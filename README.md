@@ -13,8 +13,8 @@ codebase that sits on top of NuPIC.
 
 We get a lot of questions about it. As such we wondered whether it is 
 possible to be even more open about that work.  Could we release our day 
-to day research code in a public repository? Would people get confused?  
-Would it slow us down?
+to day research code in a public repository? Would people get confused? Would
+it slow us down? 
 
 We discussed these tradeoffs on the NuPIC mailing list. Based on that 
 discussion, we decided to go ahead and create `nupic.research` It contains 
