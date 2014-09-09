@@ -27,6 +27,8 @@ Use that instance to
   Encode a sensorimotor sequence given a list of coordinates.
     SMSequences.encodeSensorimotorSequence(eyeLocs)
 
+A simple example of how you would use this class is at the bottom of this file.
+Run this script with no arguments to run that code.
 """
 
 import numpy
@@ -36,6 +38,7 @@ from nupic.bindings.math import Random
 from nupic.encoders import ScalarEncoder
 from nupic.encoders import VectorEncoder
 from nupic.encoders.category import CategoryEncoder
+from nupic.encoders.sdrcategory import SDRCategoryEncoder
 
 
 
@@ -77,7 +80,8 @@ class SMSequences(object):
                numActiveBitsSensoryInput=9,
                numActiveBitsMotorInput=9,
                seed=42,
-               verbosity=False):
+               verbosity=False,
+               useRandomEncoder=False):
     """
     @param sensoryInputElements       (list)
 
@@ -117,9 +121,15 @@ class SMSequences(object):
 
         Random seed for nupic.bindings.Random.
 
-    @param verbosity                  (boolean)
+    @param verbosity                  (int)
 
         Verbosity
+
+    @param useRandomEncoder           (boolean)
+
+        if True, use the random encoder SDRCategoryEncoder. If False,
+        use CategoryEncoder. CategoryEncoder encodes categories using contiguous
+        non-overlapping bits for each category, which makes it easier to debug.
     """
 
     #---------------------------------------------------------------------------------
@@ -135,10 +145,10 @@ class SMSequences(object):
     self.verbosity = verbosity
     self.seed = seed
 
-    self.initialize()
+    self.initialize(useRandomEncoder)
 
 
-  def initialize(self):
+  def initialize(self, useRandomEncoder):
     """
     Initialize:
       (function)        Random number generator.
@@ -156,16 +166,24 @@ class SMSequences(object):
     self.spatialMap = dict( zip( map(tuple, list(self.spatialConfig)),
                               self.sensoryInputElements))
 
-    self.lengthSensoryInput = (len(self.sensoryInputElementsPool)+1) * \
-                                                  self.numActiveBitsSensoryInput
-
     self.lengthMotorInput1D = (2*self.maxDisplacement + 1) * \
                                                     self.numActiveBitsMotorInput
 
     uniqueSensoryElements = list(set(self.sensoryInputElementsPool))
 
-    self.sensoryEncoder = CategoryEncoder(w=self.numActiveBitsSensoryInput,
-                          categoryList=uniqueSensoryElements, forced=True)
+    if useRandomEncoder:
+      self.sensoryEncoder = SDRCategoryEncoder(n=512,
+                                w=self.numActiveBitsSensoryInput,
+                                categoryList=uniqueSensoryElements,
+                                forced=True)
+      self.lengthSensoryInput = self.sensoryEncoder.getWidth()
+
+    else:
+      self.lengthSensoryInput = (len(self.sensoryInputElementsPool)+1) * \
+                                          self.numActiveBitsSensoryInput
+
+      self.sensoryEncoder = CategoryEncoder(w=self.numActiveBitsSensoryInput,
+                            categoryList=uniqueSensoryElements, forced=True)
 
     motorEncoder1D =  ScalarEncoder(n=self.lengthMotorInput1D,
                                     w=self.numActiveBitsMotorInput,
@@ -445,6 +463,8 @@ class SMSequences(object):
 
 
 if __name__ == "__main__":
+  # A simple example of how you would use this class
+
   seq = SMSequences(
     sensoryInputElementsPool=["A", "B", "C", "D", "E", "F", "G", "H"],
     sensoryInputElements=["E", "D", "A", "D", "G", "H"],
@@ -452,7 +472,23 @@ if __name__ == "__main__":
     minDisplacement=1,
     maxDisplacement=2,
     verbosity=3,
-    seed=1
+    seed=4,
+    useRandomEncoder=False
   )
 
-  seq.generateSensorimotorSequence(10)
+  sequence = seq.generateSensorimotorSequence(10)
+  print "Length of sequence:",len(sequence[0])
+  for i in range(len((sequence[0]))):
+    print "\n============= Sequence position",i
+
+    # Print the sensory pattern and motor command in "English"
+    print "Sensory pattern:",seq.decodeSensoryInput(sequence[0][i]),
+    print "Motor command:",seq.decodeMotorInput(sequence[1][i])
+
+    # Print the SDR's corresponding to sensory and motor commands
+    print "Sensory signal",
+    printSequence(sequence[0][i])
+    print "Motor signal",
+    printSequence(sequence[1][i])
+    print "Combined distal input",
+    printSequence(sequence[2][i])

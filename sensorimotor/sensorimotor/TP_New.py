@@ -160,7 +160,10 @@ class SPTP(SpatialPooler):
     synPermActiveInc:     The amount by which an active synapse is incremented 
                           in each round. Specified as a percent of a
                           fully grown synapse.
-    synPredictedInc:      The amount by which a metabotropically active synapse 
+    synPermActiveInactiveDec: For inactive columns, synapses connected to input
+                          bits that are on are decreased by
+                          synPermActiveInactiveDec.
+    synPredictedInc:      The amount by which a metabotropically active synapse
                           is incremented in each round. These are active
                           synapses originating from a previously predicted cell.
                           Specified as a percent of a fully grown synapse.
@@ -168,7 +171,7 @@ class SPTP(SpatialPooler):
                           permanence value is above the connected threshold is
                           a "connected synapse", meaning it can contribute to
                           the cell's firing.
-    minPctOvlerapDutyCycle: A number between 0 and 1.0, used to set a floor on
+    minPctOverlapDutyCycle: A number between 0 and 1.0, used to set a floor on
                           how often a column should have at least
                           stimulusThreshold active inputs. Periodically, each
                           column looks at the overlap duty cycle of
@@ -329,7 +332,7 @@ class SPTP(SpatialPooler):
     self._seed(seed)
     
     # A cell will enter pooling state if it receives enough predicted inputs
-    # pooling cells has priority during competition    
+    # pooling cells have priority during competition
     self._poolingState = numpy.zeros((self._numColumns), dtype='int32')
     self._poolingColumns = []
     # Initialize a tiny random tie breaker. This is used to determine winning
@@ -351,9 +354,9 @@ class SPTP(SpatialPooler):
 
     # The inhibition radius determines the size of a column's local 
     # neighborhood. of a column. A cortical column must overcome the overlap 
-    # score of columns in his neighborhood in order to become actives. This 
-    # radius is updated every learning round. It grows and shrinks with the 
-    # average number of connected synapses per column.
+    # score of columns in its neighborhood in order to become active. This
+    # radius is updated every updatePeriod iterations. It grows and shrinks
+    # with the average number of connected synapses per column.
     self._inhibitionRadius = 0
     self._updateInhibitionRadius()
     
@@ -365,7 +368,7 @@ class SPTP(SpatialPooler):
     '''
     Initialize connection matrix, including:
 
-    _permanences : permence of synaptic connections (sparse matrix)
+    _permanences : permanence of synaptic connections (sparse matrix)
     _potentialPools: potential pool of connections for each cell
                     (sparse binary matrix)
     _connectedSynapses: connected synapses (binary sparse matrix)
@@ -386,7 +389,7 @@ class SPTP(SpatialPooler):
     # whose columns represent the input bits. if potentialPools[i][j] == 1,
     # then input bit 'j' is in column 'i's potential pool. A column can only be 
     # connected to inputs in its potential pool. The indices refer to a 
-    # falttenned version of both the inputs and columns. Namely, irrespective 
+    # flattened version of both the inputs and columns. Namely, irrespective
     # of the topology of the inputs and columns, they are treated as being a 
     # one dimensional array. Since a column is typically connected to only a 
     # subset of the inputs, many of the entries in the matrix are 0. Therefore 
@@ -397,7 +400,7 @@ class SPTP(SpatialPooler):
     self._potentialPools.resize(numColumns, numInputs)
 
     # Initialize the permanences for each column. Similar to the 
-    # 'self._potentialPools', the permances are stored in a matrix whose rows
+    # 'self._potentialPools', the permanences are stored in a matrix whose rows
     # represent the cortial columns, and whose columns represent the input 
     # bits. if self._permanences[i][j] = 0.2, then the synapse connecting 
     # cortical column 'i' to input bit 'j'  has a permanence of 0.2. Here we 
@@ -407,8 +410,8 @@ class SPTP(SpatialPooler):
     # elements where the potential pool is non-zero.
     self._permanences = SparseMatrix(numColumns, numInputs)
 
-    # A cache for permanence decremants of (Active->Inactive Type)
-    # Permanence decremant won't be initiated until the next time
+    # A cache for permanence decrements of (Active->Inactive Type)
+    # Permanence decrements won't be initiated until the next time
     # a cell fire
     self._permanenceDecCache = SparseMatrix(numColumns, numInputs)
 
@@ -805,47 +808,6 @@ class SPTP(SpatialPooler):
         permChangesBinary.fill(1) 
         permChangesBinary[activeColumns] = 0        
         self._permanenceDecCache.setColFromDense(i, permChangesBinary)     
-
-    # if self._synPermActiveInactiveDec > 0:
-
-    #   self._connectedSynapses.transpose()
-
-    #   for i in inputIndices: 
-    #     # go through all active inputs
-    #     if self._spVerbosity > 5:
-    #       print "Active Input: ", i
-    #       print "Current Connection: ", self._connectedSynapses.getRow(i)
-        
-    #       # print "Current perm: ", self._permanences.getCol(i)        
-        
-    #     # initiate permanance decremant now
-    #     perm = self._permanences.getCol(i)
-        
-    #     permChanges = numpy.zeros(self._numColumns)
-    #     permChanges.fill(-self._synPermActiveInactiveDec)      
-    #     permChanges[activeColumns] = 0
-    #     # only do this for connected synapses
-    #     unConnected = numpy.where(self._connectedSynapses.getRow(i) == 0)[0]
-    #     permChanges[unConnected] = 0              
-
-    #     perm += permChanges
-
-    #     perm[perm < self._synPermTrimThreshold] = 0
-    #     numpy.clip(perm,self._synPermMin, self._synPermMax, out=perm)
-    #     newConnected = numpy.where(perm >= self._synPermConnected)[0]
-
-    #     self._permanences.setColFromDense(i, perm)
-                
-    #     self._connectedSynapses.replaceSparseRow(i, newConnected)
-    #     if self._spVerbosity > 5:
-    #       # print "permChanges : ", permChanges                
-    #       # print "New perm: ", self._permanences.getCol(i)
-    #       print "New Connection: ", self._connectedSynapses.getRow(i)
-
-    #   self._connectedSynapses.transpose()      
-      
-    #   for i in range(self._numColumns):
-    #     self._connectedCounts[i] = self._connectedSynapses.nNonZerosOnRow(i)
 
 
   def printParameters(self):

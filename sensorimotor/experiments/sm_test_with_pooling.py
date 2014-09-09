@@ -20,7 +20,7 @@ from nupic.encoders.category import CategoryEncoder
 realDType = GetNTAReal()
 uintType = "uint32"
 
-VERBOSITY = 2
+VERBOSITY = 0
 
 """
 
@@ -81,10 +81,14 @@ def extractInputForTP(tm, l3InputSize):
 
 #######################################################################
 #
-# Step 1: initialize several patterns, each pattern may have
+# Step 1: initialize several static patterns. Each pattern will be represented
+# by letters chosen from the alphabet.
 
-numSensoryInputActiveBits = 7
-numMotorCommandActiveBits = 7
+numSensoryInputActiveBits = 15
+numMotorCommandActiveBits = 15
+useRandomEncoding = True
+
+sensoryInputElementsPool = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 # spatial configuration of the pattern
 spatialConfig = numpy.array([0,1,2,3],dtype='int32')
@@ -94,40 +98,54 @@ print " Generating sequences for each pattern:  "
 smseqs = [
   SMSequences(
     sensoryInputElements = ['A', 'B', 'C', 'D'],
-    sensoryInputElementsPool = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+    sensoryInputElementsPool = sensoryInputElementsPool,
     spatialConfig = numpy.array([[0],[1],[2],[3]]),
     numActiveBitsSensoryInput = numSensoryInputActiveBits,
     numActiveBitsMotorInput = numMotorCommandActiveBits,
     maxDisplacement=1,
     verbosity = 3,
-    seed = 1),
+    seed = 1,
+    useRandomEncoder=useRandomEncoding),
   SMSequences(
     sensoryInputElements = ['A', 'B', 'C', 'D'],
-    sensoryInputElementsPool = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+    sensoryInputElementsPool = sensoryInputElementsPool,
     spatialConfig = numpy.array([[3],[2],[1],[0]]),
     numActiveBitsSensoryInput = numSensoryInputActiveBits,
     numActiveBitsMotorInput = numMotorCommandActiveBits,
     maxDisplacement=1,
     verbosity = 3,
-    seed = 1),
-  # SMSeqNew(
-  #   sensoryInputElements = ['E', 'F', 'G', 'H'],
-  #   sensoryInputElementsPool = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
-  #   spatialConfig = numpy.array([[0],[1],[2],[3]]),
-  #   numActiveBitsSensoryInput = numSensoryInputActiveBits,
-  #   numActiveBitsMotorInput = numMotorCommandActiveBits,
-  #   maxDisplacement=1,
-  #   verbosity = 3,
-  #   seed = 1),
-  # SMSeqNew(
-  #   sensoryInputElements = ['E', 'F', 'G', 'H'],
-  #   sensoryInputElementsPool = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
-  #   spatialConfig = numpy.array([[3],[2],[1],[0]]),
-  #   numActiveBitsSensoryInput = numSensoryInputActiveBits,
-  #   numActiveBitsMotorInput = numMotorCommandActiveBits,
-  #   maxDisplacement=1,
-  #   verbosity = 3,
-  #   seed = 1)
+    seed = 1,
+    useRandomEncoder=useRandomEncoding),
+  SMSequences(
+    sensoryInputElements = ['E', 'F', 'G', 'H'],
+    sensoryInputElementsPool = sensoryInputElementsPool,
+    spatialConfig = numpy.array([[0],[1],[2],[3]]),
+    numActiveBitsSensoryInput = numSensoryInputActiveBits,
+    numActiveBitsMotorInput = numMotorCommandActiveBits,
+    maxDisplacement=1,
+    verbosity = 3,
+    seed = 1,
+    useRandomEncoder=useRandomEncoding),
+  SMSequences(
+    sensoryInputElements = ['E', 'F', 'G', 'H'],
+    sensoryInputElementsPool = sensoryInputElementsPool,
+    spatialConfig = numpy.array([[3],[2],[1],[0]]),
+    numActiveBitsSensoryInput = numSensoryInputActiveBits,
+    numActiveBitsMotorInput = numMotorCommandActiveBits,
+    maxDisplacement=1,
+    verbosity = 3,
+    seed = 1,
+    useRandomEncoder=useRandomEncoding),
+  SMSequences(
+    sensoryInputElements = ['I', 'J', 'K', 'L'],
+    sensoryInputElementsPool = sensoryInputElementsPool,
+    spatialConfig = numpy.array([[3],[2],[1],[0]]),
+    numActiveBitsSensoryInput = numSensoryInputActiveBits,
+    numActiveBitsMotorInput = numMotorCommandActiveBits,
+    maxDisplacement=1,
+    verbosity = 3,
+    seed = 1,
+    useRandomEncoder=useRandomEncoding)
 ]
 
 numberOfPatterns = len(smseqs)
@@ -138,7 +156,7 @@ for i,seq in enumerate(smseqs):
 
 # Step 2: generate sensorimotor sequences
 
-sequenceLength = 20
+sequenceLength = 40
 sensorySequences = []
 motorSequences = []
 sensorimotorSequences = []
@@ -159,15 +177,15 @@ print "motorCommandWidth",motorCommandWidth
 # It performs sensorimotor inference, simulating layer 4
 tm = TM_SM(numberOfCols=sensoryInputWidth,
         numberOfDistalInput=motorCommandWidth+sensoryInputWidth,
-        cellsPerColumn=8,
+        cellsPerColumn=16,
         initialPerm=0.5,
         connectedPerm=0.5,
-        minThreshold=12,
+        minThreshold=24,
+        activationThreshold=24,
         newSynapseCount=50,
-        newDistalSynapseCount=21,
+        newDistalSynapseCount=50,
         permanenceInc=0.1,
         permanenceDec=0.02,
-        activationThreshold=12,
         learnOnOneCell=True,
         learnDistalInputs=True,
         learnLateralConnections=False,
@@ -205,6 +223,7 @@ l3sp = TP_New(
       useBurstingRule = False,
       minPctActiveDutyCycle = 0.1,
       synPermConnected = 0.3,
+      initConnectedPct=0.2,
       spVerbosity=0
     )
 
@@ -343,7 +362,8 @@ for s in range(numberOfPatterns):
     print formatRow( l3ActivityLearning[s][j] )
 
 # Use the stable activity for each pattern as the "template"
-l3ActivityForPattern = numpy.zeros((numberOfPatterns, l3sp._numColumns ),dtype = "int32")
+l3ActivityForPattern = numpy.zeros((numberOfPatterns, l3sp._numColumns ),
+                                   dtype = "int32")
 for s in range(numberOfPatterns):
   l3ActivityForPattern[s] = l3ActivityLearning[s][l3ActivityLearning.shape[1]-1]
   print "L3 Representation for Pattern ",s," is ",\
@@ -378,9 +398,6 @@ for repeat in range(nRepeat):
 
   l3Activity = numpy.zeros((numberOfPatterns, sequenceLength,
                             l3sp._numColumns), dtype = "int32")
-  # l4Activity = numpy.zeros((numberOfPatterns, sequenceLength, l3sp._numColumns),dtype = "int32")
-  # l4ActivityAllCell = numpy.zeros((numberOfPatterns, sequenceLength*tm.cellsPerColumn, numColumns),dtype = "int32")
-  # l4Prediction = numpy.zeros((numberOfPatterns, sequenceLength, numColumns),dtype = "int32")
 
   for s in range(numberOfPatterns):
     if VERBOSITY > 1:
@@ -439,13 +456,14 @@ for repeat in range(nRepeat):
 
   # Print out the L3 representations for each pattern for each point in the
   # sequence.
-  for s in range(numberOfPatterns):
-    print "\nLast stable L3 activity for pattern",s,formatRow(
-      l3ActivityForPattern[s])
-    print " L3 Activity for Sensorimotor Sequence ", s
-    for j in range(sequenceLength):
-      print " element, ",j,
-      print formatRow( l3Activity[s][j] )
+  if VERBOSITY >= 1:
+    for s in range(numberOfPatterns):
+      print "\nLast stable L3 activity for pattern",s,formatRow(
+        l3ActivityForPattern[s])
+      print " L3 Activity for Sensorimotor Sequence ", s
+      for j in range(sequenceLength):
+        print " element, ",j,
+        print formatRow( l3Activity[s][j] )
 
   # For this repetition, Compute the total number of shared bits between all
   # pairs of patterns, for each point in the sequence (except we skip the
@@ -456,11 +474,12 @@ for repeat in range(nRepeat):
         for j2 in range(1,sequenceLength):
           sharedBits = numpy.logical_and(l3Activity[p1][j1],
                                          l3Activity[p2][j2]).sum()
-          print p1,p2,j1,j2,sharedBits
           numSharedBits[p1][p2] += sharedBits
-          if p1 != p2 and sharedBits > 3:
-            print formatRow(l3Activity[p1][j1])
-            print formatRow(l3Activity[p2][j2])
+          if VERBOSITY >=2:
+            print p1,p2,j1,j2,sharedBits
+            if p1 != p2 and sharedBits > 3:
+              print formatRow(l3Activity[p1][j1])
+              print formatRow(l3Activity[p2][j2])
 
 
 
