@@ -50,10 +50,10 @@ def formatRow(x, formatString = "%d", rowSize = 100):
 
 class SPTP(SpatialPooler):
   """
-  This class implements the new temporal pooler. It tries to form stable and unique
-  representations for sequences that are correctly predicted. If the input is not 
-  predicted, it used similar competition rule as the spatial pooler to select active
-  cells
+  This class implements the new temporal pooler. It tries to form stable and
+  unique representations for sequences that are correctly predicted. If the
+  input is not predicted, it used similar competition rule as the spatial
+  pooler to select active cells
   """
 
   def __init__(self,
@@ -81,148 +81,41 @@ class SPTP(SpatialPooler):
                poolingThreshUnpredicted = 0.0,
                initConnectedPct = 0.1,
                seed=-1,
-               spVerbosity=0
+               spVerbosity=0,
+               wrapAround=True
                ):
     """
-    Parameters:
-    ----------------------------
-    inputDimensions:      A list representing the dimensions of the input
-                          vector. Format is [height, width, depth, ...], where
-                          each value represents the size of the dimension. For a
-                          topology of one dimesion with 100 inputs use 100, or
-                          [100]. For a two dimensional topology of 10x5 use
-                          [10,5]. 
-    columnDimensions:     A list representing the dimensions of the columns in
-                          the region. Format is [height, width, depth, ...],
-                          where each value represents the size of the dimension.
-                          For a topology of one dimesion with 2000 columns use
-                          2000, or [2000]. For a three dimensional topology of
-                          32x64x16 use [32, 64, 16]. 
-    potentialRadius:      This parameter deteremines the extent of the input 
-                          that each column can potentially be connected to. 
-                          This can be thought of as the input bits that
-                          are visible to each column, or a 'receptiveField' of 
-                          the field of vision. A large enough value will result 
-                          in the 'global coverage', meaning that each column 
-                          can potentially be connected to every input bit. This 
-                          parameter defines a square (or hyper square) area: a 
-                          column will have a max square potential pool with 
-                          sides of length 2 * potentialRadius + 1. 
-    potentialPct:         The percent of the inputs, within a column's
-                          potential radius, that a column can be connected to. 
-                          If set to 1, the column will be connected to every 
-                          input within its potential radius. This parameter is 
-                          used to give each column a unique potential pool when 
-                          a large potentialRadius causes overlap between the 
-                          columns. At initialization time we choose 
-                          ((2*potentialRadius + 1)^(# inputDimensions) * 
-                          potentialPct) input bits to comprise the column's
-                          potential pool.
-    globalInhibition:     If true, then during inhibition phase the winning 
-                          columns are selected as the most active columns from 
-                          the region as a whole. Otherwise, the winning columns 
-                          are selected with resepct to their local 
-                          neighborhoods. using global inhibition boosts 
-                          performance x60.
-    localAreaDensity:     The desired density of active columns within a local
-                          inhibition area (the size of which is set by the
-                          internally calculated inhibitionRadius, which is in
-                          turn determined from the average size of the 
-                          connected potential pools of all columns). The 
-                          inhibition logic will insure that at most N columns 
-                          remain ON within a local inhibition area, where N = 
-                          localAreaDensity * (total number of columns in 
-                          inhibition area).
-    numActivePerInhArea:  An alternate way to control the density of the active
-                          columns. If numActivePerInhArea is specified then
-                          localAreaDensity must less than 0, and vice versa. 
-                          When using numActivePerInhArea, the inhibition logic 
-                          will insure that at most 'numActivePerInhArea' 
-                          columns remain ON within a local inhibition area (the 
-                          size of which is set by the internally calculated
-                          inhibitionRadius, which is in turn determined from 
-                          the average size of the connected receptive fields of 
-                          all columns). When using this method, as columns 
-                          learn and grow their effective receptive fields, the
-                          inhibitionRadius will grow, and hence the net density
-                          of the active columns will *decrease*. This is in
-                          contrast to the localAreaDensity method, which keeps
-                          the density of active columns the same regardless of
-                          the size of their receptive fields.
-    stimulusThreshold:    This is a number specifying the minimum number of
-                          synapses that must be on in order for a columns to
-                          turn ON. The purpose of this is to prevent noise 
-                          input from activating columns. Specified as a percent 
-                          of a fully grown synapse.
-    synPermInactiveDec:   The amount by which an inactive synapse is 
-                          decremented in each round. Specified as a percent of 
-                          a fully grown synapse.
-    synPermActiveInc:     The amount by which an active synapse is incremented 
-                          in each round. Specified as a percent of a
-                          fully grown synapse.
-    synPermActiveInactiveDec: For inactive columns, synapses connected to input
-                          bits that are on are decreased by
-                          synPermActiveInactiveDec.
-    synPredictedInc:      The amount by which a metabotropically active synapse
-                          is incremented in each round. These are active
-                          synapses originating from a previously predicted cell.
-                          Specified as a percent of a fully grown synapse.
-    synPermConnected:     The default connected threshold. Any synapse whose
-                          permanence value is above the connected threshold is
-                          a "connected synapse", meaning it can contribute to
-                          the cell's firing.
-    minPctOverlapDutyCycle: A number between 0 and 1.0, used to set a floor on
-                          how often a column should have at least
-                          stimulusThreshold active inputs. Periodically, each
-                          column looks at the overlap duty cycle of
-                          all other column within its inhibition radius and 
-                          sets its own internal minimal acceptable duty cycle 
-                          to: minPctDutyCycleBeforeInh * max(other columns' 
-                          duty cycles).
-                          On each iteration, any column whose overlap duty 
-                          cycle falls below this computed value will  get
-                          all of its permanence values boosted up by
-                          synPermActiveInc. Raising all permanences in response
-                          to a sub-par duty cycle before  inhibition allows a
-                          cell to search for new inputs when either its
-                          previously learned inputs are no longer ever active,
-                          or when the vast majority of them have been 
-                          "hijacked" by other columns.
-    minPctActiveDutyCycle: A number between 0 and 1.0, used to set a floor on
-                          how often a column should be activate.
-                          Periodically, each column looks at the activity duty 
-                          cycle of all other columns within its inhibition 
-                          radius and sets its own internal minimal acceptable 
-                          duty cycle to:
-                            minPctDutyCycleAfterInh *
-                            max(other columns' duty cycles).
-                          On each iteration, any column whose duty cycle after
-                          inhibition falls below this computed value will get
-                          its internal boost factor increased.
-    dutyCyclePeriod:      The period used to calculate duty cycles. Higher
-                          values make it take longer to respond to changes in
-                          boost or synPerConnectedCell. Shorter values make it
-                          more unstable and likely to oscillate.
-    maxBoost:            The maximum overlap boost factor. Each column's
-                          overlap gets multiplied by a boost factor
-                          before it gets considered for inhibition.
-                          The actual boost factor for a column is number 
-                          between 1.0 and maxBoost. A boost factor of 1.0 is 
-                          used if the duty cycle is >= minOverlapDutyCycle, 
-                          maxBoost is used if the duty cycle is 0, and any duty 
-                          cycle in between is linearly extrapolated from these 
-                          2 endpoints.
-    seed:                 Seed for our own pseudo-random number generator.
-    spVerbosity:          spVerbosity level: 0, 1, 2, or 3
-    useBurstingRule:      A bool value indicating whether to use bursting rule
-    usePoolingRule:       A bool value indicating whether to use pooling rule
-    poolingLife:          A pooling cell will stop pooling if it hasn't received
-                          any predicted input in poolingLife steps
-    poolingThreshUnpredicted: A number between 0 and 1. The temporal pooler will
-                          stop pooling if the fraction of unpredicted input exceeds
-                          this threshold.
-    initConnectedPct:     A number between 0 and 1, indicating fraction of the inputs
-                          that are initially connected.
+    Please see spatial_pooler.py in NuPIC for descriptions of common
+    constructor parameters.
+
+    New parameters defined in this class:
+    -------------------------------------
+    @param synPermActiveInactiveDec:
+      For inactive columns, synapses connected to input bits that are on are
+      decreased by synPermActiveInactiveDec.
+
+    @param synPredictedInc:
+      The amount by which a metabotropically active synapse is incremented in
+      each round. These are active synapses originating from a previously
+      predicted cell.
+
+    @param useBurstingRule:
+      A bool value indicating whether to use bursting rule
+
+    @param usePoolingRule:
+       A bool value indicating whether to use pooling rule
+
+    @param poolingLife:
+      A pooling cell will stop pooling if it hasn't received any predicted
+      input in poolingLife steps
+
+    @param poolingThreshUnpredicted:
+      A number between 0 and 1. The temporal pooler will stop pooling if the
+      fraction of unpredicted input exceeds this threshold.
+
+    @param initConnectedPct:
+      A number between 0 and 1, indicating fraction of the inputs that are
+      initially connected.
     """
     self.initialize(inputDimensions,
                     columnDimensions,
@@ -248,7 +141,8 @@ class SPTP(SpatialPooler):
                     poolingThreshUnpredicted,
                     seed,      
                     initConnectedPct,              
-                    spVerbosity)
+                    spVerbosity,
+                    wrapAround)
 
 
   def initialize(self,
@@ -276,7 +170,8 @@ class SPTP(SpatialPooler):
                poolingThreshUnpredicted=0.0,
                seed=-1,
                initConnectedPct=0.1,
-               spVerbosity=0):
+               spVerbosity=0,
+               wrapAround=True):
 
     # Verify input is valid
     inputDimensions = numpy.array(inputDimensions)
@@ -310,6 +205,7 @@ class SPTP(SpatialPooler):
     self._dutyCyclePeriod = dutyCyclePeriod
     self._maxBoost = maxBoost
     self._spVerbosity = spVerbosity
+    self._wrapAround = wrapAround
     self._synPermActiveInactiveDec = synPermActiveInactiveDec
     self.useBurstingRule = useBurstingRule
     self.usePoolingRule = usePoolingRule
@@ -337,12 +233,11 @@ class SPTP(SpatialPooler):
     self._poolingColumns = []
     # Initialize a tiny random tie breaker. This is used to determine winning
     # columns where the overlaps are identical.
-    self._tieBreaker = 0.01*numpy.array([self._random.getReal64() for i in 
-                                        xrange(self._numColumns)])
+    self._tieBreaker = 0.01*numpy.array([self._random.getReal64() for i in
+                                          xrange(self._numColumns)])
 
     # initialize connection matrix
     self.initializeConnections()
-
 
     self._overlapDutyCycles = numpy.zeros(numColumns, dtype=realDType)
     self._activeDutyCycles = numpy.zeros(numColumns, dtype=realDType)
@@ -351,6 +246,7 @@ class SPTP(SpatialPooler):
     self._minActiveDutyCycles = numpy.zeros(numColumns,
                                             dtype=realDType)
     self._boostFactors = numpy.ones(numColumns, dtype=realDType)
+
 
     # The inhibition radius determines the size of a column's local 
     # neighborhood. of a column. A cortical column must overcome the overlap 
@@ -385,16 +281,16 @@ class SPTP(SpatialPooler):
     initConnectedPct = self._initConnectedPct
 
     # Store the set of all inputs that are within each column's potential pool.
-    # 'potentialPools' is a matrix, whose rows represent cortical columns, and 
+    # 'potentialPools' is a matrix, whose rows represent cortical columns, and
     # whose columns represent the input bits. if potentialPools[i][j] == 1,
-    # then input bit 'j' is in column 'i's potential pool. A column can only be 
-    # connected to inputs in its potential pool. The indices refer to a 
+    # then input bit 'j' is in column 'i's potential pool. A column can only be
+    # connected to inputs in its potential pool. The indices refer to a
     # flattened version of both the inputs and columns. Namely, irrespective
-    # of the topology of the inputs and columns, they are treated as being a 
-    # one dimensional array. Since a column is typically connected to only a 
-    # subset of the inputs, many of the entries in the matrix are 0. Therefore 
-    # the the potentialPool matrix is stored using the SparseBinaryMatrix 
-    # class, to reduce memory footprint and compuation time of algorithms that 
+    # of the topology of the inputs and columns, they are treated as being a
+    # one dimensional array. Since a column is typically connected to only a
+    # subset of the inputs, many of the entries in the matrix are 0. Therefore
+    # the the potentialPool matrix is stored using the SparseBinaryMatrix
+    # class, to reduce memory footprint and compuation time of algorithms that
     # require iterating over the data strcuture.
     self._potentialPools = SparseBinaryMatrix(numInputs)
     self._potentialPools.resize(numColumns, numInputs)
@@ -410,7 +306,7 @@ class SPTP(SpatialPooler):
     # elements where the potential pool is non-zero.
     self._permanences = SparseMatrix(numColumns, numInputs)
 
-    # A cache for permanence decrements of (Active->Inactive Type)
+    # NEW. A cache for permanence decrements of (Active->Inactive Type)
     # Permanence decrements won't be initiated until the next time
     # a cell fire
     self._permanenceDecCache = SparseMatrix(numColumns, numInputs)
@@ -431,46 +327,56 @@ class SPTP(SpatialPooler):
     # stored separately for efficiency purposes.
     self._connectedCounts = numpy.zeros(numColumns, dtype=realDType)
 
-    # Initialize the set of permanence values for each columns. Ensure that 
-    # each column is connected to enough input bits to allow it to be 
-    # activated
 
+    # Initialize the set of permanence values for each column. Ensure that
+    # each column is connected to enough input bits to allow it to be
+    # activated.
     for i in xrange(numColumns):
-      # indice for inputs within _potentialRadius of the current column
-      indices = numpy.array(range(2*self._potentialRadius+1))
-      indices += i
-      indices -= self._potentialRadius      
-      indices %= self._numInputs # periodic boundary conditions
-      indices = numpy.array(list(set(indices)))          
-
-      # Select a subset of the receptive field to serve as the
-      # the potential pool
-      sample = numpy.empty((self._inputDimensions * self._potentialPct)\
-                            .astype('int32'),dtype=uintType)
-      self._random.getUInt32Sample(indices.astype(uintType),sample)
-      potential = numpy.zeros(self._numInputs)  
-      potential[sample] = 1        
-
-      # update potentialPool
+      potential = self._mapPotential(i, wrapAround=self._wrapAround)
       self._potentialPools.replaceSparseRow(i, potential.nonzero()[0])
+      perm = self._initPermanence(potential, initConnectedPct)
+      self._updatePermanencesForColumn(perm, i, raisePerm=True)
 
-      # number of potential connections
-      numPotential = numpy.nonzero(potential)[0].size
-      # generate indicator for connected/unconnected
-      connected = numpy.random.rand(self._numInputs) < initConnectedPct
 
-      # set permanence value for connected synapses to be slightly above _synPermConnected
-      permConnected =  (self._synPermConnected + numpy.random.rand(self._numInputs) * 
-        self._synPermActiveInc / 4.0)
-      # set permamnce value for unconnected synapses below _synPermConnected
-      permNotConnected = self._synPermConnected * numpy.random.rand(self._numInputs)
+    # TODO: The permanence initialiation code below runs faster but is not
+    # deterministic (doesn't use our random seed.  We should clean up the code
+    # and consider moving it to the base spatial pooler class itself.
 
-      # update permamnce value
-      perm = permNotConnected
-      perm[connected] = permConnected[connected]
-      perm[potential < 1] = 0 # permanace value for cells not in the potential pool
-
-      self._updatePermanencesForColumn(perm, i, raisePerm=True) 
+    # for i in xrange(numColumns):
+    #   # NEW indices for inputs within _potentialRadius of the current column
+    #   indices = numpy.array(range(2*self._potentialRadius+1))
+    #   indices += i
+    #   indices -= self._potentialRadius
+    #   indices %= self._numInputs # periodic boundary conditions
+    #   indices = numpy.array(list(set(indices)))
+    #
+    #   # NEW Select a subset of the receptive field to serve as the
+    #   # potential pool
+    #   sample = numpy.empty((self._inputDimensions * self._potentialPct)\
+    #                         .astype('int32'),dtype=uintType)
+    #   self._random.getUInt32Sample(indices.astype(uintType),sample)
+    #   potential = numpy.zeros(self._numInputs)
+    #   potential[sample] = 1
+    #
+    #   # update potentialPool
+    #   self._potentialPools.replaceSparseRow(i, potential.nonzero()[0])
+    #
+    #   # NEW generate indicator for connected/unconnected
+    #   connected = numpy.random.rand(self._numInputs) < initConnectedPct
+    #
+    #   # set permanence value for connected synapses to be slightly above _synPermConnected
+    #   permConnected =  (self._synPermConnected + numpy.random.rand(self._numInputs) *
+    #     self._synPermActiveInc / 4.0)
+    #   # set permanence value for unconnected synapses below _synPermConnected
+    #   permNotConnected = self._synPermConnected * numpy.random.rand(self._numInputs)
+    #
+    #   # update permamnce value
+    #   perm = permNotConnected
+    #   perm[connected] = permConnected[connected]
+    #   perm[potential < 1] = 0 # permanence value for cells not in the potential
+    #   # pool
+    #
+    #   self._updatePermanencesForColumn(perm, i, raisePerm=True)
 
 
 

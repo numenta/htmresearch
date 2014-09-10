@@ -70,11 +70,11 @@ class SMSequences(object):
   """
   Class generates sensorimotor sequences
   """
-  ##############################################################################
   def __init__(self,
-               sensoryInputElementsPool,
                sensoryInputElements,
                spatialConfig,
+               sensoryInputElementsPool=list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                   "abcdefghijklmnopqrstuvwxyz0123456789"),
                minDisplacement=1,
                maxDisplacement=1,
                numActiveBitsSensoryInput=9,
@@ -84,49 +84,40 @@ class SMSequences(object):
                useRandomEncoder=False):
     """
     @param sensoryInputElements       (list)
-
         Strings or numbers representing the sensory elements that exist in your
         world. Elements can be repeated if multiple of the same exist.
 
-    @param sensoryInputElementsPool   (list)
-
-        Strings or numbers representing all possible sensory elements in this
-        world. Elements don't need to be in any order. There should be no
-        duplicates.
-
     @param spatialConfig              (numpy.array)
-
         Array of size: (1, len(sensoryInputElements), dimension). It has a
         coordinate for every element in sensoryInputElements.
 
-    @param maxDisplacement            (int)
+    @param sensoryInputElementsPool   (list)
+        List of strings representing a readable version of all possible sensory
+        elements in this world. Elements don't need to be in any order and there
+        should be no duplicates. By default this contains the set of
+        alphanumeric characters.
 
+    @param maxDisplacement            (int)
         Maximum `distance` for a motor command. Distance is defined by the
-        largest difference along any coordiante dimension.
+        largest difference along any coordinate dimension.
 
     @param minDisplacement            (int)
-
         Minimum `distance` for a motor command. Distance is defined by the
-        largest difference along any coordiante dimension.
+        largest difference along any coordinate dimension.
 
     @param numActiveBitsSensoryInput  (int)
-
         Number of active bits for each sensory input.
 
     @param numActiveBitsMotorInput    (int)
-
         Number of active bits for each dimension of the motor input.
 
     @param seed                       (int)
-
         Random seed for nupic.bindings.Random.
 
     @param verbosity                  (int)
-
         Verbosity
 
     @param useRandomEncoder           (boolean)
-
         if True, use the random encoder SDRCategoryEncoder. If False,
         use CategoryEncoder. CategoryEncoder encodes categories using contiguous
         non-overlapping bits for each category, which makes it easier to debug.
@@ -150,14 +141,7 @@ class SMSequences(object):
 
   def initialize(self, useRandomEncoder):
     """
-    Initialize:
-      (function)        Random number generator.
-      (int)             Dimensions of the world.
-      (dict)            Map from spatial coordinate to sensory element.
-      (int)             Length sensory input.
-      (int)             Length of motor input (for each dimension).
-      (CategoryEncoder) Sensory encoder.
-      (VectorEncoder)   Motor encoder.
+    Initialize the various data structures.
     """
     self.setRandomSeed(self.seed)
 
@@ -172,7 +156,7 @@ class SMSequences(object):
     uniqueSensoryElements = list(set(self.sensoryInputElementsPool))
 
     if useRandomEncoder:
-      self.sensoryEncoder = SDRCategoryEncoder(n=512,
+      self.sensoryEncoder = SDRCategoryEncoder(n=1024,
                                 w=self.numActiveBitsSensoryInput,
                                 categoryList=uniqueSensoryElements,
                                 forced=True)
@@ -194,28 +178,22 @@ class SMSequences(object):
 
     self.motorEncoder = VectorEncoder(length=self.dim, encoder=motorEncoder1D)
 
-  ##############################################################################
-  # Sequence Generators
 
   def generateSensorimotorSequence(self, sequenceLength):
     """
     Generate sensorimotor sequences of length sequenceLength.
 
     @param sequenceLength (int)
-
         Length of the sensorimotor sequence.
 
     @return (tuple) Contains:
             sensorySequence       (list)
-
                 Encoded sensory input for whole sequence.
 
             motorSequence         (list)
-
                 Encoded motor input for whole sequence.
 
             sensorimotorSequence  (list)
-
                 Encoder sensorimotor input for whole sequence. This is useful
                 when you want to give external input to temporal memory.
     """
@@ -247,27 +225,24 @@ class SMSequences(object):
 
     return (sensorySequence, motorSequence, sensorimotorSequence)
 
+
   def encodeSensorimotorSequence(self, eyeLocs):
     """
-    Encode sensorimotor sequence given the eye movements. Sequence will have length
-    len(eyeLocs) - 1 because only the differences of eye locations can be used
-    to encoder motor commands.
+    Encode sensorimotor sequence given the eye movements. Sequence will have
+    length len(eyeLocs) - 1 because only the differences of eye locations can be
+    used to encoder motor commands.
 
     @param eyeLocs  (list)
-
         Numpy coordinates describing where the eye is looking.
 
     @return (tuple) Contains:
             sensorySequence       (list)
-
                 Encoded sensory input for whole sequence.
 
             motorSequence         (list)
-
                 Encoded motor input for whole sequence.
 
             sensorimotorSequence  (list)
-
                 Encoder sensorimotor input for whole sequence. This is useful
                 when you want to give external input to temporal memory.
     """
@@ -306,16 +281,13 @@ class SMSequences(object):
     Generate next eye location based on current eye location.
 
     @param currentEyeLoc (numpy.array)
-
         Current coordinate describing the eye location in the world.
 
     @return (tuple) Contains:
             nextEyeLoc  (numpy.array)
-
                 Coordinate of the next eye location.
 
             eyeDiff     (numpy.array)
-
                 Vector describing change from currentEyeLoc to nextEyeLoc.
     """
     possibleEyeLocs = []
@@ -330,8 +302,6 @@ class SMSequences(object):
 
     return nextEyeLoc, eyeDiff
 
-  #############################################################################
-  # Helper Functions
 
   def setRandomSeed(self, seed):
     """
@@ -339,12 +309,12 @@ class SMSequences(object):
     generate new sequences.
 
     @param seed       (int)
-
         Seed for nupic.bindings.Random.
     """
     self.seed = seed
     self._random = Random()
     self._random.setSeed(seed)
+
 
   def nupicRandomChoice(self, array):
     """
@@ -352,28 +322,22 @@ class SMSequences(object):
     generator.
 
     @param array  (list or numpy.array)
-
         Array to choose random element from.
 
     @return       (element)
-
         Element chosen at random.
     """
     return array[self._random.getUInt32(len(array))]
 
-  #############################################################################
-  # Encoding/Decoding Functions
 
   def encodeMotorInput(self, motorInput):
     """
     Encode motor command to bit vector.
 
     @param motorInput (1D numpy.array)
-
         Motor command to be encoded.
 
     @return           (1D numpy.array)
-
         Encoded motor command.
     """
     if not hasattr(motorInput, "__iter__"):
@@ -381,16 +345,15 @@ class SMSequences(object):
 
     return self.motorEncoder.encode(motorInput)
 
+
   def decodeMotorInput(self, motorInputPattern):
     """
     Decode motor command from bit vector.
 
     @param motorInputPattern (1D numpy.array)
-
         Encoded motor command.
 
     @return                  (1D numpy.array)
-
         Decoded motor command.
 
     """
@@ -398,37 +361,32 @@ class SMSequences(object):
     motorCommand = self.motorEncoder.decode(motorInputPattern)[0][key][1][0]
     return motorCommand
 
+
   def encodeSensoryInput(self, sensoryInputElement):
     """
     Encode sensory input to bit vector
 
     @param sensoryElement (1D numpy.array)
-
         Sensory element to be encoded.
 
     @return               (1D numpy.array)
-
         Encoded sensory element.
     """
     return self.sensoryEncoder.encode(sensoryInputElement)
+
 
   def decodeSensoryInput(self, sensoryInputPattern):
     """
     Decode sensory input from bit vector.
 
     @param sensoryInputPattern  (1D numpy.array)
-
         Encoded sensory element.
 
     @return                     (1D numpy.array)
-
         Decoded sensory element.
     """
     return self.sensoryEncoder.decode(sensoryInputPattern)[0]['category'][1]
 
-
-  ##############################################################################
-  # Print Functions
 
   def printSensoryCodingScheme(self):
     """
@@ -439,6 +397,7 @@ class SMSequences(object):
       sensoryElement = self.spatialMap[tuple(loc)]
       print sensoryElement, "%s : " % loc,
       printSequence(self.encodeSensoryInput(sensoryElement))
+
 
   def printMotorCodingScheme(self):
     """

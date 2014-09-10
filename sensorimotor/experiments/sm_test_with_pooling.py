@@ -84,11 +84,10 @@ def extractInputForTP(tm, l3InputSize):
 # Step 1: initialize several static patterns. Each pattern will be represented
 # by letters chosen from the alphabet.
 
-numSensoryInputActiveBits = 15
-numMotorCommandActiveBits = 15
+numSensoryInputActiveBits = 25
+numMotorCommandActiveBits = 25
 useRandomEncoding = True
-
-sensoryInputElementsPool = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+maxDisplacement = 3
 
 # spatial configuration of the pattern
 spatialConfig = numpy.array([0,1,2,3],dtype='int32')
@@ -98,51 +97,64 @@ print " Generating sequences for each pattern:  "
 smseqs = [
   SMSequences(
     sensoryInputElements = ['A', 'B', 'C', 'D'],
-    sensoryInputElementsPool = sensoryInputElementsPool,
     spatialConfig = numpy.array([[0],[1],[2],[3]]),
     numActiveBitsSensoryInput = numSensoryInputActiveBits,
     numActiveBitsMotorInput = numMotorCommandActiveBits,
-    maxDisplacement=1,
+    maxDisplacement=maxDisplacement,
     verbosity = 3,
     seed = 1,
     useRandomEncoder=useRandomEncoding),
   SMSequences(
     sensoryInputElements = ['A', 'B', 'C', 'D'],
-    sensoryInputElementsPool = sensoryInputElementsPool,
     spatialConfig = numpy.array([[3],[2],[1],[0]]),
     numActiveBitsSensoryInput = numSensoryInputActiveBits,
     numActiveBitsMotorInput = numMotorCommandActiveBits,
-    maxDisplacement=1,
+    maxDisplacement=maxDisplacement,
     verbosity = 3,
     seed = 1,
     useRandomEncoder=useRandomEncoding),
   SMSequences(
     sensoryInputElements = ['E', 'F', 'G', 'H'],
-    sensoryInputElementsPool = sensoryInputElementsPool,
     spatialConfig = numpy.array([[0],[1],[2],[3]]),
     numActiveBitsSensoryInput = numSensoryInputActiveBits,
     numActiveBitsMotorInput = numMotorCommandActiveBits,
-    maxDisplacement=1,
+    maxDisplacement=maxDisplacement,
     verbosity = 3,
     seed = 1,
     useRandomEncoder=useRandomEncoding),
   SMSequences(
     sensoryInputElements = ['E', 'F', 'G', 'H'],
-    sensoryInputElementsPool = sensoryInputElementsPool,
     spatialConfig = numpy.array([[3],[2],[1],[0]]),
     numActiveBitsSensoryInput = numSensoryInputActiveBits,
     numActiveBitsMotorInput = numMotorCommandActiveBits,
-    maxDisplacement=1,
+    maxDisplacement=maxDisplacement,
     verbosity = 3,
     seed = 1,
     useRandomEncoder=useRandomEncoding),
   SMSequences(
     sensoryInputElements = ['I', 'J', 'K', 'L'],
-    sensoryInputElementsPool = sensoryInputElementsPool,
     spatialConfig = numpy.array([[3],[2],[1],[0]]),
     numActiveBitsSensoryInput = numSensoryInputActiveBits,
     numActiveBitsMotorInput = numMotorCommandActiveBits,
-    maxDisplacement=1,
+    maxDisplacement=maxDisplacement,
+    verbosity = 3,
+    seed = 1,
+    useRandomEncoder=useRandomEncoding),
+  SMSequences(
+    sensoryInputElements = ['I', 'J', 'K', 'L'],
+    spatialConfig = numpy.array([[0],[1],[2],[3]]),
+    numActiveBitsSensoryInput = numSensoryInputActiveBits,
+    numActiveBitsMotorInput = numMotorCommandActiveBits,
+    maxDisplacement=maxDisplacement,
+    verbosity = 3,
+    seed = 1,
+    useRandomEncoder=useRandomEncoding),
+  SMSequences(
+    sensoryInputElements = ['A', 'E', 'E', 'J'],
+    spatialConfig = numpy.array([[0],[1],[2],[3]]),
+    numActiveBitsSensoryInput = numSensoryInputActiveBits,
+    numActiveBitsMotorInput = numMotorCommandActiveBits,
+    maxDisplacement=maxDisplacement,
     verbosity = 3,
     seed = 1,
     useRandomEncoder=useRandomEncoding)
@@ -180,8 +192,8 @@ tm = TM_SM(numberOfCols=sensoryInputWidth,
         cellsPerColumn=16,
         initialPerm=0.5,
         connectedPerm=0.5,
-        minThreshold=24,
-        activationThreshold=24,
+        minThreshold=45,
+        activationThreshold=45,
         newSynapseCount=50,
         newDistalSynapseCount=50,
         permanenceInc=0.1,
@@ -203,8 +215,8 @@ tm.printParameters()
 # c * cellsPerCol + i
 
 print "Initializing Temporal Pooler"
-l3NumColumns = 100
-l3NumActiveColumnsPerInhArea = 15
+l3NumColumns = 512
+l3NumActiveColumnsPerInhArea = 20
 l3InputSize = tm.numberOfCols*tm.cellsPerColumn
 l3sp = TP_New(
       inputDimensions  = [l3InputSize],
@@ -314,7 +326,6 @@ for s in range(numberOfPatterns):
   sensorimotorSequence = sensorimotorSequences[s]
 
   tm.reset()
-  l3sp._previousActiveColumns = []
 
   for j in range(sequenceLength):
 
@@ -492,7 +503,9 @@ print " Different L3 cells are activated for different sensorimotor sequences "
 
 print "numComparisons=",numComparisons
 print "Total number of shared bits=\n",numSharedBits
-print "Average number of shared bits=\n",AvgNumSharedBits
+print "Average number of shared bits=\n"
+for row in range(numberOfPatterns):
+  print formatRow(AvgNumSharedBits[row], "%6.2f  ")
 
 AvgSharedBitsCorrect = numpy.trace(AvgNumSharedBits)/numberOfPatterns
 AvgSharedBitsIncorrect = (AvgNumSharedBits.sum() - numpy.trace(AvgNumSharedBits)) \
