@@ -36,7 +36,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
   VERBOSITY = 1
   DEFAULT_TM_PARAMS = {
-    "columnDimensions": [140],
+    "columnDimensions": [35],
     "cellsPerColumn": 8,
     "initialPermanence": 0.5,
     "connectedPermanence": 0.6,
@@ -67,7 +67,9 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
     sequence = self._generateSensorimotorSequence(20, world, agent)
 
-    self._testTM(sequence)
+    _, stats = self._testTM(sequence)
+    self._assertAllActiveWerePredicted(stats, universe)
+    self._assertAllInactiveWereUnpredicted(stats)
 
 
   def testSingleWorld(self):
@@ -76,7 +78,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
     patternMachine = ConsecutivePatternMachine(35, 7)
     universe = OneDUniverse(3, patternMachine,
-                            nSensor=175, wSensor=7,
+                            nSensor=35, wSensor=7,
                             nMotor=49, wMotor=7)
     world = OneDWorld(universe, [0, 1, 2, 3], 2)
     agent = RandomOneDAgent(possibleMotorValues=set(xrange(-3, 4)))
@@ -87,7 +89,38 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
     sequence = self._generateSensorimotorSequence(20, world, agent)
 
-    self._testTM(sequence)
+    _, stats = self._testTM(sequence)
+    self._assertAllActiveWerePredicted(stats, universe)
+    self._assertAllInactiveWereUnpredicted(stats)
+
+
+  # ==============================
+  # Helper functions
+  # ==============================
+
+  def _assertAllActiveWerePredicted(self, stats, universe):
+    sumUnpredictedActiveColumns = stats[4][2]
+    self.assertEqual(sumUnpredictedActiveColumns, 0)
+
+    minPredictedActiveColumns = stats[2][0]
+    self.assertEqual(minPredictedActiveColumns, universe.wSensor)
+    maxPredictedActiveColumns = stats[2][1]
+    self.assertEqual(maxPredictedActiveColumns, universe.wSensor)
+
+
+  def _assertAllInactiveWereUnpredicted(self, stats):
+    sumPredictedInactiveColumns = stats[1][2]
+    self.assertEqual(sumPredictedInactiveColumns, 0)
+
+
+  def _assertAllActiveWereUnpredicted(self, stats, universe):
+    sumPredictedActiveColumns = stats[2][2]
+    self.assertEqual(sumPredictedActiveColumns, 0)
+
+    minUnpredictedActiveColumns = stats[4][0]
+    self.assertEqual(minUnpredictedActiveColumns, universe.wSensor)
+    maxUnpredictedActiveColumns = stats[4][1]
+    self.assertEqual(maxUnpredictedActiveColumns, universe.wSensor)
 
 
 
