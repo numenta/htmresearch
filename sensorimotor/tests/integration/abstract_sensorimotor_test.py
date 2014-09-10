@@ -52,12 +52,11 @@ class AbstractSensorimotorTest(unittest.TestCase):
     sensorSequence, motorSequence, sensorimotorSequence = sequence
 
     if self.VERBOSITY >= 2:
-      print "Feeding TM..."
-      print "-------------"
+      table = PrettyTable(["Iteration", "Sensor", "Motor"])
       for i in xrange(len(sensorSequence)):
-        print "Sensor: {0}".format(list(sensorSequence[i]))
-        print "Motor:  {0}".format(list(motorSequence[i]))
-        print
+        table.add_row([i, list(sensorSequence[i]), list(motorSequence[i])])
+      print "Feeding TM..."
+      print table
 
     results = self.tmTestMachine.feedSensorimotorSequence(
       sensorSequence, sensorimotorSequence, learn=learn)
