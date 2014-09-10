@@ -33,13 +33,18 @@ class SensorimotorTemporalMemoryTestMachine(TemporalMemoryTestMachine):
   Sensorimotor TM test machine class.
   """
 
-  def feedSensorimotorSequence(self, sensorSequence, motorSequence, learn=True):
+  def feedSensorimotorSequence(self,
+                               sensorSequence,
+                               sensorimotorSequence,
+                               learn=True):
     """
     Feed a sequence through the Sensorimotor TM.
 
-    @param sensorSequence (list) List of patterns, with None for resets
-    @param motorSequence  (list) List of patterns, with None for resets
-    @param learn          (bool) Learning enabled
+    @param sensorSequence       (list) List of sensor patterns, with None for
+                                       resets
+    @param sensorimotorSequence (list) List of sensor+motor patterns, with None
+                                       for resets
+    @param learn                (bool) Learning enabled
 
     @return (list) List of sets containing predictive cells,
                    one for each element in `sequence`
@@ -48,12 +53,12 @@ class SensorimotorTemporalMemoryTestMachine(TemporalMemoryTestMachine):
 
     for i in xrange(len(sensorSequence)):
       sensorPattern = sensorSequence[i]
-      motorPattern = motorSequence[i]
+      sensorimotorPattern = sensorimotorSequence[i]
       if sensorPattern is None:
         self.tm.reset()
       else:
         self.tm.compute(sensorPattern,
-                        activeExternalCells=motorPattern,
+                        activeExternalCells=sensorimotorPattern,
                         formInternalConnections=False,
                         learn=learn)
 

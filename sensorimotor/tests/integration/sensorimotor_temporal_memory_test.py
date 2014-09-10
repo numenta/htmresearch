@@ -50,7 +50,9 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
   def testSingleSimpleWorld(self):
     """Test Sensorimotor Temporal Memory learning in a single, simple world"""
-    self._init({"columnDimensions": [4]})
+    self._init({"columnDimensions": [4],
+                "minThreshold": 2,
+                "activationThreshold": 2})
 
     patternMachine = ConsecutivePatternMachine(4, 1)
     universe = OneDUniverse(1, patternMachine,
@@ -59,15 +61,13 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     world = OneDWorld(universe, [0, 1, 2, 3], 2)
     agent = RandomOneDAgent(possibleMotorValues=set(xrange(-1, 2)))
 
-    (sensorSequence, motorSequence) = self._generateSensorimotorSequence(
-      70, world, agent)
+    sequence = self._generateSensorimotorSequence(100, world, agent)
 
-    self._feedTM(sensorSequence, motorSequence)
+    self._feedTM(sequence)
 
-    (sensorSequence, motorSequence) = self._generateSensorimotorSequence(
-      20, world, agent)
+    sequence = self._generateSensorimotorSequence(20, world, agent)
 
-    self._testTM(sensorSequence, motorSequence)
+    self._testTM(sequence)
 
 
   def testSingleWorld(self):
@@ -81,15 +81,13 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     world = OneDWorld(universe, [0, 1, 2, 3], 2)
     agent = RandomOneDAgent(possibleMotorValues=set(xrange(-3, 4)))
 
-    (sensorSequence, motorSequence) = self._generateSensorimotorSequence(
-      70, world, agent)
+    sequence = self._generateSensorimotorSequence(70, world, agent)
 
-    self._feedTM(sensorSequence, motorSequence)
+    self._feedTM(sequence)
 
-    (sensorSequence, motorSequence) = self._generateSensorimotorSequence(
-      20, world, agent)
+    sequence = self._generateSensorimotorSequence(20, world, agent)
 
-    self._testTM(sensorSequence, motorSequence)
+    self._testTM(sequence)
 
 
 

@@ -48,7 +48,9 @@ class AbstractSensorimotorTest(unittest.TestCase):
     self.tmTestMachine = SensorimotorTemporalMemoryTestMachine(self.tm)
 
 
-  def _feedTM(self, sensorSequence, motorSequence, learn=True):
+  def _feedTM(self, sequence, learn=True):
+    sensorSequence, motorSequence, sensorimotorSequence = sequence
+
     if self.VERBOSITY >= 2:
       print "Feeding TM..."
       print "-------------"
@@ -58,7 +60,7 @@ class AbstractSensorimotorTest(unittest.TestCase):
         print
 
     results = self.tmTestMachine.feedSensorimotorSequence(
-      sensorSequence, motorSequence, learn=learn)
+      sensorSequence, sensorimotorSequence, learn=learn)
 
     detailedResults = self.tmTestMachine.computeDetailedResults(
       results, sensorSequence)
@@ -74,8 +76,10 @@ class AbstractSensorimotorTest(unittest.TestCase):
     return detailedResults
 
 
-  def _testTM(self, sensorSequence, motorSequence):
-    detailedResults = self._feedTM(sensorSequence, motorSequence, learn=False)
+  def _testTM(self, sequence):
+    sensorSequence, _, _ = sequence
+
+    detailedResults = self._feedTM(sequence, learn=False)
     stats = self.tmTestMachine.computeStatistics(detailedResults,
                                                  sensorSequence)
 
@@ -137,10 +141,11 @@ class AbstractSensorimotorTest(unittest.TestCase):
     @param world  (AbstractWorld) World to act in
     @param agent  (AbstractAgent) Agent acting in world
 
-    @return (tuple) (sensor sequence, motor sequence)
+    @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence)
     """
     sensorSequence = []
     motorSequence = []
+    sensorimotorSequence = []
 
     for _ in xrange(length):
       sensorPattern = world.sense()
@@ -149,7 +154,11 @@ class AbstractSensorimotorTest(unittest.TestCase):
       sensorSequence.append(sensorPattern)
       motorSequence.append(motorPattern)
 
-    return (sensorSequence, motorSequence)
+      sensorimotorPattern = (sensorPattern |
+        set([x + world.universe.nSensor for x in motorPattern]))
+      sensorimotorSequence.append(sensorimotorPattern)
+
+    return (sensorSequence, motorSequence, sensorimotorSequence)
 
 
   def _computeTMParams(self, overrides):
