@@ -52,7 +52,10 @@ class SensorimotorTemporalMemoryTestMachine(TemporalMemoryTestMachine):
       if sensorPattern is None:
         self.tm.reset()
       else:
-        self.tm.compute(sensorPattern, motorPattern, learn=learn)
+        self.tm.compute(sensorPattern,
+                        activeExternalCells=motorPattern,
+                        formInternalConnections=False,
+                        learn=learn)
 
       results.append(self.tm.predictiveCells)
 
