@@ -35,7 +35,7 @@ class RandomOneDAgentTest(unittest.TestCase):
 
   def testChooseMotorValue(self):
     patternMachine = ConsecutivePatternMachine(100, 5)
-    universe = OneDUniverse(2, patternMachine,
+    universe = OneDUniverse(10, patternMachine,
                             nSensor=100, wSensor=5,
                             nMotor=100, wMotor=5)
     world = OneDWorld(universe, [2, 0, 5, 15, 10], 2)
@@ -43,7 +43,7 @@ class RandomOneDAgentTest(unittest.TestCase):
 
     for _ in range(100):
       motorValue = agent.chooseMotorValue(world)
-      self.assertTrue(-10 <= motorValue <= 10)
+      self.assertTrue(-2 <= motorValue <= 2)  # bounded by size of world
 
 
 

@@ -51,6 +51,21 @@ class OneDWorldTest(unittest.TestCase):
     self.assertEqual(patternMachine.get(0), world.sense())
 
 
+  def testDistanceToBoundaries(self):
+    patternMachine = ConsecutivePatternMachine(100, 5)
+    universe = OneDUniverse(2, patternMachine,
+                            nSensor=100, wSensor=5,
+                            nMotor=100, wMotor=5)
+    world = OneDWorld(universe, [2, 0, 5, 15, 10], 2)
+    self.assertEqual(world.distanceToBoundaries(), (2, 2))
+
+    world.act(-2)
+    self.assertEqual(world.distanceToBoundaries(), (0, 4))
+
+    world.act(2)
+    world.act(2)
+    self.assertEqual(world.distanceToBoundaries(), (4, 0))
+
 
 if __name__ == "__main__":
   unittest.main()

@@ -66,3 +66,10 @@ class OneDWorld(AbstractWorld):
     self.currentPosition += motorValue
     return self.universe.encodeMotorValue(motorValue)
 
+
+  def distanceToBoundaries(self):
+    """
+    @return (tuple) (distance to left, distance to right)
+    """
+    return (self.currentPosition,
+            len(self.sensorSequence) - self.currentPosition - 1)
