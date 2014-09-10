@@ -61,7 +61,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     (sensorSequence, motorSequence) = self._generateSensorimotorSequence(
       70, world, agent)
 
-    self.feedTM(sensorSequence, motorSequence)
+    self._feedTM(sensorSequence, motorSequence)
 
     (sensorSequence, motorSequence) = self._generateSensorimotorSequence(
       20, world, agent)
