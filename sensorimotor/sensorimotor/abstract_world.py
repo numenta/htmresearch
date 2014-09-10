@@ -45,7 +45,7 @@ class AbstractWorld(object):
 
 
   @abc.abstractmethod
-  def act(self, motorValue):
+  def move(self, motorValue):
     """
     @param motorValue (object) Action to perform in world. Type depends on
                                world.

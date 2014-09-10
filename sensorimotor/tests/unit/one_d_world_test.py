@@ -41,13 +41,13 @@ class OneDWorldTest(unittest.TestCase):
 
     self.assertEqual(patternMachine.get(5), world.sense())
 
-    self.assertEqual(world.act(1), set(xrange(60, 80)))
+    self.assertEqual(world.move(1), set(xrange(60, 80)))
     self.assertEqual(patternMachine.get(15), world.sense())
 
-    self.assertEqual(world.act(-2), set(xrange(0, 20)))
+    self.assertEqual(world.move(-2), set(xrange(0, 20)))
     self.assertEqual(patternMachine.get(0), world.sense())
 
-    self.assertEqual(world.act(0), set(xrange(40, 60)))
+    self.assertEqual(world.move(0), set(xrange(40, 60)))
     self.assertEqual(patternMachine.get(0), world.sense())
 
 
@@ -59,11 +59,11 @@ class OneDWorldTest(unittest.TestCase):
     world = OneDWorld(universe, [2, 0, 5, 15, 10], 2)
     self.assertEqual(world.distanceToBoundaries(), (2, 2))
 
-    world.act(-2)
+    world.move(-2)
     self.assertEqual(world.distanceToBoundaries(), (0, 4))
 
-    world.act(2)
-    world.act(2)
+    world.move(2)
+    world.move(2)
     self.assertEqual(world.distanceToBoundaries(), (4, 0))
 
 

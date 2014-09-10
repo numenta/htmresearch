@@ -56,7 +56,7 @@ class OneDWorld(AbstractWorld):
     return self.universe.encodeSensorValue(sensorValue)
 
 
-  def act(self, motorValue):
+  def move(self, motorValue):
     """
     @param motorValue (int) Number of positions to move.
                             Positive => Right; Negative => Left; 0 => No-op

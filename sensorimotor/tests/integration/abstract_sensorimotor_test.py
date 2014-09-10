@@ -150,7 +150,7 @@ class AbstractSensorimotorTest(unittest.TestCase):
     for _ in xrange(length):
       sensorPattern = world.sense()
       motorValue = agent.chooseMotorValue(world)
-      motorPattern = world.act(motorValue)
+      motorPattern = world.move(motorValue)
       sensorSequence.append(sensorPattern)
       motorSequence.append(motorPattern)
 
