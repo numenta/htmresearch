@@ -47,6 +47,28 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
   }
 
 
+  def testSingleSimpleWorld(self):
+    """Test Sensorimotor Temporal Memory learning in a single, simple world"""
+    self._init({"columnDimensions": [4]})
+
+    patternMachine = ConsecutivePatternMachine(4, 1)
+    universe = OneDUniverse(1, patternMachine,
+                            nSensor=4, wSensor=1,
+                            nMotor=3, wMotor=1)
+    world = OneDWorld(universe, [0, 1, 2, 3], 2)
+    agent = RandomOneDAgent(possibleMotorValues=set(xrange(-1, 2)))
+
+    (sensorSequence, motorSequence) = self._generateSensorimotorSequence(
+      70, world, agent)
+
+    self._feedTM(sensorSequence, motorSequence)
+
+    (sensorSequence, motorSequence) = self._generateSensorimotorSequence(
+      20, world, agent)
+
+    self._testTM(sensorSequence, motorSequence)
+
+
   def testSingleWorld(self):
     """Test Sensorimotor Temporal Memory learning in a single world"""
     self._init()
@@ -56,7 +78,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
                             nSensor=175, wSensor=7,
                             nMotor=49, wMotor=7)
     world = OneDWorld(universe, [0, 1, 2, 3], 2)
-    agent = RandomOneDAgent(possibleMotorValues=set(xrange(-3, 3)))
+    agent = RandomOneDAgent(possibleMotorValues=set(xrange(-3, 4)))
 
     (sensorSequence, motorSequence) = self._generateSensorimotorSequence(
       70, world, agent)

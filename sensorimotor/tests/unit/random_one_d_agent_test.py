@@ -45,6 +45,12 @@ class RandomOneDAgentTest(unittest.TestCase):
       motorValue = agent.chooseMotorValue(world)
       self.assertTrue(-2 <= motorValue <= 2)  # bounded by size of world
 
+    world.act(-2)
+
+    for _ in range(100):
+      motorValue = agent.chooseMotorValue(world)
+      self.assertTrue(0 <= motorValue <= 4)  # bounded by size of world
+
 
 
 if __name__ == "__main__":
