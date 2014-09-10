@@ -34,6 +34,7 @@ from abstract_sensorimotor_test import AbstractSensorimotorTest
 
 class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
+  VERBOSITY = 1
   DEFAULT_TM_PARAMS = {
     "columnDimensions": [140],
     "cellsPerColumn": 8,

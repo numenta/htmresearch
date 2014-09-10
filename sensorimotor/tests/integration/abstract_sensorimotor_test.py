@@ -49,6 +49,14 @@ class AbstractSensorimotorTest(unittest.TestCase):
 
 
   def _feedTM(self, sensorSequence, motorSequence, learn=True):
+    if self.VERBOSITY >= 2:
+      print "Feeding TM..."
+      print "-------------"
+      for i in xrange(len(sensorSequence)):
+        print "Sensor: {0}".format(list(sensorSequence[i]))
+        print "Motor:  {0}".format(list(motorSequence[i]))
+        print
+
     results = self.tmTestMachine.feedSensorimotorSequence(
       sensorSequence, motorSequence, learn=learn)
 
