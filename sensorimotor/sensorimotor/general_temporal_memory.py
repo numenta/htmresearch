@@ -24,6 +24,7 @@ General Temporal Memory implementation in Python.
 """
 
 from nupic.research.temporal_memory import TemporalMemory
+from nupic.research.temporal_memory import Connections
 
 
 
@@ -40,7 +41,12 @@ class GeneralTemporalMemory(TemporalMemory):
 
   def __init__(self,
              **kwargs):
+
     super(GeneralTemporalMemory, self).__init__(**kwargs)
+
+    self.connections = GeneralTemporalMemoryConnections(
+      kwargs["columnDimensions"],
+      kwargs["cellsPerColumn"])
 
     self.activeExternalCells = set()
 
@@ -217,3 +223,52 @@ class GeneralTemporalMemory(TemporalMemory):
       return index + numCells
 
     return set(map(increaseIndexByNumberOfCells, activeExternalCells))
+
+
+class GeneralTemporalMemoryConnections(Connections):
+
+  def synapsesForSourceCell(self, sourceCell):
+    """
+    Returns the synapses for the source cell that they synapse on.
+
+    @param sourceCell (int) Source cell index
+
+    @return (set) Synapse indices
+    """
+    # self._validateCell(sourceCell)
+
+    if not sourceCell in self._synapsesForSourceCell:
+      return set()
+
+    return self._synapsesForSourceCell[sourceCell]
+
+
+  def createSynapse(self, segment, sourceCell, permanence):
+    """
+    Creates a new synapse on a segment.
+
+    @param segment    (int)   Segment index
+    @param sourceCell (int)   Source cell index
+    @param permanence (float) Initial permanence
+
+    @return (int) Synapse index
+    """
+    self._validateSegment(segment)
+    # self._validateCell(sourceCell)
+    self._validatePermanence(permanence)
+
+    # Add data
+    synapse = self._nextSynapseIdx
+    self._synapses[synapse] = (segment, sourceCell, permanence)
+    self._nextSynapseIdx += 1
+
+    # Update indexes
+    if not len(self.synapsesForSegment(segment)):
+      self._synapsesForSegment[segment] = set()
+    self._synapsesForSegment[segment].add(synapse)
+
+    if not len(self.synapsesForSourceCell(sourceCell)):
+      self._synapsesForSourceCell[sourceCell] = set()
+    self._synapsesForSourceCell[sourceCell].add(synapse)
+
+    return synapse
