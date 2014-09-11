@@ -25,8 +25,11 @@ from prettytable import PrettyTable
 
 from sensorimotor.test.sensorimotor_temporal_memory_test_machine import (
   SensorimotorTemporalMemoryTestMachine)
-from sensorimotor.general_temporal_memory import (
-  GeneralTemporalMemory as SensorimotorTemporalMemory)
+from sensorimotor.learn_on_one_cell_temporal_memory import (
+  LearnOnOneCellTemporalMemory as SensorimotorTemporalMemory)
+# Uncomment lines below to use GeneralTemporalMemory
+# from sensorimotor.general_temporal_memory import (
+#   GeneralTemporalMemory as SensorimotorTemporalMemory)
 
 
 
