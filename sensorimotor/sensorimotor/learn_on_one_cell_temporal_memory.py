@@ -24,7 +24,7 @@ Temporal Memory subclass with Learn-On-One-Cell learning rule implementation in
 Python.
 """
 
-from htm_algorithms.general_temporal_memory import GeneralTemporalMemory
+from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 
 
 class LearnOnOneCellTemporalMemory(GeneralTemporalMemory):
