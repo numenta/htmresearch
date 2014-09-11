@@ -28,7 +28,8 @@ from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
 from sensorimotor.random_one_d_agent import RandomOneDAgent
 
-from abstract_sensorimotor_test import AbstractSensorimotorTest
+from sensorimotor.test.abstract_sensorimotor_test import (
+  AbstractSensorimotorTest)
 
 
 
