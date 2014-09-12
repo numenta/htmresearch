@@ -63,13 +63,13 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
                             nSensor=4, wSensor=1,
                             nMotor=3, wMotor=1)
     world = OneDWorld(universe, [0, 1, 2, 3], 2)
-    agent = RandomOneDAgent(possibleMotorValues=set(xrange(-1, 2)))
+    agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-1, 2)))
 
-    sequence = self._generateSensorimotorSequences(100, [world], agent)
+    sequence = self._generateSensorimotorSequences(100, [agent])
 
     self._feedTM(sequence)
 
-    sequence = self._generateSensorimotorSequences(20, [world], agent)
+    sequence = self._generateSensorimotorSequences(20, [agent])
 
     _, stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)
@@ -89,13 +89,13 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
                             nSensor=100, wSensor=10,
                             nMotor=70, wMotor=10)
     world = OneDWorld(universe, [0, 1, 2, 3], 2)
-    agent = RandomOneDAgent(possibleMotorValues=set(xrange(-3, 4)))
+    agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-3, 4)))
 
-    sequence = self._generateSensorimotorSequences(100, [world], agent)
+    sequence = self._generateSensorimotorSequences(100, [agent])
 
     self._feedTM(sequence)
 
-    sequence = self._generateSensorimotorSequences(100, [world], agent)
+    sequence = self._generateSensorimotorSequences(100, [agent])
 
     _, stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)
@@ -114,22 +114,23 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     universe = OneDUniverse(3, patternMachine,
                             nSensor=100, wSensor=10,
                             nMotor=70, wMotor=10)
-    agent = RandomOneDAgent(possibleMotorValues=set(xrange(-3, 4)))
 
-    worlds = []
+    agents = []
     numWorlds = 5
     sequenceLength = 4
 
     for i in xrange(numWorlds):
       start = i * sequenceLength
       patterns = range(start, start + sequenceLength)
-      worlds.append(OneDWorld(universe, patterns, 2))
+      world = OneDWorld(universe, patterns, 2)
+      agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-3, 4)))
+      agents.append(agent)
 
-    sequence = self._generateSensorimotorSequences(150, worlds, agent)
+    sequence = self._generateSensorimotorSequences(150, agents)
 
     self._feedTM(sequence)
 
-    sequence = self._generateSensorimotorSequences(100, worlds, agent)
+    sequence = self._generateSensorimotorSequences(100, agents)
 
     _, stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)
@@ -149,21 +150,22 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     universe = OneDUniverse(3, patternMachine,
                             nSensor=100, wSensor=10,
                             nMotor=70, wMotor=10)
-    agent = RandomOneDAgent(possibleMotorValues=set(xrange(-3, 4)))
 
-    worlds = []
+    agents = []
     numWorlds = 5
 
     for i in xrange(numWorlds):
       patterns = range(4)
       self._random.shuffle(patterns)
-      worlds.append(OneDWorld(universe, patterns, 2))
+      world = OneDWorld(universe, patterns, 2)
+      agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-3, 4)))
+      agents.append(agent)
 
-    sequence = self._generateSensorimotorSequences(150, worlds, agent)
+    sequence = self._generateSensorimotorSequences(150, agents)
 
     self._feedTM(sequence)
 
-    sequence = self._generateSensorimotorSequences(100, worlds, agent)
+    sequence = self._generateSensorimotorSequences(100, agents)
 
     _, stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)

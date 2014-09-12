@@ -39,16 +39,16 @@ class RandomOneDAgentTest(unittest.TestCase):
                             nSensor=100, wSensor=5,
                             nMotor=100, wMotor=5)
     world = OneDWorld(universe, [2, 0, 5, 15, 10], 2)
-    agent = RandomOneDAgent(possibleMotorValues=set(xrange(-10, 10)))
+    agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-10, 10)))
 
     for _ in range(100):
-      motorValue = agent.chooseMotorValue(world)
+      motorValue = agent.chooseMotorValue()
       self.assertTrue(-2 <= motorValue <= 2)  # bounded by size of world
 
     world.move(-2)
 
     for _ in range(100):
-      motorValue = agent.chooseMotorValue(world)
+      motorValue = agent.chooseMotorValue()
       self.assertTrue(0 <= motorValue <= 4)  # bounded by size of world
 
 

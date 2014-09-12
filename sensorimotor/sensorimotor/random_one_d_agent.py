@@ -28,25 +28,56 @@ from sensorimotor.abstract_agent import AbstractAgent
 class RandomOneDAgent(AbstractAgent):
 
 
-  def __init__(self, possibleMotorValues=set([-1, 1]), seed=42):
+  def __init__(self, world, possibleMotorValues=set([-1, 1]), seed=42):
     """
+    @param world (AbstractWorld) The world this agent belongs in.
     @param possibleMotorValues (set) Set of motor values to choose from
     @param seed                (int) Seed for random number generator
     """
+    self._world = world
     self.possibleMotorValues = possibleMotorValues
     self._random = numpy.random.RandomState(seed)
 
 
-  def chooseMotorValue(self, world):
+  def chooseMotorValue(self):
     """
-    @param world (OneDWorld) World to act in
+    Return a plausible next motor value.
 
     @return (int) motor value
     """
-    distanceToLeft, distanceToRight = world.distanceToBoundaries()
+    distanceToLeft, distanceToRight = self._world.distanceToBoundaries()
     minValue = -distanceToLeft
     maxValue = distanceToRight
     candidates = [x for x in self.possibleMotorValues if (x >= minValue and
                                                           x <= maxValue)]
     idx = self._random.randint(len(candidates))
     return candidates[idx]
+
+
+  def generateSensorimotorSequence(self, length):
+    """
+    Generate a sensorimotor sequence of the given length through this agent's
+    world.
+
+    @param length (int)           Length of sequence to generate
+    @param world  (AbstractWorld) World to act in
+    @param agent  (AbstractAgent) Agent acting in world
+
+    @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence)
+    """
+    sensorSequence = []
+    motorSequence = []
+    sensorimotorSequence = []
+
+    for _ in xrange(length):
+      sensorPattern = self._world.sense()
+      motorValue = self.chooseMotorValue()
+      motorPattern = self._world.move(motorValue)
+      sensorSequence.append(sensorPattern)
+      motorSequence.append(motorPattern)
+
+      sensorimotorPattern = (sensorPattern |
+        set([x + self._world.universe.nSensor for x in motorPattern]))
+      sensorimotorSequence.append(sensorimotorPattern)
+
+    return (sensorSequence, motorSequence, sensorimotorSequence)

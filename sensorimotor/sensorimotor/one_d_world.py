@@ -48,7 +48,8 @@ class OneDWorld(AbstractWorld):
 
   def sense(self):
     """
-    Returns current sensor pattern being viewed (as indices of active bits)
+    Returns the encoding of the sensor pattern at the current position (as
+    indices of active bits)
 
     @return (set) Sensor pattern
     """
@@ -58,6 +59,9 @@ class OneDWorld(AbstractWorld):
 
   def move(self, motorValue):
     """
+    Given a motor value, return an encoding of the motor command and move the
+    agent based on that command.
+
     @param motorValue (int) Number of positions to move.
                             Positive => Right; Negative => Left; 0 => No-op
 

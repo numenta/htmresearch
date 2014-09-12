@@ -28,10 +28,23 @@ class AbstractAgent(object):
 
 
   @abc.abstractmethod
-  def chooseMotorValue(self, world):
+  def chooseMotorValue(self):
     """
-    @param world (AbstractWorld) World to act in
+    Return a plausible next motor value.
 
     @return (object) motor value (type depends on world)
+    """
+    return
+
+  @abc.abstractmethod
+  def generateSensorimotorSequence(self, length):
+    """
+    Generate a sensorimotor sequence through this agent's world.
+
+    @param length (int)           Length of sequence to generate
+    @param world  (AbstractWorld) World to act in
+    @param agent  (AbstractAgent) Agent acting in world
+
+    @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence)
     """
     return
