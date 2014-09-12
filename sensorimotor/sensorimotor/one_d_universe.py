@@ -40,6 +40,9 @@ class OneDUniverse(AbstractUniverse):
     self.sensorPatternMachine = patternMachine
 
     numMotorPatterns = motorRadius * 2 + 1
+    assert (self.nMotor / numMotorPatterns ==  self.wMotor), \
+           "Number of motor patterns is too large given wMotor"
+
     self.motorPatternMachine = ConsecutivePatternMachine(
       self.nMotor, self.nMotor / numMotorPatterns)
 
