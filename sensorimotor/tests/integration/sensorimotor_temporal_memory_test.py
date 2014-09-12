@@ -136,6 +136,45 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._assertAllInactiveWereUnpredicted(stats)
 
 
+  def testMultipleWorldsSharedPatterns(self):
+    """
+    Test Sensorimotor Temporal Memory learning in multiple separate worlds.
+    Patterns are represented as complete SDRs. Patterns are shared between
+    worlds.
+    All active columns should have been predicted.
+    """
+    self._init()
+
+    patternMachine = ConsecutivePatternMachine(100, 10)
+    universe = OneDUniverse(3, patternMachine,
+                            nSensor=100, wSensor=10,
+                            nMotor=70, wMotor=10)
+    agent = RandomOneDAgent(possibleMotorValues=set(xrange(-3, 4)))
+
+    worlds = []
+    numWorlds = 5
+
+    for i in xrange(numWorlds):
+      patterns = range(4)
+      self._random.shuffle(patterns)
+      worlds.append(OneDWorld(universe, patterns, 2))
+
+    sequence = self._generateSensorimotorSequences(150, worlds, agent)
+
+    self._feedTM(sequence)
+
+    sequence = self._generateSensorimotorSequences(100, worlds, agent)
+
+    _, stats = self._testTM(sequence)
+    self._assertAllActiveWerePredicted(stats, universe)
+
+    averagePredictedInactiveColumns = stats[1][3]
+    self.assertTrue(0 < averagePredictedInactiveColumns < 10)
+
+    # TODO: Assert that patterns in different worlds have different cell
+    # representations
+
+
   # ==============================
   # Helper functions
   # ==============================
