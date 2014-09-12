@@ -37,15 +37,15 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
   VERBOSITY = 1
   DEFAULT_TM_PARAMS = {
-    "columnDimensions": [35],
+    "columnDimensions": [100],
     "cellsPerColumn": 8,
     "initialPermanence": 0.5,
     "connectedPermanence": 0.6,
-    "minThreshold": 10,
+    "minThreshold": 15,
+    "activationThreshold": 15,
     "maxNewSynapseCount": 50,
     "permanenceIncrement": 0.1,
-    "permanenceDecrement": 0.02,
-    "activationThreshold": 10
+    "permanenceDecrement": 0.02
   }
 
 
@@ -77,18 +77,18 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     """Test Sensorimotor Temporal Memory learning in a single world"""
     self._init()
 
-    patternMachine = ConsecutivePatternMachine(35, 7)
+    patternMachine = ConsecutivePatternMachine(100, 10)
     universe = OneDUniverse(3, patternMachine,
-                            nSensor=35, wSensor=7,
-                            nMotor=49, wMotor=7)
+                            nSensor=100, wSensor=10,
+                            nMotor=70, wMotor=10)
     world = OneDWorld(universe, [0, 1, 2, 3], 2)
     agent = RandomOneDAgent(possibleMotorValues=set(xrange(-3, 4)))
 
-    sequence = self._generateSensorimotorSequence(70, world, agent)
+    sequence = self._generateSensorimotorSequence(100, world, agent)
 
     self._feedTM(sequence)
 
-    sequence = self._generateSensorimotorSequence(20, world, agent)
+    sequence = self._generateSensorimotorSequence(100, world, agent)
 
     _, stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)
