@@ -21,6 +21,7 @@
 
 import unittest2 as unittest
 
+import numpy
 from prettytable import PrettyTable
 
 from sensorimotor.test.sensorimotor_temporal_memory_test_machine import (
@@ -37,6 +38,7 @@ class AbstractSensorimotorTest(unittest.TestCase):
 
   VERBOSITY = 1
   DEFAULT_TM_PARAMS = {}
+  SEED = 42
 
 
   def _init(self, tmOverrides=None):
@@ -57,7 +59,12 @@ class AbstractSensorimotorTest(unittest.TestCase):
     if self.VERBOSITY >= 2:
       table = PrettyTable(["Iteration", "Sensor", "Motor"])
       for i in xrange(len(sensorSequence)):
-        table.add_row([i, list(sensorSequence[i]), list(motorSequence[i])])
+        sensorPattern = sensorSequence[i]
+        motorPattern = motorSequence[i]
+        if sensorPattern is None:
+          table.add_row([i, "<reset>", "<reset>"])
+        else:
+          table.add_row([i, list(sensorPattern), list(motorPattern)])
       print "Feeding TM..."
       print table
 
@@ -122,6 +129,7 @@ class AbstractSensorimotorTest(unittest.TestCase):
   def setUp(self):
     self.tm = None
     self.tmTestMachine = None
+    self._random = numpy.random.RandomState(self.SEED)
 
     if self.VERBOSITY >= 2:
       print ("\n"
@@ -137,11 +145,12 @@ class AbstractSensorimotorTest(unittest.TestCase):
   # ==============================
 
   @staticmethod
-  def _generateSensorimotorSequence(length, world, agent):
+  def _generateSensorimotorSequences(length, worlds, agent):
     """
-    @param length (int)           Length of sequence to generate
-    @param world  (AbstractWorld) World to act in
-    @param agent  (AbstractAgent) Agent acting in world
+    @param length (int)           Length of each sequence to generate, one for
+                                  each world
+    @param worlds (list)          Worlds to act in
+    @param agent  (AbstractAgent) Agent acting in worlds
 
     @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence)
     """
@@ -149,16 +158,21 @@ class AbstractSensorimotorTest(unittest.TestCase):
     motorSequence = []
     sensorimotorSequence = []
 
-    for _ in xrange(length):
-      sensorPattern = world.sense()
-      motorValue = agent.chooseMotorValue(world)
-      motorPattern = world.move(motorValue)
-      sensorSequence.append(sensorPattern)
-      motorSequence.append(motorPattern)
+    for world in worlds:
+      for _ in xrange(length):
+        sensorPattern = world.sense()
+        motorValue = agent.chooseMotorValue(world)
+        motorPattern = world.move(motorValue)
+        sensorSequence.append(sensorPattern)
+        motorSequence.append(motorPattern)
 
-      sensorimotorPattern = (sensorPattern |
-        set([x + world.universe.nSensor for x in motorPattern]))
-      sensorimotorSequence.append(sensorimotorPattern)
+        sensorimotorPattern = (sensorPattern |
+          set([x + world.universe.nSensor for x in motorPattern]))
+        sensorimotorSequence.append(sensorimotorPattern)
+
+      sensorSequence.append(None)
+      motorSequence.append(None)
+      sensorimotorSequence.append(None)
 
     return (sensorSequence, motorSequence, sensorimotorSequence)
 

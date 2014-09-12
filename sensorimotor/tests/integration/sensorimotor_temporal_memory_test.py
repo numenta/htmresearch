@@ -22,7 +22,7 @@
 
 import unittest2 as unittest
 
-from nupic.data.pattern_machine import ConsecutivePatternMachine
+from nupic.data.pattern_machine import PatternMachine, ConsecutivePatternMachine
 
 from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
@@ -65,11 +65,11 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     world = OneDWorld(universe, [0, 1, 2, 3], 2)
     agent = RandomOneDAgent(possibleMotorValues=set(xrange(-1, 2)))
 
-    sequence = self._generateSensorimotorSequence(100, world, agent)
+    sequence = self._generateSensorimotorSequences(100, [world], agent)
 
     self._feedTM(sequence)
 
-    sequence = self._generateSensorimotorSequence(20, world, agent)
+    sequence = self._generateSensorimotorSequences(20, [world], agent)
 
     _, stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)
@@ -91,11 +91,45 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     world = OneDWorld(universe, [0, 1, 2, 3], 2)
     agent = RandomOneDAgent(possibleMotorValues=set(xrange(-3, 4)))
 
-    sequence = self._generateSensorimotorSequence(100, world, agent)
+    sequence = self._generateSensorimotorSequences(100, [world], agent)
 
     self._feedTM(sequence)
 
-    sequence = self._generateSensorimotorSequence(100, world, agent)
+    sequence = self._generateSensorimotorSequences(100, [world], agent)
+
+    _, stats = self._testTM(sequence)
+    self._assertAllActiveWerePredicted(stats, universe)
+    self._assertAllInactiveWereUnpredicted(stats)
+
+
+  def testMultipleWorldsBasic(self):
+    """
+    Test Sensorimotor Temporal Memory learning in multiple separate worlds.
+    Patterns are represented as complete SDRs. No patterns are repeated.
+    Prediction should be perfect.
+    """
+    self._init()
+
+    patternMachine = PatternMachine(100, 10, num=100)
+    universe = OneDUniverse(3, patternMachine,
+                            nSensor=100, wSensor=10,
+                            nMotor=70, wMotor=10)
+    agent = RandomOneDAgent(possibleMotorValues=set(xrange(-3, 4)))
+
+    worlds = []
+    numWorlds = 5
+    sequenceLength = 4
+
+    for i in xrange(numWorlds):
+      start = i * sequenceLength
+      patterns = range(start, start + sequenceLength)
+      worlds.append(OneDWorld(universe, patterns, 2))
+
+    sequence = self._generateSensorimotorSequences(150, worlds, agent)
+
+    self._feedTM(sequence)
+
+    sequence = self._generateSensorimotorSequences(100, worlds, agent)
 
     _, stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)
