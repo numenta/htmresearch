@@ -49,8 +49,11 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
   }
 
 
-  def testSingleSimpleWorld(self):
-    """Test Sensorimotor Temporal Memory learning in a single, simple world"""
+  def testSingleWorldOneBitPerPattern(self):
+    """
+    Test Sensorimotor Temporal Memory learning in a single world.
+    Patterns (sensor and motor) are represented with one active bit per pattern.
+    """
     self._init({"columnDimensions": [4],
                 "minThreshold": 2,
                 "activationThreshold": 2})
@@ -73,8 +76,12 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._assertAllInactiveWereUnpredicted(stats)
 
 
-  def testSingleWorld(self):
-    """Test Sensorimotor Temporal Memory learning in a single world"""
+  def testSingleWorldBasic(self):
+    """
+    Test Sensorimotor Temporal Memory learning in a single world.
+    Patterns are represented as complete SDRs. No patterns are repeated.
+    Prediction should be perfect.
+    """
     self._init()
 
     patternMachine = ConsecutivePatternMachine(100, 10)
