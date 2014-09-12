@@ -76,7 +76,7 @@ class AbstractSensorimotorTest(unittest.TestCase):
 
     if self.VERBOSITY >= 2:
       print self.tmTestMachine.prettyPrintDetailedResults(
-        detailedResults, sensorSequence, None)
+        detailedResults, sensorSequence, verbosity=self.VERBOSITY-2)
       print
 
     if learn and self.VERBOSITY >= 3:
