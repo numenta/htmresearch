@@ -27,6 +27,13 @@ class AbstractAgent(object):
   __metaclass__ = abc.ABCMeta
 
 
+  def __init__(self, world):
+    """
+    @param world (AbstractWorld) The world this agent belongs in.
+    """
+    self._world = world
+
+
   @abc.abstractmethod
   def chooseMotorValue(self):
     """
@@ -36,13 +43,28 @@ class AbstractAgent(object):
     """
     return
 
-  @abc.abstractmethod
   def generateSensorimotorSequence(self, length):
     """
-    Generate a sensorimotor sequence through this agent's world.
+    Generate a sensorimotor sequence of the given length through this agent's
+    world.
 
     @param length (int)           Length of sequence to generate
 
     @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence)
     """
-    return
+    sensorSequence = []
+    motorSequence = []
+    sensorimotorSequence = []
+
+    for _ in xrange(length):
+      sensorPattern = self._world.sense()
+      motorValue = self.chooseMotorValue()
+      motorPattern = self._world.move(motorValue)
+      sensorSequence.append(sensorPattern)
+      motorSequence.append(motorPattern)
+
+      sensorimotorPattern = (sensorPattern |
+        set([x + self._world.universe.nSensor for x in motorPattern]))
+      sensorimotorSequence.append(sensorimotorPattern)
+
+    return (sensorSequence, motorSequence, sensorimotorSequence)
