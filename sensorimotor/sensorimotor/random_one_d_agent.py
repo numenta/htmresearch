@@ -28,25 +28,29 @@ from sensorimotor.abstract_agent import AbstractAgent
 class RandomOneDAgent(AbstractAgent):
 
 
-  def __init__(self, possibleMotorValues=set([-1, 1]), seed=42):
+  def __init__(self, world, possibleMotorValues=(-1, 1), seed=42):
     """
+    @param world (AbstractWorld) The world this agent belongs in.
     @param possibleMotorValues (set) Set of motor values to choose from
     @param seed                (int) Seed for random number generator
     """
-    self.possibleMotorValues = possibleMotorValues
+    super(RandomOneDAgent, self).__init__(world)
+    self._possibleMotorValues = possibleMotorValues
     self._random = numpy.random.RandomState(seed)
 
 
-  def chooseMotorValue(self, world):
+  def chooseMotorValue(self):
     """
-    @param world (OneDWorld) World to act in
+    Return a plausible next motor value.
 
     @return (int) motor value
     """
-    distanceToLeft, distanceToRight = world.distanceToBoundaries()
+    distanceToLeft, distanceToRight = self._world.distanceToBoundaries()
     minValue = -distanceToLeft
     maxValue = distanceToRight
-    candidates = [x for x in self.possibleMotorValues if (x >= minValue and
+    candidates = [x for x in self._possibleMotorValues if (x >= minValue and
                                                           x <= maxValue)]
     idx = self._random.randint(len(candidates))
     return candidates[idx]
+
+

@@ -38,7 +38,7 @@ class SensorimotorTemporalMemoryTestMachine(TemporalMemoryTestMachine):
                                sensorimotorSequence,
                                learn=True):
     """
-    Feed a sequence through the Sensorimotor TM.
+    Feed a sensorimotor sequence through the Sensorimotor TM.
 
     @param sensorSequence       (list) List of sensor patterns, with None for
                                        resets

@@ -36,7 +36,7 @@ class OneDWorldTest(unittest.TestCase):
     patternMachine = ConsecutivePatternMachine(100, 5)
     universe = OneDUniverse(2, patternMachine,
                             nSensor=100, wSensor=5,
-                            nMotor=100, wMotor=5)
+                            nMotor=100, wMotor=20)
     world = OneDWorld(universe, [2, 0, 5, 15, 10], 2)
 
     self.assertEqual(patternMachine.get(5), world.sense())
@@ -55,7 +55,7 @@ class OneDWorldTest(unittest.TestCase):
     patternMachine = ConsecutivePatternMachine(100, 5)
     universe = OneDUniverse(2, patternMachine,
                             nSensor=100, wSensor=5,
-                            nMotor=100, wMotor=5)
+                            nMotor=25, wMotor=5)
     world = OneDWorld(universe, [2, 0, 5, 15, 10], 2)
     self.assertEqual(world.distanceToBoundaries(), (2, 2))
 

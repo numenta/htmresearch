@@ -145,12 +145,11 @@ class AbstractSensorimotorTest(unittest.TestCase):
   # ==============================
 
   @staticmethod
-  def _generateSensorimotorSequences(length, worlds, agent):
+  def _generateSensorimotorSequences(length, agents):
     """
     @param length (int)           Length of each sequence to generate, one for
-                                  each world
-    @param worlds (list)          Worlds to act in
-    @param agent  (AbstractAgent) Agent acting in worlds
+                                  each agent
+    @param agents  (AbstractAgent) Agents acting in their worlds
 
     @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence)
     """
@@ -158,17 +157,11 @@ class AbstractSensorimotorTest(unittest.TestCase):
     motorSequence = []
     sensorimotorSequence = []
 
-    for world in worlds:
-      for _ in xrange(length):
-        sensorPattern = world.sense()
-        motorValue = agent.chooseMotorValue(world)
-        motorPattern = world.move(motorValue)
-        sensorSequence.append(sensorPattern)
-        motorSequence.append(motorPattern)
-
-        sensorimotorPattern = (sensorPattern |
-          set([x + world.universe.nSensor for x in motorPattern]))
-        sensorimotorSequence.append(sensorimotorPattern)
+    for agent in agents:
+      s,m,sm = agent.generateSensorimotorSequence(length)
+      sensorSequence += s
+      motorSequence += m
+      sensorimotorSequence += sm
 
       sensorSequence.append(None)
       motorSequence.append(None)
