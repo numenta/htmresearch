@@ -24,6 +24,11 @@ import abc
 
 
 class AbstractUniverse(object):
+  """
+  A Universe represents the space of possible sensory and motor patterns
+  that can be produced in an experiment. This class holds all the sensory
+  and motor encoder parameters, as well as the encoder instances.
+  """
   __metaclass__ = abc.ABCMeta
 
 

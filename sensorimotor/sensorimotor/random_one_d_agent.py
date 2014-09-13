@@ -35,7 +35,7 @@ class RandomOneDAgent(AbstractAgent):
     @param seed                (int) Seed for random number generator
     """
     self._world = world
-    self.possibleMotorValues = possibleMotorValues
+    self._possibleMotorValues = possibleMotorValues
     self._random = numpy.random.RandomState(seed)
 
 
@@ -48,7 +48,7 @@ class RandomOneDAgent(AbstractAgent):
     distanceToLeft, distanceToRight = self._world.distanceToBoundaries()
     minValue = -distanceToLeft
     maxValue = distanceToRight
-    candidates = [x for x in self.possibleMotorValues if (x >= minValue and
+    candidates = [x for x in self._possibleMotorValues if (x >= minValue and
                                                           x <= maxValue)]
     idx = self._random.randint(len(candidates))
     return candidates[idx]
@@ -60,8 +60,6 @@ class RandomOneDAgent(AbstractAgent):
     world.
 
     @param length (int)           Length of sequence to generate
-    @param world  (AbstractWorld) World to act in
-    @param agent  (AbstractAgent) Agent acting in world
 
     @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence)
     """

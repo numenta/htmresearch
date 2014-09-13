@@ -42,8 +42,6 @@ class AbstractAgent(object):
     Generate a sensorimotor sequence through this agent's world.
 
     @param length (int)           Length of sequence to generate
-    @param world  (AbstractWorld) World to act in
-    @param agent  (AbstractAgent) Agent acting in world
 
     @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence)
     """

@@ -41,7 +41,7 @@ class OneDUniverse(AbstractUniverse):
 
     numMotorPatterns = motorRadius * 2 + 1
     assert (self.nMotor / numMotorPatterns ==  self.wMotor), \
-           "Number of motor patterns is too large given wMotor"
+           "nMotor and numMotorPatterns are inconsistent with wMotor"
 
     self.motorPatternMachine = ConsecutivePatternMachine(
       self.nMotor, self.nMotor / numMotorPatterns)

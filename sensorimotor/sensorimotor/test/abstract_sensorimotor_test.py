@@ -148,7 +148,7 @@ class AbstractSensorimotorTest(unittest.TestCase):
   def _generateSensorimotorSequences(length, agents):
     """
     @param length (int)           Length of each sequence to generate, one for
-                                  each world
+                                  each agent
     @param agents  (AbstractAgent) Agents acting in their worlds
 
     @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence)

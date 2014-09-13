@@ -24,12 +24,21 @@ import abc
 
 
 class AbstractWorld(object):
+  """
+  A World represents a particular (static) configuration of sensory parameters.
+  Every instance of a World belongs to a single Universe, which in turn defines
+  the space of possible sensory patterns and motor commands.
+
+  The world keeps track of the current location. It is used to generate sensory
+  SDR's given the  current position, and generate motor SDR's given the current
+  location and a desired movement.
+  """
   __metaclass__ = abc.ABCMeta
 
 
   def __init__(self, universe):
     """
-    @param universe (AbstractUniverse) Universe that the world belongs to
+    @param universe (AbstractUniverse) Universe that the world belongs to.
     """
     self.universe = universe
 

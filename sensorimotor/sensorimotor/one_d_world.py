@@ -33,12 +33,14 @@ class OneDWorld(AbstractWorld):
                sensorSequence,
                startPosition):
     """
-    Generates world from patterns. Sensor starts at middle of world.
+    Represents a simple 1D world.
 
+    @param universe (AbstractUniverse) Universe that the world belongs to.
     @param sensorSequence (list) List of integers, each specifying a sensor
                                  value. Represents spatial configuration of
                                  patterns.
-    @param startPosition  (int)  Position along sensor sequence to start from
+    @param startPosition  (int)  Initial position (index into sensor
+                                 sequence)
     """
     super(OneDWorld, self).__init__(universe)
 
