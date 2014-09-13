@@ -24,12 +24,21 @@ import abc
 
 
 class AbstractWorld(object):
+  """
+  A World represents a particular (static) configuration of sensory parameters.
+  Every instance of a World belongs to a single Universe, which in turn defines
+  the space of possible sensory patterns and motor commands.
+
+  The world keeps track of the current location. It is used to generate sensory
+  SDR's given the  current position, and generate motor SDR's given the current
+  location and a desired movement.
+  """
   __metaclass__ = abc.ABCMeta
 
 
   def __init__(self, universe):
     """
-    @param universe (AbstractUniverse) Universe that the world belongs to
+    @param universe (AbstractUniverse) Universe that the world belongs to.
     """
     self.universe = universe
 
@@ -37,7 +46,8 @@ class AbstractWorld(object):
   @abc.abstractmethod
   def sense(self):
     """
-    Returns current sensor pattern being viewed (as indices of active bits)
+    Returns the encoding of the sensor pattern at the current position (as
+    indices of active bits)
 
     @return (set) Sensor pattern
     """
@@ -47,6 +57,9 @@ class AbstractWorld(object):
   @abc.abstractmethod
   def move(self, motorValue):
     """
+    Given a motor value, return an encoding of the motor command and move the
+    agent based on that command.
+
     @param motorValue (object) Action to perform in world. Type depends on
                                world.
 

@@ -40,6 +40,9 @@ class OneDUniverse(AbstractUniverse):
     self.sensorPatternMachine = patternMachine
 
     numMotorPatterns = motorRadius * 2 + 1
+    assert (self.nMotor / numMotorPatterns ==  self.wMotor), \
+           "nMotor and numMotorPatterns are inconsistent with wMotor"
+
     self.motorPatternMachine = ConsecutivePatternMachine(
       self.nMotor, self.nMotor / numMotorPatterns)
 

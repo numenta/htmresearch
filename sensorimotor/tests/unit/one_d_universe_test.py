@@ -32,19 +32,24 @@ class OneDUniverseTest(unittest.TestCase):
 
 
   def testEncodeSensorValue(self):
-    patternMachine = ConsecutivePatternMachine(100, 5)
-    universe = OneDUniverse(10, patternMachine)
+    patternMachine = ConsecutivePatternMachine(105, 5)
+    universe = OneDUniverse(10, patternMachine, nMotor=105, wMotor=5)
     self.assertEqual(patternMachine.get(0), universe.encodeSensorValue(0))
     self.assertEqual(patternMachine.get(19), universe.encodeSensorValue(19))
 
 
   def testEncodeMotorValue(self):
-    patternMachine = ConsecutivePatternMachine(100, 5)
-    universe = OneDUniverse(10, patternMachine)
+    patternMachine = ConsecutivePatternMachine(105, 5)
+    universe = OneDUniverse(10, patternMachine, nMotor=48*21, wMotor=48)
     self.assertEqual(universe.encodeMotorValue(-10), set(xrange(0, 48)))
     self.assertEqual(universe.encodeMotorValue(0), set(xrange(480, 528)))
     self.assertEqual(universe.encodeMotorValue(10), set(xrange(960, 1008)))
 
+
+  def testEncoderCheck(self):
+    patternMachine = ConsecutivePatternMachine(105, 5)
+    with self.assertRaises(Exception):
+      OneDUniverse(10, patternMachine, nMotor=105, wMotor=10)
 
 
 if __name__ == "__main__":

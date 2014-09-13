@@ -33,12 +33,14 @@ class OneDWorld(AbstractWorld):
                sensorSequence,
                startPosition):
     """
-    Generates world from patterns. Sensor starts at middle of world.
+    Represents a simple 1D world.
 
+    @param universe (AbstractUniverse) Universe that the world belongs to.
     @param sensorSequence (list) List of integers, each specifying a sensor
                                  value. Represents spatial configuration of
                                  patterns.
-    @param startPosition  (int)  Position along sensor sequence to start from
+    @param startPosition  (int)  Initial position (index into sensor
+                                 sequence)
     """
     super(OneDWorld, self).__init__(universe)
 
@@ -48,7 +50,8 @@ class OneDWorld(AbstractWorld):
 
   def sense(self):
     """
-    Returns current sensor pattern being viewed (as indices of active bits)
+    Returns the encoding of the sensor pattern at the current position (as
+    indices of active bits)
 
     @return (set) Sensor pattern
     """
@@ -58,6 +61,9 @@ class OneDWorld(AbstractWorld):
 
   def move(self, motorValue):
     """
+    Given a motor value, return an encoding of the motor command and move the
+    agent based on that command.
+
     @param motorValue (int) Number of positions to move.
                             Positive => Right; Negative => Left; 0 => No-op
 

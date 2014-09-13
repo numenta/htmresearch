@@ -37,21 +37,42 @@ class RandomOneDAgentTest(unittest.TestCase):
     patternMachine = ConsecutivePatternMachine(100, 5)
     universe = OneDUniverse(10, patternMachine,
                             nSensor=100, wSensor=5,
-                            nMotor=100, wMotor=5)
+                            nMotor=105, wMotor=5)
     world = OneDWorld(universe, [2, 0, 5, 15, 10], 2)
-    agent = RandomOneDAgent(possibleMotorValues=set(xrange(-10, 10)))
+    agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-10, 10)))
 
     for _ in range(100):
-      motorValue = agent.chooseMotorValue(world)
+      motorValue = agent.chooseMotorValue()
       self.assertTrue(-2 <= motorValue <= 2)  # bounded by size of world
 
     world.move(-2)
 
     for _ in range(100):
-      motorValue = agent.chooseMotorValue(world)
+      motorValue = agent.chooseMotorValue()
       self.assertTrue(0 <= motorValue <= 4)  # bounded by size of world
 
 
+  def testGenerateSensorimotorSequence(self):
+    patternMachine = ConsecutivePatternMachine(100, 5)
+    universe = OneDUniverse(10, patternMachine,
+                            nSensor=100, wSensor=5,
+                            nMotor=105, wMotor=5)
+    world = OneDWorld(universe, [2, 0, 5, 15, 10], 2)
+    agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-10, 10)))
+
+    sensorSequence, motorSequence, sensorimotorSequence = (
+      agent.generateSensorimotorSequence(20)
+    )
+
+    self.assertEqual(len(sensorSequence), 20)
+    self.assertEqual(len(motorSequence), 20)
+    self.assertEqual(len(sensorimotorSequence), 20)
+
+    # Ensure each encoded pattern has the correct number of ON bits
+    for i in range(20):
+      self.assertEqual(len(sensorSequence[i]), 5)
+      self.assertEqual(len(motorSequence[i]), 5)
+      self.assertEqual(len(sensorimotorSequence[i]), 10)
 
 if __name__ == "__main__":
   unittest.main()
