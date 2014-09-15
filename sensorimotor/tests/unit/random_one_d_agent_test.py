@@ -22,8 +22,6 @@
 
 import unittest2 as unittest
 
-from nupic.data.pattern_machine import ConsecutivePatternMachine
-
 from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
 from sensorimotor.random_one_d_agent import RandomOneDAgent
@@ -34,9 +32,7 @@ class RandomOneDAgentTest(unittest.TestCase):
 
 
   def testChooseMotorValue(self):
-    patternMachine = ConsecutivePatternMachine(100, 5)
-    universe = OneDUniverse(10, patternMachine,
-                            nSensor=100, wSensor=5,
+    universe = OneDUniverse(nSensor=100, wSensor=5,
                             nMotor=105, wMotor=5)
     world = OneDWorld(universe, [2, 0, 5, 15, 10], 2)
     agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-10, 10)))
@@ -53,9 +49,7 @@ class RandomOneDAgentTest(unittest.TestCase):
 
 
   def testGenerateSensorimotorSequence(self):
-    patternMachine = ConsecutivePatternMachine(100, 5)
-    universe = OneDUniverse(10, patternMachine,
-                            nSensor=100, wSensor=5,
+    universe = OneDUniverse(nSensor=100, wSensor=5,
                             nMotor=105, wMotor=5)
     world = OneDWorld(universe, [2, 0, 5, 15, 10], 2)
     agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-10, 10)))
