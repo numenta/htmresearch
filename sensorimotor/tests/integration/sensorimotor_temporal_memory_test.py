@@ -71,7 +71,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
     sequence = self._generateSensorimotorSequences(20, [agent])
 
-    _, stats = self._testTM(sequence)
+    stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)
     self._assertAllInactiveWereUnpredicted(stats)
 
@@ -97,7 +97,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
     sequence = self._generateSensorimotorSequences(100, [agent])
 
-    _, stats = self._testTM(sequence)
+    stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)
     self._assertAllInactiveWereUnpredicted(stats)
 
@@ -132,7 +132,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
     sequence = self._generateSensorimotorSequences(100, agents)
 
-    _, stats = self._testTM(sequence)
+    stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)
     self._assertAllInactiveWereUnpredicted(stats)
 
@@ -167,7 +167,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
     sequence = self._generateSensorimotorSequences(100, agents)
 
-    _, stats = self._testTM(sequence)
+    stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)
 
     averagePredictedInactiveColumns = stats[1][3]

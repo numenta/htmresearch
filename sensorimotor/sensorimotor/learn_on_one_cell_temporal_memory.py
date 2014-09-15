@@ -25,6 +25,9 @@ Python.
 """
 
 from sensorimotor.general_temporal_memory import GeneralTemporalMemory
+from nupic.research.temporal_memory_inspect_mixin import  (
+TemporalMemoryInspectMixin)
+
 
 
 class LearnOnOneCellTemporalMemory(GeneralTemporalMemory):
@@ -120,3 +123,12 @@ class LearnOnOneCellTemporalMemory(GeneralTemporalMemory):
       self.chosenCellForColumn[column] = bestCell
 
     return (activeCells, winnerCells, learningSegments)
+
+
+
+class InspectLearnOnOneCellTemporalMemory(TemporalMemoryInspectMixin,
+                                          LearnOnOneCellTemporalMemory):
+  """
+  General Memory subclass that enables detailed inspection of history.
+  """
+  pass

@@ -23,8 +23,9 @@
 General Temporal Memory implementation in Python.
 """
 
-from nupic.research.temporal_memory import TemporalMemory
-from nupic.research.temporal_memory import Connections
+from nupic.research.temporal_memory import TemporalMemory, Connections
+from nupic.research.temporal_memory_inspect_mixin import  (
+  TemporalMemoryInspectMixin)
 
 
 
@@ -272,3 +273,12 @@ class GeneralTemporalMemoryConnections(Connections):
     self._synapsesForSourceCell[sourceCell].add(synapse)
 
     return synapse
+
+
+
+class InspectGeneralTemporalMemory(TemporalMemoryInspectMixin,
+                                   GeneralTemporalMemory):
+  """
+  General Memory subclass that enables detailed inspection of history.
+  """
+  pass

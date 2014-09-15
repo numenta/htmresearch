@@ -24,13 +24,11 @@ import unittest2 as unittest
 import numpy
 from prettytable import PrettyTable
 
-from sensorimotor.test.sensorimotor_temporal_memory_test_machine import (
-  SensorimotorTemporalMemoryTestMachine)
 from sensorimotor.learn_on_one_cell_temporal_memory import (
-  LearnOnOneCellTemporalMemory as SensorimotorTemporalMemory)
+  InspectLearnOnOneCellTemporalMemory as SensorimotorTemporalMemory)
 # Uncomment lines below to use GeneralTemporalMemory
 # from sensorimotor.general_temporal_memory import (
-#   GeneralTemporalMemory as SensorimotorTemporalMemory)
+#   InspectGeneralTemporalMemory as SensorimotorTemporalMemory)
 
 
 
@@ -50,8 +48,6 @@ class AbstractSensorimotorTest(unittest.TestCase):
     params = self._computeTMParams(tmOverrides)
     self.tm = SensorimotorTemporalMemory(**params)
 
-    self.tmTestMachine = SensorimotorTemporalMemoryTestMachine(self.tm)
-
 
   def _feedTM(self, sequence, learn=True):
     sensorSequence, motorSequence, sensorimotorSequence = sequence
@@ -68,33 +64,36 @@ class AbstractSensorimotorTest(unittest.TestCase):
       print "Feeding TM..."
       print table
 
-    results = self.tmTestMachine.feedSensorimotorSequence(
-      sensorSequence, sensorimotorSequence, learn=learn)
+    self.tm.clearHistory()
 
-    detailedResults = self.tmTestMachine.computeDetailedResults(
-      results, sensorSequence)
+    for i in xrange(len(sensorSequence)):
+      sensorPattern = sensorSequence[i]
+      sensorimotorPattern = sensorimotorSequence[i]
+      if sensorPattern is None:
+        self.tm.reset()
+      else:
+        self.tm.compute(sensorPattern,
+                        activeExternalCells=sensorimotorPattern,
+                        formInternalConnections=False,
+                        learn=learn)
 
     if self.VERBOSITY >= 2:
-      print self.tmTestMachine.prettyPrintDetailedResults(
-        detailedResults, sensorSequence, None)
+      print self.tm.prettyPrintHistory(verbosity=self.VERBOSITY-2)
       print
 
     if learn and self.VERBOSITY >= 3:
-      print self.tmTestMachine.prettyPrintConnections()
-
-    return detailedResults
+      print self.tm.prettyPrintConnections()
 
 
   def _testTM(self, sequence):
     sensorSequence, _, _ = sequence
 
-    detailedResults = self._feedTM(sequence, learn=False)
-    stats = self.tmTestMachine.computeStatistics(detailedResults,
-                                                 sensorSequence)
+    self._feedTM(sequence, learn=False)
+    stats = self.tm.getStatistics()
 
     self.allStats.append((self.id(), stats))
 
-    return detailedResults, stats
+    return stats
 
 
   # ==============================
