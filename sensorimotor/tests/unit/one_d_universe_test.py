@@ -32,13 +32,13 @@ class OneDUniverseTest(unittest.TestCase):
   def testEncodeSensorValue(self):
     universe = OneDUniverse(debugSensor=True,
                             nSensor=105, wSensor=5, nMotor=105, wMotor=5)
-    self.assertEqual(set(xrange(0, 5)), universe.encodeSensorValue(0))
-    self.assertEqual(set(xrange(95, 100)), universe.encodeSensorValue(19))
-    self.assertEqual(set(xrange(100, 105)), universe.encodeSensorValue(20))
+    self.assertEqual(universe.encodeSensorValue(0), set(xrange(0, 5)))
+    self.assertEqual(universe.encodeSensorValue(19), set(xrange(95, 100)))
+    self.assertEqual(universe.encodeSensorValue(20), set(xrange(100, 105)))
 
     universe = OneDUniverse(debugSensor=False,
                             nSensor=105, wSensor=5, nMotor=105, wMotor=5)
-    self.assertNotEqual(set(xrange(0, 5)), universe.encodeSensorValue(0))
+    self.assertNotEqual(universe.encodeSensorValue(0), set(xrange(0, 5)))
 
 
   def testEncodeMotorValue(self):
