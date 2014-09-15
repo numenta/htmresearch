@@ -19,7 +19,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from nupic.data.pattern_machine import ConsecutivePatternMachine
+from nupic.data.pattern_machine import PatternMachine, ConsecutivePatternMachine
 
 from sensorimotor.abstract_universe import AbstractUniverse
 
@@ -28,23 +28,22 @@ from sensorimotor.abstract_universe import AbstractUniverse
 class OneDUniverse(AbstractUniverse):
 
 
-  def __init__(self, motorRadius, patternMachine, **kwargs):
+  def __init__(self, debugSensor=False, debugMotor=False, **kwargs):
     """
-    @param motorRadius    (int)            Radius of possible motor values
-    @param patternMachine (PatternMachine) Pattern machine to use for
-                                           encoding sensor values
+    @param debugSensor (bool) Controls whether sensor encodings are contiguous
+    @param debugMotor  (bool) Controls whether motor encodings are contiguous
     """
     super(OneDUniverse, self).__init__(**kwargs)
 
-    self.motorRadius = motorRadius
-    self.sensorPatternMachine = patternMachine
+    SensorPatternMachine = (ConsecutivePatternMachine if debugSensor
+                            else PatternMachine)
+    self.sensorPatternMachine = SensorPatternMachine(
+      self.nSensor, self.wSensor)
 
-    numMotorPatterns = motorRadius * 2 + 1
-    assert (self.nMotor / numMotorPatterns ==  self.wMotor), \
-           "nMotor and numMotorPatterns are inconsistent with wMotor"
-
-    self.motorPatternMachine = ConsecutivePatternMachine(
-      self.nMotor, self.nMotor / numMotorPatterns)
+    MotorPatternMachine = (ConsecutivePatternMachine if debugMotor
+                            else PatternMachine)
+    self.motorPatternMachine = MotorPatternMachine(
+      self.nMotor, self.wMotor)
 
 
   def encodeSensorValue(self, sensorValue):
@@ -62,4 +61,6 @@ class OneDUniverse(AbstractUniverse):
 
     @return (set) Motor pattern
     """
-    return self.motorPatternMachine.get(motorValue + self.motorRadius)
+    numMotorValues = self.nMotor / self.wMotor
+    motorRadius = (numMotorValues - 1) / 2
+    return self.motorPatternMachine.get(motorValue + motorRadius)

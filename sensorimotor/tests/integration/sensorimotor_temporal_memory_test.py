@@ -22,8 +22,6 @@
 
 import unittest2 as unittest
 
-from nupic.data.pattern_machine import PatternMachine, ConsecutivePatternMachine
-
 from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
 from sensorimotor.random_one_d_agent import RandomOneDAgent
@@ -58,8 +56,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
                 "minThreshold": 2,
                 "activationThreshold": 2})
 
-    patternMachine = ConsecutivePatternMachine(4, 1)
-    universe = OneDUniverse(1, patternMachine,
+    universe = OneDUniverse(debugSensor=True, debugMotor=True,
                             nSensor=4, wSensor=1,
                             nMotor=3, wMotor=1)
     world = OneDWorld(universe, [0, 1, 2, 3], 2)
@@ -84,8 +81,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     """
     self._init()
 
-    patternMachine = ConsecutivePatternMachine(100, 10)
-    universe = OneDUniverse(3, patternMachine,
+    universe = OneDUniverse(debugSensor=True, debugMotor=True,
                             nSensor=100, wSensor=10,
                             nMotor=70, wMotor=10)
     world = OneDWorld(universe, [0, 1, 2, 3], 2)
@@ -110,8 +106,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     """
     self._init()
 
-    patternMachine = PatternMachine(100, 10, num=100)
-    universe = OneDUniverse(3, patternMachine,
+    universe = OneDUniverse(debugMotor=True,
                             nSensor=100, wSensor=10,
                             nMotor=70, wMotor=10)
 
@@ -146,8 +141,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     """
     self._init()
 
-    patternMachine = ConsecutivePatternMachine(100, 10)
-    universe = OneDUniverse(3, patternMachine,
+    universe = OneDUniverse(debugMotor=True,
                             nSensor=100, wSensor=10,
                             nMotor=70, wMotor=10)
 

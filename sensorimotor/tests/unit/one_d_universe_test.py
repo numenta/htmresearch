@@ -22,8 +22,6 @@
 
 import unittest2 as unittest
 
-from nupic.data.pattern_machine import ConsecutivePatternMachine
-
 from sensorimotor.one_d_universe import OneDUniverse
 
 
@@ -32,24 +30,28 @@ class OneDUniverseTest(unittest.TestCase):
 
 
   def testEncodeSensorValue(self):
-    patternMachine = ConsecutivePatternMachine(105, 5)
-    universe = OneDUniverse(10, patternMachine, nMotor=105, wMotor=5)
-    self.assertEqual(patternMachine.get(0), universe.encodeSensorValue(0))
-    self.assertEqual(patternMachine.get(19), universe.encodeSensorValue(19))
+    universe = OneDUniverse(debugSensor=True,
+                            nSensor=105, wSensor=5, nMotor=105, wMotor=5)
+    self.assertEqual(universe.encodeSensorValue(0), set(xrange(0, 5)))
+    self.assertEqual(universe.encodeSensorValue(19), set(xrange(95, 100)))
+    self.assertEqual(universe.encodeSensorValue(20), set(xrange(100, 105)))
+
+    universe = OneDUniverse(debugSensor=False,
+                            nSensor=105, wSensor=5, nMotor=105, wMotor=5)
+    self.assertNotEqual(universe.encodeSensorValue(0), set(xrange(0, 5)))
 
 
   def testEncodeMotorValue(self):
-    patternMachine = ConsecutivePatternMachine(105, 5)
-    universe = OneDUniverse(10, patternMachine, nMotor=48*21, wMotor=48)
+    universe = OneDUniverse(debugMotor=True,
+                            nSensor=105, wSensor=5, nMotor=48*21, wMotor=48)
     self.assertEqual(universe.encodeMotorValue(-10), set(xrange(0, 48)))
     self.assertEqual(universe.encodeMotorValue(0), set(xrange(480, 528)))
     self.assertEqual(universe.encodeMotorValue(10), set(xrange(960, 1008)))
 
+    universe = OneDUniverse(debugMotor=False,
+                            nSensor=105, wSensor=5, nMotor=48*21, wMotor=48)
+    self.assertNotEqual(universe.encodeMotorValue(-10), set(xrange(0, 48)))
 
-  def testEncoderCheck(self):
-    patternMachine = ConsecutivePatternMachine(105, 5)
-    with self.assertRaises(Exception):
-      OneDUniverse(10, patternMachine, nMotor=105, wMotor=10)
 
 
 if __name__ == "__main__":

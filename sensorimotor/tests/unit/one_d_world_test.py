@@ -22,8 +22,6 @@
 
 import unittest2 as unittest
 
-from nupic.data.pattern_machine import ConsecutivePatternMachine
-
 from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
 
@@ -33,27 +31,25 @@ class OneDWorldTest(unittest.TestCase):
 
 
   def testMotion(self):
-    patternMachine = ConsecutivePatternMachine(100, 5)
-    universe = OneDUniverse(2, patternMachine,
+    universe = OneDUniverse(debugSensor=True, debugMotor=True,
                             nSensor=100, wSensor=5,
                             nMotor=100, wMotor=20)
     world = OneDWorld(universe, [2, 0, 5, 15, 10], 2)
 
-    self.assertEqual(patternMachine.get(5), world.sense())
+    self.assertEqual(set(xrange(25, 30)), world.sense())
 
     self.assertEqual(world.move(1), set(xrange(60, 80)))
-    self.assertEqual(patternMachine.get(15), world.sense())
+    self.assertEqual(set(xrange(75, 80)), world.sense())
 
     self.assertEqual(world.move(-2), set(xrange(0, 20)))
-    self.assertEqual(patternMachine.get(0), world.sense())
+    self.assertEqual(set(xrange(0, 5)), world.sense())
 
     self.assertEqual(world.move(0), set(xrange(40, 60)))
-    self.assertEqual(patternMachine.get(0), world.sense())
+    self.assertEqual(set(xrange(0, 5)), world.sense())
 
 
   def testDistanceToBoundaries(self):
-    patternMachine = ConsecutivePatternMachine(100, 5)
-    universe = OneDUniverse(2, patternMachine,
+    universe = OneDUniverse(debugSensor=True, debugMotor=True,
                             nSensor=100, wSensor=5,
                             nMotor=25, wMotor=5)
     world = OneDWorld(universe, [2, 0, 5, 15, 10], 2)
