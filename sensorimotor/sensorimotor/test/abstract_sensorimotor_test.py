@@ -86,7 +86,6 @@ class AbstractSensorimotorTest(unittest.TestCase):
 
 
   def _testTM(self, sequence):
-    sensorSequence, _, _ = sequence
 
     self._feedTM(sequence, learn=False)
     stats = self.tm.getStatistics()
