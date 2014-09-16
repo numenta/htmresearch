@@ -72,6 +72,16 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._assertAllActiveWerePredicted(stats, universe)
     self._assertAllInactiveWereUnpredicted(stats)
 
+    # Ensure that only one cell per column is learning
+    for column in xrange(self.tm.connections.numberOfColumns()):
+      cellsWithSegments = set()
+      for cell in self.tm.connections.cellsForColumn(column):
+        for segment in self.tm.connections.segmentsForCell(cell):
+          synapses = self.tm.connections.synapsesForSegment(segment)
+          if len(synapses):
+            cellsWithSegments.add(cell)
+      self.assertEqual(len(cellsWithSegments), 1)
+
 
   def testSingleWorldBasic(self):
     """
