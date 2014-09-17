@@ -56,6 +56,16 @@ class AbstractUniverse(object):
 
 
   @abc.abstractmethod
+  def decodeSensorValue(self, sensorValue):
+    """
+    @param sensorValue (object) Sensor value
+
+    @return (string) Human viewable representation of sensorValue
+    """
+    return
+
+
+  @abc.abstractmethod
   def encodeMotorValue(self, motorValue):
     """
     @param motorValue (object) Motor value

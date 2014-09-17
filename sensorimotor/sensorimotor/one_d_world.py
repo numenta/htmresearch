@@ -48,6 +48,16 @@ class OneDWorld(AbstractWorld):
     self.currentPosition = startPosition
 
 
+  def __str__(self):
+    """
+    Human readable representation of the world
+    """
+    s = ""
+    for p in self.sensorSequence:
+      s += self.universe.decodeSensorValue(p)
+    return s
+
+
   def sense(self):
     """
     Returns the encoding of the sensor pattern at the current position (as
@@ -57,6 +67,15 @@ class OneDWorld(AbstractWorld):
     """
     sensorValue = self.sensorSequence[self.currentPosition]
     return self.universe.encodeSensorValue(sensorValue)
+
+
+  def getSensorValue(self):
+    """
+    Returns the sensor value at the current position
+
+    @return (set) Sensor pattern
+    """
+    return self.sensorSequence[self.currentPosition]
 
 
   def move(self, motorValue):

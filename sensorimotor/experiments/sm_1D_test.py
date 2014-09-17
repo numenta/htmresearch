@@ -21,11 +21,8 @@
 
 # A simple example of sensorimotor inference that shows how to use the
 # various classes. We feed in 1D sequences from 1D worlds with overlapping
-# patterns.  We then test to ensure the number of
-
-# The input to CLA contains both sensory inputs ("A","B","C","D") 
-# and motor commands that encodes the eye velocity vector e.g. (1,-1,2,-2,...)
-# CLA will be trained on copies of valid transitions
+# patterns.  We then test to ensure the number of predicted columns matches
+# the actual columns.
 
 
 from sensorimotor.one_d_world import OneDWorld
@@ -57,6 +54,8 @@ def feedTM(tm, length, agents,
   tm.clearHistory()
   for agent in agents:
     tm.reset()
+    if verbosity > 0:
+      print "\nGenerating sequence for world:",str(agent._world)
     sensorSequence, motorSequence, sensorimotorSequence = (
       agent.generateSensorimotorSequence(length,verbosity=verbosity)
     )
@@ -85,12 +84,14 @@ universe = OneDUniverse(debugSensor=True,
                         nSensor=nElements*7, wSensor=7,
                         nMotor=49, wMotor=7)
 agents = [
-  RandomOneDAgent(OneDWorld(universe, range(nElements), 2),
-                         possibleMotorValues=(-1,1)),
-  RandomOneDAgent(OneDWorld(universe, range(nElements-1, -1, -1), 2),
-                         possibleMotorValues=(-1,1)),
-  RandomOneDAgent(OneDWorld(universe, range(0,nElements,2), 2),
-                         possibleMotorValues=(-1,1)),
+  RandomOneDAgent(OneDWorld(universe, range(nElements), 4),
+                         possibleMotorValues=(-1,1), seed=23),
+  RandomOneDAgent(OneDWorld(universe, range(nElements-1, -1, -1), 4),
+                         possibleMotorValues=(-1,1), seed=42),
+  RandomOneDAgent(OneDWorld(universe, range(0,nElements,2), 4),
+                         possibleMotorValues=(-1,1), seed=10),
+  RandomOneDAgent(OneDWorld(universe, range(0,nElements,3), 2),
+                         possibleMotorValues=(-1,1), seed=5),
   ]
 
 # The TM parameters
@@ -110,10 +111,10 @@ tm = TMInspect(**dict(DEFAULT_TM_PARAMS))
 
 # Train and test
 print "Training TM on sequences"
-feedTM(tm, length=100, agents=agents, verbosity=0, learn=True)
+feedTM(tm, length=700, agents=agents, verbosity=1, learn=True)
 
 print "Testing TM on sequences"
-stats = feedTM(tm, length=70, agents=agents, verbosity=2,
+stats = feedTM(tm, length=200, agents=agents, verbosity=2,
                learn=False)
 
 print "Unpredicted columns: min, max, sum, average, stdev",stats[4]
