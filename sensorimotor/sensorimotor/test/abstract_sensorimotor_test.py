@@ -52,18 +52,6 @@ class AbstractSensorimotorTest(unittest.TestCase):
   def _feedTM(self, sequence, learn=True):
     sensorSequence, motorSequence, sensorimotorSequence = sequence
 
-    if self.VERBOSITY >= 2:
-      table = PrettyTable(["Iteration", "Sensor", "Motor"])
-      for i in xrange(len(sensorSequence)):
-        sensorPattern = sensorSequence[i]
-        motorPattern = motorSequence[i]
-        if sensorPattern is None:
-          table.add_row([i, "<reset>", "<reset>"])
-        else:
-          table.add_row([i, list(sensorPattern), list(motorPattern)])
-      print "Feeding TM..."
-      print table
-
     self.tm.clearHistory()
 
     for i in xrange(len(sensorSequence)):
@@ -142,8 +130,8 @@ class AbstractSensorimotorTest(unittest.TestCase):
   # Helper functions
   # ==============================
 
-  @staticmethod
-  def _generateSensorimotorSequences(length, agents):
+  @classmethod
+  def _generateSensorimotorSequences(cls, length, agents):
     """
     @param length (int)           Length of each sequence to generate, one for
                                   each agent
@@ -156,7 +144,8 @@ class AbstractSensorimotorTest(unittest.TestCase):
     sensorimotorSequence = []
 
     for agent in agents:
-      s,m,sm = agent.generateSensorimotorSequence(length)
+      s,m,sm = agent.generateSensorimotorSequence(length,
+                                                  verbosity=cls.VERBOSITY-1)
       sensorSequence += s
       motorSequence += m
       sensorimotorSequence += sm

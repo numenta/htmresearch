@@ -44,6 +44,7 @@ class AbstractAgent(object):
     """
     return
 
+
   def generateSensorimotorSequence(self, length, verbosity=0):
     """
     Generate a sensorimotor sequence of the given length through this agent's
@@ -76,8 +77,9 @@ class AbstractAgent(object):
       sensorimotorSequence.append(sensorimotorPattern)
 
     if verbosity > 0:
-      table = PrettyTable(["Iteration", "Sensor", "Motor","CurrentElement",
-                           "Motor Command"])
+      table = PrettyTable(["Iteration",
+                           "Sensor Pattern", "Motor Pattern",
+                           "Sensor Value", "Motor Value"])
       for i in xrange(len(sensorSequence)):
         sensorPattern = sensorSequence[i]
         motorPattern = motorSequence[i]
