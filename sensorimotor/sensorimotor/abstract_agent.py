@@ -20,6 +20,7 @@
 # ----------------------------------------------------------------------
 
 import abc
+from prettytable import PrettyTable
 
 
 
@@ -43,12 +44,14 @@ class AbstractAgent(object):
     """
     return
 
-  def generateSensorimotorSequence(self, length):
+  def generateSensorimotorSequence(self, length, verbosity=0):
     """
     Generate a sensorimotor sequence of the given length through this agent's
     world.
 
     @param length (int)           Length of sequence to generate
+
+    @param verbosity (int)        If > 0 print the sequence details
 
     @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence)
     """
@@ -66,5 +69,16 @@ class AbstractAgent(object):
       sensorimotorPattern = (sensorPattern |
         set([x + self._world.universe.nSensor for x in motorPattern]))
       sensorimotorSequence.append(sensorimotorPattern)
+
+    if verbosity > 0:
+      table = PrettyTable(["Iteration", "Sensor", "Motor"])
+      for i in xrange(len(sensorSequence)):
+        sensorPattern = sensorSequence[i]
+        motorPattern = motorSequence[i]
+        if sensorPattern is None:
+          table.add_row([i, "<reset>", "<reset>"])
+        else:
+          table.add_row([i, list(sensorPattern), list(motorPattern)])
+      print table
 
     return (sensorSequence, motorSequence, sensorimotorSequence)
