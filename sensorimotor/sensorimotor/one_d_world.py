@@ -65,8 +65,7 @@ class OneDWorld(AbstractWorld):
 
     @return (set) Sensor pattern
     """
-    sensorValue = self.sensorSequence[self.currentPosition]
-    return self.universe.encodeSensorValue(sensorValue)
+    return self.universe.encodeSensorValue(self.getSensorValue())
 
 
   def getSensorValue(self):

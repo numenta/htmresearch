@@ -45,7 +45,7 @@ first order representation of this sequence.
 """
 
 # Mixin class for TM statistics
-class TMInspect(TemporalMemoryInspectMixin,LearnOnOneCellTemporalMemory): pass
+class TMI(TemporalMemoryInspectMixin,LearnOnOneCellTemporalMemory): pass
 
 
 def feedTM(tm, length, agents,
@@ -79,10 +79,11 @@ def feedTM(tm, length, agents,
 
 # Initialize the universe, worlds, and agents
 nElements = 10
+wEncoders = 7
 universe = OneDUniverse(debugSensor=True,
                         debugMotor=True,
-                        nSensor=nElements*7, wSensor=7,
-                        nMotor=49, wMotor=7)
+                        nSensor=nElements*wEncoders, wSensor=wEncoders,
+                        nMotor=wEncoders*7, wMotor=wEncoders)
 agents = [
   RandomOneDAgent(OneDWorld(universe, range(nElements), 4),
                          possibleMotorValues=(-1,1), seed=23),
@@ -96,22 +97,22 @@ agents = [
 
 # The TM parameters
 DEFAULT_TM_PARAMS = {
-  "columnDimensions": [nElements*7],
+  "columnDimensions": [nElements*wEncoders],
   "cellsPerColumn": 8,
   "initialPermanence": 0.5,
   "connectedPermanence": 0.6,
-  "minThreshold": 10,
-  "maxNewSynapseCount": 50,
+  "minThreshold": wEncoders*2,
+  "maxNewSynapseCount": wEncoders*2,
   "permanenceIncrement": 0.1,
   "permanenceDecrement": 0.02,
-  "activationThreshold": 10
+  "activationThreshold": wEncoders*2
 }
 
-tm = TMInspect(**dict(DEFAULT_TM_PARAMS))
+tm = TMI(**dict(DEFAULT_TM_PARAMS))
 
 # Train and test
 print "Training TM on sequences"
-feedTM(tm, length=700, agents=agents, verbosity=1, learn=True)
+feedTM(tm, length=700, agents=agents, verbosity=0, learn=True)
 
 print "Testing TM on sequences"
 stats = feedTM(tm, length=200, agents=agents, verbosity=2,
@@ -119,6 +120,9 @@ stats = feedTM(tm, length=200, agents=agents, verbosity=2,
 
 print "Unpredicted columns: min, max, sum, average, stdev",stats[4]
 print "Predicted columns: min, max, sum, average, stdev",stats[2]
+print "Predicted inactive cells:",stats[1]
 
-if (stats[4][2]== 0) and (stats[2][2] == universe.wSensor*69*len(agents)):
+if (stats[4][2]== 0) and (stats[2][2] == universe.wSensor*199*len(agents)):
   print "Test successful!!"
+else:
+  print "Test unsuccessful"

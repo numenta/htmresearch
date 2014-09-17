@@ -77,18 +77,27 @@ class AbstractAgent(object):
       sensorimotorSequence.append(sensorimotorPattern)
 
     if verbosity > 0:
-      table = PrettyTable(["Iteration",
-                           "Sensor Pattern", "Motor Pattern",
-                           "Sensor Value", "Motor Value"])
-      for i in xrange(len(sensorSequence)):
-        sensorPattern = sensorSequence[i]
-        motorPattern = motorSequence[i]
-        if sensorPattern is None:
-          table.add_row([i, "<reset>", "<reset>"])
-        else:
-          table.add_row([i, list(sensorPattern), list(motorPattern),
-                self._world.universe.decodeSensorValue(sensorValues[i]),
-                motorCommands[i]])
-      print table
+      self._printSequence(sensorSequence, motorSequence,
+                          sensorValues, motorCommands)
 
     return (sensorSequence, motorSequence, sensorimotorSequence)
+
+
+  def _printSequence(self, sensorSequence, motorSequence,
+                     sensorValues, motorCommands):
+    """
+    Nicely print the sequence to console for debugging purposes.
+    """
+    table = PrettyTable(["Iteration",
+                         "Sensor Pattern", "Motor Pattern",
+                         "Sensor Value", "Motor Value"])
+    for i in xrange(len(sensorSequence)):
+      sensorPattern = sensorSequence[i]
+      motorPattern = motorSequence[i]
+      if sensorPattern is None:
+        table.add_row([i, "<reset>", "<reset>"])
+      else:
+        table.add_row([i, list(sensorPattern), list(motorPattern),
+              self._world.universe.decodeSensorValue(sensorValues[i]),
+              motorCommands[i]])
+    print table
