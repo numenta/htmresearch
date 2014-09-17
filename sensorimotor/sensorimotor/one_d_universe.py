@@ -45,6 +45,11 @@ class OneDUniverse(AbstractUniverse):
     self.motorPatternMachine = MotorPatternMachine(
       self.nMotor, self.wMotor)
 
+    # Purely for debugging convenience, this pool is a human friendly
+    # representation of sensory values
+    self.sensoryElements=list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                               "abcdefghijklmnopqrstuvwxyz0123456789")
+
 
   def encodeSensorValue(self, sensorValue):
     """
@@ -53,6 +58,15 @@ class OneDUniverse(AbstractUniverse):
     @return (set) Sensor pattern
     """
     return self.sensorPatternMachine.get(sensorValue)
+
+
+  def decodeSensorValue(self, sensorValue):
+    """
+    @param sensorValue (object) Sensor value
+
+    @return (string) Human viewable representation of sensorValue
+    """
+    return self.sensoryElements[sensorValue]
 
 
   def encodeMotorValue(self, motorValue):

@@ -58,27 +58,35 @@ class AbstractAgent(object):
     sensorSequence = []
     motorSequence = []
     sensorimotorSequence = []
+    sensorValues = []
+    motorCommands = []
 
     for _ in xrange(length):
+      sensorValues.append(self._world.getSensorValue())
       sensorPattern = self._world.sense()
+
       motorValue = self.chooseMotorValue()
+      motorCommands.append(motorValue)
       motorPattern = self._world.move(motorValue)
+
       sensorSequence.append(sensorPattern)
       motorSequence.append(motorPattern)
-
       sensorimotorPattern = (sensorPattern |
         set([x + self._world.universe.nSensor for x in motorPattern]))
       sensorimotorSequence.append(sensorimotorPattern)
 
     if verbosity > 0:
-      table = PrettyTable(["Iteration", "Sensor", "Motor"])
+      table = PrettyTable(["Iteration", "Sensor", "Motor","CurrentElement",
+                           "Motor Command"])
       for i in xrange(len(sensorSequence)):
         sensorPattern = sensorSequence[i]
         motorPattern = motorSequence[i]
         if sensorPattern is None:
           table.add_row([i, "<reset>", "<reset>"])
         else:
-          table.add_row([i, list(sensorPattern), list(motorPattern)])
+          table.add_row([i, list(sensorPattern), list(motorPattern),
+                self._world.universe.decodeSensorValue(sensorValues[i]),
+                motorCommands[i]])
       print table
 
     return (sensorSequence, motorSequence, sensorimotorSequence)

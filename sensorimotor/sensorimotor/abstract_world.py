@@ -43,11 +43,28 @@ class AbstractWorld(object):
     self.universe = universe
 
 
+  def __str__(self):
+    """
+    Human readable representation of the world
+    """
+    return "AbstractWorld"
+
+
   @abc.abstractmethod
   def sense(self):
     """
     Returns the encoding of the sensor pattern at the current position (as
     indices of active bits)
+
+    @return (set) Sensor pattern
+    """
+    return
+
+
+  @abc.abstractmethod
+  def getSensorValue(self):
+    """
+    Returns the sensor value at the current position
 
     @return (set) Sensor pattern
     """
