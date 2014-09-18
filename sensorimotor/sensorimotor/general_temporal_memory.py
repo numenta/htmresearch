@@ -46,9 +46,8 @@ class GeneralTemporalMemory(TemporalMemory):
                learnOnOneCell=True,
                **kwargs):
     """
-    @param learnOnOneCell               (boolean)     If True, the winner cell
-                                                      for each column will be
-                                                      fixed between resets.
+    @param learnOnOneCell  (boolean)  If True, the winner cell for each
+                                      column will be fixed between resets.
     """
 
     super(GeneralTemporalMemory, self).__init__(**kwargs)
@@ -90,7 +89,8 @@ class GeneralTemporalMemory(TemporalMemory):
      winnerCells,
      activeSynapsesForSegment,
      activeSegments,
-     predictiveCells) = self.computeFn(activeColumns,
+     predictiveCells,
+     chosenCellForColumn) = self.computeFn(activeColumns,
                                        activeExternalCells,
                                        self.activeExternalCells,
                                        self.predictiveCells,
@@ -100,6 +100,7 @@ class GeneralTemporalMemory(TemporalMemory):
                                        self.connections,
                                        formInternalConnections,
                                        self.learnOnOneCell,
+                                       self.chosenCellForColumn,
                                        learn=learn)
 
 
@@ -112,6 +113,7 @@ class GeneralTemporalMemory(TemporalMemory):
     self.activeSynapsesForSegment = activeSynapsesForSegment
     self.activeSegments = activeSegments
     self.predictiveCells = predictiveCells
+    self.chosenCellForColumn = chosenCellForColumn
 
 
   def computeFn(self,
@@ -125,6 +127,7 @@ class GeneralTemporalMemory(TemporalMemory):
                 connections,
                 formInternalConnections,
                 learnOnOneCell,
+                chosenCellForColumn,
                 learn=True):
     """
     'Functional' version of compute.
@@ -150,16 +153,16 @@ class GeneralTemporalMemory(TemporalMemory):
     @param prevWinnerCells              (set)         Indices of winner cells
                                                       in `t-1`
     @param connections                  (Connections) Connectivity of layer
-
     @param formInternalConnections      (boolean)     Flag to determine whether
                                                       to form connections with
                                                       internal cells within this
                                                       temporal memory
-
     @param learnOnOneCell               (boolean)     If True, the winner cell
                                                       for each column will be
                                                       fixed between resets.
-
+    @param chosenCellForColumn          (dict)        The current winner cell
+                                                      for each column, if it
+                                                      exists.
     @return (tuple) Contains:
                       `activeCells`               (set),
                       `winnerCells`               (set),
@@ -182,10 +185,12 @@ class GeneralTemporalMemory(TemporalMemory):
 
     (_activeCells,
      _winnerCells,
-     learningSegments) = self.burstColumns(activeColumns,
+     learningSegments,
+     chosenCellForColumn) = self.burstColumns(activeColumns,
                                            predictedColumns,
                                            prevActiveSynapsesForSegment,
                                            learnOnOneCell,
+                                           chosenCellForColumn,
                                            connections)
 
     activeCells.update(_activeCells)
@@ -216,7 +221,8 @@ class GeneralTemporalMemory(TemporalMemory):
             winnerCells,
             activeSynapsesForSegment,
             activeSegments,
-            predictiveCells)
+            predictiveCells,
+            chosenCellForColumn)
 
 
   def reset(self):
@@ -231,6 +237,7 @@ class GeneralTemporalMemory(TemporalMemory):
                    predictedColumns,
                    prevActiveSynapsesForSegment,
                    learnOnOneCell,
+                   chosenCellForColumn,
                    connections):
     """
     Phase 2: Burst unpredicted columns.
@@ -258,6 +265,9 @@ class GeneralTemporalMemory(TemporalMemory):
     @param learnOnOneCell               (boolean)     If True, the winner cell
                                                       for each column will be
                                                       fixed between resets.
+    @param chosenCellForColumn          (dict)        The current winner cell
+                                                      for each column, if it
+                                                      exists.
     @param connections                  (Connections) Connectivity of layer
 
     @return (tuple) Contains:
@@ -275,8 +285,8 @@ class GeneralTemporalMemory(TemporalMemory):
       cells = connections.cellsForColumn(column)
       activeCells.update(cells)
 
-      if learnOnOneCell and (column in self.chosenCellForColumn):
-        chosenCell = self.chosenCellForColumn[column]
+      if learnOnOneCell and (column in chosenCellForColumn):
+        chosenCell = chosenCellForColumn[column]
         cells = set([chosenCell])
 
       (bestCell,
@@ -291,10 +301,9 @@ class GeneralTemporalMemory(TemporalMemory):
 
       learningSegments.add(bestSegment)
 
-      self.chosenCellForColumn[column] = bestCell
+      chosenCellForColumn[column] = bestCell
 
-    return (activeCells, winnerCells, learningSegments)
-
+    return (activeCells, winnerCells, learningSegments, chosenCellForColumn)
 
 
   # ==============================

@@ -83,67 +83,6 @@ def feedTM(tm, length, agents,
   return tm.getStatistics()
 
 
-def extractInputForTP(tm, previouslyPredictedCells, numL4Cells):
-  """
-  Given an instance of the TM, extract the information we need to send to the
-  TP.
-  """
-  # correctly predicted cells in layer 4
-  correctlyPredictedCells = numpy.zeros(numL4Cells).astype(realDType)
-  idx = (previouslyPredictedCells + tm.activeState['t']) == 2
-  idx = idx.reshape(numL4Cells)
-  correctlyPredictedCells[idx] = 1.0
-  # print "Predicted->active cell indices=",correctlyPredictedCells.nonzero()[0]
-
-  # all currently active cells in layer 4
-  spInputVector = tm.activeState['t'].reshape(numL4Cells)
-
-  # bursting cells in layer 4
-  burstingColumns = tm.activeState['t'].sum(axis=1)
-  burstingColumns[ burstingColumns < tm.cellsPerColumn ] = 0
-  burstingColumns[ burstingColumns == tm.cellsPerColumn ] = 1
-
-  return (correctlyPredictedCells, spInputVector, burstingColumns)
-
-
-def feedTMTP(tm, length, agents,
-           verbosity=0, learn=True):
-  """Feed the given sequence to the TM instance and the TP instance."""
-  tm.clearHistory()
-  for agent in agents:
-    tm.reset()
-    if verbosity > 0:
-      print "\nGenerating sequence for world:",str(agent._world)
-    sensorSequence, motorSequence, sensorimotorSequence = (
-      agent.generateSensorimotorSequence(length,verbosity=verbosity)
-    )
-    for i in xrange(len(sensorSequence)):
-      sensorPattern = sensorSequence[i]
-      sensorimotorPattern = sensorimotorSequence[i]
-
-      # Record the previously predicted cells
-      previouslyPredictedCells = tm.predictiveCells
-      predictedCells = numpy.zeros(tm.connections.numberOfCells()
-                                                    ).astype(realDType)
-      predictedCells[list(previouslyPredictedCells)] = 1
-      tm.compute(sensorPattern,
-                activeExternalCells=sensorimotorPattern,
-                formInternalConnections=False,
-                learn=learn)
-      (correctlyPredictedCells, spInputVector, burstingColumns) = \
-        extractInputForTP(tm, predictedCells, tm.connections.numberOfCells())
-
-  if verbosity >= 2:
-    print tm.prettyPrintHistory(verbosity=verbosity)
-    print
-
-  if learn and verbosity >= 3:
-    print tm.prettyPrintConnections()
-
-  return tm.getStatistics()
-
-
-
 # Initialize the universe, worlds, and agents
 nElements = 10
 wEncoders = 7
