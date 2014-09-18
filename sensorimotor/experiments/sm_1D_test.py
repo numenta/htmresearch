@@ -25,15 +25,19 @@
 # the actual columns.
 
 
-from sensorimotor.one_d_world import OneDWorld
-from sensorimotor.one_d_universe import OneDUniverse
-from sensorimotor.random_one_d_agent import RandomOneDAgent
+import numpy
 
+from nupic.bindings.math import GetNTAReal
 from nupic.research.temporal_memory_inspect_mixin import  (
   TemporalMemoryInspectMixin)
 
-from sensorimotor.learn_on_one_cell_temporal_memory import (
-  LearnOnOneCellTemporalMemory)
+from sensorimotor.one_d_world import OneDWorld
+from sensorimotor.one_d_universe import OneDUniverse
+from sensorimotor.random_one_d_agent import RandomOneDAgent
+from sensorimotor.general_temporal_memory import (
+            GeneralTemporalMemory
+)
+
 
 """
 
@@ -44,8 +48,10 @@ first order representation of this sequence.
 
 """
 
+realDType = GetNTAReal()
+
 # Mixin class for TM statistics
-class TMI(TemporalMemoryInspectMixin,LearnOnOneCellTemporalMemory): pass
+class TMI(TemporalMemoryInspectMixin,GeneralTemporalMemory): pass
 
 
 def feedTM(tm, length, agents,
@@ -117,6 +123,11 @@ feedTM(tm, length=700, agents=agents, verbosity=0, learn=True)
 print "Testing TM on sequences"
 stats = feedTM(tm, length=200, agents=agents, verbosity=2,
                learn=False)
+
+# Debug
+print "cells for column 0",tm.connections.cellsForColumn(0)
+print "cells for column 1",tm.connections.cellsForColumn(1)
+print "cells for column 20",tm.connections.cellsForColumn(20)
 
 print "Unpredicted columns: min, max, sum, average, stdev",stats[4]
 print "Predicted columns: min, max, sum, average, stdev",stats[2]

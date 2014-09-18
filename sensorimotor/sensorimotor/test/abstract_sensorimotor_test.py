@@ -24,11 +24,8 @@ import unittest2 as unittest
 import numpy
 from prettytable import PrettyTable
 
-from sensorimotor.learn_on_one_cell_temporal_memory import (
-  InspectLearnOnOneCellTemporalMemory as SensorimotorTemporalMemory)
-# Uncomment lines below to use GeneralTemporalMemory
-# from sensorimotor.general_temporal_memory import (
-#   InspectGeneralTemporalMemory as SensorimotorTemporalMemory)
+from sensorimotor.general_temporal_memory import (
+  InspectGeneralTemporalMemory as SensorimotorTemporalMemory)
 
 
 
