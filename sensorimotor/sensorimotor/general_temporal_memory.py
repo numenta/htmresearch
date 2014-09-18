@@ -32,7 +32,9 @@ from nupic.research.temporal_memory_inspect_mixin import  (
 class GeneralTemporalMemory(TemporalMemory):
   """
   Class implementing the Temporal Memory algorithm with the added ability of
-  being able to learn from both internal and external cell activation.
+  being able to learn from both internal and external cell activation. This
+  class has an option to learn on a single cell within a column and not
+  look for a new winner cell until a reset() is called.
   """
 
   # ==============================
@@ -41,7 +43,13 @@ class GeneralTemporalMemory(TemporalMemory):
 
 
   def __init__(self,
-             **kwargs):
+               learnOnOneCell=True,
+               **kwargs):
+    """
+    @param learnOnOneCell               (boolean)     If True, the winner cell
+                                                      for each column will be
+                                                      fixed between resets.
+    """
 
     super(GeneralTemporalMemory, self).__init__(**kwargs)
 
@@ -50,6 +58,8 @@ class GeneralTemporalMemory(TemporalMemory):
       kwargs["cellsPerColumn"])
 
     self.activeExternalCells = set()
+    self.learnOnOneCell = learnOnOneCell
+    self.chosenCellForColumn = dict()
 
 
   def compute(self,
@@ -89,6 +99,7 @@ class GeneralTemporalMemory(TemporalMemory):
                                        self.winnerCells,
                                        self.connections,
                                        formInternalConnections,
+                                       self.learnOnOneCell,
                                        learn=learn)
 
 
@@ -113,6 +124,7 @@ class GeneralTemporalMemory(TemporalMemory):
                 prevWinnerCells,
                 connections,
                 formInternalConnections,
+                learnOnOneCell,
                 learn=True):
     """
     'Functional' version of compute.
@@ -144,6 +156,10 @@ class GeneralTemporalMemory(TemporalMemory):
                                                       internal cells within this
                                                       temporal memory
 
+    @param learnOnOneCell               (boolean)     If True, the winner cell
+                                                      for each column will be
+                                                      fixed between resets.
+
     @return (tuple) Contains:
                       `activeCells`               (set),
                       `winnerCells`               (set),
@@ -169,6 +185,7 @@ class GeneralTemporalMemory(TemporalMemory):
      learningSegments) = self.burstColumns(activeColumns,
                                            predictedColumns,
                                            prevActiveSynapsesForSegment,
+                                           learnOnOneCell,
                                            connections)
 
     activeCells.update(_activeCells)
@@ -206,6 +223,79 @@ class GeneralTemporalMemory(TemporalMemory):
     super(GeneralTemporalMemory, self).reset()
 
     self.activeExternalCells = set()
+    self.chosenCellForColumn = dict()
+
+
+  def burstColumns(self,
+                   activeColumns,
+                   predictedColumns,
+                   prevActiveSynapsesForSegment,
+                   learnOnOneCell,
+                   connections):
+    """
+    Phase 2: Burst unpredicted columns.
+
+    Pseudocode:
+
+      - for each unpredicted active column
+        - mark all cells as active
+        - If learnOnOneCell, keep the old best matching cell if it exists
+        - mark the best matching cell as winner cell
+          - (learning)
+            - if it has no matching segment
+              - (optimization) if there are prev winner cells
+                - add a segment to it
+            - mark the segment as learning
+
+    @param activeColumns                (set)         Indices of active columns
+                                                      in `t`
+    @param predictedColumns             (set)         Indices of predicted
+                                                      columns in `t`
+    @param prevActiveSynapsesForSegment (dict)        Mapping from segments to
+                                                      active synapses in `t-1`,
+                                                      see
+                                                      `TM.computeActiveSynapses`
+    @param learnOnOneCell               (boolean)     If True, the winner cell
+                                                      for each column will be
+                                                      fixed between resets.
+    @param connections                  (Connections) Connectivity of layer
+
+    @return (tuple) Contains:
+                      `activeCells`      (set),
+                      `winnerCells`      (set),
+                      `learningSegments` (set)
+    """
+    activeCells = set()
+    winnerCells = set()
+    learningSegments = set()
+
+    unpredictedColumns = activeColumns - predictedColumns
+
+    for column in unpredictedColumns:
+      cells = connections.cellsForColumn(column)
+      activeCells.update(cells)
+
+      if learnOnOneCell and (column in self.chosenCellForColumn):
+        chosenCell = self.chosenCellForColumn[column]
+        cells = set([chosenCell])
+
+      (bestCell,
+       bestSegment) = self.getBestMatchingCell(cells,
+                                               prevActiveSynapsesForSegment,
+                                               connections)
+      winnerCells.add(bestCell)
+
+      if bestSegment == None:
+        # TODO: (optimization) Only do this if there are prev winner cells
+        bestSegment = connections.createSegment(bestCell)
+
+      learningSegments.add(bestSegment)
+
+      self.chosenCellForColumn[column] = bestCell
+
+    return (activeCells, winnerCells, learningSegments)
+
+
 
   # ==============================
   # Helper functions

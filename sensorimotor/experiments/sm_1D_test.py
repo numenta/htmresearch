@@ -25,15 +25,19 @@
 # the actual columns.
 
 
-from sensorimotor.one_d_world import OneDWorld
-from sensorimotor.one_d_universe import OneDUniverse
-from sensorimotor.random_one_d_agent import RandomOneDAgent
+import numpy
 
+from nupic.bindings.math import GetNTAReal
 from nupic.research.temporal_memory_inspect_mixin import  (
   TemporalMemoryInspectMixin)
 
-from sensorimotor.learn_on_one_cell_temporal_memory import (
-  LearnOnOneCellTemporalMemory)
+from sensorimotor.one_d_world import OneDWorld
+from sensorimotor.one_d_universe import OneDUniverse
+from sensorimotor.random_one_d_agent import RandomOneDAgent
+from sensorimotor.general_temporal_memory import (
+            GeneralTemporalMemory
+)
+
 
 """
 
@@ -44,8 +48,10 @@ first order representation of this sequence.
 
 """
 
+realDType = GetNTAReal()
+
 # Mixin class for TM statistics
-class TMI(TemporalMemoryInspectMixin,LearnOnOneCellTemporalMemory): pass
+class TMI(TemporalMemoryInspectMixin,GeneralTemporalMemory): pass
 
 
 def feedTM(tm, length, agents,
@@ -75,6 +81,67 @@ def feedTM(tm, length, agents,
     print tm.prettyPrintConnections()
 
   return tm.getStatistics()
+
+
+def extractInputForTP(tm, previouslyPredictedCells, numL4Cells):
+  """
+  Given an instance of the TM, extract the information we need to send to the
+  TP.
+  """
+  # correctly predicted cells in layer 4
+  correctlyPredictedCells = numpy.zeros(numL4Cells).astype(realDType)
+  idx = (previouslyPredictedCells + tm.activeState['t']) == 2
+  idx = idx.reshape(numL4Cells)
+  correctlyPredictedCells[idx] = 1.0
+  # print "Predicted->active cell indices=",correctlyPredictedCells.nonzero()[0]
+
+  # all currently active cells in layer 4
+  spInputVector = tm.activeState['t'].reshape(numL4Cells)
+
+  # bursting cells in layer 4
+  burstingColumns = tm.activeState['t'].sum(axis=1)
+  burstingColumns[ burstingColumns < tm.cellsPerColumn ] = 0
+  burstingColumns[ burstingColumns == tm.cellsPerColumn ] = 1
+
+  return (correctlyPredictedCells, spInputVector, burstingColumns)
+
+
+def feedTMTP(tm, length, agents,
+           verbosity=0, learn=True):
+  """Feed the given sequence to the TM instance and the TP instance."""
+  tm.clearHistory()
+  for agent in agents:
+    tm.reset()
+    if verbosity > 0:
+      print "\nGenerating sequence for world:",str(agent._world)
+    sensorSequence, motorSequence, sensorimotorSequence = (
+      agent.generateSensorimotorSequence(length,verbosity=verbosity)
+    )
+    for i in xrange(len(sensorSequence)):
+      sensorPattern = sensorSequence[i]
+      sensorimotorPattern = sensorimotorSequence[i]
+
+      # Record the previously predicted cells
+      previouslyPredictedCells = tm.predictiveCells
+      predictedCells = numpy.zeros(tm.connections.numberOfCells()
+                                                    ).astype(realDType)
+      predictedCells[list(previouslyPredictedCells)] = 1
+      tm.compute(sensorPattern,
+                activeExternalCells=sensorimotorPattern,
+                formInternalConnections=False,
+                learn=learn)
+      (correctlyPredictedCells, spInputVector, burstingColumns) = \
+        extractInputForTP(tm, predictedCells, tm.connections.numberOfCells())
+
+  if verbosity >= 2:
+    print tm.prettyPrintHistory(verbosity=verbosity)
+    print
+
+  if learn and verbosity >= 3:
+    print tm.prettyPrintConnections()
+
+  return tm.getStatistics()
+
 
 
 # Initialize the universe, worlds, and agents
@@ -117,6 +184,11 @@ feedTM(tm, length=700, agents=agents, verbosity=0, learn=True)
 print "Testing TM on sequences"
 stats = feedTM(tm, length=200, agents=agents, verbosity=2,
                learn=False)
+
+# Debug
+print "cells for column 0",tm.connections.cellsForColumn(0)
+print "cells for column 1",tm.connections.cellsForColumn(1)
+print "cells for column 20",tm.connections.cellsForColumn(20)
 
 print "Unpredicted columns: min, max, sum, average, stdev",stats[4]
 print "Predicted columns: min, max, sum, average, stdev",stats[2]
