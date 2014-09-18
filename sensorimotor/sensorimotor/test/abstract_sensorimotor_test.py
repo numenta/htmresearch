@@ -50,20 +50,25 @@ class AbstractSensorimotorTest(unittest.TestCase):
 
 
   def _feedTM(self, sequence, learn=True):
-    sensorSequence, motorSequence, sensorimotorSequence = sequence
+    (sensorSequence,
+     motorSequence,
+     sensorimotorSequence,
+     sequenceLabels) = sequence
 
     self.tm.clearHistory()
 
     for i in xrange(len(sensorSequence)):
       sensorPattern = sensorSequence[i]
       sensorimotorPattern = sensorimotorSequence[i]
+      sequenceLabel = sequenceLabels[i]
       if sensorPattern is None:
         self.tm.reset()
       else:
         self.tm.compute(sensorPattern,
                         activeExternalCells=sensorimotorPattern,
                         formInternalConnections=False,
-                        learn=learn)
+                        learn=learn,
+                        sequenceLabel=sequenceLabel)
 
     if self.VERBOSITY >= 2:
       print self.tm.prettyPrintHistory(verbosity=self.VERBOSITY-2)
@@ -135,13 +140,15 @@ class AbstractSensorimotorTest(unittest.TestCase):
     """
     @param length (int)           Length of each sequence to generate, one for
                                   each agent
-    @param agents  (AbstractAgent) Agents acting in their worlds
+    @param agents (AbstractAgent) Agents acting in their worlds
 
-    @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence)
+    @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence,
+                     sequence labels)
     """
     sensorSequence = []
     motorSequence = []
     sensorimotorSequence = []
+    sequenceLabels = []
 
     for agent in agents:
       s,m,sm = agent.generateSensorimotorSequence(length,
@@ -149,12 +156,14 @@ class AbstractSensorimotorTest(unittest.TestCase):
       sensorSequence += s
       motorSequence += m
       sensorimotorSequence += sm
+      sequenceLabels += [str(agent.world)] * length
 
       sensorSequence.append(None)
       motorSequence.append(None)
       sensorimotorSequence.append(None)
+      sequenceLabels.append(None)
 
-    return (sensorSequence, motorSequence, sensorimotorSequence)
+    return (sensorSequence, motorSequence, sensorimotorSequence, sequenceLabels)
 
 
   def _computeTMParams(self, overrides):
