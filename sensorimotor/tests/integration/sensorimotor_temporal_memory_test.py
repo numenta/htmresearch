@@ -174,8 +174,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)
 
-    averagePredictedInactiveColumns = stats[1][3]
-    self.assertTrue(0 < averagePredictedInactiveColumns < 10)
+    self.assertTrue(0 < stats.predictedInactiveColumns.average < 10)
 
     # TODO: Assert that patterns in different worlds have different cell
     # representations
@@ -186,28 +185,21 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
   # ==============================
 
   def _assertAllActiveWerePredicted(self, stats, universe):
-    sumUnpredictedActiveColumns = stats[4][2]
-    self.assertEqual(sumUnpredictedActiveColumns, 0)
+    self.assertEqual(stats.unpredictedActiveColumns.sum, 0)
 
-    minPredictedActiveColumns = stats[2][0]
-    self.assertEqual(minPredictedActiveColumns, universe.wSensor)
-    maxPredictedActiveColumns = stats[2][1]
-    self.assertEqual(maxPredictedActiveColumns, universe.wSensor)
+    self.assertEqual(stats.predictedActiveColumns.min, universe.wSensor)
+    self.assertEqual(stats.predictedActiveColumns.max, universe.wSensor)
 
 
   def _assertAllInactiveWereUnpredicted(self, stats):
-    sumPredictedInactiveColumns = stats[1][2]
-    self.assertEqual(sumPredictedInactiveColumns, 0)
+    self.assertEqual(stats.predictedInactiveColumns.sum, 0)
 
 
   def _assertAllActiveWereUnpredicted(self, stats, universe):
-    sumPredictedActiveColumns = stats[2][2]
-    self.assertEqual(sumPredictedActiveColumns, 0)
+    self.assertEqual(stats.predictedActiveColumns.sum, 0)
 
-    minUnpredictedActiveColumns = stats[4][0]
-    self.assertEqual(minUnpredictedActiveColumns, universe.wSensor)
-    maxUnpredictedActiveColumns = stats[4][1]
-    self.assertEqual(maxUnpredictedActiveColumns, universe.wSensor)
+    self.assertEqual(stats.unpredictedActiveColumns.min, universe.wSensor)
+    self.assertEqual(stats.unpredictedActiveColumns.max, universe.wSensor)
 
 
 

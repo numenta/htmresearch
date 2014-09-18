@@ -106,7 +106,7 @@ class AbstractSensorimotorTest(unittest.TestCase):
     table = PrettyTable(cols)
 
     for stats in cls.allStats:
-      row = [stats[0]] + list(stats[1])
+      row = [stats[0]] + [tuple(x) for x in list(stats[1])]
       table.add_row(row)
 
     print
