@@ -120,7 +120,6 @@ class AbstractSensorimotorTest(unittest.TestCase):
 
   def setUp(self):
     self.tm = None
-    self.tmTestMachine = None
     self._random = numpy.random.RandomState(self.SEED)
 
     if self.VERBOSITY >= 2:
