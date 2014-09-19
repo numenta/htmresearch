@@ -101,7 +101,8 @@ class AbstractSensorimotorTest(unittest.TestCase):
             "predicted inactive cells (stats)",
             "predicted active columns (stats)",
             "predicted inactive columns (stats)",
-            "unpredicted active columns (stats)"]
+            "unpredicted active columns (stats)",
+            "(sequence) predicted active cells per column (stats)"]
 
     table = PrettyTable(cols)
 

@@ -71,16 +71,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)
     self._assertAllInactiveWereUnpredicted(stats)
-
-    # Ensure that only one cell per column is learning
-    for column in xrange(self.tm.connections.numberOfColumns()):
-      cellsWithSegments = set()
-      for cell in self.tm.connections.cellsForColumn(column):
-        for segment in self.tm.connections.segmentsForCell(cell):
-          synapses = self.tm.connections.synapsesForSegment(segment)
-          if len(synapses):
-            cellsWithSegments.add(cell)
-      self.assertEqual(len(cellsWithSegments), 1)
+    self._assertSequencesOnePredictedActiveCellPerColumn(stats)
 
 
   def testSingleWorldBasic(self):
@@ -106,6 +97,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)
     self._assertAllInactiveWereUnpredicted(stats)
+    self._assertSequencesOnePredictedActiveCellPerColumn(stats)
 
 
   def testMultipleWorldsBasic(self):
@@ -140,6 +132,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     stats = self._testTM(sequence)
     self._assertAllActiveWerePredicted(stats, universe)
     self._assertAllInactiveWereUnpredicted(stats)
+    self._assertSequencesOnePredictedActiveCellPerColumn(stats)
 
 
   def testMultipleWorldsSharedPatterns(self):
@@ -201,6 +194,10 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self.assertEqual(stats.unpredictedActiveColumns.min, universe.wSensor)
     self.assertEqual(stats.unpredictedActiveColumns.max, universe.wSensor)
 
+
+  def _assertSequencesOnePredictedActiveCellPerColumn(self, stats):
+    self.assertEqual(stats.sequencesPredictedActiveCellsPerColumn.min, 1)
+    self.assertEqual(stats.sequencesPredictedActiveCellsPerColumn.max, 1)
 
 
 if __name__ == "__main__":
