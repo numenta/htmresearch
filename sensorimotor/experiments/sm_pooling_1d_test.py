@@ -38,7 +38,7 @@ from sensorimotor.general_temporal_memory import (
             GeneralTemporalMemory
 )
 
-from sensorimotor.TP_New import SPTP as TP_New
+from sensorimotor.temporal_pooler import SPTP as TP_New
 
 
 """
@@ -93,7 +93,6 @@ def formatInputForTP(tm):
   return (tpInputVector, burstingColumns, correctlyPredictedCells)
 
 
-
 def feedTM(tm, length, agents,
            verbosity=0, learn=True):
   """Feed the given sequence to the TM instance."""
@@ -125,20 +124,34 @@ def feedTM(tm, length, agents,
   return tm.getStatistics()
 
 
-def feedTMTP(tm, tp, length, agents,
-           verbosity=0, learn=True):
-  """Feed the given sequence to the TM instance and the TP instance."""
-  tm.clearHistory()
+def generateSequences(length, agents, verbosity=0):
+  """
+  Generate sequences of the given length for each of the agents.
+
+  Returns a list containing one tuple for each agent. Each tuple contains
+  (sensorSequence, motorSequence, and sensorimotorSequence) as returned by
+  the agent's generateSensorimotorSequence() method.
+
+  """
+  sequences = []
   for agent in agents:
-    tm.reset()
     if verbosity > 0:
       print "\nGenerating sequence for world:",str(agent._world)
-    sensorSequence, motorSequence, sensorimotorSequence = (
-      agent.generateSensorimotorSequence(length,verbosity=verbosity)
+    sequences.append(
+        agent.generateSensorimotorSequence(length, verbosity=verbosity)
     )
-    for i in xrange(len(sensorSequence)):
-      sensorPattern = sensorSequence[i]
-      sensorimotorPattern = sensorimotorSequence[i]
+
+  return sequences
+
+
+def feedTMTP(tm, tp, sequences, verbosity=0, learn=True):
+  """Feed the given sequence to the TM instance and the TP instance."""
+  tm.clearHistory()
+  for s,seq in enumerate(sequences):
+    tm.reset()
+    for i in xrange(len(seq[0])):
+      sensorPattern = seq[0][i]
+      sensorimotorPattern = seq[2][i]
 
       # Feed the TM
       tm.compute(sensorPattern,
@@ -195,7 +208,7 @@ DEFAULT_TM_PARAMS = {
   "activationThreshold": wEncoders*2
 }
 
-tm = TMI(**dict(DEFAULT_TM_PARAMS))
+tm = TMI(**DEFAULT_TM_PARAMS)
 
 # Train and test
 print "Training TM on sequences"
@@ -240,4 +253,5 @@ tp = TP_New(
     )
 
 print "Testing TM on sequences"
-stats = feedTMTP(tm, tp, length=10, agents=agents, verbosity=2)
+sequences = generateSequences(10, agents, verbosity=1)
+stats = feedTMTP(tm, tp, sequences=sequences, verbosity=2)

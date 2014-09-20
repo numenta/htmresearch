@@ -5,7 +5,7 @@
 
 import sys
 from sensorimotor.TM_SM import TM_SM
-from sensorimotor.TP_New import SPTP as TP_New
+from sensorimotor.temporal_pooler import SPTP as TP_New
 
 import numpy 
 
