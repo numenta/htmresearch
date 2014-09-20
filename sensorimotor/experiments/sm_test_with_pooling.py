@@ -168,12 +168,13 @@ for i,seq in enumerate(smseqs):
 
 # Step 2: generate sensorimotor sequences
 
-sequenceLength = 40
+sequenceLength = 60
 sensorySequences = []
 motorSequences = []
 sensorimotorSequences = []
 
 for i,smseq in enumerate(smseqs):
+  print "\n\nSequence",i
   (sensorySequence, motorSequence, sensorimotorSequence) = \
               smseq.generateSensorimotorSequence(sequenceLength)
   sensorySequences.append(sensorySequence)
@@ -189,8 +190,8 @@ print "motorCommandWidth",motorCommandWidth
 # It performs sensorimotor inference, simulating layer 4
 tm = TM_SM(numberOfCols=sensoryInputWidth,
         numberOfDistalInput=motorCommandWidth+sensoryInputWidth,
-        cellsPerColumn=16,
-        initialPerm=0.5,
+        cellsPerColumn=8,
+        initialPerm=0.4,
         connectedPerm=0.5,
         minThreshold=45,
         activationThreshold=45,
@@ -208,39 +209,6 @@ tm = TM_SM(numberOfCols=sensoryInputWidth,
 print "\nLayer 4 TM parameters:"
 tm.printParameters()
 
-# Layer 3 Temporal Pooler.
-
-# Inputs to the layer 3 temporal pooler are the cells from the temporal pooler
-# Temporal pooler cell [column c, cell i] corresponds to input
-# c * cellsPerCol + i
-
-print "Initializing Temporal Pooler"
-l3NumColumns = 512
-l3NumActiveColumnsPerInhArea = 20
-l3InputSize = tm.numberOfCols*tm.cellsPerColumn
-l3sp = TP_New(
-      inputDimensions  = [l3InputSize],
-      columnDimensions = [l3NumColumns],
-      potentialRadius  = l3InputSize,
-      cellsPerColumn = 1,
-      globalInhibition = True,
-      numActiveColumnsPerInhArea=l3NumActiveColumnsPerInhArea,
-      synPermInactiveDec=0,
-      synPermActiveInc=0.001,
-      synPredictedInc = 0.5,
-      maxBoost=1.0,
-      seed=4,
-      potentialPct=0.9,
-      stimulusThreshold = 2,
-      useBurstingRule = False,
-      minPctActiveDutyCycle = 0.1,
-      synPermConnected = 0.3,
-      initConnectedPct=0.2,
-      spVerbosity=0
-    )
-
-print "Layer 3 Temporal Pooler parameters:"
-l3sp.printParameters()
 
 #######################################################################
 #
@@ -273,7 +241,7 @@ for i,smseq in enumerate(smseqs):
     tm.compute(sensorySequence[j], sensorimotorSequence[j], enableLearn = True,
                computeInfOutput = False)
 
-    # tm.printStates(printPrevious=False, printLearnState=True)
+    #tm.printStates(printPrevious=False, printLearnState=True)
 
     # sensoryInput = smseq.decodeSensoryInput(sensorySequence[j,:])
     # motorCommand = smseq.decodeMotorInput(motorSequence[j,:])
@@ -303,6 +271,40 @@ for i,smseq in enumerate(smseqs):
 
 
 print "\n-------------- DONE TRAINING SENSORIMOTOR SEQUENCE LEARNER -----------------"
+
+
+# Layer 3 Temporal Pooler.
+
+# Inputs to the layer 3 temporal pooler are the cells from the temporal pooler
+# Temporal pooler cell [column c, cell i] corresponds to input
+# c * cellsPerCol + i
+
+print "Initializing Temporal Pooler"
+l3NumColumns = 512
+l3NumActiveColumnsPerInhArea = 20
+l3InputSize = tm.numberOfCols*tm.cellsPerColumn
+l3sp = TP_New(
+      inputDimensions  = [l3InputSize],
+      columnDimensions = [l3NumColumns],
+      potentialRadius  = l3InputSize,
+      globalInhibition = True,
+      numActiveColumnsPerInhArea=l3NumActiveColumnsPerInhArea,
+      synPermInactiveDec=0,
+      synPermActiveInc=0.001,
+      synPredictedInc = 0.5,
+      maxBoost=1.0,
+      seed=4,
+      potentialPct=0.9,
+      stimulusThreshold = 2,
+      useBurstingRule = False,
+      minPctActiveDutyCycle = 0.1,
+      synPermConnected = 0.3,
+      initConnectedPct=0.2,
+      spVerbosity=0
+    )
+
+print "Layer 3 Temporal Pooler parameters:"
+l3sp.printParameters()
 
 #######################################################################
 #

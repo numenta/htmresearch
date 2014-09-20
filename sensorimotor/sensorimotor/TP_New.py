@@ -59,7 +59,6 @@ class SPTP(SpatialPooler):
   def __init__(self,
                inputDimensions=[32,32],
                columnDimensions=[64,64],
-               cellsPerColumn = 8,
                potentialRadius=16,
                potentialPct=0.5,
                globalInhibition=False,
@@ -90,6 +89,7 @@ class SPTP(SpatialPooler):
 
     New parameters defined in this class:
     -------------------------------------
+
     @param synPermActiveInactiveDec:
       For inactive columns, synapses connected to input bits that are on are
       decreased by synPermActiveInactiveDec.
@@ -119,7 +119,6 @@ class SPTP(SpatialPooler):
     """
     self.initialize(inputDimensions,
                     columnDimensions,
-                    cellsPerColumn,
                     potentialRadius,
                     potentialPct,
                     globalInhibition,
@@ -148,7 +147,6 @@ class SPTP(SpatialPooler):
   def initialize(self,
                inputDimensions=[32,32],
                columnDimensions=[64,64],
-               cellsPerColumn = 8,
                potentialRadius=16,
                potentialPct=0.5,
                globalInhibition=False,
@@ -338,9 +336,11 @@ class SPTP(SpatialPooler):
       self._updatePermanencesForColumn(perm, i, raisePerm=True)
 
 
-    # TODO: The permanence initialiation code below runs faster but is not
-    # deterministic (doesn't use our random seed.  We should clean up the code
-    # and consider moving it to the base spatial pooler class itself.
+    # TODO: The permanence initialization code below runs faster but is not
+    # deterministic (doesn't use our RNG or the seed).  The speed is
+    # particularly important for temporal pooling because the number if inputs =
+    # number of cells in the prevous level. We should consider cleaning up the
+    # code and moving it to the base spatial pooler class itself.
 
     # for i in xrange(numColumns):
     #   # NEW indices for inputs within _potentialRadius of the current column
@@ -397,37 +397,19 @@ class SPTP(SpatialPooler):
   def compute(self, inputVector, learn, activeArray, burstingColumns,
               predictedCells):
     """
-    This is the primary public method of the SpatialPooler class. This 
-    function takes a input vector and outputs the indices of the active columns.
-    If 'learn' is set to True, this method also updates the permanences of the
-    columns.
+    This is the primary public method of the class. This function takes an input
+    vector and outputs the indices of the active columns.
 
-    Parameters:
+    New parameters defined here:
     ----------------------------
-    inputVector:    a numpy array of 0's and 1's thata comprises the input to 
-                    the spatial pooler. The array will be treated as a one
-                    dimensional array, therefore the dimensions of the array
-                    do not have to much the exact dimensions specified in the 
-                    class constructor. In fact, even a list would suffice. 
-                    The number of input bits in the vector must, however, 
-                    match the number of bits specified by the call to the 
-                    constructor. Therefore there must be a '0' or '1' in the
-                    array for every input bit.
-    learn:          a boolean value indicating whether learning should be 
-                    performed. Learning entails updating the  permanence 
-                    values of the synapses, and hence modifying the 'state' 
-                    of the model. Setting learning to 'off' freezes the SP
-                    and has many uses. For example, you might want to feed in
-                    various inputs and examine the resulting SDR's.
-    activeArray:    an array whose size is equal to the number of columns. 
-                    Before the function returns this array will be populated 
-                    with 1's at the indices of the active columns, and 0's 
-                    everywhere else.
-    burstingColumns: a numpy array with numColumns elements. A 1 indicates that
-                    column is currently bursting.
-    predictedCells: a numpy array with numInputs elements. A 1 indicates that
-                    this cell switching from predicted state in the previous
-                    time step to active state in the current timestep
+    @param burstingColumns:
+      A numpy array with numColumns elements. A 1  indicates that the column is
+      currently bursting.
+
+    @param predictedCells:
+      A numpy array with numInputs elements. A 1 indicates that this cell
+      switching from predicted state in the previous time step to active state
+      in the current timestep
     """
     assert (numpy.size(inputVector) == self._numInputs)
     assert (numpy.size(predictedCells) == self._numInputs)
@@ -453,7 +435,7 @@ class SPTP(SpatialPooler):
       overlapsPooling = self._calculatePoolingActivity(predictedCells, learn)
 
       if self._spVerbosity > 4:
-        print "Use Pooling Rule: Overlaps after step a:"
+        print "usePoolingRule: Overlaps after step 1:"
         print "   ", overlapsPooling
 
     else:
@@ -463,6 +445,8 @@ class SPTP(SpatialPooler):
     overlapsAllInput = self._calculateOverlap(inputVector)
 
     # 3) overlap with predicted inputs
+    # NEW: Isn't this redundant with 1 and 2)? This looks at connected synapses
+    # only.
     overlapsPredicted = self._calculateOverlap(predictedCells)      
 
     if self._spVerbosity > 4:
@@ -562,11 +546,11 @@ class SPTP(SpatialPooler):
 
   def _calculatePoolingActivity(self, predictedCells, learn):
     """
-    This function determines each column's overlap with metabotropically
-    activated inputs. Overlap is calculated based on potential synapses. The
-    overlap of a column that was previously active and has even one active
-    metabotropic synapses is set to _numInputs+1 so they are guaranteed to win
-    during inhibition.
+    This function determines each column's overlap with inputs coming from
+    predicted cells. Overlap is calculated based on potential (not  necessarily
+    connected) synapses. The overlap of a column that was previously active and
+    has even one active predicted synapse is set to _numInputs+1 so they are
+    guaranteed to win during inhibition.
     
     TODO: check with Jeff, what happens in biology if a cell was not previously
     active but receives metabotropic input?  Does it turn on, or does the met.
@@ -605,20 +589,20 @@ class SPTP(SpatialPooler):
     mask = numpy.zeros(self._numColumns).astype(realDType)
     mask[poolingColumns] = 1    
     overlaps = overlaps * mask
-    # columns that are in polling state and receives predicted input
+    # columns that are in pooling state and receives predicted input
     # will be boosted by a large factor
     boostFactorPooling = self._maxBoost*self._numInputs
     overlaps = boostFactorPooling * overlaps
 
     if self._spVerbosity > 3:
-      print "\n============== Entering _calculateMetabotropicActivity ======"
-      print "Received metabotropic inputs from following indices:"
+      print "\n============== In _calculatePoolingActivity ======"
+      print "Received predicted cell inputs from following indices:"
       print "   ",predictedCells.nonzero()[0]
       print "The following column indices are in pooling state:"
       print "   ",poolingColumns
       print "Overlap score of pooling columns:"
       print "   ",overlaps[poolingColumns]
-      print "============== Leaving _calculateMetabotropicActivity ======\n"
+      print "============== Leaving _calculatePoolingActivity  ======\n"
 
     return overlaps
   
