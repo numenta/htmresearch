@@ -38,7 +38,7 @@ from sensorimotor.general_temporal_memory import (
             GeneralTemporalMemory
 )
 
-from sensorimotor.temporal_pooler import SPTP as TP_New
+from sensorimotor.temporal_pooler import TemporalPooler
 
 
 """
@@ -232,7 +232,7 @@ print "Training TP on sequences"
 
 l3NumColumns = 512
 l3NumActiveColumnsPerInhArea = 20
-tp = TP_New(
+tp = TemporalPooler(
       inputDimensions  = [tm.connections.numberOfCells()],
       columnDimensions = [l3NumColumns],
       potentialRadius  = tm.connections.numberOfCells(),

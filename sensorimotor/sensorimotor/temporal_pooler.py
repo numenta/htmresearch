@@ -48,7 +48,7 @@ def formatRow(x, formatString = "%d", rowSize = 100):
   return s
 
 
-class SPTP(SpatialPooler):
+class TemporalPooler(SpatialPooler):
   """
   This class implements the new temporal pooler. It tries to form stable and
   unique representations for sequences that are correctly predicted. If the
@@ -704,7 +704,7 @@ class SPTP(SpatialPooler):
     """
     Useful for debugging.
     """
-    print "------------PY  SPTP Parameters ------------------"
+    print "------------PY  TemporalPooler Parameters ------------------"
     print "numInputs                  = ", self.getNumInputs()
     print "numColumns                 = ", self.getNumColumns()
     print "columnDimensions           = ", self._columnDimensions

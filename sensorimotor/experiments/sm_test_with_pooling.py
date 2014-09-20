@@ -5,7 +5,7 @@
 
 import sys
 from sensorimotor.TM_SM import TM_SM
-from sensorimotor.temporal_pooler import SPTP as TP_New
+from sensorimotor.temporal_pooler import TemporalPooler
 
 import numpy 
 
@@ -283,7 +283,7 @@ print "Initializing Temporal Pooler"
 l3NumColumns = 512
 l3NumActiveColumnsPerInhArea = 20
 l3InputSize = tm.numberOfCols*tm.cellsPerColumn
-l3sp = TP_New(
+l3sp = TemporalPooler(
       inputDimensions  = [l3InputSize],
       columnDimensions = [l3NumColumns],
       potentialRadius  = l3InputSize,
@@ -351,7 +351,7 @@ for s in range(numberOfPatterns):
         extractInputForTP(tm, l3InputSize)
 
     # print "-------- Temporal Pooling (Layer 3) ---------:"
-    # activeArray will hold the SPTP output
+    # activeArray will hold the TemporalPooler output
     activeArray = numpy.zeros(l3sp._numColumns)
 
     l3sp.compute(spInputVector, learn=True, activeArray=activeArray,
@@ -452,7 +452,7 @@ for repeat in range(nRepeat):
       # print "-------- Temporal Pooling (Layer 3) ---------:"
       activeArray = numpy.zeros(l3sp._numColumns)      
       
-      # activeArray will hold the SPTP output
+      # activeArray will hold the TemporalPooler output
       l3sp.compute(spInputVector, learn=False, activeArray=activeArray,
                    burstingColumns=burstingColumns,
                    predictedCells=correctlyPredictedCells)
