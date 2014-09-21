@@ -32,7 +32,7 @@ class AbstractAgent(object):
     """
     @param world (AbstractWorld) The world this agent belongs in.
     """
-    self._world = world
+    self.world = world
 
 
   @abc.abstractmethod
@@ -63,17 +63,17 @@ class AbstractAgent(object):
     motorCommands = []
 
     for _ in xrange(length):
-      sensorValues.append(self._world.getSensorValue())
-      sensorPattern = self._world.sense()
+      sensorValues.append(self.world.getSensorValue())
+      sensorPattern = self.world.sense()
 
       motorValue = self.chooseMotorValue()
       motorCommands.append(motorValue)
-      motorPattern = self._world.move(motorValue)
+      motorPattern = self.world.move(motorValue)
 
       sensorSequence.append(sensorPattern)
       motorSequence.append(motorPattern)
       sensorimotorPattern = (sensorPattern |
-        set([x + self._world.universe.nSensor for x in motorPattern]))
+        set([x + self.world.universe.nSensor for x in motorPattern]))
       sensorimotorSequence.append(sensorimotorPattern)
 
     if verbosity > 0:
@@ -98,6 +98,6 @@ class AbstractAgent(object):
         table.add_row([i, "<reset>", "<reset>"])
       else:
         table.add_row([i, list(sensorPattern), list(motorPattern),
-              self._world.universe.decodeSensorValue(sensorValues[i]),
+              self.world.universe.decodeSensorValue(sensorValues[i]),
               motorCommands[i]])
     print table
