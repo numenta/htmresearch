@@ -165,7 +165,6 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self.assertTrue(0 < stats.predictedInactiveColumns.average < 10)
 
 
-  @unittest.skip("TODO: Determine why this test fails")
   def testMultipleWorldsSharedPatternsNoSharedSubsequences(self):
     """
     Test Sensorimotor Temporal Memory learning in multiple separate worlds.
@@ -176,7 +175,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     """
     self._init()
 
-    universe = OneDUniverse(debugMotor=True,
+    universe = OneDUniverse(debugSensor=True, debugMotor=True,
                             nSensor=100, wSensor=10,
                             nMotor=70, wMotor=10)
 
@@ -184,7 +183,8 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     patterns = range(4)
     for _ in xrange(2):
       world = OneDWorld(universe, patterns, 2)
-      agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-3, 4)))
+      agent = RandomOneDAgent(world, possibleMotorValues=set([-3, -2, -1,
+                                                              1,  2, 3]))
       agents.append(agent)
       patterns = list(patterns)  # copy
       patterns.reverse()
