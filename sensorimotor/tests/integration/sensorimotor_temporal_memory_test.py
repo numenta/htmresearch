@@ -63,12 +63,11 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-1, 2)))
 
     sequence = self._generateSensorimotorSequences(100, [agent])
-
     self._feedTM(sequence)
 
     sequence = self._generateSensorimotorSequences(20, [agent])
-
     stats = self._testTM(sequence)
+
     self._assertAllActiveWerePredicted(stats, universe)
     self._assertAllInactiveWereUnpredicted(stats)
     self._assertSequencesOnePredictedActiveCellPerColumn(stats)
@@ -89,12 +88,11 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-3, 4)))
 
     sequence = self._generateSensorimotorSequences(100, [agent])
-
     self._feedTM(sequence)
 
     sequence = self._generateSensorimotorSequences(100, [agent])
-
     stats = self._testTM(sequence)
+
     self._assertAllActiveWerePredicted(stats, universe)
     self._assertAllInactiveWereUnpredicted(stats)
     self._assertSequencesOnePredictedActiveCellPerColumn(stats)
@@ -124,12 +122,11 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
       agents.append(agent)
 
     sequence = self._generateSensorimotorSequences(150, agents)
-
     self._feedTM(sequence)
 
     sequence = self._generateSensorimotorSequences(100, agents)
-
     stats = self._testTM(sequence)
+
     self._assertAllActiveWerePredicted(stats, universe)
     self._assertAllInactiveWereUnpredicted(stats)
     self._assertSequencesOnePredictedActiveCellPerColumn(stats)
@@ -159,18 +156,49 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
       agents.append(agent)
 
     sequence = self._generateSensorimotorSequences(150, agents)
-
     self._feedTM(sequence)
 
     sequence = self._generateSensorimotorSequences(100, agents)
-
     stats = self._testTM(sequence)
-    self._assertAllActiveWerePredicted(stats, universe)
 
+    self._assertAllActiveWerePredicted(stats, universe)
     self.assertTrue(0 < stats.predictedInactiveColumns.average < 10)
 
-    # TODO: Assert that patterns in different worlds have different cell
-    # representations
+
+  def testMultipleWorldsSharedPatternsNoSharedSubsequences(self):
+    """
+    Test Sensorimotor Temporal Memory learning in multiple separate worlds.
+    Patterns are represented as complete SDRs. Patterns are shared between
+    worlds. Worlds have no shared subsequences.
+    All active columns should have been predicted.
+    Patterns in different worlds should have different cell representations
+    """
+    self._init()
+
+    universe = OneDUniverse(debugSensor=True, debugMotor=True,
+                            nSensor=100, wSensor=10,
+                            nMotor=70, wMotor=10)
+
+    agents = []
+    patterns = range(4)
+    for _ in xrange(2):
+      world = OneDWorld(universe, patterns, 2)
+      agent = RandomOneDAgent(world, possibleMotorValues=set([-3, -2, -1,
+                                                              1,  2, 3]))
+      agents.append(agent)
+      patterns = list(patterns)  # copy
+      patterns.reverse()
+
+    sequence = self._generateSensorimotorSequences(150, agents)
+    self._feedTM(sequence)
+
+    sequence = self._generateSensorimotorSequences(100, agents)
+    stats = self._testTM(sequence)
+
+    self._assertAllActiveWerePredicted(stats, universe)
+    self.assertTrue(0 < stats.predictedInactiveColumns.average < 5)
+    self._assertSequencesOnePredictedActiveCellPerColumn(stats)
+    self._assertOneSequencePerPredictedActiveCell(stats)
 
 
   # ==============================
@@ -198,6 +226,11 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
   def _assertSequencesOnePredictedActiveCellPerColumn(self, stats):
     self.assertEqual(stats.sequencesPredictedActiveCellsPerColumn.min, 1)
     self.assertEqual(stats.sequencesPredictedActiveCellsPerColumn.max, 1)
+
+
+  def _assertOneSequencePerPredictedActiveCell(self, stats):
+    self.assertEqual(stats.sequencesPredictedActiveCellsShared.min, 1)
+    self.assertEqual(stats.sequencesPredictedActiveCellsShared.max, 1)
 
 
 if __name__ == "__main__":
