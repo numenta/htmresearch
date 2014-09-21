@@ -45,7 +45,7 @@ class RandomOneDAgent(AbstractAgent):
 
     @return (int) motor value
     """
-    distanceToLeft, distanceToRight = self._world.distanceToBoundaries()
+    distanceToLeft, distanceToRight = self.world.distanceToBoundaries()
     minValue = -distanceToLeft
     maxValue = distanceToRight
     candidates = [x for x in self._possibleMotorValues if (x >= minValue and

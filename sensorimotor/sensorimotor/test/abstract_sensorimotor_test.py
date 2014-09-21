@@ -43,27 +43,38 @@ class AbstractSensorimotorTest(unittest.TestCase):
     :param tmOverrides: overrides for default Temporal Memory parameters
     """
     params = self._computeTMParams(tmOverrides)
+    # Uncomment the line below to disable learn on one cell mode
+    # params["learnOnOneCell"] = False
     self.tm = SensorimotorTemporalMemory(**params)
 
 
   def _feedTM(self, sequence, learn=True):
-    sensorSequence, motorSequence, sensorimotorSequence = sequence
+    (sensorSequence,
+     motorSequence,
+     sensorimotorSequence,
+     sequenceLabels) = sequence
 
     self.tm.clearHistory()
 
     for i in xrange(len(sensorSequence)):
       sensorPattern = sensorSequence[i]
       sensorimotorPattern = sensorimotorSequence[i]
+      sequenceLabel = sequenceLabels[i]
       if sensorPattern is None:
         self.tm.reset()
       else:
         self.tm.compute(sensorPattern,
                         activeExternalCells=sensorimotorPattern,
                         formInternalConnections=False,
-                        learn=learn)
+                        learn=learn,
+                        sequenceLabel=sequenceLabel)
 
     if self.VERBOSITY >= 2:
       print self.tm.prettyPrintHistory(verbosity=self.VERBOSITY-2)
+      print
+
+    if self.VERBOSITY >= 2:
+      print self.tm.prettyPrintSequenceCellRepresentations()
       print
 
     if learn and self.VERBOSITY >= 3:
@@ -92,16 +103,18 @@ class AbstractSensorimotorTest(unittest.TestCase):
   @classmethod
   def tearDownClass(cls):
     cols = ["Test",
-            "predicted active cells (stats)",
-            "predicted inactive cells (stats)",
-            "predicted active columns (stats)",
-            "predicted inactive columns (stats)",
-            "unpredicted active columns (stats)"]
+            "# of predicted active cells (stats)",
+            "# of predicted inactive cells (stats)",
+            "# of predicted active columns (stats)",
+            "# of predicted inactive columns (stats)",
+            "# of unpredicted active columns (stats)",
+            "# of predicted active cells per column in each sequence (stats)",
+            "# of sequences each predicted active cell shows up in"]
 
     table = PrettyTable(cols)
 
     for stats in cls.allStats:
-      row = [stats[0]] + list(stats[1])
+      row = [stats[0]] + [tuple(x) for x in list(stats[1])]
       table.add_row(row)
 
     print
@@ -111,7 +124,6 @@ class AbstractSensorimotorTest(unittest.TestCase):
 
   def setUp(self):
     self.tm = None
-    self.tmTestMachine = None
     self._random = numpy.random.RandomState(self.SEED)
 
     if self.VERBOSITY >= 2:
@@ -132,13 +144,15 @@ class AbstractSensorimotorTest(unittest.TestCase):
     """
     @param length (int)           Length of each sequence to generate, one for
                                   each agent
-    @param agents  (AbstractAgent) Agents acting in their worlds
+    @param agents (AbstractAgent) Agents acting in their worlds
 
-    @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence)
+    @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence,
+                     sequence labels)
     """
     sensorSequence = []
     motorSequence = []
     sensorimotorSequence = []
+    sequenceLabels = []
 
     for agent in agents:
       s,m,sm = agent.generateSensorimotorSequence(length,
@@ -146,12 +160,14 @@ class AbstractSensorimotorTest(unittest.TestCase):
       sensorSequence += s
       motorSequence += m
       sensorimotorSequence += sm
+      sequenceLabels += [str(agent.world)] * length
 
       sensorSequence.append(None)
       motorSequence.append(None)
       sensorimotorSequence.append(None)
+      sequenceLabels.append(None)
 
-    return (sensorSequence, motorSequence, sensorimotorSequence)
+    return (sensorSequence, motorSequence, sensorimotorSequence, sequenceLabels)
 
 
   def _computeTMParams(self, overrides):
