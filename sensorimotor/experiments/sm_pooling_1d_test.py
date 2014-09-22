@@ -100,7 +100,7 @@ def feedTM(tm, length, agents,
   for agent in agents:
     tm.reset()
     if verbosity > 0:
-      print "\nGenerating sequence for world:",str(agent._world)
+      print "\nGenerating sequence for world:",str(agent.world)
     sensorSequence, motorSequence, sensorimotorSequence = (
       agent.generateSensorimotorSequence(length,verbosity=verbosity)
     )
@@ -136,7 +136,7 @@ def generateSequences(length, agents, verbosity=0):
   sequences = []
   for agent in agents:
     if verbosity > 0:
-      print "\nGenerating sequence for world:",str(agent._world)
+      print "\nGenerating sequence for world:",str(agent.world)
     sequences.append(
         agent.generateSensorimotorSequence(length, verbosity=verbosity)
     )
