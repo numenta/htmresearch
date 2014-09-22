@@ -1,0 +1,33 @@
+language: python
+
+notifications:
+  webhooks: https://webhooks.gitter.im/e/af8b56ad2dd4ca61cb8e
+
+env:
+  global:
+  - NUPIC=$TRAVIS_BUILD_DIR/nupic
+  - PYTHONPATH=/home/travis/build/numenta/nupic/lib/python2.7/site-packages:$NUPIC
+  - AWS_ACCESS_KEY_ID=AKIAIGHYSEHV3WFKOWNQ
+  - secure: Lrb/OJ6iMQ34xyOTz53g3+B/OEZvOT26FVxOr1J8zqnZ11QPvJDO0zb8xd6A3FdDLGQh0NJOo3ZieN96BqSajYMVYeWVCR3qCReOIn3TwNNaD7UfuHoRPBkMQd7Th/EHNC4h0hurRjU7GYvjbFkSFpHlJ5yj3neBrvJspn4Hx5U=
+
+install:
+- echo $PYTHONPATH
+- echo $NUPIC
+- NUPIC_SHA=`cat nupic_sha.txt`
+- 'echo NUPIC SHA: $NUPIC_SHA'
+
+# These are required for the fetch_egg script.
+- pip install requests
+- pip install boto
+# Fetches the binary distribution.
+- python fetch_binary.py
+
+# Unpacks the distro into the Travis-CI file system
+- sudo tar zxvf nupic-archive.tar.gz -C /
+
+# These are the required python dependencies for NuPIC
+- travis_retry pip install -q -r /home/travis/build/numenta/nupic/requirements.txt
+- export NTA_CONF_PATH=/home/travis/build/numenta/nupic
+
+script:
+- py.test tests/
