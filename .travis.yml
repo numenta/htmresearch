@@ -29,10 +29,10 @@ install:
 - travis_retry pip install -q -r /home/travis/build/numenta/nupic/requirements.txt
 - export NTA_CONF_PATH=/home/travis/build/numenta/nupic
 
-# Install nupic.research
-- cd ${TRAVIS_BUILD_DIR}
+# Install nupic.research/sensorimotor
+- cd ${TRAVIS_BUILD_DIR}/sensorimotor
 - python setup.py install
 
 script:
-- cd ${TRAVIS_BUILD_DIR}/sensorimotor
+# Run sensorimotor tests
 - py.test tests/
