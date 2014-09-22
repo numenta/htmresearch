@@ -103,6 +103,7 @@ class SensorimotorExperimentRunner(object):
 
     for s,seq in enumerate(sequences):
       self.tm.reset()
+      if verbosity>=2: print "\nSequence:",s
 
       for i in xrange(len(seq[0])):
         sensorPattern = seq[0][i]

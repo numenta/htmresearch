@@ -29,34 +29,22 @@ from sensorimotor.sensorimotor_experiment_runner import (
 
 
 print """
-This program runs sensorimotor inference and pooling with several static worlds.
+This program forms the simplest test of sensorimotor sequence inference with
+pooling. We present sequences from a single 1D world. We then test to ensure the
+number of predicted columns matches the actual columns.
 """
 
 ############################################################
 # Initialize the universe, worlds, and agents
-nElements = 10
-wEncoders = 21
-universe = OneDUniverse(debugSensor=False,
-                        debugMotor=False,
-                        nSensor=512, wSensor=wEncoders,
+nElements = 5
+wEncoders = 7
+universe = OneDUniverse(debugSensor=True,
+                        debugMotor=True,
+                        nSensor=nElements*wEncoders, wSensor=wEncoders,
                         nMotor=wEncoders*7, wMotor=wEncoders)
 agents = [
   RandomOneDAgent(OneDWorld(universe, range(nElements), 4),
-                         possibleMotorValues=(-2, -1, 1, 2), seed=23),
-  RandomOneDAgent(OneDWorld(universe, range(nElements-1, -1, -1), 4),
-                         possibleMotorValues=(-2, -1, 1, 2), seed=42),
-  RandomOneDAgent(OneDWorld(universe, range(0,nElements,2), 4),
-                         possibleMotorValues=(-2, -1, 1, 2), seed=10),
-  RandomOneDAgent(OneDWorld(universe, range(0,nElements,3), 2),
-                         possibleMotorValues=(-2, -1, 1, 2), seed=5),
-  RandomOneDAgent(OneDWorld(universe, [0, 8, 3, 1, 6], 2),
-                         possibleMotorValues=(-2, -1, 1, 2), seed=5),
-  RandomOneDAgent(OneDWorld(universe, [6, 1, 3, 8, 0], 2),
-                         possibleMotorValues=(-2, -1, 1, 2), seed=5),
-  RandomOneDAgent(OneDWorld(universe, [3, 7, 4, 2, 5], 2),
-                         possibleMotorValues=(-2, -1, 1, 2), seed=5),
-  RandomOneDAgent(OneDWorld(universe, [5, 2, 4, 7, 3], 2),
-                         possibleMotorValues=(-2, -1, 1, 2), seed=5),
+                         possibleMotorValues=(-1,1), seed=23),
   ]
 
 l3NumColumns = 512
@@ -64,10 +52,9 @@ l3NumActiveColumnsPerInhArea = 20
 
 ############################################################
 # Initialize the experiment runner with relevant parameters
-print "Initializing experiment runner"
 smer = SensorimotorExperimentRunner(
           tmOverrides={
-              "columnDimensions": [universe.nSensor],
+              "columnDimensions": [nElements*wEncoders],
               "minThreshold": wEncoders*2,
               "maxNewSynapseCount": wEncoders*2,
               "activationThreshold": wEncoders*2
@@ -82,16 +69,16 @@ smer = SensorimotorExperimentRunner(
 # Temporal memory training
 
 print "Training TemporalMemory on sequences"
-sequences = smer.generateSequences(500, agents, verbosity=0)
-smer.feedLayers(sequences, tmLearn=True, verbosity=0)
+sequences = smer.generateSequences(40, agents, verbosity=1)
+smer.feedLayers(sequences, tmLearn=True, verbosity=1)
 
 
 # Check if TM learning went ok
 
 print "Testing TemporalMemory on novel sequences"
-testSequenceLength=100
-sequences = smer.generateSequences(testSequenceLength, agents, verbosity=0)
-stats = smer.feedLayers(sequences, tmLearn=False, verbosity=0)
+testSequenceLength=10
+sequences = smer.generateSequences(testSequenceLength, agents, verbosity=1)
+stats = smer.feedLayers(sequences, tmLearn=False, verbosity=2)
 
 print "Unpredicted columns: min, max, sum, average, stdev",stats[4]
 print "Predicted columns: min, max, sum, average, stdev",stats[2]
@@ -108,10 +95,6 @@ else:
 # Temporal pooler training
 
 print "Training TemporalPooler on sequences"
-sequences = smer.generateSequences(100, agents, verbosity=0)
-smer.feedLayers(sequences, tmLearn=False, tpLearn=True, verbosity=0)
-
-print "Testing TemporalPooler on sequences"
 sequences = smer.generateSequences(10, agents, verbosity=1)
-smer.feedLayers(sequences, tmLearn=False, tpLearn=False, verbosity=2)
+smer.feedLayers(sequences, tmLearn=False, tpLearn=True, verbosity=2)
 
