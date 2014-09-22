@@ -25,164 +25,21 @@
 # the actual columns.
 
 
-import numpy
-
-from nupic.bindings.math import GetNTAReal
-from nupic.research.temporal_memory_inspect_mixin import  (
-  TemporalMemoryInspectMixin)
-
 from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
 from sensorimotor.random_one_d_agent import RandomOneDAgent
-from sensorimotor.general_temporal_memory import (
-            GeneralTemporalMemory
+
+from sensorimotor.sensorimotor_experiment_runner import (
+  SensorimotorExperimentRunner
 )
 
-from sensorimotor.temporal_pooler import TemporalPooler
-
 
 """
-
-This program forms the simplest test of sensorimotor sequence inference
-with 1D patterns. We present a sequence from a single 1D pattern. The
-TM is initialized with multiple cells per column but should form a
-first order representation of this sequence.
-
+This program forms the simplest test of sensorimotor sequence inference with
+pooling. We present sequences from a single 1D world.
 """
 
-realDType = GetNTAReal()
-
-# Mixin class for TM statistics
-class TMI(TemporalMemoryInspectMixin,GeneralTemporalMemory): pass
-
-def formatRow(x, formatString = "%d", rowSize = 700):
-  """
-  Utility routine for pretty printing large vectors
-  """
-  s = ''
-  for c,v in enumerate(x):
-    if c > 0 and c % 7 == 0:
-      s += ' '
-    if c > 0 and c % rowSize == 0:
-      s += '\n'
-    s += formatString % v
-  s += ' '
-  return s
-
-
-
-def formatInputForTP(tm):
-  """
-  Given an instance of the TM, format the information we need to send to the
-  TP.
-  """
-  # all currently active cells in layer 4
-  tpInputVector = numpy.zeros(tm.connections.numberOfCells()).astype(realDType)
-  tpInputVector[list(tm.activeCells)] = 1
-
-  # bursting columns in layer 4
-  burstingColumns = numpy.zeros(
-    tm.connections.numberOfColumns()).astype(realDType)
-  burstingColumns[list(tm.unpredictedActiveColumnsList[-1])] = 1
-
-  # correctly predicted cells in layer 4
-  correctlyPredictedCells = numpy.zeros(
-    tm.connections.numberOfCells()).astype(realDType)
-  correctlyPredictedCells[list(tm.predictedActiveCellsList[-1])] = 1
-
-  return (tpInputVector, burstingColumns, correctlyPredictedCells)
-
-
-def feedTM(tm, length, agents,
-           verbosity=0, learn=True):
-  """Feed the given sequence to the TM instance."""
-  tm.clearHistory()
-  for agent in agents:
-    tm.reset()
-    if verbosity > 0:
-      print "\nGenerating sequence for world:",str(agent._world)
-    sensorSequence, motorSequence, sensorimotorSequence = (
-      agent.generateSensorimotorSequence(length,verbosity=verbosity)
-    )
-    for i in xrange(len(sensorSequence)):
-      sensorPattern = sensorSequence[i]
-      sensorimotorPattern = sensorimotorSequence[i]
-      tm.compute(sensorPattern,
-                activeExternalCells=sensorimotorPattern,
-                formInternalConnections=False,
-                learn=learn)
-      tpInputVector, burstingColumns, correctlyPredictedCells = (
-          formatInputForTP(tm))
-
-  if verbosity >= 2:
-    print tm.prettyPrintHistory(verbosity=verbosity)
-    print
-
-  if learn and verbosity >= 3:
-    print tm.prettyPrintConnections()
-
-  return tm.getStatistics()
-
-
-def generateSequences(length, agents, verbosity=0):
-  """
-  Generate sequences of the given length for each of the agents.
-
-  Returns a list containing one tuple for each agent. Each tuple contains
-  (sensorSequence, motorSequence, and sensorimotorSequence) as returned by
-  the agent's generateSensorimotorSequence() method.
-
-  """
-  sequences = []
-  for agent in agents:
-    if verbosity > 0:
-      print "\nGenerating sequence for world:",str(agent._world)
-    sequences.append(
-        agent.generateSensorimotorSequence(length, verbosity=verbosity)
-    )
-
-  return sequences
-
-
-def feedTMTP(tm, tp, sequences, verbosity=0, learn=True):
-  """Feed the given sequence to the TM instance and the TP instance."""
-  tm.clearHistory()
-  for s,seq in enumerate(sequences):
-    tm.reset()
-    for i in xrange(len(seq[0])):
-      sensorPattern = seq[0][i]
-      sensorimotorPattern = seq[2][i]
-
-      # Feed the TM
-      tm.compute(sensorPattern,
-                activeExternalCells=sensorimotorPattern,
-                formInternalConnections=False,
-                learn=learn)
-
-      # Feed the TP
-      tpInputVector, burstingColumns, correctlyPredictedCells = (
-          formatInputForTP(tm))
-      activeArray = numpy.zeros(tp.getNumColumns())
-
-      tp.compute(tpInputVector, learn=True, activeArray=activeArray,
-                   burstingColumns=burstingColumns,
-                   predictedCells=correctlyPredictedCells)
-
-      if verbosity >= 2:
-        print "L3 Active Cells \n",formatRow(activeArray.nonzero()[0],
-                                             formatString="%4d")
-
-
-  if verbosity >= 2:
-    print tm.prettyPrintHistory(verbosity=verbosity)
-    print
-
-  if learn and verbosity >= 3:
-    print tm.prettyPrintConnections()
-
-  return tm.getStatistics()
-
-
+############################################################
 # Initialize the universe, worlds, and agents
 nElements = 5
 wEncoders = 7
@@ -195,63 +52,54 @@ agents = [
                          possibleMotorValues=(-1,1), seed=23),
   ]
 
-# The TM parameters
-DEFAULT_TM_PARAMS = {
-  "columnDimensions": [nElements*wEncoders],
-  "cellsPerColumn": 8,
-  "initialPermanence": 0.5,
-  "connectedPermanence": 0.6,
-  "minThreshold": wEncoders*2,
-  "maxNewSynapseCount": wEncoders*2,
-  "permanenceIncrement": 0.1,
-  "permanenceDecrement": 0.02,
-  "activationThreshold": wEncoders*2
-}
+l3NumColumns = 512
+l3NumActiveColumnsPerInhArea = 20
 
-tm = TMI(**DEFAULT_TM_PARAMS)
+############################################################
+# Initialize the experiment runner with relevant parameters
+smer = SensorimotorExperimentRunner(
+          tmOverrides={
+              "columnDimensions": [nElements*wEncoders],
+              "minThreshold": wEncoders*2,
+              "maxNewSynapseCount": wEncoders*2,
+              "activationThreshold": wEncoders*2
+            },
+          tpOverrides={
+              "columnDimensions": [l3NumColumns],
+              "numActiveColumnsPerInhArea": l3NumActiveColumnsPerInhArea,
+            }
+)
 
-# Train and test
-print "Training TM on sequences"
-feedTM(tm, length=40, agents=agents, verbosity=2, learn=True)
+############################################################
+# Temporal memory training
 
-print "Testing TM on sequences"
-stats = feedTM(tm, length=10, agents=agents, verbosity=2,
-               learn=False)
+print "Training TemporalMemory on sequences"
+sequences = smer.generateSequences(40, agents, verbosity=1)
+smer.feedLayers(sequences, tmLearn=True, verbosity=1)
+
 
 # Check if TM learning went ok
+
+print "Testing TemporalMemory on novel sequences"
+testSequenceLength=10
+sequences = smer.generateSequences(testSequenceLength, agents, verbosity=1)
+stats = smer.feedLayers(sequences, tmLearn=False, verbosity=2)
+
 print "Unpredicted columns: min, max, sum, average, stdev",stats[4]
 print "Predicted columns: min, max, sum, average, stdev",stats[2]
 print "Predicted inactive cells:",stats[1]
 
-if (stats[4][2]== 0) and (stats[2][2] == universe.wSensor*199*len(agents)):
-  print "Test successful!!"
+if (stats[4][2]== 0) and (
+      stats[2][2] == universe.wSensor*(testSequenceLength-1)*len(agents)):
+  print "TM training successful!!"
 else:
-  print "Test unsuccessful"
+  print "TM training unsuccessful"
 
-print "Training TP on sequences"
 
-l3NumColumns = 512
-l3NumActiveColumnsPerInhArea = 20
-tp = TemporalPooler(
-      inputDimensions  = [tm.connections.numberOfCells()],
-      columnDimensions = [l3NumColumns],
-      potentialRadius  = tm.connections.numberOfCells(),
-      globalInhibition = True,
-      numActiveColumnsPerInhArea=l3NumActiveColumnsPerInhArea,
-      synPermInactiveDec=0,
-      synPermActiveInc=0.001,
-      synPredictedInc = 0.5,
-      maxBoost=1.0,
-      seed=4,
-      potentialPct=0.9,
-      stimulusThreshold = 2,
-      useBurstingRule = False,
-      minPctActiveDutyCycle = 0.1,
-      synPermConnected = 0.3,
-      initConnectedPct=0.2,
-      spVerbosity=0
-    )
+############################################################
+# Temporal pooler training
 
-print "Testing TM on sequences"
-sequences = generateSequences(10, agents, verbosity=1)
-stats = feedTMTP(tm, tp, sequences=sequences, verbosity=2)
+print "Training TemporalPooler on sequences"
+sequences = smer.generateSequences(10, agents, verbosity=1)
+smer.feedLayers(sequences, tmLearn=False, tpLearn=True, verbosity=2)
+
