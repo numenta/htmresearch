@@ -30,4 +30,5 @@ install:
 - export NTA_CONF_PATH=/home/travis/build/numenta/nupic
 
 script:
+- cd ${TRAVIS_BUILD_DIR}/sensorimotor
 - py.test tests/
