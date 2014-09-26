@@ -48,8 +48,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
 
   def testSingleWorldOneBitPerPattern(self):
-    """
-    Test Sensorimotor Temporal Memory learning in a single world.
+    """Test Sensorimotor Temporal Memory learning in a single world.
     Patterns (sensor and motor) are represented with one active bit per pattern.
     """
     self._init({"columnDimensions": [4],
@@ -66,16 +65,15 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._feedTM(sequence)
 
     sequence = self._generateSensorimotorSequences(20, [agent])
-    stats = self._testTM(sequence)
+    self._testTM(sequence)
 
-    self._assertAllActiveWerePredicted(stats, universe)
-    self._assertAllInactiveWereUnpredicted(stats)
-    self._assertSequencesOnePredictedActiveCellPerColumn(stats)
+    self._assertAllActiveWerePredicted(universe)
+    self._assertAllInactiveWereUnpredicted()
+    self._assertSequencesOnePredictedActiveCellPerColumn()
 
 
   def testSingleWorldBasic(self):
-    """
-    Test Sensorimotor Temporal Memory learning in a single world.
+    """Test Sensorimotor Temporal Memory learning in a single world.
     Patterns are represented as complete SDRs. No patterns are repeated.
     Prediction should be perfect.
     """
@@ -91,16 +89,15 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._feedTM(sequence)
 
     sequence = self._generateSensorimotorSequences(100, [agent])
-    stats = self._testTM(sequence)
+    self._testTM(sequence)
 
-    self._assertAllActiveWerePredicted(stats, universe)
-    self._assertAllInactiveWereUnpredicted(stats)
-    self._assertSequencesOnePredictedActiveCellPerColumn(stats)
+    self._assertAllActiveWerePredicted(universe)
+    self._assertAllInactiveWereUnpredicted()
+    self._assertSequencesOnePredictedActiveCellPerColumn()
 
 
   def testMultipleWorldsBasic(self):
-    """
-    Test Sensorimotor Temporal Memory learning in multiple separate worlds.
+    """Test Sensorimotor Temporal Memory learning in multiple separate worlds.
     Patterns are represented as complete SDRs. No patterns are repeated.
     Prediction should be perfect.
     """
@@ -125,16 +122,15 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._feedTM(sequence)
 
     sequence = self._generateSensorimotorSequences(100, agents)
-    stats = self._testTM(sequence)
+    self._testTM(sequence)
 
-    self._assertAllActiveWerePredicted(stats, universe)
-    self._assertAllInactiveWereUnpredicted(stats)
-    self._assertSequencesOnePredictedActiveCellPerColumn(stats)
+    self._assertAllActiveWerePredicted(universe)
+    self._assertAllInactiveWereUnpredicted()
+    self._assertSequencesOnePredictedActiveCellPerColumn()
 
 
   def testMultipleWorldsSharedPatterns(self):
-    """
-    Test Sensorimotor Temporal Memory learning in multiple separate worlds.
+    """Test Sensorimotor Temporal Memory learning in multiple separate worlds.
     Patterns are represented as complete SDRs. Patterns are shared between
     worlds.
     All active columns should have been predicted.
@@ -159,15 +155,16 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._feedTM(sequence)
 
     sequence = self._generateSensorimotorSequences(100, agents)
-    stats = self._testTM(sequence)
+    self._testTM(sequence)
 
-    self._assertAllActiveWerePredicted(stats, universe)
-    self.assertTrue(0 < stats.predictedInactiveColumns.average < 10)
+    self._assertAllActiveWerePredicted(universe)
+    predictedInactiveColumnsMetric = self.tm.getMetricFromTrace(
+      self.tm.getTracePredictedInactiveColumns())
+    self.assertTrue(0 < predictedInactiveColumnsMetric.mean < 10)
 
 
   def testMultipleWorldsSharedPatternsNoSharedSubsequences(self):
-    """
-    Test Sensorimotor Temporal Memory learning in multiple separate worlds.
+    """Test Sensorimotor Temporal Memory learning in multiple separate worlds.
     Patterns are represented as complete SDRs. Patterns are shared between
     worlds. Worlds have no shared subsequences.
     All active columns should have been predicted.
@@ -193,44 +190,61 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._feedTM(sequence)
 
     sequence = self._generateSensorimotorSequences(100, agents)
-    stats = self._testTM(sequence)
+    self._testTM(sequence)
 
-    self._assertAllActiveWerePredicted(stats, universe)
-    self.assertTrue(0 < stats.predictedInactiveColumns.average < 5)
-    self._assertSequencesOnePredictedActiveCellPerColumn(stats)
-    self._assertOneSequencePerPredictedActiveCell(stats)
+    self._assertAllActiveWerePredicted(universe)
+    predictedInactiveColumnsMetric = self.tm.getMetricFromTrace(
+      self.tm.getTracePredictedInactiveColumns())
+    self.assertTrue(0 < predictedInactiveColumnsMetric.mean < 5)
+    self._assertSequencesOnePredictedActiveCellPerColumn()
+    self._assertOneSequencePerPredictedActiveCell()
 
 
   # ==============================
   # Helper functions
   # ==============================
 
-  def _assertAllActiveWerePredicted(self, stats, universe):
-    self.assertEqual(stats.unpredictedActiveColumns.sum, 0)
+  def _assertAllActiveWerePredicted(self, universe):
+    unpredictedActiveColumnsMetric = self.tm.getMetricFromTrace(
+      self.tm.getTraceUnpredictedActiveColumns())
+    predictedActiveColumnsMetric = self.tm.getMetricFromTrace(
+      self.tm.getTracePredictedActiveColumns())
 
-    self.assertEqual(stats.predictedActiveColumns.min, universe.wSensor)
-    self.assertEqual(stats.predictedActiveColumns.max, universe.wSensor)
+    self.assertEqual(unpredictedActiveColumnsMetric.sum, 0)
 
-
-  def _assertAllInactiveWereUnpredicted(self, stats):
-    self.assertEqual(stats.predictedInactiveColumns.sum, 0)
-
-
-  def _assertAllActiveWereUnpredicted(self, stats, universe):
-    self.assertEqual(stats.predictedActiveColumns.sum, 0)
-
-    self.assertEqual(stats.unpredictedActiveColumns.min, universe.wSensor)
-    self.assertEqual(stats.unpredictedActiveColumns.max, universe.wSensor)
+    self.assertEqual(predictedActiveColumnsMetric.min, universe.wSensor)
+    self.assertEqual(predictedActiveColumnsMetric.max, universe.wSensor)
 
 
-  def _assertSequencesOnePredictedActiveCellPerColumn(self, stats):
-    self.assertEqual(stats.sequencesPredictedActiveCellsPerColumn.min, 1)
-    self.assertEqual(stats.sequencesPredictedActiveCellsPerColumn.max, 1)
+  def _assertAllInactiveWereUnpredicted(self):
+    predictedInactiveColumnsMetric = self.tm.getMetricFromTrace(
+      self.tm.getTracePredictedInactiveColumns())
+
+    self.assertEqual(predictedInactiveColumnsMetric.sum, 0)
 
 
-  def _assertOneSequencePerPredictedActiveCell(self, stats):
-    self.assertEqual(stats.sequencesPredictedActiveCellsShared.min, 1)
-    self.assertEqual(stats.sequencesPredictedActiveCellsShared.max, 1)
+  def _assertAllActiveWereUnpredicted(self, universe):
+    unpredictedActiveColumnsMetric = self.tm.getMetricFromTrace(
+      self.tm.getTraceUnpredictedActiveColumns())
+    predictedActiveColumnsMetric = self.tm.getMetricFromTrace(
+      self.tm.getTracePredictedActiveColumns())
+
+    self.assertEqual(predictedActiveColumnsMetric.sum, 0)
+
+    self.assertEqual(unpredictedActiveColumnsMetric.min, universe.wSensor)
+    self.assertEqual(unpredictedActiveColumnsMetric.max, universe.wSensor)
+
+
+  def _assertSequencesOnePredictedActiveCellPerColumn(self):
+    metric = self.tm.getMetricSequencesPredictedActiveCellsPerColumn()
+    self.assertEqual(metric.min, 1)
+    self.assertEqual(metric.max, 1)
+
+
+  def _assertOneSequencePerPredictedActiveCell(self):
+    metric = self.tm.getMetricSequencesPredictedActiveCellsShared()
+    self.assertEqual(metric.min, 1)
+    self.assertEqual(metric.max, 1)
 
 
 if __name__ == "__main__":

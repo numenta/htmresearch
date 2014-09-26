@@ -24,8 +24,11 @@ import unittest2 as unittest
 import numpy
 from prettytable import PrettyTable
 
-from sensorimotor.general_temporal_memory import (
-  InspectGeneralTemporalMemory as SensorimotorTemporalMemory)
+from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
+  TemporalMemoryMonitorMixin)
+from sensorimotor.general_temporal_memory import GeneralTemporalMemory
+class MonitoredSensorimotorTemporalMemory(TemporalMemoryMonitorMixin,
+                                          GeneralTemporalMemory): pass
 
 
 
@@ -45,7 +48,7 @@ class AbstractSensorimotorTest(unittest.TestCase):
     params = self._computeTMParams(tmOverrides)
     # Uncomment the line below to disable learn on one cell mode
     # params["learnOnOneCell"] = False
-    self.tm = SensorimotorTemporalMemory(**params)
+    self.tm = MonitoredSensorimotorTemporalMemory(**params)
 
 
   def _feedTM(self, sequence, learn=True):
@@ -70,7 +73,8 @@ class AbstractSensorimotorTest(unittest.TestCase):
                         sequenceLabel=sequenceLabel)
 
     if self.VERBOSITY >= 2:
-      print self.tm.prettyPrintHistory(verbosity=self.VERBOSITY-2)
+      print self.tm.prettyPrintTraces(
+        self.tm.getDefaultTraces(verbosity=self.VERBOSITY-1))
       print
 
     if self.VERBOSITY >= 2:
@@ -84,55 +88,25 @@ class AbstractSensorimotorTest(unittest.TestCase):
   def _testTM(self, sequence):
 
     self._feedTM(sequence, learn=False)
-    stats = self.tm.getStatistics()
 
-    self.allStats.append((self.id(), stats))
-
-    return stats
+    print self.tm.prettyPrintMetrics(self.tm.getDefaultMetrics())
 
 
   # ==============================
   # Overrides
   # ==============================
 
-  @classmethod
-  def setUpClass(cls):
-    cls.allStats = []
-
-
-  @classmethod
-  def tearDownClass(cls):
-    cols = ["Test",
-            "# of predicted active cells (stats)",
-            "# of predicted inactive cells (stats)",
-            "# of predicted active columns (stats)",
-            "# of predicted inactive columns (stats)",
-            "# of unpredicted active columns (stats)",
-            "# of predicted active cells per column in each sequence (stats)",
-            "# of sequences each predicted active cell shows up in"]
-
-    table = PrettyTable(cols)
-
-    for stats in cls.allStats:
-      row = [stats[0]] + [tuple(x) for x in list(stats[1])]
-      table.add_row(row)
-
-    print
-    print table
-    print "(stats) => (min, max, sum, average, standard deviation)"
-
 
   def setUp(self):
     self.tm = None
     self._random = numpy.random.RandomState(self.SEED)
 
-    if self.VERBOSITY >= 2:
-      print ("\n"
-             "======================================================\n"
-             "Test: {0} \n"
-             "{1}\n"
-             "======================================================\n"
-      ).format(self.id(), self.shortDescription())
+    print ("\n"
+           "======================================================\n"
+           "Test: {0} \n"
+           "{1}\n"
+           "======================================================\n"
+    ).format(self.id(), self.shortDescription())
 
 
   # ==============================
