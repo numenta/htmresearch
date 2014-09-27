@@ -98,27 +98,32 @@ class SensorimotorExperimentRunner(object):
 
   def feedLayers(self, sequences, tmLearn, tpLearn=None, verbosity=0):
     """
-    Feed the given set of sequences to the HTM algorithms.
+    Feed the given sequences to the HTM algorithms.
 
     @param tmLearn:   (bool)      Either False, or True
     @param tpLearn:   (None,bool) Either None, False, or True. If None,
                                   temporal pooler will be skipped.
     """
+    (sensorSequence,
+     motorSequence,
+     sensorimotorSequence,
+     sequenceLabels) = sequences
+
     self.tm.clearHistory()
 
-    for s,seq in enumerate(sequences):
-      self.tm.reset()
-      if verbosity>=2: print "\nSequence:",s
-
-      for i in xrange(len(seq[0])):
-        sensorPattern = seq[0][i]
-        sensorimotorPattern = seq[2][i]
-
+    for i in xrange(len(sensorSequence)):
+      sensorPattern = sensorSequence[i]
+      sensorimotorPattern = sensorimotorSequence[i]
+      sequenceLabel = sequenceLabels[i]
+      if sensorPattern is None:
+        self.tm.reset()
+      else:
         # Feed the TM
         self.tm.compute(sensorPattern,
                   activeExternalCells=sensorimotorPattern,
                   formInternalConnections=False,
-                  learn=tmLearn)
+                  learn=tmLearn,
+                  sequenceLabel=sequenceLabel)
 
         # If requested, feed the TP
         if tpLearn is not None:
@@ -130,12 +135,8 @@ class SensorimotorExperimentRunner(object):
                           True,
                           activeArray,
                           burstingColumns,
-                          correctlyPredictedCells)
-
-          if verbosity >= 2:
-            print "L3 Active Cells \n",self.formatRow(activeArray.nonzero()[0],
-                                                 formatString="%4d")
-
+                          correctlyPredictedCells,
+                          sequenceLabel=sequenceLabel)
 
     if verbosity >= 2:
       print self.tm.prettyPrintTraces(
@@ -147,24 +148,34 @@ class SensorimotorExperimentRunner(object):
       print
 
 
-  def generateSequences(self, length, agents, verbosity=0):
+  @staticmethod
+  def generateSequences(length, agents, verbosity=0):
     """
-    Generate sequences of the given length for each of the agents.
+    @param length (int)           Length of each sequence to generate, one for
+                                  each agent
+    @param agents (AbstractAgent) Agents acting in their worlds
 
-    Returns a list containing one tuple for each agent. Each tuple contains
-    (sensorSequence, motorSequence, and sensorimotorSequence) as returned by
-    the agent's generateSensorimotorSequence() method.
-
+    @return (tuple) (sensor sequence, motor sequence, sensorimotor sequence,
+                     sequence labels)
     """
-    sequences = []
+    sensorSequence = []
+    motorSequence = []
+    sensorimotorSequence = []
+    sequenceLabels = []
+
     for agent in agents:
-      if verbosity > 0:
-        print "\nGenerating sequence for world:",str(agent.world)
-      sequences.append(
-          agent.generateSensorimotorSequence(length, verbosity=verbosity)
-      )
+      s,m,sm = agent.generateSensorimotorSequence(length, verbosity=verbosity)
+      sensorSequence += s
+      motorSequence += m
+      sensorimotorSequence += sm
+      sequenceLabels += [str(agent.world)] * length
 
-    return sequences
+      sensorSequence.append(None)
+      motorSequence.append(None)
+      sensorimotorSequence.append(None)
+      sequenceLabels.append(None)
+
+    return (sensorSequence, motorSequence, sensorimotorSequence, sequenceLabels)
 
 
   def formatInputForTP(self):

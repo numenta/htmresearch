@@ -54,8 +54,11 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
   # ==============================
 
   def compute(self, *args, **kwargs):
-    sequenceLabel = (kwargs["sequenceLabel"]
-                     if "sequenceLabel" in kwargs else None)
+    sequenceLabel = None
+    if "sequenceLabel" in kwargs:
+      sequenceLabel = kwargs["sequenceLabel"]
+      del kwargs["sequenceLabel"]
+
     activeColumns = super(TemporalPoolerMonitorMixin, self).compute(*args,
                                                                     **kwargs)
 
