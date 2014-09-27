@@ -133,7 +133,7 @@ class SensorimotorExperimentRunner(object):
           activeArray = numpy.zeros(self.tp.getNumColumns())
 
           self.tp.compute(tpInputVector,
-                          True,
+                          tpLearn,
                           activeArray,
                           burstingColumns,
                           correctlyPredictedCells,
