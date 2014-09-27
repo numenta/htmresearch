@@ -22,11 +22,13 @@
 import numpy
 
 from nupic.bindings.math import GetNTAReal
+from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
+  TemporalMemoryMonitorMixin)
 
-from sensorimotor.general_temporal_memory import (
-            InspectGeneralTemporalMemory
-)
+from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 from sensorimotor.temporal_pooler import TemporalPooler
+class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
+                                     GeneralTemporalMemory): pass
 
 """
 
@@ -74,7 +76,7 @@ class SensorimotorExperimentRunner(object):
     params = dict(self.DEFAULT_TM_PARAMS)
     params.update(tmOverrides or {})
     self._checkParams(params)
-    self.tm = InspectGeneralTemporalMemory(**params)
+    self.tm = MonitoredGeneralTemporalMemory(**params)
 
     # Initialize Layer 3 temporal pooler
     params = dict(self.DEFAULT_TP_PARAMS)
