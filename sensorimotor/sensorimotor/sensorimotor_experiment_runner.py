@@ -133,10 +133,10 @@ class SensorimotorExperimentRunner(object):
 
 
     if verbosity >= 2:
-      print self.tm.prettyPrintHistory(verbosity=verbosity)
+      print self.tm.prettyPrintTraces(
+        self.tm.getDefaultTraces(verbosity=verbosity),
+        breakOnResets=self.tm.getTraceResets())
       print
-
-    return self.tm.getStatistics()
 
 
   def generateSequences(self, length, agents, verbosity=0):
@@ -172,12 +172,14 @@ class SensorimotorExperimentRunner(object):
     # bursting columns in layer 4
     burstingColumns = numpy.zeros(
       self.tm.connections.numberOfColumns()).astype(realDType)
-    burstingColumns[list(self.tm.unpredictedActiveColumnsList[-1])] = 1
+    burstingColumns[
+      list(self.tm.getTraceUnpredictedActiveColumns().data[-1])] = 1
 
     # correctly predicted cells in layer 4
     correctlyPredictedCells = numpy.zeros(
       self.tm.connections.numberOfCells()).astype(realDType)
-    correctlyPredictedCells[list(self.tm.predictedActiveCellsList[-1])] = 1
+    correctlyPredictedCells[
+      list(self.tm.getTracePredictedActiveCells().data[-1])] = 1
 
     return (tpInputVector, burstingColumns, correctlyPredictedCells)
 
