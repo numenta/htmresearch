@@ -111,12 +111,15 @@ testSequenceLength=100
 sequences = smer.generateSequences(testSequenceLength, agents, verbosity=0)
 stats = smer.feedLayers(sequences, tmLearn=False, verbosity=0)
 
-print "Unpredicted columns: min, max, sum, average, stdev",stats[4]
-print "Predicted columns: min, max, sum, average, stdev",stats[2]
-print "Predicted inactive cells:",stats[1]
+print smer.tm.prettyPrintMetrics(smer.tm.getDefaultMetrics())
 
-if (stats[4][2]== 0) and (
-      stats[2][2] == universe.wSensor*(testSequenceLength-1)*len(agents)):
+unpredictedActiveColumnsMetric = smer.tm.getMetricFromTrace(
+  smer.tm.getTraceUnpredictedActiveColumns())
+predictedActiveColumnsMetric = smer.tm.getMetricFromTrace(
+  smer.tm.getTracePredictedActiveColumns())
+if (unpredictedActiveColumnsMetric.sum == 0) and (
+        predictedActiveColumnsMetric.sum ==
+            universe.wSensor*(testSequenceLength-1)*len(agents)):
   print "TM training successful!!"
 else:
   print "TM training unsuccessful"
