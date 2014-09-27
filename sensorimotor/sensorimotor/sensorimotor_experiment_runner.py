@@ -27,8 +27,11 @@ from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
 
 from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 from sensorimotor.temporal_pooler import TemporalPooler
+from sensorimotor.temporal_pooler_monitor_mixin import (
+  TemporalPoolerMonitorMixin)
 class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
                                      GeneralTemporalMemory): pass
+class MonitoredTemporalPooler(TemporalPoolerMonitorMixin, TemporalPooler): pass
 
 """
 
@@ -84,7 +87,7 @@ class SensorimotorExperimentRunner(object):
     params["potentialRadius"] = self.tm.connections.numberOfCells()
     params.update(tpOverrides or {})
     self._checkParams(params)
-    self.tp = TemporalPooler(**params)
+    self.tp = MonitoredTemporalPooler(**params)
 
 
   def _checkParams(self, params):
@@ -123,9 +126,11 @@ class SensorimotorExperimentRunner(object):
               self.formatInputForTP())
           activeArray = numpy.zeros(self.tp.getNumColumns())
 
-          self.tp.compute(tpInputVector, learn=True, activeArray=activeArray,
-                       burstingColumns=burstingColumns,
-                       predictedCells=correctlyPredictedCells)
+          self.tp.compute(tpInputVector,
+                          True,
+                          activeArray,
+                          burstingColumns,
+                          correctlyPredictedCells)
 
           if verbosity >= 2:
             print "L3 Active Cells \n",self.formatRow(activeArray.nonzero()[0],
@@ -136,6 +141,9 @@ class SensorimotorExperimentRunner(object):
       print self.tm.prettyPrintTraces(
         self.tm.getDefaultTraces(verbosity=verbosity),
         breakOnResets=self.tm.getTraceResets())
+      print
+      print self.tp.prettyPrintTraces(
+        self.tp.getDefaultTraces(verbosity=verbosity))
       print
 
 

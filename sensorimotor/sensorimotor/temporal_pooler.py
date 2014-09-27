@@ -517,6 +517,8 @@ class TemporalPooler(SpatialPooler):
       # print "Inputs to pooling columns"
       # print "   ",overlapsPredicted[self._poolingColumns]
 
+    return activeColumns
+
 
   def _updatePoolingState(self, activeColWithPredictedInput, fracUnPredicted):
     """
