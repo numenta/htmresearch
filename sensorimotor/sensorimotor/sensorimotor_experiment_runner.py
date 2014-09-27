@@ -22,6 +22,7 @@
 import numpy
 
 from nupic.bindings.math import GetNTAReal
+from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 
@@ -79,7 +80,7 @@ class SensorimotorExperimentRunner(object):
     params = dict(self.DEFAULT_TM_PARAMS)
     params.update(tmOverrides or {})
     self._checkParams(params)
-    self.tm = MonitoredGeneralTemporalMemory(**params)
+    self.tm = MonitoredGeneralTemporalMemory(__name__="TM", **params)
 
     # Initialize Layer 3 temporal pooler
     params = dict(self.DEFAULT_TP_PARAMS)
@@ -87,7 +88,7 @@ class SensorimotorExperimentRunner(object):
     params["potentialRadius"] = self.tm.connections.numberOfCells()
     params.update(tpOverrides or {})
     self._checkParams(params)
-    self.tp = MonitoredTemporalPooler(**params)
+    self.tp = MonitoredTemporalPooler(__name__="TP", **params)
 
 
   def _checkParams(self, params):
@@ -139,12 +140,12 @@ class SensorimotorExperimentRunner(object):
                           sequenceLabel=sequenceLabel)
 
     if verbosity >= 2:
-      print self.tm.prettyPrintTraces(
-        self.tm.getDefaultTraces(verbosity=verbosity),
-        breakOnResets=self.tm.getTraceResets())
-      print
-      print self.tp.prettyPrintTraces(
-        self.tp.getDefaultTraces(verbosity=verbosity))
+      traces = []
+      traces += self.tm.getDefaultTraces(verbosity=verbosity)
+      if tpLearn is not None:
+        traces += self.tp.getDefaultTraces(verbosity=verbosity)
+      print MonitorMixinBase.prettyPrintTraces(
+        traces, breakOnResets=self.tm.getTraceResets())
       print
 
 

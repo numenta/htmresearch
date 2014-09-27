@@ -85,5 +85,5 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
   def clearHistory(self):
     super(TemporalPoolerMonitorMixin, self).clearHistory()
 
-    self._traces["activeColumns"] = IndicesTrace("active columns")
-    self._traces["sequenceLabels"] = StringsTrace("sequence labels")
+    self._traces["activeColumns"] = IndicesTrace(self, "active columns")
+    self._traces["sequenceLabels"] = StringsTrace(self, "sequence labels")
