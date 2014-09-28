@@ -111,6 +111,7 @@ class SensorimotorExperimentRunner(object):
      sequenceLabels) = sequences
 
     self.tm.clearHistory()
+    self.tp.clearHistory()
 
     for i in xrange(len(sensorSequence)):
       sensorPattern = sensorSequence[i]
