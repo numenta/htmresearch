@@ -35,11 +35,12 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
   debugging.
   """
 
-  def getTraceActiveColumns(self):
+
+  def getTraceActiveCells(self):
     """
-    @return (Trace) Trace of active columns
+    @return (Trace) Trace of active cells
     """
-    return self._traces["activeColumns"]
+    return self._traces["activeCells"]
 
 
   def getTraceSequenceLabels(self):
@@ -61,14 +62,16 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
     activeColumns = super(TemporalPoolerMonitorMixin, self).compute(*args,
                                                                     **kwargs)
+    activeColumns = set(activeColumns)
+    activeCells = activeColumns  # TODO: Update when moving to a cellular TP
 
-    self._traces["activeColumns"].data.append(activeColumns)
+    self._traces["activeCells"].data.append(activeCells)
     self._traces["sequenceLabels"].data.append(sequenceLabel)
 
 
   def getDefaultTraces(self, verbosity=1):
     traces = [
-      self.getTraceActiveColumns()
+      self.getTraceActiveCells()
     ]
 
     if verbosity == 1:
@@ -85,5 +88,5 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
   def clearHistory(self):
     super(TemporalPoolerMonitorMixin, self).clearHistory()
 
-    self._traces["activeColumns"] = IndicesTrace(self, "active columns")
+    self._traces["activeCells"] = IndicesTrace(self, "active cells")
     self._traces["sequenceLabels"] = StringsTrace(self, "sequence labels")
