@@ -35,12 +35,46 @@ class AbstractAgent(object):
     self.world = world
 
 
+  def sense(self):
+    """
+    Returns the encoding of the sensor pattern at the current position (as
+    indices of active bits)
+
+    @return (set) Sensor pattern
+    """
+    return self.world.universe.encodeSensorValue(self.getSensorValue())
+
+
+  @abc.abstractmethod
+  def getSensorValue(self):
+    """
+    Returns the sensor value at the current position
+
+    @return (set) Sensor pattern
+    """
+    return
+
+
   @abc.abstractmethod
   def chooseMotorValue(self):
     """
     Return a plausible next motor value.
 
     @return (object) motor value (type depends on world)
+    """
+    return
+
+
+  @abc.abstractmethod
+  def move(self, motorValue):
+    """
+    Given a motor value, return an encoding of the motor command and move the
+    agent based on that command.
+
+    @param motorValue (object) Action to perform in world. Type depends on
+                               world.
+
+    @return (set) Motor pattern
     """
     return
 
@@ -63,12 +97,12 @@ class AbstractAgent(object):
     motorCommands = []
 
     for _ in xrange(length):
-      sensorValues.append(self.world.getSensorValue())
-      sensorPattern = self.world.sense()
+      sensorValues.append(self.getSensorValue())
+      sensorPattern = self.sense()
 
       motorValue = self.chooseMotorValue()
       motorCommands.append(motorValue)
-      motorPattern = self.world.move(motorValue)
+      motorPattern = self.move(motorValue)
 
       sensorSequence.append(sensorPattern)
       motorSequence.append(motorPattern)

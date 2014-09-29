@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
 # Copyright (C) 2014, Numenta, Inc.  Unless you have an agreement
@@ -43,36 +44,36 @@ universe = OneDUniverse(debugSensor=False,
 
 # Initialize a bunch of worlds, each with at most 8 elements
 agents = [
-  RandomOneDAgent(OneDWorld(universe, range(8), 4),
+  RandomOneDAgent(OneDWorld(universe, range(8)), 4,
                          possibleMotorValues=(-2, -1, 1, 2), seed=23),
-  RandomOneDAgent(OneDWorld(universe, range(8-1, -1, -1), 4),
+  RandomOneDAgent(OneDWorld(universe, range(8-1, -1, -1)), 4,
                          possibleMotorValues=(-2, -1, 1, 2), seed=42),
 
-  RandomOneDAgent(OneDWorld(universe, range(0,16,2), 4),
+  RandomOneDAgent(OneDWorld(universe, range(0,16,2)), 4,
                          possibleMotorValues=(-2, -1, 1, 2), seed=10),
-  RandomOneDAgent(OneDWorld(universe, range(0,15,3), 2),
+  RandomOneDAgent(OneDWorld(universe, range(0,15,3)), 2,
                          possibleMotorValues=(-2, -1, 1, 2), seed=5),
-  RandomOneDAgent(OneDWorld(universe, range(0,20,4), 2),
-                         possibleMotorValues=(-2, -1, 1, 2), seed=5),
-
-  RandomOneDAgent(OneDWorld(universe, [0, 8, 3, 1, 6], 2),
-                         possibleMotorValues=(-2, -1, 1, 2), seed=5),
-  RandomOneDAgent(OneDWorld(universe, [6, 1, 3, 8, 0], 2),
+  RandomOneDAgent(OneDWorld(universe, range(0,20,4)), 2,
                          possibleMotorValues=(-2, -1, 1, 2), seed=5),
 
-  RandomOneDAgent(OneDWorld(universe, [3, 7, 4, 2, 5], 2),
+  RandomOneDAgent(OneDWorld(universe, [0, 8, 3, 1, 6]), 2,
                          possibleMotorValues=(-2, -1, 1, 2), seed=5),
-  RandomOneDAgent(OneDWorld(universe, [5, 2, 4, 7, 3], 2),
-                         possibleMotorValues=(-2, -1, 1, 2), seed=5),
-
-  RandomOneDAgent(OneDWorld(universe, [8, 12, 9, 7, 10], 2),
-                         possibleMotorValues=(-2, -1, 1, 2), seed=5),
-  RandomOneDAgent(OneDWorld(universe, [10, 7, 9, 12, 8], 2),
+  RandomOneDAgent(OneDWorld(universe, [6, 1, 3, 8, 0]), 2,
                          possibleMotorValues=(-2, -1, 1, 2), seed=5),
 
-  RandomOneDAgent(OneDWorld(universe, [15, 19, 16, 14, 17], 2),
+  RandomOneDAgent(OneDWorld(universe, [3, 7, 4, 2, 5]), 2,
                          possibleMotorValues=(-2, -1, 1, 2), seed=5),
-  RandomOneDAgent(OneDWorld(universe, [17, 14, 16, 19, 15], 2),
+  RandomOneDAgent(OneDWorld(universe, [5, 2, 4, 7, 3]), 2,
+                         possibleMotorValues=(-2, -1, 1, 2), seed=5),
+
+  RandomOneDAgent(OneDWorld(universe, [8, 12, 9, 7, 10]), 2,
+                         possibleMotorValues=(-2, -1, 1, 2), seed=5),
+  RandomOneDAgent(OneDWorld(universe, [10, 7, 9, 12, 8]), 2,
+                         possibleMotorValues=(-2, -1, 1, 2), seed=5),
+
+  RandomOneDAgent(OneDWorld(universe, [15, 19, 16, 14, 17]), 2,
+                         possibleMotorValues=(-2, -1, 1, 2), seed=5),
+  RandomOneDAgent(OneDWorld(universe, [17, 14, 16, 19, 15]), 2,
                          possibleMotorValues=(-2, -1, 1, 2), seed=5),
 
   ]

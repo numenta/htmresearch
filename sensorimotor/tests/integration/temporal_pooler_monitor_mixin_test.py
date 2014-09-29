@@ -46,9 +46,9 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
                             nSensor=nElements*wEncoders, wSensor=wEncoders,
                             nMotor=wEncoders*7, wMotor=wEncoders)
     self.agents = [
-      RandomOneDAgent(OneDWorld(universe, range(nElements), 4),
+      RandomOneDAgent(OneDWorld(universe, range(nElements)), 4,
                       possibleMotorValues=(-1,1), seed=23),
-      RandomOneDAgent(OneDWorld(universe, list(reversed(range(nElements))), 4),
+      RandomOneDAgent(OneDWorld(universe, list(reversed(range(nElements)))), 4,
                       possibleMotorValues=(-1,1), seed=23)
     ]
 

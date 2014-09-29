@@ -31,17 +31,52 @@ from sensorimotor.random_one_d_agent import RandomOneDAgent
 class RandomOneDAgentTest(unittest.TestCase):
 
 
+  def testMotion(self):
+    universe = OneDUniverse(debugSensor=True, debugMotor=True,
+                            nSensor=100, wSensor=5,
+                            nMotor=100, wMotor=20)
+    world = OneDWorld(universe, [2, 0, 5, 15, 10])
+    agent = RandomOneDAgent(world, 2)
+
+    self.assertEqual(set(xrange(25, 30)), agent.sense())
+
+    self.assertEqual(agent.move(1), set(xrange(60, 80)))
+    self.assertEqual(set(xrange(75, 80)), agent.sense())
+
+    self.assertEqual(agent.move(-2), set(xrange(0, 20)))
+    self.assertEqual(set(xrange(0, 5)), agent.sense())
+
+    self.assertEqual(agent.move(0), set(xrange(40, 60)))
+    self.assertEqual(set(xrange(0, 5)), agent.sense())
+
+
+  def testDistanceToBoundaries(self):
+    universe = OneDUniverse(debugSensor=True, debugMotor=True,
+                            nSensor=100, wSensor=5,
+                            nMotor=25, wMotor=5)
+    world = OneDWorld(universe, [2, 0, 5, 15, 10])
+    agent = RandomOneDAgent(world, 2)
+    self.assertEqual(agent.distanceToBoundaries(), (2, 2))
+
+    agent.move(-2)
+    self.assertEqual(agent.distanceToBoundaries(), (0, 4))
+
+    agent.move(2)
+    agent.move(2)
+    self.assertEqual(agent.distanceToBoundaries(), (4, 0))
+
+
   def testChooseMotorValue(self):
     universe = OneDUniverse(nSensor=100, wSensor=5,
                             nMotor=105, wMotor=5)
-    world = OneDWorld(universe, [2, 0, 5, 15, 10], 2)
-    agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-10, 10)))
+    world = OneDWorld(universe, [2, 0, 5, 15, 10])
+    agent = RandomOneDAgent(world, 2, possibleMotorValues=set(xrange(-10, 10)))
 
     for _ in range(100):
       motorValue = agent.chooseMotorValue()
       self.assertTrue(-2 <= motorValue <= 2)  # bounded by size of world
 
-    world.move(-2)
+    agent.move(-2)
 
     for _ in range(100):
       motorValue = agent.chooseMotorValue()
@@ -51,8 +86,8 @@ class RandomOneDAgentTest(unittest.TestCase):
   def testGenerateSensorimotorSequence(self):
     universe = OneDUniverse(nSensor=100, wSensor=5,
                             nMotor=105, wMotor=5)
-    world = OneDWorld(universe, [2, 0, 5, 15, 10], 2)
-    agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-10, 10)))
+    world = OneDWorld(universe, [2, 0, 5, 15, 10])
+    agent = RandomOneDAgent(world, 2, possibleMotorValues=set(xrange(-10, 10)))
 
     sensorSequence, motorSequence, sensorimotorSequence = (
       agent.generateSensorimotorSequence(20)

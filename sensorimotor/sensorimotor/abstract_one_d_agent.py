@@ -19,40 +19,52 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import numpy
+import abc
 
-from sensorimotor.abstract_one_d_agent import AbstractOneDAgent
-
-
-
-class RandomOneDAgent(AbstractOneDAgent):
+from sensorimotor.abstract_agent import AbstractAgent
 
 
-  def __init__(self, world, startPosition,
-               possibleMotorValues=(-1, 1), seed=42):
+
+class AbstractOneDAgent(AbstractAgent):
+  __metaclass__ = abc.ABCMeta
+
+
+  def __init__(self, world, startPosition):
     """
     @param world         (AbstractWorld) The world this agent belongs in.
     @param startPosition (int)           The starting position for this agent.
-
-    @param possibleMotorValues (set) Set of motor values to choose from
-    @param seed                (int) Seed for random number generator
     """
-    super(RandomOneDAgent, self).__init__(world, startPosition)
+    super(AbstractOneDAgent, self).__init__(world)
 
-    self._possibleMotorValues = possibleMotorValues
-    self._random = numpy.random.RandomState(seed)
+    self.currentPosition = startPosition
 
 
-  def chooseMotorValue(self):
+  def getSensorValue(self):
     """
-    Return a plausible next motor value.
+    Returns the sensor value at the current position
 
-    @return (int) motor value
+    @return (set) Sensor pattern
     """
-    distanceToLeft, distanceToRight = self.distanceToBoundaries()
-    minValue = -distanceToLeft
-    maxValue = distanceToRight
-    candidates = [x for x in self._possibleMotorValues if (x >= minValue and
-                                                           x <= maxValue)]
-    idx = self._random.randint(len(candidates))
-    return candidates[idx]
+    return self.world.sensorSequence[self.currentPosition]
+
+
+  def move(self, motorValue):
+    """
+    Given a motor value, return an encoding of the motor command and move the
+    agent based on that command.
+
+    @param motorValue (int) Number of positions to move.
+                            Positive => Right; Negative => Left; 0 => No-op
+
+    @return (set) Motor pattern
+    """
+    self.currentPosition += motorValue
+    return self.world.universe.encodeMotorValue(motorValue)
+
+
+  def distanceToBoundaries(self):
+    """
+    @return (tuple) (distance to left, distance to right)
+    """
+    return (self.currentPosition,
+            len(self.world.sensorSequence) - self.currentPosition - 1)

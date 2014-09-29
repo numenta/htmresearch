@@ -58,8 +58,8 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     universe = OneDUniverse(debugSensor=True, debugMotor=True,
                             nSensor=4, wSensor=1,
                             nMotor=3, wMotor=1)
-    world = OneDWorld(universe, [0, 1, 2, 3], 2)
-    agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-1, 2)))
+    world = OneDWorld(universe, [0, 1, 2, 3])
+    agent = RandomOneDAgent(world, 2, possibleMotorValues=set(xrange(-1, 2)))
 
     sequence = self._generateSensorimotorSequences(100, [agent])
     self._feedTM(sequence)
@@ -82,8 +82,8 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     universe = OneDUniverse(debugSensor=True, debugMotor=True,
                             nSensor=100, wSensor=10,
                             nMotor=70, wMotor=10)
-    world = OneDWorld(universe, [0, 1, 2, 3], 2)
-    agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-3, 4)))
+    world = OneDWorld(universe, [0, 1, 2, 3])
+    agent = RandomOneDAgent(world, 2, possibleMotorValues=set(xrange(-3, 4)))
 
     sequence = self._generateSensorimotorSequences(100, [agent])
     self._feedTM(sequence)
@@ -114,8 +114,8 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     for i in xrange(numWorlds):
       start = i * sequenceLength
       patterns = range(start, start + sequenceLength)
-      world = OneDWorld(universe, patterns, 2)
-      agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-3, 4)))
+      world = OneDWorld(universe, patterns)
+      agent = RandomOneDAgent(world, 2, possibleMotorValues=set(xrange(-3, 4)))
       agents.append(agent)
 
     sequence = self._generateSensorimotorSequences(150, agents)
@@ -147,8 +147,8 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     for i in xrange(numWorlds):
       patterns = range(4)
       self._random.shuffle(patterns)
-      world = OneDWorld(universe, patterns, 2)
-      agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-3, 4)))
+      world = OneDWorld(universe, patterns)
+      agent = RandomOneDAgent(world, 2, possibleMotorValues=set(xrange(-3, 4)))
       agents.append(agent)
 
     sequence = self._generateSensorimotorSequences(150, agents)
@@ -179,9 +179,9 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     agents = []
     patterns = range(4)
     for _ in xrange(2):
-      world = OneDWorld(universe, patterns, 2)
-      agent = RandomOneDAgent(world, possibleMotorValues=set([-3, -2, -1,
-                                                              1,  2, 3]))
+      world = OneDWorld(universe, patterns)
+      agent = RandomOneDAgent(world, 2, possibleMotorValues=set([-3, -2, -1,
+                                                                 1,  2, 3]))
       agents.append(agent)
       patterns = list(patterns)  # copy
       patterns.reverse()
