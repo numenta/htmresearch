@@ -22,11 +22,13 @@
 import numpy
 
 from nupic.bindings.math import GetNTAReal
+from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
+  TemporalMemoryMonitorMixin)
 
-from sensorimotor.general_temporal_memory import (
-            InspectGeneralTemporalMemory
-)
+from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 from sensorimotor.temporal_pooler import TemporalPooler
+class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
+                                     GeneralTemporalMemory): pass
 
 """
 
@@ -74,7 +76,7 @@ class SensorimotorExperimentRunner(object):
     params = dict(self.DEFAULT_TM_PARAMS)
     params.update(tmOverrides or {})
     self._checkParams(params)
-    self.tm = InspectGeneralTemporalMemory(**params)
+    self.tm = MonitoredGeneralTemporalMemory(**params)
 
     # Initialize Layer 3 temporal pooler
     params = dict(self.DEFAULT_TP_PARAMS)
@@ -131,10 +133,10 @@ class SensorimotorExperimentRunner(object):
 
 
     if verbosity >= 2:
-      print self.tm.prettyPrintHistory(verbosity=verbosity)
+      print self.tm.prettyPrintTraces(
+        self.tm.getDefaultTraces(verbosity=verbosity),
+        breakOnResets=self.tm.getTraceResets())
       print
-
-    return self.tm.getStatistics()
 
 
   def generateSequences(self, length, agents, verbosity=0):
@@ -170,12 +172,14 @@ class SensorimotorExperimentRunner(object):
     # bursting columns in layer 4
     burstingColumns = numpy.zeros(
       self.tm.connections.numberOfColumns()).astype(realDType)
-    burstingColumns[list(self.tm.unpredictedActiveColumnsList[-1])] = 1
+    burstingColumns[
+      list(self.tm.getTraceUnpredictedActiveColumns().data[-1])] = 1
 
     # correctly predicted cells in layer 4
     correctlyPredictedCells = numpy.zeros(
       self.tm.connections.numberOfCells()).astype(realDType)
-    correctlyPredictedCells[list(self.tm.predictedActiveCellsList[-1])] = 1
+    correctlyPredictedCells[
+      list(self.tm.getTracePredictedActiveCells().data[-1])] = 1
 
     return (tpInputVector, burstingColumns, correctlyPredictedCells)
 
