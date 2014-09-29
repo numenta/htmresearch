@@ -67,7 +67,19 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
   def getDataStabilityConfusion(self):
     """
-    TODO: Document
+    Returns data representing the stability of sequence representations. This is
+    measured by checking, for a given sequence, whether the active cells at any
+    iteration along the sequence are same as or different from the active cells
+    at each other iteration along the sequence.
+
+    The dictionary returned is a mapping:
+    sequence label (string) => confusion matrix (list)
+
+    For the confusion matrix, the rows are iterations, and the columns are the
+    same iterations. Each entry represents the number of active cells that
+    show up in either of the two iterations but not both (symmetric difference).
+
+    @return (dict) Stability confusion data
     """
     self._computeSequenceRepresentationData()
     return self._data["stabilityConfusion"]
@@ -75,7 +87,23 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
   def getDataDistinctnessConfusion(self):
     """
-    TODO: Document
+    Returns data representing the distinctness of sequence representations.
+    This is measured by comparing each sequence representation (the union of
+    active cells representing the sequence) against every other sequence
+    representation, and checking whether the representations are distinct.
+
+    The tuple returned contains the following values:
+    (confusion matrix, labels)
+
+    For the confusion matrix, the rows are sequence representations, and the
+    columns are the same sequence representations. Each entry represents the
+    number of active cells that show up both of the sequence representations
+    (intersection).
+
+    The labels are the sequence labels for the rows / columns (useful for
+    pretty-printing this data).
+
+    @return (dict) Distinctness confusion data
     """
     self._computeSequenceRepresentationData()
     return (self._data["distinctnessConfusionMatrix"],
@@ -84,7 +112,12 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
   def getMetricStabilityConfusion(self):
     """
-    TODO: Document
+    Returns metric made of values from the stability confusion matrix.
+    (See `getDataStabilityConfusion`.)
+
+    TODO: Exclude diagonals
+
+    @return (Metric) Stability confusion metric
     """
     data = self.getDataStabilityConfusion()
     numberLists = [item for sublist in data.values() for item in sublist]
@@ -93,6 +126,12 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
 
   def getMetricDistinctnessConfusion(self):
+    """
+    Returns metric made of values from the distinctness confusion matrix
+    (excluding diagonals). (See `getDataDistinctnessConfusion`.)
+
+    @return (Metric) Distinctness confusion metric
+    """
     data, _ = self.getDataDistinctnessConfusion()
     numbers = []
 
@@ -106,7 +145,10 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
   def prettyPrintDataStabilityConfusion(self):
     """
-    TODO: Document
+    Returns pretty-printed string representation of stability confusion data.
+    (See `getDataStabilityConfusion`.)
+
+    @return (string) Pretty-printed data
     """
     data = self.getDataStabilityConfusion()
     text = ""
@@ -122,7 +164,10 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
   def prettyPrintDataDistinctnessConfusion(self):
     """
-    TODO: Document
+    Returns pretty-printed string representation of distinctness confusion data.
+    (See `getDataDistinctnessConfusion`.)
+
+    @return (string) Pretty-printed data
     """
     matrix, labels = self.getDataDistinctnessConfusion()
     labelText = ", ".join(labels)
