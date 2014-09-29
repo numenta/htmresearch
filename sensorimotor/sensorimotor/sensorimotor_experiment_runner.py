@@ -117,8 +117,11 @@ class SensorimotorExperimentRunner(object):
       sensorPattern = sensorSequence[i]
       sensorimotorPattern = sensorimotorSequence[i]
       sequenceLabel = sequenceLabels[i]
+
       if sensorPattern is None:
         self.tm.reset()
+        self.tp.reset()
+
       else:
         # Feed the TM
         self.tm.compute(sensorPattern,
