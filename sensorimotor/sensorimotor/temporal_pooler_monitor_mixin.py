@@ -23,9 +23,12 @@
 Temporal Pooler mixin that enables detailed monitoring of history.
 """
 
+from collections import defaultdict
+
 from nupic.research.monitor_mixin.metric import Metric
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-from nupic.research.monitor_mixin.trace import IndicesTrace, StringsTrace
+from nupic.research.monitor_mixin.trace import (
+  IndicesTrace, StringsTrace,  BoolsTrace)
 
 
 
@@ -34,6 +37,11 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
   Mixin for TemporalPooler that stores a detailed history, for inspection and
   debugging.
   """
+
+  def __init__(self, *args, **kwargs):
+    super(TemporalPoolerMonitorMixin, self).__init__(*args, **kwargs)
+
+    self._resetActive = True  # First iteration is always a reset
 
 
   def getTraceActiveCells(self):
@@ -48,6 +56,77 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     @return (Trace) Trace of sequence labels
     """
     return self._traces["sequenceLabels"]
+
+
+  def getTraceResets(self):
+    """
+    @return (Trace) Trace of resets
+    """
+    return self._traces["resets"]
+
+
+  def getDataStabilityConfusion(self):
+    self._computeSequenceRepresentationData()
+    return self._data["stabilityConfusion"]
+
+
+  def getMetricStabilityConfusion(self):
+    data = self.getDataStabilityConfusion()
+    numberLists = [item for sublist in data.values() for item in sublist]
+    numbers = [item for sublist in numberLists for item in sublist]
+    return Metric(self, "stability confusion", numbers)
+
+
+  def prettyPrintDataStabilityConfusion(self):
+    data = self.getDataStabilityConfusion()
+    text = ""
+
+    for sequenceLabel, confusionMatrix in data.iteritems():
+      text += "Confusion matrix for {0}:\n\n".format(sequenceLabel)
+      text += ("\n".join([''.join(['{:4}'.format(item) for item in row])
+                          for row in confusionMatrix]))
+      text += "\n\n"
+
+    return text
+
+
+  # ==============================
+  # Helpers
+  # ==============================
+
+  def _computeSequenceRepresentationData(self):
+    if not self._sequenceRepresentationDataStale:
+      return
+
+    self._data["activeCellsListForSequence"] = defaultdict(list)
+    self._data["stabilityConfusion"] = {}
+
+    activeCellsTrace = self.getTraceActiveCells()
+    sequenceLabelsTrace = self.getTraceSequenceLabels()
+    resetsTrace = self.getTraceResets()
+
+    for i, activeCells in enumerate(activeCellsTrace.data):
+      sequenceLabel = sequenceLabelsTrace.data[i]
+
+      if sequenceLabel is not None and not resetsTrace.data[i]:
+        self._data["activeCellsListForSequence"][sequenceLabel].append(
+          activeCells)
+
+    for sequenceLabel, activeCellsList in (
+        self._data["activeCellsListForSequence"].iteritems()):
+      confusionMatrix = []
+
+      for i in xrange(len(activeCellsList)):
+        row = []
+
+        for j in xrange(len(activeCellsList)):
+          row.append(len(activeCellsList[i] ^ activeCellsList[j]))
+
+        confusionMatrix.append(row)
+
+      self._data["stabilityConfusion"][sequenceLabel] = confusionMatrix
+
+    self._transitionTracesStale = False
 
 
   # ==============================
@@ -68,6 +147,17 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     self._traces["activeCells"].data.append(activeCells)
     self._traces["sequenceLabels"].data.append(sequenceLabel)
 
+    self._traces["resets"].data.append(self._resetActive)
+    self._resetActive = False
+
+    self._sequenceRepresentationDataStale = True
+
+
+  def reset(self):
+    super(TemporalPoolerMonitorMixin, self).reset()
+
+    self._resetActive = True
+
 
   def getDefaultTraces(self, verbosity=1):
     traces = [
@@ -81,8 +171,10 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
 
   def getDefaultMetrics(self, verbosity=1):
-    return ([Metric.createFromTrace(trace)
-            for trace in self.getDefaultTraces()[:-1]])
+    metrics = ([Metric.createFromTrace(trace)
+                for trace in self.getDefaultTraces()[:-1]])
+    metrics.append(self.getMetricStabilityConfusion())
+    return metrics
 
 
   def clearHistory(self):
@@ -90,3 +182,6 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
     self._traces["activeCells"] = IndicesTrace(self, "active cells")
     self._traces["sequenceLabels"] = StringsTrace(self, "sequence labels")
+    self._traces["resets"] = BoolsTrace(self, "resets")
+
+    self._sequenceRepresentationDataStale = True

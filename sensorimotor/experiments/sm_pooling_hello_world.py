@@ -19,6 +19,8 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+
 from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
 from sensorimotor.random_one_d_agent import RandomOneDAgent
@@ -103,3 +105,5 @@ print "Training TemporalPooler on sequences"
 sequences = smer.generateSequences(10, agents, verbosity=1)
 smer.feedLayers(sequences, tmLearn=False, tpLearn=True, verbosity=2)
 
+print MonitorMixinBase.prettyPrintMetrics(smer.tm.getDefaultMetrics() +
+                                          smer.tp.getDefaultMetrics())
