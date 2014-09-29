@@ -81,6 +81,13 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
     self.assertTrue(
       self.experimentRunner.tp.getMetricStabilityConfusion().mean > 0)
 
+    self.assertTrue(
+      self.experimentRunner.tp.getMetricDistinctnessConfusion().min > 20)
+    self.assertTrue(
+      self.experimentRunner.tp.getMetricDistinctnessConfusion().max > 20)
+    self.assertTrue(
+      self.experimentRunner.tp.getMetricDistinctnessConfusion().mean > 20)
+
     # Test
     sequences = self.experimentRunner.generateSequences(10, self.agents)
     self.experimentRunner.feedLayers(sequences, tmLearn=False, tpLearn=False,
@@ -90,6 +97,9 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
 
     self.assertEqual(
       self.experimentRunner.tp.getMetricStabilityConfusion().sum, 0)
+
+    self.assertTrue(
+      self.experimentRunner.tp.getMetricDistinctnessConfusion().sum < 12)
 
 
   def _printInformation(self):

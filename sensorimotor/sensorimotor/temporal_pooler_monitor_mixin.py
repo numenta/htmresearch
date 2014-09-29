@@ -92,6 +92,18 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     return Metric(self, "stability confusion", numbers)
 
 
+  def getMetricDistinctnessConfusion(self):
+    data, _ = self.getDataDistinctnessConfusion()
+    numbers = []
+
+    for i in xrange(len(data)):
+      for j in xrange(len(data[i])):
+        if i != j:  # Ignoring diagonal
+          numbers.append(data[i][j])
+
+    return Metric(self, "distinctness confusion", numbers)
+
+
   def prettyPrintDataStabilityConfusion(self):
     """
     TODO: Document
@@ -228,7 +240,10 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
   def getDefaultMetrics(self, verbosity=1):
     metrics = ([Metric.createFromTrace(trace)
                 for trace in self.getDefaultTraces()[:-1]])
-    metrics.append(self.getMetricStabilityConfusion())
+
+    metrics += [self.getMetricStabilityConfusion(),
+                self.getMetricDistinctnessConfusion()]
+
     return metrics
 
 
