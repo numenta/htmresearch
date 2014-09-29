@@ -115,13 +115,17 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     Returns metric made of values from the stability confusion matrix.
     (See `getDataStabilityConfusion`.)
 
-    TODO: Exclude diagonals
-
     @return (Metric) Stability confusion metric
     """
     data = self.getDataStabilityConfusion()
-    numberLists = [item for sublist in data.values() for item in sublist]
-    numbers = [item for sublist in numberLists for item in sublist]
+    numbers = []
+
+    for matrix in data.values():
+      for i in xrange(len(matrix)):
+        for j in xrange(len(matrix[i])):
+          if i != j:  # Ignoring diagonal
+            numbers.append(matrix[i][j])
+
     return Metric(self, "stability confusion", numbers)
 
 
