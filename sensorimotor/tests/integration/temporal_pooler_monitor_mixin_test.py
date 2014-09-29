@@ -66,16 +66,13 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
     )
 
 
-  def testGetMatrixSequenceStableRepresentations(self):
+  def testGetConfusionMetrics(self):
     # Train
     sequences = self.experimentRunner.generateSequences(40, self.agents)
     self.experimentRunner.feedLayers(sequences, tmLearn=True, tpLearn=True,
                                      verbosity=self.VERBOSITY)
 
-    if self.VERBOSITY > 1:
-      print self.experimentRunner.tp.prettyPrintDataStabilityConfusion()
-      print self.experimentRunner.tp.prettyPrintMetrics(
-        self.experimentRunner.tp.getDefaultMetrics())
+    self._printInformation()
 
     self.assertEqual(
       self.experimentRunner.tp.getMetricStabilityConfusion().min, 0)
@@ -89,14 +86,29 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
     self.experimentRunner.feedLayers(sequences, tmLearn=False, tpLearn=False,
                                      verbosity=self.VERBOSITY)
 
-    if self.VERBOSITY > 1:
-      print self.experimentRunner.tp.prettyPrintDataStabilityConfusion()
-      print self.experimentRunner.tp.prettyPrintMetrics(
-        self.experimentRunner.tp.getDefaultMetrics())
+    self._printInformation()
 
     self.assertEqual(
       self.experimentRunner.tp.getMetricStabilityConfusion().sum, 0)
 
+
+  def _printInformation(self):
+    if self.VERBOSITY > 1:
+      print "Stability"
+      print "============"
+      print
+      print self.experimentRunner.tp.prettyPrintDataStabilityConfusion()
+      print
+      print "Distinctness"
+      print "============"
+      print
+      print self.experimentRunner.tp.prettyPrintDataDistinctnessConfusion()
+      print
+      print "Metrics"
+      print "============"
+      print
+      print self.experimentRunner.tp.prettyPrintMetrics(
+        self.experimentRunner.tp.getDefaultMetrics())
 
 
 if __name__ == "__main__":

@@ -66,11 +66,26 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
 
   def getDataStabilityConfusion(self):
+    """
+    TODO: Document
+    """
     self._computeSequenceRepresentationData()
     return self._data["stabilityConfusion"]
 
 
+  def getDataDistinctnessConfusion(self):
+    """
+    TODO: Document
+    """
+    self._computeSequenceRepresentationData()
+    return (self._data["distinctnessConfusionMatrix"],
+            self._data["distinctnessConfusionLabels"])
+
+
   def getMetricStabilityConfusion(self):
+    """
+    TODO: Document
+    """
     data = self.getDataStabilityConfusion()
     numberLists = [item for sublist in data.values() for item in sublist]
     numbers = [item for sublist in numberLists for item in sublist]
@@ -78,14 +93,34 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
 
   def prettyPrintDataStabilityConfusion(self):
+    """
+    TODO: Document
+    """
     data = self.getDataStabilityConfusion()
     text = ""
 
     for sequenceLabel, confusionMatrix in data.iteritems():
-      text += "Confusion matrix for {0}:\n\n".format(sequenceLabel)
+      text += "{0}:\n\n".format(sequenceLabel)
       text += ("\n".join([''.join(['{:4}'.format(item) for item in row])
                           for row in confusionMatrix]))
       text += "\n\n"
+
+    return text
+
+
+  def prettyPrintDataDistinctnessConfusion(self):
+    """
+    TODO: Document
+    """
+    matrix, labels = self.getDataDistinctnessConfusion()
+    labelText = ", ".join(labels)
+
+    text = ""
+    text += "(rows: {0})\n".format(labelText)
+    text += "(cols: {0})\n\n".format(labelText)
+    text += ("\n".join([''.join(['{:4}'.format(item) for item in row])
+                        for row in matrix]))
+    text += "\n"
 
     return text
 
@@ -99,7 +134,10 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
       return
 
     self._data["activeCellsListForSequence"] = defaultdict(list)
+    self._data["activeCellsUnionForSequence"] = defaultdict(set)
     self._data["stabilityConfusion"] = {}
+    self._data["distinctnessConfusionMatrix"] = []
+    self._data["distinctnessConfusionLabels"] = []
 
     activeCellsTrace = self.getTraceActiveCells()
     sequenceLabelsTrace = self.getTraceSequenceLabels()
@@ -124,9 +162,26 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
         confusionMatrix.append(row)
 
+        self._data["activeCellsUnionForSequence"][sequenceLabel].update(
+          activeCellsList[i])
+
       self._data["stabilityConfusion"][sequenceLabel] = confusionMatrix
 
-    self._transitionTracesStale = False
+    activeCellsUnionForSequenceItems = list(
+      self._data["activeCellsUnionForSequence"].iteritems())
+
+    for i in xrange(len(activeCellsUnionForSequenceItems)):
+      self._data["distinctnessConfusionLabels"].append(
+        activeCellsUnionForSequenceItems[i][0])
+      row = []
+
+      for j in xrange(len(activeCellsUnionForSequenceItems)):
+        row.append(len(activeCellsUnionForSequenceItems[i][1] &
+                       activeCellsUnionForSequenceItems[j][1]))
+
+      self._data["distinctnessConfusionMatrix"].append(row)
+
+    self._sequenceRepresentationDataStale = False
 
 
   # ==============================
