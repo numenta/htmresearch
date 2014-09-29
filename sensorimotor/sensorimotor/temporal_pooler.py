@@ -67,7 +67,6 @@ class TemporalPooler(SpatialPooler):
                stimulusThreshold=2,
                synPermInactiveDec=0.01,
                synPermActiveInc=0.03,
-               synPermActiveInactiveDec = 0,
                synPredictedInc=0.5,
                synPermConnected=0.3,
                minPctOverlapDutyCycle=0.001,
@@ -89,10 +88,6 @@ class TemporalPooler(SpatialPooler):
 
     New parameters defined in this class:
     -------------------------------------
-
-    @param synPermActiveInactiveDec:
-      For inactive columns, synapses connected to input bits that are on are
-      decreased by synPermActiveInactiveDec.
 
     @param synPredictedInc:
       The amount by which a metabotropically active synapse is incremented in
@@ -127,7 +122,6 @@ class TemporalPooler(SpatialPooler):
                     stimulusThreshold,
                     synPermInactiveDec,
                     synPermActiveInc,
-                    synPermActiveInactiveDec,
                     synPredictedInc,
                     synPermConnected,
                     minPctOverlapDutyCycle,
@@ -155,7 +149,6 @@ class TemporalPooler(SpatialPooler):
                stimulusThreshold=0,
                synPermInactiveDec=0.01,
                synPermActiveInc=0.1,
-               synPermActiveInactiveDec =0,
                synPredictedInc=0.1,
                synPermConnected=0.10,
                minPctOverlapDutyCycle=0.001,
@@ -204,7 +197,6 @@ class TemporalPooler(SpatialPooler):
     self._maxBoost = maxBoost
     self._spVerbosity = spVerbosity
     self._wrapAround = wrapAround
-    self._synPermActiveInactiveDec = synPermActiveInactiveDec
     self.useBurstingRule = useBurstingRule
     self.usePoolingRule = usePoolingRule
     self._poolingLife = poolingLife
@@ -267,7 +259,6 @@ class TemporalPooler(SpatialPooler):
                     (sparse binary matrix)
     _connectedSynapses: connected synapses (binary sparse matrix)
     _connectedCounts: number of connections per cell (numpy array)
-    _permanenceDecCache: a cache for permanence decremant. 
     ''' 
 
     numColumns = self._numColumns
@@ -303,12 +294,6 @@ class TemporalPooler(SpatialPooler):
     # structure. This permanence matrix is only allowed to have non-zero 
     # elements where the potential pool is non-zero.
     self._permanences = SparseMatrix(numColumns, numInputs)
-
-    # NEW. A cache for permanence decrements of (Active->Inactive Type)
-    # Permanence decrements won't be initiated until the next time
-    # a cell fire
-    self._permanenceDecCache = SparseMatrix(numColumns, numInputs)
-
 
     # 'self._connectedSynapses' is a similar matrix to 'self._permanences' 
     # (rows represent cortial columns, columns represent input bits) whose 
@@ -636,10 +621,6 @@ class TemporalPooler(SpatialPooler):
     3. synapses connected to inputs bits that are on due to predicted inputs
     are increased by synPredictedInc. 
 
-    For inactive cells:
-    4. synapses connected to input bits that are on are decreased by synPermActiveInactiveDec
-
-
     Parameters:
     ----------------------------
     inputVector:    a numpy array of 0's and 1's thata comprises the input to 
@@ -674,30 +655,11 @@ class TemporalPooler(SpatialPooler):
       # input connections to column i
       perm = self._permanences.getRow(i)
 
-      # decremant cached (active->inactive connections)
-      permChangesBinary = self._permanenceDecCache.getRow(i)
-      perm = numpy.where(permChangesBinary>0, perm-self._synPermActiveInactiveDec, perm)
-      self._permanenceDecCache.setRowToZero(i)
-
       # only consider connections in potential pool
       maskPotential = numpy.where(self._potentialPools.getRow(i) > 0)[0]
       perm[maskPotential] += permChanges[maskPotential]
       self._updatePermanencesForColumn(perm, i, raisePerm=False)
-
-    # decrement active -> inactive connections
-    if self._synPermActiveInactiveDec > 0:
-
-      for i in inputIndices: 
-        # go through all active inputs
-        if self._spVerbosity > 5:
-          print "Active Input: ", i
-          print "Current Connection: ", self._connectedSynapses.getRow(i)
-                          
-        # push permanance decremant to cache
-        permChangesBinary = numpy.zeros(self._numColumns)
-        permChangesBinary.fill(1) 
-        permChangesBinary[activeColumns] = 0        
-        self._permanenceDecCache.setColFromDense(i, permChangesBinary)     
+   
 
 
   def printParameters(self):
