@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
 # Copyright (C) 2014, Numenta, Inc.  Unless you have an agreement
@@ -91,13 +92,13 @@ universe = OneDUniverse(debugSensor=True,
                         nSensor=nElements*wEncoders, wSensor=wEncoders,
                         nMotor=wEncoders*7, wMotor=wEncoders)
 agents = [
-  RandomOneDAgent(OneDWorld(universe, range(nElements), 4),
+  RandomOneDAgent(OneDWorld(universe, range(nElements)), 4,
                          possibleMotorValues=(-1,1), seed=23),
-  RandomOneDAgent(OneDWorld(universe, range(nElements-1, -1, -1), 4),
+  RandomOneDAgent(OneDWorld(universe, range(nElements-1, -1, -1)), 4,
                          possibleMotorValues=(-1,1), seed=42),
-  RandomOneDAgent(OneDWorld(universe, range(0,nElements,2), 4),
+  RandomOneDAgent(OneDWorld(universe, range(0,nElements,2)), 4,
                          possibleMotorValues=(-1,1), seed=10),
-  RandomOneDAgent(OneDWorld(universe, range(0,nElements,3), 2),
+  RandomOneDAgent(OneDWorld(universe, range(0,nElements,3)), 2,
                          possibleMotorValues=(-1,1), seed=5),
   ]
 
