@@ -62,7 +62,7 @@ def feedTM(tm, length, agents,
   for agent in agents:
     tm.reset()
     if verbosity > 0:
-      print "\nGenerating sequence for world:",str(agent.world)
+      print "\nGenerating sequence for world:", agent.world.toString()
     sensorSequence, motorSequence, sensorimotorSequence = (
       agent.generateSensorimotorSequence(length,verbosity=verbosity)
     )
