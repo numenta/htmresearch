@@ -158,8 +158,8 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._testTM(sequence)
 
     self._assertAllActiveWerePredicted(universe)
-    predictedInactiveColumnsMetric = self.tm.getMetricFromTrace(
-      self.tm.getTracePredictedInactiveColumns())
+    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTracePredictedInactiveColumns())
     self.assertTrue(0 < predictedInactiveColumnsMetric.mean < 10)
 
 
@@ -193,8 +193,8 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._testTM(sequence)
 
     self._assertAllActiveWerePredicted(universe)
-    predictedInactiveColumnsMetric = self.tm.getMetricFromTrace(
-      self.tm.getTracePredictedInactiveColumns())
+    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTracePredictedInactiveColumns())
     self.assertTrue(0 < predictedInactiveColumnsMetric.mean < 5)
     self._assertSequencesOnePredictedActiveCellPerColumn()
     self._assertOneSequencePerPredictedActiveCell()
@@ -205,10 +205,10 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
   # ==============================
 
   def _assertAllActiveWerePredicted(self, universe):
-    unpredictedActiveColumnsMetric = self.tm.getMetricFromTrace(
-      self.tm.getTraceUnpredictedActiveColumns())
-    predictedActiveColumnsMetric = self.tm.getMetricFromTrace(
-      self.tm.getTracePredictedActiveColumns())
+    unpredictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTraceUnpredictedActiveColumns())
+    predictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTracePredictedActiveColumns())
 
     self.assertEqual(unpredictedActiveColumnsMetric.sum, 0)
 
@@ -217,17 +217,17 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
 
   def _assertAllInactiveWereUnpredicted(self):
-    predictedInactiveColumnsMetric = self.tm.getMetricFromTrace(
-      self.tm.getTracePredictedInactiveColumns())
+    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTracePredictedInactiveColumns())
 
     self.assertEqual(predictedInactiveColumnsMetric.sum, 0)
 
 
   def _assertAllActiveWereUnpredicted(self, universe):
-    unpredictedActiveColumnsMetric = self.tm.getMetricFromTrace(
-      self.tm.getTraceUnpredictedActiveColumns())
-    predictedActiveColumnsMetric = self.tm.getMetricFromTrace(
-      self.tm.getTracePredictedActiveColumns())
+    unpredictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTraceUnpredictedActiveColumns())
+    predictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTracePredictedActiveColumns())
 
     self.assertEqual(predictedActiveColumnsMetric.sum, 0)
 
@@ -236,13 +236,13 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
 
   def _assertSequencesOnePredictedActiveCellPerColumn(self):
-    metric = self.tm.getMetricSequencesPredictedActiveCellsPerColumn()
+    metric = self.tm.mmGetMetricSequencesPredictedActiveCellsPerColumn()
     self.assertEqual(metric.min, 1)
     self.assertEqual(metric.max, 1)
 
 
   def _assertOneSequencePerPredictedActiveCell(self):
-    metric = self.tm.getMetricSequencesPredictedActiveCellsShared()
+    metric = self.tm.mmGetMetricSequencesPredictedActiveCellsShared()
     self.assertEqual(metric.min, 1)
     self.assertEqual(metric.max, 1)
 

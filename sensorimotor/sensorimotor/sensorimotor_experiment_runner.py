@@ -149,7 +149,7 @@ class SensorimotorExperimentRunner(object):
       if tpLearn is not None:
         traces += self.tp.mmGetDefaultTraces(verbosity=verbosity)
       print MonitorMixinBase.mmPrettyPrintTraces(
-        traces, breakOnResets=self.tm.getTraceResets())
+        traces, breakOnResets=self.tm.mmGetTraceResets())
       print
 
 
@@ -197,13 +197,13 @@ class SensorimotorExperimentRunner(object):
     burstingColumns = numpy.zeros(
       self.tm.connections.numberOfColumns()).astype(realDType)
     burstingColumns[
-      list(self.tm.getTraceUnpredictedActiveColumns().data[-1])] = 1
+      list(self.tm.mmGetTraceUnpredictedActiveColumns().data[-1])] = 1
 
     # correctly predicted cells in layer 4
     correctlyPredictedCells = numpy.zeros(
       self.tm.connections.numberOfCells()).astype(realDType)
     correctlyPredictedCells[
-      list(self.tm.getTracePredictedActiveCells().data[-1])] = 1
+      list(self.tm.mmGetTracePredictedActiveCells().data[-1])] = 1
 
     return (tpInputVector, burstingColumns, correctlyPredictedCells)
 

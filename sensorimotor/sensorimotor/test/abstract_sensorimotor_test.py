@@ -78,11 +78,11 @@ class AbstractSensorimotorTest(unittest.TestCase):
       print
 
     if self.VERBOSITY >= 2:
-      print self.tm.prettyPrintSequenceCellRepresentations()
+      print self.tm.mmPrettyPrintSequenceCellRepresentations()
       print
 
     if learn and self.VERBOSITY >= 3:
-      print self.tm.prettyPrintConnections()
+      print self.tm.mmPrettyPrintConnections()
 
 
   def _testTM(self, sequence):

@@ -79,7 +79,7 @@ def feedTM(tm, length, agents,
     print
 
   if learn and verbosity >= 3:
-    print tm.prettyPrintConnections()
+    print tm.mmPrettyPrintConnections()
 
   return tm.getStatistics()
 

@@ -114,10 +114,10 @@ stats = smer.feedLayers(sequences, tmLearn=False, verbosity=0)
 
 print smer.tm.mmPrettyPrintMetrics(smer.tm.mmGetDefaultMetrics())
 
-unpredictedActiveColumnsMetric = smer.tm.getMetricFromTrace(
-  smer.tm.getTraceUnpredictedActiveColumns())
-predictedActiveColumnsMetric = smer.tm.getMetricFromTrace(
-  smer.tm.getTracePredictedActiveColumns())
+unpredictedActiveColumnsMetric = smer.tm.mmGetMetricFromTrace(
+  smer.tm.mmGetTraceUnpredictedActiveColumns())
+predictedActiveColumnsMetric = smer.tm.mmGetMetricFromTrace(
+  smer.tm.mmGetTracePredictedActiveColumns())
 if (unpredictedActiveColumnsMetric.sum == 0) and (
         predictedActiveColumnsMetric.sum ==
             universe.wSensor*(testSequenceLength-1)*len(agents)):
