@@ -20,6 +20,8 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import csv
+
 from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
 from sensorimotor.random_one_d_agent import RandomOneDAgent
@@ -46,10 +48,29 @@ The dependent variables (that we monitor) are:
 Each world will be composed of unique elements that are not shared between
 worlds, to test the raw memorization capacity without generalization.
 
-The output of this program is a set of graphs showing the relationship between
-these variables.
+The output of this program is a data sheet (CSV) showing the relationship
+between these variables.
 --------------------------------------------------------------------------------
 """
+
+
+
+# Reference constants
+OUTPUT_HEADERS = [
+  "num_worlds",
+  "num_elements",
+  "tp_stability_min",
+  "tp_stability_max",
+  "tp_stability_sum",
+  "tp_stability_mean",
+  "tp_stability_stddev",
+  "tp_distinctness_min",
+  "tp_distinctness_max",
+  "tp_distinctness_sum",
+  "tp_distinctness_mean",
+  "tp_distinctness_stddev"
+]
+OUTPUT_FILE = "memorization_capacity_test_results.csv"
 
 
 
@@ -84,55 +105,75 @@ print "Done setting up the experiment.\n"
 
 
 # Run the experiment
-for numWorlds in numWorldsRange:
+with open(OUTPUT_FILE, 'wb') as outFile:
+  csvWriter = csv.writer(outFile)
+  csvWriter.writerow(OUTPUT_HEADERS)
+  outFile.flush()
 
-  for numElements in numElementsRange:
-    exhaustiveAgents = []
-    randomAgents = []
-    completeSequenceLength = numElements ** 2
+  for numWorlds in numWorldsRange:
 
-    for world in xrange(numWorlds):
-      elements = range(world * numElements, world * numElements + numElements)
+    for numElements in numElementsRange:
+      exhaustiveAgents = []
+      randomAgents = []
+      completeSequenceLength = numElements ** 2
 
-      exhaustiveAgents.append(
-        ExhaustiveOneDAgent(OneDWorld(universe, elements), 0))
+      for world in xrange(numWorlds):
+        elements = range(world * numElements, world * numElements + numElements)
 
-      possibleMotorValues = range(-numElements, numElements+1)
-      possibleMotorValues.remove(0)
-      randomAgents.append(
-        RandomOneDAgent(OneDWorld(universe, elements), numElements / 2,
-                        possibleMotorValues=possibleMotorValues))
+        exhaustiveAgents.append(
+          ExhaustiveOneDAgent(OneDWorld(universe, elements), 0))
 
-
-    print "Training (worlds: {0}, elements: {1})...".format(numWorlds,
-                                                            numElements)
-    sequences = runner.generateSequences(completeSequenceLength * 2,
-                                         exhaustiveAgents,
-                                         verbosity=VERBOSITY)
-    runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
-                      verbosity=VERBOSITY,
-                      showProgressInterval=SHOW_PROGRESS_INTERVAL)
-    print "Done training.\n"
+        possibleMotorValues = range(-numElements, numElements+1)
+        possibleMotorValues.remove(0)
+        randomAgents.append(
+          RandomOneDAgent(OneDWorld(universe, elements), numElements / 2,
+                          possibleMotorValues=possibleMotorValues))
 
 
-    print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
-                                                           numElements)
-    sequences = runner.generateSequences(completeSequenceLength,
-                                         randomAgents,
-                                         verbosity=VERBOSITY)
-    runner.feedLayers(sequences, tmLearn=False, tpLearn=False,
-                      verbosity=VERBOSITY,
-                      showProgressInterval=SHOW_PROGRESS_INTERVAL)
-    print "Done testing.\n"
+      print "Training (worlds: {0}, elements: {1})...".format(numWorlds,
+                                                              numElements)
+      sequences = runner.generateSequences(completeSequenceLength * 2,
+                                           exhaustiveAgents,
+                                           verbosity=VERBOSITY)
+      runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
+                        verbosity=VERBOSITY,
+                        showProgressInterval=SHOW_PROGRESS_INTERVAL)
+      print "Done training.\n"
 
-    if VERBOSITY >= 2:
-      print "TP Stability:"
+
+      print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
+                                                             numElements)
+      sequences = runner.generateSequences(completeSequenceLength,
+                                           randomAgents,
+                                           verbosity=VERBOSITY)
+      runner.feedLayers(sequences, tmLearn=False, tpLearn=False,
+                        verbosity=VERBOSITY,
+                        showProgressInterval=SHOW_PROGRESS_INTERVAL)
+      print "Done testing.\n"
+
+      if VERBOSITY >= 2:
+        print "TP Stability:"
+        print
+        print runner.tp.mmPrettyPrintDataStabilityConfusion()
+        print "TP Distinctness:"
+        print
+        print runner.tp.mmPrettyPrintDataDistinctnessConfusion()
+        print
+
+      print runner.tp.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics())
       print
-      print runner.tp.mmPrettyPrintDataStabilityConfusion()
-      print "TP Distinctness:"
-      print
-      print runner.tp.mmPrettyPrintDataDistinctnessConfusion()
-      print
 
-    print runner.tp.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics())
-    print
+      stabilityMetric = runner.tp.mmGetMetricStabilityConfusion()
+      distinctnessMetric = runner.tp.mmGetMetricDistinctnessConfusion()
+      csvWriter.writerow([numWorlds, numElements,
+                          stabilityMetric.min,
+                          stabilityMetric.max,
+                          stabilityMetric.sum,
+                          stabilityMetric.mean,
+                          stabilityMetric.standardDeviation,
+                          distinctnessMetric.min,
+                          distinctnessMetric.max,
+                          distinctnessMetric.sum,
+                          distinctnessMetric.mean,
+                          distinctnessMetric.standardDeviation])
+      outFile.flush()
