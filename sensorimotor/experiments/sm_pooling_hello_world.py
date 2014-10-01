@@ -19,6 +19,8 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+
 from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
 from sensorimotor.random_one_d_agent import RandomOneDAgent
@@ -30,8 +32,8 @@ from sensorimotor.sensorimotor_experiment_runner import (
 
 print """
 This program forms the simplest test of sensorimotor sequence inference with
-pooling. We present sequences from a single 1D world. We then test to ensure the
-number of predicted columns matches the actual columns.
+pooling. We present sequences from two small 1D worlds. We then test to ensure
+the number of predicted columns matches the actual columns.
 """
 
 ############################################################
@@ -45,7 +47,9 @@ universe = OneDUniverse(debugSensor=True,
 agents = [
   RandomOneDAgent(OneDWorld(universe, range(nElements), 4),
                          possibleMotorValues=(-1,1), seed=23),
-  ]
+  RandomOneDAgent(OneDWorld(universe, list(reversed(range(nElements))), 4),
+                  possibleMotorValues=(-1,1), seed=23),
+]
 
 l3NumColumns = 512
 l3NumActiveColumnsPerInhArea = 20
@@ -101,3 +105,5 @@ print "Training TemporalPooler on sequences"
 sequences = smer.generateSequences(10, agents, verbosity=1)
 smer.feedLayers(sequences, tmLearn=False, tpLearn=True, verbosity=2)
 
+print MonitorMixinBase.prettyPrintMetrics(smer.tm.getDefaultMetrics() +
+                                          smer.tp.getDefaultMetrics())

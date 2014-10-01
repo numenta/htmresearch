@@ -77,8 +77,10 @@ class AbstractAgent(object):
       sensorimotorSequence.append(sensorimotorPattern)
 
     if verbosity > 0:
+      print "Generating sensorimotor sequence for world:", self.world
       self._printSequence(sensorSequence, motorSequence,
                           sensorValues, motorCommands)
+      print
 
     return (sensorSequence, motorSequence, sensorimotorSequence)
 
@@ -88,7 +90,7 @@ class AbstractAgent(object):
     """
     Nicely print the sequence to console for debugging purposes.
     """
-    table = PrettyTable(["Iteration",
+    table = PrettyTable(["#",
                          "Sensor Pattern", "Motor Pattern",
                          "Sensor Value", "Motor Value"])
     for i in xrange(len(sensorSequence)):
