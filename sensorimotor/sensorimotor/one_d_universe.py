@@ -50,7 +50,7 @@ class OneDUniverse(AbstractUniverse):
       range(0x0041, 0x005A+1) +  # A-Z
       range(0x0061, 0x007A+1) +  # a-z
       range(0x0030, 0x0039+1) +  # 0-9
-      range(0x00C0, 0x01BF+1)    # Other Latin characters
+      range(0x00C0, 0x036F+1)    # Many others
     )
     self.numDecodedElements = len(self.elementCodes)
 
