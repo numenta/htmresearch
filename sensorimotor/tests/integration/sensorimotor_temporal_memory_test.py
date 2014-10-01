@@ -108,7 +108,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
                             nMotor=70, wMotor=10)
 
     agents = []
-    numWorlds = 5
+    numWorlds = 4
     sequenceLength = 4
 
     for i in xrange(numWorlds):
