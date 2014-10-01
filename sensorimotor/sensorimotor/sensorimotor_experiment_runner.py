@@ -173,7 +173,7 @@ class SensorimotorExperimentRunner(object):
       sensorSequence += s
       motorSequence += m
       sensorimotorSequence += sm
-      sequenceLabels += [str(agent.world)] * length
+      sequenceLabels += [agent.world.toString()] * length
 
       sensorSequence.append(None)
       motorSequence.append(None)

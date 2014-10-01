@@ -53,6 +53,16 @@ class OneDUniverseTest(unittest.TestCase):
     self.assertNotEqual(universe.encodeMotorValue(-10), set(xrange(0, 48)))
 
 
+  def testDecodeSensorValue(self):
+    universe = OneDUniverse()
+
+    for i in range(universe.numDecodedElements):
+      self.assertIsNotNone(universe.decodeSensorValue(i))
+
+    self.assertRaises(IndexError,
+                      universe.decodeSensorValue, universe.numDecodedElements)
+
+
 
 if __name__ == "__main__":
   unittest.main()
