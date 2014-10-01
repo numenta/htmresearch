@@ -57,7 +57,7 @@ class AbstractSensorimotorTest(unittest.TestCase):
      sensorimotorSequence,
      sequenceLabels) = sequence
 
-    self.tm.clearHistory()
+    self.tm.mmClearHistory()
 
     for i in xrange(len(sensorSequence)):
       sensorPattern = sensorSequence[i]
@@ -73,8 +73,8 @@ class AbstractSensorimotorTest(unittest.TestCase):
                         sequenceLabel=sequenceLabel)
 
     if self.VERBOSITY >= 2:
-      print self.tm.prettyPrintTraces(
-        self.tm.getDefaultTraces(verbosity=self.VERBOSITY-1))
+      print self.tm.mmPrettyPrintTraces(
+        self.tm.mmGetDefaultTraces(verbosity=self.VERBOSITY-1))
       print
 
     if self.VERBOSITY >= 2:
@@ -89,7 +89,7 @@ class AbstractSensorimotorTest(unittest.TestCase):
 
     self._feedTM(sequence, learn=False)
 
-    print self.tm.prettyPrintMetrics(self.tm.getDefaultMetrics())
+    print self.tm.mmPrettyPrintMetrics(self.tm.mmGetDefaultMetrics())
 
 
   # ==============================

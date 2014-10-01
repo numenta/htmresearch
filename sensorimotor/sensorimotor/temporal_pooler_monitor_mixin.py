@@ -48,21 +48,21 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     """
     @return (Trace) Trace of active cells
     """
-    return self._traces["activeCells"]
+    return self._mmTraces["activeCells"]
 
 
   def getTraceSequenceLabels(self):
     """
     @return (Trace) Trace of sequence labels
     """
-    return self._traces["sequenceLabels"]
+    return self._mmTraces["sequenceLabels"]
 
 
   def getTraceResets(self):
     """
     @return (Trace) Trace of resets
     """
-    return self._traces["resets"]
+    return self._mmTraces["resets"]
 
 
   def getDataStabilityConfusion(self):
@@ -82,7 +82,7 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     @return (dict) Stability confusion data
     """
     self._computeSequenceRepresentationData()
-    return self._data["stabilityConfusion"]
+    return self._mmData["stabilityConfusion"]
 
 
   def getDataDistinctnessConfusion(self):
@@ -111,8 +111,8 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     @return (dict) Distinctness confusion data
     """
     self._computeSequenceRepresentationData()
-    return (self._data["distinctnessConfusionMatrix"],
-            self._data["distinctnessConfusionLabels"])
+    return (self._mmData["distinctnessConfusionMatrix"],
+            self._mmData["distinctnessConfusionLabels"])
 
 
   def getMetricStabilityConfusion(self):
@@ -199,11 +199,11 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     if not self._sequenceRepresentationDataStale:
       return
 
-    self._data["activeCellsListForSequence"] = defaultdict(list)
-    self._data["activeCellsUnionForSequence"] = defaultdict(set)
-    self._data["stabilityConfusion"] = {}
-    self._data["distinctnessConfusionMatrix"] = []
-    self._data["distinctnessConfusionLabels"] = []
+    self._mmData["activeCellsListForSequence"] = defaultdict(list)
+    self._mmData["activeCellsUnionForSequence"] = defaultdict(set)
+    self._mmData["stabilityConfusion"] = {}
+    self._mmData["distinctnessConfusionMatrix"] = []
+    self._mmData["distinctnessConfusionLabels"] = []
 
     activeCellsTrace = self.getTraceActiveCells()
     sequenceLabelsTrace = self.getTraceSequenceLabels()
@@ -213,11 +213,11 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
       sequenceLabel = sequenceLabelsTrace.data[i]
 
       if sequenceLabel is not None and not resetsTrace.data[i]:
-        self._data["activeCellsListForSequence"][sequenceLabel].append(
+        self._mmData["activeCellsListForSequence"][sequenceLabel].append(
           activeCells)
 
     for sequenceLabel, activeCellsList in (
-        self._data["activeCellsListForSequence"].iteritems()):
+        self._mmData["activeCellsListForSequence"].iteritems()):
       confusionMatrix = []
 
       for i in xrange(len(activeCellsList)):
@@ -228,16 +228,16 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
         confusionMatrix.append(row)
 
-        self._data["activeCellsUnionForSequence"][sequenceLabel].update(
+        self._mmData["activeCellsUnionForSequence"][sequenceLabel].update(
           activeCellsList[i])
 
-      self._data["stabilityConfusion"][sequenceLabel] = confusionMatrix
+      self._mmData["stabilityConfusion"][sequenceLabel] = confusionMatrix
 
     activeCellsUnionForSequenceItems = list(
-      self._data["activeCellsUnionForSequence"].iteritems())
+      self._mmData["activeCellsUnionForSequence"].iteritems())
 
     for i in xrange(len(activeCellsUnionForSequenceItems)):
-      self._data["distinctnessConfusionLabels"].append(
+      self._mmData["distinctnessConfusionLabels"].append(
         activeCellsUnionForSequenceItems[i][0])
       row = []
 
@@ -245,7 +245,7 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
         row.append(len(activeCellsUnionForSequenceItems[i][1] &
                        activeCellsUnionForSequenceItems[j][1]))
 
-      self._data["distinctnessConfusionMatrix"].append(row)
+      self._mmData["distinctnessConfusionMatrix"].append(row)
 
     self._sequenceRepresentationDataStale = False
 
@@ -265,10 +265,10 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     activeColumns = set(activeColumns)
     activeCells = activeColumns  # TODO: Update when moving to a cellular TP
 
-    self._traces["activeCells"].data.append(activeCells)
-    self._traces["sequenceLabels"].data.append(sequenceLabel)
+    self._mmTraces["activeCells"].data.append(activeCells)
+    self._mmTraces["sequenceLabels"].data.append(sequenceLabel)
 
-    self._traces["resets"].data.append(self._resetActive)
+    self._mmTraces["resets"].data.append(self._resetActive)
     self._resetActive = False
 
     self._sequenceRepresentationDataStale = True
@@ -280,7 +280,7 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     self._resetActive = True
 
 
-  def getDefaultTraces(self, verbosity=1):
+  def mmGetDefaultTraces(self, verbosity=1):
     traces = [
       self.getTraceActiveCells()
     ]
@@ -291,9 +291,9 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     return traces + [self.getTraceSequenceLabels()]
 
 
-  def getDefaultMetrics(self, verbosity=1):
+  def mmGetDefaultMetrics(self, verbosity=1):
     metrics = ([Metric.createFromTrace(trace)
-                for trace in self.getDefaultTraces()[:-1]])
+                for trace in self.mmGetDefaultTraces()[:-1]])
 
     metrics += [self.getMetricStabilityConfusion(),
                 self.getMetricDistinctnessConfusion()]
@@ -301,11 +301,11 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     return metrics
 
 
-  def clearHistory(self):
-    super(TemporalPoolerMonitorMixin, self).clearHistory()
+  def mmClearHistory(self):
+    super(TemporalPoolerMonitorMixin, self).mmClearHistory()
 
-    self._traces["activeCells"] = IndicesTrace(self, "active cells")
-    self._traces["sequenceLabels"] = StringsTrace(self, "sequence labels")
-    self._traces["resets"] = BoolsTrace(self, "resets")
+    self._mmTraces["activeCells"] = IndicesTrace(self, "active cells")
+    self._mmTraces["sequenceLabels"] = StringsTrace(self, "sequence labels")
+    self._mmTraces["resets"] = BoolsTrace(self, "resets")
 
     self._sequenceRepresentationDataStale = True

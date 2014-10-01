@@ -58,7 +58,7 @@ class TMI(TemporalMemoryInspectMixin,GeneralTemporalMemory): pass
 def feedTM(tm, length, agents,
            verbosity=0, learn=True):
   """Feed the given sequence to the TM instance."""
-  tm.clearHistory()
+  tm.mmClearHistory()
   for agent in agents:
     tm.reset()
     if verbosity > 0:

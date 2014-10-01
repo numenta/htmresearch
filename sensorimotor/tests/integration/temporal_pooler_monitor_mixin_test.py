@@ -117,8 +117,8 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
       print "Metrics"
       print "============"
       print
-      print self.experimentRunner.tp.prettyPrintMetrics(
-        self.experimentRunner.tp.getDefaultMetrics())
+      print self.experimentRunner.tp.mmPrettyPrintMetrics(
+        self.experimentRunner.tp.mmGetDefaultMetrics())
 
 
 if __name__ == "__main__":

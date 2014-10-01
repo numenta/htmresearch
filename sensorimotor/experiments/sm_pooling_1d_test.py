@@ -112,7 +112,7 @@ testSequenceLength=100
 sequences = smer.generateSequences(testSequenceLength, agents, verbosity=0)
 stats = smer.feedLayers(sequences, tmLearn=False, verbosity=0)
 
-print smer.tm.prettyPrintMetrics(smer.tm.getDefaultMetrics())
+print smer.tm.mmPrettyPrintMetrics(smer.tm.mmGetDefaultMetrics())
 
 unpredictedActiveColumnsMetric = smer.tm.getMetricFromTrace(
   smer.tm.getTraceUnpredictedActiveColumns())
