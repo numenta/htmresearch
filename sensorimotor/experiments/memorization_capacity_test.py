@@ -128,11 +128,11 @@ for numWorlds in numWorldsRange:
     if VERBOSITY >= 2:
       print "TP Stability:"
       print
-      print runner.tp.prettyPrintDataStabilityConfusion()
+      print runner.tp.mmPrettyPrintDataStabilityConfusion()
       print "TP Distinctness:"
       print
-      print runner.tp.prettyPrintDataDistinctnessConfusion()
+      print runner.tp.mmPrettyPrintDataDistinctnessConfusion()
       print
 
-    print runner.tp.prettyPrintMetrics(runner.tp.getDefaultMetrics())
+    print runner.tp.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics())
     print
