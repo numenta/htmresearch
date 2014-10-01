@@ -44,7 +44,7 @@ class OneDWorld(AbstractWorld):
     self.sensorSequence = sensorSequence
 
 
-  def __str__(self):
+  def toString(self):
     """
     Human readable representation of the world
     """
