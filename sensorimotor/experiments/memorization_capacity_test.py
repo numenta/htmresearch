@@ -58,6 +58,7 @@ numWorldsRange = range(2, 10, 3)
 numElementsRange = range(2, 10, 3)
 
 VERBOSITY = 0
+SHOW_PROGRESS_INTERVAL = 10
 
 
 
@@ -109,7 +110,8 @@ for numWorlds in numWorldsRange:
                                          exhaustiveAgents,
                                          verbosity=VERBOSITY)
     runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
-                      verbosity=VERBOSITY)
+                      verbosity=VERBOSITY,
+                      showProgressInterval=SHOW_PROGRESS_INTERVAL)
     print "Done training.\n"
 
 
@@ -119,7 +121,8 @@ for numWorlds in numWorldsRange:
                                          randomAgents,
                                          verbosity=VERBOSITY)
     runner.feedLayers(sequences, tmLearn=False, tpLearn=False,
-                      verbosity=VERBOSITY)
+                      verbosity=VERBOSITY,
+                      showProgressInterval=SHOW_PROGRESS_INTERVAL)
     print "Done testing.\n"
 
     if VERBOSITY >= 2:
