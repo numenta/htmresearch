@@ -20,6 +20,7 @@
 # ----------------------------------------------------------------------
 
 from nupic.data.pattern_machine import PatternMachine, ConsecutivePatternMachine
+from nupic.encoders.sdrcategory import SDRCategoryEncoder
 
 from sensorimotor.abstract_universe import AbstractUniverse
 
@@ -35,15 +36,18 @@ class OneDUniverse(AbstractUniverse):
     """
     super(OneDUniverse, self).__init__(**kwargs)
 
-    SensorPatternMachine = (ConsecutivePatternMachine if debugSensor
-                            else PatternMachine)
-    self.sensorPatternMachine = SensorPatternMachine(
-      self.nSensor, self.wSensor)
+    self.debugSensor = debugSensor
+    self.debugMotor = debugMotor
 
-    MotorPatternMachine = (ConsecutivePatternMachine if debugMotor
-                            else PatternMachine)
-    self.motorPatternMachine = MotorPatternMachine(
-      self.nMotor, self.wMotor)
+    self.sensorPatternMachine = ConsecutivePatternMachine(self.nSensor,
+                                                          self.wSensor)
+    self.sensorEncoder = SDRCategoryEncoder(self.nSensor, self.wSensor,
+                                            forced=True)
+
+    self.motorPatternMachine = ConsecutivePatternMachine(self.nMotor,
+                                                         self.wMotor)
+    self.motorEncoder = SDRCategoryEncoder(self.nMotor, self.wMotor,
+                                           forced=True)
 
     # This pool is a human friendly representation of sensory values
     self.elementCodes = (
@@ -61,7 +65,10 @@ class OneDUniverse(AbstractUniverse):
 
     @return (set) Sensor pattern
     """
-    return self.sensorPatternMachine.get(sensorValue)
+    if self.debugSensor:
+      return self.sensorPatternMachine.get(sensorValue)
+    else:
+      return set(self.sensorEncoder.encode(sensorValue).nonzero()[0])
 
 
   def decodeSensorValue(self, sensorValue):
@@ -79,6 +86,9 @@ class OneDUniverse(AbstractUniverse):
 
     @return (set) Motor pattern
     """
-    numMotorValues = self.nMotor / self.wMotor
-    motorRadius = (numMotorValues - 1) / 2
-    return self.motorPatternMachine.get(motorValue + motorRadius)
+    if self.debugMotor:
+      numMotorValues = self.nMotor / self.wMotor
+      motorRadius = (numMotorValues - 1) / 2
+      return self.motorPatternMachine.get(motorValue + motorRadius)
+    else:
+      return set(self.motorEncoder.encode(motorValue).nonzero()[0])
