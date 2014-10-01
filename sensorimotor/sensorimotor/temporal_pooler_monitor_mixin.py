@@ -103,6 +103,11 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     The labels are the sequence labels for the rows / columns (useful for
     pretty-printing this data).
 
+    NOTE: This data is only really relevant when the representations are
+    fairly stable. If the stability is low, then the union of active cells
+    representing the sequence will be a large set, and this data won't mean
+    much.
+
     @return (dict) Distinctness confusion data
     """
     self._computeSequenceRepresentationData()
