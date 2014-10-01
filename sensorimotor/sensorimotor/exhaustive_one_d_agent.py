@@ -19,13 +19,18 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import numpy
-
 from sensorimotor.abstract_one_d_agent import AbstractOneDAgent
 
 
 
 class ExhaustiveOneDAgent(AbstractOneDAgent):
+  """
+  This agent sweeps through the world, making every possible transition.
+  It starts at a position, goes to every other position and back, and then
+  moves to another starting position.
+
+  The length of such an exhaustive sweep sequence is (size of world)^2.
+  """
 
 
   def __init__(self, world, startPosition):
