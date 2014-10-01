@@ -41,31 +41,31 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
   def __init__(self, *args, **kwargs):
     super(TemporalPoolerMonitorMixin, self).__init__(*args, **kwargs)
 
-    self._resetActive = True  # First iteration is always a reset
+    self._mmResetActive = True  # First iteration is always a reset
 
 
-  def getTraceActiveCells(self):
+  def mmGetTraceActiveCells(self):
     """
     @return (Trace) Trace of active cells
     """
     return self._mmTraces["activeCells"]
 
 
-  def getTraceSequenceLabels(self):
+  def mmGetTraceSequenceLabels(self):
     """
     @return (Trace) Trace of sequence labels
     """
     return self._mmTraces["sequenceLabels"]
 
 
-  def getTraceResets(self):
+  def mmGetTraceResets(self):
     """
     @return (Trace) Trace of resets
     """
     return self._mmTraces["resets"]
 
 
-  def getDataStabilityConfusion(self):
+  def mmGetDataStabilityConfusion(self):
     """
     Returns data representing the stability of sequence representations. This is
     measured by checking, for a given sequence, whether the active cells at any
@@ -81,11 +81,11 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
     @return (dict) Stability confusion data
     """
-    self._computeSequenceRepresentationData()
+    self._mmComputeSequenceRepresentationData()
     return self._mmData["stabilityConfusion"]
 
 
-  def getDataDistinctnessConfusion(self):
+  def mmGetDataDistinctnessConfusion(self):
     """
     Returns data representing the distinctness of sequence representations.
     This is measured by comparing each sequence representation (the union of
@@ -110,19 +110,19 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
     @return (dict) Distinctness confusion data
     """
-    self._computeSequenceRepresentationData()
+    self._mmComputeSequenceRepresentationData()
     return (self._mmData["distinctnessConfusionMatrix"],
             self._mmData["distinctnessConfusionLabels"])
 
 
-  def getMetricStabilityConfusion(self):
+  def mmGetMetricStabilityConfusion(self):
     """
     Returns metric made of values from the stability confusion matrix.
-    (See `getDataStabilityConfusion`.)
+    (See `mmGetDataStabilityConfusion`.)
 
     @return (Metric) Stability confusion metric
     """
-    data = self.getDataStabilityConfusion()
+    data = self.mmGetDataStabilityConfusion()
     numbers = []
 
     for matrix in data.values():
@@ -134,14 +134,14 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     return Metric(self, "stability confusion", numbers)
 
 
-  def getMetricDistinctnessConfusion(self):
+  def mmGetMetricDistinctnessConfusion(self):
     """
     Returns metric made of values from the distinctness confusion matrix
-    (excluding diagonals). (See `getDataDistinctnessConfusion`.)
+    (excluding diagonals). (See `mmGetDataDistinctnessConfusion`.)
 
     @return (Metric) Distinctness confusion metric
     """
-    data, _ = self.getDataDistinctnessConfusion()
+    data, _ = self.mmGetDataDistinctnessConfusion()
     numbers = []
 
     for i in xrange(len(data)):
@@ -152,14 +152,14 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     return Metric(self, "distinctness confusion", numbers)
 
 
-  def prettyPrintDataStabilityConfusion(self):
+  def mmPrettyPrintDataStabilityConfusion(self):
     """
     Returns pretty-printed string representation of stability confusion data.
-    (See `getDataStabilityConfusion`.)
+    (See `mmGetDataStabilityConfusion`.)
 
     @return (string) Pretty-printed data
     """
-    data = self.getDataStabilityConfusion()
+    data = self.mmGetDataStabilityConfusion()
     text = ""
 
     for sequenceLabel, confusionMatrix in data.iteritems():
@@ -171,14 +171,14 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     return text
 
 
-  def prettyPrintDataDistinctnessConfusion(self):
+  def mmPrettyPrintDataDistinctnessConfusion(self):
     """
     Returns pretty-printed string representation of distinctness confusion data.
-    (See `getDataDistinctnessConfusion`.)
+    (See `mmGetDataDistinctnessConfusion`.)
 
     @return (string) Pretty-printed data
     """
-    matrix, labels = self.getDataDistinctnessConfusion()
+    matrix, labels = self.mmGetDataDistinctnessConfusion()
     labelText = ", ".join(labels)
 
     text = ""
@@ -195,7 +195,7 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
   # Helpers
   # ==============================
 
-  def _computeSequenceRepresentationData(self):
+  def _mmComputeSequenceRepresentationData(self):
     if not self._sequenceRepresentationDataStale:
       return
 
@@ -205,9 +205,9 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     self._mmData["distinctnessConfusionMatrix"] = []
     self._mmData["distinctnessConfusionLabels"] = []
 
-    activeCellsTrace = self.getTraceActiveCells()
-    sequenceLabelsTrace = self.getTraceSequenceLabels()
-    resetsTrace = self.getTraceResets()
+    activeCellsTrace = self.mmGetTraceActiveCells()
+    sequenceLabelsTrace = self.mmGetTraceSequenceLabels()
+    resetsTrace = self.mmGetTraceResets()
 
     for i, activeCells in enumerate(activeCellsTrace.data):
       sequenceLabel = sequenceLabelsTrace.data[i]
@@ -268,8 +268,8 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     self._mmTraces["activeCells"].data.append(activeCells)
     self._mmTraces["sequenceLabels"].data.append(sequenceLabel)
 
-    self._mmTraces["resets"].data.append(self._resetActive)
-    self._resetActive = False
+    self._mmTraces["resets"].data.append(self._mmResetActive)
+    self._mmResetActive = False
 
     self._sequenceRepresentationDataStale = True
 
@@ -277,26 +277,26 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
   def reset(self):
     super(TemporalPoolerMonitorMixin, self).reset()
 
-    self._resetActive = True
+    self._mmResetActive = True
 
 
   def mmGetDefaultTraces(self, verbosity=1):
     traces = [
-      self.getTraceActiveCells()
+      self.mmGetTraceActiveCells()
     ]
 
     if verbosity == 1:
       traces = [trace.makeCountsTrace() for trace in traces]
 
-    return traces + [self.getTraceSequenceLabels()]
+    return traces + [self.mmGetTraceSequenceLabels()]
 
 
   def mmGetDefaultMetrics(self, verbosity=1):
     metrics = ([Metric.createFromTrace(trace)
                 for trace in self.mmGetDefaultTraces()[:-1]])
 
-    metrics += [self.getMetricStabilityConfusion(),
-                self.getMetricDistinctnessConfusion()]
+    metrics += [self.mmGetMetricStabilityConfusion(),
+                self.mmGetMetricDistinctnessConfusion()]
 
     return metrics
 

@@ -75,18 +75,18 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
     self._printInformation()
 
     self.assertEqual(
-      self.experimentRunner.tp.getMetricStabilityConfusion().min, 0)
+      self.experimentRunner.tp.mmGetMetricStabilityConfusion().min, 0)
     self.assertEqual(
-      self.experimentRunner.tp.getMetricStabilityConfusion().max, 40)
+      self.experimentRunner.tp.mmGetMetricStabilityConfusion().max, 40)
     self.assertTrue(
-      self.experimentRunner.tp.getMetricStabilityConfusion().mean > 0)
+      self.experimentRunner.tp.mmGetMetricStabilityConfusion().mean > 0)
 
     self.assertTrue(
-      self.experimentRunner.tp.getMetricDistinctnessConfusion().min > 20)
+      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().min > 20)
     self.assertTrue(
-      self.experimentRunner.tp.getMetricDistinctnessConfusion().max > 20)
+      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().max > 20)
     self.assertTrue(
-      self.experimentRunner.tp.getMetricDistinctnessConfusion().mean > 20)
+      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().mean > 20)
 
     # Test
     sequences = self.experimentRunner.generateSequences(10, self.agents)
@@ -96,10 +96,10 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
     self._printInformation()
 
     self.assertEqual(
-      self.experimentRunner.tp.getMetricStabilityConfusion().sum, 0)
+      self.experimentRunner.tp.mmGetMetricStabilityConfusion().sum, 0)
 
     self.assertTrue(
-      self.experimentRunner.tp.getMetricDistinctnessConfusion().sum < 12)
+      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().sum < 12)
 
 
   def _printInformation(self):
@@ -107,12 +107,12 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
       print "Stability"
       print "============"
       print
-      print self.experimentRunner.tp.prettyPrintDataStabilityConfusion()
+      print self.experimentRunner.tp.mmPrettyPrintDataStabilityConfusion()
       print
       print "Distinctness"
       print "============"
       print
-      print self.experimentRunner.tp.prettyPrintDataDistinctnessConfusion()
+      print self.experimentRunner.tp.mmPrettyPrintDataDistinctnessConfusion()
       print
       print "Metrics"
       print "============"
