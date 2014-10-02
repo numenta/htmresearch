@@ -80,7 +80,7 @@ class SensorimotorExperimentRunner(object):
     params = dict(self.DEFAULT_TM_PARAMS)
     params.update(tmOverrides or {})
     self._checkParams(params)
-    self.tm = MonitoredGeneralTemporalMemory(__name__="TM", **params)
+    self.tm = MonitoredGeneralTemporalMemory(mmName="TM", **params)
 
     # Initialize Layer 3 temporal pooler
     params = dict(self.DEFAULT_TP_PARAMS)
@@ -88,7 +88,7 @@ class SensorimotorExperimentRunner(object):
     params["potentialRadius"] = self.tm.connections.numberOfCells()
     params.update(tpOverrides or {})
     self._checkParams(params)
-    self.tp = MonitoredTemporalPooler(__name__="TP", **params)
+    self.tp = MonitoredTemporalPooler(mmName="TP", **params)
 
 
   def _checkParams(self, params):
@@ -110,8 +110,8 @@ class SensorimotorExperimentRunner(object):
      sensorimotorSequence,
      sequenceLabels) = sequences
 
-    self.tm.clearHistory()
-    self.tp.clearHistory()
+    self.tm.mmClearHistory()
+    self.tp.mmClearHistory()
 
     for i in xrange(len(sensorSequence)):
       sensorPattern = sensorSequence[i]
@@ -145,11 +145,11 @@ class SensorimotorExperimentRunner(object):
 
     if verbosity >= 2:
       traces = []
-      traces += self.tm.getDefaultTraces(verbosity=verbosity)
+      traces += self.tm.mmGetDefaultTraces(verbosity=verbosity)
       if tpLearn is not None:
-        traces += self.tp.getDefaultTraces(verbosity=verbosity)
-      print MonitorMixinBase.prettyPrintTraces(
-        traces, breakOnResets=self.tm.getTraceResets())
+        traces += self.tp.mmGetDefaultTraces(verbosity=verbosity)
+      print MonitorMixinBase.mmPrettyPrintTraces(
+        traces, breakOnResets=self.tm.mmGetTraceResets())
       print
 
 
@@ -197,13 +197,13 @@ class SensorimotorExperimentRunner(object):
     burstingColumns = numpy.zeros(
       self.tm.connections.numberOfColumns()).astype(realDType)
     burstingColumns[
-      list(self.tm.getTraceUnpredictedActiveColumns().data[-1])] = 1
+      list(self.tm.mmGetTraceUnpredictedActiveColumns().data[-1])] = 1
 
     # correctly predicted cells in layer 4
     correctlyPredictedCells = numpy.zeros(
       self.tm.connections.numberOfCells()).astype(realDType)
     correctlyPredictedCells[
-      list(self.tm.getTracePredictedActiveCells().data[-1])] = 1
+      list(self.tm.mmGetTracePredictedActiveCells().data[-1])] = 1
 
     return (tpInputVector, burstingColumns, correctlyPredictedCells)
 

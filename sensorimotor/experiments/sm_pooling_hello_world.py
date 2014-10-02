@@ -85,12 +85,12 @@ testSequenceLength=10
 sequences = smer.generateSequences(testSequenceLength, agents, verbosity=1)
 smer.feedLayers(sequences, tmLearn=False, verbosity=2)
 
-print smer.tm.prettyPrintMetrics(smer.tm.getDefaultMetrics())
+print smer.tm.mmPrettyPrintMetrics(smer.tm.mmGetDefaultMetrics())
 
-unpredictedActiveColumnsMetric = smer.tm.getMetricFromTrace(
-  smer.tm.getTraceUnpredictedActiveColumns())
-predictedActiveColumnsMetric = smer.tm.getMetricFromTrace(
-  smer.tm.getTracePredictedActiveColumns())
+unpredictedActiveColumnsMetric = smer.tm.mmGetMetricFromTrace(
+  smer.tm.mmGetTraceUnpredictedActiveColumns())
+predictedActiveColumnsMetric = smer.tm.mmGetMetricFromTrace(
+  smer.tm.mmGetTracePredictedActiveColumns())
 if (unpredictedActiveColumnsMetric.sum == 0) and (
       predictedActiveColumnsMetric.sum ==
             universe.wSensor*(testSequenceLength-1)*len(agents)):
@@ -106,5 +106,5 @@ print "Training TemporalPooler on sequences"
 sequences = smer.generateSequences(10, agents, verbosity=1)
 smer.feedLayers(sequences, tmLearn=False, tpLearn=True, verbosity=2)
 
-print MonitorMixinBase.prettyPrintMetrics(smer.tm.getDefaultMetrics() +
-                                          smer.tp.getDefaultMetrics())
+print MonitorMixinBase.mmPrettyPrintMetrics(smer.tm.mmGetDefaultMetrics() +
+                                            smer.tp.mmGetDefaultMetrics())
