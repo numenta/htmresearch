@@ -22,6 +22,8 @@
 
 import csv
 
+from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+
 from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
 from sensorimotor.random_one_d_agent import RandomOneDAgent
@@ -160,7 +162,8 @@ with open(OUTPUT_FILE, 'wb') as outFile:
         print runner.tp.mmPrettyPrintDataDistinctnessConfusion()
         print
 
-      print runner.tp.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics())
+      print MonitorMixinBase.mmPrettyPrintMetrics(
+        runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
       print
 
       stabilityMetric = runner.tp.mmGetMetricStabilityConfusion()
