@@ -80,10 +80,10 @@ OUTPUT_FILE = ("memorization_capacity_test_results.csv" if len(sys.argv) <= 1
 
 
 # Set constants
-numWorldsRange = range(2, 10, 3)
-numElementsRange = range(2, 10, 3)
+numWorldsRange = range(2, 100, 5)
+numElementsRange = range(2, 100, 5)
 
-VERBOSITY = 0
+VERBOSITY = 3
 SHOW_PROGRESS_INTERVAL = 10
 
 
