@@ -58,8 +58,8 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     universe = OneDUniverse(debugSensor=True, debugMotor=True,
                             nSensor=4, wSensor=1,
                             nMotor=3, wMotor=1)
-    world = OneDWorld(universe, [0, 1, 2, 3], 2)
-    agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-1, 2)))
+    world = OneDWorld(universe, [0, 1, 2, 3])
+    agent = RandomOneDAgent(world, 2, possibleMotorValues=set(xrange(-1, 2)))
 
     sequence = self._generateSensorimotorSequences(100, [agent])
     self._feedTM(sequence)
@@ -82,8 +82,8 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     universe = OneDUniverse(debugSensor=True, debugMotor=True,
                             nSensor=100, wSensor=10,
                             nMotor=70, wMotor=10)
-    world = OneDWorld(universe, [0, 1, 2, 3], 2)
-    agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-3, 4)))
+    world = OneDWorld(universe, [0, 1, 2, 3])
+    agent = RandomOneDAgent(world, 2, possibleMotorValues=set(xrange(-3, 4)))
 
     sequence = self._generateSensorimotorSequences(100, [agent])
     self._feedTM(sequence)
@@ -108,14 +108,14 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
                             nMotor=70, wMotor=10)
 
     agents = []
-    numWorlds = 5
+    numWorlds = 4
     sequenceLength = 4
 
     for i in xrange(numWorlds):
       start = i * sequenceLength
       patterns = range(start, start + sequenceLength)
-      world = OneDWorld(universe, patterns, 2)
-      agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-3, 4)))
+      world = OneDWorld(universe, patterns)
+      agent = RandomOneDAgent(world, 2, possibleMotorValues=set(xrange(-3, 4)))
       agents.append(agent)
 
     sequence = self._generateSensorimotorSequences(150, agents)
@@ -147,8 +147,8 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     for i in xrange(numWorlds):
       patterns = range(4)
       self._random.shuffle(patterns)
-      world = OneDWorld(universe, patterns, 2)
-      agent = RandomOneDAgent(world, possibleMotorValues=set(xrange(-3, 4)))
+      world = OneDWorld(universe, patterns)
+      agent = RandomOneDAgent(world, 2, possibleMotorValues=set(xrange(-3, 4)))
       agents.append(agent)
 
     sequence = self._generateSensorimotorSequences(150, agents)
@@ -158,8 +158,8 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._testTM(sequence)
 
     self._assertAllActiveWerePredicted(universe)
-    predictedInactiveColumnsMetric = self.tm.getMetricFromTrace(
-      self.tm.getTracePredictedInactiveColumns())
+    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTracePredictedInactiveColumns())
     self.assertTrue(0 < predictedInactiveColumnsMetric.mean < 10)
 
 
@@ -179,9 +179,9 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     agents = []
     patterns = range(4)
     for _ in xrange(2):
-      world = OneDWorld(universe, patterns, 2)
-      agent = RandomOneDAgent(world, possibleMotorValues=set([-3, -2, -1,
-                                                              1,  2, 3]))
+      world = OneDWorld(universe, patterns)
+      agent = RandomOneDAgent(world, 2, possibleMotorValues=set([-3, -2, -1,
+                                                                 1,  2, 3]))
       agents.append(agent)
       patterns = list(patterns)  # copy
       patterns.reverse()
@@ -193,8 +193,8 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._testTM(sequence)
 
     self._assertAllActiveWerePredicted(universe)
-    predictedInactiveColumnsMetric = self.tm.getMetricFromTrace(
-      self.tm.getTracePredictedInactiveColumns())
+    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTracePredictedInactiveColumns())
     self.assertTrue(0 < predictedInactiveColumnsMetric.mean < 5)
     self._assertSequencesOnePredictedActiveCellPerColumn()
     self._assertOneSequencePerPredictedActiveCell()
@@ -205,10 +205,10 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
   # ==============================
 
   def _assertAllActiveWerePredicted(self, universe):
-    unpredictedActiveColumnsMetric = self.tm.getMetricFromTrace(
-      self.tm.getTraceUnpredictedActiveColumns())
-    predictedActiveColumnsMetric = self.tm.getMetricFromTrace(
-      self.tm.getTracePredictedActiveColumns())
+    unpredictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTraceUnpredictedActiveColumns())
+    predictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTracePredictedActiveColumns())
 
     self.assertEqual(unpredictedActiveColumnsMetric.sum, 0)
 
@@ -217,17 +217,17 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
 
   def _assertAllInactiveWereUnpredicted(self):
-    predictedInactiveColumnsMetric = self.tm.getMetricFromTrace(
-      self.tm.getTracePredictedInactiveColumns())
+    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTracePredictedInactiveColumns())
 
     self.assertEqual(predictedInactiveColumnsMetric.sum, 0)
 
 
   def _assertAllActiveWereUnpredicted(self, universe):
-    unpredictedActiveColumnsMetric = self.tm.getMetricFromTrace(
-      self.tm.getTraceUnpredictedActiveColumns())
-    predictedActiveColumnsMetric = self.tm.getMetricFromTrace(
-      self.tm.getTracePredictedActiveColumns())
+    unpredictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTraceUnpredictedActiveColumns())
+    predictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTracePredictedActiveColumns())
 
     self.assertEqual(predictedActiveColumnsMetric.sum, 0)
 
@@ -236,13 +236,13 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
 
 
   def _assertSequencesOnePredictedActiveCellPerColumn(self):
-    metric = self.tm.getMetricSequencesPredictedActiveCellsPerColumn()
+    metric = self.tm.mmGetMetricSequencesPredictedActiveCellsPerColumn()
     self.assertEqual(metric.min, 1)
     self.assertEqual(metric.max, 1)
 
 
   def _assertOneSequencePerPredictedActiveCell(self):
-    metric = self.tm.getMetricSequencesPredictedActiveCellsShared()
+    metric = self.tm.mmGetMetricSequencesPredictedActiveCellsShared()
     self.assertEqual(metric.min, 1)
     self.assertEqual(metric.max, 1)
 

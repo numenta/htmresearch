@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
 # Copyright (C) 2014, Numenta, Inc.  Unless you have an agreement
@@ -57,11 +58,11 @@ class TMI(TemporalMemoryInspectMixin,GeneralTemporalMemory): pass
 def feedTM(tm, length, agents,
            verbosity=0, learn=True):
   """Feed the given sequence to the TM instance."""
-  tm.clearHistory()
+  tm.mmClearHistory()
   for agent in agents:
     tm.reset()
     if verbosity > 0:
-      print "\nGenerating sequence for world:",str(agent.world)
+      print "\nGenerating sequence for world:", agent.world.toString()
     sensorSequence, motorSequence, sensorimotorSequence = (
       agent.generateSensorimotorSequence(length,verbosity=verbosity)
     )
@@ -78,7 +79,7 @@ def feedTM(tm, length, agents,
     print
 
   if learn and verbosity >= 3:
-    print tm.prettyPrintConnections()
+    print tm.mmPrettyPrintConnections()
 
   return tm.getStatistics()
 
@@ -91,13 +92,13 @@ universe = OneDUniverse(debugSensor=True,
                         nSensor=nElements*wEncoders, wSensor=wEncoders,
                         nMotor=wEncoders*7, wMotor=wEncoders)
 agents = [
-  RandomOneDAgent(OneDWorld(universe, range(nElements), 4),
+  RandomOneDAgent(OneDWorld(universe, range(nElements)), 4,
                          possibleMotorValues=(-1,1), seed=23),
-  RandomOneDAgent(OneDWorld(universe, range(nElements-1, -1, -1), 4),
+  RandomOneDAgent(OneDWorld(universe, range(nElements-1, -1, -1)), 4,
                          possibleMotorValues=(-1,1), seed=42),
-  RandomOneDAgent(OneDWorld(universe, range(0,nElements,2), 4),
+  RandomOneDAgent(OneDWorld(universe, range(0,nElements,2)), 4,
                          possibleMotorValues=(-1,1), seed=10),
-  RandomOneDAgent(OneDWorld(universe, range(0,nElements,3), 2),
+  RandomOneDAgent(OneDWorld(universe, range(0,nElements,3)), 2,
                          possibleMotorValues=(-1,1), seed=5),
   ]
 

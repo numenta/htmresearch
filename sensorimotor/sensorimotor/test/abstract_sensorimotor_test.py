@@ -57,7 +57,7 @@ class AbstractSensorimotorTest(unittest.TestCase):
      sensorimotorSequence,
      sequenceLabels) = sequence
 
-    self.tm.clearHistory()
+    self.tm.mmClearHistory()
 
     for i in xrange(len(sensorSequence)):
       sensorPattern = sensorSequence[i]
@@ -73,23 +73,23 @@ class AbstractSensorimotorTest(unittest.TestCase):
                         sequenceLabel=sequenceLabel)
 
     if self.VERBOSITY >= 2:
-      print self.tm.prettyPrintTraces(
-        self.tm.getDefaultTraces(verbosity=self.VERBOSITY-1))
+      print self.tm.mmPrettyPrintTraces(
+        self.tm.mmGetDefaultTraces(verbosity=self.VERBOSITY-1))
       print
 
     if self.VERBOSITY >= 2:
-      print self.tm.prettyPrintSequenceCellRepresentations()
+      print self.tm.mmPrettyPrintSequenceCellRepresentations()
       print
 
     if learn and self.VERBOSITY >= 3:
-      print self.tm.prettyPrintConnections()
+      print self.tm.mmPrettyPrintConnections()
 
 
   def _testTM(self, sequence):
 
     self._feedTM(sequence, learn=False)
 
-    print self.tm.prettyPrintMetrics(self.tm.getDefaultMetrics())
+    print self.tm.mmPrettyPrintMetrics(self.tm.mmGetDefaultMetrics())
 
 
   # ==============================
@@ -134,7 +134,7 @@ class AbstractSensorimotorTest(unittest.TestCase):
       sensorSequence += s
       motorSequence += m
       sensorimotorSequence += sm
-      sequenceLabels += [str(agent.world)] * length
+      sequenceLabels += [agent.world.toString()] * length
 
       sensorSequence.append(None)
       motorSequence.append(None)
