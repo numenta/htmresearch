@@ -133,7 +133,9 @@ class AbstractAgent(object):
       if sensorPattern is None:
         table.add_row([i, "<reset>", "<reset>"])
       else:
-        table.add_row([i, list(sensorPattern), list(motorPattern),
-              self.world.universe.decodeSensorValue(sensorValues[i]),
-              motorCommands[i]])
+        table.add_row([i,
+                       sorted(list(sensorPattern)),
+                       sorted(list(motorPattern)),
+                       self.world.universe.decodeSensorValue(sensorValues[i]),
+                       motorCommands[i]])
     print table
