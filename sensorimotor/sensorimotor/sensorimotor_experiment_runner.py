@@ -70,8 +70,9 @@ class SensorimotorExperimentRunner(object):
     # consistent across most experiments.
     "synPermInactiveDec": 0,   # TODO: Check we can use class default here.
     "synPermActiveInc": 0.001, # TODO: Check we can use class default here.
-    "synPredictedInc": 0.5,  # TODO: Why so high??
-    "initConnectedPct": 0.2,  # TODO: need to check impact of this for pooling
+    "synPredictedInc": 0.5,    # TODO: Why so high??
+    "potentialPct": 0.9,       # TODO: need to check impact of this for pooling
+    "initConnectedPct": 0.5,   # TODO: need to check impact of this for pooling
 
     # We will force client to override these
     "numActiveColumnsPerInhArea": "Sorry",
