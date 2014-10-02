@@ -21,6 +21,7 @@
 # ----------------------------------------------------------------------
 
 import csv
+import sys
 
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
@@ -72,7 +73,8 @@ OUTPUT_HEADERS = [
   "tp_distinctness_mean",
   "tp_distinctness_stddev"
 ]
-OUTPUT_FILE = "memorization_capacity_test_results.csv"
+OUTPUT_FILE = ("memorization_capacity_test_results.csv" if len(sys.argv) <= 1
+                                                        else sys.argv[1])
 
 
 
