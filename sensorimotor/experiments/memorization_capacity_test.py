@@ -21,6 +21,7 @@
 # ----------------------------------------------------------------------
 
 import csv
+from itertools import product
 import sys
 
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
@@ -114,71 +115,72 @@ with open(OUTPUT_FILE, 'wb') as outFile:
   csvWriter.writerow(OUTPUT_HEADERS)
   outFile.flush()
 
-  for numWorlds in numWorldsRange:
+  combinations = sorted(product(numWorldsRange, numElementsRange),
+    key=lambda x: x[0]*x[1])  # sorted by total # of elements
 
-    for numElements in numElementsRange:
-      exhaustiveAgents = []
-      randomAgents = []
-      completeSequenceLength = numElements ** 2
+  for numWorlds, numElements in combinations:
+    exhaustiveAgents = []
+    randomAgents = []
+    completeSequenceLength = numElements ** 2
 
-      for world in xrange(numWorlds):
-        elements = range(world * numElements, world * numElements + numElements)
+    for world in xrange(numWorlds):
+      elements = range(world * numElements, world * numElements + numElements)
 
-        exhaustiveAgents.append(
-          ExhaustiveOneDAgent(OneDWorld(universe, elements), 0))
+      exhaustiveAgents.append(
+        ExhaustiveOneDAgent(OneDWorld(universe, elements), 0))
 
-        possibleMotorValues = range(-numElements, numElements+1)
-        possibleMotorValues.remove(0)
-        randomAgents.append(
-          RandomOneDAgent(OneDWorld(universe, elements), numElements / 2,
-                          possibleMotorValues=possibleMotorValues))
-
-
-      print "Training (worlds: {0}, elements: {1})...".format(numWorlds,
-                                                              numElements)
-      sequences = runner.generateSequences(completeSequenceLength * 2,
-                                           exhaustiveAgents,
-                                           verbosity=VERBOSITY)
-      runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
-                        verbosity=VERBOSITY,
-                        showProgressInterval=SHOW_PROGRESS_INTERVAL)
-      print "Done training.\n"
+      possibleMotorValues = range(-numElements, numElements+1)
+      possibleMotorValues.remove(0)
+      randomAgents.append(
+        RandomOneDAgent(OneDWorld(universe, elements), numElements / 2,
+                        possibleMotorValues=possibleMotorValues))
 
 
-      print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
-                                                             numElements)
-      sequences = runner.generateSequences(completeSequenceLength,
-                                           randomAgents,
-                                           verbosity=VERBOSITY)
-      runner.feedLayers(sequences, tmLearn=False, tpLearn=False,
-                        verbosity=VERBOSITY,
-                        showProgressInterval=SHOW_PROGRESS_INTERVAL)
-      print "Done testing.\n"
+    print "Training (worlds: {0}, elements: {1})...".format(numWorlds,
+                                                            numElements)
+    sequences = runner.generateSequences(completeSequenceLength * 2,
+                                         exhaustiveAgents,
+                                         verbosity=VERBOSITY)
+    runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
+                      verbosity=VERBOSITY,
+                      showProgressInterval=SHOW_PROGRESS_INTERVAL)
+    print "Done training.\n"
 
-      if VERBOSITY >= 2:
-        print "TP Stability:"
-        print
-        print runner.tp.mmPrettyPrintDataStabilityConfusion()
-        print "TP Distinctness:"
-        print
-        print runner.tp.mmPrettyPrintDataDistinctnessConfusion()
-        print
 
-      print MonitorMixinBase.mmPrettyPrintMetrics(
-        runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
+    print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
+                                                           numElements)
+    sequences = runner.generateSequences(completeSequenceLength,
+                                         randomAgents,
+                                         verbosity=VERBOSITY)
+    runner.feedLayers(sequences, tmLearn=False, tpLearn=False,
+                      verbosity=VERBOSITY,
+                      showProgressInterval=SHOW_PROGRESS_INTERVAL)
+    print "Done testing.\n"
+
+    if VERBOSITY >= 2:
+      print "TP Stability:"
+      print
+      print runner.tp.mmPrettyPrintDataStabilityConfusion()
+      print "TP Distinctness:"
+      print
+      print runner.tp.mmPrettyPrintDataDistinctnessConfusion()
       print
 
-      stabilityMetric = runner.tp.mmGetMetricStabilityConfusion()
-      distinctnessMetric = runner.tp.mmGetMetricDistinctnessConfusion()
-      csvWriter.writerow([numWorlds, numElements,
-                          stabilityMetric.min,
-                          stabilityMetric.max,
-                          stabilityMetric.sum,
-                          stabilityMetric.mean,
-                          stabilityMetric.standardDeviation,
-                          distinctnessMetric.min,
-                          distinctnessMetric.max,
-                          distinctnessMetric.sum,
-                          distinctnessMetric.mean,
-                          distinctnessMetric.standardDeviation])
-      outFile.flush()
+    print MonitorMixinBase.mmPrettyPrintMetrics(
+      runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
+    print
+
+    stabilityMetric = runner.tp.mmGetMetricStabilityConfusion()
+    distinctnessMetric = runner.tp.mmGetMetricDistinctnessConfusion()
+    csvWriter.writerow([numWorlds, numElements,
+                        stabilityMetric.min,
+                        stabilityMetric.max,
+                        stabilityMetric.sum,
+                        stabilityMetric.mean,
+                        stabilityMetric.standardDeviation,
+                        distinctnessMetric.min,
+                        distinctnessMetric.max,
+                        distinctnessMetric.sum,
+                        distinctnessMetric.mean,
+                        distinctnessMetric.standardDeviation])
+    outFile.flush()
