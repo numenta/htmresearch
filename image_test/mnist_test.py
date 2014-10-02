@@ -103,7 +103,7 @@ def trainNetwork(net):
 
   print "============= Loading training images ================="
   t1 = time.time()
-  sensor.executeCommand(["loadMultipleImages", "mnist/small_training"])
+  sensor.executeCommand(["loadMultipleImages", "mnist/training"])
   numTrainingImages = sensor.getParameter('numImages')
   start = time.time()
   print "Load time for training images:",start-t1
