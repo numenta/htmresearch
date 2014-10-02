@@ -39,7 +39,7 @@ class AbstractWorld(object):
     self.universe = universe
 
 
-  def __str__(self):
+  def toString(self):
     """
     Human readable representation of the world
     """

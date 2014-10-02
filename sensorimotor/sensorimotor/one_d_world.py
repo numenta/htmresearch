@@ -51,4 +51,4 @@ class OneDWorld(AbstractWorld):
     s = ""
     for p in self.sensorSequence:
       s += self.universe.decodeSensorValue(p)
-    return s
+    return s.encode("utf-8")
