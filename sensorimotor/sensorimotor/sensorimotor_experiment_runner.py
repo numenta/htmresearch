@@ -19,6 +19,8 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import time
+
 import numpy
 
 from nupic.bindings.math import GetNTAReal
@@ -68,8 +70,9 @@ class SensorimotorExperimentRunner(object):
     # consistent across most experiments.
     "synPermInactiveDec": 0,   # TODO: Check we can use class default here.
     "synPermActiveInc": 0.001, # TODO: Check we can use class default here.
-    "synPredictedInc": 0.5,  # TODO: Why so high??
-    "initConnectedPct": 0.2,  # TODO: need to check impact of this for pooling
+    "synPredictedInc": 0.5,    # TODO: Why so high??
+    "potentialPct": 0.9,       # TODO: need to check impact of this for pooling
+    "initConnectedPct": 0.5,   # TODO: need to check impact of this for pooling
 
     # We will force client to override these
     "numActiveColumnsPerInhArea": "Sorry",
@@ -97,13 +100,17 @@ class SensorimotorExperimentRunner(object):
         raise RuntimeError("Param "+k+" must be specified")
 
 
-  def feedLayers(self, sequences, tmLearn, tpLearn=None, verbosity=0):
+  def feedLayers(self, sequences, tmLearn, tpLearn=None, verbosity=0,
+                 showProgressInterval=None):
     """
     Feed the given sequences to the HTM algorithms.
 
     @param tmLearn:   (bool)      Either False, or True
     @param tpLearn:   (None,bool) Either None, False, or True. If None,
                                   temporal pooler will be skipped.
+
+    @param showProgressInterval: (int) Prints progress every N iterations,
+                                       where N is the value of this param
     """
     (sensorSequence,
      motorSequence,
@@ -112,6 +119,8 @@ class SensorimotorExperimentRunner(object):
 
     self.tm.mmClearHistory()
     self.tp.mmClearHistory()
+
+    currentTime = time.time()
 
     for i in xrange(len(sensorSequence)):
       sensorPattern = sensorSequence[i]
@@ -142,6 +151,14 @@ class SensorimotorExperimentRunner(object):
                           burstingColumns,
                           correctlyPredictedCells,
                           sequenceLabel=sequenceLabel)
+
+        if (showProgressInterval is not None and
+            i > 0 and
+            i % showProgressInterval == 0):
+          print ("Fed {0} / {1} elements of the sequence "
+                 "in {2:0.2f} seconds.".format(
+                   i, len(sensorSequence), time.time() - currentTime))
+          currentTime = time.time()
 
     if verbosity >= 2:
       traces = []
