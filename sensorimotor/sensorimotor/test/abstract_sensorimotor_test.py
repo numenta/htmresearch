@@ -74,7 +74,8 @@ class AbstractSensorimotorTest(unittest.TestCase):
 
     if self.VERBOSITY >= 2:
       print self.tm.mmPrettyPrintTraces(
-        self.tm.mmGetDefaultTraces(verbosity=self.VERBOSITY-1))
+        self.tm.mmGetDefaultTraces(verbosity=self.VERBOSITY-1),
+        breakOnResets=self.tm.mmGetTraceResets())
       print
 
     if self.VERBOSITY >= 2:
@@ -141,7 +142,7 @@ class AbstractSensorimotorTest(unittest.TestCase):
       sensorimotorSequence.append(None)
       sequenceLabels.append(None)
 
-    return (sensorSequence, motorSequence, sensorimotorSequence, sequenceLabels)
+    return sensorSequence, motorSequence, sensorimotorSequence, sequenceLabels
 
 
   def _computeTMParams(self, overrides):
