@@ -85,22 +85,22 @@ class GeneralTemporalMemory(TemporalMemory):
 
     (activeCells,
      winnerCells,
-     activeSynapsesForSegment,
+     numActiveSynapsesForSegment,
      activeSegments,
      predictiveCells,
      chosenCellForColumn) = self.computeFn(activeColumns,
-                                       activeExternalCells,
-                                       self.activeExternalCells,
-                                       self.predictiveCells,
-                                       self.activeSegments,
-                                       self.activeSynapsesForSegment,
-                                       self.winnerCells,
-                                       self.connections,
-                                       formInternalConnections,
-                                       self.learnOnOneCell,
-                                       self.chosenCellForColumn,
-                                       learn=learn)
-
+                                           activeExternalCells,
+                                           self.activeExternalCells,
+                                           self.predictiveCells,
+                                           self.activeSegments,
+                                           self.numActiveSynapsesForSegment,
+                                           self.activeCells,
+                                           self.winnerCells,
+                                           self.connections,
+                                           formInternalConnections,
+                                           self.learnOnOneCell,
+                                           self.chosenCellForColumn,
+                                           learn=learn)
 
     self.activeColumns = activeColumns
     self.prevPredictiveCells = self.predictiveCells
@@ -108,7 +108,7 @@ class GeneralTemporalMemory(TemporalMemory):
 
     self.activeCells = activeCells
     self.winnerCells = winnerCells
-    self.activeSynapsesForSegment = activeSynapsesForSegment
+    self.numActiveSynapsesForSegment = numActiveSynapsesForSegment
     self.activeSegments = activeSegments
     self.predictiveCells = predictiveCells
     self.chosenCellForColumn = chosenCellForColumn
@@ -120,7 +120,8 @@ class GeneralTemporalMemory(TemporalMemory):
                 prevActiveExternalCells,
                 prevPredictiveCells,
                 prevActiveSegments,
-                prevActiveSynapsesForSegment,
+                prevNumActiveSynapsesForSegment,
+                prevActiveCells,
                 prevWinnerCells,
                 connections,
                 formInternalConnections,
@@ -185,11 +186,11 @@ class GeneralTemporalMemory(TemporalMemory):
      _winnerCells,
      learningSegments,
      chosenCellForColumn) = self.burstColumns(activeColumns,
-                                           predictedColumns,
-                                           prevActiveSynapsesForSegment,
-                                           learnOnOneCell,
-                                           chosenCellForColumn,
-                                           connections)
+                                              predictedColumns,
+                                              prevNumActiveSynapsesForSegment,
+                                              learnOnOneCell,
+                                              chosenCellForColumn,
+                                              connections)
 
     activeCells.update(_activeCells)
     winnerCells.update(_winnerCells)
@@ -202,22 +203,19 @@ class GeneralTemporalMemory(TemporalMemory):
 
       self.learnOnSegments(prevActiveSegments,
                            learningSegments,
-                           prevActiveSynapsesForSegment,
+                           prevActiveCells | prevActiveExternalCells,
                            winnerCells,
                            prevCellActivity,
                            connections)
 
-    activeSynapsesForSegment = self.computeActiveSynapses(
-                                              activeExternalCells | activeCells,
-                                              connections)
-
     (activeSegments,
-     predictiveCells) = self.computePredictiveCells(activeSynapsesForSegment,
-                                                    connections)
+     predictiveCells,
+     numActiveSynapsesForSegment) = self.computePredictiveCells(
+       activeCells | activeExternalCells, connections)
 
     return (activeCells,
             winnerCells,
-            activeSynapsesForSegment,
+            numActiveSynapsesForSegment,
             activeSegments,
             predictiveCells,
             chosenCellForColumn)
@@ -233,7 +231,7 @@ class GeneralTemporalMemory(TemporalMemory):
   def burstColumns(self,
                    activeColumns,
                    predictedColumns,
-                   prevActiveSynapsesForSegment,
+                   prevNumActiveSynapsesForSegment,
                    learnOnOneCell,
                    chosenCellForColumn,
                    connections):
@@ -289,11 +287,11 @@ class GeneralTemporalMemory(TemporalMemory):
 
       (bestCell,
        bestSegment) = self.getBestMatchingCell(cells,
-                                               prevActiveSynapsesForSegment,
+                                               prevNumActiveSynapsesForSegment,
                                                connections)
       winnerCells.add(bestCell)
 
-      if bestSegment == None:
+      if bestSegment is None:
         # TODO: (optimization) Only do this if there are prev winner cells
         bestSegment = connections.createSegment(bestCell)
 
@@ -301,7 +299,7 @@ class GeneralTemporalMemory(TemporalMemory):
 
       chosenCellForColumn[column] = bestCell
 
-    return (activeCells, winnerCells, learningSegments, chosenCellForColumn)
+    return activeCells, winnerCells, learningSegments, chosenCellForColumn
 
 
   # ==============================
