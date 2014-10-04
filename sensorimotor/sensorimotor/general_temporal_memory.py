@@ -333,9 +333,6 @@ class GeneralTemporalMemoryConnections(Connections):
     """
     # self._validateCell(sourceCell)
 
-    if not sourceCell in self._synapsesForSourceCell:
-      return set()
-
     return self._synapsesForSourceCell[sourceCell]
 
 
@@ -355,7 +352,8 @@ class GeneralTemporalMemoryConnections(Connections):
 
     # Add data
     synapse = self._nextSynapseIdx
-    self._synapses[synapse] = (segment, sourceCell, permanence)
+    synapseData = (segment, sourceCell, permanence)
+    self._synapses[synapse] = synapseData
     self._nextSynapseIdx += 1
 
     # Update indexes
@@ -363,8 +361,6 @@ class GeneralTemporalMemoryConnections(Connections):
       self._synapsesForSegment[segment] = set()
     self._synapsesForSegment[segment].add(synapse)
 
-    if not len(self.synapsesForSourceCell(sourceCell)):
-      self._synapsesForSourceCell[sourceCell] = set()
-    self._synapsesForSourceCell[sourceCell].add(synapse)
+    self._synapsesForSourceCell[sourceCell].add((synapse, synapseData))
 
     return synapse
