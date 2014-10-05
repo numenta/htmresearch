@@ -197,7 +197,7 @@ class SensorimotorExperimentRunner(object):
       sensorimotorSequence.append(None)
       sequenceLabels.append(None)
 
-    return (sensorSequence, motorSequence, sensorimotorSequence, sequenceLabels)
+    return sensorSequence, motorSequence, sensorimotorSequence, sequenceLabels
 
 
   def formatInputForTP(self):
@@ -213,16 +213,14 @@ class SensorimotorExperimentRunner(object):
     # bursting columns in layer 4
     burstingColumns = numpy.zeros(
       self.tm.connections.numberOfColumns()).astype(realDType)
-    burstingColumns[
-      list(self.tm.mmGetTraceUnpredictedActiveColumns().data[-1])] = 1
+    burstingColumns[list(self.tm.unpredictedActiveColumns)] = 1
 
     # correctly predicted cells in layer 4
     correctlyPredictedCells = numpy.zeros(
       self.tm.connections.numberOfCells()).astype(realDType)
-    correctlyPredictedCells[
-      list(self.tm.mmGetTracePredictedActiveCells().data[-1])] = 1
+    correctlyPredictedCells[list(self.tm.predictedActiveCells)] = 1
 
-    return (tpInputVector, burstingColumns, correctlyPredictedCells)
+    return tpInputVector, burstingColumns, correctlyPredictedCells
 
 
   def formatRow(self, x, formatString = "%d", rowSize = 700):

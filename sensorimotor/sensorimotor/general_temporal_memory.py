@@ -58,6 +58,9 @@ class GeneralTemporalMemory(TemporalMemory):
     self.learnOnOneCell = learnOnOneCell
     self.chosenCellForColumn = dict()
 
+    self.unpredictedActiveColumns = set()
+    self.predictedActiveCells = set()
+
 
   def compute(self,
               activeColumns,
@@ -88,6 +91,7 @@ class GeneralTemporalMemory(TemporalMemory):
      numActiveSynapsesForSegment,
      activeSegments,
      predictiveCells,
+     predictedColumns,
      chosenCellForColumn) = self.computeFn(activeColumns,
                                            activeExternalCells,
                                            self.activeExternalCells,
@@ -102,9 +106,10 @@ class GeneralTemporalMemory(TemporalMemory):
                                            self.chosenCellForColumn,
                                            learn=learn)
 
-    self.activeColumns = activeColumns
-    self.prevPredictiveCells = self.predictiveCells
     self.activeExternalCells = activeExternalCells
+
+    self.unpredictedActiveColumns = activeColumns - predictedColumns
+    self.predictedActiveCells = self.predictiveCells & activeCells
 
     self.activeCells = activeCells
     self.winnerCells = winnerCells
@@ -218,6 +223,7 @@ class GeneralTemporalMemory(TemporalMemory):
             numActiveSynapsesForSegment,
             activeSegments,
             predictiveCells,
+            predictedColumns,
             chosenCellForColumn)
 
 
@@ -226,6 +232,9 @@ class GeneralTemporalMemory(TemporalMemory):
 
     self.activeExternalCells = set()
     self.chosenCellForColumn = dict()
+
+    self.unpredictedActiveColumns = set()
+    self.predictedActiveCells = set()
 
 
   def burstColumns(self,
