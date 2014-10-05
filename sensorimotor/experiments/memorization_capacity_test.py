@@ -83,7 +83,7 @@ OUTPUT_FILE = ("memorization_capacity_test_results.csv" if len(sys.argv) <= 1
 numWorldsRange = range(2, 100, 5)
 numElementsRange = range(2, 100, 5)
 
-VERBOSITY = 3
+VERBOSITY = 0
 SHOW_PROGRESS_INTERVAL = 10
 
 
