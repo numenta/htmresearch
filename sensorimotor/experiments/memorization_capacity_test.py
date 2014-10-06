@@ -88,24 +88,10 @@ SHOW_PROGRESS_INTERVAL = 10
 
 
 
-# Set up the experiment
-print "Setting up the experiment..."
+# Initialize experiment
 universe = OneDUniverse(nSensor=512, wSensor=20,
                         nMotor=512, wMotor=20)
 wTotal = universe.wSensor + universe.wMotor
-runner = SensorimotorExperimentRunner(
-  tmOverrides={
-    "columnDimensions": [universe.nSensor],
-    "minThreshold": wTotal,
-    "activationThreshold": wTotal,
-    "maxNewSynapseCount": wTotal
-  },
-  tpOverrides={
-    "columnDimensions": [universe.nSensor],
-    "numActiveColumnsPerInhArea": universe.wSensor
-  }
-)
-print "Done setting up the experiment.\n"
 
 
 
@@ -119,6 +105,21 @@ with open(OUTPUT_FILE, 'wb') as outFile:
     key=lambda x: x[0]*x[1])  # sorted by total # of elements
 
   for numWorlds, numElements in combinations:
+    print "Setting up a new experiment..."
+    runner = SensorimotorExperimentRunner(
+      tmOverrides={
+        "columnDimensions": [universe.nSensor],
+        "minThreshold": wTotal,
+        "activationThreshold": wTotal,
+        "maxNewSynapseCount": wTotal
+      },
+      tpOverrides={
+        "columnDimensions": [universe.nSensor],
+        "numActiveColumnsPerInhArea": universe.wSensor
+      }
+    )
+    print "Done setting up experiment.\n"
+
     exhaustiveAgents = []
     randomAgents = []
     completeSequenceLength = numElements ** 2
