@@ -1,5 +1,8 @@
 language: python
 
+branches:
+  only: master
+
 notifications:
   webhooks: https://webhooks.gitter.im/e/af8b56ad2dd4ca61cb8e
 
