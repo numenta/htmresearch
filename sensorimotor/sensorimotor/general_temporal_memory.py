@@ -44,8 +44,7 @@ class GeneralTemporalMemory(TemporalMemory):
                learnOnOneCell=True,
                **kwargs):
     """
-    @param learnOnOneCell  (boolean)  If True, the winner cell for each
-                                      column will be fixed between resets.
+    @param learnOnOneCell (boolean) If True, the winner cell for each column will be fixed between resets.
     """
 
     super(GeneralTemporalMemory, self).__init__(**kwargs)
@@ -71,14 +70,9 @@ class GeneralTemporalMemory(TemporalMemory):
     Feeds input record through TM, performing inference and learning.
     Updates member variables with new state.
 
-    @param activeColumns            (set)     Indices of active columns in `t`
-
-    @param activeExternalCells      (set)     Indices of active external inputs
-                                              in `t`
-
-    @param formInternalConnections  (boolean) Flag to determine whether to form
-                                              connections with internal cells
-                                              within this temporal memory
+    @param activeColumns           (set)     Indices of active columns in `t`
+    @param activeExternalCells     (set)     Indices of active external inputs in `t`
+    @param formInternalConnections (boolean) Flag to determine whether to form connections with internal cells within this temporal memory
     """
 
     if not activeExternalCells:
@@ -137,36 +131,19 @@ class GeneralTemporalMemory(TemporalMemory):
     'Functional' version of compute.
     Returns new state.
 
-    @param activeColumns                (set)         Indices of active columns
-                                                      in `t`
+    @param activeColumns                   (set)         Indices of active columns in `t`
+    @param activeExternalCells             (set)         Indices of active external cells in `t`
+    @param prevActiveExternalCells         (set)         Indices of active external cells in `t-1`
+    @param prevPredictiveCells             (set)         Indices of predictive cells in `t-1`
+    @param prevActiveSegments              (set)         Indices of active segments in `t-1`
+    @param prevNumActiveSynapsesForSegment (dict)        Mapping from segments to # active synapses in `t-1` (see `TM.computePredictiveCells`)
+    @param prevActiveCells                 (set)         Indices of active cells in `t-1`
+    @param prevWinnerCells                 (set)         Indices of winner cells in `t-1`
+    @param connections                     (Connections) Connectivity of layer
+    @param formInternalConnections         (boolean)     Flag to determine whether to form connections with internal cells within this temporal memory
+    @param learnOnOneCell                  (boolean)     If True, the winner cell for each column will be fixed between resets.
+    @param chosenCellForColumn             (dict)        The current winner cell for each column, if it exists.
 
-    @param activeExternalCells          (set)         Indices of active external
-                                                      cells in `t`
-
-    @param prevActiveExternalCells      (set)         Indices of active external
-                                                      cells i `t-1`
-
-    @param prevPredictiveCells          (set)         Indices of predictive
-                                                      cells in `t-1`
-    @param prevActiveSegments           (set)         Indices of active segments
-                                                      in `t-1`
-    @param prevActiveSynapsesForSegment (dict)        Mapping from segments to
-                                                      active synapses in `t-1`,
-                                                      see
-                                                      `TM.computeActiveSynapses`
-    @param prevWinnerCells              (set)         Indices of winner cells
-                                                      in `t-1`
-    @param connections                  (Connections) Connectivity of layer
-    @param formInternalConnections      (boolean)     Flag to determine whether
-                                                      to form connections with
-                                                      internal cells within this
-                                                      temporal memory
-    @param learnOnOneCell               (boolean)     If True, the winner cell
-                                                      for each column will be
-                                                      fixed between resets.
-    @param chosenCellForColumn          (dict)        The current winner cell
-                                                      for each column, if it
-                                                      exists.
     @return (tuple) Contains:
                       `activeCells`               (set),
                       `winnerCells`               (set),
@@ -259,21 +236,12 @@ class GeneralTemporalMemory(TemporalMemory):
                 - add a segment to it
             - mark the segment as learning
 
-    @param activeColumns                (set)         Indices of active columns
-                                                      in `t`
-    @param predictedColumns             (set)         Indices of predicted
-                                                      columns in `t`
-    @param prevActiveSynapsesForSegment (dict)        Mapping from segments to
-                                                      active synapses in `t-1`,
-                                                      see
-                                                      `TM.computeActiveSynapses`
-    @param learnOnOneCell               (boolean)     If True, the winner cell
-                                                      for each column will be
-                                                      fixed between resets.
-    @param chosenCellForColumn          (dict)        The current winner cell
-                                                      for each column, if it
-                                                      exists.
-    @param connections                  (Connections) Connectivity of layer
+    @param activeColumns                   (set)         Indices of active columns in `t`
+    @param predictedColumns                (set)         Indices of predicted columns in `t`
+    @param prevNumActiveSynapsesForSegment (dict)        Mapping from segments to # active synapses in `t-1` (see `TM.computePredictiveCells`)
+    @param learnOnOneCell                  (boolean)     If True, the winner cell for each column will be fixed between resets.
+    @param chosenCellForColumn             (dict)        The current winner cell for each column, if it exists.
+    @param connections                     (Connections) Connectivity of layer
 
     @return (tuple) Contains:
                       `activeCells`      (set),
@@ -319,8 +287,7 @@ class GeneralTemporalMemory(TemporalMemory):
     """
     Move sensorimotor input indices to outside the range of valid cell indices
 
-    @params activeExternalCells     (set)   Indices of active external cells in
-                                            `t`
+    @params activeExternalCells (set) Indices of active external cells in `t`
     """
     numCells = self.connections.numberOfCells()
 
