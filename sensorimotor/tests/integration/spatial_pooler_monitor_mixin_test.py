@@ -25,17 +25,17 @@ import numpy
 from nupic.research.spatial_pooler import SpatialPooler
 from sensorimotor.spatial_pooler_monitor_mixin import (
   SpatialPoolerMonitorMixin)
-
 class MonitoredSpatialPooler(SpatialPoolerMonitorMixin, SpatialPooler): pass
 
 class SpatialPoolerMonitorMixinTest(unittest.TestCase):
 
-  VERBOSITY = 1
+  VERBOSITY = 2
 
 
   def setUp(self):
     # Initialize the spatial pooler
-    self.sp = MonitoredSpatialPooler(inputDimensions=(15,),
+    self.sp = MonitoredSpatialPooler(
+                       inputDimensions=(15,),
                        columnDimensions=(4,),
                        potentialRadius=15,
                        numActiveColumnsPerInhArea=1,
@@ -64,9 +64,9 @@ class SpatialPoolerMonitorMixinTest(unittest.TestCase):
         activeColumns[4*i+3] = output
 
     for i in range(400):
-        self.assertTrue(activeColumns[i][self.sp.mmGetTraceActiveCells().data[i]]==1)
+        self.assertTrue(activeColumns[i][self.sp.mmGetTraceActiveColumns().data[i]]==1)
 
-    self.assertTrue(self.sp.mmGetTraceConnectionCounts().data[-1]==3*4)
+    self.assertTrue(self.sp.mmGetTraceConnectionCounts().data[-1]>=3*4)
 
 
   def testGetActiveDutyCycles(self):
@@ -84,25 +84,8 @@ class SpatialPoolerMonitorMixinTest(unittest.TestCase):
         self.sp.compute(rat, learn=True, activeArray=output)
         self.sp.compute(bat, learn=True, activeArray=output)
 
+    self.assertTrue(numpy.sum(self.sp.mmComputeDutyCycle()) == 400)
 
-    self.assertTrue(numpy.sum(self.sp.mmGetTraceActiveDutyCycles().data) == 400)
-    self.sp.mmClearHistory()
-
-    output = numpy.zeros((4,), dtype="int")
-    for i in xrange(100):
-        self.sp.compute(cat, learn=False, activeArray=output)
-        self.sp.compute(dog, learn=False, activeArray=output)
-        self.sp.compute(rat, learn=False, activeArray=output)
-        self.sp.compute(bat, learn=False, activeArray=output)
-
-
-
-
-
-
-  def _printInformation(self):
-    print self.sp.mmGetTraceActiveDutyCycles().data
-    pass
 
 if __name__ == "__main__":
   unittest.main()
