@@ -53,7 +53,7 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
     """
     return self._mmTraces["totalConnected"]
 
-  def mmComputeDutyCycle(self):
+  def mmGetDataDutyCycles(self):
     """
     Computes the duty cycle for all columns
     """
@@ -86,7 +86,7 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
 
   def mmGetDefaultTraces(self, verbosity=1):
     traces = [
-      self.mmGetTraceActiveCells(),
+      self.mmGetTraceActiveColumns(),
     ]
 
     if verbosity <= 1:

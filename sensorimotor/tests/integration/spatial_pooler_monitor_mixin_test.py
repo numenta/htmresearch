@@ -66,8 +66,6 @@ class SpatialPoolerMonitorMixinTest(unittest.TestCase):
     for i in range(400):
         self.assertTrue(activeColumns[i][self.sp.mmGetTraceActiveColumns().data[i]]==1)
 
-    self.assertTrue(self.sp.mmGetTraceConnectionCounts().data[-1]>=3*4)
-
 
   def testGetActiveDutyCycles(self):
     # test whether active duty cycle are calculated correctly
@@ -84,7 +82,50 @@ class SpatialPoolerMonitorMixinTest(unittest.TestCase):
         self.sp.compute(rat, learn=True, activeArray=output)
         self.sp.compute(bat, learn=True, activeArray=output)
 
-    self.assertTrue(numpy.sum(self.sp.mmComputeDutyCycle()) == 400)
+    self.assertTrue(numpy.sum(self.sp.mmGetDataDutyCycles()) == 400)
+
+  def testIntegration(self):
+    # an integration test that runs a MonitoredSpatialPooler through
+    # multiple compute cycles, and makes sure that this mixin works end-to-end
+
+    cat = numpy.array( [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='uint8')
+    dog = numpy.array( [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0], dtype='uint8')
+    rat = numpy.array( [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0], dtype='uint8')
+    bat = numpy.array( [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1], dtype='uint8')
+
+    output = numpy.zeros((4,), dtype="int")
+    activeColumns = numpy.zeros((400,4), dtype="int")
+    for i in xrange(100):
+        self.sp.compute(cat, learn=True, activeArray=output)
+        activeColumns[4*i+0] = output
+        self.sp.compute(dog, learn=True, activeArray=output)
+        activeColumns[4*i+1] = output
+        self.sp.compute(rat, learn=True, activeArray=output)
+        activeColumns[4*i+2] = output
+        self.sp.compute(bat, learn=True, activeArray=output)
+        activeColumns[4*i+3] = output
+
+    for i in range(400):
+        self.assertTrue(activeColumns[i][self.sp.mmGetTraceActiveColumns().data[i]]==1)
+
+    self.assertTrue(numpy.sum(self.sp.mmGetDataDutyCycles()) == 400)
+
+    self.assertTrue(self.sp.mmGetTraceConnectionCounts().data[-1]>=3*4)
+
+    # default trace with verbosity level==1 returns counts of active columns
+    defaultTrace = self.sp.mmGetDefaultTraces()
+    self.assertTrue(all(defaultTrace[0].data))
+    self.assertTrue(max(defaultTrace[0].data)==1)
+
+    # default trace with verbosity==2 returns activeColumn trace
+    defaultTrace = self.sp.mmGetDefaultTraces(verbosity=2)
+    for i in range(len(defaultTrace[0].data)):
+        self.assertTrue(self.sp.mmGetTraceActiveColumns().data[i] == defaultTrace[0].data[i])
+
+    # if we run clear history, the traces should be empty
+    self.sp.mmClearHistory()
+    self.assertTrue(self.sp.mmGetTraceActiveColumns().data==[])
+    self.assertTrue(self.sp.mmGetTraceConnectionCounts().data==[])
 
 
 if __name__ == "__main__":
