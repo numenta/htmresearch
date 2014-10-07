@@ -98,8 +98,7 @@ wTotal = universe.wSensor + universe.wMotor
 # Run the experiment
 with open(OUTPUT_FILE, 'wb') as outFile:
   csvWriter = csv.writer(outFile)
-  csvWriter.writerow(OUTPUT_HEADERS)
-  outFile.flush()
+  headerWritten = False
 
   combinations = sorted(product(numWorldsRange, numElementsRange),
     key=lambda x: x[0]*x[1])  # sorted by total # of elements
@@ -171,17 +170,21 @@ with open(OUTPUT_FILE, 'wb') as outFile:
       runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
     print
 
-    stabilityMetric = runner.tp.mmGetMetricStabilityConfusion()
-    distinctnessMetric = runner.tp.mmGetMetricDistinctnessConfusion()
-    csvWriter.writerow([numWorlds, numElements,
-                        stabilityMetric.min,
-                        stabilityMetric.max,
-                        stabilityMetric.sum,
-                        stabilityMetric.mean,
-                        stabilityMetric.standardDeviation,
-                        distinctnessMetric.min,
-                        distinctnessMetric.max,
-                        distinctnessMetric.sum,
-                        distinctnessMetric.mean,
-                        distinctnessMetric.standardDeviation])
+    header = ["# worlds", "# elements"] if not headerWritten else None
+
+    row = [numWorlds, numElements]
+
+    for metric in (runner.tp.mmGetDefaultMetrics() +
+                   runner.tm.mmGetDefaultMetrics()):
+      row += [metric.min, metric.max, metric.sum,
+              metric.mean,  metric.standardDeviation]
+
+      if header:
+        header += ["{0} ({1})".format(metric.title, x) for x in [
+                   "min", "max", "sum", "mean", "stddev"]]
+
+    if header:
+      csvWriter.writerow(header)
+      headerWritten = True
+    csvWriter.writerow(row)
     outFile.flush()
