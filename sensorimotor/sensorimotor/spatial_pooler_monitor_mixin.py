@@ -47,30 +47,44 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
     """
     return self._mmTraces["activeColumns"]
 
-  def mmGetTraceConnectionCounts(self):
+
+  def mmGetTraceNumConnections(self):
     """
-    @return (Trace) Counts of total number of connections
+    @return (Trace) Trace of # connections
     """
-    return self._mmTraces["totalConnected"]
+    return self._mmTraces["connections"]
+
 
   def mmGetDataDutyCycles(self):
     """
     Computes the duty cycle for all columns
     """
-    dutyCycle = numpy.zeros(self._numColumns, dtype='uint32')
-    activeColumnnTrace = self.mmGetTraceActiveColumns().data
-    for i in range(len(activeColumnnTrace)):
-        dutyCycle[activeColumnnTrace[i]] += 1
+    dutyCycle = [0] * self._numColumns
+    activeColumns = self.mmGetTraceActiveColumns().data
+    for i in range(len(activeColumns)):
+        for j in range(len(activeColumns[i])):
+            dutyCycle[activeColumns[i][j]] += 1
 
     return dutyCycle
+
+  def mmGetMetricDutyCycles(self):
+    """
+    Metric for duty cycle for all columns
+    :return: (Metric) metric
+    """
+    dutyCycle = self.mmGetDataDutyCycles()
+
+    return Metric(self,
+                  "active duty cycle for all columns",
+                  dutyCycle)
+
 
   # ==============================
   # Overrides
   # ==============================
 
   def compute(self, inputVector, learn, activeArray, *args, **kwargs):
-
-    super(SpatialPoolerMonitorMixin, self).compute(\
+    super(SpatialPoolerMonitorMixin, self).compute(
         inputVector, learn, activeArray, *args,**kwargs)
 
     # extract indices of active columns
@@ -82,7 +96,8 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
     totalConnection = numpy.sum(connectedCounts)
 
     self._mmTraces["activeColumns"].data.append(activeColumns)
-    self._mmTraces["totalConnected"].data.append(totalConnection)
+    self._mmTraces["connections"].data.append(totalConnection)
+
 
   def mmGetDefaultTraces(self, verbosity=1):
     traces = [
@@ -92,12 +107,15 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
     if verbosity <= 1:
       traces = [trace.makeCountsTrace() for trace in traces]
 
+    traces += [self.mmGetTraceNumConnections()]
+
     return traces
 
 
   def mmGetDefaultMetrics(self, verbosity=1):
     metrics = ([Metric.createFromTrace(trace)
                 for trace in self.mmGetDefaultTraces()])
+    metrics += [self.mmGetMetricDutyCycles()]
 
     return metrics
 
@@ -106,4 +124,4 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
     super(SpatialPoolerMonitorMixin, self).mmClearHistory()
 
     self._mmTraces["activeColumns"] = IndicesTrace(self, "active columns")
-    self._mmTraces["totalConnected"] = IndicesTrace(self, "total number of connection")
+    self._mmTraces["connections"] = CountsTrace(self, "connections")
