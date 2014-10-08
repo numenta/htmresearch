@@ -83,42 +83,42 @@ OUTPUT_FILE = ("memorization_capacity_test_results.csv" if len(sys.argv) <= 1
 numWorldsRange = range(2, 100, 5)
 numElementsRange = range(2, 100, 5)
 
-VERBOSITY = 3
+VERBOSITY = 0
 SHOW_PROGRESS_INTERVAL = 10
 
 
 
-# Set up the experiment
-print "Setting up the experiment..."
+# Initialize experiment
 universe = OneDUniverse(nSensor=512, wSensor=20,
                         nMotor=512, wMotor=20)
 wTotal = universe.wSensor + universe.wMotor
-runner = SensorimotorExperimentRunner(
-  tmOverrides={
-    "columnDimensions": [universe.nSensor],
-    "minThreshold": wTotal,
-    "activationThreshold": wTotal,
-    "maxNewSynapseCount": wTotal
-  },
-  tpOverrides={
-    "columnDimensions": [universe.nSensor],
-    "numActiveColumnsPerInhArea": universe.wSensor
-  }
-)
-print "Done setting up the experiment.\n"
 
 
 
 # Run the experiment
 with open(OUTPUT_FILE, 'wb') as outFile:
   csvWriter = csv.writer(outFile)
-  csvWriter.writerow(OUTPUT_HEADERS)
-  outFile.flush()
+  headerWritten = False
 
   combinations = sorted(product(numWorldsRange, numElementsRange),
     key=lambda x: x[0]*x[1])  # sorted by total # of elements
 
   for numWorlds, numElements in combinations:
+    print "Setting up a new experiment..."
+    runner = SensorimotorExperimentRunner(
+      tmOverrides={
+        "columnDimensions": [universe.nSensor],
+        "minThreshold": wTotal,
+        "activationThreshold": wTotal,
+        "maxNewSynapseCount": wTotal
+      },
+      tpOverrides={
+        "columnDimensions": [universe.nSensor],
+        "numActiveColumnsPerInhArea": universe.wSensor
+      }
+    )
+    print "Done setting up experiment.\n"
+
     exhaustiveAgents = []
     randomAgents = []
     completeSequenceLength = numElements ** 2
@@ -170,17 +170,21 @@ with open(OUTPUT_FILE, 'wb') as outFile:
       runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
     print
 
-    stabilityMetric = runner.tp.mmGetMetricStabilityConfusion()
-    distinctnessMetric = runner.tp.mmGetMetricDistinctnessConfusion()
-    csvWriter.writerow([numWorlds, numElements,
-                        stabilityMetric.min,
-                        stabilityMetric.max,
-                        stabilityMetric.sum,
-                        stabilityMetric.mean,
-                        stabilityMetric.standardDeviation,
-                        distinctnessMetric.min,
-                        distinctnessMetric.max,
-                        distinctnessMetric.sum,
-                        distinctnessMetric.mean,
-                        distinctnessMetric.standardDeviation])
+    header = ["# worlds", "# elements"] if not headerWritten else None
+
+    row = [numWorlds, numElements]
+
+    for metric in (runner.tp.mmGetDefaultMetrics() +
+                   runner.tm.mmGetDefaultMetrics()):
+      row += [metric.min, metric.max, metric.sum,
+              metric.mean,  metric.standardDeviation]
+
+      if header:
+        header += ["{0} ({1})".format(metric.title, x) for x in [
+                   "min", "max", "sum", "mean", "stddev"]]
+
+    if header:
+      csvWriter.writerow(header)
+      headerWritten = True
+    csvWriter.writerow(row)
     outFile.flush()
