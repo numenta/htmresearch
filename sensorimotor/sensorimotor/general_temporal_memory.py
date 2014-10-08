@@ -337,6 +337,6 @@ class GeneralTemporalMemoryConnections(Connections):
       self._synapsesForSegment[segment] = set()
     self._synapsesForSegment[segment].add(synapse)
 
-    self._synapsesForSourceCell[sourceCell].add((synapse, synapseData))
+    self._synapsesForSourceCell[sourceCell][synapse] = synapseData
 
     return synapse
