@@ -35,13 +35,13 @@ class SpatialPoolerMonitorMixinTest(unittest.TestCase):
   def setUp(self):
     # Initialize the spatial pooler
     self.sp = MonitoredSpatialPooler(
-                       inputDimensions=(15,),
-                       columnDimensions=(4,),
-                       potentialRadius=15,
-                       numActiveColumnsPerInhArea=1,
-                       globalInhibition=True,
-                       synPermActiveInc=0.03,
-                       potentialPct=1.0)
+                inputDimensions=(15,),
+                columnDimensions=(4,),
+                potentialRadius=15,
+                numActiveColumnsPerInhArea=1,
+                globalInhibition=True,
+                synPermActiveInc=0.03,
+                potentialPct=1.0)
 
     cat = numpy.array( [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0], dtype='uint8')
     dog = numpy.array( [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0], dtype='uint8')
@@ -63,7 +63,7 @@ class SpatialPoolerMonitorMixinTest(unittest.TestCase):
   def testGetActiveColumn(self):
     # test whether the active column indices are correctly stored
     for i in range(400):
-        self.assertTrue(self.activeColumns[i][self.sp.mmGetTraceActiveColumns().data[i]]==1)
+        self.assertTrue(self.activeColumns[i][self.sp.mmGetTraceActiveColumns().data[i]] == 1)
 
 
   def testGetActiveDutyCycles(self):
@@ -75,31 +75,47 @@ class SpatialPoolerMonitorMixinTest(unittest.TestCase):
     # test whether history has been cleared with mmClearHistory
     # if we run clear history, the traces should be empty
     self.sp.mmClearHistory()
-    self.assertTrue(self.sp.mmGetTraceActiveColumns().data==[])
-    self.assertTrue(self.sp.mmGetTraceNumConnections().data==[])
+    self.assertTrue(self.sp.mmGetTraceActiveColumns().data == [])
+    self.assertTrue(self.sp.mmGetTraceNumConnections().data == [])
 
 
   def testGetTraceNumConnections(self):
-    self.assertTrue(self.sp.mmGetTraceNumConnections().data[-1]>=3*4)
+    self.assertTrue(self.sp.mmGetTraceNumConnections().data[-1] >= 3*4)
 
 
   def testGetDefaultTrace(self):
-    # default trace with verbosity level==1 returns count traces of activeColumn
+    # default trace with verbosity level = =1 returns count traces of activeColumn
     # and connections
-    defaultTrace = self.sp.mmGetDefaultTraces()
-    self.assertTrue(all(defaultTrace[0].data))
-    self.assertTrue(max(defaultTrace[0].data)==1)
+    traces = self.sp.mmGetDefaultTraces()
+    self.assertTrue(all(traces[0].data))
+    self.assertTrue(max(traces[0].data) == 1)
 
-    # default trace with verbosity==2 returns indices trace of activeColumn
+    # default trace with verbosity == 2 returns indices trace of activeColumn
     # and count trace of connections
-    defaultTrace = self.sp.mmGetDefaultTraces(verbosity=2)
-    for i in range(len(defaultTrace[0].data)):
-        self.assertTrue(self.sp.mmGetTraceActiveColumns().data[i] == defaultTrace[0].data[i])
+    traces = self.sp.mmGetDefaultTraces(verbosity=2)
+    for i in range(len(traces[0].data)):
+        self.assertTrue(self.sp.mmGetTraceActiveColumns().data[i] == traces[0].data[i])
 
 
   def testGetDefaultMetrics(self):
     # print default metrics
-    print self.sp.mmPrettyPrintMetrics(self.sp.mmGetDefaultMetrics())
+    traces = self.sp.mmGetDefaultMetrics()
+    print self.sp.mmPrettyPrintMetrics(traces)
+
+    self.assertTrue(len(traces) == 3)
+
+    # metric of active columns
+    self.assertTrue(traces[0].min == 1)
+    self.assertTrue(traces[0].max == 1)
+    self.assertTrue(traces[0].sum == 400)
+
+    # metric of connections
+    self.assertTrue(traces[1].max >= 12)
+
+    # metric of total column duty cycles
+    self.assertTrue(traces[2].sum == 400)
+
+
 
 if __name__ == "__main__":
   unittest.main()
