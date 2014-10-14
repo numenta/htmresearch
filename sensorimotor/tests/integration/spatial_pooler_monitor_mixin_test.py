@@ -93,10 +93,8 @@ class SpatialPoolerMonitorMixinTest(unittest.TestCase):
 
 
   def testGetDefaultTrace(self):
-    """
-    default trace with verbosity level = -1 returns count traces of activeColumn
-    and connections
-    """
+    # default trace with verbosity level == 1 returns count traces of activeColumn
+    # and connections
     traces = self.sp.mmGetDefaultTraces()
     self.assertTrue(all(traces[0].data))
     self.assertEqual(max(traces[0].data), 1)
@@ -109,7 +107,6 @@ class SpatialPoolerMonitorMixinTest(unittest.TestCase):
 
 
   def testGetDefaultMetrics(self, display=False):
-
     traces = self.sp.mmGetDefaultMetrics()
     if display:
         print self.sp.mmPrettyPrintMetrics(traces)
