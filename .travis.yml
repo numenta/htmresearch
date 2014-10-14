@@ -22,15 +22,19 @@ install:
 # These are required for the fetch_egg script.
 - pip install requests
 - pip install boto
+
 # Fetches the binary distribution.
 - python fetch_binary.py
+
+# These are the required python dependencies for NuPIC
+- git clone https://github.com/numenta/nupic-linux64.git --depth=50
+- source nupic-linux64/bin/activate
+- export NTA_CONF_PATH=/usr/local
 
 # Unpacks the distro into the Travis-CI file system
 - sudo tar zxvf nupic-archive.tar.gz -C /
 
-# These are the required python dependencies for NuPIC
-- travis_retry pip install -q -r /home/travis/build/numenta/nupic/requirements.txt
-- export NTA_CONF_PATH=/home/travis/build/numenta/nupic
+- export PYTHONPATH=$PYTHONPATH:/usr/local/lib/python2.7/dist-packages
 
 # Install nupic.research/sensorimotor
 - cd ${TRAVIS_BUILD_DIR}/sensorimotor
