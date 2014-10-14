@@ -31,6 +31,7 @@ from nupic.research.monitor_mixin.trace import (
   IndicesTrace, CountsTrace)
 
 
+
 class SpatialPoolerMonitorMixin(MonitorMixinBase):
   """
   Mixin for SpatialPooler that stores a detailed history, for inspection and
@@ -53,7 +54,7 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
 
   def mmGetDataDutyCycles(self):
     """
-    @ return: (list) duty cycles for all columns
+    @return (list) duty cycles for all columns
     """
     dutyCycles = [0] * self._numColumns
     activeColumns = self.mmGetTraceActiveColumns().data
@@ -63,9 +64,10 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
 
     return dutyCycles
 
+
   def mmGetMetricDutyCycles(self):
     """
-    @return: (Metric) metric for duty cycles for all columns
+    @return (Metric) duty cycle metric
     """
     dutyCycles = self.mmGetDataDutyCycles()
 
@@ -88,10 +90,10 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
     # total number of connections
     connectedCounts = numpy.zeros(self._numColumns, dtype='uint32')
     self.getConnectedCounts(connectedCounts)
-    totalConnection = numpy.sum(connectedCounts)
+    numConnections = numpy.sum(connectedCounts)
 
     self._mmTraces["activeColumns"].data.append(activeColumns)
-    self._mmTraces["numConnections"].data.append(totalConnection)
+    self._mmTraces["numConnections"].data.append(numConnections)
 
 
   def mmGetDefaultTraces(self, verbosity=1):

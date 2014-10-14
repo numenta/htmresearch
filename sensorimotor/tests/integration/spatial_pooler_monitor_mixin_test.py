@@ -27,6 +27,8 @@ from sensorimotor.spatial_pooler_monitor_mixin import (
   SpatialPoolerMonitorMixin)
 class MonitoredSpatialPooler(SpatialPoolerMonitorMixin, SpatialPooler): pass
 
+
+
 class SpatialPoolerMonitorMixinTest(unittest.TestCase):
 
   VERBOSITY = 2
@@ -49,6 +51,7 @@ class SpatialPoolerMonitorMixinTest(unittest.TestCase):
     bat = numpy.array( [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1], dtype='uint8')
     output = numpy.zeros((4,), dtype="int")
     self.activeColumns = numpy.zeros((400,4), dtype="int")
+
     for i in xrange(100):
         self.sp.compute(cat, learn=True, activeArray=output)
         self.activeColumns[4*i+0] = output
@@ -61,22 +64,28 @@ class SpatialPoolerMonitorMixinTest(unittest.TestCase):
 
 
   def testGetActiveColumn(self):
-    # test whether the active column indices are correctly stored
+    """
+    test whether the active column indices are correctly stored
+    """
     for i in range(400):
-        self.assertTrue(self.activeColumns[i][self.sp.mmGetTraceActiveColumns().data[i]] == 1)
+        self.assertEqual(self.activeColumns[i][self.sp.mmGetTraceActiveColumns().data[i]], 1)
 
 
   def testGetActiveDutyCycles(self):
-    # test whether active duty cycle are calculated correctly
-    self.assertTrue(numpy.sum(self.sp.mmGetDataDutyCycles()) == 400)
+    """
+    test whether active duty cycle are calculated correctly
+    """
+    self.assertEqual(numpy.sum(self.sp.mmGetDataDutyCycles()), 400)
 
 
   def testClearHistory(self):
-    # test whether history has been cleared with mmClearHistory
-    # if we run clear history, the traces should be empty
+    """
+    test whether history has been cleared with mmClearHistory
+    if we run clear history, the traces should be empty
+    """
     self.sp.mmClearHistory()
-    self.assertTrue(self.sp.mmGetTraceActiveColumns().data == [])
-    self.assertTrue(self.sp.mmGetTraceNumConnections().data == [])
+    self.assertEqual(self.sp.mmGetTraceActiveColumns().data, [])
+    self.assertEqual(self.sp.mmGetTraceNumConnections().data, [])
 
 
   def testGetTraceNumConnections(self):
@@ -84,36 +93,39 @@ class SpatialPoolerMonitorMixinTest(unittest.TestCase):
 
 
   def testGetDefaultTrace(self):
-    # default trace with verbosity level = =1 returns count traces of activeColumn
-    # and connections
+    """
+    default trace with verbosity level = -1 returns count traces of activeColumn
+    and connections
+    """
     traces = self.sp.mmGetDefaultTraces()
     self.assertTrue(all(traces[0].data))
-    self.assertTrue(max(traces[0].data) == 1)
+    self.assertEqual(max(traces[0].data), 1)
 
     # default trace with verbosity == 2 returns indices trace of activeColumn
     # and count trace of connections
     traces = self.sp.mmGetDefaultTraces(verbosity=2)
     for i in range(len(traces[0].data)):
-        self.assertTrue(self.sp.mmGetTraceActiveColumns().data[i] == traces[0].data[i])
+        self.assertEqual(self.sp.mmGetTraceActiveColumns().data[i], traces[0].data[i])
 
 
-  def testGetDefaultMetrics(self):
-    # print default metrics
+  def testGetDefaultMetrics(self, display=False):
+
     traces = self.sp.mmGetDefaultMetrics()
-    print self.sp.mmPrettyPrintMetrics(traces)
+    if display:
+        print self.sp.mmPrettyPrintMetrics(traces)
 
-    self.assertTrue(len(traces) == 3)
+    self.assertEqual(len(traces), 3)
 
     # metric of active columns
-    self.assertTrue(traces[0].min == 1)
-    self.assertTrue(traces[0].max == 1)
-    self.assertTrue(traces[0].sum == 400)
+    self.assertEqual(traces[0].min, 1)
+    self.assertEqual(traces[0].max, 1)
+    self.assertEqual(traces[0].sum, 400)
 
     # metric of connections
     self.assertTrue(traces[1].max >= 12)
 
     # metric of total column duty cycles
-    self.assertTrue(traces[2].sum == 400)
+    self.assertEqual(traces[2].sum, 400)
 
 
 
