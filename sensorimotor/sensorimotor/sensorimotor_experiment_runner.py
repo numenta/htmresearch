@@ -100,7 +100,35 @@ class SensorimotorExperimentRunner(object):
         raise RuntimeError("Param "+k+" must be specified")
 
 
-  def feedLayers(self, sequences, tmLearn, tpLearn=None, verbosity=0,
+  def feedTransition(self, sensorPattern, sensorimotorPattern,
+                     tmLearn=True, tpLearn=None, sequenceLabel=None):
+    if sensorPattern is None:
+      self.tm.reset()
+      self.tp.reset()
+
+    else:
+      # Feed the TM
+      self.tm.compute(sensorPattern,
+                activeExternalCells=sensorimotorPattern,
+                formInternalConnections=False,
+                learn=tmLearn,
+                sequenceLabel=sequenceLabel)
+
+      # If requested, feed the TP
+      if tpLearn is not None:
+        tpInputVector, burstingColumns, correctlyPredictedCells = (
+            self.formatInputForTP())
+        activeArray = numpy.zeros(self.tp.getNumColumns())
+
+        self.tp.compute(tpInputVector,
+                        tpLearn,
+                        activeArray,
+                        burstingColumns,
+                        correctlyPredictedCells,
+                        sequenceLabel=sequenceLabel)
+
+
+  def feedLayers(self, sequences, tmLearn=True, tpLearn=None, verbosity=0,
                  showProgressInterval=None):
     """
     Feed the given sequences to the HTM algorithms.
@@ -127,38 +155,17 @@ class SensorimotorExperimentRunner(object):
       sensorimotorPattern = sensorimotorSequence[i]
       sequenceLabel = sequenceLabels[i]
 
-      if sensorPattern is None:
-        self.tm.reset()
-        self.tp.reset()
-
-      else:
-        # Feed the TM
-        self.tm.compute(sensorPattern,
-                  activeExternalCells=sensorimotorPattern,
-                  formInternalConnections=False,
-                  learn=tmLearn,
-                  sequenceLabel=sequenceLabel)
-
-        # If requested, feed the TP
-        if tpLearn is not None:
-          tpInputVector, burstingColumns, correctlyPredictedCells = (
-              self.formatInputForTP())
-          activeArray = numpy.zeros(self.tp.getNumColumns())
-
-          self.tp.compute(tpInputVector,
-                          tpLearn,
-                          activeArray,
-                          burstingColumns,
-                          correctlyPredictedCells,
+      self.feedTransition(sensorPattern, sensorimotorPattern,
+                          tmLearn=tmLearn, tpLearn=tpLearn,
                           sequenceLabel=sequenceLabel)
 
-        if (showProgressInterval is not None and
-            i > 0 and
-            i % showProgressInterval == 0):
-          print ("Fed {0} / {1} elements of the sequence "
-                 "in {2:0.2f} seconds.".format(
-                   i, len(sensorSequence), time.time() - currentTime))
-          currentTime = time.time()
+      if (showProgressInterval is not None and
+          i > 0 and
+          i % showProgressInterval == 0):
+        print ("Fed {0} / {1} elements of the sequence "
+               "in {2:0.2f} seconds.".format(
+                 i, len(sensorSequence), time.time() - currentTime))
+        currentTime = time.time()
 
     if verbosity >= 2:
       traces = []
