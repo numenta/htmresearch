@@ -73,6 +73,7 @@ class SensorimotorExperimentRunner(object):
     "synPredictedInc": 0.5,    # TODO: Why so high??
     "potentialPct": 0.9,       # TODO: need to check impact of this for pooling
     "initConnectedPct": 0.5,   # TODO: need to check impact of this for pooling
+    "poolingThreshUnpredicted": 0.0,
 
     # We will force client to override these
     "numActiveColumnsPerInhArea": "Sorry",
