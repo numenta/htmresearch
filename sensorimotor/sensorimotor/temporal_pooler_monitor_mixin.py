@@ -25,10 +25,12 @@ Temporal Pooler mixin that enables detailed monitoring of history.
 
 from collections import defaultdict
 
+import numpy
+
 from nupic.research.monitor_mixin.metric import Metric
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.monitor_mixin.trace import (
-  IndicesTrace, StringsTrace,  BoolsTrace)
+  IndicesTrace, StringsTrace,  BoolsTrace, FloatsTrace)
 
 
 
@@ -63,6 +65,20 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     @return (Trace) Trace of resets
     """
     return self._mmTraces["resets"]
+
+
+  def mmGetTraceConnectionsPerColumnMean(self):
+    """
+    @return (Trace) Trace of mean # connections per column
+    """
+    return self._mmTraces["connectionsPerColumnMean"]
+
+
+  def mmGetTraceConnectionsPerColumnStdDev(self):
+    """
+    @return (Trace) Trace of std dev # connections per column
+    """
+    return self._mmTraces["connectionsPerColumnStdDev"]
 
 
   def mmGetDataStabilityConfusion(self):
@@ -271,6 +287,11 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     self._mmTraces["resets"].data.append(self._mmResetActive)
     self._mmResetActive = False
 
+    self._mmTraces["connectionsPerColumnMean"].data.append(
+      numpy.mean(self._connectedCounts))
+    self._mmTraces["connectionsPerColumnStdDev"].data.append(
+      numpy.std(self._connectedCounts))
+
     self._sequenceRepresentationDataStale = True
 
 
@@ -281,14 +302,16 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
 
   def mmGetDefaultTraces(self, verbosity=1):
-    traces = [
-      self.mmGetTraceActiveCells()
-    ]
+    traces = [self.mmGetTraceActiveCells()]
 
     if verbosity == 1:
       traces = [trace.makeCountsTrace() for trace in traces]
 
-    return traces + [self.mmGetTraceSequenceLabels()]
+    return traces + [
+      self.mmGetTraceConnectionsPerColumnMean(),
+      self.mmGetTraceConnectionsPerColumnStdDev(),
+      self.mmGetTraceSequenceLabels()
+    ]
 
 
   def mmGetDefaultMetrics(self, verbosity=1):
@@ -307,5 +330,9 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     self._mmTraces["activeCells"] = IndicesTrace(self, "active cells")
     self._mmTraces["sequenceLabels"] = StringsTrace(self, "sequence labels")
     self._mmTraces["resets"] = BoolsTrace(self, "resets")
+    self._mmTraces["connectionsPerColumnMean"] = FloatsTrace(
+      self, "# connections per column (mean)")
+    self._mmTraces["connectionsPerColumnStdDev"] = FloatsTrace(
+      self, "# connections per column (stddev)")
 
     self._sequenceRepresentationDataStale = True
