@@ -27,7 +27,7 @@ from collections import defaultdict
 
 from nupic.research.monitor_mixin.metric import Metric
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-from nupic.research.monitor_mixin.plot import HistogramPlot
+from nupic.research.monitor_mixin.plot import Plot
 from nupic.research.monitor_mixin.trace import (
   IndicesTrace, StringsTrace, BoolsTrace, MetricsTrace)
 
@@ -160,17 +160,21 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     return Metric(self, "distinctness confusion", numbers)
 
 
-  def mmGetPlotConnectionsPerColumn(self, label=None):
+  def mmGetPlotConnectionsPerColumn(self, title=None):
     """
     Returns plot of # connections per column.
 
-    @return (HistogramPlot) plot
+    @return (Plot) plot
     """
-    return HistogramPlot(self, "# connections per column",
-                         self._connectedCounts.tolist(),
-                         label=label,
-                         xlabel="# connections", ylabel="# columns",
-                         bucketSize=len(self._connectedCounts) / 10)
+    plot = Plot(self, title)
+    plot.addGraph(sorted(self._connectedCounts.tolist(), reverse=True),
+                  position=211,
+                  xlabel="column", ylabel="# connections")
+    plot.addHistogram(self._connectedCounts.tolist(),
+                      position=212,
+                      bins=len(self._connectedCounts) / 10,
+                      xlabel="column", ylabel="# connections")
+    return plot
 
 
   def mmPrettyPrintDataStabilityConfusion(self):

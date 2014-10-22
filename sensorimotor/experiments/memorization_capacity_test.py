@@ -153,7 +153,7 @@ with open(OUTPUT_FILE, 'wb') as outFile:
 
     if PLOT >= 1:
       runner.tp.mmGetPlotConnectionsPerColumn(
-        label="worlds: {0}, elements: {1}".format(numWorlds, numElements))
+        title="worlds: {0}, elements: {1}".format(numWorlds, numElements))
 
 
     print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
