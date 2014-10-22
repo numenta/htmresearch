@@ -24,6 +24,9 @@ import csv
 from itertools import product
 import sys
 
+import matplotlib.pyplot as plt
+plt.ion()
+plt.show()
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
 from sensorimotor.one_d_world import OneDWorld
@@ -146,6 +149,14 @@ with open(OUTPUT_FILE, 'wb') as outFile:
                       showProgressInterval=SHOW_PROGRESS_INTERVAL)
     print "Done training.\n"
 
+    print MonitorMixinBase.mmPrettyPrintMetrics(
+      runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
+    print
+
+    fig = runner.tp.mmGetPlotConnectionsPerColumnHistogram()
+    fig.suptitle("worlds: {0}, elements: {1}".format(numWorlds, numElements))
+    plt.draw()
+
 
     print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
                                                            numElements)
@@ -188,3 +199,5 @@ with open(OUTPUT_FILE, 'wb') as outFile:
       headerWritten = True
     csvWriter.writerow(row)
     outFile.flush()
+
+  raw_input("Press any key to exit...")

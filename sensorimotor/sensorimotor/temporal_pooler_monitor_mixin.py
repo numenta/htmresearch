@@ -25,6 +25,8 @@ Temporal Pooler mixin that enables detailed monitoring of history.
 
 from collections import defaultdict
 
+import matplotlib.pyplot as plt
+
 from nupic.research.monitor_mixin.metric import Metric
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.monitor_mixin.trace import (
@@ -157,6 +159,22 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
           numbers.append(data[i][j])
 
     return Metric(self, "distinctness confusion", numbers)
+
+
+  def mmGetPlotConnectionsPerColumnHistogram(self):
+    """
+    Returns plot of histogram of # connections per column.
+
+    @return matplotlib.figure plot
+    """
+    fig = plt.figure()
+    fig.canvas.set_window_title("# connections per column")
+    ax = fig.add_subplot(111)
+    ax.set_xlabel("# connections")
+    ax.set_ylabel("# columns")
+    ax.hist(self._connectedCounts, len(self._connectedCounts) / 10,
+            color="green", alpha=0.8)
+    return fig
 
 
   def mmPrettyPrintDataStabilityConfusion(self):
