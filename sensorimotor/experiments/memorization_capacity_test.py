@@ -24,9 +24,6 @@ import csv
 from itertools import product
 import sys
 
-import matplotlib.pyplot as plt
-plt.ion()
-plt.show()
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
 from sensorimotor.one_d_world import OneDWorld
@@ -153,9 +150,8 @@ with open(OUTPUT_FILE, 'wb') as outFile:
       runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
     print
 
-    fig = runner.tp.mmGetPlotConnectionsPerColumnHistogram()
-    fig.suptitle("worlds: {0}, elements: {1}".format(numWorlds, numElements))
-    plt.draw()
+    runner.tp.mmGetPlotConnectionsPerColumn(
+      label="worlds: {0}, elements: {1}".format(numWorlds, numElements))
 
 
     print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
