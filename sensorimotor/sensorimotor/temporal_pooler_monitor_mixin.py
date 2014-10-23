@@ -173,7 +173,7 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     plot.addHistogram(self._connectedCounts.tolist(),
                       position=212,
                       bins=len(self._connectedCounts) / 10,
-                      xlabel="column", ylabel="# connections")
+                      xlabel="# connections", ylabel="# columns")
     return plot
 
 
