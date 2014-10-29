@@ -27,8 +27,9 @@ from collections import defaultdict
 
 from nupic.research.monitor_mixin.metric import Metric
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from nupic.research.monitor_mixin.plot import Plot
 from nupic.research.monitor_mixin.trace import (
-  IndicesTrace, StringsTrace,  BoolsTrace)
+  IndicesTrace, StringsTrace, BoolsTrace, MetricsTrace)
 
 
 
@@ -63,6 +64,13 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     @return (Trace) Trace of resets
     """
     return self._mmTraces["resets"]
+
+
+  def mmGetTraceConnectionsPerColumnMetric(self):
+    """
+    @return (Trace) Trace of connections per column metric
+    """
+    return self._mmTraces["connectionsPerColumnMetric"]
 
 
   def mmGetDataStabilityConfusion(self):
@@ -150,6 +158,23 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
           numbers.append(data[i][j])
 
     return Metric(self, "distinctness confusion", numbers)
+
+
+  def mmGetPlotConnectionsPerColumn(self, title=None):
+    """
+    Returns plot of # connections per column.
+
+    @return (Plot) plot
+    """
+    plot = Plot(self, title)
+    plot.addGraph(sorted(self._connectedCounts.tolist(), reverse=True),
+                  position=211,
+                  xlabel="column", ylabel="# connections")
+    plot.addHistogram(self._connectedCounts.tolist(),
+                      position=212,
+                      bins=len(self._connectedCounts) / 10,
+                      xlabel="# connections", ylabel="# columns")
+    return plot
 
 
   def mmPrettyPrintDataStabilityConfusion(self):
@@ -271,6 +296,9 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     self._mmTraces["resets"].data.append(self._mmResetActive)
     self._mmResetActive = False
 
+    self._mmTraces["connectionsPerColumnMetric"].data.append(
+      Metric(self, "connections per column", self._connectedCounts.tolist()))
+
     self._sequenceRepresentationDataStale = True
 
 
@@ -281,22 +309,32 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
 
   def mmGetDefaultTraces(self, verbosity=1):
-    traces = [
-      self.mmGetTraceActiveCells()
-    ]
+    traces = [self.mmGetTraceActiveCells()]
 
     if verbosity == 1:
       traces = [trace.makeCountsTrace() for trace in traces]
 
-    return traces + [self.mmGetTraceSequenceLabels()]
+    return traces + [
+      self.mmGetTraceConnectionsPerColumnMetric(),
+      self.mmGetTraceSequenceLabels()
+    ]
 
 
   def mmGetDefaultMetrics(self, verbosity=1):
     metrics = ([Metric.createFromTrace(trace)
-                for trace in self.mmGetDefaultTraces()[:-1]])
+                for trace in self.mmGetDefaultTraces()[:-2]])
+
+    connectionsPerColumnMetricIntial = (
+      self._mmTraces["connectionsPerColumnMetric"].data[0].copy())
+    connectionsPerColumnMetricIntial.title += " (initial)"
+    connectionsPerColumnMetricFinal = (
+      self._mmTraces["connectionsPerColumnMetric"].data[-1].copy())
+    connectionsPerColumnMetricFinal.title += " (final)"
 
     metrics += [self.mmGetMetricStabilityConfusion(),
-                self.mmGetMetricDistinctnessConfusion()]
+                self.mmGetMetricDistinctnessConfusion(),
+                connectionsPerColumnMetricIntial,
+                connectionsPerColumnMetricFinal]
 
     return metrics
 
@@ -307,5 +345,7 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     self._mmTraces["activeCells"] = IndicesTrace(self, "active cells")
     self._mmTraces["sequenceLabels"] = StringsTrace(self, "sequence labels")
     self._mmTraces["resets"] = BoolsTrace(self, "resets")
+    self._mmTraces["connectionsPerColumnMetric"] = MetricsTrace(
+      self, "connections per column (metric)")
 
     self._sequenceRepresentationDataStale = True

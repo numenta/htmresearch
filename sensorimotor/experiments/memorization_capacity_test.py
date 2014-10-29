@@ -84,6 +84,7 @@ numWorldsRange = range(2, 100, 5)
 numElementsRange = range(2, 100, 5)
 
 VERBOSITY = 0
+PLOT = 0
 SHOW_PROGRESS_INTERVAL = 10
 
 
@@ -146,6 +147,14 @@ with open(OUTPUT_FILE, 'wb') as outFile:
                       showProgressInterval=SHOW_PROGRESS_INTERVAL)
     print "Done training.\n"
 
+    print MonitorMixinBase.mmPrettyPrintMetrics(
+      runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
+    print
+
+    if PLOT >= 1:
+      runner.tp.mmGetPlotConnectionsPerColumn(
+        title="worlds: {0}, elements: {1}".format(numWorlds, numElements))
+
 
     print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
                                                            numElements)
@@ -188,3 +197,5 @@ with open(OUTPUT_FILE, 'wb') as outFile:
       headerWritten = True
     csvWriter.writerow(row)
     outFile.flush()
+
+  raw_input("Press any key to exit...")
