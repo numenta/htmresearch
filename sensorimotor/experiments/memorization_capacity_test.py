@@ -200,4 +200,5 @@ with open(OUTPUT_FILE, 'wb') as outFile:
     csvWriter.writerow(row)
     outFile.flush()
 
-  raw_input("Press any key to exit...")
+  if PLOT >= 1:
+    raw_input("Press any key to exit...")
