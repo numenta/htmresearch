@@ -115,7 +115,9 @@ with open(OUTPUT_FILE, 'wb') as outFile:
       },
       tpOverrides={
         "columnDimensions": [universe.nSensor],
-        "numActiveColumnsPerInhArea": universe.wSensor
+        "numActiveColumnsPerInhArea": universe.wSensor,
+        "potentialPct": 0.9,
+        "initConnectedPct": 0.5
       }
     )
     print "Done setting up experiment.\n"
