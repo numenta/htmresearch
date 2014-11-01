@@ -82,7 +82,6 @@ class GeneralTemporalMemory(TemporalMemory):
 
     (activeCells,
      winnerCells,
-     numActiveSynapsesForSegment,
      activeSegments,
      predictiveCells,
      predictedColumns,
@@ -91,7 +90,6 @@ class GeneralTemporalMemory(TemporalMemory):
                                            self.activeExternalCells,
                                            self.predictiveCells,
                                            self.activeSegments,
-                                           self.numActiveSynapsesForSegment,
                                            self.activeCells,
                                            self.winnerCells,
                                            self.connections,
@@ -107,7 +105,6 @@ class GeneralTemporalMemory(TemporalMemory):
 
     self.activeCells = activeCells
     self.winnerCells = winnerCells
-    self.numActiveSynapsesForSegment = numActiveSynapsesForSegment
     self.activeSegments = activeSegments
     self.predictiveCells = predictiveCells
     self.chosenCellForColumn = chosenCellForColumn
@@ -119,7 +116,6 @@ class GeneralTemporalMemory(TemporalMemory):
                 prevActiveExternalCells,
                 prevPredictiveCells,
                 prevActiveSegments,
-                prevNumActiveSynapsesForSegment,
                 prevActiveCells,
                 prevWinnerCells,
                 connections,
@@ -136,7 +132,6 @@ class GeneralTemporalMemory(TemporalMemory):
     @param prevActiveExternalCells         (set)         Indices of active external cells in `t-1`
     @param prevPredictiveCells             (set)         Indices of predictive cells in `t-1`
     @param prevActiveSegments              (set)         Indices of active segments in `t-1`
-    @param prevNumActiveSynapsesForSegment (dict)        Mapping from segments to # active synapses in `t-1` (see `TM.computePredictiveCells`)
     @param prevActiveCells                 (set)         Indices of active cells in `t-1`
     @param prevWinnerCells                 (set)         Indices of winner cells in `t-1`
     @param connections                     (Connections) Connectivity of layer
@@ -147,7 +142,6 @@ class GeneralTemporalMemory(TemporalMemory):
     @return (tuple) Contains:
                       `activeCells`               (set),
                       `winnerCells`               (set),
-                      `activeSynapsesForSegment`  (dict),
                       `activeSegments`            (set),
                       `predictiveCells`           (set)
     """
@@ -167,12 +161,13 @@ class GeneralTemporalMemory(TemporalMemory):
     (_activeCells,
      _winnerCells,
      learningSegments,
-     chosenCellForColumn) = self.burstColumns(activeColumns,
-                                              predictedColumns,
-                                              prevNumActiveSynapsesForSegment,
-                                              learnOnOneCell,
-                                              chosenCellForColumn,
-                                              connections)
+     chosenCellForColumn) = self.burstColumns(
+       activeColumns,
+       predictedColumns,
+       prevActiveCells | prevActiveExternalCells,
+       learnOnOneCell,
+       chosenCellForColumn,
+       connections)
 
     activeCells.update(_activeCells)
     winnerCells.update(_winnerCells)
@@ -191,13 +186,11 @@ class GeneralTemporalMemory(TemporalMemory):
                            connections)
 
     (activeSegments,
-     predictiveCells,
-     numActiveSynapsesForSegment) = self.computePredictiveCells(
+     predictiveCells) = self.computePredictiveCells(
        activeCells | activeExternalCells, connections)
 
     return (activeCells,
             winnerCells,
-            numActiveSynapsesForSegment,
             activeSegments,
             predictiveCells,
             predictedColumns,
@@ -217,7 +210,7 @@ class GeneralTemporalMemory(TemporalMemory):
   def burstColumns(self,
                    activeColumns,
                    predictedColumns,
-                   prevNumActiveSynapsesForSegment,
+                   prevActiveCells,
                    learnOnOneCell,
                    chosenCellForColumn,
                    connections):
@@ -238,7 +231,7 @@ class GeneralTemporalMemory(TemporalMemory):
 
     @param activeColumns                   (set)         Indices of active columns in `t`
     @param predictedColumns                (set)         Indices of predicted columns in `t`
-    @param prevNumActiveSynapsesForSegment (dict)        Mapping from segments to # active synapses in `t-1` (see `TM.computePredictiveCells`)
+    @param prevActiveCells                 (set)         Indices of active cells in `t-1`
     @param learnOnOneCell                  (boolean)     If True, the winner cell for each column will be fixed between resets.
     @param chosenCellForColumn             (dict)        The current winner cell for each column, if it exists.
     @param connections                     (Connections) Connectivity of layer
@@ -264,7 +257,7 @@ class GeneralTemporalMemory(TemporalMemory):
 
       (bestCell,
        bestSegment) = self.getBestMatchingCell(cells,
-                                               prevNumActiveSynapsesForSegment,
+                                               prevActiveCells,
                                                connections)
       winnerCells.add(bestCell)
 
