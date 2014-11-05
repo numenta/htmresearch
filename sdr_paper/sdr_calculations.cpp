@@ -174,7 +174,10 @@ void classificationFalseMatchProbability(UInt n, UInt w, UInt M,
     vector<UInt> matchesWithThetas;
     matchesWithThetas.resize(w+1, 0);
     classificationFalseMatchTrial(n, w, M, matchesWithThetas, r);
-    if (trial%50000 == 0) std::cout << trial << std::endl;
+    if (trial%50000 == 0)
+    {
+      std::cout << trial << " trials completed out of " << nTrials << "\n";
+    }
 
     for (UInt theta = 1; theta <= w; theta++)
     {
@@ -202,6 +205,9 @@ int main(int argc, char * argv[]) {
   Random r;
   vector<Real> probWithThetas;
 
-  classificationFalseMatchProbability(100, 7, 500, probWithThetas, 1000000, r);
+  std::cout << "Simulations running. Please be patient. Think about\n"
+            << "all the things you have to be grateful for.\n\n";
+
+  classificationFalseMatchProbability(100, 7, 100, probWithThetas, 500000, r);
 }
 
