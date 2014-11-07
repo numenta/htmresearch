@@ -74,7 +74,7 @@ class GeneralTemporalMemory(TemporalMemory):
     if not activeExternalCells:
       activeExternalCells = set()
 
-    activeExternalCells = self.reindexActiveExternalCells(activeExternalCells)
+    activeExternalCells = self._reindexActiveExternalCells(activeExternalCells)
 
     (activeCells,
      winnerCells,
@@ -267,11 +267,7 @@ class GeneralTemporalMemory(TemporalMemory):
     return activeCells, winnerCells, learningSegments, chosenCellForColumn
 
 
-  # ==============================
-  # Helper functions
-  # ==============================
-
-  def reindexActiveExternalCells(self, activeExternalCells):
+  def _reindexActiveExternalCells(self, activeExternalCells):
     """
     Move sensorimotor input indices to outside the range of valid cell indices
 
