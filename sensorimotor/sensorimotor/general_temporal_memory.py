@@ -23,7 +23,7 @@
 General Temporal Memory implementation in Python.
 """
 
-from nupic.research.temporal_memory import TemporalMemory, ConnectionsCell
+from nupic.research.temporal_memory import TemporalMemory, Connections
 
 
 
@@ -48,6 +48,10 @@ class GeneralTemporalMemory(TemporalMemory):
     """
 
     super(GeneralTemporalMemory, self).__init__(**kwargs)
+
+    self.connections = GeneralTemporalMemoryConnections(
+      kwargs["columnDimensions"],
+      kwargs["cellsPerColumn"])
 
     self.activeExternalCells = set()
     self.learnOnOneCell = learnOnOneCell
@@ -148,7 +152,8 @@ class GeneralTemporalMemory(TemporalMemory):
      _winnerCells,
      predictedColumns) = self.activateCorrectlyPredictiveCells(
        prevPredictiveCells,
-       activeColumns)
+       activeColumns,
+       connections)
 
     activeCells.update(_activeCells)
     winnerCells.update(_winnerCells)
@@ -243,23 +248,23 @@ class GeneralTemporalMemory(TemporalMemory):
     unpredictedColumns = activeColumns - predictedColumns
 
     for column in unpredictedColumns:
-      cells = self.cellsForColumn(column)
+      cells = connections.cellsForColumn(column)
       activeCells.update(cells)
 
       if learnOnOneCell and (column in chosenCellForColumn):
         chosenCell = chosenCellForColumn[column]
         cells = set([chosenCell])
 
-      bestSegment = connections.mostActiveSegmentForCells(
-        list(cells), list(prevActiveCells), self.minThreshold)
+      (bestCell,
+       bestSegment) = self.getBestMatchingCell(cells,
+                                               prevActiveCells,
+                                               connections)
+      winnerCells.add(bestCell)
 
       if bestSegment is None:
-        cell = self.leastUsedCell(cells, connections)
         # TODO: (optimization) Only do this if there are prev winner cells
-        bestSegment = connections.createSegment(cell)
+        bestSegment = connections.createSegment(bestCell)
 
-      bestCell = ConnectionsCell(bestSegment.cell.idx)  # TODO: clean up
-      winnerCells.add(bestCell)
       learningSegments.add(bestSegment)
 
       chosenCellForColumn[column] = bestCell
@@ -277,9 +282,54 @@ class GeneralTemporalMemory(TemporalMemory):
 
     @params activeExternalCells (set) Indices of active external cells in `t`
     """
-    numCells = self.numberOfCells()
+    numCells = self.connections.numberOfCells()
 
     def increaseIndexByNumberOfCells(index):
-      return ConnectionsCell(index + numCells)
+      return index + numCells
 
     return set(map(increaseIndexByNumberOfCells, activeExternalCells))
+
+
+class GeneralTemporalMemoryConnections(Connections):
+
+  def synapsesForSourceCell(self, sourceCell):
+    """
+    Returns the synapses for the source cell that they synapse on.
+
+    @param sourceCell (int) Source cell index
+
+    @return (set) Synapse indices
+    """
+    # self._validateCell(sourceCell)
+
+    return self._synapsesForSourceCell[sourceCell]
+
+
+  def createSynapse(self, segment, sourceCell, permanence):
+    """
+    Creates a new synapse on a segment.
+
+    @param segment    (int)   Segment index
+    @param sourceCell (int)   Source cell index
+    @param permanence (float) Initial permanence
+
+    @return (int) Synapse index
+    """
+    self._validateSegment(segment)
+    # self._validateCell(sourceCell)
+    self._validatePermanence(permanence)
+
+    # Add data
+    synapse = self._nextSynapseIdx
+    synapseData = (segment, sourceCell, permanence)
+    self._synapses[synapse] = synapseData
+    self._nextSynapseIdx += 1
+
+    # Update indexes
+    if not len(self.synapsesForSegment(segment)):
+      self._synapsesForSegment[segment] = set()
+    self._synapsesForSegment[segment].add(synapse)
+
+    self._synapsesForSourceCell[sourceCell][synapse] = synapseData
+
+    return synapse
