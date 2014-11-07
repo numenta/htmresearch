@@ -22,11 +22,13 @@
 import unittest2 as unittest
 
 import numpy
-from prettytable import PrettyTable
 
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 from sensorimotor.general_temporal_memory import GeneralTemporalMemory
+# Uncomment the lines below to use FastGeneralTemporalMemory
+# from sensorimotor.fast_general_temporal_memory import (
+#   FastGeneralTemporalMemory as GeneralTemporalMemory)
 class MonitoredSensorimotorTemporalMemory(TemporalMemoryMonitorMixin,
                                           GeneralTemporalMemory): pass
 
