@@ -26,6 +26,10 @@ install:
 # These are the required python dependencies for nupic.research
 - pip install matplotlib
 
+# If there is already a version of numpy installed at this point, remove it
+# so there is no conflict with the one provided by nupic-linux64.
+- pip uninstall numpy
+
 # Fetches the binary distribution.
 - python fetch_binary.py
 
