@@ -23,6 +23,9 @@ install:
 - pip install requests
 - pip install boto
 
+# These are the required python dependencies for nupic.research
+- pip install matplotlib
+
 # Fetches the binary distribution.
 - python fetch_binary.py
 
