@@ -22,21 +22,32 @@ NUPIC_CORE_LIB = $(NUPIC_CORE)/external/darwin64/lib
 #
 # All compiler flags
 #
+#
+# Note: compilation flags for your system may be different. To get the
+# compilation flags for your system, look in:
+# $nupic.core/build/scripts/CMakeFiles/testcpphtm.dir/flags.make
+# and:
+# $nupic.core/build/scripts/CMakeFiles/testcpphtm.dir/link.txt
+#
+
+
 CXX_FLAGS = -mmacosx-version-min=10.7  \
 -I$(NUPIC_CORE_INC) -I$(NUPIC_EXTERNAL_INC) \
 -I$(NUPIC_EXTERNAL_PLATFORM_INC) -isystem \
--std=c++98 -fPIC -DPIC \
+-std=c++11 -stdlib=libc++ -fPIC -DPIC \
 -m64 -DHAVE_CONFIG_H -DNTA_INTERNAL -DNTA_PLATFORM_darwin64 \
 -DNTA_COMPILER_CLANG -DBOOST_NO_WREGEX -DNUPIC2 -gfull -DNTA_ASSERTIONS_ON \
--fvisibility=hidden -Wall \
+-fvisibility=hidden -Wall -Wno-c++11-extensions\
 -Wreturn-type -Wunused -Wno-unused-parameter -O3 -pipe -DNTA_ASM
 
 
+
+
 sdr: sdr_calculations.cpp
-	c++ -c sdr_calculations.cpp $(CXX_FLAGS)
-	c++    -mmacosx-version-min=10.7 -Wl,-search_paths_first \
-    -Wl,-headerpad_max_install_names     -Wl,-u,_munmap -std=c++98 \
-    -stdlib=libstdc++ \
+	clang++ -c sdr_calculations.cpp $(CXX_FLAGS)
+	clang++    -mmacosx-version-min=10.7 -Wl,-search_paths_first \
+    -Wl,-headerpad_max_install_names     -Wl,-u,_munmap -m64 \
+    -stdlib=libc++ \
     -lc++abi -liconv -lsqlite3 -framework CoreServices -framework Accelerate \
     -L$(NUPIC_CORE_EXTERNAL)/darwin64/lib sdr_calculations.o -o sdr_calculations \
     $(NUPIC_CORE)/build/temp/lib/libnupic_core.a \
