@@ -24,27 +24,16 @@ install:
 - pip install boto
 
 # These are the required python dependencies for nupic.research
+- pip install numpy --upgrade
 - pip install matplotlib
-
-# If there is already a version of numpy installed at this point, remove it
-# so there is no conflict with the one provided by nupic-linux64.
-- pip uninstall numpy --yes
 
 # Fetches the binary distribution.
 - python fetch_binary.py
-
-# DEBUGGING... might need this soon - Matt
-- sudo apt-get update
-- sudo apt-get install python python-dev python-virtualenv
 
 # These are the required python dependencies for NuPIC
 - git clone https://github.com/numenta/nupic-linux64.git
 - (cd nupic-linux64 && git reset --hard 99863c7da8b923c57bb4e59530ab087c91fd3992)
 - source nupic-linux64/bin/activate
-
-# Workaround for multiprocessing.Queue SemLock error from run_opf_bechmarks_test.
-# See: https://github.com/travis-ci/travis-cookbooks/issues/155
-- sudo rm -rf /dev/shm && sudo ln -s /run/shm /dev/shm
 
 - export NTA_CONF_PATH=/usr/local
 
