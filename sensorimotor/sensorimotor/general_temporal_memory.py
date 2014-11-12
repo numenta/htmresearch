@@ -267,6 +267,20 @@ class GeneralTemporalMemory(TemporalMemory):
     return activeCells, winnerCells, learningSegments, chosenCellForColumn
 
 
+  def activeCellsIndices(self):
+    """
+    @return (set) Set of indices.
+    """
+    return self.activeCells
+
+
+  def predictedActiveCellsIndices(self):
+    """
+    @return (set) Set of indices.
+    """
+    return self.predictedActiveCells
+
+
   def _reindexActiveExternalCells(self, activeExternalCells):
     """
     Move sensorimotor input indices to outside the range of valid cell indices

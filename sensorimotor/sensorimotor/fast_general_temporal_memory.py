@@ -95,6 +95,25 @@ class FastGeneralTemporalMemory(GeneralTemporalMemory, FastTemporalMemory):
     return activeCells, winnerCells, learningSegments, chosenCellForColumn
 
 
+  def activeCellsIndices(self):
+    """
+    @return (set) Set of indices.
+    """
+    return self._indicesForCells(self.activeCells)
+
+
+  def predictedActiveCellsIndices(self):
+    """
+    @return (set) Set of indices.
+    """
+    return self._indicesForCells(self.predictedActiveCells)
+
+
+  @staticmethod
+  def _indicesForCells(cells):
+    return set([cell.idx for cell in cells])
+
+
   def _reindexActiveExternalCells(self, activeExternalCells):
     """
     Move sensorimotor input indices to outside the range of valid cell indices

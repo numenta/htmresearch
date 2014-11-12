@@ -28,10 +28,10 @@ from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 
-from sensorimotor.general_temporal_memory import GeneralTemporalMemory
-# Uncomment the lines below to use FastGeneralTemporalMemory
-# from sensorimotor.fast_general_temporal_memory import (
-#   FastGeneralTemporalMemory as GeneralTemporalMemory)
+from sensorimotor.fast_general_temporal_memory import (
+  FastGeneralTemporalMemory as GeneralTemporalMemory)
+# Uncomment the line below to use FastGeneralTemporalMemory
+# from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 from sensorimotor.temporal_pooler import TemporalPooler
 from sensorimotor.temporal_pooler_monitor_mixin import (
   TemporalPoolerMonitorMixin)
@@ -219,7 +219,7 @@ class SensorimotorExperimentRunner(object):
     # all currently active cells in layer 4
     tpInputVector = numpy.zeros(
                   self.tm.numberOfCells()).astype(realDType)
-    tpInputVector[list(self.tm.activeCells)] = 1
+    tpInputVector[list(self.tm.activeCellsIndices())] = 1
 
     # bursting columns in layer 4
     burstingColumns = numpy.zeros(
@@ -229,7 +229,7 @@ class SensorimotorExperimentRunner(object):
     # correctly predicted cells in layer 4
     correctlyPredictedCells = numpy.zeros(
       self.tm.numberOfCells()).astype(realDType)
-    correctlyPredictedCells[list(self.tm.predictedActiveCells)] = 1
+    correctlyPredictedCells[list(self.tm.predictedActiveCellsIndices())] = 1
 
     return tpInputVector, burstingColumns, correctlyPredictedCells
 
