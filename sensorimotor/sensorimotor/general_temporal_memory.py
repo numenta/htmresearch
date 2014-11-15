@@ -160,6 +160,7 @@ class GeneralTemporalMemory(TemporalMemory):
        activeColumns,
        predictedColumns,
        prevActiveCells | prevActiveExternalCells,
+       prevWinnerCells,
        learnOnOneCell,
        chosenCellForColumn,
        connections)
@@ -206,6 +207,7 @@ class GeneralTemporalMemory(TemporalMemory):
                    activeColumns,
                    predictedColumns,
                    prevActiveCells,
+                   prevWinnerCells,
                    learnOnOneCell,
                    chosenCellForColumn,
                    connections):
@@ -256,11 +258,11 @@ class GeneralTemporalMemory(TemporalMemory):
                                             connections)
       winnerCells.add(bestCell)
 
-      if bestSegment is None:
-        # TODO: (optimization) Only do this if there are prev winner cells
+      if bestSegment is None and len(prevWinnerCells):
         bestSegment = connections.createSegment(bestCell)
 
-      learningSegments.add(bestSegment)
+      if bestSegment is not None:
+        learningSegments.add(bestSegment)
 
       chosenCellForColumn[column] = bestCell
 
