@@ -28,7 +28,10 @@ from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 
-from sensorimotor.general_temporal_memory import GeneralTemporalMemory
+from sensorimotor.fast_general_temporal_memory import (
+  FastGeneralTemporalMemory as GeneralTemporalMemory)
+# Uncomment the line below to use GeneralTemporalMemory
+# from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 from sensorimotor.temporal_pooler import TemporalPooler
 from sensorimotor.temporal_pooler_monitor_mixin import (
   TemporalPoolerMonitorMixin)
@@ -88,8 +91,8 @@ class SensorimotorExperimentRunner(object):
 
     # Initialize Layer 3 temporal pooler
     params = dict(self.DEFAULT_TP_PARAMS)
-    params["inputDimensions"] = [self.tm.connections.numberOfCells()]
-    params["potentialRadius"] = self.tm.connections.numberOfCells()
+    params["inputDimensions"] = [self.tm.numberOfCells()]
+    params["potentialRadius"] = self.tm.numberOfCells()
     params.update(tpOverrides or {})
     self._checkParams(params)
     self.tp = MonitoredTemporalPooler(mmName="TP", **params)
@@ -215,18 +218,18 @@ class SensorimotorExperimentRunner(object):
     """
     # all currently active cells in layer 4
     tpInputVector = numpy.zeros(
-                  self.tm.connections.numberOfCells()).astype(realDType)
-    tpInputVector[list(self.tm.activeCells)] = 1
+                  self.tm.numberOfCells()).astype(realDType)
+    tpInputVector[list(self.tm.activeCellsIndices())] = 1
 
     # bursting columns in layer 4
     burstingColumns = numpy.zeros(
-      self.tm.connections.numberOfColumns()).astype(realDType)
+      self.tm.numberOfColumns()).astype(realDType)
     burstingColumns[list(self.tm.unpredictedActiveColumns)] = 1
 
     # correctly predicted cells in layer 4
     correctlyPredictedCells = numpy.zeros(
-      self.tm.connections.numberOfCells()).astype(realDType)
-    correctlyPredictedCells[list(self.tm.predictedActiveCells)] = 1
+      self.tm.numberOfCells()).astype(realDType)
+    correctlyPredictedCells[list(self.tm.predictedActiveCellsIndices())] = 1
 
     return tpInputVector, burstingColumns, correctlyPredictedCells
 
