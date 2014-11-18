@@ -291,8 +291,4 @@ class GeneralTemporalMemory(TemporalMemory):
     @params activeExternalCells (set) Indices of active external cells in `t`
     """
     numCells = self.numberOfCells()
-
-    def increaseIndexByNumberOfCells(index):
-      return index + numCells
-
-    return set(map(increaseIndexByNumberOfCells, activeExternalCells))
+    return set([index + numCells for index in activeExternalCells])
