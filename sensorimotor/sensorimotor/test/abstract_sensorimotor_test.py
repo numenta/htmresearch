@@ -63,14 +63,15 @@ class AbstractSensorimotorTest(unittest.TestCase):
 
     for i in xrange(len(sensorSequence)):
       sensorPattern = sensorSequence[i]
+      motorPattern = motorSequence[i]
       sensorimotorPattern = sensorimotorSequence[i]
       sequenceLabel = sequenceLabels[i]
       if sensorPattern is None:
         self.tm.reset()
       else:
         self.tm.compute(sensorPattern,
-                        activeExternalCells=sensorimotorPattern,
-                        formInternalConnections=False,
+                        activeExternalCells=motorPattern,
+                        formInternalConnections=True,
                         learn=learn,
                         sequenceLabel=sequenceLabel)
 
