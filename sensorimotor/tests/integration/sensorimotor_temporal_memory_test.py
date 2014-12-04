@@ -194,7 +194,7 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
       agent = RandomOneDAgent(world, 2, possibleMotorValues=set(xrange(-3, 4)))
       agents.append(agent)
 
-    sequence = self._generateSensorimotorSequences(150, agents)
+    sequence = self._generateSensorimotorSequences(250, agents)
     self._feedTM(sequence)
 
     sequence = self._generateSensorimotorSequences(100, agents)
@@ -277,7 +277,9 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._assertAllActiveWerePredicted(universe)
     predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
       self.tm.mmGetTracePredictedInactiveColumns())
-    self._assertAllInactiveWereUnpredicted()
+    # Note: There will be extra predictions because transitions are shared
+    # between the worlds (the self-movements)
+    self.assertTrue(0 < predictedInactiveColumnsMetric.mean < 5)
     self._assertSequencesOnePredictedActiveCellPerColumn()
     self._assertOneSequencePerPredictedActiveCell()
 
