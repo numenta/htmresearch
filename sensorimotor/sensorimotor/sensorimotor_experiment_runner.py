@@ -104,7 +104,7 @@ class SensorimotorExperimentRunner(object):
         raise RuntimeError("Param "+k+" must be specified")
 
 
-  def feedTransition(self, sensorPattern, sensorimotorPattern,
+  def feedTransition(self, sensorPattern, motorPattern, sensorimotorPattern,
                      tmLearn=True, tpLearn=None, sequenceLabel=None):
     if sensorPattern is None:
       self.tm.reset()
@@ -113,8 +113,8 @@ class SensorimotorExperimentRunner(object):
     else:
       # Feed the TM
       self.tm.compute(sensorPattern,
-                activeExternalCells=sensorimotorPattern,
-                formInternalConnections=False,
+                activeExternalCells=motorPattern,
+                formInternalConnections=True,
                 learn=tmLearn,
                 sequenceLabel=sequenceLabel)
 
@@ -156,10 +156,11 @@ class SensorimotorExperimentRunner(object):
 
     for i in xrange(len(sensorSequence)):
       sensorPattern = sensorSequence[i]
+      motorPattern = motorSequence[i]
       sensorimotorPattern = sensorimotorSequence[i]
       sequenceLabel = sequenceLabels[i]
 
-      self.feedTransition(sensorPattern, sensorimotorPattern,
+      self.feedTransition(sensorPattern, motorPattern, sensorimotorPattern,
                           tmLearn=tmLearn, tpLearn=tpLearn,
                           sequenceLabel=sequenceLabel)
 

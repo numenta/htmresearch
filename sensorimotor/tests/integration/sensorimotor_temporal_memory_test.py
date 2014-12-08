@@ -39,8 +39,8 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     "cellsPerColumn": 8,
     "initialPermanence": 0.5,
     "connectedPermanence": 0.6,
-    "minThreshold": 15,
-    "activationThreshold": 15,
+    "minThreshold": 20,
+    "activationThreshold": 20,
     "maxNewSynapseCount": 50,
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02
@@ -137,18 +137,23 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     """
     self._init()
 
-    universe = OneDUniverse(debugMotor=True,
+    universe = OneDUniverse(debugSensor=True, debugMotor=True,
                             nSensor=100, wSensor=10,
                             nMotor=70, wMotor=10)
 
     agents = []
-    numWorlds = 5
+    patternSets = [
+      [3,2,1,0],
+      [0,2,1,3],
+      [1,2,0,3],
+      [3,0,2,1],
+      [1,0,2,3]
+    ]
 
-    for i in xrange(numWorlds):
-      patterns = range(4)
-      self._random.shuffle(patterns)
+    for patterns in patternSets:
       world = OneDWorld(universe, patterns)
-      agent = RandomOneDAgent(world, 2, possibleMotorValues=set(xrange(-3, 4)))
+      agent = RandomOneDAgent(world, 2, possibleMotorValues=set([-3, -2, -1,
+                                                                 1,  2, 3]))
       agents.append(agent)
 
     sequence = self._generateSensorimotorSequences(150, agents)
@@ -160,7 +165,45 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._assertAllActiveWerePredicted(universe)
     predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
       self.tm.mmGetTracePredictedInactiveColumns())
-    self.assertTrue(0 < predictedInactiveColumnsMetric.mean < 10)
+    self.assertTrue(0 < predictedInactiveColumnsMetric.mean < 5)
+
+
+  def testMultipleWorldsSharedPatternsWithSelfMovement(self):
+    """Test Sensorimotor Temporal Memory learning in multiple separate worlds.
+    Patterns are represented as complete SDRs. Patterns are shared between
+    worlds. Allows movements with value 0 (self-movements).
+    All active columns should have been predicted.
+    """
+    self._init()
+
+    universe = OneDUniverse(debugSensor=True, debugMotor=True,
+                            nSensor=100, wSensor=10,
+                            nMotor=70, wMotor=10)
+
+    agents = []
+    patternSets = [
+      [3,2,1,0],
+      [0,2,1,3],
+      [1,2,0,3],
+      [3,0,2,1],
+      [1,0,2,3]
+    ]
+
+    for patterns in patternSets:
+      world = OneDWorld(universe, patterns)
+      agent = RandomOneDAgent(world, 2, possibleMotorValues=set(xrange(-3, 4)))
+      agents.append(agent)
+
+    sequence = self._generateSensorimotorSequences(250, agents)
+    self._feedTM(sequence)
+
+    sequence = self._generateSensorimotorSequences(100, agents)
+    self._testTM(sequence)
+
+    self._assertAllActiveWerePredicted(universe)
+    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTracePredictedInactiveColumns())
+    self.assertTrue(0 < predictedInactiveColumnsMetric.mean < 5)
 
 
   def testMultipleWorldsSharedPatternsNoSharedSubsequences(self):
@@ -168,7 +211,8 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     Patterns are represented as complete SDRs. Patterns are shared between
     worlds. Worlds have no shared subsequences.
     All active columns should have been predicted.
-    Patterns in different worlds should have different cell representations
+    All inactive columns should have been unpredicted.
+    Patterns in different worlds should have different cell representations.
     """
     self._init()
 
@@ -195,6 +239,46 @@ class SensorimotorTemporalMemoryTest(AbstractSensorimotorTest):
     self._assertAllActiveWerePredicted(universe)
     predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
       self.tm.mmGetTracePredictedInactiveColumns())
+    self._assertAllInactiveWereUnpredicted()
+    self._assertSequencesOnePredictedActiveCellPerColumn()
+    self._assertOneSequencePerPredictedActiveCell()
+
+
+  def testMultipleWorldsSharedPatternsNoSharedSubsequencesWithSelfMovement(self):
+    """Test Sensorimotor Temporal Memory learning in multiple separate worlds.
+    Patterns are represented as complete SDRs. Patterns are shared between
+    worlds. Worlds have no shared subsequences. Allows movements with value 0
+    (self-movements).
+    All active columns should have been predicted.
+    All inactive columns should have been unpredicted.
+    Patterns in different worlds should have different cell representations.
+    """
+    self._init()
+
+    universe = OneDUniverse(debugSensor=True, debugMotor=True,
+                            nSensor=100, wSensor=10,
+                            nMotor=70, wMotor=10)
+
+    agents = []
+    patterns = range(4)
+    for _ in xrange(2):
+      world = OneDWorld(universe, patterns)
+      agent = RandomOneDAgent(world, 2, possibleMotorValues=set(xrange(-3, 4)))
+      agents.append(agent)
+      patterns = list(patterns)  # copy
+      patterns.reverse()
+
+    sequence = self._generateSensorimotorSequences(150, agents)
+    self._feedTM(sequence)
+
+    sequence = self._generateSensorimotorSequences(100, agents)
+    self._testTM(sequence)
+
+    self._assertAllActiveWerePredicted(universe)
+    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
+      self.tm.mmGetTracePredictedInactiveColumns())
+    # Note: There will be extra predictions because transitions are shared
+    # between the worlds (the self-movements)
     self.assertTrue(0 < predictedInactiveColumnsMetric.mean < 5)
     self._assertSequencesOnePredictedActiveCellPerColumn()
     self._assertOneSequencePerPredictedActiveCell()
