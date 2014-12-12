@@ -19,26 +19,7 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
-
-import csv
-from itertools import product
-import sys
-
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-
-from sensorimotor.one_d_world import OneDWorld
-from sensorimotor.one_d_universe import OneDUniverse
-from sensorimotor.random_one_d_agent import RandomOneDAgent
-from sensorimotor.exhaustive_one_d_agent import ExhaustiveOneDAgent
-
-from sensorimotor.sensorimotor_experiment_runner import (
-  SensorimotorExperimentRunner
-)
-
-
-
-print """
---------------------------------------------------------------------------------
+"""
 This program tests the memorization capacity of L4+L3.
 
 The independent variables (that we change) are:
@@ -54,72 +35,72 @@ worlds, to test the raw memorization capacity without generalization.
 
 The output of this program is a data sheet (CSV) showing the relationship
 between these variables.
---------------------------------------------------------------------------------
 """
 
+import csv
+import os
+import sys
 
+from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
-# Reference constants
-OUTPUT_HEADERS = [
-  "num_worlds",
-  "num_elements",
-  "tp_stability_min",
-  "tp_stability_max",
-  "tp_stability_sum",
-  "tp_stability_mean",
-  "tp_stability_stddev",
-  "tp_distinctness_min",
-  "tp_distinctness_max",
-  "tp_distinctness_sum",
-  "tp_distinctness_mean",
-  "tp_distinctness_stddev"
-]
-OUTPUT_FILE = ("memorization_capacity_test_results.csv" if len(sys.argv) <= 1
-                                                        else sys.argv[1])
+from sensorimotor.one_d_world import OneDWorld
+from sensorimotor.one_d_universe import OneDUniverse
+from sensorimotor.random_one_d_agent import RandomOneDAgent
+from sensorimotor.exhaustive_one_d_agent import ExhaustiveOneDAgent
+
+from sensorimotor.sensorimotor_experiment_runner import (
+  SensorimotorExperimentRunner
+)
 
 
 
-# Set constants
-numWorldsRange = range(2, 100, 5)
-numElementsRange = range(2, 100, 5)
-
+# Constants
+DEFAULTS = {
+  "n": 512,
+  "w": 20,
+  "tmParams": {
+    "columnDimensions": [512],
+    "minThreshold": 40,
+    "activationThreshold": 40,
+    "maxNewSynapseCount": 40
+  },
+  "tpParams": {
+    "columnDimensions": [512],
+    "numActiveColumnsPerInhArea": 20,
+    "potentialPct": 0.9,
+    "initConnectedPct": 0.5
+  }
+}
 VERBOSITY = 0
 PLOT = 0
 SHOW_PROGRESS_INTERVAL = 10
 
 
 
-# Initialize experiment
-universe = OneDUniverse(nSensor=512, wSensor=20,
-                        nMotor=512, wMotor=20)
-wTotal = universe.wSensor + universe.wMotor
+def runExperiment(numWorlds, numElements,
+                  n, w,
+                  tmParams, tpParams,
+                  outputDir):
+  # Initialize output
+  if not os.path.exists(outputDir):
+    os.makedirs(outputDir)
 
+  csvFilePath = os.path.join(outputDir, "{0}x{1}.csv".format(numWorlds,
+                                                             numElements))
 
+  # Initialize experiment
+  universe = OneDUniverse(nSensor=n, wSensor=w,
+                          nMotor=n, wMotor=w)
+  wTotal = universe.wSensor + universe.wMotor
 
-# Run the experiment
-with open(OUTPUT_FILE, 'wb') as outFile:
-  csvWriter = csv.writer(outFile)
-  headerWritten = False
+  # Run the experiment
+  with open(csvFilePath, 'wb') as csvFile:
+    csvWriter = csv.writer(csvFile)
+    headerWritten = False
 
-  combinations = sorted(product(numWorldsRange, numElementsRange),
-    key=lambda x: x[0]*x[1])  # sorted by total # of elements
-
-  for numWorlds, numElements in combinations:
     print "Setting up a new experiment..."
-    runner = SensorimotorExperimentRunner(
-      tmOverrides={
-        "columnDimensions": [universe.nSensor],
-        "minThreshold": wTotal,
-        "activationThreshold": wTotal,
-        "maxNewSynapseCount": wTotal
-      },
-      tpOverrides={
-        "columnDimensions": [universe.nSensor],
-        "numActiveColumnsPerInhArea": universe.wSensor,
-        "potentialPct": 0.9,
-        "initConnectedPct": 0.5
-      }
-    )
+    runner = SensorimotorExperimentRunner(tmOverrides=tmParams,
+                                          tpOverrides=tpParams)
     print "Done setting up experiment.\n"
 
     exhaustiveAgents = []
@@ -198,7 +179,21 @@ with open(OUTPUT_FILE, 'wb') as outFile:
       csvWriter.writerow(header)
       headerWritten = True
     csvWriter.writerow(row)
-    outFile.flush()
+    csvFile.flush()
 
   if PLOT >= 1:
     raw_input("Press any key to exit...")
+
+
+
+if __name__ == "__main__":
+  if len(sys.argv) < 4:
+    print "Usage: ./capacity.py NUM_WORLDS NUM_ELEMENTS OUTPUT_DIR"
+    sys.exit()
+
+  runExperiment(int(sys.argv[1]), int(sys.argv[2]),
+                DEFAULTS["n"],
+                DEFAULTS["w"],
+                DEFAULTS["tmParams"],
+                DEFAULTS["tpParams"],
+                sys.argv[3])
