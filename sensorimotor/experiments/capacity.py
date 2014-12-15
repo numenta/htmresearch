@@ -55,18 +55,20 @@ from sensorimotor.sensorimotor_experiment_runner import (
 
 
 # Constants
+N = 512
+W = 20
 DEFAULTS = {
-  "n": 512,
-  "w": 20,
+  "n": N,
+  "w": W,
   "tmParams": {
-    "columnDimensions": [512],
-    "minThreshold": 40,
-    "activationThreshold": 40,
-    "maxNewSynapseCount": 40
+    "columnDimensions": [N],
+    "minThreshold": W*2,
+    "activationThreshold": W*2,
+    "maxNewSynapseCount": W*2
   },
   "tpParams": {
-    "columnDimensions": [512],
-    "numActiveColumnsPerInhArea": 20,
+    "columnDimensions": [N],
+    "numActiveColumnsPerInhArea": W,
     "potentialPct": 0.9,
     "initConnectedPct": 0.5
   }
