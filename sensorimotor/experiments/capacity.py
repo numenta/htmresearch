@@ -93,7 +93,6 @@ def runExperiment(numWorlds, numElements,
   # Initialize experiment
   universe = OneDUniverse(nSensor=n, wSensor=w,
                           nMotor=n, wMotor=w)
-  wTotal = universe.wSensor + universe.wMotor
 
   # Run the experiment
   with open(csvFilePath, 'wb') as csvFile:
