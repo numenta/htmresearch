@@ -191,12 +191,10 @@ def runExperiment(numWorlds, numElements,
 
     for metric in (runner.tp.mmGetDefaultMetrics() +
                    runner.tm.mmGetDefaultMetrics()):
+      header += ["{0} ({1})".format(metric.prettyPrintTitle(), x) for x in
+                 ["min", "max", "sum", "mean", "stddev"]]
       row += [metric.min, metric.max, metric.sum,
               metric.mean,  metric.standardDeviation]
-
-      if header:
-        header += ["{0} ({1})".format(metric.title, x) for x in [
-                   "min", "max", "sum", "mean", "stddev"]]
 
     csvWriter.writerow(header)
     csvWriter.writerow(row)
