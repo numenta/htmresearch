@@ -183,7 +183,7 @@ class SensorimotorExperimentRunner(object):
 
 
   @staticmethod
-  def generateSequences(length, agents, verbosity=0):
+  def generateSequences(length, agents, numSequences=1, verbosity=0):
     """
     @param length (int)           Length of each sequence to generate, one for
                                   each agent
@@ -197,17 +197,18 @@ class SensorimotorExperimentRunner(object):
     sensorimotorSequence = []
     sequenceLabels = []
 
-    for agent in agents:
-      s,m,sm = agent.generateSensorimotorSequence(length, verbosity=verbosity)
-      sensorSequence += s
-      motorSequence += m
-      sensorimotorSequence += sm
-      sequenceLabels += [agent.world.toString()] * length
+    for _ in xrange(numSequences):
+      for agent in agents:
+        s,m,sm = agent.generateSensorimotorSequence(length, verbosity=verbosity)
+        sensorSequence += s
+        motorSequence += m
+        sensorimotorSequence += sm
+        sequenceLabels += [agent.world.toString()] * length
 
-      sensorSequence.append(None)
-      motorSequence.append(None)
-      sensorimotorSequence.append(None)
-      sequenceLabels.append(None)
+        sensorSequence.append(None)
+        motorSequence.append(None)
+        sensorimotorSequence.append(None)
+        sequenceLabels.append(None)
 
     return sensorSequence, motorSequence, sensorimotorSequence, sequenceLabels
 

@@ -73,7 +73,7 @@ DEFAULTS = {
     "initConnectedPct": 0.5
   }
 }
-VERBOSITY = 0
+VERBOSITY = 2
 PLOT = 0
 SHOW_PROGRESS_INTERVAL = 10
 
@@ -100,10 +100,10 @@ def runExperiment(numWorlds, numElements,
     headerWritten = False
 
     print ("Experiment parameters: "
-           "(# worlds = {0}, # elements = {1}, n = {2}, w = {3}).".format(
+           "(# worlds = {0}, # elements = {1}, n = {2}, w = {3})".format(
              numWorlds, numElements, n, w))
-    print "Temporal Memory parameters: {0}".format(tmParams)
-    print "Temporal Pooler parameters: {0}".format(tpParams)
+    print "Temporal memory parameters: {0}".format(tmParams)
+    print "Temporal pooler parameters: {0}".format(tpParams)
     print
     print "Setting up experiment..."
     runner = SensorimotorExperimentRunner(tmOverrides=tmParams,
@@ -129,7 +129,16 @@ def runExperiment(numWorlds, numElements,
 
     print "Training (worlds: {0}, elements: {1})...".format(numWorlds,
                                                             numElements)
+    print "Training temporal memory..."
     sequences = runner.generateSequences(completeSequenceLength * 2,
+                                         exhaustiveAgents,
+                                         verbosity=VERBOSITY)
+    runner.feedLayers(sequences, tmLearn=True, tpLearn=False,
+                      verbosity=VERBOSITY,
+                      showProgressInterval=SHOW_PROGRESS_INTERVAL)
+
+    print "Training temporal pooler..."
+    sequences = runner.generateSequences(completeSequenceLength * 1,
                                          exhaustiveAgents,
                                          verbosity=VERBOSITY)
     runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
@@ -148,9 +157,10 @@ def runExperiment(numWorlds, numElements,
 
     print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
                                                            numElements)
-    sequences = runner.generateSequences(completeSequenceLength,
+    sequences = runner.generateSequences(completeSequenceLength / 4,
                                          randomAgents,
-                                         verbosity=VERBOSITY)
+                                         verbosity=VERBOSITY,
+                                         numSequences=4)
     runner.feedLayers(sequences, tmLearn=False, tpLearn=False,
                       verbosity=VERBOSITY,
                       showProgressInterval=SHOW_PROGRESS_INTERVAL)
