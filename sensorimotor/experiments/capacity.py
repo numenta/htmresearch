@@ -43,6 +43,7 @@ https://github.com/numenta/nupic.research/wiki/Capacity-experiment:-setup-and-va
 import csv
 import os
 import sys
+import time
 
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
@@ -94,13 +95,13 @@ def runExperiment(numWorlds, numElements,
                                                              numElements))
 
   # Initialize experiment
+  start = time.time()
   universe = OneDUniverse(nSensor=n, wSensor=w,
                           nMotor=n, wMotor=w)
 
   # Run the experiment
   with open(csvFilePath, 'wb') as csvFile:
     csvWriter = csv.writer(csvFile)
-    headerWritten = False
 
     print ("Experiment parameters: "
            "(# worlds = {0}, # elements = {1}, n = {2}, w = {3})".format(
@@ -182,9 +183,11 @@ def runExperiment(numWorlds, numElements,
       runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
     print
 
-    header = ["# worlds", "# elements"] if not headerWritten else None
+    elapsed = int(time.time() - start)
+    print "Total time: {0:2} seconds.".format(elapsed)
 
-    row = [numWorlds, numElements]
+    header = ["# worlds", "# elements", "duration"]
+    row = [numWorlds, numElements, elapsed]
 
     for metric in (runner.tp.mmGetDefaultMetrics() +
                    runner.tm.mmGetDefaultMetrics()):
@@ -195,9 +198,7 @@ def runExperiment(numWorlds, numElements,
         header += ["{0} ({1})".format(metric.title, x) for x in [
                    "min", "max", "sum", "mean", "stddev"]]
 
-    if header:
-      csvWriter.writerow(header)
-      headerWritten = True
+    csvWriter.writerow(header)
     csvWriter.writerow(row)
     csvFile.flush()
 
