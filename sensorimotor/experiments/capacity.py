@@ -83,10 +83,13 @@ SHOW_PROGRESS_INTERVAL = 10
 
 
 
-def runExperiment(numWorlds, numElements,
-                  n, w,
-                  tmParams, tpParams,
-                  outputDir):
+def runExperiment(numWorlds, numElements, outputDir, params=DEFAULTS):
+  # Extract params
+  n = params["n"]
+  w = params["w"]
+  tmParams = params["tmParams"]
+  tpParams = params["tpParams"]
+
   # Initialize output
   if not os.path.exists(outputDir):
     os.makedirs(outputDir)
@@ -210,9 +213,4 @@ if __name__ == "__main__":
     print "Usage: ./capacity.py NUM_WORLDS NUM_ELEMENTS OUTPUT_DIR"
     sys.exit()
 
-  runExperiment(int(sys.argv[1]), int(sys.argv[2]),
-                DEFAULTS["n"],
-                DEFAULTS["w"],
-                DEFAULTS["tmParams"],
-                DEFAULTS["tpParams"],
-                sys.argv[3])
+  runExperiment(int(sys.argv[1]), int(sys.argv[2]), sys.argv[3])
