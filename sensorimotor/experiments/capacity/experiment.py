@@ -83,7 +83,7 @@ SHOW_PROGRESS_INTERVAL = 10
 
 
 
-def runExperiment(numWorlds, numElements, outputDir, params=DEFAULTS):
+def run(numWorlds, numElements, outputDir, params=DEFAULTS):
   # Extract params
   n = params["n"]
   w = params["w"]
@@ -213,4 +213,4 @@ if __name__ == "__main__":
     print "Usage: ./capacity.py NUM_WORLDS NUM_ELEMENTS OUTPUT_DIR"
     sys.exit()
 
-  runExperiment(int(sys.argv[1]), int(sys.argv[2]), sys.argv[3])
+  run(int(sys.argv[1]), int(sys.argv[2]), sys.argv[3])
