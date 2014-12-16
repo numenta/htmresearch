@@ -100,7 +100,13 @@ def runExperiment(numWorlds, numElements,
     csvWriter = csv.writer(csvFile)
     headerWritten = False
 
-    print "Setting up a new experiment..."
+    print ("Experiment parameters: "
+           "(# worlds = {0}, # elements = {1}, n = {2}, w = {3}).".format(
+             numWorlds, numElements, n, w))
+    print "Temporal Memory parameters: {0}".format(tmParams)
+    print "Temporal Pooler parameters: {0}".format(tpParams)
+    print
+    print "Setting up experiment..."
     runner = SensorimotorExperimentRunner(tmOverrides=tmParams,
                                           tpOverrides=tpParams)
     print "Done setting up experiment.\n"
