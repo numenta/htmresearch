@@ -35,6 +35,9 @@ worlds, to test the raw memorization capacity without generalization.
 
 The output of this program is a data sheet (CSV) showing the relationship
 between these variables.
+
+Experiment setup and validation are specified here:
+https://github.com/numenta/nupic.research/wiki/Capacity-experiment:-setup-and-validation
 """
 
 import csv
