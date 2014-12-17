@@ -52,6 +52,7 @@ parser.add_option(
 parser.add_option(
   "-w",
   "--workers",
+  type=int,
   default=4,
   dest="workers",
   help="Max number of parallel workers."
