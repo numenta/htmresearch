@@ -147,11 +147,15 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
                       showProgressInterval=SHOW_PROGRESS_INTERVAL)
     print
 
+    print MonitorMixinBase.mmPrettyPrintMetrics(
+      runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
+    print
+
     print "Training temporal pooler..."
     sequences = runner.generateSequences(completeSequenceLength * 1,
                                          exhaustiveAgents,
                                          verbosity=VERBOSITY)
-    runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
+    runner.feedLayers(sequences, tmLearn=False, tpLearn=True,
                       verbosity=VERBOSITY,
                       showProgressInterval=SHOW_PROGRESS_INTERVAL)
     print
