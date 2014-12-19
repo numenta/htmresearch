@@ -23,16 +23,16 @@
 
 #include <iostream>
 #include <assert.h>
-#include <nta/math/Math.hpp>
 #include <string>
 #include <vector>
 
-#include <nta/utils/Random.hpp>
-#include <nta/math/SparseMatrix.hpp>
-#include <nta/math/SparseMatrix01.hpp>
+#include <nupic/math/Math.hpp>
+#include <nupic/math/SparseMatrix.hpp>
+#include <nupic/math/SparseMatrix01.hpp>
+#include <nupic/utils/Random.hpp>
 
 using namespace std;
-using namespace nta;
+using namespace nupic;
 
 // populate choices with a random selection of nChoices elements from
 // population. throws exception when nPopulation < nChoices
@@ -108,7 +108,7 @@ void createRandomVectors(Int M, Int w, SparseMatrix01<UInt, Int> &sm,
 
   if (verbosity>0)
   {
-    std::cout << "Creating " << M << " random vectors with " << w
+    cout << "Creating " << M << " random vectors with " << w
             << " bits on.\n";
   }
   for (Int m=0; m < M; m++)
@@ -119,12 +119,12 @@ void createRandomVectors(Int M, Int w, SparseMatrix01<UInt, Int> &sm,
 
     if (verbosity > 1)
     {
-      std::cout << m << ":";
+      cout << m << ":";
       for (Int i=0; i < w; i++)
       {
-        std::cout << activeBits[i] << " ";
+        cout << activeBits[i] << " ";
       }
-      std::cout << std::endl;
+      cout << endl;
     }
   }
 
@@ -153,7 +153,7 @@ void classificationFalseMatchTrial(
   for (UInt theta = 1; theta <= w; theta++)
   {
     matchesWithThetas[theta] = numMatches(classifier, x, theta);
-    //std::cout << "theta= " << theta << ", num matches= "
+    //cout << "theta= " << theta << ", num matches= "
     //          << matchesWithThetas[theta] << "\n";
   }
 
@@ -176,7 +176,7 @@ void classificationFalseMatchProbability(UInt n, UInt w, UInt M,
     classificationFalseMatchTrial(n, w, M, matchesWithThetas, r);
     if (trial%10000 == 0)
     {
-      std::cout << trial << " trials completed out of " << nTrials << "\n";
+      cout << trial << " trials completed out of " << nTrials << "\n";
     }
 
     for (UInt theta = 1; theta <= w; theta++)
@@ -188,12 +188,12 @@ void classificationFalseMatchProbability(UInt n, UInt w, UInt M,
     }
   }
 
-  std::cout << "Classification: Probability of false match for n=" << n
+  cout << "Classification: Probability of false match for n=" << n
             << ", M=" << M << ", w=" << w << "\n";
   for (UInt theta = 1; theta <= w; theta++)
   {
     probWithThetas[theta] = (Real) probWithThetas[theta] / (Real) nTrials;
-    std::cout << "    Theta = " << theta
+    cout << "    Theta = " << theta
               << " prob=" << probWithThetas[theta] << "\n";
   }
 }
@@ -205,7 +205,7 @@ int main(int argc, char * argv[]) {
   Random r;
   vector<Real> probWithThetas;
 
-  std::cout << "Simulations running. Please be patient. Think about\n"
+  cout << "Simulations running. Please be patient. Think about\n"
             << "all the things you have to be grateful for.\n\n";
 
   classificationFalseMatchProbability(1024, 30, 100, probWithThetas, 100000, r);
