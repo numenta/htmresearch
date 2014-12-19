@@ -151,7 +151,7 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
     sequences = runner.generateSequences(completeSequenceLength * 1,
                                          exhaustiveAgents,
                                          verbosity=VERBOSITY)
-    runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
+    runner.feedLayers(sequences, tmLearn=False, tpLearn=True,
                       verbosity=VERBOSITY,
                       showProgressInterval=SHOW_PROGRESS_INTERVAL)
     print
