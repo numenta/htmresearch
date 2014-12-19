@@ -77,7 +77,10 @@ class OneDUniverse(AbstractUniverse):
 
     @return (string) Human viewable representation of sensorValue
     """
-    return unichr(self.elementCodes[sensorValue])
+    if sensorValue < len(self.elementCodes):
+      return unichr(self.elementCodes[sensorValue])
+    else:
+      return unichr(0x003F)  # Character: ?
 
 
   def encodeMotorValue(self, motorValue):
