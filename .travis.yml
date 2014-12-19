@@ -13,39 +13,41 @@ env:
   - AWS_ACCESS_KEY_ID=AKIAIGHYSEHV3WFKOWNQ
   - secure: Lrb/OJ6iMQ34xyOTz53g3+B/OEZvOT26FVxOr1J8zqnZ11QPvJDO0zb8xd6A3FdDLGQh0NJOo3ZieN96BqSajYMVYeWVCR3qCReOIn3TwNNaD7UfuHoRPBkMQd7Th/EHNC4h0hurRjU7GYvjbFkSFpHlJ5yj3neBrvJspn4Hx5U=
 
+before_install:
+  # Upgrade pip
+  - pip install --upgrade pip
+
+  # Wheels is currently used for installation.
+  - pip install wheel
+
+  # These are required for the fetch_egg script.
+  - pip install requests
+  - pip install boto
+
+  # These are the required python dependencies for nupic.research
+  - pip install numpy --upgrade
+  - pip install matplotlib
+
+
 install:
-- echo $PYTHONPATH
-- echo $NUPIC
-- NUPIC_SHA=`cat nupic_sha.txt`
-- 'echo NUPIC SHA: $NUPIC_SHA'
+  - echo $PYTHONPATH
+  - echo $NUPIC
+  - NUPIC_SHA=`cat nupic_sha.txt`
+  - 'echo NUPIC SHA: $NUPIC_SHA'
 
-# These are required for the fetch_egg script.
-- pip install requests
-- pip install boto
 
-# These are the required python dependencies for nupic.research
-- pip install numpy --upgrade
-- pip install matplotlib
+  # Fetches the NuPIC wheels.
+  - python fetch_wheels.py
 
-# Fetches the binary distribution.
-- python fetch_binary.py
+  # Install wheels we just downloaded.
+  - NUPIC_VERSION=`cat ${NUPIC}/VERSION`
+  - echo "Installing NuPIC ${NUPIC_VERSION} with wheels..."
+  - pip install --use-wheel --no-index --find-links=wheelhouse nupic==${NUPIC_VERSION}
 
-# These are the required python dependencies for NuPIC
-- git clone https://github.com/numenta/nupic-linux64.git
-- (cd nupic-linux64 && git reset --hard 99863c7da8b923c57bb4e59530ab087c91fd3992)
-- source nupic-linux64/bin/activate
-
-- export NTA_CONF_PATH=/usr/local
-
-# Unpacks the distro into the Travis-CI file system
-- sudo tar zxvf nupic-archive.tar.gz -C /
-
-- export PYTHONPATH=$PYTHONPATH:/usr/local/lib/python2.7/dist-packages
-
-# Install nupic.research/sensorimotor
-- cd ${TRAVIS_BUILD_DIR}/sensorimotor
-- python setup.py install
+  # Install nupic.research/sensorimotor
+  - cd ${TRAVIS_BUILD_DIR}/sensorimotor
+  - python setup.py install
 
 script:
-# Run sensorimotor tests
-- py.test tests/
+  # Run sensorimotor tests
+  - py.test tests/
