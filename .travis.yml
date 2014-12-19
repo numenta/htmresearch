@@ -40,7 +40,7 @@ install:
   - python fetch_wheels.py
 
   # Install wheels we just downloaded.
-  - NUPIC_VERSION=`cat ${NUPIC}/VERSION`
+  - NUPIC_VERSION=`ls ./wheelhouse | grep nupic | cut -d'-' -f2`
   - echo "Installing NuPIC ${NUPIC_VERSION} with wheels..."
   - pip install --use-wheel --no-index --find-links=wheelhouse nupic==${NUPIC_VERSION}
 
