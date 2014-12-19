@@ -77,7 +77,7 @@ DEFAULTS = {
     "initConnectedPct": 0.5
   }
 }
-VERBOSITY = 2
+VERBOSITY = 0
 PLOT = 0
 SHOW_PROGRESS_INTERVAL = 10
 
