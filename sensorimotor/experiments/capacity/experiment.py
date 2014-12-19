@@ -115,7 +115,8 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
     print "Setting up experiment..."
     runner = SensorimotorExperimentRunner(tmOverrides=tmParams,
                                           tpOverrides=tpParams)
-    print "Done setting up experiment.\n"
+    print "Done setting up experiment."
+    print
 
     exhaustiveAgents = []
     randomAgents = []
@@ -136,6 +137,7 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
 
     print "Training (worlds: {0}, elements: {1})...".format(numWorlds,
                                                             numElements)
+    print
     print "Training temporal memory..."
     sequences = runner.generateSequences(completeSequenceLength * 2,
                                          exhaustiveAgents,
@@ -143,6 +145,7 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
     runner.feedLayers(sequences, tmLearn=True, tpLearn=False,
                       verbosity=VERBOSITY,
                       showProgressInterval=SHOW_PROGRESS_INTERVAL)
+    print
 
     print "Training temporal pooler..."
     sequences = runner.generateSequences(completeSequenceLength * 1,
@@ -151,7 +154,9 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
     runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
                       verbosity=VERBOSITY,
                       showProgressInterval=SHOW_PROGRESS_INTERVAL)
-    print "Done training.\n"
+    print
+    print "Done training."
+    print
 
     print MonitorMixinBase.mmPrettyPrintMetrics(
       runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
