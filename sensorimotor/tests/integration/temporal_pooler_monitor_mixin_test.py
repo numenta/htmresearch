@@ -39,36 +39,40 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
 
   def setUp(self):
     # Initialize the universe, worlds, and agents
-    nElements = 5
-    wEncoders = 7
-    universe = OneDUniverse(debugSensor=True,
-                            debugMotor=True,
-                            nSensor=nElements*wEncoders, wSensor=wEncoders,
-                            nMotor=wEncoders*7, wMotor=wEncoders)
-    self.agents = [
-      RandomOneDAgent(OneDWorld(universe, range(nElements)), 4,
-                      possibleMotorValues=(-1,1), seed=23),
-      RandomOneDAgent(OneDWorld(universe, list(reversed(range(nElements)))), 4,
-                      possibleMotorValues=(-1,1), seed=23)
-    ]
+    nElements = 4
+    nWorlds = 3
+    n = 512
+    w = 20
+    universe = OneDUniverse(debugSensor=True, debugMotor=True,
+                            nSensor=n, wSensor=w,
+                            nMotor=n, wMotor=w)
+    self.agents = [RandomOneDAgent(
+                     OneDWorld(
+                       universe,
+                       range(nElements * world, nElements * (world+1))),
+                     0,
+                     possibleMotorValues=(-1,1),
+                     seed=23) for world in xrange(nWorlds)]
 
     self.experimentRunner = SensorimotorExperimentRunner(
       tmOverrides={
-        "columnDimensions": [nElements*wEncoders],
-        "minThreshold": wEncoders*2,
-        "maxNewSynapseCount": wEncoders*2,
-        "activationThreshold": wEncoders*2
+        "columnDimensions": [n],
+        "minThreshold": w*2,
+        "maxNewSynapseCount": w*2,
+        "activationThreshold": w*2,
+        "seed": 42
       },
       tpOverrides={
-        "columnDimensions": [512],
-        "numActiveColumnsPerInhArea": 20
+        "columnDimensions": [n],
+        "numActiveColumnsPerInhArea": w,
+        "seed": 42
       }
     )
 
 
   def testGetConfusionMetrics(self):
     # Train
-    sequences = self.experimentRunner.generateSequences(40, self.agents)
+    sequences = self.experimentRunner.generateSequences(30, self.agents)
     self.experimentRunner.feedLayers(sequences, tmLearn=True, tpLearn=True,
                                      verbosity=self.VERBOSITY)
 
@@ -82,11 +86,11 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
       self.experimentRunner.tp.mmGetMetricStabilityConfusion().mean > 0)
 
     self.assertTrue(
-      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().min > 20)
+      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().min < 20)
     self.assertTrue(
-      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().max > 20)
+      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().max > 15)
     self.assertTrue(
-      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().mean > 20)
+      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().mean > 10)
 
     # Test
     sequences = self.experimentRunner.generateSequences(10, self.agents)
