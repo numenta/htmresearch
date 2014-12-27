@@ -183,12 +183,9 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
     print "Done testing.\n"
 
     if VERBOSITY >= 2:
-      print "TP Stability:"
+      print "Overlap:"
       print
-      print runner.tp.mmPrettyPrintDataStabilityConfusion()
-      print "TP Distinctness:"
-      print
-      print runner.tp.mmPrettyPrintDataDistinctnessConfusion()
+      print runner.tp.mmPrettyPrintDataOverlap()
       print
 
     print MonitorMixinBase.mmPrettyPrintMetrics(

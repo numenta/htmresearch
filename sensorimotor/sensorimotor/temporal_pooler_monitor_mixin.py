@@ -25,6 +25,8 @@ Temporal Pooler mixin that enables detailed monitoring of history.
 
 from collections import defaultdict
 
+import numpy
+
 from nupic.research.monitor_mixin.metric import Metric
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.monitor_mixin.plot import Plot
@@ -73,90 +75,45 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     return self._mmTraces["connectionsPerColumnMetric"]
 
 
-  def mmGetDataStabilityConfusion(self):
+  def mmGetDataOverlap(self):
     """
-    Returns data representing the stability of sequence representations. This is
-    measured by checking, for a given sequence, whether the active cells at any
-    iteration along the sequence are same as or different from the active cells
-    at each other iteration along the sequence.
+    Returns 2D matrix of overlaps for sets of active cells between pairs of
+    iterations. Both the rows and columns are iterations, and the values in the
+    matrix are the size of overlaps between sets of active cells for those
+    iterations.
 
-    The dictionary returned is a mapping:
-    sequence label (string) => confusion matrix (list)
-
-    For the confusion matrix, the rows are iterations, and the columns are the
-    same iterations. Each entry represents the number of active cells that
-    show up in either of the two iterations but not both (symmetric difference).
-
-    @return (dict) Stability confusion data
+    @return (numpy.array) Overlap data
     """
     self._mmComputeSequenceRepresentationData()
-    return self._mmData["stabilityConfusion"]
-
-
-  def mmGetDataDistinctnessConfusion(self):
-    """
-    Returns data representing the distinctness of sequence representations.
-    This is measured by comparing each sequence representation (the union of
-    active cells representing the sequence) against every other sequence
-    representation, and checking whether the representations are distinct.
-
-    The tuple returned contains the following values:
-    (confusion matrix, labels)
-
-    For the confusion matrix, the rows are sequence representations, and the
-    columns are the same sequence representations. Each entry represents the
-    number of active cells that show up both of the sequence representations
-    (intersection).
-
-    The labels are the sequence labels for the rows / columns (useful for
-    pretty-printing this data).
-
-    NOTE: This data is only really relevant when the representations are
-    fairly stable. If the stability is low, then the union of active cells
-    representing the sequence will be a large set, and this data won't mean
-    much.
-
-    @return (dict) Distinctness confusion data
-    """
-    self._mmComputeSequenceRepresentationData()
-    return (self._mmData["distinctnessConfusionMatrix"],
-            self._mmData["distinctnessConfusionLabels"])
+    return self._mmData["overlap"]
 
 
   def mmGetMetricStabilityConfusion(self):
     """
-    Returns metric made of values from the stability confusion matrix.
-    (See `mmGetDataStabilityConfusion`.)
+    For each iteration that doesn't follow a reset, looks at every other
+    iteration for the same world that doesn't follow a reset, and computes the
+    number of bits that show up in one or the other set of active cells for
+    that iteration, but not both. This metric returns the distribution of those
+    numbers.
 
     @return (Metric) Stability confusion metric
     """
-    data = self.mmGetDataStabilityConfusion()
-    numbers = []
-
-    for matrix in data.values():
-      for i in xrange(len(matrix)):
-        for j in xrange(len(matrix[i])):
-          if i != j:  # Ignoring diagonal
-            numbers.append(matrix[i][j])
-
+    self._mmComputeSequenceRepresentationData()
+    numbers = self._mmData["stabilityConfusion"]
     return Metric(self, "stability confusion", numbers)
 
 
   def mmGetMetricDistinctnessConfusion(self):
     """
-    Returns metric made of values from the distinctness confusion matrix
-    (excluding diagonals). (See `mmGetDataDistinctnessConfusion`.)
+    For each iteration that doesn't follow a reset, looks at every other
+    iteration for every other world that doesn't follow a reset, and computes
+    the number of bits that show up in both sets of active cells those that
+    iteration. This metric returns the distribution of those numbers.
 
     @return (Metric) Distinctness confusion metric
     """
-    data, _ = self.mmGetDataDistinctnessConfusion()
-    numbers = []
-
-    for i in xrange(len(data)):
-      for j in xrange(len(data[i])):
-        if i != j:  # Ignoring diagonal
-          numbers.append(data[i][j])
-
+    self._mmComputeSequenceRepresentationData()
+    numbers = self._mmData["distinctnessConfusion"]
     return Metric(self, "distinctness confusion", numbers)
 
 
@@ -177,41 +134,29 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     return plot
 
 
-  def mmPrettyPrintDataStabilityConfusion(self):
+  def mmPrettyPrintDataOverlap(self):
     """
-    Returns pretty-printed string representation of stability confusion data.
-    (See `mmGetDataStabilityConfusion`.)
+    Returns pretty-printed string representation of overlap data.
+    (See `mmGetDataOverlap`.)
 
     @return (string) Pretty-printed data
     """
-    data = self.mmGetDataStabilityConfusion()
-    text = ""
-
-    for sequenceLabel, confusionMatrix in data.iteritems():
-      text += "{0}:\n\n".format(sequenceLabel)
-      text += ("\n".join([''.join(['{:4}'.format(item) for item in row])
-                          for row in confusionMatrix]))
-      text += "\n\n"
-
-    return text
-
-
-  def mmPrettyPrintDataDistinctnessConfusion(self):
-    """
-    Returns pretty-printed string representation of distinctness confusion data.
-    (See `mmGetDataDistinctnessConfusion`.)
-
-    @return (string) Pretty-printed data
-    """
-    matrix, labels = self.mmGetDataDistinctnessConfusion()
-    labelText = ", ".join(labels)
+    matrix = self.mmGetDataOverlap()
+    resetsTrace = self.mmGetTraceResets()
 
     text = ""
-    text += "(rows: {0})\n".format(labelText)
-    text += "(cols: {0})\n\n".format(labelText)
-    text += ("\n".join([''.join(['{:4}'.format(item) for item in row])
-                        for row in matrix]))
-    text += "\n"
+
+    for i, row in enumerate(matrix):
+      if resetsTrace.data[i]:
+        text += "\n"
+
+      for j, item in enumerate(row):
+        if resetsTrace.data[j]:
+          text += "    "
+
+        text += "{:4}".format(item)
+
+      text += "\n"
 
     return text
 
@@ -224,53 +169,35 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     if not self._sequenceRepresentationDataStale:
       return
 
-    self._mmData["activeCellsListForSequence"] = defaultdict(list)
-    self._mmData["activeCellsUnionForSequence"] = defaultdict(set)
-    self._mmData["stabilityConfusion"] = {}
-    self._mmData["distinctnessConfusionMatrix"] = []
-    self._mmData["distinctnessConfusionLabels"] = []
-
     activeCellsTrace = self.mmGetTraceActiveCells()
     sequenceLabelsTrace = self.mmGetTraceSequenceLabels()
     resetsTrace = self.mmGetTraceResets()
 
-    for i, activeCells in enumerate(activeCellsTrace.data):
-      sequenceLabel = sequenceLabelsTrace.data[i]
+    n = len(activeCellsTrace.data)
+    overlap = numpy.empty((n, n), dtype=int)
+    stabilityConfusion = []
+    distinctnessConfusion = []
 
-      if sequenceLabel is not None and not resetsTrace.data[i]:
-        self._mmData["activeCellsListForSequence"][sequenceLabel].append(
-          activeCells)
+    for i in xrange(n):
+      for j in xrange(i+1):
+        numActiveCells = len(activeCellsTrace.data[i])
+        numOverlap = len(activeCellsTrace.data[i] & activeCellsTrace.data[j])
+        overlap[i][j] = numOverlap
+        overlap[j][i] = numOverlap
 
-    for sequenceLabel, activeCellsList in (
-        self._mmData["activeCellsListForSequence"].iteritems()):
-      confusionMatrix = []
+        if (i != j and
+            sequenceLabelsTrace.data[i] is not None and
+            not resetsTrace.data[i] and
+            sequenceLabelsTrace.data[j] is not None and
+            not resetsTrace.data[j]):
+          if sequenceLabelsTrace.data[i] == sequenceLabelsTrace.data[j]:
+            stabilityConfusion.append(numActiveCells - numOverlap)
+          else:
+            distinctnessConfusion.append(numOverlap)
 
-      for i in xrange(len(activeCellsList)):
-        row = []
-
-        for j in xrange(len(activeCellsList)):
-          row.append(len(activeCellsList[i] ^ activeCellsList[j]))
-
-        confusionMatrix.append(row)
-
-        self._mmData["activeCellsUnionForSequence"][sequenceLabel].update(
-          activeCellsList[i])
-
-      self._mmData["stabilityConfusion"][sequenceLabel] = confusionMatrix
-
-    activeCellsUnionForSequenceItems = list(
-      self._mmData["activeCellsUnionForSequence"].iteritems())
-
-    for i in xrange(len(activeCellsUnionForSequenceItems)):
-      self._mmData["distinctnessConfusionLabels"].append(
-        activeCellsUnionForSequenceItems[i][0])
-      row = []
-
-      for j in xrange(len(activeCellsUnionForSequenceItems)):
-        row.append(len(activeCellsUnionForSequenceItems[i][1] &
-                       activeCellsUnionForSequenceItems[j][1]))
-
-      self._mmData["distinctnessConfusionMatrix"].append(row)
+    self._mmData["overlap"] = overlap
+    self._mmData["stabilityConfusion"] = stabilityConfusion
+    self._mmData["distinctnessConfusion"] = distinctnessConfusion
 
     self._sequenceRepresentationDataStale = False
 
