@@ -185,10 +185,6 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
           else:
             distinctnessConfusion.append(numOverlap)
 
-    print stabilityConfusion
-    print distinctnessConfusion
-    print
-
     self._mmData["overlap"] = overlap
     self._mmData["stabilityConfusion"] = stabilityConfusion
     self._mmData["distinctnessConfusion"] = distinctnessConfusion
