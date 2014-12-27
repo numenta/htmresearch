@@ -81,16 +81,16 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
     self.assertEqual(
       self.experimentRunner.tp.mmGetMetricStabilityConfusion().min, 0)
     self.assertEqual(
-      self.experimentRunner.tp.mmGetMetricStabilityConfusion().max, 40)
+      self.experimentRunner.tp.mmGetMetricStabilityConfusion().max, 20)
     self.assertTrue(
       self.experimentRunner.tp.mmGetMetricStabilityConfusion().mean > 0)
 
+    self.assertEqual(
+      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().min, 0)
     self.assertTrue(
-      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().min < 20)
+      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().max < 5)
     self.assertTrue(
-      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().max > 15)
-    self.assertTrue(
-      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().mean > 10)
+      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().mean > 0)
 
     # Train TP
     sequences = self.experimentRunner.generateSequences(10, self.agents)
@@ -112,23 +112,18 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
     self._printInformation()
 
     self.assertTrue(
-      self.experimentRunner.tp.mmGetMetricStabilityConfusion().max < 7)
+      self.experimentRunner.tp.mmGetMetricStabilityConfusion().max < 5)
 
     self.assertTrue(
-      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().sum < 12)
+      self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().max < 5)
 
 
   def _printInformation(self):
     if self.VERBOSITY > 1:
-      print "Stability"
+      print "Overlap"
       print "============"
       print
-      print self.experimentRunner.tp.mmPrettyPrintDataStabilityConfusion()
-      print
-      print "Distinctness"
-      print "============"
-      print
-      print self.experimentRunner.tp.mmPrettyPrintDataDistinctnessConfusion()
+      print self.experimentRunner.tp.mmPrettyPrintDataOverlap()
       print
       print "Metrics"
       print "============"
