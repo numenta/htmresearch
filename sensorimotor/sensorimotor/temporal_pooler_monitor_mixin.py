@@ -77,7 +77,10 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
   def mmGetDataOverlap(self):
     """
-    TODO: Document
+    Returns 2D matrix of overlaps for sets of active cells between pairs of
+    iterations. Both the rows and columns are iterations, and the values in the
+    matrix are the size of overlaps between sets of active cells for those
+    iterations.
 
     @return (numpy.array) Overlap data
     """
@@ -87,7 +90,11 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
   def mmGetMetricStabilityConfusion(self):
     """
-    TODO: Document
+    For each iteration that doesn't follow a reset, looks at every other
+    iteration for the same world that doesn't follow a reset, and computes the
+    number of bits that show up in one or the other set of active cells for
+    that iteration, but not both. This metric returns the distribution of those
+    numbers.
 
     @return (Metric) Stability confusion metric
     """
@@ -98,7 +105,10 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
 
   def mmGetMetricDistinctnessConfusion(self):
     """
-    TODO: Document
+    For each iteration that doesn't follow a reset, looks at every other
+    iteration for every other world that doesn't follow a reset, and computes
+    the number of bits that show up in both sets of active cells those that
+    iteration. This metric returns the distribution of those numbers.
 
     @return (Metric) Distinctness confusion metric
     """
