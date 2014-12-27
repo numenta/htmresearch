@@ -1,6 +1,6 @@
 /* ---------------------------------------------------------------------
  * Numenta Platform for Intelligent Computing (NuPIC)
- * Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
+ * Copyright (C) 2014, Numenta, Inc.  Unless you have an agreement
  * with Numenta, Inc., for a separate license for this software code, the
  * following terms and conditions apply:
  *
@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include <nupic/math/Math.hpp>
 #include <nupic/math/SparseMatrix.hpp>
@@ -64,15 +65,25 @@ void sample(PopulationIter population, UInt32 nPopulation,
   }
 }
 
+// Estimate the confidence bounds. This assumes a binomial distribution and
+// computes the +- for a 95% confidence bound on a probability prob computed
+// from the given number of trials.
+Real estimateBounds(Real prob, Int trials)
+{
+  const Real z = 1.96;  // 95% from normal distribution
+  Real stddev = sqrt((prob * (1.0 - prob)) / (Real)trials);
+  return z * stddev;
+}
+
 // Given a set of patterns, a new pattern x, and a match threshold theta,
 // return the number of matching vectors
 int numMatches(SparseMatrix01<UInt, Int> &patterns,
-              vector<UInt> &x, UInt theta)
+               vector<UInt> &x, UInt theta)
 {
   // Create a dense version of x
   vector<UInt> denseX;
   denseX.resize(patterns.nCols(), 0);
-  for (vector<UInt>::iterator it = x.begin(); it != x.end(); ++it)
+  for (auto it = x.begin(); it != x.end(); ++it)
   {
     denseX[*it] = 1;
   }
@@ -84,7 +95,7 @@ int numMatches(SparseMatrix01<UInt, Int> &patterns,
   patterns.rightVecProd(denseX.begin(), overlaps.begin());
 
   int numMatches = 0;
-  for (int i= 0; i < overlaps.size(); i++)
+  for (int i = 0; i < overlaps.size(); i++)
   {
     if (overlaps[i] >= theta) numMatches++;
   }
@@ -92,11 +103,8 @@ int numMatches(SparseMatrix01<UInt, Int> &patterns,
   return numMatches;
 }
 
-
-//
 // Create M different vectors, each with w random bits on, and add them to sm.
 // Each vectors will have sm.ncols()
-//
 void createRandomVectors(Int M, Int w, SparseMatrix01<UInt, Int> &sm,
                          Random &r, int verbosity=0)
 {
@@ -106,10 +114,9 @@ void createRandomVectors(Int M, Int w, SparseMatrix01<UInt, Int> &sm,
   vector<UInt> activeBits;
   activeBits.resize(w);
 
-  if (verbosity>0)
+  if (verbosity > 0)
   {
-    cout << "Creating " << M << " random vectors with " << w
-            << " bits on.\n";
+    cout << "Creating " << M << " random vectors with " << w << " bits on.\n";
   }
   for (Int m=0; m < M; m++)
   {
@@ -120,7 +127,7 @@ void createRandomVectors(Int M, Int w, SparseMatrix01<UInt, Int> &sm,
     if (verbosity > 1)
     {
       cout << m << ":";
-      for (Int i=0; i < w; i++)
+      for (Int i = 0; i < w; i++)
       {
         cout << activeBits[i] << " ";
       }
@@ -134,8 +141,7 @@ void createRandomVectors(Int M, Int w, SparseMatrix01<UInt, Int> &sm,
 // random vectors plus a random trial vector. For each value of theta from 1 to
 // w, return the number of vectors that match.
 void classificationFalseMatchTrial(
-          UInt n, UInt w, UInt M,
-          vector<UInt> &matchesWithThetas, Random &r)
+    UInt n, UInt w, UInt M, vector<UInt> &matchesWithThetas, Random &r)
 {
   UInt32 population[n];
   for (Int i=0; i < n; i++) population[i] = i;
@@ -162,9 +168,9 @@ void classificationFalseMatchTrial(
 // Given values for n, w, M, compute the probability of a false match for
 // each value of theta = [1,w]. This is done by performing nTrials separate
 // simulations, and seeing how often there is at least one match.
-void classificationFalseMatchProbability(UInt n, UInt w, UInt M,
-               vector<Real> &probWithThetas, UInt nTrials,
-               Random &r)
+void classificationFalseMatchProbability(
+    UInt n, UInt w, UInt M, vector<Real> &probWithThetas, UInt nTrials,
+    Random &r)
 {
   probWithThetas.clear();
   probWithThetas.resize(w+1, 0.0);
@@ -174,7 +180,7 @@ void classificationFalseMatchProbability(UInt n, UInt w, UInt M,
     vector<UInt> matchesWithThetas;
     matchesWithThetas.resize(w+1, 0);
     classificationFalseMatchTrial(n, w, M, matchesWithThetas, r);
-    if (trial%10000 == 0)
+    if (trial % 10000 == 0)
     {
       cout << trial << " trials completed out of " << nTrials << "\n";
     }
@@ -193,8 +199,10 @@ void classificationFalseMatchProbability(UInt n, UInt w, UInt M,
   for (UInt theta = 1; theta <= w; theta++)
   {
     probWithThetas[theta] = (Real) probWithThetas[theta] / (Real) nTrials;
-    cout << "    Theta = " << theta
-              << " prob=" << probWithThetas[theta] << "\n";
+    auto bounds = estimateBounds(probWithThetas[theta], nTrials);
+    cout << "    Theta = " << theta << " prob=" << probWithThetas[theta]
+         << " +/- " << bounds
+         << endl;
   }
 }
 
@@ -206,7 +214,7 @@ int main(int argc, char * argv[]) {
   vector<Real> probWithThetas;
 
   cout << "Simulations running. Please be patient. Think about\n"
-            << "all the things you have to be grateful for.\n\n";
+       << "all the things you have to be grateful for.\n\n";
 
   classificationFalseMatchProbability(1024, 30, 100, probWithThetas, 100000, r);
 }
