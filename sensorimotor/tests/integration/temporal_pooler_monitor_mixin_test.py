@@ -71,9 +71,9 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
 
 
   def testGetConfusionMetrics(self):
-    # Train
-    sequences = self.experimentRunner.generateSequences(30, self.agents)
-    self.experimentRunner.feedLayers(sequences, tmLearn=True, tpLearn=True,
+    # Train TM
+    sequences = self.experimentRunner.generateSequences(20, self.agents)
+    self.experimentRunner.feedLayers(sequences, tmLearn=True, tpLearn=False,
                                      verbosity=self.VERBOSITY)
 
     self._printInformation()
@@ -92,15 +92,27 @@ class TemporalPoolerMonitorMixinTest(unittest.TestCase):
     self.assertTrue(
       self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().mean > 10)
 
-    # Test
+    # Train TP
     sequences = self.experimentRunner.generateSequences(10, self.agents)
-    self.experimentRunner.feedLayers(sequences, tmLearn=False, tpLearn=False,
+    self.experimentRunner.feedLayers(sequences, tmLearn=False, tpLearn=True,
                                      verbosity=self.VERBOSITY)
 
     self._printInformation()
 
     self.assertEqual(
       self.experimentRunner.tp.mmGetMetricStabilityConfusion().sum, 0)
+
+    # Test
+    sequences = self.experimentRunner.generateSequences(5,
+                                                        self.agents,
+                                                        numSequences=2)
+    self.experimentRunner.feedLayers(sequences, tmLearn=False, tpLearn=False,
+                                     verbosity=self.VERBOSITY)
+
+    self._printInformation()
+
+    self.assertTrue(
+      self.experimentRunner.tp.mmGetMetricStabilityConfusion().max < 7)
 
     self.assertTrue(
       self.experimentRunner.tp.mmGetMetricDistinctnessConfusion().sum < 12)
