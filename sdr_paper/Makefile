@@ -31,21 +31,21 @@ NUPIC_CORE_LIB = $(NUPIC_CORE)/external/darwin64/lib
 #
 
 CXX_FLAGS = -DBOOST_NO_WREGEX -DHAVE_CONFIG_H -DNTA_ASM -DNTA_ASSERTIONS_ON \
-    -DNTA_INTERNAL -DNTA_PLATFORM_darwin64 -DNUPIC2 \
-    -isystem $(NUPIC_EXTERNAL_PLATFORM_INC) -isystem $(NUPIC_EXTERNAL_INC) \
-    -isystem $(NUPIC_CORE)/src -I$(NUPIC_CORE_INC) -fPIC -std=c++11 -m64 \
-    -stdlib=libc++ -fvisibility=hidden -Wall -Wreturn-type -Wunused \
-    -Wno-unused-parameter -O3
+	-DNTA_INTERNAL -DNTA_PLATFORM_darwin64 -DNUPIC2 \
+	-isystem $(NUPIC_EXTERNAL_PLATFORM_INC) -isystem $(NUPIC_EXTERNAL_INC) \
+	-isystem $(NUPIC_CORE)/src -I$(NUPIC_CORE_INC) -fPIC -std=c++11 -m64 \
+	-stdlib=libc++ -fvisibility=hidden -Wall -Wreturn-type -Wunused \
+	-Wno-unused-parameter -O3
 
 sdr: sdr_calculations.cpp
-  clang++ -c sdr_calculations.cpp $(CXX_FLAGS)
-  clang++ -Wl,-search_paths_first \
-    -Wl,-headerpad_max_install_names     -Wl,-u,_munmap -m64 \
-    -stdlib=libc++ \
-    -lc++abi -liconv -lsqlite3 -framework CoreServices -framework Accelerate \
-    -L$(NUPIC_CORE_EXTERNAL)/darwin64/lib sdr_calculations.o -o sdr_calculations \
-    $(NUPIC_CORE)/build/release/lib/libnupic_core.a \
-    $(NUPIC_CORE_EXTERNAL)/darwin64/lib/libyaml.a \
-    $(NUPIC_CORE_EXTERNAL)/darwin64/lib/libapr-1.a \
-    $(NUPIC_CORE_EXTERNAL)/darwin64/lib/libaprutil-1.a \
-    $(NUPIC_CORE_EXTERNAL)/darwin64/lib/libz.a
+	clang++ -c sdr_calculations.cpp $(CXX_FLAGS)
+	clang++ -Wl,-search_paths_first \
+		-Wl,-headerpad_max_install_names -Wl,-u,_munmap -m64 \
+		-stdlib=libc++ \
+		-lc++abi -liconv -lsqlite3 -framework CoreServices -framework Accelerate \
+		-L$(NUPIC_CORE_EXTERNAL)/darwin64/lib sdr_calculations.o -o sdr_calculations \
+		$(NUPIC_CORE)/build/release/lib/libnupic_core.a \
+		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libyaml.a \
+		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libapr-1.a \
+		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libaprutil-1.a \
+		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libz.a
