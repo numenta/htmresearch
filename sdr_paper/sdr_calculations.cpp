@@ -141,14 +141,33 @@ void createRandomVectors(Int M, Int w, SparseMatrix01<UInt, Int> &sm,
 // random vectors plus a random trial vector. For each value of theta from 1 to
 // w, return the number of vectors that match.
 void classificationFalseMatchTrial(
-    UInt n, UInt w, UInt M, vector<UInt> &matchesWithThetas, Random &r)
+    UInt n, UInt w, UInt w_p, UInt M, vector<UInt> &matchesWithThetas,
+    Random &r)
 {
+  NTA_ASSERT(w_p <= w < n);
+
   UInt32 population[n];
   for (Int i=0; i < n; i++) population[i] = i;
 
-  // Generate our set of random sparse vectors and store in our "classifier"
+  // Create a list of stored patterns to put in the classifier
+  SparseMatrix01<UInt, Int> storedPatterns(n, 1);
+  createRandomVectors(M, w, storedPatterns, r);
+
+  // Add subsampled versions of the vectors to the classifier
   SparseMatrix01<UInt, Int> classifier(n, 1);
-  createRandomVectors(M, w, classifier, r);
+  vector<UInt> originalRow;
+  vector<UInt> subsampledRow;
+  for (UInt i=0; i < M; ++i)
+  {
+    originalRow.clear();
+    originalRow.resize(w);
+    storedPatterns.getRowSparse(i, originalRow.begin());
+
+    subsampledRow.clear();
+    subsampledRow.resize(w_p);
+    sample(originalRow.begin(), w, subsampledRow.begin(), w_p, r);
+    classifier.addRow(w_p, subsampledRow.begin());
+  }
 
   // Generate our single random vector
   vector<UInt> x;
@@ -156,7 +175,7 @@ void classificationFalseMatchTrial(
   sample(population, n, x.begin(), w, r);
 
   // Generate number of matches for each value of theta
-  for (UInt theta = 1; theta <= w; theta++)
+  for (UInt theta = 1; theta <= w_p; theta++)
   {
     matchesWithThetas[theta] = numMatches(classifier, x, theta);
     //cout << "theta= " << theta << ", num matches= "
@@ -165,27 +184,37 @@ void classificationFalseMatchTrial(
 
 }
 
-// Given values for n, w, M, compute the probability of a false match for
+// Given values for n, w, w_p, M, compute the probability of a false match for
 // each value of theta = [1,w]. This is done by performing nTrials separate
 // simulations, and seeing how often there is at least one match.
+//
+// @param n number of bits per vector
+// @param w number of active bits per vector
+// @param w_p number of bits to subsample and store for each of M vectors
+// @param M number of vectors to generate and store in classifier
+// @param probWithThetas probabilities of false match for each theta value
+// @param nTrials number of trials to run to compute probability
+// @param r a random number generator
 void classificationFalseMatchProbability(
-    UInt n, UInt w, UInt M, vector<Real> &probWithThetas, UInt nTrials,
-    Random &r)
+    UInt n, UInt w, UInt w_p, UInt M, vector<Real> &probWithThetas,
+    UInt nTrials, Random &r)
 {
+  NTA_ASSERT(w_p <= w < n);
+
   probWithThetas.clear();
-  probWithThetas.resize(w+1, 0.0);
+  probWithThetas.resize(w_p+1, 0.0);
 
   for (int trial = 0; trial < nTrials; trial++)
   {
     vector<UInt> matchesWithThetas;
-    matchesWithThetas.resize(w+1, 0);
-    classificationFalseMatchTrial(n, w, M, matchesWithThetas, r);
+    matchesWithThetas.resize(w_p+1, 0);
+    classificationFalseMatchTrial(n, w, w_p, M, matchesWithThetas, r);
     if (trial % 10000 == 0)
     {
       cout << trial << " trials completed out of " << nTrials << "\n";
     }
 
-    for (UInt theta = 1; theta <= w; theta++)
+    for (UInt theta = 1; theta <= w_p; theta++)
     {
       if (matchesWithThetas[theta] > 0)
       {
@@ -195,8 +224,8 @@ void classificationFalseMatchProbability(
   }
 
   cout << "Classification: Probability of false match for n=" << n
-            << ", M=" << M << ", w=" << w << "\n";
-  for (UInt theta = 1; theta <= w; theta++)
+       << ", M=" << M << ", w=" << w << ", w'=" << w_p << "\n";
+  for (UInt theta = 1; theta <= w_p; theta++)
   {
     probWithThetas[theta] = (Real) probWithThetas[theta] / (Real) nTrials;
     auto bounds = estimateBounds(probWithThetas[theta], nTrials);
@@ -216,6 +245,7 @@ int main(int argc, char * argv[]) {
   cout << "Simulations running. Please be patient. Think about\n"
        << "all the things you have to be grateful for.\n\n";
 
-  classificationFalseMatchProbability(1024, 30, 100, probWithThetas, 100000, r);
+  classificationFalseMatchProbability(1024, 30, 30, 100, probWithThetas, 30000, r);
+  classificationFalseMatchProbability(1024, 30, 20, 100, probWithThetas, 30000, r);
 }
 
