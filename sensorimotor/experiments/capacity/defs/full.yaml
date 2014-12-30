@@ -20,41 +20,53 @@
   elements: 100
 - worlds: 10
   elements: 10
-- worlds: 10
-  elements: 20
-- worlds: 10
-  elements: 30
-- worlds: 10
-  elements: 40
-- worlds: 10
-  elements: 50
 - worlds: 20
   elements: 10
-- worlds: 20
-  elements: 20
-- worlds: 20
-  elements: 30
-- worlds: 20
-  elements: 40
-- worlds: 20
-  elements: 50
-- worlds: 50
+- worlds: 30
+  elements: 10
+- worlds: 40
   elements: 10
 - worlds: 50
-  elements: 20
-- worlds: 50
-  elements: 30
-- worlds: 50
-  elements: 40
-- worlds: 50
-  elements: 50
-- worlds: 100
+  elements: 10
+- worlds: 60
+  elements: 10
+- worlds: 70
+  elements: 10
+- worlds: 80
+  elements: 10
+- worlds: 90
   elements: 10
 - worlds: 100
-  elements: 20
-- worlds: 100
+  elements: 10
+- worlds: 10
   elements: 30
-- worlds: 100
-  elements: 40
-- worlds: 100
+- worlds: 30
+  elements: 30
+- worlds: 50
+  elements: 30
+- worlds: 70
+  elements: 30
+- worlds: 10
   elements: 50
+- worlds: 30
+  elements: 50
+- worlds: 50
+  elements: 50
+- worlds: 70
+  elements: 50
+- worlds: 10
+  elements: 70
+- worlds: 30
+  elements: 70
+- worlds: 50
+  elements: 70
+- worlds: 70
+  elements: 70
+- worlds: 10
+  elements: 90
+- worlds: 30
+  elements: 90
+- worlds: 50
+  elements: 90
+- worlds: 70
+  elements: 90
