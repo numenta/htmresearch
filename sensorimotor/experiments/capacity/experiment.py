@@ -59,7 +59,7 @@ from sensorimotor.sensorimotor_experiment_runner import (
 
 
 # Constants
-N = 1024
+N = 512
 W = 20
 DEFAULTS = {
   "n": N,
