@@ -12,8 +12,8 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
-#include <sys/syslimits.h>
-
+#include <limits.h>
+#include <cstdlib> //exit()
 
 #define MAXLABEL    9
 
