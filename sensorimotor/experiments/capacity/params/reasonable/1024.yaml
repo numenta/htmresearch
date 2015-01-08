@@ -2,7 +2,7 @@ n: 1024
 w: 20
 tmParams:
   columnDimensions: [1024]
-  minThreshold: 15
+  minThreshold: 20
   activationThreshold: 20
   maxNewSynapseCount: 30
 tpParams:
