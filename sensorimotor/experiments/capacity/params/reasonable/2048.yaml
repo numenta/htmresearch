@@ -1,0 +1,13 @@
+n: 2048
+w: 40
+tmParams:
+  columnDimensions: [2048]
+  minThreshold: 40
+  activationThreshold: 40
+  maxNewSynapseCount: 60
+tpParams:
+  columnDimensions: [2048]
+  numActiveColumnsPerInhArea: 40
+  potentialPct: 0.9
+  initConnectedPct: 0.5
+  poolingThreshUnpredicted: 0.4
