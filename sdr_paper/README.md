@@ -73,3 +73,9 @@ already setup to point to the root of your `nupic.core` repository.  It
 assumes you have followed the `nupic.core` build instructions and have a 
 proper build in place. 
 
+Next Steps
+==========
+
+- Add new parameter for multiple trials with a given set of M patterns to speed things up
+- Add support for outputting charts (or data in a parsable format for charting)
+- Optimize so we can run for values like M=1,000,000, w=60, w'=30, n=2048

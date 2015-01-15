@@ -158,11 +158,11 @@ void createRandomVectors(Int M, Int w, SparseMatrix01<UInt, Int> &sm,
   }
 }
 
-// Do a single classification trial. Given values for n, w, and M create N
-// random vectors plus a random trial vector. For each value of theta from 1 to
-// w, return the number of vectors that match.
+// Do a single classification trial. Given values for n, w, and M create M
+// random vectors plus k random trial vectors. For each value of theta from 1 to
+// w, return the number of trial vectors that had a match.
 void classificationFalseMatchTrial(
-    UInt n, UInt w, UInt w_p, UInt M, vector<UInt> &matchesWithThetas,
+    UInt n, UInt w, UInt w_p, UInt M, UInt k, vector<UInt> &matchesWithThetas,
     Random &r)
 {
   NTA_ASSERT(w_p <= w < n);
@@ -176,15 +176,28 @@ void classificationFalseMatchTrial(
 
   // Generate our single random vector
   vector<UInt> x;
+  UInt matches = 0;
   x.resize(w, 0);
-  sample(population, n, x.begin(), w, r);
-
-  // Generate number of matches for each value of theta
   for (UInt theta = 1; theta <= w_p; theta++)
   {
-    matchesWithThetas[theta] = numMatches(classifier, x, theta);
-    //cout << "theta= " << theta << ", num matches= "
-    //          << matchesWithThetas[theta] << "\n";
+    matchesWithThetas[theta] = 0;
+  }
+
+  for (UInt i = 0; i < k; i++)
+  {
+    sample(population, n, x.begin(), w, r);
+
+    // Generate number of matches for each value of theta
+    for (UInt theta = 1; theta <= w_p; theta++)
+    {
+      matches = numMatches(classifier, x, theta);
+      if (matches > 0)
+      {
+        matchesWithThetas[theta]++;
+      }
+      //cout << "theta= " << theta << ", num matches= "
+      //          << matchesWithThetas[theta] << "\n";
+    }
   }
 }
 
@@ -196,11 +209,12 @@ void classificationFalseMatchTrial(
 // @param w number of active bits per vector
 // @param w_p number of bits to subsample and store for each of M vectors
 // @param M number of vectors to generate and store in classifier
+// @param k number of vectors to generate and test per trial
 // @param probWithThetas probabilities of false match for each theta value
 // @param nTrials number of trials to run to compute probability
 // @param r a random number generator
 void classificationFalseMatchProbability(
-    UInt n, UInt w, UInt w_p, UInt M, vector<Real> &probWithThetas,
+    UInt n, UInt w, UInt w_p, UInt M, UInt k, vector<Real> &probWithThetas,
     UInt nTrials, Random &r)
 {
   NTA_ASSERT(w_p <= w < n);
@@ -212,7 +226,7 @@ void classificationFalseMatchProbability(
   {
     vector<UInt> matchesWithThetas;
     matchesWithThetas.resize(w_p+1, 0);
-    classificationFalseMatchTrial(n, w, w_p, M, matchesWithThetas, r);
+    classificationFalseMatchTrial(n, w, w_p, M, k, matchesWithThetas, r);
     if (trial % 10000 == 0)
     {
       cout << trial << " trials completed out of " << nTrials << "\n";
@@ -220,10 +234,7 @@ void classificationFalseMatchProbability(
 
     for (UInt theta = 1; theta <= w_p; theta++)
     {
-      if (matchesWithThetas[theta] > 0)
-      {
-        probWithThetas[theta]++;
-      }
+      probWithThetas[theta] += matchesWithThetas[theta];
     }
   }
 
@@ -231,8 +242,8 @@ void classificationFalseMatchProbability(
        << ", M=" << M << ", w=" << w << ", w'=" << w_p << "\n";
   for (UInt theta = 1; theta <= w_p; theta++)
   {
-    probWithThetas[theta] = (Real) probWithThetas[theta] / (Real) nTrials;
-    auto bounds = estimateBounds(probWithThetas[theta], nTrials);
+    probWithThetas[theta] = (Real) probWithThetas[theta] / (Real)(nTrials*k);
+    auto bounds = estimateBounds(probWithThetas[theta], nTrials*k);
     cout << "    Theta = " << theta << " prob=" << probWithThetas[theta]
          << " +/- " << bounds
          << endl;
@@ -347,8 +358,10 @@ int main(int argc, char * argv[]) {
        << "all the things you have to be grateful for.\n\n";
 
   // False match probability for random vector against 100 stored vectors
-  //classificationFalseMatchProbability(1024, 30, 30, 100, probWithThetas,
-  //                                    50000, r);
+  classificationFalseMatchProbability(1024, 30, 30, 100, 1, probWithThetas,
+                                      50000, r);
+  classificationFalseMatchProbability(1024, 30, 30, 100, 10, probWithThetas,
+                                      5000, r);
 
   // False match probability for random vector against 100 stored vectors where
   // the stored vectors are subsampled (20 out of 30 bits stored)
@@ -357,7 +370,7 @@ int main(int argc, char * argv[]) {
 
   // False negative probability for a stored vector with 5 bits changed against
   // 100 subsampled (20 out of 30 bits stored) random vectors
-  classificationFalseNegativeProbability(1024, 30, 20, 100, 5, probWithThetas,
-                                         50000, r);
+  //classificationFalseNegativeProbability(1024, 30, 20, 100, 5, probWithThetas,
+  //                                       50000, r);
 }
 
