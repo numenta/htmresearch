@@ -234,10 +234,7 @@ void classificationFalseMatchProbability(
 
     for (UInt theta = 1; theta <= w_p; theta++)
     {
-      if (matchesWithThetas[theta] > 0)
-      {
-        probWithThetas[theta] += matchesWithThetas[theta];
-      }
+      probWithThetas[theta] += matchesWithThetas[theta];
     }
   }
 
