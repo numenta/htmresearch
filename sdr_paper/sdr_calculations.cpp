@@ -21,8 +21,9 @@
  */
 
 
-#include <iostream>
 #include <assert.h>
+#include <fstream>
+#include <iostream>
 #include <string>
 #include <vector>
 #include <utility>
@@ -215,7 +216,7 @@ void classificationFalseMatchTrial(
 // @param r a random number generator
 void classificationFalseMatchProbability(
     UInt n, UInt w, UInt w_p, UInt M, UInt k, vector<Real> &probWithThetas,
-    UInt nTrials, Random &r)
+    UInt nTrials, Random &r, Byte verbosity)
 {
   NTA_ASSERT(w_p <= w < n);
 
@@ -227,7 +228,7 @@ void classificationFalseMatchProbability(
     vector<UInt> matchesWithThetas;
     matchesWithThetas.resize(w_p+1, 0);
     classificationFalseMatchTrial(n, w, w_p, M, k, matchesWithThetas, r);
-    if (trial % 10000 == 0)
+    if (verbosity > 0 && trial % 1000 == 0)
     {
       cout << trial << " trials completed out of " << nTrials << "\n";
     }
@@ -238,15 +239,21 @@ void classificationFalseMatchProbability(
     }
   }
 
-  cout << "Classification: Probability of false match for n=" << n
-       << ", M=" << M << ", w=" << w << ", w'=" << w_p << "\n";
+  if (verbosity > 0)
+  {
+    cout << "Classification: Probability of false match for n=" << n
+         << ", M=" << M << ", w=" << w << ", w'=" << w_p << "\n";
+  }
   for (UInt theta = 1; theta <= w_p; theta++)
   {
     probWithThetas[theta] = (Real) probWithThetas[theta] / (Real)(nTrials*k);
-    auto bounds = estimateBounds(probWithThetas[theta], nTrials*k);
-    cout << "    Theta = " << theta << " prob=" << probWithThetas[theta]
-         << " +/- " << bounds
-         << endl;
+    if (verbosity > 0)
+    {
+      auto bounds = estimateBounds(probWithThetas[theta], nTrials*k);
+      cout << "    Theta = " << theta << " prob=" << probWithThetas[theta]
+           << " +/- " << bounds
+           << endl;
+    }
   }
 }
 
@@ -254,7 +261,7 @@ void classificationFalseMatchProbability(
 // random vectors plus a random trial vector. For each value of theta from 1 to
 // w, return the number of vectors that match.
 void classificationFalseNegativeTrial(
-    UInt n, UInt w, UInt w_p, UInt M, UInt noise,
+    UInt n, UInt w, UInt w_p, UInt M, UInt k, UInt noise,
     vector<UInt> &matchesWithThetas, Random &r)
 {
   NTA_ASSERT(noise <= w_p <= w < n);
@@ -285,19 +292,34 @@ void classificationFalseNegativeTrial(
   // Pick one of the stored patterns to test
   vector<UInt> x;
   x.resize(w, 0);
-  NTA_ASSERT(storedPatterns.nRows() == M);
-  UInt32 ri = r.getUInt32(storedPatterns.nRows());
-  storedPatterns.getRowSparse(ri, x.begin());
-
-  vector<UInt> xp;
-  addNoise(x, xp, n, w, noise, r);
-
-  // Generate number of matches for each value of theta
+  UInt matches = 0;
+  UInt32 ri;
   for (UInt theta = 1; theta <= w_p; theta++)
   {
-    matchesWithThetas[theta] = numMatches(classifier, xp, theta);
-    //cout << "theta= " << theta << ", num matches= "
-    //          << matchesWithThetas[theta] << "\n";
+    matchesWithThetas[theta] = 0;
+  }
+
+  NTA_ASSERT(storedPatterns.nRows() == M);
+
+  for (UInt i = 0; i < k; i++)
+  {
+    ri = r.getUInt32(storedPatterns.nRows());
+    storedPatterns.getRowSparse(ri, x.begin());
+
+    vector<UInt> xp;
+    addNoise(x, xp, n, w, noise, r);
+
+    // Generate number of matches for each value of theta
+    for (UInt theta = 1; theta <= w_p; theta++)
+    {
+      matches = numMatches(classifier, xp, theta);
+      if (matches == 0)
+      {
+        matchesWithThetas[theta]++;
+      }
+      //cout << "theta= " << theta << ", num matches= "
+      //          << matchesWithThetas[theta] << "\n";
+    }
   }
 }
 
@@ -305,8 +327,8 @@ void classificationFalseNegativeTrial(
 // each value of theta = [1,w]. This is done by performing nTrials separate
 // simulations, and seeing how often there is at least one match.
 void classificationFalseNegativeProbability(
-    UInt n, UInt w, UInt w_p, UInt M, UInt noise, vector<Real> &probWithThetas,
-    UInt nTrials, Random &r)
+    UInt n, UInt w, UInt w_p, UInt M, UInt k, UInt noise,
+    vector<Real> &probWithThetas, UInt nTrials, Random &r)
 {
   NTA_ASSERT(w_p <= w < n);
 
@@ -319,17 +341,18 @@ void classificationFalseNegativeProbability(
     matchesWithThetas.clear();
     matchesWithThetas.resize(w_p+1, 0);
 
-    classificationFalseNegativeTrial(n, w, w_p, M, noise, matchesWithThetas, r);
-    if (trial % 10000 == 0)
+    classificationFalseNegativeTrial(n, w, w_p, M, k, noise,
+                                     matchesWithThetas, r);
+    if (trial % 1000 == 0)
     {
       cout << trial << " trials completed out of " << nTrials << "\n";
     }
 
     for (UInt theta = 1; theta <= w_p; theta++)
     {
-      if (matchesWithThetas[theta] == 0)
+      if (matchesWithThetas[theta] > 0)
       {
-        probWithThetas[theta]++;
+        probWithThetas[theta] += matchesWithThetas[theta];
       }
     }
   }
@@ -350,27 +373,60 @@ void classificationFalseNegativeProbability(
 // Run the trials!  Currently need to hard code the specific trial you are
 // about to run.
 int main(int argc, char * argv[]) {
+  if (argc != 2)
+  {
+    cout << "Expected single argument for output path." << endl;
+    exit(1);
+  }
 
+  string outPath(argv[1]);
+
+  // number of total bits in each representation
+  UInt n = 1024;
+  // number of active bits in each representation
+  UInt w = 30;
+  // w', number of bits to subsample and store for each representation
+  UInt w_p = 20;
+  // number of patterns to generate and store
+  UInt M = 100;
+  // number of patterns to test for each trial rather than doing just a
+  // single sample per trial - this is purely to speed things up
+  UInt k = 1;
+  // number of trials
+  UInt trials = 50000;
+  // verbosity
+  Byte verbosity = 1;
+  // random number generator
   Random r;
+  // output values where index is theta and value is probability
   vector<Real> probWithThetas;
 
-  cout << "Simulations running. Please be patient. Think about\n"
-       << "all the things you have to be grateful for.\n\n";
+  // noise (False negative only)
+  UInt noise = 5;
 
-  // False match probability for random vector against 100 stored vectors
-  classificationFalseMatchProbability(1024, 30, 30, 100, 1, probWithThetas,
-                                      50000, r);
-  classificationFalseMatchProbability(1024, 30, 30, 100, 10, probWithThetas,
-                                      5000, r);
+  if (verbosity > 0)
+  {
+    cout << "Simulations running. Please be patient. Think about\n"
+         << "all the things you have to be grateful for.\n\n";
+  }
 
-  // False match probability for random vector against 100 stored vectors where
-  // the stored vectors are subsampled (20 out of 30 bits stored)
-  //classificationFalseMatchProbability(1024, 30, 20, 100, probWithThetas,
-  //                                    50000, r);
+  if (true)
+  {
+    // False positive
+    classificationFalseMatchProbability(n, w, w_p, M, k, probWithThetas,
+                                        trials, r, verbosity);
+  } else {
+    // False negative
+    classificationFalseNegativeProbability(n, w, w_p, M, k, noise, probWithThetas,
+                                           trials, r);
+  }
 
-  // False negative probability for a stored vector with 5 bits changed against
-  // 100 subsampled (20 out of 30 bits stored) random vectors
-  //classificationFalseNegativeProbability(1024, 30, 20, 100, 5, probWithThetas,
-  //                                       50000, r);
+  // TODO: Set float precision to max.
+  ofstream f(outPath);
+  for (UInt theta = 1; theta <= 20; theta++)
+  {
+    f << theta << "," << probWithThetas[theta] << endl;
+  }
+  f.close();
 }
 
