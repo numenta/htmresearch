@@ -9,6 +9,7 @@ Instructions:
 1. Download the following four MNIST archive files from
    Yann LeCun's website:
 
+```
    export LECUNSITE=http://yann.lecun.com/exdb/mnist
    
    On MacOS:
@@ -40,6 +41,8 @@ Instructions:
    image format (in this case, PNG images):
 
    python ./convertImages.py
+
+```
 
 The result will be a set of 70,000 PNG-format images
 organized by category (0 through 9) and partitioned into
