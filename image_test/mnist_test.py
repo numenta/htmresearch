@@ -32,8 +32,33 @@ from nupic.research import fdrutilities
 Setups a simple Network and runs it on the MNIST dataset. Assumes you have
 the mnist data in subdirectories called mnist/training and mnist/testing.
 
-The current network, using a random SP, gets about 94% correct on the test
-set if trained with the full training set.
+The current network, using a random SP, gets about 95.5% correct on the test set
+if trained with the full training set.  By no means is this a complete  HTM
+vision system. There is no sequence memory or temporal pooling  here. In
+addition there is a single SP whose receptive field is the entire image.  A
+system with local receptive fields, temporal pooling, and some minimal
+hierarchy would be required to get really good invariance and recognition rates.
+
+Best SP params so far:
+
+------------CPP SpatialPooler Parameters ------------------
+numInputs                   = 1024
+numColumns                  = 4096
+numActiveColumnsPerInhArea  = 240
+potentialPct                = 0.9
+globalInhibition            = 1
+localAreaDensity            = -1
+stimulusThreshold           = 0
+synPermActiveInc            = 0
+synPermInactiveDec          = 0
+synPermConnected            = 0.2
+minPctOverlapDutyCycles     = 0.001
+minPctActiveDutyCycles      = 0.001
+dutyCyclePeriod             = 1000
+maxBoost                    = 1
+wrapAround                  = 1
+CPP SP seed                 = 1956
+
 """
 
 
@@ -46,18 +71,18 @@ DEFAULT_IMAGESENSOR_PARAMS ={
 }
 
 DEFAULT_SP_PARAMS = {
-  'columnCount': 2048,
-  'synPermInactiveDec': 0.000,
+  'columnCount': 4096,
   'spatialImp': 'cpp',
   'inputWidth': 1024,
   'spVerbosity': 1,
   'synPermConnected': 0.2,
-  'synPermActiveInc': 0.00,
+  'synPermActiveInc': 0.0,
+  'synPermInactiveDec': 0.0,
   'seed': 1956,
-  'numActiveColumnsPerInhArea': 120,
+  'numActiveColumnsPerInhArea': 240,
   'globalInhibition': 1,
   'potentialPct': 0.9,
-  'maxBoost': 1.0,
+  'maxBoost': 1.0
 }
 
 DEFAULT_CLASSIFIER_PARAMS = {
@@ -82,7 +107,8 @@ def createNetwork():
   net.addRegion("classifier","py.KNNClassifierRegion",
                 json.dumps(DEFAULT_CLASSIFIER_PARAMS))
 
-  # Link up the regions
+  # Link up the regions. Note that we need to create a link from the sensor
+  # to the classifier to send in the category labels.
   net.link("sensor", "SP", "UniformLink", "",
            srcOutput = "dataOut", destInput = "bottomUpIn")
   net.link("SP", "classifier", "UniformLink", "",
@@ -93,7 +119,7 @@ def createNetwork():
   return net
 
 
-def trainNetwork(net):
+def trainNetwork(net, networkFile="mnist_net.nta"):
   # Some stuff we will need later
   sensor = net.regions['sensor']
   sp = net.regions["SP"]
@@ -135,7 +161,7 @@ def trainNetwork(net):
       print "Iteration",i,"Category:",sensor.getOutputData('categoryOut')
 
   # Save the trained network
-  net.save("mnist_net.nta")
+  net.save(networkFile)
 
   # Print various statistics
   print "============= Training statistics ================="
@@ -154,11 +180,10 @@ def trainNetwork(net):
   return net
 
 
-def testNetwork(testPath="mnist/testing"):
-  net = Network("mnist_net.nta")
+def testNetwork(testPath="mnist/testing", savedNetworkFile="mnist_net.nta"):
+  net = Network(savedNetworkFile)
   sensor = net.regions['sensor']
   sp = net.regions["SP"]
-  pysp = sp.getSelf()
   classifier = net.regions['classifier']
 
   print "Reading test images"
@@ -220,10 +245,13 @@ def checkNet(net):
 
 if __name__ == "__main__":
   net = createNetwork()
-  trainNetwork(net)
+  trainNetwork(net, "mnist_net.nta")
 
+  # As a debugging step, verify we've learned the training set well
+  # This assumes you have a small subset of the training images in
+  # mnist/small_training
   print "Test on small part of training set"
-  testNetwork("mnist/small_training")
+  testNetwork("mnist/small_training", "mnist_net.nta")
 
   print "Test on full test set"
-  testNetwork()
+  testNetwork(savedNetworkFile="mnist_net.nta")
