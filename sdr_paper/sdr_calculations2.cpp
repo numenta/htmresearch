@@ -20,7 +20,6 @@
  * ----------------------------------------------------------------------
  */
 
-
 #include <assert.h>
 #include <cstdlib>
 #include <fstream>
@@ -33,6 +32,8 @@
 #include <nupic/math/SparseMatrix.hpp>
 #include <nupic/math/SparseMatrix01.hpp>
 #include <nupic/utils/Random.hpp>
+
+#include "binary_algorithms.hpp"
 
 using namespace std;
 using namespace nupic;
@@ -96,13 +97,13 @@ int numMatches(SparseMatrix01<UInt, Int> &patterns,
 
   patterns.rightVecProd(denseX.begin(), overlaps.begin());
 
-  int nMatches = 0;
+  int numMatches = 0;
   for (int i = 0; i < overlaps.size(); i++)
   {
-    if (overlaps[i] >= theta) nMatches++;
+    if (overlaps[i] >= theta) numMatches++;
   }
 
-  return nMatches;
+  return numMatches;
 }
 
 // Change exactly `noise` bits from x and put the result in xp. The number
@@ -127,31 +128,32 @@ void addNoise(const vector<UInt>& x, vector<UInt>& xp, UInt n, UInt w,
          xp.begin() + w - nRemoved, nAdded, r);
 }
 
-// Create M different vectors, each with w random bits on, and add them to sm.
-// Each vectors will have sm.ncols()
-void createRandomVectors(Int M, Int w, SparseMatrix01<UInt, Int> &sm,
-                         Random &r, int verbosity=0)
+// Create M different bit arrays, each with w random 1 bits, rest 0s.
+// The representations will use binary long[] with at least n bits. Any
+// trailing bits will be zeros and are not part of the representation.
+void createRandomSDRs(UInt M, UInt n, UInt w, Random &r, BinaryMatrix& classifier,
+                      int verbosity=0)
 {
-  vector<UInt> population;
-  for (int i= 0; i < sm.nCols(); i++) population.push_back(i);
+  UInt64 population[n];
+  for (UInt64 i= 0; i < n; i++) population[i] = i;
 
-  vector<UInt> activeBits;
-  activeBits.resize(w);
+  UInt64 activeBits[w];
 
   if (verbosity > 0)
   {
     cout << "Creating " << M << " random vectors with " << w << " bits on.\n";
   }
-  for (Int m=0; m < M; m++)
+  for (UInt m=0; m < M; m++)
   {
-    // Randomly sample from columns
-    sample(population.begin(), sm.nCols(), activeBits.begin(), w, r);
-    sm.addRow(activeBits.size(), activeBits.begin());
+    // Randomly sample bits for each SDR and add the binary representation to
+    // the output sdrs array
+    sample(population, n, activeBits, w, r);
+    classifier.setRowSparse(m, activeBits, w);
 
     if (verbosity > 1)
     {
       cout << m << ":";
-      for (Int i = 0; i < w; i++)
+      for (UInt i = 0; i < w; i++)
       {
         cout << activeBits[i] << " ";
       }
@@ -170,15 +172,14 @@ void classificationFalseMatchTrial(
   NTA_ASSERT(w_p <= w < n);
 
   UInt32 population[n];
-  for (Int i=0; i < n; i++) population[i] = i;
+  for (UInt i=0; i < n; i++) population[i] = i;
 
   // Create a list of stored patterns to put in the classifier
-  SparseMatrix01<UInt, Int> classifier(n, 1);
-  createRandomVectors(M, w, classifier, r);
+  BinaryMatrix classifier(M, n);
+  createRandomSDRs(M, n, w, r, classifier);
 
   // Generate our single random vector
-  vector<UInt> x;
-  x.resize(w, 0);
+  UInt64* x = new UInt64[w];
 
   UInt matches = 0;
   for (UInt theta = 1; theta <= w_p; theta++)
@@ -188,23 +189,22 @@ void classificationFalseMatchTrial(
 
   for (UInt i = 0; i < k; i++)
   {
-    sample(population, n, x.begin(), w, r);
+    sample(population, n, x, w, r);
 
-    //vector<UInt> y;
-    //y.resize(w, 0);
-    //classifier.getRowSparse(44, y.begin());
+    //UInt64* y = new UInt64[w];
+    //classifier.getRowSparse(44, y);
     //cout << "stored 44: ";
     //for (UInt i = 0; i < w; i++)
     //{
     //  cout << y[i] << " ";
     //}
     //cout << endl;
-    matches = numMatches(classifier, x, 1);
+    matches = classifier.matchSparse(x, w, 1);
 
     // Generate number of matches for each value of theta
     for (UInt theta = 1; theta <= w_p; theta++)
     {
-      matches = numMatches(classifier, x, theta);
+      matches = classifier.matchSparse(x, w, theta);
       if (matches > 0)
       {
         matchesWithThetas[theta]++;
@@ -213,6 +213,8 @@ void classificationFalseMatchTrial(
       //          << matchesWithThetas[theta] << "\n";
     }
   }
+
+  delete[] x;
 }
 
 // Given values for n, w, w_p, M, compute the probability of a false match for
@@ -270,6 +272,7 @@ void classificationFalseMatchProbability(
   }
 }
 
+/*
 // Do a single classification trial. Given values for n, w, and M create N
 // random vectors plus a random trial vector. For each value of theta from 1 to
 // w, return the number of vectors that match.
@@ -356,7 +359,7 @@ void classificationFalseNegativeProbability(
 
     classificationFalseNegativeTrial(n, w, w_p, M, k, noise,
                                      matchesWithThetas, r);
-    if (trial % 10 == 0)
+    if (trial % 1000 == 0)
     {
       cout << trial << " trials completed out of " << nTrials << "\n";
     }
@@ -382,6 +385,7 @@ void classificationFalseNegativeProbability(
          << endl;
   }
 }
+*/
 
 // Run the trials!  Currently need to hard code the specific trial you are
 // about to run.
@@ -430,8 +434,8 @@ int main(int argc, char * argv[]) {
                                         trials, r, verbosity);
   } else {
     // False negative
-    classificationFalseNegativeProbability(n, w, w_p, M, k, noise, probWithThetas,
-                                           trials, r);
+    //classificationFalseNegativeProbability(n, w, w_p, M, k, noise, probWithThetas,
+    //                                       trials, r);
   }
 
   // TODO: Set float precision to max.
