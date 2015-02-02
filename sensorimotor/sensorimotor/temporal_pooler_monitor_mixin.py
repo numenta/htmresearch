@@ -134,6 +134,23 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     return plot
 
 
+  def mmGetCellActivityPlot(self, title=None):
+    """
+    Returns plot of the cell activity.
+    @param title - an optional title for the figure
+    @return (Plot) plot
+    """
+    plot = Plot(self, title)
+    activeCellTrace = self._mmTraces["activeCells"].data
+    data = numpy.zeros((self._numColumns, 1))
+    for activeSet in activeCellTrace:
+      activity = numpy.zeros((self._numColumns, 1))
+      activity[list(activeSet)] = 1
+      data = numpy.concatenate((data, activity), 1)
+
+    plot.addImage(data, xlabel="Time", ylabel="Cell Activity")
+    return plot
+
   def mmPrettyPrintDataOverlap(self):
     """
     Returns pretty-printed string representation of overlap data.
