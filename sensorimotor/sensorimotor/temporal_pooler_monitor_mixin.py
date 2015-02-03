@@ -134,6 +134,33 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     return plot
 
 
+  def mmGetCellActivityPlot(self, title=None, showReset=False):
+    """
+    Returns plot of the cell activity.
+    @param title - an optional title for the figure
+    @param showReset - if true, the first set of cell activities after a reset
+                        will have a gray background
+    @return (Plot) plot
+    """
+    plot = Plot(self, title)
+
+    resetTrace = self.mmGetTraceResets().data
+    activeCellTrace = self._mmTraces["activeCells"].data
+    data = numpy.zeros((self._numColumns, 1))
+    for i in xrange(len(activeCellTrace)):
+      if showReset and resetTrace[i]:
+        activity = numpy.ones((self._numColumns, 1)) / 4
+      else:
+        activity = numpy.zeros((self._numColumns, 1))
+
+      activeSet = activeCellTrace[i]
+      activity[list(activeSet)] = 1
+      data = numpy.concatenate((data, activity), 1)
+
+    plot.addImage(data, xlabel="Time", ylabel="Cell Activity")
+    return plot
+
+
   def mmPrettyPrintDataOverlap(self):
     """
     Returns pretty-printed string representation of overlap data.

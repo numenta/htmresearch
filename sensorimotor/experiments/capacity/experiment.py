@@ -78,7 +78,7 @@ DEFAULTS = {
   }
 }
 VERBOSITY = 1
-PLOT = 0
+PLOT = 1
 SHOW_PROGRESS_INTERVAL = 10
 
 
@@ -167,9 +167,9 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
     print
 
     if PLOT >= 1:
-      runner.tp.mmGetPlotConnectionsPerColumn(
-        title="worlds: {0}, elements: {1}".format(numWorlds, numElements))
-
+      title = "worlds: {0}, elements: {1}".format(numWorlds, numElements)
+      runner.tp.mmGetPlotConnectionsPerColumn(title=title)
+      runner.tp.mmGetCellActivityPlot(title=title)
 
     print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
                                                            numElements)
@@ -216,7 +216,7 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
 
 if __name__ == "__main__":
   if len(sys.argv) < 4:
-    print "Usage: ./capacity.py NUM_WORLDS NUM_ELEMENTS OUTPUT_DIR"
+    print "Usage: ./experiment.py NUM_WORLDS NUM_ELEMENTS OUTPUT_DIR"
     sys.exit()
 
   run(int(sys.argv[1]), int(sys.argv[2]), sys.argv[3])
