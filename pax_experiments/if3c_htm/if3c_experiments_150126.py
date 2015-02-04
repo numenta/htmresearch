@@ -1,4 +1,28 @@
+#!/usr/bin/env python
+
 # -*- coding: utf-8 -*-
+
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2013, Numenta, Inc.  Unless you have purchased from
+# Numenta, Inc. a separate commercial license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
 """
 Created on Thu Jan 22 16:14:22 2015
 
@@ -58,41 +82,41 @@ tau_Is_fast = 3 * ms
 # This 3c neuron can do additive operations through I_s, I_d, and can do multiplicative
 # shunting inhibition by operating on g_i_s, g_i_d
 eqs_3c = Equations('''
-    dVa/dt = (g_l_a * (E_l - Va) + g_c_sa * (Vs - Va)) / C_a : volt    
-    dVs/dt = (g_l_s * (E_l - Vs) + g_c_sa * (Va - Vs) + g_c_ds * (Vd - Vs)
-             + g_i_s * (E_i_s - Vs) + I_s + I_ext) / C_s : volt
-    dVd/dt = (g_l_d * (E_l - Vd) + g_c_ds * (Vs - Vd) 
-             + g_i_d * (E_i_d - Vd) + I_d) / C_d : volt
-    dg_i_s/dt = -g_i_s / tau_g_i_s : siemens
-    dg_i_d/dt = -g_i_d / tau_g_i_d : siemens
-    dI_s/dt = -I_s / tau_I_s : amp
-    dI_d/dt = -I_d / tau_I_d : amp
-    I_ext : amp
+  dVa/dt = (g_l_a * (E_l - Va) + g_c_sa * (Vs - Va)) / C_a : volt    
+  dVs/dt = (g_l_s * (E_l - Vs) + g_c_sa * (Va - Vs) + g_c_ds * (Vd - Vs)
+           + g_i_s * (E_i_s - Vs) + I_s + I_ext) / C_s : volt
+  dVd/dt = (g_l_d * (E_l - Vd) + g_c_ds * (Vs - Vd) 
+           + g_i_d * (E_i_d - Vd) + I_d) / C_d : volt
+  dg_i_s/dt = -g_i_s / tau_g_i_s : siemens
+  dg_i_d/dt = -g_i_d / tau_g_i_d : siemens
+  dI_s/dt = -I_s / tau_I_s : amp
+  dI_d/dt = -I_d / tau_I_d : amp
+  I_ext : amp
 ''')
 
 eqs_fast_2c = Equations('''
-    dVa/dt = (gla_fast * (E_l - Va) + gc_fast * (Vs - Va)) / Ca_fast : volt
-    dVs/dt = (gls_fast * (E_l - Vs) + gc_fast * (Va - Vs) + gis_fast * (E_i_s - Vs)
-             + I_s + I_ext) / Cs_fast : volt
-    dgis_fast/dt = -gis_fast / tau_gis_fast : siemens
-    dI_s/dt = - I_s / tau_Is_fast : amp
-    I_ext : amp
+  dVa/dt = (gla_fast * (E_l - Va) + gc_fast * (Vs - Va)) / Ca_fast : volt
+  dVs/dt = (gls_fast * (E_l - Vs) + gc_fast * (Va - Vs) + gis_fast * (E_i_s - Vs)
+           + I_s + I_ext) / Cs_fast : volt
+  dgis_fast/dt = -gis_fast / tau_gis_fast : siemens
+  dI_s/dt = - I_s / tau_Is_fast : amp
+  I_ext : amp
 ''')
 
 ## So this was necessary because I was inputting Timed arrays as external 
 ## inputs. But I only wanted to put inputs into exc, and not into the inh cells
 ## These equations have the I_ext_s(t), which refers to the timed arrays.
 eqs_3c_in = Equations('''
-    dVa/dt = (g_l_a * (E_l - Va) + g_c_sa * (Vs - Va) + g_i_a * (E_i_a - Va)) / C_a : volt    
-    dVs/dt = (g_l_s * (E_l - Vs) + g_c_sa * (Va - Vs) + g_c_ds * (Vd - Vs)
-             + g_i_s * (E_i_s - Vs) + I_s + I_ext_s(t)) / C_s : volt
-    dVd/dt = (g_l_d * (E_l - Vd) + g_c_ds * (Vs - Vd) 
-             + g_i_d * (E_i_d - Vd) + I_d + I_ext_d(t)) / C_d : volt
-    dg_i_s/dt = -g_i_s / tau_g_i_s : siemens
-    dg_i_d/dt = -g_i_d / tau_g_i_d : siemens
-    dg_i_a/dt = -g_i_a / tau_g_i_a : siemens
-    dI_s/dt = -I_s / tau_I_s : amp
-    dI_d/dt = -I_d / tau_I_d : amp
+  dVa/dt = (g_l_a * (E_l - Va) + g_c_sa * (Vs - Va) + g_i_a * (E_i_a - Va)) / C_a : volt    
+  dVs/dt = (g_l_s * (E_l - Vs) + g_c_sa * (Va - Vs) + g_c_ds * (Vd - Vs)
+           + g_i_s * (E_i_s - Vs) + I_s + I_ext_s(t)) / C_s : volt
+  dVd/dt = (g_l_d * (E_l - Vd) + g_c_ds * (Vs - Vd) 
+           + g_i_d * (E_i_d - Vd) + I_d + I_ext_d(t)) / C_d : volt
+  dg_i_s/dt = -g_i_s / tau_g_i_s : siemens
+  dg_i_d/dt = -g_i_d / tau_g_i_d : siemens
+  dg_i_a/dt = -g_i_a / tau_g_i_a : siemens
+  dI_s/dt = -I_s / tau_I_s : amp
+  dI_d/dt = -I_d / tau_I_d : amp
 ''')
 
 #%% Synapse Equations
@@ -224,21 +248,21 @@ colors = get_cmap('Set3', N_cols)
 
 
 for idx in range(N_cols):
-    col_idx = N_cols * arange(N_exc_p_col) + idx
-    
-    for jdx in range(len(col_idx)):
-        c_idx = SpM_exc.it[0] == col_idx[jdx]
-        plot(SpM_exc.it[1][c_idx], (jdx+idx*N_exc_p_col) * ones((sum(c_idx))), 'o', c=colors(idx), ms=10)
+  col_idx = N_cols * arange(N_exc_p_col) + idx
+  
+  for jdx in range(len(col_idx)):
+    c_idx = SpM_exc.it[0] == col_idx[jdx]
+    plot(SpM_exc.it[1][c_idx], (jdx+idx*N_exc_p_col) * ones((sum(c_idx))), 'o', c=colors(idx), ms=10)
 
 title('Column Activity')
 
 subplot(212)
 stim_t = linspace(0, run_time, stimulus.shape[0])
 for idx in range(stimulus.shape[1]):
-    for jdx in range(N_exc_p_col):
-        plot(stim_t, stim_cols[:, idx + jdx * N_cols] + idx * nA, c=colors(idx))
-    plot(stim_t, stimulus[:,idx] + idx * nA, c=colors(idx), lw=3)
-    #plot(stimulus[:,idx] + idx * nA, c=colors(idx))
+  for jdx in range(N_exc_p_col):
+    plot(stim_t, stim_cols[:, idx + jdx * N_cols] + idx * nA, c=colors(idx))
+  plot(stim_t, stimulus[:,idx] + idx * nA, c=colors(idx), lw=3)
+  #plot(stimulus[:,idx] + idx * nA, c=colors(idx))
 
 title('Column Input')
 
@@ -272,8 +296,8 @@ figure(4)
 clf()
 subplot(511)    
 for jdx in range(len(col_idx)):
-    c_idx = find(SpM_exc.it[0] == col_idx[jdx])
-    plot(SpM_exc.it[1][c_idx], (jdx+idx*N_exc_p_col) * ones((len(c_idx))), 'o', c=colors(idx), ms=10, lw=3)
+  c_idx = find(SpM_exc.it[0] == col_idx[jdx])
+  plot(SpM_exc.it[1][c_idx], (jdx+idx*N_exc_p_col) * ones((len(c_idx))), 'o', c=colors(idx), ms=10, lw=3)
 title('Col %d spikes' % idx)
 
 
