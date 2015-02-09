@@ -410,7 +410,7 @@ int main(int argc, char * argv[]) {
   // single sample per trial - this is purely to speed things up
   UInt k = 10;
   // number of trials
-  UInt trials = 100;
+  UInt trials = 10;
   // verbosity
   Byte verbosity = 1;
   // random number generator
