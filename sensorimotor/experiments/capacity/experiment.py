@@ -66,9 +66,9 @@ DEFAULTS = {
   "w": W,
   "tmParams": {
     "columnDimensions": [N],
-    "minThreshold": W*2,
-    "activationThreshold": W*2,
-    "maxNewSynapseCount": W*2
+    "minThreshold": W * 2,
+    "activationThreshold": W * 2,
+    "maxNewSynapseCount": W * 2
   },
   "tpParams": {
     "columnDimensions": [N],
@@ -78,8 +78,49 @@ DEFAULTS = {
   }
 }
 VERBOSITY = 1
-PLOT = 1
+PLOT = 0
 SHOW_PROGRESS_INTERVAL = 10
+
+
+
+def trainTwoPass(runner, exhaustiveAgents, completeSequenceLength):
+  print "Training temporal memory..."
+  sequences = runner.generateSequences(completeSequenceLength * 2,
+                                       exhaustiveAgents,
+                                       verbosity=VERBOSITY)
+  runner.feedLayers(sequences, tmLearn=True, tpLearn=False,
+                    verbosity=VERBOSITY,
+                    showProgressInterval=SHOW_PROGRESS_INTERVAL)
+  print
+  print MonitorMixinBase.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics() +
+                                              runner.tm.mmGetDefaultMetrics())
+  print
+  print "Training temporal pooler..."
+  sequences = runner.generateSequences(completeSequenceLength * 1,
+                                       exhaustiveAgents,
+                                       verbosity=VERBOSITY)
+  runner.feedLayers(sequences, tmLearn=False, tpLearn=True,
+                    verbosity=VERBOSITY,
+                    showProgressInterval=SHOW_PROGRESS_INTERVAL)
+  print
+  print MonitorMixinBase.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics() +
+                                              runner.tm.mmGetDefaultMetrics())
+  print
+
+
+
+def trainOnline(runner, exhaustiveAgents, completeSequenceLength):
+  print "Training temporal memory and temporal pooler..."
+  sequences = runner.generateSequences(completeSequenceLength * 2,
+                                       exhaustiveAgents,
+                                       verbosity=VERBOSITY)
+  runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
+                    verbosity=VERBOSITY,
+                    showProgressInterval=SHOW_PROGRESS_INTERVAL)
+  print
+  print MonitorMixinBase.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics() +
+                                              runner.tm.mmGetDefaultMetrics())
+  print
 
 
 
@@ -108,7 +149,7 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
 
     print ("Experiment parameters: "
            "(# worlds = {0}, # elements = {1}, n = {2}, w = {3})".format(
-             numWorlds, numElements, n, w))
+      numWorlds, numElements, n, w))
     print "Temporal memory parameters: {0}".format(tmParams)
     print "Temporal pooler parameters: {0}".format(tpParams)
     print
@@ -128,42 +169,20 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
       exhaustiveAgents.append(
         ExhaustiveOneDAgent(OneDWorld(universe, elements), 0))
 
-      possibleMotorValues = range(-numElements, numElements+1)
+      possibleMotorValues = range(-numElements, numElements + 1)
       possibleMotorValues.remove(0)
       randomAgents.append(
         RandomOneDAgent(OneDWorld(universe, elements), numElements / 2,
                         possibleMotorValues=possibleMotorValues))
 
-
     print "Training (worlds: {0}, elements: {1})...".format(numWorlds,
                                                             numElements)
     print
-    print "Training temporal memory..."
-    sequences = runner.generateSequences(completeSequenceLength * 2,
-                                         exhaustiveAgents,
-                                         verbosity=VERBOSITY)
-    runner.feedLayers(sequences, tmLearn=True, tpLearn=False,
-                      verbosity=VERBOSITY,
-                      showProgressInterval=SHOW_PROGRESS_INTERVAL)
-    print
-
-    print MonitorMixinBase.mmPrettyPrintMetrics(
-      runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
-    print
-
-    print "Training temporal pooler..."
-    sequences = runner.generateSequences(completeSequenceLength * 1,
-                                         exhaustiveAgents,
-                                         verbosity=VERBOSITY)
-    runner.feedLayers(sequences, tmLearn=False, tpLearn=True,
-                      verbosity=VERBOSITY,
-                      showProgressInterval=SHOW_PROGRESS_INTERVAL)
-    print
+    if IS_ONLINE:
+      trainOnline(runner, exhaustiveAgents, completeSequenceLength)
+    else:
+      trainTwoPass(runner, exhaustiveAgents, completeSequenceLength)
     print "Done training."
-    print
-
-    print MonitorMixinBase.mmPrettyPrintMetrics(
-      runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
     print
 
     if PLOT >= 1:
@@ -199,11 +218,11 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
     row = [numWorlds, numElements, elapsed]
 
     for metric in (runner.tp.mmGetDefaultMetrics() +
-                   runner.tm.mmGetDefaultMetrics()):
+                     runner.tm.mmGetDefaultMetrics()):
       header += ["{0} ({1})".format(metric.prettyPrintTitle(), x) for x in
                  ["min", "max", "sum", "mean", "stddev"]]
       row += [metric.min, metric.max, metric.sum,
-              metric.mean,  metric.standardDeviation]
+              metric.mean, metric.standardDeviation]
 
     csvWriter.writerow(header)
     csvWriter.writerow(row)
@@ -214,6 +233,7 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
 
 
 
+IS_ONLINE = True
 if __name__ == "__main__":
   if len(sys.argv) < 4:
     print "Usage: ./experiment.py NUM_WORLDS NUM_ELEMENTS OUTPUT_DIR"
