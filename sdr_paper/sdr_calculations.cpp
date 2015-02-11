@@ -447,19 +447,6 @@ int main(int argc, char * argv[])
                                          trials, r);
   */
 
-  // number of total bits in each representation
-  UInt n = 1024;
-  // number of active bits in each representation
-  UInt w = 30;
-  // w', number of bits to subsample and store for each representation
-  UInt w_p = 20;
-  // number of patterns to generate and store
-  UInt M = 10000;
-  // number of patterns to test for each trial rather than doing just a
-  // single sample per trial - this is purely to speed things up
-  UInt k = 10;
-  // number of trials
-  UInt trials = 10;
   // verbosity
   Byte verbosity = 1;
   // random number generator
@@ -477,22 +464,21 @@ int main(int argc, char * argv[])
   ofstream f(outputPath);
   //runTrials(1000, 50000, 30, 180, 1, 100, 10000, r, f, verbosity);
   //runOneTrial(n, w, w_p, M, k, probWithThetas, nTrials, r, f, verbosity);
-  runOneTrial(1000, 10, 10, 1, 100, probWithThetas, 10000, r, f, verbosity);
   runOneTrial(1000, 20, 20, 1, 100, probWithThetas, 10000, r, f, verbosity);
   runOneTrial(1000, 40, 40, 1, 100, probWithThetas, 10000, r, f, verbosity);
+  runOneTrial(1000, 60, 60, 1, 100, probWithThetas, 10000, r, f, verbosity);
   runOneTrial(1000, 80, 80, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  runOneTrial(5000, 50, 50, 1, 100, probWithThetas, 10000, r, f, verbosity);
+  runOneTrial(1000, 100, 100, 1, 100, probWithThetas, 10000, r, f, verbosity);
+  runOneTrial(5000, 20, 20, 1, 100, probWithThetas, 10000, r, f, verbosity);
+  runOneTrial(5000, 40, 40, 1, 100, probWithThetas, 10000, r, f, verbosity);
+  runOneTrial(5000, 60, 60, 1, 100, probWithThetas, 10000, r, f, verbosity);
+  runOneTrial(5000, 80, 80, 1, 100, probWithThetas, 10000, r, f, verbosity);
   runOneTrial(5000, 100, 100, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  runOneTrial(5000, 200, 200, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  runOneTrial(5000, 400, 400, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  runOneTrial(20000, 200, 200, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  runOneTrial(20000, 400, 400, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  runOneTrial(20000, 800, 800, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  runOneTrial(20000, 1600, 1600, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  runOneTrial(50000, 500, 500, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  runOneTrial(50000, 1000, 1000, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  runOneTrial(50000, 2000, 2000, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  runOneTrial(50000, 4000, 4000, 1, 100, probWithThetas, 10000, r, f, verbosity);
+  runOneTrial(10000, 20, 20, 1, 100, probWithThetas, 10000, r, f, verbosity);
+  runOneTrial(10000, 40, 40, 1, 100, probWithThetas, 10000, r, f, verbosity);
+  runOneTrial(10000, 60, 60, 1, 100, probWithThetas, 10000, r, f, verbosity);
+  runOneTrial(10000, 80, 80, 1, 100, probWithThetas, 10000, r, f, verbosity);
+  runOneTrial(10000, 100, 100, 1, 100, probWithThetas, 10000, r, f, verbosity);
   f.close();
 }
 

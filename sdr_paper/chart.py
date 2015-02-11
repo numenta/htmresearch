@@ -16,8 +16,8 @@ import sys
 from matplotlib import pyplot
 
 
+
 if __name__ == "__main__":
-  #pyplot.ion()
   if len(sys.argv) != 2:
     print "Must specify path argument"
   path = sys.argv[1]
@@ -28,9 +28,9 @@ if __name__ == "__main__":
     for i, row in enumerate(reader):
       if False and n and n != int(row[0]):
         for thetas, errors, label in plotParamsList:
-          p = pyplot.plot(thetas, errors, label=label)
-        pyplot.legend()
-        pyplot.show()
+          p = plt.plot(thetas, errors, label=label)
+        plt.legend()
+        plt.show()
         plotParamsList = []
       n = int(row[0])
       w = int(row[1])
@@ -38,13 +38,19 @@ if __name__ == "__main__":
       M = int(row[3])
       k = int(row[4])
       nTrials = int(row[5])
-      errors = [float(e) for e in row[6:]]
+      errors = [float(e) for e in row[6:26]]
 
       thetas = [x+1 for x in xrange(len(errors))]
       label = "n=%i, w=%i, w'=%i" % (n, w, w_p)
 
       plotParamsList.append((thetas, errors, label))
+
     for thetas, errors, label in plotParamsList:
-      p = pyplot.plot(thetas, errors, label=label)
-    pyplot.legend()
-    pyplot.show()
+      #if "n=10000," in label:
+      p = plt.plot(thetas, errors, label=label)
+
+    plt.title("Calculated False Match Curves")
+    plt.xlabel("Theta")
+    plt.ylabel("False positive rate")
+    plt.legend()
+    plt.show()
