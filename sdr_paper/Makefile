@@ -74,3 +74,8 @@ sdr: sdr_calculations2.cpp
 		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libapr-1.a \
 		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libaprutil-1.a \
 		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libz.a
+clean: sdr_calculations2.cpp
+	rm -f *.o
+	rm -f sdr_calculations
+	rm -f sdr_calculations2
+	rm -f test_binary_matrix
