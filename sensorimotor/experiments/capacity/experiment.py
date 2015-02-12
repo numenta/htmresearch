@@ -74,18 +74,29 @@ DEFAULTS = {
     "columnDimensions": [N],
     "numActiveColumnsPerInhArea": W,
     "potentialPct": 0.9,
-    "initConnectedPct": 0.5
+    "initConnectedPct": 0.5,
+
+    # Ryan's additions
+    "synPermActiveInc": 0.001,
+    "synPermInactiveDec": 0.00,
+    "synPredictedInc": 0.5,
+    "synPermConnected": 0.3,
+    "poolingLife": 1000,
+    "poolingThreshUnpredicted": 0.0
   }
 }
 VERBOSITY = 1
 PLOT = 0
 SHOW_PROGRESS_INTERVAL = 10
-
-
+TM_TRAINING_SWEEPS = 2
+TP_TRAINING_SWEEPS = 1
+IS_ONLINE_LEARNING = True
+DEF_ONLINE_REPS = 2
 
 def trainTwoPass(runner, exhaustiveAgents, completeSequenceLength):
   print "Training temporal memory..."
-  sequences = runner.generateSequences(completeSequenceLength * 2,
+  sequences = runner.generateSequences(completeSequenceLength *
+                                       TM_TRAINING_SWEEPS,
                                        exhaustiveAgents,
                                        verbosity=VERBOSITY)
   runner.feedLayers(sequences, tmLearn=True, tpLearn=False,
@@ -96,7 +107,8 @@ def trainTwoPass(runner, exhaustiveAgents, completeSequenceLength):
                                               runner.tm.mmGetDefaultMetrics())
   print
   print "Training temporal pooler..."
-  sequences = runner.generateSequences(completeSequenceLength * 1,
+  sequences = runner.generateSequences(completeSequenceLength *
+                                       TP_TRAINING_SWEEPS,
                                        exhaustiveAgents,
                                        verbosity=VERBOSITY)
   runner.feedLayers(sequences, tmLearn=False, tpLearn=True,
@@ -109,9 +121,9 @@ def trainTwoPass(runner, exhaustiveAgents, completeSequenceLength):
 
 
 
-def trainOnline(runner, exhaustiveAgents, completeSequenceLength):
+def trainOnline(runner, exhaustiveAgents, completeSequenceLength, reps):
   print "Training temporal memory and temporal pooler..."
-  sequences = runner.generateSequences(completeSequenceLength * 2,
+  sequences = runner.generateSequences(completeSequenceLength * reps,
                                        exhaustiveAgents,
                                        verbosity=VERBOSITY)
   runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
@@ -124,12 +136,17 @@ def trainOnline(runner, exhaustiveAgents, completeSequenceLength):
 
 
 
-def run(numWorlds, numElements, outputDir, params=DEFAULTS):
+def run(numWorlds, numElements, outputDir, params=DEFAULTS,
+        isOnline=IS_ONLINE_LEARNING, onlineTrainingReps=DEF_ONLINE_REPS):
   # Extract params
   n = params["n"]
   w = params["w"]
   tmParams = params["tmParams"]
   tpParams = params["tpParams"]
+
+  if "isOnline" in params:
+    isOnline = params["isOnline"]
+    onlineTrainingReps = params["onlineTrainingReps"]
 
   # Initialize output
   if not os.path.exists(outputDir):
@@ -148,8 +165,9 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
     csvWriter = csv.writer(csvFile)
 
     print ("Experiment parameters: "
-           "(# worlds = {0}, # elements = {1}, n = {2}, w = {3})".format(
-      numWorlds, numElements, n, w))
+           "(# worlds = {0}, # elements = {1}, n = {2}, w = {3}, "
+           "online = {4}, onlineReps = {5})".format(
+      numWorlds, numElements, n, w, isOnline, onlineTrainingReps))
     print "Temporal memory parameters: {0}".format(tmParams)
     print "Temporal pooler parameters: {0}".format(tpParams)
     print
@@ -178,8 +196,9 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
     print "Training (worlds: {0}, elements: {1})...".format(numWorlds,
                                                             numElements)
     print
-    if IS_ONLINE:
-      trainOnline(runner, exhaustiveAgents, completeSequenceLength)
+    if isOnline:
+      trainOnline(runner, exhaustiveAgents, completeSequenceLength,
+                  onlineTrainingReps)
     else:
       trainTwoPass(runner, exhaustiveAgents, completeSequenceLength)
     print "Done training."
@@ -233,10 +252,9 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
 
 
 
-IS_ONLINE = True
 if __name__ == "__main__":
-  if len(sys.argv) < 4:
-    print "Usage: ./experiment.py NUM_WORLDS NUM_ELEMENTS OUTPUT_DIR"
+  if len(sys.argv) < 5:
+    print "Usage: ./experiment.py NUM_WORLDS NUM_ELEMENTS OUTPUT_DIR IS_ONLINE"
     sys.exit()
 
-  run(int(sys.argv[1]), int(sys.argv[2]), sys.argv[3])
+  run(int(sys.argv[1]), int(sys.argv[2]), sys.argv[3], isOnline=sys.argv[4])

@@ -115,3 +115,4 @@ if __name__ == "__main__":
 
       pool = Pool(processes=workers)
       pool.map(run, [(defn, params, outputDir) for defn in defs])
+
