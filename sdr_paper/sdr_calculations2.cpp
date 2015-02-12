@@ -419,7 +419,7 @@ int main(int argc, char * argv[]) {
   vector<Real> probWithThetas;
 
   // noise (False negative only)
-  UInt noise = 5;
+  //UInt noise = 5;
 
   if (verbosity > 0)
   {

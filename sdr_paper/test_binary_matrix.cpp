@@ -24,6 +24,7 @@
 #include <iostream>
 
 #include <nupic/types/Types.hpp>
+#include <nupic/utils/Log.hpp>
 
 #include "binary_algorithms.hpp"
 
@@ -42,11 +43,54 @@ int main(int argc, char * argv[])
     UInt64 indices3[4] = {3, 63, 64, 65};
     classifier.setRowSparse(2, indices3, 4);
 
-    classifier.print();
+    //classifier.print();
 
-    const UInt64 ONE = 1;
-    UInt64 sdr[2] = {8, 2};
-    UInt64 matches = classifier.matchDense(sdr, 2);
-    cout << "matches: " << matches << endl;
+    UInt64 matches;
+
+    {
+      UInt64 indices[4] = {0, 1, 2, 3};
+      matches = classifier.matchSparse(indices, 4, 4);
+      NTA_ASSERT(matches == 1);
+    }
+
+    {
+      UInt64 indices[4] = {0, 1, 2, 3};
+      matches = classifier.matchSparse(indices, 4, 2);
+      NTA_ASSERT(matches == 2);
+    }
+
+    {
+      UInt64 indices[4] = {0, 1, 2, 3};
+      matches = classifier.matchSparse(indices, 4, 1);
+      NTA_ASSERT(matches == 3);
+    }
+
+    {
+      // This creates a <=128 bit SDR with the 4th and 66th bits set
+      UInt64 sdr[2] = {8, 1};
+      matches = classifier.matchDense(sdr, 2);
+      NTA_ASSERT(matches == 2);
+    }
+
+    {
+      // This creates a <=128 bit SDR with the 4th and 66th bits set
+      UInt64 sdr[2] = {8, 2};
+      matches = classifier.matchDense(sdr, 2);
+      NTA_ASSERT(matches == 1);
+    }
+
+    {
+      // This creates a <=128 bit SDR with the 4th and 66th bits set
+      UInt64 sdr[2] = {15, 0};
+      matches = classifier.matchDense(sdr, 4);
+      NTA_ASSERT(matches == 1);
+    }
+
+    {
+      // This creates a <=128 bit SDR with the 4th and 66th bits set
+      UInt64 sdr[2] = {8, 0};
+      matches = classifier.matchDense(sdr, 1);
+      NTA_ASSERT(matches == 3);
+    }
   }
 }

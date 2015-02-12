@@ -33,7 +33,7 @@ namespace nupic
   const UInt64 ZERO = 0;
   const UInt64 ONE = 1;
 
-  void printSDR(UInt n, UInt64* sdr)
+  void printDense(UInt64* sdr, UInt n)
   {
     UInt64 one = 1;
     UInt blockIndex = 0;
@@ -52,7 +52,7 @@ namespace nupic
     std::cout << std::endl;
   }
 
-  void printSDRIndices(UInt n, UInt64* sdr)
+  void printDenseIndices(UInt64* sdr, UInt n)
   {
     UInt64 one = 1;
     UInt blockIndex = 0;
@@ -65,6 +65,15 @@ namespace nupic
       {
         std::cout << i << " ";
       }
+    }
+    std::cout << std::endl;
+  }
+
+  void printSparseIndices(UInt64* indices, UInt w)
+  {
+    for (UInt i = 0; i < w; i++)
+    {
+      std::cout << indices[i] << " ";
     }
     std::cout << std::endl;
   }
@@ -96,6 +105,7 @@ namespace nupic
     for (UInt i = 0; i < nBlocks; i++)
     {
       combined = a[i] & b[i];
+
       // Take 1: Count the on bits, incrementing count
       //while (combined)
       //{
@@ -194,7 +204,7 @@ namespace nupic
         UInt64 matches = 0;
         for (UInt i = 0; i < nRows_; i++)
         {
-          if (overlap(data_[i], tempSDR_, nCols_) >= theta)
+          if (overlap(data_[i], sdr, nCols_) >= theta)
           {
             matches++;
           }
@@ -206,7 +216,7 @@ namespace nupic
       {
         for (UInt i = 0; i < nRows_; i++)
         {
-          printSDR(nCols_, data_[i]);
+          printDense(data_[i], nCols_);
         }
       }
 
