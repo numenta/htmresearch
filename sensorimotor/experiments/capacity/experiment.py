@@ -47,6 +47,7 @@ import time
 
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
+
 from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
 from sensorimotor.random_one_d_agent import RandomOneDAgent
@@ -59,8 +60,8 @@ from sensorimotor.sensorimotor_experiment_runner import (
 
 
 # Constants
-N = 512
-W = 20
+N = 128 #512
+W = 5 #20
 DEFAULTS = {
   "n": N,
   "w": W,
@@ -82,12 +83,13 @@ DEFAULTS = {
     "synPredictedInc": 0.5,
     "synPermConnected": 0.3,
     "poolingLife": 1000,
-    "poolingThreshUnpredicted": 0.0
+    "poolingThreshUnpredicted": 0.0,
+    "spVerbosity": 0
   }
 }
-VERBOSITY = 1
-PLOT = 0
-SHOW_PROGRESS_INTERVAL = 10
+VERBOSITY = 0
+PLOT = 1
+SHOW_PROGRESS_INTERVAL = 200
 TM_TRAINING_SWEEPS = 2
 TP_TRAINING_SWEEPS = 1
 IS_ONLINE_LEARNING = True
@@ -123,7 +125,8 @@ def trainTwoPass(runner, exhaustiveAgents, completeSequenceLength):
 
 def trainOnline(runner, exhaustiveAgents, completeSequenceLength, reps):
   print "Training temporal memory and temporal pooler..."
-  sequences = runner.generateSequences(completeSequenceLength * reps,
+  sequences = runner.generateSequences(completeSequenceLength *
+                                       reps,
                                        exhaustiveAgents,
                                        verbosity=VERBOSITY)
   runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
@@ -206,8 +209,13 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS,
 
     if PLOT >= 1:
       title = "worlds: {0}, elements: {1}".format(numWorlds, numElements)
-      runner.tp.mmGetPlotConnectionsPerColumn(title=title)
-      runner.tp.mmGetCellActivityPlot(title=title)
+      runner.tm.mmGetCellActivityPlot(title=title, showReset=True,
+                                      activityType="activeCells")
+      runner.tm.mmGetCellActivityPlot(title=title, showReset=True,
+                                      activityType="correctlyPredictedCells")
+      runner.tm.mmGetCellActivityPlot(title=title, showReset=True,
+                                      activityType="predictiveCells")
+      # runner.tp.mmGetPlotConnectionsPerColumn(title=title)
 
     print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
                                                            numElements)
@@ -219,6 +227,12 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS,
                       verbosity=VERBOSITY,
                       showProgressInterval=SHOW_PROGRESS_INTERVAL)
     print "Done testing.\n"
+    if PLOT >= 1:
+      title = "worlds: {0}, elements: {1}".format(numWorlds, numElements)
+      # runner.tm.mmGetCellActivityPlot(title=title, showReset=True,
+      #                                 resetShading=0.4)
+      runner.tp.mmGetCellActivityPlot(title=title, showReset=True,
+                                      resetShading=0.4)
 
     if VERBOSITY >= 2:
       print "Overlap:"
