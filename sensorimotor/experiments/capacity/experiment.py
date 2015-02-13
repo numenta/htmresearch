@@ -47,7 +47,6 @@ import time
 
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
-
 from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
 from sensorimotor.random_one_d_agent import RandomOneDAgent
@@ -60,8 +59,8 @@ from sensorimotor.sensorimotor_experiment_runner import (
 
 
 # Constants
-N = 128 #512
-W = 5 #20
+N = 512
+W = 20
 DEFAULTS = {
   "n": N,
   "w": W,
@@ -76,8 +75,6 @@ DEFAULTS = {
     "numActiveColumnsPerInhArea": W,
     "potentialPct": 0.9,
     "initConnectedPct": 0.5,
-
-    # Ryan's additions
     "synPermActiveInc": 0.001,
     "synPermInactiveDec": 0.00,
     "synPredictedInc": 0.5,
@@ -87,9 +84,9 @@ DEFAULTS = {
     "spVerbosity": 0
   }
 }
-VERBOSITY = 0
+VERBOSITY = 1
 PLOT = 1
-SHOW_PROGRESS_INTERVAL = 200
+SHOW_PROGRESS_INTERVAL = 10
 TM_TRAINING_SWEEPS = 2
 TP_TRAINING_SWEEPS = 1
 IS_ONLINE_LEARNING = True
@@ -209,13 +206,8 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS,
 
     if PLOT >= 1:
       title = "worlds: {0}, elements: {1}".format(numWorlds, numElements)
-      runner.tm.mmGetCellActivityPlot(title=title, showReset=True,
-                                      activityType="activeCells")
-      runner.tm.mmGetCellActivityPlot(title=title, showReset=True,
-                                      activityType="correctlyPredictedCells")
-      runner.tm.mmGetCellActivityPlot(title=title, showReset=True,
-                                      activityType="predictiveCells")
-      # runner.tp.mmGetPlotConnectionsPerColumn(title=title)
+      runner.tp.mmGetPlotConnectionsPerColumn(title=title)
+      runner.tp.mmGetCellActivityPlot(title=title)
 
     print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
                                                            numElements)
@@ -229,8 +221,6 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS,
     print "Done testing.\n"
     if PLOT >= 1:
       title = "worlds: {0}, elements: {1}".format(numWorlds, numElements)
-      # runner.tm.mmGetCellActivityPlot(title=title, showReset=True,
-      #                                 resetShading=0.4)
       runner.tp.mmGetCellActivityPlot(title=title, showReset=True,
                                       resetShading=0.4)
 
@@ -251,7 +241,7 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS,
     row = [numWorlds, numElements, elapsed]
 
     for metric in (runner.tp.mmGetDefaultMetrics() +
-                     runner.tm.mmGetDefaultMetrics()):
+                   runner.tm.mmGetDefaultMetrics()):
       header += ["{0} ({1})".format(metric.prettyPrintTitle(), x) for x in
                  ["min", "max", "sum", "mean", "stddev"]]
       row += [metric.min, metric.max, metric.sum,
