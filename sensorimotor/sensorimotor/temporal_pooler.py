@@ -206,7 +206,7 @@ class TemporalPooler(SpatialPooler):
     self.usePoolingRule = usePoolingRule
     self._maxPoolingTime = maxPoolingTime
     self._poolingThreshUnpredicted = poolingThreshUnpredicted
-    # This also appears in the SP but as a local and not a class variable
+    # This also appears in the SP but as a local variable, not a class variable
     self._initConnectedPct = initConnectedPct
 
     # A column will enter pooling state if it receives enough predicted inputs
@@ -411,59 +411,10 @@ class TemporalPooler(SpatialPooler):
     correctlyPredicted = numpy.array(correctlyPredicted, dtype=realDType)
     inputVector.reshape(-1)
 
-    if self._spVerbosity > 3:
-      print " Input bits: ", inputVector.nonzero()[0]
-      print " Correctly predicted cells: ", correctlyPredicted.nonzero()[0]
+    overlaps, overlapsPredicted = self.tpCalculateOverlap(burstingColumns,
+                                                          correctlyPredicted,
+                                                          inputVector, learning)
 
-    # Phase 1: Calculate overlap scores
-    # The overlap score has 4 components:
-    # (1) Overlap between correctly predicted input cells and pooling columns
-    # (2) Overlap between active cells input and all columns (standard)
-    # (3) Overlap between correctly predicted input cells and all columns
-    # (4) Overlap sent from bursting columns to all columns
-
-    # 1) Calculate pooling overlap
-    if self.usePoolingRule:
-      overlapsPooling = self._calculatePoolingOverlap(correctlyPredicted,
-                                                      learning)
-
-      if self._spVerbosity > 4:
-        print "usePoolingRule: Overlaps after step 1:"
-        print "   ", overlapsPooling
-    else:
-      overlapsPooling = 0
-  
-    # 2) Calculate overlap between standard input and connected synapses
-    overlapsAllInput = self._calculateOverlap(inputVector)
-
-    # 3) overlap with predicted inputs
-    # NEW: Isn't this redundant with 1 and 2)? This looks at connected synapses
-    # only.
-    # RM If 1) is called with learning=False connected synapses are used and
-    # it is somewhat redundant although there is a boosting factor in 1) which
-    # makes 1's effect stronger. If 1) is called with learning=True it's less
-    # redundant
-    overlapsPredicted = self._calculateOverlap(correctlyPredicted)
-
-    if self._spVerbosity > 4:
-      print "Overlaps with all inputs:"
-      print " Number of On Bits: ", inputVector.sum()
-      print "   ", overlapsAllInput
-      print "Overlaps with predicted inputs:"
-      print "   ", overlapsPredicted
-
-    # 4) consider bursting columns
-    if self.useBurstingRule:
-      overlapsBursting = self._calculateBurstingColumns(burstingColumns)
-
-      if self._spVerbosity > 4:
-        print "Overlaps with bursting inputs:"
-        print "   ", overlapsBursting
-    else:
-      overlapsBursting = 0
-
-    overlaps = (overlapsPooling + overlapsPredicted + overlapsAllInput +
-                overlapsBursting)
 
     # Apply boosting when learning is on
     if learning:
@@ -487,10 +438,10 @@ class TemporalPooler(SpatialPooler):
         self._updateInhibitionRadius()
         self._updateMinDutyCycles()
 
-    # TODO: Why do anything with activeArray if returning activeColumns?
     activeArray.fill(0)
     if activeColumns.size > 0:
       activeArray[activeColumns] = 1
+    # END OF OVERLAP WITH SUPERCLASS
 
     # Update pooling state of columns
     poolingColumnsUpdate = activeColumns[numpy.where(
@@ -517,6 +468,60 @@ class TemporalPooler(SpatialPooler):
       # print "   ",overlapsPredicted[self._poolingColumns]
 
     return activeColumns
+
+
+  def tpCalculateOverlap(self, burstingColumns, correctlyPredicted, inputVector,
+                         learning):
+    if self._spVerbosity > 3:
+      print " Input bits: ", inputVector.nonzero()[0]
+      print " Correctly predicted cells: ", correctlyPredicted.nonzero()[0]
+
+    # Phase 1: Calculate overlap scores
+    # The overlap score has 4 components:
+    # (1) Overlap between correctly predicted input cells and pooling columns
+    # (2) Overlap between active cells input and all columns (standard)
+    # (3) Overlap between correctly predicted input cells and all columns
+    # (4) Overlap sent from bursting columns to all columns
+    # 1) Calculate pooling overlap
+    if self.usePoolingRule:
+      overlapsPooling = self._calculatePoolingOverlap(correctlyPredicted,
+                                                      learning)
+
+      if self._spVerbosity > 4:
+        print "usePoolingRule: Overlaps after step 1:"
+        print "   ", overlapsPooling
+    else:
+      overlapsPooling = 0
+
+    # 2) Calculate overlap between standard input and connected synapses
+    overlapsAllInput = self._calculateOverlap(inputVector)
+    # 3) overlap with predicted inputs
+    # NEW: Isn't this redundant with 1 and 2)? This looks at connected synapses
+    # only.
+    # RM If 1) is called with learning=False connected synapses are used and
+    # it is somewhat redundant although there is a boosting factor in 1) which
+    # makes 1's effect stronger. If 1) is called with learning=True it's less
+    # redundant
+    overlapsPredicted = self._calculateOverlap(correctlyPredicted)
+    if self._spVerbosity > 4:
+      print "Overlaps with all inputs:"
+      print " Number of On Bits: ", inputVector.sum()
+      print "   ", overlapsAllInput
+      print "Overlaps with predicted inputs:"
+      print "   ", overlapsPredicted
+
+    # 4) consider bursting columns
+    if self.useBurstingRule:
+      overlapsBursting = self._calculateBurstingColumns(burstingColumns)
+
+      if self._spVerbosity > 4:
+        print "Overlaps with bursting inputs:"
+        print "   ", overlapsBursting
+    else:
+      overlapsBursting = 0
+    overlaps = (overlapsPooling + overlapsPredicted + overlapsAllInput +
+                overlapsBursting)
+    return overlaps, overlapsPredicted
 
 
   def _calculatePoolingOverlap(self, correctlyPredictedInput, learning):
@@ -686,56 +691,10 @@ class TemporalPooler(SpatialPooler):
 
 
   def printParameters(self):
-    """
-    Useful for debugging.
-    """
+    super(TemporalPooler, self).printParameters(self)
     print "------------PY  TemporalPooler Parameters ------------------"
-    print "numInputs                  = ", self.getNumInputs()
-    print "numColumns                 = ", self.getNumColumns()
-    print "columnDimensions           = ", self._columnDimensions
-    print "numActiveColumnsPerInhArea = ", self.getNumActiveColumnsPerInhArea()
-    print "potentialPct               = ", self.getPotentialPct()
-    print "globalInhibition           = ", self.getGlobalInhibition()
-    print "localAreaDensity           = ", self.getLocalAreaDensity()
-    print "stimulusThreshold          = ", self.getStimulusThreshold()
-    print "synPermActiveInc           = ", self.getSynPermActiveInc()
-    print "synPermInactiveDec         = ", self.getSynPermInactiveDec()
-    print "synPermConnected           = ", self.getSynPermConnected()
-    print "minPctOverlapDutyCycle     = ", self.getMinPctOverlapDutyCycles()
-    print "minPctActiveDutyCycle      = ", self.getMinPctActiveDutyCycles()
-    print "dutyCyclePeriod            = ", self.getDutyCyclePeriod()
-    print "maxBoost                   = ", self.getMaxBoost()
-    print "spVerbosity                = ", self.getSpVerbosity()
-    print "version                    = ", self._version
-
-
-  # TODO: Probably can remove this. There are no calls to it! It seems to
-  # have been replaced by a similar method in sensorimotor_experiment_runner
-  def getInputForTP(self, tm):
-    """
-    Gets inputs for TP from specified temporal memory.
-    Three pieces of information are returned:
-    1. Cells correctly predicted by the temporal memory
-    2. All active cells
-    3. Bursting cells (representing unpredicted input)
-    """
-
-    # Get correctly predicted cells in layer 4
-    correctlyPredictedCells = numpy.zeros(self._inputDimensions).astype(
-                              realDType)
-    idx = (tm.predictedState["t-1"] + tm.activeState["t"]) == 2
-    idx = idx.reshape(self._inputDimensions)
-    correctlyPredictedCells[idx] = 1.0
-    # print "Predicted->active cells=",correctlyPredictedCells.nonzero()[0]
-
-    # all currently active cells in layer 4
-    spInputVector = tm.learnState["t"].reshape(self._inputDimensions)
-    # spInputVector = tm.activeState["t"].reshape(self._inputDimensions)
-
-    # bursting cells in layer 4
-    burstingColumns = tm.activeState["t"].sum(axis=1)
-    burstingColumns[burstingColumns < tm.cellsPerColumn] = 0
-    burstingColumns[burstingColumns == tm.cellsPerColumn] = 1
-    # print "Bursting column indices=",burstingColumns.nonzero()[0]
-
-    return correctlyPredictedCells, spInputVector, burstingColumns
+    print "synPredictedInc                  = ", self._synPredictedInc
+    print "maxPoolingTime                   = ", self._maxPoolingTime
+    print "poolingThreshUnpredicted         = ", self._poolingThreshUnpredicted
+    print "usePoolingRule                   = ", self.usePoolingRule
+    print "useBurstingRule                   = ", self.useBurstingRule
