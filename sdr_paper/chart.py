@@ -13,7 +13,7 @@
 import csv
 import sys
 
-from matplotlib import pyplot
+from matplotlib import pyplot as plt
 
 
 
@@ -38,7 +38,7 @@ if __name__ == "__main__":
       M = int(row[3])
       k = int(row[4])
       nTrials = int(row[5])
-      errors = [float(e) for e in row[6:26]]
+      errors = [float(e) for e in row[6:86]]
 
       thetas = [x+1 for x in xrange(len(errors))]
       label = "n=%i, w=%i, w'=%i" % (n, w, w_p)

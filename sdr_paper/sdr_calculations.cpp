@@ -565,6 +565,25 @@ void runOneTrial(UInt n, UInt w, UInt w_p, UInt M, UInt k,
   f << endl;
 }
 
+void unionRunOneTrial(UInt n, UInt w, UInt w_p, UInt M, UInt k,
+                 vector<Real>& probWithThetas, UInt nTrials, Random& r,
+                 ofstream& f, UInt verbosity)
+{
+  unionClassificationFalseMatchProbability(n, w, w_p, M, k, probWithThetas,
+                                           nTrials, r, verbosity);
+  f << n << ","
+    << w << ","
+    << w_p << ","
+    << M << ","
+    << k << ","
+    << nTrials;
+  for (UInt theta = 1; theta <= w_p; theta++)
+  {
+    f << "," << probWithThetas[theta];
+  }
+  f << endl;
+}
+
 void runTrialRange(
     UInt n1, UInt n2, UInt w1, UInt w2, UInt M, UInt k,
     UInt nTrials, Random &r, ofstream& f,
@@ -623,7 +642,7 @@ int main(int argc, char * argv[])
   }
 
   //// TODO: Set float precision to max.
-  //ofstream f(outputPath);
+  ofstream f(outputPath);
   ////runTrialRange(1000, 50000, 30, 180, 1, 100, 10000, r, f, verbosity);
   ////runOneTrial(n, w, w_p, M, k, probWithThetas, nTrials, r, f, verbosity);
   //runOneTrial(1000, 20, 20, 1, 100, probWithThetas, 10000, r, f, verbosity);
@@ -641,10 +660,23 @@ int main(int argc, char * argv[])
   //runOneTrial(10000, 60, 60, 1, 100, probWithThetas, 10000, r, f, verbosity);
   //runOneTrial(10000, 80, 80, 1, 100, probWithThetas, 10000, r, f, verbosity);
   //runOneTrial(10000, 100, 100, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //f.close();
 
-  //  UInt n, UInt w, UInt w_p, UInt M, UInt k, vector<Real> &probWithThetas,
-  //  UInt nTrials, Random &r, Byte verbosity)
-  unionClassificationFalseMatchProbability(1024, 20, 20, 20, 1, probWithThetas, 10000, r, 1);
+  //runOneTrial(n, w, w_p, M, k, probWithThetas, nTrials, r, f, verbosity);
+  //unionRunOneTrial(1000, 20, 20, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  //unionRunOneTrial(1000, 40, 40, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  //unionRunOneTrial(1000, 60, 60, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  //unionRunOneTrial(1000, 80, 80, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  //unionRunOneTrial(1000, 100, 100, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  //unionRunOneTrial(5000, 20, 20, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  //unionRunOneTrial(5000, 40, 40, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  //unionRunOneTrial(5000, 60, 60, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  //unionRunOneTrial(5000, 80, 80, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  //unionRunOneTrial(5000, 100, 100, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  unionRunOneTrial(10000, 20, 20, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  unionRunOneTrial(10000, 40, 40, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  unionRunOneTrial(10000, 60, 60, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  unionRunOneTrial(10000, 80, 80, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  unionRunOneTrial(10000, 100, 100, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  f.close();
 }
 
