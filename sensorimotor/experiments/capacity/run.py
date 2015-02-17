@@ -69,11 +69,11 @@ def run(args):
   numWorlds = defn["worlds"]
   numElements = defn["elements"]
 
+  print "Starting experiment: {0} worlds x {1} elements...".format(numWorlds,
+                                                                   numElements)
   filePrefix = os.path.join(outputDir, "{0}x{1}".format(numWorlds,
                                                         numElements))
   logPath = "{0}.log".format(filePrefix)
-
-  print "Starting ({0})...".format(logPath)
 
   with open(logPath, "w", buffering=0) as logFile:
     sys.stdout = logFile
@@ -104,6 +104,9 @@ if __name__ == "__main__":
   outputDir = options.outputDir
   workers = options.workers
 
+  print "Definitions path: " + defsPath
+  print "Params path: " + paramsPath
+  print "Output dir: " + outputDir
   with open(defsPath) as defsFile:
     defs = yaml.safe_load(defsFile)
 
