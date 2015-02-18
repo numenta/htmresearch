@@ -26,21 +26,21 @@ Combines all output files in a directory into a single file
 import csv
 import glob
 import os
-import math
 
 import matplotlib.pyplot as plt
 from pylab import rcParams
+
+
 
 def combineCsvFiles(directoryPath, outputFileName):
   appendHeader = True
 
   # Create csv output writer
-  outputPath = directoryPath + outputFileName
-  with open(outputPath, "wb") as outputFile:
+  os.chdir(directoryPath)
+  with open(outputFileName, "wb") as outputFile:
     csvWriter = csv.writer(outputFile)
 
     # Iterate over csv files in directory
-    os.chdir(directoryPath)
     for csvFileName in glob.glob("*.csv"):
 
       # Ignore and write over old version of the same file name
@@ -56,13 +56,15 @@ def combineCsvFiles(directoryPath, outputFileName):
           line = next(csvReader)
           csvWriter.writerow(line)
 
-    outputFile.flush()
 
 
 def wrangleData(path, xDataColumnIdx, yDataColumnIdxs, yStdDevIdxs):
+  """
+  Gets chart-ready data from the specified csv file
+  """
   assert len(yDataColumnIdxs) == len(yStdDevIdxs)
 
-  with open(path, "rb") as inputFile:
+  with open(path, "r") as inputFile:
     csvReader = csv.reader(inputFile)
 
     # Get DV values
@@ -110,8 +112,10 @@ def wrangleData(path, xDataColumnIdx, yDataColumnIdxs, yStdDevIdxs):
 
 
 def plotCsvData(dir, X, Ys, stdDevs, plotTitles, xAxisLabel, yAxisLabels,
-                gridFormat):
-  # TODO: Is there another way to size figure size?
+                gridFormat, plotFileName="plots.png"):
+  """
+  Plots the specified data and saved specified plot to file
+  """
   rcParams['figure.figsize'] = 15, 15
   fig = plt.figure()
   fig.suptitle(dir)
@@ -130,34 +134,38 @@ def plotCsvData(dir, X, Ys, stdDevs, plotTitles, xAxisLabel, yAxisLabels,
     ax.errorbar(X, y, stdDevs[i])
 
   plt.draw()
-  plt.savefig(dir + "plots.png", bbox_inches="tight")
+  plt.savefig(plotFileName, bbox_inches="tight")
   raw_input("Press enter...")
 
 
 
 def plotSensorimotorExperimentResults():
-  dir = "output/strict-varyElements/slow2_13/slow10xRedo/"
-  name = "allCombined.csv"
-  # TODO Figure out how to make this work all together
-  # combineCsvFiles(dir, name)
+  """
+  A utility to plot the data produced by
+  sensorimotor/experiments/capacity/run.py
+  """
+  filesDir = "output/strict-varyElements/slow2_13/slow10xRedo/"
+  combinedFileName = "allCombined.csv"
+  combineCsvFiles(filesDir, combinedFileName)
 
-  # Mean & Max Stability, Mean & Max Distinctness, Mean & Max Bursting Cols
+
   xColumnIdx = 1
+
+  # Following indices are columns in the excel file produced by
+  # sensorimotor/experiments/capacity/run.py and represent the following
+  # metrics:
+  # Mean & Max Stability, Mean & Max Distinctness, Mean & Max Bursting Cols
   yColumnIdxs = [11, 9, 16, 14, 46, 44]
   yStdDevIdxs = [12, -1, 17, -1, 47, -1]
   yAxisLabels = ["Cells", "Cells", "Cells", "Cells", "Cols", "Cols"]
   xAxisLabel = "Elements"
 
-  iv, dvs, stdDevs, metricTitles = wrangleData(dir + name, xColumnIdx,
+  iv, dvs, stdDevs, metricTitles = wrangleData(combinedFileName, xColumnIdx,
                                                yColumnIdxs, yStdDevIdxs)
 
-  # Square grid
-  # gridLength = int(math.ceil(math.sqrt(len(dvs))))
-  # gridFormat = 110 * gridLength
-
-  # 3x2
+  # 3x2 subplot grid
   gridFormat = 320
-  plotCsvData(dir, iv, dvs, stdDevs, metricTitles, xAxisLabel, yAxisLabels,
+  plotCsvData(filesDir, iv, dvs, stdDevs, metricTitles, xAxisLabel, yAxisLabels,
               gridFormat)
 
 
