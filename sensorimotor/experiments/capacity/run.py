@@ -70,7 +70,11 @@ def run(args):
   numElements = defn["elements"]
 
   print "Starting {0} worlds x {1} elems...".format(numWorlds, numElements)
-  filePrefix = os.path.join(outputDir, "{0}x{1}".format(numWorlds, numElements))
+  fileName = ""
+  if numWorlds > 100:
+    fileName = "_"
+  fileName += "{0}x{1}".format(numWorlds, numElements)
+  filePrefix = os.path.join(outputDir, fileName)
   logPath = "{0}.log".format(filePrefix)
 
   with open(logPath, "w", buffering=0) as logFile:

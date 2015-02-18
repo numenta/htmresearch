@@ -33,6 +33,14 @@ from pylab import rcParams
 
 
 def combineCsvFiles(directoryPath, outputFileName):
+  """
+  Combines all csv files in specified path.
+  All files are assumed to have a header row followed by data.
+  The resulting file contains only 1 head but all of the files' data
+  combined.
+  Caution, the csv are iterated over in alphabetical order so a file
+  100.csv may be appended before a file 10.csv and may mess up yo' data plotting
+  """
   appendHeader = True
 
   # Create csv output writer
@@ -144,12 +152,14 @@ def plotSensorimotorExperimentResults():
   Plots the data produced by
   sensorimotor/experiments/capacity/run.py
   """
-  filesDir = "output/strict-varyElements/slow2_13/slow10xRedo/"
+  filesDir = "output/strict-varyWorlds/slow3x"
   combinedFileName = "allCombined.csv"
   combineCsvFiles(filesDir, combinedFileName)
 
 
-  xColumnIdx = 1
+  # 0 gets the number of worlds
+  # 1 gets the number of elements
+  xColumnIdx = 0
 
   # Following indices are columns in the excel file produced by
   # sensorimotor/experiments/capacity/run.py and represent the following
@@ -165,8 +175,8 @@ def plotSensorimotorExperimentResults():
 
   # 3x2 subplot grid
   gridFormat = 320
-  plotChartData(filesDir, iv, dvs, stdDevs, metricTitles, xAxisLabel, yAxisLabels,
-              gridFormat)
+  plotChartData(filesDir, iv, dvs, stdDevs, metricTitles,
+                xAxisLabel, yAxisLabels, gridFormat)
 
 
 
