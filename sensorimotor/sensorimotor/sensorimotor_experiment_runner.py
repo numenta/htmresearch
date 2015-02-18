@@ -219,18 +219,16 @@ class SensorimotorExperimentRunner(object):
     TP.
     """
     # all currently active cells in layer 4
-    tpInputVector = numpy.zeros(
-                  self.tm.numberOfCells()).astype(realDType)
+    tpInputVector = numpy.zeros(self.tm.numberOfCells()).astype(realDType)
     tpInputVector[list(self.tm.activeCellsIndices())] = 1
 
     # bursting columns in layer 4
-    burstingColumns = numpy.zeros(
-      self.tm.numberOfColumns()).astype(realDType)
+    burstingColumns = numpy.zeros(self.tm.numberOfColumns()).astype(realDType)
     burstingColumns[list(self.tm.unpredictedActiveColumns)] = 1
 
     # correctly predicted cells in layer 4
     correctlyPredictedCells = numpy.zeros(
-      self.tm.numberOfCells()).astype(realDType)
+                              self.tm.numberOfCells()).astype(realDType)
     correctlyPredictedCells[list(self.tm.predictedActiveCellsIndices())] = 1
 
     return tpInputVector, burstingColumns, correctlyPredictedCells
