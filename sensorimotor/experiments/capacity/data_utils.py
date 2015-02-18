@@ -20,7 +20,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 """
-Combines all output files in a directory into a single file
+Utilities to process and visualize data from the sensorimotor experiment
 """
 
 import csv
@@ -58,7 +58,7 @@ def combineCsvFiles(directoryPath, outputFileName):
 
 
 
-def wrangleData(path, xDataColumnIdx, yDataColumnIdxs, yStdDevIdxs):
+def getChartData(path, xDataColumnIdx, yDataColumnIdxs, yStdDevIdxs):
   """
   Gets chart-ready data from the specified csv file
   """
@@ -82,7 +82,7 @@ def wrangleData(path, xDataColumnIdx, yDataColumnIdxs, yStdDevIdxs):
     plotTitles = []
 
     for i, yColIdx in enumerate(yDataColumnIdxs):
-      # Reset the csv iterator
+      # Reset the file position to allow iterator reuse
       inputFile.seek(0)
 
       # build the y data and y std devs
@@ -111,8 +111,8 @@ def wrangleData(path, xDataColumnIdx, yDataColumnIdxs, yStdDevIdxs):
 
 
 
-def plotCsvData(dir, X, Ys, stdDevs, plotTitles, xAxisLabel, yAxisLabels,
-                gridFormat, plotFileName="plots.png"):
+def plotChartData(dir, X, Ys, stdDevs, plotTitles, xAxisLabel, yAxisLabels,
+                  gridFormat, plotFileName="plots.png"):
   """
   Plots the specified data and saved specified plot to file
   """
@@ -141,7 +141,7 @@ def plotCsvData(dir, X, Ys, stdDevs, plotTitles, xAxisLabel, yAxisLabels,
 
 def plotSensorimotorExperimentResults():
   """
-  A utility to plot the data produced by
+  Plots the data produced by
   sensorimotor/experiments/capacity/run.py
   """
   filesDir = "output/strict-varyElements/slow2_13/slow10xRedo/"
@@ -160,12 +160,12 @@ def plotSensorimotorExperimentResults():
   yAxisLabels = ["Cells", "Cells", "Cells", "Cells", "Cols", "Cols"]
   xAxisLabel = "Elements"
 
-  iv, dvs, stdDevs, metricTitles = wrangleData(combinedFileName, xColumnIdx,
+  iv, dvs, stdDevs, metricTitles = getChartData(combinedFileName, xColumnIdx,
                                                yColumnIdxs, yStdDevIdxs)
 
   # 3x2 subplot grid
   gridFormat = 320
-  plotCsvData(filesDir, iv, dvs, stdDevs, metricTitles, xAxisLabel, yAxisLabels,
+  plotChartData(filesDir, iv, dvs, stdDevs, metricTitles, xAxisLabel, yAxisLabels,
               gridFormat)
 
 

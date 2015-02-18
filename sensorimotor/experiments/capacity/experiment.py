@@ -56,12 +56,10 @@ from sensorimotor.sensorimotor_experiment_runner import (
 )
 
 # Default number of input bits
-# N = 512
-N = 128
+N = 512
 
 # Default number of true input bits
-# W = 20
-W = 5
+W = 20
 DEFAULTS = {"n": N,
             "w": W,
             "tmParams": {"columnDimensions": [N],
