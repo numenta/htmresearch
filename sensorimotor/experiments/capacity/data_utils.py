@@ -55,7 +55,7 @@ def combineCsvFiles(directoryPath, outputFileName):
       if csvFileName != outputFileName:
 
         # Read each file writing the pertinent file lines to output
-        with open(csvFileName, "rb") as inputFile:
+        with open(csvFileName, "rU") as inputFile:
           csvReader = csv.reader(inputFile)
           line = next(csvReader)
           if appendHeader:
@@ -72,7 +72,7 @@ def getChartData(path, xDataColumnIdx, yDataColumnIdxs, yStdDevIdxs):
   """
   assert len(yDataColumnIdxs) == len(yStdDevIdxs)
 
-  with open(path, "r") as inputFile:
+  with open(path, "rU") as inputFile:
     csvReader = csv.reader(inputFile)
 
     # Get DV values
@@ -152,14 +152,16 @@ def plotSensorimotorExperimentResults():
   Plots the data produced by
   sensorimotor/experiments/capacity/run.py
   """
-  filesDir = "output/strict-varyWorlds/slow3x"
+  filesDir = "/Users/rmccall/nta/nupic.research/sensorimotor/experiments/capacity/output/varyWorlds-baseline/twoPass"
   combinedFileName = "allCombined.csv"
   combineCsvFiles(filesDir, combinedFileName)
 
 
-  # 0 gets the number of worlds
-  # 1 gets the number of elements
+  # 0 when number of worlds is IV
+  # 1 when number of elements is IV
   xColumnIdx = 0
+  xAxisLabel = "Worlds"
+  yAxisLabels = ["Cells", "Cells", "Cells", "Cells", "Cols", "Cols"]
 
   # Following indices are columns in the excel file produced by
   # sensorimotor/experiments/capacity/run.py and represent the following
@@ -167,11 +169,11 @@ def plotSensorimotorExperimentResults():
   # Mean & Max Stability, Mean & Max Distinctness, Mean & Max Bursting Cols
   yColumnIdxs = [11, 9, 16, 14, 46, 44]
   yStdDevIdxs = [12, -1, 17, -1, 47, -1]
-  yAxisLabels = ["Cells", "Cells", "Cells", "Cells", "Cols", "Cols"]
-  xAxisLabel = "Elements"
+
+
 
   iv, dvs, stdDevs, metricTitles = getChartData(combinedFileName, xColumnIdx,
-                                               yColumnIdxs, yStdDevIdxs)
+                                                yColumnIdxs, yStdDevIdxs)
 
   # 3x2 subplot grid
   gridFormat = 320
