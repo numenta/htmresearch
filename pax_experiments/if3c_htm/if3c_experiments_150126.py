@@ -4,7 +4,7 @@
 
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013, Numenta, Inc.  Unless you have purchased from
+# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -26,7 +26,8 @@
 """
 Created on Thu Jan 22 16:14:22 2015
 
-Experiments with columnar inhibitory feedback
+Experiments with columnar inhibitory feedback. Note that this script requires 
+brian2 and pylab.
 
 @author: pfrady
 """
@@ -306,7 +307,7 @@ plot(StM_exc[0].t, StM_exc[0].Vs, label='Vs')
 plot(StM_exc[0].t, StM_exc[0].Va, label='Va')
 title('Excitatory')
 legend()
-
+  
 subplot(513)
 plot(StM_exc[0].t, StM_exc[0].g_i_s, label='cross column')
 plot(StM_exc[0].t, StM_exc[0].g_i_a, label='within column')
