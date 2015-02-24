@@ -91,6 +91,55 @@ $L4\rightarrow L2/3 \rightarrow L5/6$ among cortical layers.  Instead, it
 provided new evidence supporting the idea that superficial layers
 ($L4\rightarrow L2/3$) and  deeper layers (L5/6) act as parallel systems.
 
+\subsection{Horton: minicolumn naysayer}
+
+This paper \cite{Horton2005} is a good summary of the arguments against the
+importance of columns. We should point out that the term "column" is very
+ambiguous - this article reviews all the variations but is also a bit muddled
+about them. In HTM the term  refers strictly to mini-columns. Phenomena like
+macro columns, hyper columns, ocular dominance columns, etc. are emergent
+phenomena that group together lots of mini columns. They probably arise as a
+function of learning, and not really required in a strict sense. You can get
+lots of variations in these macro-column structures and that would be fine. So
+most of the article does not contradict HTM theory.
+
+Horton completely disagrees  with the notion  that minicolumns have
+any functional significant whatsoever.  He states, "dubious is the concept that
+minicolumns are basic modular units of the adult cortex, rather than simply
+remnants of foetal development".
+
+Again we need to be precise about language. Most people debate whether the
+mini-column is THE  basic unit of cortical function, as if the connections
+between cells in a mini-column compute something.  In HTM theory we don’t make
+this claim, it’s false, and it leads to a lot of confusion.  The cellular layer,
+not the mini-column, is a unit of processing. All we claim is that cells in a
+mini-column share similar feedforward response properties and that they mutually
+inhibit each other.  We don’t require this inhibition be local to just the
+mini-column, in fact it may very well extend to surrounding columns.  Horton
+admits that mini-columns exist physically (pretty much everyone does), but he
+argues that they aren’t functionally important.
+
+One of his arguments is that there is a profuse connectivity across columns.
+This argues against the idea that the mini-column is the unit of computation but
+it is what we need in HTM layers.
+
+The only claim really under contention, vis-à-vis the Horton paper, is whether
+cells in a mini-column share feedforward receptive fields.  As the paper points
+out it is extremely difficult to detect this, as mini-columns are very narrow
+(35-50um wide and 2500um tall).  It is also likely that the cells in a
+mini-column are not exactly linear.  They can move about as much as they want as
+long as the connections are maintained. Neocortical tissue is more like tapioca
+and less like wood.
+
+We propose that cells in a mini-column will exhibit very different responses
+during learned sequences.  This exact behavior has been documented.  However,
+some people argue this proves that the cells in the mini-column do not share
+common receptive fields!  So you have to be careful when reading claims.  Was
+the animal awake, was it a brain slice, what exact stimulus is being used?
+
+HTM theory provides an elegant explanation for the conflicting data and
+confusion about mini-columns.
+
 \section{Sparse Distributed Representations}
 
 A core aspect of HTM theory is that sparse distributed representations (SDRs)
@@ -99,10 +148,11 @@ research papers supporting various aspects of this idea.
 
 \subsection{Olshausen: Sparse coding}
 
-The 1996, 1997 papers \cite{Olshausen1996, Olshausen1997} by Olshausen and Field represent the first computational papers on
-sparse representations in the cortex. Their work has been very influential in
-the machine learning and neuroscience. The 2004 paper \cite{Olshausen2004} is
-shorter and easier to read, more of a review.
+The 1996, 1997 papers \cite{Olshausen1996, Olshausen1997} by Olshausen and Field
+represent the first computational papers on sparse representations in the
+cortex. Their work has been very influential in the machine learning and
+neuroscience. The 2004 paper \cite{Olshausen2004} is shorter and easier to read,
+more of a review.
 
 \subsection{SDR object representations in IT}
 
@@ -123,11 +173,11 @@ V1, V2) cannot account for these similarity metrics.
 Note that each image was only presented for 105ms, so it's essentially a flash
 inference case.
 
-\subsection{SDR episodic memory in hippocampus}
-This paper \cite{Wixted2014} provides supporting evidence that a sparse distributed neural code 
-is used for episodic memory in human hippocampus. Specifically, they showed that  (i) a small 
-percentage of recorded neurons responded to any one target and (ii) a small percentage of targets 
-elicited a strong response in any one neuron
+\subsection{SDR episodic memory in hippocampus} This paper \cite{Wixted2014}
+provides supporting evidence that a sparse distributed neural code  is used for
+episodic memory in human hippocampus. Specifically, they showed that  (i) a
+small  percentage of recorded neurons responded to any one target and (ii) a
+small percentage of targets  elicited a strong response in any one neuron
 
 \subsection{Babadi: Sparseness and Expansion}
 
@@ -646,6 +696,29 @@ very specific visuomotor representations can form in humans as soon as 150 msecs
 after visual presentation of the object.  The did a TMS study, so the stimulated
 premotor cortex (they did not perform direct neural recordings).  They did
 record activity from hand muscles.
+
+\subsection{Saleem: Integration of visual and locomotion in V1}
+
+The Saleem study \cite{Saleem2013} clearly showed that V1 (at least in mouse) 
+integrates visual motion and locomotion signals during active navigation. Specifically,
+
+\begin{enumerate}
+\item Many V1 neurons are tuned for running speed (Fig. 1-2). There is a specific preferred 
+running speed, more than a nonspecific increase of activity level \cite{Niell2010}.
+\item Nearly half of the V1 neurons were reliably driven by the combination of visual speed and 
+run speed (i.e., neurons are tuned to a weighted sum of visual speed and run speed Fig. 3)
+\item As a population, V1 neurons predicted a linear combination of visual and run 
+speeds better than either visual or run speeds alone (Fig. 4).
+\end{enumerate}
+
+\subsection{Rauschecker: where and what pathway in auditory cortex}
+
+The "where" and "what" pathway, which was original proposed to describe the 
+dorsal and ventral pathway of the visual system,may be generalized to other sensory 
+modalities. Specifically, this paper \cite{Rauschecker2000} 
+showed that one region of the auditory cortex are selective to spatial locations and 
+another region is selective to auditory pattern or objects. 
+
 
 \subsection{Wolpert: Forward models}
 

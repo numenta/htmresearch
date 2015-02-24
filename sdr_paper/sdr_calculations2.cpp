@@ -20,12 +20,10 @@
  * ----------------------------------------------------------------------
  */
 
-
 #include <assert.h>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <set>
 #include <string>
 #include <vector>
 #include <utility>
@@ -33,8 +31,9 @@
 #include <nupic/math/Math.hpp>
 #include <nupic/math/SparseMatrix.hpp>
 #include <nupic/math/SparseMatrix01.hpp>
-#include <nupic/types/Types.hpp>
 #include <nupic/utils/Random.hpp>
+
+#include "binary_algorithms.hpp"
 
 using namespace std;
 using namespace nupic;
@@ -98,29 +97,13 @@ int numMatches(SparseMatrix01<UInt, Int> &patterns,
 
   patterns.rightVecProd(denseX.begin(), overlaps.begin());
 
-  int nMatches = 0;
+  int numMatches = 0;
   for (int i = 0; i < overlaps.size(); i++)
   {
-    if (overlaps[i] >= theta) nMatches++;
+    if (overlaps[i] >= theta) numMatches++;
   }
 
-  return nMatches;
-}
-
-// Given a union of patterns, a new pattern x, and a match threshold theta,
-// return the number of matching vectors
-int unionNumMatches(set<UInt> &patterns, vector<UInt> &x, UInt theta)
-{
-  int nMatches = 0;
-  for (auto it = x.begin(); it != x.end(); it++)
-  {
-    if (patterns.find(*it) != patterns.end()) nMatches++;
-  }
-
-  if (nMatches >= theta)
-    return 1;
-  else
-    return 0;
+  return numMatches;
 }
 
 // Change exactly `noise` bits from x and put the result in xp. The number
@@ -145,67 +128,32 @@ void addNoise(const vector<UInt>& x, vector<UInt>& xp, UInt n, UInt w,
          xp.begin() + w - nRemoved, nAdded, r);
 }
 
-// Create M different vectors, each with w random bits on, and add them to sm.
-// Each vectors will have sm.ncols()
-void createRandomVectors(Int M, Int w, SparseMatrix01<UInt, Int> &sm,
-                         Random &r, int verbosity=0)
+// Create M different bit arrays, each with w random 1 bits, rest 0s.
+// The representations will use binary long[] with at least n bits. Any
+// trailing bits will be zeros and are not part of the representation.
+void createRandomSDRs(UInt M, UInt n, UInt w, Random &r, BinaryMatrix& classifier,
+                      int verbosity=0)
 {
-  vector<UInt> population;
-  for (int i= 0; i < sm.nCols(); i++) population.push_back(i);
+  UInt64 population[n];
+  for (UInt64 i= 0; i < n; i++) population[i] = i;
 
-  vector<UInt> activeBits;
-  activeBits.resize(w);
+  UInt64 activeBits[w];
 
   if (verbosity > 0)
   {
     cout << "Creating " << M << " random vectors with " << w << " bits on.\n";
   }
-  for (Int m=0; m < M; m++)
+  for (UInt m=0; m < M; m++)
   {
-    // Randomly sample from columns
-    sample(population.begin(), sm.nCols(), activeBits.begin(), w, r);
-    sm.addRow(activeBits.size(), activeBits.begin());
+    // Randomly sample bits for each SDR and add the binary representation to
+    // the output sdrs array
+    sample(population, n, activeBits, w, r);
+    classifier.setRowSparse(m, activeBits, w);
 
     if (verbosity > 1)
     {
       cout << m << ":";
-      for (Int i = 0; i < w; i++)
-      {
-        cout << activeBits[i] << " ";
-      }
-      cout << endl;
-    }
-  }
-}
-
-// Create M different vectors, each with w random bits on, and union them
-// with s.
-void unionRandomVectors(UInt M, UInt n, UInt w, set<UInt>& s,
-                        Random &r, int verbosity=0)
-{
-  vector<UInt> population;
-  for (int i= 0; i < n; i++) population.push_back(i);
-
-  vector<UInt> activeBits;
-  activeBits.resize(w);
-
-  if (verbosity > 0)
-  {
-    cout << "Creating " << M << " random vectors with " << w << " bits on.\n";
-  }
-  for (Int m=0; m < M; m++)
-  {
-    // Randomly sample from columns
-    sample(population.begin(), n, activeBits.begin(), w, r);
-    for (UInt i = 0; i < w; i++)
-    {
-      s.insert(activeBits[i]);
-    }
-
-    if (verbosity > 1)
-    {
-      cout << m << ":";
-      for (Int i = 0; i < w; i++)
+      for (UInt i = 0; i < w; i++)
       {
         cout << activeBits[i] << " ";
       }
@@ -224,15 +172,14 @@ void classificationFalseMatchTrial(
   NTA_ASSERT(w_p <= w < n);
 
   UInt32 population[n];
-  for (Int i=0; i < n; i++) population[i] = i;
+  for (UInt i=0; i < n; i++) population[i] = i;
 
   // Create a list of stored patterns to put in the classifier
-  SparseMatrix01<UInt, Int> classifier(n, 1);
-  createRandomVectors(M, w, classifier, r);
+  BinaryMatrix classifier(M, n);
+  createRandomSDRs(M, n, w, r, classifier);
 
   // Generate our single random vector
-  vector<UInt> x;
-  x.resize(w, 0);
+  UInt64* x = new UInt64[w];
 
   UInt matches = 0;
   for (UInt theta = 1; theta <= w_p; theta++)
@@ -242,23 +189,22 @@ void classificationFalseMatchTrial(
 
   for (UInt i = 0; i < k; i++)
   {
-    sample(population, n, x.begin(), w, r);
+    sample(population, n, x, w, r);
 
-    //vector<UInt> y;
-    //y.resize(w, 0);
-    //classifier.getRowSparse(44, y.begin());
+    //UInt64* y = new UInt64[w];
+    //classifier.getRowSparse(44, y);
     //cout << "stored 44: ";
     //for (UInt i = 0; i < w; i++)
     //{
     //  cout << y[i] << " ";
     //}
     //cout << endl;
-    matches = numMatches(classifier, x, 1);
+    matches = classifier.matchSparse(x, w, 1);
 
     // Generate number of matches for each value of theta
     for (UInt theta = 1; theta <= w_p; theta++)
     {
-      matches = numMatches(classifier, x, theta);
+      matches = classifier.matchSparse(x, w, theta);
       if (matches > 0)
       {
         matchesWithThetas[theta]++;
@@ -267,6 +213,8 @@ void classificationFalseMatchTrial(
       //          << matchesWithThetas[theta] << "\n";
     }
   }
+
+  delete[] x;
 }
 
 // Given values for n, w, w_p, M, compute the probability of a false match for
@@ -295,7 +243,7 @@ void classificationFalseMatchProbability(
     vector<UInt> matchesWithThetas;
     matchesWithThetas.resize(w_p+1, 0);
     classificationFalseMatchTrial(n, w, w_p, M, k, matchesWithThetas, r);
-    if (verbosity > 1 && trial % 100 == 0)
+    if (verbosity > 0 && trial % 10 == 0)
     {
       cout << trial << " trials completed out of " << nTrials << "\n";
     }
@@ -324,115 +272,7 @@ void classificationFalseMatchProbability(
   }
 }
 
-// Do a single classification trial. Given values for n, w, and M create M
-// random vectors plus k random trial vectors. For each value of theta from 1 to
-// w, return the number of trial vectors that had a match.
-void unionClassificationFalseMatchTrial(
-    UInt n, UInt w, UInt w_p, UInt M, UInt k, vector<UInt> &matchesWithThetas,
-    Random &r)
-{
-  NTA_ASSERT(w_p <= w < n);
-
-  UInt32 population[n];
-  for (Int i=0; i < n; i++) population[i] = i;
-
-  set<UInt> classifier;
-  unionRandomVectors(M, n, w, classifier, r);
-
-  // Generate our single random vector
-  vector<UInt> x;
-  x.resize(w, 0);
-
-  UInt matches = 0;
-  for (UInt theta = 1; theta <= w_p; theta++)
-  {
-    matchesWithThetas[theta] = 0;
-  }
-
-  for (UInt i = 0; i < k; i++)
-  {
-    sample(population, n, x.begin(), w, r);
-
-    //vector<UInt> y;
-    //y.resize(w, 0);
-    //classifier.getRowSparse(44, y.begin());
-    //cout << "stored 44: ";
-    //for (UInt i = 0; i < w; i++)
-    //{
-    //  cout << y[i] << " ";
-    //}
-    //cout << endl;
-    //matches = unionNumMatches(classifier, x, 1);
-
-    // Generate number of matches for each value of theta
-    for (UInt theta = 1; theta <= w_p; theta++)
-    {
-      matches = unionNumMatches(classifier, x, theta);
-      if (matches > 0)
-      {
-        matchesWithThetas[theta]++;
-      }
-      //cout << "theta= " << theta << ", num matches= "
-      //          << matchesWithThetas[theta] << "\n";
-    }
-  }
-}
-
-// Given values for n, w, w_p, M, compute the probability of a false match for
-// each value of theta = [1,w]. This is done by performing nTrials separate
-// simulations, and seeing how often there is at least one match.
-//
-// @param n number of bits per vector
-// @param w number of active bits per vector
-// @param w_p number of bits to subsample and store for each of M vectors
-// @param M number of vectors to generate and store in classifier
-// @param k number of vectors to generate and test per trial
-// @param probWithThetas probabilities of false match for each theta value
-// @param nTrials number of trials to run to compute probability
-// @param r a random number generator
-void unionClassificationFalseMatchProbability(
-    UInt n, UInt w, UInt w_p, UInt M, UInt k, vector<Real> &probWithThetas,
-    UInt nTrials, Random &r, Byte verbosity)
-{
-  NTA_ASSERT(w_p <= w < n);
-
-  probWithThetas.clear();
-  probWithThetas.resize(w_p+1, 0.0);
-
-  for (int trial = 0; trial < nTrials; trial++)
-  {
-    vector<UInt> matchesWithThetas;
-    matchesWithThetas.resize(w_p+1, 0);
-    unionClassificationFalseMatchTrial(n, w, w_p, M, k, matchesWithThetas, r);
-    if (verbosity > 1 && trial % 100 == 0)
-    {
-      cout << trial << " trials completed out of " << nTrials << "\n";
-    }
-
-    for (UInt theta = 1; theta <= w_p; theta++)
-    {
-      probWithThetas[theta] += matchesWithThetas[theta];
-    }
-  }
-
-  if (verbosity > 0)
-  {
-    cout << "Classification: Probability of false match for n=" << n
-         << ", M=" << M << ", w=" << w << ", w'=" << w_p << "\n";
-  }
-  for (UInt theta = 1; theta <= w_p; theta++)
-  {
-    probWithThetas[theta] = (Real) probWithThetas[theta] / (Real)(nTrials*k);
-    if (verbosity > 0)
-    {
-      auto bounds = estimateBounds(probWithThetas[theta], nTrials*k);
-      cout << "    Theta = " << theta << " prob=" << probWithThetas[theta]
-           << " +/- " << bounds
-           << endl;
-    }
-  }
-}
-
+/*
 // Do a single classification trial. Given values for n, w, and M create N
 // random vectors plus a random trial vector. For each value of theta from 1 to
 // w, return the number of vectors that match.
@@ -519,7 +359,7 @@ void classificationFalseNegativeProbability(
 
     classificationFalseNegativeTrial(n, w, w_p, M, k, noise,
                                      matchesWithThetas, r);
-    if (trial % 10 == 0)
+    if (trial % 1000 == 0)
     {
       cout << trial << " trials completed out of " << nTrials << "\n";
     }
@@ -545,89 +385,32 @@ void classificationFalseNegativeProbability(
          << endl;
   }
 }
-
-void runOneTrial(UInt n, UInt w, UInt w_p, UInt M, UInt k,
-                 vector<Real>& probWithThetas, UInt nTrials, Random& r,
-                 ofstream& f, UInt verbosity)
-{
-  classificationFalseMatchProbability(n, w, w_p, M, k, probWithThetas,
-                                      nTrials, r, verbosity);
-  f << n << ","
-    << w << ","
-    << w_p << ","
-    << M << ","
-    << k << ","
-    << nTrials;
-  for (UInt theta = 1; theta <= w_p; theta++)
-  {
-    f << "," << probWithThetas[theta];
-  }
-  f << endl;
-}
-
-void unionRunOneTrial(UInt n, UInt w, UInt w_p, UInt M, UInt k,
-                 vector<Real>& probWithThetas, UInt nTrials, Random& r,
-                 ofstream& f, UInt verbosity)
-{
-  unionClassificationFalseMatchProbability(n, w, w_p, M, k, probWithThetas,
-                                           nTrials, r, verbosity);
-  f << n << ","
-    << w << ","
-    << w_p << ","
-    << M << ","
-    << k << ","
-    << nTrials;
-  for (UInt theta = 1; theta <= w_p; theta++)
-  {
-    f << "," << probWithThetas[theta];
-  }
-  f << endl;
-}
-
-void runTrialRange(
-    UInt n1, UInt n2, UInt w1, UInt w2, UInt M, UInt k,
-    UInt nTrials, Random &r, ofstream& f,
-    UInt verbosity)
-{
-  vector<Real> probWithThetas;
-
-  UInt nDiff = (n2 - n1) / 4;
-  for (UInt n = n1; n <= n2; n += nDiff)
-  {
-    UInt wDiff = (w2 - w1) / 2;
-    for (UInt w = w1; w <= w2; w += wDiff)
-    {
-      UInt wps = w / 3;
-      UInt wpe = w * 2 / 3;
-      UInt wpdiff = (wpe - wps) / 2;
-      for (UInt w_p = wps; w_p < wpe; w_p += wpdiff)
-      {
-        runOneTrial(n, w, w_p, M, k, probWithThetas, nTrials, r, f, verbosity);
-      }
-    }
-  }
-}
+*/
 
 // Run the trials!  Currently need to hard code the specific trial you are
 // about to run.
-int main(int argc, char * argv[])
-{
-  if (argc < 2)
+int main(int argc, char * argv[]) {
+  if (argc != 2)
   {
-    cout << "Missing output path argument" << endl;
+    cout << "Expected single argument for output path." << endl;
     exit(1);
   }
-  const char* outputPath = argv[1];
 
-  // This is for false negatives, commented out
-  /*
-  // noise (False negative only)
-  UInt noise = 5;
-  // False negative
-  classificationFalseNegativeProbability(n, w, w_p, M, k, noise, probWithThetas,
-                                         trials, r);
-  */
+  string outPath(argv[1]);
 
+  // number of total bits in each representation
+  UInt n = 1024;
+  // number of active bits in each representation
+  UInt w = 30;
+  // w', number of bits to subsample and store for each representation
+  UInt w_p = 20;
+  // number of patterns to generate and store
+  UInt M = 10000;
+  // number of patterns to test for each trial rather than doing just a
+  // single sample per trial - this is purely to speed things up
+  UInt k = 10;
+  // number of trials
+  UInt trials = 10;
   // verbosity
   Byte verbosity = 1;
   // random number generator
@@ -635,48 +418,32 @@ int main(int argc, char * argv[])
   // output values where index is theta and value is probability
   vector<Real> probWithThetas;
 
+  // noise (False negative only)
+  //UInt noise = 5;
+
   if (verbosity > 0)
   {
     cout << "Simulations running. Please be patient. Think about\n"
          << "all the things you have to be grateful for.\n\n";
   }
 
-  //// TODO: Set float precision to max.
-  ofstream f(outputPath);
-  ////runTrialRange(1000, 50000, 30, 180, 1, 100, 10000, r, f, verbosity);
-  ////runOneTrial(n, w, w_p, M, k, probWithThetas, nTrials, r, f, verbosity);
-  //runOneTrial(1000, 20, 20, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //runOneTrial(1000, 40, 40, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //runOneTrial(1000, 60, 60, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //runOneTrial(1000, 80, 80, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //runOneTrial(1000, 100, 100, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //runOneTrial(5000, 20, 20, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //runOneTrial(5000, 40, 40, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //runOneTrial(5000, 60, 60, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //runOneTrial(5000, 80, 80, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //runOneTrial(5000, 100, 100, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //runOneTrial(10000, 20, 20, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //runOneTrial(10000, 40, 40, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //runOneTrial(10000, 60, 60, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //runOneTrial(10000, 80, 80, 1, 100, probWithThetas, 10000, r, f, verbosity);
-  //runOneTrial(10000, 100, 100, 1, 100, probWithThetas, 10000, r, f, verbosity);
+  if (true)
+  {
+    // False positive
+    classificationFalseMatchProbability(n, w, w_p, M, k, probWithThetas,
+                                        trials, r, verbosity);
+  } else {
+    // False negative
+    //classificationFalseNegativeProbability(n, w, w_p, M, k, noise, probWithThetas,
+    //                                       trials, r);
+  }
 
-  //runOneTrial(n, w, w_p, M, k, probWithThetas, nTrials, r, f, verbosity);
-  //unionRunOneTrial(1000, 20, 20, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  //unionRunOneTrial(1000, 40, 40, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  //unionRunOneTrial(1000, 60, 60, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  //unionRunOneTrial(1000, 80, 80, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  //unionRunOneTrial(1000, 100, 100, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  //unionRunOneTrial(5000, 20, 20, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  //unionRunOneTrial(5000, 40, 40, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  //unionRunOneTrial(5000, 60, 60, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  //unionRunOneTrial(5000, 80, 80, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  //unionRunOneTrial(5000, 100, 100, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  unionRunOneTrial(10000, 20, 20, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  unionRunOneTrial(10000, 40, 40, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  unionRunOneTrial(10000, 60, 60, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  unionRunOneTrial(10000, 80, 80, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  unionRunOneTrial(10000, 100, 100, 20, 100, probWithThetas, 10000, r, f, verbosity);
+  // TODO: Set float precision to max.
+  ofstream f(outPath);
+  for (UInt theta = 1; theta <= 20; theta++)
+  {
+    f << theta << "," << probWithThetas[theta] << endl;
+  }
   f.close();
 }
 
