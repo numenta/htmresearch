@@ -78,13 +78,18 @@ DEFAULTS = {"n": N,
                          "poolingThreshUnpredicted": 0.0,
                          "spVerbosity": 0}}
 
-VERBOSITY = 1
-PLOT = 0
-SHOW_PROGRESS_INTERVAL = 200
-TM_TRAINING_SWEEPS = 2
-TP_TRAINING_SWEEPS = 1
 IS_ONLINE_LEARNING = True
-DEFAULT_ONLINE_TRAINING_REPS = 2
+PLOT = 2
+VERBOSITY = 0
+
+# If true, the monitors' histories are cleared during training keeping only the
+# most recent
+TRAINING_CLEAR_HISTORY = False
+SHOW_PROGRESS_INTERVAL = 300
+TWOPASS_TM_TRAINING_SWEEPS = 2
+TWOPASS_TP_TRAINING_SWEEPS = 1
+ONLINE_TRAINING_SWEEPS = 3
+RANDOM_SEED = 42
 
 
 
@@ -93,19 +98,21 @@ def setupExperiment(n, w, numElements, numWorlds, tmParams, tpParams):
   universe = OneDUniverse(nSensor=n, wSensor=w,
                           nMotor=n, wMotor=w)
   runner = SensorimotorExperimentRunner(tmOverrides=tmParams,
-                                        tpOverrides=tpParams)
+                                        tpOverrides=tpParams,
+                                        seed=RANDOM_SEED)
   exhaustiveAgents = []
   randomAgents = []
   for world in xrange(numWorlds):
     elements = range(world * numElements, world * numElements + numElements)
-    exhaustiveAgents.append(
-      ExhaustiveOneDAgent(OneDWorld(universe, elements), 0))
+    agent = ExhaustiveOneDAgent(OneDWorld(universe, elements), 0)
+    exhaustiveAgents.append(agent)
 
     possibleMotorValues = range(-numElements, numElements + 1)
     possibleMotorValues.remove(0)
-    randomAgents.append(
-      RandomOneDAgent(OneDWorld(universe, elements), numElements / 2,
-                      possibleMotorValues=possibleMotorValues))
+    agent = RandomOneDAgent(OneDWorld(universe, elements), numElements / 2,
+                            possibleMotorValues=possibleMotorValues,
+                            seed=RANDOM_SEED)
+    randomAgents.append(agent)
   print "Done setting up experiment."
   print
   return runner, exhaustiveAgents, randomAgents
@@ -115,7 +122,7 @@ def setupExperiment(n, w, numElements, numWorlds, tmParams, tpParams):
 def trainTwoPass(runner, exhaustiveAgents, completeSequenceLength):
   print "Training temporal memory..."
   sequences = runner.generateSequences(completeSequenceLength *
-                                       TM_TRAINING_SWEEPS,
+                                       TWOPASS_TM_TRAINING_SWEEPS,
                                        exhaustiveAgents,
                                        verbosity=VERBOSITY)
   runner.feedLayers(sequences, tmLearn=True, tpLearn=False,
@@ -127,12 +134,13 @@ def trainTwoPass(runner, exhaustiveAgents, completeSequenceLength):
   print
   print "Training temporal pooler..."
   sequences = runner.generateSequences(completeSequenceLength *
-                                       TP_TRAINING_SWEEPS,
+                                       TWOPASS_TP_TRAINING_SWEEPS,
                                        exhaustiveAgents,
                                        verbosity=VERBOSITY)
   runner.feedLayers(sequences, tmLearn=False, tpLearn=True,
                     verbosity=VERBOSITY,
-                    showProgressInterval=SHOW_PROGRESS_INTERVAL)
+                    showProgressInterval=SHOW_PROGRESS_INTERVAL,
+                    clearHistory=TRAINING_CLEAR_HISTORY)
   print
   print MonitorMixinBase.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics() +
                                               runner.tm.mmGetDefaultMetrics())
@@ -169,10 +177,6 @@ def runTest(runner, randomAgents, numWorlds, numElements,
                     verbosity=VERBOSITY,
                     showProgressInterval=SHOW_PROGRESS_INTERVAL)
   print "Done testing.\n"
-  if PLOT >= 1:
-    title = "worlds: {0}, elements: {1}".format(numWorlds, numElements)
-    runner.tp.mmGetCellActivityPlot(title=title, showReset=True,
-                                    resetShading=0.4)
   if VERBOSITY >= 2:
     print "Overlap:"
     print
@@ -205,9 +209,26 @@ def writeOutput(outputDir, runner, numElems, numWorlds, elapsedTime):
 
 
 
+def plotExperimentState(runner, plotVerbosity):
+  shading = 0.4
+  if plotVerbosity >= 1:
+    # title = "worlds: {0}, elements: {1}".format(numWorlds, numElems)
+    title = "Online: " + str(IS_ONLINE_LEARNING) + ", Training phase"
+    # runner.tp.mmGetPlotConnectionsPerColumn(title=title)
+    if plotVerbosity >= 2:
+      runner.tm.mmGetCellActivityPlot(title=title, activityType="activeCells",
+                                      showReset=True, resetShading=shading)
+      runner.tm.mmGetCellActivityPlot(title=title,
+                                      activityType="predictedActiveCells",
+                                      showReset=True, resetShading=shading)
+      runner.tp.mmGetCellActivityPlot(title=title, showReset=True,
+                                      resetShading=shading)
+
+
+
 def run(numWorlds, numElems, outputDir,
         params=DEFAULTS, isOnline=IS_ONLINE_LEARNING,
-        onlineTrainingReps=DEFAULT_ONLINE_TRAINING_REPS):
+        onlineTrainingReps=ONLINE_TRAINING_SWEEPS):
   # Setup params
   n = params["n"]
   w = params["w"]
@@ -234,8 +255,7 @@ def run(numWorlds, numElems, outputDir,
                                                            tpParams)
 
   # Training phase
-  print "Training: (worlds: {0}, elements: {1})...".format(numWorlds,
-                                                           numElems)
+  print "Training: (worlds: {0}, elements: {1})...".format(numWorlds, numElems)
   print
   if isOnline:
     trainOnline(runner, exhaustiveAgents, completeSequenceLength,
@@ -244,20 +264,16 @@ def run(numWorlds, numElems, outputDir,
     trainTwoPass(runner, exhaustiveAgents, completeSequenceLength)
   print "Done training."
   print
-
-  if PLOT >= 1:
-    title = "worlds: {0}, elements: {1}".format(numWorlds, numElems)
-    runner.tp.mmGetPlotConnectionsPerColumn(title=title)
-    runner.tp.mmGetCellActivityPlot(title=title)
+  plotExperimentState(runner, PLOT)
 
   # Test TM and TP on randomly moving agents
   runTest(runner, randomAgents, numWorlds, numElems, completeSequenceLength)
+  plotExperimentState(runner, PLOT)
   elapsed = int(time.time() - start)
   print "Total time: {0:2} seconds.".format(elapsed)
 
   # Write results to output file
   writeOutput(outputDir, runner, numElems, numWorlds, elapsed)
-
   if PLOT >= 1:
     raw_input("Press any key to exit...")
 

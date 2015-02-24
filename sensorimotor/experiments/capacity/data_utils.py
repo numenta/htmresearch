@@ -119,10 +119,12 @@ def getChartData(path, xDataColumnIdx, yDataColumnIdxs, yStdDevIdxs):
 
 
 
+# TODO: Discuss the possibility of an abstracted (and corrected) form of this
+# method being added to Plot
 def plotChartData(dir, X, Ys, stdDevs, plotTitles, xAxisLabel, yAxisLabels,
                   gridFormat, plotFileName="plots.png"):
   """
-  Plots the specified data and saved specified plot to file
+  Plots the specified data and saves specified plot to file
   """
   rcParams['figure.figsize'] = 15, 15
   fig = plt.figure()
@@ -152,10 +154,10 @@ def plotSensorimotorExperimentResults():
   Plots the data produced by
   sensorimotor/experiments/capacity/run.py
   """
-  filesDir = "/Users/rmccall/nta/nupic.research/sensorimotor/experiments/capacity/output/varyWorlds-baseline/twoPass"
+  filesDir = "/Users/rmccall/nta/nupic.research/sensorimotor/experiments" \
+             "/capacity/output/varyWorlds-reasonable/slow3x"
   combinedFileName = "allCombined.csv"
   combineCsvFiles(filesDir, combinedFileName)
-
 
   # 0 when number of worlds is IV
   # 1 when number of elements is IV
@@ -169,8 +171,6 @@ def plotSensorimotorExperimentResults():
   # Mean & Max Stability, Mean & Max Distinctness, Mean & Max Bursting Cols
   yColumnIdxs = [11, 9, 16, 14, 46, 44]
   yStdDevIdxs = [12, -1, 17, -1, 47, -1]
-
-
 
   iv, dvs, stdDevs, metricTitles = getChartData(combinedFileName, xColumnIdx,
                                                 yColumnIdxs, yStdDevIdxs)
