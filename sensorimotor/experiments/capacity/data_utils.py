@@ -26,6 +26,7 @@ Utilities to process and visualize data from the sensorimotor experiment
 import csv
 import glob
 import os
+import sys
 
 import matplotlib.pyplot as plt
 from pylab import rcParams
@@ -119,8 +120,6 @@ def getChartData(path, xDataColumnIdx, yDataColumnIdxs, yStdDevIdxs):
 
 
 
-# TODO: Discuss the possibility of an abstracted (and corrected) form of this
-# method being added to Plot
 def plotChartData(dir, X, Ys, stdDevs, plotTitles, xAxisLabel, yAxisLabels,
                   gridFormat, plotFileName="plots.png"):
   """
@@ -149,14 +148,13 @@ def plotChartData(dir, X, Ys, stdDevs, plotTitles, xAxisLabel, yAxisLabels,
 
 
 
-def plotSensorimotorExperimentResults():
+def plotSensorimotorExperimentResults(filesDir, combinedFileName):
   """
   Plots the data produced by
   sensorimotor/experiments/capacity/run.py
   """
-  filesDir = "/Users/rmccall/nta/nupic.research/sensorimotor/experiments" \
-             "/capacity/output/varyWorlds-reasonable/slow3x"
-  combinedFileName = "allCombined.csv"
+  print "Combining csv's in: {0}".format(filesDir)
+  print "Output file name: {0}\n".format(combinedFileName)
   combineCsvFiles(filesDir, combinedFileName)
 
   # 0 when number of worlds is IV
@@ -170,8 +168,11 @@ def plotSensorimotorExperimentResults():
   # metrics:
   # Mean & Max Stability, Mean & Max Distinctness, Mean & Max Bursting Cols
   yColumnIdxs = [11, 9, 16, 14, 46, 44]
-  yStdDevIdxs = [12, -1, 17, -1, 47, -1]
 
+  # The following are the column indices in the same xls file for the std
+  # deviations of the metrics specified by yColumnIdxs. A -1 means the script
+  # won't plot a std dev for the corresponding metric.
+  yStdDevIdxs = [12, -1, 17, -1, 47, -1]
   iv, dvs, stdDevs, metricTitles = getChartData(combinedFileName, xColumnIdx,
                                                 yColumnIdxs, yStdDevIdxs)
 
@@ -183,4 +184,7 @@ def plotSensorimotorExperimentResults():
 
 
 if __name__ == "__main__":
-  plotSensorimotorExperimentResults()
+  if len(sys.argv) < 3:
+    print "Usage: ./data_utils.py FILES_DIR COMBINED_FILE_NAME"
+    sys.exit()
+  plotSensorimotorExperimentResults(sys.argv[1], sys.argv[2])

@@ -1,5 +1,7 @@
 n: 512
 w: 20
+isOnline: True
+onlineTrainingReps: 3
 tmParams:
   columnDimensions: [512]
   minThreshold: 40

@@ -135,7 +135,7 @@ class SensorimotorExperimentRunner(object):
 
 
   def feedLayers(self, sequences, tmLearn=True, tpLearn=None, verbosity=0,
-                 showProgressInterval=None, clearHistory=True):
+                 showProgressInterval=None):
     """
     Feed the given sequences to the HTM algorithms.
 
@@ -150,10 +150,6 @@ class SensorimotorExperimentRunner(object):
      motorSequence,
      sensorimotorSequence,
      sequenceLabels) = sequences
-
-    if clearHistory:
-      self.tm.mmClearHistory()
-      self.tp.mmClearHistory()
 
     currentTime = time.time()
 

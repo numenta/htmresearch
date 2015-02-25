@@ -44,6 +44,8 @@ import csv
 import os
 import sys
 import time
+import yaml
+from optparse import OptionParser
 
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
@@ -55,40 +57,11 @@ from sensorimotor.sensorimotor_experiment_runner import (
   SensorimotorExperimentRunner
 )
 
-# Default number of input bits
-N = 512
-
-# Default number of true input bits
-W = 20
-DEFAULTS = {"n": N,
-            "w": W,
-            "tmParams": {"columnDimensions": [N],
-                         "minThreshold": W * 2,
-                         "activationThreshold": W * 2,
-                         "maxNewSynapseCount": W * 2},
-            "tpParams": {"columnDimensions": [N],
-                         "numActiveColumnsPerInhArea": W,
-                         "potentialPct": 0.9,
-                         "initConnectedPct": 0.5,
-                         "synPermActiveInc": 0.001,
-                         "synPermInactiveDec": 0.00,
-                         "synPredictedInc": 0.5,
-                         "synPermConnected": 0.3,
-                         "poolingLife": 1000,
-                         "poolingThreshUnpredicted": 0.0,
-                         "spVerbosity": 0}}
-
-IS_ONLINE_LEARNING = True
-PLOT = 2
-VERBOSITY = 0
-
-# If true, the monitors' histories are cleared during training keeping only the
-# most recent
-TRAINING_CLEAR_HISTORY = False
-SHOW_PROGRESS_INTERVAL = 300
-TWOPASS_TM_TRAINING_SWEEPS = 2
-TWOPASS_TP_TRAINING_SWEEPS = 1
-ONLINE_TRAINING_SWEEPS = 3
+SHOW_PROGRESS_INTERVAL = 200
+TWOPASS_TM_TRAINING_REPS = 2
+TWOPASS_TP_TRAINING_REPS = 1
+ONLINE_TRAINING_REPS = 3
+NUM_TEST_SEQUENCES = 4
 RANDOM_SEED = 42
 
 
@@ -119,28 +92,30 @@ def setupExperiment(n, w, numElements, numWorlds, tmParams, tpParams):
 
 
 
-def trainTwoPass(runner, exhaustiveAgents, completeSequenceLength):
+def trainTwoPass(runner, exhaustiveAgents, completeSequenceLength, verbosity):
   print "Training temporal memory..."
   sequences = runner.generateSequences(completeSequenceLength *
-                                       TWOPASS_TM_TRAINING_SWEEPS,
+                                       TWOPASS_TM_TRAINING_REPS,
                                        exhaustiveAgents,
-                                       verbosity=VERBOSITY)
+                                       verbosity=verbosity)
   runner.feedLayers(sequences, tmLearn=True, tpLearn=False,
-                    verbosity=VERBOSITY,
+                    verbosity=verbosity,
                     showProgressInterval=SHOW_PROGRESS_INTERVAL)
   print
   print MonitorMixinBase.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics() +
                                               runner.tm.mmGetDefaultMetrics())
   print
   print "Training temporal pooler..."
+
+  runner.tm.mmClearHistory()
+  runner.tp.mmClearHistory()
   sequences = runner.generateSequences(completeSequenceLength *
-                                       TWOPASS_TP_TRAINING_SWEEPS,
+                                       TWOPASS_TP_TRAINING_REPS,
                                        exhaustiveAgents,
-                                       verbosity=VERBOSITY)
+                                       verbosity=verbosity)
   runner.feedLayers(sequences, tmLearn=False, tpLearn=True,
-                    verbosity=VERBOSITY,
-                    showProgressInterval=SHOW_PROGRESS_INTERVAL,
-                    clearHistory=TRAINING_CLEAR_HISTORY)
+                    verbosity=verbosity,
+                    showProgressInterval=SHOW_PROGRESS_INTERVAL)
   print
   print MonitorMixinBase.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics() +
                                               runner.tm.mmGetDefaultMetrics())
@@ -148,14 +123,15 @@ def trainTwoPass(runner, exhaustiveAgents, completeSequenceLength):
 
 
 
-def trainOnline(runner, exhaustiveAgents, completeSequenceLength, reps):
+def trainOnline(runner, exhaustiveAgents, completeSequenceLength, reps,
+                verbosity):
   print "Training temporal memory and temporal pooler..."
   sequences = runner.generateSequences(completeSequenceLength *
                                        reps,
                                        exhaustiveAgents,
-                                       verbosity=VERBOSITY)
+                                       verbosity=verbosity)
   runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
-                    verbosity=VERBOSITY,
+                    verbosity=verbosity,
                     showProgressInterval=SHOW_PROGRESS_INTERVAL)
   print
   print MonitorMixinBase.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics() +
@@ -164,20 +140,20 @@ def trainOnline(runner, exhaustiveAgents, completeSequenceLength, reps):
 
 
 
-def runTest(runner, randomAgents, numWorlds, numElements,
-            completeSequenceLength):
-  print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
-                                                         numElements)
-  numSequences = 4
-  sequences = runner.generateSequences(completeSequenceLength / numSequences,
-                                       randomAgents,
-                                       verbosity=VERBOSITY,
-                                       numSequences=numSequences)
+def runTestPhase(runner, randomAgents, numWorlds, numElements,
+                 completeSequenceLength, verbosity):
+  print "Testing (worlds: {0}, elements: {1})...".format(numWorlds, numElements)
+  runner.tm.mmClearHistory()
+  runner.tp.mmClearHistory()
+  sequences = runner.generateSequences(completeSequenceLength /
+                                       NUM_TEST_SEQUENCES,
+                                       randomAgents, verbosity=verbosity,
+                                       numSequences=NUM_TEST_SEQUENCES)
   runner.feedLayers(sequences, tmLearn=False, tpLearn=False,
-                    verbosity=VERBOSITY,
+                    verbosity=verbosity,
                     showProgressInterval=SHOW_PROGRESS_INTERVAL)
   print "Done testing.\n"
-  if VERBOSITY >= 2:
+  if verbosity >= 2:
     print "Overlap:"
     print
     print runner.tp.mmPrettyPrintDataOverlap()
@@ -188,11 +164,28 @@ def runTest(runner, randomAgents, numWorlds, numElements,
 
 
 
+def plotExperimentState(runner, plotVerbosity, numWorlds, numElems, isOnline,
+                        experimentPhase):
+  shading = 0.4
+  if plotVerbosity >= 1:
+    title = "worlds: {0}, elements: {1}, online: {2}, phase: {3}".format(
+            numWorlds, numElems, isOnline, experimentPhase)
+    runner.tp.mmGetPlotConnectionsPerColumn(title=title)
+    if plotVerbosity >= 2:
+      runner.tm.mmGetCellActivityPlot(title=title, activityType="activeCells",
+                                      showReset=True, resetShading=shading)
+      runner.tm.mmGetCellActivityPlot(title=title,
+                                      activityType="predictedActiveCells",
+                                      showReset=True, resetShading=shading)
+      runner.tp.mmGetCellActivityPlot(title=title, showReset=True,
+                                      resetShading=shading)
+
+
+
 def writeOutput(outputDir, runner, numElems, numWorlds, elapsedTime):
   if not os.path.exists(outputDir):
     os.makedirs(outputDir)
-  filePath = os.path.join(outputDir, "{0}x{1}.csv".format(numWorlds,
-                                                          numElems))
+  filePath = os.path.join(outputDir, "{0}x{1}.csv".format(numWorlds, numElems))
   with open(filePath, "wb") as outputFile:
     csvWriter = csv.writer(outputFile)
     header = ["# worlds", "# elements", "duration"]
@@ -209,37 +202,20 @@ def writeOutput(outputDir, runner, numElems, numWorlds, elapsedTime):
 
 
 
-def plotExperimentState(runner, plotVerbosity):
-  shading = 0.4
-  if plotVerbosity >= 1:
-    # title = "worlds: {0}, elements: {1}".format(numWorlds, numElems)
-    title = "Online: " + str(IS_ONLINE_LEARNING) + ", Training phase"
-    # runner.tp.mmGetPlotConnectionsPerColumn(title=title)
-    if plotVerbosity >= 2:
-      runner.tm.mmGetCellActivityPlot(title=title, activityType="activeCells",
-                                      showReset=True, resetShading=shading)
-      runner.tm.mmGetCellActivityPlot(title=title,
-                                      activityType="predictedActiveCells",
-                                      showReset=True, resetShading=shading)
-      runner.tp.mmGetCellActivityPlot(title=title, showReset=True,
-                                      resetShading=shading)
+def run(numWorlds, numElems, paramsPath, outputDir, plot, verbosity,
+        params=None):
+  if params is None:
+    with open(paramsPath) as paramsFile:
+      params = yaml.safe_load(paramsFile)
 
-
-
-def run(numWorlds, numElems, outputDir,
-        params=DEFAULTS, isOnline=IS_ONLINE_LEARNING,
-        onlineTrainingReps=ONLINE_TRAINING_SWEEPS):
   # Setup params
   n = params["n"]
   w = params["w"]
   tmParams = params["tmParams"]
   tpParams = params["tpParams"]
-
-  if "isOnline" in params:
-    isOnline = params["isOnline"]
-    onlineTrainingReps = params["onlineTrainingReps"]
+  isOnline = params["isOnline"]
+  onlineTrainingReps = params["onlineTrainingReps"] if isOnline else "N/A"
   completeSequenceLength = numElems ** 2
-
   print ("Experiment parameters: "
          "(# worlds = {0}, # elements = {1}, n = {2}, w = {3}, "
          "online = {4}, onlineReps = {5})".format(
@@ -259,29 +235,54 @@ def run(numWorlds, numElems, outputDir,
   print
   if isOnline:
     trainOnline(runner, exhaustiveAgents, completeSequenceLength,
-                onlineTrainingReps)
+                onlineTrainingReps, verbosity)
   else:
-    trainTwoPass(runner, exhaustiveAgents, completeSequenceLength)
+    trainTwoPass(runner, exhaustiveAgents, completeSequenceLength, verbosity)
   print "Done training."
   print
-  plotExperimentState(runner, PLOT)
+  plotExperimentState(runner, plot, numWorlds, numElems, isOnline, "Training")
 
   # Test TM and TP on randomly moving agents
-  runTest(runner, randomAgents, numWorlds, numElems, completeSequenceLength)
-  plotExperimentState(runner, PLOT)
+  runTestPhase(runner, randomAgents, numWorlds, numElems,
+               completeSequenceLength, verbosity)
+  plotExperimentState(runner, plot, numWorlds, numElems, isOnline, "Testing")
   elapsed = int(time.time() - start)
   print "Total time: {0:2} seconds.".format(elapsed)
 
   # Write results to output file
   writeOutput(outputDir, runner, numElems, numWorlds, elapsed)
-  if PLOT >= 1:
+  if plot >= 1:
     raw_input("Press any key to exit...")
 
 
 
+parser = OptionParser(usage="%prog NUM_WORLDS NUM_ELEMENTS PARAMS_DIR "
+                            "OUTPUT_DIR [options]"
+                            "\n\nRun sensorimotor experiment with specified "
+                            "worlds and elements using params in PARAMS_DIR "
+                            "and outputting results to OUTPUT_DIR.")
+parser.add_option("-p",
+                  "--plot",
+                  type=int,
+                  default=0,
+                  dest="plot",
+                  help="Plotting verbosity: 0 => none, 1 => summary plots, "
+                       "2 => detailed plots")
+parser.add_option("-v",
+                  "--verbosity",
+                  type=int,
+                  default=0,
+                  dest="verbosity",
+                  help="Console message verbosity: 0 => none")
+
+
+
 if __name__ == "__main__":
-  if len(sys.argv) < 4:
-    print "Usage: ./experiment.py NUM_WORLDS NUM_ELEMENTS OUTPUT_DIR"
+  (options, args) = parser.parse_args(sys.argv[1:])
+  if len(args) < 4:
+    parser.print_help(sys.stderr)
     sys.exit()
 
-  run(int(sys.argv[1]), int(sys.argv[2]), sys.argv[3])
+  plot = options.plot
+  verbosity = options.verbosity
+  run(int(args[0]), int(args[1]), args[2], args[3], plot, verbosity)

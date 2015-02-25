@@ -32,10 +32,7 @@ import yaml
 from experiments.capacity import experiment
 
 
-
 DEFAULT_OUTPUT_DIR = "output"
-
-
 
 parser = OptionParser(
   usage="%prog path/to/defs.yaml path/to/params.yaml [options]"
@@ -60,20 +57,17 @@ parser.add_option(
 
 
 
-def consolePrint(string):
-  print string
-
-
 def run(args):
+  # TODO: how to specify these?
+  plot = 0
+  verbosity = 0
+
   defn, params, outputDir = args
   numWorlds = defn["worlds"]
   numElements = defn["elements"]
 
   print "Starting {0} worlds x {1} elems...".format(numWorlds, numElements)
-  fileName = ""
-  if numWorlds > 100:
-    fileName = "_"
-  fileName += "{0}x{1}".format(numWorlds, numElements)
+  fileName = "{0:0>3}x{1:0>3}".format(numWorlds, numElements)
   filePrefix = os.path.join(outputDir, fileName)
   logPath = "{0}.log".format(filePrefix)
 
@@ -82,7 +76,8 @@ def run(args):
     exception = None
 
     try:
-      experiment.run(numWorlds, numElements, outputDir, params=params)
+      experiment.run(numWorlds, numElements, "", outputDir, plot,
+                     verbosity, params=params)
     except Exception, err:
       print traceback.format_exc()
       exception = err
@@ -106,9 +101,9 @@ if __name__ == "__main__":
   outputDir = options.outputDir
   workers = options.workers
 
-  print "Defs path: " + defsPath
-  print "Params path: " + paramsPath
-  print "Output dir: " + outputDir + "\n"
+  print "Defs path: {0}".format(defsPath)
+  print "Params path: {0}".format(paramsPath)
+  print "Output dir: {0}\n".format(outputDir)
   with open(defsPath) as defsFile:
     defs = yaml.safe_load(defsFile)
 
