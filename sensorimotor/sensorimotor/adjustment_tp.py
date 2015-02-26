@@ -23,14 +23,35 @@
 """TODO"""
 
 import collections
+import math
 import operator
 import random
 
 
+def computeSigmoid(x, infl=0.5, sharpness=1.0, _scaleY=True):
+  scaledX = (x - infl) / min(1.0 - infl, infl)
+  logistic = 1 / (1 + math.exp(-2 * sharpness * scaledX))
+  if _scaleY:
+    minVal = computeSigmoid(0.0, infl, sharpness, _scaleY=False)
+    delta = computeSigmoid(1.0, infl, sharpness, _scaleY=False) - minVal
+    return (logistic - minVal) / delta
+  return logistic
+
+
+def cellSum(x, max, coincThreshold):
+  assert x >= 0 and x <= max
+  # x is now a value between 0.0 and 1.0
+  x = float(x) / float(max)
+  infl = float(coincThreshold) / float(max)
+  return computeSigmoid(x, infl, 1.0)
+
+
 class Cell(object):
 
-  def __init__(self, nInputs, pctConnected, activationSteps, connectedThreshold=0.5, inc=0.3, dec=0.2, r=None):
-    self.r = r or random.Random(42)
+  def __init__(self, nInputs, pctConnected, activationSteps,
+               connectedThreshold=0.5, inc=0.3, dec=0.002, r=None,
+               nActiveInputs=80, coincThreshold=20):
+    self.r = r or random.Random()
 
     nConnected = int(float(nInputs) * pctConnected)
     self.weights = ([1.0 for _ in xrange(nConnected)] +
@@ -42,15 +63,22 @@ class Cell(object):
     self.inc = inc
     self.dec = dec
 
-    self.recentInnervations = collections.deque(maxlen=activationSteps)
+    self.nActiveInputs = nActiveInputs
+    self.coincThreshold = coincThreshold
 
-  def computeInnervation(self, inputIndices, oneStep=False):
-    innervation = sum(int(self.weights[i] > self.connectedThreshold) for i in inputIndices)
-    if oneStep:
-      return innervation
+    #self.recentInnervations = collections.deque(maxlen=activationSteps)
+    self.inertia = 0.0
 
-    self.recentInnervations.append(innervation)
-    return sum(self.recentInnervations)
+  def computeInnervation(self, inputIndices, decay):
+    if decay:
+      self.inertia *= decay
+    connectedActive = sum(int(self.weights[i] > self.connectedThreshold) for i in inputIndices)
+    innervation = cellSum(connectedActive, self.nActiveInputs, self.coincThreshold)
+
+    # TODO: Fix hard coded max inertia
+    self.inertia = min(self.inertia + innervation, 5.0)
+    #self.recentInnervations.append(innervation)
+    return self.inertia
 
   def adjustWeights(self, inputIndices):
     inputIndices = set(inputIndices)
@@ -61,40 +89,70 @@ class Cell(object):
         self.weights[i] = max(0.0, self.weights[i] - self.dec)
 
   def reset(self):
-    self.recentInnervations.clear()
+    self.inertia = 0.0
 
 
 class TP(object):
 
-  def __init__(self, nInputs, nCols, nActive, pctConnected, activationSteps, connectedThreshold=0.5, inc=0.3, dec=0.2, r=None):
+  def __init__(self, nInputs, nCols, nActive, pctConnected, activationSteps,
+               connectedThreshold=0.5, inc=0.3, dec=0.1, r=None,
+               nActiveInputs=80, coincThreshold=20, decay=0.9):
     self.r = r or random.Random(42)
     self.nActive = nActive
-    self.cells = [Cell(nInputs, pctConnected, activationSteps, connectedThreshold, inc, dec, r=r) for _ in xrange(nCols)]
+    self.cells = [Cell(nInputs, pctConnected, activationSteps,
+                       connectedThreshold, inc, dec, r=r,
+                       nActiveInputs=nActiveInputs, coincThreshold=20)
+                  for _ in xrange(nCols)]
 
     self.learn = True
+    self.decay = decay
 
   def runOne(self, p):
-    innervations = [(c.computeInnervation(p), i) for i, c in enumerate(self.cells)]
+    innervations = [(c.computeInnervation(p, decay=self.decay), i) for i, c in enumerate(self.cells)]
     topIndices = [pair[1] for pair in sorted(innervations, reverse=True)[:self.nActive]]
 
     for i in topIndices:
       if self.learn:
         self.cells[i].adjustWeights(p)
 
+    return topIndices
+
   def reset(self):
     for c in self.cells:
       c.reset()
+
+
+def topColumns(tp, seq, topN):
+  initLearn = tp.learn
+  tp.learn = False
+  tp.reset()
+
+  activeCols = collections.defaultdict(int)
+  for pattern in seq:
+    indices = tp.runOne(pattern)
+    for i in indices:
+      activeCols[i] += 1
+
+  tp.learn = initLearn
+  tp.reset()
+
+  return set(sorted([v[0] for v in sorted(activeCols.iteritems(), key=lambda v: v[1], reverse=True)[:topN]]))
 
 
 if __name__ == "__main__":
   r = random.Random(42)
   nInputs = 8000
   w = int(float(nInputs) * 0.02)
+  coincThreshold = int(float(w) / 4.0)
   nCols = 2000
   nActive = 40
   activationSteps = 10
   pctConnected = 0.05
-  tp = TP(nInputs, nCols, nActive, pctConnected, activationSteps, r=r)
+  # New cell inertia is `oldInertia * decay + innervation`
+  decay = 0.9
+  tp = TP(nInputs, nCols, nActive, pctConnected, activationSteps, r=r,
+          nActiveInputs=w, coincThreshold=coincThreshold, decay=decay)
+  tp.learn = True
 
   allIndices = list(xrange(nInputs))
 
@@ -106,25 +164,8 @@ if __name__ == "__main__":
   for p in seq:
     sumSets = sumSets.union(p)
 
-  # Determine best initial fits
-  initialAverageFits = []
-  for c in tp.cells:
-    initialAverageFits.append(
-        float(sum(c.computeInnervation(p, oneStep=True) for p in seq)) / float(seqLen))
-
-  print "Top initial average fits:"
-  for pair in sorted(enumerate(initialAverageFits), key=operator.itemgetter(1), reverse=True)[:40]:
-    print "%i: %i" % pair
-
-  initialTopFits = []
-  for c in tp.cells:
-    overlaps = [c.computeInnervation(p, oneStep=True) for p in seq]
-    overThreshold = sum([int(v > int(float(w) * pctConnected * 1.5)) for v in overlaps])
-    initialTopFits.append(overThreshold)
-
-  print "Top initial best fits:"
-  for pair in sorted(enumerate(initialTopFits), key=operator.itemgetter(1), reverse=True)[:40]:
-    print "%i: %i" % pair
+  initTop = topColumns(tp, seq, 80)
+  print "Initial cols", initTop
 
   # Run through pattern a few times
   nPasses = 3
@@ -132,22 +173,14 @@ if __name__ == "__main__":
     for p in seq:
       tp.runOne(p)
 
-  # Determine best fits and compare to original fits
-  finalAverageFits = []
-  for c in tp.cells:
-    finalAverageFits.append(
-        float(sum(c.computeInnervation(p, oneStep=True) for p in seq)) / float(seqLen))
+  interTop = topColumns(tp, seq, 80)
+  print "Intermediate cols", interTop
+  print "Overlap: ", len(interTop.intersection(initTop))
 
-  print "Top final average fits:"
-  for pair in sorted(enumerate(finalAverageFits), key=operator.itemgetter(1), reverse=True)[:40]:
-    print "%i: %i" % pair
+  for _ in xrange(nPasses):
+    for p in seq:
+      tp.runOne(p)
 
-  finalTopFits = []
-  for c in tp.cells:
-    overlaps = [c.computeInnervation(p, oneStep=True) for p in seq]
-    overThreshold = sum([int(v > int(float(w) * pctConnected * 1.5)) for v in overlaps])
-    finalTopFits.append(overThreshold)
-
-  print "Top final best fits:"
-  for pair in sorted(enumerate(finalTopFits), key=operator.itemgetter(1), reverse=True)[:40]:
-    print "%i: %i" % pair
+  finalTop = topColumns(tp, seq, 80)
+  print "Final cols", finalTop
+  print "Overlap: ", len(finalTop.intersection(interTop))
