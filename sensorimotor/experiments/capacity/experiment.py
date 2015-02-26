@@ -47,6 +47,7 @@ import time
 import yaml
 from optparse import OptionParser
 
+from pylab import rcParams
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
 from sensorimotor.exhaustive_one_d_agent import ExhaustiveOneDAgent
@@ -63,6 +64,9 @@ TWOPASS_TP_TRAINING_REPS = 1
 ONLINE_TRAINING_REPS = 3
 NUM_TEST_SEQUENCES = 4
 RANDOM_SEED = 42
+PLOT_RESET_SHADING = 0.2
+PLOT_HEIGHT = 6
+PLOT_WIDTH = 9
 
 
 
@@ -166,26 +170,29 @@ def runTestPhase(runner, randomAgents, numWorlds, numElements,
 
 def plotExperimentState(runner, plotVerbosity, numWorlds, numElems, isOnline,
                         experimentPhase):
-  shading = 0.4
   if plotVerbosity >= 1:
+    rcParams['figure.figsize'] = PLOT_WIDTH, PLOT_HEIGHT
     title = "worlds: {0}, elements: {1}, online: {2}, phase: {3}".format(
             numWorlds, numElems, isOnline, experimentPhase)
     runner.tp.mmGetPlotConnectionsPerColumn(title=title)
     if plotVerbosity >= 2:
       runner.tm.mmGetCellActivityPlot(title=title, activityType="activeCells",
-                                      showReset=True, resetShading=shading)
+                                      showReset=True,
+                                      resetShading=PLOT_RESET_SHADING)
       runner.tm.mmGetCellActivityPlot(title=title,
                                       activityType="predictedActiveCells",
-                                      showReset=True, resetShading=shading)
+                                      showReset=True,
+                                      resetShading=PLOT_RESET_SHADING)
       runner.tp.mmGetCellActivityPlot(title=title, showReset=True,
-                                      resetShading=shading)
+                                      resetShading=PLOT_RESET_SHADING)
 
 
 
 def writeOutput(outputDir, runner, numElems, numWorlds, elapsedTime):
   if not os.path.exists(outputDir):
     os.makedirs(outputDir)
-  filePath = os.path.join(outputDir, "{0}x{1}.csv".format(numWorlds, numElems))
+  fileName = "{0:0>3}x{1:0>3}.csv".format(numWorlds, numElems)
+  filePath = os.path.join(outputDir, fileName)
   with open(filePath, "wb") as outputFile:
     csvWriter = csv.writer(outputFile)
     header = ["# worlds", "# elements", "duration"]
@@ -202,8 +209,8 @@ def writeOutput(outputDir, runner, numElems, numWorlds, elapsedTime):
 
 
 
-def run(numWorlds, numElems, paramsPath, outputDir, plot, verbosity,
-        params=None):
+def run(numWorlds, numElems, paramsPath, outputDir, plotVerbosity,
+        consoleVerbosity, params=None):
   if params is None:
     with open(paramsPath) as paramsFile:
       params = yaml.safe_load(paramsFile)
@@ -235,23 +242,23 @@ def run(numWorlds, numElems, paramsPath, outputDir, plot, verbosity,
   print
   if isOnline:
     trainOnline(runner, exhaustiveAgents, completeSequenceLength,
-                onlineTrainingReps, verbosity)
+                onlineTrainingReps, consoleVerbosity)
   else:
-    trainTwoPass(runner, exhaustiveAgents, completeSequenceLength, verbosity)
+    trainTwoPass(runner, exhaustiveAgents, completeSequenceLength, consoleVerbosity)
   print "Done training."
   print
-  plotExperimentState(runner, plot, numWorlds, numElems, isOnline, "Training")
+  plotExperimentState(runner, plotVerbosity, numWorlds, numElems, isOnline, "Training")
 
   # Test TM and TP on randomly moving agents
   runTestPhase(runner, randomAgents, numWorlds, numElems,
-               completeSequenceLength, verbosity)
-  plotExperimentState(runner, plot, numWorlds, numElems, isOnline, "Testing")
+               completeSequenceLength, consoleVerbosity)
+  plotExperimentState(runner, plotVerbosity, numWorlds, numElems, isOnline, "Testing")
   elapsed = int(time.time() - start)
   print "Total time: {0:2} seconds.".format(elapsed)
 
   # Write results to output file
   writeOutput(outputDir, runner, numElems, numWorlds, elapsed)
-  if plot >= 1:
+  if plotVerbosity >= 1:
     raw_input("Press any key to exit...")
 
 
@@ -265,14 +272,14 @@ parser.add_option("-p",
                   "--plot",
                   type=int,
                   default=0,
-                  dest="plot",
+                  dest="plotVerbosity",
                   help="Plotting verbosity: 0 => none, 1 => summary plots, "
                        "2 => detailed plots")
-parser.add_option("-v",
-                  "--verbosity",
+parser.add_option("-c",
+                  "--console",
                   type=int,
                   default=0,
-                  dest="verbosity",
+                  dest="consoleVerbosity",
                   help="Console message verbosity: 0 => none")
 
 
@@ -283,6 +290,6 @@ if __name__ == "__main__":
     parser.print_help(sys.stderr)
     sys.exit()
 
-  plot = options.plot
-  verbosity = options.verbosity
-  run(int(args[0]), int(args[1]), args[2], args[3], plot, verbosity)
+  plot = options.plotVerbosity
+  console = options.consoleVerbosity
+  run(int(args[0]), int(args[1]), args[2], args[3], plot, console)

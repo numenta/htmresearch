@@ -34,40 +34,43 @@ from experiments.capacity import experiment
 
 DEFAULT_OUTPUT_DIR = "output"
 
-parser = OptionParser(
-  usage="%prog path/to/defs.yaml path/to/params.yaml [options]"
-        "\n\nRun experiments in defs.py using parameters from params.py "
-        "in parallel."
-)
-parser.add_option(
-  "-o",
-  "--output-dir",
-  default=DEFAULT_OUTPUT_DIR,
-  dest="outputDir",
-  help="Output directory to write the results and logs to."
-)
-parser.add_option(
-  "-w",
-  "--workers",
-  type=int,
-  default=4,
-  dest="workers",
-  help="Max number of parallel workers."
-)
+parser = OptionParser(usage="%prog path/to/defs.yaml path/to/params.yaml "
+                            "[options]"
+                            "\n\nRun experiments in defs.py using parameters "
+                            "from params.py in parallel.")
+parser.add_option("-o",
+                  "--output-dir",
+                  default=DEFAULT_OUTPUT_DIR,
+                  dest="outputDir",
+                  help="Output directory to write the results and logs to.")
+parser.add_option("-w",
+                  "--workers",
+                  type=int,
+                  default=4,
+                  dest="workers",
+                  help="Max number of parallel workers.")
+parser.add_option("-p",
+                  "--plot",
+                  type=int,
+                  default=0,
+                  dest="plotVerbosity",
+                  help="Plot verbosity")
+parser.add_option("-c",
+                  "--console",
+                  type=int,
+                  default=0,
+                  dest="consoleVerbosity",
+                  help="Console verbosity")
 
 
 
 def run(args):
-  # TODO: how to specify these?
-  plot = 0
-  verbosity = 0
-
-  defn, params, outputDir = args
+  defn, params, outputDir, plotVerbosity, consoleVerbosity = args
   numWorlds = defn["worlds"]
   numElements = defn["elements"]
 
   print "Starting {0} worlds x {1} elems...".format(numWorlds, numElements)
-  fileName = "{0:0>3}x{1:0>3}".format(numWorlds, numElements)
+  fileName = "{0}x{1}".format(numWorlds, numElements)
   filePrefix = os.path.join(outputDir, fileName)
   logPath = "{0}.log".format(filePrefix)
 
@@ -76,8 +79,8 @@ def run(args):
     exception = None
 
     try:
-      experiment.run(numWorlds, numElements, "", outputDir, plot,
-                     verbosity, params=params)
+      experiment.run(numWorlds, numElements, "", outputDir, plotVerbosity,
+                     consoleVerbosity, params=params)
     except Exception, err:
       print traceback.format_exc()
       exception = err
@@ -90,7 +93,7 @@ def run(args):
 
 
 
-if __name__ == "__main__":
+def loadExperiments():
   (options, args) = parser.parse_args(sys.argv[1:])
   if len(args) < 2:
     parser.print_help(sys.stderr)
@@ -100,6 +103,8 @@ if __name__ == "__main__":
   paramsPath = args[1]
   outputDir = options.outputDir
   workers = options.workers
+  plotVerbosity = options.plotVerbosity
+  consoleVerbosity = options.consoleVerbosity
 
   print "Defs path: {0}".format(defsPath)
   print "Params path: {0}".format(paramsPath)
@@ -114,4 +119,10 @@ if __name__ == "__main__":
         os.makedirs(outputDir)
 
       pool = Pool(processes=workers)
-      pool.map(run, [(defn, params, outputDir) for defn in defs])
+      pool.map(run, [(defn, params, outputDir, plotVerbosity, consoleVerbosity)
+                     for defn in defs])
+
+
+
+if __name__ == "__main__":
+  loadExperiments()
