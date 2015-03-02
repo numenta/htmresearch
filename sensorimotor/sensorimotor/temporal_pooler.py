@@ -19,33 +19,16 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import copy
 import numpy
 
 from nupic.bindings.math import (SM32 as SparseMatrix,
-                                SM_01_32_32 as SparseBinaryMatrix,
-                                GetNTAReal,
-                                Random as NupicRandom)
+                                 SM_01_32_32 as SparseBinaryMatrix)
+
 from nupic.research.spatial_pooler import SpatialPooler
 
-# realDType = GetNTAReal()
 realDType = numpy.float32
 uintType = "uint32"
 
-
-def formatRow(x, formatString = "%d", rowSize = 100):
-  """
-  Utility routine for pretty printing large vectors
-  """
-  s = ''
-  for c,v in enumerate(x):
-    if c > 0 and c % 10 == 0:
-      s += ' '
-    if c > 0 and c % rowSize == 0:
-      s += '\n'
-    s += formatString % v
-  s += ' '
-  return s
 
 
 class TemporalPooler(SpatialPooler):
@@ -649,8 +632,6 @@ class TemporalPooler(SpatialPooler):
       print "\n============== _adaptSynapses ======"
       print "Active input indices:",inputIndices
       print "predicted input indices:",predictedIndices
-      # print "permChanges:"
-      # print formatRow(permChanges, "%9.4f", 20)
       print "\n============== _adaptSynapses ======\n"
 
     for i in activeColumns:
