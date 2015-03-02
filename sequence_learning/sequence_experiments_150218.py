@@ -106,6 +106,9 @@ def plot_tm_history_sequence(filename, plot_sequence=0, display=arange(20), outf
     
     plot_active_predicted(active_cells, predicted_cells, cellsPerColumn)
     title(sequence_list[trial-1])
+    yticks([])
+    xticks([])
+    
     
     for k in range(sequence_params['sequence_length']):
       
@@ -124,7 +127,8 @@ def plot_tm_history_sequence(filename, plot_sequence=0, display=arange(20), outf
       title(sequence_list[trial+k])
         
       if k == 0:
-        yticks([cellsPerColumn/2], (str(trial), ))
+        yticks([])
+        #yticks([cellsPerColumn/2], (str(trial), ))
       else:
         yticks([])
   
@@ -240,8 +244,14 @@ def plot_tm_error_all(filename, outfile=None):
   plot(convolve(sequence_error, ones(smooth_factor)/smooth_factor, mode='same'), 'k', lw=3)
   
   # This is the theoretical minimum (somewhat probabilistic)
-  best_error = ((sequence_params['sequence_length'] - 1) * (1 - sequence_params['p_rand_sdr']) 
-    / sequence_params['sequence_length'])
+  best_error = ((sequence_params['sequence_length'] - 1) * (1 - sequence_params['p_rand_sdr'])) 
+    
+  if sequence_params['force_rand_sdr']:
+    # Then there is one more rand sdr per sequence
+    best_error /= sequence_params['sequence_length'] + 1
+  else:
+    best_error /= sequence_params['sequence_length']
+
   
   plot([0, len(sequence_error)], [best_error, best_error], 'r')  
   
@@ -425,7 +435,8 @@ def createSequenceList(params):
   default_params['sequence_length'] = 2
   default_params['sequence_order'] = 0
   default_params['p_rand_sdr'] = 0.5
-  
+  default_params['force_rand_sdr'] = False
+  default_params['unique_rand_sdr'] = False
   
   for key in default_params.keys():
     if key not in params.keys():
@@ -443,6 +454,8 @@ def createSequenceList(params):
   sequences_perm = permutation(arange(params['num_elements']))
   sequences = reshape(sequences_perm[:params['num_sequences'] * params['sequence_length']],
                       (params['num_sequences'], params['sequence_length']))
+                      
+  left_over_sdrs = sequences_perm[params['num_sequences']*params['sequence_length']:]
 
   # now insert the high order elements
   if params['sequence_order'] > 0:    
@@ -459,7 +472,11 @@ def createSequenceList(params):
     
     if rand() < params['p_rand_sdr']:
       # then pick a random element
-      sequence_list[c] = randint(params['num_elements'])
+      if params['unique_rand_sdr']:
+        # Then pick random sdrs excluded from sequence sdrs
+        sequence_list[c] = left_over_sdrs[randint(len(left_over_sdrs))] 
+      else:
+        sequence_list[c] = randint(params['num_elements'])
       c += 1
     else:
       # Then pick a sequence
@@ -467,13 +484,12 @@ def createSequenceList(params):
       which_sequence[c] = seq_idx
       
       for j in range(params['sequence_length']):
-        sequence_list[c] = sequences[seq_idx, j]
-        
+        sequence_list[c] = sequences[seq_idx, j]        
         c += 1
       
-      # Uncomment to force random sdr between all sequences
-      #sequence_list[c] = randint(params['num_elements'])
-      #c += 1
+      if params['force_rand_sdr']:
+        sequence_list[c] = randint(params['num_elements'])
+        c += 1
       
   sequence_list = sequence_list[:params['total_displays']]
   which_sequence = which_sequence[:params['total_displays']]
@@ -502,7 +518,7 @@ def runTMSequenceExperiment(tm, sequence_params, filename=None, run_id=None):
   predicted_history= []
   sequence_history = [] # the true sdrs, these have specific noise
   
-  plot_state = True
+  plot_state = False
   
   p_flip_10 = 0 # probability 1 flips to 0
   p_flip_01 = 0 # probability 0 flips to 1
@@ -543,7 +559,7 @@ def runTMSequenceExperiment(tm, sequence_params, filename=None, run_id=None):
       title(sdr_name)
           
       subplot(3,1,(2,3))
-      plot_tm_state(tm)
+      plot_active_predicted(tm.activeCells, predicted_cells, tm.cellsPerColumn)
       pause(0.01)
       
     active_history.append(tm.activeCells)
@@ -580,23 +596,25 @@ def runTMSequenceExperiment(tm, sequence_params, filename=None, run_id=None):
 
 #%% Run some experiments
 
-tm = TemporalMemory(minThreshold=40, activationThreshold=40,  maxNewSynapseCount=40)
+tm = TemporalMemory(minThreshold=30, activationThreshold=30,  maxNewSynapseCount=40)
 
 sequence_params = {}
-sequence_params['total_displays'] = 1000
+sequence_params['total_displays'] = 2000
 sequence_params['num_elements'] = 100
 sequence_params['num_sequences'] = 8
 sequence_params['sequence_length'] = 4
-sequence_params['sequence_order'] = 0
+sequence_params['sequence_order'] = 2
 sequence_params['p_rand_sdr'] = 0
+sequence_params['force_rand_sdr'] = True
+sequence_params['unique_rand_sdr'] = False
  
 # Just comment this out to re-run and re-plot without running the simulation 
-#filename = runTMSequenceExperiment(tm, sequence_params)
+filename = runTMSequenceExperiment(tm, sequence_params)
 
 #%%
 plot_tm_history_all(filename, arange(400))
 #%%
-plot_tm_history_sequence(filename, 5, arange(10, 30))
+plot_tm_history_sequence(filename, 7, arange(30, 50))
 #plot_tm_history_sequence(filename, 0, arange(100, 130))
 
 #%%
@@ -604,3 +622,14 @@ plot_tm_overlap_all(filename)
 plot_tm_error_all(filename)
 plot_tm_error_sequence(filename)
 plot_tm_error_sequence_end(filename)
+
+#%%
+
+with load(filename) as data:
+  sequences = data['sequences']
+  sequence_list = data['sequence_list']
+  which_sequence = data['which_sequence']
+  
+seq_idx = find(sequence_list == 78)
+
+print sequence_list[seq_idx + 1]
