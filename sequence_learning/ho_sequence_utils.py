@@ -36,8 +36,6 @@ from nupic.encoders.sdrcategory import SDRCategoryEncoder
 
 import datetime
 
-#%%
-close('all')
 
 #%%
 
@@ -671,6 +669,9 @@ def runTMSequenceExperiment(tm, sequenceParams, filename=None, runID=None):
 #%% Run some experiments
 
 if __name__ == '__main__':
+  #%%  
+  close('all')
+  
   
   tm = TemporalMemory(minThreshold=30, activationThreshold=30,  maxNewSynapseCount=40)
   
