@@ -113,6 +113,7 @@ def trainTwoPass(runner, exhaustiveAgents, completeSequenceLength, verbosity):
 
   runner.tm.mmClearHistory()
   runner.tp.mmClearHistory()
+
   sequences = runner.generateSequences(completeSequenceLength *
                                        TWOPASS_TP_TRAINING_REPS,
                                        exhaustiveAgents,
@@ -127,11 +128,11 @@ def trainTwoPass(runner, exhaustiveAgents, completeSequenceLength, verbosity):
 
 
 
-def trainOnline(runner, exhaustiveAgents, completeSequenceLength, reps,
-                verbosity):
+def trainOnline(runner, exhaustiveAgents, completeSequenceLength,
+                trainingRepetitions, verbosity):
   print "Training temporal memory and temporal pooler..."
   sequences = runner.generateSequences(completeSequenceLength *
-                                       reps,
+                                       trainingRepetitions,
                                        exhaustiveAgents,
                                        verbosity=verbosity)
   runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
@@ -147,8 +148,10 @@ def trainOnline(runner, exhaustiveAgents, completeSequenceLength, reps,
 def runTestPhase(runner, randomAgents, numWorlds, numElements,
                  completeSequenceLength, verbosity):
   print "Testing (worlds: {0}, elements: {1})...".format(numWorlds, numElements)
+
   runner.tm.mmClearHistory()
   runner.tp.mmClearHistory()
+
   sequences = runner.generateSequences(completeSequenceLength /
                                        NUM_TEST_SEQUENCES,
                                        randomAgents, verbosity=verbosity,
@@ -209,19 +212,15 @@ def writeOutput(outputDir, runner, numElems, numWorlds, elapsedTime):
 
 
 
-def run(numWorlds, numElems, paramsPath, outputDir, plotVerbosity,
-        consoleVerbosity, params=None):
-  if params is None:
-    with open(paramsPath) as paramsFile:
-      params = yaml.safe_load(paramsFile)
-
+def run(numWorlds, numElems, params, outputDir, plotVerbosity,
+        consoleVerbosity):
   # Setup params
   n = params["n"]
   w = params["w"]
   tmParams = params["tmParams"]
   tpParams = params["tpParams"]
   isOnline = params["isOnline"]
-  onlineTrainingReps = params["onlineTrainingReps"] if isOnline else "N/A"
+  onlineTrainingReps = params["onlineTrainingReps"] if isOnline else None
   completeSequenceLength = numElems ** 2
   print ("Experiment parameters: "
          "(# worlds = {0}, # elements = {1}, n = {2}, w = {3}, "
@@ -263,33 +262,37 @@ def run(numWorlds, numElems, paramsPath, outputDir, plotVerbosity,
 
 
 
-parser = OptionParser(usage="%prog NUM_WORLDS NUM_ELEMENTS PARAMS_DIR "
-                            "OUTPUT_DIR [options]"
-                            "\n\nRun sensorimotor experiment with specified "
-                            "worlds and elements using params in PARAMS_DIR "
-                            "and outputting results to OUTPUT_DIR.")
-parser.add_option("-p",
-                  "--plot",
-                  type=int,
-                  default=0,
-                  dest="plotVerbosity",
-                  help="Plotting verbosity: 0 => none, 1 => summary plots, "
-                       "2 => detailed plots")
-parser.add_option("-c",
-                  "--console",
-                  type=int,
-                  default=0,
-                  dest="consoleVerbosity",
-                  help="Console message verbosity: 0 => none")
-
-
-
-if __name__ == "__main__":
+def _getArgs():
+  parser = OptionParser(usage="%prog NUM_WORLDS NUM_ELEMENTS PARAMS_DIR "
+                              "OUTPUT_DIR [options]"
+                              "\n\nRun sensorimotor experiment with specified "
+                              "worlds and elements using params in PARAMS_DIR "
+                              "and outputting results to OUTPUT_DIR.")
+  parser.add_option("-p",
+                    "--plot",
+                    type=int,
+                    default=0,
+                    dest="plotVerbosity",
+                    help="Plotting verbosity: 0 => none, 1 => summary plots, "
+                         "2 => detailed plots")
+  parser.add_option("-c",
+                    "--console",
+                    type=int,
+                    default=0,
+                    dest="consoleVerbosity",
+                    help="Console message verbosity: 0 => none")
   (options, args) = parser.parse_args(sys.argv[1:])
   if len(args) < 4:
     parser.print_help(sys.stderr)
     sys.exit()
 
-  plot = options.plotVerbosity
-  console = options.consoleVerbosity
-  run(int(args[0]), int(args[1]), args[2], args[3], plot, console)
+  with open(args[2]) as paramsFile:
+    params = yaml.safe_load(paramsFile)
+  return options, args, params
+
+
+
+if __name__ == "__main__":
+  (options, args, params) = _getArgs()
+  run(int(args[0]), int(args[1]), params, args[3], options.plotVerbosity,
+      options.consoleVerbosity)

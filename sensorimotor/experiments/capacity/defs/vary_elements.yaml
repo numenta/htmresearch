@@ -1,4 +1,8 @@
 - worlds: 2
+  elements: 100
+- worlds: 2
+  elements: 90
+- worlds: 2
   elements: 80
 - worlds: 2
   elements: 70

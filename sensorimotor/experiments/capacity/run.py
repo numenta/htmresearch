@@ -70,7 +70,7 @@ def run(args):
   numElements = defn["elements"]
 
   print "Starting {0} worlds x {1} elems...".format(numWorlds, numElements)
-  fileName = "{0}x{1}".format(numWorlds, numElements)
+  fileName = "{0:0>3}x{1:0>3}".format(numWorlds, numElements)
   filePrefix = os.path.join(outputDir, fileName)
   logPath = "{0}.log".format(filePrefix)
 
@@ -79,8 +79,8 @@ def run(args):
     exception = None
 
     try:
-      experiment.run(numWorlds, numElements, "", outputDir, plotVerbosity,
-                     consoleVerbosity, params=params)
+      experiment.run(numWorlds, numElements, params, outputDir, plotVerbosity,
+                     consoleVerbosity)
     except Exception, err:
       print traceback.format_exc()
       exception = err
