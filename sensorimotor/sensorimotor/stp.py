@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2014, Numenta, Inc.  Unless you have purchased from
+# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -97,6 +97,31 @@ class TP(object):
   def __init__(self, nInputs, nCols, nActive, pctConnected, activationSteps,
                connectedThreshold=0.5, inc=0.3, dec=0.1, r=None,
                nActiveInputs=80, coincThreshold=20, decay=0.9):
+    """
+
+    :param nInputs: number of input bits
+    :param nCols: number of columns in TP
+    :param nActive: number of TP columns active at a time
+    :param pctConnected: fraction of inputs bits each column should initially
+        be connected to
+    :param activationSteps: NOT USED - REMOVE
+    :param connectedThreshold: float value determining how large permanence
+        has to be to count input bit as connected to the column
+    :param inc: how much to increment column-bit permanence when column and
+        bit are active
+    :param dec: how much to decrement column-bit permanence when column is
+        active but input bit is not
+    :param r: random instance
+    :param nActiveInputs: number of input bits that are active at each step.
+        can we get rid of this and calculate in the compute method each step?
+    :param coincThreshold: the target column inputs active for coincidence
+        detection. This is used to determine the sigmoid function inflection
+        point when computing the activity weight for a column
+    :param decay: fraction of new inertia that comes from previous value. The
+        closer to 1, the more old inputs have an effect on which columns become
+        active. If 0.5, then half all previous inputs have a cumulative impact
+        equal to the current input on which columns are active.
+    """
     self.r = r or random.Random(42)
     self.nActive = nActive
     self.cells = [Cell(nInputs, pctConnected, activationSteps,
