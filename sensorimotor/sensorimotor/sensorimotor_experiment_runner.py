@@ -33,8 +33,6 @@ from sensorimotor.fast_general_temporal_memory import (
 # Uncomment the line below to use GeneralTemporalMemory
 # from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 from sensorimotor.temporal_pooler import TemporalPooler
-# Uncomment the line below to use SpatialTemporalPooler
-from sensorimotor.spatial_temporal_pooler import SpatialTemporalPooler as TemporalPooler
 from sensorimotor.temporal_pooler_monitor_mixin import (
   TemporalPoolerMonitorMixin)
 class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
@@ -73,8 +71,8 @@ class SensorimotorExperimentRunner(object):
   DEFAULT_TP_PARAMS = {
     # Need to check these parameters and find stable values that will be
     # consistent across most experiments.
-    "synPermInactiveDec": 0.05,   # TODO: Check we can use class default here.
-    "synPermActiveInc": 0.1, # TODO: Check we can use class default here.
+    "synPermInactiveDec": 0,   # TODO: Check we can use class default here.
+    "synPermActiveInc": 0.001, # TODO: Check we can use class default here.
     "synPredictedInc": 0.5,    # TODO: Why so high??
     "potentialPct": 0.9,       # TODO: need to check impact of this for pooling
     "initConnectedPct": 0.5,   # TODO: need to check impact of this for pooling
