@@ -37,7 +37,7 @@ from nupic.encoders.sdrcategory import SDRCategoryEncoder
 import datetime
 
 
-#%%
+#%% Visualization Functions
 
 def plotActivePredicted(activeCells, predictedCells, cellsPerColumn):
   '''Visualization of tm state during one timestep
@@ -80,16 +80,15 @@ def plotTMHistorySequence(filename, plotSequence=0, display=arange(20), outfile=
   '''plots the history of an individual sequence within a set of random sequences
   
   @param: filename filename of simulation data
-  @param: plotSequence which sequence to plot, 0
-  @param: display which trials to display, arange(20)
-  @param: outfile the filename save figure. False does not save, None auto-generate name. None  
+  @param: plotSequence which sequence to plot. (0)
+  @param: display which trials to display. (arange(20))
+  @param: outfile the filename save figure. False does not save, None auto-generate name. (None)
   
   @return: fh the handle to the figure
   @return: outfile the filename of the figure.
   '''
   
   with load(filename) as data:
-    sequenceHistory = data['sequenceHistory']
     sdrList = data['sdrList']
     whichSequence = data['whichSequence']
     activeHistory = data['activeHistory']
@@ -162,20 +161,18 @@ def plotTMHistoryAll(filename, display=arange(40), outfile=None):
   '''plots the history of all sequences and activity
 
   @param: filename filename of simulation data
-  @param: display which trials to display, arange(40)
-  @param: outfile the filename save figure. False does not save, None auto-generate name. None  
+  @param: display which trials to display. (arange(40))
+  @param: outfile the filename save figure. False does not save, None auto-generate name. (None)
   
   @return: fh the handle to the figure
   @return: outfile the filename of the figure.
   '''  
   
   with load(filename) as data:
-    sequenceHistory = data['sequenceHistory']
     sdrList = data['sdrList']
     activeHistory = data['activeHistory']
     predictedHistory = data['predictedHistory']
     runID = data['runID']
-    numberOfColumns = data['numberOfColumns']
     cellsPerColumn = data['cellsPerColumn']
        
   
@@ -213,23 +210,16 @@ def plotTMHistoryAll(filename, display=arange(40), outfile=None):
 def plotTMOverlapAll(filename, outfile=None, smoothFactor=10):
   '''plots prediction overlap for all displays
   
-  
   @param: filename filename of simulation data
-  @param: outfile the filename save figure. False does not save, None auto-generate name. None  
-  @param: smoothFactor size of the running average, 10
+  @param: outfile the filename save figure. False does not save, None auto-generate name. (None) 
+  @param: smoothFactor size of the running average. (10)
   
   @return: fh the handle to the figure
   @return: outfile the filename of the figure.  
   '''
   
   with load(filename) as data:
-    sequenceHistory = data['sequenceHistory']
-    sdrList = data['sdrList']
-    activeHistory = data['activeHistory']
-    predictedHistory = data['predictedHistory']
     runID = data['runID']
-    numberOfColumns = data['numberOfColumns']
-    cellsPerColumn = data['cellsPerColumn']
     sequenceOverlap = data['sequenceOverlap']
   
   fh = figure('Sequence Prediction Overlap')
@@ -257,22 +247,15 @@ def plotTMErrorAll(filename, outfile=None, smoothFactor=10):
   '''plots prediction error for all displays
 
   @param: filename filename of simulation data
-  @param: outfile the filename save figure. False does not save, None auto-generate name. None  
-  @param: smoothFactor size of the running average, 10
+  @param: outfile the filename save figure. False does not save, None auto-generate name. (None)
+  @param: smoothFactor size of the running average. (10)
   
   @return: fh the handle to the figure
   @return: outfile the filename of the figure.  
   '''
   
   with load(filename) as data:
-    sequenceHistory = data['sequenceHistory']
-    sdrList = data['sdrList']
-    activeHistory = data['activeHistory']
-    predictedHistory = data['predictedHistory']
     runID = data['runID']
-    numberOfColumns = data['numberOfColumns']
-    cellsPerColumn = data['cellsPerColumn']
-    sequenceOverlap = data['sequenceOverlap']
     sequenceError = data['sequenceError']
     sequenceParams = data['sequenceParams'][0]
   
@@ -310,7 +293,89 @@ def plotTMErrorAll(filename, outfile=None, smoothFactor=10):
     #fh.savefig(outfile, format='eps')
   
   return fh, outfile
+
+def plotTMErrorAllMulti(filenames, classForAverage=None, classLabels=None, outfile=None, smoothFactor=10):
+  '''plots prediction error for all displays for several simulations
+
+  @param: filenames list of filenames of simulation data
+  @param: classForAverage classes for each file to average before plotting, None makes each unique. (None)
+  @param: classLabels labels for each class, must be len(classLabels) == len(unique(classForAverage)). (None)
+  @param: outfile the filename save figure. False does not save, None auto-generate name. (None)
+  @param: smoothFactor size of the running average. (10)
   
+  @return: fh the handle to the figure
+  @return: outfile the filename of the figure.  
+  '''
+  
+  if classForAverage is None:
+    classForAverage = arange(len(filenames))
+  
+  if classLabels is None:
+    classLabels = []
+    for i, c in enumerate(unique(classForAverage)):
+      classLabels.append('Class: ' + str(c))
+  
+  sequenceError = []
+  sequenceParams = []  
+  for i, filename in enumerate(filenames):  
+  
+    with load(filename) as data:
+      sequenceError.append(data['sequenceError'])
+      sequenceParams.append(data['sequenceParams'][0])
+
+
+  seqErrorMeans = []
+  bestError = []
+  seqErrorClass = []
+  for i, c in enumerate(unique(classForAverage)):
+    cIdxs = find(classForAverage==c)
+    
+    # average data from the same class together
+    # just assume that everything with class has same number of displays
+    seqErrorClass.append(zeros((len(cIdxs), len(sequenceError[cIdxs[0]]))))
+    for j, ci in enumerate(cIdxs):
+      seqErrorClass[i][j,:] = convolve(sequenceError[ci], ones(smoothFactor)/smoothFactor, mode='same')
+      #seqErrorClass[i][j,:] = sequenceError[ci]
+  
+    seqErrorMeans.append(mean(seqErrorClass[i], 0))
+  
+    # compute best error based on the first params from the class
+    sp = sequenceParams[cIdxs[0]]
+    
+    bestError.append((sp['sequenceLength'] - 1) * (1 - sp['pRandSDR']))
+    
+    if sp['forceRandSDR']:
+      bestError[i] /= (sp['sequenceLength'] + 1)
+    else:
+      bestError[i] /= (sp['sequenceLength'])
+  
+  fh = figure('Prediction Error Multi')
+  clf()
+
+  colors = get_cmap('Set3', len(seqErrorMeans))
+  
+  
+  for i, sequenceError in enumerate(seqErrorMeans):
+    plot(sequenceError[:-(smoothFactor/2)], c=colors(i), lw=3, label=classLabels[i])
+    #plot(convolve(sequenceError, ones(smoothFactor)/smoothFactor, mode='same'), c=colors(i), lw=3, label=classLabels[i])
+    plot([0, len(sequenceError)], [1 - bestError[i], 1 - bestError[i]], ':', c=colors(i), lw=3)
+  
+  xlabel('Time')
+  ylabel('Error')
+  
+  
+  if outfile is None:
+    # Then make a filename
+    outfile = ('error_all_multi-nf'+ str(len(filenames)) 
+      + '-n' + datetime.date.today().strftime('%y%m%d'))
+  
+  if outfile:
+    fh.savefig(outfile + '.png', format='png')
+    #fh.savefig(outfile, format='eps')
+  
+  return fh, outfile
+
+
 def plotTMErrorSequence(filename, plotSequences=None, outfile=None):
   '''plots prediction error for all predictable elements in a given set of sequences
   
@@ -319,19 +384,11 @@ def plotTMErrorSequence(filename, plotSequences=None, outfile=None):
   @param: outfile the filename save figure. False does not save, None auto-generate name. None  
   
   @return: fh the handle to the figure
-  @return: outfile the filename of the figure.
-    
+  @return: outfile the filename of the figure.   
   '''
   
   with load(filename) as data:
-    sequenceHistory = data['sequenceHistory']
-    sdrList = data['sdrList']
-    activeHistory = data['activeHistory']
-    predictedHistory = data['predictedHistory']
     runID = data['runID']
-    numberOfColumns = data['numberOfColumns']
-    cellsPerColumn = data['cellsPerColumn']
-    sequenceOverlap = data['sequenceOverlap']
     sequenceError = data['sequenceError']
     sequenceParams = data['sequenceParams'][0]
     whichSequence = data['whichSequence']
@@ -387,28 +444,107 @@ def plotTMErrorSequence(filename, plotSequences=None, outfile=None):
     #fh.savefig(outfile, format='eps')
     
   return fh, outfile
+
+
+def plotTMErrorSequenceMulti(filenames, classForAverage=None, classLabels=None, outfile=None, smoothFactor=30):
+  '''plots prediction error for all predictable elements for multiple runs
+  
+  @param: filenames list of filenames of simulation data
+  @param: classForAverage classes for each file to average before plotting, None makes each unique. (None)
+  @param: classLabels labels for each class, must be len(classLabels) == len(unique(classForAverage)). (None)
+  @param: outfile the filename save figure. False does not save, None auto-generate name. None  
+  
+  @return: fh the handle to the figure
+  @return: outfile the filename of the figure.   
+  '''
+  
+  if classForAverage is None:
+    classForAverage = arange(len(filenames))
+  
+  if classLabels is None:
+    classLabels = []
+    for i, c in enumerate(unique(classForAverage)):
+      classLabels.append('Class: ' + str(c))
+  
+  # Load the data from all of the trials
+  sequenceError = []
+  sequenceParams = []  
+  whichSequence = []
+  
+  for i, filename in enumerate(filenames):    
+    with load(filename) as data:
+      sequenceError.append(data['sequenceError'])
+      sequenceParams.append(data['sequenceParams'][0])
+      whichSequence.append(data['whichSequence'])
+  
+  # Organize the data by finding all predictable elements
+  seqError = []
+  errorExposures = []
+  for i, c in enumerate(unique(classForAverage)):
+    cIdxs = find(classForAverage==c)
+    seqError.append([])
+    maxPredictableDisplays = 0
+            
+    for j, ci in enumerate(cIdxs):   
+      seqError[i].append([])
+      
+      # We want all sequences
+      sequenceStartIdxs = find(array(whichSequence[ci]) >= 0)
+      
+      for s, seqStart in enumerate(sequenceStartIdxs):
+        for l in range(1, sequenceParams[ci]['sequenceLength']):
+          idx = seqStart + l
+          if idx < len(sequenceError[ci]):
+            seqError[i][j].append(sequenceError[ci][idx])
+      
+      if len(seqError[i][j]) > maxPredictableDisplays:
+        maxPredictableDisplays = len(seqError[i][j])
+
+    # Now put everything into an array that can be averaged              
+    errorExposures.append(nan * zeros((len(cIdxs), maxPredictableDisplays)))
+    for j, se in enumerate(seqError[i]):
+      errorExposures[i][j, :len(se)] = se
+              
+  fh = figure('Predictable Element Error Mulit')
+  clf()
+  
+  colors = get_cmap('Set3', len(errorExposures))
+  
+  for i, classError in enumerate(errorExposures):
+    avError = nanmean(classError, 0)
+                  
+    #plot(classError, ':', c=colors(i))
+    plot(convolve(avError, ones(smoothFactor)/smoothFactor, mode='same'), c=colors(i), lw=4, label=classLabels[i])
+       
+  xlabel('Time')
+  ylabel('Error')
+  
+  
+  if outfile is None:
+    # Then make a filename
+    outfile = ('error_seq_multi-c' + str(len(errorExposures))
+      + '-n' + datetime.date.today().strftime('%y%m%d'))
+  
+  if outfile:
+    fh.savefig(outfile + '.png', format='png')
+    #fh.savefig(outfile, format='eps')
+    
+  return fh, outfile
   
 
-def plotTMErrorSequenceEnd(filename, plotSequences=None, outfile=None):
-  '''plots prediction error for last element in a given set of sequences
+def plotTMErrorHO(filename, plotSequences=None, outfile=None):
+  '''plots prediction error for the high-order element in a given set of sequences
   
   @param: filename filename of simulation data
-  @param: plotSequence which sequence to plot, 0
-  @param: outfile the filename save figure. False does not save, None auto-generate name. None  
+  @param: plotSequence which sequence to plot. (None)
+  @param: outfile the filename save figure. False does not save, None auto-generate name. (None)  
   
   @return: fh the handle to the figure
   @return: outfile the filename of the figure.
   '''
   
   with load(filename) as data:
-    sequenceHistory = data['sequenceHistory']
-    sdrList = data['sdrList']
-    activeHistory = data['activeHistory']
-    predictedHistory = data['predictedHistory']
     runID = data['runID']
-    numberOfColumns = data['numberOfColumns']
-    cellsPerColumn = data['cellsPerColumn']
-    sequenceOverlap = data['sequenceOverlap']
     sequenceError = data['sequenceError']
     sequenceParams = data['sequenceParams'][0]
     whichSequence = data['whichSequence']
@@ -435,7 +571,7 @@ def plotTMErrorSequenceEnd(filename, plotSequences=None, outfile=None):
       maxSequenceDisplays = len(sequenceStartIdxs)
       
     for j, seqStart in enumerate(sequenceStartIdxs):
-      idx = seqStart + sequenceParams['sequenceLength'] - 1
+      idx = seqStart + sequenceParams['sequenceOrder'] + 1
       
       if idx < len(sequenceError):
         # In case the last part of the sequence was never shown
@@ -469,22 +605,105 @@ def plotTMErrorSequenceEnd(filename, plotSequences=None, outfile=None):
   return fh, outfile
   
 
-#%%
+def plotTMErrorHOMulti(filenames, classForAverage=None, classLabels=None, outfile=None, smoothFactor=10):
+  '''plots prediction error for high-order elements for multiple runs
+  
+  @param: filenames list of filenames of simulation data
+  @param: classForAverage classes for each file to average before plotting, None makes each unique. (None)
+  @param: classLabels labels for each class, must be len(classLabels) == len(unique(classForAverage)). (None)
+  @param: outfile the filename save figure. False does not save, None auto-generate name. None  
+  
+  @return: fh the handle to the figure
+  @return: outfile the filename of the figure.   
+  '''
+  
+  if classForAverage is None:
+    classForAverage = arange(len(filenames))
+  
+  if classLabels is None:
+    classLabels = []
+    for i, c in enumerate(unique(classForAverage)):
+      classLabels.append('Class: ' + str(c))
+  
+  # Load the data from all of the trials
+  sequenceError = []
+  sequenceParams = []  
+  whichSequence = []
+  
+  for i, filename in enumerate(filenames):    
+    with load(filename) as data:
+      sequenceError.append(data['sequenceError'])
+      sequenceParams.append(data['sequenceParams'][0])
+      whichSequence.append(data['whichSequence'])
+  
+  # Organize the data by finding all HO elements
+  seqError = []
+  errorExposures = []
+  for i, c in enumerate(unique(classForAverage)):
+    cIdxs = find(classForAverage==c)
+    seqError.append([])
+    maxPredictableDisplays = 0
+            
+    for j, ci in enumerate(cIdxs):   
+      seqError[i].append([])
+      
+      # We want all sequences
+      sequenceStartIdxs = find(array(whichSequence[ci]) >= 0)
+      
+      for s, seqStart in enumerate(sequenceStartIdxs):
+        idx = seqStart + sequenceParams[ci]['sequenceOrder'] + 1
+        if idx < len(sequenceError[ci]):
+          seqError[i][j].append(sequenceError[ci][idx])
+      
+      if len(seqError[i][j]) > maxPredictableDisplays:
+        maxPredictableDisplays = len(seqError[i][j])
 
+    # Now put everything into an array that can be averaged              
+    errorExposures.append(nan * zeros((len(cIdxs), maxPredictableDisplays)))
+    for j, se in enumerate(seqError[i]):
+      errorExposures[i][j, :len(se)] = se
+              
+  fh = figure('HO Element Error Mulit')
+  clf()
+  
+  colors = get_cmap('Set3', len(errorExposures))
+  
+  for i, classError in enumerate(errorExposures):
+    avError = nanmean(classError, 0)
+                  
+    #plot(classError, ':', c=colors(i))
+    plot(convolve(avError, ones(smoothFactor)/smoothFactor, mode='same'), c=colors(i), lw=4, label=classLabels[i])
+       
+  xlabel('Time')
+  ylabel('Error')
+  
+  
+  if outfile is None:
+    # Then make a filename
+    outfile = ('error_ho_multi-c' + str(len(errorExposures))
+      + '-n' + datetime.date.today().strftime('%y%m%d'))
+  
+  if outfile:
+    fh.savefig(outfile + '.png', format='png')
+    #fh.savefig(outfile, format='eps')
+    
+  return fh, outfile
+  
 
+#%% Simulation functions
 
 def createSDRList(params):
   '''Creates a list of sdrs to show a temporal memory with predictable sequences
   
-  @param: params dictionary of parameters with the following key values:
-    totalDisplays number of SDRs to return, 100
-    numElements number of random SDRs to choose from, 100
-    numSequences number of predictable sequences, 4
-    sequenceLength number of SDRs in sequence, 2
-    sequenceOrder order of the sequences (number of shared elements), 0
-    pRandSDR probability of random SDR appearing between sequences, 0.5
-    forceRandSDR force a random SDR between sequences, False
-    uniqueRandSDR random SDRs and sequences completely unique, False
+  @param: params dictionary of parameters with the following keys, (defaults):
+    totalDisplays number of SDRs to return. (100)
+    numElements number of random SDRs to choose from. (100)
+    numSequences number of predictable sequences. (4)
+    sequenceLength number of SDRs in sequence. (2)
+    sequenceOrder order of the sequences (number of shared elements). (0)
+    pRandSDR probability of random SDR appearing between sequences. (0.5)
+    forceRandSDR force a random SDR between sequences. (False)
+    uniqueRandSDR random SDRs and sequences completely unique. (False)
   
   @return: sdrList the index of each sdr
   @return: which_sequence the beginnings of each unique sequence, -1 means random sdr
@@ -508,7 +727,7 @@ def createSDRList(params):
   
   if params['sequenceLength'] <= params['sequenceOrder']:
     print "sequenceLength must be larger than sequence order"
-    return
+    return # @todo: is just returning ok? Or should this throw an error
     
   if params['numElements'] < params['numSequences'] * params['sequenceLength']:
     print "too many sequences for uniqueness"
@@ -523,10 +742,11 @@ def createSDRList(params):
 
   # now insert the high order elements
   if params['sequenceOrder'] > 0:    
-    # make the higher-order sequence subset, and replace the middle
-    hoSeq = randint(params['numElements'], size=params['sequenceOrder'])  
+    # just use the middle of first sequence as the hoSeq and replace it in all others    
+    hoSeq = sequences[0, 1:(params['sequenceOrder']+1)]
     sequences[:, 1:(params['sequenceOrder']+1)] = tile(hoSeq, (params['numSequences'], 1))
-  
+    # there are SDRs removed that are not in leftOverSDRs
+    
   # need the extra numElements to make sure we don't index out of bounds
   sdrList = zeros(params['totalDisplays'] + params['numElements']) 
   whichSequence = -1 * ones(params['totalDisplays'] + params['numElements'])
@@ -552,7 +772,12 @@ def createSDRList(params):
         c += 1
       
       if params['forceRandSDR']:
-        sdrList[c] = randint(params['numElements'])
+        if params['uniqueRandSDR']:
+          # Then pick random sdrs excluded from sequence sdrs
+          sdrList[c] = leftOverSDRs[randint(len(leftOverSDRs))] 
+        else:
+          sdrList[c] = randint(params['numElements'])
+      
         c += 1
       
   sdrList = sdrList[:params['totalDisplays']]
@@ -561,13 +786,13 @@ def createSDRList(params):
   return (sdrList, whichSequence, sequences, params)
 
 
-def runTMSequenceExperiment(tm, sequenceParams, filename=None, runID=None):
+def runTMSequenceExperiment(tm, sequenceParams={}, filename=None, runID=None):
   '''Runs a temporal memory sequence learning experiment
 
   @param: tm a temporal memory instance
-  @param: sequenceParams dictionary of sequence parameters
-  @param: filename filename to save simulation data, None generates filename, None
-  @param: runID identifier for the simulation, None generates runID, None
+  @param: sequenceParams dictionary of sequence parameters. ({})
+  @param: filename filename to save simulation data, None generates filename. (None)
+  @param: runID identifier for the simulation, None generates runID. (None)
 
   @return: filename the name of the file for the simulation data.  
   '''
@@ -698,7 +923,7 @@ if __name__ == '__main__':
   plotTMOverlapAll(filename)
   plotTMErrorAll(filename)
   plotTMErrorSequence(filename)
-  plotTMErrorSequenceEnd(filename)
+  plotTMErrorHO(filename)
   
   #%%
   

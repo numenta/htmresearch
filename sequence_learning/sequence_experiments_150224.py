@@ -43,14 +43,14 @@ import datetime
 
 #%%
 sequence_params = {}
-sequence_params['total_displays'] = 1000
-sequence_params['num_elements'] = 1000
-sequence_params['num_sequences'] = 10
-sequence_params['sequence_length'] = 8
-sequence_params['sequence_order'] = 0
-sequence_params['p_rand_sdr'] = 0
-sequence_params['force_rand_sdr'] = True
-sequence_params['unique_rand_sdr'] = True
+sequence_params['totalDisplays'] = 4000
+sequence_params['numElements'] = 1000
+sequence_params['numSequences'] = 10
+sequence_params['sequenceLength'] = 8
+sequence_params['sequenceOrder'] = 2
+sequence_params['pRandSDR'] = 0
+sequence_params['forceRandSDR'] = True
+sequence_params['uniqueRandSDR'] = True
 
 num_runs = 8
 filenames = []
@@ -66,36 +66,70 @@ for i in range(num_runs):
 
 #%%
 reference_file = ('filenames-sl%02d-ho%01d-ne%04d-ns%02d-n'
-                  % (sequence_params['sequence_length'], sequence_params['sequence_order'],
-                     sequence_params['num_elements'], sequence_params['num_sequences'])
+                  % (sequence_params['sequenceLength'], sequence_params['sequenceOrder'],
+                     sequence_params['numElements'], sequence_params['numSequences'])
                   + datetime.date.today().strftime('%y%m%d') + '.npz')
 
 savez_compressed(reference_file, filenames=filenames)
 
 
+#%% First order sequence learning with longer sequences
+
+# These are the simulation files for the data in sequence_memory_random.pptx
+reference_files = []
+reference_files.append('filenames-sl02-ho0-ne1000-ns10-n150302.npz')
+reference_files.append('filenames-sl04-ho0-ne1000-ns10-n150302.npz')
+reference_files.append('filenames-sl08-ho0-ne1000-ns10-n150302.npz')
+reference_files.append('filenames-sl16-ho0-ne1000-ns10-n150302.npz')
+
+classLabels = ('Sequence Length: 2', 'Sequence Length: 4', 
+               'Sequence Length: 8', 'Sequence Length: 16')
+
+#%% HO sequence learning with more order
+
+# These are the simulation files for the data in sequence_memory_random.pptx
+reference_files = []
+reference_files.append('filenames-sl08-ho0-ne1000-ns10-n150302.npz')
+reference_files.append('filenames-sl08-ho1-ne1000-ns10-n150302.npz')
+reference_files.append('filenames-sl08-ho2-ne1000-ns10-n150302.npz')
+reference_files.append('filenames-sl08-ho3-ne1000-ns10-n150302.npz')
+reference_files.append('filenames-sl08-ho6-ne1000-ns10-n150302.npz')
+
+classLabels = ('Sequence Order: 0', 'Sequence Order: 1', 'Sequence Order: 2', 
+               'Sequence Order: 3', 'Sequence Order: 6')
+
+
+#%% Set up the reference files and class names for the multi plots
+
+filenames = []
+runClasses = []
+for i, ref_file in enumerate(reference_files):
+  
+  with load(ref_file) as data:
+    fns = data['filenames']
+    filenames.extend(fns)
+    runClasses.extend(i * ones(len(fns)))
+
+
+#%% Plot several simulations averaged together
+  
+squ.plotTMErrorAllMulti(filenames, runClasses, smoothFactor=30, classLabels=classLabels)
+
+legend()
+#title('High Order Sequence Learning')
+
+
 #%%
 
-#reference_file = 'filenames-sl2-ho0-ne1000-ns100-n150227.npz'
+squ.plotTMErrorSequenceMulti(filenames, runClasses, classLabels=classLabels)
 
-with load(reference_file) as data:
-  filenames = data['filenames']
-  
-  
-sequence_error_all = zeros((len(filenames), 1))
-for i, filename in enumerate(filenames):
-  with load(filename) as data:
-    sequence_error = data['sequence_error']
+legend()
+#title('First Order, All Predictable Elements')
+title('First Order, All Predictable Elements')
 
-  if len(sequence_error) > sequence_error_all.shape[1]:
-    sequence_error_all.resize((len(filenames), len(sequence_error)))
-  
-  sequence_error_all[i,:len(sequence_error)] = sequence_error
-  
+#%%
 
-figure('Sequence error several runs')
-clf()
-plot(mean(sequence_error_all, 0))
+squ.plotTMErrorHOMulti(filenames, runClasses, classLabels=classLabels, smoothFactor=10)
 
-smooth_factor = 10
-plot(convolve(mean(sequence_error_all, 0), ones(smooth_factor)/smooth_factor, mode='same'), 'k', lw=3)
-  
+legend()
+title('High Order Learning, HO Element')
