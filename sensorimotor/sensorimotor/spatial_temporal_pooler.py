@@ -111,7 +111,7 @@ class SpatialTemporalPooler(object):
     scores[predictedCells == 1] += 10
     overlaps = numpy.dot(self._permanences, numpy.transpose(scores))
 
-    overlaps = self._overlaps * .25 + overlaps
+    overlaps = self._overlaps * .32 + overlaps
     self._overlaps = overlaps
 
     return overlaps
