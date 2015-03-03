@@ -55,6 +55,13 @@ PLOT = 1
 class SpatialTemporalPoolerTest(unittest.TestCase):
 
   def setUp(self):
+    print ("\n"
+           "======================================================\n"
+           "Test: {0} \n"
+           "{1}\n"
+           "======================================================\n"
+    ).format(self.id(), self.shortDescription())
+
     self.patternMachine = PatternMachine(1024, 20, num=100)
     self.sequenceMachine = SequenceMachine(self.patternMachine)
 
@@ -76,7 +83,25 @@ class SpatialTemporalPoolerTest(unittest.TestCase):
       mmName="TP")
 
 
+  def testBasic(self):
+    """Two basic sequences"""
+    sequences = [
+      [ 0,  1,  2,  3,  4,  5,  6,  7],
+      [ 8,  9, 10, 11, 12, 13, 14, 15]
+    ]
+    labels = ["A", "B"]
+
+    sequences = [self.sequenceMachine.generateFromNumbers(s) for s in sequences]
+
+    for _ in xrange(10):
+      self._feedSequences(sequences, sequenceLabels=labels)
+
+    self._printInfo()
+    self._showPlots()
+
+
   def testOverlapping(self):
+    """Overlapping sequences"""
     sequences = [
       [ 0,  1,  2,  3,  4,  5,  6,  7],
       [ 8,  9, 10, 11, 12, 13, 14, 15],
@@ -94,8 +119,10 @@ class SpatialTemporalPoolerTest(unittest.TestCase):
     self._showPlots()
 
 
-  def tearDown(self):
+  @classmethod
+  def tearDownClass(cls):
     if PLOT >= 1:
+      print
       raw_input("Press any key to exit...")
 
 
@@ -119,14 +146,16 @@ class SpatialTemporalPoolerTest(unittest.TestCase):
         breakOnResets=self.tm.mmGetTraceResets())
       print
 
-    print MonitorMixinBase.mmPrettyPrintMetrics(
-      self.tp.mmGetDefaultMetrics() + self.tm.mmGetDefaultMetrics())
-    print
+    if VERBOSITY >= 1:
+      print MonitorMixinBase.mmPrettyPrintMetrics(
+        self.tp.mmGetDefaultMetrics() + self.tm.mmGetDefaultMetrics())
+      print
 
 
   def _showPlots(self):
     if PLOT >= 1:
-      self.tp.mmGetCellActivityPlot(showReset=True)
+      title = self.shortDescription()
+      self.tp.mmGetCellActivityPlot(showReset=True, title=title)
 
 
   def _feedPattern(self, pattern,
