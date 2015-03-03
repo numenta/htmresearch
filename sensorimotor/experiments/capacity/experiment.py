@@ -77,7 +77,7 @@ DEFAULTS = {
     "initConnectedPct": 0.5
   }
 }
-VERBOSITY = 1
+VERBOSITY = 0
 PLOT = 1
 SHOW_PROGRESS_INTERVAL = 10
 
@@ -151,9 +151,14 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
       runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
     print
 
+    if PLOT >= 1:
+      title = "worlds: {0}, elements: {1} (initial)".format(numWorlds, numElements)
+      runner.tp.mmGetPlotConnectionsPerColumn(title=title)
+
     print "Training temporal pooler..."
     sequences = runner.generateSequences(completeSequenceLength * 1,
                                          exhaustiveAgents,
+                                         numSequences=4,
                                          verbosity=VERBOSITY)
     runner.feedLayers(sequences, tmLearn=False, tpLearn=True,
                       verbosity=VERBOSITY,
