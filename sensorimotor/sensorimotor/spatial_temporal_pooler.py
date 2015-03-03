@@ -103,13 +103,13 @@ class SpatialTemporalPooler(object):
 
 
   def _computeConnectedCounts(self):
-    return numpy.sum(self._connectedPermanences(), axis=1)
+    return numpy.sum(self._permanences, axis=1)
 
 
   def _computeOverlaps(self, inputVector, predictedCells):
     scores = numpy.array(inputVector)
     scores[predictedCells == 1] += 10
-    overlaps = numpy.dot(self._connectedPermanences(), numpy.transpose(scores))
+    overlaps = numpy.dot(self._permanences, numpy.transpose(scores))
 
     overlaps = self._overlaps * .25 + overlaps
     self._overlaps = overlaps
@@ -118,15 +118,27 @@ class SpatialTemporalPooler(object):
 
 
   def _inhibitColumns(self, overlaps):
-    numActive = int(0.2 * self.getNumColumns())
+    numActive = int(0.02 * self.getNumColumns())
     return numpy.argpartition(overlaps, -numActive)[-numActive:]
+
+
+  def _getSubsetArray(self, array, percent=0.3):
+    subset = numpy.array(array)
+    mask = numpy.random.choice(self.getNumInputs(),
+                               int(self.getNumInputs() * (1 - percent)),
+                               replace=False)
+    subset[mask] = 0
+    return subset
 
 
   def _adaptPermanences(self, activeColumns, inputVector, predictedCells):
     for column in activeColumns:
-      delta = numpy.full(self.getNumInputs(), self.synPermInactiveDec)
-      delta[inputVector == 1] = self.synPermActiveInc
+      delta = numpy.zeros(self.getNumInputs())
       delta[predictedCells == 1] = self.synPredictedInc
-      self._permanences[column] += delta
+      permanences = self._permanences[column]
+      total = permanences.sum()
+      permanences += delta
+      permanences /= (permanences.sum() / total)
+      self._permanences[column] = permanences
 
     self._connectedCounts = self._computeConnectedCounts()
