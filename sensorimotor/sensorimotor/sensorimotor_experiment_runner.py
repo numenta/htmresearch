@@ -33,6 +33,8 @@ from sensorimotor.fast_general_temporal_memory import (
 # Uncomment the line below to use GeneralTemporalMemory
 # from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 from sensorimotor.temporal_pooler import TemporalPooler
+# Uncomment the line below to use SpatialTemporalPooler
+# from sensorimotor.spatial_temporal_pooler import SpatialTemporalPooler as TemporalPooler
 from sensorimotor.temporal_pooler_monitor_mixin import (
   TemporalPoolerMonitorMixin)
 class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,

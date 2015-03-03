@@ -147,12 +147,12 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     plot = Plot(self, title)
     resetTrace = self.mmGetTraceResets().data
     activeCellTrace = self._mmTraces["activeCells"].data
-    data = numpy.zeros((self._numColumns, 1))
+    data = numpy.zeros((self.getNumColumns(), 1))
     for i in xrange(len(activeCellTrace)):
       if showReset and resetTrace[i]:
-        activity = numpy.ones((self._numColumns, 1)) * resetShading
+        activity = numpy.ones((self.getNumColumns(), 1)) * resetShading
       else:
-        activity = numpy.zeros((self._numColumns, 1))
+        activity = numpy.zeros((self.getNumColumns(), 1))
 
       activeSet = activeCellTrace[i]
       activity[list(activeSet)] = 1
