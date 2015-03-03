@@ -154,27 +154,28 @@ def run(numWorlds, numElements, outputDir, params=DEFAULTS):
     if PLOT >= 1:
       title = "worlds: {0}, elements: {1} (initial)".format(numWorlds, numElements)
       runner.tp.mmGetPlotConnectionsPerColumn(title=title)
-
-    print "Training temporal pooler..."
-    sequences = runner.generateSequences(completeSequenceLength * 1,
-                                         exhaustiveAgents,
-                                         numSequences=4,
-                                         verbosity=VERBOSITY)
-    runner.feedLayers(sequences, tmLearn=False, tpLearn=True,
-                      verbosity=VERBOSITY,
-                      showProgressInterval=SHOW_PROGRESS_INTERVAL)
-    print
-    print "Done training."
-    print
-
-    print MonitorMixinBase.mmPrettyPrintMetrics(
-      runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
-    print
-
-    if PLOT >= 1:
-      title = "worlds: {0}, elements: {1}".format(numWorlds, numElements)
-      runner.tp.mmGetPlotConnectionsPerColumn(title=title)
       runner.tp.mmGetCellActivityPlot(title=title)
+
+    for _ in range(3):
+      print "Training temporal pooler..."
+      sequences = runner.generateSequences(completeSequenceLength * 1,
+                                           exhaustiveAgents,
+                                           verbosity=VERBOSITY)
+      runner.feedLayers(sequences, tmLearn=False, tpLearn=True,
+                        verbosity=VERBOSITY,
+                        showProgressInterval=SHOW_PROGRESS_INTERVAL)
+      print
+      print "Done training."
+      print
+
+      print MonitorMixinBase.mmPrettyPrintMetrics(
+        runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
+      print
+
+      if PLOT >= 1:
+        title = "worlds: {0}, elements: {1}".format(numWorlds, numElements)
+        runner.tp.mmGetPlotConnectionsPerColumn(title=title)
+        runner.tp.mmGetCellActivityPlot(title=title)
 
     print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
                                                            numElements)
