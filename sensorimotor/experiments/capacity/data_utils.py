@@ -121,7 +121,7 @@ def getChartData(path, xDataColumnIdx, yDataColumnIdxs, yStdDevIdxs):
 
 
 def plotChartData(dir, X, Ys, stdDevs, plotTitles, xAxisLabel, yAxisLabels,
-                  gridFormat, plotFileName="plots.png"):
+                  gridFormat, plotFileName):
   """
   Plots the specified data and saves specified plot to file
   """
@@ -148,14 +148,14 @@ def plotChartData(dir, X, Ys, stdDevs, plotTitles, xAxisLabel, yAxisLabels,
 
 
 
-def plotSensorimotorExperimentResults(filesDir, combinedFileName):
+def plotSensorimotorExperimentResults(filesDir, outputFileName):
   """
   Plots the data produced by
   sensorimotor/experiments/capacity/run.py
   """
   print "Combining csv's in: {0}".format(filesDir)
-  print "Output file name: {0}\n".format(combinedFileName)
-  combineCsvFiles(filesDir, combinedFileName)
+  print "Output file name: {0}\n".format(outputFileName)
+  combineCsvFiles(filesDir, outputFileName + ".csv")
 
   # 0 when number of worlds is IV
   # 1 when number of elements is IV
@@ -173,13 +173,14 @@ def plotSensorimotorExperimentResults(filesDir, combinedFileName):
   # deviations of the metrics specified by yColumnIdxs. A -1 means the script
   # won't plot a std dev for the corresponding metric.
   yStdDevIdxs = [12, -1, 17, -1, 47, -1]
-  iv, dvs, stdDevs, metricTitles = getChartData(combinedFileName, xColumnIdx,
-                                                yColumnIdxs, yStdDevIdxs)
+  iv, dvs, stdDevs, metricTitles = getChartData(outputFileName + ".csv",
+                                                xColumnIdx, yColumnIdxs,
+                                                yStdDevIdxs)
 
   # 3x2 subplot grid
   gridFormat = 320
   plotChartData(filesDir, iv, dvs, stdDevs, metricTitles,
-                xAxisLabel, yAxisLabels, gridFormat)
+                xAxisLabel, yAxisLabels, gridFormat, outputFileName)
 
 
 
