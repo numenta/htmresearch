@@ -29,6 +29,8 @@ import random
 
 
 def computeSigmoid(x, infl=0.5, sharpness=1.0, _scaleY=True):
+  assert x >= 0.0 and x <= 1.0
+  assert infl > 0.0 and infl < 1.0
   scaledX = (x - infl) / min(1.0 - infl, infl)
   logistic = 1 / (1 + math.exp(-2 * sharpness * scaledX))
   if _scaleY:
@@ -126,7 +128,8 @@ class TP(object):
     self.nActive = nActive
     self.cells = [Cell(nInputs, pctConnected, activationSteps,
                        connectedThreshold, inc, dec, r=r,
-                       nActiveInputs=nActiveInputs, coincThreshold=20)
+                       nActiveInputs=nActiveInputs,
+                       coincThreshold=coincThreshold)
                   for _ in xrange(nCols)]
 
     self.learn = True

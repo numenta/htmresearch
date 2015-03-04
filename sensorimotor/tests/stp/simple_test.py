@@ -24,6 +24,8 @@
 
 import random
 
+import numpy
+
 from sensorimotor import stp
 
 
@@ -33,11 +35,11 @@ if __name__ == "__main__":
   w = 20
   nInputs = 500
   A, B, C, D, E = [numpy.zeros([nInputs], dtype=numpy.bool) for _ in xrange(5)]
-  A[:categorySize] = 1
-  B[categorySize:2*categorySize] = 1
-  C[2*categorySize:3*categorySize] = 1
-  D[3*categorySize:4*categorySize] = 1
-  E[4*categorySize:5*categorySize] = 1
+  A[:w] = 1
+  B[w:2*w] = 1
+  C[2*w:3*w] = 1
+  D[3*w:4*w] = 1
+  E[4*w:5*w] = 1
 
   coincThreshold = 8
   nCols = 100
