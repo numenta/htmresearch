@@ -47,7 +47,7 @@ realDType = GetNTAReal()
 
 
 
-VERBOSITY = 2
+VERBOSITY = 1
 PLOT = 1
 
 
@@ -82,6 +82,8 @@ class SpatialTemporalPoolerTest(unittest.TestCase):
       columnDimensions=[1024],
       mmName="TP")
 
+    self._showInternalStatePlots(appendTitle=" (initial)")
+
 
   def testBasic(self):
     """Two basic sequences"""
@@ -95,9 +97,6 @@ class SpatialTemporalPoolerTest(unittest.TestCase):
 
     for _ in xrange(10):
       self._feedSequences(sequences, sequenceLabels=labels)
-
-    self._printInfo()
-    self._showPlots()
 
 
   def testOverlapping(self):
@@ -115,8 +114,11 @@ class SpatialTemporalPoolerTest(unittest.TestCase):
     for _ in xrange(10):
       self._feedSequences(sequences, sequenceLabels=labels)
 
+
+  def tearDown(self):
     self._printInfo()
-    self._showPlots()
+    self._showActivityPlots()
+    self._showInternalStatePlots(appendTitle=" (final)")
 
 
   @classmethod
@@ -152,10 +154,18 @@ class SpatialTemporalPoolerTest(unittest.TestCase):
       print
 
 
-  def _showPlots(self):
+  def _showActivityPlots(self):
     if PLOT >= 1:
       title = self.shortDescription()
       self.tp.mmGetCellActivityPlot(showReset=True, title=title)
+
+
+  def _showInternalStatePlots(self, appendTitle=None):
+    if PLOT >= 1:
+      title = self.shortDescription()
+      if appendTitle:
+        title += appendTitle
+      self.tp.mmGetPermanencesPlot(title=title)
 
 
   def _feedPattern(self, pattern,
