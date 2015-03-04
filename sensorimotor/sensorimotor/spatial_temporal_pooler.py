@@ -59,7 +59,8 @@ class SpatialTemporalPooler(object):
 
     self._permanences = self._initPermanences()
     self._connectedCounts = self._computeConnectedCounts()
-    self._overlaps = numpy.zeros(self.getNumColumns())
+
+    self.reset()
 
 
   def compute(self,
@@ -78,7 +79,7 @@ class SpatialTemporalPooler(object):
 
 
   def reset(self):
-    pass
+    self._overlaps = numpy.zeros(self.getNumColumns())
 
 
   def getNumInputs(self):
@@ -87,6 +88,10 @@ class SpatialTemporalPooler(object):
 
   def getNumColumns(self):
     return numpy.product(self.columnDimensions)
+
+
+  def getPermanence(self, column, permanence):
+    permanence[:] = self._permanences[column]
 
 
   def _initPermanences(self):
