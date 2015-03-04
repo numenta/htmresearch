@@ -162,6 +162,21 @@ class TemporalPoolerMonitorMixin(MonitorMixinBase):
     return plot
 
 
+  def mmGetPermanencesPlot(self, title=None):
+    """ Returns plot of column permanences.
+    @param title an optional title for the figure
+    @return (Plot) plot
+    """
+    plot = Plot(self, title)
+
+    data = numpy.zeros((self.getNumColumns(), self.getNumInputs()))
+    for i in xrange(self.getNumColumns()):
+      self.getPermanence(i, data[i])
+
+    plot.add2DArray(data, xlabel="Permanences", ylabel="Column")
+    return plot
+
+
   def mmPrettyPrintDataOverlap(self):
     """
     Returns pretty-printed string representation of overlap data.
