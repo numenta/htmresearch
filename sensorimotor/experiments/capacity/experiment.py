@@ -44,179 +44,255 @@ import csv
 import os
 import sys
 import time
+import yaml
+from optparse import OptionParser
 
+from pylab import rcParams
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
+from sensorimotor.exhaustive_one_d_agent import ExhaustiveOneDAgent
 from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
 from sensorimotor.random_one_d_agent import RandomOneDAgent
-from sensorimotor.exhaustive_one_d_agent import ExhaustiveOneDAgent
-
 from sensorimotor.sensorimotor_experiment_runner import (
   SensorimotorExperimentRunner
 )
 
-
-
-# Constants
-N = 512
-W = 20
-DEFAULTS = {
-  "n": N,
-  "w": W,
-  "tmParams": {
-    "columnDimensions": [N],
-    "minThreshold": W*2,
-    "activationThreshold": W*2,
-    "maxNewSynapseCount": W*2
-  },
-  "tpParams": {
-    "columnDimensions": [N],
-    "numActiveColumnsPerInhArea": W,
-    "potentialPct": 0.9,
-    "initConnectedPct": 0.5
-  }
-}
-VERBOSITY = 1
-PLOT = 1
-SHOW_PROGRESS_INTERVAL = 10
+SHOW_PROGRESS_INTERVAL = 200
+TWOPASS_TM_TRAINING_REPS = 2
+TWOPASS_TP_TRAINING_REPS = 1
+ONLINE_TRAINING_REPS = 3
+NUM_TEST_SEQUENCES = 4
+RANDOM_SEED = 42
+PLOT_RESET_SHADING = 0.2
+PLOT_HEIGHT = 6
+PLOT_WIDTH = 9
 
 
 
-def run(numWorlds, numElements, outputDir, params=DEFAULTS):
-  # Extract params
+def setupExperiment(n, w, numElements, numWorlds, tmParams, tpParams):
+  print "Setting up experiment..."
+  universe = OneDUniverse(nSensor=n, wSensor=w,
+                          nMotor=n, wMotor=w)
+  runner = SensorimotorExperimentRunner(tmOverrides=tmParams,
+                                        tpOverrides=tpParams,
+                                        seed=RANDOM_SEED)
+  exhaustiveAgents = []
+  randomAgents = []
+  for world in xrange(numWorlds):
+    elements = range(world * numElements, world * numElements + numElements)
+    agent = ExhaustiveOneDAgent(OneDWorld(universe, elements), 0)
+    exhaustiveAgents.append(agent)
+
+    possibleMotorValues = range(-numElements, numElements + 1)
+    possibleMotorValues.remove(0)
+    agent = RandomOneDAgent(OneDWorld(universe, elements), numElements / 2,
+                            possibleMotorValues=possibleMotorValues,
+                            seed=RANDOM_SEED)
+    randomAgents.append(agent)
+  print "Done setting up experiment."
+  print
+  return runner, exhaustiveAgents, randomAgents
+
+
+
+def trainTwoPass(runner, exhaustiveAgents, completeSequenceLength, verbosity):
+  print "Training temporal memory..."
+  sequences = runner.generateSequences(completeSequenceLength *
+                                       TWOPASS_TM_TRAINING_REPS,
+                                       exhaustiveAgents,
+                                       verbosity=verbosity)
+  runner.feedLayers(sequences, tmLearn=True, tpLearn=False,
+                    verbosity=verbosity,
+                    showProgressInterval=SHOW_PROGRESS_INTERVAL)
+  print
+  print MonitorMixinBase.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics() +
+                                              runner.tm.mmGetDefaultMetrics())
+  print
+  print "Training temporal pooler..."
+
+  runner.tm.mmClearHistory()
+  runner.tp.mmClearHistory()
+
+  sequences = runner.generateSequences(completeSequenceLength *
+                                       TWOPASS_TP_TRAINING_REPS,
+                                       exhaustiveAgents,
+                                       verbosity=verbosity)
+  runner.feedLayers(sequences, tmLearn=False, tpLearn=True,
+                    verbosity=verbosity,
+                    showProgressInterval=SHOW_PROGRESS_INTERVAL)
+  print
+  print MonitorMixinBase.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics() +
+                                              runner.tm.mmGetDefaultMetrics())
+  print
+
+
+
+def trainOnline(runner, exhaustiveAgents, completeSequenceLength,
+                trainingRepetitions, verbosity):
+  print "Training temporal memory and temporal pooler..."
+  sequences = runner.generateSequences(completeSequenceLength *
+                                       trainingRepetitions,
+                                       exhaustiveAgents,
+                                       verbosity=verbosity)
+  runner.feedLayers(sequences, tmLearn=True, tpLearn=True,
+                    verbosity=verbosity,
+                    showProgressInterval=SHOW_PROGRESS_INTERVAL)
+  print
+  print MonitorMixinBase.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics() +
+                                              runner.tm.mmGetDefaultMetrics())
+  print
+
+
+
+def runTestPhase(runner, randomAgents, numWorlds, numElements,
+                 completeSequenceLength, verbosity):
+  print "Testing (worlds: {0}, elements: {1})...".format(numWorlds, numElements)
+
+  runner.tm.mmClearHistory()
+  runner.tp.mmClearHistory()
+
+  sequences = runner.generateSequences(completeSequenceLength /
+                                       NUM_TEST_SEQUENCES,
+                                       randomAgents, verbosity=verbosity,
+                                       numSequences=NUM_TEST_SEQUENCES)
+  runner.feedLayers(sequences, tmLearn=False, tpLearn=False,
+                    verbosity=verbosity,
+                    showProgressInterval=SHOW_PROGRESS_INTERVAL)
+  print "Done testing.\n"
+  if verbosity >= 2:
+    print "Overlap:"
+    print
+    print runner.tp.mmPrettyPrintDataOverlap()
+    print
+  print MonitorMixinBase.mmPrettyPrintMetrics(
+    runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
+  print
+
+
+
+def plotExperimentState(runner, plotVerbosity, numWorlds, numElems, isOnline,
+                        experimentPhase):
+  if plotVerbosity >= 1:
+    rcParams['figure.figsize'] = PLOT_WIDTH, PLOT_HEIGHT
+    title = "worlds: {0}, elements: {1}, online: {2}, phase: {3}".format(
+            numWorlds, numElems, isOnline, experimentPhase)
+    runner.tp.mmGetPlotConnectionsPerColumn(title=title)
+    if plotVerbosity >= 2:
+      runner.tm.mmGetCellActivityPlot(title=title, activityType="activeCells",
+                                      showReset=True,
+                                      resetShading=PLOT_RESET_SHADING)
+      runner.tm.mmGetCellActivityPlot(title=title,
+                                      activityType="predictedActiveCells",
+                                      showReset=True,
+                                      resetShading=PLOT_RESET_SHADING)
+      runner.tp.mmGetCellActivityPlot(title=title, showReset=True,
+                                      resetShading=PLOT_RESET_SHADING)
+
+
+
+def writeOutput(outputDir, runner, numElems, numWorlds, elapsedTime):
+  if not os.path.exists(outputDir):
+    os.makedirs(outputDir)
+  fileName = "{0:0>3}x{1:0>3}.csv".format(numWorlds, numElems)
+  filePath = os.path.join(outputDir, fileName)
+  with open(filePath, "wb") as outputFile:
+    csvWriter = csv.writer(outputFile)
+    header = ["# worlds", "# elements", "duration"]
+    row = [numWorlds, numElems, elapsedTime]
+    for metric in (runner.tp.mmGetDefaultMetrics() +
+                   runner.tm.mmGetDefaultMetrics()):
+      header += ["{0} ({1})".format(metric.prettyPrintTitle(), x) for x in
+                ["min", "max", "sum", "mean", "stddev"]]
+      row += [metric.min, metric.max, metric.sum, metric.mean,
+              metric.standardDeviation]
+    csvWriter.writerow(header)
+    csvWriter.writerow(row)
+    outputFile.flush()
+
+
+
+def run(numWorlds, numElems, params, outputDir, plotVerbosity,
+        consoleVerbosity):
+  # Setup params
   n = params["n"]
   w = params["w"]
   tmParams = params["tmParams"]
   tpParams = params["tpParams"]
+  isOnline = params["isOnline"]
+  onlineTrainingReps = params["onlineTrainingReps"] if isOnline else None
+  completeSequenceLength = numElems ** 2
+  print ("Experiment parameters: "
+         "(# worlds = {0}, # elements = {1}, n = {2}, w = {3}, "
+         "online = {4}, onlineReps = {5})".format(
+         numWorlds, numElems, n, w, isOnline, onlineTrainingReps))
+  print "Temporal memory parameters: {0}".format(tmParams)
+  print "Temporal pooler parameters: {0}".format(tpParams)
+  print
 
-  # Initialize output
-  if not os.path.exists(outputDir):
-    os.makedirs(outputDir)
-
-  csvFilePath = os.path.join(outputDir, "{0}x{1}.csv".format(numWorlds,
-                                                             numElements))
-
-  # Initialize experiment
+  # Setup experiment
   start = time.time()
-  universe = OneDUniverse(nSensor=n, wSensor=w,
-                          nMotor=n, wMotor=w)
+  runner, exhaustiveAgents, randomAgents = setupExperiment(n, w, numElems,
+                                                           numWorlds, tmParams,
+                                                           tpParams)
 
-  # Run the experiment
-  with open(csvFilePath, 'wb') as csvFile:
-    csvWriter = csv.writer(csvFile)
+  # Training phase
+  print "Training: (worlds: {0}, elements: {1})...".format(numWorlds, numElems)
+  print
+  if isOnline:
+    trainOnline(runner, exhaustiveAgents, completeSequenceLength,
+                onlineTrainingReps, consoleVerbosity)
+  else:
+    trainTwoPass(runner, exhaustiveAgents, completeSequenceLength, consoleVerbosity)
+  print "Done training."
+  print
+  plotExperimentState(runner, plotVerbosity, numWorlds, numElems, isOnline, "Training")
 
-    print ("Experiment parameters: "
-           "(# worlds = {0}, # elements = {1}, n = {2}, w = {3})".format(
-             numWorlds, numElements, n, w))
-    print "Temporal memory parameters: {0}".format(tmParams)
-    print "Temporal pooler parameters: {0}".format(tpParams)
-    print
-    print "Setting up experiment..."
-    runner = SensorimotorExperimentRunner(tmOverrides=tmParams,
-                                          tpOverrides=tpParams)
-    print "Done setting up experiment."
-    print
+  # Test TM and TP on randomly moving agents
+  runTestPhase(runner, randomAgents, numWorlds, numElems,
+               completeSequenceLength, consoleVerbosity)
+  plotExperimentState(runner, plotVerbosity, numWorlds, numElems, isOnline, "Testing")
+  elapsed = int(time.time() - start)
+  print "Total time: {0:2} seconds.".format(elapsed)
 
-    exhaustiveAgents = []
-    randomAgents = []
-    completeSequenceLength = numElements ** 2
-
-    for world in xrange(numWorlds):
-      elements = range(world * numElements, world * numElements + numElements)
-
-      exhaustiveAgents.append(
-        ExhaustiveOneDAgent(OneDWorld(universe, elements), 0))
-
-      possibleMotorValues = range(-numElements, numElements+1)
-      possibleMotorValues.remove(0)
-      randomAgents.append(
-        RandomOneDAgent(OneDWorld(universe, elements), numElements / 2,
-                        possibleMotorValues=possibleMotorValues))
-
-
-    print "Training (worlds: {0}, elements: {1})...".format(numWorlds,
-                                                            numElements)
-    print
-    print "Training temporal memory..."
-    sequences = runner.generateSequences(completeSequenceLength * 2,
-                                         exhaustiveAgents,
-                                         verbosity=VERBOSITY)
-    runner.feedLayers(sequences, tmLearn=True, tpLearn=False,
-                      verbosity=VERBOSITY,
-                      showProgressInterval=SHOW_PROGRESS_INTERVAL)
-    print
-
-    print MonitorMixinBase.mmPrettyPrintMetrics(
-      runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
-    print
-
-    print "Training temporal pooler..."
-    sequences = runner.generateSequences(completeSequenceLength * 1,
-                                         exhaustiveAgents,
-                                         verbosity=VERBOSITY)
-    runner.feedLayers(sequences, tmLearn=False, tpLearn=True,
-                      verbosity=VERBOSITY,
-                      showProgressInterval=SHOW_PROGRESS_INTERVAL)
-    print
-    print "Done training."
-    print
-
-    print MonitorMixinBase.mmPrettyPrintMetrics(
-      runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
-    print
-
-    if PLOT >= 1:
-      title = "worlds: {0}, elements: {1}".format(numWorlds, numElements)
-      runner.tp.mmGetPlotConnectionsPerColumn(title=title)
-      runner.tp.mmGetCellActivityPlot(title=title)
-
-    print "Testing (worlds: {0}, elements: {1})...".format(numWorlds,
-                                                           numElements)
-    sequences = runner.generateSequences(completeSequenceLength / 4,
-                                         randomAgents,
-                                         verbosity=VERBOSITY,
-                                         numSequences=4)
-    runner.feedLayers(sequences, tmLearn=False, tpLearn=False,
-                      verbosity=VERBOSITY,
-                      showProgressInterval=SHOW_PROGRESS_INTERVAL)
-    print "Done testing.\n"
-
-    if VERBOSITY >= 2:
-      print "Overlap:"
-      print
-      print runner.tp.mmPrettyPrintDataOverlap()
-      print
-
-    print MonitorMixinBase.mmPrettyPrintMetrics(
-      runner.tp.mmGetDefaultMetrics() + runner.tm.mmGetDefaultMetrics())
-    print
-
-    elapsed = int(time.time() - start)
-    print "Total time: {0:2} seconds.".format(elapsed)
-
-    header = ["# worlds", "# elements", "duration"]
-    row = [numWorlds, numElements, elapsed]
-
-    for metric in (runner.tp.mmGetDefaultMetrics() +
-                   runner.tm.mmGetDefaultMetrics()):
-      header += ["{0} ({1})".format(metric.prettyPrintTitle(), x) for x in
-                 ["min", "max", "sum", "mean", "stddev"]]
-      row += [metric.min, metric.max, metric.sum,
-              metric.mean,  metric.standardDeviation]
-
-    csvWriter.writerow(header)
-    csvWriter.writerow(row)
-    csvFile.flush()
-
-  if PLOT >= 1:
+  # Write results to output file
+  writeOutput(outputDir, runner, numElems, numWorlds, elapsed)
+  if plotVerbosity >= 1:
     raw_input("Press any key to exit...")
 
 
 
-if __name__ == "__main__":
-  if len(sys.argv) < 4:
-    print "Usage: ./experiment.py NUM_WORLDS NUM_ELEMENTS OUTPUT_DIR"
+def _getArgs():
+  parser = OptionParser(usage="%prog NUM_WORLDS NUM_ELEMENTS PARAMS_DIR "
+                              "OUTPUT_DIR [options]"
+                              "\n\nRun sensorimotor experiment with specified "
+                              "worlds and elements using params in PARAMS_DIR "
+                              "and outputting results to OUTPUT_DIR.")
+  parser.add_option("-p",
+                    "--plot",
+                    type=int,
+                    default=0,
+                    dest="plotVerbosity",
+                    help="Plotting verbosity: 0 => none, 1 => summary plots, "
+                         "2 => detailed plots")
+  parser.add_option("-c",
+                    "--console",
+                    type=int,
+                    default=0,
+                    dest="consoleVerbosity",
+                    help="Console message verbosity: 0 => none")
+  (options, args) = parser.parse_args(sys.argv[1:])
+  if len(args) < 4:
+    parser.print_help(sys.stderr)
     sys.exit()
 
-  run(int(sys.argv[1]), int(sys.argv[2]), sys.argv[3])
+  with open(args[2]) as paramsFile:
+    params = yaml.safe_load(paramsFile)
+  return options, args, params
+
+
+
+if __name__ == "__main__":
+  (options, args, params) = _getArgs()
+  run(int(args[0]), int(args[1]), params, args[3], options.plotVerbosity,
+      options.consoleVerbosity)

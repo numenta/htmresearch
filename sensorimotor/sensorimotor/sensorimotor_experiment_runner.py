@@ -84,10 +84,11 @@ class SensorimotorExperimentRunner(object):
     "numActiveColumnsPerInhArea": "Sorry",
   }
 
-  def __init__(self, tmOverrides=None, tpOverrides=None, seed=42, verbosity=0):
+  def __init__(self, tmOverrides=None, tpOverrides=None, seed=42):
     # Initialize Layer 4 temporal memory
     params = dict(self.DEFAULT_TM_PARAMS)
     params.update(tmOverrides or {})
+    params["seed"] = seed
     self._checkParams(params)
     self.tm = MonitoredGeneralTemporalMemory(mmName="TM", **params)
 
@@ -95,6 +96,7 @@ class SensorimotorExperimentRunner(object):
     params = dict(self.DEFAULT_TP_PARAMS)
     params["inputDimensions"] = [self.tm.numberOfCells()]
     params["potentialRadius"] = self.tm.numberOfCells()
+    params["seed"] = seed
     params.update(tpOverrides or {})
     self._checkParams(params)
     self.tp = MonitoredTemporalPooler(mmName="TP", **params)
@@ -150,9 +152,6 @@ class SensorimotorExperimentRunner(object):
      motorSequence,
      sensorimotorSequence,
      sequenceLabels) = sequences
-
-    self.tm.mmClearHistory()
-    self.tp.mmClearHistory()
 
     currentTime = time.time()
 

@@ -110,7 +110,7 @@ class AbstractAgent(object):
         set([x + self.world.universe.nSensor for x in motorPattern]))
       sensorimotorSequence.append(sensorimotorPattern)
 
-    if verbosity > 0:
+    if verbosity > 1:
       print "Generating sensorimotor sequence for world:", self.world.toString()
       self._printSequence(sensorSequence, motorSequence,
                           sensorValues, motorCommands)

@@ -32,55 +32,55 @@ import yaml
 from experiments.capacity import experiment
 
 
-
 DEFAULT_OUTPUT_DIR = "output"
 
+parser = OptionParser(usage="%prog path/to/defs.yaml path/to/params.yaml "
+                            "[options]"
+                            "\n\nRun experiments in defs.py using parameters "
+                            "from params.py in parallel.")
+parser.add_option("-o",
+                  "--output-dir",
+                  default=DEFAULT_OUTPUT_DIR,
+                  dest="outputDir",
+                  help="Output directory to write the results and logs to.")
+parser.add_option("-w",
+                  "--workers",
+                  type=int,
+                  default=4,
+                  dest="workers",
+                  help="Max number of parallel workers.")
+parser.add_option("-p",
+                  "--plot",
+                  type=int,
+                  default=0,
+                  dest="plotVerbosity",
+                  help="Plot verbosity")
+parser.add_option("-c",
+                  "--console",
+                  type=int,
+                  default=0,
+                  dest="consoleVerbosity",
+                  help="Console verbosity")
 
-
-parser = OptionParser(
-  usage="%prog path/to/defs.yaml path/to/params.yaml [options]"
-        "\n\nRun experiments in defs.py using parameters from params.py "
-        "in parallel."
-)
-parser.add_option(
-  "-o",
-  "--output-dir",
-  default=DEFAULT_OUTPUT_DIR,
-  dest="outputDir",
-  help="Output directory to write the results and logs to."
-)
-parser.add_option(
-  "-w",
-  "--workers",
-  type=int,
-  default=4,
-  dest="workers",
-  help="Max number of parallel workers."
-)
-
-
-
-def consolePrint(string):
-  print string
 
 
 def run(args):
-  defn, params, outputDir = args
+  defn, params, outputDir, plotVerbosity, consoleVerbosity = args
   numWorlds = defn["worlds"]
   numElements = defn["elements"]
 
-  filePrefix = os.path.join(outputDir, "{0}x{1}".format(numWorlds,
-                                                        numElements))
+  print "Starting {0} worlds x {1} elems...".format(numWorlds, numElements)
+  fileName = "{0:0>3}x{1:0>3}".format(numWorlds, numElements)
+  filePrefix = os.path.join(outputDir, fileName)
   logPath = "{0}.log".format(filePrefix)
-
-  print "Starting ({0})...".format(logPath)
 
   with open(logPath, "w", buffering=0) as logFile:
     sys.stdout = logFile
     exception = None
 
     try:
-      experiment.run(numWorlds, numElements, outputDir, params=params)
+      experiment.run(numWorlds, numElements, params, outputDir, plotVerbosity,
+                     consoleVerbosity)
     except Exception, err:
       print traceback.format_exc()
       exception = err
@@ -93,7 +93,7 @@ def run(args):
 
 
 
-if __name__ == "__main__":
+def loadExperiments():
   (options, args) = parser.parse_args(sys.argv[1:])
   if len(args) < 2:
     parser.print_help(sys.stderr)
@@ -103,7 +103,12 @@ if __name__ == "__main__":
   paramsPath = args[1]
   outputDir = options.outputDir
   workers = options.workers
+  plotVerbosity = options.plotVerbosity
+  consoleVerbosity = options.consoleVerbosity
 
+  print "Defs path: {0}".format(defsPath)
+  print "Params path: {0}".format(paramsPath)
+  print "Output dir: {0}\n".format(outputDir)
   with open(defsPath) as defsFile:
     defs = yaml.safe_load(defsFile)
 
@@ -114,4 +119,10 @@ if __name__ == "__main__":
         os.makedirs(outputDir)
 
       pool = Pool(processes=workers)
-      pool.map(run, [(defn, params, outputDir) for defn in defs])
+      pool.map(run, [(defn, params, outputDir, plotVerbosity, consoleVerbosity)
+                     for defn in defs])
+
+
+
+if __name__ == "__main__":
+  loadExperiments()
