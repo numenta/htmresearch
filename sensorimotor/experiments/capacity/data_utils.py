@@ -120,14 +120,14 @@ def getChartData(path, xDataColumnIdx, yDataColumnIdxs, yStdDevIdxs):
 
 
 
-def plotChartData(dir, X, Ys, stdDevs, plotTitles, xAxisLabel, yAxisLabels,
-                  gridFormat, plotFileName):
+def getErrorbarFigures(title, X, Ys, stdDevs, plotTitles, xAxisLabel,
+                      yAxisLabels, gridFormat):
   """
   Plots the specified data and saves specified plot to file
   """
   rcParams['figure.figsize'] = 15, 15
   fig = plt.figure()
-  fig.suptitle(dir)
+  fig.suptitle(title)
   fig.subplots_adjust(left=None, right=None, bottom=None, top=None,
                       wspace=None, hspace=0.35)
   plt.ion()
@@ -142,10 +142,24 @@ def plotChartData(dir, X, Ys, stdDevs, plotTitles, xAxisLabel, yAxisLabels,
     ax.axis([0, max(X) + 10, 0, 20])
     ax.errorbar(X, y, stdDevs[i])
 
-  plt.draw()
-  plt.savefig(plotFileName, bbox_inches="tight")
-  raw_input("Press enter...")
+  return fig
 
+
+
+def getErrorbarFigure(title, x, y, stdDevs, xAxisLabel, yAxisLabel):
+  fig = plt.figure()
+  fig.suptitle(title)
+  fig.subplots_adjust(left=None, right=None, bottom=None, top=None,
+                      wspace=None, hspace=0.35)
+  plt.ion()
+  plt.show()
+
+  ax = fig.add_subplot(111)
+  ax.set_xlabel(xAxisLabel)
+  ax.set_ylabel(yAxisLabel)
+  ax.axis([0, max(x) + 10, 0, 1])
+  ax.errorbar(x, y, stdDevs)
+  return fig
 
 
 def plotSensorimotorExperimentResults(filesDir, outputFileName):
@@ -179,8 +193,11 @@ def plotSensorimotorExperimentResults(filesDir, outputFileName):
 
   # 3x2 subplot grid
   gridFormat = 320
-  plotChartData(filesDir, iv, dvs, stdDevs, metricTitles,
-                xAxisLabel, yAxisLabels, gridFormat, outputFileName)
+  getErrorbarFigures(filesDir, iv, dvs, stdDevs, metricTitles,
+                     xAxisLabel, yAxisLabels, gridFormat)
+  plt.savefig(outputFileName, bbox_inches="tight")
+  plt.draw()
+  raw_input("Press enter...")
 
 
 
