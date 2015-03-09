@@ -115,6 +115,24 @@ class SpatialTemporalPoolerTest(unittest.TestCase):
       self._feedSequences(sequences, sequenceLabels=labels)
 
 
+  def testMerged(self):
+    """Two distinct sequences, and merged"""
+    sequences = [
+      [ 0,  1,  2,  3,  4,  5,  6,  7],
+      [ 8,  9, 10, 11, 12, 13, 14, 15],
+      [ 0,  1,  2,  3,  4,  5,  6,  7, 8,  9, 10, 11, 12, 13, 14, 15]
+    ]
+    labels = ["A", "B", "AB"]
+  
+    sequences = [self.sequenceMachine.generateFromNumbers(s) for s in sequences]
+  
+    for _ in xrange(10):
+      self._feedSequences(sequences, sequenceLabels=labels)
+
+    # TO DO: assert C columns contain some A and some B columns, and assert
+    # the split is about equal between A and B
+
+  
   def tearDown(self):
     self._printInfo()
     self._showActivityPlots()
