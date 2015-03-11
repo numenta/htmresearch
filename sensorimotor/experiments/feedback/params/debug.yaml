@@ -3,6 +3,7 @@ n: 128
 w: 5
 isOnline: True
 onlineTrainingReps: 2
+isTrainWorlds: True
 tmParams:
   columnDimensions: [128]
   minThreshold: 10
