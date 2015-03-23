@@ -60,8 +60,9 @@ class Motor(object):
 
 class AccelerationMotor(Motor):
 
-  def __init__(self, frictionCoefficient=0.1):
+  def __init__(self, frictionCoefficient=0.1, noise=(0.0, 0.0)):
     self.frictionCoefficient = frictionCoefficient
+    self.noise = noise
 
 
   def move(self, command, vehicle):
@@ -94,7 +95,8 @@ class Vehicle(object):
 
 
   def tick(self):
-    self.move()
+    command = self.move()
+    self.motor.move(command, self)
     self.distance += 1
 
 
@@ -103,6 +105,55 @@ class NoOpVehicle(Vehicle):
 
   def move(self):
     return 0
+
+
+
+class HumanVehicle(Vehicle):
+
+  def setGraphics(self, graphics):
+    self.graphics = graphics
+
+
+  def move(self):
+    if self.graphics.currentKey is not None:
+      key = self.graphics.currentKey - 48
+      if key >= 0 and key <= 9:
+        return key - 5
+
+    return 0
+
+
+
+class Graphics(object):
+
+  def __init__(self, field, vehicle):
+    import pygame
+
+    self.field = field
+    self.vehicle = vehicle
+    self.currentKey = None
+
+    self.pygame = pygame
+    self.screen = None
+
+    self.setup()
+
+
+  def setup(self, size=(320, 240)):
+    self.pygame.init()
+    self.screen = self.pygame.display.set_mode(size)
+
+
+  def update(self):
+    self.currentKey = None
+
+    for event in self.pygame.event.get():
+      if event.type == self.pygame.KEYDOWN:
+        self.currentKey = event.key
+
+
+  def render(self):
+    pass
 
 
 
@@ -148,32 +199,40 @@ class Logs(object):
 
 
   def log(self):
-    print self.vehicle.position
+    pass
 
 
 
 class Game(object):
 
-  def __init__(self, field, vehicle, log=True, plot=True):
+  def __init__(self, field, vehicle, logs=True, plots=True, graphics=True):
     self.field = field
     self.vehicle = vehicle
 
     self.plots = None
-    if plot:
+    if plots:
       self.plots = Plots(field, vehicle)
 
     self.logs = None
-    if log:
+    if logs:
       self.logs = Logs(field, vehicle)
+
+    self.graphics = None
+    if graphics:
+      self.graphics = Graphics(field, vehicle)
 
 
   def run(self):
     while True:
+      if self.logs is not None:
+        self.logs.log()
+
       if self.plots is not None:
         self.plots.update()
         self.plots.render()
 
-      if self.logs is not None:
-        self.logs.log()
+      if self.graphics is not None:
+        self.graphics.update()
+        self.graphics.render()
 
       self.vehicle.tick()

@@ -2,7 +2,7 @@
 
 from vehicle.classes import (
  Field,
- NoOpVehicle,
+ HumanVehicle,
  NoOpSensor,
  AccelerationMotor,
  Game)
@@ -13,7 +13,8 @@ if __name__ == "__main__":
   field = Field()
   sensor = NoOpSensor()
   motor = AccelerationMotor()
-  vehicle = NoOpVehicle(field, sensor, motor)
+  vehicle = HumanVehicle(field, sensor, motor)
 
   game = Game(field, vehicle)
+  vehicle.setGraphics(game.graphics)
   game.run()
