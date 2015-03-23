@@ -117,7 +117,7 @@ class HumanVehicle(Vehicle):
   def move(self):
     if self.graphics.currentKey is not None:
       key = self.graphics.currentKey - 48
-      if key >= 0 and key <= 9:
+      if key >= 1 and key <= 9:
         return key - 5
 
     return 0
@@ -126,22 +126,23 @@ class HumanVehicle(Vehicle):
 
 class Graphics(object):
 
-  def __init__(self, field, vehicle):
+  def __init__(self, field, vehicle, size=(400, 600)):
     import pygame
 
     self.field = field
     self.vehicle = vehicle
-    self.currentKey = None
-
+    self.size = size
     self.pygame = pygame
+
+    self.currentKey = None
     self.screen = None
 
     self.setup()
 
 
-  def setup(self, size=(320, 240)):
+  def setup(self):
     self.pygame.init()
-    self.screen = self.pygame.display.set_mode(size)
+    self.screen = self.pygame.display.set_mode(self.size)
 
 
   def update(self):
@@ -153,7 +154,17 @@ class Graphics(object):
 
 
   def render(self):
-    pass
+    black = (0, 0, 0)
+    self.screen.fill(black)
+
+    color = (0, 255, 0)
+    x = int(self.vehicle.position * (self.size[0] / self.field.width))
+    y = int(self.size[1] / 2)
+    self.pygame.draw.rect(self.screen,
+                          color,
+                          self.pygame.Rect(x, y, 10, 10))
+
+    self.pygame.display.flip()
 
 
 
