@@ -136,6 +136,8 @@ class Vehicle(object):
     self.distance = 0
     self.velocity = 0
 
+    self.command = None
+
 
   def sense(self):
     return self.sensor.sense()
@@ -146,8 +148,8 @@ class Vehicle(object):
 
 
   def tick(self):
-    command = self.move()
-    self.motor.move(command, self)
+    self.command = self.move()
+    self.motor.move(self.command, self)
     self.distance += 1
 
 
@@ -266,16 +268,18 @@ class Plots(object):
     self.plt.show()
 
     self.positions = []
+    self.commands = []
     self.scores = []
 
 
   def update(self):
     self.positions.append(self.vehicle.position)
+    self.commands.append(self.vehicle.command)
     self.scores.append(self.scorer.score)
 
 
   def render(self):
-    rows = 1
+    rows = 2
     cols = 2
     self.plt.clf()
 
@@ -284,6 +288,9 @@ class Plots(object):
     self.plt.plot(range(len(self.positions)), self.positions)
 
     self.plt.subplot(rows, cols, 2)
+    self.plt.plot(range(len(self.commands)), self.commands)
+
+    self.plt.subplot(rows, cols, 3)
     self.plt.plot(range(len(self.scores)), self.scores)
 
     self.plt.draw()
