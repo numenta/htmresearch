@@ -1,3 +1,4 @@
+# TODO: cast to float when doing division
 import random
 
 import numpy
@@ -43,6 +44,13 @@ class ZigZagRoad(Road):
     position = zigPosition + (separation * zigPercent)
 
     return (position, self.width)
+
+
+  def containsVehicle(self, vehicle):
+    if vehicle.position > 50:
+      return True
+
+    return False
 
 
 
@@ -155,11 +163,12 @@ class HumanVehicle(Vehicle):
 
 class Graphics(object):
 
-  def __init__(self, field, vehicle, size=(400, 600)):
+  def __init__(self, field, vehicle, scorer, size=(400, 600)):
     import pygame
 
     self.field = field
     self.vehicle = vehicle
+    self.scorer = scorer
     self.size = size
     self.pygame = pygame
 
@@ -229,12 +238,13 @@ class Graphics(object):
 
 class Plots(object):
 
-  def __init__(self, field, vehicle):
+  def __init__(self, field, vehicle, scorer):
     import matplotlib.pyplot as plt
     # import matplotlib.cm as cm
 
     self.field = field
     self.vehicle = vehicle
+    self.scorer = scorer
     self.plt = plt
     # self.cm = cm
 
@@ -263,33 +273,69 @@ class Plots(object):
 
 class Logs(object):
 
+  def __init__(self, field, vehicle, scorer):
+    self.field = field
+    self.vehicle = vehicle
+    self.scorer = scorer
+
+
+  def log(self):
+    print self.scorer.score
+
+
+
+class Scorer(object):
+
   def __init__(self, field, vehicle):
     self.field = field
     self.vehicle = vehicle
 
+    self.score = 0
+    self.scoreDelta = 0
 
-  def log(self):
-    pass
+
+  def getChange(self):
+    raise NotImplementedError
+
+
+  def update(self):
+    self.scoreDelta = self.getChange()
+    self.score += self.scoreDelta
+
+
+
+class StayOnRoadScorer(Scorer):
+
+  def getChange(self):
+    position, width = self.field.road.get(self.vehicle.distance, self.field)
+    left = position - width / 2
+    right = left + width
+
+    if self.vehicle.position >= left and self.vehicle.position <= right:
+      return 1
+    else:
+      return -1
 
 
 
 class Game(object):
 
-  def __init__(self, field, vehicle, logs=True, plots=True, graphics=True):
+  def __init__(self, field, vehicle, scorer, logs=True, plots=True, graphics=True):
     self.field = field
     self.vehicle = vehicle
+    self.scorer = scorer
 
     self.plots = None
     if plots:
-      self.plots = Plots(field, vehicle)
+      self.plots = Plots(field, vehicle, scorer)
 
     self.logs = None
     if logs:
-      self.logs = Logs(field, vehicle)
+      self.logs = Logs(field, vehicle, scorer)
 
     self.graphics = None
     if graphics:
-      self.graphics = Graphics(field, vehicle)
+      self.graphics = Graphics(field, vehicle, scorer)
 
 
   def run(self):
@@ -306,3 +352,4 @@ class Game(object):
         self.graphics.render()
 
       self.vehicle.tick()
+      self.scorer.update()

@@ -8,6 +8,7 @@ from vehicle.classes import (
  HumanVehicle,
  NoOpSensor,
  AccelerationMotor,
+ StayOnRoadScorer,
  Game)
 
 
@@ -31,6 +32,7 @@ if __name__ == "__main__":
   motor = AccelerationMotor()
   vehicle = HumanVehicle(field, sensor, motor)
 
-  game = Game(field, vehicle, plots=args.plots)
+  scorer = StayOnRoadScorer(field, vehicle)
+  game = Game(field, vehicle, scorer, plots=args.plots)
   vehicle.setGraphics(game.graphics)
   game.run()
