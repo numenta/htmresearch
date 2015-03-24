@@ -1,4 +1,3 @@
-# TODO: cast to float when doing division
 import random
 
 import numpy
@@ -15,7 +14,7 @@ class Road(object):
 class StraightRoad(Road):
 
   def get(self, distance, field):
-    return (field.width / 2, 25)
+    return (float(field.width) / 2, 25)
 
 
 
@@ -29,8 +28,8 @@ class ZigZagRoad(Road):
 
 
   def get(self, distance, field):
-    zig = distance / self.zigZagEvery
-    zag = (distance + self.zigZagEvery) / self.zigZagEvery
+    zig = int(distance / self.zigZagEvery)
+    zag = int((distance + self.zigZagEvery) / self.zigZagEvery)
 
     zigDistance = distance % self.zigZagEvery
 
@@ -207,7 +206,7 @@ class Graphics(object):
   def renderVehicle(self):
     color = (0, 255, 0)
     x = self._scale(self.vehicle.position)
-    y = self.size[1] / 2
+    y = float(self.size[1]) / 2
     self.pygame.draw.rect(self.screen,
                           color,
                           self.pygame.Rect(x, y, 10, 10))
@@ -217,13 +216,13 @@ class Graphics(object):
     color = (255, 0, 0)
 
     for y in range(self.size[1]):
-      distance = self.vehicle.distance + y - int(self.size[1] / 2)
+      distance = self.vehicle.distance + y - float(self.size[1]) / 2
 
       if distance < 0:
         continue
 
       position, width = self.field.road.get(distance, self.field)
-      x = self._scale(position - width / 2)
+      x = self._scale(float(position - width) / 2)
       w = self._scale(width)
 
       self.pygame.draw.rect(self.screen,
@@ -232,7 +231,7 @@ class Graphics(object):
 
 
   def _scale(self, x):
-    return x * self.size[0] / self.field.width
+    return float(x * self.size[0]) / self.field.width
 
 
 
@@ -308,7 +307,7 @@ class StayOnRoadScorer(Scorer):
 
   def getChange(self):
     position, width = self.field.road.get(self.vehicle.distance, self.field)
-    left = position - width / 2
+    left = float(position - width) / 2
     right = left + width
 
     if self.vehicle.position >= left and self.vehicle.position <= right:
