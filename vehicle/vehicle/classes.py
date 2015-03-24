@@ -1,3 +1,4 @@
+# TODO: Remove casting to int for positions
 import random
 
 import numpy
@@ -6,22 +7,51 @@ import numpy
 
 class Road(object):
 
-  def get(self, distance):
+  def get(self, distance, field):
     raise NotImplementedError
 
 
 
 class StraightRoad(Road):
 
-  def get(self, distance):
-    return (0.0, 10.0)
+  def get(self, distance, field):
+    return (int(field.width / 2), 25)
+
+
+
+class ZigZagRoad(Road):
+
+  def __init__(self, width=25, zigZagEvery=60):
+    super(ZigZagRoad, self).__init__()
+
+    self.width = width
+    self.zigZagEvery = zigZagEvery
+
+
+  def get(self, distance, field):
+    zig = distance / self.zigZagEvery
+    zag = (distance + self.zigZagEvery) / self.zigZagEvery
+
+    zigDistance = distance % self.zigZagEvery
+
+    numpy.random.seed(zig)
+    zigPosition = numpy.random.randint(0, field.width)
+    numpy.random.seed(zag)
+    zagPosition = numpy.random.randint(0, field.width)
+    separation = zagPosition - zigPosition
+
+    zigPercent = float(zigDistance) / self.zigZagEvery
+    position = zigPosition + (separation * zigPercent)
+
+    return (position, self.width)
 
 
 
 class Field(object):
 
-  def __init__(self, width=100):
+  def __init__(self, road, width=100):
     self.width = width
+    self.road = road
 
 
 
@@ -154,17 +184,47 @@ class Graphics(object):
 
 
   def render(self):
+    self.renderBackground()
+    self.renderRoad()
+    self.renderVehicle()
+
+    self.pygame.display.flip()
+
+
+  def renderBackground(self):
     black = (0, 0, 0)
     self.screen.fill(black)
 
+
+  def renderVehicle(self):
     color = (0, 255, 0)
-    x = int(self.vehicle.position * (self.size[0] / self.field.width))
+    x = int(self._scale(self.vehicle.position))
     y = int(self.size[1] / 2)
     self.pygame.draw.rect(self.screen,
                           color,
                           self.pygame.Rect(x, y, 10, 10))
 
-    self.pygame.display.flip()
+
+  def renderRoad(self):
+    color = (255, 0, 0)
+
+    for y in range(self.size[1]):
+      distance = self.vehicle.distance + y - int(self.size[1] / 2)
+
+      if distance < 0:
+        continue
+
+      position, width = self.field.road.get(distance, self.field)
+      x = int(self._scale(position - width / 2))
+      w = int(self._scale(width))
+
+      self.pygame.draw.rect(self.screen,
+                            color,
+                            self.pygame.Rect(x, self.size[1] - y, w, 2))
+
+
+  def _scale(self, x):
+    return x * self.size[0] / self.field.width
 
 
 
