@@ -98,7 +98,7 @@ class Motor(object):
     self.noise = noise
 
 
-  def move(self, command, vehicle):
+  def move(self, motorValue, vehicle):
     raise NotImplementedError
 
 
@@ -110,8 +110,8 @@ class AccelerationMotor(Motor):
     self.noise = noise
 
 
-  def move(self, command, vehicle):
-    acceleration = command + random.gauss(*self.noise)
+  def move(self, motorValue, vehicle):
+    acceleration = motorValue + random.gauss(*self.noise)
     friction = vehicle.velocity * self.frictionCoefficient
     vehicle.velocity += acceleration - friction
     vehicle.position += vehicle.velocity
@@ -125,8 +125,8 @@ class PositionMotor(Motor):
     self.noise = noise
 
 
-  def move(self, command, vehicle):
-    vehicle.position += command + random.gauss(*self.noise)
+  def move(self, motorValue, vehicle):
+    vehicle.position += motorValue + random.gauss(*self.noise)
 
 
 
@@ -141,8 +141,8 @@ class Vehicle(object):
     self.distance = 0
     self.velocity = 0
 
-    self.sensorReading = None
-    self.command = None  # TODO: Rename to motorReading
+    self.sensorValue = None
+    self.motorValue = None
 
 
   def move(self):
@@ -150,9 +150,9 @@ class Vehicle(object):
 
 
   def tick(self):
-    self.sensorReading = self.sensor.sense(self.field, self)
-    self.command = self.move()
-    self.motor.move(self.command, self)
+    self.sensorValue = self.sensor.sense(self.field, self)
+    self.motorValue = self.move()
+    self.motor.move(self.motorValue, self)
     self.distance += 1
 
 
@@ -186,7 +186,7 @@ class Model(object):
     self.params = params or {}
 
 
-  def update(self, sensorReading, motorReading):
+  def update(self, sensorValue, motorValue):
     pass
 
 
@@ -202,7 +202,7 @@ class HTMModel(Model):
     self.tm = MonitoredGeneralTemporalMemory(mmName="TM", **self.params)
 
 
-  def update(self, sensorReading, motorReading):
+  def update(self, sensorValue, motorValue):
     sensorPattern = set()  # TODO: encode
     motorPattern = set()  # TODO: encode
 
@@ -310,13 +310,13 @@ class Plots(object):
     self.plt.show()
 
     self.positions = []
-    self.commands = []
+    self.motorValues = []
     self.scores = []
 
 
   def update(self):
     self.positions.append(self.vehicle.position)
-    self.commands.append(self.vehicle.command)
+    self.motorValues.append(self.vehicle.motorValue)
     self.scores.append(self.scorer.score)
 
 
@@ -330,7 +330,7 @@ class Plots(object):
     self.plt.plot(range(len(self.positions)), self.positions)
 
     self.plt.subplot(rows, cols, 2)
-    self.plt.plot(range(len(self.commands)), self.commands)
+    self.plt.plot(range(len(self.motorValues)), self.motorValues)
 
     self.plt.subplot(rows, cols, 3)
     self.plt.plot(range(len(self.scores)), self.scores)
@@ -427,6 +427,6 @@ class Game(object):
 
       self.vehicle.tick()
       self.scorer.update()
-      self.model.update(self.vehicle.sensorReading, self.vehicle.command)
+      self.model.update(self.vehicle.sensorValue, self.vehicle.motorValue)
 
       i += 1
