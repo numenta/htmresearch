@@ -4,6 +4,10 @@ import numpy
 
 
 
+PLOT_EVERY = 25
+
+
+
 class Road(object):
 
   def get(self, distance, field):
@@ -251,20 +255,25 @@ class Plots(object):
     self.plt.show()
 
     self.positions = []
+    self.scores = []
 
 
   def update(self):
     self.positions.append(self.vehicle.position)
+    self.scores.append(self.scorer.score)
 
 
   def render(self):
     rows = 1
-    cols = 1
+    cols = 2
     self.plt.clf()
 
     self.plt.subplot(rows, cols, 1)
     self.plt.ylim([0, self.field.width])
     self.plt.plot(range(len(self.positions)), self.positions)
+
+    self.plt.subplot(rows, cols, 2)
+    self.plt.plot(range(len(self.scores)), self.scores)
 
     self.plt.draw()
 
@@ -319,7 +328,8 @@ class StayOnRoadScorer(Scorer):
 
 class Game(object):
 
-  def __init__(self, field, vehicle, scorer, logs=True, plots=True, graphics=True):
+  def __init__(self, field, vehicle, scorer,
+               logs=True, plots=True, graphics=True):
     self.field = field
     self.vehicle = vehicle
     self.scorer = scorer
@@ -338,13 +348,16 @@ class Game(object):
 
 
   def run(self):
+    i = 0
     while True:
       if self.logs is not None:
         self.logs.log()
 
       if self.plots is not None:
         self.plots.update()
-        self.plots.render()
+
+        if i % PLOT_EVERY == 0:
+          self.plots.render()
 
       if self.graphics is not None:
         self.graphics.update()
@@ -352,3 +365,5 @@ class Game(object):
 
       self.vehicle.tick()
       self.scorer.update()
+
+      i += 1
