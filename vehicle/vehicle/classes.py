@@ -1,4 +1,3 @@
-# TODO: Remove casting to int for positions
 import random
 
 import numpy
@@ -15,7 +14,7 @@ class Road(object):
 class StraightRoad(Road):
 
   def get(self, distance, field):
-    return (int(field.width / 2), 25)
+    return (field.width / 2, 25)
 
 
 
@@ -198,8 +197,8 @@ class Graphics(object):
 
   def renderVehicle(self):
     color = (0, 255, 0)
-    x = int(self._scale(self.vehicle.position))
-    y = int(self.size[1] / 2)
+    x = self._scale(self.vehicle.position)
+    y = self.size[1] / 2
     self.pygame.draw.rect(self.screen,
                           color,
                           self.pygame.Rect(x, y, 10, 10))
@@ -215,8 +214,8 @@ class Graphics(object):
         continue
 
       position, width = self.field.road.get(distance, self.field)
-      x = int(self._scale(position - width / 2))
-      w = int(self._scale(width))
+      x = self._scale(position - width / 2)
+      w = self._scale(width)
 
       self.pygame.draw.rect(self.screen,
                             color,
