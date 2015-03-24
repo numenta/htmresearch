@@ -3,7 +3,7 @@
 import argparse
 
 from vehicle.classes import (
- ZigZagRoad,
+ StraightRoad, ZigZagRoad,
  Field,
  HumanVehicle,
  NoOpSensor,
@@ -16,10 +16,16 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('--plots', action='store_true',
                       help="Enable plots")
+  parser.add_argument('--road', choices=["straight", "zigzag"],
+                      default="zigzag")
 
   args = parser.parse_args()
 
-  road = ZigZagRoad()
+  if args.road == "straight":
+    road = StraightRoad()
+  elif args.road == "zigzag":
+    road = ZigZagRoad()
+
   field = Field(road)
   sensor = NoOpSensor()
   motor = AccelerationMotor()
