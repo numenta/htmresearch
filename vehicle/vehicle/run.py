@@ -11,6 +11,8 @@ from vehicle.classes import (
  PositionMotor,
  StayOnRoadScorer,
  HTMPositionModel,
+ Logs,
+ Graphics,
  Plots,
  HTMPlots,
  Game)
@@ -59,7 +61,10 @@ if __name__ == "__main__":
   if args.plots == "default":
     plots = Plots(field, vehicle, scorer, model)
 
-  game = Game(field, vehicle, scorer, model, plots=plots)
+  logs = Logs(field, vehicle, scorer, model)
+  graphics = Graphics(field, vehicle, scorer, model)
+  game = Game(field, vehicle, scorer, model,
+              logs=logs, plots=plots, graphics=graphics)
 
   vehicle.setGraphics(game.graphics)
   game.run()

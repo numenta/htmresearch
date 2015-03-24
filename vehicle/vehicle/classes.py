@@ -410,20 +410,16 @@ class StayOnRoadScorer(Scorer):
 class Game(object):
 
   def __init__(self, field, vehicle, scorer, model,
-               logs=True, plots=None, graphics=True):  # TODO: Pass in logs and graphics objects
+               logs=None, plots=None, graphics=None):
     self.field = field
     self.vehicle = vehicle
     self.scorer = scorer
     self.model = model
+    self.logs = logs
     self.plots = plots
-
-    self.logs = None
-    if logs:
-      self.logs = Logs(field, vehicle, scorer, model)
-
-    self.graphics = None
-    if graphics:
-      self.graphics = Graphics(field, vehicle, scorer, model)
+    self.graphics = graphics
+    self.logs = logs
+    self.graphics = graphics
 
 
   def run(self):
