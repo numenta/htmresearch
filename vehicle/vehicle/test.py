@@ -8,6 +8,7 @@ from vehicle.classes import (
  HumanVehicle,
  NoOpSensor,
  AccelerationMotor,
+ PositionMotor,
  StayOnRoadScorer,
  Game)
 
@@ -17,6 +18,8 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('--plots', action='store_true',
                       help="Enable plots")
+  parser.add_argument('--motor', choices=["acceleration", "position"],
+                      default="acceleration")
   parser.add_argument('--road', choices=["straight", "zigzag"],
                       default="zigzag")
 
@@ -29,7 +32,12 @@ if __name__ == "__main__":
 
   field = Field(road)
   sensor = NoOpSensor()
-  motor = AccelerationMotor()
+
+  if args.motor == "acceleration":
+    motor = AccelerationMotor()
+  elif args.motor == "position":
+    motor = PositionMotor()
+
   vehicle = HumanVehicle(field, sensor, motor)
 
   scorer = StayOnRoadScorer(field, vehicle)

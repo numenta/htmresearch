@@ -114,6 +114,17 @@ class AccelerationMotor(Motor):
 
 
 
+class PositionMotor(Motor):
+
+  def __init__(self, noise=(0.0, 0.0)):
+    self.noise = noise
+
+
+  def move(self, command, vehicle):
+    vehicle.position += command + random.gauss(*self.noise)
+
+
+
 class Vehicle(object):
 
   def __init__(self, field, sensor, motor):
