@@ -22,6 +22,10 @@ if __name__ == "__main__":
                       default="acceleration")
   parser.add_argument('--road', choices=["straight", "zigzag"],
                       default="zigzag")
+  parser.add_argument('--sensorNoise', type=float,
+                      default=0)
+  parser.add_argument('--motorNoise', type=float,
+                      default=0)
 
   args = parser.parse_args()
 
@@ -31,12 +35,15 @@ if __name__ == "__main__":
     road = ZigZagRoad()
 
   field = Field(road)
-  sensor = NoOpSensor()
 
+  sensorNoise = (0, args.sensorNoise)
+  sensor = NoOpSensor(noise=sensorNoise)
+
+  motorNoise = (0, args.motorNoise)
   if args.motor == "acceleration":
-    motor = AccelerationMotor()
+    motor = AccelerationMotor(noise=motorNoise)
   elif args.motor == "position":
-    motor = PositionMotor()
+    motor = PositionMotor(noise=motorNoise)
 
   vehicle = HumanVehicle(field, sensor, motor)
 

@@ -76,9 +76,10 @@ class Sensor(object):
 
 
 
-class NoOpSensor(object):
+class NoOpSensor(Sensor):
 
-  def __init__(self, n=1024):
+  def __init__(self, noise=(0.0, 0.0), n=1024):
+    super(NoOpSensor, self).__init__(noise=noise)
     self.n = n
 
 
