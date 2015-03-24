@@ -6,18 +6,21 @@ from vehicle.classes import (
  StraightRoad, ZigZagRoad,
  Field,
  HumanVehicle,
- NoOpSensor,
+ PositionSensor,
  AccelerationMotor,
  PositionMotor,
  StayOnRoadScorer,
- HTMModel,
+ HTMPositionModel,
+ Plots,
+ HTMPlots,
  Game)
 
 
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument('--plots', action='store_true',
+  parser.add_argument('--plots', choices=[None, "default", "htm"],
+                      default=None,
                       help="Enable plots")
   parser.add_argument('--motor', choices=["acceleration", "position"],
                       default="acceleration")
@@ -38,7 +41,7 @@ if __name__ == "__main__":
   field = Field(road)
 
   sensorNoise = (0, args.sensorNoise)
-  sensor = NoOpSensor(noise=sensorNoise)
+  sensor = PositionSensor(noise=sensorNoise)
 
   motorNoise = (0, args.motorNoise)
   if args.motor == "acceleration":
@@ -48,8 +51,15 @@ if __name__ == "__main__":
 
   vehicle = HumanVehicle(field, sensor, motor)
   scorer = StayOnRoadScorer(field, vehicle)
-  model = HTMModel()
-  game = Game(field, vehicle, scorer, model, plots=args.plots)
+  model = HTMPositionModel()
+
+  plots = None
+  if args.plots == "htm":
+    plots = HTMPlots(field, vehicle, scorer, model)
+  if args.plots == "default":
+    plots = Plots(field, vehicle, scorer, model)
+
+  game = Game(field, vehicle, scorer, model, plots=plots)
 
   vehicle.setGraphics(game.graphics)
   game.run()

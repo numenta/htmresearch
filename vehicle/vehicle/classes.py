@@ -8,6 +8,8 @@ from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
 class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
                                      GeneralTemporalMemory): pass
 
+from nupic.encoders.random_distributed_scalar import (
+  RandomDistributedScalarEncoder)
 
 PLOT_EVERY = 25
 
@@ -83,12 +85,15 @@ class Sensor(object):
 
 class NoOpSensor(Sensor):
 
-  def __init__(self, noise=(0.0, 0.0)):
-    super(NoOpSensor, self).__init__(noise=noise)
-
-
   def sense(self, field, vehicle):
     return None
+
+
+
+class PositionSensor(Sensor):
+
+  def sense(self, field, vehicle):
+    return vehicle.position
 
 
 
@@ -182,10 +187,6 @@ class HumanVehicle(Vehicle):
 
 class Model(object):
 
-  def __init__(self, params=None):
-    self.params = params or {}
-
-
   def update(self, sensorValue, motorValue):
     pass
 
@@ -195,16 +196,24 @@ class Model(object):
 
 
 
-class HTMModel(Model):
+class HTMPositionModel(Model):
 
-  def __init__(self, params=None):
-    super(HTMModel, self).__init__(params)
-    self.tm = MonitoredGeneralTemporalMemory(mmName="TM", **self.params)
+  def __init__(self, sparsity=0.02, encoderResolution=0.5, tmParams=None):
+    tmParams = tmParams or {}
+    self.tm = MonitoredGeneralTemporalMemory(mmName="TM", **tmParams)
+    self.n = self.tm.numberOfColumns()
+    self.w = int(self.n * sparsity) + 1
+    self.sensorEncoder = RandomDistributedScalarEncoder(encoderResolution,
+                                                        w=self.w,
+                                                        n=self.n)
+    self.motorEncoder = RandomDistributedScalarEncoder(encoderResolution,
+                                                       w=self.w,
+                                                       n=self.n)
 
 
   def update(self, sensorValue, motorValue):
-    sensorPattern = set()  # TODO: encode
-    motorPattern = set()  # TODO: encode
+    sensorPattern = set(self.sensorEncoder.encode(sensorValue).nonzero()[0])
+    motorPattern = set(self.motorEncoder.encode(motorValue).nonzero()[0])
 
     self.tm.compute(sensorPattern,
                     activeExternalCells=motorPattern,
@@ -213,6 +222,7 @@ class HTMModel(Model):
 
 
   def predict(self):
+    print self.tm.predictedCells
     return set()  # TODO
 
 
@@ -339,6 +349,16 @@ class Plots(object):
 
 
 
+class HTMPlots(Plots):
+
+  def render(self):
+    self.plt.figure(1)
+    super(HTMPlots, self).render()
+
+    self.model.tm.mmGetCellActivityPlot()
+
+
+
 class Logs(object):
 
   def __init__(self, field, vehicle, scorer, model):
@@ -390,15 +410,12 @@ class StayOnRoadScorer(Scorer):
 class Game(object):
 
   def __init__(self, field, vehicle, scorer, model,
-               logs=True, plots=True, graphics=True):
+               logs=True, plots=None, graphics=True):  # TODO: Pass in logs and graphics objects
     self.field = field
     self.vehicle = vehicle
     self.scorer = scorer
     self.model = model
-
-    self.plots = None
-    if plots:
-      self.plots = Plots(field, vehicle, scorer, model)
+    self.plots = plots
 
     self.logs = None
     if logs:
