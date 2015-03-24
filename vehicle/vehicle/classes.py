@@ -2,6 +2,11 @@ import random
 
 import numpy
 
+from sensorimotor.general_temporal_memory import GeneralTemporalMemory
+from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
+  TemporalMemoryMonitorMixin)
+class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
+                                     GeneralTemporalMemory): pass
 
 
 PLOT_EVERY = 25
@@ -78,13 +83,12 @@ class Sensor(object):
 
 class NoOpSensor(Sensor):
 
-  def __init__(self, noise=(0.0, 0.0), n=1024):
+  def __init__(self, noise=(0.0, 0.0)):
     super(NoOpSensor, self).__init__(noise=noise)
-    self.n = n
 
 
   def sense(self, field, vehicle):
-    return numpy.zeros(self.n)
+    return None
 
 
 
@@ -137,11 +141,8 @@ class Vehicle(object):
     self.distance = 0
     self.velocity = 0
 
-    self.command = None
-
-
-  def sense(self):
-    return self.sensor.sense()
+    self.sensorReading = None
+    self.command = None  # TODO: Rename to motorReading
 
 
   def move(self):
@@ -149,6 +150,7 @@ class Vehicle(object):
 
 
   def tick(self):
+    self.sensorReading = self.sensor.sense(self.field, self)
     self.command = self.move()
     self.motor.move(self.command, self)
     self.distance += 1
@@ -178,14 +180,52 @@ class HumanVehicle(Vehicle):
 
 
 
+class Model(object):
+
+  def __init__(self, params=None):
+    self.params = params or {}
+
+
+  def update(self, sensorReading, motorReading):
+    pass
+
+
+  def predict(self):
+    raise NotImplementedError
+
+
+
+class HTMModel(Model):
+
+  def __init__(self, params=None):
+    super(HTMModel, self).__init__(params)
+    self.tm = MonitoredGeneralTemporalMemory(mmName="TM", **self.params)
+
+
+  def update(self, sensorReading, motorReading):
+    sensorPattern = set()  # TODO: encode
+    motorPattern = set()  # TODO: encode
+
+    self.tm.compute(sensorPattern,
+                    activeExternalCells=motorPattern,
+                    formInternalConnections=True,
+                    learn=True)
+
+
+  def predict(self):
+    return set()  # TODO
+
+
+
 class Graphics(object):
 
-  def __init__(self, field, vehicle, scorer, size=(400, 600)):
+  def __init__(self, field, vehicle, scorer, model, size=(400, 600)):
     import pygame
 
     self.field = field
     self.vehicle = vehicle
     self.scorer = scorer
+    self.model = model
     self.size = size
     self.pygame = pygame
 
@@ -255,14 +295,15 @@ class Graphics(object):
 
 class Plots(object):
 
-  def __init__(self, field, vehicle, scorer):
-    import matplotlib.pyplot as plt
-    # import matplotlib.cm as cm
-
+  def __init__(self, field, vehicle, scorer, model):
     self.field = field
     self.vehicle = vehicle
     self.scorer = scorer
+    self.model = model
+
+    import matplotlib.pyplot as plt
     self.plt = plt
+    # import matplotlib.cm as cm
     # self.cm = cm
 
     self.plt.ion()
@@ -300,10 +341,11 @@ class Plots(object):
 
 class Logs(object):
 
-  def __init__(self, field, vehicle, scorer):
+  def __init__(self, field, vehicle, scorer, model):
     self.field = field
     self.vehicle = vehicle
     self.scorer = scorer
+    self.model = model
 
 
   def log(self):
@@ -347,23 +389,24 @@ class StayOnRoadScorer(Scorer):
 
 class Game(object):
 
-  def __init__(self, field, vehicle, scorer,
+  def __init__(self, field, vehicle, scorer, model,
                logs=True, plots=True, graphics=True):
     self.field = field
     self.vehicle = vehicle
     self.scorer = scorer
+    self.model = model
 
     self.plots = None
     if plots:
-      self.plots = Plots(field, vehicle, scorer)
+      self.plots = Plots(field, vehicle, scorer, model)
 
     self.logs = None
     if logs:
-      self.logs = Logs(field, vehicle, scorer)
+      self.logs = Logs(field, vehicle, scorer, model)
 
     self.graphics = None
     if graphics:
-      self.graphics = Graphics(field, vehicle, scorer)
+      self.graphics = Graphics(field, vehicle, scorer, model)
 
 
   def run(self):
@@ -384,5 +427,6 @@ class Game(object):
 
       self.vehicle.tick()
       self.scorer.update()
+      self.model.update(self.vehicle.sensorReading, self.vehicle.command)
 
       i += 1
