@@ -404,6 +404,8 @@ class HTMPlots(Plots):
     self.plt.ylabel("Predicted inactive columns")
     self.plt.plot(range(len(data)), data)
 
+    self.plt.draw()
+
 
 
 class Logs(object):
