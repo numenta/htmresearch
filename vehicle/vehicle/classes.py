@@ -198,7 +198,7 @@ class Model(object):
 
 class HTMPositionModel(Model):
 
-  def __init__(self, sparsity=0.02, encoderResolution=0.5, tmParams=None):
+  def __init__(self, sparsity=0.02, encoderResolution=0.05, tmParams=None):
     tmParams = tmParams or {}
     self.tm = MonitoredGeneralTemporalMemory(mmName="TM", **tmParams)
     self.n = self.tm.numberOfColumns()
@@ -360,21 +360,27 @@ class HTMPlots(Plots):
 
     self.plt.figure(2)
     self.plt.clf()
-    rows = 3
+    rows = 4
     cols = 1
 
-    data = self.model.tm.mmGetTraceUnpredictedActiveColumns().makeCountsTrace().data
+    data = self.model.tm.mmGetTraceActiveColumns().data
+    overlaps = [len(a & b) for a, b in zip(data[:-1], data[1:])]
     self.plt.subplot(rows, cols, 1)
+    self.plt.ylabel("Active columns overlap with t-1")
+    self.plt.plot(range(len(overlaps)), overlaps)
+
+    data = self.model.tm.mmGetTraceUnpredictedActiveColumns().makeCountsTrace().data
+    self.plt.subplot(rows, cols, 2)
     self.plt.ylabel("Unpredicted active columns")
     self.plt.plot(range(len(data)), data)
 
     data = self.model.tm.mmGetTracePredictedActiveColumns().makeCountsTrace().data
-    self.plt.subplot(rows, cols, 2)
+    self.plt.subplot(rows, cols, 3)
     self.plt.ylabel("Predicted active columns")
     self.plt.plot(range(len(data)), data)
 
     data = self.model.tm.mmGetTracePredictedInactiveColumns().makeCountsTrace().data
-    self.plt.subplot(rows, cols, 3)
+    self.plt.subplot(rows, cols, 4)
     self.plt.ylabel("Predicted inactive columns")
     self.plt.plot(range(len(data)), data)
 
