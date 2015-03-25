@@ -10,8 +10,6 @@ class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
 
 from nupic.encoders.coordinate import CoordinateEncoder
 
-PLOT_EVERY = 25
-
 
 
 class Road(object):
@@ -459,7 +457,8 @@ class StayOnRoadScorer(Scorer):
 class Game(object):
 
   def __init__(self, field, vehicle, scorer, model,
-               logs=None, plots=None, graphics=None):
+               logs=None, plots=None, graphics=None,
+               plotEvery=25):
     self.field = field
     self.vehicle = vehicle
     self.scorer = scorer
@@ -469,6 +468,8 @@ class Game(object):
     self.graphics = graphics
     self.logs = logs
     self.graphics = graphics
+
+    self.plotEvery = plotEvery
 
 
   def run(self):
@@ -480,7 +481,7 @@ class Game(object):
       if self.plots is not None:
         self.plots.update()
 
-        if i % PLOT_EVERY == 0:
+        if i % self.plotEvery == 0:
           self.plots.render()
 
       if self.graphics is not None:

@@ -37,6 +37,8 @@ if __name__ == "__main__":
                       default=0)
   parser.add_argument('--motorNoise', type=float,
                       default=0)
+  parser.add_argument('--plotEvery', type=int,
+                      default=25)
 
   args = parser.parse_args()
 
@@ -83,7 +85,8 @@ if __name__ == "__main__":
     graphics = Graphics(field, vehicle, scorer, model)
 
   game = Game(field, vehicle, scorer, model,
-              logs=logs, plots=plots, graphics=graphics)
+              logs=logs, plots=plots, graphics=graphics,
+              plotEvery=args.plotEvery)
 
   if args.vehicle == "human":
     vehicle.setGraphics(game.graphics)
