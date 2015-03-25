@@ -185,6 +185,18 @@ class HumanVehicle(Vehicle):
 
 
 
+class RandomVehicle(Vehicle):
+
+  def __init__(self, field, sensor, motor, motorValues=range(-4, 4+1)):
+    super(RandomVehicle, self).__init__(field, sensor, motor)
+    self.motorValues = motorValues
+
+
+  def move(self):
+    return random.choice(self.motorValues)
+
+
+
 class Model(object):
 
   def update(self, sensorValue, motorValue):

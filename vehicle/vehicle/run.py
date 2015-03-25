@@ -6,6 +6,7 @@ from vehicle.classes import (
  StraightRoad, ZigZagRoad,
  Field,
  HumanVehicle,
+ RandomVehicle,
  PositionSensor,
  AccelerationMotor,
  PositionMotor,
@@ -24,10 +25,14 @@ if __name__ == "__main__":
   parser.add_argument('--plots', choices=[None, "default", "htm"],
                       default=None,
                       help="Enable plots")
+  parser.add_argument('--disable_graphics', action='store_true',
+                      help="Disable graphics")
   parser.add_argument('--motor', choices=["acceleration", "position"],
                       default="acceleration")
   parser.add_argument('--road', choices=["straight", "zigzag"],
                       default="zigzag")
+  parser.add_argument('--vehicle', choices=["human", "random"],
+                      default="human")
   parser.add_argument('--sensorNoise', type=float,
                       default=0)
   parser.add_argument('--motorNoise', type=float,
@@ -51,7 +56,11 @@ if __name__ == "__main__":
   elif args.motor == "position":
     motor = PositionMotor(noise=motorNoise)
 
-  vehicle = HumanVehicle(field, sensor, motor)
+  if args.vehicle == "human":
+    vehicle = HumanVehicle(field, sensor, motor)
+  if args.vehicle == "random":
+    vehicle = RandomVehicle(field, sensor, motor, motorValues=[-1, 0, 1])
+
   scorer = StayOnRoadScorer(field, vehicle)
   model = HTMPositionModel()
 
@@ -62,9 +71,16 @@ if __name__ == "__main__":
     plots = Plots(field, vehicle, scorer, model)
 
   logs = Logs(field, vehicle, scorer, model)
-  graphics = Graphics(field, vehicle, scorer, model)
+
+  if args.disable_graphics:
+    graphics = None
+  else:
+    graphics = Graphics(field, vehicle, scorer, model)
+
   game = Game(field, vehicle, scorer, model,
               logs=logs, plots=plots, graphics=graphics)
 
-  vehicle.setGraphics(game.graphics)
+  if args.vehicle == "human":
+    vehicle.setGraphics(game.graphics)
+
   game.run()
