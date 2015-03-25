@@ -332,29 +332,38 @@ class Plots(object):
     self.plt.show()
 
     self.positions = []
+    self.sensorValues = []
     self.motorValues = []
     self.scores = []
 
 
   def update(self):
     self.positions.append(self.vehicle.position)
+    self.sensorValues.append(self.vehicle.sensorValue)
     self.motorValues.append(self.vehicle.motorValue)
     self.scores.append(self.scorer.score)
 
 
   def render(self):
-    rows = 2
-    cols = 2
+    rows = 4
+    cols = 1
     self.plt.clf()
 
     self.plt.subplot(rows, cols, 1)
+    self.plt.ylabel("Position")
     self.plt.ylim([0, self.field.width])
     self.plt.plot(range(len(self.positions)), self.positions)
 
     self.plt.subplot(rows, cols, 2)
-    self.plt.plot(range(len(self.motorValues)), self.motorValues)
+    self.plt.ylabel("Sensor value")
+    self.plt.plot(range(len(self.sensorValues)), self.sensorValues)
 
     self.plt.subplot(rows, cols, 3)
+    self.plt.ylabel("Motor value")
+    self.plt.plot(range(len(self.motorValues)), self.motorValues)
+
+    self.plt.subplot(rows, cols, 4)
+    self.plt.ylabel("Score")
     self.plt.plot(range(len(self.scores)), self.scores)
 
     self.plt.draw()
