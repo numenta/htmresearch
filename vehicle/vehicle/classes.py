@@ -355,7 +355,28 @@ class HTMPlots(Plots):
     self.plt.figure(1)
     super(HTMPlots, self).render()
 
-    self.model.tm.mmGetCellActivityPlot()
+    # self.plt.figure(2)
+    # self.model.tm.mmGetCellActivityPlot()
+
+    self.plt.figure(2)
+    self.plt.clf()
+    rows = 3
+    cols = 1
+
+    data = self.model.tm.mmGetTraceUnpredictedActiveColumns().makeCountsTrace().data
+    self.plt.subplot(rows, cols, 1)
+    self.plt.ylabel("Unpredicted active columns")
+    self.plt.plot(range(len(data)), data)
+
+    data = self.model.tm.mmGetTracePredictedActiveColumns().makeCountsTrace().data
+    self.plt.subplot(rows, cols, 2)
+    self.plt.ylabel("Predicted active columns")
+    self.plt.plot(range(len(data)), data)
+
+    data = self.model.tm.mmGetTracePredictedInactiveColumns().makeCountsTrace().data
+    self.plt.subplot(rows, cols, 3)
+    self.plt.ylabel("Predicted inactive columns")
+    self.plt.plot(range(len(data)), data)
 
 
 
