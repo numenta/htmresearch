@@ -25,7 +25,7 @@ if __name__ == "__main__":
   parser.add_argument('--plots', choices=[None, "default", "htm"],
                       default=None,
                       help="Enable plots")
-  parser.add_argument('--disable_graphics', action='store_true',
+  parser.add_argument('--disableGraphics', action='store_true',
                       help="Disable graphics")
   parser.add_argument('--motor', choices=["acceleration", "position"],
                       default="acceleration")
@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
   logs = Logs(field, vehicle, scorer, model)
 
-  if args.disable_graphics:
+  if args.disableGraphics:
     graphics = None
   else:
     graphics = Graphics(field, vehicle, scorer, model)
