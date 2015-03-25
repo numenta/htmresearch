@@ -62,7 +62,12 @@ if __name__ == "__main__":
     vehicle = RandomVehicle(field, sensor, motor, motorValues=[-1, 0, 1])
 
   scorer = StayOnRoadScorer(field, vehicle)
-  model = HTMPositionModel()
+  model = HTMPositionModel(tmParams={
+    "columnDimensions": [1024],
+    "minThreshold": 30,
+    "activationThreshold": 30,
+    "maxNewSynapseCount": 35
+  })
 
   plots = None
   if args.plots == "htm":

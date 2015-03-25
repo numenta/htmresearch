@@ -8,8 +8,7 @@ from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
 class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
                                      GeneralTemporalMemory): pass
 
-from nupic.encoders.random_distributed_scalar import (
-  RandomDistributedScalarEncoder)
+from nupic.encoders.coordinate import CoordinateEncoder
 
 PLOT_EVERY = 25
 
@@ -132,6 +131,7 @@ class PositionMotor(Motor):
 
   def move(self, motorValue, vehicle):
     vehicle.position += motorValue + random.gauss(*self.noise)
+    vehicle.position = vehicle.position % vehicle.field.width
 
 
 
@@ -210,22 +210,23 @@ class Model(object):
 
 class HTMPositionModel(Model):
 
-  def __init__(self, sparsity=0.02, encoderResolution=0.05, tmParams=None):
+  def __init__(self, sparsity=0.02, encoderResolution=1.0, tmParams=None):
     tmParams = tmParams or {}
     self.tm = MonitoredGeneralTemporalMemory(mmName="TM", **tmParams)
     self.n = self.tm.numberOfColumns()
     self.w = int(self.n * sparsity) + 1
-    self.sensorEncoder = RandomDistributedScalarEncoder(encoderResolution,
-                                                        w=self.w,
-                                                        n=self.n)
-    self.motorEncoder = RandomDistributedScalarEncoder(encoderResolution,
-                                                       w=self.w,
-                                                       n=self.n)
+    self.encoderResolution = encoderResolution
+    self.sensorEncoder = CoordinateEncoder(w=self.w, n=self.n)
+    self.motorEncoder = CoordinateEncoder(w=self.w, n=self.n)
 
 
   def update(self, sensorValue, motorValue):
-    sensorPattern = set(self.sensorEncoder.encode(sensorValue).nonzero()[0])
-    motorPattern = set(self.motorEncoder.encode(motorValue).nonzero()[0])
+    scale = 100
+    radius = int(self.encoderResolution * scale)
+    sensorInput = (numpy.array([int(sensorValue * scale)]), radius)
+    motorInput = (numpy.array([int(motorValue * scale)]), radius)
+    sensorPattern = set(self.sensorEncoder.encode(sensorInput).nonzero()[0])
+    motorPattern = set(self.motorEncoder.encode(motorInput).nonzero()[0])
 
     self.tm.compute(sensorPattern,
                     activeExternalCells=motorPattern,
