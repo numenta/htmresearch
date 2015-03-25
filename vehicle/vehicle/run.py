@@ -33,6 +33,8 @@ if __name__ == "__main__":
                       default="zigzag")
   parser.add_argument('--vehicle', choices=["human", "random"],
                       default="human")
+  parser.add_argument('--fieldWidth', type=int,
+                      default=100)
   parser.add_argument('--sensorNoise', type=float,
                       default=0)
   parser.add_argument('--motorNoise', type=float,
@@ -47,7 +49,7 @@ if __name__ == "__main__":
   elif args.road == "zigzag":
     road = ZigZagRoad()
 
-  field = Field(road)
+  field = Field(road, width=args.fieldWidth)
 
   sensorNoise = (0, args.sensorNoise)
   sensor = PositionSensor(noise=sensorNoise)
@@ -68,7 +70,12 @@ if __name__ == "__main__":
     "columnDimensions": [1024],
     "minThreshold": 30,
     "activationThreshold": 30,
-    "maxNewSynapseCount": 35
+    "maxNewSynapseCount": 35,
+    "cellsPerColumn": 8,
+    "initialPermanence": 0.3,
+    "connectedPermanence": 0.6,
+    "permanenceIncrement": 0.1,
+    "permanenceDecrement": 0.05,
   })
 
   plots = None

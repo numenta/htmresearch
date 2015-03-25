@@ -90,7 +90,9 @@ class NoOpSensor(Sensor):
 class PositionSensor(Sensor):
 
   def sense(self, field, vehicle):
-    return vehicle.position
+    position = vehicle.position + random.gauss(*self.noise)
+    position = position % field.width
+    return position
 
 
 
