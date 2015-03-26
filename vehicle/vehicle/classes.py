@@ -138,12 +138,12 @@ class PositionMotor(Motor):
 
 class Vehicle(object):
 
-  def __init__(self, field, sensor, motor):
+  def __init__(self, field, sensor, motor, startPosition=0):
     self.field = field
     self.sensor = sensor
     self.motor = motor
 
-    self.position = 0
+    self.position = startPosition
     self.distance = 0
     self.velocity = 0
 
@@ -188,13 +188,33 @@ class HumanVehicle(Vehicle):
 
 class RandomVehicle(Vehicle):
 
-  def __init__(self, field, sensor, motor, motorValues=range(-4, 4+1)):
-    super(RandomVehicle, self).__init__(field, sensor, motor)
+  def __init__(self, field, sensor, motor, startPosition=0,
+               motorValues=range(-4, 4+1)):
+    super(RandomVehicle, self).__init__(field, sensor, motor,
+                                        startPosition=startPosition)
     self.motorValues = motorValues
 
 
   def move(self):
     return random.choice(self.motorValues)
+
+
+
+class LoopVehicle(Vehicle):
+
+  def __init__(self, field, sensor, motor, startPosition=0,
+               motorValues=range(-4, 4+1)):
+    super(LoopVehicle, self).__init__(field, sensor, motor,
+                                      startPosition=startPosition)
+    self.motorValues = motorValues
+    self.idx = 0
+
+
+  def move(self):
+    value = self.motorValues[self.idx]
+    self.idx += 1
+    self.idx %= len(self.motorValues)
+    return value
 
 
 

@@ -7,6 +7,7 @@ from vehicle.classes import (
  Field,
  HumanVehicle,
  RandomVehicle,
+ LoopVehicle,
  PositionSensor,
  AccelerationMotor,
  PositionMotor,
@@ -31,7 +32,7 @@ if __name__ == "__main__":
                       default="acceleration")
   parser.add_argument('--road', choices=["straight", "zigzag"],
                       default="zigzag")
-  parser.add_argument('--vehicle', choices=["human", "random"],
+  parser.add_argument('--vehicle', choices=["human", "random", "loop"],
                       default="human")
   parser.add_argument('--fieldWidth', type=int,
                       default=100)
@@ -60,22 +61,27 @@ if __name__ == "__main__":
   elif args.motor == "position":
     motor = PositionMotor(noise=motorNoise)
 
+  startPosition = field.width / 2
   if args.vehicle == "human":
-    vehicle = HumanVehicle(field, sensor, motor)
+    vehicle = HumanVehicle(field, sensor, motor, startPosition=startPosition)
   if args.vehicle == "random":
-    vehicle = RandomVehicle(field, sensor, motor, motorValues=[-1, 0, 1])
+    vehicle = RandomVehicle(field, sensor, motor, startPosition=startPosition,
+                            motorValues=[-1, 0, 1])
+  if args.vehicle == "loop":
+    vehicle = LoopVehicle(field, sensor, motor, startPosition=startPosition,
+                          motorValues=[-3, 3])
 
   scorer = StayOnRoadScorer(field, vehicle)
   model = HTMPositionModel(tmParams={
     "columnDimensions": [1024],
-    "minThreshold": 30,
-    "activationThreshold": 30,
-    "maxNewSynapseCount": 35,
+    "minThreshold": 35,
+    "activationThreshold": 35,
+    "maxNewSynapseCount": 40,
     "cellsPerColumn": 8,
-    "initialPermanence": 0.3,
+    "initialPermanence": 0.4,
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
-    "permanenceDecrement": 0.05,
+    "permanenceDecrement": 0.03,
   })
 
   plots = None
