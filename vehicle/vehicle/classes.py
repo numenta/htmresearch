@@ -73,6 +73,7 @@ class Sensor(object):
 
   def __init__(self, noise=(0.0, 0.0)):
     self.noise = noise
+    self.noiseAmount = 0.0
 
 
   def sense(self, field, vehicle):
@@ -90,7 +91,8 @@ class NoOpSensor(Sensor):
 class PositionSensor(Sensor):
 
   def sense(self, field, vehicle):
-    position = vehicle.position + random.gauss(*self.noise)
+    self.noiseAmount = random.gauss(*self.noise)
+    position = vehicle.position + self.noiseAmount
     position = position % field.width
     return position
 
@@ -100,6 +102,7 @@ class Motor(object):
 
   def __init__(self, noise=(0.0, 0.0)):
     self.noise = noise
+    self.noiseAmount = 0.0
 
 
   def move(self, motorValue, vehicle):
@@ -110,12 +113,13 @@ class Motor(object):
 class AccelerationMotor(Motor):
 
   def __init__(self, frictionCoefficient=0.1, noise=(0.0, 0.0)):
+    super(AccelerationMotor, self).__init__(noise=noise)
     self.frictionCoefficient = frictionCoefficient
-    self.noise = noise
 
 
   def move(self, motorValue, vehicle):
-    acceleration = motorValue + random.gauss(*self.noise)
+    self.noiseAmount = random.gauss(*self.noise)
+    acceleration = motorValue + self.noiseAmount
     friction = vehicle.velocity * self.frictionCoefficient
     vehicle.velocity += acceleration - friction
     vehicle.position += vehicle.velocity
@@ -125,12 +129,9 @@ class AccelerationMotor(Motor):
 
 class PositionMotor(Motor):
 
-  def __init__(self, noise=(0.0, 0.0)):
-    self.noise = noise
-
-
   def move(self, motorValue, vehicle):
-    vehicle.position += motorValue + random.gauss(*self.noise)
+    self.noiseAmount = random.gauss(*self.noise)
+    vehicle.position += motorValue + self.noiseAmount
     vehicle.position = vehicle.position % vehicle.field.width
 
 
@@ -334,36 +335,48 @@ class Plots(object):
 
     self.positions = []
     self.sensorValues = []
+    self.sensorNoiseAmounts = []
     self.motorValues = []
+    self.motorNoiseAmounts = []
     self.scores = []
 
 
   def update(self):
     self.positions.append(self.vehicle.position)
     self.sensorValues.append(self.vehicle.sensorValue)
+    self.sensorNoiseAmounts.append(self.vehicle.sensor.noiseAmount)
     self.motorValues.append(self.vehicle.motorValue)
+    self.motorNoiseAmounts.append(self.vehicle.motor.noiseAmount)
     self.scores.append(self.scorer.score)
 
 
   def render(self):
     rows = 4
-    cols = 1
+    cols = 2
     self.plt.clf()
 
     self.plt.subplot(rows, cols, 1)
-    self.plt.ylabel("Position")
-    self.plt.ylim([0, self.field.width])
-    self.plt.plot(range(len(self.positions)), self.positions)
-
-    self.plt.subplot(rows, cols, 2)
     self.plt.ylabel("Sensor value")
     self.plt.plot(range(len(self.sensorValues)), self.sensorValues)
+
+    self.plt.subplot(rows, cols, 2)
+    self.plt.ylabel("Sensor noise")
+    self.plt.plot(range(len(self.sensorNoiseAmounts)), self.sensorNoiseAmounts)
 
     self.plt.subplot(rows, cols, 3)
     self.plt.ylabel("Motor value")
     self.plt.plot(range(len(self.motorValues)), self.motorValues)
 
     self.plt.subplot(rows, cols, 4)
+    self.plt.ylabel("Motor noise")
+    self.plt.plot(range(len(self.motorNoiseAmounts)), self.motorNoiseAmounts)
+
+    self.plt.subplot(rows, cols, 5)
+    self.plt.ylabel("Position")
+    self.plt.ylim([0, self.field.width])
+    self.plt.plot(range(len(self.positions)), self.positions)
+
+    self.plt.subplot(rows, cols, 6)
     self.plt.ylabel("Score")
     self.plt.plot(range(len(self.scores)), self.scores)
 
