@@ -81,7 +81,7 @@ if __name__ == "__main__":
     "initialPermanence": 0.4,
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
-    "permanenceDecrement": 0.03,
+    "permanenceDecrement": 0.1,
   })
 
   plots = None
