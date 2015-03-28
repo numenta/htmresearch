@@ -22,56 +22,73 @@
 import pprint
 import numpy
 
-from nupic.research.temporal_memory import TemporalMemory
 from sensorimotor.orphan_temporal_memory import OrphanTemporalMemory
+from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
+  TemporalMemoryMonitorMixin)
 
-def returnLetterVectors(w=40):
-  """
-  Return a dictionary of 26 unique vectors indexed by a letter. Each vector
-  has w contiguous bits ON and represented as a sequence of non-zero indices.
-  """
-  letters = {}
-  for i,s in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ"):
-    letters[s] = range(i*w,(i+1)*w)
-  return letters
+class MonitoredTemporalMemory(TemporalMemoryMonitorMixin, OrphanTemporalMemory): pass
 
+
+def lv(letter, w=40):
+  """
+  Return an input vector corresponding to a letter. Each vector has w contiguous
+  bits ON and represented as a sequence of non-zero indices.
+  """
+  i = ord(letter) - ord('A')
+  return set(range(i*w,(i+1)*w))
 
 def getRandomVector(w=40, n=2048):
   "Return a list of w random indices out of a vector of n elements"
   return numpy.random.permutation(n)[0:w]
 
 
-def computeError(tm):
+def getNextSequenceChunk(it, w=40, n=2048):
   """
-  Given a temporal memory instance compute the error metric.
-  :param tm:
-  :return:
+  Given an iteration index, returns a list of vectors to be appended to the
+  input stream.
   """
+  if it%10==3:
+    vecs = [lv('A',w), lv('B',w), lv('C',w), lv('D',w), lv('E',w), lv('F',w)]
+  else:
+    vecs= [set(getRandomVector(w, n))]
+
+  return vecs
 
 
-if __name__ == '__main__':
+
+def computePredictionAccuracy(pac, pic):
+  """
+  Given a temporal memory instance return the prediction accuracy. The accuracy
+  is computed as 1 - (#correctly predicted cols / # predicted cols). The
+  accuracy is 0 if there were no predicted columns.
+  """
+  pcols = float(pac + pic)
+  if pcols == 0:
+    return 0.0
+  else:
+    return (pac / pcols)
+
+def testEverything():
+  """
+  Temporary - for debugging stuff.
+  """
   print "Running"
   numpy.random.seed(42)
-
-  returnLetterVectors()
-
-  tm = OrphanTemporalMemory(minThreshold=30, activationThreshold=30,
-                      maxNewSynapseCount=40, cellsPerColumn=5,
-                      learnOnOneCell = False,
-                      permanenceOrphanDecrement = 0.005)
+  tm = MonitoredTemporalMemory(minThreshold=30, activationThreshold=30,
+                              maxNewSynapseCount=40, cellsPerColumn=5,
+                              learnOnOneCell = False,
+                              permanenceOrphanDecrement = 0.005)
 
   inputVecs = []
   for i in range(4):
     v = set(getRandomVector())
     inputVecs.append(v)
     print "input i=",v
-    if 1977 in v: print "1977 in there"
 
   print "=================="
 
-  col1977 = 0
   i=0
-  while i < 2000:
+  while i < 1000:
     if i%100==0:
       print "i=",i
     if i%8 <= 3:
@@ -79,16 +96,60 @@ if __name__ == '__main__':
     else:
       inputVec = set(getRandomVector())
 
-    # if 1977 in inputVec:
-    #   col1977 += 1
-    #   print "Yes:",col1977
-    #
     tm.compute(inputVec, learn=True)
     if i >= 1:
       print i,len(tm.predictiveCells)
-      # print "input=",inputVec
-      # print "predicted cells=",
-      # pprint.pprint(tm.predictiveCells)
-      # print "columns=",tm.mapCellsToColumns(tm.predictiveCells)
-      # print
     i += 1
+
+  # doesn't work?
+  #tm.mmGetCellActivityPlot()
+
+  print tm.mmPrettyPrintSequenceCellRepresentations()
+
+  pac = tm.mmGetTracePredictedActiveColumns()
+  pic = tm.mmGetTracePredictedInactiveColumns()
+  upac = tm.mmGetTraceUnpredictedActiveColumns()
+
+  print len(pac.data),len(pic.data)
+  print "i pac pic upac err"
+  for i,j in enumerate(pac.data):
+    print i,len(j),len(pic.data[i]),len(upac.data[i]),
+    print computePredictionAccuracy(len(j), len(pic.data[i]))
+
+
+def runExperiment1():
+  print "Running"
+  numpy.random.seed(42)
+
+  tm = MonitoredTemporalMemory(minThreshold=30, activationThreshold=30,
+                              maxNewSynapseCount=40, cellsPerColumn=5,
+                              learnOnOneCell = False,
+                              permanenceOrphanDecrement = 0.005)
+
+  i=0
+  while i < 100:
+    if i%100==0:
+      print "i=",i
+
+    vecs = getNextSequenceChunk(i)
+    for vec in vecs:
+      tm.compute(vec, learn=True)
+
+      if i >= 1:
+        print i,len(tm.predictiveCells)
+      i += 1
+
+  # Print out trace of predictions and accuracy
+  pac = tm.mmGetTracePredictedActiveColumns()
+  pic = tm.mmGetTracePredictedInactiveColumns()
+  upac = tm.mmGetTraceUnpredictedActiveColumns()
+
+  print len(pac.data),len(pic.data)
+  print "i pac pic upac err"
+  for i,j in enumerate(pac.data):
+    print i,len(j),len(pic.data[i]),len(upac.data[i]),
+    print computePredictionAccuracy(len(j), len(pic.data[i]))
+
+if __name__ == '__main__':
+  #testEverything()
+  runExperiment1()
