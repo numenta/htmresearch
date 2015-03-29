@@ -229,7 +229,7 @@ class Model(object):
 
 
 
-class HTMPositionModel(Model):
+class PositionPredictionModel(Model):
 
   def __init__(self, sparsity=0.02, encoderResolution=1.0, tmParams=None):
     tmParams = tmParams or {}

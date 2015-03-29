@@ -12,7 +12,7 @@ from vehicle.classes import (
  AccelerationMotor,
  PositionMotor,
  StayOnRoadScorer,
- HTMPositionModel,
+ PositionPredictionModel,
  Logs,
  Graphics,
  Plots,
@@ -72,7 +72,7 @@ if __name__ == "__main__":
                           motorValues=[-3, 3])
 
   scorer = StayOnRoadScorer(field, vehicle)
-  model = HTMPositionModel(tmParams={
+  model = PositionPredictionModel(tmParams={
     "columnDimensions": [1024],
     "minThreshold": 35,
     "activationThreshold": 35,
