@@ -94,7 +94,7 @@ if __name__ == "__main__":
       "permanenceDecrement": 0.1,
     })
   elif args.model == "positionBehavior":
-    model = PositionBehaviorModel()
+    model = PositionBehaviorModel(motorValues=[-1, 0, 1])
 
   plots = None
   if args.plots == "positionPrediction":

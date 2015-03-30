@@ -225,6 +225,10 @@ class LoopVehicle(Vehicle):
 
 class Model(object):
 
+  def __init__(self, motorValues=range(-4, 4+1)):
+    self.motorValues = motorValues
+
+
   def update(self, sensorValue, motorValue, goal=None):
     pass
 
@@ -232,7 +236,9 @@ class Model(object):
 
 class PositionPredictionModel(Model):
 
-  def __init__(self, sparsity=0.02, encoderResolution=1.0, tmParams=None):
+  def __init__(self, motorValues=range(-4, 4+1),
+               sparsity=0.02, encoderResolution=1.0, tmParams=None):
+    super(PositionPredictionModel, self).__init__(motorValues=motorValues)
     tmParams = tmParams or {}
     self.tm = MonitoredGeneralTemporalMemory(mmName="TM", **tmParams)
     self.n = self.tm.numberOfColumns()
@@ -259,8 +265,8 @@ class PositionPredictionModel(Model):
 
 class PositionBehaviorModel(Model):
 
-  def __init__(self):
-    pass
+  def __init__(self, motorValues=range(-4, 4+1)):
+    super(PositionBehaviorModel, self).__init__(motorValues=motorValues)
 
 
   def update(self, sensorValue, motorValue, goal=None):
