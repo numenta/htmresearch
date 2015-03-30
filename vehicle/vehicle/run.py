@@ -96,9 +96,8 @@ if __name__ == "__main__":
   elif args.model == "positionBehavior":
     model = PositionBehaviorModel(motorValues=[-1, 0, 1],
                                   bmParams={
-      "numBehaviorColumns": 1024,
-      "numGoalColumns": 1024,
-      "numCellsPerBehaviorColumn": 16
+      "numSensorColumns": 1024,
+      "numCellsPerSensorColumn": 16
     })
 
   plots = None

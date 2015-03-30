@@ -23,10 +23,13 @@ class BehaviorMemory(object):
 
   def __init__(self,
                numMotorColumns=1024,
-               numBehaviorColumns=1024,
-               numGoalColumns=1024,
-               numCellsPerBehaviorColumn=32):
+               numSensorColumns=1024,
+               numCellsPerSensorColumn=32):
     self.numMotorColumns = numMotorColumns
-    self.numBehaviorColumns = numBehaviorColumns
-    self.numGoalColumns = numGoalColumns
-    self.numCellsPerBehaviorColumn = numCellsPerBehaviorColumn
+    self.numSensorColumns = numSensorColumns
+    self.numCellsPerSensorColumn = numCellsPerSensorColumn
+
+
+  def compute(self, activeMotorColumns, activeSensorColumns, activeGoalColumns):
+    # print activeMotorColumns, activeSensorColumns, activeGoalColumns
+    pass

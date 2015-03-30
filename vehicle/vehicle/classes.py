@@ -267,24 +267,39 @@ class PositionPredictionModel(Model):
 class PositionBehaviorModel(Model):
 
   def __init__(self, motorValues=range(-4, 4+1),
-               bmParams=None):
+               sparsity=0.02, encoderResolution=1.0, bmParams=None):
     super(PositionBehaviorModel, self).__init__(motorValues=motorValues)
+    self.encoderResolution = encoderResolution
     bmParams = bmParams or {}
 
     numMotorColumns = len(self.motorValues)
     bmParams["numMotorColumns"] = numMotorColumns
     self.bm = BehaviorMemory(**bmParams)
 
+    self.sensorN = self.bm.numSensorColumns
+    self.sensorW = int(self.sensorN * sparsity) + 1
 
-  def update(self, sensorValue, motorValue, goal=None):
-    if goal is not None:
-      # Generate demo behavior
-      if goal > sensorValue:
-        return 1
-      elif goal < sensorValue:
-        return -1
-      else:
-        return None
+    self.sensorEncoder = CoordinateEncoder(w=self.sensorW, n=self.sensorN)
+
+
+  def update(self, sensorValue, motorValue, goalValue=None):
+    motorPattern = set([self.motorValues.index(motorValue)])
+
+    scale = 100
+    radius = int(self.encoderResolution * scale)
+    sensorInput = (numpy.array([int(sensorValue * scale)]), radius)
+    sensorPattern = set(self.sensorEncoder.encode(sensorInput).nonzero()[0])
+
+    goalPattern = set()
+    if goalValue is not None:
+      goalInput = (numpy.array([int(goalValue * scale)]), radius)
+      goalPattern = set(self.sensorEncoder.encode(goalInput).nonzero()[0])
+
+    self.bm.compute(motorPattern, sensorPattern, goalPattern)
+
+
+  def decodeMotor(self, motorActivation):
+    raise NotImplementedError
 
 
 
@@ -559,7 +574,7 @@ class Game(object):
       self.scorer.update()
       motorValue = self.model.update(self.vehicle.sensorValue,
                                      self.vehicle.motorValue,
-                                     goal=self.goal)
+                                     goalValue=self.goal)
 
       if motorValue is not None:
         self.vehicle.setMotorValue(motorValue)
