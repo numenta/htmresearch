@@ -55,6 +55,20 @@ def getNextSequenceChunk(it, w=40, n=2048):
   return vecs
 
 
+def printSegment(tm, segment, connections):
+  cell = connections.cellForSegment(segment)
+  synapses = connections.synapsesForSegment(segment)
+  print "segment id=",segment
+  print "   cell=",cell
+  print "   col =",tm.columnForCell(cell)
+  print "   synapses=",
+  for synapse in synapses:
+    synapseData = connections.dataForSynapse(synapse)
+    permanence = synapseData.permanence
+    presynapticCell = synapseData.presynapticCell
+    print "%d:%g" % (presynapticCell,permanence),
+  print
+
 
 def computePredictionAccuracy(pac, pic):
   """

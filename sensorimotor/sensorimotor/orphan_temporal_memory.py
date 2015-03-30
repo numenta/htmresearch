@@ -20,7 +20,7 @@
 # ----------------------------------------------------------------------
 
 """
-General Temporal Memory implementation in Python.
+Orphan Temporal Memory implementation in Python.
 """
 
 from collections import defaultdict
@@ -32,8 +32,8 @@ class OrphanTemporalMemory(GeneralTemporalMemory):
   """
   Class implementing the General Temporal Memory algorithm with the added
   ability to weaken orphan segments. An orphan segment is one where
-  it had some reasonably high input activity but the cell did not
-  become active on the next time step.
+  it had some reasonably high input activity but the column the cell
+  is in did not receive bottom up input on the next time step.
   """
 
   # ==============================
@@ -129,17 +129,19 @@ class OrphanTemporalMemory(GeneralTemporalMemory):
     'Functional' version of compute.
     Returns new state.
 
-    @param activeColumns                   (set)         Indices of active columns in `t`
-    @param activeExternalCells             (set)         Indices of active external cells in `t`
-    @param prevActiveExternalCells         (set)         Indices of active external cells in `t-1`
-    @param prevPredictiveCells             (set)         Indices of predictive cells in `t-1`
-    @param prevActiveSegments              (set)         Indices of active segments in `t-1`
-    @param prevActiveCells                 (set)         Indices of active cells in `t-1`
-    @param prevWinnerCells                 (set)         Indices of winner cells in `t-1`
-    @param connections                     (Connections) Connectivity of layer
-    @param formInternalConnections         (boolean)     Flag to determine whether to form connections with internal cells within this temporal memory
-    @param learnOnOneCell                  (boolean)     If True, the winner cell for each column will be fixed between resets.
-    @param chosenCellForColumn             (dict)        The current winner cell for each column, if it exists.
+    @param activeColumns            (set)         Indices of active columns in `t`
+    @param activeExternalCells      (set)         Indices of active external cells in `t`
+    @param prevActiveExternalCells  (set)         Indices of active external cells in `t-1`
+    @param prevPredictiveCells      (set)         Indices of predictive cells in `t-1`
+    @param prevActiveSegments       (set)         Indices of active segments in `t-1`
+    @param prevMatchingSegments     (set)         Indices of matching segments in `t-1`
+    @param prevMatchingCells        (set)         Indices of matching cells in `t-1`
+    @param prevActiveCells          (set)         Indices of active cells in `t-1`
+    @param prevWinnerCells          (set)         Indices of winner cells in `t-1`
+    @param connections              (Connections) Connectivity of layer
+    @param formInternalConnections  (boolean)     Flag to determine whether to form connections with internal cells within this temporal memory
+    @param learnOnOneCell           (boolean)     If True, the winner cell for each column will be fixed between resets.
+    @param chosenCellForColumn      (dict)        The current winner cell for each column, if it exists.
 
     @return (tuple) Contains:
                       `activeCells`               (set),
@@ -157,9 +159,6 @@ class OrphanTemporalMemory(GeneralTemporalMemory):
        prevPredictiveCells,
        prevMatchingCells,
        activeColumns)
-
-    # if orphanCells:
-    #   print "orphan columns=",self.mapCellsToColumns(orphanCells)
 
     activeCells.update(_activeCells)
     winnerCells.update(_winnerCells)
@@ -199,11 +198,6 @@ class OrphanTemporalMemory(GeneralTemporalMemory):
      matchingSegments,
      matchingCells) = self.computePredictiveCells(
        activeCells | activeExternalCells, connections)
-
-    # print "Matching segments:"
-    # for segment in matchingSegments:
-    #   self.printSegment(segment, connections)
-
 
     return (activeCells,
             winnerCells,
@@ -336,20 +330,14 @@ class OrphanTemporalMemory(GeneralTemporalMemory):
         segment, prevActiveCells, connections)
 
       if isOrphanCell:
-        # print "\nHandling orphan cell"
-        # print "Before:"
-        # self.printSegment(segment, connections)
         self.adaptSegment(segment, activeSynapses, connections,
                           -self.permanenceOrphanDecrement,
                           0.0)
-        # print "After:"
-        # self.printSegment(segment, connections)
-        # print "========================================="
 
 
   def computePredictiveCells(self, activeCells, connections):
     """
-    Phase 4: Compute predictive cells due to lateral input
+    Phase 4: Compute predictive and matching cells due to lateral input
     on distal dendrites.
 
     Pseudocode:
@@ -359,7 +347,7 @@ class OrphanTemporalMemory(GeneralTemporalMemory):
         - mark the cell as predictive
 
       - for each distal dendrite segment with unconnected
-      activity >= minThreshold
+        activity >=  minThreshold
         - mark the segment as matching
         - mark the cell as matching
 
@@ -433,18 +421,3 @@ class OrphanTemporalMemory(GeneralTemporalMemory):
       permanence = max(0.0, min(1.0, permanence))
 
       connections.updateSynapsePermanence(synapse, permanence)
-
-
-  def printSegment(self, segment, connections):
-    cell = connections.cellForSegment(segment)
-    synapses = connections.synapsesForSegment(segment)
-    print "segment id=",segment
-    print "   cell=",cell
-    print "   col =",self.columnForCell(cell)
-    print "   synapses=",
-    for synapse in synapses:
-      synapseData = connections.dataForSynapse(synapse)
-      permanence = synapseData.permanence
-      presynapticCell = synapseData.presynapticCell
-      print "%d:%g" % (presynapticCell,permanence),
-    print
