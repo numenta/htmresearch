@@ -13,17 +13,20 @@ from vehicle.classes import (
  PositionMotor,
  StayOnRoadScorer,
  PositionPredictionModel,
+ PositionBehaviorModel,
  Logs,
  Graphics,
  Plots,
- HTMPlots,
+ PositionPredictionPlots,
  Game)
 
 
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument('--plots', choices=[None, "default", "htm"],
+  parser.add_argument('--plots', choices=[None,
+                                          "default",
+                                          "positionPrediction"],
                       default=None,
                       help="Enable plots")
   parser.add_argument('--disableGraphics', action='store_true',
@@ -34,6 +37,9 @@ if __name__ == "__main__":
                       default="zigzag")
   parser.add_argument('--vehicle', choices=["human", "random", "loop"],
                       default="human")
+  parser.add_argument('--model', choices=["positionPrediction",
+                                          "positionBehavior"],
+                      default="positionBehavior")
   parser.add_argument('--fieldWidth', type=int,
                       default=100)
   parser.add_argument('--sensorNoise', type=float,
@@ -72,21 +78,25 @@ if __name__ == "__main__":
                           motorValues=[-3, 3])
 
   scorer = StayOnRoadScorer(field, vehicle)
-  model = PositionPredictionModel(tmParams={
-    "columnDimensions": [1024],
-    "minThreshold": 35,
-    "activationThreshold": 35,
-    "maxNewSynapseCount": 40,
-    "cellsPerColumn": 8,
-    "initialPermanence": 0.4,
-    "connectedPermanence": 0.6,
-    "permanenceIncrement": 0.1,
-    "permanenceDecrement": 0.1,
-  })
+
+  if args.model == "positionPrediction":
+    model = PositionPredictionModel(tmParams={
+      "columnDimensions": [1024],
+      "minThreshold": 35,
+      "activationThreshold": 35,
+      "maxNewSynapseCount": 40,
+      "cellsPerColumn": 8,
+      "initialPermanence": 0.4,
+      "connectedPermanence": 0.6,
+      "permanenceIncrement": 0.1,
+      "permanenceDecrement": 0.1,
+    })
+  elif args.model == "positionBehavior":
+    model = PositionBehaviorModel()
 
   plots = None
-  if args.plots == "htm":
-    plots = HTMPlots(field, vehicle, scorer, model)
+  if args.plots == "positionPrediction":
+    plots = PositionPredictionPlots(field, vehicle, scorer, model)
   if args.plots == "default":
     plots = Plots(field, vehicle, scorer, model)
 

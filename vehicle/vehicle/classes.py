@@ -156,10 +156,15 @@ class Vehicle(object):
 
 
   def tick(self):
+    if self.motorValue is not None:
+      self.motor.move(self.motorValue, self)
     self.sensorValue = self.sensor.sense(self.field, self)
-    self.motorValue = self.move()
-    self.motor.move(self.motorValue, self)
+    self.setMotorValue(self.move())
     self.distance += 1
+
+
+  def setMotorValue(self, motorValue):
+    self.motorValue = motorValue
 
 
 
@@ -220,12 +225,8 @@ class LoopVehicle(Vehicle):
 
 class Model(object):
 
-  def update(self, sensorValue, motorValue):
+  def update(self, sensorValue, motorValue, goal=None):
     pass
-
-
-  def predict(self):
-    raise NotImplementedError
 
 
 
@@ -255,9 +256,17 @@ class PositionPredictionModel(Model):
                     learn=True)
 
 
-  def predict(self):
-    print self.tm.predictedCells
-    return set()  # TODO
+
+class PositionBehaviorModel(Model):
+
+  def __init__(self):
+    pass
+
+
+  def update(self, sensorValue, motorValue):
+    # Generate demo behavior
+    if sensorValue > 25:
+      return 1
 
 
 
@@ -404,11 +413,11 @@ class Plots(object):
 
 
 
-class HTMPlots(Plots):
+class PositionPredictionPlots(Plots):
 
   def render(self):
     self.plt.figure(1)
-    super(HTMPlots, self).render()
+    super(PositionPredictionPlots, self).render()
 
     # self.plt.figure(2)
     # self.model.tm.mmGetCellActivityPlot()
@@ -527,6 +536,10 @@ class Game(object):
 
       self.vehicle.tick()
       self.scorer.update()
-      self.model.update(self.vehicle.sensorValue, self.vehicle.motorValue)
+      motorValue = self.model.update(self.vehicle.sensorValue,
+                                     self.vehicle.motorValue)
+
+      if motorValue is not None:
+        self.vehicle.setMotorValue(motorValue)
 
       i += 1
