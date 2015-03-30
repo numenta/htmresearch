@@ -7,6 +7,7 @@ from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
                                      GeneralTemporalMemory): pass
+from sensorimotor.behavior_memory import BehaviorMemory
 
 from nupic.encoders.coordinate import CoordinateEncoder
 
@@ -265,8 +266,14 @@ class PositionPredictionModel(Model):
 
 class PositionBehaviorModel(Model):
 
-  def __init__(self, motorValues=range(-4, 4+1)):
+  def __init__(self, motorValues=range(-4, 4+1),
+               bmParams=None):
     super(PositionBehaviorModel, self).__init__(motorValues=motorValues)
+    bmParams = bmParams or {}
+
+    numMotorColumns = len(self.motorValues)
+    bmParams["numMotorColumns"] = numMotorColumns
+    self.bm = BehaviorMemory(**bmParams)
 
 
   def update(self, sensorValue, motorValue, goal=None):
@@ -473,7 +480,8 @@ class Logs(object):
 
 
   def log(self):
-    print self.scorer.score
+    pass
+    # print self.scorer.score
 
 
 
