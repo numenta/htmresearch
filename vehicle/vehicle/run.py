@@ -46,6 +46,8 @@ if __name__ == "__main__":
                       default=0)
   parser.add_argument('--motorNoise', type=float,
                       default=0)
+  parser.add_argument('--goal', type=float,
+                      default=None)
   parser.add_argument('--plotEvery', type=int,
                       default=25)
 
@@ -107,7 +109,7 @@ if __name__ == "__main__":
   else:
     graphics = Graphics(field, vehicle, scorer, model)
 
-  game = Game(field, vehicle, scorer, model,
+  game = Game(field, vehicle, scorer, model, goal=args.goal,
               logs=logs, plots=plots, graphics=graphics,
               plotEvery=args.plotEvery)
 

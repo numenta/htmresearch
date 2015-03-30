@@ -242,7 +242,7 @@ class PositionPredictionModel(Model):
     self.motorEncoder = CoordinateEncoder(w=self.w, n=self.n)
 
 
-  def update(self, sensorValue, motorValue):
+  def update(self, sensorValue, motorValue, goal=None):
     scale = 100
     radius = int(self.encoderResolution * scale)
     sensorInput = (numpy.array([int(sensorValue * scale)]), radius)
@@ -263,10 +263,15 @@ class PositionBehaviorModel(Model):
     pass
 
 
-  def update(self, sensorValue, motorValue):
-    # Generate demo behavior
-    if sensorValue > 25:
-      return 1
+  def update(self, sensorValue, motorValue, goal=None):
+    if goal is not None:
+      # Generate demo behavior
+      if goal > sensorValue:
+        return 1
+      elif goal < sensorValue:
+        return -1
+      else:
+        return None
 
 
 
@@ -502,13 +507,15 @@ class StayOnRoadScorer(Scorer):
 
 class Game(object):
 
-  def __init__(self, field, vehicle, scorer, model,
+  def __init__(self, field, vehicle, scorer, model, goal=None,
                logs=None, plots=None, graphics=None,
                plotEvery=25):
     self.field = field
     self.vehicle = vehicle
     self.scorer = scorer
     self.model = model
+    self.goal = goal
+
     self.logs = logs
     self.plots = plots
     self.graphics = graphics
@@ -537,7 +544,8 @@ class Game(object):
       self.vehicle.tick()
       self.scorer.update()
       motorValue = self.model.update(self.vehicle.sensorValue,
-                                     self.vehicle.motorValue)
+                                     self.vehicle.motorValue,
+                                     goal=self.goal)
 
       if motorValue is not None:
         self.vehicle.setMotorValue(motorValue)
