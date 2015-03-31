@@ -51,9 +51,16 @@ class Game(object):
 
         i += 1
       except KeyboardInterrupt:
+        print "Paused."
         key = raw_input("Enter a command [(q)uit, (g)oal]: ")
-        print key
+
         if key == "q":
           break
         elif key == "g":
-          self.goal = raw_input("Enter new goal: ")
+          try:
+            self.goal = int(raw_input("Enter new goal (non-number will be None): "))
+          except ValueError:
+            self.goal = None
+          print "Set new goal:", self.goal
+
+        print "Resuming..."

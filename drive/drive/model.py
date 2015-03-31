@@ -85,7 +85,6 @@ class PositionBehaviorModel(Model):
     self.bm.compute(motorPattern, sensorPattern, goalPattern)
 
     if goalValue is not None:
-      print motorValue, self.decodeMotor()
       return self.decodeMotor()
 
 
