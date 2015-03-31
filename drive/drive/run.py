@@ -2,24 +2,17 @@
 
 import argparse
 
-from vehicle.classes import (
- StraightRoad, ZigZagRoad,
- Field,
- HumanVehicle,
- RandomVehicle,
- LoopVehicle,
- PositionSensor,
- AccelerationMotor,
- PositionMotor,
- StayOnRoadScorer,
- PositionPredictionModel,
- PositionBehaviorModel,
- Logs,
- Graphics,
- Plots,
- PositionPredictionPlots,
- PositionBehaviorPlots,
- Game)
+from drive.road import StraightRoad, ZigZagRoad
+from drive.field import Field
+from drive.vehicle import HumanVehicle, RandomVehicle, LoopVehicle
+from drive.sensor import PositionSensor
+from drive.motor import AccelerationMotor, PositionMotor
+from drive.scorer import StayOnRoadScorer
+from drive.model import PositionPredictionModel, PositionBehaviorModel
+from drive.logs import Logs
+from drive.graphics import Graphics
+from drive.plots import Plots, PositionPredictionPlots, PositionBehaviorPlots
+from drive.game import Game
 
 
 

@@ -9,7 +9,7 @@ def read(fname):
   return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(
-  name = "vehicle",
+  name = "drive",
   version = "0.0",
   author = "Chetan Surpur",
   author_email = "csurpur@numenta.com",
