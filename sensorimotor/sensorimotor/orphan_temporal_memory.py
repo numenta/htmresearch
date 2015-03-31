@@ -247,8 +247,6 @@ class OrphanTemporalMemory(GeneralTemporalMemory):
         activeCells.add(cell)
         winnerCells.add(cell)
         predictedColumns.add(column)
-      elif cell in prevMatchingCells:
-        orphanCells.add(cell)
 
     # If any cell was previously matching and we don't get bottom up activity
     # in that column, mark it as an orphan cell.
