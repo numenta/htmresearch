@@ -8,8 +8,11 @@ class Plots(object):
 
     import matplotlib.pyplot as plt
     self.plt = plt
-    # import matplotlib.cm as cm
-    # self.cm = cm
+    import matplotlib.cm as cm
+    self.cm = cm
+
+    from pylab import rcParams
+    rcParams['figure.figsize'] = 8, 14
 
     self.plt.ion()
     self.plt.show()
@@ -37,28 +40,28 @@ class Plots(object):
     self.plt.clf()
 
     self.plt.subplot(rows, cols, 1)
-    self.plt.ylabel("Sensor value")
+    self.plt.title("Sensor value")
     self.plt.plot(range(len(self.sensorValues)), self.sensorValues)
 
     self.plt.subplot(rows, cols, 2)
-    self.plt.ylabel("Sensor noise")
+    self.plt.title("Sensor noise")
     self.plt.plot(range(len(self.sensorNoiseAmounts)), self.sensorNoiseAmounts)
 
     self.plt.subplot(rows, cols, 3)
-    self.plt.ylabel("Motor value")
+    self.plt.title("Motor value")
     self.plt.plot(range(len(self.motorValues)), self.motorValues)
 
     self.plt.subplot(rows, cols, 4)
-    self.plt.ylabel("Motor noise")
+    self.plt.title("Motor noise")
     self.plt.plot(range(len(self.motorNoiseAmounts)), self.motorNoiseAmounts)
 
     self.plt.subplot(rows, cols, 5)
-    self.plt.ylabel("Position")
+    self.plt.title("Position")
     self.plt.ylim([0, self.field.width])
     self.plt.plot(range(len(self.positions)), self.positions)
 
     self.plt.subplot(rows, cols, 6)
-    self.plt.ylabel("Score")
+    self.plt.title("Score")
     self.plt.plot(range(len(self.scores)), self.scores)
 
     self.plt.draw()
@@ -82,22 +85,22 @@ class PositionPredictionPlots(Plots):
     data = self.model.tm.mmGetTraceActiveColumns().data
     overlaps = [len(a & b) for a, b in zip(data[:-1], data[1:])]
     self.plt.subplot(rows, cols, 1)
-    self.plt.ylabel("Active columns overlap with t-1")
+    self.plt.title("Active columns overlap with t-1")
     self.plt.plot(range(len(overlaps)), overlaps)
 
     data = self.model.tm.mmGetTraceUnpredictedActiveColumns().makeCountsTrace().data
     self.plt.subplot(rows, cols, 2)
-    self.plt.ylabel("Unpredicted active columns")
+    self.plt.title("Unpredicted active columns")
     self.plt.plot(range(len(data)), data)
 
     data = self.model.tm.mmGetTracePredictedActiveColumns().makeCountsTrace().data
     self.plt.subplot(rows, cols, 3)
-    self.plt.ylabel("Predicted active columns")
+    self.plt.title("Predicted active columns")
     self.plt.plot(range(len(data)), data)
 
     data = self.model.tm.mmGetTracePredictedInactiveColumns().makeCountsTrace().data
     self.plt.subplot(rows, cols, 4)
-    self.plt.ylabel("Predicted inactive columns")
+    self.plt.title("Predicted inactive columns")
     self.plt.plot(range(len(data)), data)
 
     self.plt.draw()
@@ -122,13 +125,37 @@ class PositionBehaviorPlots(Plots):
 
     self.plt.figure(2)
     self.plt.clf()
-    rows = 1
+    rows = 5
     cols = 1
 
     data = self.activeSensorColumns
     overlaps = [len(a & b) for a, b in zip(data[:-1], data[1:])]
     self.plt.subplot(rows, cols, 1)
-    self.plt.ylabel("Active columns overlap with t-1")
+    self.plt.title("Active columns overlap with t-1")
     self.plt.plot(range(len(overlaps)), overlaps)
 
+    self.plt.subplot(rows, cols, 2)
+    self.plt.title("Goal")
+    self._imshow(self.model.bm.goal.reshape([1, self.model.bm.goal.size]))
+
+    self.plt.subplot(rows, cols, 3)
+    self.plt.title("Active behavior")
+    self._imshow(self.model.bm.activeBehavior.transpose())
+
+    self.plt.subplot(rows, cols, 4)
+    self.plt.title("Learning behavior")
+    self._imshow(self.model.bm.learningBehavior.transpose())
+
+    self.plt.subplot(rows, cols, 5)
+    self.plt.title("Motor")
+    self._imshow(self.model.bm.motor.reshape([1, self.model.bm.motor.size]))
+
     self.plt.draw()
+
+
+  def _imshow(self, data):
+    self.plt.imshow(data,
+                    cmap=self.cm.Greys,
+                    interpolation="nearest",
+                    aspect='auto')
+
