@@ -152,6 +152,25 @@ class PositionBehaviorPlots(Plots):
 
     self.plt.draw()
 
+    self.plt.figure(3)
+    self.plt.clf()
+    rows = 3
+    cols = 1
+
+    self.plt.subplot(rows, cols, 1)
+    self.plt.title("Goal to behavior connections")
+    self._imshow(self.model.bm.goalToBehaviorFlat())
+
+    self.plt.subplot(rows, cols, 2)
+    self.plt.title("Behavior to motor connections")
+    self._imshow(self.model.bm.behaviorToMotorFlat())
+
+    self.plt.subplot(rows, cols, 3)
+    self.plt.title("Motor to behavior connections")
+    self._imshow(self.model.bm.motorToBehaviorFlat())
+
+    self.plt.draw()
+
 
   def _imshow(self, data):
     self.plt.imshow(data,

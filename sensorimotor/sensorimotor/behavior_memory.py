@@ -135,8 +135,23 @@ class BehaviorMemory(object):
         plt.draw()
 
 
-  def _numBehaviorCells(self):
+  def numBehaviorCells(self):
     return self.numSensorColumns * self.numCellsPerSensorColumn
+
+
+  def goalToBehaviorFlat(self):
+    return self.goalToBehavior.reshape([self.numGoalCells,
+                                        self.numBehaviorCells()])
+
+
+  def motorToBehaviorFlat(self):
+    return self.motorToBehavior.reshape([self.numMotorCells,
+                                         self.numBehaviorCells()])
+
+
+  def behaviorToMotorFlat(self):
+    return self.behaviorToMotor.reshape([self.numBehaviorCells(),
+                                         self.numMotorCells])
 
 
   def _reinforceGoalToBehavior(self):
@@ -148,9 +163,7 @@ class BehaviorMemory(object):
 
 
   def _updateActiveBehaviorFromMotor(self, sensorPattern):
-    motorToBehaviorFlat = self.motorToBehavior.reshape(
-      [self.numMotorCells, self._numBehaviorCells()])
-    activity = numpy.dot(self.motor, motorToBehaviorFlat)
+    activity = numpy.dot(self.motor, self.motorToBehaviorFlat())
     activity = activity.reshape([self.numSensorColumns,
                                 self.numCellsPerSensorColumn])
     winnerCells = numpy.argmax(activity, axis=1)
@@ -183,9 +196,7 @@ class BehaviorMemory(object):
 
 
   def _updateActiveBehaviorFromGoal(self, sensorPattern):
-    goalToBehaviorFlat = self.goalToBehavior.reshape(
-      [self.numGoalCells, self._numBehaviorCells()])
-    activity = numpy.dot(self.goal, goalToBehaviorFlat)
+    activity = numpy.dot(self.goal, self.goalToBehaviorFlat())
     activity = activity.reshape([self.numSensorColumns,
                                 self.numCellsPerSensorColumn])
     winnerCells = numpy.argmax(activity, axis=1)
@@ -197,7 +208,6 @@ class BehaviorMemory(object):
 
 
   def _updateMotorFromActiveBehavior(self):
-    behaviorToMotorFlat = self.behaviorToMotor.reshape(
-      [self._numBehaviorCells(), self.numMotorCells])
-    self.motor = numpy.dot(self.activeBehavior.flatten(), behaviorToMotorFlat)
+    self.motor = numpy.dot(self.activeBehavior.flatten(),
+                           self.behaviorToMotorFlat())
     self.motor /= self.motor.sum()
