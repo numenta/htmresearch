@@ -19,17 +19,145 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import numpy
+
+# DEBUG
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+
+
+
 class BehaviorMemory(object):
 
   def __init__(self,
                numMotorColumns=1024,
                numSensorColumns=1024,
-               numCellsPerSensorColumn=32):
+               numCellsPerSensorColumn=32,
+               goalToBehaviorLearningRate=0.3,
+               behaviorToMotorLearningRate=0.3,
+               motorToBehaviorLearningRate=0.3,
+               behaviorDecayRate=0.33):
     self.numMotorColumns = numMotorColumns
     self.numSensorColumns = numSensorColumns
     self.numCellsPerSensorColumn = numCellsPerSensorColumn
+    self.goalToBehaviorLearningRate = goalToBehaviorLearningRate
+    self.behaviorToMotorLearningRate = behaviorToMotorLearningRate
+    self.motorToBehaviorLearningRate = motorToBehaviorLearningRate
+    self.behaviorDecayRate = behaviorDecayRate
+
+    self.numMotorCells = numMotorColumns
+    self.numGoalCells = numSensorColumns
+
+    self.learningBehavior = numpy.zeros([self.numSensorColumns,
+                                         self.numCellsPerSensorColumn])
+    self.activeBehavior = numpy.zeros([self.numSensorColumns,
+                                       self.numCellsPerSensorColumn])
+
+    self.goalToBehavior = self._initWeights([self.numGoalCells,
+                                             self.numSensorColumns,
+                                             self.numCellsPerSensorColumn])
+    self.behaviorToMotor = self._initWeights([self.numSensorColumns,
+                                              self.numCellsPerSensorColumn,
+                                              self.numMotorCells])
+    self.motorToBehavior = self._initWeights([self.numMotorCells,
+                                              self.numSensorColumns,
+                                              self.numCellsPerSensorColumn])
+
+    # DEBUG
+    plt.ion()
+    plt.show()
+
+
+  @staticmethod
+  def _initWeights(shape):
+    weights = numpy.random.normal(0.5, 0.5, shape)
+    weights[weights < 0] = 0
+    weights[weights > 1] = 1
+
+    return weights
+
+
+  @staticmethod
+  def _makeArray(s, length):
+    arr = numpy.zeros(length)
+    arr[list(s)] = 1
+    return arr
+
+
+  @staticmethod
+  def _reinforce(weights, active, learningRate):
+    delta = active * learningRate
+    total = weights.sum()
+    weights += delta
+    weights /= (weights.sum() / total)
 
 
   def compute(self, activeMotorColumns, activeSensorColumns, activeGoalColumns):
-    # print activeMotorColumns, activeSensorColumns, activeGoalColumns
-    pass
+    motorPattern = self._makeArray(activeMotorColumns, self.numMotorColumns)
+    sensorPattern = self._makeArray(activeSensorColumns, self.numSensorColumns)
+
+    if len(activeGoalColumns):
+      # 1. Update active behavior (depolarized from goal)
+      # 2. Update motor (depolarized from behavior)
+      goalPattern = self._makeArray(activeGoalColumns, self.numSensorColumns)
+      pass
+    else:
+      self._reinforceGoalToBehavior(sensorPattern)
+      self._updateActiveBehavior(sensorPattern, motorPattern)
+      self._updateLearningBehavior()
+      self._reinforceBehaviorToMotor(motorPattern)
+      self._reinforceMotorToBehavior(motorPattern)
+
+      # DEBUG
+      plt.clf()
+      plt.figure(1)
+      # numBehaviorCells = self.numSensorColumns * self.numCellsPerSensorColumn
+      # plt.imshow(self.goalToBehavior.reshape(self.numGoalCells, numBehaviorCells), cmap=cm.Greys, interpolation="nearest")
+      # plt.imshow(self.activeBehavior, cmap=cm.Greys, interpolation="nearest")
+      # plt.imshow(self.learningBehavior, cmap=cm.Greys, interpolation="nearest")
+      # plt.imshow(self.behaviorToMotor.reshape(self.numSensorColumns, self.numCellsPerSensorColumn * self.numMotorCells), cmap=cm.Greys, interpolation="nearest")
+      # plt.imshow(self.motorToBehavior.reshape(self.numCellsPerSensorColumn * self.numMotorCells, self.numSensorColumns), cmap=cm.Greys, interpolation="nearest")
+      plt.draw()
+
+
+  def _reinforceGoalToBehavior(self, sensorPattern):
+    for column in sensorPattern.nonzero()[0]:
+      weights = self.goalToBehavior[column]
+      self._reinforce(weights,
+                      self.learningBehavior,
+                      self.goalToBehaviorLearningRate)
+
+
+  def _updateActiveBehavior(self, sensorPattern, motorPattern):
+    numBehaviorCells = self.numSensorColumns * self.numCellsPerSensorColumn
+    motorToBehaviorFlat = self.motorToBehavior.reshape([3, numBehaviorCells])
+    activity = numpy.dot(motorPattern, motorToBehaviorFlat)
+    activity = activity.reshape([self.numSensorColumns,
+                                self.numCellsPerSensorColumn])
+    winnerCells = numpy.argmax(activity, axis=1)
+
+    self.activeBehavior.fill(0)
+    for column in sensorPattern.nonzero()[0]:
+      winnerCell = winnerCells[column]
+      self.activeBehavior[column][winnerCell] = 1
+
+
+  def _updateLearningBehavior(self):
+    self.learningBehavior = self.learningBehavior * self.behaviorDecayRate
+    self.learningBehavior += self.activeBehavior
+
+
+  def _reinforceBehaviorToMotor(self, motorPattern):
+    for cell in numpy.transpose(self.activeBehavior.nonzero()):
+      weights = self.behaviorToMotor[cell[0], cell[1]]
+      self._reinforce(weights,
+                      motorPattern,
+                      self.behaviorToMotorLearningRate)
+
+
+  def _reinforceMotorToBehavior(self, motorPattern):
+    for cell in motorPattern.nonzero()[0]:
+      weights = self.motorToBehavior[cell]
+      self._reinforce(weights,
+                      self.activeBehavior,
+                      self.motorToBehaviorLearningRate)
