@@ -249,7 +249,7 @@ class PositionPredictionModel(Model):
     self.motorEncoder = CoordinateEncoder(w=self.w, n=self.n)
 
 
-  def update(self, sensorValue, motorValue, goal=None):
+  def update(self, sensorValue, motorValue, goalValue=None):
     scale = 100
     radius = int(self.encoderResolution * scale)
     sensorInput = (numpy.array([int(sensorValue * scale)]), radius)

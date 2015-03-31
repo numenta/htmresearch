@@ -94,7 +94,10 @@ if __name__ == "__main__":
       "permanenceDecrement": 0.1,
     })
   elif args.model == "positionBehavior":
-    model = PositionBehaviorModel(motorValues=[-1, 0, 1],
+    motorValues = [-1, 0, 1]
+    if args.vehicle == "human":
+      motorValues = range(-4, 4+1)
+    model = PositionBehaviorModel(motorValues=motorValues,
                                   bmParams={
       "numSensorColumns": 1024,
       "numCellsPerSensorColumn": 16
