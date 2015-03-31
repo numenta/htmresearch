@@ -557,26 +557,34 @@ class Game(object):
   def run(self):
     i = 0
     while True:
-      if self.logs is not None:
-        self.logs.log()
+      try:
+        if self.logs is not None:
+          self.logs.log()
 
-      if self.plots is not None:
-        self.plots.update()
+        if self.plots is not None:
+          self.plots.update()
 
-        if i % self.plotEvery == 0:
-          self.plots.render()
+          if i % self.plotEvery == 0:
+            self.plots.render()
 
-      if self.graphics is not None:
-        self.graphics.update()
-        self.graphics.render()
+        if self.graphics is not None:
+          self.graphics.update()
+          self.graphics.render()
 
-      self.vehicle.tick()
-      self.scorer.update()
-      motorValue = self.model.update(self.vehicle.sensorValue,
-                                     self.vehicle.motorValue,
-                                     goalValue=self.goal)
+        self.vehicle.tick()
+        self.scorer.update()
+        motorValue = self.model.update(self.vehicle.sensorValue,
+                                       self.vehicle.motorValue,
+                                       goalValue=self.goal)
 
-      if motorValue is not None:
-        self.vehicle.setMotorValue(motorValue)
+        if motorValue is not None:
+          self.vehicle.setMotorValue(motorValue)
 
-      i += 1
+        i += 1
+      except KeyboardInterrupt:
+        key = raw_input("Enter a command [(q)uit, (g)oal]: ")
+        print key
+        if key == "q":
+          break
+        elif key == "g":
+          self.goal = raw_input("Enter new goal: ")
