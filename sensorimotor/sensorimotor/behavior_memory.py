@@ -66,6 +66,8 @@ class BehaviorMemory(object):
     self.activeSensorColumns = set()
     self.activeGoalColumns = set()
 
+    self.prevActiveSensorColumns = set()
+
     self.reconstructedBehavior = numpy.zeros([self.numSensorColumns,
                                               self.numCellsPerSensorColumn])
     self.reconstructedMotor = numpy.zeros(self.numMotorCells)
@@ -96,6 +98,7 @@ class BehaviorMemory(object):
 
 
   def compute(self, activeMotorColumns, activeSensorColumns, activeGoalColumns):
+    self.prevActiveSensorColumns = self.activeSensorColumns
     self.activeMotorColumns = activeMotorColumns
     self.activeSensorColumns = activeSensorColumns
     self.activeGoalColumns = activeGoalColumns
@@ -107,12 +110,17 @@ class BehaviorMemory(object):
     self.motor = motorPattern
     self.goal = goalPattern if len(activeGoalColumns) else sensorPattern
 
-    self.reconstructedBehavior = self._computeBehaviorFromGoal(self.goal, sensorPattern)
-    self.reconstructedMotor = self._computeMotorFromBehavior(self.reconstructedBehavior)
+    prevSensorPattern = self._makeArray(self.prevActiveSensorColumns,
+                                        self.numSensorColumns)
+    self.reconstructedBehavior = self._computeBehaviorFromGoal(
+      self.goal, prevSensorPattern)
+    self.reconstructedMotor = self._computeMotorFromBehavior(
+      self.reconstructedBehavior)
 
     if len(activeGoalColumns):
-      self.activeBehavior = self.reconstructedBehavior
-      self.motor = self.reconstructedMotor
+      self.activeBehavior = self._computeBehaviorFromGoal(self.goal,
+                                                          sensorPattern)
+      self.motor = self._computeMotorFromBehavior(self.activeBehavior)
     else:
       self._reinforceGoalToBehavior(self.goal, self.learningBehavior)
       self.activeBehavior = self._computeBehaviorFromMotor(self.motor,
