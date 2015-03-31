@@ -97,13 +97,12 @@ class BehaviorMemory(object):
     sensorPattern = self._makeArray(activeSensorColumns, self.numSensorColumns)
 
     if len(activeGoalColumns):
-      # 1. Update active behavior (depolarized from goal)
-      # 2. Update motor (depolarized from behavior)
       goalPattern = self._makeArray(activeGoalColumns, self.numSensorColumns)
-      pass
+      self._updateActiveBehaviorFromGoal(sensorPattern, goalPattern)
+      self._updateMotorFromActiveBehavior()
     else:
       self._reinforceGoalToBehavior(sensorPattern)
-      self._updateActiveBehavior(sensorPattern, motorPattern)
+      self._updateActiveBehaviorFromMotor(sensorPattern, motorPattern)
       self._updateLearningBehavior()
       self._reinforceBehaviorToMotor(motorPattern)
       self._reinforceMotorToBehavior(motorPattern)
@@ -128,9 +127,10 @@ class BehaviorMemory(object):
                       self.goalToBehaviorLearningRate)
 
 
-  def _updateActiveBehavior(self, sensorPattern, motorPattern):
+  def _updateActiveBehaviorFromMotor(self, sensorPattern, motorPattern):
     numBehaviorCells = self.numSensorColumns * self.numCellsPerSensorColumn
-    motorToBehaviorFlat = self.motorToBehavior.reshape([3, numBehaviorCells])
+    motorToBehaviorFlat = self.motorToBehavior.reshape([self.numMotorCells,
+                                                        numBehaviorCells])
     activity = numpy.dot(motorPattern, motorToBehaviorFlat)
     activity = activity.reshape([self.numSensorColumns,
                                 self.numCellsPerSensorColumn])
@@ -161,3 +161,11 @@ class BehaviorMemory(object):
       self._reinforce(weights,
                       self.activeBehavior,
                       self.motorToBehaviorLearningRate)
+
+
+  def _updateActiveBehaviorFromGoal(self, sensorPattern, goalPattern):
+    pass
+
+
+  def _updateMotorFromActiveBehavior(self):
+    pass
