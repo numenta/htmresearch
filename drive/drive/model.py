@@ -16,9 +16,17 @@ class Model(object):
   def __init__(self, motorValues=range(-4, 4+1)):
     self.motorValues = motorValues
 
+    self.currentGoalValue = None
 
-  def update(self, sensorValue, motorValue, goal=None):
-    pass
+
+  def tick(self, sensorValue, motorValue, goalValue=None):
+    self.currentGoalValue = goalValue
+    return self.update(sensorValue, motorValue, goalValue=goalValue)
+
+
+  def update(self, sensorValue, motorValue, goalValue=None):
+    """To override"""
+    return None
 
 
 

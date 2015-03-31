@@ -23,6 +23,7 @@ class Plots(object):
     self.motorValues = []
     self.motorNoiseAmounts = []
     self.scores = []
+    self.goalValues = []
 
 
   def update(self):
@@ -32,6 +33,7 @@ class Plots(object):
     self.motorValues.append(self.vehicle.motorValue)
     self.motorNoiseAmounts.append(self.vehicle.motor.noiseAmount)
     self.scores.append(self.scorer.score)
+    self.goalValues.append(self.model.currentGoalValue)
 
 
   def render(self):
@@ -40,31 +42,31 @@ class Plots(object):
     self.plt.clf()
 
     self.plt.subplot(rows, cols, 1)
-    self.plt.title("Sensor value")
-    self.plt.plot(range(len(self.sensorValues)), self.sensorValues)
+    self.plt.ylim(min(self.sensorValues), max(self.sensorValues))
+    self._plot(self.goalValues, "Goal")
 
     self.plt.subplot(rows, cols, 2)
-    self.plt.title("Sensor noise")
-    self.plt.plot(range(len(self.sensorNoiseAmounts)), self.sensorNoiseAmounts)
+    self._plot(self.positions, "Position")
 
     self.plt.subplot(rows, cols, 3)
-    self.plt.title("Motor value")
-    self.plt.plot(range(len(self.motorValues)), self.motorValues)
+    self._plot(self.sensorValues, "Sensor value")
 
     self.plt.subplot(rows, cols, 4)
-    self.plt.title("Motor noise")
-    self.plt.plot(range(len(self.motorNoiseAmounts)), self.motorNoiseAmounts)
+    self._plot(self.sensorNoiseAmounts, "Sensor noise")
 
     self.plt.subplot(rows, cols, 5)
-    self.plt.title("Position")
-    self.plt.ylim([0, self.field.width])
-    self.plt.plot(range(len(self.positions)), self.positions)
+    self._plot(self.motorValues, "Motor value")
 
     self.plt.subplot(rows, cols, 6)
-    self.plt.title("Score")
-    self.plt.plot(range(len(self.scores)), self.scores)
+    self._plot(self.motorNoiseAmounts, "Motor noise")
 
     self.plt.draw()
+
+
+  def _plot(self, data, title):
+    self.plt.title(title)
+    self.plt.xlim(0, len(data))
+    self.plt.plot(range(len(data)), data)
 
 
 

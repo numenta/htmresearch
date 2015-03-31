@@ -33,9 +33,9 @@ class Game(object):
 
         self.vehicle.tick()
         self.scorer.update()
-        motorValue = self.model.update(self.vehicle.sensorValue,
-                                       self.vehicle.motorValue,
-                                       goalValue=self.goal)
+        motorValue = self.model.tick(self.vehicle.sensorValue,
+                                     self.vehicle.motorValue,
+                                     goalValue=self.goal)
 
         if motorValue is not None:
           self.vehicle.setMotorValue(motorValue)
