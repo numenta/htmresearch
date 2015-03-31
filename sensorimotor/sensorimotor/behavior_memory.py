@@ -127,13 +127,16 @@ class BehaviorMemory(object):
       if DEBUG:
         plt.clf()
         plt.figure(1)
-        numBehaviorCells = self.numSensorColumns * self.numCellsPerSensorColumn
-        plt.imshow(self.goalToBehavior.reshape(self.numGoalCells, numBehaviorCells), cmap=cm.Greys, interpolation="nearest")
+        plt.imshow(self.goalToBehavior.reshape(self.numGoalCells, self._numBehaviorCells()), cmap=cm.Greys, interpolation="nearest")
         # plt.imshow(self.activeBehavior, cmap=cm.Greys, interpolation="nearest")
         # plt.imshow(self.learningBehavior, cmap=cm.Greys, interpolation="nearest")
         # plt.imshow(self.behaviorToMotor.reshape(self.numSensorColumns, self.numCellsPerSensorColumn * self.numMotorCells), cmap=cm.Greys, interpolation="nearest")
         # plt.imshow(self.motorToBehavior.reshape(self.numCellsPerSensorColumn * self.numMotorCells, self.numSensorColumns), cmap=cm.Greys, interpolation="nearest")
         plt.draw()
+
+
+  def _numBehaviorCells(self):
+    return self.numSensorColumns * self.numCellsPerSensorColumn
 
 
   def _reinforceGoalToBehavior(self):
@@ -145,9 +148,8 @@ class BehaviorMemory(object):
 
 
   def _updateActiveBehaviorFromMotor(self, sensorPattern):
-    numBehaviorCells = self.numSensorColumns * self.numCellsPerSensorColumn
-    motorToBehaviorFlat = self.motorToBehavior.reshape([self.numMotorCells,
-                                                        numBehaviorCells])
+    motorToBehaviorFlat = self.motorToBehavior.reshape(
+      [self.numMotorCells, self._numBehaviorCells()])
     activity = numpy.dot(self.motor, motorToBehaviorFlat)
     activity = activity.reshape([self.numSensorColumns,
                                 self.numCellsPerSensorColumn])
@@ -181,8 +183,21 @@ class BehaviorMemory(object):
 
 
   def _updateActiveBehaviorFromGoal(self, sensorPattern):
-    pass
+    goalToBehaviorFlat = self.goalToBehavior.reshape(
+      [self.numGoalCells, self._numBehaviorCells()])
+    activity = numpy.dot(self.goal, goalToBehaviorFlat)
+    activity = activity.reshape([self.numSensorColumns,
+                                self.numCellsPerSensorColumn])
+    winnerCells = numpy.argmax(activity, axis=1)
+
+    self.activeBehavior.fill(0)
+    for column in sensorPattern.nonzero()[0]:
+      winnerCell = winnerCells[column]
+      self.activeBehavior[column][winnerCell] = 1
 
 
   def _updateMotorFromActiveBehavior(self):
-    pass
+    behaviorToMotorFlat = self.behaviorToMotor.reshape(
+      [self._numBehaviorCells(), self.numMotorCells])
+    self.motor = numpy.dot(self.activeBehavior.flatten(), behaviorToMotorFlat)
+    self.motor /= self.motor.sum()
