@@ -2,7 +2,8 @@ class Game(object):
 
   def __init__(self, field, vehicle, scorer, model, goal=None,
                logs=None, plots=None, graphics=None,
-               plotEvery=25):
+               plotEvery=25,
+               manualRun=False):
     self.field = field
     self.vehicle = vehicle
     self.scorer = scorer
@@ -16,24 +17,19 @@ class Game(object):
     self.graphics = graphics
 
     self.plotEvery = plotEvery
+    self.manualRun = manualRun
 
 
   def run(self):
     i = 0
     while True:
       try:
-        if self.logs is not None:
-          self.logs.log()
-
-        if self.plots is not None:
-          self.plots.update()
-
-          if i % self.plotEvery == 0:
-            self.plots.render()
-
         if self.graphics is not None:
           self.graphics.update()
           self.graphics.render()
+
+        if self.manualRun and self.vehicle.graphics.currentKey is None:
+          continue
 
         self.vehicle.tick()
         self.scorer.update()
@@ -43,6 +39,15 @@ class Game(object):
 
         if motorValue is not None:
           self.vehicle.setMotorValue(motorValue)
+
+        if self.logs is not None:
+          self.logs.log()
+
+        if self.plots is not None:
+          self.plots.update()
+
+          if i % self.plotEvery == 0:
+            self.plots.render()
 
         i += 1
       except KeyboardInterrupt:

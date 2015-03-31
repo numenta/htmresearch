@@ -45,6 +45,8 @@ if __name__ == "__main__":
                       default=None)
   parser.add_argument('--plotEvery', type=int,
                       default=25)
+  parser.add_argument('--manualRun', action='store_true',
+                      help="Wait for input on each timestep")
 
   args = parser.parse_args()
 
@@ -115,7 +117,8 @@ if __name__ == "__main__":
 
   game = Game(field, vehicle, scorer, model, goal=args.goal,
               logs=logs, plots=plots, graphics=graphics,
-              plotEvery=args.plotEvery)
+              plotEvery=args.plotEvery,
+              manualRun=args.manualRun)
 
   if args.vehicle == "human":
     vehicle.setGraphics(game.graphics)
