@@ -125,7 +125,7 @@ class PositionBehaviorPlots(Plots):
 
     self.plt.figure(2)
     self.plt.clf()
-    rows = 5
+    rows = 7
     cols = 1
 
     data = self.activeSensorColumns
@@ -136,19 +136,27 @@ class PositionBehaviorPlots(Plots):
 
     self.plt.subplot(rows, cols, 2)
     self.plt.title("Goal")
-    self._imshow(self.model.bm.goal.reshape([1, self.model.bm.goal.size]))
+    self._imshow(self._imageData(self.model.bm.goal))
 
     self.plt.subplot(rows, cols, 3)
     self.plt.title("Active behavior")
     self._imshow(self.model.bm.activeBehavior.transpose())
 
     self.plt.subplot(rows, cols, 4)
+    self.plt.title("Reconstructed behavior")
+    self._imshow(self.model.bm.reconstructedBehavior.transpose())
+
+    self.plt.subplot(rows, cols, 5)
     self.plt.title("Learning behavior")
     self._imshow(self.model.bm.learningBehavior.transpose())
 
-    self.plt.subplot(rows, cols, 5)
+    self.plt.subplot(rows, cols, 6)
     self.plt.title("Motor")
     self._imshow(self.model.bm.motor.reshape([1, self.model.bm.motor.size]))
+
+    self.plt.subplot(rows, cols, 7)
+    self.plt.title("Reconstructed motor")
+    self._imshow(self._imageData(self.model.bm.reconstructedMotor))
 
     self.plt.draw()
 
@@ -171,6 +179,10 @@ class PositionBehaviorPlots(Plots):
 
     self.plt.draw()
 
+
+  @staticmethod
+  def _imageData(array):
+    return array.reshape([1, array.size])
 
   def _imshow(self, data):
     self.plt.imshow(data,

@@ -61,6 +61,15 @@ class BehaviorMemory(object):
                                               self.numSensorColumns,
                                               self.numCellsPerSensorColumn])
 
+    # For debugging
+    self.activeMotorColumns = set()
+    self.activeSensorColumns = set()
+    self.activeGoalColumns = set()
+
+    self.reconstructedBehavior = numpy.zeros([self.numSensorColumns,
+                                              self.numCellsPerSensorColumn])
+    self.reconstructedMotor = numpy.zeros(self.numMotorCells)
+
 
   @staticmethod
   def _initWeights(shape):
@@ -93,16 +102,17 @@ class BehaviorMemory(object):
 
     motorPattern = self._makeArray(activeMotorColumns, self.numMotorColumns)
     sensorPattern = self._makeArray(activeSensorColumns, self.numSensorColumns)
+    goalPattern = self._makeArray(activeGoalColumns, self.numSensorColumns)
 
     self.motor = motorPattern
-    self.goal = sensorPattern
+    self.goal = goalPattern if len(activeGoalColumns) else sensorPattern
+
+    self.reconstructedBehavior = self._computeBehaviorFromGoal(self.goal, sensorPattern)
+    self.reconstructedMotor = self._computeMotorFromBehavior(self.reconstructedBehavior)
 
     if len(activeGoalColumns):
-      goalPattern = self._makeArray(activeGoalColumns, self.numSensorColumns)
-      self.goal = goalPattern
-      self.activeBehavior = self._computeBehaviorFromGoal(self.goal,
-                                                          sensorPattern)
-      self.motor = self._computeMotorFromBehavior(self.activeBehavior)
+      self.activeBehavior = self.reconstructedBehavior
+      self.motor = self.reconstructedMotor
     else:
       self._reinforceGoalToBehavior(self.goal, self.learningBehavior)
       self.activeBehavior = self._computeBehaviorFromMotor(self.motor,
