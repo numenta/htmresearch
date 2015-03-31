@@ -74,7 +74,7 @@ if __name__ == "__main__":
                             motorValues=[-1, 0, 1])
   if args.vehicle == "loop":
     vehicle = LoopVehicle(field, sensor, motor, startPosition=startPosition,
-                          motorValues=[-3, 3])
+                          motorValues=[0, -1, 0, 1, 0, 1, 0, -1])
 
   scorer = StayOnRoadScorer(field, vehicle)
 
