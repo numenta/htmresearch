@@ -21,13 +21,6 @@
 
 import numpy
 
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-
-
-
-DEBUG = False
-
 
 
 class BehaviorMemory(object):
@@ -68,14 +61,6 @@ class BehaviorMemory(object):
                                               self.numSensorColumns,
                                               self.numCellsPerSensorColumn])
 
-    self.activeMotorColumns = set()
-    self.activeSensorColumns = set()
-    self.activeGoalColumns = set()
-
-    if DEBUG:
-      plt.ion()
-      plt.show()
-
 
   @staticmethod
   def _initWeights(shape):
@@ -115,24 +100,17 @@ class BehaviorMemory(object):
     if len(activeGoalColumns):
       goalPattern = self._makeArray(activeGoalColumns, self.numSensorColumns)
       self.goal = goalPattern
-      self._updateActiveBehaviorFromGoal(sensorPattern)
-      self._updateMotorFromActiveBehavior()
+      self.activeBehavior = self._computeBehaviorFromGoal(self.goal,
+                                                          sensorPattern)
+      self.motor = self._computeMotorFromBehavior(self.activeBehavior)
     else:
-      self._reinforceGoalToBehavior()
-      self._updateActiveBehaviorFromMotor(sensorPattern)
-      self._updateLearningBehavior()
-      self._reinforceBehaviorToMotor()
-      self._reinforceMotorToBehavior()
-
-      if DEBUG:
-        plt.clf()
-        plt.figure(1)
-        plt.imshow(self.goalToBehavior.reshape(self.numGoalCells, self._numBehaviorCells()), cmap=cm.Greys, interpolation="nearest")
-        # plt.imshow(self.activeBehavior, cmap=cm.Greys, interpolation="nearest")
-        # plt.imshow(self.learningBehavior, cmap=cm.Greys, interpolation="nearest")
-        # plt.imshow(self.behaviorToMotor.reshape(self.numSensorColumns, self.numCellsPerSensorColumn * self.numMotorCells), cmap=cm.Greys, interpolation="nearest")
-        # plt.imshow(self.motorToBehavior.reshape(self.numCellsPerSensorColumn * self.numMotorCells, self.numSensorColumns), cmap=cm.Greys, interpolation="nearest")
-        plt.draw()
+      self._reinforceGoalToBehavior(self.goal, self.learningBehavior)
+      self.activeBehavior = self._computeBehaviorFromMotor(self.motor,
+                                                           sensorPattern)
+      self.learningBehavior = self._computeLearningBehavior(
+        self.learningBehavior, self.activeBehavior)
+      self._reinforceBehaviorToMotor(self.activeBehavior, self.motor)
+      self._reinforceMotorToBehavior(self.motor, self.activeBehavior)
 
 
   def numBehaviorCells(self):
@@ -154,60 +132,71 @@ class BehaviorMemory(object):
                                          self.numMotorCells])
 
 
-  def _reinforceGoalToBehavior(self):
-    for column in self.goal.nonzero()[0]:
+  def _reinforceGoalToBehavior(self, goal, behavior):
+    for column in goal.nonzero()[0]:
       weights = self.goalToBehavior[column]
       self._reinforce(weights,
-                      self.learningBehavior,
+                      behavior,
                       self.goalToBehaviorLearningRate)
 
 
-  def _updateActiveBehaviorFromMotor(self, sensorPattern):
-    activity = numpy.dot(self.motor, self.motorToBehaviorFlat())
+  def _computeBehaviorFromMotor(self, motor, sensorPattern):
+    activity = numpy.dot(motor, self.motorToBehaviorFlat())
     activity = activity.reshape([self.numSensorColumns,
                                 self.numCellsPerSensorColumn])
     winnerCells = numpy.argmax(activity, axis=1)
 
-    self.activeBehavior.fill(0)
+    behavior = numpy.zeros([self.numSensorColumns,
+                            self.numCellsPerSensorColumn])
+
     for column in sensorPattern.nonzero()[0]:
       winnerCell = winnerCells[column]
-      self.activeBehavior[column][winnerCell] = 1
+      behavior[column][winnerCell] = 1
+
+    return behavior
 
 
-  def _updateLearningBehavior(self):
-    self.learningBehavior = self.learningBehavior * self.behaviorDecayRate
-    self.learningBehavior += self.activeBehavior
+  def _computeLearningBehavior(self, learningBehavior, activeBehavior):
+    """Note: Modifies `learningBehavior` (for performance)"""
+    learningBehavior = learningBehavior * self.behaviorDecayRate
+    learningBehavior += activeBehavior
+    return learningBehavior
 
 
-  def _reinforceBehaviorToMotor(self):
-    for cell in numpy.transpose(self.activeBehavior.nonzero()):
+  def _reinforceBehaviorToMotor(self, behavior, motor):
+    for cell in numpy.transpose(behavior.nonzero()):
       weights = self.behaviorToMotor[cell[0], cell[1]]
       self._reinforce(weights,
-                      self.motor,
+                      motor,
                       self.behaviorToMotorLearningRate)
 
 
-  def _reinforceMotorToBehavior(self):
-    for cell in self.motor.nonzero()[0]:
+  def _reinforceMotorToBehavior(self, motor, behavior):
+    for cell in motor.nonzero()[0]:
       weights = self.motorToBehavior[cell]
       self._reinforce(weights,
-                      self.activeBehavior,
+                      behavior,
                       self.motorToBehaviorLearningRate)
 
 
-  def _updateActiveBehaviorFromGoal(self, sensorPattern):
-    activity = numpy.dot(self.goal, self.goalToBehaviorFlat())
+  def _computeBehaviorFromGoal(self, goal, sensorPattern):
+    activity = numpy.dot(goal, self.goalToBehaviorFlat())
     activity = activity.reshape([self.numSensorColumns,
                                 self.numCellsPerSensorColumn])
     winnerCells = numpy.argmax(activity, axis=1)
 
-    self.activeBehavior.fill(0)
+    behavior = numpy.zeros([self.numSensorColumns,
+                            self.numCellsPerSensorColumn])
+
     for column in sensorPattern.nonzero()[0]:
       winnerCell = winnerCells[column]
-      self.activeBehavior[column][winnerCell] = 1
+      behavior[column][winnerCell] = 1
+
+    return behavior
 
 
-  def _updateMotorFromActiveBehavior(self):
-    self.motor = numpy.dot(self.activeBehavior.flatten(),
-                           self.behaviorToMotorFlat())
-    self.motor /= self.motor.sum()
+  def _computeMotorFromBehavior(self, behavior):
+    motor = numpy.dot(behavior.flatten(),
+                      self.behaviorToMotorFlat())
+    motor /= self.motor.sum()
+    return motor
