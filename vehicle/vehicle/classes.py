@@ -267,7 +267,7 @@ class PositionPredictionModel(Model):
 class PositionBehaviorModel(Model):
 
   def __init__(self, motorValues=range(-4, 4+1),
-               sparsity=0.02, encoderResolution=1.0, bmParams=None):
+               sparsity=0.02, encoderResolution=0.1, bmParams=None):
     super(PositionBehaviorModel, self).__init__(motorValues=motorValues)
     self.encoderResolution = encoderResolution
     bmParams = bmParams or {}
@@ -297,9 +297,14 @@ class PositionBehaviorModel(Model):
 
     self.bm.compute(motorPattern, sensorPattern, goalPattern)
 
+    if goalValue is not None:
+      print motorValue, self.decodeMotor()
+      return self.decodeMotor()
 
-  def decodeMotor(self, motorActivation):
-    raise NotImplementedError
+
+  def decodeMotor(self):
+    idx = self.bm.motor.argmax()
+    return self.motorValues[idx]
 
 
 
@@ -480,6 +485,37 @@ class PositionPredictionPlots(Plots):
     self.plt.subplot(rows, cols, 4)
     self.plt.ylabel("Predicted inactive columns")
     self.plt.plot(range(len(data)), data)
+
+    self.plt.draw()
+
+
+
+class PositionBehaviorPlots(Plots):
+
+  def __init__(self, field, vehicle, scorer, model):
+    super(PositionBehaviorPlots, self).__init__(field, vehicle, scorer, model)
+    self.activeSensorColumns = []
+
+
+  def update(self):
+    super(PositionBehaviorPlots, self).update()
+    self.activeSensorColumns.append(self.model.bm.activeSensorColumns)
+
+
+  def render(self):
+    self.plt.figure(1)
+    super(PositionBehaviorPlots, self).render()
+
+    self.plt.figure(2)
+    self.plt.clf()
+    rows = 1
+    cols = 1
+
+    data = self.activeSensorColumns
+    overlaps = [len(a & b) for a, b in zip(data[:-1], data[1:])]
+    self.plt.subplot(rows, cols, 1)
+    self.plt.ylabel("Active columns overlap with t-1")
+    self.plt.plot(range(len(overlaps)), overlaps)
 
     self.plt.draw()
 

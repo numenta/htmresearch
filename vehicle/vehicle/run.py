@@ -18,6 +18,7 @@ from vehicle.classes import (
  Graphics,
  Plots,
  PositionPredictionPlots,
+ PositionBehaviorPlots,
  Game)
 
 
@@ -26,7 +27,8 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('--plots', choices=[None,
                                           "default",
-                                          "positionPrediction"],
+                                          "positionPrediction",
+                                          "positionBehavior"],
                       default=None,
                       help="Enable plots")
   parser.add_argument('--disableGraphics', action='store_true',
@@ -106,6 +108,8 @@ if __name__ == "__main__":
   plots = None
   if args.plots == "positionPrediction":
     plots = PositionPredictionPlots(field, vehicle, scorer, model)
+  if args.plots == "positionBehavior":
+    plots = PositionBehaviorPlots(field, vehicle, scorer, model)
   if args.plots == "default":
     plots = Plots(field, vehicle, scorer, model)
 

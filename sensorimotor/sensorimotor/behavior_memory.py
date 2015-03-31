@@ -21,9 +21,12 @@
 
 import numpy
 
-# DEBUG
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+
+
+
+DEBUG = False
 
 
 
@@ -65,9 +68,13 @@ class BehaviorMemory(object):
                                               self.numSensorColumns,
                                               self.numCellsPerSensorColumn])
 
-    # DEBUG
-    plt.ion()
-    plt.show()
+    self.activeMotorColumns = set()
+    self.activeSensorColumns = set()
+    self.activeGoalColumns = set()
+
+    if DEBUG:
+      plt.ion()
+      plt.show()
 
 
   @staticmethod
@@ -95,6 +102,10 @@ class BehaviorMemory(object):
 
 
   def compute(self, activeMotorColumns, activeSensorColumns, activeGoalColumns):
+    self.activeMotorColumns = activeMotorColumns
+    self.activeSensorColumns = activeSensorColumns
+    self.activeGoalColumns = activeGoalColumns
+
     motorPattern = self._makeArray(activeMotorColumns, self.numMotorColumns)
     sensorPattern = self._makeArray(activeSensorColumns, self.numSensorColumns)
 
@@ -113,16 +124,16 @@ class BehaviorMemory(object):
       self._reinforceBehaviorToMotor()
       self._reinforceMotorToBehavior()
 
-      # DEBUG
-      plt.clf()
-      plt.figure(1)
-      # numBehaviorCells = self.numSensorColumns * self.numCellsPerSensorColumn
-      # plt.imshow(self.goalToBehavior.reshape(self.numGoalCells, numBehaviorCells), cmap=cm.Greys, interpolation="nearest")
-      # plt.imshow(self.activeBehavior, cmap=cm.Greys, interpolation="nearest")
-      # plt.imshow(self.learningBehavior, cmap=cm.Greys, interpolation="nearest")
-      # plt.imshow(self.behaviorToMotor.reshape(self.numSensorColumns, self.numCellsPerSensorColumn * self.numMotorCells), cmap=cm.Greys, interpolation="nearest")
-      # plt.imshow(self.motorToBehavior.reshape(self.numCellsPerSensorColumn * self.numMotorCells, self.numSensorColumns), cmap=cm.Greys, interpolation="nearest")
-      plt.draw()
+      if DEBUG:
+        plt.clf()
+        plt.figure(1)
+        numBehaviorCells = self.numSensorColumns * self.numCellsPerSensorColumn
+        plt.imshow(self.goalToBehavior.reshape(self.numGoalCells, numBehaviorCells), cmap=cm.Greys, interpolation="nearest")
+        # plt.imshow(self.activeBehavior, cmap=cm.Greys, interpolation="nearest")
+        # plt.imshow(self.learningBehavior, cmap=cm.Greys, interpolation="nearest")
+        # plt.imshow(self.behaviorToMotor.reshape(self.numSensorColumns, self.numCellsPerSensorColumn * self.numMotorCells), cmap=cm.Greys, interpolation="nearest")
+        # plt.imshow(self.motorToBehavior.reshape(self.numCellsPerSensorColumn * self.numMotorCells, self.numSensorColumns), cmap=cm.Greys, interpolation="nearest")
+        plt.draw()
 
 
   def _reinforceGoalToBehavior(self):
