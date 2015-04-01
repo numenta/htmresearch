@@ -71,7 +71,7 @@ if __name__ == "__main__":
     vehicle = HumanVehicle(field, sensor, motor, startPosition=startPosition)
   if args.vehicle == "random":
     vehicle = RandomVehicle(field, sensor, motor, startPosition=startPosition,
-                            motorValues=[-1, 0, 1])
+                            motorValues=range(-3, 3+1))
   if args.vehicle == "loop":
     vehicle = LoopVehicle(field, sensor, motor, startPosition=startPosition,
                           motorValues=[0, -1, 0, 1, 0, 1, 0, -1])
@@ -91,10 +91,7 @@ if __name__ == "__main__":
       "permanenceDecrement": 0.1,
     })
   elif args.model == "positionBehavior":
-    motorValues = [-1, 0, 1]
-    if args.vehicle == "human":
-      motorValues = range(-4, 4+1)
-    model = PositionBehaviorModel(motorValues=motorValues,
+    model = PositionBehaviorModel(motorValues=vehicle.motorValues,
                                   bmParams={
       "numSensorColumns": 1024,
       "numCellsPerSensorColumn": 16
