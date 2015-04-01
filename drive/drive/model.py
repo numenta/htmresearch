@@ -62,7 +62,7 @@ class PositionPredictionModel(Model):
 class PositionBehaviorModel(Model):
 
   def __init__(self, motorValues=range(-4, 4+1),
-               sparsity=0.02, encoderResolution=0.1, bmParams=None):
+               sparsity=0.02, encoderResolution=0.5, bmParams=None):
     super(PositionBehaviorModel, self).__init__(motorValues=motorValues)
     self.encoderResolution = encoderResolution
     bmParams = bmParams or {}
