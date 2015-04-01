@@ -68,7 +68,8 @@ if __name__ == "__main__":
 
   startPosition = field.width / 2
   if args.vehicle == "human":
-    vehicle = HumanVehicle(field, sensor, motor, startPosition=startPosition)
+    vehicle = HumanVehicle(field, sensor, motor, startPosition=startPosition,
+                           motorValues=range(-4, 4+1))
   if args.vehicle == "random":
     vehicle = RandomVehicle(field, sensor, motor, startPosition=startPosition,
                             motorValues=range(-3, 3+1))

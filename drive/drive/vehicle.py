@@ -4,10 +4,13 @@ import random
 
 class Vehicle(object):
 
-  def __init__(self, field, sensor, motor, startPosition=0):
+  def __init__(self, field, sensor, motor,
+               motorValues=range(-4, 4+1),
+               startPosition=0):
     self.field = field
     self.sensor = sensor
     self.motor = motor
+    self.motorValues = motorValues
 
     self.position = startPosition
     self.distance = 0
@@ -50,21 +53,15 @@ class HumanVehicle(Vehicle):
   def move(self):
     if self.graphics.currentKey is not None:
       key = self.graphics.currentKey - 48
-      if key >= 1 and key <= 9:
-        return key - 5
+      motorValue = key - 5
+      if motorValue in self.motorValues:
+        return motorValue
 
     return 0
 
 
 
 class RandomVehicle(Vehicle):
-
-  def __init__(self, field, sensor, motor, startPosition=0,
-               motorValues=range(-4, 4+1)):
-    super(RandomVehicle, self).__init__(field, sensor, motor,
-                                        startPosition=startPosition)
-    self.motorValues = motorValues
-
 
   def move(self):
     return random.choice(self.motorValues)
