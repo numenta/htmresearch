@@ -32,7 +32,7 @@ class BehaviorMemory(object):
                goalToBehaviorLearningRate=0.3,
                behaviorToMotorLearningRate=0.3,
                motorToBehaviorLearningRate=0.3,
-               behaviorDecayRate=0.33):
+               behaviorDecayRate=0.75):
     self.numMotorColumns = numMotorColumns
     self.numSensorColumns = numSensorColumns
     self.numCellsPerSensorColumn = numCellsPerSensorColumn
