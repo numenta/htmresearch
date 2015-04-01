@@ -42,6 +42,7 @@ class Graphics(object):
     self.renderBackground()
     self.renderRoad()
     self.renderVehicle()
+    self.renderGoal()
 
     self.pygame.display.flip()
 
@@ -76,6 +77,14 @@ class Graphics(object):
       self.pygame.draw.rect(self.screen,
                             color,
                             self.pygame.Rect(x, self.size[1] - y, w, 2))
+
+
+  def renderGoal(self):
+    goal = self.model.currentGoalValue
+    if goal is not None:
+      color = (0, 0, 255)
+      x = self._scale(goal)
+      self.pygame.draw.line(self.screen, color, (x, 0), (x, self.size[1]))
 
 
   def _scale(self, x):
