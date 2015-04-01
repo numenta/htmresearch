@@ -19,6 +19,8 @@ class Game(object):
     self.plotEvery = plotEvery
     self.manualRun = manualRun
 
+    self.plotsEnabled = True
+
 
   def run(self):
     i = 0
@@ -46,13 +48,13 @@ class Game(object):
         if self.plots is not None:
           self.plots.update()
 
-          if i % self.plotEvery == 0:
+          if i % self.plotEvery == 0 and self.plotsEnabled:
             self.plots.render()
 
         i += 1
       except KeyboardInterrupt:
         print "Paused."
-        key = raw_input("Enter a command [(q)uit, (g)oal]: ")
+        key = raw_input("Enter a command [(q)uit, (g)oal, (p)lots-toggle]: ")
 
         if key == "q":
           break
@@ -62,5 +64,7 @@ class Game(object):
           except ValueError:
             self.goal = None
           print "Set new goal:", self.goal
+        elif key == "p":
+          self.plotsEnabled = not self.plotsEnabled
 
         print "Resuming..."
