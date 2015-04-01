@@ -32,7 +32,7 @@ class BehaviorMemory(object):
                goalToBehaviorLearningRate=0.3,
                behaviorToMotorLearningRate=0.3,
                motorToBehaviorLearningRate=0.3,
-               behaviorDecayRate=0.75):
+               behaviorDecayRate=0.10):
     self.numMotorColumns = numMotorColumns
     self.numSensorColumns = numSensorColumns
     self.numCellsPerSensorColumn = numCellsPerSensorColumn
@@ -75,7 +75,7 @@ class BehaviorMemory(object):
 
   @staticmethod
   def _initWeights(shape):
-    weights = numpy.random.normal(0.5, 0.5, shape)
+    weights = numpy.random.normal(0.5, 0.3, shape)
     weights[weights < 0] = 0
     weights[weights > 1] = 1
 
@@ -176,7 +176,7 @@ class BehaviorMemory(object):
 
   def _computeLearningBehavior(self, learningBehavior, activeBehavior):
     """Note: Modifies `learningBehavior` (for performance)"""
-    learningBehavior = learningBehavior * self.behaviorDecayRate
+    learningBehavior = learningBehavior * (1 - self.behaviorDecayRate)
     learningBehavior += activeBehavior
     return learningBehavior
 
