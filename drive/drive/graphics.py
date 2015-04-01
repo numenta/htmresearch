@@ -11,6 +11,8 @@ class Graphics(object):
     self.pygame = pygame
 
     self.currentKey = None
+    self.currentLeftClick = None
+    self.currentRightClick = None
     self.screen = None
 
     self.setup()
@@ -23,10 +25,17 @@ class Graphics(object):
 
   def update(self):
     self.currentKey = None
+    self.currentLeftClick = None
+    self.currentRightClick = None
 
     for event in self.pygame.event.get():
       if event.type == self.pygame.KEYDOWN:
         self.currentKey = event.key
+      elif event.type == self.pygame.MOUSEBUTTONDOWN:
+        if event.button == 1:
+          self.currentLeftClick = event.pos
+        elif event.button == 3:
+          self.currentRightClick = event.pos
 
 
   def render(self):

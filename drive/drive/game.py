@@ -30,8 +30,15 @@ class Game(object):
           self.graphics.update()
           self.graphics.render()
 
-        if self.manualRun and self.vehicle.graphics.currentKey is None:
+        if self.manualRun and self.graphics.currentKey is None:
           continue
+
+        if self.graphics is not None:
+          if self.graphics.currentLeftClick is not None:
+            posX = float(self.graphics.currentLeftClick[0])
+            self.setGoal(posX / self.graphics.size[0] * self.field.width)
+          if self.graphics.currentRightClick is not None:
+            self.setGoal(None)
 
         self.vehicle.tick()
         self.scorer.update()
@@ -58,13 +65,20 @@ class Game(object):
 
         if key == "q":
           break
+
         elif key == "g":
           try:
-            self.goal = int(raw_input("Enter new goal (non-number will be None): "))
+            goal = int(raw_input("Enter new goal (non-number will be None): "))
           except ValueError:
-            self.goal = None
-          print "Set new goal:", self.goal
+            goal = None
+          self.setGoal(goal)
+
         elif key == "p":
           self.plotsEnabled = not self.plotsEnabled
 
         print "Resuming..."
+
+
+  def setGoal(self, goal):
+    self.goal = goal
+    print "Set new goal: ", self.goal
