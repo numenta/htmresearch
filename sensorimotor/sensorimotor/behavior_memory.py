@@ -89,12 +89,18 @@ class BehaviorMemory(object):
     return arr
 
 
-  @staticmethod
-  def _reinforce(weights, active, learningRate):
+  @classmethod
+  def _reinforce(cls, weights, active, learningRate):
     delta = active * learningRate
-    total = weights.sum()
-    weights += delta
-    weights /= (weights.sum() / total)
+    cls._addAndNormalize(weights, delta)
+
+
+  @staticmethod
+  def _addAndNormalize(numbers, delta):
+    total = numbers.sum()
+    numbers += delta
+    numbers /= (numbers.sum() / total)
+    return numbers
 
 
   def compute(self, activeMotorColumns, activeSensorColumns, activeGoalColumns):
@@ -178,6 +184,7 @@ class BehaviorMemory(object):
     """Note: Modifies `learningBehavior` (for performance)"""
     learningBehavior = learningBehavior * (1 - self.behaviorDecayRate)
     learningBehavior += activeBehavior
+    numpy.clip(learningBehavior, 0, 1, out=learningBehavior)
     return learningBehavior
 
 
