@@ -36,7 +36,7 @@ if __name__ == "__main__":
                                           "positionBehavior"],
                       default="positionBehavior")
   parser.add_argument('--fieldWidth', type=int,
-                      default=100)
+                      default=50)
   parser.add_argument('--sensorNoise', type=float,
                       default=0)
   parser.add_argument('--motorNoise', type=float,
@@ -44,7 +44,7 @@ if __name__ == "__main__":
   parser.add_argument('--goal', type=float,
                       default=None)
   parser.add_argument('--plotEvery', type=int,
-                      default=25)
+                      default=1)
   parser.add_argument('--manualRun', action='store_true',
                       help="Wait for input on each timestep")
 
