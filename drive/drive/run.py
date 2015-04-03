@@ -55,7 +55,7 @@ if __name__ == "__main__":
   if args.road == "straight":
     road = StraightRoad()
   elif args.road == "zigzag":
-    road = ZigZagRoad()
+    road = ZigZagRoad(width=args.fieldWidth / 4)
 
   field = Field(road, width=args.fieldWidth)
 
