@@ -6,7 +6,7 @@ from drive.road import StraightRoad, ZigZagRoad
 from drive.field import Field
 from drive.vehicle import HumanVehicle, RandomVehicle, LoopVehicle
 from drive.sensor import PositionSensor
-from drive.motor import AccelerationMotor, PositionMotor
+from drive.motor import PositionMotor, AccelerationMotor, JerkMotor
 from drive.scorer import StayOnRoadScorer
 from drive.model import PositionPredictionModel, PositionBehaviorModel
 from drive.logs import Logs
@@ -26,8 +26,8 @@ if __name__ == "__main__":
                       help="Enable plots")
   parser.add_argument('--disableGraphics', action='store_true',
                       help="Disable graphics")
-  parser.add_argument('--motor', choices=["acceleration", "position"],
-                      default="acceleration")
+  parser.add_argument('--motor', choices=["position", "acceleration", "jerk"],
+                      default="jerk")
   parser.add_argument('--road', choices=["straight", "zigzag"],
                       default="zigzag")
   parser.add_argument('--vehicle', choices=["human", "random", "loop"],
@@ -61,10 +61,12 @@ if __name__ == "__main__":
   sensor = PositionSensor(noise=sensorNoise)
 
   motorNoise = (0, args.motorNoise)
-  if args.motor == "acceleration":
-    motor = AccelerationMotor(noise=motorNoise)
-  elif args.motor == "position":
+  if args.motor == "position":
     motor = PositionMotor(noise=motorNoise)
+  elif args.motor == "acceleration":
+    motor = AccelerationMotor(noise=motorNoise, frictionCoefficient=0.1)
+  elif args.motor == "jerk":
+    motor = JerkMotor(noise=motorNoise, frictionCoefficient=0.1, scale=0.05)
 
   startPosition = field.width / 2
   if args.vehicle == "human":

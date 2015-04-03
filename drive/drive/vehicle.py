@@ -15,6 +15,8 @@ class Vehicle(object):
     self.position = startPosition
     self.distance = 0
     self.velocity = 0
+    self.acceleration = 0
+    self.jerk = 0
 
     self.sensorValue = None
     self.motorValue = None
