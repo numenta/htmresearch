@@ -2,7 +2,7 @@ class Game(object):
 
   def __init__(self, field, vehicle, scorer, model, goal=None,
                logs=None, plots=None, graphics=None,
-               plotEvery=25,
+               plotEvery=25, plotsEnabled=True,
                manualRun=False):
     self.field = field
     self.vehicle = vehicle
@@ -19,7 +19,7 @@ class Game(object):
     self.plotEvery = plotEvery
     self.manualRun = manualRun
 
-    self.plotsEnabled = True
+    self.plotsEnabled = plotsEnabled
 
 
   def run(self):

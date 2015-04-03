@@ -26,6 +26,8 @@ if __name__ == "__main__":
                       help="Enable plots")
   parser.add_argument('--disableGraphics', action='store_true',
                       help="Disable graphics")
+  parser.add_argument('--hidePlots', action='store_true',
+                      help="Hide plots on startup")
   parser.add_argument('--motor', choices=["position", "acceleration", "jerk"],
                       default="jerk")
   parser.add_argument('--road', choices=["straight", "zigzag"],
@@ -121,7 +123,7 @@ if __name__ == "__main__":
 
   game = Game(field, vehicle, scorer, model, goal=args.goal,
               logs=logs, plots=plots, graphics=graphics,
-              plotEvery=args.plotEvery,
+              plotEvery=args.plotEvery, plotsEnabled=not args.hidePlots,
               manualRun=args.manualRun)
 
   if args.vehicle == "human":
