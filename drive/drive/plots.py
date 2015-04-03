@@ -133,8 +133,7 @@ class PositionBehaviorPlots(Plots):
     data = self.activeSensorColumns
     overlaps = [len(a & b) for a, b in zip(data[:-1], data[1:])]
     self.plt.subplot(rows, cols, 1)
-    self.plt.title("Active columns overlap with t-1")
-    self.plt.plot(range(len(overlaps)), overlaps)
+    self._plot(overlaps, "Active columns overlap with t-1")
 
     self.plt.subplot(rows, cols, 2)
     self.plt.title("Goal")
