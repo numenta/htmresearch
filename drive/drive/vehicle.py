@@ -65,8 +65,33 @@ class HumanVehicle(Vehicle):
 
 class RandomVehicle(Vehicle):
 
+
+  def __init__(self, field, sensor, motor,
+               motorValues=range(-4, 4+1),
+               startPosition=0,
+               motorProbabilities=None):
+    super(RandomVehicle, self).__init__(field, sensor, motor,
+                                        motorValues=motorValues,
+                                        startPosition=startPosition)
+    self.motorProbabilities = motorProbabilities
+
+
   def move(self):
-    return random.choice(self.motorValues)
+    if self.motorProbabilities is None:
+      return random.choice(self.motorValues)
+    else:
+      assert len(self.motorValues) == len(self.motorProbabilities)
+      total = sum(self.motorProbabilities)
+      assert total == 1.0
+
+      r = random.uniform(0, total)
+      upto = 0
+
+      for i in range(len(self.motorValues)):
+        p = self.motorProbabilities[i]
+        if upto + p > r:
+          return self.motorValues[i]
+        upto += p
 
 
 
