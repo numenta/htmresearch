@@ -2,6 +2,7 @@ class Game(object):
 
   def __init__(self, field, vehicle, scorer, model, goal=None,
                logs=None, plots=None, graphics=None,
+               runSpeed=1.0,
                plotEvery=25, plotsEnabled=True,
                manualRun=False):
     self.field = field
@@ -16,6 +17,7 @@ class Game(object):
     self.logs = logs
     self.graphics = graphics
 
+    self.runSpeed = runSpeed
     self.plotEvery = plotEvery
     self.manualRun = manualRun
 
@@ -24,14 +26,12 @@ class Game(object):
 
   def run(self):
     i = 0
+    t = 0
     while True:
       try:
         if self.graphics is not None:
           self.graphics.update()
           self.graphics.render()
-
-        if self.manualRun and self.graphics.currentKey is None:
-          continue
 
         if self.graphics is not None:
           if self.graphics.currentLeftClick is not None:
@@ -39,6 +39,14 @@ class Game(object):
             self.setGoal(posX / self.graphics.size[0] * self.field.width)
           if self.graphics.currentRightClick is not None:
             self.setGoal(None)
+
+        if self.manualRun and self.graphics.currentKey is None:
+          continue
+
+        t += self.runSpeed
+        if t < 1 and not self.manualRun:
+          continue
+        t = 0
 
         self.vehicle.tick()
         self.scorer.update()
@@ -61,7 +69,8 @@ class Game(object):
         i += 1
       except KeyboardInterrupt:
         print "Paused."
-        key = raw_input("Enter a command [(q)uit, (g)oal, (p)lots-toggle]: ")
+        key = raw_input("Enter a command "
+                        "[(q)uit, (g)oal, (p)lots-toggle, (r)un-speed]: ")
 
         if key == "q":
           break
@@ -75,6 +84,13 @@ class Game(object):
 
         elif key == "p":
           self.plotsEnabled = not self.plotsEnabled
+
+        elif key == "r":
+          try:
+            speed = float(raw_input("Enter new run speed (1.0 is highest): "))
+            self.runSpeed = speed
+          except ValueError:
+            pass
 
         print "Resuming..."
 

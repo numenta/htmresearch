@@ -45,6 +45,9 @@ if __name__ == "__main__":
                       default=0)
   parser.add_argument('--goal', type=float,
                       default=None)
+  parser.add_argument('--runSpeed', type=float,
+                      default=1.0,
+                      help="How fast to run graphics (1.0 is highest)")
   parser.add_argument('--plotEvery', type=int,
                       default=1)
   parser.add_argument('--manualRun', action='store_true',
@@ -123,6 +126,7 @@ if __name__ == "__main__":
 
   game = Game(field, vehicle, scorer, model, goal=args.goal,
               logs=logs, plots=plots, graphics=graphics,
+              runSpeed=args.runSpeed,
               plotEvery=args.plotEvery, plotsEnabled=not args.hidePlots,
               manualRun=args.manualRun)
 
