@@ -208,14 +208,10 @@ class BehaviorMemory(object):
     activity = numpy.dot(goal, self.goalToBehaviorFlat())
     activity = activity.reshape([self.numSensorColumns,
                                 self.numCellsPerSensorColumn])
-    winnerCells = numpy.argmax(activity, axis=1)
-
-    behavior = numpy.zeros([self.numSensorColumns,
-                            self.numCellsPerSensorColumn])
+    behavior = numpy.zeros(activity.shape)
 
     for column in sensorPattern.nonzero()[0]:
-      winnerCell = winnerCells[column]
-      behavior[column][winnerCell] = 1
+      behavior[column][:] = activity[column]
 
     return behavior
 
