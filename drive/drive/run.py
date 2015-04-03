@@ -97,7 +97,11 @@ if __name__ == "__main__":
     model = PositionBehaviorModel(motorValues=vehicle.motorValues,
                                   bmParams={
       "numSensorColumns": 1024,
-      "numCellsPerSensorColumn": 16
+      "numCellsPerSensorColumn": 16,
+      "goalToBehaviorLearningRate": 0.3,
+      "behaviorToMotorLearningRate": 0.3,
+      "motorToBehaviorLearningRate": 0.3,
+      "behaviorDecayRate": 0.10
     })
 
   plots = None
