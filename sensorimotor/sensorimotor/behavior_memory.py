@@ -181,11 +181,18 @@ class BehaviorMemory(object):
 
 
   def _computeLearningBehavior(self, learningBehavior, activeBehavior):
-    """Note: Modifies `learningBehavior` (for performance)"""
-    learningBehavior = learningBehavior * (1 - self.behaviorDecayRate)
-    learningBehavior += activeBehavior
-    numpy.clip(learningBehavior, 0, 1, out=learningBehavior)
-    return learningBehavior
+    behavior = learningBehavior * (1 - self.behaviorDecayRate)
+    behavior += activeBehavior
+
+    winnerCells = behavior.argmax(axis=1)
+    sparseBehavior = numpy.zeros(behavior.shape)
+
+    for column in range(len(winnerCells)):
+      winnerCell = winnerCells[column]
+      sparseBehavior[column][winnerCell] = behavior[column][winnerCell]
+
+    numpy.clip(sparseBehavior, 0, 1, out=sparseBehavior)
+    return sparseBehavior
 
 
   def _reinforceBehaviorToMotor(self, behavior, motor):
