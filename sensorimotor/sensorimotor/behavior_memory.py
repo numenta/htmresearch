@@ -215,6 +215,7 @@ class BehaviorMemory(object):
 
 
   def _computeBehaviorFromGoal(self, goal, sensorPattern):
+    """TODO: Rename to _reconstruct..."""
     activity = numpy.dot(goal, self.goalToBehaviorFlat().transpose())
     activity = activity.reshape([self.numSensorColumns,
                                 self.numCellsPerSensorColumn])
@@ -223,11 +224,15 @@ class BehaviorMemory(object):
     for column in sensorPattern.nonzero()[0]:
       behavior[column][:] = activity[column]
 
+    behavior /= behavior.max()
     return behavior
 
 
   def _computeMotorFromBehavior(self, behavior):
+    """TODO: Rename to _reconstruct..."""
     motor = numpy.dot(behavior.flatten(),
                       self.behaviorToMotorFlat().transpose())
     motor /= self.motor.sum()
+
+    motor /= motor.max()
     return motor
