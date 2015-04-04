@@ -51,9 +51,9 @@ class BehaviorMemory(object):
                                        self.numCellsPerSensorColumn])
     self.goal = numpy.zeros(self.numGoalCells)
 
-    self.goalToBehavior = self._initWeights([self.numGoalCells,
-                                             self.numSensorColumns,
-                                             self.numCellsPerSensorColumn])
+    self.goalToBehavior = self._initWeights([self.numSensorColumns,
+                                             self.numCellsPerSensorColumn,
+                                             self.numGoalCells])
     self.behaviorToMotor = self._initWeights([self.numSensorColumns,
                                               self.numCellsPerSensorColumn,
                                               self.numMotorCells])
@@ -142,8 +142,8 @@ class BehaviorMemory(object):
 
 
   def goalToBehaviorFlat(self):
-    return self.goalToBehavior.reshape([self.numGoalCells,
-                                        self.numBehaviorCells()])
+    return self.goalToBehavior.reshape([self.numBehaviorCells(),
+                                        self.numGoalCells])
 
 
   def motorToBehaviorFlat(self):
@@ -157,11 +157,12 @@ class BehaviorMemory(object):
 
 
   def _reinforceGoalToBehavior(self, goal, behavior):
-    for column in goal.nonzero()[0]:
-      weights = self.goalToBehavior[column]
-      self._reinforce(weights,
-                      behavior,
-                      self.goalToBehaviorLearningRate)
+    goalToBehaviorFlat = self.goalToBehaviorFlat()
+    for cell in numpy.flatnonzero(behavior):
+      weights = goalToBehaviorFlat[cell]
+      idx = numpy.unravel_index(cell, behavior.shape)
+      learningRate = self.goalToBehaviorLearningRate * behavior[idx]
+      self._reinforce(weights, goal, learningRate)
 
 
   def _computeBehaviorFromMotor(self, motor, sensorPattern):
@@ -180,7 +181,8 @@ class BehaviorMemory(object):
     return behavior
 
 
-  def _computeLearningBehavior(self, learningBehavior, activeBehavior):
+  def _computeLearningBehavior(self, learningBehavior, activeBehavior,
+                               minWeight=0.001):
     behavior = learningBehavior * (1 - self.behaviorDecayRate)
     behavior += activeBehavior
 
@@ -192,6 +194,7 @@ class BehaviorMemory(object):
       sparseBehavior[column][winnerCell] = behavior[column][winnerCell]
 
     numpy.clip(sparseBehavior, 0, 1, out=sparseBehavior)
+    sparseBehavior[sparseBehavior < minWeight] = 0
     return sparseBehavior
 
 
@@ -212,7 +215,7 @@ class BehaviorMemory(object):
 
 
   def _computeBehaviorFromGoal(self, goal, sensorPattern):
-    activity = numpy.dot(goal, self.goalToBehaviorFlat())
+    activity = numpy.dot(goal, self.goalToBehaviorFlat().transpose())
     activity = activity.reshape([self.numSensorColumns,
                                 self.numCellsPerSensorColumn])
     behavior = numpy.zeros(activity.shape)
