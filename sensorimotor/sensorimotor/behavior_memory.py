@@ -75,9 +75,8 @@ class BehaviorMemory(object):
 
   @staticmethod
   def _initWeights(shape):
-    weights = numpy.random.normal(0.5, 0.3, shape)
-    weights[weights < 0] = 0
-    weights[weights > 1] = 1
+    weights = numpy.random.normal(0.2, 0.1, shape)
+    numpy.clip(weights, 0, 1, out=weights)
 
     return weights
 
@@ -92,13 +91,14 @@ class BehaviorMemory(object):
   @classmethod
   def _reinforce(cls, weights, active, learningRate):
     delta = active * learningRate
-    cls._addAndNormalize(weights, delta)
+    return cls._addAndNormalize(weights, delta)
 
 
   @staticmethod
   def _addAndNormalize(numbers, delta):
     total = numbers.sum()
     numbers += delta
+    numpy.clip(numbers, 0, 1, out=numbers)
     numbers /= (numbers.sum() / total)
     return numbers
 
