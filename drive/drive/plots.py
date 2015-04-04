@@ -115,10 +115,33 @@ class PositionBehaviorPlots(Plots):
     super(PositionBehaviorPlots, self).__init__(field, vehicle, scorer, model)
     self.activeSensorColumns = []
 
+    self.activeBehavior = self.model.bm.activeBehavior
+    self.lastActiveBehavior = self.model.bm.activeBehavior
+    self.motor = self.model.bm.motor
+    self.lastMotor = self.model.bm.motor
+
+    self.reconstructedBehaviorOverlap = []
+    self.reconstructedMotorOverlap = []
+
 
   def update(self):
     super(PositionBehaviorPlots, self).update()
     self.activeSensorColumns.append(self.model.bm.activeSensorColumns)
+
+    self.lastActiveBehavior = self.activeBehavior
+    self.activeBehavior = self.model.bm.activeBehavior
+    self.lastMotor = self.motor
+    self.motor = self.model.bm.motor
+
+    reconstructedBehavior = self.model.bm.reconstructedBehavior
+    behaviorOverlap = (self.lastActiveBehavior * reconstructedBehavior).sum()
+    behaviorOverlap /= reconstructedBehavior.sum()
+    self.reconstructedBehaviorOverlap.append(behaviorOverlap)
+
+    reconstructedMotor = self.model.bm.reconstructedMotor
+    motorOverlap = (self.lastMotor * reconstructedMotor).sum()
+    motorOverlap /= reconstructedMotor.sum()
+    self.reconstructedMotorOverlap.append(motorOverlap)
 
 
   def render(self):
@@ -127,7 +150,7 @@ class PositionBehaviorPlots(Plots):
 
     self.plt.figure(2)
     self.plt.clf()
-    rows = 7
+    rows = 9
     cols = 1
 
     data = self.activeSensorColumns
@@ -158,6 +181,14 @@ class PositionBehaviorPlots(Plots):
     self.plt.subplot(rows, cols, 7)
     self.plt.title("Reconstructed motor")
     self._imshow(self._imageData(self.model.bm.reconstructedMotor))
+
+    self.plt.subplot(rows, cols, 8)
+    self._plot(self.reconstructedBehaviorOverlap,
+               "Reconstructed behavior overlap")
+
+    self.plt.subplot(rows, cols, 9)
+    self._plot(self.reconstructedMotorOverlap,
+               "Reconstructed motor overlap")
 
     self.plt.draw()
 
