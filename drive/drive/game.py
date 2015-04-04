@@ -67,6 +67,10 @@ class Game(object):
             self.plots.render()
 
         i += 1
+
+        if i % 100 == 0:
+          print "{0} iterations completed.".format(i)
+
       except KeyboardInterrupt:
         print "Paused."
         key = raw_input("Enter a command "
