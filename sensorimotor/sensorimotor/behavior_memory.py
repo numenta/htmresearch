@@ -75,7 +75,7 @@ class BehaviorMemory(object):
 
   @staticmethod
   def _initWeights(shape):
-    weights = numpy.random.normal(0.2, 0.1, shape)
+    weights = numpy.random.normal(0.1, 0.1, shape)
     numpy.clip(weights, 0, 1, out=weights)
 
     return weights
