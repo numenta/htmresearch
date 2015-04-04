@@ -54,12 +54,12 @@ class BehaviorMemory(object):
     self.goalToBehavior = self._initWeights([self.numSensorColumns,
                                              self.numCellsPerSensorColumn,
                                              self.numGoalCells])
-    self.behaviorToMotor = self._initWeights([self.numSensorColumns,
-                                              self.numCellsPerSensorColumn,
-                                              self.numMotorCells])
-    self.motorToBehavior = self._initWeights([self.numMotorCells,
+    self.behaviorToMotor = self._initWeights([self.numMotorCells,
                                               self.numSensorColumns,
                                               self.numCellsPerSensorColumn])
+    self.motorToBehavior = self._initWeights([self.numSensorColumns,
+                                              self.numCellsPerSensorColumn,
+                                              self.numMotorCells])
 
     # For debugging
     self.activeMotorColumns = set()
@@ -147,13 +147,13 @@ class BehaviorMemory(object):
 
 
   def motorToBehaviorFlat(self):
-    return self.motorToBehavior.reshape([self.numMotorCells,
-                                         self.numBehaviorCells()])
+    return self.motorToBehavior.reshape([self.numBehaviorCells(),
+                                         self.numMotorCells])
 
 
   def behaviorToMotorFlat(self):
-    return self.behaviorToMotor.reshape([self.numBehaviorCells(),
-                                         self.numMotorCells])
+    return self.behaviorToMotor.reshape([self.numMotorCells,
+                                         self.numBehaviorCells()])
 
 
   def _reinforceGoalToBehavior(self, goal, behavior):
@@ -166,7 +166,7 @@ class BehaviorMemory(object):
 
 
   def _computeBehaviorFromMotor(self, motor, sensorPattern):
-    activity = numpy.dot(motor, self.motorToBehaviorFlat())
+    activity = numpy.dot(motor, self.motorToBehaviorFlat().transpose())
     activity = activity.reshape([self.numSensorColumns,
                                 self.numCellsPerSensorColumn])
     winnerCells = numpy.argmax(activity, axis=1)
@@ -199,18 +199,18 @@ class BehaviorMemory(object):
 
 
   def _reinforceBehaviorToMotor(self, behavior, motor):
-    for cell in numpy.transpose(behavior.nonzero()):
-      weights = self.behaviorToMotor[cell[0], cell[1]]
+    for cell in motor.nonzero()[0]:
+      weights = self.behaviorToMotor[cell]
       self._reinforce(weights,
-                      motor,
+                      behavior,
                       self.behaviorToMotorLearningRate)
 
 
   def _reinforceMotorToBehavior(self, motor, behavior):
-    for cell in motor.nonzero()[0]:
-      weights = self.motorToBehavior[cell]
+    for cell in numpy.transpose(behavior.nonzero()):
+      weights = self.motorToBehavior[cell[0], cell[1]]
       self._reinforce(weights,
-                      behavior,
+                      motor,
                       self.motorToBehaviorLearningRate)
 
 
@@ -228,6 +228,6 @@ class BehaviorMemory(object):
 
   def _computeMotorFromBehavior(self, behavior):
     motor = numpy.dot(behavior.flatten(),
-                      self.behaviorToMotorFlat())
+                      self.behaviorToMotorFlat().transpose())
     motor /= self.motor.sum()
     return motor
