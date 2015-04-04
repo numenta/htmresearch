@@ -107,7 +107,7 @@ if __name__ == "__main__":
       "behaviorToMotorLearningRate": 0.3,
       "motorToBehaviorLearningRate": 0.3,
       "behaviorDecayRate": 0.10
-    })
+    }, encoderResolution=0.5)
 
   plots = None
   if args.plots == "positionPrediction":
