@@ -156,31 +156,32 @@ class PositionBehaviorPlots(Plots):
     data = self.activeSensorColumns
     overlaps = [len(a & b) for a, b in zip(data[:-1], data[1:])]
     self.plt.subplot(rows, cols, 1)
-    self._plot(overlaps, "Active columns overlap with t-1")
+    self._plot(overlaps,
+               "Active columns overlap with t-1")
 
     self.plt.subplot(rows, cols, 2)
-    self.plt.title("Goal")
-    self._imshow(self._imageData(self.model.bm.goal))
+    self._imshow(self._imageData(self.model.bm.goal),
+                 "Goal")
 
     self.plt.subplot(rows, cols, 3)
-    self.plt.title("Active behavior")
-    self._imshow(self.model.bm.activeBehavior.transpose())
+    self._imshow(self.model.bm.activeBehavior.transpose(),
+                 "Active behavior")
 
     self.plt.subplot(rows, cols, 4)
-    self.plt.title("Reconstructed behavior")
-    self._imshow(self.model.bm.reconstructedBehavior.transpose())
+    self._imshow(self.model.bm.reconstructedBehavior.transpose(),
+                 "Reconstructed behavior")
 
     self.plt.subplot(rows, cols, 5)
-    self.plt.title("Learning behavior")
-    self._imshow(self.model.bm.learningBehavior.transpose())
+    self._imshow(self.model.bm.learningBehavior.transpose(),
+                 "Learning behavior")
 
     self.plt.subplot(rows, cols, 6)
-    self.plt.title("Motor")
-    self._imshow(self.model.bm.motor.reshape([1, self.model.bm.motor.size]))
+    self._imshow(self.model.bm.motor.reshape([1, self.model.bm.motor.size]),
+                 "Motor")
 
     self.plt.subplot(rows, cols, 7)
-    self.plt.title("Reconstructed motor")
-    self._imshow(self._imageData(self.model.bm.reconstructedMotor))
+    self._imshow(self._imageData(self.model.bm.reconstructedMotor),
+                 "Reconstructed motor")
 
     self.plt.subplot(rows, cols, 8)
     self._plot(self.reconstructedBehaviorOverlap,
@@ -198,16 +199,16 @@ class PositionBehaviorPlots(Plots):
     cols = 1
 
     self.plt.subplot(rows, cols, 1)
-    self.plt.title("Goal to behavior connections")
-    self._imshow(self.model.bm.goalToBehaviorFlat())
+    self._imshow(self.model.bm.goalToBehaviorFlat(),
+                 "Goal to behavior connections")
 
     self.plt.subplot(rows, cols, 2)
-    self.plt.title("Behavior to motor connections")
-    self._imshow(self.model.bm.behaviorToMotorFlat())
+    self._imshow(self.model.bm.behaviorToMotorFlat(),
+                 "Behavior to motor connections")
 
     self.plt.subplot(rows, cols, 3)
-    self.plt.title("Motor to behavior connections")
-    self._imshow(self.model.bm.motorToBehaviorFlat())
+    self._imshow(self.model.bm.motorToBehaviorFlat(),
+                 "Motor to behavior connections")
 
     self.plt.draw()
 
@@ -216,7 +217,9 @@ class PositionBehaviorPlots(Plots):
   def _imageData(array):
     return array.reshape([1, array.size])
 
-  def _imshow(self, data):
+
+  def _imshow(self, data, title):
+    self.plt.title(title)
     self.plt.imshow(data,
                     cmap=self.cm.Greys,
                     interpolation="nearest",
