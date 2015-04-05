@@ -37,7 +37,7 @@ class Plots(object):
 
 
   def render(self):
-    rows = 4
+    rows = 3
     cols = 2
     self.plt.clf()
 
@@ -46,7 +46,7 @@ class Plots(object):
     self._plot(self.goalValues, "Goal")
 
     self.plt.subplot(rows, cols, 2)
-    self._plot(self.positions, "Position")
+    self._plot(self.scores, "Score")
 
     self.plt.subplot(rows, cols, 3)
     self._plot(self.sensorValues, "Sensor value")
