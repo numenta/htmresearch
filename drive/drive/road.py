@@ -41,12 +41,3 @@ class ZigZagRoad(Road):
     position = zigPosition + (separation * zigPercent)
 
     return (position, self.width)
-
-
-  @staticmethod
-  def containsVehicle(vehicle):
-    # TODO: Implement correctly
-    if vehicle.position > 50:
-      return True
-
-    return False
