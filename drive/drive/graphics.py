@@ -71,7 +71,7 @@ class Graphics(object):
         continue
 
       position, width = self.field.road.get(distance, self.field)
-      x = self._scale(float(position - width) / 2)
+      x = self._scale(position - float(width / 2))
       w = self._scale(width)
 
       self.pygame.draw.rect(self.screen,
