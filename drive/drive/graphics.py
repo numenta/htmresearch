@@ -13,6 +13,8 @@ class Graphics(object):
     self.currentKey = None
     self.currentLeftClick = None
     self.currentRightClick = None
+    self.paused = False
+
     self.screen = None
 
     self.setup()
@@ -27,6 +29,7 @@ class Graphics(object):
     self.currentKey = None
     self.currentLeftClick = None
     self.currentRightClick = None
+    self.paused = False
 
     for event in self.pygame.event.get():
       if event.type == self.pygame.KEYDOWN:
@@ -36,6 +39,8 @@ class Graphics(object):
           self.currentLeftClick = event.pos
         elif event.button == 3:
           self.currentRightClick = event.pos
+      elif event.type == self.pygame.QUIT:
+        self.paused = True
 
 
   def render(self):
@@ -43,6 +48,7 @@ class Graphics(object):
     self.renderRoad()
     self.renderVehicle()
     self.renderGoal()
+    self.renderPaused()
 
     self.pygame.display.flip()
 
@@ -85,6 +91,13 @@ class Graphics(object):
       color = (0, 0, 255)
       x = self._scale(goal)
       self.pygame.draw.line(self.screen, color, (x, 0), (x, self.size[1]))
+
+
+  def renderPaused(self):
+    if self.paused:
+      font = self.pygame.font.SysFont(None, 32)
+      label = font.render("Paused (see console)", 1, (255,255,255))
+      self.screen.blit(label, (100, 100))
 
 
   def _scale(self, x):
