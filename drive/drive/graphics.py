@@ -54,21 +54,23 @@ class Graphics(object):
 
 
   def renderBackground(self):
-    black = (0, 0, 0)
+    black = (85,98,112)
     self.screen.fill(black)
 
 
   def renderVehicle(self):
-    color = (0, 255, 0)
+    color = (232,74,95)
     x = self._scale(self.vehicle.position)
     y = float(self.size[1]) / 2
-    self.pygame.draw.rect(self.screen,
-                          color,
-                          self.pygame.Rect(x, y, 10, 10))
+    self.pygame.draw.polygon(self.screen,
+                             color,
+                             [(x, y),
+                              (x - 8, y + 15),
+                              (x + 8, y + 15)])
 
 
   def renderRoad(self):
-    color = (255, 0, 0)
+    color = (254,206,168)
 
     for y in range(self.size[1]):
       distance = self.vehicle.distance + y - float(self.size[1]) / 2
@@ -88,7 +90,7 @@ class Graphics(object):
   def renderGoal(self):
     goal = self.model.currentGoalValue
     if goal is not None:
-      color = (0, 0, 255)
+      color = (153,184,152)
       x = self._scale(goal)
       self.pygame.draw.line(self.screen, color, (x, 0), (x, self.size[1]))
 
