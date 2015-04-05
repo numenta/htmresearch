@@ -22,7 +22,7 @@ class StayOnRoadScorer(Scorer):
 
   def getChange(self):
     position, width = self.field.road.get(self.vehicle.distance, self.field)
-    left = float(position - width) / 2
+    left = position - float(width / 2)
     right = left + width
 
     if self.vehicle.position >= left and self.vehicle.position <= right:
