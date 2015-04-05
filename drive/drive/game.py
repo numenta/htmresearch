@@ -80,7 +80,7 @@ class Game(object):
       except KeyboardInterrupt:
         print "Paused."
         key = raw_input("Enter a command "
-                        "[(q)uit, set-(g)oal, (p)lots-toggle, (r)un-speed, (a)uto-goal]: ")
+                        "[(q)uit, set-(g)oal, (p)lots-toggle, (r)un-speed, (a)uto-goal-toggle]: ")
 
         if key == "q":
           break
@@ -103,7 +103,9 @@ class Game(object):
             pass
 
         elif key == "a":
-          self.autoGoal = True
+          self.autoGoal = not self.autoGoal
+          if not self.autoGoal:
+            self.setGoal(None)
 
         print "Resuming..."
 
