@@ -22,6 +22,7 @@ class Game(object):
     self.manualRun = manualRun
 
     self.plotsEnabled = plotsEnabled
+    self.autoGoal = False
 
 
   def run(self):
@@ -50,6 +51,11 @@ class Game(object):
 
         self.vehicle.tick()
         self.scorer.update()
+
+        if self.autoGoal:
+          position, _ = self.field.road.get(self.vehicle.distance, self.field)
+          self.setGoal(position)
+
         motorValue = self.model.tick(self.vehicle.sensorValue,
                                      self.vehicle.motorValue,
                                      goalValue=self.goal)
@@ -74,7 +80,7 @@ class Game(object):
       except KeyboardInterrupt:
         print "Paused."
         key = raw_input("Enter a command "
-                        "[(q)uit, (g)oal, (p)lots-toggle, (r)un-speed]: ")
+                        "[(q)uit, set-(g)oal, (p)lots-toggle, (r)un-speed, (a)uto-goal]: ")
 
         if key == "q":
           break
@@ -95,6 +101,9 @@ class Game(object):
             self.runSpeed = speed
           except ValueError:
             pass
+
+        elif key == "a":
+          self.autoGoal = True
 
         print "Resuming..."
 
