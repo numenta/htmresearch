@@ -37,8 +37,8 @@ class Plots(object):
 
 
   def render(self):
-    rows = 3
-    cols = 2
+    rows = 6
+    cols = 1
     self.plt.clf()
 
     self.plt.subplot(rows, cols, 1)
@@ -46,19 +46,19 @@ class Plots(object):
     self._plot(self.goalValues, "Goal")
 
     self.plt.subplot(rows, cols, 2)
-    self._plot(self.scores, "Score")
-
-    self.plt.subplot(rows, cols, 3)
     self._plot(self.sensorValues, "Sensor value")
 
-    self.plt.subplot(rows, cols, 4)
+    self.plt.subplot(rows, cols, 3)
     self._plot(self.sensorNoiseAmounts, "Sensor noise")
 
-    self.plt.subplot(rows, cols, 5)
+    self.plt.subplot(rows, cols, 4)
     self._plot(self.motorValues, "Motor value")
 
-    self.plt.subplot(rows, cols, 6)
+    self.plt.subplot(rows, cols, 5)
     self._plot(self.motorNoiseAmounts, "Motor noise")
+
+    self.plt.subplot(rows, cols, 6)
+    self._plot(self.scores, "Score")
 
     self.plt.draw()
 
