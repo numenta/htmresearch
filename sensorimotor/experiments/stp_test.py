@@ -26,8 +26,8 @@ import numpy
 
 from nupic.bindings.math import GetNTAReal
 
-from nupic.data.pattern_machine import PatternMachine
-from nupic.data.sequence_machine import SequenceMachine
+from nupic.data.generators.pattern_machine import PatternMachine
+from nupic.data.generators.sequence_machine import SequenceMachine
 
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
