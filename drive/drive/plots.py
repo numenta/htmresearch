@@ -12,7 +12,8 @@ class Plots(object):
     self.cm = cm
 
     from pylab import rcParams
-    rcParams['figure.figsize'] = 8, 14
+    rcParams.update({'figure.figsize': (8, 14)})
+    rcParams.update({'figure.autolayout': True})
 
     self.plt.ion()
     self.plt.show()
@@ -87,23 +88,19 @@ class PositionPredictionPlots(Plots):
     data = self.model.tm.mmGetTraceActiveColumns().data
     overlaps = [len(a & b) for a, b in zip(data[:-1], data[1:])]
     self.plt.subplot(rows, cols, 1)
-    self.plt.title("Active columns overlap with t-1")
-    self.plt.plot(range(len(overlaps)), overlaps)
+    self._plot(overlaps, "Active columns overlap with t-1")
 
     data = self.model.tm.mmGetTraceUnpredictedActiveColumns().makeCountsTrace().data
     self.plt.subplot(rows, cols, 2)
-    self.plt.title("Unpredicted active columns")
-    self.plt.plot(range(len(data)), data)
+    self._plot(data, "Unpredicted active columns")
 
     data = self.model.tm.mmGetTracePredictedActiveColumns().makeCountsTrace().data
     self.plt.subplot(rows, cols, 3)
-    self.plt.title("Predicted active columns")
-    self.plt.plot(range(len(data)), data)
+    self._plot(data, "Predicted active columns")
 
     data = self.model.tm.mmGetTracePredictedInactiveColumns().makeCountsTrace().data
     self.plt.subplot(rows, cols, 4)
-    self.plt.title("Predicted inactive columns")
-    self.plt.plot(range(len(data)), data)
+    self._plot(data, "Predicted inactive columns")
 
     self.plt.draw()
 
