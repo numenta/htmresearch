@@ -23,6 +23,8 @@ import numpy
 import csv
 from optparse import OptionParser
 import sys
+import os
+from prettytable import PrettyTable
 
 from sensorimotor.orphan_temporal_memory import OrphanTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
@@ -30,6 +32,9 @@ from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
 
 class MonitoredTemporalMemory(TemporalMemoryMonitorMixin, OrphanTemporalMemory): pass
 
+#########################################################################
+#
+# Sequence generation routines
 
 def letterSequence(letters, w=40):
   """
@@ -49,48 +54,7 @@ def getRandomVector(w=40, n=2048):
   return set(numpy.random.permutation(n)[0:w])
 
 
-def getNextSequenceChunk(it, w=40, n=2048):
-  """
-  Given an iteration index, returns a list of vectors to be appended to the
-  input stream, as well as a string label identifying the sequence
-  """
-  if it%20==3:
-    vecs = letterSequence("ABCDEF")
-    label="ABCDEF"
-  elif it%20==13:
-    vecs = letterSequence("GBIJKL")
-    label="GBIJKL"
-  else:
-    vecs= [getRandomVector(w, n)]
-    label="."
-
-  return vecs,label
-
-
-def getLowOrderSequenceChunk(it, w=40, n=2048):
-  """
-  Given an iteration index, returns a list of vectors to be appended to the
-  input stream, as well as a string label identifying the sequence
-  """
-  if it%10==3:
-    s = numpy.random.randint(3)
-    if s==0:
-      label="ABCDEF"
-      vecs = letterSequence(label)
-    elif s==1:
-      label="CBEAFD"
-      vecs = letterSequence(label)
-    else:
-      label="DABFEC"
-      vecs = letterSequence(label)
-  else:
-    vecs= [getRandomVector(w, n)]
-    label="."
-
-  return vecs,label
-
-
-def getHighOrderSequenceChunk(it, switchover = 1000, w=40, n=2048):
+def getHighOrderSequenceChunk(it, switchover=1000, w=40, n=2048):
   """
   Given an iteration index, returns a list of vectors to be appended to the
   input stream, as well as a string label identifying the sequence. This
@@ -111,7 +75,7 @@ def getHighOrderSequenceChunk(it, switchover = 1000, w=40, n=2048):
       elif s==3:
         label="WABCMN"
       else:
-        label="ZDABCE"
+        label="ZDBCAE"
     else:
       if s==0:
         label="XCBEAF"
@@ -131,6 +95,109 @@ def getHighOrderSequenceChunk(it, switchover = 1000, w=40, n=2048):
 
   return vecs,label
 
+def addNoise(vecs, percent=0.1, w=40, n=2048):
+  """
+  Add noise to the given sequence of vectors and return the modified  sequence.
+  A percentage of the input bits will be flipped from 0 to 1.
+  """
+  noisyVecs = []
+  for vec in vecs:
+    for v in vec:
+      print v
+
+  return noisyVecs
+
+
+
+#########################################################################
+#
+# Core experiment routines
+
+def computePredictionAccuracy(pac, pic):
+  """
+  Given a temporal memory instance return the prediction accuracy. The accuracy
+  is computed as 1 - (#correctly predicted cols / # predicted cols). The
+  accuracy is 0 if there were no predicted columns.
+  """
+  pcols = float(pac + pic)
+  if pcols == 0:
+    return 0.0
+  else:
+    return (pac / pcols)
+
+
+def runExperiment1(csvWriter, options):
+  numpy.random.seed(42)
+
+  tm = MonitoredTemporalMemory(minThreshold=20,
+                              activationThreshold=20,
+                              maxNewSynapseCount=40,
+                              cellsPerColumn=options.cells,
+                              learnOnOneCell = False,
+                              permanenceOrphanDecrement = 0.01,
+                              columnDimensions=(2048,),
+                              learningRadius=2048,
+                              initialPermanence=0.21,
+                              connectedPermanence=0.50,
+                              permanenceIncrement=0.10,
+                              permanenceDecrement=0.10,
+                              seed=42,
+                              )
+
+  printOptions(options, tm)
+
+  # Run the simulation using the given parameters
+  sequenceString = ""
+  i=0
+  while i < options.iterations:
+    if i%100==0:
+      print "i=",i
+
+    if options.simulation == "normal":
+      vecs,label = getHighOrderSequenceChunk(i, options.switchover)
+    else:
+      raise Exception("Unknown simulation: " + options.simulation)
+
+    sequenceString += label
+
+    for xi,vec in enumerate(vecs):
+      tm.compute(vec, learn=True)
+      i += 1
+
+
+  # Create CSV file with detailed trace of predictions, missed predictions,
+  # and accuracy
+  pac = tm.mmGetTracePredictedActiveColumns()
+  pic = tm.mmGetTracePredictedInactiveColumns()
+  upac = tm.mmGetTraceUnpredictedActiveColumns()
+
+  accuracies = numpy.zeros(len(pac.data))
+  am = 0
+  csvWriter.writerow(["time", "element", "pac", "pic", "upac", "a",
+                      "am", "accuracy","sum"])
+  for i,j in enumerate(pac.data):
+    if i>0:
+      # Compute instantaneous and average accuracy.
+      a = computePredictionAccuracy(len(j), len(pic.data[i]))
+
+      #  We compute an exponential plus a windowed average to get curve
+      #  looking nice and smooth for the paper.
+      am = 0.99*am + 0.01*a
+      accuracies[i] = am
+      i0 = max(0, i-60+1)
+      accuracy = numpy.mean(accuracies[i0:i+1])
+
+      row=[i, sequenceString[i],len(j),len(pic.data[i]),
+              len(upac.data[i]), a, am,
+              accuracy,
+              numpy.sum(accuracies[i0:i+1])]
+      csvWriter.writerow(row)
+      #print row
+
+
+#########################################################################
+#
+# Debugging routines
 
 def printSegment(tm, segment, connections):
   cell = connections.cellForSegment(segment)
@@ -147,135 +214,37 @@ def printSegment(tm, segment, connections):
   print
 
 
-def computePredictionAccuracy(pac, pic):
+def printTemporalMemory(tm):
   """
-  Given a temporal memory instance return the prediction accuracy. The accuracy
-  is computed as 1 - (#correctly predicted cols / # predicted cols). The
-  accuracy is 0 if there were no predicted columns.
+  Given an instance of OrphanTemporalMemory, print out the relevant parameters
   """
-  pcols = float(pac + pic)
-  if pcols == 0:
-    return 0.0
-  else:
-    return (pac / pcols)
+  table = PrettyTable(["Parameter name", "Value", ])
+
+  table.add_row(["columnDimensions", tm.columnDimensions])
+  table.add_row(["cellsPerColumn", tm.cellsPerColumn])
+  table.add_row(["activationThreshold", tm.activationThreshold])
+  table.add_row(["minThreshold", tm.minThreshold])
+  table.add_row(["maxNewSynapseCount", tm.maxNewSynapseCount])
+  table.add_row(["permanenceIncrement", tm.permanenceIncrement])
+  table.add_row(["permanenceDecrement", tm.permanenceDecrement])
+  table.add_row(["initialPermanence", tm.initialPermanence])
+  table.add_row(["connectedPermanence", tm.connectedPermanence])
+  table.add_row(["permanenceOrphanDecrement", tm.permanenceOrphanDecrement])
+  table.add_row(["learnOnOneCell", tm.learnOnOneCell])
+
+  print table.get_string().encode("utf-8")
 
 
-def testEverything():
-  """
-  Temporary - for debugging stuff.
-  """
-  print "Running"
-  numpy.random.seed(42)
-  tm = MonitoredTemporalMemory(minThreshold=30, activationThreshold=30,
-                              maxNewSynapseCount=40, cellsPerColumn=5,
-                              learnOnOneCell = False,
-                              permanenceOrphanDecrement = 0.005)
-
-  inputVecs = []
-  for i in range(4):
-    v = getRandomVector()
-    inputVecs.append(v)
-    print "input i=",v
-
-  print "=================="
-
-  i=0
-  while i < 1000:
-    if i%100==0:
-      print "i=",i
-    if i%8 <= 3:
-      inputVec = inputVecs[i%4]
-    else:
-      inputVec = getRandomVector()
-
-    tm.compute(inputVec, learn=True)
-    if i >= 1:
-      print i,len(tm.predictiveCells)
-    i += 1
-
-  # doesn't work?
-  #tm.mmGetCellActivityPlot()
-
-  print tm.mmPrettyPrintSequenceCellRepresentations()
-
-  pac = tm.mmGetTracePredictedActiveColumns()
-  pic = tm.mmGetTracePredictedInactiveColumns()
-  upac = tm.mmGetTraceUnpredictedActiveColumns()
-
-  print len(pac.data),len(pic.data)
-  print "i pac pic upac err"
-  for i,j in enumerate(pac.data):
-    print i,len(j),len(pic.data[i]),len(upac.data[i]),
-    print computePredictionAccuracy(len(j), len(pic.data[i]))
-
-
-def printOptions(options):
+def printOptions(options, tm):
   """
   Pretty print the set of options
   """
+  print "TM parameters:"
+  printTemporalMemory(tm)
   print "Experiment parameters:"
   for k,v in options.__dict__.iteritems():
     print "  %s : %s" % (k,str(v))
 
-
-def runExperiment1(csvWriter, options):
-  csvWriter.writerow(["time", "element", "pac", "pic", "upac", "a", "accuracy"])
-  numpy.random.seed(42)
-
-  tm = MonitoredTemporalMemory(minThreshold=30,
-                              activationThreshold=30,
-                              maxNewSynapseCount=40,
-                              cellsPerColumn=options.cells,
-                              learnOnOneCell = False,
-                              permanenceOrphanDecrement = 0.01,
-                              columnDimensions=(2048,),
-                              cellsPerColumn=32,
-                              learningRadius=2048,
-                              initialPermanence=0.21,
-                              connectedPermanence=0.50,
-                              permanenceIncrement=0.10,
-                              permanenceDecrement=0.10,
-                              seed=42,
-                              )
-
-  sequenceString = ""
-  i=0
-  while i < options.iterations:
-    if i%100==0:
-      print "i=",i
-
-    if options.simulation == "low":
-      vecs,label = getLowOrderSequenceChunk(i)
-    elif options.simulation == "high":
-      vecs,label = getHighOrderSequenceChunk(i, options.switchover)
-    else:
-      raise Exception("Unknown simulation: " + options.simulation)
-
-    sequenceString += label
-
-    for xi,vec in enumerate(vecs):
-      tm.compute(vec, learn=True)
-
-      # if i >= 1:
-      #   print i,label[xi],len(tm.predictiveCells)
-      i += 1
-
-  # Print out trace of predictions and accuracy
-  pac = tm.mmGetTracePredictedActiveColumns()
-  pic = tm.mmGetTracePredictedInactiveColumns()
-  upac = tm.mmGetTraceUnpredictedActiveColumns()
-
-  accuracy = 0.0
-  print len(pac.data),len(pic.data)
-  print "i elmt pac pic upac err"
-  for i,j in enumerate(pac.data):
-    if i>0:
-      a = computePredictionAccuracy(len(j), len(pic.data[i]))
-      accuracy = 0.995*accuracy + 0.005*a
-      print i,sequenceString[i],len(j),len(pic.data[i]),len(upac.data[i]),
-      print a,accuracy
-      csvWriter.writerow([i, sequenceString[i],len(j),len(pic.data[i]),
-                          len(upac.data[i]), a, accuracy])
 
 if __name__ == '__main__':
   helpString = (
@@ -291,7 +260,7 @@ if __name__ == '__main__':
                     help="Output file. Results will be written to this file."
                     " (default: %default)",
                     dest="outputFile",
-                    default="output.csv")
+                    default=os.path.join('results',"output.csv"))
   parser.add_option("--iterations",
                     help="Number of iterations to run for. [default: %default]",
                     default=1000,
@@ -306,16 +275,13 @@ if __name__ == '__main__':
                     default=8,
                     type=int)
   parser.add_option("--simulation",
-                    help="Which simulation to run: 'low' or 'high'"
+                    help="Which simulation to run: 'normal' or 'noisy'"
                     " (default: %default)",
-                    default="low",
+                    default="normal",
                     type=str)
 
   options, args = parser.parse_args(sys.argv[1:])
-  printOptions(options)
 
   with open(options.outputFile,"wb") as outputFile:
     csvWriter = csv.writer(outputFile)
-
-    #testEverything()
     runExperiment1(csvWriter, options)
