@@ -14,6 +14,7 @@ class Plots(object):
     from pylab import rcParams
     rcParams.update({'figure.figsize': (8, 14)})
     rcParams.update({'figure.autolayout': True})
+    rcParams.update({'figure.facecolor': 'white'})
 
     self.plt.ion()
     self.plt.show()
