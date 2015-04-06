@@ -19,8 +19,8 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from nupic.data.generators.pattern_machine import PatternMachine,\
-                                                  ConsecutivePatternMachine
+from nupic.data.generators.pattern_machine import (PatternMachine,
+                                                  ConsecutivePatternMachine)
 from nupic.encoders.sdrcategory import SDRCategoryEncoder
 
 from sensorimotor.abstract_universe import AbstractUniverse
