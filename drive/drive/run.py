@@ -39,6 +39,8 @@ if __name__ == "__main__":
                       default="positionBehavior")
   parser.add_argument('--fieldWidth', type=int,
                       default=50)
+  parser.add_argument('--roadWidth', type=int,
+                      default=12)
   parser.add_argument('--sensorNoise', type=float,
                       default=0)
   parser.add_argument('--motorNoise', type=float,
@@ -58,7 +60,7 @@ if __name__ == "__main__":
   if args.road == "straight":
     road = StraightRoad()
   elif args.road == "zigzag":
-    road = ZigZagRoad(width=args.fieldWidth / 4)
+    road = ZigZagRoad(width=args.roadWidth)
 
   field = Field(road, width=args.fieldWidth)
 
