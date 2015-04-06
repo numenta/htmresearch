@@ -174,12 +174,18 @@ class SensorimotorExperimentRunner(object):
         currentTime = time.time()
 
     if verbosity >= 2:
-      traces = []
-      traces += self.tm.mmGetDefaultTraces(verbosity=verbosity)
+      # Print default TM traces
+      traces = self.tm.mmGetDefaultTraces(verbosity=verbosity)
+      print MonitorMixinBase.mmPrettyPrintTraces(traces,
+                                                 breakOnResets=
+                                                 self.tm.mmGetTraceResets())
+
       if tpLearn is not None:
-        traces += self.tp.mmGetDefaultTraces(verbosity=verbosity)
-      print MonitorMixinBase.mmPrettyPrintTraces(
-        traces, breakOnResets=self.tm.mmGetTraceResets())
+        # Print default TP traces
+        traces = self.tp.mmGetDefaultTraces(verbosity=verbosity)
+        print MonitorMixinBase.mmPrettyPrintTraces(traces,
+                                                   breakOnResets=
+                                                   self.tp.mmGetTraceResets())
       print
 
 
