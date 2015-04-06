@@ -29,7 +29,7 @@ if __name__ == "__main__":
   parser.add_argument('--hidePlots', action='store_true',
                       help="Hide plots on startup")
   parser.add_argument('--motor', choices=["position", "acceleration", "jerk"],
-                      default="jerk")
+                      default="acceleration")
   parser.add_argument('--road', choices=["straight", "zigzag"],
                       default="zigzag")
   parser.add_argument('--vehicle', choices=["human", "random", "loop"],
