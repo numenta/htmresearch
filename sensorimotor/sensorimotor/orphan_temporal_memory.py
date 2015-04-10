@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2014, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -374,21 +374,28 @@ class OrphanTemporalMemory(GeneralTemporalMemory):
         segment = synapseData.segment
         permanence = synapseData.permanence
 
-        if permanence >= self.connectedPermanence:
-          numActiveConnectedSynapsesForSegment[segment] += 1
+        if permanence > 0:
 
-          if (numActiveConnectedSynapsesForSegment[segment] >=
-              self.activationThreshold):
-            activeSegments.add(segment)
-            predictiveCells.add(connections.cellForSegment(segment))
+          # Measure whether segment has sufficient weak activity, defined as
+          # total active synapses >= minThreshold. A synapse is active if it
+          # exists ( permanence > 0) and does not have to be connected.
+          numActiveSynapsesForSegment[segment] += 1
 
-        # See how many segments have weak activity, defined as unconnected
-        # active segments >= minThreshold
-        numActiveSynapsesForSegment[segment] += 1
+          # Measure whether a segment has sufficient connected active
+          # synapses to cause the cell to enter predicted mode.
+          if permanence >= self.connectedPermanence:
+            numActiveConnectedSynapsesForSegment[segment] += 1
 
-        if numActiveSynapsesForSegment[segment] >= self.minThreshold:
-          matchingSegments.add(segment)
-          matchingCells.add(connections.cellForSegment(segment))
+            if (numActiveConnectedSynapsesForSegment[segment] >=
+                self.activationThreshold):
+              activeSegments.add(segment)
+              predictiveCells.add(connections.cellForSegment(segment))
+
+          # TODO: Modify to also be permanence > 0. Also need to check
+          # bestMatchingSegment()
+          if numActiveSynapsesForSegment[segment] >= self.minThreshold:
+            matchingSegments.add(segment)
+            matchingCells.add(connections.cellForSegment(segment))
 
     return activeSegments, predictiveCells, matchingSegments, matchingCells
 
@@ -419,3 +426,39 @@ class OrphanTemporalMemory(GeneralTemporalMemory):
       permanence = max(0.0, min(1.0, permanence))
 
       connections.updateSynapsePermanence(synapse, permanence)
+
+
+  def bestMatchingSegment(self, cell, activeCells, connections):
+    """
+    Gets the segment on a cell with the largest number of activate synapses,
+    including all synapses with non-zero permanences.
+
+    @param cell                        (int)         Cell index
+    @param activeCells                 (set)         Indices of active cells
+    @param connections                 (Connections) Connectivity of layer
+
+    @return (tuple) Contains:
+                      `segment`                 (int),
+                      `connectedActiveSynapses` (set)
+    """
+    maxSynapses = self.minThreshold
+    bestSegment = None
+    bestNumActiveSynapses = None
+
+    for segment in connections.segmentsForCell(cell):
+      numActiveSynapses = 0
+
+      for synapse in connections.synapsesForSegment(segment):
+        synapseData = connections.dataForSynapse(synapse)
+        if ( (synapseData.presynapticCell in activeCells) and
+            synapseData.permanence > 0):
+          numActiveSynapses += 1
+
+      if numActiveSynapses >= maxSynapses:
+        maxSynapses = numActiveSynapses
+        bestSegment = segment
+        bestNumActiveSynapses = numActiveSynapses
+
+    return bestSegment, bestNumActiveSynapses
+
+

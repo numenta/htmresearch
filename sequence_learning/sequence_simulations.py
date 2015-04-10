@@ -24,6 +24,7 @@ import csv
 from optparse import OptionParser
 import sys
 import os
+import datetime
 from prettytable import PrettyTable
 
 from sensorimotor.orphan_temporal_memory import OrphanTemporalMemory
@@ -95,18 +96,22 @@ def getHighOrderSequenceChunk(it, switchover=1000, w=40, n=2048):
 
   return vecs,label
 
-def addNoise(vecs, percent=0.1, w=40, n=2048):
+
+def addNoise(vecs, percent=0.1, n=2048):
   """
   Add noise to the given sequence of vectors and return the modified  sequence.
-  A percentage of the input bits will be flipped from 0 to 1.
+  A percentage of the on bits are shuffled to other locations.
   """
   noisyVecs = []
   for vec in vecs:
-    for v in vec:
-      print v
+    nv = vec.copy()
+    for idx in vec:
+      if numpy.random.random() <= percent:
+        nv.discard(idx)
+        nv.add(numpy.random.randint(n))
+    noisyVecs.append(nv)
 
   return noisyVecs
-
 
 
 #########################################################################
@@ -127,6 +132,8 @@ def computePredictionAccuracy(pac, pic):
 
 
 def runExperiment1(csvWriter, options):
+  startTime = datetime.datetime.now()
+  print "Start time=",startTime.isoformat(' ')
   numpy.random.seed(42)
 
   tm = MonitoredTemporalMemory(minThreshold=20,
@@ -148,21 +155,49 @@ def runExperiment1(csvWriter, options):
 
   # Run the simulation using the given parameters
   sequenceString = ""
+  numSegments = []
+  numSynapses = []
   i=0
   while i < options.iterations:
     if i%100==0:
-      print "i=",i
+      print "i=",i,"segments=",tm.connections.numSegments(),
+      print "synapses=",tm.connections.numSynapses()
+      sys.stdout.flush()
 
+    learn=True
     if options.simulation == "normal":
       vecs,label = getHighOrderSequenceChunk(i, options.switchover)
+
+    # Train with noisy data and then test with clean
+    elif options.simulation == "noisy":
+      learn = True
+      vecs,label = getHighOrderSequenceChunk(i, i+1)
+      if i >= options.switchover:
+        options.noise = 0.0
+        learn= False
+      vecs = addNoise(vecs, percent = options.noise)
+
+    # Train with clean data and then test with noisy
+    elif options.simulation == "clean_noise":
+      learn = True
+      noise = 0.0
+      vecs,label = getHighOrderSequenceChunk(i, i+1)
+      if i >= options.switchover:
+        noise = options.noise
+        learn= False
+      vecs = addNoise(vecs, percent = noise)
+
     else:
       raise Exception("Unknown simulation: " + options.simulation)
 
-    sequenceString += label
-
+    # Train on the next sequence chunk
     for xi,vec in enumerate(vecs):
-      tm.compute(vec, learn=True)
+      tm.compute(vec, learn=learn)
+      numSegments.append(tm.connections.numSegments())
+      numSynapses.append(tm.connections.numSynapses())
       i += 1
+
+    sequenceString += label
 
 
   # Create CSV file with detailed trace of predictions, missed predictions,
@@ -174,7 +209,7 @@ def runExperiment1(csvWriter, options):
   accuracies = numpy.zeros(len(pac.data))
   am = 0
   csvWriter.writerow(["time", "element", "pac", "pic", "upac", "a",
-                      "am", "accuracy","sum"])
+                      "am", "accuracy","sum","nSegs","nSyns"])
   for i,j in enumerate(pac.data):
     if i>0:
       # Compute instantaneous and average accuracy.
@@ -190,9 +225,13 @@ def runExperiment1(csvWriter, options):
       row=[i, sequenceString[i],len(j),len(pic.data[i]),
               len(upac.data[i]), a, am,
               accuracy,
-              numpy.sum(accuracies[i0:i+1])]
+              numpy.sum(accuracies[i0:i+1]),
+              numSegments[i], numSynapses[i]]
       csvWriter.writerow(row)
-      #print row
+
+  print "End time=",datetime.datetime.now().isoformat(' ')
+  print "Duration=",str(datetime.datetime.now()-startTime)
+
 
 
 #########################################################################
@@ -265,18 +304,23 @@ if __name__ == '__main__':
                     help="Number of iterations to run for. [default: %default]",
                     default=1000,
                     type=int)
+  parser.add_option("--noise",
+                    help="Percent noise for noisy simulations. [default: "
+                         "%default]",
+                    default=0.1,
+                    type=float)
   parser.add_option("--switchover",
                     help="Number of iterations after which to change "
                          "statistics. [default: %default]",
-                    default=1000,
+                    default=10000,
                     type=int)
   parser.add_option("--cells",
                     help="Number of per column. [default: %default]",
                     default=8,
                     type=int)
   parser.add_option("--simulation",
-                    help="Which simulation to run: 'normal' or 'noisy'"
-                    " (default: %default)",
+                    help="Which simulation to run: 'normal' or 'noisy' or "
+                    "'clean_noise' (default: %default)",
                     default="normal",
                     type=str)
 
