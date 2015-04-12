@@ -26,12 +26,6 @@ import numpy
 from collections import defaultdict
 from sensorimotor.orphan_temporal_memory import OrphanTemporalMemory
 
-# Modify computePredictiveCells() to  ensure prevPredictiveCells and
-# prevMatchingCells don't contain dead cells.
-# No need to modify activateCorrectlyPredictiveCells()
-# Modify bestMatchingCell so it doesn't include dead cells
-
-# Update burstColumns to exclude dead cells.
 
 class FaultyTemporalMemory(OrphanTemporalMemory):
   """

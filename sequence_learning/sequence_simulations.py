@@ -140,13 +140,15 @@ def createReport(tm, options, sequenceString, numSegments, numSynapses):
   pic = tm.mmGetTracePredictedInactiveColumns()
   upac = tm.mmGetTraceUnpredictedActiveColumns()
 
-  with open(options.outputFile,"wb") as outputFile:
-    csvWriter = csv.writer(outputFile)
+  resultsFilename = os.path.join("results", options.name+".csv")
+
+  with open(resultsFilename,"wb") as resultsFile:
+    csvWriter = csv.writer(resultsFile)
 
     accuracies = numpy.zeros(len(pac.data))
     am = 0
     csvWriter.writerow(["time", "element", "pac", "pic", "upac", "a",
-                        "am", "accuracy","sum","nSegs","nSyns"])
+                        "am", "accuracy", "sum", "nSegs", "nSyns"])
     for i,j in enumerate(pac.data):
       if i>0:
         # Compute instantaneous and average accuracy.
@@ -159,7 +161,7 @@ def createReport(tm, options, sequenceString, numSegments, numSynapses):
         i0 = max(0, i-60+1)
         accuracy = numpy.mean(accuracies[i0:i+1])
 
-        row=[i, sequenceString[i],len(j),len(pic.data[i]),
+        row=[i, sequenceString[i], len(j), len(pic.data[i]),
                 len(upac.data[i]), a, am,
                 accuracy,
                 numpy.sum(accuracies[i0:i+1]),
@@ -168,83 +170,86 @@ def createReport(tm, options, sequenceString, numSegments, numSynapses):
 
 
 def runExperiment1(options):
-  startTime = datetime.datetime.now()
-  print "Start time=",startTime.isoformat(' ')
-  numpy.random.seed(42)
+  outFilename = os.path.join("results", options.name+".out")
 
-  tm = MonitoredTemporalMemory(minThreshold=20,
-                              activationThreshold=20,
-                              maxNewSynapseCount=40,
-                              cellsPerColumn=options.cells,
-                              learnOnOneCell = False,
-                              permanenceOrphanDecrement = 0.01,
-                              columnDimensions=(2048,),
-                              learningRadius=2048,
-                              initialPermanence=0.21,
-                              connectedPermanence=0.50,
-                              permanenceIncrement=0.10,
-                              permanenceDecrement=0.10,
-                              seed=42,
-                              )
+  with open(outFilename,"wb") as outputFile:
+    startTime = datetime.datetime.now()
+    print >>outputFile, "Start time=", startTime.isoformat(' ')
+    numpy.random.seed(options.seed)
 
-  printOptions(options, tm, sys.stdout)
+    tm = MonitoredTemporalMemory(minThreshold=20,
+                                activationThreshold=20,
+                                maxNewSynapseCount=40,
+                                cellsPerColumn=options.cells,
+                                learnOnOneCell = False,
+                                permanenceOrphanDecrement = 0.01,
+                                columnDimensions=(2048,),
+                                learningRadius=2048,
+                                initialPermanence=0.21,
+                                connectedPermanence=0.50,
+                                permanenceIncrement=0.10,
+                                permanenceDecrement=0.10,
+                                seed=42,
+                                )
 
-  # Run the simulation using the given parameters
-  sequenceString = ""
-  numSegments = []
-  numSynapses = []
-  i=0
-  while i < options.iterations:
-    if i%100==0:
-      print "i=",i,"segments=",tm.connections.numSegments(),
-      print "synapses=",tm.connections.numSynapses()
-      sys.stdout.flush()
+    printOptions(options, tm, outputFile)
 
-    learn=True
-    if options.simulation == "normal":
-      vecs,label = getHighOrderSequenceChunk(i, options.switchover)
+    # Run the simulation using the given parameters
+    sequenceString = ""
+    numSegments = []
+    numSynapses = []
+    i=0
+    while i < options.iterations:
+      if i%100==0:
+        print "i=",i,"segments=",tm.connections.numSegments(),
+        print "synapses=",tm.connections.numSynapses()
+        sys.stdout.flush()
 
-    # Train with noisy data and then test with clean
-    elif options.simulation == "noisy":
-      vecs,label = getHighOrderSequenceChunk(i, i+1)
-      if i >= options.switchover:
-        options.noise = 0.0
-        learn= False
-      vecs = addNoise(vecs, percent = options.noise)
+      learn=True
+      if options.simulation == "normal":
+        vecs,label = getHighOrderSequenceChunk(i, options.switchover)
 
-    # Train with clean data and then test with noisy
-    elif options.simulation == "clean_noise":
-      noise = 0.0
-      vecs,label = getHighOrderSequenceChunk(i, i+1)
-      if i >= options.switchover:
-        noise = options.noise
-        learn= False
-      vecs = addNoise(vecs, percent = noise)
+      # Train with noisy data and then test with clean
+      elif options.simulation == "noisy":
+        vecs,label = getHighOrderSequenceChunk(i, i+1)
+        if i >= options.switchover:
+          options.noise = 0.0
+          learn= False
+        vecs = addNoise(vecs, percent = options.noise)
 
-    # Train with clean data and then kill of a certain percentage of cells
-    elif options.simulation == "killer":
-      vecs,label = getHighOrderSequenceChunk(i, i+1)
-      if i == options.switchover:
-        print "i=",i,"Killing cells!"
-        tm.killCells(percent = options.noise)
+      # Train with clean data and then test with noisy
+      elif options.simulation == "clean_noise":
+        noise = 0.0
+        vecs,label = getHighOrderSequenceChunk(i, i+1)
+        if i >= options.switchover:
+          noise = options.noise
+          learn= False
+        vecs = addNoise(vecs, percent = noise)
 
-    else:
-      raise Exception("Unknown simulation: " + options.simulation)
+      # Train with clean data and then kill of a certain percentage of cells
+      elif options.simulation == "killer":
+        vecs,label = getHighOrderSequenceChunk(i, i+1)
+        if i == options.switchover:
+          print "i=",i,"Killing cells!"
+          tm.killCells(percent = options.noise)
 
-    # Train on the next sequence chunk
-    for xi,vec in enumerate(vecs):
-      tm.compute(vec, learn=learn)
-      numSegments.append(tm.connections.numSegments())
-      numSynapses.append(tm.connections.numSynapses())
-      i += 1
+      else:
+        raise Exception("Unknown simulation: " + options.simulation)
 
-    sequenceString += label
+      # Train on the next sequence chunk
+      for xi,vec in enumerate(vecs):
+        tm.compute(vec, learn=learn)
+        numSegments.append(tm.connections.numSegments())
+        numSynapses.append(tm.connections.numSynapses())
+        i += 1
+
+      sequenceString += label
 
 
-  createReport(tm, options, sequenceString, numSegments, numSynapses)
+    createReport(tm, options, sequenceString, numSegments, numSynapses)
 
-  print "End time=",datetime.datetime.now().isoformat(' ')
-  print "Duration=",str(datetime.datetime.now()-startTime)
+    print >>outputFile, "End time=",datetime.datetime.now().isoformat(' ')
+    print >>outputFile, "Duration=",str(datetime.datetime.now()-startTime)
 
 
 #########################################################################
@@ -296,7 +301,7 @@ def printOptions(options, tm, outFile):
   print >>outFile, "Experiment parameters:"
   for k,v in options.__dict__.iteritems():
     print >>outFile, "  %s : %s" % (k,str(v))
-
+  outFile.flush()
 
 if __name__ == '__main__':
   helpString = (
@@ -312,15 +317,14 @@ if __name__ == '__main__':
                     help="Name of experiment. Outputs will be written to"
                     "results/name.csv & results/name.out (default: %default)",
                     dest="name",
-                    default=os.path.join('results',"temp"))
-  parser.add_option("--outputFile",
-                    help="Output file. Results will be written to this file."
-                    " (default: %default)",
-                    dest="outputFile",
-                    default=os.path.join('results',"output.csv"))
+                    default="temp")
   parser.add_option("--iterations",
                     help="Number of iterations to run for. [default: %default]",
-                    default=1000,
+                    default=6000,
+                    type=int)
+  parser.add_option("--seed",
+                    help="Random seed to use. [default: %default]",
+                    default=42,
                     type=int)
   parser.add_option("--noise",
                     help="Percent noise for noisy simulations. [default: "
@@ -330,7 +334,7 @@ if __name__ == '__main__':
   parser.add_option("--switchover",
                     help="Number of iterations after which to change "
                          "statistics. [default: %default]",
-                    default=10000,
+                    default=3500,
                     type=int)
   parser.add_option("--cells",
                     help="Number of per column. [default: %default]",
