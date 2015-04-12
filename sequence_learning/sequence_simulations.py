@@ -27,11 +27,11 @@ import os
 import datetime
 from prettytable import PrettyTable
 
-from sensorimotor.orphan_temporal_memory import OrphanTemporalMemory
+from sensorimotor.faulty_temporal_memory import FaultyTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 
-class MonitoredTemporalMemory(TemporalMemoryMonitorMixin, OrphanTemporalMemory): pass
+class MonitoredTemporalMemory(TemporalMemoryMonitorMixin, FaultyTemporalMemory): pass
 
 #########################################################################
 #
@@ -131,7 +131,43 @@ def computePredictionAccuracy(pac, pic):
     return (pac / pcols)
 
 
-def runExperiment1(csvWriter, options):
+def createReport(tm, options, sequenceString, numSegments, numSynapses):
+  """
+  Create CSV file with detailed trace of predictions, missed predictions,
+  accuracy, segment/synapse growth, etc.
+  """
+  pac = tm.mmGetTracePredictedActiveColumns()
+  pic = tm.mmGetTracePredictedInactiveColumns()
+  upac = tm.mmGetTraceUnpredictedActiveColumns()
+
+  with open(options.outputFile,"wb") as outputFile:
+    csvWriter = csv.writer(outputFile)
+
+    accuracies = numpy.zeros(len(pac.data))
+    am = 0
+    csvWriter.writerow(["time", "element", "pac", "pic", "upac", "a",
+                        "am", "accuracy","sum","nSegs","nSyns"])
+    for i,j in enumerate(pac.data):
+      if i>0:
+        # Compute instantaneous and average accuracy.
+        a = computePredictionAccuracy(len(j), len(pic.data[i]))
+
+        #  We compute an exponential plus a windowed average to get curve
+        #  looking nice and smooth for the paper.
+        am = 0.99*am + 0.01*a
+        accuracies[i] = am
+        i0 = max(0, i-60+1)
+        accuracy = numpy.mean(accuracies[i0:i+1])
+
+        row=[i, sequenceString[i],len(j),len(pic.data[i]),
+                len(upac.data[i]), a, am,
+                accuracy,
+                numpy.sum(accuracies[i0:i+1]),
+                numSegments[i], numSynapses[i]]
+        csvWriter.writerow(row)
+
+
+def runExperiment1(options):
   startTime = datetime.datetime.now()
   print "Start time=",startTime.isoformat(' ')
   numpy.random.seed(42)
@@ -151,7 +187,7 @@ def runExperiment1(csvWriter, options):
                               seed=42,
                               )
 
-  printOptions(options, tm)
+  printOptions(options, tm, sys.stdout)
 
   # Run the simulation using the given parameters
   sequenceString = ""
@@ -170,7 +206,6 @@ def runExperiment1(csvWriter, options):
 
     # Train with noisy data and then test with clean
     elif options.simulation == "noisy":
-      learn = True
       vecs,label = getHighOrderSequenceChunk(i, i+1)
       if i >= options.switchover:
         options.noise = 0.0
@@ -179,13 +214,19 @@ def runExperiment1(csvWriter, options):
 
     # Train with clean data and then test with noisy
     elif options.simulation == "clean_noise":
-      learn = True
       noise = 0.0
       vecs,label = getHighOrderSequenceChunk(i, i+1)
       if i >= options.switchover:
         noise = options.noise
         learn= False
       vecs = addNoise(vecs, percent = noise)
+
+    # Train with clean data and then kill of a certain percentage of cells
+    elif options.simulation == "killer":
+      vecs,label = getHighOrderSequenceChunk(i, i+1)
+      if i == options.switchover:
+        print "i=",i,"Killing cells!"
+        tm.killCells(percent = options.noise)
 
     else:
       raise Exception("Unknown simulation: " + options.simulation)
@@ -200,38 +241,10 @@ def runExperiment1(csvWriter, options):
     sequenceString += label
 
 
-  # Create CSV file with detailed trace of predictions, missed predictions,
-  # and accuracy
-  pac = tm.mmGetTracePredictedActiveColumns()
-  pic = tm.mmGetTracePredictedInactiveColumns()
-  upac = tm.mmGetTraceUnpredictedActiveColumns()
-
-  accuracies = numpy.zeros(len(pac.data))
-  am = 0
-  csvWriter.writerow(["time", "element", "pac", "pic", "upac", "a",
-                      "am", "accuracy","sum","nSegs","nSyns"])
-  for i,j in enumerate(pac.data):
-    if i>0:
-      # Compute instantaneous and average accuracy.
-      a = computePredictionAccuracy(len(j), len(pic.data[i]))
-
-      #  We compute an exponential plus a windowed average to get curve
-      #  looking nice and smooth for the paper.
-      am = 0.99*am + 0.01*a
-      accuracies[i] = am
-      i0 = max(0, i-60+1)
-      accuracy = numpy.mean(accuracies[i0:i+1])
-
-      row=[i, sequenceString[i],len(j),len(pic.data[i]),
-              len(upac.data[i]), a, am,
-              accuracy,
-              numpy.sum(accuracies[i0:i+1]),
-              numSegments[i], numSynapses[i]]
-      csvWriter.writerow(row)
+  createReport(tm, options, sequenceString, numSegments, numSynapses)
 
   print "End time=",datetime.datetime.now().isoformat(' ')
   print "Duration=",str(datetime.datetime.now()-startTime)
-
 
 
 #########################################################################
@@ -253,7 +266,7 @@ def printSegment(tm, segment, connections):
   print
 
 
-def printTemporalMemory(tm):
+def printTemporalMemory(tm, outFile):
   """
   Given an instance of OrphanTemporalMemory, print out the relevant parameters
   """
@@ -271,18 +284,18 @@ def printTemporalMemory(tm):
   table.add_row(["permanenceOrphanDecrement", tm.permanenceOrphanDecrement])
   table.add_row(["learnOnOneCell", tm.learnOnOneCell])
 
-  print table.get_string().encode("utf-8")
+  print >>outFile, table.get_string().encode("utf-8")
 
 
-def printOptions(options, tm):
+def printOptions(options, tm, outFile):
   """
   Pretty print the set of options
   """
-  print "TM parameters:"
-  printTemporalMemory(tm)
-  print "Experiment parameters:"
+  print >>outFile, "TM parameters:"
+  printTemporalMemory(tm, outFile)
+  print >>outFile, "Experiment parameters:"
   for k,v in options.__dict__.iteritems():
-    print "  %s : %s" % (k,str(v))
+    print >>outFile, "  %s : %s" % (k,str(v))
 
 
 if __name__ == '__main__':
@@ -290,11 +303,16 @@ if __name__ == '__main__':
     "\n%prog [options] [uid]"
     "\n%prog --help"
     "\n"
-    "\nRuns high and low order sequence simulations with artificial data."
+    "\nRuns sequence simulations with artificial data."
   )
 
   # All the command line options
   parser = OptionParser(helpString)
+  parser.add_option("--name",
+                    help="Name of experiment. Outputs will be written to"
+                    "results/name.csv & results/name.out (default: %default)",
+                    dest="name",
+                    default=os.path.join('results',"temp"))
   parser.add_option("--outputFile",
                     help="Output file. Results will be written to this file."
                     " (default: %default)",
@@ -316,16 +334,14 @@ if __name__ == '__main__':
                     type=int)
   parser.add_option("--cells",
                     help="Number of per column. [default: %default]",
-                    default=8,
+                    default=32,
                     type=int)
   parser.add_option("--simulation",
-                    help="Which simulation to run: 'normal' or 'noisy' or "
-                    "'clean_noise' (default: %default)",
+                    help="Which simulation to run: 'normal', 'noisy', "
+                    "'clean_noise' or 'killer' (default: %default)",
                     default="normal",
                     type=str)
 
   options, args = parser.parse_args(sys.argv[1:])
 
-  with open(options.outputFile,"wb") as outputFile:
-    csvWriter = csv.writer(outputFile)
-    runExperiment1(csvWriter, options)
+  runExperiment1(options)

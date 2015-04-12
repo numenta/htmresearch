@@ -391,8 +391,6 @@ class OrphanTemporalMemory(GeneralTemporalMemory):
               activeSegments.add(segment)
               predictiveCells.add(connections.cellForSegment(segment))
 
-          # TODO: Modify to also be permanence > 0. Also need to check
-          # bestMatchingSegment()
           if numActiveSynapsesForSegment[segment] >= self.minThreshold:
             matchingSegments.add(segment)
             matchingCells.add(connections.cellForSegment(segment))
