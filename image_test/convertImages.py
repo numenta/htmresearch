@@ -8,10 +8,12 @@
 # ----------------------------------------------------------------------
 
 import os
+import sys
+
 import numpy
 from PIL import Image
 
-def doConversion():
+def doConversion(dataDir):
 
   # Inner function to process each directory
   def _visitorProc(state, dirname, names):
@@ -45,10 +47,13 @@ def doConversion():
 
   # Perform final conversion
   state = dict(numImages=0)
-  os.path.walk("training", _visitorProc, state)
-  os.path.walk("testing", _visitorProc, state)
+  os.path.walk(os.path.join(dataDir, "training"), _visitorProc, state)
+  os.path.walk(os.path.join(dataDir, "testing"), _visitorProc, state)
   print "Total images: %d" % state['numImages']
 
 
 if __name__ == "__main__":
-  doConversion()
+  if len(sys.argv) != 2:
+    print "Usage: python convertImages.py dataDir"
+  dataDir = os.path.join(os.getcwd(), sys.argv[1])
+  doConversion(dataDir)
