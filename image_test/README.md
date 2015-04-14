@@ -43,3 +43,8 @@ details on the dataset.
     ```
     python run_mnist_experiment.py
     ```
+
+## Results
+
+This example achieves 95.56% accuracy on the 10,000 image training set as
+of 2015-04-13.
