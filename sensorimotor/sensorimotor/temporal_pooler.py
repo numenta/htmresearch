@@ -520,7 +520,7 @@ class TemporalPooler(SpatialPooler):
     """
     This function updates the pooling state of TP cells. A cell will stop
     pooling if:
-    (1) It hasn't received any predicted input in the last self._maxPoolingTime
+    (1) It hasn't received any predicted input in the last self._poolingLife
     steps
     or
     (2) the overall fraction of unpredicted input to the TP is above
@@ -571,13 +571,11 @@ class TemporalPooler(SpatialPooler):
 
     overlaps = numpy.zeros(self._numColumns).astype(realDType)
 
-    # If no pooling columns no predicted acitve inputs, return all zeros
+    # If no pooling columns or no predicted active inputs, return all zeros
     if (sum(self._poolingActivation) == 0 or
        len(predictedActiveCells.nonzero()[0]) == 0):
       return overlaps
 
-
-    # self._connectedSynapses.rightVecSumAtNZ_fast(predictedCells, overlaps)      
     if learn:
       # During learning, overlap is calculated based on potential synapses. 
       self._potentialPools.rightVecSumAtNZ_fast(predictedActiveCells, overlaps)
