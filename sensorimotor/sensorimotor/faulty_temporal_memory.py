@@ -63,7 +63,6 @@ class FaultyTemporalMemory(OrphanTemporalMemory):
     else:
       self.deadCells = set()
 
-
   def computeFn(self,
                 activeColumns,
                 activeExternalCells,
@@ -294,5 +293,45 @@ class FaultyTemporalMemory(OrphanTemporalMemory):
       chosenCellForColumn[column] = bestCell
 
     return activeCells, winnerCells, learningSegments, chosenCellForColumn
+
+
+  #########################################################################
+  #
+  # Debugging routines
+
+
+  def printDeadCells(self):
+    """
+    Print statistics for the dead cells
+    """
+    columnCasualties = numpy.zeros(self.numberOfColumns())
+    for cell in self.deadCells:
+      col = self.columnForCell(cell)
+      columnCasualties[col] += 1
+    for col in range(self.numberOfColumns()):
+      print col,columnCasualties[col]
+
+
+  def printSegmentsForCell(self, cell):
+    segments = self.connections.segmentsForCell(cell)
+
+    print "Segments for cell",cell
+    for segment in segments:
+      self.printSegment(segment, self.connections)
+
+
+  def printSegment(self, segment, connections):
+    cell = connections.cellForSegment(segment)
+    synapses = connections.synapsesForSegment(segment)
+    print "segment id=",segment
+    print "   cell=",cell
+    print "   col =",self.columnForCell(cell)
+    print "   synapses=",
+    for synapse in synapses:
+      synapseData = connections.dataForSynapse(synapse)
+      permanence = synapseData.permanence
+      presynapticCell = synapseData.presynapticCell
+      print "%d:%g" % (presynapticCell,permanence),
+    print
 
 

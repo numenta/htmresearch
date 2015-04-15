@@ -177,8 +177,8 @@ def runExperiment1(options):
     print >>outputFile, "Start time=", startTime.isoformat(' ')
     numpy.random.seed(options.seed)
 
-    tm = MonitoredTemporalMemory(minThreshold=20,
-                                activationThreshold=20,
+    tm = MonitoredTemporalMemory(minThreshold=15,
+                                activationThreshold=15,
                                 maxNewSynapseCount=40,
                                 cellsPerColumn=options.cells,
                                 learnOnOneCell = False,
@@ -320,7 +320,7 @@ if __name__ == '__main__':
                     default="temp")
   parser.add_option("--iterations",
                     help="Number of iterations to run for. [default: %default]",
-                    default=6000,
+                    default=9000,
                     type=int)
   parser.add_option("--seed",
                     help="Random seed to use. [default: %default]",
