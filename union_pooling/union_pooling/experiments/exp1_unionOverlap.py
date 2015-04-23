@@ -20,12 +20,63 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from union_pooling.experiments.union_pooler_experiment import \
-  UnionPoolerExperiment
+from nupic.data.generators.pattern_machine import PatternMachine
+from nupic.data.generators.sequence_machine import SequenceMachine
 
-# Union Pooling with and without Temporal Memory training
-# Compute overlap between Union SDR representations in two conditions over time
+from union_pooling.experiments.union_pooler_experiment import (
+    UnionPoolerExperiment)
+
+"""
+Union Pooling with and without Temporal Memory training
+Compute overlap between Union SDR representations in two conditions over time
+"""
+
+
+_SHOW_PROGRESS_INTERVAL = 100
+_VERBOSITY = 0
+
+
+def trainNetwork(experiment, sequences, repetitions, verbosity):
+  print "Training network..."
+  experiment.feedLayers(sequences, tmLearn=True, tpLearn=True,
+                        verbosity=verbosity,
+                        progressInterval=_SHOW_PROGRESS_INTERVAL)
+  print
+  print MonitorMixinBase.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics() +
+                                              runner.tm.mmGetDefaultMetrics())
+  print
+
+
+
+def main():
+  tmLearning = False
+  patternDimensionality = 1024
+  patternCardinality = 20
+  patternAlphabetSize = 100
+  patternMachine = PatternMachine(patternDimensionality, patternCardinality,
+                                  patternAlphabetSize)
+  sequenceMachine = SequenceMachine(patternMachine)
+
+  numSequences = 10
+  sequenceLength = 10
+  numbers = sequenceMachine.generateNumbers(numSequences, sequenceLength)
+  generatedSequences = sequenceMachine.generateFromNumbers(numbers)
+  # print sequenceMachine.prettyPrintSequence(generatedSequences)
+
+  temporalMemoryParamOverrides = {}
+  unionPoolerParamOverrides = {}
+  experiment = UnionPoolerExperiment(temporalMemoryParamOverrides,
+                                     unionPoolerParamOverrides)
+
+  trainingRepetitions = 1
+  trainNetwork(experiment, generatedSequences, trainingRepetitions, _VERBOSITY)
+  # TODO run training
+
+  # TODO run testing
+
+  # TODO output Union SDR sequence
+
 
 
 if __name__ == "__main__":
-  exp = UnionPoolerExperiment()
+  main()

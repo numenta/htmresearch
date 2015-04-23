@@ -58,9 +58,7 @@ class UnionPooler(SpatialPooler):
                maxBoost=1.0,
                seed=42,
                spVerbosity=0,
-               wrapAround=True,
-               initConnectedPct = 0.2,
-               synPredictedInc=0.5):
+               wrapAround=True):
 
     # TODO: SDR Union length parameter
     # TODO: Strength of mini-burst parameter; regular input param

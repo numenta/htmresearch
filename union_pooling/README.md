@@ -1,6 +1,6 @@
 # Description
 
-Vehicle control application for research.
+Union Temporal Pooler and related experiments.
 
 # Installation
 
