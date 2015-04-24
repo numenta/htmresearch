@@ -20,7 +20,16 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-# Generate sequences from an alphabet
-# Train on sequences
-# Test phase: show sequences selected randomly. At each step there is a chance
-# of Random Jump, Substitution, Deletion, and Addition
+"""
+Experiment 2
+Generate sequences from an alphabet.
+Train on sequences.
+Test phase: Input sequence pattern by pattern. Sequence-to-sequence
+progression is randomly selected. At each step there is a chance that the
+next pattern in the sequence is not shown. Specifically the following
+perturbations may occur:
+  1) random Jump to another sequence
+  2) substitution of some other pattern for the normal expected pattern
+  3) skipping expected pattern and presenting next pattern in sequence
+  4) addition of some other pattern putting off expected pattern one time step
+"""

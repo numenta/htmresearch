@@ -19,37 +19,78 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import time
 
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
+from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
 from union_pooling.experiments.union_pooler_experiment import (
     UnionPoolerExperiment)
 
 """
+Experiment 1
 Union Pooling with and without Temporal Memory training
 Compute overlap between Union SDR representations in two conditions over time
 """
+
 
 
 _SHOW_PROGRESS_INTERVAL = 100
 _VERBOSITY = 0
 
 
-def trainNetwork(experiment, sequences, repetitions, verbosity):
+
+def runTestPhase(experiment, consoleVerbosity):
+  # TODO
+  pass
+
+
+
+# TODO: Consider moving this to union_pooler_experiment
+def trainNetwork(experiment, sequences, sequencesLabels, repetitions,
+                 verbosity, onlineLearn=False):
   print "Training network..."
-  experiment.feedLayers(sequences, tmLearn=True, tpLearn=True,
-                        verbosity=verbosity,
-                        progressInterval=_SHOW_PROGRESS_INTERVAL)
+  if onlineLearn:
+    experiment.runNetworkOnSequence(sequences,
+                                    sequencesLabels,
+                                    tmLearn=True,
+                                    upLearn=True,
+                                    verbosity=verbosity,
+                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
+  else:
+    experiment.runNetworkOnSequence(sequences,
+                                    sequencesLabels,
+                                    tmLearn=True,
+                                    upLearn=False,
+                                    verbosity=verbosity,
+                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
+    experiment.runNetworkOnSequence(sequences,
+                                    sequencesLabels,
+                                    tmLearn=False,
+                                    upLearn=True,
+                                    verbosity=verbosity,
+                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
+
   print
-  print MonitorMixinBase.mmPrettyPrintMetrics(runner.tp.mmGetDefaultMetrics() +
-                                              runner.tm.mmGetDefaultMetrics())
+  print MonitorMixinBase.mmPrettyPrintMetrics(
+    experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
   print
+
+
+
+def plotNetworkState(experiment, plotVerbosity, onlineLearning,
+                     experimentPhase):
+  # TODO
+  pass
 
 
 
 def main():
-  tmLearning = False
+  start = time.time()
+  onlineLearning = False
+  consoleVerbosity = 0
+  plotVerbosity = 0
   patternDimensionality = 1024
   patternCardinality = 20
   patternAlphabetSize = 100
@@ -57,24 +98,37 @@ def main():
                                   patternAlphabetSize)
   sequenceMachine = SequenceMachine(patternMachine)
 
-  numSequences = 10
-  sequenceLength = 10
+  numSequences = 4
+  sequenceLength = 4
   numbers = sequenceMachine.generateNumbers(numSequences, sequenceLength)
   generatedSequences = sequenceMachine.generateFromNumbers(numbers)
-  # print sequenceMachine.prettyPrintSequence(generatedSequences)
+  sequenceLabels = [str(numbers[i + i*sequenceLength: i + (i+1)*sequenceLength])
+                    for i in xrange(numSequences)]
+  labeledSequence = []
+  for label in sequenceLabels:
+    for i in xrange(sequenceLength):
+      labeledSequence.append(label)
+    labeledSequence.append(None)
 
-  temporalMemoryParamOverrides = {}
-  unionPoolerParamOverrides = {}
-  experiment = UnionPoolerExperiment(temporalMemoryParamOverrides,
-                                     unionPoolerParamOverrides)
+  tmParamOverrides = {}
+  upParamOverrides = {}
+  experiment = UnionPoolerExperiment(tmParamOverrides, upParamOverrides)
 
   trainingRepetitions = 1
-  trainNetwork(experiment, generatedSequences, trainingRepetitions, _VERBOSITY)
-  # TODO run training
+  trainNetwork(experiment, generatedSequences, labeledSequence,
+               trainingRepetitions, _VERBOSITY, onlineLearn=onlineLearning)
 
-  # TODO run testing
+  runTestPhase(experiment, consoleVerbosity)
+  plotNetworkState(experiment, plotVerbosity, onlineLearning, "Testing")
+
+  elapsed = int(time.time() - start)
+  print "Total time: {0:2} seconds.".format(elapsed)
 
   # TODO output Union SDR sequence
+  # Write results to output file
+  # writeOutput(outputDir, runner, numElems, numWorlds, elapsed)
+  # if plotVerbosity >= 1:
+  #   raw_input("Press any key to exit...")
 
 
 

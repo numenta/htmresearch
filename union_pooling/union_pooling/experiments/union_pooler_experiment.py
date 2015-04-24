@@ -29,17 +29,18 @@ from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
     TemporalMemoryMonitorMixin)
 
 from sensorimotor.fast_general_temporal_memory import (
-    FastGeneralTemporalMemory)
+     FastGeneralTemporalMemory)
+from sensorimotor.temporal_pooler_monitor_mixin import (
+     TemporalPoolerMonitorMixin)
 from union_pooling.union_pooler import UnionPooler
-from union_pooling.union_pooler_monitor_mixin import UnionPoolerMonitorMixin
 
 
 class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
                                      FastGeneralTemporalMemory):
   pass
 
-
-class MonitoredUnionTemporalPooler(UnionPoolerMonitorMixin, UnionPooler):
+# TODO Implement UnionPoolerMonitorMixin if needed...
+class MonitoredUnionTemporalPooler(TemporalPoolerMonitorMixin, UnionPooler):
   pass
 
 
@@ -91,22 +92,25 @@ class UnionPoolerExperiment(object):
 
     # Initialize Union Pooler layer
     params = dict(self.DEFAULT_UNION_POOLER_PARAMS)
+    params.update(upOverrides or {})
     params["inputDimensions"] = [self.tm.numberOfCells()]
     params["potentialRadius"] = self.tm.numberOfCells()
     params["seed"] = seed
-    params.update(upOverrides or {})
-
-    # TODO Implement MonitoredUnionPooler
-    self.up = UnionPooler(**params)
+    self.up = MonitoredUnionTemporalPooler(mmName="UP", **params)
 
 
-  def runNetworkOnSequence(self, sensorSequence, sequenceLabels, tmLearn=True,
+  def runNetworkOnSequence(self, sensorSequences, sequencesLabels, tmLearn=True,
                            upLearn=None, verbosity=0, progressInterval=None):
     """
     Runs Union Pooler network on specified sequence.
 
-    @param sensorSequence         TODO
-    @param sequenceLabels         TODO
+    @param sensorSequences        A sequence of sensor sequences. Each
+                                  sequence is terminated by None.
+
+    @param sequenceLabels         A sequence of string representations of the
+                                  current sequence. Each sequence is terminated
+                                  by None.
+
     @param tmLearn:   (bool)      Either False, or True
     @param upLearn:   (None,bool) Either None, False, or True. If None,
                                   union pooler will be skipped.
@@ -117,16 +121,16 @@ class UnionPoolerExperiment(object):
 
     currentTime = time.time()
 
-    for i in xrange(len(sensorSequence)):
-      sensorPattern = sensorSequence[i]
-      sequenceLabel = sequenceLabels[i]
+    for i in xrange(len(sensorSequences)):
+      sensorPattern = sensorSequences[i]
+      sequenceLabel = sequencesLabels[i]
 
       self.runNetworkOnPattern(sensorPattern, tmLearn=tmLearn, upLearn=upLearn,
                                sequenceLabel=sequenceLabel)
 
       if progressInterval is not None and i > 0 and i % progressInterval == 0:
         print ("Ran {0} / {1} elements of sequence in "
-               "{2:0.2f} seconds.".format(i, len(sensorSequence),
+               "{2:0.2f} seconds.".format(i, len(sensorSequences),
                                           time.time() - currentTime))
         currentTime = time.time()
 
@@ -148,8 +152,7 @@ class UnionPoolerExperiment(object):
                           sequenceLabel=None):
     if sensorPattern is None:
       self.tm.reset()
-      # TODO implement reset() in monitor
-      # self.up.reset()
+      self.up.reset()
     else:
       self.tm.compute(sensorPattern,
                       formInternalConnections=True,
@@ -157,15 +160,11 @@ class UnionPoolerExperiment(object):
                       sequenceLabel=sequenceLabel)
 
       if upLearn is not None:
-        activeCells, predictedActiveCells, burstingColumns, = (
-            self.getUnionPoolerInput())
-        activeColumnsArray = numpy.zeros(self.up.getNumColumns())
-
+        activeCells, predActiveCells, burstingCols, = self.getUnionPoolerInput()
         self.up.compute(activeCells,
-                        upLearn,
-                        activeColumnsArray,
-                        burstingColumns,
-                        predictedActiveCells,
+                        predActiveCells,
+                        burstingCols,
+                        learn=upLearn,
                         sequenceLabel=sequenceLabel)
 
 

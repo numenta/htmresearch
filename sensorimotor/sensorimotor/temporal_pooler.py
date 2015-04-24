@@ -495,8 +495,8 @@ class TemporalPooler(SpatialPooler):
       activeArray[activeColumns] = 1
 
     # update pooling state of cells
-    activeColWithPredictedInput = activeColumns[numpy.where(\
-                                overlapsPredicted[activeColumns]>0)[0]]
+    activeColWithPredictedInput = activeColumns[numpy.where(
+                                  overlapsPredicted[activeColumns] > 0)[0]]
     
     numUnPredictedInput = float(len(burstingColumns.nonzero()[0]))
     numPredictedInput = float(len(predictedCells))
