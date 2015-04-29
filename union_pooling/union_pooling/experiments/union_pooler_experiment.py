@@ -70,15 +70,18 @@ class UnionPoolerExperiment(object):
 
 
   DEFAULT_UNION_POOLER_PARAMS = {# Spatial Pooler Params
+                                 # inputDimensions set to TM cell count
+                                 # potentialRadius set to TM cell count
                                  "columnDimensions": [1024],
-                                 "potentialPct": 0.5,
-                                 "globalInhibition": True,
-                                 "localAreaDensity": -1,
                                  "numActiveColumnsPerInhArea": 20,
                                  "stimulusThreshold": 0,
                                  "synPermInactiveDec": 0.01,
                                  "synPermActiveInc": 0.1,
+                                 "synPredictedInc": 0.5,
                                  "synPermConnected": 0.1,
+                                 "potentialPct": 0.5,
+                                 "globalInhibition": True,
+                                 "localAreaDensity": -1,
                                  "minPctOverlapDutyCycle": 0.001,
                                  "minPctActiveDutyCycle": 0.001,
                                  "dutyCyclePeriod": 1000,
@@ -108,7 +111,7 @@ class UnionPoolerExperiment(object):
     params["seed"] = seed
     self.up = MonitoredUnionTemporalPooler(mmName="UP", **params)
 
-    # TODO KNN classifer?
+    # TODO KNN classifer
 
 
   def runNetworkOnSequence(self, sensorSequences, sequencesLabels, tmLearn=True,

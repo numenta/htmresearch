@@ -19,7 +19,10 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import sys
 import time
+import yaml
+from optparse import OptionParser
 
 from pylab import rcParams
 
@@ -52,11 +55,7 @@ def runTestPhase(experiment, consoleVerbosity):
 
 
 
-def outputNetworkState(experiment, plotVerbosity, trainingPasses, phase=""):
-  print
-  print MonitorMixinBase.mmPrettyPrintMetrics(
-    experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
-  print
+def plotNetworkState(experiment, plotVerbosity, trainingPasses, phase=""):
   if plotVerbosity >= 1:
     rcParams["figure.figsize"] = PLOT_WIDTH, PLOT_HEIGHT
     title = "training passes: {0}, phase: {1}".format(trainingPasses, phase)
@@ -75,26 +74,40 @@ def outputNetworkState(experiment, plotVerbosity, trainingPasses, phase=""):
 
 
 
-def run(trainingPasses, numberOfSequences, sequenceLength,
-        patternDimensionality, patternCardinality, patternAlphabetSize,
-        consoleVerbosity=0, plotVerbosity=0):
+def run(params, outputDir, plotVerbosity=0, consoleVerbosity=0):
   """
   Runs the union overlap experiment.
 
-  :param isTrainTemporalMemory: If true the temporal memory will be trained
-  :param numberOfSequences: Number of unique sequences shown to network
-  :param sequenceLength: Length of sequences shown to network
-  :param patternDimensionality: Dimensionality of sequence patterns
-  :param patternCardinality: Cardinality (ON / true bits) of sequence patterns
-  :param patternAlphabetSize: Number of unique patterns from which sequences
-  are built
-  :param consoleVerbosity: Console output verbosity
+  :param params: A dict of experiment parameters
+  :param outputDir: Output will be written to this path
   :param plotVerbosity: Plotting verbosity
+  :param consoleVerbosity: Console output verbosity
   """
-  start = time.time()
+
+  # Dimensionality of sequence patterns
+  patternDimensionality = params["patternDimensionality"]
+
+  # Cardinality (ON / true bits) of sequence patterns
+  patternCardinality = params["patternCardinality"]
+
+  # Number of unique patterns from which sequences are built
+  patternAlphabetSize = params["patternAlphabetSize"]
+
+  # Length of sequences shown to network
+  sequenceLength = params["sequenceLength"]
+
+  # Number of sequences used. Sequences may share common elements.
+  numberOfSequences = params["numberOfSequences"]
+
+  # Number of sequence passes for training the TM. Zero => no training.
+  trainingPasses = params["trainingPasses"]
+
+  tmParamOverrides = params["temporalMemoryParams"]
+  upParamOverrides = params["unionPoolerParams"]
 
   # Generate a sequence list and an associated labeled list (both containing a
   # set of sequences separated by None)
+  start = time.time()
   print "Generating sequences..."
   patternMachine = PatternMachine(patternDimensionality, patternCardinality,
                                   patternAlphabetSize)
@@ -112,8 +125,7 @@ def run(trainingPasses, numberOfSequences, sequenceLength,
 
   # Set up the Temporal Memory and Union Pooler network
   print "Creating network..."
-  tmParamOverrides = {}
-  upParamOverrides = {}
+
   experiment = UnionPoolerExperiment(tmParamOverrides, upParamOverrides)
 
   # Train only the Temporal Memory on the generated sequences
@@ -127,15 +139,19 @@ def run(trainingPasses, numberOfSequences, sequenceLength,
                                       verbosity=_VERBOSITY,
                                       progressInterval=_SHOW_PROGRESS_INTERVAL)
 
-    outputNetworkState(experiment, plotVerbosity, trainingPasses,
-                       phase="Training")
+    print
+    print MonitorMixinBase.mmPrettyPrintMetrics(
+      experiment.tm.mmGetDefaultMetrics())
+    print
+    plotNetworkState(experiment, plotVerbosity, trainingPasses,
+                     phase="Training")
 
   print "Running test phase..."
   for i in xrange(numberOfSequences):
     sequence = generatedSequences[i + i * sequenceLength:
-                                  i + (i + 1) * sequenceLength]
+                                  (i + 1) + (i + 1) * sequenceLength]
     labeledSequence = labeledSequences[i + i * sequenceLength:
-                                       i + (i + 1) * sequenceLength]
+                                       (i + 1) + (i + 1) * sequenceLength]
     experiment.runNetworkOnSequence(sequence,
                                     labeledSequence,
                                     tmLearn=False,
@@ -143,7 +159,11 @@ def run(trainingPasses, numberOfSequences, sequenceLength,
                                     verbosity=_VERBOSITY,
                                     progressInterval=_SHOW_PROGRESS_INTERVAL)
 
-  outputNetworkState(experiment, plotVerbosity, trainingPasses,
+  print
+  print MonitorMixinBase.mmPrettyPrintMetrics(
+      experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
+  print
+  plotNetworkState(experiment, plotVerbosity, trainingPasses,
                      phase="Testing")
 
   elapsed = int(time.time() - start)
@@ -156,13 +176,45 @@ def run(trainingPasses, numberOfSequences, sequenceLength,
 
 
 
+def _getArgs():
+  parser = OptionParser(usage="%prog PARAMS_DIR OUTPUT_DIR [options]"
+                              "\n\nRun union overlap experiment using params in"
+                              " PARAMS_DIR and outputting results to "
+                              "OUTPUT_DIR.")
+  parser.add_option("-p",
+                    "--plot",
+                    type=int,
+                    default=0,
+                    dest="plotVerbosity",
+                    help="Plotting verbosity: 0 => none, 1 => summary plots, "
+                         "2 => detailed plots")
+  parser.add_option("-c",
+                    "--console",
+                    type=int,
+                    default=0,
+                    dest="consoleVerbosity",
+                    help="Console message verbosity: 0 => none")
+  (options, args) = parser.parse_args(sys.argv[1:])
+  if len(args) < 2:
+    parser.print_help(sys.stderr)
+    sys.exit()
+
+  with open(args[0]) as paramsFile:
+    params = yaml.safe_load(paramsFile)
+
+  return options, args, params
+
+
+
 if __name__ == "__main__":
+  # TODO Make params files
   # trainingPasses = 50
-  trainingPasses = 0
-  numberOfSequences = 4
-  sequenceLength = 4
-  patternDimensionality = 1024
-  patternCardinality = 20
-  patternAlphabetSize = 100
-  run(trainingPasses, numberOfSequences, sequenceLength,
-      patternDimensionality, patternCardinality, patternAlphabetSize)
+  # trainingPasses = 0
+  # numberOfSequences = 4
+  # sequenceLength = 4
+  # patternDimensionality = 1024
+  # patternCardinality = 20
+  # patternAlphabetSize = 100
+
+  (options, args, params) = _getArgs()
+  run(params, args[1], options.plotVerbosity, options.consoleVerbosity)

@@ -61,9 +61,12 @@ class UnionPooler(SpatialPooler):
                seed=42,
                spVerbosity=0,
                wrapAround=True,
+
+               # union_pooler.py parameters
                activeOverlapWeight=1.0,
                predictedActiveOverlapWeight=10.0,
-               maxUnionActivity=0.20):
+               maxUnionActivity=0.20,
+               synPredictedInc=0.5):
     """
     Please see spatial_pooler.py in NuPIC for super class parameter
     descriptions.
@@ -80,6 +83,9 @@ class UnionPooler(SpatialPooler):
     @param maxUnionActivity: Maximum percentage of cells allowed to be in
     union SDR
 
+    @param synPredictedInc: The amount by which a synapse activated from
+    predicted-active-cell input is incremented in each round. Specified as a
+    percent of a fully grown synapse.
     """
 
     super(UnionPooler, self).__init__(inputDimensions,
@@ -104,6 +110,7 @@ class UnionPooler(SpatialPooler):
     self._activeOverlapWeight = activeOverlapWeight
     self._predictedActiveOverlapWeight = predictedActiveOverlapWeight
     self._maxUnionActivity = maxUnionActivity
+    self._synPredictedInc = synPredictedInc
 
     self._poolingActivation = numpy.zeros(self._numColumns, dtype="int32")
     self._unionSDR = []
@@ -164,6 +171,8 @@ class UnionPooler(SpatialPooler):
     # Decrement pooling activation of all cells
     self._poolingActivation -= 1
     self._poolingActivation[numpy.where(self._poolingActivation < 0)] = 0
+    # TODO should _poolingActivation be a numpy array?
+    # perm[perm < self._synPermTrimThreshold] = 0
 
     # Set activation of cells receiving input from active cells
     columnIndices = numpy.where(activeOverlaps[activeCells] > 0)[0]
@@ -179,9 +188,12 @@ class UnionPooler(SpatialPooler):
     self._poolingActivation[activeCellsFromPredActiveInputs] += (
       predictedActiveOverlaps[activeCellsFromPredActiveInputs])
 
-    potentialUnionSDR = self._poolingActivation.nonzero()[0].sort()
-    self._unionSDR = potentialUnionSDR[0 : self._numColumns *
-                                           self._maxUnionActivity]
+    potentialUnionSDR = numpy.argsort(
+      self._poolingActivation)[::-1][:len(self._poolingActivation)]
+    numUnionCells = int(self._numColumns * self._maxUnionActivity)
+    topCells = potentialUnionSDR[0:numUnionCells]
+    nonZeroTopCells = self._poolingActivation[topCells] > 0
+    self._unionSDR = topCells[nonZeroTopCells]
     return self._unionSDR
 
 
