@@ -50,6 +50,9 @@ realDType = GetNTAReal()
 
 
 class UnionPoolerExperiment(object):
+  """
+
+  """
 
 
   DEFAULT_TEMPORAL_MEMORY_PARAMS = {"columnDimensions": (1024,),
@@ -62,10 +65,12 @@ class UnionPoolerExperiment(object):
                                     "maxNewSynapseCount": 30,
                                     "permanenceIncrement": 0.10,
                                     "permanenceDecrement": 0.02,
-                                    "seed": 42}
+                                    "seed": 42,
+                                    "learnOnOneCell": False}
 
 
-  DEFAULT_UNION_POOLER_PARAMS = {"columnDimensions": [1024],
+  DEFAULT_UNION_POOLER_PARAMS = {# Spatial Pooler Params
+                                 "columnDimensions": [1024],
                                  "potentialPct": 0.5,
                                  "globalInhibition": True,
                                  "localAreaDensity": -1,
@@ -80,7 +85,12 @@ class UnionPoolerExperiment(object):
                                  "maxBoost": 10.0,
                                  "seed": 42,
                                  "spVerbosity": 0,
-                                 "wrapAround": True}
+                                 "wrapAround": True,
+
+                                 # Union Pooler Params
+                                 "activeOverlapWeight": 1.0,
+                                 "predictedActiveOverlapWeight": 10.0,
+                                 "maxUnionActivity": 0.20}
 
 
   def __init__(self, tmOverrides=None, upOverrides=None, seed=42):
@@ -97,6 +107,8 @@ class UnionPoolerExperiment(object):
     params["potentialRadius"] = self.tm.numberOfCells()
     params["seed"] = seed
     self.up = MonitoredUnionTemporalPooler(mmName="UP", **params)
+
+    # TODO KNN classifer?
 
 
   def runNetworkOnSequence(self, sensorSequences, sequencesLabels, tmLearn=True,

@@ -58,6 +58,7 @@ from sensorimotor.sensorimotor_experiment_runner import (
   SensorimotorExperimentRunner
 )
 
+
 SHOW_PROGRESS_INTERVAL = 200
 TWOPASS_TM_TRAINING_REPS = 2
 TWOPASS_TP_TRAINING_REPS = 1
@@ -174,7 +175,7 @@ def runTestPhase(runner, randomAgents, numWorlds, numElements,
 def plotExperimentState(runner, plotVerbosity, numWorlds, numElems, isOnline,
                         experimentPhase):
   if plotVerbosity >= 1:
-    rcParams['figure.figsize'] = PLOT_WIDTH, PLOT_HEIGHT
+    rcParams["figure.figsize"] = PLOT_WIDTH, PLOT_HEIGHT
     title = "worlds: {0}, elements: {1}, online: {2}, phase: {3}".format(
             numWorlds, numElems, isOnline, experimentPhase)
     runner.tp.mmGetPlotConnectionsPerColumn(title=title)

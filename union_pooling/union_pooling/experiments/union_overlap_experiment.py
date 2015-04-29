@@ -52,13 +52,13 @@ def runTestPhase(experiment, consoleVerbosity):
 
 
 
-def plotNetworkState(experiment, plotVerbosity, trainingPasses, phase=""):
+def outputNetworkState(experiment, plotVerbosity, trainingPasses, phase=""):
   print
   print MonitorMixinBase.mmPrettyPrintMetrics(
-    experiment.tm.mmGetDefaultMetrics())
+    experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
   print
   if plotVerbosity >= 1:
-    rcParams['figure.figsize'] = PLOT_WIDTH, PLOT_HEIGHT
+    rcParams["figure.figsize"] = PLOT_WIDTH, PLOT_HEIGHT
     title = "training passes: {0}, phase: {1}".format(trainingPasses, phase)
     experiment.up.mmGetPlotConnectionsPerColumn(title=title)
     if plotVerbosity >= 2:
@@ -117,21 +117,34 @@ def run(trainingPasses, numberOfSequences, sequenceLength,
   experiment = UnionPoolerExperiment(tmParamOverrides, upParamOverrides)
 
   # Train only the Temporal Memory on the generated sequences
-  print "Training Temporal Memory..."
-  for _ in xrange(trainingPasses):
-    experiment.runNetworkOnSequence(generatedSequences,
-                                    labeledSequences,
-                                    tmLearn=True,
-                                    upLearn=None,
-                                    verbosity=_VERBOSITY,
-                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
-  plotNetworkState(experiment, plotVerbosity, trainingPasses,
-                   phase="Training")
+  if trainingPasses > 0:
+    print "Training Temporal Memory..."
+    for _ in xrange(trainingPasses):
+      experiment.runNetworkOnSequence(generatedSequences,
+                                      labeledSequences,
+                                      tmLearn=True,
+                                      upLearn=None,
+                                      verbosity=_VERBOSITY,
+                                      progressInterval=_SHOW_PROGRESS_INTERVAL)
+
+    outputNetworkState(experiment, plotVerbosity, trainingPasses,
+                       phase="Training")
 
   print "Running test phase..."
-  runTestPhase(experiment, consoleVerbosity)
-  plotNetworkState(experiment, plotVerbosity, trainingPasses,
-                   phase="Testing")
+  for i in xrange(numberOfSequences):
+    sequence = generatedSequences[i + i * sequenceLength:
+                                  i + (i + 1) * sequenceLength]
+    labeledSequence = labeledSequences[i + i * sequenceLength:
+                                       i + (i + 1) * sequenceLength]
+    experiment.runNetworkOnSequence(sequence,
+                                    labeledSequence,
+                                    tmLearn=False,
+                                    upLearn=False,
+                                    verbosity=_VERBOSITY,
+                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
+
+  outputNetworkState(experiment, plotVerbosity, trainingPasses,
+                     phase="Testing")
 
   elapsed = int(time.time() - start)
   print "Total time: {0:2} seconds.".format(elapsed)
@@ -144,7 +157,8 @@ def run(trainingPasses, numberOfSequences, sequenceLength,
 
 
 if __name__ == "__main__":
-  trainingPasses = 1
+  # trainingPasses = 50
+  trainingPasses = 0
   numberOfSequences = 4
   sequenceLength = 4
   patternDimensionality = 1024
