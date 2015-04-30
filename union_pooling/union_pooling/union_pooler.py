@@ -170,9 +170,7 @@ class UnionPooler(SpatialPooler):
 
     # Decrement pooling activation of all cells
     self._poolingActivation -= 1
-    self._poolingActivation[numpy.where(self._poolingActivation < 0)] = 0
-    # TODO should _poolingActivation be a numpy array?
-    # perm[perm < self._synPermTrimThreshold] = 0
+    self._poolingActivation[self._poolingActivation < 0] = 0
 
     # Set activation of cells receiving input from active cells
     columnIndices = numpy.where(activeOverlaps[activeCells] > 0)[0]

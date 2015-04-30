@@ -39,7 +39,7 @@ class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
                                      FastGeneralTemporalMemory):
   pass
 
-# TODO Implement UnionPoolerMonitorMixin if needed...
+# Implement UnionPoolerMonitorMixin if needed...
 class MonitoredUnionTemporalPooler(TemporalPoolerMonitorMixin, UnionPooler):
   pass
 

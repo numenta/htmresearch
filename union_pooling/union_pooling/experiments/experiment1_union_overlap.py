@@ -19,8 +19,10 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import csv
 import sys
 import time
+import os
 import yaml
 from optparse import OptionParser
 
@@ -49,9 +51,44 @@ PLOT_WIDTH = 9
 
 
 
-def runTestPhase(experiment, consoleVerbosity):
-  # TODO
-  pass
+def writeOutput(outputDir, paramDir, experiment, patternDimensionality,
+                patternCardinality, patternAlphabetSize, sequenceLength,
+                numberOfSequences, trainingPasses, elapsedTime):
+  if not os.path.exists(outputDir):
+    os.makedirs(outputDir)
+
+  # Output metrics
+  outputPrefix = paramDir.replace("/", ".")
+  outputPrefix = outputPrefix.replace(".yaml", "")
+  fileName = outputPrefix + "-metrics.csv"
+  filePath = os.path.join(outputDir, fileName)
+  with open(filePath, "wb") as outputFile:
+    csvWriter = csv.writer(outputFile)
+    header = ["n", "w", "alphabet", "seq length", "num sequences",
+              "training passes", "experiment time"]
+    row = [patternDimensionality, patternCardinality, patternAlphabetSize,
+           sequenceLength, numberOfSequences, trainingPasses, elapsedTime]
+    for metric in (experiment.tm.mmGetDefaultMetrics() +
+                   experiment.up.mmGetDefaultMetrics()):
+      header += ["{0} ({1})".format(metric.prettyPrintTitle(), x) for x in
+                ["min", "max", "sum", "mean", "stddev"]]
+      row += [metric.min, metric.max, metric.sum, metric.mean,
+              metric.standardDeviation]
+    csvWriter.writerow(header)
+    csvWriter.writerow(row)
+    outputFile.flush()
+
+  # Output Union SDR trace
+  fileName = outputPrefix + "-union_sdr_trace.csv"
+  filePath = os.path.join(outputDir, fileName)
+  with open(filePath, "wb") as outputFile:
+    csvWriter = csv.writer(outputFile)
+    unionTraceData = experiment.up._mmTraces["activeCells"].data
+    header = [i for i in xrange(len(unionTraceData))]
+    row = [unionSdr for unionSdr in unionTraceData]
+    csvWriter.writerow(header)
+    csvWriter.writerow(row)
+    outputFile.flush()
 
 
 
@@ -74,11 +111,12 @@ def plotNetworkState(experiment, plotVerbosity, trainingPasses, phase=""):
 
 
 
-def run(params, outputDir, plotVerbosity=0, consoleVerbosity=0):
+def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   """
   Runs the union overlap experiment.
 
   :param params: A dict of experiment parameters
+  :param paramDir: Path of parameter file
   :param outputDir: Output will be written to this path
   :param plotVerbosity: Plotting verbosity
   :param consoleVerbosity: Console output verbosity
@@ -169,8 +207,9 @@ def run(params, outputDir, plotVerbosity=0, consoleVerbosity=0):
   elapsed = int(time.time() - start)
   print "Total time: {0:2} seconds.".format(elapsed)
 
-  # Write results to output file
-  # TODO writeOutput(outputDir, runner, numElems, numWorlds, elapsed)
+  writeOutput(outputDir, paramDir, experiment, patternDimensionality,
+              patternCardinality, patternAlphabetSize, sequenceLength,
+              numberOfSequences, trainingPasses, elapsed)
   if plotVerbosity >= 1:
     raw_input("Press any key to exit...")
 
@@ -207,14 +246,5 @@ def _getArgs():
 
 
 if __name__ == "__main__":
-  # TODO Make params files
-  # trainingPasses = 50
-  # trainingPasses = 0
-  # numberOfSequences = 4
-  # sequenceLength = 4
-  # patternDimensionality = 1024
-  # patternCardinality = 20
-  # patternAlphabetSize = 100
-
   (options, args, params) = _getArgs()
-  run(params, args[1], options.plotVerbosity, options.consoleVerbosity)
+  run(params, args[0], args[1], options.plotVerbosity, options.consoleVerbosity)
