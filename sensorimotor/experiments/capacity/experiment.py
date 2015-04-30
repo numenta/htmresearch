@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2014, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2014-2015, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -57,6 +57,7 @@ from sensorimotor.random_one_d_agent import RandomOneDAgent
 from sensorimotor.sensorimotor_experiment_runner import (
   SensorimotorExperimentRunner
 )
+
 
 SHOW_PROGRESS_INTERVAL = 200
 TWOPASS_TM_TRAINING_REPS = 2
@@ -174,7 +175,7 @@ def runTestPhase(runner, randomAgents, numWorlds, numElements,
 def plotExperimentState(runner, plotVerbosity, numWorlds, numElems, isOnline,
                         experimentPhase):
   if plotVerbosity >= 1:
-    rcParams['figure.figsize'] = PLOT_WIDTH, PLOT_HEIGHT
+    rcParams["figure.figsize"] = PLOT_WIDTH, PLOT_HEIGHT
     title = "worlds: {0}, elements: {1}, online: {2}, phase: {3}".format(
             numWorlds, numElems, isOnline, experimentPhase)
     runner.tp.mmGetPlotConnectionsPerColumn(title=title)
