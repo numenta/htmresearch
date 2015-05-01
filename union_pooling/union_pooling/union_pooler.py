@@ -21,9 +21,6 @@
 
 import numpy
 
-from nupic.bindings.math import (SM32 as SparseMatrix,
-                                 SM_01_32_32 as SparseBinaryMatrix)
-
 from nupic.research.spatial_pooler import SpatialPooler
 
 

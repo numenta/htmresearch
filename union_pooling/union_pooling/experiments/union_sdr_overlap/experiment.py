@@ -57,38 +57,38 @@ def writeOutput(outputDir, paramDir, experiment, patternDimensionality,
   if not os.path.exists(outputDir):
     os.makedirs(outputDir)
 
-  # Output metrics
   outputPrefix = paramDir.replace("/", ".")
   outputPrefix = outputPrefix.replace(".yaml", "")
-  fileName = outputPrefix + "-metrics.csv"
-  filePath = os.path.join(outputDir, fileName)
-  with open(filePath, "wb") as outputFile:
-    csvWriter = csv.writer(outputFile)
-    header = ["n", "w", "alphabet", "seq length", "num sequences",
-              "training passes", "experiment time"]
-    row = [patternDimensionality, patternCardinality, patternAlphabetSize,
-           sequenceLength, numberOfSequences, trainingPasses, elapsedTime]
-    for metric in (experiment.tm.mmGetDefaultMetrics() +
-                   experiment.up.mmGetDefaultMetrics()):
-      header += ["{0} ({1})".format(metric.prettyPrintTitle(), x) for x in
-                ["min", "max", "sum", "mean", "stddev"]]
-      row += [metric.min, metric.max, metric.sum, metric.mean,
-              metric.standardDeviation]
-    csvWriter.writerow(header)
-    csvWriter.writerow(row)
-    outputFile.flush()
 
   # Output Union SDR trace
   fileName = outputPrefix + "-union_sdr_trace.csv"
   filePath = os.path.join(outputDir, fileName)
   with open(filePath, "wb") as outputFile:
     csvWriter = csv.writer(outputFile)
-    unionTraceData = experiment.up._mmTraces["activeCells"].data
-    header = [i for i in xrange(len(unionTraceData))]
-    row = [unionSdr for unionSdr in unionTraceData]
-    csvWriter.writerow(header)
-    csvWriter.writerow(row)
+    unionSdrTrace = experiment.up._mmTraces["activeCells"].data
+    rows = [list(unionSdr) for unionSdr in unionSdrTrace]
+    csvWriter.writerows(rows)
     outputFile.flush()
+
+  # Output metrics
+  # fileName = outputPrefix + "-metrics.csv"
+  # filePath = os.path.join(outputDir, fileName)
+  # with open(filePath, "wb") as outputFile:
+  #   csvWriter = csv.writer(outputFile)
+  #   header = ["n", "w", "alphabet", "seq length", "num sequences",
+  #             "training passes", "experiment time"]
+  #   row = [patternDimensionality, patternCardinality, patternAlphabetSize,
+  #          sequenceLength, numberOfSequences, trainingPasses, elapsedTime]
+  #   for metric in (experiment.tm.mmGetDefaultMetrics() +
+  #                  experiment.up.mmGetDefaultMetrics()):
+  #     header += ["{0} ({1})".format(metric.prettyPrintTitle(), x) for x in
+  #               ["min", "max", "sum", "mean", "stddev"]]
+  #     row += [metric.min, metric.max, metric.sum, metric.mean,
+  #             metric.standardDeviation]
+  #   csvWriter.writerow(header)
+  #   csvWriter.writerow(row)
+  #   outputFile.flush()
+
 
 
 
@@ -121,6 +121,9 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   :param plotVerbosity: Plotting verbosity
   :param consoleVerbosity: Console output verbosity
   """
+  print "Running SDR overlap experiment...\n"
+  print "Params dir: {0}".format(paramDir)
+  print "Output dir: {0}\n".format(outputDir)
 
   # Dimensionality of sequence patterns
   patternDimensionality = params["patternDimensionality"]
@@ -146,7 +149,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   # Generate a sequence list and an associated labeled list (both containing a
   # set of sequences separated by None)
   start = time.time()
-  print "Generating sequences..."
+  print "\nGenerating sequences..."
   patternMachine = PatternMachine(patternDimensionality, patternCardinality,
                                   patternAlphabetSize)
   sequenceMachine = SequenceMachine(patternMachine)
@@ -162,14 +165,16 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
     labeledSequences.append(None)
 
   # Set up the Temporal Memory and Union Pooler network
-  print "Creating network..."
+  print "\nCreating network..."
 
   experiment = UnionPoolerExperiment(tmParamOverrides, upParamOverrides)
 
   # Train only the Temporal Memory on the generated sequences
   if trainingPasses > 0:
     print "Training Temporal Memory..."
-    for _ in xrange(trainingPasses):
+    for i in xrange(trainingPasses):
+      if consoleVerbosity > 0:
+        print "\nTraining pass: {0}".format(i)
       experiment.runNetworkOnSequence(generatedSequences,
                                       labeledSequences,
                                       tmLearn=True,
@@ -184,7 +189,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
     plotNetworkState(experiment, plotVerbosity, trainingPasses,
                      phase="Training")
 
-  print "Running test phase..."
+  print "\nRunning test phase..."
   for i in xrange(numberOfSequences):
     sequence = generatedSequences[i + i * sequenceLength:
                                   (i + 1) + (i + 1) * sequenceLength]
