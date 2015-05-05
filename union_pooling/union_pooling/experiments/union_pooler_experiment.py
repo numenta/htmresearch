@@ -77,7 +77,6 @@ class UnionPoolerExperiment(object):
                                  "stimulusThreshold": 0,
                                  "synPermInactiveDec": 0.01,
                                  "synPermActiveInc": 0.1,
-                                 "synPredictedInc": 0.5,
                                  "synPermConnected": 0.1,
                                  "potentialPct": 0.5,
                                  "globalInhibition": True,

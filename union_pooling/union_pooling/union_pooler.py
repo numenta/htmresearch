@@ -105,7 +105,7 @@ class UnionPooler(SpatialPooler):
     self._maxUnionActivity = maxUnionActivity
 
     self._maxUnionCells = int(self._numColumns * self._maxUnionActivity)
-    self._poolingActivation = numpy.zeros(self._numColumns, dtype="int32")
+    self._poolingActivation = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
     self._unionSDR = []
 
 
@@ -115,7 +115,7 @@ class UnionPooler(SpatialPooler):
     """
 
     # Reset Union Pooler fields
-    self._poolingActivation = numpy.zeros(self._numColumns, dtype="int32")
+    self._poolingActivation = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
     self._unionSDR = []
 
     # Reset Spatial Pooler fields
@@ -177,6 +177,7 @@ class UnionPooler(SpatialPooler):
     """
     self._poolingActivation -= 1
     self._poolingActivation[self._poolingActivation < 0] = 0
+    return self._poolingActivation
 
 
   def _addToPoolingActivation(self, activeCells, overlaps):
@@ -188,8 +189,8 @@ class UnionPooler(SpatialPooler):
     """
     cellIndices = numpy.where(overlaps[activeCells] > 0)[0]
     activeCellsSubset = activeCells[cellIndices]
-    self._poolingActivation[activeCellsSubset] += (
-      overlaps[activeCellsSubset])
+    self._poolingActivation[activeCellsSubset] += overlaps[activeCellsSubset]
+    return self._poolingActivation
 
 
   def _getMostActiveCells(self):

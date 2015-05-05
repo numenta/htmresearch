@@ -4,6 +4,12 @@ import numpy
 
 from union_pooling.union_pooler import UnionPooler
 
+
+
+REAL_DTYPE = numpy.float32
+
+
+
 class UnionPoolerTest(unittest.TestCase):
 
 
@@ -35,29 +41,74 @@ class UnionPoolerTest(unittest.TestCase):
 
   def testDecayPoolingActivation(self):
     self.unionPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
-                                                      dtype="int32")
-    self.unionPooler._decayPoolingActivation()
-
+                                                      dtype=REAL_DTYPE)
     expected = numpy.array([0, 0, 1, 2, 3])
+
+    result = self.unionPooler._decayPoolingActivation()
+
+    self.assertEquals(len(expected), len(result))
     for i in xrange(len(expected)):
-      self.assertEquals(expected[i], self.unionPooler._poolingActivation[i])
+      self.assertEquals(expected[i], result[i])
 
 
   def testAddToPoolingActivation(self):
-    pass
-    # activeCells = set([1, 3, 4])
-    # #          [    0,   1,   0,     1,     1]
-    # overlaps = [0.123, 0.0, 0.0, 0.456, 0.789]
-    # expected = [0.0, 0.0, 0.0, 0.456, 0.789]
-    #
-    # self.unionPooler._addToPoolingActivation(activeCells, overlaps)
-    #
-    # for i in xrange(len(expected)):
-    #   self.assertEquals(expected[i], self.unionPooler._poolingActivation[i])
+    activeCells = numpy.array([1, 3, 4])
+    #                      [    0,   1,   0,     1,     1]
+    overlaps = numpy.array([0.123, 0.0, 0.0, 0.456, 0.789])
+    expected = [0.0, 0.0, 0.0, 0.456, 0.789]
+
+    result = self.unionPooler._addToPoolingActivation(activeCells, overlaps)
+
+    self.assertEquals(len(expected), len(result))
+    for i in xrange(len(expected)):
+      self.assertAlmostEquals(expected[i], result[i], places=6)
 
 
-  def testGetMostActiveCells(self):
-    pass
+  def testAddToPoolingActivation2(self):
+    self.unionPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
+                                                      dtype=REAL_DTYPE)
+    activeCells = numpy.array([1, 3, 4])
+    #                      [    0,   1,   0,     1,     1]
+    overlaps = numpy.array([0.123, 0.0, 0.0, 0.456, 0.789])
+    expected = [0.0, 1.0, 2.0, 3.456, 4.789]
+
+    result = self.unionPooler._addToPoolingActivation(activeCells, overlaps)
+
+    self.assertEquals(len(expected), len(result))
+    for i in xrange(len(expected)):
+      self.assertAlmostEquals(expected[i], result[i], places=6)
+
+
+  def testGetMostActiveCellsCornerCase(self):
+    self.unionPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
+                                                      dtype=REAL_DTYPE)
+    self.unionPooler._maxUnionCells = 0
+
+    result = self.unionPooler._getMostActiveCells()
+
+    self.assertEquals(len(result), 0)
+
+
+  def testGetMostActiveCellsRegular(self):
+    self.unionPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
+                                                      dtype=REAL_DTYPE)
+
+    result = self.unionPooler._getMostActiveCells()
+
+    self.assertEquals(len(result), 1)
+    self.assertEquals(result[0], 4)
+
+
+  def testGetMostActiveCellsIgnoreZeros(self):
+    self.unionPooler._poolingActivation = numpy.array([0, 0, 0, 3, 4],
+                                                      dtype=REAL_DTYPE)
+    self.unionPooler._maxUnionCells = 3
+
+    result = self.unionPooler._getMostActiveCells()
+
+    self.assertEquals(len(result), 2)
+    self.assertEquals(result[0], 4)
+    self.assertEquals(result[1], 3)
 
 
 if __name__ == "__main__":

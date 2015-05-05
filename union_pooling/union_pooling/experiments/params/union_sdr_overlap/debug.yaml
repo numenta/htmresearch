@@ -46,4 +46,3 @@ unionPoolerParams:
   activeOverlapWeight: 1.0
   predictedActiveOverlapWeight: 10.0
   maxUnionActivity: 0.20
-  synPredictedInc: 0.5
