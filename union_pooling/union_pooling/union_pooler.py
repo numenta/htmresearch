@@ -62,8 +62,7 @@ class UnionPooler(SpatialPooler):
                # union_pooler.py parameters
                activeOverlapWeight=1.0,
                predictedActiveOverlapWeight=10.0,
-               maxUnionActivity=0.20,
-               synPredictedInc=0.5):
+               maxUnionActivity=0.20):
     """
     Please see spatial_pooler.py in NuPIC for super class parameter
     descriptions.
@@ -77,12 +76,9 @@ class UnionPooler(SpatialPooler):
     @param predictedActiveOverlapWeight: A multiplicative weight applied to
     the overlap between connected synapses and predicted-active-cell input
 
-    @param maxUnionActivity: Maximum percentage of cells allowed to be in
-    union SDR
-
-    @param synPredictedInc: The amount by which a synapse activated from
-    predicted-active-cell input is incremented in each round. Specified as a
-    percent of a fully grown synapse.
+    @param maxUnionActivity: Maximum number of active cells allowed in
+    union SDR simultaneously in terms of the ratio between the number of active
+    cells and the number of total cells
     """
 
     super(UnionPooler, self).__init__(inputDimensions,
@@ -107,8 +103,8 @@ class UnionPooler(SpatialPooler):
     self._activeOverlapWeight = activeOverlapWeight
     self._predictedActiveOverlapWeight = predictedActiveOverlapWeight
     self._maxUnionActivity = maxUnionActivity
-    self._synPredictedInc = synPredictedInc
 
+    self._maxUnionCells = int(self._numColumns * self._maxUnionActivity)
     self._poolingActivation = numpy.zeros(self._numColumns, dtype="int32")
     self._unionSDR = []
 
@@ -135,23 +131,21 @@ class UnionPooler(SpatialPooler):
     """
     Computes one cycle of the Union Pooler algorithm.
     """
-    assert (numpy.size(activeInput) == self._numInputs)
-    assert (numpy.size(predictedActiveInput) == self._numInputs)
+    assert numpy.size(activeInput) == self._numInputs
+    assert numpy.size(predictedActiveInput) == self._numInputs
     self._updateBookeepingVars(learn)
 
-    activeOverlaps = self._calculateOverlap(activeInput)
-    predictedActiveOverlaps = self._calculateOverlap(predictedActiveInput)
-    totalOverlap = (activeOverlaps * self._activeOverlapWeight  +
-                    predictedActiveOverlaps *
+    overlapsActive = self._calculateOverlap(activeInput)
+    overlapsPredictedActive = self._calculateOverlap(predictedActiveInput)
+    totalOverlap = (overlapsActive * self._activeOverlapWeight  +
+                    overlapsPredictedActive *
                     self._predictedActiveOverlapWeight)
 
-    # Apply boosting when learning is on
     if learn:
       boostedOverlaps = self._boostFactors * totalOverlap
     else:
       boostedOverlaps = totalOverlap
 
-    # Apply inhibition to determine the winning cells
     activeCells = self._inhibitColumns(boostedOverlaps)
 
     if learn:
@@ -163,85 +157,50 @@ class UnionPooler(SpatialPooler):
         self._updateInhibitionRadius()
         self._updateMinDutyCycles()
 
-    # Update and return the Union SDR
-
     # Decrement pooling activation of all cells
+    self._decayPoolingActivation()
+
+    # Add to the poolingActivation of active Union Pooler cells receiving input
+    # from active input cells
+    self._addToPoolingActivation(activeCells, overlapsActive)
+
+    # Add to the poolingActivation of active Union Pooler cells receiving
+    # active-predicted input cells.
+    self._addToPoolingActivation(activeCells, overlapsPredictedActive)
+
+    return self._getMostActiveCells()
+
+
+  def _decayPoolingActivation(self):
+    """
+    Decrements pooling activation of all cells
+    """
     self._poolingActivation -= 1
     self._poolingActivation[self._poolingActivation < 0] = 0
 
-    # Set activation of cells receiving input from active cells
-    columnIndices = numpy.where(activeOverlaps[activeCells] > 0)[0]
-    activeCellsFromActiveInputs = activeCells[columnIndices]
-    self._poolingActivation[activeCellsFromActiveInputs] += (
-      activeOverlaps[activeCellsFromActiveInputs])
 
-    # Reset activation of cells receiving predicted input. This ordering assumes
-    # that the pooling period due to predicted active input will be greater than
-    # the period due to active input
-    columnIndices = numpy.where(predictedActiveOverlaps[activeCells] > 0)[0]
-    activeCellsFromPredActiveInputs = activeCells[columnIndices]
-    self._poolingActivation[activeCellsFromPredActiveInputs] += (
-      predictedActiveOverlaps[activeCellsFromPredActiveInputs])
+  def _addToPoolingActivation(self, activeCells, overlaps):
+    """
+    Adds overlaps from specified active cells to cells' pooling
+    activation.
+    :param activeCells: Indices of those cells winning the inhibition step
+    :param overlaps: A current set of overlap values for each cell
+    """
+    cellIndices = numpy.where(overlaps[activeCells] > 0)[0]
+    activeCellsSubset = activeCells[cellIndices]
+    self._poolingActivation[activeCellsSubset] += (
+      overlaps[activeCellsSubset])
 
+
+  def _getMostActiveCells(self):
+    """
+    Gets the most active cells in the Union SDR
+    :return: a set/list of cell indices
+    """
     potentialUnionSDR = numpy.argsort(
       self._poolingActivation)[::-1][:len(self._poolingActivation)]
-    numUnionCells = int(self._numColumns * self._maxUnionActivity)
-    topCells = potentialUnionSDR[0:numUnionCells]
+
+    topCells = potentialUnionSDR[0: self._maxUnionCells]
     nonZeroTopCells = self._poolingActivation[topCells] > 0
     self._unionSDR = topCells[nonZeroTopCells]
     return self._unionSDR
-
-
-  def _adaptSynapses(self, activeInput, predictedActiveInput, activeCells):
-    """
-    This is the synaptic learning method for the Union Pooler. It updates
-    the permanence of synapses based on the active and predicted-active input to
-    the Union Pooler. For each active Union Pooler cell, its synapses'
-    permanences are updated as follows:
-
-    1. if pre-synaptic input is ON due to a correctly predicted cell,
-       increase permanence by _synPredictedInc
-    2. else if input is ON due to an active cell, increase permanence by
-       _synPermActiveInc
-    3. else input is OFF, decrease permanence by _synPermInactiveDec
-
-    Parameters:
-    ----------------------------
-    activeInput:    a numpy array whose ON bits represent the active cells from
-                    Temporal Memory
-
-    predictedActiveInput: a numpy array with numInputs elements. A 1 indicates
-                          that this input was a correctly predicted cell in
-                          Temporal Memory
-
-    activeCells:    an array containing the indices of the cells that
-                    survived the Union Pooler inhibition step
-    """
-    activeInputIndices = numpy.where(activeInput > 0)[0]
-    predictedActiveInputIndices = numpy.where(predictedActiveInput > 0)[0]
-    permanenceChanges = numpy.zeros(self._numInputs)
-
-    # Decrement connections from inactive TM cell -> active Union Pooler cell
-    permanenceChanges.fill(-1 * self._synPermInactiveDec)
-
-    # Increment connections from active TM cell -> active Union Pooler cell
-    permanenceChanges[activeInputIndices] = self._synPermActiveInc
-
-    # Increment connections from correctly predicted TM cell -> active Union
-    # Pooler cell
-    permanenceChanges[predictedActiveInputIndices] = self._synPredictedInc
-
-    if self._spVerbosity > 4:
-      print "\n============== _adaptSynapses ======"
-      print "Active input indices:", activeInputIndices
-      print "Predicted-active input indices:", predictedActiveInputIndices
-      print "\n============== _adaptSynapses ======\n"
-
-    for i in activeCells:
-      # Get the permanences of the synapses of Union Pooler cell i
-      permanence = self._permanences.getRow(i)
-
-      # Only consider connections in column's potential pool (receptive field)
-      maskPotential = numpy.where(self._potentialPools.getRow(i) > 0)[0]
-      permanence[maskPotential] += permanenceChanges[maskPotential]
-      self._updatePermanencesForColumn(permanence, i, raisePerm=False)

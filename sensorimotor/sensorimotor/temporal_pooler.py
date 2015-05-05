@@ -500,7 +500,8 @@ class TemporalPooler(SpatialPooler):
     
     numUnPredictedInput = float(len(burstingColumns.nonzero()[0]))
     numPredictedInput = float(len(predictedCells))
-    fracUnPredicted = numUnPredictedInput/(numUnPredictedInput + numPredictedInput)
+    fracUnPredicted = numUnPredictedInput / (numUnPredictedInput +
+                                             numPredictedInput)
 
     self._updatePoolingState(activeColWithPredictedInput, fracUnPredicted)
 
