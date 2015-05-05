@@ -53,7 +53,7 @@ def main(pathLearn, pathNoLearn, outputPath):
   # Plot union size for data B
   unionSizeB = [len(datum) for datum in dataB]
   data_utils.getErrorbarFigure("Union Size, no Learning vs. Time", x,
-                               unionSizeA, stdDevs, "Time","Union Size")
+                               unionSizeB, stdDevs, "Time","Union Size")
 
   assert len(dataA) == len(dataB)
 
