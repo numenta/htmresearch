@@ -35,38 +35,3 @@ perturbations may occur:
   3) skipping expected pattern and presenting next pattern in sequence
   4) addition of some other pattern putting off expected pattern one time step
 """
-
-
-
-_SHOW_PROGRESS_INTERVAL = 100
-
-
-
-def trainNetwork(experiment, sequences, sequencesLabels, repetitions,
-                 verbosity, onlineLearn=False):
-  print "Training network..."
-  if onlineLearn:
-    experiment.runNetworkOnSequence(sequences,
-                                    sequencesLabels,
-                                    tmLearn=True,
-                                    upLearn=True,
-                                    verbosity=verbosity,
-                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
-  else:
-    experiment.runNetworkOnSequence(sequences,
-                                    sequencesLabels,
-                                    tmLearn=True,
-                                    upLearn=False,
-                                    verbosity=verbosity,
-                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
-    experiment.runNetworkOnSequence(sequences,
-                                    sequencesLabels,
-                                    tmLearn=False,
-                                    upLearn=True,
-                                    verbosity=verbosity,
-                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
-
-  print
-  print MonitorMixinBase.mmPrettyPrintMetrics(
-    experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
-  print
