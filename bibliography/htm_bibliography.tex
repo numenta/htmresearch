@@ -213,6 +213,38 @@ pyramidal neurons, including their various regions, active dendritic
 properties, number of synapses, etc. They focus on the commonalities across
 different cortical areas and hippocampus.
 
+\subsection{Polsky: computational subunits in dendrites of pyramidal cells}
+Polsky et al \cite{Polsky2004} showed that the thin basal dendrites of pyramidal
+cells provide a layer of independent computational 'subunits' that sigmoidally 
+modulate their inputs prior to global summation. This challenges the often reported 
+global linear or sublinear summation of synaptic inputs in pyramidal cells.
+
+Similar ideas have been proposed in an earlier paper \cite{Poirazi2003}, which
+shows that pyramidal cells is best modeled as a "two-layer" neural network. 
+
+\subsection{Rah: Thalamocortical inputs targeted proximal basal dendrites}
+Rah et al \cite{Rah2013} used array tomography, a high resolution optical 
+microscopy method to examine the spatial distributions of thalamocortical (TC) 
+inputs onto L4 and L5 pyramidal neurons. 
+
+\emph{Main results}:
+\begin{enumerate}
+\item TC synapses primarily target basal dendrites in L5 and proximal apical
+dendrites in L4 (Fig. 8).
+\item TC inputs are biased toward certain branches and, within branches,
+synapses show significant clustering with an excess of TC synapse nearest 
+neighbors within 5Ð15 ?m compared to a random distribution
+\end{enumerate}
+
+\subsection{Yoshimura: vertical and horizontal inputs to L2/3 neurons}
+
+Yoshimura et al. \cite{Yoshimura2000} examined properties of horizontal inputs 
+(lateral connections) and vertical inputs (feedforward inputs from L4) to L2/3 
+pyramidal cells. They found that vertical inputs (L4->L2/3) evoke large amplitude 
+EPSPs of L2/3 pyramidal neurons, whereas horizontal inputs 
+(lateral inputs from other L2/3 neurons) caused small amplitude EPSPs with 
+large variation.
+
 \section{Active Dendrites}
 
 An important function of the neocortex is to generate predictions of what will
@@ -316,8 +348,21 @@ They review different types of cell models.
 
 They provide numbers regarding the minimum number of synapses required to
 trigger dendritic spikes that match up very well with our formal analysis of
-SDRâ€™s.  NMDA spike in distal dendrites can be evoked by as few as 10 active
+SDRs.  NMDA spike in distal dendrites can be evoked by as few as 10 active
 synapses that are clustered together (page 17, top left).
+
+\subsection{Major: NMDA spikes in basal dendrites of pyramidal neurons}
+
+This paper \cite{Major2008} shows that glutamatergic inputs clustered over 
+approximately 20-40 microm can elicit local NMDA spike/plateau potentials in 
+terminal basal dendrites of cortical pyramidal neurons.
+
+\subsection{Golding: calcium spike in apical dendrites of pyramidal neurons}
+
+This paper \cite{Golding1999} shows calcium spikes are initiated in the apical 
+dendrites of CA1 pyramidal neurons and drive bursts of sodium-dependent action 
+potentials at the soma. A predicted cell could fire bursts of action potentials 
+through this mechanism. 
 
 \subsection{Larkum: BAC firing hypothesis}
 
@@ -535,7 +580,7 @@ A change in the timing of ABCD causes lower responses as well.
 total
 visual stimulation). During this time they saw the sequence 200 times.  The
 sequences were robust to dropout. ABCD had similar responses to A\_CD, both of
-which were larger than E\_CD.  Their results donâ€™t seem to be layer specific.
+which were larger than E\_CD.  Their results don't seem to be layer specific.
 They find larger responses to trained sequences in all layers.   Sequence
 learning was stimulus specific and localized; it did not transfer to the other
 eye.
@@ -551,9 +596,24 @@ HTM theory, since there would be a fair amount of inhibitory suppression within
 mini columns for predicted sequences.
 
 \emph{Oddity 2}: they claim that sequence learning occurs without NMDA receptor
-activation (page 3). I didnâ€™t understand that portion. Does that mean NMDA
+activation (page 3). I didn't understand that portion. Does that mean NMDA
 spikes are not required?
 
+\subsection{Martin: Functional heterogeneity in neighboring neurons of V1}
+ 
+\emph{Main result}: Although neurons in V1 are clustered according to their stimulus
+ preferences, responses to complex visual stimuli are highly heterogeneous between 
+ adjacent neurons \cite{Martin2013}. In response to gratings and visual noise, signal and noise 
+ correlations were well correlated with each other, but less so for responses to movies. 
+ 
+ Similar results are reported in \cite{Yen2007}, which shows that when stimulated with 
+ complex, time-varying natural scenes (i.e., movies), nearby striate neurons exhibit highly 
+ sparse and heterogenous responses.
+ 
+\emph{Other result}: "trial-to-trial fluctuations (termed ÒnoiseÓ) were poorly correlated between 
+ neighboring neurons, suggesting low degrees of common input." This is consistent with 
+ our assumption that cells in the same mini-column has different lateral connections.
+ 
 \section{Temporal Pooling and Invariances}
 
 The idea of temporal pooling is that after learning, predicted inputs will

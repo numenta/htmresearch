@@ -29,6 +29,14 @@ from nupic.research.fast_temporal_memory import FastTemporalMemory, ConnectionsC
 
 
 class FastGeneralTemporalMemory(GeneralTemporalMemory, FastTemporalMemory):
+  """
+  An implementation of GeneralTemporalMemory using C++ Connections data
+  structure (from FastTemporalMemory) for more optimized performance.
+  Note that while this implementation is faster than GeneralTemporalMemory,
+  it is harder to debug because of the C++ code. In contrast,
+  GeneralTemporalMemory is solely implemented in Python and will be easier to
+  debug.
+  """
 
   def burstColumns(self,
                    activeColumns,
