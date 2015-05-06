@@ -3,6 +3,16 @@ This directory contains code and Excel files that simulate various scenarios in
 the SDR paper. They are used to generate the numerical results. The code also
 serves to verify the formulas in the paper.
 
+An arXiv version of the SDR paper is available here:
+
+Ahmad, S., and Hawkins, J. (2015). *Properties of Sparse Distributed
+Representations and their Application to Hierarchical Temporal Memory*. Neurons
+and Cognition; Artificial Intelligence. Retrieved from
+http://arxiv.org/abs/1503.07469
+
+Subutai is working on a modified version for a journal publication.
+
+
 sdr_calculations.cpp
 ====================
 
@@ -58,6 +68,12 @@ of parameters. (A much wider range than you can by simulations.) This
 spreadsheet was used to compute the numbers in the examples and the tables in
 the SDR paper. 
 
+
+Averaged error
+==============
+
+averaged_error.py computes averaged errors over a wide range of values. The 
+file plotErrors.py plots the curve as a function of theta.   
 
 Note on using NuPIC Core
 ========================
