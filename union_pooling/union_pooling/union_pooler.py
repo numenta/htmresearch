@@ -105,7 +105,7 @@ class UnionPooler(SpatialPooler):
     self._maxUnionActivity = maxUnionActivity
 
     self._maxUnionCells = int(self._numColumns * self._maxUnionActivity)
-    self._poolingActivation = numpy.zeros(self._numColumns, dtype="int32")
+    self._poolingActivation = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
     self._unionSDR = []
 
 
@@ -115,7 +115,7 @@ class UnionPooler(SpatialPooler):
     """
 
     # Reset Union Pooler fields
-    self._poolingActivation = numpy.zeros(self._numColumns, dtype="int32")
+    self._poolingActivation = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
     self._unionSDR = []
 
     # Reset Spatial Pooler fields
@@ -126,8 +126,7 @@ class UnionPooler(SpatialPooler):
     self._boostFactors = numpy.ones(self._numColumns, dtype=REAL_DTYPE)
 
 
-  def compute(self, activeInput, predictedActiveInput, burstingColumns,
-              learn):
+  def compute(self, activeInput, predictedActiveInput, learn):
     """
     Computes one cycle of the Union Pooler algorithm.
     """
@@ -135,6 +134,7 @@ class UnionPooler(SpatialPooler):
     assert numpy.size(predictedActiveInput) == self._numInputs
     self._updateBookeepingVars(learn)
 
+    # Compute proximal dendrite overlaps with active and active-predicted inputs
     overlapsActive = self._calculateOverlap(activeInput)
     overlapsPredictedActive = self._calculateOverlap(predictedActiveInput)
     totalOverlap = (overlapsActive * self._activeOverlapWeight  +
@@ -149,7 +149,7 @@ class UnionPooler(SpatialPooler):
     activeCells = self._inhibitColumns(boostedOverlaps)
 
     if learn:
-      self._adaptSynapses(activeInput, predictedActiveInput, activeCells)
+      self._adaptSynapses(activeInput, activeCells)
       self._updateDutyCycles(totalOverlap, activeCells)
       self._bumpUpWeakColumns()
       self._updateBoostFactors()
@@ -157,7 +157,7 @@ class UnionPooler(SpatialPooler):
         self._updateInhibitionRadius()
         self._updateMinDutyCycles()
 
-    # Update and return the Union SDR
+    # Decrement pooling activation of all cells
     self._decayPoolingActivation()
 
     # Add to the poolingActivation of active Union Pooler cells receiving input
@@ -177,6 +177,7 @@ class UnionPooler(SpatialPooler):
     """
     self._poolingActivation -= 1
     self._poolingActivation[self._poolingActivation < 0] = 0
+    return self._poolingActivation
 
 
   def _addToPoolingActivation(self, activeCells, overlaps):
@@ -188,14 +189,15 @@ class UnionPooler(SpatialPooler):
     """
     cellIndices = numpy.where(overlaps[activeCells] > 0)[0]
     activeCellsSubset = activeCells[cellIndices]
-    self._poolingActivation[activeCellsSubset] += (
-      overlaps[activeCellsSubset])
+    self._poolingActivation[activeCellsSubset] += overlaps[activeCellsSubset]
+    return self._poolingActivation
 
 
   def _getMostActiveCells(self):
     """
-    Gets the most active cells in the Union SDR
-    :return: a set/list of cell indices
+    Gets the most active cells in the Union SDR having at least non-zero
+    activation.
+    :return: a list of cell indices
     """
     potentialUnionSDR = numpy.argsort(
       self._poolingActivation)[::-1][:len(self._poolingActivation)]

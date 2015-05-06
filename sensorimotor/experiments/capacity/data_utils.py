@@ -157,8 +157,10 @@ def getErrorbarFigure(title, x, y, stdDevs, xAxisLabel, yAxisLabel):
   ax = fig.add_subplot(111)
   ax.set_xlabel(xAxisLabel)
   ax.set_ylabel(yAxisLabel)
-  ax.axis([0, max(x) + 10, 0, 1])
+  ax.axis([0, max(x) + 10, 0, max(y) + 10])
   ax.errorbar(x, y, stdDevs)
+
+  plt.draw()
   return fig
 
 
