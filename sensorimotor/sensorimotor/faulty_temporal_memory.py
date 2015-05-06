@@ -48,20 +48,28 @@ class FaultyTemporalMemory(OrphanTemporalMemory):
                **kwargs):
     super(FaultyTemporalMemory, self).__init__(**kwargs)
     self.deadCells = set()
+    self.zombiePermutation = None    # Contains the order in which cells
+                                      # will be killed
+    self.numDead = 0
 
 
   def killCells(self, percent = 0.05):
     """
-    Kill off a certain percentage of cells. The previous set of dead cells (
-    if any) will be resurrected from the dead and replaced by a new set of dead
-    cells.
+    Changes the percentage of cells that are now considered dead. The first
+    time you call this method a permutation list is set up. Calls change the
+    number of cells considered dead.
     """
-    cellsToKill = round(percent * self.numberOfCells())
-    if cellsToKill > 0:
-      cells = numpy.random.permutation(self.numberOfCells())
-      self.deadCells = set(cells[0:cellsToKill])
+    if self.zombiePermutation is None:
+      self.zombiePermutation = numpy.random.permutation(self.numberOfCells())
+
+    self.numDead = round(percent * self.numberOfCells())
+    if self.numDead > 0:
+      self.deadCells = set(self.zombiePermutation[0:self.numDead])
     else:
       self.deadCells = set()
+
+    print "Total number of dead cells=",len(self.deadCells)
+
 
   def computeFn(self,
                 activeColumns,

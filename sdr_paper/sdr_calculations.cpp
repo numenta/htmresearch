@@ -569,6 +569,10 @@ void unionRunOneTrial(UInt n, UInt w, UInt w_p, UInt M, UInt k,
                  vector<Real>& probWithThetas, UInt nTrials, Random& r,
                  ofstream& f, UInt verbosity)
 {
+  cout << "Classification with unions of SDRs:\n";
+  f    << "Classification with unions of SDRs:\n";
+  f    << "n,w,w_p,M,k,nTrials,Prob with various thetas\n";
+
   unionClassificationFalseMatchProbability(n, w, w_p, M, k, probWithThetas,
                                            nTrials, r, verbosity);
   f << n << ","

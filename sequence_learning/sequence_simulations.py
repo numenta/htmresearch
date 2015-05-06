@@ -169,6 +169,30 @@ def createReport(tm, options, sequenceString, numSegments, numSynapses):
         csvWriter.writerow(row)
 
 
+def killCells(i, options, tm):
+  """
+  Kill cells as appropriate
+  """
+  # Kill cells if called for
+  if options.simulation == "killer":
+
+    if i == options.switchover:
+      print "i=",i,"Killing cells for the first time!"
+      tm.killCells(percent = options.noise)
+
+    if i == options.secondKill:
+      print "i=",i,"Killing cells again up to",options.secondNoise
+      tm.killCells(percent = options.secondNoise)
+
+  elif options.simulation == "killingMeSoftly" and (i%100 == 0):
+    steps = (options.secondKill - options.switchover)/100
+    nsteps = (options.secondNoise - options.noise)/steps
+    noise = options.noise + nsteps*(i-options.switchover)/100
+    if i in xrange(options.switchover, options.secondKill+1):
+      print "i=",i,"Killing cells!"
+      tm.killCells(percent = noise)
+
+
 def runExperiment1(options):
   outFilename = os.path.join("results", options.name+".out")
 
@@ -227,17 +251,17 @@ def runExperiment1(options):
         vecs = addNoise(vecs, percent = noise)
 
       # Train with clean data and then kill of a certain percentage of cells
-      elif options.simulation == "killer":
+      elif options.simulation in ["killer", "killingMeSoftly"]:
         vecs,label = getHighOrderSequenceChunk(i, i+1)
-        if i == options.switchover:
-          print "i=",i,"Killing cells!"
-          tm.killCells(percent = options.noise)
 
       else:
         raise Exception("Unknown simulation: " + options.simulation)
 
       # Train on the next sequence chunk
       for xi,vec in enumerate(vecs):
+
+        killCells(i, options, tm)
+
         tm.compute(vec, learn=learn)
         numSegments.append(tm.connections.numSegments())
         numSynapses.append(tm.connections.numSynapses())
@@ -331,10 +355,20 @@ if __name__ == '__main__':
                          "%default]",
                     default=0.1,
                     type=float)
+  parser.add_option("--secondNoise",
+                    help="Percent noise for second kill. [default: "
+                         "%default]",
+                    default=0.5,
+                    type=float)
   parser.add_option("--switchover",
                     help="Number of iterations after which to change "
                          "statistics. [default: %default]",
                     default=3500,
+                    type=int)
+  parser.add_option("--secondKill",
+                    help="Number of iterations after which to kill again. "
+                         "[default: %default]",
+                    default=50000,
                     type=int)
   parser.add_option("--cells",
                     help="Number of per column. [default: %default]",
@@ -342,7 +376,8 @@ if __name__ == '__main__':
                     type=int)
   parser.add_option("--simulation",
                     help="Which simulation to run: 'normal', 'noisy', "
-                    "'clean_noise' or 'killer' (default: %default)",
+                    "'clean_noise', 'killer', 'killingMeSoftly' (default: "
+                    "%default)",
                     default="normal",
                     type=str)
 
