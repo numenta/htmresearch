@@ -34,4 +34,7 @@ perturbations may occur:
   2) substitution of some other pattern for the normal expected pattern
   3) skipping expected pattern and presenting next pattern in sequence
   4) addition of some other pattern putting off expected pattern one time step
+Goal: Characterize the noise robustness of the UnionPooler to various
+perturbations. Explore trade-off between remaining stable to noise yet still
+changing when sequence actually changes.
 """

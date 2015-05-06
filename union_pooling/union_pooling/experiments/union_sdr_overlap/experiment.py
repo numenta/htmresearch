@@ -51,44 +51,49 @@ PLOT_WIDTH = 9
 
 
 
-def writeOutput(outputDir, paramDir, experiment, patternDimensionality,
-                patternCardinality, patternAlphabetSize, sequenceLength,
-                numberOfSequences, trainingPasses, elapsedTime):
+def writeMetricTrace(experiment, traceName, outputDir, outputFileName):
+  """
+  Assume trace elements can be converted to list.
+  :param experiment:
+  :param traceName:
+  :param outputDir:
+  :param outputFileName:
+  :return:
+  """
+
   if not os.path.exists(outputDir):
     os.makedirs(outputDir)
 
-  outputPrefix = paramDir.replace("/", ".")
-  outputPrefix = outputPrefix.replace(".yaml", "")
-
-  # Output Union SDR trace
-  fileName = outputPrefix + "-union_sdr_trace.csv"
-  filePath = os.path.join(outputDir, fileName)
+  filePath = os.path.join(outputDir, outputFileName)
   with open(filePath, "wb") as outputFile:
     csvWriter = csv.writer(outputFile)
-    unionSdrTrace = experiment.up._mmTraces["activeCells"].data
-    rows = [list(unionSdr) for unionSdr in unionSdrTrace]
+    dataTrace = experiment.up._mmTraces[traceName].data
+    rows = [list(datum) for datum in dataTrace]
     csvWriter.writerows(rows)
     outputFile.flush()
 
-  # Output metrics
-  # fileName = outputPrefix + "-metrics.csv"
-  # filePath = os.path.join(outputDir, fileName)
-  # with open(filePath, "wb") as outputFile:
-  #   csvWriter = csv.writer(outputFile)
-  #   header = ["n", "w", "alphabet", "seq length", "num sequences",
-  #             "training passes", "experiment time"]
-  #   row = [patternDimensionality, patternCardinality, patternAlphabetSize,
-  #          sequenceLength, numberOfSequences, trainingPasses, elapsedTime]
-  #   for metric in (experiment.tm.mmGetDefaultMetrics() +
-  #                  experiment.up.mmGetDefaultMetrics()):
-  #     header += ["{0} ({1})".format(metric.prettyPrintTitle(), x) for x in
-  #               ["min", "max", "sum", "mean", "stddev"]]
-  #     row += [metric.min, metric.max, metric.sum, metric.mean,
-  #             metric.standardDeviation]
-  #   csvWriter.writerow(header)
-  #   csvWriter.writerow(row)
-  #   outputFile.flush()
 
+
+def writeDefaultMetrics(outputDir, experiment, patternDimensionality,
+                        patternCardinality, patternAlphabetSize, sequenceLength,
+                        numberOfSequences, trainingPasses, elapsedTime):
+  fileName = "defaultMetrics_{0}learningPasses.csv".format(trainingPasses)
+  filePath = os.path.join(outputDir, fileName)
+  with open(filePath, "wb") as outputFile:
+    csvWriter = csv.writer(outputFile)
+    header = ["n", "w", "alphabet", "seq length", "num sequences",
+              "training passes", "experiment time"]
+    row = [patternDimensionality, patternCardinality, patternAlphabetSize,
+           sequenceLength, numberOfSequences, trainingPasses, elapsedTime]
+    for metric in (experiment.tm.mmGetDefaultMetrics() +
+                   experiment.up.mmGetDefaultMetrics()):
+      header += ["{0} ({1})".format(metric.prettyPrintTitle(), x) for x in
+                ["min", "max", "sum", "mean", "stddev"]]
+      row += [metric.min, metric.max, metric.sum, metric.mean,
+              metric.standardDeviation]
+    csvWriter.writerow(header)
+    csvWriter.writerow(row)
+    outputFile.flush()
 
 
 
@@ -212,9 +217,11 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   elapsed = int(time.time() - start)
   print "Total time: {0:2} seconds.".format(elapsed)
 
-  writeOutput(outputDir, paramDir, experiment, patternDimensionality,
-              patternCardinality, patternAlphabetSize, sequenceLength,
-              numberOfSequences, trainingPasses, elapsed)
+  # Write Union SDR trace
+  metricName = "activeCells"
+  outputFileName = "unionSdrTrace_{0}learningPasses.csv".format(trainingPasses)
+  writeMetricTrace(experiment, metricName, outputDir, outputFileName)
+
   if plotVerbosity >= 1:
     raw_input("Press any key to exit...")
 

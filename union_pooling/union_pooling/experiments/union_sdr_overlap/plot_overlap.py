@@ -22,14 +22,24 @@
 
 import argparse
 import csv
+import os
+
 import numpy
 
 from experiments.capacity import data_utils
 
 
 
-def main(pathLearn, pathNoLearn, outputPath):
-  print "Computing Union SDR overlap between SDR traces in following files:"
+def main(inputPath, outputPath):
+  print "Computing Union SDR overlap between SDR traces in following dir:"
+  print inputPath + "\n"
+
+  files = os.listdir(inputPath)
+  assert len(files) == 2
+  pathNoLearn = inputPath + "/" + files[0]
+  pathLearn = inputPath + "/" + files[1]
+
+  print "Comparing files..."
   print pathLearn
   print pathNoLearn + "\n"
 
@@ -57,7 +67,7 @@ def main(pathLearn, pathNoLearn, outputPath):
 
   assert len(dataA) == len(dataB)
 
-  with open(outputPath + "overlaps.csv", "wb") as outputFile:
+  with open(outputPath + "_overlaps.csv", "wb") as outputFile:
     csvWriter = csv.writer(outputFile)
     overlaps = [getOverlap(dataA[i], dataB[i]) for i in xrange(len(dataA))]
     csvWriter.writerow(overlaps)
@@ -82,9 +92,7 @@ def _getArgs():
   Parses and returns command line arguments.
   """
   parser = argparse.ArgumentParser()
-  parser.add_argument("--learn", help="Path to learning union_sdr_trace.csv")
-  parser.add_argument("--noLearn", help="Path to no-learning "
-                                         "union_sdr_trace.csv")
+  parser.add_argument("--input", help="Path to unionSdrTrace .csv files")
   parser.add_argument("--output", help="Path to output csv")
   return parser.parse_args()
 
@@ -92,4 +100,4 @@ def _getArgs():
 
 if __name__ == "__main__":
   args = _getArgs()
-  main(args.learn, args.noLearn, args.output)
+  main(args.input, args.output)

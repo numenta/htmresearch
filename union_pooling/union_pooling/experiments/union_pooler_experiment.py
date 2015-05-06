@@ -177,7 +177,6 @@ class UnionPoolerExperiment(object):
         activeCells, predActiveCells, burstingCols, = self.getUnionPoolerInput()
         self.up.compute(activeCells,
                         predActiveCells,
-                        burstingCols,
                         learn=upLearn,
                         sequenceLabel=sequenceLabel)
 

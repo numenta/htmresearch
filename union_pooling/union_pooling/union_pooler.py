@@ -126,8 +126,7 @@ class UnionPooler(SpatialPooler):
     self._boostFactors = numpy.ones(self._numColumns, dtype=REAL_DTYPE)
 
 
-  def compute(self, activeInput, predictedActiveInput, burstingColumns,
-              learn):
+  def compute(self, activeInput, predictedActiveInput, learn):
     """
     Computes one cycle of the Union Pooler algorithm.
     """
@@ -135,6 +134,7 @@ class UnionPooler(SpatialPooler):
     assert numpy.size(predictedActiveInput) == self._numInputs
     self._updateBookeepingVars(learn)
 
+    # Compute proximal dendrite overlaps with active and active-predicted inputs
     overlapsActive = self._calculateOverlap(activeInput)
     overlapsPredictedActive = self._calculateOverlap(predictedActiveInput)
     totalOverlap = (overlapsActive * self._activeOverlapWeight  +
@@ -149,7 +149,7 @@ class UnionPooler(SpatialPooler):
     activeCells = self._inhibitColumns(boostedOverlaps)
 
     if learn:
-      self._adaptSynapses(activeInput, predictedActiveInput, activeCells)
+      self._adaptSynapses(activeInput, activeCells)
       self._updateDutyCycles(totalOverlap, activeCells)
       self._bumpUpWeakColumns()
       self._updateBoostFactors()
@@ -195,8 +195,9 @@ class UnionPooler(SpatialPooler):
 
   def _getMostActiveCells(self):
     """
-    Gets the most active cells in the Union SDR
-    :return: a set/list of cell indices
+    Gets the most active cells in the Union SDR having at least non-zero
+    activation.
+    :return: a list of cell indices
     """
     potentialUnionSDR = numpy.argsort(
       self._poolingActivation)[::-1][:len(self._poolingActivation)]

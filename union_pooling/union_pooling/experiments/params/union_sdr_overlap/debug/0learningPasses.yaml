@@ -2,10 +2,10 @@
 
 patternDimensionality: 128
 patternCardinality: 3
-patternAlphabetSize: 10
+patternAlphabetSize: 100
 sequenceLength: 3
 numberOfSequences: 3
-trainingPasses: 3
+trainingPasses: 0
 
 temporalMemoryParams:
   columnDimensions: [128]

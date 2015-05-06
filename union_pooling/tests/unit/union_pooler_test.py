@@ -64,7 +64,7 @@ class UnionPoolerTest(unittest.TestCase):
       self.assertAlmostEquals(expected[i], result[i], places=6)
 
 
-  def testAddToPoolingActivation2(self):
+  def testAddToPoolingActivationExistingActivation(self):
     self.unionPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
                                                       dtype=REAL_DTYPE)
     activeCells = numpy.array([1, 3, 4])
@@ -79,7 +79,7 @@ class UnionPoolerTest(unittest.TestCase):
       self.assertAlmostEquals(expected[i], result[i], places=6)
 
 
-  def testGetMostActiveCellsCornerCase(self):
+  def testGetMostActiveCellsUnionSizeZero(self):
     self.unionPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
                                                       dtype=REAL_DTYPE)
     self.unionPooler._maxUnionCells = 0
