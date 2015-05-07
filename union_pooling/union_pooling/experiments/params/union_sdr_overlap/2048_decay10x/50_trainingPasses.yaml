@@ -1,14 +1,14 @@
-patternDimensionality: 1024
-patternCardinality: 20
+patternDimensionality: 2048
+patternCardinality: 40
 sequenceLength: 10
 numberOfSequences: 10
-trainingPasses: 0
+trainingPasses: 50
 
 temporalMemoryParams:
-  columnDimensions: [1024]
+  columnDimensions: [2048]
   cellsPerColumn: 8
   activationThreshold: 20
-  learningRadius: 1024
+  learningRadius: 2048
   initialPermanence: 0.5
   connectedPermanence: 0.6
   minThreshold: 20
@@ -20,8 +20,8 @@ temporalMemoryParams:
 
 unionPoolerParams:
   # Spatial Pooler superclass params
-  columnDimensions: [1024]
-  numActiveColumnsPerInhArea: 20.0
+  columnDimensions: [2048]
+  numActiveColumnsPerInhArea: 40.0
   potentialPct: 0.5
   globalInhibition: True
   localAreaDensity: -1.0
@@ -41,4 +41,4 @@ unionPoolerParams:
   activeOverlapWeight: 1.0
   predictedActiveOverlapWeight: 10.0
   maxUnionActivity: 0.20
-  decayFunctionSlope: 1.0
+  decayFunctionSlope: 10.0
