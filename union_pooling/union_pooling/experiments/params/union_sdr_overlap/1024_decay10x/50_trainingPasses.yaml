@@ -1,0 +1,48 @@
+# A reasonable parameter set; learning; input size 1024
+
+patternDimensionality: 1024
+patternCardinality: 20
+sequenceLength: 15
+numberOfSequences: 5
+trainingPasses: 50
+
+temporalMemoryParams:
+  columnDimensions: [1024]
+  cellsPerColumn: 8
+  activationThreshold: 20
+  learningRadius: 2048
+  initialPermanence: 0.5
+  connectedPermanence: 0.6
+  minThreshold: 20
+  maxNewSynapseCount: 30
+  permanenceIncrement: 0.10
+  permanenceDecrement: 0.02
+  seed: 42
+  learnOnOneCell: False
+
+unionPoolerParams:
+  # Spatial Pooler Params
+  # inputDimensions set based on Temporal Memory cell count
+  # potentialRadius set based on Temporal Memory cell count
+  columnDimensions: [1024]
+  potentialPct: 0.5
+  globalInhibition: True
+  localAreaDensity: -1.0
+  numActiveColumnsPerInhArea: 20.0
+  stimulusThreshold: 0
+  synPermInactiveDec: 0.01
+  synPermActiveInc: 0.10
+  synPermConnected: 0.10
+  minPctOverlapDutyCycle: 0.001
+  minPctActiveDutyCycle: 0.001
+  dutyCyclePeriod: 1000
+  maxBoost: 10.0
+  seed: 42
+  spVerbosity: 0
+  wrapAround: True
+
+  # Union Pooler Params
+  activeOverlapWeight: 1.0
+  predictedActiveOverlapWeight: 10.0
+  maxUnionActivity: 0.20
+  decayFunctionSlope: 10.0

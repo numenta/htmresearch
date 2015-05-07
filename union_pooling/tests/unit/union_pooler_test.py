@@ -39,10 +39,23 @@ class UnionPoolerTest(unittest.TestCase):
                                    maxUnionActivity=0.20)
 
 
-  def testDecayPoolingActivation(self):
+  def testDecayPoolingActivationDefaultDecayRate(self):
     self.unionPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
                                                       dtype=REAL_DTYPE)
     expected = numpy.array([0, 0, 1, 2, 3])
+
+    result = self.unionPooler._decayPoolingActivation()
+
+    self.assertEquals(len(expected), len(result))
+    for i in xrange(len(expected)):
+      self.assertEquals(expected[i], result[i])
+
+
+  def testDecayPoolingActivationSpecifiedDecayRate(self):
+    self.unionPooler._decayFunctionSlope = 10
+    self.unionPooler._poolingActivation = numpy.array([0, 10, 20, 30, 40],
+                                                      dtype=REAL_DTYPE)
+    expected = numpy.array([0, 0, 10, 20, 30])
 
     result = self.unionPooler._decayPoolingActivation()
 

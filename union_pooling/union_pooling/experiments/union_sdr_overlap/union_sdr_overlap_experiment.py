@@ -28,6 +28,7 @@ from optparse import OptionParser
 
 from pylab import rcParams
 
+from experiments.capacity import data_utils
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
@@ -48,29 +49,6 @@ _VERBOSITY = 0
 PLOT_RESET_SHADING = 0.2
 PLOT_HEIGHT = 6
 PLOT_WIDTH = 9
-
-
-
-def writeMetricTrace(experiment, traceName, outputDir, outputFileName):
-  """
-  Assume trace elements can be converted to list.
-  :param experiment:
-  :param traceName:
-  :param outputDir:
-  :param outputFileName:
-  :return:
-  """
-
-  if not os.path.exists(outputDir):
-    os.makedirs(outputDir)
-
-  filePath = os.path.join(outputDir, outputFileName)
-  with open(filePath, "wb") as outputFile:
-    csvWriter = csv.writer(outputFile)
-    dataTrace = experiment.up._mmTraces[traceName].data
-    rows = [list(datum) for datum in dataTrace]
-    csvWriter.writerows(rows)
-    outputFile.flush()
 
 
 
@@ -97,12 +75,45 @@ def writeDefaultMetrics(outputDir, experiment, patternDimensionality,
 
 
 
+def writeMetricTrace(experiment, traceName, outputDir, outputFileName):
+  """
+  Assume trace elements can be converted to list.
+  :param experiment:
+  :param traceName:
+  :param outputDir:
+  :param outputFileName:
+  :return:
+  """
+
+  if not os.path.exists(outputDir):
+    os.makedirs(outputDir)
+
+  filePath = os.path.join(outputDir, outputFileName)
+  with open(filePath, "wb") as outputFile:
+    csvWriter = csv.writer(outputFile)
+    dataTrace = experiment.up._mmTraces[traceName].data
+    rows = [list(datum) for datum in dataTrace]
+    csvWriter.writerows(rows)
+    outputFile.flush()
+
+
+
 def plotNetworkState(experiment, plotVerbosity, trainingPasses, phase=""):
+
   if plotVerbosity >= 1:
     rcParams["figure.figsize"] = PLOT_WIDTH, PLOT_HEIGHT
-    title = "training passes: {0}, phase: {1}".format(trainingPasses, phase)
-    experiment.up.mmGetPlotConnectionsPerColumn(title=title)
+
+    # Plot Union SDR trace
+    dataTrace = experiment.up._mmTraces["activeCells"].data
+    unionSizeTrace = [len(datum) for datum in dataTrace]
+    x = [i for i in xrange(len(unionSizeTrace))]
+    stdDevs = None
+    title = "Union Size; {0} training passses vs. Time".format(trainingPasses)
+    data_utils.getErrorbarFigure(title, x, unionSizeTrace, stdDevs, "Time",
+                                 "Union Size")
     if plotVerbosity >= 2:
+      title = "training passes: {0}, phase: {1}".format(trainingPasses, phase)
+      experiment.up.mmGetPlotConnectionsPerColumn(title=title)
       experiment.tm.mmGetCellActivityPlot(title=title,
                                           activityType="activeCells",
                                           showReset=True,
@@ -137,7 +148,9 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   patternCardinality = params["patternCardinality"]
 
   # Number of unique patterns from which sequences are built
-  patternAlphabetSize = params["patternAlphabetSize"]
+  # TODO if this parameter is to be supported, the sequence generation code
+  # below must change
+  # patternAlphabetSize = params["patternAlphabetSize"]
 
   # Length of sequences shown to network
   sequenceLength = params["sequenceLength"]
@@ -155,6 +168,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   # set of sequences separated by None)
   start = time.time()
   print "\nGenerating sequences..."
+  patternAlphabetSize = sequenceLength * numberOfSequences
   patternMachine = PatternMachine(patternDimensionality, patternCardinality,
                                   patternAlphabetSize)
   sequenceMachine = SequenceMachine(patternMachine)
@@ -191,8 +205,9 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
     print MonitorMixinBase.mmPrettyPrintMetrics(
       experiment.tm.mmGetDefaultMetrics())
     print
-    plotNetworkState(experiment, plotVerbosity, trainingPasses,
-                     phase="Training")
+    if plotVerbosity >= 2:
+      plotNetworkState(experiment, plotVerbosity, trainingPasses,
+                       phase="Training")
 
   print "\nRunning test phase..."
   for i in xrange(numberOfSequences):
@@ -211,8 +226,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   print MonitorMixinBase.mmPrettyPrintMetrics(
       experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
   print
-  plotNetworkState(experiment, plotVerbosity, trainingPasses,
-                     phase="Testing")
+  plotNetworkState(experiment, plotVerbosity, trainingPasses, phase="Testing")
 
   elapsed = int(time.time() - start)
   print "Total time: {0:2} seconds.".format(elapsed)

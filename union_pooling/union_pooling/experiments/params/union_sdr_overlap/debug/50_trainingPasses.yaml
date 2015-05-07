@@ -2,10 +2,9 @@
 
 patternDimensionality: 128
 patternCardinality: 3
-patternAlphabetSize: 100
-sequenceLength: 3
-numberOfSequences: 3
-trainingPasses: 10
+sequenceLength: 15
+numberOfSequences: 5
+trainingPasses: 50
 
 temporalMemoryParams:
   columnDimensions: [128]
@@ -46,3 +45,4 @@ unionPoolerParams:
   activeOverlapWeight: 1.0
   predictedActiveOverlapWeight: 10.0
   maxUnionActivity: 0.20
+  decayFunctionSlope: 1.0

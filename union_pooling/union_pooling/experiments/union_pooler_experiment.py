@@ -92,7 +92,8 @@ class UnionPoolerExperiment(object):
                                  # Union Pooler Params
                                  "activeOverlapWeight": 1.0,
                                  "predictedActiveOverlapWeight": 10.0,
-                                 "maxUnionActivity": 0.20}
+                                 "maxUnionActivity": 0.20,
+                                 "decayFunctionSlope": 1.0}
 
 
   def __init__(self, tmOverrides=None, upOverrides=None, seed=42):
