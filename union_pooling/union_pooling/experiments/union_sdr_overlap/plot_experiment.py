@@ -34,7 +34,9 @@ _OVERLAPS_FILE_NAME = "/overlaps.csv"
 
 
 def main(inputPath, csvOutputPath, imgOutputPath):
-  os.remove(csvOutputPath + _OVERLAPS_FILE_NAME)
+  # remove existing /overlaps.csv if present
+  if os.path.exists(csvOutputPath + _OVERLAPS_FILE_NAME):
+    os.remove(csvOutputPath + _OVERLAPS_FILE_NAME)
 
   if not os.path.exists(csvOutputPath):
     os.makedirs(csvOutputPath)

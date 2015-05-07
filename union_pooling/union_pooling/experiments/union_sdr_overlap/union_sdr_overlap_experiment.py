@@ -44,7 +44,7 @@ Compute overlap between Union SDR representations in two conditions over time
 
 
 
-_SHOW_PROGRESS_INTERVAL = 100
+_SHOW_PROGRESS_INTERVAL = 10
 _VERBOSITY = 0
 PLOT_RESET_SHADING = 0.2
 PLOT_HEIGHT = 6
@@ -84,7 +84,6 @@ def writeMetricTrace(experiment, traceName, outputDir, outputFileName):
   :param outputFileName:
   :return:
   """
-
   if not os.path.exists(outputDir):
     os.makedirs(outputDir)
 
@@ -192,8 +191,10 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   if trainingPasses > 0:
     print "Training Temporal Memory..."
     for i in xrange(trainingPasses):
-      if consoleVerbosity > 0:
+
+      if i % _SHOW_PROGRESS_INTERVAL == 0:
         print "\nTraining pass: {0}".format(i)
+
       experiment.runNetworkOnSequence(generatedSequences,
                                       labeledSequences,
                                       tmLearn=True,
