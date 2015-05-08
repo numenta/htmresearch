@@ -38,8 +38,9 @@ from union_pooling.experiments.union_pooler_experiment import (
 
 """
 Experiment 1
-Union Pooling with and without Temporal Memory training
-Compute overlap between Union SDR representations in two conditions over time
+Runs UnionPooler on input from a Temporal Memory with and
+without training. Compute overlap between Union SDR representations in two
+conditions over time.
 """
 
 
@@ -211,6 +212,10 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
                        phase="Training")
 
   print "\nRunning test phase..."
+
+  # In the case we train the Temporal Memory, we want to stop in the test
+  # phase if there are bursting columns
+  stopIfBursting = trainingPasses > 0
   for i in xrange(numberOfSequences):
     sequence = generatedSequences[i + i * sequenceLength:
                                   (i + 1) + (i + 1) * sequenceLength]
@@ -221,7 +226,8 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
                                     tmLearn=False,
                                     upLearn=False,
                                     verbosity=_VERBOSITY,
-                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
+                                    progressInterval=_SHOW_PROGRESS_INTERVAL,
+                                    stopIfBursting=stopIfBursting)
 
   print
   print MonitorMixinBase.mmPrettyPrintMetrics(

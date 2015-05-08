@@ -76,7 +76,7 @@ def main(inputPath, csvOutputPath, imgOutputPath):
   assert len(dataA) == len(dataB)
 
   # To display all plots on the same y scale
-  yRangeMax = max(max(unionSizeA), max(unionSizeB))
+  yRangeMax = 1.05 * max(max(unionSizeA), max(unionSizeB))
 
   # Plot union size for data A
   x = [i for i in xrange(len(dataA))]

@@ -49,6 +49,10 @@ realDType = GetNTAReal()
 
 
 
+class BurstingColumnsException(Exception):
+  pass
+
+
 class UnionPoolerExperiment(object):
   """
 
@@ -110,11 +114,13 @@ class UnionPoolerExperiment(object):
     params["seed"] = seed
     self.up = MonitoredUnionTemporalPooler(mmName="UP", **params)
 
+    self.resetPrevStep = True
     # TODO KNN classifer
 
 
   def runNetworkOnSequence(self, sensorSequences, sequencesLabels, tmLearn=True,
-                           upLearn=None, verbosity=0, progressInterval=None):
+                           upLearn=None, stopIfBursting=False, verbosity=0,
+                           progressInterval=None):
     """
     Runs Union Pooler network on specified sequence.
 
@@ -134,13 +140,17 @@ class UnionPoolerExperiment(object):
     """
 
     currentTime = time.time()
+    self.resetPrevStep = True
 
     for i in xrange(len(sensorSequences)):
       sensorPattern = sensorSequences[i]
       sequenceLabel = sequencesLabels[i]
 
-      self.runNetworkOnPattern(sensorPattern, tmLearn=tmLearn, upLearn=upLearn,
-                               sequenceLabel=sequenceLabel)
+      self.runNetworkOnPattern(sensorPattern,
+                               tmLearn=tmLearn,
+                               upLearn=upLearn,
+                               sequenceLabel=sequenceLabel,
+                               stopIfBursting=stopIfBursting)
 
       if progressInterval is not None and i > 0 and i % progressInterval == 0:
         print ("Ran {0} / {1} elements of sequence in "
@@ -163,22 +173,34 @@ class UnionPoolerExperiment(object):
 
 
   def runNetworkOnPattern(self, sensorPattern, tmLearn=True, upLearn=None,
-                          sequenceLabel=None):
+                          sequenceLabel=None, stopIfBursting=False):
     if sensorPattern is None:
       self.tm.reset()
       self.up.reset()
+      self.resetPrevStep = True
     else:
       self.tm.compute(sensorPattern,
                       formInternalConnections=True,
                       learn=tmLearn,
                       sequenceLabel=sequenceLabel)
 
+      activeCells, predActiveCells, burstingCols, = self.getUnionPoolerInput()
+
+      if stopIfBursting and not self.resetPrevStep:
+        numBursting = len(burstingCols.nonzero())
+        if numBursting > 0:
+          msg = "WARNING: Stopping after finding {0} bursting columns".format(
+            numBursting)
+          print msg
+          raise BurstingColumnsException(msg)
+
       if upLearn is not None:
-        activeCells, predActiveCells, burstingCols, = self.getUnionPoolerInput()
         self.up.compute(activeCells,
                         predActiveCells,
                         learn=upLearn,
                         sequenceLabel=sequenceLabel)
+
+      self.resetPrevStep = False
 
 
   def getUnionPoolerInput(self):
