@@ -109,8 +109,14 @@ class UnionPooler(SpatialPooler):
     self._maxUnionActivity = maxUnionActivity
     self._decayFunctionSlope = decayFunctionSlope
 
+    # The maximum number of cells allowed in a single union SDR
     self._maxUnionCells = int(self._numColumns * self._maxUnionActivity)
+
+    # Scalar activation of potential union SDR cells; most active cells become
+    # the union SDR
     self._poolingActivation = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
+
+    # Current union SDR; the end product of the union pooler algorithm
     self._unionSDR = []
 
 

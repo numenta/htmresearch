@@ -58,7 +58,6 @@ class UnionPoolerExperiment(object):
   DEFAULT_TEMPORAL_MEMORY_PARAMS = {"columnDimensions": (1024,),
                                     "cellsPerColumn": 8,
                                     "activationThreshold": 20,
-                                    "learningRadius": 2048,
                                     "initialPermanence": 0.5,
                                     "connectedPermanence": 0.6,
                                     "minThreshold": 20,
