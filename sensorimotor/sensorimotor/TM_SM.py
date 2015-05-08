@@ -43,7 +43,7 @@ class TM_SM(TM):
                numberOfDistalInput = 10,
                cellsPerColumn =4,
                #columnsShape = # todo: need to specify topology at some point
-               learningRadius =50,    # todo: use when choosing new synapses
+               #learningRadius =50,    # todo: use when choosing new synapses
                initialPerm =0.2, # todo: check perm numbers with Ron
                connectedPerm =0.8,
                newSynapseCount =10,
@@ -73,9 +73,6 @@ class TM_SM(TM):
 
     @param cellsPerColumn Number of cells per column. Different cells in the same
                   column represents different context of the same input
-
-    @param learningRadius The scope of lateral connections. Cells can only make lateral
-                  connections to other cells within learningRadius.
 
     @param initialPerm initial permanance when a new synapse is added
 
@@ -143,7 +140,7 @@ class TM_SM(TM):
     self.cellsPerColumn = cellsPerColumn
     self.numberOfDistalInput = numberOfDistalInput
     self._numberOfCells = numberOfCols * cellsPerColumn
-    self.learningRadius = learningRadius
+    # self.learningRadius = learningRadius
     self.initialPerm = numpy.float32(initialPerm)
     self.connectedPerm = numpy.float32(connectedPerm)
     self.minThreshold = minThreshold
