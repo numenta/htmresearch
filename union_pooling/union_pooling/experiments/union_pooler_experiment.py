@@ -146,7 +146,7 @@ class UnionPoolerExperiment(object):
       sensorPattern = sensorSequences[i]
       sequenceLabel = sequencesLabels[i]
 
-      self.runNetworkOnPattern(sensorPattern,
+      self.runNetworkOnPattern(sensorPattern, i,
                                tmLearn=tmLearn,
                                upLearn=upLearn,
                                sequenceLabel=sequenceLabel,
@@ -172,7 +172,7 @@ class UnionPoolerExperiment(object):
       print
 
 
-  def runNetworkOnPattern(self, sensorPattern, tmLearn=True, upLearn=None,
+  def runNetworkOnPattern(self, sensorPattern, i, tmLearn=True, upLearn=None,
                           sequenceLabel=None, stopIfBursting=False):
     if sensorPattern is None:
       self.tm.reset()
@@ -189,10 +189,9 @@ class UnionPoolerExperiment(object):
       if stopIfBursting and not self.resetPrevStep:
         numBursting = len(burstingCols.nonzero())
         if numBursting > 0:
-          msg = "WARNING: Stopping after finding {0} bursting columns".format(
-            numBursting)
+          msg = "Pattern: {0} Bursting: {1}".format(i, numBursting)
           print msg
-          raise BurstingColumnsException(msg)
+          # raise BurstingColumnsException(msg)
 
       if upLearn is not None:
         self.up.compute(activeCells,

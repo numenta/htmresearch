@@ -26,12 +26,14 @@ import os
 import yaml
 from optparse import OptionParser
 
+import numpy
 from pylab import rcParams
 
 from experiments.capacity import data_utils
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from nupic.research.monitor_mixin.metric import Metric
 
 from union_pooling.experiments.union_pooler_experiment import (
     UnionPoolerExperiment)
@@ -45,7 +47,7 @@ conditions over time.
 
 
 
-_SHOW_PROGRESS_INTERVAL = 10
+_SHOW_PROGRESS_INTERVAL = 200
 _VERBOSITY = 0
 PLOT_RESET_SHADING = 0.2
 PLOT_HEIGHT = 6
@@ -202,6 +204,14 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
                                       upLearn=None,
                                       verbosity=_VERBOSITY,
                                       progressInterval=_SHOW_PROGRESS_INTERVAL)
+
+      traceData = experiment.tm.mmGetTraceUnpredictedActiveColumns().data
+      countTrace = [len(x) for x in traceData]
+      mean = numpy.mean(countTrace)
+      stdDev = numpy.std(countTrace)
+      maximum = max(countTrace)
+      print "Pass {0}\t{1}\t{2}\t{3}".format(i, mean, stdDev, maximum)
+      experiment.tm.mmClearHistory()
 
     print
     print MonitorMixinBase.mmPrettyPrintMetrics(
