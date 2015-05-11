@@ -29,12 +29,11 @@ from optparse import OptionParser
 import numpy
 from pylab import rcParams
 
-from experiments.capacity import data_utils
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-from nupic.research.monitor_mixin.metric import Metric
 
+from experiments.capacity import data_utils
 from union_pooling.experiments.union_pooler_experiment import (
     UnionPoolerExperiment)
 
@@ -52,6 +51,18 @@ _VERBOSITY = 0
 PLOT_RESET_SHADING = 0.2
 PLOT_HEIGHT = 6
 PLOT_WIDTH = 9
+
+
+
+def getBurstingColumnsStats(experiment):
+  traceData = experiment.tm.mmGetTraceUnpredictedActiveColumns().data
+  resetData = experiment.tm.mmGetTraceResets().data
+  countTrace = [0 if resetData[x] else len(traceData[x])
+                for x in xrange(len(traceData))]
+  mean = numpy.mean(countTrace)
+  stdDev = numpy.std(countTrace)
+  maximum = max(countTrace)
+  return [mean, stdDev, maximum]
 
 
 
@@ -192,11 +203,12 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
 
   # Train only the Temporal Memory on the generated sequences
   if trainingPasses > 0:
-    print "Training Temporal Memory..."
-    for i in xrange(trainingPasses):
 
-      if i % _SHOW_PROGRESS_INTERVAL == 0:
-        print "\nTraining pass: {0}".format(i)
+    print "\nTraining Temporal Memory..."
+    if consoleVerbosity > 0:
+      print "\nPass\tBursting Columns Mean\tStdDev\tMax"
+
+    for i in xrange(trainingPasses):
 
       experiment.runNetworkOnSequence(generatedSequences,
                                       labeledSequences,
@@ -205,12 +217,11 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
                                       verbosity=_VERBOSITY,
                                       progressInterval=_SHOW_PROGRESS_INTERVAL)
 
-      traceData = experiment.tm.mmGetTraceUnpredictedActiveColumns().data
-      countTrace = [len(x) for x in traceData]
-      mean = numpy.mean(countTrace)
-      stdDev = numpy.std(countTrace)
-      maximum = max(countTrace)
-      print "Pass {0}\t{1}\t{2}\t{3}".format(i, mean, stdDev, maximum)
+      if consoleVerbosity > 0:
+        stats = getBurstingColumnsStats(experiment)
+        print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
+
+      # Reset the TM monitor mixin's records accrued during this training pass
       experiment.tm.mmClearHistory()
 
     print
@@ -223,21 +234,18 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
 
   print "\nRunning test phase..."
 
-  # In the case we train the Temporal Memory, we want to stop in the test
-  # phase if there are bursting columns
-  stopIfBursting = trainingPasses > 0
-  for i in xrange(numberOfSequences):
-    sequence = generatedSequences[i + i * sequenceLength:
-                                  (i + 1) + (i + 1) * sequenceLength]
-    labeledSequence = labeledSequences[i + i * sequenceLength:
-                                       (i + 1) + (i + 1) * sequenceLength]
-    experiment.runNetworkOnSequence(sequence,
-                                    labeledSequence,
-                                    tmLearn=False,
-                                    upLearn=False,
-                                    verbosity=_VERBOSITY,
-                                    progressInterval=_SHOW_PROGRESS_INTERVAL,
-                                    stopIfBursting=stopIfBursting)
+  experiment.runNetworkOnSequence(generatedSequences,
+                                  labeledSequences,
+                                  tmLearn=False,
+                                  upLearn=False,
+                                  verbosity=_VERBOSITY,
+                                  progressInterval=_SHOW_PROGRESS_INTERVAL)
+
+  print "\nPass\tBursting Columns Mean\tStdDev\tMax"
+  stats = getBurstingColumnsStats(experiment)
+  print "{0}\t{1}\t{2}\t{3}".format(0, stats[0], stats[1], stats[2])
+  if trainingPasses > 0 and stats[0] > 0:
+    print "***WARNING! MEAN BURSTING COLUMNS IN TEST PHASE IS GREATER THAN 0***"
 
   print
   print MonitorMixinBase.mmPrettyPrintMetrics(

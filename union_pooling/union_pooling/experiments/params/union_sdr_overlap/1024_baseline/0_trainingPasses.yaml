@@ -1,6 +1,6 @@
 patternDimensionality: 1024
 patternCardinality: 20
-sequenceLength: 10
+sequenceLength: 13
 numberOfSequences: 10
 trainingPasses: 0
 

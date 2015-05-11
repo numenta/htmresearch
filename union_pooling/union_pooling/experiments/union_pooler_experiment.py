@@ -35,11 +35,14 @@ from sensorimotor.temporal_pooler_monitor_mixin import (
 from union_pooling.union_pooler import UnionPooler
 
 
+
 class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
                                      FastGeneralTemporalMemory):
   pass
 
-# Implement UnionPoolerMonitorMixin if needed...
+
+
+# Implement a UnionPoolerMonitorMixin if needed...
 class MonitoredUnionTemporalPooler(TemporalPoolerMonitorMixin, UnionPooler):
   pass
 
@@ -49,13 +52,10 @@ realDType = GetNTAReal()
 
 
 
-class BurstingColumnsException(Exception):
-  pass
-
-
 class UnionPoolerExperiment(object):
   """
-
+  This class defines a Temporal Memory-Union Pooler network and provides methods
+  to run the network on data sequences.
   """
 
 
@@ -114,13 +114,11 @@ class UnionPoolerExperiment(object):
     params["seed"] = seed
     self.up = MonitoredUnionTemporalPooler(mmName="UP", **params)
 
-    self.resetPrevStep = True
     # TODO KNN classifer
 
 
   def runNetworkOnSequence(self, sensorSequences, sequencesLabels, tmLearn=True,
-                           upLearn=None, stopIfBursting=False, verbosity=0,
-                           progressInterval=None):
+                           upLearn=None, verbosity=0, progressInterval=None):
     """
     Runs Union Pooler network on specified sequence.
 
@@ -140,17 +138,15 @@ class UnionPoolerExperiment(object):
     """
 
     currentTime = time.time()
-    self.resetPrevStep = True
 
     for i in xrange(len(sensorSequences)):
       sensorPattern = sensorSequences[i]
       sequenceLabel = sequencesLabels[i]
 
-      self.runNetworkOnPattern(sensorPattern, i,
+      self.runNetworkOnPattern(sensorPattern,
                                tmLearn=tmLearn,
                                upLearn=upLearn,
-                               sequenceLabel=sequenceLabel,
-                               stopIfBursting=stopIfBursting)
+                               sequenceLabel=sequenceLabel)
 
       if progressInterval is not None and i > 0 and i % progressInterval == 0:
         print ("Ran {0} / {1} elements of sequence in "
@@ -172,34 +168,23 @@ class UnionPoolerExperiment(object):
       print
 
 
-  def runNetworkOnPattern(self, sensorPattern, i, tmLearn=True, upLearn=None,
-                          sequenceLabel=None, stopIfBursting=False):
+  def runNetworkOnPattern(self, sensorPattern, tmLearn=True, upLearn=None,
+                          sequenceLabel=None):
     if sensorPattern is None:
       self.tm.reset()
       self.up.reset()
-      self.resetPrevStep = True
     else:
       self.tm.compute(sensorPattern,
                       formInternalConnections=True,
                       learn=tmLearn,
                       sequenceLabel=sequenceLabel)
 
-      activeCells, predActiveCells, burstingCols, = self.getUnionPoolerInput()
-
-      if stopIfBursting and not self.resetPrevStep:
-        numBursting = len(burstingCols.nonzero())
-        if numBursting > 0:
-          msg = "Pattern: {0} Bursting: {1}".format(i, numBursting)
-          print msg
-          # raise BurstingColumnsException(msg)
-
       if upLearn is not None:
+        activeCells, predActiveCells, burstingCols, = self.getUnionPoolerInput()
         self.up.compute(activeCells,
                         predActiveCells,
                         learn=upLearn,
                         sequenceLabel=sequenceLabel)
-
-      self.resetPrevStep = False
 
 
   def getUnionPoolerInput(self):

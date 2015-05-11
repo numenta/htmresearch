@@ -1,12 +1,12 @@
 patternDimensionality: 2048
 patternCardinality: 40
-sequenceLength: 10
+sequenceLength: 13
 numberOfSequences: 10
 trainingPasses: 0
 
 temporalMemoryParams:
   columnDimensions: [2048]
-  cellsPerColumn: 16
+  cellsPerColumn: 8
   activationThreshold: 20
   initialPermanence: 0.5
   connectedPermanence: 0.6
