@@ -4,7 +4,7 @@ patternDimensionality: 128
 patternCardinality: 3
 sequenceLength: 10
 numberOfSequences: 10
-trainingPasses: 50
+trainingPasses: 5
 
 temporalMemoryParams:
   columnDimensions: [128]
