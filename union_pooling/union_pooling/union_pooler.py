@@ -62,7 +62,8 @@ class UnionPooler(SpatialPooler):
                # union_pooler.py parameters
                activeOverlapWeight=1.0,
                predictedActiveOverlapWeight=10.0,
-               maxUnionActivity=0.20):
+               maxUnionActivity=0.20,
+               decayFunctionSlope=1.0):
     """
     Please see spatial_pooler.py in NuPIC for super class parameter
     descriptions.
@@ -79,6 +80,9 @@ class UnionPooler(SpatialPooler):
     @param maxUnionActivity: Maximum number of active cells allowed in
     union SDR simultaneously in terms of the ratio between the number of active
     cells and the number of total cells
+
+    @param decayFunctionSlope: Slope of the linear curve used to decay
+    pooling activation
     """
 
     super(UnionPooler, self).__init__(inputDimensions,
@@ -103,9 +107,16 @@ class UnionPooler(SpatialPooler):
     self._activeOverlapWeight = activeOverlapWeight
     self._predictedActiveOverlapWeight = predictedActiveOverlapWeight
     self._maxUnionActivity = maxUnionActivity
+    self._decayFunctionSlope = decayFunctionSlope
 
+    # The maximum number of cells allowed in a single union SDR
     self._maxUnionCells = int(self._numColumns * self._maxUnionActivity)
+
+    # Scalar activation of potential union SDR cells; most active cells become
+    # the union SDR
     self._poolingActivation = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
+
+    # Current union SDR; the end product of the union pooler algorithm
     self._unionSDR = []
 
 
@@ -175,7 +186,7 @@ class UnionPooler(SpatialPooler):
     """
     Decrements pooling activation of all cells
     """
-    self._poolingActivation -= 1
+    self._poolingActivation -= self._decayFunctionSlope
     self._poolingActivation[self._poolingActivation < 0] = 0
     return self._poolingActivation
 

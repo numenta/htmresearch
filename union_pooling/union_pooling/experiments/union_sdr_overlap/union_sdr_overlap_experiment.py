@@ -26,24 +26,27 @@ import os
 import yaml
 from optparse import OptionParser
 
+import numpy
 from pylab import rcParams
 
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
+from experiments.capacity import data_utils
 from union_pooling.experiments.union_pooler_experiment import (
     UnionPoolerExperiment)
 
 """
 Experiment 1
-Union Pooling with and without Temporal Memory training
-Compute overlap between Union SDR representations in two conditions over time
+Runs UnionPooler on input from a Temporal Memory with and
+without training. Compute overlap between Union SDR representations in two
+conditions over time.
 """
 
 
 
-_SHOW_PROGRESS_INTERVAL = 100
+_SHOW_PROGRESS_INTERVAL = 200
 _VERBOSITY = 0
 PLOT_RESET_SHADING = 0.2
 PLOT_HEIGHT = 6
@@ -51,26 +54,15 @@ PLOT_WIDTH = 9
 
 
 
-def writeMetricTrace(experiment, traceName, outputDir, outputFileName):
-  """
-  Assume trace elements can be converted to list.
-  :param experiment:
-  :param traceName:
-  :param outputDir:
-  :param outputFileName:
-  :return:
-  """
-
-  if not os.path.exists(outputDir):
-    os.makedirs(outputDir)
-
-  filePath = os.path.join(outputDir, outputFileName)
-  with open(filePath, "wb") as outputFile:
-    csvWriter = csv.writer(outputFile)
-    dataTrace = experiment.up._mmTraces[traceName].data
-    rows = [list(datum) for datum in dataTrace]
-    csvWriter.writerows(rows)
-    outputFile.flush()
+def getBurstingColumnsStats(experiment):
+  traceData = experiment.tm.mmGetTraceUnpredictedActiveColumns().data
+  resetData = experiment.tm.mmGetTraceResets().data
+  countTrace = [0 if resetData[x] else len(traceData[x])
+                for x in xrange(len(traceData))]
+  mean = numpy.mean(countTrace)
+  stdDev = numpy.std(countTrace)
+  maximum = max(countTrace)
+  return (mean, stdDev, maximum)
 
 
 
@@ -97,12 +89,43 @@ def writeDefaultMetrics(outputDir, experiment, patternDimensionality,
 
 
 
+def writeMetricTrace(experiment, traceName, outputDir, outputFileName):
+  """
+  Assume trace elements can be converted to list.
+  :param experiment: UnionPoolerExperiment instance
+  :param traceName: name of the metric trace
+  :param outputDir: dir where output file will be written
+  :param outputFileName: filename of output file
+  """
+  if not os.path.exists(outputDir):
+    os.makedirs(outputDir)
+
+  filePath = os.path.join(outputDir, outputFileName)
+  with open(filePath, "wb") as outputFile:
+    csvWriter = csv.writer(outputFile)
+    dataTrace = experiment.up._mmTraces[traceName].data
+    rows = [list(datum) for datum in dataTrace]
+    csvWriter.writerows(rows)
+    outputFile.flush()
+
+
+
 def plotNetworkState(experiment, plotVerbosity, trainingPasses, phase=""):
+
   if plotVerbosity >= 1:
     rcParams["figure.figsize"] = PLOT_WIDTH, PLOT_HEIGHT
-    title = "training passes: {0}, phase: {1}".format(trainingPasses, phase)
-    experiment.up.mmGetPlotConnectionsPerColumn(title=title)
+
+    # Plot Union SDR trace
+    dataTrace = experiment.up._mmTraces["activeCells"].data
+    unionSizeTrace = [len(datum) for datum in dataTrace]
+    x = [i for i in xrange(len(unionSizeTrace))]
+    stdDevs = None
+    title = "Union Size; {0} training passses vs. Time".format(trainingPasses)
+    data_utils.getErrorbarFigure(title, x, unionSizeTrace, stdDevs, "Time",
+                                 "Union Size")
     if plotVerbosity >= 2:
+      title = "training passes: {0}, phase: {1}".format(trainingPasses, phase)
+      experiment.up.mmGetPlotConnectionsPerColumn(title=title)
       experiment.tm.mmGetCellActivityPlot(title=title,
                                           activityType="activeCells",
                                           showReset=True,
@@ -137,7 +160,9 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   patternCardinality = params["patternCardinality"]
 
   # Number of unique patterns from which sequences are built
-  patternAlphabetSize = params["patternAlphabetSize"]
+  # TODO if this parameter is to be supported, the sequence generation code
+  # below must change
+  # patternAlphabetSize = params["patternAlphabetSize"]
 
   # Length of sequences shown to network
   sequenceLength = params["sequenceLength"]
@@ -155,6 +180,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   # set of sequences separated by None)
   start = time.time()
   print "\nGenerating sequences..."
+  patternAlphabetSize = sequenceLength * numberOfSequences
   patternMachine = PatternMachine(patternDimensionality, patternCardinality,
                                   patternAlphabetSize)
   sequenceMachine = SequenceMachine(patternMachine)
@@ -176,10 +202,13 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
 
   # Train only the Temporal Memory on the generated sequences
   if trainingPasses > 0:
-    print "Training Temporal Memory..."
+
+    print "\nTraining Temporal Memory..."
+    if consoleVerbosity > 0:
+      print "\nPass\tBursting Columns Mean\tStdDev\tMax"
+
     for i in xrange(trainingPasses):
-      if consoleVerbosity > 0:
-        print "\nTraining pass: {0}".format(i)
+
       experiment.runNetworkOnSequence(generatedSequences,
                                       labeledSequences,
                                       tmLearn=True,
@@ -187,32 +216,41 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
                                       verbosity=_VERBOSITY,
                                       progressInterval=_SHOW_PROGRESS_INTERVAL)
 
+      if consoleVerbosity > 0:
+        stats = getBurstingColumnsStats(experiment)
+        print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
+
+      # Reset the TM monitor mixin's records accrued during this training pass
+      experiment.tm.mmClearHistory()
+
     print
     print MonitorMixinBase.mmPrettyPrintMetrics(
       experiment.tm.mmGetDefaultMetrics())
     print
-    plotNetworkState(experiment, plotVerbosity, trainingPasses,
-                     phase="Training")
+    if plotVerbosity >= 2:
+      plotNetworkState(experiment, plotVerbosity, trainingPasses,
+                       phase="Training")
 
   print "\nRunning test phase..."
-  for i in xrange(numberOfSequences):
-    sequence = generatedSequences[i + i * sequenceLength:
-                                  (i + 1) + (i + 1) * sequenceLength]
-    labeledSequence = labeledSequences[i + i * sequenceLength:
-                                       (i + 1) + (i + 1) * sequenceLength]
-    experiment.runNetworkOnSequence(sequence,
-                                    labeledSequence,
-                                    tmLearn=False,
-                                    upLearn=False,
-                                    verbosity=_VERBOSITY,
-                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
+
+  experiment.runNetworkOnSequence(generatedSequences,
+                                  labeledSequences,
+                                  tmLearn=False,
+                                  upLearn=False,
+                                  verbosity=_VERBOSITY,
+                                  progressInterval=_SHOW_PROGRESS_INTERVAL)
+
+  print "\nPass\tBursting Columns Mean\tStdDev\tMax"
+  stats = getBurstingColumnsStats(experiment)
+  print "{0}\t{1}\t{2}\t{3}".format(0, stats[0], stats[1], stats[2])
+  if trainingPasses > 0 and stats[0] > 0:
+    print "***WARNING! MEAN BURSTING COLUMNS IN TEST PHASE IS GREATER THAN 0***"
 
   print
   print MonitorMixinBase.mmPrettyPrintMetrics(
       experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
   print
-  plotNetworkState(experiment, plotVerbosity, trainingPasses,
-                     phase="Testing")
+  plotNetworkState(experiment, plotVerbosity, trainingPasses, phase="Testing")
 
   elapsed = int(time.time() - start)
   print "Total time: {0:2} seconds.".format(elapsed)

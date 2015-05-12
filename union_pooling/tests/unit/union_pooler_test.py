@@ -39,16 +39,25 @@ class UnionPoolerTest(unittest.TestCase):
                                    maxUnionActivity=0.20)
 
 
-  def testDecayPoolingActivation(self):
+  def testDecayPoolingActivationDefaultDecayRate(self):
     self.unionPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
                                                       dtype=REAL_DTYPE)
-    expected = numpy.array([0, 0, 1, 2, 3])
+    expected = numpy.array([0, 0, 1, 2, 3], dtype=REAL_DTYPE)
 
     result = self.unionPooler._decayPoolingActivation()
 
-    self.assertEquals(len(expected), len(result))
-    for i in xrange(len(expected)):
-      self.assertEquals(expected[i], result[i])
+    self.assertTrue(numpy.array_equal(expected, result))
+
+
+  def testDecayPoolingActivationSpecifiedDecayRate(self):
+    self.unionPooler._decayFunctionSlope = 10
+    self.unionPooler._poolingActivation = numpy.array([0, 10, 20, 30, 40],
+                                                      dtype=REAL_DTYPE)
+    expected = numpy.array([0, 0, 10, 20, 30], dtype=REAL_DTYPE)
+
+    result = self.unionPooler._decayPoolingActivation()
+
+    self.assertTrue(numpy.array_equal(expected, result))
 
 
   def testAddToPoolingActivation(self):
@@ -59,9 +68,7 @@ class UnionPoolerTest(unittest.TestCase):
 
     result = self.unionPooler._addToPoolingActivation(activeCells, overlaps)
 
-    self.assertEquals(len(expected), len(result))
-    for i in xrange(len(expected)):
-      self.assertAlmostEquals(expected[i], result[i], places=6)
+    self.assertTrue(numpy.allclose(expected, result))
 
 
   def testAddToPoolingActivationExistingActivation(self):
@@ -74,9 +81,7 @@ class UnionPoolerTest(unittest.TestCase):
 
     result = self.unionPooler._addToPoolingActivation(activeCells, overlaps)
 
-    self.assertEquals(len(expected), len(result))
-    for i in xrange(len(expected)):
-      self.assertAlmostEquals(expected[i], result[i], places=6)
+    self.assertTrue(numpy.allclose(expected, result))
 
 
   def testGetMostActiveCellsUnionSizeZero(self):
