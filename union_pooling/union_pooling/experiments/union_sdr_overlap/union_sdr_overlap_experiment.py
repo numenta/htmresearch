@@ -62,7 +62,7 @@ def getBurstingColumnsStats(experiment):
   mean = numpy.mean(countTrace)
   stdDev = numpy.std(countTrace)
   maximum = max(countTrace)
-  return [mean, stdDev, maximum]
+  return (mean, stdDev, maximum)
 
 
 
@@ -92,11 +92,10 @@ def writeDefaultMetrics(outputDir, experiment, patternDimensionality,
 def writeMetricTrace(experiment, traceName, outputDir, outputFileName):
   """
   Assume trace elements can be converted to list.
-  :param experiment:
-  :param traceName:
-  :param outputDir:
-  :param outputFileName:
-  :return:
+  :param experiment: UnionPoolerExperiment instance
+  :param traceName: name of the metric trace
+  :param outputDir: dir where output file will be written
+  :param outputFileName: filename of output file
   """
   if not os.path.exists(outputDir):
     os.makedirs(outputDir)
