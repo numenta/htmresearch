@@ -35,11 +35,14 @@ from sensorimotor.temporal_pooler_monitor_mixin import (
 from union_pooling.union_pooler import UnionPooler
 
 
+
 class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
                                      FastGeneralTemporalMemory):
   pass
 
-# Implement UnionPoolerMonitorMixin if needed...
+
+
+# Implement a UnionPoolerMonitorMixin if needed...
 class MonitoredUnionTemporalPooler(TemporalPoolerMonitorMixin, UnionPooler):
   pass
 
@@ -51,14 +54,14 @@ realDType = GetNTAReal()
 
 class UnionPoolerExperiment(object):
   """
-
+  This class defines a Temporal Memory-Union Pooler network and provides methods
+  to run the network on data sequences.
   """
 
 
   DEFAULT_TEMPORAL_MEMORY_PARAMS = {"columnDimensions": (1024,),
                                     "cellsPerColumn": 8,
                                     "activationThreshold": 20,
-                                    "learningRadius": 2048,
                                     "initialPermanence": 0.5,
                                     "connectedPermanence": 0.6,
                                     "minThreshold": 20,
@@ -92,7 +95,8 @@ class UnionPoolerExperiment(object):
                                  # Union Pooler Params
                                  "activeOverlapWeight": 1.0,
                                  "predictedActiveOverlapWeight": 10.0,
-                                 "maxUnionActivity": 0.20}
+                                 "maxUnionActivity": 0.20,
+                                 "decayFunctionSlope": 1.0}
 
 
   def __init__(self, tmOverrides=None, upOverrides=None, seed=42):
@@ -139,7 +143,9 @@ class UnionPoolerExperiment(object):
       sensorPattern = sensorSequences[i]
       sequenceLabel = sequencesLabels[i]
 
-      self.runNetworkOnPattern(sensorPattern, tmLearn=tmLearn, upLearn=upLearn,
+      self.runNetworkOnPattern(sensorPattern,
+                               tmLearn=tmLearn,
+                               upLearn=upLearn,
                                sequenceLabel=sequenceLabel)
 
       if progressInterval is not None and i > 0 and i % progressInterval == 0:
