@@ -1,4 +1,4 @@
-from union_pooling.strategies.activation_function_base import (
+from union_pooling.activation_strategies.activation_function_base import (
   ActivationFunctionBase)
 
 class LinearActivationFunction(ActivationFunctionBase):

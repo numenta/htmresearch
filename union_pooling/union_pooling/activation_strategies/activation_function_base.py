@@ -1,6 +1,12 @@
 from abc import ABCMeta, abstractmethod
 
-class ActivationFunctionBase(metaclass=ABCMeta):
+class ActivationFunctionBase(object):
+
+  __metaclass__ = ABCMeta
+
+
+  def __init__(self):
+    pass
 
 
   @abstractmethod
