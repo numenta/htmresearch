@@ -233,7 +233,7 @@ inputs onto L4 and L5 pyramidal neurons.
 dendrites in L4 (Fig. 8).
 \item TC inputs are biased toward certain branches and, within branches,
 synapses show significant clustering with an excess of TC synapse nearest 
-neighbors within 5Ð15 ?m compared to a random distribution
+neighbors within 5-15 $\mu m$ compared to a random distribution
 \end{enumerate}
 
 \subsection{Yoshimura: vertical and horizontal inputs to L2/3 neurons}
@@ -251,12 +251,18 @@ An important function of the neocortex is to generate predictions of what will
 happen in the future. In HTM theory proximal and distal dendrites recognize
 patterns and depolarize cells into a "predictive state". Over the last 20 years,
 the properties of active dendrites have become a topic of great  interest to the
-neuroscience community. These properties are likely to form the underlying
-neural mechanisms for prediction and inference. This section contains numerous
-papers describing current neuroscience knowledge on active dendrites.  Some of
-the papers also show that apical dendrites (not directly modeled by HTM theory)
-have very interesting special properties.  Much of our current HTM research
-is focused on understanding dendritic properties in detail.
+neuroscience community. Active dendrites seem to be coicidence detectors,
+detecting a temporal coincidence of activity within a portion of the dendrite
+through "NMDA spikes". These spikes usually don't cause a neuron to spike but
+they  seem to prime the cell and make it more likely to generate an axon
+potential, and generate it faster than it would have otherwise.
+
+HTM theory says that these properties form the underlying neural mechanisms for
+prediction and inference. This section contains numerous papers describing
+current neuroscience knowledge on active dendrites.  Some of the papers also
+show that apical dendrites also have very interesting special properties.  Much
+of our current HTM research is focused on understanding dendritic properties in
+detail.
 
 \subsection{Antic: Decade of NMDA Spikes}
 From Jeff: \emph{This is a short and relatively easy to read paper that covers
@@ -338,6 +344,23 @@ necessary for proper sensorimotor inference.
 If apical dendrites have much larger temporal integration windows, this could be
 very useful for feedback which necessarily has a slower time scale.
 
+\subsection{Losonczy: Integrative Properties of Active dendrites}
+
+This paper \cite{Losonczy2006} contains a detailed study of exactly how many
+synapses are required to initiate a dendritic spike in hippocampal pyramidal
+neurons.
+
+Their study suggests that 17-20 active synapses are required for
+dendritic spiking. They show that the synapses need to be within 6 msecs,
+confirming the hypothesis that these dendrites are acting like a coincidence
+detector.  If you spread out the activity to 50 msecs you do not see spiking.
+
+The spiking is specific to a branch. The synapses do not need to be
+tightly spatially clustered but can be anywhere on a branch. They quote that
+a branch typically has 300 to 400 synapses. This suggests that a branch can
+detect noisy patterns (the threshold is lower than the total number of cells)
+or that they are detecting a union of patterns, or both.
+
 \subsection{Major: Active properties of dendrites}
 
 This paper \cite{Major2013} cites evidence that distal dendritic spikes often
@@ -349,7 +372,11 @@ They review different types of cell models.
 They provide numbers regarding the minimum number of synapses required to
 trigger dendritic spikes that match up very well with our formal analysis of
 SDRs.  NMDA spike in distal dendrites can be evoked by as few as 10 active
-synapses that are clustered together (page 17, top left).
+synapses that are clustered together (page 17, top left) or 20 spread along
+the branch. Note that the effect of spatial clustering is slightly different
+than reported in \cite{Losonczy2006}.  However as they point out,
+these numbers are rough and can vary dynamically (e.g. as a result of
+dendritic inhibitory input).
 
 \subsection{Major: NMDA spikes in basal dendrites of pyramidal neurons}
 
@@ -610,7 +637,7 @@ spikes are not required?
  complex, time-varying natural scenes (i.e., movies), nearby striate neurons exhibit highly 
  sparse and heterogenous responses.
  
-\emph{Other result}: "trial-to-trial fluctuations (termed ÒnoiseÓ) were poorly correlated between 
+\emph{Other result}: "trial-to-trial fluctuations (termed ï¿½noiseï¿½) were poorly correlated between 
  neighboring neurons, suggesting low degrees of common input." This is consistent with 
  our assumption that cells in the same mini-column has different lateral connections.
  
