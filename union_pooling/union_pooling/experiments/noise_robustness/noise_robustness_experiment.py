@@ -20,6 +20,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 import csv
+import random
 import sys
 import time
 import os
@@ -196,12 +197,61 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
                        phase="Training")
 
   print "\nRunning test phase..."
-  # experiment.runNetworkOnSequence(generatedSequences,
-  #                                 labeledSequences,
-  #                                 tmLearn=False,
-  #                                 upLearn=False,
-  #                                 verbosity=consoleVerbosity,
-  #                                 progressInterval=_SHOW_PROGRESS_INTERVAL)
+  experiment.runNetworkOnSequence(generatedSequences,
+                                  labeledSequences,
+                                  tmLearn=False,
+                                  upLearn=False,
+                                  verbosity=consoleVerbosity,
+                                  progressInterval=_SHOW_PROGRESS_INTERVAL)
+
+  # Input sequence pattern by pattern. Sequence-to-sequence
+  # progression is randomly selected. At each step there is a chance of
+  # perturbation. Specifically the following
+  # perturbations may occur:
+  # Establish a baseline without noise
+  # Establish a baseline adding the following perturbations one-by-one
+  # 1) substitution of some other pattern for the normal expected pattern
+  # 2) skipping expected pattern and presenting next pattern in sequence
+  # 3) addition of some other pattern putting off expected pattern one time step
+  # Finally measure performance on more complex perturbation
+  # 4) Jump to another sequence randomly (Random jump to start or random
+  # position?)
+
+  perturbationChance = 0.10 # TODO Parameter
+  testSequencePresentations = numberOfSequences # TODO Parameter
+  for _ in xrange(testSequencePresentations):
+
+    # Randomly select the next sequence to present
+    rand = random.randint(0, numberOfSequences-1)
+    randomSequence = generatedSequences[rand + rand * sequenceLength:
+                                        (rand+1) + (rand+1) * sequenceLength]
+
+    # Present selected sequence to network
+    for i in xrange(len(randomSequence)):
+
+      # Now randomly select perturbation type with equal probability
+      if random.random() > perturbationChance:
+        randPerturb = random.random()
+        if randPerturb < 1.0 / 3.0:
+          # Noisy substitution
+          sensorPattern = getRandomPattern(generatedSequences)
+        elif randPerturb < 2.0 / 3.0:
+          # Skip to next pattern
+          i += 1 # TODO VERIFY!!
+          sensorPattern = randomSequence[i]
+        else:
+          # Noisy insertion
+          i -= 1
+          sensorPattern = getRandomPattern(generatedSequences)
+
+      else:
+        sensorPattern = randomSequence[i]
+
+      experiment.runNetworkOnPattern(sensorPattern,
+                                     tmLearn=False,
+                                     upLearn=False)
+
+
   #
   # print "\nPass\tBursting Columns Mean\tStdDev\tMax"
   # stats = experiment.getBurstingColumnsStats(experiment)
@@ -224,7 +274,15 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   # writeMetricTrace(experiment, metricName, outputDir, outputFileName)
 
   if plotVerbosity >= 1:
-    raw_input("Press any key to exit...")
+    raw_input("\nPress any key to exit...")
+
+
+
+def getRandomPattern(patterns):
+  rand = random.randint(0, len(patterns)-1)
+  while patterns[rand] is None:
+    rand = random.randint(0, len(patterns)-1)
+  return patterns[rand]
 
 
 
