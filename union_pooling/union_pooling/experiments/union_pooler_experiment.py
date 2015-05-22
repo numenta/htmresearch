@@ -100,13 +100,13 @@ class UnionPoolerExperiment(object):
 
 
   def __init__(self, tmOverrides=None, upOverrides=None, seed=42):
-    # Initialize Temporal Memory
+    print "Initializing Temporal Memory..."
     params = dict(self.DEFAULT_TEMPORAL_MEMORY_PARAMS)
     params.update(tmOverrides or {})
     params["seed"] = seed
     self.tm = MonitoredGeneralTemporalMemory(mmName="TM", **params)
 
-    # Initialize Union Pooler layer
+    print "Initializing Union Pooler..."
     params = dict(self.DEFAULT_UNION_POOLER_PARAMS)
     params.update(upOverrides or {})
     params["inputDimensions"] = [self.tm.numberOfCells()]
@@ -202,3 +202,20 @@ class UnionPoolerExperiment(object):
     burstingColumns[list(self.tm.unpredictedActiveColumns)] = 1
 
     return activeCells, predictedActiveCells, burstingColumns
+
+
+  def getBurstingColumnsStats(self):
+    """
+    Gets statistics on the Temporal Memory's bursting columns. Used as a metric
+    of Temporal Memory's learning performance.
+    :return: mean, standard deviation, and max of Temporal Memory's bursting
+    columns over time
+    """
+    traceData = self.tm.mmGetTraceUnpredictedActiveColumns().data
+    resetData = self.tm.mmGetTraceResets().data
+    countTrace = [0 if resetData[x] else len(traceData[x])
+                  for x in xrange(len(traceData))]
+    mean = numpy.mean(countTrace)
+    stdDev = numpy.std(countTrace)
+    maximum = max(countTrace)
+    return mean, stdDev, maximum

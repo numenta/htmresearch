@@ -1,0 +1,47 @@
+# A parameter set with low dimensionality to expedite debugging.
+
+patternDimensionality: 128
+patternCardinality: 3
+sequenceLength: 10
+numberOfSequences: 10
+trainingPasses: 0
+
+temporalMemoryParams:
+  columnDimensions: [128]
+  cellsPerColumn: 8
+  activationThreshold: 20
+  initialPermanence: 0.5
+  connectedPermanence: 0.6
+  minThreshold: 20
+  maxNewSynapseCount: 30
+  permanenceIncrement: 0.10
+  permanenceDecrement: 0.02
+  seed: 42
+  learnOnOneCell: False
+
+unionPoolerParams:
+  # Spatial Pooler Params
+  # 'inputDimensions' based on Temporal Memory cell count
+  # 'potentialRadius' based on Temporal Memory cell count
+  columnDimensions: [128]
+  potentialPct: 0.5
+  globalInhibition: True
+  localAreaDensity: -1.0
+  numActiveColumnsPerInhArea: 20.0
+  stimulusThreshold: 0
+  synPermInactiveDec: 0.01
+  synPermActiveInc: 0.10
+  synPermConnected: 0.10
+  minPctOverlapDutyCycle: 0.001
+  minPctActiveDutyCycle: 0.001
+  dutyCyclePeriod: 1000
+  maxBoost: 10.0
+  seed: 42
+  spVerbosity: 0
+  wrapAround: True
+
+  # Union Pooler Params
+  activeOverlapWeight: 1.0
+  predictedActiveOverlapWeight: 10.0
+  maxUnionActivity: 0.20
+  decayFunctionSlope: 1.0
