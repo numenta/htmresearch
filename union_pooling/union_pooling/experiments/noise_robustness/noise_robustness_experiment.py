@@ -20,6 +20,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 import csv
+import random
 import sys
 import time
 import os
@@ -38,10 +39,29 @@ from union_pooling.experiments.union_pooler_experiment import (
     UnionPoolerExperiment)
 
 """
-Experiment 1
-Runs UnionPooler on input from a Temporal Memory with and
-without training. Compute overlap between Union SDR representations in two
-conditions over time.
+Experiment 2
+
+Data: Sequences generated from an alphabet.
+Train Phase: Train network on sequences for some number of repetitions
+Test phase: Input sequence pattern by pattern. Sequence-to-sequence
+progression is randomly selected. At each step there is a chance that the
+next pattern in the sequence is not shown. Specifically the following
+perturbations may occur:
+  1) random Jump to another sequence
+  2) substitution of some other pattern for the normal expected pattern
+  3) skipping expected pattern and presenting next pattern in sequence
+  4) addition of some other pattern putting off expected pattern one time step
+Goal: Characterize the noise robustness of the UnionPooler to various
+perturbations. Explore trade-off between remaining stable to noise yet still
+changing when sequence actually changes.
+
+Part a) Study capacity of classifiable sequences
+- Similar to TP capacity experiments
+
+Part b) Study classification performance with noise
+- Explore trade-off between stability to noise and adaptability to actual sequence changes
+- Conditions: Classify using TM output vs. Union SDR
+
 """
 
 
@@ -50,50 +70,6 @@ _SHOW_PROGRESS_INTERVAL = 200
 _PLOT_RESET_SHADING = 0.2
 _PLOT_HEIGHT = 6
 _PLOT_WIDTH = 9
-
-
-
-def writeDefaultMetrics(outputDir, experiment, patternDimensionality,
-                        patternCardinality, patternAlphabetSize, sequenceLength,
-                        numberOfSequences, trainingPasses, elapsedTime):
-  fileName = "defaultMetrics_{0}learningPasses.csv".format(trainingPasses)
-  filePath = os.path.join(outputDir, fileName)
-  with open(filePath, "wb") as outputFile:
-    csvWriter = csv.writer(outputFile)
-    header = ["n", "w", "alphabet", "seq length", "num sequences",
-              "training passes", "experiment time"]
-    row = [patternDimensionality, patternCardinality, patternAlphabetSize,
-           sequenceLength, numberOfSequences, trainingPasses, elapsedTime]
-    for metric in (experiment.tm.mmGetDefaultMetrics() +
-                   experiment.up.mmGetDefaultMetrics()):
-      header += ["{0} ({1})".format(metric.prettyPrintTitle(), x) for x in
-                ["min", "max", "sum", "mean", "stddev"]]
-      row += [metric.min, metric.max, metric.sum, metric.mean,
-              metric.standardDeviation]
-    csvWriter.writerow(header)
-    csvWriter.writerow(row)
-    outputFile.flush()
-
-
-
-def writeMetricTrace(experiment, traceName, outputDir, outputFileName):
-  """
-  Assume trace elements can be converted to list.
-  :param experiment: UnionPoolerExperiment instance
-  :param traceName: name of the metric trace
-  :param outputDir: dir where output file will be written
-  :param outputFileName: filename of output file
-  """
-  if not os.path.exists(outputDir):
-    os.makedirs(outputDir)
-
-  filePath = os.path.join(outputDir, outputFileName)
-  with open(filePath, "wb") as outputFile:
-    csvWriter = csv.writer(outputFile)
-    dataTrace = experiment.up._mmTraces[traceName].data
-    rows = [list(datum) for datum in dataTrace]
-    csvWriter.writerows(rows)
-    outputFile.flush()
 
 
 
@@ -127,56 +103,105 @@ def plotNetworkState(experiment, plotVerbosity, trainingPasses, phase=""):
 
 
 
+def runTestPhase(experiment, generatedSequences, sequenceCount, sequenceLength,
+                 testPresentations, perturbationChance):
+  print "Pres\tPerturbations"
+  for presentation in xrange(testPresentations):
+
+    # Randomly select the next sequence to present
+    rand = random.randint(0, sequenceCount - 1)
+    randomSequence = generatedSequences[rand + rand * sequenceLength:
+      (rand + 1) + (rand + 1) * sequenceLength]
+
+    # Present selected sequence to network
+    i = 0
+    perturbCount = 0
+    while i < len(randomSequence):
+
+      # Randomly select perturbation type with equal probability
+      if randomSequence[i] is not None and random.random() < perturbationChance:
+        perturbCount += 1
+        randPerturb = random.random()
+        if randPerturb < 1.0 / 3.0:
+          # Substitution with random pattern
+          sensorPattern = getRandomPattern(generatedSequences)
+          i += 1
+        elif randPerturb < 2.0 / 3.0:
+          # Skip to next pattern in sequence
+          i += 1
+          sensorPattern = randomSequence[i]
+          i += 1
+        else:
+          # Add in a random pattern
+          sensorPattern = getRandomPattern(generatedSequences)
+      else:
+        sensorPattern = randomSequence[i]
+        i += 1
+
+      experiment.runNetworkOnPattern(sensorPattern,
+                                     tmLearn=False,
+                                     upLearn=False)
+
+    print "{0} \t\t {1}".format(presentation, perturbCount)
+
+
+
 def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   """
-  Runs the union overlap experiment.
+  Runs the noise robustness experiment.
 
-  :param params: A dict of experiment parameters
+  :param params: A dict containing the following experiment parameters:
+
+        patternDimensionality - Dimensionality of sequence patterns
+        patternCardinality - Cardinality (# ON bits) of sequence patterns
+        sequenceLength - Length of sequences shown to network
+        sequenceCount - Number of unique sequences used
+        trainingPasses - Number of times Temporal Memory is trained on each
+        sequence
+        testPresentations - Number of sequences presented in test phase
+        perturbationChance - Chance of sequence perturbations during test phase
+        temporalMemoryParams - A dict of Temporal Memory parameter overrides
+        unionPoolerParams - A dict of Union Pooler parameter overrides
+
   :param paramDir: Path of parameter file
   :param outputDir: Output will be written to this path
   :param plotVerbosity: Plotting verbosity
   :param consoleVerbosity: Console output verbosity
   """
-  print "Running SDR overlap experiment...\n"
-  print "Params dir: {0}".format(paramDir)
-  print "Output dir: {0}\n".format(outputDir)
+  print "Running Noise robustness experiment...\n"
+  print "Params dir: {0}".format(os.path.join(os.path.dirname(__file__),
+                                              paramDir))
+  print "Output dir: {0}\n".format(os.path.join(os.path.dirname(__file__),
+                                                outputDir))
 
-  # Dimensionality of sequence patterns
   patternDimensionality = params["patternDimensionality"]
-
-  # Cardinality (ON / true bits) of sequence patterns
   patternCardinality = params["patternCardinality"]
-
-  # TODO If this parameter is to be supported, the sequence generation code
-  # below must change
-  # Number of unique patterns from which sequences are built
-  # patternAlphabetSize = params["patternAlphabetSize"]
-
-  # Length of sequences shown to network
   sequenceLength = params["sequenceLength"]
-
-  # Number of sequences used. Sequences may share common elements.
-  numberOfSequences = params["numberOfSequences"]
-
-  # Number of sequence passes for training the TM. Zero => no training.
+  sequenceCount = params["numberOfSequences"]
   trainingPasses = params["trainingPasses"]
-
+  testPresentations = params["testPresentations"]
+  perturbationChance = params["perturbationChance"]
   tmParamOverrides = params["temporalMemoryParams"]
   upParamOverrides = params["unionPoolerParams"]
+
+  # TODO If this parameter is to be supported, the sequence generation
+  # code below must change
+  # Number of unique patterns from which sequences are built
+  # patternAlphabetSize = params["patternAlphabetSize"]
 
   # Generate a sequence list and an associated labeled list (both containing a
   # set of sequences separated by None)
   start = time.time()
-  print "\nGenerating sequences..."
-  patternAlphabetSize = sequenceLength * numberOfSequences
+  print "Generating sequences..."
+  patternAlphabetSize = sequenceLength * sequenceCount
   patternMachine = PatternMachine(patternDimensionality, patternCardinality,
                                   patternAlphabetSize)
   sequenceMachine = SequenceMachine(patternMachine)
 
-  numbers = sequenceMachine.generateNumbers(numberOfSequences, sequenceLength)
+  numbers = sequenceMachine.generateNumbers(sequenceCount, sequenceLength)
   generatedSequences = sequenceMachine.generateFromNumbers(numbers)
   sequenceLabels = [str(numbers[i + i*sequenceLength: i + (i+1)*sequenceLength])
-                    for i in xrange(numberOfSequences)]
+                    for i in xrange(sequenceCount)]
   labeledSequences = []
   for label in sequenceLabels:
     for _ in xrange(sequenceLength):
@@ -192,7 +217,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
 
     print "\nTraining Temporal Memory..."
     if consoleVerbosity > 0:
-      print "\nPass\tBursting Columns Mean\tStdDev\tMax"
+      print "\nPass\tMean\t\tStdDev\t\tMax\t\t(Bursting Columns)"
 
     for i in xrange(trainingPasses):
 
@@ -208,7 +233,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
         print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
 
       # Reset the TM monitor mixin's records accrued during this training pass
-      experiment.tm.mmClearHistory()
+      # experiment.tm.mmClearHistory()
 
     print
     print MonitorMixinBase.mmPrettyPrintMetrics(
@@ -219,43 +244,55 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
                        phase="Training")
 
   print "\nRunning test phase..."
-  experiment.runNetworkOnSequence(generatedSequences,
-                                  labeledSequences,
-                                  tmLearn=False,
-                                  upLearn=False,
-                                  verbosity=consoleVerbosity,
-                                  progressInterval=_SHOW_PROGRESS_INTERVAL)
 
-  print "\nPass\tBursting Columns Mean\tStdDev\tMax"
-  stats = experiment.getBurstingColumnsStats(experiment)
-  print "{0}\t{1}\t{2}\t{3}".format(0, stats[0], stats[1], stats[2])
-  if trainingPasses > 0 and stats[0] > 0:
-    print "***WARNING! MEAN BURSTING COLUMNS IN TEST PHASE IS GREATER THAN 0***"
+  # Input sequence pattern by pattern. Sequence-to-sequence
+  # progression is randomly selected. At each step there is a chance of
+  # perturbation. Specifically the following
+  # perturbations may occur:
+  # Establish a baseline without noise
+  # Establish a baseline adding the following perturbations one-by-one
+  # 1) substitution of some other pattern for the normal expected pattern
+  # 2) skipping expected pattern and presenting next pattern in sequence
+  # 3) addition of some other pattern putting off expected pattern one time step
+  # Finally measure performance on more complex perturbation
+  # TODO 4) Jump to another sequence randomly (Random jump to start or random
+  # position?)
+
+  runTestPhase(experiment, generatedSequences, sequenceCount, sequenceLength,
+               testPresentations, perturbationChance)
 
   print
   print MonitorMixinBase.mmPrettyPrintMetrics(
       experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
   print
-  plotNetworkState(experiment, plotVerbosity, trainingPasses, phase="Testing")
+  # plotNetworkState(experiment, plotVerbosity, trainingPasses, phase="Testing")
 
   elapsed = int(time.time() - start)
   print "Total time: {0:2} seconds.".format(elapsed)
 
-  # Write Union SDR trace
-  metricName = "activeCells"
-  outputFileName = "unionSdrTrace_{0}learningPasses.csv".format(trainingPasses)
-  writeMetricTrace(experiment, metricName, outputDir, outputFileName)
+  ## Write Union SDR trace
+  # metricName = "activeCells"
+  # outputFileName = "unionSdrTrace_{0}learningPasses.csv".format(trainingPasses)
+  # writeMetricTrace(experiment, metricName, outputDir, outputFileName)
 
   if plotVerbosity >= 1:
-    raw_input("Press any key to exit...")
+    raw_input("\nPress any key to exit...")
+
+
+
+def getRandomPattern(patterns):
+  rand = random.randint(0, len(patterns)-1)
+  while patterns[rand] is None:
+    rand = random.randint(0, len(patterns)-1)
+  return patterns[rand]
 
 
 
 def _getArgs():
   parser = OptionParser(usage="%prog PARAMS_DIR OUTPUT_DIR [options]"
-                              "\n\nRun union overlap experiment using params in"
-                              " PARAMS_DIR and outputting results to "
-                              "OUTPUT_DIR.")
+                              "\n\nRun noise robustness experiment using "
+                              "params in PARAMS_DIR (relative to this file) "
+                              "and outputting results to OUTPUT_DIR.")
   parser.add_option("-p",
                     "--plot",
                     type=int,
@@ -274,7 +311,8 @@ def _getArgs():
     parser.print_help(sys.stderr)
     sys.exit()
 
-  with open(args[0]) as paramsFile:
+  absPath = os.path.join(os.path.dirname(__file__), args[0])
+  with open(absPath) as paramsFile:
     params = yaml.safe_load(paramsFile)
 
   return options, args, params
