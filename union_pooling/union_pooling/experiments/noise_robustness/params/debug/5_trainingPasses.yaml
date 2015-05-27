@@ -5,6 +5,8 @@ patternCardinality: 3
 sequenceLength: 10
 numberOfSequences: 10
 trainingPasses: 5
+testPresentations: 10
+perturbationChance: 0.50
 
 temporalMemoryParams:
   columnDimensions: [128]

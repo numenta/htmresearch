@@ -98,6 +98,12 @@ class UnionPoolerExperiment(object):
                                  "maxUnionActivity": 0.20,
                                  "decayFunctionSlope": 1.0}
 
+  DEFAULT_CLASSIFIER_PARAMS = {
+  'distThreshold': 0.000001,
+  'maxCategoryCount': 10,
+  #'distanceMethod': 'rawOverlap',  # Default is Euclidean distance
+   }
+
 
   def __init__(self, tmOverrides=None, upOverrides=None, seed=42):
     print "Initializing Temporal Memory..."
