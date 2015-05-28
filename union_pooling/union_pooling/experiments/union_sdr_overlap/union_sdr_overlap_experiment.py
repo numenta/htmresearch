@@ -227,7 +227,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
                                   progressInterval=_SHOW_PROGRESS_INTERVAL)
 
   print "\nPass\tBursting Columns Mean\tStdDev\tMax"
-  stats = experiment.getBurstingColumnsStats(experiment)
+  stats = experiment.getBurstingColumnsStats()
   print "{0}\t{1}\t{2}\t{3}".format(0, stats[0], stats[1], stats[2])
   if trainingPasses > 0 and stats[0] > 0:
     print "***WARNING! MEAN BURSTING COLUMNS IN TEST PHASE IS GREATER THAN 0***"
