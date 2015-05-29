@@ -39,16 +39,16 @@ public class API : MonoBehaviour {
 	/* Data transfer */
 
 	IEnumerator SendReset() {
-		string url = "http://localhost:8080/reset";
-		WWW www = new WWW(url);
+		string pth = "/reset";
+		WWW www = new WWW(serverURL + pth);
 		yield return www;
 	}
 
 	IEnumerator Sync() {
 		WWWForm form = new WWWForm();
 		form.AddField ("outputData", JsonWriter.Serialize(_outputData));
-		string url = "http://localhost:8080/sync";
-		WWW www = new WWW(url, form);
+		string pth = "/sync";
+		WWW www = new WWW(serverURL + pth, form);
 		yield return www;
 
 		_isWaitingForResponse = false;
