@@ -23,7 +23,6 @@
 import numpy
 import unittest
 
-from nupic.encoders.base import defaultDtype
 from sensorimotor.encoders.one_d_depth import OneDDepthEncoder
 
 
