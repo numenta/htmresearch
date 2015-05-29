@@ -54,6 +54,20 @@ _SHOW_PROGRESS_INTERVAL = 200
 
 
 
+def getDistinctness(unionSdrs):
+    distinctnessConfusion = []
+
+    for i in xrange(len(unionSdrs)):
+      for j in xrange(i+1):
+        numOverlap = len(unionSdrs[i] & unionSdrs[j])
+        distinctnessConfusion.append(numOverlap)
+
+    mean = numpy.mean(distinctnessConfusion)
+    stdDev = numpy.std(distinctnessConfusion)
+    maximum = max(distinctnessConfusion)
+    return mean, stdDev, maximum
+
+
 
 def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   """
@@ -139,11 +153,34 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
     # if plotVerbosity >= 2:
     #   plotNetworkState(experiment, plotVerbosity, trainingPasses,
     #                    phase="Training")
+  experiment.tm.mmClearHistory()
+  experiment.up.mmClearHistory()
 
   print "\nRunning test phase..."
 
+  unionSDRS = []
+  for i in xrange(sequenceCount):
+    seq = generatedSequences[i + i*sequenceLength: i+1 + (i+1)*sequenceLength]
+    lblSeq = labeledSequences[i + i*sequenceLength: i+1 + (i+1)*sequenceLength]
+    experiment.runNetworkOnSequence(seq,
+                                    lblSeq,
+                                    tmLearn=False,
+                                    upLearn=False,
+                                    verbosity=consoleVerbosity,
+                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
+    unionSDRS.append(experiment.up.getUnionSDR())
+
+  distinctness = getDistinctness(unionSDRS)
+
+
   # runTestPhase(experiment, generatedSequences, sequenceCount, sequenceLength,
   #              testPresentations, perturbationChance)
+
+  print "\nPass\tBursting Columns Mean\tStdDev\tMax"
+  stats = experiment.getBurstingColumnsStats()
+  print "{0}\t{1}\t{2}\t{3}".format(0, stats[0], stats[1], stats[2])
+  if trainingPasses > 0 and stats[0] > 0:
+    print "***WARNING! MEAN BURSTING COLUMNS IN TEST PHASE IS GREATER THAN 0***"
 
   print
   print MonitorMixinBase.mmPrettyPrintMetrics(
