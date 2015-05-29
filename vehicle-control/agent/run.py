@@ -1,9 +1,20 @@
+import numpy
+
 from unity_client.fetcher import Fetcher
+from sensorimotor.encoders.one_d_depth import OneDDepthEncoder
+
 
 
 def run(plotEvery=1):
   fetcher = Fetcher()
   plotter = Plotter()
+  encoder = OneDDepthEncoder(positions=[i*20 for i in range(36)],
+                             radius=3,
+                             wrapAround=True,
+                             nPerPosition=57,
+                             wPerPosition=3,
+                             minVal=0,
+                             maxVal=1)
 
   while True:
     outputData = fetcher.sync()
@@ -18,7 +29,10 @@ def run(plotEvery=1):
     if outputData["reset"]:
       print "Reset."
 
-    plotter.update(outputData["ForwardsSweepSensor"])
+    sensor = outputData["ForwardsSweepSensor"]
+    encoding = encoder.encode(numpy.array(sensor))
+
+    plotter.update(sensor, encoding)
 
     if fetcher.timestep % plotEvery == 0:
       plotter.render()
@@ -29,6 +43,7 @@ class Plotter(object):
 
   def __init__(self):
     self.sensor = []
+    self.encoding = []
 
     import matplotlib.pyplot as plt
     self.plt = plt
@@ -39,8 +54,9 @@ class Plotter(object):
     self.plt.show()
 
 
-  def update(self, sensor):
+  def update(self, sensor, encoding):
     self.sensor.append(sensor)
+    self.encoding.append(encoding)
 
 
   def render(self):
@@ -48,7 +64,11 @@ class Plotter(object):
 
     self.plt.clf()
 
+    self.plt.subplot(2,1,1)
     self._imshow(self.sensor)
+
+    self.plt.subplot(2,1,2)
+    self._imshow(self.encoding)
 
     self.plt.draw()
 
