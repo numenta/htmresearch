@@ -2078,7 +2078,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   lineRenderer: {fileID: 12050378}
-  numRays: 360
+  numRays: 720
   graphVerticalOffset: 30
   fieldOfView: 360
   focalLength: 40
