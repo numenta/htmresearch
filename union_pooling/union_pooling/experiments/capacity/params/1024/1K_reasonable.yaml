@@ -2,7 +2,7 @@ patternDimensionality: 1024
 patternCardinality: 20
 sequenceLength: 13
 numberOfSequences: 1000
-trainingPasses: 5
+trainingPasses: 3
 
 temporalMemoryParams:
   columnDimensions: [1024]

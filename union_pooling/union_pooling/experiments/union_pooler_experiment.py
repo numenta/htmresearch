@@ -159,6 +159,9 @@ class UnionPoolerExperiment(object):
                "{2:0.2f} seconds.".format(i, len(sensorSequences),
                                           time.time() - currentTime))
         currentTime = time.time()
+        if tmLearn:
+          MonitorMixinBase.mmPrettyPrintMetrics(self.tm.mmGetDefaultMetrics())
+          self.tm.mmClearHistory()
 
     if verbosity >= 2:
       traces = self.tm.mmGetDefaultTraces(verbosity=verbosity)
@@ -219,8 +222,11 @@ class UnionPoolerExperiment(object):
     """
     traceData = self.tm.mmGetTraceUnpredictedActiveColumns().data
     resetData = self.tm.mmGetTraceResets().data
-    countTrace = [0 if resetData[x] else len(traceData[x])
-                  for x in xrange(len(traceData))]
+    countTrace = []
+    for x in xrange(len(traceData)):
+      if not resetData[x]:
+        countTrace.append(len(traceData[x]))
+
     mean = numpy.mean(countTrace)
     stdDev = numpy.std(countTrace)
     maximum = max(countTrace)

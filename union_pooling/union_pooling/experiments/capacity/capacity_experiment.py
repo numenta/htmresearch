@@ -40,28 +40,34 @@ from union_pooling.experiments.union_pooler_experiment import (
 
 """
 Experiment 2a
-Explore the limits of the classifiability of Union Pooler's union SDR.
+Explore the limits of the distinctness of Union Pooler's union SDR.
 
 Data: Sequences of unique patterns.
-Train Phase: Train network on sequences for some number of repetitions
+Train Phase: Train network on some number of sequences having moderate length.
 Test phase: Each sequence is shown once and the Union SDRs at the end are
 recorded. Compute the distinctness between the final SDRs of each sequence.
 """
 
 
 
-_SHOW_PROGRESS_INTERVAL = 200
+_SHOW_PROGRESS_INTERVAL = 5000
 
 
 
-def getDistinctness(unionSdrs):
-    distinctness = []
-    for i in xrange(len(unionSdrs)):
-      for j in xrange(i):
-        intersection = numpy.intersect1d(unionSdrs[i], unionSdrs[j])
-        distinctness.append(len(intersection))
+def getDistinctness(sdrList):
+  """
+  Gets the distinctness of a list of unionSdrs, that is, a measure of the
+  overlap between the SDRs.
+  :param sdrList: a list of SDRs
+  :return: The average, standard deviation, and max distinctness of the set
+  """
+  distinctness = []
+  for i in xrange(len(sdrList)):
+    for j in xrange(i):
+      intersection = numpy.intersect1d(sdrList[i], sdrList[j])
+      distinctness.append(len(intersection))
 
-    return numpy.mean(distinctness), numpy.std(distinctness), max(distinctness)
+  return numpy.mean(distinctness), numpy.std(distinctness), max(distinctness)
 
 
 
@@ -99,9 +105,10 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   tmParamOverrides = params["temporalMemoryParams"]
   upParamOverrides = params["unionPoolerParams"]
 
-  # Generate a sequence list and an associated labeled list (both containing a
-  # set of sequences separated by None)
   start = time.time()
+
+  # Generate a sequence list and an associated labeled list
+  # (both containing a set of sequences separated by None)
   print "Generating sequences..."
   patternAlphabetSize = sequenceLength * sequenceCount
   patternMachine = PatternMachine(patternDimensionality, patternCardinality,
@@ -130,7 +137,6 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
       print "\nPass\tMean\t\tStdDev\t\tMax\t\t(Bursting Columns)"
 
     for i in xrange(trainingPasses):
-
       experiment.runNetworkOnSequence(generatedSequences,
                                       labeledSequences,
                                       tmLearn=True,
@@ -142,30 +148,30 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
         stats = experiment.getBurstingColumnsStats()
         print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
 
-    print
-    print MonitorMixinBase.mmPrettyPrintMetrics(
-      experiment.tm.mmGetDefaultMetrics())
-    print
-    # if plotVerbosity >= 2:
-    #   plotNetworkState(experiment, plotVerbosity, trainingPasses,
-    #                    phase="Training")
+      experiment.tm.mmClearHistory()
+
   experiment.tm.mmClearHistory()
   experiment.up.mmClearHistory()
 
   print "\nRunning test phase..."
-
   unionSDRS = []
   for i in xrange(sequenceCount):
     seq = generatedSequences[i + i*sequenceLength: i+1 + (i+1)*sequenceLength]
     lblSeq = labeledSequences[i + i*sequenceLength: i+1 + (i+1)*sequenceLength]
+
+    # Present sequence (minus reset element)
     experiment.runNetworkOnSequence(seq[:-1],
                                     lblSeq[:-1],
                                     tmLearn=False,
                                     upLearn=False,
                                     verbosity=consoleVerbosity,
                                     progressInterval=_SHOW_PROGRESS_INTERVAL)
+
+    # Record Union SDR at end of sequence
     seqUnionSdr = experiment.up.getUnionSDR()
     unionSDRS.append(numpy.sort(seqUnionSdr))
+
+    # Run reset element
     experiment.runNetworkOnSequence(seq[-1:],
                                     lblSeq[-1:],
                                     tmLearn=False,
@@ -187,21 +193,11 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
 
   # Output distinctness metric
   print "\nSequences\tDistinctness Ave.\tStdDev\tMax"
-  ave, stdDev, max = getDistinctness(unionSDRS)
-  print "{0}\t{1}\t{2}\t{3}".format(sequenceCount, ave, stdDev, max)
-
-  # plotNetworkState(experiment, plotVerbosity, trainingPasses, phase="Testing")
+  ave, stdDev, maxDist = getDistinctness(unionSDRS)
+  print "{0}\t{1}\t{2}\t{3}".format(sequenceCount, ave, stdDev, maxDist)
 
   elapsed = int(time.time() - start)
   print "Total time: {0:2} seconds.".format(elapsed)
-
-  ## Write Union SDR trace
-  # metricName = "activeCells"
-  # outputFileName = "unionSdrTrace_{0}learningPasses.csv".format(trainingPasses)
-  # writeMetricTrace(experiment, metricName, outputDir, outputFileName)
-
-  if plotVerbosity >= 1:
-    raw_input("\nPress any key to exit...")
 
 
 
