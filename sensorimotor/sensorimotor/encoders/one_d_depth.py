@@ -95,7 +95,7 @@ class OneDDepthEncoder(Encoder):
       values = inputData.take(indices, mode=mode)
       start = i * self.scalarEncoder.getWidth()
       end = (i + 1) * self.scalarEncoder.getWidth()
-      output[start:end] = self.scalarEncoder.encode(min(values))
+      output[start:end] = self.scalarEncoder.encode(max(values))
 
 
   def dump(self):

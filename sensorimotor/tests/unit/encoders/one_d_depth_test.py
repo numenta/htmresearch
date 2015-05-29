@@ -48,23 +48,23 @@ class OneDDepthEncoderTest(unittest.TestCase):
 
 
   def testEncodeSingleSpikeCenter(self):
-    inputData = numpy.array([1.0] * len(self.encoder.positions))
-    inputData[int(len(self.encoder.positions) / 2)] = 0.25
+    inputData = numpy.array([0.0] * len(self.encoder.positions))
+    inputData[int(len(self.encoder.positions) / 2)] = 0.75
     outputData = self.encoder.encode(inputData)
     self._printInputOutput(inputData, outputData)
 
 
   def testEncodeSingleSpikeLeft(self):
-    inputData = numpy.array([1.0] * len(self.encoder.positions))
-    inputData[0] = 0.25
+    inputData = numpy.array([0.0] * len(self.encoder.positions))
+    inputData[0] = 0.75
     outputData = self.encoder.encode(inputData)
     self._printInputOutput(inputData, outputData)
 
 
   def testEncodeSingleSpikeLeftWrapAround(self):
     self.encoder.wrapAround = True
-    inputData = numpy.array([1.0] * len(self.encoder.positions))
-    inputData[0] = 0.25
+    inputData = numpy.array([0.0] * len(self.encoder.positions))
+    inputData[0] = 0.75
     outputData = self.encoder.encode(inputData)
     self._printInputOutput(inputData, outputData)
 
