@@ -71,6 +71,61 @@ def getDistinctness(sdrList):
 
 
 
+def generateSequences(patternDimensionality, patternCardinality, sequenceLength,
+                      sequenceCount):
+  # Generate a sequence list and an associated labeled list
+  # (both containing a set of sequences separated by None)
+  print "Generating sequences..."
+  patternAlphabetSize = sequenceLength * sequenceCount
+  patternMachine = PatternMachine(patternDimensionality, patternCardinality,
+                                  patternAlphabetSize)
+  sequenceMachine = SequenceMachine(patternMachine)
+  numbers = sequenceMachine.generateNumbers(sequenceCount, sequenceLength)
+  generatedSequences = sequenceMachine.generateFromNumbers(numbers)
+  sequenceLabels = [
+    str(numbers[i + i * sequenceLength: i + (i + 1) * sequenceLength])
+    for i in xrange(sequenceCount)]
+  labeledSequences = []
+  for label in sequenceLabels:
+    for _ in xrange(sequenceLength):
+      labeledSequences.append(label)
+    labeledSequences.append(None)
+
+  return generatedSequences, labeledSequences
+
+
+def runTestPhase(experiment, inputSequences, seqLabels, sequenceCount,
+                 sequenceLength, consoleVerbosity):
+  print "\nRunning Test Phase..."
+  unionSdrs = []
+  for i in xrange(sequenceCount):
+    seq = inputSequences[
+          i + i * sequenceLength: i + 1 + (i + 1) * sequenceLength]
+    lblSeq = seqLabels[i + i * sequenceLength: i + 1 + (i + 1) * sequenceLength]
+
+    # Present sequence (minus reset element)
+    experiment.runNetworkOnSequence(seq[:-1],
+                                    lblSeq[:-1],
+                                    tmLearn=False,
+                                    upLearn=False,
+                                    verbosity=consoleVerbosity,
+                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
+
+    # Record Union SDR at end of sequence
+    seqUnionSdr = experiment.up.getUnionSDR()
+    unionSdrs.append(numpy.sort(seqUnionSdr))
+
+    # Run reset element
+    experiment.runNetworkOnSequence(seq[-1:],
+                                    lblSeq[-1:],
+                                    tmLearn=False,
+                                    upLearn=False,
+                                    verbosity=consoleVerbosity,
+                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
+
+  return unionSdrs
+
+
 def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   """
   Runs the Union Pooler capacity experiment.
@@ -91,6 +146,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   :param plotVerbosity: Plotting verbosity
   :param consoleVerbosity: Console output verbosity
   """
+  start = time.time()
   print "Running Union Pooler Capacity Experiment...\n"
   print "Params dir: {0}".format(os.path.join(os.path.dirname(__file__),
                                               paramDir))
@@ -105,86 +161,47 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   tmParamOverrides = params["temporalMemoryParams"]
   upParamOverrides = params["unionPoolerParams"]
 
-  start = time.time()
+  # Generate input data
+  inputSequences, seqLabels = generateSequences(patternDimensionality,
+                                                patternCardinality,
+                                                sequenceLength,
+                                                sequenceCount)
 
-  # Generate a sequence list and an associated labeled list
-  # (both containing a set of sequences separated by None)
-  print "Generating sequences..."
-  patternAlphabetSize = sequenceLength * sequenceCount
-  patternMachine = PatternMachine(patternDimensionality, patternCardinality,
-                                  patternAlphabetSize)
-  sequenceMachine = SequenceMachine(patternMachine)
-
-  numbers = sequenceMachine.generateNumbers(sequenceCount, sequenceLength)
-  generatedSequences = sequenceMachine.generateFromNumbers(numbers)
-  sequenceLabels = [str(numbers[i + i*sequenceLength: i + (i+1)*sequenceLength])
-                    for i in xrange(sequenceCount)]
-  labeledSequences = []
-  for label in sequenceLabels:
-    for _ in xrange(sequenceLength):
-      labeledSequences.append(label)
-    labeledSequences.append(None)
-
-  # Set up the Temporal Memory and Union Pooler network
-  print "\nCreating network..."
+  print "\nCreating Network..."
   experiment = UnionPoolerExperiment(tmParamOverrides, upParamOverrides)
 
-  # Train only the Temporal Memory on the generated sequences
-  if trainingPasses > 0:
+  # Train the Temporal Memory on the generated sequences
+  print "\nTraining Temporal Memory..."
+  for i in xrange(trainingPasses):
+    print "\nTraining pass {0} ...\n".format(i)
+    experiment.runNetworkOnSequence(inputSequences,
+                                    seqLabels,
+                                    tmLearn=True,
+                                    upLearn=None,
+                                    verbosity=consoleVerbosity,
+                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
 
-    print "\nTraining Temporal Memory..."
     if consoleVerbosity > 0:
+      stats = experiment.getBurstingColumnsStats()
       print "\nPass\tMean\t\tStdDev\t\tMax\t\t(Bursting Columns)"
+      print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
 
-    for i in xrange(trainingPasses):
-      experiment.runNetworkOnSequence(generatedSequences,
-                                      labeledSequences,
-                                      tmLearn=True,
-                                      upLearn=None,
-                                      verbosity=consoleVerbosity,
-                                      progressInterval=_SHOW_PROGRESS_INTERVAL)
-
-      if consoleVerbosity > 0:
-        stats = experiment.getBurstingColumnsStats()
-        print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
-
-      experiment.tm.mmClearHistory()
-
+  print
+  print MonitorMixinBase.mmPrettyPrintMetrics(
+    experiment.tm.mmGetDefaultMetrics())
+  print
   experiment.tm.mmClearHistory()
-  experiment.up.mmClearHistory()
 
-  print "\nRunning test phase..."
-  unionSDRS = []
-  for i in xrange(sequenceCount):
-    seq = generatedSequences[i + i*sequenceLength: i+1 + (i+1)*sequenceLength]
-    lblSeq = labeledSequences[i + i*sequenceLength: i+1 + (i+1)*sequenceLength]
+  # Run test phase recording Union SDRs
+  unionSdrs = runTestPhase(experiment, inputSequences, seqLabels, sequenceCount,
+                           sequenceLength, consoleVerbosity)
 
-    # Present sequence (minus reset element)
-    experiment.runNetworkOnSequence(seq[:-1],
-                                    lblSeq[:-1],
-                                    tmLearn=False,
-                                    upLearn=False,
-                                    verbosity=consoleVerbosity,
-                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
-
-    # Record Union SDR at end of sequence
-    seqUnionSdr = experiment.up.getUnionSDR()
-    unionSDRS.append(numpy.sort(seqUnionSdr))
-
-    # Run reset element
-    experiment.runNetworkOnSequence(seq[-1:],
-                                    lblSeq[-1:],
-                                    tmLearn=False,
-                                    upLearn=False,
-                                    verbosity=consoleVerbosity,
-                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
-
-  # Check bursting columns
+  # Check bursting columns metric during test phase
   print "\nSequences\tBursting Columns Mean\tStdDev\tMax"
   stats = experiment.getBurstingColumnsStats()
   print "{0}\t{1}\t{2}\t{3}".format(sequenceCount, stats[0], stats[1], stats[2])
   if trainingPasses > 0 and stats[0] > 0:
-    print "***WARNING! MEAN BURSTING COLUMNS IN TEST PHASE IS GREATER THAN 0***"
+    print "***Warning! Mean bursing columns > 0 in test phase***"
 
   print
   print MonitorMixinBase.mmPrettyPrintMetrics(
@@ -192,12 +209,10 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   print
 
   # Output distinctness metric
-  print "\nSequences\tDistinctness Ave.\tStdDev\tMax"
-  ave, stdDev, maxDist = getDistinctness(unionSDRS)
+  print "\nSequences\tDistinctness Ave\tStdDev\tMax"
+  ave, stdDev, maxDist = getDistinctness(unionSdrs)
   print "{0}\t{1}\t{2}\t{3}".format(sequenceCount, ave, stdDev, maxDist)
-
-  elapsed = int(time.time() - start)
-  print "Total time: {0:2} seconds.".format(elapsed)
+  print "Total time: {0:2} seconds.".format(int(time.time() - start))
 
 
 

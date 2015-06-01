@@ -155,13 +155,10 @@ class UnionPoolerExperiment(object):
                                sequenceLabel=sequenceLabel)
 
       if progressInterval is not None and i > 0 and i % progressInterval == 0:
+        elapsed = (time.time() - currentTime) / 60.0
         print ("Ran {0} / {1} elements of sequence in "
-               "{2:0.2f} seconds.".format(i, len(sensorSequences),
-                                          time.time() - currentTime))
+               "{2:0.2f} minutes.".format(i, len(sensorSequences), elapsed))
         currentTime = time.time()
-        if tmLearn:
-          MonitorMixinBase.mmPrettyPrintMetrics(self.tm.mmGetDefaultMetrics())
-          self.tm.mmClearHistory()
 
     if verbosity >= 2:
       traces = self.tm.mmGetDefaultTraces(verbosity=verbosity)
