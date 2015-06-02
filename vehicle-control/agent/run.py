@@ -66,16 +66,22 @@ class Plotter(object):
 
     self.plt.clf()
 
-    self.plt.subplot(3,1,1)
+    self.plt.subplot(4,1,1)
     self._imshow(self.sensor)
 
-    self.plt.subplot(3,1,2)
+    self.plt.subplot(4,1,2)
     self._imshow(self.encoding)
 
-    self.plt.subplot(3,1,3)
+    self.plt.subplot(4,1,3)
     shape = len(self.encoder.positions), self.encoder.scalarEncoder.getWidth()
     encoding = numpy.array(self.encoding[-1]).reshape(shape).transpose()
     self._imshow(encoding)
+
+    self.plt.subplot(4,1,4)
+    data = self.encoding
+    w = self.encoder.w
+    overlaps = [sum(a & b) / float(w) for a, b in zip(data[:-1], data[1:])]
+    self.plt.plot(range(len(overlaps)), overlaps)
 
     self.plt.draw()
 
