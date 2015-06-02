@@ -6,8 +6,6 @@ from sensorimotor.encoders.one_d_depth import OneDDepthEncoder
 
 
 def run(plotEvery=1):
-  fetcher = Fetcher()
-  plotter = Plotter()
   encoder = OneDDepthEncoder(positions=[i*20 for i in range(36)],
                              radius=3,
                              wrapAround=True,
@@ -15,6 +13,8 @@ def run(plotEvery=1):
                              wPerPosition=3,
                              minVal=0,
                              maxVal=1)
+  fetcher = Fetcher()
+  plotter = Plotter(encoder)
 
   while True:
     outputData = fetcher.sync()
@@ -41,7 +41,9 @@ def run(plotEvery=1):
 
 class Plotter(object):
 
-  def __init__(self):
+  def __init__(self, encoder):
+    self.encoder = encoder
+
     self.sensor = []
     self.encoding = []
 
@@ -64,11 +66,16 @@ class Plotter(object):
 
     self.plt.clf()
 
-    self.plt.subplot(2,1,1)
+    self.plt.subplot(3,1,1)
     self._imshow(self.sensor)
 
-    self.plt.subplot(2,1,2)
+    self.plt.subplot(3,1,2)
     self._imshow(self.encoding)
+
+    self.plt.subplot(3,1,3)
+    shape = len(self.encoder.positions), self.encoder.scalarEncoder.getWidth()
+    encoding = numpy.array(self.encoding[-1]).reshape(shape).transpose()
+    self._imshow(encoding)
 
     self.plt.draw()
 
