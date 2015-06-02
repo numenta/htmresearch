@@ -159,6 +159,8 @@ class UnionPoolerExperiment(object):
         print ("Ran {0} / {1} elements of sequence in "
                "{2:0.2f} minutes.".format(i, len(sensorSequences), elapsed))
         currentTime = time.time()
+        print MonitorMixinBase.mmPrettyPrintMetrics(
+          self.tm.mmGetDefaultMetrics())
 
     if verbosity >= 2:
       traces = self.tm.mmGetDefaultTraces(verbosity=verbosity)

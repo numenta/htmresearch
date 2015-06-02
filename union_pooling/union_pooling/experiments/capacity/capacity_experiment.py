@@ -196,6 +196,11 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   unionSdrs = runTestPhase(experiment, inputSequences, seqLabels, sequenceCount,
                            sequenceLength, consoleVerbosity)
 
+  # Output distinctness metric
+  print "\nSequences\tDistinctness Ave\tStdDev\tMax"
+  ave, stdDev, maxDist = getDistinctness(unionSdrs)
+  print "{0}\t{1}\t{2}\t{3}".format(sequenceCount, ave, stdDev, maxDist)
+
   # Check bursting columns metric during test phase
   print "\nSequences\tBursting Columns Mean\tStdDev\tMax"
   stats = experiment.getBurstingColumnsStats()
@@ -207,11 +212,6 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   print MonitorMixinBase.mmPrettyPrintMetrics(
       experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
   print
-
-  # Output distinctness metric
-  print "\nSequences\tDistinctness Ave\tStdDev\tMax"
-  ave, stdDev, maxDist = getDistinctness(unionSdrs)
-  print "{0}\t{1}\t{2}\t{3}".format(sequenceCount, ave, stdDev, maxDist)
   print "Total time: {0:2} seconds.".format(int(time.time() - start))
 
 
