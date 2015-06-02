@@ -5,8 +5,8 @@ from sensorimotor.encoders.one_d_depth import OneDDepthEncoder
 
 
 
-def run(plotEvery=1):
-  encoder = OneDDepthEncoder(positions=[i*20 for i in range(36)],
+def run(positions, plotEvery=1):
+  encoder = OneDDepthEncoder(positions=positions,
                              radius=3,
                              wrapAround=True,
                              nPerPosition=57,
@@ -108,4 +108,10 @@ class Plotter(object):
 
 
 
-run()
+# complete uniform
+# positions = [i*20 for i in range(36)]
+
+# forward uniform
+positions = [i*10 for i in range(18, 54)]
+
+run(positions)
