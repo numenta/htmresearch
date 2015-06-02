@@ -52,6 +52,11 @@ class Plotter(object):
     import matplotlib.cm as cm
     self.cm = cm
 
+    from pylab import rcParams
+    rcParams.update({'figure.figsize': (6, 9)})
+    # rcParams.update({'figure.autolayout': True})
+    rcParams.update({'figure.facecolor': 'white'})
+
     self.plt.ion()
     self.plt.show()
 
@@ -67,26 +72,33 @@ class Plotter(object):
     self.plt.clf()
 
     self.plt.subplot(4,1,1)
-    self._imshow(self.sensor)
+    self._imshow(self.sensor, "Sensor over time")
 
     self.plt.subplot(4,1,2)
-    self._imshow(self.encoding)
+    self._imshow(self.encoding, "Encoding over time")
 
     self.plt.subplot(4,1,3)
     shape = len(self.encoder.positions), self.encoder.scalarEncoder.getWidth()
     encoding = numpy.array(self.encoding[-1]).reshape(shape).transpose()
-    self._imshow(encoding)
+    self._imshow(encoding, "Encoding at time t")
 
     self.plt.subplot(4,1,4)
     data = self.encoding
     w = self.encoder.w
     overlaps = [sum(a & b) / float(w) for a, b in zip(data[:-1], data[1:])]
-    self.plt.plot(range(len(overlaps)), overlaps)
+    self._plot(overlaps, "Encoding overlaps between consecutive times")
 
     self.plt.draw()
 
 
-  def _imshow(self, data):
+  def _plot(self, data, title):
+    self.plt.title(title)
+    self.plt.xlim(0, len(data))
+    self.plt.plot(range(len(data)), data)
+
+
+  def _imshow(self, data, title):
+    self.plt.title(title)
     self.plt.imshow(data,
                     cmap=self.cm.Greys,
                     interpolation="nearest",
