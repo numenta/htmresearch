@@ -23,6 +23,7 @@ import time
 
 import numpy
 
+from nupic.algorithms.KNNClassifier import KNNClassifier
 from nupic.bindings.math import GetNTAReal
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
@@ -99,6 +100,7 @@ class UnionPoolerExperiment(object):
                                  "decayFunctionSlope": 1.0}
 
   DEFAULT_CLASSIFIER_PARAMS = {
+    # TODO: Add parameters
   'distThreshold': 0.000001,
   'maxCategoryCount': 10,
   #'distanceMethod': 'rawOverlap',  # Default is Euclidean distance
@@ -120,7 +122,9 @@ class UnionPoolerExperiment(object):
     params["seed"] = seed
     self.up = MonitoredUnionTemporalPooler(mmName="UP", **params)
 
-    # TODO KNN classifer
+    print "Initializing KNN Classifier..."
+    params = dict(self.DEFAULT_CLASSIFIER_PARAMS)
+    self.classifier = KNNClassifier(**params)
 
 
   def runNetworkOnSequence(self, sensorSequences, sequencesLabels, tmLearn=True,
