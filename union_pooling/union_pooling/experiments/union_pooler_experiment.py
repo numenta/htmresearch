@@ -155,10 +155,12 @@ class UnionPoolerExperiment(object):
                                sequenceLabel=sequenceLabel)
 
       if progressInterval is not None and i > 0 and i % progressInterval == 0:
+        elapsed = (time.time() - currentTime) / 60.0
         print ("Ran {0} / {1} elements of sequence in "
-               "{2:0.2f} seconds.".format(i, len(sensorSequences),
-                                          time.time() - currentTime))
+               "{2:0.2f} minutes.".format(i, len(sensorSequences), elapsed))
         currentTime = time.time()
+        print MonitorMixinBase.mmPrettyPrintMetrics(
+          self.tm.mmGetDefaultMetrics())
 
     if verbosity >= 2:
       traces = self.tm.mmGetDefaultTraces(verbosity=verbosity)
@@ -219,8 +221,11 @@ class UnionPoolerExperiment(object):
     """
     traceData = self.tm.mmGetTraceUnpredictedActiveColumns().data
     resetData = self.tm.mmGetTraceResets().data
-    countTrace = [0 if resetData[x] else len(traceData[x])
-                  for x in xrange(len(traceData))]
+    countTrace = []
+    for x in xrange(len(traceData)):
+      if not resetData[x]:
+        countTrace.append(len(traceData[x]))
+
     mean = numpy.mean(countTrace)
     stdDev = numpy.std(countTrace)
     maximum = max(countTrace)

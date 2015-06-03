@@ -217,3 +217,7 @@ class UnionPooler(SpatialPooler):
     nonZeroTopCells = self._poolingActivation[topCells] > 0
     self._unionSDR = topCells[nonZeroTopCells]
     return self._unionSDR
+
+
+  def getUnionSDR(self):
+    return self._unionSDR
