@@ -19,24 +19,6 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
-import csv
-import random
-import sys
-import time
-import os
-import yaml
-from optparse import OptionParser
-
-import numpy
-from pylab import rcParams
-
-from nupic.data.generators.pattern_machine import PatternMachine
-from nupic.data.generators.sequence_machine import SequenceMachine
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-
-from experiments.capacity import data_utils
-from union_pooling.experiments.union_pooler_experiment import (
-    UnionPoolerExperiment)
 
 """
 Experiment 2a
@@ -47,6 +29,21 @@ Train Phase: Train network on some number of sequences having moderate length.
 Test phase: Each sequence is shown once and the Union SDRs at the end are
 recorded. Compute the distinctness between the final SDRs of each sequence.
 """
+
+from optparse import OptionParser
+import os
+import sys
+import time
+import yaml
+
+import numpy
+
+from nupic.data.generators.pattern_machine import PatternMachine
+from nupic.data.generators.sequence_machine import SequenceMachine
+from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+
+from union_pooling.experiments.union_pooler_experiment import (
+    UnionPoolerExperiment)
 
 
 
@@ -99,9 +96,12 @@ def runTestPhase(experiment, inputSequences, seqLabels, sequenceCount,
   print "\nRunning Test Phase..."
   unionSdrs = []
   for i in xrange(sequenceCount):
-    seq = inputSequences[
-          i + i * sequenceLength: i + 1 + (i + 1) * sequenceLength]
-    lblSeq = seqLabels[i + i * sequenceLength: i + 1 + (i + 1) * sequenceLength]
+
+    # Extract next sequence
+    begin = i + i * sequenceLength
+    end = i + 1 + (i + 1) * sequenceLength
+    seq = inputSequences[begin: end]
+    lblSeq = seqLabels[begin: end]
 
     # Present sequence (minus reset element)
     experiment.runNetworkOnSequence(seq[:-1],
