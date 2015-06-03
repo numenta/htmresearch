@@ -182,10 +182,10 @@ class UnionPooler(SpatialPooler):
     # Add to the poolingActivation of current active Union Pooler cells
     if self._poolingActivationBurst is not None:
       # Increase is based on fixed parameter
-      self._poolingActivation[activeCells] += self._poolingActivationBurst
       tieBreaker = [random.random() * _TIE_BREAKER_FACTOR
                     for _ in xrange(len(activeCells))]
-      self._poolingActivation[activeCells] += tieBreaker
+      self._poolingActivation[activeCells] = (self._poolingActivationBurst +
+                                             tieBreaker)
     else:
       # Increase is based on active & predicted-active overlap
       self._addToPoolingActivation(activeCells, overlapsActive)
