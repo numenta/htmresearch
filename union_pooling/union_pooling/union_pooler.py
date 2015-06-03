@@ -75,21 +75,21 @@ class UnionPooler(SpatialPooler):
     -------------------------------------
 
     @param activeOverlapWeight: A multiplicative weight applied to
-    the overlap between connected synapses and active-cell input
+        the overlap between connected synapses and active-cell input
 
     @param predictedActiveOverlapWeight: A multiplicative weight applied to
-    the overlap between connected synapses and predicted-active-cell input
+        the overlap between connected synapses and predicted-active-cell input
 
     @param poolingActivationBurst: A fixed scalar amount of pooling activation
-    assigned to columns winning the inhibition step. If None, columns' pooling
-    activation is calculated based on their overlap.
+        assigned to columns winning the inhibition step. If None, columns'
+        pooling activation is calculated based on their overlap.
 
-    @param maxUnionActivity: Maximum number of active cells allowed in
-    union SDR simultaneously in terms of the ratio between the number of active
-    cells and the number of total cells
+    @param maxUnionActivity: Maximum number of active cells allowed in union SDR
+        simultaneously in terms of the ratio between the number of active cells
+        and the number of total cells
 
     @param decayFunctionSlope: Slope of the linear curve used to decay
-    pooling activation
+        pooling activation
     """
 
     super(UnionPooler, self).__init__(inputDimensions,
