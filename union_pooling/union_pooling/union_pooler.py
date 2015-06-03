@@ -18,6 +18,7 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import random
 
 import numpy
 
@@ -26,6 +27,7 @@ from nupic.research.spatial_pooler import SpatialPooler
 
 
 REAL_DTYPE = numpy.float32
+_TIE_BREAKER_FACTOR = 0.0001
 
 
 
@@ -181,6 +183,9 @@ class UnionPooler(SpatialPooler):
     if self._poolingActivationBurst is not None:
       # Increase is based on fixed parameter
       self._poolingActivation[activeCells] += self._poolingActivationBurst
+      tieBreaker = [random.random() * _TIE_BREAKER_FACTOR
+                    for _ in xrange(len(activeCells))]
+      self._poolingActivation[activeCells] += tieBreaker
     else:
       # Increase is based on active & predicted-active overlap
       self._addToPoolingActivation(activeCells, overlapsActive)
