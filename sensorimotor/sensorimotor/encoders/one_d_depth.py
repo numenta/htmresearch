@@ -30,7 +30,9 @@ class OneDDepthEncoder(Encoder):
   Given an array of numbers, each representing distance to the closest object,
   returns an SDR representation of that depth data.
 
-  TODO: Add details
+  At each given position, computes the closest distance within radius 3, and
+  encodes that distance with a scalar encoder. The concatenation of all these
+  scalar encodings is the final encoding.
   """
 
   def __init__(self,
@@ -46,7 +48,13 @@ class OneDDepthEncoder(Encoder):
     """
     See `nupic.encoders.base.Encoder` for more information.
 
-    TODO: Document parameters
+    @param positions    (list) Positions at which to encode distance
+    @param radius       (int)  Radius of positions over which to consider to get closest distance for encoding
+    @param wrapAround   (bool) Whether radius should wrap around the sides of the input array
+    @param nPerPosition (int)  Number of bits available for scalar encoder when encoding each position
+    @param wPerPosition (int)  Number of bits active for scalar encoder when encoding each position
+    @param minVal       (int)  Minimum distance that can be encoded
+    @param maxVal       (int)  Maximum distance that can be encoded
     """
     self.positions = positions
     self.radius = radius
