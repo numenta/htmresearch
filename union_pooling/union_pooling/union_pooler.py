@@ -18,6 +18,7 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import random
 
 import numpy
 
@@ -26,6 +27,7 @@ from nupic.research.spatial_pooler import SpatialPooler
 
 
 REAL_DTYPE = numpy.float32
+_TIE_BREAKER_FACTOR = 0.0001
 
 
 
@@ -62,6 +64,7 @@ class UnionPooler(SpatialPooler):
                # union_pooler.py parameters
                activeOverlapWeight=1.0,
                predictedActiveOverlapWeight=10.0,
+               poolingActivationBurst = None,
                maxUnionActivity=0.20,
                decayFunctionSlope=1.0):
     """
@@ -76,6 +79,10 @@ class UnionPooler(SpatialPooler):
 
     @param predictedActiveOverlapWeight: A multiplicative weight applied to
     the overlap between connected synapses and predicted-active-cell input
+
+    @param poolingActivationBurst: A fixed scalar amount of pooling activation
+    assigned to columns winning the inhibition step. If None, columns' pooling
+    activation is calculated based on their overlap.
 
     @param maxUnionActivity: Maximum number of active cells allowed in
     union SDR simultaneously in terms of the ratio between the number of active
@@ -106,6 +113,7 @@ class UnionPooler(SpatialPooler):
 
     self._activeOverlapWeight = activeOverlapWeight
     self._predictedActiveOverlapWeight = predictedActiveOverlapWeight
+    self._poolingActivationBurst = poolingActivationBurst
     self._maxUnionActivity = maxUnionActivity
     self._decayFunctionSlope = decayFunctionSlope
 
@@ -171,13 +179,17 @@ class UnionPooler(SpatialPooler):
     # Decrement pooling activation of all cells
     self._decayPoolingActivation()
 
-    # Add to the poolingActivation of active Union Pooler cells receiving input
-    # from active input cells
-    self._addToPoolingActivation(activeCells, overlapsActive)
-
-    # Add to the poolingActivation of active Union Pooler cells receiving
-    # active-predicted input cells.
-    self._addToPoolingActivation(activeCells, overlapsPredictedActive)
+    # Add to the poolingActivation of current active Union Pooler cells
+    if self._poolingActivationBurst is not None:
+      # Increase is based on fixed parameter
+      tieBreaker = [random.random() * _TIE_BREAKER_FACTOR
+                    for _ in xrange(len(activeCells))]
+      self._poolingActivation[activeCells] = (self._poolingActivationBurst +
+                                             tieBreaker)
+    else:
+      # Increase is based on active & predicted-active overlap
+      self._addToPoolingActivation(activeCells, overlapsActive)
+      self._addToPoolingActivation(activeCells, overlapsPredictedActive)
 
     return self._getMostActiveCells()
 
