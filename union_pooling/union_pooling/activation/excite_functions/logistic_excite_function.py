@@ -1,18 +1,17 @@
 import numpy
 
-from union_pooling.activation_strategies.activation_function_base import (
-  ActivationFunctionBase)
+from excite_function_base import ExciteFunctionBase
 
 
 
-class LogisticActivationFunction(ActivationFunctionBase):
+class LogisticExciteFunction(ExciteFunctionBase):
   """
   Implementation of a logistic activation function for activation updating.
   Specifically, the function has the following form:
 
   f(x) = maxValue / (1 + exp(-steepness * (x - xMidpoint) ) )
 
-  Note: The excitation and decay rates are linear. The activation function is
+  Note: The excitation rate is linear. The activation function is
   logistic.
   """
 
@@ -42,18 +41,6 @@ class LogisticActivationFunction(ActivationFunctionBase):
     """
     assert amount >= 0
     return self._updateActivation(current, amount)
-
-
-  def decay(self, current, amount):
-    """
-    Decreases current activation by amount.
-    :param current: Current activation value(s) to be decayed
-    :type current: ndarray
-    :param amount: Amount of decay. Must be a positive value.
-    :type amount: float
-    """
-    assert amount >= 0
-    return self._updateActivation(current, -amount)
 
 
   def _updateActivation(self, current, amount):

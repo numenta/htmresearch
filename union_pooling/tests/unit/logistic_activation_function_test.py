@@ -3,15 +3,15 @@ import unittest
 import numpy
 import numpy.testing as npt
 
-from union_pooling.activation_strategies.logistic_activation_function import (
-  LogisticActivationFunction)
+from union_pooling.activation.excite_functions.logistic_excite_function import (
+  LogisticExciteFunction)
 
 
 class LogisticActivationFunctionTest(unittest.TestCase):
 
 
   def setUp(self):
-    self.fcn = LogisticActivationFunction(xMidpoint=5, maxValue=1, steepness=2)
+    self.fcn = LogisticExciteFunction(xMidpoint=5, maxValue=1, steepness=2)
 
 
   def testDecayExciteConsistency(self):
