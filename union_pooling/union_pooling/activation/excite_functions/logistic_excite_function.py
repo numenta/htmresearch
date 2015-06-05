@@ -1,20 +1,21 @@
 import numpy
 
-from union_pooling.activation_strategies.activation_function_base import (
-  ActivationFunctionBase)
+from excite_function_base import ExciteFunctionBase
 
 
 
-class LogisticActivationFunction(ActivationFunctionBase):
+class LogisticExciteFunction(ExciteFunctionBase):
   """
   Implementation of a logistic activation function for activation updating.
   Specifically, the function has the following form:
 
   f(x) = maxValue / (1 + exp(-steepness * (x - xMidpoint) ) )
 
-  Note: The excitation and decay rates are linear. The activation function is
+  Note: The excitation rate is linear. The activation function is
   logistic.
   """
+  _SMALL_POSITIVE_CONSTANT = 0.000001
+
 
   def __init__(self, xMidpoint=0, maxValue=1, steepness=1):
     """
@@ -44,28 +45,20 @@ class LogisticActivationFunction(ActivationFunctionBase):
     return self._updateActivation(current, amount)
 
 
-  def decay(self, current, amount):
-    """
-    Decreases current activation by amount.
-    :param current: Current activation value(s) to be decayed
-    :type current: ndarray
-    :param amount: Amount of decay. Must be a positive value.
-    :type amount: float
-    """
-    assert amount >= 0
-    return self._updateActivation(current, -amount)
-
-
   def _updateActivation(self, current, amount):
-    # Ignore zero-valued elements since current is a divisor in function
-    nonzero = current.nonzero()
+    # Find zero-valued elements and bump values up slightly
+    # since current is a divisor below
+    zeroValued = numpy.where(current == 0)[0]
+
+    # TODO: Code is not correct
+    current[zeroValued] = self._SMALL_POSITIVE_CONSTANT
 
     # Apply inverse logistic function to current
-    converted = (numpy.log(self._maxValue / current[nonzero] - 1) /
+    converted = (numpy.log(self._maxValue / current - 1) /
                  -self._steepness + self._xMidpoint)
     converted += amount
 
     # Apply logistic function to updated domain value
-    current[nonzero] = self._maxValue / (1 + numpy.exp(-self._steepness *
-                                        (converted - self._xMidpoint)))
+    current = self._maxValue / (1 + numpy.exp(-self._steepness *
+                                (converted - self._xMidpoint)))
     return current

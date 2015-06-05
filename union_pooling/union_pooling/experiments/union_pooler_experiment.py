@@ -36,14 +36,14 @@ from union_pooling.union_pooler import UnionPooler
 
 
 
-class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
-                                     FastGeneralTemporalMemory):
+class MonitoredFastGeneralTemporalMemory(TemporalMemoryMonitorMixin,
+                                         FastGeneralTemporalMemory):
   pass
 
 
 
 # Implement a UnionPoolerMonitorMixin if needed...
-class MonitoredUnionTemporalPooler(TemporalPoolerMonitorMixin, UnionPooler):
+class MonitoredUnionPooler(TemporalPoolerMonitorMixin, UnionPooler):
   pass
 
 
@@ -94,9 +94,11 @@ class UnionPoolerExperiment(object):
 
                                  # Union Pooler Params
                                  "activeOverlapWeight": 1.0,
-                                 "predictedActiveOverlapWeight": 10.0,
-                                 "maxUnionActivity": 0.20,
-                                 "decayFunctionSlope": 1.0}
+                                 "predictedActiveOverlapWeight": 0.0,
+                                 "fixedPoolingActivationBurst": False,
+                                 "exciteFunction": None,
+                                 "decayFunction": None,
+                                 "maxUnionActivity": 0.20}
 
   DEFAULT_CLASSIFIER_PARAMS = {
   'distThreshold': 0.000001,
@@ -110,7 +112,7 @@ class UnionPoolerExperiment(object):
     params = dict(self.DEFAULT_TEMPORAL_MEMORY_PARAMS)
     params.update(tmOverrides or {})
     params["seed"] = seed
-    self.tm = MonitoredGeneralTemporalMemory(mmName="TM", **params)
+    self.tm = MonitoredFastGeneralTemporalMemory(mmName="TM", **params)
 
     print "Initializing Union Pooler..."
     params = dict(self.DEFAULT_UNION_POOLER_PARAMS)
@@ -118,7 +120,7 @@ class UnionPoolerExperiment(object):
     params["inputDimensions"] = [self.tm.numberOfCells()]
     params["potentialRadius"] = self.tm.numberOfCells()
     params["seed"] = seed
-    self.up = MonitoredUnionTemporalPooler(mmName="UP", **params)
+    self.up = MonitoredUnionPooler(mmName="UP", **params)
 
     # TODO KNN classifer
 
