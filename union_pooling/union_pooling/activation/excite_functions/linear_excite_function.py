@@ -1,15 +1,17 @@
-from union_pooling.activation_strategies.activation_function_base import (
-  ActivationFunctionBase)
+import sys
 
-class LinearActivationFunction(ActivationFunctionBase):
+from excite_function_base import ExciteFunctionBase
+
+
+class LinearExciteFunction(ExciteFunctionBase):
   """
-  Implementation of simple linear activation function for activation updating.
+  Implementation of simple linear activation function for activation excitation.
   Specifically, the function has the following form:
   f(x) = slope * x
   """
-  
 
-  def __init__(self, slope=1, lowerBound=0, upperBound=1):
+
+  def __init__(self, slope=1, lowerBound=0, upperBound=sys.maxint):
     """
     :param slope: slope of linear function
     :param lowerBound: controls a lower bound on the minimum value of
@@ -23,14 +25,6 @@ class LinearActivationFunction(ActivationFunctionBase):
 
 
   def excite(self, current, amount):
-    assert amount >= 0
     current += amount * self._slope
     current[current > self._upperBound] = self._upperBound
-    return current
-
-
-  def decay(self, current, amount):
-    assert amount >= 0
-    current -= amount * self._slope
-    current[current < self._lowerBound] = self._lowerBound
     return current

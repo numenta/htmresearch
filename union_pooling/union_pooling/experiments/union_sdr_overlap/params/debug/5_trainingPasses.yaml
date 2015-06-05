@@ -44,4 +44,3 @@ unionPoolerParams:
   activeOverlapWeight: 1.0
   predictedActiveOverlapWeight: 10.0
   maxUnionActivity: 0.20
-  decayFunctionSlope: 1.0
