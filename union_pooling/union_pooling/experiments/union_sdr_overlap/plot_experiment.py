@@ -52,7 +52,8 @@ def main(inputPath, csvOutputPath, imgOutputPath):
 
   files = os.listdir(inputPath)
   if len(files) != 2:
-    print "Found {0} files at input path. Requires exactly 2.".format(inputPath)
+    print "Found {0} files at input path {1} - Requires exactly 2.".format(
+      len(files), inputPath)
     sys.exit(1)
 
   pathNoLearn = inputPath + "/" + files[0]

@@ -14,6 +14,8 @@ class LogisticExciteFunction(ExciteFunctionBase):
   Note: The excitation rate is linear. The activation function is
   logistic.
   """
+  _SMALL_POSITIVE_CONSTANT = 0.000001
+
 
   def __init__(self, xMidpoint=0, maxValue=1, steepness=1):
     """
@@ -44,15 +46,19 @@ class LogisticExciteFunction(ExciteFunctionBase):
 
 
   def _updateActivation(self, current, amount):
-    # Ignore zero-valued elements since current is a divisor in function
-    nonzero = current.nonzero()
+    # Find zero-valued elements and bump values up slightly
+    # since current is a divisor below
+    zeroValued = numpy.where(current == 0)[0]
+
+    # TODO: Code is not correct
+    current[zeroValued] = self._SMALL_POSITIVE_CONSTANT
 
     # Apply inverse logistic function to current
-    converted = (numpy.log(self._maxValue / current[nonzero] - 1) /
+    converted = (numpy.log(self._maxValue / current - 1) /
                  -self._steepness + self._xMidpoint)
     converted += amount
 
     # Apply logistic function to updated domain value
-    current[nonzero] = self._maxValue / (1 + numpy.exp(-self._steepness *
-                                        (converted - self._xMidpoint)))
+    current = self._maxValue / (1 + numpy.exp(-self._steepness *
+                                (converted - self._xMidpoint)))
     return current

@@ -68,7 +68,7 @@ class UnionPooler(SpatialPooler):
 
                # union_pooler.py parameters
                activeOverlapWeight=1.0,
-               predictedActiveOverlapWeight=10.0,
+               predictedActiveOverlapWeight=0.0,
                fixedPoolingActivationBurst = False,
                exciteFunction = None,
                decayFunction = None,
