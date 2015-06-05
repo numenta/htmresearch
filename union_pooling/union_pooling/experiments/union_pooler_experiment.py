@@ -101,15 +101,14 @@ class UnionPoolerExperiment(object):
                                  "decayFunction": None,
                                  "maxUnionActivity": 0.20}
 
-  DEFAULT_CLASSIFIER_PARAMS = {
-    # TODO: Add parameters
-  'distThreshold': 0.000001,
-  'maxCategoryCount': 10,
-  #'distanceMethod': 'rawOverlap',  # Default is Euclidean distance
-   }
+  DEFAULT_CLASSIFIER_PARAMS = {"k": 1,
+                               "distanceMethod": "rawOverlap",
+                               "distThreshold": 0}
 
 
-  def __init__(self, tmOverrides=None, upOverrides=None, seed=42):
+
+  def __init__(self, tmOverrides=None, upOverrides=None,
+               classifierOverrides=None, seed=42):
     print "Initializing Temporal Memory..."
     params = dict(self.DEFAULT_TEMPORAL_MEMORY_PARAMS)
     params.update(tmOverrides or {})
@@ -126,39 +125,48 @@ class UnionPoolerExperiment(object):
 
     print "Initializing KNN Classifier..."
     params = dict(self.DEFAULT_CLASSIFIER_PARAMS)
+    params.update(classifierOverrides or {})
     self.classifier = KNNClassifier(**params)
 
 
-  def runNetworkOnSequence(self, sensorSequences, sequencesLabels, tmLearn=True,
-                           upLearn=None, verbosity=0, progressInterval=None):
+  def runNetworkOnSequence(self, sensorSequences, inputCategories, tmLearn=True,
+                           upLearn=None, classifierLearn=False, verbosity=0,
+                           progressInterval=None):
     """
     Runs Union Pooler network on specified sequence.
 
-    @param sensorSequences        A sequence of sensor sequences. Each
-                                  sequence is terminated by None.
+    @param sensorSequences          A sequence of sensor sequences. Each
+                                    sequence is terminated by None.
 
-    @param sequenceLabels         A sequence of string representations of the
-                                  current sequence. Each sequence is terminated
-                                  by None.
+    @param inputCategories          A sequence of category representations
+                                    of for each element in the sensorSequences
+                                    Each sequence is terminated by None.
 
-    @param tmLearn:   (bool)      Either False, or True
-    @param upLearn:   (None,bool) Either None, False, or True. If None,
-                                  union pooler will be skipped.
+    @param tmLearn:   (bool)        Temporal Memory learning mode
+    @param upLearn:   (None,bool)   Union Pooler learning mode. If None,
+                                    union pooler will be skipped.
+    @param classifierLearn: (bool)  Classifier learning mode
 
-    @param progressInterval: (int) Prints progress every N iterations,
-                                   where N is the value of this param
+    @param progressInterval: (int)  Prints progress every N iterations,
+                                    where N is the value of this param
     """
 
     currentTime = time.time()
 
     for i in xrange(len(sensorSequences)):
       sensorPattern = sensorSequences[i]
-      sequenceLabel = sequencesLabels[i]
+      inputCategory = inputCategories[i]
 
       self.runNetworkOnPattern(sensorPattern,
                                tmLearn=tmLearn,
                                upLearn=upLearn,
-                               sequenceLabel=sequenceLabel)
+                               sequenceLabel=inputCategory)
+
+      # Classifier learns on Union Pooler SDR right before resets
+      if (classifierLearn and i + 1 < len(sensorSequences) and
+          sensorPattern[i+1] is None):
+        self.classifier.learn(sensorPattern, inputCategory)
+
 
       if progressInterval is not None and i > 0 and i % progressInterval == 0:
         elapsed = (time.time() - currentTime) / 60.0

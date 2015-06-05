@@ -105,6 +105,21 @@ def plotNetworkState(experiment, plotVerbosity, trainingPasses, phase=""):
 
 def runTestPhase(experiment, generatedSequences, sequenceCount, sequenceLength,
                  testPresentations, perturbationChance):
+  """
+  Input sequence pattern by pattern. Sequence-to-sequence
+  progression is randomly selected. At each step there is a chance of
+  perturbation. Specifically the following
+  perturbations may occur:
+  Establish a baseline without noise
+  Establish a baseline adding the following perturbations one-by-one
+    1) substitution of some other pattern for the normal expected pattern
+    2) skipping expected pattern and presenting next pattern in sequence
+    3) addition of some other pattern putting off expected pattern one time step
+    Finally measure performance on more complex perturbation
+    TODO 4) Jump to another sequence randomly (Random jump to start or random
+    position?)
+  """
+
   print "Pres\tPerturbations"
   for presentation in xrange(testPresentations):
 
@@ -184,11 +199,6 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   tmParamOverrides = params["temporalMemoryParams"]
   upParamOverrides = params["unionPoolerParams"]
 
-  # TODO If this parameter is to be supported, the sequence generation
-  # code below must change
-  # Number of unique patterns from which sequences are built
-  # patternAlphabetSize = params["patternAlphabetSize"]
-
   # Generate a sequence list and an associated labeled list (both containing a
   # set of sequences separated by None)
   start = time.time()
@@ -200,13 +210,12 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
 
   numbers = sequenceMachine.generateNumbers(sequenceCount, sequenceLength)
   generatedSequences = sequenceMachine.generateFromNumbers(numbers)
-  sequenceLabels = [str(numbers[i + i*sequenceLength: i + (i+1)*sequenceLength])
-                    for i in xrange(sequenceCount)]
-  labeledSequences = []
-  for label in sequenceLabels:
+
+  inputCategories = []
+  for i in xrange(sequenceCount):
     for _ in xrange(sequenceLength):
-      labeledSequences.append(label)
-    labeledSequences.append(None)
+      inputCategories.append(i)
+    inputCategories.append(None)
 
   # Set up the Temporal Memory and Union Pooler network
   print "\nCreating network..."
@@ -214,26 +223,23 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
 
   # Train only the Temporal Memory on the generated sequences
   if trainingPasses > 0:
-
     print "\nTraining Temporal Memory..."
     if consoleVerbosity > 0:
       print "\nPass\tMean\t\tStdDev\t\tMax\t\t(Bursting Columns)"
 
-    for i in xrange(trainingPasses):
+  for i in xrange(trainingPasses):
+    experiment.runNetworkOnSequence(generatedSequences,
+                                    inputCategories,
+                                    tmLearn=True,
+                                    upLearn=None,
+                                    classifierLearn=True,
+                                    verbosity=consoleVerbosity,
+                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
 
-      experiment.runNetworkOnSequence(generatedSequences,
-                                      labeledSequences,
-                                      tmLearn=True,
-                                      upLearn=None,
-                                      verbosity=consoleVerbosity,
-                                      progressInterval=_SHOW_PROGRESS_INTERVAL)
+    if consoleVerbosity > 0:
+      stats = experiment.getBurstingColumnsStats()
+      print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
 
-      if consoleVerbosity > 0:
-        stats = experiment.getBurstingColumnsStats()
-        print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
-
-      # Reset the TM monitor mixin's records accrued during this training pass
-      # experiment.tm.mmClearHistory()
 
     print
     print MonitorMixinBase.mmPrettyPrintMetrics(
@@ -244,20 +250,6 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
                        phase="Training")
 
   print "\nRunning test phase..."
-
-  # Input sequence pattern by pattern. Sequence-to-sequence
-  # progression is randomly selected. At each step there is a chance of
-  # perturbation. Specifically the following
-  # perturbations may occur:
-  # Establish a baseline without noise
-  # Establish a baseline adding the following perturbations one-by-one
-  # 1) substitution of some other pattern for the normal expected pattern
-  # 2) skipping expected pattern and presenting next pattern in sequence
-  # 3) addition of some other pattern putting off expected pattern one time step
-  # Finally measure performance on more complex perturbation
-  # TODO 4) Jump to another sequence randomly (Random jump to start or random
-  # position?)
-
   runTestPhase(experiment, generatedSequences, sequenceCount, sequenceLength,
                testPresentations, perturbationChance)
 
