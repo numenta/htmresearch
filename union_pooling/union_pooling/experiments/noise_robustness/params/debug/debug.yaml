@@ -1,13 +1,13 @@
-patternDimensionality: 1024
-patternCardinality: 20
-sequenceLength: 13
+patternDimensionality: 128
+patternCardinality: 3
+sequenceLength: 10
 numberOfSequences: 10
-trainingPasses: 5
+trainingPasses: 3
 testPresentations: 10
-perturbationChance: 0.05
+perturbationChance: 0.50
 
 temporalMemoryParams:
-  columnDimensions: [1024]
+  columnDimensions: [128]
   cellsPerColumn: 8
   activationThreshold: 20
   initialPermanence: 0.5
@@ -20,9 +20,9 @@ temporalMemoryParams:
   learnOnOneCell: False
 
 unionPoolerParams:
-  # Spatial Pooler superclass params
-  columnDimensions: [1024]
-  numActiveColumnsPerInhArea: 20.0
+  # Spatial Pooler Params
+  columnDimensions: [128]
+  numActiveColumnsPerInhArea: 3.0
   potentialPct: 0.5
   globalInhibition: True
   localAreaDensity: -1.0
@@ -38,7 +38,12 @@ unionPoolerParams:
   spVerbosity: 0
   wrapAround: True
 
-  # Union Pooler params
+  # Union Pooler Params
   activeOverlapWeight: 1.0
   predictedActiveOverlapWeight: 0.0
   maxUnionActivity: 0.20
+
+classifierParams:
+  "k": 1
+  "distanceMethod": "rawOverlap"
+  "distThreshold": 0

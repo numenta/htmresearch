@@ -195,7 +195,6 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
       print "\nPass\tBursting Columns Mean\tStdDev\tMax"
 
     for i in xrange(trainingPasses):
-
       experiment.runNetworkOnSequence(generatedSequences,
                                       labeledSequences,
                                       tmLearn=True,

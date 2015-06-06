@@ -1,15 +1,13 @@
-# A parameter set with low dimensionality to expedite debugging.
-
-patternDimensionality: 128
-patternCardinality: 3
-sequenceLength: 10
+patternDimensionality: 1024
+patternCardinality: 20
+sequenceLength: 13
 numberOfSequences: 10
-trainingPasses: 0
+trainingPasses: 3
 testPresentations: 10
-perturbationChance: 0.50
+perturbationChance: 0.05
 
 temporalMemoryParams:
-  columnDimensions: [128]
+  columnDimensions: [1024]
   cellsPerColumn: 8
   activationThreshold: 20
   initialPermanence: 0.5
@@ -23,13 +21,11 @@ temporalMemoryParams:
 
 unionPoolerParams:
   # Spatial Pooler Params
-  # 'inputDimensions' based on Temporal Memory cell count
-  # 'potentialRadius' based on Temporal Memory cell count
-  columnDimensions: [128]
+  columnDimensions: [1024]
+  numActiveColumnsPerInhArea: 20.0
   potentialPct: 0.5
   globalInhibition: True
   localAreaDensity: -1.0
-  numActiveColumnsPerInhArea: 20.0
   stimulusThreshold: 0
   synPermInactiveDec: 0.01
   synPermActiveInc: 0.10
@@ -46,3 +42,8 @@ unionPoolerParams:
   activeOverlapWeight: 1.0
   predictedActiveOverlapWeight: 0.0
   maxUnionActivity: 0.20
+
+classifierParams:
+  "k": 1
+  "distanceMethod": "rawOverlap"
+  "distThreshold": 0

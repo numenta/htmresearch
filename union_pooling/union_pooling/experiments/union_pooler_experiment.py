@@ -164,9 +164,9 @@ class UnionPoolerExperiment(object):
 
       # Classifier learns on Union Pooler SDR right before resets
       if (classifierLearn and i + 1 < len(sensorSequences) and
-          sensorPattern[i+1] is None):
-        self.classifier.learn(sensorPattern, inputCategory)
-
+          sensorSequences[i+1] is None):
+        unionSDR = self.up.getUnionSDR()
+        self.classifier.learn(unionSDR, inputCategory)
 
       if progressInterval is not None and i > 0 and i % progressInterval == 0:
         elapsed = (time.time() - currentTime) / 60.0

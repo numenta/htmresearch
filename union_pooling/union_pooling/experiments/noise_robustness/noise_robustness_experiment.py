@@ -39,29 +39,25 @@ from union_pooling.experiments.union_pooler_experiment import (
     UnionPoolerExperiment)
 
 """
-Experiment 2
+Noise Robustness Experiment
 
 Data: Sequences generated from an alphabet.
+
 Train Phase: Train network on sequences for some number of repetitions
+
 Test phase: Input sequence pattern by pattern. Sequence-to-sequence
 progression is randomly selected. At each step there is a chance that the
 next pattern in the sequence is not shown. Specifically the following
 perturbations may occur:
+
   1) random Jump to another sequence
   2) substitution of some other pattern for the normal expected pattern
   3) skipping expected pattern and presenting next pattern in sequence
   4) addition of some other pattern putting off expected pattern one time step
+
 Goal: Characterize the noise robustness of the UnionPooler to various
 perturbations. Explore trade-off between remaining stable to noise yet still
 changing when sequence actually changes.
-
-Part a) Study capacity of classifiable sequences
-- Similar to TP capacity experiments
-
-Part b) Study classification performance with noise
-- Explore trade-off between stability to noise and adaptability to actual sequence changes
-- Conditions: Classify using TM output vs. Union SDR
-
 """
 
 
@@ -156,6 +152,9 @@ def runTestPhase(experiment, generatedSequences, sequenceCount, sequenceLength,
       experiment.runNetworkOnPattern(sensorPattern,
                                      tmLearn=False,
                                      upLearn=False)
+      unionSDR = experiment.up.getUnionSDR()
+      winningCategory, _, _, _ = experiment.classifier.infer(unionSDR)
+      # TODO: Append winning category to a trace
 
     print "{0} \t\t {1}".format(presentation, perturbCount)
 
@@ -170,19 +169,21 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
         patternDimensionality - Dimensionality of sequence patterns
         patternCardinality - Cardinality (# ON bits) of sequence patterns
         sequenceLength - Length of sequences shown to network
-        sequenceCount - Number of unique sequences used
+        numberOfSequences - Number of unique sequences used
         trainingPasses - Number of times Temporal Memory is trained on each
         sequence
         testPresentations - Number of sequences presented in test phase
         perturbationChance - Chance of sequence perturbations during test phase
         temporalMemoryParams - A dict of Temporal Memory parameter overrides
         unionPoolerParams - A dict of Union Pooler parameter overrides
+        classifierParams - A dict of KNNClassifer parameter overrides
 
   :param paramDir: Path of parameter file
   :param outputDir: Output will be written to this path
   :param plotVerbosity: Plotting verbosity
   :param consoleVerbosity: Console output verbosity
   """
+  startTime = time.time()
   print "Running Noise robustness experiment...\n"
   print "Params dir: {0}".format(os.path.join(os.path.dirname(__file__),
                                               paramDir))
@@ -192,34 +193,35 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   patternDimensionality = params["patternDimensionality"]
   patternCardinality = params["patternCardinality"]
   sequenceLength = params["sequenceLength"]
-  sequenceCount = params["numberOfSequences"]
+  numberOfSequences = params["numberOfSequences"]
   trainingPasses = params["trainingPasses"]
   testPresentations = params["testPresentations"]
   perturbationChance = params["perturbationChance"]
   tmParamOverrides = params["temporalMemoryParams"]
   upParamOverrides = params["unionPoolerParams"]
+  classifierOverrides = params["classifierParams"]
 
   # Generate a sequence list and an associated labeled list (both containing a
   # set of sequences separated by None)
-  start = time.time()
   print "Generating sequences..."
-  patternAlphabetSize = sequenceLength * sequenceCount
+  patternAlphabetSize = sequenceLength * numberOfSequences
   patternMachine = PatternMachine(patternDimensionality, patternCardinality,
                                   patternAlphabetSize)
   sequenceMachine = SequenceMachine(patternMachine)
 
-  numbers = sequenceMachine.generateNumbers(sequenceCount, sequenceLength)
+  numbers = sequenceMachine.generateNumbers(numberOfSequences, sequenceLength)
   generatedSequences = sequenceMachine.generateFromNumbers(numbers)
 
   inputCategories = []
-  for i in xrange(sequenceCount):
+  for i in xrange(numberOfSequences):
     for _ in xrange(sequenceLength):
       inputCategories.append(i)
     inputCategories.append(None)
 
   # Set up the Temporal Memory and Union Pooler network
   print "\nCreating network..."
-  experiment = UnionPoolerExperiment(tmParamOverrides, upParamOverrides)
+  experiment = UnionPoolerExperiment(tmParamOverrides, upParamOverrides,
+                                     classifierOverrides)
 
   # Train only the Temporal Memory on the generated sequences
   if trainingPasses > 0:
@@ -232,34 +234,43 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
                                     inputCategories,
                                     tmLearn=True,
                                     upLearn=None,
-                                    classifierLearn=True,
+                                    classifierLearn=False,
                                     verbosity=consoleVerbosity,
                                     progressInterval=_SHOW_PROGRESS_INTERVAL)
-
     if consoleVerbosity > 0:
       stats = experiment.getBurstingColumnsStats()
       print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
 
-
-    print
-    print MonitorMixinBase.mmPrettyPrintMetrics(
-      experiment.tm.mmGetDefaultMetrics())
-    print
+    # print
+    # print MonitorMixinBase.mmPrettyPrintMetrics(
+    #   experiment.tm.mmGetDefaultMetrics())
+    # print
     if plotVerbosity >= 2:
       plotNetworkState(experiment, plotVerbosity, trainingPasses,
                        phase="Training")
 
-  print "\nRunning test phase..."
-  runTestPhase(experiment, generatedSequences, sequenceCount, sequenceLength,
-               testPresentations, perturbationChance)
+  # Train classifier with Temporal Memory learning off
+  experiment.runNetworkOnSequence(generatedSequences,
+                                  inputCategories,
+                                  tmLearn=False,
+                                  upLearn=None,
+                                  classifierLearn=True,
+                                  verbosity=consoleVerbosity,
+                                  progressInterval=_SHOW_PROGRESS_INTERVAL)
 
-  print
-  print MonitorMixinBase.mmPrettyPrintMetrics(
-      experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
-  print
+  print "\nRunning test phase..."
+  runTestPhase(experiment, generatedSequences, numberOfSequences,
+               sequenceLength, testPresentations, perturbationChance)
+
+  # TODO: Output classified categories and actual categories
+
+  # print
+  # print MonitorMixinBase.mmPrettyPrintMetrics(
+  #     experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
+  # print
   # plotNetworkState(experiment, plotVerbosity, trainingPasses, phase="Testing")
 
-  elapsed = int(time.time() - start)
+  elapsed = int(time.time() - startTime)
   print "Total time: {0:2} seconds.".format(elapsed)
 
   ## Write Union SDR trace
@@ -312,5 +323,6 @@ def _getArgs():
 
 
 if __name__ == "__main__":
-  (options, args, params) = _getArgs()
-  run(params, args[0], args[1], options.plotVerbosity, options.consoleVerbosity)
+  (_options, _args, _params) = _getArgs()
+  run(_params, _args[0], _args[1], _options.plotVerbosity,
+      _options.consoleVerbosity)
