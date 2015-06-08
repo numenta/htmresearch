@@ -129,32 +129,32 @@ class UnionPoolerExperiment(object):
     self.classifier = KNNClassifier(**params)
 
 
-  def runNetworkOnSequence(self, sensorSequences, inputCategories, tmLearn=True,
-                           upLearn=None, classifierLearn=False, verbosity=0,
-                           progressInterval=None):
+  def runNetworkOnSequences(self, inputSequences, inputCategories, tmLearn=True,
+                            upLearn=None, classifierLearn=False, verbosity=0,
+                            progressInterval=None):
     """
     Runs Union Pooler network on specified sequence.
 
-    @param sensorSequences          A sequence of sensor sequences. Each
-                                    sequence is terminated by None.
+    @param inputSequences           One or more sequences of input patterns.
+                                    Each should be terminated with None.
 
     @param inputCategories          A sequence of category representations
-                                    of for each element in the sensorSequences
-                                    Each sequence is terminated by None.
+                                    for each element in inputSequences
+                                    Each should be terminated with None.
 
     @param tmLearn:   (bool)        Temporal Memory learning mode
     @param upLearn:   (None,bool)   Union Pooler learning mode. If None,
-                                    union pooler will be skipped.
+                                    Union Pooler will not be run.
     @param classifierLearn: (bool)  Classifier learning mode
 
-    @param progressInterval: (int)  Prints progress every N iterations,
-                                    where N is the value of this param
+    @param progressInterval: (int)  Interval of console progress updates
+                                    in terms of timesteps.
     """
 
     currentTime = time.time()
 
-    for i in xrange(len(sensorSequences)):
-      sensorPattern = sensorSequences[i]
+    for i in xrange(len(inputSequences)):
+      sensorPattern = inputSequences[i]
       inputCategory = inputCategories[i]
 
       self.runNetworkOnPattern(sensorPattern,
@@ -163,15 +163,16 @@ class UnionPoolerExperiment(object):
                                sequenceLabel=inputCategory)
 
       # Classifier learns on Union Pooler SDR right before resets
-      if (classifierLearn and i + 1 < len(sensorSequences) and
-          sensorSequences[i+1] is None):
+      if (classifierLearn and i + 1 < len(inputSequences) and
+          inputSequences[i+1] is None):
         unionSDR = self.up.getUnionSDR()
-        self.classifier.learn(unionSDR, inputCategory)
+        upCellCount = self.up.getColumnDimensions()
+        self.classifier.learn(unionSDR, inputCategory, isSparse=upCellCount)
 
       if progressInterval is not None and i > 0 and i % progressInterval == 0:
         elapsed = (time.time() - currentTime) / 60.0
         print ("Ran {0} / {1} elements of sequence in "
-               "{2:0.2f} minutes.".format(i, len(sensorSequences), elapsed))
+               "{2:0.2f} minutes.".format(i, len(inputSequences), elapsed))
         currentTime = time.time()
         print MonitorMixinBase.mmPrettyPrintMetrics(
           self.tm.mmGetDefaultMetrics())

@@ -241,7 +241,7 @@ class UnionPooler(SpatialPooler):
   def _getMostActiveCells(self):
     """
     Gets the most active cells in the Union SDR having at least non-zero
-    activation.
+    activation in sorted order.
     :return: a list of cell indices
     """
     potentialUnionSDR = numpy.argsort(
@@ -249,7 +249,7 @@ class UnionPooler(SpatialPooler):
 
     topCells = potentialUnionSDR[0: self._maxUnionCells]
     nonZeroTopCells = self._poolingActivation[topCells] > 0
-    self._unionSDR = topCells[nonZeroTopCells]
+    self._unionSDR = numpy.sort(topCells[nonZeroTopCells])
     return self._unionSDR
 
 

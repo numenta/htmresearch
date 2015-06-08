@@ -195,12 +195,12 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
       print "\nPass\tBursting Columns Mean\tStdDev\tMax"
 
     for i in xrange(trainingPasses):
-      experiment.runNetworkOnSequence(generatedSequences,
-                                      labeledSequences,
-                                      tmLearn=True,
-                                      upLearn=None,
-                                      verbosity=consoleVerbosity,
-                                      progressInterval=_SHOW_PROGRESS_INTERVAL)
+      experiment.runNetworkOnSequences(generatedSequences,
+                                       labeledSequences,
+                                       tmLearn=True,
+                                       upLearn=None,
+                                       verbosity=consoleVerbosity,
+                                       progressInterval=_SHOW_PROGRESS_INTERVAL)
 
       if consoleVerbosity > 0:
         stats = experiment.getBurstingColumnsStats()
@@ -218,12 +218,12 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
                        phase="Training")
 
   print "\nRunning test phase..."
-  experiment.runNetworkOnSequence(generatedSequences,
-                                  labeledSequences,
-                                  tmLearn=False,
-                                  upLearn=False,
-                                  verbosity=consoleVerbosity,
-                                  progressInterval=_SHOW_PROGRESS_INTERVAL)
+  experiment.runNetworkOnSequences(generatedSequences,
+                                   labeledSequences,
+                                   tmLearn=False,
+                                   upLearn=False,
+                                   verbosity=consoleVerbosity,
+                                   progressInterval=_SHOW_PROGRESS_INTERVAL)
 
   print "\nPass\tBursting Columns Mean\tStdDev\tMax"
   stats = experiment.getBurstingColumnsStats()
