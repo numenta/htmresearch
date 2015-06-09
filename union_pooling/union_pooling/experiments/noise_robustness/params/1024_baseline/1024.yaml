@@ -45,6 +45,6 @@ unionPoolerParams:
   maxUnionActivity: 0.20
 
 classifierParams:
-  "k": 1
+  "k": 2
   "distanceMethod": "rawOverlap"
   "distThreshold": 0

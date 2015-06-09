@@ -19,22 +19,19 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+
 import csv
+from optparse import OptionParser
+import os
 import random
 import sys
 import time
-import os
 import yaml
-from optparse import OptionParser
-
-import numpy
-from pylab import rcParams
 
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
-from experiments.capacity import data_utils
 from union_pooling.experiments.union_pooler_experiment import (
     UnionPoolerExperiment)
 
@@ -63,39 +60,6 @@ changing when sequence actually changes.
 
 
 _SHOW_PROGRESS_INTERVAL = 2000
-_PLOT_RESET_SHADING = 0.2
-_PLOT_HEIGHT = 6
-_PLOT_WIDTH = 9
-
-
-
-def plotNetworkState(experiment, plotVerbosity, trainingPasses, phase=""):
-
-  if plotVerbosity >= 1:
-    rcParams["figure.figsize"] = _PLOT_WIDTH, _PLOT_HEIGHT
-
-    # Plot Union SDR trace
-    dataTrace = experiment.up._mmTraces["activeCells"].data
-    unionSizeTrace = [len(datum) for datum in dataTrace]
-    x = [i for i in xrange(len(unionSizeTrace))]
-    stdDevs = None
-    title = "Union Size; {0} training passses vs. Time".format(trainingPasses)
-    data_utils.getErrorbarFigure(title, x, unionSizeTrace, stdDevs, "Time",
-                                 "Union Size")
-    if plotVerbosity >= 2:
-      title = "training passes: {0}, phase: {1}".format(trainingPasses, phase)
-      experiment.up.mmGetPlotConnectionsPerColumn(title=title)
-      experiment.tm.mmGetCellActivityPlot(title=title,
-                                          activityType="activeCells",
-                                          showReset=True,
-                                          resetShading=_PLOT_RESET_SHADING)
-      experiment.tm.mmGetCellActivityPlot(title=title,
-                                          activityType="predictedActiveCells",
-                                          showReset=True,
-                                          resetShading=_PLOT_RESET_SHADING)
-      experiment.up.mmGetCellActivityPlot(title=title,
-                                          showReset=True,
-                                          resetShading=_PLOT_RESET_SHADING)
 
 
 
@@ -243,7 +207,7 @@ def getRandomPatternIndex(patterns):
 
 
 
-def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
+def run(params, paramDir, outputDir, consoleVerbosity=0):
   """
   Runs the noise robustness experiment.
 
@@ -332,10 +296,6 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
           experiment.tm.mmGetDefaultMetrics())
         print
 
-    if plotVerbosity >= 2:
-      plotNetworkState(experiment, plotVerbosity, trainingPasses,
-                       phase="Training")
-
     experiment.tm.mmClearHistory()
     experiment.up.mmClearHistory()
 
@@ -371,10 +331,16 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
 
   # Classification stats
   correctClassifications = 0.0
+  classificationVector = []
   for i in xrange(len(actualCategories)):
-    if (actualCategories[i] is not None and
-        actualCategories[i] == classifiedCategories[i]):
-      correctClassifications += 1
+    if actualCategories[i] is not None:
+      if actualCategories[i] == classifiedCategories[i]:
+        correctClassifications += 1
+        classificationVector.append(1)
+      else:
+        classificationVector.append(0)
+    else:
+      classificationVector.append("*")
   classificationRate = 100.0 * correctClassifications / len(actualCategories)
   print "\n>>> Correct Classification Rate: {0:.2f}%".format(classificationRate)
 
@@ -386,16 +352,14 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   print "\nFinished in {0:.2f} minutes.".format(elapsedTime)
 
   writeClassificationTrace(actualCategories, classifiedCategories,
-                           [classificationRate], [elapsedTime], outputDir,
-                           outputFileName)
-
-
+                           classificationVector, [classificationRate],
+                           [elapsedTime], outputDir, outputFileName)
 
 
 
 def writeClassificationTrace(actualCategories, classifiedCategories,
-                             classificationStats, elapsedTime, outputDir,
-                             outputFileName):
+                             classificationVector, classificationStats,
+                             elapsedTime, outputDir, outputFileName):
   """
   Write classification trace to output file.
   :param actualCategories: True categories
@@ -414,6 +378,8 @@ def writeClassificationTrace(actualCategories, classifiedCategories,
     csvWriter.writerow(actualCategories)
     csvWriter.writerow(["Classified Categories"])
     csvWriter.writerow(classifiedCategories)
+    csvWriter.writerow(["Correct Classifications"])
+    csvWriter.writerow(classificationVector)
     csvWriter.writerow(["Classification Statistics"])
     csvWriter.writerow(classificationStats)
     csvWriter.writerow(["Elapsed Time"])
@@ -427,13 +393,6 @@ def _getArgs():
                               "\n\nRun noise robustness experiment using "
                               "params in PARAMS_DIR (relative to this file) "
                               "and outputting results to OUTPUT_DIR.")
-  parser.add_option("-p",
-                    "--plot",
-                    type=int,
-                    default=0,
-                    dest="plotVerbosity",
-                    help="Plotting verbosity: 0 => none, 1 => summary plots, "
-                         "2 => detailed plots")
   parser.add_option("-c",
                     "--console",
                     type=int,
@@ -455,5 +414,4 @@ def _getArgs():
 
 if __name__ == "__main__":
   (_options, _args, _params) = _getArgs()
-  run(_params, _args[0], _args[1], _options.plotVerbosity,
-      _options.consoleVerbosity)
+  run(_params, _args[0], _args[1], _options.consoleVerbosity)
