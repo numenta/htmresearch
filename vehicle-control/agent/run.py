@@ -97,21 +97,15 @@ class Plotter(object):
 
     self.plt.clf()
 
-    self.plt.subplot(5,1,1)
-    self._imshow(self.sensor, "Sensor over time")
-
-    self.plt.subplot(5,1,2)
-    self._imshow(self.encoding, "Encoding over time")
-
-    self.plt.subplot(5,1,3)
+    self.plt.subplot(3,1,1)
     self._plot(self.steer, "Steer over time")
 
-    self.plt.subplot(5,1,4)
+    self.plt.subplot(3,1,2)
     shape = len(self.encoder.positions), self.encoder.scalarEncoder.getWidth()
     encoding = numpy.array(self.encoding[-1]).reshape(shape).transpose()
     self._imshow(encoding, "Encoding at time t")
 
-    self.plt.subplot(5,1,5)
+    self.plt.subplot(3,1,3)
     data = self.encoding
     w = self.encoder.w
     overlaps = [sum(a & b) / float(w) for a, b in zip(data[:-1], data[1:])]
