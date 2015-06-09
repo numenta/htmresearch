@@ -26,7 +26,8 @@ public class SweepSensor : MonoBehaviour {
 		Vector3 position;
 
 		for (int i = 0; i < numRays; i++) {
-			if (Physics.Raycast(transform.position, direction, out hit) && hit.collider.gameObject.tag != "Boundary") {
+			if (Physics.Raycast(transform.position, direction, out hit) &&
+			    hit.collider.gameObject.tag != "Boundary") {
 				hits[i] = Mathf.Lerp(1, 0, hit.distance / focalLength);
 
 				position = transform.position + direction;
