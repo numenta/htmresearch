@@ -62,7 +62,7 @@ changing when sequence actually changes.
 
 
 
-_SHOW_PROGRESS_INTERVAL = 200
+_SHOW_PROGRESS_INTERVAL = 2000
 _PLOT_RESET_SHADING = 0.2
 _PLOT_HEIGHT = 6
 _PLOT_WIDTH = 9
@@ -101,7 +101,7 @@ def plotNetworkState(experiment, plotVerbosity, trainingPasses, phase=""):
 
 def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
                  sequenceLength, testPresentations, perturbationChance,
-                 sequenceJumpPerturbationChance):
+                 sequenceJumpPerturbationChance, consoleVerbosity):
   """
   Performs a number of presentations of sequences with resets afterwards.
   Sequence selection is random.
@@ -129,6 +129,11 @@ def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
   pert3ChanceThreshold = (1 - sequenceJumpPerturbationChance)
 
   presentation = 0
+  presentationString = "Presentation 0: "
+  pert0Count = 0
+  pert1Count = 0
+  pert2Count = 0
+  pert3Count = 0
   while presentation < testPresentations:
 
     # Randomly select the next sequence to present
@@ -138,15 +143,16 @@ def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
     selectedSequence = inputSequences[start:end]
     selectedSequenceCatgories = inputCategories[start:end]
 
+    if consoleVerbosity > 0:
+      presentationString += "Seq-{0} ".format(r)
+
     # Present selected sequence to network
     i = 0
-    perturbationCount = 0
     while i < len(selectedSequence):
 
       # Roll to determine if there will be a perturbation of next pattern
       if (selectedSequence[i] is not None and
           random.random() < perturbationChance):
-        perturbationCount += 1
 
         # Randomly select a perturbation type with equal probability
         perturbationType = random.random()
@@ -157,6 +163,7 @@ def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
           sensorPattern = inputSequences[randIdx]
           actualCategory = inputCategories[randIdx]
           i += 1
+          pert0Count += 1
         elif perturbationType < pert2ChanceThreshold:
 
           # Skip to next pattern in sequence
@@ -166,15 +173,18 @@ def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
           sensorPattern = selectedSequence[i]
           actualCategory = selectedSequenceCatgories[i]
           i += 1
+          pert1Count += 1
         elif perturbationType < pert3ChanceThreshold:
 
           # Add in a random pattern
           randIdx = getRandomPatternIndex(inputSequences)
           sensorPattern = inputSequences[randIdx]
           actualCategory = inputCategories[randIdx]
+          pert2Count += 1
         else:
 
           # Random jump to another sequence
+          pert3Count += 1
           break
 
       else:
@@ -185,20 +195,41 @@ def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
       experiment.runNetworkOnPattern(sensorPattern,
                                      tmLearn=False,
                                      upLearn=False)
-      actualCategories.append(actualCategory)
 
-      # Store classification
-      unionSDR = experiment.up.getUnionSDR()
-      if len(unionSDR) != 0:
+      if sensorPattern is not None:
+        # Store classification
+        unionSDR = experiment.up.getUnionSDR()
         winningCategory, _, _, _ = experiment.classifier.infer(unionSDR)
       else:
-        winningCategory = -1
+        winningCategory = None
+        actualCategory = None
 
       classifiedCategories.append(winningCategory)
+      actualCategories.append(actualCategory)
 
-    # End inner while
+    # While presenting sequence
     else:
+
+      # Sequence perturbation counts
+      if consoleVerbosity > 1:
+        print presentationString
+        print ("Perturbations: PatternSub: {0} PatternSkip: {1} "
+               "PatternAdd: {2} SequenceSkip {3}").format(pert0Count,
+                                                          pert1Count,
+                                                          pert2Count,
+                                                          pert3Count)
+        print
+
+      # Presentation finished; prepare for next one
       presentation += 1
+      presentationString = "Presentation {0}: ".format(presentation)
+      pert0Count = 0
+      pert1Count = 0
+      pert2Count = 0
+      pert3Count = 0
+    # Finished with sequence presentation
+
+  # While running test presentations
 
   return actualCategories, classifiedCategories
 
@@ -282,7 +313,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   if trainingPasses > 0:
     print "\nTraining Temporal Memory..."
     if consoleVerbosity > 0:
-      print "\nPass\tMean\t\tStdDev\t\tMax\t\t(Bursting Columns)"
+      print "Pass\tMean\t\tStdDev\t\tMax\t\t(Bursting Columns)"
 
   for i in xrange(trainingPasses):
     experiment.runNetworkOnSequences(inputSequences,
@@ -295,25 +326,37 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
     if consoleVerbosity > 0:
       stats = experiment.getBurstingColumnsStats()
       print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
+      if consoleVerbosity > 1:
+        print
+        print MonitorMixinBase.mmPrettyPrintMetrics(
+          experiment.tm.mmGetDefaultMetrics())
+        print
 
     if plotVerbosity >= 2:
       plotNetworkState(experiment, plotVerbosity, trainingPasses,
                        phase="Training")
 
-  print
-  print MonitorMixinBase.mmPrettyPrintMetrics(
-      experiment.tm.mmGetDefaultMetrics())
-  print
+    experiment.tm.mmClearHistory()
+    experiment.up.mmClearHistory()
 
   # With Temporal Memory learning off and Union Pooler running without learning,
   # train the classifier.
-  experiment.runNetworkOnSequences(inputSequences,
-                                   inputCategories,
-                                   tmLearn=False,
-                                   upLearn=False,
-                                   classifierLearn=True,
-                                   verbosity=consoleVerbosity,
-                                   progressInterval=_SHOW_PROGRESS_INTERVAL)
+  print "\nTraining Classifier..."
+  if consoleVerbosity > 0:
+      print "Pass\tClassifier Patterns\tUnique Sequences"
+  for i in xrange(trainingPasses):
+    experiment.runNetworkOnSequences(inputSequences,
+                                     inputCategories,
+                                     tmLearn=False,
+                                     upLearn=False,
+                                     classifierLearn=True,
+                                     verbosity=consoleVerbosity,
+                                     progressInterval=_SHOW_PROGRESS_INTERVAL)
+    if consoleVerbosity > 0:
+      print "{0}\t\t{1}\t\t{2}".format(i, experiment.classifier._numPatterns,
+                                       numberOfSequences)
+    experiment.tm.mmClearHistory()
+    experiment.up.mmClearHistory()
 
   print "\nRunning test phase..."
   actualCategories, classifiedCategories = runTestPhase(experiment,
@@ -323,33 +366,41 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
                                                         sequenceLength,
                                                         testPresentations,
                                                         perturbationChance,
-                                                        sequenceJumpPerturbationChance)
-  # print
-  # print MonitorMixinBase.mmPrettyPrintMetrics(
-  #     experiment.tm.mmGetDefaultMetrics() +
-  #     experiment.up.mmGetDefaultMetrics())
-  # print
+                                                        sequenceJumpPerturbationChance,
+                                                        consoleVerbosity)
+
+  # Classification stats
+  correctClassifications = 0.0
+  for i in xrange(len(actualCategories)):
+    if (actualCategories[i] is not None and
+        actualCategories[i] == classifiedCategories[i]):
+      correctClassifications += 1
+  classificationRate = 100.0 * correctClassifications / len(actualCategories)
+  print "\n>>> Correct Classification Rate: {0:.2f}%".format(classificationRate)
 
   print "\nWriting results to file..."
-  outputFileName = "{0}tests_{1}perturbationRate.txt".format(
-    testPresentations, perturbationChance)
-  writeClassificationTrace(actualCategories, classifiedCategories, outputDir,
+  outputFileName = "testPres{0}_perturbationRate{1}_jumpRate{2}.txt".format(
+    testPresentations, perturbationChance, sequenceJumpPerturbationChance)
+
+  elapsedTime = (time.time() - startTime) / 60.0
+  print "\nFinished in {0:.2f} minutes.".format(elapsedTime)
+
+  writeClassificationTrace(actualCategories, classifiedCategories,
+                           [classificationRate], [elapsedTime], outputDir,
                            outputFileName)
 
-  elapsed = int(time.time() - startTime)
-  print "\nFinished. Total time: {0:2} seconds.".format(elapsed)
-
-  # if plotVerbosity >= 1:
-  #   raw_input("\nPress any key to exit...")
 
 
 
-def writeClassificationTrace(actualCategories, classifiedCategories, outputDir,
+
+def writeClassificationTrace(actualCategories, classifiedCategories,
+                             classificationStats, elapsedTime, outputDir,
                              outputFileName):
   """
   Write classification trace to output file.
   :param actualCategories: True categories
   :param classifiedCategories: Classified categories
+  :param classificationStats: List of stats of classification performance
   :param outputDir: dir where output file will be written
   :param outputFileName: filename of output file
   """
@@ -359,18 +410,14 @@ def writeClassificationTrace(actualCategories, classifiedCategories, outputDir,
   filePath = os.path.join(outputDir, outputFileName)
   with open(filePath, "wb") as outputFile:
     csvWriter = csv.writer(outputFile)
-
+    csvWriter.writerow(["Actual Categories"])
     csvWriter.writerow(actualCategories)
+    csvWriter.writerow(["Classified Categories"])
     csvWriter.writerow(classifiedCategories)
-
-    correct = 0.0
-    for i in xrange(len(actualCategories)):
-      if actualCategories[i] == classifiedCategories[i]:
-        correct += 1
-
-    correctRate = correct / len(actualCategories)
-    csvWriter.writerow([correctRate])
-
+    csvWriter.writerow(["Classification Statistics"])
+    csvWriter.writerow(classificationStats)
+    csvWriter.writerow(["Elapsed Time"])
+    csvWriter.writerow(elapsedTime)
     outputFile.flush()
 
 
