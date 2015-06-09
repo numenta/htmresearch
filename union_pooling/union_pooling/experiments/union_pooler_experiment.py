@@ -36,14 +36,14 @@ from union_pooling.union_pooler import UnionPooler
 
 
 
-class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
-                                     FastGeneralTemporalMemory):
+class MonitoredFastGeneralTemporalMemory(TemporalMemoryMonitorMixin,
+                                         FastGeneralTemporalMemory):
   pass
 
 
 
 # Implement a UnionPoolerMonitorMixin if needed...
-class MonitoredUnionTemporalPooler(TemporalPoolerMonitorMixin, UnionPooler):
+class MonitoredUnionPooler(TemporalPoolerMonitorMixin, UnionPooler):
   pass
 
 
@@ -94,25 +94,33 @@ class UnionPoolerExperiment(object):
 
                                  # Union Pooler Params
                                  "activeOverlapWeight": 1.0,
-                                 "predictedActiveOverlapWeight": 10.0,
-                                 "maxUnionActivity": 0.20,
-                                 "decayFunctionSlope": 1.0}
+                                 "predictedActiveOverlapWeight": 0.0,
+                                 "fixedPoolingActivationBurst": False,
+                                 "exciteFunction": None,
+                                 "decayFunction": None,
+                                 "maxUnionActivity": 0.20}
+
+  DEFAULT_CLASSIFIER_PARAMS = {
+  'distThreshold': 0.000001,
+  'maxCategoryCount': 10,
+  #'distanceMethod': 'rawOverlap',  # Default is Euclidean distance
+   }
 
 
   def __init__(self, tmOverrides=None, upOverrides=None, seed=42):
-    # Initialize Temporal Memory
+    print "Initializing Temporal Memory..."
     params = dict(self.DEFAULT_TEMPORAL_MEMORY_PARAMS)
     params.update(tmOverrides or {})
     params["seed"] = seed
-    self.tm = MonitoredGeneralTemporalMemory(mmName="TM", **params)
+    self.tm = MonitoredFastGeneralTemporalMemory(mmName="TM", **params)
 
-    # Initialize Union Pooler layer
+    print "Initializing Union Pooler..."
     params = dict(self.DEFAULT_UNION_POOLER_PARAMS)
     params.update(upOverrides or {})
     params["inputDimensions"] = [self.tm.numberOfCells()]
     params["potentialRadius"] = self.tm.numberOfCells()
     params["seed"] = seed
-    self.up = MonitoredUnionTemporalPooler(mmName="UP", **params)
+    self.up = MonitoredUnionPooler(mmName="UP", **params)
 
     # TODO KNN classifer
 
@@ -149,10 +157,12 @@ class UnionPoolerExperiment(object):
                                sequenceLabel=sequenceLabel)
 
       if progressInterval is not None and i > 0 and i % progressInterval == 0:
+        elapsed = (time.time() - currentTime) / 60.0
         print ("Ran {0} / {1} elements of sequence in "
-               "{2:0.2f} seconds.".format(i, len(sensorSequences),
-                                          time.time() - currentTime))
+               "{2:0.2f} minutes.".format(i, len(sensorSequences), elapsed))
         currentTime = time.time()
+        print MonitorMixinBase.mmPrettyPrintMetrics(
+          self.tm.mmGetDefaultMetrics())
 
     if verbosity >= 2:
       traces = self.tm.mmGetDefaultTraces(verbosity=verbosity)
@@ -202,3 +212,23 @@ class UnionPoolerExperiment(object):
     burstingColumns[list(self.tm.unpredictedActiveColumns)] = 1
 
     return activeCells, predictedActiveCells, burstingColumns
+
+
+  def getBurstingColumnsStats(self):
+    """
+    Gets statistics on the Temporal Memory's bursting columns. Used as a metric
+    of Temporal Memory's learning performance.
+    :return: mean, standard deviation, and max of Temporal Memory's bursting
+    columns over time
+    """
+    traceData = self.tm.mmGetTraceUnpredictedActiveColumns().data
+    resetData = self.tm.mmGetTraceResets().data
+    countTrace = []
+    for x in xrange(len(traceData)):
+      if not resetData[x]:
+        countTrace.append(len(traceData[x]))
+
+    mean = numpy.mean(countTrace)
+    stdDev = numpy.std(countTrace)
+    maximum = max(countTrace)
+    return mean, stdDev, maximum

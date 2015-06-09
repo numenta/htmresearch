@@ -424,14 +424,6 @@ Martinotti neurons blocking dendritic activity - what is this for? Need to
 review. Could this turn off pooling when columns burst?
 
 
-\subsection{Yang: Branch specific dendritic learning}
-
-This amazing paper \cite{Yang2014} studies learning on specific dendritic
-branches in awake rats while they go through normal behavior. It shows learning
-induced dendritic branch specific formation of synapses, which is consistent
-with the temporal memory algorithm and high order sequences. This paper deals
-with high order motor sequences. Ignore the sleep part.
-
 \subsection{Palmer: NMDA Spikes}
 
 Few papers talk about dendritic NMDA spikes in Layer 2/3 pyramidal neurons.
@@ -492,6 +484,34 @@ A more recent review paper by Holtmaat and Svoboda \cite{Holtmaat2009} presents
 more recent findings with imaging techniques. I find the numbers in
 supplementary table S1 very useful, it shows what fraction of synapses are
 stable from many different studies.
+
+\subsection{Losonczy: Branch specific plasticity}
+
+HTM theory requires that if a dendritic segment becomes active and then that
+cell later fires, that we learn on that specific segment. This requires a
+coupling between segment activity and later activity at the soma. This is a
+fairly strong and specific prediction of HTM learning rules.
+
+This paper\cite{Losonczy2008} seems to be the first demonstrated evidence for
+this type of plasticity rule. First they show that there is branch (segment)
+specific potentiation (learning), isolated from other branches. Second, they
+show that the branch specific potentiation requires a back action potential
+(top left of page 439).
+
+They also show that there are weak branches and strong branches.  The strong
+branches tend to be near the soma (proximal) and the weaker branches tended to
+be terminal (distal). They also show that eventually the weaker branches can
+cause the cell to fire – this is not currently modeled in HTM.
+
+
+\subsection{Yang: Branch specific dendritic learning}
+
+This amazing paper \cite{Yang2014} studies learning on specific dendritic
+branches in awake rats while they go through normal behavior. It shows learning
+induced dendritic branch specific formation of synapses, which is consistent
+with the temporal memory algorithm and high order sequences. This paper deals
+with high order motor sequences. Ignore the sleep part.
+
 
 \subsection{Imaging the growth of synapses}
 

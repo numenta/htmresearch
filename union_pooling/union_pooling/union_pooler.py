@@ -19,13 +19,20 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import random
+
 import numpy
 
 from nupic.research.spatial_pooler import SpatialPooler
+from union_pooling.activation.excite_functions.linear_excite_function import (
+  LinearExciteFunction)
+from union_pooling.activation.decay_functions.no_decay_function import (
+  NoDecayFunction)
 
 
 
 REAL_DTYPE = numpy.float32
+_TIE_BREAKER_FACTOR = 0.0001
 
 
 
@@ -61,9 +68,11 @@ class UnionPooler(SpatialPooler):
 
                # union_pooler.py parameters
                activeOverlapWeight=1.0,
-               predictedActiveOverlapWeight=10.0,
-               maxUnionActivity=0.20,
-               decayFunctionSlope=1.0):
+               predictedActiveOverlapWeight=0.0,
+               fixedPoolingActivationBurst = False,
+               exciteFunction = None,
+               decayFunction = None,
+               maxUnionActivity=0.20):
     """
     Please see spatial_pooler.py in NuPIC for super class parameter
     descriptions.
@@ -72,17 +81,26 @@ class UnionPooler(SpatialPooler):
     -------------------------------------
 
     @param activeOverlapWeight: A multiplicative weight applied to
-    the overlap between connected synapses and active-cell input
+        the overlap between connected synapses and active-cell input
 
     @param predictedActiveOverlapWeight: A multiplicative weight applied to
-    the overlap between connected synapses and predicted-active-cell input
+        the overlap between connected synapses and predicted-active-cell input
 
-    @param maxUnionActivity: Maximum number of active cells allowed in
-    union SDR simultaneously in terms of the ratio between the number of active
-    cells and the number of total cells
+    @param fixedPoolingActivationBurst: A Boolean, which, if True, has the
+        Union Pooler grant a fixed amount of pooling activation to
+        columns whenever they win the inhibition step. If False, columns'
+        pooling activation is calculated based on their current overlap.
 
-    @param decayFunctionSlope: Slope of the linear curve used to decay
-    pooling activation
+    @param exciteFunction: If fixedPoolingActivationBurst is False,
+        this specifies the ExciteFunctionBase used to excite pooling
+        activation.
+
+    @param decayFunction: Specifies the DecayFunctionBase used to decay pooling
+        activation.
+
+    @param maxUnionActivity: Maximum number of active cells allowed in union SDR
+        simultaneously in terms of the ratio between the number of active cells
+        and the number of total cells
     """
 
     super(UnionPooler, self).__init__(inputDimensions,
@@ -106,8 +124,18 @@ class UnionPooler(SpatialPooler):
 
     self._activeOverlapWeight = activeOverlapWeight
     self._predictedActiveOverlapWeight = predictedActiveOverlapWeight
+    self._fixedPoolingActivationBurst = fixedPoolingActivationBurst
     self._maxUnionActivity = maxUnionActivity
-    self._decayFunctionSlope = decayFunctionSlope
+
+    if exciteFunction is None:
+      self._exciteFunction = LinearExciteFunction()
+    else:
+      self._exciteFunction = exciteFunction
+
+    if decayFunction is None:
+      self._decayFunction = NoDecayFunction()
+    else:
+      self._decayFunction = decayFunction
 
     # The maximum number of cells allowed in a single union SDR
     self._maxUnionCells = int(self._numColumns * self._maxUnionActivity)
@@ -171,13 +199,17 @@ class UnionPooler(SpatialPooler):
     # Decrement pooling activation of all cells
     self._decayPoolingActivation()
 
-    # Add to the poolingActivation of active Union Pooler cells receiving input
-    # from active input cells
-    self._addToPoolingActivation(activeCells, overlapsActive)
-
-    # Add to the poolingActivation of active Union Pooler cells receiving
-    # active-predicted input cells.
-    self._addToPoolingActivation(activeCells, overlapsPredictedActive)
+    # Reset the poolingActivation of current active Union Pooler cells
+    if self._fixedPoolingActivationBurst:
+      # Increase is based on fixed parameter
+      tieBreaker = [random.random() * _TIE_BREAKER_FACTOR
+                    for _ in xrange(len(activeCells))]
+      self._poolingActivation[activeCells] = (self._poolingActivationBurst +
+                                             tieBreaker)
+    else:
+      # PoolingActivation update is based on active & predicted-active overlap
+      self._addToPoolingActivation(activeCells, overlapsActive)
+      self._addToPoolingActivation(activeCells, overlapsPredictedActive)
 
     return self._getMostActiveCells()
 
@@ -186,7 +218,8 @@ class UnionPooler(SpatialPooler):
     """
     Decrements pooling activation of all cells
     """
-    self._poolingActivation -= self._decayFunctionSlope
+    self._poolingActivation = self._decayFunction.decay(self._poolingActivation,
+                                                        1)
     self._poolingActivation[self._poolingActivation < 0] = 0
     return self._poolingActivation
 
@@ -199,8 +232,9 @@ class UnionPooler(SpatialPooler):
     :param overlaps: A current set of overlap values for each cell
     """
     cellIndices = numpy.where(overlaps[activeCells] > 0)[0]
-    activeCellsSubset = activeCells[cellIndices]
-    self._poolingActivation[activeCellsSubset] += overlaps[activeCellsSubset]
+    subset = activeCells[cellIndices]
+    self._poolingActivation[subset] = self._exciteFunction.excite(
+      self._poolingActivation[subset], overlaps[subset])
     return self._poolingActivation
 
 
@@ -216,4 +250,8 @@ class UnionPooler(SpatialPooler):
     topCells = potentialUnionSDR[0: self._maxUnionCells]
     nonZeroTopCells = self._poolingActivation[topCells] > 0
     self._unionSDR = topCells[nonZeroTopCells]
+    return self._unionSDR
+
+
+  def getUnionSDR(self):
     return self._unionSDR
