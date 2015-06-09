@@ -517,7 +517,7 @@ GameObject:
   - 4: {fileID: 715854796}
   - 65: {fileID: 715854797}
   - 114: {fileID: 715854798}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: 2Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
