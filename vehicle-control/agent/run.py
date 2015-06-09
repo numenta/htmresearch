@@ -54,7 +54,9 @@ def run(positions, plotEvery=1):
     sensor = outputData["ForwardsSweepSensor"]
     encoding = encoder.encode(numpy.array(sensor))
 
-    plotter.update(sensor, encoding)
+    steer = outputData["steer"]
+
+    plotter.update(sensor, encoding, steer)
 
     if fetcher.timestep % plotEvery == 0:
       plotter.render()
@@ -68,6 +70,7 @@ class Plotter(object):
 
     self.sensor = []
     self.encoding = []
+    self.steer = []
 
     import matplotlib.pyplot as plt
     self.plt = plt
@@ -83,9 +86,10 @@ class Plotter(object):
     self.plt.show()
 
 
-  def update(self, sensor, encoding):
+  def update(self, sensor, encoding, steer):
     self.sensor.append(sensor)
     self.encoding.append(encoding)
+    self.steer.append(steer)
 
 
   def render(self):
@@ -93,18 +97,21 @@ class Plotter(object):
 
     self.plt.clf()
 
-    self.plt.subplot(4,1,1)
+    self.plt.subplot(5,1,1)
     self._imshow(self.sensor, "Sensor over time")
 
-    self.plt.subplot(4,1,2)
+    self.plt.subplot(5,1,2)
     self._imshow(self.encoding, "Encoding over time")
 
-    self.plt.subplot(4,1,3)
+    self.plt.subplot(5,1,3)
+    self._plot(self.steer, "Steer over time")
+
+    self.plt.subplot(5,1,4)
     shape = len(self.encoder.positions), self.encoder.scalarEncoder.getWidth()
     encoding = numpy.array(self.encoding[-1]).reshape(shape).transpose()
     self._imshow(encoding, "Encoding at time t")
 
-    self.plt.subplot(4,1,4)
+    self.plt.subplot(5,1,5)
     data = self.encoding
     w = self.encoder.w
     overlaps = [sum(a & b) / float(w) for a, b in zip(data[:-1], data[1:])]

@@ -12,6 +12,10 @@ public class CarAIControl : MonoBehaviour {
 		if (API.instance.GetInput("steer") != null) {
 			userControl.horizontal = (float)(double)API.instance.GetInput("steer");
 		}
+
+		userControl.horizontal = Mathf.Round(userControl.horizontal);
+
+		API.instance.SetOutput("steer", userControl.horizontal);
 	}
 
 }
