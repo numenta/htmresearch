@@ -100,9 +100,11 @@ def plotNetworkState(experiment, plotVerbosity, trainingPasses, phase=""):
 
 
 def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
-                 sequenceLength, testPresentations, perturbationChance):
+                 sequenceLength, testPresentations, perturbationChance,
+                 sequenceJumpPerturbationChance):
   """
-  Performs a number of presentations of sequences. Sequence selection is random.
+  Performs a number of presentations of sequences with resets afterwards.
+  Sequence selection is random.
   At each step of sequence presentation there is a chance of a perturbation.
   Specifically the following perturbations may occur:
     1) Substitution of expected pattern with some other random pattern among
@@ -118,16 +120,21 @@ def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
         classifiedCategores - A list of the classifications of the categories
                               of each pattern presented during the test phase
   """
-
   actualCategories = []
   classifiedCategories = []
-  # print "Presentation \tPerturbations"
-  for presentation in xrange(testPresentations):
+
+  # Compute the bounds for a wheel-of-fortune style roll
+  pert1ChanceThreshold = (1 - sequenceJumpPerturbationChance) * (1 / 3.0)
+  pert2ChanceThreshold = (1 - sequenceJumpPerturbationChance) * (2 / 3.0)
+  pert3ChanceThreshold = (1 - sequenceJumpPerturbationChance)
+
+  presentation = 0
+  while presentation < testPresentations:
 
     # Randomly select the next sequence to present
     r = random.randint(0, sequenceCount - 1)
     start = r + r * sequenceLength
-    end = r + (r + 1) * sequenceLength # Don't want Nones
+    end = r + 1 + (r + 1) * sequenceLength
     selectedSequence = inputSequences[start:end]
     selectedSequenceCatgories = inputCategories[start:end]
 
@@ -143,14 +150,14 @@ def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
 
         # Randomly select a perturbation type with equal probability
         perturbationType = random.random()
-        if perturbationType < 1.0 / 3.0:
+        if perturbationType < pert1ChanceThreshold:
 
           # Substitution with random pattern
           randIdx = getRandomPatternIndex(inputSequences)
           sensorPattern = inputSequences[randIdx]
           actualCategory = inputCategories[randIdx]
           i += 1
-        elif perturbationType < 2.0 / 3.0:
+        elif perturbationType < pert2ChanceThreshold:
 
           # Skip to next pattern in sequence
           i += 1
@@ -159,15 +166,17 @@ def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
           sensorPattern = selectedSequence[i]
           actualCategory = selectedSequenceCatgories[i]
           i += 1
-        else:
+        elif perturbationType < pert3ChanceThreshold:
 
           # Add in a random pattern
           randIdx = getRandomPatternIndex(inputSequences)
           sensorPattern = inputSequences[randIdx]
           actualCategory = inputCategories[randIdx]
+        else:
 
-        # TODO Perturbation type 4) Jump to another sequence randomly (Random
-        # jump to sequence start or random position?)
+          # Random jump to another sequence
+          break
+
       else:
         sensorPattern = selectedSequence[i]
         actualCategory = selectedSequenceCatgories[i]
@@ -180,11 +189,16 @@ def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
 
       # Store classification
       unionSDR = experiment.up.getUnionSDR()
-      winningCategory, _, _, _ = experiment.classifier.infer(unionSDR)
+      if len(unionSDR) != 0:
+        winningCategory, _, _, _ = experiment.classifier.infer(unionSDR)
+      else:
+        winningCategory = -1
+
       classifiedCategories.append(winningCategory)
 
-    # TODO Record true perturbation rate
-    # print "{0} \t\t {1}".format(presentation, perturbationCount)
+    # End inner while
+    else:
+      presentation += 1
 
   return actualCategories, classifiedCategories
 
@@ -212,6 +226,8 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
         sequence
         testPresentations - Number of sequences presented in test phase
         perturbationChance - Chance of sequence perturbations during test phase
+        sequenceJumpPerturbationChance - Chance of a jump-sequence perturbation
+                                         type
         temporalMemoryParams - A dict of Temporal Memory parameter overrides
         unionPoolerParams - A dict of Union Pooler parameter overrides
         classifierParams - A dict of KNNClassifer parameter overrides
@@ -235,6 +251,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   trainingPasses = params["trainingPasses"]
   testPresentations = params["testPresentations"]
   perturbationChance = params["perturbationChance"]
+  sequenceJumpPerturbationChance = params["sequenceJumpPerturbationChance"]
   tmParamOverrides = params["temporalMemoryParams"]
   upParamOverrides = params["unionPoolerParams"]
   classifierOverrides = params["classifierParams"]
@@ -305,7 +322,8 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
                                                         numberOfSequences,
                                                         sequenceLength,
                                                         testPresentations,
-                                                        perturbationChance)
+                                                        perturbationChance,
+                                                        sequenceJumpPerturbationChance)
   # print
   # print MonitorMixinBase.mmPrettyPrintMetrics(
   #     experiment.tm.mmGetDefaultMetrics() +

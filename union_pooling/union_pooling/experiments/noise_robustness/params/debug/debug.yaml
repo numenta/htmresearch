@@ -4,7 +4,8 @@ sequenceLength: 4
 numberOfSequences: 10
 trainingPasses: 3
 testPresentations: 10
-perturbationChance: 0.50
+perturbationChance: 0.90
+sequenceJumpPerturbationChance: 0.90
 
 temporalMemoryParams:
   columnDimensions: [128]
