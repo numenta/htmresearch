@@ -37,15 +37,15 @@ ACTIIONS = ["-1", "0", "1"]
 
 def run(positions, plotEvery=1):
   encoder = OneDDepthEncoder(positions=positions,
-                             radius=3,
+                             radius=5,
                              wrapAround=True,
-                             nPerPosition=57,
+                             nPerPosition=28,
                              wPerPosition=3,
                              minVal=0,
                              maxVal=1)
   fetcher = Fetcher()
   plotter = Plotter(encoder)
-  learner = QLearner(ACTIIONS, n=2052)
+  learner = QLearner(ACTIIONS, n=1008)
 
   lastState = None
   lastAction = None
@@ -145,12 +145,12 @@ class Plotter(object):
     self.plt.subplot(n,1,3)
     self._plot(self.value, "Value over time")
 
-    # self.plt.subplot(n,1,7)
+    # self.plt.subplot(n,1,4)
     # shape = len(self.encoder.positions), self.encoder.scalarEncoder.getWidth()
     # encoding = numpy.array(self.encoding[-1]).reshape(shape).transpose()
     # self._imshow(encoding, "Encoding at time t")
 
-    # self.plt.subplot(n,1,8)
+    # self.plt.subplot(n,1,5)
     # data = self.encoding
     # w = self.encoder.w
     # overlaps = [sum(a & b) / float(w) for a, b in zip(data[:-1], data[1:])]
