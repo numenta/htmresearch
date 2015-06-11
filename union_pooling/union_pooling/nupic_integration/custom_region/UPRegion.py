@@ -136,6 +136,13 @@ def _getAdditionalSpecs():
       dataType="UInt32",
       count=1,
       constraints=""),
+
+    maxUnionActivity=dict(
+      description="Maximum number of active cells allowed in union SDR simultaneously in terms of the ratio between the number of active cells and the number of total cells",
+      accessMode="ReadWrite",
+      dataType="Real32",
+      count=1,
+      constraints=""),
     ))
 
 
@@ -181,7 +188,7 @@ class UPRegion(PyRegion):
   argument into UPRegion.__init__, which will override all the default handling.
   """
 
-  def __init__(self, columnCount, inputWidth, **kwargs):
+  def __init__(self, columnCount, inputWidth, maxUnionActivity, **kwargs):
 
     if columnCount <= 0 or inputWidth <=0:
       raise TypeError("Parameters columnCount and inputWidth must be > 0")
@@ -198,28 +205,16 @@ class UPRegion(PyRegion):
     self.learningMode = True
     self._inputWidth = inputWidth
     self._columnCount    = columnCount
-
-
-    #
-    # Variables set up in initInNetwork()
-    #
+    self._maxOutputSize = int(columnCount * maxUnionActivity)
 
     # Union instance
     self._union = None
-
-    # union pooler's bottom-up output value: hang on to this  output for
-    # top-down inference and for debugging
-    self._unionPoolerOutput = None
 
 
   def initialize(self, inputs, outputs):
     """
     Initialize the UnionPooler
     """
-
-    # Zero out the union output in case it is requested
-    self._unionPoolerOutput = numpy.zeros(self._columnCount,
-                                          dtype=GetNTAReal())
 
     # Retrieve the necessary extra arguments that were handled automatically
     autoArgs = {name: getattr(self, name) for name in self._unionArgNames}
@@ -246,10 +241,10 @@ class UPRegion(PyRegion):
     predictedActiveCells[predictedActiveCellsIndices]= 1
 
     # Convert
-    self.unionPoolerOutput = self._union.compute(activeCells,
-                              predictedActiveCells, self.learningMode)
-
-    outputs["mostActiveCells"] = self.unionPoolerOutput
+    output = self._union.compute(activeCells, predictedActiveCells, self.learningMode)
+    numZeros = self._maxOutputSize - len(output)
+    paddedOutput = numpy.pad(output, (0, numZeros), mode="constant")
+    outputs["mostActiveCells"][:] = paddedOutput
 
 
   @classmethod
@@ -342,7 +337,7 @@ class UPRegion(PyRegion):
 
 
   def getOutputElementCount(self, name):
-    return self._columnCount
+    return self._maxOutputSize
 
 
   def getParameterArrayCount(self, name, index):
