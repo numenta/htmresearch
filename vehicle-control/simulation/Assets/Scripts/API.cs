@@ -31,6 +31,10 @@ public class API : MonoBehaviour {
 		return null;
 	}
 
+	public float LastSyncTime() {
+		return _lastSyncTime;
+	}
+
 	void ClearOutput() {
 		_outputData = new Dictionary<string, object>();
 	}
