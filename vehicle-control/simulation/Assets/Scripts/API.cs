@@ -129,7 +129,7 @@ public class API : MonoBehaviour {
 		}
 		else {
 			if(this != _instance)
-			Destroy(this.gameObject);
+			DestroyImmediate(this.gameObject);
 		}
 	}
 
