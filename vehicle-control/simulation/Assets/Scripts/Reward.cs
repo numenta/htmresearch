@@ -8,7 +8,11 @@ public class Reward : MonoBehaviour {
 	private bool collided = false;
 
 	IEnumerator ResetLevel() {
-		yield return new WaitForSeconds(1.0f);
+		float lastSyncTime = API.instance.LastSyncTime();
+		while (lastSyncTime == API.instance.LastSyncTime()) {
+			yield return null;
+		}
+
 		Application.LoadLevel(Application.loadedLevel);
 	}
 
