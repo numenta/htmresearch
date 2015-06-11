@@ -48,6 +48,7 @@ SP_PARAMS = {
     "spatialImp": "cpp",
     "globalInhibition": 1,
     "columnCount": 1024,
+    #"columnCount": 2048,
     # This must be set before creating the SPRegion
     "inputWidth": 0,
     "numActiveColumnsPerInhArea": 40,
@@ -65,6 +66,9 @@ TP_PARAMS = {
     "columnCount": 1024,
     "cellsPerColumn": 8,
     "inputWidth": 1024,
+    #"columnCount": 2048,
+    #"cellsPerColumn": 32,
+    #"inputWidth": 2048,
     "seed": 1960,
     "temporalImp": "cpp",
     "newSynapseCount": 20,
@@ -88,9 +92,11 @@ UP_PARAMS = {
     "spVerbosity": _VERBOSITY,
     "globalInhibition": 1,
     "columnCount": 128,
+    #"columnCount": 2048,
     # This must be set before creating the UPRegion
     "inputWidth": 0,
     "numActiveColumnsPerInhArea": 20,
+    #"numActiveColumnsPerInhArea": 40,
     "seed": 1956,
     "stimulusThreshold": 0,
     "synPermInactiveDec": 0.01,
@@ -203,7 +209,7 @@ def createNetwork(dataSource):
   # Make sure learning is enabled (this is the default)
   temporal.setParameter("learningMode", 1, True)
   # Enable inference mode so we get predictions
-  temporal.setParameter("inferenceMode", 1, False)
+  temporal.setParameter("inferenceMode", 1, True)
   temporal.setParameter("unionMode", 1, True)
 
   union = network.regions["unionPoolerRegion"].getSelf()
