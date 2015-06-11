@@ -9,6 +9,20 @@ public class CarAIControl : MonoBehaviour {
 	private float timeSinceReset;
 	private float action;
 
+	void UpdateControl() {
+		userControl.vertical = 1;
+
+		if (API.instance.GetInput("steer") != null) {
+			userControl.horizontal = (float)(double)API.instance.GetInput("steer");
+		}
+
+		userControl.horizontal = Mathf.Round(userControl.horizontal);
+
+		ExecutePredefinedControl();
+
+		API.instance.SetOutput("steer", userControl.horizontal);
+	}
+
 	void ExecutePredefinedControl() {
 		timeSinceReset += Time.deltaTime;
 
@@ -22,26 +36,17 @@ public class CarAIControl : MonoBehaviour {
 		action = Random.value > 0.5f ? -1 : 1;
 	}
 
-	void Start() {
+	IEnumerator Start() {
 		Setup();
+
+		while (true) {
+			UpdateControl();
+			yield return null;
+		}
 	}
 
 	void OnLevelWasLoaded(int level) {
 		Setup();
-	}
-
-	void LateUpdate() {
-		userControl.vertical = 1;
-
-		if (API.instance.GetInput("steer") != null) {
-			userControl.horizontal = (float)(double)API.instance.GetInput("steer");
-		}
-
-		userControl.horizontal = Mathf.Round(userControl.horizontal);
-
-		ExecutePredefinedControl();
-
-		API.instance.SetOutput("steer", userControl.horizontal);
 	}
 
 }
