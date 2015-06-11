@@ -213,6 +213,7 @@ def createNetwork(dataSource):
   return network
 
 
+
 def runNetwork(network, writer):
   """Run the network and write output to writer.
 
