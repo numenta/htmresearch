@@ -83,7 +83,7 @@ TP_PARAMS = {
     "activationThreshold": 12,
     "outputType": "normal",
     "pamLength": 3,
-    "unionMode": 1,
+    "computePredictedActiveCellIndices": 1,
 }
 
 
@@ -210,7 +210,7 @@ def createNetwork(dataSource):
   temporal.setParameter("learningMode", 1, True)
   # Enable inference mode so we get predictions
   temporal.setParameter("inferenceMode", 1, True)
-  temporal.setParameter("unionMode", 1, True)
+  temporal.setParameter("computePredictedActiveCellIndices", 1, True)
 
   union = network.regions["unionPoolerRegion"].getSelf()
   # Make sure learning is enabled (this is the default)
