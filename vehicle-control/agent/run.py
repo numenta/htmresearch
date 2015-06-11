@@ -60,6 +60,13 @@ def run(positions, plotEvery=1):
       print ("Warning: skipped {0} timesteps, "
              "now at {1}").format(fetcher.skippedTimesteps, fetcher.timestep)
 
+    if not ("reset" in outputData and
+            "ForwardsSweepSensor" in outputData and
+            "steer" in outputData):
+      print ("Warning: Missing data on timestep {0}: {1}".format(
+             fetcher.timestep, outputData))
+      continue
+
     if outputData["reset"]:
       print "Reset."
 
