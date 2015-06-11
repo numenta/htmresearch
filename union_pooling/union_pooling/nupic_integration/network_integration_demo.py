@@ -173,8 +173,8 @@ def createNetwork(dataSource):
 
   # Register UPRegion since we aren't in nupic
   curDirectory = os.path.dirname(os.path.abspath(__file__))
-  # directory of union pooler is 3 directories above
-  unionPoolerDirectory = os.path.split((os.path.split((os.path.split(curDirectory))[0]))[0])[0]
+  # directory of union pooler is 2 directories above
+  unionPoolerDirectory = os.path.split((os.path.split(curDirectory))[0])[0]
   sys.path.append(curDirectory)
   sys.path.append(unionPoolerDirectory)
   Network.registerRegionPackage("custom_region")
