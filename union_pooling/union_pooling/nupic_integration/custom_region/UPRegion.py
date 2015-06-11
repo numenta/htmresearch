@@ -136,13 +136,6 @@ def _getAdditionalSpecs():
       dataType="UInt32",
       count=1,
       constraints=""),
-
-    maxUnionActivity=dict(
-      description="Maximum number of active cells allowed in union SDR simultaneously in terms of the ratio between the number of active cells and the number of total cells",
-      accessMode="ReadWrite",
-      dataType="Real32",
-      count=1,
-      constraints=""),
     ))
 
 
@@ -188,7 +181,7 @@ class UPRegion(PyRegion):
   argument into UPRegion.__init__, which will override all the default handling.
   """
 
-  def __init__(self, columnCount, inputWidth, maxUnionActivity, **kwargs):
+  def __init__(self, columnCount, inputWidth, **kwargs):
 
     if columnCount <= 0 or inputWidth <=0:
       raise TypeError("Parameters columnCount and inputWidth must be > 0")
@@ -204,8 +197,7 @@ class UPRegion(PyRegion):
     # Defaults for all other parameters
     self.learningMode = True
     self._inputWidth = inputWidth
-    self._columnCount    = columnCount
-    self._maxOutputSize = int(columnCount * maxUnionActivity)
+    self._columnCount = columnCount
 
     # Union instance
     self._union = None
@@ -240,11 +232,11 @@ class UPRegion(PyRegion):
     predictedActiveCellsIndices = [int(i) for i in inputs["predictedActiveCellsIndices"]]
     predictedActiveCells[predictedActiveCellsIndices]= 1
 
-    # Convert
-    output = self._union.compute(activeCells, predictedActiveCells, self.learningMode)
-    numZeros = self._maxOutputSize - len(output)
-    paddedOutput = numpy.pad(output, (0, numZeros), mode="constant")
-    outputs["mostActiveCells"][:] = paddedOutput
+    mostActiveCellsIndices = self._union.compute(activeCells, predictedActiveCells, self.learningMode)
+
+    # Convert to SDR
+    outputs["mostActiveCells"][:] = numpy.zeros(self._columnCount, dtype=GetNTAReal())
+    outputs["mostActiveCells"][mostActiveCellsIndices] = 1
 
 
   @classmethod
@@ -337,7 +329,7 @@ class UPRegion(PyRegion):
 
 
   def getOutputElementCount(self, name):
-    return self._maxOutputSize
+    return self._columnCount
 
 
   def getParameterArrayCount(self, name, index):

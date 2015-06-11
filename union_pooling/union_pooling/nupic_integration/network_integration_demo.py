@@ -241,7 +241,7 @@ def runNetwork(network, writer):
     # value.
     activeCells = unionPoolerRegion.getOutputData("mostActiveCells")
     consumption = sensorRegion.getOutputData("sourceOut")[0]
-    writer.writerow((i, consumption, activeCells))
+    writer.writerow((i, consumption, numpy.sum(activeCells)))
 
 
 
