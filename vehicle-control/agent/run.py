@@ -85,6 +85,8 @@ def run(positions, plotEvery=1):
     for action in ACTIIONS:
       qValues[action] = learner.qValue(encoding, action)
 
+    fetcher.inputData["qValues"] = qValues
+
     plotter.update(sensor, encoding, steer, reward, value, qValues)
 
     if fetcher.timestep % plotEvery == 0:

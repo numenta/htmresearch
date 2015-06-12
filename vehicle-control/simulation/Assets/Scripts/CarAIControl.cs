@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using UnityStandardAssets.Vehicles.Car;
 
 public class CarAIControl : MonoBehaviour {
@@ -23,6 +24,27 @@ public class CarAIControl : MonoBehaviour {
 		API.instance.SetOutput("steer", userControl.horizontal);
 	}
 
+	void UpdateQValues() {
+		Dictionary<string, object> qValues = (Dictionary<string, object>)API.instance.GetInput("qValues");
+		if (qValues == null) return;
+
+		double qLeft = (double)qValues["-1"];
+		double qStraight = (double)qValues["0"];
+		double qRight = (double)qValues["1"];
+
+		int lineLength = 10;
+
+		Debug.DrawLine(transform.position, transform.position + 10 * -transform.right, ColorForQValue(qLeft), 0, false);
+		Debug.DrawLine(transform.position, transform.position + 10 * transform.right, ColorForQValue(qRight), 0, false);
+		Debug.DrawLine(transform.position, transform.position + 10 * transform.forward, ColorForQValue(qStraight), 0, false);
+	}
+
+	Color ColorForQValue(double qValue) {
+		float x = -0.5f * (float)qValue;
+		float t = 1 / (1 + Mathf.Exp(x));
+		return Color.Lerp(Color.red, Color.green, t);
+	}
+
 	void ExecutePredefinedControl() {
 		timeSinceReset += Time.deltaTime;
 
@@ -41,6 +63,7 @@ public class CarAIControl : MonoBehaviour {
 
 		while (true) {
 			UpdateControl();
+			UpdateQValues();
 			yield return null;
 		}
 	}
