@@ -1,10 +1,10 @@
 patternDimensionality: 128
 patternCardinality: 3
 sequenceLength: 13
-numberOfSequences: 100
+numberOfSequences: 10
 trainingPasses: 3
-testPresentations: 100
-perturbationChance: 0.50
+testPresentations: 10
+perturbationChance: 0.0
 sequenceJumpPerturbationChance: 0.50
 
 temporalMemoryParams:
@@ -47,4 +47,4 @@ unionPoolerParams:
 classifierParams:
   "k": 1
   "distanceMethod": "rawOverlap"
-  "distThreshold": 0
+  "distThreshold": 0.1

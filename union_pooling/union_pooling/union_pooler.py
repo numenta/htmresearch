@@ -32,6 +32,7 @@ from union_pooling.activation.decay_functions.no_decay_function import (
 
 
 REAL_DTYPE = numpy.float32
+INT_DTYPE = numpy.int32
 _TIE_BREAKER_FACTOR = 0.0001
 
 
@@ -145,7 +146,7 @@ class UnionPooler(SpatialPooler):
     self._poolingActivation = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
 
     # Current union SDR; the end product of the union pooler algorithm
-    self._unionSDR = []
+    self._unionSDR = numpy.array([], dtype=INT_DTYPE)
 
 
   def reset(self):
@@ -249,7 +250,7 @@ class UnionPooler(SpatialPooler):
 
     topCells = potentialUnionSDR[0: self._maxUnionCells]
     nonZeroTopCells = self._poolingActivation[topCells] > 0
-    self._unionSDR = numpy.sort(topCells[nonZeroTopCells])
+    self._unionSDR = numpy.sort(topCells[nonZeroTopCells]).astype(INT_DTYPE)
     return self._unionSDR
 
 

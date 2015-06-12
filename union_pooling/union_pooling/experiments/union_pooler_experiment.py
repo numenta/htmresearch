@@ -19,6 +19,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import pprint
 import time
 
 import numpy
@@ -108,7 +109,7 @@ class UnionPoolerExperiment(object):
 
 
   def __init__(self, tmOverrides=None, upOverrides=None,
-               classifierOverrides=None, seed=42):
+               classifierOverrides=None, seed=42, consoleVerbosity=0):
     print "Initializing Temporal Memory..."
     params = dict(self.DEFAULT_TEMPORAL_MEMORY_PARAMS)
     params.update(tmOverrides or {})
@@ -125,6 +126,7 @@ class UnionPoolerExperiment(object):
 
     print "Initializing KNN Classifier..."
     params = dict(self.DEFAULT_CLASSIFIER_PARAMS)
+    # params["verbosity"] = consoleVerbosity
     params.update(classifierOverrides or {})
     self.classifier = KNNClassifier(**params)
 
@@ -168,6 +170,9 @@ class UnionPoolerExperiment(object):
         unionSDR = self.up.getUnionSDR()
         upCellCount = self.up.getColumnDimensions()
         self.classifier.learn(unionSDR, inputCategory, isSparse=upCellCount)
+        if verbosity > 1:
+          pprint.pprint("Union SDR {0} is Cat {1}".format(unionSDR,
+                                                          inputCategory))
 
       if progressInterval is not None and i > 0 and i % progressInterval == 0:
         elapsed = (time.time() - currentTime) / 60.0

@@ -21,6 +21,7 @@
 # ----------------------------------------------------------------------
 
 import csv
+import numpy
 from optparse import OptionParser
 import os
 import random
@@ -163,7 +164,14 @@ def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
       if sensorPattern is not None:
         # Store classification
         unionSDR = experiment.up.getUnionSDR()
-        winningCategory, _, _, _ = experiment.classifier.infer(unionSDR)
+        denseUnionSDR = numpy.zeros(experiment.up.getNumColumns())
+        denseUnionSDR[unionSDR] = 1.0
+        winningCategory, _, _, _ = experiment.classifier.infer(denseUnionSDR)
+        # print "Classif: {0} for {1}".format(winningCategory, unionSDR)
+        # overlaps, categories = experiment.classifier.getOverlaps(unionSDR)
+        # print "Overlaps " + str(overlaps)
+        # print "Categories " + str(categories)
+        # print
       else:
         winningCategory = None
         actualCategory = None
@@ -173,7 +181,7 @@ def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
 
     # While presenting sequence
     else:
-
+      print
       # Sequence perturbation counts
       if consoleVerbosity > 1:
         print presentationString
@@ -213,23 +221,26 @@ def run(params, paramDir, outputDir, consoleVerbosity=0):
 
   :param params: A dict containing the following experiment parameters:
 
-        patternDimensionality - Dimensionality of sequence patterns
-        patternCardinality - Cardinality (# ON bits) of sequence patterns
-        sequenceLength - Length of sequences shown to network
-        numberOfSequences - Number of unique sequences used
-        trainingPasses - Number of times Temporal Memory is trained on each
-        sequence
-        testPresentations - Number of sequences presented in test phase
-        perturbationChance - Chance of sequence perturbations during test phase
+        patternDimensionality -       Dimensionality of sequence patterns
+        patternCardinality -          Cardinality (# ON bits) of sequence
+                                      patterns
+        sequenceLength -              Length of sequences shown to network
+        numberOfSequences -           Number of unique sequences used
+        trainingPasses -              Number of times Temporal Memory is trained
+                                      on each sequence
+        testPresentations -           Number of sequences presented in test
+                                      phase
+        perturbationChance -          Chance of sequence perturbations during
+                                      test phase
         sequenceJumpPerturbationChance - Chance of a jump-sequence perturbation
                                          type
-        temporalMemoryParams - A dict of Temporal Memory parameter overrides
-        unionPoolerParams - A dict of Union Pooler parameter overrides
-        classifierParams - A dict of KNNClassifer parameter overrides
+        temporalMemoryParams -        A dict of Temporal Memory parameter
+                                      overrides
+        unionPoolerParams -           A dict of Union Pooler parameter overrides
+        classifierParams -            A dict of KNNClassifer parameter overrides
 
   :param paramDir: Path of parameter file
   :param outputDir: Output will be written to this path
-  :param plotVerbosity: Plotting verbosity
   :param consoleVerbosity: Console output verbosity
   """
   startTime = time.time()
@@ -268,16 +279,27 @@ def run(params, paramDir, outputDir, consoleVerbosity=0):
       inputCategories.append(i)
     inputCategories.append(None)
 
+  if consoleVerbosity > 2:
+    for i in xrange(len(inputSequences)):
+      if inputSequences[i] is None:
+        print
+      else:
+        print inputSequences[i]
+        print inputCategories[i]
+
   # Set up the Temporal Memory and Union Pooler network
   print "\nCreating network..."
-  experiment = UnionPoolerExperiment(tmParamOverrides, upParamOverrides,
-                                     classifierOverrides)
+  experiment = UnionPoolerExperiment(tmOverrides=tmParamOverrides,
+                                     upOverrides=upParamOverrides,
+                                     classifierOverrides=classifierOverrides,
+                                     consoleVerbosity=0)
 
   # Training only the Temporal Memory on the generated sequences
   if trainingPasses > 0:
     print "\nTraining Temporal Memory..."
     if consoleVerbosity > 0:
-      print "Pass\tMean\t\tStdDev\t\tMax\t\t(Bursting Columns)"
+      print "\nTemporal Memory Bursting Columns stats..."
+      print "Pass\tMean\t\tStdDev\t\tMax"
 
   for i in xrange(trainingPasses):
     experiment.runNetworkOnSequences(inputSequences,
@@ -302,7 +324,7 @@ def run(params, paramDir, outputDir, consoleVerbosity=0):
   # With Temporal Memory learning off and Union Pooler running without learning,
   # train the classifier.
   print "\nTraining Classifier..."
-  if consoleVerbosity > 0:
+  if consoleVerbosity > 2:
       print "Pass\tClassifier Patterns\tUnique Sequences"
   for i in xrange(trainingPasses):
     experiment.runNetworkOnSequences(inputSequences,
@@ -312,7 +334,7 @@ def run(params, paramDir, outputDir, consoleVerbosity=0):
                                      classifierLearn=True,
                                      verbosity=consoleVerbosity,
                                      progressInterval=_SHOW_PROGRESS_INTERVAL)
-    if consoleVerbosity > 0:
+    if consoleVerbosity > 2:
       print "{0}\t\t{1}\t\t{2}".format(i, experiment.classifier._numPatterns,
                                        numberOfSequences)
     experiment.tm.mmClearHistory()
@@ -331,9 +353,11 @@ def run(params, paramDir, outputDir, consoleVerbosity=0):
 
   # Classification stats
   correctClassifications = 0.0
+  numberClassifications = 0.0
   classificationVector = []
   for i in xrange(len(actualCategories)):
     if actualCategories[i] is not None:
+      numberClassifications += 1
       if actualCategories[i] == classifiedCategories[i]:
         correctClassifications += 1
         classificationVector.append(1)
@@ -341,12 +365,14 @@ def run(params, paramDir, outputDir, consoleVerbosity=0):
         classificationVector.append(0)
     else:
       classificationVector.append("*")
-  classificationRate = 100.0 * correctClassifications / len(actualCategories)
+  classificationRate = 100.0 * correctClassifications / numberClassifications
+
+  # Output
   print "\n>>> Correct Classification Rate: {0:.2f}%".format(classificationRate)
 
-  print "\nWriting results to file..."
   outputFileName = "testPres{0}_perturbationRate{1}_jumpRate{2}.txt".format(
     testPresentations, perturbationChance, sequenceJumpPerturbationChance)
+  print "\nWriting results to {0}/{1}".format(outputDir, outputFileName)
 
   elapsedTime = (time.time() - startTime) / 60.0
   print "\nFinished in {0:.2f} minutes.".format(elapsedTime)

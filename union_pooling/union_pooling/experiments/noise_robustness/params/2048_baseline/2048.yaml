@@ -47,4 +47,4 @@ unionPoolerParams:
 classifierParams:
   "k": 1
   "distanceMethod": "rawOverlap"
-  "distThreshold": 0
+  "distThreshold": 0.1
