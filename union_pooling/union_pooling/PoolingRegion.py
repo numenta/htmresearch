@@ -331,21 +331,6 @@ class PoolingRegion(PyRegion):
       raise Exception("Unknown parameter: " + parameterName)
 
 
-  def __getstate__(self):
-    """
-    Return serializable state.  
-    """
-    return self.__dict__.copy()
-
-
-  def __setstate__(self, state):
-    """
-    Set the state of ourself from a serialized state.
-    """
-
-    self.__dict__.update(state)
-
-
   def getOutputElementCount(self, name):
     return self._columnCount
 
