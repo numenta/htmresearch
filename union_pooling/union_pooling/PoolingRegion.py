@@ -28,25 +28,36 @@ from nupic.regions.PyRegion import PyRegion
 
 
 
-def _buildArgs(self=None, kwargs={}):
+def _getPoolerClass(name):
+    if name=="union":
+      return UnionPooler
+    else:
+      raise RuntimeError("Invalid pooling implementation %s. Valid ones are: union" % (name))
+
+
+def _getDefaultPoolerClass():
+    return UnionPooler
+
+
+def _buildArgs(poolerClass, self=None, kwargs={}):
   """
   Get the default arguments from the function and assign as instance vars.
 
   Return a list of 3-tuples with (name, description, defaultValue) for each
     argument to the function.
 
-  Assigns all arguments to the function as instance variables of UPRegion.
+  Assigns all arguments to the function as instance variables of PoolingRegion.
   If the argument was not provided, uses the default value.
 
   Pops any values from kwargs that go to the function.
 
   """
   # Get the name, description, and default value for each argument
-  argTuples = getArgumentDescriptions(UnionPooler.__init__)
+  argTuples = getArgumentDescriptions(poolerClass.__init__)
   argTuples = argTuples[1:]  # Remove "self"
 
   # Get the names of the parameters to our own constructor and remove them
-  init = UPRegion.__init__
+  init = PoolingRegion.__init__
   ourArgNames = [t[0] for t in getArgumentDescriptions(init)]
   # Also remove a few other names that aren't in our constructor but are
   #  computed automatically
@@ -77,14 +88,13 @@ def _buildArgs(self=None, kwargs={}):
   return argTuples
 
 
-def _getAdditionalSpecs():
+def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
   """Build the additional specs in three groups (for the inspector)
 
   Use the type of the default argument to set the Spec type, defaulting
   to "Byte" for None and complex types
 
-  Determines the union parameters based on the selected implementation.
-  It defaults to UnionPooler.
+  Determines the pooler parameters based on the selected implementation.
   """
   typeNames = {int: "UInt32", float: "Real32", str: "Byte", bool: "bool", tuple: "tuple"}
 
@@ -107,22 +117,22 @@ def _getAdditionalSpecs():
     else:
       return ""
 
-  # Get arguments from union pooler constructors, figure out types of
-  # variables and populate unionSpec.
-  uArgTuples = _buildArgs()
-  unionSpec = {}
-  for argTuple in uArgTuples:
+  # Get arguments from pooler constructors, figure out types of
+  # variables and populate poolerSpec.
+  pArgTuples = _buildArgs(poolerClass)
+  poolerSpec = {}
+  for argTuple in pArgTuples:
     d = dict(
       description=argTuple[1],
       accessMode="ReadWrite",
       dataType=getArgType(argTuple[2])[0],
       count=getArgType(argTuple[2])[1],
       constraints=getConstraints(argTuple[2]))
-    unionSpec[argTuple[0]] = d
+    poolerSpec[argTuple[0]] = d
 
   # Add special parameters that weren't handled automatically
-  # Union pooler parameters only
-  unionSpec.update(dict(
+  # Pooler parameters only
+  poolerSpec.update(dict(
     columnCount=dict(
       description="Total number of columns (coincidences).",
       accessMode="ReadWrite",
@@ -136,10 +146,17 @@ def _getAdditionalSpecs():
       dataType="UInt32",
       count=1,
       constraints=""),
-    ))
+
+     poolerType=dict(
+      description="Type of pooler to use: union",
+      accessMode="ReadWrite",
+      dataType="Byte",
+      count=0,
+      constraints="enum: union"),
+     ))
 
 
-  # The last group is for parameters that aren't specific to union pooler
+  # The last group is for parameters that aren't specific to pooler
   otherSpec = dict(
     learningMode=dict(
       description="1 if the node is learning (default 1).",
@@ -149,48 +166,49 @@ def _getAdditionalSpecs():
       constraints="bool"),
   )
 
-  return unionSpec, otherSpec
+  return poolerSpec, otherSpec
 
 
 
-class UPRegion(PyRegion):
+class PoolingRegion(PyRegion):
 
   """
-  UPRegion is designed to implement the union pooler compute for a given
+  PoolingRegion is designed to implement the pooler compute for a given
   HTM level.
 
-  Uses the UnionPooler class to do most of the work. This node has just one
-  UnionPooler instance for the enitire level and does *not* support the concept
+  Uses a pooler class to do most of the work. This node has just one
+  pooler instance for the enitire level and does *not* support the concept
   of "baby nodes" within it.
 
   Automatic parameter handling:
 
   Parameter names, default values, and descriptions are retrieved automatically
-  from UnionPooler. Thus, there are only a few hardcoded arguments in __init__,
-  and the rest are passed to the appropriate underlying class. The NodeSpec is
+  from pooler. Thus, there are only a few hardcoded arguments in __init__,
+  and the rest are passed to the appropriate underlying pooler class. The NodeSpec is
   mostly built automatically from these parameters, too.
 
-  If you add a parameter to UnionPooler, it will be exposed through UPRegion
-  automatically as if it were in UPRegion.__init__, with the right default
+  If you add a parameter to pooler, it will be exposed through PoolingRegion
+  automatically as if it were in PoolingRegion.__init__, with the right default
   value. Add an entry in the __init__ docstring for it too, and that will be
-  brought into the NodeSpec. UPRegion will maintain the parameter as its own
-  instance variable and also pass it to UnionPooler. If the parameter is
-  changed, UPRegion will propagate the change.
+  brought into the NodeSpec. PoolingRegion will maintain the parameter as its own
+  instance variable and also pass it to pooler. If the parameter is
+  changed, PoolingRegion will propagate the change.
 
   If you want to do something different with the parameter, add it as an
-  argument into UPRegion.__init__, which will override all the default handling.
+  argument into PoolingRegion.__init__, which will override all the default handling.
   """
 
-  def __init__(self, columnCount, inputWidth, **kwargs):
+  def __init__(self, columnCount, inputWidth, poolerType, **kwargs):
 
     if columnCount <= 0 or inputWidth <=0:
       raise TypeError("Parameters columnCount and inputWidth must be > 0")
-    # Pull out the union arguments automatically
-    # These calls whittle down kwargs and create instance variables of UPRegion
-    uArgTuples = _buildArgs(self, kwargs)
+    # Pull out the pooler arguments automatically
+    # These calls whittle down kwargs and create instance variables of PoolingRegion
+    self._poolerClass = _getPoolerClass(poolerType)
+    pArgTuples = _buildArgs(self._poolerClass, self, kwargs)
 
-    # Make a list of automatic union arg names for later use
-    self._unionArgNames = [t[0] for t in uArgTuples]
+    # Make a list of automatic pooler arg names for later use
+    self._poolerArgNames = [t[0] for t in pArgTuples]
 
     PyRegion.__init__(self, **kwargs)
 
@@ -199,30 +217,30 @@ class UPRegion(PyRegion):
     self._inputWidth = inputWidth
     self._columnCount = columnCount
 
-    # Union instance
-    self._union = None
+    # pooler instance
+    self._pooler = None
 
 
   def initialize(self, inputs, outputs):
     """
-    Initialize the UnionPooler
+    Initialize the self._poolerClass
     """
 
     # Retrieve the necessary extra arguments that were handled automatically
-    autoArgs = {name: getattr(self, name) for name in self._unionArgNames}
+    autoArgs = {name: getattr(self, name) for name in self._poolerArgNames}
     autoArgs["inputDimensions"] = [self._inputWidth]
     autoArgs["columnDimensions"] = [self._columnCount]
     autoArgs["potentialRadius"] = self._inputWidth
 
-    # Allocate the union pooler
-    self._union = UnionPooler(**autoArgs)
+    # Allocate the pooler
+    self._pooler = self._poolerClass(**autoArgs)
   
 
   def compute(self, inputs, outputs):
     """
-    Run one iteration of UPRegion's compute.
+    Run one iteration of PoolingRegion's compute.
 
-    The guts of the compute are contained in the UnionPooler compute() call
+    The guts of the compute are contained in the self._poolerClass compute() call
     """
     activeCells = numpy.zeros(self._inputWidth, dtype=GetNTAReal())
     activeCellsIndices = [int(i) for i in inputs["activeCellsIndices"]]
@@ -232,7 +250,7 @@ class UPRegion(PyRegion):
     predictedActiveCellsIndices = [int(i) for i in inputs["predictedActiveCellsIndices"]]
     predictedActiveCells[predictedActiveCellsIndices]= 1
 
-    mostActiveCellsIndices = self._union.compute(activeCells, predictedActiveCells, self.learningMode)
+    mostActiveCellsIndices = self._pooler.compute(activeCells, predictedActiveCells, self.learningMode)
 
     # Convert to SDR
     outputs["mostActiveCells"][:] = numpy.zeros(self._columnCount, dtype=GetNTAReal())
@@ -241,12 +259,12 @@ class UPRegion(PyRegion):
 
   @classmethod
   def getBaseSpec(cls):
-    """Return the base Spec for UPRegion.
+    """Return the base Spec for PoolingRegion.
 
-    Doesn't include the union parameters
+    Doesn't include the pooler parameters
     """
     spec = dict(
-      description=UPRegion.__doc__,
+      description=PoolingRegion.__doc__,
       singleNodeOnly=True,
       inputs=dict(
           activeCellsIndices=dict(
@@ -270,7 +288,7 @@ class UPRegion(PyRegion):
       ),
       outputs=dict(
         mostActiveCells=dict(
-          description="Most active cells in the Union SDR having non-zero activation",
+          description="Most active cells in the pooler SDR having non-zero activation",
           dataType="Real32",
           count=0,
           regionLevel=True,
@@ -286,14 +304,14 @@ class UPRegion(PyRegion):
   @classmethod
   def getSpec(cls):
     """
-    Return the Spec for UPRegion.
+    Return the Spec for PoolingRegion.
 
     The parameters collection is constructed based on the parameters specified
-    by the various components (unionSpec and otherSpec)
+    by the various components (poolerSpec and otherSpec)
     """
     spec = cls.getBaseSpec()
-    u, o = _getAdditionalSpecs()
-    spec["parameters"].update(u)
+    p, o = _getAdditionalSpecs()
+    spec["parameters"].update(p)
     spec["parameters"].update(o)
 
     return spec
@@ -305,8 +323,8 @@ class UPRegion(PyRegion):
     automatically by PyRegion's parameter set mechanism. The ones that need
     special treatment are explicitly handled here.
     """
-    if parameterName in self._unionArgNames:
-      setattr(self._union, parameterName, parameterValue)
+    if parameterName in self._poolerArgNames:
+      setattr(self._pooler, parameterName, parameterValue)
     elif hasattr(self, parameterName):
       setattr(self, parameterName, parameterValue)
     else:
