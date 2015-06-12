@@ -90,8 +90,8 @@ def run(positions, plotEvery=1):
 
     plotter.update(sensor, encoding, steer, reward, value, qValues)
 
-    if fetcher.timestep % plotEvery == 0:
-      plotter.render()
+    # if fetcher.timestep % plotEvery == 0:
+    #   plotter.render()
 
     lastState = encoding
     lastAction = steer
