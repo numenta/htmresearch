@@ -86,6 +86,7 @@ def run(positions, plotEvery=1):
       qValues[action] = learner.qValue(encoding, action)
 
     fetcher.inputData["qValues"] = qValues
+    fetcher.inputData["bestAction"] = learner.bestAction(encoding)
 
     plotter.update(sensor, encoding, steer, reward, value, qValues)
 

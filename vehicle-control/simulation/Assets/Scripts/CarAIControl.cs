@@ -32,17 +32,35 @@ public class CarAIControl : MonoBehaviour {
 		double qStraight = (double)qValues["0"];
 		double qRight = (double)qValues["1"];
 
-		int lineLength = 10;
+		DrawLineAtCar(-transform.right, ColorForQValue(qLeft));
+		DrawLineAtCar(transform.forward, ColorForQValue(qStraight));
+		DrawLineAtCar(transform.right, ColorForQValue(qRight));
 
-		Debug.DrawLine(transform.position, transform.position + 10 * -transform.right, ColorForQValue(qLeft), 0, false);
-		Debug.DrawLine(transform.position, transform.position + 10 * transform.right, ColorForQValue(qRight), 0, false);
-		Debug.DrawLine(transform.position, transform.position + 10 * transform.forward, ColorForQValue(qStraight), 0, false);
+		string bestAction = (string)API.instance.GetInput("bestAction");
+		if (bestAction == null) return;
+
+		if (bestAction == "-1") DrawLineBehindCar(-transform.right, ColorForQValue(qLeft));
+		if (bestAction == "0") DrawLineBehindCar(transform.forward, ColorForQValue(qStraight));
+		if (bestAction == "1") DrawLineBehindCar(transform.right, ColorForQValue(qRight));
 	}
 
 	Color ColorForQValue(double qValue) {
 		float x = -0.5f * (float)qValue;
 		float t = 1 / (1 + Mathf.Exp(x));
 		return Color.Lerp(Color.red, Color.green, t);
+	}
+
+	void DrawLineAtCar(Vector3 direction, Color color) {
+		int lineLength = 10;
+		Debug.DrawLine(transform.position, transform.position + lineLength * direction, color, 0, false);
+	}
+
+	void DrawLineBehindCar(Vector3 direction, Color color) {
+		int lineLength = 4;
+		int distance = 5;
+
+		Vector3 position = transform.position - distance * transform.forward;
+		Debug.DrawLine(position, position + lineLength * direction, color, 0, false);
 	}
 
 	void ExecutePredefinedControl() {
