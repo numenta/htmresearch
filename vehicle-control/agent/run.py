@@ -20,23 +20,35 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+from collections import defaultdict
+import operator
+
 import numpy
 
 from unity_client.fetcher import Fetcher
 from sensorimotor.encoders.one_d_depth import OneDDepthEncoder
+from sensorimotor.q_learner import QLearner
+
+
+
+ACTIIONS = ["-1", "0", "1"]
 
 
 
 def run(positions, plotEvery=1):
   encoder = OneDDepthEncoder(positions=positions,
-                             radius=3,
+                             radius=5,
                              wrapAround=True,
-                             nPerPosition=57,
+                             nPerPosition=28,
                              wPerPosition=3,
                              minVal=0,
                              maxVal=1)
   fetcher = Fetcher()
   plotter = Plotter(encoder)
+  learner = QLearner(ACTIIONS, n=1008)
+
+  lastState = None
+  lastAction = None
 
   while True:
     outputData = fetcher.sync()
@@ -48,16 +60,41 @@ def run(positions, plotEvery=1):
       print ("Warning: skipped {0} timesteps, "
              "now at {1}").format(fetcher.skippedTimesteps, fetcher.timestep)
 
+    if not ("reset" in outputData and
+            "ForwardsSweepSensor" in outputData and
+            "steer" in outputData):
+      print ("Warning: Missing data on timestep {0}: {1}".format(
+             fetcher.timestep, outputData))
+      continue
+
     if outputData["reset"]:
       print "Reset."
 
     sensor = outputData["ForwardsSweepSensor"]
+    steer = outputData["steer"]
+    reward = outputData.get("reward") or 0
+
     encoding = encoder.encode(numpy.array(sensor))
 
-    plotter.update(sensor, encoding)
+    if lastState is not None:
+      learner.update(lastState, str(lastAction), encoding, str(steer), reward)
 
-    if fetcher.timestep % plotEvery == 0:
-      plotter.render()
+    value = learner.value(encoding)
+
+    qValues = {}
+    for action in ACTIIONS:
+      qValues[action] = learner.qValue(encoding, action)
+
+    fetcher.inputData["qValues"] = qValues
+    fetcher.inputData["bestAction"] = learner.bestAction(encoding)
+
+    plotter.update(sensor, encoding, steer, reward, value, qValues)
+
+    # if fetcher.timestep % plotEvery == 0:
+    #   plotter.render()
+
+    lastState = encoding
+    lastAction = steer
 
 
 
@@ -68,6 +105,11 @@ class Plotter(object):
 
     self.sensor = []
     self.encoding = []
+    self.steer = []
+    self.reward = []
+    self.value = []
+    self.qValues = defaultdict(lambda: [])
+    self.bestAction = []
 
     import matplotlib.pyplot as plt
     self.plt = plt
@@ -83,9 +125,18 @@ class Plotter(object):
     self.plt.show()
 
 
-  def update(self, sensor, encoding):
+  def update(self, sensor, encoding, steer, reward, value, qValues):
     self.sensor.append(sensor)
     self.encoding.append(encoding)
+    self.steer.append(steer)
+    self.reward.append(reward)
+    self.value.append(value)
+
+    for key, value in qValues.iteritems():
+      self.qValues[key].append(value)
+
+    bestAction = int(max(qValues.iteritems(), key=operator.itemgetter(1))[0])
+    self.bestAction.append(bestAction)
 
 
   def render(self):
@@ -93,22 +144,34 @@ class Plotter(object):
 
     self.plt.clf()
 
-    self.plt.subplot(4,1,1)
-    self._imshow(self.sensor, "Sensor over time")
+    n = 7
 
-    self.plt.subplot(4,1,2)
-    self._imshow(self.encoding, "Encoding over time")
+    self.plt.subplot(n,1,1)
+    self._plot(self.steer, "Steer over time")
 
-    self.plt.subplot(4,1,3)
-    shape = len(self.encoder.positions), self.encoder.scalarEncoder.getWidth()
-    encoding = numpy.array(self.encoding[-1]).reshape(shape).transpose()
-    self._imshow(encoding, "Encoding at time t")
+    self.plt.subplot(n,1,2)
+    self._plot(self.reward, "Reward over time")
 
-    self.plt.subplot(4,1,4)
-    data = self.encoding
-    w = self.encoder.w
-    overlaps = [sum(a & b) / float(w) for a, b in zip(data[:-1], data[1:])]
-    self._plot(overlaps, "Encoding overlaps between consecutive times")
+    self.plt.subplot(n,1,3)
+    self._plot(self.value, "Value over time")
+
+    # self.plt.subplot(n,1,4)
+    # shape = len(self.encoder.positions), self.encoder.scalarEncoder.getWidth()
+    # encoding = numpy.array(self.encoding[-1]).reshape(shape).transpose()
+    # self._imshow(encoding, "Encoding at time t")
+
+    # self.plt.subplot(n,1,5)
+    # data = self.encoding
+    # w = self.encoder.w
+    # overlaps = [sum(a & b) / float(w) for a, b in zip(data[:-1], data[1:])]
+    # self._plot(overlaps, "Encoding overlaps between consecutive times")
+
+    for i, action in enumerate(ACTIIONS):
+      self.plt.subplot(n,1,4+i)
+      self._plot(self.qValues[action], "Q value: {0}".format(action))
+
+    self.plt.subplot(n,1,7)
+    self._plot(self.bestAction, "Best action")
 
     self.plt.draw()
 
