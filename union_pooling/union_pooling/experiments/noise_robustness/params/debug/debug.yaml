@@ -1,11 +1,11 @@
 patternDimensionality: 128
 patternCardinality: 3
 sequenceLength: 13
-numberOfSequences: 10
+numberOfSequences: 200
 trainingPasses: 3
-testPresentations: 10
-perturbationChance: 0.0
-sequenceJumpPerturbationChance: 0.50
+testPresentations: 200
+perturbationChance: 0.50
+sequenceJumpPerturbationChance: 0.05
 
 temporalMemoryParams:
   columnDimensions: [128]

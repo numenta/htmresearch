@@ -156,7 +156,6 @@ def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
         sensorPattern = selectedSequence[i]
         actualCategory = selectedSequenceCatgories[i]
         i += 1
-
       experiment.runNetworkOnPattern(sensorPattern,
                                      tmLearn=False,
                                      upLearn=False)
@@ -181,27 +180,23 @@ def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
 
     # While presenting sequence
     else:
-      print
-      # Sequence perturbation counts
-      if consoleVerbosity > 1:
-        print presentationString
-        print ("Perturbations: PatternSub: {0} PatternSkip: {1} "
-               "PatternAdd: {2} SequenceSkip {3}").format(pert0Count,
-                                                          pert1Count,
-                                                          pert2Count,
-                                                          pert3Count)
-        print
 
       # Presentation finished; prepare for next one
+      if consoleVerbosity > 0:
+        print presentationString
       presentation += 1
       presentationString = "Presentation {0}: ".format(presentation)
-      pert0Count = 0
-      pert1Count = 0
-      pert2Count = 0
-      pert3Count = 0
+
     # Finished with sequence presentation
 
   # While running test presentations
+  # Sequence perturbation counts
+  if consoleVerbosity > 0:
+    print ("\nPerturbation Summary: PatternSub: {0} PatternSkip: {1} "
+           "PatternAdd: {2} SequenceSkip {3}\n").format(pert0Count,
+                                                        pert1Count,
+                                                        pert2Count,
+                                                        pert3Count)
 
   return actualCategories, classifiedCategories
 
@@ -295,12 +290,8 @@ def run(params, paramDir, outputDir, consoleVerbosity=0):
                                      consoleVerbosity=0)
 
   # Training only the Temporal Memory on the generated sequences
-  if trainingPasses > 0:
-    print "\nTraining Temporal Memory..."
-    if consoleVerbosity > 0:
-      print "\nTemporal Memory Bursting Columns stats..."
-      print "Pass\tMean\t\tStdDev\t\tMax"
-
+  print "\nTraining Temporal Memory..."
+  burstingColsString = ""
   for i in xrange(trainingPasses):
     experiment.runNetworkOnSequences(inputSequences,
                                      inputCategories,
@@ -309,23 +300,27 @@ def run(params, paramDir, outputDir, consoleVerbosity=0):
                                      classifierLearn=False,
                                      verbosity=consoleVerbosity,
                                      progressInterval=_SHOW_PROGRESS_INTERVAL)
-    if consoleVerbosity > 0:
-      stats = experiment.getBurstingColumnsStats()
-      print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
-      if consoleVerbosity > 1:
-        print
-        print MonitorMixinBase.mmPrettyPrintMetrics(
-          experiment.tm.mmGetDefaultMetrics())
-        print
+
+    if consoleVerbosity > 1:
+      print
+      print MonitorMixinBase.mmPrettyPrintMetrics(
+        experiment.tm.mmGetDefaultMetrics())
+      print
+    stats = experiment.getBurstingColumnsStats()
+    burstingColsString += "{0}\t{1}\t{2}\t{3}\n".format(i, stats[0], stats[1],
+                                                       stats[2])
 
     experiment.tm.mmClearHistory()
     experiment.up.mmClearHistory()
 
-  # With Temporal Memory learning off and Union Pooler running without learning,
-  # train the classifier.
+  if consoleVerbosity > 0:
+    print "\nTemporal Memory Bursting Columns stats..."
+    print "Pass\tMean\t\tStdDev\t\tMax"
+    print burstingColsString
+
+  # With learning off, but TM and UP running, train the classifier.
   print "\nTraining Classifier..."
-  if consoleVerbosity > 2:
-      print "Pass\tClassifier Patterns\tUnique Sequences"
+  classifResString = ""
   for i in xrange(trainingPasses):
     experiment.runNetworkOnSequences(inputSequences,
                                      inputCategories,
@@ -334,11 +329,15 @@ def run(params, paramDir, outputDir, consoleVerbosity=0):
                                      classifierLearn=True,
                                      verbosity=consoleVerbosity,
                                      progressInterval=_SHOW_PROGRESS_INTERVAL)
-    if consoleVerbosity > 2:
-      print "{0}\t\t{1}\t\t{2}".format(i, experiment.classifier._numPatterns,
-                                       numberOfSequences)
+
+    classifResString +=  "{0}\t\t{1}\t\t{2}\n".format(i,
+      experiment.classifier._numPatterns, numberOfSequences)
     experiment.tm.mmClearHistory()
     experiment.up.mmClearHistory()
+
+  if consoleVerbosity > 1:
+    print "Pass\tClassifier Patterns\tUnique Sequences"
+    print classifResString
 
   print "\nRunning test phase..."
   actualCategories, classifiedCategories = runTestPhase(experiment,
