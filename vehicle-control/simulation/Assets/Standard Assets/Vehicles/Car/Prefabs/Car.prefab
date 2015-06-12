@@ -2068,7 +2068,7 @@ MonoBehaviour:
   numRays: 720
   graphVerticalOffset: 30
   fieldOfView: 360
-  focalLength: 40
+  focalLength: 60
 --- !u!120 &12050378
 LineRenderer:
   m_ObjectHideFlags: 1
