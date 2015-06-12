@@ -60,7 +60,7 @@ changing when sequence actually changes.
 
 
 
-_SHOW_PROGRESS_INTERVAL = 2000
+_SHOW_PROGRESS_INTERVAL = 3000
 
 
 
