@@ -210,7 +210,7 @@ def getRandomPatternIndex(patterns):
 
 
 
-def run(params, paramDir, outputDir, consoleVerbosity=0):
+def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   """
   Runs the noise robustness experiment.
 
