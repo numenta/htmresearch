@@ -31,9 +31,21 @@ public class API : MonoBehaviour {
 		return null;
 	}
 
-	void Clear() {
+	public float LastSyncTime() {
+		return _lastSyncTime;
+	}
+
+	void ClearOutput() {
 		_outputData = new Dictionary<string, object>();
+	}
+
+	void ClearInput() {
 		_inputData = new Dictionary<string, object>();
+	}
+
+	void Clear() {
+		ClearOutput();
+		ClearInput();
 	}
 
 	/* Data transfer */
@@ -59,6 +71,7 @@ public class API : MonoBehaviour {
 		if (www.error != null) return false;
 
 		_inputData = JsonReader.Deserialize<Dictionary<string, object>>(www.text);
+		ClearOutput();
 	}
 
 	/* Events */
@@ -120,7 +133,7 @@ public class API : MonoBehaviour {
 		}
 		else {
 			if(this != _instance)
-			Destroy(this.gameObject);
+			DestroyImmediate(this.gameObject);
 		}
 	}
 
