@@ -71,11 +71,17 @@ class QLearner(ReinforcementLearner):
 
 
   def update(self, state, action, nextState, nextAction, reward):
+    targetValue = reward + self.gamma * self.value(nextState)
     qValue = self.qValue(state, action)
-    correction = (reward + self.gamma * self.value(nextState)) - qValue
-    correction /= sum(state)
+    correction = (targetValue - qValue) / sum(state)
+    targetWeight = targetValue / sum(state)
 
-    for i in state.nonzero()[0]:
-      self.weights[action][i] += self.alpha * correction * state[i]
+    diffs = [abs(targetWeight - self.weights[action][i])
+             for i in state.nonzero()[0]]
+    maxDiff = max(diffs)
 
-    return qValue, correction
+    if maxDiff != 0:
+      for i in state.nonzero()[0]:
+        diff = abs(targetWeight - self.weights[action][i])
+        scale = diff / maxDiff
+        self.weights[action][i] += self.alpha * correction * scale
