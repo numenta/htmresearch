@@ -24,6 +24,7 @@ import csv
 import numpy
 from optparse import OptionParser
 import os
+import pprint
 import random
 import sys
 import time
@@ -64,7 +65,7 @@ _SHOW_PROGRESS_INTERVAL = 3000
 
 
 
-def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
+def runTestPhase(experiment, inputSequences, sequenceCount,
                  sequenceLength, testPresentations, perturbationChance,
                  sequenceJumpPerturbationChance, consoleVerbosity):
   """
@@ -89,124 +90,115 @@ def runTestPhase(experiment, inputSequences, inputCategories, sequenceCount,
   classifiedCategories = []
 
   # Compute the bounds for a wheel-of-fortune style roll
-  pert1ChanceThreshold = (1 - sequenceJumpPerturbationChance) * (1 / 3.0)
-  pert2ChanceThreshold = (1 - sequenceJumpPerturbationChance) * (2 / 3.0)
-  pert3ChanceThreshold = (1 - sequenceJumpPerturbationChance)
+  patternSubChanceThreshold = (1 - sequenceJumpPerturbationChance) * (1 / 3.0)
+  patternSkipChanceThreshold = (1 - sequenceJumpPerturbationChance) * (2 / 3.0)
+  patternAddChanceThreshold = (1 - sequenceJumpPerturbationChance)
+  # sequenceJumpChanceThreshold = 1
+
+  if consoleVerbosity > 0:
+    patternSubCount = 0
+    patternSkipCount = 0
+    patternAddCount = 0
+    sequenceJumpCount = 0
+    presentationString = "Presentation 0: "
 
   presentation = 0
-  presentationString = "Presentation 0: "
-  pert0Count = 0
-  pert1Count = 0
-  pert2Count = 0
-  pert3Count = 0
   while presentation < testPresentations:
 
     # Randomly select the next sequence to present
-    r = random.randint(0, sequenceCount - 1)
-    start = r + r * sequenceLength
-    end = r + 1 + (r + 1) * sequenceLength
-    selectedSequence = inputSequences[start:end]
-    selectedSequenceCatgories = inputCategories[start:end]
+    sequence = random.randint(0, sequenceCount - 1)
 
     if consoleVerbosity > 0:
-      presentationString += "Seq-{0} ".format(r)
+      presentationString += "Seq-{0} ".format(sequence)
 
     # Present selected sequence to network
-    i = 0
-    while i < len(selectedSequence):
+    i = sequence + sequence * sequenceLength
+    sequenceEnd = sequence + 1 + (sequence + 1) * sequenceLength
+    while i < sequenceEnd:
 
       # Roll to determine if there will be a perturbation of next pattern
-      if (selectedSequence[i] is not None and
+      if (inputSequences[i] is not None and
           random.random() < perturbationChance):
 
         # Randomly select a perturbation type with equal probability
         perturbationType = random.random()
-        if perturbationType < pert1ChanceThreshold:
+        if perturbationType < patternSubChanceThreshold:
 
-          # Substitution with random pattern
-          randIdx = getRandomPatternIndex(inputSequences)
-          sensorPattern = inputSequences[randIdx]
-          actualCategory = inputCategories[randIdx]
+          # Substitute in a random pattern and move on to next pattern
+          # in sequence
+          currentPattern = getRandomPattern(inputSequences)
           i += 1
-          pert0Count += 1
-        elif perturbationType < pert2ChanceThreshold:
+          patternSubCount += 1
+        elif perturbationType < patternSkipChanceThreshold:
 
           # Skip to next pattern in sequence
           i += 1
-          if i == len(selectedSequence):
+          if i == sequenceEnd:
             break;
-          sensorPattern = selectedSequence[i]
-          actualCategory = selectedSequenceCatgories[i]
+          currentPattern = inputSequences[i]
           i += 1
-          pert1Count += 1
-        elif perturbationType < pert3ChanceThreshold:
+          patternSkipCount += 1
+        elif perturbationType < patternAddChanceThreshold:
 
-          # Add in a random pattern
-          randIdx = getRandomPatternIndex(inputSequences)
-          sensorPattern = inputSequences[randIdx]
-          actualCategory = inputCategories[randIdx]
-          pert2Count += 1
+          # Add in an extra random pattern
+          currentPattern = getRandomPattern(inputSequences)
+          patternAddCount += 1
         else:
 
           # Random jump to another sequence
-          pert3Count += 1
+          sequenceJumpCount += 1
           break
 
       else:
-        sensorPattern = selectedSequence[i]
-        actualCategory = selectedSequenceCatgories[i]
+        currentPattern = inputSequences[i]
         i += 1
-      experiment.runNetworkOnPattern(sensorPattern,
+
+      experiment.runNetworkOnPattern(currentPattern,
                                      tmLearn=False,
                                      upLearn=False)
 
-      if sensorPattern is not None:
+      if currentPattern is not None:
         # Store classification
         unionSDR = experiment.up.getUnionSDR()
         denseUnionSDR = numpy.zeros(experiment.up.getNumColumns())
         denseUnionSDR[unionSDR] = 1.0
-        winningCategory, _, _, _ = experiment.classifier.infer(denseUnionSDR)
-        # print "Classif: {0} for {1}".format(winningCategory, unionSDR)
-        # overlaps, categories = experiment.classifier.getOverlaps(unionSDR)
-        # print "Overlaps " + str(overlaps)
-        # print "Categories " + str(categories)
-        # print
-      else:
-        winningCategory = None
-        actualCategory = None
+        classification, _, _, _ = experiment.classifier.infer(denseUnionSDR)
 
-      classifiedCategories.append(winningCategory)
-      actualCategories.append(actualCategory)
+        # Assumes sequence number and sequence category is equivalent
+        actualCategories.append(sequence)
+        classifiedCategories.append(classification)
 
     # While presenting sequence
     else:
+      # Move to next presentation only if a sequence has been completed
+      # without any sequence jumps
+      presentation += 1
 
       # Presentation finished; prepare for next one
       if consoleVerbosity > 0:
         print presentationString
-      presentation += 1
-      presentationString = "Presentation {0}: ".format(presentation)
+        presentationString = "Presentation {0}: ".format(presentation)
 
-    # Finished with sequence presentation
+    # Finished sequence presentation
 
   # While running test presentations
-  # Sequence perturbation counts
+
   if consoleVerbosity > 0:
-    print ("\nPerturbation Summary: PatternSub: {0} PatternSkip: {1} "
-           "PatternAdd: {2} SequenceSkip {3}\n").format(pert0Count,
-                                                        pert1Count,
-                                                        pert2Count,
-                                                        pert3Count)
+    print ("\nPerturbation Counts: PatternSub: {0} PatternSkip: {1} "
+           "PatternAdd: {2} SequenceJump {3}\n").format(patternSubCount,
+                                                        patternSkipCount,
+                                                        patternAddCount,
+                                                        sequenceJumpCount)
 
   return actualCategories, classifiedCategories
 
 
 
-def getRandomPatternIndex(patterns):
-  rand = random.randint(0, len(patterns)-1)
-  while patterns[rand] is None:
-    rand = random.randint(0, len(patterns)-1)
-  return rand
+def getRandomPattern(patterns):
+  r = random.randint(0, len(patterns)-1)
+  while patterns[r] is None:
+    r = random.randint(0, len(patterns)-1)
+  return patterns[r]
 
 
 
@@ -342,7 +334,6 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   print "\nRunning test phase..."
   actualCategories, classifiedCategories = runTestPhase(experiment,
                                                         inputSequences,
-                                                        inputCategories,
                                                         numberOfSequences,
                                                         sequenceLength,
                                                         testPresentations,
@@ -350,21 +341,16 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
                                                         sequenceJumpPerturbationChance,
                                                         consoleVerbosity)
 
-  # Classification stats
-  correctClassifications = 0.0
-  numberClassifications = 0.0
-  classificationVector = []
-  for i in xrange(len(actualCategories)):
-    if actualCategories[i] is not None:
-      numberClassifications += 1
-      if actualCategories[i] == classifiedCategories[i]:
-        correctClassifications += 1
-        classificationVector.append(1)
-      else:
-        classificationVector.append(0)
-    else:
-      classificationVector.append("*")
-  classificationRate = 100.0 * correctClassifications / numberClassifications
+  # Classification results
+  print "\n*Results*"
+  pprint.pprint("Actual Category {0}".format(actualCategories), width=50)
+  pprint.pprint("Classification  {0}".format(classifiedCategories), width=50)
+
+  correctClassificationTrace = [1 if (actualCategories[i] ==
+                                      classifiedCategories[i]) else 0
+                                for i in xrange(len(actualCategories))]
+  correctClassifications = correctClassificationTrace.count(1)
+  classificationRate = 100.0 * correctClassifications / len(actualCategories)
 
   # Output
   print "\n>>> Correct Classification Rate: {0:.2f}%".format(classificationRate)
@@ -377,7 +363,7 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   print "\nFinished in {0:.2f} minutes.".format(elapsedTime)
 
   writeClassificationTrace(actualCategories, classifiedCategories,
-                           classificationVector, [classificationRate],
+                           correctClassificationTrace, [classificationRate],
                            [elapsedTime], outputDir, outputFileName)
 
 

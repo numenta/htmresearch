@@ -154,7 +154,6 @@ class UnionPoolerExperiment(object):
     """
 
     currentTime = time.time()
-
     for i in xrange(len(inputSequences)):
       sensorPattern = inputSequences[i]
       inputCategory = inputCategories[i]
@@ -170,9 +169,8 @@ class UnionPoolerExperiment(object):
         unionSDR = self.up.getUnionSDR()
         upCellCount = self.up.getColumnDimensions()
         self.classifier.learn(unionSDR, inputCategory, isSparse=upCellCount)
-        if verbosity > 1:
-          pprint.pprint("Union SDR {0} is Cat {1}".format(unionSDR,
-                                                          inputCategory))
+        if verbosity > 0:
+          pprint.pprint("{0} is category {1}".format(unionSDR, inputCategory))
 
       if progressInterval is not None and i > 0 and i % progressInterval == 0:
         elapsed = (time.time() - currentTime) / 60.0
