@@ -202,6 +202,84 @@ def getRandomPattern(patterns):
 
 
 
+def trainTemporalMemory(experiment, inputSequences, inputCategories,
+                        trainingPasses, consoleVerbosity):
+  burstingColsString = ""
+  for i in xrange(trainingPasses):
+    experiment.runNetworkOnSequences(inputSequences,
+                                     inputCategories,
+                                     tmLearn=True,
+                                     upLearn=None,
+                                     classifierLearn=False,
+                                     verbosity=consoleVerbosity,
+                                     progressInterval=_SHOW_PROGRESS_INTERVAL)
+
+    if consoleVerbosity > 1:
+      print
+      print MonitorMixinBase.mmPrettyPrintMetrics(
+        experiment.tm.mmGetDefaultMetrics())
+      print
+    stats = experiment.getBurstingColumnsStats()
+    burstingColsString += "{0}\t{1}\t{2}\t{3}\n".format(i, stats[0], stats[1],
+                                                        stats[2])
+
+    experiment.tm.mmClearHistory()
+    experiment.up.mmClearHistory()
+
+  if consoleVerbosity > 0:
+    print "\nTemporal Memory Bursting Columns stats..."
+    print "Pass\tMean\t\tStdDev\t\tMax"
+    print burstingColsString
+
+
+
+def trainClassifier(experiment, inputSequences, inputCategories,
+                    numberOfSequences, trainingPasses, consoleVerbosity):
+  classifResString = ""
+  for i in xrange(trainingPasses):
+    experiment.runNetworkOnSequences(inputSequences,
+                                     inputCategories,
+                                     tmLearn=False,
+                                     upLearn=False,
+                                     classifierLearn=True,
+                                     verbosity=consoleVerbosity,
+                                     progressInterval=_SHOW_PROGRESS_INTERVAL)
+
+    classifResString += "{0}\t\t{1}\t\t{2}\n".format(i,
+                                                     experiment.classifier._numPatterns,
+                                                     numberOfSequences)
+    experiment.tm.mmClearHistory()
+    experiment.up.mmClearHistory()
+  if consoleVerbosity > 1:
+    print "Pass\tClassifier Patterns\tUnique Sequences"
+    print classifResString
+
+
+
+def generateSequences(patternCardinality, patternDimensionality,
+                      numberOfSequences, sequenceLength, consoleVerbosity):
+  patternAlphabetSize = sequenceLength * numberOfSequences
+  patternMachine = PatternMachine(patternDimensionality, patternCardinality,
+                                  patternAlphabetSize)
+  sequenceMachine = SequenceMachine(patternMachine)
+  numbers = sequenceMachine.generateNumbers(numberOfSequences, sequenceLength)
+  inputSequences = sequenceMachine.generateFromNumbers(numbers)
+  inputCategories = []
+  for i in xrange(numberOfSequences):
+    for _ in xrange(sequenceLength):
+      inputCategories.append(i)
+    inputCategories.append(None)
+  if consoleVerbosity > 1:
+    for i in xrange(len(inputSequences)):
+      if inputSequences[i] is None:
+        print
+      else:
+        print "{0} {1}".format(inputSequences[i], inputCategories[i])
+
+  return inputSequences, inputCategories
+
+
+
 def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   """
   Runs the noise robustness experiment.
@@ -244,7 +322,7 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   trainingPasses = params["trainingPasses"]
   testPresentations = params["testPresentations"]
   perturbationChance = params["perturbationChance"]
-  sequenceJumpPerturbationChance = params["sequenceJumpPerturbationChance"]
+  sequenceJumpChance = params["sequenceJumpPerturbationChance"]
   tmParamOverrides = params["temporalMemoryParams"]
   upParamOverrides = params["unionPoolerParams"]
   classifierOverrides = params["classifierParams"]
@@ -252,27 +330,11 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   # Generate a sequence list and an associated labeled list (both containing a
   # set of sequences separated by None)
   print "Generating sequences..."
-  patternAlphabetSize = sequenceLength * numberOfSequences
-  patternMachine = PatternMachine(patternDimensionality, patternCardinality,
-                                  patternAlphabetSize)
-  sequenceMachine = SequenceMachine(patternMachine)
-
-  numbers = sequenceMachine.generateNumbers(numberOfSequences, sequenceLength)
-  inputSequences = sequenceMachine.generateFromNumbers(numbers)
-
-  inputCategories = []
-  for i in xrange(numberOfSequences):
-    for _ in xrange(sequenceLength):
-      inputCategories.append(i)
-    inputCategories.append(None)
-
-  if consoleVerbosity > 2:
-    for i in xrange(len(inputSequences)):
-      if inputSequences[i] is None:
-        print
-      else:
-        print inputSequences[i]
-        print inputCategories[i]
+  inputSequences, inputCategories = generateSequences(patternCardinality,
+                                                      patternDimensionality,
+                                                      numberOfSequences,
+                                                      sequenceLength,
+                                                      consoleVerbosity)
 
   # Set up the Temporal Memory and Union Pooler network
   print "\nCreating network..."
@@ -283,53 +345,13 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
 
   # Training only the Temporal Memory on the generated sequences
   print "\nTraining Temporal Memory..."
-  burstingColsString = ""
-  for i in xrange(trainingPasses):
-    experiment.runNetworkOnSequences(inputSequences,
-                                     inputCategories,
-                                     tmLearn=True,
-                                     upLearn=None,
-                                     classifierLearn=False,
-                                     verbosity=consoleVerbosity,
-                                     progressInterval=_SHOW_PROGRESS_INTERVAL)
-
-    if consoleVerbosity > 1:
-      print
-      print MonitorMixinBase.mmPrettyPrintMetrics(
-        experiment.tm.mmGetDefaultMetrics())
-      print
-    stats = experiment.getBurstingColumnsStats()
-    burstingColsString += "{0}\t{1}\t{2}\t{3}\n".format(i, stats[0], stats[1],
-                                                       stats[2])
-
-    experiment.tm.mmClearHistory()
-    experiment.up.mmClearHistory()
-
-  if consoleVerbosity > 0:
-    print "\nTemporal Memory Bursting Columns stats..."
-    print "Pass\tMean\t\tStdDev\t\tMax"
-    print burstingColsString
+  trainTemporalMemory(experiment, inputSequences, inputCategories,
+                      trainingPasses, consoleVerbosity)
 
   # With learning off, but TM and UP running, train the classifier.
   print "\nTraining Classifier..."
-  classifResString = ""
-  for i in xrange(trainingPasses):
-    experiment.runNetworkOnSequences(inputSequences,
-                                     inputCategories,
-                                     tmLearn=False,
-                                     upLearn=False,
-                                     classifierLearn=True,
-                                     verbosity=consoleVerbosity,
-                                     progressInterval=_SHOW_PROGRESS_INTERVAL)
-
-    classifResString +=  "{0}\t\t{1}\t\t{2}\n".format(i,
-      experiment.classifier._numPatterns, numberOfSequences)
-    experiment.tm.mmClearHistory()
-    experiment.up.mmClearHistory()
-
-  if consoleVerbosity > 1:
-    print "Pass\tClassifier Patterns\tUnique Sequences"
-    print classifResString
+  trainClassifier(experiment, inputSequences, inputCategories,
+                  numberOfSequences, trainingPasses, consoleVerbosity)
 
   print "\nRunning test phase..."
   actualCategories, classifiedCategories = runTestPhase(experiment,
@@ -338,7 +360,7 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
                                                         sequenceLength,
                                                         testPresentations,
                                                         perturbationChance,
-                                                        sequenceJumpPerturbationChance,
+                                                        sequenceJumpChance,
                                                         consoleVerbosity)
 
   # Classification results
@@ -356,7 +378,7 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   print "\n>>> Correct Classification Rate: {0:.2f}%".format(classificationRate)
 
   outputFileName = "testPres{0}_perturbationRate{1}_jumpRate{2}.txt".format(
-    testPresentations, perturbationChance, sequenceJumpPerturbationChance)
+    testPresentations, perturbationChance, sequenceJumpChance)
   print "\nWriting results to {0}/{1}".format(outputDir, outputFileName)
 
   elapsedTime = (time.time() - startTime) / 60.0
