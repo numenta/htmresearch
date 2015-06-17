@@ -179,7 +179,6 @@ def runExperiment1(options):
                               learnOnOneCell = False,
                               permanenceOrphanDecrement = 0.01,
                               columnDimensions=(2048,),
-                              learningRadius=2048,
                               initialPermanence=0.21,
                               connectedPermanence=0.50,
                               permanenceIncrement=0.10,
