@@ -9,6 +9,15 @@ public class CarAIControl : MonoBehaviour {
 
 	private float timeSinceReset;
 	private float action;
+	private float overrideHorizontal;
+	private float overrideVertical;
+	private bool directionIsOverridden = false;
+
+	public void OverrideControl(float horizontal, float vertical) {
+		overrideHorizontal = horizontal;
+		overrideVertical = vertical;
+		directionIsOverridden = true;
+	}
 
 	void UpdateControl() {
 		userControl.vertical = 1;
@@ -17,8 +26,13 @@ public class CarAIControl : MonoBehaviour {
 			userControl.horizontal = (float)(double)API.instance.GetInput("steer");
 		}
 
-		if (userControl.horizontal > 0) userControl.horizontal = 1;
-		if (userControl.horizontal < 0) userControl.horizontal = -1;
+		userControl.horizontal = Mathf.Round(userControl.horizontal);
+
+		if (directionIsOverridden) {
+			userControl.horizontal = overrideHorizontal;
+			userControl.vertical = overrideVertical;
+			directionIsOverridden = false;
+		}
 
 		ExecutePredefinedControl();
 
@@ -70,6 +84,8 @@ public class CarAIControl : MonoBehaviour {
 		if (timeSinceReset > 10 && timeSinceReset < 12) {
 			userControl.horizontal = action;
 		}
+
+
 	}
 
 	void Setup() {
