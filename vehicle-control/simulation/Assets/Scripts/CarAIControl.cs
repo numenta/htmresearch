@@ -26,6 +26,8 @@ public class CarAIControl : MonoBehaviour {
 			userControl.horizontal = (float)(double)API.instance.GetInput("steer");
 		}
 
+		if (userControl.horizontal > 0) userControl.horizontal = 1;
+		if (userControl.horizontal < 0) userControl.horizontal = -1;
 		userControl.horizontal = Mathf.Round(userControl.horizontal);
 
 		if (directionIsOverridden) {
@@ -84,8 +86,6 @@ public class CarAIControl : MonoBehaviour {
 		if (timeSinceReset > 10 && timeSinceReset < 12) {
 			userControl.horizontal = action;
 		}
-
-
 	}
 
 	void Setup() {
