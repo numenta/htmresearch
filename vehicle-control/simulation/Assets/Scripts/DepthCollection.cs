@@ -18,7 +18,7 @@ public class DepthCollection : MonoBehaviour {
 		}
 		else {
 			if (holdingKey) {
-				screenshotName = "screenshot_"+System.DateTime.Now.ToString("%y%m%d%H%M%s")+".png";
+				screenshotName = "screenshot_"+System.DateTime.Now.ToString("%y%M%d%H%M%ss")+".png";
 				Application.CaptureScreenshot("Screenshots/"+screenshotName);
 				holdingKey = false;
 			}

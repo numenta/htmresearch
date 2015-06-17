@@ -113,8 +113,8 @@ def comparePlotSDRs(SDRList, shape=_SHAPE):
 			axs[j][i].yaxis.set_ticklabels([])
 
 			title = "{0:.2f}".format(score)
-			axs[j][i].text(.5, 0.5, title, horizontalalignment='center',
-        				   transform=axs[j][i].transAxes)
+			axs[i][j].text(.2, .1, title, horizontalalignment='center',
+        				   transform=axs[i][j].transAxes)
 
 	plt.show()
 
@@ -150,7 +150,7 @@ def collectDepthData(outputDir=_OUTPUT_DIR):
 		dt = time.strftime("%y%m%d%H%M%S")
 		depthID = 'depth_'+dt+'.txt'
 
-		depthOutputPath = os.path.join(os.path.dirname(__file__)+outputDir,
+		depthOutputPath = os.path.join(os.path.dirname(__file__)+'/'+outputDir,
 									   depthID)
 
 		np.savetxt(depthOutputPath, depthData)
@@ -158,7 +158,7 @@ def collectDepthData(outputDir=_OUTPUT_DIR):
 		print "Wrote out to ", depthOutputPath
 
 def prepareDepthData(inputDir, encoder_params):
-	depthDir = os.path.dirname(__file__)+inputDir
+	depthDir = os.path.dirname(__file__)+'/'+inputDir
 	SDRs = []
 
 	encoder = OneDDepthEncoder(**encoder_params)
