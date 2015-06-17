@@ -21,12 +21,21 @@
 # ----------------------------------------------------------------------
 
 """
-This program runs many experiments in parallel.
+This module can run several experiments in parallel.
+It has the following restrictions:
+
+1) For each experiment there is a unique parameter file
+2) Parameter files are all in same directory
+3) Parameter files are .yaml file type
+4) Console output and logging are sent to a .log file for each
+experiment
+5) All output is sent to a single directory
+
+See _getArgs for exact usage.
 """
 
 import importlib
 from multiprocessing import Pool
-
 from optparse import OptionParser
 import os
 from os import listdir
@@ -38,17 +47,19 @@ import yaml
 
 
 def _getArgs():
-  parser = OptionParser(usage="%prog EXPERIMENT_MODULE FUNCTION_MODULE "
+  numRequiredArgs = 4
+  parser = OptionParser(usage="%prog MODULE FUNCTION "
                               "PARAM_FILES_DIR OUTPUT_DIR [options]"
-                              "\n\nFrom MODULE runs FUNCTION for each "
-                              "parameter file in PARAM_FILES_DIR in parallel "
-                              "outputting to OUTPUT_DIR.")
+                              "\n\nRuns FUNCTION in MODULE for "
+                              "each .yaml file in PARAM_FILES_DIR in "
+                              "parallel outputting console output and "
+                              "logging to OUTPUT_DIR.")
   parser.add_option("-w",
                     "--workers",
                     type=int,
                     default=4,
                     dest="workers",
-                    help="Max number of parallel workers.")
+                    help="Maximum number of parallel workers.")
   parser.add_option("-p",
                     "--plot",
                     type=int,
@@ -63,7 +74,7 @@ def _getArgs():
                     help="Console verbosity")
 
   (options, args) = parser.parse_args(sys.argv[1:])
-  if len(args) != 4:
+  if len(args) != numRequiredArgs:
     parser.print_help(sys.stderr)
     sys.exit()
 
@@ -71,10 +82,18 @@ def _getArgs():
 
 
 
-def run(args):
+def runSingleExperiment(args):
   (function, params, paramsDir, paramFileName, paramFile,
   outputDir, consoleVerbosity, plotVerbosity) = args
-  logPath = "{0}.log".format(paramFileName)
+
+  print "Starting {0} ...".format(paramFileName)
+
+  logDir = outputDir + "/logs"
+  if not os.path.exists(logDir):
+    os.makedirs(logDir)
+
+  logFileName = paramFileName.split(".")[0] + ".log"
+  logPath = os.path.join(logDir, logFileName)
 
   with open(logPath, "w", buffering=0) as logFile:
     sys.stdout = logFile
@@ -108,21 +127,23 @@ def loadExperiments():
   experimentModule = importlib.import_module(moduleName)
   experimentFunction = getattr(experimentModule, functionName)
 
-  print "Param files dir: {0}".format(paramsDir)
-  print "Output dir: {0}\n".format(outputDir)
+  print "Loading parameter files from: {0}".format(paramsDir)
+  print "Output console and logs to: {0}\n".format(outputDir)
 
   if not os.path.exists(outputDir):
     os.makedirs(outputDir)
 
-  pool = Pool(processes=workers)
-  paramFileList = [f for f in listdir(paramsDir) if isfile(join(paramsDir,f)) ]
+  argsList = []
+  paramFileList = [f for f in listdir(paramsDir) if isfile(join(paramsDir,f))]
   for f in paramFileList:
     with open(join(paramsDir,f)) as paramFile:
       params = yaml.safe_load(paramFile)
-      print "Starting {0} ...".format(f)
-      runArgs = [(experimentFunction, params, paramsDir, f, paramFile,
-                  outputDir, consoleVerbosity, plotVerbosity)]
-      pool.map(run, runArgs)
+      argsList.append((experimentFunction, params, paramsDir, f, paramFile,
+                       outputDir, consoleVerbosity, plotVerbosity))
+
+  pool = Pool(processes=workers)
+  pool.map(runSingleExperiment, argsList)
+
 
 
 if __name__ == "__main__":
