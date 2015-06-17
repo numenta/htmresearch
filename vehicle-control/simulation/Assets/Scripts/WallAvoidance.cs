@@ -9,7 +9,7 @@ public class WallAvoidance : MonoBehaviour {
 
 	private GameObject closeWall;
 	private GameObject closestWall;
-	private float closestWallDistance = 8f;
+	private float closestWallDistance = 6f;
 	private float steeringDirection;
 	private Vector3[] views;
 	private float distance;
@@ -20,7 +20,7 @@ public class WallAvoidance : MonoBehaviour {
 		Quaternion rotation = Quaternion.Euler(0, fieldOfView / numViews, 0);
 		Vector3 direction = Quaternion.Euler(0, -fieldOfView / 2f, 0) * transform.forward;
 
-		closestWallDistance = 8f;
+		closestWallDistance = 6f;
 		closestWall = null;
 
 		for (int i = 0; i < numViews; i++) {
