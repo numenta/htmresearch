@@ -533,8 +533,6 @@ GameObject:
   serializedVersion: 4
   m_Component:
   - 4: {fileID: 466396}
-  - 114: {fileID: 11458312}
-  - 120: {fileID: 12050378}
   - 114: {fileID: 11417906}
   m_Layer: 0
   m_Name: DepthCollectionSensor
@@ -2095,22 +2093,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cbb2ef4811ae34a7ca04fe7e361fc192, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &11458312
-MonoBehaviour:
-  m_ObjectHideFlags: 1
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 112014}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8f670dba9684447b986489a6e5aeef35, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  lineRenderer: {fileID: 12050378}
-  numRays: 720
-  graphVerticalOffset: 30
-  fieldOfView: 360
-  focalLength: 60
 --- !u!114 &11494148
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -2127,41 +2109,6 @@ MonoBehaviour:
   graphVerticalOffset: 30
   fieldOfView: 360
   focalLength: 60
---- !u!120 &12050378
-LineRenderer:
-  m_ObjectHideFlags: 1
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 112014}
-  m_Enabled: 0
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_Materials:
-  - {fileID: 10754, guid: 0000000000000000e000000000000000, type: 0}
-  m_SubsetIndices: 
-  m_StaticBatchRoot: {fileID: 0}
-  m_UseLightProbes: 1
-  m_ReflectionProbeUsage: 1
-  m_ProbeAnchor: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_PreserveUVs: 0
-  m_ImportantGI: 0
-  m_AutoUVMaxDistance: .5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingOrder: 0
-  m_Positions: []
-  m_Parameters:
-    startWidth: .200000003
-    endWidth: .200000003
-    m_StartColor:
-      serializedVersion: 2
-      rgba: 4278190335
-    m_EndColor:
-      serializedVersion: 2
-      rgba: 4278190335
-  m_UseWorldSpace: 1
 --- !u!120 &12095298
 LineRenderer:
   m_ObjectHideFlags: 1

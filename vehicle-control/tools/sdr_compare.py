@@ -39,11 +39,12 @@ the percent overlap (relative to the density).
 """
 
 
-import time
+import argparse
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import time
 
 from unity_client.fetcher import Fetcher
 from sensorimotor.encoders.one_d_depth import OneDDepthEncoder
@@ -180,5 +181,28 @@ def compareDepthData(inputDir=_OUTPUT_DIR, encoder_params=_ENCODER_PARAMS):
 
 if __name__ == "__main__":
 
-	collectDepthData()
-	#compareDepthData()
+	parser = argparse.ArgumentParser()
+
+	parser.add_argument("--record",
+                    	default=False,
+                    	action='store_true',
+                    	help="Start recording depth data.")
+
+	parser.add_argument("--compare",
+                    	default=False,
+                    	action='store_true',
+                   		help="Compare depth data.")
+
+	args = parser.parse_args()
+
+	if args.record and args.compare:
+		raise "Cannot record and compare simultaneously."
+
+	if not (args.record or args.compare):
+		args.record = True
+
+	if args.record:
+		collectDepthData()
+
+	if args.compare:
+		compareDepthData()
