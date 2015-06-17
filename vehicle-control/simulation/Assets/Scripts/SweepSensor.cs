@@ -18,7 +18,7 @@ public class SweepSensor : MonoBehaviour {
 	void Update () {
 		RaycastHit hit;
 		Quaternion rotation = Quaternion.Euler(0, fieldOfView / numRays, 0);
-		Vector3 direction = Quaternion.Euler(0, -fieldOfView / 2f, 0) * transform.forward;
+		Vector3 direction = transform.forward;
 
 		float[] hits = new float[numRays];
 

@@ -49,7 +49,7 @@ import time
 from unity_client.fetcher import Fetcher
 from sensorimotor.encoders.one_d_depth import OneDDepthEncoder
 
-positions = [i*10 for i in range(18, 54)]
+positions = [i*10 for i in range(-18, 18)]
 nPerPosition = 28
 
 _SHAPE = (36, nPerPosition)
