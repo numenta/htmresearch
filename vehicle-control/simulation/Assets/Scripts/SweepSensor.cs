@@ -10,6 +10,8 @@ public class SweepSensor : MonoBehaviour {
 	public float focalLength = 20;
 
 	private bool lineIsActive = true;
+	private bool holdingKey = false;
+	private string screenshotName = "screenshot.png";
 
 	void Start () {
 		lineRenderer.SetVertexCount(numRays + 1);
@@ -45,6 +47,21 @@ public class SweepSensor : MonoBehaviour {
 			}
 
 			direction = rotation * direction;
+		}
+
+		if (Input.GetKey (KeyCode.C)) {
+			// For collecting depth data.
+			API.instance.SetOutput("collectKeyPressed", 1);
+			holdingKey = true;
+		}
+		else {
+			if (holdingKey) {
+				screenshotName = "screenshot_"+System.DateTime.Now.ToString("%y%m%d%H%M%s")+".png";
+				Application.CaptureScreenshot("Screenshots/"+screenshotName);
+				holdingKey = false;
+			}
+
+			API.instance.SetOutput("collectKeyPressed", 0);
 		}
 
 		API.instance.SetOutput(gameObject.name, hits);
