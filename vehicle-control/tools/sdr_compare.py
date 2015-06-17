@@ -150,15 +150,16 @@ def collectDepthData(outputDir=_OUTPUT_DIR):
 		dt = time.strftime("%y%m%d%H%M%S")
 		depthID = 'depth_'+dt+'.txt'
 
-		depthOutputPath = os.path.join(os.path.dirname(__file__)+'/'+outputDir,
-									   depthID)
+		depthOutputPath = os.path.join(os.path.dirname(__file__),
+                                   outputDir,
+                                   depthID)
 
 		np.savetxt(depthOutputPath, depthData)
 
 		print "Wrote out to ", depthOutputPath
 
 def prepareDepthData(inputDir, encoder_params):
-	depthDir = os.path.dirname(__file__)+'/'+inputDir
+	depthDir = os.path.join(os.path.dirname(__file__), inputDir)
 	SDRs = []
 
 	encoder = OneDDepthEncoder(**encoder_params)
