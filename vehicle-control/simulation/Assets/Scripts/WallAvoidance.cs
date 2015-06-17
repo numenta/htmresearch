@@ -9,7 +9,7 @@ public class WallAvoidance : MonoBehaviour {
 
 	private GameObject closeWall;
 	private GameObject closestWall;
-	private float closestWallDistance = 10f;
+	private float closestWallDistance = 8f;
 	private float steeringDirection;
 	private Vector3[] views;
 	private float distance;
@@ -20,7 +20,7 @@ public class WallAvoidance : MonoBehaviour {
 		Quaternion rotation = Quaternion.Euler(0, fieldOfView / numViews, 0);
 		Vector3 direction = Quaternion.Euler(0, -fieldOfView / 2f, 0) * transform.forward;
 
-		closestWallDistance = 10f;
+		closestWallDistance = 8f;
 		closestWall = null;
 
 		for (int i = 0; i < numViews; i++) {
@@ -42,20 +42,27 @@ public class WallAvoidance : MonoBehaviour {
 		return closestWall;
 	}
 
-	private float AvoidanceTurningDirection(float collosionObjectAngle, float carAngle) {
-		// Only change directions if moving towards the wall.
-		float refAngle = Mathf.Abs (collosionObjectAngle - carAngle);
-
-		if (refAngle < 90 || refAngle > 270) {
-			if (collosionObjectAngle < carAngle || 360 - collosionObjectAngle < carAngle) {
-				// The car is pointed towards the right, so turn it right.
-				return 1f;
+	private float AvoidanceTurningDirection(float collisionObjectAngle, float carAngle) {
+		if (collisionObjectAngle < carAngle) {
+			if (carAngle - collisionObjectAngle < 120) {
+				return 1;
 			}
-			// The car is pointed towards the left, so turn it left.
-			return -1f;
+			if (carAngle - collisionObjectAngle > 240) {
+				return -1;
+			}
+
+			return 0;
 		}
-		// The car is already moving away from the wall.
-		return 0f;
+
+		if (collisionObjectAngle - carAngle < 120) {
+			return -1;
+		}
+		if (collisionObjectAngle - carAngle > 240) {
+			return 1;
+		}
+
+		return 0;
+
 	}
 
 	private float HorizontalMoveAwayFromWall(GameObject wall) {
