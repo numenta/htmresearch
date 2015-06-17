@@ -17,7 +17,8 @@ public class CarAIControl : MonoBehaviour {
 			userControl.horizontal = (float)(double)API.instance.GetInput("steer");
 		}
 
-		userControl.horizontal = Mathf.Round(userControl.horizontal);
+		if (userControl.horizontal > 0) userControl.horizontal = 1;
+		if (userControl.horizontal < 0) userControl.horizontal = -1;
 
 		ExecutePredefinedControl();
 
