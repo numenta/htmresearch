@@ -145,7 +145,7 @@ class UnionPoolerExperiment(object):
                                     Each should be terminated with None.
 
     @param tmLearn:   (bool)        Temporal Memory learning mode
-    @param upLearn:   (None,bool)   Union Pooler learning mode. If None,
+    @param upLearn:   (None, bool)  Union Pooler learning mode. If None,
                                     Union Pooler will not be run.
     @param classifierLearn: (bool)  Classifier learning mode
 
@@ -163,9 +163,7 @@ class UnionPoolerExperiment(object):
                                upLearn=upLearn,
                                sequenceLabel=inputCategory)
 
-      # Classifier learns on Union Pooler SDR right before resets
-      if (classifierLearn and i + 1 < len(inputSequences) and
-          inputSequences[i+1] is None):
+      if classifierLearn and sensorPattern is not None:
         unionSDR = self.up.getUnionSDR()
         upCellCount = self.up.getColumnDimensions()
         self.classifier.learn(unionSDR, inputCategory, isSparse=upCellCount)

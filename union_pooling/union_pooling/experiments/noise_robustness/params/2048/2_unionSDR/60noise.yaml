@@ -42,7 +42,7 @@ unionPoolerParams:
   # Union Pooler Params
   activeOverlapWeight: 1.0
   predictedActiveOverlapWeight: 0.0
-  maxUnionActivity: 0.05
+  maxUnionActivity: 0.02
 
 classifierParams:
   "k": 1

@@ -4,8 +4,8 @@ sequenceLength: 13
 numberOfSequences: 200
 trainingPasses: 3
 testPresentations: 200
-perturbationChance: 0.0
-sequenceJumpPerturbationChance: 0.0
+perturbationChance: 0.70
+sequenceJumpPerturbationChance: 0.05
 
 temporalMemoryParams:
   columnDimensions: [1024]
@@ -42,7 +42,7 @@ unionPoolerParams:
   # Union Pooler Params
   activeOverlapWeight: 1.0
   predictedActiveOverlapWeight: 0.0
-  maxUnionActivity: 0.05
+  maxUnionActivity: 0.02
 
 classifierParams:
   "k": 1
