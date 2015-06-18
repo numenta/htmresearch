@@ -104,7 +104,7 @@ def runTestPhase(experiment, inputSequences, seqLabels, sequenceCount,
     lblSeq = seqLabels[begin: end]
 
     # Present sequence (minus reset element)
-    experiment.runNetworkOnSequence(seq[:-1],
+    experiment.runNetworkOnSequences(seq[:-1],
                                     lblSeq[:-1],
                                     tmLearn=False,
                                     upLearn=False,
@@ -116,7 +116,7 @@ def runTestPhase(experiment, inputSequences, seqLabels, sequenceCount,
     unionSdrs.append(numpy.sort(seqUnionSdr))
 
     # Run reset element
-    experiment.runNetworkOnSequence(seq[-1:],
+    experiment.runNetworkOnSequences(seq[-1:],
                                     lblSeq[-1:],
                                     tmLearn=False,
                                     upLearn=False,
@@ -174,12 +174,12 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   print "\nTraining Temporal Memory..."
   for i in xrange(trainingPasses):
     print "\nTraining pass {0} ...\n".format(i)
-    experiment.runNetworkOnSequence(inputSequences,
-                                    seqLabels,
-                                    tmLearn=True,
-                                    upLearn=None,
-                                    verbosity=consoleVerbosity,
-                                    progressInterval=_SHOW_PROGRESS_INTERVAL)
+    experiment.runNetworkOnSequences(inputSequences,
+                                     seqLabels,
+                                     tmLearn=True,
+                                     upLearn=None,
+                                     verbosity=consoleVerbosity,
+                                     progressInterval=_SHOW_PROGRESS_INTERVAL)
 
     if consoleVerbosity > 0:
       stats = experiment.getBurstingColumnsStats()
