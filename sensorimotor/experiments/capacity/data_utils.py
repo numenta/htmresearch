@@ -146,7 +146,8 @@ def getErrorbarFigures(title, X, Ys, stdDevs, plotTitles, xAxisLabel,
 
 
 
-def getErrorbarFigure(title, x, y, stdDevs, xAxisLabel, yAxisLabel):
+def getErrorbarFigure(title, x, y, stdDevs, xAxisLabel, yAxisLabel,
+                      xRangeMax=None, yRangeMax=None):
   fig = plt.figure()
   fig.suptitle(title)
   fig.subplots_adjust(left=None, right=None, bottom=None, top=None,
@@ -157,8 +158,16 @@ def getErrorbarFigure(title, x, y, stdDevs, xAxisLabel, yAxisLabel):
   ax = fig.add_subplot(111)
   ax.set_xlabel(xAxisLabel)
   ax.set_ylabel(yAxisLabel)
-  ax.axis([0, max(x) + 10, 0, 1])
+
+  if xRangeMax is None:
+    xRangeMax = max(x) + 10
+  if yRangeMax is None:
+    yRangeMax = max(y) + 10
+
+  ax.axis([0, xRangeMax, 0, yRangeMax])
   ax.errorbar(x, y, stdDevs)
+
+  plt.draw()
   return fig
 
 
