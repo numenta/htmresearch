@@ -19,10 +19,12 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import pprint
 import time
 
 import numpy
 
+from nupic.algorithms.KNNClassifier import KNNClassifier
 from nupic.bindings.math import GetNTAReal
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
@@ -100,14 +102,14 @@ class UnionPoolerExperiment(object):
                                  "decayFunction": None,
                                  "maxUnionActivity": 0.20}
 
-  DEFAULT_CLASSIFIER_PARAMS = {
-  'distThreshold': 0.000001,
-  'maxCategoryCount': 10,
-  #'distanceMethod': 'rawOverlap',  # Default is Euclidean distance
-   }
+  DEFAULT_CLASSIFIER_PARAMS = {"k": 1,
+                               "distanceMethod": "rawOverlap",
+                               "distThreshold": 0}
 
 
-  def __init__(self, tmOverrides=None, upOverrides=None, seed=42):
+
+  def __init__(self, tmOverrides=None, upOverrides=None,
+               classifierOverrides=None, seed=42, consoleVerbosity=0):
     print "Initializing Temporal Memory..."
     params = dict(self.DEFAULT_TEMPORAL_MEMORY_PARAMS)
     params.update(tmOverrides or {})
@@ -122,44 +124,56 @@ class UnionPoolerExperiment(object):
     params["seed"] = seed
     self.up = MonitoredUnionPooler(mmName="UP", **params)
 
-    # TODO KNN classifer
+    print "Initializing KNN Classifier..."
+    params = dict(self.DEFAULT_CLASSIFIER_PARAMS)
+    # params["verbosity"] = consoleVerbosity
+    params.update(classifierOverrides or {})
+    self.classifier = KNNClassifier(**params)
 
 
-  def runNetworkOnSequence(self, sensorSequences, sequencesLabels, tmLearn=True,
-                           upLearn=None, verbosity=0, progressInterval=None):
+  def runNetworkOnSequences(self, inputSequences, inputCategories, tmLearn=True,
+                            upLearn=None, classifierLearn=False, verbosity=0,
+                            progressInterval=None):
     """
     Runs Union Pooler network on specified sequence.
 
-    @param sensorSequences        A sequence of sensor sequences. Each
-                                  sequence is terminated by None.
+    @param inputSequences           One or more sequences of input patterns.
+                                    Each should be terminated with None.
 
-    @param sequenceLabels         A sequence of string representations of the
-                                  current sequence. Each sequence is terminated
-                                  by None.
+    @param inputCategories          A sequence of category representations
+                                    for each element in inputSequences
+                                    Each should be terminated with None.
 
-    @param tmLearn:   (bool)      Either False, or True
-    @param upLearn:   (None,bool) Either None, False, or True. If None,
-                                  union pooler will be skipped.
+    @param tmLearn:   (bool)        Temporal Memory learning mode
+    @param upLearn:   (None, bool)  Union Pooler learning mode. If None,
+                                    Union Pooler will not be run.
+    @param classifierLearn: (bool)  Classifier learning mode
 
-    @param progressInterval: (int) Prints progress every N iterations,
-                                   where N is the value of this param
+    @param progressInterval: (int)  Interval of console progress updates
+                                    in terms of timesteps.
     """
 
     currentTime = time.time()
-
-    for i in xrange(len(sensorSequences)):
-      sensorPattern = sensorSequences[i]
-      sequenceLabel = sequencesLabels[i]
+    for i in xrange(len(inputSequences)):
+      sensorPattern = inputSequences[i]
+      inputCategory = inputCategories[i]
 
       self.runNetworkOnPattern(sensorPattern,
                                tmLearn=tmLearn,
                                upLearn=upLearn,
-                               sequenceLabel=sequenceLabel)
+                               sequenceLabel=inputCategory)
+
+      if classifierLearn and sensorPattern is not None:
+        unionSDR = self.up.getUnionSDR()
+        upCellCount = self.up.getColumnDimensions()
+        self.classifier.learn(unionSDR, inputCategory, isSparse=upCellCount)
+        if verbosity > 0:
+          pprint.pprint("{0} is category {1}".format(unionSDR, inputCategory))
 
       if progressInterval is not None and i > 0 and i % progressInterval == 0:
         elapsed = (time.time() - currentTime) / 60.0
         print ("Ran {0} / {1} elements of sequence in "
-               "{2:0.2f} minutes.".format(i, len(sensorSequences), elapsed))
+               "{2:0.2f} minutes.".format(i, len(inputSequences), elapsed))
         currentTime = time.time()
         print MonitorMixinBase.mmPrettyPrintMetrics(
           self.tm.mmGetDefaultMetrics())
