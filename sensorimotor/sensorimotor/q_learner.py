@@ -71,7 +71,7 @@ class QLearner(ReinforcementLearner):
 
 
   def update(self, state, action, nextState, nextAction, reward):
-    targetValue = reward + self.gamma * self.value(nextState)
+    targetValue = reward + (self.gamma * self.value(nextState))
     qValue = self.qValue(state, action)
     correction = (targetValue - qValue) / sum(state)
     targetWeight = targetValue / sum(state)
