@@ -1,9 +1,9 @@
 patternDimensionality: 128
 patternCardinality: 3
 sequenceLength: 13
-numberOfSequences: 30
+numberOfSequences: 10
 trainingPasses: 3
-testPresentations: 25
+testPresentations: 10
 perturbationChance: 0.50
 sequenceJumpPerturbationChance: 0.05
 

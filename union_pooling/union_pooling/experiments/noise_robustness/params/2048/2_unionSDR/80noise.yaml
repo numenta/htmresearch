@@ -5,7 +5,7 @@ numberOfSequences: 200
 trainingPasses: 3
 testPresentations: 200
 perturbationChance: 0.8
-sequenceJumpPerturbationChance: 0.0
+sequenceJumpPerturbationChance: 0.05
 
 temporalMemoryParams:
   columnDimensions: [2048]

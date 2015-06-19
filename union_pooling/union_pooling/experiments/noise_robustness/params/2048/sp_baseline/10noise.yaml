@@ -1,11 +1,12 @@
 patternDimensionality: 2048
 patternCardinality: 40
 sequenceLength: 13
-numberOfSequences: 500
+numberOfSequences: 200
 trainingPasses: 3
-testPresentations: 500
-perturbationChance: 0.4
+testPresentations: 200
+perturbationChance: 0.1
 sequenceJumpPerturbationChance: 0.05
+useSpatialPooler: True
 
 temporalMemoryParams:
   columnDimensions: [2048]

@@ -20,6 +20,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+from collections import Counter
 import csv
 import numpy
 from optparse import OptionParser
@@ -40,9 +41,12 @@ from union_pooling.experiments.union_pooler_experiment import (
 """
 Noise Robustness Experiment
 
-Data: Sequences generated from an alphabet.
+Data: Sequences generated from an alphabet. Patterns do not overlap between
+sequences.
 
-Train Phase: Train network on sequences for some number of repetitions
+Train Phase: Train network on sequences for some number of repetitions, then
+train KNN Classifier on sequences learning the same category label for each
+element in the sequence.
 
 Test phase: Input sequence pattern by pattern. Sequence-to-sequence
 progression is randomly selected. At each step there is a chance that the
@@ -62,7 +66,11 @@ changing when sequence actually changes.
 
 
 _SHOW_PROGRESS_INTERVAL = 3000
-
+_NO_PERTURBATION = 0
+_SUBSTITUTION_PERTURBATION_TYPE = 1
+_SKIP_PERTURBATION_TYPE = 2
+_ADD_PERTURBATION_TYPE = 3
+_SEQUENCE_JUMP_PERTURBATION_TYPE = 4
 
 
 def runTestPhase(experiment, inputSequences, sequenceCount,
@@ -85,9 +93,12 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
                               presented during the test phase
         classifiedCategores - A list of the classifications of the categories
                               of each pattern presented during the test phase
+        perturbationTrace -   A list of the perturbations that occurred during
+                              the test phase
   """
   actualCategories = []
   classifiedCategories = []
+  perturbationTrace = []
 
   # Compute the bounds for a wheel-of-fortune style roll
   patternSubChanceThreshold = (1 - sequenceJumpPerturbationChance) * (1 / 3.0)
@@ -96,13 +107,10 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
   # sequenceJumpChanceThreshold = 1
 
   if consoleVerbosity > 0:
-    patternSubCount = 0
-    patternSkipCount = 0
-    patternAddCount = 0
-    sequenceJumpCount = 0
     presentationString = "Presentation 0: "
 
   presentation = 0
+  isStartOfSequenceJump = False
   while presentation < testPresentations:
 
     # Randomly select the next sequence to present
@@ -127,8 +135,8 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
           # Substitute in a random pattern and move on to next pattern
           # in sequence
           currentPattern = getRandomPattern(inputSequences)
+          currentPerturbation = _SUBSTITUTION_PERTURBATION_TYPE
           i += 1
-          patternSubCount += 1
         elif perturbationType < patternSkipChanceThreshold:
 
           # Skip to next pattern in sequence
@@ -136,21 +144,27 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
           if i == sequenceEnd:
             break;
           currentPattern = inputSequences[i]
+          currentPerturbation = _SKIP_PERTURBATION_TYPE
           i += 1
-          patternSkipCount += 1
         elif perturbationType < patternAddChanceThreshold:
 
           # Add in an extra random pattern
           currentPattern = getRandomPattern(inputSequences)
-          patternAddCount += 1
+          currentPerturbation = _ADD_PERTURBATION_TYPE
         else:
 
           # Random jump to another sequence
-          sequenceJumpCount += 1
+          isStartOfSequenceJump = True
           break
 
       else:
+        # Normal advancement of sequence
         currentPattern = inputSequences[i]
+        if isStartOfSequenceJump:
+          currentPerturbation = _SEQUENCE_JUMP_PERTURBATION_TYPE
+          isStartOfSequenceJump = False
+        else:
+          currentPerturbation = _NO_PERTURBATION
         i += 1
 
       experiment.runNetworkOnPattern(currentPattern,
@@ -167,12 +181,14 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
         # Assumes sequence number and sequence category is equivalent
         actualCategories.append(sequence)
         classifiedCategories.append(classification)
+        perturbationTrace.append(currentPerturbation)
 
     # While presenting sequence
     else:
       # Move to next presentation only if a sequence has been completed
       # without any sequence jumps
       presentation += 1
+      isStartOfSequenceJump = False
 
       # Presentation finished; prepare for next one
       if consoleVerbosity > 0:
@@ -184,13 +200,18 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
   # While running test presentations
 
   if consoleVerbosity > 0:
+    patternSubCount = perturbationTrace.count(_SUBSTITUTION_PERTURBATION_TYPE)
+    patternSkipCount = perturbationTrace.count(_SKIP_PERTURBATION_TYPE)
+    patternAddCount = perturbationTrace.count(_ADD_PERTURBATION_TYPE)
+    sequenceJumpCount = perturbationTrace.count(
+      _SEQUENCE_JUMP_PERTURBATION_TYPE)
     print ("\nPerturbation Counts: PatternSub: {0} PatternSkip: {1} "
            "PatternAdd: {2} SequenceJump {3}\n").format(patternSubCount,
                                                         patternSkipCount,
                                                         patternAddCount,
                                                         sequenceJumpCount)
 
-  return actualCategories, classifiedCategories
+  return actualCategories, classifiedCategories, perturbationTrace
 
 
 
@@ -326,6 +347,10 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   tmParamOverrides = params["temporalMemoryParams"]
   upParamOverrides = params["unionPoolerParams"]
   classifierOverrides = params["classifierParams"]
+  if "useSpatialPooler" in params:
+    useSpatialPooler = params["useSpatialPooler"]
+  else:
+    useSpatialPooler = False
 
   # Generate a sequence list and an associated labeled list (both containing a
   # set of sequences separated by None)
@@ -341,7 +366,8 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   experiment = UnionPoolerExperiment(tmOverrides=tmParamOverrides,
                                      upOverrides=upParamOverrides,
                                      classifierOverrides=classifierOverrides,
-                                     consoleVerbosity=0)
+                                     consoleVerbosity=0,
+                                     useSpatialPooler=useSpatialPooler)
 
   # Training only the Temporal Memory on the generated sequences
   print "\nTraining Temporal Memory..."
@@ -353,20 +379,19 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   trainClassifier(experiment, inputSequences, inputCategories,
                   numberOfSequences, trainingPasses, consoleVerbosity)
 
-  print "\nRunning test phase..."
-  actualCategories, classifiedCategories = runTestPhase(experiment,
-                                                        inputSequences,
-                                                        numberOfSequences,
-                                                        sequenceLength,
-                                                        testPresentations,
-                                                        perturbationChance,
-                                                        sequenceJumpChance,
-                                                        consoleVerbosity)
-
-  # Classification results
-  print "\n*Results*"
-  pprint.pprint("Actual Category {0}".format(actualCategories), width=50)
-  pprint.pprint("Classification  {0}".format(classifiedCategories), width=50)
+  print "\nRunning Test Phase..."
+  (actualCategories,
+   classifiedCategories,
+   perturbationTrace) = runTestPhase(experiment,
+                                     inputSequences,
+                                     numberOfSequences,
+                                     sequenceLength,
+                                     testPresentations,
+                                     perturbationChance,
+                                     sequenceJumpChance,
+                                     consoleVerbosity)
+  assert len(actualCategories) == len(classifiedCategories)
+  assert len(actualCategories) == len(perturbationTrace)
 
   correctClassificationTrace = [1 if (actualCategories[i] ==
                                       classifiedCategories[i]) else 0
@@ -374,8 +399,44 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   correctClassifications = correctClassificationTrace.count(1)
   classificationRate = 100.0 * correctClassifications / len(actualCategories)
 
-  # Output
+  # Classification results
+  print "\n*Results*"
+  pprint.pprint("Actual Category {0}".format(actualCategories))
+  pprint.pprint("Classification  {0}".format(classifiedCategories))
+  pprint.pprint("Correct Classif {0}".format(
+    correctClassificationTrace))
+  pprint.pprint("Perturb Type    {0}".format(perturbationTrace))
+  numPerturbations = (len(perturbationTrace) -
+                      perturbationTrace.count(_NO_PERTURBATION))
+  print "Actual perturbation rate: {0:.2f}%".format(100.0* numPerturbations /
+                                                    len(perturbationTrace))
+
+  errorDict = {_NO_PERTURBATION: 0,
+               _SUBSTITUTION_PERTURBATION_TYPE: 0,
+               _SKIP_PERTURBATION_TYPE: 0,
+               _ADD_PERTURBATION_TYPE: 0,
+               _SEQUENCE_JUMP_PERTURBATION_TYPE: 0}
+
+  for i in xrange(len(actualCategories)):
+    if actualCategories[i] != classifiedCategories[i]:
+      errorDict[perturbationTrace[i]] += 1.0
+
+  incorrect = len(correctClassificationTrace) - correctClassifications
+
+  print
   print "\n>>> Correct Classification Rate: {0:.2f}%".format(classificationRate)
+  print "Total Classifications: \t\t{0}".format(len(
+    correctClassificationTrace))
+  print "Correct Classifications: \t{0}".format(correctClassifications)
+  print "Incorrect Classifications: \t{0}".format(incorrect)
+
+  print ("\nError Causes:")
+  print ("Substitution: \t{0:.2f}% "
+         "\nSkip: \t{1:.2f}% \nAdd: \t{2:.2f}% \nSeq Jump: \t{3:.2f}%").format(
+    100 * errorDict[_SUBSTITUTION_PERTURBATION_TYPE] / incorrect,
+    100 * errorDict[_SKIP_PERTURBATION_TYPE] / incorrect,
+    100 * errorDict[_ADD_PERTURBATION_TYPE] / incorrect,
+    100 * errorDict[_SEQUENCE_JUMP_PERTURBATION_TYPE] / incorrect)
 
   outputFileName = "testPres{0}_perturbationRate{1}_jumpRate{2}.txt".format(
     testPresentations, perturbationChance, sequenceJumpChance)
@@ -384,22 +445,16 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   elapsedTime = (time.time() - startTime) / 60.0
   print "\nFinished in {0:.2f} minutes.".format(elapsedTime)
 
-  writeClassificationTrace(actualCategories, classifiedCategories,
-                           correctClassificationTrace, [classificationRate],
-                           [elapsedTime], outputDir, outputFileName)
+  writeClassificationTrace(outputDir, outputFileName, classificationRate)
 
 
 
-def writeClassificationTrace(actualCategories, classifiedCategories,
-                             classificationVector, classificationStats,
-                             elapsedTime, outputDir, outputFileName):
+def writeClassificationTrace(outputDir, outputFileName, mean):
   """
   Write classification trace to output file.
-  :param actualCategories: True categories
-  :param classifiedCategories: Classified categories
-  :param classificationStats: List of stats of classification performance
   :param outputDir: dir where output file will be written
   :param outputFileName: filename of output file
+  :param mean: Mean classification performance
   """
   if not os.path.exists(outputDir):
     os.makedirs(outputDir)
@@ -407,16 +462,8 @@ def writeClassificationTrace(actualCategories, classifiedCategories,
   filePath = os.path.join(outputDir, outputFileName)
   with open(filePath, "wb") as outputFile:
     csvWriter = csv.writer(outputFile)
-    csvWriter.writerow(["Actual Categories"])
-    csvWriter.writerow(actualCategories)
-    csvWriter.writerow(["Classified Categories"])
-    csvWriter.writerow(classifiedCategories)
-    csvWriter.writerow(["Correct Classifications"])
-    csvWriter.writerow(classificationVector)
     csvWriter.writerow(["Classification Statistics"])
-    csvWriter.writerow(classificationStats)
-    csvWriter.writerow(["Elapsed Time"])
-    csvWriter.writerow(elapsedTime)
+    csvWriter.writerow([mean])
     outputFile.flush()
 
 
