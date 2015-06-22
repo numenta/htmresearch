@@ -1,4 +1,26 @@
-﻿using UnityEngine;
+﻿/*
+  ----------------------------------------------------------------------
+  Numenta Platform for Intelligent Computing (NuPIC)
+  Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+  with Numenta, Inc., for a separate license for this software code, the
+  following terms and conditions apply:
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License version 3 as
+  published by the Free Software Foundation.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see http://www.gnu.org/licenses.
+
+  http://numenta.org/licenses/
+  ----------------------------------------------------------------------
+*/
+using UnityEngine;
 using System.Collections;
 
 public class SweepSensor : MonoBehaviour {
@@ -18,7 +40,7 @@ public class SweepSensor : MonoBehaviour {
 	void Update () {
 		RaycastHit hit;
 		Quaternion rotation = Quaternion.Euler(0, fieldOfView / numRays, 0);
-		Vector3 direction = Quaternion.Euler(0, -fieldOfView / 2f, 0) * transform.forward;
+		Vector3 direction = transform.forward;
 
 		float[] hits = new float[numRays];
 
@@ -26,8 +48,7 @@ public class SweepSensor : MonoBehaviour {
 		Vector3 position;
 
 		for (int i = 0; i < numRays; i++) {
-			if (Physics.Raycast(transform.position, direction, out hit) &&
-			    hit.collider.gameObject.tag != "Boundary") {
+			if (Physics.Raycast(transform.position, direction, out hit)) {
 				hits[i] = Mathf.Lerp(1, 0, hit.distance / focalLength);
 
 				position = transform.position + direction;

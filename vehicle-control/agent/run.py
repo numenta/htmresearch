@@ -155,23 +155,23 @@ class Plotter(object):
     self.plt.subplot(n,1,3)
     self._plot(self.value, "Value over time")
 
-    # self.plt.subplot(n,1,4)
-    # shape = len(self.encoder.positions), self.encoder.scalarEncoder.getWidth()
-    # encoding = numpy.array(self.encoding[-1]).reshape(shape).transpose()
-    # self._imshow(encoding, "Encoding at time t")
+    self.plt.subplot(n,1,4)
+    shape = len(self.encoder.positions), self.encoder.scalarEncoder.getWidth()
+    encoding = numpy.array(self.encoding[-1]).reshape(shape).transpose()
+    self._imshow(encoding, "Encoding at time t")
 
-    # self.plt.subplot(n,1,5)
-    # data = self.encoding
-    # w = self.encoder.w
-    # overlaps = [sum(a & b) / float(w) for a, b in zip(data[:-1], data[1:])]
-    # self._plot(overlaps, "Encoding overlaps between consecutive times")
+    self.plt.subplot(n,1,5)
+    data = self.encoding
+    w = self.encoder.w
+    overlaps = [sum(a & b) / float(w) for a, b in zip(data[:-1], data[1:])]
+    self._plot(overlaps, "Encoding overlaps between consecutive times")
 
-    for i, action in enumerate(ACTIIONS):
-      self.plt.subplot(n,1,4+i)
-      self._plot(self.qValues[action], "Q value: {0}".format(action))
+    # for i, action in enumerate(ACTIIONS):
+    #   self.plt.subplot(n,1,4+i)
+    #   self._plot(self.qValues[action], "Q value: {0}".format(action))
 
-    self.plt.subplot(n,1,7)
-    self._plot(self.bestAction, "Best action")
+    # self.plt.subplot(n,1,7)
+    # self._plot(self.bestAction, "Best action")
 
     self.plt.draw()
 
@@ -198,6 +198,6 @@ if __name__ == "__main__":
   # positions = [i*20 for i in range(36)]
 
   # forward uniform
-  positions = [i*10 for i in range(18, 54)]
+  positions = [i*10 for i in range(-18, 18)]
 
   run(positions)

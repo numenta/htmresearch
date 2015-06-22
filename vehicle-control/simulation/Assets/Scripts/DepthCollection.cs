@@ -1,4 +1,4 @@
-﻿/*
+/*
   ----------------------------------------------------------------------
   Numenta Platform for Intelligent Computing (NuPIC)
   Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
@@ -23,15 +23,31 @@
 using UnityEngine;
 using System.Collections;
 
-public class CarCollisions : MonoBehaviour {
+public class DepthCollection : MonoBehaviour {
 
-	void OnCollisionEnter(Collision collision) {
-		if (collision.gameObject.tag == "Boundary") {
-			Application.LoadLevel(Application.loadedLevel);
-		}
-		else if (collision.gameObject.tag == "Finish") {
-			Application.LoadLevel(Application.loadedLevel + 1);
-		}
+	private bool holdingKey = false;
+	private string screenshotName = "screenshot.png";
+	
+	void Start () {
 	}
+	
+	void Update () {
+	
+		if (Input.GetKey (KeyCode.C)) {
+			// For collecting depth data.
+			API.instance.SetOutput("collectKeyPressed", 1);
+			holdingKey = true;
+		}
+		else {
+			if (holdingKey) {
+				screenshotName = "screenshot_"+System.DateTime.Now.ToString("%yy%MM%dd%HH%mm%ss")+".png";
+				Application.CaptureScreenshot("Screenshots/"+screenshotName);
+				holdingKey = false;
+			}
+			
+			API.instance.SetOutput("collectKeyPressed", 0);
+		}
 
+	}
+	
 }

@@ -533,10 +533,25 @@ GameObject:
   serializedVersion: 4
   m_Component:
   - 4: {fileID: 466396}
-  - 114: {fileID: 11458312}
-  - 120: {fileID: 12050378}
+  - 114: {fileID: 11417906}
   m_Layer: 0
-  m_Name: ForwardsSweepSensor
+  m_Name: DepthCollectionSensor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!1 &147088
+GameObject:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  serializedVersion: 4
+  m_Component:
+  - 4: {fileID: 463468}
+  - 114: {fileID: 11462464}
+  m_Layer: 0
+  m_Name: WallAvoidanceSensor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -552,6 +567,23 @@ GameObject:
   - 4: {fileID: 424826}
   m_Layer: 0
   m_Name: Sensors
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!1 &174708
+GameObject:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  serializedVersion: 4
+  m_Component:
+  - 4: {fileID: 474726}
+  - 114: {fileID: 11494148}
+  - 120: {fileID: 12095298}
+  m_Layer: 0
+  m_Name: ForwardsSweepSensor
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -970,15 +1002,41 @@ Transform:
   m_LocalPosition: {x: 0, y: .550000012, z: 2.02999997}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
+  - {fileID: 474726}
   - {fileID: 466396}
+  - {fileID: 463468}
   m_Father: {fileID: 400050}
   m_RootOrder: 0
+--- !u!4 &463468
+Transform:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 147088}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.18000007, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 424826}
+  m_RootOrder: 2
 --- !u!4 &466396
 Transform:
   m_ObjectHideFlags: 1
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 112014}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.18000007, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 424826}
+  m_RootOrder: 1
+--- !u!4 &474726
+Transform:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 174708}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 1.17999995, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -2053,7 +2111,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 86a1a7d7e23fc487fa533278ead43848, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &11458312
+--- !u!114 &11417906
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_PrefabParentObject: {fileID: 0}
@@ -2061,20 +2119,45 @@ MonoBehaviour:
   m_GameObject: {fileID: 112014}
   m_Enabled: 1
   m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cbb2ef4811ae34a7ca04fe7e361fc192, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &11462464
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 147088}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2cc0d3167d3c54c019c966849ee50764, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  carAIControl: {fileID: 11411908}
+  fieldOfView: 180
+  numViews: 3
+--- !u!114 &11494148
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 174708}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8f670dba9684447b986489a6e5aeef35, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  lineRenderer: {fileID: 12050378}
+  lineRenderer: {fileID: 12095298}
   numRays: 720
   graphVerticalOffset: 30
   fieldOfView: 360
   focalLength: 60
---- !u!120 &12050378
+--- !u!120 &12095298
 LineRenderer:
   m_ObjectHideFlags: 1
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 112014}
+  m_GameObject: {fileID: 174708}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
