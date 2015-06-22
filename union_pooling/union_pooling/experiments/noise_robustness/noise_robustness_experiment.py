@@ -74,8 +74,8 @@ _SEQUENCE_JUMP_PERTURBATION_TYPE = 4
 
 
 def runTestPhase(experiment, inputSequences, sequenceCount,
-                 sequenceLength, testPresentations, perturbationChance,
-                 sequenceJumpPerturbationChance, consoleVerbosity):
+                 sequenceLength, testPresentations, overallPerturbationChance,
+                 perturbationTypeChance, consoleVerbosity):
   """
   Performs a number of presentations of sequences with resets afterwards.
   Sequence selection is random.
@@ -83,10 +83,34 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
   Specifically the following perturbations may occur:
     1) Substitution of expected pattern with some other random pattern among
     the set of sequences
-    2) Skipping of expected pattern and advancing to next pattern in the
-    sequence
-    3) Insertion of some other random pattern (among the set of sequences)
+    2) Insertion of some other random pattern (among the set of sequences)
     that delays the expected pattern one time step
+    3) Skipping of expected pattern and advancing to next pattern in the
+    sequence
+    4) Jump from current sequence to another randomly selected sequence
+
+  @param experiment                 A UnionPoolerExperiment
+  @param inputSequences             List of sequences each terminated by None.
+  @param sequenceCount              The number of sequences in inputSequences
+  @param sequenceLength             Length of each sequence not counting Nones.
+  @param testPresentations          Number of sequences randomly selected and
+                                    presented during the test phase. Sequence
+                                    jumps do not count towards the number of
+                                    presentations, rather an entire sequence
+                                    must be presented (without sequence jumps)
+                                    before advancing to the next test
+                                    presentation.
+  @param overallPerturbationChance  Rate of perturbations during the test phase
+  @param perturbationTypeChance     A list of relative chances for each
+                                    perturbation type:
+                                    0 - substitution chance
+                                    1 - addition chance
+                                    2 - skip chance
+                                    3 - sequence jump chance
+                                    Note the chances do not need to sum to 1.0,
+                                    and the relative weight of each of each
+                                    type chance is what determines likelihood.
+  @param consoleVerbosity           Console output verbosity
 
   @return
         actualCategories -    A list of the actual categories of the patterns
@@ -100,11 +124,20 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
   classifiedCategories = []
   perturbationTrace = []
 
+  substitutionChance = perturbationTypeChance[0]
+  additionChance = perturbationTypeChance[1]
+  skipChance = perturbationTypeChance[2]
+  sequenceJumpChance = perturbationTypeChance[3]
+
+  totalTypeChance = (substitutionChance + additionChance + skipChance +
+                     sequenceJumpChance)
+
   # Compute the bounds for a wheel-of-fortune style roll
-  patternSubChanceThreshold = (1 - sequenceJumpPerturbationChance) * (1 / 3.0)
-  patternSkipChanceThreshold = (1 - sequenceJumpPerturbationChance) * (2 / 3.0)
-  patternAddChanceThreshold = (1 - sequenceJumpPerturbationChance)
-  # sequenceJumpChanceThreshold = 1
+  patternSubChanceThreshold = float(substitutionChance) / totalTypeChance
+  patternAddChanceThreshold = (float(substitutionChance + additionChance) /
+                               totalTypeChance)
+  patternSkipChanceThreshold = float(substitutionChance + additionChance +
+                                     skipChance) / totalTypeChance
 
   if consoleVerbosity > 0:
     presentationString = "Presentation 0: "
@@ -126,9 +159,9 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
 
       # Roll to determine if there will be a perturbation of next pattern
       if (inputSequences[i] is not None and
-          random.random() < perturbationChance):
+          random.random() < overallPerturbationChance):
 
-        # Randomly select a perturbation type with equal probability
+        # Randomly select a perturbation type
         perturbationType = random.random()
         if perturbationType < patternSubChanceThreshold:
 
@@ -137,6 +170,11 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
           currentPattern = getRandomPattern(inputSequences)
           currentPerturbation = _SUBSTITUTION_PERTURBATION_TYPE
           i += 1
+        elif perturbationType < patternAddChanceThreshold:
+
+          # Add in an extra random pattern
+          currentPattern = getRandomPattern(inputSequences)
+          currentPerturbation = _ADD_PERTURBATION_TYPE
         elif perturbationType < patternSkipChanceThreshold:
 
           # Skip to next pattern in sequence
@@ -146,17 +184,11 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
           currentPattern = inputSequences[i]
           currentPerturbation = _SKIP_PERTURBATION_TYPE
           i += 1
-        elif perturbationType < patternAddChanceThreshold:
-
-          # Add in an extra random pattern
-          currentPattern = getRandomPattern(inputSequences)
-          currentPerturbation = _ADD_PERTURBATION_TYPE
         else:
 
           # Random jump to another sequence
           isStartOfSequenceJump = True
           break
-
       else:
         # Normal advancement of sequence
         currentPattern = inputSequences[i]
@@ -205,11 +237,12 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
     patternAddCount = perturbationTrace.count(_ADD_PERTURBATION_TYPE)
     sequenceJumpCount = perturbationTrace.count(
       _SEQUENCE_JUMP_PERTURBATION_TYPE)
-    print ("\nPerturbation Counts: PatternSub: {0} PatternSkip: {1} "
-           "PatternAdd: {2} SequenceJump {3}\n").format(patternSubCount,
-                                                        patternSkipCount,
-                                                        patternAddCount,
-                                                        sequenceJumpCount)
+    print ("\nPerturbation Counts: "
+           "\nPatternSub: {0} "
+           "\nPatternSkip: {1} "
+           "\nPatternAdd: {2} "
+           "\nSequenceJump {3}").format(patternSubCount, patternSkipCount,
+                                        patternAddCount, sequenceJumpCount)
 
   return actualCategories, classifiedCategories, perturbationTrace
 
@@ -344,13 +377,29 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   testPresentations = params["testPresentations"]
   perturbationChance = params["perturbationChance"]
   sequenceJumpChance = params["sequenceJumpPerturbationChance"]
+
+  # These if-else/s are for backwards compatibility with older param files that
+  # didn't specify these chances
+  if "substitutionPerturbationChance" in params:
+    substitutionChance = params["substitutionPerturbationChance"]
+  else:
+    substitutionChance = (1 - sequenceJumpChance) / 3.0
+
+  if "addPerturbationChance" in params:
+    addChance = params["addPerturbationChance"]
+  else:
+    addChance = (1 - sequenceJumpChance) / 3.0
+
+  if "skipChance" in params:
+    skipChance = params["skipChance"]
+  else:
+    skipChance = (1 - sequenceJumpChance) / 3.0
+
+  perturbationTypeChance = [substitutionChance, addChance, skipChance,
+                            sequenceJumpChance]
   tmParamOverrides = params["temporalMemoryParams"]
   upParamOverrides = params["unionPoolerParams"]
   classifierOverrides = params["classifierParams"]
-  if "useSpatialPooler" in params:
-    useSpatialPooler = params["useSpatialPooler"]
-  else:
-    useSpatialPooler = False
 
   # Generate a sequence list and an associated labeled list (both containing a
   # set of sequences separated by None)
@@ -366,8 +415,7 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   experiment = UnionPoolerExperiment(tmOverrides=tmParamOverrides,
                                      upOverrides=upParamOverrides,
                                      classifierOverrides=classifierOverrides,
-                                     consoleVerbosity=0,
-                                     useSpatialPooler=useSpatialPooler)
+                                     consoleVerbosity=0)
 
   # Training only the Temporal Memory on the generated sequences
   print "\nTraining Temporal Memory..."
@@ -388,7 +436,7 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
                                      sequenceLength,
                                      testPresentations,
                                      perturbationChance,
-                                     sequenceJumpChance,
+                                     perturbationTypeChance,
                                      consoleVerbosity)
   assert len(actualCategories) == len(classifiedCategories)
   assert len(actualCategories) == len(perturbationTrace)
@@ -408,8 +456,6 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   pprint.pprint("Perturb Type    {0}".format(perturbationTrace))
   numPerturbations = (len(perturbationTrace) -
                       perturbationTrace.count(_NO_PERTURBATION))
-  print "Actual perturbation rate: {0:.2f}%".format(100.0* numPerturbations /
-                                                    len(perturbationTrace))
 
   errorDict = {_NO_PERTURBATION: 0,
                _SUBSTITUTION_PERTURBATION_TYPE: 0,
@@ -417,26 +463,39 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
                _ADD_PERTURBATION_TYPE: 0,
                _SEQUENCE_JUMP_PERTURBATION_TYPE: 0}
 
+  incorrect = 0
   for i in xrange(len(actualCategories)):
     if actualCategories[i] != classifiedCategories[i]:
       errorDict[perturbationTrace[i]] += 1.0
+      incorrect += 1
 
-  incorrect = len(correctClassificationTrace) - correctClassifications
-
-  print
   print "\n>>> Correct Classification Rate: {0:.2f}%".format(classificationRate)
-  print "Total Classifications: \t\t{0}".format(len(
-    correctClassificationTrace))
-  print "Correct Classifications: \t{0}".format(correctClassifications)
-  print "Incorrect Classifications: \t{0}".format(incorrect)
+  print "Correct / Total: \t{0} / {1}".format(correctClassifications,
+                                              len(correctClassificationTrace))
 
-  print ("\nError Causes:")
-  print ("Substitution: \t{0:.2f}% "
-         "\nSkip: \t{1:.2f}% \nAdd: \t{2:.2f}% \nSeq Jump: \t{3:.2f}%").format(
-    100 * errorDict[_SUBSTITUTION_PERTURBATION_TYPE] / incorrect,
-    100 * errorDict[_SKIP_PERTURBATION_TYPE] / incorrect,
-    100 * errorDict[_ADD_PERTURBATION_TYPE] / incorrect,
-    100 * errorDict[_SEQUENCE_JUMP_PERTURBATION_TYPE] / incorrect)
+  print "\nActual perturbation rate: {0:.2f}%".format(100.0* numPerturbations /
+                                                      len(perturbationTrace))
+
+  substitutionErrorRate = (0 if incorrect == 0 else
+    100.0 * errorDict[_SUBSTITUTION_PERTURBATION_TYPE] / incorrect)
+  skipErrorRate = (0 if incorrect == 0 else
+    100.0 * errorDict[_SKIP_PERTURBATION_TYPE] / incorrect)
+  addErrorRate = (0 if incorrect == 0 else
+    100.0 * errorDict[_ADD_PERTURBATION_TYPE] / incorrect)
+  sequenceJumpErrorRate = (0 if incorrect == 0 else
+    100.0 * errorDict[_SEQUENCE_JUMP_PERTURBATION_TYPE] / incorrect)
+  noPerturbationErrorRate = (0 if incorrect == 0 else
+    100.0 * errorDict[_NO_PERTURBATION] / incorrect)
+  print "\nError Rate by Perturbation:"
+  print (  "Substitution:    \t{0:.2f}% "
+         "\nSkip Pattern:    \t{1:.2f}% "
+         "\nAdd Pattern:     \t{2:.2f}% "
+         "\nSequence Jump:   \t{3:.2f}% "
+         "\nNo Perturbation: \t{4:.2f}%").format(substitutionErrorRate,
+                                                 skipErrorRate,
+                                                 addErrorRate,
+                                                 sequenceJumpErrorRate,
+                                                 noPerturbationErrorRate)
 
   outputFileName = "testPres{0}_perturbationRate{1}_jumpRate{2}.txt".format(
     testPresentations, perturbationChance, sequenceJumpChance)

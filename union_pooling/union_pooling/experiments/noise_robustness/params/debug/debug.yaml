@@ -4,7 +4,10 @@ sequenceLength: 13
 numberOfSequences: 10
 trainingPasses: 3
 testPresentations: 10
-perturbationChance: 0.50
+perturbationChance: 0.00
+substitutionPerturbationChance: 0.316666666666
+addPerturbationChance: 0.316666666666
+skipChance: 0.316666666666
 sequenceJumpPerturbationChance: 0.05
 
 temporalMemoryParams:

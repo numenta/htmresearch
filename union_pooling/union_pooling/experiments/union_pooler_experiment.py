@@ -109,8 +109,7 @@ class UnionPoolerExperiment(object):
 
 
   def __init__(self, tmOverrides=None, upOverrides=None,
-               classifierOverrides=None, seed=42, consoleVerbosity=0,
-               useSpatialPooler=False):
+               classifierOverrides=None, seed=42, consoleVerbosity=0):
     print "Initializing Temporal Memory..."
     params = dict(self.DEFAULT_TEMPORAL_MEMORY_PARAMS)
     params.update(tmOverrides or {})
