@@ -55,7 +55,6 @@ class GeneralTemporalMemory(TemporalMemory):
 
     self.unpredictedActiveColumns = set()
     self.predictedActiveCells = set()
-    print "Use General Temporal Memory", "predictedSegmentDecrement = ", self.predictedSegmentDecrement
 
 
   def compute(self,
@@ -138,8 +137,8 @@ class GeneralTemporalMemory(TemporalMemory):
     @param prevActiveSegments              (set)         Indices of active segments in `t-1`
     @param prevActiveCells                 (set)         Indices of active cells in `t-1`
     @param prevWinnerCells                 (set)         Indices of winner cells in `t-1`
-    @param prevMatchingSegments  (set)         Indices of matching segments in `t-1`
-    @param prevMatchingCells     (set)         Indices of matching cells in `t-1`
+    @param prevMatchingSegments            (set)         Indices of matching segments in `t-1`
+    @param prevMatchingCells               (set)         Indices of matching cells in `t-1`
     @param connections                     (Connections) Connectivity of layer
     @param formInternalConnections         (boolean)     Flag to determine whether to form connections with internal cells within this temporal memory
     @param learnOnOneCell                  (boolean)     If True, the winner cell for each column will be fixed between resets.
