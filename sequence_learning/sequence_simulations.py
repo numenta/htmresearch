@@ -296,7 +296,7 @@ def printSegment(tm, segment, connections):
 
 def printTemporalMemory(tm, outFile):
   """
-  Given an instance of OrphanTemporalMemory, print out the relevant parameters
+  Given an instance of TemporalMemory, print out the relevant parameters
   """
   table = PrettyTable(["Parameter name", "Value", ])
 
