@@ -25,7 +25,6 @@ Faulty Temporal Memory implementation in Python.
 import numpy
 from collections import defaultdict
 from sensorimotor.general_temporal_memory import GeneralTemporalMemory
-# from sensorimotor.orphan_temporal_memory import OrphanTemporalMemory
 
 class FaultyTemporalMemory(GeneralTemporalMemory):
   """
@@ -69,105 +68,6 @@ class FaultyTemporalMemory(GeneralTemporalMemory):
       self.deadCells = set()
 
     print "Total number of dead cells=",len(self.deadCells)
-
-
-  # def computeFn(self,
-  #               activeColumns,
-  #               activeExternalCells,
-  #               prevActiveExternalCells,
-  #               prevPredictiveCells,
-  #               prevActiveSegments,
-  #               prevActiveCells,
-  #               prevMatchingSegments,
-  #               prevMatchingCells,
-  #               prevWinnerCells,
-  #               connections,
-  #               formInternalConnections,
-  #               learnOnOneCell,
-  #               chosenCellForColumn,
-  #               learn=True):
-  #   """
-  #   'Functional' version of compute.
-  #   Returns new state.
-  #
-  #   @param activeColumns            (set)         Indices of active columns in `t`
-  #   @param activeExternalCells      (set)         Indices of active external cells in `t`
-  #   @param prevActiveExternalCells  (set)         Indices of active external cells in `t-1`
-  #   @param prevPredictiveCells      (set)         Indices of predictive cells in `t-1`
-  #   @param prevActiveSegments       (set)         Indices of active segments in `t-1`
-  #   @param prevMatchingSegments     (set)         Indices of matching segments in `t-1`
-  #   @param prevMatchingCells        (set)         Indices of matching cells in `t-1`
-  #   @param prevActiveCells          (set)         Indices of active cells in `t-1`
-  #   @param prevWinnerCells          (set)         Indices of winner cells in `t-1`
-  #   @param connections              (Connections) Connectivity of layer
-  #   @param formInternalConnections  (boolean)     Flag to determine whether to form connections with internal cells within this temporal memory
-  #   @param learnOnOneCell           (boolean)     If True, the winner cell for each column will be fixed between resets.
-  #   @param chosenCellForColumn      (dict)        The current winner cell for each column, if it exists.
-  #
-  #   @return (tuple) Contains:
-  #                     `activeCells`               (set),
-  #                     `winnerCells`               (set),
-  #                     `activeSegments`            (set),
-  #                     `predictiveCells`           (set)
-  #   """
-  #   activeCells = set()
-  #   winnerCells = set()
-  #
-  #   (_activeCells,
-  #    _winnerCells,
-  #    predictedColumns,
-  #    orphanCells) = self.activateCorrectlyPredictiveCells(
-  #      prevPredictiveCells,
-  #      prevMatchingCells,
-  #      activeColumns)
-  #
-  #   activeCells.update(_activeCells)
-  #   winnerCells.update(_winnerCells)
-  #
-  #   (_activeCells,
-  #    _winnerCells,
-  #    learningSegments,
-  #    chosenCellForColumn) = self.burstColumns(
-  #      activeColumns,
-  #      predictedColumns,
-  #      prevActiveCells | prevActiveExternalCells,
-  #      prevWinnerCells,
-  #      learnOnOneCell,
-  #      chosenCellForColumn,
-  #      connections)
-  #
-  #   activeCells.update(_activeCells)
-  #   winnerCells.update(_winnerCells)
-  #
-  #   if learn:
-  #     prevCellActivity = prevActiveExternalCells
-  #
-  #     if formInternalConnections:
-  #       prevCellActivity.update(prevWinnerCells)
-  #
-  #     self.learnOnSegments(prevActiveSegments,
-  #                          learningSegments,
-  #                          prevActiveCells | prevActiveExternalCells,
-  #                          winnerCells,
-  #                          prevCellActivity,
-  #                          connections,
-  #                          orphanCells,
-  #                          prevMatchingSegments)
-  #
-  #   (activeSegments,
-  #    predictiveCells,
-  #    matchingSegments,
-  #    matchingCells) = self.computePredictiveCells(
-  #      activeCells | activeExternalCells, connections)
-  #
-  #   return (activeCells,
-  #           winnerCells,
-  #           activeSegments,
-  #           predictiveCells,
-  #           predictedColumns,
-  #           chosenCellForColumn,
-  #           matchingSegments,
-  #           matchingCells)
 
 
   def computePredictiveCells(self, activeCells, connections):
