@@ -206,7 +206,7 @@ def runExperiment1(options):
                                 maxNewSynapseCount=40,
                                 cellsPerColumn=options.cells,
                                 learnOnOneCell = False,
-                                permanenceOrphanDecrement = 0.01,
+                                predictedSegmentDecrement = 0.01,
                                 columnDimensions=(2048,),
                                 initialPermanence=0.21,
                                 connectedPermanence=0.50,
@@ -309,7 +309,7 @@ def printTemporalMemory(tm, outFile):
   table.add_row(["permanenceDecrement", tm.permanenceDecrement])
   table.add_row(["initialPermanence", tm.initialPermanence])
   table.add_row(["connectedPermanence", tm.connectedPermanence])
-  table.add_row(["permanenceOrphanDecrement", tm.permanenceOrphanDecrement])
+  table.add_row(["predictedSegmentDecrement", tm.predictedSegmentDecrement])
   table.add_row(["learnOnOneCell", tm.learnOnOneCell])
 
   print >>outFile, table.get_string().encode("utf-8")
