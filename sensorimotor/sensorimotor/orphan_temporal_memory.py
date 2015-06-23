@@ -42,17 +42,18 @@ class OrphanTemporalMemory(GeneralTemporalMemory):
 
 
   def __init__(self,
-               permanenceOrphanDecrement = 0.004,
+               predictedSegmentDecrement = 0.004,
                **kwargs):
     """
-    @param permanenceOrphanDecrement (float) Amount by which
+    @param predictedSegmentDecrement (float) Amount by which
            active permanences of orphan segments are decremented.
     """
 
     super(OrphanTemporalMemory, self).__init__(**kwargs)
-    self.permanenceOrphanDecrement = permanenceOrphanDecrement
+    self.predictedSegmentDecrement = predictedSegmentDecrement
     self.matchingSegments = set()
     self.matchingCells = set()
+    print "Use Orphan General Temporal Memory", "predictedSegmentDecrement = ", self.predictedSegmentDecrement
 
 
   def compute(self,
@@ -329,7 +330,7 @@ class OrphanTemporalMemory(GeneralTemporalMemory):
 
       if isOrphanCell:
         self.adaptSegment(segment, activeSynapses, connections,
-                          -self.permanenceOrphanDecrement,
+                          -self.predictedSegmentDecrement,
                           0.0)
 
 
