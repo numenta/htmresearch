@@ -55,6 +55,7 @@ class GeneralTemporalMemory(TemporalMemory):
 
     self.unpredictedActiveColumns = set()
     self.predictedActiveCells = set()
+    print "Use General Temporal Memory", "predictedSegmentDecrement = ", self.predictedSegmentDecrement
 
 
   def compute(self,
@@ -81,6 +82,8 @@ class GeneralTemporalMemory(TemporalMemory):
      activeSegments,
      predictiveCells,
      predictedColumns,
+     matchingSegments,
+     matchingCells,
      chosenCellForColumn) = self.computeFn(activeColumns,
                                            activeExternalCells,
                                            self.activeExternalCells,
@@ -88,11 +91,13 @@ class GeneralTemporalMemory(TemporalMemory):
                                            self.activeSegments,
                                            self.activeCells,
                                            self.winnerCells,
+                                           self.matchingSegments,
+                                           self.matchingCells,
                                            self.connections,
                                            formInternalConnections,
                                            self.learnOnOneCell,
                                            self.chosenCellForColumn,
-                                           learn=learn)
+                                           learn=learn) 
 
     self.activeExternalCells = activeExternalCells
 
@@ -104,7 +109,8 @@ class GeneralTemporalMemory(TemporalMemory):
     self.activeSegments = activeSegments
     self.predictiveCells = predictiveCells
     self.chosenCellForColumn = chosenCellForColumn
-
+    self.matchingSegments = matchingSegments
+    self.matchingCells = matchingCells
 
   def computeFn(self,
                 activeColumns,
@@ -114,6 +120,8 @@ class GeneralTemporalMemory(TemporalMemory):
                 prevActiveSegments,
                 prevActiveCells,
                 prevWinnerCells,
+                prevMatchingSegments,
+                prevMatchingCells,
                 connections,
                 formInternalConnections,
                 learnOnOneCell,
@@ -130,6 +138,8 @@ class GeneralTemporalMemory(TemporalMemory):
     @param prevActiveSegments              (set)         Indices of active segments in `t-1`
     @param prevActiveCells                 (set)         Indices of active cells in `t-1`
     @param prevWinnerCells                 (set)         Indices of winner cells in `t-1`
+    @param prevMatchingSegments  (set)         Indices of matching segments in `t-1`
+    @param prevMatchingCells     (set)         Indices of matching cells in `t-1`
     @param connections                     (Connections) Connectivity of layer
     @param formInternalConnections         (boolean)     Flag to determine whether to form connections with internal cells within this temporal memory
     @param learnOnOneCell                  (boolean)     If True, the winner cell for each column will be fixed between resets.
@@ -139,15 +149,21 @@ class GeneralTemporalMemory(TemporalMemory):
                       `activeCells`               (set),
                       `winnerCells`               (set),
                       `activeSegments`            (set),
-                      `predictiveCells`           (set)
+                      `predictiveCells`           (set),
+                      'predictedColumns'          (set),
+                      'matchingSegments'          (set),
+                      'matchingCells'             (set),
+                      'chosenCellForColumn'       (dict)
     """
     activeCells = set()
     winnerCells = set()
 
     (_activeCells,
      _winnerCells,
-     predictedColumns) = self.activateCorrectlyPredictiveCells(
+     predictedColumns,
+     predictedInactiveCells) = self.activateCorrectlyPredictiveCells(
        prevPredictiveCells,
+       prevMatchingCells,
        activeColumns)
 
     activeCells.update(_activeCells)
@@ -179,10 +195,14 @@ class GeneralTemporalMemory(TemporalMemory):
                            prevActiveCells | prevActiveExternalCells,
                            winnerCells,
                            prevCellActivity,
-                           connections)
+                           connections,
+                           predictedInactiveCells,
+                           prevMatchingSegments)
 
     (activeSegments,
-     predictiveCells) = self.computePredictiveCells(
+     predictiveCells,
+     matchingSegments,
+     matchingCells) = self.computePredictiveCells(
        activeCells | activeExternalCells, connections)
 
     return (activeCells,
@@ -190,6 +210,8 @@ class GeneralTemporalMemory(TemporalMemory):
             activeSegments,
             predictiveCells,
             predictedColumns,
+            matchingSegments,
+            matchingCells,
             chosenCellForColumn)
 
 
