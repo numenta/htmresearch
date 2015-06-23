@@ -242,13 +242,8 @@ class PoolingRegion(PyRegion):
 
     The guts of the compute are contained in the self._poolerClass compute() call
     """
-    activeCells = numpy.zeros(self._inputWidth, dtype=GetNTAReal())
-    activeCellsIndices = [int(i) for i in inputs["activeCellsIndices"]]
-    activeCells[activeCellsIndices] = 1
-
-    predictedActiveCells= numpy.zeros(self._inputWidth, dtype=GetNTAReal())
-    predictedActiveCellsIndices = [int(i) for i in inputs["predictedActiveCellsIndices"]]
-    predictedActiveCells[predictedActiveCellsIndices]= 1
+    activeCells = inputs["activeCells"]
+    predictedActiveCells = inputs["predictedActiveCells"]
 
     mostActiveCellsIndices = self._pooler.compute(activeCells, predictedActiveCells, self.learningMode)
 
@@ -267,8 +262,8 @@ class PoolingRegion(PyRegion):
       description=PoolingRegion.__doc__,
       singleNodeOnly=True,
       inputs=dict(
-          activeCellsIndices=dict(
-          description="Active cells indices",
+          activeCells=dict(
+          description="Active cells",
           dataType="Real32",
           count=0,
           required=True,
@@ -276,8 +271,8 @@ class PoolingRegion(PyRegion):
           isDefaultInput=False,
           requireSplitterMap=False),
 
-          predictedActiveCellsIndices=dict(
-          description="Predicted Actived Cell Indices",
+          predictedActiveCells=dict(
+          description="Predicted Actived Cells",
           dataType="Real32",
           count=0,
           required=True,

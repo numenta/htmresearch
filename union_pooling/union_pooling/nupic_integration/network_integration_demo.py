@@ -191,9 +191,9 @@ def createNetwork(dataSource):
   network.addRegion("unionPoolerRegion", "py.PoolingRegion", json.dumps(UP_PARAMS))
 
   network.link("temporalMemoryRegion", "unionPoolerRegion", "UniformLink", "",
-               srcOutput="activeCellsIndices", destInput="activeCellsIndices")
+               srcOutput="activeCells", destInput="activeCells")
   network.link("temporalMemoryRegion", "unionPoolerRegion", "UniformLink", "",
-               srcOutput="predictedActiveCellsIndices", destInput="predictedActiveCellsIndices")
+               srcOutput="predictedActiveCells", destInput="predictedActiveCells")
 
   network.initialize()
 
