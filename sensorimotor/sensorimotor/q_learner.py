@@ -31,7 +31,7 @@ from sensorimotor.reinforcement_learner import ReinforcementLearner
 class QLearner(ReinforcementLearner):
 
   def __init__(self, actions,
-               alpha=0.9, gamma=0.8, elambda=0.3,
+               alpha=0.2, gamma=0.8, elambda=0.3,
                n=2048):
     super(QLearner, self).__init__(actions,
                                    alpha=alpha, gamma=gamma, elambda=elambda)
