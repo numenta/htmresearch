@@ -9,7 +9,7 @@ class LogisticExciteFunction(ExciteFunctionBase):
   Implementation of a logistic activation function for activation updating.
   Specifically, the function has the following form:
 
-  f(x) = maxValue / (1 + exp(-steepness * (x - xMidpoint) ) )
+  f(x) = maxValue / (1 + exp(-steepness * (x - xMidpoint) ) ) + minValue
 
   Note: The excitation rate is linear. The activation function is
   logistic.
@@ -17,7 +17,7 @@ class LogisticExciteFunction(ExciteFunctionBase):
   _SMALL_POSITIVE_CONSTANT = 0.000001
 
 
-  def __init__(self, xMidpoint=0, maxValue=1, steepness=1):
+  def __init__(self, xMidpoint=0, maxValue=1, steepness=1, minValue=0):
     """
     :param xMidpoint: Controls where function output is half of 'maxValue,'
                       i.e. f(xMidpoint) = maxValue / 2
@@ -30,6 +30,7 @@ class LogisticExciteFunction(ExciteFunctionBase):
 
     self._xMidpoint = xMidpoint
     self._maxValue = maxValue
+    self._minValue = minValue
     self._steepness = steepness
 
 
