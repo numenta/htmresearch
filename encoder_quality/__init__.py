@@ -42,8 +42,8 @@ class InputPairCreatorFromGenerator(_InputPairCreator):
 		self.sampleGenerator = sampleGenerator
 
 	def getNewPair(self):
-		first = next(self.sampleGenerator)
-		second = next(self.sampleGenerator)
+		first = self.sampleGenerator()
+		second = self.sampleGenerator()
 
 		return (first, second)
 
@@ -135,8 +135,9 @@ encoder = ScalarEncoder(name="scalar", n=14, w=3, minval=minval, maxval=maxval,
 # Anything more than 1/4 outside the range is completely not similar.
 similarity_function = lambda x,y : max(0.0, 1.0-abs(x-y)/(.25*(maxval-minval)))
 
-sample_space = np.random.uniform(minval, maxval, (Nsamples,))
-input_pairs_source = InputPairCreatorFromList(sample_space)
+#sample_space = np.random.uniform(minval, maxval, (Nsamples,))
+sample_generator = lambda : np.random.uniform(minval, maxval)
+input_pairs_source = InputPairCreatorFromGenerator(sample_generator)
 
 err = encoderError(encoder, similarity_function, input_pairs_source)
 print "Average error: ",
