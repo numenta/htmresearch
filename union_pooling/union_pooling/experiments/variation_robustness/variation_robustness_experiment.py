@@ -20,7 +20,6 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from collections import Counter
 import csv
 import numpy
 from optparse import OptionParser
@@ -39,7 +38,7 @@ from union_pooling.experiments.union_pooler_experiment import (
     UnionPoolerExperiment)
 
 """
-Noise Robustness Experiment
+Variation Robustness Experiment
 
 Data: Sequences generated from an alphabet. Patterns do not overlap between
 sequences.
@@ -58,9 +57,9 @@ perturbations may occur:
   3) skipping expected pattern and presenting next pattern in sequence
   4) addition of some other pattern putting off expected pattern one time step
 
-Goal: Characterize the noise robustness of the UnionPooler to various
-perturbations. Explore trade-off between remaining stable to noise yet still
-changing when sequence actually changes.
+Goal: Characterize the variation robustness of the UnionPooler to various
+perturbations. Explore trade-off between remaining stable to variations yet
+still changing when sequence actually changes.
 """
 
 
@@ -73,9 +72,10 @@ _ADD_PERTURBATION_TYPE = 3
 _SEQUENCE_JUMP_PERTURBATION_TYPE = 4
 
 
-def runTestPhase(experiment, inputSequences, sequenceCount,
-                 sequenceLength, testPresentations, overallPerturbationChance,
-                 perturbationTypeChance, consoleVerbosity):
+def runTestPhaseRandom(experiment, inputSequences, sequenceCount,
+                       sequenceLength, testPresentations,
+                       overallPerturbationChance, perturbationTypeChance,
+                       consoleVerbosity):
   """
   Performs a number of presentations of sequences with resets afterwards.
   Sequence selection is random.
@@ -153,7 +153,8 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
       presentationString += "Seq-{0} ".format(sequence)
 
     # Present selected sequence to network
-    i = sequence + sequence * sequenceLength
+    sequenceStart = sequence + sequence * sequenceLength
+    i = sequenceStart
     sequenceEnd = sequence + 1 + (sequence + 1) * sequenceLength
     while i < sequenceEnd:
 
@@ -167,19 +168,24 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
 
           # Substitute in a random pattern and move on to next pattern
           # in sequence
-          currentPattern = getRandomPattern(inputSequences)
+          currentPattern = getRandomPattern(inputSequences, sequenceStart,
+                                            sequenceEnd)
           currentPerturbation = _SUBSTITUTION_PERTURBATION_TYPE
           i += 1
         elif perturbationType < patternAddChanceThreshold:
 
           # Add in an extra random pattern
-          currentPattern = getRandomPattern(inputSequences)
+          currentPattern = getRandomPattern(inputSequences, sequenceStart,
+                                            sequenceEnd)
           currentPerturbation = _ADD_PERTURBATION_TYPE
         elif perturbationType < patternSkipChanceThreshold:
 
           # Skip to next pattern in sequence
           i += 1
           if i == sequenceEnd:
+            experiment.runNetworkOnPattern(None,
+                                           tmLearn=False,
+                                           upLearn=False)
             break;
           currentPattern = inputSequences[i]
           currentPerturbation = _SKIP_PERTURBATION_TYPE
@@ -248,11 +254,83 @@ def runTestPhase(experiment, inputSequences, sequenceCount,
 
 
 
-def getRandomPattern(patterns):
+def getRandomPattern(patterns, ignoreStart, ignoreEnd):
   r = random.randint(0, len(patterns)-1)
-  while patterns[r] is None:
+  while (ignoreStart <= r <= ignoreEnd) or (patterns[r] is None):
     r = random.randint(0, len(patterns)-1)
   return patterns[r]
+
+
+
+def getPerturbedSequences(inputSequences, sequenceCount, sequenceLength,
+                          exactSubstitutions):
+  perturbationTrace = [0] * (sequenceCount * sequenceLength)
+  perturbedSequences = list(inputSequences)
+  for i in xrange(sequenceCount):
+    start = i + i * sequenceLength
+    end = i + 1 + (i + 1) * sequenceLength
+
+    # end - 1 because we don't want the None
+    sequenceIndices = range(start, end - 1)
+    subsample = random.sample(sequenceIndices, exactSubstitutions)
+    for j in subsample:
+      perturbedSequences[j] = getRandomPattern(inputSequences, start, end - 2)
+
+      # Must subtract number of Nones
+      perturbationTrace[j - i] = _SUBSTITUTION_PERTURBATION_TYPE
+
+  return perturbedSequences, perturbationTrace
+
+
+
+def runTestPhaseFixed(experiment, inputSequences, sequenceCount, sequenceLength,
+                      exactSubstitutions, consoleVerbosity):
+  """
+  Runs a test phase where a fixed number of substitutions perturbations are
+  performed, i.e. chance does not affect the number of substitutions that occur.
+  Random chance does still affect where these perturbation occur in each
+  sequence.
+  @param experiment                 A UnionPoolerExperiment
+  @param inputSequences             List of sequences each terminated by None.
+  @param sequenceCount              The number of sequences in inputSequences
+  @param sequenceLength             Length of each sequence not counting Nones.
+
+  @param exactSubstitutions         The number of substitution perturbations
+                                    guaranteed to be made in each sequence.
+  @param consoleVerbosity           Console output verbosity
+
+  @return
+        actualCategories -    A list of the actual categories of the patterns
+                              presented during the test phase
+        classifiedCategores - A list of the classifications of the categories
+                              of each pattern presented during the test phase
+        perturbationTrace -   A list of the perturbations that occurred during
+                              the test phase
+  """
+  actualCategories = []
+  classifiedCategories = []
+
+  perturbedSequences, perturbationTrace = getPerturbedSequences(inputSequences,
+                                                                sequenceCount,
+                                                                sequenceLength,
+                                                                exactSubstitutions)
+  for i in xrange(len(perturbedSequences)):
+    experiment.runNetworkOnPattern(perturbedSequences[i],
+                                   tmLearn=False,
+                                   upLearn=False)
+
+    if perturbedSequences[i] is not None:
+      # Store classification
+      unionSDR = experiment.up.getUnionSDR()
+      denseUnionSDR = numpy.zeros(experiment.up.getNumColumns())
+      denseUnionSDR[unionSDR] = 1.0
+      classification, _, _, _ = experiment.classifier.infer(denseUnionSDR)
+
+      # Assumes sequence number and sequence category is equivalent
+      actualCategories.append(i / (sequenceLength + 1))
+      classifiedCategories.append(classification)
+
+  return actualCategories, classifiedCategories, perturbationTrace
 
 
 
@@ -336,7 +414,7 @@ def generateSequences(patternCardinality, patternDimensionality,
 
 def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   """
-  Runs the noise robustness experiment.
+  Runs the variation robustness experiment.
 
   :param params: A dict containing the following experiment parameters:
 
@@ -363,7 +441,7 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   :param consoleVerbosity: Console output verbosity
   """
   startTime = time.time()
-  print "Running Noise robustness experiment...\n"
+  print "Running Variation robustness experiment...\n"
   print "Params dir: {0}".format(os.path.join(os.path.dirname(__file__),
                                               paramDir))
   print "Output dir: {0}\n".format(os.path.join(os.path.dirname(__file__),
@@ -375,6 +453,10 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   numberOfSequences = params["numberOfSequences"]
   trainingPasses = params["trainingPasses"]
   testPresentations = params["testPresentations"]
+
+  exactSubstitutions = (params["exactSubstitutions"] if "exactSubstitutions" in
+                        params else None)
+
   perturbationChance = params["perturbationChance"]
   sequenceJumpChance = params["sequenceJumpPerturbationChance"]
 
@@ -428,16 +510,27 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
                   numberOfSequences, trainingPasses, consoleVerbosity)
 
   print "\nRunning Test Phase..."
-  (actualCategories,
-   classifiedCategories,
-   perturbationTrace) = runTestPhase(experiment,
-                                     inputSequences,
-                                     numberOfSequences,
-                                     sequenceLength,
-                                     testPresentations,
-                                     perturbationChance,
-                                     perturbationTypeChance,
-                                     consoleVerbosity)
+  if exactSubstitutions is None:
+    (actualCategories,
+     classifiedCategories,
+     perturbationTrace) = runTestPhaseRandom(experiment,
+                                             inputSequences,
+                                             numberOfSequences,
+                                             sequenceLength,
+                                             testPresentations,
+                                             perturbationChance,
+                                             perturbationTypeChance,
+                                             consoleVerbosity)
+  else:
+    (actualCategories,
+     classifiedCategories,
+     perturbationTrace) = runTestPhaseFixed(experiment,
+                                            inputSequences,
+                                            numberOfSequences,
+                                            sequenceLength,
+                                            exactSubstitutions,
+                                            consoleVerbosity)
+
   assert len(actualCategories) == len(classifiedCategories)
   assert len(actualCategories) == len(perturbationTrace)
 
@@ -451,7 +544,7 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
   print "\n*Results*"
   pprint.pprint("Actual Category {0}".format(actualCategories))
   pprint.pprint("Classification  {0}".format(classifiedCategories))
-  pprint.pprint("Correct Classif {0}".format(
+  pprint.pprint("Class. Correct  {0}".format(
     correctClassificationTrace))
   pprint.pprint("Perturb Type    {0}".format(perturbationTrace))
   numPerturbations = (len(perturbationTrace) -
@@ -469,12 +562,13 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
       errorDict[perturbationTrace[i]] += 1.0
       incorrect += 1
 
-  print "\n>>> Correct Classification Rate: {0:.2f}%".format(classificationRate)
-  print "Correct / Total: \t{0} / {1}".format(correctClassifications,
-                                              len(correctClassificationTrace))
+  print "\n*** Correct Classification Rate: {0:.2f}%".format(classificationRate)
+  print "*** Correct / Total: \t{0} / {1}".format(correctClassifications,
+                                                len(correctClassificationTrace))
 
-  print "\nActual perturbation rate: {0:.2f}%".format(100.0* numPerturbations /
-                                                      len(perturbationTrace))
+  if exactSubstitutions is None:
+    actualPerturbationRate = 100.0 * numPerturbations / len(perturbationTrace)
+    print "\nActual perturbation rate: {0:.2f}%".format(actualPerturbationRate)
 
   substitutionErrorRate = (0 if incorrect == 0 else
     100.0 * errorDict[_SUBSTITUTION_PERTURBATION_TYPE] / incorrect)
@@ -497,8 +591,9 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
                                                  sequenceJumpErrorRate,
                                                  noPerturbationErrorRate)
 
-  outputFileName = "testPres{0}_perturbationRate{1}_jumpRate{2}.txt".format(
-    testPresentations, perturbationChance, sequenceJumpChance)
+  outputFileName = ("testPresentations{0:0>3}_perturbationRate{"
+                    "1:0>3}_exactSubstitutions{2:0>3}.txt").format(
+    testPresentations, perturbationChance, exactSubstitutions)
   print "\nWriting results to {0}/{1}".format(outputDir, outputFileName)
 
   elapsedTime = (time.time() - startTime) / 60.0
@@ -529,7 +624,7 @@ def writeClassificationTrace(outputDir, outputFileName, mean):
 
 def _getArgs():
   parser = OptionParser(usage="%prog PARAMS_DIR OUTPUT_DIR [options]"
-                              "\n\nRun noise robustness experiment using "
+                              "\n\nRun variation robustness experiment using "
                               "params in PARAMS_DIR (relative to this file) "
                               "and outputting results to OUTPUT_DIR.")
   parser.add_option("-c",

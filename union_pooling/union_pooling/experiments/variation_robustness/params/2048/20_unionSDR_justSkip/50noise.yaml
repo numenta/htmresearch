@@ -1,17 +1,17 @@
-patternDimensionality: 128
-patternCardinality: 3
+patternDimensionality: 2048
+patternCardinality: 40
 sequenceLength: 13
-numberOfSequences: 10
+numberOfSequences: 200
 trainingPasses: 3
-testPresentations: 10
-perturbationChance: 0.00
-substitutionPerturbationChance: 0.316666666666
-addPerturbationChance: 0.316666666666
-skipChance: 0.316666666666
-sequenceJumpPerturbationChance: 0.05
+testPresentations: 200
+perturbationChance: 0.5
+substitutionPerturbationChance: 0.0
+addPerturbationChance: 0.0
+skipChance: 1.0
+sequenceJumpPerturbationChance: 0.0
 
 temporalMemoryParams:
-  columnDimensions: [128]
+  columnDimensions: [2048]
   cellsPerColumn: 8
   activationThreshold: 20
   initialPermanence: 0.5
@@ -25,8 +25,8 @@ temporalMemoryParams:
 
 unionPoolerParams:
   # Spatial Pooler Params
-  columnDimensions: [128]
-  numActiveColumnsPerInhArea: 3.0
+  columnDimensions: [2048]
+  numActiveColumnsPerInhArea: 40.0
   potentialPct: 0.5
   globalInhibition: True
   localAreaDensity: -1.0
