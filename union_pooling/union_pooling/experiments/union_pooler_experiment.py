@@ -34,9 +34,10 @@ from sensorimotor.fast_general_temporal_memory import (
      FastGeneralTemporalMemory)
 from sensorimotor.temporal_pooler_monitor_mixin import (
      TemporalPoolerMonitorMixin)
-from union_pooling.union_pooler import UnionPooler
 
-
+from union_pooling.union_pooler_new import UnionPoolerNew as UnionPooler
+# uncomment to use early version of union pooler
+# from union_pooling.union_pooler import UnionPooler
 
 class MonitoredFastGeneralTemporalMemory(TemporalMemoryMonitorMixin,
                                          FastGeneralTemporalMemory):
