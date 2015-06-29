@@ -74,14 +74,6 @@ class QLearner(ReinforcementLearner):
     targetValue = reward + (self.gamma * self.value(nextState))
     qValue = self.qValue(state, action)
     correction = (targetValue - qValue) / sum(state)
-    targetWeight = targetValue / sum(state)
 
-    diffs = [abs(targetWeight - self.weights[action][i])
-             for i in state.nonzero()[0]]
-    maxDiff = max(diffs)
-
-    if maxDiff != 0:
-      for i in state.nonzero()[0]:
-        diff = abs(targetWeight - self.weights[action][i])
-        scale = diff / maxDiff
-        self.weights[action][i] += self.alpha * correction * scale
+    for i in state.nonzero()[0]:
+      self.weights[action][i] += self.alpha * correction
