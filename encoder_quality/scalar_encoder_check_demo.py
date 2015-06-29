@@ -18,3 +18,30 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+
+import encoder_check
+import numpy as np
+
+from nupic.encoders.scalar import ScalarEncoder
+
+if __name__ == "__main__":
+
+  print "Testing ScalarEncoder Quality"
+
+  maxval = 100.0
+  minval = -100.0
+  Nsamples = 1000
+
+  encoder = ScalarEncoder(name="scalar", n=14, w=3, minval=minval,
+                          maxval=maxval, periodic=True, forced=True)
+
+  distance_function = lambda x,y : abs(x-y)
+
+  sample_generator = lambda : np.random.uniform(minval, maxval)
+  input_pairs_source = encoder_check.InputTripleCreator(sample_generator)
+
+  err = encoder_check.encoderCheck(encoder, distance_function,
+  	                               input_pairs_source)
+
+  print "Average error: ",
+  print err
