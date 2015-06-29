@@ -79,47 +79,40 @@ def trainAndClassify(trainingSetSize, model, data_path, results_path):
       anomalyScore = result.inferences['anomalyScore']
       predictedLabel = result.inferences['anomalyLabel'][2:-2]
 
-      # relabel prediction for all the records with indices withing the training set size range.
-      if x < trainingSetSize:
-        for label in CLASS_RANGES:
-          for class_range in CLASS_RANGES[label]:
-            start = class_range['start']
-            end = class_range['end']
+      if x < 1000: # wait until the SP has seen the 3 classes at lest one time
+        csvWriter.writerow([x, modelInput["y"], trueLabel, anomalyScore, 'NOT_READY'])
+      
+      elif 1000 <= x < trainingSetSize: # relabel predictions (i.e. train KNN)
+        csvWriter.writerow([x, modelInput["y"], trueLabel, anomalyScore, 'TRAINING'])
+        classifierRegion.executeCommand(["addLabel", str(x), str(x + 1), trueLabel])
 
-            if start <= x <= end:
-              predictedLabel = label
+      elif x>= trainingSetSize: # predict
+        csvWriter.writerow([x, modelInput["y"], trueLabel, anomalyScore, predictedLabel])
 
-            if x == end + 2:
-              print "Adding labeled anomalies for record", x
-              classifierRegion.executeCommand(["addLabel", str(start), str(end + 1), label])
+      
 
-      csvWriter.writerow([x, modelInput["y"], trueLabel, anomalyScore, predictedLabel])
-
-  print "Results scores have been written to %s" % results_path
+  print "Results have been written to %s" % results_path
 
 
-def computeClassificationAccuracy(result_file):
-  num_errors = 0.0
-  num_records = 0.0
-  with open (findDataset(result_file)) as fin:
+def computeClassificationAccuracy(resultFile, trainingSetSize):
+  numErrors = 0.0
+  numRecords = 0.0
+  with open (findDataset(resultFile)) as fin:
     reader = csv.reader(fin)
     headers = reader.next()
     for i, record in enumerate(reader):
-      data = dict(zip(headers, record))
-
-      if data['predictedLabel'] != data['trueLabel']:
-          num_errors += 1.0
-          print "=> Incorrectly predicted record at line #%s. True Label: %s. Predicted Label: %s" %\
-                (i, data['trueLabel'], data['predictedLabel']) 
+      if numRecords >= trainingSetSize:
+        data = dict(zip(headers, record))
+  
+        if data['predictedLabel'] != data['trueLabel']:
+            numErrors += 1.0
+            print "=> Incorrectly predicted record at line %s." %i
+            print "   True Label: %s. Predicted Label: %s" %(data['trueLabel'], data['predictedLabel']) 
       
-      num_records += 1.0
+      numRecords += 1.0
           
-  print ""
-  print "== Classification error for %s ==" % resultsPath
-  print "* Number of errors: %s" % num_errors
-  print "* Classification accuracy: %s %%" % (num_errors/num_records * 100)
-  print ""
-
+  # classification accuracy          
+  return (1-numErrors/numRecords) * 100
 
 def getModelParamsFromName(metricName):
   
@@ -139,15 +132,30 @@ if __name__ == "__main__":
   generateData(whiteNoise=True, signal_mean=SIGNAL_MEAN, signal_amplitude=SIGNAL_AMPLITUDE, noise_amplitude=WHITE_NOISE_AMPLITUDE)
 
 
+  accuracyResults = [['signal_type', 'classification_accuracy']]
+
   for signalType in SIGNAL_TYPES:
     # generate model params
     fileName = '%s/%s.csv' % (DATA_DIR, signalType)
     modelParamsName = '%s_model_params' % signalType
     createModelParams(MODEL_PARAMS_DIR, modelParamsName, fileName)
 
+    # train and classify
     dataPath = "%s.csv" % signalType
     resultsPath = "%s/%s.csv" % (RESULTS_DIR, signalType)
-
     model = createModel(signalType)
     trainAndClassify(TRAINING_SET_SIZE, model, dataPath, resultsPath)
-    computeClassificationAccuracy(resultsPath)
+    
+    #classification accuracy
+    classificationAccuracy = computeClassificationAccuracy(resultsPath, TRAINING_SET_SIZE)
+    accuracyResults.append([signalType, classificationAccuracy])
+
+  print accuracyResults
+
+  # write accuracy results to file 
+  accuracyResultsFile = 'classification_accuracy'
+  with open("%s/%s.csv" %(RESULTS_DIR, accuracyResultsFile), 'wb') as f:
+    writer = csv.writer(f)
+    writer.writerows(accuracyResults)
+      
+    
