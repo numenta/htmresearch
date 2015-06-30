@@ -21,27 +21,24 @@
 
 import numpy
 import matplotlib.pyplot as plt
-from excite_function_base import ExciteFunctionBase
+from decay_function_base import DecayFunctionBase
 
 
 
-class PersistenceExciteFunction(ExciteFunctionBase):
+class LogisticDecayFunction(DecayFunctionBase):
   """
-  Implementation of a logistic activation function for activation updating.
-  Specifically, the function has the following form:
-
-  f(x) = (maxValue - minValue) / (1 + exp(-steepness * (x - xMidpoint) ) ) + minValue
-
-  Note: The excitation rate is linear. The activation function is
-  logistic.
+  Implementation of logistic decay.
+  f(t) = maxValue / (1 + exp(-steepness * (tMidpoint - t) ) )
+  tMidpoint is when activation decays to half of its initial level
+  steepness controls the steepness of the decay function around tMidpoint
   """
 
 
-  def __init__(self, xMidpoint=5, minValue=10, maxValue=20, steepness=1):
+  def __init__(self, tMidpoint=10, maxValue=20, steepness=1):
     """
-    @param xMidpoint: Controls where function output is half of 'maxValue,'
+    @param tMidpoint: Controls where function output is half of 'maxValue,'
                       i.e. f(xMidpoint) = maxValue / 2
-    @param minValue: Minimum value of the function
+
     @param maxValue: Controls the maximum value of the function's range
     @param steepness: Controls the steepness of the "middle" part of the
                       curve where output values begin changing rapidly.
@@ -49,36 +46,35 @@ class PersistenceExciteFunction(ExciteFunctionBase):
     """
     assert steepness != 0
 
-    self._xMidpoint = xMidpoint
+    self._xMidpoint = tMidpoint
     self._maxValue = maxValue
-    self._minValue = minValue
     self._steepness = steepness
 
 
-  def excite(self, currentActivation, inputs):
+  def decay(self, activationLevel, timeSinceActivation):
     """
-    Increases current activation by amount.
-    @param currentActivation (numpy array) Current activation levels for each cell
-    @param inputs            (numpy array) inputs for each cell
+    @param activationLevel: current activation level
+    @param timeSinceActivation: time since the activation
+    @return: activation level after decay
     """
 
-    currentActivation += self._minValue + (self._maxValue - self._minValue) / \
-                                          (1 + numpy.exp(-self._steepness * (inputs - self._xMidpoint)))
+    activationLevel = self._maxValue / (1 + numpy.exp(-self._steepness * (self._xMidpoint - timeSinceActivation)))
 
-    currentActivation[currentActivation>self._maxValue] = self._maxValue
-
-    return currentActivation
+    return activationLevel
 
   def plot(self):
-    """
-    plot the activation function
-    """
+    initValue = 20
+    nStep = 20
+    x = numpy.arange(0, nStep, 1)
+    y = numpy.zeros(x.shape)
+    y[0] = initValue
+
+    for i in range(0, nStep-1):
+      y[i+1] = self.decay(y[i], i)
+
     plt.ion()
     plt.show()
-    x = numpy.linspace(0, 15, 100)
-    y = numpy.zeros(x.shape)
-    y = self.excite(y, x)
-    plt.plot(x, y)
-    plt.xlabel('Input')
-    plt.ylabel('Persistence')
 
+    plt.plot(x, y)
+    plt.xlabel('Time after activation (step)')
+    plt.ylabel('Persistence')

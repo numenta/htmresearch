@@ -33,12 +33,12 @@ class ExponentialDecayFunction(DecayFunctionBase):
   """
 
 
-  def __init__(self, lambda_constant=0.2):
+  def __init__(self, time_constant=10.0):
     """
-    :param lambda_constant: positive exponential decay constant.
+    @param (float) lambda_constant: positive exponential decay time constant.
     """
-    assert not lambda_constant < 0
-    self._lambda_constant = lambda_constant
+    assert not time_constant < 0
+    self._lambda_constant = 1/float(time_constant)
 
 
   def decay(self, activationLevel):
@@ -54,14 +54,14 @@ class ExponentialDecayFunction(DecayFunctionBase):
     nStep = 20
     x = numpy.arange(0, nStep, 1)
     y = numpy.zeros(x.shape)
-    y[1] = initValue
+    y[0] = initValue
 
     for i in range(0, nStep-1):
-      y[i+1] = self.decay(y[i], i)
+      y[i+1] = self.decay(y[i])
 
     plt.ion()
     plt.show()
 
     plt.plot(x, y)
-    plt.xlabel('Step')
+    plt.xlabel('Time after activation (step)')
     plt.ylabel('Persistence')
