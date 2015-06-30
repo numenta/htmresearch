@@ -79,7 +79,7 @@ MODEL_PARAMS = {'aggregationInfo': {'days': 0,
                               'permanenceInc': 0.1,
                               'seed': 1960,
                               'temporalImp': 'cpp',
-                              #'temporalImp': 'tm_py',  # 'tm_py' to use the vanilla version of TM
+                              #'temporalImp': 'tm_py',  # use 'tm_py' to use the vanilla version of TM
                               'verbosity': 0},
                  'trainSPNetOnlyIfRequested': False},
  'predictAheadTime': None,
