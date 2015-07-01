@@ -47,7 +47,6 @@ def run(positions, plotEvery=1):
   plotter = Plotter(encoder)
   learner = QLearner(ACTIIONS, n=1008)
 
-
   lastState = None
   lastAction = None
 
