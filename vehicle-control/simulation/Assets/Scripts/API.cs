@@ -17,6 +17,8 @@ public class API : MonoBehaviour {
 
 	private bool _isWaitingForResponse;
 	private float _lastSyncTime;
+	private int _myTime = 0;
+	private int _clientTime = 0;
 	private Dictionary<string, object> _outputData;
 	private Dictionary<string, object> _inputData;
 
@@ -63,11 +65,20 @@ public class API : MonoBehaviour {
 		WWW www = new WWW(serverURL + pth, form);
 		yield return www;
 
-		_isWaitingForResponse = false;
-		if (blockOnResponse) {
-			Time.timeScale = 1.0f;
+		if (_inputData.ContainsKey ("clientTime")) {
+			_clientTime = (int)_inputData ["clientTime"];
 		}
+		
+		_isWaitingForResponse = _myTime != _clientTime;
 
+		if (blockOnResponse && _isWaitingForResponse) {
+			Time.timeScale = 0.0f;
+		} 
+		else {
+			Time.timeScale = 1.0f;
+			_myTime += 1;
+		}
+		
 		if (www.error != null) return false;
 
 		_inputData = JsonReader.Deserialize<Dictionary<string, object>>(www.text);
@@ -95,17 +106,9 @@ public class API : MonoBehaviour {
 			return;
 		}
 
-		if (blockOnResponse && _isWaitingForResponse) {
-			return;
-		}
-
-		_lastSyncTime = Time.time;
+		_outputData["timestep"] = _myTime;
 		StartCoroutine ("Sync");
-		_isWaitingForResponse = true;
-
-		if (blockOnResponse) {
-			Time.timeScale = 0.0f;
-		}
+		_lastSyncTime = Time.time;
 	}
 
 

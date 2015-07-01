@@ -47,6 +47,7 @@ def run(positions, plotEvery=1):
   plotter = Plotter(encoder)
   learner = QLearner(ACTIIONS, n=1008)
 
+
   lastState = None
   lastAction = None
 
@@ -87,6 +88,7 @@ def run(positions, plotEvery=1):
 
     fetcher.inputData["qValues"] = qValues
     fetcher.inputData["bestAction"] = learner.bestAction(encoding)
+    fetcher.inputData["clientTime"] = myTime
 
     plotter.update(sensor, encoding, steer, reward, value, qValues)
 
