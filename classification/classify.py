@@ -21,8 +21,7 @@
 # ----------------------------------------------------------------------
 
 """
-A simple example showing how to use classification for detecting known
-anomalies even if they occur again. There are two different methods shown here.
+A simple example showing how to use classification 
 """
 
 import csv
