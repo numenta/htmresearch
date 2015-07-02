@@ -134,7 +134,7 @@ def loadExperiments():
     os.makedirs(outputDir)
 
   argsList = []
-  paramFileList = [f for f in listdir(paramsDir) if isfile(join(paramsDir,f))]
+  paramFileList = [f for f in listdir(paramsDir) if isfile(join(paramsDir, f))]
   for f in paramFileList:
     with open(join(paramsDir,f)) as paramFile:
       params = yaml.safe_load(paramFile)
