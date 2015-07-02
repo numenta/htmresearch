@@ -28,6 +28,7 @@ import numpy
 from unity_client.fetcher import Fetcher
 from nupic.encoders.coordinate import CoordinateEncoder
 from nupic.encoders.scalar import ScalarEncoder
+from nupic.research.monitor_mixin.trace import CountsTrace
 from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
@@ -47,7 +48,6 @@ def run(plotEvery=1):
   motorEncoder = ScalarEncoder(21, -1, 1,
                                n=1024)
   fetcher = Fetcher()
-  plotter = Plotter(encoder)
   tm = MonitoredGeneralTemporalMemory(
     columnDimensions=[2048],
     cellsPerColumn=1,
@@ -58,6 +58,7 @@ def run(plotEvery=1):
     minThreshold=35,
     activationThreshold=35,
     maxNewSynapseCount=40)
+  plotter = Plotter(tm)
 
   lastState = None
   lastAction = None
@@ -77,12 +78,12 @@ def run(plotEvery=1):
             "steer" in outputData):
       print ("Warning: Missing data on timestep {0}: {1}".format(
              fetcher.timestep, outputData))
+      plotter.render()
       continue
 
     if outputData["reset"]:
       print "Reset."
       tm.reset()
-      tm.mmClearHistory()
 
     location = outputData["location"]
     steer = outputData["steer"]
@@ -94,9 +95,6 @@ def run(plotEvery=1):
 
     motorEncoding = motorEncoder.encode(steer)
 
-    # if lastState is not None:
-    #   print (lastState & encoding).sum()
-
     sensorPattern = set(encoding.nonzero()[0])
     motorPattern = set(motorEncoding.nonzero()[0])
 
@@ -106,6 +104,15 @@ def run(plotEvery=1):
 
     print tm.mmPrettyPrintMetrics(tm.mmGetDefaultMetrics())
 
+    overlap = 0
+    if lastState is not None:
+      overlap = (lastState & encoding).sum()
+
+    plotter.update(overlap)
+
+    # if fetcher.timestep % plotEvery == 0 and outputData["reset"]:
+    #   plotter.render()
+
     lastState = encoding
     lastAction = steer
 
@@ -113,16 +120,9 @@ def run(plotEvery=1):
 
 class Plotter(object):
 
-  def __init__(self, encoder):
-    self.encoder = encoder
-
-    self.sensor = []
-    self.encoding = []
-    self.steer = []
-    self.reward = []
-    self.value = []
-    self.qValues = defaultdict(lambda: [])
-    self.bestAction = []
+  def __init__(self, tm):
+    self.tm = tm
+    self.overlaps = []
 
     import matplotlib.pyplot as plt
     self.plt = plt
@@ -131,25 +131,15 @@ class Plotter(object):
 
     from pylab import rcParams
     rcParams.update({'figure.figsize': (6, 9)})
-    # rcParams.update({'figure.autolayout': True})
+    rcParams.update({'figure.autolayout': True})
     rcParams.update({'figure.facecolor': 'white'})
 
     self.plt.ion()
     self.plt.show()
 
 
-  def update(self, sensor, encoding, steer, reward, value, qValues):
-    self.sensor.append(sensor)
-    self.encoding.append(encoding)
-    self.steer.append(steer)
-    self.reward.append(reward)
-    self.value.append(value)
-
-    for key, value in qValues.iteritems():
-      self.qValues[key].append(value)
-
-    bestAction = int(max(qValues.iteritems(), key=operator.itemgetter(1))[0])
-    self.bestAction.append(bestAction)
+  def update(self, overlap):
+    self.overlaps.append(overlap)
 
 
   def render(self):
@@ -157,34 +147,18 @@ class Plotter(object):
 
     self.plt.clf()
 
-    n = 7
+    traces = self.tm.mmGetDefaultTraces()
+    traces = [trace for trace in traces if type(trace) is CountsTrace]
 
-    self.plt.subplot(n,1,1)
-    self._plot(self.steer, "Steer over time")
+    n = len(traces) + 1
 
-    self.plt.subplot(n,1,2)
-    self._plot(self.reward, "Reward over time")
+    for i in xrange(len(traces)):
+      trace = traces[i]
+      self.plt.subplot(n, 1, i+1)
+      self._plot(trace.data, trace.title)
 
-    self.plt.subplot(n,1,3)
-    self._plot(self.value, "Value over time")
-
-    self.plt.subplot(n,1,4)
-    shape = len(self.encoder.positions), self.encoder.scalarEncoder.getWidth()
-    encoding = numpy.array(self.encoding[-1]).reshape(shape).transpose()
-    self._imshow(encoding, "Encoding at time t")
-
-    self.plt.subplot(n,1,5)
-    data = self.encoding
-    w = self.encoder.w
-    overlaps = [sum(a & b) / float(w) for a, b in zip(data[:-1], data[1:])]
-    self._plot(overlaps, "Encoding overlaps between consecutive times")
-
-    # for i, action in enumerate(ACTIIONS):
-    #   self.plt.subplot(n,1,4+i)
-    #   self._plot(self.qValues[action], "Q value: {0}".format(action))
-
-    # self.plt.subplot(n,1,7)
-    # self._plot(self.bestAction, "Best action")
+    self.plt.subplot(n, 1, n)
+    self._plot(self.overlaps, "Overlap between encoding at t and t-1")
 
     self.plt.draw()
 
