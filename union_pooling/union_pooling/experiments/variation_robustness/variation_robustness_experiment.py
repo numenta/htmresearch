@@ -65,11 +65,30 @@ still changing when sequence actually changes.
 
 
 _SHOW_PROGRESS_INTERVAL = 3000
-_NO_PERTURBATION = 0
-_SUBSTITUTION_PERTURBATION_TYPE = 1
-_SKIP_PERTURBATION_TYPE = 2
-_ADD_PERTURBATION_TYPE = 3
-_SEQUENCE_JUMP_PERTURBATION_TYPE = 4
+
+
+
+class PerturbationType(object):
+  """An enum class defining the different types of perturbations used by this
+  experiment.
+  """
+
+  # No perturbation
+  none = 0
+
+  # Perturbation switching expected pattern for another random pattern
+  substitution = 1
+
+  # Perturbation skipping over expected pattern and continuing with next
+  # expected pattern
+  skip = 2
+
+  # Perturbation adding in a random pattern delaying expected pattern
+  add = 3
+
+  # Perturbation switching to entirely different sequence from its beginning
+  sequenceJump = 4
+
 
 
 def runTestPhaseRandom(experiment, inputSequences, sequenceCount,
@@ -170,14 +189,14 @@ def runTestPhaseRandom(experiment, inputSequences, sequenceCount,
           # in sequence
           currentPattern = getRandomPattern(inputSequences, sequenceStart,
                                             sequenceEnd)
-          currentPerturbation = _SUBSTITUTION_PERTURBATION_TYPE
+          currentPerturbation = PerturbationType.substitution
           i += 1
         elif perturbationType < patternAddChanceThreshold:
 
           # Add in an extra random pattern
           currentPattern = getRandomPattern(inputSequences, sequenceStart,
                                             sequenceEnd)
-          currentPerturbation = _ADD_PERTURBATION_TYPE
+          currentPerturbation = PerturbationType.add
         elif perturbationType < patternSkipChanceThreshold:
 
           # Skip to next pattern in sequence
@@ -188,7 +207,7 @@ def runTestPhaseRandom(experiment, inputSequences, sequenceCount,
                                            upLearn=False)
             break;
           currentPattern = inputSequences[i]
-          currentPerturbation = _SKIP_PERTURBATION_TYPE
+          currentPerturbation = PerturbationType.skip
           i += 1
         else:
 
@@ -199,10 +218,10 @@ def runTestPhaseRandom(experiment, inputSequences, sequenceCount,
         # Normal advancement of sequence
         currentPattern = inputSequences[i]
         if isStartOfSequenceJump:
-          currentPerturbation = _SEQUENCE_JUMP_PERTURBATION_TYPE
+          currentPerturbation = PerturbationType.sequenceJump
           isStartOfSequenceJump = False
         else:
-          currentPerturbation = _NO_PERTURBATION
+          currentPerturbation = PerturbationType.none
         i += 1
 
       experiment.runNetworkOnPattern(currentPattern,
@@ -238,11 +257,10 @@ def runTestPhaseRandom(experiment, inputSequences, sequenceCount,
   # While running test presentations
 
   if consoleVerbosity > 0:
-    patternSubCount = perturbationTrace.count(_SUBSTITUTION_PERTURBATION_TYPE)
-    patternSkipCount = perturbationTrace.count(_SKIP_PERTURBATION_TYPE)
-    patternAddCount = perturbationTrace.count(_ADD_PERTURBATION_TYPE)
-    sequenceJumpCount = perturbationTrace.count(
-      _SEQUENCE_JUMP_PERTURBATION_TYPE)
+    patternSubCount = perturbationTrace.count(PerturbationType.substitution)
+    patternSkipCount = perturbationTrace.count(PerturbationType.skip)
+    patternAddCount = perturbationTrace.count(PerturbationType.add)
+    sequenceJumpCount = perturbationTrace.count(PerturbationType.sequenceJump)
     print ("\nPerturbation Counts: "
            "\nPatternSub: {0} "
            "\nPatternSkip: {1} "
@@ -277,7 +295,7 @@ def getPerturbedSequences(inputSequences, sequenceCount, sequenceLength,
       perturbedSequences[j] = getRandomPattern(inputSequences, start, end - 2)
 
       # Must subtract number of Nones
-      perturbationTrace[j - i] = _SUBSTITUTION_PERTURBATION_TYPE
+      perturbationTrace[j - i] = PerturbationType.substitution
 
   return perturbedSequences, perturbationTrace
 
@@ -548,13 +566,13 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
     correctClassificationTrace))
   pprint.pprint("Perturb Type    {0}".format(perturbationTrace))
   numPerturbations = (len(perturbationTrace) -
-                      perturbationTrace.count(_NO_PERTURBATION))
+                      perturbationTrace.count(PerturbationType.none))
 
-  errorDict = {_NO_PERTURBATION: 0,
-               _SUBSTITUTION_PERTURBATION_TYPE: 0,
-               _SKIP_PERTURBATION_TYPE: 0,
-               _ADD_PERTURBATION_TYPE: 0,
-               _SEQUENCE_JUMP_PERTURBATION_TYPE: 0}
+  errorDict = {PerturbationType.none: 0,
+               PerturbationType.substitution: 0,
+               PerturbationType.skip: 0,
+               PerturbationType.add: 0,
+               PerturbationType.sequenceJump: 0}
 
   incorrect = 0
   for i in xrange(len(actualCategories)):
@@ -571,15 +589,15 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
     print "\nActual perturbation rate: {0:.2f}%".format(actualPerturbationRate)
 
   substitutionErrorRate = (0 if incorrect == 0 else
-    100.0 * errorDict[_SUBSTITUTION_PERTURBATION_TYPE] / incorrect)
+    100.0 * errorDict[PerturbationType.substitution] / incorrect)
   skipErrorRate = (0 if incorrect == 0 else
-    100.0 * errorDict[_SKIP_PERTURBATION_TYPE] / incorrect)
+    100.0 * errorDict[PerturbationType.skip] / incorrect)
   addErrorRate = (0 if incorrect == 0 else
-    100.0 * errorDict[_ADD_PERTURBATION_TYPE] / incorrect)
+    100.0 * errorDict[PerturbationType.add] / incorrect)
   sequenceJumpErrorRate = (0 if incorrect == 0 else
-    100.0 * errorDict[_SEQUENCE_JUMP_PERTURBATION_TYPE] / incorrect)
+    100.0 * errorDict[PerturbationType.sequenceJump] / incorrect)
   noPerturbationErrorRate = (0 if incorrect == 0 else
-    100.0 * errorDict[_NO_PERTURBATION] / incorrect)
+    100.0 * errorDict[PerturbationType.none] / incorrect)
   print "\nError Rate by Perturbation:"
   print (  "Substitution:    \t{0:.2f}% "
          "\nSkip Pattern:    \t{1:.2f}% "

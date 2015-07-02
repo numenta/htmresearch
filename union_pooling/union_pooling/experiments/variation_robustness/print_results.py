@@ -1,3 +1,29 @@
+#!/usr/bin/env python
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
+"""Simple utility to print out variation robustness experiment results from a
+directory of files.
+"""
+
 import csv
 from optparse import OptionParser
 from os import listdir
@@ -10,13 +36,14 @@ SIG_FIGS = 5
 
 
 
-def main(dir):
-  fileList = sorted([f for f in listdir(dir) if isfile(join(dir, f))])
+def main(outputFilesDir):
+  fileList = sorted([f for f in listdir(outputFilesDir)
+                     if isfile(join(outputFilesDir, f))])
   for f in fileList:
-    with open(join(dir, f), "rU") as outputFile:
+    with open(join(outputFilesDir, f), "rU") as outputFile:
       csvReader = csv.reader(outputFile)
-      next(csvReader)
-      print "{1:.{0}f}".format(SIG_FIGS, float(next(csvReader)[0]))
+      csvReader.next()
+      print "{1:.{0}f}".format(SIG_FIGS, float(csvReader.next()[0]))
 
 
 
