@@ -73,15 +73,14 @@ def run(plotEvery=1):
       print ("Warning: skipped {0} timesteps, "
              "now at {1}").format(fetcher.skippedTimesteps, fetcher.timestep)
 
-    if not ("reset" in outputData and
-            "location" in outputData and
+    if not ("location" in outputData and
             "steer" in outputData):
       print ("Warning: Missing data on timestep {0}: {1}".format(
              fetcher.timestep, outputData))
       plotter.render()
       continue
 
-    if outputData["reset"]:
+    if outputData.get("reset"):
       print "Reset."
       tm.reset()
 
