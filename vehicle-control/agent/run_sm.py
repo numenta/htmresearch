@@ -22,6 +22,7 @@
 
 from collections import defaultdict
 import operator
+import time
 
 import numpy
 
@@ -151,7 +152,7 @@ class Plotter(object):
     self._plot(self.overlaps, "Overlap between encoding at t and t-1")
 
     self.plt.draw()
-    self.plt.savefig('test.png')
+    self.plt.savefig("sm-{0}.png".format(time.time()))
 
 
   def _plot(self, data, title):
