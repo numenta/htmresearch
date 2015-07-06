@@ -36,7 +36,9 @@ class UnionPoolerTest(unittest.TestCase):
                                    # union_pooler.py parameters
                                    activeOverlapWeight=1.0,
                                    predictedActiveOverlapWeight=10.0,
-                                   maxUnionActivity=0.20)
+                                   maxUnionActivity=0.20,
+                                   exciteFunctionType='Fixed',
+                                   decayFunctionType='NoDecay')
 
 
   def testDecayPoolingActivationDefaultDecayRate(self):
@@ -45,18 +47,17 @@ class UnionPoolerTest(unittest.TestCase):
     expected = numpy.array([0, 1, 2, 3, 4], dtype=REAL_DTYPE)
 
     result = self.unionPooler._decayPoolingActivation()
-
+    print result
     self.assertTrue(numpy.array_equal(expected, result))
 
 
   def testAddToPoolingActivation(self):
     activeCells = numpy.array([1, 3, 4])
-    #                      [    0,   1,   0,     1,     1]
+
     overlaps = numpy.array([0.123, 0.0, 0.0, 0.456, 0.789])
-    expected = [0.0, 0.0, 0.0, 0.456, 0.789]
+    expected = [0.0, 10.0, 0.0, 10.0, 10.0]
 
     result = self.unionPooler._addToPoolingActivation(activeCells, overlaps)
-
     self.assertTrue(numpy.allclose(expected, result))
 
 
@@ -66,10 +67,9 @@ class UnionPoolerTest(unittest.TestCase):
     activeCells = numpy.array([1, 3, 4])
     #                      [    0,   1,   0,     1,     1]
     overlaps = numpy.array([0.123, 0.0, 0.0, 0.456, 0.789])
-    expected = [0.0, 1.0, 2.0, 3.456, 4.789]
+    expected = [0.0, 11.0, 2.0, 13, 14]
 
     result = self.unionPooler._addToPoolingActivation(activeCells, overlaps)
-
     self.assertTrue(numpy.allclose(expected, result))
 
 
@@ -101,8 +101,8 @@ class UnionPoolerTest(unittest.TestCase):
     result = self.unionPooler._getMostActiveCells()
 
     self.assertEquals(len(result), 2)
-    self.assertEquals(result[0], 4)
-    self.assertEquals(result[1], 3)
+    self.assertEquals(result[0], 3)
+    self.assertEquals(result[1], 4)
 
 
 if __name__ == "__main__":
