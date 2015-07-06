@@ -32,31 +32,27 @@ resulting figures to a pdf document "excitation_decay_functions.pdf"
 with PdfPages('excitation_decay_functions.pdf') as pdf:
 	
 	plt.figure()
-	from union_pooling.activation.excite_functions.logistic_excite_function import (
+	plt.subplot(2,2,1)
+	from union_pooling.activation.excite_functions.excite_functions_all import (
 	  LogisticExciteFunction)
 	self = LogisticExciteFunction()
-	self.plot()
-	plt.title('Sigmoid Activation Function')
-	pdf.savefig()
-	plt.close()
-
-	# test decay function
-	from union_pooling.activation.decay_functions.exponential_decay_function import (
+	self.plot()	
+	plt.xlabel('Predicted Input #')
+	
+	from union_pooling.activation.decay_functions.decay_functions_all import (
 	  ExponentialDecayFunction)
-
-	plt.figure()
+	
+	plt.subplot(2,2,2)
 	self = ExponentialDecayFunction(10.0)
-	self.plot()
-	plt.title('Exponential Decay Function')
+	self.plot()	
 	pdf.savefig()
 	plt.close()
 
-	from union_pooling.activation.decay_functions.logistic_decay_function import (
-	  LogisticDecayFunction)
+	# from union_pooling.activation.decay_functions.logistic_decay_function import (
+	#   LogisticDecayFunction)
 
-	plt.figure()
-	self = LogisticDecayFunction(10.0)
-	self.plot()
-	plt.title('Sigmoid Decay Function')
-	pdf.savefig()
-	plt.close()
+	# plt.figure()
+	# self = LogisticDecayFunction(10.0)
+	# self.plot()	
+	# pdf.savefig()
+	# plt.close()
