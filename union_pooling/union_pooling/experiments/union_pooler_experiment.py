@@ -97,11 +97,10 @@ class UnionPoolerExperiment(object):
 
                                  # Union Pooler Params
                                  "activeOverlapWeight": 1.0,
-                                 "predictedActiveOverlapWeight": 0.0,
-                                 "fixedPoolingActivationBurst": False,
-                                 "exciteFunction": None,
-                                 "decayFunction": None,
-                                 "maxUnionActivity": 0.20}
+                                 "predictedActiveOverlapWeight": 10.0,
+                                 "maxUnionActivity": 0.20,
+                                 "exciteFunctionType": 'Fixed',
+                                 "decayFunctionType": 'NoDecay'}
 
   DEFAULT_CLASSIFIER_PARAMS = {"k": 1,
                                "distanceMethod": "rawOverlap",

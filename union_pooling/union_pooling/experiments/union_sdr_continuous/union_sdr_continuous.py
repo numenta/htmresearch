@@ -126,14 +126,12 @@ def plotNetworkState(experiment, plotVerbosity, trainingPasses, phase=""):
                                           resetShading=_PLOT_RESET_SHADING)
 
 
-paramDir = 'params/1024_baseline/5_trainingPasses_long_sequence.yaml';
+paramDir = 'params/1024_baseline/5_trainingPasses_long_sequence.yaml'
 outputDir = 'results/'
 params = yaml.safe_load(open(paramDir, 'r'))
 options = {'plotVerbosity': 2, 'consoleVerbosity': 2}
 plotVerbosity = 2
 consoleVerbosity = 1
-
-
 
 
 print "Running SDR overlap experiment...\n"
@@ -206,7 +204,7 @@ if trainingPasses > 0:
       print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
 
     # Reset the TM monitor mixin's records accrued during this training pass
-    experiment.tm.mmClearHistory()
+    # experiment.tm.mmClearHistory()
 
   print
   print MonitorMixinBase.mmPrettyPrintMetrics(
@@ -217,38 +215,10 @@ if trainingPasses > 0:
     plotNetworkState(experiment, plotVerbosity, trainingPasses, phase="Training")
 
 experiment.tm.mmClearHistory()
-
 experiment.up.mmClearHistory()
+
+
 print "\nRunning test phase..."
-experiment.runNetworkOnSequences(generatedSequences,
-                                 labeledSequences,
-                                 tmLearn=False,
-                                 upLearn=False,
-                                 verbosity=consoleVerbosity,
-                                 progressInterval=_SHOW_PROGRESS_INTERVAL)
-
-print "\nPass\tBursting Columns Mean\tStdDev\tMax"
-stats = experiment.getBurstingColumnsStats()
-print "{0}\t{1}\t{2}\t{3}".format(0, stats[0], stats[1], stats[2])
-if trainingPasses > 0 and stats[0] > 0:
-  print "***WARNING! MEAN BURSTING COLUMNS IN TEST PHASE IS GREATER THAN 0***"
-
-print
-print MonitorMixinBase.mmPrettyPrintMetrics(\
-    experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
-print
-plotNetworkState(experiment, plotVerbosity, trainingPasses, phase="Testing")
-
-cellTrace = experiment.up._mmTraces["activeCells"].data
-experiment.up.mmGetSubsetCellTracePlot(cellTrace, 100, "activeCells","UP representation subset")
-
-experiment.up.mmGetCellActivityPlot(title="UP representation",
-                                    showReset=True,
-                                    resetShading=_PLOT_RESET_SHADING)
-
-elapsed = int(time.time() - start)
-print "Total time: {0:2} seconds.".format(elapsed)
-
 
 inputSequences = generatedSequences
 inputCategories = labeledSequences
@@ -295,6 +265,17 @@ for i in xrange(len(inputSequences)):
       currentSPSDR[experiment.up._activeCells] = 1
       activeSPTrace = numpy.concatenate((activeSPTrace, currentSPSDR), 1)      
 
+print "\nPass\tBursting Columns Mean\tStdDev\tMax"
+stats = experiment.getBurstingColumnsStats()
+print "{0}\t{1}\t{2}\t{3}".format(0, stats[0], stats[1], stats[2])
+if trainingPasses > 0 and stats[0] > 0:
+  print "***WARNING! MEAN BURSTING COLUMNS IN TEST PHASE IS GREATER THAN 0***"
+
+print
+print MonitorMixinBase.mmPrettyPrintMetrics(\
+    experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
+print
+
       
 # estimate fraction of shared bits across adjacent time point      
 unionSDRdiff = []
@@ -322,35 +303,11 @@ bitLife = numpy.zeros((0))
 for t in xrange(len(bitLifeList)):
   bitLife = numpy.concatenate((bitLife, numpy.array(bitLifeList[t])), 0)
 
-  # if classifierLearn and sensorPattern is not None:
-  #   unionSDR = experiment.up.getUnionSDR()
-  #   upCellCount = experiment.up.getColumnDimensions()
-  #   experiment.classifier.learn(unionSDR, inputCategory, isSparse=upCellCount)
-  #   if verbosity > 0:
-  #     pprint.pprint("{0} is category {1}".format(unionSDR, inputCategory))
 
-  # if progressInterval is not None and i > 0 and i % progressInterval == 0:
-  #   elapsed = (time.time() - currentTime) / 60.0
-  #   print ("Ran {0} / {1} elements of sequence in "
-  #          "{2:0.2f} minutes.".format(i, len(inputSequences), elapsed))
-  #   currentTime = time.time()
-  #   print MonitorMixinBase.mmPrettyPrintMetrics(
-  #     experiment.tm.mmGetDefaultMetrics())
-
+# Plot SP outputs, UP persistence and UP outputs in testing phase
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.backends.backend_pdf import PdfPages
-
-# from nupic.research.monitor_mixin.plot import Plot
-# plot = Plot(experiment.up, "persistence over time")    
-# plot.add2DArray(poolingActivationTrace[1:100,:], xlabel="time", ylabel="Cells")
-
-
-# plot = Plot(experiment.up, "unionSDR over time")    
-# plot.add2DArray(activeCellsTrace[1:100,:], xlabel="time",ylabel='Cells')
-
-# plot = Plot(experiment.up, "SP SDR over time")    
-# plot.add2DArray(activeSPTrace[1:100,:], xlabel="time", ylabel="Cells")
 
 plt.figure()
 plt.subplot(1,3,1)
