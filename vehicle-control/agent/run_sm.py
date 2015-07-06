@@ -22,10 +22,11 @@
 
 from collections import defaultdict
 import operator
+import time
 
 import numpy
 
-from unity_client.fetcher import Fetcher
+from unity_client.server import Server
 from nupic.encoders.coordinate import CoordinateEncoder
 from nupic.encoders.scalar import ScalarEncoder
 from nupic.research.monitor_mixin.trace import CountsTrace
@@ -42,47 +43,38 @@ RADIUS = 7
 
 
 
-def run(plotEvery=1):
-  encoder = CoordinateEncoder(n=1024,
-                              w=21)
-  motorEncoder = ScalarEncoder(21, -1, 1,
-                               n=1024)
-  fetcher = Fetcher()
-  tm = MonitoredGeneralTemporalMemory(
-    columnDimensions=[2048],
-    cellsPerColumn=1,
-    initialPermanence=0.5,
-    connectedPermanence=0.6,
-    permanenceIncrement=0.1,
-    permanenceDecrement=0.02,
-    minThreshold=35,
-    activationThreshold=35,
-    maxNewSynapseCount=40)
-  plotter = Plotter(tm)
+class Agent(object):
 
-  lastState = None
-  lastAction = None
+  def __init__(self):
+    self.encoder = CoordinateEncoder(n=1024,
+                                w=21)
+    self.motorEncoder = ScalarEncoder(21, -1, 1,
+                                 n=1024)
+    self.tm = MonitoredGeneralTemporalMemory(
+      columnDimensions=[2048],
+      cellsPerColumn=1,
+      initialPermanence=0.5,
+      connectedPermanence=0.6,
+      permanenceIncrement=0.1,
+      permanenceDecrement=0.02,
+      minThreshold=35,
+      activationThreshold=35,
+      maxNewSynapseCount=40)
+    self.plotter = Plotter(self.tm)
 
-  while True:
-    outputData = fetcher.sync()
+    self.lastState = None
+    self.lastAction = None
 
-    if outputData is None:
-      continue
 
-    if fetcher.skippedTimesteps > 0:
-      print ("Warning: skipped {0} timesteps, "
-             "now at {1}").format(fetcher.skippedTimesteps, fetcher.timestep)
-
+  def sync(self, outputData):
     if not ("location" in outputData and
             "steer" in outputData):
-      print ("Warning: Missing data on timestep {0}: {1}".format(
-             fetcher.timestep, outputData))
-      plotter.render()
-      continue
+      print "Warning: Missing data:", outputData
+      return
 
     if outputData.get("reset"):
       print "Reset."
-      tm.reset()
+      self.tm.reset()
 
     location = outputData["location"]
     steer = outputData["steer"]
@@ -90,30 +82,30 @@ def run(plotEvery=1):
     x = int(location["x"] * SCALE)
     z = int(location["z"] * SCALE)
     coordinate = numpy.array([x, z])
-    encoding = encoder.encode((coordinate, RADIUS))
+    encoding = self.encoder.encode((coordinate, RADIUS))
 
-    motorEncoding = motorEncoder.encode(steer)
+    motorEncoding = self.motorEncoder.encode(steer)
 
     sensorPattern = set(encoding.nonzero()[0])
     motorPattern = set(motorEncoding.nonzero()[0])
 
-    tm.compute(sensorPattern,
-               activeExternalCells=motorPattern,
-               formInternalConnections=True)
+    self.tm.compute(sensorPattern,
+                    activeExternalCells=motorPattern,
+                    formInternalConnections=True)
 
-    print tm.mmPrettyPrintMetrics(tm.mmGetDefaultMetrics())
+    print self.tm.mmPrettyPrintMetrics(self.tm.mmGetDefaultMetrics())
 
     overlap = 0
-    if lastState is not None:
-      overlap = (lastState & encoding).sum()
+    if self.lastState is not None:
+      overlap = (self.lastState & encoding).sum()
 
-    plotter.update(overlap)
+    self.plotter.update(overlap)
 
-    # if fetcher.timestep % plotEvery == 0 and outputData["reset"]:
-    #   plotter.render()
+    if outputData.get("reset"):
+      self.plotter.render()
 
-    lastState = encoding
-    lastAction = steer
+    self.lastState = encoding
+    self.lastAction = steer
 
 
 
@@ -133,8 +125,8 @@ class Plotter(object):
     rcParams.update({'figure.autolayout': True})
     rcParams.update({'figure.facecolor': 'white'})
 
-    self.plt.ion()
-    self.plt.show()
+    # self.plt.ion()
+    # self.plt.show()
 
 
   def update(self, overlap):
@@ -160,6 +152,7 @@ class Plotter(object):
     self._plot(self.overlaps, "Overlap between encoding at t and t-1")
 
     self.plt.draw()
+    self.plt.savefig("sm-{0}.png".format(time.time()))
 
 
   def _plot(self, data, title):
@@ -180,4 +173,5 @@ class Plotter(object):
 
 
 if __name__ == "__main__":
-  run()
+  agent = Agent()
+  Server(agent)

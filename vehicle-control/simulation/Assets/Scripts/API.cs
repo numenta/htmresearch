@@ -35,6 +35,10 @@ public class API : MonoBehaviour {
 		return _lastSyncTime;
 	}
 
+	public void Reset() {
+		SetOutput("reset", true);
+	}
+
 	void ClearOutput() {
 		_outputData = new Dictionary<string, object>();
 	}
@@ -51,6 +55,10 @@ public class API : MonoBehaviour {
 	/* Data transfer */
 
 	IEnumerator Sync() {
+		_lastSyncTime = Time.time;
+		_isWaitingForResponse = true;
+		Time.timeScale = 0f;
+
 		WWWForm form = new WWWForm();
 		form.AddField ("outputData", JsonWriter.Serialize(_outputData));
 		string pth = "/sync";
@@ -58,10 +66,6 @@ public class API : MonoBehaviour {
 		yield return www;
 
 		_isWaitingForResponse = false;
-		if (blockOnResponse) {
-			Time.timeScale = 1.0f;
-		}
-
 		if (www.error != null) return false;
 
 		_inputData = JsonReader.Deserialize<Dictionary<string, object>>(www.text);
@@ -72,16 +76,16 @@ public class API : MonoBehaviour {
 
 	void Start() {
 		Clear();
-		_outputData["reset"] = true;
-	}
-
-	void OnLevelWasLoaded(int level) {
-		Clear();
-		_outputData["reset"] = true;
+		Reset();
 	}
 
 	void Update() {
-		Time.timeScale = runSpeed;
+		if (blockOnResponse && _isWaitingForResponse) {
+			Time.timeScale = 0f;
+		}
+		else {
+			Time.timeScale = runSpeed;
+		}
 	}
 
 	void LateUpdate () {
@@ -93,13 +97,7 @@ public class API : MonoBehaviour {
 			return;
 		}
 
-		_lastSyncTime = Time.time;
 		StartCoroutine(Sync());
-		_isWaitingForResponse = true;
-
-		if (blockOnResponse) {
-			Time.timeScale = 0.0f;
-		}
 	}
 
 

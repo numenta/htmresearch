@@ -22,10 +22,11 @@
 
 from collections import defaultdict
 import operator
+import time
 
 import numpy
 
-from unity_client.fetcher import Fetcher
+from unity_client.server import Server
 from sensorimotor.encoders.one_d_depth import OneDDepthEncoder
 from sensorimotor.q_learner import QLearner
 
@@ -34,37 +35,28 @@ from sensorimotor.q_learner import QLearner
 ACTIIONS = ["-1", "0", "1"]
 
 
+class Agent(object):
 
-def run(positions, plotEvery=1):
-  encoder = OneDDepthEncoder(positions=positions,
-                             radius=5,
-                             wrapAround=True,
-                             nPerPosition=28,
-                             wPerPosition=3,
-                             minVal=0,
-                             maxVal=1)
-  fetcher = Fetcher()
-  plotter = Plotter(encoder)
-  learner = QLearner(ACTIIONS, n=1008)
+  def __init__(self, position):
+    self.encoder = OneDDepthEncoder(positions=positions,
+                                    radius=5,
+                                    wrapAround=True,
+                                    nPerPosition=28,
+                                    wPerPosition=3,
+                                    minVal=0,
+                                    maxVal=1)
+    self.plotter = Plotter(self.encoder)
+    self.learner = QLearner(ACTIIONS, n=1008)
 
-  lastState = None
-  lastAction = None
+    self.lastState = None
+    self.lastAction = None
 
-  while True:
-    outputData = fetcher.sync()
 
-    if outputData is None:
-      continue
-
-    if fetcher.skippedTimesteps > 0:
-      print ("Warning: skipped {0} timesteps, "
-             "now at {1}").format(fetcher.skippedTimesteps, fetcher.timestep)
-
+  def sync(self, outputData):
     if not ("ForwardsSweepSensor" in outputData and
             "steer" in outputData):
-      print ("Warning: Missing data on timestep {0}: {1}".format(
-             fetcher.timestep, outputData))
-      continue
+      print "Warning: Missing data:", outputData
+      return
 
     if outputData.get("reset"):
       print "Reset."
@@ -73,27 +65,31 @@ def run(positions, plotEvery=1):
     steer = outputData["steer"]
     reward = outputData.get("reward") or 0
 
-    encoding = encoder.encode(numpy.array(sensor))
+    encoding = self.encoder.encode(numpy.array(sensor))
 
-    if lastState is not None:
-      learner.update(lastState, str(lastAction), encoding, str(steer), reward)
+    if self.lastState is not None:
+      self.learner.update(self.lastState, str(self.lastAction),
+                          encoding, str(steer), reward)
 
-    value = learner.value(encoding)
+    value = self.learner.value(encoding)
 
     qValues = {}
     for action in ACTIIONS:
-      qValues[action] = learner.qValue(encoding, action)
+      qValues[action] = self.learner.qValue(encoding, action)
 
-    fetcher.inputData["qValues"] = qValues
-    fetcher.inputData["bestAction"] = learner.bestAction(encoding)
+    inputData = {}
+    inputData["qValues"] = qValues
+    inputData["bestAction"] = self.learner.bestAction(encoding)
 
-    plotter.update(sensor, encoding, steer, reward, value, qValues)
+    self.plotter.update(sensor, encoding, steer, reward, value, qValues)
 
-    if fetcher.timestep % plotEvery == 0:
-      plotter.render()
+    if outputData.get("reset"):
+      self.plotter.render()
 
-    lastState = encoding
-    lastAction = steer
+    self.lastState = encoding
+    self.lastAction = steer
+
+    return inputData
 
 
 
@@ -119,9 +115,6 @@ class Plotter(object):
     rcParams.update({'figure.figsize': (6, 9)})
     # rcParams.update({'figure.autolayout': True})
     rcParams.update({'figure.facecolor': 'white'})
-
-    self.plt.ion()
-    self.plt.show()
 
 
   def update(self, sensor, encoding, steer, reward, value, qValues):
@@ -173,6 +166,7 @@ class Plotter(object):
     # self._plot(self.bestAction, "Best action")
 
     self.plt.draw()
+    self.plt.savefig("q-{0}.png".format(time.time()))
 
 
   def _plot(self, data, title):
@@ -199,4 +193,5 @@ if __name__ == "__main__":
   # forward uniform
   positions = [i*10 for i in range(-18, 18)]
 
-  run(positions)
+  agent = Agent(positions)
+  Server(agent)
