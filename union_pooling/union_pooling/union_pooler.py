@@ -206,7 +206,7 @@ class UnionPooler(SpatialPooler):
       tieBreaker = [random.random() * _TIE_BREAKER_FACTOR
                     for _ in xrange(len(activeCells))]
       self._poolingActivation[activeCells] = (self._poolingActivationBurst +
-                                             tieBreaker)
+                                              tieBreaker)
     else:
       # PoolingActivation update is based on active & predicted-active overlap
       self._addToPoolingActivation(activeCells, overlapsActive)
