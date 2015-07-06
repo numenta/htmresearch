@@ -50,12 +50,6 @@ public class API : MonoBehaviour {
 
 	/* Data transfer */
 
-	IEnumerator SendReset() {
-		string pth = "/reset";
-		WWW www = new WWW(serverURL + pth);
-		yield return www;
-	}
-
 	IEnumerator Sync() {
 		WWWForm form = new WWWForm();
 		form.AddField ("outputData", JsonWriter.Serialize(_outputData));
@@ -78,12 +72,12 @@ public class API : MonoBehaviour {
 
 	void Start() {
 		Clear();
-		StartCoroutine("SendReset");
+		_outputData["reset"] = true;
 	}
 
 	void OnLevelWasLoaded(int level) {
 		Clear();
-		StartCoroutine("SendReset");
+		_outputData["reset"] = true;
 	}
 
 	void Update() {
@@ -100,7 +94,7 @@ public class API : MonoBehaviour {
 		}
 
 		_lastSyncTime = Time.time;
-		StartCoroutine ("Sync");
+		StartCoroutine(Sync());
 		_isWaitingForResponse = true;
 
 		if (blockOnResponse) {

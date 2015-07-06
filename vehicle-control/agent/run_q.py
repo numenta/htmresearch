@@ -60,14 +60,13 @@ def run(positions, plotEvery=1):
       print ("Warning: skipped {0} timesteps, "
              "now at {1}").format(fetcher.skippedTimesteps, fetcher.timestep)
 
-    if not ("reset" in outputData and
-            "ForwardsSweepSensor" in outputData and
+    if not ("ForwardsSweepSensor" in outputData and
             "steer" in outputData):
       print ("Warning: Missing data on timestep {0}: {1}".format(
              fetcher.timestep, outputData))
       continue
 
-    if outputData["reset"]:
+    if outputData.get("reset"):
       print "Reset."
 
     sensor = outputData["ForwardsSweepSensor"]
@@ -90,8 +89,8 @@ def run(positions, plotEvery=1):
 
     plotter.update(sensor, encoding, steer, reward, value, qValues)
 
-    # if fetcher.timestep % plotEvery == 0:
-    #   plotter.render()
+    if fetcher.timestep % plotEvery == 0:
+      plotter.render()
 
     lastState = encoding
     lastAction = steer
