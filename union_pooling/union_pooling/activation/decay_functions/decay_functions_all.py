@@ -30,7 +30,7 @@ class NoDecayFunction(DecayFunctionBase):
   Implementation of no decay.
   """
 
-  def decay(self, current, amount):
+  def decay(self, current, amount=0):
     return current
 
 class ExponentialDecayFunction(DecayFunctionBase):
