@@ -278,30 +278,10 @@ print
 
       
 # estimate fraction of shared bits across adjacent time point      
-unionSDRdiff = []
-unionSDRshared = []
-for t in xrange(activeCellsTrace.shape[1] - 1):
-  totalBits = sum(numpy.logical_or(activeCellsTrace[:,t], activeCellsTrace[:,t+1]))
-  sharedBits = sum(numpy.logical_and(activeCellsTrace[:,t], activeCellsTrace[:,t+1]))
-  numDiffBits = totalBits - sharedBits
-  unionSDRdiff.append(numDiffBits)
-  unionSDRshared.append( sharedBits/sum(activeCellsTrace[:,t+1]))
+unionSDRshared = experiment.up._mmComputeUnionSDRdiff()
 
-bitLifeList = []
-bitLifeCounter = numpy.ones(experiment.up._numColumns) * -1
-for t in xrange(activeCellsTrace.shape[1] ):
-  newActiveCells = numpy.where(numpy.logical_and(activeCellsTrace[:,t]>0, bitLifeCounter==-1))
-  continuousActiveCells = numpy.where(numpy.logical_and(activeCellsTrace[:,t]>0, bitLifeCounter>0))
-  stopActiveCells = numpy.where(numpy.logical_and(activeCellsTrace[:,t]==0, bitLifeCounter>0))
-
-  bitLifeList.append(list(bitLifeCounter[stopActiveCells]))
-  bitLifeCounter[stopActiveCells] = -1
-  bitLifeCounter[newActiveCells] = 1
-  bitLifeCounter[continuousActiveCells] += 1
-
-bitLife = numpy.zeros((0))
-for t in xrange(len(bitLifeList)):
-  bitLife = numpy.concatenate((bitLife, numpy.array(bitLifeList[t])), 0)
+bitLifeList = experiment.up._mmComputeBitLifeStats()
+bitLife = numpy.array(bitLifeList)
 
 
 # Plot SP outputs, UP persistence and UP outputs in testing phase
