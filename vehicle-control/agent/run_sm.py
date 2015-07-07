@@ -114,6 +114,8 @@ class Plotter(object):
   def __init__(self, tm):
     self.tm = tm
     self.overlaps = []
+    self.numSegmentsPerCell = []
+    self.numSynapsesPerSegment = []
 
     import matplotlib.pyplot as plt
     self.plt = plt
@@ -121,9 +123,10 @@ class Plotter(object):
     self.cm = cm
 
     from pylab import rcParams
-    rcParams.update({'figure.figsize': (6, 9)})
+    rcParams.update({'figure.figsize': (6, 12)})
     rcParams.update({'figure.autolayout': True})
     rcParams.update({'figure.facecolor': 'white'})
+    rcParams.update({'ytick.labelsize': 8})
 
     # self.plt.ion()
     # self.plt.show()
@@ -131,6 +134,15 @@ class Plotter(object):
 
   def update(self, overlap):
     self.overlaps.append(overlap)
+
+    # TODO: Deal with empty segments / unconnected synapses
+    numSegmentsPerCell = [len(segments) for segments in
+                          self.tm.connections._segmentsForCell.values()]
+    self.numSegmentsPerCell.append(numpy.array(numSegmentsPerCell))
+
+    numSynapsesPerSegment = [len(synapses) for synapses in
+                             self.tm.connections._synapsesForSegment.values()]
+    self.numSynapsesPerSegment.append(numpy.array(numSynapsesPerSegment))
 
 
   def render(self):
@@ -141,12 +153,18 @@ class Plotter(object):
     traces = self.tm.mmGetDefaultTraces()
     traces = [trace for trace in traces if type(trace) is CountsTrace]
 
-    n = len(traces) + 1
+    n = len(traces) + 3
 
     for i in xrange(len(traces)):
       trace = traces[i]
       self.plt.subplot(n, 1, i+1)
       self._plot(trace.data, trace.title)
+
+    self.plt.subplot(n, 1, n-2)
+    self._plotDistributions(self.numSegmentsPerCell, "# segments per cell")
+
+    self.plt.subplot(n, 1, n-1)
+    self._plotDistributions(self.numSynapsesPerSegment, "# synapses per segment")
 
     self.plt.subplot(n, 1, n)
     self._plot(self.overlaps, "Overlap between encoding at t and t-1")
@@ -169,6 +187,17 @@ class Plotter(object):
                     aspect='auto',
                     vmin=0,
                     vmax=1)
+
+
+  def _plotDistributions(self, data, title):
+    self.plt.title(title)
+    self.plt.xlim(0, len(data))
+
+    means = [numpy.mean(x) if len(x) else 0 for x in data]
+    maxs = [numpy.max(x) if len(x) else 0 for x in data]
+    self.plt.plot(range(len(data)), means, label='mean')
+    self.plt.plot(range(len(data)), maxs, label='max')
+    self.plt.legend(loc='lower right')
 
 
 
