@@ -32,8 +32,8 @@ from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
 
 from sensorimotor.general_temporal_memory import (
      GeneralTemporalMemory)
-from sensorimotor.temporal_pooler_monitor_mixin import (
-     TemporalPoolerMonitorMixin)
+from union_pooling.union_pooler_monitor_mixin import (
+     UnionPoolerMonitorMixin)
 
 # from union_pooling.union_pooler_new import UnionPoolerNew as UnionPooler
 # uncomment to use early version of union pooler
@@ -44,9 +44,7 @@ class MonitoredFastGeneralTemporalMemory(TemporalMemoryMonitorMixin,
   pass
 
 
-
-# Implement a UnionPoolerMonitorMixin if needed...
-class MonitoredUnionPooler(TemporalPoolerMonitorMixin, UnionPooler):
+class MonitoredUnionPooler(UnionPoolerMonitorMixin, UnionPooler):
   pass
 
 
