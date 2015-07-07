@@ -1,3 +1,25 @@
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
+
 import unittest
 
 import numpy
@@ -36,7 +58,9 @@ class UnionPoolerTest(unittest.TestCase):
                                    # union_pooler.py parameters
                                    activeOverlapWeight=1.0,
                                    predictedActiveOverlapWeight=10.0,
-                                   maxUnionActivity=0.20)
+                                   maxUnionActivity=0.20,
+                                   exciteFunctionType='Fixed',
+                                   decayFunctionType='NoDecay')
 
 
   def testDecayPoolingActivationDefaultDecayRate(self):
@@ -45,18 +69,17 @@ class UnionPoolerTest(unittest.TestCase):
     expected = numpy.array([0, 1, 2, 3, 4], dtype=REAL_DTYPE)
 
     result = self.unionPooler._decayPoolingActivation()
-
+    print result
     self.assertTrue(numpy.array_equal(expected, result))
 
 
   def testAddToPoolingActivation(self):
     activeCells = numpy.array([1, 3, 4])
-    #                      [    0,   1,   0,     1,     1]
+
     overlaps = numpy.array([0.123, 0.0, 0.0, 0.456, 0.789])
-    expected = [0.0, 0.0, 0.0, 0.456, 0.789]
+    expected = [0.0, 10.0, 0.0, 10.0, 10.0]
 
     result = self.unionPooler._addToPoolingActivation(activeCells, overlaps)
-
     self.assertTrue(numpy.allclose(expected, result))
 
 
@@ -66,10 +89,9 @@ class UnionPoolerTest(unittest.TestCase):
     activeCells = numpy.array([1, 3, 4])
     #                      [    0,   1,   0,     1,     1]
     overlaps = numpy.array([0.123, 0.0, 0.0, 0.456, 0.789])
-    expected = [0.0, 1.0, 2.0, 3.456, 4.789]
+    expected = [0.0, 11.0, 2.0, 13, 14]
 
     result = self.unionPooler._addToPoolingActivation(activeCells, overlaps)
-
     self.assertTrue(numpy.allclose(expected, result))
 
 
@@ -101,8 +123,8 @@ class UnionPoolerTest(unittest.TestCase):
     result = self.unionPooler._getMostActiveCells()
 
     self.assertEquals(len(result), 2)
-    self.assertEquals(result[0], 4)
-    self.assertEquals(result[1], 3)
+    self.assertEquals(result[0], 3)
+    self.assertEquals(result[1], 4)
 
 
 if __name__ == "__main__":
