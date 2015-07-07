@@ -95,11 +95,7 @@ class Agent(object):
 
     print self.tm.mmPrettyPrintMetrics(self.tm.mmGetDefaultMetrics())
 
-    overlap = 0
-    if self.lastState is not None:
-      overlap = (self.lastState & encoding).sum()
-
-    self.plotter.update(overlap)
+    self.plotter.update(encoding)
 
     if outputData.get("reset"):
       self.plotter.render()
@@ -113,7 +109,7 @@ class Plotter(object):
 
   def __init__(self, tm):
     self.tm = tm
-    self.overlaps = []
+    self.encodings = []
     self.numSegmentsPerCell = []
     self.numSynapsesPerSegment = []
 
@@ -128,12 +124,9 @@ class Plotter(object):
     rcParams.update({'figure.facecolor': 'white'})
     rcParams.update({'ytick.labelsize': 8})
 
-    # self.plt.ion()
-    # self.plt.show()
 
-
-  def update(self, overlap):
-    self.overlaps.append(overlap)
+  def update(self, encoding):
+    self.encodings.append(encoding)
 
     # TODO: Deal with empty segments / unconnected synapses
     numSegmentsPerCell = [len(segments) for segments in
@@ -146,31 +139,62 @@ class Plotter(object):
 
 
   def render(self):
+    timestamp = int(time.time())
+
     self.plt.figure(1)
-
     self.plt.clf()
+    self._renderMetrics(timestamp)
 
+    self.plt.figure(2)
+    self.plt.clf()
+    self._renderOverlaps(timestamp)
+
+
+  def _renderMetrics(self, timestamp):
     traces = self.tm.mmGetDefaultTraces()
     traces = [trace for trace in traces if type(trace) is CountsTrace]
 
-    n = len(traces) + 3
+    t = len(traces)
+    n = t + 2
 
-    for i in xrange(len(traces)):
+    for i in xrange(t):
       trace = traces[i]
       self.plt.subplot(n, 1, i+1)
       self._plot(trace.data, trace.title)
 
-    self.plt.subplot(n, 1, n-2)
+    self.plt.subplot(n, 1, t+1)
     self._plotDistributions(self.numSegmentsPerCell, "# segments per cell")
 
-    self.plt.subplot(n, 1, n-1)
+    self.plt.subplot(n, 1, t+2)
     self._plotDistributions(self.numSynapsesPerSegment, "# synapses per segment")
 
-    self.plt.subplot(n, 1, n)
-    self._plot(self.overlaps, "Overlap between encoding at t and t-1")
+    self.plt.draw()
+    self.plt.savefig("sm-{0}_A.png".format(timestamp))
+
+
+  def _renderOverlaps(self, timestamp):
+    self.plt.subplot(1, 1, 1)
+    self._imshow(self._computeOverlaps(), "Overlaps", aspect=None)
 
     self.plt.draw()
-    self.plt.savefig("sm-{0}.png".format(time.time()))
+    self.plt.savefig("sm-{0}_B.png".format(timestamp))
+
+
+  def _computeOverlaps(self):
+    overlaps = []
+    encodings = self.encodings
+
+    for i in range(len(encodings)):
+      row = []
+
+      for j in range(len(encodings)):
+        n = max(encodings[i].sum(), encodings[j].sum())
+        overlap = (encodings[i] & encodings[j]).sum() / float(n)
+        row.append(overlap)
+
+      overlaps.append(row)
+
+    return overlaps
 
 
   def _plot(self, data, title):
@@ -179,12 +203,12 @@ class Plotter(object):
     self.plt.plot(range(len(data)), data)
 
 
-  def _imshow(self, data, title):
+  def _imshow(self, data, title, aspect='auto'):
     self.plt.title(title)
     self.plt.imshow(data,
                     cmap=self.cm.Greys,
                     interpolation="nearest",
-                    aspect='auto',
+                    aspect=aspect,
                     vmin=0,
                     vmax=1)
 
