@@ -37,15 +37,13 @@ from experiments.capacity import data_utils
 from union_pooling.experiments.union_pooler_experiment import (
     UnionPoolerExperiment)
 
-_SHOW_PROGRESS_INTERVAL = 200
-
 """
 Experiment 1
 Runs UnionPooler on input from a Temporal Memory after training
 on a long sequence
 """
 
-paramDir = 'params/1024_baseline/5_trainingPasses_long_sequence.yaml'
+paramDir = 'params/1024_baseline/5_trainingPasses.yaml'
 outputDir = 'results/'
 params = yaml.safe_load(open(paramDir, 'r'))
 options = {'plotVerbosity': 2, 'consoleVerbosity': 2}
@@ -104,41 +102,44 @@ print "\nCreating network..."
 experiment = UnionPoolerExperiment(tmParamOverrides, upParamOverrides)
 
 # Train only the Temporal Memory on the generated sequences
-if trainingPasses > 0:
-
-  print "\nTraining Temporal Memory..."
-  if consoleVerbosity > 0:
-    print "\nPass\tBursting Columns Mean\tStdDev\tMax"
-
-  for i in xrange(trainingPasses):
-    experiment.runNetworkOnSequences(generatedSequences,
-                                     labeledSequences,
-                                     tmLearn=True,
-                                     upLearn=None,
-                                     verbosity=consoleVerbosity,
-                                     progressInterval=_SHOW_PROGRESS_INTERVAL)
-
-    if consoleVerbosity > 0:
-      stats = experiment.getBurstingColumnsStats()
-      print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
-
-    # Reset the TM monitor mixin's records accrued during this training pass
-    experiment.tm.mmClearHistory()
-
-  print
-  print MonitorMixinBase.mmPrettyPrintMetrics(
-    experiment.tm.mmGetDefaultMetrics())
-  print
-
-experiment.tm.mmClearHistory()
-experiment.up.mmClearHistory()
+# if trainingPasses > 0:
+#
+#   print "\nTraining Temporal Memory..."
+#   if consoleVerbosity > 0:
+#     print "\nPass\tBursting Columns Mean\tStdDev\tMax"
+#
+#   for i in xrange(trainingPasses):
+#     experiment.runNetworkOnSequences(generatedSequences,
+#                                      labeledSequences,
+#                                      tmLearn=True,
+#                                      upLearn=None,
+#                                      verbosity=consoleVerbosity,
+#                                      progressInterval=_SHOW_PROGRESS_INTERVAL)
+#
+#     if consoleVerbosity > 0:
+#       stats = experiment.getBurstingColumnsStats()
+#       print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
+#
+#     # Reset the TM monitor mixin's records accrued during this training pass
+#     # experiment.tm.mmClearHistory()
+#
+#   print
+#   print MonitorMixinBase.mmPrettyPrintMetrics(
+#     experiment.tm.mmGetDefaultMetrics())
+#   print
+#
+#   if plotVerbosity >= 2:
+#     plotNetworkState(experiment, plotVerbosity, trainingPasses, phase="Training")
+#
+# experiment.tm.mmClearHistory()
+# experiment.up.mmClearHistory()
 
 
 print "\nRunning test phase..."
 
 inputSequences = generatedSequences
 inputCategories = labeledSequences
-tmLearn = False
+tmLearn = True
 upLearn = False
 classifierLearn = False
 currentTime = time.time()
@@ -150,47 +151,46 @@ poolingActivationTrace = numpy.zeros((experiment.up._numColumns, 1))
 activeCellsTrace = numpy.zeros((experiment.up._numColumns, 1))
 activeSPTrace = numpy.zeros((experiment.up._numColumns, 1))
 
-for i in xrange(len(inputSequences)):
-  sensorPattern = inputSequences[i]
-  inputCategory = inputCategories[i]
-  if sensorPattern is None:
-    pass
-  else:
-    experiment.tm.compute(sensorPattern,
-                    formInternalConnections=True,
-                    learn=tmLearn,
-                    sequenceLabel=inputCategory)
-
-    if upLearn is not None:
-      activeCells, predActiveCells, burstingCols, = experiment.getUnionPoolerInput()
-      experiment.up.compute(activeCells,
-                      predActiveCells,
-                      learn=upLearn,
+for _ in xrange(trainingPasses):
+  for i in xrange(len(inputSequences)):
+    sensorPattern = inputSequences[i]
+    inputCategory = inputCategories[i]
+    if sensorPattern is None:
+      pass
+    else:
+      experiment.tm.compute(sensorPattern,
+                      formInternalConnections=True,
+                      learn=tmLearn,
                       sequenceLabel=inputCategory)
 
-      currentPoolingActivation = experiment.up._poolingActivation
+      if upLearn is not None:
+        activeCells, predActiveCells, burstingCols, = experiment.getUnionPoolerInput()
+        experiment.up.compute(activeCells,
+                        predActiveCells,
+                        learn=upLearn,
+                        sequenceLabel=inputCategory)
 
-      currentPoolingActivation = experiment.up._poolingActivation.reshape((experiment.up._numColumns, 1))
-      poolingActivationTrace = numpy.concatenate((poolingActivationTrace, currentPoolingActivation), 1)
+        currentPoolingActivation = experiment.up._poolingActivation
 
-      currentUnionSDR = numpy.zeros((experiment.up._numColumns, 1))
-      currentUnionSDR[experiment.up._unionSDR] = 1
-      activeCellsTrace = numpy.concatenate((activeCellsTrace, currentUnionSDR), 1)
+        currentPoolingActivation = experiment.up._poolingActivation.reshape((experiment.up._numColumns, 1))
+        poolingActivationTrace = numpy.concatenate((poolingActivationTrace, currentPoolingActivation), 1)
 
-      currentSPSDR = numpy.zeros((experiment.up._numColumns, 1))
-      currentSPSDR[experiment.up._activeCells] = 1
-      activeSPTrace = numpy.concatenate((activeSPTrace, currentSPSDR), 1)      
+        currentUnionSDR = numpy.zeros((experiment.up._numColumns, 1))
+        currentUnionSDR[experiment.up._unionSDR] = 1
+        activeCellsTrace = numpy.concatenate((activeCellsTrace, currentUnionSDR), 1)
 
-print "\nPass\tBursting Columns Mean\tStdDev\tMax"
-stats = experiment.getBurstingColumnsStats()
-print "{0}\t{1}\t{2}\t{3}".format(0, stats[0], stats[1], stats[2])
-if trainingPasses > 0 and stats[0] > 0:
-  print "***WARNING! MEAN BURSTING COLUMNS IN TEST PHASE IS GREATER THAN 0***"
+        currentSPSDR = numpy.zeros((experiment.up._numColumns, 1))
+        currentSPSDR[experiment.up._activeCells] = 1
+        activeSPTrace = numpy.concatenate((activeSPTrace, currentSPSDR), 1)
 
-print
-print MonitorMixinBase.mmPrettyPrintMetrics(\
-    experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
-print
+  print "\nPass\tBursting Columns Mean\tStdDev\tMax"
+  stats = experiment.getBurstingColumnsStats()
+  print "{0}\t{1}\t{2}\t{3}".format(0, stats[0], stats[1], stats[2])
+  print
+  print MonitorMixinBase.mmPrettyPrintMetrics(\
+      experiment.tm.mmGetDefaultMetrics() + experiment.up.mmGetDefaultMetrics())
+  print
+  experiment.tm.mmClearHistory()
 
       
 # estimate fraction of shared bits across adjacent time point      
@@ -205,19 +205,30 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.backends.backend_pdf import PdfPages
 plt.ion()
+
+def showSequenceStartLine(ax, trainingPasses, sequenceLength):
+  for i in xrange(trainingPasses):
+    ax.vlines(i*sequenceLength, 0, 100, linestyles='--')
+
 plt.figure()
-plt.subplot(1,3,1)
-plt.imshow(activeSPTrace[1:100,:], cmap=cm.Greys,interpolation="nearest")
-plt.title('SP SDR')
-plt.ylabel('Cells')
-plt.subplot(1,3,2)
-plt.imshow(poolingActivationTrace[1:100,:], cmap=cm.Greys, interpolation="nearest")
-plt.title('Persistence')
-plt.xlabel('Time (steps)')
-plt.subplot(1,3,3)
-plt.imshow(activeCellsTrace[1:100,:], cmap=cm.Greys,interpolation="nearest")
+ncolShow = 100
+f, (ax1, ax2, ax3) = plt.subplots(nrows=1,ncols=3)
+ax1.imshow(activeSPTrace[1:ncolShow,:], cmap=cm.Greys,interpolation="nearest",aspect='auto')
+# ax1.set_xticklabels([])
+showSequenceStartLine(ax1, trainingPasses, sequenceLength)
+ax1.set_title('SP SDR')
+ax1.set_ylabel('Columns')
+ax2.imshow(poolingActivationTrace[1:100,:], cmap=cm.Greys, interpolation="nearest",aspect='auto')
+showSequenceStartLine(ax2, trainingPasses, sequenceLength)
+# ax2.set_yticklabels([])
+ax2.set_title('Persistence')
+ax3.imshow(activeCellsTrace[1:ncolShow,:], cmap=cm.Greys, interpolation="nearest",aspect='auto')
+showSequenceStartLine(ax3, trainingPasses, sequenceLength)
 plt.title('Union SDR')
-pp = PdfPages('results/UnionSDRexample.pdf')
+
+ax2.set_xlabel('Time (steps)')
+
+pp = PdfPages('results/UnionPoolingDuringTMlearning.pdf')
 pp.savefig()
 pp.close()
 
@@ -234,7 +245,7 @@ plt.xlabel('Time (steps)')
 plt.subplot(2,2,3)
 plt.hist(bitLife)
 plt.xlabel('Life duration for each bit')
-pp = PdfPages('results/UnionSDRproperty.pdf')
-pp.savefig()
-pp.close()
+# pp = PdfPages('results/UnionSDRproperty.pdf')
+# pp.savefig()
+# pp.close()
 
