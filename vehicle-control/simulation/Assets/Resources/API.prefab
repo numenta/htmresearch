@@ -40,7 +40,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   blockOnResponse: 1
-  updateRate: 2
+  updateRate: 1.5
   runSpeed: 1
   serverURL: http://localhost:8080
 --- !u!1001 &100100000

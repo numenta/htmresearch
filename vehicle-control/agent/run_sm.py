@@ -39,7 +39,7 @@ class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
 
 
 SCALE = 5
-RADIUS = 7
+RADIUS = 10
 
 
 
