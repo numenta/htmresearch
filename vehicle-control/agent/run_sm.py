@@ -60,7 +60,7 @@ class Agent(object):
       minThreshold=35,
       activationThreshold=35,
       maxNewSynapseCount=40)
-    self.plotter = Plotter(self.tm)
+    self.plotter = Plotter(self.tm, showOverlaps=False, showOverlapsValues=False)
 
     self.lastState = None
     self.lastAction = None
@@ -107,8 +107,12 @@ class Agent(object):
 
 class Plotter(object):
 
-  def __init__(self, tm):
+  def __init__(self, tm, showOverlaps=False, showOverlapsValues=False):
     self.tm = tm
+
+    self.showOverlaps = showOverlaps
+    self.showOverlapsValues = showOverlapsValues
+
     self.encodings = []
     self.numSegmentsPerCell = []
     self.numSynapsesPerSegment = []
@@ -119,7 +123,12 @@ class Plotter(object):
     self.cm = cm
 
     from pylab import rcParams
-    rcParams.update({'figure.figsize': (6, 12)})
+
+    if self.showOverlaps and self.showOverlapsValues:
+      rcParams.update({'figure.figsize': (20, 20)})
+    else:
+      rcParams.update({'figure.figsize': (6, 12)})
+
     rcParams.update({'figure.autolayout': True})
     rcParams.update({'figure.facecolor': 'white'})
     rcParams.update({'ytick.labelsize': 8})
@@ -145,9 +154,10 @@ class Plotter(object):
     self.plt.clf()
     self._renderMetrics(timestamp)
 
-    self.plt.figure(2)
-    self.plt.clf()
-    self._renderOverlaps(timestamp)
+    if self.showOverlaps:
+      self.plt.figure(2)
+      self.plt.clf()
+      self._renderOverlaps(timestamp)
 
 
   def _renderMetrics(self, timestamp):
@@ -174,7 +184,15 @@ class Plotter(object):
 
   def _renderOverlaps(self, timestamp):
     self.plt.subplot(1, 1, 1)
-    self._imshow(self._computeOverlaps(), "Overlaps", aspect=None)
+
+    overlaps = self._computeOverlaps()
+    self._imshow(overlaps, "Overlaps", aspect=None)
+
+    if self.showOverlapsValues:
+      for i in range(len(overlaps)):
+        for j in range(len(overlaps[i])):
+          overlap = "%.1f" % overlaps[i][j]
+          self.plt.annotate(overlap, xy=(i, j), fontsize=6, color='red', verticalalignment='center', horizontalalignment='center')
 
     self.plt.draw()
     self.plt.savefig("sm-{0}_B.png".format(timestamp))
