@@ -72,7 +72,9 @@ class Agent(object):
       print "Warning: Missing data:", outputData
       return
 
-    if outputData.get("reset"):
+    reset = outputData.get("reset") or False
+
+    if reset:
       print "Reset."
       self.tm.reset()
 
@@ -95,9 +97,9 @@ class Agent(object):
 
     print self.tm.mmPrettyPrintMetrics(self.tm.mmGetDefaultMetrics())
 
-    self.plotter.update(encoding)
+    self.plotter.update(encoding, reset)
 
-    if outputData.get("reset"):
+    if reset:
       self.plotter.render()
 
     self.lastState = encoding
@@ -114,6 +116,7 @@ class Plotter(object):
     self.showOverlapsValues = showOverlapsValues
 
     self.encodings = []
+    self.resets = []
     self.numSegmentsPerCell = []
     self.numSynapsesPerSegment = []
 
@@ -134,8 +137,9 @@ class Plotter(object):
     rcParams.update({'ytick.labelsize': 8})
 
 
-  def update(self, encoding):
+  def update(self, encoding, reset):
     self.encodings.append(encoding)
+    self.resets.append(reset)
 
     # TODO: Deal with empty segments / unconnected synapses
     numSegmentsPerCell = [len(segments) for segments in
@@ -188,6 +192,10 @@ class Plotter(object):
     overlaps = self._computeOverlaps()
     self._imshow(overlaps, "Overlaps", aspect=None)
 
+    for i in self._computeResetIndices():
+      self.plt.axvline(i, color='black', alpha=0.5)
+      self.plt.axhline(i, color='black', alpha=0.5)
+
     if self.showOverlapsValues:
       for i in range(len(overlaps)):
         for j in range(len(overlaps[i])):
@@ -215,10 +223,21 @@ class Plotter(object):
     return overlaps
 
 
+  def _computeResetIndices(self):
+    return numpy.array(self.resets).nonzero()[0]
+
+
   def _plot(self, data, title):
+    self.plt.plot(range(len(data)), data)
+    self._finishPlot(data, title)
+
+
+  def _finishPlot(self, data, title):
     self.plt.title(title)
     self.plt.xlim(0, len(data))
-    self.plt.plot(range(len(data)), data)
+
+    for i in self._computeResetIndices():
+      self.plt.axvline(i, color='black', alpha=0.5)
 
 
   def _imshow(self, data, title, aspect='auto'):
@@ -232,14 +251,12 @@ class Plotter(object):
 
 
   def _plotDistributions(self, data, title):
-    self.plt.title(title)
-    self.plt.xlim(0, len(data))
-
     means = [numpy.mean(x) if len(x) else 0 for x in data]
     maxs = [numpy.max(x) if len(x) else 0 for x in data]
     self.plt.plot(range(len(data)), means, label='mean')
     self.plt.plot(range(len(data)), maxs, label='max')
     self.plt.legend(loc='lower right')
+    self._finishPlot(data, title)
 
 
 
