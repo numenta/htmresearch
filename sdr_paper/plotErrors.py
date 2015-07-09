@@ -20,12 +20,11 @@
 # ----------------------------------------------------------------------
 
 # This uses plotly to create a nice looking graph of average false positive
-# error rates as a function of theta.
+# error rates as a function of theta.  I'm sorry this code is so ugly.
 
 import plotly.plotly as py
 from plotly.graph_objs import *
 import os
-import math
 
 plotlyUser = os.environ['PLOTLY_USER_NAME']
 plotlyAPIKey = os.environ['PLOTLY_API_KEY']
@@ -75,16 +74,16 @@ for i,e in enumerate(errors):
 print lnerror
 print ubound
 
-trace1 = Scatter(
-    y=ubound,
-    x=[3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24],
-    line=Line(
-        color='rgb(239, 0, 22)',
-        width=3,
-        dash='dash'
-    ),
-    showlegend=False
-)
+# trace1 = Scatter(
+#     y=ubound,
+#     x=[3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24],
+#     line=Line(
+#         color='rgb(239, 0, 22)',
+#         width=3,
+#         dash='dash'
+#     ),
+#     showlegend=False
+# )
 trace2_1 = Scatter(
     y=lnerror[0:7],
     x=[3,4,5,6,7,8,9,10],
@@ -117,19 +116,7 @@ trace3 = Scatter(
     showlegend=False
 )
 
-# trace3 = Scatter(
-#     y=lbound,
-#     x=[3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24],
-#     fill='tonexty',
-#     line=Line(
-#         color='rgba(44, 160, 44, 0)',
-#         shape='spline'
-#     ),
-#     fillcolor='rgba(217, 217, 217, 0.5)',
-#     showlegend=False
-# )
-
-data = Data([trace2_1, trace2_2, trace3, trace1])
+data = Data([trace2_1, trace2_2, trace3])
 
 layout = Layout(
     title='',
@@ -138,7 +125,8 @@ layout = Layout(
     width=855,
     height=700,
     xaxis=XAxis(
-        title='$\\text{Segment Spike Threshold } = \\theta$',
+        title='$\\text{No. of synapses required for dendritic spike } ('
+              '\\theta)$',
         titlefont=Font(
             family='',
             size=16,
@@ -149,7 +137,7 @@ layout = Layout(
             size=12,
             color=''
         ),
-        showline=False,
+        showline=True,
     ),
     yaxis=YAxis(
         title='Probability of false positives',
@@ -158,7 +146,7 @@ layout = Layout(
         autorange=True,
         titlefont=Font(
             family='',
-            size=16,
+            size=18,
             color=''
         ),
         tickfont=Font(
@@ -166,11 +154,40 @@ layout = Layout(
             size=10,
             color=''
         ),
+        showline=True,
     ),
     annotations=Annotations([
       Annotation(
-          x=9,
-          y=0.6,
+            x=14.776699029126213,
+            y=0.5538461538461539,
+            xref='x',
+            yref='paper',
+            text='Median false positive error',
+            showarrow=True,
+            font=Font(
+                family='',
+                size=14,
+                color=''
+            ),
+            xanchor='auto',
+            yanchor='auto',
+            align='center',
+            arrowhead=2,
+            arrowsize=1,
+            arrowwidth=0,
+            arrowcolor='',
+            ax=107,
+            ay=-46.171875,
+            textangle=0,
+            bordercolor='',
+            borderwidth=1,
+            borderpad=1,
+            bgcolor='rgba(0, 0, 0, 0)',
+            opacity=1
+        ),
+    Annotation(
+          x=8.79611650485437,
+          y=0.46153846153846156,
           xref='x',
           yref='paper',
           text='$\\text{Error rate} \leq 10^{-9}$',
@@ -183,12 +200,12 @@ layout = Layout(
           xanchor='auto',
           yanchor='auto',
           align='center',
-          arrowhead=1,
+          arrowhead=2,
           arrowsize=1,
           arrowwidth=0,
           arrowcolor='',
-          ax=-70,
-          ay=39.828125,
+          ax=-109,
+          ay=63.828125,
           textangle=0,
           bordercolor='',
           borderwidth=1,
