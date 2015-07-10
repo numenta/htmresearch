@@ -19,8 +19,8 @@ temporalMemoryParams:
 
 unionPoolerParams:
   # Spatial Pooler superclass params
-  columnDimensions: [1024]
-  numActiveColumnsPerInhArea: 20.0
+  columnDimensions: [512]
+  numActiveColumnsPerInhArea: 10.0
   potentialPct: 0.5
   globalInhibition: True
   localAreaDensity: -1.0

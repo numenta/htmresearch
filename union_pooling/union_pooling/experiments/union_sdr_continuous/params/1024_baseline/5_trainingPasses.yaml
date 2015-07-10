@@ -1,7 +1,7 @@
 patternDimensionality: 1024
 patternCardinality: 20
-sequenceLength: 13
-numberOfSequences: 10
+sequenceLength: 20
+numberOfSequences: 1
 trainingPasses: 5
 
 temporalMemoryParams:
@@ -38,5 +38,8 @@ unionPoolerParams:
 
   # Union Pooler params
   activeOverlapWeight: 1.0
-  predictedActiveOverlapWeight: 0.0
+  predictedActiveOverlapWeight: 10.0
   maxUnionActivity: 0.20
+  exciteFunctionType: 'Logistic'
+  decayFunctionType: 'Exponential'
+  decayTimeConst: 10.0
