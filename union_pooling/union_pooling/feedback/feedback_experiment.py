@@ -261,10 +261,10 @@ def experiment1(aorb='a', mutate_times = [3]):
   else:
     raise ValueError
 
-  sequences = generateSequences(2048, 20, 5, 1)
+  sequences = generateSequences(2048, 40, 5, 1)
   alphabet = getAlphabet(sequences)
 
-  fixed_feedback = set([random.randint(0, 2048) for _ in range(feedback_n)])
+  fixed_feedback = set([random.randint(0, 2047) for _ in range(feedback_n)])
   feedback_seq = shiftingFeedback(fixed_feedback, len(sequences))
 
   train(tmNoFeedback, sequences)
@@ -278,14 +278,14 @@ def experiment1(aorb='a', mutate_times = [3]):
 
 
 def experiment2(aorb='a'):
-  sequences1 = generateSequences(2048, 20, 5, 1)
+  sequences1 = generateSequences(2048, 40, 5, 1)
 
   sequences2 = [x for x in sequences1]
   sequences2[0] = set([random.randint(0, 2047) for _ in sequences1[0]])
   sequences2[-2] = set([random.randint(0, 2047) for _ in sequences1[-2]])
 
-  fixed_feedback1 = set([random.randint(0, 2048) for _ in range(feedback_n)])
-  fixed_feedback2 = set([random.randint(0, 2048) for _ in range(feedback_n)])
+  fixed_feedback1 = set([random.randint(0, 2047) for _ in range(feedback_n)])
+  fixed_feedback2 = set([random.randint(0, 2047) for _ in range(feedback_n)])
   feedback_seq1 = shiftingFeedback(fixed_feedback1, len(sequences1))
   feedback_seq2 = shiftingFeedback(fixed_feedback2, len(sequences2))
 
@@ -320,12 +320,12 @@ def experiment2(aorb='a'):
   plotResults(ys1, ys2, allLabels, title)
 
 def experiment3():
-  sequences1 = generateSequences(2048, 20, 5, 1)
+  sequences1 = generateSequences(2048, 40, 5, 1)
 
   sequences2 = [x for x in sequences1]
   sequences2[-2] = sequences1[1]
 
-  fixed_feedback = set([random.randint(0, 2048) for _ in range(feedback_n)])
+  fixed_feedback = set([random.randint(0, 2047) for _ in range(feedback_n)])
   feedback_seq = shiftingFeedback(fixed_feedback, len(sequences1))
 
   alphabet = getAlphabet(sequences1)
@@ -344,8 +344,40 @@ def experiment3():
   plotPredictionAccuracy(tmNoFeedback, tmFeedback, allLabels, title)
   plotResults(ys1, ys2, allLabels, title)
 
+def capacityExperiment():
+
+  w = 40
+  seq_lengths = range(5, 51, 5)
+  bursting_cols = []
+
+  for seq_length in seq_lengths:
+    sequences1 = generateSequences(2048, w, seq_length, 1)
+
+    sequences2 = [x for x in sequences1]
+    sequences2[-2] = set([random.randint(0, 2047) for _ in range(w)])
+
+    fixed_feedback = set([random.randint(0, 2047) for _ in range(feedback_n)])
+    feedback_seq = shiftingFeedback(fixed_feedback, seq_length)
+
+    alphabet = getAlphabet(sequences1)
+
+    train(tmFeedback, sequences1, feedback_seq)
+
+    bursting, _ = run(tmFeedback, defaultdict(list), sequences2, alphabet,
+                      feedback_seq=feedback_seq)
+
+    bursting_cols.append(bursting[-1])
+
+  _, ymax = plt.ylim()
+  plt.ylim(0, ymax)
+  plt.title('Sequence Length Capacity of Predictive Feedback Mechanism')
+  plt.xlabel('Sequence length')
+  plt.ylabel('Incorrectly active columns with random input')
+  plt.plot(seq_lengths, [w-x for x in bursting_cols])
+  plt.show()
 
 if __name__ == "__main__":
-  experiment1('a')
+  #experiment1('a')
   #experiment2('b')
-  #experiment3()t3()
+  #experiment3()
+  capacityExperiment()
