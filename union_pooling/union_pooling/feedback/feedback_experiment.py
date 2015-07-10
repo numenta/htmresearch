@@ -320,6 +320,33 @@ def experiment2(aorb='a'):
   plotPredictionAccuracy(tmNoFeedback, tmFeedback, allLabels, title)
   plotResults(ys1, ys2, allLabels, title)
 
+def experiment3():
+  sequences1 = generateSequences(1024, 20, 5, 1)
+
+  sequences2 = [x for x in sequences1]
+  sequences2[-2] = sequences1[1]
+
+  fixed_feedback = set([random.randint(0, 1024) for _ in range(feedback_n)])
+  feedback_seq = shiftingFeedback(fixed_feedback, len(sequences1))
+
+  alphabet = getAlphabet(sequences1)
+
+  train(tmNoFeedback, sequences1)
+  train(tmFeedback, sequences1, feedback_seq)
+
+  ys1, allLabels = run(tmNoFeedback, defaultdict(list), sequences2,
+                       alphabet)
+
+  ys2, _ = run(tmFeedback, defaultdict(list), sequences2, alphabet,
+               feedback_seq=feedback_seq)
+
+  title = 'Feedback is in "ABCDE" state'
+
+  plotPredictionAccuracy(tmNoFeedback, tmFeedback, allLabels, title)
+  plotResults(ys1, ys2, allLabels, title)
+
+
 if __name__ == "__main__":
   #experiment1('a')
-  experiment2('b')
+  #experiment2('b')
+  experiment3()
