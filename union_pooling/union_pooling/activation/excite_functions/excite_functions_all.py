@@ -62,7 +62,7 @@ class LogisticExciteFunction(ExciteFunctionBase):
     @param inputs            (numpy array) inputs for each cell
     """
 
-    currentActivation += self._minValue + (self._maxValue - self._minValue) / \
+    currentActivation = self._minValue + (self._maxValue - self._minValue) / \
                                           (1 + numpy.exp(-self._steepness * (inputs - self._xMidpoint)))
 
     return currentActivation
@@ -101,7 +101,7 @@ class FixedExciteFunction(ExciteFunctionBase):
     @param inputs            (numpy array) inputs for each cell
     """
 
-    currentActivation += self._targetExcLevel
+    currentActivation = self._targetExcLevel
 
     return currentActivation
 

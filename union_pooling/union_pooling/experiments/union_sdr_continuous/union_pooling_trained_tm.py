@@ -28,7 +28,6 @@ from optparse import OptionParser
 
 import numpy
 from pylab import rcParams
-
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.backends.backend_pdf import PdfPages
@@ -42,12 +41,15 @@ from experiments.capacity import data_utils
 from union_pooling.experiments.union_pooler_experiment import (
     UnionPoolerExperiment)
 
+_SHOW_PROGRESS_INTERVAL = 200
+
 """
-Experiment 2
-Runs UnionPooler on input from a Temporal Memory while TM learns the sequence
+Experiment 1
+Runs UnionPooler on input from a Temporal Memory after training
+on a long sequence
 """
 
-def experiment2():
+def experiment1():
   paramDir = 'params/1024_baseline/5_trainingPasses.yaml'
   outputDir = 'results/'
   params = yaml.safe_load(open(paramDir, 'r'))
@@ -107,37 +109,35 @@ def experiment2():
   experiment = UnionPoolerExperiment(tmParamOverrides, upParamOverrides)
 
   # Train only the Temporal Memory on the generated sequences
-  # if trainingPasses > 0:
-  #
-  #   print "\nTraining Temporal Memory..."
-  #   if consoleVerbosity > 0:
-  #     print "\nPass\tBursting Columns Mean\tStdDev\tMax"
-  #
-  #   for i in xrange(trainingPasses):
-  #     experiment.runNetworkOnSequences(generatedSequences,
-  #                                      labeledSequences,
-  #                                      tmLearn=True,
-  #                                      upLearn=None,
-  #                                      verbosity=consoleVerbosity,
-  #                                      progressInterval=_SHOW_PROGRESS_INTERVAL)
-  #
-  #     if consoleVerbosity > 0:
-  #       stats = experiment.getBurstingColumnsStats()
-  #       print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
-  #
-  #     # Reset the TM monitor mixin's records accrued during this training pass
-  #     # experiment.tm.mmClearHistory()
-  #
-  #   print
-  #   print MonitorMixinBase.mmPrettyPrintMetrics(
-  #     experiment.tm.mmGetDefaultMetrics())
-  #   print
-  #
-  #   if plotVerbosity >= 2:
-  #     plotNetworkState(experiment, plotVerbosity, trainingPasses, phase="Training")
-  #
-  # experiment.tm.mmClearHistory()
-  # experiment.up.mmClearHistory()
+  if trainingPasses > 0:
+
+    print "\nTraining Temporal Memory..."
+    if consoleVerbosity > 0:
+      print "\nPass\tBursting Columns Mean\tStdDev\tMax"
+
+    for i in xrange(trainingPasses):
+      experiment.runNetworkOnSequences(generatedSequences,
+                                       labeledSequences,
+                                       tmLearn=True,
+                                       upLearn=None,
+                                       verbosity=consoleVerbosity,
+                                       progressInterval=_SHOW_PROGRESS_INTERVAL)
+
+      if consoleVerbosity > 0:
+        stats = experiment.getBurstingColumnsStats()
+        print "{0}\t{1}\t{2}\t{3}".format(i, stats[0], stats[1], stats[2])
+
+      # Reset the TM monitor mixin's records accrued during this training pass
+      # experiment.tm.mmClearHistory()
+
+    print
+    print MonitorMixinBase.mmPrettyPrintMetrics(
+      experiment.tm.mmGetDefaultMetrics())
+    print
+
+
+  experiment.tm.mmClearHistory()
+  experiment.up.mmClearHistory()
 
 
   print "\nRunning test phase..."
@@ -157,6 +157,7 @@ def experiment2():
   activeSPTrace = numpy.zeros((experiment.up._numColumns, 1))
 
   for _ in xrange(trainingPasses):
+    experiment.tm.reset()
     for i in xrange(len(inputSequences)):
       sensorPattern = inputSequences[i]
       inputCategory = inputCategories[i]
@@ -226,9 +227,10 @@ def experiment2():
 
   ax2.set_xlabel('Time (steps)')
 
-  pp = PdfPages('results/UnionPoolingDuringTMlearning_Experiment2.pdf')
+  pp = PdfPages('results/UnionPoolingOnLearnedTM_Experiment1.pdf')
   pp.savefig()
   pp.close()
+
 
   f, (ax1, ax2, ax3) = plt.subplots(nrows=3,ncols=1)
   ax1.plot((sum(activeCellsTrace))/experiment.up._numColumns*100)
@@ -242,9 +244,9 @@ def experiment2():
 
   ax3.hist(bitLife)
   ax3.set_xlabel('Life duration for each bit')
-  pp = PdfPages('results/UnionSDRproperty_Experiment2.pdf')
+  pp = PdfPages('results/UnionSDRproperty_Experiment1.pdf')
   pp.savefig()
   pp.close()
 
 if __name__ == "__main__":
-  experiment2()
+  experiment1()

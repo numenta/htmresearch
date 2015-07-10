@@ -283,7 +283,7 @@ class UnionPoolerMonitorMixin(MonitorMixinBase):
     activeColumns = super(UnionPoolerMonitorMixin, self).compute(*args,
                                                                     **kwargs)
     activeColumns = set(activeColumns)
-    activeCells = activeColumns  # TODO: Update when moving to a cellular TP
+    activeCells = activeColumns
 
     self._mmTraces["activeCells"].data.append(activeCells)
     self._mmTraces["sequenceLabels"].data.append(sequenceLabel)
