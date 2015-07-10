@@ -34,13 +34,13 @@ from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
 
 
 class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
-									 GeneralTemporalMemory):
+                   GeneralTemporalMemory):
   pass
 
 
 
-DEFAULT_TEMPORAL_MEMORY_PARAMS = {"columnDimensions": (1024,),
-                                  "cellsPerColumn": 8,
+DEFAULT_TEMPORAL_MEMORY_PARAMS = {"columnDimensions": (2048,),
+                                  "cellsPerColumn": 20,
                                   "activationThreshold": 20,
                                   "initialPermanence": 0.5,
                                   "connectedPermanence": 0.6,
@@ -118,7 +118,7 @@ def shiftingFeedback(starting_feedback, n, percent_shift=0.02):
     feedback = set([x for x in feedback])
     p = int(percent_shift*len(feedback))
     toRemove = set(random.sample(feedback, p))
-    toAdd = set([random.randint(0, 1024) for _ in range(p)])
+    toAdd = set([random.randint(0, 2048) for _ in range(p)])
     feedback = (feedback - toRemove) | toAdd
     feedback_seq.append(feedback)
 
@@ -133,12 +133,12 @@ def train(tm, sequences, feedback_seq=None, trials=trials,
         tm.reset()
       else:
         if i<feedback_buffer:
-          feedback = set([random.randint(0, 1024) for _ in range(feedback_n)])
+          feedback = set([random.randint(0, 2048) for _ in range(feedback_n)])
         elif feedback_seq is not None:
           feedback = feedback_seq[j]
         else:
           feedback = set()
-        tm.compute(sensorPattern, activeExternalCells=feedback,
+        tm.compute(sensorPattern, activeApicalCells=feedback,
                    learn=True, sequenceLabel=None)
 
     if clearhistory:
@@ -152,13 +152,13 @@ def run(tm, mutate_times, sequences, alphabet, feedback_seq=None, mutation=0):
   for j, sensorPattern in enumerate(sequences):
     print "Pattern ", j
     if sensorPattern is None:
-  	  tm.reset()
+      tm.reset()
     else:
       if j in mutate_times:
         if mutation:
           continue
         else:
-          sensorPattern = set([random.randint(0, 1023) for _ in sensorPattern])
+          sensorPattern = set([random.randint(0, 2047) for _ in sensorPattern])
 
       if feedback_seq is not None:
         feedback = feedback_seq[j]
@@ -166,7 +166,7 @@ def run(tm, mutate_times, sequences, alphabet, feedback_seq=None, mutation=0):
       else:
         feedback = set()
 
-      tm.compute(sensorPattern, activeExternalCells=feedback,
+      tm.compute(sensorPattern, activeApicalCells=feedback,
                  learn=True, sequenceLabel=None)
 
       allLabels.append(labelPattern(sensorPattern, alphabet))
@@ -252,8 +252,7 @@ def plotPredictionAccuracy(tm1, tm2, allLabels, title=None):
   plt.xticks(index + bar_width, allLabels)
   plt.legend(loc='lower right')
 
-def experiment1(aorb='a'):
-  mutate_times = [3]
+def experiment1(aorb='a', mutate_times = [3]):
 
   if aorb =='a':
     mutation = 0
@@ -262,10 +261,10 @@ def experiment1(aorb='a'):
   else:
     raise ValueError
 
-  sequences = generateSequences(1024, 20, 5, 1)
+  sequences = generateSequences(2048, 20, 5, 1)
   alphabet = getAlphabet(sequences)
 
-  fixed_feedback = set([random.randint(0, 1024) for _ in range(feedback_n)])
+  fixed_feedback = set([random.randint(0, 2048) for _ in range(feedback_n)])
   feedback_seq = shiftingFeedback(fixed_feedback, len(sequences))
 
   train(tmNoFeedback, sequences)
@@ -279,14 +278,14 @@ def experiment1(aorb='a'):
 
 
 def experiment2(aorb='a'):
-  sequences1 = generateSequences(1024, 20, 5, 1)
+  sequences1 = generateSequences(2048, 20, 5, 1)
 
   sequences2 = [x for x in sequences1]
-  sequences2[0] = set([random.randint(0, 1023) for _ in sequences1[0]])
-  sequences2[-2] = set([random.randint(0, 1023) for _ in sequences1[-2]])
+  sequences2[0] = set([random.randint(0, 2047) for _ in sequences1[0]])
+  sequences2[-2] = set([random.randint(0, 2047) for _ in sequences1[-2]])
 
-  fixed_feedback1 = set([random.randint(0, 1024) for _ in range(feedback_n)])
-  fixed_feedback2 = set([random.randint(0, 1024) for _ in range(feedback_n)])
+  fixed_feedback1 = set([random.randint(0, 2048) for _ in range(feedback_n)])
+  fixed_feedback2 = set([random.randint(0, 2048) for _ in range(feedback_n)])
   feedback_seq1 = shiftingFeedback(fixed_feedback1, len(sequences1))
   feedback_seq2 = shiftingFeedback(fixed_feedback2, len(sequences2))
 
@@ -321,12 +320,12 @@ def experiment2(aorb='a'):
   plotResults(ys1, ys2, allLabels, title)
 
 def experiment3():
-  sequences1 = generateSequences(1024, 20, 5, 1)
+  sequences1 = generateSequences(2048, 20, 5, 1)
 
   sequences2 = [x for x in sequences1]
   sequences2[-2] = sequences1[1]
 
-  fixed_feedback = set([random.randint(0, 1024) for _ in range(feedback_n)])
+  fixed_feedback = set([random.randint(0, 2048) for _ in range(feedback_n)])
   feedback_seq = shiftingFeedback(fixed_feedback, len(sequences1))
 
   alphabet = getAlphabet(sequences1)
@@ -347,6 +346,6 @@ def experiment3():
 
 
 if __name__ == "__main__":
-  #experiment1('a')
+  experiment1('a')
   #experiment2('b')
-  experiment3()
+  #experiment3()t3()
