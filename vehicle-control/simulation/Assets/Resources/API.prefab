@@ -39,14 +39,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 47ae92da62c394fde81a75abe3004ba7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  outputNames:
-  - position
-  outputTypes:
-  - float
-  inputNames: []
-  inputTypes: []
-  blockOnResponse: 0
-  updateRate: 30
+  blockOnResponse: 1
+  updateRate: 1.5
   runSpeed: 1
   serverURL: http://localhost:8080
 --- !u!1001 &100100000

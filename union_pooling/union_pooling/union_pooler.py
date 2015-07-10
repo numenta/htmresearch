@@ -22,18 +22,17 @@
 import random
 
 import numpy
-
 from nupic.research.spatial_pooler import SpatialPooler
-from union_pooling.activation.excite_functions.linear_excite_function import (
-  LinearExciteFunction)
-from union_pooling.activation.decay_functions.no_decay_function import (
-  NoDecayFunction)
+from union_pooling.activation.excite_functions.excite_functions_all import (
+  LogisticExciteFunction, FixedExciteFunction)
 
+from union_pooling.activation.decay_functions.decay_functions_all import (
+  ExponentialDecayFunction, NoDecayFunction)
 
 
 REAL_DTYPE = numpy.float32
 INT_DTYPE = numpy.int32
-_TIE_BREAKER_FACTOR = 0.0001
+_TIE_BREAKER_FACTOR = 0.000001
 
 
 
@@ -48,32 +47,14 @@ class UnionPooler(SpatialPooler):
 
 
   def __init__(self,
-               inputDimensions=[32,32],
-               columnDimensions=[64,64],
-               potentialRadius=16,
-               potentialPct=0.9,
-               globalInhibition=True,
-               localAreaDensity=-1.0,
-               numActiveColumnsPerInhArea=20.0,
-               stimulusThreshold=2,
-               synPermInactiveDec=0.01,
-               synPermActiveInc=0.03,
-               synPermConnected=0.3,
-               minPctOverlapDutyCycle=0.001,
-               minPctActiveDutyCycle=0.001,
-               dutyCyclePeriod=1000,
-               maxBoost=1.0,
-               seed=42,
-               spVerbosity=0,
-               wrapAround=True,
-
                # union_pooler.py parameters
                activeOverlapWeight=1.0,
                predictedActiveOverlapWeight=0.0,
-               fixedPoolingActivationBurst = False,
-               exciteFunction = None,
-               decayFunction = None,
-               maxUnionActivity=0.20):
+               maxUnionActivity=0.20,
+               exciteFunctionType='Fixed',
+               decayFunctionType='NoDecay',
+               decayTimeConst=20.0,
+               **kwargs):
     """
     Please see spatial_pooler.py in NuPIC for super class parameter
     descriptions.
@@ -99,44 +80,34 @@ class UnionPooler(SpatialPooler):
     @param decayFunction: Specifies the DecayFunctionBase used to decay pooling
         activation.
 
-    @param maxUnionActivity: Maximum number of active cells allowed in union SDR
-        simultaneously in terms of the ratio between the number of active cells
-        and the number of total cells
+    @param maxUnionActivity: Maximum sparsity of the union SDR
+
+    @param decayTimeConst Time constant for the decay function
     """
 
-    super(UnionPooler, self).__init__(inputDimensions,
-                                      columnDimensions,
-                                      potentialRadius,
-                                      potentialPct,
-                                      globalInhibition,
-                                      localAreaDensity,
-                                      numActiveColumnsPerInhArea,
-                                      stimulusThreshold,
-                                      synPermInactiveDec,
-                                      synPermActiveInc,
-                                      synPermConnected,
-                                      minPctOverlapDutyCycle,
-                                      minPctActiveDutyCycle,
-                                      dutyCyclePeriod,
-                                      maxBoost,
-                                      seed,
-                                      spVerbosity,
-                                      wrapAround)
+    super(UnionPooler, self).__init__(**kwargs)
 
     self._activeOverlapWeight = activeOverlapWeight
     self._predictedActiveOverlapWeight = predictedActiveOverlapWeight
-    self._fixedPoolingActivationBurst = fixedPoolingActivationBurst
     self._maxUnionActivity = maxUnionActivity
 
-    if exciteFunction is None:
-      self._exciteFunction = LinearExciteFunction()
+    self._exciteFunctionType = exciteFunctionType
+    self._decayFunctionType = decayFunctionType
+    # initialize excite/decay functions
+    if exciteFunctionType == 'Fixed':
+      self._exciteFunction = FixedExciteFunction()
+    elif exciteFunctionType == 'Logistic':
+      self._exciteFunction = LogisticExciteFunction()
     else:
-      self._exciteFunction = exciteFunction
+      raise NotImplementedError('unknown excite function type'+exciteFunctionType)
 
-    if decayFunction is None:
+    if decayFunctionType == 'NoDecay':
       self._decayFunction = NoDecayFunction()
+    elif decayFunctionType == 'Exponential':
+      self._decayFunction = ExponentialDecayFunction(decayTimeConst)
     else:
-      self._decayFunction = decayFunction
+      raise NotImplementedError('unknown decay function type'+decayFunctionType)
+
 
     # The maximum number of cells allowed in a single union SDR
     self._maxUnionCells = int(self._numColumns * self._maxUnionActivity)
@@ -145,9 +116,25 @@ class UnionPooler(SpatialPooler):
     # the union SDR
     self._poolingActivation = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
 
-    # Current union SDR; the end product of the union pooler algorithm
+    # include a small amount of tie-breaker when sorting pooling activation
+    numpy.random.seed(1)
+    self._poolingActivation_tieBreaker = numpy.random.randn(self._numColumns) * _TIE_BREAKER_FACTOR
+
+    # time since last pooling activation increment
+    # initialized to be a large integer
+    self._poolingTimer = numpy.ones(self._numColumns, dtype=REAL_DTYPE) * 1000
+
+    # pooling activation level after the latest update, used for sigmoid decay function
+    self._poolingActivationInitLevel = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
+
+    # Current union SDR; the output of the union pooler algorithm
     self._unionSDR = numpy.array([], dtype=INT_DTYPE)
 
+    # Indices of active cells from spatial pooler
+    self._activeCells = numpy.array([], dtype=INT_DTYPE)
+
+    # lowest possible pooling activation level
+    self._poolingActivationlowerBound = 0.1
 
   def reset(self):
     """
@@ -156,7 +143,9 @@ class UnionPooler(SpatialPooler):
 
     # Reset Union Pooler fields
     self._poolingActivation = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
-    self._unionSDR = []
+    self._unionSDR = numpy.array([], dtype=INT_DTYPE)
+    self._poolingTimer = numpy.ones(self._numColumns, dtype=REAL_DTYPE) * 1000
+    self._poolingActivationInitLevel = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
 
     # Reset Spatial Pooler fields
     self._overlapDutyCycles = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
@@ -169,6 +158,9 @@ class UnionPooler(SpatialPooler):
   def compute(self, activeInput, predictedActiveInput, learn):
     """
     Computes one cycle of the Union Pooler algorithm.
+    @param activeInput            (numpy array) A numpy array of 0's and 1's that comprises the input to the union pooler
+    @param predictedActiveInput   (numpy array) A numpy array of 0's and 1's that comprises the correctly predicted input to the union pooler
+    @param learn                  (boolen)      A boolen value indicating whether learning should be performed
     """
     assert numpy.size(activeInput) == self._numInputs
     assert numpy.size(predictedActiveInput) == self._numInputs
@@ -187,6 +179,7 @@ class UnionPooler(SpatialPooler):
       boostedOverlaps = totalOverlap
 
     activeCells = self._inhibitColumns(boostedOverlaps)
+    self._activeCells = activeCells
 
     if learn:
       self._adaptSynapses(activeInput, activeCells)
@@ -200,18 +193,8 @@ class UnionPooler(SpatialPooler):
     # Decrement pooling activation of all cells
     self._decayPoolingActivation()
 
-    # Reset the poolingActivation of current active Union Pooler cells
-    if self._fixedPoolingActivationBurst:
-      # Increase is based on fixed parameter
-      tieBreaker = [random.random() * _TIE_BREAKER_FACTOR
-                    for _ in xrange(len(activeCells))]
-      self._poolingActivation[activeCells] = (self._poolingActivationBurst +
-                                             tieBreaker)
-    else:
-      # PoolingActivation update is based on active & predicted-active overlap
-      self._addToPoolingActivation(activeCells, overlapsActive)
-      self._addToPoolingActivation(activeCells, overlapsPredictedActive)
-
+    # Update the poolingActivation of current active Union Pooler cells
+    self._addToPoolingActivation(activeCells, overlapsPredictedActive)
     return self._getMostActiveCells()
 
 
@@ -219,9 +202,12 @@ class UnionPooler(SpatialPooler):
     """
     Decrements pooling activation of all cells
     """
-    self._poolingActivation = self._decayFunction.decay(self._poolingActivation,
-                                                        1)
-    self._poolingActivation[self._poolingActivation < 0] = 0
+    if self._decayFunctionType == 'NoDecay':
+      self._poolingActivation = self._decayFunction.decay(self._poolingActivation)
+    elif self._decayFunctionType == 'Exponential':
+      self._poolingActivation = self._decayFunction.decay(\
+                                self._poolingActivationInitLevel, self._poolingTimer)
+
     return self._poolingActivation
 
 
@@ -229,13 +215,20 @@ class UnionPooler(SpatialPooler):
     """
     Adds overlaps from specified active cells to cells' pooling
     activation.
-    :param activeCells: Indices of those cells winning the inhibition step
-    :param overlaps: A current set of overlap values for each cell
+    @param activeCells: Indices of those cells winning the inhibition step
+    @param overlaps: A current set of overlap values for each cell
+    @return current pooling activation
     """
-    cellIndices = numpy.where(overlaps[activeCells] > 0)[0]
-    subset = activeCells[cellIndices]
-    self._poolingActivation[subset] = self._exciteFunction.excite(
-      self._poolingActivation[subset], overlaps[subset])
+    self._poolingActivation[activeCells] = self._exciteFunction.excite(
+                                          self._poolingActivation[activeCells], overlaps[activeCells])
+
+    # increase pooling timers for all cells
+    self._poolingTimer[self._poolingTimer >= 0] += 1
+
+    # reset pooling timer for active cells
+    self._poolingTimer[activeCells] = 0
+    self._poolingActivationInitLevel[activeCells] = self._poolingActivation[activeCells]
+
     return self._poolingActivation
 
 
@@ -243,14 +236,19 @@ class UnionPooler(SpatialPooler):
     """
     Gets the most active cells in the Union SDR having at least non-zero
     activation in sorted order.
-    :return: a list of cell indices
+    @return: a list of cell indices
     """
-    potentialUnionSDR = numpy.argsort(
-      self._poolingActivation)[::-1][:len(self._poolingActivation)]
+    poolingActivation = self._poolingActivation
+    nonZeroCells = numpy.argwhere(poolingActivation > 0)[:,0]
+
+    # include a tie-breaker before sorting
+    poolingActivationSubset = poolingActivation[nonZeroCells] + \
+                              self._poolingActivation_tieBreaker[nonZeroCells]
+    potentialUnionSDR = nonZeroCells[numpy.argsort(poolingActivationSubset)[::-1]]
 
     topCells = potentialUnionSDR[0: self._maxUnionCells]
-    nonZeroTopCells = self._poolingActivation[topCells] > 0
-    self._unionSDR = numpy.sort(topCells[nonZeroTopCells]).astype(INT_DTYPE)
+
+    self._unionSDR = numpy.sort(topCells).astype(INT_DTYPE)
     return self._unionSDR
 
 

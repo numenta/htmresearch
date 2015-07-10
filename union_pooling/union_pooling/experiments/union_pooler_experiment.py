@@ -30,22 +30,21 @@ from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
     TemporalMemoryMonitorMixin)
 
-from sensorimotor.fast_general_temporal_memory import (
-     FastGeneralTemporalMemory)
-from sensorimotor.temporal_pooler_monitor_mixin import (
-     TemporalPoolerMonitorMixin)
+from sensorimotor.general_temporal_memory import (
+     GeneralTemporalMemory)
+from union_pooling.union_pooler_monitor_mixin import (
+     UnionPoolerMonitorMixin)
+
+# from union_pooling.union_pooler_new import UnionPoolerNew as UnionPooler
+# uncomment to use early version of union pooler
 from union_pooling.union_pooler import UnionPooler
 
-
-
 class MonitoredFastGeneralTemporalMemory(TemporalMemoryMonitorMixin,
-                                         FastGeneralTemporalMemory):
+                                         GeneralTemporalMemory):
   pass
 
 
-
-# Implement a UnionPoolerMonitorMixin if needed...
-class MonitoredUnionPooler(TemporalPoolerMonitorMixin, UnionPooler):
+class MonitoredUnionPooler(UnionPoolerMonitorMixin, UnionPooler):
   pass
 
 
@@ -96,11 +95,10 @@ class UnionPoolerExperiment(object):
 
                                  # Union Pooler Params
                                  "activeOverlapWeight": 1.0,
-                                 "predictedActiveOverlapWeight": 0.0,
-                                 "fixedPoolingActivationBurst": False,
-                                 "exciteFunction": None,
-                                 "decayFunction": None,
-                                 "maxUnionActivity": 0.20}
+                                 "predictedActiveOverlapWeight": 10.0,
+                                 "maxUnionActivity": 0.20,
+                                 "exciteFunctionType": 'Fixed',
+                                 "decayFunctionType": 'NoDecay'}
 
   DEFAULT_CLASSIFIER_PARAMS = {"k": 1,
                                "distanceMethod": "rawOverlap",
@@ -117,16 +115,18 @@ class UnionPoolerExperiment(object):
     self.tm = MonitoredFastGeneralTemporalMemory(mmName="TM", **params)
 
     print "Initializing Union Pooler..."
+    start = time.time()
     params = dict(self.DEFAULT_UNION_POOLER_PARAMS)
     params.update(upOverrides or {})
     params["inputDimensions"] = [self.tm.numberOfCells()]
     params["potentialRadius"] = self.tm.numberOfCells()
     params["seed"] = seed
     self.up = MonitoredUnionPooler(mmName="UP", **params)
+    elapsed = int(time.time() - start)
+    print "Total time: {0:2} seconds.".format(elapsed)
 
     print "Initializing KNN Classifier..."
     params = dict(self.DEFAULT_CLASSIFIER_PARAMS)
-    # params["verbosity"] = consoleVerbosity
     params.update(classifierOverrides or {})
     self.classifier = KNNClassifier(**params)
 
@@ -167,7 +167,7 @@ class UnionPoolerExperiment(object):
         unionSDR = self.up.getUnionSDR()
         upCellCount = self.up.getColumnDimensions()
         self.classifier.learn(unionSDR, inputCategory, isSparse=upCellCount)
-        if verbosity > 0:
+        if verbosity > 1:
           pprint.pprint("{0} is category {1}".format(unionSDR, inputCategory))
 
       if progressInterval is not None and i > 0 and i % progressInterval == 0:

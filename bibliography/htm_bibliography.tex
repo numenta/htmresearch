@@ -17,10 +17,9 @@ Redwood City, CA 94063 \\
 \texttt{sahmad@numenta.com} \\
 \And
 Yuwei Cui \\
-Department of Biology\\
-University of Maryland\\
-College Park, MD 20742\\
-\texttt{ywcui@umd.edu} \\
+Numenta, Inc.\\
+Redwood City, CA 94063 \\
+\texttt{ycui@numenta.com} \\
 }
 \newcommand{\fix}{\marginpar{FIX}}
 \newcommand{\new}{\marginpar{NEW}}
@@ -424,17 +423,51 @@ Martinotti neurons blocking dendritic activity - what is this for? Need to
 review. Could this turn off pooling when columns burst?
 
 
-\subsection{Palmer: NMDA Spikes}
+\subsection{Palmer: NMDA Spikes in L2/3 neurons}
 
 Few papers talk about dendritic NMDA spikes in Layer 2/3 pyramidal neurons.
 That is the topic of this paper \cite{Palmer2014} showing that Layer 2/3 cells
 act similarly to the more studied L5 and Hippocampal Ca1 pyramidal neurons.
+
+Another study \cite{Larkum2007} studies dendritic spike in the apical dendrites of L2/3 pyramidal neurons. They conclude that L2/3 neurons can generate dendritic spikes similar to L5 neurons.
+
+\subsection{Yuste et al: Apical Dendrite as a segregated functional compartment}
+
+Yuste et al \cite{Yuste1994} proposed that the apical dendrite and basal dendrite could act as two segregated functional compartments. The authors showed that the apical zone can be activated (generated Ca2+ spikes) even when Na and K conductances are blocked. 
+
+In a more recent paper, Larkum et al \cite{Larkum2009} made a similar proposal (Fig. 4) with more advanced experimental techniques. They further showed that a few NMDA spikes were needed to trigger Ca2+ spikes in the apical zone.
+
 
 \section{Synapses and Plasticity}
 
 Learning requires changes of synaptic connections between neurons. In this
 section we review papers on synaptic plasticity, with a focus on
 experience-dependent formation and elimination of synapses.
+
+\subsection{Hebb and his learning rule}
+
+Although this is often stated as Hebbian learning, Hebb did not in fact write
+"Neurons that fire together wire together". Here is what he actually wrote in
+\cite{Hebb1949}:
+
+\begin{quote}
+\emph{Let us assume that the persistence or repetition of a reverberatory
+activity (or "trace") tends to induce lasting cellular changes that add to its
+stability.… When an axon of cell A is near enough to excite a cell B and
+repeatedly or persistently takes part in firing it, some growth process or
+metabolic change takes place in one or both cells such that A's efficiency, as
+one of the cells firing B, is increased.}
+\end{quote}
+
+The wording of his actual statement is really interesting. First, he
+talks about growth processes and metabolic changes. This is consistent with the
+notion of synapses actually growing.  Second he talks about axon of cell A being
+near cell B - this is consistent with notion of potential synapses.  Third he
+talks about cell A persistently taking part in cell B’s activity. This implies a
+temporal and causal relationship, not just instantaneous correlation. In fact
+he discusses sequences quite a bit in his book. If  you  really  want to read
+into it, his exact wording can be seen to be consistent with active dendrites
+and the HTM learning rules.
 
 \subsection{Chklovskii: Potential synapses}
 
@@ -502,6 +535,16 @@ They also show that there are weak branches and strong branches.  The strong
 branches tend to be near the soma (proximal) and the weaker branches tended to
 be terminal (distal). They also show that eventually the weaker branches can
 cause the cell to fire – this is not currently modeled in HTM.
+
+Figure 1 in their supplementary materials is very closely related to HTM
+theory. They hypothesize that dendritic segments are used for storing
+individual elements of sequence and that the efficiency of processing
+sequences will be increased. To quote: \emph{The repeated occurrence of the
+sequence item [snip]will be stored in the increased branch coupling strength,
+such that subsequent arrival of the item will have an enhanced efficacy and
+improved capability to evoke a precise output.} Although they don't explicitly
+discuss prediction and high order sequences, the experiments and results in this
+paper are very consistent with HTMs.
 
 
 \subsection{Yang: Branch specific dendritic learning}

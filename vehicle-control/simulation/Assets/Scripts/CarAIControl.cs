@@ -52,13 +52,13 @@ public class CarAIControl : MonoBehaviour {
 		if (userControl.horizontal < 0) userControl.horizontal = -1;
 		userControl.horizontal = Mathf.Round(userControl.horizontal);
 
+		ExecutePredefinedControl();
+
 		if (directionIsOverridden) {
 			userControl.horizontal = overrideHorizontal;
 			userControl.vertical = overrideVertical;
 			directionIsOverridden = false;
 		}
-
-		ExecutePredefinedControl();
 
 		API.instance.SetOutput("steer", userControl.horizontal);
 	}
