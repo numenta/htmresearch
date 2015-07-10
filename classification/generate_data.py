@@ -25,48 +25,71 @@
 import csv
 import math
 import random
-from settings import CLASS_RANGES, DATA_DIR, SIGNAL_TYPES, WHITE_NOISE_AMPLITUDE, SIGNAL_AMPLITUDE, SIGNAL_MEAN
+from settings import \
+  SEQUENCE_LENGTH, \
+  NUMBER_OF_LABELS, \
+  DATA_DIR, \
+  DEFAULT_WHITE_NOISE_AMPLITUDE, \
+  WHITE_NOISE_AMPLITUDE_RANGES, \
+  SIGNAL_AMPLITUDE, \
+  SIGNAL_MEAN, \
+  NUM_RECORDS, \
+  SIGNAL_PERIOD
 
-class _InvalidSignalName(Exception):
-  pass
+
   
-def generateData(whiteNoise=False, signal_mean=10, signal_period=100.0, number_of_points=4000, signal_amplitude=1, noise_amplitude=0.5, data_duplicates=2):
+def generateData(dataDir=None, 
+                 whiteNoise=False, 
+                 signal_mean=SIGNAL_MEAN, 
+                 signal_period=SIGNAL_PERIOD, 
+                 number_of_points=NUM_RECORDS, 
+                 signal_amplitude=SIGNAL_AMPLITUDE, 
+                 noise_amplitude=DEFAULT_WHITE_NOISE_AMPLITUDE):
 
   if whiteNoise:
-    fileName = "white_noise"
+    fileName = "white_noise_%s" %noise_amplitude
   else:
     fileName = "no_noise"
+    
+  if not dataDir:
+    dataDir = DATA_DIR
   
-  if fileName not in SIGNAL_TYPES:
-    raise _InvalidSignalName("File name should one of the following signal types %s but is '%s'" % (SIGNAL_TYPES, fileName))
-  
-  fileHandle = open("%s/%s.csv" % (DATA_DIR, fileName),"w")
+  fileHandle = open("%s/%s.csv" % (dataDir, fileName),"w")
   writer = csv.writer(fileHandle)
   writer.writerow(["x","y", "label"])
+  writer.writerow(["float","float","int"])
+  writer.writerow(["","","C"]) # C is for category
 
-  for j in range(data_duplicates):
-    for i in range(number_of_points):
-      
-      if whiteNoise:
-        noise = noise_amplitude * random.random()
+
+  endOfSequence = SEQUENCE_LENGTH
+  label = 0
+  for i in range(number_of_points):
+    
+    if whiteNoise:
+      noise = noise_amplitude * random.random()
+    else:
+      noise = 0
+    
+    if i == endOfSequence:
+      endOfSequence += SEQUENCE_LENGTH
+      if label == NUMBER_OF_LABELS - 1:
+        label = 0
       else:
-        noise = 0
-  
-      for label in CLASS_RANGES:
-        for class_range in CLASS_RANGES[label]:
-          start = class_range['start']
-          end = class_range['end']
-          if i>=start and i<=end:
-            signal_modifier = 2 * (int(label[-1]) + 1)
-            x = signal_modifier * (i * math.pi) / signal_period
-            m1 = signal_modifier * signal_mean + signal_amplitude * math.sin(x) + noise    
-  
-            #print "Values labelled with class '%s' at %s" %(label, i)
-            writer.writerow([x,m1, label])
+        label += 1
+      
+    signal_modifier = 2 * (label + 1)
+    x = signal_modifier * (i * math.pi) / signal_period
+    m1 = signal_modifier * signal_mean + signal_amplitude * math.sin(x) + noise    
+
+    writer.writerow([x,m1, label])
+    #writer.writerow([i,i, label])
+      
     
   fileHandle.close()
   
+  print "Data generated. File saved to %s/%s.csv" % (dataDir, fileName)
+  
 
 if __name__ == "__main__":
-  generateData(whiteNoise=False, signal_mean=SIGNAL_MEAN, signal_amplitude=SIGNAL_AMPLITUDE)
-  generateData(whiteNoise=True, signal_mean=SIGNAL_MEAN, signal_amplitude=SIGNAL_AMPLITUDE, noise_amplitude=WHITE_NOISE_AMPLITUDE)
+  for whiteNoiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
+    generateData(whiteNoise=True, noise_amplitude=whiteNoiseAmplitude)
