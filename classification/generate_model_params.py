@@ -66,7 +66,31 @@ def createModelParams(modelParamsDir, modelParamsName, fileName):
     mp['modelParams']['sensorParams']['encoders']['y']['maxval'] = maxValue
     mp['modelParams']['sensorParams']['encoders']['y']['minval'] = minValue
     modelParamsFile.write("MODEL_PARAMS = %s" % repr(mp))
+    
 
+def findMinMax(fileName):
+  
+  # get the scalar values
+  values = []
+  with open(fileName, 'rU') as inputFile:
+    csvReader = csv.reader(inputFile)
+    headers = csvReader.next()
+    
+    # skip the rest of the header rows
+    csvReader.next()
+    csvReader.next()
+    
+    if headers[0] != 'x':
+      raise IncorrectHeadersException("first column should be named 'x' but is '%s'" %headers[0])
+    if headers[1] != 'y':
+      raise IncorrectHeadersException("first column should be named 'y' but is '%s'" %headers[1])
+  
+    for line in csvReader:
+      values.append(float(line[1]))
+      
+
+  return min(values), max(values)
+  
 
 
 if __name__ == "__main__":
