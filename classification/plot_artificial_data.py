@@ -21,25 +21,79 @@
 # ----------------------------------------------------------------------
 
 import csv
+import os
 import matplotlib.pyplot as plt
-from settings import RESULTS_DIR, DATA_DIR, SIGNAL_TYPES
+import matplotlib.patches as mpatches
+
+from settings import DATA_DIR, SIGNAL_TYPES, WHITE_NOISE_AMPLITUDE_RANGES, SEQUENCE_LENGTH, NUMBER_OF_LABELS
+
+
+
+def findValidCSVNames():
+  validFileNames = []
+  for noiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
+    for signalType in SIGNAL_TYPES:
+      filePath = "%s/%s_%s.csv" %(DATA_DIR, signalType, noiseAmplitude)
+      if os.path.exists(filePath):
+        validFileNames.append(filePath)
+        
+  return validFileNames
+
+
+csvFiles = findValidCSVNames()
 
 plt.figure()
-for signal_type in SIGNAL_TYPES:
-  filePath = "%s/%s.csv" %(DATA_DIR, signal_type)
+
+for filePath in csvFiles:
+
+  timesteps = []
+  data = []
+  labels = []
+  categoriesLabelled = []
   with open(filePath, 'rb') as f:
-    reader = csv.reader(f)
-    headers = reader.next()
-    x = []
-    data = []
-    labels = []
-    for i, values in enumerate(reader):
-      record = dict(zip(headers, values))
-      x.append(i)
-      data.append(record['y'])
-      labels.append(record['label'])
+      reader = csv.reader(f)
+      headers = reader.next()
 
-    plt.subplot(2, 1, SIGNAL_TYPES.index(signal_type) + 1)
-    plt.plot(x, data)
+      #skip the 2 first rows
+      reader.next()
+      reader.next()
 
+
+      for i, values in enumerate(reader):
+        record = dict(zip(headers, values))
+        timesteps.append(i)
+        data.append(record['y'])
+        labels.append(record['label'])
+  
+      ax = plt.subplot(len(csvFiles), 1, csvFiles.index(filePath) + 1)
+      plt.plot(timesteps, data, label='signal')
+
+      for k in range(len(timesteps) / SEQUENCE_LENGTH):
+        if k%3 == 0:
+          categoryColor = 'g'
+        elif k%3 == 1:
+          categoryColor = 'y'
+        elif k%3 == 2:
+          categoryColor = 'r'
+        
+        start = k*SEQUENCE_LENGTH
+        end = (k+1) * SEQUENCE_LENGTH
+       
+        if categoryColor not in categoriesLabelled:
+          label = 'sequence %s' %(k%3)
+          categoriesLabelled.append(categoryColor)
+        else:
+          label=None
+        plt.axvspan(start, end , facecolor=categoryColor, alpha=0.5, label=label)
+      
+      plt.xlim(xmin=0, xmax=len(timesteps))
+      
+      # title
+      titleWords = filePath.split("/")[-1].replace('.csv', '').split("_")
+      title = "%s amplitude = %s" %(' '.join(titleWords[:-1]), titleWords[-1])
+      plt.title(title) 
+      plt.tight_layout()
+      
+      plt.legend()
+    
 plt.show()
