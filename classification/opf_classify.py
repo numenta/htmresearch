@@ -43,7 +43,8 @@ from settings import \
   MODEL_PARAMS_DIR, \
   DEFAULT_WHITE_NOISE_AMPLITUDE, \
   SIGNAL_AMPLITUDE, \
-  SIGNAL_MEAN
+  SIGNAL_MEAN, \
+  WHITE_NOISE_AMPLITUDE_RANGES
 
 
 def createModel(metricName):
@@ -136,21 +137,20 @@ def getModelParamsFromName(metricName):
 
 if __name__ == "__main__":
 
-  # generate data
-  generateData(whiteNoise=False, signal_mean=SIGNAL_MEAN, signal_amplitude=SIGNAL_AMPLITUDE)
-  generateData(whiteNoise=True, signal_mean=SIGNAL_MEAN, signal_amplitude=SIGNAL_AMPLITUDE, noise_amplitude=DEFAULT_WHITE_NOISE_AMPLITUDE)
-
-
   accuracyResults = [['signal_type', 'classification_accuracy']]
 
-  for signalType in SIGNAL_TYPES:
+  for noiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
+    #generate data
+    generateData(dataDir=DATA_DIR, whiteNoise=True, noise_amplitude=noiseAmplitude)
+    
     # generate model params
-    fileName = '%s/%s.csv' % (DATA_DIR, signalType)
+    signalType = 'white_noise'
+    fileName = '%s/%s_%s.csv' % (DATA_DIR, signalType, noiseAmplitude)
     modelParamsName = '%s_model_params' % signalType
     createModelParams(MODEL_PARAMS_DIR, modelParamsName, fileName)
 
     # train and classify
-    dataPath = "%s.csv" % signalType
+    dataPath = "%s_%s.csv" % (signalType, noiseAmplitude)
     resultsPath = "%s/%s.csv" % (RESULTS_DIR, signalType)
     model = createModel(signalType)
     trainAndClassify(model, dataPath, resultsPath)

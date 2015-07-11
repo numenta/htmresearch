@@ -54,11 +54,14 @@ def generateData(dataDir=None,
   if not dataDir:
     dataDir = DATA_DIR
   
-  fileHandle = open("%s/%s.csv" % (dataDir, fileName),"w")
+  fileHandle = open("%s/%s.csv" % (dataDir, fileName),"wb")
   writer = csv.writer(fileHandle)
   writer.writerow(["x","y", "label"])
   writer.writerow(["float","float","int"])
-  writer.writerow(["","","C"]) # C is for category
+  writer.writerow(["","","C"]) # C is for category. 
+  # WARNING: if the C flag is forgotten in the dataset, then all records will be arbitrarily put
+  # in the same category (i.e. category 0). So make sure to have the C flag -- otherwise
+  # you'll get 100% classification accuracy regardless of the input data :-P
 
 
   endOfSequence = SEQUENCE_LENGTH

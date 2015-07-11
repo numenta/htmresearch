@@ -23,7 +23,9 @@
 import csv
 import os
 import matplotlib.pyplot as plt
-from settings import DATA_DIR, SIGNAL_TYPES, WHITE_NOISE_AMPLITUDE_RANGES
+import matplotlib.patches as mpatches
+
+from settings import DATA_DIR, SIGNAL_TYPES, WHITE_NOISE_AMPLITUDE_RANGES, SEQUENCE_LENGTH, NUMBER_OF_LABELS
 
 
 
@@ -41,25 +43,57 @@ def findValidCSVNames():
 csvFiles = findValidCSVNames()
 
 plt.figure()
+
 for filePath in csvFiles:
-    with open(filePath, 'rb') as f:
+
+  timesteps = []
+  data = []
+  labels = []
+  categoriesLabelled = []
+  with open(filePath, 'rb') as f:
       reader = csv.reader(f)
       headers = reader.next()
+
       #skip the 2 first rows
       reader.next()
       reader.next()
-      x = []
-      data = []
-      labels = []
+
+
       for i, values in enumerate(reader):
         record = dict(zip(headers, values))
-        x.append(i)
+        timesteps.append(i)
         data.append(record['y'])
         labels.append(record['label'])
   
-      plt.subplot(len(csvFiles), 1, csvFiles.index(filePath) + 1)
-      plt.plot(x, data)
-      plt.title(filePath.split("/")[-1]) 
-      plt.tight_layout()
+      ax = plt.subplot(len(csvFiles), 1, csvFiles.index(filePath) + 1)
+      plt.plot(timesteps, data, label='signal')
 
+      for k in range(len(timesteps) / SEQUENCE_LENGTH):
+        if k%3 == 0:
+          categoryColor = 'g'
+        elif k%3 == 1:
+          categoryColor = 'y'
+        elif k%3 == 2:
+          categoryColor = 'r'
+        
+        start = k*SEQUENCE_LENGTH
+        end = (k+1) * SEQUENCE_LENGTH
+       
+        if categoryColor not in categoriesLabelled:
+          label = 'sequence %s' %(k%3)
+          categoriesLabelled.append(categoryColor)
+        else:
+          label=None
+        plt.axvspan(start, end , facecolor=categoryColor, alpha=0.5, label=label)
+      
+      plt.xlim(xmin=0, xmax=len(timesteps))
+      
+      # title
+      titleWords = filePath.split("/")[-1].replace('.csv', '').split("_")
+      title = "%s amplitude = %s" %(' '.join(titleWords[:-1]), titleWords[-1])
+      plt.title(title) 
+      plt.tight_layout()
+      
+      plt.legend()
+    
 plt.show()
