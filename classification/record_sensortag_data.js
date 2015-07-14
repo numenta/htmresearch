@@ -25,7 +25,7 @@ var async = require('async');
 
 var SensorTag = require('sensortag');
 
-var fileName = 'sensortag_data.csv';
+var fileName = 'data/sensortag_data.csv';
 
 SensorTag.discover(function(sensorTag) {
 

@@ -8,11 +8,15 @@ Generate the data by running: `python generate_data.py`. This will generate the 
 - Data with spatial noise: same sequence of distinct sine waves, but with with white noise (spatial noise)
 - Data with temporal noise: [TODO]
 
-[Optional] Plot the data: `python plot.py` 
+[Optional] Plot the data: 
+* `python plot_artificial_data.py` will plot the artificial sensory sequences.
+* `python plot_sensortag_data.py` will plot the accelerometer data recorded by the TI Sensortag
 
 Generate the model params for all the datasets: `python generate_model_params.py`
 
-Classify the data: `python classify.py`. The classification accuracy will be printed out. 
+Classify the data: 
+* Network API: `python classify_active_cells.py`
+* OPF: `python opf_classify.py` [DEPRECATED]
 
 
 #Classification of Real Data
@@ -29,4 +33,4 @@ The datasets were created by recording accelerometer data during the following t
 
 The sensor used to record accelerometer data is the TI SensorTag CC2541
 
-To connect to the SensorTag and write data to a file: enable bluetooth, and run `node sensortag.js '<filename>.csv'`
+To connect to the SensorTag and write data to a file: enable bluetooth, and run `node record_sensortag_data.js '<filename>.csv'`
