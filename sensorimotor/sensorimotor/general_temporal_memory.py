@@ -88,7 +88,8 @@ class GeneralTemporalMemory(TemporalMemory):
       activeApicalCells = set()
 
     activeExternalCells = self._reindexActiveExternalCells(activeExternalCells)
-    activeApicalCells = self._reindexActiveExternalCells(activeApicalCells)
+    activeApicalCells = self._reindexActiveApicalCells(activeApicalCells,
+                                                       len(activeExternalCells))
 
     (activeCells,
      winnerCells,
@@ -181,11 +182,11 @@ class GeneralTemporalMemory(TemporalMemory):
     @return (tuple) Contains:
                       `activeCells`               (set),
                       `winnerCells`               (set),
-                      `activeSegments`      (set),
+                      `activeSegments`            (set),
                       `activeApicalSegments`      (set),
                       `predictiveCells`           (set),
                       'predictedColumns'          (set),
-                      'matchingSegments'    (set),
+                      'matchingSegments'          (set),
                       'matchingApicalSegments'    (set),
                       'matchingCells'             (set),
                       'chosenCellForColumn'       (dict)
@@ -223,6 +224,7 @@ class GeneralTemporalMemory(TemporalMemory):
     winnerCells.update(_winnerCells)
 
     if learn:
+      prevCellActivity = prevActiveExternalCells
       self.learnOnApicalSegments(prevActiveApicalSegments,
                                  apicalLearningSegments,
                                  prevActiveApicalCells,
@@ -233,14 +235,16 @@ class GeneralTemporalMemory(TemporalMemory):
 
 
       if formInternalConnections:
-        self.learnOnSegments(prevActiveSegments,
-                             learningSegments,
-                             prevActiveCells | prevActiveExternalCells,
-                             winnerCells,
-                             prevWinnerCells,
-                             connections,
-                             predictedInactiveCells,
-                             prevMatchingSegments)
+        prevCellActivity.update(prevWinnerCells)
+
+      self.learnOnSegments(prevActiveSegments,
+                           learningSegments,
+                           prevActiveCells | prevActiveExternalCells,
+                           winnerCells,
+                           prevCellActivity,
+                           connections,
+                           predictedInactiveCells,
+                           prevMatchingSegments)
 
     allActiveCells = activeCells | activeExternalCells
     (activeSegments,
@@ -290,7 +294,7 @@ class GeneralTemporalMemory(TemporalMemory):
                    activeColumns,
                    predictedColumns,
                    prevActiveCells,
-                   prevActiveExternalCells,
+                   prevActiveApicalCells,
                    prevWinnerCells,
                    learnOnOneCell,
                    chosenCellForColumn,
@@ -314,12 +318,12 @@ class GeneralTemporalMemory(TemporalMemory):
     @param activeColumns                   (set)         Indices of active columns in `t`
     @param predictedColumns                (set)         Indices of predicted columns in `t`
     @param prevActiveCells                 (set)         Indices of active cells in `t-1`
-    @param prevActiveExternalCells         (set)         Indices of ext active cells in `t-1`
+    @param prevActiveApicalCells           (set)         Indices of ext active cells in `t-1`
     @param prevWinnerCells                 (set)         Indices of winner cells in `t-1`
     @param learnOnOneCell                  (boolean)     If True, the winner cell for each column will be fixed between resets.
     @param chosenCellForColumn             (dict)        The current winner cell for each column, if it exists.
     @param connections                     (Connections) Connectivity of layer
-    @param apicalConnections             (Connections) External connectivity of layer
+    @param apicalConnections               (Connections) External connectivity of layer
 
     @return (tuple) Contains:
                       `activeCells`      (set),
@@ -344,37 +348,38 @@ class GeneralTemporalMemory(TemporalMemory):
 
       (bestCell,
        bestSegment,
-       bestExternalSegment) = self.bestMatchingCell(cells,
-                                            prevActiveCells,
-                                            prevActiveExternalCells,
-                                            connections,
-                                            apicalConnections)
+       bestApicalSegment) = self.bestMatchingCell(cells,
+                                                  prevActiveCells,
+                                                  prevActiveApicalCells,
+                                                  connections,
+                                                  apicalConnections)
       winnerCells.add(bestCell)
 
       if bestSegment is None and len(prevWinnerCells):
         bestSegment = connections.createSegment(bestCell)
 
-      if bestExternalSegment is None:
-        bestExternalSegment = apicalConnections.createSegment(bestCell)
+      if bestApicalSegment is None:
+        bestApicalSegment = apicalConnections.createSegment(bestCell)
 
       if bestSegment is not None:
         learningSegments.add(bestSegment)
 
-      if bestExternalSegment is not None:
-        apicalLearningSegments.add(bestExternalSegment)
+      if bestApicalSegment is not None:
+        apicalLearningSegments.add(bestApicalSegment)
 
       chosenCellForColumn[column] = bestCell
 
-    return activeCells, winnerCells, learningSegments, apicalLearningSegments, chosenCellForColumn
+    return (activeCells, winnerCells, learningSegments, apicalLearningSegments,
+            chosenCellForColumn)
 
   def learnOnApicalSegments(self,
-                              prevActiveSegments,
-                              learningSegments,
-                              prevActiveCells,
-                              winnerCells,
-                              connections,
-                              predictedInactiveCells,
-                              prevMatchingSegments):
+                            prevActiveSegments,
+                            learningSegments,
+                            prevActiveCells,
+                            winnerCells,
+                            connections,
+                            predictedInactiveCells,
+                            prevMatchingSegments):
     """
     Phase 3: Perform learning by adapting segments.
 
@@ -399,19 +404,19 @@ class GeneralTemporalMemory(TemporalMemory):
     for winnerCell in winnerCells:
       winnerSegments = connections.segmentsForCell(winnerCell)
       if len(winnerSegments & (prevActiveSegments | learningSegments)) == 0:
-          maxActiveSynapses = 0
-          winnerSegment = None
-          for segment in winnerSegments:
-            activeSynapses = TemporalMemory.activeSynapsesForSegment(
-                                                                    segment,
-                                                                    prevActiveCells,
-                                                                    connections)
-            numActiveSynapses = len(activeSynapses)
-            if numActiveSynapses > maxActiveSynapses:
-              maxActiveSynapses = numActiveSynapses
-              winnerSegment = segment
-          if winnerSegment is not None:
-            learningSegments.add(winnerSegment)
+        maxActiveSynapses = 0
+        winnerSegment = None
+        for segment in winnerSegments:
+          activeSynapses = TemporalMemory.activeSynapsesForSegment(
+              segment,
+              prevActiveCells,
+              connections)
+          numActiveSynapses = len(activeSynapses)
+          if numActiveSynapses > maxActiveSynapses:
+            maxActiveSynapses = numActiveSynapses
+            winnerSegment = segment
+        if winnerSegment is not None:
+          learningSegments.add(winnerSegment)
 
     for segment in prevActiveSegments | learningSegments:
       isLearningSegment = segment in learningSegments
@@ -495,7 +500,7 @@ class GeneralTemporalMemory(TemporalMemory):
 
     return activeSegments, predictiveCells, matchingSegments, matchingCells
 
-  def bestMatchingCell(self, cells, activeCells, activeExternalCells, connections, apicalConnections):
+  def bestMatchingCell(self, cells, activeCells, activeApicalCells, connections, apicalConnections):
     """
     Gets the cell with the best matching segment
     (see `TM.bestMatchingSegment`) that has the largest number of active
@@ -505,37 +510,37 @@ class GeneralTemporalMemory(TemporalMemory):
 
     @param cells                       (set)         Indices of cells
     @param activeCells                 (set)         Indices of active cells
-    @param activeExternalCells         (set)         Indices of active external cells
+    @param activeApicalCells           (set)         Indices of active apical cells
     @param connections                 (Connections) Connectivity of layer
-    @param apicalConnections         (Connections) External connectivity of layer
+    @param apicalConnections           (Connections) Apical connectivity of layer
 
     @return (tuple) Contains:
                       `cell`                (int),
                       `bestSegment`         (int),
-                      `bestExternalSegment` (int)
+                      `bestApicalSegment` (int)
     """
     maxSynapses = 0
     bestCell = None
     bestSegment = None
-    bestExternalSegment = None
+    bestApicalSegment = None
 
     for cell in cells:
       segment, numActiveSynapses = self.bestMatchingSegment(
         cell, activeCells, connections)
 
-      externalSegment, externalNumActiveSynapses = self.bestMatchingSegment(
-        cell, activeExternalCells, apicalConnections)
+      apicalSegment, apicalNumActiveSynapses = self.bestMatchingSegment(
+        cell, activeApicalCells, apicalConnections)
 
       if segment is not None and numActiveSynapses > maxSynapses:
         maxSynapses = numActiveSynapses
         bestCell = cell
         bestSegment = segment
-        bestExternalSegment = externalSegment
+        bestApicalSegment = apicalSegment
 
     if bestCell is None:
       bestCell = self.leastUsedCell(cells, connections)
 
-    return bestCell, bestSegment, bestExternalSegment
+    return bestCell, bestSegment, bestApicalSegment
 
 
   def activeCellsIndices(self):
@@ -560,6 +565,13 @@ class GeneralTemporalMemory(TemporalMemory):
     """
     numCells = self.numberOfCells()
     return set([index + numCells for index in activeExternalCells])
+
+  def _reindexActiveApicalCells(self, activeApicalCells, numExtCells):
+    """
+    @params activeApicalCells (set) Indices of active apical cells in `t`
+    """
+    numCells = self.numberOfCells() + numExtCells
+    return set([index + numCells for index in activeApicalCells])
 
   def calculatePredictiveCells(self, predictiveDistalCells,
                                predictiveApicalCells):
