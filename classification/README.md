@@ -10,7 +10,6 @@ Generate the data by running: `python generate_data.py`. This will generate the 
 
 [Optional] Plot the data: 
 * `python plot_artificial_data.py` will plot the artificial sensory sequences.
-* `python plot_sensortag_data.py` will plot the accelerometer data recorded by the TI Sensortag
 
 Generate the model params for all the datasets: `python generate_model_params.py`
 
@@ -33,4 +32,13 @@ The datasets were created by recording accelerometer data during the following t
 
 The sensor used to record accelerometer data is the TI SensorTag CC2541
 
-To connect to the SensorTag and write data to a file: enable bluetooth, and run `node record_sensortag_data.js '<filename>.csv'`
+## Record data
+To connect to the SensorTag and write data to a file: enable bluetooth, and run `node sensortag/record_sensortag_data.js '<filename>.csv'`
+
+## Visualize data
+Run `python sensortag/plot_sensortag_data.py`. This will plot the accelerometer data recorded by the TI Sensortag
+
+## Data preprocessing
+To get good results on the data recorded by the sensor tag, it is necessary to account for misplacements of the sensor on the leg of the patient. So compensate, we convert and rotate the data before feeding it to the sequence classifier. Run `python sensortag/experiments/trajectory_converter.py` to clean the data out.
+
+
