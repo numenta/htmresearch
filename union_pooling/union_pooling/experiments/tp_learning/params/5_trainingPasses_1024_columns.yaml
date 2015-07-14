@@ -1,0 +1,46 @@
+patternDimensionality: 1024
+patternCardinality: 50
+sequenceLength: 50
+numberOfSequences: 1
+trainingPasses: 5
+
+temporalMemoryParams:
+  columnDimensions: [1024]
+  cellsPerColumn: 8
+  activationThreshold: 20
+  initialPermanence: 0.5
+  connectedPermanence: 0.6
+  minThreshold: 20
+  maxNewSynapseCount: 30
+  permanenceIncrement: 0.10
+  permanenceDecrement: 0.02
+  seed: 42
+  learnOnOneCell: False
+
+unionPoolerParams:
+  # Spatial Pooler superclass params
+  columnDimensions: [1024]
+  numActiveColumnsPerInhArea: 20.0
+  potentialPct: 0.9
+  globalInhibition: True
+  localAreaDensity: -1.0
+  stimulusThreshold: 0
+  synPermInactiveDec: 0.0
+  synPermActiveInc: 0.0
+  synPermConnected: 0.10
+  minPctOverlapDutyCycle: 0.001
+  minPctActiveDutyCycle: 0.001
+  dutyCyclePeriod: 1000
+  maxBoost: 10.0
+  seed: 42
+  spVerbosity: 0
+  wrapAround: True
+
+  # Union Pooler params
+  activeOverlapWeight: 1.0
+  predictedActiveOverlapWeight: 10.0
+  maxUnionActivity: 0.20
+  exciteFunctionType: 'Logistic'
+  decayFunctionType: 'Exponential'
+  decayTimeConst: 10.0
+  synPermPredActiveInc: 0.05
