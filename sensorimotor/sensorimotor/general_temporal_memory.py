@@ -44,7 +44,7 @@ class GeneralTemporalMemory(TemporalMemory):
 
   def __init__(self,
                learnOnOneCell=True,
-               apicalActivationThreshold=26,
+               apicalActivationThreshold=30,
                **kwargs):
     """
     @param learnOnOneCell (boolean) If True, the winner cell for each column will be fixed between resets.
@@ -181,11 +181,11 @@ class GeneralTemporalMemory(TemporalMemory):
     @return (tuple) Contains:
                       `activeCells`               (set),
                       `winnerCells`               (set),
-                      `activeDistalSegments`      (set),
+                      `activeSegments`      (set),
                       `activeApicalSegments`      (set),
                       `predictiveCells`           (set),
                       'predictedColumns'          (set),
-                      'matchingDistalSegments'    (set),
+                      'matchingSegments'    (set),
                       'matchingApicalSegments'    (set),
                       'matchingCells'             (set),
                       'chosenCellForColumn'       (dict)
@@ -223,13 +223,13 @@ class GeneralTemporalMemory(TemporalMemory):
     winnerCells.update(_winnerCells)
 
     if learn:
-      self.learnOnExternalSegments(prevActiveApicalSegments,
-                           apicalLearningSegments,
-                           prevActiveApicalCells,
-                           winnerCells,
-                           apicalConnections,
-                           predictedInactiveCells,
-                           prevMatchingApicalSegments)
+      self.learnOnApicalSegments(prevActiveApicalSegments,
+                                 apicalLearningSegments,
+                                 prevActiveApicalCells,
+                                 winnerCells,
+                                 apicalConnections,
+                                 predictedInactiveCells,
+                                 prevMatchingApicalSegments)
 
 
       if formInternalConnections:
@@ -242,50 +242,31 @@ class GeneralTemporalMemory(TemporalMemory):
                              predictedInactiveCells,
                              prevMatchingSegments)
 
-    (activeDistalSegments,
+    allActiveCells = activeCells | activeExternalCells
+    (activeSegments,
     predictiveDistalCells,
-    matchingDistalSegments,
-    matchingDistalCells) = self.computePredictiveCells(
-    activeCells | activeExternalCells, connections)
+    matchingSegments,
+    matchingDistalCells) = self.computePredictiveCells(allActiveCells,
+                                                       connections)
 
     (activeApicalSegments,
     predictiveApicalCells,
     matchingApicalSegments,
-    matchingApicalCells) = self.computeExternalPredictiveCells(
-    activeApicalCells, apicalConnections)
+    matchingApicalCells) = self.computeApicalPredictiveCells(activeApicalCells,
+                                                             apicalConnections)
 
     matchingCells = matchingDistalCells | matchingApicalCells
 
-    # There is probably a way to speed up the below
-    cellPredictiveScores = defaultdict(int)
-
-    for candidate in predictiveApicalCells:
-      cellPredictiveScores[candidate] += 1
-
-    for candidate in predictiveDistalCells:
-      cellPredictiveScores[candidate] += 1
-
-    columnThresholds = defaultdict(int)
-
-    for candidate in cellPredictiveScores:
-      column = self.columnForCell(candidate)
-      score = cellPredictiveScores[candidate]
-      columnThresholds[column] = max(score, columnThresholds[column])
-
-    predictiveCells = set()
-
-    for candidate in cellPredictiveScores:
-      column = self.columnForCell(candidate)
-      if cellPredictiveScores[candidate] >= columnThresholds[column]:
-        predictiveCells.add(candidate)
+    predictiveCells = self.calculatePredictiveCells(predictiveDistalCells,
+                                                    predictiveApicalCells)
 
     return (activeCells,
             winnerCells,
-            activeDistalSegments,
+            activeSegments,
             activeApicalSegments,
             predictiveCells,
             predictedColumns,
-            matchingDistalSegments,
+            matchingSegments,
             matchingApicalSegments,
             matchingCells,
             chosenCellForColumn)
@@ -386,7 +367,7 @@ class GeneralTemporalMemory(TemporalMemory):
 
     return activeCells, winnerCells, learningSegments, apicalLearningSegments, chosenCellForColumn
 
-  def learnOnExternalSegments(self,
+  def learnOnApicalSegments(self,
                               prevActiveSegments,
                               learningSegments,
                               prevActiveCells,
@@ -418,7 +399,19 @@ class GeneralTemporalMemory(TemporalMemory):
     for winnerCell in winnerCells:
       winnerSegments = connections.segmentsForCell(winnerCell)
       if len(winnerSegments & (prevActiveSegments | learningSegments)) == 0:
-          learningSegments |= winnerSegments
+          maxActiveSynapses = 0
+          winnerSegment = None
+          for segment in winnerSegments:
+            activeSynapses = TemporalMemory.activeSynapsesForSegment(
+                                                                    segment,
+                                                                    prevActiveCells,
+                                                                    connections)
+            numActiveSynapses = len(activeSynapses)
+            if numActiveSynapses > maxActiveSynapses:
+              maxActiveSynapses = numActiveSynapses
+              winnerSegment = segment
+          if winnerSegment is not None:
+            learningSegments.add(winnerSegment)
 
     for segment in prevActiveSegments | learningSegments:
       isLearningSegment = segment in learningSegments
@@ -429,7 +422,8 @@ class GeneralTemporalMemory(TemporalMemory):
 
       if isLearningSegment or isFromWinnerCell:
         self.adaptSegment(segment, activeSynapses, connections,
-                          self.permanenceIncrement/2.0, 0)
+                          self.permanenceIncrement/2.0,
+                          self.permanenceDecrement/2.0)
 
       if isLearningSegment:
         n = self.maxNewSynapseCount - len(activeSynapses)
@@ -442,7 +436,7 @@ class GeneralTemporalMemory(TemporalMemory):
                                     presynapticCell,
                                     self.initialPermanence)
 
-  def computeExternalPredictiveCells(self, activeCells, connections):
+  def computeApicalPredictiveCells(self, activeCells, connections):
     """
     Phase 4: Compute predictive cells due to lateral input
     on distal dendrites.
@@ -566,3 +560,30 @@ class GeneralTemporalMemory(TemporalMemory):
     """
     numCells = self.numberOfCells()
     return set([index + numCells for index in activeExternalCells])
+
+  def calculatePredictiveCells(self, predictiveDistalCells,
+                               predictiveApicalCells):
+
+    cellPredictiveScores = defaultdict(int)
+
+    for candidate in predictiveApicalCells:
+      cellPredictiveScores[candidate] += 1
+
+    for candidate in predictiveDistalCells:
+      cellPredictiveScores[candidate] += 1
+
+    columnThresholds = defaultdict(int)
+
+    for candidate in cellPredictiveScores:
+      column = self.columnForCell(candidate)
+      score = cellPredictiveScores[candidate]
+      columnThresholds[column] = max(score, columnThresholds[column])
+
+    predictiveCells = set()
+
+    for candidate in cellPredictiveScores:
+      column = self.columnForCell(candidate)
+      if cellPredictiveScores[candidate] >= columnThresholds[column]:
+        predictiveCells.add(candidate)
+
+    return predictiveCells

@@ -45,7 +45,7 @@ DEFAULT_TEMPORAL_MEMORY_PARAMS = {"columnDimensions": (2048,),
                                   "initialPermanence": 0.5,
                                   "connectedPermanence": 0.6,
                                   "minThreshold": 20,
-                                  "maxNewSynapseCount": 30,
+                                  "maxNewSynapseCount": 40,
                                   "permanenceIncrement": 0.10,
                                   "permanenceDecrement": 0.02,
                                   "seed": 42,
@@ -54,7 +54,7 @@ DEFAULT_TEMPORAL_MEMORY_PARAMS = {"columnDimensions": (2048,),
 params = dict(DEFAULT_TEMPORAL_MEMORY_PARAMS)
 tmNoFeedback = MonitoredGeneralTemporalMemory(mmName="TM1", **params)
 tmFeedback = MonitoredGeneralTemporalMemory(mmName="TM2", **params)
-feedback_n = 200
+feedback_n = 400
 trials = 30
 
 
@@ -252,12 +252,28 @@ def plotPredictionAccuracy(tm1, tm2, allLabels, title=None):
   plt.xticks(index + bar_width, allLabels)
   plt.legend(loc='lower right')
 
+def confusionMatrixStats(tm, timestep):
+
+  predAct = len(tm.mmGetTracePredictedActiveCells().data[timestep])
+  predInact = len(tm.mmGetTracePredictedInactiveCells().data[timestep])
+  unpredAct = len(tm.mmGetTraceUnpredictedActiveColumns().data[timestep])
+
+  pred_or_act = tm.mmGetTraceUnpredictedActiveColumns().data[timestep] | (
+                tm.mmGetTracePredictedActiveColumns().data[timestep] | (
+                tm.mmGetTracePredictedInactiveColumns().data[timestep]))
+
+  unpredInact = tm.numberOfColumns()-len(pred_or_act)
+
+  return predAct, unpredAct, predInact, unpredInact
+
 def experiment1(aorb='a', mutate_times = [3]):
 
   if aorb =='a':
     mutation = 0
+    timestep = 4
   elif aorb =='b':
     mutation = 1
+    timestep = 3
   else:
     raise ValueError
 
@@ -273,8 +289,16 @@ def experiment1(aorb='a', mutate_times = [3]):
   ys1, allLabels = run(tmNoFeedback, mutate_times, sequences, alphabet, mutation=mutation)
   ys2, _ = run(tmFeedback, mutate_times, sequences, alphabet, feedback_seq, mutation)
 
-  plotPredictionAccuracy(tmNoFeedback, tmFeedback, allLabels)
-  plotResults(ys1, ys2, allLabels)
+  print "Considering timestep "+str(timestep)
+  print "No feedback confusion matrix: "
+  print confusionMatrixStats(tmNoFeedback, timestep)
+  print
+  print "Feedback confusion matrix: "
+  print confusionMatrixStats(tmFeedback, timestep)
+  print
+
+  # plotPredictionAccuracy(tmNoFeedback, tmFeedback, allLabels)
+  # plotResults(ys1, ys2, allLabels)
 
 
 def experiment2(aorb='a'):
@@ -314,13 +338,31 @@ def experiment2(aorb='a'):
   ys2, _ = run(tmFeedback, defaultdict(list), partial_sequences1, alphabet,
                feedback_seq=testFeedback)
 
-  print allLabels
+  timestep = 3
+  print "Considering timestep "+str(timestep)
+  print "No feedback confusion matrix: "
+  print confusionMatrixStats(tmNoFeedback, timestep)
+  print
+  print "Feedback confusion matrix: "
+  print confusionMatrixStats(tmFeedback, timestep)
+  print
 
-  plotPredictionAccuracy(tmNoFeedback, tmFeedback, allLabels, title)
-  plotResults(ys1, ys2, allLabels, title)
+  # print allLabels
 
-def experiment3():
-  sequences1 = generateSequences(2048, 40, 5, 1)
+  # plotPredictionAccuracy(tmNoFeedback, tmFeedback, allLabels, title)
+  # plotResults(ys1, ys2, allLabels, title)
+
+def experiment3(aorb='a'):
+  if aorb == 'a':
+    sequence_len = 5
+  elif aorb == 'b':
+    sequence_len = 26
+  elif aorb == 'c':
+    return capacityExperiment()
+  else:
+    raise ValueError
+
+  sequences1 = generateSequences(2048, 40, sequence_len, 1)
 
   sequences2 = [x for x in sequences1]
   sequences2[-2] = sequences1[1]
@@ -339,45 +381,63 @@ def experiment3():
   ys2, _ = run(tmFeedback, defaultdict(list), sequences2, alphabet,
                feedback_seq=feedback_seq)
 
-  title = 'Feedback is in "ABCDE" state'
+  timestep = sequence_len-1
+  print "Considering timestep "+str(timestep)
+  print "No feedback confusion matrix: "
+  print confusionMatrixStats(tmNoFeedback, timestep)
+  print
+  print "Feedback confusion matrix: "
+  print confusionMatrixStats(tmFeedback, timestep)
+  print
 
-  plotPredictionAccuracy(tmNoFeedback, tmFeedback, allLabels, title)
-  plotResults(ys1, ys2, allLabels, title)
+  # title = 'Feedback is in "ABCDE" state'
+
+  # plotPredictionAccuracy(tmNoFeedback, tmFeedback, allLabels, title)
+  # plotResults(ys1, ys2, allLabels, title)
 
 def capacityExperiment():
 
   w = 40
-  seq_lengths = range(5, 51, 5)
-  bursting_cols = []
+  trials_per_params = 5
+  seq_lengths = range(5, 41, 5)
+  ys = []
 
   for seq_length in seq_lengths:
-    sequences1 = generateSequences(2048, w, seq_length, 1)
+    avg_y = 0.0
+    for _ in range(trials_per_params):
+      sequences1 = generateSequences(2048, w, seq_length, 1)
 
-    sequences2 = [x for x in sequences1]
-    sequences2[-2] = set([random.randint(0, 2047) for _ in range(w)])
+      sequences2 = [x for x in sequences1]
+      sequences2[-2] = set([random.randint(0, 2047) for _ in range(w)])
 
-    fixed_feedback = set([random.randint(0, 2047) for _ in range(feedback_n)])
-    feedback_seq = shiftingFeedback(fixed_feedback, seq_length)
+      fixed_feedback = set([random.randint(0, 2047) for _ in range(feedback_n)])
+      feedback_seq = shiftingFeedback(fixed_feedback, seq_length)
 
-    alphabet = getAlphabet(sequences1)
+      alphabet = getAlphabet(sequences1)
 
-    train(tmFeedback, sequences1, feedback_seq)
+      train(tmFeedback, sequences1, feedback_seq)
 
-    bursting, _ = run(tmFeedback, defaultdict(list), sequences2, alphabet,
-                      feedback_seq=feedback_seq)
+      bursting, _ = run(tmFeedback, defaultdict(list), sequences2, alphabet,
+                        feedback_seq=feedback_seq)
 
-    bursting_cols.append(bursting[-1])
+      y =  w-bursting[-1]
+      avg_y += y
+      print "error: ", y
+    avg_y /= trials_per_params
+    print "average error: ", avg_y
+    ys.append(avg_y)
 
-  _, ymax = plt.ylim()
-  plt.ylim(0, ymax)
+  print ys
+
   plt.title('Sequence Length Capacity of Predictive Feedback Mechanism')
   plt.xlabel('Sequence length')
-  plt.ylabel('Incorrectly active columns with random input')
-  plt.plot(seq_lengths, [w-x for x in bursting_cols])
+  plt.ylabel('Incorrectly active cells with random input')
+  plt.plot(seq_lengths, ys)
+  _, ymax = plt.ylim()
+  plt.ylim(0, ymax)
   plt.show()
 
 if __name__ == "__main__":
-  #experiment1('a')
-  #experiment2('b')
-  #experiment3()
-  capacityExperiment()
+  experiment1('a')
+  #experiment2('a')
+  #experiment3('c')
