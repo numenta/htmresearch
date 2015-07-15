@@ -44,7 +44,6 @@ class GeneralTemporalMemory(TemporalMemory):
 
   def __init__(self,
                learnOnOneCell=True,
-               apicalActivationThreshold=30,
                **kwargs):
     """
     @param learnOnOneCell (boolean) If True, the winner cell for each column will be fixed between resets.
@@ -61,7 +60,6 @@ class GeneralTemporalMemory(TemporalMemory):
 
     self.activeApicalCells = set()
     self.apicalConnections = Connections(self.numberOfCells())
-    self.apicalActivationThreshold = apicalActivationThreshold
     self.activeApicalSegments = set()
     self.matchingApicalSegments = set()
 
@@ -256,8 +254,8 @@ class GeneralTemporalMemory(TemporalMemory):
     (activeApicalSegments,
     predictiveApicalCells,
     matchingApicalSegments,
-    matchingApicalCells) = self.computeApicalPredictiveCells(activeApicalCells,
-                                                             apicalConnections)
+    matchingApicalCells) = self.computePredictiveCells(activeApicalCells,
+                                                       apicalConnections)
 
     matchingCells = matchingDistalCells | matchingApicalCells
 
@@ -427,8 +425,8 @@ class GeneralTemporalMemory(TemporalMemory):
 
       if isLearningSegment or isFromWinnerCell:
         self.adaptSegment(segment, activeSynapses, connections,
-                          self.permanenceIncrement/2.0,
-                          self.permanenceDecrement/2.0)
+                          self.permanenceIncrement,
+                          self.permanenceDecrement)
 
       if isLearningSegment:
         n = self.maxNewSynapseCount - len(activeSynapses)
@@ -441,64 +439,6 @@ class GeneralTemporalMemory(TemporalMemory):
                                     presynapticCell,
                                     self.initialPermanence)
 
-  def computeApicalPredictiveCells(self, activeCells, connections):
-    """
-    Phase 4: Compute predictive cells due to lateral input
-    on distal dendrites.
-
-    Pseudocode:
-
-      - for each distal dendrite segment with activity >= activationThreshold
-        - mark the segment as active
-        - mark the cell as predictive
-
-      - if predictedSegmentDecrement > 0
-        - for each distal dendrite segment with unconnected
-          activity >=  minThreshold
-          - mark the segment as matching
-          - mark the cell as matching
-
-    Forward propagates activity from active cells to the synapses that touch
-    them, to determine which synapses are active.
-
-    @param activeCells (set)         Indices of active cells in `t`
-    @param connections (Connections) Connectivity of layer
-
-    @return (tuple) Contains:
-                      `activeSegments`  (set),
-                      `predictiveCells` (set),
-                      `matchingSegments` (set),
-                      `matchingCells`    (set)
-    """
-    numActiveConnectedSynapsesForSegment = defaultdict(int)
-    numActiveSynapsesForSegment = defaultdict(int)
-    activeSegments = set()
-    predictiveCells = set()
-
-    matchingSegments = set()
-    matchingCells = set()
-
-    for cell in activeCells:
-      for synapseData in connections.synapsesForPresynapticCell(cell).values():
-        segment = synapseData.segment
-        permanence = synapseData.permanence
-
-        if permanence >= self.connectedPermanence:
-          numActiveConnectedSynapsesForSegment[segment] += 1
-
-          if (numActiveConnectedSynapsesForSegment[segment] >=
-              self.apicalActivationThreshold):
-            activeSegments.add(segment)
-            predictiveCells.add(connections.cellForSegment(segment))
-
-        if permanence > 0 and self.predictedSegmentDecrement > 0:
-          numActiveSynapsesForSegment[segment] += 1
-
-          if numActiveSynapsesForSegment[segment] >= self.minThreshold:
-            matchingSegments.add(segment)
-            matchingCells.add(connections.cellForSegment(segment))
-
-    return activeSegments, predictiveCells, matchingSegments, matchingCells
 
   def bestMatchingCell(self, cells, activeCells, activeApicalCells, connections, apicalConnections):
     """
@@ -576,13 +516,15 @@ class GeneralTemporalMemory(TemporalMemory):
   def calculatePredictiveCells(self, predictiveDistalCells,
                                predictiveApicalCells):
 
+    columnPredThresh = 2
+
     cellPredictiveScores = defaultdict(int)
 
     for candidate in predictiveApicalCells:
       cellPredictiveScores[candidate] += 1
 
     for candidate in predictiveDistalCells:
-      cellPredictiveScores[candidate] += 1
+      cellPredictiveScores[candidate] += 2
 
     columnThresholds = defaultdict(int)
 
@@ -595,7 +537,8 @@ class GeneralTemporalMemory(TemporalMemory):
 
     for candidate in cellPredictiveScores:
       column = self.columnForCell(candidate)
-      if cellPredictiveScores[candidate] >= columnThresholds[column]:
+      if (columnThresholds[column] >= columnPredThresh) and (
+            cellPredictiveScores[candidate] >= columnThresholds[column]):
         predictiveCells.add(candidate)
 
     return predictiveCells
