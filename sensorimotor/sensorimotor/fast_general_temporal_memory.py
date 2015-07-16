@@ -42,12 +42,16 @@ class FastGeneralTemporalMemory(GeneralTemporalMemory, FastTemporalMemory):
                    activeColumns,
                    predictedColumns,
                    prevActiveCells,
+                   prevActiveApicalCells,
                    prevWinnerCells,
                    learnOnOneCell,
                    chosenCellForColumn,
-                   connections):
+                   connections,
+                   apicalConnections):
     """
     Phase 2: Burst unpredicted columns.
+
+    TODO: Add functionality for feedback.
 
     Pseudocode:
 
@@ -108,7 +112,7 @@ class FastGeneralTemporalMemory(GeneralTemporalMemory, FastTemporalMemory):
 
       chosenCellForColumn[column] = bestCell
 
-    return activeCells, winnerCells, learningSegments, chosenCellForColumn
+    return activeCells, winnerCells, learningSegments, set(), chosenCellForColumn
 
 
   def activeCellsIndices(self):

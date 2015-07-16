@@ -50,7 +50,12 @@ def main(inputPath, csvOutputPath, imgOutputPath):
   print "Computing Union SDR overlap between SDR traces in following dir:"
   print inputPath + "\n"
 
-  files = os.listdir(inputPath)
+  filesAll = os.listdir(inputPath)
+  files = []
+  for _ in xrange(len(filesAll)):
+    if filesAll[_].find('unionSdrTrace') != -1:
+      files.append(filesAll[_])
+
   if len(files) != 2:
     print "Found {0} files at input path {1} - Requires exactly 2.".format(
       len(files), inputPath)
