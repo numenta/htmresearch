@@ -54,6 +54,7 @@ DEFAULT_TEMPORAL_MEMORY_PARAMS = {"columnDimensions": (2048,),
                                   "maxNewSynapseCount": 40,
                                   "permanenceIncrement": 0.10,
                                   "permanenceDecrement": 0.02,
+                                  "predictedSegmentDecrement": 0.08,
                                   "seed": 42,
                                   "learnOnOneCell": False}
 
@@ -85,11 +86,32 @@ DEFAULT_UNION_POOLER_PARAMS = {# Spatial Pooler Params
                                  "exciteFunctionType": 'Fixed',
                                  "decayFunctionType": 'NoDecay'}
 
-params = dict(DEFAULT_TEMPORAL_MEMORY_PARAMS)
-tmNoFeedback = MonitoredGeneralTemporalMemory(mmName="TM1", **params)
-tmFeedback = MonitoredGeneralTemporalMemory(mmName="TM2", **params)
-feedback_n = 400
 trials = 30
+feedback_n = 400
+
+tmNoFeedback = None
+tmFeedback = None
+up = None
+
+def setup(upSet=False):
+  global tmNoFeedback, tmFeedback, up
+
+  print "Initializing temporal memory..."
+  params = dict(DEFAULT_TEMPORAL_MEMORY_PARAMS)
+  tmNoFeedback = MonitoredGeneralTemporalMemory(mmName="TM1", **params)
+  tmFeedback = MonitoredGeneralTemporalMemory(mmName="TM2", **params)
+  feedback_n = 400
+  trials = 30
+  print "Done."
+
+  if upSet:
+    print "Initializing union pooler..."
+    params = dict(DEFAULT_UNION_POOLER_PARAMS)
+    params["inputDimensions"] = [tmFeedback.numberOfCells()]
+    params["potentialRadius"] = tmFeedback.numberOfCells()
+    up = UnionPooler(**params)
+    print "Done."
+
 
 
 def generateSequences(patternDimensionality, patternCardinality, sequenceLength,
@@ -143,7 +165,7 @@ def labelSequences(sequences, alphabet=None):
 
   return labels
 
-def shiftingFeedback(starting_feedback, n, percent_shift=0.02):
+def shiftingFeedback(starting_feedback, n, percent_shift=0.2):
 
   feedback_seq = []
   feedback = starting_feedback
@@ -159,19 +181,19 @@ def shiftingFeedback(starting_feedback, n, percent_shift=0.02):
   return feedback_seq
 
 def getUnionPoolerInput(tm):
-    """
-    Gets the Union Pooler input from the Temporal Memory
-    """
-    activeCells = np.zeros(tm.numberOfCells()).astype(realDType)
-    activeCells[list(tm.activeCellsIndices())] = 1
+  """
+  Gets the Union Pooler input from the Temporal Memory
+  """
+  activeCells = np.zeros(tm.numberOfCells()).astype(realDType)
+  activeCells[list(tm.activeCellsIndices())] = 1
 
-    predictedActiveCells = np.zeros(tm.numberOfCells()).astype(realDType)
-    predictedActiveCells[list(tm.predictedActiveCellsIndices())] = 1
+  predictedActiveCells = np.zeros(tm.numberOfCells()).astype(realDType)
+  predictedActiveCells[list(tm.predictedActiveCellsIndices())] = 1
 
-    burstingColumns = np.zeros(tm.numberOfColumns()).astype(realDType)
-    burstingColumns[list(tm.unpredictedActiveColumns)] = 1
+  burstingColumns = np.zeros(tm.numberOfColumns()).astype(realDType)
+  burstingColumns[list(tm.unpredictedActiveColumns)] = 1
 
-    return activeCells, predictedActiveCells, burstingColumns
+  return activeCells, predictedActiveCells, burstingColumns
 
 def trainUP(tm, sequences, up=None, trials=trials, clearhistory=True):
 
@@ -190,7 +212,7 @@ def trainUP(tm, sequences, up=None, trials=trials, clearhistory=True):
                    learn=True, sequenceLabel=None)
         if up is not None:
           activeCells, predActiveCells, burstingCols, = getUnionPoolerInput(tm)
-          up.compute(activeCells, predActiveCells, learn=True)
+          up.compute(activeCells, predActiveCells, learn=False)
 
     if clearhistory:
       tm.mmClearHistory()
@@ -200,7 +222,6 @@ def runUP(tm, mutate_times, sequences, alphabet, up=None, mutation=0):
   allLabels = []
 
   for j, sensorPattern in enumerate(sequences):
-    print "Pattern ", j
     if sensorPattern is None:
       tm.reset()
     else:
@@ -220,7 +241,7 @@ def runUP(tm, mutate_times, sequences, alphabet, up=None, mutation=0):
 
       if up is not None:
         activeCells, predActiveCells, burstingCols, = getUnionPoolerInput(tm)
-        up.compute(activeCells, predActiveCells, learn=True)
+        up.compute(activeCells, predActiveCells, learn=False)
 
       allLabels.append(labelPattern(sensorPattern, alphabet))
 
@@ -356,7 +377,6 @@ def plotPredictionAccuracy(tm1, tm2, allLabels, title=None):
   plt.legend(loc='lower right')
 
 def confusionMatrixStats(tm, timestep):
-
   predAct = len(tm.mmGetTracePredictedActiveCells().data[timestep])
   predInact = len(tm.mmGetTracePredictedInactiveCells().data[timestep])
   unpredAct = len(tm.mmGetTraceUnpredictedActiveColumns().data[timestep])
@@ -369,18 +389,20 @@ def confusionMatrixStats(tm, timestep):
 
   return predAct, unpredAct, predInact, unpredInact
 
-def experiment1(aorb='a', mutate_times = [3], up=None):
+def experiment1(aorb='a', mutate_times = [12], upSet=False):
+
+  setup(upSet)
 
   if aorb =='a':
     mutation = 0
-    timestep = 4
+    timestep = 14
   elif aorb =='b':
     mutation = 1
-    timestep = 3
+    timestep = 13
   else:
     raise ValueError
 
-  sequences = generateSequences(2048, 40, 5, 1)
+  sequences = generateSequences(2048, 40, 15, 1)
   alphabet = getAlphabet(sequences)
 
   fixed_feedback = set([random.randint(0, 2047) for _ in range(feedback_n)])
@@ -409,8 +431,10 @@ def experiment1(aorb='a', mutate_times = [3], up=None):
   print
 
 
-def experiment2(aorb='a', up=None):
-  sequences1 = generateSequences(2048, 40, 5, 1)
+def experiment2(aorb='a', upSet=False):
+  setup(upSet)
+
+  sequences1 = generateSequences(2048, 40, 20, 1)
 
   sequences2 = [x for x in sequences1]
   sequences2[0] = set([random.randint(0, 2047) for _ in sequences1[0]])
@@ -422,10 +446,10 @@ def experiment2(aorb='a', up=None):
   feedback_seq2 = shiftingFeedback(fixed_feedback2, len(sequences2))
 
   sequences = sequences1+sequences2
-  feedback_seq = feedback_seq1+feedback_seq2
-
+  feedback_seq = feedback_seq1 + feedback_seq2
   alphabet = getAlphabet(sequences)
   partial_sequences1 = sequences1[1:]
+  partial_sequences2 = sequences2[1:]
 
   if aorb == 'a':
     testFeedback = feedback_seq1
@@ -437,8 +461,11 @@ def experiment2(aorb='a', up=None):
     raise ValueError
 
   # No feedback
-  train(tmNoFeedback, sequences)
-  ys1, allLabels = run(tmNoFeedback, defaultdict(list), partial_sequences1,
+  for _ in range(trials):
+    train(tmNoFeedback, sequences1, trials=1)
+    train(tmNoFeedback, sequences2, trials=1)
+
+  ys1, allLabels = run(tmNoFeedback, defaultdict(list), partial_sequences2,
                        alphabet)
 
   # Feedback
@@ -450,7 +477,7 @@ def experiment2(aorb='a', up=None):
     trainUP(tmFeedback, sequences, up)
     ys2, _ = runUP(tmFeedback, defaultdict(list), partial_sequences1, alphabet, up)
 
-  timestep = 3
+  timestep = 18
   print "Considering timestep "+str(timestep)
   print "No feedback confusion matrix: "
   print confusionMatrixStats(tmNoFeedback, timestep)
@@ -460,9 +487,11 @@ def experiment2(aorb='a', up=None):
   print
 
 
-def experiment3(aorb='a', up=None):
+def experiment3(aorb='a', upSet=False):
+  setup(upSet)
+
   if aorb == 'a':
-    sequence_len = 5
+    sequence_len = 20
   elif aorb == 'b':
     sequence_len = 26
   elif aorb == 'c':
@@ -503,83 +532,68 @@ def experiment3(aorb='a', up=None):
   print
 
 
-def capacityExperiment(up=None):
+# def capacityExperiment(up=None):
 
-  w = 40
-  trials_per_params = 5
-  seq_lengths = range(5, 41, 5)
-  ys = []
+#   w = 40
+#   trials_per_params = 5
+#   seq_lengths = range(5, 41, 5)
+#   ys = []
 
-  for seq_length in seq_lengths:
-    avg_y = 0.0
-    for _ in range(trials_per_params):
-      sequences1 = generateSequences(2048, w, seq_length, 1)
+#   for seq_length in seq_lengths:
+#     avg_y = 0.0
+#     for _ in range(trials_per_params):
+#       sequences1 = generateSequences(2048, w, seq_length, 1)
 
-      sequences2 = [x for x in sequences1]
-      sequences2[-2] = set([random.randint(0, 2047) for _ in range(w)])
+#       sequences2 = [x for x in sequences1]
+#       sequences2[-2] = set([random.randint(0, 2047) for _ in range(w)])
 
-      fixed_feedback = set([random.randint(0, 2047) for _ in range(feedback_n)])
-      feedback_seq = shiftingFeedback(fixed_feedback, seq_length)
+#       fixed_feedback = set([random.randint(0, 2047) for _ in range(feedback_n)])
+#       feedback_seq = shiftingFeedback(fixed_feedback, seq_length)
 
-      alphabet = getAlphabet(sequences1)
+#       alphabet = getAlphabet(sequences1)
 
-      if up is None:
-        train(tmFeedback, sequences1, feedback_seq)
-        bursting, _ = run(tmFeedback, defaultdict(list), sequences2, alphabet,
-                          feedback_seq=feedback_seq)
-      else:
-        trainUP(tmFeedback, sequences1, up)
-        bursting, _ = runUP(tmFeedback, defaultdict(list), sequences2,
-                            alphabet, up)
+#       if up is None:
+#         train(tmFeedback, sequences1, feedback_seq)
+#         bursting, _ = run(tmFeedback, defaultdict(list), sequences2, alphabet,
+#                           feedback_seq=feedback_seq)
+#       else:
+#         trainUP(tmFeedback, sequences1, up)
+#         bursting, _ = runUP(tmFeedback, defaultdict(list), sequences2,
+#                             alphabet, up)
 
-      y =  w-bursting[-1]
-      avg_y += y
-    avg_y /= trials_per_params
-    ys.append(avg_y)
+#       y =  w-bursting[-1]
+#       avg_y += y
+#     avg_y /= trials_per_params
+#     ys.append(avg_y)
 
-  print ys
+#   print ys
 
-  plt.title('Sequence Length Capacity of Predictive Feedback Mechanism')
-  plt.xlabel('Sequence length')
-  plt.ylabel('Incorrectly active cells with random input')
-  plt.plot(seq_lengths, ys)
-  _, ymax = plt.ylim()
-  plt.ylim(0, ymax)
-  plt.show()
+#   plt.title('Sequence Length Capacity of Predictive Feedback Mechanism')
+#   plt.xlabel('Sequence length')
+#   plt.ylabel('Incorrectly active cells with random input')
+#   plt.plot(seq_lengths, ys)
+#   _, ymax = plt.ylim()
+#   plt.ylim(0, ymax)
+#   plt.show()
 
 if __name__ == "__main__":
 
-  print "Initializing union pooler..."
-  params = dict(DEFAULT_UNION_POOLER_PARAMS)
-  params["inputDimensions"] = [tmFeedback.numberOfCells()]
-  params["potentialRadius"] = tmFeedback.numberOfCells()
-  up = UnionPooler(**params)
-  print "Done."
-
   print "Experiment 1a"
-  experiment1('a', up=up)
+  experiment1('a', upSet=True)
   print
 
   print "Experiment 1b"
-  experiment1('b', up=up)
+  experiment1('b', upSet=True)
   print
 
   print "Experiment 2a"
-  experiment2('a', up=up)
+  experiment2('a', upSet=True)
   print
 
   print "Experiment 2b"
-  experiment2('b', up=up)
+  experiment2('b', upSet=True)
   print
 
   print "Experiment 3a"
-  experiment3('a', up=up)
-  print
-
-  print "Experiment 3b"
-  experiment3('b', up=up)
-  print
-
-  print "Experiment 3c"
-  experiment3('c', up=up)
+  experiment3('a', upSet=True)
   print
