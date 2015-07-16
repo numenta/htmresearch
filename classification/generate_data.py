@@ -24,6 +24,7 @@
 
 import csv
 import math
+import os
 import random
 from settings import \
   SEQUENCE_LENGTH, \
@@ -45,7 +46,8 @@ def generateData(dataDir=None,
                  number_of_points=NUM_RECORDS, 
                  signal_amplitude=SIGNAL_AMPLITUDE, 
                  noise_amplitude=DEFAULT_WHITE_NOISE_AMPLITUDE):
-
+  
+  
   if whiteNoise:
     fileName = "white_noise_%s" %noise_amplitude
   else:
@@ -53,6 +55,10 @@ def generateData(dataDir=None,
     
   if not dataDir:
     dataDir = DATA_DIR
+  
+  # make sure the directory exist. if not, create it.
+  if not os.path.exists(dataDir):
+    os.makedirs(dataDir)
   
   fileHandle = open("%s/%s.csv" % (dataDir, fileName),"wb")
   writer = csv.writer(fileHandle)
