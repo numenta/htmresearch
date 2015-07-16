@@ -195,7 +195,7 @@ def createNetwork(dataSource):
   # Forward the sensor region sequence reset to the TM
   network.link("sensor", "TM", "UniformLink", "", srcOutput="resetOut", destInput="resetIn")
 
-  # Make sure learning is enabled (this is the default)
+  # Make sure learning is not enabled (we want to train the SP first)
   temporalMemoryRegion = network.regions["TM"]
   temporalMemoryRegion.setParameter("learningMode", False)
   
@@ -299,7 +299,7 @@ def runNetwork(network):
       print phaseInfo
       
     
-    #--- BEGIN PREDICTING TEST SET --#
+    #-- OUTER LOOP TO FEED TM STATES TO CLA CLASS because compute() doesn't work for now --#
     if i >= TM_TRAINING_SET_SIZE:
       # Pass this information to the classifier's custom compute method
       # so that it can assign the current classification to possibly

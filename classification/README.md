@@ -3,7 +3,7 @@ Sequence Classification
 
 #Classification of Artificial Data
 
-Generate the data by running: `python generate_data.py`. This will generate the following datasets:
+[Optional] Generate the data by running: `python generate_data.py`. This will generate the following datasets:
 - Non-noisy data: sequence of 3 sine waves with different amplitude and frequency
 - Data with spatial noise: same sequence of distinct sine waves, but with with white noise (spatial noise)
 - Data with temporal noise: [TODO]
@@ -11,10 +11,10 @@ Generate the data by running: `python generate_data.py`. This will generate the 
 [Optional] Plot the data: 
 * `python plot_artificial_data.py` will plot the artificial sensory sequences.
 
-Generate the model params for all the datasets: `python generate_model_params.py`
+[Optional] Generate the model params for all the datasets: `python generate_model_params.py`
 
 Classify the data: 
-* Network API: `python classify_active_cells.py`
+* Network API: `python classify_active_cells.py` (this will generate data AND model_params for various noise levels)
 * OPF: `python opf_classify.py` [DEPRECATED]
 
 
