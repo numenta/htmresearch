@@ -123,6 +123,7 @@ class ClassificationNetwork(object):
     """
   
     # Init region variables.
+    self.encoder = MultiEncoder()
     self.network = Network()
     self.sensorRegion = None
     self.spatialPoolerRegion = None
@@ -130,27 +131,9 @@ class ClassificationNetwork(object):
     self.classifierRegion = None
 
 
-  @staticmethod
-  def _createEncoder(self):
-    """
-    TODO: generalize for other encoder types (?).
-    """
-
-    scalarEncoder = ScalarEncoder(SCALAR_ENCODER_PARAMS['w'],
-                         SCALAR_ENCODER_PARAMS['minval'], 
-                         SCALAR_ENCODER_PARAMS['maxval'], 
-                         n=SCALAR_ENCODER_PARAMS['n'], 
-                         name=SCALAR_ENCODER_PARAMS['name'])
-    
-    # NOTE: we don't want to encode the category along with the scalar input. 
-    # The category will be fed separately to the classifier later, during the training phase.
-    #categoryEncoder = CategoryEncoder(CATEGORY_ENCODER_PARAMS['w'],
-    #                                  CATEGORY_ENCODER_PARAMS['categoryList'],
-    #                                  name=CATEGORY_ENCODER_PARAMS['name'])
-    encoder = MultiEncoder()
-    encoder.addEncoder(SCALAR_ENCODER_PARAMS['name'], scalarEncoder)
-    
-    return encoder
+  def createEncoder(self, name, newEncoder):
+    """Add an encoder to the MultiEncoder."""
+    self.encoder.addEncoder(name, newEncoder)
 
 
   def _initSensorRegion(self, dataSource):
@@ -168,12 +151,12 @@ class ClassificationNetwork(object):
     self.sensorRegion = self.network.regions["sensor"].getSelf()
 
     # Specify how RecordSensor encodes input values
-    sensorRegion.encoder = self._createEncoder()
+    self.sensorRegion.encoder = self.encoder
 
     # Specify the dataSource as a file record stream instance
-    sensorRegion.dataSource = dataSource
+    self.sensorRegion.dataSource = dataSource
 
-    return sensorRegion.encoder.getWidth()
+    return self.sensorRegion.encoder.getWidth()
 
 
   def _initSpatialPoolerRegion(self, prevRegionWidth):
@@ -187,10 +170,10 @@ class ClassificationNetwork(object):
     self.spatialPoolerRegion = self.network.regions["SP"]
 
     # Link the SP region to the sensor input
-    network.link("sensor", "SP", "UniformLink", "")
+    self.network.link("sensor", "SP", "UniformLink", "")
     
     # Forward the sensor region sequence reset to the SP
-    network.link("sensor", "SP", "UniformLink", "", srcOutput="resetOut", destInput="resetIn")
+    self.network.link("sensor", "SP", "UniformLink", "", srcOutput="resetOut", destInput="resetIn")
     
     # Make sure learning is ON
     self.spatialPoolerRegion.setParameter("learningMode", True)
@@ -252,7 +235,7 @@ class ClassificationNetwork(object):
     self.classifierRegion = self.network.regions["classifier"]
 
     # Feed the TM states to the classifier.
-    network.link("TM", "classifier", "UniformLink", "",
+    self.network.link("TM", "classifier", "UniformLink", "",
         srcOutput = "bottomUpOut", destInput = "bottomUpIn")
     
     
@@ -271,11 +254,10 @@ class ClassificationNetwork(object):
 
   def createNetwork(self, dataSource):
     """
-    Create and return the Network instance.
+    Create the network instance, ready to run with regions for the sensor
+    SP, TM, and classifier.
 
     @param dataSource   (RecordStream)  Sensor region reads data from here.
-    @return             (Network)       Instance ready to run, with regions for
-                                        the sensor, SP, TM, and classifier.
     """
     sensorRegionWidth = self._initSensorRegion(dataSource)
     
@@ -288,6 +270,14 @@ class ClassificationNetwork(object):
     self.network.initialize()
 
 
+  def _setRegions(self):
+    """Init regions of the network."""
+    self.sensorRegion = self.network.regions["sensor"]
+    self.spatialPoolerRegion = self.network.regions["SP"]
+    self.temporalMemoryRegion = self.network.regions["TM"]
+    self.classifier = self.network.regions["classifier"]
+
+
   def runNetwork(self):
     """Run the network and write classification results output.
 
@@ -295,6 +285,8 @@ class ClassificationNetwork(object):
     
     TODO: break this into smaller methods.
     """
+    self._setRegions()
+
     phaseInfo = "\n-> Training SP. Index=0. LEARNING: SP is ON | TM is OFF | Classifier is OFF \n"
     outFile.write(phaseInfo)
     print phaseInfo
@@ -313,7 +305,7 @@ class ClassificationNetwork(object):
       predictiveCells = tmInstance.predictiveCells
       #if len(predictiveCells) >0:
       #  print len(predictiveCells)
-      
+
       # NOTE: To be able to extract a category, one of the field of the the
       # dataset needs to have the flag C so it can be recognized as a category
       # by the encoder.
@@ -409,10 +401,18 @@ if __name__ == "__main__":
     minval, maxval = findMinMax(inputFile)
     SCALAR_ENCODER_PARAMS["minval"] = minval
     SCALAR_ENCODER_PARAMS["maxval"] = maxval
-  
+
+    # Setup scalar encoder; not category b/c fed seperately later.
+    scalarEncoder = ScalarEncoder(SCALAR_ENCODER_PARAMS["w"],
+                                  SCALAR_ENCODER_PARAMS["minval"],
+                                  SCALAR_ENCODER_PARAMS["maxval"],
+                                  n=SCALAR_ENCODER_PARAMS["n"],
+                                  name=SCALAR_ENCODER_PARAMS["name"])
+
     # Create and run network on this data.
     dataSource = FileRecordStream(streamID=inputFile)
     network = ClassificationNetwork()
+    network.createEncoder(SCALAR_ENCODER_PARAMS["name"], scalarEncoder)
     network.createNetwork(dataSource)
     network.runNetwork()
     
