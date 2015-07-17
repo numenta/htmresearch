@@ -45,6 +45,7 @@ from settings import (NUMBER_OF_LABELS,
                       )
 
 
+## TODO: cmd line args.
 _OUT_FILE = 'results/network.out'
 _VERBOSITY = 0
 
@@ -163,7 +164,7 @@ class ClassificationNetwork(object):
     """
     Create the spatial pooler region.
     
-    @return             ()              Region width to input to next region.
+    @return             (int)            Region width to input to next region.
     """
     SP_PARAMS["inputWidth"] = prevRegionWidth
     self.network.addRegion("SP", "py.SPRegion", json.dumps(SP_PARAMS))
@@ -189,12 +190,12 @@ class ClassificationNetwork(object):
     """
     Create the temporal memory region.
     
-    @return             ()              Region width to input to next region.
+    @return             (int)            Region width to input to next region.
     """
     # Make sure region widths fit
-    if TM_PARAMS['columnCount'] != prevRegionWidth:
+    if TM_PARAMS["columnCount"] != prevRegionWidth:
       raise ValueError("Region widths do not fit.")
-    TM_PARAMS['inputWidth'] = TM_PARAMS['columnCount']
+    TM_PARAMS["inputWidth"] = TM_PARAMS["columnCount"]
     
     # Create the TM region
     self.network.addRegion("TM", "py.TPRegion", json.dumps(TM_PARAMS))
@@ -220,14 +221,13 @@ class ClassificationNetwork(object):
     # Inference mode outputs the current inference (i.e. active cells).
     # Okay to always leave inference mode on - only there for some corner cases.
     self.temporalMemoryRegion.setParameter("inferenceMode", True)
-    
-    return TM_PARAMS['inputWidth']
+
+    return TM_PARAMS["inputWidth"]
 
 
   def _initClassifierRegion(self):
     """
     Create classifier region.
-    
     """
     # Create the classifier region.
     self.network.addRegion(
@@ -252,6 +252,14 @@ class ClassificationNetwork(object):
     self.classifierRegion.setParameter("inferenceMode", True)
 
 
+  def _setRegions(self):
+    """Init regions of the network."""
+    self.sensorRegion = self.network.regions["sensor"]
+    self.spatialPoolerRegion = self.network.regions["SP"]
+    self.temporalMemoryRegion = self.network.regions["TM"]
+    self.classifierRegion = self.network.regions["classifier"]
+
+
   def createNetwork(self, dataSource):
     """
     Create the network instance, ready to run with regions for the sensor
@@ -270,119 +278,111 @@ class ClassificationNetwork(object):
     self.network.initialize()
 
 
-  def _setRegions(self):
-    """Init regions of the network."""
-    self.sensorRegion = self.network.regions["sensor"]
-    self.spatialPoolerRegion = self.network.regions["SP"]
-    self.temporalMemoryRegion = self.network.regions["TM"]
-    self.classifier = self.network.regions["classifier"]
+def run(net, outFile):
+  """Run the network and write classification results output.
 
+  @param outFile: a writer instance to write output to file.
+  
+  TODO: break this into smaller methods.
+  """
+  net._setRegions()
 
-  def runNetwork(self):
-    """Run the network and write classification results output.
-
-    @param writer: a csv.writer instance to write output to file.
+  phaseInfo = "\n-> Training SP. Index=0. LEARNING: SP is ON | TM is OFF | Classifier is OFF \n"
+  outFile.write(phaseInfo)
+  print phaseInfo
+  
+  numCorrect = 0
+  numTestRecords = 0
+  for i in xrange(NUM_RECORDS):
+    # Run the network for a single iteration
+    net.network.run(1)
     
-    TODO: break this into smaller methods.
-    """
-    self._setRegions()
+    # Various info from the network, useful for debugging & monitoring
+    anomalyScore = net.temporalMemoryRegion.getOutputData("anomalyScore")
+    spOut = net.spatialPoolerRegion.getOutputData("bottomUpOut")
+    tpOut = net.temporalMemoryRegion.getOutputData("bottomUpOut")
+    tmInstance = net.temporalMemoryRegion.getSelf()._tfdr
+    predictiveCells = tmInstance.predictiveCells
+    #if len(predictiveCells) >0:
+    #  print len(predictiveCells)
 
-    phaseInfo = "\n-> Training SP. Index=0. LEARNING: SP is ON | TM is OFF | Classifier is OFF \n"
-    outFile.write(phaseInfo)
-    print phaseInfo
+    # NOTE: To be able to extract a category, one of the field of the the
+    # dataset needs to have the flag C so it can be recognized as a category
+    # by the encoder.
+    actualValue = net.sensorRegion.getOutputData("categoryOut")[0]
+
     
-    numCorrect = 0
-    numTestRecords = 0
-    for i in xrange(NUM_RECORDS):
-      # Run the network for a single iteration
-      self.network.run(1)
+    outFile.write("=> INDEX=%s |  actualValue=%s | anomalyScore=%s | tpOutNZ=%s\n" %(i, actualValue, anomalyScore, tpOut.nonzero()[0]))
+    
+    # SP has been trained. Now start training the TM too.
+    if i == SP_TRAINING_SET_SIZE:
+      net.temporalMemoryRegion.setParameter("learningMode", True)
+      phaseInfo = "\n-> Training TM. Index=%s. LEARNING: SP is ON | TM is ON | Classifier is OFF \n" %i
+      outFile.write(phaseInfo)
+      print phaseInfo
       
-      # Various info from the network, useful for debugging & monitoring
-      anomalyScore = self.temporalMemoryRegion.getOutputData("anomalyScore")
-      spOut = self.spatialPoolerRegion.getOutputData("bottomUpOut")
-      tpOut = self.temporalMemoryRegion.getOutputData("bottomUpOut")
-      tmInstance = self.temporalMemoryRegion.getSelf()._tfdr
-      predictiveCells = tmInstance.predictiveCells
-      #if len(predictiveCells) >0:
-      #  print len(predictiveCells)
+    # Start training the classifier as well.
+    elif i == TM_TRAINING_SET_SIZE:
+      net.classifierRegion.setParameter("learningMode", True)
+      phaseInfo = "\n-> Training Classifier. Index=%s. LEARNING: SP is OFF | TM is ON | Classifier is ON \n" %i
+      outFile.write(phaseInfo)
+      print phaseInfo
+    
+    # Stop training.
+    elif i == CLASSIFIER_TRAINING_SET_SIZE:
+      net.spatialPoolerRegion.setParameter("learningMode", False)
+      net.temporalMemoryRegion.setParameter("learningMode", False)
+      net.classifierRegion.setParameter("learningMode", False)
+      phaseInfo = "-> Test. Index=%s. LEARNING: SP is OFF | TM is OFF | Classifier is OFF \n" %i
+      outFile.write(phaseInfo)
+      print phaseInfo
+      
+    
+    #--- BEGIN PREDICTING TEST SET --#
+    if i >= TM_TRAINING_SET_SIZE:
+      # Pass this information to the classifier's custom compute method
+      # so that it can assign the current classification to possibly
+      # multiple patterns from the past and current, and also provide
+      # the expected classification for some time step(s) in the future.
 
-      # NOTE: To be able to extract a category, one of the field of the the
-      # dataset needs to have the flag C so it can be recognized as a category
-      # by the encoder.
-      actualValue = self.sensorRegion.getOutputData("categoryOut")[0]
+      # TODO: this is a hack for int categories... try to get the
+      # getBucketIndices() method working instead.
+      #bucketIdx = net.sensorRegion.getBucketIndices(actualValue)[0]
+      bucketIdx = actualValue
+      
+      classificationIn = {"bucketIdx": int(bucketIdx),
+                          "actValue": int(actualValue)}
+    
+      # List the indices of active cells (non-zero pattern)
+      activeCells = net.temporalMemoryRegion.getOutputData("bottomUpOut")
+      patternNZ = activeCells.nonzero()[0]
+      
+      # Call classifier
+      clResults = net.classifierRegion.getSelf().customCompute(
+          recordNum=i, patternNZ=patternNZ, classification=classificationIn)
+      
+      inferredValue = clResults["actualValues"][clResults[int(CLA_CLASSIFIER_PARAMS["steps"])].argmax()]
+      
+      outFile.write(" inferredValue=%s | classificationIn=%s | \n clResults=%s \n\n" %(inferredValue, classificationIn, clResults))
+    
+      # Evaluate the predictions in the test set.
+      if i > CLASSIFIER_TRAINING_SET_SIZE:
 
-      
-      outFile.write("=> INDEX=%s |  actualValue=%s | anomalyScore=%s | tpOutNZ=%s\n" %(i, actualValue, anomalyScore, tpOut.nonzero()[0]))
-      
-      # SP has been trained. Now start training the TM too.
-      if i == SP_TRAINING_SET_SIZE:
-        self.temporalMemoryRegion.setParameter("learningMode", True)
-        phaseInfo = "\n-> Training TM. Index=%s. LEARNING: SP is ON | TM is ON | Classifier is OFF \n" %i
-        outFile.write(phaseInfo)
-        print phaseInfo
+        if actualValue == inferredValue:
+          numCorrect += 1
+        else:  # TODO: remove. debugging.
+          #print " INCORRECT_PREDICTION: index=%s | actualValue = %s | inferredValue = %s | \n clResults = %s \n\n" % (i, actualValue, inferredValue, clResults)
+          pass
         
-      # Start training the classifier as well.
-      elif i == TM_TRAINING_SET_SIZE:
-        self.classifier.setParameter('learningMode', True)
-        phaseInfo = "\n-> Training Classifier. Index=%s. LEARNING: SP is OFF | TM is ON | Classifier is ON \n" %i
-        outFile.write(phaseInfo)
-        print phaseInfo
+        numTestRecords += 1
       
-      # Stop training.
-      elif i == CLASSIFIER_TRAINING_SET_SIZE:
-        self.spatialPoolerRegion.setParameter("learningMode", False)
-        self.temporalMemoryRegion.setParameter("learningMode", False)
-        self.classifier.setParameter("learningMode", False)
-        phaseInfo = "-> Test. Index=%s. LEARNING: SP is OFF | TM is OFF | Classifier is OFF \n" %i
-        outFile.write(phaseInfo)
-        print phaseInfo
-        
-      
-      #--- BEGIN PREDICTING TEST SET --#
-      if i >= TM_TRAINING_SET_SIZE:
-        # Pass this information to the classifier's custom compute method
-        # so that it can assign the current classification to possibly
-        # multiple patterns from the past and current, and also provide
-        # the expected classification for some time step(s) in the future.
+  predictionAccuracy =  100.0 * numCorrect / numTestRecords
 
-        # TODO: this is a hack for int categories... try to get the
-        # getBucketIndices() method working instead.
-        #bucketIdx = self.sensorRegion.getBucketIndices(actualValue)[0]
-        bucketIdx = actualValue
-        
-        classificationIn = {"bucketIdx": int(bucketIdx),
-                            "actValue": int(actualValue)}
-      
-        # List the indices of active cells (non-zero pattern)
-        activeCells = self.temporalMemoryRegion.getOutputData("bottomUpOut")
-        patternNZ = activeCells.nonzero()[0]
-        
-        # Call classifier
-        clResults = self.classifierRegion.getSelf().customCompute(
-            recordNum=i, patternNZ=patternNZ, classification=classificationIn)
-        
-        inferredValue = clResults["actualValues"][clResults[int(CLA_CLASSIFIER_PARAMS["steps"])].argmax()]
-        
-        outFile.write(" inferredValue=%s | classificationIn=%s | \n clResults=%s \n\n" %(inferredValue, classificationIn, clResults))
-      
-        # Evaluate the predictions in the test set.
-        if i > CLASSIFIER_TRAINING_SET_SIZE:
+  results = "RESULTS: accuracy=%s | %s correctly predicted records out of %s test records \n" %(predictionAccuracy, numCorrect, numTestRecords)
+  outFile.write(results)
+  print results
 
-          if actualValue == inferredValue:
-            numCorrect += 1
-          else:  # TODO: remove. debugging.
-            #print " INCORRECT_PREDICTION: index=%s | actualValue = %s | inferredValue = %s | \n clResults = %s \n\n" % (i, actualValue, inferredValue, clResults)
-            pass
-          
-          numTestRecords += 1
-        
-    predictionAccuracy =  100.0 * numCorrect / numTestRecords
-
-    results = "RESULTS: accuracy=%s | %s correctly predicted records out of %s test records \n" %(predictionAccuracy, numCorrect, numTestRecords)
-    outFile.write(results)
-    print results
-
-    return numCorrect, numTestRecords, predictionAccuracy
+  return numCorrect, numTestRecords, predictionAccuracy
 
 
 if __name__ == "__main__":
@@ -414,6 +414,7 @@ if __name__ == "__main__":
     network = ClassificationNetwork()
     network.createEncoder(SCALAR_ENCODER_PARAMS["name"], scalarEncoder)
     network.createNetwork(dataSource)
-    network.runNetwork()
+
+    run(network, outFile)
     
     print "results written to: %s" %_OUT_FILE
