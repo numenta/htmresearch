@@ -27,41 +27,12 @@ try:
 except ImportError:
   import json
 
-from generate_data import generateData
-from generate_model_params import findMinMax
 from nupic.data.file_record_stream import FileRecordStream
 from nupic.encoders import CategoryEncoder, MultiEncoder, ScalarEncoder
 from nupic.engine import Network
-from settings import (NUMBER_OF_LABELS,
-                      NUM_RECORDS,
-                      CLASSIFIER_TRAINING_SET_SIZE,
-                      TM_TRAINING_SET_SIZE,
-                      SP_TRAINING_SET_SIZE,
-                      SIGNAL_AMPLITUDE,
-                      SIGNAL_MEAN,
-                      SIGNAL_PERIOD,
-                      WHITE_NOISE_AMPLITUDE_RANGES,
-                      DATA_DIR,
-                      )
 
 
-## TODO: cmd line args.
-_OUT_FILE = 'results/network.out'
 _VERBOSITY = 0
-
-SCALAR_ENCODER_PARAMS = {
-  "name": 'y',
-  "n": 256,
-  "w": 21,
-  "minval": None, # needs to be initialized after file introspection
-  "maxval": None,  # needs to be initialized after file introspection
-}
-
-CATEGORY_ENCODER_PARAMS = {
-  "name": 'label',
-  "w": 21,
-  "categoryList": range(NUMBER_OF_LABELS),
-}
 
 SP_PARAMS = {
     "spVerbosity": _VERBOSITY,
@@ -99,17 +70,8 @@ TM_PARAMS = {
     "pamLength": 3,
 }
 
-#KNN_CLASSIFIER_PARAMS = {
-#  "k": 1,
-#  'distThreshold': 0,
-#  'maxCategoryCount': NUMBER_OF_LABELS,
-#}
-
 CLA_CLASSIFIER_PARAMS = {"steps": "1",
                          "implementation": "py"}
-
-
-outFile = open(_OUT_FILE, "wb")
 
 
 
@@ -119,11 +81,23 @@ class ClassificationNetwork(object):
     encoder -> SP -> TM -> (UP) -> classifier
   """
 
-  def __init__(self):
+  def __init__(self,
+               spParams=SP_PARAMS,
+               tmParams=TM_PARAMS,
+               classifierParams=CLA_CLASSIFIER_PARAMS,
+               verbosity=_VERBOSITY):
     """
+    @param spParams         (dict)        Spatial pooler parameters.
+    @param tmParams         (dict)        Temporal memory parameters.
+    @param classifierParams (dict)        CLA classifier parameters.
+    @param verbosity        (dict)        Amount of info printed to the console.
     """
+    self.spParams=spParams
+    self.tmParams=tmParams
+    self.classifierParams=classifierParams
+    self.verbosity=verbosity
   
-    # Init region variables.
+    # Init region variables
     self.encoder = MultiEncoder()
     self.network = Network()
     self.sensorRegion = None
@@ -142,13 +116,13 @@ class ClassificationNetwork(object):
     Initializes the sensor region with an encoder and data source.
     
     @param dataSource   (RecordStream)  Sensor region reads data from here.
-    @return             ()              Region width to input to next region.
+    @return             (int)           Region width to input to next region.
     """
     # Input data comes from a CSV file (scalar values, labels). The RecordSensor region
     # allows us to specify a file record stream as the input source via the
     # dataSource attribute.
     self.network.addRegion(
-        "sensor", "py.RecordSensor", json.dumps({"verbosity": _VERBOSITY}))
+        "sensor", "py.RecordSensor", json.dumps({"verbosity": self.verbosity}))
     self.sensorRegion = self.network.regions["sensor"].getSelf()
 
     # Specify how RecordSensor encodes input values
@@ -166,15 +140,16 @@ class ClassificationNetwork(object):
     
     @return             (int)            Region width to input to next region.
     """
-    SP_PARAMS["inputWidth"] = prevRegionWidth
-    self.network.addRegion("SP", "py.SPRegion", json.dumps(SP_PARAMS))
+    self.spParams["inputWidth"] = prevRegionWidth
+    self.network.addRegion("SP", "py.SPRegion", json.dumps(self.spParams))
     self.spatialPoolerRegion = self.network.regions["SP"]
 
     # Link the SP region to the sensor input
     self.network.link("sensor", "SP", "UniformLink", "")
     
     # Forward the sensor region sequence reset to the SP
-    self.network.link("sensor", "SP", "UniformLink", "", srcOutput="resetOut", destInput="resetIn")
+    self.network.link("sensor", "SP", "UniformLink", "",
+        srcOutput="resetOut", destInput="resetIn")
     
     # Make sure learning is ON
     self.spatialPoolerRegion.setParameter("learningMode", True)
@@ -183,7 +158,7 @@ class ClassificationNetwork(object):
     # It's ok to always leave inference mode on - it's only there for some corner cases.
     self.spatialPoolerRegion.setParameter("inferenceMode", True)
 
-    return SP_PARAMS["columnCount"]
+    return self.spParams["columnCount"]
 
 
   def _initTemporalMemoryRegion(self, prevRegionWidth):
@@ -193,12 +168,12 @@ class ClassificationNetwork(object):
     @return             (int)            Region width to input to next region.
     """
     # Make sure region widths fit
-    if TM_PARAMS["columnCount"] != prevRegionWidth:
+    if self.tmParams["columnCount"] != prevRegionWidth:
       raise ValueError("Region widths do not fit.")
-    TM_PARAMS["inputWidth"] = TM_PARAMS["columnCount"]
+    self.tmParams["inputWidth"] = self.tmParams["columnCount"]
     
     # Create the TM region
-    self.network.addRegion("TM", "py.TPRegion", json.dumps(TM_PARAMS))
+    self.network.addRegion("TM", "py.TPRegion", json.dumps(self.tmParams))
     self.temporalMemoryRegion = self.network.regions["TM"]
 
     # Feed forward link from SP to TM
@@ -222,7 +197,7 @@ class ClassificationNetwork(object):
     # Okay to always leave inference mode on - only there for some corner cases.
     self.temporalMemoryRegion.setParameter("inferenceMode", True)
 
-    return TM_PARAMS["inputWidth"]
+    return self.tmParams["inputWidth"]
 
 
   def _initClassifierRegion(self):
@@ -231,7 +206,7 @@ class ClassificationNetwork(object):
     """
     # Create the classifier region.
     self.network.addRegion(
-      "classifier", "py.CLAClassifierRegion", json.dumps(CLA_CLASSIFIER_PARAMS))
+      "classifier", "py.CLAClassifierRegion", json.dumps(self.classifierParams))
     self.classifierRegion = self.network.regions["classifier"]
 
     # Feed the TM states to the classifier.
@@ -253,7 +228,7 @@ class ClassificationNetwork(object):
 
 
   def _setRegions(self):
-    """Init regions of the network."""
+    """Init regions variables of the network instance."""
     self.sensorRegion = self.network.regions["sensor"]
     self.spatialPoolerRegion = self.network.regions["SP"]
     self.temporalMemoryRegion = self.network.regions["TM"]
@@ -262,8 +237,8 @@ class ClassificationNetwork(object):
 
   def createNetwork(self, dataSource):
     """
-    Create the network instance, ready to run with regions for the sensor
-    SP, TM, and classifier.
+    Create and intialize the network instance, ready to run with regions for the
+    sensor, SP, TM, and classifier.
 
     @param dataSource   (RecordStream)  Sensor region reads data from here.
     """
@@ -275,146 +250,6 @@ class ClassificationNetwork(object):
   
     self._initClassifierRegion()
   
+    # Need to init the network before it can run.
     self.network.initialize()
-
-
-def run(net, outFile):
-  """Run the network and write classification results output.
-
-  @param outFile: a writer instance to write output to file.
-  
-  TODO: break this into smaller methods.
-  """
-  net._setRegions()
-
-  phaseInfo = "\n-> Training SP. Index=0. LEARNING: SP is ON | TM is OFF | Classifier is OFF \n"
-  outFile.write(phaseInfo)
-  print phaseInfo
-  
-  numCorrect = 0
-  numTestRecords = 0
-  for i in xrange(NUM_RECORDS):
-    # Run the network for a single iteration
-    net.network.run(1)
-    
-    # Various info from the network, useful for debugging & monitoring
-    anomalyScore = net.temporalMemoryRegion.getOutputData("anomalyScore")
-    spOut = net.spatialPoolerRegion.getOutputData("bottomUpOut")
-    tpOut = net.temporalMemoryRegion.getOutputData("bottomUpOut")
-    tmInstance = net.temporalMemoryRegion.getSelf()._tfdr
-    predictiveCells = tmInstance.predictiveCells
-    #if len(predictiveCells) >0:
-    #  print len(predictiveCells)
-
-    # NOTE: To be able to extract a category, one of the field of the the
-    # dataset needs to have the flag C so it can be recognized as a category
-    # by the encoder.
-    actualValue = net.sensorRegion.getOutputData("categoryOut")[0]
-
-    
-    outFile.write("=> INDEX=%s |  actualValue=%s | anomalyScore=%s | tpOutNZ=%s\n" %(i, actualValue, anomalyScore, tpOut.nonzero()[0]))
-    
-    # SP has been trained. Now start training the TM too.
-    if i == SP_TRAINING_SET_SIZE:
-      net.temporalMemoryRegion.setParameter("learningMode", True)
-      phaseInfo = "\n-> Training TM. Index=%s. LEARNING: SP is ON | TM is ON | Classifier is OFF \n" %i
-      outFile.write(phaseInfo)
-      print phaseInfo
-      
-    # Start training the classifier as well.
-    elif i == TM_TRAINING_SET_SIZE:
-      net.classifierRegion.setParameter("learningMode", True)
-      phaseInfo = "\n-> Training Classifier. Index=%s. LEARNING: SP is OFF | TM is ON | Classifier is ON \n" %i
-      outFile.write(phaseInfo)
-      print phaseInfo
-    
-    # Stop training.
-    elif i == CLASSIFIER_TRAINING_SET_SIZE:
-      net.spatialPoolerRegion.setParameter("learningMode", False)
-      net.temporalMemoryRegion.setParameter("learningMode", False)
-      net.classifierRegion.setParameter("learningMode", False)
-      phaseInfo = "-> Test. Index=%s. LEARNING: SP is OFF | TM is OFF | Classifier is OFF \n" %i
-      outFile.write(phaseInfo)
-      print phaseInfo
-      
-    
-    #--- BEGIN PREDICTING TEST SET --#
-    if i >= TM_TRAINING_SET_SIZE:
-      # Pass this information to the classifier's custom compute method
-      # so that it can assign the current classification to possibly
-      # multiple patterns from the past and current, and also provide
-      # the expected classification for some time step(s) in the future.
-
-      # TODO: this is a hack for int categories... try to get the
-      # getBucketIndices() method working instead.
-      #bucketIdx = net.sensorRegion.getBucketIndices(actualValue)[0]
-      bucketIdx = actualValue
-      
-      classificationIn = {"bucketIdx": int(bucketIdx),
-                          "actValue": int(actualValue)}
-    
-      # List the indices of active cells (non-zero pattern)
-      activeCells = net.temporalMemoryRegion.getOutputData("bottomUpOut")
-      patternNZ = activeCells.nonzero()[0]
-      
-      # Call classifier
-      clResults = net.classifierRegion.getSelf().customCompute(
-          recordNum=i, patternNZ=patternNZ, classification=classificationIn)
-      
-      inferredValue = clResults["actualValues"][clResults[int(CLA_CLASSIFIER_PARAMS["steps"])].argmax()]
-      
-      outFile.write(" inferredValue=%s | classificationIn=%s | \n clResults=%s \n\n" %(inferredValue, classificationIn, clResults))
-    
-      # Evaluate the predictions in the test set.
-      if i > CLASSIFIER_TRAINING_SET_SIZE:
-
-        if actualValue == inferredValue:
-          numCorrect += 1
-        else:  # TODO: remove. debugging.
-          #print " INCORRECT_PREDICTION: index=%s | actualValue = %s | inferredValue = %s | \n clResults = %s \n\n" % (i, actualValue, inferredValue, clResults)
-          pass
-        
-        numTestRecords += 1
-      
-  predictionAccuracy =  100.0 * numCorrect / numTestRecords
-
-  results = "RESULTS: accuracy=%s | %s correctly predicted records out of %s test records \n" %(predictionAccuracy, numCorrect, numTestRecords)
-  outFile.write(results)
-  print results
-
-  return numCorrect, numTestRecords, predictionAccuracy
-
-
-if __name__ == "__main__":
-  
-  for noiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
-    
-    expParams = "\nRUNNING EXPERIMENT WITH PARAMS: numRecords=%s | noiseAmplitude=%s | signalAmplitude=%s | signalMean=%s | signalPeriod=%s \n\n"\
-          %(NUM_RECORDS, noiseAmplitude, SIGNAL_AMPLITUDE, SIGNAL_MEAN, SIGNAL_PERIOD)
-    outFile.write(expParams)
-    print expParams    
-    
-    generateData(whiteNoise=True, noise_amplitude=noiseAmplitude)
-  
-    # Set min and max for scalar encoder params.
-    inputFile = "%s/white_noise_%s.csv" % (DATA_DIR, noiseAmplitude)
-    minval, maxval = findMinMax(inputFile)
-    SCALAR_ENCODER_PARAMS["minval"] = minval
-    SCALAR_ENCODER_PARAMS["maxval"] = maxval
-
-    # Setup scalar encoder; not category b/c fed seperately later.
-    scalarEncoder = ScalarEncoder(SCALAR_ENCODER_PARAMS["w"],
-                                  SCALAR_ENCODER_PARAMS["minval"],
-                                  SCALAR_ENCODER_PARAMS["maxval"],
-                                  n=SCALAR_ENCODER_PARAMS["n"],
-                                  name=SCALAR_ENCODER_PARAMS["name"])
-
-    # Create and run network on this data.
-    dataSource = FileRecordStream(streamID=inputFile)
-    network = ClassificationNetwork()
-    network.createEncoder(SCALAR_ENCODER_PARAMS["name"], scalarEncoder)
-    network.createNetwork(dataSource)
-
-    run(network, outFile)
-    
-    print "results written to: %s" %_OUT_FILE
+    self._setRegions()
