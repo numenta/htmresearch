@@ -20,8 +20,8 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import json
 import numpy
+import os
 
 from classification_network import ClassificationNetwork
 from generate_data import generateData
@@ -29,7 +29,6 @@ from generate_model_params import findMinMax
 
 from nupic.data.file_record_stream import FileRecordStream
 from nupic.encoders import ScalarEncoder, CategoryEncoder, MultiEncoder
-from nupic.engine import Network
 from settings import (NUMBER_OF_LABELS,
                       NUM_RECORDS,
                       CLASSIFIER_TRAINING_SET_SIZE,
@@ -43,7 +42,7 @@ from settings import (NUMBER_OF_LABELS,
                       )
 
 
-_OUT_FILE = 'results/network.out'
+_OUT_FILE = "results/network.out"
 _VERBOSITY = 0
 
 SCALAR_ENCODER_PARAMS = {
@@ -191,6 +190,19 @@ def run(net, outFile):
   return numCorrect, numTestRecords, predictionAccuracy
 
 
+def _setupScalarEncoder(minval, maxval):
+  # Set min and max for scalar encoder params.
+  SCALAR_ENCODER_PARAMS["minval"] = minval
+  SCALAR_ENCODER_PARAMS["maxval"] = maxval
+
+  # Setup scalar encoder; not category b/c fed seperately later.
+  scalarEncoder = ScalarEncoder(SCALAR_ENCODER_PARAMS["w"],
+                                SCALAR_ENCODER_PARAMS["minval"],
+                                SCALAR_ENCODER_PARAMS["maxval"],
+                                n=SCALAR_ENCODER_PARAMS["n"],
+                                name=SCALAR_ENCODER_PARAMS["name"])
+  return scalarEncoder
+
 
 if __name__ == "__main__":
   
@@ -201,20 +213,12 @@ if __name__ == "__main__":
     outFile.write(expParams)
     print expParams    
     
+    # Generate the data, and get the min/max values
     generateData(whiteNoise=True, noise_amplitude=noiseAmplitude)
-  
-    # Set min and max for scalar encoder params.
-    inputFile = "%s/white_noise_%s.csv" % (DATA_DIR, noiseAmplitude)
+    inputFile = os.path.join(DATA_DIR, "white_noise_%s.csv" % noiseAmplitude)
     minval, maxval = findMinMax(inputFile)
-    SCALAR_ENCODER_PARAMS["minval"] = minval
-    SCALAR_ENCODER_PARAMS["maxval"] = maxval
-
-    # Setup scalar encoder; not category b/c fed seperately later.
-    scalarEncoder = ScalarEncoder(SCALAR_ENCODER_PARAMS["w"],
-                                  SCALAR_ENCODER_PARAMS["minval"],
-                                  SCALAR_ENCODER_PARAMS["maxval"],
-                                  n=SCALAR_ENCODER_PARAMS["n"],
-                                  name=SCALAR_ENCODER_PARAMS["name"])
+  
+    scalarEncoder = _setupScalarEncoder(minval, maxval)
 
     # Create and run network on this data.
     dataSource = FileRecordStream(streamID=inputFile)
@@ -224,4 +228,6 @@ if __name__ == "__main__":
 
     run(network, outFile)
     
-    print "results written to: %s" %_OUT_FILE
+    print "Results written to: %s" %_OUT_FILE
+
+  outFile.close()
