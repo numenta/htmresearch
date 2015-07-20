@@ -51,7 +51,14 @@ Experiment 1
 Runs UnionPooler on input from a Temporal Memory after training
 on a long sequence
 
-Enables learning in UnionPooler, and monitors growth of synapses
+Enables learning in UnionPooler
+Tests different learning rules
+- Forward learning is Hebbian learning on union pooled cells
+- Backward learning is Reinforcement-like learning that allows cells to
+  connect to inputs from the previous few time steps
+- Several metrics are measured before and after learning, including
+  average response latency, total size of union, overlap between learned &
+  naive representations
 """
 
 
