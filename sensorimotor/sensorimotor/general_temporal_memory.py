@@ -23,8 +23,10 @@
 General Temporal Memory implementation in Python.
 """
 
-from nupic.research.temporal_memory import TemporalMemory
+from collections import defaultdict
 
+from nupic.research.temporal_memory import TemporalMemory
+from nupic.research.connections import Connections
 
 
 class GeneralTemporalMemory(TemporalMemory):
@@ -56,10 +58,16 @@ class GeneralTemporalMemory(TemporalMemory):
     self.unpredictedActiveColumns = set()
     self.predictedActiveCells = set()
 
+    self.activeApicalCells = set()
+    self.apicalConnections = Connections(self.numberOfCells())
+    self.activeApicalSegments = set()
+    self.matchingApicalSegments = set()
+
 
   def compute(self,
               activeColumns,
               activeExternalCells=None,
+              activeApicalCells=None,
               formInternalConnections=True,
               learn=True):
     """
@@ -74,31 +82,44 @@ class GeneralTemporalMemory(TemporalMemory):
     if not activeExternalCells:
       activeExternalCells = set()
 
+    if not activeApicalCells:
+      activeApicalCells = set()
+
     activeExternalCells = self._reindexActiveExternalCells(activeExternalCells)
+    activeApicalCells = self._reindexActiveApicalCells(activeApicalCells,
+                                                       len(activeExternalCells))
 
     (activeCells,
      winnerCells,
      activeSegments,
+     activeApicalSegments,
      predictiveCells,
      predictedColumns,
      matchingSegments,
+     matchingApicalSegments,
      matchingCells,
      chosenCellForColumn) = self.computeFn(activeColumns,
                                            activeExternalCells,
+                                           activeApicalCells,
                                            self.activeExternalCells,
+                                           self.activeApicalCells,
                                            self.predictiveCells,
                                            self.activeSegments,
+                                           self.activeApicalSegments,
                                            self.activeCells,
                                            self.winnerCells,
                                            self.matchingSegments,
+                                           self.matchingApicalSegments,
                                            self.matchingCells,
                                            self.connections,
+                                           self.apicalConnections,
                                            formInternalConnections,
                                            self.learnOnOneCell,
                                            self.chosenCellForColumn,
-                                           learn=learn) 
+                                           learn=learn)
 
     self.activeExternalCells = activeExternalCells
+    self.activeApicalCells = activeApicalCells
 
     self.unpredictedActiveColumns = activeColumns - predictedColumns
     self.predictedActiveCells = self.predictiveCells & activeCells
@@ -106,22 +127,29 @@ class GeneralTemporalMemory(TemporalMemory):
     self.activeCells = activeCells
     self.winnerCells = winnerCells
     self.activeSegments = activeSegments
+    self.activeApicalSegments = activeApicalSegments
     self.predictiveCells = predictiveCells
     self.chosenCellForColumn = chosenCellForColumn
     self.matchingSegments = matchingSegments
+    self.matchingApicalSegments = matchingApicalSegments
     self.matchingCells = matchingCells
 
   def computeFn(self,
                 activeColumns,
                 activeExternalCells,
+                activeApicalCells,
                 prevActiveExternalCells,
+                prevActiveApicalCells,
                 prevPredictiveCells,
                 prevActiveSegments,
+                prevActiveApicalSegments,
                 prevActiveCells,
                 prevWinnerCells,
                 prevMatchingSegments,
+                prevMatchingApicalSegments,
                 prevMatchingCells,
                 connections,
+                apicalConnections,
                 formInternalConnections,
                 learnOnOneCell,
                 chosenCellForColumn,
@@ -132,14 +160,19 @@ class GeneralTemporalMemory(TemporalMemory):
 
     @param activeColumns                   (set)         Indices of active columns in `t`
     @param activeExternalCells             (set)         Indices of active external cells in `t`
+    @param activeApicalCells               (set)         Indices of active apical cells in `t`
     @param prevActiveExternalCells         (set)         Indices of active external cells in `t-1`
+    @param prevActiveApicalCells           (set)         Indices of active apical cells in `t-1`
     @param prevPredictiveCells             (set)         Indices of predictive cells in `t-1`
     @param prevActiveSegments              (set)         Indices of active segments in `t-1`
+    @param prevActiveApicalSegments        (set)         Indices of active apical segments in `t-1`
     @param prevActiveCells                 (set)         Indices of active cells in `t-1`
     @param prevWinnerCells                 (set)         Indices of winner cells in `t-1`
     @param prevMatchingSegments            (set)         Indices of matching segments in `t-1`
+    @param prevMatchingApicalSegments      (set)         Indices of matching apical segments in `t-1`
     @param prevMatchingCells               (set)         Indices of matching cells in `t-1`
     @param connections                     (Connections) Connectivity of layer
+    @param apicalConnections               (Connections) Apical connectivity of layer
     @param formInternalConnections         (boolean)     Flag to determine whether to form connections with internal cells within this temporal memory
     @param learnOnOneCell                  (boolean)     If True, the winner cell for each column will be fixed between resets.
     @param chosenCellForColumn             (dict)        The current winner cell for each column, if it exists.
@@ -148,9 +181,11 @@ class GeneralTemporalMemory(TemporalMemory):
                       `activeCells`               (set),
                       `winnerCells`               (set),
                       `activeSegments`            (set),
+                      `activeApicalSegments`      (set),
                       `predictiveCells`           (set),
                       'predictedColumns'          (set),
                       'matchingSegments'          (set),
+                      'matchingApicalSegments'    (set),
                       'matchingCells'             (set),
                       'chosenCellForColumn'       (dict)
     """
@@ -171,20 +206,31 @@ class GeneralTemporalMemory(TemporalMemory):
     (_activeCells,
      _winnerCells,
      learningSegments,
+     apicalLearningSegments,
      chosenCellForColumn) = self.burstColumns(
        activeColumns,
        predictedColumns,
        prevActiveCells | prevActiveExternalCells,
+       prevActiveApicalCells,
        prevWinnerCells,
        learnOnOneCell,
        chosenCellForColumn,
-       connections)
+       connections,
+       apicalConnections)
 
     activeCells.update(_activeCells)
     winnerCells.update(_winnerCells)
 
     if learn:
       prevCellActivity = prevActiveExternalCells
+      self.learnOnApicalSegments(prevActiveApicalSegments,
+                                 apicalLearningSegments,
+                                 prevActiveApicalCells,
+                                 winnerCells,
+                                 apicalConnections,
+                                 predictedInactiveCells,
+                                 prevMatchingApicalSegments)
+
 
       if formInternalConnections:
         prevCellActivity.update(prevWinnerCells)
@@ -198,18 +244,32 @@ class GeneralTemporalMemory(TemporalMemory):
                            predictedInactiveCells,
                            prevMatchingSegments)
 
+    allActiveCells = activeCells | activeExternalCells
     (activeSegments,
-     predictiveCells,
-     matchingSegments,
-     matchingCells) = self.computePredictiveCells(
-       activeCells | activeExternalCells, connections)
+    predictiveDistalCells,
+    matchingSegments,
+    matchingDistalCells) = self.computePredictiveCells(allActiveCells,
+                                                       connections)
+
+    (activeApicalSegments,
+    predictiveApicalCells,
+    matchingApicalSegments,
+    matchingApicalCells) = self.computePredictiveCells(activeApicalCells,
+                                                       apicalConnections)
+
+    matchingCells = matchingDistalCells | matchingApicalCells
+
+    predictiveCells = self.calculatePredictiveCells(predictiveDistalCells,
+                                                    predictiveApicalCells)
 
     return (activeCells,
             winnerCells,
             activeSegments,
+            activeApicalSegments,
             predictiveCells,
             predictedColumns,
             matchingSegments,
+            matchingApicalSegments,
             matchingCells,
             chosenCellForColumn)
 
@@ -223,15 +283,21 @@ class GeneralTemporalMemory(TemporalMemory):
     self.unpredictedActiveColumns = set()
     self.predictedActiveCells = set()
 
+    self.activeApicalCells = set()
+    self.activeApicalSegments = set()
+    self.matchingApicalSegments = set()
+
 
   def burstColumns(self,
                    activeColumns,
                    predictedColumns,
                    prevActiveCells,
+                   prevActiveApicalCells,
                    prevWinnerCells,
                    learnOnOneCell,
                    chosenCellForColumn,
-                   connections):
+                   connections,
+                   apicalConnections):
     """
     Phase 2: Burst unpredicted columns.
 
@@ -250,19 +316,23 @@ class GeneralTemporalMemory(TemporalMemory):
     @param activeColumns                   (set)         Indices of active columns in `t`
     @param predictedColumns                (set)         Indices of predicted columns in `t`
     @param prevActiveCells                 (set)         Indices of active cells in `t-1`
+    @param prevActiveApicalCells           (set)         Indices of ext active cells in `t-1`
     @param prevWinnerCells                 (set)         Indices of winner cells in `t-1`
     @param learnOnOneCell                  (boolean)     If True, the winner cell for each column will be fixed between resets.
     @param chosenCellForColumn             (dict)        The current winner cell for each column, if it exists.
     @param connections                     (Connections) Connectivity of layer
+    @param apicalConnections               (Connections) External connectivity of layer
 
     @return (tuple) Contains:
                       `activeCells`      (set),
                       `winnerCells`      (set),
-                      `learningSegments` (set)
+                      `learningSegments` (set),
+                      `apicalLearningSegments` (set)
     """
     activeCells = set()
     winnerCells = set()
     learningSegments = set()
+    apicalLearningSegments = set()
 
     unpredictedColumns = activeColumns - predictedColumns
 
@@ -275,20 +345,142 @@ class GeneralTemporalMemory(TemporalMemory):
         cells = set([chosenCell])
 
       (bestCell,
-       bestSegment) = self.bestMatchingCell(cells,
-                                            prevActiveCells,
-                                            connections)
+       bestSegment,
+       bestApicalSegment) = self.bestMatchingCell(cells,
+                                                  prevActiveCells,
+                                                  prevActiveApicalCells,
+                                                  connections,
+                                                  apicalConnections)
       winnerCells.add(bestCell)
 
       if bestSegment is None and len(prevWinnerCells):
         bestSegment = connections.createSegment(bestCell)
 
+      if bestApicalSegment is None:
+        bestApicalSegment = apicalConnections.createSegment(bestCell)
+
       if bestSegment is not None:
         learningSegments.add(bestSegment)
 
+      if bestApicalSegment is not None:
+        apicalLearningSegments.add(bestApicalSegment)
+
       chosenCellForColumn[column] = bestCell
 
-    return activeCells, winnerCells, learningSegments, chosenCellForColumn
+    return (activeCells, winnerCells, learningSegments, apicalLearningSegments,
+            chosenCellForColumn)
+
+  def learnOnApicalSegments(self,
+                            prevActiveSegments,
+                            learningSegments,
+                            prevActiveCells,
+                            winnerCells,
+                            connections,
+                            predictedInactiveCells,
+                            prevMatchingSegments):
+    """
+    Phase 3: Perform learning by adapting segments.
+
+    Pseudocode:
+
+      - (learning) for each prev active or learning segment
+        - if learning segment or from winner cell
+          - strengthen active synapses
+          - weaken inactive synapses
+        - if learning segment
+          - add some synapses to the segment
+            - subsample from prev winner cells
+
+    @param prevActiveSegments           (set)         Indices of active segments in `t-1`
+    @param learningSegments             (set)         Indices of learning segments in `t`
+    @param prevActiveCells              (set)         Indices of active cells in `t-1`
+    @param winnerCells                  (set)         Indices of winner cells in `t`
+    @param connections                  (Connections) Connectivity of layer
+    @param predictedInactiveCells       (set)         Indices of predicted inactive cells
+    @param prevMatchingSegments         (set)         Indices of segments with
+    """
+    for winnerCell in winnerCells:
+      winnerSegments = connections.segmentsForCell(winnerCell)
+      if len(winnerSegments & (prevActiveSegments | learningSegments)) == 0:
+        maxActiveSynapses = 0
+        winnerSegment = None
+        for segment in winnerSegments:
+          activeSynapses = TemporalMemory.activeSynapsesForSegment(
+              segment,
+              prevActiveCells,
+              connections)
+          numActiveSynapses = len(activeSynapses)
+          if numActiveSynapses > maxActiveSynapses:
+            maxActiveSynapses = numActiveSynapses
+            winnerSegment = segment
+        if winnerSegment is not None:
+          learningSegments.add(winnerSegment)
+
+    for segment in prevActiveSegments | learningSegments:
+      isLearningSegment = segment in learningSegments
+      isFromWinnerCell = connections.cellForSegment(segment) in winnerCells
+
+      activeSynapses = self.activeSynapsesForSegment(
+        segment, prevActiveCells, connections)
+
+      if isLearningSegment or isFromWinnerCell:
+        self.adaptSegment(segment, activeSynapses, connections,
+                          self.permanenceIncrement,
+                          self.permanenceDecrement)
+
+      if isLearningSegment:
+        n = self.maxNewSynapseCount - len(activeSynapses)
+
+        for presynapticCell in self.pickCellsToLearnOn(n,
+                                                       segment,
+                                                       prevActiveCells,
+                                                       connections):
+          connections.createSynapse(segment,
+                                    presynapticCell,
+                                    self.initialPermanence)
+
+
+  def bestMatchingCell(self, cells, activeCells, activeApicalCells, connections, apicalConnections):
+    """
+    Gets the cell with the best matching segment
+    (see `TM.bestMatchingSegment`) that has the largest number of active
+    synapses of all best matching segments.
+
+    If none were found, pick the least used cell (see `TM.leastUsedCell`).
+
+    @param cells                       (set)         Indices of cells
+    @param activeCells                 (set)         Indices of active cells
+    @param activeApicalCells           (set)         Indices of active apical cells
+    @param connections                 (Connections) Connectivity of layer
+    @param apicalConnections           (Connections) Apical connectivity of layer
+
+    @return (tuple) Contains:
+                      `cell`                (int),
+                      `bestSegment`         (int),
+                      `bestApicalSegment` (int)
+    """
+    maxSynapses = 0
+    bestCell = None
+    bestSegment = None
+    bestApicalSegment = None
+
+    for cell in cells:
+      segment, numActiveSynapses = self.bestMatchingSegment(
+        cell, activeCells, connections)
+
+      apicalSegment, apicalNumActiveSynapses = self.bestMatchingSegment(
+        cell, activeApicalCells, apicalConnections)
+
+      if segment is not None and numActiveSynapses > maxSynapses:
+        maxSynapses = numActiveSynapses
+        bestCell = cell
+        bestSegment = segment
+        bestApicalSegment = apicalSegment
+
+    if bestCell is None:
+      bestCell = self.leastUsedCell(cells, connections)
+
+    return bestCell, bestSegment, bestApicalSegment
 
 
   def activeCellsIndices(self):
@@ -313,3 +505,40 @@ class GeneralTemporalMemory(TemporalMemory):
     """
     numCells = self.numberOfCells()
     return set([index + numCells for index in activeExternalCells])
+
+  def _reindexActiveApicalCells(self, activeApicalCells, numExtCells):
+    """
+    @params activeApicalCells (set) Indices of active apical cells in `t`
+    """
+    numCells = self.numberOfCells() + numExtCells
+    return set([index + numCells for index in activeApicalCells])
+
+  def calculatePredictiveCells(self, predictiveDistalCells,
+                               predictiveApicalCells):
+
+    columnPredThresh = 2
+
+    cellPredictiveScores = defaultdict(int)
+
+    for candidate in predictiveApicalCells:
+      cellPredictiveScores[candidate] += 1
+
+    for candidate in predictiveDistalCells:
+      cellPredictiveScores[candidate] += 2
+
+    columnThresholds = defaultdict(int)
+
+    for candidate in cellPredictiveScores:
+      column = self.columnForCell(candidate)
+      score = cellPredictiveScores[candidate]
+      columnThresholds[column] = max(score, columnThresholds[column])
+
+    predictiveCells = set()
+
+    for candidate in cellPredictiveScores:
+      column = self.columnForCell(candidate)
+      if (columnThresholds[column] >= columnPredThresh) and (
+            cellPredictiveScores[candidate] >= columnThresholds[column]):
+        predictiveCells.add(candidate)
+
+    return predictiveCells
