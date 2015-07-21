@@ -249,7 +249,7 @@ def runNetwork(network):
   temporalMemoryRegion = network.regions["TM"]
   classifier = network.regions["classifier"]
 
-  phaseInfo =  "\n-> Training SP. Index=0. LEARNING: SP is ON | TM is OFF | Classifier is OFF \n"
+  phaseInfo =  "-> Training SP. Index=0. LEARNING: SP is ON | TM is OFF | Classifier is OFF \n"
   outFile.write(phaseInfo)
   print phaseInfo
   
@@ -278,14 +278,14 @@ def runNetwork(network):
     # SP has been trained. Now start training the TM too.
     if i == SP_TRAINING_SET_SIZE:
       temporalMemoryRegion.setParameter("learningMode", True)
-      phaseInfo = "\n-> Training TM. Index=%s. LEARNING: SP is ON | TM is ON | Classifier is OFF \n" %i
+      phaseInfo = "-> Training TM. Index=%s. LEARNING: SP is ON | TM is ON | Classifier is OFF \n" %i
       outFile.write(phaseInfo)
       print phaseInfo
       
     # Start training the classifier as well.
     elif i == TM_TRAINING_SET_SIZE:
       classifier.setParameter('learningMode', True)
-      phaseInfo = "\n-> Training Classifier. Index=%s. LEARNING: SP is OFF | TM is ON | Classifier is ON \n" %i
+      phaseInfo = "-> Training Classifier. Index=%s. LEARNING: SP is OFF | TM is ON | Classifier is ON \n" %i
       outFile.write(phaseInfo)
       print phaseInfo
       
@@ -312,8 +312,11 @@ def runNetwork(network):
       classificationIn = {'bucketIdx': int(bucketIdx),
                           'actValue': int(actualValue)}
       
-      activeCells = temporalMemoryRegion.getOutputData("bottomUpOut")
-      patternNZ = activeCells.nonzero()[0] # list of indices of active cells (non-zero pattern)
+      #activeCells = temporalMemoryRegion.getOutputData("bottomUpOut")
+      #patternNZ = activeCells.nonzero()[0] # list of indices of active cells (non-zero pattern)
+      
+      predictedActiveCells = temporalMemoryRegion.getOutputData("predictedActiveCells")
+      patternNZ = predictedActiveCells.nonzero()[0] # list of indices of active cells (non-zero pattern)
       
       clResults = classifier.getSelf().customCompute(recordNum=i,
                                              patternNZ=patternNZ,
