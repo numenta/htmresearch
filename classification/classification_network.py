@@ -147,10 +147,14 @@ def createSensorRegion(network, sensorType, encoders, dataSource):
     # Add new region class to the network
     Network.registerRegion(LanguageSensor)
 
-  # Add region to network
-  regionParams = json.dumps({"verbosity": _VERBOSITY})
-  import pdb; pdb.set_trace()
-  network.addRegion("sensor", sensorType, regionParams)
+  try:
+    # Add region to network
+    regionParams = json.dumps({"verbosity": _VERBOSITY})
+    network.addRegion("sensor", sensorType, regionParams)
+  except RuntimeError:
+    print ("Custom region not added correctly. Possible issues are the spec is "
+          "wrong or the region class is not in the Python path.")
+    return
 
   # getSelf() returns the actual region, instead of a region wrapper
   sensorRegion = network.regions["sensor"].getSelf()

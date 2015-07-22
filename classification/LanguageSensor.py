@@ -39,8 +39,7 @@ class LanguageSensor(PyRegion):
     as a dict object. For example, a DataSource might return:
       defaultdict(sample="Hello world!", labels=["Python"])
 
-    2. A LanguageEncoder object encodes one record into an SDR, as defined in
-    nupic.fluent/encoders
+    2. An encoder from nupic.fluent/encoders
 
   The DataSource and LanguageEncoder are supplied after the node is created,
   not in the node itself.
@@ -101,7 +100,7 @@ class LanguageSensor(PyRegion):
       ## commented out b/c dataType not cool w/ numpy
         # "sourceOut":{
         #   "description":"Unencoded data from the source, input to the encoder",
-        #   "dataType":"String",
+        #   "dataType":str,
         #   "count":0,
         #   "regionLevel":True,
         #   "isDefaultOutput":False,
@@ -177,43 +176,29 @@ class LanguageSensor(PyRegion):
       raise Exception("Unable to initialize LanguageSensor -- dataSource has not been set")
 
 
-  def preprocessRecord(self, data):
-    """
-    Preprocesses the data text at the level specified by the member variable.
-
-    @param data       (str)         One sequence of words.
-    @return           (list)        Tokenized (and preprocessed) sequence.
-    """
-    texter = TextPreprocess()
-    if self.preprocess:
-      tokens = texter.tokenize(data,
-                               ignoreCommon=100,
-                               removeStrings=["[identifier deleted]"],
-                               correctSpell=True)
-    else:
-      tokens = texter.tokenize(data)
-
-    return tokens
-
-
   def compute(self, inputs, outputs):
     """
     Get a record from the dataSource and encode it. The fields for inputs and
     outputs are as defined in the LS object's spec.
+
+    TODO: validate we're handling resets correctly
     """
     data = self.dataSource.getNextRecordDict()
 
-    outputs["resetOut"][0] = data["_reset"]  ## handle resets here or in Model?
+    # Copy important data input fields over to outputs dict.
+    #   NOTE: set "sourceOut" explicitly b/c PyRegion.getSpec() won't take an
+    #   output field w/ type str.
+    outputs["resetOut"][0] = data["_reset"]
     outputs["sequenceIdOut"][0] = data["_sequenceId"]
     outputs["categoryOut"][0] = data["_category"]
+    outputs["sourceOut"] = data["sample"]
 
-    # Tokenize the text sample; the data key must match the datafile column header
-    text = self.preprocessRecord(data["sample"])
-    outputs["sourceOut"] = text
-
-    encodings = [self.encoder.encodeIntoArray(token, output=None)
-                 for token in text]
-    outputs["dataOut"] = encodings  ## this is very dif from RecordSensor, which has a numpy array populated in place
+    # Encode the token, where the encoding is a dict as expected in
+    # nupic.fluent ClassificationModel.
+    # The data key must match the datafile column header
+    # NOTE: this logic differs from RecordSensor, where output is a (sparse)
+    # numpy array populated in place.
+    outputs["dataOut"] = self.encoder.encodeIntoArray(data["sample"], output=None)
 
     # self._outputValues <- dict() of sample that goes to Model (??)
 
