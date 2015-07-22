@@ -182,8 +182,8 @@ def createTemporalMemoryRegion(network, prevRegionWidth):
   temporalMemoryRegion = network.addRegion(
       "TM", "py.TPRegion", json.dumps(TM_PARAMS))
 
-  # Make sure learning is enabled (this is the default)
-  temporalMemoryRegion.setParameter("learningMode", True)
+  # Disable learning for now (will be enabled in a later training phase)
+  temporalMemoryRegion.setParameter("learningMode", False)
 
   # Inference mode outputs the current inference (i.e. active cells).
   # Okay to always leave inference mode on; only there for some corner cases.
@@ -204,7 +204,7 @@ def createClassifierRegion(network):
   classifierRegion = network.addRegion(
       "classifier", "py.CLAClassifierRegion", json.dumps(CLA_CLASSIFIER_PARAMS))
 
-  # Disable learning for now (will be enabled in a later training phase)... why???
+  # Disable learning for now (will be enabled in a later training phase)
   classifierRegion.setParameter("learningMode", False)
 
   # Inference mode outputs the current inference. We can always leave it on.
