@@ -57,6 +57,7 @@ class UnionPooler(SpatialPooler):
                synPermPredActiveInc=0.0,
                synPermPreviousPredActiveInc=0.0,
                historyLength=0,
+               spatialPoolerParams=None,
                **kwargs):
     """
     Please see spatial_pooler.py in NuPIC for super class parameter
@@ -87,9 +88,10 @@ class UnionPooler(SpatialPooler):
 
     @param decayTimeConst Time constant for the decay function
     """
-
-    super(UnionPooler, self).__init__(**kwargs)
-
+    if spatialPoolerParams is not None:
+      super(UnionPooler, self).__init__(**spatialPoolerParams)
+    else:
+      super(UnionPooler, self).__init__(**kwargs)
     self._activeOverlapWeight = activeOverlapWeight
     self._predictedActiveOverlapWeight = predictedActiveOverlapWeight
     self._maxUnionActivity = maxUnionActivity
