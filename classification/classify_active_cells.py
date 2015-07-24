@@ -67,8 +67,10 @@ def run(net, numRecords, partitions, outFile):
   """
   Run the network and write classification results output.
 
-  @param net: a Network instance to run
+  @param net: a Network instance to run.
   @param outFile: a writer instance to write output to file.
+  @param partitions: list of indices at which training begins for the SP, TM,
+      and classifier regions, respectively, e.g. [100, 200, 300].
 
   TODO: break this into smaller methods.
   """
@@ -101,7 +103,6 @@ def run(net, numRecords, partitions, outFile):
     # by the encoder.
     actualValue = sensorRegion.getOutputData("categoryOut")[0]
 
-
     outFile.write("=> INDEX=%s |  actualValue=%s | anomalyScore=%s | tpOutNZ=%s\n" %(i, actualValue, anomalyScore, tpOut.nonzero()[0]))
 
     # SP has been trained. Now start training the TM too.
@@ -126,7 +127,6 @@ def run(net, numRecords, partitions, outFile):
       phaseInfo = "-> Test. Index=%s. LEARNING: SP is OFF | TM is OFF | Classifier is OFF \n" %i
       outFile.write(phaseInfo)
       print phaseInfo
-
 
     #--- BEGIN PREDICTING TEST SET --#
     if i >= partitions[1]:

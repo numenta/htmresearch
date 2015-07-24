@@ -233,6 +233,8 @@ def createClassifierRegion(network):
   @param network          (Network)   The region will be a node in this network.
   @param prevRegionWidth  (int)       Width of region below.
   @return                 (Region)    CLA classifier region of the network.
+
+  TODO: replace CLAClassifier w/ SequenceClassifier region
   """
   # Create the classifier region.
   classifierRegion = network.addRegion(
