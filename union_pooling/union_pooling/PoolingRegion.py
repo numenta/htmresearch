@@ -217,7 +217,6 @@ class PoolingRegion(PyRegion):
   """
 
   def __init__(self, columnCount, inputWidth, poolerType, **kwargs):
-
     if columnCount <= 0 or inputWidth <=0:
       raise TypeError("Parameters columnCount and inputWidth must be > 0")
     # Pull out the pooler arguments automatically
@@ -271,6 +270,11 @@ class PoolingRegion(PyRegion):
     outputs["mostActiveCells"][mostActiveCellsIndices] = 1
 
 
+  def reset(self):
+    """ Reset the state of the Union Pooler """
+    if self._pooler is not None:
+      self._pooler.reset()
+
   @classmethod
   def getBaseSpec(cls):
     """Return the base Spec for PoolingRegion.
@@ -308,8 +312,10 @@ class PoolingRegion(PyRegion):
           regionLevel=True,
           isDefaultOutput=True),
       ),
-
       parameters=dict(),
+      commands=dict(
+        reset=dict(description='Reset the union pooler.'),
+      )
     )
 
     return spec
