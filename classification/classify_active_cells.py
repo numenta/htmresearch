@@ -100,7 +100,7 @@ def run(net, numRecords, partitions, outFile):
     # by the encoder.
     actualValue = sensorRegion.getOutputData("categoryOut")[0]
 
-    outFile.write("=> INDEX=%s |  actualValue=%s | anomalyScore=%s | tpOutNZ=%s\n" %(i, actualValue, anomalyScore, tpOut.nonzero()[0]))
+    outFile.write("=> INDEX=%s |  actualValue=%s | anomalyScore=%s \n" %(i, actualValue, anomalyScore))
 
     # SP has been trained. Now start training the TM too.
     if i == partitions[0]:
@@ -160,7 +160,7 @@ def run(net, numRecords, partitions, outFile):
 
       inferredValue = clResults["actualValues"][clResults[int(classifierRegion.getParameter("steps"))].argmax()]
 
-      outFile.write(" inferredValue=%s | classificationIn=%s | \n clResults=%s \n\n" %(inferredValue, classificationIn, clResults))
+      outFile.write(" inferredValue=%s | classificationIn=%s | \n clResults=%s \n" %(inferredValue, classificationIn, clResults))
 
       # Evaluate the predictions in the test set.
       if i > partitions[2]:
@@ -191,7 +191,7 @@ if __name__ == "__main__":
 
   for noiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
     
-    expParams = "RUNNING EXPERIMENT WITH PARAMS: numRecords=%s | noiseAmplitude=%s | signalAmplitude=%s | signalMean=%s | signalPeriod=%s \n\n"\
+    expParams = "RUNNING EXPERIMENT WITH PARAMS: numRecords=%s | noiseAmplitude=%s | signalAmplitude=%s | signalMean=%s | signalPeriod=%s \n"\
           %(NUM_RECORDS, noiseAmplitude, SIGNAL_AMPLITUDE, SIGNAL_MEAN, SIGNAL_PERIOD)
     outFile.write(expParams)
     print expParams
