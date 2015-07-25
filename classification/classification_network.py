@@ -34,6 +34,7 @@ except ImportError:
 from nupic.data.file_record_stream import FileRecordStream
 from nupic.encoders import CategoryEncoder, MultiEncoder, ScalarEncoder
 from nupic.engine import Network
+from LanguageSensor import LanguageSensor
 
 
 _VERBOSITY = 0
@@ -77,6 +78,23 @@ TM_PARAMS = {
 CLA_CLASSIFIER_PARAMS = {"steps": "1",
                          "implementation": "py"}
 
+## TODO: get these straight from nupic/engine.__init__.py
+PY_REGIONS = ["AnomalyRegion",
+              "CLAClassifierRegion",
+              "ImageSensor",
+              "KNNAnomalyClassifierRegion",
+              "KNNClassifierRegion",
+              "PCANode",
+              "PyRegion",
+              "RecordSensor",
+              "SPRegion",
+              "SVMClassifierNode",
+              "TPRegion",
+              "TestNode",
+              "TestRegion",
+              "UnimportableNode",
+              "GaborNode2"]
+
 
 
 def createEncoder(newEncoders):
@@ -116,21 +134,37 @@ def createSensorRegion(network, sensorType, encoders, dataSource):
   @param sensorType   (str)           Specific type of region, e.g.
       "py.RecordSensor"; possible options can be found in /nupic/regions/.
 
-  @param encoders     (dict)          See createEncoder() docstring.
+  @param encoders     (dict, encoder) If adding multiple encoders, pass a dict
+      as specified in createEncoder() docstring. Otherwise an encoder object is
+      expected.
 
   @param dataSource   (RecordStream)  Sensor region reads data from here.
 
   @return             (Region)        Sensor region of the network.
   """
-  # Add region to network
-  regionParams = json.dumps({"verbosity": _VERBOSITY})
-  network.addRegion("sensor", sensorType, regionParams)
+  # Sensor region may be non-standard, so add custom region class to the network
+  if sensorType.split(".")[1] not in PY_REGIONS:
+    # Add new region class to the network
+    Network.registerRegion(LanguageSensor)
+
+  try:
+    # Add region to network
+    regionParams = json.dumps({"verbosity": _VERBOSITY})
+    network.addRegion("sensor", sensorType, regionParams)
+  except RuntimeError:
+    print ("Custom region not added correctly. Possible issues are the spec is "
+          "wrong or the region class is not in the Python path.")
+    return
 
   # getSelf() returns the actual region, instead of a region wrapper
   sensorRegion = network.regions["sensor"].getSelf()
 
   # Specify how RecordSensor encodes input values
-  sensorRegion.encoder = createEncoder(encoders)
+  if isinstance(encoders, dict):
+    # Multiple encoders to add
+    sensorRegion.encoder = createEncoder(encoders)
+  else:
+    sensorRegion.encoder = encoders
 
   # Specify the dataSource as a file RecordStream instance
   sensorRegion.dataSource = dataSource
@@ -182,7 +216,7 @@ def createTemporalMemoryRegion(network, prevRegionWidth):
   temporalMemoryRegion = network.addRegion(
       "TM", "py.TPRegion", json.dumps(TM_PARAMS))
 
-  # Disable learning for now (will be enabled in a later training phase)
+  # Make sure learning is enabled (this is the default)
   temporalMemoryRegion.setParameter("learningMode", False)
   
   # We want to compute the predictedActiveCells
@@ -203,12 +237,14 @@ def createClassifierRegion(network):
   @param network          (Network)   The region will be a node in this network.
   @param prevRegionWidth  (int)       Width of region below.
   @return                 (Region)    CLA classifier region of the network.
+
+  TODO: replace CLAClassifier w/ SequenceClassifier region
   """
   # Create the classifier region.
   classifierRegion = network.addRegion(
       "classifier", "py.CLAClassifierRegion", json.dumps(CLA_CLASSIFIER_PARAMS))
 
-  # Disable learning for now (will be enabled in a later training phase)
+  # Disable learning for now (will be enabled in a later training phase)... why???
   classifierRegion.setParameter("learningMode", False)
 
   # Inference mode outputs the current inference. We can always leave it on.
@@ -221,6 +257,8 @@ def createRegions(network, args):
   """
   Create the regions. @param args is to hold network params.
   Note the regions still need to be linked appropriately in linkRegions().
+
+  @param new      (PyRegion)    If specified, this is a custom (new) region.
   """
   (dataSource,
    sensorType,
