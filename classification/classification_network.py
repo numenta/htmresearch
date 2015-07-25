@@ -217,7 +217,11 @@ def createTemporalMemoryRegion(network, prevRegionWidth):
       "TM", "py.TPRegion", json.dumps(TM_PARAMS))
 
   # Make sure learning is enabled (this is the default)
-  temporalMemoryRegion.setParameter("learningMode", True)
+  temporalMemoryRegion.setParameter("learningMode", False)
+  
+  # We want to compute the predictedActiveCells
+  # TODO: we can't use that output for now because the tm_py impl is broken
+  # temporalMemoryRegion.setParameter("computePredictedActiveCellIndices", True)
 
   # Inference mode outputs the current inference (i.e. active cells).
   # Okay to always leave inference mode on; only there for some corner cases.

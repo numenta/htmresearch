@@ -79,7 +79,7 @@ def run(net, numRecords, partitions, outFile):
   temporalMemoryRegion = net.regions["TM"]
   classifierRegion = net.regions["classifier"]
 
-  phaseInfo = "\n-> Training SP. Index=0. LEARNING: SP is ON | TM is OFF | Classifier is OFF \n"
+  phaseInfo = "-> Training SP. Index=0. LEARNING: SP is ON | TM is OFF | Classifier is OFF \n"
   outFile.write(phaseInfo)
   print phaseInfo
 
@@ -94,10 +94,7 @@ def run(net, numRecords, partitions, outFile):
     spOut = spatialPoolerRegion.getOutputData("bottomUpOut")
     tpOut = temporalMemoryRegion.getOutputData("bottomUpOut")
     tmInstance = temporalMemoryRegion.getSelf()._tfdr
-    predictiveCells = tmInstance.predictiveCells
-    #if len(predictiveCells) >0:
-    #  print len(predictiveCells)
-
+    
     # NOTE: To be able to extract a category, one of the field of the the
     # dataset needs to have the flag C so it can be recognized as a category
     # by the encoder.
@@ -108,14 +105,14 @@ def run(net, numRecords, partitions, outFile):
     # SP has been trained. Now start training the TM too.
     if i == partitions[0]:
       temporalMemoryRegion.setParameter("learningMode", True)
-      phaseInfo = "\n-> Training TM. Index=%s. LEARNING: SP is ON | TM is ON | Classifier is OFF \n" %i
+      phaseInfo = "-> Training TM. Index=%s. LEARNING: SP is ON | TM is ON | Classifier is OFF \n" %i
       outFile.write(phaseInfo)
       print phaseInfo
 
     # Start training the classifier as well.
     elif i == partitions[1]:
       classifierRegion.setParameter("learningMode", True)
-      phaseInfo = "\n-> Training Classifier. Index=%s. LEARNING: SP is OFF | TM is ON | Classifier is ON \n" %i
+      phaseInfo = "-> Training Classifier. Index=%s. LEARNING: SP is OFF | TM is ON | Classifier is ON \n" %i
       outFile.write(phaseInfo)
       print phaseInfo
 
@@ -147,6 +144,16 @@ def run(net, numRecords, partitions, outFile):
       activeCells = temporalMemoryRegion.getOutputData("bottomUpOut")
       patternNZ = activeCells.nonzero()[0]
 
+      # classify predicted active cells
+      # TODO: ideally we would want to get the tmInstance.getOutput("predictedActiveCells")
+      # TODO[continued] but it is not implemented in the tm_py, so we use this work around for now.
+      # predictiveCells = tmInstance.getOutput("predictedActiveCells")
+      predictiveCells = tmInstance.predictiveCells
+      predictedActiveCells = numpy.intersect1d(activeCells, predictiveCells)
+      if len(predictiveCells) >0: #TODO: this line to be removed. for debugging purposes.
+        #print "predictiveActiveCells: %s" %predictedActiveCells
+        pass
+      
       # Call classifier
       clResults = classifierRegion.getSelf().customCompute(
           recordNum=i, patternNZ=patternNZ, classification=classificationIn)
@@ -183,8 +190,8 @@ def _setupScalarEncoder(minval, maxval):
 if __name__ == "__main__":
 
   for noiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
-
-    expParams = "\nRUNNING EXPERIMENT WITH PARAMS: numRecords=%s | noiseAmplitude=%s | signalAmplitude=%s | signalMean=%s | signalPeriod=%s \n\n"\
+    
+    expParams = "RUNNING EXPERIMENT WITH PARAMS: numRecords=%s | noiseAmplitude=%s | signalAmplitude=%s | signalMean=%s | signalPeriod=%s \n\n"\
           %(NUM_RECORDS, noiseAmplitude, SIGNAL_AMPLITUDE, SIGNAL_MEAN, SIGNAL_PERIOD)
     outFile.write(expParams)
     print expParams
