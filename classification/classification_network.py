@@ -31,10 +31,8 @@ try:
 except ImportError:
   import json
 
-from nupic.data.file_record_stream import FileRecordStream
-from nupic.encoders import CategoryEncoder, MultiEncoder, ScalarEncoder
+from nupic.encoders import MultiEncoder
 from nupic.engine import Network
-from LanguageSensor import LanguageSensor
 
 
 _VERBOSITY = 0
@@ -154,9 +152,17 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
   TODO: hardcoded to register LanguageSensor... generalize this.
   """
   # Sensor region may be non-standard, so add custom region class to the network
-  if sensorType.split(".")[1] not in PY_REGIONS:
+  SENSOR_NAME = sensorType.split(".")[1]
+  SENSOR_MODULE = SENSOR_NAME  # conveniently have the same name
+  if SENSOR_NAME not in PY_REGIONS:
     # Add new region class to the network
-    Network.registerRegion(LanguageSensor)
+    try:
+      module = __import__(SENSOR_MODULE, {}, {}, SENSOR_NAME)
+      sensorClass = getattr(module, SENSOR_NAME)
+      Network.registerRegion(sensorClass)
+    except ImportError:
+      raise RuntimeError("Could not find sensor \'{}\' to import.".
+                         format(SENSOR_NAME))
 
   try:
     # Add region to network
@@ -171,9 +177,9 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
   # getSelf() returns the actual region, instead of a region wrapper
   sensorRegion = network.regions["sensor"].getSelf()
 
-  # Specify how RecordSensor encodes input values
+  # Specify how the sensor encodes input values
   if isinstance(encoders, dict):
-    # Multiple encoders to add
+    # Add encoder(s) from params dict:
     sensorRegion.encoder = createEncoder(encoders)
   else:
     sensorRegion.encoder = encoders
@@ -230,7 +236,7 @@ def createTemporalMemoryRegion(network, prevRegionWidth):
 
   # Make sure learning is enabled (this is the default)
   temporalMemoryRegion.setParameter("learningMode", False)
-  
+
   # We want to compute the predictedActiveCells
   # TODO: we can't use that output for now because the tm_py impl is broken
   # temporalMemoryRegion.setParameter("computePredictedActiveCellIndices", True)
@@ -253,8 +259,6 @@ def createClassifierRegion(network):
   TODO: replace CLAClassifier w/ SequenceClassifier region
   """
   # Create the classifier region.
-  # classifierRegion = network.addRegion(
-  #     "classifier", "py.CLAClassifierRegion", json.dumps(CLA_CLASSIFIER_PARAMS))
   classifierRegion = network.addRegion(
       "classifier", "py.CLAClassifierRegion", json.dumps(CLA_CLASSIFIER_PARAMS))
   # Disable learning for now (will be enabled in a later training phase)... why???
