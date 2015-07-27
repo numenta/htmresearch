@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -53,11 +53,11 @@ SCALAR_ENCODER_PARAMS = {
     "maxval": None  # needs to be initialized after file introspection
 }
 
-CATEGORY_ENCODER_PARAMS = {
-    "name": 'label',
-    "w": 21,
-    "categoryList": range(NUMBER_OF_LABELS)
-}
+# CATEGORY_ENCODER_PARAMS = {
+#     "name": 'label',
+#     "w": 21,
+#     "categoryList": range(NUMBER_OF_LABELS)
+# }
 
 
 outFile = open(_OUT_FILE, 'wb')
@@ -66,7 +66,6 @@ outFile = open(_OUT_FILE, 'wb')
 def run(net, numRecords, partitions, outFile):
   """
   Run the network and write classification results output.
-
   @param net: a Network instance to run.
   @param outFile: a writer instance to write output to file.
   @param partitions: list of indices at which training begins for the SP, TM,
@@ -94,11 +93,11 @@ def run(net, numRecords, partitions, outFile):
     spOut = spatialPoolerRegion.getOutputData("bottomUpOut")
     tpOut = temporalMemoryRegion.getOutputData("bottomUpOut")
     tmInstance = temporalMemoryRegion.getSelf()._tfdr
-    
+
     # NOTE: To be able to extract a category, one of the field of the the
     # dataset needs to have the flag C so it can be recognized as a category
-    # by the encoder.
-    actualValue = sensorRegion.getOutputData("categoryOut")[0]
+    # by the FileRecordStream instance.
+    actualValue = sensorRegion.getOutputData("categoryOut")[0]  ## here we get the category out of the sensor region; otherwise there is no way b/c no regions take it from the sensor output
 
     outFile.write("=> INDEX=%s |  actualValue=%s | anomalyScore=%s \n" %(i, actualValue, anomalyScore))
 
@@ -149,11 +148,8 @@ def run(net, numRecords, partitions, outFile):
       # TODO[continued] but it is not implemented in the tm_py, so we use this work around for now.
       # predictiveCells = tmInstance.getOutput("predictedActiveCells")
       predictiveCells = tmInstance.predictiveCells
-      predictedActiveCells = numpy.intersect1d(activeCells, predictiveCells)
-      if len(predictiveCells) >0: #TODO: this line to be removed. for debugging purposes.
-        #print "predictiveActiveCells: %s" %predictedActiveCells
-        pass
-      
+      predictedActiveCells = [cell for cell in predictiveCells if activeCells[cell]==1]
+
       # Call classifier
       clResults = classifierRegion.getSelf().customCompute(
           recordNum=i, patternNZ=patternNZ, classification=classificationIn)
@@ -166,9 +162,6 @@ def run(net, numRecords, partitions, outFile):
       if i > partitions[2]:
         if actualValue == inferredValue:
           numCorrect += 1
-        else:  # TODO: remove. debugging.
-          #print " INCORRECT_PREDICTION: index=%s | actualValue = %s | inferredValue = %s | \n clResults = %s \n\n" % (i, actualValue, inferredValue, clResults)
-          pass
 
         numTestRecords += 1
 
@@ -190,7 +183,7 @@ def _setupScalarEncoder(minval, maxval):
 if __name__ == "__main__":
 
   for noiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
-    
+
     expParams = "RUNNING EXPERIMENT WITH PARAMS: numRecords=%s | noiseAmplitude=%s | signalAmplitude=%s | signalMean=%s | signalPeriod=%s \n"\
           %(NUM_RECORDS, noiseAmplitude, SIGNAL_AMPLITUDE, SIGNAL_MEAN, SIGNAL_PERIOD)
     outFile.write(expParams)
@@ -212,7 +205,9 @@ if __name__ == "__main__":
     #   input source via the dataSource attribute.
     dataSource = FileRecordStream(streamID=inputFile)
     encoders = {"white_noise": SCALAR_ENCODER_PARAMS}
-    network = createNetwork((dataSource, "py.RecordSensor", encoders))
+    numberOfCategories = 3
+    network = createNetwork(
+        (dataSource, "py.RecordSensor", encoders, numberOfCategories))
 
     # Need to init the network before it can run.
     network.initialize()

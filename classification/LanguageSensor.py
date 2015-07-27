@@ -22,7 +22,6 @@
 # ----------------------------------------------------------------------
 import numpy
 
-from fluent.utils.text_preprocess import TextPreprocess
 from nupic.regions.PyRegion import PyRegion
 
 
@@ -47,8 +46,8 @@ class LanguageSensor(PyRegion):
   """
 
   def __init__(self,
-               preprocess=0,
-               verbosity=0):
+               verbosity=0,
+               numCategories=1):
     """
     Create a node without an encoder or datasource.
     """
@@ -56,7 +55,7 @@ class LanguageSensor(PyRegion):
     self.dataSource = None
     self._outputValues = {}
 
-    self.preprocess = preprocess
+    self.numCategories = numCategories
     self.verbosity = verbosity
     self._iterNum = 0
 
@@ -78,8 +77,8 @@ class LanguageSensor(PyRegion):
           },
         "categoryOut":{
           "description":"Index of the current word's category.",
-          "dataType":"Real32",
-          "count":1,
+          "dataType":"Int32",
+          "count":0,
           "regionLevel":True,
           "isDefaultOutput":False,
           },
@@ -181,9 +180,13 @@ class LanguageSensor(PyRegion):
     Get a record from the dataSource and encode it. The fields for inputs and
     outputs are as defined in the LS object's spec.
 
+    TODO: populate self._outputValues
     TODO: validate we're handling resets correctly
     """
     data = self.dataSource.getNextRecordDict()
+    # The private keys in data are standard of RecordStreamIface objects. Any
+    # add'l keys are column headers from the data source.
+    import pdb; pdb.set_trace()
 
     # Copy important data input fields over to outputs dict.
     #   NOTE: set "sourceOut" explicitly b/c PyRegion.getSpec() won't take an

@@ -75,10 +75,17 @@ TM_PARAMS = {
     "pamLength": 3,
 }
 
+
+# TODO: replace with SEQ_CLASSIFIER_PARAMS
 CLA_CLASSIFIER_PARAMS = {"steps": "1",
                          "implementation": "py"}
+KNN_CLASSIFIER_PARAMS = {
+ "k": 1,
+ 'distThreshold': 0,
+ 'maxCategoryCount': 4,
+ }
 
-## TODO: get these straight from nupic/engine.__init__.py
+# TODO: get these straight from nupic/engine.__init__.py
 PY_REGIONS = ["AnomalyRegion",
               "CLAClassifierRegion",
               "ImageSensor",
@@ -125,7 +132,7 @@ def createEncoder(newEncoders):
   return encoder
 
 
-def createSensorRegion(network, sensorType, encoders, dataSource):
+def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
   """
   Initializes the sensor region with an encoder and data source.
 
@@ -140,7 +147,11 @@ def createSensorRegion(network, sensorType, encoders, dataSource):
 
   @param dataSource   (RecordStream)  Sensor region reads data from here.
 
+  @param numCats      (int)           Number of possible categories per record.
+
   @return             (Region)        Sensor region of the network.
+
+  TODO: hardcoded to register LanguageSensor... generalize this.
   """
   # Sensor region may be non-standard, so add custom region class to the network
   if sensorType.split(".")[1] not in PY_REGIONS:
@@ -149,7 +160,8 @@ def createSensorRegion(network, sensorType, encoders, dataSource):
 
   try:
     # Add region to network
-    regionParams = json.dumps({"verbosity": _VERBOSITY})
+    regionParams = json.dumps({"verbosity": _VERBOSITY,
+                               "numCategories": numCats})
     network.addRegion("sensor", sensorType, regionParams)
   except RuntimeError:
     print ("Custom region not added correctly. Possible issues are the spec is "
@@ -241,9 +253,10 @@ def createClassifierRegion(network):
   TODO: replace CLAClassifier w/ SequenceClassifier region
   """
   # Create the classifier region.
+  # classifierRegion = network.addRegion(
+  #     "classifier", "py.CLAClassifierRegion", json.dumps(CLA_CLASSIFIER_PARAMS))
   classifierRegion = network.addRegion(
       "classifier", "py.CLAClassifierRegion", json.dumps(CLA_CLASSIFIER_PARAMS))
-
   # Disable learning for now (will be enabled in a later training phase)... why???
   classifierRegion.setParameter("learningMode", False)
 
@@ -262,9 +275,11 @@ def createRegions(network, args):
   """
   (dataSource,
    sensorType,
-   encoders) = args
+   encoders,
+   numCats) = args
 
-  sensor = createSensorRegion(network, sensorType, encoders, dataSource)
+  sensor = createSensorRegion(
+      network, sensorType, encoders, dataSource, numCats)
 
   createSpatialPoolerRegion(network, sensor.encoder.getWidth())
 
@@ -318,6 +333,7 @@ def createNetwork(args):
     sensorType   (str)          Specific type of region, e.g. "py.RecordSensor";
                                 possible options can be found in nupic/regions/.
     encoders     (dict)         See createEncoder() docstring for format.
+    numCats      (int)          Number of possible categories per record.
 
   @return        (Network)      sensor -> SP -> TM -> CLA classifier
   """
