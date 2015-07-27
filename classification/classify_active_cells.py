@@ -53,14 +53,8 @@ SCALAR_ENCODER_PARAMS = {
     "maxval": None  # needs to be initialized after file introspection
 }
 
-# CATEGORY_ENCODER_PARAMS = {
-#     "name": 'label',
-#     "w": 21,
-#     "categoryList": range(NUMBER_OF_LABELS)
-# }
-
-
 outFile = open(_OUT_FILE, 'wb')
+
 
 
 def run(net, numRecords, partitions, outFile):
@@ -97,7 +91,7 @@ def run(net, numRecords, partitions, outFile):
     # NOTE: To be able to extract a category, one of the field of the the
     # dataset needs to have the flag C so it can be recognized as a category
     # by the FileRecordStream instance.
-    actualValue = sensorRegion.getOutputData("categoryOut")[0]  ## here we get the category out of the sensor region; otherwise there is no way b/c no regions take it from the sensor output
+    actualValue = sensorRegion.getOutputData("categoryOut")[0]
 
     outFile.write("=> INDEX=%s |  actualValue=%s | anomalyScore=%s \n" %(i, actualValue, anomalyScore))
 
@@ -145,7 +139,7 @@ def run(net, numRecords, partitions, outFile):
 
       # classify predicted active cells
       # TODO: ideally we would want to get the tmInstance.getOutput("predictedActiveCells")
-      # TODO[continued] but it is not implemented in the tm_py, so we use this work around for now.
+      # but it is not implemented in the tm_py, so we use this work around for now.
       # predictiveCells = tmInstance.getOutput("predictedActiveCells")
       predictiveCells = tmInstance.predictiveCells
       predictedActiveCells = [cell for cell in predictiveCells if activeCells[cell]==1]
