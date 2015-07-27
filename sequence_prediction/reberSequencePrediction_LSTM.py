@@ -114,14 +114,15 @@ def testLSTMnet(net, numTestSequence, seedSeq=2):
     (ds, in_seq, out_seq) = getReberDS(maxLength)
     print("test seq", _, sequenceToWord(in_seq))
 
-    seq = ds.getSequenceIterator(0)
-    for i in xrange(len(seq)-1):
-      (sample, target) = seq[i]
+    for i in xrange(len(in_seq)-1):
+      sample = in_seq[i]
+      target = out_seq[i]
+
       currentInput = sequenceToWord([sample])
       netActivation = net.activate(sample)
       predictNextInput = getMaxActivation(netActivation)
 
-      possibleNextInput = getElementFromVec(out_seq[i])
+      possibleNextInput = getElementFromVec(target)
 
       outcome = checkPrediction(possibleNextInput, predictNextInput)
       outcomeAll.append(outcome)
@@ -130,7 +131,7 @@ def testLSTMnet(net, numTestSequence, seedSeq=2):
       (missN, fpN) = checkPrediction2(possibleNextInput, prediction)
 
       numPred += len(prediction)
-      numOutcome += len(out_seq[i])
+      numOutcome += len(target)
       numMiss += missN
       numFP += fpN
       numStep += 1
