@@ -23,8 +23,10 @@
 General Temporal Memory implementation in Python.
 """
 
-from sensorimotor.general_temporal_memory import GeneralTemporalMemory
+from nupic.bindings.algorithms import Connections
 from nupic.research.fast_temporal_memory import FastTemporalMemory, ConnectionsCell
+
+from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 
 
 
@@ -37,6 +39,11 @@ class FastGeneralTemporalMemory(GeneralTemporalMemory, FastTemporalMemory):
   GeneralTemporalMemory is solely implemented in Python and will be easier to
   debug.
   """
+
+  def __init__(self, *args, **kwargs):
+    super(FastGeneralTemporalMemory, self).__init__(*args, **kwargs)
+    self.apicalConnections = Connections(self.numberOfCells())
+
 
   def burstColumns(self,
                    activeColumns,
