@@ -50,13 +50,17 @@ class LanguageSensor(PyRegion):
                numCategories=1):
     """
     Create a node without an encoder or datasource.
-    """
-    self.encoder = None
-    self.dataSource = None
-    self._outputValues = {}
 
+    TODO: use self._outputValues for logging(?)
+    """
     self.numCategories = numCategories
     self.verbosity = verbosity
+
+    # These fields are set outside when building the region.
+    self.encoder = None
+    self.dataSource = None
+
+    self._outputValues = {}
     self._iterNum = 0
 
 
@@ -119,6 +123,13 @@ class LanguageSensor(PyRegion):
         #   count=0,
         #   regionLevel=True,
         #   isDefaultOutput=False),
+        # classificationTopDownOut=dict(
+        #   description="The top-down input signal, generated via feedback "
+        #               "from classifier through TP through SP.",
+        #   dataType='Real32',
+        #   count=0,
+        #   regionLevel=True,
+        #   isDefaultOutput=False),
       },
       "inputs":{
         "spatialTopDownIn":{
@@ -160,6 +171,13 @@ class LanguageSensor(PyRegion):
           "count":1,
           "constraints":"",
         },
+        "numCategories":{
+          "description":("Total number of categories to expect from the "
+                         "FileRecordStream"),
+          "dataType":"UInt32",
+          "accessMode":"ReadWrite",
+          "count":1,
+          "constraints":""},
       },
       "commands":{},
     }
@@ -178,32 +196,42 @@ class LanguageSensor(PyRegion):
   def compute(self, inputs, outputs):
     """
     Get a record from the dataSource and encode it. The fields for inputs and
-    outputs are as defined in the LS object's spec.
+    outputs are as defined in the spec above.
 
-    TODO: populate self._outputValues
+    Expects the text data to be in under header "token" from the dataSource.
+
     TODO: validate we're handling resets correctly
     """
     data = self.dataSource.getNextRecordDict()
     # The private keys in data are standard of RecordStreamIface objects. Any
     # add'l keys are column headers from the data source.
-    import pdb; pdb.set_trace()
 
-    # Copy important data input fields over to outputs dict.
-    #   NOTE: set "sourceOut" explicitly b/c PyRegion.getSpec() won't take an
-    #   output field w/ type str.
+    # Copy important data input fields over to outputs dict. We set "sourceOut"
+    # explicitly b/c PyRegion.getSpec() won't take an output field w/ type str.
     outputs["resetOut"][0] = data["_reset"]
     outputs["sequenceIdOut"][0] = data["_sequenceId"]
-    outputs["categoryOut"][0] = data["_category"]
     outputs["sourceOut"] = data["token"]
+
+    # Note: non-categories are represented with -1.
+    if data["_category"][0] is None:
+      # The record has no entry in category field.
+      outputs['categoryOut'][:] = -1
+    else:
+      # Populate category output array by looping over the smaller of the
+      # output array (size specified by numCategories) and the record's number
+      # of categories.
+      tmp = outputs['categoryOut']
+      [numpy.put(tmp, [i], cat) for i, (_, cat) in enumerate(zip(tmp, data["_category"]))]
+      tmp[len(data["_category"]):] = -1
+      outputs['categoryOut'] = tmp
 
     # Encode the token, where the encoding is a dict as expected in
     # nupic.fluent ClassificationModel.
     # The data key must match the datafile column header
     # NOTE: this logic differs from RecordSensor, where output is a (sparse)
-    # numpy array populated in place.
-    outputs["dataOut"] = self.encoder.encodeIntoArray(data["token"], output=None)
-
-    # self._outputValues <- dict() of sample that goes to Model (??)
+    # numpy array populated in place. So we leave the data output alone for now,
+    # and (maybe) populate it in fluent.ClassificationModel.
+    outputs["encodingOut"] = self.encoder.encodeIntoArray(data["token"], output=None)
 
     self._iterNum += 1
 
@@ -218,6 +246,7 @@ class LanguageSensor(PyRegion):
 
   def getOutputElementCount(self, name):
     """Returns the width of dataOut."""
+
     if name == "resetOut" or name == "sequenceIdOut":
       print ("WARNING: getOutputElementCount should not have been called with "
             "{}.".format(name))
@@ -229,6 +258,9 @@ class LanguageSensor(PyRegion):
                         "LanguageSensor node, but the encoder has not been set."
                         .format(name))
       return self.encoder.getWidth()
+
+    elif name == "categoryOut":
+      return self.numCategories
 
     elif (name == "sourceOut" or
           name == 'spatialTopDownOut' or
