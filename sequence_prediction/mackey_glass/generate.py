@@ -73,7 +73,7 @@ def run():
         for writer in (allWriter, trainWriter, testWriter):
           writer.writerow(["y"])
           writer.writerow(["float"])
-          writer.writerow([""])
+          writer.writerow([])
 
         while True:
           T.append(t)
