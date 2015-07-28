@@ -79,15 +79,16 @@ def run():
           T.append(t)
           Y.append(y)
 
-          allWriter.writerow([y])
-
-          if t >= 200 and t < 3200:
-            trainWriter.writerow([y])
-          elif t >= 5000 and t < 5500:
-            testWriter.writerow([y])
-
           if abs(round(t) - t) < 1e-5:
             print("y(%2.1f)\t= %4.6f \t" % ( t, y ))
+
+            allWriter.writerow([y])
+
+            if t >= 200 and t < 3200:
+              trainWriter.writerow([y])
+            elif t >= 5000 and t < 5500:
+              testWriter.writerow([y])
+
           t, y = t + dt, y + dy( t, y, dt )
 
           if t > 5500:
