@@ -35,7 +35,7 @@ from nupic.frameworks.opf.expdescriptionhelpers import importBaseDescription
 # the sub-experiment configuration
 config ={
   'aggregationInfo' : {'seconds': 0, 'fields': [], 'months': 0, 'days': 0, 'years': 0, 'hours': 0, 'microseconds': 0, 'weeks': 0, 'minutes': 0, 'milliseconds': 0},
-  'modelParams' : {'sensorParams': {'encoders': {'_classifierInput': {'maxval': 1.33, 'classifierOnly': True, 'minval': 0.4, 'clipInput': True, 'n': 275, 'fieldname': 'y', 'w': 21, 'type': 'ScalarEncoder'}, u'y': {'maxval': 1.33, 'name': 'y', 'clipInput': True, 'minval': 0.4, 'n': 272, 'fieldname': 'y', 'w': 21, 'type': 'ScalarEncoder'}}}, 'spParams': {'synPermInactiveDec': 0.05015}, 'tpParams': {'minThreshold': 11, 'activationThreshold': 14, 'pamLength': 3}, 'clParams': {'alpha': 0.050050000000000004}},
+  'modelParams' : {'sensorParams': {'encoders': {'_classifierInput': {'maxval': 1.34, 'classifierOnly': True, 'minval': 0.39, 'clipInput': True, 'n': 127, 'fieldname': 'y', 'w': 21, 'type': 'ScalarEncoder'}, u'y': {'maxval': 1.34, 'name': 'y', 'clipInput': True, 'minval': 0.39, 'n': 122, 'fieldname': 'y', 'w': 21, 'type': 'ScalarEncoder'}}}, 'spParams': {'synPermInactiveDec': 0.07009}, 'tpParams': {'minThreshold': 10, 'activationThreshold': 13, 'pamLength': 2}, 'clParams': {'alpha': 0.020080000000000004}},
 
 }
 

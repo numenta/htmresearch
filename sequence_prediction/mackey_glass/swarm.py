@@ -33,7 +33,7 @@ logging.basicConfig()
 from nupic.swarming import permutations_runner
 from swarm_description import SWARM_DESCRIPTION
 
-INPUT_FILE = "data-train.csv"
+INPUT_FILE = "data_train.csv"
 DESCRIPTION = (
   "This script runs a swarm on the input data (data-train.csv) and\n"
   "creates a model parameters file in the `model_params` directory containing\n"

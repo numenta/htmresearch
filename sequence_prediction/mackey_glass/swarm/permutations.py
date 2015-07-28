@@ -56,8 +56,8 @@ permutations = {
 
     'sensorParams': {
       'encoders': {
-          u'y': PermuteEncoder(maxval=1.33, fieldName='y', w=21, clipInput=True, minval=0.4, encoderClass='ScalarEncoder', n=PermuteInt(22, 521), ),
-  '_classifierInput': dict(maxval=1.33, classifierOnly=True, clipInput=True, minval=0.4, n=PermuteInt(28, 521), fieldname='y', w=21, type='ScalarEncoder', ),
+          u'y': PermuteEncoder(maxval=1.34, fieldName='y', w=21, clipInput=True, minval=0.39, encoderClass='ScalarEncoder', n=PermuteInt(22, 521), ),
+  '_classifierInput': dict(maxval=1.34, classifierOnly=True, clipInput=True, minval=0.39, n=PermuteInt(28, 521), fieldname='y', w=21, type='ScalarEncoder', ),
       },
     },
 
@@ -96,17 +96,17 @@ report = [
 # (generated from minimize = "multiStepBestPredictions:multiStep:errorMetric='nrmse':steps=\[1\]:window=1000000:field=y")
 minimize = "multiStepBestPredictions:multiStep:errorMetric='nrmse':steps=\[1\]:window=1000000:field=y"
 
-minParticlesPerSwarm = 3
+minParticlesPerSwarm = 5
 
-inputPredictedField = 'yes'
-
-
+inputPredictedField = 'auto'
 
 
 
 
 
-maxModels = 1
+
+
+maxModels = 200
 
 
 

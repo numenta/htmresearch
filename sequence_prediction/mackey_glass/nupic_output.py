@@ -72,7 +72,7 @@ class NuPICFileOutput(NuPICOutput):
     headerRow = ['timestamp', 'y', 'prediction']
     for name in self.names:
       self.lineCounts.append(0)
-      outputFileName = "%s_out.csv" % name
+      outputFileName = "out_%s" % name
       print "Preparing to output %s data to %s" % (name, outputFileName)
       outputFile = open(outputFileName, "w")
       self.outputFiles.append(outputFile)

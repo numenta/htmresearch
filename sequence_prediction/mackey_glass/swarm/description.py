@@ -96,8 +96,8 @@ config = {
             'encoders': {
                 u'y':     {   'clipInput': True,
     'fieldname': u'y',
-    'maxval': 1.33,
-    'minval': 0.4,
+    'maxval': 1.34,
+    'minval': 0.39,
     'n': 100,
     'name': u'y',
     'type': 'ScalarEncoder',
@@ -105,8 +105,8 @@ config = {
   '_classifierInput':     {   'classifierOnly': True,
     'clipInput': True,
     'fieldname': u'y',
-    'maxval': 1.33,
-    'minval': 0.4,
+    'maxval': 1.34,
+    'minval': 0.39,
     'n': 100,
     'name': '_classifierInput',
     'type': 'ScalarEncoder',
@@ -322,14 +322,14 @@ control = {
 
 
   # A dictionary containing all the supplementary parameters for inference
-  "inferenceArgs":{u'inputPredictedField': 'yes',
+  "inferenceArgs":{u'inputPredictedField': 'auto',
  u'predictedField': u'y',
  u'predictionSteps': [1]},
 
   # Metrics: A list of MetricSpecs that instantiate the metrics that are
   # computed for this experiment
   'metrics':[
-    MetricSpec(field=u'y', metric='multiStep', inferenceElement='multiStepBestPredictions', params={'window': 1000000, 'steps': [1], 'errorMetric': 'rmse'})
+    MetricSpec(field=u'y', metric='multiStep', inferenceElement='multiStepBestPredictions', params={'window': 1000000, 'steps': [1], 'errorMetric': 'nrmse'})
   ],
 
   # Logged Metrics: A sequence of regular expressions that specify which of

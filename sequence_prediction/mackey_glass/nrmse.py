@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
 # Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
@@ -18,37 +19,43 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import csv
+import math
+import sys
 
-SWARM_DESCRIPTION = {
-  "includedFields": [
-    {
-      "fieldName": "y",
-      "fieldType": "float",
-      "maxValue": 1.34,
-      "minValue": 0.39
-    }
-  ],
-  "streamDef": {
-    "info": "data_train",
-    "version": 1,
-    "streams": [
-      {
-        "info": "Mackey-Glass data",
-        "source": "file://data_train.csv",
-        "columns": [
-          "*"
-        ]
-      }
-    ]
-  },
+import numpy
 
-  "inferenceType": "TemporalMultiStep",
-  "inferenceArgs": {
-    "predictionSteps": [
-      1
-    ],
-    "predictedField": "y"
-  },
-  "iterationCount": -1,
-  "swarmSize": "medium"
-}
+
+
+def run(filename):
+  with open(filename, 'rU') as infile:
+    reader = csv.reader(infile)
+    reader.next()
+
+    line = reader.next()
+    actual = float(line[1])
+    predicted = float(line[2])
+
+    actuals = []
+    aggregatedError = 0
+    n = 0
+
+    for line in reader:
+      actual = float(line[1])
+      actuals.append(actual)
+
+      aggregatedError += (actual - predicted)**2
+      n += 1
+
+      predicted = float(line[2])
+
+    rmse = math.sqrt(aggregatedError / float(n))
+    nrmse = rmse / numpy.std(actuals)
+
+    print "RMSE:", rmse
+    print "NRMSE:", nrmse
+
+
+
+if __name__ == "__main__":
+  run(sys.argv[1])

@@ -19,10 +19,6 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
-"""
-Groups together code used for creating a NuPIC model and dealing with IO.
-(This is a component of the One Hot Gym Prediction Tutorial.)
-"""
 import importlib
 import sys
 import csv
@@ -35,18 +31,12 @@ from nupic.frameworks.opf.predictionmetricsmanager import MetricsManager
 
 import nupic_output
 
+from model_params.model_params import MODEL_PARAMS
 
-DESCRIPTION = (
-  "Starts a NuPIC model from the model params returned by the swarm\n"
-  "and pushes each line of input from the gym into the model. Results\n"
-  "are written to an output file (default) or plotted dynamically if\n"
-  "the --plot option is specified.\n"
-  "NOTE: You must run ./swarm.py before this, because model parameters\n"
-  "are required to run NuPIC.\n"
-)
-GYM_NAME = "data_test"  # or use "rec-center-every-15m-large"
+
+DATA_TRAIN = "data_train.csv"
+DATA_TEST = "data_test.csv"
 DATA_DIR = "."
-MODEL_PARAMS_DIR = "./model_params"
 # '7/2/10 0:00'
 DATE_FORMAT = "%m/%d/%y %H:%M"
 
@@ -72,21 +62,7 @@ def createModel(modelParams):
 
 
 
-def getModelParamsFromName(gymName):
-  importName = "model_params.%s_model_params" % (
-    gymName.replace(" ", "_").replace("-", "_")
-  )
-  print "Importing model params from %s" % importName
-  try:
-    importedModelParams = importlib.import_module(importName).MODEL_PARAMS
-  except ImportError:
-    raise Exception("No model params exist for '%s'. Run swarm first!"
-                    % gymName)
-  return importedModelParams
-
-
-
-def runIoThroughNupic(inputData, model, gymName, plot):
+def runIoThroughNupic(inputData, model, dataName, plot):
   inputFile = open(inputData, "rb")
   csvReader = csv.reader(inputFile)
   # skip header rows
@@ -96,9 +72,9 @@ def runIoThroughNupic(inputData, model, gymName, plot):
 
   shifter = InferenceShifter()
   if plot:
-    output = nupic_output.NuPICPlotOutput([gymName])
+    output = nupic_output.NuPICPlotOutput([dataName])
   else:
-    output = nupic_output.NuPICFileOutput([gymName])
+    output = nupic_output.NuPICFileOutput([dataName])
 
   metricsManager = MetricsManager(_METRIC_SPECS, model.getFieldInfo(),
                                   model.getInferenceType())
@@ -130,18 +106,20 @@ def runIoThroughNupic(inputData, model, gymName, plot):
 
 
 
-def runModel(gymName, plot=False):
-  print "Creating model from %s..." % gymName
-  model = createModel(getModelParamsFromName(gymName))
-  inputData = "%s/%s.csv" % (DATA_DIR, gymName.replace(" ", "_"))
-  runIoThroughNupic(inputData, model, gymName, plot)
+def runModel(plot=False):
+  model = createModel(MODEL_PARAMS)
+  print "Training..."
+  runIoThroughNupic(DATA_TRAIN, model, DATA_TRAIN, plot)
+  model.resetSequenceStates()
+  model.disableLearning()
+  print "Testing..."
+  runIoThroughNupic(DATA_TEST, model, DATA_TEST, plot)
 
 
 
 if __name__ == "__main__":
-  print DESCRIPTION
   plot = False
   args = sys.argv[1:]
   if "--plot" in args:
     plot = True
-  runModel(GYM_NAME, plot=plot)
+  runModel(plot=plot)
