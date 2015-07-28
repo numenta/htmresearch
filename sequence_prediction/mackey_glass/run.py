@@ -59,10 +59,10 @@ _METRIC_SPECS = (
                params={'errorMetric': 'aae', 'window': 1000, 'steps': 1}),
     MetricSpec(field='y', metric='multiStep',
                inferenceElement='multiStepBestPredictions',
-               params={'errorMetric': 'rmse', 'window': 1000000, 'steps': 1}),
+               params={'errorMetric': 'nrmse', 'window': 1000000, 'steps': 1}),
     MetricSpec(field='y', metric='trivial',
                inferenceElement='prediction',
-               params={'errorMetric': 'rmse', 'window': 1000000, 'steps': 1}),
+               params={'errorMetric': 'nrmse', 'window': 1000000, 'steps': 1}),
 )
 
 def createModel(modelParams):
@@ -114,9 +114,9 @@ def runIoThroughNupic(inputData, model, gymName, plot):
 
     if counter % 100 == 0:
       print "Read %i lines..." % counter
-      print ("After %i records, 1-step rmse=%f", counter,
+      print ("After %i records, 1-step nrmse=%f", counter,
               result.metrics["multiStepBestPredictions:multiStep:"
-                             "errorMetric='rmse':steps=1:window=1000000:"
+                             "errorMetric='nrmse':steps=1:window=1000000:"
                              "field=y"])
  
     if plot:
