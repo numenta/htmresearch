@@ -33,6 +33,7 @@ except ImportError:
 
 from nupic.encoders import MultiEncoder
 from nupic.engine import Network
+from nupic.engine import pyRegions
 
 
 _VERBOSITY = 0
@@ -83,22 +84,7 @@ KNN_CLASSIFIER_PARAMS = {
  'maxCategoryCount': 4,
  }
 
-# TODO: get these straight from nupic/engine.__init__.py
-PY_REGIONS = ["AnomalyRegion",
-              "CLAClassifierRegion",
-              "ImageSensor",
-              "KNNAnomalyClassifierRegion",
-              "KNNClassifierRegion",
-              "PCANode",
-              "PyRegion",
-              "RecordSensor",
-              "SPRegion",
-              "SVMClassifierNode",
-              "TPRegion",
-              "TestNode",
-              "TestRegion",
-              "UnimportableNode",
-              "GaborNode2"]
+PY_REGIONS = [r[1] for r in pyRegions]
 
 
 
@@ -148,8 +134,6 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
   @param numCats      (int)           Number of possible categories per record.
 
   @return             (Region)        Sensor region of the network.
-
-  TODO: hardcoded to register LanguageSensor... generalize this.
   """
   # Sensor region may be non-standard, so add custom region class to the network
   SENSOR_NAME = sensorType.split(".")[1]
@@ -160,6 +144,8 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
       module = __import__(SENSOR_MODULE, {}, {}, SENSOR_NAME)
       sensorClass = getattr(module, SENSOR_NAME)
       Network.registerRegion(sensorClass)
+      # Add region to list of registered PyRegions
+      PY_REGIONS.append(SENSOR_NAME)
     except ImportError:
       raise RuntimeError("Could not find sensor \'{}\' to import.".
                          format(SENSOR_NAME))
