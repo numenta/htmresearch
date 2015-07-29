@@ -81,7 +81,7 @@ class LanguageSensor(PyRegion):
           },
         "categoryOut":{
           "description":"Index of the current word's category.",
-          "dataType":"Int32",
+          "dataType":"Real32",
           "count":0,
           "regionLevel":True,
           "isDefaultOutput":False,
@@ -193,6 +193,23 @@ class LanguageSensor(PyRegion):
       raise Exception("Unable to initialize LanguageSensor -- dataSource has not been set")
 
 
+  def populateCategoriesOut(self, categories, output):
+    """
+    Populate the output array with the category indices.
+    Note: non-categories are represented with -1.
+    """
+    if categories[0] is None:
+      # The record has no entry in category field.
+      output[:] = -1
+    else:
+      # Populate category output array by looping over the smaller of the
+      # output array (size specified by numCategories) and the record's number
+      # of categories.
+      [numpy.put(output, [i], cat)
+          for i, (_, cat) in enumerate(zip(output, categories))]
+      output[len(categories):] = -1
+
+
   def compute(self, inputs, outputs):
     """
     Get a record from the dataSource and encode it. The fields for inputs and
@@ -210,20 +227,10 @@ class LanguageSensor(PyRegion):
     # explicitly b/c PyRegion.getSpec() won't take an output field w/ type str.
     outputs["resetOut"][0] = data["_reset"]
     outputs["sequenceIdOut"][0] = data["_sequenceId"]
-    outputs["sourceOut"] = data["token"]
+    outputs["sourceOut"] = data["_token"]
 
-    # Note: non-categories are represented with -1.
-    if data["_category"][0] is None:
-      # The record has no entry in category field.
-      outputs['categoryOut'][:] = -1
-    else:
-      # Populate category output array by looping over the smaller of the
-      # output array (size specified by numCategories) and the record's number
-      # of categories.
-      tmp = outputs['categoryOut']
-      [numpy.put(tmp, [i], cat) for i, (_, cat) in enumerate(zip(tmp, data["_category"]))]
-      tmp[len(data["_category"]):] = -1
-      outputs['categoryOut'] = tmp
+    self.populateCategoriesOut(data["_category"], outputs['categoryOut'])
+    print outputs['categoryOut']
 
     # Encode the token, where the encoding is a dict as expected in
     # nupic.fluent ClassificationModel.
@@ -231,7 +238,7 @@ class LanguageSensor(PyRegion):
     # NOTE: this logic differs from RecordSensor, where output is a (sparse)
     # numpy array populated in place. So we leave the data output alone for now,
     # and (maybe) populate it in fluent.ClassificationModel.
-    outputs["encodingOut"] = self.encoder.encodeIntoArray(data["token"], output=None)
+    outputs["encodingOut"] = self.encoder.encodeIntoArray(data["_token"], output=None)
 
     self._iterNum += 1
 
