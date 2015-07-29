@@ -20,7 +20,6 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 import csv
-from math import sqrt
 from matplotlib import pyplot
 
 
