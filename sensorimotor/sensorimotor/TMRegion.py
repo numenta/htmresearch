@@ -404,19 +404,19 @@ class TMRegion(PyRegion):
     self._tm.mmGetCellActivityPlot(activityType="activeCells",
                                    showReset=True,
                                    resetShading=0.75,
-                                   name="ac-{name}".format(name=name))
+                                   title="ac-{name}".format(name=name))
     self._tm.mmGetCellActivityPlot(activityType="predictiveCells",
                                    showReset=True,
                                    resetShading=0.75,
-                                   name="p1-{name}".format(name=name))
+                                   title="p1-{name}".format(name=name))
     self._tm.mmGetCellActivityPlot(activityType="predictedCells",
                                    showReset=True,
                                    resetShading=0.75,
-                                   name="p2-{name}".format(name=name))
+                                   title="p2-{name}".format(name=name))
     self._tm.mmGetCellActivityPlot(activityType="predictedActiveCells",
                                    showReset=True,
                                    resetShading=0.75,
-                                   name="pa-{name}".format(name=name))
+                                   title="pa-{name}".format(name=name))
 
 
   @classmethod
