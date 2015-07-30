@@ -88,8 +88,7 @@ class FastGeneralTemporalMemory(GeneralTemporalMemory, FastTemporalMemory):
     activeCells = set()
     winnerCells = set()
     learningSegments = set()
-
-    unpredictedColumns = activeColumns - predictedColumns
+    unpredictedColumns = set(activeColumns) - predictedColumns
 
     for column in unpredictedColumns:
       cells = self.cellsForColumn(column)

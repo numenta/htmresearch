@@ -79,10 +79,10 @@ class GeneralTemporalMemory(TemporalMemory):
     @param formInternalConnections (boolean) Flag to determine whether to form connections with internal cells within this temporal memory
     """
 
-    if not activeExternalCells:
+    if activeExternalCells is None:
       activeExternalCells = set()
 
-    if not activeApicalCells:
+    if activeApicalCells is None:
       activeApicalCells = set()
 
     activeExternalCells = self._reindexActiveExternalCells(activeExternalCells)
@@ -401,7 +401,7 @@ class GeneralTemporalMemory(TemporalMemory):
     """
     for winnerCell in winnerCells:
       winnerSegments = connections.segmentsForCell(winnerCell)
-      if len(winnerSegments & (prevActiveSegments | learningSegments)) == 0:
+      if len(set(winnerSegments) & (prevActiveSegments | learningSegments)) == 0:
         maxActiveSynapses = 0
         winnerSegment = None
         for segment in winnerSegments:
