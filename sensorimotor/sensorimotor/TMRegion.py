@@ -23,6 +23,7 @@ import copy
 from operator import mul
 import numpy
 
+from nupic.bindings.math import GetNTAReal
 from nupic.support import getArgumentDescriptions
 from nupic.regions.PyRegion import PyRegion
 
@@ -42,7 +43,7 @@ def getDefaultTMImp():
   """
   Return the default temporal memory implementation for this region.
   """
-  return "generalMonitored"
+  return "fast"
 
 
 
@@ -54,7 +55,6 @@ def getTMClass(tmImp):
     return GeneralTemporalMemory
   elif tmImp == "fast":
     return FastGeneralTemporalMemory
-    return MonitoredFastGeneralTemporalMemory
   elif tmImp == "generalMonitored":
     return MonitoredGeneralTemporalMemory
   elif tmImp == "fastMonitored":
@@ -370,7 +370,13 @@ class TMRegion(PyRegion):
                      formInternalConnections=formInternalConnections,
                      learn=self.learningMode)
 
-    outputs["activeCells"] = self._tm.activeCells
+    predictedActiveCellsOutput = numpy.zeros(
+      self.getOutputElementCount("predictedActiveCells"), dtype=GetNTAReal())
+
+    activeCells = [cell.idx for cell in (self._tm.predictedActiveCells)]
+    predictedActiveCellsOutput[activeCells] = 1.0
+
+    outputs["predictedActiveCells"][:] = predictedActiveCellsOutput[:]
 
     # TODO: Add other outputs
     #self._tm.activeExternalCells
@@ -395,7 +401,22 @@ class TMRegion(PyRegion):
 
 
   def debugPlot(self, name):
-    self._tm.mmGetCellActivityPlot(showReset=True, name=name)
+    self._tm.mmGetCellActivityPlot(activityType="activeCells",
+                                   showReset=True,
+                                   resetShading=0.75,
+                                   name="ac-{name}".format(name=name))
+    self._tm.mmGetCellActivityPlot(activityType="predictiveCells",
+                                   showReset=True,
+                                   resetShading=0.75,
+                                   name="p1-{name}".format(name=name))
+    self._tm.mmGetCellActivityPlot(activityType="predictedCells",
+                                   showReset=True,
+                                   resetShading=0.75,
+                                   name="p2-{name}".format(name=name))
+    self._tm.mmGetCellActivityPlot(activityType="predictedActiveCells",
+                                   showReset=True,
+                                   resetShading=0.75,
+                                   name="pa-{name}".format(name=name))
 
 
   @classmethod
@@ -445,6 +466,18 @@ class TMRegion(PyRegion):
       outputs=dict(
           activeCells=dict(
               description="Active cells",
+              dataType="Real32",
+              count=0,
+              regionLevel=True,
+              isDefaultOutput=True),
+          predictiveCells=dict(
+              description="Predictive cells",
+              dataType="Real32",
+              count=0,
+              regionLevel=True,
+              isDefaultOutput=True),
+          predictedActiveCells=dict(
+              description="Predicted active cells",
               dataType="Real32",
               count=0,
               regionLevel=True,
@@ -505,6 +538,10 @@ class TMRegion(PyRegion):
 
     # TODO: Add other outputs
     if name == 'activeCells':
+      return reduce(mul, self.columnDimensions, 1) * self.cellsPerColumn
+    elif name == 'predictiveCells':
+      return reduce(mul, self.columnDimensions, 1) * self.cellsPerColumn
+    elif name == 'predictedActiveCells':
       return reduce(mul, self.columnDimensions, 1) * self.cellsPerColumn
     else:
       raise Exception("Invalid output name specified")
