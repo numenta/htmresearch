@@ -63,7 +63,7 @@ def createModel(modelParams):
 
 
 def runIoThroughNupic(inputData, model, dataName, plot):
-  inputFile = open(inputData, "rb")
+  inputFile = open(inputData, "rU")
   csvReader = csv.reader(inputFile)
   # skip header rows
   csvReader.next()
