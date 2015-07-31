@@ -63,13 +63,15 @@ CATEGORY_ENCODER_PARAMS = {
 outFile = open(_OUT_FILE, 'wb')
 
 
-def run(net, outFile):
+def run(net, numRecords, partitions, outFile):
   """
   Run the network and write classification results output.
-  
-  @param net: a Network instance to run
+
+  @param net: a Network instance to run.
   @param outFile: a writer instance to write output to file.
-  
+  @param partitions: list of indices at which training begins for the SP, TM,
+      and classifier regions, respectively, e.g. [100, 200, 300].
+
   TODO: break this into smaller methods.
   """
   sensorRegion = net.regions["sensor"]
@@ -77,59 +79,54 @@ def run(net, outFile):
   temporalMemoryRegion = net.regions["TM"]
   classifierRegion = net.regions["classifier"]
 
-  phaseInfo = "\n-> Training SP. Index=0. LEARNING: SP is ON | TM is OFF | Classifier is OFF \n"
+  phaseInfo = "-> Training SP. Index=0. LEARNING: SP is ON | TM is OFF | Classifier is OFF \n"
   outFile.write(phaseInfo)
   print phaseInfo
-  
+
   numCorrect = 0
   numTestRecords = 0
-  for i in xrange(NUM_RECORDS):
+  for i in xrange(numRecords):
     # Run the network for a single iteration
     net.run(1)
-    
+
     # Various info from the network, useful for debugging & monitoring
     anomalyScore = temporalMemoryRegion.getOutputData("anomalyScore")
     spOut = spatialPoolerRegion.getOutputData("bottomUpOut")
     tpOut = temporalMemoryRegion.getOutputData("bottomUpOut")
     tmInstance = temporalMemoryRegion.getSelf()._tfdr
-    predictiveCells = tmInstance.predictiveCells
-    #if len(predictiveCells) >0:
-    #  print len(predictiveCells)
-
+    
     # NOTE: To be able to extract a category, one of the field of the the
     # dataset needs to have the flag C so it can be recognized as a category
     # by the encoder.
     actualValue = sensorRegion.getOutputData("categoryOut")[0]
 
-    
-    outFile.write("=> INDEX=%s |  actualValue=%s | anomalyScore=%s | tpOutNZ=%s\n" %(i, actualValue, anomalyScore, tpOut.nonzero()[0]))
-    
+    outFile.write("=> INDEX=%s |  actualValue=%s | anomalyScore=%s \n" %(i, actualValue, anomalyScore))
+
     # SP has been trained. Now start training the TM too.
-    if i == SP_TRAINING_SET_SIZE:
+    if i == partitions[0]:
       temporalMemoryRegion.setParameter("learningMode", True)
-      phaseInfo = "\n-> Training TM. Index=%s. LEARNING: SP is ON | TM is ON | Classifier is OFF \n" %i
+      phaseInfo = "-> Training TM. Index=%s. LEARNING: SP is ON | TM is ON | Classifier is OFF \n" %i
       outFile.write(phaseInfo)
       print phaseInfo
-      
+
     # Start training the classifier as well.
-    elif i == TM_TRAINING_SET_SIZE:
+    elif i == partitions[1]:
       classifierRegion.setParameter("learningMode", True)
-      phaseInfo = "\n-> Training Classifier. Index=%s. LEARNING: SP is OFF | TM is ON | Classifier is ON \n" %i
+      phaseInfo = "-> Training Classifier. Index=%s. LEARNING: SP is OFF | TM is ON | Classifier is ON \n" %i
       outFile.write(phaseInfo)
       print phaseInfo
-    
+
     # Stop training.
-    elif i == CLASSIFIER_TRAINING_SET_SIZE:
+    elif i == partitions[2]:
       spatialPoolerRegion.setParameter("learningMode", False)
       temporalMemoryRegion.setParameter("learningMode", False)
       classifierRegion.setParameter("learningMode", False)
       phaseInfo = "-> Test. Index=%s. LEARNING: SP is OFF | TM is OFF | Classifier is OFF \n" %i
       outFile.write(phaseInfo)
       print phaseInfo
-      
-    
+
     #--- BEGIN PREDICTING TEST SET --#
-    if i >= TM_TRAINING_SET_SIZE:
+    if i >= partitions[1]:
       # Pass this information to the classifier's custom compute method
       # so that it can assign the current classification to possibly
       # multiple patterns from the past and current, and also provide
@@ -139,33 +136,42 @@ def run(net, outFile):
       # getBucketIndices() method working instead.
       #bucketIdx = net.sensorRegion.getBucketIndices(actualValue)[0]
       bucketIdx = actualValue
-      
+
       classificationIn = {"bucketIdx": int(bucketIdx),
                           "actValue": int(actualValue)}
-    
+
       # List the indices of active cells (non-zero pattern)
       activeCells = temporalMemoryRegion.getOutputData("bottomUpOut")
       patternNZ = activeCells.nonzero()[0]
+
+      # classify predicted active cells
+      # TODO: ideally we would want to get the tmInstance.getOutput("predictedActiveCells")
+      # TODO[continued] but it is not implemented in the tm_py, so we use this work around for now.
+      # predictiveCells = tmInstance.getOutput("predictedActiveCells")
+      predictiveCells = tmInstance.predictiveCells
+      predictedActiveCells = numpy.intersect1d(activeCells, predictiveCells)
+      if len(predictiveCells) >0: #TODO: this line to be removed. for debugging purposes.
+        #print "predictiveActiveCells: %s" %predictedActiveCells
+        pass
       
       # Call classifier
       clResults = classifierRegion.getSelf().customCompute(
           recordNum=i, patternNZ=patternNZ, classification=classificationIn)
 
       inferredValue = clResults["actualValues"][clResults[int(classifierRegion.getParameter("steps"))].argmax()]
-      
-      outFile.write(" inferredValue=%s | classificationIn=%s | \n clResults=%s \n\n" %(inferredValue, classificationIn, clResults))
-    
-      # Evaluate the predictions in the test set.
-      if i > CLASSIFIER_TRAINING_SET_SIZE:
 
+      outFile.write(" inferredValue=%s | classificationIn=%s | \n clResults=%s \n" %(inferredValue, classificationIn, clResults))
+
+      # Evaluate the predictions in the test set.
+      if i > partitions[2]:
         if actualValue == inferredValue:
           numCorrect += 1
         else:  # TODO: remove. debugging.
           #print " INCORRECT_PREDICTION: index=%s | actualValue = %s | inferredValue = %s | \n clResults = %s \n\n" % (i, actualValue, inferredValue, clResults)
           pass
-        
+
         numTestRecords += 1
-      
+
   predictionAccuracy =  100.0 * numCorrect / numTestRecords
 
   results = "RESULTS: accuracy=%s | %s correctly predicted records out of %s test records \n" %(predictionAccuracy, numCorrect, numTestRecords)
@@ -182,19 +188,22 @@ def _setupScalarEncoder(minval, maxval):
 
 
 if __name__ == "__main__":
-  
+
   for noiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
     
-    expParams = "\nRUNNING EXPERIMENT WITH PARAMS: numRecords=%s | noiseAmplitude=%s | signalAmplitude=%s | signalMean=%s | signalPeriod=%s \n\n"\
+    expParams = "RUNNING EXPERIMENT WITH PARAMS: numRecords=%s | noiseAmplitude=%s | signalAmplitude=%s | signalMean=%s | signalPeriod=%s \n"\
           %(NUM_RECORDS, noiseAmplitude, SIGNAL_AMPLITUDE, SIGNAL_MEAN, SIGNAL_PERIOD)
     outFile.write(expParams)
-    print expParams    
-    
+    print expParams
+
     # Generate the data, and get the min/max values
     generateData(whiteNoise=True, noise_amplitude=noiseAmplitude)
     inputFile = os.path.join(DATA_DIR, "white_noise_%s.csv" % noiseAmplitude)
     minval, maxval = findMinMax(inputFile)
-  
+    # Partition records into training sets for SP, TM, and classifier
+    partitions = [
+      SP_TRAINING_SET_SIZE, TM_TRAINING_SET_SIZE, CLASSIFIER_TRAINING_SET_SIZE]
+
     _setupScalarEncoder(minval, maxval)
 
     # Create and run network on this data.
@@ -207,8 +216,8 @@ if __name__ == "__main__":
 
     # Need to init the network before it can run.
     network.initialize()
-    run(network, outFile)
-    
+    run(network, NUM_RECORDS, partitions, outFile)
+
     print "Results written to: %s" %_OUT_FILE
 
   outFile.close()
