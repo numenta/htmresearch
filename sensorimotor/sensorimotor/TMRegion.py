@@ -27,7 +27,6 @@ from nupic.bindings.math import GetNTAReal
 from nupic.support import getArgumentDescriptions
 from nupic.regions.PyRegion import PyRegion
 
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 from sensorimotor.fast_general_temporal_memory import FastGeneralTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
@@ -370,13 +369,19 @@ class TMRegion(PyRegion):
                      formInternalConnections=formInternalConnections,
                      learn=self.learningMode)
 
+    activeCellsOutput = numpy.zeros(
+      self.getOutputElementCount("activeCells"), dtype=GetNTAReal())
     predictedActiveCellsOutput = numpy.zeros(
       self.getOutputElementCount("predictedActiveCells"), dtype=GetNTAReal())
 
-    activeCells = [cell.idx for cell in (self._tm.predictedActiveCells)]
-    predictedActiveCellsOutput[activeCells] = 1.0
+    activeCells = [cell.idx for cell in (self._tm.activeCells)]
+    activeCellsOutput[activeCells] = 1.0
+    preditedActiveCells = [cell.idx for cell in (self._tm.predictedActiveCells)]
+    predictedActiveCellsOutput[preditedActiveCells] = 1.0
 
+    outputs["activeCells"][:] = predictedActiveCellsOutput[:]
     outputs["predictedActiveCells"][:] = predictedActiveCellsOutput[:]
+
 
     # TODO: Add other outputs
     #self._tm.activeExternalCells
