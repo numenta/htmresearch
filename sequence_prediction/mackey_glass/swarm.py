@@ -52,7 +52,7 @@ def modelParamsToString(modelParams):
 
 def writeModelParamsToFile(modelParams, name):
   cleanName = name.replace(" ", "_").replace("-", "_")
-  paramsName = "%s_model_params.py" % cleanName
+  paramsName = "model_params.py"
   outDir = os.path.join(os.getcwd(), 'model_params')
   if not os.path.isdir(outDir):
     os.mkdir(outDir)
