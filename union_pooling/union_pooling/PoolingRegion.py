@@ -140,15 +140,13 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
       description="Total number of columns (coincidences).",
       accessMode="ReadWrite",
       dataType="UInt32",
-      count=1,
-      constraints=""),
+      count=1),
 
     inputWidth=dict(
       description="Size of inputs to the UP.",
       accessMode="ReadWrite",
       dataType="UInt32",
-      count=1,
-      constraints=""),
+      count=1),
 
      poolerType=dict(
       description="Type of pooler to use: union",
@@ -180,8 +178,7 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
                   "API will likely result in failures.",
       accessMode="ReadWrite",
       dataType="Byte",
-      count=0,
-      constraints="")
+      count=0)
   )
 
   return poolerSpec, otherSpec
@@ -248,7 +245,6 @@ class PoolingRegion(PyRegion):
     autoArgs["spatialPoolerParams"] = yaml.load(autoArgs["spatialPoolerParams"])
     autoArgs["spatialPoolerParams"]["inputDimensions"] = [self._inputWidth]
     autoArgs["spatialPoolerParams"]["columnDimensions"] = [self._columnCount]
-    #autoArgs["spatialPoolerParams"]["potentialRadius"] = self._inputWidth
 
     # Allocate the pooler
     self._pooler = self._poolerClass(**autoArgs)
@@ -274,6 +270,7 @@ class PoolingRegion(PyRegion):
     """ Reset the state of the Union Pooler """
     if self._pooler is not None:
       self._pooler.reset()
+
 
   @classmethod
   def getBaseSpec(cls):
@@ -314,7 +311,7 @@ class PoolingRegion(PyRegion):
       ),
       parameters=dict(),
       commands=dict(
-        reset=dict(description='Reset the union pooler.'),
+        reset=dict(description="Reset the union pooler."),
       )
     )
 
