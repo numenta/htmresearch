@@ -20,7 +20,6 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import numpy
 import os
 
 from classification_network import createNetwork
@@ -88,12 +87,9 @@ def run(net, numRecords, partitions, outFile):
   for i in xrange(numRecords):
     # Run the network for a single iteration
     net.run(1)
-
+    
     # Various info from the network, useful for debugging & monitoring
     anomalyScore = temporalMemoryRegion.getOutputData("anomalyScore")
-    spOut = spatialPoolerRegion.getOutputData("bottomUpOut")
-    tpOut = temporalMemoryRegion.getOutputData("bottomUpOut")
-    tmInstance = temporalMemoryRegion.getSelf()._tfdr
     
     # NOTE: To be able to extract a category, one of the field of the the
     # dataset needs to have the flag C so it can be recognized as a category
@@ -127,52 +123,27 @@ def run(net, numRecords, partitions, outFile):
 
     #--- BEGIN PREDICTING TEST SET --#
     if i >= partitions[1]:
-      # Pass this information to the classifier's custom compute method
-      # so that it can assign the current classification to possibly
-      # multiple patterns from the past and current, and also provide
-      # the expected classification for some time step(s) in the future.
 
-      # TODO: this is a hack for int categories... try to get the
-      # getBucketIndices() method working instead.
-      #bucketIdx = net.sensorRegion.getBucketIndices(actualValue)[0]
-      bucketIdx = actualValue
-
-      classificationIn = {"bucketIdx": int(bucketIdx),
-                          "actValue": int(actualValue)}
-
-      # List the indices of active cells (non-zero pattern)
-      activeCells = temporalMemoryRegion.getOutputData("bottomUpOut")
-      patternNZ = activeCells.nonzero()[0]
-
-      # classify predicted active cells
-      # TODO: ideally we would want to get the tmInstance.getOutput("predictedActiveCells")
-      # TODO[continued] but it is not implemented in the tm_py, so we use this work around for now.
-      # predictiveCells = tmInstance.getOutput("predictedActiveCells")
-      predictiveCells = tmInstance.predictiveCells
-      predictedActiveCells = numpy.intersect1d(activeCells, predictiveCells)
-      if len(predictiveCells) >0: #TODO: this line to be removed. for debugging purposes.
-        #print "predictiveActiveCells: %s" %predictedActiveCells
-        pass
       
-      # Call classifier
-      clResults = classifierRegion.getSelf().customCompute(
-          recordNum=i, patternNZ=patternNZ, classification=classificationIn)
+      categoryProbabilitiesOut =  classifierRegion.getOutputData("categoryProbabilitiesOut")
+      categoriesOut =  classifierRegion.getOutputData("categoryActualValuesOut")
+      
 
-      inferredValue = clResults["actualValues"][clResults[int(classifierRegion.getParameter("steps"))].argmax()]
-
-      outFile.write(" inferredValue=%s | classificationIn=%s | \n clResults=%s \n" %(inferredValue, classificationIn, clResults))
-
+      inferredValue = classifierRegion.getOutputData("categoryOut")[0]
+      
       # Evaluate the predictions in the test set.
       if i > partitions[2]:
         if actualValue == inferredValue:
           numCorrect += 1
-        else:  # TODO: remove. debugging.
-          #print " INCORRECT_PREDICTION: index=%s | actualValue = %s | inferredValue = %s | \n clResults = %s \n\n" % (i, actualValue, inferredValue, clResults)
+        else: 
+          #print "[DEBUG] INCORRECT_PREDICTION: index=%s | actualValue = %s | inferredValue = %s \n" % (i, actualValue, inferredValue)
           pass
-
+        
         numTestRecords += 1
+        
 
   predictionAccuracy =  100.0 * numCorrect / numTestRecords
+
 
   results = "RESULTS: accuracy=%s | %s correctly predicted records out of %s test records \n" %(predictionAccuracy, numCorrect, numTestRecords)
   outFile.write(results)
@@ -212,12 +183,13 @@ if __name__ == "__main__":
     #   input source via the dataSource attribute.
     dataSource = FileRecordStream(streamID=inputFile)
     encoders = {"white_noise": SCALAR_ENCODER_PARAMS}
-    network = createNetwork((dataSource, "py.RecordSensor", encoders))
+    network = createNetwork((dataSource, "py.RecordSensor", "py.SequenceClassifierRegion", encoders))
 
     # Need to init the network before it can run.
     network.initialize()
     run(network, NUM_RECORDS, partitions, outFile)
 
     print "Results written to: %s" %_OUT_FILE
+
 
   outFile.close()
