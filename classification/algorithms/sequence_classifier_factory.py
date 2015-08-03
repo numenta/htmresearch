@@ -18,3 +18,27 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+
+"""Module providing a factory for instantiating a Sequence classifier."""
+
+from SequenceClassifier import SequenceClassifier
+from nupic.support.configuration import Configuration
+
+
+
+class SequenceClassifierFactory(object):
+  """Factory for instantiating Sequence classifiers."""
+
+
+  @staticmethod
+  def create(*args, **kwargs):
+    impl = kwargs.pop('implementation', None)
+    if impl is None:
+      impl = Configuration.get('nupic.opf.claClassifier.implementation')
+    if impl == 'py':
+      return SequenceClassifier(*args, **kwargs)
+    elif impl == 'cpp':
+      raise ValueError('cpp version not yet implemented')
+    else:
+      raise ValueError('Invalid classifier implementation (%r). Value must be '
+                       '"py" or "cpp".' % impl)

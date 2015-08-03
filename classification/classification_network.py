@@ -24,18 +24,17 @@ The methods here are a factory to create a classification network:
   encoder -> SP -> TM -> (UP) -> classifier
 """
 
-import numpy
 
 try:
   import simplejson as json
 except ImportError:
   import json
 
-from nupic.data.file_record_stream import FileRecordStream
-from nupic.encoders import CategoryEncoder, MultiEncoder, ScalarEncoder
+from nupic.encoders import MultiEncoder
 from nupic.engine import Network
 from LanguageSensor import LanguageSensor
-
+from regions.SequenceClassifierRegion import SequenceClassifierRegion
+from nupic.engine import pyRegions
 
 _VERBOSITY = 0
 
@@ -75,25 +74,10 @@ TM_PARAMS = {
     "pamLength": 3,
 }
 
-CLA_CLASSIFIER_PARAMS = {"steps": "1",
-                         "implementation": "py"}
+SEQUENCE_CLASSIFIER_PARAMS = {'maxCategoryCount': 3}
+KNN_CLASSIFIER_PARAMS = {'k': 1}
 
-## TODO: get these straight from nupic/engine.__init__.py
-PY_REGIONS = ["AnomalyRegion",
-              "CLAClassifierRegion",
-              "ImageSensor",
-              "KNNAnomalyClassifierRegion",
-              "KNNClassifierRegion",
-              "PCANode",
-              "PyRegion",
-              "RecordSensor",
-              "SPRegion",
-              "SVMClassifierNode",
-              "TPRegion",
-              "TestNode",
-              "TestRegion",
-              "UnimportableNode",
-              "GaborNode2"]
+PY_REGIONS = [r[1] for r in pyRegions]
 
 
 
@@ -230,25 +214,33 @@ def createTemporalMemoryRegion(network, prevRegionWidth):
   return temporalMemoryRegion
 
 
-def createClassifierRegion(network):
+def createClassifierRegion(network, classifierType, prevRegionWidth):
   """
   Create classifier region.
 
   @param network          (Network)   The region will be a node in this network.
+  @param classifierType   (str)           Specific type of region, e.g.
+      "py.CLAClassifierRegion"; possible options can be found in /nupic/regions/.
   @param prevRegionWidth  (int)       Width of region below.
-  @return                 (Region)    CLA classifier region of the network.
+  @return                 (Region)    Classifier region of the network.
 
-  TODO: replace CLAClassifier w/ SequenceClassifier region
   """
+  # Classifier region may be non-standard, so add custom region class to the network
+  if classifierType.split(".")[1] not in PY_REGIONS:
+    # Add new region class to the network
+    network.registerRegion(SequenceClassifierRegion)
+    PY_REGIONS.append(classifierType.split(".")[1])
+  
   # Create the classifier region.
   classifierRegion = network.addRegion(
-      "classifier", "py.CLAClassifierRegion", json.dumps(CLA_CLASSIFIER_PARAMS))
+      "classifier", classifierType, json.dumps(SEQUENCE_CLASSIFIER_PARAMS))
 
   # Disable learning for now (will be enabled in a later training phase)... why???
   classifierRegion.setParameter("learningMode", False)
 
   # Inference mode outputs the current inference. We can always leave it on.
   classifierRegion.setParameter("inferenceMode", True)
+  
 
   return classifierRegion
 
@@ -262,15 +254,16 @@ def createRegions(network, args):
   """
   (dataSource,
    sensorType,
+   classifierType,
    encoders) = args
 
   sensor = createSensorRegion(network, sensorType, encoders, dataSource)
 
-  createSpatialPoolerRegion(network, sensor.encoder.getWidth())
+  sp = createSpatialPoolerRegion(network, sensor.encoder.getWidth())
 
-  createTemporalMemoryRegion(network, SP_PARAMS["columnCount"])
+  tm = createTemporalMemoryRegion(network, sp.getSelf().columnCount)
 
-  createClassifierRegion(network)
+  createClassifierRegion(network, classifierType, tm.getSelf().outputWidth)
 
 
 def linkRegions(network):
@@ -301,7 +294,7 @@ def linkRegions(network):
       srcOutput = "bottomUpOut", destInput = "bottomUpIn")
 
   # Link the sensor to the classifier to send in category labels.
-  # TODO: this link is useless right now because the CLAclassifier region
+  # TODO: this link is useless right now because the classifier region
   # compute() function doesn't work... we are currently feeding TM states and
   # categories manually to the classifier via the customCompute() function.
   network.link("sensor", "classifier", "UniformLink", "",
@@ -316,6 +309,8 @@ def createNetwork(args):
   @param args                   (dataSource, sensorType, encoders), more info:
     dataSource   (RecordStream) Sensor region reads data from here.
     sensorType   (str)          Specific type of region, e.g. "py.RecordSensor";
+                                possible options can be found in nupic/regions/.
+    classifierType   (str)      Specific type of classifier region, e.g. "py.CLAClassifier";
                                 possible options can be found in nupic/regions/.
     encoders     (dict)         See createEncoder() docstring for format.
 
