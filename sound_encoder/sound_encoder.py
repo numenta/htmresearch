@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -55,34 +55,34 @@ class SoundEncoder(Encoder):
     self._scalarEncoder = ScalarEncoder(name="scalar_"+str(name), n=n, w=w,
                                         minval=minval, maxval=maxval)
 
-  def _detectFrequency(self, input):
+  def _detectFrequency(self, inputArr):
     """Use FFT to find maximum frequency present in the input."""
-    fftData=abs(np.fft.rfft(input))**2
+    fftData=abs(np.fft.rfft(inputArr))**2
     maxFreqIdx = np.argmax(fftData)
 
     if maxFreqIdx < len(fftData)-1:
-        # Quadratic interpolation
-        y0,y1,y2 = np.log(fftData[maxFreqIdx-1:maxFreqIdx+2:])
-        x1 = (y2 - y0) * .5 / (2 * y1 - y2 - y0)
-        return (maxFreqIdx+x1)*(self.rate/self.chunk)
+      # Quadratic interpolation
+      y0,y1,y2 = np.log(fftData[maxFreqIdx-1:maxFreqIdx+2:])
+      x1 = (y2 - y0) * .5 / (2 * y1 - y2 - y0)
+      return (maxFreqIdx+x1)*(self.rate/self.chunk)
 
     # Maximum idx is last in list, so cannot do quadratic interpolation
     return (maxFreqIdx+x1)*(self.rate/self.chunk)
 
-  def encodeIntoArray(self, input, output):
-    if not isinstance(input, (list, np.ndarray)):
+  def encodeIntoArray(self, inputArr, output):
+    if not isinstance(inputArr, (list, np.ndarray)):
       raise TypeError(
-          "Expected a list or numpy array but got input of type %s" % type(input))
+          "Expected a list or numpy array but got input of type %s" % type(inputArr))
 
-    if input == SENTINEL_VALUE_FOR_MISSING_DATA:
+    if inputArr == SENTINEL_VALUE_FOR_MISSING_DATA:
       output[0:self.n] = 0
     else:
-      frequency = self._detectFrequency(input)
+      frequency = self._detectFrequency(inputArr)
       # Fail fast if frequency is outside allowed range.
       if (frequency < self.minval) or (frequency > self.maxval):
-          raise ValueError(
-               "Frequency value %f is outside allowed range (%f, %f)" % (
-                    frequency, self.minval, self.maxval))
+        raise ValueError(
+             "Frequency value %f is outside allowed range (%f, %f)" % (
+                  frequency, self.minval, self.maxval))
 
       output[0:self.n] = self._scalarEncoder.encode(frequency)
 
