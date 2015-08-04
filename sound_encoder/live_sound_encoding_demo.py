@@ -39,10 +39,10 @@ RECORD_SECONDS = 10
 def getAudioStream():
   p = pyaudio.PyAudio()
   return p.open(format=FORMAT,
-				channels=CHANNELS,
-				rate=RATE,
-				input=True,
-				frames_per_buffer=CHUNK)
+                channels=CHANNELS,
+                rate=RATE,
+                input=True,
+                frames_per_buffer=CHUNK)
 
 
 def transformData(data, window):
@@ -88,4 +88,3 @@ if __name__ == "__main__":
   stream = getAudioStream()
   sdrs = recordAndEncode(stream, soundEncoder)
   visualizeSDRs(sdrs)
-

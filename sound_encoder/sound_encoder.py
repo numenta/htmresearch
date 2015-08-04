@@ -55,6 +55,7 @@ class SoundEncoder(Encoder):
     self._scalarEncoder = ScalarEncoder(name="scalar_"+str(name), n=n, w=w,
                                         minval=minval, maxval=maxval)
 
+
   def _detectFrequency(self, inputArr):
     """Use FFT to find maximum frequency present in the input."""
     fftData=abs(np.fft.rfft(inputArr))**2
@@ -62,12 +63,13 @@ class SoundEncoder(Encoder):
 
     if maxFreqIdx < len(fftData)-1:
       # Quadratic interpolation
-      y0,y1,y2 = np.log(fftData[maxFreqIdx-1:maxFreqIdx+2:])
+      y0, y1, y2 = np.log(fftData[maxFreqIdx-1:maxFreqIdx+2:])
       x1 = (y2 - y0) * .5 / (2 * y1 - y2 - y0)
       return (maxFreqIdx+x1)*(self.rate/self.chunk)
 
     # Maximum idx is last in list, so cannot do quadratic interpolation
     return (maxFreqIdx+x1)*(self.rate/self.chunk)
+
 
   def encodeIntoArray(self, inputArr, output):
     if not isinstance(inputArr, (list, np.ndarray)):
@@ -85,6 +87,7 @@ class SoundEncoder(Encoder):
                   frequency, self.minval, self.maxval))
 
       output[0:self.n] = self._scalarEncoder.encode(frequency)
+
 
   def getWidth(self):
     return self.n
