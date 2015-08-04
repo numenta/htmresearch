@@ -136,19 +136,19 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
   @return             (Region)        Sensor region of the network.
   """
   # Sensor region may be non-standard, so add custom region class to the network
-  SENSOR_NAME = sensorType.split(".")[1]
-  SENSOR_MODULE = SENSOR_NAME  # conveniently have the same name
-  if SENSOR_NAME not in PY_REGIONS:
+  sensorName = sensorType.split(".")[1]
+  sensorModule = sensorName  # conveniently have the same name
+  if sensorName not in PY_REGIONS:
     # Add new region class to the network
     try:
-      module = __import__(SENSOR_MODULE, {}, {}, SENSOR_NAME)
-      sensorClass = getattr(module, SENSOR_NAME)
+      module = __import__(sensorModule, {}, {}, sensorName)
+      sensorClass = getattr(module, sensorName)
       Network.registerRegion(sensorClass)
       # Add region to list of registered PyRegions
-      PY_REGIONS.append(SENSOR_NAME)
+      PY_REGIONS.append(sensorName)
     except ImportError:
       raise RuntimeError("Could not find sensor \'{}\' to import.".
-                         format(SENSOR_NAME))
+                         format(sensorName))
 
   try:
     # Add region to network
