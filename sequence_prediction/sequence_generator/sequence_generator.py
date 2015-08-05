@@ -25,11 +25,17 @@ import random
 
 class SequenceGenerator(object):
 
+  def __init__(self, seed=None):
+    self.seed = seed
+
+
   def generate(self, order, numPredictions=1):
     assert order > 0
 
     symbols = range(order + 1 + (numPredictions * 2))
+    random.seed(self.seed)
     random.shuffle(symbols)
+    random.seed()
     subsequence = symbols[0:order-1]
 
     sequences = []
@@ -47,7 +53,7 @@ class SequenceGenerator(object):
 
 
 if __name__ == "__main__":
-  generator = SequenceGenerator()
+  generator = SequenceGenerator(seed=42)
 
   print "Examples:"
   print "Order 1, with 5 predictions for each sequence:", generator.generate(1, 5)
