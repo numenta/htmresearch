@@ -22,10 +22,10 @@
 """This file implements the SequenceClassifier."""
 
 import array
-from collections import deque
 import itertools
-
 import numpy
+
+from collections import deque
 
 
 # This determines how large one of the duty cycles must get before each of the
@@ -270,10 +270,12 @@ class SequenceClassifier(object):
 
     Parameters:
     ---------------------------------------------------------------------
-    steps:    Sequence of the different steps of multi-step predictions to learn
-    alpha:    The alpha used to compute running averages of the bucket duty
+    steps:     Sequence of the different steps of multi-step predictions to learn
+    alpha:     The alpha used to compute running averages of the bucket duty
                cycles for each activation pattern bit. A lower alpha results
                in longer term memory.
+    actValueAlpha:    The alpha used to compute running averages of the 
+                      actual values for each bucket.
     verbosity: verbosity level, can be 0, 1, or 2
     """
     # Save constructor args
@@ -322,9 +324,6 @@ class SequenceClassifier(object):
   def compute(self, recordNum, patternNZ, classification, learn, infer):
     """
     Process one input sample.
-    This method is called by outer loop code outside the nupic-engine. We
-    use this instead of the nupic engine compute() because our inputs and
-    outputs aren't fixed size vectors of reals.
 
     Parameters:
     --------------------------------------------------------------------
