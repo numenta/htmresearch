@@ -187,8 +187,8 @@ if __name__ == "__main__":
     dataSource = FileRecordStream(streamID=inputFile)
     encoders = encoders = {"y": _SCALAR_ENCODER_PARAMS, "label": _CATEGORY_ENCODER_PARAMS}
     network = createNetwork(
-      (dataSource, "py.RecordSensor", encoders, "py.SequenceClassifierRegion",
-       _SEQUENCE_CLASSIFIER_PARAMS, NUM_CATEGORIES))
+      (dataSource, "py.RecordSensor", encoders, NUM_CATEGORIES, "py.SequenceClassifierRegion",
+       _SEQUENCE_CLASSIFIER_PARAMS))
 
     # Need to init the network before it can run.
     network.initialize()
