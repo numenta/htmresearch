@@ -33,7 +33,7 @@ from nupic.frameworks.opf.modelfactory import ModelFactory
 from generate_data import generateData
 from generate_model_params import createModelParams
 from settings import \
-  NUMBER_OF_LABELS, \
+  NUM_CATEGORIES, \
   RESULTS_DIR, \
   SIGNAL_TYPES, \
   CLASSIFIER_TRAINING_SET_SIZE, \

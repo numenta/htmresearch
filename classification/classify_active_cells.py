@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -26,7 +26,7 @@ from classification_network import createNetwork
 from generate_data import generateData
 from generate_model_params import findMinMax
 from nupic.data.file_record_stream import FileRecordStream
-from settings import (NUMBER_OF_LABELS,
+from settings import (NUM_CATEGORIES,
                       NUM_RECORDS,
                       CLASSIFIER_TRAINING_SET_SIZE,
                       TM_TRAINING_SET_SIZE,
@@ -38,34 +38,40 @@ from settings import (NUMBER_OF_LABELS,
                       DATA_DIR,
                       )
 
-
-_OUT_FILE = "results/network.out"
 _VERBOSITY = 0
 
-SCALAR_ENCODER_PARAMS = {
-    "name": "white_noise",
-    "fieldname": "y",
-    "type": "ScalarEncoder",
-    "n": 256,
-    "w": 21,
-    "minval": None, # needs to be initialized after file introspection
-    "maxval": None  # needs to be initialized after file introspection
+_SCALAR_ENCODER_PARAMS = {
+  "name": "white_noise",
+  "fieldname": "y",
+  "type": "ScalarEncoder",
+  "n": 256,
+  "w": 21,
+  "minval": None,  # needs to be initialized after file introspection
+  "maxval": None  # needs to be initialized after file introspection
 }
 
-CATEGORY_ENCODER_PARAMS = {
-    "name": 'label',
-    "w": 21,
-    "categoryList": range(NUMBER_OF_LABELS)
+_CATEGORY_ENCODER_PARAMS = {
+  "name": 'white_noise',
+  "fieldname": 'label',
+  "type": "CategoryEncoder",
+  "w": 21,
+  "categoryList": range(NUM_CATEGORIES)
 }
 
+_SEQUENCE_CLASSIFIER_PARAMS = {'maxCategoryCount': NUM_CATEGORIES}
 
-outFile = open(_OUT_FILE, 'wb')
+_KNN_CLASSIFIER_PARAMS = {
+  "k": 1,
+  'distThreshold': 0,
+  'maxCategoryCount': NUM_CATEGORIES,
+}
+
+_OUT_FILE = open("results/network.out", 'wb')
 
 
 def run(net, numRecords, partitions, outFile):
   """
   Run the network and write classification results output.
-
   @param net: a Network instance to run.
   @param outFile: a writer instance to write output to file.
   @param partitions: list of indices at which training begins for the SP, TM,
@@ -87,28 +93,28 @@ def run(net, numRecords, partitions, outFile):
   for i in xrange(numRecords):
     # Run the network for a single iteration
     net.run(1)
-    
+
     # Various info from the network, useful for debugging & monitoring
     anomalyScore = temporalMemoryRegion.getOutputData("anomalyScore")
-    
+
     # NOTE: To be able to extract a category, one of the field of the the
     # dataset needs to have the flag C so it can be recognized as a category
-    # by the encoder.
+    # by the FileRecordStream instance.
     actualValue = sensorRegion.getOutputData("categoryOut")[0]
 
-    outFile.write("=> INDEX=%s |  actualValue=%s | anomalyScore=%s \n" %(i, actualValue, anomalyScore))
+    outFile.write("=> INDEX=%s |  actualValue=%s | anomalyScore=%s \n" % (i, actualValue, anomalyScore))
 
     # SP has been trained. Now start training the TM too.
     if i == partitions[0]:
       temporalMemoryRegion.setParameter("learningMode", True)
-      phaseInfo = "-> Training TM. Index=%s. LEARNING: SP is ON | TM is ON | Classifier is OFF \n" %i
+      phaseInfo = "-> Training TM. Index=%s. LEARNING: SP is ON | TM is ON | Classifier is OFF \n" % i
       outFile.write(phaseInfo)
       print phaseInfo
 
     # Start training the classifier as well.
     elif i == partitions[1]:
       classifierRegion.setParameter("learningMode", True)
-      phaseInfo = "-> Training Classifier. Index=%s. LEARNING: SP is OFF | TM is ON | Classifier is ON \n" %i
+      phaseInfo = "-> Training Classifier. Index=%s. LEARNING: SP is OFF | TM is ON | Classifier is ON \n" % i
       outFile.write(phaseInfo)
       print phaseInfo
 
@@ -117,35 +123,33 @@ def run(net, numRecords, partitions, outFile):
       spatialPoolerRegion.setParameter("learningMode", False)
       temporalMemoryRegion.setParameter("learningMode", False)
       classifierRegion.setParameter("learningMode", False)
-      phaseInfo = "-> Test. Index=%s. LEARNING: SP is OFF | TM is OFF | Classifier is OFF \n" %i
+      phaseInfo = "-> Test. Index=%s. LEARNING: SP is OFF | TM is OFF | Classifier is OFF \n" % i
       outFile.write(phaseInfo)
       print phaseInfo
 
-    #--- BEGIN PREDICTING TEST SET --#
+    # --- BEGIN PREDICTING TEST SET --#
     if i >= partitions[1]:
 
-      
-      categoryProbabilitiesOut =  classifierRegion.getOutputData("categoryProbabilitiesOut")
-      categoriesOut =  classifierRegion.getOutputData("categoryActualValuesOut")
-      
-
+      # get various outputs
+      categoryProbabilitiesOut = classifierRegion.getOutputData("categoryProbabilitiesOut")
+      categoriesOut = classifierRegion.getOutputData("categoryActualValuesOut")
+      inferredValue = categoriesOut[categoryProbabilitiesOut.argmax()]
       inferredValue = classifierRegion.getOutputData("categoryOut")[0]
-      
+
       # Evaluate the predictions in the test set.
       if i > partitions[2]:
         if actualValue == inferredValue:
           numCorrect += 1
-        else: 
-          #print "[DEBUG] INCORRECT_PREDICTION: index=%s | actualValue = %s | inferredValue = %s \n" % (i, actualValue, inferredValue)
-          pass
-        
+        else:
+          print "[DEBUG] INCORRECT_PREDICTION: index=%s | actualValue = %s | inferredValue = %s \n" \
+                % (i, actualValue, inferredValue)
+
         numTestRecords += 1
-        
 
-  predictionAccuracy =  100.0 * numCorrect / numTestRecords
+  predictionAccuracy = 100.0 * numCorrect / numTestRecords
 
-
-  results = "RESULTS: accuracy=%s | %s correctly predicted records out of %s test records \n" %(predictionAccuracy, numCorrect, numTestRecords)
+  results = "RESULTS: accuracy=%s | %s correctly predicted records out of %s test records \n" % (
+    predictionAccuracy, numCorrect, numTestRecords)
   outFile.write(results)
   print results
 
@@ -154,17 +158,17 @@ def run(net, numRecords, partitions, outFile):
 
 def _setupScalarEncoder(minval, maxval):
   # Set min and max for scalar encoder params.
-  SCALAR_ENCODER_PARAMS["minval"] = minval
-  SCALAR_ENCODER_PARAMS["maxval"] = maxval
+  _SCALAR_ENCODER_PARAMS["minval"] = minval
+  _SCALAR_ENCODER_PARAMS["maxval"] = maxval
 
 
 if __name__ == "__main__":
 
   for noiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
-    
-    expParams = "RUNNING EXPERIMENT WITH PARAMS: numRecords=%s | noiseAmplitude=%s | signalAmplitude=%s | signalMean=%s | signalPeriod=%s \n"\
-          %(NUM_RECORDS, noiseAmplitude, SIGNAL_AMPLITUDE, SIGNAL_MEAN, SIGNAL_PERIOD)
-    outFile.write(expParams)
+    expParams = "RUNNING EXPERIMENT WITH PARAMS: " + \
+                "numRecords=%s | noiseAmplitude=%s | signalAmplitude=%s | signalMean=%s | signalPeriod=%s \n" \
+                % (NUM_RECORDS, noiseAmplitude, SIGNAL_AMPLITUDE, SIGNAL_MEAN, SIGNAL_PERIOD)
+    _OUT_FILE.write(expParams)
     print expParams
 
     # Generate the data, and get the min/max values
@@ -172,8 +176,7 @@ if __name__ == "__main__":
     inputFile = os.path.join(DATA_DIR, "white_noise_%s.csv" % noiseAmplitude)
     minval, maxval = findMinMax(inputFile)
     # Partition records into training sets for SP, TM, and classifier
-    partitions = [
-      SP_TRAINING_SET_SIZE, TM_TRAINING_SET_SIZE, CLASSIFIER_TRAINING_SET_SIZE]
+    partitions = [SP_TRAINING_SET_SIZE, TM_TRAINING_SET_SIZE, CLASSIFIER_TRAINING_SET_SIZE]
 
     _setupScalarEncoder(minval, maxval)
 
@@ -182,14 +185,15 @@ if __name__ == "__main__":
     #   RecordSensor region allows us to specify a file record stream as the
     #   input source via the dataSource attribute.
     dataSource = FileRecordStream(streamID=inputFile)
-    encoders = {"white_noise": SCALAR_ENCODER_PARAMS}
-    network = createNetwork((dataSource, "py.RecordSensor", "py.SequenceClassifierRegion", encoders))
+    encoders = encoders = {"y": _SCALAR_ENCODER_PARAMS, "label": _CATEGORY_ENCODER_PARAMS}
+    network = createNetwork(
+      (dataSource, "py.RecordSensor", encoders, "py.SequenceClassifierRegion",
+       _SEQUENCE_CLASSIFIER_PARAMS, NUM_CATEGORIES))
 
     # Need to init the network before it can run.
     network.initialize()
-    run(network, NUM_RECORDS, partitions, outFile)
+    run(network, NUM_RECORDS, partitions, _OUT_FILE)
 
-    print "Results written to: %s" %_OUT_FILE
+    print "Results written to: %s" % _OUT_FILE
 
-
-  outFile.close()
+  _OUT_FILE.close()

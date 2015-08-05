@@ -32,14 +32,10 @@ from nupic.data.file_record_stream import FileRecordStream
 #   - replace outFile writing w/ csv writer - commented out
 
 _INPUT_FILE_PATH = os.path.abspath("../../nupic.fluent/data/sample_reviews_multi/sample_reviews_data_training_network2.csv")
+# _INPUT_FILE_PATH = os.path.abspath("../../nupic.fluent/network_experiment/data.csv")
 _OUTPUT_FILE_NAME = ""
 
-NUMBER_OF_LABELS = 4
-CATEGORY_ENCODER_PARAMS = {
-    "name": 'label',
-    "w": 21,
-    "categoryList": range(NUMBER_OF_LABELS)
-}
+TOTAL_NUMBER_OF_CATEGORIES = 4
 
 
 
@@ -52,7 +48,7 @@ def run(outFile):
 
   print "Creating network"
   encoder = CioEncoder(cacheDir="./fluent_experiments/cache")
-  network = createNetwork((dataSource, "py.LanguageSensor", encoder))
+  network = createNetwork((dataSource, "py.LanguageSensor", encoder, TOTAL_NUMBER_OF_CATEGORIES))
   # outputPath = os.path.join(os.path.dirname(__file__), _OUTPUT_FILE_NAME)
   network.initialize()
 
