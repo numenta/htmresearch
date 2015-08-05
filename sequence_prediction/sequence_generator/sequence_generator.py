@@ -30,12 +30,14 @@ class SequenceGenerator(object):
 
 
   def generate(self, order, numPredictions=1):
-    assert order > 0
-
     symbols = range(order + 1 + (numPredictions * 2))
     random.seed(self.seed)
     random.shuffle(symbols)
     random.seed()
+
+    if order == 0:
+      return symbols[0:2]
+
     subsequence = symbols[0:order-1]
 
     sequences = []
@@ -59,3 +61,9 @@ if __name__ == "__main__":
   print "Order 1, with 5 predictions for each sequence:", generator.generate(1, 5)
   print "Order 4, with 3 predictions for each sequence:", generator.generate(4, 3)
   print "Order 10, with 1 prediction for each sequence:", generator.generate(10, 1)
+
+  print
+
+  print "Edge cases:"
+  print "Order 0, with 1 prediction for each sequence:", generator.generate(0, 1)
+  print "Order 0, with 5 predictions for each sequence:", generator.generate(0, 5)
