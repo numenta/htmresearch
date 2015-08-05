@@ -36,7 +36,7 @@ class SequenceGenerator(object):
     random.seed()
 
     if order == 0:
-      return symbols[0:2]
+      return [[symbols[0]], [symbols[1]]]
 
     subsequence = symbols[0:order-1]
 
