@@ -47,6 +47,6 @@ SWARM_CONFIG = {
     "predictionSteps": [1],
     "predictedField": "data"
   },
-  "metricWindow": 1000,
+  "metricWindow": 2000,
   "swarmSize": "large"
 }

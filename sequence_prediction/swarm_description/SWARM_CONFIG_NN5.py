@@ -34,11 +34,11 @@ SWARM_CONFIG = {
     }
   ],
   "streamDef": {
-    "info": "NN5-101",
+    "info": "NN5-103",
     "version": 1,
     "streams": [
       {
-        "source": "file://data/NN5/NN5-101.csv",
+        "source": "file://data/NN5/NN5-103.csv",
         "columns": [
           "*"
         ]
@@ -47,7 +47,7 @@ SWARM_CONFIG = {
   },
   "inferenceType": "TemporalMultiStep",
   "inferenceArgs": {
-    "predictionSteps": range(1, 57),
+    "predictionSteps": range(1, 2),
     "predictedField": "data"
   },
   "metricWindow": 1000,
