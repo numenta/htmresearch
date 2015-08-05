@@ -45,7 +45,7 @@ for i in range(numFile):
   print " save data: ", dataSetName
   dataSet = pd.Series(df[dataSetName])
   trainfileName = './data/NN5/' + dataSetName + '.csv'
-  testfileName = './data/NN5/' + dataSetName + 'cont.csv'
+  testfileName = './data/NN5/' + dataSetName + '_cont.csv'
 
   saveSeriesToCSV(trainfileName, dataSet[:numRecTrain])
   saveSeriesToCSV(testfileName, dataSet[numRecTrain:])

@@ -57,10 +57,9 @@ def plotPerformance(dataSet):
   N = min(len(predData_TM), len(trueData))
 
   TM_lag = 1
-  lag = TM_lag
 
   predData_shift = np.roll(trueData, 1)
-  predData_TM = np.roll(predData_TM, 1)
+  predData_TM = np.roll(predData_TM, TM_lag)
 
   trueData = trueData[10:-10]
   predData_TM = predData_TM[10:-10]

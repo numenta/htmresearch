@@ -24,7 +24,7 @@ import csv
 import numpy as np
 
 angles = np.linspace(0, 120, num=2400)
-sine = np.sin(angles*2)
+sine = np.sin(angles*4)
 
 outputFile = open('data/sine.csv',"w")
 csvWriter = csv.writer(outputFile)
@@ -41,27 +41,27 @@ csvWriter = csv.writer(outputFile)
 csvWriter.writerow(['angle', 'data'])
 csvWriter.writerow(['float', 'float'])
 csvWriter.writerow(['', ''])
-for i in range(2001, 2400):
+for i in range(2001, 2200):
   csvWriter.writerow([angles[i], sine[i]])
 outputFile.close()
 
 
 
-outputFile = open('data/sine_der.csv',"w")
-csvWriter = csv.writer(outputFile)
-csvWriter.writerow(['angle', 'data'])
-csvWriter.writerow(['float', 'float'])
-csvWriter.writerow(['', ''])
-for i in range(1,2000):
-  csvWriter.writerow([angles[i], sine[i]-sine[i-1]])
-outputFile.close()
-
-
-outputFile = open('data/sine_der_cont.csv',"w")
-csvWriter = csv.writer(outputFile)
-csvWriter.writerow(['angle', 'data'])
-csvWriter.writerow(['float', 'float'])
-csvWriter.writerow(['', ''])
-for i in range(2001, 2400):
-  csvWriter.writerow([angles[i], sine[i]-sine[i-1]])
-outputFile.close()
+# outputFile = open('data/sine_der.csv',"w")
+# csvWriter = csv.writer(outputFile)
+# csvWriter.writerow(['angle', 'data'])
+# csvWriter.writerow(['float', 'float'])
+# csvWriter.writerow(['', ''])
+# for i in range(1,2000):
+#   csvWriter.writerow([angles[i], sine[i]-sine[i-1]])
+# outputFile.close()
+#
+#
+# outputFile = open('data/sine_der_cont.csv',"w")
+# csvWriter = csv.writer(outputFile)
+# csvWriter.writerow(['angle', 'data'])
+# csvWriter.writerow(['float', 'float'])
+# csvWriter.writerow(['', ''])
+# for i in range(2001, 2200):
+#   csvWriter.writerow([angles[i], sine[i]-sine[i-1]])
+# outputFile.close()

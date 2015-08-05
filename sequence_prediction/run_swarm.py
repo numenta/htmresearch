@@ -26,8 +26,10 @@ import importlib
 from optparse import OptionParser
 from nupic.swarming import permutations_runner
 from nupic.frameworks.opf.modelfactory import ModelFactory
+from nupic.data.inference_shifter import InferenceShifter
 
 import matplotlib
+
 matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -103,7 +105,7 @@ def createModel(modelParams):
   return model
 
 
-def runNupicModel(filePath, model, plot, useDifference=True):
+def runNupicModel(filePath, model, plot, useDeltaEncoder=True, savePrediction=True):
 
   fileName = os.path.splitext(os.path.basename(filePath))[0]
 
@@ -122,17 +124,19 @@ def runNupicModel(filePath, model, plot, useDifference=True):
     plt.tight_layout()
     plt.ion()
 
-  outputFileName = './prediction/'+fileName+'_TM_pred.csv'
-  outputFile = open(outputFileName,"w")
-  csvWriter = csv.writer(outputFile)
-  csvWriter.writerow(['step', 'data'])
-  csvWriter.writerow(['int', 'float'])
-  csvWriter.writerow(['', ''])
+  if savePrediction:
+    outputFileName = './prediction/'+fileName+'_TM_pred.csv'
+    outputFile = open(outputFileName,"w")
+    csvWriter = csv.writer(outputFile)
+    csvWriter.writerow(['step', 'data'])
+    csvWriter.writerow(['int', 'float'])
+    csvWriter.writerow(['', ''])
 
   data = pd.read_csv(filePath, header=0, skiprows=[1,2])
 
   predictedFieldVals = data[predictedField].astype('float')
-  firstDifference = predictedFieldVals.diff()
+  if useDeltaEncoder:
+    firstDifference = predictedFieldVals.diff()
 
   time_step = []
   actual_data = []
@@ -142,7 +146,7 @@ def runNupicModel(filePath, model, plot, useDifference=True):
     if (i % 100 == 0):
       print "Read %i lines..." % i
 
-    if useDifference:
+    if useDeltaEncoder:
       inputRecord = {inputField: float(firstDifference.values[i])}
     else:
       inputRecord = {inputField: float(predictedFieldVals.values[i])}
@@ -150,11 +154,12 @@ def runNupicModel(filePath, model, plot, useDifference=True):
     result = model.run(inputRecord)
 
     actual_data.append(float(predictedFieldVals.values[i]))
+
     prediction = result.inferences["multiStepBestPredictions"]
-    prediction_values = np.array(prediction.values()).reshape((nPredictionSteps,1))
+    prediction_values = np.array(prediction.values()).reshape((nPredictionSteps, 1))
     prediction_values = np.where(prediction_values == np.array(None), 0, prediction_values)
 
-    if useDifference:
+    if useDeltaEncoder:
       prediction_values += float(predictedFieldVals.values[i])
 
     predict_data = np.concatenate((predict_data, prediction_values),1)
@@ -178,9 +183,11 @@ def runNupicModel(filePath, model, plot, useDifference=True):
 
     allPrediction = list(prediction_values.reshape(nPredictionSteps,))
 
-    csvWriter.writerow([time_step[-1], actual_data[-1], allPrediction[0]])
+    if savePrediction:
+      csvWriter.writerow([time_step[-1], actual_data[-1], allPrediction[0]])
 
-  outputFile.close()
+  if savePrediction:
+    outputFile.close()
 
 
 def calculateFirstDifference(filePath, outputFilePath):
@@ -210,11 +217,14 @@ def calculateFirstDifference(filePath, outputFilePath):
   outputFile.close()
 
 
-def swarm(SWARM_CONFIG, swarmOnDifference=False):
-  if swarmOnDifference:
+def swarm(SWARM_CONFIG, useDeltaEncoder=False):
+  if useDeltaEncoder:
+    print "Use First-order delta encoder"
     filePath = SWARM_CONFIG["streamDef"]['streams'][0]['source']
-    name = os.path.splitext(os.path.basename(filePath))[0]
-    SWARM_CONFIG["streamDef"]['streams'][0]['source'] = 'file://data/'+name+'_FirstDifference.csv'
+    filePath = filePath[7:]
+    name = os.path.splitext(filePath)[0]
+
+    SWARM_CONFIG["streamDef"]['streams'][0]['source'] = 'file://'+name+'_FirstDifference.csv'
 
   filePath = SWARM_CONFIG["streamDef"]['streams'][0]['source']
   filePath = filePath[7:]
@@ -239,6 +249,7 @@ def swarm(SWARM_CONFIG, swarmOnDifference=False):
   print "\nWrote the following model param files:"
   print "\t%s" % modelParams
 
+
 def _getArgs():
   parser = OptionParser(usage="%prog PARAMS_DIR OUTPUT_DIR [options]"
                               "\n\nCompare TM performance with trivial predictor using "
@@ -252,9 +263,9 @@ def _getArgs():
                     help="DataSet Name, choose from sine, SantaFe_A, MackeyGlass")
 
   parser.add_option("-f",
-                    "--swarmOnDifference",
+                    "--useDeltaEncoder",
                     default=False,
-                    dest="swarmOnDifference",
+                    dest="useDeltaEncoder",
                     help="Set to True to use delta encoder")
 
   (options, remainder) = parser.parse_args()
@@ -263,44 +274,47 @@ def _getArgs():
   return options, remainder
 
 
-def runExperiment(dataSet, swarmOnDifference=False):
+def runExperiment(dataSet, useDeltaEncoder=False):
 
   filePath = SWARM_CONFIG["streamDef"]['streams'][0]['source']
   filePath = filePath[7:]
-  fileName = os.path.splitext(filePath)
+  fileName = os.path.splitext(filePath)[0]
 
-  # calculate first difference
-  if swarmOnDifference:
-    filePathtrain = fileName[0] + '_FirstDifference' + fileName[1]
+  # calculate first difference if delta encoder is used
+  if useDeltaEncoder:
+    filePathtrain = fileName + '_FirstDifference' + '.csv'
     calculateFirstDifference(filePath, filePathtrain)
 
-    filePathtestOriginal = fileName[0]+'_cont'+'.csv'
-    filePathtest = fileName[0] + '_FirstDifference' +'_cont'+'.csv'
+    filePathtestOriginal = fileName+'_cont'+'.csv'
+    filePathtest = fileName + '_FirstDifference' +'_cont'+'.csv'
     calculateFirstDifference(filePathtestOriginal, filePathtest)
   else:
-    filePathtest = fileName[0] + '_cont'+'.csv'
+    filePathtest = fileName + '_cont'+'.csv'
     filePathtestOriginal = filePathtest
-  swarm(SWARM_CONFIG, swarmOnDifference)
+
+  # run swarm on data file
+  swarm(SWARM_CONFIG, useDeltaEncoder)
 
   filePath = SWARM_CONFIG["streamDef"]['streams'][0]['source']
+  filePath = filePath[7:]
   fileName = os.path.splitext(os.path.basename(filePath))[0]
 
   modelName = fileName
   modelParams = getModelParamsFromName(modelName)
   model = createModel(modelParams)
 
-  fileTest = filePathtestOriginal
-  runNupicModel(fileTest, model, plot=False, useDifference=True)
+  print 'run model on training data first to get better result on the test data'
+  runNupicModel(filePath, model, plot=False, useDeltaEncoder=useDeltaEncoder, savePrediction=True)
+
+  print 'run model on test data ', filePathtestOriginal
+  runNupicModel(filePathtestOriginal, model, plot=False, useDeltaEncoder=useDeltaEncoder, savePrediction=True)
 
 
 if __name__ == "__main__":
-
-  # dataSet = 'sine'
   (_options, _args) = _getArgs()
   dataSet = _options.dataSet
-  swarmOnDifference = _options.dataSet
+  useDeltaEncoder = _options.useDeltaEncoder
+
   SWARM_CONFIG = importSwarmDescription(dataSet)
-  runExperiment(dataSet, swarmOnDifference)
-
-
+  runExperiment(dataSet, useDeltaEncoder)
 
