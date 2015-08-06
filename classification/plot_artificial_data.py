@@ -25,7 +25,7 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
-from settings import DATA_DIR, SIGNAL_TYPES, WHITE_NOISE_AMPLITUDE_RANGES, SEQUENCE_LENGTH, NUMBER_OF_LABELS
+from settings import DATA_DIR, SIGNAL_TYPES, WHITE_NOISE_AMPLITUDE_RANGES, SEQUENCE_LENGTH, NUM_CATEGORIES
 
 
 
