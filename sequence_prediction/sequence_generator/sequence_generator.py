@@ -29,8 +29,13 @@ class SequenceGenerator(object):
     self.seed = seed
 
 
+  @staticmethod
+  def numSymbols(order, numPredictions):
+    return order + 1 + (numPredictions * 2)
+
+
   def generate(self, order, numPredictions=1):
-    symbols = range(order + 1 + (numPredictions * 2))
+    symbols = range(self.numSymbols(order, numPredictions))
     random.seed(self.seed)
     random.shuffle(symbols)
     random.seed()
