@@ -215,6 +215,9 @@ class BitHistory(object):
 
 
   def write(self, proto):
+    """
+    Write activationPattern bit history.
+    """
     proto.id = self._id
 
     statsProto = proto.init("stats", len(self._stats))
@@ -228,6 +231,9 @@ class BitHistory(object):
 
   @classmethod
   def read(cls, proto):
+    """
+    Read activationPattern bit history.
+    """
     bitHistory = object.__new__(cls)
 
     bitHistory._id = proto.id
@@ -534,6 +540,9 @@ class SequenceClassifier(object):
 
   @classmethod
   def read(cls, proto):
+    """
+    Retrieve properties of prototype (alpha, patternHistory, etc..)
+    """
     classifier = object.__new__(cls)
 
     classifier.steps = []
@@ -578,6 +587,9 @@ class SequenceClassifier(object):
 
 
   def write(self, proto):
+    """
+    Update prototype properties (alpha, patternHistory, etc..)
+    """
     stepsProto = proto.init("steps", len(self.steps))
     for i in xrange(len(self.steps)):
       stepsProto[i] = self.steps[i]
