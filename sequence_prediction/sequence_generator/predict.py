@@ -58,7 +58,7 @@ MODEL_PARAMS = {
       },
       "sensorAutoReset" : None,
     },
-      "spEnable": True,
+      "spEnable": False,
       "spParams": {
         "spVerbosity" : 0,
         "globalInhibition": 1,
@@ -81,16 +81,17 @@ MODEL_PARAMS = {
         "inputWidth": 2048,
         "seed": 1960,
         "temporalImp": "tm_py",
-        "newSynapseCount": 35,
+        "newSynapseCount": 40,
         "maxSynapsesPerSegment": 32,
         "maxSegmentsPerCell": 128,
-        "initialPerm": 0.41,
+        "initialPerm": 0.21,
+        "connectedPerm": 0.50,
         "permanenceInc": 0.1,
-        "permanenceDec" : 0.02,
+        "permanenceDec": 0.1,
         "globalDecay": 0.0,
         "maxAge": 0,
-        "minThreshold": 30,
-        "activationThreshold": 30,
+        "minThreshold": 15,
+        "activationThreshold": 15,
         "outputType": "normal",
         "pamLength": 1,
       },
@@ -181,10 +182,10 @@ if __name__ == "__main__":
           pyplot.plot(range(len(accuracy)), accuracy)
           pyplot.draw()
 
-          rcParams.update({'figure.figsize': (6, 12)})
-          pyplot.figure(2)
-          pyplot.clf()
-          tm = model._getTPRegion().getSelf()._tfdr
-          plotTraces(tm)
+          # rcParams.update({'figure.figsize': (6, 12)})
+          # pyplot.figure(2)
+          # pyplot.clf()
+          # tm = model._getTPRegion().getSelf()._tfdr
+          # plotTraces(tm)
 
     model.resetSequenceStates()
