@@ -24,7 +24,6 @@ The methods here are a factory to create a classification network:
   encoder -> SP -> TM -> (UP) -> classifier
 """
 
-import numpy
 
 try:
   import simplejson as json
@@ -33,6 +32,7 @@ except ImportError:
 
 from nupic.encoders import MultiEncoder
 from nupic.engine import Network
+from regions.SequenceClassifierRegion import SequenceClassifierRegion
 from nupic.engine import pyRegions
 
 
@@ -74,15 +74,6 @@ TM_PARAMS = {
     "pamLength": 3,
 }
 
-
-# TODO: replace with SEQ_CLASSIFIER_PARAMS
-CLA_CLASSIFIER_PARAMS = {"steps": "1",
-                         "implementation": "py"}
-KNN_CLASSIFIER_PARAMS = {
- "k": 1,
- 'distThreshold': 0,
- 'maxCategoryCount': 4,
- }
 
 PY_REGIONS = [r[1] for r in pyRegions]
 
@@ -130,8 +121,8 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
       expected.
 
   @param dataSource   (RecordStream)  Sensor region reads data from here.
-
-  @param numCats      (int)           Number of possible categories per record.
+  
+  @param numCats   (int) Maximum number of categories of the input data.
 
   @return             (Region)        Sensor region of the network.
   """
@@ -234,19 +225,27 @@ def createTemporalMemoryRegion(network, prevRegionWidth):
   return temporalMemoryRegion
 
 
-def createClassifierRegion(network):
+def createClassifierRegion(network, classifierType, classifierParams, prevRegionWidth):
   """
   Create classifier region.
 
   @param network          (Network)   The region will be a node in this network.
+  @param classifierType   (str)           Specific type of region, e.g.
+      "py.CLAClassifierRegion"; possible options can be found in /nupic/regions/.
   @param prevRegionWidth  (int)       Width of region below.
-  @return                 (Region)    CLA classifier region of the network.
+  @return                 (Region)    Classifier region of the network.
 
-  TODO: replace CLAClassifier w/ SequenceClassifier region
   """
+  # Classifier region may be non-standard, so add custom region class to the network
+  if classifierType.split(".")[1] not in PY_REGIONS:
+    # Add new region class to the network
+    network.registerRegion(SequenceClassifierRegion)
+    PY_REGIONS.append(classifierType.split(".")[1])
+  
   # Create the classifier region.
   classifierRegion = network.addRegion(
-      "classifier", "py.CLAClassifierRegion", json.dumps(CLA_CLASSIFIER_PARAMS))
+      "classifier", classifierType, json.dumps(classifierParams))
+
   # Disable learning for now (will be enabled in a later training phase)... why???
   classifierRegion.setParameter("learningMode", False)
 
@@ -261,21 +260,34 @@ def createRegions(network, args):
   Create the regions. @param args is to hold network params.
   Note the regions still need to be linked appropriately in linkRegions().
 
-  @param new      (PyRegion)    If specified, this is a custom (new) region.
+   @param network (Network)    The network instance
+   @param args                 (dataSource, sensorType, encoders, numCategories, 
+                                classifierType, classifierParams) , more info:
+    dataSource   (RecordStream) Sensor region reads data from here.
+    sensorType   (str)          Specific type of region, e.g. "py.RecordSensor";
+                                possible options can be found in nupic/regions/.
+    encoders     (dict)         See createEncoder() docstring for format.
+    numCategories  (int)        Max number of categories of the input data.
+    classifierType   (str)      Specific type of classifier region, e.g. "py.SequenceClassifier";
+                                possible options can be found in nupic/regions/.
+    classifierParams   (dict)   Parameters for the model. E.g. {'maxCategoryCount': 3}                               
+                                
   """
   (dataSource,
    sensorType,
    encoders,
-   numCats) = args
+   numCats,
+   classifierType, 
+   classifierParams) = args
 
   sensor = createSensorRegion(
       network, sensorType, encoders, dataSource, numCats)
 
-  createSpatialPoolerRegion(network, sensor.encoder.getWidth())
+  sp = createSpatialPoolerRegion(network, sensor.encoder.getWidth())
 
-  createTemporalMemoryRegion(network, SP_PARAMS["columnCount"])
+  tm = createTemporalMemoryRegion(network, sp.getSelf().columnCount)
 
-  createClassifierRegion(network)
+  createClassifierRegion(network, classifierType, classifierParams, tm.getSelf().outputWidth)
 
 
 def linkRegions(network):
@@ -318,13 +330,17 @@ def createNetwork(args):
   Create the network instance with regions for the sensor, SP, TM, and
   classifier. Before running, be sure to init w/ network.initialize().
 
-  @param args                   (dataSource, sensorType, encoders), more info:
+  @param args                 (dataSource, sensorType, encoders, numCategories, 
+                                classifierType, classifierParams) , more info:
     dataSource   (RecordStream) Sensor region reads data from here.
     sensorType   (str)          Specific type of region, e.g. "py.RecordSensor";
                                 possible options can be found in nupic/regions/.
     encoders     (dict)         See createEncoder() docstring for format.
-    numCats      (int)          Number of possible categories per record.
-
+    numCategories  (int)        Max number of categories of the input data.
+    classifierType   (str)      Specific type of classifier region, e.g. "py.SequenceClassifier";
+                                possible options can be found in nupic/regions/.
+    classifierParams   (dict)   Parameters for the model. E.g. {'maxCategoryCount': 3}                               
+                                
   @return        (Network)      sensor -> SP -> TM -> CLA classifier
   """
   network = Network()

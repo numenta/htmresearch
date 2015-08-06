@@ -25,31 +25,54 @@ import random
 
 class SequenceGenerator(object):
 
+  def __init__(self, seed=None):
+    self.seed = seed
+
+
   def generate(self, order, numPredictions=1):
-    assert order > 0
-
     symbols = range(order + 1 + (numPredictions * 2))
+    random.seed(self.seed)
     random.shuffle(symbols)
-    subsequence = symbols[0:order-1]
+    random.seed()
 
+    if order == 0:
+      return [[symbols[0]], [symbols[1]]]
+
+    subsequence = symbols[0:order-1]
     sequences = []
 
     for i in xrange(2):
       start = order+i-1
 
       for j in xrange(numPredictions):
-        end = -((numPredictions * i) + j + 1)
-        sequence = [symbols[start]] + subsequence + [symbols[end]]
+        # TODO: refactor
+        remainder = symbols[-(numPredictions * 2):]
+        predictions = remainder[numPredictions * i:numPredictions * (i + 1)]
+        sequence = [symbols[start]] + subsequence + [predictions[j]]
         sequences.append(sequence)
+
+        if order > 2:
+          remainder = list(reversed(remainder))
+          predictions = remainder[numPredictions * i:numPredictions * (i + 1)]
+          sequence = [symbols[start]] + list(reversed(subsequence)) + [predictions[j]]
+          sequences.append(sequence)
 
     return sequences
 
 
 
 if __name__ == "__main__":
-  generator = SequenceGenerator()
+  generator = SequenceGenerator(seed=42)
 
   print "Examples:"
   print "Order 1, with 5 predictions for each sequence:", generator.generate(1, 5)
-  print "Order 4, with 3 predictions for each sequence:", generator.generate(4, 3)
+  print "Order 2, with 3 predictions for each sequence:", generator.generate(2, 3)
+  print "Order 3, with 4 predictions for each sequence:", generator.generate(3, 4)
+  print "Order 4, with 2 predictions for each sequence:", generator.generate(4, 2)
   print "Order 10, with 1 prediction for each sequence:", generator.generate(10, 1)
+
+  print
+
+  print "Edge cases:"
+  print "Order 0, with 1 prediction for each sequence:", generator.generate(0, 1)
+  print "Order 0, with 5 predictions for each sequence:", generator.generate(0, 5)

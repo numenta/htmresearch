@@ -28,7 +28,7 @@ import os
 import random
 from settings import \
   SEQUENCE_LENGTH, \
-  NUMBER_OF_LABELS, \
+  NUM_CATEGORIES, \
   DATA_DIR, \
   DEFAULT_WHITE_NOISE_AMPLITUDE, \
   WHITE_NOISE_AMPLITUDE_RANGES, \
@@ -81,7 +81,7 @@ def generateData(dataDir=None,
     
     if i == endOfSequence:
       endOfSequence += SEQUENCE_LENGTH
-      if label == NUMBER_OF_LABELS - 1:
+      if label == NUM_CATEGORIES - 1:
         label = 0
       else:
         label += 1
