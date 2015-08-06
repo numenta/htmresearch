@@ -34,6 +34,7 @@ from sequence_generator import SequenceGenerator
 
 
 
+MIN_ORDER = 3
 MAX_ORDER = 4
 NUM_PREDICTIONS = 1
 
@@ -112,7 +113,7 @@ def generateSequences():
   generator = SequenceGenerator(seed=42)
   sequences = []
 
-  for order in xrange(MAX_ORDER-1, MAX_ORDER+1):
+  for order in xrange(MIN_ORDER, MAX_ORDER+1):
     sequences += generator.generate(order, NUM_PREDICTIONS)
 
   for sequence in sequences:
