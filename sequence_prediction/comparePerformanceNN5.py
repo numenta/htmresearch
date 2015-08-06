@@ -44,11 +44,11 @@ def NRMSE(data, pred):
 
 
 def plotPerformance(dataSet):
-  filePath = './data/NN5/NN5-' + str(dataSet) + '_cont.csv'
+  filePath = './data/NN5/NN5-' + str(dataSet) + '.csv'
   print "load test data from ", filePath
   trueData = loadDataFile(filePath)
 
-  filePath = './prediction/NN5-' + str(dataSet) + '_cont_TM_pred.csv'
+  filePath = './prediction/NN5-' + str(dataSet) + '_TM_pred.csv'
   print "load TM prediction from ", filePath
   predData_TM = loadDataFile(filePath)
 

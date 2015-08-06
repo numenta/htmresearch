@@ -30,6 +30,7 @@ from nupic.data.inference_shifter import InferenceShifter
 
 import matplotlib
 
+import datetime
 matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -39,6 +40,9 @@ import pandas as pd
 import numpy as np
 
 dataSet = 'sine'
+
+DATE_FORMAT = "%m/%d/%y %H:%M"
+
 
 def importSwarmDescription(dataSet):
   swarmConfigFileName = 'SWARM_CONFIG_' + dataSet
@@ -146,10 +150,16 @@ def runNupicModel(filePath, model, plot, useDeltaEncoder=True, savePrediction=Tr
     if (i % 100 == 0):
       print "Read %i lines..." % i
 
+    inputRecord = {}
+    for field in range(len(SWARM_CONFIG["includedFields"])):
+      fieldName = SWARM_CONFIG["includedFields"][field]['fieldName']
+      inputRecord[fieldName] = data[fieldName].values[i]
+
     if useDeltaEncoder:
-      inputRecord = {inputField: float(firstDifference.values[i])}
-    else:
-      inputRecord = {inputField: float(predictedFieldVals.values[i])}
+      inputRecord[predictedField] = float(firstDifference.values[i])
+
+    if "timestamp" in inputRecord:
+      inputRecord["timestamp"] = datetime.datetime.strptime(inputRecord["timestamp"], DATE_FORMAT)
 
     result = model.run(inputRecord)
 
@@ -274,7 +284,7 @@ def _getArgs():
   return options, remainder
 
 
-def runExperiment(dataSet, useDeltaEncoder=False):
+def runExperiment(SWARM_CONFIG, useDeltaEncoder=False):
 
   filePath = SWARM_CONFIG["streamDef"]['streams'][0]['source']
   filePath = filePath[7:]
@@ -305,9 +315,12 @@ def runExperiment(dataSet, useDeltaEncoder=False):
 
   print 'run model on training data first to get better result on the test data'
   runNupicModel(filePath, model, plot=False, useDeltaEncoder=useDeltaEncoder, savePrediction=True)
+  try:
+    print 'run model on test data ', filePathtestOriginal
+    runNupicModel(filePathtestOriginal, model, plot=False, useDeltaEncoder=useDeltaEncoder, savePrediction=True)
+  except ImportError:
+    raise Exception("No continuation file exist at %s " % filePathtestOriginal)
 
-  print 'run model on test data ', filePathtestOriginal
-  runNupicModel(filePathtestOriginal, model, plot=False, useDeltaEncoder=useDeltaEncoder, savePrediction=True)
 
 
 if __name__ == "__main__":
@@ -316,5 +329,5 @@ if __name__ == "__main__":
   useDeltaEncoder = _options.useDeltaEncoder
 
   SWARM_CONFIG = importSwarmDescription(dataSet)
-  runExperiment(dataSet, useDeltaEncoder)
+  runExperiment(SWARM_CONFIG, useDeltaEncoder)
 
