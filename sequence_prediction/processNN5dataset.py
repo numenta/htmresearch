@@ -27,7 +27,7 @@ def saveSeriesToCSV(fileName, dataSet):
   csvWriter = csv.writer(outputFile)
   csvWriter.writerow(['date', 'data'])
   csvWriter.writerow(['datetime', 'float'])
-  csvWriter.writerow(['', ''])
+  csvWriter.writerow(['T', ''])
   for r in range(len(dataSet)):
     csvWriter.writerow([str(dataSet.index[r]), dataSet[r]])
   outputFile.close()
