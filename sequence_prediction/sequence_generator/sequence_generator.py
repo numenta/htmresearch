@@ -36,19 +36,26 @@ class SequenceGenerator(object):
     random.seed()
 
     if order == 0:
-      return symbols[0:2]
+      return [[symbols[0]], [symbols[1]]]
 
     subsequence = symbols[0:order-1]
-
     sequences = []
 
     for i in xrange(2):
       start = order+i-1
 
       for j in xrange(numPredictions):
-        end = -((numPredictions * i) + j + 1)
-        sequence = [symbols[start]] + subsequence + [symbols[end]]
+        # TODO: refactor
+        remainder = symbols[-(numPredictions * 2):]
+        predictions = remainder[numPredictions * i:numPredictions * (i + 1)]
+        sequence = [symbols[start]] + subsequence + [predictions[j]]
         sequences.append(sequence)
+
+        if order > 2:
+          remainder = list(reversed(remainder))
+          predictions = remainder[numPredictions * i:numPredictions * (i + 1)]
+          sequence = [symbols[start]] + list(reversed(subsequence)) + [predictions[j]]
+          sequences.append(sequence)
 
     return sequences
 
@@ -59,7 +66,9 @@ if __name__ == "__main__":
 
   print "Examples:"
   print "Order 1, with 5 predictions for each sequence:", generator.generate(1, 5)
-  print "Order 4, with 3 predictions for each sequence:", generator.generate(4, 3)
+  print "Order 2, with 3 predictions for each sequence:", generator.generate(2, 3)
+  print "Order 3, with 4 predictions for each sequence:", generator.generate(3, 4)
+  print "Order 4, with 2 predictions for each sequence:", generator.generate(4, 2)
   print "Order 10, with 1 prediction for each sequence:", generator.generate(10, 1)
 
   print
