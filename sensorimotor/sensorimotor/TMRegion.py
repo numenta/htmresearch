@@ -31,6 +31,9 @@ from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 from sensorimotor.fast_general_temporal_memory import FastGeneralTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
+
+
+
 class MonitoredFastGeneralTemporalMemory(TemporalMemoryMonitorMixin,
                                          FastGeneralTemporalMemory): pass
 class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
@@ -57,7 +60,7 @@ def getTMClass(tmImp):
   elif tmImp == "generalMonitored":
     return MonitoredGeneralTemporalMemory
   elif tmImp == "fastMonitored":
-    raise NotImplementedError
+    return MonitoredFastGeneralTemporalMemory
   else:
     raise RuntimeError("Invalid temporal memory implementation '{imp}'. "
                        "Legal values are: 'general' and 'fast'"
@@ -374,9 +377,9 @@ class TMRegion(PyRegion):
     predictedActiveCellsOutput = numpy.zeros(
       self.getOutputElementCount("predictedActiveCells"), dtype=GetNTAReal())
 
-    activeCells = [cell.idx for cell in (self._tm.activeCells)]
+    activeCells = [self._tm.getCellIndex(cell) for cell in (self._tm.activeCells)]
     activeCellsOutput[activeCells] = 1.0
-    preditedActiveCells = [cell.idx for cell in (self._tm.predictedActiveCells)]
+    preditedActiveCells = [self._tm.getCellIndex(cell) for cell in (self._tm.predictedActiveCells)]
     predictedActiveCellsOutput[preditedActiveCells] = 1.0
 
     outputs["activeCells"][:] = predictedActiveCellsOutput[:]
