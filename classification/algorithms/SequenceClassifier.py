@@ -27,13 +27,13 @@ import numpy
 
 from collections import deque
 
-
 # This determines how large one of the duty cycles must get before each of the
 # duty cycles are updated to the current iteration.
 # This must be less than float32 size since storage is float32 size
 DUTY_CYCLE_UPDATE_INTERVAL = numpy.finfo(numpy.float32).max / ( 2**20 )
 
 g_debugPrefix = "SequenceClassifier"
+
 
 
 def _pFormatArray(array_, fmt="%.2f"):
@@ -526,7 +526,6 @@ class SequenceClassifier(object):
       for (i, pattern) in enumerate(self._patternNZHistory):
         self._patternNZHistory[i] = (self._learnIteration-(historyLen-i),
                                      pattern)
-
 
     elif state["_version"] == 2:
       # Version 2 introduced _recordNumMinusLearnIteration
