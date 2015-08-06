@@ -82,7 +82,7 @@ MODEL_PARAMS = {
         "seed": 1960,
         "temporalImp": "tm_py",
         "newSynapseCount": 40,
-        "maxSynapsesPerSegment": 32,
+        "maxSynapsesPerSegment": 128,
         "maxSegmentsPerCell": 128,
         "initialPerm": 0.21,
         "connectedPerm": 0.50,
