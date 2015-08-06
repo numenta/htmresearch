@@ -121,6 +121,8 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
       expected.
 
   @param dataSource   (RecordStream)  Sensor region reads data from here.
+  
+  @param numCats   (int) Maximum number of categories of the input data.
 
   @return             (Region)        Sensor region of the network.
   """
@@ -258,7 +260,18 @@ def createRegions(network, args):
   Create the regions. @param args is to hold network params.
   Note the regions still need to be linked appropriately in linkRegions().
 
-  @param new      (PyRegion)    If specified, this is a custom (new) region.
+   @param network (Network)    The network instance
+   @param args                 (dataSource, sensorType, encoders, numCategories, 
+                                classifierType, classifierParams) , more info:
+    dataSource   (RecordStream) Sensor region reads data from here.
+    sensorType   (str)          Specific type of region, e.g. "py.RecordSensor";
+                                possible options can be found in nupic/regions/.
+    encoders     (dict)         See createEncoder() docstring for format.
+    numCategories  (int)        Max number of categories of the input data.
+    classifierType   (str)      Specific type of classifier region, e.g. "py.SequenceClassifier";
+                                possible options can be found in nupic/regions/.
+    classifierParams   (dict)   Parameters for the model. E.g. {'maxCategoryCount': 3}                               
+                                
   """
   (dataSource,
    sensorType,
@@ -317,15 +330,17 @@ def createNetwork(args):
   Create the network instance with regions for the sensor, SP, TM, and
   classifier. Before running, be sure to init w/ network.initialize().
 
-  @param args                   (dataSource, sensorType, encoders), more info:
+  @param args                 (dataSource, sensorType, encoders, numCategories, 
+                                classifierType, classifierParams) , more info:
     dataSource   (RecordStream) Sensor region reads data from here.
     sensorType   (str)          Specific type of region, e.g. "py.RecordSensor";
                                 possible options can be found in nupic/regions/.
-    classifierType   (str)      Specific type of classifier region, e.g. "py.CLAClassifier";
-                                possible options can be found in nupic/regions/.
-  
     encoders     (dict)         See createEncoder() docstring for format.
-
+    numCategories  (int)        Max number of categories of the input data.
+    classifierType   (str)      Specific type of classifier region, e.g. "py.SequenceClassifier";
+                                possible options can be found in nupic/regions/.
+    classifierParams   (dict)   Parameters for the model. E.g. {'maxCategoryCount': 3}                               
+                                
   @return        (Network)      sensor -> SP -> TM -> CLA classifier
   """
   network = Network()
