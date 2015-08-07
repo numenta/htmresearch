@@ -140,17 +140,6 @@ class SequenceClassifierRegion(PyRegion):
             'accessMode': 'ReadWrite'
           },
 
-          #TODO: this should go away for sequence classification. we always map TM states to current timestep
-          'steps': {
-            'description': 'Comma separated list of the desired steps of '
-                        'prediction that the classifier should learn',
-            'dataType': "Byte",
-            'count': 0,
-            'constraints': '',
-            'defaultValue': '0',
-            'accessMode': 'Create'
-          },
-
           'alpha': {
             'description': 'The alpha used to compute running averages of the '
                'bucket duty cycles for each activation pattern bit. A lower '
@@ -190,22 +179,17 @@ class SequenceClassifierRegion(PyRegion):
 
 
   def __init__(self,
-               steps='0',
                alpha=0.001,
                clVerbosity=0,
                implementation='py',
                maxCategoryCount=None
                ):
 
-    # Convert the steps designation to a list
-    self.steps = steps
-    self.stepsList = eval("[%s]" % (steps))
     self.alpha = alpha
     self.verbosity = clVerbosity
 
     # Initialize internal structures
-    self._claClassifier = SequenceClassifierFactory.create(
-        steps=self.stepsList,
+    self._classifier = SequenceClassifierFactory.create(
         alpha=self.alpha,
         verbosity=self.verbosity,
         implementation=implementation,
@@ -230,7 +214,7 @@ class SequenceClassifierRegion(PyRegion):
 
 
   def clear(self):
-    self._claClassifier.clear()
+    self._classifier.clear()
 
 
   def getParameter(self, name, index=-1):
@@ -278,7 +262,7 @@ class SequenceClassifierRegion(PyRegion):
                          }
     
     
-    clResults = self._claClassifier.compute(recordNum=self.recordNum,
+    clResults = self._classifier.compute(recordNum=self.recordNum,
                                 patternNZ=patternNZ,
                                 classification=classificationIn,
                                 learn = self.learningMode,
@@ -289,9 +273,9 @@ class SequenceClassifierRegion(PyRegion):
     clResultsSize = len(clResults["actualValues"])
     for i in xrange(clResultsSize):
       outputs['categoryActualValuesOut'][i] = clResults["actualValues"][i]
-      outputs['categoryProbabilitiesOut'][i] = clResults[int(self.steps)][i]
-      
-    outputs['categoryOut'][0] = clResults["actualValues"][clResults[int(self.steps)].argmax()]
+      outputs['categoryProbabilitiesOut'][i] = clResults['probabilities'][i]
+
+    outputs['categoryOut'][0] = clResults["actualValues"][clResults['probabilities'].argmax()]
 
     self.recordNum += 1
 
@@ -319,7 +303,7 @@ class SequenceClassifierRegion(PyRegion):
                    4 : [0.2, 0.4, 0.3, 0.5]}
     """
 
-    return self._claClassifier.compute( recordNum=recordNum,
+    return self._classifier.compute( recordNum=recordNum,
                                         patternNZ=patternNZ,
                                         classification=classification,
                                         learn = self.learningMode,

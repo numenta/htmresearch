@@ -30,7 +30,7 @@ import importlib
 from nupic.data.datasethelpers import findDataset
 from nupic.frameworks.opf.modelfactory import ModelFactory
 
-from generate_data import generateData
+from generate_sensor_data import generateData
 from generate_model_params import createModelParams
 from settings import (
   RESULTS_DIR,
@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
   for noiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
     # generate data
-    generateData(dataDir=DATA_DIR, whiteNoise=True, noise_amplitude=noiseAmplitude)
+    generateData(dataDir=DATA_DIR, noise_amplitude=noiseAmplitude)
 
     # generate model params
     signalType = 'white_noise'

@@ -23,14 +23,12 @@
 import os
 
 from classification_network import createNetwork
-from generate_data import generateData
+from generate_sensor_data import generateData
 from generate_model_params import findMinMax
 from nupic.data.file_record_stream import FileRecordStream
 from settings import (NUM_CATEGORIES,
                       NUM_RECORDS,
-                      CLASSIFIER_TRAINING_SET_SIZE,
-                      TM_TRAINING_SET_SIZE,
-                      SP_TRAINING_SET_SIZE,
+                      PARTITIONS,
                       SIGNAL_AMPLITUDE,
                       SIGNAL_MEAN,
                       SIGNAL_PERIOD,
@@ -38,7 +36,7 @@ from settings import (NUM_CATEGORIES,
                       DATA_DIR,
                       )
 
-_VERBOSITY = 0
+_VERBOSITY = 1
 
 _SCALAR_ENCODER_PARAMS = {
   "name": "white_noise",
@@ -133,8 +131,11 @@ def run(net, numRecords, partitions, outFile):
       # get various outputs
       categoryProbabilitiesOut = classifierRegion.getOutputData("categoryProbabilitiesOut")
       categoriesOut = classifierRegion.getOutputData("categoryActualValuesOut")
-      inferredValue = categoriesOut[categoryProbabilitiesOut.argmax()]
       inferredValue = classifierRegion.getOutputData("categoryOut")[0]
+      print "probabilities: %s" % categoryProbabilitiesOut
+      print "categories: %s" % categoriesOut
+      print "actual category: %s | predicted category: %s" %(sensorRegion.getOutputData("categoryOut")[0], inferredValue)
+      
 
       # Evaluate the predictions in the test set.
       if i > partitions[2]:
@@ -172,12 +173,10 @@ if __name__ == "__main__":
     print expParams
 
     # Generate the data, and get the min/max values
-    generateData(whiteNoise=True, noise_amplitude=noiseAmplitude)
+    generateData(noise_amplitude=noiseAmplitude)
     inputFile = os.path.join(DATA_DIR, "white_noise_%s.csv" % noiseAmplitude)
     minval, maxval = findMinMax(inputFile)
     # Partition records into training sets for SP, TM, and classifier
-    partitions = [SP_TRAINING_SET_SIZE, TM_TRAINING_SET_SIZE, CLASSIFIER_TRAINING_SET_SIZE]
-
     _setupScalarEncoder(minval, maxval)
 
     # Create and run network on this data.
@@ -192,8 +191,6 @@ if __name__ == "__main__":
 
     # Need to init the network before it can run.
     network.initialize()
-    run(network, NUM_RECORDS, partitions, _OUT_FILE)
-
-    print "Results written to: %s" % _OUT_FILE
+    run(network, NUM_RECORDS, PARTITIONS, _OUT_FILE)
 
   _OUT_FILE.close()

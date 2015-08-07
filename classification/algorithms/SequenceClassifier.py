@@ -61,14 +61,12 @@ class BitHistory(object):
     bitNum:        activation pattern bit number this history is for,
                         used only for debug messages
     """
-    #TODO: nSteps needs to be removed
-    nSteps = 0
     
     # Store reference to the classifier
     self._classifier = classifier
 
     # Form our "id"
-    self._id = "%d[%d]" % (bitNum, nSteps)
+    self._id = bitNum
 
     # Dictionary of bucket entries. The key is the bucket index, the
     # value is the dutyCycle, which is the rolling average of the duty cycle
@@ -214,40 +212,6 @@ class BitHistory(object):
     self._version = BitHistory.__VERSION__
 
 
-  def write(self, proto):
-    """
-    Write activationPattern bit history.
-    """
-    proto.id = self._id
-
-    statsProto = proto.init("stats", len(self._stats))
-    for (bucketIdx, dutyCycle) in enumerate(self._stats):
-      statsProto[bucketIdx].index = bucketIdx
-      statsProto[bucketIdx].dutyCycle = dutyCycle
-
-    proto.lastTotalUpdate = self._lastTotalUpdate
-    proto.learnIteration = self._learnIteration
-
-
-  @classmethod
-  def read(cls, proto):
-    """
-    Read activationPattern bit history.
-    """
-    bitHistory = object.__new__(cls)
-
-    bitHistory._id = proto.id
-
-    for statProto in proto.stats:
-      statsLen = len(bitHistory._stats) - 1
-      if statProto.index > statsLen:
-        bitHistory._stats.extend(itertools.repeat(0.0, statProto.index - statsLen))
-      bitHistory._stats[statProto.index] = statProto.dutyCycle
-
-    bitHistory._lastTotalUpdate = proto.lastTotalUpdate
-    bitHistory._learnIteration = proto.learnIteration
-
-    return bitHistory
 
 
 
@@ -271,12 +235,11 @@ class SequenceClassifier(object):
   __VERSION__ = 2
 
 
-  def __init__(self, steps=(1,), alpha=0.001, actValueAlpha=0.3, verbosity=0):
+  def __init__(self, alpha=0.001, actValueAlpha=0.3, verbosity=0):
     """Constructor for the CLA classifier.
 
     Parameters:
     ---------------------------------------------------------------------
-    steps:     Sequence of the different steps of multi-step predictions to learn
     alpha:     The alpha used to compute running averages of the bucket duty
                cycles for each activation pattern bit. A lower alpha results
                in longer term memory.
@@ -285,29 +248,17 @@ class SequenceClassifier(object):
     verbosity: verbosity level, can be 0, 1, or 2
     """
     # Save constructor args
-    self.steps = steps
     self.alpha = alpha
     self.actValueAlpha = actValueAlpha
     self.verbosity = verbosity
 
-    # Init learn iteration index
-    self._learnIteration = 0
-
-    # This contains the offset between the recordNum (provided by caller) and
-    #  learnIteration (internal only, always starts at 0).
-    self._recordNumMinusLearnIteration = None
-
-    # Max # of steps of prediction we need to support
-    # TODO: Do we need the +1?
-    maxSteps = max(self.steps) + 1
-
-    # History of the last _maxSteps activation patterns. We need to keep
-    # these so that we can associate the current iteration's classification
-    # with the activationPattern from N steps ago
-    self._patternNZHistory = deque(maxlen=maxSteps)
+    # Current activation pattern. We need to keep it so that we can
+    # associate the current iteration's classification
+    # with the current activationPattern
+    self._currentPatternNZ = None
 
     # These are the bit histories. Each one is a BitHistory instance, stored in
-    # this dict, where the key is (bit, nSteps). The 'bit' is the index of the
+    # this dict, where the key is 'bit'. The 'bit' is the index of the
     # bit in the activation pattern and nSteps is the number of steps of
     # prediction desired for that bit.
     self._activeBitHistory = dict()
@@ -320,7 +271,9 @@ class SequenceClassifier(object):
     # This keeps track of the actual value to use for each bucket index. We
     # start with 1 bucket, no actual value so that the first infer has something
     # to return
-    self._actualValues = [None]
+    # TODO: 1. we probably don't care about the actual value since we are not making predictions
+    # TODO: 2. make a mapping {bucketId1: probability1, bucketId2: probability2, ...}. And that's it
+    self._actualValues = []
 
     # Set the version to the latest version.
     # This is used for serialization/deserialization
@@ -353,30 +306,19 @@ class SequenceClassifier(object):
                 use for each bucket. The key is 'actualValues'.
 
                 for example:
-                  {1 :             [0.1, 0.3, 0.2, 0.7],
-                   4 :             [0.2, 0.4, 0.3, 0.5],
+                  {'probabilities' :  [0.1, 0.3, 0.2, 0.7],
                    'actualValues': [1.5, 3,5, 5,5, 7.6],
                   }
     """
 
-    # Save the offset between recordNum and learnIteration if this is the first
-    #  compute
-    if self._recordNumMinusLearnIteration is None:
-      self._recordNumMinusLearnIteration = recordNum - self._learnIteration
-
-    # Update the learn iteration
-    self._learnIteration = recordNum - self._recordNumMinusLearnIteration
-
-
     if self.verbosity >= 1:
       print "\n%s: compute" % g_debugPrefix
       print "  recordNum:", recordNum
-      print "  learnIteration:", self._learnIteration
       print "  patternNZ (%d):" % len(patternNZ), patternNZ
       print "  classificationIn:", classification
 
-    # Store pattern in our history
-    self._patternNZHistory.append((self._learnIteration, patternNZ))
+    # Store the current pattern
+    self._currentPatternNZ = patternNZ
 
     # ------------------------------------------------------------------------
     # Inference:
@@ -387,48 +329,44 @@ class SequenceClassifier(object):
       # for yet, just plug in any valid actual value. It doesn't matter what
       # we use because that bucket won't have non-zero likelihood anyways.
 
-      # NOTE: If doing 0-step prediction, we shouldn't use any knowledge
-      #  of the classification input during inference.
-      if self.steps[0] == 0:
-        defaultValue = 0
+      # NOTE: we shouldn't use any knowledge of the classification input during inference.
+      if classification["actValue"] not in self._actualValues:
+        self._actualValues.append(classification["actValue"])
+      
+      if classification["actValue"] > self._maxBucketIdx:
+        self._maxBucketIdx = classification["actValue"]
+      
+      retval = {"actualValues": self._actualValues}
+
+      # Accumulate bucket index votes and actValues into these arrays
+      sumVotes = numpy.zeros(self._maxBucketIdx+1)
+      bitVotes = numpy.zeros(self._maxBucketIdx+1)
+
+      # For each active bit, get the votes
+      for bit in patternNZ:
+        history = self._activeBitHistory.get(bit)
+        if history is None:
+          continue
+        
+        #TODO: fill(0) useful ?
+        bitVotes.fill(0)
+        history.infer(iteration=recordNum, votes=bitVotes)
+
+        sumVotes += bitVotes
+
+      # Return the votes for each bucket, normalized
+      total = sumVotes.sum()
+      if total > 0:
+        sumVotes /= total
       else:
-        defaultValue = classification["actValue"]
-      actValues = [x if x is not None else defaultValue
-                   for x in self._actualValues]
-      retval = {"actualValues": actValues}
+        # If all buckets have zero probability then simply make all of the
+        # buckets equally likely. There is no actual prediction for this
+        # timestep so any of the possible predictions are just as good.
+        if sumVotes.size > 0:
+          sumVotes = numpy.ones(sumVotes.shape)
+          sumVotes /= sumVotes.size
 
-      # For each n-step prediction...
-      for nSteps in self.steps:
-
-        # Accumulate bucket index votes and actValues into these arrays
-        sumVotes = numpy.zeros(self._maxBucketIdx+1)
-        bitVotes = numpy.zeros(self._maxBucketIdx+1)
-
-        # For each active bit, get the votes
-        for bit in patternNZ:
-          key = (bit, nSteps)
-          history = self._activeBitHistory.get(key, None)
-          if history is None:
-            continue
-
-          bitVotes.fill(0)
-          history.infer(iteration=self._learnIteration, votes=bitVotes)
-
-          sumVotes += bitVotes
-
-        # Return the votes for each bucket, normalized
-        total = sumVotes.sum()
-        if total > 0:
-          sumVotes /= total
-        else:
-          # If all buckets have zero probability then simply make all of the
-          # buckets equally likely. There is no actual prediction for this
-          # timestep so any of the possible predictions are just as good.
-          if sumVotes.size > 0:
-            sumVotes = numpy.ones(sumVotes.shape)
-            sumVotes /= sumVotes.size
-
-        retval[nSteps] = sumVotes
+      retval['probabilities'] = sumVotes
 
     # ------------------------------------------------------------------------
     # Learning:
@@ -444,6 +382,7 @@ class SequenceClassifier(object):
       # Update maxBucketIndex
       self._maxBucketIdx = max(self._maxBucketIdx, bucketIdx)
 
+      #TODO: change this. we only work with categories. so we actually don't need to update actual values
       # Update rolling average of actual values if it's a scalar. If it's
       # not, it must be a category, in which case each bucket only ever
       # sees one category so we don't need a running average.
@@ -459,44 +398,26 @@ class SequenceClassifier(object):
         else:
           self._actualValues[bucketIdx] = actValue
 
-      # Train each pattern that we have in our history that aligns with the
-      # steps we have in self.steps
-      for nSteps in self.steps:
+     
+      # Store classification info for each active bit from the pattern
+      for bit in self._currentPatternNZ:
 
-        # Do we have the pattern that should be assigned to this classification
-        # in our pattern history? If not, skip it
-        found = False
-        for (iteration, learnPatternNZ) in self._patternNZHistory:
-          if iteration == self._learnIteration - nSteps:
-            found = True;
-            break
-        if not found:
-          continue
+        history = self._activeBitHistory.get(bit, None)
+        if history is None:
+          history = self._activeBitHistory[bit] = BitHistory(self,
+                      bitNum=bit)
 
-        # Store classification info for each active bit from the pattern
-        # that we got nSteps time steps ago.
-        for bit in learnPatternNZ:
-
-          # Get the history structure for this bit and step #
-          key = (bit, nSteps)
-          history = self._activeBitHistory.get(key, None)
-          if history is None:
-            history = self._activeBitHistory[key] = BitHistory(self,
-                        bitNum=bit)
-
-          # Store new sample
-          history.store(iteration=self._learnIteration,
-                        bucketIdx=bucketIdx)
+        # Store new sample
+        history.store(iteration=recordNum,
+                      bucketIdx=bucketIdx)
 
     # ------------------------------------------------------------------------
     # Verbose print
     if infer and self.verbosity >= 1:
       print "  inference: combined bucket likelihoods:"
       print "    actual bucket values:", retval["actualValues"]
-      for (nSteps, votes) in retval.items():
-        if nSteps == "actualValues":
-          continue
-        print "    %d steps: " % (nSteps), _pFormatArray(votes)
+      for votes in retval["probabilities"]:
+        print _pFormatArray(votes)
         bestBucketIdx = votes.argmax()
         print "      most likely bucket idx: %d, value: %s" % (bestBucketIdx,
                             retval["actualValues"][bestBucketIdx])
@@ -516,120 +437,7 @@ class SequenceClassifier(object):
     # Set our state
     self.__dict__.update(state)
 
-    # Handle version 0 case (i.e. before versioning code)
-    if "_version" not in state or state["_version"] < 2:
-      self._recordNumMinusLearnIteration = None
-
-      # Plug in the iteration number in the old patternNZHistory to make it
-      #  compatible with the new format
-      historyLen = len(self._patternNZHistory)
-      for (i, pattern) in enumerate(self._patternNZHistory):
-        self._patternNZHistory[i] = (self._learnIteration-(historyLen-i),
-                                     pattern)
-
-    elif state["_version"] == 2:
-      # Version 2 introduced _recordNumMinusLearnIteration
-      pass
-
-    else:
-      pass
-
     self._version = SequenceClassifier.__VERSION__
 
 
-  @classmethod
-  def read(cls, proto):
-    """
-    Retrieve properties of prototype (alpha, patternHistory, etc..)
-    """
-    classifier = object.__new__(cls)
-
-    classifier.steps = []
-    for step in proto.steps:
-      classifier.steps.append(step)
-
-    classifier.alpha = proto.alpha
-    classifier.actValueAlpha = proto.actValueAlpha
-    classifier._learnIteration = proto.learnIteration
-    classifier._recordNumMinusLearnIteration = proto.recordNumMinusLearnIteration
-
-    classifier._patternNZHistory = deque(maxlen=max(classifier.steps) + 1)
-    patternNZHistoryProto = proto.patternNZHistory
-    learnIteration = classifier._learnIteration - len(patternNZHistoryProto) + 1
-    for i in xrange(len(patternNZHistoryProto)):
-      classifier._patternNZHistory.append((learnIteration, list(patternNZHistoryProto[i])))
-      learnIteration += 1
-
-    classifier._activeBitHistory = dict()
-    activeBitHistoryProto = proto.activeBitHistory
-    for i in xrange(len(activeBitHistoryProto)):
-      stepBitHistories = activeBitHistoryProto[i]
-      nSteps = stepBitHistories.steps
-      for indexBitHistoryProto in stepBitHistories.bitHistories:
-        bit = indexBitHistoryProto.index
-        bitHistory = BitHistory.read(indexBitHistoryProto.history)
-        classifier._activeBitHistory[(bit, nSteps)] = bitHistory
-
-    classifier._maxBucketIdx = proto.maxBucketIdx
-
-    classifier._actualValues = []
-    for actValue in proto.actualValues:
-      if actValue == 0:
-        classifier._actualValues.append(None)
-      else:
-        classifier._actualValues.append(actValue)
-
-    classifier._version = proto.version
-    classifier.verbosity = proto.verbosity
-
-    return classifier
-
-
-  def write(self, proto):
-    """
-    Update prototype properties (alpha, patternHistory, etc..)
-    """
-    stepsProto = proto.init("steps", len(self.steps))
-    for i in xrange(len(self.steps)):
-      stepsProto[i] = self.steps[i]
-
-    proto.alpha = self.alpha
-    proto.actValueAlpha = self.actValueAlpha
-    proto.learnIteration = self._learnIteration
-    proto.recordNumMinusLearnIteration = self._recordNumMinusLearnIteration
-
-    patternNZHistory = []
-    for (iteration, learnPatternNZ) in self._patternNZHistory:
-      patternNZHistory.append(learnPatternNZ)
-    proto.patternNZHistory = patternNZHistory
-
-    i = 0
-    activeBitHistoryProtos = proto.init("activeBitHistory", len(self._activeBitHistory))
-    if len(self._activeBitHistory) > 0:
-      for nSteps in self.steps:
-        stepBitHistory = {bit: self._activeBitHistory[(bit, step)]
-                          for (bit, step) in self._activeBitHistory.keys()
-                          if step == nSteps}
-        stepBitHistoryProto = activeBitHistoryProtos[i]
-        stepBitHistoryProto.steps = nSteps
-        indexBitHistoryListProto = stepBitHistoryProto.init("bitHistories", len(stepBitHistory))
-        j = 0
-        for indexBitHistory in stepBitHistory:
-          indexBitHistoryProto = indexBitHistoryListProto[j]
-          indexBitHistoryProto.index = indexBitHistory
-          bitHistoryProto = indexBitHistoryProto.history
-          stepBitHistory[indexBitHistory].write(bitHistoryProto)
-          j += 1
-        i += 1
-
-    proto.maxBucketIdx = self._maxBucketIdx
-
-    actualValuesProto = proto.init("actualValues", len(self._actualValues))
-    for i in xrange(len(self._actualValues)):
-      if self._actualValues[i] is not None:
-        actualValuesProto[i] = self._actualValues[i]
-      else:
-        actualValuesProto[i] = 0
-
-    proto.version = self._version
-    proto.verbosity = self.verbosity
+ 
