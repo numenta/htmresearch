@@ -36,7 +36,7 @@ from settings import (NUM_CATEGORIES,
                       DATA_DIR,
                       )
 
-_VERBOSITY = 1
+_VERBOSITY = 2
 
 _SCALAR_ENCODER_PARAMS = {
   "name": "white_noise",
@@ -56,7 +56,7 @@ _CATEGORY_ENCODER_PARAMS = {
   "categoryList": range(NUM_CATEGORIES)
 }
 
-_SEQUENCE_CLASSIFIER_PARAMS = {'maxCategoryCount': NUM_CATEGORIES}
+_SEQUENCE_CLASSIFIER_PARAMS = {'numCategories': NUM_CATEGORIES, "clVerbosity": _VERBOSITY}
 
 _KNN_CLASSIFIER_PARAMS = {
   "k": 1,
@@ -126,26 +126,18 @@ def run(net, numRecords, partitions, outFile):
       print phaseInfo
 
     # --- BEGIN PREDICTING TEST SET --#
-    if i >= partitions[1]:
+    if i >= partitions[2]:
 
       # get various outputs
-      categoryProbabilitiesOut = classifierRegion.getOutputData("categoryProbabilitiesOut")
-      categoriesOut = classifierRegion.getOutputData("categoryActualValuesOut")
       inferredValue = classifierRegion.getOutputData("categoryOut")[0]
-      print "probabilities: %s" % categoryProbabilitiesOut
-      print "categories: %s" % categoriesOut
-      print "actual category: %s | predicted category: %s" %(sensorRegion.getOutputData("categoryOut")[0], inferredValue)
-      
 
-      # Evaluate the predictions in the test set.
-      if i > partitions[2]:
-        if actualValue == inferredValue:
-          numCorrect += 1
-        else:
-          print "[DEBUG] INCORRECT_PREDICTION: index=%s | actualValue = %s | inferredValue = %s \n" \
-                % (i, actualValue, inferredValue)
+      if actualValue == inferredValue:
+        numCorrect += 1
+      else:
+        print "[DEBUG] INCORRECT_PREDICTION: index=%s | actualValue = %s | inferredValue = %s \n" \
+              % (i, actualValue, inferredValue)
 
-        numTestRecords += 1
+      numTestRecords += 1
 
   predictionAccuracy = 100.0 * numCorrect / numTestRecords
 

@@ -80,14 +80,6 @@ class SequenceClassifierRegion(PyRegion):
         },
 
         'outputs': {
-          # TODO: categoriesOut and categoryProbabilitiesOut needs to be combined into a dict: {categoryValue: probability}
-          'categoryActualValuesOut': {
-            'description': 'A vector representing the actual value of each category',
-          'dataType':'Real32',
-          'count':0,
-          'regionLevel':True,
-          'isDefaultOutput':True
-          },
 
           'categoryProbabilitiesOut': {
           'description':'A vector representing, for each category '
@@ -111,9 +103,8 @@ class SequenceClassifierRegion(PyRegion):
 
         'parameters': {
           
-          'maxCategoryCount': {
-            'description': 'The maximal number of categories the '
-                        'classifier will distinguish between.',
+          'numCategories': {
+            'description': 'Number of distinct categories in the training data.',
             'dataType': 'UInt32',
             'count': 1,
             'constraints': '',
@@ -127,16 +118,6 @@ class SequenceClassifierRegion(PyRegion):
             'count': 1,
             'constraints': 'bool',
             'defaultValue': 1,
-            'accessMode': 'ReadWrite'
-          },
-
-          'inferenceMode': {
-            'description': 'Boolean (0/1) indicating whether or not a region '
-                        'is in inference mode.',
-            'dataType': 'UInt32',
-            'count': 1,
-            'constraints': 'bool',
-            'defaultValue': 0,
             'accessMode': 'ReadWrite'
           },
 
@@ -182,7 +163,7 @@ class SequenceClassifierRegion(PyRegion):
                alpha=0.001,
                clVerbosity=0,
                implementation='py',
-               maxCategoryCount=None
+               numCategories=None
                ):
 
     self.alpha = alpha
@@ -193,20 +174,15 @@ class SequenceClassifierRegion(PyRegion):
         alpha=self.alpha,
         verbosity=self.verbosity,
         implementation=implementation,
+        numCategories=numCategories
         )
     self.learningMode = True
-    self.inferenceMode = False
-
-    self._initEphemerals()
     
     self.recordNum = 0
-    if maxCategoryCount:
-      self.maxCategoryCount = maxCategoryCount
+    if numCategories:
+      self.numCategories = numCategories
     else:
-      raise Exception("'maxCategoryCount' value needs to be specified in in the input params of the classifier.")
-
-  def _initEphemerals(self):
-    pass
+      raise Exception("'numCategories' value needs to be specified in in the input params of the classifier.")
 
 
   def initialize(self, dims, splitterMaps):
@@ -239,14 +215,9 @@ class SequenceClassifierRegion(PyRegion):
     """
     if name == "learningMode":
       self.learningMode = bool(int(value))
-    elif name == "inferenceMode":
-      self.inferenceMode = bool(int(value))
     else:
       return PyRegion.setParameter(self, name, index, value)
 
-
-  def reset(self):
-    pass
 
 
   def compute(self, inputs, outputs):
@@ -257,25 +228,27 @@ class SequenceClassifierRegion(PyRegion):
     """
 
     patternNZ = inputs['bottomUpIn'].nonzero()[0]
-    classificationIn =  {"bucketIdx": int(inputs['categoryIn'][0]),
-                          "actValue": int(inputs['categoryIn'][0])
+    categories = []
+    for x in inputs['categoryIn']:
+      if x != -1:
+        categories.append(x) 
+
+    classificationIn =  {"bucketIdx": int(categories[0]),
+                          "actValue": int(categories[0])
                          }
     
     
     clResults = self._classifier.compute(recordNum=self.recordNum,
                                 patternNZ=patternNZ,
                                 classification=classificationIn,
-                                learn = self.learningMode,
-                                infer = self.inferenceMode)
+                                learn = self.learningMode)
     
     
     # populate results     
-    clResultsSize = len(clResults["actualValues"])
-    for i in xrange(clResultsSize):
-      outputs['categoryActualValuesOut'][i] = clResults["actualValues"][i]
+    for i in xrange(self.numCategories):
       outputs['categoryProbabilitiesOut'][i] = clResults['probabilities'][i]
 
-    outputs['categoryOut'][0] = clResults["actualValues"][clResults['probabilities'].argmax()]
+    outputs['categoryOut'][0] = clResults['probabilities'].argmax()
 
     self.recordNum += 1
 
@@ -306,18 +279,15 @@ class SequenceClassifierRegion(PyRegion):
     return self._classifier.compute( recordNum=recordNum,
                                         patternNZ=patternNZ,
                                         classification=classification,
-                                        learn = self.learningMode,
-                                        infer = self.inferenceMode)
+                                        learn = self.learningMode)
 
 
   def getOutputElementCount(self, name):
     """This method will be called only when the node is used in nuPIC 2"""
-    if name == 'categoryActualValuesOut':
-      return self.maxCategoryCount
-    elif name == 'categoryProbabilitiesOut':
-      return self.maxCategoryCount
+    if name == 'categoryProbabilitiesOut':
+      return self.numCategories
     elif name == 'categoryOut':
-      return 1
+      return self.numCategories
     else:
       raise Exception('Unknown output: ' + name)
   
