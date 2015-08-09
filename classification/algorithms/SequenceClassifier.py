@@ -49,7 +49,7 @@ class BitHistory(object):
   __slots__ = ("_classifier", "_id", "_stats", "_lastUpdate",
                "_learnIteration", "_version")
 
-  __VERSION__ = 2
+  __VERSION__ = 1
 
 
   def __init__(self, classifier, bitNum):
@@ -179,37 +179,6 @@ class BitHistory(object):
       print "bucket votes for %s:" % (self._id), _pFormatArray(votes)
 
 
-  def __getstate__(self):
-    return dict((elem, getattr(self, elem)) for elem in self.__slots__)
-
-
-  def __setstate__(self, state):
-    version = 0
-    if "_version" in state:
-      version = state["_version"]
-
-    # Migrate from version 0 to version 1
-    if version == 0:
-      stats = state.pop("_stats")
-      assert isinstance(stats, dict)
-      maxBucket = max(stats.iterkeys())
-      self._stats = array.array("f", itertools.repeat(0.0, maxBucket+1))
-      for (index, value) in stats.iteritems():
-        self._stats[index] = value
-    elif version == 1:
-      state.pop("_updateDutyCycles", None)
-    elif version == 2:
-      pass
-    else:
-      raise Exception("Error while deserializing %s: Invalid version %s"
-                      %(self.__class__, version))
-
-    for (attr, value) in state.iteritems():
-      setattr(self, attr, value)
-
-    self._version = BitHistory.__VERSION__
-
-
 
 class SequenceClassifier(object):
   """
@@ -228,7 +197,7 @@ class SequenceClassifier(object):
   classification(s).
   """
 
-  __VERSION__ = 2
+  __VERSION__ = 1
 
 
   def __init__(self, alpha=0.001, actValueAlpha=0.3, verbosity=0):
@@ -424,28 +393,4 @@ class SequenceClassifier(object):
 
     return retval
 
-
-  def __getstate__(self):
-    return self.__dict__
-
-
-  def __setstate__(self, state):
-    if "_profileMemory" in state:
-      state.pop("_profileMemory")
-
-    # Set our state
-    self.__dict__.update(state)
-
-    # Handle version 0 case (i.e. before versioning code)
-    if "_version" not in state or state["_version"] < 2:
-      self._recordNumMinusLearnIteration = None
-
-    elif state["_version"] == 2:
-      # Version 2 introduced _recordNumMinusLearnIteration
-      pass
-
-    else:
-      pass
-
-    self._version = SequenceClassifier.__VERSION__
 
