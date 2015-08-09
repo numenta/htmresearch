@@ -34,6 +34,7 @@ class SequenceClassifierFactory(object):
   def create(*args, **kwargs):
     impl = kwargs.pop('implementation', None)
     if impl is None:
+      #TODO: update that. Using old CLA impl for now.
       impl = Configuration.get('nupic.opf.claClassifier.implementation')
     if impl == 'py':
       return SequenceClassifier(*args, **kwargs)

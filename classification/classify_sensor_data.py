@@ -37,7 +37,7 @@ from settings import (NUM_CATEGORIES,
                       )
 
 
-_VERBOSITY = 1
+_VERBOSITY = 0
 
 _SCALAR_ENCODER_PARAMS = {
     "name": "white_noise",
