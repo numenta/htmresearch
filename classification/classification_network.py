@@ -248,6 +248,9 @@ def createClassifierRegion(network, classifierType, classifierParams, prevRegion
 
   # Disable learning for now (will be enabled in a later training phase)... why???
   classifierRegion.setParameter("learningMode", False)
+  
+  # Okay to always leave inference mode on; only there for some corner cases.
+  classifierRegion.setParameter("inferenceMode", True)
 
   return classifierRegion
 
