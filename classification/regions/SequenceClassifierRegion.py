@@ -246,14 +246,17 @@ class SequenceClassifierRegion(PyRegion):
                       bucketIdx: index of the encoder bucket
                       actValue:  actual value going into the encoder
 
-    retval:     dict containing inference results, one entry for each step in
-                self.steps. The key is the number of steps, the value is an
-                array containing the relative likelihood for each bucketIdx
-                starting from bucketIdx 0.
+    retval:     dict containing inference results. The entry 'probabilities'
+                is an array containing the relative likelihood for
+                each bucketIdx starting from bucketIdx 0.
+
+                There is also an entry containing the average actual value to
+                use for each bucket. The key is 'actualValues'.
 
                 for example:
-                  {1 : [0.1, 0.3, 0.2, 0.7]
-                   4 : [0.2, 0.4, 0.3, 0.5]}
+                  {'probabilities': [0.1, 0.3, 0.2, 0.7],
+                   'actualValues': [1.5, 3,5, 5,5, 7.6],
+                  }
     """
 
     return self._classifier.compute( recordNum=recordNum,
