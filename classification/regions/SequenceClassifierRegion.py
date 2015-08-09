@@ -144,15 +144,11 @@ class SequenceClassifierRegion(PyRegion):
                implementation=None,
                ):
 
-    # Convert the steps designation to a list
-    self.steps = 0
-    self.stepsList = eval("[%s]" % (self.steps))
     self.alpha = alpha
     self.verbosity = clVerbosity
 
     # Initialize internal structures
     self._classifier = SequenceClassifierFactory.create(
-        steps=self.stepsList,
         alpha=self.alpha,
         verbosity=self.verbosity,
         implementation=implementation,
@@ -232,7 +228,7 @@ class SequenceClassifierRegion(PyRegion):
     clResults = self._classifier.compute(
         recordNum=self.recordNum, patternNZ=patternNZ, classification=classificationIn, learn=self.learningMode, infer=self.inferenceMode)
 
-    inferredValue = clResults["actualValues"][clResults[int(self.steps)].argmax()]
+    inferredValue = clResults["actualValues"][clResults['probabilities'].argmax()]
 
     outputs['classificationResult'][0] = inferredValue
     
