@@ -37,7 +37,7 @@ from settings import (NUM_CATEGORIES,
                       )
 
 
-_VERBOSITY = 0
+_VERBOSITY = 1
 
 _SCALAR_ENCODER_PARAMS = {
     "name": "white_noise",
@@ -55,8 +55,7 @@ _CATEGORY_ENCODER_PARAMS = {
     "categoryList": range(NUM_CATEGORIES)
 }
 
-_CLA_CLASSIFIER_PARAMS = {"steps": "1",
-                         "implementation": "py", "clVerbosity": _VERBOSITY}
+_SEQ_CLASSIFIER_PARAMS = {"implementation": "py", "clVerbosity": _VERBOSITY}
 
 _KNN_CLASSIFIER_PARAMS = {
   "k": 1,
@@ -133,9 +132,6 @@ def run(net, numRecords, partitions, outFile):
 
       if actualValue == inferredValue:
         numCorrect += 1
-      else:
-        print "[DEBUG] INCORRECT_PREDICTION: index=%s | actualValue = %s | inferredValue = %s \n" \
-            % (i, actualValue, inferredValue)
 
       numTestRecords += 1
 
@@ -176,7 +172,7 @@ if __name__ == "__main__":
     #   input source via the dataSource attribute.
     dataSource = FileRecordStream(streamID=inputFile)
     encoders = {"white_noise": _SCALAR_ENCODER_PARAMS}
-    network = createNetwork((dataSource, "py.RecordSensor", encoders, NUM_CATEGORIES, "py.SequenceClassifierRegion", _CLA_CLASSIFIER_PARAMS))
+    network = createNetwork((dataSource, "py.RecordSensor", encoders, NUM_CATEGORIES, "py.SequenceClassifierRegion", _SEQ_CLASSIFIER_PARAMS))
 
     # Need to init the network before it can run.
     network.initialize()
