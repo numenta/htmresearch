@@ -21,7 +21,7 @@
 # ----------------------------------------------------------------------
 
 
-SIGNAL_TYPES = ["no_noise", "white_noise"]
+SIGNAL_TYPES = ["white_noise"]
 RESULTS_DIR = "results"
 DATA_DIR = "data" 
 MODEL_PARAMS_DIR = 'model_params'
@@ -32,7 +32,10 @@ SP_TRAINING_SET_SIZE = NUM_RECORDS * 1/4
 TM_TRAINING_SET_SIZE = NUM_RECORDS * 1/2  
 CLASSIFIER_TRAINING_SET_SIZE = NUM_RECORDS * 3/4 
 DEFAULT_WHITE_NOISE_AMPLITUDE = 10.0
-WHITE_NOISE_AMPLITUDE_RANGES = [0, 1, 10, 100]
+WHITE_NOISE_AMPLITUDE_RANGES = [1]
 SIGNAL_AMPLITUDE = 1.0
 SIGNAL_MEAN = 1.0
 SIGNAL_PERIOD = 20.0
+# Partition records into training sets for SP, TM, and classifier
+PARTITIONS = [SP_TRAINING_SET_SIZE, TM_TRAINING_SET_SIZE, CLASSIFIER_TRAINING_SET_SIZE]
+

@@ -40,7 +40,6 @@ from settings import \
 
   
 def generateData(dataDir=None, 
-                 whiteNoise=False, 
                  signal_mean=SIGNAL_MEAN, 
                  signal_period=SIGNAL_PERIOD, 
                  number_of_points=NUM_RECORDS, 
@@ -48,10 +47,7 @@ def generateData(dataDir=None,
                  noise_amplitude=DEFAULT_WHITE_NOISE_AMPLITUDE):
   
   
-  if whiteNoise:
-    fileName = "white_noise_%s" %noise_amplitude
-  else:
-    fileName = "no_noise"
+  fileName = "white_noise_%s" %noise_amplitude
     
   if not dataDir:
     dataDir = DATA_DIR
@@ -71,20 +67,17 @@ def generateData(dataDir=None,
 
 
   endOfSequence = SEQUENCE_LENGTH
-  label = 0
+  label = 2
   for i in range(number_of_points):
     
-    if whiteNoise:
-      noise = noise_amplitude * random.random()
-    else:
-      noise = 0
+    noise = noise_amplitude * random.random()
     
     if i == endOfSequence:
       endOfSequence += SEQUENCE_LENGTH
-      if label == NUM_CATEGORIES - 1:
-        label = 0
+      if label == 0:
+        label = 2
       else:
-        label += 1
+        label -= 1
       
     signal_modifier = 2 * (label + 1)
     x = signal_modifier * (i * math.pi) / signal_period
@@ -101,4 +94,4 @@ def generateData(dataDir=None,
 
 if __name__ == "__main__":
   for whiteNoiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
-    generateData(whiteNoise=True, noise_amplitude=whiteNoiseAmplitude)
+    generateData(noise_amplitude=whiteNoiseAmplitude)
