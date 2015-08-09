@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2013-15, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -45,144 +45,138 @@ class SequenceClassifierRegion(PyRegion):
   activationPattern, it looks up the most likely classification(s) from the
   history stored for that bit and then votes across these to get the resulting
   classification(s).
+
   """
-
-
 
   @classmethod
   def getSpec(cls):
-     
-    
-    spec = {
-        'description': SequenceClassifierRegion.__doc__,
-        'singleNodeOnly': True,
+    ns = dict(
+        description=SequenceClassifierRegion.__doc__,
+        singleNodeOnly=True,
 
-        'inputs': {
-          'categoryIn': {
-            'description': 'Category of the input sample',
-            'dataType': 'Real32',
-            'count': 1, # TODO: number of categories can be more than 1 in the future
-            'required': True,
-            'regionLevel': True,
-            'isDefaultInput': False,
-            'requireSplitterMap':False
-            },
+        inputs=dict(
+          categoryIn=dict(
+            description='Vector of categories of the input sample',
+            dataType='Real32',
+            count=0,
+            required=True,
+            regionLevel=True,
+            isDefaultInput=False,
+            requireSplitterMap=False),
 
-          'bottomUpIn': {
-            'description': 'Belief values over children\'s groups',
-            'dataType': 'Real32',
-            'count': 0,
-            'required': True,
-            'regionLevel': False,
-            'isDefaultInput': True,
-            'requireSplitterMap': False
-          },
-        },
+          bottomUpIn=dict(
+            description='Belief values over children\'s groups',
+            dataType='Real32',
+            count=0,
+            required=True,
+            regionLevel=False,
+            isDefaultInput=True,
+            requireSplitterMap=False),
+        ),
 
-        'outputs': {
+        outputs=dict(
+            classificationResult=dict(
+            description='Classification results - i.e. the most likely categorie(s)',
+            dataType='Real32',
+            count=0,
+            required=True,
+            regionLevel=True,
+            isDefaultOutput=True,
+            requireSplitterMap=False),
+        ),
 
-          'categoryProbabilitiesOut': {
-          'description':'A vector representing, for each category '
-                      'index, the probability that the input to the node belongs '
-                      'to that category.',
-          'dataType':'Real32',
-          'count':0,
-          'regionLevel':True,
-          'isDefaultOutput':True,
-          },
-          
-          'categoryOut': {
-          'description':'The most likely category that the input belongs to.',
-          'dataType':'UInt32',
-          'count':0,
-          'regionLevel':True,
-          'isDefaultOutput':True,
-          },
-          
-        },
-
-        'parameters': {
-          
-          'numCategories': {
-            'description': 'Number of distinct categories in the training data.',
-            'dataType': 'UInt32',
-            'count': 1,
-            'constraints': '',
-            'defaultValue': None,
-            'accessMode':'Create'
-          },
-          'learningMode': {
-            'description': 'Boolean (0/1) indicating whether or not a region '
+        parameters=dict(
+          learningMode=dict(
+            description='Boolean (0/1) indicating whether or not a region '
                         'is in learning mode.',
-            'dataType': 'UInt32',
-            'count': 1,
-            'constraints': 'bool',
-            'defaultValue': 1,
-            'accessMode': 'ReadWrite'
-          },
+            dataType='UInt32',
+            count=1,
+            constraints='bool',
+            defaultValue=1,
+            accessMode='ReadWrite'),
 
-          'alpha': {
-            'description': 'The alpha used to compute running averages of the '
+          inferenceMode=dict(
+            description='Boolean (0/1) indicating whether or not a region '
+                        'is in inference mode.',
+            dataType='UInt32',
+            count=1,
+            constraints='bool',
+            defaultValue=0,
+            accessMode='ReadWrite'),
+
+          steps=dict(
+            description='Comma separated list of the desired steps of '
+                        'prediction that the classifier should learn',
+            dataType="Byte",
+            count=0,
+            constraints='',
+            defaultValue='1',
+            accessMode='Create'),
+
+          alpha=dict(
+            description='The alpha used to compute running averages of the '
                'bucket duty cycles for each activation pattern bit. A lower '
                'alpha results in longer term memory',
-            'dataType': "Real32",
-            'count': 1,
-            'constraints': '',
-            'defaultValue': 0.001,
-            'accessMode': 'Create'
-          },
+            dataType="Real32",
+            count=1,
+            constraints='',
+            defaultValue=0.001,
+            accessMode='Create'),
 
-          'implementation': {
-            'description': 'The classifier implementation to use.',
-            'accessMode': 'ReadWrite',
-            'dataType': 'Byte',
-            'count': 0,
-            'constraints': 'enum: py' # Removed 'cpp' implementation, since it doesn't exist -- for now.
-          },
-    
-           'clVerbosity': {
-            'description': 'An integer that controls the verbosity level, '
+          implementation=dict(
+            description='The classifier implementation to use.',
+            accessMode='ReadWrite',
+            dataType='Byte',
+            count=0,
+            constraints='enum: py, cpp'),
+
+           clVerbosity=dict(
+            description='An integer that controls the verbosity level, '
                         '0 means no verbose output, increasing integers '
                         'provide more verbosity.',
-            'dataType': 'UInt32',
-            'count': 1,
-            'constraints': '',
-            'defaultValue': 0 ,
-            'accessMode': 'ReadWrite'
-           },
-            
+            dataType='UInt32',
+            count=1,
+            constraints='',
+            defaultValue=0 ,
+            accessMode='ReadWrite'),
 
-      },
-      'commands': {}
-    }
+     ),
+      commands=dict()
+    )
 
-    return spec
+    return ns
 
 
   def __init__(self,
+               steps='1',
                alpha=0.001,
                clVerbosity=0,
-               implementation='py',
-               numCategories=None
+               implementation=None,
                ):
 
+    # Convert the steps designation to a list
+    self.steps = steps
+    self.stepsList = eval("[%s]" % (steps))
     self.alpha = alpha
     self.verbosity = clVerbosity
 
     # Initialize internal structures
     self._classifier = SequenceClassifierFactory.create(
+        steps=self.stepsList,
         alpha=self.alpha,
         verbosity=self.verbosity,
         implementation=implementation,
-        numCategories=numCategories
         )
     self.learningMode = True
+    self.inferenceMode = False
+
+    self._initEphemerals()
     
     self.recordNum = 0
-    if numCategories:
-      self.numCategories = numCategories
-    else:
-      raise Exception("'numCategories' value needs to be specified in in the input params of the classifier.")
+
+
+  def _initEphemerals(self):
+    pass
 
 
   def initialize(self, dims, splitterMaps):
@@ -215,9 +209,14 @@ class SequenceClassifierRegion(PyRegion):
     """
     if name == "learningMode":
       self.learningMode = bool(int(value))
+    elif name == "inferenceMode":
+      self.inferenceMode = bool(int(value))
     else:
       return PyRegion.setParameter(self, name, index, value)
 
+
+  def reset(self):
+    pass
 
 
   def compute(self, inputs, outputs):
@@ -227,37 +226,32 @@ class SequenceClassifierRegion(PyRegion):
 
     """
 
-    patternNZ = inputs['bottomUpIn'].nonzero()[0]
     categories = []
-    for x in inputs['categoryIn']:
-      if x != -1:
-        categories.append(x) 
+    for category in inputs['categoryIn']:
+      if category != -1:
+        categories.append(category)
 
-    classificationIn =  {"bucketIdx": int(categories[0]),
-                          "actValue": int(categories[0])
-                         }
-    
-    
-    clResults = self._classifier.compute(recordNum=self.recordNum,
-                                patternNZ=patternNZ,
-                                classification=classificationIn,
-                                learn = self.learningMode)
-    
-    
-    # populate results     
-    for i in xrange(self.numCategories):
-      outputs['categoryProbabilitiesOut'][i] = clResults['probabilities'][i]
+    classificationIn = {"bucketIdx": int(categories[0]),
+                        "actValue": int(categories[0])}
 
-    outputs['categoryOut'][0] = clResults['probabilities'].argmax()
+    # List the indices of active cells (non-zero pattern)
+    activeCells = inputs["bottomUpIn"]
+    patternNZ = activeCells.nonzero()[0]
 
+    # Call classifier
+    clResults = self._classifier.compute(
+        recordNum=self.recordNum, patternNZ=patternNZ, classification=classificationIn, learn=self.learningMode, infer=self.inferenceMode)
+
+    inferredValue = clResults["actualValues"][clResults[int(self.steps)].argmax()]
+
+    outputs['classificationResult'][0] = inferredValue
+    
     self.recordNum += 1
+
 
   def customCompute(self, recordNum, patternNZ, classification):
     """
     Process one input sample.
-    This method is called by outer loop code outside the nupic-engine. We
-    use this instead of the nupic engine compute() because our inputs and
-    outputs aren't fixed size vectors of reals.
 
     Parameters:
     --------------------------------------------------------------------
@@ -279,23 +273,24 @@ class SequenceClassifierRegion(PyRegion):
     return self._classifier.compute( recordNum=recordNum,
                                         patternNZ=patternNZ,
                                         classification=classification,
-                                        learn = self.learningMode)
+                                        learn = self.learningMode,
+                                        infer = self.inferenceMode)
+
+  def getOutputValues(self, outputName):
+    """Return the dictionary of output values. Note that these are normal Python
+    lists, rather than numpy arrays. This is to support lists with mixed scalars
+    and strings, as in the case of records with categorical variables
+    """
+    return self._outputValues[outputName]
 
 
   def getOutputElementCount(self, name):
-    """This method will be called only when the node is used in nuPIC 2"""
-    if name == 'categoryProbabilitiesOut':
-      return self.numCategories
-    elif name == 'categoryOut':
-      return self.numCategories
+    """Returns the width of dataOut."""
+   
+    if name == "classificationResult":
+      return 1
     else:
-      raise Exception('Unknown output: ' + name)
-  
-if __name__=='__main__':
-  from nupic.engine import Network
-  n = Network()
-  classifier = n.addRegion(
-    'classifier',
-    'py.SequenceClassifierRegion',
-    '{}'
-  )
+      raise Exception("Unknown output {}.".format(name))
+
+
+
