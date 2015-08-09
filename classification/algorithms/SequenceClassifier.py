@@ -243,6 +243,8 @@ class SequenceClassifier(object):
     alpha:    The alpha used to compute running averages of the bucket duty
                cycles for each activation pattern bit. A lower alpha results
                in longer term memory.
+    actValueAlpha:  The alpha used to compute running averages of each 
+              bucketIdx actual values.
     verbosity: verbosity level, can be 0, 1, or 2
     """
     # Save constructor args
@@ -304,17 +306,15 @@ class SequenceClassifier(object):
     learn:      if true, learn this sample
     infer:      if true, perform inference
 
-    retval:     dict containing inference results, there is one entry for each
-                step in self.steps, where the key is the number of steps, and
-                the value is an array containing the relative likelihood for
+    retval:     dict containing inference results. The entry 'probabilities'
+                is an array containing the relative likelihood for
                 each bucketIdx starting from bucketIdx 0.
 
                 There is also an entry containing the average actual value to
                 use for each bucket. The key is 'actualValues'.
 
                 for example:
-                  {1 :             [0.1, 0.3, 0.2, 0.7],
-                   4 :             [0.2, 0.4, 0.3, 0.5],
+                  {'probabilities': [0.1, 0.3, 0.2, 0.7],
                    'actualValues': [1.5, 3,5, 5,5, 7.6],
                   }
     """
@@ -349,10 +349,7 @@ class SequenceClassifier(object):
 
       # NOTE: If doing 0-step prediction, we shouldn't use any knowledge
       #  of the classification input during inference.
-      if self.steps[0] == 0:
-        defaultValue = 0
-      else:
-        defaultValue = classification["actValue"]
+      defaultValue = 0
       actValues = [x if x is not None else defaultValue
                    for x in self._actualValues]
       retval = {"actualValues": actValues}
