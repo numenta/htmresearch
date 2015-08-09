@@ -58,7 +58,7 @@ class BitHistory(object):
 
     Parameters:
     ---------------------------------------------------------------------
-    classifier:    instance of the CLAClassifier that owns us
+    classifier:    instance of the SequenceClassifier that owns us
     bitNum:        activation pattern bit number this history is for,
                         used only for debug messages
     nSteps:        number of steps of prediction this history is for, used
@@ -235,19 +235,18 @@ class SequenceClassifier(object):
   __VERSION__ = 2
 
 
-  def __init__(self, steps=(1,), alpha=0.001, actValueAlpha=0.3, verbosity=0):
-    """Constructor for the CLA classifier.
+  def __init__(self, alpha=0.001, actValueAlpha=0.3, verbosity=0):
+    """Constructor for the Sequence classifier.
 
     Parameters:
     ---------------------------------------------------------------------
-    steps:    Sequence of the different steps of multi-step predictions to learn
     alpha:    The alpha used to compute running averages of the bucket duty
                cycles for each activation pattern bit. A lower alpha results
                in longer term memory.
     verbosity: verbosity level, can be 0, 1, or 2
     """
     # Save constructor args
-    self.steps = steps
+    self.steps = [0]
     self.alpha = alpha
     self.actValueAlpha = actValueAlpha
     self.verbosity = verbosity
@@ -259,9 +258,8 @@ class SequenceClassifier(object):
     #  learnIteration (internal only, always starts at 0).
     self._recordNumMinusLearnIteration = None
 
-    # Max # of steps of prediction we need to support
-    # TODO: Do we need the +1?
-    maxSteps = max(self.steps) + 1
+    # Max # of steps we need to remember for classification
+    maxSteps = 1
 
     # History of the last _maxSteps activation patterns. We need to keep
     # these so that we can associate the current iteration's classification
@@ -390,7 +388,7 @@ class SequenceClassifier(object):
             sumVotes = numpy.ones(sumVotes.shape)
             sumVotes /= sumVotes.size
 
-        retval[nSteps] = sumVotes
+        retval['probabilities'] = sumVotes
 
     # ------------------------------------------------------------------------
     # Learning:
@@ -458,7 +456,7 @@ class SequenceClassifier(object):
       for (nSteps, votes) in retval.items():
         if nSteps == "actualValues":
           continue
-        print "    %d steps: " % (nSteps), _pFormatArray(votes)
+        print "    %s steps: " % (nSteps), _pFormatArray(votes)
         bestBucketIdx = votes.argmax()
         print "      most likely bucket idx: %d, value: %s" % (bestBucketIdx,
                             retval["actualValues"][bestBucketIdx])
