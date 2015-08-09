@@ -104,15 +104,6 @@ class SequenceClassifierRegion(PyRegion):
             defaultValue=0,
             accessMode='ReadWrite'),
 
-          steps=dict(
-            description='Comma separated list of the desired steps of '
-                        'prediction that the classifier should learn',
-            dataType="Byte",
-            count=0,
-            constraints='',
-            defaultValue='1',
-            accessMode='Create'),
-
           alpha=dict(
             description='The alpha used to compute running averages of the '
                'bucket duty cycles for each activation pattern bit. A lower '
@@ -148,15 +139,14 @@ class SequenceClassifierRegion(PyRegion):
 
 
   def __init__(self,
-               steps='1',
                alpha=0.001,
                clVerbosity=0,
                implementation=None,
                ):
 
     # Convert the steps designation to a list
-    self.steps = steps
-    self.stepsList = eval("[%s]" % (steps))
+    self.steps = 0
+    self.stepsList = eval("[%s]" % (self.steps))
     self.alpha = alpha
     self.verbosity = clVerbosity
 
