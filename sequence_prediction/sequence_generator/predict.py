@@ -25,6 +25,7 @@ import random
 import time
 
 from matplotlib import pyplot
+import numpy
 
 from nupic.data.inference_shifter import InferenceShifter
 from nupic.frameworks.opf.modelfactory import ModelFactory
@@ -118,10 +119,45 @@ def generateSequences():
 
   for sequence in sequences:
     print sequence
+
   return sequences
 
 
-def plotTraces(tm, timestamp=int(time.time())):
+
+def movingAverage(a, n=3) :
+  weights = numpy.repeat(1.0, n)/n
+  return numpy.convolve(a, weights, 'valid')
+
+
+
+def plotAccuracy(correct, window=1000):
+  if len(correct) > window:
+    accuracy = movingAverage(correct, n=window)
+    pyplot.plot(range(len(accuracy)), accuracy)
+  else:
+    pyplot.text(0, 0, "Waiting for data...", fontsize=24)
+
+
+
+def plotTraces(tm, timestamp=int(time.time()), window=500):
+  """
+  Have to make the following change in NuPIC for this to work:
+
+  --- a/nupic/research/TP_shim.py
+  +++ b/nupic/research/TP_shim.py
+  @@ -27,10 +27,13 @@ for use with OPF.
+   import numpy
+
+   from nupic.research.temporal_memory import TemporalMemory
+  +from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
+  +  TemporalMemoryMonitorMixin)
+  +class MonitoredTemporalMemory(TemporalMemoryMonitorMixin, TemporalMemory): pass
+
+
+
+  -class TPShim(TemporalMemory):
+  +class TPShim(MonitoredTemporalMemory):
+  """
   traces = tm.mmGetDefaultTraces()
   traces = [trace for trace in traces if type(trace) is CountsTrace]
 
@@ -131,7 +167,7 @@ def plotTraces(tm, timestamp=int(time.time())):
     trace = traces[i]
     pyplot.subplot(t, 1, i+1)
     pyplot.title(trace.title)
-    pyplot.xlim(max(len(trace.data)-500, 0), len(trace.data))
+    pyplot.xlim(max(len(trace.data)-window, 0), len(trace.data))
     pyplot.plot(range(len(trace.data)), trace.data)
 
   pyplot.draw()
@@ -144,8 +180,7 @@ if __name__ == "__main__":
   shifter = InferenceShifter()
 
   sequences = generateSequences()
-  numCorrect = 0
-  accuracy = []
+  correct = []
 
   pyplot.ion()
   pyplot.show()
@@ -156,7 +191,7 @@ if __name__ == "__main__":
   rcParams.update({'figure.facecolor': 'white'})
   rcParams.update({'ytick.labelsize': 8})
 
-  for i in xrange(10000):
+  for i in xrange(100000000):
     sequence = random.choice(sequences)
 
     for j, element in enumerate(sequence):
@@ -171,16 +206,13 @@ if __name__ == "__main__":
 
         print "Evaluation:", element, topPredictions, element in topPredictions
 
-        if element in topPredictions:
-          numCorrect += 1
-
-        accuracy.append(numCorrect / float(i+1))
+        correct.append(element in topPredictions)
 
         if i % 100 == 0:
           rcParams.update({'figure.figsize': (12, 6)})
           pyplot.figure(1)
           pyplot.clf()
-          pyplot.plot(range(len(accuracy)), accuracy)
+          plotAccuracy(correct)
           pyplot.draw()
 
           # rcParams.update({'figure.figsize': (6, 12)})
