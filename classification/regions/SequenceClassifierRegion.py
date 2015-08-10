@@ -72,6 +72,16 @@ class SequenceClassifierRegion(PyRegion):
             regionLevel=False,
             isDefaultInput=True,
             requireSplitterMap=False),
+          
+          predictedActiveCells=dict(
+            description="The cells that are active and predicted",
+            dataType='Real32',
+            count=0,
+            required=True,
+            regionLevel=True,
+            isDefaultInput=False,
+            requireSplitterMap=False),
+
         ),
 
         outputs=dict(
@@ -94,7 +104,18 @@ class SequenceClassifierRegion(PyRegion):
             constraints='bool',
             defaultValue=1,
             accessMode='ReadWrite'),
-
+          
+          classifyPredictedActiveCells=dict(
+            description='Boolean (0/1) indicating whether or not to classify only'
+                        'predicted active cells. '
+                        'If set to 0, then all active cells will be classified.'
+                        'If set to 1, then only predicted active cells will be classified.',
+            dataType='UInt32',
+            count=1,
+            constraints='bool',
+            defaultValue=0,
+            accessMode='ReadWrite'),
+          
           inferenceMode=dict(
             description='Boolean (0/1) indicating whether or not a region '
                         'is in inference mode.',
@@ -197,6 +218,8 @@ class SequenceClassifierRegion(PyRegion):
       self.learningMode = bool(int(value))
     elif name == "inferenceMode":
       self.inferenceMode = bool(int(value))
+    elif name == "classifyPredictedActiveCells":
+      self.classifyPredictedActiveCells = bool(int(value))
     else:
       return PyRegion.setParameter(self, name, index, value)
 
@@ -221,8 +244,12 @@ class SequenceClassifierRegion(PyRegion):
                         "actValue": int(categories[0])}
 
     # List the indices of active cells (non-zero pattern)
-    activeCells = inputs["bottomUpIn"]
-    patternNZ = activeCells.nonzero()[0]
+    if self.classifyPredictedActiveCells:
+      predictedActiveCells = inputs["predictedActiveCells"]      
+      patternNZ = predictedActiveCells.nonzero()[0]
+    else:
+      activeCells = inputs["bottomUpIn"]
+      patternNZ = activeCells.nonzero()[0]
 
     # Call classifier
     clResults = self._classifier.compute(
@@ -274,6 +301,14 @@ class SequenceClassifierRegion(PyRegion):
 
 
   def getOutputElementCount(self, name):
+    """Returns the width of dataOut."""
+   
+    if name == "classificationResult":
+      return 1
+    else:
+      raise Exception("Unknown output {}.".format(name))
+    
+  def getInputElementCount(self, name):
     """Returns the width of dataOut."""
    
     if name == "classificationResult":

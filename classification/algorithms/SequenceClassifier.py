@@ -206,9 +206,10 @@ class SequenceClassifier(object):
     Parameters:
     ---------------------------------------------------------------------
     alpha:    The alpha used to compute running averages of the bucket duty
-               cycles for each activation pattern bit. A lower alpha results
-               in longer term memory.
-    actValueAlpha:  The alpha used to compute running averages of each 
+              cycles for each activation pattern bit. A lower alpha results
+              in longer term memory.
+    actValueAlpha:  
+              The alpha used to compute running averages of each 
               bucketIdx actual values.
     verbosity: verbosity level, can be 0, 1, or 2
     """

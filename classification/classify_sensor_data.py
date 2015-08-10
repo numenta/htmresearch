@@ -55,7 +55,8 @@ _CATEGORY_ENCODER_PARAMS = {
     "categoryList": range(NUM_CATEGORIES)
 }
 
-_SEQ_CLASSIFIER_PARAMS = {"implementation": "py", "clVerbosity": _VERBOSITY}
+_SEQ_CLASSIFIER_PARAMS = {"implementation": "py", 
+                          "clVerbosity": _VERBOSITY}
 
 _KNN_CLASSIFIER_PARAMS = {
   "k": 1,
@@ -152,30 +153,41 @@ def _setupScalarEncoder(minval, maxval):
 
 if __name__ == "__main__":
 
-  for noiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
-    expParams = "RUNNING EXPERIMENT WITH PARAMS: " + \
-                "numRecords=%s | noiseAmplitude=%s | signalAmplitude=%s | signalMean=%s | signalPeriod=%s \n" \
-                % (NUM_RECORDS, noiseAmplitude, SIGNAL_AMPLITUDE, SIGNAL_MEAN, SIGNAL_PERIOD)
-    _OUT_FILE.write(expParams)
-    print expParams
-
-    # Generate the data, and get the min/max values
-    generateData(noise_amplitude=noiseAmplitude)
-    inputFile = os.path.join(DATA_DIR, "white_noise_%s.csv" % noiseAmplitude)
-    minval, maxval = findMinMax(inputFile)
-
-    _setupScalarEncoder(minval, maxval)
-
-    # Create and run network on this data.
-    #   Input data comes from a CSV file (scalar values, labels). The
-    #   RecordSensor region allows us to specify a file record stream as the
-    #   input source via the dataSource attribute.
-    dataSource = FileRecordStream(streamID=inputFile)
-    encoders = {"white_noise": _SCALAR_ENCODER_PARAMS}
-    network = createNetwork((dataSource, "py.RecordSensor", encoders, NUM_CATEGORIES, "py.SequenceClassifierRegion", _SEQ_CLASSIFIER_PARAMS))
-
-    # Need to init the network before it can run.
-    network.initialize()
-    run(network, NUM_RECORDS, PARTITIONS, _OUT_FILE)
+  for classifyPredictedActiveCells in [True, False]:
+    for noiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
+      expParams = "RUNNING EXPERIMENT WITH PARAMS: \n" \
+                  " * classifyPredictiveActiveCells=%s \n" %classifyPredictedActiveCells + \
+                  " * numRecords=%s \n" %NUM_RECORDS + \
+                  " * noiseAmplitude=%s \n" %noiseAmplitude + \
+                  " * signalAmplitude=%s \n" %SIGNAL_AMPLITUDE + \
+                  " * signalMean=%s \n" %SIGNAL_MEAN + \
+                  " * signalPeriod=%s \n" %SIGNAL_PERIOD
+      _OUT_FILE.write(expParams)
+      print expParams
+  
+      # Generate the data, and get the min/max values
+      generateData(noise_amplitude=noiseAmplitude)
+      inputFile = os.path.join(DATA_DIR, "white_noise_%s.csv" % noiseAmplitude)
+      minval, maxval = findMinMax(inputFile)
+  
+      _setupScalarEncoder(minval, maxval)
+  
+      # Create and run network on this data.
+      #   Input data comes from a CSV file (scalar values, labels). The
+      #   RecordSensor region allows us to specify a file record stream as the
+      #   input source via the dataSource attribute.
+      dataSource = FileRecordStream(streamID=inputFile)
+      encoders = {"sensor_data": _SCALAR_ENCODER_PARAMS}
+      network = createNetwork(dataSource, 
+                              "py.RecordSensor", 
+                              encoders, 
+                              NUM_CATEGORIES, 
+                              "py.SequenceClassifierRegion", 
+                              _SEQ_CLASSIFIER_PARAMS, 
+                              classifyPredictedActiveCells)
+  
+      # Need to init the network before it can run.
+      network.initialize()
+      run(network, NUM_RECORDS, PARTITIONS, _OUT_FILE)
 
   _OUT_FILE.close()
