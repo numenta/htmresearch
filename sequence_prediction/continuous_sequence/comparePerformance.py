@@ -24,6 +24,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from optparse import OptionParser
+from swarm_runner import SwarmRunner
+
 rcParams.update({'figure.autolayout': True})
 plt.ion()
 plt.close('all')
@@ -43,12 +45,12 @@ def NRMSE(data, pred):
   return np.sqrt(np.nanmean(np.square(pred-data)))/np.sqrt(np.nanmean( np.square(data-np.nanmean(data))))
 
 
-def plotPerformance(dataSet):
-  filePath = './data/' + dataSet + '_cont.csv'
+def plotPerformance(dataSet, nTrain):
+  filePath = './data/' + dataSet + '.csv'
   print "load test data from ", filePath
   trueData = loadDataFile(filePath)
 
-  filePath = './prediction/' + dataSet + '_cont_TM_pred.csv'
+  filePath = './prediction/' + dataSet + '_TM_pred.csv'
   print "load TM prediction from ", filePath
   predData_TM = loadDataFile(filePath)
 
@@ -56,14 +58,15 @@ def plotPerformance(dataSet):
   # predData_ARIMA = loadDataFile(filePath)
   N = min(len(predData_TM), len(trueData))
 
+  print "nTrain: ", nTrain
+  print "nTest: ", len(trueData[nTrain:])
   TM_lag = 1
-
   predData_shift = np.roll(trueData, 1)
   predData_TM = np.roll(predData_TM, TM_lag)
 
-  trueData = trueData[10:-10]
-  predData_TM = predData_TM[10:-10]
-  predData_shift = predData_shift[10:-10]
+  trueData = trueData[nTrain:]
+  predData_TM = predData_TM[nTrain:]
+  predData_shift = predData_shift[nTrain:]
 
   # predData_ARIMA = predData_ARIMA[lag:N]
 
@@ -128,5 +131,7 @@ if __name__ == "__main__":
 
   (_options, _args) = _getArgs()
   dataSet = _options.dataSet
+  SWARM_CONFIG = SwarmRunner.importSwarmDescription(dataSet)
+  nTrain = SWARM_CONFIG["streamDef"]['streams'][0]['last_record']
   print 'Compare Model performance for ', dataSet
-  plotPerformance(dataSet)
+  plotPerformance(dataSet, nTrain)
