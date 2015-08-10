@@ -248,8 +248,8 @@ def createClassifierRegion(network, classifierType, classifierParams, prevRegion
 
   # Disable learning for now (will be enabled in a later training phase)... why???
   classifierRegion.setParameter("learningMode", False)
-
-  # Inference mode outputs the current inference. We can always leave it on.
+  
+  # Okay to always leave inference mode on; only there for some corner cases.
   classifierRegion.setParameter("inferenceMode", True)
 
   return classifierRegion
@@ -318,9 +318,6 @@ def linkRegions(network):
       srcOutput = "bottomUpOut", destInput = "bottomUpIn")
 
   # Link the sensor to the classifier to send in category labels.
-  # TODO: this link is useless right now because the CLAclassifier region
-  # compute() function doesn't work... we are currently feeding TM states and
-  # categories manually to the classifier via the customCompute() function.
   network.link("sensor", "classifier", "UniformLink", "",
       srcOutput = "categoryOut", destInput = "categoryIn")
 

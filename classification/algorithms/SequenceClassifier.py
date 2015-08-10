@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -22,10 +22,11 @@
 """This file implements the SequenceClassifier."""
 
 import array
+from collections import deque
 import itertools
+
 import numpy
 
-from collections import deque
 
 # This determines how large one of the duty cycles must get before each of the
 # duty cycles are updated to the current iteration.
@@ -52,7 +53,7 @@ class BitHistory(object):
   __VERSION__ = 2
 
 
-  def __init__(self, classifier, bitNum):
+  def __init__(self, classifier, bitNum, nSteps):
     """Constructor for bit history.
 
     Parameters:
@@ -60,10 +61,9 @@ class BitHistory(object):
     classifier:    instance of the CLAClassifier that owns us
     bitNum:        activation pattern bit number this history is for,
                         used only for debug messages
+    nSteps:        number of steps of prediction this history is for, used
+                        only for debug messages
     """
-    #TODO: nSteps needs to be removed
-    nSteps = 0
-    
     # Store reference to the classifier
     self._classifier = classifier
 
@@ -215,9 +215,6 @@ class BitHistory(object):
 
 
   def write(self, proto):
-    """
-    Write activationPattern bit history.
-    """
     proto.id = self._id
 
     statsProto = proto.init("stats", len(self._stats))
@@ -231,9 +228,6 @@ class BitHistory(object):
 
   @classmethod
   def read(cls, proto):
-    """
-    Read activationPattern bit history.
-    """
     bitHistory = object.__new__(cls)
 
     bitHistory._id = proto.id
@@ -276,12 +270,10 @@ class SequenceClassifier(object):
 
     Parameters:
     ---------------------------------------------------------------------
-    steps:     Sequence of the different steps of multi-step predictions to learn
-    alpha:     The alpha used to compute running averages of the bucket duty
+    steps:    Sequence of the different steps of multi-step predictions to learn
+    alpha:    The alpha used to compute running averages of the bucket duty
                cycles for each activation pattern bit. A lower alpha results
                in longer term memory.
-    actValueAlpha:    The alpha used to compute running averages of the 
-                      actual values for each bucket.
     verbosity: verbosity level, can be 0, 1, or 2
     """
     # Save constructor args
@@ -482,7 +474,7 @@ class SequenceClassifier(object):
           history = self._activeBitHistory.get(key, None)
           if history is None:
             history = self._activeBitHistory[key] = BitHistory(self,
-                        bitNum=bit)
+                        bitNum=bit, nSteps=nSteps)
 
           # Store new sample
           history.store(iteration=self._learnIteration,
@@ -527,6 +519,7 @@ class SequenceClassifier(object):
         self._patternNZHistory[i] = (self._learnIteration-(historyLen-i),
                                      pattern)
 
+
     elif state["_version"] == 2:
       # Version 2 introduced _recordNumMinusLearnIteration
       pass
@@ -539,9 +532,6 @@ class SequenceClassifier(object):
 
   @classmethod
   def read(cls, proto):
-    """
-    Retrieve properties of prototype (alpha, patternHistory, etc..)
-    """
     classifier = object.__new__(cls)
 
     classifier.steps = []
@@ -586,9 +576,6 @@ class SequenceClassifier(object):
 
 
   def write(self, proto):
-    """
-    Update prototype properties (alpha, patternHistory, etc..)
-    """
     stepsProto = proto.init("steps", len(self.steps))
     for i in xrange(len(self.steps)):
       stepsProto[i] = self.steps[i]
