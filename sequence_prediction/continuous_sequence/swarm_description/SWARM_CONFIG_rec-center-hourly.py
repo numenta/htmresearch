@@ -23,30 +23,39 @@
 SWARM_CONFIG = {
   "includedFields": [
     {
-      "fieldName": "data",
+      "fieldName": "timestamp",
+      "fieldType": "datetime"
+    },
+    {
+      "fieldName": "kw_energy_consumption",
       "fieldType": "float",
-      "maxValue": 1.0,
-      "minValue": -1.0
+      "maxValue": 53.0,
+      "minValue": 0.0
     }
   ],
   "streamDef": {
-    "info": "sine",
+    "info": "kw_energy_consumption",
     "version": 1,
     "streams": [
       {
-        "info": "sine.csv",
-        "source": "file://data/sine.csv",
+        "info": "Rec Center",
+        "source": "file://data/rec-center-hourly.csv",
         "columns": [
           "*"
-        ]
+        ],
+        "last_record": 3000
       }
-    ]
+    ],
   },
+
   "inferenceType": "TemporalMultiStep",
   "inferenceArgs": {
-    "predictionSteps": [1],
-    "predictedField": "data"
+    "predictionSteps": [
+      1
+    ],
+    "predictedField": "kw_energy_consumption"
   },
-  "metricWindow": 2000,
+  "metricWindow": 3000,
+  "iterationCount": -1,
   "swarmSize": "medium"
 }

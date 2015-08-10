@@ -35,58 +35,11 @@ matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
+from swarm_runner import SwarmRunner
+
 # from SWARM_CONFIG import SWARM_CONFIG
 import pandas as pd
 import numpy as np
-
-dataSet = 'sine'
-
-DATE_FORMAT = "%m/%d/%y %H:%M"
-
-
-def importSwarmDescription(dataSet):
-  swarmConfigFileName = 'SWARM_CONFIG_' + dataSet
-  try:
-    SWARM_CONFIG = importlib.import_module("swarm_description.%s" % swarmConfigFileName).SWARM_CONFIG
-  except ImportError:
-    raise Exception("No swarm_description exist for '%s'. Create swarm_description first"
-                    % dataSet)
-
-  return SWARM_CONFIG
-
-def modelParamsToString(modelParams):
-  pp = pprint.PrettyPrinter(indent=2)
-  return pp.pformat(modelParams)
-
-
-def writeModelParamsToFile(modelParams, name):
-  cleanName = name.replace(" ", "_").replace("-", "_")
-  paramsName = "%s_model_params.py" % cleanName
-  outDir = os.path.join(os.getcwd(), 'model_params')
-  if not os.path.isdir(outDir):
-    os.mkdir(outDir)
-  outPath = os.path.join(os.getcwd(), 'model_params', paramsName)
-  with open(outPath, "wb") as outFile:
-    modelParamsString = modelParamsToString(modelParams)
-    outFile.write("MODEL_PARAMS = \\\n%s" % modelParamsString)
-  return outPath
-
-
-def swarmForBestModelParams(swarmConfig, name, maxWorkers=6):
-  outputLabel = name
-  permWorkDir = os.path.abspath('swarm')
-  if not os.path.exists(permWorkDir):
-    os.mkdir(permWorkDir)
-
-  modelParams = permutations_runner.runWithConfig(
-    swarmConfig,
-    {"maxWorkers": maxWorkers, "overwrite": True},
-    outputLabel=outputLabel,
-    outDir=permWorkDir,
-    permWorkDir=permWorkDir,
-    verbosity=0)
-  modelParamsFile = writeModelParamsToFile(modelParams, name)
-  return modelParamsFile
 
 
 def getModelParamsFromName(modelName):
@@ -117,6 +70,10 @@ def runNupicModel(filePath, model, plot, useDeltaEncoder=True, savePrediction=Tr
   predictedField = SWARM_CONFIG['inferenceArgs']['predictedField']
   predictionSteps = SWARM_CONFIG['inferenceArgs']['predictionSteps']
   nPredictionSteps = len(predictionSteps)
+
+  print "inputField: ", inputField
+  print "predictedField: ", predictedField
+
   if plot:
     plotCount = 1
     plotHeight = max(plotCount * 3, 6)
@@ -132,8 +89,8 @@ def runNupicModel(filePath, model, plot, useDeltaEncoder=True, savePrediction=Tr
     outputFileName = './prediction/'+fileName+'_TM_pred.csv'
     outputFile = open(outputFileName,"w")
     csvWriter = csv.writer(outputFile)
-    csvWriter.writerow(['step', 'data'])
-    csvWriter.writerow(['int', 'float'])
+    csvWriter.writerow(['step', 'data','prediction'])
+    csvWriter.writerow(['int', 'float','float'])
     csvWriter.writerow(['', ''])
 
   data = pd.read_csv(filePath, header=0, skiprows=[1,2])
@@ -153,13 +110,10 @@ def runNupicModel(filePath, model, plot, useDeltaEncoder=True, savePrediction=Tr
     inputRecord = {}
     for field in range(len(SWARM_CONFIG["includedFields"])):
       fieldName = SWARM_CONFIG["includedFields"][field]['fieldName']
-      inputRecord[fieldName] = data[fieldName].values[i]
+      inputRecord[fieldName] = float(data[fieldName].values[i])
 
     if useDeltaEncoder:
       inputRecord[predictedField] = float(firstDifference.values[i])
-
-    if "timestamp" in inputRecord:
-      inputRecord["timestamp"] = datetime.datetime.strptime(inputRecord["timestamp"], DATE_FORMAT)
 
     result = model.run(inputRecord)
 
@@ -227,39 +181,6 @@ def calculateFirstDifference(filePath, outputFilePath):
   outputFile.close()
 
 
-def swarm(SWARM_CONFIG, useDeltaEncoder=False):
-  if useDeltaEncoder:
-    print "Use First-order delta encoder"
-    filePath = SWARM_CONFIG["streamDef"]['streams'][0]['source']
-    filePath = filePath[7:]
-    name = os.path.splitext(filePath)[0]
-
-    SWARM_CONFIG["streamDef"]['streams'][0]['source'] = 'file://'+name+'_FirstDifference.csv'
-
-  filePath = SWARM_CONFIG["streamDef"]['streams'][0]['source']
-  filePath = filePath[7:]
-  name = os.path.splitext(os.path.basename(filePath))[0]
-
-  print "================================================="
-  print "= Swarming on %s data..." % name
-  print " Swam size: ", (SWARM_CONFIG["swarmSize"])
-  print " Read Input File: ", filePath
-
-  predictedField = SWARM_CONFIG['inferenceArgs']['predictedField']
-
-  data = pd.read_csv(filePath, header=0, skiprows=[1,2])
-  data = data[predictedField].astype('float')
-
-  SWARM_CONFIG['includedFields'][0]['minValue'] = float(data.min())
-  SWARM_CONFIG['includedFields'][0]['maxValue'] = float(data.max())
-
-  pprint.pprint(SWARM_CONFIG)
-  print "================================================="
-  modelParams = swarmForBestModelParams(SWARM_CONFIG, name)
-  print "\nWrote the following model param files:"
-  print "\t%s" % modelParams
-
-
 def _getArgs():
   parser = OptionParser(usage="%prog PARAMS_DIR OUTPUT_DIR [options]"
                               "\n\nCompare TM performance with trivial predictor using "
@@ -299,22 +220,17 @@ def runExperiment(SWARM_CONFIG, useDeltaEncoder=False):
     filePathtest = fileName + '_FirstDifference' +'_cont'+'.csv'
     calculateFirstDifference(filePathtestOriginal, filePathtest)
   else:
+    filePathtrain = fileName + '.csv'
     filePathtest = fileName + '_cont'+'.csv'
     filePathtestOriginal = filePathtest
 
-  # run swarm on data file
-  swarm(SWARM_CONFIG, useDeltaEncoder)
-
-  filePath = SWARM_CONFIG["streamDef"]['streams'][0]['source']
-  filePath = filePath[7:]
-  fileName = os.path.splitext(os.path.basename(filePath))[0]
-
-  modelName = fileName
+  modelName = os.path.splitext(os.path.basename(filePathtrain))[0]
   modelParams = getModelParamsFromName(modelName)
   model = createModel(modelParams)
 
-  print 'run model on training data first to get better result on the test data'
+  print 'run model on training data ', filePathtrain
   runNupicModel(filePath, model, plot=False, useDeltaEncoder=useDeltaEncoder, savePrediction=True)
+
   try:
     print 'run model on test data ', filePathtestOriginal
     runNupicModel(filePathtestOriginal, model, plot=False, useDeltaEncoder=useDeltaEncoder, savePrediction=True)
@@ -322,12 +238,11 @@ def runExperiment(SWARM_CONFIG, useDeltaEncoder=False):
     raise Exception("No continuation file exist at %s " % filePathtestOriginal)
 
 
-
 if __name__ == "__main__":
   (_options, _args) = _getArgs()
   dataSet = _options.dataSet
   useDeltaEncoder = _options.useDeltaEncoder
 
-  SWARM_CONFIG = importSwarmDescription(dataSet)
+  SWARM_CONFIG = SwarmRunner.importSwarmDescription(dataSet)
   runExperiment(SWARM_CONFIG, useDeltaEncoder)
 
