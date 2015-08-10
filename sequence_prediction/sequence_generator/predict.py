@@ -131,11 +131,9 @@ def movingAverage(a, n=3) :
 
 
 def plotAccuracy(correct, window=1000):
-  if len(correct) > window:
-    accuracy = movingAverage(correct, n=window)
-    pyplot.plot(range(len(accuracy)), accuracy)
-  else:
-    pyplot.text(0, 0, "Waiting for data...", fontsize=24)
+  accuracy = movingAverage(correct, n=min(len(correct), window))
+  style = 'ro' if len(correct) < window else ''
+  pyplot.plot(range(len(accuracy)), accuracy, style)
 
 
 
