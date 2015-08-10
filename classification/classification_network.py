@@ -266,7 +266,7 @@ def validateRegions(sensor, sp, tm, classifier):
     raise ValueError("Region widths do not fit. SP output width = %s. TM input width = %s"
                      % (spOutputWidth, tmInputWidth))
 
-    # TODO: should we check if TM output width matches classifier input width? Not sure param exists.
+  # TODO: should we check if TM output width matches classifier input width? Not sure param exists.
 
 
 def linkRegions(network):

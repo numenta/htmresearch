@@ -239,10 +239,7 @@ class SequenceClassifierRegion(PyRegion):
     for category in inputs['categoryIn']:
       if category != -1:
         categories.append(category)
-
-    classificationIn = {"bucketIdx": int(categories[0]),
-                        "actValue": int(categories[0])}
-
+        
     # List the indices of active cells (non-zero pattern)
     if self.classifyPredictedActiveCells:
       predictedActiveCells = inputs["predictedActiveCells"]      
@@ -251,10 +248,18 @@ class SequenceClassifierRegion(PyRegion):
       activeCells = inputs["bottomUpIn"]
       patternNZ = activeCells.nonzero()[0]
 
-    # Call classifier
+    # Call classifier. Don't train. Just inference. Train after.
     clResults = self._classifier.compute(
-        recordNum=self.recordNum, patternNZ=patternNZ, classification=classificationIn, learn=self.learningMode, infer=self.inferenceMode)
+      recordNum=self.recordNum, patternNZ=patternNZ, classification=None, learn=False, infer=self.inferenceMode)
 
+    for category in categories:
+      classificationIn = {"bucketIdx": int(category),
+                          "actValue": int(category)}
+  
+      # Train classifier, no inference
+      self._classifier.compute(
+          recordNum=self.recordNum, patternNZ=patternNZ, classification=classificationIn, learn=self.learningMode, infer=False)
+  
     inferredValue = clResults["actualValues"][clResults['probabilities'].argmax()]
 
     outputs['classificationResult'][0] = inferredValue
