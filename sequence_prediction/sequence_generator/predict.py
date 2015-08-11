@@ -74,7 +74,6 @@ MODEL_PARAMS = {
         "synPermInactiveDec": 0.01,
         "maxBoost": 0.0
     },
-
     "tpEnable" : True,
     "tpParams": {
       "verbosity": 0,
@@ -124,16 +123,38 @@ def generateSequences():
 
 
 
-def movingAverage(a, n=3) :
+def movingAverage(a, n):
   weights = numpy.repeat(1.0, n)/n
   return numpy.convolve(a, weights, 'valid')
 
 
 
-def plotAccuracy(correct, window=1000):
-  accuracy = movingAverage(correct, n=min(len(correct), window))
-  style = 'ro' if len(correct) < window else ''
-  pyplot.plot(range(len(accuracy)), accuracy, style)
+def plotMovingAverage(data, window):
+  movingData = movingAverage(data, min(len(data), window))
+  style = 'ro' if len(data) < window else ''
+  pyplot.plot(range(len(movingData)), movingData, style)
+
+
+
+def plotAccuracy(correct, window=100):
+  pyplot.title("Accuracy over window={0}".format(window))
+  plotMovingAverage(correct, window)
+
+
+
+def plotTMStats(numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns,
+                window=100):
+  pyplot.subplot(3, 1, 1)
+  pyplot.title("# predicted => active cells over window={0}".format(window))
+  plotMovingAverage(numPredictedActiveCells, window)
+
+  pyplot.subplot(3, 1, 2)
+  pyplot.title("# predicted => inactive cells over window={0}".format(window))
+  plotMovingAverage(numPredictedInactiveCells, window)
+
+  pyplot.subplot(3, 1, 3)
+  pyplot.title("# unpredicted => active cells over window={0}".format(window))
+  plotMovingAverage(numUnpredictedActiveColumns, window)
 
 
 
@@ -179,6 +200,9 @@ if __name__ == "__main__":
 
   sequences = generateSequences()
   correct = []
+  numPredictedActiveCells = []
+  numPredictedInactiveCells = []
+  numUnpredictedActiveColumns = []
 
   pyplot.ion()
   pyplot.show()
@@ -195,6 +219,10 @@ if __name__ == "__main__":
     for j, element in enumerate(sequence):
       result = shifter.shift(model.run({"element": element}))
       # print element, result.inferences["multiStepPredictions"][1]
+      tm = model._getTPRegion().getSelf()._tfdr
+
+      if j == len(sequence) - 2:
+        tm.mmClearHistory()
 
       if j == len(sequence) - 1:
         bestPredictions = sorted(result.inferences["multiStepPredictions"][1].items(),
@@ -205,6 +233,9 @@ if __name__ == "__main__":
         print "Evaluation:", element, topPredictions, element in topPredictions
 
         correct.append(element in topPredictions)
+        numPredictedActiveCells.append(len(tm.mmGetTracePredictedActiveCells().data[0]))
+        numPredictedInactiveCells.append(len(tm.mmGetTracePredictedInactiveCells().data[0]))
+        numUnpredictedActiveColumns.append(len(tm.mmGetTraceUnpredictedActiveColumns().data[0]))
 
         if i % 100 == 0:
           rcParams.update({'figure.figsize': (12, 6)})
@@ -218,5 +249,10 @@ if __name__ == "__main__":
           # pyplot.clf()
           # tm = model._getTPRegion().getSelf()._tfdr
           # plotTraces(tm)
+
+          pyplot.figure(2)
+          pyplot.clf()
+          plotTMStats(numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns)
+          pyplot.draw()
 
     model.resetSequenceStates()
