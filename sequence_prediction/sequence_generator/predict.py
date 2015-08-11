@@ -110,11 +110,52 @@ MODEL_PARAMS = {
 
 
 def generateSequences():
-  generator = SequenceGenerator(seed=42)
   sequences = []
+
+  # Generated sequences
+  generator = SequenceGenerator(seed=42)
 
   for order in xrange(MIN_ORDER, MAX_ORDER+1):
     sequences += generator.generate(order, NUM_PREDICTIONS)
+
+  # # Subutai's sequences
+  # """
+  # Make sure to change parameter 'categoryList' above to: "categoryList": range(18)
+  # """
+  # sequences = [
+  #   [0, 1, 2, 3, 4, 5],
+  #   [6, 3, 2, 5, 1, 7],
+  #   [8, 9, 10, 11, 12, 13],
+  #   [14, 1, 2, 3, 15, 16],
+  #   [17, 4, 2, 3, 1, 5]
+  # ]
+
+  # # Two orders of sequences
+  # sequences = [
+  #   [4, 2, 5, 0],
+  #   [4, 5, 2, 3],
+  #   [1, 2, 5, 3],
+  #   [1, 5, 2, 0],
+  #   [5, 3, 6, 2, 0],
+  #   [5, 2, 6, 3, 4],
+  #   [1, 3, 6, 2, 4],
+  #   [1, 2, 6, 3, 0]
+  # ]
+
+  # # Two orders of sequences (easier)
+  # # """
+  # # Make sure to change parameter 'categoryList' above to: "categoryList": range(13)
+  # # """
+  # sequences = [
+  #   [4, 2, 5, 0],
+  #   [4, 5, 2, 3],
+  #   [1, 2, 5, 3],
+  #   [1, 5, 2, 0],
+  #   [11, 9, 12, 8, 6],
+  #   [11, 8, 12, 9, 10],
+  #   [7, 9, 12, 8, 10],
+  #   [7, 8, 12, 9, 6]
+  # ]
 
   for sequence in sequences:
     print sequence
