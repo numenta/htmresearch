@@ -94,19 +94,31 @@ config = {
             #                  'w': 21}}
             #
             'encoders': {
-                u'data':     {   'clipInput': True,
-    'fieldname': u'data',
-    'maxval': 1.0,
-    'minval': -1.0,
+                u'timestamp_timeOfDay':     {   'fieldname': u'timestamp',
+    'name': u'timestamp_timeOfDay',
+    'timeOfDay': (21, 1),
+    'type': 'DateEncoder'},
+  u'timestamp_dayOfWeek':     {   'dayOfWeek': (21, 1),
+    'fieldname': u'timestamp',
+    'name': u'timestamp_dayOfWeek',
+    'type': 'DateEncoder'},
+  u'timestamp_weekend':     {   'fieldname': u'timestamp',
+    'name': u'timestamp_weekend',
+    'type': 'DateEncoder',
+    'weekend': 21},
+  u'kw_energy_consumption':     {   'clipInput': True,
+    'fieldname': u'kw_energy_consumption',
+    'maxval': 53.0,
+    'minval': 0.0,
     'n': 100,
-    'name': u'data',
+    'name': u'kw_energy_consumption',
     'type': 'ScalarEncoder',
     'w': 21},
   '_classifierInput':     {   'classifierOnly': True,
     'clipInput': True,
-    'fieldname': u'data',
-    'maxval': 1.0,
-    'minval': -1.0,
+    'fieldname': u'kw_energy_consumption',
+    'maxval': 53.0,
+    'minval': 0.0,
     'n': 100,
     'name': '_classifierInput',
     'type': 'ScalarEncoder',
@@ -305,11 +317,11 @@ control = {
 
   # Input stream specification per py/nupic/frameworks/opf/jsonschema/stream_def.json.
   #
-  'dataset' : {   u'info': u'sine',
+  'dataset' : {   u'info': u'kw_energy_consumption',
         u'streams': [   {   u'columns': [u'*'],
-                            u'info': u'sine.csv',
-                            u'last_record': 1800,
-                            u'source': u'file://data/sine.csv'}],
+                            u'info': u'Rec Center',
+                            u'last_record': 3800,
+                            u'source': u'file://data/rec-center-hourly.csv'}],
         u'version': 1},
 
   # Iteration count: maximum number of iterations.  Each iteration corresponds
@@ -319,19 +331,19 @@ control = {
   # whichever occurs first.
   #
   # iterationCount of -1 = iterate over the entire dataset
-  'iterationCount' : 100,
+  'iterationCount' : -1,
 
 
   # A dictionary containing all the supplementary parameters for inference
-  "inferenceArgs":{u'inputPredictedField': 'yes',
- u'predictedField': u'data',
+  "inferenceArgs":{u'inputPredictedField': 'auto',
+ u'predictedField': u'kw_energy_consumption',
  u'predictionSteps': [1]},
 
   # Metrics: A list of MetricSpecs that instantiate the metrics that are
   # computed for this experiment
   'metrics':[
-    MetricSpec(field=u'data', metric='multiStep', inferenceElement='multiStepBestPredictions', params={'window': 1800, 'steps': [1], 'errorMetric': 'aae'}),
-    MetricSpec(field=u'data', metric='multiStep', inferenceElement='multiStepBestPredictions', params={'window': 1800, 'steps': [1], 'errorMetric': 'altMAPE'})
+    MetricSpec(field=u'kw_energy_consumption', metric='multiStep', inferenceElement='multiStepBestPredictions', params={'window': 3000, 'steps': [1], 'errorMetric': 'aae'}),
+    MetricSpec(field=u'kw_energy_consumption', metric='multiStep', inferenceElement='multiStepBestPredictions', params={'window': 3000, 'steps': [1], 'errorMetric': 'altMAPE'})
   ],
 
   # Logged Metrics: A sequence of regular expressions that specify which of

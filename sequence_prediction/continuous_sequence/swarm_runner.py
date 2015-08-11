@@ -195,12 +195,10 @@ if __name__ == "__main__":
   swarm_runner = SwarmRunner(dataSet, useDeltaEncoder)
   SWARM_CONFIG = SwarmRunner.importSwarmDescription(dataSet)
 
-  swarm_runner.runExperiment(SWARM_CONFIG)
-
   if _options.generateDescriptionFile:
     # only generate description file for swarming
     filePathTrain = swarm_runner.getSourceFile(SWARM_CONFIG)
     print " generate swarm description file for ", filePathTrain
   else:
-    swarm_runner.generateExperimentDescription(SWARM_CONFIG)
+    swarm_runner.runExperiment(SWARM_CONFIG)
 

@@ -43,7 +43,7 @@ SWARM_CONFIG = {
         "columns": [
           "*"
         ],
-        "last_record": 3000
+        "last_record": 3800
       }
     ],
   },
