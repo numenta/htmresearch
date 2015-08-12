@@ -213,13 +213,12 @@ def createClassifierRegion(network, classifierType, classifierParams):
   """
   Create classifier region.
 
-  @param network          (Network)   
-    The region will be a node in this network.
-  @param classifierType   (str)           
-    Specific type of region, e.g.
+  @param network (Network) The region will be a node in this network.
+  
+  @param classifierType (str) Specific type of region, e.g. 
     "py.CLAClassifierRegion"; possible options can be found in /nupic/regions/.
-  @return                 (Region)    
-    Classifier region of the network.
+   
+  @return (Region) Classifier region of the network.
 
   """
   # Classifier region may be non-standard, so add custom region class to the network
@@ -308,22 +307,21 @@ def createNetwork(dataSource,
   Create the network instance with regions for the sensor, SP, TM, and
   classifier. Before running, be sure to init w/ network.initialize().
 
-  @param dataSource   (RecordStream) 
-    Sensor region reads data from here.
-  @param sensorType   (str)          
-    Specific type of region, e.g. "py.RecordSensor";
+  @param dataSource (RecordStream) Sensor region reads data from here.
+  
+  @param sensorType (str) Specific type of region, e.g. "py.RecordSensor";
     possible options can be found in nupic/regions/.
-  @param encoders     (dict)         
-    See createEncoder() docstring for format.
-  @param numCategories  (int)        
-    Max number of categories of the input data.
-  @param classifierType   (str)      
-    Specific type of classifier region, e.g. "py.SequenceClassifier";
-    possible options can be found in nupic/regions/.
-  @param classifierParams   (dict)   
-    Parameters for the model. E.g. {'maxCategoryCount': 3} 
-  @return        (Network)      
-    Sample network: SensorRegion -> SP -> TM -> CLA classifier
+    
+  @param encoders (dict) See createEncoder() docstring for format.
+  
+  @param numCategories (int) Max number of categories of the input data.
+  
+  @param classifierType (str) Specific type of classifier region, 
+    e.g. "py.SequenceClassifier"; possible options can be found in nupic/regions/.
+    
+  @param classifierParams (dict) Parameters for the model. E.g. {'maxCategoryCount': 3} 
+  
+  @return (Network) Sample network: SensorRegion -> SP -> TM -> CLA classifier
   """
   network = Network()
 
