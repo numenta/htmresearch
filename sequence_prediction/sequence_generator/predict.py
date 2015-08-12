@@ -112,11 +112,11 @@ MODEL_PARAMS = {
 def generateSequences():
   sequences = []
 
-  # Generated sequences
-  generator = SequenceGenerator(seed=42)
+  # # Generated sequences
+  # generator = SequenceGenerator(seed=42)
 
-  for order in xrange(MIN_ORDER, MAX_ORDER+1):
-    sequences += generator.generate(order, NUM_PREDICTIONS)
+  # for order in xrange(MIN_ORDER, MAX_ORDER+1):
+  #   sequences += generator.generate(order, NUM_PREDICTIONS)
 
   # # Subutai's sequences
   # """
@@ -163,6 +163,18 @@ def generateSequences():
   #   [5, 2, 6, 3, 4]
   # ]
   # random.seed(100) # 100 fails, 300 works (results depend on order of training)
+
+  # Hardcoded set of sequences
+  sequences = [
+    [6, 8, 7, 4, 2, 3, 0],
+    [6, 3, 4, 2, 7, 8, 5],
+    [1, 8, 7, 4, 2, 3, 5],
+    [1, 3, 4, 2, 7, 8, 0],
+    [1, 9, 7, 8, 5, 3, 4, 0],
+    [1, 4, 3, 5, 8, 7, 9, 6],
+    [2, 9, 7, 8, 5, 3, 4, 6],
+    [2, 4, 3, 5, 8, 7, 9, 0]
+  ]
 
   for sequence in sequences:
     print sequence
@@ -293,6 +305,7 @@ if __name__ == "__main__":
       if j == len(sequence) - 2:
         tm.mmClearHistory()
 
+        # Uncomment to use custom classifier (uses predicted cells to make predictions)
         predictiveColumns = set([tm.columnForCell(cell) for cell in tm.predictiveCells])
         topPredictions = classify(mapping, predictiveColumns)
 
