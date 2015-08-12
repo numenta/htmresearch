@@ -105,17 +105,6 @@ class SequenceClassifierRegion(PyRegion):
             defaultValue=1,
             accessMode='ReadWrite'),
           
-          classifyPredictedActiveCells=dict(
-            description='Boolean (0/1) indicating whether or not to classify only'
-                        'predicted active cells. '
-                        'If set to 0, then all active cells will be classified.'
-                        'If set to 1, then only predicted active cells will be classified.',
-            dataType='UInt32',
-            count=1,
-            constraints='bool',
-            defaultValue=0,
-            accessMode='ReadWrite'),
-          
           inferenceMode=dict(
             description='Boolean (0/1) indicating whether or not a region '
                         'is in inference mode.',
@@ -218,8 +207,6 @@ class SequenceClassifierRegion(PyRegion):
       self.learningMode = bool(int(value))
     elif name == "inferenceMode":
       self.inferenceMode = bool(int(value))
-    elif name == "classifyPredictedActiveCells":
-      self.classifyPredictedActiveCells = bool(int(value))
     else:
       return PyRegion.setParameter(self, name, index, value)
 
@@ -235,22 +222,33 @@ class SequenceClassifierRegion(PyRegion):
 
     """
 
+    # Allow training on multiple categories:
+    #  An input can potentially belong to multiple categories. 
+    #  If a category value is < 0, it means that the input does not belong to that category.
     categories = []
     for category in inputs['categoryIn']:
-      if category != -1:
+      # if a category value <0, then it means 
+      # the input record does not belong to that category.
+      if category >= 0:
         categories.append(category)
         
-    # List the indices of active cells (non-zero pattern)
-    if self.classifyPredictedActiveCells:
-      predictedActiveCells = inputs["predictedActiveCells"]      
-      patternNZ = predictedActiveCells.nonzero()[0]
-    else:
-      activeCells = inputs["bottomUpIn"]
-      patternNZ = activeCells.nonzero()[0]
+    # Get TM states.
+    activeCells = inputs["bottomUpIn"]
+    defaultPatternNZ = activeCells.nonzero()[0]
+    
+    # TODO: We need a parameter to say that the previous region is the TM.
+    #   Indeed, the previous region could the UP for example.
+    #   So only get predicted active cells if we know previous region is TM
+    #   Use param `learnFromTM` for example.
+    predictedActiveCells = inputs["predictedActiveCells"]      
+    
+    # TODO: need to insert a mechanism that will alter the default patternNZ with the predictedActiveCells
+    # NOTE: Could that work? => train more on the predictedActive than the active cells
+    patternNZPredictedActive = predictedActiveCells.nonzero()[0]
 
     # Call classifier. Don't train. Just inference. Train after.
     clResults = self._classifier.compute(
-      recordNum=self.recordNum, patternNZ=patternNZ, classification=None, learn=False, infer=self.inferenceMode)
+      recordNum=self.recordNum, patternNZ=defaultPatternNZ, classification=None, learn=False, infer=self.inferenceMode)
 
     for category in categories:
       classificationIn = {"bucketIdx": int(category),
@@ -258,7 +256,7 @@ class SequenceClassifierRegion(PyRegion):
   
       # Train classifier, no inference
       self._classifier.compute(
-          recordNum=self.recordNum, patternNZ=patternNZ, classification=classificationIn, learn=self.learningMode, infer=False)
+          recordNum=self.recordNum, patternNZ=defaultPatternNZ, classification=classificationIn, learn=self.learningMode, infer=False)
   
     inferredValue = clResults["actualValues"][clResults['probabilities'].argmax()]
 
@@ -314,7 +312,7 @@ class SequenceClassifierRegion(PyRegion):
       raise Exception("Unknown output {}.".format(name))
     
   def getInputElementCount(self, name):
-    """Returns the width of dataOut."""
+    """Returns the width of dataIn."""
    
     if name == "classificationResult":
       return 1

@@ -200,7 +200,7 @@ def createTemporalMemoryRegion(network):
   temporalMemoryRegion.setParameter("learningMode", False)
 
   # We want to compute the predictedActiveCells
-  temporalMemoryRegion.setParameter("computePredictedActiveCellIndices", True)
+  #temporalMemoryRegion.setParameter("computePredictedActiveCellIndices", True)
 
   # Inference mode outputs the current inference (i.e. active cells).
   # Okay to always leave inference mode on; only there for some corner cases.
@@ -209,7 +209,7 @@ def createTemporalMemoryRegion(network):
   return temporalMemoryRegion
 
 
-def createClassifierRegion(network, classifierType, classifierParams, classifyPredictedActiveCells):
+def createClassifierRegion(network, classifierType, classifierParams):
   """
   Create classifier region.
 
@@ -218,9 +218,6 @@ def createClassifierRegion(network, classifierType, classifierParams, classifyPr
   @param classifierType   (str)           
     Specific type of region, e.g.
     "py.CLAClassifierRegion"; possible options can be found in /nupic/regions/.
-  @classifyPredictedActiveCells  (Boolean)
-    If set to True, only predictedActiveCells will be mapped to classification categories.
-    If set to False, all active cells will be mapped to classification categories. 
   @return                 (Region)    
     Classifier region of the network.
 
@@ -235,17 +232,12 @@ def createClassifierRegion(network, classifierType, classifierParams, classifyPr
   classifierRegion = network.addRegion(
     "classifier", classifierType, json.dumps(classifierParams))
 
-  # Disable learning for now (will be enabled in a later training phase)... why???
+  # Disable learning for now (will be enabled in a later training phase)
   classifierRegion.setParameter("learningMode", False)
 
   # Okay to always leave inference mode on; only there for some corner cases.
   classifierRegion.setParameter("inferenceMode", True)
-
-  if classifyPredictedActiveCells:
-    classifierRegion.setParameter("classifyPredictedActiveCells", True)
-  else:
-    classifierRegion.setParameter("classifyPredictedActiveCells", False)
-
+  
   return classifierRegion
 
 
@@ -311,8 +303,7 @@ def createNetwork(dataSource,
                   encoders,
                   numCategories,
                   classifierType,
-                  classifierParams,
-                  classifyPredictedActiveCells):
+                  classifierParams):
   """
   Create the network instance with regions for the sensor, SP, TM, and
   classifier. Before running, be sure to init w/ network.initialize().
@@ -331,9 +322,6 @@ def createNetwork(dataSource,
     possible options can be found in nupic/regions/.
   @param classifierParams   (dict)   
     Parameters for the model. E.g. {'maxCategoryCount': 3} 
-  @classifyPredictedActiveCells  (Boolean)
-    If set to True, only predictedActiveCells will be mapped to classification categories.
-    If set to False, all active cells will be mapped to classification categories.                            
   @return        (Network)      
     Sample network: SensorRegion -> SP -> TM -> CLA classifier
   """
@@ -352,8 +340,7 @@ def createNetwork(dataSource,
 
   classifier = createClassifierRegion(network,
                                       classifierType,
-                                      classifierParams,
-                                      classifyPredictedActiveCells)
+                                      classifierParams)
 
   validateRegions(sensor, sp, tm, classifier)
 
