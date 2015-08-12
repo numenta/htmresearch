@@ -234,10 +234,37 @@ def plotTraces(tm, timestamp=int(time.time()), window=500):
   # pyplot.savefig("tm-{0}.png".format(timestamp))
 
 
+
+def getEncoderMapping(model):
+  encoder = model._getEncoder().encoders[0][1]
+  mapping = dict()
+
+  for i in range(7):
+    mapping[i] = set(encoder.encode(i).nonzero()[0])
+
+  return mapping
+
+
+
+def classify(mapping, activeColumns):
+  best = -1
+  bestOverlap = float("-inf")
+
+  for i, encoding in mapping.iteritems():
+    overlap = len(encoding & activeColumns)
+    if overlap > bestOverlap:
+      best = i
+      bestOverlap = overlap
+
+  return best
+
+
+
 if __name__ == "__main__":
   model = ModelFactory.create(MODEL_PARAMS)
   model.enableInference({"predictedField": "element"})
   shifter = InferenceShifter()
+  mapping = getEncoderMapping(model)
 
   sequences = generateSequences()
   correct = []
@@ -257,6 +284,8 @@ if __name__ == "__main__":
   for i in xrange(100000000):
     sequence = random.choice(sequences)
 
+    topPredictions = []
+
     for j, element in enumerate(sequence):
       result = shifter.shift(model.run({"element": element}))
       # print element, result.inferences["multiStepPredictions"][1]
@@ -265,11 +294,15 @@ if __name__ == "__main__":
       if j == len(sequence) - 2:
         tm.mmClearHistory()
 
+        predictiveColumns = set([tm.columnForCell(cell) for cell in tm.predictiveCells])
+        topPredictions = [classify(mapping, predictiveColumns)]
+
       if j == len(sequence) - 1:
-        bestPredictions = sorted(result.inferences["multiStepPredictions"][1].items(),
-                                 key=operator.itemgetter(1),
-                                 reverse=True)
-        topPredictions = [int(round(a)) for a, b in bestPredictions[:NUM_PREDICTIONS]]
+        # Uncomment to use CLA classifier's predictions
+        # bestPredictions = sorted(result.inferences["multiStepPredictions"][1].items(),
+        #                          key=operator.itemgetter(1),
+        #                          reverse=True)
+        # topPredictions = [int(round(a)) for a, b in bestPredictions[:NUM_PREDICTIONS]]
 
         print "Evaluation:", element, topPredictions, element in topPredictions
 
