@@ -57,6 +57,11 @@ _CATEGORY_ENCODER_PARAMS = {
 _SEQ_CLASSIFIER_PARAMS = {"implementation": "py",
                           "clVerbosity": _VERBOSITY}
 
+_CLA_CLASSIFIER_PARAMS = {"steps": "0,1",
+                          "implementation": "py",
+                          "numCategories": NUM_CATEGORIES,
+                          "clVerbosity": _VERBOSITY}
+
 _KNN_CLASSIFIER_PARAMS = {
   "k": 1,
   'distThreshold': 0,
@@ -125,7 +130,7 @@ def run(net, numRecords, partitions, outFile):
     # Evaluate the predictions on the test set.
     if i >= partitions[2]:
 
-      inferredValue = classifierRegion.getOutputData("classificationResult")[0]
+      inferredValue = classifierRegion.getOutputData("classificationResults")[0]
       outFile.write(" inferredValue=%s \n" % inferredValue)
 
       if actualValue == inferredValue:

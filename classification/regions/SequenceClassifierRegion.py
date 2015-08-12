@@ -85,7 +85,7 @@ class SequenceClassifierRegion(PyRegion):
         ),
 
         outputs=dict(
-            classificationResult=dict(
+            classificationResults=dict(
             description='Classification results - i.e. the most likely categorie(s)',
             dataType='Real32',
             count=0,
@@ -260,7 +260,7 @@ class SequenceClassifierRegion(PyRegion):
   
     inferredValue = clResults["actualValues"][clResults['probabilities'].argmax()]
 
-    outputs['classificationResult'][0] = inferredValue
+    outputs['classificationResults'][0] = inferredValue
     
     self.recordNum += 1
 
@@ -306,7 +306,7 @@ class SequenceClassifierRegion(PyRegion):
   def getOutputElementCount(self, name):
     """Returns the width of dataOut."""
    
-    if name == "classificationResult":
+    if name == "classificationResults":
       return 1
     else:
       raise Exception("Unknown output {}.".format(name))
@@ -314,7 +314,7 @@ class SequenceClassifierRegion(PyRegion):
   def getInputElementCount(self, name):
     """Returns the width of dataIn."""
    
-    if name == "classificationResult":
+    if name == "classificationResults":
       return 1
     else:
       raise Exception("Unknown output {}.".format(name))
