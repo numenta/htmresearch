@@ -157,6 +157,13 @@ def generateSequences():
   #   [7, 8, 12, 9, 6]
   # ]
 
+  # # Two orders of sequences (isolating the problem)
+  # sequences = [
+  #   [1, 5, 2, 0],
+  #   [5, 2, 6, 3, 4]
+  # ]
+  # random.seed(100) # 100 fails, 300 works (results depend on order of training)
+
   for sequence in sequences:
     print sequence
 
@@ -276,7 +283,6 @@ if __name__ == "__main__":
 
   for i in xrange(100000000):
     sequence = random.choice(sequences)
-
     topPredictions = []
 
     for j, element in enumerate(sequence):
@@ -297,6 +303,7 @@ if __name__ == "__main__":
         #                          reverse=True)
         # topPredictions = [int(round(a)) for a, b in bestPredictions[:NUM_PREDICTIONS]]
 
+        print "Sequence: ", sequence
         print "Evaluation:", element, topPredictions, element in topPredictions
 
         correct.append(element in topPredictions)
