@@ -226,7 +226,7 @@ class SequenceClassifierRegion(PyRegion):
     #  An input can potentially belong to multiple categories. 
     #  If a category value is < 0, it means that the input does not belong to that category.
     categories = []
-    for category in inputs['categoryIn']:
+    for category in inputs["categoryIn"]:
       # if a category value <0, then it means 
       # the input record does not belong to that category.
       if category >= 0:
@@ -258,9 +258,9 @@ class SequenceClassifierRegion(PyRegion):
       self._classifier.compute(
           recordNum=self.recordNum, patternNZ=defaultPatternNZ, classification=classificationIn, learn=self.learningMode, infer=False)
   
-    inferredValue = clResults["actualValues"][clResults['probabilities'].argmax()]
+    inferredValue = clResults["actualValues"][clResults["probabilities"].argmax()]
 
-    outputs['classificationResults'][0] = inferredValue
+    outputs["classificationResults"][0] = inferredValue
     
     self.recordNum += 1
 

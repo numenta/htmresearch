@@ -339,7 +339,7 @@ class SequenceClassifier(object):
           sumVotes = numpy.ones(sumVotes.shape)
           sumVotes /= sumVotes.size
 
-      retval['probabilities'] = sumVotes
+      retval["probabilities"] = sumVotes
 
     # ------------------------------------------------------------------------
     # Learning:
@@ -389,7 +389,7 @@ class SequenceClassifier(object):
     if infer and self.verbosity >= 1:
       print "  inference: combined bucket likelihoods:"
       print "    actual bucket values:", retval["actualValues"]
-      votes = retval['probabilities']
+      votes = retval["probabilities"]
       print "    probabilities: %s" %_pFormatArray(votes)
       bestBucketIdx = votes.argmax()
       print "      most likely bucket idx: %d, value: %s" % (bestBucketIdx,
