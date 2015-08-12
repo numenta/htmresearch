@@ -34,7 +34,7 @@ from nupic.swarming.permutationhelpers import *
 # The name of the field being predicted.  Any allowed permutation MUST contain
 # the prediction field.
 # (generated from PREDICTION_FIELD)
-predictedField = 'data'
+predictedField = 'kw_energy_consumption'
 
 
 
@@ -56,8 +56,11 @@ permutations = {
 
     'sensorParams': {
       'encoders': {
-          u'data': PermuteEncoder(maxval=1.0, fieldName='data', w=21, clipInput=True, minval=-1.0, encoderClass='ScalarEncoder', n=PermuteInt(22, 521), ),
-  '_classifierInput': dict(maxval=1.0, classifierOnly=True, clipInput=True, minval=-1.0, n=PermuteInt(28, 521), fieldname='data', w=21, type='ScalarEncoder', ),
+          u'timestamp_timeOfDay': PermuteEncoder(fieldName='timestamp', encoderClass='DateEncoder.timeOfDay', radius=PermuteFloat(0.5, 12), w=21, ),
+  u'timestamp_dayOfWeek': PermuteEncoder(encoderClass='DateEncoder.dayOfWeek', radius=PermuteFloat(1, 6), w=21, fieldName='timestamp', ),
+  u'timestamp_weekend': PermuteEncoder(encoderClass='DateEncoder.weekend', radius=PermuteChoices([1]),  w=21, fieldName='timestamp', ),
+  u'kw_energy_consumption': PermuteEncoder(maxval=53.0, fieldName='kw_energy_consumption', w=21, clipInput=True, minval=0.0, encoderClass='ScalarEncoder', n=PermuteInt(22, 521), ),
+  '_classifierInput': dict(maxval=53.0, classifierOnly=True, clipInput=True, minval=0.0, n=PermuteInt(28, 521), fieldname='kw_energy_consumption', w=21, type='ScalarEncoder', ),
       },
     },
 
@@ -86,27 +89,27 @@ permutations = {
 #       report generator
 # (fieldname values generated from PERM_PREDICTED_FIELD_NAME)
 report = [
-          '.*data.*',
+          '.*kw_energy_consumption.*',
          ]
 
 # Permutation optimization setting: either minimize or maximize metric
 # used by RunPermutations.
 # NOTE: The value is used as a regular expressions by RunPermutations.py's
 #       report generator
-# (generated from minimize = "multiStepBestPredictions:multiStep:errorMetric='altMAPE':steps=\[1\]:window=1800:field=data")
-minimize = "multiStepBestPredictions:multiStep:errorMetric='altMAPE':steps=\[1\]:window=1800:field=data"
+# (generated from minimize = "multiStepBestPredictions:multiStep:errorMetric='altMAPE':steps=\[1\]:window=3000:field=kw_energy_consumption")
+minimize = "multiStepBestPredictions:multiStep:errorMetric='altMAPE':steps=\[1\]:window=3000:field=kw_energy_consumption"
 
-minParticlesPerSwarm = 3
+minParticlesPerSwarm = 5
 
-inputPredictedField = 'yes'
-
-
+inputPredictedField = 'auto'
 
 
 
 
 
-maxModels = 1
+
+
+maxModels = 200
 
 
 

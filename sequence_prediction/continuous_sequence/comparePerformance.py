@@ -54,24 +54,27 @@ def plotPerformance(dataSet, nTrain):
   print "load TM prediction from ", filePath
   predData_TM = loadDataFile(filePath)
 
-  # filePath = './prediction/' + dataSet + '_ARIMA_pred_cont.csv'
-  # predData_ARIMA = loadDataFile(filePath)
-  N = min(len(predData_TM), len(trueData))
+  filePath = './prediction/' + dataSet + '_ARIMA_pred.csv'
+  predData_ARIMA = loadDataFile(filePath)
+
 
   print "nTrain: ", nTrain
   print "nTest: ", len(trueData[nTrain:])
-  TM_lag = 1
+
+  # trivial shift predictor
   predData_shift = np.roll(trueData, 1)
+
+  TM_lag = 1
   predData_TM = np.roll(predData_TM, TM_lag)
 
   trueData = trueData[nTrain:]
   predData_TM = predData_TM[nTrain:]
   predData_shift = predData_shift[nTrain:]
 
-  # predData_ARIMA = predData_ARIMA[lag:N]
+  predData_ARIMA = predData_ARIMA[nTrain:]
 
   NRMSE_TM = NRMSE(trueData, predData_TM)
-  # NRMSE_ARIMA = NRMSE(trueData, predData_ARIMA)
+  NRMSE_ARIMA = NRMSE(trueData, predData_ARIMA)
   NRMSE_Shift = NRMSE(trueData, predData_shift)
 
   resTM = abs(trueData-predData_TM)
@@ -81,13 +84,13 @@ def plotPerformance(dataSet, nTrain):
 
   print "NRMSE: Shift", NRMSE_Shift
   print "NRMSE: TM", NRMSE_TM
-  # print "NRMSE: ARIMA", NRMSE_ARIMA
+  print "NRMSE: ARIMA", NRMSE_ARIMA
 
 
   plt.figure(1)
   plt.plot(trueData, label='True Data')
   plt.plot(predData_shift, label='Trival NRMSE: '+"%0.3f" % NRMSE_Shift)
-  # plt.plot(predData_ARIMA, label='ARIMA NRMSE: '+"%0.3f" % NRMSE_ARIMA)
+  plt.plot(predData_ARIMA, label='ARIMA NRMSE: '+"%0.3f" % NRMSE_ARIMA)
   plt.plot(predData_TM, label='TM, NRMSE: '+"%0.3f" % NRMSE_TM)
   plt.legend()
   plt.xlabel('Time')
