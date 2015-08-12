@@ -246,17 +246,10 @@ def getEncoderMapping(model):
 
 
 
-def classify(mapping, activeColumns):
-  best = -1
-  bestOverlap = float("-inf")
-
-  for i, encoding in mapping.iteritems():
-    overlap = len(encoding & activeColumns)
-    if overlap > bestOverlap:
-      best = i
-      bestOverlap = overlap
-
-  return best
+def classify(mapping, activeColumns, numPredictions=NUM_PREDICTIONS):
+  scores = [(len(encoding & activeColumns), i) for i, encoding in mapping.iteritems()]
+  print sorted(scores, reverse=True)
+  return [i for _, i in sorted(scores, reverse=True)[:numPredictions]]
 
 
 
@@ -295,7 +288,7 @@ if __name__ == "__main__":
         tm.mmClearHistory()
 
         predictiveColumns = set([tm.columnForCell(cell) for cell in tm.predictiveCells])
-        topPredictions = [classify(mapping, predictiveColumns)]
+        topPredictions = classify(mapping, predictiveColumns)
 
       if j == len(sequence) - 1:
         # Uncomment to use CLA classifier's predictions
