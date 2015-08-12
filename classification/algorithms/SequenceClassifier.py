@@ -291,7 +291,11 @@ class SequenceClassifier(object):
       print "  patternNZ (%d):" % len(patternNZ), patternNZ
       print "  classificationIn:", classification
 
-
+    # To allow multi-class classification, we need to be able to run leaning
+    # without inference being on. So initialize retval outside 
+    # of the inference block.
+    retval = None
+    
     # ------------------------------------------------------------------------
     # Inference:
     # For each active bit in the activationPattern, get the classification
