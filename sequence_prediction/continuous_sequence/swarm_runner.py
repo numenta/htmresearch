@@ -198,6 +198,7 @@ if __name__ == "__main__":
   if _options.generateDescriptionFile:
     # only generate description file for swarming
     filePathTrain = swarm_runner.getSourceFile(SWARM_CONFIG)
+    swarm_runner.generateExperimentDescription(SWARM_CONFIG)
     print " generate swarm description file for ", filePathTrain
   else:
     swarm_runner.runExperiment(SWARM_CONFIG)

@@ -96,10 +96,10 @@ report = [
 # used by RunPermutations.
 # NOTE: The value is used as a regular expressions by RunPermutations.py's
 #       report generator
-# (generated from minimize = "multiStepBestPredictions:multiStep:errorMetric='altMAPE':steps=\[1\]:window=3000:field=kw_energy_consumption")
-minimize = "multiStepBestPredictions:multiStep:errorMetric='nrmse':steps=\[1\]:window=3000:field=kw_energy_consumption"
+# (generated from minimize = "multiStepBestPredictions:multiStep:errorMetric='altMAPE':steps=\[1, 5\]:window=2000:field=kw_energy_consumption")
+minimize = "multiStepBestPredictions:multiStep:errorMetric='nrmse':steps=\[1, 5\]:window=2000:field=kw_energy_consumption"
 
-minParticlesPerSwarm = 5
+minParticlesPerSwarm = 15
 
 inputPredictedField = 'auto'
 
@@ -107,9 +107,9 @@ inputPredictedField = 'auto'
 
 
 
+tryAll3FieldCombinationsWTimestamps = True
 
 
-maxModels = 200
 
 
 

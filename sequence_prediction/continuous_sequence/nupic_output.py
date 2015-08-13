@@ -69,7 +69,7 @@ class NuPICFileOutput(NuPICOutput):
     self.outputFiles = []
     self.outputWriters = []
     self.lineCounts = []
-    headerRow = ['timestamp', 'kw_energy_consumption', 'prediction']
+    headerRow = ['timestamp', 'kw_energy_consumption', 'prediction-1step', 'prediction-5step']
     for name in self.names:
       self.lineCounts.append(0)
       outputFileName = "./prediction/%s_TM_pred.csv" % name
@@ -79,24 +79,24 @@ class NuPICFileOutput(NuPICOutput):
       outputWriter = csv.writer(outputFile)
       self.outputWriters.append(outputWriter)
       outputWriter.writerow(headerRow)
-      outputWriter.writerow(['int', 'float', 'float'])
-      outputWriter.writerow(['', '', ''])
+      outputWriter.writerow(['int', 'float', 'float','float'])
+      outputWriter.writerow(['', '', '', ''])
 
 
 
-  def write(self, timestamps, actualValues, predictedValues,
-            predictionStep=1):
+  def write(self, timestamps, actualValues, predictedValues1step, predictedValues5step):
 
-    assert len(timestamps) == len(actualValues) == len(predictedValues)
+    assert len(timestamps) == len(actualValues) == len(predictedValues1step)
 
     for index in range(len(self.names)):
       timestamp = timestamps[index]
       actual = actualValues[index]
-      prediction = predictedValues[index]
+      prediction1step = predictedValues1step[index]
+      prediction5step = predictedValues5step[index]
       writer = self.outputWriters[index]
 
       if timestamp is not None:
-        outputRow = [timestamp, actual, prediction]
+        outputRow = [timestamp, actual, prediction1step, prediction5step]
         writer.writerow(outputRow)
         self.lineCounts[index] += 1
 
