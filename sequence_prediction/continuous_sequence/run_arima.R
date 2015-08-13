@@ -5,8 +5,9 @@ library(TSPred)
 setwd('/Users/ycui/nta/nupic.research/sequence_prediction/continuous_sequence')
 
 # available data: "sine", "rec-center-hourly"
+dataSet <- 'nyc_taxi'
 # dataSet <- 'rec-center-hourly'
-dataSet <- "sine"
+# dataSet <- "sine"
 dataSetPath <- paste0("data/", dataSet, '.csv')
 
 # load data
@@ -17,11 +18,13 @@ if(dataSet=="sine"){
   nTrain <- 1800
 } else if (dataSet=='rec-center-hourly'){
   nTrain <- 3800
+} else if (dataSet=='nyc_taxi'){
+  nTrain <- 8000
 }
   
 nData <- length(rt)
 testLength <- nData - nTrain
-testLength <- 50
+# testLength <- 50
 
 # Vectors to hold prediction for t+1
 arima_output1 = vector(mode="numeric", length=nData)
@@ -61,10 +64,10 @@ lines(1:testLength, arima_output5[seq(nTrain+1,nTrain+testLength)],'l',col='gree
 # save prediction as a csv file
 fileName <- paste0('prediction/', dataSet, '_ARIMA_pred.csv')
 
-df <- data.frame(1:length(rt), rt, arima_output1)
-df <- rbind(c('','',''), df)
-df <- rbind(c('int','float','float'), df)
-df <- rbind(c('step','data','prediction'), df)
+df <- data.frame(1:length(rt), rt, arima_output1, arima_output5)
+df <- rbind(c('','','',''), df)
+df <- rbind(c('int','float','float','float'), df)
+df <- rbind(c('step','data','prediction-1step','prediction-5step'), df)
 
 write.table(df, file=fileName ,sep=',',col.names =FALSE, row.names = FALSE)
 dev.off()

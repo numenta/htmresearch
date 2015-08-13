@@ -277,7 +277,7 @@ config = {
 
             # This is set after the call to updateConfigFromSubConfig and is
             # computed from the aggregationInfo and predictAheadTime.
-            'steps': '1',
+            'steps': '1,5',
         },
 
         'anomalyParams': {   u'anomalyCacheRecords': None,
@@ -337,12 +337,13 @@ control = {
   # A dictionary containing all the supplementary parameters for inference
   "inferenceArgs":{u'inputPredictedField': 'auto',
  u'predictedField': u'kw_energy_consumption',
- u'predictionSteps': [1]},
+ u'predictionSteps': [1, 5]},
 
   # Metrics: A list of MetricSpecs that instantiate the metrics that are
   # computed for this experiment
   'metrics':[
-    MetricSpec(field=u'kw_energy_consumption', metric='multiStep', inferenceElement='multiStepBestPredictions', params={'window': 3000, 'steps': [1], 'errorMetric': 'nrmse'})
+    MetricSpec(field=u'kw_energy_consumption', metric='multiStep', inferenceElement='multiStepBestPredictions', params={'window': 2000, 'steps': [1, 5], 'errorMetric': 'aae'}),
+    MetricSpec(field=u'kw_energy_consumption', metric='multiStep', inferenceElement='multiStepBestPredictions', params={'window': 2000, 'steps': [1, 5], 'errorMetric': 'nrmse'})
   ],
 
   # Logged Metrics: A sequence of regular expressions that specify which of

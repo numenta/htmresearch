@@ -27,23 +27,23 @@ SWARM_CONFIG = {
       "fieldType": "datetime"
     },
     {
-      "fieldName": "kw_energy_consumption",
-      "fieldType": "float",
-      "maxValue": 53.0,
-      "minValue": 0.0
+      "fieldName": "passenger_count",
+      "fieldType": "int",
+      "maxValue": 32000,
+      "minValue": 0
     }
   ],
   "streamDef": {
-    "info": "kw_energy_consumption",
+    "info": "passenger_count",
     "version": 1,
     "streams": [
       {
-        "info": "Rec Center",
-        "source": "file://data/rec-center-hourly.csv",
+        "info": "passenger count",
+        "source": "file://data/nyc_taxi.csv",
         "columns": [
           "*"
         ],
-        "last_record": 3800
+        "last_record": 8000
       }
     ],
   },
@@ -53,9 +53,9 @@ SWARM_CONFIG = {
     "predictionSteps": [
       1, 5
     ],
-    "predictedField": "kw_energy_consumption"
+    "predictedField": "passenger_count"
   },
   "metricWindow": 2000,
   "iterationCount": -1,
-  "swarmSize": "large"
+  "swarmSize": "medium"
 }
