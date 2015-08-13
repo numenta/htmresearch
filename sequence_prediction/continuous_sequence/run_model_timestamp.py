@@ -34,7 +34,7 @@ from nupic.frameworks.opf.modelfactory import ModelFactory
 from nupic.frameworks.opf.predictionmetricsmanager import MetricsManager
 
 import nupic_output
-
+from optparse import OptionParser
 
 DESCRIPTION = (
   "Starts a NuPIC model from the model params returned by the swarm\n"
@@ -44,40 +44,29 @@ DESCRIPTION = (
   "NOTE: You must run ./swarm.py before this, because model parameters\n"
   "are required to run NuPIC.\n"
 )
-dataSet = "rec-center-hourly"  # or use "rec-center-every-15m-large"
-DATE_FORMAT = "%m/%d/%y %H:%M"
-predictedField = "kw_energy_consumption"
-
-dataSet = "nyc_taxi"
-DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
-predictedField = "passenger_count"
 
 
 DATA_DIR = "./data"
 MODEL_PARAMS_DIR = "./model_params"
-# '7/2/10 0:00'
 
 
-_METRIC_SPECS = (
-    MetricSpec(field=predictedField, metric='multiStep',
-               inferenceElement='multiStepBestPredictions',
-               params={'errorMetric': 'aae', 'window': 1000, 'steps': 1}),
-    MetricSpec(field=predictedField, metric='trivial',
-               inferenceElement='prediction',
-               params={'errorMetric': 'aae', 'window': 1000, 'steps': 1}),
-    MetricSpec(field=predictedField, metric='multiStep',
-               inferenceElement='multiStepBestPredictions',
-               params={'errorMetric': 'altMAPE', 'window': 1000, 'steps': 1}),
-    MetricSpec(field=predictedField, metric='trivial',
-               inferenceElement='prediction',
-               params={'errorMetric': 'altMAPE', 'window': 1000, 'steps': 1}),
-)
+
+def getMetricSpecs(predictedField):
+  _METRIC_SPECS = (
+      MetricSpec(field=predictedField, metric='multiStep',
+                 inferenceElement='multiStepBestPredictions',
+                 params={'errorMetric': 'aae', 'window': 1000, 'steps': 1}),
+      MetricSpec(field=predictedField, metric='multiStep',
+                 inferenceElement='multiStepBestPredictions',
+                 params={'errorMetric': 'nrmse', 'window': 1000, 'steps': 1}),
+  )
+  return _METRIC_SPECS
+
 
 def createModel(modelParams):
   model = ModelFactory.create(modelParams)
   model.enableInference({"predictedField": predictedField})
   return model
-
 
 
 def getModelParamsFromName(dataSet):
@@ -109,6 +98,7 @@ def runIoThroughNupic(inputData, model, dataSet, plot, savePrediction=True):
   else:
     output = nupic_output.NuPICFileOutput([dataSet])
 
+  _METRIC_SPECS = getMetricSpecs(predictedField)
   metricsManager = MetricsManager(_METRIC_SPECS, model.getFieldInfo(),
                                   model.getInferenceType())
 
@@ -132,9 +122,9 @@ def runIoThroughNupic(inputData, model, dataSet, plot, savePrediction=True):
 
     if counter % 100 == 0:
       print "Read %i lines..." % counter
-      print ("After %i records, 1-step altMAPE=%f", counter,
+      print ("After %i records, 1-step NRMSE=%f", counter,
               result.metrics["multiStepBestPredictions:multiStep:"
-                             "errorMetric='altMAPE':steps=1:window=1000:"
+                             "errorMetric='nrmse':steps=1:window=1000:"
                              "field="+predictedField])
  
     if plot:
@@ -148,7 +138,6 @@ def runIoThroughNupic(inputData, model, dataSet, plot, savePrediction=True):
   output.close()
 
 
-
 def runModel(dataSet, plot=False):
   print "Creating model from %s..." % dataSet
   model = createModel(getModelParamsFromName(dataSet))
@@ -156,6 +145,29 @@ def runModel(dataSet, plot=False):
   runIoThroughNupic(inputData, model, dataSet, plot)
 
 
+def _getArgs():
+  parser = OptionParser(usage="%prog PARAMS_DIR OUTPUT_DIR [options]"
+                              "\n\nCompare TM performance with trivial predictor using "
+                              "model outputs in prediction directory "
+                              "and outputting results to result directory.")
+  parser.add_option("-d",
+                    "--dataSet",
+                    type=str,
+                    default=0,
+                    dest="dataSet",
+                    help="DataSet Name, choose from rec-center-hourly, nyc_taxi")
+
+  parser.add_option("-p",
+                    "--plot",
+                    default=False,
+                    dest="plot",
+                    help="Set to True to plot result")
+
+
+  (options, remainder) = parser.parse_args()
+  print options
+
+  return options, remainder
 
 if __name__ == "__main__":
   print DESCRIPTION
@@ -163,4 +175,16 @@ if __name__ == "__main__":
   args = sys.argv[1:]
   if "--plot" in args:
     plot = True
+
+  (_options, _args) = _getArgs()
+  dataSet = _options.dataSet
+  plot = _options.plot
+
+  if dataSet == "rec-center-hourly":
+    DATE_FORMAT = "%m/%d/%y %H:%M" # '7/2/10 0:00'
+    predictedField = "kw_energy_consumption"
+  elif dataSet == "nyc_taxi":
+    DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+    predictedField = "passenger_count"
+
   runModel(dataSet, plot=plot)

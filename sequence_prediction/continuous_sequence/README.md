@@ -14,13 +14,13 @@ run swarm using the delta encoder
 
 Existing DATASET includes sine, MackeyGlass, SantaFe_A, rec-center-hourly
 
-run swarm using custum permutation settings (e.g. different error metrics)
+run swarm using custom permutation settings (e.g. different error metrics)
 
 	python run_swarm.py swarm_hotgym/permutations.py --maxWorkers 8
 
 run nupic model using existing model parameters
 
-	python runHotgym.py
+	python run_model_timestamp.py -d rec-center-hourly
 	python run_model.py -d sine
 
 
