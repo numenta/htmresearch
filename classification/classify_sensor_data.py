@@ -54,20 +54,23 @@ _CATEGORY_ENCODER_PARAMS = {
   "categoryList": range(NUM_CATEGORIES)
 }
 
-_SEQ_CLASSIFIER_PARAMS = {"implementation": "py",
-                          "clVerbosity": _VERBOSITY}
+_SEQ_CLASSIFIER_PARAMS = {
+  "implementation": "py",
+  "clVerbosity": _VERBOSITY
+}
 
-_CLA_CLASSIFIER_PARAMS = {"steps": "0,1",
-                          "implementation": "py",
-                          "numCategories": NUM_CATEGORIES,
-                          "clVerbosity": _VERBOSITY}
+_CLA_CLASSIFIER_PARAMS = {
+  "steps": "0,1",
+  "implementation": "py",
+  "numCategories": NUM_CATEGORIES,
+  "clVerbosity": _VERBOSITY
+}
 
 _KNN_CLASSIFIER_PARAMS = {
   "k": 1,
   'distThreshold': 0,
   'maxCategoryCount': NUM_CATEGORIES,
 }
-
 
 
 def run(net, numRecords, partitions, outFile):
@@ -84,7 +87,8 @@ def run(net, numRecords, partitions, outFile):
   temporalMemoryRegion = net.regions["TM"]
   classifierRegion = net.regions["classifier"]
 
-  phaseInfo = "-> Training SP. Index=0. LEARNING: SP is ON | TM is OFF | Classifier is OFF \n"
+  phaseInfo = ("-> Training SP. Index=0. LEARNING: SP is ON | TM is OFF | "
+               "Classifier is OFF \n")
   outFile.write(phaseInfo)
   print phaseInfo
 
@@ -102,19 +106,23 @@ def run(net, numRecords, partitions, outFile):
     # by the FileRecordStream instance.
     actualValue = sensorRegion.getOutputData("categoryOut")[0]
 
-    outFile.write("=> INDEX=%s |  actualValue=%s | anomalyScore=%s \n" % (i, actualValue, anomalyScore))
+    outFile.write("=> INDEX=%s |  actualValue=%s | anomalyScore=%s \n" % (
+      i, actualValue, anomalyScore))
 
     # SP has been trained. Now start training the TM too.
     if i == partitions[0]:
       temporalMemoryRegion.setParameter("learningMode", True)
-      phaseInfo = "-> Training TM. Index=%s. LEARNING: SP is ON | TM is ON | Classifier is OFF \n" % i
+      phaseInfo = (
+        "-> Training TM. Index=%s. LEARNING: SP is ON | TM is ON | Classifier "
+        "is OFF \n" % i)
       outFile.write(phaseInfo)
       print phaseInfo
 
     # Start training the classifier as well.
     elif i == partitions[1]:
       classifierRegion.setParameter("learningMode", True)
-      phaseInfo = "-> Training Classifier. Index=%s. LEARNING: SP is OFF | TM is ON | Classifier is ON \n" % i
+      phaseInfo = ("-> Training Classifier. Index=%s. LEARNING: SP is OFF | "
+                   "TM is ON | Classifier is ON \n" % i)
       outFile.write(phaseInfo)
       print phaseInfo
 
@@ -123,14 +131,15 @@ def run(net, numRecords, partitions, outFile):
       spatialPoolerRegion.setParameter("learningMode", False)
       temporalMemoryRegion.setParameter("learningMode", False)
       classifierRegion.setParameter("learningMode", False)
-      phaseInfo = "-> Test. Index=%s. LEARNING: SP is OFF | TM is OFF | Classifier is OFF \n" % i
+      phaseInfo = ("-> Test. Index=%s. LEARNING: SP is OFF | TM is OFF | "
+                   "Classifier is OFF \n" % i)
       outFile.write(phaseInfo)
       print phaseInfo
 
     # Evaluate the predictions on the test set.
     if i >= partitions[2]:
 
-      inferredValue = classifierRegion.getOutputData("classificationResults")[0]
+      inferredValue = classifierRegion.getOutputData("categoriesOut")[0]
       outFile.write(" inferredValue=%s \n" % inferredValue)
 
       if actualValue == inferredValue:
@@ -140,8 +149,10 @@ def run(net, numRecords, partitions, outFile):
 
   predictionAccuracy = 100.0 * numCorrect / numTestRecords
 
-  results = "RESULTS: accuracy=%s | %s correctly predicted records out of %s test records \n" % (
-    predictionAccuracy, numCorrect, numTestRecords)
+  results = ("RESULTS: accuracy=%s | %s correctly predicted records out of %s "
+             "test records \n" % (predictionAccuracy,
+                                  numCorrect,
+                                  numTestRecords))
   outFile.write(results)
   print results
 
@@ -170,7 +181,7 @@ if __name__ == "__main__":
                         SIGNAL_AMPLITUDE,
                         SIGNAL_MEAN,
                         SIGNAL_PERIOD)
-      
+
       outFile.write(expParams)
       print expParams
 
@@ -191,8 +202,8 @@ if __name__ == "__main__":
                               "py.RecordSensor",
                               encoders,
                               NUM_CATEGORIES,
-                              "py.SequenceClassifierRegion",
-                              _SEQ_CLASSIFIER_PARAMS)
+                              "py.CLAClassifierRegion",
+                              _CLA_CLASSIFIER_PARAMS)
 
       # Need to init the network before it can run.
       network.initialize()
