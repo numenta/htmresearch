@@ -73,6 +73,7 @@ _KNN_CLASSIFIER_PARAMS = {
 }
 
 
+
 def runNetwork(net, numRecords, partitions):
   """
   Run the network and write classification results output.
@@ -155,12 +156,14 @@ def runNetwork(net, numRecords, partitions):
   return numCorrect, numTestRecords, predictionAccuracy
 
 
+
 def _setupScalarEncoder(minval, maxval):
   """
   Set min and max for scalar encoder params.
   """ 
   _SCALAR_ENCODER_PARAMS["minval"] = minval
   _SCALAR_ENCODER_PARAMS["maxval"] = maxval
+
 
 
 def configureNetwork(noiseAmplitude):
@@ -191,6 +194,7 @@ def configureNetwork(noiseAmplitude):
   # Need to init the network before it can run.
   network.initialize()
   return network
+
 
 
 if __name__ == "__main__":

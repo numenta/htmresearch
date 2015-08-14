@@ -26,6 +26,7 @@ from nupic.support.configuration import Configuration
 from algorithms.SequenceClassifier import SequenceClassifier
 
 
+
 class SequenceClassifierFactory(object):
   """Factory for instantiating Sequence classifiers."""
 

@@ -37,15 +37,13 @@ from settings import (SEQUENCE_LENGTH,
                       SIGNAL_PERIOD)
 
 
+
 def generateData(dataDir=None,
                  signal_mean=SIGNAL_MEAN,
                  signal_period=SIGNAL_PERIOD,
                  number_of_points=NUM_RECORDS,
                  signal_amplitude=SIGNAL_AMPLITUDE,
                  noise_amplitude=DEFAULT_WHITE_NOISE_AMPLITUDE):
-  
-  
-  
   fileName = "white_noise_%s" % noise_amplitude
 
   if not dataDir:
@@ -63,8 +61,8 @@ def generateData(dataDir=None,
   # WARNING: if the C flag is forgotten in the dataset, then all records will
   #  be arbitrarily put
   # in the same category (i.e. category 0). So make sure to have the C flag 
-  # -- otherwise
-  # you'll get 100% classification accuracy regardless of the input data :-P
+  # -- otherwise you'll get 100% classification accuracy regardless of 
+  # the input data :-P
 
 
   endOfSequence = SEQUENCE_LENGTH
@@ -89,6 +87,7 @@ def generateData(dataDir=None,
   fileHandle.close()
 
   print "Data generated. File saved to %s/%s.csv" % (dataDir, fileName)
+
 
 
 if __name__ == "__main__":

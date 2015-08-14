@@ -30,6 +30,7 @@ from nupic.regions.PyRegion import PyRegion
 from algorithms.sequence_classifier_factory import SequenceClassifierFactory
 
 
+
 class SequenceClassifierRegion(PyRegion):
   """
   A Sequence classifier accepts a binary input from the level below (the
@@ -37,9 +38,8 @@ class SequenceClassifierRegion(PyRegion):
   "classification") describing the input to the system at that time step.
 
   When learning, for every bit in activation pattern, it records a history of 
-  the
-  classification each time that bit was active. The history is weighted so that
-  more recent activity has a bigger impact than older activity. The alpha
+  the classification each time that bit was active. The history is weighted so
+  that more recent activity has a bigger impact than older activity. The alpha
   parameter controls this weighting.
 
   For inference, it takes an ensemble approach. For every active bit in the
@@ -86,7 +86,7 @@ class SequenceClassifierRegion(PyRegion):
       ),
 
       outputs=dict(
-        classificationResults=dict(
+        categoriesOut=dict(
           description='Classification results - i.e. the most likely '
                       'categorie(s)',
           dataType='Real32',
@@ -150,6 +150,7 @@ class SequenceClassifierRegion(PyRegion):
 
     return ns
 
+
   def __init__(self,
                alpha=0.001,
                clVerbosity=0,
@@ -172,14 +173,17 @@ class SequenceClassifierRegion(PyRegion):
 
     self.recordNum = 0
 
+
   def _initEphemerals(self):
     pass
+
 
   def initialize(self, dims, splitterMaps):
     pass
 
   def clear(self):
     self._classifier.clear()
+
 
   def getParameter(self, name, index=-1):
     """
@@ -191,6 +195,7 @@ class SequenceClassifierRegion(PyRegion):
     # If any spec parameter name is the same as an attribute, this call
     # will get it automatically, e.g. self.learningMode
     return PyRegion.getParameter(self, name, index)
+
 
   def setParameter(self, name, index, value):
     """
@@ -207,8 +212,10 @@ class SequenceClassifierRegion(PyRegion):
     else:
       return PyRegion.setParameter(self, name, index, value)
 
+
   def reset(self):
     pass
+
 
   def compute(self, inputs, outputs):
     """
@@ -267,9 +274,10 @@ class SequenceClassifierRegion(PyRegion):
     inferredValue = clResults["actualValues"][
       clResults["probabilities"].argmax()]
 
-    outputs["classificationResults"][0] = inferredValue
+    outputs["categoriesOut"][0] = inferredValue
 
     self.recordNum += 1
+
 
   def customCompute(self, recordNum, patternNZ, classification):
     """
@@ -301,25 +309,28 @@ class SequenceClassifierRegion(PyRegion):
                                     learn=self.learningMode,
                                     infer=self.inferenceMode)
 
-  def getOutputValues(self, outputName):
+
+  def getOutputValues(self, name):
     """Return the dictionary of output values. Note that these are normal Python
     lists, rather than numpy arrays. This is to support lists with mixed scalars
     and strings, as in the case of records with categorical variables
     """
-    return self._outputValues[outputName]
+    return self._outputValues[name]
+
 
   def getOutputElementCount(self, name):
     """Returns the width of dataOut."""
 
-    if name == "classificationResults":
+    if name == "categoriesOut":
       return 1
     else:
       raise Exception("Unknown output {}.".format(name))
 
+
   def getInputElementCount(self, name):
     """Returns the width of dataIn."""
 
-    if name == "classificationResults":
+    if name == "categoriesOut":
       return 1
     else:
       raise Exception("Unknown output {}.".format(name))
