@@ -137,8 +137,10 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
 
   try:
     # Add region to network
-    regionParams = json.dumps({"verbosity": _VERBOSITY,
-                               "numCategories": numCats})
+    regionParams = json.dumps({
+                                "verbosity": _VERBOSITY,
+                                "numCategories": numCats
+                                })
     network.addRegion("sensor", sensorType, regionParams)
   except RuntimeError:
     print ("Custom region not added correctly. Possible issues are the spec is "
@@ -200,7 +202,7 @@ def createTemporalMemoryRegion(network):
   temporalMemoryRegion.setParameter("learningMode", False)
 
   # We want to compute the predictedActiveCells
-  #temporalMemoryRegion.setParameter("computePredictedActiveCellIndices", True)
+  # temporalMemoryRegion.setParameter("computePredictedActiveCellIndices", True)
 
   # Inference mode outputs the current inference (i.e. active cells).
   # Okay to always leave inference mode on; only there for some corner cases.
@@ -221,7 +223,8 @@ def createClassifierRegion(network, classifierType, classifierParams):
   @return (Region) Classifier region of the network.
 
   """
-  # Classifier region may be non-standard, so add custom region class to the network
+  # Classifier region may be non-standard, so add custom region class to the 
+  # network
   if classifierType.split(".")[1] not in PY_REGIONS:
     # Add new region class to the network
     network.registerRegion(SequenceClassifierRegion)
@@ -236,7 +239,7 @@ def createClassifierRegion(network, classifierType, classifierParams):
 
   # Okay to always leave inference mode on; only there for some corner cases.
   classifierRegion.setParameter("inferenceMode", True)
-  
+
   return classifierRegion
 
 
@@ -250,14 +253,15 @@ def validateRegions(sensor, sp, tm, classifier):
   tmOutputWidth = tmInputWidth * tm.getSelf().cellsPerColumn
 
   if sensorOutputWidth != spInputWidth:
-    raise ValueError("Region widths do not fit. Sensor output width = %s. SP input width = %s"
-                     % (sensorOutputWidth, spInputWidth))
+    raise ValueError("Region widths do not fit. Sensor output width = {}, SP "
+                     "input width = {}.".format(sensorOutputWidth,
+                                                spInputWidth))
 
   if spOutputWidth != tmInputWidth:
-    raise ValueError("Region widths do not fit. SP output width = %s. TM input width = %s"
-                     % (spOutputWidth, tmInputWidth))
+    raise ValueError("Region widths do not fit. SP output width = {}, TM "
+                     "input width = {}.".format(spInputWidth, tmInputWidth))
 
-  # TODO: should we check if TM output width matches classifier input width? Not sure param exists.
+    # TODO: should we check if TM output width matches classifier input width? 
 
 
 def linkRegions(network):
@@ -290,7 +294,8 @@ def linkRegions(network):
 
   # Feed the predicted active cells to the classifier
   network.link("TM", "classifier", "UniformLink", "",
-               srcOutput="predictedActiveCells", destInput="predictedActiveCells")
+               srcOutput="predictedActiveCells",
+               destInput="predictedActiveCells")
 
   # Link the sensor to the classifier to send in category labels.
   network.link("sensor", "classifier", "UniformLink", "",
@@ -317,9 +322,11 @@ def createNetwork(dataSource,
   @param numCategories (int) Max number of categories of the input data.
   
   @param classifierType (str) Specific type of classifier region, 
-    e.g. "py.SequenceClassifier"; possible options can be found in nupic/regions/.
+    e.g. "py.SequenceClassifier"; possible options can be found in 
+    nupic/regions/.
     
-  @param classifierParams (dict) Parameters for the model. E.g. {'maxCategoryCount': 3} 
+  @param classifierParams (dict) Parameters for the model. E.g. {
+  'maxCategoryCount': 3} 
   
   @return (Network) Sample network: SensorRegion -> SP -> TM -> CLA classifier
   """
