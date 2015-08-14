@@ -60,7 +60,6 @@ for filePath in csvFiles:
       reader.next()
       reader.next()
 
-
       for i, values in enumerate(reader):
         record = dict(zip(headers, values))
         timesteps.append(i)
