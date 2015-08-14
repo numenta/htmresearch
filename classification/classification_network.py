@@ -31,8 +31,10 @@ except ImportError:
 
 from nupic.encoders import MultiEncoder
 from nupic.engine import Network
-from regions.SequenceClassifierRegion import SequenceClassifierRegion
 from nupic.engine import pyRegions
+
+from regions.SequenceClassifierRegion import SequenceClassifierRegion
+
 
 _VERBOSITY = 0
 

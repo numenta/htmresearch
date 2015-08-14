@@ -22,13 +22,12 @@
 
 """
 This file implements the Sequence Classifier region. See the comments in the 
-class
-definition of SequenceClassifierRegion for a description.
+class definition of SequenceClassifierRegion for a description.
 """
 
 from nupic.regions.PyRegion import PyRegion
-from classification.algorithms.sequence_classifier_factory import \
-  SequenceClassifierFactory
+
+from algorithms.sequence_classifier_factory import SequenceClassifierFactory
 
 
 class SequenceClassifierRegion(PyRegion):

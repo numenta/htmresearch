@@ -20,11 +20,12 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from model_params.template_model_params import MODEL_PARAMS as TEMPLATE_MODEL_PARAMS
 import csv
 import os
 
 from settings import SIGNAL_TYPES, MODEL_PARAMS_DIR, DATA_DIR
+from model_params.template_model_params import (MODEL_PARAMS as 
+                                                TEMPLATE_MODEL_PARAMS)
 
 
 class IncorrectHeadersException(Exception):

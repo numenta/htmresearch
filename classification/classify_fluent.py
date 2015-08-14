@@ -23,7 +23,7 @@ import csv
 import os
 
 from classification_network import createNetwork
-from classify_active_cells import run as runNetwork
+from classify_sensor_data import runNetwork
 from fluent.encoders.cio_encoder import CioEncoder
 from nupic.data.file_record_stream import FileRecordStream
 

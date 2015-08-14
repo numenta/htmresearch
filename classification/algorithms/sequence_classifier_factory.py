@@ -21,9 +21,9 @@
 
 """Module providing a factory for instantiating a Sequence classifier."""
 
-from SequenceClassifier import SequenceClassifier
 from nupic.support.configuration import Configuration
 
+from algorithms.SequenceClassifier import SequenceClassifier
 
 
 class SequenceClassifierFactory(object):

@@ -22,15 +22,18 @@
 
 import csv
 import os
+
 import matplotlib.pyplot as plt
 
-from settings import DATA_DIR, SIGNAL_TYPES, WHITE_NOISE_AMPLITUDE_RANGES, SEQUENCE_LENGTH, NUM_CATEGORIES
-
+from settings import (DATA_DIR, 
+                      SIGNAL_TYPES, 
+                      WHITE_NOISE_AMPLITUDES, 
+                      SEQUENCE_LENGTH)
 
 
 def findValidCSVNames():
   validFileNames = []
-  for noiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
+  for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
     for signalType in SIGNAL_TYPES:
       filePath = "%s/%s_%s.csv" %(DATA_DIR, signalType, noiseAmplitude)
       if os.path.exists(filePath):

@@ -22,19 +22,19 @@
 
 import os
 
+from nupic.data.file_record_stream import FileRecordStream
+
 from classification_network import createNetwork
 from generate_sensor_data import generateData
 from generate_model_params import findMinMax
-from nupic.data.file_record_stream import FileRecordStream
 from settings import (NUM_CATEGORIES,
                       NUM_RECORDS,
                       PARTITIONS,
                       SIGNAL_AMPLITUDE,
                       SIGNAL_MEAN,
                       SIGNAL_PERIOD,
-                      WHITE_NOISE_AMPLITUDE_RANGES,
-                      DATA_DIR,
-                      )
+                      WHITE_NOISE_AMPLITUDES,
+                      DATA_DIR)
 
 _VERBOSITY = 0
 
