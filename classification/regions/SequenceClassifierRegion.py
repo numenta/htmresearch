@@ -21,13 +21,14 @@
 # ----------------------------------------------------------------------
 
 """
-This file implements the Sequence Classifier region. See the comments in the class
+This file implements the Sequence Classifier region. See the comments in the 
+class
 definition of SequenceClassifierRegion for a description.
 """
 
 from nupic.regions.PyRegion import PyRegion
-from classification.algorithms.sequence_classifier_factory import SequenceClassifierFactory
-
+from classification.algorithms.sequence_classifier_factory import \
+  SequenceClassifierFactory
 
 
 class SequenceClassifierRegion(PyRegion):
@@ -36,7 +37,8 @@ class SequenceClassifierRegion(PyRegion):
   "activationPattern") and information from the sensor and encoders (the
   "classification") describing the input to the system at that time step.
 
-  When learning, for every bit in activation pattern, it records a history of the
+  When learning, for every bit in activation pattern, it records a history of 
+  the
   classification each time that bit was active. The history is weighted so that
   more recent activity has a bigger impact than older activity. The alpha
   parameter controls this weighting.
@@ -51,102 +53,103 @@ class SequenceClassifierRegion(PyRegion):
   @classmethod
   def getSpec(cls):
     ns = dict(
-        description=SequenceClassifierRegion.__doc__,
-        singleNodeOnly=True,
+      description=SequenceClassifierRegion.__doc__,
+      singleNodeOnly=True,
 
-        inputs=dict(
-          categoryIn=dict(
-            description='Vector of categories of the input sample',
-            dataType='Real32',
-            count=0,
-            required=True,
-            regionLevel=True,
-            isDefaultInput=False,
-            requireSplitterMap=False),
+      inputs=dict(
+        categoryIn=dict(
+          description='Vector of categories of the input sample',
+          dataType='Real32',
+          count=0,
+          required=True,
+          regionLevel=True,
+          isDefaultInput=False,
+          requireSplitterMap=False),
 
-          bottomUpIn=dict(
-            description='Belief values over children\'s groups',
-            dataType='Real32',
-            count=0,
-            required=True,
-            regionLevel=False,
-            isDefaultInput=True,
-            requireSplitterMap=False),
-          
-          predictedActiveCells=dict(
-            description="The cells that are active and predicted",
-            dataType='Real32',
-            count=0,
-            required=True,
-            regionLevel=True,
-            isDefaultInput=False,
-            requireSplitterMap=False),
+        bottomUpIn=dict(
+          description='Belief values over children\'s groups',
+          dataType='Real32',
+          count=0,
+          required=True,
+          regionLevel=False,
+          isDefaultInput=True,
+          requireSplitterMap=False),
 
-        ),
+        predictedActiveCells=dict(
+          description="The cells that are active and predicted",
+          dataType='Real32',
+          count=0,
+          required=True,
+          regionLevel=True,
+          isDefaultInput=False,
+          requireSplitterMap=False),
 
-        outputs=dict(
-            classificationResults=dict(
-            description='Classification results - i.e. the most likely categorie(s)',
-            dataType='Real32',
-            count=0,
-            required=True,
-            regionLevel=True,
-            isDefaultOutput=True,
-            requireSplitterMap=False),
-        ),
+      ),
 
-        parameters=dict(
-          learningMode=dict(
-            description='Boolean (0/1) indicating whether or not a region '
-                        'is in learning mode.',
-            dataType='UInt32',
-            count=1,
-            constraints='bool',
-            defaultValue=1,
-            accessMode='ReadWrite'),
-          
-          inferenceMode=dict(
-            description='Boolean (0/1) indicating whether or not a region '
-                        'is in inference mode.',
-            dataType='UInt32',
-            count=1,
-            constraints='bool',
-            defaultValue=0,
-            accessMode='ReadWrite'),
+      outputs=dict(
+        classificationResults=dict(
+          description='Classification results - i.e. the most likely '
+                      'categorie(s)',
+          dataType='Real32',
+          count=0,
+          required=True,
+          regionLevel=True,
+          isDefaultOutput=True,
+          requireSplitterMap=False),
+      ),
 
-          alpha=dict(
-            description='The alpha used to compute running averages of the '
-               'bucket duty cycles for each activation pattern bit. A lower '
-               'alpha results in longer term memory',
-            dataType="Real32",
-            count=1,
-            constraints='',
-            defaultValue=0.001,
-            accessMode='Create'),
+      parameters=dict(
+        learningMode=dict(
+          description='Boolean (0/1) indicating whether or not a region '
+                      'is in learning mode.',
+          dataType='UInt32',
+          count=1,
+          constraints='bool',
+          defaultValue=1,
+          accessMode='ReadWrite'),
 
-          implementation=dict(
-            description='The classifier implementation to use.',
-            accessMode='ReadWrite',
-            dataType='Byte',
-            count=0,
-            constraints='enum: py, cpp'),
+        inferenceMode=dict(
+          description='Boolean (0/1) indicating whether or not a region '
+                      'is in inference mode.',
+          dataType='UInt32',
+          count=1,
+          constraints='bool',
+          defaultValue=0,
+          accessMode='ReadWrite'),
 
-           clVerbosity=dict(
-            description='An integer that controls the verbosity level, '
-                        '0 means no verbose output, increasing integers '
-                        'provide more verbosity.',
-            dataType='UInt32',
-            count=1,
-            constraints='',
-            defaultValue=0 ,
-            accessMode='ReadWrite'),
+        alpha=dict(
+          description='The alpha used to compute running averages of the '
+                      'bucket duty cycles for each activation pattern bit. A '
+                      'lower '
+                      'alpha results in longer term memory',
+          dataType="Real32",
+          count=1,
+          constraints='',
+          defaultValue=0.001,
+          accessMode='Create'),
 
-     ),
+        implementation=dict(
+          description='The classifier implementation to use.',
+          accessMode='ReadWrite',
+          dataType='Byte',
+          count=0,
+          constraints='enum: py, cpp'),
+
+        clVerbosity=dict(
+          description='An integer that controls the verbosity level, '
+                      '0 means no verbose output, increasing integers '
+                      'provide more verbosity.',
+          dataType='UInt32',
+          count=1,
+          constraints='',
+          defaultValue=0,
+          accessMode='ReadWrite'),
+
+      ),
       commands=dict()
     )
 
     return ns
-
 
   def __init__(self,
                alpha=0.001,
@@ -159,29 +162,25 @@ class SequenceClassifierRegion(PyRegion):
 
     # Initialize internal structures
     self._classifier = SequenceClassifierFactory.create(
-        alpha=self.alpha,
-        verbosity=self.verbosity,
-        implementation=implementation,
-        )
+      alpha=self.alpha,
+      verbosity=self.verbosity,
+      implementation=implementation,
+    )
     self.learningMode = True
     self.inferenceMode = False
 
     self._initEphemerals()
-    
-    self.recordNum = 0
 
+    self.recordNum = 0
 
   def _initEphemerals(self):
     pass
 
-
   def initialize(self, dims, splitterMaps):
     pass
 
-
   def clear(self):
     self._classifier.clear()
-
 
   def getParameter(self, name, index=-1):
     """
@@ -193,7 +192,6 @@ class SequenceClassifierRegion(PyRegion):
     # If any spec parameter name is the same as an attribute, this call
     # will get it automatically, e.g. self.learningMode
     return PyRegion.getParameter(self, name, index)
-
 
   def setParameter(self, name, index, value):
     """
@@ -210,10 +208,8 @@ class SequenceClassifierRegion(PyRegion):
     else:
       return PyRegion.setParameter(self, name, index, value)
 
-
   def reset(self):
     pass
-
 
   def compute(self, inputs, outputs):
     """
@@ -224,46 +220,57 @@ class SequenceClassifierRegion(PyRegion):
 
     # Allow training on multiple categories:
     #  An input can potentially belong to multiple categories. 
-    #  If a category value is < 0, it means that the input does not belong to that category.
+    #  If a category value is < 0, it means that the input does not belong to
+    #  that category.
     categories = []
     for category in inputs["categoryIn"]:
       # if a category value <0, then it means 
       # the input record does not belong to that category.
       if category >= 0:
         categories.append(category)
-        
+
     # Get TM states.
     activeCells = inputs["bottomUpIn"]
     defaultPatternNZ = activeCells.nonzero()[0]
-    
+
     # TODO: We need a parameter to say that the previous region is the TM.
     #   Indeed, the previous region could the UP for example.
     #   So only get predicted active cells if we know previous region is TM
     #   Use param `learnFromTM` for example.
-    predictedActiveCells = inputs["predictedActiveCells"]      
-    
-    # TODO: need to insert a mechanism that will alter the default patternNZ with the predictedActiveCells
-    # NOTE: Could that work? => train more on the predictedActive than the active cells
+    predictedActiveCells = inputs["predictedActiveCells"]
+
+    # TODO: need to insert a mechanism that will alter the default patternNZ 
+    # with the predictedActiveCells
+    # NOTE: Could that work? => train more on the predictedActive than the 
+    # active cells
     patternNZPredictedActive = predictedActiveCells.nonzero()[0]
 
     # Call classifier. Don't train. Just inference. Train after.
-    clResults = self._classifier.compute(
-      recordNum=self.recordNum, patternNZ=defaultPatternNZ, classification=None, learn=False, infer=self.inferenceMode)
+    clResults = self._classifier.compute(recordNum=self.recordNum, 
+                                         patternNZ=defaultPatternNZ, 
+                                         classification=None,
+                                         learn=False, 
+                                         infer=self.inferenceMode)
 
     for category in categories:
-      classificationIn = {"bucketIdx": int(category),
-                          "actValue": int(category)}
-  
+      classificationIn = {
+        "bucketIdx": int(category),
+        "actValue": int(category)
+        }
+
       # Train classifier, no inference
-      self._classifier.compute(
-          recordNum=self.recordNum, patternNZ=defaultPatternNZ, classification=classificationIn, learn=self.learningMode, infer=False)
-  
-    inferredValue = clResults["actualValues"][clResults["probabilities"].argmax()]
+      self._classifier.compute(recordNum=self.recordNum, 
+                               patternNZ=defaultPatternNZ,
+                               classification=classificationIn, 
+                               learn=self.learningMode, 
+                               infer=False)
+
+    inferredValue = clResults["actualValues"][
+      clResults["probabilities"].argmax()]
 
     outputs["classificationResults"][0] = inferredValue
-    
-    self.recordNum += 1
 
+    self.recordNum += 1
 
   def customCompute(self, recordNum, patternNZ, classification):
     """
@@ -289,11 +296,11 @@ class SequenceClassifierRegion(PyRegion):
                   }
     """
 
-    return self._classifier.compute( recordNum=recordNum,
-                                        patternNZ=patternNZ,
-                                        classification=classification,
-                                        learn = self.learningMode,
-                                        infer = self.inferenceMode)
+    return self._classifier.compute(recordNum=recordNum,
+                                    patternNZ=patternNZ,
+                                    classification=classification,
+                                    learn=self.learningMode,
+                                    infer=self.inferenceMode)
 
   def getOutputValues(self, outputName):
     """Return the dictionary of output values. Note that these are normal Python
@@ -302,22 +309,18 @@ class SequenceClassifierRegion(PyRegion):
     """
     return self._outputValues[outputName]
 
-
   def getOutputElementCount(self, name):
     """Returns the width of dataOut."""
-   
+
     if name == "classificationResults":
       return 1
     else:
       raise Exception("Unknown output {}.".format(name))
-    
+
   def getInputElementCount(self, name):
     """Returns the width of dataIn."""
-   
+
     if name == "classificationResults":
       return 1
     else:
       raise Exception("Unknown output {}.".format(name))
-
-
-
