@@ -38,7 +38,8 @@ SWARM_CONFIG = {
         "source": "file://data/SantaFe_A.csv",
         "columns": [
           "*"
-        ]
+        ],
+        "last_record": 1000
       }
     ]
   },

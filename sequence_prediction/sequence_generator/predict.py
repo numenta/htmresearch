@@ -35,9 +35,14 @@ from sequence_generator import SequenceGenerator
 
 
 
-MIN_ORDER = 3
-MAX_ORDER = 4
-NUM_PREDICTIONS = 1
+MIN_ORDER = 6
+MAX_ORDER = 7
+NUM_PREDICTIONS = 2
+NUM_RANDOM = 1
+PERTURB_AFTER = 1000
+
+RANDOM_RESERVOIR = 1000
+NUM_SYMBOLS = SequenceGenerator.numSymbols(MAX_ORDER, NUM_PREDICTIONS)
 
 MODEL_PARAMS = {
   "model": "CLA",
@@ -52,8 +57,7 @@ MODEL_PARAMS = {
           "fieldname": u"element",
           "name": u"element",
           "type": "SDRCategoryEncoder",
-          "categoryList": range(SequenceGenerator.numSymbols(MAX_ORDER,
-                                                             NUM_PREDICTIONS)),
+          "categoryList": range(NUM_SYMBOLS + RANDOM_RESERVOIR),
           "n": 2048,
           "w": 41
         }
@@ -112,11 +116,11 @@ MODEL_PARAMS = {
 def generateSequences():
   sequences = []
 
-  # Generated sequences
-  generator = SequenceGenerator(seed=42)
+  # # Generated sequences
+  # generator = SequenceGenerator(seed=42)
 
-  for order in xrange(MIN_ORDER, MAX_ORDER+1):
-    sequences += generator.generate(order, NUM_PREDICTIONS)
+  # for order in xrange(MIN_ORDER, MAX_ORDER+1):
+  #   sequences += generator.generate(order, NUM_PREDICTIONS)
 
   # # Subutai's sequences
   # """
@@ -156,6 +160,46 @@ def generateSequences():
   #   [7, 9, 12, 8, 10],
   #   [7, 8, 12, 9, 6]
   # ]
+
+  # # Two orders of sequences (isolating the problem)
+  # sequences = [
+  #   [1, 5, 2, 0],
+  #   [5, 2, 6, 3, 4]
+  # ]
+  # random.seed(100) # 100 fails, 300 works (results depend on order of training)
+
+  # # Hardcoded set of sequences
+  # sequences = [
+  #   [6, 8, 7, 4, 2, 3, 0],
+  #   [6, 3, 4, 2, 7, 8, 5],
+  #   [1, 8, 7, 4, 2, 3, 5],
+  #   [1, 3, 4, 2, 7, 8, 0],
+  #   [1, 9, 7, 8, 5, 3, 4, 0],
+  #   [1, 4, 3, 5, 8, 7, 9, 6],
+  #   [2, 9, 7, 8, 5, 3, 4, 6],
+  #   [2, 4, 3, 5, 8, 7, 9, 0]
+  # ]
+
+  # Hardcoded set of sequences with multiple predictions (2)
+  # Make sure to set NUM_PREDICTIONS = 2 above
+  sequences = [
+    [4, 8, 3, 10, 9, 6, 1],
+    [4, 6, 9, 10, 3, 8, 7],
+    [4, 8, 3, 10, 9, 6, 2],
+    [4, 6, 9, 10, 3, 8, 0],
+    [5, 8, 3, 10, 9, 6, 0],
+    [5, 6, 9, 10, 3, 8, 2],
+    [5, 8, 3, 10, 9, 6, 7],
+    [5, 6, 9, 10, 3, 8, 1],
+    [4, 3, 8, 6, 1, 10, 11, 9],
+    [4, 11, 10, 1, 6, 8, 3, 7],
+    [4, 3, 8, 6, 1, 10, 11, 2],
+    [4, 11, 10, 1, 6, 8, 3, 0],
+    [5, 3, 8, 6, 1, 10, 11, 0],
+    [5, 11, 10, 1, 6, 8, 3, 2],
+    [5, 3, 8, 6, 1, 10, 11, 7],
+    [5, 11, 10, 1, 6, 8, 3, 9]
+  ]
 
   for sequence in sequences:
     print sequence
@@ -239,24 +283,17 @@ def getEncoderMapping(model):
   encoder = model._getEncoder().encoders[0][1]
   mapping = dict()
 
-  for i in range(7):
+  for i in range(NUM_SYMBOLS):
     mapping[i] = set(encoder.encode(i).nonzero()[0])
 
   return mapping
 
 
 
-def classify(mapping, activeColumns):
-  best = -1
-  bestOverlap = float("-inf")
-
-  for i, encoding in mapping.iteritems():
-    overlap = len(encoding & activeColumns)
-    if overlap > bestOverlap:
-      best = i
-      bestOverlap = overlap
-
-  return best
+def classify(mapping, activeColumns, numPredictions=NUM_PREDICTIONS):
+  scores = [(len(encoding & activeColumns), i) for i, encoding in mapping.iteritems()]
+  print sorted(scores, reverse=True)
+  return [i for _, i in sorted(scores, reverse=True)[:numPredictions]]
 
 
 
@@ -284,6 +321,9 @@ if __name__ == "__main__":
   for i in xrange(100000000):
     sequence = random.choice(sequences)
 
+    if i > PERTURB_AFTER:
+      sequence = list(reversed(sequence))
+
     topPredictions = []
 
     for j, element in enumerate(sequence):
@@ -294,8 +334,9 @@ if __name__ == "__main__":
       if j == len(sequence) - 2:
         tm.mmClearHistory()
 
+        # Uncomment to use custom classifier (uses predicted cells to make predictions)
         predictiveColumns = set([tm.columnForCell(cell) for cell in tm.predictiveCells])
-        topPredictions = [classify(mapping, predictiveColumns)]
+        topPredictions = classify(mapping, predictiveColumns)
 
       if j == len(sequence) - 1:
         # Uncomment to use CLA classifier's predictions
@@ -304,6 +345,7 @@ if __name__ == "__main__":
         #                          reverse=True)
         # topPredictions = [int(round(a)) for a, b in bestPredictions[:NUM_PREDICTIONS]]
 
+        print "Sequence: ", sequence
         print "Evaluation:", element, topPredictions, element in topPredictions
 
         correct.append(element in topPredictions)
@@ -329,4 +371,13 @@ if __name__ == "__main__":
           plotTMStats(numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns)
           pyplot.draw()
 
-    model.resetSequenceStates()
+    # Feed noise
+    sequence = range(NUM_SYMBOLS, NUM_SYMBOLS + RANDOM_RESERVOIR)
+    random.shuffle(sequence)
+    sequence = sequence[0:NUM_RANDOM]
+    print "Random:", sequence
+
+    for element in sequence:
+      model.run({"element": element})
+
+    print
