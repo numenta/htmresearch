@@ -39,6 +39,7 @@ MIN_ORDER = 6
 MAX_ORDER = 7
 NUM_PREDICTIONS = 2
 NUM_RANDOM = 1
+PERTURB_AFTER = 1000
 
 RANDOM_RESERVOIR = 1000
 NUM_SYMBOLS = SequenceGenerator.numSymbols(MAX_ORDER, NUM_PREDICTIONS)
@@ -319,6 +320,10 @@ if __name__ == "__main__":
 
   for i in xrange(100000000):
     sequence = random.choice(sequences)
+
+    if i > PERTURB_AFTER:
+      sequence = list(reversed(sequence))
+
     topPredictions = []
 
     for j, element in enumerate(sequence):
