@@ -185,8 +185,8 @@ def configureNetwork(noiseAmplitude):
                           "py.RecordSensor",
                           encoders,
                           NUM_CATEGORIES,
-                          "py.CLAClassifierRegion",
-                          _CLA_CLASSIFIER_PARAMS)
+                          "py.SequenceClassifierRegion",
+                          _SEQ_CLASSIFIER_PARAMS)
 
   # Need to init the network before it can run.
   network.initialize()
