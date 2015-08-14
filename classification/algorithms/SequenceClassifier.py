@@ -377,8 +377,7 @@ class SequenceClassifier(object):
         # Get the history structure for this bit 
         history = self._activeBitHistory.get(bit, None)
         if history is None:
-          history = self._activeBitHistory[bit] = BitHistory(self,
-                      bitNum=bit)
+          history = self._activeBitHistory[bit] = BitHistory(self, bitNum=bit)
 
         # Store new sample
         history.store(iteration=self._learnIteration,
