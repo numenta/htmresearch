@@ -38,7 +38,10 @@ from sequence_generator import SequenceGenerator
 MIN_ORDER = 6
 MAX_ORDER = 7
 NUM_PREDICTIONS = 2
+NUM_RANDOM = 1
+PERTURB_AFTER = 1000
 
+RANDOM_RESERVOIR = 1000
 NUM_SYMBOLS = SequenceGenerator.numSymbols(MAX_ORDER, NUM_PREDICTIONS)
 
 MODEL_PARAMS = {
@@ -54,7 +57,7 @@ MODEL_PARAMS = {
           "fieldname": u"element",
           "name": u"element",
           "type": "SDRCategoryEncoder",
-          "categoryList": range(NUM_SYMBOLS),
+          "categoryList": range(NUM_SYMBOLS + RANDOM_RESERVOIR),
           "n": 2048,
           "w": 41
         }
@@ -317,6 +320,10 @@ if __name__ == "__main__":
 
   for i in xrange(100000000):
     sequence = random.choice(sequences)
+
+    if i > PERTURB_AFTER:
+      sequence = list(reversed(sequence))
+
     topPredictions = []
 
     for j, element in enumerate(sequence):
@@ -364,4 +371,13 @@ if __name__ == "__main__":
           plotTMStats(numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns)
           pyplot.draw()
 
-    model.resetSequenceStates()
+    # Feed noise
+    sequence = range(NUM_SYMBOLS, NUM_SYMBOLS + RANDOM_RESERVOIR)
+    random.shuffle(sequence)
+    sequence = sequence[0:NUM_RANDOM]
+    print "Random:", sequence
+
+    for element in sequence:
+      model.run({"element": element})
+
+    print
