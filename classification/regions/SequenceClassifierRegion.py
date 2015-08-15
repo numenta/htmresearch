@@ -150,6 +150,7 @@ class SequenceClassifierRegion(PyRegion):
 
     return ns
 
+
   def __init__(self,
                alpha=0.001,
                clVerbosity=0,
@@ -172,14 +173,17 @@ class SequenceClassifierRegion(PyRegion):
 
     self.recordNum = 0
 
+
   def _initEphemerals(self):
     pass
+
 
   def initialize(self, dims, splitterMaps):
     pass
 
   def clear(self):
     self._classifier.clear()
+
 
   def getParameter(self, name, index=-1):
     """
@@ -191,6 +195,7 @@ class SequenceClassifierRegion(PyRegion):
     # If any spec parameter name is the same as an attribute, this call
     # will get it automatically, e.g. self.learningMode
     return PyRegion.getParameter(self, name, index)
+
 
   def setParameter(self, name, index, value):
     """
@@ -207,8 +212,10 @@ class SequenceClassifierRegion(PyRegion):
     else:
       return PyRegion.setParameter(self, name, index, value)
 
+
   def reset(self):
     pass
+
 
   def compute(self, inputs, outputs):
     """
@@ -271,6 +278,7 @@ class SequenceClassifierRegion(PyRegion):
 
     self.recordNum += 1
 
+
   def customCompute(self, recordNum, patternNZ, classification):
     """
     Process one input sample.
@@ -301,12 +309,14 @@ class SequenceClassifierRegion(PyRegion):
                                     learn=self.learningMode,
                                     infer=self.inferenceMode)
 
-  def getOutputValues(self, outputName):
+
+  def getOutputValues(self, name):
     """Return the dictionary of output values. Note that these are normal Python
     lists, rather than numpy arrays. This is to support lists with mixed scalars
     and strings, as in the case of records with categorical variables
     """
-    return self._outputValues[outputName]
+    return self._outputValues[name]
+
 
   def getOutputElementCount(self, name):
     """Returns the width of dataOut."""
@@ -315,6 +325,7 @@ class SequenceClassifierRegion(PyRegion):
       return 1
     else:
       raise Exception("Unknown output {}.".format(name))
+
 
   def getInputElementCount(self, name):
     """Returns the width of dataIn."""

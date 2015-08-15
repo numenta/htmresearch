@@ -26,7 +26,6 @@ import itertools
 
 import numpy
 
-
 # This determines how large one of the duty cycles must get before each of the
 # duty cycles are updated to the current iteration.
 # This must be less than float32 size since storage is float32 size
@@ -186,9 +185,9 @@ class SequenceClassifier(object):
   "activationPattern") and information from the sensor and encoders (the
   "classification") describing the input to the system at that time step.
 
-  When learning, for every bit in activation pattern, it records a history of the
-  classification each time that bit was active. The history is weighted so that
-  more recent activity has a bigger impact than older activity. The alpha
+  When learning, for every bit in activation pattern, it records a history of 
+  the classification each time that bit was active. The history is weighted so 
+  that more recent activity has a bigger impact than older activity. The alpha
   parameter controls this weighting.
 
   For inference, it takes an ensemble approach. For every active bit in the
@@ -364,9 +363,9 @@ class SequenceClassifier(object):
         self._actualValues[bucketIdx] = actValue
       else:
         if isinstance(actValue, int) or isinstance(actValue, float):
-          self._actualValues[bucketIdx] = \
-                  (1.0 - self.actValueAlpha) * self._actualValues[bucketIdx] \
-                   + self.actValueAlpha * actValue
+          self._actualValues[bucketIdx] = ((1.0 - self.actValueAlpha) *
+                                           self._actualValues[bucketIdx]
+                                           + self.actValueAlpha * actValue)
         else:
           self._actualValues[bucketIdx] = actValue
 
@@ -396,5 +395,3 @@ class SequenceClassifier(object):
       print
 
     return retval
-
-
