@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -22,15 +22,18 @@
 
 import csv
 import os
+
 import matplotlib.pyplot as plt
 
-from settings import DATA_DIR, SIGNAL_TYPES, WHITE_NOISE_AMPLITUDE_RANGES, SEQUENCE_LENGTH, NUM_CATEGORIES
-
+from settings import (DATA_DIR, 
+                      SIGNAL_TYPES, 
+                      WHITE_NOISE_AMPLITUDES, 
+                      SEQUENCE_LENGTH)
 
 
 def findValidCSVNames():
   validFileNames = []
-  for noiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
+  for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
     for signalType in SIGNAL_TYPES:
       filePath = "%s/%s_%s.csv" %(DATA_DIR, signalType, noiseAmplitude)
       if os.path.exists(filePath):
@@ -56,7 +59,6 @@ for filePath in csvFiles:
       #skip the 2 first rows
       reader.next()
       reader.next()
-
 
       for i, values in enumerate(reader):
         record = dict(zip(headers, values))

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013-15, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -21,12 +21,13 @@
 # ----------------------------------------------------------------------
 
 """
-This file implements the Sequence Classifier region. See the comments in the class
-definition of SequenceClassifierRegion for a description.
+This file implements the Sequence Classifier region. See the comments in the 
+class definition of SequenceClassifierRegion for a description.
 """
 
 from nupic.regions.PyRegion import PyRegion
-from classification.algorithms.sequence_classifier_factory import SequenceClassifierFactory
+
+from algorithms.sequence_classifier_factory import SequenceClassifierFactory
 
 
 
@@ -36,9 +37,9 @@ class SequenceClassifierRegion(PyRegion):
   "activationPattern") and information from the sensor and encoders (the
   "classification") describing the input to the system at that time step.
 
-  When learning, for every bit in activation pattern, it records a history of the
-  classification each time that bit was active. The history is weighted so that
-  more recent activity has a bigger impact than older activity. The alpha
+  When learning, for every bit in activation pattern, it records a history of 
+  the classification each time that bit was active. The history is weighted so
+  that more recent activity has a bigger impact than older activity. The alpha
   parameter controls this weighting.
 
   For inference, it takes an ensemble approach. For every active bit in the
@@ -51,96 +52,99 @@ class SequenceClassifierRegion(PyRegion):
   @classmethod
   def getSpec(cls):
     ns = dict(
-        description=SequenceClassifierRegion.__doc__,
-        singleNodeOnly=True,
+      description=SequenceClassifierRegion.__doc__,
+      singleNodeOnly=True,
 
-        inputs=dict(
-          categoryIn=dict(
-            description='Vector of categories of the input sample',
-            dataType='Real32',
-            count=0,
-            required=True,
-            regionLevel=True,
-            isDefaultInput=False,
-            requireSplitterMap=False),
+      inputs=dict(
+        categoryIn=dict(
+          description='Vector of categories of the input sample',
+          dataType='Real32',
+          count=0,
+          required=True,
+          regionLevel=True,
+          isDefaultInput=False,
+          requireSplitterMap=False),
 
-          bottomUpIn=dict(
-            description='Belief values over children\'s groups',
-            dataType='Real32',
-            count=0,
-            required=True,
-            regionLevel=False,
-            isDefaultInput=True,
-            requireSplitterMap=False),
-        ),
+        bottomUpIn=dict(
+          description='Belief values over children\'s groups',
+          dataType='Real32',
+          count=0,
+          required=True,
+          regionLevel=False,
+          isDefaultInput=True,
+          requireSplitterMap=False),
 
-        outputs=dict(
-            classificationResult=dict(
-            description='Classification results - i.e. the most likely categorie(s)',
-            dataType='Real32',
-            count=0,
-            required=True,
-            regionLevel=True,
-            isDefaultOutput=True,
-            requireSplitterMap=False),
-        ),
+        predictedActiveCells=dict(
+          description="The cells that are active and predicted",
+          dataType='Real32',
+          count=0,
+          required=True,
+          regionLevel=True,
+          isDefaultInput=False,
+          requireSplitterMap=False),
 
-        parameters=dict(
-          learningMode=dict(
-            description='Boolean (0/1) indicating whether or not a region '
-                        'is in learning mode.',
-            dataType='UInt32',
-            count=1,
-            constraints='bool',
-            defaultValue=1,
-            accessMode='ReadWrite'),
+      ),
 
-          inferenceMode=dict(
-            description='Boolean (0/1) indicating whether or not a region '
-                        'is in inference mode.',
-            dataType='UInt32',
-            count=1,
-            constraints='bool',
-            defaultValue=0,
-            accessMode='ReadWrite'),
+      outputs=dict(
+        categoriesOut=dict(
+          description='Classification results - i.e. the most likely '
+                      'categorie(s)',
+          dataType='Real32',
+          count=0,
+          required=True,
+          regionLevel=True,
+          isDefaultOutput=True,
+          requireSplitterMap=False),
+      ),
 
-          steps=dict(
-            description='Comma separated list of the desired steps of '
-                        'prediction that the classifier should learn',
-            dataType="Byte",
-            count=0,
-            constraints='',
-            defaultValue='1',
-            accessMode='Create'),
+      parameters=dict(
+        learningMode=dict(
+          description='Boolean (0/1) indicating whether or not a region '
+                      'is in learning mode.',
+          dataType='UInt32',
+          count=1,
+          constraints='bool',
+          defaultValue=1,
+          accessMode='ReadWrite'),
 
-          alpha=dict(
-            description='The alpha used to compute running averages of the '
-               'bucket duty cycles for each activation pattern bit. A lower '
-               'alpha results in longer term memory',
-            dataType="Real32",
-            count=1,
-            constraints='',
-            defaultValue=0.001,
-            accessMode='Create'),
+        inferenceMode=dict(
+          description='Boolean (0/1) indicating whether or not a region '
+                      'is in inference mode.',
+          dataType='UInt32',
+          count=1,
+          constraints='bool',
+          defaultValue=0,
+          accessMode='ReadWrite'),
 
-          implementation=dict(
-            description='The classifier implementation to use.',
-            accessMode='ReadWrite',
-            dataType='Byte',
-            count=0,
-            constraints='enum: py, cpp'),
+        alpha=dict(
+          description='The alpha used to compute running averages of the '
+                      'bucket duty cycles for each activation pattern bit. A '
+                      'lower '
+                      'alpha results in longer term memory',
+          dataType="Real32",
+          count=1,
+          constraints='',
+          defaultValue=0.001,
+          accessMode='Create'),
 
-           clVerbosity=dict(
-            description='An integer that controls the verbosity level, '
-                        '0 means no verbose output, increasing integers '
-                        'provide more verbosity.',
-            dataType='UInt32',
-            count=1,
-            constraints='',
-            defaultValue=0 ,
-            accessMode='ReadWrite'),
+        implementation=dict(
+          description='The classifier implementation to use.',
+          accessMode='ReadWrite',
+          dataType='Byte',
+          count=0,
+          constraints='enum: py, cpp'),
 
-     ),
+        clVerbosity=dict(
+          description='An integer that controls the verbosity level, '
+                      '0 means no verbose output, increasing integers '
+                      'provide more verbosity.',
+          dataType='UInt32',
+          count=1,
+          constraints='',
+          defaultValue=0,
+          accessMode='ReadWrite'),
+
+      ),
       commands=dict()
     )
 
@@ -148,30 +152,25 @@ class SequenceClassifierRegion(PyRegion):
 
 
   def __init__(self,
-               steps='1',
                alpha=0.001,
                clVerbosity=0,
                implementation=None,
                ):
 
-    # Convert the steps designation to a list
-    self.steps = steps
-    self.stepsList = eval("[%s]" % (steps))
     self.alpha = alpha
     self.verbosity = clVerbosity
 
     # Initialize internal structures
     self._classifier = SequenceClassifierFactory.create(
-        steps=self.stepsList,
-        alpha=self.alpha,
-        verbosity=self.verbosity,
-        implementation=implementation,
-        )
+      alpha=self.alpha,
+      verbosity=self.verbosity,
+      implementation=implementation,
+    )
     self.learningMode = True
     self.inferenceMode = False
 
     self._initEphemerals()
-    
+
     self.recordNum = 0
 
 
@@ -181,7 +180,6 @@ class SequenceClassifierRegion(PyRegion):
 
   def initialize(self, dims, splitterMaps):
     pass
-
 
   def clear(self):
     self._classifier.clear()
@@ -226,26 +224,58 @@ class SequenceClassifierRegion(PyRegion):
 
     """
 
+    # Allow training on multiple categories:
+    #  An input can potentially belong to multiple categories. 
+    #  If a category value is < 0, it means that the input does not belong to
+    #  that category.
     categories = []
-    for category in inputs['categoryIn']:
-      if category != -1:
+    for category in inputs["categoryIn"]:
+      # if a category value <0, then it means 
+      # the input record does not belong to that category.
+      if category >= 0:
         categories.append(category)
 
-    classificationIn = {"bucketIdx": int(categories[0]),
-                        "actValue": int(categories[0])}
-
-    # List the indices of active cells (non-zero pattern)
+    # Get TM states.
     activeCells = inputs["bottomUpIn"]
-    patternNZ = activeCells.nonzero()[0]
+    defaultPatternNZ = activeCells.nonzero()[0]
 
-    # Call classifier
-    clResults = self._classifier.compute(
-        recordNum=self.recordNum, patternNZ=patternNZ, classification=classificationIn, learn=self.learningMode, infer=self.inferenceMode)
+    # TODO: We need a parameter to say that the previous region is the TM.
+    #   Indeed, the previous region could the UP for example.
+    #   So only get predicted active cells if we know previous region is TM
+    #   Use param `learnFromTM` for example.
+    predictedActiveCells = inputs["predictedActiveCells"]
 
-    inferredValue = clResults["actualValues"][clResults[int(self.steps)].argmax()]
+    # TODO: need to insert a mechanism that will alter the default patternNZ 
+    # with the predictedActiveCells
+    # NOTE: Could that work? => train more on the predictedActive than the 
+    # active cells
+    patternNZPredictedActive = predictedActiveCells.nonzero()[0]
 
-    outputs['classificationResult'][0] = inferredValue
-    
+    # Call classifier. Don't train. Just inference. Train after.
+    clResults = self._classifier.compute(recordNum=self.recordNum, 
+                                         patternNZ=defaultPatternNZ, 
+                                         classification=None,
+                                         learn=False, 
+                                         infer=self.inferenceMode)
+
+    for category in categories:
+      classificationIn = {
+        "bucketIdx": int(category),
+        "actValue": int(category)
+        }
+
+      # Train classifier, no inference
+      self._classifier.compute(recordNum=self.recordNum, 
+                               patternNZ=defaultPatternNZ,
+                               classification=classificationIn, 
+                               learn=self.learningMode, 
+                               infer=False)
+
+    inferredValue = clResults["actualValues"][
+      clResults["probabilities"].argmax()]
+
+    outputs["categoriesOut"][0] = inferredValue
+
     self.recordNum += 1
 
 
@@ -260,37 +290,47 @@ class SequenceClassifierRegion(PyRegion):
                       bucketIdx: index of the encoder bucket
                       actValue:  actual value going into the encoder
 
-    retval:     dict containing inference results, one entry for each step in
-                self.steps. The key is the number of steps, the value is an
-                array containing the relative likelihood for each bucketIdx
-                starting from bucketIdx 0.
+    retval:     dict containing inference results. The entry 'probabilities'
+                is an array containing the relative likelihood for
+                each bucketIdx starting from bucketIdx 0.
+
+                There is also an entry containing the average actual value to
+                use for each bucket. The key is 'actualValues'.
 
                 for example:
-                  {1 : [0.1, 0.3, 0.2, 0.7]
-                   4 : [0.2, 0.4, 0.3, 0.5]}
+                  {'probabilities': [0.1, 0.3, 0.2, 0.7],
+                   'actualValues': [1.5, 3,5, 5,5, 7.6],
+                  }
     """
 
-    return self._classifier.compute( recordNum=recordNum,
-                                        patternNZ=patternNZ,
-                                        classification=classification,
-                                        learn = self.learningMode,
-                                        infer = self.inferenceMode)
+    return self._classifier.compute(recordNum=recordNum,
+                                    patternNZ=patternNZ,
+                                    classification=classification,
+                                    learn=self.learningMode,
+                                    infer=self.inferenceMode)
 
-  def getOutputValues(self, outputName):
+
+  def getOutputValues(self, name):
     """Return the dictionary of output values. Note that these are normal Python
     lists, rather than numpy arrays. This is to support lists with mixed scalars
     and strings, as in the case of records with categorical variables
     """
-    return self._outputValues[outputName]
+    return self._outputValues[name]
 
 
   def getOutputElementCount(self, name):
     """Returns the width of dataOut."""
-   
-    if name == "classificationResult":
+
+    if name == "categoriesOut":
       return 1
     else:
       raise Exception("Unknown output {}.".format(name))
 
 
+  def getInputElementCount(self, name):
+    """Returns the width of dataIn."""
 
+    if name == "categoriesOut":
+      return 1
+    else:
+      raise Exception("Unknown output {}.".format(name))

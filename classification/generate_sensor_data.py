@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -26,72 +26,70 @@ import csv
 import math
 import os
 import random
-from settings import \
-  SEQUENCE_LENGTH, \
-  NUM_CATEGORIES, \
-  DATA_DIR, \
-  DEFAULT_WHITE_NOISE_AMPLITUDE, \
-  WHITE_NOISE_AMPLITUDE_RANGES, \
-  SIGNAL_AMPLITUDE, \
-  SIGNAL_MEAN, \
-  NUM_RECORDS, \
-  SIGNAL_PERIOD
+
+from settings import (SEQUENCE_LENGTH,
+                      DATA_DIR,
+                      DEFAULT_WHITE_NOISE_AMPLITUDE,
+                      WHITE_NOISE_AMPLITUDES,
+                      SIGNAL_AMPLITUDE,
+                      SIGNAL_MEAN,
+                      NUM_RECORDS,
+                      SIGNAL_PERIOD)
 
 
-  
-def generateData(dataDir=None, 
-                 signal_mean=SIGNAL_MEAN, 
-                 signal_period=SIGNAL_PERIOD, 
-                 number_of_points=NUM_RECORDS, 
-                 signal_amplitude=SIGNAL_AMPLITUDE, 
+
+def generateData(dataDir=None,
+                 signal_mean=SIGNAL_MEAN,
+                 signal_period=SIGNAL_PERIOD,
+                 number_of_points=NUM_RECORDS,
+                 signal_amplitude=SIGNAL_AMPLITUDE,
                  noise_amplitude=DEFAULT_WHITE_NOISE_AMPLITUDE):
-  
-  
-  fileName = "white_noise_%s" %noise_amplitude
-    
+  fileName = "white_noise_%s" % noise_amplitude
+
   if not dataDir:
     dataDir = DATA_DIR
-  
+
   # make sure the directory exist. if not, create it.
   if not os.path.exists(dataDir):
     os.makedirs(dataDir)
-  
-  fileHandle = open("%s/%s.csv" % (dataDir, fileName),"wb")
+
+  fileHandle = open("%s/%s.csv" % (dataDir, fileName), "wb")
   writer = csv.writer(fileHandle)
-  writer.writerow(["x","y", "label"])
-  writer.writerow(["float","float","int"])
-  writer.writerow(["","","C"]) # C is for category. 
-  # WARNING: if the C flag is forgotten in the dataset, then all records will be arbitrarily put
-  # in the same category (i.e. category 0). So make sure to have the C flag -- otherwise
-  # you'll get 100% classification accuracy regardless of the input data :-P
+  writer.writerow(["x", "y", "label"])
+  writer.writerow(["float", "float", "int"])
+  writer.writerow(["", "", "C"])  # C is for category. 
+  # WARNING: if the C flag is forgotten in the dataset, then all records will
+  #  be arbitrarily put
+  # in the same category (i.e. category 0). So make sure to have the C flag 
+  # -- otherwise you'll get 100% classification accuracy regardless of 
+  # the input data :-P
 
 
   endOfSequence = SEQUENCE_LENGTH
   label = 2
   for i in range(number_of_points):
-    
+
     noise = noise_amplitude * random.random()
-    
+
     if i == endOfSequence:
       endOfSequence += SEQUENCE_LENGTH
       if label == 0:
         label = 2
       else:
         label -= 1
-      
+
     signal_modifier = 2 * (label + 1)
     x = signal_modifier * (i * math.pi) / signal_period
-    m1 = signal_modifier * signal_mean + signal_amplitude * math.sin(x) + noise    
+    m1 = signal_modifier * signal_mean + signal_amplitude * math.sin(x) + noise
 
-    writer.writerow([x,m1, label])
-    #writer.writerow([i,i, label])
-      
-    
+    writer.writerow([x, m1, label])
+
   fileHandle.close()
-  
+
   print "Data generated. File saved to %s/%s.csv" % (dataDir, fileName)
-  
+
+
 
 if __name__ == "__main__":
-  for whiteNoiseAmplitude in WHITE_NOISE_AMPLITUDE_RANGES:
+  for whiteNoiseAmplitude in WHITE_NOISE_AMPLITUDES:
     generateData(noise_amplitude=whiteNoiseAmplitude)

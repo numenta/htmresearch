@@ -15,7 +15,6 @@ Sequence Classification
 
 Classify the data: 
 * Network API: `python classify_active_cells.py` (this will generate data AND model_params for various noise levels)
-* OPF: `python opf_classify.py` [DEPRECATED]
 
 
 #Classification of Real Data
