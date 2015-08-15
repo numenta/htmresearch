@@ -21,13 +21,15 @@
 # ----------------------------------------------------------------------
 import unittest
 
-from classify_sensor_data import configureNetwork, runNetwork
+from classify_sensor_data import (configureNetwork, 
+                                  runNetwork)
 from settings import (NUM_RECORDS,
                       PARTITIONS,
                       SIGNAL_AMPLITUDE,
                       SIGNAL_MEAN,
                       SIGNAL_PERIOD,
                       WHITE_NOISE_AMPLITUDES)
+
 
 
 class TestSensorDataClassification(unittest.TestCase):

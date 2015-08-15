@@ -30,6 +30,7 @@ from nupic.regions.PyRegion import PyRegion
 from algorithms.sequence_classifier_factory import SequenceClassifierFactory
 
 
+
 class SequenceClassifierRegion(PyRegion):
   """
   A Sequence classifier accepts a binary input from the level below (the
@@ -37,9 +38,8 @@ class SequenceClassifierRegion(PyRegion):
   "classification") describing the input to the system at that time step.
 
   When learning, for every bit in activation pattern, it records a history of 
-  the
-  classification each time that bit was active. The history is weighted so that
-  more recent activity has a bigger impact than older activity. The alpha
+  the classification each time that bit was active. The history is weighted so
+  that more recent activity has a bigger impact than older activity. The alpha
   parameter controls this weighting.
 
   For inference, it takes an ensemble approach. For every active bit in the

@@ -35,7 +35,6 @@ from nupic.engine import pyRegions
 
 from regions.SequenceClassifierRegion import SequenceClassifierRegion
 
-
 _VERBOSITY = 0
 
 SP_PARAMS = {
@@ -75,6 +74,7 @@ TM_PARAMS = {
 PY_REGIONS = [r[1] for r in pyRegions]
 
 
+
 def createEncoder(newEncoders):
   """
   Creates and returns a MultiEncoder.
@@ -101,6 +101,7 @@ def createEncoder(newEncoders):
   encoder = MultiEncoder()
   encoder.addMultipleEncoders(newEncoders)
   return encoder
+
 
 
 def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
@@ -165,6 +166,7 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
   return sensorRegion
 
 
+
 def createSpatialPoolerRegion(network, prevRegionWidth):
   """
   Create the spatial pooler region.
@@ -186,6 +188,7 @@ def createSpatialPoolerRegion(network, prevRegionWidth):
   spatialPoolerRegion.setParameter("inferenceMode", True)
 
   return spatialPoolerRegion
+
 
 
 def createTemporalMemoryRegion(network):
@@ -211,6 +214,7 @@ def createTemporalMemoryRegion(network):
   temporalMemoryRegion.setParameter("inferenceMode", True)
 
   return temporalMemoryRegion
+
 
 
 def createClassifierRegion(network, classifierType, classifierParams):
@@ -245,6 +249,7 @@ def createClassifierRegion(network, classifierType, classifierParams):
   return classifierRegion
 
 
+
 def validateRegions(sensor, sp, tm, classifier):
   """ Make sure region widths fit"""
 
@@ -264,6 +269,7 @@ def validateRegions(sensor, sp, tm, classifier):
                      "input width = {}.".format(spInputWidth, tmInputWidth))
 
     # TODO: should we check if TM output width matches classifier input width? 
+
 
 
 def linkRegions(network):
@@ -302,6 +308,7 @@ def linkRegions(network):
   # Link the sensor to the classifier to send in category labels.
   network.link("sensor", "classifier", "UniformLink", "",
                srcOutput="categoryOut", destInput="categoryIn")
+
 
 
 def createNetwork(dataSource,
