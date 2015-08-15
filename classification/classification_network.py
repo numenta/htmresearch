@@ -121,7 +121,7 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
       expected.
 
   @param dataSource   (RecordStream)  Sensor region reads data from here.
-  
+
   @param numCats   (int) Maximum number of categories of the input data.
 
   @return             (Region)        Sensor region of the network.
@@ -138,8 +138,7 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
       # Add region to list of registered PyRegions
       PY_REGIONS.append(sensorName)
     except ImportError:
-      raise RuntimeError("Could not find sensor \'{}\' to import.".
-                         format(sensorName))
+      raise RuntimeError("Could not import sensor \'{}\'.".format(sensorName))
 
   try:
     # Add region to network
@@ -241,14 +240,14 @@ def createClassifierRegion(network, classifierType, classifierParams, prevRegion
     # Add new region class to the network
     network.registerRegion(SequenceClassifierRegion)
     PY_REGIONS.append(classifierType.split(".")[1])
-  
+
   # Create the classifier region.
   classifierRegion = network.addRegion(
       "classifier", classifierType, json.dumps(classifierParams))
 
   # Disable learning for now (will be enabled in a later training phase)... why???
   classifierRegion.setParameter("learningMode", False)
-  
+
   # Okay to always leave inference mode on; only there for some corner cases.
   classifierRegion.setParameter("inferenceMode", True)
 
@@ -261,7 +260,7 @@ def createRegions(network, args):
   Note the regions still need to be linked appropriately in linkRegions().
 
    @param network (Network)    The network instance
-   @param args                 (dataSource, sensorType, encoders, numCategories, 
+   @param args                 (dataSource, sensorType, encoders, numCategories,
                                 classifierType, classifierParams) , more info:
     dataSource   (RecordStream) Sensor region reads data from here.
     sensorType   (str)          Specific type of region, e.g. "py.RecordSensor";
@@ -270,14 +269,14 @@ def createRegions(network, args):
     numCategories  (int)        Max number of categories of the input data.
     classifierType   (str)      Specific type of classifier region, e.g. "py.SequenceClassifier";
                                 possible options can be found in nupic/regions/.
-    classifierParams   (dict)   Parameters for the model. E.g. {'maxCategoryCount': 3}                               
-                                
+    classifierParams   (dict)   Parameters for the model. E.g. {'maxCategoryCount': 3}
+
   """
   (dataSource,
    sensorType,
    encoders,
    numCats,
-   classifierType, 
+   classifierType,
    classifierParams) = args
 
   sensor = createSensorRegion(
@@ -327,7 +326,7 @@ def createNetwork(args):
   Create the network instance with regions for the sensor, SP, TM, and
   classifier. Before running, be sure to init w/ network.initialize().
 
-  @param args                 (dataSource, sensorType, encoders, numCategories, 
+  @param args                 (dataSource, sensorType, encoders, numCategories,
                                 classifierType, classifierParams) , more info:
     dataSource   (RecordStream) Sensor region reads data from here.
     sensorType   (str)          Specific type of region, e.g. "py.RecordSensor";
@@ -336,8 +335,8 @@ def createNetwork(args):
     numCategories  (int)        Max number of categories of the input data.
     classifierType   (str)      Specific type of classifier region, e.g. "py.SequenceClassifier";
                                 possible options can be found in nupic/regions/.
-    classifierParams   (dict)   Parameters for the model. E.g. {'maxCategoryCount': 3}                               
-                                
+    classifierParams   (dict)   Parameters for the model. E.g. {'maxCategoryCount': 3}
+
   @return        (Network)      sensor -> SP -> TM -> CLA classifier
   """
   network = Network()
