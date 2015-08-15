@@ -19,11 +19,13 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import os
 import unittest
 
 from classify_sensor_data import (configureNetwork, 
                                   runNetwork)
-from settings import (NUM_RECORDS,
+from settings import (DATA_DIR,
+                      NUM_RECORDS,
                       PARTITIONS,
                       SIGNAL_AMPLITUDE,
                       SIGNAL_MEAN,
@@ -66,6 +68,17 @@ class TestSensorDataClassification(unittest.TestCase):
         self.assertEqual(predictionAccuracy, 100)
       else:
         self.assertNotEqual(predictionAccuracy, 100)
+
+
+  def tearDown(self):
+    """
+    Remove data files
+    """
+    for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
+      fileToDelete = os.path.join(DATA_DIR,
+                                  "white_noise_%s.csv" % noiseAmplitude)
+      os.remove(fileToDelete)
+
 
 
 if __name__ == "__main__":
