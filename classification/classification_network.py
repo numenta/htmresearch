@@ -135,8 +135,7 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
       # Add region to list of registered PyRegions
       PY_REGIONS.append(sensorName)
     except ImportError:
-      raise RuntimeError("Could not find sensor \'{}\' to import.".
-                         format(sensorName))
+      raise RuntimeError("Could not import sensor \'{}\'.".format(sensorName))
 
   try:
     # Add region to network
