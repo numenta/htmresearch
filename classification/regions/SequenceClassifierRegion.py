@@ -73,16 +73,6 @@ class SequenceClassifierRegion(PyRegion):
           regionLevel=False,
           isDefaultInput=True,
           requireSplitterMap=False),
-
-        predictedActiveCells=dict(
-          description="The cells that are active and predicted",
-          dataType='Real32',
-          count=0,
-          required=True,
-          regionLevel=True,
-          isDefaultInput=False,
-          requireSplitterMap=False),
-
       ),
 
       outputs=dict(
@@ -237,23 +227,11 @@ class SequenceClassifierRegion(PyRegion):
 
     # Get TM states.
     activeCells = inputs["bottomUpIn"]
-    defaultPatternNZ = activeCells.nonzero()[0]
-
-    # TODO: We need a parameter to say that the previous region is the TM.
-    #   Indeed, the previous region could the UP for example.
-    #   So only get predicted active cells if we know previous region is TM
-    #   Use param `learnFromTM` for example.
-    predictedActiveCells = inputs["predictedActiveCells"]
-
-    # TODO: need to insert a mechanism that will alter the default patternNZ 
-    # with the predictedActiveCells
-    # NOTE: Could that work? => train more on the predictedActive than the 
-    # active cells
-    patternNZPredictedActive = predictedActiveCells.nonzero()[0]
+    patternNZ = activeCells.nonzero()[0]
 
     # Call classifier. Don't train. Just inference. Train after.
     clResults = self._classifier.compute(recordNum=self.recordNum, 
-                                         patternNZ=defaultPatternNZ, 
+                                         patternNZ=patternNZ, 
                                          classification=None,
                                          learn=False, 
                                          infer=self.inferenceMode)
@@ -266,7 +244,7 @@ class SequenceClassifierRegion(PyRegion):
 
       # Train classifier, no inference
       self._classifier.compute(recordNum=self.recordNum, 
-                               patternNZ=defaultPatternNZ,
+                               patternNZ=patternNZ,
                                classification=classificationIn, 
                                learn=self.learningMode, 
                                infer=False)
