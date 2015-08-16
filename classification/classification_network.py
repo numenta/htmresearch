@@ -206,9 +206,6 @@ def createTemporalMemoryRegion(network):
   # Make sure learning is enabled (this is the default)
   temporalMemoryRegion.setParameter("learningMode", False)
 
-  # We want to compute the predictedActiveCells
-  # temporalMemoryRegion.setParameter("computePredictedActiveCellIndices", True)
-
   # Inference mode outputs the current inference (i.e. active cells).
   # Okay to always leave inference mode on; only there for some corner cases.
   temporalMemoryRegion.setParameter("inferenceMode", True)
@@ -299,11 +296,6 @@ def linkRegions(network):
   # Feed the TM states to the classifier.
   network.link("TM", "classifier", "UniformLink", "",
                srcOutput="bottomUpOut", destInput="bottomUpIn")
-
-  # Feed the predicted active cells to the classifier
-  network.link("TM", "classifier", "UniformLink", "",
-               srcOutput="predictedActiveCells",
-               destInput="predictedActiveCells")
 
   # Link the sensor to the classifier to send in category labels.
   network.link("sensor", "classifier", "UniformLink", "",
