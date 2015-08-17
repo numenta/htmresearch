@@ -292,6 +292,7 @@ def getEncoderMapping(model):
 
 def classify(mapping, activeColumns, numPredictions=NUM_PREDICTIONS):
   scores = [(len(encoding & activeColumns), i) for i, encoding in mapping.iteritems()]
+  random.shuffle(scores)  # break ties randomly
   print sorted(scores, reverse=True)
   return [i for _, i in sorted(scores, reverse=True)[:numPredictions]]
 
