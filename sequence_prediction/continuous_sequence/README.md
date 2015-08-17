@@ -1,6 +1,6 @@
 # Description
 
-Run HTM on continuous time series prediction problem
+Run HTM and other competing algorithms on continuous time series prediction problem
 
 # Example Usage
 
@@ -12,7 +12,7 @@ run swarm using the delta encoder
 
 	python run_swarm.py -d DATASET -f True
 
-Existing DATASET includes sine, MackeyGlass, SantaFe_A, rec-center-hourly
+Existing DATASET includes sine, MackeyGlass, SantaFe_A, rec-center-hourly, nyc_taxi
 
 run swarm using custom permutation settings (e.g. different error metrics)
 
@@ -27,6 +27,10 @@ run nupic model using existing model parameters
 run ARIMA on dataset
 
 	Rscript run_arima.R
+
+run LSTM on dataset
+
+    python run_lstm.py -d sine -n 5 -r 30
 
 compare TM performance with a trivial shift predictor and ARIMA 
 
