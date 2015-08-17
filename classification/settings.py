@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -32,7 +32,7 @@ SP_TRAINING_SET_SIZE = NUM_RECORDS * 1/4
 TM_TRAINING_SET_SIZE = NUM_RECORDS * 1/2  
 CLASSIFIER_TRAINING_SET_SIZE = NUM_RECORDS * 3/4 
 DEFAULT_WHITE_NOISE_AMPLITUDE = 10.0
-WHITE_NOISE_AMPLITUDE_RANGES = [1]
+WHITE_NOISE_AMPLITUDES = [0, 1]
 SIGNAL_AMPLITUDE = 1.0
 SIGNAL_MEAN = 1.0
 SIGNAL_PERIOD = 20.0

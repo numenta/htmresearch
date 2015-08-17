@@ -36,7 +36,8 @@ Redwood City, CA 94063 \\
 
 \begin{abstract}
 This document contains an annotated bibliography targeted towards those doing
-active research on Hierarchical Temporal Memory (HTM). The focus is on
+active research on Hierarchical Temporal Memory (HTM) particularly the class of 
+cortical algorithms initially defined in \cite{Hawkins2011}. The focus is on
 neuroscience, though there are occasional other references. The document consists
 of (possibly very brief) descriptions of specific papers. These descriptions
 emphasize the relationship to HTM Theory and don't necessarily summarize the
@@ -803,6 +804,58 @@ early in life.  This seems ridiculous to me.  Perhaps they are trying to show
 that HMAX (which doesn't learn at all) is a good model.  They show a chart
 (figure 2) showing that for translation fixed HMAX is as good as learning
 temporal pooling.
+
+\section{Feedback}
+
+What is feedback? Information processing in the cortex is hierarchical and
+bidirectional. Sensory input to the hierarchy occurs at the lowest levels and
+flows from the bottom to the top, i.e. in the feedforward direction. We would
+characterize this process as bottom-up. We define lateral connections as those
+connections that occur between neurons in the same \emph{layer} (not level). Here
+we define feedback as none of those. Specifically here they are projections from
+higher levels back to down to lower levels. We do not include
+lateral connections in our definition of feedback (this distinction is often
+confusing in the literature).
+
+We leave open for now other types of connections, such as cortico-thalamic and
+intralaminar.  Some might say that cortico-thalamic pathways are involved in
+attention, which is a top-down process and hence involves feedback. This would
+not be unreasonable. Similarly there might exist intralaminar connections
+(within a level) to apical dendrites where more stable patterns bias less stable
+patterns. This could also be reasonably called "feedback". We will place these
+categories of connections firmly in our "gray area" bag until we better
+understand the precise mechanisms and anatomy.
+
+\subsection{Makino: learning enhances impact of top-down pathways}
+
+Makino's paper \cite{Makino2015} is an excellent study of learning in feedback
+pathways. The paper studies activity and learning in layers 2/3, 4, and feedback
+projections into layer 1 from a higher region. Their experimental protocol
+involved active visually guided avoidance and as a control, passive visual
+experience. They examined plasticty in area V1 in mice. They identified a
+specific higher level (RSC) that projects to V1 as a major source of top-down
+input, and restricted top-down measurements to axons projecting from RSC to V1.
+
+They found that during active learning top down activity increased over several
+days. They measured  top-down activity as  the activity of axonal boutons
+projecting from RSC to layer I. This increase did not occur for the passive
+learning case. Activity in Layer 2/3 and L4 became much sparser in general. The
+difference in Layer 2/3 was larger in the active learning case than in the
+passive learning case.
+
+Activity in Layer 2/3 neurons and RSC boutons ramped up significantly during the
+active trials, in anticipation of specific visual events.  This did not occur
+in the non-active condition.  Layer 4 did not show any such ramp up.  They show
+that RSC activity is required for the Layer 2/3 ramp up. RSC inactivation also
+impaired the performance of the active learning task.
+
+They also measured activity of interneurons and suggested that top-down activity
+in general inhibits bottom-up pathways. As they state, \emph{"such learning-related
+shifts in the neocortical operation mode may be a fundamental feature of
+cortical computations underlying associative feature binding ... by effectively
+ignoring irrelevant fluctuations in sensory inputs resulting from the noise in
+the sensory environment."}
+
 
 
 \section{Thalamocortical Pathways}

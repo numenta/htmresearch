@@ -21,8 +21,9 @@
 
 """Module providing a factory for instantiating a Sequence classifier."""
 
-from SequenceClassifier import SequenceClassifier
 from nupic.support.configuration import Configuration
+
+from algorithms.SequenceClassifier import SequenceClassifier
 
 
 
@@ -34,6 +35,7 @@ class SequenceClassifierFactory(object):
   def create(*args, **kwargs):
     impl = kwargs.pop('implementation', None)
     if impl is None:
+      #TODO: update that. Using old CLA impl for now.
       impl = Configuration.get('nupic.opf.claClassifier.implementation')
     if impl == 'py':
       return SequenceClassifier(*args, **kwargs)
