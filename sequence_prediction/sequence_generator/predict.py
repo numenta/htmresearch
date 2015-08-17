@@ -37,12 +37,12 @@ from sequence_generator import SequenceGenerator
 
 MIN_ORDER = 6
 MAX_ORDER = 7
-NUM_PREDICTIONS = 2
+NUM_PREDICTIONS = [1, 2]
 NUM_RANDOM = 1
 PERTURB_AFTER = 1000
 
 RANDOM_RESERVOIR = 1000
-NUM_SYMBOLS = SequenceGenerator.numSymbols(MAX_ORDER, NUM_PREDICTIONS)
+NUM_SYMBOLS = SequenceGenerator.numSymbols(MAX_ORDER, max(NUM_PREDICTIONS))
 
 MODEL_PARAMS = {
   "model": "CLA",
@@ -113,7 +113,7 @@ MODEL_PARAMS = {
 
 
 
-def generateSequences():
+def generateSequences(numPredictions):
   sequences = []
 
   # # Generated sequences
@@ -168,41 +168,45 @@ def generateSequences():
   # ]
   # random.seed(100) # 100 fails, 300 works (results depend on order of training)
 
-  # # Hardcoded set of sequences
-  # sequences = [
-  #   [6, 8, 7, 4, 2, 3, 0],
-  #   [6, 3, 4, 2, 7, 8, 5],
-  #   [1, 8, 7, 4, 2, 3, 5],
-  #   [1, 3, 4, 2, 7, 8, 0],
-  #   [1, 9, 7, 8, 5, 3, 4, 0],
-  #   [1, 4, 3, 5, 8, 7, 9, 6],
-  #   [2, 9, 7, 8, 5, 3, 4, 6],
-  #   [2, 4, 3, 5, 8, 7, 9, 0]
-  # ]
+  if numPredictions == 1:
+    # Hardcoded set of sequences
+    sequences = [
+      [6, 8, 7, 4, 2, 3, 0],
+      [6, 3, 4, 2, 7, 8, 5],
+      [1, 8, 7, 4, 2, 3, 5],
+      [1, 3, 4, 2, 7, 8, 0],
+      [1, 9, 7, 8, 5, 3, 4, 0],
+      [1, 4, 3, 5, 8, 7, 9, 6],
+      [2, 9, 7, 8, 5, 3, 4, 6],
+      [2, 4, 3, 5, 8, 7, 9, 0]
+    ]
 
-  # Hardcoded set of sequences with multiple predictions (2)
-  # Make sure to set NUM_PREDICTIONS = 2 above
-  sequences = [
-    [4, 8, 3, 10, 9, 6, 1],
-    [4, 6, 9, 10, 3, 8, 7],
-    [4, 8, 3, 10, 9, 6, 2],
-    [4, 6, 9, 10, 3, 8, 0],
-    [5, 8, 3, 10, 9, 6, 0],
-    [5, 6, 9, 10, 3, 8, 2],
-    [5, 8, 3, 10, 9, 6, 7],
-    [5, 6, 9, 10, 3, 8, 1],
-    [4, 3, 8, 6, 1, 10, 11, 9],
-    [4, 11, 10, 1, 6, 8, 3, 7],
-    [4, 3, 8, 6, 1, 10, 11, 2],
-    [4, 11, 10, 1, 6, 8, 3, 0],
-    [5, 3, 8, 6, 1, 10, 11, 0],
-    [5, 11, 10, 1, 6, 8, 3, 2],
-    [5, 3, 8, 6, 1, 10, 11, 7],
-    [5, 11, 10, 1, 6, 8, 3, 9]
-  ]
+  if numPredictions == 2:
+    # Hardcoded set of sequences with multiple predictions (2)
+    # Make sure to set NUM_PREDICTIONS = 2 above
+    sequences = [
+      [4, 8, 3, 10, 9, 6, 1],
+      [4, 6, 9, 10, 3, 8, 7],
+      [4, 8, 3, 10, 9, 6, 2],
+      [4, 6, 9, 10, 3, 8, 0],
+      [5, 8, 3, 10, 9, 6, 0],
+      [5, 6, 9, 10, 3, 8, 2],
+      [5, 8, 3, 10, 9, 6, 7],
+      [5, 6, 9, 10, 3, 8, 1],
+      [4, 3, 8, 6, 1, 10, 11, 9],
+      [4, 11, 10, 1, 6, 8, 3, 7],
+      [4, 3, 8, 6, 1, 10, 11, 2],
+      [4, 11, 10, 1, 6, 8, 3, 0],
+      [5, 3, 8, 6, 1, 10, 11, 0],
+      [5, 11, 10, 1, 6, 8, 3, 2],
+      [5, 3, 8, 6, 1, 10, 11, 7],
+      [5, 11, 10, 1, 6, 8, 3, 9]
+    ]
 
+  print "Sequences generated:"
   for sequence in sequences:
     print sequence
+  print
 
   return sequences
 
@@ -290,7 +294,7 @@ def getEncoderMapping(model):
 
 
 
-def classify(mapping, activeColumns, numPredictions=NUM_PREDICTIONS):
+def classify(mapping, activeColumns, numPredictions):
   scores = [(len(encoding & activeColumns), i) for i, encoding in mapping.iteritems()]
   random.shuffle(scores)  # break ties randomly
   print sorted(scores, reverse=True)
@@ -298,18 +302,81 @@ def classify(mapping, activeColumns, numPredictions=NUM_PREDICTIONS):
 
 
 
+class Runner(object):
+
+  def __init__(self, numPredictions):
+    self.numPredictions = numPredictions
+
+    self.model = ModelFactory.create(MODEL_PARAMS)
+    self.model.enableInference({"predictedField": "element"})
+    self.shifter = InferenceShifter()
+    self.mapping = getEncoderMapping(self.model)
+
+    self.sequences = generateSequences(self.numPredictions)
+    self.correct = []
+    self.numPredictedActiveCells = []
+    self.numPredictedInactiveCells = []
+    self.numUnpredictedActiveColumns = []
+
+    self.i = 0
+
+  def step(self):
+    sequence = random.choice(self.sequences)
+
+    if self.i > PERTURB_AFTER:
+      sequence = list(reversed(sequence))
+
+    topPredictions = []
+
+    for j, element in enumerate(sequence):
+      result = self.shifter.shift(self.model.run({"element": element}))
+      # print element, result.inferences["multiStepPredictions"][1]
+      tm = self.model._getTPRegion().getSelf()._tfdr
+
+      if j == len(sequence) - 2:
+        tm.mmClearHistory()
+
+        # Uncomment to use custom classifier (uses predicted cells to make predictions)
+        predictiveColumns = set([tm.columnForCell(cell) for cell in tm.predictiveCells])
+        topPredictions = classify(self.mapping, predictiveColumns, self.numPredictions)
+
+      if j == len(sequence) - 1:
+        # Uncomment to use CLA classifier's predictions
+        # bestPredictions = sorted(result.inferences["multiStepPredictions"][1].items(),
+        #                          key=operator.itemgetter(1),
+        #                          reverse=True)
+        # topPredictions = [int(round(a)) for a, b in bestPredictions[:self.numPredictions]]
+
+        print "Step (numPredictions={0})".format(self.numPredictions)
+        print "Sequence: ", sequence
+        print "Evaluation:", element, topPredictions, element in topPredictions
+
+        self.correct.append(element in topPredictions)
+        self.numPredictedActiveCells.append(len(tm.mmGetTracePredictedActiveCells().data[0]))
+        self.numPredictedInactiveCells.append(len(tm.mmGetTracePredictedInactiveCells().data[0]))
+        self.numUnpredictedActiveColumns.append(len(tm.mmGetTraceUnpredictedActiveColumns().data[0]))
+
+
+    # Feed noise
+    sequence = range(NUM_SYMBOLS, NUM_SYMBOLS + RANDOM_RESERVOIR)
+    random.shuffle(sequence)
+    sequence = sequence[0:NUM_RANDOM]
+    print "Random:", sequence
+
+    print
+
+    for element in sequence:
+      self.model.run({"element": element})
+
+    self.i += 1
+
+
+  def accuracy(self):
+    return self.correct
+
+
+
 if __name__ == "__main__":
-  model = ModelFactory.create(MODEL_PARAMS)
-  model.enableInference({"predictedField": "element"})
-  shifter = InferenceShifter()
-  mapping = getEncoderMapping(model)
-
-  sequences = generateSequences()
-  correct = []
-  numPredictedActiveCells = []
-  numPredictedInactiveCells = []
-  numUnpredictedActiveColumns = []
-
   pyplot.ion()
   pyplot.show()
 
@@ -318,67 +385,28 @@ if __name__ == "__main__":
   rcParams.update({'figure.autolayout': True})
   rcParams.update({'figure.facecolor': 'white'})
   rcParams.update({'ytick.labelsize': 8})
+  rcParams.update({'figure.figsize': (12, 6)})
+
+  runners = []
+
+  for numPredictions in NUM_PREDICTIONS:
+    runners.append(Runner(numPredictions))
 
   for i in xrange(100000000):
-    sequence = random.choice(sequences)
+    if i % 100 == 0:
+      pyplot.clf()
 
-    if i > PERTURB_AFTER:
-      sequence = list(reversed(sequence))
+    for runner in runners:
+      runner.step()
 
-    topPredictions = []
+      if i % 100 == 0:
+        plotAccuracy(runner.accuracy())
 
-    for j, element in enumerate(sequence):
-      result = shifter.shift(model.run({"element": element}))
-      # print element, result.inferences["multiStepPredictions"][1]
-      tm = model._getTPRegion().getSelf()._tfdr
+        # TODO: Fix below
+        # pyplot.figure(2)
+        # pyplot.clf()
+        # plotTMStats(numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns)
+        # pyplot.draw()
 
-      if j == len(sequence) - 2:
-        tm.mmClearHistory()
-
-        # Uncomment to use custom classifier (uses predicted cells to make predictions)
-        predictiveColumns = set([tm.columnForCell(cell) for cell in tm.predictiveCells])
-        topPredictions = classify(mapping, predictiveColumns)
-
-      if j == len(sequence) - 1:
-        # Uncomment to use CLA classifier's predictions
-        # bestPredictions = sorted(result.inferences["multiStepPredictions"][1].items(),
-        #                          key=operator.itemgetter(1),
-        #                          reverse=True)
-        # topPredictions = [int(round(a)) for a, b in bestPredictions[:NUM_PREDICTIONS]]
-
-        print "Sequence: ", sequence
-        print "Evaluation:", element, topPredictions, element in topPredictions
-
-        correct.append(element in topPredictions)
-        numPredictedActiveCells.append(len(tm.mmGetTracePredictedActiveCells().data[0]))
-        numPredictedInactiveCells.append(len(tm.mmGetTracePredictedInactiveCells().data[0]))
-        numUnpredictedActiveColumns.append(len(tm.mmGetTraceUnpredictedActiveColumns().data[0]))
-
-        if i % 100 == 0:
-          rcParams.update({'figure.figsize': (12, 6)})
-          pyplot.figure(1)
-          pyplot.clf()
-          plotAccuracy(correct)
-          pyplot.draw()
-
-          # rcParams.update({'figure.figsize': (6, 12)})
-          # pyplot.figure(2)
-          # pyplot.clf()
-          # tm = model._getTPRegion().getSelf()._tfdr
-          # plotTraces(tm)
-
-          pyplot.figure(2)
-          pyplot.clf()
-          plotTMStats(numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns)
-          pyplot.draw()
-
-    # Feed noise
-    sequence = range(NUM_SYMBOLS, NUM_SYMBOLS + RANDOM_RESERVOIR)
-    random.shuffle(sequence)
-    sequence = sequence[0:NUM_RANDOM]
-    print "Random:", sequence
-
-    for element in sequence:
-      model.run({"element": element})
-
-    print
+    if i % 100 == 0:
+      pyplot.draw()
