@@ -1,6 +1,6 @@
 # Description
 
-Run HTM on continuous time series prediction problem
+Run HTM and other competing algorithms on continuous time series prediction problem
 
 # Example Usage
 
