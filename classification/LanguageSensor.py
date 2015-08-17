@@ -230,7 +230,8 @@ class LanguageSensor(PyRegion):
     outputs["sourceOut"] = data["_token"]
 
     self.populateCategoriesOut(data["_category"], outputs['categoryOut'])
-    print outputs['categoryOut']
+    if self.verbosity > 0:
+      print "Categories out: ", outputs['categoryOut']
 
     # Encode the token, where the encoding is a dict as expected in
     # nupic.fluent ClassificationModel.
