@@ -21,8 +21,10 @@
 # ----------------------------------------------------------------------
 
 import operator
+import os
 import pickle
 import random
+import sys
 import time
 
 import numpy
@@ -312,6 +314,11 @@ class Runner(object):
 
 
 if __name__ == "__main__":
+  outdir = sys.argv[1]
+
+  if not os.path.exists(outdir):
+    os.makedirs(outdir)
+
   runners = []
 
   for numPredictions in NUM_PREDICTIONS:
@@ -324,5 +331,5 @@ if __name__ == "__main__":
     if i % 100 == 0:
       results = [(runner.numPredictions, runner.accuracy()) for runner in runners]
 
-      with open("results_{0}".format(int(time.time())), 'wb') as outfile:
+      with open(os.path.join(outdir, "results_{0}".format(int(time.time()))), 'wb') as outfile:
         pickle.dump(results, outfile)
