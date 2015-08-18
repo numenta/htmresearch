@@ -21,10 +21,10 @@
 # ----------------------------------------------------------------------
 
 import operator
+import pickle
 import random
 import time
 
-from matplotlib import pyplot
 import numpy
 
 from nupic.data.inference_shifter import InferenceShifter
@@ -218,71 +218,6 @@ def movingAverage(a, n):
 
 
 
-def plotMovingAverage(data, window):
-  movingData = movingAverage(data, min(len(data), window))
-  style = 'ro' if len(data) < window else ''
-  pyplot.plot(range(len(movingData)), movingData, style)
-
-
-
-def plotAccuracy(correct, window=100):
-  pyplot.title("Accuracy over window={0}".format(window))
-  plotMovingAverage(correct, window)
-
-
-
-def plotTMStats(numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns,
-                window=100):
-  pyplot.subplot(3, 1, 1)
-  pyplot.title("# predicted => active cells over window={0}".format(window))
-  plotMovingAverage(numPredictedActiveCells, window)
-
-  pyplot.subplot(3, 1, 2)
-  pyplot.title("# predicted => inactive cells over window={0}".format(window))
-  plotMovingAverage(numPredictedInactiveCells, window)
-
-  pyplot.subplot(3, 1, 3)
-  pyplot.title("# unpredicted => active cells over window={0}".format(window))
-  plotMovingAverage(numUnpredictedActiveColumns, window)
-
-
-
-def plotTraces(tm, timestamp=int(time.time()), window=500):
-  """
-  Have to make the following change in NuPIC for this to work:
-
-  --- a/nupic/research/TP_shim.py
-  +++ b/nupic/research/TP_shim.py
-  @@ -27,10 +27,13 @@ for use with OPF.
-   import numpy
-
-   from nupic.research.temporal_memory import TemporalMemory
-  +from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
-  +  TemporalMemoryMonitorMixin)
-  +class MonitoredTemporalMemory(TemporalMemoryMonitorMixin, TemporalMemory): pass
-
-
-
-  -class TPShim(TemporalMemory):
-  +class TPShim(MonitoredTemporalMemory):
-  """
-  traces = tm.mmGetDefaultTraces()
-  traces = [trace for trace in traces if type(trace) is CountsTrace]
-
-  t = len(traces)
-
-  for i in xrange(t):
-    trace = traces[i]
-    pyplot.subplot(t, 1, i+1)
-    pyplot.title(trace.title)
-    pyplot.xlim(max(len(trace.data)-window, 0), len(trace.data))
-    pyplot.plot(range(len(trace.data)), trace.data)
-
-  pyplot.draw()
-  # pyplot.savefig("tm-{0}.png".format(timestamp))
-
-
-
 def getEncoderMapping(model):
   encoder = model._getEncoder().encoders[0][1]
   mapping = dict()
@@ -377,36 +312,17 @@ class Runner(object):
 
 
 if __name__ == "__main__":
-  pyplot.ion()
-  pyplot.show()
-
-  from pylab import rcParams
-
-  rcParams.update({'figure.autolayout': True})
-  rcParams.update({'figure.facecolor': 'white'})
-  rcParams.update({'ytick.labelsize': 8})
-  rcParams.update({'figure.figsize': (12, 6)})
-
   runners = []
 
   for numPredictions in NUM_PREDICTIONS:
     runners.append(Runner(numPredictions))
 
   for i in xrange(100000000):
-    if i % 100 == 0:
-      pyplot.clf()
-
     for runner in runners:
       runner.step()
 
-      if i % 100 == 0:
-        plotAccuracy(runner.accuracy())
-
-        # TODO: Fix below
-        # pyplot.figure(2)
-        # pyplot.clf()
-        # plotTMStats(numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns)
-        # pyplot.draw()
-
     if i % 100 == 0:
-      pyplot.draw()
+      results = [runner.accuracy() for runner in runners]
+
+      with open("results_{0}".format(int(time.time())), 'wb') as outfile:
+        pickle.dump(results, outfile)
