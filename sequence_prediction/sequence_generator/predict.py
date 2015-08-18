@@ -21,10 +21,10 @@
 # ----------------------------------------------------------------------
 
 import operator
+import pickle
 import random
 import time
 
-from matplotlib import pyplot
 import numpy
 
 from nupic.data.inference_shifter import InferenceShifter
@@ -37,12 +37,12 @@ from sequence_generator import SequenceGenerator
 
 MIN_ORDER = 6
 MAX_ORDER = 7
-NUM_PREDICTIONS = 2
+NUM_PREDICTIONS = [1, 2]
 NUM_RANDOM = 1
 PERTURB_AFTER = 1000
 
 RANDOM_RESERVOIR = 1000
-NUM_SYMBOLS = SequenceGenerator.numSymbols(MAX_ORDER, NUM_PREDICTIONS)
+NUM_SYMBOLS = SequenceGenerator.numSymbols(MAX_ORDER, max(NUM_PREDICTIONS))
 
 MODEL_PARAMS = {
   "model": "CLA",
@@ -113,7 +113,7 @@ MODEL_PARAMS = {
 
 
 
-def generateSequences():
+def generateSequences(numPredictions):
   sequences = []
 
   # # Generated sequences
@@ -168,41 +168,45 @@ def generateSequences():
   # ]
   # random.seed(100) # 100 fails, 300 works (results depend on order of training)
 
-  # # Hardcoded set of sequences
-  # sequences = [
-  #   [6, 8, 7, 4, 2, 3, 0],
-  #   [6, 3, 4, 2, 7, 8, 5],
-  #   [1, 8, 7, 4, 2, 3, 5],
-  #   [1, 3, 4, 2, 7, 8, 0],
-  #   [1, 9, 7, 8, 5, 3, 4, 0],
-  #   [1, 4, 3, 5, 8, 7, 9, 6],
-  #   [2, 9, 7, 8, 5, 3, 4, 6],
-  #   [2, 4, 3, 5, 8, 7, 9, 0]
-  # ]
+  if numPredictions == 1:
+    # Hardcoded set of sequences
+    sequences = [
+      [6, 8, 7, 4, 2, 3, 0],
+      [6, 3, 4, 2, 7, 8, 5],
+      [1, 8, 7, 4, 2, 3, 5],
+      [1, 3, 4, 2, 7, 8, 0],
+      [1, 9, 7, 8, 5, 3, 4, 0],
+      [1, 4, 3, 5, 8, 7, 9, 6],
+      [2, 9, 7, 8, 5, 3, 4, 6],
+      [2, 4, 3, 5, 8, 7, 9, 0]
+    ]
 
-  # Hardcoded set of sequences with multiple predictions (2)
-  # Make sure to set NUM_PREDICTIONS = 2 above
-  sequences = [
-    [4, 8, 3, 10, 9, 6, 1],
-    [4, 6, 9, 10, 3, 8, 7],
-    [4, 8, 3, 10, 9, 6, 2],
-    [4, 6, 9, 10, 3, 8, 0],
-    [5, 8, 3, 10, 9, 6, 0],
-    [5, 6, 9, 10, 3, 8, 2],
-    [5, 8, 3, 10, 9, 6, 7],
-    [5, 6, 9, 10, 3, 8, 1],
-    [4, 3, 8, 6, 1, 10, 11, 9],
-    [4, 11, 10, 1, 6, 8, 3, 7],
-    [4, 3, 8, 6, 1, 10, 11, 2],
-    [4, 11, 10, 1, 6, 8, 3, 0],
-    [5, 3, 8, 6, 1, 10, 11, 0],
-    [5, 11, 10, 1, 6, 8, 3, 2],
-    [5, 3, 8, 6, 1, 10, 11, 7],
-    [5, 11, 10, 1, 6, 8, 3, 9]
-  ]
+  if numPredictions == 2:
+    # Hardcoded set of sequences with multiple predictions (2)
+    # Make sure to set NUM_PREDICTIONS = 2 above
+    sequences = [
+      [4, 8, 3, 10, 9, 6, 1],
+      [4, 6, 9, 10, 3, 8, 7],
+      [4, 8, 3, 10, 9, 6, 2],
+      [4, 6, 9, 10, 3, 8, 0],
+      [5, 8, 3, 10, 9, 6, 0],
+      [5, 6, 9, 10, 3, 8, 2],
+      [5, 8, 3, 10, 9, 6, 7],
+      [5, 6, 9, 10, 3, 8, 1],
+      [4, 3, 8, 6, 1, 10, 11, 9],
+      [4, 11, 10, 1, 6, 8, 3, 7],
+      [4, 3, 8, 6, 1, 10, 11, 2],
+      [4, 11, 10, 1, 6, 8, 3, 0],
+      [5, 3, 8, 6, 1, 10, 11, 0],
+      [5, 11, 10, 1, 6, 8, 3, 2],
+      [5, 3, 8, 6, 1, 10, 11, 7],
+      [5, 11, 10, 1, 6, 8, 3, 9]
+    ]
 
+  print "Sequences generated:"
   for sequence in sequences:
     print sequence
+  print
 
   return sequences
 
@@ -211,71 +215,6 @@ def generateSequences():
 def movingAverage(a, n):
   weights = numpy.repeat(1.0, n)/n
   return numpy.convolve(a, weights, 'valid')
-
-
-
-def plotMovingAverage(data, window):
-  movingData = movingAverage(data, min(len(data), window))
-  style = 'ro' if len(data) < window else ''
-  pyplot.plot(range(len(movingData)), movingData, style)
-
-
-
-def plotAccuracy(correct, window=100):
-  pyplot.title("Accuracy over window={0}".format(window))
-  plotMovingAverage(correct, window)
-
-
-
-def plotTMStats(numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns,
-                window=100):
-  pyplot.subplot(3, 1, 1)
-  pyplot.title("# predicted => active cells over window={0}".format(window))
-  plotMovingAverage(numPredictedActiveCells, window)
-
-  pyplot.subplot(3, 1, 2)
-  pyplot.title("# predicted => inactive cells over window={0}".format(window))
-  plotMovingAverage(numPredictedInactiveCells, window)
-
-  pyplot.subplot(3, 1, 3)
-  pyplot.title("# unpredicted => active cells over window={0}".format(window))
-  plotMovingAverage(numUnpredictedActiveColumns, window)
-
-
-
-def plotTraces(tm, timestamp=int(time.time()), window=500):
-  """
-  Have to make the following change in NuPIC for this to work:
-
-  --- a/nupic/research/TP_shim.py
-  +++ b/nupic/research/TP_shim.py
-  @@ -27,10 +27,13 @@ for use with OPF.
-   import numpy
-
-   from nupic.research.temporal_memory import TemporalMemory
-  +from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
-  +  TemporalMemoryMonitorMixin)
-  +class MonitoredTemporalMemory(TemporalMemoryMonitorMixin, TemporalMemory): pass
-
-
-
-  -class TPShim(TemporalMemory):
-  +class TPShim(MonitoredTemporalMemory):
-  """
-  traces = tm.mmGetDefaultTraces()
-  traces = [trace for trace in traces if type(trace) is CountsTrace]
-
-  t = len(traces)
-
-  for i in xrange(t):
-    trace = traces[i]
-    pyplot.subplot(t, 1, i+1)
-    pyplot.title(trace.title)
-    pyplot.xlim(max(len(trace.data)-window, 0), len(trace.data))
-    pyplot.plot(range(len(trace.data)), trace.data)
-
-  pyplot.draw()
-  # pyplot.savefig("tm-{0}.png".format(timestamp))
 
 
 
@@ -290,86 +229,68 @@ def getEncoderMapping(model):
 
 
 
-def classify(mapping, activeColumns, numPredictions=NUM_PREDICTIONS):
+def classify(mapping, activeColumns, numPredictions):
   scores = [(len(encoding & activeColumns), i) for i, encoding in mapping.iteritems()]
+  random.shuffle(scores)  # break ties randomly
   print sorted(scores, reverse=True)
   return [i for _, i in sorted(scores, reverse=True)[:numPredictions]]
 
 
 
-if __name__ == "__main__":
-  model = ModelFactory.create(MODEL_PARAMS)
-  model.enableInference({"predictedField": "element"})
-  shifter = InferenceShifter()
-  mapping = getEncoderMapping(model)
+class Runner(object):
 
-  sequences = generateSequences()
-  correct = []
-  numPredictedActiveCells = []
-  numPredictedInactiveCells = []
-  numUnpredictedActiveColumns = []
+  def __init__(self, numPredictions):
+    self.numPredictions = numPredictions
 
-  pyplot.ion()
-  pyplot.show()
+    self.model = ModelFactory.create(MODEL_PARAMS)
+    self.model.enableInference({"predictedField": "element"})
+    self.shifter = InferenceShifter()
+    self.mapping = getEncoderMapping(self.model)
 
-  from pylab import rcParams
+    self.sequences = generateSequences(self.numPredictions)
+    self.correct = []
+    self.numPredictedActiveCells = []
+    self.numPredictedInactiveCells = []
+    self.numUnpredictedActiveColumns = []
 
-  rcParams.update({'figure.autolayout': True})
-  rcParams.update({'figure.facecolor': 'white'})
-  rcParams.update({'ytick.labelsize': 8})
+    self.i = 0
 
-  for i in xrange(100000000):
-    sequence = random.choice(sequences)
+  def step(self):
+    sequence = random.choice(self.sequences)
 
-    if i > PERTURB_AFTER:
+    if self.i > PERTURB_AFTER:
       sequence = list(reversed(sequence))
 
     topPredictions = []
 
     for j, element in enumerate(sequence):
-      result = shifter.shift(model.run({"element": element}))
+      result = self.shifter.shift(self.model.run({"element": element}))
       # print element, result.inferences["multiStepPredictions"][1]
-      tm = model._getTPRegion().getSelf()._tfdr
+      tm = self.model._getTPRegion().getSelf()._tfdr
 
       if j == len(sequence) - 2:
         tm.mmClearHistory()
 
         # Uncomment to use custom classifier (uses predicted cells to make predictions)
         predictiveColumns = set([tm.columnForCell(cell) for cell in tm.predictiveCells])
-        topPredictions = classify(mapping, predictiveColumns)
+        topPredictions = classify(self.mapping, predictiveColumns, self.numPredictions)
 
       if j == len(sequence) - 1:
         # Uncomment to use CLA classifier's predictions
         # bestPredictions = sorted(result.inferences["multiStepPredictions"][1].items(),
         #                          key=operator.itemgetter(1),
         #                          reverse=True)
-        # topPredictions = [int(round(a)) for a, b in bestPredictions[:NUM_PREDICTIONS]]
+        # topPredictions = [int(round(a)) for a, b in bestPredictions[:self.numPredictions]]
 
+        print "Step (numPredictions={0})".format(self.numPredictions)
         print "Sequence: ", sequence
         print "Evaluation:", element, topPredictions, element in topPredictions
 
-        correct.append(element in topPredictions)
-        numPredictedActiveCells.append(len(tm.mmGetTracePredictedActiveCells().data[0]))
-        numPredictedInactiveCells.append(len(tm.mmGetTracePredictedInactiveCells().data[0]))
-        numUnpredictedActiveColumns.append(len(tm.mmGetTraceUnpredictedActiveColumns().data[0]))
+        self.correct.append(element in topPredictions)
+        self.numPredictedActiveCells.append(len(tm.mmGetTracePredictedActiveCells().data[0]))
+        self.numPredictedInactiveCells.append(len(tm.mmGetTracePredictedInactiveCells().data[0]))
+        self.numUnpredictedActiveColumns.append(len(tm.mmGetTraceUnpredictedActiveColumns().data[0]))
 
-        if i % 100 == 0:
-          rcParams.update({'figure.figsize': (12, 6)})
-          pyplot.figure(1)
-          pyplot.clf()
-          plotAccuracy(correct)
-          pyplot.draw()
-
-          # rcParams.update({'figure.figsize': (6, 12)})
-          # pyplot.figure(2)
-          # pyplot.clf()
-          # tm = model._getTPRegion().getSelf()._tfdr
-          # plotTraces(tm)
-
-          pyplot.figure(2)
-          pyplot.clf()
-          plotTMStats(numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns)
-          pyplot.draw()
 
     # Feed noise
     sequence = range(NUM_SYMBOLS, NUM_SYMBOLS + RANDOM_RESERVOIR)
@@ -377,7 +298,31 @@ if __name__ == "__main__":
     sequence = sequence[0:NUM_RANDOM]
     print "Random:", sequence
 
-    for element in sequence:
-      model.run({"element": element})
-
     print
+
+    for element in sequence:
+      self.model.run({"element": element})
+
+    self.i += 1
+
+
+  def accuracy(self):
+    return self.correct
+
+
+
+if __name__ == "__main__":
+  runners = []
+
+  for numPredictions in NUM_PREDICTIONS:
+    runners.append(Runner(numPredictions))
+
+  for i in xrange(100000000):
+    for runner in runners:
+      runner.step()
+
+    if i % 100 == 0:
+      results = [(runner.numPredictions, runner.accuracy()) for runner in runners]
+
+      with open("results_{0}".format(int(time.time())), 'wb') as outfile:
+        pickle.dump(results, outfile)
