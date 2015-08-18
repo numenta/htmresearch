@@ -35,16 +35,18 @@ def movingAverage(a, n):
 
 
 
-def plotMovingAverage(data, window):
+def plotMovingAverage(data, window, label=None):
   movingData = movingAverage(data, min(len(data), window))
   style = 'ro' if len(data) < window else ''
-  pyplot.plot(range(len(movingData)), movingData, style)
+  pyplot.plot(range(len(movingData)), movingData, style, label=label)
 
 
 
-def plotAccuracy(correct, window=100):
-  pyplot.title("Accuracy over window={0}".format(window))
-  plotMovingAverage(correct, window)
+def plotAccuracy(correct, window=100, label=None):
+  pyplot.title("High-order prediction")
+  pyplot.xlabel("# of sequences seen")
+  pyplot.ylabel("High-order prediction accuracy over last {0} sequences".format(window))
+  plotMovingAverage(correct, window, label=label)
 
 
 
@@ -112,15 +114,12 @@ if __name__ == "__main__":
   with open(sys.argv[1]) as infile:
     results = pickle.load(infile)
 
-    for result in results:
-      plotAccuracy(result)
-
-    pyplot.draw()
+    for (numPredictions, accuracy) in results:
+      plotAccuracy(accuracy, label="{0} possible predictions per sequence".format(numPredictions))
 
     # TODO: Fix below
     # pyplot.figure(2)
-    # pyplot.clf()
     # plotTMStats(numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns)
-    # pyplot.draw()
 
+  pyplot.legend()
   pyplot.show()

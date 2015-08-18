@@ -322,7 +322,7 @@ if __name__ == "__main__":
       runner.step()
 
     if i % 100 == 0:
-      results = [runner.accuracy() for runner in runners]
+      results = [(runner.numPredictions, runner.accuracy()) for runner in runners]
 
       with open("results_{0}".format(int(time.time())), 'wb') as outfile:
         pickle.dump(results, outfile)
