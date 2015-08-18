@@ -110,16 +110,25 @@ if __name__ == "__main__":
   rcParams.update({'ytick.labelsize': 8})
   rcParams.update({'figure.figsize': (12, 6)})
 
+  results = None
+  tmStats = None
 
   with open(sys.argv[1]) as infile:
     results = pickle.load(infile)
 
-    for (numPredictions, accuracy) in results:
-      plotAccuracy(accuracy, label="{0} possible predictions per sequence".format(numPredictions))
+  if len(sys.argv) > 2:
+    with open(sys.argv[2]) as infile:
+      tmStats = pickle.load(infile)
 
-    # TODO: Fix below
-    # pyplot.figure(2)
-    # plotTMStats(numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns)
+  for i in xrange(len(results)):
+    pyplot.figure(1)
+    numPredictions, accuracy = results[i]
+    plotAccuracy(accuracy, label="{0} possible predictions per sequence".format(numPredictions))
+
+    if tmStats is not None:
+      pyplot.figure(2)
+      numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns = tmStats[i]
+      plotTMStats(numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns)
 
   pyplot.legend()
   pyplot.show()

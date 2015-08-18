@@ -122,7 +122,7 @@ def generateSequences(numPredictions):
   # generator = SequenceGenerator(seed=42)
 
   # for order in xrange(MIN_ORDER, MAX_ORDER+1):
-  #   sequences += generator.generate(order, NUM_PREDICTIONS)
+  #   sequences += generator.generate(order, numPredictions)
 
   # # Subutai's sequences
   # """
@@ -333,3 +333,8 @@ if __name__ == "__main__":
 
       with open(os.path.join(outdir, "results_{0}".format(int(time.time()))), 'wb') as outfile:
         pickle.dump(results, outfile)
+
+      tmStats = [(runner.numPredictedActiveCells, runner.numPredictedInactiveCells, runner.numUnpredictedActiveColumns) for runner in runners]
+
+      with open(os.path.join(outdir, "tm_stats_{0}".format(int(time.time()))), 'wb') as outfile:
+        pickle.dump(tmStats, outfile)
