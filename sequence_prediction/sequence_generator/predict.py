@@ -19,6 +19,10 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+"""
+Add parameter setting predictedSegmentDecrement=0.01 in TPShim
+TODO: Set that here instead
+"""
 
 import operator
 import os
