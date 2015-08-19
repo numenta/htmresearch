@@ -21,21 +21,162 @@
 # ----------------------------------------------------------------------
 
 
-SIGNAL_TYPES = ["white_noise"]
-RESULTS_DIR = "results"
-DATA_DIR = "data" 
-MODEL_PARAMS_DIR = 'model_params'
+# Parameters to generate the artificial sensor data
+OUTFILE_NAME = "white_noise"
 SEQUENCE_LENGTH = 200
-NUM_CATEGORIES = 3 
+NUM_CATEGORIES = 3
 NUM_RECORDS = 2400
-SP_TRAINING_SET_SIZE = NUM_RECORDS * 1/4  
-TM_TRAINING_SET_SIZE = NUM_RECORDS * 1/2  
-CLASSIFIER_TRAINING_SET_SIZE = NUM_RECORDS * 3/4 
 DEFAULT_WHITE_NOISE_AMPLITUDE = 10.0
 WHITE_NOISE_AMPLITUDES = [0, 1]
 SIGNAL_AMPLITUDE = 1.0
 SIGNAL_MEAN = 1.0
 SIGNAL_PERIOD = 20.0
-# Partition records into training sets for SP, TM, and classifier
-PARTITIONS = [SP_TRAINING_SET_SIZE, TM_TRAINING_SET_SIZE, CLASSIFIER_TRAINING_SET_SIZE]
+
+# Additional parameters to run the classification experiments 
+RESULTS_DIR = "results"
+MODEL_PARAMS_DIR = 'model_params'
+DATA_DIR = "data"
+
+# Classification network parameters
+VERBOSITY = 0
+
+CATEGORY_ENCODER_PARAMS = {
+  "name": 'label',
+  "w": 21,
+  "categoryList": range(NUM_CATEGORIES)
+}
+
+RECORD_SENSOR_PARAMS = {
+  "verbosity": VERBOSITY,
+  "numCategories": NUM_CATEGORIES
+}
+
+SEQ_CLASSIFIER_PARAMS = {
+  "implementation": "py",
+  "clVerbosity": VERBOSITY
+}
+
+CLA_CLASSIFIER_PARAMS = {
+  "steps": "0,1",
+  "implementation": "py",
+  "maxCategoryCount": NUM_CATEGORIES,
+  "clVerbosity": VERBOSITY
+}
+
+KNN_CLASSIFIER_PARAMS = {
+  "k": 1,
+  'distThreshold': 0,
+  'maxCategoryCount': NUM_CATEGORIES,
+}
+
+SP_PARAMS = {
+  "spVerbosity": VERBOSITY,
+  "spatialImp": "cpp",
+  "globalInhibition": 1,
+  "columnCount": 2048,
+  "numActiveColumnsPerInhArea": 40,
+  "seed": 1956,
+  "potentialPct": 0.8,
+  "synPermConnected": 0.1,
+  "synPermActiveInc": 0.0001,
+  "synPermInactiveDec": 0.0005,
+  "maxBoost": 1.0,
+}
+
+TM_PARAMS = {
+  "verbosity": VERBOSITY,
+  "columnCount": 2048,
+  "cellsPerColumn": 32,
+  "seed": 1960,
+  "temporalImp": "tm_py",
+  "newSynapseCount": 20,
+  "maxSynapsesPerSegment": 32,
+  "maxSegmentsPerCell": 128,
+  "initialPerm": 0.21,
+  "permanenceInc": 0.1,
+  "permanenceDec": 0.1,
+  "globalDecay": 0.0,
+  "maxAge": 0,
+  "minThreshold": 9,
+  "activationThreshold": 12,
+  "outputType": "normal",
+  "pamLength": 3,
+}
+
+UP_PARAMS = {}  # TODO: Don't know what the UP params are yet.
+
+
+# A list of configurations specifying what regions to add to a network:
+# 
+# sensorType: Specific type of region, e.g. "py.RecordSensor";
+#   possible options can be found in nupic/regions/.
+# 
+# sensorParams:  Parameters for the sensor region. E.g.  
+#   {"verbosity": 0, "numCategories": 3}
+# 
+# classifierType: Specific type of classifier region. E.g. 
+#   "py.SequenceClassifier"; possible options can be found in nupic/regions/.
+# 
+# classifierParams: Parameters for the model. E.g. { 'maxCategoryCount': 3} 
+
+NETWORK_CONFIGURATIONS = [
+  {
+    "sensorRegion":
+      {
+        "type": "py.RecordSensor",
+        "params": RECORD_SENSOR_PARAMS
+      },
+    "spRegion":
+      {
+        "enabled": True,
+        "params": SP_PARAMS,
+      },
+    "tmRegion":
+      {
+        "enabled": True,
+        "params": TM_PARAMS,
+      },
+    "upRegion":
+      {
+        "enabled": False,
+        "params": UP_PARAMS,
+      },
+    "classifierRegion":
+      {
+        "type": "py.SequenceClassifierRegion",
+        "params": SEQ_CLASSIFIER_PARAMS
+      }
+  },
+  
+  {
+    "sensorRegion":
+      {
+        "type": "py.RecordSensor",
+        "params": RECORD_SENSOR_PARAMS
+      },
+    "spRegion":
+      {
+        "enabled": True,
+        "params": SP_PARAMS,
+      },
+    "tmRegion":
+      {
+        "enabled": False,
+        "params": TM_PARAMS,
+      },
+    "upRegion":
+      {
+        "enabled": False,
+        "params": UP_PARAMS,
+      },
+    "classifierRegion":
+      {
+        "type": "py.SequenceClassifierRegion",
+        "params": SEQ_CLASSIFIER_PARAMS
+      }
+  }
+]
+
+
+
 

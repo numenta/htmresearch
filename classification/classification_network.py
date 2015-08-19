@@ -35,42 +35,6 @@ from nupic.engine import pyRegions
 
 from regions.SequenceClassifierRegion import SequenceClassifierRegion
 
-_VERBOSITY = 0
-
-SP_PARAMS = {
-  "spVerbosity": _VERBOSITY,
-  "spatialImp": "cpp",
-  "globalInhibition": 1,
-  "columnCount": 2048,
-  "numActiveColumnsPerInhArea": 40,
-  "seed": 1956,
-  "potentialPct": 0.8,
-  "synPermConnected": 0.1,
-  "synPermActiveInc": 0.0001,
-  "synPermInactiveDec": 0.0005,
-  "maxBoost": 1.0,
-}
-
-TM_PARAMS = {
-  "verbosity": _VERBOSITY,
-  "columnCount": 2048,
-  "cellsPerColumn": 32,
-  "seed": 1960,
-  "temporalImp": "tm_py",
-  "newSynapseCount": 20,
-  "maxSynapsesPerSegment": 32,
-  "maxSegmentsPerCell": 128,
-  "initialPerm": 0.21,
-  "permanenceInc": 0.1,
-  "permanenceDec": 0.1,
-  "globalDecay": 0.0,
-  "maxAge": 0,
-  "minThreshold": 9,
-  "activationThreshold": 12,
-  "outputType": "normal",
-  "pamLength": 3,
-}
-
 PY_REGIONS = [r[1] for r in pyRegions]
 
 
@@ -104,7 +68,7 @@ def createEncoder(newEncoders):
 
 
 
-def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
+def createSensorRegion(network, sensorType, sensorParams, dataSource, encoders):
   """
   Initializes the sensor region with an encoder and data source.
 
@@ -112,14 +76,14 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
 
   @param sensorType   (str)           Specific type of region, e.g.
       "py.RecordSensor"; possible options can be found in /nupic/regions/.
-
-  @param encoders     (dict, encoder) If adding multiple encoders, pass a dict
-      as specified in createEncoder() docstring. Otherwise an encoder object is
-      expected.
+      
+  @param sensorParams (int) Maximum number of categories of the input data.
 
   @param dataSource   (RecordStream)  Sensor region reads data from here.
   
-  @param numCats   (int) Maximum number of categories of the input data.
+  @param encoders     (dict, encoder) If adding multiple encoders, pass a dict
+      as specified in createEncoder() docstring. Otherwise an encoder object is
+      expected.
 
   @return             (Region)        Sensor region of the network.
   """
@@ -137,17 +101,8 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
     except ImportError:
       raise RuntimeError("Could not import sensor \'{}\'.".format(sensorName))
 
-  try:
-    # Add region to network
-    regionParams = json.dumps({
-                                "verbosity": _VERBOSITY,
-                                "numCategories": numCats
-                                })
-    network.addRegion("sensor", sensorType, regionParams)
-  except RuntimeError:
-    print ("Custom region not added correctly. Possible issues are the spec is "
-           "wrong or the region class is not in the Python path.")
-    return
+  # Add region to network
+  network.addRegion("sensor", sensorType, sensorParams)
 
   # getSelf() returns the actual region, instead of a region wrapper
   sensorRegion = network.regions["sensor"].getSelf()
@@ -166,20 +121,19 @@ def createSensorRegion(network, sensorType, encoders, dataSource, numCats):
 
 
 
-def createSpatialPoolerRegion(network, prevRegionWidth):
+def createSpatialPoolerRegion(network, spParams):
   """
   Create the spatial pooler region.
 
   @param network          (Network)   The region will be a node in this network.
-  @param prevRegionWidth  (int)       Width of region below.
+  @param spParams         (dict)      The SP params
   @return                 (Region)    SP region of the network.
   """
   # Add region to network
-  SP_PARAMS["inputWidth"] = prevRegionWidth
   spatialPoolerRegion = network.addRegion(
-    "SP", "py.SPRegion", json.dumps(SP_PARAMS))
+    "SP", "py.SPRegion", json.dumps(spParams))
 
-  # Make sure learning is ON
+  # Make sure learning is ON.
   spatialPoolerRegion.setParameter("learningMode", True)
 
   # Inference mode outputs the current inference (i.e. active columns).
@@ -190,17 +144,18 @@ def createSpatialPoolerRegion(network, prevRegionWidth):
 
 
 
-def createTemporalMemoryRegion(network):
+def createTemporalMemoryRegion(network, tmParams):
   """
   Create the temporal memory region.
 
   @param network          (Network)   The region will be a node in this network.
+  @param tmParams         (dict)      The params of the TM
   @return                 (Region)    TM region of the network.
   """
   # Add region to network
-  TM_PARAMS["inputWidth"] = TM_PARAMS["columnCount"]
+  tmParams["inputWidth"] = tmParams["columnCount"]
   temporalMemoryRegion = network.addRegion(
-    "TM", "py.TPRegion", json.dumps(TM_PARAMS))
+    "TM", "py.TPRegion", json.dumps(tmParams))
 
   # Make sure learning is enabled (this is the default)
   temporalMemoryRegion.setParameter("learningMode", False)
@@ -246,109 +201,139 @@ def createClassifierRegion(network, classifierType, classifierParams):
 
 
 
-def validateRegions(sensor, sp, tm, classifier):
-  """ Make sure region widths fit"""
-
-  sensorOutputWidth = sensor.encoder.getWidth()
-  spInputWidth = sp.getSelf().inputWidth
-  spOutputWidth = sp.getSelf().columnCount
-  tmInputWidth = tm.getSelf().columnCount
-  tmOutputWidth = tmInputWidth * tm.getSelf().cellsPerColumn
-
-  if sensorOutputWidth != spInputWidth:
-    raise ValueError("Region widths do not fit. Sensor output width = {}, SP "
-                     "input width = {}.".format(sensorOutputWidth,
-                                                spInputWidth))
-
-  if spOutputWidth != tmInputWidth:
-    raise ValueError("Region widths do not fit. SP output width = {}, TM "
-                     "input width = {}.".format(spInputWidth, tmInputWidth))
-
-    # TODO: should we check if TM output width matches classifier input width? 
+def createUnionPoolerRegion(network, upParams):
+  """
+  Create a Union Pooler region.
+  
+  @param network (Network) The region will be a node in this network.
+  
+  @param upParams (dict) The UP params
+  
+  @return (Region) Union Pooler region of the network.
+  """
+  return
 
 
 
-def linkRegions(network):
+def linkRegions(network, previousRegion, currentRegion):
   """Link the regions, as commented below."""
 
-  # Link the SP region to the sensor input
-  network.link("sensor", "SP", "UniformLink", "")
+  # Link the previous region to the current region
+  network.link(previousRegion, currentRegion, "UniformLink", "")
 
-  # Forward the sensor region sequence reset to the SP
-  network.link("sensor", "SP", "UniformLink", "",
+  # Propagate the sequence reset
+  network.link(previousRegion, currentRegion, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
 
-  # Feed forward link from SP to TM
-  network.link("SP", "TM", "UniformLink", "",
-               srcOutput="bottomUpOut", destInput="bottomUpIn")
 
-  # Feedback links (unnecessary??)
-  network.link("TM", "SP", "UniformLink", "",
-               srcOutput="topDownOut", destInput="topDownIn")
-  network.link("TM", "sensor", "UniformLink", "",
-               srcOutput="topDownOut", destInput="temporalTopDownIn")
 
-  # Forward the sensor region sequence reset to the TM
-  network.link("sensor", "TM", "UniformLink", "",
-               srcOutput="resetOut", destInput="resetIn")
+def validateRegionWidths(previousRegionWidth, currentRegionWidth):
+  """
+  Make sure previous and current region have compatible input and output width
+  """
 
-  # Feed the TM states to the classifier.
-  network.link("TM", "classifier", "UniformLink", "",
-               srcOutput="bottomUpOut", destInput="bottomUpIn")
-
-  # Link the sensor to the classifier to send in category labels.
-  network.link("sensor", "classifier", "UniformLink", "",
-               srcOutput="categoryOut", destInput="categoryIn")
+  if previousRegionWidth != currentRegionWidth:
+    raise ValueError("Region widths do not fit. Output width = {}, "
+                     "input width = {}.".format(previousRegionWidth,
+                                                currentRegionWidth))
 
 
 
 def createNetwork(dataSource,
-                  sensorType,
                   encoders,
-                  numCategories,
-                  classifierType,
-                  classifierParams):
+                  networkConfiguration):
   """
-  Create the network instance with regions for the sensor, SP, TM, and
-  classifier. Before running, be sure to init w/ network.initialize().
+  TODO: update doc string with new params
+  
+  Create and initialize the network instance with regions for the sensor, SP, 
+  TM, and classifier. Before running, be sure to init w/ network.initialize().
 
   @param dataSource (RecordStream) Sensor region reads data from here.
-  
-  @param sensorType (str) Specific type of region, e.g. "py.RecordSensor";
-    possible options can be found in nupic/regions/.
     
   @param encoders (dict) See createEncoder() docstring for format.
   
-  @param numCategories (int) Max number of categories of the input data.
+  @param networkConfiguration (dict) the configuration of this network. E.g.
+    {
+      "sensorRegion":
+        {
+          "type": "py.RecordSensor",
+          "params": RECORD_SENSOR_PARAMS
+        },
+      "spRegion":
+        {
+          "enabled": True,
+          "params": SP_PARAMS,
+        },
+      "tmRegion":
+        {
+          "enabled": True,
+          "params": TM_PARAMS,
+        },
+      "upRegion":
+        {
+          "enabled": False,
+          "params": UP_PARAMS,
+        },
+      "classifierRegion":
+        {
+          "type": "py.CLAClassifierRegion",
+          "params": CLA_CLASSIFIER_PARAMS
+            
+        }
+    }
   
-  @param classifierType (str) Specific type of classifier region, 
-    e.g. "py.SequenceClassifier"; possible options can be found in 
-    nupic/regions/.
-    
-  @param classifierParams (dict) Parameters for the model. E.g. {
-  'maxCategoryCount': 3} 
-  
-  @return (Network) Sample network: SensorRegion -> SP -> TM -> CLA classifier
+  @return network (Network) Sample network. 
+    E.g. SensorRegion -> SP -> TM -> CLAClassifier
   """
   network = Network()
 
-  sensor = createSensorRegion(network,
-                              sensorType,
-                              encoders,
-                              dataSource,
-                              numCategories)
+  sensorParams = networkConfiguration["sensorRegion"]["params"]
+  sensorType = networkConfiguration["sensorRegion"]["type"]
+  sensorRegion = createSensorRegion(network,
+                                    sensorType,
+                                    sensorParams,
+                                    dataSource,
+                                    encoders)
 
-  sp = createSpatialPoolerRegion(network,
-                                 sensor.encoder.getWidth())
+  # keep track of the previous region name and width to validate and link the 
+  # input/output width of two consecutive regions.
+  previousRegion = "sensor"
+  previousRegionWidth = sensorRegion.encoder.getWidth()
 
-  tm = createTemporalMemoryRegion(network)
+  if networkConfiguration["spRegion"]["enabled"]:
+    spParams = networkConfiguration["spRegion"]["params"]
+    spParams["inputWidth"] = sensorRegion.encoder.getWidth
+    spRegion = createSpatialPoolerRegion(network, spParams)
+    linkRegions(network, previousRegion, "SP")
+    validateRegionWidths(previousRegionWidth, spRegion.getSelf().inputWidth)
+    previousRegion = "SP"
+    previousRegionWidth = spRegion.getSelf().columnCount
 
-  classifier = createClassifierRegion(network,
-                                      classifierType,
-                                      classifierParams)
+  if networkConfiguration["tmRegion"]["enabled"]:
+    tmParams = networkConfiguration["tmRegion"]["params"]
+    tmRegion = createTemporalMemoryRegion(network, tmParams)
+    linkRegions(network, previousRegion, "TM")
+    validateRegionWidths(previousRegionWidth, tmRegion.getSelf().columnCount)
+    previousRegion = "TM"
+    previousRegionWidth = tmRegion.getSelf().cellsPerColumn
 
-  validateRegions(sensor, sp, tm, classifier)
+  if networkConfiguration["upRegion"]["enabled"]:
+    upParams = networkConfiguration["upRegion"]["params"]
+    upRegion = createUnionPoolerRegion(network, upParams)
+    linkRegions(network, previousRegion, "UP")
+    # TODO: not sure about the UP region width params. This needs to be updated.
+    validateRegionWidths(previousRegionWidth, upRegion.getSelf().cellsPerColumn)
+    previousRegion = "UP"
 
-  linkRegions(network)
+  classifierParams = networkConfiguration["classifierRegion"]["params"]
+  classifierType = networkConfiguration["classifierRegion"]["type"]
+  createClassifierRegion(network,
+                         classifierType,
+                         classifierParams)
+  linkRegions(network, previousRegion, "classifier")
+
+  # Link the sensor to the classifier to send in category labels.
+  network.link("sensor", "classifier", "UniformLink", "",
+               srcOutput="categoryOut", destInput="categoryIn")
 
   return network

@@ -20,7 +20,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import os
+import json
 
 from nupic.data.file_record_stream import FileRecordStream
 
@@ -28,50 +28,15 @@ from classification_network import createNetwork
 from generate_sensor_data import generateData
 from generate_model_params import findMinMax
 from settings import (NUM_CATEGORIES,
+                      SEQUENCE_LENGTH,
+                      OUTFILE_NAME,
                       NUM_RECORDS,
-                      PARTITIONS,
+                      NETWORK_CONFIGURATIONS,
                       SIGNAL_AMPLITUDE,
                       SIGNAL_MEAN,
                       SIGNAL_PERIOD,
                       WHITE_NOISE_AMPLITUDES,
                       DATA_DIR)
-
-_VERBOSITY = 0
-
-_SCALAR_ENCODER_PARAMS = {
-  "name": "white_noise",
-  "fieldname": "y",
-  "type": "ScalarEncoder",
-  "n": 256,
-  "w": 21,
-  "minval": None,  # needs to be initialized after file introspection
-  "maxval": None  # needs to be initialized after file introspection
-}
-
-_CATEGORY_ENCODER_PARAMS = {
-  "name": 'label',
-  "w": 21,
-  "categoryList": range(NUM_CATEGORIES)
-}
-
-_SEQ_CLASSIFIER_PARAMS = {
-  "implementation": "py",
-  "clVerbosity": _VERBOSITY
-}
-
-_CLA_CLASSIFIER_PARAMS = {
-  "steps": "0,1",
-  "implementation": "py",
-  "numCategories": NUM_CATEGORIES,
-  "clVerbosity": _VERBOSITY
-}
-
-_KNN_CLASSIFIER_PARAMS = {
-  "k": 1,
-  'distThreshold': 0,
-  'maxCategoryCount': NUM_CATEGORIES,
-}
-
 
 
 def runNetwork(net, numRecords, partitions):
@@ -157,39 +122,22 @@ def runNetwork(net, numRecords, partitions):
 
 
 
-def _setupScalarEncoder(minval, maxval):
-  """
-  Set min and max for scalar encoder params.
-  """ 
-  _SCALAR_ENCODER_PARAMS["minval"] = minval
-  _SCALAR_ENCODER_PARAMS["maxval"] = maxval
-
-
-
-def configureNetwork(noiseAmplitude):
+def configureNetwork(encoders,
+                     networkConfiguration):
   """
   Configure the network for various experiment values.
-  @param noiseAmplitude: amplitude of the white noise.
   """
-  # Generate the data, and get the min/max values
-  generateData(noise_amplitude=noiseAmplitude)
-  inputFile = os.path.join(DATA_DIR, "white_noise_%s.csv" % noiseAmplitude)
-  minval, maxval = findMinMax(inputFile)
 
-  _setupScalarEncoder(minval, maxval)
 
   # Create and run network on this data.
   #   Input data comes from a CSV file (scalar values, labels). The
   #   RecordSensor region allows us to specify a file record stream as the
   #   input source via the dataSource attribute.
   dataSource = FileRecordStream(streamID=inputFile)
-  encoders = {"sensor_data": _SCALAR_ENCODER_PARAMS}
+  
   network = createNetwork(dataSource,
-                          "py.RecordSensor",
                           encoders,
-                          NUM_CATEGORIES,
-                          "py.SequenceClassifierRegion",
-                          _SEQ_CLASSIFIER_PARAMS)
+                          networkConfiguration)
 
   # Need to init the network before it can run.
   network.initialize()
@@ -197,23 +145,120 @@ def configureNetwork(noiseAmplitude):
 
 
 
-if __name__ == "__main__":
+def findNumberOfPartitions(networkConfiguration, numRecords):
+  """
+  Find the number of partitions for the input data based on a specific
+  networkConfiguration. 
   
-  for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
+  @param networkConfiguration (dict) the configuration of this network. E.g.
+    {
+      "sensorRegion":
+        {
+          "type": "py.RecordSensor",
+          "params": RECORD_SENSOR_PARAMS
+        },
+      "spRegion":
+        {
+          "enabled": True,
+          "params": SP_PARAMS,
+        },
+      "tmRegion":
+        {
+          "enabled": True,
+          "params": TM_PARAMS,
+        },
+      "upRegion":
+        {
+          "enabled": False,
+          "params": UP_PARAMS,
+        },
+      "classifierRegion":
+        {
+          "type": "py.CLAClassifierRegion",
+          "params": CLA_CLASSIFIER_PARAMS
+            
+        }
+    }
+  
+  @numRecords (int) Number of records of the input dataset.
+  
+  @return partitions (list) list of indices partitioning the input dataset. 
+    The last partition is always the test set. All the partitions before are 
+    used to train the regions in the network consecutively.
+  """
+
+  spEnabled = networkConfiguration["spRegion"]["enabled"]
+  tmEnabled = networkConfiguration["tmRegion"]["enabled"]
+  upEnabled = networkConfiguration["tmRegion"]["enabled"]
+
+  if spEnabled and tmEnabled and upEnabled:
+    numPartitions = 5
+  elif spEnabled and tmEnabled:
+    numPartitions = 4
+  elif spEnabled:
+    numPartitions = 3
+  else:
+    numPartitions = 2  # only the classifier, so just test and train partitions
+
+  return [numRecords * i / numPartitions for i in xrange(numPartitions)]
+
+
+
+def generateScalarEncoderParams(inputFile):
+  minval, maxval = findMinMax(inputFile)
+  scalarEncoderParams = {
+    "name": "white_noise",
+    "fieldname": "y",
+    "type": "ScalarEncoder",
+    "n": 256,
+    "w": 21,
+    "minval": minval,
+    "maxval": maxval
+  }
+  return scalarEncoderParams
+  
+
+
+
+if __name__ == "__main__":
+
+  for networkConfiguration in NETWORK_CONFIGURATIONS:
+    for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
       expParams = ("RUNNING EXPERIMENT WITH PARAMS:\n"
                    " * numRecords=%s\n"
-                   " * noiseAmplitude=%s\n"
                    " * signalAmplitude=%s\n"
                    " * signalMean=%s\n"
                    " * signalPeriod=%s\n"
+                   " * networkConfiguration=%s\n"
                    ) % (NUM_RECORDS,
-                        noiseAmplitude,
                         SIGNAL_AMPLITUDE,
                         SIGNAL_MEAN,
-                        SIGNAL_PERIOD)
+                        SIGNAL_PERIOD,
+                        json.dumps(networkConfiguration, indent=2))
       print expParams
 
-      network = configureNetwork(noiseAmplitude)
-      numCorrect, numTestRecords, predictionAccuracy = runNetwork(network,
-                                                                  NUM_RECORDS,
-                                                                  PARTITIONS)
+
+      # Generate the data, and get the min/max values
+      inputFile = generateData(DATA_DIR,
+                               OUTFILE_NAME,
+                               SIGNAL_MEAN,
+                               SIGNAL_PERIOD,
+                               SEQUENCE_LENGTH,
+                               NUM_RECORDS,
+                               SIGNAL_AMPLITUDE,
+                               noiseAmplitude)
+      
+      scalarEncoderParams = generateScalarEncoderParams(inputFile)
+      
+      encoders = {"sensor_data" : scalarEncoderParams}
+      
+      network = configureNetwork(encoders,
+                                 networkConfiguration)
+
+      partitions = findNumberOfPartitions(networkConfiguration)
+
+      (numCorrect,
+       numTestRecords,
+       predictionAccuracy) = runNetwork(network,
+                                        NUM_RECORDS,
+                                        partitions)
