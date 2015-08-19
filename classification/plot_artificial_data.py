@@ -26,7 +26,7 @@ import os
 import matplotlib.pyplot as plt
 
 from settings import (DATA_DIR, 
-                      SIGNAL_TYPES, 
+                      OUTFILE_NAME, 
                       WHITE_NOISE_AMPLITUDES, 
                       SEQUENCE_LENGTH)
 
@@ -34,7 +34,7 @@ from settings import (DATA_DIR,
 def findValidCSVNames():
   validFileNames = []
   for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
-    for signalType in SIGNAL_TYPES:
+    for signalType in OUTFILE_NAME:
       filePath = "%s/%s_%s.csv" %(DATA_DIR, signalType, noiseAmplitude)
       if os.path.exists(filePath):
         validFileNames.append(filePath)

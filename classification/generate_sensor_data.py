@@ -29,7 +29,7 @@ import random
 
 from settings import (SEQUENCE_LENGTH,
                       DATA_DIR,
-                      DEFAULT_WHITE_NOISE_AMPLITUDE,
+                      OUTFILE_NAME,
                       WHITE_NOISE_AMPLITUDES,
                       SIGNAL_AMPLITUDE,
                       SIGNAL_MEAN,
@@ -38,13 +38,29 @@ from settings import (SEQUENCE_LENGTH,
 
 
 
-def generateData(dataDir=None,
-                 signal_mean=SIGNAL_MEAN,
-                 signal_period=SIGNAL_PERIOD,
-                 number_of_points=NUM_RECORDS,
-                 signal_amplitude=SIGNAL_AMPLITUDE,
-                 noise_amplitude=DEFAULT_WHITE_NOISE_AMPLITUDE):
-  fileName = "white_noise_%s" % noise_amplitude
+def generateData(dataDir,
+                 outputFileName,
+                 signalMean,
+                 signalPeriod,
+                 sequenceLength,
+                 numPoints,
+                 signalAmplitude,
+                 numCategories,
+                 noiseAmplitude):
+  """
+  TODO: docstring
+  
+  :param dataDir: 
+  :param outputFileName: 
+  :param signalMean: 
+  :param signalPeriod: 
+  :param sequenceLength: 
+  :param numPoints: 
+  :param signalAmplitude: 
+  :param noiseAmplitude: 
+  :return:
+  """
+  fileName = "%s_%s" % (outputFileName, noiseAmplitude)
 
   if not dataDir:
     dataDir = DATA_DIR
@@ -65,31 +81,36 @@ def generateData(dataDir=None,
   # the input data :-P
 
 
-  endOfSequence = SEQUENCE_LENGTH
-  label = 2
-  for i in range(number_of_points):
+  endOfSequence = sequenceLength
+  label = numCategories - 1
+  for i in range(numPoints):
 
-    noise = noise_amplitude * random.random()
+    noise = noiseAmplitude * random.random()
 
     if i == endOfSequence:
-      endOfSequence += SEQUENCE_LENGTH
+      endOfSequence += sequenceLength
       if label == 0:
-        label = 2
+        label = numCategories - 1
       else:
         label -= 1
 
     signal_modifier = 2 * (label + 1)
-    x = signal_modifier * (i * math.pi) / signal_period
-    m1 = signal_modifier * signal_mean + signal_amplitude * math.sin(x) + noise
+    x = signal_modifier * (i * math.pi) / signalPeriod
+    m1 = signal_modifier * signalMean + signalAmplitude * math.sin(x) + noise
 
     writer.writerow([x, m1, label])
 
   fileHandle.close()
 
-  print "Data generated. File saved to %s/%s.csv" % (dataDir, fileName)
-
-
+  return os.path.join(dataDir, "%s_%s.csv" % (outputFileName, noiseAmplitude))
 
 if __name__ == "__main__":
   for whiteNoiseAmplitude in WHITE_NOISE_AMPLITUDES:
-    generateData(noise_amplitude=whiteNoiseAmplitude)
+    generateData(DATA_DIR,
+                 OUTFILE_NAME,
+                 SIGNAL_MEAN,
+                 SIGNAL_PERIOD,
+                 SEQUENCE_LENGTH,
+                 NUM_RECORDS,
+                 SIGNAL_AMPLITUDE,
+                 whiteNoiseAmplitude)

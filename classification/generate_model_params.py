@@ -23,7 +23,7 @@
 import csv
 import os
 
-from settings import (SIGNAL_TYPES,
+from settings import (OUTFILE_NAME,
                       MODEL_PARAMS_DIR,
                       DATA_DIR)
 from model_params.template_model_params import (MODEL_PARAMS as 
@@ -102,7 +102,7 @@ def findMinMax(fileName):
 
 if __name__ == "__main__":
   
-  for signal_type in SIGNAL_TYPES:
+  for signal_type in OUTFILE_NAME:
     inputFileName = '%s/%s.csv' % (DATA_DIR, signal_type)
     paramsName = '%s_model_params' % signal_type
     createModelParams(MODEL_PARAMS_DIR, paramsName, inputFileName)

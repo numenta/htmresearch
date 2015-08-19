@@ -39,14 +39,14 @@ from settings import (NUM_CATEGORIES,
                       DATA_DIR)
 
 
-def runNetwork(net, numRecords, partitions):
+def runNetwork(net, numRecords):
   """
   Run the network and write classification results output.
-  @param net: a Network instance to run.
-  @param partitions: list of indices at which training begins for the SP, TM,
-      and classifier regions, respectively, e.g. [100, 200, 300].
-
+  @param network: a Network instance to run.
   """
+  
+  partitions = findNumberOfPartitions(networkConfiguration)
+  
   sensorRegion = net.regions["sensor"]
   spatialPoolerRegion = net.regions["SP"]
   temporalMemoryRegion = net.regions["TM"]
@@ -122,12 +122,15 @@ def runNetwork(net, numRecords, partitions):
 
 
 
-def configureNetwork(encoders,
+def configureNetwork(inputFile,
                      networkConfiguration):
   """
   Configure the network for various experiment values.
   """
 
+  # create the network encoders for sensor data.  
+  scalarEncoderParams = generateScalarEncoderParams(inputFile)
+  encoders = {"sensor_data" : scalarEncoderParams}
 
   # Create and run network on this data.
   #   Input data comes from a CSV file (scalar values, labels). The
@@ -236,9 +239,7 @@ if __name__ == "__main__":
                         SIGNAL_PERIOD,
                         json.dumps(networkConfiguration, indent=2))
       print expParams
-
-
-      # Generate the data, and get the min/max values
+      
       inputFile = generateData(DATA_DIR,
                                OUTFILE_NAME,
                                SIGNAL_MEAN,
@@ -246,19 +247,13 @@ if __name__ == "__main__":
                                SEQUENCE_LENGTH,
                                NUM_RECORDS,
                                SIGNAL_AMPLITUDE,
+                               NUM_CATEGORIES,
                                noiseAmplitude)
-      
-      scalarEncoderParams = generateScalarEncoderParams(inputFile)
-      
-      encoders = {"sensor_data" : scalarEncoderParams}
-      
-      network = configureNetwork(encoders,
+    
+      network = configureNetwork(inputFile,
                                  networkConfiguration)
-
-      partitions = findNumberOfPartitions(networkConfiguration)
 
       (numCorrect,
        numTestRecords,
        predictionAccuracy) = runNetwork(network,
-                                        NUM_RECORDS,
-                                        partitions)
+                                        NUM_RECORDS)

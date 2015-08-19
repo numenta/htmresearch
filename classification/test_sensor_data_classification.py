@@ -19,18 +19,23 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import json
 import os
 import unittest
 
-from classify_sensor_data import (configureNetwork, 
+from classify_sensor_data import (generateData,
+                                  configureNetwork,
                                   runNetwork)
-from settings import (DATA_DIR,
+from settings import (NUM_CATEGORIES,
+                      SEQUENCE_LENGTH,
+                      OUTFILE_NAME,
                       NUM_RECORDS,
-                      PARTITIONS,
+                      NETWORK_CONFIGURATIONS,
                       SIGNAL_AMPLITUDE,
                       SIGNAL_MEAN,
                       SIGNAL_PERIOD,
-                      WHITE_NOISE_AMPLITUDES)
+                      WHITE_NOISE_AMPLITUDES,
+                      DATA_DIR)
 
 
 
@@ -39,35 +44,50 @@ class TestSensorDataClassification(unittest.TestCase):
   Test classification results for sensor data. 
   """
 
+
   def testClassificationAccuracy(self):
 
     """
     Test classification accuracy for sensor data.
     """
 
-    for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
-      expParams = ("RUNNING EXPERIMENT WITH PARAMS:\n"
-                   " * numRecords=%s\n"
-                   " * noiseAmplitude=%s\n"
-                   " * signalAmplitude=%s\n"
-                   " * signalMean=%s\n"
-                   " * signalPeriod=%s\n"
-                   ) % (NUM_RECORDS,
-                        noiseAmplitude,
-                        SIGNAL_AMPLITUDE,
-                        SIGNAL_MEAN,
-                        SIGNAL_PERIOD)
-      print expParams
+    for networkConfiguration in NETWORK_CONFIGURATIONS:
+      for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
+        expParams = ("RUNNING EXPERIMENT WITH PARAMS:\n"
+                     " * numRecords=%s\n"
+                     " * signalAmplitude=%s\n"
+                     " * signalMean=%s\n"
+                     " * signalPeriod=%s\n"
+                     " * networkConfiguration=%s\n"
+                     ) % (NUM_RECORDS,
+                          SIGNAL_AMPLITUDE,
+                          SIGNAL_MEAN,
+                          SIGNAL_PERIOD,
+                          json.dumps(networkConfiguration, indent=2))
+        print expParams
 
-      network = configureNetwork(noiseAmplitude)
-      numCorrect, numTestRecords, predictionAccuracy = runNetwork(network,
-                                                                  NUM_RECORDS,
-                                                                  PARTITIONS)
+        inputFile = generateData(DATA_DIR,
+                                 OUTFILE_NAME,
+                                 SIGNAL_MEAN,
+                                 SIGNAL_PERIOD,
+                                 SEQUENCE_LENGTH,
+                                 NUM_RECORDS,
+                                 SIGNAL_AMPLITUDE,
+                                 NUM_CATEGORIES,
+                                 noiseAmplitude)
 
-      if noiseAmplitude == 0:
-        self.assertEqual(predictionAccuracy, 100)
-      else:
-        self.assertNotEqual(predictionAccuracy, 100)
+        network = configureNetwork(inputFile,
+                                   networkConfiguration)
+
+        (numCorrect,
+         numTestRecords,
+         predictionAccuracy) = runNetwork(network,
+                                          NUM_RECORDS)
+
+        if noiseAmplitude == 0:
+          self.assertEqual(predictionAccuracy, 100)
+        else:
+          self.assertNotEqual(predictionAccuracy, 100)
 
 
   def tearDown(self):
@@ -75,9 +95,10 @@ class TestSensorDataClassification(unittest.TestCase):
     Remove data files
     """
     for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
-      fileToDelete = os.path.join(DATA_DIR,
-                                  "white_noise_%s.csv" % noiseAmplitude)
-      os.remove(fileToDelete)
+      fileToDelete = os.path.join(DATA_DIR, "%s_%s.csv" % (OUTFILE_NAME,
+                                                           noiseAmplitude))
+      if os.path.exists(fileToDelete):
+        os.remove(fileToDelete)
 
 
 
