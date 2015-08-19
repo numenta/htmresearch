@@ -52,17 +52,29 @@ def plotAccuracy(correct, window=100, label=None):
 
 def plotTMStats(numPredictedActiveCells, numPredictedInactiveCells, numUnpredictedActiveColumns,
                 window=100):
-  pyplot.subplot(3, 1, 1)
+  pyplot.subplot(6, 1, 1)
   pyplot.title("# predicted => active cells over window={0}".format(window))
   plotMovingAverage(numPredictedActiveCells, window)
 
-  pyplot.subplot(3, 1, 2)
+  pyplot.subplot(6, 1, 2)
+  pyplot.title("# predicted => active cells".format(window))
+  pyplot.plot(range(len(numPredictedActiveCells)), numPredictedActiveCells)
+
+  pyplot.subplot(6, 1, 3)
   pyplot.title("# predicted => inactive cells over window={0}".format(window))
   plotMovingAverage(numPredictedInactiveCells, window)
 
-  pyplot.subplot(3, 1, 3)
+  pyplot.subplot(6, 1, 4)
+  pyplot.title("#predicted => inactive cells")
+  pyplot.plot(range(len(numPredictedInactiveCells)), numPredictedInactiveCells)
+
+  pyplot.subplot(6, 1, 5)
   pyplot.title("# unpredicted => active cells over window={0}".format(window))
   plotMovingAverage(numUnpredictedActiveColumns, window)
+
+  pyplot.subplot(6, 1, 6)
+  pyplot.title("# unpredicted => active columns")
+  pyplot.plot(range(len(numUnpredictedActiveColumns)), numUnpredictedActiveColumns)
 
 
 
