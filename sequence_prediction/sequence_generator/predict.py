@@ -43,8 +43,9 @@ NUM_PREDICTIONS = [1, 2]
 NUM_RANDOM = 1
 PERTURB_AFTER = 1000
 
-RANDOM_RESERVOIR = 1000
 NUM_SYMBOLS = SequenceGenerator.numSymbols(MAX_ORDER, max(NUM_PREDICTIONS))
+RANDOM_START = NUM_SYMBOLS
+RANDOM_END = NUM_SYMBOLS + 1000
 
 MODEL_PARAMS = {
   "model": "CLA",
@@ -59,7 +60,7 @@ MODEL_PARAMS = {
           "fieldname": u"element",
           "name": u"element",
           "type": "SDRCategoryEncoder",
-          "categoryList": range(NUM_SYMBOLS + RANDOM_RESERVOIR),
+          "categoryList": range(max(RANDOM_END, NUM_SYMBOLS)),
           "n": 2048,
           "w": 41
         }
@@ -295,7 +296,7 @@ class Runner(object):
 
 
     # Feed noise
-    sequence = range(NUM_SYMBOLS, NUM_SYMBOLS + RANDOM_RESERVOIR)
+    sequence = range(RANDOM_START, RANDOM_END)
     random.shuffle(sequence)
     sequence = sequence[0:NUM_RANDOM]
     print "Random:", sequence
@@ -324,7 +325,7 @@ if __name__ == "__main__":
   for numPredictions in NUM_PREDICTIONS:
     runners.append(Runner(numPredictions))
 
-  for i in xrange(100000000):
+  for i in iter(int, 1):
     for runner in runners:
       runner.step()
 
