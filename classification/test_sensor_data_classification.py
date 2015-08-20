@@ -23,9 +23,8 @@ import json
 import os
 import unittest
 
-from classify_sensor_data import (generateData,
-                                  configureNetwork,
-                                  runNetwork)
+from classify_sensor_data import configureNetwork, runNetwork
+from generate_sensor_data import generateData
 from settings import (NUM_CATEGORIES,
                       SEQUENCE_LENGTH,
                       OUTFILE_NAME,
@@ -58,11 +57,13 @@ class TestSensorDataClassification(unittest.TestCase):
                      " * signalAmplitude=%s\n"
                      " * signalMean=%s\n"
                      " * signalPeriod=%s\n"
+                     " * noiseAmplitude=%s\n"
                      " * networkConfiguration=%s\n"
                      ) % (NUM_RECORDS,
                           SIGNAL_AMPLITUDE,
                           SIGNAL_MEAN,
                           SIGNAL_PERIOD,
+                          noiseAmplitude,
                           json.dumps(networkConfiguration, indent=2))
         print expParams
 
@@ -82,6 +83,7 @@ class TestSensorDataClassification(unittest.TestCase):
         (numCorrect,
          numTestRecords,
          predictionAccuracy) = runNetwork(network,
+                                          networkConfiguration,
                                           NUM_RECORDS)
 
         if noiseAmplitude == 0:

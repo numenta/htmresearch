@@ -20,94 +20,108 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import json
-
 from nupic.data.file_record_stream import FileRecordStream
 
 from classification_network import createNetwork
-from generate_sensor_data import generateData
 from generate_model_params import findMinMax
-from settings import (NUM_CATEGORIES,
-                      SEQUENCE_LENGTH,
-                      OUTFILE_NAME,
-                      NUM_RECORDS,
-                      NETWORK_CONFIGURATIONS,
-                      SIGNAL_AMPLITUDE,
-                      SIGNAL_MEAN,
-                      SIGNAL_PERIOD,
-                      WHITE_NOISE_AMPLITUDES,
-                      DATA_DIR)
 
 
-def runNetwork(net, numRecords):
+
+def enableRegionLearning(network,
+                         trainedRegionNames,
+                         regionName,
+                         recordNumber):
   """
-  Run the network and write classification results output.
-  @param network: a Network instance to run.
+  Enable learning for a specific region.
+  
+  @param network: the network instance 
+  @param trainedRegionNames: list of regions that have been trained on the 
+  input data.
+  @param regionName: name of the current region  
+  @param recordNumber: int value of the current record number 
+  @return: info text about the phase
   """
-  
-  partitions = findNumberOfPartitions(networkConfiguration)
-  
-  sensorRegion = net.regions["sensor"]
-  spatialPoolerRegion = net.regions["SP"]
-  temporalMemoryRegion = net.regions["TM"]
-  classifierRegion = net.regions["classifier"]
 
-  phaseInfo = ("-> Training SP. Index=0. LEARNING: SP is ON | TM is OFF | "
-               "Classifier is OFF \n")
-
+  region = network.regions[regionName]
+  region.setParameter("learningMode", True)
+  phaseInfo = ("-> Training '%s'. RecordNumber=%s. Learning is ON for %s, "
+               "but OFF for the remaining regions." % (regionName,
+                                                       recordNumber,
+                                                       trainedRegionNames))
   print phaseInfo
 
+
+
+def stopLearning(network, trainedRegionNames, recordNumber):
+  """
+  Disable learning for all trained regions.
+  
+  @param network: the network instance 
+  @param trainedRegionNames: list of regions that have been trained on the 
+  input data.
+  @param recordNumber: int value of the current record number 
+  @return: info text about the phase
+  """
+
+  for regionName in trainedRegionNames:
+    region = network.regions[regionName]
+    region.setParameter("learningMode", False)
+
+  phaseInfo = ("-> Test phase. RecordNumber=%s. "
+               "Learning is OFF for all regions: %s" % (recordNumber,
+                                                        trainedRegionNames))
+  print phaseInfo
+
+
+
+def runNetwork(network, networkConfiguration, numRecords):
+  """
+  Run the network and write classification results output.
+  
+  @param networkConfiguration (dict) the configuration of this network.
+  @param numRecords (int) Number of records of the input dataset.
+  @param network: a Network instance to run.
+  """
+
+  partitions = findNumberOfPartitions(networkConfiguration, numRecords)
+  sensorRegion = network.regions["sensor"]
+  classifierRegion = network.regions["classifier"]
+  testIndex = partitions[-1][1]
+
+  trainedRegionNames = []
   numCorrect = 0
   numTestRecords = 0
-  for i in xrange(numRecords):
+  for recordNumber in xrange(numRecords):
     # Run the network for a single iteration
-    net.run(1)
+    network.run(1)
 
-    # NOTE: To be able to extract a category, one of the field of the the
-    # dataset needs to have the flag C so it can be recognized as a category
-    # by the FileRecordStream instance.
     actualValue = sensorRegion.getOutputData("categoryOut")[0]
 
-    # Various info from the network, useful for debugging & monitoring
-    anomalyScore = temporalMemoryRegion.getOutputData("anomalyScore")
-    debugInfo = ("=> INDEX=%s |  actualValue=%s | anomalyScore=%s \n" % (
-      i, actualValue, anomalyScore))
-    # print debugInfo
+    partitionName = partitions[0][0]
+    partitionIndex = partitions[0][1]
 
-    # SP has been trained. Now start training the TM too.
-    if i == partitions[0]:
-      temporalMemoryRegion.setParameter("learningMode", True)
-      phaseInfo = ("-> Training TM. Index=%s. LEARNING: SP is ON | "
-                   "TM is ON | Classifier is OFF \n" % i)
-      print phaseInfo
+    # train all of the regions
+    if partitionIndex == recordNumber:
 
-    # Start training the classifier as well.
-    elif i == partitions[1]:
-      classifierRegion.setParameter("learningMode", True)
-      phaseInfo = ("-> Training Classifier. Index=%s. LEARNING: SP is OFF | "
-                   "TM is ON | Classifier is ON \n" % i)
+      if partitionName == "test":
+        stopLearning(network, trainedRegionNames, recordNumber)
 
-      print phaseInfo
-
-    # Stop training.
-    elif i == partitions[2]:
-      spatialPoolerRegion.setParameter("learningMode", False)
-      temporalMemoryRegion.setParameter("learningMode", False)
-      classifierRegion.setParameter("learningMode", False)
-      phaseInfo = ("-> Test. Index=%s. LEARNING: SP is OFF | TM is OFF | "
-                   "Classifier is OFF \n" % i)
-      print phaseInfo
+      else:
+        partitions.pop(0)
+        trainedRegionNames.append(partitionName)
+        enableRegionLearning(network,
+                             trainedRegionNames,
+                             partitionName,
+                             recordNumber)
 
     # Evaluate the predictions on the test set.
-    if i >= partitions[2]:
-
+    if recordNumber >= testIndex:
       inferredValue = classifierRegion.getOutputData("categoriesOut")[0]
-      debugInfo = (" inferredValue=%s \n" % inferredValue)
-      # print debugInfo
-
       if actualValue == inferredValue:
         numCorrect += 1
-
+      else:
+        print "[DEBUG] actualValue=%s, inferredValue=%s" % (actualValue,
+                                                            inferredValue)
       numTestRecords += 1
 
   predictionAccuracy = 100.0 * numCorrect / numTestRecords
@@ -126,18 +140,22 @@ def configureNetwork(inputFile,
                      networkConfiguration):
   """
   Configure the network for various experiment values.
+  
+  @param inputFile: file containing the input data that will be fed to the 
+  network
+  @param networkConfiguration (dict) the configuration of this network.
   """
 
   # create the network encoders for sensor data.  
   scalarEncoderParams = generateScalarEncoderParams(inputFile)
-  encoders = {"sensor_data" : scalarEncoderParams}
+  encoders = {"sensor_data": scalarEncoderParams}
 
   # Create and run network on this data.
   #   Input data comes from a CSV file (scalar values, labels). The
   #   RecordSensor region allows us to specify a file record stream as the
   #   input source via the dataSource attribute.
   dataSource = FileRecordStream(streamID=inputFile)
-  
+
   network = createNetwork(dataSource,
                           encoders,
                           networkConfiguration)
@@ -153,61 +171,47 @@ def findNumberOfPartitions(networkConfiguration, numRecords):
   Find the number of partitions for the input data based on a specific
   networkConfiguration. 
   
-  @param networkConfiguration (dict) the configuration of this network. E.g.
-    {
-      "sensorRegion":
-        {
-          "type": "py.RecordSensor",
-          "params": RECORD_SENSOR_PARAMS
-        },
-      "spRegion":
-        {
-          "enabled": True,
-          "params": SP_PARAMS,
-        },
-      "tmRegion":
-        {
-          "enabled": True,
-          "params": TM_PARAMS,
-        },
-      "upRegion":
-        {
-          "enabled": False,
-          "params": UP_PARAMS,
-        },
-      "classifierRegion":
-        {
-          "type": "py.CLAClassifierRegion",
-          "params": CLA_CLASSIFIER_PARAMS
-            
-        }
-    }
-  
-  @numRecords (int) Number of records of the input dataset.
-  
-  @return partitions (list) list of indices partitioning the input dataset. 
-    The last partition is always the test set. All the partitions before are 
-    used to train the regions in the network consecutively.
+  @param networkConfiguration (dict) the configuration of this network.
+  @param numRecords (int) Number of records of the input dataset.
+  @return partitions (list of tuples) Region names and associated indices 
+  partitioning the input dataset to indicate at which recordNumber it should 
+  start learning. The remaining of the data (last partition) is used as a test 
+  set. 
   """
 
   spEnabled = networkConfiguration["spRegion"]["enabled"]
   tmEnabled = networkConfiguration["tmRegion"]["enabled"]
-  upEnabled = networkConfiguration["tmRegion"]["enabled"]
+  upEnabled = networkConfiguration["upRegion"]["enabled"]
 
+  partitionNames = []
   if spEnabled and tmEnabled and upEnabled:
     numPartitions = 5
+    partitionNames.extend(["SP", "TM", "UP"])
   elif spEnabled and tmEnabled:
     numPartitions = 4
+    partitionNames.extend(["SP", "TM"])
   elif spEnabled:
     numPartitions = 3
+    partitionNames.append("SP")
   else:
     numPartitions = 2  # only the classifier, so just test and train partitions
+  partitionNames.append("classifier")
+  partitionNames.append("test")
 
-  return [numRecords * i / numPartitions for i in xrange(numPartitions)]
+  partitionIndices = [numRecords * i / numPartitions
+                      for i in range(0, numPartitions)]
+
+  return zip(partitionNames, partitionIndices)
 
 
 
 def generateScalarEncoderParams(inputFile):
+  """
+  Introspect an input file and return the min and max values.
+  
+  @param inputFile: input file to introspect.
+  @return: (dict) scalar encoder params
+  """
   minval, maxval = findMinMax(inputFile)
   scalarEncoderParams = {
     "name": "white_noise",
@@ -219,41 +223,5 @@ def generateScalarEncoderParams(inputFile):
     "maxval": maxval
   }
   return scalarEncoderParams
-  
 
 
-
-if __name__ == "__main__":
-
-  for networkConfiguration in NETWORK_CONFIGURATIONS:
-    for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
-      expParams = ("RUNNING EXPERIMENT WITH PARAMS:\n"
-                   " * numRecords=%s\n"
-                   " * signalAmplitude=%s\n"
-                   " * signalMean=%s\n"
-                   " * signalPeriod=%s\n"
-                   " * networkConfiguration=%s\n"
-                   ) % (NUM_RECORDS,
-                        SIGNAL_AMPLITUDE,
-                        SIGNAL_MEAN,
-                        SIGNAL_PERIOD,
-                        json.dumps(networkConfiguration, indent=2))
-      print expParams
-      
-      inputFile = generateData(DATA_DIR,
-                               OUTFILE_NAME,
-                               SIGNAL_MEAN,
-                               SIGNAL_PERIOD,
-                               SEQUENCE_LENGTH,
-                               NUM_RECORDS,
-                               SIGNAL_AMPLITUDE,
-                               NUM_CATEGORIES,
-                               noiseAmplitude)
-    
-      network = configureNetwork(inputFile,
-                                 networkConfiguration)
-
-      (numCorrect,
-       numTestRecords,
-       predictionAccuracy) = runNetwork(network,
-                                        NUM_RECORDS)

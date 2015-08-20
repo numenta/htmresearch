@@ -57,7 +57,7 @@ SEQ_CLASSIFIER_PARAMS = {
 }
 
 CLA_CLASSIFIER_PARAMS = {
-  "steps": "0,1",
+  "steps": "0",
   "implementation": "py",
   "maxCategoryCount": NUM_CATEGORIES,
   "clVerbosity": VERBOSITY
@@ -143,8 +143,8 @@ NETWORK_CONFIGURATIONS = [
       },
     "classifierRegion":
       {
-        "type": "py.SequenceClassifierRegion",
-        "params": SEQ_CLASSIFIER_PARAMS
+        "type": "py.CLAClassifierRegion",
+        "params": CLA_CLASSIFIER_PARAMS
       }
   },
   
