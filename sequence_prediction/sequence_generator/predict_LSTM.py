@@ -27,80 +27,18 @@ import time
 from matplotlib import pyplot as plt
 import numpy as np
 
-from sequence_generator import SequenceGenerator
-
 from pybrain.datasets import SequentialDataSet
 from pybrain.tools.shortcuts import buildNetwork
 from pybrain.structure.modules import LSTMLayer
 from pybrain.supervised import RPropMinusTrainer
 
-from predict import plotAccuracy
+from predict import generateSequences
+from plot import plotAccuracy
 
-plt.ion()
 
-MIN_ORDER = 3
-MAX_ORDER = 4
+
 NUM_PREDICTIONS = 1
 
-
-def generateSequences():
-  sequences = []
-
-  # Generated sequences
-  generator = SequenceGenerator(seed=42)
-
-  for order in xrange(MIN_ORDER, MAX_ORDER+1):
-    sequences += generator.generate(order, NUM_PREDICTIONS)
-
-  # # Subutai's sequences
-  # """
-  # Make sure to change parameter 'categoryList' above to: "categoryList": range(18)
-  # """
-  # sequences = [
-  #   [0, 1, 2, 3, 4, 5],
-  #   [6, 3, 2, 5, 1, 7],
-  #   [8, 9, 10, 11, 12, 13],
-  #   [14, 1, 2, 3, 15, 16],
-  #   [17, 4, 2, 3, 1, 5]
-  # ]
-
-  # # Two orders of sequences
-  # sequences = [
-  #   [4, 2, 5, 0],
-  #   [4, 5, 2, 3],
-  #   [1, 2, 5, 3],
-  #   [1, 5, 2, 0],
-  #   [5, 3, 6, 2, 0],
-  #   [5, 2, 6, 3, 4],
-  #   [1, 3, 6, 2, 4],
-  #   [1, 2, 6, 3, 0]
-  # ]
-
-  # # Two orders of sequences (easier)
-  # # """
-  # # Make sure to change parameter 'categoryList' above to: "categoryList": range(13)
-  # # """
-  sequences = [
-    [4, 2, 5, 0],
-    [4, 5, 2, 3],
-    [1, 2, 5, 3],
-    [1, 5, 2, 0],
-    [11, 9, 12, 8, 6],
-    [11, 8, 12, 9, 10],
-    [7, 9, 12, 8, 10],
-    [7, 8, 12, 9, 6]
-  ]
-
-  # sequences = [
-  #   [4, 2, 5, 0],
-  #   [4, 5, 2, 3],
-  #   [1, 2, 5, 3],
-  #   [1, 5, 2, 0]
-  # ]
-  for sequence in sequences:
-    print sequence
-
-  return sequences
 
 
 def num2vec(activeBits, nDim):
@@ -122,20 +60,16 @@ def initializeLSTMnet(nDim, nLSTMcells=10):
                      hiddenclass=LSTMLayer, bias=True, outputbias=False, recurrent=True)
   return net
 
+
+
 if __name__ == "__main__":
-
-
-  sequences = generateSequences()
-  # sequences = [[0,1,2,3]]
-  nDim = max(max(sequences)) + 1
+  sequences = generateSequences(NUM_PREDICTIONS)
+  nDim = max([len(sequence) for sequence in sequences]) + 2  # TODO: Why 2?
 
   from pylab import rcParams
   rcParams.update({'figure.autolayout': True})
   rcParams.update({'figure.facecolor': 'white'})
   rcParams.update({'ytick.labelsize': 8})
-
-  plt.ion()
-  plt.show()
 
   # Batch training mode
   print "generate a dataset of sequences"
@@ -148,7 +82,7 @@ if __name__ == "__main__":
       ds.addSample(seq_vec[j], seq_vec[j+1])
     ds.newSequence()
 
-  rptPerSeqList = [1, 2, 5, 10, 20, 50, 100]
+  rptPerSeqList = [1, 2, 5, 10, 20, 50, 100, 150, 175]
   accuracyList = []
   for rptNum in rptPerSeqList:
     # train LSTM
@@ -179,6 +113,8 @@ if __name__ == "__main__":
   plt.semilogx(np.array(rptPerSeqList), np.array(accuracyList), '-*')
   plt.xlabel(' Repeat of entire batch')
   plt.ylabel(' Accuracy ')
+
+  plt.show()
 
   # online mode (does not work well)
   # net = initializeLSTMnet(nDim, nLSTMcells=20)
