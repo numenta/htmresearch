@@ -219,12 +219,6 @@ def generateSequences(numPredictions):
 
 
 
-def movingAverage(a, n):
-  weights = numpy.repeat(1.0, n)/n
-  return numpy.convolve(a, weights, 'valid')
-
-
-
 def getEncoderMapping(model):
   encoder = model._getEncoder().encoders[0][1]
   mapping = dict()
