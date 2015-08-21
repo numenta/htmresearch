@@ -6,6 +6,8 @@ This mapping is based on the International Phonetic Alphabet, but currently only
 
 IPA chart: http://www.internationalphoneticalphabet.org/ipa-sounds/ipa-chart-with-sounds/
 
+The mapping is in data/letter\_mappings.csv.  Modify that file to adjust the mapping and the hard coded value in letter.py (self.numGroups).  For each category in the mapping file, several bits are selected as part of the SDR.
+
 Work for the future:
 -Encode other alphabets so we cover the entire IPA
 -See how the output from temporal memory can be converted to sound
