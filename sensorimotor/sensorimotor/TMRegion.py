@@ -42,16 +42,13 @@ class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
 
 
 def getDefaultTMImp():
-  """
-  Return the default temporal memory implementation for this region.
-  """
+  """ Return the default temporal memory implementation for this region. """
   return "fast"
 
 
 
 def getTMClass(tmImp):
-  """ Return the class corresponding to the given spatialImp string
-  """
+  """ Return the class corresponding to the given spatialImp string """
 
   if tmImp == "general":
     return GeneralTemporalMemory
@@ -265,8 +262,13 @@ def _getAdditionalSpecs(tmImp):
 
 
 class TMRegion(PyRegion):
-
   """
+  The TMRegion implements temporal memory for the HTM network API.
+
+  The TMRegion's computation implementations come from the various
+  Temporal Memory classes found in nupic and nupic.research
+  (TemporalMemory, FastTemporalMemory, GeneralTemporalMemory and
+  FastGeneralTemporalMemory).
   """
 
   def __init__(self,
@@ -279,17 +281,18 @@ class TMRegion(PyRegion):
                maxNewSynapseCount=20,
                permanenceIncrement=0.10,
                permanenceDecrement=0.10,
-               predictedSegmentDecrement = 0.0,
+               predictedSegmentDecrement=0.0,
                seed=42,
                learnOnOneCell=False,
                tmImp=getDefaultTMImp(),
                **kwargs):
-    # Pull out the pooler arguments automatically
+
+    # Pull out the tm arguments automatically
     # These calls whittle down kwargs and create instance variables of TMRegion
     self._tmClass = getTMClass(tmImp)
     tmArgTuples = _buildArgs(self._tmClass, self, kwargs)
 
-    # Make a list of automatic pooler arg names for later use
+    # Make a list of automatic tm arg names for later use
     self._tmArgNames = [t[0] for t in tmArgTuples]
 
     # Defaults for all other parameters
@@ -336,7 +339,7 @@ class TMRegion(PyRegion):
     autoArgs["predictedSegmentDecrement"] = self.predictedSegmentDecrement
     autoArgs["seed"] = self.seed
 
-    # Allocate the pooler
+    # Allocate the tm
     self._tm = self._tmClass(**autoArgs)
 
 

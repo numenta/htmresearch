@@ -401,7 +401,7 @@ class GeneralTemporalMemory(TemporalMemory):
     """
     for winnerCell in winnerCells:
       winnerSegments = connections.segmentsForCell(winnerCell)
-      if len(set(winnerSegments) & (prevActiveSegments | learningSegments)) == 0:
+      if len(winnerSegments & (prevActiveSegments | learningSegments)) == 0:
         maxActiveSynapses = 0
         winnerSegment = None
         for segment in winnerSegments:
