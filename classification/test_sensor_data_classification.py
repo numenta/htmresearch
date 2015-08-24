@@ -101,7 +101,7 @@ class TestSensorDataClassification(unittest.TestCase):
               and spEnabled
               and not tmEnabled
               and not upEnabled):
-          self.assertNotEqual(predictionAccuracy, 98.75)
+          self.assertEqual(predictionAccuracy, 98.75)
         elif (noiseAmplitude == 1.0
               and spEnabled
               and tmEnabled
@@ -111,7 +111,7 @@ class TestSensorDataClassification(unittest.TestCase):
               and spEnabled
               and not tmEnabled
               and not upEnabled):
-          self.assertEqual(predictionAccuracy, 98.75)
+          self.assertEqual(predictionAccuracy, 81.875)
 
 
   def tearDown(self):
