@@ -269,8 +269,6 @@ def createNetwork(dataSource,
                   encoders,
                   networkConfiguration):
   """
-  TODO: update doc string with new params
-  
   Create and initialize the network instance with regions for the sensor, SP, 
   TM, and classifier. Before running, be sure to init w/ network.initialize().
 
@@ -306,11 +304,11 @@ def createNetwork(dataSource,
     spParams = networkConfiguration[SP_REGION_NAME]["params"]
     spParams["inputWidth"] = sensorRegion.encoder.width
     spRegion = createSpatialPoolerRegion(network, SP_REGION_NAME, spParams)
+    validateRegionWidths(previousRegionWidth, spRegion.getSelf().inputWidth)
     linkRegions(network,
                 SENSOR_REGION_NAME,
                 previousRegion,
                 SP_REGION_NAME)
-    validateRegionWidths(previousRegionWidth, spRegion.getSelf().inputWidth)
     previousRegion = SP_REGION_NAME
     previousRegionWidth = spRegion.getSelf().columnCount
 
@@ -318,11 +316,11 @@ def createNetwork(dataSource,
   if networkConfiguration[TM_REGION_NAME]["enabled"]:
     tmParams = networkConfiguration[TM_REGION_NAME]["params"]
     tmRegion = createTemporalMemoryRegion(network, TM_REGION_NAME, tmParams)
+    validateRegionWidths(previousRegionWidth, tmRegion.getSelf().columnCount)
     linkRegions(network,
                 SENSOR_REGION_NAME,
                 previousRegion,
                 TM_REGION_NAME)
-    validateRegionWidths(previousRegionWidth, tmRegion.getSelf().columnCount)
     previousRegion = TM_REGION_NAME
     previousRegionWidth = tmRegion.getSelf().cellsPerColumn
 
@@ -330,12 +328,12 @@ def createNetwork(dataSource,
   if networkConfiguration[UP_REGION_NAME]["enabled"]:
     upParams = networkConfiguration[UP_REGION_NAME]["params"]
     upRegion = createUnionPoolerRegion(network, upParams)
+    # TODO: not sure about the UP region width params. This needs to be updated.
+    validateRegionWidths(previousRegionWidth, upRegion.getSelf().cellsPerColumn)
     linkRegions(network,
                 SENSOR_REGION_NAME,
                 previousRegion,
                 UP_REGION_NAME)
-    # TODO: not sure about the UP region width params. This needs to be updated.
-    validateRegionWidths(previousRegionWidth, upRegion.getSelf().cellsPerColumn)
     previousRegion = UP_REGION_NAME
 
   # Create classifier region (always enabled)
