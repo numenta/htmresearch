@@ -24,6 +24,12 @@ from nupic.data.file_record_stream import FileRecordStream
 
 from classification_network import createNetwork
 from generate_model_params import findMinMax
+from settings import (SENSOR_REGION_NAME,
+                      SP_REGION_NAME,
+                      TM_REGION_NAME,
+                      UP_REGION_NAME,
+                      CLASSIFIER_REGION_NAME,
+                      TEST_PARTITION_NAME)
 
 
 
@@ -34,12 +40,11 @@ def enableRegionLearning(network,
   """
   Enable learning for a specific region.
   
-  @param network: the network instance 
-  @param trainedRegionNames: list of regions that have been trained on the 
+  @param network (Network) the network instance 
+  @param trainedRegionNames (list) regions that have been trained on the 
   input data.
-  @param regionName: name of the current region  
-  @param recordNumber: int value of the current record number 
-  @return: info text about the phase
+  @param regionName (str) name of the current region  
+  @param recordNumber (int) value of the current record number 
   """
 
   region = network.regions[regionName]
@@ -56,11 +61,10 @@ def stopLearning(network, trainedRegionNames, recordNumber):
   """
   Disable learning for all trained regions.
   
-  @param network: the network instance 
-  @param trainedRegionNames: list of regions that have been trained on the 
+  @param network (Network) the network instance 
+  @param trainedRegionNames (list) regions that have been trained on the 
   input data.
-  @param recordNumber: int value of the current record number 
-  @return: info text about the phase
+  @param recordNumber (int) value of the current record number 
   """
 
   for regionName in trainedRegionNames:
@@ -80,12 +84,12 @@ def runNetwork(network, networkConfiguration, numRecords):
   
   @param networkConfiguration (dict) the configuration of this network.
   @param numRecords (int) Number of records of the input dataset.
-  @param network: a Network instance to run.
+  @param network (Network) a Network instance to run.
   """
 
   partitions = findNumberOfPartitions(networkConfiguration, numRecords)
-  sensorRegion = network.regions["sensor"]
-  classifierRegion = network.regions["classifier"]
+  sensorRegion = network.regions[SENSOR_REGION_NAME]
+  classifierRegion = network.regions[CLASSIFIER_REGION_NAME]
   testIndex = partitions[-1][1]
 
   trainedRegionNames = []
@@ -103,7 +107,7 @@ def runNetwork(network, networkConfiguration, numRecords):
     # train all of the regions
     if partitionIndex == recordNumber:
 
-      if partitionName == "test":
+      if partitionName == TEST_PARTITION_NAME:
         stopLearning(network, trainedRegionNames, recordNumber)
 
       else:
@@ -141,7 +145,7 @@ def configureNetwork(inputFile,
   """
   Configure the network for various experiment values.
   
-  @param inputFile: file containing the input data that will be fed to the 
+  @param inputFile (str) file containing the input data that will be fed to the 
   network
   @param networkConfiguration (dict) the configuration of this network.
   """
@@ -179,24 +183,27 @@ def findNumberOfPartitions(networkConfiguration, numRecords):
   set. 
   """
 
-  spEnabled = networkConfiguration["spRegion"]["enabled"]
-  tmEnabled = networkConfiguration["tmRegion"]["enabled"]
-  upEnabled = networkConfiguration["upRegion"]["enabled"]
+  spEnabled = networkConfiguration[SP_REGION_NAME]["enabled"]
+  tmEnabled = networkConfiguration[TM_REGION_NAME]["enabled"]
+  upEnabled = networkConfiguration[UP_REGION_NAME]["enabled"]
 
   partitionNames = []
   if spEnabled and tmEnabled and upEnabled:
     numPartitions = 5
-    partitionNames.extend(["SP", "TM", "UP"])
+    partitionNames.extend([SP_REGION_NAME,
+                           TM_REGION_NAME,
+                           UP_REGION_NAME])
   elif spEnabled and tmEnabled:
     numPartitions = 4
-    partitionNames.extend(["SP", "TM"])
+    partitionNames.extend([SP_REGION_NAME, 
+                           TM_REGION_NAME])
   elif spEnabled:
     numPartitions = 3
-    partitionNames.append("SP")
+    partitionNames.append(SP_REGION_NAME)
   else:
     numPartitions = 2  # only the classifier, so just test and train partitions
-  partitionNames.append("classifier")
-  partitionNames.append("test")
+  partitionNames.append(CLASSIFIER_REGION_NAME)
+  partitionNames.append(TEST_PARTITION_NAME)
 
   partitionIndices = [numRecords * i / numPartitions
                       for i in range(0, numPartitions)]

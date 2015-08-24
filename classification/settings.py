@@ -58,7 +58,7 @@ SEQ_CLASSIFIER_PARAMS = {
 
 CLA_CLASSIFIER_PARAMS = {
   "steps": "0",
-  "implementation": "py",
+  "implementation": "cpp",
   "maxCategoryCount": NUM_CATEGORIES,
   "clVerbosity": VERBOSITY
 }
@@ -106,42 +106,39 @@ TM_PARAMS = {
 UP_PARAMS = {}  # TODO: Don't know what the UP params are yet.
 
 
-# A list of configurations specifying what regions to add to a network:
-# 
-# sensorType: Specific type of region, e.g. "py.RecordSensor";
-#   possible options can be found in nupic/regions/.
-# 
-# sensorParams:  Parameters for the sensor region. E.g.  
-#   {"verbosity": 0, "numCategories": 3}
-# 
-# classifierType: Specific type of classifier region. E.g. 
-#   "py.SequenceClassifier"; possible options can be found in nupic/regions/.
-# 
-# classifierParams: Parameters for the model. E.g. { 'maxCategoryCount': 3} 
+# Region names for the network
+SENSOR_REGION_NAME = "sensorRegion"
+SP_REGION_NAME = "spRegion"
+TM_REGION_NAME = "tmRegion"
+UP_REGION_NAME = "upRegion"
+CLASSIFIER_REGION_NAME = "classifierRegion"
 
+TEST_PARTITION_NAME = "test"
+
+# A list of configurations specifying what regions to add to a network
 NETWORK_CONFIGURATIONS = [
   {
-    "sensorRegion":
+    SENSOR_REGION_NAME:
       {
         "type": "py.RecordSensor",
         "params": RECORD_SENSOR_PARAMS
       },
-    "spRegion":
+    SP_REGION_NAME:
       {
         "enabled": True,
         "params": SP_PARAMS,
       },
-    "tmRegion":
+    TM_REGION_NAME:
       {
         "enabled": True,
         "params": TM_PARAMS,
       },
-    "upRegion":
+    UP_REGION_NAME:
       {
         "enabled": False,
         "params": UP_PARAMS,
       },
-    "classifierRegion":
+    CLASSIFIER_REGION_NAME:
       {
         "type": "py.CLAClassifierRegion",
         "params": CLA_CLASSIFIER_PARAMS
@@ -149,30 +146,30 @@ NETWORK_CONFIGURATIONS = [
   },
   
   {
-    "sensorRegion":
+    SENSOR_REGION_NAME:
       {
         "type": "py.RecordSensor",
         "params": RECORD_SENSOR_PARAMS
       },
-    "spRegion":
+    SP_REGION_NAME:
       {
         "enabled": True,
         "params": SP_PARAMS,
       },
-    "tmRegion":
+    TM_REGION_NAME:
       {
         "enabled": False,
         "params": TM_PARAMS,
       },
-    "upRegion":
+    UP_REGION_NAME:
       {
         "enabled": False,
         "params": UP_PARAMS,
       },
-    "classifierRegion":
+    CLASSIFIER_REGION_NAME:
       {
-        "type": "py.SequenceClassifierRegion",
-        "params": SEQ_CLASSIFIER_PARAMS
+        "type": "py.CLAClassifierRegion",
+        "params": CLA_CLASSIFIER_PARAMS
       }
   }
 ]
