@@ -45,14 +45,14 @@ def _generateCSVData():
   outFiles = []
   for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
     outFile = generateData(DATA_DIR,
-                             OUTFILE_NAME,
-                             SIGNAL_MEAN,
-                             SIGNAL_PERIOD,
-                             SEQUENCE_LENGTH,
-                             NUM_RECORDS,
-                             SIGNAL_AMPLITUDE,
-                             NUM_CATEGORIES,
-                             noiseAmplitude)
+                           OUTFILE_NAME,
+                           SIGNAL_MEAN,
+                           SIGNAL_PERIOD,
+                           SEQUENCE_LENGTH,
+                           NUM_RECORDS,
+                           SIGNAL_AMPLITUDE,
+                           NUM_CATEGORIES,
+                           noiseAmplitude)
     outFiles.append(outFile)
 
   return outFiles

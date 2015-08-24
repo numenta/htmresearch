@@ -73,11 +73,11 @@ def createEncoder(encoders):
 
 
 
-def createSensorRegion(network, 
-                       regionName, 
-                       sensorType, 
-                       sensorParams, 
-                       dataSource, 
+def createSensorRegion(network,
+                       regionName,
+                       sensorType,
+                       sensorParams,
+                       dataSource,
                        encoders):
   """
   Initializes the sensor region with an encoder and data source.
@@ -182,9 +182,9 @@ def createTemporalMemoryRegion(network, regionName, tmParams):
 
 
 
-def createClassifierRegion(network, 
-                           regionName, 
-                           classifierType, 
+def createClassifierRegion(network,
+                           regionName,
+                           classifierType,
                            classifierParams):
   """
   Create classifier region.
@@ -232,7 +232,7 @@ def createUnionPoolerRegion(network, regionName, upParams):
   
   @return (Region) Union Pooler region of the network.
   """
-  pass #TODO: implement UP regions creation. Make sure learning is off at init.
+  pass  # TODO: implement UP regions creation. Make sure learning is off. 
 
 
 
@@ -303,13 +303,12 @@ def createNetwork(dataSource,
 
   # Create SP region, if enabled.
   if networkConfiguration["spRegion"]["enabled"]:
-
     spParams = networkConfiguration[SP_REGION_NAME]["params"]
     spParams["inputWidth"] = sensorRegion.encoder.width
     spRegion = createSpatialPoolerRegion(network, SP_REGION_NAME, spParams)
     linkRegions(network,
                 SENSOR_REGION_NAME,
-                previousRegion, 
+                previousRegion,
                 SP_REGION_NAME)
     validateRegionWidths(previousRegionWidth, spRegion.getSelf().inputWidth)
     previousRegion = SP_REGION_NAME
@@ -319,9 +318,9 @@ def createNetwork(dataSource,
   if networkConfiguration[TM_REGION_NAME]["enabled"]:
     tmParams = networkConfiguration[TM_REGION_NAME]["params"]
     tmRegion = createTemporalMemoryRegion(network, TM_REGION_NAME, tmParams)
-    linkRegions(network, 
+    linkRegions(network,
                 SENSOR_REGION_NAME,
-                previousRegion, 
+                previousRegion,
                 TM_REGION_NAME)
     validateRegionWidths(previousRegionWidth, tmRegion.getSelf().columnCount)
     previousRegion = TM_REGION_NAME
@@ -331,9 +330,9 @@ def createNetwork(dataSource,
   if networkConfiguration[UP_REGION_NAME]["enabled"]:
     upParams = networkConfiguration[UP_REGION_NAME]["params"]
     upRegion = createUnionPoolerRegion(network, upParams)
-    linkRegions(network, 
+    linkRegions(network,
                 SENSOR_REGION_NAME,
-                previousRegion, 
+                previousRegion,
                 UP_REGION_NAME)
     # TODO: not sure about the UP region width params. This needs to be updated.
     validateRegionWidths(previousRegionWidth, upRegion.getSelf().cellsPerColumn)
@@ -349,11 +348,11 @@ def createNetwork(dataSource,
   # Link the classifier to previous region and sensor region - to send in 
   # category labels.
   network.link(previousRegion, CLASSIFIER_REGION_NAME, "UniformLink", "")
-  network.link(SENSOR_REGION_NAME, 
-               CLASSIFIER_REGION_NAME, 
-               "UniformLink", 
+  network.link(SENSOR_REGION_NAME,
+               CLASSIFIER_REGION_NAME,
+               "UniformLink",
                "",
-               srcOutput="categoryOut", 
+               srcOutput="categoryOut",
                destInput="categoryIn")
 
   return network

@@ -58,7 +58,7 @@ SEQ_CLASSIFIER_PARAMS = {
 
 CLA_CLASSIFIER_PARAMS = {
   "steps": "0",
-  "implementation": "py",
+  "implementation": "cpp",
   "maxCategoryCount": NUM_CATEGORIES,
   "clVerbosity": VERBOSITY
 }
@@ -112,6 +112,7 @@ TM_REGION_NAME = "tmRegion"
 UP_REGION_NAME = "upRegion"
 CLASSIFIER_REGION_NAME = "classifierRegion"
 
+# Name of the partition used for the test set
 TEST_PARTITION_NAME = "test"
 
 # A list of configurations specifying what regions to add to a network
@@ -139,11 +140,11 @@ NETWORK_CONFIGURATIONS = [
       },
     CLASSIFIER_REGION_NAME:
       {
-        "type": "py.CLAClassifierRegion",
-        "params": CLA_CLASSIFIER_PARAMS
+        "type": "py.SequenceClassifierRegion",
+        "params": SEQ_CLASSIFIER_PARAMS
       }
   },
-  
+
   {
     SENSOR_REGION_NAME:
       {
@@ -167,12 +168,8 @@ NETWORK_CONFIGURATIONS = [
       },
     CLASSIFIER_REGION_NAME:
       {
-        "type": "py.CLAClassifierRegion",
-        "params": CLA_CLASSIFIER_PARAMS
+        "type": "py.SequenceClassifierRegion",
+        "params": SEQ_CLASSIFIER_PARAMS
       }
   }
 ]
-
-
-
-
