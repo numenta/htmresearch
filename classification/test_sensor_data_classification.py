@@ -34,7 +34,10 @@ from settings import (NUM_CATEGORIES,
                       SIGNAL_MEAN,
                       SIGNAL_PERIOD,
                       WHITE_NOISE_AMPLITUDES,
-                      DATA_DIR)
+                      DATA_DIR,
+                      SP_REGION_NAME,
+                      TM_REGION_NAME,
+                      UP_REGION_NAME)
 
 
 
@@ -86,10 +89,29 @@ class TestSensorDataClassification(unittest.TestCase):
                                           networkConfiguration,
                                           NUM_RECORDS)
 
-        if noiseAmplitude == 0:
+        spEnabled = networkConfiguration[SP_REGION_NAME]["enabled"]
+        tmEnabled = networkConfiguration[TM_REGION_NAME]["enabled"]
+        upEnabled = networkConfiguration[UP_REGION_NAME]["enabled"]
+        if (noiseAmplitude == 0
+            and spEnabled
+            and tmEnabled
+            and not upEnabled):
           self.assertEqual(predictionAccuracy, 100)
-        else:
-          self.assertNotEqual(predictionAccuracy, 100)
+        elif (noiseAmplitude == 0
+              and spEnabled
+              and not tmEnabled
+              and not upEnabled):
+          self.assertNotEqual(predictionAccuracy, 98.75)
+        elif (noiseAmplitude == 1.0
+              and spEnabled
+              and tmEnabled
+              and not upEnabled):
+          self.assertEqual(predictionAccuracy, 88.0)
+        elif (noiseAmplitude == 1.0
+              and spEnabled
+              and not tmEnabled
+              and not upEnabled):
+          self.assertEqual(predictionAccuracy, 98.75)
 
 
   def tearDown(self):

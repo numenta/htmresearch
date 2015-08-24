@@ -29,7 +29,8 @@ from settings import (SENSOR_REGION_NAME,
                       TM_REGION_NAME,
                       UP_REGION_NAME,
                       CLASSIFIER_REGION_NAME,
-                      TEST_PARTITION_NAME)
+                      TEST_PARTITION_NAME,
+                      VERBOSITY)
 
 
 
@@ -92,7 +93,16 @@ def runNetwork(network, networkConfiguration, numRecords):
   classifierRegion = network.regions[CLASSIFIER_REGION_NAME]
   testIndex = partitions[-1][1]
 
+  # keep track of the regions that have been trained
   trainedRegionNames = []
+
+  # Enable learning for the first region
+  firstRegionName = partitions[0][0]
+  enableRegionLearning(network,
+                       trainedRegionNames,
+                       firstRegionName,
+                       0)
+
   numCorrect = 0
   numTestRecords = 0
   for recordNumber in xrange(numRecords):
@@ -123,9 +133,9 @@ def runNetwork(network, networkConfiguration, numRecords):
       inferredValue = classifierRegion.getOutputData("categoriesOut")[0]
       if actualValue == inferredValue:
         numCorrect += 1
-      else:
-        print "[DEBUG] actualValue=%s, inferredValue=%s" % (actualValue,
-                                                            inferredValue)
+      elif VERBOSITY > 0:
+        print ("[DEBUG] recordNum=%s, actualValue=%s, inferredValue=%s"
+               % (recordNumber, actualValue, inferredValue))
       numTestRecords += 1
 
   predictionAccuracy = 100.0 * numCorrect / numTestRecords
@@ -195,7 +205,7 @@ def findNumberOfPartitions(networkConfiguration, numRecords):
                            UP_REGION_NAME])
   elif spEnabled and tmEnabled:
     numPartitions = 4
-    partitionNames.extend([SP_REGION_NAME, 
+    partitionNames.extend([SP_REGION_NAME,
                            TM_REGION_NAME])
   elif spEnabled:
     numPartitions = 3
@@ -230,5 +240,3 @@ def generateScalarEncoderParams(inputFile):
     "maxval": maxval
   }
   return scalarEncoderParams
-
-

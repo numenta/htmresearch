@@ -48,17 +48,17 @@ def generateData(dataDir,
                  numCategories,
                  noiseAmplitude):
   """
-  TODO: docstring
-  
-  :param dataDir: 
-  :param outputFileName: 
-  :param signalMean: 
-  :param signalPeriod: 
-  :param sequenceLength: 
-  :param numPoints: 
-  :param signalAmplitude: 
-  :param noiseAmplitude: 
-  :return:
+  Generate the artificial sensor data.
+  @param dataDir: (str) directory where to save the CSV files
+  @param outputFileName: (str) base name for the output file
+  @param signalMean: (float) mean of the signal to generate
+  @param signalPeriod: (float) period of the signal to generate
+  @param sequenceLength: (int) sequence length of the signal to generate
+  @param numPoints: (int) total number of points in the sequence
+  @param signalAmplitude: (float) amplitude of the signal to generate
+  @param numCategories: (int) number of categories labels
+  @param noiseAmplitude: (float) amplitude of the white noise
+  @return outFilePath: (str) path to the output file
   """
   fileName = "%s_%s" % (outputFileName, noiseAmplitude)
 
@@ -102,7 +102,9 @@ def generateData(dataDir,
 
   fileHandle.close()
 
-  return os.path.join(dataDir, "%s_%s.csv" % (outputFileName, noiseAmplitude))
+  outFilePath = os.path.join(dataDir,
+                          "%s_%s.csv" % (outputFileName, noiseAmplitude))
+  return outFilePath
 
 if __name__ == "__main__":
   for whiteNoiseAmplitude in WHITE_NOISE_AMPLITUDES:

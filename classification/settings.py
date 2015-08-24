@@ -27,7 +27,7 @@ SEQUENCE_LENGTH = 200
 NUM_CATEGORIES = 3
 NUM_RECORDS = 2400
 DEFAULT_WHITE_NOISE_AMPLITUDE = 10.0
-WHITE_NOISE_AMPLITUDES = [0, 1]
+WHITE_NOISE_AMPLITUDES = [0.0, 1.0]
 SIGNAL_AMPLITUDE = 1.0
 SIGNAL_MEAN = 1.0
 SIGNAL_PERIOD = 20.0
@@ -58,7 +58,7 @@ SEQ_CLASSIFIER_PARAMS = {
 
 CLA_CLASSIFIER_PARAMS = {
   "steps": "0",
-  "implementation": "cpp",
+  "implementation": "py",
   "maxCategoryCount": NUM_CATEGORIES,
   "clVerbosity": VERBOSITY
 }
@@ -104,7 +104,6 @@ TM_PARAMS = {
 }
 
 UP_PARAMS = {}  # TODO: Don't know what the UP params are yet.
-
 
 # Region names for the network
 SENSOR_REGION_NAME = "sensorRegion"

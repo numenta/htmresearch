@@ -21,42 +21,61 @@
 # ----------------------------------------------------------------------
 
 import csv
-import os
 
 import matplotlib.pyplot as plt
 
-from settings import (DATA_DIR, 
-                      OUTFILE_NAME, 
-                      WHITE_NOISE_AMPLITUDES, 
-                      SEQUENCE_LENGTH)
+from generate_sensor_data import generateData
+from settings import (DATA_DIR,
+                      OUTFILE_NAME,
+                      WHITE_NOISE_AMPLITUDES,
+                      SIGNAL_MEAN,
+                      SIGNAL_PERIOD,
+                      SEQUENCE_LENGTH,
+                      NUM_RECORDS,
+                      SIGNAL_AMPLITUDE,
+                      NUM_CATEGORIES)
 
 
-def findValidCSVNames():
-  validFileNames = []
+
+def _generateCSVData():
+  """
+  Generate CSV data to plot.
+  @return outFiles (list) paths to output files
+  """
+  outFiles = []
   for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
-    for signalType in OUTFILE_NAME:
-      filePath = "%s/%s_%s.csv" %(DATA_DIR, signalType, noiseAmplitude)
-      if os.path.exists(filePath):
-        validFileNames.append(filePath)
-        
-  return validFileNames
+    outFile = generateData(DATA_DIR,
+                             OUTFILE_NAME,
+                             SIGNAL_MEAN,
+                             SIGNAL_PERIOD,
+                             SEQUENCE_LENGTH,
+                             NUM_RECORDS,
+                             SIGNAL_AMPLITUDE,
+                             NUM_CATEGORIES,
+                             noiseAmplitude)
+    outFiles.append(outFile)
+
+  return outFiles
 
 
-csvFiles = findValidCSVNames()
 
-plt.figure()
+def main():
+  # csvFiles = ["data/white_noise_0.0.csv"]
+  csvFiles = _generateCSVData()
 
-for filePath in csvFiles:
+  plt.figure()
 
-  timesteps = []
-  data = []
-  labels = []
-  categoriesLabelled = []
-  with open(filePath, 'rb') as f:
+  for filePath in csvFiles:
+
+    timesteps = []
+    data = []
+    labels = []
+    categoriesLabelled = []
+    with open(filePath, 'rb') as f:
       reader = csv.reader(f)
       headers = reader.next()
 
-      #skip the 2 first rows
+      # skip the 2 first rows
       reader.next()
       reader.next()
 
@@ -65,36 +84,41 @@ for filePath in csvFiles:
         timesteps.append(i)
         data.append(record['y'])
         labels.append(record['label'])
-  
+
       ax = plt.subplot(len(csvFiles), 1, csvFiles.index(filePath) + 1)
       plt.plot(timesteps, data, label='signal')
 
       for k in range(len(timesteps) / SEQUENCE_LENGTH):
-        if k%3 == 0:
+        if k % 3 == 0:
           categoryColor = 'g'
-        elif k%3 == 1:
+        elif k % 3 == 1:
           categoryColor = 'y'
-        elif k%3 == 2:
+        elif k % 3 == 2:
           categoryColor = 'r'
-        
-        start = k*SEQUENCE_LENGTH
-        end = (k+1) * SEQUENCE_LENGTH
-       
+
+        start = k * SEQUENCE_LENGTH
+        end = (k + 1) * SEQUENCE_LENGTH
+
         if categoryColor not in categoriesLabelled:
-          label = 'sequence %s' %(k%3)
+          label = 'sequence %s' % (k % 3)
           categoriesLabelled.append(categoryColor)
         else:
-          label=None
-        plt.axvspan(start, end , facecolor=categoryColor, alpha=0.5, label=label)
-      
+          label = None
+        plt.axvspan(start, end, facecolor=categoryColor, alpha=0.5, label=label)
+
       plt.xlim(xmin=0, xmax=len(timesteps))
-      
+
       # title
       titleWords = filePath.split("/")[-1].replace('.csv', '').split("_")
-      title = "%s amplitude = %s" %(' '.join(titleWords[:-1]), titleWords[-1])
-      plt.title(title) 
+      title = "%s amplitude = %s" % (' '.join(titleWords[:-1]), titleWords[-1])
+      plt.title(title)
       plt.tight_layout()
-      
+
       plt.legend()
-    
-plt.show()
+
+  plt.show()
+
+
+
+if __name__ == "__main__":
+  main()
