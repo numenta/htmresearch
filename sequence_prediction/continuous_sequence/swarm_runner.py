@@ -105,11 +105,10 @@ class SwarmRunner():
     modelParamsFile = self.writeModelParamsToFile(modelParams, name)
     return modelParamsFile
 
-  def generateExperimentDescription(self, SWARM_CONFIG):
+  def generateExperimentDescription(self, SWARM_CONFIG, outDir='./swarm/'):
     expDescConfig = json.dumps(SWARM_CONFIG)
     expDescConfig = expDescConfig.splitlines()
     expDescConfig = "".join(expDescConfig)
-    outDir = './swarm/'
 
     expGenerator([
       "--description=%s" % (expDescConfig),
@@ -198,7 +197,7 @@ if __name__ == "__main__":
   if _options.generateDescriptionFile:
     # only generate description file for swarming
     filePathTrain = swarm_runner.getSourceFile(SWARM_CONFIG)
-    swarm_runner.generateExperimentDescription(SWARM_CONFIG)
+    swarm_runner.generateExperimentDescription(SWARM_CONFIG, outDir='./swarm/'+dataSet)
     print " generate swarm description file for ", filePathTrain
   else:
     swarm_runner.runExperiment(SWARM_CONFIG)
