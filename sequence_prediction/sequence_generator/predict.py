@@ -20,8 +20,9 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 """
-Add parameter setting predictedSegmentDecrement=0.01 in TPShim
-TODO: Set that here instead
+Depends on:
+- https://github.com/numenta/nupic/pull/2491
+- https://github.com/numenta/nupic/pull/2495
 """
 
 import operator
@@ -92,7 +93,7 @@ MODEL_PARAMS = {
         "cellsPerColumn": 32,
         "inputWidth": 2048,
         "seed": 1960,
-        "temporalImp": "tm_py",
+        "temporalImp": "monitored_tm_py",
         "newSynapseCount": 20,
         "maxSynapsesPerSegment": 128,
         "maxSegmentsPerCell": 128,
@@ -100,6 +101,7 @@ MODEL_PARAMS = {
         "connectedPerm": 0.50,
         "permanenceInc": 0.1,
         "permanenceDec": 0.1,
+        "predictedSegmentDecrement": 0.0333,
         "globalDecay": 0.0,
         "maxAge": 0,
         "minThreshold": 15,
