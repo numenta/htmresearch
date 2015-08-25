@@ -19,25 +19,71 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
-import json
+import copy
 import os
 import unittest
 
-from classify_sensor_data import configureNetwork, runNetwork
+from classification_network import configureNetwork, runNetwork
 from generate_sensor_data import generateData
 from settings import (NUM_CATEGORIES,
                       SEQUENCE_LENGTH,
                       OUTFILE_NAME,
                       NUM_RECORDS,
-                      NETWORK_CONFIGURATIONS,
-                      SIGNAL_AMPLITUDE,
-                      SIGNAL_MEAN,
-                      SIGNAL_PERIOD,
+                      SIGNAL_AMPLITUDES,
+                      SIGNAL_MEANS,
+                      SIGNAL_PERIODS,
                       WHITE_NOISE_AMPLITUDES,
-                      DATA_DIR,
-                      SP_REGION_NAME,
-                      TM_REGION_NAME,
-                      UP_REGION_NAME)
+                      DATA_DIR)
+from network_params import (SENSOR_REGION_NAME,
+                            SP_REGION_NAME,
+                            TM_REGION_NAME,
+                            UP_REGION_NAME,
+                            CLASSIFIER_REGION_NAME,
+                            SENSOR_TYPE,
+                            CLA_CLASSIFIER_TYPE,
+                            CLA_CLASSIFIER_PARAMS,
+                            KNN_CLASSIFIER_TYPE,
+                            KNN_CLASSIFIER_PARAMS)
+from network_params import NETWORK_CONFIGURATION
+
+
+
+def _generateNetworkConfigurations():
+  """
+  Generate a series of network configurations.
+  @return networkConfigurations: (list) network configs.
+  """
+
+  networkConfigurations = []
+
+  # First config: SP and TM enabled. UP disabled. CLA Classifier.
+  baseNetworkConfig = copy.deepcopy(NETWORK_CONFIGURATION)
+  baseNetworkConfig[SP_REGION_NAME]["enabled"] = True
+  baseNetworkConfig[TM_REGION_NAME]["enabled"] = True
+  baseNetworkConfig[UP_REGION_NAME]["enabled"] = False
+  baseNetworkConfig[CLASSIFIER_REGION_NAME]["type"] = CLA_CLASSIFIER_TYPE
+  baseNetworkConfig[CLASSIFIER_REGION_NAME]["params"] = CLA_CLASSIFIER_PARAMS
+  networkConfigurations.append(baseNetworkConfig)
+
+  # Second config: SP enabled. TM and UP disabled. CLA Classifier.
+  baseNetworkConfig = copy.deepcopy(NETWORK_CONFIGURATION)
+  baseNetworkConfig[SP_REGION_NAME]["enabled"] = True
+  baseNetworkConfig[TM_REGION_NAME]["enabled"] = False
+  baseNetworkConfig[UP_REGION_NAME]["enabled"] = False
+  baseNetworkConfig[CLASSIFIER_REGION_NAME]["type"] = CLA_CLASSIFIER_TYPE
+  baseNetworkConfig[CLASSIFIER_REGION_NAME]["params"] = CLA_CLASSIFIER_PARAMS
+  networkConfigurations.append(baseNetworkConfig)
+  
+  # First config: SP and TM enabled. UP disabled. KNN Classifier.
+  baseNetworkConfig = copy.deepcopy(NETWORK_CONFIGURATION)
+  baseNetworkConfig[SP_REGION_NAME]["enabled"] = True
+  baseNetworkConfig[TM_REGION_NAME]["enabled"] = True
+  baseNetworkConfig[UP_REGION_NAME]["enabled"] = False
+  baseNetworkConfig[CLASSIFIER_REGION_NAME]["type"] = KNN_CLASSIFIER_TYPE
+  baseNetworkConfig[CLASSIFIER_REGION_NAME]["params"] = KNN_CLASSIFIER_PARAMS
+  networkConfigurations.append(baseNetworkConfig)
+
+  return networkConfigurations
 
 
 
@@ -53,65 +99,107 @@ class TestSensorDataClassification(unittest.TestCase):
     Test classification accuracy for sensor data.
     """
 
-    for networkConfiguration in NETWORK_CONFIGURATIONS:
+    networkConfigurations = _generateNetworkConfigurations()
+
+    for networkConfig in networkConfigurations:
       for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
-        expParams = ("RUNNING EXPERIMENT WITH PARAMS:\n"
-                     " * numRecords=%s\n"
-                     " * signalAmplitude=%s\n"
-                     " * signalMean=%s\n"
-                     " * signalPeriod=%s\n"
-                     " * noiseAmplitude=%s\n"
-                     " * networkConfiguration=%s\n"
-                     ) % (NUM_RECORDS,
-                          SIGNAL_AMPLITUDE,
-                          SIGNAL_MEAN,
-                          SIGNAL_PERIOD,
-                          noiseAmplitude,
-                          json.dumps(networkConfiguration, indent=2))
-        print expParams
+        for signalMean in SIGNAL_MEANS:
+          for signalAmplitude in SIGNAL_AMPLITUDES:
+            for signalPeriod in SIGNAL_PERIODS:
 
-        inputFile = generateData(DATA_DIR,
-                                 OUTFILE_NAME,
-                                 SIGNAL_MEAN,
-                                 SIGNAL_PERIOD,
-                                 SEQUENCE_LENGTH,
-                                 NUM_RECORDS,
-                                 SIGNAL_AMPLITUDE,
-                                 NUM_CATEGORIES,
-                                 noiseAmplitude)
+              sensorType = networkConfig[SENSOR_REGION_NAME]["type"]
+              spEnabled = networkConfig[SP_REGION_NAME]["enabled"]
+              tmEnabled = networkConfig[TM_REGION_NAME]["enabled"]
+              upEnabled = networkConfig[UP_REGION_NAME]["enabled"]
+              classifierType = networkConfig[CLASSIFIER_REGION_NAME]["type"]
 
-        network = configureNetwork(inputFile,
-                                   networkConfiguration)
+              expParams = ("RUNNING EXPERIMENT WITH PARAMS:\n"
+                           " * numRecords=%s\n"
+                           " * signalAmplitude=%s\n"
+                           " * signalMean=%s\n"
+                           " * signalPeriod=%s\n"
+                           " * noiseAmplitude=%s\n"
+                           " * sensorType=%s\n"
+                           " * spEnabled=%s\n"
+                           " * tmEnabled=%s\n"
+                           " * upEnabled=%s\n"
+                           " * classifierType=%s\n"
+                           ) % (NUM_RECORDS,
+                                signalAmplitude,
+                                signalMean,
+                                signalPeriod,
+                                noiseAmplitude,
+                                sensorType.split(".")[1],
+                                spEnabled,
+                                tmEnabled,
+                                upEnabled,
+                                classifierType.split(".")[1])
+              print expParams
 
-        (numCorrect,
-         numTestRecords,
-         predictionAccuracy) = runNetwork(network,
-                                          networkConfiguration,
-                                          NUM_RECORDS)
+              inputFile = generateData(DATA_DIR,
+                                       OUTFILE_NAME,
+                                       signalMean,
+                                       signalPeriod,
+                                       SEQUENCE_LENGTH,
+                                       NUM_RECORDS,
+                                       signalAmplitude,
+                                       NUM_CATEGORIES,
+                                       noiseAmplitude)
 
-        spEnabled = networkConfiguration[SP_REGION_NAME]["enabled"]
-        tmEnabled = networkConfiguration[TM_REGION_NAME]["enabled"]
-        upEnabled = networkConfiguration[UP_REGION_NAME]["enabled"]
-        if (noiseAmplitude == 0
-            and spEnabled
-            and tmEnabled
-            and not upEnabled):
-          self.assertEqual(predictionAccuracy, 100)
-        elif (noiseAmplitude == 0
-              and spEnabled
-              and not tmEnabled
-              and not upEnabled):
-          self.assertEqual(predictionAccuracy, 98.75)
-        elif (noiseAmplitude == 1.0
-              and spEnabled
-              and tmEnabled
-              and not upEnabled):
-          self.assertEqual(predictionAccuracy, 88.0)
-        elif (noiseAmplitude == 1.0
-              and spEnabled
-              and not tmEnabled
-              and not upEnabled):
-          self.assertEqual(predictionAccuracy, 81.875)
+              network = configureNetwork(inputFile,
+                                         networkConfig)
+
+              (numCorrect,
+               numTestRecords,
+               predictionAccuracy) = runNetwork(network,
+                                                networkConfig,
+                                                NUM_RECORDS)
+
+              if (noiseAmplitude == 0
+                  and signalMean == 1.0
+                  and signalAmplitude == 1.0
+                  and signalPeriod == 20.0
+                  and classifierType == KNN_CLASSIFIER_TYPE
+                  and spEnabled
+                  and tmEnabled
+                  and not upEnabled):
+                self.assertEqual(predictionAccuracy, 100)
+              elif (noiseAmplitude == 0
+                    and signalMean == 1.0
+                    and signalAmplitude == 1.0
+                    and signalPeriod == 20.0
+                    and classifierType == CLA_CLASSIFIER_TYPE
+                    and spEnabled
+                    and tmEnabled
+                    and not upEnabled):
+                self.assertEqual(predictionAccuracy, 100)
+              elif (noiseAmplitude == 0
+                    and signalMean == 1.0
+                    and signalAmplitude == 1.0
+                    and signalPeriod == 20.0
+                    and classifierType == CLA_CLASSIFIER_TYPE
+                    and spEnabled
+                    and not tmEnabled
+                    and not upEnabled):
+                self.assertEqual(predictionAccuracy, 98.75)
+              elif (noiseAmplitude == 1.0
+                    and signalMean == 1.0
+                    and signalAmplitude == 1.0
+                    and signalPeriod == 20.0
+                    and classifierType == CLA_CLASSIFIER_TYPE
+                    and spEnabled
+                    and tmEnabled
+                    and not upEnabled):
+                self.assertEqual(predictionAccuracy, 88.0)
+              elif (noiseAmplitude == 1.0
+                    and signalMean == 1.0
+                    and signalAmplitude == 1.0
+                    and signalPeriod == 20.0
+                    and classifierType == CLA_CLASSIFIER_TYPE
+                    and spEnabled
+                    and not tmEnabled
+                    and not upEnabled):
+                self.assertEqual(predictionAccuracy, 81.875)
 
 
   def tearDown(self):

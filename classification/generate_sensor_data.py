@@ -27,15 +27,6 @@ import math
 import os
 import random
 
-from settings import (SEQUENCE_LENGTH,
-                      DATA_DIR,
-                      OUTFILE_NAME,
-                      WHITE_NOISE_AMPLITUDES,
-                      SIGNAL_AMPLITUDE,
-                      SIGNAL_MEAN,
-                      NUM_RECORDS,
-                      SIGNAL_PERIOD)
-
 
 
 def generateData(dataDir,
@@ -61,9 +52,6 @@ def generateData(dataDir,
   @return outFilePath: (str) path to the output file
   """
   fileName = "%s_%s" % (outputFileName, noiseAmplitude)
-
-  if not dataDir:
-    dataDir = DATA_DIR
 
   # make sure the directory exist. if not, create it.
   if not os.path.exists(dataDir):
@@ -105,14 +93,3 @@ def generateData(dataDir,
   outFilePath = os.path.join(dataDir,
                           "%s_%s.csv" % (outputFileName, noiseAmplitude))
   return outFilePath
-
-if __name__ == "__main__":
-  for whiteNoiseAmplitude in WHITE_NOISE_AMPLITUDES:
-    generateData(DATA_DIR,
-                 OUTFILE_NAME,
-                 SIGNAL_MEAN,
-                 SIGNAL_PERIOD,
-                 SEQUENCE_LENGTH,
-                 NUM_RECORDS,
-                 SIGNAL_AMPLITUDE,
-                 whiteNoiseAmplitude)

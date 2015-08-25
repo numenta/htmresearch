@@ -28,11 +28,11 @@ from generate_sensor_data import generateData
 from settings import (DATA_DIR,
                       OUTFILE_NAME,
                       WHITE_NOISE_AMPLITUDES,
-                      SIGNAL_MEAN,
-                      SIGNAL_PERIOD,
+                      SIGNAL_MEANS,
+                      SIGNAL_PERIODS,
                       SEQUENCE_LENGTH,
                       NUM_RECORDS,
-                      SIGNAL_AMPLITUDE,
+                      SIGNAL_AMPLITUDES,
                       NUM_CATEGORIES)
 
 
@@ -44,16 +44,20 @@ def _generateCSVData():
   """
   outFiles = []
   for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
-    outFile = generateData(DATA_DIR,
-                           OUTFILE_NAME,
-                           SIGNAL_MEAN,
-                           SIGNAL_PERIOD,
-                           SEQUENCE_LENGTH,
-                           NUM_RECORDS,
-                           SIGNAL_AMPLITUDE,
-                           NUM_CATEGORIES,
-                           noiseAmplitude)
-    outFiles.append(outFile)
+    for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
+      for signalMean in SIGNAL_MEANS:
+        for signalAmplitude in SIGNAL_AMPLITUDES:
+          for signalPeriod in SIGNAL_PERIODS:
+            outFile = generateData(DATA_DIR,
+                                   OUTFILE_NAME,
+                                   signalMean,
+                                   signalPeriod,
+                                   SEQUENCE_LENGTH,
+                                   NUM_RECORDS,
+                                   signalAmplitude,
+                                   NUM_CATEGORIES,
+                                   noiseAmplitude)
+            outFiles.append(outFile)
 
   return outFiles
 

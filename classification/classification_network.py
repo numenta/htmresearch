@@ -21,30 +21,37 @@
 # ----------------------------------------------------------------------
 """
 The methods here are a factory to create a classification network:
-  encoder -> SP -> TM -> (UP) -> classifier
+  encoder -> (SP) -> (TM) -> (UP) -> classifier
 """
+
+import csv
 
 try:
   import simplejson as json
 except ImportError:
   import json
 
+from nupic.data.file_record_stream import FileRecordStream
 from nupic.encoders import MultiEncoder
 from nupic.engine import Network
 from nupic.engine import pyRegions
 
-from regions.SequenceClassifierRegion import SequenceClassifierRegion
-from settings import (SENSOR_REGION_NAME,
-                      SP_REGION_NAME,
-                      TM_REGION_NAME,
-                      UP_REGION_NAME,
-                      CLASSIFIER_REGION_NAME)
+from network_params import (CLASSIFIER_REGION_NAME,
+                            SENSOR_REGION_NAME,
+                            SCALAR_ENCODER_NAME,
+                            SP_REGION_NAME,
+                            TM_REGION_NAME,
+                            UP_REGION_NAME,
+                            KNN_CLASSIFIER_TYPE,
+                            CLA_CLASSIFIER_TYPE)
+from settings import (TEST_PARTITION_NAME,
+                      DEBUG_VERBOSITY)
 
 _PY_REGIONS = [r[1] for r in pyRegions]
 
 
 
-def createEncoder(encoders):
+def _createEncoder(encoders):
   """
   Creates and returns a MultiEncoder.
 
@@ -73,12 +80,12 @@ def createEncoder(encoders):
 
 
 
-def createSensorRegion(network,
-                       regionName,
-                       sensorType,
-                       sensorParams,
-                       dataSource,
-                       encoders):
+def _createSensorRegion(network,
+                        regionName,
+                        sensorType,
+                        sensorParams,
+                        dataSource,
+                        encoders):
   """
   Initializes the sensor region with an encoder and data source.
 
@@ -122,7 +129,7 @@ def createSensorRegion(network,
   # Specify how the sensor encodes input values
   if isinstance(encoders, dict):
     # Add encoder(s) from params dict:
-    sensorRegion.encoder = createEncoder(encoders)
+    sensorRegion.encoder = _createEncoder(encoders)
   else:
     sensorRegion.encoder = encoders
 
@@ -133,7 +140,7 @@ def createSensorRegion(network,
 
 
 
-def createSpatialPoolerRegion(network, regionName, spParams):
+def _createSpatialPoolerRegion(network, regionName, spParams):
   """
   Create the spatial pooler region.
 
@@ -146,8 +153,8 @@ def createSpatialPoolerRegion(network, regionName, spParams):
   spatialPoolerRegion = network.addRegion(
     regionName, "py.SPRegion", json.dumps(spParams))
 
-  # Learning is disabled at initialization. Can be enabled later.
-  spatialPoolerRegion.setParameter("learningMode", False)
+  # Enable learning at initialization. 
+  spatialPoolerRegion.setParameter("learningMode", True)
 
   # Inference mode outputs the current inference (i.e. active columns).
   # Okay to always leave inference mode on; only there for some corner cases.
@@ -157,7 +164,7 @@ def createSpatialPoolerRegion(network, regionName, spParams):
 
 
 
-def createTemporalMemoryRegion(network, regionName, tmParams):
+def _createTemporalMemoryRegion(network, regionName, tmParams):
   """
   Create the temporal memory region.
 
@@ -182,10 +189,10 @@ def createTemporalMemoryRegion(network, regionName, tmParams):
 
 
 
-def createClassifierRegion(network,
-                           regionName,
-                           classifierType,
-                           classifierParams):
+def _createClassifierRegion(network,
+                            regionName,
+                            classifierType,
+                            classifierParams):
   """
   Create classifier region.
 
@@ -199,13 +206,6 @@ def createClassifierRegion(network,
   @return (Region) Classifier region of the network.
 
   """
-  # Classifier region may be non-standard, so add custom region class to the 
-  # network
-  if classifierType.split(".")[1] not in _PY_REGIONS:
-    # Add new region class to the network
-    network.registerRegion(SequenceClassifierRegion)
-    _PY_REGIONS.append(classifierType.split(".")[1])
-
   # Create the classifier region.
   classifierRegion = network.addRegion(
     regionName, classifierType, json.dumps(classifierParams))
@@ -220,7 +220,7 @@ def createClassifierRegion(network,
 
 
 
-def createUnionPoolerRegion(network, regionName, upParams):
+def _createUnionPoolerRegion(network, regionName, upParams):
   """
   Create a Union Pooler region.
   
@@ -236,7 +236,7 @@ def createUnionPoolerRegion(network, regionName, upParams):
 
 
 
-def linkRegions(network, sensorRegionName, previousRegion, currentRegion):
+def _linkRegions(network, sensorRegionName, previousRegion, currentRegion):
   """
   Link the previous region to the current region and propagate the 
   sequence reset from the sensor region.
@@ -251,7 +251,7 @@ def linkRegions(network, sensorRegionName, previousRegion, currentRegion):
 
 
 
-def validateRegionWidths(previousRegionWidth, currentRegionWidth):
+def _validateRegionWidths(previousRegionWidth, currentRegionWidth):
   """
   Make sure previous and current region have compatible input and output width
   @param previousRegionWidth (int) width of the previous region in the network
@@ -287,12 +287,12 @@ def createNetwork(dataSource,
   # Create sensor regions (always enabled)
   sensorParams = networkConfiguration[SENSOR_REGION_NAME]["params"]
   sensorType = networkConfiguration[SENSOR_REGION_NAME]["type"]
-  sensorRegion = createSensorRegion(network,
-                                    SENSOR_REGION_NAME,
-                                    sensorType,
-                                    sensorParams,
-                                    dataSource,
-                                    encoders)
+  sensorRegion = _createSensorRegion(network,
+                                     SENSOR_REGION_NAME,
+                                     sensorType,
+                                     sensorParams,
+                                     dataSource,
+                                     encoders)
 
   # Keep track of the previous region name and width to validate and link the 
   # input/output width of two consecutive regions.
@@ -303,46 +303,47 @@ def createNetwork(dataSource,
   if networkConfiguration["spRegion"]["enabled"]:
     spParams = networkConfiguration[SP_REGION_NAME]["params"]
     spParams["inputWidth"] = sensorRegion.encoder.width
-    spRegion = createSpatialPoolerRegion(network, SP_REGION_NAME, spParams)
-    validateRegionWidths(previousRegionWidth, spRegion.getSelf().inputWidth)
-    linkRegions(network,
-                SENSOR_REGION_NAME,
-                previousRegion,
-                SP_REGION_NAME)
+    spRegion = _createSpatialPoolerRegion(network, SP_REGION_NAME, spParams)
+    _validateRegionWidths(previousRegionWidth, spRegion.getSelf().inputWidth)
+    _linkRegions(network,
+                 SENSOR_REGION_NAME,
+                 previousRegion,
+                 SP_REGION_NAME)
     previousRegion = SP_REGION_NAME
     previousRegionWidth = spRegion.getSelf().columnCount
 
   # Create TM region, if enabled.
   if networkConfiguration[TM_REGION_NAME]["enabled"]:
     tmParams = networkConfiguration[TM_REGION_NAME]["params"]
-    tmRegion = createTemporalMemoryRegion(network, TM_REGION_NAME, tmParams)
-    validateRegionWidths(previousRegionWidth, tmRegion.getSelf().columnCount)
-    linkRegions(network,
-                SENSOR_REGION_NAME,
-                previousRegion,
-                TM_REGION_NAME)
+    tmRegion = _createTemporalMemoryRegion(network, TM_REGION_NAME, tmParams)
+    _validateRegionWidths(previousRegionWidth, tmRegion.getSelf().columnCount)
+    _linkRegions(network,
+                 SENSOR_REGION_NAME,
+                 previousRegion,
+                 TM_REGION_NAME)
     previousRegion = TM_REGION_NAME
     previousRegionWidth = tmRegion.getSelf().cellsPerColumn
 
   # Create UP region, if enabled.
   if networkConfiguration[UP_REGION_NAME]["enabled"]:
     upParams = networkConfiguration[UP_REGION_NAME]["params"]
-    upRegion = createUnionPoolerRegion(network, upParams)
+    upRegion = _createUnionPoolerRegion(network, upParams)
     # TODO: not sure about the UP region width params. This needs to be updated.
-    validateRegionWidths(previousRegionWidth, upRegion.getSelf().cellsPerColumn)
-    linkRegions(network,
-                SENSOR_REGION_NAME,
-                previousRegion,
-                UP_REGION_NAME)
+    _validateRegionWidths(previousRegionWidth,
+                          upRegion.getSelf().cellsPerColumn)
+    _linkRegions(network,
+                 SENSOR_REGION_NAME,
+                 previousRegion,
+                 UP_REGION_NAME)
     previousRegion = UP_REGION_NAME
 
   # Create classifier region (always enabled)
   classifierParams = networkConfiguration[CLASSIFIER_REGION_NAME]["params"]
   classifierType = networkConfiguration[CLASSIFIER_REGION_NAME]["type"]
-  createClassifierRegion(network,
-                         CLASSIFIER_REGION_NAME,
-                         classifierType,
-                         classifierParams)
+  _createClassifierRegion(network,
+                          CLASSIFIER_REGION_NAME,
+                          classifierType,
+                          classifierParams)
   # Link the classifier to previous region and sensor region - to send in 
   # category labels.
   network.link(previousRegion, CLASSIFIER_REGION_NAME, "UniformLink", "")
@@ -354,3 +355,233 @@ def createNetwork(dataSource,
                destInput="categoryIn")
 
   return network
+
+
+
+def _enableRegionLearning(network,
+                          trainedRegionNames,
+                          regionName,
+                          recordNumber):
+  """
+  Enable learning for a specific region.
+  
+  @param network (Network) the network instance 
+  @param trainedRegionNames (list) regions that have been trained on the 
+  input data.
+  @param regionName (str) name of the current region  
+  @param recordNumber (int) value of the current record number 
+  """
+
+  region = network.regions[regionName]
+  region.setParameter("learningMode", True)
+  phaseInfo = ("-> Training '%s'. RecordNumber=%s. Learning is ON for %s, "
+               "but OFF for the remaining regions." % (regionName,
+                                                       recordNumber,
+                                                       trainedRegionNames))
+  print phaseInfo
+
+
+
+def _stopLearning(network, trainedRegionNames, recordNumber):
+  """
+  Disable learning for all trained regions.
+  
+  @param network (Network) the network instance 
+  @param trainedRegionNames (list) regions that have been trained on the 
+  input data.
+  @param recordNumber (int) value of the current record number 
+  """
+
+  for regionName in trainedRegionNames:
+    region = network.regions[regionName]
+    region.setParameter("learningMode", False)
+
+  phaseInfo = ("-> Test phase. RecordNumber=%s. "
+               "Learning is OFF for all regions: %s" % (recordNumber,
+                                                        trainedRegionNames))
+  print phaseInfo
+
+
+
+def runNetwork(network, networkConfiguration, numRecords):
+  """
+  Run the network and write classification results output.
+  
+  @param networkConfiguration (dict) the configuration of this network.
+  @param numRecords (int) Number of records of the input dataset.
+  @param network (Network) a Network instance to run.
+  """
+
+  partitions = _findNumberOfPartitions(networkConfiguration, numRecords)
+  sensorRegion = network.regions[SENSOR_REGION_NAME]
+  classifierRegion = network.regions[CLASSIFIER_REGION_NAME]
+  testIndex = partitions[-1][1]
+
+  # keep track of the regions that have been trained
+  trainedRegionNames = []
+  numCorrect = 0
+  numTestRecords = 0
+  for recordNumber in xrange(numRecords):
+    # Run the network for a single iteration
+    network.run(1)
+
+    actualValue = sensorRegion.getOutputData("categoryOut")[0]
+
+    partitionName = partitions[0][0]
+    partitionIndex = partitions[0][1]
+
+    # train all of the regions
+    if partitionIndex == recordNumber:
+
+      if partitionName == TEST_PARTITION_NAME:
+        _stopLearning(network, trainedRegionNames, recordNumber)
+
+      else:
+        partitions.pop(0)
+        trainedRegionNames.append(partitionName)
+        _enableRegionLearning(network,
+                              trainedRegionNames,
+                              partitionName,
+                              recordNumber)
+
+    # Evaluate the predictions on the test set.
+    if recordNumber >= testIndex:
+      if classifierRegion.type == KNN_CLASSIFIER_TYPE:
+        inferredValue = classifierRegion.getOutputData("categoriesOut").argmax()
+      elif classifierRegion.type == CLA_CLASSIFIER_TYPE:
+        inferredValue = classifierRegion.getOutputData("categoriesOut")[0]
+      if actualValue == inferredValue:
+        numCorrect += 1
+      elif DEBUG_VERBOSITY > 0:
+        print ("[DEBUG] recordNum=%s, actualValue=%s, inferredValue=%s"
+               % (recordNumber, actualValue, inferredValue))
+      numTestRecords += 1
+
+  predictionAccuracy = 100.0 * numCorrect / numTestRecords
+
+  results = ("RESULTS: accuracy=%s | %s correctly predicted records out of %s "
+             "test records \n" % (predictionAccuracy,
+                                  numCorrect,
+                                  numTestRecords))
+  print results
+
+  return numCorrect, numTestRecords, predictionAccuracy
+
+
+
+def configureNetwork(inputFile,
+                     networkConfiguration):
+  """
+  Configure the network for various experiment values.
+  
+  @param inputFile (str) file containing the input data that will be fed to the 
+  network
+  @param networkConfiguration (dict) the configuration of this network.
+  """
+
+  # create the network encoders for sensor data.  
+  minval, maxval = _findCSVMinMax(inputFile)
+  _setScalarEncoderMinMax(networkConfiguration, minval, maxval)
+  encoders = networkConfiguration[SENSOR_REGION_NAME]["encoders"]
+
+  # Create and run network on this data.
+  #   Input data comes from a CSV file (scalar values, labels). The
+  #   RecordSensor region allows us to specify a file record stream as the
+  #   input source via the dataSource attribute.
+  dataSource = FileRecordStream(streamID=inputFile)
+
+  network = createNetwork(dataSource,
+                          encoders,
+                          networkConfiguration)
+
+  # Need to init the network before it can run.
+  network.initialize()
+  return network
+
+
+
+def _findNumberOfPartitions(networkConfiguration, numRecords):
+  """
+  Find the number of partitions for the input data based on a specific
+  networkConfiguration. 
+  
+  @param networkConfiguration (dict) the configuration of this network.
+  @param numRecords (int) Number of records of the input dataset.
+  @return partitions (list of tuples) Region names and associated indices 
+  partitioning the input dataset to indicate at which recordNumber it should 
+  start learning. The remaining of the data (last partition) is used as a test 
+  set. 
+  """
+
+  spEnabled = networkConfiguration[SP_REGION_NAME]["enabled"]
+  tmEnabled = networkConfiguration[TM_REGION_NAME]["enabled"]
+  upEnabled = networkConfiguration[UP_REGION_NAME]["enabled"]
+
+  partitionNames = []
+  if spEnabled and tmEnabled and upEnabled:
+    numPartitions = 5
+    partitionNames.extend([SP_REGION_NAME,
+                           TM_REGION_NAME,
+                           UP_REGION_NAME])
+  elif spEnabled and tmEnabled:
+    numPartitions = 4
+    partitionNames.extend([SP_REGION_NAME,
+                           TM_REGION_NAME])
+  elif spEnabled:
+    numPartitions = 3
+    partitionNames.append(SP_REGION_NAME)
+  else:
+    numPartitions = 2  # only the classifier, so just test and train partitions
+  partitionNames.append(CLASSIFIER_REGION_NAME)
+  partitionNames.append(TEST_PARTITION_NAME)
+
+  partitionIndices = [numRecords * i / numPartitions
+                      for i in range(0, numPartitions)]
+
+  return zip(partitionNames, partitionIndices)
+
+
+
+def _setScalarEncoderMinMax(networkConfiguration, minval, maxval):
+  """
+  Introspect an input file and set the min and max values.
+  
+  @param networkConfiguration (dict) the configuration of this network.
+  """
+  scalarEncoderParams = (networkConfiguration
+                         [SENSOR_REGION_NAME]
+                         ["encoders"]
+                         [SCALAR_ENCODER_NAME])
+  scalarEncoderParams["minval"] = minval
+  scalarEncoderParams["maxval"] = maxval
+
+
+
+def _findCSVMinMax(fileName):
+  """
+  Introspect a CSV file and fin the min and max values. Useful for the 
+  scalar encoder.
+  @param fileName: (str) name of the CSV file to introspect.
+  @return: (tuple) min and max value of the CSV file.
+  """
+  # get the scalar values
+  values = []
+  with open(fileName, 'rU') as inputFile:
+    csvReader = csv.reader(inputFile)
+    headers = csvReader.next()
+
+    # skip the rest of the header rows
+    csvReader.next()
+    csvReader.next()
+
+    if headers[0] != 'x':
+      raise ValueError("first column should be named "
+                       "'x' but is '%s'" % headers[0])
+    if headers[1] != 'y':
+      raise ValueError("first column should be named "
+                       "'y' but is '%s'" % headers[1])
+
+    for line in csvReader:
+      values.append(float(line[1]))
+
+  return min(values), max(values)
