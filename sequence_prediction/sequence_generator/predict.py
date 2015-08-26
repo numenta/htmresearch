@@ -101,7 +101,7 @@ MODEL_PARAMS = {
         "connectedPerm": 0.50,
         "permanenceInc": 0.1,
         "permanenceDec": 0.1,
-        "predictedSegmentDecrement": 0.0333,
+        "predictedSegmentDecrement": 0.01,
         "globalDecay": 0.0,
         "maxAge": 0,
         "minThreshold": 15,
