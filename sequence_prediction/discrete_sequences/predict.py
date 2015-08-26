@@ -38,7 +38,7 @@ from nupic.data.inference_shifter import InferenceShifter
 from nupic.frameworks.opf.modelfactory import ModelFactory
 from nupic.research.monitor_mixin.trace import CountsTrace
 
-from sequence_generator import SequenceGenerator
+from sequence_generator.sequence_generator import SequenceGenerator
 
 
 
