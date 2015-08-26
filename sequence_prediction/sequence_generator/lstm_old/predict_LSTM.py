@@ -41,17 +41,35 @@ NUM_PREDICTIONS = 1
 
 
 
-def num2vec(activeBits, nDim):
-  sample = np.zeros((1,nDim))
-  sample[0][activeBits] = 1
+vectors = {}
+
+
+
+def num2vec(num, nDim):
+  if num in vectors:
+    return vectors[num]
+
+  sample = np.random.random((1,nDim))
+  # if num < 100:
+  #   vectors[num] = sample
+  vectors[num] = sample
   return sample
 
 def seq2vec(sequence, nDim):
   nSample = len(sequence)
   seq_vec = np.zeros((nSample, nDim))
   for i in xrange(nSample):
-    seq_vec[i][sequence[i]] = 1
+    seq_vec[i] = num2vec(sequence[i], nDim)
   return seq_vec
+
+def closest_node(node, nodes):
+  nodes = np.array(nodes)
+  dist_2 = np.sum((nodes - node)**2, axis=2)
+  return np.argmin(dist_2)
+
+def classify(netActivation):
+  idx = closest_node(netActivation, vectors.values())
+  return vectors.keys()[idx]
 
 
 def initializeLSTMnet(nDim, nLSTMcells=10):
@@ -64,48 +82,86 @@ def initializeLSTMnet(nDim, nLSTMcells=10):
 
 if __name__ == "__main__":
   sequences = generateSequences(NUM_PREDICTIONS)
-  nDim = max([len(sequence) for sequence in sequences]) + 2  # TODO: Why 2?
+  # nDim = max([len(sequence) for sequence in sequences]) + 2  # TODO: Why 2?
+  nDim = 100
 
   from pylab import rcParams
   rcParams.update({'figure.autolayout': True})
   rcParams.update({'figure.facecolor': 'white'})
   rcParams.update({'ytick.labelsize': 8})
 
-  # Batch training mode
-  print "generate a dataset of sequences"
-  ds = SequentialDataSet(nDim, nDim)
-  for i in xrange(len(sequences)):
-    sequence = sequences[i]
-    print sequence
-    seq_vec = seq2vec(sequence, nDim)
-    for j in xrange(len(sequence)-1):
-      ds.addSample(seq_vec[j], seq_vec[j+1])
-    ds.newSequence()
+  # for i in xrange(len(sequences)):
+  #   sequence = sequences[i]
+  #   print sequence
+  #   seq_vec = seq2vec(sequence, nDim)
+  #   for j in xrange(len(sequence)-1):
+  #     ds.addSample(seq_vec[j], seq_vec[j+1])
+  #   ds.newSequence()
 
-  rptPerSeqList = [1, 2, 5, 10, 20, 50, 100, 150, 175]
+  rptPerSeqList = [1, 2, 5, 10, 20, 50, 100, 250, 500, 1000]
   accuracyList = []
   for rptNum in rptPerSeqList:
     # train LSTM
-    net = initializeLSTMnet(nDim, nLSTMcells=20)
+    # net = initializeLSTMnet(nDim, nLSTMcells=30)
+    # net.reset()
+
+    # trainer = RPropMinusTrainer(net)
+
+    # for _ in xrange(rptNum):
+    #   # Batch training mode
+    #   # print "generate a dataset of sequences"
+    #   ds = SequentialDataSet(nDim, nDim)
+    #   trainer.setData(ds)
+    #   import random
+    #   random.shuffle(sequences)
+    #   concat_sequences = []
+    #   for sequence in sequences:
+    #     concat_sequences += sequence
+    #     concat_sequences.append(random.randrange(100, 1000000))
+    #   # concat_sequences = sum(sequences, [])
+    #   for j in xrange(len(concat_sequences) - 1):
+    #     ds.addSample(num2vec(concat_sequences[j], nDim), num2vec(concat_sequences[j+1], nDim))
+
+    #   trainer.train()
+    net = initializeLSTMnet(nDim, nLSTMcells=50)
     net.reset()
-    trainer = RPropMinusTrainer(net, dataset=ds)
+    ds = SequentialDataSet(nDim, nDim)
+    trainer = RPropMinusTrainer(net)
+    trainer.setData(ds)
+    for _ in xrange(1000):
+      # Batch training mode
+      # print "generate a dataset of sequences"
+      import random
+      random.shuffle(sequences)
+      concat_sequences = []
+      for sequence in sequences:
+        concat_sequences += sequence
+        concat_sequences.append(random.randrange(100, 1000000))
+    for j in xrange(len(concat_sequences) - 1):
+      ds.addSample(num2vec(concat_sequences[j], nDim), num2vec(concat_sequences[j+1], nDim))
+
     trainer.trainEpochs(rptNum)
 
-    print "test LSTM"
+    print
+    print "test LSTM, repeats =", rptNum
     # test LSTM
     correct = []
     for i in xrange(len(sequences)):
-      sequence = sequences[i]
-      print sequence
       net.reset()
+      sequence = sequences[i]
+      sequence = sequence + [random.randrange(100, 1000000)]
+      print sequence
       predictedInput = []
-      for j in xrange(len(sequence)-1):
+      for j in xrange(len(sequence)):
         sample = num2vec(sequence[j], nDim)
         netActivation = net.activate(sample)
-        predictedInput.append(np.argmax(netActivation))
-        print " actual input: ", sequence[j+1], " predicted Input: ", predictedInput[j]
+        if j+1 < len(sequence) - 1:
+          predictedInput.append(classify(netActivation))
+          print " actual input: ", sequence[j+1], " predicted Input: ", predictedInput[j]
 
-      correct.append(predictedInput[-1] == sequence[-1])
+          correct.append(predictedInput[j] == sequence[j+1])
+
+      # correct.append(predictedInput[-1] == sequence[-1])
 
     accuracyList.append(sum(correct)/float(len(correct)))
     print "Accuracy: ", accuracyList[-1]
