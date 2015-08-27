@@ -169,7 +169,8 @@ class Suite(PyExperimentSuite):
     else:
       self.computeCounter -= 1
 
-    if iteration < params['disable_learning_after']:
+    if (not params['compute_test_mode'] or
+        iteration % params['compute_every'] == 0):
       self.net = self.train(params)
 
     predictions = None
