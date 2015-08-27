@@ -58,8 +58,8 @@ class BasicEncoder(Encoder):
     return encoding
 
 
-  def random(self):
-    return self.encode(random.randint(self.num))
+  def randomSymbol(self):
+    return random.randint(self.num)
 
 
   def classify(self, encoding):
@@ -110,6 +110,7 @@ class Suite(PyExperimentSuite):
     self.computeCounter = 0
 
     self.history = []
+    self.resets = []
     self.currentSequence = self.dataset.generateSequence()
 
     self.net = None
@@ -117,6 +118,11 @@ class Suite(PyExperimentSuite):
 
   def iterate(self, params, repetition, iteration):
     self.history.append(self.currentSequence.pop(0))
+
+    reset = (len(self.currentSequence) == 0 and
+             params['separate_sequences_with'] == 'reset')
+    self.resets.append(reset)
+
     if len(self.currentSequence) == 0:
       self.currentSequence = self.dataset.generateSequence()
 
@@ -144,9 +150,12 @@ class Suite(PyExperimentSuite):
       ds = SequentialDataSet(n, n)
       trainer = RPropMinusTrainer(net, dataset=ds)
 
-      for i in xrange(len(self.history) - 1):
-        ds.addSample(self.encoder.encode(self.history[i]),
-                     self.encoder.encode(self.history[i+1]))
+      for i in xrange(1, len(self.history)):
+        if not self.resets[i-1]:
+          ds.addSample(self.encoder.encode(self.history[i-1]),
+                       self.encoder.encode(self.history[i]))
+        if self.resets[i]:
+          ds.newSequence()
 
       if len(self.history) > 1:
         trainer.trainEpochs(params['num_epochs'])
@@ -154,13 +163,20 @@ class Suite(PyExperimentSuite):
 
     prediction = None
 
-    for symbol in self.history:
+    for i, symbol in enumerate(self.history):
       output = net.activate(self.encoder.encode(symbol))
       prediction = self.encoder.classify(output)
 
+      if self.resets[i]:
+        net.reset()
+
+    truth = None if self.resets[-1] else self.currentSequence[0]
+
     return {"iteration": iteration,
+            "current": self.history[-1],
+            "reset": self.resets[-1],
             "prediction": prediction,
-            "truth": self.currentSequence[0]}
+            "truth": truth}
 
 
 
