@@ -112,11 +112,16 @@ class Suite(PyExperimentSuite):
     self.history = []
     self.currentSequence = self.dataset.generateSequence()
 
+    self.net = None
+
 
   def iterate(self, params, repetition, iteration):
     self.history.append(self.currentSequence.pop(0))
     if len(self.currentSequence) == 0:
       self.currentSequence = self.dataset.generateSequence()
+
+    if iteration < params['compute_after']:
+      return None
 
     if iteration % params['compute_every'] == 0:
       self.computeCounter = params['compute_for']
@@ -128,20 +133,24 @@ class Suite(PyExperimentSuite):
 
     n = params['encoding_num']
 
-    net = buildNetwork(n, params['num_cells'], n,
-                       hiddenclass=LSTMLayer, bias=True, outputbias=False, recurrent=True)
-    net.reset()
+    net = self.net
 
-    ds = SequentialDataSet(n, n)
-    trainer = RPropMinusTrainer(net, dataset=ds)
-
-    for i in xrange(len(self.history) - 1):
-      ds.addSample(self.encoder.encode(self.history[i]),
-                   self.encoder.encode(self.history[i+1]))
-
-    if len(self.history) > 1:
-      trainer.trainEpochs(params['num_epochs'])
+    if iteration < params['disable_learning_after']:
+      net = buildNetwork(n, params['num_cells'], n,
+                         hiddenclass=LSTMLayer, bias=True, outputbias=False, recurrent=True)
+      self.net = net
       net.reset()
+
+      ds = SequentialDataSet(n, n)
+      trainer = RPropMinusTrainer(net, dataset=ds)
+
+      for i in xrange(len(self.history) - 1):
+        ds.addSample(self.encoder.encode(self.history[i]),
+                     self.encoder.encode(self.history[i+1]))
+
+      if len(self.history) > 1:
+        trainer.trainEpochs(params['num_epochs'])
+        net.reset()
 
     prediction = None
 
