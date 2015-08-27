@@ -59,7 +59,7 @@ class BasicEncoder(Encoder):
 
 
   def randomSymbol(self):
-    return random.randint(self.num)
+    return random.randrange(self.num)
 
 
   def classify(self, encoding):
@@ -111,6 +111,7 @@ class Suite(PyExperimentSuite):
 
     self.history = []
     self.resets = []
+    self.randoms = []
     self.currentSequence = self.dataset.generateSequence()
 
     self.net = None
@@ -119,12 +120,19 @@ class Suite(PyExperimentSuite):
   def iterate(self, params, repetition, iteration):
     self.history.append(self.currentSequence.pop(0))
 
-    reset = (len(self.currentSequence) == 0 and
-             params['separate_sequences_with'] == 'reset')
-    self.resets.append(reset)
+    resetFlag = (len(self.currentSequence) == 0 and
+                 params['separate_sequences_with'] == 'reset')
+    self.resets.append(resetFlag)
+
+    randomFlag = (len(self.currentSequence) == 0 and
+                  params['separate_sequences_with'] == 'random')
+    self.randoms.append(randomFlag)
 
     if len(self.currentSequence) == 0:
-      self.currentSequence = self.dataset.generateSequence()
+      if randomFlag:
+        self.currentSequence.append(self.encoder.randomSymbol())
+
+      self.currentSequence += self.dataset.generateSequence()
 
     if iteration < params['compute_after']:
       return None
@@ -170,11 +178,14 @@ class Suite(PyExperimentSuite):
       if self.resets[i]:
         net.reset()
 
-    truth = None if self.resets[-1] else self.currentSequence[0]
+    truth = None if (self.resets[-1] or
+                     self.randoms[-1] or
+                     len(self.randoms) >= 2 and self.randoms[-2]) else self.currentSequence[0]
 
     return {"iteration": iteration,
             "current": self.history[-1],
             "reset": self.resets[-1],
+            "random": self.randoms[-1],
             "prediction": prediction,
             "truth": truth}
 
