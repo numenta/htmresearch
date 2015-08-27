@@ -45,7 +45,7 @@ class Encoder(object):
     pass
 
 
-  def classify(self, encoding):
+  def classify(self, encoding, num=1):
     pass
 
 
@@ -62,8 +62,9 @@ class BasicEncoder(Encoder):
     return random.randrange(self.num)
 
 
-  def classify(self, encoding):
-    return numpy.argmax(encoding)
+  def classify(self, encoding, num=1):
+    idx = numpy.argpartition(encoding, -num)[-num:]
+    return idx[numpy.argsort(encoding[idx])][::-1].tolist()
 
 
 
@@ -169,11 +170,11 @@ class Suite(PyExperimentSuite):
         trainer.trainEpochs(params['num_epochs'])
         net.reset()
 
-    prediction = None
+    predictions = None
 
     for i, symbol in enumerate(self.history):
       output = net.activate(self.encoder.encode(symbol))
-      prediction = self.encoder.classify(output)
+      predictions = self.encoder.classify(output, num=params['num_predictions'])
 
       if self.resets[i]:
         net.reset()
@@ -186,7 +187,7 @@ class Suite(PyExperimentSuite):
             "current": self.history[-1],
             "reset": self.resets[-1],
             "random": self.randoms[-1],
-            "prediction": prediction,
+            "predictions": predictions,
             "truth": truth}
 
 
