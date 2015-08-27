@@ -118,6 +118,29 @@ class Suite(PyExperimentSuite):
     self.net = None
 
 
+  def train(self, params):
+    n = params['encoding_num']
+    net = buildNetwork(n, params['num_cells'], n,
+                       hiddenclass=LSTMLayer, bias=True, outputbias=False, recurrent=True)
+    net.reset()
+
+    ds = SequentialDataSet(n, n)
+    trainer = RPropMinusTrainer(net, dataset=ds)
+
+    for i in xrange(1, len(self.history)):
+      if not self.resets[i-1]:
+        ds.addSample(self.encoder.encode(self.history[i-1]),
+                     self.encoder.encode(self.history[i]))
+      if self.resets[i]:
+        ds.newSequence()
+
+    if len(self.history) > 1:
+      trainer.trainEpochs(params['num_epochs'])
+      net.reset()
+
+    return net
+
+
   def iterate(self, params, repetition, iteration):
     self.history.append(self.currentSequence.pop(0))
 
@@ -146,38 +169,17 @@ class Suite(PyExperimentSuite):
     else:
       self.computeCounter -= 1
 
-    n = params['encoding_num']
-
-    net = self.net
-
     if iteration < params['disable_learning_after']:
-      net = buildNetwork(n, params['num_cells'], n,
-                         hiddenclass=LSTMLayer, bias=True, outputbias=False, recurrent=True)
-      self.net = net
-      net.reset()
-
-      ds = SequentialDataSet(n, n)
-      trainer = RPropMinusTrainer(net, dataset=ds)
-
-      for i in xrange(1, len(self.history)):
-        if not self.resets[i-1]:
-          ds.addSample(self.encoder.encode(self.history[i-1]),
-                       self.encoder.encode(self.history[i]))
-        if self.resets[i]:
-          ds.newSequence()
-
-      if len(self.history) > 1:
-        trainer.trainEpochs(params['num_epochs'])
-        net.reset()
+      self.net = self.train(params)
 
     predictions = None
 
     for i, symbol in enumerate(self.history):
-      output = net.activate(self.encoder.encode(symbol))
+      output = self.net.activate(self.encoder.encode(symbol))
       predictions = self.encoder.classify(output, num=params['num_predictions'])
 
       if self.resets[i]:
-        net.reset()
+        self.net.reset()
 
     truth = None if (self.resets[-1] or
                      self.randoms[-1] or
