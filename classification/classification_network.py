@@ -544,7 +544,7 @@ def _findNumberOfPartitions(networkConfiguration, numRecords):
 
 def _setScalarEncoderMinMax(networkConfiguration, minval, maxval):
   """
-  Introspect an input file and set the min and max values.
+  Set the min and max values.
   
   @param networkConfiguration (dict) the configuration of this network.
   """
@@ -559,7 +559,7 @@ def _setScalarEncoderMinMax(networkConfiguration, minval, maxval):
 
 def _findCSVMinMax(fileName):
   """
-  Introspect a CSV file and fin the min and max values. Useful for the 
+  Introspect a CSV file and find the min and max values. Useful for the 
   scalar encoder.
   @param fileName: (str) name of the CSV file to introspect.
   @return: (tuple) min and max value of the CSV file.
