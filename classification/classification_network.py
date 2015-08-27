@@ -20,11 +20,9 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 """
-The methods here are a factory to create a classification network:
-  encoder -> (SP) -> (TM) -> (UP) -> classifier
+The methods here are a factory to create a classification network 
+of any of sensor, SP, TM, UP, and classifier regions.
 """
-
-import csv
 
 try:
   import simplejson as json
