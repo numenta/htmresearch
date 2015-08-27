@@ -107,16 +107,24 @@ class Suite(PyExperimentSuite):
     else:
       raise Exception("Dataset not found")
 
-    self.history = []
-    self.predictions = []
+    self.computeCounter = 0
 
-    self.currentSequence = []
+    self.history = []
+    self.currentSequence = self.dataset.generateSequence()
 
 
   def iterate(self, params, repetition, iteration):
+    self.history.append(self.currentSequence.pop(0))
     if len(self.currentSequence) == 0:
       self.currentSequence = self.dataset.generateSequence()
-    self.history.append(self.currentSequence.pop(0))
+
+    if iteration % params['compute_every'] == 0:
+      self.computeCounter = params['compute_for']
+
+    if self.computeCounter == 0:
+      return None
+    else:
+      self.computeCounter -= 1
 
     n = params['encoding_num']
 
@@ -141,11 +149,9 @@ class Suite(PyExperimentSuite):
       output = net.activate(self.encoder.encode(symbol))
       prediction = self.encoder.classify(output)
 
-    self.predictions.append(prediction)
-
     return {"iteration": iteration,
-            "history": self.history,
-            "predictions": self.predictions}
+            "prediction": prediction,
+            "truth": self.currentSequence[0]}
 
 
 
