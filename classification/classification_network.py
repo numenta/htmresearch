@@ -20,11 +20,9 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 """
-The methods here are a factory to create a classification network:
-  encoder -> (SP) -> (TM) -> (UP) -> classifier
+The methods here are a factory to create a classification network 
+of any of sensor, SP, TM, UP, and classifier regions.
 """
-
-import csv
 
 try:
   import simplejson as json
@@ -478,17 +476,15 @@ def configureNetwork(inputFile,
   network
   @param networkConfiguration (dict) the configuration of this network.
   """
-
-  # create the network encoders for sensor data.  
-  minval, maxval = _findCSVMinMax(inputFile)
-  _setScalarEncoderMinMax(networkConfiguration, minval, maxval)
-  encoders = networkConfiguration[SENSOR_REGION_NAME]["encoders"]
-
   # Create and run network on this data.
   #   Input data comes from a CSV file (scalar values, labels). The
   #   RecordSensor region allows us to specify a file record stream as the
   #   input source via the dataSource attribute.
+
+  # create the network encoders for sensor data. 
   dataSource = FileRecordStream(streamID=inputFile)
+  _setScalarEncoderMinMax(networkConfiguration, dataSource)
+  encoders = networkConfiguration[SENSOR_REGION_NAME]["encoders"]
 
   network = createNetwork(dataSource,
                           encoders,
@@ -542,46 +538,18 @@ def _findNumberOfPartitions(networkConfiguration, numRecords):
 
 
 
-def _setScalarEncoderMinMax(networkConfiguration, minval, maxval):
+def _setScalarEncoderMinMax(networkConfiguration, dataSource):
   """
-  Introspect an input file and set the min and max values.
+  Set the min and max values.
   
   @param networkConfiguration (dict) the configuration of this network.
+  @param dataSource (RecordStream) the input source
   """
   scalarEncoderParams = (networkConfiguration
                          [SENSOR_REGION_NAME]
                          ["encoders"]
                          [SCALAR_ENCODER_NAME])
-  scalarEncoderParams["minval"] = minval
-  scalarEncoderParams["maxval"] = maxval
+  fieldName = scalarEncoderParams["fieldname"]
+  scalarEncoderParams["minval"] = dataSource.getFieldMin(fieldName)
+  scalarEncoderParams["maxval"] = dataSource.getFieldMax(fieldName) 
 
-
-
-def _findCSVMinMax(fileName):
-  """
-  Introspect a CSV file and fin the min and max values. Useful for the 
-  scalar encoder.
-  @param fileName: (str) name of the CSV file to introspect.
-  @return: (tuple) min and max value of the CSV file.
-  """
-  # get the scalar values
-  values = []
-  with open(fileName, 'rU') as inputFile:
-    csvReader = csv.reader(inputFile)
-    headers = csvReader.next()
-
-    # skip the rest of the header rows
-    csvReader.next()
-    csvReader.next()
-
-    if headers[0] != 'x':
-      raise ValueError("first column should be named "
-                       "'x' but is '%s'" % headers[0])
-    if headers[1] != 'y':
-      raise ValueError("first column should be named "
-                       "'y' but is '%s'" % headers[1])
-
-    for line in csvReader:
-      values.append(float(line[1]))
-
-  return min(values), max(values)
