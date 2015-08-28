@@ -93,16 +93,15 @@ class DistributedEncoder(Encoder):
 
 
   @staticmethod
-  def closest(node, nodes):
+  def closest(node, nodes, num):
     nodes = numpy.array(nodes)
     dist_2 = numpy.sum((nodes - node)**2, axis=2)
-    return numpy.argmin(dist_2)
+    return dist_2.flatten().argsort()[:num]
 
 
   def classify(self, encoding, num=1):
-    # TODO: support num > 1
-    idx = self.closest(encoding, self.encodings.values())
-    return [self.encodings.keys()[idx]]
+    idx = self.closest(encoding, self.encodings.values(), num)
+    return [self.encodings.keys()[i] for i in idx]
 
 
 
