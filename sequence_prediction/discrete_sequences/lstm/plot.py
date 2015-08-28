@@ -42,30 +42,36 @@ def plotMovingAverage(data, window, label=None):
 
 
 
-def plotAccuracy(accuracy, iteration, window=100, label=None):
+def plotAccuracy(results, window=100, label=None):
   pyplot.title("High-order prediction")
   pyplot.xlabel("# of elements seen")
   pyplot.ylabel("High-order prediction accuracy over last {0} elements".format(window))
 
+  accuracy = results[0]
   movingData = movingAverage(accuracy, min(len(accuracy), window))
-  x = iteration[:len(movingData)]
+  x = results[1][:len(movingData)]
   pyplot.plot(x, movingData, label=label,
               marker='o', markersize=3, markeredgewidth=0)
 
 
 
-def computeAccuracy(predictions, truth, resets=None, randoms=None):
+def computeAccuracy(predictions, truth, iteration, resets=None, randoms=None):
   accuracy = []
+  x = []
 
   for i in xrange(len(predictions) - 1):
+    if truth[i] is None:
+      continue
+
     if resets is not None or randoms is not None:
       if not (resets[i+1] or randoms[i+1]):
         continue
 
     correct = truth[i] is None or truth[i] in predictions[i]
     accuracy.append(correct)
+    x.append(iteration[i])
 
-  return accuracy
+  return (accuracy, x)
 
 
 
@@ -94,7 +100,6 @@ if __name__ == '__main__':
   rcParams.update({'ytick.labelsize': 8})
   rcParams.update({'figure.figsize': (12, 6)})
 
-  plotAccuracy(computeAccuracy(predictions, truth, resets=resets, randoms=randoms),
-               iteration,
+  plotAccuracy(computeAccuracy(predictions, truth, iteration, resets=resets, randoms=randoms),
                window=args.window)
   pyplot.show()
