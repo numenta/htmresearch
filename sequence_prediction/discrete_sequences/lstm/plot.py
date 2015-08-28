@@ -54,10 +54,14 @@ def plotAccuracy(accuracy, iteration, window=100, label=None):
 
 
 
-def computeAccuracy(predictions, truth):
+def computeAccuracy(predictions, truth, resets=None, randoms=None):
   accuracy = []
 
-  for i in xrange(len(predictions)):
+  for i in xrange(len(predictions) - 1):
+    if resets is not None or randoms is not None:
+      if not (resets[i+1] or randoms[i+1]):
+        continue
+
     correct = truth[i] is None or truth[i] in predictions[i]
     accuracy.append(correct)
 
@@ -69,6 +73,7 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('experiment', metavar='/path/to/experiment', type=str)
   parser.add_argument('-w', '--window', type=int, default=100)
+  parser.add_argument('-e', '--end-of-sequences-only', action='store_true')
 
   suite = Suite()
   args = parser.parse_args()
@@ -79,6 +84,9 @@ if __name__ == '__main__':
   predictions = suite.get_history(experiment, 0, 'predictions')
   truth = suite.get_history(experiment, 0, 'truth')
 
+  resets = suite.get_history(experiment, 0, 'reset') if args.end_of_sequences_only else None
+  randoms = suite.get_history(experiment, 0, 'random') if args.end_of_sequences_only else None
+
   from pylab import rcParams
 
   rcParams.update({'figure.autolayout': True})
@@ -86,5 +94,7 @@ if __name__ == '__main__':
   rcParams.update({'ytick.labelsize': 8})
   rcParams.update({'figure.figsize': (12, 6)})
 
-  plotAccuracy(computeAccuracy(predictions, truth), iteration, window=args.window)
+  plotAccuracy(computeAccuracy(predictions, truth, resets=resets, randoms=randoms),
+               iteration,
+               window=args.window)
   pyplot.show()
