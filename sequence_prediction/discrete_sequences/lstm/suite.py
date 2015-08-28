@@ -88,6 +88,8 @@ class SimpleDataset(Dataset):
     self.sequences = [
       [6, 8, 7, 4, 2, 3, 0],
       [2, 9, 7, 8, 5, 3, 4, 6],
+      [6, 3, 4, 2, 7, 8, 5],
+      [2, 4, 3, 5, 8, 7, 9, 1]
     ]
 
   def generateSequence(self):
