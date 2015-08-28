@@ -68,6 +68,42 @@ class BasicEncoder(Encoder):
 
 
 
+class DistributedEncoder(Encoder):
+
+  def __init__(self, *args, **kwargs):
+    super(DistributedEncoder, self).__init__(*args, **kwargs)
+
+    self.encodings = {}
+
+
+  def encode(self, symbol):
+    if symbol in self.encodings:
+      return self.encodings[symbol]
+
+    encoding = numpy.random.random((1, self.num))
+    self.encodings[symbol] = encoding
+
+    return encoding
+
+
+  def randomSymbol(self):
+    return random.randrange(self.num, 10000000)
+
+
+  @staticmethod
+  def closest(node, nodes):
+    nodes = numpy.array(nodes)
+    dist_2 = numpy.sum((nodes - node)**2, axis=2)
+    return numpy.argmin(dist_2)
+
+
+  def classify(self, encoding, num=1):
+    # TODO: support num > 1
+    idx = self.closest(encoding, self.encodings.values())
+    return [self.encodings.keys()[idx]]
+
+
+
 class Dataset(object):
 
   def generateSequence(self):
@@ -139,6 +175,8 @@ class Suite(PyExperimentSuite):
   def reset(self, params, repetition):
     if params['encoding'] == 'basic':
       self.encoder = BasicEncoder(params['encoding_num'])
+    elif params['encoding'] == 'distributed':
+      self.encoder = DistributedEncoder(params['encoding_num'])
     else:
       raise Exception("Encoder not found")
 
