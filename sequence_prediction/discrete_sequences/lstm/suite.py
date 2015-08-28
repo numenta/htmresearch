@@ -275,8 +275,7 @@ class Suite(PyExperimentSuite):
                      self.randoms[-1] or
                      len(self.randoms) >= 2 and self.randoms[-2]) else self.currentSequence[0]
 
-    return {"iteration": iteration,
-            "current": self.history[-1],
+    return {"current": self.history[-1],
             "reset": self.resets[-1],
             "random": self.randoms[-1],
             "predictions": predictions,
