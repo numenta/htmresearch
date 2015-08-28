@@ -29,6 +29,8 @@ from pybrain.tools.shortcuts import buildNetwork
 from pybrain.structure.modules import LSTMLayer
 from pybrain.supervised import RPropMinusTrainer
 
+from reberGrammar.reberGrammar import generateSequencesNumber
+
 
 
 class Encoder(object):
@@ -113,8 +115,15 @@ class Dataset(object):
 
 class ReberDataset(Dataset):
 
+  def __init__(self, maxLength=None):
+    if maxLength is None:
+      raise "maxLength not specified"
+
+    self.maxLength = maxLength
+
+
   def generateSequence(self):
-    pass
+    return generateSequencesNumber(self.maxLength)[0]
 
 
 
@@ -182,6 +191,8 @@ class Suite(PyExperimentSuite):
 
     if params['dataset'] == 'simple':
       self.dataset = SimpleDataset()
+    elif params['dataset'] == 'reber':
+      self.dataset = ReberDataset(maxLength=params['max_length'])
     elif params['dataset'] == 'high-order':
       self.dataset = HighOrderDataset(numPredictions=params['num_predictions'])
     else:
