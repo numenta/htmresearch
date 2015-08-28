@@ -20,7 +20,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import sys
+import argparse
 
 from matplotlib import pyplot
 import numpy
@@ -66,8 +66,14 @@ def computeAccuracy(predictions, truth):
 
 
 if __name__ == '__main__':
+  parser = argparse.ArgumentParser()
+  parser.add_argument('experiment', metavar='/path/to/experiment', type=str)
+  parser.add_argument('-w', '--window', type=int, default=100)
+
   suite = Suite()
-  experiment = sys.argv[1]
+  args = parser.parse_args()
+
+  experiment = args.experiment
 
   iteration = suite.get_history(experiment, 0, 'iteration')
   predictions = suite.get_history(experiment, 0, 'predictions')
@@ -80,5 +86,5 @@ if __name__ == '__main__':
   rcParams.update({'ytick.labelsize': 8})
   rcParams.update({'figure.figsize': (12, 6)})
 
-  plotAccuracy(computeAccuracy(predictions, truth), iteration)
+  plotAccuracy(computeAccuracy(predictions, truth), iteration, window=args.window)
   pyplot.show()
