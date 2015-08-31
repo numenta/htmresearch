@@ -25,15 +25,15 @@ import unittest
 
 from classification_network import configureNetwork, runNetwork
 from generate_sensor_data import generateData
-from settings import (NUM_CATEGORIES,
-                      SEQUENCE_LENGTH,
-                      OUTFILE_NAME,
-                      NUM_RECORDS,
-                      SIGNAL_AMPLITUDES,
-                      SIGNAL_MEANS,
-                      SIGNAL_PERIODS,
-                      WHITE_NOISE_AMPLITUDES,
-                      DATA_DIR)
+from sensor_data_exp_settings import (NUM_CATEGORIES,
+                                      SEQUENCE_LENGTH,
+                                      OUTFILE_NAME,
+                                      NUM_RECORDS,
+                                      SIGNAL_AMPLITUDES,
+                                      SIGNAL_MEANS,
+                                      SIGNAL_PERIODS,
+                                      WHITE_NOISE_AMPLITUDES,
+                                      DATA_DIR)
 from network_params import (SENSOR_REGION_NAME,
                             SP_REGION_NAME,
                             TM_REGION_NAME,
@@ -73,7 +73,7 @@ def _generateNetworkConfigurations():
   baseNetworkConfig[CLASSIFIER_REGION_NAME]["type"] = CLA_CLASSIFIER_TYPE
   baseNetworkConfig[CLASSIFIER_REGION_NAME]["params"] = CLA_CLASSIFIER_PARAMS
   networkConfigurations.append(baseNetworkConfig)
-  
+
   # First config: SP and TM enabled. UP disabled. KNN Classifier.
   baseNetworkConfig = copy.deepcopy(NETWORK_CONFIGURATION)
   baseNetworkConfig[SP_REGION_NAME]["enabled"] = True

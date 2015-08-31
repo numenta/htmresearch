@@ -25,39 +25,38 @@ import csv
 import matplotlib.pyplot as plt
 
 from generate_sensor_data import generateData
-from settings import (DATA_DIR,
-                      OUTFILE_NAME,
-                      WHITE_NOISE_AMPLITUDES,
-                      SIGNAL_MEANS,
-                      SIGNAL_PERIODS,
-                      SEQUENCE_LENGTH,
-                      NUM_RECORDS,
-                      SIGNAL_AMPLITUDES,
-                      NUM_CATEGORIES)
+from sensor_data_exp_settings import (DATA_DIR,
+                                      OUTFILE_NAME,
+                                      WHITE_NOISE_AMPLITUDES,
+                                      SIGNAL_MEANS,
+                                      SIGNAL_PERIODS,
+                                      SEQUENCE_LENGTH,
+                                      NUM_RECORDS,
+                                      SIGNAL_AMPLITUDES,
+                                      NUM_CATEGORIES)
 
 
 
 def _generateCSVData():
   """
   Generate CSV data to plot.
-  @return outFiles (list) paths to output files
+  @return outFiles: (list) paths to output files
   """
   outFiles = []
   for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
-    for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
-      for signalMean in SIGNAL_MEANS:
-        for signalAmplitude in SIGNAL_AMPLITUDES:
-          for signalPeriod in SIGNAL_PERIODS:
-            outFile = generateData(DATA_DIR,
-                                   OUTFILE_NAME,
-                                   signalMean,
-                                   signalPeriod,
-                                   SEQUENCE_LENGTH,
-                                   NUM_RECORDS,
-                                   signalAmplitude,
-                                   NUM_CATEGORIES,
-                                   noiseAmplitude)
-            outFiles.append(outFile)
+    for signalMean in SIGNAL_MEANS:
+      for signalAmplitude in SIGNAL_AMPLITUDES:
+        for signalPeriod in SIGNAL_PERIODS:
+          outFile = generateData(DATA_DIR,
+                                 OUTFILE_NAME,
+                                 signalMean,
+                                 signalPeriod,
+                                 SEQUENCE_LENGTH,
+                                 NUM_RECORDS,
+                                 signalAmplitude,
+                                 NUM_CATEGORIES,
+                                 noiseAmplitude)
+          outFiles.append(outFile)
 
   return outFiles
 

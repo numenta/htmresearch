@@ -19,28 +19,29 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
-from settings import NUM_CATEGORIES
+from sensor_data_exp_settings import NUM_CATEGORIES
 
 # Regions verbosity
 VERBOSITY = 0
 
-# Region names for the network
+# Region names
 SENSOR_REGION_NAME = "sensorRegion"
 SP_REGION_NAME = "spRegion"
 TM_REGION_NAME = "tmRegion"
 UP_REGION_NAME = "upRegion"
 CLASSIFIER_REGION_NAME = "classifierRegion"
 
-# Sensor types
+# Region types
 SENSOR_TYPE = "py.RecordSensor"
+SP_REGION_TYPE = "py.SPRegion"
+TM_REGION_TYPE = "py.TPRegion"
+UP_REGION_TYPE = "py.UPRegion"
+CLA_CLASSIFIER_TYPE = "py.CLAClassifierRegion"
+KNN_CLASSIFIER_TYPE = "py.KNNClassifierRegion"
 
 # Encoder names
 SCALAR_ENCODER_NAME = "scalarEncoder"
 SCALAR_ENCODER_FIELD_NAME = "y"
-
-# Classifier types
-CLA_CLASSIFIER_TYPE = "py.CLAClassifierRegion"
-KNN_CLASSIFIER_TYPE = "py.KNNClassifierRegion"
 
 # Sensor region params
 RECORD_SENSOR_PARAMS = {
@@ -119,6 +120,7 @@ UP_PARAMS = {}
 NETWORK_CONFIGURATION = {
   SENSOR_REGION_NAME:
     {
+      "name": SENSOR_REGION_NAME,
       "type": SENSOR_TYPE,
       "params": RECORD_SENSOR_PARAMS,
       "encoders": {
@@ -127,21 +129,28 @@ NETWORK_CONFIGURATION = {
     },
   SP_REGION_NAME:
     {
-      "enabled": True,
+      "name": SP_REGION_NAME,
+      "type": SP_REGION_TYPE,
       "params": SP_PARAMS,
+      "enabled": True,
     },
   TM_REGION_NAME:
     {
-      "enabled": True,
+      "name": TM_REGION_NAME,
+      "type": TM_REGION_TYPE,
       "params": TM_PARAMS,
+      "enabled": True,
     },
   UP_REGION_NAME:
     {
-      "enabled": False,
+      "name": UP_REGION_NAME,
+      "type": UP_REGION_TYPE,
       "params": UP_PARAMS,
+      "enabled": False,
     },
   CLASSIFIER_REGION_NAME:
     {
+      "name": CLASSIFIER_REGION_NAME,
       "type": CLA_CLASSIFIER_TYPE,
       "params": CLA_CLASSIFIER_PARAMS
     }
