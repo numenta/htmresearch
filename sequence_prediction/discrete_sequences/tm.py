@@ -19,6 +19,11 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+"""
+Depends on:
+- https://github.com/numenta/nupic/pull/2491
+- https://github.com/numenta/nupic/pull/2495
+"""
 
 import operator
 import os
@@ -33,7 +38,7 @@ from nupic.data.inference_shifter import InferenceShifter
 from nupic.frameworks.opf.modelfactory import ModelFactory
 from nupic.research.monitor_mixin.trace import CountsTrace
 
-from sequence_generator import SequenceGenerator
+from sequence_generator.sequence_generator import SequenceGenerator
 
 
 
@@ -43,8 +48,9 @@ NUM_PREDICTIONS = [1, 2]
 NUM_RANDOM = 1
 PERTURB_AFTER = 1000
 
-RANDOM_RESERVOIR = 1000
 NUM_SYMBOLS = SequenceGenerator.numSymbols(MAX_ORDER, max(NUM_PREDICTIONS))
+RANDOM_START = NUM_SYMBOLS
+RANDOM_END = NUM_SYMBOLS + 1000
 
 MODEL_PARAMS = {
   "model": "CLA",
@@ -59,7 +65,7 @@ MODEL_PARAMS = {
           "fieldname": u"element",
           "name": u"element",
           "type": "SDRCategoryEncoder",
-          "categoryList": range(NUM_SYMBOLS + RANDOM_RESERVOIR),
+          "categoryList": range(max(RANDOM_END, NUM_SYMBOLS)),
           "n": 2048,
           "w": 41
         }
@@ -87,7 +93,7 @@ MODEL_PARAMS = {
         "cellsPerColumn": 32,
         "inputWidth": 2048,
         "seed": 1960,
-        "temporalImp": "tm_py",
+        "temporalImp": "monitored_tm_py",
         "newSynapseCount": 20,
         "maxSynapsesPerSegment": 128,
         "maxSegmentsPerCell": 128,
@@ -95,6 +101,7 @@ MODEL_PARAMS = {
         "connectedPerm": 0.50,
         "permanenceInc": 0.1,
         "permanenceDec": 0.1,
+        "predictedSegmentDecrement": 0.01,
         "globalDecay": 0.0,
         "maxAge": 0,
         "minThreshold": 15,
@@ -177,10 +184,10 @@ def generateSequences(numPredictions):
       [6, 3, 4, 2, 7, 8, 5],
       [1, 8, 7, 4, 2, 3, 5],
       [1, 3, 4, 2, 7, 8, 0],
-      [1, 9, 7, 8, 5, 3, 4, 0],
-      [1, 4, 3, 5, 8, 7, 9, 6],
+      [0, 9, 7, 8, 5, 3, 4, 1],
+      [0, 4, 3, 5, 8, 7, 9, 6],
       [2, 9, 7, 8, 5, 3, 4, 6],
-      [2, 4, 3, 5, 8, 7, 9, 0]
+      [2, 4, 3, 5, 8, 7, 9, 1]
     ]
 
   if numPredictions == 2:
@@ -211,12 +218,6 @@ def generateSequences(numPredictions):
   print
 
   return sequences
-
-
-
-def movingAverage(a, n):
-  weights = numpy.repeat(1.0, n)/n
-  return numpy.convolve(a, weights, 'valid')
 
 
 
@@ -295,7 +296,7 @@ class Runner(object):
 
 
     # Feed noise
-    sequence = range(NUM_SYMBOLS, NUM_SYMBOLS + RANDOM_RESERVOIR)
+    sequence = range(RANDOM_START, RANDOM_END)
     random.shuffle(sequence)
     sequence = sequence[0:NUM_RANDOM]
     print "Random:", sequence
@@ -324,7 +325,7 @@ if __name__ == "__main__":
   for numPredictions in NUM_PREDICTIONS:
     runners.append(Runner(numPredictions))
 
-  for i in xrange(100000000):
+  for i in iter(int, 1):
     for runner in runners:
       runner.step()
 
