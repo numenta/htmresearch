@@ -55,6 +55,15 @@ def _generateNetworkConfigurations():
   """
 
   networkConfigurations = []
+  
+  # First config: SP and TM enabled. UP disabled. KNN Classifier.
+  baseNetworkConfig = copy.deepcopy(NETWORK_CONFIGURATION)
+  baseNetworkConfig[SP_REGION_NAME]["enabled"] = True
+  baseNetworkConfig[TM_REGION_NAME]["enabled"] = True
+  baseNetworkConfig[UP_REGION_NAME]["enabled"] = False
+  baseNetworkConfig[CLASSIFIER_REGION_NAME]["type"] = KNN_CLASSIFIER_TYPE
+  baseNetworkConfig[CLASSIFIER_REGION_NAME]["params"] = KNN_CLASSIFIER_PARAMS
+  networkConfigurations.append(baseNetworkConfig)
 
   # First config: SP and TM enabled. UP disabled. CLA Classifier.
   baseNetworkConfig = copy.deepcopy(NETWORK_CONFIGURATION)
@@ -74,15 +83,6 @@ def _generateNetworkConfigurations():
   baseNetworkConfig[CLASSIFIER_REGION_NAME]["params"] = CLA_CLASSIFIER_PARAMS
   networkConfigurations.append(baseNetworkConfig)
 
-  # First config: SP and TM enabled. UP disabled. KNN Classifier.
-  baseNetworkConfig = copy.deepcopy(NETWORK_CONFIGURATION)
-  baseNetworkConfig[SP_REGION_NAME]["enabled"] = True
-  baseNetworkConfig[TM_REGION_NAME]["enabled"] = True
-  baseNetworkConfig[UP_REGION_NAME]["enabled"] = False
-  baseNetworkConfig[CLASSIFIER_REGION_NAME]["type"] = KNN_CLASSIFIER_TYPE
-  baseNetworkConfig[CLASSIFIER_REGION_NAME]["params"] = KNN_CLASSIFIER_PARAMS
-  networkConfigurations.append(baseNetworkConfig)
-
   return networkConfigurations
 
 
@@ -91,6 +91,9 @@ class TestSensorDataClassification(unittest.TestCase):
   """
   Test classification results for sensor data. 
   """
+
+  def setUp(self):
+    self.filesToDelete = []
 
 
   def testClassificationAccuracy(self):
@@ -145,6 +148,7 @@ class TestSensorDataClassification(unittest.TestCase):
                                        signalAmplitude,
                                        NUM_CATEGORIES,
                                        noiseAmplitude)
+              self.filesToDelete.append(inputFile)
 
               network = configureNetwork(inputFile,
                                          networkConfig)
@@ -206,9 +210,7 @@ class TestSensorDataClassification(unittest.TestCase):
     """
     Remove data files
     """
-    for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
-      fileToDelete = os.path.join(DATA_DIR, "%s_%s.csv" % (OUTFILE_NAME,
-                                                           noiseAmplitude))
+    for fileToDelete in self.filesToDelete:
       if os.path.exists(fileToDelete):
         os.remove(fileToDelete)
 

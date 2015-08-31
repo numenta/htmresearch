@@ -28,6 +28,7 @@ try:
   import simplejson as json
 except ImportError:
   import json
+import numpy
 
 from nupic.data.file_record_stream import FileRecordStream
 from nupic.encoders import MultiEncoder
@@ -362,7 +363,11 @@ def runNetwork(network, networkConfiguration, numRecords):
     # Evaluate the predictions on the test set.
     if recordNumber >= testIndex:
       if classifierRegion.type == KNN_CLASSIFIER_TYPE:
-        inferredValue = classifierRegion.getOutputData("categoriesOut").argmax()
+        # The use of numpy.lexsort() here is to first sort by labelFreq, then 
+        # sort by random values; this breaks ties in a random manner.
+        inferenceValues = classifierRegion.getOutputData("categoriesOut")
+        randomValues = numpy.random.random(inferenceValues.size)
+        inferredValue = numpy.lexsort((randomValues, inferenceValues))[-1]
       elif classifierRegion.type == CLA_CLASSIFIER_TYPE:
         inferredValue = classifierRegion.getOutputData("categoriesOut")[0]
       if actualValue == inferredValue:

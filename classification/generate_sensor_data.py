@@ -51,45 +51,41 @@ def generateData(dataDir,
   @param noiseAmplitude: (float) amplitude of the white noise
   @return outFilePath: (str) path to the output file
   """
-  fileName = "%s_%s" % (outputFileName, noiseAmplitude)
-
   # make sure the directory exist. if not, create it.
   if not os.path.exists(dataDir):
     os.makedirs(dataDir)
 
-  fileHandle = open("%s/%s.csv" % (dataDir, fileName), "wb")
-  writer = csv.writer(fileHandle)
-  writer.writerow(["x", "y", "label"])
-  writer.writerow(["float", "float", "int"])
-  writer.writerow(["", "", "C"])  # C is for category. 
-  # WARNING: if the C flag is forgotten in the dataset, then all records will
-  #  be arbitrarily put
-  # in the same category (i.e. category 0). So make sure to have the C flag 
-  # -- otherwise you'll get 100% classification accuracy regardless of 
-  # the input data :-P
+  filePath = "%s/%s_%s.csv" % (dataDir, outputFileName, noiseAmplitude)
+  with open(filePath, "wb") as f:
+    writer = csv.writer(f)
+    writer.writerow(["x", "y", "label"])
+    writer.writerow(["float", "float", "int"])
+    writer.writerow(["", "", "C"])  # C is for category. 
+    # WARNING: if the C flag is forgotten in the dataset, then all records will
+    #  be arbitrarily put
+    # in the same category (i.e. category 0). So make sure to have the C flag 
+    # -- otherwise you'll get 100% classification accuracy regardless of 
+    # the input data :-P
+  
+  
+    endOfSequence = sequenceLength
+    label = numCategories - 1
+    for i in range(numPoints):
+  
+      noise = noiseAmplitude * random.random()
+  
+      if i == endOfSequence:
+        endOfSequence += sequenceLength
+        if label == 0:
+          label = numCategories - 1
+        else:
+          label -= 1
+  
+      signal_modifier = 2 * (label + 1)
+      x = signal_modifier * (i * math.pi) / signalPeriod
+      m1 = signal_modifier * signalMean + signalAmplitude * math.sin(x) + noise
+  
+      writer.writerow([x, m1, label])
 
+  return filePath
 
-  endOfSequence = sequenceLength
-  label = numCategories - 1
-  for i in range(numPoints):
-
-    noise = noiseAmplitude * random.random()
-
-    if i == endOfSequence:
-      endOfSequence += sequenceLength
-      if label == 0:
-        label = numCategories - 1
-      else:
-        label -= 1
-
-    signal_modifier = 2 * (label + 1)
-    x = signal_modifier * (i * math.pi) / signalPeriod
-    m1 = signal_modifier * signalMean + signalAmplitude * math.sin(x) + noise
-
-    writer.writerow([x, m1, label])
-
-  fileHandle.close()
-
-  outFilePath = os.path.join(dataDir,
-                          "%s_%s.csv" % (outputFileName, noiseAmplitude))
-  return outFilePath
