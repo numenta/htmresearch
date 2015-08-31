@@ -194,7 +194,7 @@ class TestSensorDataClassification(unittest.TestCase):
                     and spEnabled
                     and tmEnabled
                     and not upEnabled):
-                self.assertEqual(predictionAccuracy, 87.29)
+                self.assertEqual(predictionAccuracy, 82.92)
               elif (noiseAmplitude == 1.0
                     and signalMean == 1.0
                     and signalAmplitude == 1.0
