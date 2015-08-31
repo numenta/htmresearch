@@ -152,11 +152,8 @@ def _createRegion(network, params):
   # Add region to network
   region = network.addRegion(regionName, regionType, json.dumps(regionParams))
 
-  # Enable learning at initialization. 
-  if regionType == "py.SPRegion":
-    region.setParameter("learningMode", True)
-  else:
-    region.setParameter("learningMode", False)
+  # Disable learning at initialization. 
+  region.setParameter("learningMode", False)
 
   # Inference mode outputs the current inference (i.e. active columns).
   # Okay to always leave inference mode on; only there for some corner cases.
@@ -375,7 +372,7 @@ def runNetwork(network, networkConfiguration, numRecords):
                % (recordNumber, actualValue, inferredValue))
       numTestRecords += 1
 
-  predictionAccuracy = 100.0 * numCorrect / numTestRecords
+  predictionAccuracy = round(100.0 * numCorrect / numTestRecords, 2)
 
   results = ("RESULTS: accuracy=%s | %s correctly predicted records out of %s "
              "test records \n" % (predictionAccuracy,
@@ -429,29 +426,26 @@ def _findNumberOfPartitions(networkConfiguration, numRecords):
   spEnabled = networkConfiguration[SP_REGION_NAME]["enabled"]
   tmEnabled = networkConfiguration[TM_REGION_NAME]["enabled"]
   upEnabled = networkConfiguration[UP_REGION_NAME]["enabled"]
+  maxNumPartitions = 5
 
-  partitionNames = []
+  partitions = {}
   if spEnabled and tmEnabled and upEnabled:
-    numPartitions = 5
-    partitionNames.extend([SP_REGION_NAME,
-                           TM_REGION_NAME,
-                           UP_REGION_NAME])
+    partitions[SP_REGION_NAME] = 0
+    partitions[TM_REGION_NAME] = numRecords * 1/maxNumPartitions
+    partitions[UP_REGION_NAME] = numRecords * 2/maxNumPartitions
   elif spEnabled and tmEnabled:
-    numPartitions = 4
-    partitionNames.extend([SP_REGION_NAME,
-                           TM_REGION_NAME])
+    partitions[SP_REGION_NAME] = numRecords * 1/maxNumPartitions
+    partitions[TM_REGION_NAME] = numRecords * 2/maxNumPartitions
   elif spEnabled:
-    numPartitions = 3
-    partitionNames.append(SP_REGION_NAME)
-  else:
-    numPartitions = 2  # only the classifier, so just test and train partitions
-  partitionNames.append(CLASSIFIER_REGION_NAME)
-  partitionNames.append(TEST_PARTITION_NAME)
+    partitions[SP_REGION_NAME] = numRecords * 2/maxNumPartitions
 
-  partitionIndices = [numRecords * i / numPartitions
-                      for i in range(0, numPartitions)]
+  partitions[CLASSIFIER_REGION_NAME] = numRecords * 3/maxNumPartitions
+  partitions[TEST_PARTITION_NAME] = numRecords * 4/maxNumPartitions
 
-  return zip(partitionNames, partitionIndices)
+  return sorted(partitions.items(), key=lambda x: x[1])
+
+
+
 
 
 

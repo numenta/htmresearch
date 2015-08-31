@@ -163,7 +163,7 @@ class TestSensorDataClassification(unittest.TestCase):
                   and spEnabled
                   and tmEnabled
                   and not upEnabled):
-                self.assertEqual(predictionAccuracy, 100)
+                self.assertEqual(predictionAccuracy, 100.00)
               elif (noiseAmplitude == 0
                     and signalMean == 1.0
                     and signalAmplitude == 1.0
@@ -172,7 +172,7 @@ class TestSensorDataClassification(unittest.TestCase):
                     and spEnabled
                     and tmEnabled
                     and not upEnabled):
-                self.assertEqual(predictionAccuracy, 100)
+                self.assertEqual(predictionAccuracy, 100.00)
               elif (noiseAmplitude == 0
                     and signalMean == 1.0
                     and signalAmplitude == 1.0
@@ -181,7 +181,7 @@ class TestSensorDataClassification(unittest.TestCase):
                     and spEnabled
                     and not tmEnabled
                     and not upEnabled):
-                self.assertEqual(predictionAccuracy, 98.75)
+                self.assertEqual(predictionAccuracy, 100.00)
               elif (noiseAmplitude == 1.0
                     and signalMean == 1.0
                     and signalAmplitude == 1.0
@@ -190,7 +190,7 @@ class TestSensorDataClassification(unittest.TestCase):
                     and spEnabled
                     and tmEnabled
                     and not upEnabled):
-                self.assertEqual(predictionAccuracy, 88.0)
+                self.assertEqual(predictionAccuracy, 87.29)
               elif (noiseAmplitude == 1.0
                     and signalMean == 1.0
                     and signalAmplitude == 1.0
@@ -199,7 +199,7 @@ class TestSensorDataClassification(unittest.TestCase):
                     and spEnabled
                     and not tmEnabled
                     and not upEnabled):
-                self.assertEqual(predictionAccuracy, 81.875)
+                self.assertEqual(predictionAccuracy, 83.54)
 
 
   def tearDown(self):
