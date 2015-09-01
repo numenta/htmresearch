@@ -207,6 +207,11 @@ class Suite(PyExperimentSuite):
     self.net = None
 
 
+  def window(self, data, params):
+    start = max(0, len(data) - params['learning_window'])
+    return data[start:]
+
+
   def train(self, params):
     n = params['encoding_num']
     net = buildNetwork(n, params['num_cells'], n,
@@ -216,14 +221,18 @@ class Suite(PyExperimentSuite):
     ds = SequentialDataSet(n, n)
     trainer = RPropMinusTrainer(net, dataset=ds)
 
-    for i in xrange(1, len(self.history)):
-      if not self.resets[i-1]:
-        ds.addSample(self.encoder.encode(self.history[i-1]),
-                     self.encoder.encode(self.history[i]))
-      if self.resets[i]:
+    history = self.window(self.history, params)
+    resets = self.window(self.resets, params)
+    print len(history)
+
+    for i in xrange(1, len(history)):
+      if not resets[i-1]:
+        ds.addSample(self.encoder.encode(history[i-1]),
+                     self.encoder.encode(history[i]))
+      if resets[i]:
         ds.newSequence()
 
-    if len(self.history) > 1:
+    if len(history) > 1:
       trainer.trainEpochs(params['num_epochs'])
       net.reset()
 
@@ -263,12 +272,14 @@ class Suite(PyExperimentSuite):
       self.net = self.train(params)
 
     predictions = None
+    history = self.window(self.history, params)
+    resets = self.window(self.resets, params)
 
-    for i, symbol in enumerate(self.history):
+    for i, symbol in enumerate(history):
       output = self.net.activate(self.encoder.encode(symbol))
       predictions = self.encoder.classify(output, num=params['num_predictions'])
 
-      if self.resets[i]:
+      if resets[i]:
         self.net.reset()
 
     truth = None if (self.resets[-1] or
