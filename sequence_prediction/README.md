@@ -5,6 +5,7 @@ Compare HTM with other algorithms on standard sequence prediction problems
 # Dependency
     SciPy
     PyBrain (for LSTM algorithm): https://github.com/pybrain/pybrain
+    R (for ARIMA algorithm)
     NuPIC
 
 # Installation
