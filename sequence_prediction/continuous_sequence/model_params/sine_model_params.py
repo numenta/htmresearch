@@ -5,15 +5,15 @@
 # following terms and conditions apply:
 #
 # This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 3 as
+# it under the terms of the GNU Affero Public License version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
+# See the GNU Affero Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
+# You should have received a copy of the GNU Affero Public License
 # along with this program.  If not, see http://www.gnu.org/licenses.
 #
 # http://numenta.org/licenses/
@@ -33,17 +33,17 @@ MODEL_PARAMS = {'aggregationInfo': {'days': 0,
  'modelParams': {'anomalyParams': {u'anomalyCacheRecords': None,
                                    u'autoDetectThreshold': None,
                                    u'autoDetectWaitRecords': None},
-                 'clParams': {'alpha': 0.0001,
+                 'clParams': {'alpha': 0.003897231488739025,
                               'clVerbosity': 0,
                               'regionName': 'CLAClassifierRegion',
-                              'steps': '1'},
+                              'steps': '5'},
                  'inferenceType': 'TemporalMultiStep',
                  'sensorParams': {'encoders': {'_classifierInput': {'classifierOnly': True,
                                                                     'clipInput': True,
                                                                     'fieldname': 'data',
                                                                     'maxval': 1.0,
                                                                     'minval': -1.0,
-                                                                    'n': 65,
+                                                                    'n': 28,
                                                                     'name': '_classifierInput',
                                                                     'type': 'ScalarEncoder',
                                                                     'w': 21},
@@ -51,7 +51,7 @@ MODEL_PARAMS = {'aggregationInfo': {'days': 0,
                                                          'fieldname': 'data',
                                                          'maxval': 1.0,
                                                          'minval': -1.0,
-                                                         'n': 68,
+                                                         'n': 67,
                                                          'name': 'data',
                                                          'type': 'ScalarEncoder',
                                                          'w': 21}},
@@ -69,9 +69,9 @@ MODEL_PARAMS = {'aggregationInfo': {'days': 0,
                               'spatialImp': 'cpp',
                               'synPermActiveInc': 0.05,
                               'synPermConnected': 0.1,
-                              'synPermInactiveDec': 0.07350371155772457},
+                              'synPermInactiveDec': 0.1},
                  'tpEnable': True,
-                 'tpParams': {'activationThreshold': 13,
+                 'tpParams': {'activationThreshold': 12,
                               'cellsPerColumn': 32,
                               'columnCount': 2048,
                               'globalDecay': 0.0,
@@ -83,7 +83,7 @@ MODEL_PARAMS = {'aggregationInfo': {'days': 0,
                               'minThreshold': 9,
                               'newSynapseCount': 20,
                               'outputType': 'normal',
-                              'pamLength': 2,
+                              'pamLength': 1,
                               'permanenceDec': 0.1,
                               'permanenceInc': 0.1,
                               'seed': 1960,
