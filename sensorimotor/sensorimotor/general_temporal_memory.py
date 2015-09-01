@@ -5,15 +5,15 @@
 # following terms and conditions apply:
 #
 # This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 3 as
+# it under the terms of the GNU Affero Public License version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
+# See the GNU Affero Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
+# You should have received a copy of the GNU Affero Public License
 # along with this program.  If not, see http://www.gnu.org/licenses.
 #
 # http://numenta.org/licenses/
@@ -94,7 +94,7 @@ class GeneralTemporalMemory(TemporalMemory):
      activeSegments,
      activeApicalSegments,
      predictiveCells,
-     predictedColumns,
+     predictedActiveColumns,
      matchingSegments,
      matchingApicalSegments,
      matchingCells,
@@ -121,7 +121,7 @@ class GeneralTemporalMemory(TemporalMemory):
     self.activeExternalCells = activeExternalCells
     self.activeApicalCells = activeApicalCells
 
-    self.unpredictedActiveColumns = activeColumns - predictedColumns
+    self.unpredictedActiveColumns = activeColumns - predictedActiveColumns
     self.predictedActiveCells = self.predictiveCells & activeCells
 
     self.activeCells = activeCells
@@ -183,7 +183,7 @@ class GeneralTemporalMemory(TemporalMemory):
                       `activeSegments`            (set),
                       `activeApicalSegments`      (set),
                       `predictiveCells`           (set),
-                      'predictedColumns'          (set),
+                      'predictedActiveColumns'    (set),
                       'matchingSegments'          (set),
                       'matchingApicalSegments'    (set),
                       'matchingCells'             (set),
@@ -194,7 +194,7 @@ class GeneralTemporalMemory(TemporalMemory):
 
     (_activeCells,
      _winnerCells,
-     predictedColumns,
+     predictedActiveColumns,
      predictedInactiveCells) = self.activateCorrectlyPredictiveCells(
        prevPredictiveCells,
        prevMatchingCells,
@@ -209,7 +209,7 @@ class GeneralTemporalMemory(TemporalMemory):
      apicalLearningSegments,
      chosenCellForColumn) = self.burstColumns(
        activeColumns,
-       predictedColumns,
+       predictedActiveColumns,
        prevActiveCells | prevActiveExternalCells,
        prevActiveApicalCells,
        prevWinnerCells,
@@ -267,7 +267,7 @@ class GeneralTemporalMemory(TemporalMemory):
             activeSegments,
             activeApicalSegments,
             predictiveCells,
-            predictedColumns,
+            predictedActiveColumns,
             matchingSegments,
             matchingApicalSegments,
             matchingCells,
@@ -290,7 +290,7 @@ class GeneralTemporalMemory(TemporalMemory):
 
   def burstColumns(self,
                    activeColumns,
-                   predictedColumns,
+                   predictedActiveColumns,
                    prevActiveCells,
                    prevActiveApicalCells,
                    prevWinnerCells,
@@ -314,7 +314,7 @@ class GeneralTemporalMemory(TemporalMemory):
             - mark the segment as learning
 
     @param activeColumns                   (set)         Indices of active columns in `t`
-    @param predictedColumns                (set)         Indices of predicted columns in `t`
+    @param predictedActiveColumns          (set)         Indices of predicted => active columns in `t`
     @param prevActiveCells                 (set)         Indices of active cells in `t-1`
     @param prevActiveApicalCells           (set)         Indices of ext active cells in `t-1`
     @param prevWinnerCells                 (set)         Indices of winner cells in `t-1`
@@ -334,9 +334,9 @@ class GeneralTemporalMemory(TemporalMemory):
     learningSegments = set()
     apicalLearningSegments = set()
 
-    unpredictedColumns = activeColumns - predictedColumns
+    unpredictedActiveColumns = activeColumns - predictedActiveColumns
 
-    for column in unpredictedColumns:
+    for column in unpredictedActiveColumns:
       cells = self.cellsForColumn(column)
       activeCells.update(cells)
 
