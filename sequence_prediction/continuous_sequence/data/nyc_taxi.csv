@@ -1,6 +1,6 @@
 timestamp,passenger_count,timeofday,dayofweek
-datetime,int,int,int
-T,
+datetime,int,int,string
+T,,,
 2014-07-01 00:00:00,10844,0,1
 2014-07-01 00:30:00,8127,30,1
 2014-07-01 01:00:00,6210,60,1
