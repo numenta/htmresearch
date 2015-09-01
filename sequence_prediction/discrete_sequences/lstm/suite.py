@@ -72,8 +72,14 @@ class BasicEncoder(Encoder):
 
 class DistributedEncoder(Encoder):
 
-  def __init__(self, *args, **kwargs):
-    super(DistributedEncoder, self).__init__(*args, **kwargs)
+  def __init__(self, num, maxValue=None, minValue=None):
+    super(DistributedEncoder, self).__init__(num)
+
+    if maxValue is None or minValue is None:
+      raise "maxValue and minValue are required"
+
+    self.maxValue = maxValue
+    self.minValue = minValue
 
     self.encodings = {}
 
@@ -82,7 +88,7 @@ class DistributedEncoder(Encoder):
     if symbol in self.encodings:
       return self.encodings[symbol]
 
-    encoding = numpy.random.random((1, self.num))
+    encoding = (self.maxValue - self.minValue) * numpy.random.random((1, self.num)) + self.minValue
     self.encodings[symbol] = encoding
 
     return encoding
@@ -184,7 +190,9 @@ class Suite(PyExperimentSuite):
     if params['encoding'] == 'basic':
       self.encoder = BasicEncoder(params['encoding_num'])
     elif params['encoding'] == 'distributed':
-      self.encoder = DistributedEncoder(params['encoding_num'])
+      self.encoder = DistributedEncoder(params['encoding_num'],
+                                        maxValue=params['encoding_max'],
+                                        minValue=params['encoding_min'])
     else:
       raise Exception("Encoder not found")
 
