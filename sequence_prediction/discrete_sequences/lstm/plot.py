@@ -56,8 +56,7 @@ def plotAccuracy(results, window=100, type="sequences", label=None):
   accuracy = results[0]
   x = results[1]
   movingData = movingAverage(accuracy, min(len(accuracy), window))
-  movingX = x[:len(movingData)]
-  pyplot.plot(movingX, movingData, label=label,
+  pyplot.plot(x, movingData, label=label,
               marker='o', markersize=3, markeredgewidth=0)
 
 
