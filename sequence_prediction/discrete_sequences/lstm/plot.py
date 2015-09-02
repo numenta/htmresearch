@@ -30,8 +30,14 @@ from suite import Suite
 
 
 def movingAverage(a, n):
-  weights = numpy.repeat(1.0, n)/n
-  return numpy.convolve(a, weights, 'valid')
+  movingAverage = []
+
+  for i in xrange(len(a)):
+    start = max(0, i - n)
+    values = a[start:i+1]
+    movingAverage.append(sum(values) / float(len(values)))
+
+  return movingAverage
 
 
 
@@ -45,12 +51,13 @@ def plotMovingAverage(data, window, label=None):
 def plotAccuracy(results, window=100, type="sequences", label=None):
   pyplot.title("High-order prediction")
   pyplot.xlabel("# of {0} seen".format(type))
-  pyplot.ylabel("High-order prediction accuracy over last {0} {1}".format(window, type))
+  pyplot.ylabel("High-order prediction accuracy over last {0} tested {1}".format(window, type))
 
   accuracy = results[0]
+  x = results[1]
   movingData = movingAverage(accuracy, min(len(accuracy), window))
-  x = results[1][:len(movingData)]
-  pyplot.plot(x, movingData, label=label,
+  movingX = x[:len(movingData)]
+  pyplot.plot(movingX, movingData, label=label,
               marker='o', markersize=3, markeredgewidth=0)
 
 
