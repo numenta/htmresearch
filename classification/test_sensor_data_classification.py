@@ -20,12 +20,21 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 import copy
+try:
+  import simplejson as json
+except ImportError:
+  import json
 import os
 import unittest
 
-from classification_network import configureNetwork, runNetwork
+from nupic.data.file_record_stream import FileRecordStream
+
+from classification_network import (configureNetwork,
+                                    getRegionConfigParam,
+                                    runNetwork)
 from generate_sensor_data import generateData
 from sensor_data_exp_settings import (NUM_CATEGORIES,
+                                      TEST_PARTITION_NAME,
                                       SEQUENCE_LENGTH,
                                       OUTFILE_NAME,
                                       NUM_RECORDS,
@@ -34,56 +43,132 @@ from sensor_data_exp_settings import (NUM_CATEGORIES,
                                       SIGNAL_PERIODS,
                                       WHITE_NOISE_AMPLITUDES,
                                       DATA_DIR)
-from network_params import (SENSOR_REGION_NAME,
-                            SP_REGION_NAME,
-                            TM_REGION_NAME,
-                            UP_REGION_NAME,
-                            CLASSIFIER_REGION_NAME,
-                            SENSOR_TYPE,
-                            CLA_CLASSIFIER_TYPE,
-                            CLA_CLASSIFIER_PARAMS,
-                            KNN_CLASSIFIER_TYPE,
-                            KNN_CLASSIFIER_PARAMS)
-from network_params import NETWORK_CONFIGURATION
+
+# Region names
+SENSOR_CONFIG = "sensorRegionConfig"
+SP_CONFIG = "spRegionConfig"
+TM_CONFIG = "tmRegionConfig"
+UP_CONFIG = "upRegionConfig"
+CLASSIFIER_CONFIG = "classifierRegionConfig"
+
+# Region types
+SENSOR_TYPE = "py.RecordSensor"
+SP_REGION_TYPE = "py.SPRegion"
+TM_REGION_TYPE = "py.TPRegion"
+UP_REGION_TYPE = "py.UPRegion"
+CLA_CLASSIFIER_TYPE = "py.CLAClassifierRegion"
+KNN_CLASSIFIER_TYPE = "py.KNNClassifierRegion"
+
+# Classifier region params
+CLA_CLASSIFIER_PARAMS = {
+  "steps": "0",
+  "implementation": "cpp",
+  "maxCategoryCount": NUM_CATEGORIES,
+  "clVerbosity": 0
+}
+
+KNN_CLASSIFIER_PARAMS = {
+  "k": 1,
+  'distThreshold': 0,
+  'maxCategoryCount': NUM_CATEGORIES,
+}
 
 
 
-def _generateNetworkConfigurations():
+def _generateExperimentsNetworkParams(templateNetworkConfig):
   """
-  Generate a series of network configurations.
+  Generate a series of network params for each experiment, using a template 
+  network params dict.
+  
+  @param templateNetworkConfig: (dict) template network config based on which 
+  other network configs are generated.
   @return networkConfigurations: (list) network configs.
   """
 
   networkConfigurations = []
-  
+
   # First config: SP and TM enabled. UP disabled. KNN Classifier.
-  baseNetworkConfig = copy.deepcopy(NETWORK_CONFIGURATION)
-  baseNetworkConfig[SP_REGION_NAME]["enabled"] = True
-  baseNetworkConfig[TM_REGION_NAME]["enabled"] = True
-  baseNetworkConfig[UP_REGION_NAME]["enabled"] = False
-  baseNetworkConfig[CLASSIFIER_REGION_NAME]["type"] = KNN_CLASSIFIER_TYPE
-  baseNetworkConfig[CLASSIFIER_REGION_NAME]["params"] = KNN_CLASSIFIER_PARAMS
-  networkConfigurations.append(baseNetworkConfig)
+  networkConfig = copy.deepcopy(templateNetworkConfig)
+  networkConfig[SP_CONFIG]["regionEnabled"] = True
+  networkConfig[TM_CONFIG]["regionEnabled"] = True
+  networkConfig[UP_CONFIG]["regionEnabled"] = False
+  networkConfig[CLASSIFIER_CONFIG]["regionType"] = KNN_CLASSIFIER_TYPE
+  networkConfig[CLASSIFIER_CONFIG]["regionParams"] = KNN_CLASSIFIER_PARAMS
+  networkConfigurations.append(networkConfig)
 
   # First config: SP and TM enabled. UP disabled. CLA Classifier.
-  baseNetworkConfig = copy.deepcopy(NETWORK_CONFIGURATION)
-  baseNetworkConfig[SP_REGION_NAME]["enabled"] = True
-  baseNetworkConfig[TM_REGION_NAME]["enabled"] = True
-  baseNetworkConfig[UP_REGION_NAME]["enabled"] = False
-  baseNetworkConfig[CLASSIFIER_REGION_NAME]["type"] = CLA_CLASSIFIER_TYPE
-  baseNetworkConfig[CLASSIFIER_REGION_NAME]["params"] = CLA_CLASSIFIER_PARAMS
-  networkConfigurations.append(baseNetworkConfig)
+  networkConfig = copy.deepcopy(templateNetworkConfig)
+  networkConfig[SP_CONFIG]["regionEnabled"] = True
+  networkConfig[TM_CONFIG]["regionEnabled"] = True
+  networkConfig[UP_CONFIG]["regionEnabled"] = False
+  networkConfig[CLASSIFIER_CONFIG]["regionType"] = CLA_CLASSIFIER_TYPE
+  networkConfig[CLASSIFIER_CONFIG]["regionParams"] = CLA_CLASSIFIER_PARAMS
+  networkConfigurations.append(networkConfig)
 
   # Second config: SP enabled. TM and UP disabled. CLA Classifier.
-  baseNetworkConfig = copy.deepcopy(NETWORK_CONFIGURATION)
-  baseNetworkConfig[SP_REGION_NAME]["enabled"] = True
-  baseNetworkConfig[TM_REGION_NAME]["enabled"] = False
-  baseNetworkConfig[UP_REGION_NAME]["enabled"] = False
-  baseNetworkConfig[CLASSIFIER_REGION_NAME]["type"] = CLA_CLASSIFIER_TYPE
-  baseNetworkConfig[CLASSIFIER_REGION_NAME]["params"] = CLA_CLASSIFIER_PARAMS
-  networkConfigurations.append(baseNetworkConfig)
+  networkConfig = copy.deepcopy(templateNetworkConfig)
+  networkConfig[SP_CONFIG]["regionEnabled"] = True
+  networkConfig[TM_CONFIG]["regionEnabled"] = False
+  networkConfig[UP_CONFIG]["regionEnabled"] = False
+  networkConfig[CLASSIFIER_CONFIG]["regionType"] = CLA_CLASSIFIER_TYPE
+  networkConfig[CLASSIFIER_CONFIG]["regionParams"] = CLA_CLASSIFIER_PARAMS
+  networkConfigurations.append(networkConfig)
 
   return networkConfigurations
+
+
+
+def _findNumberOfPartitions(networkConfiguration, numRecords):
+  """
+  Find the number of partitions for the input data based on a specific
+  networkConfiguration. 
+  
+  @param networkConfiguration: (dict) the configuration of this network.
+  @param numRecords: (int) Number of records of the input dataset.
+  @return partitions: (list of tuples) Region names and associated indices 
+  partitioning the input dataset to indicate at which recordNumber it should 
+  start learning. The remaining of the data (last partition) is used as a test 
+  set. 
+  """
+
+  spEnabled = getRegionConfigParam(networkConfiguration,
+                                   "spRegionConfig",
+                                   "regionEnabled")
+  tmEnabled = getRegionConfigParam(networkConfiguration,
+                                   "tmRegionConfig",
+                                   "regionEnabled")
+  upEnabled = getRegionConfigParam(networkConfiguration,
+                                   "upRegionConfig",
+                                   "regionEnabled")
+  spRegionName = getRegionConfigParam(networkConfiguration,
+                                      "spRegionConfig",
+                                      "regionName")
+  tmRegionName = getRegionConfigParam(networkConfiguration,
+                                      "tmRegionConfig",
+                                      "regionName")
+  upRegionName = getRegionConfigParam(networkConfiguration,
+                                      "upRegionConfig",
+                                      "regionName")
+  classifierRegionName = getRegionConfigParam(networkConfiguration,
+                                              "classifierRegionConfig",
+                                              "regionName")
+  maxNumPartitions = 5
+
+  partitions = {}
+  if spEnabled and tmEnabled and upEnabled:
+    partitions[spRegionName] = 0
+    partitions[tmRegionName] = numRecords * 1 / maxNumPartitions
+    partitions[upRegionName] = numRecords * 2 / maxNumPartitions
+  elif spEnabled and tmEnabled:
+    partitions[spRegionName] = numRecords * 1 / maxNumPartitions
+    partitions[tmRegionName] = numRecords * 2 / maxNumPartitions
+  elif spEnabled:
+    partitions[spRegionName] = numRecords * 2 / maxNumPartitions
+
+  partitions[classifierRegionName] = numRecords * 3 / maxNumPartitions
+  partitions[TEST_PARTITION_NAME] = numRecords * 4 / maxNumPartitions
+
+  return sorted(partitions.items(), key=lambda x: x[1])
 
 
 
@@ -92,8 +177,11 @@ class TestSensorDataClassification(unittest.TestCase):
   Test classification results for sensor data. 
   """
 
+
   def setUp(self):
     self.filesToDelete = []
+    with open("sensor_data_network_config.json", "rb") as jsonFile:
+      self.templateNetworkConfig = json.load(jsonFile)
 
 
   def testClassificationAccuracy(self):
@@ -102,7 +190,8 @@ class TestSensorDataClassification(unittest.TestCase):
     Test classification accuracy for sensor data.
     """
 
-    networkConfigurations = _generateNetworkConfigurations()
+    networkConfigurations = _generateExperimentsNetworkParams(
+      self.templateNetworkConfig)
 
     for networkConfig in networkConfigurations:
       for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
@@ -110,11 +199,21 @@ class TestSensorDataClassification(unittest.TestCase):
           for signalAmplitude in SIGNAL_AMPLITUDES:
             for signalPeriod in SIGNAL_PERIODS:
 
-              sensorType = networkConfig[SENSOR_REGION_NAME]["type"]
-              spEnabled = networkConfig[SP_REGION_NAME]["enabled"]
-              tmEnabled = networkConfig[TM_REGION_NAME]["enabled"]
-              upEnabled = networkConfig[UP_REGION_NAME]["enabled"]
-              classifierType = networkConfig[CLASSIFIER_REGION_NAME]["type"]
+              sensorType = getRegionConfigParam(networkConfig,
+                                                "sensorRegionConfig",
+                                                "regionType")
+              spEnabled = getRegionConfigParam(networkConfig,
+                                               "spRegionConfig",
+                                               "regionEnabled")
+              tmEnabled = getRegionConfigParam(networkConfig,
+                                               "tmRegionConfig",
+                                               "regionEnabled")
+              upEnabled = getRegionConfigParam(networkConfig,
+                                               "upRegionConfig",
+                                               "regionEnabled")
+              classifierType = getRegionConfigParam(networkConfig,
+                                                    "classifierRegionConfig",
+                                                    "regionType")
 
               expParams = ("RUNNING EXPERIMENT WITH PARAMS:\n"
                            " * numRecords=%s\n"
@@ -148,15 +247,18 @@ class TestSensorDataClassification(unittest.TestCase):
                                        signalAmplitude,
                                        NUM_CATEGORIES,
                                        noiseAmplitude)
+
               self.filesToDelete.append(inputFile)
-
-              network = configureNetwork(inputFile,
+              dataSource = FileRecordStream(streamID=inputFile)
+              network = configureNetwork(dataSource,
                                          networkConfig)
-
+              partitions = _findNumberOfPartitions(networkConfig,
+                                                   NUM_RECORDS)
               (numCorrect,
                numTestRecords,
                predictionAccuracy) = runNetwork(network,
                                                 networkConfig,
+                                                partitions,
                                                 NUM_RECORDS)
 
               if (noiseAmplitude == 0

@@ -30,21 +30,11 @@ except ImportError:
   import json
 import numpy
 
-from nupic.data.file_record_stream import FileRecordStream
 from nupic.encoders import MultiEncoder
 from nupic.engine import Network
 from nupic.engine import pyRegions
 
-from network_params import (CLASSIFIER_REGION_NAME,
-                            SENSOR_REGION_NAME,
-                            SCALAR_ENCODER_NAME,
-                            SP_REGION_NAME,
-                            TM_REGION_NAME,
-                            UP_REGION_NAME,
-                            KNN_CLASSIFIER_TYPE,
-                            CLA_CLASSIFIER_TYPE)
-from sensor_data_exp_settings import (TEST_PARTITION_NAME,
-                                      DEBUG_VERBOSITY)
+from sensor_data_exp_settings import (TEST_PARTITION_NAME, DEBUG_VERBOSITY)
 
 _PY_REGIONS = [r[1] for r in pyRegions]
 
@@ -76,22 +66,20 @@ def _createEncoder(encoders):
 
 
 
-def _createSensorRegion(network,
-                        params,
-                        dataSource):
+def _createSensorRegion(network, regionConfig, dataSource):
   """
   Register a sensor region and initialize it the sensor region with an encoder 
   and data source.
 
   @param network: (Network) The network instance.
-  @param params: (dict) parameters for the sensor region
+  @param regionConfig: (dict) configuration of the sensor region
   @param dataSource: (RecordStream) Sensor region reads data from here.
   @return sensorRegion: (PyRegion) Sensor region of the network.
   """
-  regionType = params["type"]
-  regionName = params["name"]
-  regionParams = params["params"]
-  encoders = params["encoders"]
+  regionType = regionConfig["regionType"]
+  regionName = regionConfig["regionName"]
+  regionParams = regionConfig["regionParams"]
+  encoders = regionConfig["encoders"]
 
   _registerRegion(regionType)
 
@@ -117,7 +105,8 @@ def _createSensorRegion(network,
 
 def _registerRegion(regionType):
   """
-  Sensor region may be non-standard, so add custom region class to the network
+  Sensor region may be non-standard, so add custom region class to the network.
+  
   @param regionType: (str) type of the region. E.g py.SensorRegion.
   """
   regionTypeName = regionType.split(".")[1]
@@ -136,18 +125,18 @@ def _registerRegion(regionType):
 
 
 
-def _createRegion(network, params):
+def _createRegion(network, regionConfig):
   """
   Create the SP, TM, UP or classifier region.
 
   @param network: (Network) The region will be a node in this network.
-  @param params: (dict) The region params
+  @param regionConfig: (dict) The region configuration
   @return region: (PyRegion) region of the network.
   """
-  regionName = params["name"]
-  regionType = params["type"]
-  regionParams = params["params"]
-  
+  regionName = regionConfig["regionName"]
+  regionType = regionConfig["regionType"]
+  regionParams = regionConfig["regionParams"]
+
   _registerRegion(regionType)
 
   # Add region to network
@@ -164,19 +153,21 @@ def _createRegion(network, params):
 
 
 
-
-def _linkRegions(network, sensorRegionName, previousRegion, currentRegion):
+def _linkRegions(network,
+                 sensorRegionName,
+                 previousRegionName,
+                 currentRegionName):
   """
   Link the previous region to the current region and propagate the 
   sequence reset from the sensor region.
   
   @param network: (Network) regions to be linked are nodes in this network.
   @param sensorRegionName: (str) name of the sensor region
-  @param previousRegion: (PyRegion) parent node in the network
-  @param currentRegion: (PyRegion) current node in the network
+  @param previousRegionName: (str) parent node in the network
+  @param currentRegionName: (str) current node in the network
   """
-  network.link(previousRegion, currentRegion, "UniformLink", "")
-  network.link(sensorRegionName, currentRegion, "UniformLink", "",
+  network.link(previousRegionName, currentRegionName, "UniformLink", "")
+  network.link(sensorRegionName, currentRegionName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
 
 
@@ -196,8 +187,7 @@ def _validateRegionWidths(previousRegionWidth, currentRegionWidth):
 
 
 
-def createNetwork(dataSource,
-                  networkConfiguration):
+def createNetwork(dataSource, networkConfiguration):
   """
   Create and initialize the network instance with regions for the sensor, SP, 
   TM, and classifier. Before running, be sure to init w/ network.initialize().
@@ -206,66 +196,79 @@ def createNetwork(dataSource,
   @param networkConfiguration: (dict) the configuration of this network. 
   @return network: (Network) Sample network. E.g. Sensor -> SP -> TM -> Classif.
   """
+
   network = Network()
 
   # Create sensor regions (always enabled)
-  sensorParams = networkConfiguration[SENSOR_REGION_NAME]
+  sensorRegionConfig = networkConfiguration["sensorRegionConfig"]
+  sensorRegionName = sensorRegionConfig["regionName"]
   sensorRegion = _createSensorRegion(network,
-                                     sensorParams,
+                                     sensorRegionConfig,
                                      dataSource)
 
   # Keep track of the previous region name and width to validate and link the 
   # input/output width of two consecutive regions.
-  previousRegion = SENSOR_REGION_NAME
+  previousRegion = sensorRegionName
   previousRegionWidth = sensorRegion.encoder.getWidth()
 
   # Create SP region, if enabled.
-  if networkConfiguration[SP_REGION_NAME]["enabled"]:
-    spParams = networkConfiguration[SP_REGION_NAME]
-    spParams["params"]["inputWidth"] = sensorRegion.encoder.width
-    spRegion = _createRegion(network, spParams)
+  regionConfig = networkConfiguration["spRegionConfig"]
+  regionName = regionConfig["regionName"]
+  regionParams = regionConfig["regionParams"]
+  regionEnabled = regionConfig["regionEnabled"]
+  if regionEnabled:
+    regionParams["inputWidth"] = sensorRegion.encoder.width
+    spRegion = _createRegion(network, regionConfig)
     _validateRegionWidths(previousRegionWidth, spRegion.getSelf().inputWidth)
     _linkRegions(network,
-                 SENSOR_REGION_NAME,
+                 sensorRegionName,
                  previousRegion,
-                 SP_REGION_NAME)
-    previousRegion = SP_REGION_NAME
+                 regionName)
+    previousRegion = regionName
     previousRegionWidth = spRegion.getSelf().columnCount
 
   # Create TM region, if enabled.
-  if networkConfiguration[TM_REGION_NAME]["enabled"]:
-    tmParams = networkConfiguration[TM_REGION_NAME]
-    tmParams["params"]["inputWidth"] = tmParams["params"]["columnCount"]
-    tmRegion = _createRegion(network, tmParams)
+  regionConfig = networkConfiguration["tmRegionConfig"]
+  regionName = regionConfig["regionName"]
+  regionParams = regionConfig["regionParams"]
+  regionEnabled = regionConfig["regionEnabled"]
+  if regionEnabled:
+    regionParams["inputWidth"] = regionParams["columnCount"]
+    tmRegion = _createRegion(network, regionConfig)
     _validateRegionWidths(previousRegionWidth, tmRegion.getSelf().columnCount)
     _linkRegions(network,
-                 SENSOR_REGION_NAME,
+                 sensorRegionName,
                  previousRegion,
-                 TM_REGION_NAME)
-    previousRegion = TM_REGION_NAME
+                 regionName)
+    previousRegion = regionName
     previousRegionWidth = tmRegion.getSelf().cellsPerColumn
 
   # Create UP region, if enabled.
-  if networkConfiguration[UP_REGION_NAME]["enabled"]:
-    upParams = networkConfiguration[UP_REGION_NAME]
-    upRegion = _createRegion(network, upParams)
+  regionConfig = networkConfiguration["upRegionConfig"]
+  regionName = regionConfig["regionName"]
+  regionParams = regionConfig["regionParams"]
+  regionEnabled = regionConfig["regionEnabled"]
+  if regionEnabled:
     # TODO: not sure about the UP region width params. This needs to be updated.
+    regionParams["inputWidth"] = previousRegionWidth
+    upRegion = _createRegion(network, regionConfig)
     _validateRegionWidths(previousRegionWidth,
                           upRegion.getSelf().cellsPerColumn)
     _linkRegions(network,
-                 SENSOR_REGION_NAME,
+                 sensorRegionName,
                  previousRegion,
-                 UP_REGION_NAME)
-    previousRegion = UP_REGION_NAME
+                 regionName)
+    previousRegion = regionName
 
   # Create classifier region (always enabled)
-  classifierParams = networkConfiguration[CLASSIFIER_REGION_NAME]
-  _createRegion(network, classifierParams)
+  regionConfig = networkConfiguration["classifierRegionConfig"]
+  regionName = regionConfig["regionName"]
+  _createRegion(network, regionConfig)
   # Link the classifier to previous region and sensor region - to send in 
   # category labels.
-  network.link(previousRegion, CLASSIFIER_REGION_NAME, "UniformLink", "")
-  network.link(SENSOR_REGION_NAME,
-               CLASSIFIER_REGION_NAME,
+  network.link(previousRegion, regionName, "UniformLink", "")
+  network.link(sensorRegionName,
+               regionName,
                "UniformLink",
                "",
                srcOutput="categoryOut",
@@ -311,7 +314,7 @@ def _stopLearning(network, trainedRegionNames, recordNumber):
   for regionName in trainedRegionNames:
     region = network.regions[regionName]
     region.setParameter("learningMode", False)
-    
+
   phaseInfo = ("-> Test phase. RecordNumber=%s. "
                "Learning is OFF for all regions: %s" % (recordNumber,
                                                         trainedRegionNames))
@@ -319,18 +322,29 @@ def _stopLearning(network, trainedRegionNames, recordNumber):
 
 
 
-def runNetwork(network, networkConfiguration, numRecords):
+def runNetwork(network, networkConfig, partitions, numRecords):
   """
   Run the network and write classification results output.
   
-  @param networkConfiguration: (dict) the configuration of this network.
+  @param networkConfig: (dict) the config of the network.
+  @param partitions: (list of tuples) Region names and associated indices 
+  partitioning the input dataset to indicate at which recordNumber it should 
+  start learning. The remaining of the data (last partition) is used as a test 
+  set. 
   @param numRecords: (int) Number of records of the input dataset.
   @param network: (Network) a Network instance to run.
   """
-
-  partitions = _findNumberOfPartitions(networkConfiguration, numRecords)
-  sensorRegion = network.regions[SENSOR_REGION_NAME]
-  classifierRegion = network.regions[CLASSIFIER_REGION_NAME]
+  sensorRegionName = getRegionConfigParam(networkConfig,
+                                          "sensorRegionConfig",
+                                          "regionName")
+  classifierRegionName = getRegionConfigParam(networkConfig,
+                                              "classifierRegionConfig",
+                                              "regionName")
+  classifierRegionType = getRegionConfigParam(networkConfig,
+                                              "classifierRegionConfig",
+                                              "regionType")
+  sensorRegion = network.regions[sensorRegionName]
+  classifierRegion = network.regions[classifierRegionName]
   testIndex = partitions[-1][1]
 
   # keep track of the regions that have been trained
@@ -362,13 +376,13 @@ def runNetwork(network, networkConfiguration, numRecords):
 
     # Evaluate the predictions on the test set.
     if recordNumber >= testIndex:
-      if classifierRegion.type == KNN_CLASSIFIER_TYPE:
+      if classifierRegionType == "py.KNNClassifierRegion":
         # The use of numpy.lexsort() here is to first sort by labelFreq, then 
         # sort by random values; this breaks ties in a random manner.
         inferenceValues = classifierRegion.getOutputData("categoriesOut")
         randomValues = numpy.random.random(inferenceValues.size)
         inferredValue = numpy.lexsort((randomValues, inferenceValues))[-1]
-      elif classifierRegion.type == CLA_CLASSIFIER_TYPE:
+      elif classifierRegionType == "py.CLAClassifierRegion":
         inferredValue = classifierRegion.getOutputData("categoriesOut")[0]
       if actualValue == inferredValue:
         numCorrect += 1
@@ -389,25 +403,20 @@ def runNetwork(network, networkConfiguration, numRecords):
 
 
 
-def configureNetwork(inputFile,
-                     networkConfiguration):
+def configureNetwork(dataSource, networkParams):
   """
   Configure the network for various experiment values.
   
-  @param inputFile: (str) file containing the input data that will be fed to 
-  the network.
-  @param networkConfiguration: (dict) the configuration of this network.
+  @param dataSource: (RecordStream) CSV file record stream.
+  @param networkParams: (dict) the configuration of this network.
   """
-  # Create and run network on this data.
-  #   Input data comes from a CSV file (scalar values, labels). The
-  #   RecordSensor region allows us to specify a file record stream as the
-  #   input source via the dataSource attribute.
 
-  # create the network encoders for sensor data. 
-  dataSource = FileRecordStream(streamID=inputFile)
-  _setScalarEncoderMinMax(networkConfiguration, dataSource)
+  # if the sensor region has a scalar encoder, then set the min and max values. 
+  encoderType = getEncoderParam(networkParams, "scalarEncoder", "type")
+  if encoderType is not None:
+    _setScalarEncoderMinMax(networkParams, dataSource)
 
-  network = createNetwork(dataSource, networkConfiguration)
+  network = createNetwork(dataSource, networkParams)
 
   # Need to init the network before it can run.
   network.initialize()
@@ -415,56 +424,323 @@ def configureNetwork(inputFile,
 
 
 
-def _findNumberOfPartitions(networkConfiguration, numRecords):
+def setRegionConfigParam(networkConfig,
+                         regionConfigKey,
+                         regionConfigParamKey,
+                         regionConfigParamValue):
   """
-  Find the number of partitions for the input data based on a specific
-  networkConfiguration. 
+  Set the value of a region config parameter. E.g. 'regionName' in:
   
-  @param networkConfiguration: (dict) the configuration of this network.
-  @param numRecords: (int) Number of records of the input dataset.
-  @return partitions: (list of tuples) Region names and associated indices 
-  partitioning the input dataset to indicate at which recordNumber it should 
-  start learning. The remaining of the data (last partition) is used as a test 
-  set. 
-  """
-
-  spEnabled = networkConfiguration[SP_REGION_NAME]["enabled"]
-  tmEnabled = networkConfiguration[TM_REGION_NAME]["enabled"]
-  upEnabled = networkConfiguration[UP_REGION_NAME]["enabled"]
-  maxNumPartitions = 5
-
-  partitions = {}
-  if spEnabled and tmEnabled and upEnabled:
-    partitions[SP_REGION_NAME] = 0
-    partitions[TM_REGION_NAME] = numRecords * 1/maxNumPartitions
-    partitions[UP_REGION_NAME] = numRecords * 2/maxNumPartitions
-  elif spEnabled and tmEnabled:
-    partitions[SP_REGION_NAME] = numRecords * 1/maxNumPartitions
-    partitions[TM_REGION_NAME] = numRecords * 2/maxNumPartitions
-  elif spEnabled:
-    partitions[SP_REGION_NAME] = numRecords * 2/maxNumPartitions
-
-  partitions[CLASSIFIER_REGION_NAME] = numRecords * 3/maxNumPartitions
-  partitions[TEST_PARTITION_NAME] = numRecords * 4/maxNumPartitions
-
-  return sorted(partitions.items(), key=lambda x: x[1])
-
-
-
-
-
-
-def _setScalarEncoderMinMax(networkConfiguration, dataSource):
-  """
-  Set the min and max values.
+  "spRegionConfig": {
+    "regionEnabled": true,
+    "regionName": "SP",
+    "regionType": "py.SPRegion",
+    "regionParams": {
+      "spVerbosity": 0,
+      "spatialImp": "cpp",
+      "globalInhibition": 1,
+      "columnCount": 2048,
+      "numActiveColumnsPerInhArea": 40,
+      "seed": 1956,
+      "potentialPct": 0.8,
+      "synPermConnected": 0.1,
+      "synPermActiveInc": 0.0001,
+      "synPermInactiveDec": 0.0005,
+      "maxBoost": 1.0
+    }
+  }
   
-  @param networkConfiguration: (dict) the configuration of this network.
+  @param networkConfig: (dict) the config of the network.
+  @param regionConfigKey: (str) name of the region config for which we want to 
+  modify the param. E.g. 'sensorRegionConfig'.
+  @param regionConfigParamKey: (str) name of the region config param to 
+  update. E.g. 'regionType'.
+  @param regionConfigParamValue: value of the region config param.
+  """
+
+  networkConfig[regionConfigKey][regionConfigParamKey] = regionConfigParamValue
+
+
+
+def setRegionParam(networkConfig,
+                   regionConfigKey,
+                   regionParamKey,
+                   regionParamValue):
+  """
+  Set value of a key in the 'regionParams' dict of a region config. See:
+  
+  "spRegionConfig": {
+    "regionEnabled": true,
+    "regionName": "SP",
+    "regionType": "py.SPRegion",
+    "regionParams": {
+      "spVerbosity": 0,
+      "spatialImp": "cpp",
+      "globalInhibition": 1,
+      "columnCount": 2048,
+      "numActiveColumnsPerInhArea": 40,
+      "seed": 1956,
+      "potentialPct": 0.8,
+      "synPermConnected": 0.1,
+      "synPermActiveInc": 0.0001,
+      "synPermInactiveDec": 0.0005,
+      "maxBoost": 1.0
+    }
+  }
+  
+  @param networkConfig: (dict) the config of the network.
+  @param regionConfigKey: (str) name of the region config for which we want to 
+  modify the param. E.g. 'sensorRegionConfig'.
+  @param regionParamKey: (str) name of the region param to update. E.g. 
+  'inputWidth'.
+  @param regionParamValue: value of the region param.
+  """
+
+  (networkConfig[regionConfigKey]['regionParams']
+   [regionParamKey]) = regionParamValue
+
+
+
+def getRegionConfigParam(networkConfig,
+                         regionConfigKey,
+                         regionConfigParamKey):
+  """
+  Get the value of a region config parameter. E.g. 'regionName' in:
+  
+  "spRegionConfig": {
+    "regionEnabled": true,
+    "regionName": "SP",
+    "regionType": "py.SPRegion",
+    "regionParams": {
+      "spVerbosity": 0,
+      "spatialImp": "cpp",
+      "globalInhibition": 1,
+      "columnCount": 2048,
+      "numActiveColumnsPerInhArea": 40,
+      "seed": 1956,
+      "potentialPct": 0.8,
+      "synPermConnected": 0.1,
+      "synPermActiveInc": 0.0001,
+      "synPermInactiveDec": 0.0005,
+      "maxBoost": 1.0
+    }
+  }
+  
+  @param networkConfig: (dict) the config of the network.
+  @param regionConfigKey: (str) name of the region config for which we want to 
+  modify the param. E.g. 'sensorRegionConfig'.
+  @param regionConfigParamKey: (str) name of the region config param to 
+  update. E.g. 'regionType'.
+  @return regionConfigParamValue: value of the region config param.
+  """
+
+  return networkConfig[regionConfigKey].get(regionConfigParamKey)
+
+
+
+def getRegionParam(networkConfig,
+                   regionConfigKey,
+                   regionParamKey,
+                   regionParamValue):
+  """
+  Get value of a key in the 'regionParams' dict of a region config. See:
+  
+  "spRegionConfig": {
+    "regionEnabled": true,
+    "regionName": "SP",
+    "regionType": "py.SPRegion",
+    "regionParams": {
+      "spVerbosity": 0,
+      "spatialImp": "cpp",
+      "globalInhibition": 1,
+      "columnCount": 2048,
+      "numActiveColumnsPerInhArea": 40,
+      "seed": 1956,
+      "potentialPct": 0.8,
+      "synPermConnected": 0.1,
+      "synPermActiveInc": 0.0001,
+      "synPermInactiveDec": 0.0005,
+      "maxBoost": 1.0
+    }
+  }
+  
+  @param networkConfig: (dict) the config of the network.
+  @param regionConfigKey: (str) name of the region config for which we want to 
+  modify the param. E.g. 'sensorRegionConfig'.
+  @param regionParamKey: (str) name of the region param to update. E.g. 
+  'inputWidth'.
+  @param regionParamValue: value of the region param.
+  """
+
+  (networkConfig[regionConfigKey]['regionParams']
+   [regionParamKey]) = regionParamValue
+
+
+
+def setEncoderParam(networkConfig,
+                    encoderName,
+                    paramName,
+                    paramValue):
+  """
+  Set the value of an encoder parameter for the sensor region.
+  
+  @param networkConfig: (dict) the config of the network
+  @param encoderName: (str) name of the encoder. E.g. 'scalar'.
+  @param paramName: (str) name of the encoder param to update. 
+  E.g. 'minval'.
+  @param paramValue: value of the encoder param.
+  """
+
+  (networkConfig["sensorRegionConfig"]["encoders"][encoderName]
+   [paramName]) = paramValue
+
+
+
+def getEncoderParam(networkConfig, encoderName, paramName):
+  """
+  Get the value of an encoder parameter for the sensor region.
+  
+  @param networkConfig: (dict) the configuration of the network
+  @param encoderName: (str) name of the encoder. E.g. 'ScalarEncoder'.
+  @param paramName: (str) name of the param to update. E.g. 'minval'.
+  @return paramValue: None if key 'paramName' does not exist. Value otherwise.
+  """
+
+  return networkConfig["sensorRegionConfig"]["encoders"][encoderName].get(
+    paramName)
+
+
+
+def _setScalarEncoderMinMax(networkConfig, dataSource):
+  """
+  Set the min and max values of a scalar encoder.
+  
+  @param networkConfig: (dict) configuration of the network.
   @param dataSource: (RecordStream) the input source
   """
-  scalarEncoderParams = (networkConfiguration
-                         [SENSOR_REGION_NAME]
-                         ["encoders"]
-                         [SCALAR_ENCODER_NAME])
-  fieldName = scalarEncoderParams["fieldname"]
-  scalarEncoderParams["minval"] = dataSource.getFieldMin(fieldName)
-  scalarEncoderParams["maxval"] = dataSource.getFieldMax(fieldName)
+
+  fieldName = getEncoderParam(networkConfig, "scalarEncoder", "fieldname")
+  minval = dataSource.getFieldMin(fieldName)
+  maxval = dataSource.getFieldMax(fieldName)
+  setEncoderParam(networkConfig, "scalarEncoder", "minval", minval)
+  setEncoderParam(networkConfig, "scalarEncoder", "maxval", maxval)
+
+
+
+def setRegionEnabled(networkConfig,
+                     regionConfigKey,
+                     regionEnabledValue):
+  """
+  Set the value of the config param 'regionEnabled'.
+  
+  @param networkConfig: (dict) the config of the network.
+  @param regionConfigKey: (str) name of the region config for which we want to 
+  modify the param. E.g. 'sensorRegionConfig'.
+  update. E.g. 'regionType'.
+  @param regionEnabledValue: (bool) 1 if region enabled. 0 Otherwise.
+  """
+  setRegionConfigParam(networkConfig,
+                       regionConfigKey,
+                       "regionEnabled",
+                       regionEnabledValue)
+
+
+
+def getRegionEnabled(networkConfig,
+                     regionConfigKey):
+  """
+  Get the value of the config param 'regionEnabled'.
+  
+  @param networkConfig: (dict) the config of the network.
+  @param regionConfigKey: (str) name of the region config for which we want to 
+  modify the param. E.g. 'sensorRegionConfig'.
+  update. E.g. 'regionType'.
+  @retun regionEnabledValue: (bool) 1 if region enabled. 0 Otherwise.
+  """
+  return getRegionConfigParam(networkConfig,
+                              regionConfigKey,
+                              "regionEnabled")
+
+
+
+def setRegionType(networkConfig,
+                  regionConfigKey,
+                  regionTypeValue):
+  """
+  Set the value of the config param 'regionType'.
+  
+  @param networkConfig: (dict) the config of the network.
+  @param regionConfigKey: (str) name of the region config for which we want to 
+  modify the param. E.g. 'sensorRegionConfig'.
+  update. E.g. 'regionType'.
+  @param regionTypeValue: (str) Type of the region. E.g. "py.KNNClassifier"
+  """
+  setRegionConfigParam(networkConfig,
+                       regionConfigKey,
+                       "regionType",
+                       regionTypeValue)
+
+
+
+def getRegionType(networkConfig,
+                  regionConfigKey):
+  """
+  Get the value of the config param 'regionType'.
+  
+  @param networkConfig: (dict) the config of the network.
+  @param regionConfigKey: (str) name of the region config for which we want to 
+  modify the param. E.g. 'sensorRegionConfig'.
+  update. E.g. 'regionType'.
+  @return regionTypeValue: (str) Type of the region. E.g. "py.KNNClassifier"
+  """
+  return getRegionConfigParam(networkConfig,
+                              regionConfigKey,
+                              "regionType")
+
+
+
+def setRegionParams(networkConfig,
+                    regionConfigKey,
+                    regionParamsValue):
+  """
+  Set the value of the config param 'regionParams'.
+  
+  @param networkConfig: (dict) the config of the network.
+  @param regionConfigKey: (str) name of the region config for which we want to 
+  modify the param. E.g. 'sensorRegionConfig'.
+  update. E.g. 'regionType'.
+  @param regionParamsValue: (dict) params of the region. E.g for a 
+  region of type "py.KNNClassifier":
+      {
+        "k": 1,
+        "distThreshold": 0,
+        "maxCategoryCount": 10
+      }
+  """
+  setRegionConfigParam(networkConfig,
+                       regionConfigKey,
+                       "regionParams",
+                       regionParamsValue)
+
+
+
+def getRegionParams(networkConfig,
+                    regionConfigKey):
+  """
+  Get the value of the config param 'regionParams'.
+  
+  @param networkConfig: (dict) the config of the network.
+  @param regionConfigKey: (str) name of the region config for which we want to 
+  modify the param. E.g. 'sensorRegionConfig'.
+  update. E.g. 'regionType'.
+  @return regionParamsValue: (dict) params of the region. E.g for a 
+  region of type "py.KNNClassifier":
+      {
+        "k": 1,
+        "distThreshold": 0,
+        "maxCategoryCount": 10
+      }
+  """
+  return getRegionConfigParam(networkConfig,
+                              regionConfigKey,
+                              "regionParams")
