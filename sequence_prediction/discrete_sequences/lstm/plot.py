@@ -56,8 +56,26 @@ def plotAccuracy(results, window=100, type="sequences", label=None):
   accuracy = results[0]
   x = results[1]
   movingData = movingAverage(accuracy, min(len(accuracy), window))
+
   pyplot.plot(x, movingData, label=label,
               marker='o', markersize=3, markeredgewidth=0)
+
+  dX = numpy.array([x[i+1] - x[i] for i in xrange(len(x) - 1)])
+  testEnd = numpy.array(x)[dX > dX.mean()].tolist()
+  testEnd = testEnd + [x[-1]]
+
+  dX = numpy.insert(dX, 0, 0)
+  testStart = numpy.array(x)[dX > dX.mean()].tolist()
+  testStart = [0] + testStart
+
+  for line in testStart:
+    pyplot.axvline(line, color='red')
+
+  for i in xrange(len(testStart)):
+    pyplot.axvspan(testStart[i], testEnd[i], alpha=0.25, facecolor='b')
+
+  pyplot.xlim(0, x[-1])
+  pyplot.ylim(0, 1.001)
 
 
 
