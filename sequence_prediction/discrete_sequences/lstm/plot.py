@@ -69,10 +69,10 @@ def plotAccuracy(results, window=100, type="sequences", label=None):
   testStart = [0] + testStart
 
   for line in testStart:
-    pyplot.axvline(line, color='red')
+    pyplot.axvline(line, color='orange')
 
   for i in xrange(len(testStart)):
-    pyplot.axvspan(testStart[i], testEnd[i], alpha=0.25, facecolor='b')
+    pyplot.axvspan(testStart[i], testEnd[i], alpha=0.15, facecolor='black')
 
   pyplot.xlim(0, x[-1])
   pyplot.ylim(0, 1.001)
