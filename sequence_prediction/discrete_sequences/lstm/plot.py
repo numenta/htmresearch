@@ -42,10 +42,10 @@ def plotMovingAverage(data, window, label=None):
 
 
 
-def plotAccuracy(results, window=100, label=None):
+def plotAccuracy(results, window=100, type="sequences", label=None):
   pyplot.title("High-order prediction")
-  pyplot.xlabel("# of elements seen")
-  pyplot.ylabel("High-order prediction accuracy over last {0} elements".format(window))
+  pyplot.xlabel("# of {0} seen".format(type))
+  pyplot.ylabel("High-order prediction accuracy over last {0} {1}".format(window, type))
 
   accuracy = results[0]
   movingData = movingAverage(accuracy, min(len(accuracy), window))
@@ -79,7 +79,7 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('experiments', metavar='/path/to/experiment /path/...', nargs='+', type=str)
   parser.add_argument('-w', '--window', type=int, default=100)
-  parser.add_argument('-e', '--end-of-sequences-only', action='store_true')
+  parser.add_argument('-f', '--full', action='store_true')
 
   suite = Suite()
   args = parser.parse_args()
@@ -98,11 +98,13 @@ if __name__ == '__main__':
     predictions = suite.get_history(experiment, 0, 'predictions')
     truth = suite.get_history(experiment, 0, 'truth')
 
-    resets = suite.get_history(experiment, 0, 'reset') if args.end_of_sequences_only else None
-    randoms = suite.get_history(experiment, 0, 'random') if args.end_of_sequences_only else None
+    resets = None if args.full else suite.get_history(experiment, 0, 'reset')
+    randoms = None if args.full else suite.get_history(experiment, 0, 'random')
+    type = "elements" if args.full else "sequences"
 
     plotAccuracy(computeAccuracy(predictions, truth, iteration, resets=resets, randoms=randoms),
                  window=args.window,
+                 type=type,
                  label=experiment)
 
   if len(experiments) > 1:
