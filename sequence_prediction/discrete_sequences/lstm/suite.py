@@ -231,7 +231,6 @@ class Suite(PyExperimentSuite):
 
     history = self.window(self.history, params)
     resets = self.window(self.resets, params)
-    print len(history)
 
     for i in xrange(1, len(history)):
       if not resets[i-1]:
