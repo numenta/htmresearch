@@ -77,21 +77,12 @@ def computeAccuracy(predictions, truth, iteration, resets=None, randoms=None):
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
-  parser.add_argument('experiment', metavar='/path/to/experiment', type=str)
+  parser.add_argument('experiments', metavar='/path/to/experiment /path/...', nargs='+', type=str)
   parser.add_argument('-w', '--window', type=int, default=100)
   parser.add_argument('-e', '--end-of-sequences-only', action='store_true')
 
   suite = Suite()
   args = parser.parse_args()
-
-  experiment = args.experiment
-
-  iteration = suite.get_history(experiment, 0, 'iteration')
-  predictions = suite.get_history(experiment, 0, 'predictions')
-  truth = suite.get_history(experiment, 0, 'truth')
-
-  resets = suite.get_history(experiment, 0, 'reset') if args.end_of_sequences_only else None
-  randoms = suite.get_history(experiment, 0, 'random') if args.end_of_sequences_only else None
 
   from pylab import rcParams
 
@@ -100,6 +91,21 @@ if __name__ == '__main__':
   rcParams.update({'ytick.labelsize': 8})
   rcParams.update({'figure.figsize': (12, 6)})
 
-  plotAccuracy(computeAccuracy(predictions, truth, iteration, resets=resets, randoms=randoms),
-               window=args.window)
+  experiments = args.experiments
+
+  for experiment in experiments:
+    iteration = suite.get_history(experiment, 0, 'iteration')
+    predictions = suite.get_history(experiment, 0, 'predictions')
+    truth = suite.get_history(experiment, 0, 'truth')
+
+    resets = suite.get_history(experiment, 0, 'reset') if args.end_of_sequences_only else None
+    randoms = suite.get_history(experiment, 0, 'random') if args.end_of_sequences_only else None
+
+    plotAccuracy(computeAccuracy(predictions, truth, iteration, resets=resets, randoms=randoms),
+                 window=args.window,
+                 label=experiment)
+
+  if len(experiments) > 1:
+    pyplot.legend()
+
   pyplot.show()
