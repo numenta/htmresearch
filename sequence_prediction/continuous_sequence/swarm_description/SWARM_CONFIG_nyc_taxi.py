@@ -22,12 +22,12 @@
 
 SWARM_CONFIG = {
   "includedFields": [
-    # {
-    #   "fieldName": "timeofday",
-    #   "fieldType": "string",
-    #   "maxValue": 1500,
-    #   "minValue": 0
-    # },
+    {
+      "fieldName": "timeofday",
+      "fieldType": "string",
+      "maxValue": 1500,
+      "minValue": 0
+    },
     # {
     #   "fieldName": "dayofweek",
     #   "fieldType": "string"
