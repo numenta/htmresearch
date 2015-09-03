@@ -105,7 +105,7 @@ def _getArgs():
   parser.add_option("-d",
                     "--dataSet",
                     type=str,
-                    default='sine',
+                    default='nyc_taxi',
                     dest="dataSet",
                     help="DataSet Name, choose from sine, SantaFe_A, MackeyGlass")
 
@@ -248,7 +248,7 @@ if __name__ == "__main__":
   csvReader.next()
   csvReader.next()
 
-  outputFileName = './prediction/'+dataSet+'_lstm_pred.csv'
+  outputFileName = './prediction/'+dataSet+'_lstm_pred_useTimeOfDay_'+str(useTimeOfDay)+'.csv'
   outputFile = open(outputFileName,"w")
   csvWriter = csv.writer(outputFile)
   csvWriter.writerow(['timestamp', predictedField, 'prediction-'+str(predictionStep)+'step'])

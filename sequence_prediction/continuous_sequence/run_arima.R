@@ -1,3 +1,5 @@
+rm(list = ls())
+
 library(forecast)
 library(TSPred)
 
@@ -19,12 +21,12 @@ if(dataSet=="sine"){
 } else if (dataSet=='rec-center-hourly'){
   nTrain <- 3800
 } else if (dataSet=='nyc_taxi'){
-  nTrain <- 15000
+  nTrain <- 5000
 }
   
 nData <- length(rt)
-# testLength <- nData - nTrain
-testLength <- 500
+testLength <- nData - nTrain
+# testLength <- 1
 
 # Vectors to hold prediction for t+1
 arima_output1 = vector(mode="numeric", length=nData)
@@ -38,15 +40,14 @@ auto.arima(rt[seq(1, nTrain)])
 for(i in 1:testLength)
 {
   # Compute ARIMA on the full dataset up to this point
-  trainSet = window(rt, end=nTrain+i)
+  trainSet = window(rt, start=i, end=nTrain+i)
   fit_arima <- auto.arima(trainSet)
   
 #   fcast_arima <- predict(fit_arima, n.ahead = 5, se.fit = TRUE)
 #   mean <- fcast_arima$pred
 #   std <- fcast_arima$se
-  # Use records from 1 up to nTrain+i to 
-  # predict nTrain+i+1 to nTrain+i+24
-  fcast_arima <- forecast(fit_arima,h=5)
+  
+  fcast_arima <- forecast(fit_arima, h=5)
   pred <- fcast_arima$mean
 
   arima_output1[nTrain+i] = pred[1]

@@ -71,7 +71,7 @@ class NuPICFileOutput(NuPICOutput):
     self.outputFiles = []
     self.outputWriters = []
     self.lineCounts = []
-    headerRow = ['timestamp', 'kw_energy_consumption',  'prediction-5step']
+    headerRow = ['timestamp', 'data',  'prediction-5step']
     for name in self.names:
       self.lineCounts.append(0)
       outputFileName = "./prediction/%s_TM_pred.csv" % name
@@ -88,7 +88,7 @@ class NuPICFileOutput(NuPICOutput):
 
   def write(self, timestamps, actualValues, predictedValues5step):
 
-    assert len(timestamps) == len(actualValues) == len(predictedValues5step)
+    # assert len(timestamps) == len(actualValues) == len(predictedValues5step)
 
     for index in range(len(self.names)):
       timestamp = timestamps[index]

@@ -49,9 +49,8 @@ def loadTrueDataFile(filePath):
 
 
 def loadDataFileLSTM(filePath):
-  data = pd.read_csv(filePath, header=0, nrows=1)
-  colnames = data.columns.values
-  ncol = len(colnames)
+  # data = pd.read_csv(filePath, header=0, nrows=1)
+  # colnames = data.columns.values
   data = pd.read_csv(filePath, header=0, skiprows=[1,2], names=['step', 'value', 'prediction5'])
 
   return data
@@ -71,157 +70,6 @@ def loadDataFile(filePath):
   elif ncol == 4:
     data = pd.read_csv(filePath, header=0, skiprows=[1,2], names=['step', 'data', 'prediction1', 'prediction5'])
   return data
-
-
-def plotPerformance(dataSet, nTrain):
-  # filePath = './data/' + dataSet + '.csv'
-  # print "load test data from ", filePath
-  # trueData = loadDataFile(filePath)
-  # trueData = trueData['value']
-  #
-  # filePath = './prediction/' + dataSet + '_TM_pred.csv'
-  # print "load TM prediction from ", filePath
-  # predData_TM = loadDataFile(filePath)
-  #
-  # filePath = './prediction/' + dataSet + '_ARIMA_pred.csv'
-  # predData_ARIMA = loadDataFile(filePath)
-  #
-  # print "nTrain: ", nTrain
-  # print "nTest: ", len(trueData[nTrain:])
-  #
-  # # trivial shift predictor
-  # predData_shift = np.roll(trueData, 1)
-  # predData_TM_one_step = np.roll(predData_TM['prediction1'], 1)
-  # predData_ARIMA_one_step = np.roll(predData_ARIMA['prediction1'], 1)
-  #
-  # trueData = trueData[nTrain:]
-  # predData_TM_one_step = predData_TM_one_step[nTrain:]
-  # predData_shift = predData_shift[nTrain:]
-  # predData_ARIMA_one_step = predData_ARIMA_one_step[nTrain:]
-  #
-  # NRMSE_TM = NRMSE(trueData, predData_TM_one_step)
-  # NRMSE_ARIMA = NRMSE(trueData, predData_ARIMA_one_step)
-  # NRMSE_Shift = NRMSE(trueData, predData_shift)
-  #
-  # print "NRMSE: Shift - 1step", NRMSE_Shift
-  # print "NRMSE: TM - 1 step", NRMSE_TM
-  # print "NRMSE: ARIMA - 1 step", NRMSE_ARIMA
-  #
-  # plt.figure(1)
-  # plt.plot(trueData, label='True Data', color='black')
-  # plt.plot(predData_shift, label='Trival NRMSE: '+"%0.3f" % NRMSE_Shift)
-  # plt.plot(predData_ARIMA_one_step, label='ARIMA NRMSE: '+"%0.3f" % NRMSE_ARIMA)
-  # plt.plot(predData_TM_one_step, label='TM, NRMSE: '+"%0.3f" % NRMSE_TM)
-  # plt.legend()
-  # plt.xlabel('Time')
-  # fileName = './result/'+dataSet+"modelPrediction.pdf"
-  # print "save example prediction trace to ", fileName
-  # plt.savefig(fileName)
-
-  # resTM = abs(trueData-predData_TM)
-  # res_shift = abs(trueData-predData_shift)
-  # resTM = resTM[np.isnan(resTM) == False]
-  # res_shift = res_shift[np.isnan(res_shift) == False]
-  # plt.figure(2)
-  # xl = [0, max(max(resTM), max(res_shift))]
-  # plt.subplot(2,2,1)
-  # plt.hist(resTM)
-  # plt.title('TM median='+"%0.3f" % np.median(resTM)+' NRMSE: '+"%0.3f" % NRMSE_TM)
-  # plt.xlim(xl)
-  # plt.xlabel("|residual|")
-  # plt.subplot(2,2,3)
-  # plt.hist(res_shift)
-  # plt.title('Trivial median='+"%0.3f" % np.median(res_shift)+' NRMSE: '+"%0.3f" % NRMSE_Shift)
-  # plt.xlim(xl)
-  # plt.xlabel("|residual|")
-  # fileName = './result/'+dataSet+"error_distribution.pdf"
-  # print "save residual error distribution to ", fileName
-  # plt.savefig(fileName)
-
-
-  filePath = './data/' + dataSet + '.csv'
-  print "load test data from ", filePath
-  trueData = loadTrueDataFile(filePath)
-  trueData = trueData['value'].astype('float')
-
-  filePath = './prediction/' + dataSet + '_TM_pred.csv'
-  print "load TM prediction from ", filePath
-  predData_TM = loadDataFileLSTM(filePath)
-
-  filePath = './prediction/' + dataSet + '_ARIMA_pred.csv'
-  predData_ARIMA = loadDataFile(filePath)
-
-  filePath = './prediction/' + dataSet + '_lstm_pred.csv'
-  predData_LSTM = loadDataFileLSTM(filePath)
-
-
-  nTest = len(trueData) - nTrain - 5
-  print "nTrain: ", nTrain
-  print "nTest: ", len(trueData[nTrain:])
-
-  # trivial shift predictor
-  predData_shift = np.roll(trueData, 5)
-  predData_TM_five_step = np.roll(predData_TM['prediction5'], 5)
-  predData_ARIMA_five_step = predData_shift
-  # predData_ARIMA_five_step = np.roll(predData_ARIMA['prediction5'], 5)
-  predData_LSTM_five_step = np.roll(predData_LSTM['prediction5'], 5)
-
-  time_step = predData_TM['step']
-
-  nrmse_window = 1000
-  (window_center, nrmse_slide_tm) = NRMSE_sliding(trueData, predData_TM_five_step, nrmse_window)
-  (window_center, nrmse_slide_lstm) = NRMSE_sliding(trueData, predData_LSTM_five_step, nrmse_window)
-  (window_center, nrmse_slide_shift) = NRMSE_sliding(trueData, predData_shift, nrmse_window)
-
-  plt.figure(1)
-  plt.plot(window_center, nrmse_slide_tm, label='TM')
-  plt.plot(window_center, nrmse_slide_lstm, label='LSTM')
-  plt.plot(window_center, nrmse_slide_shift, label='Shift')
-  plt.legend()
-
-  trueData = trueData[nTrain:nTrain+nTest]
-  predData_TM_five_step = predData_TM_five_step[nTrain:nTrain+nTest]
-  predData_shift = predData_shift[nTrain:nTrain+nTest]
-  predData_ARIMA_five_step = predData_ARIMA_five_step[nTrain:nTrain+nTest]
-  predData_LSTM_five_step = predData_LSTM_five_step[nTrain:nTrain+nTest]
-  time_step = time_step[nTrain:nTrain+nTest]
-
-  NRMSE_TM = NRMSE(trueData, predData_TM_five_step)
-  NRMSE_ARIMA = NRMSE(trueData, predData_ARIMA_five_step)
-  NRMSE_LSTM = NRMSE(trueData, predData_LSTM_five_step)
-  NRMSE_Shift = NRMSE(trueData, predData_shift)
-
-
-
-  print "NRMSE: Shift - 5 step", NRMSE_Shift
-  print "NRMSE: TM - 5 step", NRMSE_TM
-  print "NRMSE: ARIMA - 5 step", NRMSE_ARIMA
-  print "NRMSE: LSTM - 5 step", NRMSE_LSTM
-
-  time_step = pd.to_datetime(time_step)
-  plt.figure(2)
-  plt.plot(time_step, trueData, label='True Data', color='black')
-  # plt.plot(time_step, predData_shift, label='Trival NRMSE: '+"%0.3f" % NRMSE_Shift)
-  # plt.plot(time_step, predData_ARIMA_five_step, label='ARIMA NRMSE: '+"%0.3f" % NRMSE_ARIMA)
-  plt.plot(time_step, predData_TM_five_step, label='TM, NRMSE: '+"%0.3f" % NRMSE_TM)
-  plt.plot(time_step, predData_LSTM_five_step, label='LSTM, NRMSE: '+"%0.3f" % NRMSE_LSTM)
-  plt.legend()
-  plt.xlabel('Time')
-  plt.ylabel('Passenger Count')
-  plt.xlim([time_step.values[0], time_step.values[400]])
-  fileName = './result/'+dataSet+"modelPrediction.pdf"
-  print "save example prediction trace to ", fileName
-  plt.savefig(fileName)
-
-  fig, ax = plt.subplots()
-  inds = np.arange(4)
-  ax.bar(inds, [NRMSE_Shift, NRMSE_LSTM, NRMSE_ARIMA, NRMSE_TM], width=0.3)
-  ax.set_xticks(inds+0.3/2)
-  ax.set_xticklabels( ('Shift', 'LSTM', 'ARIMA', 'TM') )
-  ax.set_ylabel('NRMSE')
-
-  # import plotly.plotly as py
-  # plot_url = py.plot_mpl(fig)
 
 
 def _getArgs():
@@ -247,4 +95,94 @@ if __name__ == "__main__":
   SWARM_CONFIG = SwarmRunner.importSwarmDescription(dataSet)
   nTrain = SWARM_CONFIG["streamDef"]['streams'][0]['last_record']
   print 'Compare Model performance for ', dataSet
-  plotPerformance(dataSet, nTrain)
+
+
+  filePath = './data/' + dataSet + '.csv'
+  print "load test data from ", filePath
+  trueData = loadTrueDataFile(filePath)
+  time_step = trueData['step']
+  trueData = trueData['value'].astype('float')
+
+  filePath = './prediction/' + dataSet + '_TM_pred.csv'
+  print "load TM prediction from ", filePath
+  predData_TM = loadDataFileLSTM(filePath)
+
+  filePath = './prediction/' + dataSet + '_ARIMA_pred.csv'
+  predData_ARIMA = loadDataFile(filePath)
+
+  useTimeOfDay = False
+  filePath = './prediction/'+dataSet+'_lstm_pred_useTimeOfDay_'+str(useTimeOfDay)+'.csv'
+  predData_LSTM = loadDataFileLSTM(filePath)
+
+
+  nTest = len(trueData) - nTrain - 5
+  print "nTrain: ", nTrain
+  print "nTest: ", len(trueData[nTrain:])
+
+  # trivial shift predictor
+  predData_shift = np.roll(trueData, 5)
+  predData_TM_five_step = np.roll(predData_TM['prediction5'], 5)
+  predData_ARIMA_five_step = np.roll(predData_ARIMA['prediction5'], 5)
+  predData_LSTM_five_step = np.roll(predData_LSTM['prediction5'], 5)
+
+
+  # trueData = trueData[nTrain:nTrain+nTest]
+  # predData_TM_five_step = predData_TM_five_step[nTrain:nTrain+nTest]
+  # predData_shift = predData_shift[nTrain:nTrain+nTest]
+  # predData_ARIMA_five_step = predData_ARIMA_five_step[nTrain:nTrain+nTest]
+  # predData_LSTM_five_step = predData_LSTM_five_step[nTrain:nTrain+nTest]
+
+  NRMSE_TM = NRMSE(trueData[nTrain:nTrain+nTest], predData_TM_five_step[nTrain:nTrain+nTest])
+  NRMSE_ARIMA = NRMSE(trueData[nTrain:nTrain+nTest], predData_ARIMA_five_step[nTrain:nTrain+nTest])
+  NRMSE_LSTM = NRMSE(trueData[nTrain:nTrain+nTest], predData_LSTM_five_step[nTrain:nTrain+nTest])
+  NRMSE_Shift = NRMSE(trueData[nTrain:nTrain+nTest], predData_shift[nTrain:nTrain+nTest])
+
+  print "NRMSE: Shift - 5 step", NRMSE_Shift
+  print "NRMSE: TM - 5 step", NRMSE_TM
+  print "NRMSE: ARIMA - 5 step", NRMSE_ARIMA
+  print "NRMSE: LSTM - 5 step", NRMSE_LSTM
+
+  time_step = pd.to_datetime(time_step)
+
+  plt.figure(2)
+  plt.plot(time_step, trueData, label='True Data', color='black')
+  # plt.plot(time_step, predData_shift, label='Trival NRMSE: '+"%0.3f" % NRMSE_Shift)
+  # plt.plot(time_step, predData_ARIMA_five_step, label='ARIMA NRMSE: '+"%0.3f" % NRMSE_ARIMA)
+  plt.plot(time_step, predData_TM_five_step, label='TM, NRMSE: '+"%0.3f" % NRMSE_TM)
+  plt.plot(time_step, predData_LSTM_five_step, label='LSTM, NRMSE: '+"%0.3f" % NRMSE_LSTM)
+  plt.legend()
+  plt.xlabel('Time')
+  plt.ylabel('Passenger Count')
+  plt.xlim([time_step.values[-500], time_step.values[-1]])
+  fileName = './result/'+dataSet+"modelPrediction.pdf"
+  print "save example prediction trace to ", fileName
+  plt.savefig(fileName)
+
+  fig, ax = plt.subplots()
+  inds = np.arange(4)
+  ax.bar(inds, [NRMSE_Shift, NRMSE_ARIMA, NRMSE_TM, NRMSE_LSTM], width=0.3)
+  ax.set_xticks(inds+0.3/2)
+  ax.set_xticklabels( ('Shift', 'ARIMA', 'TM', 'LSTM') )
+  ax.set_ylabel('NRMSE')
+
+  # plot NRMSE as a function of time
+  nrmse_window = 960
+  (window_center, nrmse_slide_tm) = NRMSE_sliding(trueData, predData_TM_five_step, nrmse_window)
+  (window_center, nrmse_slide_lstm) = NRMSE_sliding(trueData, predData_LSTM_five_step, nrmse_window)
+  (window_center, nrmse_slide_shift) = NRMSE_sliding(trueData, predData_shift, nrmse_window)
+  (window_center, nrmse_arima_shift) = NRMSE_sliding(trueData, predData_ARIMA_five_step, nrmse_window)
+
+  plt.figure(1)
+  plt.plot(time_step[window_center], nrmse_slide_tm, label='TM')
+  plt.plot(time_step[window_center], nrmse_slide_lstm, label='LSTM')
+  plt.plot(time_step[window_center], nrmse_slide_shift, label='Shift')
+  plt.plot(time_step[window_center], nrmse_arima_shift, label='ARIMA')
+  plt.legend()
+  plt.xlim([time_step[nTrain+nrmse_window], time_step.values[-1]])
+  plt.ylim([0.3, 1.1])
+  plt.xlabel(' time step ')
+  plt.ylabel(' NRMSE ')
+
+
+  # import plotly.plotly as py
+  # plot_url = py.plot_mpl(fig)
