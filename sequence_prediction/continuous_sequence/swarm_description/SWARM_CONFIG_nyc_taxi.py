@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2013-2015, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -23,13 +23,19 @@
 SWARM_CONFIG = {
   "includedFields": [
     {
-      "fieldName": "timestamp",
-      "fieldType": "datetime"
+      "fieldName": "timeofday",
+      "fieldType": "string",
+      "maxValue": 1500,
+      "minValue": 0
     },
+    # {
+    #   "fieldName": "dayofweek",
+    #   "fieldType": "string"
+    # },
     {
       "fieldName": "passenger_count",
       "fieldType": "int",
-      "maxValue": 32000,
+      "maxValue": 40000,
       "minValue": 0
     }
   ],
@@ -43,7 +49,7 @@ SWARM_CONFIG = {
         "columns": [
           "*"
         ],
-        "last_record": 8000
+        "last_record": 5000
       }
     ],
   },
@@ -51,11 +57,11 @@ SWARM_CONFIG = {
   "inferenceType": "TemporalMultiStep",
   "inferenceArgs": {
     "predictionSteps": [
-      1, 5
+      5
     ],
     "predictedField": "passenger_count"
   },
   "metricWindow": 2000,
   "iterationCount": -1,
-  "swarmSize": "medium"
+  "swarmSize": "large"
 }

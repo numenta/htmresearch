@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013-2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -19,36 +19,27 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import numpy as np
 
-SWARM_CONFIG = {
-  "includedFields": [
-    {
-      "fieldName": "data",
-      "fieldType": "float",
-      "maxValue": 1.0,
-      "minValue": -1.0
-    }
-  ],
-  "streamDef": {
-    "info": "sine",
-    "version": 1,
-    "streams": [
-      {
-        "info": "sine.csv",
-        "source": "file://data/sine.csv",
-        "columns": [
-          "*"
-        ],
-         "last_record": 1800
-      }
-    ]
-  },
-  "inferenceType": "TemporalMultiStep",
-  "inferenceArgs": {
-    "predictionSteps": [5],
-    "predictedField": "data"
-  },
 
-  "metricWindow": 500,
-  "swarmSize": "large"
-}
+def NRMSE(data, pred):
+  return np.sqrt(np.nanmean(np.square(pred-data)))/np.sqrt(np.nanmean( np.square(data-np.nanmean(data))))
+
+
+def NRMSE_sliding(data, pred, windowSize):
+  """
+  Computing NRMSE in a sliding window
+  :param data:
+  :param pred:
+  :param windowSize:
+  :return: (window_center, NRMSE)
+  """
+
+  halfWindowSize = int(round(float(windowSize)/2))
+  window_center = range(halfWindowSize, len(data)-halfWindowSize, int(round(float(halfWindowSize)/5.0)))
+  nrmse = []
+  for wc in window_center:
+    nrmse.append(NRMSE(data[wc-halfWindowSize:wc+halfWindowSize],
+                       pred[wc-halfWindowSize:wc+halfWindowSize]))
+
+  return (window_center, nrmse)
