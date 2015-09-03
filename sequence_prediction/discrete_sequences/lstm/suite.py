@@ -148,39 +148,77 @@ class SimpleDataset(Dataset):
 class HighOrderDataset(Dataset):
 
   def __init__(self, numPredictions=1):
-    if numPredictions == 1:
-      self.sequences = [
-        [6, 8, 7, 4, 2, 3, 0],
-        [6, 3, 4, 2, 7, 8, 5],
-        [1, 8, 7, 4, 2, 3, 5],
-        [1, 3, 4, 2, 7, 8, 0],
-        [0, 9, 7, 8, 5, 3, 4, 1],
-        [0, 4, 3, 5, 8, 7, 9, 6],
-        [2, 9, 7, 8, 5, 3, 4, 6],
-        [2, 4, 3, 5, 8, 7, 9, 1]
-      ]
-    elif numPredictions == 2:
-      self.sequences = [
-        [4, 8, 3, 10, 9, 6, 1],
-        [4, 6, 9, 10, 3, 8, 7],
-        [4, 8, 3, 10, 9, 6, 2],
-        [4, 6, 9, 10, 3, 8, 0],
-        [5, 8, 3, 10, 9, 6, 0],
-        [5, 6, 9, 10, 3, 8, 2],
-        [5, 8, 3, 10, 9, 6, 7],
-        [5, 6, 9, 10, 3, 8, 1],
-        [4, 3, 8, 6, 1, 10, 11, 9],
-        [4, 11, 10, 1, 6, 8, 3, 7],
-        [4, 3, 8, 6, 1, 10, 11, 2],
-        [4, 11, 10, 1, 6, 8, 3, 0],
-        [5, 3, 8, 6, 1, 10, 11, 0],
-        [5, 11, 10, 1, 6, 8, 3, 2],
-        [5, 3, 8, 6, 1, 10, 11, 7],
-        [5, 11, 10, 1, 6, 8, 3, 9]
-      ]
+    self.numPredictions = numPredictions
 
-  def generateSequence(self):
-    return list(random.choice(self.sequences))
+
+  def sequences(self, numPredictions, perturbed):
+    if numPredictions == 1:
+      if perturbed:
+        return [
+          [6, 8, 7, 4, 2, 3, 5],
+          [1, 8, 7, 4, 2, 3, 0],
+          [6, 3, 4, 2, 7, 8, 0],
+          [1, 3, 4, 2, 7, 8, 5],
+          [0, 9, 7, 8, 5, 3, 4, 6],
+          [2, 9, 7, 8, 5, 3, 4, 1],
+          [0, 4, 3, 5, 8, 7, 9, 1],
+          [2, 4, 3, 5, 8, 7, 9, 6]
+        ]
+      else:
+        return [
+          [6, 8, 7, 4, 2, 3, 0],
+          [1, 8, 7, 4, 2, 3, 5],
+          [6, 3, 4, 2, 7, 8, 5],
+          [1, 3, 4, 2, 7, 8, 0],
+          [0, 9, 7, 8, 5, 3, 4, 1],
+          [2, 9, 7, 8, 5, 3, 4, 6],
+          [0, 4, 3, 5, 8, 7, 9, 6],
+          [2, 4, 3, 5, 8, 7, 9, 1]
+        ]
+
+    elif numPredictions == 2:
+      if perturbed:
+        return [
+          [4, 8, 3, 10, 9, 6, 0],
+          [4, 8, 3, 10, 9, 6, 7],
+          [5, 8, 3, 10, 9, 6, 1],
+          [5, 8, 3, 10, 9, 6, 2],
+          [4, 6, 9, 10, 3, 8, 2],
+          [4, 6, 9, 10, 3, 8, 1],
+          [5, 6, 9, 10, 3, 8, 7],
+          [5, 6, 9, 10, 3, 8, 0],
+          [4, 3, 8, 6, 1, 10, 11, 0],
+          [4, 3, 8, 6, 1, 10, 11, 7],
+          [5, 3, 8, 6, 1, 10, 11, 9],
+          [5, 3, 8, 6, 1, 10, 11, 2],
+          [4, 11, 10, 1, 6, 8, 3, 2],
+          [4, 11, 10, 1, 6, 8, 3, 9],
+          [5, 11, 10, 1, 6, 8, 3, 7],
+          [5, 11, 10, 1, 6, 8, 3, 0]
+        ]
+      else:
+        return [
+          [4, 8, 3, 10, 9, 6, 1],
+          [4, 8, 3, 10, 9, 6, 2],
+          [5, 8, 3, 10, 9, 6, 0],
+          [5, 8, 3, 10, 9, 6, 7],
+          [4, 6, 9, 10, 3, 8, 7],
+          [4, 6, 9, 10, 3, 8, 0],
+          [5, 6, 9, 10, 3, 8, 2],
+          [5, 6, 9, 10, 3, 8, 1],
+          [4, 3, 8, 6, 1, 10, 11, 9],
+          [4, 3, 8, 6, 1, 10, 11, 2],
+          [5, 3, 8, 6, 1, 10, 11, 0],
+          [5, 3, 8, 6, 1, 10, 11, 7],
+          [4, 11, 10, 1, 6, 8, 3, 7],
+          [4, 11, 10, 1, 6, 8, 3, 0],
+          [5, 11, 10, 1, 6, 8, 3, 2],
+          [5, 11, 10, 1, 6, 8, 3, 9]
+        ]
+
+
+  def generateSequence(self, perturbed=False):
+    return list(random.choice(self.sequences(self.numPredictions, perturbed)))
 
 
 
@@ -231,7 +269,6 @@ class Suite(PyExperimentSuite):
 
     history = self.window(self.history, params)
     resets = self.window(self.resets, params)
-    print len(history)
 
     for i in xrange(1, len(history)):
       if not resets[i-1]:
@@ -262,7 +299,12 @@ class Suite(PyExperimentSuite):
       if randomFlag:
         self.currentSequence.append(self.encoder.randomSymbol())
 
-      self.currentSequence += self.dataset.generateSequence()
+      if iteration > params['perturb_after']:
+        sequence = self.dataset.generateSequence(perturbed=True)
+      else:
+        sequence = self.dataset.generateSequence()
+
+      self.currentSequence += sequence
 
     if iteration < params['compute_after']:
       return None
