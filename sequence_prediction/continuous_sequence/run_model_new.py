@@ -86,73 +86,6 @@ def getModelParamsFromName(dataSet):
   return importedModelParams
 
 
-
-def runIoThroughNupic(inputData, model, dataSet, plot, savePrediction=True):
-  print dataSet
-  inputFile = open(inputData, "rb")
-  csvReader = csv.reader(inputFile)
-  # skip header rows
-  csvReader.next()
-  csvReader.next()
-  csvReader.next()
-
-  shifter = InferenceShifter()
-  if plot:
-    output = nupic_output.NuPICPlotOutput([dataSet])
-  else:
-    output = nupic_output.NuPICFileOutput([dataSet])
-
-  _METRIC_SPECS = getMetricSpecs(predictedField)
-  metricsManager = MetricsManager(_METRIC_SPECS, model.getFieldInfo(),
-                                  model.getInferenceType())
-
-  i = 0
-  for row in csvReader:
-    i += 1
-    timestamp = datetime.datetime.strptime(row[0], DATE_FORMAT)
-    data = float(row[1])
-    if dataSet == 'rec-center-hourly':
-      result = model.run({
-        "timestamp": timestamp,
-        "kw_energy_consumption": data
-      })
-    elif dataSet == 'nyc_taxi':
-      result = model.run({
-        "timestamp": timestamp,
-        "passenger_count": float(row[1])
-      })
-
-    result.metrics = metricsManager.update(result)
-
-    if i % 100 == 0:
-      print "Read %i lines..." % i
-      negLL = result.metrics["multiStepBestPredictions:multiStep:"
-                             "errorMetric='negativeLogLikelihood':steps=5:window=1000:"
-                             "field="+predictedField]
-      nrmse = result.metrics["multiStepBestPredictions:multiStep:"
-                             "errorMetric='nrmse':steps=5:window=1000:"
-                             "field="+predictedField]
-      print "After %i records, 5-step negLL=%f nrmse=%f" % (i, negLL, nrmse)
- 
-    if plot:
-      result = shifter.shift(result)
-
-    # prediction_1step = result.inferences["multiStepBestPredictions"][1]
-    prediction_5step = result.inferences["multiStepBestPredictions"][5]
-    output.write([timestamp], [data], [prediction_5step])
-    # output.write([timestamp], [data], [prediction_1step], [prediction_5step])
-
-  inputFile.close()
-  output.close()
-
-
-def runModel(dataSet, plot=False):
-  print "Creating model from %s..." % dataSet
-  model = createModel(getModelParamsFromName(dataSet))
-  inputData = "%s/%s.csv" % (DATA_DIR, dataSet.replace(" ", "_"))
-  runIoThroughNupic(inputData, model, dataSet, plot)
-
-
 def _getArgs():
   parser = OptionParser(usage="%prog PARAMS_DIR OUTPUT_DIR [options]"
                               "\n\nCompare TM performance with trivial predictor using "
@@ -186,12 +119,14 @@ def getInputRecord(df, predictedField, i):
   }
   return inputRecord
 
-def runMultiplePass(df, model, predictedField, nMultiplePass, nTrain):
+
+def runMultiplePass(df, model, nMultiplePass, nTrain):
   """
   run CLA model through data record 0:nTrain nMultiplePass passes
   """
   # nMultiplePass = 5
   # nTrain = 5000
+  predictedField = model.getInferenceArgs()['predictedField']
   print "run TM through the train data multiple times"
   for nPass in xrange(nMultiplePass):
     for j in xrange(nTrain):
@@ -204,6 +139,22 @@ def runMultiplePass(df, model, predictedField, nMultiplePass, nTrain):
 
   return model
 
+def runMultiplePassSPonly(df, model, nMultiplePass, nTrain):
+  """
+  run CLA model SP through data record 0:nTrain nMultiplePass passes
+  """
+
+  predictedField = model.getInferenceArgs()['predictedField']
+  print "run TM through the train data multiple times"
+  for nPass in xrange(nMultiplePass):
+    for j in xrange(nTrain):
+      inputRecord = getInputRecord(df, predictedField, j)
+      model._sensorCompute(inputRecord)
+      model._spCompute()
+      if j % 100 == 0:
+        print " pass %i, record %i" % (nPass, j)
+
+  return model
 
 if __name__ == "__main__":
   print DESCRIPTION
@@ -227,6 +178,7 @@ if __name__ == "__main__":
   print "Creating model from %s..." % dataSet
   # model = createModel(modelParams)
 
+  # use customized CLA model
   from clamodel_custom import CLAModel_custom
   # from nupic.frameworks.opf.clamodel import CLAModel
   model = CLAModel_custom(**modelParams['modelParams'])
@@ -246,11 +198,6 @@ if __name__ == "__main__":
     classifier_encoder = None
 
   # encoder = model._classifierInputEncoder
-  maxBucket = classifier_encoder.n - classifier_encoder.w + 1
-
-
-  shifter = InferenceShifter()
-  output = nupic_output.NuPICFileOutput([dataSet])
 
   _METRIC_SPECS = getMetricSpecs(predictedField)
   metric = metrics.getModule(_METRIC_SPECS[0])
@@ -270,13 +217,17 @@ if __name__ == "__main__":
     plt.ion()
 
   print "Load dataset: ", dataSet
-  df = pd.read_csv(inputData, header=0, skiprows=[1,2])
+  df = pd.read_csv(inputData, header=0, skiprows=[1, 2])
 
-  nMultiplePass = 3
+  nMultiplePass = 5
   nTrain = 5000
   print " run TM through the first %i samples %i passes " %(nMultiplePass, nTrain)
-  model = runMultiplePass(df, model, predictedField, nMultiplePass, nTrain)
+  model = runMultiplePassSPonly(df, model, nMultiplePass, nTrain)
+  model._spLearningEnabled = False
+  # model = runMultiplePass(df, model, nMultiplePass, nTrain)
 
+
+  maxBucket = classifier_encoder.n - classifier_encoder.w + 1
   likelihoodsVecAll = np.zeros((maxBucket, len(df)))
 
   prediction_5step = None
@@ -295,13 +246,15 @@ if __name__ == "__main__":
   sp = model._getSPRegion().getSelf()._sfdr
   spActiveCellsCount = np.zeros(sp.getColumnDimensions())
 
+  output = nupic_output.NuPICFileOutput([dataSet])
+
   for i in xrange(len(df)):
     inputRecord = getInputRecord(df, predictedField, i)
 
     tp = model._getTPRegion()
     tm = tp.getSelf()._tfdr
     prePredictiveCells = tm.predictiveCells
-    prePredictiveColumn = np.array(list(prePredictiveCells))/ tm.cellsPerColumn
+    prePredictiveColumn = np.array(list(prePredictiveCells)) / tm.cellsPerColumn
 
     result = model.run(inputRecord)
     # spRegion = model._getSPRegion().getSelf()
