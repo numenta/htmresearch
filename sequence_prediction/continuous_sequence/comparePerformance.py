@@ -110,9 +110,13 @@ if __name__ == "__main__":
   filePath = './prediction/' + dataSet + '_ARIMA_pred.csv'
   predData_ARIMA = loadDataFile(filePath)
 
-  useTimeOfDay = False
+  useTimeOfDay = True
   filePath = './prediction/'+dataSet+'_lstm_pred_useTimeOfDay_'+str(useTimeOfDay)+'.csv'
   predData_LSTM = loadDataFileLSTM(filePath)
+
+  useTimeOfDay = False
+  filePath = './prediction/'+dataSet+'_lstm_pred_useTimeOfDay_'+str(useTimeOfDay)+'.csv'
+  predData_LSTM2 = loadDataFileLSTM(filePath)
 
 
   nTest = len(trueData) - nTrain - 5
@@ -124,6 +128,7 @@ if __name__ == "__main__":
   predData_TM_five_step = np.roll(predData_TM['prediction5'], 5)
   predData_ARIMA_five_step = np.roll(predData_ARIMA['prediction5'], 5)
   predData_LSTM_five_step = np.roll(predData_LSTM['prediction5'], 5)
+  predData_LSTM_five_step2 = np.roll(predData_LSTM2['prediction5'], 5)
 
 
   # trueData = trueData[nTrain:nTrain+nTest]
@@ -135,12 +140,14 @@ if __name__ == "__main__":
   NRMSE_TM = NRMSE(trueData[nTrain:nTrain+nTest], predData_TM_five_step[nTrain:nTrain+nTest])
   NRMSE_ARIMA = NRMSE(trueData[nTrain:nTrain+nTest], predData_ARIMA_five_step[nTrain:nTrain+nTest])
   NRMSE_LSTM = NRMSE(trueData[nTrain:nTrain+nTest], predData_LSTM_five_step[nTrain:nTrain+nTest])
+  NRMSE_LSTM2 = NRMSE(trueData[nTrain:nTrain+nTest], predData_LSTM_five_step2[nTrain:nTrain+nTest])
   NRMSE_Shift = NRMSE(trueData[nTrain:nTrain+nTest], predData_shift[nTrain:nTrain+nTest])
 
   print "NRMSE: Shift - 5 step", NRMSE_Shift
   print "NRMSE: TM - 5 step", NRMSE_TM
   print "NRMSE: ARIMA - 5 step", NRMSE_ARIMA
   print "NRMSE: LSTM - 5 step", NRMSE_LSTM
+  print "NRMSE: LSTM - 5 step, no time of day", NRMSE_LSTM2
 
   time_step = pd.to_datetime(time_step)
 
@@ -150,6 +157,7 @@ if __name__ == "__main__":
   # plt.plot(time_step, predData_ARIMA_five_step, label='ARIMA NRMSE: '+"%0.3f" % NRMSE_ARIMA)
   plt.plot(time_step, predData_TM_five_step, label='TM, NRMSE: '+"%0.3f" % NRMSE_TM)
   plt.plot(time_step, predData_LSTM_five_step, label='LSTM, NRMSE: '+"%0.3f" % NRMSE_LSTM)
+  plt.plot(time_step, predData_LSTM_five_step2, label='LSTM no TimeOfDay, NRMSE: '+"%0.3f" % NRMSE_LSTM)
   plt.legend()
   plt.xlabel('Time')
   plt.ylabel('Passenger Count')
@@ -159,27 +167,29 @@ if __name__ == "__main__":
   plt.savefig(fileName)
 
   fig, ax = plt.subplots()
-  inds = np.arange(4)
-  ax.bar(inds, [NRMSE_Shift, NRMSE_ARIMA, NRMSE_TM, NRMSE_LSTM], width=0.3)
+  inds = np.arange(5)
+  ax.bar(inds, [NRMSE_Shift, NRMSE_ARIMA, NRMSE_TM, NRMSE_LSTM, NRMSE_LSTM2], width=0.3)
   ax.set_xticks(inds+0.3/2)
-  ax.set_xticklabels( ('Shift', 'ARIMA', 'TM', 'LSTM') )
+  ax.set_xticklabels( ('Shift', 'ARIMA', 'TM', 'LSTM', 'LSTM-NotimeOfDay') )
   ax.set_ylabel('NRMSE')
 
   # plot NRMSE as a function of time
   nrmse_window = 960
   (window_center, nrmse_slide_tm) = NRMSE_sliding(trueData, predData_TM_five_step, nrmse_window)
   (window_center, nrmse_slide_lstm) = NRMSE_sliding(trueData, predData_LSTM_five_step, nrmse_window)
+  (window_center, nrmse_slide_lstm2) = NRMSE_sliding(trueData, predData_LSTM_five_step2, nrmse_window)
   (window_center, nrmse_slide_shift) = NRMSE_sliding(trueData, predData_shift, nrmse_window)
-  (window_center, nrmse_arima_shift) = NRMSE_sliding(trueData, predData_ARIMA_five_step, nrmse_window)
+  (window_center, nrmse_arima_arima) = NRMSE_sliding(trueData, predData_ARIMA_five_step, nrmse_window)
 
   plt.figure(1)
   plt.plot(time_step[window_center], nrmse_slide_tm, label='TM')
   plt.plot(time_step[window_center], nrmse_slide_lstm, label='LSTM')
+  plt.plot(time_step[window_center], nrmse_slide_lstm2, label='LSTM-noTimeOfDay')
   plt.plot(time_step[window_center], nrmse_slide_shift, label='Shift')
-  plt.plot(time_step[window_center], nrmse_arima_shift, label='ARIMA')
+  plt.plot(time_step[window_center], nrmse_arima_arima, label='ARIMA')
   plt.legend()
   plt.xlim([time_step[nTrain+nrmse_window], time_step.values[-1]])
-  plt.ylim([0.3, 1.1])
+  plt.ylim([0.2, 1.1])
   plt.xlabel(' time step ')
   plt.ylabel(' NRMSE ')
 
