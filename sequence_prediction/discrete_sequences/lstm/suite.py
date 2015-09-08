@@ -72,8 +72,14 @@ class BasicEncoder(Encoder):
 
 class DistributedEncoder(Encoder):
 
-  def __init__(self, *args, **kwargs):
-    super(DistributedEncoder, self).__init__(*args, **kwargs)
+  def __init__(self, num, maxValue=None, minValue=None):
+    super(DistributedEncoder, self).__init__(num)
+
+    if maxValue is None or minValue is None:
+      raise "maxValue and minValue are required"
+
+    self.maxValue = maxValue
+    self.minValue = minValue
 
     self.encodings = {}
 
@@ -82,7 +88,7 @@ class DistributedEncoder(Encoder):
     if symbol in self.encodings:
       return self.encodings[symbol]
 
-    encoding = numpy.random.random((1, self.num))
+    encoding = (self.maxValue - self.minValue) * numpy.random.random((1, self.num)) + self.minValue
     self.encodings[symbol] = encoding
 
     return encoding
@@ -142,39 +148,77 @@ class SimpleDataset(Dataset):
 class HighOrderDataset(Dataset):
 
   def __init__(self, numPredictions=1):
-    if numPredictions == 1:
-      self.sequences = [
-        [6, 8, 7, 4, 2, 3, 0],
-        [6, 3, 4, 2, 7, 8, 5],
-        [1, 8, 7, 4, 2, 3, 5],
-        [1, 3, 4, 2, 7, 8, 0],
-        [0, 9, 7, 8, 5, 3, 4, 1],
-        [0, 4, 3, 5, 8, 7, 9, 6],
-        [2, 9, 7, 8, 5, 3, 4, 6],
-        [2, 4, 3, 5, 8, 7, 9, 1]
-      ]
-    elif numPredictions == 2:
-      self.sequences = [
-        [4, 8, 3, 10, 9, 6, 1],
-        [4, 6, 9, 10, 3, 8, 7],
-        [4, 8, 3, 10, 9, 6, 2],
-        [4, 6, 9, 10, 3, 8, 0],
-        [5, 8, 3, 10, 9, 6, 0],
-        [5, 6, 9, 10, 3, 8, 2],
-        [5, 8, 3, 10, 9, 6, 7],
-        [5, 6, 9, 10, 3, 8, 1],
-        [4, 3, 8, 6, 1, 10, 11, 9],
-        [4, 11, 10, 1, 6, 8, 3, 7],
-        [4, 3, 8, 6, 1, 10, 11, 2],
-        [4, 11, 10, 1, 6, 8, 3, 0],
-        [5, 3, 8, 6, 1, 10, 11, 0],
-        [5, 11, 10, 1, 6, 8, 3, 2],
-        [5, 3, 8, 6, 1, 10, 11, 7],
-        [5, 11, 10, 1, 6, 8, 3, 9]
-      ]
+    self.numPredictions = numPredictions
 
-  def generateSequence(self):
-    return list(random.choice(self.sequences))
+
+  def sequences(self, numPredictions, perturbed):
+    if numPredictions == 1:
+      if perturbed:
+        return [
+          [6, 8, 7, 4, 2, 3, 5],
+          [1, 8, 7, 4, 2, 3, 0],
+          [6, 3, 4, 2, 7, 8, 0],
+          [1, 3, 4, 2, 7, 8, 5],
+          [0, 9, 7, 8, 5, 3, 4, 6],
+          [2, 9, 7, 8, 5, 3, 4, 1],
+          [0, 4, 3, 5, 8, 7, 9, 1],
+          [2, 4, 3, 5, 8, 7, 9, 6]
+        ]
+      else:
+        return [
+          [6, 8, 7, 4, 2, 3, 0],
+          [1, 8, 7, 4, 2, 3, 5],
+          [6, 3, 4, 2, 7, 8, 5],
+          [1, 3, 4, 2, 7, 8, 0],
+          [0, 9, 7, 8, 5, 3, 4, 1],
+          [2, 9, 7, 8, 5, 3, 4, 6],
+          [0, 4, 3, 5, 8, 7, 9, 6],
+          [2, 4, 3, 5, 8, 7, 9, 1]
+        ]
+
+    elif numPredictions == 2:
+      if perturbed:
+        return [
+          [4, 8, 3, 10, 9, 6, 0],
+          [4, 8, 3, 10, 9, 6, 7],
+          [5, 8, 3, 10, 9, 6, 1],
+          [5, 8, 3, 10, 9, 6, 2],
+          [4, 6, 9, 10, 3, 8, 2],
+          [4, 6, 9, 10, 3, 8, 1],
+          [5, 6, 9, 10, 3, 8, 7],
+          [5, 6, 9, 10, 3, 8, 0],
+          [4, 3, 8, 6, 1, 10, 11, 0],
+          [4, 3, 8, 6, 1, 10, 11, 7],
+          [5, 3, 8, 6, 1, 10, 11, 9],
+          [5, 3, 8, 6, 1, 10, 11, 2],
+          [4, 11, 10, 1, 6, 8, 3, 2],
+          [4, 11, 10, 1, 6, 8, 3, 9],
+          [5, 11, 10, 1, 6, 8, 3, 7],
+          [5, 11, 10, 1, 6, 8, 3, 0]
+        ]
+      else:
+        return [
+          [4, 8, 3, 10, 9, 6, 1],
+          [4, 8, 3, 10, 9, 6, 2],
+          [5, 8, 3, 10, 9, 6, 0],
+          [5, 8, 3, 10, 9, 6, 7],
+          [4, 6, 9, 10, 3, 8, 7],
+          [4, 6, 9, 10, 3, 8, 0],
+          [5, 6, 9, 10, 3, 8, 2],
+          [5, 6, 9, 10, 3, 8, 1],
+          [4, 3, 8, 6, 1, 10, 11, 9],
+          [4, 3, 8, 6, 1, 10, 11, 2],
+          [5, 3, 8, 6, 1, 10, 11, 0],
+          [5, 3, 8, 6, 1, 10, 11, 7],
+          [4, 11, 10, 1, 6, 8, 3, 7],
+          [4, 11, 10, 1, 6, 8, 3, 0],
+          [5, 11, 10, 1, 6, 8, 3, 2],
+          [5, 11, 10, 1, 6, 8, 3, 9]
+        ]
+
+
+  def generateSequence(self, perturbed=False):
+    return list(random.choice(self.sequences(self.numPredictions, perturbed)))
 
 
 
@@ -184,7 +228,9 @@ class Suite(PyExperimentSuite):
     if params['encoding'] == 'basic':
       self.encoder = BasicEncoder(params['encoding_num'])
     elif params['encoding'] == 'distributed':
-      self.encoder = DistributedEncoder(params['encoding_num'])
+      self.encoder = DistributedEncoder(params['encoding_num'],
+                                        maxValue=params['encoding_max'],
+                                        minValue=params['encoding_min'])
     else:
       raise Exception("Encoder not found")
 
@@ -207,6 +253,11 @@ class Suite(PyExperimentSuite):
     self.net = None
 
 
+  def window(self, data, params):
+    start = max(0, len(data) - params['learning_window'])
+    return data[start:]
+
+
   def train(self, params):
     n = params['encoding_num']
     net = buildNetwork(n, params['num_cells'], n,
@@ -216,14 +267,17 @@ class Suite(PyExperimentSuite):
     ds = SequentialDataSet(n, n)
     trainer = RPropMinusTrainer(net, dataset=ds)
 
-    for i in xrange(1, len(self.history)):
-      if not self.resets[i-1]:
-        ds.addSample(self.encoder.encode(self.history[i-1]),
-                     self.encoder.encode(self.history[i]))
-      if self.resets[i]:
+    history = self.window(self.history, params)
+    resets = self.window(self.resets, params)
+
+    for i in xrange(1, len(history)):
+      if not resets[i-1]:
+        ds.addSample(self.encoder.encode(history[i-1]),
+                     self.encoder.encode(history[i]))
+      if resets[i]:
         ds.newSequence()
 
-    if len(self.history) > 1:
+    if len(history) > 1:
       trainer.trainEpochs(params['num_epochs'])
       net.reset()
 
@@ -245,7 +299,12 @@ class Suite(PyExperimentSuite):
       if randomFlag:
         self.currentSequence.append(self.encoder.randomSymbol())
 
-      self.currentSequence += self.dataset.generateSequence()
+      if iteration > params['perturb_after']:
+        sequence = self.dataset.generateSequence(perturbed=True)
+      else:
+        sequence = self.dataset.generateSequence()
+
+      self.currentSequence += sequence
 
     if iteration < params['compute_after']:
       return None
@@ -263,12 +322,14 @@ class Suite(PyExperimentSuite):
       self.net = self.train(params)
 
     predictions = None
+    history = self.window(self.history, params)
+    resets = self.window(self.resets, params)
 
-    for i, symbol in enumerate(self.history):
+    for i, symbol in enumerate(history):
       output = self.net.activate(self.encoder.encode(symbol))
       predictions = self.encoder.classify(output, num=params['num_predictions'])
 
-      if self.resets[i]:
+      if resets[i]:
         self.net.reset()
 
     truth = None if (self.resets[-1] or

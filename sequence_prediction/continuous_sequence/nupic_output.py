@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2013-2015, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -36,6 +36,8 @@ try:
 except ImportError:
   pass
 
+import numpy as np
+
 WINDOW = 100
 
 
@@ -69,7 +71,7 @@ class NuPICFileOutput(NuPICOutput):
     self.outputFiles = []
     self.outputWriters = []
     self.lineCounts = []
-    headerRow = ['timestamp', 'kw_energy_consumption', 'prediction-1step', 'prediction-5step']
+    headerRow = ['timestamp', 'data',  'prediction-5step']
     for name in self.names:
       self.lineCounts.append(0)
       outputFileName = "./prediction/%s_TM_pred.csv" % name
@@ -79,24 +81,24 @@ class NuPICFileOutput(NuPICOutput):
       outputWriter = csv.writer(outputFile)
       self.outputWriters.append(outputWriter)
       outputWriter.writerow(headerRow)
-      outputWriter.writerow(['int', 'float', 'float','float'])
-      outputWriter.writerow(['', '', '', ''])
+      outputWriter.writerow(['int', 'float', 'float'])
+      outputWriter.writerow(['', '', ''])
 
 
 
-  def write(self, timestamps, actualValues, predictedValues1step, predictedValues5step):
+  def write(self, timestamps, actualValues, predictedValues5step):
 
-    assert len(timestamps) == len(actualValues) == len(predictedValues1step)
+    # assert len(timestamps) == len(actualValues) == len(predictedValues5step)
 
     for index in range(len(self.names)):
       timestamp = timestamps[index]
       actual = actualValues[index]
-      prediction1step = predictedValues1step[index]
+      # prediction1step = predictedValues1step[index]
       prediction5step = predictedValues5step[index]
       writer = self.outputWriters[index]
 
       if timestamp is not None:
-        outputRow = [timestamp, actual, prediction1step, prediction5step]
+        outputRow = [timestamp, actual, prediction5step]
         writer.writerow(outputRow)
         self.lineCounts[index] += 1
 
@@ -112,7 +114,7 @@ class NuPICFileOutput(NuPICOutput):
 class NuPICPlotOutput(NuPICOutput):
 
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, maxBucket, *args, **kwargs):
     super(NuPICPlotOutput, self).__init__(*args, **kwargs)
     # Turn matplotlib interactive mode on.
     plt.ion()
@@ -124,6 +126,9 @@ class NuPICPlotOutput(NuPICOutput):
     self.predictedLines = []
     self.linesInitialized = False
     self.graphs = []
+    self.maxBucket = maxBucket
+    self.likelihoodsVecAll = np.zeros((maxBucket, 10000))
+
     plotCount = len(self.names)
     plotHeight = max(plotCount * 3, 6)
     fig = plt.figure(figsize=(14, plotHeight))
@@ -131,9 +136,9 @@ class NuPICPlotOutput(NuPICOutput):
     for index in range(len(self.names)):
       self.graphs.append(fig.add_subplot(gs[index, 0]))
       plt.title(self.names[index])
-      plt.ylabel('KW Energy Consumption')
+      plt.ylabel('Passenger Count')
       plt.xlabel('Date')
-    plt.tight_layout()
+    # plt.tight_layout()
 
 
 
@@ -161,9 +166,18 @@ class NuPICPlotOutput(NuPICOutput):
 
 
   def write(self, timestamps, actualValues, predictedValues,
-            predictionStep=1):
+            predictionStep, results):
 
     assert len(timestamps) == len(actualValues) == len(predictedValues)
+
+    # bucketLL = results.inferences['multiStepBucketLikelihoods'][5]
+    # likelihoodsVec = np.zeros((self.maxBucket,))
+    # if bucketLL is not None:
+    #   for (k, v) in bucketLL.items():
+    #     likelihoodsVec[k] = v
+    #
+    # i = len(self.actualValues) + 1
+    # self.likelihoodsVecAll[0:len(likelihoodsVec), i] = likelihoodsVec
 
     # We need the first timestamp to initialize the lines at the right X value,
     # so do that check first.
@@ -184,6 +198,7 @@ class NuPICPlotOutput(NuPICOutput):
 
       self.graphs[index].relim()
       self.graphs[index].autoscale_view(True, True, True)
+
 
     plt.draw()
     plt.legend(('actual','predicted'), loc=3)
