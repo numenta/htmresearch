@@ -20,12 +20,12 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 import copy
+import os
+import unittest
 try:
   import simplejson as json
 except ImportError:
   import json
-import os
-import unittest
 
 from nupic.data.file_record_stream import FileRecordStream
 
@@ -77,10 +77,10 @@ KNN_CLASSIFIER_PARAMS = {
 
 def _generateExperimentsNetworkParams(templateNetworkConfig):
   """
-  Generate a series of network params for each experiment, using a template 
+  Generate a series of network params for each experiment, using a template
   network params dict.
-  
-  @param templateNetworkConfig: (dict) template network config based on which 
+
+  @param templateNetworkConfig: (dict) template network config based on which
   other network configs are generated.
   @return networkConfigurations: (list) network configs.
   """
@@ -121,14 +121,14 @@ def _generateExperimentsNetworkParams(templateNetworkConfig):
 def _findNumberOfPartitions(networkConfiguration, numRecords):
   """
   Find the number of partitions for the input data based on a specific
-  networkConfiguration. 
-  
+  networkConfiguration.
+
   @param networkConfiguration: (dict) the configuration of this network.
   @param numRecords: (int) Number of records of the input dataset.
-  @return partitions: (list of tuples) Region names and associated indices 
-  partitioning the input dataset to indicate at which recordNumber it should 
-  start learning. The remaining of the data (last partition) is used as a test 
-  set. 
+  @return partitions: (list of tuples) Region names and associated indices
+  partitioning the input dataset to indicate at which recordNumber it should
+  start learning. The remaining of the data (last partition) is used as a test
+  set.
   """
 
   spEnabled = getRegionConfigParam(networkConfiguration,
@@ -173,9 +173,7 @@ def _findNumberOfPartitions(networkConfiguration, numRecords):
 
 
 class TestSensorDataClassification(unittest.TestCase):
-  """
-  Test classification results for sensor data. 
-  """
+  """Test classification results for sensor data."""
 
 
   def setUp(self):
@@ -185,10 +183,7 @@ class TestSensorDataClassification(unittest.TestCase):
 
 
   def testClassificationAccuracy(self):
-
-    """
-    Test classification accuracy for sensor data.
-    """
+    """Test classification accuracy for sensor data."""
 
     networkConfigurations = _generateExperimentsNetworkParams(
       self.templateNetworkConfig)
@@ -309,9 +304,6 @@ class TestSensorDataClassification(unittest.TestCase):
 
 
   def tearDown(self):
-    """
-    Remove data files
-    """
     for fileToDelete in self.filesToDelete:
       if os.path.exists(fileToDelete):
         os.remove(fileToDelete)

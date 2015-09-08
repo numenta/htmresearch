@@ -7,7 +7,7 @@
     "encoders": {
       "nlpEncoder": {}
     },
-    "spRegionConfig": {
+  "spRegionConfig": {
       "regionEnabled": true,
       "regionName": "SP",
       "regionType": "py.SPRegion",
@@ -25,7 +25,7 @@
         "maxBoost": 1.0
       }
     },
-    "tmRegionConfig": {
+  "tmRegionConfig": {
       "regionEnabled": true,
       "regionName": "TM",
       "regionType": "py.TPRegion",
@@ -49,13 +49,13 @@
         "pamLength": 3
       }
     },
-    "upRegionConfig": {
+  "upRegionConfig": {
       "regionEnabled": false,
       "regionName": "UP",
       "regionType": "py.UPRegion",
       "regionParams": null
     },
-    "classifierRegionConfig": {
+  "classifierRegionConfig": {
       "regionEnabled": true,
       "regionName": "classifier",
       "regionType": "py.KNNClassifierRegion",
