@@ -35,7 +35,7 @@ from optparse import OptionParser
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from nrmse import *
+from errorMetrics import *
 from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
 
@@ -52,7 +52,6 @@ DESCRIPTION = (
 
 DATA_DIR = "./data"
 MODEL_PARAMS_DIR = "./model_params"
-
 
 
 def getMetricSpecs(predictedField):
@@ -155,6 +154,7 @@ def runMultiplePassSPonly(df, model, nMultiplePass, nTrain):
         print " pass %i, record %i" % (nPass, j)
 
   return model
+
 
 if __name__ == "__main__":
   print DESCRIPTION
@@ -347,13 +347,13 @@ if __name__ == "__main__":
         time_step_display = time_step[-100:]
         actual_data_display = actual_data[-100:]
         predict_data_ML_display = predict_data_ML[-100:]
-        likelihood_display = likelihoodsVecAll[:, i-100:i]
+        likelihood_display = likelihoodsVecAll[:, i-99:i+1]
         xl = [(i)-100, (i)]
       else:
         time_step_display = time_step
         actual_data_display = actual_data
         predict_data_ML_display = predict_data_ML
-        likelihood_display = likelihoodsVecAll[:, :i]
+        likelihood_display = likelihoodsVecAll[:, :i+1]
         xl = [0, (i)]
 
       plt.figure(2)

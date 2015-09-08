@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from optparse import OptionParser
 from swarm_runner import SwarmRunner
-from nrmse import *
+from errorMetrics import *
 rcParams.update({'figure.autolayout': True})
 plt.ion()
 plt.close('all')
@@ -143,6 +143,13 @@ if __name__ == "__main__":
   NRMSE_LSTM2 = NRMSE(trueData[nTrain:nTrain+nTest], predData_LSTM_five_step2[nTrain:nTrain+nTest])
   NRMSE_Shift = NRMSE(trueData[nTrain:nTrain+nTest], predData_shift[nTrain:nTrain+nTest])
 
+
+  altMAPE_TM = altMAPE(trueData[nTrain:nTrain+nTest], predData_TM_five_step[nTrain:nTrain+nTest])
+  altMAPE_ARIMA = altMAPE(trueData[nTrain:nTrain+nTest], predData_ARIMA_five_step[nTrain:nTrain+nTest])
+  altMAPE_LSTM = altMAPE(trueData[nTrain:nTrain+nTest], predData_LSTM_five_step[nTrain:nTrain+nTest])
+  altMAPE_LSTM2 = altMAPE(trueData[nTrain:nTrain+nTest], predData_LSTM_five_step2[nTrain:nTrain+nTest])
+  altMAPE_Shift = altMAPE(trueData[nTrain:nTrain+nTest], predData_shift[nTrain:nTrain+nTest])
+
   print "NRMSE: Shift - 5 step", NRMSE_Shift
   print "NRMSE: TM - 5 step", NRMSE_TM
   print "NRMSE: ARIMA - 5 step", NRMSE_ARIMA
@@ -162,16 +169,26 @@ if __name__ == "__main__":
   plt.xlabel('Time')
   plt.ylabel('Passenger Count')
   plt.xlim([time_step.values[-500], time_step.values[-1]])
-  fileName = './result/'+dataSet+"modelPrediction.pdf"
-  print "save example prediction trace to ", fileName
-  plt.savefig(fileName)
+  fileName = './result/'+dataSet+"modelPrediction.pdf "
+  # print "save example prediction trace to ", fileName
+  # plt.savefig(fileName)
 
-  fig, ax = plt.subplots()
+  fig, ax = plt.subplots(nrows=1, ncols=2)
   inds = np.arange(5)
-  ax.bar(inds, [NRMSE_Shift, NRMSE_ARIMA, NRMSE_TM, NRMSE_LSTM, NRMSE_LSTM2], width=0.3)
-  ax.set_xticks(inds+0.3/2)
-  ax.set_xticklabels( ('Shift', 'ARIMA', 'TM', 'LSTM', 'LSTM-NotimeOfDay') )
-  ax.set_ylabel('NRMSE')
+  ax[0].bar(inds, [altMAPE_Shift, altMAPE_ARIMA, altMAPE_TM, altMAPE_LSTM, altMAPE_LSTM2], width=0.3)
+  ax[0].set_xticks(inds+0.3/2)
+  ax[0].set_xticklabels( ('Shift', 'ARIMA', 'TM', 'LSTM', 'LSTM-NotimeOfDay') )
+  ax[0].set_ylabel('altMAPE')
+
+  ax[1].bar(inds, [NRMSE_Shift, NRMSE_ARIMA, NRMSE_TM, NRMSE_LSTM, NRMSE_LSTM2], width=0.3)
+  ax[1].set_xticks(inds+0.3/2)
+  ax[1].set_xticklabels( ('Shift', 'ARIMA', 'TM', 'LSTM', 'LSTM-NotimeOfDay') )
+  ax[1].set_ylabel('NRMSE')
+  import plotly.plotly as py
+  plot_url = py.plot_mpl(fig)
+
+
+
 
   # plot NRMSE as a function of time
   nrmse_window = 960
@@ -194,5 +211,3 @@ if __name__ == "__main__":
   plt.ylabel(' NRMSE ')
 
 
-  # import plotly.plotly as py
-  # plot_url = py.plot_mpl(fig)
