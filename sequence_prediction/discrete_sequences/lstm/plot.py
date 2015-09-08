@@ -48,7 +48,7 @@ def plotMovingAverage(data, window, label=None):
 
 
 
-def plotAccuracy(results, window=100, type="sequences", label=None):
+def plotAccuracy(results, train, window=100, type="sequences", label=None):
   pyplot.title("High-order prediction")
   pyplot.xlabel("# of elements seen")
   pyplot.ylabel("High-order prediction accuracy over last {0} tested {1}".format(window, type))
@@ -60,19 +60,23 @@ def plotAccuracy(results, window=100, type="sequences", label=None):
   pyplot.plot(x, movingData, label=label,
               marker='o', markersize=3, markeredgewidth=0)
 
-  dX = numpy.array([x[i+1] - x[i] for i in xrange(len(x) - 1)])
-  testEnd = numpy.array(x)[dX > dX.mean()].tolist()
-  testEnd = testEnd + [x[-1]]
+  # dX = numpy.array([x[i+1] - x[i] for i in xrange(len(x) - 1)])
+  # testEnd = numpy.array(x)[dX > dX.mean()].tolist()
+  # testEnd = testEnd + [x[-1]]
 
-  dX = numpy.insert(dX, 0, 0)
-  testStart = numpy.array(x)[dX > dX.mean()].tolist()
-  testStart = [0] + testStart
+  # dX = numpy.insert(dX, 0, 0)
+  # testStart = numpy.array(x)[dX > dX.mean()].tolist()
+  # testStart = [0] + testStart
 
-  for line in testStart:
-    pyplot.axvline(line, color='orange')
+  # for line in testStart:
+  #   pyplot.axvline(line, color='orange')
 
-  for i in xrange(len(testStart)):
-    pyplot.axvspan(testStart[i], testEnd[i], alpha=0.15, facecolor='black')
+  # for i in xrange(len(testStart)):
+  #   pyplot.axvspan(testStart[i], testEnd[i], alpha=0.15, facecolor='black')
+
+  for i in xrange(len(train)):
+    if train[i]:
+      pyplot.axvline(i, color='orange')
 
   pyplot.xlim(0, x[-1])
   pyplot.ylim(0, 1.001)
@@ -121,12 +125,14 @@ if __name__ == '__main__':
     iteration = suite.get_history(experiment, 0, 'iteration')
     predictions = suite.get_history(experiment, 0, 'predictions')
     truth = suite.get_history(experiment, 0, 'truth')
+    train = suite.get_history(experiment, 0, 'train')
 
     resets = None if args.full else suite.get_history(experiment, 0, 'reset')
     randoms = None if args.full else suite.get_history(experiment, 0, 'random')
     type = "elements" if args.full else "sequences"
 
     plotAccuracy(computeAccuracy(predictions, truth, iteration, resets=resets, randoms=randoms),
+                 train,
                  window=args.window,
                  type=type,
                  label=experiment)
