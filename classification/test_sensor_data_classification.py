@@ -30,9 +30,7 @@ except ImportError:
 from collections import namedtuple
 from nupic.data.file_record_stream import FileRecordStream
 
-from classification_network import (configureNetwork,
-                                    getRegionConfigParam,
-                                    runNetwork)
+from classification_network import configureNetwork, runNetwork
 from generate_sensor_data import generateData
 from sensor_data_exp_settings import (NUM_CATEGORIES,
                                       TEST_PARTITION_NAME,
@@ -173,21 +171,16 @@ class TestSensorDataClassification(unittest.TestCase):
           for signalAmplitude in SIGNAL_AMPLITUDES:
             for signalPeriod in SIGNAL_PERIODS:
 
-              sensorType = getRegionConfigParam(networkConfig,
-                                                "sensorRegionConfig",
-                                                "regionType")
-              spEnabled = getRegionConfigParam(networkConfig,
-                                               "spRegionConfig",
-                                               "regionEnabled")
-              tmEnabled = getRegionConfigParam(networkConfig,
-                                               "tmRegionConfig",
-                                               "regionEnabled")
-              upEnabled = getRegionConfigParam(networkConfig,
-                                               "upRegionConfig",
-                                               "regionEnabled")
-              classifierType = getRegionConfigParam(networkConfig,
-                                                    "classifierRegionConfig",
-                                                    "regionType")
+              sensorType = networkConfig["sensorRegionConfig"].get(
+                "regionType")
+              spEnabled = networkConfig["sensorRegionConfig"].get(
+                "regionEnabled")
+              tmEnabled = networkConfig["tmRegionConfig"].get(
+                "regionEnabled")
+              upEnabled = networkConfig["upRegionConfig"].get(
+                "regionEnabled")
+              classifierType = networkConfig["classifierRegionConfig"].get(
+                "regionType")
 
               expParams = ("RUNNING EXPERIMENT WITH PARAMS:\n"
                            " * numRecords=%s\n"

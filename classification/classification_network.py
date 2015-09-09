@@ -67,6 +67,23 @@ def _createEncoder(encoders):
 
 
 
+def _setScalarEncoderMinMax(networkConfig, dataSource):
+  """
+  Set the min and max values of a scalar encoder.
+
+  @param networkConfig: (dict) configuration of the network.
+  @param dataSource: (RecordStream) the input source
+  """
+  fieldName = getEncoderParam(networkConfig, "scalarEncoder", "fieldname")
+  minval = dataSource.getFieldMin(fieldName)
+  maxval = dataSource.getFieldMax(fieldName)
+  networkConfig["sensorRegionConfig"]["encoders"]["scalarEncoder"]["minval"] = (
+    minval)
+  networkConfig["sensorRegionConfig"]["encoders"]["scalarEncoder"]["maxval"] = (
+    maxval)
+
+
+
 def _createSensorRegion(network, regionConfig, dataSource):
   """
   Register a sensor region and initialize it the sensor region with an encoder
@@ -413,178 +430,6 @@ def configureNetwork(dataSource, networkParams):
 
 
 
-def setRegionConfigParam(networkConfig,
-                         regionConfigKey,
-                         regionConfigParamKey,
-                         regionConfigParamValue):
-  """
-  Set the value of a region config parameter. E.g. 'regionName' in:
-
-  "spRegionConfig": {
-    "regionEnabled": true,
-    "regionName": "SP",
-    "regionType": "py.SPRegion",
-    "regionParams": {
-      "spVerbosity": 0,
-      "spatialImp": "cpp",
-      "globalInhibition": 1,
-      "columnCount": 2048,
-      "numActiveColumnsPerInhArea": 40,
-      "seed": 1956,
-      "potentialPct": 0.8,
-      "synPermConnected": 0.1,
-      "synPermActiveInc": 0.0001,
-      "synPermInactiveDec": 0.0005,
-      "maxBoost": 1.0
-    }
-  }
-
-  @param networkConfig: (dict) the config of the network.
-  @param regionConfigKey: (str) name of the region config for which we want to
-  modify the param. E.g. 'sensorRegionConfig'.
-  @param regionConfigParamKey: (str) name of the region config param to
-  update. E.g. 'regionType'.
-  @param regionConfigParamValue: value of the region config param.
-  """
-
-  networkConfig[regionConfigKey][regionConfigParamKey] = regionConfigParamValue
-
-
-
-def setRegionParam(networkConfig,
-                   regionConfigKey,
-                   regionParamKey,
-                   regionParamValue):
-  """
-  Set value of a key in the 'regionParams' dict of a region config. See:
-
-  "spRegionConfig": {
-    "regionEnabled": true,
-    "regionName": "SP",
-    "regionType": "py.SPRegion",
-    "regionParams": {
-      "spVerbosity": 0,
-      "spatialImp": "cpp",
-      "globalInhibition": 1,
-      "columnCount": 2048,
-      "numActiveColumnsPerInhArea": 40,
-      "seed": 1956,
-      "potentialPct": 0.8,
-      "synPermConnected": 0.1,
-      "synPermActiveInc": 0.0001,
-      "synPermInactiveDec": 0.0005,
-      "maxBoost": 1.0
-    }
-  }
-
-  @param networkConfig: (dict) the config of the network.
-  @param regionConfigKey: (str) name of the region config for which we want to
-  modify the param. E.g. 'sensorRegionConfig'.
-  @param regionParamKey: (str) name of the region param to update. E.g.
-  'inputWidth'.
-  @param regionParamValue: value of the region param.
-  """
-
-  (networkConfig[regionConfigKey]['regionParams']
-   [regionParamKey]) = regionParamValue
-
-
-
-def getRegionConfigParam(networkConfig,
-                         regionConfigKey,
-                         regionConfigParamKey):
-  """
-  Get the value of a region config parameter. E.g. 'regionName' in:
-
-  "spRegionConfig": {
-    "regionEnabled": true,
-    "regionName": "SP",
-    "regionType": "py.SPRegion",
-    "regionParams": {
-      "spVerbosity": 0,
-      "spatialImp": "cpp",
-      "globalInhibition": 1,
-      "columnCount": 2048,
-      "numActiveColumnsPerInhArea": 40,
-      "seed": 1956,
-      "potentialPct": 0.8,
-      "synPermConnected": 0.1,
-      "synPermActiveInc": 0.0001,
-      "synPermInactiveDec": 0.0005,
-      "maxBoost": 1.0
-    }
-  }
-
-  @param networkConfig: (dict) the config of the network.
-  @param regionConfigKey: (str) name of the region config for which we want to
-  modify the param. E.g. 'sensorRegionConfig'.
-  @param regionConfigParamKey: (str) name of the region config param to
-  update. E.g. 'regionType'.
-  @return regionConfigParamValue: value of the region config param.
-  """
-
-  return networkConfig[regionConfigKey].get(regionConfigParamKey)
-
-
-
-def getRegionParam(networkConfig,
-                   regionConfigKey,
-                   regionParamKey,
-                   regionParamValue):
-  """
-  Get value of a key in the 'regionParams' dict of a region config. See:
-
-  "spRegionConfig": {
-    "regionEnabled": true,
-    "regionName": "SP",
-    "regionType": "py.SPRegion",
-    "regionParams": {
-      "spVerbosity": 0,
-      "spatialImp": "cpp",
-      "globalInhibition": 1,
-      "columnCount": 2048,
-      "numActiveColumnsPerInhArea": 40,
-      "seed": 1956,
-      "potentialPct": 0.8,
-      "synPermConnected": 0.1,
-      "synPermActiveInc": 0.0001,
-      "synPermInactiveDec": 0.0005,
-      "maxBoost": 1.0
-    }
-  }
-
-  @param networkConfig: (dict) the config of the network.
-  @param regionConfigKey: (str) name of the region config for which we want to
-  modify the param. E.g. 'sensorRegionConfig'.
-  @param regionParamKey: (str) name of the region param to update. E.g.
-  'inputWidth'.
-  @param regionParamValue: value of the region param.
-  """
-
-  (networkConfig[regionConfigKey]['regionParams']
-   [regionParamKey]) = regionParamValue
-
-
-
-def setEncoderParam(networkConfig,
-                    encoderName,
-                    paramName,
-                    paramValue):
-  """
-  Set the value of an encoder parameter for the sensor region.
-
-  @param networkConfig: (dict) the config of the network
-  @param encoderName: (str) name of the encoder. E.g. 'scalar'.
-  @param paramName: (str) name of the encoder param to update.
-  E.g. 'minval'.
-  @param paramValue: value of the encoder param.
-  """
-
-  (networkConfig["sensorRegionConfig"]["encoders"][encoderName]
-   [paramName]) = paramValue
-
-
-
 def getEncoderParam(networkConfig, encoderName, paramName):
   """
   Get the value of an encoder parameter for the sensor region.
@@ -594,142 +439,5 @@ def getEncoderParam(networkConfig, encoderName, paramName):
   @param paramName: (str) name of the param to update. E.g. 'minval'.
   @return paramValue: None if key 'paramName' does not exist. Value otherwise.
   """
-
   return networkConfig["sensorRegionConfig"]["encoders"][encoderName].get(
     paramName)
-
-
-
-def _setScalarEncoderMinMax(networkConfig, dataSource):
-  """
-  Set the min and max values of a scalar encoder.
-
-  @param networkConfig: (dict) configuration of the network.
-  @param dataSource: (RecordStream) the input source
-  """
-
-  fieldName = getEncoderParam(networkConfig, "scalarEncoder", "fieldname")
-  minval = dataSource.getFieldMin(fieldName)
-  maxval = dataSource.getFieldMax(fieldName)
-  setEncoderParam(networkConfig, "scalarEncoder", "minval", minval)
-  setEncoderParam(networkConfig, "scalarEncoder", "maxval", maxval)
-
-
-
-def setRegionEnabled(networkConfig,
-                     regionConfigKey,
-                     regionEnabledValue):
-  """
-  Set the value of the config param 'regionEnabled'.
-
-  @param networkConfig: (dict) the config of the network.
-  @param regionConfigKey: (str) name of the region config for which we want to
-  modify the param. E.g. 'sensorRegionConfig'.
-  update. E.g. 'regionType'.
-  @param regionEnabledValue: (bool) 1 if region enabled. 0 Otherwise.
-  """
-  setRegionConfigParam(networkConfig,
-                       regionConfigKey,
-                       "regionEnabled",
-                       regionEnabledValue)
-
-
-
-def getRegionEnabled(networkConfig,
-                     regionConfigKey):
-  """
-  Get the value of the config param 'regionEnabled'.
-
-  @param networkConfig: (dict) the config of the network.
-  @param regionConfigKey: (str) name of the region config for which we want to
-  modify the param. E.g. 'sensorRegionConfig'.
-  update. E.g. 'regionType'.
-  @retun regionEnabledValue: (bool) 1 if region enabled. 0 Otherwise.
-  """
-  return getRegionConfigParam(networkConfig,
-                              regionConfigKey,
-                              "regionEnabled")
-
-
-
-def setRegionType(networkConfig,
-                  regionConfigKey,
-                  regionTypeValue):
-  """
-  Set the value of the config param 'regionType'.
-
-  @param networkConfig: (dict) the config of the network.
-  @param regionConfigKey: (str) name of the region config for which we want to
-  modify the param. E.g. 'sensorRegionConfig'.
-  update. E.g. 'regionType'.
-  @param regionTypeValue: (str) Type of the region. E.g. "py.KNNClassifier"
-  """
-  setRegionConfigParam(networkConfig,
-                       regionConfigKey,
-                       "regionType",
-                       regionTypeValue)
-
-
-
-def getRegionType(networkConfig,
-                  regionConfigKey):
-  """
-  Get the value of the config param 'regionType'.
-
-  @param networkConfig: (dict) the config of the network.
-  @param regionConfigKey: (str) name of the region config for which we want to
-  modify the param. E.g. 'sensorRegionConfig'.
-  update. E.g. 'regionType'.
-  @return regionTypeValue: (str) Type of the region. E.g. "py.KNNClassifier"
-  """
-  return getRegionConfigParam(networkConfig,
-                              regionConfigKey,
-                              "regionType")
-
-
-
-def setRegionParams(networkConfig,
-                    regionConfigKey,
-                    regionParamsValue):
-  """
-  Set the value of the config param 'regionParams'.
-
-  @param networkConfig: (dict) the config of the network.
-  @param regionConfigKey: (str) name of the region config for which we want to
-  modify the param. E.g. 'sensorRegionConfig'.
-  update. E.g. 'regionType'.
-  @param regionParamsValue: (dict) params of the region. E.g for a
-  region of type "py.KNNClassifier":
-      {
-        "k": 1,
-        "distThreshold": 0,
-        "maxCategoryCount": 10
-      }
-  """
-  setRegionConfigParam(networkConfig,
-                       regionConfigKey,
-                       "regionParams",
-                       regionParamsValue)
-
-
-
-def getRegionParams(networkConfig,
-                    regionConfigKey):
-  """
-  Get the value of the config param 'regionParams'.
-
-  @param networkConfig: (dict) the config of the network.
-  @param regionConfigKey: (str) name of the region config for which we want to
-  modify the param. E.g. 'sensorRegionConfig'.
-  update. E.g. 'regionType'.
-  @return regionParamsValue: (dict) params of the region. E.g for a
-  region of type "py.KNNClassifier":
-      {
-        "k": 1,
-        "distThreshold": 0,
-        "maxCategoryCount": 10
-      }
-  """
-  return getRegionConfigParam(networkConfig,
-                              regionConfigKey,
-                              "regionParams")
