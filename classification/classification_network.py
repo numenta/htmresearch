@@ -28,16 +28,18 @@ try:
   import simplejson as json
 except ImportError:
   import json
+import logging
 import numpy
 
 from nupic.encoders import MultiEncoder
 from nupic.engine import Network
 from nupic.engine import pyRegions
 
-from sensor_data_exp_settings import DEBUG_VERBOSITY
 
 _PY_REGIONS = [r[1] for r in pyRegions]
 _TEST_PARTITION_NAME = "test"
+_LOGGER = logging.getLogger(__name__)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 
@@ -392,8 +394,7 @@ def runNetwork(network, networkConfig, partitions, numRecords):
         inferredValue = classifierRegion.getOutputData("categoriesOut")[0]
       if actualValue == inferredValue:
         numCorrect += 1
-      elif DEBUG_VERBOSITY > 0:
-        print ("[DEBUG] recordNum=%s, actualValue=%s, inferredValue=%s"
+      _LOGGER.debug("recordNum=%s, actualValue=%s, inferredValue=%s"
                % (recordNumber, actualValue, inferredValue))
       numTestRecords += 1
 
