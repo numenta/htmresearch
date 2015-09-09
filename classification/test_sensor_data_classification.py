@@ -27,6 +27,7 @@ try:
 except ImportError:
   import json
 
+from collections import namedtuple
 from nupic.data.file_record_stream import FileRecordStream
 
 from classification_network import (configureNetwork,
@@ -118,57 +119,35 @@ def _generateExperimentsNetworkParams(templateNetworkConfig):
 
 
 
-def _findNumberOfPartitions(networkConfiguration, numRecords):
+def _findNumberOfPartitions(networkConfig, numRecords):
   """
   Find the number of partitions for the input data based on a specific
-  networkConfiguration.
+  networkConfig.
 
-  @param networkConfiguration: (dict) the configuration of this network.
+  @param networkConfig: (dict) the configuration of this network.
   @param numRecords: (int) Number of records of the input dataset.
-  @return partitions: (list of tuples) Region names and associated indices
-  partitioning the input dataset to indicate at which recordNumber it should
-  start learning. The remaining of the data (last partition) is used as a test
-  set.
+  @return partitions: (list of namedtuples) Region names and index at which the
+    region is to begin learning. The final partition is reserved as a test set.
   """
+  Partition = namedtuple("Partition", "partName index")
 
-  spEnabled = getRegionConfigParam(networkConfiguration,
-                                   "spRegionConfig",
-                                   "regionEnabled")
-  tmEnabled = getRegionConfigParam(networkConfiguration,
-                                   "tmRegionConfig",
-                                   "regionEnabled")
-  upEnabled = getRegionConfigParam(networkConfiguration,
-                                   "upRegionConfig",
-                                   "regionEnabled")
-  spRegionName = getRegionConfigParam(networkConfiguration,
-                                      "spRegionConfig",
-                                      "regionName")
-  tmRegionName = getRegionConfigParam(networkConfiguration,
-                                      "tmRegionConfig",
-                                      "regionName")
-  upRegionName = getRegionConfigParam(networkConfiguration,
-                                      "upRegionConfig",
-                                      "regionName")
-  classifierRegionName = getRegionConfigParam(networkConfiguration,
-                                              "classifierRegionConfig",
-                                              "regionName")
+  # Add regions to partition list in order of learning.
+  regionConfigs = ("spRegionConfig", "tmRegionConfig", "upRegionConfig",
+    "classifierRegionConfig")
+  partitions = []
   maxNumPartitions = 5
+  i = 0
+  for region in regionConfigs:
+    if networkConfig[region].get("regionEnabled"):
+      learnIndex = i * numRecords / maxNumPartitions
+      partitions.append(Partition(
+        partName=networkConfig[region].get("regionName"), index=learnIndex))
+      i += 1
 
-  partitions = {}
-  if spEnabled and tmEnabled and upEnabled:
-    partitions[spRegionName] = 0
-    partitions[tmRegionName] = numRecords * 1 / maxNumPartitions
-    partitions[upRegionName] = numRecords * 2 / maxNumPartitions
-  elif spEnabled and tmEnabled:
-    partitions[spRegionName] = numRecords * 1 / maxNumPartitions
-    partitions[tmRegionName] = numRecords * 2 / maxNumPartitions
-  elif spEnabled:
-    partitions[spRegionName] = numRecords * 2 / maxNumPartitions
+  testIndex = numRecords * (maxNumPartitions-1) / maxNumPartitions
+  partitions.append(Partition(partName=TEST_PARTITION_NAME, index=testIndex))
 
-  partitions[classifierRegionName] = numRecords * 3 / maxNumPartitions
-  partitions[TEST_PARTITION_NAME] = numRecords * 4 / maxNumPartitions
-
-  return sorted(partitions.items(), key=lambda x: x[1])
+  return partitions
 
 
 
@@ -291,7 +270,7 @@ class TestSensorDataClassification(unittest.TestCase):
                     and spEnabled
                     and tmEnabled
                     and not upEnabled):
-                self.assertEqual(predictionAccuracy, 82.92)
+                self.assertEqual(predictionAccuracy, 79.79)
               elif (noiseAmplitude == 1.0
                     and signalMean == 1.0
                     and signalAmplitude == 1.0
@@ -300,7 +279,7 @@ class TestSensorDataClassification(unittest.TestCase):
                     and spEnabled
                     and not tmEnabled
                     and not upEnabled):
-                self.assertEqual(predictionAccuracy, 83.54)
+                self.assertEqual(predictionAccuracy, 81.46)
 
 
   def tearDown(self):
