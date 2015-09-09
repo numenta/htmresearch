@@ -34,9 +34,10 @@ from nupic.encoders import MultiEncoder
 from nupic.engine import Network
 from nupic.engine import pyRegions
 
-from sensor_data_exp_settings import (TEST_PARTITION_NAME, DEBUG_VERBOSITY)
+from sensor_data_exp_settings import DEBUG_VERBOSITY
 
 _PY_REGIONS = [r[1] for r in pyRegions]
+_TEST_PARTITION_NAME = "test"
 
 
 
@@ -187,20 +188,20 @@ def _validateRegionWidths(previousRegionWidth, currentRegionWidth):
 
 
 
-def createNetwork(dataSource, networkConfiguration):
+def createNetwork(dataSource, networkConfig):
   """
   Create and initialize the network instance with regions for the sensor, SP,
   TM, and classifier. Before running, be sure to init w/ network.initialize().
 
   @param dataSource: (RecordStream) Sensor region reads data from here.
-  @param networkConfiguration: (dict) the configuration of this network.
+  @param networkConfig: (dict) the configuration of this network.
   @return network: (Network) Sample network. E.g. Sensor -> SP -> TM -> Classif.
   """
 
   network = Network()
 
   # Create sensor regions (always enabled)
-  sensorRegionConfig = networkConfiguration["sensorRegionConfig"]
+  sensorRegionConfig = networkConfig["sensorRegionConfig"]
   sensorRegionName = sensorRegionConfig["regionName"]
   sensorRegion = _createSensorRegion(network,
                                      sensorRegionConfig,
@@ -212,11 +213,10 @@ def createNetwork(dataSource, networkConfiguration):
   previousRegionWidth = sensorRegion.encoder.getWidth()
 
   # Create SP region, if enabled.
-  regionConfig = networkConfiguration["spRegionConfig"]
-  regionName = regionConfig["regionName"]
-  regionParams = regionConfig["regionParams"]
-  regionEnabled = regionConfig["regionEnabled"]
-  if regionEnabled:
+  if networkConfig["spRegionConfig"]["regionEnabled"]:
+    regionConfig = networkConfig["spRegionConfig"]
+    regionName = regionConfig["regionName"]
+    regionParams = regionConfig["regionParams"]
     regionParams["inputWidth"] = sensorRegion.encoder.width
     spRegion = _createRegion(network, regionConfig)
     _validateRegionWidths(previousRegionWidth, spRegion.getSelf().inputWidth)
@@ -228,11 +228,10 @@ def createNetwork(dataSource, networkConfiguration):
     previousRegionWidth = spRegion.getSelf().columnCount
 
   # Create TM region, if enabled.
-  regionConfig = networkConfiguration["tmRegionConfig"]
-  regionName = regionConfig["regionName"]
-  regionParams = regionConfig["regionParams"]
-  regionEnabled = regionConfig["regionEnabled"]
-  if regionEnabled:
+  if networkConfig["tmRegionConfig"]["regionEnabled"]:
+    regionConfig = networkConfig["tmRegionConfig"]
+    regionName = regionConfig["regionName"]
+    regionParams = regionConfig["regionParams"]
     regionParams["inputWidth"] = regionParams["columnCount"]
     tmRegion = _createRegion(network, regionConfig)
     _validateRegionWidths(previousRegionWidth, tmRegion.getSelf().columnCount)
@@ -244,11 +243,10 @@ def createNetwork(dataSource, networkConfiguration):
     previousRegionWidth = tmRegion.getSelf().cellsPerColumn
 
   # Create UP region, if enabled.
-  regionConfig = networkConfiguration["upRegionConfig"]
-  regionName = regionConfig["regionName"]
-  regionParams = regionConfig["regionParams"]
-  regionEnabled = regionConfig["regionEnabled"]
-  if regionEnabled:
+  if networkConfig["upRegionConfig"]["regionEnabled"]:
+    regionConfig = networkConfig["upRegionConfig"]
+    regionName = regionConfig["regionName"]
+    regionParams = regionConfig["regionParams"]
     # TODO: not sure about the UP region width params. This needs to be updated.
     regionParams["inputWidth"] = previousRegionWidth
     upRegion = _createRegion(network, regionConfig)
@@ -261,7 +259,7 @@ def createNetwork(dataSource, networkConfiguration):
     previousRegion = regionName
 
   # Create classifier region (always enabled)
-  regionConfig = networkConfiguration["classifierRegionConfig"]
+  regionConfig = networkConfig["classifierRegionConfig"]
   regionName = regionConfig["regionName"]
   _createRegion(network, regionConfig)
   # Link the classifier to previous region and sensor region - to send in
@@ -348,13 +346,11 @@ def runNetwork(network, networkConfig, partitions, numRecords):
 
     actualValue = sensorRegion.getOutputData("categoryOut")[0]
 
-    partitionName = partitions[0][0]
-    partitionIndex = partitions[0][1]
+    if recordNumber == partitions[0][1]:
+      # end of the current partition
+      partitionName = partitions[0][0]
 
-    # train all of the regions
-    if partitionIndex == recordNumber:
-
-      if partitionName == TEST_PARTITION_NAME:
+      if partitionName == _TEST_PARTITION_NAME:
         _stopLearning(network, trainedRegionNames, recordNumber)
 
       else:
