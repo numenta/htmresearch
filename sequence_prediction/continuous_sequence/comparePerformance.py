@@ -111,11 +111,15 @@ if __name__ == "__main__":
   predData_ARIMA = loadDataFile(filePath)
 
   useTimeOfDay = True
-  filePath = './prediction/'+dataSet+'_lstm_pred_useTimeOfDay_'+str(useTimeOfDay)+'.csv'
+  useDayOfWeek = True
+  filePath = './prediction/'+dataSet+'_lstm_pred_useTimeOfDay_'+str(useTimeOfDay)+\
+                   '_useDayOfWeek'+str(useDayOfWeek)+'.csv'
   predData_LSTM = loadDataFileLSTM(filePath)
 
-  useTimeOfDay = False
-  filePath = './prediction/'+dataSet+'_lstm_pred_useTimeOfDay_'+str(useTimeOfDay)+'.csv'
+  useTimeOfDay = True
+  useDayOfWeek = False
+  filePath = './prediction/'+dataSet+'_lstm_pred_useTimeOfDay_'+str(useTimeOfDay)+\
+                   '_useDayOfWeek'+str(useDayOfWeek)+'.csv'
   predData_LSTM2 = loadDataFileLSTM(filePath)
 
 
@@ -177,15 +181,15 @@ if __name__ == "__main__":
   inds = np.arange(5)
   ax[0].bar(inds, [altMAPE_Shift, altMAPE_ARIMA, altMAPE_TM, altMAPE_LSTM, altMAPE_LSTM2], width=0.3)
   ax[0].set_xticks(inds+0.3/2)
-  ax[0].set_xticklabels( ('Shift', 'ARIMA', 'TM', 'LSTM', 'LSTM-NotimeOfDay') )
+  ax[0].set_xticklabels( ('Shift', 'ARIMA', 'TM', 'LSTM', 'LSTM-NoDayOfWeek') )
   ax[0].set_ylabel('altMAPE')
 
   ax[1].bar(inds, [NRMSE_Shift, NRMSE_ARIMA, NRMSE_TM, NRMSE_LSTM, NRMSE_LSTM2], width=0.3)
   ax[1].set_xticks(inds+0.3/2)
-  ax[1].set_xticklabels( ('Shift', 'ARIMA', 'TM', 'LSTM', 'LSTM-NotimeOfDay') )
+  ax[1].set_xticklabels( ('Shift', 'ARIMA', 'TM', 'LSTM', 'LSTM-NoDayOfWeek') )
   ax[1].set_ylabel('NRMSE')
-  import plotly.plotly as py
-  plot_url = py.plot_mpl(fig)
+  # import plotly.plotly as py
+  # plot_url = py.plot_mpl(fig)
 
 
 
@@ -201,7 +205,7 @@ if __name__ == "__main__":
   plt.figure(1)
   plt.plot(time_step[window_center], nrmse_slide_tm, label='TM')
   plt.plot(time_step[window_center], nrmse_slide_lstm, label='LSTM')
-  plt.plot(time_step[window_center], nrmse_slide_lstm2, label='LSTM-noTimeOfDay')
+  plt.plot(time_step[window_center], nrmse_slide_lstm2, label='LSTM-NoDayOfWeek')
   plt.plot(time_step[window_center], nrmse_slide_shift, label='Shift')
   plt.plot(time_step[window_center], nrmse_arima_arima, label='ARIMA')
   plt.legend()

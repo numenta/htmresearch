@@ -25,6 +25,7 @@ import numpy
 from optparse import OptionParser
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
 import pandas as pd
 
@@ -367,10 +368,10 @@ if __name__ == "__main__":
     if plot and i > 500:
       # prepare data for display
       if i > 100:
-        time_step_display = time_step[-500:-nPredictionSteps]
-        actual_data_display = actual_data[-500+nPredictionSteps:]
-        predict_data_ML_display = predict_data_ML[-500:-nPredictionSteps]
-        likelihood_display = likelihoodsVecAll[:, i-499:i-nPredictionSteps+1]
+        time_step_display = time_step[-500:-_options.stepsAhead]
+        actual_data_display = actual_data[-500+_options.stepsAhead:]
+        predict_data_ML_display = predict_data_ML[-500:-_options.stepsAhead]
+        likelihood_display = likelihoodsVecAll[:, i-499:i-_options.stepsAhead+1]
         xl = [(i)-500, (i)]
       else:
         time_step_display = time_step

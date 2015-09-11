@@ -144,8 +144,8 @@ if __name__ == "__main__":
   nTrain = SWARM_CONFIG["streamDef"]['streams'][0]['last_record']
   predictionStep = SWARM_CONFIG['inferenceArgs']['predictionSteps'][0]
 
-  useTimeOfDay = False
-  useDayOfWeek = False
+  useTimeOfDay = True
+  useDayOfWeek = True
 
   nTrain = 5000
 
@@ -160,6 +160,10 @@ if __name__ == "__main__":
   meanTimeOfDay = np.mean(sequence['timeofday'])
   stdTimeOfDay = np.std(sequence['timeofday'])
   sequence['timeofday'] = (sequence['timeofday'] - meanTimeOfDay)/stdTimeOfDay
+
+  meanDayOfWeek = np.mean(sequence['dayofweek'])
+  stdDayOfWeek = np.std(sequence['dayofweek'])
+  sequence['dayofweek'] = (sequence['dayofweek'] - meanDayOfWeek)/stdDayOfWeek
 
   ds = getPyBrainDataSet(sequence, nTrain, predictionStep, useTimeOfDay, useDayOfWeek)
 
@@ -250,7 +254,8 @@ if __name__ == "__main__":
   csvReader.next()
   csvReader.next()
 
-  outputFileName = './prediction/'+dataSet+'_lstm_pred_useTimeOfDay_'+str(useTimeOfDay)+'.csv'
+  outputFileName = './prediction/'+dataSet+'_lstm_pred_useTimeOfDay_'+str(useTimeOfDay)+\
+                   '_useDayOfWeek'+str(useDayOfWeek)+'.csv'
   outputFile = open(outputFileName,"w")
   csvWriter = csv.writer(outputFile)
   csvWriter.writerow(['timestamp', predictedField, 'prediction-'+str(predictionStep)+'step'])
