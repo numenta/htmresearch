@@ -38,7 +38,9 @@ from swarm_runner import SwarmRunner
 
 
 import pandas as pd
-from nrmse import *
+from errorMetrics import *
+
+from nupic.encoders.scalar import ScalarEncoder
 
 plt.ion()
 
