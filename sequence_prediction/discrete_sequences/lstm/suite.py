@@ -317,8 +317,10 @@ class Suite(PyExperimentSuite):
     else:
       self.computeCounter -= 1
 
-    if (not params['compute_test_mode'] or
-        iteration % params['compute_every'] == 0):
+    train = (not params['compute_test_mode'] or
+             iteration % params['compute_every'] == 0)
+
+    if train:
       self.net = self.train(params)
 
     predictions = None
@@ -339,6 +341,7 @@ class Suite(PyExperimentSuite):
     return {"current": self.history[-1],
             "reset": self.resets[-1],
             "random": self.randoms[-1],
+            "train": train,
             "predictions": predictions,
             "truth": truth}
 

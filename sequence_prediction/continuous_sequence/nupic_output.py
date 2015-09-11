@@ -86,7 +86,8 @@ class NuPICFileOutput(NuPICOutput):
 
 
 
-  def write(self, timestamps, actualValues, predictedValues5step):
+  def write(self, timestamps, actualValues, predictedValues5step,
+            extraValues = []):
 
     # assert len(timestamps) == len(actualValues) == len(predictedValues5step)
 
@@ -98,10 +99,10 @@ class NuPICFileOutput(NuPICOutput):
       writer = self.outputWriters[index]
 
       if timestamp is not None:
-        outputRow = [timestamp, actual, prediction5step]
-        writer.writerow(outputRow)
+        row = [timestamp, actual, prediction5step]
+        row.extend(extraValues)
+        writer.writerow(row)
         self.lineCounts[index] += 1
-
 
 
   def close(self):

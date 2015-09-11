@@ -19,18 +19,21 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import importlib
-import sys
-import csv
-import datetime
 
-from nupic.data.inference_shifter import InferenceShifter
+import importlib
+import numpy
+from optparse import OptionParser
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+rcParams.update({'figure.autolayout': True})
+import pandas as pd
+
 from nupic.frameworks.opf.metrics import MetricSpec
 from nupic.frameworks.opf.modelfactory import ModelFactory
 from nupic.frameworks.opf.predictionmetricsmanager import MetricsManager
 from nupic.frameworks.opf import metrics
 import nupic_output
-from optparse import OptionParser
+
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -38,6 +41,7 @@ import pandas as pd
 from errorMetrics import *
 from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
+
 
 plt.ion()
 DESCRIPTION = (
@@ -54,14 +58,16 @@ DATA_DIR = "./data"
 MODEL_PARAMS_DIR = "./model_params"
 
 
-def getMetricSpecs(predictedField):
+def getMetricSpecs(predictedField, stepsAhead=5):
   _METRIC_SPECS = (
       MetricSpec(field=predictedField, metric='multiStep',
                  inferenceElement='multiStepBestPredictions',
-                 params={'errorMetric': 'negativeLogLikelihood', 'window': 1000, 'steps': 5}),
+                 params={'errorMetric': 'negativeLogLikelihood',
+                         'window': 1000, 'steps': stepsAhead}),
       MetricSpec(field=predictedField, metric='multiStep',
                  inferenceElement='multiStepBestPredictions',
-                 params={'errorMetric': 'nrmse', 'window': 1000, 'steps': 5}),
+                 params={'errorMetric': 'nrmse', 'window': 1000,
+                         'steps': stepsAhead}),
   )
   return _METRIC_SPECS
 
@@ -103,6 +109,10 @@ def _getArgs():
                     dest="plot",
                     help="Set to True to plot result")
 
+  parser.add_option("--stepsAhead",
+                    help="How many steps ahead to predict. [default: %default]",
+                    default=5,
+                    type=int)
 
   (options, remainder) = parser.parse_args()
   print options
@@ -114,17 +124,35 @@ def getInputRecord(df, predictedField, i):
   inputRecord = {
     predictedField: float(df[predictedField][i]),
     "timeofday": float(df["timeofday"][i]),
-    # "dayofweek": row[3],
+    "dayofweek": float(df["dayofweek"][i]),
   }
   return inputRecord
+
+
+def printTPRegionParams(tpregion):
+  """
+  Note: assumes we are using TemporalMemory/TPShim in the TPRegion
+  """
+  tm = tpregion.getSelf()._tfdr
+  print "------------PY  TemporalMemory Parameters ------------------"
+  print "numberOfCols             =", tm.columnDimensions
+  print "cellsPerColumn           =", tm.cellsPerColumn
+  print "minThreshold             =", tm.minThreshold
+  print "activationThreshold      =", tm.activationThreshold
+  print "newSynapseCount          =", tm.maxNewSynapseCount
+  print "initialPerm              =", tm.initialPermanence
+  print "connectedPerm            =", tm.connectedPermanence
+  print "permanenceInc            =", tm.permanenceIncrement
+  print "permanenceDec            =", tm.permanenceDecrement
+  print "predictedSegmentDecrement=", tm.predictedSegmentDecrement
+  print
+
 
 
 def runMultiplePass(df, model, nMultiplePass, nTrain):
   """
   run CLA model through data record 0:nTrain nMultiplePass passes
   """
-  # nMultiplePass = 5
-  # nTrain = 5000
   predictedField = model.getInferenceArgs()['predictedField']
   print "run TM through the train data multiple times"
   for nPass in xrange(nMultiplePass):
@@ -150,7 +178,7 @@ def runMultiplePassSPonly(df, model, nMultiplePass, nTrain):
       inputRecord = getInputRecord(df, predictedField, j)
       model._sensorCompute(inputRecord)
       model._spCompute()
-      if j % 100 == 0:
+      if j % 400 == 0:
         print " pass %i, record %i" % (nPass, j)
 
   return model
@@ -171,21 +199,21 @@ if __name__ == "__main__":
     predictedField = "passenger_count"
   else:
     raise RuntimeError("un recognized dataset")
-  # runModel(dataSet, plot=plot)
 
   modelParams = getModelParamsFromName(dataSet)
+  modelParams['modelParams']['clParams']['steps'] = str(_options.stepsAhead)
 
   print "Creating model from %s..." % dataSet
-  # model = createModel(modelParams)
 
   # use customized CLA model
   from clamodel_custom import CLAModel_custom
-  # from nupic.frameworks.opf.clamodel import CLAModel
   model = CLAModel_custom(**modelParams['modelParams'])
   model.enableInference({"predictedField": predictedField})
   model.enableLearning()
   model._spLearningEnabled = True
   model._tpLearningEnabled = True
+
+  printTPRegionParams(model._getTPRegion())
 
   inputData = "%s/%s.csv" % (DATA_DIR, dataSet.replace(" ", "_"))
 
@@ -197,15 +225,12 @@ if __name__ == "__main__":
   else:
     classifier_encoder = None
 
-  # encoder = model._classifierInputEncoder
-
   _METRIC_SPECS = getMetricSpecs(predictedField)
   metric = metrics.getModule(_METRIC_SPECS[0])
   metricsManager = MetricsManager(_METRIC_SPECS, model.getFieldInfo(),
                                   model.getInferenceType())
 
   if plot:
-    import matplotlib.gridspec as gridspec
     plotCount = 1
     plotHeight = max(plotCount * 3, 6)
     fig = plt.figure(figsize=(14, plotHeight))
@@ -221,21 +246,19 @@ if __name__ == "__main__":
 
   nMultiplePass = 5
   nTrain = 5000
-  print " run TM through the first %i samples %i passes " %(nMultiplePass, nTrain)
+  print " run SP through the first %i samples %i passes " %(nMultiplePass, nTrain)
   model = runMultiplePassSPonly(df, model, nMultiplePass, nTrain)
   model._spLearningEnabled = False
-  # model = runMultiplePass(df, model, nMultiplePass, nTrain)
 
 
   maxBucket = classifier_encoder.n - classifier_encoder.w + 1
   likelihoodsVecAll = np.zeros((maxBucket, len(df)))
 
-  prediction_5step = None
+  prediction_nstep = None
   time_step = []
   actual_data = []
   patternNZ_track = []
-  nPredictionSteps = 5
-  predict_data = np.zeros((nPredictionSteps, 0))
+  predict_data = np.zeros((_options.stepsAhead, 0))
   predict_data_ML = []
   negLL_track = []
 
@@ -257,8 +280,6 @@ if __name__ == "__main__":
     prePredictiveColumn = np.array(list(prePredictiveCells)) / tm.cellsPerColumn
 
     result = model.run(inputRecord)
-    # spRegion = model._getSPRegion().getSelf()
-    # sensorOutput = spRegion._spatialPoolerInput
 
     sp = model._getSPRegion().getSelf()._sfdr
     spOutput = model._getSPRegion().getOutputData('bottomUpOut')
@@ -303,30 +324,32 @@ if __name__ == "__main__":
     result.metrics = metricsManager.update(result)
 
     negLL = result.metrics["multiStepBestPredictions:multiStep:"
-                             "errorMetric='negativeLogLikelihood':steps=5:window=1000:"
-                             "field="+predictedField]
+               "errorMetric='negativeLogLikelihood':steps=%d:window=1000:"
+               "field=%s"%(_options.stepsAhead, predictedField)]
     if i % 100 == 0 and i>0:
       negLL = result.metrics["multiStepBestPredictions:multiStep:"
-                             "errorMetric='negativeLogLikelihood':steps=5:window=1000:"
-                             "field="+predictedField]
+               "errorMetric='negativeLogLikelihood':steps=%d:window=1000:"
+               "field=%s"%(_options.stepsAhead, predictedField)]
       nrmse = result.metrics["multiStepBestPredictions:multiStep:"
-                             "errorMetric='nrmse':steps=5:window=1000:"
-                             "field="+predictedField]
+               "errorMetric='nrmse':steps=%d:window=1000:"
+               "field=%s"%(_options.stepsAhead, predictedField)]
 
       numActiveCell = np.mean(activeCellNum[-100:])
       numPredictiveCells = np.mean(predCellNum[-100:])
       numCorrectPredicted = np.mean(predictedActiveColumnsNum[-100:])
 
-      print "After %i records, 5-step negLL=%f nrmse=%f ActiveCell %f PredCol %f CorrectPredCol %f" % \
-            (i, negLL, nrmse, numActiveCell, numPredictiveCells, numCorrectPredicted)    
+      print "After %i records, %d-step negLL=%f nrmse=%f ActiveCell %f PredCol %f CorrectPredCol %f" % \
+            (i, _options.stepsAhead, negLL, nrmse, numActiveCell,
+             numPredictiveCells, numCorrectPredicted)
 
-    # prediction_1step = result.inferences["multiStepBestPredictions"][1]
-    last_prediction = prediction_5step
-    prediction_5step = result.inferences["multiStepBestPredictions"][5]
-    output.write([i], [inputRecord[predictedField]], [float(prediction_5step)])
+    last_prediction = prediction_nstep
+    prediction_nstep = \
+      result.inferences["multiStepBestPredictions"][_options.stepsAhead]
+    output.write([i], [inputRecord[predictedField]], [float(prediction_nstep)])
 
 
-    bucketLL = result.inferences['multiStepBucketLikelihoods'][5]
+    bucketLL = \
+      result.inferences['multiStepBucketLikelihoods'][_options.stepsAhead]
     likelihoodsVec = np.zeros((maxBucket,))
     if bucketLL is not None:
       for (k, v) in bucketLL.items():
@@ -334,14 +357,14 @@ if __name__ == "__main__":
 
     time_step.append(i)
     actual_data.append(inputRecord[predictedField])
-    predict_data_ML.append(result.inferences['multiStepBestPredictions'][5])
+    predict_data_ML.append(
+      result.inferences['multiStepBestPredictions'][_options.stepsAhead])
     negLL_track.append(negLL)
 
     likelihoodsVecAll[0:len(likelihoodsVec), i] = likelihoodsVec
 
 
-    startPlotFrom = 500
-    if plot and i > startPlotFrom:
+    if plot and i > 500:
       # prepare data for display
       if i > 100:
         time_step_display = time_step[-500:-nPredictionSteps]
@@ -358,8 +381,10 @@ if __name__ == "__main__":
 
       plt.figure(2)
       plt.clf()
-      plt.imshow(likelihood_display, extent=(time_step_display[0], time_step_display[-1], 0, 40000),
-                 interpolation='nearest', aspect='auto', origin='lower', cmap='Reds')
+      plt.imshow(likelihood_display,
+                 extent=(time_step_display[0], time_step_display[-1], 0, 40000),
+                 interpolation='nearest', aspect='auto',
+                 origin='lower', cmap='Reds')
       plt.plot(time_step_display, actual_data_display, 'k', label='Data')
       plt.plot(time_step_display, predict_data_ML_display, 'b', label='Best Prediction')
       plt.xlim(xl)
@@ -368,8 +393,8 @@ if __name__ == "__main__":
       plt.title('TM, useTimeOfDay='+str(True)+' '+dataSet+' test neg LL = '+str(negLL))
       plt.draw()
 
-  predData_TM_five_step = np.roll(np.array(predict_data_ML), 5)
-  nTest = len(actual_data) - nTrain - 5
-  NRMSE_TM = NRMSE(actual_data[nTrain:nTrain+nTest], predData_TM_five_step[nTrain:nTrain+nTest])
+  predData_TM_n_step = np.roll(np.array(predict_data_ML), _options.stepsAhead)
+  nTest = len(actual_data) - nTrain - _options.stepsAhead
+  NRMSE_TM = NRMSE(actual_data[nTrain:nTrain+nTest], predData_TM_n_step[nTrain:nTrain+nTest])
   print "NRMSE on test data: ", NRMSE_TM
   output.close()
