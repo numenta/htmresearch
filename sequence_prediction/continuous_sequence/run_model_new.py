@@ -344,11 +344,11 @@ if __name__ == "__main__":
     if plot and i > startPlotFrom:
       # prepare data for display
       if i > 100:
-        time_step_display = time_step[-100:]
-        actual_data_display = actual_data[-100:]
-        predict_data_ML_display = predict_data_ML[-100:]
-        likelihood_display = likelihoodsVecAll[:, i-99:i+1]
-        xl = [(i)-100, (i)]
+        time_step_display = time_step[-500:-nPredictionSteps]
+        actual_data_display = actual_data[-500+nPredictionSteps:]
+        predict_data_ML_display = predict_data_ML[-500:-nPredictionSteps]
+        likelihood_display = likelihoodsVecAll[:, i-499:i-nPredictionSteps+1]
+        xl = [(i)-500, (i)]
       else:
         time_step_display = time_step
         actual_data_display = actual_data
@@ -363,6 +363,9 @@ if __name__ == "__main__":
       plt.plot(time_step_display, actual_data_display, 'k', label='Data')
       plt.plot(time_step_display, predict_data_ML_display, 'b', label='Best Prediction')
       plt.xlim(xl)
+      plt.xlabel('Time')
+      plt.ylabel('Prediction')
+      plt.title('TM, useTimeOfDay='+str(True)+' '+dataSet+' test neg LL = '+str(negLL))
       plt.draw()
 
   predData_TM_five_step = np.roll(np.array(predict_data_ML), 5)
