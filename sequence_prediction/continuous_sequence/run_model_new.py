@@ -35,7 +35,14 @@ from nupic.frameworks.opf.predictionmetricsmanager import MetricsManager
 from nupic.frameworks.opf import metrics
 import nupic_output
 
-from nrmse import *
+
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from errorMetrics import *
+from matplotlib import rcParams
+rcParams.update({'figure.autolayout': True})
+
 
 plt.ion()
 DESCRIPTION = (
@@ -50,7 +57,6 @@ DESCRIPTION = (
 
 DATA_DIR = "./data"
 MODEL_PARAMS_DIR = "./model_params"
-
 
 
 def getMetricSpecs(predictedField, stepsAhead=5):
@@ -177,6 +183,7 @@ def runMultiplePassSPonly(df, model, nMultiplePass, nTrain):
         print " pass %i, record %i" % (nPass, j)
 
   return model
+
 
 if __name__ == "__main__":
   print DESCRIPTION
@@ -361,16 +368,16 @@ if __name__ == "__main__":
     if plot and i > 500:
       # prepare data for display
       if i > 100:
-        time_step_display = time_step[-100:]
-        actual_data_display = actual_data[-100:]
-        predict_data_ML_display = predict_data_ML[-100:]
-        likelihood_display = likelihoodsVecAll[:, i-100:i]
-        xl = [(i)-100, (i)]
+        time_step_display = time_step[-500:-_options.stepsAhead]
+        actual_data_display = actual_data[-500+_options.stepsAhead:]
+        predict_data_ML_display = predict_data_ML[-500:-_options.stepsAhead]
+        likelihood_display = likelihoodsVecAll[:, i-499:i-_options.stepsAhead+1]
+        xl = [(i)-500, (i)]
       else:
         time_step_display = time_step
         actual_data_display = actual_data
         predict_data_ML_display = predict_data_ML
-        likelihood_display = likelihoodsVecAll[:, :i]
+        likelihood_display = likelihoodsVecAll[:, :i+1]
         xl = [0, (i)]
 
       plt.figure(2)
@@ -382,6 +389,9 @@ if __name__ == "__main__":
       plt.plot(time_step_display, actual_data_display, 'k', label='Data')
       plt.plot(time_step_display, predict_data_ML_display, 'b', label='Best Prediction')
       plt.xlim(xl)
+      plt.xlabel('Time')
+      plt.ylabel('Prediction')
+      plt.title('TM, useTimeOfDay='+str(True)+' '+dataSet+' test neg LL = '+str(negLL))
       plt.draw()
 
   predData_TM_n_step = np.roll(np.array(predict_data_ML), _options.stepsAhead)

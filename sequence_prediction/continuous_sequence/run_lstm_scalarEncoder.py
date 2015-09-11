@@ -32,6 +32,8 @@ from pybrain.structure import LinearLayer
 from pybrain.structure import RecurrentNetwork
 from pybrain.structure import FullConnection
 from pybrain.structure.modules import LSTMLayer
+from pybrain.structure.modules import SigmoidLayer
+
 from pybrain.supervised import RPropMinusTrainer
 
 from swarm_runner import SwarmRunner
@@ -42,12 +44,13 @@ from errorMetrics import *
 
 from nupic.encoders.scalar import ScalarEncoder
 
+
 plt.ion()
 
 def initializeLSTMnet(nDimInput, nDimOutput, nLSTMcells=10):
   # Build LSTM network with nDim input units, nLSTMcells hidden units (LSTM cells) and nDim output cells
   net = buildNetwork(nDimInput, nLSTMcells, nDimOutput,
-                     hiddenclass=LSTMLayer, bias=True, outputbias=True, recurrent=True)
+                     hiddenclass=LSTMLayer, bias=True, outclass=SigmoidLayer, recurrent=True)
   return net
 
 
@@ -99,6 +102,45 @@ def getPyBrainDataSet(sequence, nTrain, predictionStep=1, useTimeOfDay=True, use
   return ds
 
 
+def getPyBrainDataSetScalarEncoder(sequence, nTrain, encoder, predictionStep=1, useTimeOfDay=True, useDayOfWeek=True):
+  """
+  Use scalar encoder for the data
+  :param sequence:
+  :param nTrain:
+  :param predictionStep:
+  :param useTimeOfDay:
+  :param useDayOfWeek:
+  :return:
+  """
+  print "generate a pybrain dataset of sequences"
+  print "the training data contains ", str(nTrain-predictionStep), "records"
+
+  inDim = encoder.n + int(useTimeOfDay) + int(useDayOfWeek)
+  outDim = encoder.n
+  ds = SequentialDataSet(inDim, outDim)
+  if useTimeOfDay:
+    print "include time of day as input field"
+  if useDayOfWeek:
+    print "include day of week as input field"
+
+  for i in xrange(nTrain-predictionStep):
+
+    dataSDR = encoder.encode(sequence['data'][i])
+
+    if useTimeOfDay and useDayOfWeek:
+      sample = np.concatenate((dataSDR, [sequence['timeofday'][i]], [sequence['dayofweek'][i]]), axis=0)
+    elif useTimeOfDay:
+      sample = np.concatenate((dataSDR, [sequence['timeofday'][i]]), axis=0)
+    elif useDayOfWeek:
+      sample = np.concatenate((dataSDR, [sequence['dayofweek'][i]]), axis=0)
+    else:
+      sample = dataSDR
+
+    ds.addSample(sample, encoder.encode(sequence['data'][i+predictionStep]))
+
+  return ds
+
+
 def _getArgs():
   parser = OptionParser(usage="%prog PARAMS_DIR OUTPUT_DIR [options]"
                               "\n\nCompare TM performance with trivial predictor using "
@@ -121,7 +163,7 @@ def _getArgs():
   parser.add_option("-r",
                     "--repeatNumber",
                     type=int,
-                    default=30,
+                    default=20,
                     dest="repeatNumber",
                     help="number of training epoches")
 
@@ -145,31 +187,23 @@ if __name__ == "__main__":
   predictionStep = SWARM_CONFIG['inferenceArgs']['predictionSteps'][0]
 
   useTimeOfDay = True
-  useDayOfWeek = True
+  useDayOfWeek = False
 
   nTrain = 5000
 
   # prepare dataset as pyBrain sequential dataset
   sequence = readDataSet(dataSet)
-
-  # standardize data by subtracting mean and dividing by std
-  meanSeq = np.mean(sequence['data'])
-  stdSeq = np.std(sequence['data'])
-  sequence['data'] = (sequence['data'] - meanSeq)/stdSeq
+  encoder = ScalarEncoder(w=1, minval=0, maxval=40000, n=15, forced=True)
 
   meanTimeOfDay = np.mean(sequence['timeofday'])
   stdTimeOfDay = np.std(sequence['timeofday'])
   sequence['timeofday'] = (sequence['timeofday'] - meanTimeOfDay)/stdTimeOfDay
 
-  meanDayOfWeek = np.mean(sequence['dayofweek'])
-  stdDayOfWeek = np.std(sequence['dayofweek'])
-  sequence['dayofweek'] = (sequence['dayofweek'] - meanDayOfWeek)/stdDayOfWeek
-
-  ds = getPyBrainDataSet(sequence, nTrain, predictionStep, useTimeOfDay, useDayOfWeek)
+  ds = getPyBrainDataSetScalarEncoder(sequence, nTrain, encoder, predictionStep, useTimeOfDay, useDayOfWeek)
 
   print "train LSTM with "+str(rptNum)+" repeats"
 
-  net = initializeLSTMnet(nDimInput=len(ds.getSample()[0]), nDimOutput=1, nLSTMcells=20)
+  net = initializeLSTMnet(nDimInput=len(ds.getSample()[0]), nDimOutput=encoder.n, nLSTMcells=20)
 
   trainer = RPropMinusTrainer(net, dataset=ds, verbose=True)
   error = []
@@ -180,92 +214,51 @@ if __name__ == "__main__":
   print "test LSTM"
   net.reset()
 
-  predictedInput = np.zeros((len(sequence),))
+  predictedDistribution = np.zeros((len(sequence), encoder.n))
+  targetDistribution = np.zeros((len(sequence), encoder.n))
   targetInput = np.zeros((len(sequence),))
   trueData = np.zeros((len(sequence),))
   for i in xrange(len(sequence)-predictionStep):
+    dataSDR = encoder.encode(sequence['data'][i])
+
     if useTimeOfDay and useDayOfWeek:
-      sample = np.array([sequence['data'][i], sequence['timeofday'][i], sequence['dayofweek'][i]])
+      sample = np.concatenate((dataSDR, [sequence['timeofday'][i]], [sequence['dayofweek'][i]]), axis=0)
     elif useTimeOfDay:
-      sample = np.array([sequence['data'][i], sequence['timeofday'][i]])
+      sample = np.concatenate((dataSDR, [sequence['timeofday'][i]]), axis=0)
     elif useDayOfWeek:
-      sample = np.array([sequence['data'][i], sequence['dayofweek'][i]])
+      sample = np.concatenate((dataSDR, [sequence['dayofweek'][i]]), axis=0)
     else:
-      sample = np.array([sequence['data'][i]])
+      sample = dataSDR
 
     netActivation = net.activate(sample)
-    predictedInput[i] = netActivation
-    targetInput[i] = sequence['data'][i+predictionStep]
+    predictedDistribution[i, :] = netActivation/sum(netActivation)
+    targetDistribution[i, :] = encoder.encode(sequence['data'][i+predictionStep])
     trueData[i] = sequence['data'][i]
-    # print " target input: ", targetInput[i], " predicted Input: ", predictedInput[i]
+    targetInput[i] = sequence['data'][i+predictionStep]
+    # print " target input: ", targetDistribution[i], " predicted Input: ", predictedInput[i]
 
-  predictedInput = (predictedInput * stdSeq) + meanSeq
-  targetInput = (targetInput * stdSeq) + meanSeq
-  trueData = (trueData * stdSeq) + meanSeq
+  # calculate negative log-likelihood
+  Likelihood = np.multiply(predictedDistribution, targetDistribution)
+  Likelihood = np.sum(Likelihood, axis=1)
 
-  nrmse_train = NRMSE(targetInput[:nTrain], predictedInput[:nTrain])
-  nrmse_test = NRMSE(targetInput[nTrain:-predictionStep], predictedInput[nTrain:-predictionStep])
+  minProb = 0.00001
+  Likelihood[np.where(Likelihood<minProb)[0]] = minProb
+  negLL = -np.log(Likelihood)
 
-  print "NRMSE, Train %f, Test %f" %(nrmse_train, nrmse_test)
-
-  (window_center, nrmse_slide) = NRMSE_sliding(targetInput, predictedInput, 480)
+  negLLtest = np.mean(negLL[nTrain:])
+  print "LSTM, negLL Train %f Test %f" % (np.mean(negLL[:nTrain]), np.mean(negLL[nTrain:]))
 
   plt.close('all')
-  plt.figure(1)
-  plt.plot(targetInput[nTrain:], color='black')
-  plt.plot(predictedInput[nTrain:], color='red')
-  plt.title('LSTM, useTimeOfDay='+str(useTimeOfDay)+dataSet+' test NRMSE = '+str(nrmse_test))
-  plt.xlim([0, 500])
-  plt.xlabel('Time')
-  plt.ylabel('Prediction')
+  fig = plt.figure(1)
+  NT = len(trueData)
+  plt.imshow(np.transpose(predictedDistribution), extent=(0, NT, encoder.minval, encoder.maxval),
+             interpolation='nearest', aspect='auto', origin='lower', cmap='Reds')
 
-
-  plt.figure(2)
   plt.plot(targetInput, color='black')
-  plt.plot(predictedInput, color='red')
-  plt.title('LSTM, useTimeOfDay='+str(useTimeOfDay)+dataSet+' train NRMSE = '+str(nrmse_train))
-  plt.xlim([0, 500])
+  plt.title('LSTM, useTimeOfDay='+str(useTimeOfDay)+' '+dataSet+' test neg LL = '+str(negLLtest))
+  plt.xlim([NT-500, NT-predictionStep])
   plt.xlabel('Time')
   plt.ylabel('Prediction')
 
-
-  fig = plt.figure(3)
-  plt.subplot(2, 1, 1)
-  plt.plot(window_center, nrmse_slide)
-  plt.xlabel(' Time ')
-  plt.ylabel(' NRMSE')
-
-  plt.subplot(2, 1, 2)
-  plt.plot(targetInput[:], color='black')
-  plt.plot(predictedInput[:], color='red')
-  plt.xlabel('Time')
-  plt.ylabel('Prediction')
-
-  import plotly.plotly as py
-  plot_url = py.plot_mpl(fig)
-
-  #
-  filePath = 'data/'+dataSet+'.csv'
-  inputFile = open(filePath, "rb")
-
-  csvReader = csv.reader(inputFile)
-  # skip header rows
-  csvReader.next()
-  csvReader.next()
-  csvReader.next()
-
-  outputFileName = './prediction/'+dataSet+'_lstm_pred_useTimeOfDay_'+str(useTimeOfDay)+\
-                   '_useDayOfWeek'+str(useDayOfWeek)+'.csv'
-  outputFile = open(outputFileName,"w")
-  csvWriter = csv.writer(outputFile)
-  csvWriter.writerow(['timestamp', predictedField, 'prediction-'+str(predictionStep)+'step'])
-  csvWriter.writerow(['datetime', 'float', 'float'])
-  csvWriter.writerow(['', '', ''])
-
-  for i in xrange(len(sequence)):
-    row = csvReader.next()
-    csvWriter.writerow([row[0], row[1], predictedInput[i]])
-
-  inputFile.close()
-  outputFile.close()
-
+  # import plotly.plotly as py
+  # plot_url = py.plot_mpl(fig)
