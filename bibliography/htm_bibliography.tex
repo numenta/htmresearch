@@ -547,6 +547,12 @@ improved capability to evoke a precise output.} Although they don't explicitly
 discuss prediction and high order sequences, the experiments and results in this
 paper are very consistent with HTMs.
 
+See also \cite{Gordon2006} where they demonstrate branch specific plasticity
+rules in distal basal dendrites vs proximal dendrites.  Distal basal dendrites
+require NMDA spikes in order to learn. It is not clear if their finding that
+such plasticity requires the presence of BDNF molecule is inconsistent with
+Losonczy.
+
 
 \subsection{Yang: Branch specific dendritic learning}
 
@@ -704,7 +710,21 @@ spikes are not required?
 \emph{Other result}: "trial-to-trial fluctuations (termed �noise�) were poorly correlated between 
  neighboring neurons, suggesting low degrees of common input." This is consistent with 
  our assumption that cells in the same mini-column has different lateral connections.
- 
+
+\subsection{Nikolic: Distributed memory with sequences}
+
+The sequence memory in HTM predicts that the current sparse pattern of cell
+activity contains information about past stimuli when recognizing a high order
+sequence. With high order sequences you should be able to take the current
+activity and reconstruct the past patterns. The paper by \cite{Nikolic2009}
+shows exactly this pehenomenon. Experiment setup: sequences of letters were
+presented to lightly anesthetized cats. Each letter is presented for 100ms and
+there is a 100-ms blank interval between letters. 124 randomly selected V1
+neurons were recorded during the stimulus presentation. The author found that
+the current active V1 neurons contains almost equal information about both the
+current and the preceding stimulus.  They use a classifier to determine this,
+and the phenomenon is illustrated in Fig. 3.
+
 \section{Temporal Pooling and Invariances}
 
 The idea of temporal pooling is that after learning, predicted inputs will

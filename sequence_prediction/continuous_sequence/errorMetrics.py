@@ -43,3 +43,8 @@ def NRMSE_sliding(data, pred, windowSize):
                        pred[wc-halfWindowSize:wc+halfWindowSize]))
 
   return (window_center, nrmse)
+
+def altMAPE(groundTruth, prediction):
+  error = abs(groundTruth - prediction)
+  altMAPE = 100.0 * np.sum(error) / np.sum(abs(groundTruth))
+  return altMAPE
