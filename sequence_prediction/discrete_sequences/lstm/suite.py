@@ -281,6 +281,14 @@ class Suite(PyExperimentSuite):
       trainer.trainEpochs(params['num_epochs'])
       net.reset()
 
+    for i in xrange(len(history) - 1):
+      symbol = history[i]
+      output = self.net.activate(self.encoder.encode(symbol))
+      predictions = self.encoder.classify(output, num=params['num_predictions'])
+
+      if resets[i]:
+        net.reset()
+
     return net
 
 
@@ -323,16 +331,15 @@ class Suite(PyExperimentSuite):
     if train:
       self.net = self.train(params)
 
-    predictions = None
     history = self.window(self.history, params)
     resets = self.window(self.resets, params)
 
-    for i, symbol in enumerate(history):
-      output = self.net.activate(self.encoder.encode(symbol))
-      predictions = self.encoder.classify(output, num=params['num_predictions'])
+    if resets[-1]:
+      self.net.reset()
 
-      if resets[i]:
-        self.net.reset()
+    symbol = history[-1]
+    output = self.net.activate(self.encoder.encode(symbol))
+    predictions = self.encoder.classify(output, num=params['num_predictions'])
 
     truth = None if (self.resets[-1] or
                      self.randoms[-1] or
