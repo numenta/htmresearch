@@ -327,6 +327,7 @@ class Suite(PyExperimentSuite):
     history = self.window(self.history, params)
     resets = self.window(self.resets, params)
 
+    self.net.reset()
     for i, symbol in enumerate(history):
       output = self.net.activate(self.encoder.encode(symbol))
       predictions = self.encoder.classify(output, num=params['num_predictions'])
