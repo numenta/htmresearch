@@ -63,8 +63,12 @@ def _createEncoder(encoders):
                    "timeOfDay": (21, 9.5)},
     }
   """
+  if not isinstance(encoders, dict):
+    raise TypeError("Encoders specified in incorrect format.")
+
   encoder = MultiEncoder()
   encoder.addMultipleEncoders(encoders)
+
   return encoder
 
 
@@ -86,7 +90,7 @@ def _setScalarEncoderMinMax(networkConfig, dataSource):
 
 
 
-def _createSensorRegion(network, regionConfig, dataSource):
+def _createSensorRegion(network, regionConfig, dataSource, encoder=None):
   """
   Register a sensor region and initialize it the sensor region with an encoder
   and data source.
@@ -94,29 +98,30 @@ def _createSensorRegion(network, regionConfig, dataSource):
   @param network: (Network) The network instance.
   @param regionConfig: (dict) configuration of the sensor region
   @param dataSource: (RecordStream) Sensor region reads data from here.
+  @param encoder: (Encoder) encoding object to use instead of specifying in
+    networkConfig.
   @return sensorRegion: (PyRegion) Sensor region of the network.
   """
   regionType = regionConfig["regionType"]
   regionName = regionConfig["regionName"]
   regionParams = regionConfig["regionParams"]
   encoders = regionConfig["encoders"]
+  if not encoders:
+    encoders = encoder
 
   _registerRegion(regionType)
 
-  # Add region to network
   network.addRegion(regionName, regionType, json.dumps(regionParams))
 
   # getSelf() returns the actual region, instead of a region wrapper
   sensorRegion = network.regions[regionName].getSelf()
 
-  # Specify how the sensor encodes input values
   if isinstance(encoders, dict):
-    # Add encoder(s) from params dict:
+    # Add encoder(s) from params dict.
     sensorRegion.encoder = _createEncoder(encoders)
   else:
     sensorRegion.encoder = encoders
 
-  # Specify the dataSource as a file RecordStream instance
   sensorRegion.dataSource = dataSource
 
   return sensorRegion
@@ -206,25 +211,52 @@ def _validateRegionWidths(previousRegionWidth, currentRegionWidth):
                                                 currentRegionWidth))
 
 
+def configureNetwork(dataSource, networkParams, encoder=None):
+  """
+  Configure the network for various experiment values.
 
-def createNetwork(dataSource, networkConfig):
+  @param dataSource: (RecordStream) CSV file record stream.
+  @param networkParams: (dict) the configuration of this network.
+  @param encoder: (Encoder) encoding object to use instead of specifying in
+    networkConfig.
+  """
+  encoderDict = networkParams["sensorRegionConfig"].get("encoders")
+  if not encoderDict and not encoder:
+    raise ValueError("No encoder specified; cannot create sensor region.")
+
+  # if the sensor region has a scalar encoder, then set the min and max values.
+  scalarEncoder = encoderDict.get("scalarEncoder")
+  if scalarEncoder:
+    _setScalarEncoderMinMax(networkParams, dataSource)
+
+  network = createNetwork(dataSource, networkParams, encoder)
+
+  # Need to init the network before it can run.
+  network.initialize()
+  return network
+
+
+
+def createNetwork(dataSource, networkConfig, encoder=None):
   """
   Create and initialize the network instance with regions for the sensor, SP,
   TM, and classifier. Before running, be sure to init w/ network.initialize().
 
   @param dataSource: (RecordStream) Sensor region reads data from here.
   @param networkConfig: (dict) the configuration of this network.
+  @param encoder: (Encoder) encoding object to use instead of specifying in
+    networkConfig.
   @return network: (Network) Sample network. E.g. Sensor -> SP -> TM -> Classif.
   """
-
   network = Network()
 
-  # Create sensor regions (always enabled)
+  # Create sensor region (always enabled)
   sensorRegionConfig = networkConfig["sensorRegionConfig"]
   sensorRegionName = sensorRegionConfig["regionName"]
   sensorRegion = _createSensorRegion(network,
                                      sensorRegionConfig,
-                                     dataSource)
+                                     dataSource,
+                                     encoder)
 
   # Keep track of the previous region name and width to validate and link the
   # input/output width of two consecutive regions.
@@ -236,7 +268,7 @@ def createNetwork(dataSource, networkConfig):
     regionConfig = networkConfig["spRegionConfig"]
     regionName = regionConfig["regionName"]
     regionParams = regionConfig["regionParams"]
-    regionParams["inputWidth"] = sensorRegion.encoder.width
+    regionParams["inputWidth"] = sensorRegion.encoder.getWidth()
     spRegion = _createRegion(network, regionConfig)
     _validateRegionWidths(previousRegionWidth, spRegion.getSelf().inputWidth)
     _linkRegions(network,
@@ -304,7 +336,7 @@ def _enableRegionLearning(network,
 
   @param network: (Network) the network instance
   @param trainedRegionNames: (list) regions that have been trained on the
-  input data.
+    input data.
   @param regionName: (str) name of the current region
   @param recordNumber: (int) value of the current record number
   """
@@ -324,7 +356,7 @@ def _stopLearning(network, trainedRegionNames, recordNumber):
 
   @param network: (Network) the network instance
   @param trainedRegionNames: (list) regions that have been trained on the
-  input data.
+    input data.
   @param recordNumber: (int) value of the current record number
   """
 
@@ -346,7 +378,7 @@ def runNetwork(network, networkConfig, partitions, numRecords):
   @param network: (Network) a Network instance to run.
   @param networkConfig: (dict) params for network regions.
   @param partitions: (list of tuples) Region names and index at which the
-  region is to begin learning, including a test partition (the last entry).
+    region is to begin learning, including a test partition (the last entry).
   @param numRecords: (int) Number of records of the input dataset.
   """
   sensorRegion = network.regions[
@@ -354,16 +386,13 @@ def runNetwork(network, networkConfig, partitions, numRecords):
   classifierRegion = network.regions[
     networkConfig["classifierRegionConfig"].get("regionName")]
 
-
-  # keep track of the regions that have been trained
+  # Keep track of the regions that have been trained.
   trainedRegionNames = []
   numCorrect = 0
   numTestRecords = 0
   for recordNumber in xrange(numRecords):
-    # Run the network for a single iteration
+    # Run the network for a single iteration.
     network.run(1)
-
-    actualValue = sensorRegion.getOutputData("categoryOut")[0]
 
     if recordNumber == partitions[0][1]:
       # end of the current partition
@@ -380,18 +409,13 @@ def runNetwork(network, networkConfig, partitions, numRecords):
                               partitionName,
                               recordNumber)
 
-    # Evaluate the predictions on the test set.
-    classifierType = networkConfig["classifierRegionConfig"].get("regionType")
     if recordNumber >= partitions[-1][1]:
-      # Test the network.
-      if classifierType == "py.KNNClassifierRegion":
-        # The use of numpy.lexsort() here is to first sort by labelFreq, then
-        # sort by random values; this breaks ties in a random manner.
-        inferenceValues = classifierRegion.getOutputData("categoriesOut")
-        randomValues = numpy.random.random(inferenceValues.size)
-        inferredValue = numpy.lexsort((randomValues, inferenceValues))[-1]
-      elif classifierType == "py.CLAClassifierRegion":
-        inferredValue = classifierRegion.getOutputData("categoriesOut")[0]
+      # evaluate the predictions on the test set
+      # classifierConfig = networkConfig["classifierRegionConfig"]
+      classifierRegion.setParameter("inferenceMode", True)
+
+      actualValue = sensorRegion.getOutputData("categoryOut")[0]
+      inferredValue = _getClassifierInference(classifierRegion)
       if actualValue == inferredValue:
         numCorrect += 1
       _LOGGER.debug("recordNum=%s, actualValue=%s, inferredValue=%s"
@@ -410,24 +434,17 @@ def runNetwork(network, networkConfig, partitions, numRecords):
 
 
 
-def configureNetwork(dataSource, networkParams):
-  """
-  Configure the network for various experiment values.
+def _getClassifierInference(classifierRegion):
+  """Return output categories from the classifier region."""
+  if classifierRegion.type == "py.KNNClassifierRegion":
+    # The use of numpy.lexsort() here is to first sort by labelFreq, then
+    # sort by random values; this breaks ties in a random manner.
+    inferenceValues = classifierRegion.getOutputData("categoriesOut")
+    randomValues = numpy.random.random(inferenceValues.size)
+    return numpy.lexsort((randomValues, inferenceValues))[-1]
 
-  @param dataSource: (RecordStream) CSV file record stream.
-  @param networkParams: (dict) the configuration of this network.
-  """
-
-  # if the sensor region has a scalar encoder, then set the min and max values.
-  encoderType = getEncoderParam(networkParams, "scalarEncoder", "type")
-  if encoderType is not None:
-    _setScalarEncoderMinMax(networkParams, dataSource)
-
-  network = createNetwork(dataSource, networkParams)
-
-  # Need to init the network before it can run.
-  network.initialize()
-  return network
+  elif classifierRegion.type == "py.CLAClassifierRegion":
+    return classifierRegion.getOutputData("categoriesOut")[0]
 
 
 

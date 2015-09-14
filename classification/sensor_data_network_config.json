@@ -7,7 +7,7 @@
       "verbosity": 0,
       "numCategories": 3
     },
-  "encoders": {
+    "encoders": {
       "scalarEncoder": {
         "name": "scalarEncoder",
         "fieldname": "y",
