@@ -19,7 +19,10 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import yaml
+
 import numpy
+
 from nupic.bindings.math import GetNTAReal
 #from nupic.research.union_pooler import UnionPooler
 from union_pooling.union_pooler import UnionPooler
@@ -137,15 +140,13 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
       description="Total number of columns (coincidences).",
       accessMode="ReadWrite",
       dataType="UInt32",
-      count=1,
-      constraints=""),
+      count=1),
 
     inputWidth=dict(
       description="Size of inputs to the UP.",
       accessMode="ReadWrite",
       dataType="UInt32",
-      count=1,
-      constraints=""),
+      count=1),
 
      poolerType=dict(
       description="Type of pooler to use: union",
@@ -164,6 +165,20 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
       dataType="bool",
       count=1,
       constraints="bool"),
+
+    spatialPoolerParams=dict(
+      description="The union pooler is built on top of the spatial pooler. "
+                  "To pass initialization parameters to the spatial pooler, "
+                  "send them as a YAML serialized dictionary. They are then "
+                  "passed during initialization to the spatial pooler. There "
+                  "is currently no way to interact with these parameters after "
+                  "initialization (i.e. the getParameter and setParameter "
+                  "methods have no affect on the SP paramaters, and calls to "
+                  "these methods through the C++ implementation of the network "
+                  "API will likely result in failures.",
+      accessMode="ReadWrite",
+      dataType="Byte",
+      count=0)
   )
 
   return poolerSpec, otherSpec
@@ -199,7 +214,6 @@ class PoolingRegion(PyRegion):
   """
 
   def __init__(self, columnCount, inputWidth, poolerType, **kwargs):
-
     if columnCount <= 0 or inputWidth <=0:
       raise TypeError("Parameters columnCount and inputWidth must be > 0")
     # Pull out the pooler arguments automatically
@@ -228,13 +242,13 @@ class PoolingRegion(PyRegion):
 
     # Retrieve the necessary extra arguments that were handled automatically
     autoArgs = {name: getattr(self, name) for name in self._poolerArgNames}
-    autoArgs["inputDimensions"] = [self._inputWidth]
-    autoArgs["columnDimensions"] = [self._columnCount]
-    autoArgs["potentialRadius"] = self._inputWidth
+    autoArgs["spatialPoolerParams"] = yaml.load(autoArgs["spatialPoolerParams"])
+    autoArgs["spatialPoolerParams"]["inputDimensions"] = [self._inputWidth]
+    autoArgs["spatialPoolerParams"]["columnDimensions"] = [self._columnCount]
 
     # Allocate the pooler
     self._pooler = self._poolerClass(**autoArgs)
-  
+
 
   def compute(self, inputs, outputs):
     """
@@ -250,6 +264,12 @@ class PoolingRegion(PyRegion):
     # Convert to SDR
     outputs["mostActiveCells"][:] = numpy.zeros(self._columnCount, dtype=GetNTAReal())
     outputs["mostActiveCells"][mostActiveCellsIndices] = 1
+
+
+  def reset(self):
+    """ Reset the state of the Union Pooler """
+    if self._pooler is not None:
+      self._pooler.reset()
 
 
   @classmethod
@@ -289,8 +309,10 @@ class PoolingRegion(PyRegion):
           regionLevel=True,
           isDefaultOutput=True),
       ),
-
       parameters=dict(),
+      commands=dict(
+        reset=dict(description="Reset the union pooler."),
+      )
     )
 
     return spec
