@@ -219,7 +219,7 @@ if __name__ == "__main__":
 
   print "train LSTM with "+str(rptNum)+" repeats"
 
-  net = initializeLSTMnet(nDimInput=len(ds.getSample()[0]), nDimOutput=len(ds.getSample()[1]), nLSTMcells=5)
+  net = initializeLSTMnet(nDimInput=len(ds.getSample()[0]), nDimOutput=len(ds.getSample()[1]), nLSTMcells=20)
 
   trainer = RPropMinusTrainer(net, dataset=ds, verbose=True)
   error = []
