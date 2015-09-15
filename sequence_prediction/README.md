@@ -16,3 +16,10 @@ Compare HTM with other algorithms on standard sequence prediction problems
 Or (doesn't require sudo but does require manual PYTHONPATH setup):
 
 	python setup.py develop --prefix=/some/other/path/
+
+## On EC2
+
+To get `pybrain` working on EC2, use the following commands to install dependencies:
+
+    sudo yum install atlas-devel blas blas-devel
+    ATLAS=/usr/lib64/atlas sudo pip install scipy
