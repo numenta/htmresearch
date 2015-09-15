@@ -158,7 +158,7 @@ if __name__ == "__main__":
   print "NRMSE: TM - 5 step", NRMSE_TM
   print "NRMSE: ARIMA - 5 step", NRMSE_ARIMA
   print "NRMSE: LSTM - 5 step", NRMSE_LSTM
-  print "NRMSE: LSTM - 5 step, no time of day", NRMSE_LSTM2
+  print "NRMSE: LSTM - 5 step, no day of week", NRMSE_LSTM2
 
   time_step = pd.to_datetime(time_step)
 

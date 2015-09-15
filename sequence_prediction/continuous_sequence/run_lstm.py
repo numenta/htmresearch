@@ -223,8 +223,11 @@ if __name__ == "__main__":
   plt.figure(2)
   plt.plot(targetInput, color='black')
   plt.plot(predictedInput, color='red')
-  plt.title('LSTM, useTimeOfDay='+str(useTimeOfDay)+dataSet+' train NRMSE = '+str(nrmse_train))
-  plt.xlim([0, 500])
+  plt.title('LSTM, useTimeOfDay='+str(useTimeOfDay)+dataSet+' test NRMSE = '+str(nrmse_test))
+  NT = len(trueData)
+  plt.xlim([NT-500, NT-predictionStep])
+  plt.ylim([0, 40000])
+  # plt.xlim([0, 500])
   plt.xlabel('Time')
   plt.ylabel('Prediction')
 
@@ -241,8 +244,8 @@ if __name__ == "__main__":
   plt.xlabel('Time')
   plt.ylabel('Prediction')
 
-  import plotly.plotly as py
-  plot_url = py.plot_mpl(fig)
+  # import plotly.plotly as py
+  # plot_url = py.plot_mpl(fig)
 
   #
   filePath = 'data/'+dataSet+'.csv'
