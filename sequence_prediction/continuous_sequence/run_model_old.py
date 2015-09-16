@@ -53,6 +53,10 @@ from nupic.frameworks.opf.opfutils import (InferenceType,
 from nupic.frameworks.opf.predictionmetricsmanager import MetricsManager
 from nupic.frameworks.opf.metrics import MetricSpec
 from nupic.frameworks.opf import metrics
+
+DATA_DIR = "./data"
+MODEL_PARAMS_DIR = "./model_params"
+
 def getMetricSpecs(predictedField):
   _METRIC_SPECS = (
       MetricSpec(field=predictedField, metric='multiStep',
@@ -226,6 +230,14 @@ def _getArgs():
 
   return options, remainder
 
+def getInputRecord(df, predictedField, i):
+  inputRecord = {
+    predictedField: float(df[predictedField][i]),
+    "timeofday": float(df["timeofday"][i]),
+    "dayofweek": float(df["dayofweek"][i]),
+  }
+  return inputRecord
+
 
 def runExperiment(SWARM_CONFIG, useDeltaEncoder=False):
 
@@ -383,19 +395,24 @@ if __name__ == "__main__":
 
 
   #
+  inputData = "%s/%s.csv" % (DATA_DIR, dataSet.replace(" ", "_"))
+  print "Load dataset: ", dataSet
+  df = pd.read_csv(inputData, header=0, skiprows=[1, 2])
+
   for i in xrange(len(data)):
     time_step.append(i)
     if (i % 100 == 0):
       print "Read %i lines..." % i
 
     recordNum = i
-    inputRecord = {}
-    for field in range(len(SWARM_CONFIG["includedFields"])):
-      fieldName = SWARM_CONFIG["includedFields"][field]['fieldName']
-      inputRecord[fieldName] = float(data[fieldName].values[i])
-
-    if useDeltaEncoder:
-      inputRecord[predictedField] = float(firstDifference.values[i])
+    inputRecord = getInputRecord(df, predictedField, i)
+    # inputRecord = {}
+    # for field in range(len(SWARM_CONFIG["includedFields"])):
+    #   fieldName = SWARM_CONFIG["includedFields"][field]['fieldName']
+    #   inputRecord[fieldName] = float(data[fieldName].values[i])
+    #
+    # if useDeltaEncoder:
+    #   inputRecord[predictedField] = float(firstDifference.values[i])
 
     results = model.run(inputRecord)
 

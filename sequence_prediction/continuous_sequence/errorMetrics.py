@@ -23,7 +23,9 @@ import numpy as np
 
 
 def NRMSE(data, pred):
-  return np.sqrt(np.nanmean(np.square(pred-data)))/np.sqrt(np.nanmean( np.square(data-np.nanmean(data))))
+  return np.sqrt(np.nanmean(np.square(pred-data)))/\
+         np.nanstd(data)
+
 
 
 def NRMSE_sliding(data, pred, windowSize):
@@ -43,6 +45,7 @@ def NRMSE_sliding(data, pred, windowSize):
                        pred[wc-halfWindowSize:wc+halfWindowSize]))
 
   return (window_center, nrmse)
+
 
 def altMAPE(groundTruth, prediction):
   error = abs(groundTruth - prediction)
