@@ -126,9 +126,9 @@ class NYCTaxiDataset(Dataset):
       dailyHour = dailyTime/60
       profile = np.ones((len(dailyTime),))
       # multiple 7am-11am traffic by 0.1
-      profile[np.where(np.all([dailyHour >= 7.0, dailyHour < 11.0], axis=0))[0]] = 0.1
+      profile[np.where(np.all([dailyHour >= 7.0, dailyHour < 11.0], axis=0))[0]] = 0.8
       # multiple 22:00 - 24:00 traffic by 2
-      profile[np.where(np.all([dailyHour >= 21.0, dailyHour <= 23.0], axis=0))[0]] = 2
+      profile[np.where(np.all([dailyHour >= 21.0, dailyHour <= 23.0], axis=0))[0]] = 1.2
       dailyProfile = {}
       for i in range(len(dailyTime)):
         dailyProfile[dailyTime[i]] = profile[i]
@@ -174,7 +174,7 @@ class Suite(PyExperimentSuite):
     else:
       raise Exception("Dataset not found")
 
-    self.computeCounter = 0
+    self.testCounter = 0
 
     self.history = []
     self.resets = []
@@ -194,14 +194,14 @@ class Suite(PyExperimentSuite):
     nDimInput = 3
     nDimOutput = 1
     net = buildNetwork(nDimInput, params['num_cells'], nDimOutput,
-                       hiddenclass=LSTMLayer, bias=True, outputbias=False, recurrent=True)
+                       hiddenclass=LSTMLayer, bias=True, outputbias=True, recurrent=True)
     net.reset()
 
     ds = SequentialDataSet(nDimInput, nDimOutput)
     trainer = RPropMinusTrainer(net, dataset=ds)
 
-    history = self.window(self.history, params)
-    resets = self.window(self.resets, params)
+    history = self.window(self.history[:-1], params)
+    resets = self.window(self.resets[:-1], params)
 
     for i in xrange(params['prediction_nstep'], len(history)):
       if not resets[i-1]:
@@ -225,38 +225,36 @@ class Suite(PyExperimentSuite):
 
 
   def iterate(self, params, repetition, iteration):
-    print "iteration: ", iteration
     self.history.append(self.currentSequence.pop(0))
 
     resetFlag = (len(self.currentSequence) == 0 and
                  params['separate_sequences_with'] == 'reset')
     self.resets.append(resetFlag)
 
+    if iteration == params['perturb_after']:
+      self.currentSequence = self.dataset.generateSequence(perturbed=True, startFrom=iteration)
+
     if len(self.currentSequence) == 0:
-
-      if iteration > params['perturb_after']:
-        sequence = self.dataset.generateSequence(perturbed=True, startFrom=iteration)
-      else:
-        sequence = self.dataset.generateSequence()
-
-      self.currentSequence += sequence
+      return None
 
     if iteration < params['compute_after']:
       return None
 
-    if iteration % params['compute_every'] == 0:
-      self.computeCounter = params['compute_for']
-
-    if self.computeCounter == 0:
-      return None
-    else:
-      self.computeCounter -= 1
-
     train = (not params['compute_test_mode'] or
-             iteration % params['compute_every'] == 0)
+             iteration % params['train_every'] == 0 or
+             iteration == params['train_at_iteration'])
 
     if train:
       self.net = self.train(params)
+
+    if train:
+      # reset test counter after training
+      self.testCounter = params['test_for']
+
+    if self.testCounter == 0:
+      return None
+    else:
+      self.testCounter -= 1
 
     history = self.window(self.history, params)
     resets = self.window(self.resets, params)
