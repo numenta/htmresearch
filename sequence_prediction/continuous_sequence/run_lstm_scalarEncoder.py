@@ -42,7 +42,7 @@ from nupic.encoders.scalar import ScalarEncoder
 
 from scipy import random
 
-# set the random seed here to get reproducible result
+# set the random seed here to get reproducible lstm result
 random.seed(6)
 
 plt.ion()
