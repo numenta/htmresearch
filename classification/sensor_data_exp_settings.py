@@ -35,11 +35,3 @@ SIGNAL_PERIODS = [20.0]
 RESULTS_DIR = "results"
 MODEL_PARAMS_DIR = 'model_params'
 DATA_DIR = "data"
-
-# Verbosity of the debug messages in the classification network
-DEBUG_VERBOSITY = 0
-
-# Name of the partition used for the test set
-TEST_PARTITION_NAME = "test"
-
-

@@ -37,9 +37,9 @@ from nupic.engine import pyRegions
 
 
 _PY_REGIONS = [r[1] for r in pyRegions]
-_TEST_PARTITION_NAME = "test"
 _LOGGER = logging.getLogger(__name__)
 # logging.basicConfig(level=logging.DEBUG)
+TEST_PARTITION_NAME = "test"
 
 
 
@@ -109,9 +109,7 @@ def _createSensorRegion(network, regionConfig, dataSource, encoder=None):
   if not encoders:
     encoders = encoder
 
-  _registerRegion(regionType)
-
-  network.addRegion(regionName, regionType, json.dumps(regionParams))
+  _addRegisteredRegion(network, regionConfig)
 
   # getSelf() returns the actual region, instead of a region wrapper
   sensorRegion = network.regions[regionName].getSelf()
@@ -128,20 +126,37 @@ def _createSensorRegion(network, regionConfig, dataSource, encoder=None):
 
 
 
-def _registerRegion(regionType):
+def _addRegisteredRegion(network, regionConfig, moduleName=None):
   """
-  Sensor region may be non-standard, so add custom region class to the network.
+  Add the region to the network, and register it if necessary. Return the
+  added region.
+  """
+  regionName = regionConfig["regionName"]
+  regionType = regionConfig["regionType"]
+  regionParams = regionConfig["regionParams"]
 
-  @param regionType: (str) type of the region. E.g py.SensorRegion.
-  """
   regionTypeName = regionType.split(".")[1]
-  sensorModule = regionTypeName  # conveniently have the same name
   if regionTypeName not in _PY_REGIONS:
-    # Add new region class to the network
+    _registerRegion(regionTypeName, moduleName)
+
+  return network.addRegion(regionName, regionType, json.dumps(regionParams))
+
+
+
+def _registerRegion(regionTypeName, moduleName=None):
+  """
+  A region may be non-standard, so add custom region class to the network.
+
+  @param regionTypeName: (str) type name of the region. E.g SensorRegion.
+  """
+  if moduleName is None:
+    moduleName = regionTypeName
+  if regionTypeName not in _PY_REGIONS:
+    # Add new region class to the network.
     try:
-      module = __import__(sensorModule, {}, {}, regionTypeName)
-      sensorClass = getattr(module, regionTypeName)
-      Network.registerRegion(sensorClass)
+      module = __import__(moduleName, {}, {}, regionTypeName)
+      unregisteredClass = getattr(module, regionTypeName)
+      Network.registerRegion(unregisteredClass)
       # Add region to list of registered PyRegions
       _PY_REGIONS.append(regionTypeName)
     except ImportError:
@@ -150,22 +165,15 @@ def _registerRegion(regionType):
 
 
 
-def _createRegion(network, regionConfig):
+def _createRegion(network, regionConfig, moduleName=None):
   """
-  Create the SP, TM, UP or classifier region.
+  Create the SP, TM, UP, or classifier region.
 
   @param network: (Network) The region will be a node in this network.
   @param regionConfig: (dict) The region configuration
   @return region: (PyRegion) region of the network.
   """
-  regionName = regionConfig["regionName"]
-  regionType = regionConfig["regionType"]
-  regionParams = regionConfig["regionParams"]
-
-  _registerRegion(regionType)
-
-  # Add region to network
-  region = network.addRegion(regionName, regionType, json.dumps(regionParams))
+  region = _addRegisteredRegion(network, regionConfig, moduleName)
 
   # Disable learning at initialization.
   region.setParameter("learningMode", False)
@@ -263,8 +271,10 @@ def createNetwork(dataSource, networkConfig, encoder=None):
   previousRegion = sensorRegionName
   previousRegionWidth = sensorRegion.encoder.getWidth()
 
-  # Create SP region, if enabled.
-  if networkConfig["spRegionConfig"]["regionEnabled"]:
+  networkRegions = [r for r in networkConfig.keys() if networkConfig[r]["regionEnabled"]]
+
+  if "spRegionConfig" in networkRegions:
+    # create SP region, if enabled
     regionConfig = networkConfig["spRegionConfig"]
     regionName = regionConfig["regionName"]
     regionParams = regionConfig["regionParams"]
@@ -278,8 +288,8 @@ def createNetwork(dataSource, networkConfig, encoder=None):
     previousRegion = regionName
     previousRegionWidth = spRegion.getSelf().columnCount
 
-  # Create TM region, if enabled.
-  if networkConfig["tmRegionConfig"]["regionEnabled"]:
+  if "tmRegionConfig" in networkRegions:
+    # create TM region, if enabled
     regionConfig = networkConfig["tmRegionConfig"]
     regionName = regionConfig["regionName"]
     regionParams = regionConfig["regionParams"]
@@ -293,14 +303,14 @@ def createNetwork(dataSource, networkConfig, encoder=None):
     previousRegion = regionName
     previousRegionWidth = tmRegion.getSelf().cellsPerColumn
 
-  # Create UP region, if enabled.
-  if networkConfig["upRegionConfig"]["regionEnabled"]:
+  if "upRegionConfig" in networkRegions:
+    # create UP region, if enabled
     regionConfig = networkConfig["upRegionConfig"]
     regionName = regionConfig["regionName"]
     regionParams = regionConfig["regionParams"]
-    # TODO: not sure about the UP region width params. This needs to be updated.
     regionParams["inputWidth"] = previousRegionWidth
-    upRegion = _createRegion(network, regionConfig)
+    upRegion = _createRegion(network, regionConfig,
+      moduleName="union_pooling.PoolingRegion")
     _validateRegionWidths(previousRegionWidth,
                           upRegion.getSelf().cellsPerColumn)
     _linkRegions(network,
@@ -398,7 +408,7 @@ def runNetwork(network, networkConfig, partitions, numRecords):
       # end of the current partition
       partitionName = partitions[0][0]
 
-      if partitionName == _TEST_PARTITION_NAME:
+      if partitionName == TEST_PARTITION_NAME:
         _stopLearning(network, trainedRegionNames, recordNumber)
 
       else:

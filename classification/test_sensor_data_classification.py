@@ -30,10 +30,11 @@ except ImportError:
 from collections import namedtuple
 from nupic.data.file_record_stream import FileRecordStream
 
-from classification_network import configureNetwork, runNetwork
+from classification_network import (configureNetwork,
+                                    runNetwork,
+                                    TEST_PARTITION_NAME)
 from generate_sensor_data import generateData
 from sensor_data_exp_settings import (NUM_CATEGORIES,
-                                      TEST_PARTITION_NAME,
                                       SEQUENCE_LENGTH,
                                       OUTFILE_NAME,
                                       NUM_RECORDS,
@@ -221,6 +222,7 @@ class TestSensorDataClassification(unittest.TestCase):
                                          networkConfig)
               partitions = _findNumberOfPartitions(networkConfig,
                                                    NUM_RECORDS)
+
               (numCorrect,
                numTestRecords,
                predictionAccuracy) = runNetwork(network,
@@ -263,7 +265,7 @@ class TestSensorDataClassification(unittest.TestCase):
                     and spEnabled
                     and tmEnabled
                     and not upEnabled):
-                self.assertEqual(predictionAccuracy, 79.79)
+                self.assertEqual(predictionAccuracy, 80.0)
               elif (noiseAmplitude == 1.0
                     and signalMean == 1.0
                     and signalAmplitude == 1.0
@@ -272,7 +274,7 @@ class TestSensorDataClassification(unittest.TestCase):
                     and spEnabled
                     and not tmEnabled
                     and not upEnabled):
-                self.assertEqual(predictionAccuracy, 81.46)
+                self.assertEqual(predictionAccuracy, 80.42)
 
 
   def tearDown(self):
