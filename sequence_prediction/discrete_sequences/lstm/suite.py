@@ -261,7 +261,10 @@ class Suite(PyExperimentSuite):
   def train(self, params):
     n = params['encoding_num']
     net = buildNetwork(n, params['num_cells'], n,
-                       hiddenclass=LSTMLayer, bias=True, outputbias=False, recurrent=True)
+                       hiddenclass=LSTMLayer,
+                       bias=True,
+                       outputbias=params['output_bias'],
+                       recurrent=True)
     net.reset()
 
     ds = SequentialDataSet(n, n)
