@@ -21,21 +21,17 @@
 # ----------------------------------------------------------------------
 
 
-SIGNAL_TYPES = ["white_noise"]
-RESULTS_DIR = "results"
-DATA_DIR = "data" 
-MODEL_PARAMS_DIR = 'model_params'
+# Parameters to generate the artificial sensor data
+OUTFILE_NAME = "white_noise"
 SEQUENCE_LENGTH = 200
-NUM_CATEGORIES = 3 
+NUM_CATEGORIES = 3
 NUM_RECORDS = 2400
-SP_TRAINING_SET_SIZE = NUM_RECORDS * 1/4  
-TM_TRAINING_SET_SIZE = NUM_RECORDS * 1/2  
-CLASSIFIER_TRAINING_SET_SIZE = NUM_RECORDS * 3/4 
-DEFAULT_WHITE_NOISE_AMPLITUDE = 10.0
-WHITE_NOISE_AMPLITUDES = [0, 1]
-SIGNAL_AMPLITUDE = 1.0
-SIGNAL_MEAN = 1.0
-SIGNAL_PERIOD = 20.0
-# Partition records into training sets for SP, TM, and classifier
-PARTITIONS = [SP_TRAINING_SET_SIZE, TM_TRAINING_SET_SIZE, CLASSIFIER_TRAINING_SET_SIZE]
+WHITE_NOISE_AMPLITUDES = [0.0, 1.0]
+SIGNAL_AMPLITUDES = [1.0]
+SIGNAL_MEANS = [1.0]
+SIGNAL_PERIODS = [20.0]
 
+# Additional parameters to run the classification experiments 
+RESULTS_DIR = "results"
+MODEL_PARAMS_DIR = 'model_params'
+DATA_DIR = "data"
