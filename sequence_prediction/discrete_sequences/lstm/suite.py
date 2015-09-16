@@ -268,8 +268,8 @@ class Suite(PyExperimentSuite):
     ds = SequentialDataSet(n, n)
     trainer = RPropMinusTrainer(net, dataset=ds)
 
-    history = self.window(self.history[:-1], params)
-    resets = self.window(self.resets[:-1], params)
+    history = self.window(self.history, params)
+    resets = self.window(self.resets, params)
 
     for i in xrange(1, len(history)):
       if not resets[i-1]:
