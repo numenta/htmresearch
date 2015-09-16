@@ -27,7 +27,7 @@ plt.ion()
 
 from suite import Suite
 from errorMetrics import *
-
+import pandas as pd
 
 def movingAverage(a, n):
   movingAverage = []
@@ -48,27 +48,33 @@ def plotMovingAverage(data, window, label=None):
 
 
 
-def plotAccuracy(results, train, truth, window=100, type="sequences", label=None, params=None):
+def plotAccuracy(results, train, truth, window=100, label=None, params=None):
   plt.title('Prediction Error Over Time')
   plt.xlabel("# of elements seen")
-  plt.ylabel("NRMSE over last {0} tested {1}".format(window, type))
+  plt.ylabel("NRMSE over last {0} tested {1}".format(window, 'elements'))
 
-  square_deviation = np.array(results[0])
-  x = np.array(results[1])
+  square_deviation = results[0]
+  x = results[1]
+  x = x[:len(square_deviation)]
 
   square_deviation[np.where(x < params['compute_after'])[0]] = np.nan
   movingData = movingAverage(square_deviation, min(len(square_deviation), window))
   nrmse = np.sqrt(np.array(movingData))/np.nanstd(truth)
   print " Avg NRMSE:", np.sqrt(np.nanmean(square_deviation))/np.nanstd(truth)
 
+  print len(x)
+  print len(nrmse)
   plt.plot(x, nrmse, label=label,
               marker='o', markersize=3, markeredgewidth=0)
 
   for i in xrange(len(train)):
     if train[i]:
-      plt.axvline(i, color='orange')
+      plt.axvline(x[i], color='orange')
 
-  # plt.xlim(0, x[-1])
+  if params['perturb_after'] < len(x):
+    plt.axvline(x[params['perturb_after']], color='black', linestyle='--')
+
+  plt.xlim(x[0], x[len(x)-1])
   
   # plt.ylim(0, 1.001)
 
@@ -83,6 +89,39 @@ def computeAccuracy(predictions, truth, iteration, resets=None, randoms=None):
   return (square_deviation, x)
 
 
+def loadAndPlot(experiment, window):
+  suite = Suite()
+  suite.parse_opt()
+  suite.parse_cfg()
+
+  experiment_dir = experiment.split('/')[1]
+  experiment_name = experiment.split('/')[-2]
+  params = suite.items_to_params(suite.cfgparser.items(experiment_dir))
+
+  filePath = './data/' + params['dataset'] + '.csv'
+  data = pd.read_csv(filePath, header=0, skiprows=[1,2], names=['datetime', 'value', 'timeofday', 'dayofweek'])
+
+  iteration = suite.get_history(experiment, 0, 'iteration')
+  predictions = suite.get_history(experiment, 0, 'predictions')
+  truth = suite.get_history(experiment, 0, 'truth')
+  train = suite.get_history(experiment, 0, 'train')
+
+  truth = np.array(truth, dtype=np.float)
+  predictions = np.array(predictions, dtype=np.float)
+
+  resets = suite.get_history(experiment, 0, 'reset')
+  randoms = suite.get_history(experiment, 0, 'random')
+
+
+  (square_deviation, x) = computeAccuracy(predictions, truth, iteration, resets=resets, randoms=randoms)
+  x = pd.to_datetime(data['datetime'])
+  plotAccuracy((square_deviation, x),
+               train,
+               truth,
+               window=window,
+               label=experiment_name,
+               params=params)
+
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -90,9 +129,6 @@ if __name__ == '__main__':
   parser.add_argument('-w', '--window', type=int, default=480)
   parser.add_argument('-f', '--full', action='store_true')
 
-  suite = Suite()
-  suite.parse_opt()
-  suite.parse_cfg()
 
   args = parser.parse_args()
 
@@ -106,31 +142,7 @@ if __name__ == '__main__':
   experiments = args.experiments
 
   for experiment in experiments:
-
-    experiment_dir = experiment.split('/')[1]
-    experiment_name = experiment.split('/')[-2]
-    params = suite.items_to_params(suite.cfgparser.items(experiment_dir))
-
-    iteration = suite.get_history(experiment, 0, 'iteration')
-    predictions = suite.get_history(experiment, 0, 'predictions')
-    truth = suite.get_history(experiment, 0, 'truth')
-    train = suite.get_history(experiment, 0, 'train')
-
-    truth = np.array(truth, dtype=np.float)
-    predictions = np.array(predictions, dtype=np.float)
-
-    resets = None if args.full else suite.get_history(experiment, 0, 'reset')
-    randoms = None if args.full else suite.get_history(experiment, 0, 'random')
-    type = "elements" if args.full else "sequences"
-
-    (square_deviation, x) = computeAccuracy(predictions, truth, iteration, resets=resets, randoms=randoms)
-    plotAccuracy((square_deviation, x),
-                 train,
-                 truth,
-                 window=args.window,
-                 type=type,
-                 label=experiment_name,
-                 params=params)
+    loadAndPlot(experiment, args.window)
 
   if len(experiments) > 1:
     plt.legend()
