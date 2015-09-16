@@ -125,9 +125,9 @@ class NYCTaxiDataset(Dataset):
       dailyTime = np.sort(self.sequence['timeofday'].unique())
       dailyHour = dailyTime/60
       profile = np.ones((len(dailyTime),))
-      # multiple 7am-11am traffic by 0.1
+      # decrease 7am-11am traffic by 20%
       profile[np.where(np.all([dailyHour >= 7.0, dailyHour < 11.0], axis=0))[0]] = 0.8
-      # multiple 22:00 - 24:00 traffic by 2
+      # increase 21:00 - 24:00 traffic by 20%
       profile[np.where(np.all([dailyHour >= 21.0, dailyHour <= 23.0], axis=0))[0]] = 1.2
       dailyProfile = {}
       for i in range(len(dailyTime)):
@@ -180,28 +180,27 @@ class Suite(PyExperimentSuite):
     self.resets = []
     self.currentSequence = self.dataset.generateSequence()
 
-    self.net = None
+    random.seed(6)
+    self.nDimInput = 3
+    self.nDimOutput = 1
+    self.net = buildNetwork(self.nDimInput, params['num_cells'], self.nDimOutput,
+                       hiddenclass=LSTMLayer, bias=True, outputbias=True, recurrent=True)
 
 
   def window(self, data, params):
-    start = max(0, len(data) - params['learning_window'])
+    start = max(0, len(data) - params['learning_window'] -1)
     return data[start:]
 
 
   def train(self, params):
 
-    random.seed(6)
-    nDimInput = 3
-    nDimOutput = 1
-    net = buildNetwork(nDimInput, params['num_cells'], nDimOutput,
-                       hiddenclass=LSTMLayer, bias=True, outputbias=True, recurrent=True)
-    net.reset()
+    self.net.reset()
 
-    ds = SequentialDataSet(nDimInput, nDimOutput)
-    trainer = RPropMinusTrainer(net, dataset=ds)
+    ds = SequentialDataSet(self.nDimInput, self.nDimOutput)
+    trainer = RPropMinusTrainer(self.net, dataset=ds, verbose=False)
 
-    history = self.window(self.history[:-1], params)
-    resets = self.window(self.resets[:-1], params)
+    history = self.window(self.history, params)
+    resets = self.window(self.resets, params)
 
     for i in xrange(params['prediction_nstep'], len(history)):
       if not resets[i-1]:
@@ -210,22 +209,28 @@ class Suite(PyExperimentSuite):
       if resets[i]:
         ds.newSequence()
 
+    # print ds.getSample(0)
+    # print ds.getSample(1)
+    # print ds.getSample(1000)
+    # print " training data size", ds.getLength(), " len(history) ", len(history), " self.history ", len(self.history)
+    # print ds
+
     if len(history) > 1:
       trainer.trainEpochs(params['num_epochs'])
-      net.reset()
 
-    for i in xrange(len(history) - 1):
+    self.net.reset()
+    for i in xrange(len(history) - params['prediction_nstep']):
       symbol = history[i]
-      output = net.activate(self.inputEncoder.encode(symbol))
+      output = self.net.activate(ds.getSample(i)[0])
 
       if resets[i]:
-        net.reset()
+        self.net.reset()
 
-    return net
 
 
   def iterate(self, params, repetition, iteration):
     self.history.append(self.currentSequence.pop(0))
+    # print "iteration: ", iteration, ' history length', len(self.history), ' last ele: ', self.history[-1]
 
     resetFlag = (len(self.currentSequence) == 0 and
                  params['separate_sequences_with'] == 'reset')
@@ -245,7 +250,7 @@ class Suite(PyExperimentSuite):
              iteration == params['train_at_iteration'])
 
     if train:
-      self.net = self.train(params)
+      self.train(params)
 
     if train:
       # reset test counter after training
@@ -256,19 +261,16 @@ class Suite(PyExperimentSuite):
     else:
       self.testCounter -= 1
 
-    history = self.window(self.history, params)
-    resets = self.window(self.resets, params)
-
-    if resets[-1]:
+    if self.resets[-1]:
       self.net.reset()
 
-    symbol = history[-1]
+    symbol = self.history[-(params['prediction_nstep']+1)]
     output = self.net.activate(self.inputEncoder.encode(symbol))
 
     predictions = self.dataset.reconstructSequence(output[0])
 
     truth = None if (self.resets[-1]) else \
-      self.dataset.reconstructSequence(self.currentSequence[params['prediction_nstep']][0])
+      self.dataset.reconstructSequence(self.history[-1][0])
 
     return {"current": self.history[-1],
             "reset": self.resets[-1],
