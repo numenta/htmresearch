@@ -57,8 +57,7 @@ def plotAccuracy(results, train, window=100, type="sequences", label=None):
   x = results[1]
   movingData = movingAverage(accuracy, min(len(accuracy), window))
 
-  pyplot.plot(x, movingData, label=label,
-              marker='o', markersize=3, markeredgewidth=0)
+  pyplot.plot(x, movingData, label=label)
 
   # dX = numpy.array([x[i+1] - x[i] for i in xrange(len(x) - 1)])
   # testEnd = numpy.array(x)[dX > dX.mean()].tolist()
@@ -106,7 +105,7 @@ def computeAccuracy(predictions, truth, iteration, resets=None, randoms=None):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('experiments', metavar='/path/to/experiment /path/...', nargs='+', type=str)
-  parser.add_argument('-w', '--window', type=int, default=20)
+  parser.add_argument('-w', '--window', type=int, default=50)
   parser.add_argument('-f', '--full', action='store_true')
 
   suite = Suite()
