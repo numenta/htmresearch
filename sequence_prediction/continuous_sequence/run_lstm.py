@@ -35,7 +35,7 @@ from pybrain.structure.modules import LSTMLayer
 from pybrain.supervised import RPropMinusTrainer
 
 from swarm_runner import SwarmRunner
-
+from scipy import random
 
 import pandas as pd
 from errorMetrics import *
@@ -167,8 +167,8 @@ if __name__ == "__main__":
 
   ds = getPyBrainDataSet(sequence, nTrain, predictionStep, useTimeOfDay, useDayOfWeek)
 
-  print "train LSTM with "+str(rptNum)+" repeats"
-
+  print "train LSTM with "+str(rptNum)+" epochs"
+  random.seed(6)
   net = initializeLSTMnet(nDimInput=len(ds.getSample()[0]), nDimOutput=1, nLSTMcells=20)
 
   trainer = RPropMinusTrainer(net, dataset=ds, verbose=True)
@@ -183,7 +183,7 @@ if __name__ == "__main__":
   predictedInput = np.zeros((len(sequence),))
   targetInput = np.zeros((len(sequence),))
   trueData = np.zeros((len(sequence),))
-  for i in xrange(len(sequence)-predictionStep):
+  for i in xrange(1, len(sequence)-predictionStep):
     if useTimeOfDay and useDayOfWeek:
       sample = np.array([sequence['data'][i], sequence['timeofday'][i], sequence['dayofweek'][i]])
     elif useTimeOfDay:
