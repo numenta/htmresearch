@@ -30,7 +30,7 @@ from pybrain.structure.modules import LSTMLayer
 from pybrain.supervised import RPropMinusTrainer
 
 from reberGrammar.reberGrammar import generateSequencesNumber
-
+from scipy import random
 
 
 class Encoder(object):
@@ -259,16 +259,17 @@ class Suite(PyExperimentSuite):
 
 
   def train(self, params):
+    # set random seeds for reproducible LSTM result
+    random.seed(1)
     n = params['encoding_num']
     net = buildNetwork(n, params['num_cells'], n,
-                       hiddenclass=LSTMLayer, bias=True, outputbias=False, recurrent=True)
-    net.reset()
+                       hiddenclass=LSTMLayer, bias=True, outputbias=True, recurrent=True)
 
     ds = SequentialDataSet(n, n)
     trainer = RPropMinusTrainer(net, dataset=ds)
 
-    history = self.window(self.history, params)
-    resets = self.window(self.resets, params)
+    history = self.window(self.history[:-1], params)
+    resets = self.window(self.resets[:-1], params)
 
     for i in xrange(1, len(history)):
       if not resets[i-1]:
