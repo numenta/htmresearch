@@ -30,14 +30,14 @@ from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
     TemporalMemoryMonitorMixin)
 
-from sensorimotor.general_temporal_memory import (
+from htmresearch.algorithms.general_temporal_memory import (
      GeneralTemporalMemory)
-from union_pooling.union_pooler_monitor_mixin import (
+from htmresearch.support.union_pooler_monitor_mixin import (
      UnionPoolerMonitorMixin)
 
 # from union_pooling.union_pooler_new import UnionPoolerNew as UnionPooler
 # uncomment to use early version of union pooler
-from union_pooling.union_pooler import UnionPooler
+from htmresearch.algorithms.union_pooler import UnionPooler
 
 class MonitoredFastGeneralTemporalMemory(TemporalMemoryMonitorMixin,
                                          GeneralTemporalMemory):

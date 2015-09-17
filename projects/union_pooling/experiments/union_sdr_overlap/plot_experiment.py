@@ -28,7 +28,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy
 
-from experiments.capacity import data_utils
+from htmresearch.support import data_utils
 
 
 
