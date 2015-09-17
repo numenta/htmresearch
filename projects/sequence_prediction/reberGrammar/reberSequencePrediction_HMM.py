@@ -20,7 +20,7 @@
 # ----------------------------------------------------------------------
 
 from reberGrammar import *
-from HMM import HMM
+from htmresearch.algorithms.hidden_markov_model import HMM
 
 import matplotlib.pyplot as plt
 import numpy as np

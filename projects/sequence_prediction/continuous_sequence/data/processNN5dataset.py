@@ -33,7 +33,7 @@ def saveSeriesToCSV(fileName, dataSet):
   outputFile.close()
 
 
-df = pd.read_excel('./data/NN5dataset.xlsx', header=0, skiprows=[1, 2, 3], index_col=0)
+df = pd.read_excel('./NN5dataset.xlsx', header=0, skiprows=[1, 2, 3], index_col=0)
 
 (numRec, numFile) = df.shape
 
@@ -44,8 +44,8 @@ for i in range(numFile):
   dataSetName = df.columns[i]
   print " save data: ", dataSetName
   dataSet = pd.Series(df[dataSetName])
-  trainfileName = './data/NN5/' + dataSetName + '.csv'
-  testfileName = './data/NN5/' + dataSetName + '_cont.csv'
+  trainfileName = './NN5/' + dataSetName + '.csv'
+  testfileName = './NN5/' + dataSetName + '_cont.csv'
 
   saveSeriesToCSV(trainfileName, dataSet[:numRecTrain])
   saveSeriesToCSV(testfileName, dataSet[numRecTrain:])

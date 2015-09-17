@@ -26,7 +26,7 @@ import numpy as np
 angles = np.linspace(0, 120, num=2400)
 sine = np.sin(angles*4)
 
-outputFile = open('data/sine.csv',"w")
+outputFile = open('sine.csv',"w")
 csvWriter = csv.writer(outputFile)
 csvWriter.writerow(['angle', 'data'])
 csvWriter.writerow(['float', 'float'])
@@ -36,7 +36,7 @@ for i in range(2000):
 outputFile.close()
 
 
-outputFile = open('data/sine_cont.csv',"w")
+outputFile = open('sine_cont.csv',"w")
 csvWriter = csv.writer(outputFile)
 csvWriter.writerow(['angle', 'data'])
 csvWriter.writerow(['float', 'float'])

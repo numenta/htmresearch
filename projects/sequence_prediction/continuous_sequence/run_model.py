@@ -33,6 +33,7 @@ from nupic.frameworks.opf.metrics import MetricSpec
 from nupic.frameworks.opf.modelfactory import ModelFactory
 from nupic.frameworks.opf.predictionmetricsmanager import MetricsManager
 from nupic.frameworks.opf import metrics
+from htmresearch.frameworks.opf.clamodel_custom import CLAModel_custom
 import nupic_output
 
 
@@ -207,7 +208,6 @@ if __name__ == "__main__":
   print "Creating model from %s..." % dataSet
 
   # use customized CLA model
-  from clamodel_custom import CLAModel_custom
   model = CLAModel_custom(**modelParams['modelParams'])
   model.enableInference({"predictedField": predictedField})
   model.enableLearning()
