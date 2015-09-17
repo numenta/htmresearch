@@ -22,6 +22,8 @@
 # ----------------------------------------------------------------------
 import numpy
 
+from collections import deque
+
 from nupic.regions.PyRegion import PyRegion
 
 
@@ -35,8 +37,9 @@ class LanguageSensor(PyRegion):
   An LS is essentially a shell containing two objects:
 
     1. A DataSource object gets one record at a time. This record is returned
-    as a dict object. For example, a DataSource might return:
-      defaultdict(sample="Hello world!", labels=["Python"])
+    as a dict object by getNextRecordDict(). For example, a DataSource might
+    return:
+      {sample="Hello world!", labels=["Python"]}
 
     2. An encoder from nupic.fluent/encoders
 
@@ -62,6 +65,8 @@ class LanguageSensor(PyRegion):
 
     self._outputValues = {}
     self._iterNum = 0
+
+    self.queue = deque()
 
 
   @classmethod
@@ -219,9 +224,13 @@ class LanguageSensor(PyRegion):
 
     TODO: validate we're handling resets correctly
     """
-    data = self.dataSource.getNextRecordDict()
-    # The private keys in data are standard of RecordStreamIface objects. Any
-    # add'l keys are column headers from the data source.
+    if len(self.queue) > 0:
+      # data has been added to the queue, so use it
+      data = self.queue.pop()
+    else:
+      data = self.dataSource.getNextRecordDict()
+      # Keys in data that are not column headers from the data source are standard
+      # of RecordStreamIface objects.
 
     # Copy important data input fields over to outputs dict. We set "sourceOut"
     # explicitly b/c PyRegion.getSpec() won't take an output field w/ type str.
