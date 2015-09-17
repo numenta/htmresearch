@@ -25,7 +25,7 @@ import numpy as np
 import pyaudio
 import wave
 
-from sound_encoder import SoundEncoder
+from htmresearch.encoders.sound_encoder import SoundEncoder
 
 
 CHUNK = 1024
