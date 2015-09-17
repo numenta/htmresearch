@@ -30,7 +30,7 @@ rcParams.update({'figure.autolayout': True})
 
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
-from sensorimotor.general_temporal_memory import (
+from htmresearch.algorithms.general_temporal_memory import (
      GeneralTemporalMemory)
 
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
