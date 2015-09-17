@@ -23,10 +23,10 @@ import random
 import copy
 import numpy
 from nupic.research.spatial_pooler import SpatialPooler
-from union_pooling.activation.excite_functions.excite_functions_all import (
+from htmresearch.frameworks.union_pooling.activation.excite_functions.excite_functions_all import (
   LogisticExciteFunction, FixedExciteFunction)
 
-from union_pooling.activation.decay_functions.decay_functions_all import (
+from htmresearch.frameworks.union_pooling.activation.decay_functions.decay_functions_all import (
   ExponentialDecayFunction, NoDecayFunction)
 
 

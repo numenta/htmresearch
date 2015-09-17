@@ -26,16 +26,16 @@ import os
 import yaml
 from optparse import OptionParser
 
-import numpy
 from pylab import rcParams
 
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
-from experiments.capacity import data_utils
-from union_pooling.experiments.union_pooler_experiment import (
+from htmresearch.support import data_utils
+from htmresearch.frameworks.union_pooling.union_pooler_experiment import (
     UnionPoolerExperiment)
+
 
 """
 Experiment 1
