@@ -35,9 +35,9 @@ def convertDatToCSV(inputFileName, outputFileName, Nrpts=1, maxLength=None):
       csvWriter.writerow([i,df['value'][i]])
 
   else:
-    csvWriter.writerow(['step', 'data','reset'])
-    csvWriter.writerow(['float', 'float','int'])
-    csvWriter.writerow(['', '','R'])
+    csvWriter.writerow(['step', 'data', 'reset'])
+    csvWriter.writerow(['float', 'float', 'int'])
+    csvWriter.writerow(['', '', 'R'])
 
     for _ in xrange(Nrpts):
       for i in xrange(maxLength):
@@ -45,15 +45,15 @@ def convertDatToCSV(inputFileName, outputFileName, Nrpts=1, maxLength=None):
           reset = 1
         else:
           reset = 0
-        csvWriter.writerow([i,df['value'][i],reset])
+        csvWriter.writerow([i, df['value'][i], reset])
 
   outputFile.close()
 
 
-inputFileName = 'data/SantaFe_A_cont.dat'
-outputFileName = 'data/SantaFe_A_cont.csv'
+inputFileName = 'SantaFe_A_cont.dat'
+outputFileName = 'SantaFe_A_cont.csv'
 convertDatToCSV(inputFileName, outputFileName, maxLength=100)
 
-inputFileName = 'data/SantaFe_A.dat'
-outputFileName = 'data/SantaFe_A.csv'
+inputFileName = 'SantaFe_A.dat'
+outputFileName = 'SantaFe_A.csv'
 convertDatToCSV(inputFileName, outputFileName, Nrpts=1)
