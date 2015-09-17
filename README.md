@@ -49,3 +49,31 @@ included into NuPIC as soon as they are ready. We really hope this repository
 is helpful and does not instead create a lot of confusion about what's coming
 next.  
 
+
+Installation
+============
+
+OK, enough caveats. Here are some installation instructions though mostly you
+are on your own. (Wait, was that another caveat?)
+
+Requirements: the main requirement is nupic. Various individual projects may
+have other requirements. We don't formally spell these out but two common ones
+are pandas and plotly.
+
+Install using setup.py like any python project. Since the contents here change
+often, we highly recommend installing as follows:
+
+    python setup.py develop --user
+
+After this you can test by importing from htmresearch:
+
+    python
+    from htmresearch.algorithms.general_temporal_memory import GeneralTemporalMemory
+
+If this works installation probably worked fine. BTW, the above class is a
+modified version of TemporalMemory that we are currently researching. It
+includes support for feedback connections (through apical dendrites) and
+sensorimotor inference (includes efference motor copy as another option input
+to the layer).
+
+

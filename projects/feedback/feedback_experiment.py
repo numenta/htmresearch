@@ -28,10 +28,10 @@ from matplotlib import pyplot as plt
 from nupic.bindings.math import GetNTAReal
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
-from sensorimotor.general_temporal_memory import GeneralTemporalMemory
+from htmresearch.algorithms.general_temporal_memory import GeneralTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
     TemporalMemoryMonitorMixin)
-from union_pooling.union_pooler import UnionPooler
+from htmresearch.algorithms.union_pooler import UnionPooler
 
 
 
