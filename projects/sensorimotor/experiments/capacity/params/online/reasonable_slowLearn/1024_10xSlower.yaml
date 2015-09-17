@@ -1,0 +1,24 @@
+n: 1024
+w: 20
+isOnline: True
+onlineTrainingReps: 10
+tmParams:
+  columnDimensions: [1024]
+  minThreshold: 20
+  activationThreshold: 20
+  maxNewSynapseCount: 30
+tpParams:
+  columnDimensions: [1024]
+  numActiveColumnsPerInhArea: 20
+  potentialPct: 0.9
+  initConnectedPct: 0.5
+  poolingThreshUnpredicted: 0.4
+
+  # The following param is 1/onlineTrainingReps of normal value
+  synPermActiveInc: 0.0001
+  synPermInactiveDec: 0.00
+
+  # The following param is 1/onlineTrainingReps of normal value
+  synPredictedInc: 0.05
+  synPermConnected: 0.3
+  poolingLife: 1000
