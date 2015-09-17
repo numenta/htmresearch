@@ -21,13 +21,12 @@
 
 
 import importlib
-import numpy
+
 from optparse import OptionParser
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
-import pandas as pd
 
 from nupic.frameworks.opf.metrics import MetricSpec
 from nupic.frameworks.opf.modelfactory import ModelFactory
@@ -64,7 +63,7 @@ def getMetricSpecs(predictedField, stepsAhead=5):
   _METRIC_SPECS = (
       MetricSpec(field=predictedField, metric='multiStep',
                  inferenceElement='multiStepBestPredictions',
-                 params={'errorMetric': 'negativeLogLikelihood',
+                 params={'errorMetric': 'altMAPE',
                          'window': 1000, 'steps': stepsAhead}),
       MetricSpec(field=predictedField, metric='multiStep',
                  inferenceElement='multiStepBestPredictions',
@@ -196,7 +195,7 @@ if __name__ == "__main__":
   if dataSet == "rec-center-hourly":
     DATE_FORMAT = "%m/%d/%y %H:%M" # '7/2/10 0:00'
     predictedField = "kw_energy_consumption"
-  elif dataSet == "nyc_taxi":
+  elif dataSet == "nyc_taxi" or dataSet == "nyc_taxi_perturb":
     DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
     predictedField = "passenger_count"
   else:
@@ -226,7 +225,7 @@ if __name__ == "__main__":
   else:
     classifier_encoder = None
 
-  _METRIC_SPECS = getMetricSpecs(predictedField)
+  _METRIC_SPECS = getMetricSpecs(predictedField, stepsAhead=_options.stepsAhead)
   metric = metrics.getModule(_METRIC_SPECS[0])
   metricsManager = MetricsManager(_METRIC_SPECS, model.getFieldInfo(),
                                   model.getInferenceType())
@@ -325,11 +324,11 @@ if __name__ == "__main__":
     result.metrics = metricsManager.update(result)
 
     negLL = result.metrics["multiStepBestPredictions:multiStep:"
-               "errorMetric='negativeLogLikelihood':steps=%d:window=1000:"
+               "errorMetric='altMAPE':steps=%d:window=1000:"
                "field=%s"%(_options.stepsAhead, predictedField)]
     if i % 100 == 0 and i>0:
       negLL = result.metrics["multiStepBestPredictions:multiStep:"
-               "errorMetric='negativeLogLikelihood':steps=%d:window=1000:"
+               "errorMetric='altMAPE':steps=%d:window=1000:"
                "field=%s"%(_options.stepsAhead, predictedField)]
       nrmse = result.metrics["multiStepBestPredictions:multiStep:"
                "errorMetric='nrmse':steps=%d:window=1000:"

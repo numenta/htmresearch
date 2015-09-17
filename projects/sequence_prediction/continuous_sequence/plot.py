@@ -48,7 +48,7 @@ def plotMovingAverage(data, window, label=None):
 
 
 
-def plotAccuracy(results, train, truth, window=100, label=None, params=None):
+def plotAccuracy(results, truth, train=None, window=100, label=None, params=None):
   plt.title('Prediction Error Over Time')
   plt.xlabel("# of elements seen")
   plt.ylabel("NRMSE over last {0} tested {1}".format(window, 'elements'))
@@ -57,22 +57,23 @@ def plotAccuracy(results, train, truth, window=100, label=None, params=None):
   x = results[1]
   x = x[:len(square_deviation)]
 
-  square_deviation[np.where(x < params['compute_after'])[0]] = np.nan
+  if params is not None:
+    square_deviation[np.where(x < params['compute_after'])[0]] = np.nan
   movingData = movingAverage(square_deviation, min(len(square_deviation), window))
   nrmse = np.sqrt(np.array(movingData))/np.nanstd(truth)
   print " Avg NRMSE:", np.sqrt(np.nanmean(square_deviation))/np.nanstd(truth)
 
-  print len(x)
-  print len(nrmse)
   plt.plot(x, nrmse, label=label,
               marker='o', markersize=3, markeredgewidth=0)
 
-  for i in xrange(len(train)):
-    if train[i]:
-      plt.axvline(x[i], color='orange')
+  if train is not None:
+    for i in xrange(len(train)):
+      if train[i]:
+        plt.axvline(x[i], color='orange')
 
-  if params['perturb_after'] < len(x):
-    plt.axvline(x[params['perturb_after']], color='black', linestyle='--')
+  if params is not None:
+    if params['perturb_after'] < len(x):
+      plt.axvline(x[params['perturb_after']], color='black', linestyle='--')
 
   plt.xlim(x[0], x[len(x)-1])
   
@@ -88,18 +89,13 @@ def computeAccuracy(predictions, truth, iteration, resets=None, randoms=None):
 
   return (square_deviation, x)
 
-
-def loadAndPlot(experiment, window):
+def loadExperiment(experiment):
   suite = Suite()
   suite.parse_opt()
   suite.parse_cfg()
 
   experiment_dir = experiment.split('/')[1]
-  experiment_name = experiment.split('/')[-2]
   params = suite.items_to_params(suite.cfgparser.items(experiment_dir))
-
-  filePath = './data/' + params['dataset'] + '.csv'
-  data = pd.read_csv(filePath, header=0, skiprows=[1,2], names=['datetime', 'value', 'timeofday', 'dayofweek'])
 
   iteration = suite.get_history(experiment, 0, 'iteration')
   predictions = suite.get_history(experiment, 0, 'predictions')
@@ -109,19 +105,7 @@ def loadAndPlot(experiment, window):
   truth = np.array(truth, dtype=np.float)
   predictions = np.array(predictions, dtype=np.float)
 
-  resets = suite.get_history(experiment, 0, 'reset')
-  randoms = suite.get_history(experiment, 0, 'random')
-
-
-  (square_deviation, x) = computeAccuracy(predictions, truth, iteration, resets=resets, randoms=randoms)
-  x = pd.to_datetime(data['datetime'])
-  plotAccuracy((square_deviation, x),
-               train,
-               truth,
-               window=window,
-               label=experiment_name,
-               params=params)
-
+  return (iteration, truth, predictions, train, params)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -142,7 +126,22 @@ if __name__ == '__main__':
   experiments = args.experiments
 
   for experiment in experiments:
-    loadAndPlot(experiment, args.window)
+    experiment_name = experiment.split('/')[-2]
+    (iteration, truth, predictions, train, params) = loadExperiment(experiment)
+
+    (square_deviation, x) = computeAccuracy(predictions, truth, iteration)
+
+    # use datetime as x-axis
+    filePath = './data/' + params['dataset'] + '.csv'
+    data = pd.read_csv(filePath, header=0, skiprows=[1, 2], names=['datetime', 'value', 'timeofday', 'dayofweek'])
+
+    x = pd.to_datetime(data['datetime'])
+    plotAccuracy((square_deviation, x),
+                 truth,
+                 window=args.window,
+                 label=experiment_name,
+                 params=params)
+
 
   if len(experiments) > 1:
     plt.legend()
