@@ -20,6 +20,10 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+from htmresearch.frameworks.classification.utils.sensor_data import (
+  generateSensorData)
+from htmresearch.frameworks.classification.utils.sensor_data import (
+  plotSensorData)
 
 # Parameters to generate the artificial sensor data
 OUTFILE_NAME = "white_noise"
@@ -35,3 +39,39 @@ SIGNAL_PERIODS = [20.0]
 RESULTS_DIR = "results"
 MODEL_PARAMS_DIR = 'model_params'
 DATA_DIR = "data"
+
+
+
+def _generateData():
+  """
+  Generate CSV data to plot.
+  @return outFiles: (list) paths to output files
+  """
+  outFiles = []
+  for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
+    for signalMean in SIGNAL_MEANS:
+      for signalAmplitude in SIGNAL_AMPLITUDES:
+        for signalPeriod in SIGNAL_PERIODS:
+          outFile = generateSensorData(DATA_DIR,
+                                       OUTFILE_NAME,
+                                       signalMean,
+                                       signalPeriod,
+                                       SEQUENCE_LENGTH,
+                                       NUM_RECORDS,
+                                       signalAmplitude,
+                                       NUM_CATEGORIES,
+                                       noiseAmplitude)
+          outFiles.append(outFile)
+
+  return outFiles
+
+
+
+def main():
+  csvFiles = _generateData()
+  plotSensorData(csvFiles, SEQUENCE_LENGTH)
+
+
+
+if __name__ == "__main__":
+  main()
