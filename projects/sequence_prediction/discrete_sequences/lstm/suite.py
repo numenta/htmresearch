@@ -286,7 +286,7 @@ class Suite(PyExperimentSuite):
 
     for i in xrange(len(history) - 1):
       symbol = history[i]
-      output = self.net.activate(self.encoder.encode(symbol))
+      output = net.activate(self.encoder.encode(symbol))
       predictions = self.encoder.classify(output, num=params['num_predictions'])
 
       if resets[i]:
