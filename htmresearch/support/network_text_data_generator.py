@@ -33,8 +33,8 @@ import string
 
 from collections import defaultdict, OrderedDict
 
-from fluent.utils.csv_helper import readCSV
-from fluent.utils.text_preprocess import TextPreprocess
+from htmresearch.support.csv_helper import readCSV
+from htmresearch.support.text_preprocess import TextPreprocess
 
 try:
   import simplejson as json

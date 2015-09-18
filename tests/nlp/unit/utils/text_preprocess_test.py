@@ -24,7 +24,7 @@
 
 import unittest
 
-from fluent.utils.text_preprocess import TextPreprocess
+from htmresearch.support.text_preprocess import TextPreprocess
 
 
 

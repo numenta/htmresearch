@@ -29,7 +29,7 @@ import os
 import random
 import string
 
-from fluent.utils.csv_helper import readCSV, writeCSV
+from htmresearch.support.csv_helper import readCSV, writeCSV
 
 
 

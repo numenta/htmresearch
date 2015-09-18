@@ -24,7 +24,7 @@ import gensim
 import numpy
 import operator
 
-from fluent.encoders.language_encoder import LanguageEncoder
+from htmresearch.encoders.language_encoder import LanguageEncoder
 
 
 TARGET_SPARSITY = 1.0

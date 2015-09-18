@@ -23,8 +23,8 @@
 import os
 import unittest
 
-from fluent.encoders import EncoderTypes
-from fluent.encoders.cio_encoder import CioEncoder
+from htmresearch.encoders import EncoderTypes
+from htmresearch.encoders.cio_encoder import CioEncoder
 
 try:
   import simplejson as json

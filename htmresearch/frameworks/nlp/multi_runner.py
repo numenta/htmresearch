@@ -23,9 +23,9 @@ import numpy
 import os
 import random
 
-from fluent.experiments.runner import Runner
-from fluent.utils.csv_helper import readCSV, readDir
-from fluent.utils.text_preprocess import TextPreprocess
+from htmresearch.frameworks.nlp.runner import Runner
+from htmresearch.support.csv_helper import readCSV, readDir
+from htmresearch.support.text_preprocess import TextPreprocess
 
 
 

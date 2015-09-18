@@ -20,11 +20,12 @@
 # ----------------------------------------------------------------------
 
 import numpy
+import os
 
 from collections import defaultdict, OrderedDict
-from fluent.encoders.cio_encoder import CioEncoder
-from fluent.encoders.cio_encoder import LanguageEncoder
-from fluent.models.classification_model import ClassificationModel
+from htmresearch.encoders.cio_encoder import CioEncoder
+from htmresearch.encoders.language_encoder import LanguageEncoder
+from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 
 
 
@@ -46,8 +47,9 @@ class ClassificationModelEndpoint(ClassificationModel):
     """
     super(ClassificationModelEndpoint, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
-
-    self.encoder = CioEncoder(cacheDir="./experiments/cache",
+    
+    root = os.path.dirname(os.path.realpath(__file__))
+    self.encoder = CioEncoder(cacheDir=os.path.join(root, "CioCache"),
                               unionSparsity=unionSparsity)
     self.compareEncoder = LanguageEncoder()
 

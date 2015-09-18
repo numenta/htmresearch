@@ -23,9 +23,10 @@ import cPickle as pkl
 import os
 
 from collections import Counter, namedtuple
-from fluent.experiments.runner import Runner
-from fluent.models.classify_htm import ClassificationModelHTM
-from fluent.utils.network_data_generator import NetworkDataGenerator
+
+from htmresearch.frameworks.nlp.runner import Runner
+from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
+from htmresearch.support.network_text_data_generator import NetworkDataGenerator
 from nupic.engine import Network
 
 try:
@@ -126,8 +127,8 @@ class HTMRunner(Runner):
     Generate the data in network API format if necessary. self.dataFiles is
     populated with the paths of network data files, one for each trial
 
-    Look at runner.py (setupData) and network_data_generator.py (split) for the
-    parameters.
+    Look at runner.py (setupData) and network_text_data_generator.py (split) for
+    the parameters.
     """
     if generateData:
       # TODO: use model.prepData()?

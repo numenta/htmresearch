@@ -25,9 +25,9 @@ import os
 import shutil
 import unittest
 
-from fluent.encoders import EncoderTypes
-from fluent.experiments.htm_runner import HTMRunner
-from fluent.utils.csv_helper import readCSV
+from htmresearch.encoders import EncoderTypes
+from htmresearch.frameworks.nlp.htm_runner import HTMRunner
+from htmresearch.support.csv_helper import readCSV
 
 try:
   import simplejson as json

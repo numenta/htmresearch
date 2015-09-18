@@ -24,10 +24,11 @@ import shutil
 import unittest
 
 from collections import OrderedDict
-from fluent.models.classification_model import ClassificationModel
-from fluent.models.classify_endpoint import ClassificationModelEndpoint
-from fluent.models.classify_fingerprint import ClassificationModelFingerprint
-from fluent.models.classify_keywords import ClassificationModelKeywords
+
+from htmresearch.frameworks.nlp.classification_model import ClassificationModel
+from htmresearch.frameworks.nlp.classify_endpoint import ClassificationModelEndpoint
+from htmresearch.frameworks.nlp.classify_fingerprint import ClassificationModelFingerprint
+from htmresearch.frameworks.nlp.classify_keywords import ClassificationModelKeywords
 
 
 

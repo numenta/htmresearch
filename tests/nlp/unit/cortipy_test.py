@@ -23,8 +23,9 @@
 import os
 import unittest
 
-from cortipy.cortical_client import CorticalClient
 from mock import patch
+
+from cortipy.cortical_client import CorticalClient
 
 
 

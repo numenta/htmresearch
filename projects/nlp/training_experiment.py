@@ -28,9 +28,9 @@ import os
 import pprint
 import time
 
-from fluent.experiments.runner import Runner
-from fluent.experiments.multi_runner import MultiRunner
-from fluent.experiments.htm_runner import HTMRunner
+from htmresearch.frameworks.nlp.runner import Runner
+from htmresearch.frameworks.nlp.multi_runner import MultiRunner
+from htmresearch.frameworks.nlp.htm_runner import HTMRunner
 
 
 

@@ -23,7 +23,7 @@ import copy
 import numpy
 import os
 
-from fluent.models.classification_model import ClassificationModel
+from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from nupic.algorithms.KNNClassifier import KNNClassifier
 
 try:

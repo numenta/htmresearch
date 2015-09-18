@@ -27,11 +27,11 @@ import random
 
 from collections import defaultdict
 
-from fluent.encoders import EncoderTypes
-from fluent.models.classify_endpoint import ClassificationModelEndpoint
-from fluent.models.classify_fingerprint import ClassificationModelFingerprint
-from fluent.models.classify_keywords import ClassificationModelKeywords
-from fluent.utils.csv_helper import readCSV, writeFromDict
+from htmresearch.encoders import EncoderTypes
+from htmresearch.frameworks.nlp.classify_endpoint import ClassificationModelEndpoint
+from htmresearch.frameworks.nlp.classify_fingerprint import ClassificationModelFingerprint
+from htmresearch.frameworks.nlp.classify_keywords import ClassificationModelKeywords
+from htmresearch.support.csv_helper import readCSV, writeFromDict
 
 
 _MODEL_MAPPING = {
@@ -65,7 +65,7 @@ class Runner(object):
     @param resultsDir       (str)     Directory where for the results metrics.
     @param experimentName   (str)     Experiment name, used for saving results.
     @param loadPath         (str)     Path to serialized model for loading.
-    @param modelName        (str)     Name of nupic.fluent Model subclass.
+    @param modelName        (str)     Name of nlp model subclass.
     @param numClasses       (int)     Number of classes (labels) per sample.
     @param plots            (int)     Specifies plotting of evaluation metrics.
     @param orderedSplit     (bool)    Indicates method for splitting train/test
@@ -91,7 +91,7 @@ class Runner(object):
       os.makedirs(self.modelDir)
 
     if self.plots:
-      from fluent.utils.plotting import PlotNLP
+      from htmresearch.support.nlp_classification_plotting import PlotNLP
       self.plotter = PlotNLP()
 
     self.dataDict = None

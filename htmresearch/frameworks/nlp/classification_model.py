@@ -29,7 +29,7 @@ import random
 
 from collections import defaultdict, OrderedDict
 
-from fluent.utils.text_preprocess import TextPreprocess
+from htmresearch.support.text_preprocess import TextPreprocess
 
 try:
   import simplejson as json

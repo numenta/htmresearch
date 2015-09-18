@@ -90,7 +90,8 @@ def _setScalarEncoderMinMax(networkConfig, dataSource):
 
 
 
-def _createSensorRegion(network, regionConfig, dataSource, encoder=None):
+def _createSensorRegion(network, regionConfig, dataSource, encoder=None,
+  moduleName=None):
   """
   Register a sensor region and initialize it the sensor region with an encoder
   and data source.
@@ -100,6 +101,8 @@ def _createSensorRegion(network, regionConfig, dataSource, encoder=None):
   @param dataSource: (RecordStream) Sensor region reads data from here.
   @param encoder: (Encoder) encoding object to use instead of specifying in
     networkConfig.
+  @param moduleName: (str) location of the region class, only needed if 
+    registering a region that is outside the expected "regions/" dir.
   @return sensorRegion: (PyRegion) Sensor region of the network.
   """
   regionType = regionConfig["regionType"]
@@ -109,7 +112,7 @@ def _createSensorRegion(network, regionConfig, dataSource, encoder=None):
   if not encoders:
     encoders = encoder
 
-  _addRegisteredRegion(network, regionConfig)
+  _addRegisteredRegion(network, regionConfig, moduleName)
 
   # getSelf() returns the actual region, instead of a region wrapper
   sensorRegion = network.regions[regionName].getSelf()
@@ -148,9 +151,12 @@ def _registerRegion(regionTypeName, moduleName=None):
   A region may be non-standard, so add custom region class to the network.
 
   @param regionTypeName: (str) type name of the region. E.g SensorRegion.
+  @param moduleName: (str) location of the region class, only needed if
+    registering a region that is outside the expected "regions/" dir.
   """
   if moduleName is None:
-    moduleName = regionTypeName
+    # the region is located in the regions/ directory
+    moduleName = "regions." + regionTypeName
   if regionTypeName not in _PY_REGIONS:
     # Add new region class to the network.
     try:
@@ -312,7 +318,7 @@ def createNetwork(dataSource, networkConfig, encoder=None):
     regionParams = regionConfig["regionParams"]
     regionParams["inputWidth"] = previousRegionWidth
     upRegion = _createRegion(network, regionConfig,
-      moduleName="union_pooling.PoolingRegion")
+      moduleName="regions.PoolingRegion")
     _validateRegionWidths(previousRegionWidth,
                           upRegion.getSelf().cellsPerColumn)
     _linkRegions(network,

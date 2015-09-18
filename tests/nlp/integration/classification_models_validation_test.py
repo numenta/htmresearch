@@ -24,10 +24,10 @@ import os
 import shutil
 import unittest
 
-from fluent.encoders import EncoderTypes
-from fluent.experiments.htm_runner import HTMRunner
-from fluent.experiments.runner import Runner
-from fluent.utils.csv_helper import readCSV
+from htmresearch.encoders import EncoderTypes
+from htmresearch.frameworks.nlp.htm_runner import HTMRunner
+from htmresearch.frameworks.nlp.runner import Runner
+from htmresearch.support.csv_helper import readCSV
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data")
@@ -49,12 +49,12 @@ class ClassificationModelsTest(unittest.TestCase):
     finally:
       # cleanup
       shutil.rmtree(runner.model.modelDir.split("/")[0])
-  
-  
+
+
   @staticmethod
   def getExpectedClassifications(runner, expectationFilePath):
     """
-    Return a list of the labels predicted by runner and a list of expected 
+    Return a list of the labels predicted by runner and a list of expected
     labels from the expected classifications file path.
     """
     dataDict = readCSV(expectationFilePath, numLabels=3)
@@ -75,7 +75,7 @@ class ClassificationModelsTest(unittest.TestCase):
   def testClassifyKeywordsAsExpected(self):
     """
     Tests ClassificationModelKeywords.
-    
+
     Training on the first five samples of the dataset, and testing on the rest,
     the model's classifications should match those in the expected classes
     data file.
@@ -110,7 +110,7 @@ class ClassificationModelsTest(unittest.TestCase):
   def testClassifyDocumentFingerprintsAsExpected(self):
     """
     Tests ClassificationModelFingerprint (for encoder type 'document').
-    
+
     Training on the first five samples of the dataset, and testing on the rest,
     the model's classifications should match those in the expected classes
     data file.
@@ -142,7 +142,7 @@ class ClassificationModelsTest(unittest.TestCase):
   def testClassifyWordFingerprintsAsExpected(self):
     """
     Tests ClassificationModelFingerprint (for encoder type 'word').
-    
+
     Training on the first five samples of the dataset, and testing on the rest,
     the model's classifications should match those in the expected classes
     data file.
@@ -174,7 +174,7 @@ class ClassificationModelsTest(unittest.TestCase):
   def testClassifyEndpointAsExpected(self):
     """
     Tests ClassificationModelEndpoint.
-    
+
     Training on the first five samples of the dataset, and testing on the rest,
     the model's classifications should match those in the expected classes
     data file.
@@ -204,7 +204,7 @@ class ClassificationModelsTest(unittest.TestCase):
   def testClassifyHTMAsExpectedWithKNN(self):
     """
     Tests ClassificationModelHTM.
-    
+
     Training on the first five samples of the dataset, and testing on the rest,
     the model's classifications should match those in the expected classes
     data file.

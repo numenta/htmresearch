@@ -25,9 +25,9 @@ from collections import Counter
 
 from cortipy.cortical_client import CorticalClient
 from cortipy.exceptions import UnsuccessfulEncodingError
-from fluent.encoders import EncoderTypes
-from fluent.encoders.language_encoder import LanguageEncoder
-from fluent.utils.text_preprocess import TextPreprocess
+from htmresearch.encoders import EncoderTypes
+from htmresearch.encoders.language_encoder import LanguageEncoder
+from support.text_preprocess import TextPreprocess
 
 
 DEFAULT_RETINA = "en_synonymous"
@@ -43,7 +43,7 @@ class CioEncoder(LanguageEncoder):
   converted to binary SDR arrays with this Cio encoder.
   """
 
-  def __init__(self, w=128, h=128, retina=DEFAULT_RETINA, cacheDir="./cache",
+  def __init__(self, w=128, h=128, retina=DEFAULT_RETINA, cacheDir=None,
                verbosity=0, fingerprintType=EncoderTypes.document,
                unionSparsity=20.0):
     """
@@ -61,6 +61,10 @@ class CioEncoder(LanguageEncoder):
       raise OSError("Missing API key.")
 
     super(CioEncoder, self).__init__(unionSparsity = unionSparsity)
+
+    if cacheDir is None:
+      root = os.path.dirname(os.path.realpath(__file__))
+      cacheDir = os.path.join(root, "CioCache")
 
     self.apiKey = os.environ["CORTICAL_API_KEY"]
     self.client = CorticalClient(self.apiKey, retina=retina, cacheDir=cacheDir)

@@ -24,10 +24,11 @@ import numpy
 import operator
 import os
 
-from classification_network import configureNetwork
-from fluent.encoders.cio_encoder import CioEncoder
-from fluent.models.classification_model import ClassificationModel
-from fluent.utils.network_data_generator import NetworkDataGenerator
+from htmresearch.frameworks.classification.classification_network import (
+  configureNetwork)
+from htmresearch.encoders.cio_encoder import CioEncoder
+from htmresearch.frameworks.nlp.classification_model import ClassificationModel
+from htmresearch.support.network_text_data_generator import NetworkDataGenerator
 from nupic.data.file_record_stream import FileRecordStream
 
 
@@ -102,7 +103,8 @@ class ClassificationModelHTM(ClassificationModel):
     Initialize the network; self.networdDataPath must already be set.
     """
     recordStream = FileRecordStream(streamID=self.networkDataPath)
-    encoder = CioEncoder(cacheDir="./experiments/cache")
+    root = os.path.dirname(os.path.realpath(__file__))
+    encoder = CioEncoder(cacheDir=os.path.join(root, "CioCache"))
 
     return configureNetwork(recordStream, self.networkConfig, encoder)
 

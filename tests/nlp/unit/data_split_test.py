@@ -23,7 +23,10 @@
 """Tests for data_split module."""
 
 import unittest
-
+#import pdb; pdb.set_trace()
+import pprint
+import sys
+pprint.pprint(sys.path)
 from htmresearch.support import data_split
 
 

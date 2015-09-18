@@ -27,7 +27,7 @@ import pandas
 import random
 import unittest
 
-from fluent.utils.network_data_generator import NetworkDataGenerator
+from htmresearch.support.network_text_data_generator import NetworkDataGenerator
 from nupic.data.file_record_stream import FileRecordStream
 
 try:

@@ -20,10 +20,11 @@
 # ----------------------------------------------------------------------
 
 import numpy
+import os
 
-from fluent.encoders.cio_encoder import CioEncoder
-from fluent.encoders import EncoderTypes
-from fluent.models.classification_model import ClassificationModel
+from htmresearch.encoders import EncoderTypes
+from htmresearch.encoders.cio_encoder import CioEncoder
+from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from nupic.algorithms.KNNClassifier import KNNClassifier
 
 
@@ -56,7 +57,8 @@ class ClassificationModelFingerprint(ClassificationModel):
     if fingerprintType is (not EncoderTypes.document or not EncoderTypes.word):
       raise ValueError("Invaid type of fingerprint encoding; see the "
                        "EncoderTypes class for eligble types.")
-    self.encoder = CioEncoder(cacheDir="./fluent/experiments/cioCache",
+    root = os.path.dirname(os.path.realpath(__file__))
+    self.encoder = CioEncoder(cacheDir=os.path.join(root, "CioCache"),
                               fingerprintType=fingerprintType,
                               unionSparsity=unionSparsity)
     self.n = self.encoder.n

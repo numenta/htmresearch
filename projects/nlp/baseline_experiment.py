@@ -35,16 +35,14 @@ Notes:
 - classification and label are used interchangeably
 """
 
-
 import argparse
 import os
 import pprint
 import time
 
-from fluent.experiments.runner import Runner
-#from fluent.experiments.multi_runner import MultiRunner
-from fluent.experiments.htm_runner import HTMRunner
-from fluent.utils.data_split import KFolds
+from htmresearch.frameworks.nlp.runner import Runner
+from htmresearch.frameworks.nlp.htm_runner import HTMRunner
+from htmresearch.support.data_split import KFolds
 
 
 
