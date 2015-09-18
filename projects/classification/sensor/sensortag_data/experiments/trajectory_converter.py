@@ -7,13 +7,20 @@ from collections import defaultdict
 import settings
 import os
 
-from settings import METRICS, SENSORS, INPUT_DATA_FILE, CONVERTED_DATA_DIR, MODEL_PARAMS_DIR, INPUT_DATA_DIR
-from prototype.model_params_template import MODEL_PARAMS as TEMPLATE_MODEL_PARAMS
+from settings import (METRICS, 
+                      SENSORS, 
+                      INPUT_DATA_FILE, 
+                      CONVERTED_DATA_DIR, 
+                      MODEL_PARAMS_DIR, 
+                      INPUT_DATA_DIR)
+from model_params_template import MODEL_PARAMS as TEMPLATE_MODEL_PARAMS
 
 DIRS = [CONVERTED_DATA_DIR, MODEL_PARAMS_DIR, INPUT_DATA_DIR]
 for directory in DIRS:
   if not os.path.exists(directory):
       os.makedirs(directory)
+
+
 
 def convertMag(raw):
   """
