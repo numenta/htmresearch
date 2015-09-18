@@ -27,7 +27,7 @@ from cortipy.cortical_client import CorticalClient
 from cortipy.exceptions import UnsuccessfulEncodingError
 from htmresearch.encoders import EncoderTypes
 from htmresearch.encoders.language_encoder import LanguageEncoder
-from support.text_preprocess import TextPreprocess
+from htmresearch.support.text_preprocess import TextPreprocess
 
 
 DEFAULT_RETINA = "en_synonymous"
