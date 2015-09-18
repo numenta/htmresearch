@@ -22,7 +22,6 @@
 
 import csv
 import matplotlib.pyplot as plt
-from settings import DATA_DIR
 
 EXPERIMENTS = ['jump',
                'run',
@@ -37,7 +36,7 @@ NUM_RECORDS_TO_PLOT = 80
 
 plt.figure(figsize=(20, 10))
 for exp in EXPERIMENTS:
-  filePath = "%s/sensortag/%s-5min.csv" % (DATA_DIR, exp)
+  filePath = "data/%s-5min.csv" % exp
   with open(filePath, 'rU') as f:
     reader = csv.reader(f)
     headers = reader.next()
