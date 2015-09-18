@@ -29,7 +29,7 @@ from pybrain.tools.shortcuts import buildNetwork
 from pybrain.structure.modules import LSTMLayer
 from pybrain.supervised import RPropMinusTrainer
 
-from reberGrammar.reberGrammar import generateSequencesNumber
+from htmresearch.support.reberGrammar import generateSequencesNumber
 
 
 
