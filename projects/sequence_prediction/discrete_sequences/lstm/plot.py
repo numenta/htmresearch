@@ -137,6 +137,6 @@ if __name__ == '__main__':
                  label=experiment)
 
   if len(experiments) > 1:
-    pyplot.legend()
+    pyplot.legend(loc=4)
 
   pyplot.show()
