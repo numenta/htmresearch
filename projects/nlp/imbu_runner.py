@@ -91,12 +91,14 @@ def run(args):
   elif args.modelName == "HTMNetwork":
     networkConfig = loadJSON(_NETWORK_JSON)
     
+    print "Creating the network model..."
     model = _createModel(modelName=args.modelName, savePath=args.savePath,
       networkConfig=networkConfig, inputFilePath=args.dataPath, prepData=True,
       numLabels=0, stripCats=True)
     
     numRecords = sum(model.networkDataGen.getNumberOfTokens(model.networkDataPath))
 
+    print "Training the model..."
     model.trainModel(iterations=numRecords)
 
   else:
@@ -104,10 +106,11 @@ def run(args):
 
     dataDict = readCSV(args.dataPath, numLabels=0)
 
+    print "Preparing and encoding the data..."
     samples = model.prepData(dataDict, args.preprocess)
-
     patterns = model.encodeSamples(samples)
 
+    print "Training the model..."
     for i in xrange(len(samples)):
       model.trainModel(i)
 

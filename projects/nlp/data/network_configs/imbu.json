@@ -62,9 +62,9 @@
     "regionName": "classifier",
     "regionType": "py.KNNClassifierRegion",
     "regionParams": {
-      "k": 1001,
+      "k": 2001,
       "distThreshold": 0,
-      "maxCategoryCount": 1000
+      "maxCategoryCount": 2000
     }
   }
 }
