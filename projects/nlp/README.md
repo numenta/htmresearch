@@ -19,22 +19,21 @@ In this directory are scripts for several NLP applications. They each use one or
 
 #### Text querying
 
-For a set of text samples, query the model with a phrase to get a sorted print out of the most similar text samples.
+For a set of text samples, query the model with a phrase to get a sorted print out of the most similar text samples. To run this on a subset of the [IMDb movie reviews dataset](http://ai.stanford.edu/~amaas/data/sentiment/):
 
-	python projects/nlp/imbu_runner.py projects/nlp/data/sample_reviews/sample_reviews.csv
+	python imbu_runner.py data/etc/imdb_subset.csv
 
 
 #### Classification experiments
 
-The experiments test the models on classifying labeled samples of text. Here are some results for the Cortical.io word fingerprints model:
+The experiments test the models on classifying labeled samples of text.
 
-(insert plot)
-
-The data here is a small set of survey question responses in data/sample_reviews/sample_reviews.csv. The experiment incrementally increases the training size each trial; we expect to see the classification accuracies increase.
+- training_experiment.py incrementally increases the training size each trial; we expect to see the classification accuracies increase.
+- baseline_experiment.py runs k-folds cross validation.
 
 
 #### Additional examples
 
 Please see the [classification models integration tests](https://github.com/numenta/nupic.research/blob/master/tests/nlp/integration/classification_models_validation_test.py) for example usage.
 
-The ["Fox-eats"](https://www.youtube.com/watch?v=X4XjYXFRIAQ&start=7084) demo is an example from the NuPIC 2013 Hackathon, using a previous version of this repo.
+The ["Fox-eats"](https://www.youtube.com/watch?v=X4XjYXFRIAQ&start=7084) demo is an example from the NuPIC 2013 Hackathon, using a previous version Numenta's NLP code.
