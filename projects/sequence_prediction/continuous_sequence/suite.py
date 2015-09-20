@@ -28,6 +28,7 @@ from pybrain.datasets import SequentialDataSet
 from pybrain.tools.shortcuts import buildNetwork
 from pybrain.structure.modules import LSTMLayer
 from pybrain.supervised import RPropMinusTrainer
+from pybrain.structure.modules import SigmoidLayer
 
 from nupic.encoders.scalar import ScalarEncoder as NupicScalarEncoder
 
@@ -79,13 +80,13 @@ class PassThroughEncoder(Encoder):
     return symbol
 
 
-class ScalarEncoder(Encoder):
+class ScalarBucketEncoder(Encoder):
 
   def __init__(self):
     self.encoder = NupicScalarEncoder(w=1, minval=0, maxval=40000, n=22, forced=True)
 
   def encode(self, symbol):
-    encoding = self.encoder.encode(symbol[0])
+    encoding = self.encoder.encode(symbol)
     return encoding
 
 class Dataset(object):
@@ -119,7 +120,7 @@ class NYCTaxiDataset(Dataset):
     self.sequence.loc[:, 'normalizedDayofweek'] = \
       pd.Series((self.sequence['dayofweek'] - self.meanDayOfWeek)/self.stdDayOfWeek, index=self.sequence.index)
 
-  def generateSequence(self, perturbed=False, startFrom=0):
+  def generateSequence(self, perturbed=False, startFrom=0, prediction_nstep=5):
     if perturbed:
       # create a new daily profile
       dailyTime = np.sort(self.sequence['timeofday'].unique())
@@ -137,7 +138,7 @@ class NYCTaxiDataset(Dataset):
       old_data = self.sequence['data']
       new_data = np.zeros(old_data.shape)
       for i in xrange(len(old_data)):
-        if self.sequence['dayofweek'][i]<5:
+        if self.sequence['dayofweek'][i] < 5:
           new_data[i] = old_data[i] * dailyProfile[self.sequence['timeofday'][i]]
         else:
           new_data[i] = old_data[i]
@@ -148,8 +149,13 @@ class NYCTaxiDataset(Dataset):
       self.sequence.loc[:, 'normalizedData'] = \
         pd.Series((self.sequence['data'] - self.meanSeq)/self.stdSeq, index=self.sequence.index)
 
-    sequence = self.sequence[['normalizedData', 'normalizedTimeofday', 'normalizedDayofweek']].values.tolist()
-    return sequence[startFrom:]
+    sequence = self.sequence[['normalizedData',
+                              'normalizedTimeofday',
+                              'normalizedDayofweek']].values.tolist()
+
+    targetInput = self.sequence['data'].values.tolist()
+
+    return (sequence[startFrom:-prediction_nstep], targetInput[startFrom+prediction_nstep:])
 
   def reconstructSequence(self, data):
     return data * self.stdSeq + self.meanSeq
@@ -158,16 +164,17 @@ class NYCTaxiDataset(Dataset):
 class Suite(PyExperimentSuite):
 
   def reset(self, params, repetition):
-    # if params['encoding'] == 'basic':
-    #   self.inputEncoder = PassThroughEncoder()
-    # elif params['encoding'] == 'distributed':
-    #   self.outputEncoder = PassThroughEncoder()
-    # else:
-    #   raise Exception("Encoder not found")
-
     print params
+
+    self.nDimInput = 3
     self.inputEncoder = PassThroughEncoder()
-    self.outputEncoder = PassThroughEncoder()
+
+    if params['output_encoding'] == None:
+      self.outputEncoder = PassThroughEncoder()
+      self.nDimOutput = 1
+    elif params['output_encoding'] == 'likelihood':
+      self.outputEncoder = ScalarBucketEncoder()
+      self.nDimOutput = self.outputEncoder.encoder.n
 
     if params['dataset'] == 'nyc_taxi':
       self.dataset = NYCTaxiDataset()
@@ -175,16 +182,11 @@ class Suite(PyExperimentSuite):
       raise Exception("Dataset not found")
 
     self.testCounter = 0
-
+    self.net = None
     self.history = []
     self.resets = []
-    self.currentSequence = self.dataset.generateSequence()
 
-    random.seed(6)
-    self.nDimInput = 3
-    self.nDimOutput = 1
-    self.net = buildNetwork(self.nDimInput, params['num_cells'], self.nDimOutput,
-                       hiddenclass=LSTMLayer, bias=True, outputbias=True, recurrent=True)
+    (self.currentSequence, self.targetPrediction) = self.dataset.generateSequence()
 
 
   def window(self, data, params):
@@ -192,20 +194,30 @@ class Suite(PyExperimentSuite):
     return data[start:]
 
 
-  def train(self, params):
+  def train(self, params, verbose=False):
+
+    random.seed(6)
+    if params['output_encoding'] == None:
+      self.net = buildNetwork(self.nDimInput, params['num_cells'], self.nDimOutput,
+                         hiddenclass=LSTMLayer, bias=True, outputbias=True, recurrent=True)
+    elif params['output_encoding'] == 'likelihood':
+      self.net = buildNetwork(self.nDimInput, params['num_cells'], self.nDimOutput,
+                         hiddenclass=LSTMLayer, bias=True, outclass=SigmoidLayer, recurrent=True)
 
     self.net.reset()
 
     ds = SequentialDataSet(self.nDimInput, self.nDimOutput)
-    trainer = RPropMinusTrainer(self.net, dataset=ds, verbose=False)
+    trainer = RPropMinusTrainer(self.net, dataset=ds, verbose=verbose)
 
     history = self.window(self.history, params)
     resets = self.window(self.resets, params)
+    targetPrediction = self.window(self.targetPrediction, params)
 
-    for i in xrange(params['prediction_nstep'], len(history)):
+    # prepare a training dataset using the history
+    for i in xrange(len(history)):
       if not resets[i-1]:
-        ds.addSample(self.inputEncoder.encode(history[i-params['prediction_nstep']]),
-                     self.outputEncoder.encode(history[i][0]))
+        ds.addSample(self.inputEncoder.encode(history[i]),
+                     self.outputEncoder.encode(targetPrediction[i]))
       if resets[i]:
         ds.newSequence()
 
@@ -218,29 +230,30 @@ class Suite(PyExperimentSuite):
     if len(history) > 1:
       trainer.trainEpochs(params['num_epochs'])
 
+    # run through the training dataset to get the lstm network state right
     self.net.reset()
-    for i in xrange(len(history) - params['prediction_nstep']):
-      symbol = history[i]
+    for i in xrange(len(history)):
       output = self.net.activate(ds.getSample(i)[0])
 
       if resets[i]:
         self.net.reset()
 
 
+  def iterate(self, params, repetition, iteration, verbose=False):
 
-  def iterate(self, params, repetition, iteration):
+    if len(self.currentSequence) == 0:
+      return None
+
     self.history.append(self.currentSequence.pop(0))
-    # print "iteration: ", iteration, ' history length', len(self.history), ' last ele: ', self.history[-1]
+    self.targetPrediction.append(self.targetPrediction.pop(0))
+
+    if verbose:
+      print "iteration: ", iteration, ' history length', len(self.history), ' last ele: ', self.history[-1]
 
     resetFlag = (len(self.currentSequence) == 0 and
                  params['separate_sequences_with'] == 'reset')
     self.resets.append(resetFlag)
 
-    if iteration == params['perturb_after']:
-      self.currentSequence = self.dataset.generateSequence(perturbed=True, startFrom=iteration)
-
-    if len(self.currentSequence) == 0:
-      return None
 
     if iteration < params['compute_after']:
       return None
@@ -250,7 +263,7 @@ class Suite(PyExperimentSuite):
              iteration == params['train_at_iteration'])
 
     if train:
-      self.train(params)
+      self.train(params, verbose)
 
     if train:
       # reset test counter after training
@@ -267,10 +280,18 @@ class Suite(PyExperimentSuite):
     symbol = self.history[-(params['prediction_nstep']+1)]
     output = self.net.activate(self.inputEncoder.encode(symbol))
 
-    predictions = self.dataset.reconstructSequence(output[0])
+    if params['output_encoding'] == None:
+      predictions = self.dataset.reconstructSequence(output[0])
+    elif params['output_encoding'] == 'likelihood':
+      predictions = list(output/sum(output))
+    else:
+      predictions = None
 
-    truth = None if (self.resets[-1]) else \
-      self.dataset.reconstructSequence(self.history[-1][0])
+    truth = None if (self.resets[-1]) else self.targetPrediction[-1]
+
+    if iteration == params['perturb_after']:
+      (self.currentSequence, self.targetPrediction) = \
+        self.dataset.generateSequence(perturbed=True, startFrom=iteration, prediction_nstep=params['prediction_nstep'])
 
     return {"current": self.history[-1],
             "reset": self.resets[-1],

@@ -63,7 +63,7 @@ def getMetricSpecs(predictedField, stepsAhead=5):
   _METRIC_SPECS = (
       MetricSpec(field=predictedField, metric='multiStep',
                  inferenceElement='multiStepBestPredictions',
-                 params={'errorMetric': 'altMAPE',
+                 params={'errorMetric': 'negativeLogLikelihood',
                          'window': 1000, 'steps': stepsAhead}),
       MetricSpec(field=predictedField, metric='multiStep',
                  inferenceElement='multiStepBestPredictions',
@@ -265,7 +265,7 @@ if __name__ == "__main__":
   activeCellNum = []
   predCellNum = []
   predictedActiveColumnsNum = []
-
+  trueBucketIndex = []
   sp = model._getSPRegion().getSelf()._sfdr
   spActiveCellsCount = np.zeros(sp.getColumnDimensions())
 
@@ -280,6 +280,7 @@ if __name__ == "__main__":
     prePredictiveColumn = np.array(list(prePredictiveCells)) / tm.cellsPerColumn
 
     result = model.run(inputRecord)
+    trueBucketIndex.append(model._getClassifierInputRecord(inputRecord).bucketIndex)
 
     sp = model._getSPRegion().getSelf()._sfdr
     spOutput = model._getSPRegion().getOutputData('bottomUpOut')
@@ -324,11 +325,11 @@ if __name__ == "__main__":
     result.metrics = metricsManager.update(result)
 
     negLL = result.metrics["multiStepBestPredictions:multiStep:"
-               "errorMetric='altMAPE':steps=%d:window=1000:"
+               "errorMetric='negativeLogLikelihood':steps=%d:window=1000:"
                "field=%s"%(_options.stepsAhead, predictedField)]
     if i % 100 == 0 and i>0:
       negLL = result.metrics["multiStepBestPredictions:multiStep:"
-               "errorMetric='altMAPE':steps=%d:window=1000:"
+               "errorMetric='negativeLogLikelihood':steps=%d:window=1000:"
                "field=%s"%(_options.stepsAhead, predictedField)]
       nrmse = result.metrics["multiStepBestPredictions:multiStep:"
                "errorMetric='nrmse':steps=%d:window=1000:"
@@ -398,3 +399,31 @@ if __name__ == "__main__":
   NRMSE_TM = NRMSE(actual_data[nTrain:nTrain+nTest], predData_TM_n_step[nTrain:nTrain+nTest])
   print "NRMSE on test data: ", NRMSE_TM
   output.close()
+
+
+  # calculate neg-likelihood
+  predictions = np.transpose(likelihoodsVecAll)
+  truth = np.roll(actual_data, -5)
+
+  from nupic.encoders.scalar import ScalarEncoder as NupicScalarEncoder
+  encoder = NupicScalarEncoder(w=1, minval=0, maxval=40000, n=22, forced=True)
+  from plot import computeLikelihood, plotAccuracy
+
+  bucketIndex2 = []
+  negLL  = []
+  minProb = 0.0001
+  for i in xrange(len(truth)):
+    bucketIndex2.append(np.where(encoder.encode(truth[i]))[0])
+    outOfBucketProb = 1 - sum(predictions[i,:])
+    prob = predictions[i, bucketIndex2[i]]
+    if prob == 0:
+      prob = outOfBucketProb
+    if prob < minProb:
+      prob = minProb
+    negLL.append( -np.log(prob))
+
+  negLL = computeLikelihood(predictions, truth, encoder)
+  negLL[:5000] = np.nan
+  x = range(len(negLL))
+  plt.figure()
+  plotAccuracy((negLL, x), truth, window=480, errorType='negLL')

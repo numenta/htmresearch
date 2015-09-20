@@ -28,7 +28,7 @@ from errorMetrics import *
 import pandas as pd
 
 from pylab import rcParams
-from plot import loadExperiment, computeAccuracy, plotAccuracy
+from plot import ExperimentResult, plotAccuracy, computeSquareDeviation, computeLikelihood
 import plotly.plotly as py
 
 rcParams.update({'figure.autolayout': True})
@@ -49,12 +49,20 @@ data = pd.read_csv(filePath, header=0, skiprows=[1, 2], names=['datetime', 'valu
 xaxis_datetime = pd.to_datetime(data['datetime'])
 
 def plotLSTMresult(experiment, window, xaxis=None, label=None):
-  (iteration, truth, predictions, train, params) = loadExperiment(experiment)
-  (square_deviation, x) = computeAccuracy(predictions, truth, iteration)
+  expResult = ExperimentResult(experiment)
+
   if xaxis is not None:
     x = xaxis
-  plotAccuracy((square_deviation, x), truth, train=train, window=window,
-               label=label, params=params)
+  else:
+    x = range(0, len(expResult.error))
+
+  plotAccuracy((expResult.error, x),
+               expResult.truth,
+               train=expResult.train,
+               window=window,
+               label=label,
+               params=expResult.params,
+               errorType=expResult.errorType)
 
 
 ### Figure 1: Continuous vs Batch LSTM
@@ -104,7 +112,7 @@ truth = predData_TM['value']
 predData_TM_five_step = np.roll(predData_TM['prediction5'], 5)
 iteration = predData_TM.index
 
-(square_deviation, x) = computeAccuracy(predData_TM_five_step, truth, iteration)
+(square_deviation, x) = computeSquareDeviation(predData_TM_five_step, truth, iteration)
 square_deviation[:5000] = None
 x = pd.to_datetime(data['datetime'])
 plotAccuracy((square_deviation, x),
@@ -113,4 +121,19 @@ plotAccuracy((square_deviation, x),
              label='TM')
 plt.legend()
 plt.savefig(figPath + 'continuous_perturb.pdf')
+
+
+### Figure 4: Continuous LSTM with different window size
+
+fig = plt.figure(4)
+plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window1001.0/',
+               window, xaxis=xaxis_datetime, label='continuous LSTM-1000')
+
+plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window3001.0/',
+               window, xaxis=xaxis_datetime, label='continuous LSTM-3000')
+
+plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window5001.0/',
+               window, xaxis=xaxis_datetime, label='continuous LSTM-5000')
+plt.legend()
+plt.savefig(figPath + 'continuous.pdf')
 
