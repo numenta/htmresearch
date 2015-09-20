@@ -105,7 +105,8 @@ def computeAccuracy(predictions, truth, iteration, resets=None, randoms=None):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('experiments', metavar='/path/to/experiment /path/...', nargs='+', type=str)
-  parser.add_argument('-w', '--window', type=int, default=50)
+  parser.add_argument('-w', '--window', type=int, default=100)
+  parser.add_argument('-l', '--legend-position', type=int, default=4)
   parser.add_argument('-f', '--full', action='store_true')
 
   suite = Suite()
@@ -137,6 +138,6 @@ if __name__ == '__main__':
                  label=experiment)
 
   if len(experiments) > 1:
-    pyplot.legend(loc=4)
+    pyplot.legend(loc=args.legend_position)
 
   pyplot.show()
