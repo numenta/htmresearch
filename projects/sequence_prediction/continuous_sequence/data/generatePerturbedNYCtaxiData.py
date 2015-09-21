@@ -48,7 +48,7 @@ for i in xrange(len(old_data)):
   else:
     new_data[i] = old_data[i]
 
-df['data'] = new_data
+df.loc[13152:, 'data'] = new_data[13152:]
 
 
 # save perturbed data
@@ -58,5 +58,5 @@ csvWriter.writerow(['timestamp', 'passenger_count', 'timeofday', 'dayofweek'])
 csvWriter.writerow(['datetime', 'int', 'int', 'string'])
 csvWriter.writerow(['T', '', '', ''])
 for i in range(len(df)):
-  csvWriter.writerow([df.index[i], df.data[i], df.timeofday[i], df.dayofweek[i]])
+  csvWriter.writerow([df.time[i], df.data[i], df.timeofday[i], df.dayofweek[i]])
 outputFile.close()
