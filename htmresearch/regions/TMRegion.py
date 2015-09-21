@@ -388,7 +388,6 @@ class TMRegion(PyRegion):
     outputs["activeCells"][:] = predictedActiveCellsOutput[:]
     outputs["predictedActiveCells"][:] = predictedActiveCellsOutput[:]
 
-
     # TODO: Add other outputs
     #self._tm.activeExternalCells
     #self._tm.activeApicalCells
