@@ -1,0 +1,967 @@
+\documentclass{article} % For LaTeX2e
+\usepackage{nips13submit_e,times}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{amsmath}
+\usepackage{tocloft}
+%\documentstyle[nips13submit_09,times,art10]{article} % For LaTeX 2.09
+
+
+\title{Annotated Bibliography For HTM Researchers}
+
+
+\author{
+Subutai Ahmad \thanks{Send all flames and blame to him.} \\
+Numenta, Inc.\\
+Redwood City, CA 94063 \\
+\texttt{sahmad@numenta.com} \\
+\And
+Yuwei Cui \\
+Numenta, Inc.\\
+Redwood City, CA 94063 \\
+\texttt{ycui@numenta.com} \\
+}
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+\nipsfinalcopy % Uncomment for camera-ready version
+
+% Dots for TOC
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+
+\begin{document}
+
+
+\maketitle
+
+\begin{abstract}
+This document contains an annotated bibliography targeted towards those doing
+active research on Hierarchical Temporal Memory (HTM) particularly the class of 
+cortical algorithms initially defined in \cite{Hawkins2011}. The focus is on
+neuroscience, though there are occasional other references. The document consists
+of (possibly very brief) descriptions of specific papers. These descriptions
+emphasize the relationship to HTM Theory and don't necessarily summarize the
+paper itself. There is typically exactly one paper, or a couple of tightly
+related papers, for each subsection. We hope the content is useful for finding
+appropriate citations when writing HTM related papers. The material
+could also be useful in understanding the neuroscience behind HTM theory in more
+depth. One very useful feature is that the references section includes the full
+abstract of each paper. The bibtex file for these references are exported from
+the public Mendeley HTM Neuroscience group.
+ \\
+
+\emph{Date: \today}
+\end{abstract}
+
+\clearpage
+
+
+\renewcommand{\contentsname}{Table of Contents}
+\setcounter{tocdepth}{2}
+\tableofcontents
+
+\clearpage
+
+\section{Neuroanatomy}
+
+As HTM is a theory of the neocortex, we include review papers on architecture
+of the mammalian cortex, including the laminar and columnar structures of the
+cortex and thalamacortical circuits.
+
+\subsection{Thomson: Cortical anatomy}
+
+These papers by Thomson \cite{Thomson2003,Thomson2007,Thomson2010} are dense
+but contain a lot of detailed information about the connections into, out of,
+and within the various cortical layers and between different types of neurons in the cortex.
+
+\subsection{Buxhoeveden: minicolumn review}
+
+\cite{Buxhoeveden2002} Note from Jeff: \emph{this is the best review article I
+know about mini-columns. Start here.}
+
+The article also contains a bunch of data on typical measurements. From this you
+can gather that minicolumn widths vary quite significantly between species.  The
+width can range from 20-60 microns, with about 40-80 microns distance in between
+(center to center).  So there are 12 to 25 minicolumns per mm of cortex.
+
+\subsection{Constantinople and Bruno: parallel systems in the cortex}
+This recent paper by Constantinople and Bruno \cite{Constantinople2013}
+challenged the  classical belief of sensory processing pathway along
+$L4\rightarrow L2/3 \rightarrow L5/6$ among cortical layers.  Instead, it
+provided new evidence supporting the idea that superficial layers
+($L4\rightarrow L2/3$) and  deeper layers (L5/6) act as parallel systems.
+
+\subsection{Horton: minicolumn naysayer}
+
+This paper \cite{Horton2005} is a good summary of the arguments against the
+importance of columns. We should point out that the term "column" is very
+ambiguous - this article reviews all the variations but is also a bit muddled
+about them. In HTM the term  refers strictly to mini-columns. Phenomena like
+macro columns, hyper columns, ocular dominance columns, etc. are emergent
+phenomena that group together lots of mini columns. They probably arise as a
+function of learning, and not really required in a strict sense. You can get
+lots of variations in these macro-column structures and that would be fine. So
+most of the article does not contradict HTM theory.
+
+Horton completely disagrees  with the notion  that minicolumns have
+any functional significant whatsoever.  He states, "dubious is the concept that
+minicolumns are basic modular units of the adult cortex, rather than simply
+remnants of foetal development".
+
+Again we need to be precise about language. Most people debate whether the
+mini-column is THE  basic unit of cortical function, as if the connections
+between cells in a mini-column compute something.  In HTM theory we don’t make
+this claim, it’s false, and it leads to a lot of confusion.  The cellular layer,
+not the mini-column, is a unit of processing. All we claim is that cells in a
+mini-column share similar feedforward response properties and that they mutually
+inhibit each other.  We don’t require this inhibition be local to just the
+mini-column, in fact it may very well extend to surrounding columns.  Horton
+admits that mini-columns exist physically (pretty much everyone does), but he
+argues that they aren’t functionally important.
+
+One of his arguments is that there is a profuse connectivity across columns.
+This argues against the idea that the mini-column is the unit of computation but
+it is what we need in HTM layers.
+
+The only claim really under contention, vis-à-vis the Horton paper, is whether
+cells in a mini-column share feedforward receptive fields.  As the paper points
+out it is extremely difficult to detect this, as mini-columns are very narrow
+(35-50um wide and 2500um tall).  It is also likely that the cells in a
+mini-column are not exactly linear.  They can move about as much as they want as
+long as the connections are maintained. Neocortical tissue is more like tapioca
+and less like wood.
+
+We propose that cells in a mini-column will exhibit very different responses
+during learned sequences.  This exact behavior has been documented.  However,
+some people argue this proves that the cells in the mini-column do not share
+common receptive fields!  So you have to be careful when reading claims.  Was
+the animal awake, was it a brain slice, what exact stimulus is being used?
+
+HTM theory provides an elegant explanation for the conflicting data and
+confusion about mini-columns.
+
+\section{Sparse Distributed Representations}
+
+A core aspect of HTM theory is that sparse distributed representations (SDRs)
+are used everywhere in the brain. In this section we summarize neuroscience
+research papers supporting various aspects of this idea.
+
+\subsection{Olshausen: Sparse coding}
+
+The 1996, 1997 papers \cite{Olshausen1996, Olshausen1997} by Olshausen and Field
+represent the first computational papers on sparse representations in the
+cortex. Their work has been very influential in the machine learning and
+neuroscience. The 2004 paper \cite{Olshausen2004} is shorter and easier to read,
+more of a review.
+
+\subsection{SDR object representations in IT}
+
+\cite{Kiani2007} is an extensive study of SDR-like properties in IT. They
+measured responses of 600 neurons in monkey IT to 1000 images. They analyzed the
+similarity between all pairs of responses. By doing agglomerative clustering
+they show that objects tend to cluster according to natural categories. i.e.
+similar objects have similar representations. They use many different distance
+methods, though only one is really shown in detail.
+
+The selectivity of single cells was imperfect compared to cell population as a
+whole. Many cells discriminated between combinations of categories. In other
+words it is a distributed representation.
+
+They showed that lower level simple and complex features (roughly equivalent to
+V1, V2) cannot account for these similarity metrics.
+
+Note that each image was only presented for 105ms, so it's essentially a flash
+inference case.
+
+\subsection{SDR episodic memory in hippocampus} This paper \cite{Wixted2014}
+provides supporting evidence that a sparse distributed neural code  is used for
+episodic memory in human hippocampus. Specifically, they showed that  (i) a
+small  percentage of recorded neurons responded to any one target and (ii) a
+small percentage of targets  elicited a strong response in any one neuron
+
+\subsection{Babadi: Sparseness and Expansion}
+
+
+The paper \cite{Babadi2014} is tangentially related to our SDR work. I am
+including it here only because we might want to cite it in our
+theory papers. I think there are several key differences:
+
+\begin{itemize}
+\item They are focused on sparseness combined with expansion. This is a bit
+strange, since expansion is not required and not found everywhere in the cortex.
+
+\item They require full connectivity matrix between the input layer and the
+encoding layer
+
+\item They are using analog weights and a very different distance function
+(Euclidean distance instead of overlap)
+
+\end{itemize}
+
+\section{Pyramidal Neurons}
+
+Pyramidal neurons are the most numerous excitatory cells in the cortex and play
+important roles in advanced cognitive functions. Understanding the
+structure and function of
+these neurons is important to HTM research.   This section  contains research
+and review papers on properties of pyramidal neurons.
+
+\subsection{Spruston: Pyramidal neuron review}
+
+This paper \cite{Spruston2008} contains a very nice review of
+pyramidal neurons, including their various regions, active dendritic
+properties, number of synapses, etc. They focus on the commonalities across
+different cortical areas and hippocampus.
+
+\subsection{Polsky: computational subunits in dendrites of pyramidal cells}
+Polsky et al \cite{Polsky2004} showed that the thin basal dendrites of pyramidal
+cells provide a layer of independent computational 'subunits' that sigmoidally 
+modulate their inputs prior to global summation. This challenges the often reported 
+global linear or sublinear summation of synaptic inputs in pyramidal cells.
+
+Similar ideas have been proposed in an earlier paper \cite{Poirazi2003}, which
+shows that pyramidal cells is best modeled as a "two-layer" neural network. 
+
+\subsection{Rah: Thalamocortical inputs targeted proximal basal dendrites}
+Rah et al \cite{Rah2013} used array tomography, a high resolution optical 
+microscopy method to examine the spatial distributions of thalamocortical (TC) 
+inputs onto L4 and L5 pyramidal neurons. 
+
+\emph{Main results}:
+\begin{enumerate}
+\item TC synapses primarily target basal dendrites in L5 and proximal apical
+dendrites in L4 (Fig. 8).
+\item TC inputs are biased toward certain branches and, within branches,
+synapses show significant clustering with an excess of TC synapse nearest 
+neighbors within 5-15 $\mu m$ compared to a random distribution
+\end{enumerate}
+
+\subsection{Yoshimura: vertical and horizontal inputs to L2/3 neurons}
+
+Yoshimura et al. \cite{Yoshimura2000} examined properties of horizontal inputs 
+(lateral connections) and vertical inputs (feedforward inputs from L4) to L2/3 
+pyramidal cells. They found that vertical inputs (L4->L2/3) evoke large amplitude 
+EPSPs of L2/3 pyramidal neurons, whereas horizontal inputs 
+(lateral inputs from other L2/3 neurons) caused small amplitude EPSPs with 
+large variation.
+
+\section{Active Dendrites}
+
+An important function of the neocortex is to generate predictions of what will
+happen in the future. In HTM theory proximal and distal dendrites recognize
+patterns and depolarize cells into a "predictive state". Over the last 20 years,
+the properties of active dendrites have become a topic of great  interest to the
+neuroscience community. Active dendrites seem to be coicidence detectors,
+detecting a temporal coincidence of activity within a portion of the dendrite
+through "NMDA spikes". These spikes usually don't cause a neuron to spike but
+they  seem to prime the cell and make it more likely to generate an axon
+potential, and generate it faster than it would have otherwise.
+
+HTM theory says that these properties form the underlying neural mechanisms for
+prediction and inference. This section contains numerous papers describing
+current neuroscience knowledge on active dendrites.  Some of the papers also
+show that apical dendrites also have very interesting special properties.  Much
+of our current HTM research is focused on understanding dendritic properties in
+detail.
+
+\subsection{Antic: Decade of NMDA Spikes}
+From Jeff: \emph{This is a short and relatively easy to read paper that covers
+ the basics of NMDA dendritic spikes including some of the history.  It might be a
+good introduction to the topic.}
+
+The paper \cite{Antic2010} describes evidence for the HTM "predictive state". A
+non-apical NMDA spike can depolarize a cell body (page 2998, middle of right
+column). The time course of this depolarization is interesting - the paper shows
+evidence for a more sustained depolarization than we typically model in HTMs.
+This could be used to help combat temporal noise or it could support the "learn
+on one cell" mode.
+
+They also provide evidence that NMDA spikes are highly localized events
+incorporating a small dendritic segment. They are localized in space (10-40
+microns) and localized in time. See page 2998, middle of left column.
+
+\subsection{Larkum: Synaptic integration in tuft dendrites}
+
+Although this paper \cite{Larkum2009} is primarily about apical tuft dendrites
+it is also a good introduction to dendritic spikes in general, including basal
+dendrites.  Figure 4H is a good summary diagram of how to think about a typical
+pyramidal neuron where the apical tuft dendrites act as a set of coincidence
+detectors similar to how the basal dendrites act as a set of coincidence
+detectors.  The apical tuft dendrites generate a Ca spike and the basal
+dendrites generate a somatic Na action potential.
+
+\subsection{Branco: How dendritic segments integrate their inputs}
+
+This paper \cite{Branco2011} contains some useful data on dendritic segments
+and how they integrate their inputs. Summary of findings:
+
+\begin{enumerate}
+
+\item Proximal dendrites sum over their synapses linearly. Synapses sum linearly
+and inputs must converge at the exact same time. They also show that more distal
+dendritic branches show threshold like (sigmoidal) response properties. This is
+nice confirmation for our model.
+
+\item Distal dendrites have broader temporal integration windows. Quote: "We show
+that single cortical pyramidal cell dendrites exhibit a gradient of temporal
+summation and input gain that increases from proximal to distal locations. This
+suggests a progressive shift of computational strategies for synaptic inputs
+along single dendrites.
+
+Near the base if inputs are more than a few msecs apart, the evoked potential
+drops significantly. Confirmation that proximal dendrites act as coincidence
+detectors. Segments farther away from the base can sum over longer temporal
+intervals. At the most distal locations, evoked potential stays constant for
+much longer than 10 msecs.
+
+Another way to phrase this is that proximal segments require precise synchrony
+(coincidence detection), distal segments do not require such precise timing.
+
+
+\item More distal segments have higher gain (sigmoid gain) and require fewer
+synapses to fire. As a consequence, they also state that really distal segments
+can be as effective or even more effective than proximal dendrites in driving
+axonal output. Not sure what to make of this.
+
+
+\item They show all this in Layer 2/3 as well as Layer 5 pyramidal cells.
+
+\end{enumerate}
+
+Some reactions to temporal property: We don't model the timing property of
+distal segments today, but this property could be very useful. For example
+longer temporal scales can be helpful in dealing with temporal noise. A longer
+scale will make us more resistant to temporal insertions. It could also be used
+to create connections from a single segment to time steps t-1 and t-2. This will
+make us more robust to temporal deletions. (This is similar to our old
+pooling idea.)
+
+
+Distal inputs into L4 can be coming in at different time scales (motor commands
+could be slower than sensory input). A longer temporal integration period may be
+necessary for proper sensorimotor inference.
+
+If apical dendrites have much larger temporal integration windows, this could be
+very useful for feedback which necessarily has a slower time scale.
+
+\subsection{Losonczy: Integrative Properties of Active dendrites}
+
+This paper \cite{Losonczy2006} contains a detailed study of exactly how many
+synapses are required to initiate a dendritic spike in hippocampal pyramidal
+neurons.
+
+Their study suggests that 17-20 active synapses are required for
+dendritic spiking. They show that the synapses need to be within 6 msecs,
+confirming the hypothesis that these dendrites are acting like a coincidence
+detector.  If you spread out the activity to 50 msecs you do not see spiking.
+
+The spiking is specific to a branch. The synapses do not need to be
+tightly spatially clustered but can be anywhere on a branch. They quote that
+a branch typically has 300 to 400 synapses. This suggests that a branch can
+detect noisy patterns (the threshold is lower than the total number of cells)
+or that they are detecting a union of patterns, or both.
+
+\subsection{Major: Active properties of dendrites}
+
+This paper \cite{Major2013} cites evidence that distal dendritic spikes often
+have a weaker modulatory effect. (Proximal connections are thought to have a
+stronger effect.)
+
+They review different types of cell models.
+
+They provide numbers regarding the minimum number of synapses required to
+trigger dendritic spikes that match up very well with our formal analysis of
+SDRs.  NMDA spike in distal dendrites can be evoked by as few as 10 active
+synapses that are clustered together (page 17, top left) or 20 spread along
+the branch. Note that the effect of spatial clustering is slightly different
+than reported in \cite{Losonczy2006}.  However as they point out,
+these numbers are rough and can vary dynamically (e.g. as a result of
+dendritic inhibitory input).
+
+\subsection{Major: NMDA spikes in basal dendrites of pyramidal neurons}
+
+This paper \cite{Major2008} shows that glutamatergic inputs clustered over 
+approximately 20-40 microm can elicit local NMDA spike/plateau potentials in 
+terminal basal dendrites of cortical pyramidal neurons.
+
+\subsection{Golding: calcium spike in apical dendrites of pyramidal neurons}
+
+This paper \cite{Golding1999} shows calcium spikes are initiated in the apical 
+dendrites of CA1 pyramidal neurons and drive bursts of sodium-dependent action 
+potentials at the soma. A predicted cell could fire bursts of action potentials 
+through this mechanism. 
+
+\subsection{Larkum: BAC firing hypothesis}
+
+Apical dendrites seem to have a special integration zone which can cause that
+region of the cell to be depolarized for sustained periods of time.
+
+In addition, feedback input to apical dendrites by themselves can cause strong
+action potentials.   If this is coincident with matching feed forward input, the
+cell bursting can be sustained for a period of time. Mechanisms for that are
+reviewed. Figure 3a is an example of this.
+
+\emph{
+...this article \cite{Larkum2013} has dealt with the biophysical
+evidence for the existence of an associative firing mechanism in pyramidal
+neurons and its influence on the input/ output function. This degree of
+integration between the micro- and macroarchitecture, as well as inbuilt
+complexity at the cellular level, invites speculation about whether and how the
+whole system utilizes this feature. The importance of this mechanism
+conceptually is that the pyramidal neuron is able to detect coincident input to
+proximal and distal dendritic regions, investing the cortex with an inbuilt
+associative mechanism at the cellular level for combining feed-forward and
+feedback information.}
+
+\emph{The BAC firing hypothesis presented here offers a cellular mechanism that
+addresses a number of questions about the cortex. It suggests that the
+pyramidal neuron cell type is an associative element which carries out the same
+essential task at all cortical stages: that of coupling feed-forward and
+feedback information at the cellular level.}
+
+
+Martinotti neurons blocking dendritic activity - what is this for? Need to
+review. Could this turn off pooling when columns burst?
+
+
+\subsection{Palmer: NMDA Spikes in L2/3 neurons}
+
+Few papers talk about dendritic NMDA spikes in Layer 2/3 pyramidal neurons.
+That is the topic of this paper \cite{Palmer2014} showing that Layer 2/3 cells
+act similarly to the more studied L5 and Hippocampal Ca1 pyramidal neurons.
+
+Another study \cite{Larkum2007} studies dendritic spike in the apical dendrites of L2/3 pyramidal neurons. They conclude that L2/3 neurons can generate dendritic spikes similar to L5 neurons.
+
+\subsection{Yuste et al: Apical Dendrite as a segregated functional compartment}
+
+Yuste et al \cite{Yuste1994} proposed that the apical dendrite and basal dendrite could act as two segregated functional compartments. The authors showed that the apical zone can be activated (generated Ca2+ spikes) even when Na and K conductances are blocked. 
+
+In a more recent paper, Larkum et al \cite{Larkum2009} made a similar proposal (Fig. 4) with more advanced experimental techniques. They further showed that a few NMDA spikes were needed to trigger Ca2+ spikes in the apical zone.
+
+
+\section{Synapses and Plasticity}
+
+Learning requires changes of synaptic connections between neurons. In this
+section we review papers on synaptic plasticity, with a focus on
+experience-dependent formation and elimination of synapses.
+
+\subsection{Hebb and his learning rule}
+
+Although this is often stated as Hebbian learning, Hebb did not in fact write
+"Neurons that fire together wire together". Here is what he actually wrote in
+\cite{Hebb1949}:
+
+\begin{quote}
+\emph{Let us assume that the persistence or repetition of a reverberatory
+activity (or "trace") tends to induce lasting cellular changes that add to its
+stability.… When an axon of cell A is near enough to excite a cell B and
+repeatedly or persistently takes part in firing it, some growth process or
+metabolic change takes place in one or both cells such that A's efficiency, as
+one of the cells firing B, is increased.}
+\end{quote}
+
+The wording of his actual statement is really interesting. First, he
+talks about growth processes and metabolic changes. This is consistent with the
+notion of synapses actually growing.  Second he talks about axon of cell A being
+near cell B - this is consistent with notion of potential synapses.  Third he
+talks about cell A persistently taking part in cell B’s activity. This implies a
+temporal and causal relationship, not just instantaneous correlation. In fact
+he discusses sequences quite a bit in his book. If  you  really  want to read
+into it, his exact wording can be seen to be consistent with active dendrites
+and the HTM learning rules.
+
+\subsection{Chklovskii: Potential synapses}
+
+This paper \cite{Chklovskii2004} includes evidence and arguments for dynamic
+synapse formation,  potential synapses, etc. Jeff says on the NuPIC Theory
+mailing list:
+
+\emph{Classic Hebbian learning is about strengthening synapses, but we are
+suggesting that new synapses are formed. I think you are asking how this is
+possible biologically. The idea for “potential synapses” comes from a researcher
+Chklovskii.  An axon and dendrite that are near each other but that are not
+connected can still sense pre- and post-syaptic activity and this is sufficient
+for them to start to grow a new synapse when they are active at the same time.
+What is actually is grown is a “spine” that connects the axon and dendrite.  The
+synapse is on the end of the spine.  In addition, glial cells have been shown to
+act as intermediaries.  They can encourage a dendrite and axon to move/grow
+closer together when they fire at the same time.  Glial cells effectively
+increase the number of potential synapses.  Finally, the ends of the dendritic
+and axonal tress are constantly growing I different directions trying to find
+new useful connections.  It is now well known that synapses and spines form
+during learning and they also disappear.  This can happen rapidly, in a matter
+of minutes in some cases.}
+
+\emph{I believe the concept of potential synapses and the growth of new synapses
+applies to both proximal and distal synapses.  In our temporal memory
+implementation we decided to implement it differently purely to make the
+software more efficient and to use less memory.  Instead of maintaining a large
+pool of potential synapses, most of which would have 0 permanence, we choose
+from the set of active cells.}
+
+\subsection{Experience-dependent synaptogenesis}
+
+The review paper by Bailey and Kandel \cite{Bailey1993} presents numerous early
+researches supporting synapse formation during formation of long-term memory.
+
+Zito and Svoboda 2002 \cite{Zito2002} is a short review of activity-dependent
+synaptogenesis in the adult cortex. This review first presented the common view
+of synaptic plasticity, which argues initial establishment of synaptic
+connections occurs independent of learning, and experience refines existing
+synaptic connections, rather than create new ones (para 2, page 1). Zito and
+Svoboda then presented a different view, which argues "short-term plasticity
+depends on existing synapses, but long term changes in synaptic strength are
+accompanied by structural rearrangements, through formation or elimination of
+synapses. This second view is consistent with the current HTM algorithms.
+
+A more recent review paper by Holtmaat and Svoboda \cite{Holtmaat2009} presents
+more recent findings with imaging techniques. I find the numbers in
+supplementary table S1 very useful, it shows what fraction of synapses are
+stable from many different studies.
+
+\subsection{Losonczy: Branch specific plasticity}
+
+HTM theory requires that if a dendritic segment becomes active and then that
+cell later fires, that we learn on that specific segment. This requires a
+coupling between segment activity and later activity at the soma. This is a
+fairly strong and specific prediction of HTM learning rules.
+
+This paper\cite{Losonczy2008} seems to be the first demonstrated evidence for
+this type of plasticity rule. First they show that there is branch (segment)
+specific potentiation (learning), isolated from other branches. Second, they
+show that the branch specific potentiation requires a back action potential
+(top left of page 439).
+
+They also show that there are weak branches and strong branches.  The strong
+branches tend to be near the soma (proximal) and the weaker branches tended to
+be terminal (distal). They also show that eventually the weaker branches can
+cause the cell to fire – this is not currently modeled in HTM.
+
+Figure 1 in their supplementary materials is very closely related to HTM
+theory. They hypothesize that dendritic segments are used for storing
+individual elements of sequence and that the efficiency of processing
+sequences will be increased. To quote: \emph{The repeated occurrence of the
+sequence item [snip]will be stored in the increased branch coupling strength,
+such that subsequent arrival of the item will have an enhanced efficacy and
+improved capability to evoke a precise output.} Although they don't explicitly
+discuss prediction and high order sequences, the experiments and results in this
+paper are very consistent with HTMs.
+
+See also \cite{Gordon2006} where they demonstrate branch specific plasticity
+rules in distal basal dendrites vs proximal dendrites.  Distal basal dendrites
+require NMDA spikes in order to learn. It is not clear if their finding that
+such plasticity requires the presence of BDNF molecule is inconsistent with
+Losonczy.
+
+
+\subsection{Yang: Branch specific dendritic learning}
+
+This amazing paper \cite{Yang2014} studies learning on specific dendritic
+branches in awake rats while they go through normal behavior. It shows learning
+induced dendritic branch specific formation of synapses, which is consistent
+with the temporal memory algorithm and high order sequences. This paper deals
+with high order motor sequences. Ignore the sleep part.
+
+
+\subsection{Imaging the growth of synapses}
+
+Most recent studies are use fancy image techniques to study synapse formation.
+Trachtenberg et al \cite{Trachtenberg2002} first shows experience-dependent
+synapse formation and elimination with long-term imaging. Niell et al.
+\cite{Niell2004} contains a movie showing how fast synapses and dendritic
+segments can change dramatically within 24 hours.
+
+\section{Sequence Learning}
+
+In this section we review evidence of sequence learning in the cortex. One
+prediction of HTM theory is that unexpected input will cause  column-level
+bursting  activity in the cortex whereas predicted inputs are represented by
+SDRs. Expected input will lead to extremely sparse activity (one or two cells
+per active column). Another prediction is that formation and elimination of
+lateral connections between neurons is a key mechanism for sequence
+learning. These predictions are supported by the following studies.
+
+\subsection{Vinje and Gallant: Temporal sequences are sparser}
+
+Part of a classic set of studies for HTM sequence learning. This paper
+\cite{Vinje2002}
+demonstrates increasingly sparse neural activity when a neuron gets larger
+spatio-temporal context compared to flash input. Moreover the same set of
+neurons tend to fire given the same temporal context. (They show temporal
+context by creating� that simulate eye saccades.)
+
+There are some problems with the study. For one, the eye movements are not
+initiated by the monkey. Instead the movie simulates what the monkey might see
+during saccades. This is a huge issue. Their analysis also assumes there are no
+temporal correlations in neural activity. Another big problem since temporal
+pooling creates temporal correlations. They don't really think in terms of the
+monkey learning sequences. Etc.
+
+\subsection{Milier: Visual stimuli recruit intrinsically generated cortical ensembles}
+
+This paper \cite{Miller2014} provides some supporting evidence of the Temporal Memory algorithm. 
+
+Neuroscientists traditionally think that neurons in the cortical encode sensory
+stimulus individually: each neuron has some preferred stimulus, which can be
+measured through receptive field (RF) mapping. When a stimulus comes in, a
+neuron will fire if it matches its RF well, and will stay silent otherwise.
+
+What's interesting in this paper is that the authors suggest groups (ensembles)
+of neurons , rather than individual neurons, are the functional units of
+cortical activity. When a stimulus is presented, cortical activity is dominated
+by coactive groups of neurons.  Presumably these ensembles are supported via
+learned recurrent excitatory connections, since they also appears during
+spontaneous activity.
+
+I find this consistent with the temporal memory algorithm (previously known as
+the CLA algorithm), which suggest external stimulus triggers a unique sequence
+of cells, which are connected via lateral connections. However, the technology
+used in this paper (two-photon imaging) has a relatively poor temporal
+resolution, so it is not possible to tell whether the "coactive group of
+neurons" fires sequentially or simultaneously.
+Chetan:What else is interesting is that they found single neurons to participate
+in multiple ensembles, regardless of how specialized they were for a stimulus at
+an individual level. (See section titled "Single Neurons Participate
+Promiscuously in Multiple Ensembles").
+
+Also, this is interesting: "Taken together, our findings demonstrate that when
+individual neurons are activated, they are more likely to be activated together
+with a specific set of other neurons as an ensemble. At the same time,
+individual neurons can participate in multiple ensembles, dynamically
+reorganizing their allegiance with different sets of neurons."
+
+\subsection{Meyer: surprise responses in IT}
+
+Subutai: I've been trying to locate strong experimental evidence that surprise
+inputs result in cells in mini column firing (aka bursting).  The attached paper
+doesn't quite show that, but it has some other relevant information
+\cite{Meyer2011}.  Unpredicted stimuli elicits a stronger response in IT than
+predicted stimuli. The mean firing rate of neurons is higher with unpredicted
+stimuli (Figure 2). In figure 2A you do see a slightly increased mean response
+rate to predicted stimuli (above baseline) but the average response is higher
+for unpredicted stimuli. All this is consistent with column bursting in temporal
+memory. In this paper you can't tell whether the surprise is along a minicolumn
+or not. Additional experiments showed that unpredicted firing had slightly
+longer latency than predicted firing. This is consistent with predicted cells
+firing earlier due to depolarization. Predicted firing was about 5 msecs faster
+than unpredicted firing, which is also about what you would expect.
+
+\subsection{Fishman: Oddball responses in auditory cortex}
+ 
+From EEG recordings, people know that unexpected stimulus ("deviant" sounds in
+this study), will elicit stronger response. This paper \cite{Fishman2012}
+studies the neural mechanisms and brain regions underlying this effect in the
+primary auditory cortex. They confirmed that spiking response were larger when
+elicited by the unexpected stimulus, and the difference between expected and
+unexpected stimulus were more prominent in later activity. The unexpected
+stimulus can be introduced either in a oddball paradigm in which rare deviant
+tones are randomly interspersed among frequent standard tones (Fig. 1B), or in
+a random sequence where tone is unexpected (Fig. 1C).
+
+One downside of this study is they used a very simple sequence for the oddball
+paradigm. It will be more interesting to see whether the same phenomenon holds
+when they play a more complex tone sequence (an oddball within a melody). They
+conclude that the difference between unexpected stimulus and repeated expected
+stimulus is due to stimulus specific adaptation (rather than prediction).
+
+\subsection{Gavornik: sequence learning in V1}
+
+\emph{Main result}: Gavornik and Bear \cite{Gavornik2014} shows that neurons in
+V1 adapt to sequences. Apparently sequence learning has not been demonstrated in
+V1 before. Mice were trained on a particular sequence of sinusoidal gratings,
+ABCD.  After training ABCD evoked a much larger response than DCBA. Also much
+larger than ABCD in a control group.  They found that timing makes a difference.
+A change in the timing of ABCD causes lower responses as well.
+
+\emph{Other results}: The mice learn very quickly, within one day (2 mins of
+total
+visual stimulation). During this time they saw the sequence 200 times.  The
+sequences were robust to dropout. ABCD had similar responses to A\_CD, both of
+which were larger than E\_CD.  Their results don't seem to be layer specific.
+They find larger responses to trained sequences in all layers.   Sequence
+learning was stimulus specific and localized; it did not transfer to the other
+eye.
+
+\emph{Oddity 1}: Why would responses be larger for a trained sequence? We would
+expect
+sparser activity after training. They are measuring evoked field potential in
+layer 4. After discussing with Paxon it seems there is some controversy as to
+what LFP or VEP actually measures. It measures activity in all cells: both
+inhibitory and excitatory but there is evidence that it might be more sensitive
+to inhibitory cells.  In either case a larger response could be consistent with
+HTM theory, since there would be a fair amount of inhibitory suppression within
+mini columns for predicted sequences.
+
+\emph{Oddity 2}: they claim that sequence learning occurs without NMDA receptor
+activation (page 3). I didn't understand that portion. Does that mean NMDA
+spikes are not required?
+
+\subsection{Martin: Functional heterogeneity in neighboring neurons of V1}
+ 
+\emph{Main result}: Although neurons in V1 are clustered according to their stimulus
+ preferences, responses to complex visual stimuli are highly heterogeneous between 
+ adjacent neurons \cite{Martin2013}. In response to gratings and visual noise, signal and noise 
+ correlations were well correlated with each other, but less so for responses to movies. 
+ 
+ Similar results are reported in \cite{Yen2007}, which shows that when stimulated with 
+ complex, time-varying natural scenes (i.e., movies), nearby striate neurons exhibit highly 
+ sparse and heterogenous responses.
+ 
+\emph{Other result}: "trial-to-trial fluctuations (termed �noise�) were poorly correlated between 
+ neighboring neurons, suggesting low degrees of common input." This is consistent with 
+ our assumption that cells in the same mini-column has different lateral connections.
+
+\subsection{Nikolic: Distributed memory with sequences}
+
+The sequence memory in HTM predicts that the current sparse pattern of cell
+activity contains information about past stimuli when recognizing a high order
+sequence. With high order sequences you should be able to take the current
+activity and reconstruct the past patterns. The paper by \cite{Nikolic2009}
+shows exactly this pehenomenon. Experiment setup: sequences of letters were
+presented to lightly anesthetized cats. Each letter is presented for 100ms and
+there is a 100-ms blank interval between letters. 124 randomly selected V1
+neurons were recorded during the stimulus presentation. The author found that
+the current active V1 neurons contains almost equal information about both the
+current and the preceding stimulus.  They use a classifier to determine this,
+and the phenomenon is illustrated in Fig. 3.
+
+\section{Temporal Pooling and Invariances}
+
+The idea of temporal pooling is that after learning, predicted inputs will
+lead to stable (invariant) representations in higher levels of the cortical
+hierarchy despite changes of inputs at lower levels of the hierarchy. We
+summarize supporting neuroscience evidences for this idea below.
+
+\subsection{Li and DiCarlo: Learning invariances}
+
+This paper \cite{Li2008} very closely supports HTM temporal pooling ideas,
+including the role of sensorimotor inference in forming invariant
+representations.  A detailed summary follows:
+
+They found neurons in monkey IT that responded strongly to a particular object
+P (preferred) and moderately to another N (non-preferred). Tested position
+tolerance of these objects to get a baseline.  The difference between the
+responses to P and N is the selectivity for this neuron.  They did this
+for about 100 neurons in two monkeys, and many different objects.
+
+They then altered temporal contiguity of stimuli and tested the effects on these
+invariant representations.
+
+
+
+In the experiment, monkeys viewed altered stimuli for several hours. Basically
+there were three positions for each object: centered, 3 above and below. For a
+given P object, the position above or below was designated the swap position.
+As eyes moved around, a P object would be shown in the swap position but was was
+replaced by the N object during saccade. (Each saccade lasts 23 msecs.) This
+would happen every time P object was shown in the swap position.  A P object in
+the non-swap position didn't change when the money saccaded. (The swap position
+was randomly changed for different objects.)  The monkey is effectively blind
+during a saccade, so they don't see the change - they just see the new object
+after fixation.
+
+Their prediction: invariance selectivity at swap position would change.
+Selectivity in the non-swap position won't change.  This is what happened. At
+swap position cells did not discriminate as well between P and N. Neuron became
+more responsive to N and less responsive to P, but only at that location. Change
+was location specific and shape specific, so very specific to this particular
+invariance. These changes cannot be explained by attention affects or
+retinotopic adaptation (everything was counter balanced).
+
+However another paper of theirs seemed to indicate that temporal contiguity
+alone was not enough. Looks like eye movements may also be required (this is
+their reference 10 - Cox and DiCarlo, 2005. Attached paper 2).
+
+They call this effect �Unsupervised temporal tolerance learning� or UTL. This is
+just temporal pooling for us.  The behavior they describe is exactly the pooling
+behavior we would expect in layer 3.
+
+In \cite{Cox2005} they have the same experiment as \cite{Li2008}, but
+here they used human subjects and a same-difference psychological test.  
+Swapped objects were much more likely to be confused than non-swapped objects.
+They did the same experiment without eye saccades, and did not see the effect. 
+
+\emph{"Moreover, the confusions are predictable in that they are what is
+expected if the visual system assumes that object identity is stable across the short time
+interval of a saccade."}
+
+
+\subsection{Isik et al: Learning invariance using temporal associations}
+
+Yuwei: Here \cite{Isik2012} is a modeling study from Tomaso Poggio's lab that
+ is very
+relevant to the idea of temporal pooling. This paper aims to explain the
+"invariance disruption" experiments, which is the study Subutai found that
+supports temporal pooling. In that experiment, Li and DiCarlo
+\cite{Li2008} showed that
+individual IT neurons change their selectivity in a position-dependent manner
+after exposure to the altered visual experiment. The modeling study here used a
+temporal association learning rule to learn transformation invariance through
+natural visual experience. The basic underlying idea is very similar to temporal
+pooling: since the external visual scene usually changes at a slow time scale,
+"temporal adjacency" is a good cue that two images are of the same object.
+
+I think the major difference between this study and what we have is they don't
+distinguish between predicted and unpredicted inputs. In our algorithm, we only
+start temporal pooling when the input is predicted. They also don't have a motor
+component in their model. Nevertheless, I feel this line of study (developing
+invariance with temporal association rules) is very relevant for us to think
+about temporal pooling. i am planning to take a look at some papers along these
+lines.
+
+Jeff:  In addition to Yuwei's observations I would add:  - They make a
+distinction between generic transformations� (such as image translations) and
+�class-specific translations� (such as rotation through plane).  They argue that
+generic transformations apply to all objects but class-specific transformations
+do not.  I am struggling to see if this distinction really exists.  I would
+prefer that temporal pooling works the same in all cases and that this
+distinction doesn't exist.
+
+
+Another thing they talk about which I found odd is they ask, why should
+training continue throughout life?  They say generic transformations can be set
+early in life.  This seems ridiculous to me.  Perhaps they are trying to show
+that HMAX (which doesn't learn at all) is a good model.  They show a chart
+(figure 2) showing that for translation fixed HMAX is as good as learning
+temporal pooling.
+
+\section{Feedback}
+
+What is feedback? Information processing in the cortex is hierarchical and
+bidirectional. Sensory input to the hierarchy occurs at the lowest levels and
+flows from the bottom to the top, i.e. in the feedforward direction. We would
+characterize this process as bottom-up. We define lateral connections as those
+connections that occur between neurons in the same \emph{layer} (not level). Here
+we define feedback as none of those. Specifically here they are projections from
+higher levels back to down to lower levels. We do not include
+lateral connections in our definition of feedback (this distinction is often
+confusing in the literature).
+
+We leave open for now other types of connections, such as cortico-thalamic and
+intralaminar.  Some might say that cortico-thalamic pathways are involved in
+attention, which is a top-down process and hence involves feedback. This would
+not be unreasonable. Similarly there might exist intralaminar connections
+(within a level) to apical dendrites where more stable patterns bias less stable
+patterns. This could also be reasonably called "feedback". We will place these
+categories of connections firmly in our "gray area" bag until we better
+understand the precise mechanisms and anatomy.
+
+\subsection{Makino: learning enhances impact of top-down pathways}
+
+Makino's paper \cite{Makino2015} is an excellent study of learning in feedback
+pathways. The paper studies activity and learning in layers 2/3, 4, and feedback
+projections into layer 1 from a higher region. Their experimental protocol
+involved active visually guided avoidance and as a control, passive visual
+experience. They examined plasticty in area V1 in mice. They identified a
+specific higher level (RSC) that projects to V1 as a major source of top-down
+input, and restricted top-down measurements to axons projecting from RSC to V1.
+
+They found that during active learning top down activity increased over several
+days. They measured  top-down activity as  the activity of axonal boutons
+projecting from RSC to layer I. This increase did not occur for the passive
+learning case. Activity in Layer 2/3 and L4 became much sparser in general. The
+difference in Layer 2/3 was larger in the active learning case than in the
+passive learning case.
+
+Activity in Layer 2/3 neurons and RSC boutons ramped up significantly during the
+active trials, in anticipation of specific visual events.  This did not occur
+in the non-active condition.  Layer 4 did not show any such ramp up.  They show
+that RSC activity is required for the Layer 2/3 ramp up. RSC inactivation also
+impaired the performance of the active learning task.
+
+They also measured activity of interneurons and suggested that top-down activity
+in general inhibits bottom-up pathways. As they state, \emph{"such learning-related
+shifts in the neocortical operation mode may be a fundamental feature of
+cortical computations underlying associative feature binding ... by effectively
+ignoring irrelevant fluctuations in sensory inputs resulting from the noise in
+the sensory environment."}
+
+
+
+\section{Thalamocortical Pathways}
+
+\subsection{Sherman and Guillery: The Book}
+
+For those interested in going deeper into the role of the thalamus, this is an
+excellent book \cite{Sherman}. Suggested by Jeff, it is a well written summary
+of a modern view of cortico-thalamic connections. It describes, for example, the
+connections between every cortical region and the thalamus including the role of
+sub-cortical motor centers. It does require some neuroscience background but is
+much easier to read than many of the really dense neuroscience papers. The
+diagrams are also very clear.
+
+\section{Sensorimotor Inference}
+
+The idea of sensorimotor inference is that cortex makes predictions of future
+inputs based on both the current inputs and a copy of motor command that is
+about to be executed.  Some supporting evidences is summarized below.
+
+\subsection{Bartoli: SDR representations of tools}
+
+This paper \cite{Bartoli2014} is concerned with merging of information from
+visual properties of tools to the motor coordinates for using and interacting
+with those tools. Looking at premotor and motor populations of neurons coding
+for specific hand configurations.
+
+An "affordance" is the set of stuff that can be done to an object.  It is the
+possibility of some actions that can be performed on an object.
+
+Neurons in premotor cortex code for object specific and grip specific actions.
+(Rochat, 2010). A subset of these neurons fire for executing a specific
+hand-object and a specific visual representation of that object. (Murata 97)
+This activity is indepedenent of whether that action actually occurs later.
+
+This paper shows that the same specific patterns observed in monkeys also occurs
+in humans.  They visually show specific tools to people, and observe very
+specific "motor plans" arising as a result of the stimuli. The main contribution
+is to "close the gap" between monkey and human data. In addition, they show that
+very specific visuomotor representations can form in humans as soon as 150 msecs
+after visual presentation of the object.  The did a TMS study, so the stimulated
+premotor cortex (they did not perform direct neural recordings).  They did
+record activity from hand muscles.
+
+\subsection{Saleem: Integration of visual and locomotion in V1}
+
+The Saleem study \cite{Saleem2013} clearly showed that V1 (at least in mouse) 
+integrates visual motion and locomotion signals during active navigation. Specifically,
+
+\begin{enumerate}
+\item Many V1 neurons are tuned for running speed (Fig. 1-2). There is a specific preferred 
+running speed, more than a nonspecific increase of activity level \cite{Niell2010}.
+\item Nearly half of the V1 neurons were reliably driven by the combination of visual speed and 
+run speed (i.e., neurons are tuned to a weighted sum of visual speed and run speed Fig. 3)
+\item As a population, V1 neurons predicted a linear combination of visual and run 
+speeds better than either visual or run speeds alone (Fig. 4).
+\end{enumerate}
+
+\subsection{Rauschecker: where and what pathway in auditory cortex}
+
+The "where" and "what" pathway, which was original proposed to describe the 
+dorsal and ventral pathway of the visual system,may be generalized to other sensory 
+modalities. Specifically, this paper \cite{Rauschecker2000} 
+showed that one region of the auditory cortex are selective to spatial locations and 
+another region is selective to auditory pattern or objects. 
+
+
+\subsection{Wolpert: Forward models}
+
+This paper \cite{Wolpert1996} discussed sensorimotor inference from a
+computational perspective. They proposed a forward model that uses the current
+state of the motor system and motor command to predict the next state. This is
+similar to our sensorimotor inference algorithms. The forward model concept in
+this paper is widely used in motor control and sensorimotor inference.
+
+\subsection{Sommer: Efference Copy}
+
+This review paper \cite{Sommer2006} summarizes a series of studies that
+established a  pathway for corollary discharge signal (the motor command copy to
+sensory cortex), explains how predictive shifting of receptive field is
+constructed with CD signal, and how visual stability is achieved despite
+eye-movements.
+
+
+\bibliographystyle{plain-annote}
+%\bibliographystyle{apalike}
+\bibliography{htm_bibliography}
+
+\end{document}
