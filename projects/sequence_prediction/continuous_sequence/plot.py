@@ -51,8 +51,6 @@ def plotMovingAverage(data, window, label=None):
 
 def plotAccuracy(results, truth, train=None, window=100, label=None, params=None, errorType=None):
   plt.title('Prediction Error Over Time')
-  plt.xlabel("# of elements seen")
-  plt.ylabel("NRMSE over last {0} tested {1}".format(window, 'elements'))
 
   error = results[0]
 
@@ -63,7 +61,7 @@ def plotAccuracy(results, truth, train=None, window=100, label=None, params=None
     error[np.where(x < params['compute_after'])[0]] = np.nan
   movingData = movingAverage(error, min(len(error), window))
 
-  if errorType == 'squared_deviation':
+  if errorType == 'square_deviation':
     print label, " Avg NRMSE:", np.sqrt(np.nanmean(error))/np.nanstd(truth)
     avgError = np.sqrt(np.array(movingData))/np.nanstd(truth)
   elif errorType == 'negLL':
@@ -74,7 +72,8 @@ def plotAccuracy(results, truth, train=None, window=100, label=None, params=None
 
   plt.plot(x, avgError, label=label,
               marker='o', markersize=3, markeredgewidth=0)
-
+  plt.xlabel("# of elements seen")
+  plt.ylabel("{0} over last {1} record".format(errorType, window))
   if train is not None:
     for i in xrange(len(train)):
       if train[i]:
@@ -89,12 +88,11 @@ def plotAccuracy(results, truth, train=None, window=100, label=None, params=None
   # plt.ylim(0, 1.001)
 
 
-def computeSquareDeviation(predictions, truth, iteration, resets=None, randoms=None):
+def computeSquareDeviation(predictions, truth, resets=None, randoms=None):
 
   square_deviation = np.square(predictions-truth)
-  x = range(0, len(square_deviation))
 
-  return (square_deviation, x)
+  return square_deviation
 
 
 def computeLikelihood(predictions, truth, encoder):

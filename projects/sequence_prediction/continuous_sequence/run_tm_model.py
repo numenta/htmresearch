@@ -427,3 +427,9 @@ if __name__ == "__main__":
   x = range(len(negLL))
   plt.figure()
   plotAccuracy((negLL, x), truth, window=480, errorType='negLL')
+
+  np.save('./result/'+dataSet+'TMprediction.npy', predictions)
+  np.save('./result/'+dataSet+'TMtruth.npy', truth)
+
+
+

@@ -92,13 +92,13 @@ plt.savefig(figPath + 'continuous.pdf')
 
 ### Figure 3: Continuous LSTM & TM on perturbed data
 fig = plt.figure(3)
-plotLSTMresult('results/nyc_taxi_experiment_perturb/learning_window1001.0/',
+plotLSTMresult('results/nyc_taxi_experiment_continuous_perturb/learning_window1001.0/',
                window, xaxis=xaxis_datetime, label='continuous LSTM-1000')
 
-plotLSTMresult('results/nyc_taxi_experiment_perturb/learning_window3001.0/',
+plotLSTMresult('results/nyc_taxi_experiment_continuous_perturb/learning_window3001.0/',
                window, xaxis=xaxis_datetime, label='continuous LSTM-3000')
 
-plotLSTMresult('results/nyc_taxi_experiment_perturb/learning_window5001.0/',
+plotLSTMresult('results/nyc_taxi_experiment_continuous_perturb/learning_window5001.0/',
                window, xaxis=xaxis_datetime, label='continuous LSTM-5000')
 
 # load TM prediction
@@ -112,12 +112,13 @@ truth = predData_TM['value']
 predData_TM_five_step = np.roll(predData_TM['prediction5'], 5)
 iteration = predData_TM.index
 
-(square_deviation, x) = computeSquareDeviation(predData_TM_five_step, truth, iteration)
+square_deviation = computeSquareDeviation(predData_TM_five_step, truth, iteration)
 square_deviation[:5000] = None
 x = pd.to_datetime(data['datetime'])
 plotAccuracy((square_deviation, x),
              truth,
              window=window,
+             errorType='square_deviation',
              label='TM')
 plt.legend()
 plt.savefig(figPath + 'continuous_perturb.pdf')
@@ -126,6 +127,9 @@ plt.savefig(figPath + 'continuous_perturb.pdf')
 ### Figure 4: Continuous LSTM with different window size
 
 fig = plt.figure(4)
+# plotLSTMresult('results/nyc_taxi_experiment_one_shot_likelihood/',
+#                window, xaxis=xaxis_datetime, label='static LSTM ')
+
 plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window1001.0/',
                window, xaxis=xaxis_datetime, label='continuous LSTM-1000')
 
@@ -134,6 +138,37 @@ plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_windo
 
 plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window5001.0/',
                window, xaxis=xaxis_datetime, label='continuous LSTM-5000')
-plt.legend()
-plt.savefig(figPath + 'continuous.pdf')
 
+dataSet = 'nyc_taxi'
+tm_prediction = np.load('./result/'+dataSet+'TMprediction.npy')
+tm_truth = np.load('./result/'+dataSet+'TMtruth.npy')
+from nupic.encoders.scalar import ScalarEncoder as NupicScalarEncoder
+encoder = NupicScalarEncoder(w=1, minval=0, maxval=40000, n=22, forced=True)
+negLL = computeLikelihood(tm_prediction, tm_truth, encoder)
+negLL[:5000] = None
+plotAccuracy((negLL, x), truth, window=window, errorType='negLL', label='TM')
+plt.legend()
+plt.savefig(figPath + 'continuous_likelihood.pdf')
+
+
+### Figure 5:
+
+fig = plt.figure(5)
+# plotLSTMresult('results/nyc_taxi_experiment_one_shot_likelihood/',
+#                window, xaxis=xaxis_datetime, label='static LSTM ')
+
+plotLSTMresult('results/nyc_taxi_experiment_perturb_likelihood/learning_window1001.0/',
+               window, xaxis=xaxis_datetime, label='continuous LSTM-1000')
+
+plotLSTMresult('results/nyc_taxi_experiment_perturb_likelihood/learning_window3001.0/',
+               window, xaxis=xaxis_datetime, label='continuous LSTM-3000')
+
+plotLSTMresult('results/nyc_taxi_experiment_perturb_likelihood/learning_window5001.0/',
+               window, xaxis=xaxis_datetime, label='continuous LSTM-5000')
+plt.legend()
+plt.savefig(figPath + 'continuous_likelihood_perturb.pdf')
+
+
+
+expResult1 = ExperimentResult('results/nyc_taxi_experiment_continuous_likelihood/learning_window1001.0/')
+expResult2 = ExperimentResult('results/nyc_taxi_experiment_perturb_likelihood/learning_window1001.0/')
