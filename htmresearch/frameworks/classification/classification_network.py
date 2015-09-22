@@ -159,15 +159,11 @@ def _registerRegion(regionTypeName, moduleName=None):
     moduleName = "htmresearch.regions." + regionTypeName
   if regionTypeName not in _PY_REGIONS:
     # Add new region class to the network.
-    try:
-      module = __import__(moduleName, {}, {}, regionTypeName)
-      unregisteredClass = getattr(module, regionTypeName)
-      Network.registerRegion(unregisteredClass)
-      # Add region to list of registered PyRegions
-      _PY_REGIONS.append(regionTypeName)
-    except ImportError:
-      raise RuntimeError(
-        "Could not import sensor \'{}\'.".format(regionTypeName))
+    module = __import__(moduleName, {}, {}, regionTypeName)
+    unregisteredClass = getattr(module, regionTypeName)
+    Network.registerRegion(unregisteredClass)
+    # Add region to list of registered PyRegions
+    _PY_REGIONS.append(regionTypeName)
 
 
 
@@ -318,7 +314,7 @@ def createNetwork(dataSource, networkConfig, encoder=None):
     regionParams = regionConfig["regionParams"]
     regionParams["inputWidth"] = previousRegionWidth
     upRegion = _createRegion(network, regionConfig,
-      moduleName="regions.PoolingRegion")
+      moduleName="htmresearch.regions.PoolingRegion")
     _validateRegionWidths(previousRegionWidth,
                           upRegion.getSelf().cellsPerColumn)
     _linkRegions(network,

@@ -21,8 +21,7 @@
 
 import numpy
 from nupic.bindings.math import GetNTAReal
-#from nupic.research.union_pooler import UnionPooler
-from union_pooling.union_pooler import UnionPooler
+from htmresearch.algorithms.union_pooler import UnionPooler
 from nupic.support import getArgumentDescriptions
 from nupic.regions.PyRegion import PyRegion
 
