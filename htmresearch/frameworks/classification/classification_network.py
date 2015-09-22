@@ -156,7 +156,7 @@ def _registerRegion(regionTypeName, moduleName=None):
   """
   if moduleName is None:
     # the region is located in the regions/ directory
-    moduleName = "regions." + regionTypeName
+    moduleName = "htmresearch.regions." + regionTypeName
   if regionTypeName not in _PY_REGIONS:
     # Add new region class to the network.
     try:
