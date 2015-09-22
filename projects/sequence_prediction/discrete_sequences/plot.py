@@ -25,7 +25,7 @@ import argparse
 from matplotlib import pyplot
 import numpy
 
-from suite import Suite
+from expsuite import PyExperimentSuite
 
 
 
@@ -111,7 +111,7 @@ if __name__ == '__main__':
   parser.add_argument('-f', '--full', action='store_true')
   parser.add_argument('-t', '--training-hide', action='store_true')
 
-  suite = Suite()
+  suite = PyExperimentSuite()
   args = parser.parse_args()
 
   from pylab import rcParams
