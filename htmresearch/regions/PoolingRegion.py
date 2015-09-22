@@ -163,6 +163,12 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
       dataType="bool",
       count=1,
       constraints="bool"),
+    inferenceMode=dict(
+      description="1 if the node outputs current inference (default 1).",
+      accessMode="ReadWrite",
+      dataType="bool",
+      count=1,
+      constraints="bool"),
   )
 
   return poolerSpec, otherSpec
@@ -213,6 +219,7 @@ class PoolingRegion(PyRegion):
 
     # Defaults for all other parameters
     self.learningMode = True
+    self.inferenceMode = True
     self._inputWidth = inputWidth
     self._columnCount = columnCount
 
