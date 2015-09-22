@@ -48,7 +48,7 @@ def plotMovingAverage(data, window, label=None):
 
 
 
-def plotAccuracy(results, train, window=100, type="sequences", label=None):
+def plotAccuracy(results, train, window=100, type="sequences", label=None, hideTraining=True):
   pyplot.title("High-order prediction")
   pyplot.xlabel("# of elements seen")
   pyplot.ylabel("High-order prediction accuracy over last {0} tested {1}".format(window, type))
@@ -73,9 +73,10 @@ def plotAccuracy(results, train, window=100, type="sequences", label=None):
   # for i in xrange(len(testStart)):
   #   pyplot.axvspan(testStart[i], testEnd[i], alpha=0.15, facecolor='black')
 
-  for i in xrange(len(train)):
-    if train[i]:
-      pyplot.axvline(i, color='orange')
+  if not hideTraining:
+    for i in xrange(len(train)):
+      if train[i]:
+        pyplot.axvline(i, color='orange')
 
   pyplot.xlim(0, x[-1])
   pyplot.ylim(0, 1.001)
@@ -105,8 +106,10 @@ def computeAccuracy(predictions, truth, iteration, resets=None, randoms=None):
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('experiments', metavar='/path/to/experiment /path/...', nargs='+', type=str)
-  parser.add_argument('-w', '--window', type=int, default=50)
+  parser.add_argument('-w', '--window', type=int, default=100)
+  parser.add_argument('-l', '--legend-position', type=int, default=4)
   parser.add_argument('-f', '--full', action='store_true')
+  parser.add_argument('-t', '--training-hide', action='store_true')
 
   suite = Suite()
   args = parser.parse_args()
@@ -134,9 +137,10 @@ if __name__ == '__main__':
                  train,
                  window=args.window,
                  type=type,
-                 label=experiment)
+                 label=experiment,
+                 hideTraining=args.training_hide)
 
   if len(experiments) > 1:
-    pyplot.legend(loc=4)
+    pyplot.legend(loc=args.legend_position)
 
   pyplot.show()

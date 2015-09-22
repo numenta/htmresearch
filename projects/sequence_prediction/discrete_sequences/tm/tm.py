@@ -25,9 +25,9 @@ Depends on:
 - https://github.com/numenta/nupic/pull/2495
 """
 
+import json
 import operator
 import os
-import pickle
 import random
 import sys
 import time
@@ -46,7 +46,7 @@ MIN_ORDER = 6
 MAX_ORDER = 7
 NUM_PREDICTIONS = [1, 2]
 NUM_RANDOM = 1
-PERTURB_AFTER = 1000
+PERTURB_AFTER = 10000
 
 NUM_SYMBOLS = SequenceGenerator.numSymbols(MAX_ORDER, max(NUM_PREDICTIONS))
 RANDOM_START = NUM_SYMBOLS
@@ -94,18 +94,18 @@ MODEL_PARAMS = {
         "inputWidth": 2048,
         "seed": 1960,
         "temporalImp": "monitored_tm_py",
-        "newSynapseCount": 20,
-        "maxSynapsesPerSegment": 128,
+        "newSynapseCount": 32,
+        "maxSynapsesPerSegment": 40,
         "maxSegmentsPerCell": 128,
-        "initialPerm": 0.21,
+        "initialPerm": 0.31,
         "connectedPerm": 0.50,
         "permanenceInc": 0.1,
         "permanenceDec": 0.1,
         "predictedSegmentDecrement": 0.01,
         "globalDecay": 0.0,
         "maxAge": 0,
-        "minThreshold": 15,
-        "activationThreshold": 15,
+        "minThreshold": 18,
+        "activationThreshold": 18,
         "outputType": "normal",
         "pamLength": 1,
       },
@@ -267,15 +267,19 @@ def getEncoderMapping(model):
 def classify(mapping, activeColumns, numPredictions):
   scores = [(len(encoding & activeColumns), i) for i, encoding in mapping.iteritems()]
   random.shuffle(scores)  # break ties randomly
-  print sorted(scores, reverse=True)
   return [i for _, i in sorted(scores, reverse=True)[:numPredictions]]
 
 
 
 class Runner(object):
 
-  def __init__(self, numPredictions):
+  def __init__(self, numPredictions, resultsDir):
     self.numPredictions = numPredictions
+
+    if not os.path.exists(resultsDir):
+      os.makedirs(resultsDir)
+
+    self.resultsFile = open(os.path.join(resultsDir, "0.log"), 'w')
 
     self.model = ModelFactory.create(MODEL_PARAMS)
     self.model.enableInference({"predictedField": "element"})
@@ -288,61 +292,54 @@ class Runner(object):
     self.numPredictedInactiveCells = []
     self.numUnpredictedActiveColumns = []
 
-    self.i = 0
+    self.currentSequence = random.choice(self.sequences)
+    self.iteration = 0
+    self.perturbed = False
+    self.randoms = []
+
 
   def step(self):
-    if self.i == PERTURB_AFTER:
-      self.sequences = generateSequences(self.numPredictions, perturbed=True)
+    element = self.currentSequence.pop(0)
 
-    sequence = random.choice(self.sequences)
+    randomFlag = (len(self.currentSequence) == 0)
+    self.randoms.append(randomFlag)
 
-    topPredictions = []
+    if len(self.currentSequence) == 0:
+      if randomFlag:
+        self.currentSequence.append(random.randrange(RANDOM_START, RANDOM_END))
 
-    for j, element in enumerate(sequence):
-      result = self.shifter.shift(self.model.run({"element": element}))
-      # print element, result.inferences["multiStepPredictions"][1]
-      tm = self.model._getTPRegion().getSelf()._tfdr
+      if self.iteration > PERTURB_AFTER and not self.perturbed:
+        print "PERTURBING"
+        self.sequences = generateSequences(self.numPredictions, perturbed=True)
+        self.perturbed = True
 
-      if j == len(sequence) - 2:
-        tm.mmClearHistory()
+      sequence = random.choice(self.sequences)
 
-        # Uncomment to use custom classifier (uses predicted cells to make predictions)
-        predictiveColumns = set([tm.columnForCell(cell) for cell in tm.predictiveCells])
-        topPredictions = classify(self.mapping, predictiveColumns, self.numPredictions)
+      self.currentSequence += sequence
 
-      if j == len(sequence) - 1:
-        # Uncomment to use CLA classifier's predictions
-        # bestPredictions = sorted(result.inferences["multiStepPredictions"][1].items(),
-        #                          key=operator.itemgetter(1),
-        #                          reverse=True)
-        # topPredictions = [int(round(a)) for a, b in bestPredictions[:self.numPredictions]]
+    result = self.shifter.shift(self.model.run({"element": element}))
+    tm = self.model._getTPRegion().getSelf()._tfdr
 
-        print "Step (numPredictions={0})".format(self.numPredictions)
-        print "Sequence: ", sequence
-        print "Evaluation:", element, topPredictions, element in topPredictions
+    tm.mmClearHistory()
+    # Use custom classifier (uses predicted cells to make predictions)
+    predictiveColumns = set([tm.columnForCell(cell) for cell in tm.predictiveCells])
+    topPredictions = classify(self.mapping, predictiveColumns, self.numPredictions)
 
-        self.correct.append(element in topPredictions)
-        self.numPredictedActiveCells.append(len(tm.mmGetTracePredictedActiveCells().data[0]))
-        self.numPredictedInactiveCells.append(len(tm.mmGetTracePredictedInactiveCells().data[0]))
-        self.numUnpredictedActiveColumns.append(len(tm.mmGetTraceUnpredictedActiveColumns().data[0]))
+    truth = None if (self.randoms[-1] or
+                     len(self.randoms) >= 2 and self.randoms[-2]) else self.currentSequence[0]
 
+    data = {"iteration": self.iteration,
+            "current": element,
+            "reset": False,
+            "random": randomFlag,
+            "train": True,
+            "predictions": topPredictions,
+            "truth": truth}
 
-    # Feed noise
-    sequence = range(RANDOM_START, RANDOM_END)
-    random.shuffle(sequence)
-    sequence = sequence[0:NUM_RANDOM]
-    print "Random:", sequence
+    self.resultsFile.write(json.dumps(data) + '\n')
+    self.resultsFile.flush()
 
-    print
-
-    for element in sequence:
-      self.model.run({"element": element})
-
-    self.i += 1
-
-
-  def accuracy(self):
-    return self.correct
+    self.iteration += 1
 
 
 
@@ -355,19 +352,9 @@ if __name__ == "__main__":
   runners = []
 
   for numPredictions in NUM_PREDICTIONS:
-    runners.append(Runner(numPredictions))
+    resultsDir = os.path.join(outdir, "num_predictions{0}".format(numPredictions))
+    runners.append(Runner(numPredictions, resultsDir))
 
   for i in iter(int, 1):
     for runner in runners:
       runner.step()
-
-    if i % 100 == 0:
-      results = [(runner.numPredictions, runner.accuracy()) for runner in runners]
-
-      with open(os.path.join(outdir, "results_{0}".format(int(time.time()))), 'wb') as outfile:
-        pickle.dump(results, outfile)
-
-      tmStats = [(runner.numPredictedActiveCells, runner.numPredictedInactiveCells, runner.numUnpredictedActiveColumns) for runner in runners]
-
-      with open(os.path.join(outdir, "tm_stats_{0}".format(int(time.time()))), 'wb') as outfile:
-        pickle.dump(tmStats, outfile)

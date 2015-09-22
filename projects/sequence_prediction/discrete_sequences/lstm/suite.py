@@ -72,14 +72,18 @@ class BasicEncoder(Encoder):
 
 class DistributedEncoder(Encoder):
 
-  def __init__(self, num, maxValue=None, minValue=None):
+  def __init__(self, num, maxValue=None, minValue=None, classifyWithRandom=None):
     super(DistributedEncoder, self).__init__(num)
 
     if maxValue is None or minValue is None:
       raise "maxValue and minValue are required"
 
+    if classifyWithRandom is None:
+      raise "classifyWithRandom is required"
+
     self.maxValue = maxValue
     self.minValue = minValue
+    self.classifyWithRandom = classifyWithRandom
 
     self.encodings = {}
 
@@ -106,8 +110,13 @@ class DistributedEncoder(Encoder):
 
 
   def classify(self, encoding, num=1):
-    idx = self.closest(encoding, self.encodings.values(), num)
-    return [self.encodings.keys()[i] for i in idx]
+    encodings = {k:v for (k, v) in self.encodings.iteritems() if k <= self.num or self.classifyWithRandom}
+
+    if len(encodings) == 0:
+      return []
+
+    idx = self.closest(encoding, encodings.values(), num)
+    return [encodings.keys()[i] for i in idx]
 
 
 
@@ -230,7 +239,8 @@ class Suite(PyExperimentSuite):
     elif params['encoding'] == 'distributed':
       self.encoder = DistributedEncoder(params['encoding_num'],
                                         maxValue=params['encoding_max'],
-                                        minValue=params['encoding_min'])
+                                        minValue=params['encoding_min'],
+                                        classifyWithRandom=params['classify_with_random'])
     else:
       raise Exception("Encoder not found")
 
