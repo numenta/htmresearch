@@ -249,13 +249,26 @@ class PoolingRegion(PyRegion):
     The guts of the compute are contained in the self._poolerClass compute() call
     """
     activeCells = inputs["activeCells"]
-    predictedActiveCells = inputs["predictedActiveCells"]
+    predictedActiveCells = inputs["predictedActiveCells"] if (
+      "predictedActiveCells" in inputs) else numpy.zeros(self._inputWidth)
+
+    resetSignal = False
+    if 'resetIn' in inputs:
+      assert len(inputs['resetIn']) == 1
+      if inputs['resetIn'][0] != 0:
+        self.reset()
 
     mostActiveCellsIndices = self._pooler.compute(activeCells, predictedActiveCells, self.learningMode)
 
     # Convert to SDR
     outputs["mostActiveCells"][:] = numpy.zeros(self._columnCount, dtype=GetNTAReal())
     outputs["mostActiveCells"][mostActiveCellsIndices] = 1
+
+
+  def reset(self):
+    """ Reset the state of the Union Pooler """
+    if self._pooler is not None:
+      self._pooler.reset()
 
 
   @classmethod
@@ -274,7 +287,7 @@ class PoolingRegion(PyRegion):
           count=0,
           required=True,
           regionLevel=False,
-          isDefaultInput=False,
+          isDefaultInput=True,
           requireSplitterMap=False),
 
           predictedActiveCells=dict(
@@ -286,6 +299,16 @@ class PoolingRegion(PyRegion):
           isDefaultInput=False,
           requireSplitterMap=False),
 
+          resetIn=dict(
+          description="""A boolean flag that indicates whether
+                         or not the input vector received in this compute cycle
+                         represents the start of a new temporal sequence.""",
+          dataType='Real32',
+          count=1,
+          required=False,
+          regionLevel=True,
+          isDefaultInput=False,
+          requireSplitterMap=False),
       ),
       outputs=dict(
         mostActiveCells=dict(
