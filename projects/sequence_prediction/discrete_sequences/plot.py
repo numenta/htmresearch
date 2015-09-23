@@ -111,9 +111,9 @@ if __name__ == '__main__':
   parser.add_argument('experiments', metavar='/path/to/experiment /path/...', nargs='+', type=str)
   parser.add_argument('-w', '--window', type=int, default=100)
   parser.add_argument('-n', '--num', type=int, default=None)
+  parser.add_argument('-t', '--training-hide', type=int, nargs='+')
   parser.add_argument('-l', '--legend-position', type=int, default=4)
   parser.add_argument('-f', '--full', action='store_true')
-  parser.add_argument('-t', '--training-hide', action='store_true')
 
   suite = PyExperimentSuite()
   args = parser.parse_args()
@@ -127,7 +127,7 @@ if __name__ == '__main__':
 
   experiments = args.experiments
 
-  for experiment in experiments:
+  for i, experiment in enumerate(experiments):
     iteration = suite.get_history(experiment, 0, 'iteration')
     predictions = suite.get_history(experiment, 0, 'predictions')
     truth = suite.get_history(experiment, 0, 'truth')
@@ -137,12 +137,14 @@ if __name__ == '__main__':
     randoms = None if args.full else suite.get_history(experiment, 0, 'random')
     type = "elements" if args.full else "sequences"
 
+    hideTraining = args.training_hide is not None and len(args.training_hide) > i and args.training_hide[i] > 0
+
     plotAccuracy(computeAccuracy(predictions, truth, iteration, resets=resets, randoms=randoms, num=args.num),
                  train,
                  window=args.window,
                  type=type,
                  label=experiment,
-                 hideTraining=args.training_hide)
+                 hideTraining=hideTraining)
 
   if len(experiments) > 1:
     pyplot.legend(loc=args.legend_position)
