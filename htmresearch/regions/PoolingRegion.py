@@ -254,7 +254,9 @@ class PoolingRegion(PyRegion):
 
     resetSignal = False
     if 'resetIn' in inputs:
-      assert len(inputs['resetIn']) == 1
+      if len(inputs['resetIn']) != 1:
+        raise Exception("resetIn has invalid length")
+
       if inputs['resetIn'][0] != 0:
         self.reset()
 
