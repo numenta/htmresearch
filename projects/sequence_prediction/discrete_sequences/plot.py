@@ -83,11 +83,14 @@ def plotAccuracy(results, train, window=100, type="sequences", label=None, hideT
 
 
 
-def computeAccuracy(predictions, truth, iteration, resets=None, randoms=None):
+def computeAccuracy(predictions, truth, iteration, resets=None, randoms=None, num=None):
   accuracy = []
   x = []
 
   for i in xrange(len(predictions) - 1):
+    if num is not None and i > num:
+      continue
+
     if truth[i] is None:
       continue
 
@@ -107,6 +110,7 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument('experiments', metavar='/path/to/experiment /path/...', nargs='+', type=str)
   parser.add_argument('-w', '--window', type=int, default=100)
+  parser.add_argument('-n', '--num', type=int, default=None)
   parser.add_argument('-l', '--legend-position', type=int, default=4)
   parser.add_argument('-f', '--full', action='store_true')
   parser.add_argument('-t', '--training-hide', action='store_true')
@@ -133,7 +137,7 @@ if __name__ == '__main__':
     randoms = None if args.full else suite.get_history(experiment, 0, 'random')
     type = "elements" if args.full else "sequences"
 
-    plotAccuracy(computeAccuracy(predictions, truth, iteration, resets=resets, randoms=randoms),
+    plotAccuracy(computeAccuracy(predictions, truth, iteration, resets=resets, randoms=randoms, num=args.num),
                  train,
                  window=args.window,
                  type=type,
