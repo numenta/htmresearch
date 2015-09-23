@@ -48,7 +48,7 @@ def plotMovingAverage(data, window, label=None):
 
 
 
-def plotAccuracy(results, train, window=100, type="sequences", label=None, hideTraining=True):
+def plotAccuracy(results, train, window=100, type="sequences", label=None, hideTraining=True, lineSize=None):
   pyplot.title("High-order prediction")
   pyplot.xlabel("# of elements seen")
   pyplot.ylabel("High-order prediction accuracy over last {0} tested {1}".format(window, type))
@@ -57,7 +57,7 @@ def plotAccuracy(results, train, window=100, type="sequences", label=None, hideT
   x = results[1]
   movingData = movingAverage(accuracy, min(len(accuracy), window))
 
-  pyplot.plot(x, movingData, label=label)
+  pyplot.plot(x, movingData, label=label, linewidth=lineSize)
 
   # dX = numpy.array([x[i+1] - x[i] for i in xrange(len(x) - 1)])
   # testEnd = numpy.array(x)[dX > dX.mean()].tolist()
@@ -112,6 +112,7 @@ if __name__ == '__main__':
   parser.add_argument('-w', '--window', type=int, default=100)
   parser.add_argument('-n', '--num', type=int, default=None)
   parser.add_argument('-t', '--training-hide', type=int, nargs='+')
+  parser.add_argument('-s', '--size-of-line', type=float, nargs='+')
   parser.add_argument('-l', '--legend-position', type=int, default=4)
   parser.add_argument('-f', '--full', action='store_true')
 
@@ -138,13 +139,15 @@ if __name__ == '__main__':
     type = "elements" if args.full else "sequences"
 
     hideTraining = args.training_hide is not None and len(args.training_hide) > i and args.training_hide[i] > 0
+    lineSize = args.size_of_line[i] if args.size_of_line is not None and len(args.size_of_line) > i else 0.8
 
     plotAccuracy(computeAccuracy(predictions, truth, iteration, resets=resets, randoms=randoms, num=args.num),
                  train,
                  window=args.window,
                  type=type,
                  label=experiment,
-                 hideTraining=hideTraining)
+                 hideTraining=hideTraining,
+                 lineSize=lineSize)
 
   if len(experiments) > 1:
     pyplot.legend(loc=args.legend_position)
