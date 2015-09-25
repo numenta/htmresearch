@@ -112,6 +112,7 @@ if __name__ == '__main__':
   parser.add_argument('-w', '--window', type=int, default=100)
   parser.add_argument('-n', '--num', type=int, default=None)
   parser.add_argument('-t', '--training-hide', type=int, nargs='+')
+  parser.add_argument('-g', '--graph-labels', type=str, nargs='+')
   parser.add_argument('-s', '--size-of-line', type=float, nargs='+')
   parser.add_argument('-l', '--legend-position', type=int, default=4)
   parser.add_argument('-f', '--full', action='store_true')
@@ -140,12 +141,13 @@ if __name__ == '__main__':
 
     hideTraining = args.training_hide is not None and len(args.training_hide) > i and args.training_hide[i] > 0
     lineSize = args.size_of_line[i] if args.size_of_line is not None and len(args.size_of_line) > i else 0.8
+    label = args.graph_labels[i] if args.graph_labels is not None and len(args.graph_labels) > i else experiment
 
     plotAccuracy(computeAccuracy(predictions, truth, iteration, resets=resets, randoms=randoms, num=args.num),
                  train,
                  window=args.window,
                  type=type,
-                 label=experiment,
+                 label=label,
                  hideTraining=hideTraining,
                  lineSize=lineSize)
 
