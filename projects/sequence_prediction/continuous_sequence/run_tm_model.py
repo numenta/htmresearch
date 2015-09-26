@@ -195,13 +195,16 @@ if __name__ == "__main__":
   if dataSet == "rec-center-hourly":
     DATE_FORMAT = "%m/%d/%y %H:%M" # '7/2/10 0:00'
     predictedField = "kw_energy_consumption"
-  elif dataSet == "nyc_taxi" or dataSet == "nyc_taxi_perturb":
+  elif dataSet == "nyc_taxi" or dataSet == "nyc_taxi_perturb" or dataSet =="nyc_taxi_perturb_baseline":
     DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
     predictedField = "passenger_count"
   else:
     raise RuntimeError("un recognized dataset")
 
-  modelParams = getModelParamsFromName(dataSet)
+  if dataSet == "nyc_taxi" or dataSet == "nyc_taxi_perturb" or dataSet =="nyc_taxi_perturb_baseline":
+    modelParams = getModelParamsFromName("nyc_taxi")
+  else:
+    modelParams = getModelParamsFromName(dataSet)
   modelParams['modelParams']['clParams']['steps'] = str(_options.stepsAhead)
 
   print "Creating model from %s..." % dataSet
@@ -273,7 +276,6 @@ if __name__ == "__main__":
 
   for i in xrange(len(df)):
     inputRecord = getInputRecord(df, predictedField, i)
-
     tp = model._getTPRegion()
     tm = tp.getSelf()._tfdr
     prePredictiveCells = tm.predictiveCells

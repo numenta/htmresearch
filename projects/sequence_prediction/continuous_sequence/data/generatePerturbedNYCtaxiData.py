@@ -23,6 +23,17 @@ import pandas as pd
 import numpy as np
 import csv
 
+def savePerturbedData(df, filename):
+  outputFile = open(filename, "w")
+  csvWriter = csv.writer(outputFile)
+  csvWriter.writerow(['timestamp', 'passenger_count', 'timeofday', 'dayofweek'])
+  csvWriter.writerow(['datetime', 'int', 'int', 'string'])
+  csvWriter.writerow(['T', '', '', ''])
+  for i in range(len(df)):
+    csvWriter.writerow([df.time[i], df.data[i], df.timeofday[i], df.dayofweek[i]])
+  outputFile.close()
+
+
 dataSet = 'nyc_taxi'
 filePath = dataSet+'.csv'
 df = pd.read_csv(filePath, header=0, skiprows=[1, 2], names=['time', 'data', 'timeofday', 'dayofweek'])
@@ -48,15 +59,10 @@ for i in xrange(len(old_data)):
   else:
     new_data[i] = old_data[i]
 
+filename = 'nyc_taxi_perturb.csv'
 df.loc[13152:, 'data'] = new_data[13152:]
+savePerturbedData(df, filename)
 
-
-# save perturbed data
-outputFile = open('nyc_taxi_perturb.csv', "w")
-csvWriter = csv.writer(outputFile)
-csvWriter.writerow(['timestamp', 'passenger_count', 'timeofday', 'dayofweek'])
-csvWriter.writerow(['datetime', 'int', 'int', 'string'])
-csvWriter.writerow(['T', '', '', ''])
-for i in range(len(df)):
-  csvWriter.writerow([df.time[i], df.data[i], df.timeofday[i], df.dayofweek[i]])
-outputFile.close()
+filename = 'nyc_taxi_perturb_baseline.csv'
+df.loc[:, 'data'] = new_data[:]
+savePerturbedData(df, filename)

@@ -4,7 +4,7 @@ library(forecast)
 library(TSPred)
 
 # set working directory here
-setwd('/Users/ycui/nta/nupic.research/sequence_prediction/continuous_sequence')
+setwd('/Users/ycui/nta/nupic.research/projects/sequence_prediction/continuous_sequence')
 
 # available data: "sine", "rec-center-hourly"
 dataSet <- 'nyc_taxi'
@@ -21,11 +21,12 @@ if(dataSet=="sine"){
 } else if (dataSet=='rec-center-hourly'){
   nTrain <- 3800
 } else if (dataSet=='nyc_taxi'){
-  nTrain <- 5000
+  nTrain <- 6000
 }
   
 nData <- length(rt)
 testLength <- nData - nTrain
+
 # testLength <- 1
 
 # Vectors to hold prediction for t+1

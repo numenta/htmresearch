@@ -39,14 +39,15 @@ from scipy import random
 def readDataSet(dataSet):
   filePath = 'data/'+dataSet+'.csv'
 
-  if dataSet == 'nyc_taxi':
-    df = pd.read_csv(filePath, header=0, skiprows=[1,2], names=['time', 'data', 'timeofday', 'dayofweek'])
-    sequence = df['data']
-    dayofweek = df['dayofweek']
-    timeofday = df['timeofday']
-
-    seq = pd.DataFrame(np.array(pd.concat([sequence, timeofday, dayofweek], axis=1)),
-                        columns=['data', 'timeofday', 'dayofweek'])
+  if dataSet == 'nyc_taxi' or dataSet == 'nyc_taxi_perturb' or dataSet == 'nyc_taxi_perturb_baseline':
+    seq = pd.read_csv(filePath, header=0, skiprows=[1, 2], names=['time', 'data', 'timeofday', 'dayofweek'])
+    seq['time']=pd.to_datetime(seq['time'])
+    # sequence = df['data']
+    # dayofweek = df['dayofweek']
+    # timeofday = df['timeofday']
+    #
+    # seq = pd.DataFrame(np.array(pd.concat([sequence, timeofday, dayofweek], axis=1)),
+    #                     columns=['data', 'timeofday', 'dayofweek'])
   elif dataSet == 'sine':
     df = pd.read_csv(filePath, header=0, skiprows=[1, 2], names=['time', 'data'])
     sequence = df['data']
@@ -99,9 +100,8 @@ class Dataset(object):
 
 class NYCTaxiDataset(Dataset):
 
-  def __init__(self):
-    self.sequence = readDataSet('nyc_taxi')
-    self.normalizeSequence()
+  def __init__(self, dataset='nyc_taxi'):
+    self.sequence_name = dataset
 
   def normalizeSequence(self):
     # standardize data by subtracting mean and dividing by std
@@ -123,32 +123,39 @@ class NYCTaxiDataset(Dataset):
 
   def generateSequence(self, perturbed=False, prediction_nstep=5, output_encoding=None):
     if perturbed:
-      # create a new daily profile
-      dailyTime = np.sort(self.sequence['timeofday'].unique())
-      dailyHour = dailyTime/60
-      profile = np.ones((len(dailyTime),))
-      # decrease 7am-11am traffic by 20%
-      profile[np.where(np.all([dailyHour >= 7.0, dailyHour < 11.0], axis=0))[0]] = 0.8
-      # increase 21:00 - 24:00 traffic by 20%
-      profile[np.where(np.all([dailyHour >= 21.0, dailyHour <= 23.0], axis=0))[0]] = 1.2
-      dailyProfile = {}
-      for i in range(len(dailyTime)):
-        dailyProfile[dailyTime[i]] = profile[i]
+      self.sequence = readDataSet(self.sequence_name+'_perturb')
+    else:
+      print "read dataset", self.sequence_name
+      self.sequence = readDataSet(self.sequence_name)
 
-      # apply the new daily pattern to weekday traffic
-      old_data = self.sequence['data']
-      new_data = np.zeros(old_data.shape)
-      for i in xrange(len(old_data)):
-        if self.sequence['dayofweek'][i] < 5:
-          new_data[i] = old_data[i] * dailyProfile[self.sequence['timeofday'][i]]
-        else:
-          new_data[i] = old_data[i]
-
-      self.sequence['data'] = new_data
-      self.meanSeq = np.mean(self.sequence['data'])
-      self.stdSeq = np.std(self.sequence['data'])
-      self.sequence.loc[:, 'normalizedData'] = \
-        pd.Series((self.sequence['data'] - self.meanSeq)/self.stdSeq, index=self.sequence.index)
+    self.normalizeSequence()
+      #
+      # # create a new daily profile
+      # dailyTime = np.sort(self.sequence['timeofday'].unique())
+      # dailyHour = dailyTime/60
+      # profile = np.ones((len(dailyTime),))
+      # # decrease 7am-11am traffic by 20%
+      # profile[np.where(np.all([dailyHour >= 7.0, dailyHour < 11.0], axis=0))[0]] = 0.8
+      # # increase 21:00 - 24:00 traffic by 20%
+      # profile[np.where(np.all([dailyHour >= 21.0, dailyHour <= 23.0], axis=0))[0]] = 1.2
+      # dailyProfile = {}
+      # for i in range(len(dailyTime)):
+      #   dailyProfile[dailyTime[i]] = profile[i]
+      #
+      # # apply the new daily pattern to weekday traffic
+      # old_data = self.sequence['data']
+      # new_data = np.zeros(old_data.shape)
+      # for i in xrange(len(old_data)):
+      #   if self.sequence['dayofweek'][i] < 5:
+      #     new_data[i] = old_data[i] * dailyProfile[self.sequence['timeofday'][i]]
+      #   else:
+      #     new_data[i] = old_data[i]
+      #
+      # self.sequence['data'] = new_data
+      # self.meanSeq = np.mean(self.sequence['data'])
+      # self.stdSeq = np.std(self.sequence['data'])
+      # self.sequence.loc[:, 'normalizedData'] = \
+      #   pd.Series((self.sequence['data'] - self.meanSeq)/self.stdSeq, index=self.sequence.index)
 
     networkInput = self.sequence[['normalizedData',
                               'normalizedTimeofday',
@@ -186,8 +193,8 @@ class Suite(PyExperimentSuite):
       self.outputEncoder = ScalarBucketEncoder()
       self.nDimOutput = self.outputEncoder.encoder.n
 
-    if params['dataset'] == 'nyc_taxi':
-      self.dataset = NYCTaxiDataset()
+    if params['dataset'] == 'nyc_taxi' or params['dataset'] == 'nyc_taxi_perturb_baseline':
+      self.dataset = NYCTaxiDataset(params['dataset'])
     else:
       raise Exception("Dataset not found")
 
@@ -218,7 +225,9 @@ class Suite(PyExperimentSuite):
   def train(self, params, verbose=False):
 
     if params['create_network_before_training']:
-      print 'create lstm network'
+      if verbose:
+        print 'create lstm network'
+
       random.seed(6)
       if params['output_encoding'] == None:
         self.net = buildNetwork(self.nDimInput, params['num_cells'], self.nDimOutput,
@@ -239,6 +248,8 @@ class Suite(PyExperimentSuite):
     for i in xrange(len(networkInput)):
       ds.addSample(self.inputEncoder.encode(networkInput[i]),
                    self.outputEncoder.encode(targetPrediction[i]))
+    if verbose:
+      print " train LSTM on ", len(ds), " records for ", params['num_epochs'], " epochs "
 
     if len(networkInput) > 1:
       trainer.trainEpochs(params['num_epochs'])
@@ -252,18 +263,31 @@ class Suite(PyExperimentSuite):
   def iterate(self, params, repetition, iteration, verbose=True):
     self.iteration = iteration
 
-    if iteration < params['compute_after'] or self.iteration >= len(self.networkInput):
+    if self.iteration >= len(self.networkInput):
       return None
 
-    train = (iteration % params['train_every'] == 0 or
-             iteration == params['train_at_iteration'])
+    train = False
+    if iteration > params['compute_after']:
+      if iteration == params['train_at_iteration']:
+        train = True
+
+      if params['train_every_month']:
+        train = (self.dataset.sequence['time'][iteration].is_month_start and
+                  self.dataset.sequence['time'][iteration].hour == 0 and
+                  self.dataset.sequence['time'][iteration].minute == 0)
+
+      if params['train_every_week']:
+        train = (self.dataset.sequence['time'][iteration].dayofweek==0 and
+                  self.dataset.sequence['time'][iteration].hour == 0 and
+                  self.dataset.sequence['time'][iteration].minute == 0)
 
     if verbose:
-      print "iteration: ", iteration
+      print
+      print "iteration: ", iteration, " time: ", self.dataset.sequence['time'][iteration]
 
     if train:
       if verbose:
-        print " train at", iteration
+        print " train at", iteration, " time: ", self.dataset.sequence['time'][iteration]
       self.train(params, verbose)
 
     if train:
@@ -285,9 +309,13 @@ class Suite(PyExperimentSuite):
     else:
       predictions = None
 
+    if verbose:
+      print " test at :", iteration,
+
     if iteration == params['perturb_after']:
       if verbose:
         print " perturb data and introduce new patterns"
+
       (newNetworkInput, newTargetPrediction, newTrueData) = \
         self.dataset.generateSequence(perturbed=True,
                                       prediction_nstep=params['prediction_nstep'],

@@ -35,7 +35,15 @@ def movingAverage(a, n):
 
   for i in xrange(len(a)):
     start = max(0, i - n)
-    values = a[start:i+1]
+    end = i+1
+    #
+    # start = i
+    # end = min(len(a), i + n)
+
+    # start = max(0, i-n/2)
+    # end = min(len(a), i+n/2)
+    #
+    values = a[start:end]
     movingAverage.append(sum(values) / float(len(values)))
 
   return movingAverage
@@ -59,13 +67,18 @@ def plotAccuracy(results, truth, train=None, window=100, label=None, params=None
 
   if params is not None:
     error[np.where(x < params['compute_after'])[0]] = np.nan
+
+  error[:5904] = np.nan
+
   movingData = movingAverage(error, min(len(error), window))
 
   if errorType == 'square_deviation':
     print label, " Avg NRMSE:", np.sqrt(np.nanmean(error))/np.nanstd(truth)
+    meanError = np.sqrt(np.nanmean(error))/np.nanstd(truth)
     avgError = np.sqrt(np.array(movingData))/np.nanstd(truth)
   elif errorType == 'negLL':
     print label, " Avg negLL:", np.nanmean(error)
+    meanError = np.nanmean(error)
     avgError = movingData
   else:
     raise NotImplementedError
@@ -84,11 +97,12 @@ def plotAccuracy(results, truth, train=None, window=100, label=None, params=None
       plt.axvline(x[params['perturb_after']], color='black', linestyle='--')
 
   plt.xlim(x[0], x[len(x)-1])
+  return error
 
   # plt.ylim(0, 1.001)
 
 
-def computeSquareDeviation(predictions, truth, resets=None, randoms=None):
+def computeSquareDeviation(predictions, truth):
 
   square_deviation = np.square(predictions-truth)
 
@@ -111,6 +125,8 @@ def computeLikelihood(predictions, truth, encoder):
 
   return negLL
 
+def computeAbsouteError(predictions, truth):
+  return np.abs( (predictions-truth))
 
 class ExperimentResult(object):
   def __init__(self, experiment_name):
@@ -156,6 +172,25 @@ class ExperimentResult(object):
 
     startAt = max(self.params['compute_after'], self.params['train_at_iteration'])
     self.error[:startAt] = np.nan
+
+
+def plotLSTMresult(experiment, window, xaxis=None, label=None):
+  expResult = ExperimentResult(experiment)
+
+  if xaxis is not None:
+    x = xaxis
+  else:
+    x = range(0, len(expResult.error))
+
+  error = plotAccuracy((expResult.error, x),
+                           expResult.truth,
+                           train=expResult.train,
+                           window=window,
+                           label=label,
+                           params=expResult.params,
+                           errorType=expResult.errorType)
+  return (error, expResult)
+
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
