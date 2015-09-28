@@ -247,7 +247,7 @@ if __name__ == "__main__":
     if encoderOutput is None:
       predictedInput[i] = netActivation
     else:
-      predictedInput[i] = bucketValues[np.where(netActivation==max(netActivation))[0][0]]
+      predictedInput[i] = bucketValues[np.where(netActivation == max(netActivation))[0][0]]
       predictedDistribution[i, :] = netActivation/sum(netActivation)
       targetDistribution[i, :] = encoderOutput.encode(sequence['data'][i+predictionStep])
 
