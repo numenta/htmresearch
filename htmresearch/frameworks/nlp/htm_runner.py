@@ -302,7 +302,7 @@ class HTMRunner(Runner):
     Partition = namedtuple("Partition", "partName index")
 
     # Add regions to partition list in order of learning.
-    regionConfigs = ("spRegionConfig", "tmRegionConfig", "upRegionConfig",
+    regionConfigs = ("spRegionConfig", "tmRegionConfig", "tpRegionConfig",
       "classifierRegionConfig")
     partitions = []
 

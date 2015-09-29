@@ -32,14 +32,14 @@ from htmresearch.frameworks.classification.classification_network import (
 SENSOR_CONFIG = "sensorRegionConfig"
 SP_CONFIG = "spRegionConfig"
 TM_CONFIG = "tmRegionConfig"
-UP_CONFIG = "upRegionConfig"
+TP_CONFIG = "tpRegionConfig"
 CLASSIFIER_CONFIG = "classifierRegionConfig"
 
 # Region types
 SENSOR_TYPE = "py.RecordSensor"
 SP_REGION_TYPE = "py.SPRegion"
 TM_REGION_TYPE = "py.TPRegion"
-UP_REGION_TYPE = "py.UPRegion"
+TP_REGION_TYPE = "py.TPRegion"
 CLA_CLASSIFIER_TYPE = "py.CLAClassifierRegion"
 KNN_CLASSIFIER_TYPE = "py.KNNClassifierRegion"
 
@@ -60,7 +60,7 @@ def generateNetworkPartitions(networkConfig, numRecords):
   Partition = namedtuple("Partition", "partName index")
 
   # Add regions to partition list in order of learning.
-  regionConfigs = ("spRegionConfig", "tmRegionConfig", "upRegionConfig",
+  regionConfigs = ("spRegionConfig", "tmRegionConfig", "tpRegionConfig",
                    "classifierRegionConfig")
   partitions = []
   maxNumPartitions = 5
@@ -109,7 +109,7 @@ def generateSampleNetworkConfig(templateNetworkConfig, maxCategoryCount):
   networkConfig = copy.deepcopy(templateNetworkConfig)
   networkConfig[SP_CONFIG]["regionEnabled"] = True
   networkConfig[TM_CONFIG]["regionEnabled"] = True
-  networkConfig[UP_CONFIG]["regionEnabled"] = False
+  networkConfig[TP_CONFIG]["regionEnabled"] = False
   networkConfig[CLASSIFIER_CONFIG]["regionType"] = KNN_CLASSIFIER_TYPE
   networkConfig[CLASSIFIER_CONFIG]["regionParams"] = KNN_CLASSIFIER_PARAMS
   networkConfigurations.append(networkConfig)
@@ -118,7 +118,7 @@ def generateSampleNetworkConfig(templateNetworkConfig, maxCategoryCount):
   networkConfig = copy.deepcopy(templateNetworkConfig)
   networkConfig[SP_CONFIG]["regionEnabled"] = True
   networkConfig[TM_CONFIG]["regionEnabled"] = True
-  networkConfig[UP_CONFIG]["regionEnabled"] = False
+  networkConfig[TP_CONFIG]["regionEnabled"] = False
   networkConfig[CLASSIFIER_CONFIG]["regionType"] = CLA_CLASSIFIER_TYPE
   networkConfig[CLASSIFIER_CONFIG]["regionParams"] = CLA_CLASSIFIER_PARAMS
   networkConfigurations.append(networkConfig)
@@ -127,7 +127,7 @@ def generateSampleNetworkConfig(templateNetworkConfig, maxCategoryCount):
   networkConfig = copy.deepcopy(templateNetworkConfig)
   networkConfig[SP_CONFIG]["regionEnabled"] = True
   networkConfig[TM_CONFIG]["regionEnabled"] = False
-  networkConfig[UP_CONFIG]["regionEnabled"] = False
+  networkConfig[TP_CONFIG]["regionEnabled"] = False
   networkConfig[CLASSIFIER_CONFIG]["regionType"] = CLA_CLASSIFIER_TYPE
   networkConfig[CLASSIFIER_CONFIG]["regionParams"] = CLA_CLASSIFIER_PARAMS
   networkConfigurations.append(networkConfig)
