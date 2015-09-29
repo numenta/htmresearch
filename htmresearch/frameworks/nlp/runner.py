@@ -28,9 +28,12 @@ import random
 from collections import defaultdict
 
 from htmresearch.encoders import EncoderTypes
-from htmresearch.frameworks.nlp.classify_endpoint import ClassificationModelEndpoint
-from htmresearch.frameworks.nlp.classify_fingerprint import ClassificationModelFingerprint
-from htmresearch.frameworks.nlp.classify_keywords import ClassificationModelKeywords
+from htmresearch.frameworks.nlp.classify_endpoint import (
+  ClassificationModelEndpoint)
+from htmresearch.frameworks.nlp.classify_fingerprint import (
+  ClassificationModelFingerprint)
+from htmresearch.frameworks.nlp.classify_keywords import (
+  ClassificationModelKeywords)
 from htmresearch.support.csv_helper import readCSV, writeFromDict
 
 
