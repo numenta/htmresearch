@@ -29,7 +29,6 @@ import pprint
 import time
 
 from htmresearch.frameworks.nlp.runner import Runner
-from htmresearch.frameworks.nlp.multi_runner import MultiRunner
 from htmresearch.frameworks.nlp.htm_runner import HTMRunner
 
 
@@ -55,19 +54,7 @@ def run(args):
   root = os.path.dirname(os.path.realpath(__file__))
   resultsDir = os.path.join(root, args.resultsDir)
 
-  if os.path.isdir(args.dataPath):
-    runner = MultiRunner(dataPath=args.dataPath,
-                         resultsDir=resultsDir,
-                         experimentName=args.experimentName,
-                         loadPath=args.loadPath,
-                         modelName=args.modelName,
-                         numClasses=args.numClasses,
-                         plots=args.plots,
-                         orderedSplit=args.orderedSplit,
-                         trainSizes=args.trainSizes,
-                         verbosity=args.verbosity,
-                         test=args.test)
-  elif args.modelName == "HTMNetwork":
+  if args.modelName == "HTMNetwork":
     runner = HTMRunner(dataPath=args.dataPath,
                        networkConfigPath=args.networkConfigPath,
                        resultsDir=resultsDir,
@@ -82,6 +69,7 @@ def run(args):
                        generateData=args.generateData,
                        votingMethod=args.votingMethod,
                        classificationFile=args.classificationFile)
+    runner.initModel(0)
   else:
     runner = Runner(dataPath=args.dataPath,
                     resultsDir=resultsDir,
@@ -93,10 +81,6 @@ def run(args):
                     orderedSplit=args.orderedSplit,
                     trainSizes=args.trainSizes,
                     verbosity=args.verbosity)
-
-  if args.modelName == "HTMNetwork":
-    runner.initModel(0)
-  else:
     runner.initModel(args.modelName)
 
   print "Reading in data and preprocessing."
