@@ -12,7 +12,7 @@
   "upRegionConfig": {
     "regionEnabled": true,
     "regionName": "UP",
-    "regionType": "py.PoolingRegion",
+    "regionType": "py.TemporalPoolerRegion",
     "regionParams": {
       "poolerType": "union",
       "columnCount": 2048,

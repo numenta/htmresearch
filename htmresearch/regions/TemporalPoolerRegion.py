@@ -45,7 +45,7 @@ def _buildArgs(poolerClass, self=None, kwargs={}):
   Return a list of 3-tuples with (name, description, defaultValue) for each
     argument to the function.
 
-  Assigns all arguments to the function as instance variables of PoolingRegion.
+  Assigns all arguments to the function as instance variables of TemporalPoolerRegion.
   If the argument was not provided, uses the default value.
 
   Pops any values from kwargs that go to the function.
@@ -56,7 +56,7 @@ def _buildArgs(poolerClass, self=None, kwargs={}):
   argTuples = argTuples[1:]  # Remove "self"
 
   # Get the names of the parameters to our own constructor and remove them
-  init = PoolingRegion.__init__
+  init = TemporalPoolerRegion.__init__
   ourArgNames = [t[0] for t in getArgumentDescriptions(init)]
   # Also remove a few other names that aren't in our constructor but are
   #  computed automatically
@@ -175,10 +175,10 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
 
 
 
-class PoolingRegion(PyRegion):
+class TemporalPoolerRegion(PyRegion):
 
   """
-  PoolingRegion is designed to implement the pooler compute for a given
+  TemporalPoolerRegion is designed to implement the pooler compute for a given
   HTM level.
 
   Uses a pooler class to do most of the work. This node has just one
@@ -192,15 +192,15 @@ class PoolingRegion(PyRegion):
   and the rest are passed to the appropriate underlying pooler class. The NodeSpec is
   mostly built automatically from these parameters, too.
 
-  If you add a parameter to pooler, it will be exposed through PoolingRegion
-  automatically as if it were in PoolingRegion.__init__, with the right default
+  If you add a parameter to pooler, it will be exposed through TemporalPoolerRegion
+  automatically as if it were in TemporalPoolerRegion.__init__, with the right default
   value. Add an entry in the __init__ docstring for it too, and that will be
-  brought into the NodeSpec. PoolingRegion will maintain the parameter as its own
+  brought into the NodeSpec. TemporalPoolerRegion will maintain the parameter as its own
   instance variable and also pass it to pooler. If the parameter is
-  changed, PoolingRegion will propagate the change.
+  changed, TemporalPoolerRegion will propagate the change.
 
   If you want to do something different with the parameter, add it as an
-  argument into PoolingRegion.__init__, which will override all the default handling.
+  argument into TemporalPoolerRegion.__init__, which will override all the default handling.
   """
 
   def __init__(self, columnCount, inputWidth, poolerType, **kwargs):
@@ -208,7 +208,7 @@ class PoolingRegion(PyRegion):
     if columnCount <= 0 or inputWidth <=0:
       raise TypeError("Parameters columnCount and inputWidth must be > 0")
     # Pull out the pooler arguments automatically
-    # These calls whittle down kwargs and create instance variables of PoolingRegion
+    # These calls whittle down kwargs and create instance variables of TemporalPoolerRegion
     self._poolerClass = _getPoolerClass(poolerType)
     pArgTuples = _buildArgs(self._poolerClass, self, kwargs)
 
@@ -244,7 +244,7 @@ class PoolingRegion(PyRegion):
 
   def compute(self, inputs, outputs):
     """
-    Run one iteration of PoolingRegion's compute.
+    Run one iteration of TemporalPoolerRegion's compute.
 
     The guts of the compute are contained in the self._poolerClass compute() call
     """
@@ -275,12 +275,12 @@ class PoolingRegion(PyRegion):
 
   @classmethod
   def getBaseSpec(cls):
-    """Return the base Spec for PoolingRegion.
+    """Return the base Spec for TemporalPoolerRegion.
 
     Doesn't include the pooler parameters
     """
     spec = dict(
-      description=PoolingRegion.__doc__,
+      description=TemporalPoolerRegion.__doc__,
       singleNodeOnly=True,
       inputs=dict(
           activeCells=dict(
@@ -330,7 +330,7 @@ class PoolingRegion(PyRegion):
   @classmethod
   def getSpec(cls):
     """
-    Return the Spec for PoolingRegion.
+    Return the Spec for TemporalPoolerRegion.
 
     The parameters collection is constructed based on the parameters specified
     by the various components (poolerSpec and otherSpec)

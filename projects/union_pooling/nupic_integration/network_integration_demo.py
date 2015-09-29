@@ -188,7 +188,7 @@ def createNetwork(dataSource):
   # Add the UPRegion on top of the TPRegion
   temporal = network.regions["temporalMemoryRegion"].getSelf()
   UP_PARAMS["inputWidth"] = temporal.getOutputElementCount("bottomUpOut")
-  network.addRegion("unionTemporalPoolerRegion", "py.PoolingRegion", json.dumps(UP_PARAMS))
+  network.addRegion("unionTemporalPoolerRegion", "py.TemporalPoolerRegion", json.dumps(UP_PARAMS))
 
   network.link("temporalMemoryRegion", "unionTemporalPoolerRegion", "UniformLink", "",
                srcOutput="activeCells", destInput="activeCells")

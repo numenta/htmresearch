@@ -312,7 +312,7 @@ def createNetwork(dataSource, networkConfig, encoder=None):
     regionParams = regionConfig["regionParams"]
     regionParams["inputWidth"] = previousRegionWidth
     upRegion = _createRegion(network, regionConfig,
-      moduleName="htmresearch.regions.PoolingRegion")
+      moduleName="htmresearch.regions.TemporalPoolerRegion")
     _validateRegionWidths(previousRegionWidth,
                           upRegion.getSelf()._inputWidth)
     _linkRegions(network,
