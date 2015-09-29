@@ -20,7 +20,7 @@
 # ----------------------------------------------------------------------
 
 """
-Union Pooler mixin that enables detailed monitoring of history.
+Union Temporal Pooler mixin that enables detailed monitoring of history.
 """
 
 from collections import defaultdict
@@ -35,14 +35,14 @@ from nupic.research.monitor_mixin.trace import (
 
 
 
-class UnionPoolerMonitorMixin(MonitorMixinBase):
+class UnionTemporalPoolerMonitorMixin(MonitorMixinBase):
   """
-  Mixin for UnionPooler that stores a detailed history, for inspection and
+  Mixin for UnionTemporalPooler that stores a detailed history, for inspection and
   debugging.
   """
 
   def __init__(self, *args, **kwargs):
-    super(UnionPoolerMonitorMixin, self).__init__(*args, **kwargs)
+    super(UnionTemporalPoolerMonitorMixin, self).__init__(*args, **kwargs)
 
     self._mmResetActive = True  # First iteration is always a reset
 
@@ -280,7 +280,7 @@ class UnionPoolerMonitorMixin(MonitorMixinBase):
       sequenceLabel = kwargs["sequenceLabel"]
       del kwargs["sequenceLabel"]
 
-    activeColumns = super(UnionPoolerMonitorMixin, self).compute(*args,
+    activeColumns = super(UnionTemporalPoolerMonitorMixin, self).compute(*args,
                                                                     **kwargs)
     activeColumns = set(activeColumns)
     activeCells = activeColumns
@@ -298,7 +298,7 @@ class UnionPoolerMonitorMixin(MonitorMixinBase):
 
 
   def reset(self):
-    super(UnionPoolerMonitorMixin, self).reset()
+    super(UnionTemporalPoolerMonitorMixin, self).reset()
 
     self._mmResetActive = True
 
@@ -335,7 +335,7 @@ class UnionPoolerMonitorMixin(MonitorMixinBase):
 
 
   def mmClearHistory(self):
-    super(UnionPoolerMonitorMixin, self).mmClearHistory()
+    super(UnionTemporalPoolerMonitorMixin, self).mmClearHistory()
 
     self._mmTraces["activeCells"] = IndicesTrace(self, "active cells")
     self._mmTraces["sequenceLabels"] = StringsTrace(self, "sequence labels")

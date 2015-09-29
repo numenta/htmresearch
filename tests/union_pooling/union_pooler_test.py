@@ -24,7 +24,7 @@ import unittest
 
 import numpy
 
-from union_pooling.union_pooler import UnionPooler
+from union_temporal_pooling.union_temporal_pooler import UnionTemporalPooler
 
 
 
@@ -32,11 +32,11 @@ REAL_DTYPE = numpy.float32
 
 
 
-class UnionPoolerTest(unittest.TestCase):
+class UnionTemporalPoolerTest(unittest.TestCase):
 
 
   def setUp(self):
-    self.unionPooler = UnionPooler(inputDimensions=5,
+    self.unionTemporalPooler = UnionTemporalPooler(inputDimensions=5,
                                    columnDimensions=5,
                                    potentialRadius=16,
                                    potentialPct=0.9,
@@ -55,7 +55,7 @@ class UnionPoolerTest(unittest.TestCase):
                                    spVerbosity=0,
                                    wrapAround=True,
 
-                                   # union_pooler.py parameters
+                                   # union_temporal_pooler.py parameters
                                    activeOverlapWeight=1.0,
                                    predictedActiveOverlapWeight=10.0,
                                    maxUnionActivity=0.20,
@@ -64,11 +64,11 @@ class UnionPoolerTest(unittest.TestCase):
 
 
   def testDecayPoolingActivationDefaultDecayRate(self):
-    self.unionPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
+    self.unionTemporalPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
                                                       dtype=REAL_DTYPE)
     expected = numpy.array([0, 1, 2, 3, 4], dtype=REAL_DTYPE)
 
-    result = self.unionPooler._decayPoolingActivation()
+    result = self.unionTemporalPooler._decayPoolingActivation()
     print result
     self.assertTrue(numpy.array_equal(expected, result))
 
@@ -79,48 +79,48 @@ class UnionPoolerTest(unittest.TestCase):
     overlaps = numpy.array([0.123, 0.0, 0.0, 0.456, 0.789])
     expected = [0.0, 10.0, 0.0, 10.0, 10.0]
 
-    result = self.unionPooler._addToPoolingActivation(activeCells, overlaps)
+    result = self.unionTemporalPooler._addToPoolingActivation(activeCells, overlaps)
     self.assertTrue(numpy.allclose(expected, result))
 
 
   def testAddToPoolingActivationExistingActivation(self):
-    self.unionPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
+    self.unionTemporalPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
                                                       dtype=REAL_DTYPE)
     activeCells = numpy.array([1, 3, 4])
     #                      [    0,   1,   0,     1,     1]
     overlaps = numpy.array([0.123, 0.0, 0.0, 0.456, 0.789])
     expected = [0.0, 11.0, 2.0, 13, 14]
 
-    result = self.unionPooler._addToPoolingActivation(activeCells, overlaps)
+    result = self.unionTemporalPooler._addToPoolingActivation(activeCells, overlaps)
     self.assertTrue(numpy.allclose(expected, result))
 
 
   def testGetMostActiveCellsUnionSizeZero(self):
-    self.unionPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
+    self.unionTemporalPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
                                                       dtype=REAL_DTYPE)
-    self.unionPooler._maxUnionCells = 0
+    self.unionTemporalPooler._maxUnionCells = 0
 
-    result = self.unionPooler._getMostActiveCells()
+    result = self.unionTemporalPooler._getMostActiveCells()
 
     self.assertEquals(len(result), 0)
 
 
   def testGetMostActiveCellsRegular(self):
-    self.unionPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
+    self.unionTemporalPooler._poolingActivation = numpy.array([0, 1, 2, 3, 4],
                                                       dtype=REAL_DTYPE)
 
-    result = self.unionPooler._getMostActiveCells()
+    result = self.unionTemporalPooler._getMostActiveCells()
 
     self.assertEquals(len(result), 1)
     self.assertEquals(result[0], 4)
 
 
   def testGetMostActiveCellsIgnoreZeros(self):
-    self.unionPooler._poolingActivation = numpy.array([0, 0, 0, 3, 4],
+    self.unionTemporalPooler._poolingActivation = numpy.array([0, 0, 0, 3, 4],
                                                       dtype=REAL_DTYPE)
-    self.unionPooler._maxUnionCells = 3
+    self.unionTemporalPooler._maxUnionCells = 3
 
-    result = self.unionPooler._getMostActiveCells()
+    result = self.unionTemporalPooler._getMostActiveCells()
 
     self.assertEquals(len(result), 2)
     self.assertEquals(result[0], 3)

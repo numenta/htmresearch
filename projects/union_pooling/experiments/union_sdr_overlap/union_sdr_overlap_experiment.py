@@ -33,13 +33,13 @@ from nupic.data.generators.sequence_machine import SequenceMachine
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
 from htmresearch.support import data_utils
-from htmresearch.frameworks.union_pooling.union_pooler_experiment import (
-    UnionPoolerExperiment)
+from htmresearch.frameworks.union_temporal_pooling.union_temporal_pooler_experiment import (
+    UnionTemporalPoolerExperiment)
 
 
 """
 Experiment 1
-Runs UnionPooler on input from a Temporal Memory with and
+Runs UnionTemporalPooler on input from a Temporal Memory with and
 without training. Compute overlap between Union SDR representations in two
 conditions over time.
 """
@@ -79,7 +79,7 @@ def writeDefaultMetrics(outputDir, experiment, patternDimensionality,
 def writeMetricTrace(experiment, traceName, outputDir, outputFileName):
   """
   Assume trace elements can be converted to list.
-  :param experiment: UnionPoolerExperiment instance
+  :param experiment: UnionTemporalPoolerExperiment instance
   :param traceName: name of the metric trace
   :param outputDir: dir where output file will be written
   :param outputFileName: filename of output file
@@ -185,7 +185,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
 
   # Set up the Temporal Memory and Union Pooler network
   print "\nCreating network..."
-  experiment = UnionPoolerExperiment(tmParamOverrides, upParamOverrides)
+  experiment = UnionTemporalPoolerExperiment(tmParamOverrides, upParamOverrides)
 
   # Train only the Temporal Memory on the generated sequences
   if trainingPasses > 0:

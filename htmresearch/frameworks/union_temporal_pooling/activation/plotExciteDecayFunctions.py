@@ -33,13 +33,13 @@ with PdfPages('excitation_decay_functions.pdf') as pdf:
 	
 	plt.figure()
 	plt.subplot(2,2,1)
-	from union_pooling.activation.excite_functions.excite_functions_all import (
+	from union_temporal_pooling.activation.excite_functions.excite_functions_all import (
 	  LogisticExciteFunction)
 	self = LogisticExciteFunction()
 	self.plot()	
 	plt.xlabel('Predicted Input #')
 	
-	from union_pooling.activation.decay_functions.decay_functions_all import (
+	from union_temporal_pooling.activation.decay_functions.decay_functions_all import (
 	  ExponentialDecayFunction)
 	
 	plt.subplot(2,2,2)
@@ -48,7 +48,7 @@ with PdfPages('excitation_decay_functions.pdf') as pdf:
 	pdf.savefig()
 	plt.close()
 
-	# from union_pooling.activation.decay_functions.logistic_decay_function import (
+	# from union_temporal_pooling.activation.decay_functions.logistic_decay_function import (
 	#   LogisticDecayFunction)
 
 	# plt.figure()

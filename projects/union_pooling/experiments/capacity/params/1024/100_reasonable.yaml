@@ -17,7 +17,7 @@ temporalMemoryParams:
   seed: 42
   learnOnOneCell: False
 
-unionPoolerParams:
+unionTemporalPoolerParams:
   # Spatial Pooler superclass params
   columnDimensions: [1024]
   numActiveColumnsPerInhArea: 20.0
@@ -36,7 +36,7 @@ unionPoolerParams:
   spVerbosity: 0
   wrapAround: True
 
-  # Union Pooler params
+  # Union Temporal Pooler params
   activeOverlapWeight: 1.0
   predictedActiveOverlapWeight: 0.0
   maxUnionActivity: 0.20

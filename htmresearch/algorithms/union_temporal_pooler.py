@@ -38,11 +38,11 @@ _TIE_BREAKER_FACTOR = 0.000001
 
 class UnionTemporalPooler(SpatialPooler):
   """
-  Experimental Union Temporal Pooler Python implementation. The Union Temporal Pooler builds a
-  "union SDR" of the most recent sets of active columns. It is driven by
-  active-cell input and, more strongly, by predictive-active cell input. The
-  latter is more likely to produce active columns. Such winning columns will
-  also tend to persist longer in the union SDR.
+  Experimental Union Temporal Pooler Python implementation. The Union Temporal
+  Pooler builds a "union SDR" of the most recent sets of active columns. It is
+  driven by active-cell input and, more strongly, by predictive-active cell
+  input. The latter is more likely to produce active columns. Such winning
+  columns will also tend to persist longer in the union SDR.
   """
 
 
