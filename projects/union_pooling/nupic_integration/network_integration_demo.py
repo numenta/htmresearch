@@ -87,13 +87,13 @@ TP_PARAMS = {
 }
 
 
-# Config field for UPRegion
+# Config field for TPRegion
 UP_PARAMS = {
     "spVerbosity": _VERBOSITY,
     "globalInhibition": 1,
     "columnCount": 128,
     #"columnCount": 2048,
-    # This must be set before creating the UPRegion
+    # This must be set before creating the TPRegion
     "inputWidth": 0,
     "numActiveColumnsPerInhArea": 20,
     #"numActiveColumnsPerInhArea": 40,
@@ -178,14 +178,14 @@ def createNetwork(dataSource):
   network.link("temporalMemoryRegion", "spatialPoolerRegion", "UniformLink", "",
                srcOutput="topDownOut", destInput="topDownIn")
 
-  # Register UPRegion since we aren't in nupic
+  # Register TPRegion since we aren't in nupic
   curDirectory = os.path.dirname(os.path.abspath(__file__))
   # directory containing the union pooler directory is 2 directories above this file
   unionTemporalPoolerDirectory = os.path.split((os.path.split(curDirectory))[0])[0]
   sys.path.append(unionTemporalPoolerDirectory)
   Network.registerRegionPackage("union_temporal_pooling")
 
-  # Add the UPRegion on top of the TPRegion
+  # Add the TPRegion on top of the TPRegion
   temporal = network.regions["temporalMemoryRegion"].getSelf()
   UP_PARAMS["inputWidth"] = temporal.getOutputElementCount("bottomUpOut")
   network.addRegion("unionTemporalPoolerRegion", "py.TemporalPoolerRegion", json.dumps(UP_PARAMS))

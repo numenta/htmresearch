@@ -51,10 +51,10 @@
       "pamLength": 3
     }
   },
-  "upRegionConfig": {
+  "tpRegionConfig": {
     "regionEnabled": false,
     "regionName": "UP",
-    "regionType": "py.UPRegion",
+    "regionType": "py.TPRegion",
     "regionParams": null
   },
   "classifierRegionConfig": {

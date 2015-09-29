@@ -305,16 +305,16 @@ def createNetwork(dataSource, networkConfig, encoder=None):
     previousRegion = regionName
     previousRegionWidth = tmRegion.getSelf().cellsPerColumn
 
-  if "upRegionConfig" in networkRegions:
+  if "tpRegionConfig" in networkRegions:
     # create UP region, if enabled
-    regionConfig = networkConfig["upRegionConfig"]
+    regionConfig = networkConfig["tpRegionConfig"]
     regionName = regionConfig["regionName"]
     regionParams = regionConfig["regionParams"]
     regionParams["inputWidth"] = previousRegionWidth
-    upRegion = _createRegion(network, regionConfig,
+    tpRegion = _createRegion(network, regionConfig,
       moduleName="htmresearch.regions.TemporalPoolerRegion")
     _validateRegionWidths(previousRegionWidth,
-                          upRegion.getSelf()._inputWidth)
+                          tpRegion.getSelf()._inputWidth)
     _linkRegions(network,
                  sensorRegionName,
                  previousRegion,

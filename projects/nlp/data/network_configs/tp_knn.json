@@ -9,7 +9,7 @@
       },
     "encoders": {}
   },
-  "upRegionConfig": {
+  "tpRegionConfig": {
     "regionEnabled": true,
     "regionName": "UP",
     "regionType": "py.TemporalPoolerRegion",

@@ -72,7 +72,7 @@ def run():
               "regionEnabled")
             tmEnabled = networkConfig["tmRegionConfig"].get(
               "regionEnabled")
-            upEnabled = networkConfig["upRegionConfig"].get(
+            upEnabled = networkConfig["tpRegionConfig"].get(
               "regionEnabled")
             classifierType = networkConfig["classifierRegionConfig"].get(
               "regionType")
