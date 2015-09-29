@@ -21,7 +21,7 @@
 
 import numpy
 from nupic.bindings.math import GetNTAReal
-from htmresearch.algorithms.union_pooler import UnionPooler
+from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
 from nupic.support import getArgumentDescriptions
 from nupic.regions.PyRegion import PyRegion
 
@@ -29,13 +29,13 @@ from nupic.regions.PyRegion import PyRegion
 
 def _getPoolerClass(name):
     if name=="union":
-      return UnionPooler
+      return UnionTemporalPooler
     else:
       raise RuntimeError("Invalid pooling implementation %s. Valid ones are: union" % (name))
 
 
 def _getDefaultPoolerClass():
-    return UnionPooler
+    return UnionTemporalPooler
 
 
 def _buildArgs(poolerClass, self=None, kwargs={}):
@@ -268,7 +268,7 @@ class PoolingRegion(PyRegion):
 
 
   def reset(self):
-    """ Reset the state of the Union Pooler """
+    """ Reset the state of the Union Temporal Pooler """
     if self._pooler is not None:
       self._pooler.reset()
 

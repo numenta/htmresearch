@@ -38,12 +38,12 @@ from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
-from htmresearch.frameworks.union_pooling.union_pooler_experiment import (
-    UnionPoolerExperiment)
+from htmresearch.frameworks.union_temporal_pooling.union_temporal_pooler_experiment import (
+    UnionTemporalPoolerExperiment)
 
 """
 Experiment 2
-Runs UnionPooler on input from a Temporal Memory while TM learns the sequence
+Runs UnionTemporalPooler on input from a Temporal Memory while TM learns the sequence
 """
 
 def experiment2():
@@ -103,7 +103,7 @@ def experiment2():
 
   # Set up the Temporal Memory and Union Pooler network
   print "\nCreating network..."
-  experiment = UnionPoolerExperiment(tmParamOverrides, upParamOverrides)
+  experiment = UnionTemporalPoolerExperiment(tmParamOverrides, upParamOverrides)
 
   # Train only the Temporal Memory on the generated sequences
   # if trainingPasses > 0:
@@ -168,7 +168,7 @@ def experiment2():
                         sequenceLabel=inputCategory)
 
         if upLearn is not None:
-          activeCells, predActiveCells, burstingCols, = experiment.getUnionPoolerInput()
+          activeCells, predActiveCells, burstingCols, = experiment.getUnionTemporalPoolerInput()
           experiment.up.compute(activeCells,
                           predActiveCells,
                           learn=upLearn,

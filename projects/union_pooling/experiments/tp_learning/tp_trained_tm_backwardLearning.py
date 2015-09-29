@@ -39,18 +39,18 @@ from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
-from htmresearch.frameworks.union_pooling.union_pooler_experiment import (
-    UnionPoolerExperiment)
+from htmresearch.frameworks.union_temporal_pooling.union_temporal_pooler_experiment import (
+    UnionTemporalPoolerExperiment)
 
 _SHOW_PROGRESS_INTERVAL = 200
 
 
 """
 Experiment 1
-Runs UnionPooler on input from a Temporal Memory after training
+Runs UnionTemporalPooler on input from a Temporal Memory after training
 on a long sequence
 
-Enables learning in UnionPooler
+Enables learning in UnionTemporalPooler
 Tests different learning rules
 - Forward learning is Hebbian learning on union pooled cells
 - Backward learning is Reinforcement-like learning that allows cells to
@@ -120,7 +120,7 @@ def initializeNetwork():
 
   # Set up the Temporal Memory and Union Pooler network
   print "\nCreating network..."
-  experiment = UnionPoolerExperiment(tmParamOverrides, upParamOverrides)
+  experiment = UnionTemporalPoolerExperiment(tmParamOverrides, upParamOverrides)
   return experiment
 
 
@@ -310,7 +310,7 @@ def runTestPhase(experiment, tmLearn=False, upLearn=True, outputfileName='result
                         sequenceLabel=inputCategory)
 
 
-        activeCells, predActiveCells, burstingCols, = experiment.getUnionPoolerInput()
+        activeCells, predActiveCells, burstingCols, = experiment.getUnionTemporalPoolerInput()
 
         overlapsActive = experiment.up._calculateOverlap(activeCells)
         overlapsPredictedActive = experiment.up._calculateOverlap(predActiveCells)
@@ -427,7 +427,7 @@ def runTPLearnPhase(experiment, learningPasses):
                         sequenceLabel=inputCategory)
 
 
-        activeCells, predActiveCells, burstingCols, = experiment.getUnionPoolerInput()
+        activeCells, predActiveCells, burstingCols, = experiment.getUnionTemporalPoolerInput()
 
         overlapsActive = experiment.up._calculateOverlap(activeCells)
         overlapsPredictedActive = experiment.up._calculateOverlap(predActiveCells)

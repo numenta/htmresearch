@@ -32,19 +32,19 @@ from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
 
 from htmresearch.algorithms.general_temporal_memory import (
      GeneralTemporalMemory)
-from htmresearch.support.union_pooler_monitor_mixin import (
-     UnionPoolerMonitorMixin)
+from htmresearch.support.union_temporal_pooler_monitor_mixin import (
+     UnionTemporalPoolerMonitorMixin)
 
-# from union_pooling.union_pooler_new import UnionPoolerNew as UnionPooler
+# from union_temporal_pooling.union_temporal_pooler_new import UnionTemporalPoolerNew as UnionTemporalPooler
 # uncomment to use early version of union pooler
-from htmresearch.algorithms.union_pooler import UnionPooler
+from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
 
 class MonitoredFastGeneralTemporalMemory(TemporalMemoryMonitorMixin,
                                          GeneralTemporalMemory):
   pass
 
 
-class MonitoredUnionPooler(UnionPoolerMonitorMixin, UnionPooler):
+class MonitoredUnionTemporalPooler(UnionTemporalPoolerMonitorMixin, UnionTemporalPooler):
   pass
 
 
@@ -53,9 +53,9 @@ realDType = GetNTAReal()
 
 
 
-class UnionPoolerExperiment(object):
+class UnionTemporalPoolerExperiment(object):
   """
-  This class defines a Temporal Memory-Union Pooler network and provides methods
+  This class defines a Temporal Memory-Union Temporal Pooler network and provides methods
   to run the network on data sequences.
   """
 
@@ -93,7 +93,7 @@ class UnionPoolerExperiment(object):
                                  "spVerbosity": 0,
                                  "wrapAround": True,
 
-                                 # Union Pooler Params
+                                 # Union Temporal Pooler Params
                                  "activeOverlapWeight": 1.0,
                                  "predictedActiveOverlapWeight": 10.0,
                                  "maxUnionActivity": 0.20,
@@ -114,14 +114,14 @@ class UnionPoolerExperiment(object):
     params["seed"] = seed
     self.tm = MonitoredFastGeneralTemporalMemory(mmName="TM", **params)
 
-    print "Initializing Union Pooler..."
+    print "Initializing Union Temporal Pooler..."
     start = time.time()
     params = dict(self.DEFAULT_UNION_POOLER_PARAMS)
     params.update(upOverrides or {})
     params["inputDimensions"] = [self.tm.numberOfCells()]
     params["potentialRadius"] = self.tm.numberOfCells()
     params["seed"] = seed
-    self.up = MonitoredUnionPooler(mmName="UP", **params)
+    self.up = MonitoredUnionTemporalPooler(mmName="UP", **params)
     elapsed = int(time.time() - start)
     print "Total time: {0:2} seconds.".format(elapsed)
 
@@ -135,7 +135,7 @@ class UnionPoolerExperiment(object):
                             upLearn=None, classifierLearn=False, verbosity=0,
                             progressInterval=None):
     """
-    Runs Union Pooler network on specified sequence.
+    Runs Union Temporal Pooler network on specified sequence.
 
     @param inputSequences           One or more sequences of input patterns.
                                     Each should be terminated with None.
@@ -145,8 +145,8 @@ class UnionPoolerExperiment(object):
                                     Each should be terminated with None.
 
     @param tmLearn:   (bool)        Temporal Memory learning mode
-    @param upLearn:   (None, bool)  Union Pooler learning mode. If None,
-                                    Union Pooler will not be run.
+    @param upLearn:   (None, bool)  Union Temporal Pooler learning mode. If None,
+                                    Union Temporal Pooler will not be run.
     @param classifierLearn: (bool)  Classifier learning mode
 
     @param progressInterval: (int)  Interval of console progress updates
@@ -204,16 +204,16 @@ class UnionPoolerExperiment(object):
                       sequenceLabel=sequenceLabel)
 
       if upLearn is not None:
-        activeCells, predActiveCells, burstingCols, = self.getUnionPoolerInput()
+        activeCells, predActiveCells, burstingCols, = self.getUnionTemporalPoolerInput()
         self.up.compute(activeCells,
                         predActiveCells,
                         learn=upLearn,
                         sequenceLabel=sequenceLabel)
 
 
-  def getUnionPoolerInput(self):
+  def getUnionTemporalPoolerInput(self):
     """
-    Gets the Union Pooler input from the Temporal Memory
+    Gets the Union Temporal Pooler input from the Temporal Memory
     """
     activeCells = numpy.zeros(self.tm.numberOfCells()).astype(realDType)
     activeCells[list(self.tm.activeCellsIndices())] = 1

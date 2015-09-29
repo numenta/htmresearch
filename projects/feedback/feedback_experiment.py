@@ -31,7 +31,7 @@ from nupic.data.generators.sequence_machine import SequenceMachine
 from htmresearch.algorithms.general_temporal_memory import GeneralTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
     TemporalMemoryMonitorMixin)
-from htmresearch.algorithms.union_pooler import UnionPooler
+from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
 
 
 
@@ -79,7 +79,7 @@ DEFAULT_UNION_POOLER_PARAMS = {# Spatial Pooler Params
                                  "spVerbosity": 0,
                                  "wrapAround": True,
 
-                                 # Union Pooler Params
+                                 # Union Temporal Pooler Params
                                  "activeOverlapWeight": 1.0,
                                  "predictedActiveOverlapWeight": 10.0,
                                  "maxUnionActivity": 0.20,
@@ -109,7 +109,7 @@ def setup(upSet=False):
     params = dict(DEFAULT_UNION_POOLER_PARAMS)
     params["inputDimensions"] = [tmFeedback.numberOfCells()]
     params["potentialRadius"] = tmFeedback.numberOfCells()
-    up = UnionPooler(**params)
+    up = UnionTemporalPooler(**params)
     print "Done."
 
 
@@ -180,9 +180,9 @@ def shiftingFeedback(starting_feedback, n, percent_shift=0.2):
 
   return feedback_seq
 
-def getUnionPoolerInput(tm):
+def getUnionTemporalPoolerInput(tm):
   """
-  Gets the Union Pooler input from the Temporal Memory
+  Gets the Union Temporal Pooler input from the Temporal Memory
   """
   activeCells = np.zeros(tm.numberOfCells()).astype(realDType)
   activeCells[list(tm.activeCellsIndices())] = 1
@@ -211,7 +211,7 @@ def trainUP(tm, sequences, up=None, trials=trials, clearhistory=True):
         tm.compute(sensorPattern, activeApicalCells=feedback,
                    learn=True, sequenceLabel=None)
         if up is not None:
-          activeCells, predActiveCells, burstingCols, = getUnionPoolerInput(tm)
+          activeCells, predActiveCells, burstingCols, = getUnionTemporalPoolerInput(tm)
           up.compute(activeCells, predActiveCells, learn=False)
 
     if clearhistory:
@@ -240,7 +240,7 @@ def runUP(tm, mutate_times, sequences, alphabet, up=None, mutation=0):
                  learn=True, sequenceLabel=None)
 
       if up is not None:
-        activeCells, predActiveCells, burstingCols, = getUnionPoolerInput(tm)
+        activeCells, predActiveCells, burstingCols, = getUnionTemporalPoolerInput(tm)
         up.compute(activeCells, predActiveCells, learn=False)
 
       allLabels.append(labelPattern(sensorPattern, alphabet))

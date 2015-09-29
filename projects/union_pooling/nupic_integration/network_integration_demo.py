@@ -181,18 +181,18 @@ def createNetwork(dataSource):
   # Register UPRegion since we aren't in nupic
   curDirectory = os.path.dirname(os.path.abspath(__file__))
   # directory containing the union pooler directory is 2 directories above this file
-  unionPoolerDirectory = os.path.split((os.path.split(curDirectory))[0])[0]
-  sys.path.append(unionPoolerDirectory)
-  Network.registerRegionPackage("union_pooling")
+  unionTemporalPoolerDirectory = os.path.split((os.path.split(curDirectory))[0])[0]
+  sys.path.append(unionTemporalPoolerDirectory)
+  Network.registerRegionPackage("union_temporal_pooling")
 
   # Add the UPRegion on top of the TPRegion
   temporal = network.regions["temporalMemoryRegion"].getSelf()
   UP_PARAMS["inputWidth"] = temporal.getOutputElementCount("bottomUpOut")
-  network.addRegion("unionPoolerRegion", "py.PoolingRegion", json.dumps(UP_PARAMS))
+  network.addRegion("unionTemporalPoolerRegion", "py.PoolingRegion", json.dumps(UP_PARAMS))
 
-  network.link("temporalMemoryRegion", "unionPoolerRegion", "UniformLink", "",
+  network.link("temporalMemoryRegion", "unionTemporalPoolerRegion", "UniformLink", "",
                srcOutput="activeCells", destInput="activeCells")
-  network.link("temporalMemoryRegion", "unionPoolerRegion", "UniformLink", "",
+  network.link("temporalMemoryRegion", "unionTemporalPoolerRegion", "UniformLink", "",
                srcOutput="predictedActiveCells", destInput="predictedActiveCells")
 
   network.initialize()
@@ -212,7 +212,7 @@ def createNetwork(dataSource):
   temporal.setParameter("inferenceMode", 1, True)
   temporal.setParameter("computePredictedActiveCellIndices", 1, True)
 
-  union = network.regions["unionPoolerRegion"].getSelf()
+  union = network.regions["unionTemporalPoolerRegion"].getSelf()
   # Make sure learning is enabled (this is the default)
   union.setParameter("learningMode", 1, True)
 
@@ -229,7 +229,7 @@ def runNetwork(network, writer):
   sensorRegion = network.regions["sensor"]
   spatialPoolerRegion = network.regions["spatialPoolerRegion"]
   temporalMemoryRegion = network.regions["temporalMemoryRegion"]
-  unionPoolerRegion = network.regions["unionPoolerRegion"]
+  unionTemporalPoolerRegion = network.regions["unionTemporalPoolerRegion"]
 
   prevPredictedColumns = []
 
@@ -239,7 +239,7 @@ def runNetwork(network, writer):
 
     # Write out the active cells along with the record number and consumption
     # value.
-    activeCells = unionPoolerRegion.getOutputData("mostActiveCells")
+    activeCells = unionTemporalPoolerRegion.getOutputData("mostActiveCells")
     consumption = sensorRegion.getOutputData("sourceOut")[0]
     writer.writerow((i, consumption, numpy.sum(activeCells)))
 

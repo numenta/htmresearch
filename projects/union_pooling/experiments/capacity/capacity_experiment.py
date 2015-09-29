@@ -22,7 +22,7 @@
 
 """
 Experiment 2a
-Explore the limits of the distinctness of Union Pooler's union SDR.
+Explore the limits of the distinctness of Union Temporal Pooler's union SDR.
 
 Data: Sequences of unique patterns.
 Train Phase: Train network on some number of sequences having moderate length.
@@ -42,8 +42,8 @@ from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
-from htmresearch.frameworks.union_pooling.union_pooler_experiment import (
-    UnionPoolerExperiment)
+from htmresearch.frameworks.union_temporal_pooling.union_temporal_pooler_experiment import (
+    UnionTemporalPoolerExperiment)
 
 
 
@@ -128,7 +128,7 @@ def runTestPhase(experiment, inputSequences, seqLabels, sequenceCount,
 
 def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   """
-  Runs the Union Pooler capacity experiment.
+  Runs the Union Temporal Pooler capacity experiment.
 
   :param params: A dict containing the following experiment parameters:
 
@@ -139,7 +139,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
         trainingPasses - Number of times Temporal Memory is trained on each
         sequence
         temporalMemoryParams - A dict of Temporal Memory parameter overrides
-        unionPoolerParams - A dict of Union Pooler parameter overrides
+        unionTemporalPoolerParams - A dict of Union Temporal Pooler parameter overrides
 
   :param paramDir: Path of parameter file
   :param outputDir: Output will be written to this path
@@ -147,7 +147,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   :param consoleVerbosity: Console output verbosity
   """
   start = time.time()
-  print "Running Union Pooler Capacity Experiment...\n"
+  print "Running Union Temporal Pooler Capacity Experiment...\n"
   print "Params dir: {0}".format(os.path.join(os.path.dirname(__file__),
                                               paramDir))
   print "Output dir: {0}\n".format(os.path.join(os.path.dirname(__file__),
@@ -159,7 +159,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
   sequenceCount = params["numberOfSequences"]
   trainingPasses = params["trainingPasses"]
   tmParamOverrides = params["temporalMemoryParams"]
-  upParamOverrides = params["unionPoolerParams"]
+  upParamOverrides = params["unionTemporalPoolerParams"]
 
   # Generate input data
   inputSequences, seqLabels = generateSequences(patternDimensionality,
@@ -168,7 +168,7 @@ def run(params, paramDir, outputDir, plotVerbosity=0, consoleVerbosity=0):
                                                 sequenceCount)
 
   print "\nCreating Network..."
-  experiment = UnionPoolerExperiment(tmParamOverrides, upParamOverrides)
+  experiment = UnionTemporalPoolerExperiment(tmParamOverrides, upParamOverrides)
 
   # Train the Temporal Memory on the generated sequences
   print "\nTraining Temporal Memory..."

@@ -24,7 +24,7 @@ import unittest
 import numpy
 import numpy.testing as npt
 
-from union_pooling.activation.excite_functions.excite_functions_all import (
+from union_temporal_pooling.activation.excite_functions.excite_functions_all import (
   LogisticExciteFunction)
 
 class LogisticExciteFunctionTest(unittest.TestCase):

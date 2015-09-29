@@ -34,8 +34,8 @@ from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
-from union_pooling.experiments.union_pooler_experiment import (
-    UnionPoolerExperiment)
+from union_temporal_pooling.experiments.union_temporal_pooler_experiment import (
+    UnionTemporalPoolerExperiment)
 
 """
 Variation Robustness Experiment
@@ -57,7 +57,7 @@ perturbations may occur:
   3) skipping expected pattern and presenting next pattern in sequence
   4) addition of some other pattern putting off expected pattern one time step
 
-Goal: Characterize the variation robustness of the UnionPooler to various
+Goal: Characterize the variation robustness of the UnionTemporalPooler to various
 perturbations. Explore trade-off between remaining stable to variations yet
 still changing when sequence actually changes.
 """
@@ -108,7 +108,7 @@ def runTestPhaseRandom(experiment, inputSequences, sequenceCount,
     sequence
     4) Jump from current sequence to another randomly selected sequence
 
-  @param experiment                 A UnionPoolerExperiment
+  @param experiment                 A UnionTemporalPoolerExperiment
   @param inputSequences             List of sequences each terminated by None.
   @param sequenceCount              The number of sequences in inputSequences
   @param sequenceLength             Length of each sequence not counting Nones.
@@ -308,7 +308,7 @@ def runTestPhaseFixed(experiment, inputSequences, sequenceCount, sequenceLength,
   performed, i.e. chance does not affect the number of substitutions that occur.
   Random chance does still affect where these perturbation occur in each
   sequence.
-  @param experiment                 A UnionPoolerExperiment
+  @param experiment                 A UnionTemporalPoolerExperiment
   @param inputSequences             List of sequences each terminated by None.
   @param sequenceCount              The number of sequences in inputSequences
   @param sequenceLength             Length of each sequence not counting Nones.
@@ -512,7 +512,7 @@ def run(params, paramDir, outputDir, consoleVerbosity=0, plotVerbosity=0):
 
   # Set up the Temporal Memory and Union Pooler network
   print "\nCreating network..."
-  experiment = UnionPoolerExperiment(tmOverrides=tmParamOverrides,
+  experiment = UnionTemporalPoolerExperiment(tmOverrides=tmParamOverrides,
                                      upOverrides=upParamOverrides,
                                      classifierOverrides=classifierOverrides,
                                      consoleVerbosity=0)
