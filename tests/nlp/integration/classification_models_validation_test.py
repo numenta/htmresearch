@@ -237,6 +237,42 @@ class ClassificationModelsTest(unittest.TestCase):
       for e, r in zip(expectedClasses, resultClasses)]
 
 
+  def testClassifyHTMUsingTPAsExpectedWithKNN(self):
+    """
+    Tests ClassificationModelHTM using TP region.
+
+    Training on the first five samples of the dataset, and testing on the rest,
+    the model's classifications should match those in the expected classes
+    data file.
+    """
+    modelName = "HTMNetwork"
+    runner = HTMRunner(dataPath=os.path.join(DATA_DIR, "responses_network.csv"),
+                       networkConfigPath=os.path.join(
+                         DATA_DIR, "network_config_tp_knn.json"),
+                       resultsDir="",
+                       experimentName="htm_test",
+                       loadPath=None,
+                       modelName=modelName,
+                       numClasses=3,
+                       plots=0,
+                       orderedSplit=True,
+                       trainSizes=[5],
+                       verbosity=0,
+                       generateData=False,
+                       votingMethod="last",
+                       classificationFile=os.path.join(
+                         DATA_DIR, "responses_classifications.json"))
+    runner.initModel(0)
+    runner.runExperiment()
+
+    expectedClasses, resultClasses = self.getExpectedClassifications(runner,
+      os.path.join(DATA_DIR, "responses_expected_classes_htm_tp.csv"))
+
+    [self.assertEqual(sorted(e), sorted(r),
+      "HTM model predicted classes other than what we expect.")
+      for e, r in zip(expectedClasses, resultClasses)]
+
+
 # TODO: add the following tests...
 
 #  def testClassifyHTMAsExpectedWithCLA(self):
