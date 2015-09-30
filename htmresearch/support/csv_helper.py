@@ -41,7 +41,7 @@ def readCSV(csvFile, numLabels=0):
                                         corresponding category labels (strings).
   """
   try:
-    with open(csvFile, "rb") as f:
+    with open(csvFile, "rU") as f:
       reader = csv.reader(f)
       headers = next(reader, None)
       try:
