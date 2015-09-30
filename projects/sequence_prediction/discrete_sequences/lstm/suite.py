@@ -234,6 +234,8 @@ class HighOrderDataset(Dataset):
 class Suite(PyExperimentSuite):
 
   def reset(self, params, repetition):
+    random.seed(params['seed'])
+
     if params['encoding'] == 'basic':
       self.encoder = BasicEncoder(params['encoding_num'])
     elif params['encoding'] == 'distributed':
