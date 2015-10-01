@@ -303,7 +303,8 @@ def createNetwork(dataSource, networkConfig, encoder=None):
                  previousRegion,
                  regionName)
     previousRegion = regionName
-    previousRegionWidth = tmRegion.getSelf().cellsPerColumn
+    previousRegionWidth = (tmRegion.getSelf().columnCount *
+                           tmRegion.getSelf().cellsPerColumn)
 
   if "tpRegionConfig" in networkRegions:
     # create UP region, if enabled
