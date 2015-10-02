@@ -200,7 +200,8 @@ class LanguageEncoder(object):
                                   size (n) by.
     @return             (list)    Scaled down bitmap of the encoding.
     """
-    return [int(i * scaleFactor) for i in encoding]
+    scaledBitmap = [int(i * scaleFactor) for i in encoding]
+    return sorted(set(scaledBitmap), key=lambda x: scaledBitmap.index(x))
 
 
   def pprintHeader(self, prefix=""):

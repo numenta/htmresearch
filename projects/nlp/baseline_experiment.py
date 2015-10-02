@@ -78,6 +78,7 @@ def run(args):
                        experimentName=args.experimentName,
                        loadPath=args.loadPath,
                        modelName=args.modelName,
+                       retinaScaling=args.retinaScaling,
                        numClasses=args.numClasses,
                        plots=args.plots,
                        orderedSplit=args.orderedSplit,
@@ -93,6 +94,7 @@ def run(args):
                     experimentName=args.experimentName,
                     loadPath=args.loadPath,
                     modelName=args.modelName,
+                    retinaScaling=args.retinaScaling,
                     numClasses=args.numClasses,
                     plots=args.plots,
                     orderedSplit=args.orderedSplit,
@@ -161,6 +163,10 @@ if __name__ == "__main__":
                       type=str,
                       help="Name of model class. Also used for model results "
                            "directory and pickle checkpoint.")
+  parser.add_argument("--retinaScaling",
+                      default=1.0,
+                      type=float,
+                      help="Factor by which to scale the Cortical.io retina.")
   parser.add_argument("--resultsDir",
                       default="results",
                       help="This will hold the experiment results.")

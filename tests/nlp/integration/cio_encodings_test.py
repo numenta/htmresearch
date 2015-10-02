@@ -94,20 +94,28 @@ class CioTest(unittest.TestCase):
     """Test the CioEncoder for retina dimension scaling."""
     
     cio = CioEncoder(retinaScaling = 0.5, fingerprintType=EncoderTypes.document)
-    responseHalf = cio.encode(self.text)
+    response = cio.encode(self.text)
     
-    cio = CioEncoder(retinaScaling = 0.33, fingerprintType=EncoderTypes.document)
-    responseThird = cio.encode(self.text)
+    encodingDict = getTestData("cio_encoding_scaled_retina.json")
+
+    self.assertEqual(encodingDict["fingerprint"]["positions"],
+      response["fingerprint"]["positions"], "Cio bitmap is not as expected.")
+
+    fullRetinaEncodingDict = getTestData("cio_encoding_document.json")
+    fullLength = len(fullRetinaEncodingDict["fingerprint"]["positions"])
+    responseLength = len(response["fingerprint"]["positions"])
     
-    encodingDict = getTestData("cio_encoding_document.json")
+    self.assertTrue(responseLength <= fullLength,
+      "Retina scaling did not decrease the fingerprint size.")
+
     
-    for i, j, k in zip(encodingDict["fingerprint"]["positions"],
-                       responseHalf["fingerprint"]["positions"],
-                       responseThird["fingerprint"]["positions"]):
-      ii = int(0.5 * i)
-      self.assertEqual(ii, j, "Bitmap scaled by 0.5 is not as expected.")
-      self.assertNotEqual(j, k,
-        "Bitmaps scaled by 0.5 and 0.33 should not have equal elements.")
+#    for i, j, k in zip(encodingDict["fingerprint"]["positions"],
+#                       responseHalf["fingerprint"]["positions"],
+#                       responseThird["fingerprint"]["positions"]):
+#      ii = int(0.5 * i)
+#      self.assertEqual(ii, j, "Bitmap scaled by 0.5 is not as expected.")
+#      self.assertNotEqual(j, k,
+#        "Bitmaps scaled by 0.5 and 0.33 should not have equal elements.")
 
 
 
