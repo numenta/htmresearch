@@ -43,12 +43,14 @@ class CioEncoder(LanguageEncoder):
   converted to binary SDR arrays with this Cio encoder.
   """
 
-  def __init__(self, w=128, h=128, retina=DEFAULT_RETINA, cacheDir=None,
+  def __init__(self, retina=DEFAULT_RETINA, retinaScaling = 1.0, cacheDir=None,
                verbosity=0, fingerprintType=EncoderTypes.document,
                unionSparsity=20.0):
     """
-    @param w               (int)      Width dimension of the SDR topology.
-    @param h               (int)      Height dimension of the SDR topology.
+    @param retina          (str)      Cortical.io retina, either "en_synonymous"
+                                      or "en_associative".
+    @param retinaScaling   (float)    Scales the dimensions of the SDR topology,
+                                      where the width and height are both 128.
     @param cacheDir        (str)      Where to cache results of API queries.
     @param verbosity       (int)      Amount of info printed out, 0, 1, or 2.
     @param fingerprintType (Enum)     Specify word- or document-level encoding.
@@ -68,12 +70,22 @@ class CioEncoder(LanguageEncoder):
 
     self.apiKey = os.environ["CORTICAL_API_KEY"]
     self.client = CorticalClient(self.apiKey, retina=retina, cacheDir=cacheDir)
-    self.w = w
-    self.h = h
-    self.n = w*h
-    self.verbosity = verbosity
+
+    self._setDimensions(retinaScaling)
+
     self.fingerprintType = fingerprintType
     self.description = ("Cio Encoder", 0)
+    self.verbosity = verbosity
+
+
+  def _setDimensions(self, scalingFactor):
+    if scalingFactor < 0 or scalingFactor > 1:
+      raise ValueError("Retina can only be scaled by values between 0 and 1.")
+
+    self.retinaScaling = scalingFactor
+    self.width = int(128 * scalingFactor)
+    self.height = int(128 * scalingFactor)
+    self.n = self.width * self.height
 
 
   def encode(self, text):
@@ -102,6 +114,15 @@ class CioEncoder(LanguageEncoder):
                "the corpus.".format(text))
       encoding = self._subEncoding(text)
 
+    if self.retinaScaling != 1:
+      encoding["fingerprint"]["positions"] = self.scaleEncoding(
+        encoding["fingerprint"]["positions"], self.retinaScaling)
+      encoding["width"] = self.width
+      encoding["height"] = self.height
+
+    encoding["sparsity"] = len(encoding["fingerprint"]["positions"]) / float(
+      (encoding["width"] * encoding["height"]))
+
     return encoding
 
 
@@ -119,6 +140,10 @@ class CioEncoder(LanguageEncoder):
     counts = Counter()
     for t in tokens:
       bitmap = self.client.getBitmap(t)["fingerprint"]["positions"]
+
+      if self.retinaScaling != 1:
+        bitmap = self.scaleEncoding(bitmap, self.retinaScaling)
+
       counts.update(bitmap)
 
     positions = self.sparseUnion(counts)
@@ -128,8 +153,8 @@ class CioEncoder(LanguageEncoder):
         "text": text,
         "sparsity": len(positions) * 100 / float(self.n),
         "df": 0.0,
-        "height": self.h,
-        "width": self.w,
+        "height": self.height,
+        "width": self.width,
         "score": 0.0,
         "fingerprint": {
             "positions":sorted(positions)

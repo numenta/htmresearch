@@ -90,5 +90,26 @@ class CioTest(unittest.TestCase):
       response["fingerprint"]["positions"], "Cio bitmap is not as expected.")
 
 
+  def testRetinaScaling(self):
+    """Test the CioEncoder for retina dimension scaling."""
+    
+    cio = CioEncoder(retinaScaling = 0.5, fingerprintType=EncoderTypes.document)
+    responseHalf = cio.encode(self.text)
+    
+    cio = CioEncoder(retinaScaling = 0.33, fingerprintType=EncoderTypes.document)
+    responseThird = cio.encode(self.text)
+    
+    encodingDict = getTestData("cio_encoding_document.json")
+    
+    for i, j, k in zip(encodingDict["fingerprint"]["positions"],
+                       responseHalf["fingerprint"]["positions"],
+                       responseThird["fingerprint"]["positions"]):
+      ii = int(0.5 * i)
+      self.assertEqual(ii, j, "Bitmap scaled by 0.5 is not as expected.")
+      self.assertNotEqual(j, k,
+        "Bitmaps scaled by 0.5 and 0.33 should not have equal elements.")
+
+
+
 if __name__ == "__main__":
      unittest.main()
