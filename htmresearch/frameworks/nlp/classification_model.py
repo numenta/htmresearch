@@ -47,17 +47,12 @@ class ClassificationModel(object):
   # TODO: use nupic.bindings.math import Random
 
   def __init__(self,
-               n=16384,
-               w=328,
                verbosity=1,
                numLabels=3,
                modelDir="ClassificationModel"):
     """
-    The SDR dimensions are standard for Cortical.io fingerprints. If there are
-    no labels, set numLabels=0.
+    If there are no labels set numLabels=0.
     """
-    self.n = n
-    self.w = w
     self.numLabels = numLabels
     self.verbosity = verbosity
     self.modelDir = modelDir
@@ -307,10 +302,10 @@ class ClassificationModel(object):
     return self.patterns
 
 
-  def encodeRandomly(self, sample):
+  def encodeRandomly(self, sample, n, w):
     """Return a random bitmap representation of the sample."""
     random.seed(sample)
-    return numpy.sort(random.sample(xrange(self.n), self.w))
+    return numpy.sort(random.sample(xrange(n), w))
 
 
   def writeOutEncodings(self):
