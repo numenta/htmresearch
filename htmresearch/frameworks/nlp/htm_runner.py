@@ -49,6 +49,7 @@ class HTMRunner(Runner):
                experimentName,
                loadPath,
                modelName,
+               retinaScaling=1.0,
                numClasses=3,
                plots=0,
                orderedSplit=False,
@@ -67,8 +68,9 @@ class HTMRunner(Runner):
     See base class constructor for the other parameters.
     """
     super(HTMRunner, self).__init__(dataPath, resultsDir, experimentName,
-                                    modelName, loadPath, numClasses, plots,
-                                    orderedSplit, trainSizes, verbosity)
+                                    modelName, retinaScaling, loadPath,
+                                    numClasses, plots, orderedSplit, trainSizes,
+                                    verbosity)
 
     self.networkConfig = self._getNetworkConfig(networkConfigPath)
     self.model = None
@@ -111,6 +113,7 @@ class HTMRunner(Runner):
     else:
       self.model = ClassificationModelHTM(self.networkConfig,
                                           self.dataFiles[trial],
+                                          retinaScaling=self.retinaScaling,
                                           verbosity=self.verbosity,
                                           numLabels=self.numClasses,
                                           modelDir=self.modelDir,

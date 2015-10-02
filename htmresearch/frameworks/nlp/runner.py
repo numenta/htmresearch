@@ -57,6 +57,7 @@ class Runner(object):
                resultsDir,
                experimentName,
                modelName,
+               retinaScaling=1.0,
                loadPath=None,
                numClasses=3,
                plots=0,
@@ -67,8 +68,9 @@ class Runner(object):
     @param dataPath         (str)     Path to raw data file for the experiment.
     @param resultsDir       (str)     Directory where for the results metrics.
     @param experimentName   (str)     Experiment name, used for saving results.
-    @param loadPath         (str)     Path to serialized model for loading.
     @param modelName        (str)     Name of nlp model subclass.
+    @param retinaScaling    (float)   For scaling dimensions of Cio encoders.
+    @param loadPath         (str)     Path to serialized model for loading.
     @param numClasses       (int)     Number of classes (labels) per sample.
     @param plots            (int)     Specifies plotting of evaluation metrics.
     @param orderedSplit     (bool)    Indicates method for splitting train/test
@@ -85,6 +87,7 @@ class Runner(object):
     self.numClasses = numClasses
     self.plots = plots
     self.orderedSplit = orderedSplit
+    self.retinaScaling = retinaScaling
     self.trainSizes = trainSizes if trainSizes else []
     self.verbosity = verbosity
 
@@ -129,13 +132,15 @@ class Runner(object):
       return modelCls(verbosity=self.verbosity,
                       numLabels=self.numClasses,
                       modelDir=self.modelDir,
-                      fingerprintType=EncoderTypes.word)
+                      fingerprintType=EncoderTypes.word,
+                      retinaScaling=self.retinaScaling)
 
     elif modelName == "CioDocumentFingerprint":
       return modelCls(verbosity=self.verbosity,
                       numLabels=self.numClasses,
                       modelDir=self.modelDir,
-                      fingerprintType=EncoderTypes.document)
+                      fingerprintType=EncoderTypes.document,
+                      retinaScaling=self.retinaScaling)
 
     else:
       return modelCls(verbosity=self.verbosity,

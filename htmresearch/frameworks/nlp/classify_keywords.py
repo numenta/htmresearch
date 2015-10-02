@@ -75,7 +75,7 @@ class ClassificationModelKeywords(ClassificationModel):
     for token in sample:
       patterns.append({"text":token,
                        "sparsity":float(self.w)/self.n,
-                       "bitmap":self.encodeRandomly(token)})
+                       "bitmap":self.encodeRandomly(token, self.n, self.w)})
     return patterns
 
 

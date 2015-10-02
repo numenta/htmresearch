@@ -84,7 +84,7 @@ class ClassificationModelEndpoint(ClassificationModel):
     else:
       fp = {"text":sample,
             "sparsity":float(self.w)/self.n,
-            "bitmap":self.encodeRandomly(sample)}
+            "bitmap":self.encodeRandomly(sample, self.n, self.w)}
 
     return fp
 
