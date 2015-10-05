@@ -71,6 +71,14 @@ class BasicEncoder(Encoder):
 
 
 class DistributedEncoder(Encoder):
+  """
+  TODO: We are using self.num to limit how many elements are non-random,
+  where we should instead have a separate parameter that can be set.
+
+  This can cause bugs if self.num is too small, and classifyWithRandom = False.
+
+  MUST FIX IF WE WANT TO USE classifyWithRandom = False!
+  """
 
   def __init__(self, num, maxValue=None, minValue=None, classifyWithRandom=None):
     super(DistributedEncoder, self).__init__(num)
