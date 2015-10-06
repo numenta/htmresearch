@@ -217,7 +217,7 @@ class NetworkDataGeneratorTest(unittest.TestCase):
     dataOutputFile = os.path.join(
         self.dirName, "test_data/multi_sample_split.csv")
     categoriesOutputFile = os.path.join(
-        self.dirName, "test_data/multi_sample_category.csv")
+        self.dirName, "test_data/multi_sample_categories.csv")
     ndg.split(filename, 3, False)
 
     with self.assertRaises(TypeError):
@@ -231,7 +231,7 @@ class NetworkDataGeneratorTest(unittest.TestCase):
     dataOutputFile = os.path.join(
         self.dirName, "test_data/multi_sample_split.csv")
     categoriesOutputFile = os.path.join(
-        self.dirName, "test_data/multi_sample_category.json")
+        self.dirName, "test_data/multi_sample_categories.json")
     ndg.saveData(dataOutputFile, categoriesOutputFile)
 
     # If no error is raised, then the data is in the correct format
