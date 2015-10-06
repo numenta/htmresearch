@@ -44,57 +44,57 @@ class NetworkDataGeneratorTest(unittest.TestCase):
     super(NetworkDataGeneratorTest, self).__init__(*args, **kwargs)
     self.expected = [[
       {"_token": "get",
-      "_categories": "0 1",
+      "_category": "0 1",
       "_sequenceID": 0,
       "ID": "1",
       "_reset": 1},
       {"_token": "rid",
-      "_categories": "0 1",
+      "_category": "0 1",
       "_sequenceID": 0,
       "ID": "1",
       "_reset": 0},
       {"_token": "of",
-      "_categories": "0 1",
+      "_category": "0 1",
       "_sequenceID": 0,
       "ID": "1",
       "_reset": 0},
       {"_token": "the",
-      "_categories": "0 1",
+      "_category": "0 1",
       "_sequenceID": 0,
       "ID": "1",
       "_reset": 0},
       {"_token": "trrible",
-      "_categories": "0 1",
+      "_category": "0 1",
       "_sequenceID": 0,
       "ID": "1",
       "_reset": 0},
       {"_token": "kitchen",
-      "_categories": "0 1",
+      "_category": "0 1",
       "_sequenceID": 0,
       "ID": "1",
       "_reset": 0},
       {"_token": "odor",
-      "_categories": "0 1",
+      "_category": "0 1",
       "_sequenceID": 0,
       "ID": "1",
       "_reset": 0}],
       [{"_token": "i",
-      "_categories": "2",
+      "_category": "2",
       "_sequenceID": 1,
       "ID": "2",
       "_reset": 1},
       {"_token": "don",
-      "_categories": "2",
+      "_category": "2",
       "_sequenceID": 1,
       "ID": "2",
       "_reset": 0},
       {"_token": "t",
-      "_categories": "2",
+      "_category": "2",
       "_sequenceID": 1,
       "ID": "2",
       "_reset": 0},
       {"_token": "care",
-      "_categories": "2",
+      "_category": "2",
       "_sequenceID": 1,
       "ID": "2",
       "_reset": 0}]]
@@ -124,17 +124,17 @@ class NetworkDataGeneratorTest(unittest.TestCase):
 
     expected = [[
       {"_token": "gohbkchoo",
-      "_categories": "0 1",
+      "_category": "0 1",
       "_sequenceID": 0,
       "ID": "1",
       "_reset": 1}],
       [{"_token": "o",
-      "_categories": "2",
+      "_category": "2",
       "_sequenceID": 1,
       "ID": "2",
       "_reset": 1},
       {"_token": "ca",
-      "_categories": "2",
+      "_category": "2",
       "_sequenceID": 1,
       "ID": "2",
       "_reset": 0}]]
@@ -181,12 +181,12 @@ class NetworkDataGeneratorTest(unittest.TestCase):
 
     dataTable = pandas.read_csv(dataOutputFile).fillna("")
 
-    types = {"_categories": "list",
+    types = {"_category": "list",
              "_token": "string",
              "_sequenceID": "int",
              "_reset": "int",
              "ID": "string"}
-    specials = {"_categories": "C",
+    specials = {"_category": "C",
                 "_token": "",
                 "_sequenceID": "S",
                 "_reset": "R",
@@ -217,7 +217,7 @@ class NetworkDataGeneratorTest(unittest.TestCase):
     dataOutputFile = os.path.join(
         self.dirName, "test_data/multi_sample_split.csv")
     categoriesOutputFile = os.path.join(
-        self.dirName, "test_data/multi_sample_categories.csv")
+        self.dirName, "test_data/multi_sample_category.csv")
     ndg.split(filename, 3, False)
 
     with self.assertRaises(TypeError):
@@ -231,7 +231,7 @@ class NetworkDataGeneratorTest(unittest.TestCase):
     dataOutputFile = os.path.join(
         self.dirName, "test_data/multi_sample_split.csv")
     categoriesOutputFile = os.path.join(
-        self.dirName, "test_data/multi_sample_categories.json")
+        self.dirName, "test_data/multi_sample_category.json")
     ndg.saveData(dataOutputFile, categoriesOutputFile)
 
     # If no error is raised, then the data is in the correct format

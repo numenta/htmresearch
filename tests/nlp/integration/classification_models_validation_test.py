@@ -225,7 +225,7 @@ class ClassificationModelsTest(unittest.TestCase):
                        generateData=False,
                        votingMethod="last",
                        classificationFile=os.path.join(
-                         DATA_DIR, "responses_classifications.json"))
+                         DATA_DIR, "responses_categories.json"))
     runner.initModel(0)
     runner.runExperiment()
 
