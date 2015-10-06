@@ -55,15 +55,15 @@ class NetworkDataGenerator(object):
     Note: a reset marks the first item of a new sequence.
     """
     self.records = []
-    self.fieldNames = ["_token", "_category", "_sequenceId", "_reset", "ID"]
+    self.fieldNames = ["_token", "_category", "_sequenceID", "_reset", "ID"]
     self.types = {"_token": "string",
                   "_category": "list",
-                  "_sequenceId": "int",
+                  "_sequenceID": "int",
                   "_reset": "int",
                   "ID": "string"}
     self.specials = {"_token": "",
                      "_category": "C",
-                     "_sequenceId": "S",
+                     "_sequenceID": "S",
                      "_reset": "R"}
 
     # len(self.categoryToId) gives each category a unique id w/o having
@@ -148,14 +148,14 @@ class NetworkDataGenerator(object):
     """Erases the categories, replacing them with the sequence number."""
     for data in self.records:
       for record in data:
-        record["_category"] = record["_sequenceId"]
+        record["_category"] = record["_sequenceID"]
 
 
   @staticmethod
   def _formatSequence(tokens, categories, seqID, uniqueID):
     """Write the sequence of data records for this sample."""
     record = {"_category":categories,
-              "_sequenceId":seqID}
+              "_sequenceID":seqID}
     data = []
     reset = 1
     for t in tokens:
@@ -239,13 +239,13 @@ class NetworkDataGenerator(object):
 
   def reset(self):
     self.records = []
-    self.fieldNames = ["token", "_sequenceId", "_reset", "ID"]
+    self.fieldNames = ["token", "_sequenceID", "_reset", "ID"]
     self.types = {"token": "string",
-                  "_sequenceId": "int",
+                  "_sequenceID": "int",
                   "_reset": "int",
                   "ID": "string"}
     self.specials = {"token": "",
-                     "_sequenceId": "S",
+                     "_sequenceID": "S",
                      "_reset": "R"}
 
     self.categoryToId.clear()
