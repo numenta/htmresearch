@@ -31,6 +31,7 @@ from htmresearch.support.text_preprocess import TextPreprocess
 
 
 DEFAULT_RETINA = "en_synonymous"
+DEFAULT_RETINA_DIM = 128
 
 
 
@@ -75,6 +76,7 @@ class CioEncoder(LanguageEncoder):
 
     self.fingerprintType = fingerprintType
     self.description = ("Cio Encoder", 0)
+
     self.verbosity = verbosity
 
 
@@ -83,8 +85,8 @@ class CioEncoder(LanguageEncoder):
       raise ValueError("Retina can only be scaled by values between 0 and 1.")
 
     self.retinaScaling = scalingFactor
-    self.width = int(128 * scalingFactor)
-    self.height = int(128 * scalingFactor)
+    self.width = int(DEFAULT_RETINA_DIM * scalingFactor)
+    self.height = int(DEFAULT_RETINA_DIM * scalingFactor)
     self.n = self.width * self.height
 
 
