@@ -5,11 +5,11 @@
     "regionType": "py.LanguageSensor",
     "regionParams": {
       "verbosity": 0,
-      "numCategories": 3
+      "numCategories": 2000
       },
     "encoders": {}
   },
-  "tpRegionConfig": {
+  "upRegionConfig": {
     "regionEnabled": true,
     "regionName": "UP",
     "regionType": "py.TemporalPoolerRegion",
@@ -29,9 +29,9 @@
     "regionName": "classifier",
     "regionType": "py.KNNClassifierRegion",
     "regionParams": {
-      "k": 3,
+      "k": 2001,
       "distThreshold": 0,
-      "maxCategoryCount": 3
+      "maxCategoryCount": 2000
     }
   }
 }

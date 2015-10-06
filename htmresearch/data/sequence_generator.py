@@ -78,6 +78,11 @@ if __name__ == "__main__":
 
   print
 
+  print "Order 6, with 4 predictions for each sequence:", generator.generate(6, 4)
+  print "Order 7, with 4 predictions for each sequence:", generator.generate(7, 4)
+
+  print
+
   print "Edge cases:"
   print "Order 0, with 1 prediction for each sequence:", generator.generate(0, 1)
   print "Order 0, with 5 predictions for each sequence:", generator.generate(0, 5)
