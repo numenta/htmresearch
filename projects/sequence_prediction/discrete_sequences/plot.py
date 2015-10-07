@@ -116,6 +116,7 @@ if __name__ == '__main__':
   parser.add_argument('-s', '--size-of-line', type=float, nargs='+')
   parser.add_argument('-l', '--legend-position', type=int, default=4)
   parser.add_argument('-f', '--full', action='store_true')
+  parser.add_argument('-o', '--output', type=str, default=None)
 
   suite = PyExperimentSuite()
   args = parser.parse_args()
@@ -126,6 +127,7 @@ if __name__ == '__main__':
   rcParams.update({'figure.facecolor': 'white'})
   rcParams.update({'ytick.labelsize': 8})
   rcParams.update({'figure.figsize': (12, 6)})
+  rcParams.update({'pdf.fonttype': 42})
 
   experiments = args.experiments
 
@@ -154,4 +156,7 @@ if __name__ == '__main__':
   if len(experiments) > 1:
     pyplot.legend(loc=args.legend_position)
 
-  pyplot.show()
+  if args.output is not None:
+    pyplot.savefig(args.output)
+  else:
+    pyplot.show()
