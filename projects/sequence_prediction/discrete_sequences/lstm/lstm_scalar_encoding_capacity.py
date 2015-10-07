@@ -24,22 +24,22 @@
 import numpy as np
 from suite import DistributedEncoder
 
-num_encodings = 10
-num_multiple_prediction = 2
-nDim = 10
+num_encodings = 1000
+num_nonrandoms = 12
+nDim = 25
 
 enc = DistributedEncoder(nDim,
-                         minValue=-0.5,
-                         maxValue=0.5,
-                         classifyWithRandom=False)
+                         minValue=-1.0,
+                         maxValue=1.0,
+                         classifyWithRandom=True)
 
 for i in range(num_encodings):
   enc.encode(i)
 
-symbolList = enc.encodings.keys()
+symbolList = range(num_nonrandoms)
 
 outcome = []
-for _ in range(500):
+for _ in range(1000):
   # select two symbols, and decode using the average of the two encodings
   symbol1 = np.random.choice(symbolList)
   symbol2 = np.random.choice(symbolList)
