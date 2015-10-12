@@ -45,57 +45,57 @@ class NetworkDataGeneratorTest(unittest.TestCase):
     self.expected = [[
       {"_token": "get",
       "_category": "0 1",
-      "_sequenceID": 0,
+      "_sequenceId": 0,
       "ID": "1",
       "_reset": 1},
       {"_token": "rid",
       "_category": "0 1",
-      "_sequenceID": 0,
+      "_sequenceId": 0,
       "ID": "1",
       "_reset": 0},
       {"_token": "of",
       "_category": "0 1",
-      "_sequenceID": 0,
+      "_sequenceId": 0,
       "ID": "1",
       "_reset": 0},
       {"_token": "the",
       "_category": "0 1",
-      "_sequenceID": 0,
+      "_sequenceId": 0,
       "ID": "1",
       "_reset": 0},
       {"_token": "trrible",
       "_category": "0 1",
-      "_sequenceID": 0,
+      "_sequenceId": 0,
       "ID": "1",
       "_reset": 0},
       {"_token": "kitchen",
       "_category": "0 1",
-      "_sequenceID": 0,
+      "_sequenceId": 0,
       "ID": "1",
       "_reset": 0},
       {"_token": "odor",
       "_category": "0 1",
-      "_sequenceID": 0,
+      "_sequenceId": 0,
       "ID": "1",
       "_reset": 0}],
       [{"_token": "i",
       "_category": "2",
-      "_sequenceID": 1,
+      "_sequenceId": 1,
       "ID": "2",
       "_reset": 1},
       {"_token": "don",
       "_category": "2",
-      "_sequenceID": 1,
+      "_sequenceId": 1,
       "ID": "2",
       "_reset": 0},
       {"_token": "t",
       "_category": "2",
-      "_sequenceID": 1,
+      "_sequenceId": 1,
       "ID": "2",
       "_reset": 0},
       {"_token": "care",
       "_category": "2",
-      "_sequenceID": 1,
+      "_sequenceId": 1,
       "ID": "2",
       "_reset": 0}]]
     self.dirName = os.path.dirname(os.path.realpath(__file__))
@@ -125,17 +125,17 @@ class NetworkDataGeneratorTest(unittest.TestCase):
     expected = [[
       {"_token": "gohbkchoo",
       "_category": "0 1",
-      "_sequenceID": 0,
+      "_sequenceId": 0,
       "ID": "1",
       "_reset": 1}],
       [{"_token": "o",
       "_category": "2",
-      "_sequenceID": 1,
+      "_sequenceId": 1,
       "ID": "2",
       "_reset": 1},
       {"_token": "ca",
       "_category": "2",
-      "_sequenceID": 1,
+      "_sequenceId": 1,
       "ID": "2",
       "_reset": 0}]]
 
@@ -161,7 +161,7 @@ class NetworkDataGeneratorTest(unittest.TestCase):
     dataTable = pandas.read_csv(dataOutputFile)
     for _, values in dataTable.iterrows():
       record = values.to_dict()
-      idx = record["_sequenceID"]
+      idx = record["_sequenceId"]
       if idx.isdigit() and (not randomizedIDs or randomizedIDs[-1] != idx):
         randomizedIDs.append(idx)
 
@@ -183,12 +183,12 @@ class NetworkDataGeneratorTest(unittest.TestCase):
 
     types = {"_category": "list",
              "_token": "string",
-             "_sequenceID": "int",
+             "_sequenceId": "int",
              "_reset": "int",
              "ID": "string"}
     specials = {"_category": "C",
                 "_token": "",
-                "_sequenceID": "S",
+                "_sequenceId": "S",
                 "_reset": "R",
                 "ID": ""}
     
@@ -200,7 +200,7 @@ class NetworkDataGeneratorTest(unittest.TestCase):
       record = values.to_dict()
       if idx > 1:
         # csv values are strings, so cast the ints
-        record["_sequenceID"] = int(record["_sequenceID"])
+        record["_sequenceId"] = int(record["_sequenceId"])
         record["_reset"] = int(record["_reset"])
       self.assertDictEqual(record, expected_records[idx])
 

@@ -1,4 +1,4 @@
-_token,_category,_sequenceID,_reset,ID
+_token,_category,_sequenceId,_reset,ID
 string,list,int,int,string
 ,C,S,R,
 get,0,0,1,0
