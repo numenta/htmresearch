@@ -14,9 +14,12 @@ aggregation_rule = {'Sum': sum}
 
 ts_all = None
 
+aggregation_window = "1min"
+print " aggregate data at" + aggregation_window + "resolution"
+
 for year in [2014, 2015]:
   for month in xrange(1, 13):
-    datafileName =  'yellow_tripdata_' + str(year) + '-' + "{:0>2d}".format(month) + '.csv'
+    datafileName = 'yellow_tripdata_' + str(year) + '-' + "{:0>2d}".format(month) + '.csv'
 
     if os.path.isfile(datafileName):
       print " Load Datafile: ", datafileName
@@ -39,8 +42,7 @@ for year in [2014, 2015]:
       ts = pd.Series(np.array(df.passenger_count), index=pd.to_datetime(df.pickup_datetime))
       del df
 
-      print " aggregate data at 30min resolution"
-      ts_aggregate = ts.resample("30min", how=aggregation_rule)
+      ts_aggregate = ts.resample(aggregation_window, how=aggregation_rule)
 
       if ts_all is not None:
         print " concat ts_all"
@@ -64,7 +66,8 @@ plt.figure(1)
 plt.plot(seq.index, seq.passenger_count)
 
 import csv
-outputFile = open('nyc_taxi.csv',"w")
+outputFileName = "nyc_taxi_" + aggregation_window + ".csv"
+outputFile = open(outputFileName,"w")
 csvWriter = csv.writer(outputFile)
 csvWriter.writerow(['timestamp', 'passenger_count', 'timeofday', 'dayofweek'])
 csvWriter.writerow(['datetime', 'int', 'int', 'string'])
