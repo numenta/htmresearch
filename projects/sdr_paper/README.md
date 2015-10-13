@@ -68,12 +68,19 @@ of parameters. (A much wider range than you can by simulations.) This
 spreadsheet was used to compute the numbers in the examples and the tables in
 the SDR paper. 
 
+sdr_math_neuron_paper.ipynb
+===========================
 
-Averaged error
-==============
+An ipython notebook showing how to implement and compute the functions in
+python using a symbolic math library.
 
-averaged_error.py computes averaged errors over a wide range of values. The 
-file plotErrors.py plots the curve as a function of theta.   
+
+Optimal threshold
+=================
+
+compute_optimal_threshold.py computes averaged errors over a wide range of values.
+The file plot_optimal_threshold.py plots the curve as a function of theta and
+outlines the "optimal" area.
 
 Note on using NuPIC Core
 ========================
@@ -89,9 +96,3 @@ already setup to point to the root of your `nupic.core` repository.  It
 assumes you have followed the `nupic.core` build instructions and have a 
 proper build in place. 
 
-Next Steps
-==========
-
-- Add new parameter for multiple trials with a given set of M patterns to speed things up
-- Add support for outputting charts (or data in a parsable format for charting)
-- Optimize so we can run for values like M=1,000,000, w=60, w'=30, n=2048
