@@ -1,9 +1,7 @@
 Sequence Classification
 =======================
 
-Sequence classification applied to Sensor Data and NLP.
-
-# 1. Sensor Data
+# Sensor Data
 
 The goal of the sensor data experiments is to learn and classify successfully
  spatio-temporal sequences. Two types of sensor data are being classified here:
@@ -43,9 +41,4 @@ The sensor used to record accelerometer data is the TI SensorTag CC2541.
 * Run `python run_models.py` to run the models on the converted data and generate the output results
 * Run `python plot_results.py` to plot the converted data and associated anomalies.
 * If all went well, the generated output will be located in `plot_results` 
-
-
-# 2. NLP
-
-[TODO]
 
