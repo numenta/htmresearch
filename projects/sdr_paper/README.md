@@ -13,51 +13,6 @@ http://arxiv.org/abs/1503.07469
 Subutai is working on a modified version for a journal publication.
 
 
-sdr_calculations.cpp
-====================
-
-This C++ program simulates SDR classification with various parameters.  In 
-particular it simulates the "Classifying a Set of Vectors" setup. You can set
-values for M, n, and w and it will return the probability of a false match 
-for various values of theta. It computes these probabilities via simulations 
-(i.e. generating millions of random vectors and using a classifier to compute
-whether there was a match or not). 
-
-As such this can be used to verify that the math in the paper is accurate. 
-
-However, we can only really verify the math for relatively small parameters 
-this way. Many of the probabilities are insanely low and it is impossible to 
-verify via simulation.  Still if the math matches the simulation results 
-exactly for a wide range of parameters, we can be reasonably sure it is 
-accurate.
-
-Currently you need to hard code the numbers in the C++ file,  compile and run.
-Sorry about that. Here is an example run on my laptop:
-
-For n=100, M=500, w=7 and setting nTrials to 1,000,000 it takes 10 minutes to
-generate the following result:
-```
-Classification: Probability of false match for n=100, M=500, w=7
-    Theta = 1 prob=1
-    Theta = 2 prob=1
-    Theta = 3 prob=0.964839
-    Theta = 4 prob=0.134632
-    Theta = 5 prob=0.00285
-    Theta = 6 prob=1.7e-05
-    Theta = 7 prob=0
-```
-
-These correspond quite closely to the formula in the paper. For example, for
-theta=5 the formula leads to 0.002826477. For theta=4 the formula leads to
-0.144691001.  For theta=6 the formula leads to 2.03654E-05  
-
-Remember  that  the formula is an upper bound on the classification error. It 
-will be less accurate as you get closer to 1.0. The simulations themselves will
-be less accurate for really tiny numbers since we are running a finite number of
-trials.  As an example, For theta=7 the  formula leads to 3.12352E-08 but we
-need to run hundreds of millions of  trials to get that number through
-simulations.
-
 SDR Properties Calculations.xlsx
 ================================
 
@@ -81,6 +36,52 @@ Optimal threshold
 compute_optimal_threshold.py computes averaged errors over a wide range of values.
 The file plot_optimal_threshold.py plots the curve as a function of theta and
 outlines the "optimal" area.
+
+
+sdr_calculations.cpp
+====================
+
+This C++ program simulates SDR classification with various parameters.  In
+particular it simulates the "Classifying a Set of Vectors" setup. You can set
+values for M, n, and w and it will return the probability of a false match
+for various values of theta. It computes these probabilities via simulations
+(i.e. generating millions of random vectors and using a classifier to compute
+whether there was a match or not).
+
+As such this can be used to verify that the math in the paper is accurate.
+
+However, we can only really verify the math for relatively small parameters
+this way. Many of the probabilities are insanely low and it is impossible to
+verify via simulation.  Still if the math matches the simulation results
+exactly for a wide range of parameters, we can be reasonably sure it is
+accurate.
+
+Currently you need to hard code the numbers in the C++ file,  compile and run.
+Sorry about that. Here is an example run on my laptop:
+
+For n=100, M=500, w=7 and setting nTrials to 1,000,000 it takes 10 minutes to
+generate the following result:
+```
+Classification: Probability of false match for n=100, M=500, w=7
+    Theta = 1 prob=1
+    Theta = 2 prob=1
+    Theta = 3 prob=0.964839
+    Theta = 4 prob=0.134632
+    Theta = 5 prob=0.00285
+    Theta = 6 prob=1.7e-05
+    Theta = 7 prob=0
+```
+
+These correspond quite closely to the formula in the paper. For example, for
+theta=5 the formula leads to 0.002826477. For theta=4 the formula leads to
+0.144691001.  For theta=6 the formula leads to 2.03654E-05
+
+Remember  that  the formula is an upper bound on the classification error. It
+will be less accurate as you get closer to 1.0. The simulations themselves will
+be less accurate for really tiny numbers since we are running a finite number of
+trials.  As an example, For theta=7 the  formula leads to 3.12352E-08 but we
+need to run hundreds of millions of  trials to get that number through
+simulations.
 
 Note on using NuPIC Core
 ========================
