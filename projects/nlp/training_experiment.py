@@ -62,6 +62,8 @@ def run(args):
                        loadPath=args.loadPath,
                        modelName=args.modelName,
                        retinaScaling=args.retinaScaling,
+                       retina=args.retina,
+                       apiKey=args.apiKey,
                        numClasses=args.numClasses,
                        plots=args.plots,
                        orderedSplit=args.orderedSplit,
@@ -78,6 +80,8 @@ def run(args):
                     loadPath=args.loadPath,
                     modelName=args.modelName,
                     retinaScaling=args.retinaScaling,
+                    retina=args.retina,
+                    apiKey=args.apiKey,
                     numClasses=args.numClasses,
                     plots=args.plots,
                     orderedSplit=args.orderedSplit,
@@ -140,6 +144,14 @@ if __name__ == "__main__":
                       default=1.0,
                       type=float,
                       help="Factor by which to scale the Cortical.io retina.")
+  parser.add_argument("--retina",
+                      default="en_associative",
+                      type=str,
+                      help="Name of Cortical.io retina.")
+  parser.add_argument("--apiKey",
+                      default=None,
+                      type=str,
+                      help="Key for Cortical.io API.")
   parser.add_argument("--resultsDir",
                       default="results",
                       help="This will hold the experiment results.")

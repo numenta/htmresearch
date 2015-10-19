@@ -43,7 +43,9 @@ class ClassificationModelFingerprint(ClassificationModel):
                modelDir="ClassificationModelFingerprint",
                fingerprintType=EncoderTypes.word,
                unionSparsity=20.0,
-               retinaScaling=1.0):
+               retinaScaling=1.0,
+               retina="en_associative",
+               apiKey=None):
 
     super(ClassificationModelFingerprint, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
@@ -62,7 +64,9 @@ class ClassificationModelFingerprint(ClassificationModel):
     self.encoder = CioEncoder(retinaScaling=retinaScaling,
                               cacheDir=os.path.join(root, "CioCache"),
                               fingerprintType=fingerprintType,
-                              unionSparsity=unionSparsity)
+                              unionSparsity=unionSparsity,
+                              retina=retina,
+                              apiKey=apiKey)
 
 
   def encodeSample(self, sample):

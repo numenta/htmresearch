@@ -267,7 +267,7 @@ class ClassificationModel(object):
         distances are between 0.0 and 1.0
     """
     (_, _, dist, _) = self.classifier.infer(
-      self.sparsifyPattern(pattern["bitmap"], self.n))
+      self.sparsifyPattern(pattern["bitmap"], self.encoder.n))
     return dist
 
 

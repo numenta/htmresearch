@@ -58,6 +58,8 @@ class Runner(object):
                experimentName,
                modelName,
                retinaScaling=1.0,
+               retina="en_associative",
+               apiKey=None,
                loadPath=None,
                numClasses=3,
                plots=0,
@@ -70,6 +72,8 @@ class Runner(object):
     @param experimentName   (str)     Experiment name, used for saving results.
     @param modelName        (str)     Name of nlp model subclass.
     @param retinaScaling    (float)   For scaling dimensions of Cio encoders.
+    @param retina           (str)     Name of Cio retina for encodings.
+    @param apiKey           (str)     Key for Cio API.
     @param loadPath         (str)     Path to serialized model for loading.
     @param numClasses       (int)     Number of classes (labels) per sample.
     @param plots            (int)     Specifies plotting of evaluation metrics.
@@ -88,6 +92,8 @@ class Runner(object):
     self.plots = plots
     self.orderedSplit = orderedSplit
     self.retinaScaling = retinaScaling
+    self.retina = retina
+    self.apiKey = apiKey
     self.trainSizes = trainSizes if trainSizes else []
     self.verbosity = verbosity
 
@@ -133,14 +139,18 @@ class Runner(object):
                       numLabels=self.numClasses,
                       modelDir=self.modelDir,
                       fingerprintType=EncoderTypes.word,
-                      retinaScaling=self.retinaScaling)
+                      retinaScaling=self.retinaScaling,
+                      retina=self.retina,
+                      apiKey=self.apiKey)
 
     elif modelName == "CioDocumentFingerprint":
       return modelCls(verbosity=self.verbosity,
                       numLabels=self.numClasses,
                       modelDir=self.modelDir,
                       fingerprintType=EncoderTypes.document,
-                      retinaScaling=self.retinaScaling)
+                      retinaScaling=self.retinaScaling,
+                      retina=self.retina,
+                      apiKey=self.apiKey)
 
     else:
       return modelCls(verbosity=self.verbosity,
