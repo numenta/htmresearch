@@ -117,16 +117,7 @@ class CioEncoder(LanguageEncoder):
                "the corpus.".format(text))
       encoding = self._subEncoding(text)
 
-    if self.retinaScaling != 1:
-      encoding["fingerprint"]["positions"] = self.scaleEncoding(
-        encoding["fingerprint"]["positions"], self.retinaScaling, dimensions=2.0)
-      encoding["width"] = self.width
-      encoding["height"] = self.height
-
-    encoding["sparsity"] = len(encoding["fingerprint"]["positions"]) / float(
-      (encoding["width"] * encoding["height"]))
-
-    return encoding
+    return self.finishEncoding(encoding)
 
 
   def getUnionEncoding(self, text):
@@ -164,6 +155,27 @@ class CioEncoder(LanguageEncoder):
     return encoding
 
 
+  def finishEncoding(self, encoding):
+    """
+    Scale the fingerprint of the encoding dict (if specified) and fill the
+    width, height, and sparsity fields.
+
+    @param encoding       (dict)      Dict as returned by the Cio client.
+    @return encoding      (dict)      Same format as the input dict, with the
+                                      dimensions and sparsity fields populated.
+    """
+    if self.retinaScaling != 1:
+      encoding["fingerprint"]["positions"] = self.scaleEncoding(
+        encoding["fingerprint"]["positions"], self.retinaScaling)
+      encoding["width"] = self.width
+      encoding["height"] = self.height
+
+    encoding["sparsity"] = len(encoding["fingerprint"]["positions"]) / float(
+      (encoding["width"] * encoding["height"]))
+
+    return encoding
+
+
   def encodeIntoArray(self, inputText, output):
     """
     See method description in language_encoder.py. It is expected the inputText
@@ -194,16 +206,7 @@ class CioEncoder(LanguageEncoder):
         # set OFF bits back to 0 b/c output is still populated from last encoding
         output[i] = 0
 
-    if self.retinaScaling != 1:
-      encoding["fingerprint"]["positions"] = self.scaleEncoding(
-        encoding["fingerprint"]["positions"], self.retinaScaling, dimensions=2.0)
-      encoding["width"] = self.width
-      encoding["height"] = self.height
-
-    encoding["sparsity"] = len(encoding["fingerprint"]["positions"]) / float(
-      (encoding["width"] * encoding["height"]))
-
-    return encoding
+    return self.finishEncoding(encoding)
 
 
   def decode(self, encoding, numTerms=10):

@@ -93,7 +93,7 @@ class CioTest(unittest.TestCase):
   def testRetinaScaling(self):
     """Test the CioEncoder for retina dimension scaling."""
     
-    cio = CioEncoder(retinaScaling = 0.5, fingerprintType=EncoderTypes.document)
+    cio = CioEncoder(retinaScaling = 0.25, fingerprintType=EncoderTypes.document)
     response = cio.encode(self.text)
     
     encodingDict = getTestData("cio_encoding_scaled_retina.json")

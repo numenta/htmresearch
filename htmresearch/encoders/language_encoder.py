@@ -187,7 +187,7 @@ class LanguageEncoder(object):
     """
     max_sparsity = int((self.unionSparsity / 100) * self.n)
     w = min(len(counts), max_sparsity)
-    return [c[0] for c in counts.most_common(w)]
+    return [c[0] for c in counts.most_common(w)]  # TODO: how does this break ties?
 
 
   @staticmethod
@@ -196,11 +196,11 @@ class LanguageEncoder(object):
     Scale down the size of the encoding by a factor between 0 and 1.
 
     @param encoding     (array)   Bitmap encoding.
-    @scaleFactor        (float)   Factor between 0 and 1 to scale down the SDR's
+    @param scaleFactor  (float)   Factor between 0 and 1 to scale down the SDR's
                                   size (n) by.
     @return             (list)    Scaled down bitmap of the encoding.
     """
-    scaledBitmap = [int(i * scaleFactor) for i in encoding]
+    scaledBitmap = [int(i * float(scaleFactor)) for i in encoding]
     return sorted(set(scaledBitmap), key=lambda x: scaledBitmap.index(x))
 
 
