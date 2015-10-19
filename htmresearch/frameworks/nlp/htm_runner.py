@@ -27,7 +27,6 @@ from collections import Counter, namedtuple
 from htmresearch.frameworks.nlp.runner import Runner
 from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
 from htmresearch.support.network_text_data_generator import NetworkDataGenerator
-from nupic.engine import Network
 
 try:
   import simplejson as json
@@ -49,6 +48,9 @@ class HTMRunner(Runner):
                experimentName,
                loadPath,
                modelName,
+               retinaScaling=1.0,
+               retina="en_associative",
+               apiKey=None,
                numClasses=3,
                plots=0,
                orderedSplit=False,
@@ -67,8 +69,9 @@ class HTMRunner(Runner):
     See base class constructor for the other parameters.
     """
     super(HTMRunner, self).__init__(dataPath, resultsDir, experimentName,
-                                    modelName, loadPath, numClasses, plots,
-                                    orderedSplit, trainSizes, verbosity)
+                                    modelName, retinaScaling, retina, apiKey,
+                                    loadPath, numClasses, plots, orderedSplit,
+                                    trainSizes, verbosity)
 
     self.networkConfig = self._getNetworkConfig(networkConfigPath)
     self.model = None
@@ -111,6 +114,9 @@ class HTMRunner(Runner):
     else:
       self.model = ClassificationModelHTM(self.networkConfig,
                                           self.dataFiles[trial],
+                                          retinaScaling=self.retinaScaling,
+                                          retina=self.retina,
+                                          apiKey=self.apiKey,
                                           verbosity=self.verbosity,
                                           numLabels=self.numClasses,
                                           modelDir=self.modelDir,

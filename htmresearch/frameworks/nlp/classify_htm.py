@@ -41,6 +41,9 @@ class ClassificationModelHTM(ClassificationModel):
   def __init__(self,
                networkConfig,
                inputFilePath,
+               retinaScaling=1.0,
+               retina="en_associative",
+               apiKey=None,
                verbosity=1,
                numLabels=3,
                modelDir="ClassificationModelHTM",
@@ -50,6 +53,9 @@ class ClassificationModelHTM(ClassificationModel):
     @param networkConfig      (str)     Path to JSON of network configuration,
                                         with region parameters.
     @param inputFilePath      (str)     Path to data file.
+    @param retinaScaling      (float)   Scales the dimensions of the SDRs.
+    @param retina             (str)     Name of Cio retina.
+    @param apiKey             (str)     Key for Cio API.
     @param prepData           (bool)    Prepare the input data into network API
                                         format.
     @param stripCats          (bool)    Remove the categories and replace them
@@ -61,6 +67,9 @@ class ClassificationModelHTM(ClassificationModel):
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
 
     self.networkConfig = networkConfig
+    self.retinaScaling = retinaScaling
+    self.retina = retina
+    self.apiKey = apiKey
 
     if prepData:
       self.networkDataPath, self.networkDataGen = self.prepData(
@@ -104,8 +113,12 @@ class ClassificationModelHTM(ClassificationModel):
     """
     recordStream = FileRecordStream(streamID=self.networkDataPath)
     root = os.path.dirname(os.path.realpath(__file__))
-    encoder = CioEncoder(cacheDir=os.path.join(root, "CioCache"))
+    encoder = CioEncoder(retinaScaling=self.retinaScaling,
+                         cacheDir=os.path.join(root, "CioCache"),
+                         retina=self.retina,
+                         apiKey=self.apiKey)
 
+    # This encoder specifies the LanguageSensor output width.
     return configureNetwork(recordStream, self.networkConfig, encoder)
 
 

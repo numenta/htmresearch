@@ -83,7 +83,7 @@ class ClassificationModelContext(ClassificationModel):
     if fpInfo:
       bitmap = numpy.array(fpInfo["fingerprint"]["positions"])
     else:
-      bitmap = self.encodeRandomly(text)
+      bitmap = self.encodeRandomly(text, self.n, self.w)
 
     return bitmap.astype(int)
 

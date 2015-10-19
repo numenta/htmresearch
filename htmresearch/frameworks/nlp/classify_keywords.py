@@ -49,12 +49,15 @@ class ClassificationModelKeywords(ClassificationModel):
                modelDir="ClassificationModelKeywords"):
 
     super(ClassificationModelKeywords, self).__init__(
-      n, w, verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
+      verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
 
     self.classifier = KNNClassifier(exact=True,
                                     distanceMethod="rawOverlap",
                                     k=numLabels,
                                     verbosity=verbosity-1)
+
+    self.n = n
+    self.w = w
 
 
   def encodeSample(self, sample):
@@ -72,7 +75,7 @@ class ClassificationModelKeywords(ClassificationModel):
     for token in sample:
       patterns.append({"text":token,
                        "sparsity":float(self.w)/self.n,
-                       "bitmap":self.encodeRandomly(token)})
+                       "bitmap":self.encodeRandomly(token, self.n, self.w)})
     return patterns
 
 

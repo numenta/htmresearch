@@ -26,6 +26,11 @@ import random
 from nupic.encoders.utils import bitsToString
 
 
+# Default SDR dimensions for 2% sparsity:
+DEFAULT_N = 16384
+DEFAULT_W = 328
+
+
 
 class LanguageEncoder(object):
   """
@@ -45,7 +50,7 @@ class LanguageEncoder(object):
   - getDescription() returns a dict describing the encoded output
   """
 
-  def __init__(self, n=16384, w=328, unionSparsity=20.0):
+  def __init__(self, n=DEFAULT_N, w=DEFAULT_W, unionSparsity=20.0):
     """The SDR dimensions are standard for Cortical.io fingerprints."""
     self.n = n
     self.w = w
@@ -182,7 +187,21 @@ class LanguageEncoder(object):
     """
     max_sparsity = int((self.unionSparsity / 100) * self.n)
     w = min(len(counts), max_sparsity)
-    return [c[0] for c in counts.most_common(w)]
+    return [c[0] for c in counts.most_common(w)]  # TODO: how does this break ties?
+
+
+  @staticmethod
+  def scaleEncoding(encoding, scaleFactor):
+    """
+    Scale down the size of the encoding by a factor between 0 and 1.
+
+    @param encoding     (array)   Bitmap encoding.
+    @param scaleFactor  (float)   Factor between 0 and 1 to scale down the SDR's
+                                  size (n) by.
+    @return             (list)    Scaled down bitmap of the encoding.
+    """
+    scaledBitmap = [int(i * float(scaleFactor)) for i in encoding]
+    return sorted(set(scaledBitmap), key=lambda x: scaledBitmap.index(x))
 
 
   def pprintHeader(self, prefix=""):

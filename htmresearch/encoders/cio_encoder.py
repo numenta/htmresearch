@@ -23,7 +23,7 @@ import itertools
 import os
 from collections import Counter
 
-from cortipy.cortical_client import CorticalClient
+from cortipy.cortical_client import CorticalClient, RETINA_SIZES
 from cortipy.exceptions import UnsuccessfulEncodingError
 from htmresearch.encoders import EncoderTypes
 from htmresearch.encoders.language_encoder import LanguageEncoder
@@ -43,17 +43,19 @@ class CioEncoder(LanguageEncoder):
   converted to binary SDR arrays with this Cio encoder.
   """
 
-  def __init__(self, w=128, h=128, retina=DEFAULT_RETINA, cacheDir=None,
+  def __init__(self, retina=DEFAULT_RETINA, retinaScaling=1.0, cacheDir=None,
                verbosity=0, fingerprintType=EncoderTypes.document,
-               unionSparsity=20.0):
+               unionSparsity=20.0, apiKey=None):
     """
-    @param w               (int)      Width dimension of the SDR topology.
-    @param h               (int)      Height dimension of the SDR topology.
+    @param retina          (str)      Cortical.io retina, either "en_synonymous"
+                                      or "en_associative".
+    @param retinaScaling   (float)    Scales the dimensions of the SDR topology,
+                                      where the width and height are both 128.
     @param cacheDir        (str)      Where to cache results of API queries.
     @param verbosity       (int)      Amount of info printed out, 0, 1, or 2.
     @param fingerprintType (Enum)     Specify word- or document-level encoding.
     """
-    if "CORTICAL_API_KEY" not in os.environ:
+    if apiKey is None and "CORTICAL_API_KEY" not in os.environ:
       print ("Missing CORTICAL_API_KEY environment variable. If you have a "
         "key, set it with $ export CORTICAL_API_KEY=api_key\n"
         "You can retrieve a key by registering for the REST API at "
@@ -66,14 +68,27 @@ class CioEncoder(LanguageEncoder):
       root = os.path.dirname(os.path.realpath(__file__))
       cacheDir = os.path.join(root, "CioCache")
 
-    self.apiKey = os.environ["CORTICAL_API_KEY"]
+    self.apiKey = apiKey if apiKey else os.environ["CORTICAL_API_KEY"]
     self.client = CorticalClient(self.apiKey, retina=retina, cacheDir=cacheDir)
-    self.w = w
-    self.h = h
-    self.n = w*h
-    self.verbosity = verbosity
+
+    self._setDimensions(retina, retinaScaling)
+
     self.fingerprintType = fingerprintType
     self.description = ("Cio Encoder", 0)
+
+    self.verbosity = verbosity
+
+
+  def _setDimensions(self, retina, scalingFactor):
+    if scalingFactor < 0 or scalingFactor > 1:
+      raise ValueError("Retina can only be scaled by values between 0 and 1.")
+
+    retinaDim = RETINA_SIZES[retina]["width"]
+
+    self.retinaScaling = scalingFactor
+    self.width = int(retinaDim * scalingFactor)
+    self.height = int(retinaDim * scalingFactor)
+    self.n = self.width * self.height
 
 
   def encode(self, text):
@@ -102,7 +117,7 @@ class CioEncoder(LanguageEncoder):
                "the corpus.".format(text))
       encoding = self._subEncoding(text)
 
-    return encoding
+    return self.finishEncoding(encoding)
 
 
   def getUnionEncoding(self, text):
@@ -126,16 +141,37 @@ class CioEncoder(LanguageEncoder):
     # Populate encoding
     encoding = {
         "text": text,
-        "sparsity": len(positions) * 100 / float(self.n),
+        "sparsity": len(positions) / float(self.n),
         "df": 0.0,
-        "height": self.h,
-        "width": self.w,
+        "height": self.height,
+        "width": self.width,
         "score": 0.0,
         "fingerprint": {
             "positions":sorted(positions)
             },
         "pos_types": []
         }
+
+    return encoding
+
+
+  def finishEncoding(self, encoding):
+    """
+    Scale the fingerprint of the encoding dict (if specified) and fill the
+    width, height, and sparsity fields.
+
+    @param encoding       (dict)      Dict as returned by the Cio client.
+    @return encoding      (dict)      Same format as the input dict, with the
+                                      dimensions and sparsity fields populated.
+    """
+    if self.retinaScaling != 1:
+      encoding["fingerprint"]["positions"] = self.scaleEncoding(
+        encoding["fingerprint"]["positions"], self.retinaScaling)
+      encoding["width"] = self.width
+      encoding["height"] = self.height
+
+    encoding["sparsity"] = len(encoding["fingerprint"]["positions"]) / float(
+      (encoding["width"] * encoding["height"]))
 
     return encoding
 
@@ -162,8 +198,15 @@ class CioEncoder(LanguageEncoder):
                "the corpus.".format(inputText))
       encoding = self._subEncoding(inputText)
 
-    # output = sparsify(encoding["fingerprint"]["positions"])
-    return encoding
+    # Populate output with sparse encoding
+    for i in xrange(len(output)):
+      if i in encoding["fingerprint"]["positions"]:
+        output[i] = 1
+      else:
+        # set OFF bits back to 0 b/c output is still populated from last encoding
+        output[i] = 0
+
+    return self.finishEncoding(encoding)
 
 
   def decode(self, encoding, numTerms=10):
@@ -257,6 +300,10 @@ class CioEncoder(LanguageEncoder):
 
   def getWidth(self):
     return self.n
+
+
+  def getDimensions(self):
+    return (self.width, self.height)
 
 
   def getDescription(self):

@@ -42,7 +42,10 @@ class ClassificationModelFingerprint(ClassificationModel):
                numLabels=3,
                modelDir="ClassificationModelFingerprint",
                fingerprintType=EncoderTypes.word,
-               unionSparsity=20.0):
+               unionSparsity=20.0,
+               retinaScaling=1.0,
+               retina="en_associative",
+               apiKey=None):
 
     super(ClassificationModelFingerprint, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
@@ -58,11 +61,12 @@ class ClassificationModelFingerprint(ClassificationModel):
       raise ValueError("Invaid type of fingerprint encoding; see the "
                        "EncoderTypes class for eligble types.")
     root = os.path.dirname(os.path.realpath(__file__))
-    self.encoder = CioEncoder(cacheDir=os.path.join(root, "CioCache"),
+    self.encoder = CioEncoder(retinaScaling=retinaScaling,
+                              cacheDir=os.path.join(root, "CioCache"),
                               fingerprintType=fingerprintType,
-                              unionSparsity=unionSparsity)
-    self.n = self.encoder.n
-    self.w = int((self.encoder.targetSparsity/100)*self.n)
+                              unionSparsity=unionSparsity,
+                              retina=retina,
+                              apiKey=apiKey)
 
 
   def encodeSample(self, sample):
@@ -88,8 +92,9 @@ class ClassificationModelFingerprint(ClassificationModel):
             "bitmap":numpy.array(fpInfo["fingerprint"]["positions"])}
     else:
       fp = {"text":sample,
-            "sparsity":float(self.w)/self.n,
-            "bitmap":self.encodeRandomly(sample)}
+            "sparsity":float(self.encoder.w)/self.encoder.n,
+            "bitmap":self.encodeRandomly(
+              sample, self.encoder.n, self.encoder.w)}
 
     return fp
 
@@ -104,7 +109,7 @@ class ClassificationModelFingerprint(ClassificationModel):
     bitmap = self.patterns[i]["pattern"]["bitmap"]
     if bitmap.any():
       for label in self.patterns[i]["labels"]:
-        self.classifier.learn(bitmap, label, isSparse=self.n)
+        self.classifier.learn(bitmap, label, isSparse=self.encoder.n)
         self.sampleReference.append(self.patterns[i]["ID"])
 
 
@@ -116,6 +121,6 @@ class ClassificationModelFingerprint(ClassificationModel):
     @return           (numpy array)   numLabels most-frequent classifications
                                       for the data samples; int or empty.
     """
-    (_, inferenceResult, _, _) = self.classifier.infer(
-      self.sparsifyPattern(self.patterns[i]["pattern"]["bitmap"], self.n))
+    (_, inferenceResult, _, _) = self.classifier.infer(self.sparsifyPattern(
+      self.patterns[i]["pattern"]["bitmap"], self.encoder.n))
     return self.getWinningLabels(inferenceResult, numLabels)
