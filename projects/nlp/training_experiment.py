@@ -100,7 +100,7 @@ def run(args):
   print ("Encoding complete; elapsed time is {0:.2f} seconds.\nNow running the "
          "experiment.".format(time.time() - encodeTime))
 
-  runner.runExperiment()
+  runner.runExperiment(args.seed)
 
   runner.writeOutClassifications()
 
@@ -179,6 +179,10 @@ if __name__ == "__main__":
                            "the samples randomly, True will allocate the "
                            "first n samples to training with the remainder "
                            "for testing.")
+  parser.add_argument("--seed",
+                      default=42,
+                      type=int,
+                      help="Random seed, used in partitioning the data.")
   parser.add_argument("--trainSizes",
                       default=[7, 7, 7, 13, 13, 13],
                       nargs="+",

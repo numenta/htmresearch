@@ -113,7 +113,7 @@ def run(args):
   # TODO: move kfolds splitting to Runner
   random = False if args.orderedSplit else True
   runner.partitions = KFolds(args.kFolds).split(
-    range(len(runner.samples)), randomize=random)
+    range(len(runner.samples)), randomize=random, seed=args.seed)
   runner.trainSizes = [len(x[0]) for x in runner.partitions]
   print ("Data setup complete; elapsed time is {0:.2f} seconds.\nNow encoding "
          "the data".format(time.time() - dataTime))
@@ -204,6 +204,10 @@ if __name__ == "__main__":
                            "the samples randomly, True will allocate the "
                            "first n samples to training with the remainder "
                            "for testing.")
+  parser.add_argument("--seed",
+                      default=42,
+                      type=int,
+                      help="Random seed, used in partitioning the data.")
   parser.add_argument("--classifier",
                       default="KNN",
                       choices=["KNN", "CLA"],

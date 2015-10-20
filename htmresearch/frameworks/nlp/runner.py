@@ -217,11 +217,11 @@ class Runner(object):
     self.patterns = self.model.encodeSamples(self.samples)
 
 
-  def runExperiment(self):
+  def runExperiment(self, seed=42):
     """Train and test the model for each trial specified by self.trainSizes."""
     if not self.partitions:
       # An experiment (e.g. k-folds) may do this elsewhere
-      self.partitionIndices()
+      self.partitionIndices(seed)
 
     for i, _ in enumerate(self.trainSizes):
       self.resetModel(i)
@@ -236,12 +236,11 @@ class Runner(object):
       self._testing(i)
 
 
-  def partitionIndices(self):
+  def partitionIndices(self, seed=42):
     """
     Partitions list of two-tuples of train and test indices for each trial.
-
-    TODO: use StandardSplit in data_split.py
     """
+    # TODO: use StandardSplit in data_split.py
     length = len(self.samples)
     if self.orderedSplit:
       for split in self.trainSizes:
@@ -251,6 +250,7 @@ class Runner(object):
     else:
       # Randomly sampled, not repeated
       for split in self.trainSizes:
+        random.seed(seed)
         trainIndices = random.sample(xrange(length), split)
         testIndices = [i for i in xrange(length) if i not in trainIndices]
         self.partitions.append((trainIndices, testIndices))

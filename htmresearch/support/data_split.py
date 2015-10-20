@@ -72,7 +72,7 @@ class KFolds(DataSplit):
     self.k = k
 
 
-  def split(self, samples, randomize=False):
+  def split(self, samples, randomize=False, seed=42):
     """Split the given samples into k train/test sets.
 
     Each train/test split will have len(samples)/k elements in the test set
@@ -80,6 +80,8 @@ class KFolds(DataSplit):
     test set from the other folds. The samples themselves can be any type.
 
     @param samples        (list)          Sample elements of any type.
+    @param randomize      (bool)          Randomize the order.
+    @param seed           (int)           Random seed.
     @return               (list)          Splits where each split is 2-tuple
                                           (training, test) where each element is
                                           a list of elements from samples. Each
@@ -91,6 +93,7 @@ class KFolds(DataSplit):
           "Must have as many samples as number of folds %i" % self.k)
 
     if randomize:
+      random.seed(seed)
       random.shuffle(samples)
 
     # Aggregate each train/test set to return
@@ -127,11 +130,13 @@ class StandardSplit(DataSplit):
     self.trainPortion = trainPortion
 
 
-  def split(self, samples, randomize=False):
+  def split(self, samples, randomize=False, seed=42):
     """Split the given samples in one train/test set, where the first n-portion
     of the samples are designated for training.
 
     @param samples        (list)          Sample elements of any type.
+    @param randomize      (bool)          Randomize the order.
+    @param seed           (int)           Random seed.
     @return               (tuple)         Split samples into (training, test),
                                           where each element of the 2-tuple is a
                                           list of samples.
@@ -140,6 +145,7 @@ class StandardSplit(DataSplit):
       raise ValueError("Must have at least two samples for train/test split.")
 
     if randomize:
+      random.seed(seed)
       random.shuffle(samples)
 
     # Make sure we have an indexable list
