@@ -71,7 +71,8 @@ def run(args):
                        verbosity=args.verbosity,
                        generateData=args.generateData,
                        votingMethod=args.votingMethod,
-                       classificationFile=args.classificationFile)
+                       classificationFile=args.classificationFile,
+                       seed=args.seed)
     runner.initModel(0)
   else:
     runner = Runner(dataPath=args.dataPath,
