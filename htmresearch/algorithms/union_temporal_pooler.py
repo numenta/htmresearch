@@ -322,3 +322,4 @@ class UnionTemporalPooler(SpatialPooler):
 
   def getUnionSDR(self):
     return self._unionSDR
+  
