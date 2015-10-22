@@ -61,30 +61,22 @@ class UnionTemporalPooler(SpatialPooler):
     """
     Please see spatial_pooler.py in NuPIC for super class parameter
     descriptions.
-
     Class-specific parameters:
     -------------------------------------
-
     @param activeOverlapWeight: A multiplicative weight applied to
         the overlap between connected synapses and active-cell input
-
     @param predictedActiveOverlapWeight: A multiplicative weight applied to
         the overlap between connected synapses and predicted-active-cell input
-
     @param fixedPoolingActivationBurst: A Boolean, which, if True, has the
         Union Temporal Pooler grant a fixed amount of pooling activation to
         columns whenever they win the inhibition step. If False, columns'
         pooling activation is calculated based on their current overlap.
-
     @param exciteFunction: If fixedPoolingActivationBurst is False,
         this specifies the ExciteFunctionBase used to excite pooling
         activation.
-
     @param decayFunction: Specifies the DecayFunctionBase used to decay pooling
         activation.
-
     @param maxUnionActivity: Maximum sparsity of the union SDR
-
     @param decayTimeConst Time constant for the decay function
     """
 
@@ -205,21 +197,16 @@ class UnionTemporalPooler(SpatialPooler):
     self._getMostActiveCells()
 
     if learn:
-      # adapt permanence of connections from predicted active inputs to newly active cell
-      # This step is the spatial pooler learning rule, applied only to the predictedActiveInput
-      # Todo: should we also include unpredicted active input in this step?
+      # adapt permanence of connections to all active inputs (predicted & unpredicted)
       self._adaptSynapses(predictedActiveInput, activeCells, self._synPermActiveInc, self._synPermInactiveDec)
 
-      # Increase permanence of connections from predicted active inputs to cells in the union SDR
-      # This is Hebbian learning applied to the current time step
+      # adapt permanence of connections to current predicted inputs
       self._adaptSynapses(predictedActiveInput, self._unionSDR, self._synPermPredActiveInc, 0.0)
 
-      # adapt permenence of connections from previously predicted inputs to newly active cells
-      # This is a reinforcement learning rule that considers previous input to the current cell
+      # adapt permenence of connections to previously predicted inputs
       for i in xrange(self._historyLength):
         self._adaptSynapses(self._prePredictedActiveInput[:,i], activeCells, self._synPermPreviousPredActiveInc, 0.0)
 
-      # Homeostasis learning inherited from the spatial pooler
       self._updateDutyCycles(totalOverlap, activeCells)
       self._bumpUpWeakColumns()
       self._updateBoostFactors()
@@ -298,7 +285,6 @@ class UnionTemporalPooler(SpatialPooler):
     inhibition round. Permanence values are increased for synapses connected to
     input bits that are turned on, and decreased for synapses connected to
     inputs bits that are turned off.
-
     Parameters:
     ----------------------------
     @param inputVector:
@@ -308,7 +294,6 @@ class UnionTemporalPooler(SpatialPooler):
     @param activeColumns:
                     An array containing the indices of the columns that
                     survived inhibition.
-
     @param synPermActiveInc:
                     Permanence increment for active inputs
     @param synPermInactiveDec:
