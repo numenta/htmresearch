@@ -61,22 +61,30 @@ class UnionTemporalPooler(SpatialPooler):
     """
     Please see spatial_pooler.py in NuPIC for super class parameter
     descriptions.
+
     Class-specific parameters:
     -------------------------------------
+
     @param activeOverlapWeight: A multiplicative weight applied to
         the overlap between connected synapses and active-cell input
+
     @param predictedActiveOverlapWeight: A multiplicative weight applied to
         the overlap between connected synapses and predicted-active-cell input
+
     @param fixedPoolingActivationBurst: A Boolean, which, if True, has the
         Union Temporal Pooler grant a fixed amount of pooling activation to
         columns whenever they win the inhibition step. If False, columns'
         pooling activation is calculated based on their current overlap.
+
     @param exciteFunction: If fixedPoolingActivationBurst is False,
         this specifies the ExciteFunctionBase used to excite pooling
         activation.
+
     @param decayFunction: Specifies the DecayFunctionBase used to decay pooling
         activation.
+
     @param maxUnionActivity: Maximum sparsity of the union SDR
+
     @param decayTimeConst Time constant for the decay function
     """
 
@@ -285,6 +293,7 @@ class UnionTemporalPooler(SpatialPooler):
     inhibition round. Permanence values are increased for synapses connected to
     input bits that are turned on, and decreased for synapses connected to
     inputs bits that are turned off.
+
     Parameters:
     ----------------------------
     @param inputVector:
@@ -294,6 +303,7 @@ class UnionTemporalPooler(SpatialPooler):
     @param activeColumns:
                     An array containing the indices of the columns that
                     survived inhibition.
+
     @param synPermActiveInc:
                     Permanence increment for active inputs
     @param synPermInactiveDec:
