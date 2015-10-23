@@ -115,6 +115,8 @@ class NetworkDataGenerator(object):
     @param textPreprocess  (bool)   True will preprocess text while tokenizing.
     @param seed            (int)    Random seed.
     
+    @return dataDict       (dict)   Data as read in from filePath.
+    
     Please see TextPreprocess tokenize() for the other parameters; they're only
     used when textPreprocess is True.
     """
@@ -142,6 +144,8 @@ class NetworkDataGenerator(object):
 
       self.records.append(data)
       self.sequenceCount += 1
+    
+    return dataDict
 
 
   def _stripCategories(self):

@@ -35,6 +35,7 @@ from htmresearch.frameworks.nlp.classify_fingerprint import (
 from htmresearch.frameworks.nlp.classify_keywords import (
   ClassificationModelKeywords)
 from htmresearch.support.csv_helper import readCSV, writeFromDict
+from htmresearch.support.data_split import KFolds
 
 
 _MODEL_MAPPING = {
@@ -56,6 +57,7 @@ class Runner(object):
                dataPath,
                resultsDir,
                experimentName,
+               experimentType,
                modelName,
                retinaScaling=1.0,
                retina="en_associative",
@@ -64,12 +66,14 @@ class Runner(object):
                numClasses=3,
                plots=0,
                orderedSplit=False,
+               folds=None,
                trainSizes=None,
                verbosity=0):
     """
     @param dataPath         (str)     Path to raw data file for the experiment.
     @param resultsDir       (str)     Directory where for the results metrics.
     @param experimentName   (str)     Experiment name, used for saving results.
+    @param experimentType   (str)     Either 'incremental' or 'k-folds'.
     @param modelName        (str)     Name of nlp model subclass.
     @param retinaScaling    (float)   For scaling dimensions of Cio encoders.
     @param retina           (str)     Name of Cio retina for encodings.
@@ -79,10 +83,19 @@ class Runner(object):
     @param plots            (int)     Specifies plotting of evaluation metrics.
     @param orderedSplit     (bool)    Indicates method for splitting train/test
                                       samples; False is random, True is ordered.
-    @param trainSizes       (list)    Number of samples to use in training, per
-                                      trial.
+    @param folds            (int)     For k-folds experiment, number of cross
+                                      validation folds.
+    @param trainSizes       (list)    For incremental experiment, number of 
+                                      samples to use in training, per trial.
     @param verbosity        (int)     Greater value prints out more progress.
     """
+    if experimentType not in ("incremental", "k-folds"):
+      raise ValueError("Experiment type not recognized.")
+    if (folds is None) and (trainSizes is None):
+      raise ValueError("Runner needs to know how to split the data.")
+    self.experimentType = experimentType
+    self.folds = folds
+    self.trainSizes = trainSizes
     self.dataPath = dataPath
     self.resultsDir = resultsDir
     self.experimentName = experimentName
@@ -94,7 +107,7 @@ class Runner(object):
     self.retinaScaling = retinaScaling
     self.retina = retina
     self.apiKey = apiKey
-    self.trainSizes = trainSizes if trainSizes else []
+#    self.trainSizes = trainSizes if trainSizes else []
     self.verbosity = verbosity
 
     self.modelDir = os.path.join(
@@ -198,9 +211,11 @@ class Runner(object):
     """
     self.dataDict = readCSV(self.dataPath, numLabels=self.numClasses)
 
-    if (not isinstance(self.trainSizes, list) or not
-        all([0 <= size <= len(self.dataDict) for size in self.trainSizes])):
-      raise ValueError("Invalid size(s) for training set.")
+    if self.experimentType == "incremental":
+      # stop now if the data won't work for the specified experiment
+      if (not isinstance(self.trainSizes, list) or not
+          all([0 <= size <= len(self.dataDict) for size in self.trainSizes])):
+        raise ValueError("Invalid size(s) for training set(s).")
 
     self._mapLabelRefs()
 
@@ -218,21 +233,14 @@ class Runner(object):
 
 
   def runExperiment(self, seed=42):
-    """Train and test the model for each trial specified by self.trainSizes."""
-    if not self.partitions:
-      # An experiment (e.g. k-folds) may do this elsewhere
-      self.partitionIndices(seed)
+    """Train and test the model for each trial specified by self.splitting."""
+    self.partitionIndices(seed)
 
-    for i, _ in enumerate(self.trainSizes):
+    for i, _ in enumerate(self.partitions):
       self.resetModel(i)
-
       if self.verbosity > 0:
-        print "\tTraining for run {0} of {1}.".format(
-          i + 1, len(self.trainSizes))
+        print "\tTraining and testing for run {}.".format(i)
       self._training(i)
-
-      if self.verbosity > 0:
-        print "\tTesting for this run."
       self._testing(i)
 
 
@@ -240,20 +248,23 @@ class Runner(object):
     """
     Partitions list of two-tuples of train and test indices for each trial.
     """
-    # TODO: use StandardSplit in data_split.py
-    length = len(self.samples)
-    if self.orderedSplit:
-      for split in self.trainSizes:
-        trainIndices = range(split)
-        testIndices = range(split, length)
-        self.partitions.append((trainIndices, testIndices))
+    if self.experimentType == "k-folds":
+      self.partitions = KFolds(self.folds).split(range(len(self.samples)), randomize=(not self.orderedSplit), seed=seed)
     else:
-      # Randomly sampled, not repeated
-      for split in self.trainSizes:
+      # TODO: use StandardSplit in data_split.py
+      length = len(self.samples)
+      if self.orderedSplit:
+        for split in self.trainSizes:
+          trainIndices = range(split)
+          testIndices = range(split, length)
+          self.partitions.append((trainIndices, testIndices))
+      else:
+        # randomly sampled, not repeated
         random.seed(seed)
-        trainIndices = random.sample(xrange(length), split)
-        testIndices = [i for i in xrange(length) if i not in trainIndices]
-        self.partitions.append((trainIndices, testIndices))
+        for split in self.trainSizes:
+          trainIndices = random.sample(xrange(length), split)
+          testIndices = [i for i in xrange(length) if i not in trainIndices]
+          self.partitions.append((trainIndices, testIndices))
 
 
   def _training(self, trial):
@@ -287,7 +298,13 @@ class Runner(object):
   def writeOutClassifications(self):
     """Write the samples, actual, and predicted classes to a CSV."""
     headers = ("Tokenized sample", "Actual", "Predicted")
-    for trial, _ in enumerate(self.trainSizes):
+    
+    if self.experimentType == "k-folds":
+      splits = range(self.folds)
+    else:
+      splits = self.trainSizes
+    
+    for trial in splits:
       resultsDict = defaultdict(list)
       for i, sampleNum in enumerate(self.partitions[trial][1]):
         # Loop through the indices in the test set of this trial.
@@ -304,15 +321,17 @@ class Runner(object):
   def calculateResults(self):
     """
     Calculate evaluation metrics from the result classifications.
-
-    TODO: pass intended CM results to plotter.plotConfusionMatrix()
     """
-    resultCalcs = [self.model.evaluateResults(self.results[i],
-                                              self.labelRefs,
-                                              self.partitions[i][1])
-                   for i in xrange(len(self.partitions))]
+    # TODO: pass intended CM results to plotter.plotConfusionMatrix()
+    resultCalcs = []
+    for i, sampleNum in enumerate(self.partitions):
+      if self.verbosity > 0:
+        self.printTrialReport(i, sampleNum[1])
+      resultCalcs.append(self.model.evaluateResults(
+        self.results[i], self.labelRefs, sampleNum[i][1]))
 
-    self.printFinalReport(self.trainSizes, [r[0] for r in resultCalcs])
+    trainSizes = [len(x[0]) for x in self.partitions]
+    self.printFinalReport(trainSizes, [r[0] for r in resultCalcs])
 
     if self.plots:
       trialAccuracies = self._calculateTrialAccuracies()
@@ -329,6 +348,35 @@ class Runner(object):
           self.setupConfusionMatrices(resultCalcs))
 
     return resultCalcs
+
+
+  def printTrialReport(self, trial, idx):
+    """Print columns for sample #, actual label, and predicted label."""
+    template = "{0:<10}|{1:<55}|{2:<55}"
+    print "Classification results for the trial:"
+    print template.format("#", "Actual", "Predicted")
+    for i in xrange(len(self.results[trial][0])):
+      if not any(self.results[trial][0][i]):
+        # No predicted classes for this sample.
+        print template.format(
+          idx[i],
+          [self.labelRefs[label] for label in self.results[trial][1][i]],
+          "(none)")
+      else:
+        print template.format(
+          idx[i],
+          [self.labelRefs[label] for label in self.results[trial][1][i]],
+          [self.labelRefs[label] for label in self.results[trial][0][i]])
+
+
+  @staticmethod
+  def printFinalReport(trainSizes, accuracies):
+    """Prints result accuracies."""
+    template = "{0:<20}|{1:<10}"
+    print "---------- RESULTS ----------"
+    print template.format("Size of training set", "Accuracy")
+    for size, acc in itertools.izip(trainSizes, accuracies):
+      print template.format(size, acc)
 
 
   def _calculateTrialAccuracies(self):
@@ -393,16 +441,6 @@ class Runner(object):
     return accuracies
 
 
-  @staticmethod
-  def printFinalReport(trainSizes, accuracies):
-    """Prints result accuracies."""
-    template = "{0:<20}|{1:<10}"
-    print "Evaluation results for this experiment:"
-    print template.format("Size of training set", "Accuracy")
-    for size, acc in itertools.izip(trainSizes, accuracies):
-      print template.format(size, acc)
-
-
   def evaluateCumulativeResults(self, intermResults):
     """
     Cumulative statistics for the outputs of evaluateTrialResults().
@@ -437,7 +475,6 @@ class Runner(object):
     """
     Prints results as returned by evaluateFinalResults() after several trials.
     """
-    print "---------- RESULTS ----------"
     print "max, mean, min accuracies = "
     print "{0:.3f}, {1:.3f}, {2:.3f}".format(
       results["max_accuracy"], results["mean_accuracy"],

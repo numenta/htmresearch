@@ -20,7 +20,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 """
-Script to run "incremental training" classification experiment.
+Script to run classification experiments.
 """
 
 import argparse
@@ -59,6 +59,7 @@ def run(args):
                        networkConfigPath=args.networkConfigPath,
                        resultsDir=resultsDir,
                        experimentName=args.experimentName,
+                       experimentType=args.experimentType,
                        loadPath=args.loadPath,
                        modelName=args.modelName,
                        retinaScaling=args.retinaScaling,
@@ -67,6 +68,7 @@ def run(args):
                        numClasses=args.numClasses,
                        plots=args.plots,
                        orderedSplit=args.orderedSplit,
+                       folds=args.folds,
                        trainSizes=args.trainSizes,
                        verbosity=args.verbosity,
                        generateData=args.generateData,
@@ -78,6 +80,7 @@ def run(args):
     runner = Runner(dataPath=args.dataPath,
                     resultsDir=resultsDir,
                     experimentName=args.experimentName,
+                    experimentType=args.experimentType,
                     loadPath=args.loadPath,
                     modelName=args.modelName,
                     retinaScaling=args.retinaScaling,
@@ -86,6 +89,7 @@ def run(args):
                     numClasses=args.numClasses,
                     plots=args.plots,
                     orderedSplit=args.orderedSplit,
+                    folds=args.folds,
                     trainSizes=args.trainSizes,
                     verbosity=args.verbosity)
     runner.initModel(args.modelName)
@@ -105,7 +109,8 @@ def run(args):
 
   runner.writeOutClassifications()
 
-  runner.calculateResults()
+  resultCalcs = runner.calculateResults()
+  runner.evaluateCumulativeResults(resultCalcs)
 
   print "Saving..."
   runner.saveModel()
@@ -132,10 +137,14 @@ if __name__ == "__main__":
                       default=None,
                       help="Path to data CSV to use for testing if provided. "
                            "Otherwise will test on \'dataPath\'.")
-  parser.add_argument("-e", "--experimentName",
-                      default="incremental_training",
+  parser.add_argument("-n", "--experimentName",
+                      default="kfolds",
                       type=str,
                       help="Experiment name.")
+  parser.add_argument("-e", "--experimentType",
+                      default="k-folds",
+                      type=str,
+                      help="Either 'k-folds' or 'incremental'.")
   parser.add_argument("-m", "--modelName",
                       default="Keywords",
                       type=str,
@@ -184,12 +193,18 @@ if __name__ == "__main__":
                       default=42,
                       type=int,
                       help="Random seed, used in partitioning the data.")
+  parser.add_argument("--folds",
+                      default=5,
+                      type=int,
+                      help="For incremental, number of samples to use in "
+                           "training. Separate w/ spaces for multiple trials."
+                           "For k-folds, number of cross validation folds.")
   parser.add_argument("--trainSizes",
                       default=[7, 7, 7, 13, 13, 13],
-                      nargs="+",
                       type=int,
-                      help="Number of samples to use in training. Separate "
-                           "with spaces for multiple trials.")
+                      nargs="+",
+                      help="For incremental, number of samples to use in "
+                           "training. Separate w/ spaces for multiple trials.")
   parser.add_argument("-v", "--verbosity",
                       default=1,
                       type=int,
