@@ -205,16 +205,21 @@ class UnionTemporalPooler(SpatialPooler):
     self._getMostActiveCells()
 
     if learn:
-      # adapt permanence of connections to all active inputs (predicted & unpredicted)
+      # adapt permanence of connections from predicted active inputs to newly active cell
+      # This step is the spatial pooler learning rule, applied only to the predictedActiveInput
+      # Todo: should we also include unpredicted active input in this step?
       self._adaptSynapses(predictedActiveInput, activeCells, self._synPermActiveInc, self._synPermInactiveDec)
 
-      # adapt permanence of connections to current predicted inputs
+      # Increase permanence of connections from predicted active inputs to cells in the union SDR
+      # This is Hebbian learning applied to the current time step
       self._adaptSynapses(predictedActiveInput, self._unionSDR, self._synPermPredActiveInc, 0.0)
 
-      # adapt permenence of connections to previously predicted inputs
+      # adapt permenence of connections from previously predicted inputs to newly active cells
+      # This is a reinforcement learning rule that considers previous input to the current cell
       for i in xrange(self._historyLength):
         self._adaptSynapses(self._prePredictedActiveInput[:,i], activeCells, self._synPermPreviousPredActiveInc, 0.0)
 
+      # Homeostasis learning inherited from the spatial pooler
       self._updateDutyCycles(totalOverlap, activeCells)
       self._bumpUpWeakColumns()
       self._updateBoostFactors()
@@ -322,3 +327,4 @@ class UnionTemporalPooler(SpatialPooler):
 
   def getUnionSDR(self):
     return self._unionSDR
+
