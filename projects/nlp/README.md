@@ -23,6 +23,7 @@ For a set of text samples, query the model with a phrase to get a sorted print o
 
 	python imbu_runner.py data/etc/imdb_subset.csv
 
+**This is currently broken/slow as we experiment with the TP region and algorithm.**
 
 #### Classification experiments
 
