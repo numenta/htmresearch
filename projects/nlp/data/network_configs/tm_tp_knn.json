@@ -55,7 +55,7 @@
     "regionParams": {
       "k": 3,
       "distThreshold": 0,
-      "maxCategoryCount": 3
+      "maxCategoryCount": 100
     }
   }
 }
