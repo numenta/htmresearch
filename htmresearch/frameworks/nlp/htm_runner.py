@@ -136,11 +136,18 @@ class HTMRunner(Runner):
   def setupNetData(self, generateData=False, seed=42, preprocess=False, **kwargs):
     """
     Generate the data in network API format if necessary. self.dataFiles is
-    populated with the paths of network data files, one for each trial
+    populated with the paths of network data files, one for each experiment
+    iteration.
 
     Look at runner.py (setupData) and network_text_data_generator.py (split) for
     the parameters.
     """
+    # TODO: logic here is confusing (a lot of if-statements), so maybe cleanup.
+    if self.experimentType == "k-folds":
+      splits = self.folds
+    else:
+      splits = len(self.trainSizes)
+
     if generateData:
       # TODO: use model.prepData()?
       ndg = NetworkDataGenerator()
@@ -150,16 +157,14 @@ class HTMRunner(Runner):
       filename, ext = os.path.splitext(self.dataPath)
       self.classificationFile = "{}_categories.json".format(filename)
 
-      # Generate one file for each experiment iteration.
-      if self.experimentType == "k-folds":
-        splits = self.folds
-        if not self.orderedSplit: ndg.randomizeData(seed)
-      else:
-        splits = len(self.trainSizes)
-      for i in xrange(splits):
-        if not self.orderedSplit:
+      # Generate one data file for each experiment iteration.
+      if self.experimentType == "k-folds" and not self.orderedSplit:
+          # only randomize the data order once for k-folds cross validation
           ndg.randomizeData(seed)
-          seed += 1  # necessary?
+      for i in xrange(splits):
+        if self.experimentType != "k-folds" and not self.orderedSplit:
+          ndg.randomizeData(seed)
+          seed += 1
         dataFile = "{}_network_{}{}".format(filename, i, ext)
         ndg.saveData(dataFile, self.classificationFile)
         self.dataFiles.append(dataFile)
