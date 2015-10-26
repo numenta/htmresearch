@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from scipy import signal
 import numpy.matlib
+import time
 
 display = True
 if display:
@@ -11,7 +12,16 @@ if display:
   plt.close('all')
   plt.ion()
 
+
 def plotWaveletPower(sig, cwtmatr, time_scale, x_range=None, title=''):
+  """
+  Display wavelet transformations along with the original data
+  :param sig: original sigal
+  :param cwtmatr: cwt coefficients
+  :param time_scale: time scales of wavelets
+  :param x_range: x range of the plot
+  :param title: title of the plot
+  """
   if x_range is None:
     x_range = range(0, cwtmatr.shape[1])
 
@@ -37,9 +47,20 @@ def plotWaveletPower(sig, cwtmatr, time_scale, x_range=None, title=''):
   ax[1].autoscale(tight=True)
   plt.show()
 
-def calculate_cwt(dat, figDir, fileName, display=True):
+
+def calculate_cwt(dat, figDir='./', fileName='./', display=True):
+  """
+  Calculate continuous wavelet transformation (CWT)
+  Return variance of the cwt coefficients overtime and its cumulative
+  distribution
+
+  :param dat: pandas dataframe with two columns, 'timestamp' and 'value'
+  :param figDir: directory of cwt plots
+  :param fileName: name of the dataset, used for determining figDir
+  :param display: whether to create the cwt plot
+  """
   sig = dat['value'].values
-  timestamp = pd.to_datetime(dat.timestamp)
+  timestamp = pd.to_datetime(dat['timestamp'])
   sampling_interval = timestamp[len(sig)-1] - timestamp[0]
   dt = sampling_interval.total_seconds()/(len(sig)-1)
 
@@ -48,7 +69,7 @@ def calculate_cwt(dat, figDir, fileName, display=True):
 
   T = int(widths[-1])
 
-  # continulus wavelet transformation
+  # continulus wavelet transformation with ricker wavelet
   cwtmatr = signal.cwt(sig, signal.ricker, widths)
   cwtmatr = cwtmatr[:, 4*T:-4*T]
   sig = sig[4*T:-4*T]
@@ -58,11 +79,12 @@ def calculate_cwt(dat, figDir, fileName, display=True):
   time_scale = widths * dt * 4
 
   # variance of wavelet power
-  cwt_power_var = np.var(np.abs(cwtmatr), axis=1)
-  cwt_power_var = cwt_power_var/np.sum(cwt_power_var)
-  cum_power_var = np.cumsum(cwt_power_var)
+  cwt_var = np.var(np.abs(cwtmatr), axis=1)
+  cwt_var = cwt_var/np.sum(cwt_var)
+  cum_cwt_var = np.cumsum(cwt_var)
 
-  # figDir = join(waveletDir, data_file_dir[-2])
+  local_min, local_max, strong_local_max = get_local_maxima(cwt_var)
+
   if not exists(figDir):
       makedirs(figDir)
 
@@ -74,7 +96,17 @@ def calculate_cwt(dat, figDir, fileName, display=True):
 
     fig, axs = plt.subplots(nrows=2, ncols=1)
     ax = axs[0]
-    ax.plot(time_scale, cwt_power_var, '-o')
+    ax.plot(time_scale, cwt_var, '-o')
+    ax.axvline(x=86400, color='c')
+    ax.axvline(x=604800, color='c')
+
+    for _ in xrange(len(local_max)):
+      ax.axvline(x=time_scale[local_max[_]], color='r')
+    for _ in xrange(len(strong_local_max)):
+      ax.axvline(x=time_scale[strong_local_max[_]], color='k')
+    for _ in xrange(len(local_min)):
+      ax.axvline(x=time_scale[local_min[_]], color='b')
+
     ax.set_xscale('log')
     ax.set_xlabel(' Time Scale (sec) ')
     ax.set_ylabel(' Variance of Power')
@@ -82,19 +114,70 @@ def calculate_cwt(dat, figDir, fileName, display=True):
     ax.set_title(fileName)
 
     ax = axs[1]
-    ax.plot(time_scale, cum_power_var, '-o')
+    ax.plot(time_scale, cum_cwt_var, '-o')
     ax.set_xscale('log')
     ax.set_xlabel(' Time Scale (sec) ')
     ax.set_ylabel(' Accumulated Variance of Power')
     ax.autoscale(tight='True')
     plt.savefig(join(figDir, fileName + 'aggregation_time_scale.pdf'))
 
-  return (cum_power_var, time_scale)
+  return cum_cwt_var, cwt_var, time_scale
 
-def aggregate_nab_data(thresh_list, dataPath='data/', aggregatedDataPath='data_aggregate', waveletDir='wavelet/'):
-  # dataPath = '../data'
-  # aggregatedDataPath = '../data_aggregate/'
-  # waveletDir = '../wavelet/'
+
+def get_local_maxima(cwt_var):
+  """
+  Find local maxima from the wavelet coefficient variance spectrum
+  A strong maxima is defined as
+  (1) At least 10% higher than the nearest local minima
+  (2) Above the baseline value
+  """
+
+  # peak & valley detection
+  local_min = (np.diff(np.sign(np.diff(cwt_var))) > 0).nonzero()[0] + 1
+  local_max = (np.diff(np.sign(np.diff(cwt_var))) < 0).nonzero()[0] + 1
+
+  baseline_value = 1.0/len(cwt_var)
+
+  dayPeriod = 86400
+  weekPeriod = 604800
+
+  strong_local_max = []
+  for i in xrange(len(local_max)):
+    left_local_min = np.where(np.less(local_min, local_max[i]))[0]
+    if len(left_local_min) == 0:
+      left_local_min_value = cwt_var[0]
+    else:
+      left_local_min_value = cwt_var[left_local_min[-1]]
+
+    right_local_min = np.where(np.greater(local_min, local_max[i]))[0]
+    if len(right_local_min) == 0:
+      right_local_min = right_local_min[0]
+      right_local_min_value = cwt_var[-1]
+    else:
+      right_local_min_value = cwt_var[right_local_min[0]]
+
+    local_max_value = cwt_var[local_max[i]]
+    nearest_local_min_value = np.max(left_local_min_value, right_local_min_value)
+    if ( (local_max_value - nearest_local_min_value)/nearest_local_min_value > 0.1 and
+           local_max_value > baseline_value):
+      strong_local_max.append(local_max[i])
+
+      # TODO: check whether the current local maxima is near a dayPeriod or weekPeriod
+
+
+  return local_min, local_max, strong_local_max
+
+
+def aggregate_nab_data(thresh_list, dataPath='data/',
+                       aggregatedDataPath='data_aggregate', waveletDir='wavelet/'):
+  """
+  Aggregate NAB data using the wavelet transformation based algorithm
+
+  :param thresh_list: threshold of the aggregation, a number in [0, 1)
+  :param dataPath: path of the original NAB data
+  :param aggregatedDataPath: path of the aggregated NAB data
+  :param waveletDir: path of wavelet transformations (for visual inspection)
+  """
   if not exists(aggregatedDataPath):
       makedirs(aggregatedDataPath)
 
@@ -117,12 +200,13 @@ def aggregate_nab_data(thresh_list, dataPath='data/', aggregatedDataPath='data_a
       dt = sampling_interval.total_seconds()/(len(sig)-1)
       ts = pd.Series(np.array(dat.value).astype('float32'), index=pd.to_datetime(dat.timestamp))
 
-      (cum_power_var, time_scale) = calculate_cwt(dat,
+      (cum_cwt_var, cwt_var, time_scale) = calculate_cwt(dat,
                                                   figDir=join(waveletDir, data_file_dir[-2]),
                                                   fileName=data_file_dir[-1])
+      
       # apply different threshold to the cumulative power variance
       for thresh in thresh_list:
-        cutoff_time_scale = time_scale[np.where(cum_power_var >= thresh)[0][0]]
+        cutoff_time_scale = time_scale[np.where(cum_cwt_var >= thresh)[0][0]]
         aggregation_time_scale = cutoff_time_scale/10.0
         if aggregation_time_scale < dt*4:
           aggregation_time_scale = dt*4
@@ -148,6 +232,11 @@ def aggregate_nab_data(thresh_list, dataPath='data/', aggregatedDataPath='data_a
 
         
 def get_pre_aggregated_anomaly_score(data_path, result_folder, result_folder_pre_aggregate):
+  """
+  This function transforms anomaly scores on the aggregated data file (in result_folder)
+  to the original sampling rate of the data (in data_path) before aggregation. The new anomaly
+  score will be saved to result_folder_pre_aggregate
+  """
 
   dataDirs = [join(result_folder, f) for f in listdir(result_folder) if not isfile(join(result_folder, f))]
 
@@ -159,7 +248,8 @@ def get_pre_aggregated_anomaly_score(data_path, result_folder, result_folder_pre
 
       original_data_file = join(data_path, result_file_dir[-2], result_file_dir[-1][8:])
       dat = pd.read_csv(original_data_file, header=0, names=['timestamp', 'value'])
-      result = pd.read_csv(resultfiles[i], header=0, names=['timestamp', 'value', 'anomaly_score', 'raw_score', 'label'])
+      result = pd.read_csv(resultfiles[i], header=0,
+                           names=['timestamp', 'value', 'anomaly_score', 'raw_score', 'label'])
 
       time_stamp_pre_aggregation =pd.to_datetime(dat.timestamp)
       time_stamp_after_aggregation = pd.to_datetime(result.timestamp)
@@ -192,19 +282,65 @@ def get_pre_aggregated_anomaly_score(data_path, result_folder, result_folder_pre
       result_pre_aggregate.to_csv(result_file_pre_aggregate, index=False)
       print " write pre-aggregated file to ", result_file_pre_aggregate
 
+      # compare anomaly scores before and after aggregations
       # plt.figure(2)
       # plt.plot(time_stamp_after_aggregation, binary_anomaly_score_after_aggregation)
       # plt.plot(time_stamp_pre_aggregation, binary_anomaly_score_pre_aggregation)
+
+
+def runTimeVsDataLength(dataPath):
+  """
+  Plot Data Aggregation Algorithm Runtime vs length of the data
+  """
+
+  dataDirs = [join(dataPath, f) for f in listdir(dataPath) if not isfile(join(dataPath, f))]
+
+  thresh = 0.2
+
+  dataLength = []
+  runTime = []
+  for dir in dataDirs:
+    datafiles = [join(dir, f) for f in listdir(dir) if isfile(join(dir, f))]
+
+    for i in range(len(datafiles)):
+      dat = pd.read_csv(datafiles[i], header=0, names=['timestamp', 'value'])
+      data_file_dir = datafiles[i].split('/')
+      dataLength.append(len(dat))
+
+      sig = dat['value'].values
+      timestamp = pd.to_datetime(dat.timestamp)
+      sampling_interval = timestamp[len(sig)-1] - timestamp[0]
+      dt = sampling_interval.total_seconds()/(len(sig)-1)
+      ts = pd.Series(np.array(dat.value).astype('float32'), index=pd.to_datetime(dat.timestamp))
+
+      start_time = time.time()
+      (cum_cwt_var, time_scale) = calculate_cwt(dat, display=False)
+      # apply different threshold to the cumulative power variance
+
+      cutoff_time_scale = time_scale[np.where(cum_cwt_var >= thresh)[0][0]]
+
+      end_time = time.time()
+
+      print " length: ", len(dat), " file: ", datafiles[i], " Time: ", end_time - start_time
+
+      runTime.append(end_time - start_time)
+
+  plt.figure()
+  plt.plot(dataLength, runTime, '*')
+  plt.xlabel(' Dataset Size (# Record)')
+  plt.ylabel(' Runtime (seconds) ')
+  plt.savefig('RuntimeVsDatasetSize.pdf')
+
+  return (dataLength, runTime)
+
 
 if __name__ == "__main__":
 
   NABPath = '/Users/ycui/nta/NAB/'
   currentPath = getcwd()
 
-  # thresh_list = [0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18, 0.2]
-  # thresh_list = [0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18, 0.2,
-  #                0.22, 0.24, 0.26, 0.28, 0.3, 0.32, 0.34, 0.36, 0.38, 0.40]
-  thresh_list = [0, 0.1, 0.2, 0.3]
+  thresh_list = [0, 0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18, 0.2,
+                 0.22, 0.24, 0.26, 0.28, 0.3, 0.32, 0.34, 0.36, 0.38, 0.40]
 
   # step 1: aggregate NAB data with different threshold
   print " aggregating NAB data ..."
@@ -215,7 +351,7 @@ if __name__ == "__main__":
     print " run HTM on aggregated data with threshold " + str(thresh)
     system("python " + NABPath + "run.py -d numenta --detect --dataDir data_aggregate/thresh=" + str(thresh) +
               "/ --resultsDir "+ currentPath + "/results_aggregate/thresh=" + str(thresh) + " --skipConfirmation")
-  #
+
   # step 3: get pre-aggregated anomaly score
   for thresh in thresh_list:
     get_pre_aggregated_anomaly_score(data_path=NABPath+'data/',
@@ -258,16 +394,23 @@ if __name__ == "__main__":
   # plot anomaly score vs aggregation threshold
   anomaly_score_diff = standard_score[:, long_dat] - numpy.matlib.repmat(standard_score[0, long_dat], len(thresh_list), 1)
 
+  shortFileName = []
+  for i in range(len(scoredf.File.values[:-1])):
+    file = scoredf.File.values[i]
+    fileName = file.split('/')[-1]
+    fileName = fileName[:-4]
+    shortFileName.append(fileName)
   fig=plt.figure()
   plt.imshow(anomaly_score_diff, interpolation='nearest', aspect='auto')
-  plt.yticks(range(len(thresh_list)), thresh_list)
-  plt.xticks(range(len(scoredf.File)-1), scoredf.File.values[:-1], rotation='vertical')
+  ytickLoc = range(len(thresh_list))
+  plt.yticks(ytickLoc, thresh_list)
+  plt.xticks(range(len(scoredf.File)-1), shortFileName, rotation='vertical')
   plt.subplots_adjust(bottom=0.6)
-  plt.xlabel(' Dataset ')
   plt.ylabel(' Threshold')
-  plt.title(' Anomaly Score ')
+  plt.title(' Anomaly Score Relative to BaseLine')
   plt.colorbar()
   plt.clim(-2, 2)
+  plt.savefig('AnomalyScore_Vs_AggregationThreshold_EachFile.pdf')
 
   plt.figure()
   plt.subplot(2, 1, 1)
@@ -287,3 +430,5 @@ if __name__ == "__main__":
   num_better_anomaly_score = []
   for i in xrange(len(thresh_list)-1):
     num_better_anomaly_score.append(len(np.where(standard_score[i+1, :] > standard_score[0, :])[0]))
+
+  (dataLength, runTime) = runTimeVsDataLength(dataPath=NABPath+'data/')
