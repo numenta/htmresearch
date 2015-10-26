@@ -107,7 +107,6 @@ class Runner(object):
     self.retinaScaling = retinaScaling
     self.retina = retina
     self.apiKey = apiKey
-#    self.trainSizes = trainSizes if trainSizes else []
     self.verbosity = verbosity
 
     self.modelDir = os.path.join(
@@ -304,7 +303,7 @@ class Runner(object):
     else:
       splits = self.trainSizes
     
-    for trial in splits:
+    for trial in xrange(len(splits)):
       resultsDict = defaultdict(list)
       for i, sampleNum in enumerate(self.partitions[trial][1]):
         # Loop through the indices in the test set of this trial.
@@ -328,7 +327,7 @@ class Runner(object):
       if self.verbosity > 0:
         self.printTrialReport(i, sampleNum[1])
       resultCalcs.append(self.model.evaluateResults(
-        self.results[i], self.labelRefs, sampleNum[i][1]))
+        self.results[i], self.labelRefs, sampleNum[1]))
 
     trainSizes = [len(x[0]) for x in self.partitions]
     self.printFinalReport(trainSizes, [r[0] for r in resultCalcs])
@@ -464,8 +463,7 @@ class Runner(object):
                "min_accuracy":min(accuracy),
                "total_cm":cm}
 
-    if self.verbosity > 0:
-      self._printCumulativeReport(results)
+    self._printCumulativeReport(results)
 
     return results
 
