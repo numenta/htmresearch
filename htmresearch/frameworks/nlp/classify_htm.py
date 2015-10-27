@@ -168,14 +168,13 @@ class ClassificationModelHTM(ClassificationModel):
 
   def saveModel(self):
     # TODO: test this works
-    #   use self.network.save()?
     try:
       if not os.path.exists(self.modelDir):
         os.makedirs(self.modelDir)
       networkPath = os.path.join(self.modelDir, "network.nta")
-      # self.network = networkPath
-      with open(networkPath, "wb") as f:
-        pkl.dump(self, f)
+      self.network.save(networkPath)
+      # with open(networkPath, "wb") as f:
+      #   pkl.dump(self, f)
       if self.verbosity > 0:
         print "Model saved to \'{}\'.".format(networkPath)
     except IOError as e:
@@ -190,6 +189,7 @@ class ClassificationModelHTM(ClassificationModel):
     there's a 1-to-1 mapping of training samples.
     """
     for region in self.learningRegions:
+      # if region.name == 'UP': continue
       region.setParameter("learningMode", True)
 
     self.network.run(iterations)

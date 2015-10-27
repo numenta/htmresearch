@@ -73,7 +73,7 @@ class NetworkDataGenerator(object):
     self.sequenceCount = 0
 
 
-  def setupData(self, dataPath, numLabels=0, ordered=False, stripCats=False, **kwargs):
+  def setupData(self, dataPath, numLabels=0, ordered=False, stripCats=False, seed=42, **kwargs):
     """
     Main method of this class. Use for setting up a network data file.
     
@@ -82,8 +82,7 @@ class NetworkDataGenerator(object):
     @param textPreprocess  (bool)   True will preprocess text while tokenizing.
     @param ordered         (bool)   Keep data samples (sequences) in order,
                                     otherwise randomize.
-    
-    
+    @param seed            (int)    Random seed.
     
     @return dataFileName   (str)    Network data file name; same directory as
                                     input data file.
@@ -91,7 +90,7 @@ class NetworkDataGenerator(object):
     self.split(dataPath, numLabels, **kwargs)
   
     if not ordered:
-      self.randomizeData()
+      self.randomizeData(seed)
     
     filename, ext = os.path.splitext(dataPath)
     classificationFileName = "{}_category.json".format(filename)
@@ -105,18 +104,21 @@ class NetworkDataGenerator(object):
     return dataFileName
   
 
-  def split(self, filePath, numLabels, textPreprocess=False, abbrCSV="",
-            contrCSV="", ignoreCommon=100, removeStrings="[identifier deleted]",
-            correctSpell=True):
+  def split(self, filePath, numLabels, textPreprocess=False, seed=42,
+            abbrCSV="", contrCSV="", ignoreCommon=100,
+            removeStrings="[identifier deleted]", correctSpell=True):
     """
     Split all the comments in a file into tokens. Preprocess if necessary.
     
     @param filePath        (str)    Path to csv file
     @param numLabels       (int)    Number of columns of category labels.
     @param textPreprocess  (bool)   True will preprocess text while tokenizing.
+    @param seed            (int)    Random seed.
+    
+    @return dataDict       (dict)   Data as read in from filePath.
     
     Please see TextPreprocess tokenize() for the other parameters; they're only
-    used when textPrepricess is True.
+    used when textPreprocess is True.
     """
     dataDict = readCSV(filePath, numLabels=numLabels)
     if dataDict is None:
@@ -142,6 +144,8 @@ class NetworkDataGenerator(object):
 
       self.records.append(data)
       self.sequenceCount += 1
+    
+    return dataDict
 
 
   def _stripCategories(self):
@@ -169,7 +173,8 @@ class NetworkDataGenerator(object):
     return data
   
 
-  def randomizeData(self):
+  def randomizeData(self, seed=42):
+    random.seed(seed)
     random.shuffle(self.records)
 
 

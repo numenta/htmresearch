@@ -61,13 +61,13 @@ class ClassificationModelsTest(unittest.TestCase):
 
     expectedClasses = []
     resultClasses = []
-    for i, trial in enumerate(runner.results):
-      for j, predictionList in enumerate(trial[0]):
+    for trial, trialResults in enumerate(runner.results):
+      for i, predictionList in enumerate(trialResults[0]):
         predictions = [runner.labelRefs[p] for p in predictionList]
         if predictions == []:
           predictions = ["(none)"]
         resultClasses.append(predictions)
-        expectedClasses.append(dataDict.items()[j+runner.trainSizes[i]][1][1])
+        expectedClasses.append(dataDict.items()[i+runner.trainSizes[trial]][1][1])
 
     return expectedClasses, resultClasses
 
@@ -84,6 +84,7 @@ class ClassificationModelsTest(unittest.TestCase):
     runner = Runner(dataPath=os.path.join(DATA_DIR, "responses.csv"),
                     resultsDir="",
                     experimentName="keywords_test",
+                    experimentType="incremental",
                     loadPath=None,
                     modelName=modelName,
                     numClasses=3,
@@ -119,6 +120,7 @@ class ClassificationModelsTest(unittest.TestCase):
     runner = Runner(dataPath=os.path.join(DATA_DIR, "responses.csv"),
                     resultsDir="",
                     experimentName="fingerprints_test",
+                    experimentType="incremental",
                     loadPath=None,
                     modelName=modelName,
                     numClasses=3,
@@ -151,6 +153,7 @@ class ClassificationModelsTest(unittest.TestCase):
     runner = Runner(dataPath=os.path.join(DATA_DIR, "responses.csv"),
                     resultsDir="",
                     experimentName="fingerprints_test",
+                    experimentType="incremental",
                     loadPath=None,
                     modelName=modelName,
                     numClasses=3,
@@ -164,8 +167,7 @@ class ClassificationModelsTest(unittest.TestCase):
 
     expectedClasses, resultClasses = self.getExpectedClassifications(runner,
       os.path.join(DATA_DIR, "responses_expected_classes_fingerprint_word.csv"))
-    for i, (e, r) in enumerate(zip(expectedClasses, resultClasses)):
-      if sorted(e) != sorted(r): print i, e, r
+
     [self.assertEqual(sorted(e), sorted(r),
       "Fingerprint model predicted classes other than what we expect.")
       for e, r in zip(expectedClasses, resultClasses)]
@@ -183,6 +185,7 @@ class ClassificationModelsTest(unittest.TestCase):
     runner = Runner(dataPath=os.path.join(DATA_DIR, "responses.csv"),
                     resultsDir="",
                     experimentName="endpoint_test",
+                    experimentType="incremental",
                     loadPath=None,
                     modelName=modelName,
                     numClasses=3,
@@ -215,6 +218,7 @@ class ClassificationModelsTest(unittest.TestCase):
                          DATA_DIR, "network_config_sp_tm_knn.json"),
                        resultsDir="",
                        experimentName="htm_test",
+                       experimentType="incremental",
                        loadPath=None,
                        modelName=modelName,
                        numClasses=3,
@@ -251,6 +255,7 @@ class ClassificationModelsTest(unittest.TestCase):
                          DATA_DIR, "network_config_tp_knn.json"),
                        resultsDir="",
                        experimentName="htm_test",
+                       experimentType="incremental",
                        loadPath=None,
                        modelName=modelName,
                        numClasses=3,

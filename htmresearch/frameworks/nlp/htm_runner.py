@@ -26,6 +26,7 @@ from collections import Counter, namedtuple
 
 from htmresearch.frameworks.nlp.runner import Runner
 from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
+from htmresearch.support.data_split import KFolds
 from htmresearch.support.network_text_data_generator import NetworkDataGenerator
 
 try:
@@ -46,19 +47,22 @@ class HTMRunner(Runner):
                networkConfigPath,
                resultsDir,
                experimentName,
-               loadPath,
+               experimentType,
                modelName,
                retinaScaling=1.0,
                retina="en_associative",
                apiKey=None,
+               loadPath=None,
                numClasses=3,
                plots=0,
                orderedSplit=False,
+               folds=None,
                trainSizes=None,
                verbosity=0,
                generateData=True,
                votingMethod="last",
-               classificationFile=""):
+               classificationFile="",
+               seed=42):
     """
     @param networkConfigPath  (str)    Path to JSON specifying network params.
     @param generateData       (bool)   Whether or not we need to generate data.
@@ -69,9 +73,10 @@ class HTMRunner(Runner):
     See base class constructor for the other parameters.
     """
     super(HTMRunner, self).__init__(dataPath, resultsDir, experimentName,
-                                    modelName, retinaScaling, retina, apiKey,
+                                    experimentType, modelName,
+                                    retinaScaling, retina, apiKey,
                                     loadPath, numClasses, plots, orderedSplit,
-                                    trainSizes, verbosity)
+                                    folds, trainSizes, verbosity)
 
     self.networkConfig = self._getNetworkConfig(networkConfigPath)
     self.model = None
@@ -84,8 +89,8 @@ class HTMRunner(Runner):
     self.classificationFile = classificationFile
 
     # Setup data now in order to init the network model. If you want to
-    # specify data params, just call setupData() again later.
-    self.setupNetData(generateData=generateData)
+    # specify data params, just call setupNetData() again later.
+    self.setupNetData(generateData=generateData, seed=seed)
 
 
   @staticmethod
@@ -128,25 +133,38 @@ class HTMRunner(Runner):
     pass
 
 
-  def setupNetData(self, preprocess=False, generateData=False, **kwargs):
+  def setupNetData(self, generateData=False, seed=42, preprocess=False, **kwargs):
     """
     Generate the data in network API format if necessary. self.dataFiles is
-    populated with the paths of network data files, one for each trial
+    populated with the paths of network data files, one for each experiment
+    iteration.
 
     Look at runner.py (setupData) and network_text_data_generator.py (split) for
     the parameters.
     """
+    # TODO: logic here is confusing (a lot of if-statements), so maybe cleanup.
+    if self.experimentType == "k-folds":
+      splits = self.folds
+    else:
+      splits = len(self.trainSizes)
+
     if generateData:
       # TODO: use model.prepData()?
       ndg = NetworkDataGenerator()
-      ndg.split(self.dataPath, self.numClasses, preprocess, **kwargs)
+      self.dataDict = ndg.split(
+        self.dataPath, self.numClasses, preprocess, **kwargs)
 
       filename, ext = os.path.splitext(self.dataPath)
       self.classificationFile = "{}_categories.json".format(filename)
 
-      for i in xrange(len(self.trainSizes)):
-        if not self.orderedSplit:
-          ndg.randomizeData()
+      # Generate one data file for each experiment iteration.
+      if self.experimentType == "k-folds" and not self.orderedSplit:
+          # only randomize the data order once for k-folds cross validation
+          ndg.randomizeData(seed)
+      for i in xrange(splits):
+        if self.experimentType != "k-folds" and not self.orderedSplit:
+          ndg.randomizeData(seed)
+          seed += 1
         dataFile = "{}_network_{}{}".format(filename, i, ext)
         ndg.saveData(dataFile, self.classificationFile)
         self.dataFiles.append(dataFile)
@@ -155,30 +173,28 @@ class HTMRunner(Runner):
         print "{} file(s) generated at {}".format(len(self.dataFiles),
           self.dataFiles)
         print "Classification JSON is at: {}".format(self.classificationFile)
+
     else:
       # Use the input file for each trial; maintains the order of samples.
       self.dataFiles = [self.dataPath] * len(self.trainSizes)
 
     if self.numClasses > 0:
       # Setup labels data objects
-      self.actualLabels = [self._getClassifications(size, i)
-        for i, size in enumerate(self.trainSizes)]
+      self.actualLabels = [self._getClassifications(i) for i in xrange(splits)]
       self._mapLabelRefs()
 
 
-  def _getClassifications(self, split, trial):
+  def _getClassifications(self, iteration):
     """
-    Gets the classifications for testing samples for a particular trial
-    @param split      (int)       Size of training set
-    @param trial      (int)       trial count
+    Get the classifications for a particular iteration.
+    @param iteration  (int)       Iteration of the experiment.
     @return           (list)      List of list of ids of classifications for a
-                                  sample
+                                  sample.
     """
-    # import pdb; pdb.set_trace()
-    dataFile = self.dataFiles[trial]
+    dataFile = self.dataFiles[iteration]
     classifications = NetworkDataGenerator.getClassifications(dataFile)
     return [[int(c) for c in classes.strip().split(" ")]
-             for classes in classifications][split:]
+             for classes in classifications]
 
 
   def _mapLabelRefs(self):
@@ -262,7 +278,8 @@ class HTMRunner(Runner):
              "{}".format(indices))
 
     results = ([], [])
-    for i, numTokens in enumerate(self.partitions[trial][1]):
+    testIndex = len(self.partitions[trial][0])
+    for numTokens in self.partitions[trial][1]:
       predictions = []
       for _ in xrange(numTokens):
         predicted = self.model.testModel()
@@ -271,7 +288,8 @@ class HTMRunner(Runner):
 
       # TODO: switch to standard (expected, actual) format
       results[0].append(winningPredictions)
-      results[1].append(self.actualLabels[trial][i])
+      results[1].append(self.actualLabels[trial][testIndex])
+      testIndex += 1
 
     # Prepare data for writeOutClassifications
     trainIdx = range(len(self.partitions[trial][0]))
@@ -283,15 +301,25 @@ class HTMRunner(Runner):
     self.results.append(results)
 
 
-  def partitionIndices(self):
+  def partitionIndices(self, _):
     """
     Sets self.partitions for the number of tokens for each sample in the
-    training and test sets (when doing an ordered split).
+    training and test sets.
+
+    The order of sequences is already specified by the network data files; if
+    generated by the experiment, these are in order or randomized as specified
+    by the orderedSplit arg.
     """
-    for trial, split in enumerate(self.trainSizes):
-      dataFile = self.dataFiles[trial]
-      numTokens = NetworkDataGenerator.getNumberOfTokens(dataFile)
-      self.partitions.append((numTokens[:split], numTokens[split:]))
+    if self.experimentType == "k-folds":
+      for fold in xrange(self.folds):
+        dataFile = self.dataFiles[fold]
+        numTokens = NetworkDataGenerator.getNumberOfTokens(dataFile)
+        self.partitions = KFolds(self.folds).split(numTokens, randomize=False)
+    else:
+      for trial, split in enumerate(self.trainSizes):
+        dataFile = self.dataFiles[trial]
+        numTokens = NetworkDataGenerator.getNumberOfTokens(dataFile)
+        self.partitions.append((numTokens[:split], numTokens[split:]))
 
 
   # TODO

@@ -20,19 +20,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 """
-Runs k-fold cross validation experiment for classification of text samples.
-
-EXAMPLE: from the nupic.fluent directory run...
-  python experiments/baseline_experiment.py data/sample_reviews/sample_reviews.csv
-
-Notes:
-- The above example runs the ClassificationModelRandomSDR subclass of Model. To
-  use a different model, use cmd line args modelName and modelModuleName.
-- k-fold cross validation: the training dataset is split
-  differently for each of the k trials. The majority of the dataset is used for
-  training, and a small portion (1/k) is held out for evaluation; this
-  evaluation data is different from the test data.
-- classification and label are used interchangeably
+Script to run classification experiments.
 """
 
 import argparse
@@ -42,7 +30,6 @@ import time
 
 from htmresearch.frameworks.nlp.runner import Runner
 from htmresearch.frameworks.nlp.htm_runner import HTMRunner
-from htmresearch.support.data_split import KFolds
 
 
 
@@ -61,12 +48,8 @@ def checkInputs(args):
   return checkInputs(args)
 
 
-
 def run(args):
   start = time.time()
-
-  if (not isinstance(args.kFolds, int)) or (args.kFolds < 1):
-    raise ValueError("Invalid value for number of cross-validation folds.")
 
   root = os.path.dirname(os.path.realpath(__file__))
   resultsDir = os.path.join(root, args.resultsDir)
@@ -76,6 +59,7 @@ def run(args):
                        networkConfigPath=args.networkConfigPath,
                        resultsDir=resultsDir,
                        experimentName=args.experimentName,
+                       experimentType=args.experimentType,
                        loadPath=args.loadPath,
                        modelName=args.modelName,
                        retinaScaling=args.retinaScaling,
@@ -84,37 +68,35 @@ def run(args):
                        numClasses=args.numClasses,
                        plots=args.plots,
                        orderedSplit=args.orderedSplit,
-                       trainSizes=[],
+                       folds=args.folds,
+                       trainSizes=args.trainSizes,
                        verbosity=args.verbosity,
                        generateData=args.generateData,
                        votingMethod=args.votingMethod,
                        classificationFile=args.classificationFile,
-                       classifierType=args.classifierType)
+                       seed=args.seed)
+    runner.initModel(0)
   else:
     runner = Runner(dataPath=args.dataPath,
                     resultsDir=resultsDir,
                     experimentName=args.experimentName,
+                    experimentType=args.experimentType,
                     loadPath=args.loadPath,
                     modelName=args.modelName,
                     retinaScaling=args.retinaScaling,
+                    retina=args.retina,
+                    apiKey=args.apiKey,
                     numClasses=args.numClasses,
                     plots=args.plots,
                     orderedSplit=args.orderedSplit,
-                    trainSizes=[],
+                    folds=args.folds,
+                    trainSizes=args.trainSizes,
                     verbosity=args.verbosity)
-
-    # HTM network data isn't ready yet to initialize the model
     runner.initModel(args.modelName)
 
   print "Reading in data and preprocessing."
   dataTime = time.time()
   runner.setupData(args.textPreprocess)
-
-  # TODO: move kfolds splitting to Runner
-  random = False if args.orderedSplit else True
-  runner.partitions = KFolds(args.kFolds).split(
-    range(len(runner.samples)), randomize=random)
-  runner.trainSizes = [len(x[0]) for x in runner.partitions]
   print ("Data setup complete; elapsed time is {0:.2f} seconds.\nNow encoding "
          "the data".format(time.time() - dataTime))
 
@@ -123,43 +105,46 @@ def run(args):
   print ("Encoding complete; elapsed time is {0:.2f} seconds.\nNow running the "
          "experiment.".format(time.time() - encodeTime))
 
-  runner.runExperiment()
-  print "Experiment complete in {0:.2f} seconds.".format(time.time() - start)
+  runner.runExperiment(args.seed)
+
+  runner.writeOutClassifications()
 
   resultCalcs = runner.calculateResults()
-  _ = runner.evaluateCumulativeResults(resultCalcs)
+  runner.evaluateCumulativeResults(resultCalcs)
 
   print "Saving..."
   runner.saveModel()
+
+  print "Experiment complete in {0:.2f} seconds.".format(time.time() - start)
 
   if args.validation:
     print "Validating experiment against expected classifications..."
     print runner.validateExperiment(args.validation)
 
-  ## TODO:
-  # print "Calculating random classifier results for comparison."
-  # print model.classifyRandomly(labels)
-
 
 if __name__ == "__main__":
 
   parser = argparse.ArgumentParser()
+
   parser.add_argument("dataPath",
-                      help="Path to data CSV.",
+                      help="Path to data CSV or folder of CSVs.",
                       type=str)
   parser.add_argument("--networkConfigPath",
-                      default=os.path.abspath("data/network_configs/sp_tm_knn.json"),
+                      default="htm_network_config.json",
                       help="Path to JSON specifying the network params.",
                       type=str)
-  parser.add_argument("-k", "--kFolds",
-                      default=5,
-                      type=int,
-                      help="Number of folds for cross validation; k=1 will "
-                      "run no cross-validation.")
-  parser.add_argument("-e", "--experimentName",
-                      default="k_folds",
+  parser.add_argument("--test",
+                      default=None,
+                      help="Path to data CSV to use for testing if provided. "
+                           "Otherwise will test on \'dataPath\'.")
+  parser.add_argument("-n", "--experimentName",
+                      default="kfolds",
                       type=str,
                       help="Experiment name.")
+  parser.add_argument("-e", "--experimentType",
+                      default="k-folds",
+                      type=str,
+                      help="Either 'k-folds' or 'incremental'.")
   parser.add_argument("-m", "--modelName",
                       default="Keywords",
                       type=str,
@@ -193,7 +178,7 @@ if __name__ == "__main__":
                       type=int,
                       default=3)
   parser.add_argument("--plots",
-                      default=0,
+                      default=1,
                       type=int,
                       help="0 for no evaluation plots, 1 for classification "
                            "accuracy plots, 2 includes the confusion matrix.")
@@ -204,10 +189,22 @@ if __name__ == "__main__":
                            "the samples randomly, True will allocate the "
                            "first n samples to training with the remainder "
                            "for testing.")
-  parser.add_argument("--classifier",
-                      default="KNN",
-                      choices=["KNN", "CLA"],
-                      help="Type of classifier to use for the HTM")
+  parser.add_argument("--seed",
+                      default=42,
+                      type=int,
+                      help="Random seed, used in partitioning the data.")
+  parser.add_argument("--folds",
+                      default=5,
+                      type=int,
+                      help="For incremental, number of samples to use in "
+                           "training. Separate w/ spaces for multiple trials."
+                           "For k-folds, number of cross validation folds.")
+  parser.add_argument("--trainSizes",
+                      default=[7, 7, 7, 13, 13, 13],
+                      type=int,
+                      nargs="+",
+                      help="For incremental, number of samples to use in "
+                           "training. Separate w/ spaces for multiple trials.")
   parser.add_argument("-v", "--verbosity",
                       default=1,
                       type=int,
@@ -215,40 +212,24 @@ if __name__ == "__main__":
                            "verbosity 1 will include results, and verbosity > "
                            "1 will print out preprocessed tokens and kNN "
                            "inference metrics.")
-  parser.add_argument("--contrCSV",
-                      default="",
-                      help="Path to contraction csv")
-  parser.add_argument("--abbrCSV",
-                      default="",
-                      help="Path to abbreviation csv")
-  parser.add_argument("--batch",
-                      help="Train the model with all the data at one time",
-                      action="store_true")
   parser.add_argument("--validation",
                       default="",
                       help="Path to file of expected classifications.")
   parser.add_argument("--skipConfirmation",
-                      help="If specified will skip the user confirmation step",
+                      help="If specified will skip the user confirmation step.",
                       default=False,
                       action="store_true")
   parser.add_argument("--generateData",
                       default=False,
                       action="store_true",
-                      help="Whether or not to generate network data files. "
-                           "This only applies to HTM models.")
+                      help="Whether or not to generate network data files.")
   parser.add_argument("--votingMethod",
                       default="last",
                       choices=["last", "most"],
-                      help="Method to use when picking final classifications. "
-                           "This only applies to HTM models.")
+                      help="Method to use when picking final classifications.")
   parser.add_argument("--classificationFile",
                       default="",
-                      help="Json file mapping labels strings to their IDs. "
-                           "This only applies to HTM models.")
-  parser.add_argument("--classifierType",
-                      default="KNN",
-                      choices=["KNN", "CLA"],
-                      help="Type of classifier to use for the HTM")
+                      help="JSON file mapping string labels to ids.")
 
   args = parser.parse_args()
 

@@ -96,9 +96,9 @@ class PlotNLP():
     return cm
 
 
-  def plotConfusionMatrix(self, data, normalize=True):
+  def plotCategoryConfusionMatrix(self, data, normalize=True):
     """
-    Plots the confusion matrix of the input dataframe.
+    Plots the confusion matrix of the input classifications dataframe.
     
     @param data         (pandas DF)     The confusion matrix.
 
@@ -148,6 +148,112 @@ class PlotNLP():
     fig = Figure(data=data, layout=layout)
     plot_url = py.plot(fig)
     print "Confusion matrix URL: ", plot_url
+
+
+  def plotConfusionMatrix(self, dataFrame, name):
+    """
+    @param data         (pandas DF)     The confusion matrix.
+    @param name         (str)
+    """
+    labels = dataFrame.columns.values.tolist()
+    values = map(list, dataFrame.values)
+
+    data = Data([Heatmap(z=values,
+                         x=labels,
+                         y=labels,
+                         colorscale='YIGnBu')])
+
+    layout = Layout(
+      title='Confusion Matrix for ' + name,
+      xaxis=XAxis(
+        title='',
+        side='top',
+        titlefont=Font(
+          family='Courier New, monospace',
+          size=18,
+          color='#7f7f7f'
+        )
+      ),
+      yaxis=YAxis(
+        title='',
+        titlefont=Font(
+          family='Courier New, monospace',
+          size=18,
+          color='#7f7f7f'
+        ),
+        autorange='reversed'
+      ),
+      barmode='overlay',
+      autosize=True,
+      width=1000,
+      height=1000,
+      margin=Margin(
+        l=80,
+        r=80,
+        b=120,
+        t=140
+        )
+    )
+
+    fig = Figure(data=data, layout=layout)
+    plot_url = py.plot(fig)
+    print "Confusion matrix URL: ", plot_url
+
+
+  def plotRegression(self, xData, yData, title, axisTitles=("x","y"), zData=None, line=None):
+    """
+    Plot a regression of the input data vectors; these must be the same length
+    lists, where the items are scalar values.
+    
+    Note: line defaults to None b/c there are better line fitting tools online
+      (https://plot.ly/how-to-create-a-line-of-best-fits/)
+    """
+    # TODO: use zData for 3D plots
+    assert(len(xData) == len(yData))
+    if zData: assert(len(xData) == len(zData))
+    
+    if line:
+      assert line in ("linear", "spline")
+      trace = Scatter(
+        x=xData,
+        y=yData,
+        mode='lines+markers',
+        marker=dict(
+          color='rgb(128, 0, 128)',
+          size=8,
+        ),
+        line=dict(
+          shape=line,
+          color='rgb(128, 0, 128)',
+          width=1
+        )
+      )
+    else:
+      trace = Scatter(
+        x=xData,
+        y=yData,
+        mode='markers',
+        marker=dict(
+          color='rgb(128, 0, 128)',
+          size=8,
+        )
+      )
+    
+    layout = Layout(
+      title=title,
+      xaxis=dict(
+        title=axisTitles[0],
+      ),
+      yaxis=dict(
+        title=axisTitles[1],
+      )
+    )
+    
+    data = [trace]
+    fig = Figure(data=data, layout=layout)
+    
+    plot_url = py.plot(fig)
+    print "Regression plot URL: ", plot_url
 
 
   def plotCategoryAccuracies(self, trialAccuracies, trainSizes):

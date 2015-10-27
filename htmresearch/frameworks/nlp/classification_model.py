@@ -372,9 +372,6 @@ class ClassificationModel(object):
     @return                 (tuple)           Returns a 2-item tuple w/ the
         accuracy (float) and confusion matrix (numpy array).
     """
-    if self.verbosity > 0:
-      self.printTrialReport(classifications, references, idx)
-
     accuracy = self.calculateAccuracy(classifications)
     cm = self.calculateConfusionMatrix(classifications, references)
 
@@ -432,21 +429,3 @@ class ClassificationModel(object):
                           index=references+["Prediction Totals"])
 
     return cm
-
-
-  @staticmethod
-  def printTrialReport(labels, refs, idx):
-    """Print columns for sample #, actual label, and predicted label."""
-    template = "{0:<10}|{1:<55}|{2:<55}"
-    print "Evaluation results for the trial:"
-    print template.format("#", "Actual", "Predicted")
-    for i in xrange(len(labels[0])):
-      if not any(labels[0][i]):
-        # No predicted classes for this sample.
-        print template.format(idx[i],
-                              [refs[label] for label in labels[1][i]],
-                              "(none)")
-      else:
-        print template.format(idx[i],
-                              [refs[label] for label in labels[1][i]],
-                              [refs[label] for label in labels[0][i]])
