@@ -242,7 +242,8 @@ class LanguageSensor(PyRegion):
       print "SeqID: ", outputs["sequenceIdOut"]
       print "Categories out: ", outputs['categoryOut']
 
-    outputs["encodingOut"] = self.encoder.encodeIntoArray(data["_token"], outputs["dataOut"])
+    outputs["encodingOut"] = self.encoder.encodeIntoArray(
+      data["_token"], outputs["dataOut"])
 
     self._iterNum += 1
 
