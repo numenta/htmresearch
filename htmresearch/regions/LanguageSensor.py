@@ -237,18 +237,13 @@ class LanguageSensor(PyRegion):
     outputs["resetOut"][0] = data["_reset"]
     outputs["sequenceIdOut"][0] = data["_sequenceId"]
     outputs["sourceOut"] = data["_token"]
-
     self.populateCategoriesOut(data["_category"], outputs['categoryOut'])
     if self.verbosity > 0:
+      print "SeqID: ", outputs["sequenceIdOut"]
       print "Categories out: ", outputs['categoryOut']
 
-    # Encode the token, where the encoding is a dict as expected in
-    # nupic.fluent ClassificationModel.
-    # The data key must match the datafile column header
-    # NOTE: this logic differs from RecordSensor, where output is a (sparse)
-    # numpy array populated in place. So we leave the data output alone for now,
-    # and (maybe) populate it in fluent.ClassificationModel.
-    outputs["encodingOut"] = self.encoder.encodeIntoArray(data["_token"], output=None)
+    outputs["encodingOut"] = self.encoder.encodeIntoArray(
+      data["_token"], outputs["dataOut"])
 
     self._iterNum += 1
 
