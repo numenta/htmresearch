@@ -92,7 +92,7 @@ def run(args):
                     folds=args.folds,
                     trainSizes=args.trainSizes,
                     verbosity=args.verbosity)
-    runner.initModel(args.modelName)
+    runner.initModel(args.modelName, args.vecPath)
 
   print "Reading in data and preprocessing."
   dataTime = time.time()
@@ -230,6 +230,9 @@ if __name__ == "__main__":
   parser.add_argument("--classificationFile",
                       default="",
                       help="JSON file mapping string labels to ids.")
+  parser.add_argument("--vecPath",
+                      default="",
+                      help="For Vector model, path to word embedding vectors.")
 
   args = parser.parse_args()
 
