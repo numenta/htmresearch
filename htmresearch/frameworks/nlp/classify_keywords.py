@@ -52,7 +52,7 @@ class ClassificationModelKeywords(ClassificationModel):
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
 
     self.classifier = KNNClassifier(exact=True,
-                                    distanceMethod="rawOverlap",
+                                    distanceMethod="pctOverlapOfInput",
                                     k=numLabels,
                                     verbosity=verbosity-1)
 

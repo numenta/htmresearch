@@ -53,7 +53,7 @@ class ClassificationModelFingerprint(ClassificationModel):
     # Init kNN classifier and Cortical.io encoder; need valid API key (see
     # CioEncoder init for details).
     self.classifier = KNNClassifier(k=numLabels,
-                                    distanceMethod='rawOverlap',
+                                    distanceMethod='pctOverlapOfInput',
                                     exact=False,
                                     verbosity=verbosity-1)
 
