@@ -126,10 +126,10 @@ class LanguageEncoder(object):
     return numpy.array([i for i in range(len(sdr)) if sdr[i]==1])
 
 
-  def encodeRandomly(self, text):
-    """Return a random bitmap representation of the sample."""
-    random.seed(sample)
-    return numpy.sort(random.sample(xrange(self.n), self.w))
+  def encodeRandomly(self, text, w, n):
+    """Return a random bitmap representation of the text."""
+    random.seed(text)
+    return numpy.sort(random.sample(xrange(n), w))
 
 
   def compare(self, bitmap1, bitmap2):
