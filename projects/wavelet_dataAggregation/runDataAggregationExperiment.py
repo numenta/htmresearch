@@ -83,7 +83,7 @@ def calculate_cwt(dat, figDir='./', fileName='./', display=True):
   cwt_var = cwt_var/np.sum(cwt_var)
   cum_cwt_var = np.cumsum(cwt_var)
 
-  local_min, local_max, strong_local_max = get_local_maxima(cwt_var)
+  (useTimeOfDay, useDayOfWeek, local_min, local_max, strong_local_max) = get_local_maxima(cwt_var, time_scale)
 
   if not exists(figDir):
       makedirs(figDir)
@@ -124,7 +124,7 @@ def calculate_cwt(dat, figDir='./', fileName='./', display=True):
   return cum_cwt_var, cwt_var, time_scale
 
 
-def get_local_maxima(cwt_var):
+def get_local_maxima(cwt_var, time_scale):
   """
   Find local maxima from the wavelet coefficient variance spectrum
   A strong maxima is defined as
@@ -141,20 +141,29 @@ def get_local_maxima(cwt_var):
   dayPeriod = 86400
   weekPeriod = 604800
 
+  cwt_var_at_dayPeriod = np.interp(dayPeriod, time_scale, cwt_var)
+  cwt_var_at_weekPeriod = np.interp(weekPeriod, time_scale, cwt_var)
+
+  useTimeOfDay = False
+  useDayOfWeek = False
+
   strong_local_max = []
   for i in xrange(len(local_max)):
     left_local_min = np.where(np.less(local_min, local_max[i]))[0]
     if len(left_local_min) == 0:
+      left_local_min = 0
       left_local_min_value = cwt_var[0]
     else:
-      left_local_min_value = cwt_var[left_local_min[-1]]
+      left_local_min = local_min[left_local_min[-1]]
+      left_local_min_value = cwt_var[left_local_min]
 
     right_local_min = np.where(np.greater(local_min, local_max[i]))[0]
     if len(right_local_min) == 0:
-      right_local_min = right_local_min[0]
+      right_local_min = len(cwt_var)-1
       right_local_min_value = cwt_var[-1]
     else:
-      right_local_min_value = cwt_var[right_local_min[0]]
+      right_local_min = local_min[right_local_min[0]]
+      right_local_min_value = cwt_var[right_local_min]
 
     local_max_value = cwt_var[local_max[i]]
     nearest_local_min_value = np.max(left_local_min_value, right_local_min_value)
@@ -162,10 +171,37 @@ def get_local_maxima(cwt_var):
            local_max_value > baseline_value):
       strong_local_max.append(local_max[i])
 
-      # TODO: check whether the current local maxima is near a dayPeriod or weekPeriod
+      if (time_scale[left_local_min] < dayPeriod and
+              dayPeriod < time_scale[right_local_min] and
+              cwt_var_at_dayPeriod > local_max_value/2.0):
+        useTimeOfDay = True
+
+      if (time_scale[left_local_min] < weekPeriod and
+              weekPeriod < time_scale[right_local_min] and
+              cwt_var_at_weekPeriod > local_max_value/2.0):
+        useDayOfWeek = True
+
+  return useTimeOfDay, useDayOfWeek, local_min, local_max, strong_local_max
 
 
-  return local_min, local_max, strong_local_max
+def get_suggested_timescale_and_encoder(dat, thresh=0.2):
+
+  sig = dat['value'].values
+  timestamp = pd.to_datetime(dat.timestamp)
+  sampling_interval = timestamp[len(sig)-1] - timestamp[0]
+  dt = sampling_interval.total_seconds()/(len(sig)-1)
+  (cum_cwt_var, cwt_var, time_scale) = calculate_cwt(dat, display=False)
+
+  (useTimeOfDay, useDayOfWeek, local_min, local_max, strong_local_max) = get_local_maxima(cwt_var, time_scale)
+
+  cutoff_time_scale = time_scale[np.where(cum_cwt_var >= thresh)[0][0]]
+  aggregation_time_scale = cutoff_time_scale/10.0
+  if aggregation_time_scale < dt*4:
+    aggregation_time_scale = dt*4
+
+  new_sampling_interval = str(int(aggregation_time_scale/4))+'S'
+
+  return (new_sampling_interval, useTimeOfDay, useDayOfWeek)
 
 
 def aggregate_nab_data(thresh_list, dataPath='data/',
@@ -198,12 +234,12 @@ def aggregate_nab_data(thresh_list, dataPath='data/',
       timestamp = pd.to_datetime(dat.timestamp)
       sampling_interval = timestamp[len(sig)-1] - timestamp[0]
       dt = sampling_interval.total_seconds()/(len(sig)-1)
-      ts = pd.Series(np.array(dat.value).astype('float32'), index=pd.to_datetime(dat.timestamp))
 
       (cum_cwt_var, cwt_var, time_scale) = calculate_cwt(dat,
                                                   figDir=join(waveletDir, data_file_dir[-2]),
                                                   fileName=data_file_dir[-1])
-      
+
+      ts = pd.Series(np.array(dat.value).astype('float32'), index=pd.to_datetime(dat.timestamp))
       # apply different threshold to the cumulative power variance
       for thresh in thresh_list:
         cutoff_time_scale = time_scale[np.where(cum_cwt_var >= thresh)[0][0]]
