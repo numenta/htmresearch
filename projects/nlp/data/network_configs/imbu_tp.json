@@ -5,11 +5,11 @@
     "regionType": "py.LanguageSensor",
     "regionParams": {
       "verbosity": 0,
-      "numCategories": 3
+      "numCategories": 1
       },
     "encoders": {}
   },
-  "tpRegionConfig": {
+  "upRegionConfig": {
     "regionEnabled": true,
     "regionName": "UP",
     "regionType": "py.TemporalPoolerRegion",
@@ -19,9 +19,9 @@
       "activeOverlapWeight": 1.0,
       "predictedActiveOverlapWeight": 10.0,
       "maxUnionActivity": 0.20,
-      "synPermPredActiveInc": 0.1,
-      "synPermPreviousPredActiveInc": 0.1,
-      "decayFunctionType": "Exponential"
+      "synPermPredActiveInc": 0.0,
+      "synPermPreviousPredActiveInc": 0.0,
+      "decayFunctionType": "NoDecay"
     }
   },
   "classifierRegionConfig": {
@@ -29,9 +29,9 @@
     "regionName": "classifier",
     "regionType": "py.KNNClassifierRegion",
     "regionParams": {
-      "k": 3,
+      "k": 2000,
       "distanceMethod": "rawOverlap",
-      "maxCategoryCount": 100
+      "maxCategoryCount": 2000
     }
   }
 }

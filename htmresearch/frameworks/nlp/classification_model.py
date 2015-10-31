@@ -224,7 +224,7 @@ class ClassificationModel(object):
     return numpy.array([i for i in winners if labelFreq[i] > 0])
 
 
-  def queryModel(self, query, preprocess):
+  def queryModel(self, query, preprocess=False):
     """
     Preprocesses the query, encodes it into a pattern, then queries the
     classifier to infer distances to trained-on samples.
@@ -239,17 +239,15 @@ class ClassificationModel(object):
     else:
       sample = TextPreprocess().tokenize(query)
 
-    allDistances = self.infer(self.encodeSample(sample))
-
-    # Model trains multiple times for multi-label samples, so remove repeats.
-    # note: numpy.unique() auto sorts least to greatest
+    encodedQuery = self.encodeSample(sample)
+    allDistances = self.infer(encodedQuery) / len(encodedQuery["bitmap"])
 
     if len(allDistances) != len(self.sampleReference):
       raise IndexError("Number of protoype distances must match number of "
                        "samples trained on.")
 
     sampleDistances = defaultdict()
-    for i, uniqueID in enumerate(self.sampleReference):
+    for uniqueID in self.sampleReference:
       sampleDistances[uniqueID] = min(
         [allDistances[i] for i, x in enumerate(self.sampleReference)
          if x == uniqueID])
