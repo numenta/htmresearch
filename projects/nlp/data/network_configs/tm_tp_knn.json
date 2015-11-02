@@ -45,7 +45,7 @@
       "maxUnionActivity": 0.20,
       "synPermPredActiveInc": 0.1,
       "synPermPreviousPredActiveInc": 0.1,
-      "decayFunctionType": "NoDecay"
+      "decayFunctionType": "Exponential"
     }
   },
   "classifierRegionConfig": {
