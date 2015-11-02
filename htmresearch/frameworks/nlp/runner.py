@@ -85,7 +85,7 @@ class Runner(object):
                                       samples; False is random, True is ordered.
     @param folds            (int)     For k-folds experiment, number of cross
                                       validation folds.
-    @param trainSizes       (list)    For incremental experiment, number of 
+    @param trainSizes       (list)    For incremental experiment, number of
                                       samples to use in training, per trial.
     @param verbosity        (int)     Greater value prints out more progress.
     """
@@ -248,7 +248,8 @@ class Runner(object):
     Partitions list of two-tuples of train and test indices for each trial.
     """
     if self.experimentType == "k-folds":
-      self.partitions = KFolds(self.folds).split(range(len(self.samples)), randomize=(not self.orderedSplit), seed=seed)
+      self.partitions = KFolds(self.folds).split(
+        range(len(self.samples)), randomize=(not self.orderedSplit), seed=seed)
     else:
       # TODO: use StandardSplit in data_split.py
       length = len(self.samples)
@@ -296,13 +297,13 @@ class Runner(object):
 
   def writeOutClassifications(self):
     """Write the samples, actual, and predicted classes to a CSV."""
-    headers = ("Tokenized sample", "Actual", "Predicted")
-    
+    headers = ("", "Tokenized sample", "Actual", "Predicted")
+
     if self.experimentType == "k-folds":
       splits = range(self.folds)
     else:
       splits = self.trainSizes
-    
+
     for trial in xrange(len(splits)):
       resultsDict = defaultdict(list)
       for i, sampleNum in enumerate(self.partitions[trial][1]):
@@ -355,7 +356,7 @@ class Runner(object):
     print "Classification results for the trial:"
     print template.format("#", "Actual", "Predicted")
     for i in xrange(len(self.results[trial][0])):
-      if not any(self.results[trial][0][i]):
+      if self.results[trial][0][i].size == 0:
         # No predicted classes for this sample.
         print template.format(
           idx[i],
