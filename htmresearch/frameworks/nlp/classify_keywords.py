@@ -51,8 +51,11 @@ class ClassificationModelKeywords(ClassificationModel):
     super(ClassificationModelKeywords, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
 
+    # We use the pctOverlapOfInput distance metric for this model so the
+    # queryModel() output is consistent (i.e. 0.0-1.0). The KNN classifications
+    # aren't affected b/c the raw overlap distance is still used under the hood.
     self.classifier = KNNClassifier(exact=True,
-                                    distanceMethod="rawOverlap",
+                                    distanceMethod="pctOverlapOfInput",
                                     k=numLabels,
                                     verbosity=verbosity-1)
 
@@ -144,7 +147,7 @@ class ClassificationModelKeywords(ClassificationModel):
     """
     Get the classifier output for a single input pattern; assumes classifier
     has an infer() method (as specified in NuPIC kNN implementation). For this
-    model we sum the distances across the patterns. and normalize
+    model we sum the distances across the patterns and normalize
     before returning.
     @return       (numpy.array)       Each entry is the distance from the
         input pattern to that prototype (pattern in the classifier). All
