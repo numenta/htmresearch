@@ -240,7 +240,7 @@ class ClassificationModel(object):
       sample = TextPreprocess().tokenize(query)
 
     encodedQuery = self.encodeSample(sample)
-    allDistances = self.infer(encodedQuery) / len(encodedQuery["bitmap"])
+    allDistances = self.infer(encodedQuery)
 
     if len(allDistances) != len(self.sampleReference):
       raise IndexError("Number of protoype distances must match number of "
@@ -261,12 +261,13 @@ class ClassificationModel(object):
     has an infer() method (as specified in NuPIC kNN implementation).
 
     @return dist    (numpy.array)       Each entry is the distance from the
-        input pattern to that prototype (pattern in the classifier). All
-        distances are between 0.0 and 1.0
+        input pattern to that prototype (pattern in the classifier). We divide
+        by the width of the input pattern such that all distances are between
+        0.0 and 1.0.
     """
     (_, _, dist, _) = self.classifier.infer(
       self.sparsifyPattern(pattern["bitmap"], self.encoder.n))
-    return dist
+    return dist / len(pattern["bitmap"])
 
 
   @staticmethod
