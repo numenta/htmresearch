@@ -195,12 +195,11 @@ class ClassificationModelHTM(ClassificationModel):
     self.network.run(iterations)
 
 
-  def testModel(self, numLabels=3):
+  def testModel(self):
     """
     Test the classifier region on the input sample. Call this method for each
     word of a sequence.
 
-    @param numLabels  (int)           Number of classification predictions.
     @return           (numpy array)   numLabels most-frequent classifications
                                       for the data samples; int or empty.
     """
@@ -221,7 +220,7 @@ class ClassificationModelHTM(ClassificationModel):
       # max number of inferences = k
       inferenceValues = self.classifierRegion.getOutputData(
         "categoriesOut")[:relevantCats]
-      return self.getWinningLabels(inferenceValues, numLabels=3)
+      return self.getWinningLabels(inferenceValues)
 
 
     elif self.classifierRegion.type == "py.CLAClassifierRegion":

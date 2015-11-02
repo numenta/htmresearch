@@ -193,8 +193,7 @@ class ClassificationModel(object):
     return (randomLabels == labels).sum() / float(labels.shape[0])
 
 
-  @staticmethod
-  def getWinningLabels(labelFreq, numLabels=3):
+  def getWinningLabels(self, labelFreq):
     """
     Returns indices of input array, sorted for highest to lowest value. E.g.
       >>> labelFreq = array([ 0., 4., 0., 1.])
@@ -207,8 +206,6 @@ class ClassificationModel(object):
 
     @param labelFreq    (numpy.array)   Ints that (in this context) represent
                                         the frequency of inferred labels.
-    @param numLabels    (int)           Return this number of most frequent
-                                        labels within top k
     @return             (numpy.array)   Indicates largest elements in labelFreq,
                                         sorted greatest to least. Length is up
                                         to numLabels.
@@ -219,8 +216,8 @@ class ClassificationModel(object):
       return numpy.array([])
 
     randomValues = numpy.random.random(labelFreq.size)
-    winners = numpy.lexsort((randomValues, labelFreq))[::-1][:numLabels]
-
+    winners = numpy.lexsort((randomValues, labelFreq))[::-1][:self.numLabels]
+    # import pdb; pdb.set_trace()
     return numpy.array([i for i in winners if labelFreq[i] > 0])
 
 
