@@ -165,7 +165,6 @@ class HTMRunner(Runner):
         if self.experimentType != "k-folds" and not self.orderedSplit:
           ndg.randomizeData(seed)
           seed += 1
-        # ext = '.csv'
         dataFile = "{}_network_{}{}".format(filename, i, ext)
         ndg.saveData(dataFile, self.classificationFile)
         self.dataFiles.append(dataFile)
