@@ -206,7 +206,6 @@ def _linkRegions(network,
                srcOutput="resetOut", destInput="resetIn")
 
 
-
 def _validateRegionWidths(previousRegionWidth, currentRegionWidth):
   """
   Make sure previous and current region have compatible input and output width
@@ -321,6 +320,9 @@ def createNetwork(dataSource, networkConfig, encoder=None):
                  previousRegion,
                  regionName)
     previousRegion = regionName
+    network.link(sensorRegionName, regionName, "UniformLink", "",
+                 srcOutput="sequenceIdOut", destInput="sequenceIdIn")
+    
 
   # Create classifier region (always enabled)
   regionConfig = networkConfig["classifierRegionConfig"]
