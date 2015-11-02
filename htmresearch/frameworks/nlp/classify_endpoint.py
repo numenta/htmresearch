@@ -126,12 +126,11 @@ class ClassificationModelEndpoint(ClassificationModel):
       self.sampleReference.append(i)
 
 
-  def testModel(self, i, numLabels=3, metric="overlappingAll"):
+  def testModel(self, i, _, metric="overlappingAll"):
     """
     Test on record i. The Cortical.io classifier returns a dictionary
     containing various distance metrics between the sample and the classes.
 
-    @param numLabels  (int)           Number of classification predictions.
     @param metric     (str)           Distance metric use by classifier.
     @return           (numpy array)   numLabels most-frequent classifications
                                       for the data samples; int or empty.
@@ -142,31 +141,26 @@ class ClassificationModelEndpoint(ClassificationModel):
     for cat, catBitmap in self.categoryBitmaps.iteritems():
       distances[cat] = self.compareEncoder.compare(sampleBitmap, catBitmap)
 
-    return self.getWinningLabels(distances, numLabels=numLabels, metric=metric)
+    return self.getWinningLabels(distances, metric=metric)
 
 
-  @staticmethod
-  def compareCategories(catDistances, metric="overlappingAll"):
+  def getWinningLabels(self, distances, metric):
     """
-    Calculate category distances. Returns a defaultdict of category keys, where
-    values are OrderedDicts sorted such that the most similar categories
-    (according to the input metric) are listed first.
+    Return indices of winning categories, based off of the input metric.
+    Overrides the base class implementation.
     """
+    metricValues = numpy.array([v[metric] for v in distances.values()])
+    sortedIdx = numpy.argsort(metricValues)
+
+    # euclideanDistance and jaccardDistance are ascending
     descendingOrder = ("overlappingAll", "overlappingLeftRight",
                        "overlappingRightLeft", "cosineSimilarity",
                        "weightedScoring")
+    if metric in descendingOrder:
+      sortedIdx = sortedIdx[::-1]
 
-    categoryComparisons = defaultdict(list)
-    for k, v in catDistances.iteritems():
-      # Create a dict for this category
-      metricDict = {compareCat: distances[metric]
-                    for compareCat, distances in v.iteritems()}
-      # Sort the dict by the metric
-      reverse = True if metric in descendingOrder else False
-      categoryComparisons[k] = OrderedDict(
-        sorted(metricDict.items(), key=lambda k: k[1], reverse=reverse))
-
-    return categoryComparisons
+    return numpy.array(
+      [distances.keys()[catIdx] for catIdx in sortedIdx[:self.numLabels]])
 
 
   def getCategoryDistances(self, sort=True, save=None, labelRefs=None):
@@ -210,23 +204,27 @@ class ClassificationModelEndpoint(ClassificationModel):
 
 
   @staticmethod
-  def getWinningLabels(distances, numLabels, metric):
+  def compareCategories(catDistances, metric="overlappingAll"):
     """
-    Return indices of winning categories, based off of the input metric.
-    Overrides the base class implementation.
+    Calculate category distances. Returns a defaultdict of category keys, where
+    values are OrderedDicts sorted such that the most similar categories
+    (according to the input metric) are listed first.
     """
-    metricValues = numpy.array([v[metric] for v in distances.values()])
-    sortedIdx = numpy.argsort(metricValues)
-
-    # euclideanDistance and jaccardDistance are ascending
     descendingOrder = ("overlappingAll", "overlappingLeftRight",
                        "overlappingRightLeft", "cosineSimilarity",
                        "weightedScoring")
-    if metric in descendingOrder:
-      sortedIdx = sortedIdx[::-1]
 
-    return numpy.array(
-      [distances.keys()[catIdx] for catIdx in sortedIdx[:numLabels]])
+    categoryComparisons = defaultdict(list)
+    for k, v in catDistances.iteritems():
+      # Create a dict for this category
+      metricDict = {compareCat: distances[metric]
+                    for compareCat, distances in v.iteritems()}
+      # Sort the dict by the metric
+      reverse = True if metric in descendingOrder else False
+      categoryComparisons[k] = OrderedDict(
+        sorted(metricDict.items(), key=lambda k: k[1], reverse=reverse))
+
+    return categoryComparisons
 
 
   @staticmethod
