@@ -240,7 +240,7 @@ class Runner(object):
       if self.verbosity > 0:
         print "\tTraining and testing for run {}.".format(i)
       self._training(i)
-      self._testing(i)
+      self._testing(i, seed)
 
 
   def partitionIndices(self, seed=42):
@@ -281,14 +281,14 @@ class Runner(object):
       self.model.trainModel(i)
 
 
-  def _testing(self, trial):
+  def _testing(self, trial, seed):
     if self.verbosity > 0:
       print ("\tRunner selects to test on sample(s) {}".format(
         self.partitions[trial][1]))
 
     results = ([], [])
     for i in self.partitions[trial][1]:
-      predicted = self.model.testModel(i)
+      predicted = self.model.testModel(i, seed)
       results[0].append(predicted)
       results[1].append(self.patterns[i]["labels"])
 

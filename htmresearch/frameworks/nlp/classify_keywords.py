@@ -113,12 +113,13 @@ class ClassificationModelKeywords(ClassificationModel):
           self.sampleReference.append(self.patterns[i]["ID"])
 
 
-  def testModel(self, i):
+  def testModel(self, i, seed=42):
     """
-    Test the model on record i.  Returns the classifications
-    most frequent amongst the classifications of the sample's individual tokens.
+    Test the model on record i.  Returns the classifications most frequent 
+    amongst the classifications of the sample's individual tokens.
     We ignore the terms that are unclassified, picking the most frequent
     classifications among those that are detected.
+    The random seed is used in getWinningLabels().
 
     @return           (numpy array)   numLabels most-frequent classifications
                                       for the data samples; int or empty.
@@ -136,7 +137,7 @@ class ClassificationModelKeywords(ClassificationModel):
       else:
         totalInferenceResult += inferenceResult
 
-    return self.getWinningLabels(totalInferenceResult)
+    return self.getWinningLabels(totalInferenceResult, seed)
 
 
   def infer(self, patterns):

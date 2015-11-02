@@ -195,10 +195,10 @@ class ClassificationModelHTM(ClassificationModel):
     self.network.run(iterations)
 
 
-  def testModel(self):
+  def testModel(self, seed=42):
     """
     Test the classifier region on the input sample. Call this method for each
-    word of a sequence.
+    word of a sequence. The random seed is used in getWinningLabels().
 
     @return           (numpy array)   numLabels most-frequent classifications
                                       for the data samples; int or empty.
@@ -209,10 +209,10 @@ class ClassificationModelHTM(ClassificationModel):
 
     self.network.run(1)
 
-    return self._getClassifierInference()
+    return self._getClassifierInference(seed)
 
 
-  def _getClassifierInference(self):
+  def _getClassifierInference(self, seed):
     """Return output categories from the classifier region."""
     relevantCats = self.classifierRegion.getParameter("categoryCount")
 
@@ -220,7 +220,7 @@ class ClassificationModelHTM(ClassificationModel):
       # max number of inferences = k
       inferenceValues = self.classifierRegion.getOutputData(
         "categoriesOut")[:relevantCats]
-      return self.getWinningLabels(inferenceValues)
+      return self.getWinningLabels(inferenceValues, seed)
 
 
     elif self.classifierRegion.type == "py.CLAClassifierRegion":
