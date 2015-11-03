@@ -11,9 +11,10 @@ plt.ion()
 You need to run NAB with four different sets of model parameters before using this script
 
 
-# go to the NAB directory, create a new result directory named results_encoder/
+go to the NAB directory, create a new result directory named results_encoder/
 
-# the model parameters are located in ./nab_modelparams
+replace the nab/detectors/numenta/modelParams/model_params.json with
+the model parameters are located in ./nab_modelparams
 
 # first use model_params_value_only
 python run.py -d numenta --detect --dataDir data_processed/ --resultsDir results_encoder/value_only --score
@@ -23,7 +24,6 @@ python run.py -d numenta --detect --dataDir data_processed/ --resultsDir results
 
 # third use model_params_day_of_week
 python run.py -d numenta --detect --dataDir data_processed/ --resultsDir results_encoder/day_of_week/ --score
-
 
 """
 
