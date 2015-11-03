@@ -19,8 +19,8 @@
       "activeOverlapWeight": 1.0,
       "predictedActiveOverlapWeight": 10.0,
       "maxUnionActivity": 0.20,
-      "synPermPredActiveInc": 0.1,
-      "synPermPreviousPredActiveInc": 0.1,
+      "synPermPredActiveInc": 0,
+      "synPermPreviousPredActiveInc": 0,
       "decayFunctionType": "Exponential"
     }
   },
@@ -30,7 +30,7 @@
     "regionType": "py.KNNClassifierRegion",
     "regionParams": {
       "k": 3,
-      "distThreshold": 0,
+      "distanceMethod": "rawOverlap",
       "maxCategoryCount": 100
     }
   }

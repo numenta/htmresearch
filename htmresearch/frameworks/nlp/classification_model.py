@@ -193,12 +193,11 @@ class ClassificationModel(object):
     return (randomLabels == labels).sum() / float(labels.shape[0])
 
 
-  @staticmethod
-  def getWinningLabels(labelFreq, numLabels=3):
+  def getWinningLabels(self, labelFreq, seed=None):
     """
     Returns indices of input array, sorted for highest to lowest value. E.g.
       >>> labelFreq = array([ 0., 4., 0., 1.])
-      >>> winners = getWinningLabels(labelFreq, numLabels=3)
+      >>> winners = getWinningLabels(labelFreq, seed=42)
       >>> print winners
       array([1, 3])
     Note:
@@ -207,24 +206,25 @@ class ClassificationModel(object):
 
     @param labelFreq    (numpy.array)   Ints that (in this context) represent
                                         the frequency of inferred labels.
-    @param numLabels    (int)           Return this number of most frequent
-                                        labels within top k
+    @param seed         (int)           Seed the numpy random generator.
     @return             (numpy.array)   Indicates largest elements in labelFreq,
                                         sorted greatest to least. Length is up
                                         to numLabels.
     """
-    # The use of numpy.lexsort() here is to first sort by labelFreq, then sort
-    # by random values; this breaks ties in a random manner.
     if labelFreq is None:
       return numpy.array([])
 
+    if seed:
+      numpy.random.seed(seed)
     randomValues = numpy.random.random(labelFreq.size)
-    winners = numpy.lexsort((randomValues, labelFreq))[::-1][:numLabels]
+
+    # First sort by labelFreq, then sort by random values.
+    winners = numpy.lexsort((randomValues, labelFreq))[::-1][:self.numLabels]
 
     return numpy.array([i for i in winners if labelFreq[i] > 0])
 
 
-  def queryModel(self, query, preprocess):
+  def queryModel(self, query, preprocess=False):
     """
     Preprocesses the query, encodes it into a pattern, then queries the
     classifier to infer distances to trained-on samples.
@@ -239,17 +239,15 @@ class ClassificationModel(object):
     else:
       sample = TextPreprocess().tokenize(query)
 
-    allDistances = self.infer(self.encodeSample(sample))
-
-    # Model trains multiple times for multi-label samples, so remove repeats.
-    # note: numpy.unique() auto sorts least to greatest
+    encodedQuery = self.encodeSample(sample)
+    allDistances = self.infer(encodedQuery)
 
     if len(allDistances) != len(self.sampleReference):
       raise IndexError("Number of protoype distances must match number of "
                        "samples trained on.")
 
     sampleDistances = defaultdict()
-    for i, uniqueID in enumerate(self.sampleReference):
+    for uniqueID in self.sampleReference:
       sampleDistances[uniqueID] = min(
         [allDistances[i] for i, x in enumerate(self.sampleReference)
          if x == uniqueID])
@@ -263,12 +261,13 @@ class ClassificationModel(object):
     has an infer() method (as specified in NuPIC kNN implementation).
 
     @return dist    (numpy.array)       Each entry is the distance from the
-        input pattern to that prototype (pattern in the classifier). All
-        distances are between 0.0 and 1.0
+        input pattern to that prototype (pattern in the classifier). We divide
+        by the width of the input pattern such that all distances are between
+        0.0 and 1.0.
     """
     (_, _, dist, _) = self.classifier.infer(
       self.sparsifyPattern(pattern["bitmap"], self.encoder.n))
-    return dist
+    return dist / len(pattern["bitmap"])
 
 
   @staticmethod
