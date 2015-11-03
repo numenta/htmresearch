@@ -29,7 +29,7 @@ from nupic.data.file_record_stream import FileRecordStream
 
 from htmresearch.frameworks.classification.classification_network import (
   configureNetwork,
-  runNetwork)
+  trainNetwork)
 from htmresearch.frameworks.classification.utils.sensor_data import (
   generateSensorData)
 from htmresearch.frameworks.classification.utils.network_config import (
@@ -55,7 +55,7 @@ DATA_DIR = "data"
 
 def run():
   """ Run classification network(s) on artificial sensor data """
-  with open("network_config.json", "rb") as jsonFile:
+  with open("network_config_template.json", "rb") as jsonFile:
     templateNetworkConfig = json.load(jsonFile)
 
   networkConfigurations = generateSampleNetworkConfig(templateNetworkConfig, 
@@ -86,7 +86,7 @@ def run():
                          " * sensorType=%s\n"
                          " * spEnabled=%s\n"
                          " * tmEnabled=%s\n"
-                         " * upEnabled=%s\n"
+                         " * tpEnabled=%s\n"
                          " * classifierType=%s\n"
                          ) % (NUM_RECORDS,
                               signalAmplitude,
@@ -116,7 +116,7 @@ def run():
             partitions = generateNetworkPartitions(networkConfig,
                                                    NUM_RECORDS)
 
-            runNetwork(network, networkConfig, partitions, NUM_RECORDS)
+            trainNetwork(network, networkConfig, partitions, NUM_RECORDS)
 
 
 
