@@ -121,6 +121,7 @@ def calculate_cwt(sampling_interval, sig, figDir='./', fileName='./', display=Tr
     ax.set_xlabel(' Time Scale (sec) ')
     ax.set_ylabel(' Accumulated Variance of Power')
     ax.autoscale(tight='True')
+    plt.title(['useTimeOfDay: '+str(useTimeOfDay)+' useDayOfWeek: '+str(useDayOfWeek)])
     plt.savefig(join(figDir, fileName + 'aggregation_time_scale.pdf'))
 
   return cum_cwt_var, cwt_var, time_scale
@@ -140,8 +141,8 @@ def get_local_maxima(cwt_var, time_scale):
 
   baseline_value = 1.0/len(cwt_var)
 
-  dayPeriod = 86400
-  weekPeriod = 604800
+  dayPeriod = 86400.0
+  weekPeriod = 604800.0
 
   cwt_var_at_dayPeriod = np.interp(dayPeriod, time_scale, cwt_var)
   cwt_var_at_weekPeriod = np.interp(weekPeriod, time_scale, cwt_var)
@@ -176,28 +177,32 @@ def get_local_maxima(cwt_var, time_scale):
       if (time_scale[left_local_min] < dayPeriod and
               dayPeriod < time_scale[right_local_min] and
               cwt_var_at_dayPeriod > local_max_value/2.0):
-        useTimeOfDay = True
+        if np.abs(dayPeriod - time_scale[local_max[i]])/dayPeriod < 0.5:
+          useTimeOfDay = True
 
       if (time_scale[left_local_min] < weekPeriod and
               weekPeriod < time_scale[right_local_min] and
               cwt_var_at_weekPeriod > local_max_value/2.0):
-        useDayOfWeek = True
+        if np.abs(weekPeriod - time_scale[local_max[i]])/weekPeriod < 0.5:
+          useDayOfWeek = True
 
   return useTimeOfDay, useDayOfWeek, local_min, local_max, strong_local_max
 
 
 def get_suggested_timescale_and_encoder(timestamp, sig, thresh=0.2):
-
-  dt = (timestamp[len(sig)-1] - timestamp[0])/(len(sig)-1)
+  dt = np.median(np.diff(timestamp))
   dt_sec = dt.astype('float32')
-  (cum_cwt_var, cwt_var, time_scale) = calculate_cwt(dt_sec, sig, display=False)
+  # resample the data with homogeneous sampling intervals
+  (timestamp, sig) = resample_data(timestamp, sig, dt, display=True)
+
+  (cum_cwt_var, cwt_var, time_scale) = calculate_cwt(dt_sec, sig)
 
   (useTimeOfDay, useDayOfWeek, local_min, local_max, strong_local_max) = get_local_maxima(cwt_var, time_scale)
 
   cutoff_time_scale = time_scale[np.where(cum_cwt_var >= thresh)[0][0]]
   aggregation_time_scale = cutoff_time_scale/10.0
-  if aggregation_time_scale < dt*4:
-    aggregation_time_scale = dt*4
+  if aggregation_time_scale < dt_sec*4:
+    aggregation_time_scale = dt_sec*4
 
   new_sampling_interval = str(int(aggregation_time_scale/4))+'S'
 
@@ -428,7 +433,7 @@ def runTimeVsDataLength(dataPath):
 
       end_time = time.time()
 
-      print " length: ", len(dat), " file: ", datafiles[i], " Time: ", (end_time - start_time)
+      print " length: ", len(sig), " file: ", datafiles[i], " Time: ", (end_time - start_time)
 
       runTime.append(end_time - start_time)
 
