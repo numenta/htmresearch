@@ -154,3 +154,34 @@ class StandardSplit(DataSplit):
     sliceIdx = int(self.trainPortion*len(samples))
 
     return (samples[:sliceIdx], samples[sliceIdx:])
+
+
+
+class Buckets(DataSplit):
+  """Split data for the 'buckets' experiment."""
+
+  def split(self, bucketSizes, numTraining=10, randomize=False, seed=42):
+    """Split the given samples into train/test sets.
+
+    @param bucketSizes    (list)
+    @param numTraining    (int)           Size of training set.
+    @param randomize      (bool)          Randomize the order.
+    @param seed           (int)           Random seed.
+    @return               (list)          Splits where each split is 2-tuple
+                                          (training, test), and each element is
+                                          a list of elements from samples.
+    """
+    if not all(x > numTraining for x in bucketSizes):
+      raise ValueError("All bucket sizes must be larger than numTraining.")
+
+    # Aggregate each train/test set to return
+    trainTestSplits = []
+
+    for b in bucketSizes:
+      indices = range(b)
+      if randomize:
+        random.seed(seed)
+        random.shuffle(indices)
+      trainTestSplits.append((indices[:numTraining], indices[numTraining:]))
+
+    return trainTestSplits
