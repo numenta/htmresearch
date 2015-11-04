@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-from runDataAggregationExperiment import get_suggested_timescale_and_encoder
-from os.path import isfile, join, exists
+from runDataAggregationExperiment import get_suggested_timescale_and_encoder, readCSVfiles
+from os.path import join
 
 import matplotlib.pyplot as plt
 plt.close('all')
@@ -30,7 +30,7 @@ python run.py -d numenta --detect --dataDir data_processed/ --resultsDir results
 NABPath = '/Users/ycui/nta/NAB/'
 
 def loadNABscore(encoderType):
-  scorefile = NABPath + "results_encoder/" + encoderType + "/numenta/numenta_standard_scores.csv"
+  scorefile = NABPath + "results_encoder/" + encoderType + "_aggregate/numenta/numenta_standard_scores.csv"
   score = pd.read_csv(scorefile, header=0)
   score = score[:-1]
   score = score.sort('File')
@@ -41,25 +41,26 @@ def loadNABscore(encoderType):
 score_value = loadNABscore("value_only")
 score_time_of_day = loadNABscore("time_of_day")
 score_day_of_week = loadNABscore("day_of_week")
-score_both = loadNABscore("time_of_day_and_day_of_week")
+# score_both = loadNABscore("time_of_day_and_day_of_week")
 
 fileList = score_value['File'].values
 better_with_time_of_day = (score_time_of_day['Score'] > score_value['Score'])
 better_with_day_of_week = (score_day_of_week['Score'] > score_value['Score'])
-
 
 dataPath = NABPath+'/data'
 useTimeOfDayEncoder = []
 useDayOfWeekEncoder = []
 for i in xrange(len(score_value)):
   filename = join(dataPath, score_value['File'][i])
-  dat = pd.read_csv(filename, header=0, names=['timestamp', 'value'])
-  (new_sampling_interval, useTimeOfDay, useDayOfWeek) = get_suggested_timescale_and_encoder((dat))
+
+  (timestamp, sig) = readCSVfiles(filename)
+  (new_sampling_interval, useTimeOfDay, useDayOfWeek) = get_suggested_timescale_and_encoder(timestamp, sig)
 
   useTimeOfDayEncoder.append(useTimeOfDay)
   useDayOfWeekEncoder.append(useDayOfWeek)
 
-  print " file: ", filename, " useTimeOfDay: ", useTimeOfDay, " useDayOfWeek: ", useDayOfWeek
+  print " file: ", filename, " useTimeOfDay: ", useTimeOfDay, " useDayOfWeek: ", useDayOfWeek, \
+    " aggregation window: ", new_sampling_interval
 
 useTimeOfDayEncoder = np.array(useTimeOfDayEncoder)
 useDayOfWeekEncoder = np.array(useDayOfWeekEncoder)
