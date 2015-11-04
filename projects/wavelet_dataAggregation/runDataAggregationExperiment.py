@@ -177,14 +177,14 @@ def get_local_maxima(cwt_var, time_scale):
       if (time_scale[left_local_min] < dayPeriod and
               dayPeriod < time_scale[right_local_min] and
               cwt_var_at_dayPeriod > local_max_value/2.0):
-        if np.abs(dayPeriod - time_scale[local_max[i]])/dayPeriod < 0.5:
-          useTimeOfDay = True
+        # if np.abs(dayPeriod - time_scale[local_max[i]])/dayPeriod < 0.5:
+        useTimeOfDay = True
 
       if (time_scale[left_local_min] < weekPeriod and
               weekPeriod < time_scale[right_local_min] and
               cwt_var_at_weekPeriod > local_max_value/2.0):
-        if np.abs(weekPeriod - time_scale[local_max[i]])/weekPeriod < 0.5:
-          useDayOfWeek = True
+        # if np.abs(weekPeriod - time_scale[local_max[i]])/weekPeriod < 0.5:
+        useDayOfWeek = True
 
   return useTimeOfDay, useDayOfWeek, local_min, local_max, strong_local_max
 
