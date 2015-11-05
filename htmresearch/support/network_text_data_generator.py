@@ -116,11 +116,12 @@ class NetworkDataGenerator(object):
     @param seed            (int)    Random seed.
     
     @return dataDict       (dict)   Data as read in from filePath.
-    
+
     Please see TextPreprocess tokenize() for the other parameters; they're only
     used when textPreprocess is True.
     """
     dataDict = readCSV(filePath, numLabels=numLabels)
+
     if dataDict is None:
       raise Exception("Could not read CSV.")
 
@@ -128,8 +129,9 @@ class NetworkDataGenerator(object):
     expandAbbr = (abbrCSV != "")
     expandContr = (contrCSV != "")
 
-    for i, uniqueID in enumerate(dataDict.keys()):
-      comment, categories = dataDict[uniqueID]
+    for recordNum, record in dataDict.iteritems():
+      comment, categories, uniqueID = record
+      
       # Convert the categories to a string of their IDs
       categories = string.join([str(self.categoryToId[c]) for c in categories])
 
@@ -140,7 +142,7 @@ class NetworkDataGenerator(object):
       else:
         tokens = preprocessor.tokenize(comment)
 
-      data = self._formatSequence(tokens, categories, i, uniqueID)
+      data = self._formatSequence(tokens, categories, recordNum, uniqueID)
 
       self.records.append(data)
       self.sequenceCount += 1
