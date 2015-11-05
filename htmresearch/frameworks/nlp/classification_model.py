@@ -138,7 +138,7 @@ class ClassificationModel(object):
     """
     outDict = OrderedDict()
     for dataID, data in dataDict.iteritems():
-      outDict[dataID] = (self.prepText(data[0], preprocess), data[1])
+      outDict[dataID] = (self.prepText(data[0], preprocess), data[1], data[2])
 
     return outDict
 
@@ -288,16 +288,20 @@ class ClassificationModel(object):
     """
     if self.numLabels == 0:
       # No labels for classification, so populate labels with stand-ins
-      self.patterns = [{"ID": i,
+      self.patterns = [{"recordNumber": i,
                         "pattern": self.encodeSample(s[0]),
-                        "labels": numpy.array([-1])}
+                        "labels": numpy.array([-1]),
+                        "ID": s[2]}
                        for i, s in samples.iteritems()]
     else:
-      self.patterns = [{"ID": i,
+      self.patterns = [{"recordNumber": i,
                         "pattern": self.encodeSample(s[0]),
-                        "labels": s[1]}
+                        "labels": s[1],
+                        "ID": s[2]}
                        for i, s in samples.iteritems()]
+
     self.writeOutEncodings()
+
     return self.patterns
 
 
