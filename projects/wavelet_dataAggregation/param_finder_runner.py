@@ -44,9 +44,10 @@ args = parser.parse_args()
 print "File: %s" % args.csv
 
 (timestamps, values) = read_csv_files(args.csv)
-(new_sampling_interval, useTimeOfDay,
+(med_sampling_interval, new_sampling_interval, useTimeOfDay,
  useDayOfWeek) = get_suggested_timescale_and_encoder(timestamps, values)
 
-print " - Suggested sampling interval (sec) ", new_sampling_interval
+print " - Median sampling interval (s): ", med_sampling_interval
+print " - Suggested sampling interval (s): ", new_sampling_interval
 print " - Use TimeOfDay encoder? ", useTimeOfDay
 print " - use DayOfWeek encoder? ", useDayOfWeek

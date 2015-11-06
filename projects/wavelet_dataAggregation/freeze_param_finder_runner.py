@@ -38,8 +38,8 @@ def main():
 
   # Freeze the script
   executables = [cx_Freeze.Executable(os.path.join(scriptDir,
-                                                   "param_finder_test.py"),
-                                      targetName="param_finder_test")]
+                                                   "param_finder_runner.py"),
+                                      targetName="param_finder_runner")]
 
   freezer = cx_Freeze.Freezer(executables,
                               silent=True)

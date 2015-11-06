@@ -26,7 +26,7 @@ and DayOfWeek encoder.
 Example usage:
 
 (timestamps, values) = read_csv_files('example_data/art_daily_flatmiddle.csv')
-(new_sampling_interval, useTimeOfDay, 
+(med_sampling_interval, new_sampling_interval, useTimeOfDay, 
 useDayOfWeek) = get_suggested_timescale_and_encoder(timestamps, values)
 
 """
@@ -347,6 +347,7 @@ def get_suggested_timescale_and_encoder(timestamp, value, thresh=0.2):
   :param value: value of the time series
   :param thresh: aggregation threshold 
     (default value based on experiments with NAB data)
+  :return med_sampling_interval: median sampling interval in seconds
   :return: new_sampling_interval, a string for suggested sampling interval 
     (e.g., 300000ms)
   :return: useTimeOfDay, a bool variable for whether to use time of day encoder
@@ -357,22 +358,23 @@ def get_suggested_timescale_and_encoder(timestamp, value, thresh=0.2):
   # of the sampling intervals and resample the data with the same sampling 
   # intervals
   dt = np.median(np.diff(timestamp))
-  dt_sec = dt.astype('float32')
+  med_sampling_interval = dt.astype('float32')
   (timestamp, value) = resample_data(timestamp, value, dt)
 
-  (cwtmatr, cwt_var, time_scale) = calculate_cwt(dt_sec, value)
+  (cwtmatr, cwt_var, time_scale) = calculate_cwt(med_sampling_interval, value)
   cum_cwt_var = np.cumsum(cwt_var)
 
   # decide aggregation window
-  new_sampling_interval_sec = determine_aggregation_window(time_scale,
-                                                           cum_cwt_var,
-                                                           thresh,
-                                                           dt_sec,
-                                                           len(value))
-  new_sampling_interval = str(int(new_sampling_interval_sec * 1000)) + 'ms'
+  new_sampling_interval = determine_aggregation_window(time_scale,
+                                                       cum_cwt_var,
+                                                       thresh,
+                                                       med_sampling_interval,
+                                                       len(value))
+  new_sampling_interval = str(int(new_sampling_interval * 1000)) + 'ms'
 
   # decide whether to use TimeOfDay and DayOfWeek encoders
   (useTimeOfDay, useDayOfWeek, local_min, local_max,
    strong_local_max) = get_local_maxima(cwt_var, time_scale)
 
-  return new_sampling_interval, useTimeOfDay, useDayOfWeek
+  return (med_sampling_interval, new_sampling_interval, useTimeOfDay,
+          useDayOfWeek)
