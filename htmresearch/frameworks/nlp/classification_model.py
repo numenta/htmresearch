@@ -283,8 +283,10 @@ class ClassificationModel(object):
     """
     Encode samples and store in self.patterns, write out encodings to a file.
 
-    @param samples    (dict)      Keys are sample IDs, values are two-tuples:
-                                  list of tokens (str) and list of labels (int).
+    @param samples    (dict)  Keys are samples' record numbers, values are
+                              3-tuples: list of tokens (str), list of labels
+                              (int), unique ID (int or str).
+    @return patterns  (list)  A dict for each encoded data sample.
     """
     if self.numLabels == 0:
       # No labels for classification, so populate labels with stand-ins
