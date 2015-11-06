@@ -375,8 +375,4 @@ def get_suggested_timescale_and_encoder(timestamp, value, thresh=0.2):
   (useTimeOfDay, useDayOfWeek, local_min, local_max,
    strong_local_max) = get_local_maxima(cwt_var, time_scale)
 
-  print "original sampling interval (sec) ", dt_sec
-  print "suggested sampling interval (sec) ", new_sampling_interval_sec
-  print "use TimeOfDay encoder? ", useTimeOfDay
-  print "use DayOfWeek encoder? ", useDayOfWeek
   return new_sampling_interval, useTimeOfDay, useDayOfWeek

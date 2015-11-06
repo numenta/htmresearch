@@ -21,12 +21,32 @@
 
 """
 Run param finder. This script will be frozen with cx_freeze. 
+
+Example usage:
+  $ python param_finder_runner.py example_data/art_daily_flatmiddle.csv 
+  
+  File: example_data/art_daily_flatmiddle.csv
+   - Suggested sampling interval (sec)  1209600ms
+   - Use TimeOfDay encoder?  True
+   - use DayOfWeek encoder?  False
+  
 """
+
+import argparse
 
 from htmresearch.frameworks.utils.param_finder import read_csv_files
 from htmresearch.frameworks.utils.param_finder \
   import get_suggested_timescale_and_encoder
 
-(timestamps, values) = read_csv_files('example_data/art_daily_flatmiddle.csv')
+parser = argparse.ArgumentParser()
+parser.add_argument("csv")
+args = parser.parse_args()
+print "File: %s" % args.csv
+
+(timestamps, values) = read_csv_files(args.csv)
 (new_sampling_interval, useTimeOfDay,
  useDayOfWeek) = get_suggested_timescale_and_encoder(timestamps, values)
+
+print " - Suggested sampling interval (sec) ", new_sampling_interval
+print " - Use TimeOfDay encoder? ", useTimeOfDay
+print " - use DayOfWeek encoder? ", useDayOfWeek
