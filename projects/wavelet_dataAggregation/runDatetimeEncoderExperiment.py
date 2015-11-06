@@ -1,7 +1,31 @@
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
 import pandas as pd
 import numpy as np
-from runDataAggregationExperiment import get_suggested_timescale_and_encoder
-from os.path import isfile, join, exists
+from param_finder import get_suggested_timescale_and_encoder
+from runDataAggregationExperiment import readCSVfiles
+from os.path import join
+import matplotlib as mpl
+mpl.rcParams['pdf.fonttype'] = 42
 
 import matplotlib.pyplot as plt
 plt.close('all')
@@ -11,9 +35,10 @@ plt.ion()
 You need to run NAB with four different sets of model parameters before using this script
 
 
-# go to the NAB directory, create a new result directory named results_encoder/
+go to the NAB directory, create a new result directory named results_encoder/
 
-# the model parameters are located in ./nab_modelparams
+replace the nab/detectors/numenta/modelParams/model_params.json with
+the model parameters are located in ./nab_modelparams
 
 # first use model_params_value_only
 python run.py -d numenta --detect --dataDir data_processed/ --resultsDir results_encoder/value_only --score
@@ -24,13 +49,12 @@ python run.py -d numenta --detect --dataDir data_processed/ --resultsDir results
 # third use model_params_day_of_week
 python run.py -d numenta --detect --dataDir data_processed/ --resultsDir results_encoder/day_of_week/ --score
 
-
 """
 
 NABPath = '/Users/ycui/nta/NAB/'
 
 def loadNABscore(encoderType):
-  scorefile = NABPath + "results_encoder/" + encoderType + "/numenta/numenta_standard_scores.csv"
+  scorefile = NABPath + "results_encoder/" + encoderType + "_aggregate/numenta/numenta_standard_scores.csv"
   score = pd.read_csv(scorefile, header=0)
   score = score[:-1]
   score = score.sort('File')
@@ -41,25 +65,26 @@ def loadNABscore(encoderType):
 score_value = loadNABscore("value_only")
 score_time_of_day = loadNABscore("time_of_day")
 score_day_of_week = loadNABscore("day_of_week")
-score_both = loadNABscore("time_of_day_and_day_of_week")
+# score_both = loadNABscore("time_of_day_and_day_of_week")
 
 fileList = score_value['File'].values
 better_with_time_of_day = (score_time_of_day['Score'] > score_value['Score'])
 better_with_day_of_week = (score_day_of_week['Score'] > score_value['Score'])
-
 
 dataPath = NABPath+'/data'
 useTimeOfDayEncoder = []
 useDayOfWeekEncoder = []
 for i in xrange(len(score_value)):
   filename = join(dataPath, score_value['File'][i])
-  dat = pd.read_csv(filename, header=0, names=['timestamp', 'value'])
-  (new_sampling_interval, useTimeOfDay, useDayOfWeek) = get_suggested_timescale_and_encoder((dat))
+
+  (timestamp, value) = readCSVfiles(filename)
+  (new_sampling_interval, useTimeOfDay, useDayOfWeek) = get_suggested_timescale_and_encoder(timestamp, value)
 
   useTimeOfDayEncoder.append(useTimeOfDay)
   useDayOfWeekEncoder.append(useDayOfWeek)
 
-  print " file: ", filename, " useTimeOfDay: ", useTimeOfDay, " useDayOfWeek: ", useDayOfWeek
+  print " file: ", filename, " useTimeOfDay: ", useTimeOfDay, " useDayOfWeek: ", useDayOfWeek, \
+    " aggregation window: ", new_sampling_interval
 
 useTimeOfDayEncoder = np.array(useTimeOfDayEncoder)
 useDayOfWeekEncoder = np.array(useDayOfWeekEncoder)
@@ -93,6 +118,24 @@ print " mean score without timeOfDay, ", np.mean(result.scoreWithValue)
 print " mean score with timeOfDay, ", np.mean(result.scoreWithTimeOfDay)
 print " mean score with algorithm, ", np.mean(scoreSelect)
 
+
+idx = range(len(result))
+result_true = [np.sum(result.ix[idx].scoreWithValue < result.ix[idx].scoreWithTimeOfDay),
+           np.sum(result.ix[idx].scoreWithValue == result.ix[idx].scoreWithTimeOfDay),
+           np.sum(result.ix[idx].scoreWithValue > result.ix[idx].scoreWithTimeOfDay)]
+
+fig, ax = plt.subplots(nrows=1, ncols=1)
+rec1 = ax.bar([0], [result_true[0]], color='b')
+rec2 = ax.bar([1], [result_true[1]], color='y')
+rec3 = ax.bar([2], [result_true[2]], color='r')
+ax.set_xlim([0, 6])
+ax.set_xlabel('Number Of datasets')
+plt.legend((rec1[0], rec2[0], rec3[0]),
+           ('Better NAB score with TimeOfDay',
+            'Same NAB score with TimeOfDay',
+            'Worse NAB score with TimeOfDay'))
+plt.savefig('experimentWithTimeOfDayEncoder_NABsummary.pdf')
+
 # plot experiment results
 idx = np.where(useTimeOfDayEncoder)[0]
 result_true = [np.sum(result.ix[idx].scoreWithValue < result.ix[idx].scoreWithTimeOfDay),
@@ -103,7 +146,8 @@ result_false = [np.sum(result.ix[idx].scoreWithValue < result.ix[idx].scoreWithT
            np.sum(result.ix[idx].scoreWithValue == result.ix[idx].scoreWithTimeOfDay),
            np.sum(result.ix[idx].scoreWithValue > result.ix[idx].scoreWithTimeOfDay)]
 
-fig, ax = plt.subplots()
+numFalseSuggestion = result_true[2] + result_false[0]
+fig, ax = plt.subplots(nrows=1, ncols=1)
 rec1 = ax.bar([0, 4], [result_true[0], result_false[0]], color='b')
 rec2 = ax.bar([1, 5], [result_true[1], result_false[1]], color='y')
 rec3 = ax.bar([2, 6], [result_true[2], result_false[2]], color='r')
@@ -114,7 +158,7 @@ plt.legend((rec1[0], rec2[0], rec3[0]),
            ('Better NAB score with TimeOfDay',
             'Same NAB score with TimeOfDay',
             'Worse NAB score with TimeOfDay'))
-plt.savefig('experimentWithTimeOfDayEncoder.pdf')
+plt.savefig('experimentWithTimeOfDayEncoder_accuracy.pdf')
 
 
 idx = np.where(useDayOfWeekEncoder)[0]

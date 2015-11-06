@@ -199,12 +199,8 @@ class CioEncoder(LanguageEncoder):
       encoding = self._subEncoding(inputText)
 
     # Populate output with sparse encoding
-    for i in xrange(len(output)):
-      if i in encoding["fingerprint"]["positions"]:
-        output[i] = 1
-      else:
-        # set OFF bits back to 0 b/c output is still populated from last encoding
-        output[i] = 0
+    output[:] = 0
+    output[encoding["fingerprint"]["positions"]] = 1
 
     return self.finishEncoding(encoding)
 
