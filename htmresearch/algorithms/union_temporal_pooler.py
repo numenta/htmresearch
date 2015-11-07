@@ -164,11 +164,11 @@ class UnionTemporalPooler(SpatialPooler):
     self._prePredictedActiveInput = numpy.zeros((self.getNumInputs(), self._historyLength), dtype=REAL_DTYPE)
 
     # Reset Spatial Pooler fields
-    self._overlapDutyCycles = numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
-    self._activeDutyCycles = numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
-    self._minOverlapDutyCycles = numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
-    self._minActiveDutyCycles = numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
-    self._boostFactors = numpy.ones(self.getNumColumns(), dtype=REAL_DTYPE)
+    self.setOverlapDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
+    self.setActiveDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
+    self.setMinOverlapDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
+    self.setMinActiveDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
+    self.setBoostFactors(numpy.ones(self.getNumColumns(), dtype=REAL_DTYPE))
 
 
   def compute(self, activeInput, predictedActiveInput, learn):
@@ -190,7 +190,9 @@ class UnionTemporalPooler(SpatialPooler):
                     self._predictedActiveOverlapWeight)
 
     if learn:
-      boostedOverlaps = self._boostFactors * totalOverlap
+      boostFactors = numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
+      self.getBoostFactors(boostFactors)
+      boostedOverlaps = boostFactors * totalOverlap
     else:
       boostedOverlaps = totalOverlap
 
@@ -210,7 +212,7 @@ class UnionTemporalPooler(SpatialPooler):
       # adapt permanence of connections from predicted active inputs to newly active cell
       # This step is the spatial pooler learning rule, applied only to the predictedActiveInput
       # Todo: should we also include unpredicted active input in this step?
-      self._adaptSynapses(predictedActiveInput, activeCells, self._synPermActiveInc, self._synPermInactiveDec)
+      self._adaptSynapses(predictedActiveInput, activeCells, self.getSynPermActiveInc(), self.getSynPermInactiveDec())
 
       # Increase permanence of connections from predicted active inputs to cells in the union SDR
       # This is Hebbian learning applied to the current time step
@@ -320,9 +322,12 @@ class UnionTemporalPooler(SpatialPooler):
     permChanges = numpy.zeros(self.getNumInputs())
     permChanges.fill(-1 * synPermInactiveDec)
     permChanges[inputIndices] = synPermActiveInc
+    perm = numpy.zeros(self.getNumInputs())
+    potential = numpy.zeros(self.getNumInputs())
     for i in activeColumns:
-      perm = self._permanences.getRow(i)
-      maskPotential = numpy.where(self._potentialPools.getRow(i) > 0)[0]
+      self.getPermanence(i, perm)
+      self.getPotential(i, potential)
+      maskPotential = numpy.where(potential > 0)[0]
       perm[maskPotential] += permChanges[maskPotential]
       self._updatePermanencesForColumn(perm, i, raisePerm=False)
 
