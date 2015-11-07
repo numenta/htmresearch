@@ -113,14 +113,13 @@ class ClassificationModelFingerprint(ClassificationModel):
         self.sampleReference.append(self.patterns[i]["ID"])
 
 
-  def testModel(self, i, numLabels=3):
+  def testModel(self, i, seed=42):
     """
-    Test the model on record i.
+    Test the model on record i. The random seed is used in getWinningLabels().
 
-    @param numLabels  (int)           Number of classification predictions.
     @return           (numpy array)   numLabels most-frequent classifications
                                       for the data samples; int or empty.
     """
     (_, inferenceResult, _, _) = self.classifier.infer(self.sparsifyPattern(
       self.patterns[i]["pattern"]["bitmap"], self.encoder.n))
-    return self.getWinningLabels(inferenceResult, numLabels)
+    return self.getWinningLabels(inferenceResult, seed)
