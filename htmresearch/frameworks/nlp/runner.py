@@ -35,7 +35,7 @@ from htmresearch.frameworks.nlp.classify_fingerprint import (
 from htmresearch.frameworks.nlp.classify_keywords import (
   ClassificationModelKeywords)
 from htmresearch.support.csv_helper import readCSV, writeFromDict
-from htmresearch.support.data_split import Buckets, KFolds
+from htmresearch.support.data_split import KFolds
 
 
 _MODEL_MAPPING = {
@@ -89,10 +89,10 @@ class Runner(object):
                                       samples to use in training, per trial.
     @param verbosity        (int)     Greater value prints out more progress.
     """
-    if experimentType not in ("bucketsLowDim", "bucketsHighDim", "incremental", "k-folds"):
+    if experimentType not in (
+      "bucketsLowDim", "bucketsHighDim", "incremental", "k-folds"):
       raise ValueError("Experiment type not recognized.")
-    if (folds is None) and (trainSizes is None):
-      raise ValueError("Runner needs to know how to split the data.")
+
     self.experimentType = experimentType
     self.folds = folds
     self.trainSizes = trainSizes
@@ -200,6 +200,8 @@ class Runner(object):
                                   reading in samples.
     """
     self.dataDict = readCSV(self.dataPath, numLabels=self.numClasses)
+    # from htmresearch.support.csv_helper import readNSFDataset
+    # self.dataDict = readNSFDataset(self.dataPath)
 
     if self.experimentType == "incremental":
       # stop now if the data won't work for the specified experiment
@@ -224,18 +226,6 @@ class Runner(object):
     for recordNumber, data in self.dataDict.iteritems():
       self.dataDict[recordNumber] = (data[0], numpy.array(
         [self.labelRefs.index(label) for label in data[1]]), data[2])
-
-
-  def bucketData(self):
-    """
-    Populate self.buckets with a dictionary of buckets, where each category
-    (key) is a bucket of its corresponding data samples.
-    The patterns in a bucket list are in the order they are originally read in;
-    this may or may not match the samples' unique IDs.
-    """
-    self.buckets = defaultdict(list)
-    for p in self.patterns:
-      self.buckets[p["labels"][0]].append(p)
 
 
   def encodeSamples(self):
@@ -266,13 +256,6 @@ class Runner(object):
     if self.experimentType == "k-folds":
       self.partitions = KFolds(self.folds).split(
         range(len(self.samples)), randomize=(not self.orderedSplit), seed=seed)
-    elif "buckets" in self.experimentType:
-      if not self.buckets:
-        raise RuntimeError("You need to first bucket the data.")
-      bucketSizes = [len(x) for x in self.buckets.values()]
-      # Create one partition (train, test) for each bucket.
-      self.partitions = Buckets().split(
-        bucketSizes, numTraining=4, randomize=(not self.orderedSplit), seed=seed)   # TODO: numBuckets arg
     else:
       # TODO: use StandardSplit in data_split.py
       length = len(self.samples)
