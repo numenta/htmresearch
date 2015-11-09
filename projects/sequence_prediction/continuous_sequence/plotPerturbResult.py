@@ -26,7 +26,7 @@ plt.ion()
 
 from errorMetrics import *
 import pandas as pd
-
+import numpy as np
 from pylab import rcParams
 from plot import ExperimentResult, plotAccuracy, computeSquareDeviation, computeLikelihood, plotLSTMresult
 import plotly.plotly as py
@@ -50,6 +50,10 @@ data = pd.read_csv(filePath, header=0, skiprows=[1, 2], names=['datetime', 'valu
 
 xaxis_datetime = pd.to_datetime(data['datetime'])
 
+expResult_perturb = ExperimentResult(
+  'results/nyc_taxi_experiment_continuous_likelihood_perturb/learning_window'+str(1001.0)+'/')
+negLL_LSTM1000_perturb = expResult_perturb.error
+truth_LSTM1000_perturb = expResult_perturb.truth
 
 expResult_perturb = ExperimentResult(
   'results/nyc_taxi_experiment_continuous_likelihood_perturb/learning_window'+str(3001.0)+'/')
@@ -100,52 +104,82 @@ plt.ylabel('Negative Log-Likelihood')
 plt.savefig(figPath + 'example_perturbation.pdf')
 
 
+expResult_perturb_1000 = ExperimentResult(
+  'results/nyc_taxi_experiment_continuous_perturb/learning_window'+str(1001.0)+'/')
+
 expResult_perturb_3000 = ExperimentResult(
   'results/nyc_taxi_experiment_continuous_perturb/learning_window'+str(3001.0)+'/')
 
 expResult_perturb_6000 = ExperimentResult(
   'results/nyc_taxi_experiment_continuous_perturb/learning_window'+str(6001.0)+'/')
 
+nrmse_LSTM1000_perturb = expResult_perturb_1000.error
 nrmse_LSTM3000_perturb = expResult_perturb_3000.error
 nrmse_LSTM6000_perturb = expResult_perturb_6000.error
+mape_LSTM1000_perturb = np.abs(expResult_perturb_1000.truth - expResult_perturb_1000.predictions)
 mape_LSTM3000_perturb = np.abs(expResult_perturb_3000.truth - expResult_perturb_3000.predictions)
 mape_LSTM6000_perturb = np.abs(expResult_perturb_6000.truth - expResult_perturb_6000.predictions)
 
 
+plt.figure()
+window = 400
+plotAccuracy((mape_LSTM1000_perturb, xaxis_datetime), truth_LSTM3000_perturb,
+             window=window, errorType='mape', label='LSTM1000', train=expResult_perturb.train)
+
+plotAccuracy((mape_LSTM3000_perturb, xaxis_datetime), truth_LSTM3000_perturb,
+             window=window, errorType='mape', label='LSTM3000', train=expResult_perturb.train)
+
+plotAccuracy((mape_LSTM6000_perturb, xaxis_datetime), truth_LSTM6000_perturb,
+             window=window, errorType='mape', label='LSTM6000')
+
+plotAccuracy((mape_tm_perturb, xaxis_datetime), tm_truth_perturb,
+             window=window, errorType='mape', label='TM')
+plt.axvline(xaxis_datetime[13152], color='black', linestyle='--')
+plt.xlim([xaxis_datetime[13000], xaxis_datetime[15000]])
+plt.legend()
+plt.ylim([.1, .4])
+plt.ylabel('MAPE')
+plt.savefig(figPath + 'example_perturbation_MAPE.pdf')
+
 startFrom = 13152
 endAt = startFrom+1440
+norm_factor = np.nanstd(tm_truth_perturb[startFrom:endAt])
+
 fig, ax = plt.subplots(nrows=1, ncols=3)
-inds = np.arange(3)
+inds = np.arange(4)
 
 width = 0.5
-norm_factor = np.nanstd(tm_truth_perturb[startFrom:endAt])
+
 ax1 = ax[0]
-ax1.bar(inds, [np.sqrt(np.nanmean(nrmse_LSTM3000_perturb[startFrom:endAt]))/norm_factor,
+ax1.bar(inds, [np.sqrt(np.nanmean(nrmse_LSTM1000_perturb[startFrom:endAt]))/norm_factor,
+               np.sqrt(np.nanmean(nrmse_LSTM3000_perturb[startFrom:endAt]))/norm_factor,
                np.sqrt(np.nanmean(nrmse_LSTM6000_perturb[startFrom:endAt]))/norm_factor,
                np.sqrt(np.nanmean(nrmse_tm_perturb[startFrom:endAt]))/norm_factor], width=width)
 ax1.set_xticks(inds+width/2)
-ax1.set_xticklabels( ('LSTM3000', 'LSTM6000', 'TM') )
+ax1.set_xticklabels( ('LSTM1000', 'LSTM3000', 'LSTM6000', 'TM') )
 ax1.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
 ax1.set_ylabel('NRMSE')
 
 ax2 = ax[1]
 width = 0.5
 norm_factor = np.nanmean(np.abs(tm_truth_perturb[startFrom:endAt]))
-ax2.bar(inds, [np.nanmean(mape_LSTM3000_perturb[startFrom:endAt])/norm_factor,
+ax2.bar(inds, [np.nanmean(mape_LSTM1000_perturb[startFrom:endAt])/norm_factor,
+               np.nanmean(mape_LSTM3000_perturb[startFrom:endAt])/norm_factor,
                np.nanmean(mape_LSTM6000_perturb[startFrom:endAt]/norm_factor),
                np.nanmean(mape_tm_perturb[startFrom:endAt])/norm_factor], width=width)
 ax2.set_xticks(inds+width/2)
-ax2.set_xticklabels( ('LSTM3000', 'LSTM6000', 'TM') )
+ax2.set_xticklabels( ('LSTM1000', 'LSTM3000', 'LSTM6000', 'TM') )
 ax2.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
 ax2.set_ylabel('MAPE')
 
 ax3 = ax[2]
 width = 0.5
-ax3.bar(inds, [np.nanmean(negLL_LSTM3000_perturb[startFrom:endAt]),
+ax3.bar(inds, [np.nanmean(negLL_LSTM1000_perturb[startFrom:endAt]),
+               np.nanmean(negLL_LSTM3000_perturb[startFrom:endAt]),
                np.nanmean(negLL_LSTM6000_perturb[startFrom:endAt]),
                np.nanmean(negLL_tm_perturb[startFrom:])], width=width)
 ax3.set_xticks(inds+width/2)
-ax3.set_xticklabels( ('LSTM3000', 'LSTM6000', 'TM') )
+ax3.set_xticklabels( ('LSTM1000', 'LSTM3000', 'LSTM6000', 'TM') )
 ax3.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
 ax3.set_ylabel('Negative Log-likelihood')
 plt.savefig(figPath + 'model_performance_after_perturbation.pdf')
