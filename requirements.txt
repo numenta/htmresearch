@@ -2,4 +2,3 @@
 pandas
 plotly
 nupic
-cx_Freeze
