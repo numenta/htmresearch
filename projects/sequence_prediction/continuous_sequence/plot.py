@@ -28,7 +28,7 @@ plt.ion()
 from suite import Suite
 from errorMetrics import *
 import pandas as pd
-
+import numpy as np
 
 def movingAverage(a, n):
   movingAverage = []
@@ -80,11 +80,16 @@ def plotAccuracy(results, truth, train=None, window=100, label=None, params=None
     print label, " Avg negLL:", np.nanmean(error)
     meanError = np.nanmean(error)
     avgError = movingData
+  elif errorType == 'mape':
+
+    normFactor = np.nanstd(truth)
+    print label, " MAPE:", np.nanmean(error)  / normFactor
+    meanError = np.nanmean(error) / normFactor
+    avgError = movingData / normFactor
   else:
     raise NotImplementedError
 
-  plt.plot(x, avgError, label=label,
-              marker='o', markersize=3, markeredgewidth=0)
+  plt.plot(x, avgError, label=label)
   plt.xlabel("# of elements seen")
   plt.ylabel("{0} over last {1} record".format(errorType, window))
   if train is not None:
