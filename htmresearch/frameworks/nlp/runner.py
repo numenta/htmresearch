@@ -68,7 +68,8 @@ class Runner(object):
                orderedSplit=False,
                folds=None,
                trainSizes=None,
-               verbosity=0):
+               verbosity=0,
+               **kwargs):
     """
     @param dataPath         (str)     Path to raw data file for the experiment.
     @param resultsDir       (str)     Directory where for the results metrics.
@@ -89,8 +90,7 @@ class Runner(object):
                                       samples to use in training, per trial.
     @param verbosity        (int)     Greater value prints out more progress.
     """
-    if experimentType not in (
-      "bucketsLowDim", "bucketsHighDim", "incremental", "k-folds"):
+    if experimentType not in ("buckets", "incremental", "k-folds"):
       raise ValueError("Experiment type not recognized.")
 
     self.experimentType = experimentType
@@ -245,8 +245,8 @@ class Runner(object):
       self.resetModel(i)
       if self.verbosity > 0:
         print "\tTraining and testing for run {}.".format(i)
-      self._training(i)
-      self._testing(i, seed)
+      self.training(i)
+      self.testing(i, seed)
 
 
   def partitionIndices(self, seed=42):
@@ -273,7 +273,7 @@ class Runner(object):
           self.partitions.append((trainIndices, testIndices))
 
 
-  def _training(self, trial):
+  def training(self, trial):
     """
     Train the model one-by-one on each pattern specified in this trials
     partition of indices. Models' training methods require the sample and label
@@ -287,7 +287,7 @@ class Runner(object):
       self.model.trainModel(i)
 
 
-  def _testing(self, trial, seed):
+  def testing(self, trial, seed):
     if self.verbosity > 0:
       print ("\tRunner selects to test on sample(s) {}".format(
         self.partitions[trial][1]))

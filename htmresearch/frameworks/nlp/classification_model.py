@@ -267,7 +267,8 @@ class ClassificationModel(object):
     """
     (_, _, dist, _) = self.classifier.infer(
       self.sparsifyPattern(pattern["bitmap"], self.encoder.n))
-    return dist / len(pattern["bitmap"])
+    # return dist / len(pattern["bitmap"])
+    return dist
 
 
   @staticmethod

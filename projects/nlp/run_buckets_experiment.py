@@ -28,8 +28,8 @@ import os
 import pprint
 import time
 
-from htmresearch.frameworks.nlp.runner import Runner
 from htmresearch.frameworks.nlp.bucket_runner import BucketRunner
+from htmresearch.frameworks.nlp.bucket_htm_runner import BucketHTMRunner
 
 
 
@@ -48,6 +48,7 @@ def checkInputs(args):
   return checkInputs(args)
 
 
+
 def run(args):
   start = time.time()
 
@@ -55,29 +56,30 @@ def run(args):
   resultsDir = os.path.join(root, args.resultsDir)
 
   if args.modelName == "HTMNetwork":
-    runner = HTMRunner(dataPath=args.dataPath,
-                       networkConfigPath=args.networkConfigPath,
-                       resultsDir=resultsDir,
-                       experimentName=args.experimentName,
-                       experimentType=args.experimentType,
-                       loadPath=args.loadPath,
-                       modelName=args.modelName,
-                       retinaScaling=args.retinaScaling,
-                       retina=args.retina,
-                       apiKey=args.apiKey,
-                       numClasses=1,
-                       plots=args.plots,
-                       orderedSplit=args.orderedSplit,
-                       verbosity=args.verbosity,
-                       generateData=args.generateData,
-                       classificationFile=args.classificationFile,
-                       seed=args.seed)
+    runner = BucketHTMRunner(dataPath=args.dataPath,
+                             resultsDir=resultsDir,
+                             experimentName=args.experimentName,
+                             experimentType="buckets",
+                             modelName=args.modelName,
+                             retinaScaling=args.retinaScaling,
+                             retina=args.retina,
+                             apiKey=args.apiKey,
+                             loadPath=args.loadPath,
+                             plots=args.plots,
+                             orderedSplit=args.orderedSplit,
+                             verbosity=args.verbosity,
+                             generateData=args.generateData,
+                             classificationFile=args.classificationFile,
+                             networkConfigPath=args.networkConfigPath,
+                             trainingReps=args.trainingReps,
+                             trainingDataPath=args.trainingDataPath,
+                             seed=args.seed)
     runner.initModel(0)
   else:
     runner = BucketRunner(dataPath=args.dataPath,
                           resultsDir=resultsDir,
                           experimentName=args.experimentName,
-                          experimentType=args.experimentType,
+                          experimentType="buckets",
                           modelName=args.modelName,
                           retinaScaling=args.retinaScaling,
                           retina=args.retina,
@@ -101,15 +103,13 @@ def run(args):
 
   runner.bucketData()
 
-  runner.partitionIndices(args.seed)
+  runner.partitionIndices(args.seed, args.numInference)
 
-  runner.runExperiment()
-  import pdb; pdb.set_trace()
-  # TODO: plots, aggregate metrics across buckets
+  runner.train()
 
-  # runner.writeOutClassifications()
+  metricsDict = runner.runExperiment(args.numInference)
 
-  resultCalcs = runner.evaluateResults()
+  resultCalcs = runner.evaluateResults(metricsDict)
 
   print "Saving..."
   runner.saveModel()
@@ -129,10 +129,6 @@ if __name__ == "__main__":
                       default="kfolds",
                       type=str,
                       help="Experiment name.")
-  parser.add_argument("-e", "--experimentType",
-                      default="k-folds",
-                      type=str,
-                      help="Either 'k-folds', 'incremental', or 'buckets'.")
   parser.add_argument("-m", "--modelName",
                       default="Keywords",
                       type=str,
@@ -157,6 +153,11 @@ if __name__ == "__main__":
                       action="store_true",
                       default=False,
                       help="Whether or not to use text preprocessing.")
+  parser.add_argument("--numInference",
+                      help="Number of samples to use for inference per bucket. "
+                           "A bucket with too few samples will be skipped.",
+                      type=int,
+                      default=10)
   parser.add_argument("--loadPath",
                       help="Path from which to load the serialized model.",
                       type=str,
@@ -203,6 +204,14 @@ if __name__ == "__main__":
   parser.add_argument("--classificationFile",
                       default="",
                       help="JSON file mapping string labels to ids.")
+  parser.add_argument("--trainingReps",
+                      help="How many times to repeat training an HTM network.",
+                      type=int,
+                      default=1)
+  parser.add_argument("--trainingDataPath",
+                      help="Path to CSV file of unique data samples.",
+                      type=str,
+                      default=None)
 
   args = parser.parse_args()
 

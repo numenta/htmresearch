@@ -33,7 +33,7 @@ import string
 
 from collections import defaultdict, OrderedDict
 
-from htmresearch.support.csv_helper import readCSV
+from htmresearch.support.csv_helper import readCSV, readNSFDataset
 from htmresearch.support.text_preprocess import TextPreprocess
 
 try:
@@ -102,28 +102,31 @@ class NetworkDataGenerator(object):
     self.saveData(dataFileName, classificationFileName)
     
     return dataFileName
-  
 
-  def split(self, filePath, numLabels, textPreprocess=False, seed=42,
+
+  def split(self, filePath=None, numLabels=3, textPreprocess=False, dataDict=None,
             abbrCSV="", contrCSV="", ignoreCommon=100,
             removeStrings="[identifier deleted]", correctSpell=True):
     """
-    Split all the comments in a file into tokens. Preprocess if necessary.
-    
+    Split all the comments in a file into tokens, w/ or w/o preprocessing.
+    Specifying both filePath and dataDict will prefer filePath.
+
     @param filePath        (str)    Path to csv file
+    @param dataDict        (dict)   Data as returned by readCSV()
     @param numLabels       (int)    Number of columns of category labels.
     @param textPreprocess  (bool)   True will preprocess text while tokenizing.
-    @param seed            (int)    Random seed.
     
     @return dataDict       (dict)   Data as read in from filePath.
 
     Please see TextPreprocess tokenize() for the other parameters; they're only
     used when textPreprocess is True.
     """
-    dataDict = readCSV(filePath, numLabels=numLabels)
+    if filePath:
+      dataDict = readCSV(filePath, numLabels=numLabels)
+#      dataDict = readNSFDataset(filePath)
 
     if dataDict is None:
-      raise Exception("Could not read CSV.")
+      raise Exception("No data given, or could not read CSV.")
 
     preprocessor = TextPreprocess(abbrCSV=abbrCSV, contrCSV=contrCSV)
     expandAbbr = (abbrCSV != "")

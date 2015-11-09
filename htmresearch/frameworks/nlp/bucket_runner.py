@@ -20,6 +20,7 @@
 # ----------------------------------------------------------------------
 
 from collections import defaultdict, OrderedDict
+import itertools
 import numpy
 import pprint
 
@@ -30,63 +31,51 @@ from htmresearch.support.data_split import Buckets
 class BucketRunner(Runner):
   """Runner methods specific to the buckets experiment."""
 
-  def __init__(self,
-               dataPath,
-               resultsDir,
-               experimentName,
-               experimentType,
-               modelName,
-               retinaScaling=1.0,
-               retina="en_associative",
-               apiKey=None,
-               loadPath=None,
-               plots=0,
-               orderedSplit=False,
-               folds=None,
-               trainSizes=None,
-               verbosity=0):
+  def __init__(self, numInference=10, *args, **kwargs):
     """
+    @param numInference   (int)     Number of samples (per bucket) for inference
     """
-    numClasses = 1
-    super(BucketRunner, self).__init__(dataPath, resultsDir, experimentName,
-                                    experimentType, modelName,
-                                    retinaScaling, retina, apiKey,
-                                    loadPath, numClasses, plots, orderedSplit,
-                                    folds, trainSizes, verbosity)
+    super(BucketRunner, self).__init__(numClasses=1, *args, **kwargs)
 
 
   def bucketData(self):
     """
     Populate self.buckets with a dictionary of buckets, where each category
     (key) is a bucket of its corresponding data samples.
+
     The patterns in a bucket list are in the order they are originally read in;
     this may or may not match the samples' unique IDs.
+
+    Buckets with insufficient size (fewer samples than numInference) are
+    skipped over later.
     """
     self.buckets = defaultdict(list)
-    for p in self.patterns:
-      self.buckets[p["labels"][0]].append(p)
+    for d in self.dataDict.values():
+      bucketName = d[1][0]
+      self.buckets[bucketName].append(d)
 
 
-  def partitionIndices(self, seed=42):
+  def partitionIndices(self, seed=42, numInference=10):
     """
     partitions is a list with an entry for each bucket; the list indices
     correspond to the runner.buckets keys, which are ints that identify each
     bucket (category) as mapped in runner.labelRefs.
-    Each entry is a 2-tuple where the items are training and testing indices,
+    Each entry is a 2-tuple where the items are testing and "ranking" indices,
     respectively. The index values refer to the indices of the patterns listed
     in each bucket.
     In the below example, the bucket for category A is indexed at 0, and
-    contains 3 encoded data samples (i.e. pattern dicts). The partitions specify
-    the first pattern for training is at bucket index 1, which is the pattern w/
-    unique ID 4, followed by the pattern at bucket index 0 (ID 13). The pattern
-    at bucket index 2 (ID 42) will then be used for testing.
+    contains three data samples. The partitions specify the first pattern for
+    testing is at bucket index 1, which is the sample w/ unique ID 4, followed
+    by the pattern at bucket index 0 (ID 13). The pattern at bucket index 2
+    (ID 42) will then be used in the ranking step, where we evaluate test
+    (i.e. inference) results.
 
     labelRefs = ['category A', 'category B', ...]
     buckets = {
       0: [
-           {<pattern w/ ID 4>},
-           {<pattern w/ ID 13>},
-           {<pattern w/ ID 42>}
+           {<data w/ ID 4>},
+           {<data w/ ID 13>},
+           {<data w/ ID 42>}
         ],
       1: [
         ...],
@@ -97,134 +86,163 @@ class BucketRunner(Runner):
     if not self.buckets:
         raise RuntimeError("You need to first bucket the data.")
     bucketSizes = [len(x) for x in self.buckets.values()]
+
     # Create one partition (train, test) for each bucket.
     self.partitions = Buckets().split(
-      bucketSizes, numTraining=4, randomize=(not self.orderedSplit), seed=seed)
+      bucketSizes, numInference, randomize=(not self.orderedSplit), seed=seed)
 
 
-  def runExperiment(self):
-    for idx, bucket in self.buckets.iteritems():
-      # train/test the model independently for each bucket
-      self.resetModel(idx)
-
-      # Skip data samples in the training set, rank those in the testing set.
-      trainIndices = self.partitions[idx][0]
-      trainIDs = [p["ID"] for p in
-        [self.patterns[trainIdx] for trainIdx in trainIndices]]
-      testIndices = self.partitions[idx][1]
-      testIDs = [p["ID"] for p in
-        [self.patterns[testIdx] for testIdx in testIndices]]
-
-      if self.experimentType == "bucketsHighDim":
-        self.runHD(bucket, trainIDs, testIDs)
-      elif self.experimentType == "bucketsLowDim":
-        self.runLD(trainIndices, testIDs)
+  def train(self):
+    """No training for non-HTM models, just populating the KNN later."""
+    pass
 
 
-  def highDimTest(self, queryPatterns):
+  def runExperiment(self, numInference):
     """
-    Query the model for the input patterns, returning a dict w/ distance values
-    for each query.
-    """
-    distances = {}
-    for ID, pattern in queryPatterns.iteritems():
-      distances[ID] = self.model.infer(pattern["pattern"])
-
-    return distances
-
-
-  @staticmethod
-  def getMetricsHD(distances, alreadyTrained, testIDs):
-    """
-    @param distances        (dict)  Keys are IDs of queried samples, values are numpy.arrays of distances to KNN prototypes.
-    @param distances      (numpy array)
-
-    @param alreadyTrained   (list)  IDs corresponding to KNN prototypes (in distances).
-    @return
-    """
-    rankIndices = numpy.argsort(distances)
-    rankedIDs = [alreadyTrained[i] for i in rankIndices]
-    testRanks = numpy.array([rankedIDs.index(ID) for ID in testIDs])  # TODO: faster way?
-
-    return {
-      "mean": testRanks.mean(),
-      "lastTP": testRanks.max(),
-      "firstTP": testRanks.min(),  # ideally this would be 0
-      "numTop10": len([r for r in testRanks if r < 10]),
-      "total": len(distances),
-    }
-
-
-  def runHD(self, bucket, trainIDs, testIDs):
-    """
-    Train on all except for the bucket's training samples (trainIDs), and
-    query the model with the training samples (evaluating the ranks of the
-    testing samples).
-
     The model trains on everything up front, populating the KNN space w/ all
-    of the samples (thus it's high dimensional).
+    of the samples. Then we experiment with each bucket, returning a dict with
+    metrics for each bucket.
     """
-    queryPatterns = {}
-    alreadyTrained = []
+    # The trainIDs dict maps data samples' unique IDs to prototype #.
+    trainIDs = self.populateKNN()
+    metrics = {}
+    for idx, bucket in self.buckets.iteritems():
+      if len(bucket) < numInference:
+        print "Skipping bucket '{}' because it has too few samples.".format(
+          self.labelRefs[idx])
+        continue
+      testIDs, rankIDs = self.prepBucket(idx)
+      import pdb; pdb.set_trace()
+      metrics[idx] = self.testBucket(bucket, trainIDs, testIDs, rankIDs, idx)
+
+    return metrics
+
+
+  def populateKNN(self):
+    """
+    Populate the KNN space with every pattern. We track the KNN prototype number
+    for each pattern ID so we know where they are in the KNN space.
+    """
+    prototypeMap = OrderedDict()
+    prototypeNum = 0
     for i, pattern in enumerate(self.patterns):
-      if pattern["ID"] in trainIDs:
-        # we use these patterns later when querying the model; duplicates get
-        # overwritten b/c dict keys are the unique IDs
-        queryPatterns[pattern["ID"]] = pattern
-      elif pattern["ID"] in alreadyTrained:
+      if prototypeMap.get(pattern["ID"]) is not None:
         # samples appear multiple times, so don't repeat training
         continue
       else:
+        # train on pattern i, and keep track of it's index in KNN space
         self.model.trainModel(i)
-        alreadyTrained.append(pattern["ID"])
-    assert(sorted(queryPatterns.keys()) == sorted(trainIDs))
+        prototypeMap[pattern["ID"]] = [prototypeNum]  # in a list b/c some models (htm) classify every word
+        prototypeNum += 1
 
-    # Infer distances, one training sample per iteration, combining the
-    # inferred distances by taking the minimum across iterations.
-    ## --> mean
-    queryDistances = self.highDimTest(queryPatterns)
-    # summedDistances = numpy.zeros(len(alreadyTrained))  ##
-    # meanDistances = []  ##
-    currentBest = numpy.ones(len(alreadyTrained))
+    return prototypeMap
+
+
+  def prepBucket(self, idx):
+      # Test samples are for inferring, rank samples are for evaluation.
+      testIndices = self.partitions[idx][0]
+      # testIDs = [p["ID"] for p in
+      #   [self.patterns[testIdx] for testIdx in testIndices]]
+      rankIndices = self.partitions[idx][1]
+      # rankIDs = [p["ID"] for p in
+      #   [self.patterns[rankIdx] for rankIdx in rankIndices]]
+
+      testIDs = [d[2] for d in
+        [self.dataDict[testIdx] for testIdx in testIndices]]
+      rankIDs = [d[2] for d in
+        [self.dataDict[rankIdx] for rankIdx in rankIndices]]
+
+      return testIDs, rankIDs
+
+
+  def testBucket(self, bucket, trainIDs, testIDs, rankIDs, idx):
+    """
+    Use the testing samples to infer distances. The distances for subsequent
+    iterations are combined according to self.combine.
+    b
+    y taking the min.
+
+
+    @param testIDs      (list)    Unique IDs of samples for inference.
+    @param trainIDs     (dict)    Maps sample unique IDs to their prototype
+                                  index in KNN space.
+    """
+    # Query the model for the input patterns, returning a dict w/ distance
+    # values for each query.
+    distances = OrderedDict()
+    for i, pattern in enumerate(self.patterns):
+      if pattern["ID"] in testIDs and pattern["ID"] not in distances.keys():
+        distances[pattern["ID"]] = self.model.infer(pattern["pattern"])
+    assert(sorted(distances.keys()) == sorted(testIDs))
+
+    # summedDistances = numpy.zeros(len(alreadyTrained))  ## mean
+    # meanDistances = []  ## mean
+    currentBest = numpy.ones(len(trainIDs.keys()))
     bestDistances = []
-    for n, (ID, dist) in enumerate(queryDistances.iteritems()):
-      # summedDistances += dist  ##
-      # meanDistances.append(summedDistances / (n+1.0))  ##
+    no = []
+    for ID, dist in distances.iteritems():
+      # summedDistances += dist  ## mean
+      # meanDistances.append(summedDistances / (n+1.0))  ## mean
       currentBest = numpy.minimum(currentBest, dist)
+
+      # In each iteration, exclude the queried samples.
+      for p in trainIDs[ID]:
+        no.append(p)
+      currentBest[no] = 1.0  # TODO: better way to get rid of these?
+
       bestDistances.append(currentBest)
 
     metrics = []
-    # for mD in meanDistances:  ##
+    # for mD in meanDistances:  ## mean
     for bD in bestDistances:
-      # metrics.append(getMetricsHD(mD, alreadyTrained, testIDs))  ##
-      metrics.append(self.getMetricsHD(bD, alreadyTrained, testIDs))
+      # metrics.append(getMetricsHD(mD, alreadyTrained, rankIDs))  ## mean
+      metrics.append(self.getMetrics(bD, trainIDs, rankIDs))
 
-    print "================="
-    print "Results for bucket ", self.labelRefs[bucket[0]["labels"]]
-    pprint.pprint(metrics)
+    if self.verbosity > 0:
+      print "====="
+      print "Total data samples in KNN space = ", len(trainIDs)
+      print "Results for bucket ", self.labelRefs[bucket[0][1]]
+      pprint.pprint(metrics)
+
+    return metrics
 
 
-  def runLD(self):
+  @staticmethod
+  def getMetrics(distances, alreadyTrained, rankIDs):
     """
-    Train on the bucket's training samples (one at a time), and query the
-    model for all other samples (evaluating the ranks of the testing samples).
-
-    The model only trains on the samples in the current training partition, so
-    the resulting KNN space is low dimensional (i.e. 1-10).
+    @param distances      (list)    numpy.arrays of distances to KNN prototypes
+    @param alreadyTrained (dict)    IDs corresponding to KNN prototype indices
+    @param rankIDs        (list)    IDs of the samples we want metrics on
+    @return
     """
-    for n in xrange(numTraining):
-      # each iteration we train the model on one more sample from the training partition
-      bucketIdxForTraining = trainIndices[n]
-      self.model.trainModel(bucketIdxForTraining)
-      import pdb; pdb.set_trace()
-      distances = lowDimTest(trainIDs)
-      getMetricsLD(distances, testIDs)
+    rankIndices = numpy.argsort(distances)
+    # rankedIDs = [alreadyTrained[i] for i in rankIndices]
+    # testRanks = numpy.array([rankedIDs.index(ID) for ID in testIDs])  # TODO: faster way?
+    import pdb; pdb.set_trace()
+    rankPrototypes = [alreadyTrained[ID] for ID in rankIDs]
+    ranks = rankIndices[list(itertools.chain.from_iterable(rankPrototypes))]
+    import pdb; pdb.set_trace()
+    return {
+      "mean": ranks.mean(),
+      "lastTP": ranks.max(),
+      "firstTP": ranks.min(),  # ideally this would be 0
+      "numTop10": len([r for r in ranks if r < 10]),
+      "totalRanked": len(rankIDs),
+    }
 
 
-  def evaluateResults(self):
+  def evaluateResults(self, metrics):
     """
     Calculate evaluation metrics from the bucketing results.
+
+    @param metrics    (dict)    Keys are bucket numbers.
     """
+    import pdb; pdb.set_trace()
+    # TODO: plots, aggregate metrics across buckets
+
+
+    if self.plots:  ## if nothing but plotting, move this to the run script
+      print "plots..."
 
 
     return

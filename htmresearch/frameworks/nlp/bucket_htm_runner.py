@@ -1,0 +1,320 @@
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Numenta, Inc. a separate commercial license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
+import os
+
+from collections import OrderedDict
+
+from htmresearch.frameworks.nlp.bucket_runner import BucketRunner
+from htmresearch.frameworks.nlp.htm_runner import HTMRunner
+from htmresearch.support.csv_helper import bucketCSVs
+from htmresearch.support.data_split import Buckets
+from htmresearch.support.network_text_data_generator import NetworkDataGenerator
+
+
+class BucketHTMRunner(BucketRunner, HTMRunner):
+  """Buckets experiment methods for HTM network models."""
+
+  def __init__(self, trainingReps=1, trainingDataPath=None, *args, **kwargs):
+    """
+    Param for trainingReps specifies how many times the network runs through
+    the data with all regions (but the classifier) learning; the classifier only
+    learns on the final rep (i.e. only the final learned representations make up
+    the KNN space). Add'l params go to constructors of super classes.
+    """
+    # if trainingDataPath is None:
+    #   raise RuntimeError("Need data file of unique samples for training.")
+
+    self.trainingReps = trainingReps
+    # self.trainingDataPath = trainingDataPath  # unique samples
+
+    self.bucketFiles = []
+    self.classifiedSeqIds = []
+
+    super(BucketHTMRunner, self).__init__(*args, **kwargs)
+
+
+  def setupNetData(self, generateData=False, seed=42, preprocess=False, **kwargs):
+    """
+    Resulting network data files created:
+      - One for each bucket
+      - One for each training rep, where samples are not repeated in a given
+      file.
+    """
+    if generateData:
+      ndg = NetworkDataGenerator()
+      self.dataDict = ndg.split(filePath=self.dataPath, numLabels=1, textPreprocess=preprocess, **kwargs)
+
+      filename, ext = os.path.splitext(self.dataPath)
+      self.classificationFile = "{}_categories.json".format(filename)
+
+      # Generate test data files: one network data file for each bucket.
+      bucketFilePaths = bucketCSVs(self.dataPath)
+      for bucketFile in bucketFilePaths:
+        ndg = NetworkDataGenerator()  # TODO: use ndg.reset()
+        ndg.split(
+          filePath=bucketFile, numLabels=1, textPreprocess=preprocess, **kwargs)
+        bucketFileName, ext = os.path.splitext(bucketFile)
+        if not self.orderedSplit:
+          ndg.randomizeData(seed)
+        dataFile = "{}_network{}".format(bucketFileName, ext)
+        ndg.saveData(dataFile, self.classificationFile)  # the classification file here gets (correctly) overwritten later
+        self.bucketFiles.append(dataFile)
+
+      # Generate training data file(s).
+      uniqueDataDict = OrderedDict()
+      included = []
+      seqID = 0
+      for dataEntry in self.dataDict.values():
+        uniqueID = dataEntry[2]
+        if uniqueID not in included:
+          # skip over the samples that are repeated in multiple buckets
+          uniqueDataDict[seqID] = dataEntry
+          included.append(uniqueID)
+          seqID += 1
+      ndg = NetworkDataGenerator()
+      dd = ndg.split(
+        dataDict=uniqueDataDict, numLabels=1, textPreprocess=preprocess,
+        **kwargs)
+      for rep in xrange(self.trainingReps):
+        # use a different file for each training rep
+        if not self.orderedSplit:
+          ndg.randomizeData(seed)
+        dataFile = "{}_network_{}{}".format(filename, rep, ext)
+        ndg.saveData(dataFile, self.classificationFile)
+        self.dataFiles.append(dataFile)
+
+      # TODO: add a method (and corresponding arg) for removing all these data files
+
+    else:
+      raise NotImplementedError("Must generate data.")
+
+    # Setup labels data objects
+    # self.actualLabels = [self._getClassifications(i) for i in xrange(splits)]  ## need this?
+    self._mapLabelRefs()  # these match the classification json
+
+
+  def partitionIndices(self, _, numInference=10):
+    """
+    Sets self.partitions for the number of tokens for each sample in the
+    bucket data files;
+    training and test sets.
+
+    The order of sequences is already specified by the network data files; if
+    generated by the experiment, these are in order or randomized as specified
+    by the orderedSplit arg.
+    """
+    ndg = NetworkDataGenerator()
+
+    # TODO: skip/remove buckets w/ <numInference samples
+    for dataFile in self.bucketFiles:
+      # numTokens = NetworkDataGenerator.getNumberOfTokens(df)
+      numTokens = ndg.getNumberOfTokens(dataFile)
+      self.partitions.append((numTokens[:numInference], numTokens[numInference:]))
+
+
+  def train(self):
+    """
+    Train the network regions on the entire dataset.
+    There should be one datafile for each training rep in self.dataFiles, where
+    every data sample appears only once in each file.
+    """
+    if self.trainingReps != len(self.dataFiles):
+      raise RuntimeError()
+
+    # trainIDs = []
+    # import pdb; pdb.set_trace()
+    for dataFile in self.dataFiles:
+      self.model.swapRecordStream(dataFile)
+      numTokens = NetworkDataGenerator().getNumberOfTokens(dataFile)
+      n = sum(numTokens)
+      self.model.trainNetwork(n)
+
+      # for i in xrange(n):
+      #   # need to loop in order to add the sequence's unique ID to the list of training IDs
+      #   self.model.trainNetwork(1)
+      #   seqId = self.classifierRegion.getOutputData("sequenceIdOut")
+      #   trainIDs.append(self.dataDict[seqId][2])
+
+    # Populate the classifier space by running through the current data file;
+    # learning is turned off by the model.
+    print "CLASSIFICATION STEP"
+    self.classifiedSeqIds = self.model.classifyNetwork(n)
+
+
+  def populateKNN(self):
+    """
+
+    BucketRunner will remove the duplicate samples here, but this subclass
+    handles duplicates when generating the network data files.
+    """
+    # The network already populated the KNN at the end of training, but we still
+    # need to map the sample IDs to their prototypes.
+    prototypeMap = OrderedDict()
+    for i, idx in enumerate(self.classifiedSeqIds):
+      uniqueID = self.dataDict[idx][2]
+      if prototypeMap.get(uniqueID) is None:
+        prototypeMap[uniqueID] = [i]
+      else:
+        prototypeMap[uniqueID].append(i)
+
+    return prototypeMap
+
+
+  def prepBucket(self, idx):
+
+    return [], []
+
+
+  def testBucket(self, bucket, trainIDs, bb, rankIDs, bucketNum):
+    """
+    """
+    # Run the test samples for this bucket through the network, getting the categories out
+    distances = OrderedDict()
+    import pdb; pdb.set_trace()
+    for i, numTokens in enumerate(self.partitions[bucketNum][0]):
+      # swap the record stream for this bucket
+      self.model.swapRecordStream(self.bucketFiles[bucketNum])
+
+      sampleDistances = None
+      for j in xrange(numTokens):
+        # run the network for the number of tokens in the data sample i
+        self.model.network.run(1)
+        inferenceValues = self.model.classifierRegion.getOutputData("categoriesOut")
+        if sampleDistances is None:
+          sampleDistances = inferenceValues
+        else:
+          sampleDistances += inferenceValues
+      import pdb; pdb.set_trace()
+      # seqId maps to the sample's index in its bucket
+      seqId = self.model.sensorRegion.getOutputData("sequenceIdOut")[0]
+      testID = self.buckets[bucketNum][seqId][2]
+      # testID = bucket[seqId][2]   # if we need bucket arg, then use this version
+
+      # distances[testIDs[i]] = inferenceValues
+      distances[testID] = inferenceValues  # if no testIDs passed in, do it this way
+    # assert(sorted(distances.keys()) == sorted(testIDs))
+
+    # IF I NEED TRAIN IDS, DO IT IN TRAIN() (SEE COMMNETED OUT CODE)
+    import pdb; pdb.set_trace()
+    currentBest = numpy.ones(len(distances[distances.keys()[0]]))
+    bestDistances = []
+    no = []
+    for ID, dist in distances.iteritems():
+      continue
+
+
+
+
+
+
+
+
+  def highDimTest(self, queryPatterns):
+    """
+    Query the model for the input patterns, returning a dict w/ distance values
+    for each query.
+    """
+    distances = {}
+    for ID, pattern in queryPatterns.iteritems():
+      distances[ID] = self.model.infer(pattern["pattern"])
+
+    return distances
+
+
+  @staticmethod
+  def getMetricsHD(distances, alreadyTrained, testIDs):
+    """
+    @param distances        (dict)  Keys are IDs of queried samples, values are numpy.arrays of distances to KNN prototypes.
+    @param distances      (numpy array)
+
+    @param alreadyTrained   (list)  IDs corresponding to KNN prototypes (in distances).
+    @return
+    """
+    rankIndices = numpy.argsort(distances)
+    rankedIDs = [alreadyTrained[i] for i in rankIndices]
+    testRanks = numpy.array([rankedIDs.index(ID) for ID in testIDs])  # TODO: faster way?
+
+    return {
+      "mean": testRanks.mean(),
+      "lastTP": testRanks.max(),
+      "firstTP": testRanks.min(),  # ideally this would be 0
+      "numTop10": len([r for r in testRanks if r < 10]),
+      "total": len(distances),
+    }
+
+
+  def _runHD(self, bucket, trainIDs, testIDs):
+    """
+    Train on all except for the bucket's training samples (trainIDs), and
+    query the model with the training samples (evaluating the ranks of the
+    testing samples).
+
+    The model trains on everything up front, populating the KNN space w/ all
+    of the samples (thus it's high dimensional).
+    """
+    queryPatterns = {}
+    alreadyTrained = []
+    for i, pattern in enumerate(self.patterns):
+      if pattern["ID"] in trainIDs:
+        # we use these patterns later when querying the model; duplicates get
+        # overwritten b/c dict keys are the unique IDs
+        queryPatterns[pattern["ID"]] = pattern
+      elif pattern["ID"] in alreadyTrained:
+        # samples appear multiple times, so don't repeat training
+        continue
+      else:
+        self.model.trainModel(i)
+        alreadyTrained.append(pattern["ID"])
+    assert(sorted(queryPatterns.keys()) == sorted(trainIDs))
+
+    # Infer distances, one training sample per iteration, combining the
+    # inferred distances by taking the minimum across iterations.
+    ## --> mean
+    queryDistances = self.highDimTest(queryPatterns)
+    # summedDistances = numpy.zeros(len(alreadyTrained))  ##
+    # meanDistances = []  ##
+    currentBest = numpy.ones(len(alreadyTrained))
+    bestDistances = []
+    for n, (ID, dist) in enumerate(queryDistances.iteritems()):
+      # summedDistances += dist  ##
+      # meanDistances.append(summedDistances / (n+1.0))  ##
+      currentBest = numpy.minimum(currentBest, dist)
+      bestDistances.append(currentBest)
+
+    metrics = []
+    # for mD in meanDistances:  ##
+    for bD in bestDistances:
+      # metrics.append(getMetricsHD(mD, alreadyTrained, testIDs))  ##
+      metrics.append(self.getMetricsHD(bD, alreadyTrained, testIDs))
+
+    print "================="
+    print "Results for bucket ", self.labelRefs[bucket[0]["labels"]]
+    pprint.pprint(metrics)
+
+
+  def evaluateResults(self):
+    """
+    Calculate evaluation metrics from the bucketing results.
+    """
+
+
+    return

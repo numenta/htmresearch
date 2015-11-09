@@ -71,12 +71,11 @@ class ClassificationModelHTM(ClassificationModel):
     self.retina = retina
     self.apiKey = apiKey
 
+    self.networkDataGen = NetworkDataGenerator()
     if prepData:
-      self.networkDataPath, self.networkDataGen = self.prepData(
-        inputFilePath, stripCats=stripCats)
+      self.networkDataPath = self.prepData(inputFilePath, stripCats=stripCats)
     else:
       self.networkDataPath = inputFilePath
-      self.networkDataGen = None
 
     self.network = self.initModel()
     self.learningRegions = self._getLearningRegions()
@@ -98,13 +97,11 @@ class ClassificationModelHTM(ClassificationModel):
     @param stripCats         (bool) Remove the categories and replace them with
                                     the sequence_Id.
     @return networkDataPath  (str)  Path to data formtted for network API.
-    @return ndg              (NetworkDataGenerator)
     """
-    ndg = NetworkDataGenerator()
-    networkDataPath = ndg.setupData(
+    networkDataPath = self.networkDataGen.setupData(
       dataPath, self.numLabels, ordered, stripCats, **kwargs)
 
-    return networkDataPath, ndg
+    return networkDataPath
 
 
   def initModel(self):
@@ -195,6 +192,45 @@ class ClassificationModelHTM(ClassificationModel):
     self.network.run(iterations)
 
 
+  def trainNetwork(self, iterations):
+    """Run the network with all regions learning but the classifier."""
+    # import pdb; pdb.set_trace()
+    for region in self.learningRegions:
+      if region.name == "classifier": continue
+      region.setParameter("learningMode", True)
+
+    self.network.run(iterations)
+
+
+  def classifyNetwork(self, iterations):
+    """
+    For running after the network has been trained by trainNetwork(), this
+    populates the KNN prototype space with the final network representations.
+    """
+    for region in self.learningRegions:
+      region.setParameter("learningMode", False)
+
+    sensor = self.sensorRegion.getSelf()
+    sensor.rewind()
+
+    self.classifierRegion.setParameter("learningMode", True)
+    self.classifierRegion.setParameter("inferenceMode", True)
+
+    sequenceIds = []
+    for _ in xrange(iterations):
+      self.network.run(1)
+      sequenceIds.append(sensor.getOutputValues("sequenceIdOut")[0])
+
+    return sequenceIds
+
+
+  def swapRecordStream(self, dataPath):
+    """Change the data source for the network's sensor region."""
+    recordStream = FileRecordStream(streamID=self.networkDataPath)
+    sensor = self.sensorRegion.getSelf()
+    sensor.dataSource = recordStream  # TODO: implement this in network factory
+
+
   def testModel(self, seed=42):
     """
     Test the classifier region on the input sample. Call this method for each
@@ -209,7 +245,11 @@ class ClassificationModelHTM(ClassificationModel):
 
     self.network.run(1)
 
+    import pdb; pdb.set_trace()  # which return do we want??
     return self._getClassifierInference(seed)
+    inference = self._getClassifierInference(seed)
+    activityBitmap = self.classifierRegion.getInputData("bottomUpIn")
+    return inference, activityBitmap
 
 
   def _getClassifierInference(self, seed):
@@ -244,6 +284,7 @@ class ClassificationModelHTM(ClassificationModel):
 
     sampleDistances = None
     sensor = self.sensorRegion.getSelf()
+    import pdb; pdb.set_trace()
     for qD in queryDicts:
       # Sum together the inferred distances for each word of the query sequence.
       sensor.queue.appendleft(qD)

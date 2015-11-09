@@ -252,7 +252,7 @@ class TemporalPoolerRegion(PyRegion):
 
     # Allocate the pooler
     self._pooler = self._poolerClass(**autoArgs)
-  
+
 
   def compute(self, inputs, outputs):
     """
@@ -323,16 +323,6 @@ class TemporalPoolerRegion(PyRegion):
           regionLevel=True,
           isDefaultInput=False,
           requireSplitterMap=False),
-
-        sequenceIdIn=dict(
-          description="Sequence ID",
-          dataType='UInt64',
-          count=1,
-          required=False,
-          regionLevel=True,
-          isDefaultInput=False,
-          requireSplitterMap=False),
-
       ),
       outputs=dict(
         mostActiveCells=dict(

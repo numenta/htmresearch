@@ -66,6 +66,27 @@ def readCSV(csvFile, numLabels=0):
     print e
 
 
+def bucketCSVs(csvFile, bucketIdx=2):
+  """Write the individual buckets in csvFile to their own CSV files."""
+  try:
+    with open(csvFile, "rU") as f:
+      reader = csv.reader(f)
+      headers = next(reader, None)
+      dataDict = defaultdict(list)
+      for lineNumber, line in enumerate(reader):
+        dataDict[line[bucketIdx]].append(line)
+  except IOError as e:
+    print e
+
+  filePaths = []
+  for i, (_, lines) in enumerate(dataDict.iteritems()):
+    bucketFile = csvFile.replace(".", "_"+str(i)+".")
+    writeCSV(lines, headers, bucketFile)
+    filePaths.append(bucketFile)
+
+  return filePaths
+
+
 def readDir(dirPath, numLabels, modify=False):
   """
   Reads in data from a directory of CSV files; assumes the directory only

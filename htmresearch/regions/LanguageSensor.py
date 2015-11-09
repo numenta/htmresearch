@@ -20,6 +20,7 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import copy
 import numpy
 
 from collections import deque
@@ -51,11 +52,7 @@ class LanguageSensor(PyRegion):
   def __init__(self,
                verbosity=0,
                numCategories=1):
-    """
-    Create a node without an encoder or datasource.
-
-    TODO: use self._outputValues for logging(?)
-    """
+    """Create a node without an encoder or datasource."""
     self.numCategories = numCategories
     self.verbosity = verbosity
 
@@ -198,6 +195,13 @@ class LanguageSensor(PyRegion):
       raise Exception("Unable to initialize LanguageSensor -- dataSource has not been set")
 
 
+  def rewind(self):
+    """Reset the sensor to the beginning of the data file."""
+    self._iterNum = 0
+    if self.dataSource is not None:
+      self.dataSource.rewind()
+
+
   def populateCategoriesOut(self, categories, output):
     """
     Populate the output array with the category indices.
@@ -244,6 +248,8 @@ class LanguageSensor(PyRegion):
 
     outputs["encodingOut"] = self.encoder.encodeIntoArray(
       data["_token"], outputs["dataOut"])
+
+    self._outputValues = copy.deepcopy(outputs)
 
     self._iterNum += 1
 

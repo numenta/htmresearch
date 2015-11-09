@@ -160,19 +160,19 @@ class StandardSplit(DataSplit):
 class Buckets(DataSplit):
   """Split data for the 'buckets' experiment."""
 
-  def split(self, bucketSizes, numTraining=10, randomize=False, seed=42):
+  def split(self, bucketSizes, numInference=10, randomize=False, seed=42):
     """Split the given samples into train/test sets.
 
     @param bucketSizes    (list)
-    @param numTraining    (int)           Size of training set.
+    @param numInference   (int)           Size of first set of data.
     @param randomize      (bool)          Randomize the order.
     @param seed           (int)           Random seed.
     @return               (list)          Splits where each split is 2-tuple
                                           (training, test), and each element is
                                           a list of elements from samples.
     """
-    if not all(x > numTraining for x in bucketSizes):
-      raise ValueError("All bucket sizes must be larger than numTraining.")
+    if not all(x > numInference for x in bucketSizes):
+      print "Warning: not all buckets have sufficient size for inference."
 
     # Aggregate each train/test set to return
     trainTestSplits = []
@@ -182,6 +182,6 @@ class Buckets(DataSplit):
       if randomize:
         random.seed(seed)
         random.shuffle(indices)
-      trainTestSplits.append((indices[:numTraining], indices[numTraining:]))
+      trainTestSplits.append((indices[:numInference], indices[numInference:]))
 
     return trainTestSplits
