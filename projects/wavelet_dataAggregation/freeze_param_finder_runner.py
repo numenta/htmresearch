@@ -19,6 +19,12 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+"""
+This is a one-off experiment to check that param_finder_runner.py can be 
+packaged with cx_freeze. You need to install cx_freeze to run this script:
+  pip install cx_Freeze --user
+"""
+
 import cx_Freeze
 import os
 
