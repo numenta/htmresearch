@@ -80,4 +80,4 @@ class SpatiotemporalPooler(SpatialPooler):
     SpatialPooler.compute(self, unionSDR,
       learn, self._activeColumns)
           
-    return self._activeColumns
+    return self._activeColumns.nonzero()[0].tolist()

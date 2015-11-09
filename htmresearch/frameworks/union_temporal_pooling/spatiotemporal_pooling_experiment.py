@@ -15,12 +15,16 @@ from htmresearch.algorithms.general_temporal_memory import (
 
 from htmresearch.algorithms.spatiotemporal_pooler import SpatiotemporalPooler
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from htmresearch.support.union_temporal_pooler_monitor_mixin import UnionTemporalPoolerMonitorMixin
 
 realDType = GetNTAReal()
 
 
 
-class SpatiotemporalPoolerMixin(MonitorMixinBase):
+# class SpatiotemporalPoolerMixin(MonitorMixinBase):
+#   pass
+
+class SpatiotemporalPoolerMixin(UnionTemporalPoolerMonitorMixin):
   pass
 
 
@@ -56,7 +60,8 @@ class SpatiotemporalPoolerExperiment(object):
                                  "inputDimensions": (1024,),
                                  # "columnDimensions": [1024],
                                  "columnDimensions": (1024,),
-                                 "numActiveColumnsPerInhArea": 10,
+                                 "numActiveColumnsPerInhArea": 20,
+                                 # "numActiveColumnsPerInhArea": 200,
                                  # "numActiveColumnsPerInhArea": 3,
                                  "stimulusThreshold": 0,
                                  "synPermInactiveDec": 0.01,
@@ -142,7 +147,7 @@ class SpatiotemporalPoolerExperiment(object):
     currentTime = time.time()
 
     # columnActivations = list()
-    columnActivations = np.ndarray((len(inputSequences), self.stp._numColumns))
+    columnActivations = np.zeros((len(inputSequences), self.stp._numColumns))
     
     unionedInput = np.ndarray((len(inputSequences), self.stp._numInputs))
 
@@ -150,12 +155,14 @@ class SpatiotemporalPoolerExperiment(object):
       sensorPattern = inputSequences[i]
       inputCategory = inputCategories[i]
             
-      columnActivations[i,:] = self.runNetworkOnPattern(sensorPattern,
-                                 tmLearn=tmLearn,
-                                 stpLearn=stpLearn,
-                                 sequenceLabel=inputCategory,
-                                 unionedInputMonitor=unionedInput[i])
-
+      self.runNetworkOnPattern(sensorPattern,
+        tmLearn=tmLearn,
+        stpLearn=stpLearn,
+        sequenceLabel=inputCategory,
+        unionedInputMonitor=unionedInput[i])
+      
+      columnActivations[i, list(self.stp.mmGetTraceActiveCells().data[-1])] = 1
+      
       # if classifierLearn and sensorPattern is not None:
       #   unionSDR = self.up.getUnionSDR()
       #   upCellCount = self.up.getColumnDimensions()
@@ -182,7 +189,7 @@ class SpatiotemporalPoolerExperiment(object):
     #     print MonitorMixinBase.mmPrettyPrintTraces(traces,
     #                                                breakOnResets=
     #                                                self.up.mmGetTraceResets())
-      print
+      # print
     
     # print columnActivations
     
@@ -206,17 +213,18 @@ class SpatiotemporalPoolerExperiment(object):
         # activeCells, predActiveCells, burstingCols, = self.getUnionTemporalPoolerInput()
         
       activeCells = np.zeros(self.params["inputDimensions"])
-      print np.array(list(sensorPattern), dtype=int)
+      # print np.array(list(sensorPattern), dtype=int)
       activeCells[np.array(list(sensorPattern), dtype=int)] = 1
       
       predActiveCells = activeCells.copy()
       
-      activeColumns = self.stp.compute(activeCells,
-                                       predActiveCells,
-                                       learn=stpLearn,
-                                       unionedInputMonitor=unionedInputMonitor)
+      self.stp.compute(activeCells,
+                       predActiveCells,
+                       learn=stpLearn,
+                       unionedInputMonitor=unionedInputMonitor)
+                                       
+      # print self.stp.mmGetTraceActiveCells().data
 
-      return activeColumns
 
 
   # def getSpatiotemporalPoolerInput(self):

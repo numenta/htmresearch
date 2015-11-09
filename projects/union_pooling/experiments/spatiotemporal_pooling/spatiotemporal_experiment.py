@@ -45,7 +45,7 @@ def generateSequences(patternDimensionality, patternCardinality, sequenceLength,
   
 
 def main():
-  inputSequences, inputCategories = generateSequences(1024,10,125,2)
+  inputSequences, inputCategories = generateSequences(1024,20,250,1)
   
   print inputCategories
     
@@ -88,8 +88,18 @@ def main():
   
   # return
 
-  for _ in xrange(50):
-    columnActivations, _ = stpe.runNetworkOnSequences(inputSequences, inputCategories, stpLearn=True)
+  bitLifeListPretraining = np.array(stpe.stp._mmComputeBitLifeStats())
+  
+  # Perform iterations with learning on
+  for _ in xrange(10):
+    _, _ = stpe.runNetworkOnSequences(inputSequences, inputCategories, stpLearn=True)
+  
+  stpe.stp.mmClearHistory()
+  
+  # Run one final test run after training to collect stats
+  columnActivations, unionedInput = stpe.runNetworkOnSequences(inputSequences, inputCategories)
+  
+  bitLifeListPosttraining = np.array(stpe.stp._mmComputeBitLifeStats())
   
   plt.subplot(122)
   plt.imshow(1-columnActivations.T, aspect=aspect, interpolation="none", cmap = cm.Greys_r)
@@ -97,6 +107,41 @@ def main():
   plt.xlabel('Time step')
   # plt.ylabel('SP Column')
   plt.savefig("results/columns.png")
+  
+  
+  # Creat bit life stats plot
+  preMean = bitLifeListPretraining.mean() 
+  postMean = bitLifeListPosttraining.mean() 
+  
+  preStd = bitLifeListPretraining.std() 
+  postStd = bitLifeListPosttraining.std() 
+  
+  
+  plt.figure()
+  plt.subplot(121)
+  plt.hist(bitLifeListPretraining, 50)
+  ylim = plt.ylim()
+  plt.xlim((0,25))
+  plt.ylabel("Cell count")
+  plt.xlabel("Time steps")
+  plt.title("Pre-training")
+  plt.annotate("Mean: %.2f\nStd: %.2f" % (preMean, preStd), xy=(.6,.9), xycoords="axes fraction")
+  
+  plt.subplot(122)
+  plt.hist(bitLifeListPosttraining, 50)
+  plt.ylim(ylim)
+  plt.xlim((0,25))
+  plt.title("Post-training")
+  plt.xlabel("Time steps")
+  plt.annotate("Mean: %.2f\nStd: %.2f" % (postMean, postStd), xy=(.6,.9), xycoords="axes fraction")
+   
+  plt.savefig("results/bitlife.png")
+  
+  
+  
+  
+  # stpe.stp.mmGetCellActivityPlot()
+  # plt.savefig("results/test_plot.png")
   
   
   
