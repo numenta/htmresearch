@@ -62,10 +62,18 @@
     }
   },
   "tpRegionConfig": {
-    "regionEnabled": false,
-    "regionName": "UP",
-    "regionType": "py.TPRegion",
-    "regionParams": null
+    "regionEnabled": true,
+    "regionName": "TP",
+    "regionType": "py.TemporalPoolerRegion",
+    "regionParams": {
+      "poolerType": "union",
+      "columnCount": 512,
+      "predictedActiveOverlapWeight": 10.0,
+      "maxUnionActivity": 0.20,
+      "synPermPredActiveInc": 0.1,
+      "synPermPreviousPredActiveInc": 0.1,
+      "decayFunctionType": "NoDecay"
+    }
   },
   "classifierRegionConfig": {
     "regionEnabled": true,
