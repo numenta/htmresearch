@@ -22,6 +22,7 @@
 
 import numpy
 from nupic.research.spatial_pooler import SpatialPooler
+# from nupic.bindings.algorithms import SpatialPooler
 
 
 REAL_DTYPE = numpy.float32
@@ -68,7 +69,7 @@ class SpatiotemporalPooler(SpatialPooler):
     self._persistence = numpy.maximum(self._persistence, 0)
 
     # For now, all active cells participate in the union
-    self._persistence[activeInput.astype(bool)] += self._historyLength
+    self._persistence[activeInput.astype(bool)] = self._historyLength
 
     unionSDR = self._persistence > 0
     

@@ -64,11 +64,11 @@ class SpatiotemporalPoolerExperiment(object):
                                  # "numActiveColumnsPerInhArea": 200,
                                  # "numActiveColumnsPerInhArea": 3,
                                  "stimulusThreshold": 0,
-                                 "synPermInactiveDec": 0.01,
-                                 "synPermActiveInc": 0.1,
-                                 "synPermConnected": 0.1,
+                                'synPermActiveInc': 0.001,
+                                'synPermConnected': 0.5,
+                                'synPermInactiveDec': 0.0001,
                                  # "potentialPct": 0.5,
-                                 "potentialPct": .5,
+                                 "potentialPct": 1.0,
                                  "globalInhibition": True,
                                  "localAreaDensity": -1,
                                  "minPctOverlapDutyCycle": 0.001,
@@ -266,3 +266,5 @@ class SpatiotemporalPoolerExperiment(object):
   #   stdDev = numpy.std(countTrace)
   #   maximum = max(countTrace)
   #   return mean, stdDev, maximum
+
+
