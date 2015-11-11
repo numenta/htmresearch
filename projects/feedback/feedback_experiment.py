@@ -32,7 +32,7 @@ from htmresearch.algorithms.general_temporal_memory import GeneralTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
     TemporalMemoryMonitorMixin)
 from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
-
+from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
 
 
@@ -94,6 +94,10 @@ tmFeedback = None
 up = None
 
 def setup(upSet=False):
+  """
+  Setup experiment, create two identical TM models, named as tmNoFeedback and tmFeedback
+  Create a union temporal pooler if upSet is True
+  """
   global tmNoFeedback, tmFeedback, up
 
   print "Initializing temporal memory..."
@@ -195,7 +199,7 @@ def getUnionTemporalPoolerInput(tm):
 
   return activeCells, predictedActiveCells, burstingColumns
 
-def trainUP(tm, sequences, up=None, trials=trials, clearhistory=True):
+def trainUP(tm, sequences, up=None, trials=trials, clearhistory=True, verbose=0):
 
   for i in range(trials):
     for j, sensorPattern in enumerate(sequences):
@@ -215,9 +219,19 @@ def trainUP(tm, sequences, up=None, trials=trials, clearhistory=True):
           up.compute(activeCells, predActiveCells, learn=False)
 
     if clearhistory:
+      if i == trials-1:
+        if verbose > 0:
+          print " TM metrics after training"
+          print MonitorMixinBase.mmPrettyPrintMetrics(tm.mmGetDefaultMetrics())
+
+        if verbose > 1:
+          print " TM traces after training"
+          print MonitorMixinBase.mmPrettyPrintTraces(tm.mmGetDefaultTraces(verbosity=True),
+                                                     breakOnResets=tm.mmGetTraceResets())
+
       tm.mmClearHistory()
 
-def runUP(tm, mutate_times, sequences, alphabet, up=None, mutation=0):
+def runUP(tm, mutate_times, sequences, alphabet, up=None, mutation=0, verbose=0):
 
   allLabels = []
 
@@ -245,13 +259,20 @@ def runUP(tm, mutate_times, sequences, alphabet, up=None, mutation=0):
 
       allLabels.append(labelPattern(sensorPattern, alphabet))
 
-
   ys = [len(x) for x in tm.mmGetTraceUnpredictedActiveColumns().data]
+
+  if verbose > 0:
+    print " TM metrics on test sequence"
+    print MonitorMixinBase.mmPrettyPrintMetrics(tm.mmGetDefaultMetrics())
+
+  if verbose > 1:
+    print MonitorMixinBase.mmPrettyPrintTraces(tm.mmGetDefaultTraces(verbosity=True),
+                                               breakOnResets=tm.mmGetTraceResets())
 
   return ys, allLabels
 
 def train(tm, sequences, feedback_seq=None, trials=trials,
-          feedback_buffer=10, clearhistory=True):
+          feedback_buffer=10, clearhistory=True, verbose=0):
 
   for i in range(trials):
     for j, sensorPattern in enumerate(sequences):
@@ -268,13 +289,23 @@ def train(tm, sequences, feedback_seq=None, trials=trials,
                    learn=True, sequenceLabel=None)
 
     if clearhistory:
+      if i == trials-1:
+        if verbose > 0:
+          print " TM metrics after training"
+          print MonitorMixinBase.mmPrettyPrintMetrics(tm.mmGetDefaultMetrics())
+
+        if verbose > 1:
+          print " TM traces after training"
+          print MonitorMixinBase.mmPrettyPrintTraces(tm.mmGetDefaultTraces(verbosity=True),
+                                                     breakOnResets=tm.mmGetTraceResets())
+
       tm.mmClearHistory()
 
 
-def run(tm, mutate_times, sequences, alphabet, feedback_seq=None, mutation=0):
+def run(tm, mutate_times, sequences, alphabet, feedback_seq=None, mutation=0, verbose=0):
 
   allLabels = []
-
+  tm.reset()
   for j, sensorPattern in enumerate(sequences):
     if sensorPattern is None:
       tm.reset()
@@ -295,8 +326,15 @@ def run(tm, mutate_times, sequences, alphabet, feedback_seq=None, mutation=0):
 
       allLabels.append(labelPattern(sensorPattern, alphabet))
 
-
   ys = [len(x) for x in tm.mmGetTraceUnpredictedActiveColumns().data]
+
+  if verbose > 0:
+    print " TM metrics on test sequence"
+    print MonitorMixinBase.mmPrettyPrintMetrics(tm.mmGetDefaultMetrics())
+
+  if verbose > 1:
+    print MonitorMixinBase.mmPrettyPrintTraces(tm.mmGetDefaultTraces(verbosity=True),
+                                               breakOnResets=tm.mmGetTraceResets())
 
   return ys, allLabels
 
@@ -389,52 +427,93 @@ def confusionMatrixStats(tm, timestep):
 
   return predAct, unpredAct, predInact, unpredInact
 
-def experiment1(aorb='a', mutate_times = [12], upSet=False):
+def printConfusionMatrix(mat):
+  print "\t predicted neurons \t unpredicted columns"
+  print "active: \t ", mat[0], '\t\t\t', mat[1]
+  print "inactive: \t ", mat[2], '\t\t\t', mat[3]
+
+
+def experiment1(aorb='a', upSet=False):
+  """
+  Test TM responses to miss or incorrect elements in a sequence.
+  For example, instead of ABCDE, we get AB?DE (if aorb=='b') or ABDE (if aorb=='a')
+
+  TM should have the following behavior
+  (1) Burst at "D", while at the same time make prediction for E
+  (2) Correctly predict "E"
+
+  The behavior does not depend on feedback in this case
+  """
 
   setup(upSet)
 
-  if aorb =='a':
+  sequences = generateSequences(2048, 40, 5, 1)
+  alphabet = getAlphabet(sequences)
+
+  if aorb == 'a':
+    # miss an element in the sequence
+    print "train TM on ABCDE"
+    print "test TM on missing elements in a sequence, e.g., instead of ABCDE, the sequence is ABDE"
     mutation = 0
-    timestep = 14
-  elif aorb =='b':
+    mutate_times = []
+    test_timestep = len(sequences)-2
+  elif aorb == 'b':
+    # an element is replaced with noise
+    print "train TM on ABCDE"
+    print "test TM on missing elements in a sequence, e.g., instead of ABCDE, the sequence is AB?DE"
     mutation = 1
-    timestep = 13
+    mutate_times = [len(sequences) - 3]
+    test_timestep = len(sequences)-1
   else:
     raise ValueError
 
-  sequences = generateSequences(2048, 40, 15, 1)
-  alphabet = getAlphabet(sequences)
 
   fixed_feedback = set([random.randint(0, 2047) for _ in range(feedback_n)])
-  feedback_seq = shiftingFeedback(fixed_feedback, len(sequences))
+  feedback_seq = shiftingFeedback(fixed_feedback, len(sequences), percent_shift=0)
 
   # No feedback
-  train(tmNoFeedback, sequences)
+  train(tmNoFeedback, sequences, verbose=0)
   ys1, allLabels = run(tmNoFeedback, mutate_times, sequences, alphabet,
-                       mutation=mutation)
+                       mutation=mutation, verbose=0)
 
   # Feedback
   if up is None:
-    train(tmFeedback, sequences, feedback_seq)
+    train(tmFeedback, sequences, feedback_seq, verbose=0)
     ys2, _ = run(tmFeedback, mutate_times, sequences, alphabet, feedback_seq,
-                 mutation)
+                 mutation, verbose=0)
   else:
     trainUP(tmFeedback, sequences, up)
     ys2, _ = runUP(tmFeedback, mutate_times, sequences, alphabet, up, mutation)
 
-  print "Considering timestep "+str(timestep)
+
+  print "Considering timestep "+str(test_timestep)
   print "No feedback confusion matrix: "
-  print confusionMatrixStats(tmNoFeedback, timestep)
+  printConfusionMatrix(confusionMatrixStats(tmNoFeedback, test_timestep))
   print
   print "Feedback confusion matrix: "
-  print confusionMatrixStats(tmFeedback, timestep)
+  printConfusionMatrix(confusionMatrixStats(tmFeedback, test_timestep))
   print
 
 
 def experiment2(aorb='a', upSet=False):
+  """
+  Disambiguation experiment.
+  Experiment setup:
+    Train TM on sequences ABCDE and XBCDF with/without feedback
+    Test TM on partial ambiguous sequences BCDE and BCDF
+      Without feedback
+      With correct feedback
+      With incorrect feedback
+
+  Desired result:
+    With correct feedback, TM should make correct prediction after D
+    With incorrect feedback, TM should not make correct prediction after D
+    Without feedback, TM should predict both E & F
+  """
   setup(upSet)
 
-  sequences1 = generateSequences(2048, 40, 20, 1)
+  # Create two sequences with format "ABCDE" and "XBCDF"
+  sequences1 = generateSequences(2048, 40, 5, 1)
 
   sequences2 = [x for x in sequences1]
   sequences2[0] = set([random.randint(0, 2047) for _ in sequences1[0]])
@@ -445,49 +524,155 @@ def experiment2(aorb='a', upSet=False):
   feedback_seq1 = shiftingFeedback(fixed_feedback1, len(sequences1))
   feedback_seq2 = shiftingFeedback(fixed_feedback2, len(sequences2))
 
-  sequences = sequences1+sequences2
+  sequences = sequences1 + sequences2
   feedback_seq = feedback_seq1 + feedback_seq2
   alphabet = getAlphabet(sequences)
   partial_sequences1 = sequences1[1:]
   partial_sequences2 = sequences2[1:]
 
+  print "train TM on sequences ABCDE and XBCDF"
+  test_sequence = partial_sequences1
+  print "test TM on sequence BCDE, evaluate responses to E"
+
   if aorb == 'a':
     testFeedback = feedback_seq1
-    title = 'UP is in "ABCDE" state'
+    print 'Feedback is in "ABCDE" state'
+    print 'Desired outcome: '
+    print '\t many extra prediction without feedback (>0 predicted inactive cell)'
+    print '\t no extra prediction with feedback (~0 predicted inactive cell)'
   elif aorb == 'b':
     testFeedback = feedback_seq2
-    title = 'UP is in "XBCDF" state'
+    print 'Feedback is in "XBCDF" state'
+    print 'Desired outcome: '
+    print '\t many extra prediction without feedback (>0 predicted inactive cell)'
+    print '\t unexpected input with feedback (>0 predicted inactive cell, ~0 predicted active cell)'
   else:
     raise ValueError
 
   # No feedback
-  for _ in range(trials):
-    train(tmNoFeedback, sequences1, trials=1)
-    train(tmNoFeedback, sequences2, trials=1)
+  train(tmNoFeedback, sequences, verbose=0)
 
-  ys1, allLabels = run(tmNoFeedback, defaultdict(list), partial_sequences2,
-                       alphabet)
+  ys1, allLabels = run(tmNoFeedback, defaultdict(list), test_sequence,
+                       alphabet, verbose=0)
 
   # Feedback
   if up is None:
-    train(tmFeedback, sequences, feedback_seq)
-    ys2, _ = run(tmFeedback, defaultdict(list), partial_sequences1, alphabet,
-                 feedback_seq=testFeedback)
+    train(tmFeedback, sequences, feedback_seq, verbose= 0)
+    ys2, _ = run(tmFeedback, defaultdict(list), test_sequence, alphabet,
+                 feedback_seq=testFeedback, verbose=0)
   else:
     trainUP(tmFeedback, sequences, up)
-    ys2, _ = runUP(tmFeedback, defaultdict(list), partial_sequences1, alphabet, up)
+    ys2, _ = runUP(tmFeedback, defaultdict(list), test_sequence, alphabet, up)
 
-  timestep = 18
+  timestep = len(test_sequence)-2
   print "Considering timestep "+str(timestep)
   print "No feedback confusion matrix: "
-  print confusionMatrixStats(tmNoFeedback, timestep)
+  printConfusionMatrix(confusionMatrixStats(tmNoFeedback, timestep))
   print
   print "Feedback confusion matrix: "
-  print confusionMatrixStats(tmFeedback, timestep)
+  printConfusionMatrix(confusionMatrixStats(tmFeedback, timestep))
   print
 
 
-def experiment3(aorb='a', upSet=False):
+def experiment3(upSet=False):
+  """
+  Retain context with noisy sequences.
+  Experiment setup:
+    Train TM on sequences ABCDE and XBCDF with/without feedback
+    Test TM on sequence with temporal variations A?CDE, A?CDF, ACDE, ACDF
+      Without feedback
+      With correct feedback
+      With incorrect feedback
+
+  """
+  print " experiment: test TM with/without feedback on sequences with temporal variations"
+  setup(upSet)
+
+  # Create two sequences with format "ABCDE" and "XBCDF"
+  sequences1 = generateSequences(2048, 40, 5, 1)
+
+  sequences2 = [x for x in sequences1]
+  sequences2[0] = set([random.randint(0, 2047) for _ in sequences1[0]])
+  sequences2[-2] = set([random.randint(0, 2047) for _ in sequences1[-2]])
+
+  fixed_feedback1 = set([random.randint(0, 2047) for _ in range(feedback_n)])
+  fixed_feedback2 = set([random.randint(0, 2047) for _ in range(feedback_n)])
+  feedback_seq1 = shiftingFeedback(fixed_feedback1, len(sequences1))
+  feedback_seq2 = shiftingFeedback(fixed_feedback2, len(sequences2))
+
+  sequences = sequences1 + sequences2
+  feedback_seq = feedback_seq1 + feedback_seq2
+  alphabet = getAlphabet(sequences)
+
+  for test_case in xrange(4):
+    # train TM with/without feedback
+    print " training TM with ABCDE and XBCDF"
+    # No feedback
+    train(tmNoFeedback, sequences, verbose=0)
+    # Feedback
+    if up is None:
+      train(tmFeedback, sequences, feedback_seq, verbose=0)
+    else:
+      trainUP(tmFeedback, sequences, up)
+
+    testFeedback = feedback_seq1
+    if test_case == 0:
+      print "run on A?CDE, test for E element"
+      print "desired result: "
+      print " without feedback: "
+      print "\t extra predictions (both E&F predicted, ~40 predicted active cells, ~40 predicted inactive cells)"
+      print " with feedback: "
+      print "\t no extra prediction (only E is predicted due to disambiguation at D, 0 predicted inactive cells)"
+      test_sequence = sequences1
+      test_sequence[1] = set([random.randint(0, 2047) for _ in sequences1[0]])
+    elif test_case == 1:
+      print "run on A?CDF, test for F element"
+      print "desired result: "
+      print " without feedback: "
+      print "\t both E and F are predicted (~40 predicted active cells, ~40 predicted inactive cells)"
+      print " with feedback: "
+      print "\t F is unpredicted, E is predicted but inactive (clear context due to feedback) " \
+            "(~40 predicted inactive cells, ~0 predicted active cells)"
+      test_sequence = sequences1
+      test_sequence[1] = set([random.randint(0, 2047) for _ in sequences1[0]])
+      test_sequence[-2] = sequences2[-2]
+    elif test_case == 2:
+      print "run on ACDE, test for E element"
+      print "desired result: "
+      print " without feedback: "
+      print "\t extra predictions (both E&F predicted, ~40 predicted active cells, ~40 predicted inactive cells)"
+      print " with feedback: "
+      print "\t no extra prediction (only E is predicted due to disambiguation at D, 0 predicted inactive cells)"
+      test_sequence = [sequences1[0]] + sequences1[2:]
+    elif test_case == 3:
+      print "run on ACDF, test for F element"
+      print "desired result: "
+      print " without feedback: "
+      print "\t both E and F are predicted (~40 predicted active cells, ~40 predicted inactive cells)"
+      print " with feedback: "
+      print "\t F is unpredicted, E is predicted but inactive (clear context due to feedback) " \
+            "(~40 predicted inactive cells, ~0 predicted active cells)"
+      test_sequence = [sequences1[0]] + sequences1[2:]
+      test_sequence[-2] = sequences2[-2]
+
+    ys1, allLabels = run(tmNoFeedback, defaultdict(list), test_sequence, alphabet)
+    # Feedback
+    if up is None:
+      ys2, _ = run(tmFeedback, defaultdict(list), test_sequence, alphabet,
+                   feedback_seq=testFeedback)
+    else:
+      ys2, _ = runUP(tmFeedback, defaultdict(list), test_sequence, alphabet, up)
+
+    timestep = len(test_sequence)-2
+    print "Considering timestep "+str(timestep)
+    print "No feedback confusion matrix: "
+    printConfusionMatrix(confusionMatrixStats(tmNoFeedback, timestep))
+    print
+    print "Feedback confusion matrix: "
+    printConfusionMatrix(confusionMatrixStats(tmFeedback, timestep))
+    print
+
+def experiment4(aorb='a', upSet=False):
   setup(upSet)
 
   if aorb == 'a':
@@ -530,7 +715,6 @@ def experiment3(aorb='a', upSet=False):
   print "Feedback confusion matrix: "
   print confusionMatrixStats(tmFeedback, timestep)
   print
-
 
 # def capacityExperiment(up=None):
 
@@ -578,22 +762,14 @@ def experiment3(aorb='a', upSet=False):
 
 if __name__ == "__main__":
 
-  print "Experiment 1a"
-  experiment1('a', upSet=True)
+  print "Experiment 2a, disambiguation experiment, correct feedback"
+  experiment2('a', upSet=False)
   print
 
-  print "Experiment 1b"
-  experiment1('b', upSet=True)
-  print
-
-  print "Experiment 2a"
-  experiment2('a', upSet=True)
-  print
-
-  print "Experiment 2b"
-  experiment2('b', upSet=True)
+  print "Experiment 2b, disambiguation experiment, incorrect feedback"
+  experiment2('b', upSet=False)
   print
 
   print "Experiment 3a"
-  experiment3('a', upSet=True)
+  experiment3(upSet=False)
   print
