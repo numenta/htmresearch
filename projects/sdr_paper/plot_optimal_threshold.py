@@ -71,9 +71,6 @@ for i,e in enumerate(errors):
   ubound.append(1e-9)
   lbound.append(errors[-1])
 
-print lnerror
-print ubound
-
 # trace1 = Scatter(
 #     y=ubound,
 #     x=[3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24],
@@ -129,12 +126,12 @@ layout = Layout(
               '\\theta)$',
         titlefont=Font(
             family='',
-            size=16,
+            size=18,
             color=''
         ),
         tickfont=Font(
             family='',
-            size=12,
+            size=18,
             color=''
         ),
         showline=True,
@@ -151,7 +148,7 @@ layout = Layout(
         ),
         tickfont=Font(
             family='',
-            size=10,
+            size=16,
             color=''
         ),
         showline=True,
@@ -166,7 +163,7 @@ layout = Layout(
             showarrow=True,
             font=Font(
                 family='',
-                size=14,
+                size=18,
                 color=''
             ),
             xanchor='auto',
@@ -194,7 +191,7 @@ layout = Layout(
           showarrow=True,
           font=Font(
               family='',
-              size=14,
+              size=18,
               color=''
           ),
           xanchor='auto',
@@ -220,4 +217,4 @@ fig = Figure(data=data, layout=layout)
 plot_url = py.plot(fig)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
-py.image.save_as(figure, 'figure.png')
+py.image.save_as(figure, 'optimal_threshold.png')
