@@ -51,8 +51,11 @@ class ClassificationModelKeywords(ClassificationModel):
     super(ClassificationModelKeywords, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
 
+    # We use the pctOverlapOfInput distance metric for this model so the
+    # queryModel() output is consistent (i.e. 0.0-1.0). The KNN classifications
+    # aren't affected b/c the raw overlap distance is still used under the hood.
     self.classifier = KNNClassifier(exact=True,
-                                    distanceMethod="rawOverlap",
+                                    distanceMethod="pctOverlapOfInput",
                                     k=numLabels,
                                     verbosity=verbosity-1)
 
@@ -113,14 +116,14 @@ class ClassificationModelKeywords(ClassificationModel):
           self.sampleReference.append(self.patterns[i]["ID"])
 
 
-  def testModel(self, i, numLabels=3):
+  def testModel(self, i, seed=42):
     """
-    Test the model on record i.  Returns the classifications
-    most frequent amongst the classifications of the sample's individual tokens.
+    Test the model on record i.  Returns the classifications most frequent 
+    amongst the classifications of the sample's individual tokens.
     We ignore the terms that are unclassified, picking the most frequent
     classifications among those that are detected.
+    The random seed is used in getWinningLabels().
 
-    @param numLabels  (int)           Number of classification predictions.
     @return           (numpy array)   numLabels most-frequent classifications
                                       for the data samples; int or empty.
     """
@@ -137,14 +140,14 @@ class ClassificationModelKeywords(ClassificationModel):
       else:
         totalInferenceResult += inferenceResult
 
-    return self.getWinningLabels(totalInferenceResult, numLabels)
+    return self.getWinningLabels(totalInferenceResult, seed)
 
 
   def infer(self, patterns):
     """
     Get the classifier output for a single input pattern; assumes classifier
     has an infer() method (as specified in NuPIC kNN implementation). For this
-    model we sum the distances across the patterns. and normalize
+    model we sum the distances across the patterns and normalize
     before returning.
     @return       (numpy.array)       Each entry is the distance from the
         input pattern to that prototype (pattern in the classifier). All

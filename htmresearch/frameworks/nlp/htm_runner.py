@@ -243,26 +243,7 @@ class HTMRunner(Runner):
       self.model.trainModel(iterations=numTokens)
 
 
-  def _selectWinners(self, predictions):
-    """
-    Selects the final classifications for the predictions.  Voting
-    method=="last" means the predictions of the last sample are used. Voting
-    method=="most" means the most frequent sample is used.
-    @param predictions    (list)    List of list of possible classifications
-    @return               (list)    List of winning classifications
-    """
-    if self.votingMethod == "last":
-      return predictions[-1]
-    elif self.votingMethod == "most":
-      counter = Counter()
-      for p in predictions:
-        counter.update(p)
-      return zip(*counter.most_common(self.numClasses))[0]
-    else:
-      raise ValueError("voting method must be either \'last\' or \'most\'")
-
-
-  def _testing(self, trial):
+  def _testing(self, trial, seed):
     """
     Test the network on the test set for a particular trial and store the
     results
@@ -282,7 +263,7 @@ class HTMRunner(Runner):
     for numTokens in self.partitions[trial][1]:
       predictions = []
       for _ in xrange(numTokens):
-        predicted = self.model.testModel()
+        predicted = self.model.testModel(seed)
         predictions.append(predicted)
       winningPredictions = self._selectWinners(predictions)
 
@@ -299,6 +280,25 @@ class HTMRunner(Runner):
     self.samples = NetworkDataGenerator.getSamples(self.dataFiles[trial])
 
     self.results.append(results)
+
+
+  def _selectWinners(self, predictions):
+    """
+    Selects the final classifications for the predictions.  Voting
+    method=="last" means the predictions of the last sample are used. Voting
+    method=="most" means the most frequent sample is used.
+    @param predictions    (list)    List of list of possible classifications
+    @return               (list)    List of winning classifications
+    """
+    if self.votingMethod == "last":
+      return predictions[-1]
+    elif self.votingMethod == "most":
+      counter = Counter()
+      for p in predictions:
+        counter.update(p)
+      return zip(*counter.most_common(self.numClasses))[0]
+    else:
+      raise ValueError("voting method must be either \'last\' or \'most\'")
 
 
   def partitionIndices(self, _):

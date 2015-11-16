@@ -45,7 +45,7 @@
       "maxUnionActivity": 0.20,
       "synPermPredActiveInc": 0.1,
       "synPermPreviousPredActiveInc": 0.1,
-      "decayFunctionType": "NoDecay"
+      "decayFunctionType": "Exponential"
     }
   },
   "classifierRegionConfig": {
@@ -54,7 +54,7 @@
     "regionType": "py.KNNClassifierRegion",
     "regionParams": {
       "k": 3,
-      "distThreshold": 0,
+      "distanceMethod": "rawOverlap",
       "maxCategoryCount": 100
     }
   }
