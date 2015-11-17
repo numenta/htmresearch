@@ -40,6 +40,9 @@ vegetable_reader = csv.reader(open('vegetables.txt', 'r'))
 for row in vegetable_reader:
   vegetables.append(row[0])
 
+animals = animals[:5]
+vegetables = vegetables[:5]
+
 nSample = 100
 sentences = []
 classification_label_list = ['animalEatsVegetable', 'vegetableEatsAnimal']
@@ -47,16 +50,21 @@ classification_labels = []
 for ID in xrange(nSample):
   animal = animals[random.randint(0, len(animals)-1)]
   vegetable = vegetables[random.randint(0, len(vegetables)-1)]
-  if ID < nSample/2:
-    sentence = animal + ' eats ' + vegetable
-    classification = 0
-  else:
-    sentence = vegetable + ' eats ' + animal
-    classification = 1
+
+  sentence = animal + ' eats ' + vegetable
+  classification = 0
 
   sentences.append(sentence)
   classification_labels.append(classification)
   print str(ID), ': ', classification_labels[-1], sentences[-1]
+
+  sentence = vegetable + ' eats ' + animal
+  classification = 1
+
+  sentences.append(sentence)
+  classification_labels.append(classification)
+  print str(ID), ': ', classification_labels[-1], sentences[-1]
+
 
 data_writer = csv.writer(open('animal_eat_vegetable.csv', 'w'))
 data_writer.writerow(['ID', 'Question', 'Sample', 'Classification'])
@@ -73,7 +81,7 @@ for ID in xrange(nSample):
   classification = classification_labels[ID]
   words = sentence.split(' ')
   for i in xrange(len(words)):
-    if i==0:
+    if i == 0:
       reset = 1
     else:
       reset = 0
