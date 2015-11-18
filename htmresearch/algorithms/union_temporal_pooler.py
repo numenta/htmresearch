@@ -25,6 +25,7 @@ import numpy
 from nupic.research.spatial_pooler import SpatialPooler
 # Uncomment below line to use C++ SP
 # from nupic.bindings.algorithms import SpatialPooler
+from nupic.bindings.math import GetNTAReal
 from htmresearch.frameworks.union_temporal_pooling.activation.excite_functions.excite_functions_all import (
   LogisticExciteFunction, FixedExciteFunction)
 
@@ -32,8 +33,8 @@ from htmresearch.frameworks.union_temporal_pooling.activation.decay_functions.de
   ExponentialDecayFunction, NoDecayFunction)
 
 
-REAL_DTYPE = numpy.float32
-UINT_DTYPE = numpy.uint32
+REAL_DTYPE = GetNTAReal()
+UINT_DTYPE = "uint32"
 _TIE_BREAKER_FACTOR = 0.000001
 
 
