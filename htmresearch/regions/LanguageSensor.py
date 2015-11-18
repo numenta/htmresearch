@@ -79,7 +79,7 @@ class LanguageSensor(PyRegion):
       "outputs":{
         "dataOut":{
           "description":"Encoded text",
-          "dataType":"Real32",
+          "dataType":"UInt32",
           "count":0,
           "regionLevel":True,
           "isDefaultOutput":True,

@@ -27,6 +27,10 @@ from nupic.regions.PyRegion import PyRegion
 
 
 
+uintDType = "uint32"
+
+
+
 def _getPoolerClass(name):
     if name=="union":
       return UnionTemporalPooler
@@ -250,7 +254,8 @@ class TemporalPoolerRegion(PyRegion):
     """
     activeCells = inputs["activeCells"]
     predictedActiveCells = inputs["predictedActiveCells"] if (
-      "predictedActiveCells" in inputs) else numpy.zeros(self._inputWidth)
+      "predictedActiveCells" in inputs) else numpy.zeros(self._inputWidth,
+                                                         dtype=uintDType)
 
     resetSignal = False
     if 'resetIn' in inputs:
@@ -285,7 +290,7 @@ class TemporalPoolerRegion(PyRegion):
       inputs=dict(
           activeCells=dict(
           description="Active cells",
-          dataType="Real32",
+          dataType="UInt32",
           count=0,
           required=True,
           regionLevel=False,
@@ -294,7 +299,7 @@ class TemporalPoolerRegion(PyRegion):
 
           predictedActiveCells=dict(
           description="Predicted Actived Cells",
-          dataType="Real32",
+          dataType="UInt32",
           count=0,
           required=True,
           regionLevel=True,
