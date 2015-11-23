@@ -290,5 +290,5 @@ fig = Figure(data=data, layout=layout)
 plot_url = py.plot(fig)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
-py.image.save_as(figure, 'union_effect_of_n.png')
+py.image.save_as(figure, 'union_effect_of_n.png', scale=4)
 
