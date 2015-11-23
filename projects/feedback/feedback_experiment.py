@@ -280,7 +280,7 @@ def train(tm, sequences, feedback_seq=None, trials=trials,
         tm.reset()
       else:
         if i<feedback_buffer:
-          feedback = set([random.randint(0, 2048) for _ in range(feedback_n)])
+          feedback = set([random.randint(0, 2047) for _ in range(feedback_n)])
         elif feedback_seq is not None:
           feedback = feedback_seq[j]
         else:
