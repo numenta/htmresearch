@@ -29,9 +29,16 @@ import numpy
 
 from nupic.research.monitor_mixin.metric import Metric
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
 from nupic.research.monitor_mixin.plot import Plot
 from nupic.research.monitor_mixin.trace import (
-  IndicesTrace, StringsTrace, BoolsTrace, MetricsTrace)
+  IndicesTrace, StringsTrace, BoolsTrace, MetricsTrace, CountsTrace)
+
+from nupic.bindings.math import GetNTAReal
+
+
+realDType = GetNTAReal()
+uintType = "uint32"
 
 
 
@@ -45,13 +52,143 @@ class UnionTemporalPoolerMonitorMixin(MonitorMixinBase):
     super(UnionTemporalPoolerMonitorMixin, self).__init__(*args, **kwargs)
 
     self._mmResetActive = True  # First iteration is always a reset
+    self.mmClearHistory()
 
 
-  def mmGetTraceActiveCells(self):
+  def mmGetDataUnionSDRDutyCycle(self):
     """
-    @return (Trace) Trace of active cells
+    @return (list) duty cycles for union SDR bits
     """
-    return self._mmTraces["activeCells"]
+    return self._mmData["unionSDRDutyCycle"].tolist()
+
+
+  def mmGetMetricUnionSDRDutyCycle(self):
+    """
+    @return (Metric) duty cycle metric for union SDR bits
+    """
+    data = self.mmGetDataUnionSDRDutyCycle()
+    return Metric(self, "Union SDR duty cycle", data)
+
+
+  def mmGetPlotUnionSDRDutyCycle(self, title="Union SDR Duty Cycle"):
+    """
+    @return (Plot) Plot of union SDR duty cycle.
+    """
+    plot = Plot(self, title)
+    unionSDRDutyCycle = self.mmGetDataUnionSDRDutyCycle()
+    plot.addGraph(sorted(unionSDRDutyCycle, reverse=True),
+                  position=211,
+                  xlabel="Union SDR Bit", ylabel="Duty Cycle")
+    plot.addHistogram(unionSDRDutyCycle,
+                      position=212,
+                      bins=len(unionSDRDutyCycle) / 10,
+                      xlabel="Duty Cycle", ylabel="# Union SDR Bits")
+    return plot
+
+
+  def mmGetDataPersistenceDutyCycle(self):
+    """
+    @return (list) duty cycles for persistences
+    """
+    return self._mmData["persistenceDutyCycle"].tolist()
+
+
+  def mmGetMetricPersistenceDutyCycle(self):
+    """
+    @return (Metric) duty cycle metric for persistences
+    """
+    data = self.mmGetDataPersistenceDutyCycle()
+    return Metric(self, "Persistence duty cycle", data)
+
+
+  def mmGetPlotPersistenceDutyCycle(self, title="Persistence Duty Cycle"):
+    """
+    @return (Plot) Plot of persistence duty cycle.
+    """
+    plot = Plot(self, title)
+    persistenceDutyCycle = self.mmGetDataPersistenceDutyCycle()
+    plot.addGraph(sorted(persistenceDutyCycle, reverse=True),
+                  position=211,
+                  xlabel="Union SDR Bit", ylabel="Persistence Duty Cycle")
+    plot.addHistogram(persistenceDutyCycle,
+                      position=212,
+                      bins=len(persistenceDutyCycle) / 10,
+                      xlabel="Persistence Duty Cycle", ylabel="# Union SDR Bits")
+    return plot
+
+
+  def mmGetDataBitlife(self):
+    """
+    The bitlife is the number of time steps for which a union SDR bit remains
+    active. This method returns a list of all bitlife values with each entry
+    corresponding to an instance in which a bit turns on.
+
+    @return (list) All bitlife values
+    """
+    return self._mmComputeBitLifeStats()
+
+
+  def mmGetMetricBitlife(self):
+    """
+    See `mmGetDataBitlife` for description of bitlife.
+
+    @return (Metric) bitlife metric
+    """
+    data = self._mmComputeBitLifeStats()
+    return Metric(self, "Union SDR bitlife", data)
+
+
+  def mmGetPlotBitlife(self, title="Bitlife Statistics"):
+    """
+    @return (Plot) Plot of bitlife statistics.
+    """
+    plot = Plot(self, title)
+    bitlife = self.mmGetDataBitlife()
+    print bitlife
+    plot.addGraph(sorted(bitlife, reverse=True),
+                  position=211,
+                  xlabel="Union SDR Bit", ylabel="Bitlife")
+    plot.addHistogram(bitlife,
+                      position=212,
+                      bins=max(len(bitlife) / 10, 3),
+                      xlabel="Bitlife", ylabel="# Union SDR Bits")
+    return plot
+
+
+  def mmGetDataConnectedCounts(self):
+    connectedCounts = numpy.zeros(self.getNumColumns(), dtype='uint32')
+    self.getConnectedCounts(connectedCounts)
+    return connectedCounts
+
+
+  def mmGetMetricConnectedCounts(self):
+    data = self.mmGetDataConnectedCounts()
+    return Metric(self, "Connected synapse counts", data)
+
+
+  def mmGetTraceUnionSDR(self):
+    """
+    @return (Trace) Trace of union SDR
+    """
+    return self._mmTraces["unionSDR"]
+
+
+  def mmGetPlotUnionSDRActivity(self, title="Union SDR Activity Raster",
+                                showReset=False, resetShading=0.25):
+    """ Returns plot of the activity of union SDR bits.
+    @param title an optional title for the figure
+    @param showReset if true, the first set of activities after a reset
+                        will have a gray background
+    @param resetShading If showReset is true, this float specifies the
+    intensity of the reset background with 0.0 being white and 1.0 being black
+    @return (Plot) plot
+    """
+    unionSDRTrace = self.mmGetTraceUnionSDR().data
+    columnCount = self.getNumColumns()
+    activityType = "Union SDR Activity"
+    return self.mmGetCellTracePlot(unionSDRTrace, columnCount, activityType,
+                                   title=title, showReset=showReset,
+                                   resetShading=resetShading)
 
 
   def mmGetTraceSequenceLabels(self):
@@ -75,17 +212,65 @@ class UnionTemporalPoolerMonitorMixin(MonitorMixinBase):
     return self._mmTraces["connectionsPerColumnMetric"]
 
 
+  def mmGetPlotConnectionsPerColumn(self, title="Connections per Columns"):
+    """
+    Returns plot of # connections per column.
+
+    @return (Plot) plot
+    """
+    plot = Plot(self, title)
+    connectedCounts = numpy.ndarray(self.getNumColumns(), dtype=uintType)
+    self.getConnectedCounts(connectedCounts)
+
+    plot.addGraph(sorted(connectedCounts.tolist(), reverse=True),
+                  position=211,
+                  xlabel="column", ylabel="# connections")
+
+    plot.addHistogram(connectedCounts.tolist(),
+                      position=212,
+                      bins=len(connectedCounts) / 10,
+                      xlabel="# connections", ylabel="# columns")
+    return plot
+
+
   def mmGetDataOverlap(self):
     """
-    Returns 2D matrix of overlaps for sets of active cells between pairs of
+    Returns 2D matrix of overlaps for sets of active bits between pairs of
     iterations. Both the rows and columns are iterations, and the values in the
-    matrix are the size of overlaps between sets of active cells for those
-    iterations.
+    matrix are the value of the overlap metric between sets of active bits for
+    those iterations.
 
     @return (numpy.array) Overlap data
     """
     self._mmComputeSequenceRepresentationData()
     return self._mmData["overlap"]
+
+
+  def mmPrettyPrintDataOverlap(self):
+    """
+    Returns pretty-printed string representation of overlap metric data.
+    (See `mmGetDataOverlap`.)
+
+    @return (string) Pretty-printed data
+    """
+    matrix = self.mmGetDataOverlap()
+    resetsTrace = self.mmGetTraceResets()
+
+    text = ""
+
+    for i, row in enumerate(matrix):
+      if resetsTrace.data[i]:
+        text += "\n"
+
+      for j, item in enumerate(row):
+        if resetsTrace.data[j]:
+          text += "    "
+
+        text += "{:4}".format(item)
+
+      text += "\n"
+
+    return text
 
 
   def mmGetMetricStabilityConfusion(self):
@@ -103,6 +288,26 @@ class UnionTemporalPoolerMonitorMixin(MonitorMixinBase):
     return Metric(self, "stability confusion", numbers)
 
 
+  def mmGetPlotStability(self, title="Stability", showReset=False,
+                         resetShading=0.25):
+    """
+    Returns plot of the overlap metric between union SDRs within a sequence.
+    @param title an optional title for the figure
+    @return (Plot) plot
+    """
+    plot = Plot(self, title)
+    self._mmComputeSequenceRepresentationData()
+    data = self._mmData["stabilityConfusion"]
+    plot.addGraph(sorted(data, reverse=True),
+                  position=211,
+                  xlabel="Time steps", ylabel="Overlap")
+    plot.addHistogram(data,
+                      position=212,
+                      bins=100,
+                      xlabel="Overlap", ylabel="# time steps")
+    return plot
+
+
   def mmGetMetricDistinctnessConfusion(self):
     """
     For each iteration that doesn't follow a reset, looks at every other
@@ -117,42 +322,27 @@ class UnionTemporalPoolerMonitorMixin(MonitorMixinBase):
     return Metric(self, "distinctness confusion", numbers)
 
 
-  def mmGetPlotConnectionsPerColumn(self, title=None):
+  def mmGetPlotDistinctness(self, title="Distinctiness", showReset=False,
+                            resetShading=0.25):
     """
-    Returns plot of # connections per column.
-
+    Returns plot of the overlap metric between union SDRs between sequences.
+    @param title an optional title for the figure
     @return (Plot) plot
     """
     plot = Plot(self, title)
-    plot.addGraph(sorted(self._connectedCounts.tolist(), reverse=True),
+    self._mmComputeSequenceRepresentationData()
+    data = self._mmData["distinctnessConfusion"]
+    plot.addGraph(sorted(data, reverse=True),
                   position=211,
-                  xlabel="column", ylabel="# connections")
-    plot.addHistogram(self._connectedCounts.tolist(),
+                  xlabel="Time steps", ylabel="Overlap")
+    plot.addHistogram(data,
                       position=212,
-                      bins=len(self._connectedCounts) / 10,
-                      xlabel="# connections", ylabel="# columns")
+                      bins=100,
+                      xlabel="Overlap", ylabel="# time steps")
     return plot
 
 
-  def mmGetCellActivityPlot(self, title=None, showReset=False,
-                            resetShading=0.25):
-    """ Returns plot of the cell activity.
-    @param title an optional title for the figure
-    @param showReset if true, the first set of cell activities after a reset
-                        will have a gray background
-    @param resetShading If showReset is true, this float specifies the
-    intensity of the reset background with 0.0 being white and 1.0 being black
-    @return (Plot) plot
-    """
-    cellTrace = self._mmTraces["activeCells"].data
-    cellCount = self.getNumColumns()
-    activityType = "Cell Activity"
-    return self.mmGetCellTracePlot(cellTrace, cellCount, activityType,
-                                   title=title, showReset=showReset,
-                                   resetShading=resetShading)
-
-
-  def mmGetPermanencesPlot(self, title=None):
+  def mmGetPlotPermanences(self, title="Permanences"):
     """ Returns plot of column permanences.
     @param title an optional title for the figure
     @return (Plot) plot
@@ -198,25 +388,75 @@ class UnionTemporalPoolerMonitorMixin(MonitorMixinBase):
   # Helpers
   # ==============================
 
+
+  @staticmethod
+  def _mmUpdateDutyCyclesHelper(dutyCycles, newInput, period):
+    """
+    Updates a duty cycle estimate with a new value. This is a helper
+    function that is used to update several duty cycle variables in
+    the Column class, such as: overlapDutyCucle, activeDutyCycle,
+    minPctDutyCycleBeforeInh, minPctDutyCycleAfterInh, etc. returns
+    the updated duty cycle. Duty cycles are updated according to the following
+    formula:
+
+                  (period - 1)*dutyCycle + newValue
+      dutyCycle := ----------------------------------
+                              period
+
+    Parameters:
+    ----------------------------
+    @param dutyCycles: An array containing one or more duty cycle values that need
+                    to be updated
+    @param newInput: A new numerical value used to update the duty cycle
+    @param period:  The period of the duty cycle
+    """
+    assert(period >= 1)
+    return (dutyCycles * (period -1.0) + newInput) / period
+
+
+  def _mmUpdateDutyCycles(self):
+    """
+    Update the duty cycle variables internally tracked by the TM mixin.
+    """
+    period = self.getDutyCyclePeriod()
+
+    unionSDRArray = numpy.zeros(self.getNumColumns())
+    unionSDRArray[list(self._mmTraces["unionSDR"].data[-1])] = 1
+
+    self._mmData["unionSDRDutyCycle"] = \
+      UnionTemporalPoolerMonitorMixin._mmUpdateDutyCyclesHelper(
+        self._mmData["unionSDRDutyCycle"], unionSDRArray, period)
+
+    self._mmData["persistenceDutyCycle"] = \
+      UnionTemporalPoolerMonitorMixin._mmUpdateDutyCyclesHelper(
+        self._mmData["persistenceDutyCycle"], self._poolingActivation, period)
+
+
   def _mmComputeSequenceRepresentationData(self):
+    """
+    Calculates values for the overlap distance matrix, stability within a
+    sequence, and distinctness between sequences. These values are cached so
+    that they do need to be recomputed for calls to each of several accessor
+    methods that use these values.
+    """
     if not self._sequenceRepresentationDataStale:
       return
 
-    activeCellsTrace = self.mmGetTraceActiveCells()
+    unionSDRTrace = self.mmGetTraceUnionSDR()
     sequenceLabelsTrace = self.mmGetTraceSequenceLabels()
     resetsTrace = self.mmGetTraceResets()
 
-    n = len(activeCellsTrace.data)
-    overlap = numpy.empty((n, n), dtype=int)
-    stabilityConfusion = []
-    distinctnessConfusion = []
+    n = len(unionSDRTrace.data)
+    overlapMatrix = numpy.empty((n, n), dtype=uintType)
+    stabilityConfusionUnionSDR = []
+    distinctnessConfusionUnionSDR = []
 
     for i in xrange(n):
       for j in xrange(i+1):
-        numActiveCells = len(activeCellsTrace.data[i])
-        numOverlap = len(activeCellsTrace.data[i] & activeCellsTrace.data[j])
-        overlap[i][j] = numOverlap
-        overlap[j][i] = numOverlap
+        overlapUnionSDR = len(unionSDRTrace.data[i] & unionSDRTrace.data[j])
+
+        overlapMatrix[i][j] = overlapUnionSDR
+        overlapMatrix[j][i] = overlapUnionSDR
 
         if (i != j and
             sequenceLabelsTrace.data[i] is not None and
@@ -224,44 +464,31 @@ class UnionTemporalPoolerMonitorMixin(MonitorMixinBase):
             sequenceLabelsTrace.data[j] is not None and
             not resetsTrace.data[j]):
           if sequenceLabelsTrace.data[i] == sequenceLabelsTrace.data[j]:
-            stabilityConfusion.append(numActiveCells - numOverlap)
+            stabilityConfusionUnionSDR.append(overlapUnionSDR)
           else:
-            distinctnessConfusion.append(numOverlap)
+            distinctnessConfusionUnionSDR.append(overlapUnionSDR)
 
-    self._mmData["overlap"] = overlap
-    self._mmData["stabilityConfusion"] = stabilityConfusion
-    self._mmData["distinctnessConfusion"] = distinctnessConfusion
+    self._mmData["overlap"] = overlapMatrix
+    self._mmData["stabilityConfusion"] = stabilityConfusionUnionSDR
+    self._mmData["distinctnessConfusion"] = distinctnessConfusionUnionSDR
 
     self._sequenceRepresentationDataStale = False
 
 
-  def _mmComputeUnionSDRdiff(self):
-    """
-    Compute fraction of shared bits across adjacent time point    
-    @return (list) fraction of shared bits as a function of time steps
-    """
-    n = len(self._mmTraces["activeCells"].data)    
-    unionSDRshared = []
-    for t in xrange(n-1):      
-      sharedBits = len(self._mmTraces["activeCells"].data[t] & \
-                       self._mmTraces["activeCells"].data[t+1])
-      unionSDRshared.append( sharedBits/float(len(self._mmTraces["activeCells"].data[t+1])) )
-
-    return unionSDRshared
-
   def _mmComputeBitLifeStats(self):
-    """    
+    """ 
     @return (list) Life duration of all active bits
     """
     bitLifeList = []
-    n = len(self._mmTraces["activeCells"].data)    
-    bitLifeCounter = numpy.zeros(self._numColumns) 
+    traceData = self._mmTraces["unionSDR"].data
+    n = len(traceData)    
+    bitLifeCounter = numpy.zeros(self.getNumColumns()) 
     preActiveCells = set()
     for t in xrange(n-1):
       preActiveCells = set(numpy.where(bitLifeCounter>0)[0])
-      newActiveCells = list(self._mmTraces["activeCells"].data[t] - preActiveCells)
-      stopActiveCells = list(preActiveCells - self._mmTraces["activeCells"].data[t])
-      continuousActiveCells = list(preActiveCells & self._mmTraces["activeCells"].data[t] )
+      newActiveCells = list(traceData[t] - preActiveCells)
+      stopActiveCells = list(preActiveCells - traceData[t])
+      continuousActiveCells = list(preActiveCells & traceData[t] )
       bitLifeList += list(bitLifeCounter[stopActiveCells])
 
       bitLifeCounter[stopActiveCells] = 0
@@ -269,32 +496,36 @@ class UnionTemporalPoolerMonitorMixin(MonitorMixinBase):
       bitLifeCounter[continuousActiveCells] += 1
 
     return bitLifeList
+  
 
+    
+    
   # ==============================
   # Overrides
   # ==============================
 
   def compute(self, *args, **kwargs):
-    sequenceLabel = None
-    if "sequenceLabel" in kwargs:
-      sequenceLabel = kwargs["sequenceLabel"]
-      del kwargs["sequenceLabel"]
+    sequenceLabel = kwargs.pop("sequenceLabel", None)
 
-    activeColumns = super(UnionTemporalPoolerMonitorMixin, self).compute(*args,
+    unionSDR = super(UnionTemporalPoolerMonitorMixin, self).compute(*args,
                                                                     **kwargs)
-    activeColumns = set(activeColumns)
-    activeCells = activeColumns
 
-    self._mmTraces["activeCells"].data.append(activeCells)
+    ### From spatial pooler
+    # total number of connections
+    connectedCounts = numpy.zeros(self.getNumColumns(), dtype=uintType)
+    self.getConnectedCounts(connectedCounts)
+    numConnections = numpy.sum(connectedCounts)
+
+    self._mmTraces["unionSDR"].data.append(set(unionSDR))
+    self._mmTraces["numConnections"].data.append(numConnections)
     self._mmTraces["sequenceLabels"].data.append(sequenceLabel)
-
     self._mmTraces["resets"].data.append(self._mmResetActive)
     self._mmResetActive = False
-
     self._mmTraces["connectionsPerColumnMetric"].data.append(
       Metric(self, "connections per column", self._connectedCounts.tolist()))
 
-    self._sequenceRepresentationDataStale = True    
+    self._sequenceRepresentationDataStale = True
+    self._mmUpdateDutyCycles()
 
 
   def reset(self):
@@ -304,7 +535,7 @@ class UnionTemporalPoolerMonitorMixin(MonitorMixinBase):
 
 
   def mmGetDefaultTraces(self, verbosity=1):
-    traces = [self.mmGetTraceActiveCells()]
+    traces = [self.mmGetTraceUnionSDR()]
 
     if verbosity == 1:
       traces = [trace.makeCountsTrace() for trace in traces]
@@ -337,10 +568,16 @@ class UnionTemporalPoolerMonitorMixin(MonitorMixinBase):
   def mmClearHistory(self):
     super(UnionTemporalPoolerMonitorMixin, self).mmClearHistory()
 
-    self._mmTraces["activeCells"] = IndicesTrace(self, "active cells")
+    self._mmTraces["unionSDR"] = IndicesTrace(self, "union SDR")
     self._mmTraces["sequenceLabels"] = StringsTrace(self, "sequence labels")
     self._mmTraces["resets"] = BoolsTrace(self, "resets")
     self._mmTraces["connectionsPerColumnMetric"] = MetricsTrace(
       self, "connections per column (metric)")
 
+    self._mmData["unionSDRDutyCycle"] = numpy.zeros(self.getNumColumns(), dtype=realDType)
+    self._mmData["persistenceDutyCycle"] = numpy.zeros(self.getNumColumns(), dtype=realDType)
+
+    self._mmTraces["numConnections"] = CountsTrace(self, "connections")
+
     self._sequenceRepresentationDataStale = True
+
