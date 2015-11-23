@@ -178,7 +178,7 @@ def shiftingFeedback(starting_feedback, n, percent_shift=0.2):
     feedback = set([x for x in feedback])
     p = int(percent_shift*len(feedback))
     toRemove = set(random.sample(feedback, p))
-    toAdd = set([random.randint(0, 2048) for _ in range(p)])
+    toAdd = set([random.randint(0, 2047) for _ in range(p)])
     feedback = (feedback - toRemove) | toAdd
     feedback_seq.append(feedback)
 
