@@ -32,33 +32,47 @@ import random
 animals = []
 vegetables = []
 
-animal_reader = csv.reader(open('animals.txt', 'r'))
+animal_reader = csv.reader(open('animals_short.txt', 'r'))
 for row in animal_reader:
   animals.append(row[0])
 
-vegetable_reader = csv.reader(open('vegetables.txt', 'r'))
+vegetable_reader = csv.reader(open('vegetables_short.txt', 'r'))
 for row in vegetable_reader:
   vegetables.append(row[0])
 
-animals = animals[:5]
-vegetables = vegetables[:5]
+# animals = animals[:5]
+# vegetables = vegetables[:5]
 
-nSample = 100
+nSample = 900
+animal_vegetable_pairs = []
+ID = 0
+for animal in animals:
+  for vegetable in vegetables:
+    animal_vegetable_pairs.append([animal, vegetable])
+    ID += 1
+    if ID >= nSample:
+      break
+
+random.shuffle(animal_vegetable_pairs)
+
 sentences = []
 classification_label_list = ['animalEatsVegetable', 'vegetableEatsAnimal']
 classification_labels = []
+ID = 0
 for ID in xrange(nSample):
-  animal = animals[random.randint(0, len(animals)-1)]
-  vegetable = vegetables[random.randint(0, len(vegetables)-1)]
+  animal = animal_vegetable_pairs[ID][0]
+  vegetable = animal_vegetable_pairs[ID][1]
+  # animal = animals[random.randint(0, len(animals)-1)]
+  # vegetable = vegetables[random.randint(0, len(vegetables)-1)]
 
-  sentence = animal + ' eats ' + vegetable
+  sentence = 'the ' + animal + ' eats ' + vegetable
   classification = 0
 
   sentences.append(sentence)
   classification_labels.append(classification)
   print str(ID), ': ', classification_labels[-1], sentences[-1]
 
-  sentence = vegetable + ' eats ' + animal
+  sentence = 'the ' + vegetable + ' eats ' + animal
   classification = 1
 
   sentences.append(sentence)
