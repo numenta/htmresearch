@@ -34,6 +34,8 @@ from htmresearch.frameworks.nlp.classify_fingerprint import (
   ClassificationModelFingerprint)
 from htmresearch.frameworks.nlp.classify_keywords import (
   ClassificationModelKeywords)
+from htmresearch.frameworks.nlp.classify_vector import (
+  ClassificationModelVector)
 from htmresearch.support.csv_helper import readCSV, writeFromDict
 from htmresearch.support.data_split import KFolds
 
@@ -43,6 +45,7 @@ _MODEL_MAPPING = {
   "CioDocumentFingerprint": ClassificationModelFingerprint,
   "Keywords": ClassificationModelKeywords,
   "CioEndpoint": ClassificationModelEndpoint,
+  "Vector": ClassificationModelVector,
   }
 
 
@@ -128,15 +131,15 @@ class Runner(object):
     self.model = None
 
 
-  def initModel(self, modelName):
+  def initModel(self, modelName, vecPath=None):
     """Load or instantiate the classification model."""
     if self.loadPath:
       self.model = self.loadModel()
     else:
-      self.model = self._createModel(modelName)
+      self.model = self._createModel(modelName, vecPath)
 
 
-  def _createModel(self, modelName):
+  def _createModel(self, modelName, vecPath=None):
     """Return an instantiated model."""
     modelCls = _MODEL_MAPPING.get(modelName, None)
 
@@ -163,6 +166,12 @@ class Runner(object):
                       retinaScaling=self.retinaScaling,
                       retina=self.retina,
                       apiKey=self.apiKey)
+
+    elif modelName == "Vector":
+      return modelCls(vecPath,
+                      verbosity=self.verbosity,
+                      numLabels=self.numClasses,
+                      modelDir=self.modelDir)
 
     else:
       return modelCls(verbosity=self.verbosity,
