@@ -22,8 +22,15 @@
 import numpy
 from nupic.bindings.math import GetNTAReal
 from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
+from htmresearch.support.union_temporal_pooler_monitor_mixin import (
+  UnionTemporalPoolerMonitorMixin)
 from nupic.support import getArgumentDescriptions
 from nupic.regions.PyRegion import PyRegion
+
+
+
+class MonitoredUnionTemporalPooler(UnionTemporalPoolerMonitorMixin,
+  UnionTemporalPooler): pass
 
 
 
@@ -34,8 +41,11 @@ uintDType = "uint32"
 def _getPoolerClass(name):
     if name=="union":
       return UnionTemporalPooler
+    elif name=="unionMonitored":
+      return MonitoredUnionTemporalPooler
     else:
-      raise RuntimeError("Invalid pooling implementation %s. Valid ones are: union" % (name))
+      raise RuntimeError("Invalid pooling implementation %s. Valid ones are:" +
+        " union, unionMonitored" % (name))
 
 
 def _getDefaultPoolerClass():
@@ -167,12 +177,14 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
       dataType="bool",
       count=1,
       constraints="bool"),
+
     inferenceMode=dict(
       description="1 if the node outputs current inference (default 1).",
       accessMode="ReadWrite",
       dataType="bool",
       count=1,
       constraints="bool"),
+
   )
 
   return poolerSpec, otherSpec
@@ -288,7 +300,7 @@ class TemporalPoolerRegion(PyRegion):
       description=TemporalPoolerRegion.__doc__,
       singleNodeOnly=True,
       inputs=dict(
-          activeCells=dict(
+        activeCells=dict(
           description="Active cells",
           dataType="UInt32",
           count=0,
@@ -297,7 +309,7 @@ class TemporalPoolerRegion(PyRegion):
           isDefaultInput=True,
           requireSplitterMap=False),
 
-          predictedActiveCells=dict(
+        predictedActiveCells=dict(
           description="Predicted Actived Cells",
           dataType="UInt32",
           count=0,
@@ -316,6 +328,16 @@ class TemporalPoolerRegion(PyRegion):
           regionLevel=True,
           isDefaultInput=False,
           requireSplitterMap=False),
+
+        sequenceIdIn=dict(
+          description="Sequence ID",
+          dataType='UInt64',
+          count=1,
+          required=False,
+          regionLevel=True,
+          isDefaultInput=False,
+          requireSplitterMap=False),
+
       ),
       outputs=dict(
         mostActiveCells=dict(

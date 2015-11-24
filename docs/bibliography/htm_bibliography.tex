@@ -251,11 +251,11 @@ An important function of the neocortex is to generate predictions of what will
 happen in the future. In HTM theory proximal and distal dendrites recognize
 patterns and depolarize cells into a "predictive state". Over the last 20 years,
 the properties of active dendrites have become a topic of great  interest to the
-neuroscience community. Active dendrites seem to be coicidence detectors,
+neuroscience community. Active dendrites seem to be coincidence detectors,
 detecting a temporal coincidence of activity within a portion of the dendrite
-through "NMDA spikes". These spikes usually don't cause a neuron to spike but
-they  seem to prime the cell and make it more likely to generate an axon
-potential, and generate it faster than it would have otherwise.
+through "NMDA spikes". These spikes usually don't cause a neuron to generate an
+action potential. They do seem to prime the cell and make it more likely to
+generate an axon potential, and generate it faster than it would have otherwise.
 
 HTM theory says that these properties form the underlying neural mechanisms for
 prediction and inference. This section contains numerous papers describing
@@ -269,16 +269,23 @@ From Jeff: \emph{This is a short and relatively easy to read paper that covers
  the basics of NMDA dendritic spikes including some of the history.  It might be a
 good introduction to the topic.}
 
-The paper \cite{Antic2010} describes evidence for the HTM "predictive state". A
-non-apical NMDA spike can depolarize a cell body (page 2998, middle of right
-column). The time course of this depolarization is interesting - the paper shows
-evidence for a more sustained depolarization than we typically model in HTMs.
-This could be used to help combat temporal noise or it could support the "learn
-on one cell" mode.
+Figure 1 is a very clear picture showing the location of various spikes on a
+neuron (NMDA, calcium, sodium) and their associated waveforms.
+
+The paper \cite{Antic2010} describes evidence for the HTM "predictive state",
+what they call a cell "Up" state. A non-apical NMDA spike can depolarize a
+cell body (page 2998, middle of right column). Figures 2B and 3 show that the
+depolarization on the cell body is about 10mv. The time course of this depolarization is
+interesting - the paper shows evidence for a more sustained depolarization than
+we typically model in HTMs (about 50msecs). This could be used to help combat
+temporal noise or it could support the "learn on one cell" mode.
 
 They also provide evidence that NMDA spikes are highly localized events
 incorporating a small dendritic segment. They are localized in space (10-40
 microns) and localized in time. See page 2998, middle of left column.
+
+Overall this is a good paper to read and contains many references to the key
+papers on this topic.
 
 \subsection{Larkum: Synaptic integration in tuft dendrites}
 
@@ -297,52 +304,57 @@ and how they integrate their inputs. Summary of findings:
 
 \begin{enumerate}
 
-\item Proximal dendrites sum over their synapses linearly. Synapses sum linearly
-and inputs must converge at the exact same time. They also show that more distal
-dendritic branches show threshold like (sigmoidal) response properties. This is
-nice confirmation for our model.
+\item Proximal dendrites sum over their synapses linearly. Proximal synapses
+have a gradual linear effect on the soma (Fig 1C). They also show that more
+distal dendritic branches show threshold like (sigmoidal) response properties.
+This is nice confirmation for our model.
 
-\item Distal dendrites have broader temporal integration windows. Quote: "We show
-that single cortical pyramidal cell dendrites exhibit a gradient of temporal
-summation and input gain that increases from proximal to distal locations. This
-suggests a progressive shift of computational strategies for synaptic inputs
-along single dendrites.
-
+\item They looked at temporal parameters. Proximal synaptic inputs must converge
+in close temporal proximity (within 1-4 msecs, Fig 3A) for maximal effect on the soma.
 Near the base if inputs are more than a few msecs apart, the evoked potential
 drops significantly. Confirmation that proximal dendrites act as coincidence
-detectors. Segments farther away from the base can sum over longer temporal
-intervals. At the most distal locations, evoked potential stays constant for
-much longer than 10 msecs.
+detectors.
 
-Another way to phrase this is that proximal segments require precise synchrony
-(coincidence detection), distal segments do not require such precise timing.
+Distal dendrites have broader temporal integration windows (they measured up to
+10 msecs with almost no degradation, Fig 3B). Thus segments farther away from
+the base can sum over longer temporal intervals.  This effect is not directly
+modeled in HTMs but I don't think it contradicts anything. One can imagine that
+since distal dendrites detect temporal context from cells that are broadly
+dispersed, it would be difficult to require precise temporal synchrony.
 
+Quote from them: "We show that single cortical pyramidal cell dendrites
+exhibit a gradient of temporal summation and input gain that increases from
+proximal to distal locations." They suggest a progressive shift of computational
+strategies for synaptic inputs along single dendrites.
+
+In summary proximal segments require precise synchrony (coincidence detection),
+distal segments do not require such precise timing.
 
 \item More distal segments have higher gain (sigmoid gain) and require fewer
 synapses to fire. As a consequence, they also state that really distal segments
 can be as effective or even more effective than proximal dendrites in driving
-axonal output. Not sure what to make of this.
-
+axonal output. There could be another interpretation. According to SDR math, if
+all other parameters are fixed, we generally require higher thresholds for
+unions and lower thresholds for non-union representations. It could simply be
+that the more distal dendrites have fewer synapses and fewer unions.
 
 \item They show all this in Layer 2/3 as well as Layer 5 pyramidal cells.
 
 \end{enumerate}
 
-Some reactions to temporal property: We don't model the timing property of
-distal segments today, but this property could be very useful. For example
-longer temporal scales can be helpful in dealing with temporal noise. A longer
-scale will make us more resistant to temporal insertions. It could also be used
-to create connections from a single segment to time steps t-1 and t-2. This will
-make us more robust to temporal deletions. (This is similar to our old
-pooling idea.)
-
-
-Distal inputs into L4 can be coming in at different time scales (motor commands
-could be slower than sensory input). A longer temporal integration period may be
-necessary for proper sensorimotor inference.
-
-If apical dendrites have much larger temporal integration windows, this could be
-very useful for feedback which necessarily has a slower time scale.
+Some reactions to temporal property: we don't model the timing property of
+distal segments today, but the property of longer temporal integration windows
+could be very useful. For example longer temporal scales can be helpful in
+dealing with temporal noise. A longer scale will make us more resistant to
+temporal insertions. It could also be used to create connections from a single
+segment to time steps t-1 and t-2. This will make us more robust to temporal
+deletions. (This is similar to our old pooling idea.)  In \cite{Branco2010a}
+they go into this topic in more detail and discuss an additional timing
+property. They show that the order of signals could be relevant in distal
+dendrites. The time scales they studied are quite short, on the order of a few
+msecs. Overall these two properties are an interesting area for future study. It
+is unclear what computational impact these properties could have, the robustness
+of these results in vivo, and how to best model this in HTMs.
 
 \subsection{Losonczy: Integrative Properties of Active dendrites}
 
@@ -377,6 +389,40 @@ the branch. Note that the effect of spatial clustering is slightly different
 than reported in \cite{Losonczy2006}.  However as they point out,
 these numbers are rough and can vary dynamically (e.g. as a result of
 dendritic inhibitory input).
+
+\subsection{Smith: NMDA spikes enhance selectivity \emph{in vivo}}
+
+Much of the experimental results on active dendrites have been results from
+\emph{in vitro} studies.  Is there any evidence that dendritic spikes contribute
+to some computation \emph{in vivo}? Experimentally this is an extremely
+challenging task as you have to reliably measure dendritic activity in very
+short segments of dendrites in awake behaving animals. \cite{Smith2013} contains
+some of the first pieces of evidence for this.
+
+In this paper they show that the presence of dendritic spikes enhances the
+selectivity of L2/3 neurons in primary visual cortex. When shown moving gratings
+at the preferred orientation there were numerous dendritic spikes as well as
+action potentials. When shown a non-preferred orientation, there were neither
+dendritic spikes nor action potentials. Thus both somatic action potentials
+and dendritic segments were tuned to similar orientations.  When dendritic spikes
+were suppressed, the cell became much less selective - it would fire for a much
+broader range of orientations (Fig 5d). Thus dendritic spikes seem essential
+for orientation selectivity.  These recordings were made on basal dendrites.
+
+The exact relationship to HTM theory is not clear. You can think of a prediction
+as making a cell more selective to a particular sequence. So that part is
+consistent. (A moving grating can be a predictable sequence.) However it is not
+clear why removing spikes would make the cell less selective and allow it to
+fire for a broader range of bottom up inputs. (Speculating wildly, it is
+possible that NMDA spikes affect the overall threshold for action potentials. In
+HTM speak, in effect this would imply that in the absence of predictions, cells
+are boosted and thus more likely to fire. This is not modeled in today's HTMs.)
+
+Another interesting finding is that the frequency of NMDA spikes is much higher
+than the frequency of action potentials. This is a fairly strong prediction of HTM
+theory. With branching sequences and multiple predictions being the norm, you
+would expect more segments becoming active than cells.
+
 
 \subsection{Major: NMDA spikes in basal dendrites of pyramidal neurons}
 
