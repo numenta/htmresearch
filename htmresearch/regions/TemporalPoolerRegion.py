@@ -242,9 +242,9 @@ class TemporalPoolerRegion(PyRegion):
     # These calls whittle down kwargs and create instance variables of TemporalPoolerRegion
     self._poolerClass = _getPoolerClass(poolerType)
     pArgTuples = _buildArgs(self._poolerClass, self, kwargs)
-
+    pArgTuplesSP = _buildArgs(_getParentSpatialPoolerClass(), self, kwargs)
     # Make a list of automatic pooler arg names for later use
-    self._poolerArgNames = [t[0] for t in pArgTuples]
+    self._poolerArgNames = [t[0] for t in pArgTuples] + [t[0] for t in pArgTuplesSP]
 
     PyRegion.__init__(self, **kwargs)
 
