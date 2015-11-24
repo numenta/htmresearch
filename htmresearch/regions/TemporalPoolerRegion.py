@@ -44,6 +44,10 @@ def _getPoolerClass(name):
         " union, unionMonitored" % (name))
 
 
+def _getParentSpatialPoolerClass():
+    return UnionTemporalPooler.__bases__[0]
+
+
 def _getDefaultPoolerClass():
     return UnionTemporalPooler
 
@@ -139,6 +143,19 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
       constraints=getConstraints(argTuple[2]))
     poolerSpec[argTuple[0]] = d
 
+  # Get arguments from spatial pooler constructors, figure out types of
+  # variables and populate poolerSpec.
+  # This allows setting SP parameters
+  pArgTuples = _buildArgs(_getParentSpatialPoolerClass())
+  for argTuple in pArgTuples:
+    d = dict(
+      description=argTuple[1],
+      accessMode="ReadWrite",
+      dataType=getArgType(argTuple[2])[0],
+      count=getArgType(argTuple[2])[1],
+      constraints=getConstraints(argTuple[2]))
+    poolerSpec[argTuple[0]] = d
+
   # Add special parameters that weren't handled automatically
   # Pooler parameters only
   poolerSpec.update(dict(
@@ -180,6 +197,8 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
       dataType="bool",
       count=1,
       constraints="bool"),
+
+
 
   )
 
@@ -313,7 +332,7 @@ class TemporalPoolerRegion(PyRegion):
           isDefaultInput=False,
           requireSplitterMap=False),
 
-          resetIn=dict(
+        resetIn=dict(
           description="""A boolean flag that indicates whether
                          or not the input vector received in this compute cycle
                          represents the start of a new temporal sequence.""",

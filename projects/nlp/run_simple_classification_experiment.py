@@ -1,7 +1,9 @@
 import time
+import argparse
 from htmresearch.frameworks.nlp.runner import Runner
 from htmresearch.frameworks.nlp.htm_runner import HTMRunner
 from htmresearch.support.network_text_data_generator import NetworkDataGenerator
+from htmresearch.regions.TemporalPoolerRegion import TemporalPoolerRegion
 from matplotlib import pyplot as plt
 plt.ion()
 
@@ -119,7 +121,7 @@ def get_nupic_regions(network):
       sensorRegion = regionInstance.getSelf()
     elif type(regionInstance.getSelf()) is nupic.regions.TPRegion.TPRegion:
       tmRegion = regionInstance.getSelf()
-    elif type(regionInstance.getSelf()) is htmresearch.regions.TemporalPoolerRegion.TemporalPoolerRegion:
+    elif type(regionInstance.getSelf()) is TemporalPoolerRegion:
       tpRegion = regionInstance.getSelf()
     elif type(regionInstance.getSelf()) is nupic.regions.KNNClassifierRegion.KNNClassifierRegion:
       knnRegion = regionInstance.getSelf()
@@ -190,13 +192,30 @@ class inputParameters(object):
 
 if __name__ == "__main__":
 
-  # args = inputParameters(retina="en_associative_64_univ",
-  #                        apiKey="7c164cd0-fca0-11e3-80ac-f7122a45615d",
-  #                        networkConfigPath='data/network_configs/tm_knn_4k_retina.json')
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--useTPregion",
+                      default=0,
+                      type=int,
+                      help="0 for using direct union of TM cells, 1 for using TP region")
+  parser.add_argument("--retina",
+                      default="en_associative_64_univ",
+                      type=str,
+                      help="Name of Cortical.io retina.")
+  parser.add_argument("--apiKey",
+                      default=None,
+                      type=str,
+                      help="Key for Cortical.io API (use special key for 4K retina).")
+  args = parser.parse_args()
+  args.apiKey = "7c164cd0-fca0-11e3-80ac-f7122a45615d"
+  if args.useTPregion:
+    args = inputParameters(retina=args.retina,
+                           apiKey=args.apiKey,
+                           networkConfigPath='data/network_configs/tm_tp_knn_4k_retina.json')
+  else:
+    args = inputParameters(retina=args.retina,
+                           apiKey=args.apiKey,
+                           networkConfigPath='data/network_configs/tm_knn_4k_retina.json')
 
-  args = inputParameters(retina="en_associative_64_univ",
-                         apiKey="7c164cd0-fca0-11e3-80ac-f7122a45615d",
-                         networkConfigPath='data/network_configs/tm_tp_knn_4k_retina.json')
 
   # setup HTM Runner
   runner = HTMRunner(dataPath=args.dataPath,
@@ -231,13 +250,6 @@ if __name__ == "__main__":
   tmRegion.learningMode = True
   tmRegion.computePredictedActiveCellIndices = True
 
-  tpRegion._pooler._globalInhibition = True
-  # i = 0
-  # runner.resetModel(i)
-  # if runner.verbosity > 0:
-  #   print "\tTraining and testing for run {}.".format(i)
-
-
   animals, vegetables = get_animal_vegetable_list()
   vegetable = {}
   animal = {}
@@ -258,7 +270,7 @@ if __name__ == "__main__":
   accuracy = []
   accuracy_tp = []
   numTokens = NetworkDataGenerator.getNumberOfTokens(args.dataPath)
-  for numSample in xrange(len(numTokens)):
+  for numSample in xrange(500):#xrange(len(numTokens)):
 
     # union SDR for this sequence
     tmCellActivation = np.zeros((tmRegion._tfdr.cellsPerColumn * tmRegion._tfdr.columnDimensions[0],))
@@ -296,17 +308,18 @@ if __name__ == "__main__":
       tmRegion.compute(tmRegionInput, tmRegionOutput)
 
       if tpRegion is not None:
+        resetSignal = sensorOutput['resetOut']
         tpRegionInput = {"activeCells": tmRegionOutput["bottomUpOut"],
                          "predictedActiveCells": tmRegionOutput["predictedActiveCells"],
                          "sequenceIdIn": sensorOutput["sequenceIdOut"],
-                         "resetIn": sensorOutput['resetOut']}
+                         "resetIn": resetSignal}
         tpRegionOutputs = {"mostActiveCells": np.zeros((tpRegion._columnCount,))}
         tpRegion.compute(tpRegionInput, tpRegionOutputs)
 
-      if word > 0:
-        # tmCellActivation = np.logical_or(tmCellActivation, tmRegionOutput['bottomUpOut'])
-        tmCellActivation = np.logical_or(tmCellActivation, tmRegionOutput["predictedActiveCells"])
-        tmInputActivation = np.logical_or(tmInputActivation, tmRegionInput["bottomUpIn"])
+      # plain union of TM cells
+      # tmCellActivation = np.logical_or(tmCellActivation, tmRegionOutput['bottomUpOut'])
+      tmCellActivation = np.logical_or(tmCellActivation, tmRegionOutput["predictedActiveCells"])
+      tmInputActivation = np.logical_or(tmInputActivation, tmRegionInput["bottomUpIn"])
 
 
       currentWord = sensorOutput['sourceOut']
@@ -361,7 +374,7 @@ if __name__ == "__main__":
       plt.plot(movingAverage(accuracy_tp, winLen), color='red')
       plt.ylabel(' Classification Accuracy ')
       plt.xlabel(' Training Samples #')
-      plt.ylim([.5, 1.0])
+      plt.ylim([0.0, 1.0])
       plt.draw()
       time.sleep(0.1)
 
