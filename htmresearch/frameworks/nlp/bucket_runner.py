@@ -18,11 +18,11 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
-
-from collections import defaultdict, OrderedDict
 import itertools
 import numpy
 import pprint
+
+from collections import defaultdict, OrderedDict
 
 from htmresearch.frameworks.nlp.runner import Runner
 from htmresearch.support.data_split import Buckets
@@ -31,11 +31,15 @@ from htmresearch.support.data_split import Buckets
 class BucketRunner(Runner):
   """Runner methods specific to the buckets experiment."""
 
-  def __init__(self, numInference=10, *args, **kwargs):
+  def __init__(self, combineMethod="min", *args, **kwargs):
     """
-    @param numInference   (int)     Number of samples (per bucket) for inference
+    @param combineMethod  (str) How to combine KNN distances from subsequent
+                                inference iterations.
     """
-    super(BucketRunner, self).__init__(numClasses=1, *args, **kwargs)
+    self.combineMethod = combineMethod
+    self.buckets = None
+
+    super(BucketRunner, self).__init__(*args, **kwargs)
 
 
   def bucketData(self):
@@ -84,10 +88,10 @@ class BucketRunner(Runner):
     partitions = [([1, 0], [2]), (...), ...]
     """
     if not self.buckets:
-        raise RuntimeError("You need to first bucket the data.")
+      raise RuntimeError("You need to first bucket the data.")
     bucketSizes = [len(x) for x in self.buckets.values()]
 
-    # Create one partition (train, test) for each bucket.
+    # Create one partition (test, rank) for each bucket.
     self.partitions = Buckets().split(
       bucketSizes, numInference, randomize=(not self.orderedSplit), seed=seed)
 
@@ -99,12 +103,11 @@ class BucketRunner(Runner):
 
   def runExperiment(self, numInference):
     """
-    The model trains on everything up front, populating the KNN space w/ all
-    of the samples. Then we experiment with each bucket, returning a dict with
-    metrics for each bucket.
+    Populate the KNN space w/ all of the samples and experiment with each
+    bucket, returning a dict with metrics for each bucket.
     """
-    # The trainIDs dict maps data samples' unique IDs to prototype #.
-    trainIDs = self.populateKNN()
+    # The prototypeMap dict maps data samples' unique IDs to KNN prototype #s.
+    prototypeMap = self.populateKNN()
     metrics = {}
     for idx, bucket in self.buckets.iteritems():
       if len(bucket) < numInference:
@@ -112,8 +115,8 @@ class BucketRunner(Runner):
           self.labelRefs[idx])
         continue
       testIDs, rankIDs = self.prepBucket(idx)
-      import pdb; pdb.set_trace()
-      metrics[idx] = self.testBucket(bucket, trainIDs, testIDs, rankIDs, idx)
+
+      metrics[idx] = self.testBucket(idx, prototypeMap, testIDs, rankIDs)
 
     return metrics
 
@@ -132,40 +135,35 @@ class BucketRunner(Runner):
       else:
         # train on pattern i, and keep track of it's index in KNN space
         self.model.trainModel(i)
-        prototypeMap[pattern["ID"]] = [prototypeNum]  # in a list b/c some models (htm) classify every word
+        prototypeMap[pattern["ID"]] = prototypeNum
         prototypeNum += 1
 
     return prototypeMap
 
 
   def prepBucket(self, idx):
-      # Test samples are for inferring, rank samples are for evaluation.
-      testIndices = self.partitions[idx][0]
-      # testIDs = [p["ID"] for p in
-      #   [self.patterns[testIdx] for testIdx in testIndices]]
-      rankIndices = self.partitions[idx][1]
-      # rankIDs = [p["ID"] for p in
-      #   [self.patterns[rankIdx] for rankIdx in rankIndices]]
+    """Test samples are for inferring, rank samples are for evaluation."""
+    testIndices = self.partitions[idx][0]
+    rankIndices = self.partitions[idx][1]
 
-      testIDs = [d[2] for d in
-        [self.dataDict[testIdx] for testIdx in testIndices]]
-      rankIDs = [d[2] for d in
-        [self.dataDict[rankIdx] for rankIdx in rankIndices]]
+    testIDs = [d[2] for d in
+      [self.dataDict[testIdx] for testIdx in testIndices]]
+    rankIDs = [d[2] for d in
+      [self.dataDict[rankIdx] for rankIdx in rankIndices]]
 
-      return testIDs, rankIDs
+    return testIDs, rankIDs
 
 
-  def testBucket(self, bucket, trainIDs, testIDs, rankIDs, idx):
+  def testBucket(self, bucketNum, trainIDs, testIDs, rankIDs):
     """
     Use the testing samples to infer distances. The distances for subsequent
-    iterations are combined according to self.combine.
-    b
-    y taking the min.
+    iterations are combined according to self.combineMethod.
 
-
+    @param bucketNum    (int)     Index of bucket to test.
     @param testIDs      (list)    Unique IDs of samples for inference.
     @param trainIDs     (dict)    Maps sample unique IDs to their prototype
                                   index in KNN space.
+    @param rankIDs      (list)    IDs of the samples we want metrics on.
     """
     # Query the model for the input patterns, returning a dict w/ distance
     # values for each query.
@@ -175,60 +173,83 @@ class BucketRunner(Runner):
         distances[pattern["ID"]] = self.model.infer(pattern["pattern"])
     assert(sorted(distances.keys()) == sorted(testIDs))
 
-    # summedDistances = numpy.zeros(len(alreadyTrained))  ## mean
-    # meanDistances = []  ## mean
-    currentBest = numpy.ones(len(trainIDs.keys()))
-    bestDistances = []
-    no = []
-    for ID, dist in distances.iteritems():
-      # summedDistances += dist  ## mean
-      # meanDistances.append(summedDistances / (n+1.0))  ## mean
-      currentBest = numpy.minimum(currentBest, dist)
+    accumulatedDistances = self.setupDistances(distances, trainIDs)
 
-      # In each iteration, exclude the queried samples.
-      for p in trainIDs[ID]:
-        no.append(p)
-      currentBest[no] = 1.0  # TODO: better way to get rid of these?
-
-      bestDistances.append(currentBest)
-
-    metrics = []
-    # for mD in meanDistances:  ## mean
-    for bD in bestDistances:
-      # metrics.append(getMetricsHD(mD, alreadyTrained, rankIDs))  ## mean
-      metrics.append(self.getMetrics(bD, trainIDs, rankIDs))
+    metrics = self.getMetrics(accumulatedDistances, trainIDs, rankIDs)
 
     if self.verbosity > 0:
       print "====="
       print "Total data samples in KNN space = ", len(trainIDs)
-      print "Results for bucket ", self.labelRefs[bucket[0][1]]
+      print "Results for bucket ", self.labelRefs[self.buckets[bucketNum][0][1]]
       pprint.pprint(metrics)
 
     return metrics
 
 
   @staticmethod
-  def getMetrics(distances, alreadyTrained, rankIDs):
+  def setupDistances(distances, trainIDs, method="min"):
     """
-    @param distances      (list)    numpy.arrays of distances to KNN prototypes
-    @param alreadyTrained (dict)    IDs corresponding to KNN prototype indices
-    @param rankIDs        (list)    IDs of the samples we want metrics on
-    @return
+    Combine the distance results of each iteration with the method specified.
+
+    @param distances  (dict)  Keys are unique IDs of the inferred samples,
+                              values are the distance arrays from KNN
+                              inference results.
+    @param trainIDs   (dict)  Map of unique IDs to sequence numbers as they are
+                              used when populating KNN space.
+    @param method     (str)   Method to combine distances arrays.
     """
-    rankIndices = numpy.argsort(distances)
-    # rankedIDs = [alreadyTrained[i] for i in rankIndices]
-    # testRanks = numpy.array([rankedIDs.index(ID) for ID in testIDs])  # TODO: faster way?
-    import pdb; pdb.set_trace()
-    rankPrototypes = [alreadyTrained[ID] for ID in rankIDs]
-    ranks = rankIndices[list(itertools.chain.from_iterable(rankPrototypes))]
-    import pdb; pdb.set_trace()
-    return {
-      "mean": ranks.mean(),
-      "lastTP": ranks.max(),
-      "firstTP": ranks.min(),  # ideally this would be 0
-      "numTop10": len([r for r in ranks if r < 10]),
-      "totalRanked": len(rankIDs),
-    }
+    if method not in ("min", "mean"):
+      raise ValueError(
+        "Distance combination method must be one of 'min' or 'mean'.")
+
+    if method == "mean":
+      currentBest = numpy.zeros(len(alreadyTrained))
+    elif method == "min":
+      currentBest = numpy.ones(len(trainIDs))
+    accumulatedDistances = []
+    for ID, dist in distances.iteritems():
+
+      if method == "mean":
+        currentBest += dist
+        currentBest = currentBest / (n+1.0)
+      elif method == "min":
+        currentBest = numpy.minimum(currentBest, dist)
+
+      # In each iteration, exclude the queried samples.
+      currentBest[trainIDs[ID]] = 1.0  # TODO: better way to get rid of these?
+
+      accumulatedDistances.append(currentBest)
+
+    return accumulatedDistances
+
+
+  def getMetrics(self, accumulatedDistances, trainIDs, rankIDs):
+    """
+    @param accumulatedDistances (list)    Results of setupDistance, where each
+                                    subsequent item is a numpy.array of
+                                    combined distances to KNN prototypes.
+    @param trainIDs       (dict)    IDs corresponding to KNN prototype indices.
+    @param rankIDs        (list)    IDs of the samples we want metrics on.
+    @return metrics       (list)    Dict of metrics for each iteration.
+    """
+    metrics = []
+    # for mD in meanDistances:  ## mean
+    for distances in accumulatedDistances:
+      rankIndices = numpy.argsort(distances)
+      rankPrototypes = [trainIDs[ID] for ID in rankIDs]
+      # ranks = rankIndices[list(itertools.chain.from_iterable(rankPrototypes))]
+      ranks = rankIndices[rankPrototypes]
+
+      metrics.append({
+        "mean": ranks.mean(),
+        "lastTP": ranks.max(),
+        "firstTP": ranks.min(),  # ideally this would be 0
+        "numTop10": len([r for r in ranks if r < 10]),
+        "totalRanked": len(rankIDs),
+        }
+      )
+
+    return metrics
 
 
   def evaluateResults(self, metrics):

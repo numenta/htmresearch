@@ -72,8 +72,8 @@ def run(args):
                              classificationFile=args.classificationFile,
                              networkConfigPath=args.networkConfigPath,
                              trainingReps=args.trainingReps,
-                             trainingDataPath=args.trainingDataPath,
-                             seed=args.seed)
+                             seed=args.seed,
+                             numClasses=0)
     runner.initModel(0)
   else:
     runner = BucketRunner(dataPath=args.dataPath,
@@ -87,7 +87,8 @@ def run(args):
                           loadPath=args.loadPath,
                           plots=args.plots,
                           orderedSplit=args.orderedSplit,
-                          verbosity=args.verbosity)
+                          verbosity=args.verbosity,
+                          numClasses=1)
     runner.initModel(args.modelName)
 
   print "Reading in data and preprocessing."
@@ -107,9 +108,9 @@ def run(args):
 
   runner.train()
 
-  metricsDict = runner.runExperiment(args.numInference)
+  metricsDicts = runner.runExperiment(args.numInference)
 
-  resultCalcs = runner.evaluateResults(metricsDict)
+  resultCalcs = runner.evaluateResults(metricsDicts)
 
   print "Saving..."
   runner.saveModel()
@@ -208,10 +209,12 @@ if __name__ == "__main__":
                       help="How many times to repeat training an HTM network.",
                       type=int,
                       default=1)
-  parser.add_argument("--trainingDataPath",
-                      help="Path to CSV file of unique data samples.",
+  parser.add_argument("--combineMethod",
+                      help="Method for combining KNN distances over multiple "
+                           "inference steps. Acceptable values are 'min' and "
+                           "'mean'.",
                       type=str,
-                      default=None)
+                      default="min")
 
   args = parser.parse_args()
 

@@ -33,7 +33,7 @@ import string
 
 from collections import defaultdict, OrderedDict
 
-from htmresearch.support.csv_helper import readCSV, readNSFDataset
+from htmresearch.support.csv_helper import readCSV
 from htmresearch.support.text_preprocess import TextPreprocess
 
 try:
@@ -54,6 +54,13 @@ class NetworkDataGenerator(object):
 
     Note: a reset marks the first item of a new sequence.
     """
+    self.reset()
+    
+    # len(self.categoryToId) gives each category a unique ID
+    self.categoryToId = defaultdict(lambda: len(self.categoryToId))
+
+
+  def reset(self):
     self.records = []
     self.fieldNames = ["_token", "_category", "_sequenceId", "_reset", "ID"]
     self.types = {"_token": "string",
@@ -65,14 +72,10 @@ class NetworkDataGenerator(object):
                      "_category": "C",
                      "_sequenceId": "S",
                      "_reset": "R"}
-
-    # len(self.categoryToId) gives each category a unique id w/o having
-    # duplicates
-    self.categoryToId = defaultdict(lambda: len(self.categoryToId))
     
     self.sequenceCount = 0
-
-
+    
+    
   def setupData(self, dataPath, numLabels=0, ordered=False, stripCats=False, seed=42, **kwargs):
     """
     Main method of this class. Use for setting up a network data file.
@@ -88,7 +91,7 @@ class NetworkDataGenerator(object):
                                     input data file.
     """
     self.split(dataPath, numLabels, **kwargs)
-  
+
     if not ordered:
       self.randomizeData(seed)
     
@@ -97,7 +100,7 @@ class NetworkDataGenerator(object):
     dataFileName = "{}_network{}".format(filename, ext)
     
     if stripCats:
-      self._stripCategories()
+      self.stripCategories()
   
     self.saveData(dataFileName, classificationFileName)
     
@@ -123,7 +126,6 @@ class NetworkDataGenerator(object):
     """
     if filePath:
       dataDict = readCSV(filePath, numLabels=numLabels)
-#      dataDict = readNSFDataset(filePath)
 
     if dataDict is None:
       raise Exception("No data given, or could not read CSV.")
@@ -153,7 +155,7 @@ class NetworkDataGenerator(object):
     return dataDict
 
 
-  def _stripCategories(self):
+  def stripCategories(self):
     """Erases the categories, replacing them with the sequence number."""
     for data in self.records:
       for record in data:
@@ -242,23 +244,9 @@ class NetworkDataGenerator(object):
     cat = [-1]
     self.sequenceCount += 1
     uniqueID = "q"
-    data = self._formatSequence(tokens, cat, self.sequenceCount, uniqueID)
+    data = self._formatSequence(tokens, cat, self.sequenceCount-1, uniqueID)
 
     return data
-
-
-  def reset(self):
-    self.records = []
-    self.fieldNames = ["token", "_sequenceId", "_reset", "ID"]
-    self.types = {"token": "string",
-                  "_sequenceId": "int",
-                  "_reset": "int",
-                  "ID": "string"}
-    self.specials = {"token": "",
-                     "_sequenceId": "S",
-                     "_reset": "R"}
-
-    self.categoryToId.clear()
 
 
   @staticmethod

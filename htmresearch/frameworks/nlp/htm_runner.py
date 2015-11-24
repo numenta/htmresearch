@@ -50,22 +50,10 @@ class HTMRunner(Runner):
                experimentType,
                networkConfigPath=None,
                generateData=True,
-               votingMethod="last",
+               votingMethod="most",
                classificationFile="",
                seed=42,
                **kwargs):
-               # modelName="HTMNetwork",
-               # retinaScaling=1.0,
-               # retina="en_associative",
-               # apiKey=None,
-               # loadPath=None,
-               # numClasses=3,
-               # plots=0,
-               # orderedSplit=False,
-               # folds=None,
-               # trainSizes=None,
-               # verbosity=0,
-               # seed=42):
     """
     @param networkConfigPath  (str)    Path to JSON specifying network params.
     @param generateData       (bool)   Whether or not we need to generate data.
@@ -120,6 +108,7 @@ class HTMRunner(Runner):
       # self.model.network = Network(networkFile)
       print "Model loaded from \'{0}\'.".format(self.loadPath)
     else:
+      print "Creating HTM classification model..."
       self.model = ClassificationModelHTM(self.networkConfig,
                                           self.dataFiles[trial],
                                           retinaScaling=self.retinaScaling,
@@ -145,9 +134,6 @@ class HTMRunner(Runner):
       splits = self.folds
     elif self.experimentType == "incremental":
       splits = len(self.trainSizes)
-    elif self.experimentType == "buckets":
-      # use a different data file (random order) for each training iteration
-      splits = self.trainingReps
 
     if generateData:
       self.generateNetworkDataFiles(splits, seed, preprocess, **kwargs)
@@ -158,7 +144,7 @@ class HTMRunner(Runner):
     if self.numClasses > 0:
       # Setup labels data objects
       self.actualLabels = [self._getClassifications(i) for i in xrange(splits)]
-      self._mapLabelRefs()
+      self.mapLabelRefs()
 
 
   def generateNetworkDataFiles(self, splits, seed, preprocess, **kwargs):
@@ -202,7 +188,7 @@ class HTMRunner(Runner):
       for classes in classifications]
 
 
-  def _mapLabelRefs(self):
+  def mapLabelRefs(self):
     """Get the mapping from label strings to the corresponding ints."""
     try:
       with open(self.classificationFile, "r") as f:

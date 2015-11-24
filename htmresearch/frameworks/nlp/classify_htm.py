@@ -34,9 +34,7 @@ from nupic.data.file_record_stream import FileRecordStream
 
 
 class ClassificationModelHTM(ClassificationModel):
-  """
-  Class to run the survey response classification task with nupic network.
-  """
+  """Class to run the classification experiments with HTM network models."""
 
   def __init__(self,
                networkConfig,
@@ -62,7 +60,6 @@ class ClassificationModelHTM(ClassificationModel):
                                         with the sequence_Id.
     See ClassificationModel for remaining parameters.
     """
-
     super(ClassificationModelHTM, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
 
@@ -164,7 +161,6 @@ class ClassificationModelHTM(ClassificationModel):
 
 
   def saveModel(self):
-    # TODO: test this works
     try:
       if not os.path.exists(self.modelDir):
         os.makedirs(self.modelDir)
@@ -194,10 +190,11 @@ class ClassificationModelHTM(ClassificationModel):
 
   def trainNetwork(self, iterations):
     """Run the network with all regions learning but the classifier."""
-    # import pdb; pdb.set_trace()
     for region in self.learningRegions:
-      if region.name == "classifier": continue
-      region.setParameter("learningMode", True)
+      if region.name == "classifier":
+        region.setParameter("learningMode", False)
+      else:
+        region.setParameter("learningMode", True)
 
     self.network.run(iterations)
 
@@ -224,11 +221,37 @@ class ClassificationModelHTM(ClassificationModel):
     return sequenceIds
 
 
+  def inferNetwork(self, iterations, fileRecord=None, learn=False):
+    """
+    Run the network to infer distances to the classified samples.
+
+    @param fileRecord (str)     If you want to change the file record stream.
+    @param learn      (bool)    The classifier will learn the inferred sequnce.
+    """
+    if fileRecord:
+      self.swapRecordStream(fileRecord)
+
+    self.classifierRegion.setParameter("learningMode", learn)
+    self.classifierRegion.setParameter("inferenceMode", True)
+
+    sampleDistances = None
+    for i in xrange(iterations):
+      self.network.run(1)
+      inferenceValues = self.classifierRegion.getOutputData("categoriesOut")
+      # Sum together the inferred distances for each word of the sequence.
+      if sampleDistances is None:
+        sampleDistances = inferenceValues
+      else:
+        sampleDistances += inferenceValues
+
+    return sampleDistances
+
+
   def swapRecordStream(self, dataPath):
     """Change the data source for the network's sensor region."""
-    recordStream = FileRecordStream(streamID=self.networkDataPath)
+    recordStream = FileRecordStream(streamID=dataPath)
     sensor = self.sensorRegion.getSelf()
-    sensor.dataSource = recordStream  # TODO: implement this in network factory
+    sensor.dataSource = recordStream  # TODO: implement this in network API
 
 
   def testModel(self, seed=42):
@@ -262,7 +285,6 @@ class ClassificationModelHTM(ClassificationModel):
         "categoriesOut")[:relevantCats]
       return self.getWinningLabels(inferenceValues, seed)
 
-
     elif self.classifierRegion.type == "py.CLAClassifierRegion":
       # TODO: test this
       return self.classifierRegion.getOutputData("categoriesOut")[:relevantCats]
@@ -283,8 +305,7 @@ class ClassificationModelHTM(ClassificationModel):
     queryDicts = self.networkDataGen.generateSequence(query, preprocess)
 
     sampleDistances = None
-    sensor = self.sensorRegion.getSelf()
-    import pdb; pdb.set_trace()
+
     for qD in queryDicts:
       # Sum together the inferred distances for each word of the query sequence.
       sensor.queue.appendleft(qD)
