@@ -1,16 +1,64 @@
 import time
+import csv
 import argparse
-from htmresearch.frameworks.nlp.runner import Runner
+
 from htmresearch.frameworks.nlp.htm_runner import HTMRunner
 from htmresearch.support.network_text_data_generator import NetworkDataGenerator
 from htmresearch.regions.TemporalPoolerRegion import TemporalPoolerRegion
+from htmresearch.regions.LanguageSensor import  LanguageSensor
+import nupic
+import numpy as np
+
 from matplotlib import pyplot as plt
 plt.ion()
 
-import htmresearch
-import nupic
-import csv
-import numpy as np
+
+def getNupicRegions(network):
+  sensorRegion = None
+  spRegion = None
+  tmRegion = None
+  tpRegion = None
+  knnRegion = None
+  for region in network.regions.values():
+    regionInstance = region
+    if type(regionInstance.getSelf()) is LanguageSensor:
+      sensorRegion = regionInstance.getSelf()
+    elif type(regionInstance.getSelf()) is nupic.regions.TPRegion.TPRegion:
+      tmRegion = regionInstance.getSelf()
+    elif type(regionInstance.getSelf()) is TemporalPoolerRegion:
+      tpRegion = regionInstance.getSelf()
+    elif type(regionInstance.getSelf()) is nupic.regions.KNNClassifierRegion.KNNClassifierRegion:
+      knnRegion = regionInstance.getSelf()
+    elif type(regionInstance.getSelf()) is nupic.regions.SPRegion.SPRegion:
+      spRegion = regionInstance.getSelf()
+
+  return sensorRegion, spRegion, tmRegion, tpRegion, knnRegion
+
+
+def getAnimalVegetableList():
+  animal_reader = csv.reader(open('data/animal_eat_vegetables/animals.txt', 'r'))
+  animals = []
+  for row in animal_reader:
+    animals.append(row[0])
+
+  vegetable_reader = csv.reader(open('data/animal_eat_vegetables/vegetables.txt', 'r'))
+  vegetables = []
+  for row in vegetable_reader:
+    vegetables.append(row[0])
+  return animals, vegetables
+
+
+def movingAverage(data, window):
+  movingAverage = []
+
+  for i in xrange(len(data)):
+    start = max(0, i - window)
+    end = i+1
+    values = data[start:end]
+    movingAverage.append(sum(values) / float(len(values)))
+
+  return movingAverage
+
 
 def evaluateSDROverlap(vegetable_sdrs, animal_sdrs):
   """
@@ -59,12 +107,13 @@ def evaluateSDROverlap(vegetable_sdrs, animal_sdrs):
   print " overlap vegetable-vegetable", np.mean(overlap_vegetable_vegetable), " max: ", np.max(overlap_vegetable_vegetable)
   print " overlap animal-vegetable", np.mean(overlap_vegetable_animal), " max: ", np.max(overlap_vegetable_animal)
 
-def calculate_classificastion_accuracy(categoryLabel, tmCellUnion, knnInLastNSequences=20, knn_number=3):
+
+def calculateClassificastionAccuracy(categoryLabel, tmCellUnion, knnInLastNSequences=20, knnNumber=3):
   predicted_label = []
   actual_label = []
-  for seqID in xrange(knn_number+1, len(categoryLabel)):
+  for seqID in xrange(knnNumber+1, len(categoryLabel)):
     tmCellsdr = tmCellUnion[seqID]
-    knn_prediction = knn_classifier(tmCellsdr, tmCellUnion[:seqID-1], categoryLabel, knnInLastNSequences, knn_number)
+    knn_prediction = knnClassifier(tmCellsdr, tmCellUnion[:seqID - 1], categoryLabel, knnInLastNSequences, knnNumber)
     predicted_label.append(knn_prediction)
     actual_label.append(categoryLabel[seqID])
 
@@ -72,75 +121,115 @@ def calculate_classificastion_accuracy(categoryLabel, tmCellUnion, knnInLastNSeq
   return accuracy
 
 
-def knn_classifier(tmCellsdr, tmCellUnion, categoryLabel, knnInLastNSequences=20, knn_number=3):
+def knnClassifier(tmCellsdr, tmCellUnion, categoryLabel, knnInLastNSequences=20, knnNumber=3):
   """
-  Run knn classifier on the last observed [knnInLastNSequences] elements, with n=knn_number
+  Run knn classifier on the last observed [knnInLastNSequences] elements, with n=knnNumber
   :param tmCellsdr: SDR to be classified
   :param tmCellUnion: List of SDRs
   :param categoryLabel: List of category labels
   :param knnInLastNSequences:
-  :param knn_number:
+  :param knnNumber:
   :return:
   """
   numSample = len(tmCellUnion)
-  if numSample > knn_number+1:
+  if numSample > knnNumber+1:
     overlap_score = []
     for seqID2 in xrange(max(numSample-knnInLastNSequences, 0), numSample-1):
       overlap_score.append(np.sum(np.logical_and(tmCellUnion[seqID2], tmCellsdr)))
 
     sortidx = np.argsort(overlap_score)
-    best_match = np.array(range(max(numSample - knnInLastNSequences, 0), numSample-1))[sortidx[-(knn_number + 1):-1]]
+    best_match = np.array(range(max(numSample - knnInLastNSequences, 0), numSample-1))[sortidx[-(knnNumber + 1):-1]]
     categorylabel_values = np.array(categoryLabel)
     predicted_label = np.argmax(np.bincount(categorylabel_values[best_match]))
   else:
-    # make a random guess if the numSample < knn_number
+    # make a random guess if the numSample < knnNumber
     predicted_label = np.random.randint(2)
   return predicted_label
 
-def get_animal_vegetable_list():
-  animal_reader = csv.reader(open('data/animal_eat_vegetables/animals.txt', 'r'))
-  animals = []
-  for row in animal_reader:
-    animals.append(row[0])
 
-  vegetable_reader = csv.reader(open('data/animal_eat_vegetables/vegetables.txt', 'r'))
-  vegetables = []
-  for row in vegetable_reader:
-    vegetables.append(row[0])
-  return animals, vegetables
+def plotAccuracyOverTime(categoryLabel, tmCellUnion, tmInputUnion):
+  accuracyControl = calculateClassificastionAccuracy(categoryLabel, tmInputUnion)
+  accuracy = calculateClassificastionAccuracy(categoryLabel, tmCellUnion, knnInLastNSequences=30, knnNumber=3)
+  print " mean accuracy: ", np.mean(accuracy[-100:])
+  winLen = 50
+  accuracyAverage = movingAverage(accuracy, winLen)
+  accuracyControlAverage = movingAverage(accuracyControl, winLen)
 
-def get_nupic_regions(network):
-  sensorRegion = None
-  spRegion = None
-  tmRegion = None
-  tpRegion = None
-  knnRegion = None
-  for region in network.regions.values():
-    regionInstance = region
-    if type(regionInstance.getSelf()) is htmresearch.regions.LanguageSensor.LanguageSensor:
-      sensorRegion = regionInstance.getSelf()
-    elif type(regionInstance.getSelf()) is nupic.regions.TPRegion.TPRegion:
-      tmRegion = regionInstance.getSelf()
-    elif type(regionInstance.getSelf()) is TemporalPoolerRegion:
-      tpRegion = regionInstance.getSelf()
-    elif type(regionInstance.getSelf()) is nupic.regions.KNNClassifierRegion.KNNClassifierRegion:
-      knnRegion = regionInstance.getSelf()
-    elif type(regionInstance.getSelf()) is nupic.regions.SPRegion.SPRegion:
-      spRegion = regionInstance.getSelf()
-
-  return sensorRegion, spRegion, tmRegion, tpRegion, knnRegion
+  plt.figure()
+  plt.plot(accuracyAverage)
+  plt.plot(accuracyControlAverage)
+  plt.legend(['Classification with predicted TM cells', 'with bag of SDRs'], loc=4)
+  plt.ylabel(' Classification Accuracy ')
+  plt.xlabel(' Training Samples #')
+  plt.ylim([.0, 1.0])
 
 
-def movingAverage(data, window):
-  movingAverage = []
+def evaulateTPrepresentationOverlap(categoryLabel, tmCellUnion, startFrom=50):
+  # evaluate overlap on TP representations
+  group1 = np.where(categoryLabel==0)[0]
+  group2 = np.where(categoryLabel==1)[0]
 
-  for i in xrange(len(data)):
-    start = max(0, i - window)
-    end = i+1
-    values = data[start:end]
-    movingAverage.append(sum(values) / float(len(values)))
+  group1 = group1[startFrom:]
+  group2 = group2[startFrom:]
 
-  return movingAverage
+  overlapWithinCategory = []
+  overlapAcrossCategory = []
+  maximumOverlapAcrossCategory = []
+  maximumOverlapWithinCategory = []
+  for i in group1:
+    dist = []
+    for j in group2:
+      if i-10 < j < i:
+        dist.append(np.sum(np.logical_and(tmCellUnion[i], tmCellUnion[j])))
+    if len(dist) > 0:
+      maximumOverlapAcrossCategory.append(max(dist))
+      overlapAcrossCategory += dist
+
+    dist = []
+    for j in group1:
+      if i-10 < j < i:
+        dist.append(np.sum(np.logical_and(tmCellUnion[i], tmCellUnion[j])))
+    if len(dist) > 0:
+      maximumOverlapWithinCategory.append(max(dist))
+      overlapWithinCategory += dist
+
+  maximumOverlapAcrossCategory = np.array(maximumOverlapAcrossCategory)
+  maximumOverlapWithinCategory = np.array(maximumOverlapWithinCategory)
+  print "Overlap of TP representation within category", np.mean(overlapWithinCategory)
+  print "Overlap of TP representation across category", np.mean(overlapAcrossCategory)
+
+
+  histBins = np.linspace(0, np.max(overlapWithinCategory + overlapAcrossCategory), 20)
+  histBinsCenter = (histBins[1:] + histBins[:-1]) / 2
+
+  overlapWithinCategoryDistribution = np.histogram(overlapWithinCategory, bins=histBins)
+  overlapWithinCategoryDistribution = overlapWithinCategoryDistribution[0].astype('float32') / sum(overlapWithinCategoryDistribution[0])
+
+  overlapAcrossCategoryDistribution = np.histogram(overlapAcrossCategory, bins=histBins)
+  overlapAcrossCategoryDistribution = overlapAcrossCategoryDistribution[0].astype('float32') / sum(overlapAcrossCategoryDistribution[0])
+
+  plt.figure()
+  plt.subplot(3,1,1)
+  plt.plot(histBinsCenter, overlapAcrossCategoryDistribution)
+  plt.plot(histBinsCenter, overlapWithinCategoryDistribution)
+  plt.xlabel(' Overlap of TP representations')
+  plt.legend(['across category', 'within category'])
+
+  overlapWithinCategoryDistribution = np.histogram(maximumOverlapWithinCategory, bins=histBins)
+  overlapWithinCategoryDistribution = overlapWithinCategoryDistribution[0].astype('float32') / sum(overlapWithinCategoryDistribution[0])
+
+  overlapAcrossCategoryDistribution = np.histogram(maximumOverlapAcrossCategory, bins=histBins)
+  overlapAcrossCategoryDistribution = overlapAcrossCategoryDistribution[0].astype('float32') / sum(overlapAcrossCategoryDistribution[0])
+
+  plt.subplot(3,1,2)
+  plt.plot(histBinsCenter, overlapAcrossCategoryDistribution)
+  plt.plot(histBinsCenter, overlapWithinCategoryDistribution)
+  plt.xlabel(' Overlap with nearest neighbor')
+  plt.legend(['across category', 'within category'])
+
+  plt.subplot(3,1,3)
+  plt.hist(maximumOverlapWithinCategory - maximumOverlapAcrossCategory)
+  plt.xlabel(' Overlap with nearest neighbor (within - across)')
 
 
 class inputParameters(object):
@@ -190,8 +279,8 @@ class inputParameters(object):
       self.textPreprocess = textPreprocess
       self.seed = seed
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--useTPregion",
                       default=0,
@@ -206,7 +295,7 @@ if __name__ == "__main__":
                       type=str,
                       help="Key for Cortical.io API (use special key for 4K retina).")
   args = parser.parse_args()
-  args.apiKey = "7c164cd0-fca0-11e3-80ac-f7122a45615d"
+
   if args.useTPregion:
     args = inputParameters(retina=args.retina,
                            apiKey=args.apiKey,
@@ -216,8 +305,6 @@ if __name__ == "__main__":
                            apiKey=args.apiKey,
                            networkConfigPath='data/network_configs/tm_knn_4k_retina.json')
 
-
-  # setup HTM Runner
   runner = HTMRunner(dataPath=args.dataPath,
                      networkConfigPath=args.networkConfigPath,
                      resultsDir=args.resultsDir,
@@ -239,39 +326,32 @@ if __name__ == "__main__":
                      classificationFile=args.classificationFile,
                      seed=args.seed)
   runner.initModel(0)
-
   runner.setupData(args.textPreprocess)
-
   runner.encodeSamples()
-
   runner.partitionIndices(args.seed)
 
-  sensorRegion, spRegion, tmRegion, tpRegion, knnRegion = get_nupic_regions(runner.model.network)
+  sensorRegion, spRegion, tmRegion, tpRegion, knnRegion = getNupicRegions(runner.model.network)
   tmRegion.learningMode = True
   tmRegion.computePredictedActiveCellIndices = True
 
-  animals, vegetables = get_animal_vegetable_list()
+  categoryList = ['animal-eats-vegetable', 'vegetable-eats-animal']
+  animals, vegetables = getAnimalVegetableList()
   vegetable = {}
   animal = {}
   tmCellUnion = []
   tmInputUnion = []
   tpOutput = []
   categoryLabel = []
-
-  categoryList = ['animal-eats-vegetable', 'vegetable-eats-animal']
-
+  accuracy = []
+  accuracyTp = []
   knnInLastNSequences = 20
-  knn_number = 1
+  knnNumber = 1
 
   plt.close('all')
   plt.figure(1)
   plt.show()
-
-  accuracy = []
-  accuracy_tp = []
   numTokens = NetworkDataGenerator.getNumberOfTokens(args.dataPath)
-  for numSample in xrange(500):#xrange(len(numTokens)):
-
+  for numSample in xrange(200):#xrange(len(numTokens)):
     # union SDR for this sequence
     tmCellActivation = np.zeros((tmRegion._tfdr.cellsPerColumn * tmRegion._tfdr.columnDimensions[0],))
     tmInputActivation = np.zeros((tmRegion._tfdr.columnDimensions[0],))
@@ -341,23 +421,23 @@ if __name__ == "__main__":
         animal[currentWord] = tmRegionInput['bottomUpIn']
 
     # classify sentence
-    predicted_label = knn_classifier(tmCellActivation,
-                                         tmCellUnion,
+    predictedLabel = knnClassifier(tmCellActivation,
+                                   tmCellUnion,
+                                   categoryLabel,
+                                   knnInLastNSequences=knnInLastNSequences,
+                                   knnNumber=knnNumber)
+    accuracy.append(sensorOutput['categoryOut'][0] == predictedLabel)
+    if tpRegion is not None:
+      predicted_label_tp = knnClassifier(tpRegionOutputs["mostActiveCells"],
+                                         tpOutput,
                                          categoryLabel,
                                          knnInLastNSequences=knnInLastNSequences,
-                                         knn_number=knn_number)
-    accuracy.append(sensorOutput['categoryOut'][0]==predicted_label)
-    if tpRegion is not None:
-      predicted_label_tp = knn_classifier(tpRegionOutputs["mostActiveCells"],
-                                           tpOutput,
-                                           categoryLabel,
-                                           knnInLastNSequences=knnInLastNSequences,
-                                           knn_number=knn_number)
-      accuracy_tp.append(sensorOutput['categoryOut'][0]==predicted_label_tp)
+                                         knnNumber=knnNumber)
+      accuracyTp.append(sensorOutput['categoryOut'][0] == predicted_label_tp)
 
     print " sequence: ", sensorOutput['sequenceIdOut'][0], \
           " category: ", categoryList[sensorOutput['categoryOut'][0]], \
-          " predicted category: ", categoryList[predicted_label]
+          " predicted category: ", categoryList[predictedLabel]
 
     sequenceID = sensorOutput['sequenceIdOut'][0]
     tmInputUnion.append(tmInputActivation)
@@ -371,7 +451,7 @@ if __name__ == "__main__":
       winLen = 30
       plt.figure(1)
       plt.plot(movingAverage(accuracy, winLen), color='blue')
-      plt.plot(movingAverage(accuracy_tp, winLen), color='red')
+      plt.plot(movingAverage(accuracyTp, winLen), color='red')
       plt.ylabel(' Classification Accuracy ')
       plt.xlabel(' Training Samples #')
       plt.ylim([0.0, 1.0])
@@ -382,100 +462,18 @@ if __name__ == "__main__":
   categoryLabel = np.array(categoryLabel)
 
   # evaluate cortical.io sdr overlaps
-  vegetable_sdrs = vegetable.values()
-  animal_sdrs = animal.values()
-  evaluateSDROverlap(vegetable_sdrs, animal_sdrs)
+  vegetableSdrs = vegetable.values()
+  animalSdrs = animal.values()
+  evaluateSDROverlap(vegetableSdrs, animalSdrs)
 
+  plotAccuracyOverTime(categoryLabel, tmCellUnion, tmInputUnion)
 
-  # plot accuracy over time
-  accuracy_control = calculate_classificastion_accuracy(categoryLabel, tmInputUnion)
-  accuracy = calculate_classificastion_accuracy(categoryLabel, tmCellUnion, knnInLastNSequences=30, knn_number=3)
-  print " mean accuracy: ", np.mean(accuracy[-100:])
-  winLen = 50
-  accuracy_average = movingAverage(accuracy, winLen)
-  accuracy_control_average = movingAverage(accuracy_control, winLen)
-
-  plt.figure()
-  plt.plot(accuracy_average)
-  plt.plot(accuracy_control_average)
-  plt.legend(['Classification with predicted TM cells', 'with bag of SDRs'], loc=4)
-  plt.ylabel(' Classification Accuracy ')
-  plt.xlabel(' Training Samples #')
-  plt.ylim([.0, 1.0])
-
-
-  # evaluate overlap on TP representations
-  group1 = np.where(categoryLabel==0)[0]
-  group2 = np.where(categoryLabel==1)[0]
-
-  group1 = group1[100:]
-  group2 = group2[100:]
-
-  dist_within_category = []
-  dist_across_category = []
-  maximum_dist_across_category = []
-  maximum_dist_within_category = []
-  for i in group1:
-    dist = []
-    for j in group2:
-      if i-10 < j < i:
-        dist.append(np.sum(np.logical_and(tmCellUnion[i], tmCellUnion[j])))
-    if len(dist) > 0:
-      maximum_dist_across_category.append(max(dist))
-      dist_across_category += dist
-
-    dist = []
-    for j in group1:
-      if i-10 < j < i:
-        dist.append(np.sum(np.logical_and(tmCellUnion[i], tmCellUnion[j])))
-    if len(dist) > 0:
-      maximum_dist_within_category.append(max(dist))
-      dist_within_category += dist
-
-  maximum_dist_across_category = np.array(maximum_dist_across_category)
-  maximum_dist_within_category = np.array(maximum_dist_within_category)
-  print "Overlap of TP representation within category", np.mean(dist_within_category)
-  print "Overlap of TP representation across category", np.mean(dist_across_category)
-
-
-  hist_bins = np.linspace(0, np.max(dist_within_category+dist_across_category), 20)
-  hist_bins_center = (hist_bins[1:] + hist_bins[:-1])/2
-
-  overlap_within_category_dist = np.histogram(dist_within_category, bins=hist_bins)
-  overlap_within_category_dist = overlap_within_category_dist[0].astype('float32')/sum(overlap_within_category_dist[0])
-
-  overlap_across_category_dist = np.histogram(dist_across_category, bins=hist_bins)
-  overlap_across_category_dist = overlap_across_category_dist[0].astype('float32')/sum(overlap_across_category_dist[0])
-
-  plt.figure()
-  plt.subplot(3,1,1)
-  plt.plot(hist_bins_center, overlap_across_category_dist)
-  plt.plot(hist_bins_center, overlap_within_category_dist)
-  plt.xlabel(' Overlap of TP representations')
-  plt.legend(['across category', 'within category'])
-
-  overlap_within_category_dist = np.histogram(maximum_dist_within_category, bins=hist_bins)
-  overlap_within_category_dist = overlap_within_category_dist[0].astype('float32')/sum(overlap_within_category_dist[0])
-
-  overlap_across_category_dist = np.histogram(maximum_dist_across_category, bins=hist_bins)
-  overlap_across_category_dist = overlap_across_category_dist[0].astype('float32')/sum(overlap_across_category_dist[0])
-
-  plt.subplot(3,1,2)
-  plt.plot(hist_bins_center, overlap_across_category_dist)
-  plt.plot(hist_bins_center, overlap_within_category_dist)
-  plt.xlabel(' Overlap with nearest neighbor')
-  plt.legend(['across category', 'within category'])
-
-  plt.subplot(3,1,3)
-  plt.hist(maximum_dist_within_category - maximum_dist_across_category )
-  plt.xlabel(' Overlap with nearest neighbor (within - across)')
-
+  evaulateTPrepresentationOverlap(categoryLabel, tmCellUnion)
 
   # calculate number of predicted cells over time
   nOnBits = []
   for i in xrange(len(tmCellUnion)):
     nOnBits.append(np.sum(tmCellUnion[i]))
-
   plt.figure()
   plt.plot(nOnBits)
   plt.ylabel(' Predicted Cells #')
