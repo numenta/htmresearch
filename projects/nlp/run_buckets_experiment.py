@@ -20,7 +20,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 """
-Script to run "bucket" classification experiments.
+Script to run "buckets" classification experiments.
 """
 
 import argparse
@@ -56,6 +56,8 @@ def run(args):
   resultsDir = os.path.join(root, args.resultsDir)
 
   metricsDicts = []
+  # TODO: would it be okay to just loop over the inference steps for multiple
+  # trials? Is this even possible?
   for trial in xrange(args.trials):
     if args.modelName == "HTMNetwork":
       runner = BucketHTMRunner(dataPath=args.dataPath,
@@ -75,6 +77,7 @@ def run(args):
                                networkConfigPath=args.networkConfigPath,
                                trainingReps=args.trainingReps,
                                seed=args.seed,
+                               concatenationMethod=args.combineMethod,
                                numClasses=0)
       runner.initModel(0)
     else:
@@ -90,29 +93,25 @@ def run(args):
                             plots=args.plots,
                             orderedSplit=args.orderedSplit,
                             verbosity=args.verbosity,
+                            concatenationMethod=args.combineMethod,
                             numClasses=1)
       runner.initModel(args.modelName)
 
-    print "Reading in data and preprocessing."
+    print "Reading in data, preprocessing, and encoding."
     dataTime = time.time()
     runner.setupData(args.textPreprocess)
-    print ("Data setup complete; elapsed time is {0:.2f} seconds.\nNow encoding "
-           "the data".format(time.time() - dataTime))
 
-    encodeTime = time.time()
     runner.encodeSamples()
     print ("Encoding complete; elapsed time is {0:.2f} seconds.\nNow running the "
-           "experiment.".format(time.time() - encodeTime))
+           "experiment.".format(time.time() - dataTime))
 
     runner.bucketData()
-    # TODO: how can we just loop over the inference steps for multiple trials??
+
     runner.partitionIndices(args.seed, args.numInference)
 
     runner.train()
 
     metricsDicts.append(runner.runExperiment(args.numInference))
-
-    # resultCalcs = runner.evaluateResults(metricsDicts)
 
     print "Saving..."
     runner.saveModel()

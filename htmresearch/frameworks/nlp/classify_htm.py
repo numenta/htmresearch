@@ -268,10 +268,9 @@ class ClassificationModelHTM(ClassificationModel):
 
     self.network.run(1)
 
-    import pdb; pdb.set_trace()  # which return do we want??
-    return self._getClassifierInference(seed)
     inference = self._getClassifierInference(seed)
     activityBitmap = self.classifierRegion.getInputData("bottomUpIn")
+
     return inference, activityBitmap
 
 

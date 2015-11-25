@@ -373,8 +373,8 @@ class PlotNLP():
 
   def plotBucketsMetrics(self, metricsDict, comboMethod):
     """
-    @param metricsDicts   (dict)  Expected metrics are
-      firstTP, lastTP, mean, numTop10, and totalRanked.
+    @param metricsDicts   (dict)  Arrays for the min, mean, and max of each
+                                  metric.
     @param comboMethod    (str)   Concatenation method from the experiment.
     """
     numInference = 10

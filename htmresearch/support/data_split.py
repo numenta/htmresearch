@@ -163,7 +163,7 @@ class Buckets(DataSplit):
   def split(self, bucketSizes, numInference=10, randomize=False, seed=42):
     """Split the given samples into train/test sets.
 
-    @param bucketSizes    (list)
+    @param bucketSizes    (list)          Each item is the size of a bucket.
     @param numInference   (int)           Size of first set of data.
     @param randomize      (bool)          Randomize the order.
     @param seed           (int)           Random seed.
@@ -176,7 +176,6 @@ class Buckets(DataSplit):
 
     # Aggregate each train/test set to return
     trainTestSplits = []
-
     for b in bucketSizes:
       indices = range(b)
       if randomize:

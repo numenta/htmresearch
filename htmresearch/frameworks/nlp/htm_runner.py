@@ -264,7 +264,6 @@ class HTMRunner(Runner):
       predictions = []
       activations = []
       for _ in xrange(numTokens):
-        import pdb; pdb.set_trace()
         predicted, active = self.model.testModel(seed)
         activations.append(active)
         predictions.append(predicted)
