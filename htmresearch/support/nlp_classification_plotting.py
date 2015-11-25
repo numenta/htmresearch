@@ -99,7 +99,7 @@ class PlotNLP():
   def plotCategoryConfusionMatrix(self, data, normalize=True):
     """
     Plots the confusion matrix of the input classifications dataframe.
-    
+
     @param data         (pandas DF)     The confusion matrix.
 
     @param normalize    (bool)          True will normalize the confusion matrix
@@ -204,14 +204,14 @@ class PlotNLP():
     """
     Plot a regression of the input data vectors; these must be the same length
     lists, where the items are scalar values.
-    
+
     Note: line defaults to None b/c there are better line fitting tools online
       (https://plot.ly/how-to-create-a-line-of-best-fits/)
     """
     # TODO: use zData for 3D plots
     assert(len(xData) == len(yData))
     if zData: assert(len(xData) == len(zData))
-    
+
     if line:
       assert line in ("linear", "spline")
       trace = Scatter(
@@ -238,7 +238,7 @@ class PlotNLP():
           size=8,
         )
       )
-    
+
     layout = Layout(
       title=title,
       xaxis=dict(
@@ -248,10 +248,10 @@ class PlotNLP():
         title=axisTitles[1],
       )
     )
-    
+
     data = [trace]
     fig = Figure(data=data, layout=layout)
-    
+
     plot_url = py.plot(fig)
     print "Regression plot URL: ", plot_url
 
@@ -259,11 +259,11 @@ class PlotNLP():
   def plotCategoryAccuracies(self, trialAccuracies, trainSizes):
     """
     Shows the accuracy for the categories at a certain training size
-    
+
     @param trialAccuracies    (dict)    A dictionary of dictionaries. For each
-        train size, there is a dictionary that maps a category to a list of 
+        train size, there is a dictionary that maps a category to a list of
         accuracies for that category.
-    
+
     @param trainSizes         (list)    Size of training set for each trial.
     """
     sizes = sorted(set(trainSizes))
@@ -284,7 +284,7 @@ class PlotNLP():
       row = (i - col + 1) / cols + 1
       classificationAccuracies = trialAccuracies[s]
       num_categories = max(num_categories,len(classificationAccuracies.keys()))
-      
+
       x = []
       y = []
       std = []
@@ -329,17 +329,17 @@ class PlotNLP():
     """
     Creates scatter plots that show the accuracy for each category at a
     certain training size
-    
+
     @param classificationAccuracies (dict)    Maps a category label to a list of
         lists of accuracies. Each item in the key is a list of accuracies for
         a specific training size, ordered by increasing training size.
-        
+
     @param trainSizes                (list)    Sizes of training sets for trials.
     """
     # Convert list of list of accuracies to list of means
     classificationSummaries = [(label, map(numpy.mean, acc))
         for label, acc in classificationAccuracies.iteritems()]
-    
+
     data = []
     sizes = sorted(set(trainSizes))
     for label, summary in classificationSummaries:
@@ -369,3 +369,60 @@ class PlotNLP():
     fig = Figure(data=data, layout=layout)
     plot_url = py.plot(fig)
     print "Cumulative Accuracies URL: ", plot_url
+
+
+  def plotBucketsMetrics(self, metricsDict, comboMethod):
+    """
+    @param metricsDicts   (dict)  Expected metrics are
+      firstTP, lastTP, mean, numTop10, and totalRanked.
+    @param comboMethod    (str)   Concatenation method from the experiment.
+    """
+    numInference = 10
+
+    xData = range(1, numInference+1)
+
+    for metricName, results in metricsDict.iteritems():
+      if metricName == "totalRanked": continue
+      minTrace = Scatter(
+        x = xData,
+        y = results[0],
+        mode = "lines+markers",
+        name = "min"
+      )
+      meanTrace = Scatter(
+        x = xData,
+        y = results[1],
+        mode = "lines+markers",
+        name = "mean"
+      )
+      maxTrace = Scatter(
+        x = xData,
+        y = results[2],
+        mode = "lines+markers",
+        name = "max"
+      )
+      data = [minTrace, meanTrace, maxTrace]
+
+      layout = Layout(
+        title="Buckets Experiment ('{}' concatenation) ".format(comboMethod),
+        xaxis=XAxis(
+          title="Iteration",
+          titlefont=Font(
+            family='Courier New, monospace',
+            size=18,
+            color='#7f7f7f'
+          )
+        ),
+        yaxis=YAxis(
+          title=metricName,
+          titlefont=Font(
+            family='Courier New, monospace',
+            size=18,
+            color='#7f7f7f'
+          )
+        )
+      )
+
+      fig = Figure(data=data, layout=layout)
+      plotUrl = py.plot(fig)
+      print "Plot URL for {}: {}".format(metricName, plotUrl)

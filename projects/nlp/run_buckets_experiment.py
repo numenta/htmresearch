@@ -55,65 +55,71 @@ def run(args):
   root = os.path.dirname(os.path.realpath(__file__))
   resultsDir = os.path.join(root, args.resultsDir)
 
-  if args.modelName == "HTMNetwork":
-    runner = BucketHTMRunner(dataPath=args.dataPath,
-                             resultsDir=resultsDir,
-                             experimentName=args.experimentName,
-                             experimentType="buckets",
-                             modelName=args.modelName,
-                             retinaScaling=args.retinaScaling,
-                             retina=args.retina,
-                             apiKey=args.apiKey,
-                             loadPath=args.loadPath,
-                             plots=args.plots,
-                             orderedSplit=args.orderedSplit,
-                             verbosity=args.verbosity,
-                             generateData=args.generateData,
-                             classificationFile=args.classificationFile,
-                             networkConfigPath=args.networkConfigPath,
-                             trainingReps=args.trainingReps,
-                             seed=args.seed,
-                             numClasses=0)
-    runner.initModel(0)
-  else:
-    runner = BucketRunner(dataPath=args.dataPath,
-                          resultsDir=resultsDir,
-                          experimentName=args.experimentName,
-                          experimentType="buckets",
-                          modelName=args.modelName,
-                          retinaScaling=args.retinaScaling,
-                          retina=args.retina,
-                          apiKey=args.apiKey,
-                          loadPath=args.loadPath,
-                          plots=args.plots,
-                          orderedSplit=args.orderedSplit,
-                          verbosity=args.verbosity,
-                          numClasses=1)
-    runner.initModel(args.modelName)
+  metricsDicts = []
+  for trial in xrange(args.trials):
+    if args.modelName == "HTMNetwork":
+      runner = BucketHTMRunner(dataPath=args.dataPath,
+                               resultsDir=resultsDir,
+                               experimentName=args.experimentName,
+                               experimentType="buckets",
+                               modelName=args.modelName,
+                               retinaScaling=args.retinaScaling,
+                               retina=args.retina,
+                               apiKey=args.apiKey,
+                               loadPath=args.loadPath,
+                               plots=args.plots,
+                               orderedSplit=args.orderedSplit,
+                               verbosity=args.verbosity,
+                               generateData=args.generateData,
+                               classificationFile=args.classificationFile,
+                               networkConfigPath=args.networkConfigPath,
+                               trainingReps=args.trainingReps,
+                               seed=args.seed,
+                               numClasses=0)
+      runner.initModel(0)
+    else:
+      runner = BucketRunner(dataPath=args.dataPath,
+                            resultsDir=resultsDir,
+                            experimentName=args.experimentName,
+                            experimentType="buckets",
+                            modelName=args.modelName,
+                            retinaScaling=args.retinaScaling,
+                            retina=args.retina,
+                            apiKey=args.apiKey,
+                            loadPath=args.loadPath,
+                            plots=args.plots,
+                            orderedSplit=args.orderedSplit,
+                            verbosity=args.verbosity,
+                            numClasses=1)
+      runner.initModel(args.modelName)
 
-  print "Reading in data and preprocessing."
-  dataTime = time.time()
-  runner.setupData(args.textPreprocess)
-  print ("Data setup complete; elapsed time is {0:.2f} seconds.\nNow encoding "
-         "the data".format(time.time() - dataTime))
+    print "Reading in data and preprocessing."
+    dataTime = time.time()
+    runner.setupData(args.textPreprocess)
+    print ("Data setup complete; elapsed time is {0:.2f} seconds.\nNow encoding "
+           "the data".format(time.time() - dataTime))
 
-  encodeTime = time.time()
-  runner.encodeSamples()
-  print ("Encoding complete; elapsed time is {0:.2f} seconds.\nNow running the "
-         "experiment.".format(time.time() - encodeTime))
+    encodeTime = time.time()
+    runner.encodeSamples()
+    print ("Encoding complete; elapsed time is {0:.2f} seconds.\nNow running the "
+           "experiment.".format(time.time() - encodeTime))
 
-  runner.bucketData()
+    runner.bucketData()
+    # TODO: how can we just loop over the inference steps for multiple trials??
+    runner.partitionIndices(args.seed, args.numInference)
 
-  runner.partitionIndices(args.seed, args.numInference)
+    runner.train()
 
-  runner.train()
+    metricsDicts.append(runner.runExperiment(args.numInference))
 
-  metricsDicts = runner.runExperiment(args.numInference)
+    # resultCalcs = runner.evaluateResults(metricsDicts)
+
+    print "Saving..."
+    runner.saveModel()
+
+    args.seed += 1
 
   resultCalcs = runner.evaluateResults(metricsDicts)
-
-  print "Saving..."
-  runner.saveModel()
 
   print "Experiment complete in {0:.2f} seconds.".format(time.time() - start)
 
@@ -159,6 +165,12 @@ if __name__ == "__main__":
                            "A bucket with too few samples will be skipped.",
                       type=int,
                       default=10)
+  parser.add_argument("--trials",
+                      help="Number of experiment trials to run, where the "
+                           "random selection of inference data samples will "
+                           "change each trial.",
+                      type=int,
+                      default=1)
   parser.add_argument("--loadPath",
                       help="Path from which to load the serialized model.",
                       type=str,

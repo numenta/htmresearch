@@ -31,13 +31,28 @@ from htmresearch.support.data_split import Buckets
 class BucketRunner(Runner):
   """Runner methods specific to the buckets experiment."""
 
-  def __init__(self, combineMethod="min", *args, **kwargs):
+  def __init__(self, concatenationMethod="min", *args, **kwargs):
     """
-    @param combineMethod  (str) How to combine KNN distances from subsequent
-                                inference iterations.
+    @param concatenationMethod  (str)   How to combine KNN distances from
+      subsequent inference iterations.
     """
-    self.combineMethod = combineMethod
+    if concatenationMethod not in ("min", "mean"):
+      raise ValueError(
+        "Distance concatenation method must be one of 'min' or 'mean'.")
+    self.concatenationMethod = concatenationMethod
     self.buckets = None
+    self.skippedBuckets = []
+
+    # The metrics dict...
+    # note the lists exclude the buckets we skipped b/c they're too small.
+    self.metrics = {
+      "mean": defaultdict(list),
+      "lastTP": defaultdict(list),
+      "firstTP": defaultdict(list),
+      "numTop10": defaultdict(list),
+      "totalRanked": defaultdict(list),
+    }
+    # self.metrics = defaultdict(list)
 
     super(BucketRunner, self).__init__(*args, **kwargs)
 
@@ -104,21 +119,26 @@ class BucketRunner(Runner):
   def runExperiment(self, numInference):
     """
     Populate the KNN space w/ all of the samples and experiment with each
-    bucket, returning a dict with metrics for each bucket.
+    bucket, returning a dict with the bucket metrics for each iteration.
+
+    We skip over buckets that are too small for numInference, keeping track of
+    their indices in self.skippedBuckets, but they're still included in
+    self.labelRefs.
     """
     # The prototypeMap dict maps data samples' unique IDs to KNN prototype #s.
     prototypeMap = self.populateKNN()
-    metrics = {}
+    # metrics = {}
     for idx, bucket in self.buckets.iteritems():
       if len(bucket) < numInference:
+        self.skippedBuckets.append(idx)
         print "Skipping bucket '{}' because it has too few samples.".format(
           self.labelRefs[idx])
         continue
       testIDs, rankIDs = self.prepBucket(idx)
 
-      metrics[idx] = self.testBucket(idx, prototypeMap, testIDs, rankIDs)
+      self.testBucket(idx, prototypeMap, testIDs, rankIDs)
 
-    return metrics
+    return self.metrics
 
 
   def populateKNN(self):
@@ -157,7 +177,8 @@ class BucketRunner(Runner):
   def testBucket(self, bucketNum, trainIDs, testIDs, rankIDs):
     """
     Use the testing samples to infer distances. The distances for subsequent
-    iterations are combined according to self.combineMethod.
+    iterations are combined according to self.concatenationMethod. Results are
+    assigned to self.metrics
 
     @param bucketNum    (int)     Index of bucket to test.
     @param testIDs      (list)    Unique IDs of samples for inference.
@@ -175,7 +196,7 @@ class BucketRunner(Runner):
 
     accumulatedDistances = self.setupDistances(distances, trainIDs)
 
-    metrics = self.getMetrics(accumulatedDistances, trainIDs, rankIDs)
+    self.getMetrics(accumulatedDistances, trainIDs, rankIDs)
 
     if self.verbosity > 0:
       print "====="
@@ -183,11 +204,8 @@ class BucketRunner(Runner):
       print "Results for bucket ", self.labelRefs[self.buckets[bucketNum][0][1]]
       pprint.pprint(metrics)
 
-    return metrics
 
-
-  @staticmethod
-  def setupDistances(distances, trainIDs, method="min"):
+  def setupDistances(self, distances, trainIDs):
     """
     Combine the distance results of each iteration with the method specified.
 
@@ -198,21 +216,17 @@ class BucketRunner(Runner):
                               used when populating KNN space.
     @param method     (str)   Method to combine distances arrays.
     """
-    if method not in ("min", "mean"):
-      raise ValueError(
-        "Distance combination method must be one of 'min' or 'mean'.")
-
-    if method == "mean":
+    if self.concatenationMethod == "mean":
       currentBest = numpy.zeros(len(alreadyTrained))
-    elif method == "min":
+    elif self.concatenationMethod == "min":
       currentBest = numpy.ones(len(trainIDs))
     accumulatedDistances = []
     for ID, dist in distances.iteritems():
 
-      if method == "mean":
+      if self.concatenationMethod == "mean":
         currentBest += dist
         currentBest = currentBest / (n+1.0)
-      elif method == "min":
+      elif self.concatenationMethod == "min":
         currentBest = numpy.minimum(currentBest, dist)
 
       # In each iteration, exclude the queried samples.
@@ -232,38 +246,78 @@ class BucketRunner(Runner):
     @param rankIDs        (list)    IDs of the samples we want metrics on.
     @return metrics       (list)    Dict of metrics for each iteration.
     """
-    metrics = []
-    # for mD in meanDistances:  ## mean
-    for distances in accumulatedDistances:
+    for iteration, distances in enumerate(accumulatedDistances):
       rankIndices = numpy.argsort(distances)
       rankPrototypes = [trainIDs[ID] for ID in rankIDs]
-      # ranks = rankIndices[list(itertools.chain.from_iterable(rankPrototypes))]
       ranks = rankIndices[rankPrototypes]
+      self.metrics["firstTP"][iteration].append(ranks.min())
+      self.metrics["lastTP"][iteration].append(ranks.max())
+      self.metrics["mean"][iteration].append(ranks.mean())
+      self.metrics["numTop10"][iteration].append(
+        len([r for r in ranks if r < 10]))
+      self.metrics["totalRanked"][iteration].append(len(rankIDs))
 
-      metrics.append({
-        "mean": ranks.mean(),
-        "lastTP": ranks.max(),
-        "firstTP": ranks.min(),  # ideally this would be 0
-        "numTop10": len([r for r in ranks if r < 10]),
-        "totalRanked": len(rankIDs),
-        }
-      )
-
-    return metrics
+    return self.metrics
 
 
   def evaluateResults(self, metrics):
     """
-    Calculate evaluation metrics from the bucketing results.
+    Evaluate metrics from the bucketing results over multiple experiment trials.
 
-    @param metrics    (dict)    Keys are bucket numbers.
+    @param metrics    (list)    Each item represents an experiment trial. Items
+                                are dicts for each metric type.
+    @return cummulativeResults  (dict)  For each metric type there is a 3-tuple
+                                for the (min,mean,max) of that metric across
+                                all buckets; one item for each iteration.
     """
-    import pdb; pdb.set_trace()
-    # TODO: plots, aggregate metrics across buckets
+    numInference = 10
+    numBuckets = float(len(self.labelRefs) - len(self.skippedBuckets))
 
+    cummulativeResults = {}
+    for metricName in self.metrics.keys():
+      cummulativeResults[metricName] = [
+        numpy.zeros(numInference),
+        numpy.zeros(numInference),
+        numpy.zeros(numInference),
+      ]
+    for i, trial in enumerate(metrics):
+      # sum the specific metric values over the trials
+      for metricName, metricDict in trial.iteritems():
+        # each trial has a dict of results w/ entries for all metrics
+        for iteration, bucketsMetrics in metricDict.iteritems():
+          # get min, mean, and max values across the buckets
+          cummulativeResults[metricName][0][iteration] += min(bucketsMetrics)
+          cummulativeResults[metricName][1][iteration] += sum(bucketsMetrics) / numBuckets
+          cummulativeResults[metricName][2][iteration] += max(bucketsMetrics)
+        if i == len(metrics)-1:
+          # done summing, get the means
+          for resultsArray in cummulativeResults[metricName]:
+            resultsArray /= float(len(metrics))
 
-    if self.plots:  ## if nothing but plotting, move this to the run script
-      print "plots..."
+    # cummulativeResults = {}
+    # totalResults = {}
+    # for i, trial in enumerate(metrics):
+    #   cummulativeResults[i] = {}
+    #   for metricName, metricDict in trial.iteritems():
+    #     mins = []
+    #     maxs = []
+    #     means = []
+    #     # mins = numpy.zeros(numInference)
+    #     for iteration, bucketMetrics in metricDict.iteritems():
+    #       mins.append(min(bucketMetrics))
+    #       maxs.append(max(bucketMetrics))
+    #       means.append(sum(bucketMetrics) / numBuckets)
+    #     cummulativeResults[i][metricName] = (mins, means, maxs)
 
+    # import pdb; pdb.set_trace()
 
-    return
+    if self.verbosity > 0:
+      pprint.pprint(cummulativeResults)
+
+    if self.plots:
+      print ("Plotting results (note the total number of ranked data samples "
+        "is {})...".format(metricDict["totalRanked"]))
+      self.plotter.plotBucketsMetrics(
+        cummulativeResults, self.concatenationMethod)
+
+    return cummulativeResults
