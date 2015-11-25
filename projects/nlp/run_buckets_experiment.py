@@ -132,11 +132,11 @@ if __name__ == "__main__":
                       help="Path to data CSV or folder of CSVs.",
                       type=str)
   parser.add_argument("-n", "--experimentName",
-                      default="kfolds",
+                      default="buckets",
                       type=str,
                       help="Experiment name.")
   parser.add_argument("-m", "--modelName",
-                      default="Keywords",
+                      default="CioWordFingerprint",
                       type=str,
                       help="Name of model class. Also used for model results "
                            "directory and pickle checkpoint.")
@@ -209,10 +209,6 @@ if __name__ == "__main__":
                       default=False,
                       action="store_true",
                       help="Whether or not to generate network data files.")
-  parser.add_argument("--votingMethod",
-                      default="last",
-                      choices=["last", "most"],
-                      help="Method to use when picking final classifications.")
   parser.add_argument("--classificationFile",
                       default="",
                       help="JSON file mapping string labels to ids.")
