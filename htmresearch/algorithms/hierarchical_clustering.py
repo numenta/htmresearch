@@ -77,17 +77,93 @@ class HierarchicalClustering(object):
   def getDendrogram(self, truncate_mode=None, p=30):
     linkage = self.getLinkageMatrix()
     linkage[:,2] -= numpy.min(linkage[:,2])
+    n = linkage.shape[0]
 
-    fig = plt.figure()
+    def llf(id):
+      if id < n:
+        return "leaf: " + str(id)
+      else:
+        return '[%d %d %1.2f]' % (id, 2, linkage[n-id,3])
+
+    fig = plt.figure(figsize=(10,8), dpi=400)
     ax = plt.axes()
     scipy.cluster.hierarchy.dendrogram(linkage,
-      p=p, truncate_mode=truncate_mode, ax=ax)
+      p=p, truncate_mode=truncate_mode, ax=ax, orientation="right", leaf_font_size=5,
+      no_labels=False, leaf_rotation=45.0, show_leaf_counts=True, leaf_label_func=llf,
+      color_threshold=50)
+    
+    for label in ax.get_yticklabels():
+      label.set_fontsize(4)
+
     return fig
 
 
   ##################
   # Helper Methods #
   ##################
+
+
+  @staticmethod
+  def getMaxAverageOverlap(indices, overlaps):
+    # find the number of data points based on the length of the overlap array
+    # solves for n: len(overlaps) = n(n-1)/2
+    n = numpy.roots([1, -1, -2 * len(overlaps)]).max()
+    k = len(indices)
+
+    rowIdxs = numpy.ndarray((k, k-1), dtype=int)
+    colIdxs = numpy.ndarray((k, k-1), dtype=int)
+
+    for i in xrange(k):
+      rowIdx[i, :] = indices[i]
+      colIdx[i, :i] = indices[:i]
+      colIdx[i, i:] = indices[i+1:]
+
+    idx = HierarchicalClustering._condensedIndex(rowIdx, colIdx, n)
+    subsampledOverlaps = overlaps[idx]
+    biggestOverlapSubsetIdx = subsampledOverlaps.mean(1).argmax()
+    return indices[biggestOverlapSubsetIdx]
+
+
+  @staticmethod
+  def _condensedIndex(indicesA, indicesB, n):
+    """
+    Given a set of n points for which pairwise overlaps are stored in a flat
+    array X in the format returned by _computeOverlaps (upper triangular of the
+    overlap matrix in row-major order), this function returns the indices in X
+    for that correspond to the overlaps for pairs provided in the parameters.
+
+    Example
+    -------
+    Consider the case with n = 5 data points for which pairwise overlaps are
+    stored in array X, which has length 10 = n(n-1)/2. If we want the overlap
+    of points 2 and 3 and the overlap of points 4 and 1, we would call 
+
+      idx = _condensedIndex([2, 4], [3, 1], 5) # idx == [6, 1]
+
+    Note: Since X does not contain the diagonal (self-comparisons), it is
+    invalid to pass arrays such that indicesA[i] == indicesB[i] for any i.
+
+    @param indicesA (arraylike) First dimension of pairs of datapoint indices
+
+    @param indicesB (arraylike) Second dimension of pairs of datapoint indices
+
+    @param n (int) Number of datapoints
+
+    @returns (numpy.array) Indices in condensed overlap matrix containing
+        specified overlaps. Dimension will be same as indicesA and indicesB.
+    """
+    # Ensure that there are no self-comparisons
+    assert (indicesA != indicesB).all()
+
+    # re-arrange indices to ensure that rowIxs[i] < colIxs[i] for all i
+    rowIxs = numpy.where(indicesA < indicesB, indicesA, indicesB)
+    colIxs = numpy.where(indicesA < indicesB, indicesB, indicesA)
+
+    # compute the indices in X of the start of each row in the upper triangular
+    flatRowStarts = rowIxs * n - (rowIxs + 1) * rowIxs / 2
+    flatIxs = flatRowStarts + colIxs
+
+    return flatIxs
 
 
   def _populateOverlaps(self):
