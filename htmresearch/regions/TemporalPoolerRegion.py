@@ -44,8 +44,24 @@ def _getPoolerClass(name):
         " union, unionMonitored" % (name))
 
 
-def _getParentSpatialPoolerClass():
-    return UnionTemporalPooler.__bases__[0]
+def _getParentSpatialPoolerClass(name):
+    """
+    Find the spatial pooler in the parent classes
+    :param name: pooler class name as in _getPoolerClass
+    :return: the parent spatial pooler class
+    """
+    baseClassList = list(_getPoolerClass(name).__bases__)
+    spatialPoolerParent = None
+    while len(baseClassList) > 0 and spatialPoolerParent is None:
+      v = baseClassList.pop()
+      if v.__name__ is "SpatialPooler":
+        spatialPoolerParent = v
+      if v.__name__ is not 'object':
+        baseClassList += list(v.__bases__)
+
+    if spatialPoolerParent is None:
+      raise RuntimeError("Union pooler class does not inherit from spatial pooler class")
+    return spatialPoolerParent
 
 
 def _getDefaultPoolerClass():
