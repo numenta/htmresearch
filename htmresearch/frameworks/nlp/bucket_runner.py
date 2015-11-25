@@ -43,8 +43,7 @@ class BucketRunner(Runner):
     self.buckets = None
     self.skippedBuckets = []
 
-    # The metrics dict...
-    # note the lists exclude the buckets we skipped b/c they're too small.
+    # the metrics lists exclude the buckets we skipped b/c they're too small.
     self.metrics = {
       "mean": defaultdict(list),
       "lastTP": defaultdict(list),
@@ -52,7 +51,6 @@ class BucketRunner(Runner):
       "numTop10": defaultdict(list),
       "totalRanked": defaultdict(list),
     }
-    # self.metrics = defaultdict(list)
 
     super(BucketRunner, self).__init__(*args, **kwargs)
 
@@ -76,7 +74,7 @@ class BucketRunner(Runner):
 
   def partitionIndices(self, seed=42, numInference=10):
     """
-    partitions is a list with an entry for each bucket; the list indices
+    self.partitions is a list with an entry for each bucket; the list indices
     correspond to the runner.buckets keys, which are ints that identify each
     bucket (category) as mapped in runner.labelRefs.
     Each entry is a 2-tuple where the items are testing and "ranking" indices,
@@ -84,17 +82,17 @@ class BucketRunner(Runner):
     in each bucket.
     In the below example, the bucket for category A is indexed at 0, and
     contains three data samples. The partitions specify the first pattern for
-    testing is at bucket index 1, which is the sample w/ unique ID 4, followed
-    by the pattern at bucket index 0 (ID 13). The pattern at bucket index 2
-    (ID 42) will then be used in the ranking step, where we evaluate test
+    testing is at bucket index 1, which is the sample w/ unique ID '4', followed
+    by the pattern at bucket index 0 (ID '13'). The pattern at bucket index 2
+    (ID '42') will then be used in the ranking step, where we evaluate test
     (i.e. inference) results.
 
     labelRefs = ['category A', 'category B', ...]
     buckets = {
       0: [
-           {<data w/ ID 4>},
-           {<data w/ ID 13>},
-           {<data w/ ID 42>}
+           {<data w/ ID '4'>},
+           {<data w/ ID '13'>},
+           {<data w/ ID '42'>}
         ],
       1: [
         ...],
@@ -127,7 +125,7 @@ class BucketRunner(Runner):
     """
     # The prototypeMap dict maps data samples' unique IDs to KNN prototype #s.
     prototypeMap = self.populateKNN()
-    # metrics = {}
+
     for idx, bucket in self.buckets.iteritems():
       if len(bucket) < numInference:
         self.skippedBuckets.append(idx)
@@ -149,11 +147,11 @@ class BucketRunner(Runner):
     prototypeMap = OrderedDict()
     prototypeNum = 0
     for i, pattern in enumerate(self.patterns):
-      if prototypeMap.get(pattern["ID"]) is not None:
+      if pattern["ID"] in prototypeMap:
         # samples appear multiple times, so don't repeat training
         continue
       else:
-        # train on pattern i, and keep track of it's index in KNN space
+        # train on pattern i, and keep track of its index in KNN space
         self.model.trainModel(i)
         prototypeMap[pattern["ID"]] = prototypeNum
         prototypeNum += 1
@@ -174,7 +172,7 @@ class BucketRunner(Runner):
     return testIDs, rankIDs
 
 
-  def testBucket(self, bucketNum, trainIDs, testIDs, rankIDs):
+  def testBucket(self, bucketNum, protoIDs, testIDs, rankIDs):
     """
     Use the testing samples to infer distances. The distances for subsequent
     iterations are combined according to self.concatenationMethod. Results are
@@ -182,7 +180,7 @@ class BucketRunner(Runner):
 
     @param bucketNum    (int)     Index of bucket to test.
     @param testIDs      (list)    Unique IDs of samples for inference.
-    @param trainIDs     (dict)    Maps sample unique IDs to their prototype
+    @param protoIDs     (dict)    Maps sample unique IDs to their prototype
                                   index in KNN space.
     @param rankIDs      (list)    IDs of the samples we want metrics on.
     """
@@ -194,61 +192,55 @@ class BucketRunner(Runner):
         distances[pattern["ID"]] = self.model.infer(pattern["pattern"])
     assert(sorted(distances.keys()) == sorted(testIDs))
 
-    accumulatedDistances = self.setupDistances(distances, trainIDs)
+    accumulatedDistances = self.setupDistances(distances, protoIDs)
 
-    self.getMetrics(accumulatedDistances, trainIDs, rankIDs)
-
-    if self.verbosity > 0:
-      print "====="
-      print "Total data samples in KNN space = ", len(trainIDs)
-      print "Results for bucket ", self.labelRefs[self.buckets[bucketNum][0][1]]
-      pprint.pprint(metrics)
+    self.calcMetrics(accumulatedDistances, protoIDs, rankIDs)
 
 
-  def setupDistances(self, distances, trainIDs):
+  def setupDistances(self, distances, protoIDs):
     """
     Combine the distance results of each iteration with the method specified.
 
     @param distances  (dict)  Keys are unique IDs of the inferred samples,
                               values are the distance arrays from KNN
                               inference results.
-    @param trainIDs   (dict)  Map of unique IDs to sequence numbers as they are
+    @param protoIDs   (dict)  Map of unique IDs to sequence numbers as they are
                               used when populating KNN space.
-    @param method     (str)   Method to combine distances arrays.
     """
     if self.concatenationMethod == "mean":
-      currentBest = numpy.zeros(len(alreadyTrained))
+      summedDist = numpy.zeros(len(protoIDs))
     elif self.concatenationMethod == "min":
-      currentBest = numpy.ones(len(trainIDs))
+      tempDist = numpy.ones(len(protoIDs))
+
     accumulatedDistances = []
-    for ID, dist in distances.iteritems():
-
+    for n, (ID, dist) in enumerate(distances.iteritems()):
       if self.concatenationMethod == "mean":
-        currentBest += dist
-        currentBest = currentBest / (n+1.0)
+        summedDist += dist
+        tempDist = summedDist / (n+1.0)
       elif self.concatenationMethod == "min":
-        currentBest = numpy.minimum(currentBest, dist)
-
+        tempDist = numpy.minimum(currentBest, dist)
       # In each iteration, exclude the queried samples.
-      currentBest[trainIDs[ID]] = 1.0  # TODO: better way to get rid of these?
+      tempDist[protoIDs[ID]] = 1.1  # TODO: better way to get rid of these?
 
-      accumulatedDistances.append(currentBest)
+      accumulatedDistances.append(tempDist)
 
     return accumulatedDistances
 
 
-  def getMetrics(self, accumulatedDistances, trainIDs, rankIDs):
+  def calcMetrics(self, accumulatedDistances, protoIDs, rankIDs):
     """
     @param accumulatedDistances (list)    Results of setupDistance, where each
                                     subsequent item is a numpy.array of
                                     combined distances to KNN prototypes.
-    @param trainIDs       (dict)    IDs corresponding to KNN prototype indices.
+    @param protoIDs       (dict)    IDs corresponding to KNN prototype indices.
     @param rankIDs        (list)    IDs of the samples we want metrics on.
-    @return metrics       (list)    Dict of metrics for each iteration.
+    @return metrics       (list)    Dict of metrics for each iteration. Note
+                                    these lists do not include buckets too
+                                    small for the experiment.
     """
     for iteration, distances in enumerate(accumulatedDistances):
       rankIndices = numpy.argsort(distances)
-      rankPrototypes = [trainIDs[ID] for ID in rankIDs]
+      rankPrototypes = [protoIDs[ID] for ID in rankIDs]
       ranks = rankIndices[rankPrototypes]
       self.metrics["firstTP"][iteration].append(ranks.min())
       self.metrics["lastTP"][iteration].append(ranks.max())
@@ -257,8 +249,6 @@ class BucketRunner(Runner):
         len([r for r in ranks if r < 10]))
       self.metrics["totalRanked"][iteration].append(len(rankIDs))
 
-    return self.metrics
-
 
   def evaluateResults(self, metrics):
     """
@@ -266,9 +256,9 @@ class BucketRunner(Runner):
 
     @param metrics    (list)    Each item represents an experiment trial. Items
                                 are dicts for each metric type.
-    @return cummulativeResults  (dict)  For each metric type there is a 3-tuple
-                                for the (min,mean,max) of that metric across
-                                all buckets; one item for each iteration.
+    @return cummulativeResults  (dict)  For each metric type there is a 3-item
+                                list for the min, mean, and max of that metric
+                                across all buckets; one item for each iteration.
     """
     numInference = 10
     numBuckets = float(len(self.labelRefs) - len(self.skippedBuckets))
@@ -287,7 +277,8 @@ class BucketRunner(Runner):
         for iteration, bucketsMetrics in metricDict.iteritems():
           # get min, mean, and max values across the buckets
           cummulativeResults[metricName][0][iteration] += min(bucketsMetrics)
-          cummulativeResults[metricName][1][iteration] += sum(bucketsMetrics) / numBuckets
+          cummulativeResults[metricName][1][iteration] += \
+            sum(bucketsMetrics) / numBuckets
           cummulativeResults[metricName][2][iteration] += max(bucketsMetrics)
         if i == len(metrics)-1:
           # done summing, get the means
@@ -309,7 +300,6 @@ class BucketRunner(Runner):
     #       means.append(sum(bucketMetrics) / numBuckets)
     #     cummulativeResults[i][metricName] = (mins, means, maxs)
 
-    # import pdb; pdb.set_trace()
 
     if self.verbosity > 0:
       pprint.pprint(cummulativeResults)

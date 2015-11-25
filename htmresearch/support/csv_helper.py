@@ -72,9 +72,13 @@ def bucketCSVs(csvFile, bucketIdx=2):
     with open(csvFile, "rU") as f:
       reader = csv.reader(f)
       headers = next(reader, None)
-      dataDict = defaultdict(list)
+      dataDict = OrderedDict()
       for lineNumber, line in enumerate(reader):
-        dataDict[line[bucketIdx]].append(line)
+        if line[bucketIdx] in dataDict:
+          dataDict[line[bucketIdx]].append(line)
+        else:
+          # new bucket
+          dataDict[line[bucketIdx]] = [line]
   except IOError as e:
     print e
 
