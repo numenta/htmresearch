@@ -250,17 +250,18 @@ class BucketRunner(Runner):
       self.metrics["totalRanked"][iteration].append(len(rankIDs))
 
 
-  def evaluateResults(self, metrics):
+  def evaluateResults(self, metrics, numInference):
     """
     Evaluate metrics from the bucketing results over multiple experiment trials.
 
-    @param metrics    (list)    Each item represents an experiment trial. Items
-                                are dicts for each metric type.
+    @param numInference (int)     Number of inference iterations.
+    @param metrics      (list)    Each item represents an experiment trial.
+                                  Items are dicts for each metric type.
     @return cummulativeResults  (dict)  For each metric type there is a 3-item
-                                list for the min, mean, and max of that metric
-                                across all buckets; one item for each iteration.
+                                  list for the min, mean, and max of that metric
+                                  across all buckets; one item for each
+                                  iteration.
     """
-    numInference = 10
     numBuckets = float(len(self.labelRefs) - len(self.skippedBuckets))
 
     cummulativeResults = {}
@@ -284,22 +285,6 @@ class BucketRunner(Runner):
           # done summing, get the means
           for resultsArray in cummulativeResults[metricName]:
             resultsArray /= float(len(metrics))
-
-    # cummulativeResults = {}
-    # totalResults = {}
-    # for i, trial in enumerate(metrics):
-    #   cummulativeResults[i] = {}
-    #   for metricName, metricDict in trial.iteritems():
-    #     mins = []
-    #     maxs = []
-    #     means = []
-    #     # mins = numpy.zeros(numInference)
-    #     for iteration, bucketMetrics in metricDict.iteritems():
-    #       mins.append(min(bucketMetrics))
-    #       maxs.append(max(bucketMetrics))
-    #       means.append(sum(bucketMetrics) / numBuckets)
-    #     cummulativeResults[i][metricName] = (mins, means, maxs)
-
 
     if self.verbosity > 0:
       pprint.pprint(cummulativeResults)
