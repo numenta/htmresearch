@@ -3,7 +3,8 @@
 In this directory are models and runners for NLP classification experiments. Below is a high-level description of these files. Examples can be found in the [projects/nlp/](https://github.com/numenta/nupic.research/tree/master/projects/nlp) directory. Note the use of the [Cortical.io API](http://api.cortical.io/) for encodings, which we query via cortipy(https://github.com/numenta/cortipy); there is also a [Python SDK by Cortical.io](https://github.com/cortical-io/python-client-sdk).
 
 * classification_model.py: ClassificationModel
-    - Specific classification models are subclassed from this base.
+	- Specific classification models are subclassed from this base.
+    - This base class abstracts the various classification operations used in our NLP experiments. This way the experiment runners (described below) are mostly independent of the specific classification scheme used.
 
 * classify_htm.py: ClassificationModelHTM
     - The network is specified by a network configuration JSON; see projects/nlp/data/network_configs/, e.g.:
