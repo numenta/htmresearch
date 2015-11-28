@@ -141,3 +141,23 @@ class ClassificationModelWindows(ClassificationModel):
         totalInferenceResult += inferenceResult
 
     return self.getWinningLabels(totalInferenceResult, seed)
+
+
+  def infer(self, patterns):
+    """
+    Get the classifier output for a single input pattern; assumes classifier
+    has an infer() method (as specified in NuPIC kNN implementation). For this
+    model we sum the distances across the patterns and normalize
+    before returning.
+    @return       (numpy.array)       Each entry is the distance from the
+        input pattern to that prototype (pattern in the classifier). All
+        distances are between 0.0 and 1.0
+    """
+    distances = numpy.zeros((self.classifier._numPatterns))
+    for i, p in enumerate(patterns):
+      (_, _, dist, _) = self.classifier.infer(
+        self.sparsifyPattern(p["bitmap"], self.encoder.n))
+
+      distances = numpy.array([sum(x) for x in zip(dist, distances)])
+
+    return distances / (i+1)
