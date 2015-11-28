@@ -25,6 +25,7 @@ import unittest
 
 from htmresearch.encoders import EncoderTypes
 from htmresearch.encoders.cio_encoder import CioEncoder
+from htmresearch.support.text_preprocess import TextPreprocess
 
 try:
   import simplejson as json
@@ -43,13 +44,13 @@ def getTestData(fileName):
 
 class CioTest(unittest.TestCase):
   """Test class for getting Cortical.io encodings."""
-  
+
   def setUp(self):
     self.text = "Beautiful is better than ugly."
-  
+
   def assertFingerprintFields(self, response):
     """Check we get the expected fields in a fingerprint dict."""
-    
+
     self.assertIsInstance(response["text"], str,
       "Text field is not a string.")
     self.assertIsInstance(response["fingerprint"]["positions"], list,
@@ -60,18 +61,18 @@ class CioTest(unittest.TestCase):
       "Width field is not an int.")
     self.assertIsInstance(response["height"], int,
       "Height field is not an int.")
-  
-  
+
+
   def testDocumentFingerprint(self):
     """Test the Cortical.io text (document-level) encoding."""
 
     cio = CioEncoder(fingerprintType=EncoderTypes.document)
     response = cio.encode(self.text)
-    
+
     self.assertFingerprintFields(response)
-    
+
     encodingDict = getTestData("cio_encoding_document.json")
-    
+
     self.assertEqual(encodingDict["fingerprint"]["positions"],
       response["fingerprint"]["positions"], "Cio bitmap is not as expected.")
 
@@ -81,9 +82,9 @@ class CioTest(unittest.TestCase):
 
     cio = CioEncoder(fingerprintType=EncoderTypes.word)
     response = cio.encode(self.text)
-    
+
     self.assertFingerprintFields(response)
-    
+
     encodingDict = getTestData("cio_encoding_word.json")
 
     self.assertEqual(encodingDict["fingerprint"]["positions"],
@@ -92,10 +93,11 @@ class CioTest(unittest.TestCase):
 
   def testRetinaScaling(self):
     """Test the CioEncoder for retina dimension scaling."""
-    
-    cio = CioEncoder(retinaScaling = 0.25, fingerprintType=EncoderTypes.document)
+
+    cio = CioEncoder(
+      retinaScaling = 0.25, fingerprintType=EncoderTypes.document)
     response = cio.encode(self.text)
-    
+
     encodingDict = getTestData("cio_encoding_scaled_retina.json")
 
     self.assertEqual(encodingDict["fingerprint"]["positions"],
@@ -104,11 +106,47 @@ class CioTest(unittest.TestCase):
     fullRetinaEncodingDict = getTestData("cio_encoding_document.json")
     fullLength = len(fullRetinaEncodingDict["fingerprint"]["positions"])
     responseLength = len(response["fingerprint"]["positions"])
-    
+
     self.assertTrue(responseLength <= fullLength,
       "Retina scaling did not decrease the fingerprint size.")
 
 
+  def testWindowEncodings(self):
+    """Test the CioEncoder for the sliding window encodings."""
+    cio = CioEncoder(fingerprintType=EncoderTypes.word)
+
+    text = """
+      I grok people. I am people, so now I can say it in people talk. I've found
+      out why people laugh. They laugh because it hurts so much, because it's
+      the only thing that'll make it stop hurting."""
+
+    tokens = TextPreprocess().tokenize(text)
+
+    encodingDicts = cio.getWindowEncoding(tokens)
+
+    self.assertEqual(len(tokens), len(encodingDicts),
+      "Returned incorrect number of window encodings.")
+
+    # Test small window
+    smallWindowEncoding = getTestData("cio_encoding_window_small.json")
+    self.assertEqual(["i", "grok", "people"], smallWindowEncoding["text"],
+      "Small window encoding represents the wrong text.")
+    self.assertTrue(smallWindowEncoding["sparsity"] <= cio.unionSparsity,
+      "Sparsity for small window is larger than the max.")
+
+    # Test large window
+    largeWindowEncoding = getTestData("cio_encoding_window_large.json")
+    self.assertEqual(
+      ["people", "talk", "i", "ve", "found", "out", "why",
+      "people", "laugh", "they", "laugh", "because", "it", "hurts", "so",
+      "much", "because", "it", "s", "the", "only", "thing", "that", "ll",
+      "make", "it", "stop", "hurting"],
+      largeWindowEncoding["text"],
+      "Large window encoding represents the wrong text.")
+    self.assertTrue(largeWindowEncoding["sparsity"] <= cio.unionSparsity,
+      "Sparsity for large window is larger than the max.")
+
+
 
 if __name__ == "__main__":
-     unittest.main()
+    unittest.main()
