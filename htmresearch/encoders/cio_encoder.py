@@ -18,9 +18,10 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
-
 import itertools
+import numpy
 import os
+
 from collections import Counter
 
 from cortipy.cortical_client import CorticalClient, RETINA_SIZES
@@ -62,7 +63,7 @@ class CioEncoder(LanguageEncoder):
         "http://www.cortical.io/resources_apikey.html")
       raise OSError("Missing API key.")
 
-    super(CioEncoder, self).__init__(unionSparsity = unionSparsity)
+    super(CioEncoder, self).__init__(unionSparsity=unionSparsity)
 
     if cacheDir is None:
       root = os.path.dirname(os.path.realpath(__file__))
@@ -133,7 +134,7 @@ class CioEncoder(LanguageEncoder):
     # Count the ON bits represented in the encoded tokens.
     counts = Counter()
     for t in tokens:
-      bitmap = self.client.getBitmap(t)["fingerprint"]["positions"]
+      bitmap = self.getWordBitmap(t)
       counts.update(bitmap)
 
     positions = self.sparseUnion(counts)
@@ -155,6 +156,41 @@ class CioEncoder(LanguageEncoder):
     return encoding
 
 
+  def getWindowEncoding(self, tokens):
+    """
+    The encoding representation of a given token is a union of its bitmap with
+    the immediately previous tokens' bitmaps, up to the maximum sparsity.
+
+    @param tokens           (list)  Tokenized string.
+    @return windowBitmaps   (list)  Dict for each token, with entries for the
+                                    token string, sparsity float, and bitmap
+                                    numpy array.
+    """
+    bitmaps = []
+    for t in tokens:
+      bitmaps.append(numpy.array(self.getWordBitmap(t)))
+
+    windowBitmaps = []
+    for i, _ in enumerate(bitmaps):
+      windowBitmap = bitmaps[i]
+      j=0
+      for j in reversed(xrange(i)):
+        windowSparsity = len(windowBitmap) / float(self.n)
+        nextSparsity = len(bitmaps[j]) / float(self.n)
+        if windowSparsity + nextSparsity > self.unionSparsity / 100.0:
+          # stopping criterion reached
+          break
+        else:
+          # add bitmap to the current window
+          windowBitmap = numpy.union1d(windowBitmap, bitmaps[j])
+      windowBitmaps.append(
+        {"text": tokens[j:i+1],
+         "sparsity": len(windowBitmap) / float(self.n),
+         "bitmap": windowBitmap})
+
+    return windowBitmaps
+
+
   def finishEncoding(self, encoding):
     """
     Scale the fingerprint of the encoding dict (if specified) and fill the
@@ -174,6 +210,14 @@ class CioEncoder(LanguageEncoder):
       (encoding["width"] * encoding["height"]))
 
     return encoding
+
+
+  def getWordBitmap(self, term):
+    """
+    Return a bitmap for the word. If the Cortical.io API can't encode, cortipy
+    will use a random encoding for the word.
+    """
+    return self.client.getBitmap(term)["fingerprint"]["positions"]
 
 
   def encodeIntoArray(self, inputText, output):
