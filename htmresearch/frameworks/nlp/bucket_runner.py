@@ -114,27 +114,27 @@ class BucketRunner(Runner):
     pass
 
 
-  def runExperiment(self, numInference):
+  def runExperiment(self, numInference, numRank):
     """
     Populate the KNN space w/ all of the samples and experiment with each
     bucket, returning a dict with the bucket metrics for each iteration.
 
-    We skip over buckets that are too small for numInference, keeping track of
-    their indices in self.skippedBuckets, but they're still included in
-    self.labelRefs.
+    We skip over buckets that are too small for numInference and numRank,
+    keeping track of their indices in self.skippedBuckets, but they're still
+    included in self.labelRefs.
     """
     # The prototypeMap dict maps data samples' unique IDs to KNN prototype #s.
     prototypeMap = self.populateKNN()
 
     for idx, bucket in self.buckets.iteritems():
-      if len(bucket) < numInference:
+      if len(bucket) < numInference + numRank:
         self.skippedBuckets.append(idx)
         print "Skipping bucket '{}' because it has too few samples.".format(
           self.labelRefs[idx])
         continue
       testIDs, rankIDs = self.prepBucket(idx)
 
-      self.testBucket(idx, prototypeMap, testIDs, rankIDs)
+      self.testBucket(idx, prototypeMap, testIDs, rankIDs, numRank)
 
     return self.metrics
 
@@ -172,7 +172,7 @@ class BucketRunner(Runner):
     return testIDs, rankIDs
 
 
-  def testBucket(self, bucketNum, protoIDs, testIDs, rankIDs):
+  def testBucket(self, bucketNum, protoIDs, testIDs, rankIDs, numRank):
     """
     Use the testing samples to infer distances. The distances for subsequent
     iterations are combined according to self.concatenationMethod. Results are
@@ -182,6 +182,7 @@ class BucketRunner(Runner):
     @param testIDs      (list)    Unique IDs of samples for inference.
     @param protoIDs     (dict)    Maps sample unique IDs to their prototype
                                   index in KNN space.
+    @param numRank      (int)     Use the top numRank TPs for the metrics.
     @param rankIDs      (list)    IDs of the samples we want metrics on.
     """
     # Query the model for the input patterns, returning a dict w/ distance
@@ -194,7 +195,7 @@ class BucketRunner(Runner):
 
     accumulatedDistances = self.setupDistances(distances, protoIDs)
 
-    self.calcMetrics(accumulatedDistances, protoIDs, rankIDs)
+    self.calcMetrics(accumulatedDistances, protoIDs, rankIDs, numRank)
 
 
   def setupDistances(self, distances, protoIDs):
@@ -218,7 +219,7 @@ class BucketRunner(Runner):
         summedDist += dist
         tempDist = summedDist / (n+1.0)
       elif self.concatenationMethod == "min":
-        tempDist = numpy.minimum(currentBest, dist)
+        tempDist = numpy.minimum(tempDist, dist)
       # In each iteration, exclude the queried samples.
       tempDist[protoIDs[ID]] = 1.1  # TODO: better way to get rid of these?
 
@@ -227,13 +228,14 @@ class BucketRunner(Runner):
     return accumulatedDistances
 
 
-  def calcMetrics(self, accumulatedDistances, protoIDs, rankIDs):
+  def calcMetrics(self, accumulatedDistances, protoIDs, rankIDs, numRank):
     """
     @param accumulatedDistances (list)    Results of setupDistance, where each
                                     subsequent item is a numpy.array of
                                     combined distances to KNN prototypes.
     @param protoIDs       (dict)    IDs corresponding to KNN prototype indices.
     @param rankIDs        (list)    IDs of the samples we want metrics on.
+    @param numRank        (int)     Use the top numRank TPs for the metrics.
     @return metrics       (list)    Dict of metrics for each iteration. Note
                                     these lists do not include buckets too
                                     small for the experiment.
@@ -242,12 +244,12 @@ class BucketRunner(Runner):
       rankIndices = numpy.argsort(distances)
       rankPrototypes = [protoIDs[ID] for ID in rankIDs]
       ranks = rankIndices[rankPrototypes]
-      self.metrics["firstTP"][iteration].append(ranks.min())
-      self.metrics["lastTP"][iteration].append(ranks.max())
-      self.metrics["mean"][iteration].append(ranks.mean())
+      topRanks = numpy.sort(ranks)[:numRank]
+      self.metrics["firstTP"][iteration].append(topRanks.min())
+      self.metrics["lastTP"][iteration].append(topRanks.max())
+      self.metrics["mean"][iteration].append(topRanks.mean())
       self.metrics["numTop10"][iteration].append(
-        len([r for r in ranks if r < 10]))
-      self.metrics["totalRanked"][iteration].append(len(rankIDs))
+        len([r for r in topRanks if r < 10]))
 
 
   def evaluateResults(self, metrics, numInference):

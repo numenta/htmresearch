@@ -111,7 +111,7 @@ def run(args):
 
     runner.train()
 
-    metricsDicts.append(runner.runExperiment(args.numInference))
+    metricsDicts.append(runner.runExperiment(args.numInference, args.numRank))
 
     print "Saving..."
     runner.saveModel()
@@ -164,6 +164,11 @@ if __name__ == "__main__":
                            "A bucket with too few samples will be skipped.",
                       type=int,
                       default=10)
+  parser.add_argument("--numRank",
+                      help="Number of samples to use for ranking TPs in each "
+                           "bucket. Buckets with too few samples are skipped.",
+                      type=int,
+                      default=5)
   parser.add_argument("--trials",
                       help="Number of experiment trials to run, where the "
                            "random selection of inference data samples will "
