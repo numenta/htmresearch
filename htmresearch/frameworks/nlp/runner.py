@@ -34,6 +34,8 @@ from htmresearch.frameworks.nlp.classify_fingerprint import (
   ClassificationModelFingerprint)
 from htmresearch.frameworks.nlp.classify_keywords import (
   ClassificationModelKeywords)
+from htmresearch.frameworks.nlp.classify_windows import (
+  ClassificationModelWindows)
 from htmresearch.support.csv_helper import readCSV, writeFromDict
 from htmresearch.support.data_split import KFolds
 
@@ -41,6 +43,7 @@ from htmresearch.support.data_split import KFolds
 _MODEL_MAPPING = {
   "CioWordFingerprint": ClassificationModelFingerprint,
   "CioDocumentFingerprint": ClassificationModelFingerprint,
+  "CioWindows": ClassificationModelWindows,
   "Keywords": ClassificationModelKeywords,
   "CioEndpoint": ClassificationModelEndpoint,
   }
