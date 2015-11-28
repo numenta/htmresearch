@@ -1,0 +1,47 @@
+{
+  "sensorRegionConfig": {
+    "regionEnabled": true,
+    "regionName": "sensor",
+    "regionType": "py.LanguageSensor",
+    "regionParams": {
+      "verbosity": 0,
+      "numCategories": 3
+      },
+    "encoders": {}
+  },
+  "tmRegionConfig": {
+    "regionEnabled": true,
+    "regionName": "TM",
+    "regionType": "py.TPRegion",
+    "regionParams": {
+      "verbosity": 0,
+      "columnCount": 4096,
+      "cellsPerColumn": 16,
+      "seed": 1960,
+      "temporalImp": "tm_py",
+      "newSynapseCount": 40,
+      "maxSynapsesPerSegment": 80,
+      "maxSegmentsPerCell": 128,
+      "initialPerm": 0.21,
+      "connectedPerm": 0.3,
+      "permanenceInc": 0.1,
+      "permanenceDec": 0.1,
+      "globalDecay": 0.0,
+      "maxAge": 0,
+      "minThreshold": 20,
+      "activationThreshold": 22,
+      "outputType": "normal",
+      "pamLength": 3
+    }
+  },
+  "classifierRegionConfig": {
+    "regionEnabled": true,
+    "regionName": "classifier",
+    "regionType": "py.KNNClassifierRegion",
+    "regionParams": {
+      "k": 3,
+      "distanceMethod": "rawOverlap",
+      "maxCategoryCount": 100
+    }
+  }
+}

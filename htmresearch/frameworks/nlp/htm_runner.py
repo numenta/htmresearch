@@ -176,7 +176,7 @@ class HTMRunner(Runner):
 
     else:
       # Use the input file for each trial; maintains the order of samples.
-      self.dataFiles = [self.dataPath] * len(self.trainSizes)
+      self.dataFiles = [self.dataPath] * splits
 
     if self.numClasses > 0:
       # Setup labels data objects

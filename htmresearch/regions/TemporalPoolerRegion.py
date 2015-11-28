@@ -44,6 +44,26 @@ def _getPoolerClass(name):
         " union, unionMonitored" % (name))
 
 
+def _getParentSpatialPoolerClass(name):
+    """
+    Find the spatial pooler in the parent classes
+    :param name: pooler class name as in _getPoolerClass
+    :return: the parent spatial pooler class
+    """
+    baseClassList = list(_getPoolerClass(name).__bases__)
+    spatialPoolerParent = None
+    while len(baseClassList) > 0 and spatialPoolerParent is None:
+      v = baseClassList.pop()
+      if v.__name__ is "SpatialPooler":
+        spatialPoolerParent = v
+      if v.__name__ is not 'object':
+        baseClassList += list(v.__bases__)
+
+    if spatialPoolerParent is None:
+      raise RuntimeError("Union pooler class does not inherit from spatial pooler class")
+    return spatialPoolerParent
+
+
 def _getDefaultPoolerClass():
     return UnionTemporalPooler
 
@@ -139,6 +159,19 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
       constraints=getConstraints(argTuple[2]))
     poolerSpec[argTuple[0]] = d
 
+  # Get arguments from spatial pooler constructors, figure out types of
+  # variables and populate poolerSpec.
+  # This allows setting SP parameters
+  pArgTuples = _buildArgs(_getParentSpatialPoolerClass())
+  for argTuple in pArgTuples:
+    d = dict(
+      description=argTuple[1],
+      accessMode="ReadWrite",
+      dataType=getArgType(argTuple[2])[0],
+      count=getArgType(argTuple[2])[1],
+      constraints=getConstraints(argTuple[2]))
+    poolerSpec[argTuple[0]] = d
+
   # Add special parameters that weren't handled automatically
   # Pooler parameters only
   poolerSpec.update(dict(
@@ -180,6 +213,8 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
       dataType="bool",
       count=1,
       constraints="bool"),
+
+
 
   )
 
@@ -223,9 +258,9 @@ class TemporalPoolerRegion(PyRegion):
     # These calls whittle down kwargs and create instance variables of TemporalPoolerRegion
     self._poolerClass = _getPoolerClass(poolerType)
     pArgTuples = _buildArgs(self._poolerClass, self, kwargs)
-
+    pArgTuplesSP = _buildArgs(_getParentSpatialPoolerClass(), self, kwargs)
     # Make a list of automatic pooler arg names for later use
-    self._poolerArgNames = [t[0] for t in pArgTuples]
+    self._poolerArgNames = [t[0] for t in pArgTuples] + [t[0] for t in pArgTuplesSP]
 
     PyRegion.__init__(self, **kwargs)
 
@@ -313,7 +348,7 @@ class TemporalPoolerRegion(PyRegion):
           isDefaultInput=False,
           requireSplitterMap=False),
 
-          resetIn=dict(
+        resetIn=dict(
           description="""A boolean flag that indicates whether
                          or not the input vector received in this compute cycle
                          represents the start of a new temporal sequence.""",
