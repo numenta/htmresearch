@@ -371,15 +371,16 @@ class PlotNLP():
     print "Cumulative Accuracies URL: ", plot_url
 
 
-  def plotBucketsMetrics(self, metricsDict, comboMethod):
+  def plotBucketsMetrics(
+    self, metricsDict, comboMethod, numIterations, modelName):
     """
     @param metricsDicts   (dict)  Arrays for the min, mean, and max of each
                                   metric.
     @param comboMethod    (str)   Concatenation method from the experiment.
+    @param numIterations  (str)   Number of inference steps run.
+    @param modelName      (str)   Name of tested model.
     """
-    numInference = 10
-
-    xData = range(1, numInference+1)
+    xData = range(1, numIterations+1)
 
     for metricName, results in metricsDict.iteritems():
       if metricName == "totalRanked": continue
@@ -404,14 +405,16 @@ class PlotNLP():
       data = [minTrace, meanTrace, maxTrace]
 
       layout = Layout(
-        title="Buckets Experiment ('{}' concatenation) ".format(comboMethod),
+        title="Buckets Experiment for {} ('{}' concatenation) ".format(
+          modelName, comboMethod),
         xaxis=XAxis(
           title="Iteration",
           titlefont=Font(
             family='Courier New, monospace',
             size=18,
             color='#7f7f7f'
-          )
+          ),
+        dtick=1
         ),
         yaxis=YAxis(
           title=metricName,

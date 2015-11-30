@@ -108,13 +108,17 @@ class ClassificationModelWindows(ClassificationModel):
     sampleReference is populated to correlate classifier prototypes to sample
     IDs. This model is unique in that a single sample contains multiple encoded
     patterns.
+
+    @return       (int)     Number of patterns trained on.
     """
-    for token in self.patterns[i]["pattern"]:
+    for idx, token in enumerate(self.patterns[i]["pattern"]):
       if token["bitmap"].any():
         for label in self.patterns[i]["labels"]:
           self.classifier.learn(
             token["bitmap"], label, isSparse=self.encoder.n)
           self.sampleReference.append(self.patterns[i]["ID"])
+
+    return idx+1
 
 
   def testModel(self, i, seed=42):

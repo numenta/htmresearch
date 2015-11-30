@@ -118,7 +118,8 @@ def run(args):
 
     args.seed += 1
 
-  resultCalcs = runner.evaluateResults(metricsDicts, args.numInference)
+  resultCalcs = runner.evaluateResults(
+    metricsDicts, args.numInference, args.modelName)
 
   print "Experiment complete in {0:.2f} seconds.".format(time.time() - start)
 

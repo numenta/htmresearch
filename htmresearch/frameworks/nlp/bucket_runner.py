@@ -18,6 +18,7 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import copy
 import itertools
 import numpy
 import pprint
@@ -152,9 +153,14 @@ class BucketRunner(Runner):
         continue
       else:
         # train on pattern i, and keep track of its index in KNN space
-        self.model.trainModel(i)
-        prototypeMap[pattern["ID"]] = prototypeNum
-        prototypeNum += 1
+        count = self.model.trainModel(i)
+        if count:
+          # multiple kNN prototypes for this sample
+          prototypeMap[pattern["ID"]] = range(prototypeNum, prototypeNum+count)
+          prototypeNum += count
+        else:
+          prototypeMap[pattern["ID"]] = prototypeNum
+          prototypeNum += 1
 
     return prototypeMap
 
@@ -208,10 +214,16 @@ class BucketRunner(Runner):
     @param protoIDs   (dict)  Map of unique IDs to sequence numbers as they are
                               used when populating KNN space.
     """
+    lastProto = protoIDs[protoIDs.keys()[-1]]
+    if isinstance(lastProto, list):
+      numProtos = lastProto[-1] + 1
+    else:
+      numProtos = lastProto + 1
+
     if self.concatenationMethod == "mean":
-      summedDist = numpy.zeros(len(protoIDs))
+      summedDist = numpy.zeros(numProtos)
     elif self.concatenationMethod == "min":
-      tempDist = numpy.ones(len(protoIDs))
+      tempDist = numpy.ones(numProtos)
 
     accumulatedDistances = []
     for n, (ID, dist) in enumerate(distances.iteritems()):
@@ -241,10 +253,38 @@ class BucketRunner(Runner):
                                     small for the experiment.
     """
     for iteration, distances in enumerate(accumulatedDistances):
-      rankIndices = numpy.argsort(distances)
-      rankPrototypes = [protoIDs[ID] for ID in rankIDs]
-      ranks = rankIndices[rankPrototypes]
+      # First make sure each sample maps to its best prototype.
+      protoMappings = copy.deepcopy(protoIDs)
+      if isinstance(protoIDs[protoIDs.keys()[0]], list):
+        indices = []
+        # IDs each map to multiple prototypes, so use the closest prototype
+        # (i.e. best matching window) for each ID
+        for i, (pID, prototypes) in enumerate(protoIDs.iteritems()):
+          distForThisID = [distances[proto] for proto in prototypes]
+          bestProto = numpy.argsort(distForThisID)[0]
+          protoMappings[pID] = prototypes[bestProto]
+
+      # Only use the prototypes for which we've mapped data samples.
+      # eligibleDistances = [distances[j] for j in protoMappings.values()]
+      eligibleDistances = numpy.zeros(len(protoMappings))
+      mapDistances = OrderedDict()
+      for eligibleDIdx, allDIdx in enumerate(protoMappings.values()):
+        # eligibile distances are to the prototypes which best represent each
+        # sample, and we need to map the indices of the eligible distances
+        # array to those of the distances array
+        eligibleDistances[eligibleDIdx] = distances[allDIdx]
+        mapDistances[allDIdx] = eligibleDIdx
+
+      # get the indices of closest-to-farthest eligible prototypes:
+      sortedDistances = numpy.argsort(eligibleDistances)
+      # get the prototype indices (in distances array) representing the samples
+      # we want to rank:
+      rankPrototypes = [protoMappings[ID] for ID in rankIDs]
+      # get the ranks of the desired prototypes:
+      ranks = sortedDistances[[mapDistances[rP] for rP in rankPrototypes]]
       topRanks = numpy.sort(ranks)[:numRank]
+
+      # Get the desired ranking metrics.
       self.metrics["firstTP"][iteration].append(topRanks.min())
       self.metrics["lastTP"][iteration].append(topRanks.max())
       self.metrics["mean"][iteration].append(topRanks.mean())
@@ -252,13 +292,14 @@ class BucketRunner(Runner):
         len([r for r in topRanks if r < 10]))
 
 
-  def evaluateResults(self, metrics, numInference):
+  def evaluateResults(self, metrics, numInference, modelName=""):
     """
     Evaluate metrics from the bucketing results over multiple experiment trials.
 
     @param numInference (int)     Number of inference iterations.
     @param metrics      (list)    Each item represents an experiment trial.
                                   Items are dicts for each metric type.
+    @param modelName    (str)     Name of the model (for plotting).
     @return cummulativeResults  (dict)  For each metric type there is a 3-item
                                   list for the min, mean, and max of that metric
                                   across all buckets; one item for each
@@ -295,6 +336,6 @@ class BucketRunner(Runner):
       print ("Plotting results (note the total number of ranked data samples "
         "is {})...".format(metricDict["totalRanked"]))
       self.plotter.plotBucketsMetrics(
-        cummulativeResults, self.concatenationMethod)
+        cummulativeResults, self.concatenationMethod, numInference, modelName)
 
     return cummulativeResults
