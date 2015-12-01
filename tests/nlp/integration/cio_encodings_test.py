@@ -113,7 +113,7 @@ class CioTest(unittest.TestCase):
 
   def testWindowEncodings(self):
     """Test the CioEncoder for the sliding window encodings."""
-    cio = CioEncoder(fingerprintType=EncoderTypes.word)
+    cio = CioEncoder(fingerprintType=EncoderTypes.document)
 
     text = """
       I grok people. I am people, so now I can say it in people talk. I've found
@@ -123,28 +123,20 @@ class CioTest(unittest.TestCase):
     tokens = TextPreprocess().tokenize(text)
 
     encodingDicts = cio.getWindowEncoding(tokens)
-
-    self.assertEqual(len(tokens), len(encodingDicts),
+    
+    # Test that only dense windows get encoded
+    self.assertTrue(len(tokens) > len(encodingDicts),
       "Returned incorrect number of window encodings.")
 
-    # Test small window
-    smallWindowEncoding = getTestData("cio_encoding_window_small.json")
-    self.assertEqual(["i", "grok", "people"], smallWindowEncoding["text"],
-      "Small window encoding represents the wrong text.")
-    self.assertTrue(smallWindowEncoding["sparsity"] <= cio.unionSparsity,
-      "Sparsity for small window is larger than the max.")
-
-    # Test large window
-    largeWindowEncoding = getTestData("cio_encoding_window_large.json")
-    self.assertEqual(
-      ["people", "talk", "i", "ve", "found", "out", "why",
-      "people", "laugh", "they", "laugh", "because", "it", "hurts", "so",
-      "much", "because", "it", "s", "the", "only", "thing", "that", "ll",
-      "make", "it", "stop", "hurting"],
-      largeWindowEncoding["text"],
-      "Large window encoding represents the wrong text.")
-    self.assertTrue(largeWindowEncoding["sparsity"] <= cio.unionSparsity,
+    # Test window
+    windowEncoding = getTestData("cio_encoding_window.json")
+    self.assertEqual(windowEncoding["text"], encodingDicts[-1]["text"],
+      "Window encoding represents the wrong text.")
+    self.assertTrue(encodingDicts[-1]["sparsity"] <= cio.unionSparsity,
       "Sparsity for large window is larger than the max.")
+    self.assertSequenceEqual(
+      windowEncoding["bitmap"], encodingDicts[-1]["bitmap"].tolist(),
+      "Window encoding's bitmap is not as expected.")
 
 
 

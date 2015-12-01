@@ -166,6 +166,10 @@ class CioEncoder(LanguageEncoder):
                                     token string, sparsity float, and bitmap
                                     numpy array.
     """
+    if self.fingerprintType != EncoderTypes.word:
+      print ("Although the encoder type is not set for words, the window "
+        "encodings use word-level fingerprints.")
+
     bitmaps = []
     for t in tokens:
       bitmaps.append(numpy.array(self.getWordBitmap(t)))
