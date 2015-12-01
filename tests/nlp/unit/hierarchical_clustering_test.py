@@ -95,6 +95,29 @@ class TestHierarchicalClustering(unittest.TestCase):
       _ = HierarchicalClustering._condensedIndex(indicesA, indicesB, 4)
 
 
+  def testGetPrototypes(self):
+    data = scipy.sparse.csr_matrix([
+      [1, 1, 0, 1],
+      [1, 0, 1, 1],
+      [0, 1, 1, 0],
+      [1, 1, 1, 1]
+    ])
+    overlaps = HierarchicalClustering._computeOverlaps(data)
+
+    prototypes = HierarchicalClustering._getPrototypes([0, 1, 2, 3], overlaps)
+    self.assertEqual(set(prototypes.tolist()), set([3]))
+
+    prototypes = HierarchicalClustering._getPrototypes([1, 2, 3], overlaps, 2)
+    self.assertEqual(set(prototypes.tolist()), set([3, 1]))
+
+    prototypes = HierarchicalClustering._getPrototypes([0, 2, 3], overlaps, 2)
+    self.assertEqual(set(prototypes.tolist()), set([3, 0]))
+
+    prototypes = HierarchicalClustering._getPrototypes([0, 1, 2], overlaps, 2)
+    self.assertEqual(set(prototypes.tolist()), set([0, 1]))
+
+
+
 if __name__ == "__main__":
   unittest.main()
 

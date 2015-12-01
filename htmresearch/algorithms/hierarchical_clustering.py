@@ -104,24 +104,44 @@ class HierarchicalClustering(object):
 
 
   @staticmethod
-  def getMaxAverageOverlap(indices, overlaps):
+  def _getPrototypes(indices, overlaps, topNumber=1):
+    """
+    Given a compressed overlap array and a set of indices specifying a subset
+    of those in that array, return the set of topNumber indices that have 
+    maximum overlap with one another.
+
+    @param indices (arraylike) Array of indices for which to get prototypes
+
+    @param overlaps (numpy.array) Condensed array of overlaps of the form
+        returned by _computeOverlaps().
+
+    @param topNumber (int) The number of prototypes to return. Optional,
+        defaults to 1.
+
+    @returns (numpy.array) Array of indices of prototypes
+    """
     # find the number of data points based on the length of the overlap array
     # solves for n: len(overlaps) = n(n-1)/2
     n = numpy.roots([1, -1, -2 * len(overlaps)]).max()
     k = len(indices)
 
+    indices = numpy.array(indices, dtype=int)
     rowIdxs = numpy.ndarray((k, k-1), dtype=int)
     colIdxs = numpy.ndarray((k, k-1), dtype=int)
 
     for i in xrange(k):
-      rowIdx[i, :] = indices[i]
-      colIdx[i, :i] = indices[:i]
-      colIdx[i, i:] = indices[i+1:]
+      rowIdxs[i, :] = indices[i]
+      colIdxs[i, :i] = indices[:i]
+      colIdxs[i, i:] = indices[i+1:]
 
-    idx = HierarchicalClustering._condensedIndex(rowIdx, colIdx, n)
+    idx = HierarchicalClustering._condensedIndex(rowIdxs, colIdxs, n)
     subsampledOverlaps = overlaps[idx]
-    biggestOverlapSubsetIdx = subsampledOverlaps.mean(1).argmax()
-    return indices[biggestOverlapSubsetIdx]
+
+    meanSubsampledOverlaps = subsampledOverlaps.mean(1)
+    biggestOverlapSubsetIdxs = numpy.argpartition(
+      -meanSubsampledOverlaps, topNumber)[:topNumber]
+
+    return indices[biggestOverlapSubsetIdxs]
 
 
   @staticmethod
@@ -152,8 +172,9 @@ class HierarchicalClustering(object):
     @returns (numpy.array) Indices in condensed overlap matrix containing
         specified overlaps. Dimension will be same as indicesA and indicesB.
     """
-    indicesA = numpy.array(indicesA)
-    indicesB = numpy.array(indicesB)
+    indicesA = numpy.array(indicesA, dtype=int)
+    indicesB = numpy.array(indicesB, dtype=int)
+    n = int(n)
 
     # Ensure that there are no self-comparisons
     assert (indicesA != indicesB).all()
