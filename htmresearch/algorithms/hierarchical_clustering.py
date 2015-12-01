@@ -152,6 +152,9 @@ class HierarchicalClustering(object):
     @returns (numpy.array) Indices in condensed overlap matrix containing
         specified overlaps. Dimension will be same as indicesA and indicesB.
     """
+    indicesA = numpy.array(indicesA)
+    indicesB = numpy.array(indicesB)
+
     # Ensure that there are no self-comparisons
     assert (indicesA != indicesB).all()
 
@@ -159,9 +162,7 @@ class HierarchicalClustering(object):
     rowIxs = numpy.where(indicesA < indicesB, indicesA, indicesB)
     colIxs = numpy.where(indicesA < indicesB, indicesB, indicesA)
 
-    # compute the indices in X of the start of each row in the upper triangular
-    flatRowStarts = rowIxs * n - (rowIxs + 1) * rowIxs / 2
-    flatIxs = flatRowStarts + colIxs
+    flatIxs = rowIxs * (n - 1) - (rowIxs + 1) * rowIxs / 2 + colIxs - 1
 
     return flatIxs
 

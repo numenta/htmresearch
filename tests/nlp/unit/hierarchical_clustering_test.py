@@ -71,6 +71,30 @@ class TestHierarchicalClustering(unittest.TestCase):
     self.assertEqual(sparseDataMatrix.todense().tolist(), vectors.tolist())
 
 
+  def testCondensedIndex(self):
+    flat = range(6)
+
+    # first try only indexing upper triangular region
+    indicesA = [0, 0, 0, 1, 1, 2]
+    indicesB = [1, 2, 3, 2, 3, 3]
+    res = HierarchicalClustering._condensedIndex(indicesA, indicesB, 4)
+    self.assertEqual(res.tolist(), flat)
+
+    # ensure we get same result by transposing some indices for the lower
+    # triangular region
+    indicesA = [0, 2, 3, 1, 3, 2]
+    indicesB = [1, 0, 0, 2, 1, 3]
+    res = HierarchicalClustering._condensedIndex(indicesA, indicesB, 4)
+    self.assertEqual(res.tolist(), flat)
+
+    # finally check that we get an assertion error if we try accessing
+    # an element from the diagonal
+    with self.assertRaises(AssertionError):
+      indicesA = [0, 2, 0, 1, 3, 2]
+      indicesB = [1, 2, 3, 2, 1, 3]
+      _ = HierarchicalClustering._condensedIndex(indicesA, indicesB, 4)
+
+
 if __name__ == "__main__":
   unittest.main()
 
