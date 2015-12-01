@@ -37,8 +37,9 @@ def readCSV(csvFile, numLabels=0):
 
   @param csvFile         (str)          File name for the input CSV.
   @param numLabels       (int)          Number of columns of category labels.
-  @return                (OrderedDict)  Keys are samples, values are lists of
-                                        corresponding category labels (strings).
+  @return                (OrderedDict)  Keys are sample IDs, values are 3-tuples
+                                        of sample (str), categories (list of
+                                        str), sample number (int).
   """
   try:
     with open(csvFile, "rU") as f:
@@ -55,14 +56,39 @@ def readCSV(csvFile, numLabels=0):
       labelIdx = range(sampleIdx + 1, sampleIdx + 1 + numLabels)
 
       dataDict = OrderedDict()
-      for line in reader:
-        dataDict[line[idIdx]] = (line[sampleIdx],
-                                 [line[i] for i in labelIdx if line[i]])
-
+      for lineNumber, line in enumerate(reader):
+        dataDict[lineNumber] = (line[sampleIdx],
+                                [line[i] for i in labelIdx if line[i]],
+                                line[idIdx])
       return dataDict
 
   except IOError as e:
     print e
+
+
+def bucketCSVs(csvFile, bucketIdx=2):
+  """Write the individual buckets in csvFile to their own CSV files."""
+  try:
+    with open(csvFile, "rU") as f:
+      reader = csv.reader(f)
+      headers = next(reader, None)
+      dataDict = OrderedDict()
+      for lineNumber, line in enumerate(reader):
+        if line[bucketIdx] in dataDict:
+          dataDict[line[bucketIdx]].append(line)
+        else:
+          # new bucket
+          dataDict[line[bucketIdx]] = [line]
+  except IOError as e:
+    print e
+
+  filePaths = []
+  for i, (_, lines) in enumerate(dataDict.iteritems()):
+    bucketFile = csvFile.replace(".", "_"+str(i)+".")
+    writeCSV(lines, headers, bucketFile)
+    filePaths.append(bucketFile)
+
+  return filePaths
 
 
 def readDir(dirPath, numLabels, modify=False):

@@ -20,6 +20,7 @@
 # ----------------------------------------------------------------------
 
 import cPickle as pkl
+import numpy
 import os
 
 from collections import Counter, namedtuple
@@ -44,25 +45,15 @@ class HTMRunner(Runner):
 
   def __init__(self,
                dataPath,
-               networkConfigPath,
                resultsDir,
                experimentName,
                experimentType,
-               modelName,
-               retinaScaling=1.0,
-               retina="en_associative",
-               apiKey=None,
-               loadPath=None,
-               numClasses=3,
-               plots=0,
-               orderedSplit=False,
-               folds=None,
-               trainSizes=None,
-               verbosity=0,
+               networkConfigPath=None,
                generateData=True,
-               votingMethod="last",
+               votingMethod="most",
                classificationFile="",
-               seed=42):
+               seed=42,
+               **kwargs):
     """
     @param networkConfigPath  (str)    Path to JSON specifying network params.
     @param generateData       (bool)   Whether or not we need to generate data.
@@ -72,11 +63,11 @@ class HTMRunner(Runner):
 
     See base class constructor for the other parameters.
     """
-    super(HTMRunner, self).__init__(dataPath, resultsDir, experimentName,
-                                    experimentType, modelName,
-                                    retinaScaling, retina, apiKey,
-                                    loadPath, numClasses, plots, orderedSplit,
-                                    folds, trainSizes, verbosity)
+    if networkConfigPath is None:
+      raise RuntimeError("Need to specify a network configuration JSON.")
+
+    super(HTMRunner, self).__init__(
+      dataPath, resultsDir, experimentName, experimentType, **kwargs)
 
     self.networkConfig = self._getNetworkConfig(networkConfigPath)
     self.model = None
@@ -117,6 +108,7 @@ class HTMRunner(Runner):
       # self.model.network = Network(networkFile)
       print "Model loaded from \'{0}\'.".format(self.loadPath)
     else:
+      print "Creating HTM classification model..."
       self.model = ClassificationModelHTM(self.networkConfig,
                                           self.dataFiles[trial],
                                           retinaScaling=self.retinaScaling,
@@ -126,11 +118,6 @@ class HTMRunner(Runner):
                                           numLabels=self.numClasses,
                                           modelDir=self.modelDir,
                                           prepData=False)
-
-
-  def setupData(self, _):
-    """Passthrough b/c network data generation was done upfront."""
-    pass
 
 
   def setupNetData(self, generateData=False, seed=42, preprocess=False, **kwargs):
@@ -145,35 +132,11 @@ class HTMRunner(Runner):
     # TODO: logic here is confusing (a lot of if-statements), so maybe cleanup.
     if self.experimentType == "k-folds":
       splits = self.folds
-    else:
+    elif self.experimentType == "incremental":
       splits = len(self.trainSizes)
 
     if generateData:
-      # TODO: use model.prepData()?
-      ndg = NetworkDataGenerator()
-      self.dataDict = ndg.split(
-        self.dataPath, self.numClasses, preprocess, **kwargs)
-
-      filename, ext = os.path.splitext(self.dataPath)
-      self.classificationFile = "{}_categories.json".format(filename)
-
-      # Generate one data file for each experiment iteration.
-      if self.experimentType == "k-folds" and not self.orderedSplit:
-          # only randomize the data order once for k-folds cross validation
-          ndg.randomizeData(seed)
-      for i in xrange(splits):
-        if self.experimentType != "k-folds" and not self.orderedSplit:
-          ndg.randomizeData(seed)
-          seed += 1
-        dataFile = "{}_network_{}{}".format(filename, i, ext)
-        ndg.saveData(dataFile, self.classificationFile)
-        self.dataFiles.append(dataFile)
-
-      if self.verbosity > 0:
-        print "{} file(s) generated at {}".format(len(self.dataFiles),
-          self.dataFiles)
-        print "Classification JSON is at: {}".format(self.classificationFile)
-
+      self.generateNetworkDataFiles(splits, seed, preprocess, **kwargs)
     else:
       # Use the input file for each trial; maintains the order of samples.
       self.dataFiles = [self.dataPath] * splits
@@ -181,7 +144,35 @@ class HTMRunner(Runner):
     if self.numClasses > 0:
       # Setup labels data objects
       self.actualLabels = [self._getClassifications(i) for i in xrange(splits)]
-      self._mapLabelRefs()
+      self.mapLabelRefs()
+
+
+  def generateNetworkDataFiles(self, splits, seed, preprocess, **kwargs):
+    # TODO: use model.prepData()?
+    ndg = NetworkDataGenerator()
+    self.dataDict = ndg.split(
+      filePath=self.dataPath, numLabels=self.numClasses, textPreprocess=preprocess, **kwargs)
+
+    filename, ext = os.path.splitext(self.dataPath)
+    self.classificationFile = "{}_categories.json".format(filename)
+
+    # Generate one data file for each experiment iteration.
+    if self.experimentType == "k-folds" and not self.orderedSplit:
+      # only randomize the data order once for k-folds cross validation
+      ndg.randomizeData(seed)
+    for i in xrange(splits):
+      if self.experimentType != "k-folds" and not self.orderedSplit:
+        ndg.randomizeData(seed)
+        seed += 1
+      # ext='.csv'
+      dataFile = "{}_network_{}{}".format(filename, i, ext)
+      ndg.saveData(dataFile, self.classificationFile)
+      self.dataFiles.append(dataFile)
+
+    if self.verbosity > 0:
+      print "{} file(s) generated at {}".format(len(self.dataFiles),
+        self.dataFiles)
+      print "Classification JSON is at: {}".format(self.classificationFile)
 
 
   def _getClassifications(self, iteration):
@@ -194,19 +185,23 @@ class HTMRunner(Runner):
     dataFile = self.dataFiles[iteration]
     classifications = NetworkDataGenerator.getClassifications(dataFile)
     return [[int(c) for c in classes.strip().split(" ")]
-             for classes in classifications]
+      for classes in classifications]
 
 
-  def _mapLabelRefs(self):
+  def mapLabelRefs(self):
     """Get the mapping from label strings to the corresponding ints."""
     try:
       with open(self.classificationFile, "r") as f:
         labelToId = json.load(f)
-      # Convert the dict of strings -> ids to a list of strings ordered by id
-      self.labelRefs = zip(*sorted(labelToId.iteritems(), key=lambda x:x[1]))[0]
     except IOError as e:
       print "Must have a valid classification JSON file"
       raise e
+
+    # Convert the dict of strings -> ids to a list of strings ordered by id
+    self.labelRefs = zip(*sorted(labelToId.iteritems(), key=lambda x: x[1]))[0]
+    for recordNumber, data in self.dataDict.iteritems():
+      self.dataDict[recordNumber] = (data[0], numpy.array(
+        [self.labelRefs.index(label) for label in data[1]]), data[2])
 
 
   def resetModel(self, trial=0):
@@ -219,12 +214,17 @@ class HTMRunner(Runner):
     #   otherwise you're creating a new model instance twice each experiment
 
 
+  def setupData(self, _):
+    """Passthrough b/c network data generation was done upfront."""
+    pass
+
+
   def encodeSamples(self):
     """Passthrough b/c the network encodes the samples."""
     pass
 
 
-  def _training(self, trial):
+  def training(self, trial):
     """
     Train the network on all the tokens in the training set for a particular
     trial.
@@ -243,7 +243,7 @@ class HTMRunner(Runner):
       self.model.trainModel(iterations=numTokens)
 
 
-  def _testing(self, trial, seed):
+  def testing(self, trial, seed):
     """
     Test the network on the test set for a particular trial and store the
     results
@@ -262,10 +262,12 @@ class HTMRunner(Runner):
     testIndex = len(self.partitions[trial][0])
     for numTokens in self.partitions[trial][1]:
       predictions = []
+      activations = []
       for _ in xrange(numTokens):
-        predicted = self.model.testModel(seed)
+        predicted, active = self.model.testModel(seed)
+        activations.append(active)
         predictions.append(predicted)
-      winningPredictions = self._selectWinners(predictions)
+      winningPredictions = self._selectWinners(predictions, activations)
 
       # TODO: switch to standard (expected, actual) format
       results[0].append(winningPredictions)
@@ -282,7 +284,7 @@ class HTMRunner(Runner):
     self.results.append(results)
 
 
-  def _selectWinners(self, predictions):
+  def _selectWinners(self, predictions, activations):
     """
     Selects the final classifications for the predictions.  Voting
     method=="last" means the predictions of the last sample are used. Voting
@@ -320,7 +322,6 @@ class HTMRunner(Runner):
         dataFile = self.dataFiles[trial]
         numTokens = NetworkDataGenerator.getNumberOfTokens(dataFile)
         self.partitions.append((numTokens[:split], numTokens[split:]))
-
 
   # TODO
   # This method is to partition data for which regions are learning, as in the

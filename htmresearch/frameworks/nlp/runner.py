@@ -71,7 +71,8 @@ class Runner(object):
                orderedSplit=False,
                folds=None,
                trainSizes=None,
-               verbosity=0):
+               verbosity=0,
+               **kwargs):
     """
     @param dataPath         (str)     Path to raw data file for the experiment.
     @param resultsDir       (str)     Directory where for the results metrics.
@@ -92,10 +93,9 @@ class Runner(object):
                                       samples to use in training, per trial.
     @param verbosity        (int)     Greater value prints out more progress.
     """
-    if experimentType not in ("incremental", "k-folds"):
+    if experimentType not in ("buckets", "incremental", "k-folds"):
       raise ValueError("Experiment type not recognized.")
-    if (folds is None) and (trainSizes is None):
-      raise ValueError("Runner needs to know how to split the data.")
+
     self.experimentType = experimentType
     self.folds = folds
     self.trainSizes = trainSizes
@@ -121,6 +121,7 @@ class Runner(object):
       from htmresearch.support.nlp_classification_plotting import PlotNLP
       self.plotter = PlotNLP()
 
+    self.buckets = None
     self.dataDict = None
     self.labels = None
     self.labelRefs = None
@@ -189,18 +190,8 @@ class Runner(object):
     self.model.resetModel()
 
 
-  def saveModel(self):
-    self.model.saveModel()
-
-
-  def _mapLabelRefs(self):
-    """Replace the label strings in self.dataDict with corresponding ints."""
-    self.labelRefs = [label for label in set(
-      itertools.chain.from_iterable([x[1] for x in self.dataDict.values()]))]
-
-    for uniqueID, data in self.dataDict.iteritems():
-      self.dataDict[uniqueID] = (data[0], numpy.array(
-        [self.labelRefs.index(label) for label in data[1]]))
+  def saveModel(self, trial=None):
+    self.model.saveModel(trial)
 
 
   def setupData(self, preprocess=False):
@@ -223,14 +214,27 @@ class Runner(object):
 
     self.samples = self.model.prepData(self.dataDict, preprocess)
 
-    self.encodeSamples()
-
     if self.verbosity > 1:
       for i, s in self.samples.iteritems():
         print i, s
 
 
+  def _mapLabelRefs(self):
+    """Replace the label strings in self.dataDict with corresponding ints."""
+    self.labelRefs = [label for label in set(
+      itertools.chain.from_iterable([x[1] for x in self.dataDict.values()]))]
+
+    for recordNumber, data in self.dataDict.iteritems():
+      self.dataDict[recordNumber] = (data[0], numpy.array(
+        [self.labelRefs.index(label) for label in data[1]]), data[2])
+
+
   def encodeSamples(self):
+    """
+    The patterns list is in the same order as the samples in the original data
+    file; the order is preserved by the OrderedDicts self.dataDict and
+    self.samples, which may or may not match the samples' unique IDs
+    """
     self.patterns = self.model.encodeSamples(self.samples)
 
 
@@ -242,8 +246,8 @@ class Runner(object):
       self.resetModel(i)
       if self.verbosity > 0:
         print "\tTraining and testing for run {}.".format(i)
-      self._training(i)
-      self._testing(i, seed)
+      self.training(i)
+      self.testing(i, seed)
 
 
   def partitionIndices(self, seed=42):
@@ -270,7 +274,7 @@ class Runner(object):
           self.partitions.append((trainIndices, testIndices))
 
 
-  def _training(self, trial):
+  def training(self, trial):
     """
     Train the model one-by-one on each pattern specified in this trials
     partition of indices. Models' training methods require the sample and label
@@ -284,7 +288,7 @@ class Runner(object):
       self.model.trainModel(i)
 
 
-  def _testing(self, trial, seed):
+  def testing(self, trial, seed):
     if self.verbosity > 0:
       print ("\tRunner selects to test on sample(s) {}".format(
         self.partitions[trial][1]))
@@ -359,7 +363,7 @@ class Runner(object):
     print "Classification results for the trial:"
     print template.format("#", "Actual", "Predicted")
     for i in xrange(len(self.results[trial][0])):
-      if self.results[trial][0][i].size == 0:
+      if len(self.results[trial][0][i]) == 0:
         # No predicted classes for this sample.
         print template.format(
           idx[i],

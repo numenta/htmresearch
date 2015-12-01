@@ -34,9 +34,7 @@ from nupic.data.file_record_stream import FileRecordStream
 
 
 class ClassificationModelHTM(ClassificationModel):
-  """
-  Class to run the survey response classification task with nupic network.
-  """
+  """Class to run the classification experiments with HTM network models."""
 
   def __init__(self,
                networkConfig,
@@ -62,7 +60,6 @@ class ClassificationModelHTM(ClassificationModel):
                                         with the sequence_Id.
     See ClassificationModel for remaining parameters.
     """
-
     super(ClassificationModelHTM, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
 
@@ -71,12 +68,11 @@ class ClassificationModelHTM(ClassificationModel):
     self.retina = retina
     self.apiKey = apiKey
 
+    self.networkDataGen = NetworkDataGenerator()
     if prepData:
-      self.networkDataPath, self.networkDataGen = self.prepData(
-        inputFilePath, stripCats=stripCats)
+      self.networkDataPath = self.prepData(inputFilePath, stripCats=stripCats)
     else:
       self.networkDataPath = inputFilePath
-      self.networkDataGen = None
 
     self.network = self.initModel()
     self.learningRegions = self._getLearningRegions()
@@ -98,13 +94,11 @@ class ClassificationModelHTM(ClassificationModel):
     @param stripCats         (bool) Remove the categories and replace them with
                                     the sequence_Id.
     @return networkDataPath  (str)  Path to data formtted for network API.
-    @return ndg              (NetworkDataGenerator)
     """
-    ndg = NetworkDataGenerator()
-    networkDataPath = ndg.setupData(
+    networkDataPath = self.networkDataGen.setupData(
       dataPath, self.numLabels, ordered, stripCats, **kwargs)
 
-    return networkDataPath, ndg
+    return networkDataPath
 
 
   def initModel(self):
@@ -166,19 +160,21 @@ class ClassificationModelHTM(ClassificationModel):
     self.network = self.initModel()
 
 
-  def saveModel(self):
-    # TODO: test this works
+  def saveModel(self, trial=None):
     try:
       if not os.path.exists(self.modelDir):
         os.makedirs(self.modelDir)
-      networkPath = os.path.join(self.modelDir, "network.nta")
-      self.network.save(networkPath)
-      # with open(networkPath, "wb") as f:
+      if trial:
+        netPath = os.path.join(self.modelDir, "network_{}.nta".format(trial))
+      else:
+        netPath = os.path.join(self.modelDir, "network.nta")
+      self.network.save(netPath)
+      # with open(netPath, "wb") as f:
       #   pkl.dump(self, f)
       if self.verbosity > 0:
-        print "Model saved to \'{}\'.".format(networkPath)
+        print "Model saved to '{}'.".format(netPath)
     except IOError as e:
-      print "Could not save model to \'{}\'.".format(networkPath)
+      print "Could not save model to '{}'.".format(netPath)
       raise e
 
 
@@ -189,10 +185,75 @@ class ClassificationModelHTM(ClassificationModel):
     there's a 1-to-1 mapping of training samples.
     """
     for region in self.learningRegions:
-      # if region.name == 'UP': continue
       region.setParameter("learningMode", True)
 
     self.network.run(iterations)
+
+
+  def trainNetwork(self, iterations):
+    """Run the network with all regions learning but the classifier."""
+    for region in self.learningRegions:
+      if region.name == "classifier":
+        region.setParameter("learningMode", False)
+      else:
+        region.setParameter("learningMode", True)
+
+    self.network.run(iterations)
+
+
+  def classifyNetwork(self, iterations):
+    """
+    For running after the network has been trained by trainNetwork(), this
+    populates the KNN prototype space with the final network representations.
+    """
+    for region in self.learningRegions:
+      region.setParameter("learningMode", False)
+
+    sensor = self.sensorRegion.getSelf()
+    sensor.rewind()
+
+    self.classifierRegion.setParameter("learningMode", True)
+    self.classifierRegion.setParameter("inferenceMode", True)
+
+    sequenceIds = []
+    for _ in xrange(iterations):
+      self.network.run(1)
+      sequenceIds.append(sensor.getOutputValues("sequenceIdOut")[0])
+
+    return sequenceIds
+
+
+  def inferNetwork(self, iterations, fileRecord=None, learn=False):
+    """
+    Run the network to infer distances to the classified samples.
+
+    @param fileRecord (str)     If you want to change the file record stream.
+    @param learn      (bool)    The classifier will learn the inferred sequnce.
+    """
+    if fileRecord:
+      self.swapRecordStream(fileRecord)
+
+    self.classifierRegion.setParameter("learningMode", learn)
+    self.classifierRegion.setParameter("inferenceMode", True)
+
+    sampleDistances = None
+    for i in xrange(iterations):
+      self.network.run(1)
+      inferenceValues = self.classifierRegion.getOutputData("categoriesOut")
+      # Sum together the inferred distances for each word of the sequence.
+      if sampleDistances is None:
+        sampleDistances = inferenceValues
+      else:
+        sampleDistances += inferenceValues
+
+    return sampleDistances
+
+
+  def swapRecordStream(self, dataPath):
+    """Change the data source for the network's sensor region."""
+    recordStream = FileRecordStream(streamID=dataPath)
+    sensor = self.sensorRegion.getSelf()
+    sensor.dataSource = recordStream  # TODO: implement this in network API
 
 
   def testModel(self, seed=42):
@@ -209,7 +270,10 @@ class ClassificationModelHTM(ClassificationModel):
 
     self.network.run(1)
 
-    return self._getClassifierInference(seed)
+    inference = self._getClassifierInference(seed)
+    activityBitmap = self.classifierRegion.getInputData("bottomUpIn")
+
+    return inference, activityBitmap
 
 
   def _getClassifierInference(self, seed):
@@ -221,7 +285,6 @@ class ClassificationModelHTM(ClassificationModel):
       inferenceValues = self.classifierRegion.getOutputData(
         "categoriesOut")[:relevantCats]
       return self.getWinningLabels(inferenceValues, seed)
-
 
     elif self.classifierRegion.type == "py.CLAClassifierRegion":
       # TODO: test this
@@ -243,7 +306,7 @@ class ClassificationModelHTM(ClassificationModel):
     queryDicts = self.networkDataGen.generateSequence(query, preprocess)
 
     sampleDistances = None
-    sensor = self.sensorRegion.getSelf()
+
     for qD in queryDicts:
       # Sum together the inferred distances for each word of the query sequence.
       sensor.queue.appendleft(qD)

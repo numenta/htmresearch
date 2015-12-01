@@ -88,18 +88,22 @@ class ClassificationModel(object):
     raise NotImplementedError
 
 
-  def saveModel(self):
+  def saveModel(self, trial=None):
     """Save the serialized model."""
     try:
       if not os.path.exists(self.modelDir):
         os.makedirs(self.modelDir)
-      self.modelPath = os.path.join(self.modelDir, "model.pkl")
+      if trial:
+        self.modelPath = os.path.join(
+          self.modelDir, "model_{}.pkl".format(trial))
+      else:
+        self.modelPath = os.path.join(self.modelDir, "model.pkl")
       with open(self.modelPath, "wb") as f:
         pkl.dump(self, f)
       if self.verbosity > 0:
-        print "Model saved to \'{}\'.".format(self.modelPath)
+        print "Model saved to '{}'.".format(self.modelPath)
     except IOError as e:
-      print "Could not save model to \'{}\'.".format(self.modelPath)
+      print "Could not save model to '{}'.".format(self.modelPath)
       raise e
 
 
@@ -138,7 +142,7 @@ class ClassificationModel(object):
     """
     outDict = OrderedDict()
     for dataID, data in dataDict.iteritems():
-      outDict[dataID] = (self.prepText(data[0], preprocess), data[1])
+      outDict[dataID] = (self.prepText(data[0], preprocess), data[1], data[2])
 
     return outDict
 
@@ -267,7 +271,8 @@ class ClassificationModel(object):
     """
     (_, _, dist, _) = self.classifier.infer(
       self.sparsifyPattern(pattern["bitmap"], self.encoder.n))
-    return dist / len(pattern["bitmap"])
+    # return dist / len(pattern["bitmap"])
+    return dist
 
 
   @staticmethod
@@ -283,21 +288,27 @@ class ClassificationModel(object):
     """
     Encode samples and store in self.patterns, write out encodings to a file.
 
-    @param samples    (dict)      Keys are sample IDs, values are two-tuples:
-                                  list of tokens (str) and list of labels (int).
+    @param samples    (dict)  Keys are samples' record numbers, values are
+                              3-tuples: list of tokens (str), list of labels
+                              (int), unique ID (int or str).
+    @return patterns  (list)  A dict for each encoded data sample.
     """
     if self.numLabels == 0:
       # No labels for classification, so populate labels with stand-ins
-      self.patterns = [{"ID": i,
+      self.patterns = [{"recordNumber": i,
                         "pattern": self.encodeSample(s[0]),
-                        "labels": numpy.array([-1])}
+                        "labels": numpy.array([-1]),
+                        "ID": s[2]}
                        for i, s in samples.iteritems()]
     else:
-      self.patterns = [{"ID": i,
+      self.patterns = [{"recordNumber": i,
                         "pattern": self.encodeSample(s[0]),
-                        "labels": s[1]}
+                        "labels": s[1],
+                        "ID": s[2]}
                        for i, s in samples.iteritems()]
+
     self.writeOutEncodings()
+
     return self.patterns
 
 

@@ -46,7 +46,7 @@ class CioEncoder(LanguageEncoder):
 
   def __init__(self, retina=DEFAULT_RETINA, retinaScaling=1.0, cacheDir=None,
                verbosity=0, fingerprintType=EncoderTypes.document,
-               unionSparsity=20.0, apiKey=None):
+               unionSparsity=0.20, apiKey=None):
     """
     @param retina          (str)      Cortical.io retina, either "en_synonymous"
                                       or "en_associative".
@@ -166,27 +166,35 @@ class CioEncoder(LanguageEncoder):
                                     token string, sparsity float, and bitmap
                                     numpy array.
     """
+    if self.fingerprintType != EncoderTypes.word:
+      print ("Although the encoder type is not set for words, the window "
+        "encodings use word-level fingerprints.")
+
     bitmaps = []
     for t in tokens:
       bitmaps.append(numpy.array(self.getWordBitmap(t)))
 
     windowBitmaps = []
-    for i, _ in enumerate(bitmaps):
-      windowBitmap = bitmaps[i]
-      j=0
+    for i, bitmap in enumerate(bitmaps):
+      windowBitmap = bitmap
+      j = 0
       for j in reversed(xrange(i)):
         windowSparsity = len(windowBitmap) / float(self.n)
         nextSparsity = len(bitmaps[j]) / float(self.n)
-        if windowSparsity + nextSparsity > self.unionSparsity / 100.0:
+        if windowSparsity + nextSparsity > self.unionSparsity:
           # stopping criterion reached
           break
         else:
           # add bitmap to the current window
           windowBitmap = numpy.union1d(windowBitmap, bitmaps[j])
-      windowBitmaps.append(
-        {"text": tokens[j:i+1],
-         "sparsity": len(windowBitmap) / float(self.n),
-         "bitmap": windowBitmap})
+
+      sparsity = len(windowBitmap) / float(self.n)
+      if sparsity > 0.9 * self.unionSparsity:
+        # only include windows of sufficient density
+        windowBitmaps.append(
+          {"text": tokens[j:i+1],
+           "sparsity": sparsity,
+           "bitmap": windowBitmap})
 
     return windowBitmaps
 

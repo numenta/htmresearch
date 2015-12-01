@@ -54,6 +54,13 @@ class NetworkDataGenerator(object):
 
     Note: a reset marks the first item of a new sequence.
     """
+    self.reset()
+    
+    # len(self.categoryToId) gives each category a unique ID
+    self.categoryToId = defaultdict(lambda: len(self.categoryToId))
+
+
+  def reset(self):
     self.records = []
     self.fieldNames = ["_token", "_category", "_sequenceId", "_reset", "ID"]
     self.types = {"_token": "string",
@@ -65,14 +72,10 @@ class NetworkDataGenerator(object):
                      "_category": "C",
                      "_sequenceId": "S",
                      "_reset": "R"}
-
-    # len(self.categoryToId) gives each category a unique id w/o having
-    # duplicates
-    self.categoryToId = defaultdict(lambda: len(self.categoryToId))
     
     self.sequenceCount = 0
-
-
+    
+    
   def setupData(self, dataPath, numLabels=0, ordered=False, stripCats=False, seed=42, **kwargs):
     """
     Main method of this class. Use for setting up a network data file.
@@ -88,7 +91,7 @@ class NetworkDataGenerator(object):
                                     input data file.
     """
     self.split(dataPath, numLabels, **kwargs)
-  
+
     if not ordered:
       self.randomizeData(seed)
     
@@ -97,39 +100,43 @@ class NetworkDataGenerator(object):
     dataFileName = "{}_network{}".format(filename, ext)
     
     if stripCats:
-      self._stripCategories()
+      self.stripCategories()
   
     self.saveData(dataFileName, classificationFileName)
     
     return dataFileName
-  
 
-  def split(self, filePath, numLabels, textPreprocess=False, seed=42,
+
+  def split(self, filePath=None, numLabels=3, textPreprocess=False, dataDict=None,
             abbrCSV="", contrCSV="", ignoreCommon=100,
             removeStrings="[identifier deleted]", correctSpell=True):
     """
-    Split all the comments in a file into tokens. Preprocess if necessary.
-    
+    Split all the comments in a file into tokens, w/ or w/o preprocessing.
+    Specifying both filePath and dataDict will prefer filePath.
+
     @param filePath        (str)    Path to csv file
+    @param dataDict        (dict)   Data as returned by readCSV()
     @param numLabels       (int)    Number of columns of category labels.
     @param textPreprocess  (bool)   True will preprocess text while tokenizing.
-    @param seed            (int)    Random seed.
     
     @return dataDict       (dict)   Data as read in from filePath.
-    
+
     Please see TextPreprocess tokenize() for the other parameters; they're only
     used when textPreprocess is True.
     """
-    dataDict = readCSV(filePath, numLabels=numLabels)
+    if filePath:
+      dataDict = readCSV(filePath, numLabels=numLabels)
+
     if dataDict is None:
-      raise Exception("Could not read CSV.")
+      raise Exception("No data given, or could not read CSV.")
 
     preprocessor = TextPreprocess(abbrCSV=abbrCSV, contrCSV=contrCSV)
     expandAbbr = (abbrCSV != "")
     expandContr = (contrCSV != "")
 
-    for i, uniqueID in enumerate(dataDict.keys()):
-      comment, categories = dataDict[uniqueID]
+    for recordNum, record in dataDict.iteritems():
+      comment, categories, uniqueID = record
+      
       # Convert the categories to a string of their IDs
       categories = string.join([str(self.categoryToId[c]) for c in categories])
 
@@ -140,7 +147,7 @@ class NetworkDataGenerator(object):
       else:
         tokens = preprocessor.tokenize(comment)
 
-      data = self._formatSequence(tokens, categories, i, uniqueID)
+      data = self._formatSequence(tokens, categories, recordNum, uniqueID)
 
       self.records.append(data)
       self.sequenceCount += 1
@@ -148,7 +155,7 @@ class NetworkDataGenerator(object):
     return dataDict
 
 
-  def _stripCategories(self):
+  def stripCategories(self):
     """Erases the categories, replacing them with the sequence number."""
     for data in self.records:
       for record in data:
@@ -237,23 +244,9 @@ class NetworkDataGenerator(object):
     cat = [-1]
     self.sequenceCount += 1
     uniqueID = "q"
-    data = self._formatSequence(tokens, cat, self.sequenceCount, uniqueID)
+    data = self._formatSequence(tokens, cat, self.sequenceCount-1, uniqueID)
 
     return data
-
-
-  def reset(self):
-    self.records = []
-    self.fieldNames = ["token", "_sequenceId", "_reset", "ID"]
-    self.types = {"token": "string",
-                  "_sequenceId": "int",
-                  "_reset": "int",
-                  "ID": "string"}
-    self.specials = {"token": "",
-                     "_sequenceId": "S",
-                     "_reset": "R"}
-
-    self.categoryToId.clear()
 
 
   @staticmethod
