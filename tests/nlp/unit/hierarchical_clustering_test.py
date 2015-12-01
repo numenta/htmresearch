@@ -68,7 +68,10 @@ class TestHierarchicalClustering(unittest.TestCase):
     # Extract vectors from KNN
     sparseDataMatrix = HierarchicalClustering._extractVectorsFromKNN(knn)
 
-    self.assertEqual(sparseDataMatrix.todense().tolist(), vectors.tolist())
+    self.assertEqual(
+      sorted(sparseDataMatrix.todense().tolist()), 
+      sorted(vectors.tolist())
+    )
 
 
   def testCondensedIndex(self):
