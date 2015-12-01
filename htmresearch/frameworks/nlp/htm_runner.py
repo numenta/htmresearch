@@ -299,15 +299,6 @@ class HTMRunner(Runner):
       for p in predictions:
         counter.update(p)
       return zip(*counter.most_common(self.numClasses))[0]
-    elif self.votingmethod == "tree":
-      import pdb; pdb.set_trace()
-      # Calculate overlaps
-
-      # Which are nodes?
-
-      # Classify by the nodes
-
-
     else:
       raise ValueError("voting method must be either \'last\' or \'most\'")
 

@@ -29,8 +29,12 @@ from htmresearch.frameworks.nlp.runner import Runner
 from htmresearch.support.data_split import Buckets
 
 
+
 class BucketRunner(Runner):
   """Runner methods specific to the buckets experiment."""
+
+  # buffer ensures we use buckets large enough for both querying and ranking
+  _rankBuffer = 5
 
   def __init__(self, concatenationMethod="min", *args, **kwargs):
     """
@@ -46,11 +50,8 @@ class BucketRunner(Runner):
 
     # the metrics lists exclude the buckets we skipped b/c they're too small.
     self.metrics = {
-      "mean": defaultdict(list),
-      "lastTP": defaultdict(list),
       "firstTP": defaultdict(list),
       "numTop10": defaultdict(list),
-      "totalRanked": defaultdict(list),
     }
 
     super(BucketRunner, self).__init__(*args, **kwargs)
@@ -78,14 +79,14 @@ class BucketRunner(Runner):
     self.partitions is a list with an entry for each bucket; the list indices
     correspond to the runner.buckets keys, which are ints that identify each
     bucket (category) as mapped in runner.labelRefs.
-    Each entry is a 2-tuple where the items are testing and "ranking" indices,
+    Each entry is a 2-tuple where the items are "querying" and "ranking" indices,
     respectively. The index values refer to the indices of the patterns listed
     in each bucket.
     In the below example, the bucket for category A is indexed at 0, and
     contains three data samples. The partitions specify the first pattern for
-    testing is at bucket index 1, which is the sample w/ unique ID '4', followed
+    querying is at bucket index 1, which is the sample w/ unique ID '4', followed
     by the pattern at bucket index 0 (ID '13'). The pattern at bucket index 2
-    (ID '42') will then be used in the ranking step, where we evaluate test
+    (ID '42') will then be used in the ranking step, where we evaluate query
     (i.e. inference) results.
 
     labelRefs = ['category A', 'category B', ...]
@@ -105,9 +106,10 @@ class BucketRunner(Runner):
       raise RuntimeError("You need to first bucket the data.")
     bucketSizes = [len(x) for x in self.buckets.values()]
 
-    # Create one partition (test, rank) for each bucket.
+    # Create one partition (query, rank) for each bucket.
     self.partitions = Buckets().split(
-      bucketSizes, numInference, randomize=(not self.orderedSplit), seed=seed)
+      bucketSizes, numInference=numInference, randomize=(not self.orderedSplit),
+      seed=seed)
 
 
   def train(self):
@@ -115,12 +117,12 @@ class BucketRunner(Runner):
     pass
 
 
-  def runExperiment(self, numInference, numRank):
+  def runExperiment(self, numInference):
     """
     Populate the KNN space w/ all of the samples and experiment with each
     bucket, returning a dict with the bucket metrics for each iteration.
 
-    We skip over buckets that are too small for numInference and numRank,
+    We skip over buckets that are too small for numInference,
     keeping track of their indices in self.skippedBuckets, but they're still
     included in self.labelRefs.
     """
@@ -128,14 +130,14 @@ class BucketRunner(Runner):
     prototypeMap = self.populateKNN()
 
     for idx, bucket in self.buckets.iteritems():
-      if len(bucket) < numInference + numRank:
+      if len(bucket) < numInference + self._rankBuffer:
         self.skippedBuckets.append(idx)
         print "Skipping bucket '{}' because it has too few samples.".format(
           self.labelRefs[idx])
         continue
-      testIDs, rankIDs = self.prepBucket(idx)
+      queryIDs, rankIDs = self.prepBucket(idx, prototypeMap)
 
-      self.testBucket(idx, prototypeMap, testIDs, rankIDs, numRank)
+      self.testBucket(idx, prototypeMap, queryIDs, rankIDs)
 
     return self.metrics
 
@@ -151,57 +153,63 @@ class BucketRunner(Runner):
       if pattern["ID"] in prototypeMap:
         # samples appear multiple times, so don't repeat training
         continue
-      else:
-        # train on pattern i, and keep track of its index in KNN space
-        count = self.model.trainModel(i)
-        if count:
-          # multiple kNN prototypes for this sample
-          prototypeMap[pattern["ID"]] = range(prototypeNum, prototypeNum+count)
-          prototypeNum += count
-        else:
-          prototypeMap[pattern["ID"]] = prototypeNum
-          prototypeNum += 1
+
+      # Train on pattern i, and keep track of its index in KNN space.
+      count = self.model.trainModel(i)
+      if count:
+        # kNN prototype(s) for this sample
+        prototypeMap[pattern["ID"]] = range(prototypeNum, prototypeNum+count)
+        prototypeNum += count
 
     return prototypeMap
 
 
-  def prepBucket(self, idx):
-    """Test samples are for inferring, rank samples are for evaluation."""
-    testIndices = self.partitions[idx][0]
+  def prepBucket(self, idx, protoIDs):
+    """Query samples are for inferring, rank samples are for evaluation."""
+    queryIndices = self.partitions[idx][0]
     rankIndices = self.partitions[idx][1]
 
-    testIDs = [d[2] for d in
-      [self.dataDict[testIdx] for testIdx in testIndices]]
+    queryIDs = [d[2] for d in
+      [self.dataDict[queryIdx] for queryIdx in queryIndices]]
     rankIDs = [d[2] for d in
       [self.dataDict[rankIdx] for rankIdx in rankIndices]]
 
-    return testIDs, rankIDs
+    rankIDsCopy = copy.deepcopy(rankIDs)  # TODO: better way to do this?
+    for rID in rankIDs:
+      if rID not in protoIDs:
+        rankIDsCopy.remove(rID)
+
+    return queryIDs, rankIDsCopy
 
 
-  def testBucket(self, bucketNum, protoIDs, testIDs, rankIDs, numRank):
+  def testBucket(self, bucketNum, protoIDs, queryIDs, rankIDs):
     """
-    Use the testing samples to infer distances. The distances for subsequent
+    Use the querying samples to infer distances. The distances for subsequent
     iterations are combined according to self.concatenationMethod. Results are
     assigned to self.metrics
 
     @param bucketNum    (int)     Index of bucket to test.
-    @param testIDs      (list)    Unique IDs of samples for inference.
+    @param queryIDs     (list)    Unique IDs of samples for inference.
     @param protoIDs     (dict)    Maps sample unique IDs to their prototype
                                   index in KNN space.
-    @param numRank      (int)     Use the top numRank TPs for the metrics.
     @param rankIDs      (list)    IDs of the samples we want metrics on.
     """
     # Query the model for the input patterns, returning a dict w/ distance
     # values for each query.
     distances = OrderedDict()
     for i, pattern in enumerate(self.patterns):
-      if pattern["ID"] in testIDs and pattern["ID"] not in distances.keys():
+      if pattern["ID"] in queryIDs and pattern["ID"] not in distances.keys():
+        # only infer w/ samples from query set (one time each)
+        if not pattern["pattern"]:
+          # there may not be any encoded patterns for this sample...
+          print ("Not querying pattern {} of bucket {} because it doesn't have "
+            "any encodings.".format(i, bucketNum))
+          continue
         distances[pattern["ID"]] = self.model.infer(pattern["pattern"])
-    assert(sorted(distances.keys()) == sorted(testIDs))
 
     accumulatedDistances = self.setupDistances(distances, protoIDs)
 
-    self.calcMetrics(accumulatedDistances, protoIDs, rankIDs, numRank)
+    self.calcMetrics(accumulatedDistances, protoIDs, rankIDs)
 
 
   def setupDistances(self, distances, protoIDs):
@@ -240,14 +248,13 @@ class BucketRunner(Runner):
     return accumulatedDistances
 
 
-  def calcMetrics(self, accumulatedDistances, protoIDs, rankIDs, numRank):
+  def calcMetrics(self, accumulatedDistances, protoIDs, rankIDs):
     """
     @param accumulatedDistances (list)    Results of setupDistance, where each
                                     subsequent item is a numpy.array of
                                     combined distances to KNN prototypes.
     @param protoIDs       (dict)    IDs corresponding to KNN prototype indices.
     @param rankIDs        (list)    IDs of the samples we want metrics on.
-    @param numRank        (int)     Use the top numRank TPs for the metrics.
     @return metrics       (list)    Dict of metrics for each iteration. Note
                                     these lists do not include buckets too
                                     small for the experiment.
@@ -256,7 +263,6 @@ class BucketRunner(Runner):
       # First make sure each sample maps to its best prototype.
       protoMappings = copy.deepcopy(protoIDs)
       if isinstance(protoIDs[protoIDs.keys()[0]], list):
-        indices = []
         # IDs each map to multiple prototypes, so use the closest prototype
         # (i.e. best matching window) for each ID
         for i, (pID, prototypes) in enumerate(protoIDs.iteritems()):
@@ -282,12 +288,10 @@ class BucketRunner(Runner):
       rankPrototypes = [protoMappings[ID] for ID in rankIDs]
       # get the ranks of the desired prototypes:
       ranks = sortedDistances[[mapDistances[rP] for rP in rankPrototypes]]
-      topRanks = numpy.sort(ranks)[:numRank]
+      topRanks = numpy.sort(ranks)
 
       # Get the desired ranking metrics.
       self.metrics["firstTP"][iteration].append(topRanks.min())
-      self.metrics["lastTP"][iteration].append(topRanks.max())
-      self.metrics["mean"][iteration].append(topRanks.mean())
       self.metrics["numTop10"][iteration].append(
         len([r for r in topRanks if r < 10]))
 

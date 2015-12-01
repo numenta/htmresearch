@@ -190,8 +190,8 @@ class Runner(object):
     self.model.resetModel()
 
 
-  def saveModel(self):
-    self.model.saveModel()
+  def saveModel(self, trial=None):
+    self.model.saveModel(trial)
 
 
   def setupData(self, preprocess=False):
@@ -203,8 +203,6 @@ class Runner(object):
                                   reading in samples.
     """
     self.dataDict = readCSV(self.dataPath, numLabels=self.numClasses)
-    # from htmresearch.support.csv_helper import readNSFDataset
-    # self.dataDict = readNSFDataset(self.dataPath)
 
     if self.experimentType == "incremental":
       # stop now if the data won't work for the specified experiment

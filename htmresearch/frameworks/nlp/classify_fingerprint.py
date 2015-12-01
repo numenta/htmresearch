@@ -42,7 +42,7 @@ class ClassificationModelFingerprint(ClassificationModel):
                numLabels=3,
                modelDir="ClassificationModelFingerprint",
                fingerprintType=EncoderTypes.word,
-               unionSparsity=20.0,
+               unionSparsity=0.20,
                retinaScaling=1.0,
                retina="en_associative",
                apiKey=None):
@@ -108,9 +108,11 @@ class ClassificationModelFingerprint(ClassificationModel):
     """
     bitmap = self.patterns[i]["pattern"]["bitmap"]
     if bitmap.any():
-      for label in self.patterns[i]["labels"]:
+      for count, label in enumerate(self.patterns[i]["labels"]):
         self.classifier.learn(bitmap, label, isSparse=self.encoder.n)
         self.sampleReference.append(self.patterns[i]["ID"])
+
+    return count + 1
 
 
   def testModel(self, i, seed=42):

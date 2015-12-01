@@ -15,7 +15,7 @@
     "regionType": "py.TemporalPoolerRegion",
     "regionParams": {
       "poolerType": "union",
-      "columnCount": 4096,
+      "columnCount": 2048,
       "activeOverlapWeight": 1.0,
       "predictedActiveOverlapWeight": 10.0,
       "maxUnionActivity": 0.20,

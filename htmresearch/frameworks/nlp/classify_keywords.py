@@ -109,11 +109,15 @@ class ClassificationModelKeywords(ClassificationModel):
     IDs. This model is unique in that a single sample contains multiple encoded
     patterns.
     """
+    count = 0
     for token in self.patterns[i]["pattern"]:
       if token["bitmap"].any():
         for label in self.patterns[i]["labels"]:
           self.classifier.learn(token["bitmap"], label, isSparse=self.n)
           self.sampleReference.append(self.patterns[i]["ID"])
+          count += 1
+  
+    return count
 
 
   def testModel(self, i, seed=42):

@@ -41,7 +41,7 @@ class ClassificationModelEndpoint(ClassificationModel):
                verbosity=1,
                numLabels=3,
                modelDir="ClassificationModelEndpoint",
-               unionSparsity=20.0):
+               unionSparsity=0.20):
     """
     Initializes the encoder as CioEncoder; requires a valid API key.
     """

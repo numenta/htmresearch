@@ -88,18 +88,22 @@ class ClassificationModel(object):
     raise NotImplementedError
 
 
-  def saveModel(self):
+  def saveModel(self, trial=None):
     """Save the serialized model."""
     try:
       if not os.path.exists(self.modelDir):
         os.makedirs(self.modelDir)
-      self.modelPath = os.path.join(self.modelDir, "model.pkl")
+      if trial:
+        self.modelPath = os.path.join(
+          self.modelDir, "model_{}.pkl".format(trial))
+      else:
+        self.modelPath = os.path.join(self.modelDir, "model.pkl")
       with open(self.modelPath, "wb") as f:
         pkl.dump(self, f)
       if self.verbosity > 0:
-        print "Model saved to \'{}\'.".format(self.modelPath)
+        print "Model saved to '{}'.".format(self.modelPath)
     except IOError as e:
-      print "Could not save model to \'{}\'.".format(self.modelPath)
+      print "Could not save model to '{}'.".format(self.modelPath)
       raise e
 
 

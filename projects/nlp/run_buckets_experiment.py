@@ -31,6 +31,11 @@ import time
 from htmresearch.frameworks.nlp.bucket_runner import BucketRunner
 from htmresearch.frameworks.nlp.bucket_htm_runner import BucketHTMRunner
 
+try:
+  import simplejson as json
+except ImportError:
+  import json
+
 
 
 def checkInputs(args):
@@ -56,9 +61,8 @@ def run(args):
   resultsDir = os.path.join(root, args.resultsDir)
 
   metricsDicts = []
-  # TODO: would it be okay to just loop over the inference steps for multiple
-  # trials? Is this even possible?
   for trial in xrange(args.trials):
+    print "Running buckets experiment trial {}...".format(trial)
     if args.modelName == "HTMNetwork":
       runner = BucketHTMRunner(dataPath=args.dataPath,
                                resultsDir=resultsDir,
@@ -97,26 +101,33 @@ def run(args):
                             numClasses=1)
       runner.initModel(args.modelName)
 
-    print "Reading in data, preprocessing, and encoding."
+    print "Reading in data, preprocessing, encoding, and bucketing."
     dataTime = time.time()
+
     runner.setupData(args.textPreprocess)
 
     runner.encodeSamples()
-    print ("Encoding complete; elapsed time is {0:.2f} seconds.\nNow running the "
-           "experiment.".format(time.time() - dataTime))
 
     runner.bucketData()
+
+    print ("Data setup complete; elapsed time is {0:.2f} seconds.\nNow running "
+           "the buckets experiment.".format(time.time() - dataTime))
 
     runner.partitionIndices(args.seed, args.numInference)
 
     runner.train()
 
-    metricsDicts.append(runner.runExperiment(args.numInference, args.numRank))
+    metricsDicts.append(runner.runExperiment(args.numInference))
 
-    print "Saving..."
-    runner.saveModel()
+    print "Trial complete, now saving the model."
+    runner.saveModel(trial)
 
     args.seed += 1
+
+  metricsFilePath = os.path.join(resultsDir, args.experimentName, "metrics.json")
+  print "Dumping results to {}".format(metricsFilePath)
+  with open(metricsFilePath, "w") as f:
+    json.dump(metricsDicts, f, sort_keys=True, indent=2, separators=(",", ": "))
 
   resultCalcs = runner.evaluateResults(
     metricsDicts, args.numInference, args.modelName)
@@ -165,11 +176,6 @@ if __name__ == "__main__":
                            "A bucket with too few samples will be skipped.",
                       type=int,
                       default=10)
-  parser.add_argument("--numRank",
-                      help="Number of samples to use for ranking TPs in each "
-                           "bucket. Buckets with too few samples are skipped.",
-                      type=int,
-                      default=5)
   parser.add_argument("--trials",
                       help="Number of experiment trials to run, where the "
                            "random selection of inference data samples will "
@@ -188,10 +194,10 @@ if __name__ == "__main__":
   parser.add_argument("--orderedSplit",
                       default=False,
                       action="store_true",
-                      help="To split the train and test sets, False will split "
+                      help="To split the data sets, False will split "
                            "the samples randomly, True will allocate the "
-                           "first n samples to training with the remainder "
-                           "for testing.")
+                           "first n samples to querying with the remainder "
+                           "for ranking.")
   parser.add_argument("--seed",
                       default=42,
                       type=int,

@@ -46,13 +46,16 @@ class ClassificationModelWindows(ClassificationModel):
                verbosity=1,
                numLabels=3,
                modelDir="ClassificationModelWindow",
-               unionSparsity=20.0,
+               unionSparsity=0.20,
                retinaScaling=1.0,
                retina="en_associative",
                apiKey=None):
 
     super(ClassificationModelWindows, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
+
+    # window patterns below minSparsity will be skipped over
+    self.minSparsity = 0.9 * unionSparsity
 
     # Init kNN classifier and Cortical.io encoder; need valid API key (see
     # CioEncoder init for details).
@@ -107,18 +110,23 @@ class ClassificationModelWindows(ClassificationModel):
     Train the classifier on the sample and labels for record i. The list
     sampleReference is populated to correlate classifier prototypes to sample
     IDs. This model is unique in that a single sample contains multiple encoded
-    patterns.
+    patterns, of which, any that are too sparse are skipped over.
 
     @return       (int)     Number of patterns trained on.
     """
-    for idx, token in enumerate(self.patterns[i]["pattern"]):
-      if token["bitmap"].any():
+    patternTokens = self.patterns[i]["pattern"]
+    if len(patternTokens) == 0:
+      # no patterns b/c no windows were large enough for encoding
+      return 0
+
+    for idx, token in enumerate(patternTokens):
+      if token["sparsity"] > self.minSparsity:
         for label in self.patterns[i]["labels"]:
           self.classifier.learn(
             token["bitmap"], label, isSparse=self.encoder.n)
           self.sampleReference.append(self.patterns[i]["ID"])
 
-    return idx+1
+    return idx + 1
 
 
   def testModel(self, i, seed=42):
@@ -158,10 +166,11 @@ class ClassificationModelWindows(ClassificationModel):
         distances are between 0.0 and 1.0
     """
     distances = numpy.zeros((self.classifier._numPatterns))
+
     for i, p in enumerate(patterns):
       (_, _, dist, _) = self.classifier.infer(
         self.sparsifyPattern(p["bitmap"], self.encoder.n))
 
       distances = numpy.array([sum(x) for x in zip(dist, distances)])
 
-    return distances / (i+1)
+    return distances / float(i+1)

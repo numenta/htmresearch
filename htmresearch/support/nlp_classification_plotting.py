@@ -408,7 +408,7 @@ class PlotNLP():
         title="Buckets Experiment for {} ('{}' concatenation) ".format(
           modelName, comboMethod),
         xaxis=XAxis(
-          title="Iteration",
+          title="Number of samples queried",
           titlefont=Font(
             family='Courier New, monospace',
             size=18,
