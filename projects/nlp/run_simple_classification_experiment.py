@@ -1,3 +1,33 @@
+#!/usr/bin/env python
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Numenta, Inc. a separate commercial license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
+"""
+Script to run a simple sentence classification experiment with HTM temporal memory
+The goal is to classify two class of sentences:
+"The animal eats vegetable" (e.g. The rabbit eats carrot)
+and
+"The vegetable eats animal" (e.g. The carrot eats rabbit)
+"""
+
 import time
 import csv
 import argparse
@@ -11,7 +41,6 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 plt.ion()
-
 
 def getNupicRegions(network):
   sensorRegion = None
