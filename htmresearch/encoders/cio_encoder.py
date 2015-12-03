@@ -156,12 +156,14 @@ class CioEncoder(LanguageEncoder):
     return encoding
 
 
-  def getWindowEncoding(self, tokens):
+  def getWindowEncoding(self, tokens, minSparsity=0.0):
     """
     The encoding representation of a given token is a union of its bitmap with
     the immediately previous tokens' bitmaps, up to the maximum sparsity.
 
     @param tokens           (list)  Tokenized string.
+    @param minSparsity      (float) Only window encodings denser than this value
+                                    will be included.
     @return windowBitmaps   (list)  Dict for each token, with entries for the
                                     token string, sparsity float, and bitmap
                                     numpy array.
@@ -189,7 +191,7 @@ class CioEncoder(LanguageEncoder):
           windowBitmap = numpy.union1d(windowBitmap, bitmaps[j])
 
       sparsity = len(windowBitmap) / float(self.n)
-      if sparsity > 0.9 * self.unionSparsity:
+      if sparsity > minSparsity:
         # only include windows of sufficient density
         windowBitmaps.append(
           {"text": tokens[j:i+1],
