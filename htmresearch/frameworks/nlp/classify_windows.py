@@ -20,13 +20,15 @@
 # ----------------------------------------------------------------------
 import copy
 import numpy
+import operator
 import os
 
-from collections import Counter, OrderedDict
+from collections import Counter, defaultdict, OrderedDict
 
 from htmresearch.encoders import EncoderTypes
 from htmresearch.encoders.cio_encoder import CioEncoder
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
+from htmresearch.support.text_preprocess import TextPreprocess
 from nupic.algorithms.KNNClassifier import KNNClassifier
 
 try:
@@ -57,13 +59,12 @@ class ClassificationModelWindows(ClassificationModel):
     # window patterns below minSparsity will be skipped over
     self.minSparsity = 0.9 * unionSparsity
 
-    # Init kNN classifier and Cortical.io encoder; need valid API key (see
-    # CioEncoder init for details).
     self.classifier = KNNClassifier(k=numLabels,
                                     distanceMethod='rawOverlap',
                                     exact=False,
                                     verbosity=verbosity-1)
 
+    # need valid API key (see CioEncoder init for details)
     root = os.path.dirname(os.path.realpath(__file__))
     self.encoder = CioEncoder(retinaScaling=retinaScaling,
                               cacheDir=os.path.join(root, "CioCache"),
@@ -82,7 +83,7 @@ class ClassificationModelWindows(ClassificationModel):
     @return           (list)        Pattern dicts for the windows, each with the
                                     sample text, sparsity, and bitmap.
     """
-    return self.encoder.getWindowEncoding(sample)
+    return self.encoder.getWindowEncoding(sample, self.minSparsity)
 
 
   def writeOutEncodings(self):
@@ -114,19 +115,19 @@ class ClassificationModelWindows(ClassificationModel):
 
     @return       (int)     Number of patterns trained on.
     """
-    patternTokens = self.patterns[i]["pattern"]
-    if len(patternTokens) == 0:
+    patternWindows = self.patterns[i]["pattern"]
+    if len(patternWindows) == 0:
       # no patterns b/c no windows were large enough for encoding
-      return 0
+      return
+    count = 0
+    for window in patternWindows:
+      for label in self.patterns[i]["labels"]:
+        self.classifier.learn(
+          window["bitmap"], label, isSparse=self.encoder.n)
+        self.sampleReference.append(self.patterns[i]["ID"])
+        count += 1
 
-    for idx, token in enumerate(patternTokens):
-      if token["sparsity"] > self.minSparsity:
-        for label in self.patterns[i]["labels"]:
-          self.classifier.learn(
-            token["bitmap"], label, isSparse=self.encoder.n)
-          self.sampleReference.append(self.patterns[i]["ID"])
-
-    return idx + 1
+    return count
 
 
   def testModel(self, i, seed=42):
@@ -155,12 +156,56 @@ class ClassificationModelWindows(ClassificationModel):
     return self.getWinningLabels(totalInferenceResult, seed)
 
 
+  def queryModel(self, query, preprocess=False):
+    """
+    Preprocesses the query, encodes it into a pattern, then queries the
+    classifier to infer distances to trained-on samples.
+    @return       (list)          Two-tuples of sample ID and distance, sorted
+                                  closest to farthest from the query.
+    """
+    if preprocess:
+      sample = TextPreprocess().tokenize(query,
+                                         ignoreCommon=100,
+                                         removeStrings=["[identifier deleted]"],
+                                         correctSpell=True)
+    else:
+      sample = TextPreprocess().tokenize(query)
+
+    # Get window patterns for the query, but if the query is too small such that
+    # the window encodings are too sparse, we default to a pure union.
+    encodedQuery = self.encodeSample(sample)
+    if len(encodedQuery) == 0:
+      sample = " ".join(sample)
+      fpInfo = self.encoder.getUnionEncoding(sample)
+      encodedQuery = [{
+        "text":fpInfo["text"],
+        "sparsity":fpInfo["sparsity"],
+        "bitmap":numpy.array(fpInfo["fingerprint"]["positions"])
+      }]
+    allDistances = self.infer(encodedQuery)
+
+    if len(allDistances) != len(self.sampleReference):
+      raise IndexError("Number of protoype distances must match number of "
+                       "samples trained on.")
+
+    sampleDistances = defaultdict()
+    for uniqueID in self.sampleReference:
+      sampleDistances[uniqueID] = min(
+        [allDistances[i] for i, x in enumerate(self.sampleReference)
+         if x == uniqueID])
+
+    return sorted(sampleDistances.items(), key=operator.itemgetter(1))
+
+
   def infer(self, patterns):
     """
     Get the classifier output for a single input pattern; assumes classifier
     has an infer() method (as specified in NuPIC kNN implementation). For this
     model we sum the distances across the patterns and normalize
     before returning.
+
+    NOTE: there is no check here that the pattern sparsities are > the minimum.
+
     @return       (numpy.array)       Each entry is the distance from the
         input pattern to that prototype (pattern in the classifier). All
         distances are between 0.0 and 1.0
@@ -171,6 +216,6 @@ class ClassificationModelWindows(ClassificationModel):
       (_, _, dist, _) = self.classifier.infer(
         self.sparsifyPattern(p["bitmap"], self.encoder.n))
 
-      distances = numpy.array([sum(x) for x in zip(dist, distances)])
+      distances = distances + dist
 
     return distances / float(i+1)

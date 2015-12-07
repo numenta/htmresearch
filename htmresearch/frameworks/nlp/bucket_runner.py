@@ -113,7 +113,7 @@ class BucketRunner(Runner):
 
 
   def train(self):
-    """No training for non-HTM models, just populating the KNN later."""
+    """No (real) training for non-HTM models, just populating the KNN later."""
     pass
 
 
