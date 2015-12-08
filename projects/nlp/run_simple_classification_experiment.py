@@ -380,7 +380,7 @@ if __name__ == "__main__":
   plt.figure(1)
   plt.show()
   numTokens = NetworkDataGenerator.getNumberOfTokens(args.dataPath)
-  for numSample in xrange(200):#xrange(len(numTokens)):
+  for numSample in xrange(len(numTokens)):
     # union SDR for this sequence
     tmCellActivation = np.zeros((tmRegion._tfdr.cellsPerColumn * tmRegion._tfdr.columnDimensions[0],))
     tmInputActivation = np.zeros((tmRegion._tfdr.columnDimensions[0],))
@@ -420,7 +420,6 @@ if __name__ == "__main__":
         resetSignal = sensorOutput['resetOut']
         tpRegionInput = {"activeCells": tmRegionOutput["bottomUpOut"],
                          "predictedActiveCells": tmRegionOutput["predictedActiveCells"],
-                         "sequenceIdIn": sensorOutput["sequenceIdOut"],
                          "resetIn": resetSignal}
         tpRegionOutputs = {"mostActiveCells": np.zeros((tpRegion._columnCount,))}
         tpRegion.compute(tpRegionInput, tpRegionOutputs)
