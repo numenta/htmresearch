@@ -244,6 +244,7 @@ class ClassificationModel(object):
       sample = TextPreprocess().tokenize(query)
 
     encodedQuery = self.encodeSample(sample)
+    # import pdb; pdb.set_trace()
     allDistances = self.infer(encodedQuery)
 
     if len(allDistances) != len(self.sampleReference):
@@ -271,8 +272,8 @@ class ClassificationModel(object):
     """
     (_, _, dist, _) = self.classifier.infer(
       self.sparsifyPattern(pattern["bitmap"], self.encoder.n))
-    # return dist / len(pattern["bitmap"])
-    return dist
+
+    return dist.astype("float64")
 
 
   @staticmethod

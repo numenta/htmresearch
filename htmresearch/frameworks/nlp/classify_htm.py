@@ -305,8 +305,8 @@ class ClassificationModelHTM(ClassificationModel):
     # Put query text in LanguageSensor data format.
     queryDicts = self.networkDataGen.generateSequence(query, preprocess)
 
+    sensor = self.sensorRegion.getSelf()
     sampleDistances = None
-
     for qD in queryDicts:
       # Sum together the inferred distances for each word of the query sequence.
       sensor.queue.appendleft(qD)
@@ -318,8 +318,8 @@ class ClassificationModelHTM(ClassificationModel):
         sampleDistances += inferenceValues
 
     catCount = self.classifierRegion.getParameter("categoryCount")
-    # The use of numpy.lexsort() here is to first sort by labelFreq, then sort
-    # by random values; this breaks ties in a random manner.
+    # The use of numpy.lexsort() here is to first sort by randomValues, then
+    # sort by random values; this breaks ties in a random manner.
     randomValues = numpy.random.random(catCount)
     sortedSamples = numpy.lexsort((randomValues, sampleDistances[:catCount]))
     qTuple = [(a, b) for a, b in zip(sortedSamples, sampleDistances[:catCount])]
