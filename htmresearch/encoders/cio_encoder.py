@@ -286,20 +286,20 @@ class CioEncoder(LanguageEncoder):
                                               An empty dictionary of the text
                                               could not be encoded.
     """
-    tokens = list(itertools.chain.from_iterable(
-        [t.split(',') for t in self.client.tokenize(text)]))
     try:
       if method == "df":
-        encoding = min([self.client.getBitmap(t) for t in tokens],
-                       key=lambda x: x["df"])
+        tokens = list(itertools.chain.from_iterable(
+          [t.split(",") for t in self.client.tokenize(text)]))
+        encoding = min(
+          [self.client.getBitmap(t) for t in tokens], key=lambda x: x["df"])
       elif method == "keyword":
         encoding = self.getUnionEncoding(text)
       else:
-        raise ValueError("method must be either \'df\' or \'keyword\'")
+        raise ValueError("method must be either 'df' or 'keyword'")
     except UnsuccessfulEncodingError:
       if self.verbosity > 0:
         print ("\tThe client returned no substitute encoding for the text "
-               "\'{0}\', so we encode with None.".format(text))
+               "'{}', so we encode with None.".format(text))
       encoding = None
 
     return encoding
