@@ -84,6 +84,10 @@ class ClassificationModelHTM(ClassificationModel):
       self.networkConfig["classifierRegionConfig"].get("regionName")]
 
 
+  def getKNN(self):
+    return self.classifierRegion.getSelf()._knn
+
+
   def prepData(self, dataPath, ordered=False, stripCats=False, **kwargs):
     """
     Generate the data in network API format.

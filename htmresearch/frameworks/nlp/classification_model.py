@@ -84,6 +84,13 @@ class ClassificationModel(object):
     raise NotImplementedError
 
 
+  def getKNN(self):
+    """
+    Returns the KNN classifier for the model.
+    """
+    return self.classifier
+
+
   def saveModel(self, trial=None):
     """Save the serialized model."""
     try:
