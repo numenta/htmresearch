@@ -52,46 +52,13 @@ def run(args):
   start = time.time()
 
   root = os.path.dirname(os.path.realpath(__file__))
-  resultsDir = os.path.join(root, args.resultsDir)
+  args.resultsDir = os.path.join(root, args.resultsDir)
 
   if args.modelName == "HTMNetwork":
-    runner = HTMRunner(dataPath=args.dataPath,
-                       networkConfigPath=args.networkConfigPath,
-                       resultsDir=resultsDir,
-                       experimentName=args.experimentName,
-                       experimentType=args.experimentType,
-                       loadPath=args.loadPath,
-                       modelName=args.modelName,
-                       retinaScaling=args.retinaScaling,
-                       retina=args.retina,
-                       apiKey=args.apiKey,
-                       numClasses=args.numClasses,
-                       plots=args.plots,
-                       orderedSplit=args.orderedSplit,
-                       folds=args.folds,
-                       trainSizes=args.trainSizes,
-                       verbosity=args.verbosity,
-                       generateData=args.generateData,
-                       votingMethod=args.votingMethod,
-                       classificationFile=args.classificationFile,
-                       seed=args.seed)
+    runner = HTMRunner(**args.__dict__)
     runner.initModel(0)
   else:
-    runner = Runner(dataPath=args.dataPath,
-                    resultsDir=resultsDir,
-                    experimentName=args.experimentName,
-                    experimentType=args.experimentType,
-                    loadPath=args.loadPath,
-                    modelName=args.modelName,
-                    retinaScaling=args.retinaScaling,
-                    retina=args.retina,
-                    apiKey=args.apiKey,
-                    numClasses=args.numClasses,
-                    plots=args.plots,
-                    orderedSplit=args.orderedSplit,
-                    folds=args.folds,
-                    trainSizes=args.trainSizes,
-                    verbosity=args.verbosity)
+    runner = Runner(**args.__dict__)
     runner.initModel(args.modelName)
 
   print "Reading in data and preprocessing."
@@ -234,4 +201,4 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
   if args.skipConfirmation or checkInputs(args):
-    run(args)
+    runner = run(args)

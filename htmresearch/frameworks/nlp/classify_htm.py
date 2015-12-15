@@ -120,11 +120,9 @@ class ClassificationModelHTM(ClassificationModel):
     """Return tuple of the network's region objects that learn."""
     learningRegions = []
     for region in self.network.regions.values():
-      try:
-        _ = region.getParameter("learningMode")
+      spec = region.getSpec()
+      if spec.parameters.contains('learningMode'):
         learningRegions.append(region)
-      except:
-        continue
 
     return learningRegions
 

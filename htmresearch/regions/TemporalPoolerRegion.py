@@ -25,8 +25,7 @@ from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
 from htmresearch.support.union_temporal_pooler_monitor_mixin import (
   UnionTemporalPoolerMonitorMixin)
 from nupic.support import getArgumentDescriptions
-from nupic.regions.PyRegion import PyRegion
-
+from nupic.bindings.regions.PyRegion import PyRegion
 
 
 class MonitoredUnionTemporalPooler(UnionTemporalPoolerMonitorMixin,
