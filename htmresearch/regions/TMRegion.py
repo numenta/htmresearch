@@ -25,7 +25,7 @@ import numpy
 
 from nupic.bindings.math import GetNTAReal
 from nupic.support import getArgumentDescriptions
-from nupic.regions.PyRegion import PyRegion
+from nupic.bindings.regions.PyRegion import PyRegion
 
 from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 from sensorimotor.fast_general_temporal_memory import FastGeneralTemporalMemory

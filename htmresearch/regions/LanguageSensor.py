@@ -25,8 +25,7 @@ import numpy
 
 from collections import deque
 
-from nupic.regions.PyRegion import PyRegion
-
+from nupic.bindings.regions.PyRegion import PyRegion
 
 
 class LanguageSensor(PyRegion):
