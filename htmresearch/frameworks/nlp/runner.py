@@ -337,7 +337,7 @@ class Runner(object):
       if self.verbosity > 0:
         self.printTrialReport(i, sampleNum[1])
       resultCalcs.append(evaluateResults(
-        self.results[i], self.labelRefs, sampleNum[1]))
+        self.results[i], self.labelRefs))
 
     trainSizes = [len(x[0]) for x in self.partitions]
     self.printFinalReport(trainSizes, [r[0] for r in resultCalcs])

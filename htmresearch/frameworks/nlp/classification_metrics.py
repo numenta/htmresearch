@@ -22,10 +22,10 @@
 import numpy
 
 """
-This module contains
+This module contains metrics useful for classification scenarios
 """
 
-def evaluateResults(classifications, references, idx):
+def evaluateResults(classifications, references):
   """
   Calculate statistics for the predicted classifications against the actual.
 
@@ -35,8 +35,6 @@ def evaluateResults(classifications, references, idx):
       are numpy arrays of ints.
 
   @param references       (list)            Classification label strings.
-
-  @param idx              (list)            Indices of test samples.
 
   @return                 (tuple)           Returns a 2-item tuple w/ the
       accuracy (float) and confusion matrix (numpy array).
