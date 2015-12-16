@@ -23,6 +23,9 @@ import random
 import copy
 import numpy
 from nupic.research.spatial_pooler import SpatialPooler
+# Uncomment below line to use C++ SP
+# from nupic.bindings.algorithms import SpatialPooler
+from nupic.bindings.math import GetNTAReal
 from htmresearch.frameworks.union_temporal_pooling.activation.excite_functions.excite_functions_all import (
   LogisticExciteFunction, FixedExciteFunction)
 
@@ -30,8 +33,8 @@ from htmresearch.frameworks.union_temporal_pooling.activation.decay_functions.de
   ExponentialDecayFunction, NoDecayFunction)
 
 
-REAL_DTYPE = numpy.float32
-INT_DTYPE = numpy.int32
+REAL_DTYPE = GetNTAReal()
+UINT_DTYPE = "uint32"
 _TIE_BREAKER_FACTOR = 0.000001
 
 
@@ -118,35 +121,35 @@ class UnionTemporalPooler(SpatialPooler):
 
 
     # The maximum number of cells allowed in a single union SDR
-    self._maxUnionCells = int(self._numColumns * self._maxUnionActivity)
+    self._maxUnionCells = int(self.getNumColumns() * self._maxUnionActivity)
 
     # Scalar activation of potential union SDR cells; most active cells become
     # the union SDR
-    self._poolingActivation = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
+    self._poolingActivation = numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
 
     # include a small amount of tie-breaker when sorting pooling activation
     numpy.random.seed(1)
-    self._poolingActivation_tieBreaker = numpy.random.randn(self._numColumns) * _TIE_BREAKER_FACTOR
+    self._poolingActivation_tieBreaker = numpy.random.randn(self.getNumColumns()) * _TIE_BREAKER_FACTOR
 
     # time since last pooling activation increment
     # initialized to be a large number
-    self._poolingTimer = numpy.ones(self._numColumns, dtype=REAL_DTYPE) * 1000
+    self._poolingTimer = numpy.ones(self.getNumColumns(), dtype=REAL_DTYPE) * 1000
 
     # pooling activation level after the latest update, used for sigmoid decay function
-    self._poolingActivationInitLevel = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
+    self._poolingActivationInitLevel = numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
 
     # Current union SDR; the output of the union pooler algorithm
-    self._unionSDR = numpy.array([], dtype=INT_DTYPE)
+    self._unionSDR = numpy.array([], dtype=UINT_DTYPE)
 
     # Indices of active cells from spatial pooler
-    self._activeCells = numpy.array([], dtype=INT_DTYPE)
+    self._activeCells = numpy.array([], dtype=UINT_DTYPE)
 
     # lowest possible pooling activation level
     self._poolingActivationlowerBound = 0.1
 
-    self._preActiveInput = numpy.zeros(self._numInputs, dtype=REAL_DTYPE)
+    self._preActiveInput = numpy.zeros(self.getNumInputs(), dtype=REAL_DTYPE)
     # predicted inputs from the last n steps
-    self._prePredictedActiveInput = numpy.zeros((self._numInputs, self._historyLength), dtype=REAL_DTYPE)
+    self._prePredictedActiveInput = numpy.zeros((self.getNumInputs(), self._historyLength), dtype=REAL_DTYPE)
 
   def reset(self):
     """
@@ -154,19 +157,19 @@ class UnionTemporalPooler(SpatialPooler):
     """
 
     # Reset Union Temporal Pooler fields
-    self._poolingActivation = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
-    self._unionSDR = numpy.array([], dtype=INT_DTYPE)
-    self._poolingTimer = numpy.ones(self._numColumns, dtype=REAL_DTYPE) * 1000
-    self._poolingActivationInitLevel = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
-    self._preActiveInput = numpy.zeros(self._numInputs, dtype=REAL_DTYPE)
-    self._prePredictedActiveInput = numpy.zeros((self._numInputs, self._historyLength), dtype=REAL_DTYPE)
+    self._poolingActivation = numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
+    self._unionSDR = numpy.array([], dtype=UINT_DTYPE)
+    self._poolingTimer = numpy.ones(self.getNumColumns(), dtype=REAL_DTYPE) * 1000
+    self._poolingActivationInitLevel = numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
+    self._preActiveInput = numpy.zeros(self.getNumInputs(), dtype=REAL_DTYPE)
+    self._prePredictedActiveInput = numpy.zeros((self.getNumInputs(), self._historyLength), dtype=REAL_DTYPE)
 
     # Reset Spatial Pooler fields
-    self._overlapDutyCycles = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
-    self._activeDutyCycles = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
-    self._minOverlapDutyCycles = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
-    self._minActiveDutyCycles = numpy.zeros(self._numColumns, dtype=REAL_DTYPE)
-    self._boostFactors = numpy.ones(self._numColumns, dtype=REAL_DTYPE)
+    self.setOverlapDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
+    self.setActiveDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
+    self.setMinOverlapDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
+    self.setMinActiveDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
+    self.setBoostFactors(numpy.ones(self.getNumColumns(), dtype=REAL_DTYPE))
 
 
   def compute(self, activeInput, predictedActiveInput, learn):
@@ -176,8 +179,8 @@ class UnionTemporalPooler(SpatialPooler):
     @param predictedActiveInput   (numpy array) A numpy array of 0's and 1's that comprises the correctly predicted input to the union pooler
     @param learn                  (boolen)      A boolen value indicating whether learning should be performed
     """
-    assert numpy.size(activeInput) == self._numInputs
-    assert numpy.size(predictedActiveInput) == self._numInputs
+    assert numpy.size(activeInput) == self.getNumInputs()
+    assert numpy.size(predictedActiveInput) == self.getNumInputs()
     self._updateBookeepingVars(learn)
 
     # Compute proximal dendrite overlaps with active and active-predicted inputs
@@ -185,10 +188,12 @@ class UnionTemporalPooler(SpatialPooler):
     overlapsPredictedActive = self._calculateOverlap(predictedActiveInput)
     totalOverlap = (overlapsActive * self._activeOverlapWeight  +
                     overlapsPredictedActive *
-                    self._predictedActiveOverlapWeight)
+                    self._predictedActiveOverlapWeight).astype(REAL_DTYPE)
 
     if learn:
-      boostedOverlaps = self._boostFactors * totalOverlap
+      boostFactors = numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
+      self.getBoostFactors(boostFactors)
+      boostedOverlaps = boostFactors * totalOverlap
     else:
       boostedOverlaps = totalOverlap
 
@@ -208,7 +213,7 @@ class UnionTemporalPooler(SpatialPooler):
       # adapt permanence of connections from predicted active inputs to newly active cell
       # This step is the spatial pooler learning rule, applied only to the predictedActiveInput
       # Todo: should we also include unpredicted active input in this step?
-      self._adaptSynapses(predictedActiveInput, activeCells, self._synPermActiveInc, self._synPermInactiveDec)
+      self._adaptSynapses(predictedActiveInput, activeCells, self.getSynPermActiveInc(), self.getSynPermInactiveDec())
 
       # Increase permanence of connections from predicted active inputs to cells in the union SDR
       # This is Hebbian learning applied to the current time step
@@ -220,7 +225,7 @@ class UnionTemporalPooler(SpatialPooler):
         self._adaptSynapses(self._prePredictedActiveInput[:,i], activeCells, self._synPermPreviousPredActiveInc, 0.0)
 
       # Homeostasis learning inherited from the spatial pooler
-      self._updateDutyCycles(totalOverlap, activeCells)
+      self._updateDutyCycles(totalOverlap.astype(UINT_DTYPE), activeCells)
       self._bumpUpWeakColumns()
       self._updateBoostFactors()
       if self._isUpdateRound():
@@ -286,7 +291,7 @@ class UnionTemporalPooler(SpatialPooler):
 
     topCells = potentialUnionSDR[0: self._maxUnionCells]
 
-    self._unionSDR = numpy.sort(topCells).astype(INT_DTYPE)
+    self._unionSDR = numpy.sort(topCells).astype(UINT_DTYPE)
     return self._unionSDR
 
 
@@ -315,12 +320,15 @@ class UnionTemporalPooler(SpatialPooler):
                     Permanence decrement for inactive inputs
     """
     inputIndices = numpy.where(inputVector > 0)[0]
-    permChanges = numpy.zeros(self._numInputs)
+    permChanges = numpy.zeros(self.getNumInputs(), dtype=REAL_DTYPE)
     permChanges.fill(-1 * synPermInactiveDec)
     permChanges[inputIndices] = synPermActiveInc
+    perm = numpy.zeros(self.getNumInputs(), dtype=REAL_DTYPE)
+    potential = numpy.zeros(self.getNumInputs(), dtype=REAL_DTYPE)
     for i in activeColumns:
-      perm = self._permanences.getRow(i)
-      maskPotential = numpy.where(self._potentialPools.getRow(i) > 0)[0]
+      self.getPermanence(i, perm)
+      self.getPotential(i, potential)
+      maskPotential = numpy.where(potential > 0)[0]
       perm[maskPotential] += permChanges[maskPotential]
       self._updatePermanencesForColumn(perm, i, raisePerm=False)
 
