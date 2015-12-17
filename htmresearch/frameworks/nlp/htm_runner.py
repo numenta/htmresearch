@@ -219,7 +219,7 @@ class HTMRunner(Runner):
     pass
 
 
-  def encodeSamples(self):
+  def encodeSamples(self, _):
     """Passthrough b/c the network encodes the samples."""
     pass
 

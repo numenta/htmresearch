@@ -98,8 +98,9 @@ class ClassificationModelWindows(ClassificationModel):
     jsonPatterns = copy.deepcopy(self.patterns)
     for jp in jsonPatterns:
       for tokenPattern in jp["pattern"]:
-        tokenPattern["bitmap"] = tokenPattern.get("bitmap", None).tolist()
-      jp["labels"] = jp.get("labels", None).tolist()
+        tokenPattern["bitmap"] = tokenPattern.get(
+          "bitmap", numpy.array([])).tolist()
+      jp["labels"] = jp.get("labels", numpy.array([])).tolist()
 
     with open(os.path.join(self.modelDir, "encoding_log.txt"), "w") as f:
       f.write(json.dumps(jsonPatterns, indent=1))
