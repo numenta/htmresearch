@@ -122,7 +122,7 @@ class CioTest(unittest.TestCase):
 
     tokens = TextPreprocess().tokenize(text)
 
-    encodingDicts = cio.getWindowEncoding(tokens)
+    encodingDicts = cio.getWindowEncoding(tokens, minSparsity=0.19)
     
     # Test that only dense windows get encoded
     self.assertTrue(len(tokens) > len(encodingDicts),
