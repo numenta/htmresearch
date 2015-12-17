@@ -29,10 +29,7 @@ from htmresearch.encoders import EncoderTypes
 from htmresearch.frameworks.nlp.htm_runner import HTMRunner
 from htmresearch.support.csv_helper import readCSV
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data")

@@ -31,11 +31,7 @@ from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.support.text_preprocess import TextPreprocess
 from nupic.algorithms.KNNClassifier import KNNClassifier
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
-
+import simplejson as json
 
 
 class ClassificationModelWindows(ClassificationModel):

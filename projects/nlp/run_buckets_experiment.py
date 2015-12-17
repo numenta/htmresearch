@@ -31,10 +31,7 @@ import time
 from htmresearch.frameworks.nlp.bucket_runner import BucketRunner
 from htmresearch.frameworks.nlp.bucket_htm_runner import BucketHTMRunner
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 
 
 

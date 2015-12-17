@@ -30,10 +30,7 @@ from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
 from htmresearch.support.data_split import KFolds
 from htmresearch.support.network_text_data_generator import NetworkDataGenerator
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 
 
 

@@ -24,10 +24,7 @@ The methods here are a factory to create a classification network
 of any of sensor, SP, TM, TP, and classifier regions.
 """
 import copy
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 import logging
 import numpy
 import sys

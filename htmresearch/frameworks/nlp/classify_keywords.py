@@ -26,10 +26,7 @@ import os
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from nupic.algorithms.KNNClassifier import KNNClassifier
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 
 
 
