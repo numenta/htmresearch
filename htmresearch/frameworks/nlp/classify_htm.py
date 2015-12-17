@@ -48,8 +48,8 @@ class ClassificationModelHTM(ClassificationModel):
                prepData=True,
                stripCats=False):
     """
-    @param networkConfig      (str)     Path to JSON of network configuration,
-                                        with region parameters.
+    @param networkConfig      (dict)    Network configuration dict with region
+                                        parameters.
     @param inputFilePath      (str)     Path to data file.
     @param retinaScaling      (float)   Scales the dimensions of the SDRs.
     @param retina             (str)     Name of Cio retina.
