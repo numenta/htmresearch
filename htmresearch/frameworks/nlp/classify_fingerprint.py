@@ -107,12 +107,14 @@ class ClassificationModelFingerprint(ClassificationModel):
     IDs.
     """
     bitmap = self.patterns[i]["pattern"]["bitmap"]
+    count = 0
     if bitmap.any():
       for count, label in enumerate(self.patterns[i]["labels"]):
         self.classifier.learn(bitmap, label, isSparse=self.encoder.n)
         self.sampleReference.append(self.patterns[i]["ID"])
+      count += 1
 
-    return count + 1
+    return count
 
 
   def testModel(self, i, seed=42):

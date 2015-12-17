@@ -229,13 +229,15 @@ class Runner(object):
         [self.labelRefs.index(label) for label in data[1]]), data[2])
 
 
-  def encodeSamples(self):
+  def encodeSamples(self, writeEncodings=False):
     """
     The patterns list is in the same order as the samples in the original data
     file; the order is preserved by the OrderedDicts self.dataDict and
-    self.samples, which may or may not match the samples' unique IDs
+    self.samples, which may or may not match the samples' unique IDs.
+
+    @param writeEncodings   (bool)    True will write the encodings to a JSON.
     """
-    self.patterns = self.model.encodeSamples(self.samples)
+    self.patterns = self.model.encodeSamples(self.samples, write=writeEncodings)
 
 
   def runExperiment(self, seed=42):

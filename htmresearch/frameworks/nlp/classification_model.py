@@ -244,7 +244,7 @@ class ClassificationModel(object):
       sample = TextPreprocess().tokenize(query)
 
     encodedQuery = self.encodeSample(sample)
-    # import pdb; pdb.set_trace()
+
     allDistances = self.infer(encodedQuery)
 
     if len(allDistances) != len(self.sampleReference):
@@ -285,13 +285,14 @@ class ClassificationModel(object):
     return sparsePattern
 
 
-  def encodeSamples(self, samples):
+  def encodeSamples(self, samples, write=False):
     """
     Encode samples and store in self.patterns, write out encodings to a file.
 
     @param samples    (dict)  Keys are samples' record numbers, values are
                               3-tuples: list of tokens (str), list of labels
                               (int), unique ID (int or str).
+    @param write      (bool)  True will write out encodings to a file.
     @return patterns  (list)  A dict for each encoded data sample.
     """
     if self.numLabels == 0:
@@ -308,7 +309,8 @@ class ClassificationModel(object):
                         "ID": s[2]}
                        for i, s in samples.iteritems()]
 
-    self.writeOutEncodings()
+    if write:
+      self.writeOutEncodings()
 
     return self.patterns
 
@@ -327,8 +329,9 @@ class ClassificationModel(object):
     # Cast numpy arrays to list objects for serialization.
     jsonPatterns = copy.deepcopy(self.patterns)
     for jp in jsonPatterns:
-      jp["pattern"]["bitmap"] = jp["pattern"].get("bitmap", None).tolist()
-      jp["labels"] = jp.get("labels", None).tolist()
+      jp["pattern"]["bitmap"] = jp["pattern"].get(
+        "bitmap", numpy.array([])).tolist()
+      jp["labels"] = jp.get("labels", numpy.array([])).tolist()
 
     with open(os.path.join(self.modelDir, "encoding_log.json"), "w") as f:
       json.dump(jsonPatterns, f, indent=2)

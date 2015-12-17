@@ -106,7 +106,7 @@ def run(args):
 
     runner.setupData(args.textPreprocess)
 
-    runner.encodeSamples()
+    runner.encodeSamples(args.writeEncodings)
 
     runner.bucketData()
 
@@ -202,6 +202,10 @@ if __name__ == "__main__":
                       default=42,
                       type=int,
                       help="Random seed, used in partitioning the data.")
+  parser.add_argument("--writeEncodings",
+                      default=False,
+                      action="store_true",
+                      help="Write encoded patterns to a JSON.")
   parser.add_argument("-v", "--verbosity",
                       default=1,
                       type=int,
