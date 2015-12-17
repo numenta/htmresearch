@@ -68,7 +68,7 @@ def run(args):
          "the data".format(time.time() - dataTime))
 
   encodeTime = time.time()
-  runner.encodeSamples()
+  runner.encodeSamples(args.writeEncodings)
   print ("Encoding complete; elapsed time is {0:.2f} seconds.\nNow running the "
          "experiment.".format(time.time() - encodeTime))
 
@@ -160,6 +160,10 @@ if __name__ == "__main__":
                       default=42,
                       type=int,
                       help="Random seed, used in partitioning the data.")
+  parser.add_argument("--writeEncodings",
+                      default=False,
+                      action="store_true",
+                      help="Write encoded patterns to a JSON.")
   parser.add_argument("--folds",
                       default=5,
                       type=int,
