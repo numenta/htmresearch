@@ -38,6 +38,8 @@ from htmresearch.frameworks.nlp.classify_windows import (
   ClassificationModelWindows)
 from htmresearch.support.csv_helper import readCSV, writeFromDict
 from htmresearch.support.data_split import KFolds
+from htmresearch.frameworks.nlp.classification_metrics import (
+  evaluateResults, calculateClassificationResults)
 
 
 _MODEL_MAPPING = {
@@ -336,8 +338,8 @@ class Runner(object):
     for i, sampleNum in enumerate(self.partitions):
       if self.verbosity > 0:
         self.printTrialReport(i, sampleNum[1])
-      resultCalcs.append(self.model.evaluateResults(
-        self.results[i], self.labelRefs, sampleNum[1]))
+      resultCalcs.append(evaluateResults(
+        self.results[i], self.labelRefs))
 
     trainSizes = [len(x[0]) for x in self.partitions]
     self.printFinalReport(trainSizes, [r[0] for r in resultCalcs])
@@ -350,11 +352,6 @@ class Runner(object):
       self.plotter.plotCategoryAccuracies(trialAccuracies, self.trainSizes)
       self.plotter.plotCumulativeAccuracies(
         classificationAccuracies, self.trainSizes)
-
-      if self.plots > 1:
-        # Plot extra evaluation figures -- confusion matrix.
-        self.plotter.plotConfusionMatrix(
-          self.setupConfusionMatrices(resultCalcs))
 
     return resultCalcs
 
@@ -399,7 +396,7 @@ class Runner(object):
     # trialSize -> (category -> list of accuracies)
     trialAccuracies = defaultdict(lambda: defaultdict(lambda: numpy.ndarray(0)))
     for result, size in itertools.izip(self.results, self.trainSizes):
-      accuracies = self.model.calculateClassificationResults(result)
+      accuracies = calculateClassificationResults(result)
       for label, acc in accuracies:
         category = self.labelRefs[label]
         accList = trialAccuracies[size][category]
