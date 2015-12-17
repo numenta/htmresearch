@@ -204,6 +204,7 @@ class ClassificationModelsTest(unittest.TestCase):
       for e, r in zip(expectedClasses, resultClasses)]
 
 
+  @unittest.skip("temporarily skip")
   def testClassifyHTMAsExpectedWithKNN(self):
     """
     Tests ClassificationModelHTM.
@@ -227,7 +228,7 @@ class ClassificationModelsTest(unittest.TestCase):
                        trainSizes=[5],
                        verbosity=0,
                        generateData=False,
-                       votingMethod="last",
+                       votingMethod="most",
                        classificationFile=os.path.join(
                          DATA_DIR, "responses_categories.json"))
     runner.initModel(0)
@@ -241,6 +242,8 @@ class ClassificationModelsTest(unittest.TestCase):
       for e, r in zip(expectedClasses, resultClasses)]
 
 
+  @unittest.skip(
+    "We do not yet know what the expected (correct) classifications are.")
   def testClassifyHTMUsingTPAsExpectedWithKNN(self):
     """
     Tests ClassificationModelHTM using TP region.
@@ -264,7 +267,7 @@ class ClassificationModelsTest(unittest.TestCase):
                        trainSizes=[5],
                        verbosity=0,
                        generateData=False,
-                       votingMethod="last",
+                       votingMethod="most",
                        classificationFile=os.path.join(
                          DATA_DIR, "responses_categories.json"))
     runner.initModel(0)
@@ -279,8 +282,6 @@ class ClassificationModelsTest(unittest.TestCase):
 
 
 # TODO: add the following tests...
-
-#  def testClassifyHTMAsExpectedWithCLA(self):
 
 #  def testTrainOnAllTestOnAll(self):
 #    """Train on all samples, save model, load model, and test on all samples."""
