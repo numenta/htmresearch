@@ -22,9 +22,9 @@
 import random
 import copy
 import numpy
-from nupic.research.spatial_pooler import SpatialPooler
-# Uncomment below line to use C++ SP
-# from nupic.bindings.algorithms import SpatialPooler
+from nupic.bindings.algorithms import SpatialPooler
+# Uncomment below line to use python SP
+# from nupic.research.spatial_pooler import SpatialPooler
 from nupic.bindings.math import GetNTAReal
 from htmresearch.frameworks.union_temporal_pooling.activation.excite_functions.excite_functions_all import (
   LogisticExciteFunction, FixedExciteFunction)
