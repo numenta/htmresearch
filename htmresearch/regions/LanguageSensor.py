@@ -101,69 +101,8 @@ class LanguageSensor(PyRegion):
           "regionLevel":True,
           "isDefaultOutput":False,
         },
-      ## commented out b/c dataType not cool w/ numpy
-        # "sourceOut":{
-        #   "description":"Unencoded data from the source, input to the encoder",
-        #   "dataType":str,
-        #   "count":0,
-        #   "regionLevel":True,
-        #   "isDefaultOutput":False,
-        # },
-      ## need these...??
-        # spatialTopDownOut=dict(
-        #   description="""The top-down output signal, generated from
-        #                 feedback from SP""",
-        #   dataType='Real32',
-        #   count=0,
-        #   regionLevel=True,
-        #   isDefaultOutput=False),
-        # temporalTopDownOut=dict(
-        #   description="""The top-down output signal, generated from
-        #                 feedback from TP through SP""",
-        #   dataType='Real32',
-        #   count=0,
-        #   regionLevel=True,
-        #   isDefaultOutput=False),
-        # classificationTopDownOut=dict(
-        #   description="The top-down input signal, generated via feedback "
-        #               "from classifier through TP through SP.",
-        #   dataType='Real32',
-        #   count=0,
-        #   regionLevel=True,
-        #   isDefaultOutput=False),
       },
-      "inputs":{
-        "spatialTopDownIn":{
-          "description":"The top-down input signal, generated via feedback "
-                        "from SP.",
-          "dataType":"Real32",
-          "count":0,
-          "required":False,
-          "regionLevel":True,
-          "isDefaultInput":False,
-          "requireSplitterMap":False,
-        },
-        "temporalTopDownIn":{
-          "description":"The top-down input signal, generated via feedback "
-                        "from TP through SP.",
-          "dataType":"Real32",
-          "count":0,
-          "required":False,
-          "regionLevel":True,
-          "isDefaultInput":False,
-          "requireSplitterMap":False,
-        },
-        "classificationTopDownIn":{
-          "description":"The top-down input signal, generated via feedback "
-                        "from classifier through TP through SP.",
-          "dataType":"int",
-          "count":0,
-          "required":False,
-          "regionLevel":True,
-          "isDefaultInput":False,
-          "requireSplitterMap":False,
-        },
-      },
+      "inputs":{},
       "parameters":{
         "verbosity":{
           "description":"Verbosity level",
@@ -189,9 +128,8 @@ class LanguageSensor(PyRegion):
   def initialize(self, inputs, outputs):
     """Initialize the node after the network is fully linked."""
     if self.encoder is None:
-      raise Exception("Unable to initialize LanguageSensor -- encoder has not been set")
-    if self.dataSource is None:
-      raise Exception("Unable to initialize LanguageSensor -- dataSource has not been set")
+      raise Exception("Unable to initialize LanguageSensor -- "
+                      "encoder has not been set")
 
 
   def rewind(self):
@@ -230,6 +168,10 @@ class LanguageSensor(PyRegion):
     if len(self.queue) > 0:
       # data has been added to the queue, so use it
       data = self.queue.pop()
+
+    elif self.dataSource is None:
+        raise Exception("LanguageSensor: No data to encode: queue is empty "
+                        "and the dataSource is None.")
     else:
       data = self.dataSource.getNextRecordDict()
       # Keys in data that are not column headers from the data source are standard
@@ -251,6 +193,19 @@ class LanguageSensor(PyRegion):
     self._outputValues = copy.deepcopy(outputs)
 
     self._iterNum += 1
+
+
+  def addDataToQueue(self, token, categoryList, sequenceID, reset = 0):
+    """
+    Add the given data item to the sensor's internal queue. Calls to compute
+    will cause items in the queue to be dequeued in FIFO order.
+    """
+    self.queue.appendLeft ({
+        "_token": token,
+        "_category": categoryList,
+        "_sequenceID": sequenceID,
+        "_reset": reset
+      })
 
 
   def getOutputValues(self, outputName):
@@ -278,15 +233,6 @@ class LanguageSensor(PyRegion):
 
     elif name == "categoryOut":
       return self.numCategories
-
-    elif (name == "sourceOut" or
-          name == 'spatialTopDownOut' or
-          name == 'temporalTopDownOut'):
-      if self.encoder == None:
-        raise Exception("Network requested output element count for {} on a "
-                        "LanguageSensor node, but the encoder has not been set."
-                        .format(name))
-      return len(self.encoder.getDescription())
 
     else:
       raise Exception("Unknown output {}.".format(name))

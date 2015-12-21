@@ -19,7 +19,6 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import cPickle as pkl
 import numpy
 import operator
 import os
@@ -105,7 +104,11 @@ class ClassificationModelHTM(ClassificationModel):
     """
     Initialize the network; self.networdDataPath must already be set.
     """
-    recordStream = FileRecordStream(streamID=self.networkDataPath)
+    if self.networkDataPath is not None:
+      recordStream = FileRecordStream(streamID=self.networkDataPath)
+    else:
+      recordStream = None
+
     root = os.path.dirname(os.path.realpath(__file__))
     encoder = CioEncoder(retinaScaling=self.retinaScaling,
                          cacheDir=os.path.join(root, "CioCache"),
