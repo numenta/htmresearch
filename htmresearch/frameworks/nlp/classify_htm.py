@@ -85,7 +85,7 @@ class ClassificationModelHTM(ClassificationModel):
 
 
   def getKNN(self):
-    return self.classifierRegion.getSelf()._knn
+    return self.classifierRegion.getSelf().getAlgorithmInstance()
 
 
   def prepData(self, dataPath, ordered=False, stripCats=False, **kwargs):
