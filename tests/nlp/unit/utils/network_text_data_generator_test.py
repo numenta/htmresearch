@@ -30,10 +30,7 @@ import unittest
 from htmresearch.support.network_text_data_generator import NetworkDataGenerator
 from nupic.data.file_record_stream import FileRecordStream
 
-try:
-  import simplejson as json
-except:
-  import json
+import simplejson as json
 
 
 

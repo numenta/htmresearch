@@ -22,10 +22,7 @@
 import shutil
 import unittest
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 
 from nupic.data.file_record_stream import FileRecordStream
 

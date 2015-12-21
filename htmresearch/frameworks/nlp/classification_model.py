@@ -30,10 +30,7 @@ from collections import defaultdict, OrderedDict
 
 from htmresearch.support.text_preprocess import TextPreprocess
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 
 
 
