@@ -84,7 +84,10 @@ class ClassificationModelHTM(ClassificationModel):
       self.networkConfig["classifierRegionConfig"].get("regionName")]
 
 
-  def getKNN(self):
+  def getClassifier(self):
+    """
+    Returns the classifier for the model.
+    """
     return self.classifierRegion.getSelf().getAlgorithmInstance()
 
 

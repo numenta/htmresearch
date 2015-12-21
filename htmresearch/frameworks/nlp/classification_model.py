@@ -84,9 +84,9 @@ class ClassificationModel(object):
     raise NotImplementedError
 
 
-  def getKNN(self):
+  def getClassifier(self):
     """
-    Returns the KNN classifier for the model.
+    Returns the classifier for the model.
     """
     return self.classifier
 
