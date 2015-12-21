@@ -84,6 +84,13 @@ class ClassificationModel(object):
     raise NotImplementedError
 
 
+  def getClassifier(self):
+    """
+    Returns the classifier for the model.
+    """
+    return self.classifier
+
+
   def saveModel(self, trial=None):
     """Save the serialized model."""
     try:
