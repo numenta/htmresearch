@@ -170,7 +170,7 @@ class LanguageSensor(PyRegion):
       data = self.queue.pop()
 
     elif self.dataSource is None:
-        raise Exception("LanguageSensor: No data to encode: queue is empty "
+      raise Exception("LanguageSensor: No data to encode: queue is empty "
                         "and the dataSource is None.")
     else:
       data = self.dataSource.getNextRecordDict()
