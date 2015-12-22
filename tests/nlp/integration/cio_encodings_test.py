@@ -110,7 +110,7 @@ class CioTest(unittest.TestCase):
 
   def testWindowEncodings(self):
     """Test the CioEncoder for the sliding window encodings."""
-    cio = CioEncoder(fingerprintType=EncoderTypes.document)
+    cio = CioEncoder(fingerprintType=EncoderTypes.word)
 
     text = """
       I grok people. I am people, so now I can say it in people talk. I've found
