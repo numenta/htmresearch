@@ -154,7 +154,7 @@ class BucketHTMRunner(BucketRunner, HTMRunner):
 
     for dataFile in self.dataFiles:
       if self.verbosity > 0:
-        print "Running all the data through the netwrok for training..."
+        print "Running all the data through the network for training..."
       self.model.swapRecordStream(dataFile)
       numTokens = NetworkDataGenerator().getNumberOfTokens(dataFile)
       n = sum(numTokens)

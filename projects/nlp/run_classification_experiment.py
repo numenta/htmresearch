@@ -176,6 +176,10 @@ if __name__ == "__main__":
                       nargs="+",
                       help="For incremental, number of samples to use in "
                            "training. Separate w/ spaces for multiple trials.")
+  parser.add_argument("--classifierMetric",
+                      help="Distance metric (see classifier for the options).",
+                      type=str,
+                      default="pctOverlapOfInput")
   parser.add_argument("-v", "--verbosity",
                       default=1,
                       type=int,

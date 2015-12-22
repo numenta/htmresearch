@@ -47,7 +47,8 @@ class ClassificationModelWindows(ClassificationModel):
                unionSparsity=0.20,
                retinaScaling=1.0,
                retina="en_associative",
-               apiKey=None):
+               apiKey=None,
+               classifierMetric="rawOverlap"):
 
     super(ClassificationModelWindows, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
@@ -56,7 +57,7 @@ class ClassificationModelWindows(ClassificationModel):
     self.minSparsity = 0.9 * unionSparsity
 
     self.classifier = KNNClassifier(k=numLabels,
-                                    distanceMethod='rawOverlap',
+                                    distanceMethod=classifierMetric,
                                     exact=False,
                                     verbosity=verbosity-1)
 
