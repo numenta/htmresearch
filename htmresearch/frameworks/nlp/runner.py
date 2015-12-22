@@ -67,6 +67,7 @@ class Runner(object):
                retinaScaling=1.0,
                retina="en_associative",
                apiKey=None,
+               classifierMetric="rawOverlap",
                loadPath=None,
                numClasses=3,
                plots=0,
@@ -84,6 +85,7 @@ class Runner(object):
     @param retinaScaling    (float)   For scaling dimensions of Cio encoders.
     @param retina           (str)     Name of Cio retina for encodings.
     @param apiKey           (str)     Key for Cio API.
+    @param classifierMetric (str)     Distance metric used by the classifier.
     @param loadPath         (str)     Path to serialized model for loading.
     @param numClasses       (int)     Number of classes (labels) per sample.
     @param plots            (int)     Specifies plotting of evaluation metrics.
@@ -112,6 +114,7 @@ class Runner(object):
     self.retinaScaling = retinaScaling
     self.retina = retina
     self.apiKey = apiKey
+    self.classifierMetric = classifierMetric
     self.verbosity = verbosity
 
     self.modelDir = os.path.join(
@@ -159,7 +162,8 @@ class Runner(object):
                       fingerprintType=EncoderTypes.word,
                       retinaScaling=self.retinaScaling,
                       retina=self.retina,
-                      apiKey=self.apiKey)
+                      apiKey=self.apiKey,
+                      classifierMetric=self.classifierMetric)
 
     elif modelName == "CioDocumentFingerprint":
       return modelCls(verbosity=self.verbosity,
@@ -168,12 +172,14 @@ class Runner(object):
                       fingerprintType=EncoderTypes.document,
                       retinaScaling=self.retinaScaling,
                       retina=self.retina,
-                      apiKey=self.apiKey)
+                      apiKey=self.apiKey,
+                      classifierMetric=self.classifierMetric)
 
     else:
       return modelCls(verbosity=self.verbosity,
                       numLabels=self.numClasses,
-                      modelDir=self.modelDir)
+                      modelDir=self.modelDir,
+                      classifierMetric=self.classifierMetric)
 
 
   def loadModel(self):

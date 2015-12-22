@@ -58,6 +58,9 @@ class ClassificationModelHTM(ClassificationModel):
     @param stripCats          (bool)    Remove the categories and replace them
                                         with the sequence_Id.
     See ClassificationModel for remaining parameters.
+
+    Note classifierMetric is not specified here as it is in other models. This
+    is done in the network config file.
     """
     super(ClassificationModelHTM, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)

@@ -79,6 +79,7 @@ def run(args):
                                trainingReps=args.trainingReps,
                                seed=args.seed,
                                concatenationMethod=args.combineMethod,
+                               classifierMetric = args.classifierMetric,
                                numClasses=0)
       runner.initModel(0)
     else:
@@ -95,6 +96,7 @@ def run(args):
                             orderedSplit=args.orderedSplit,
                             verbosity=args.verbosity,
                             concatenationMethod=args.combineMethod,
+                            classifierMetric = args.classifierMetric,
                             numClasses=1)
       runner.initModel(args.modelName)
 
@@ -235,6 +237,10 @@ if __name__ == "__main__":
                            "'mean'.",
                       type=str,
                       default="min")
+  parser.add_argument("--classifierMetric",
+                      help="Distance metric (see classifier for the options).",
+                      type=str,
+                      default="pctOverlapOfInput")
 
   args = parser.parse_args()
 

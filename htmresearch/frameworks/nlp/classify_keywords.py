@@ -43,7 +43,8 @@ class ClassificationModelKeywords(ClassificationModel):
                w=20,
                verbosity=1,
                numLabels=3,
-               modelDir="ClassificationModelKeywords"):
+               modelDir="ClassificationModelKeywords",
+               classifierMetric="rawOverlap"):
 
     super(ClassificationModelKeywords, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
@@ -52,7 +53,7 @@ class ClassificationModelKeywords(ClassificationModel):
     # queryModel() output is consistent (i.e. 0.0-1.0). The KNN classifications
     # aren't affected b/c the raw overlap distance is still used under the hood.
     self.classifier = KNNClassifier(exact=True,
-                                    distanceMethod="pctOverlapOfInput",
+                                    distanceMethod=classifierMetric,
                                     k=numLabels,
                                     verbosity=verbosity-1)
 
