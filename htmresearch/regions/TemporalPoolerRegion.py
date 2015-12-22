@@ -371,6 +371,7 @@ class TemporalPoolerRegion(PyRegion):
           regionLevel=True,
           isDefaultInput=False,
           requireSplitterMap=False),
+
       ),
       outputs=dict(
         mostActiveCells=dict(

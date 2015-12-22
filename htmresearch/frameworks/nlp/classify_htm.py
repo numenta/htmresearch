@@ -19,7 +19,6 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import cPickle as pkl
 import numpy
 import operator
 import os
@@ -48,8 +47,8 @@ class ClassificationModelHTM(ClassificationModel):
                prepData=True,
                stripCats=False):
     """
-    @param networkConfig      (str)     Path to JSON of network configuration,
-                                        with region parameters.
+    @param networkConfig      (dict)    Network configuration dict with region
+                                        parameters.
     @param inputFilePath      (str)     Path to data file.
     @param retinaScaling      (float)   Scales the dimensions of the SDRs.
     @param retina             (str)     Name of Cio retina.
@@ -59,6 +58,9 @@ class ClassificationModelHTM(ClassificationModel):
     @param stripCats          (bool)    Remove the categories and replace them
                                         with the sequence_Id.
     See ClassificationModel for remaining parameters.
+
+    Note classifierMetric is not specified here as it is in other models. This
+    is done in the network config file.
     """
     super(ClassificationModelHTM, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
@@ -84,6 +86,13 @@ class ClassificationModelHTM(ClassificationModel):
       self.networkConfig["classifierRegionConfig"].get("regionName")]
 
 
+  def getClassifier(self):
+    """
+    Returns the classifier for the model.
+    """
+    return self.classifierRegion.getSelf().getAlgorithmInstance()
+
+
   def prepData(self, dataPath, ordered=False, stripCats=False, **kwargs):
     """
     Generate the data in network API format.
@@ -105,7 +114,11 @@ class ClassificationModelHTM(ClassificationModel):
     """
     Initialize the network; self.networdDataPath must already be set.
     """
-    recordStream = FileRecordStream(streamID=self.networkDataPath)
+    if self.networkDataPath is not None:
+      recordStream = FileRecordStream(streamID=self.networkDataPath)
+    else:
+      recordStream = None
+
     root = os.path.dirname(os.path.realpath(__file__))
     encoder = CioEncoder(retinaScaling=self.retinaScaling,
                          cacheDir=os.path.join(root, "CioCache"),

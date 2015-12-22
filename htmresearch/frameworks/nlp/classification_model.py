@@ -24,17 +24,13 @@ import cPickle as pkl
 import numpy
 import operator
 import os
-import pandas
 import random
 
 from collections import defaultdict, OrderedDict
 
 from htmresearch.support.text_preprocess import TextPreprocess
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 
 
 
@@ -86,6 +82,13 @@ class ClassificationModel(object):
 
   def testModel(self, index, numLabels):
     raise NotImplementedError
+
+
+  def getClassifier(self):
+    """
+    Returns the classifier for the model.
+    """
+    return self.classifier
 
 
   def saveModel(self, trial=None):
@@ -244,7 +247,7 @@ class ClassificationModel(object):
       sample = TextPreprocess().tokenize(query)
 
     encodedQuery = self.encodeSample(sample)
-    # import pdb; pdb.set_trace()
+
     allDistances = self.infer(encodedQuery)
 
     if len(allDistances) != len(self.sampleReference):
@@ -285,13 +288,14 @@ class ClassificationModel(object):
     return sparsePattern
 
 
-  def encodeSamples(self, samples):
+  def encodeSamples(self, samples, write=False):
     """
     Encode samples and store in self.patterns, write out encodings to a file.
 
     @param samples    (dict)  Keys are samples' record numbers, values are
                               3-tuples: list of tokens (str), list of labels
                               (int), unique ID (int or str).
+    @param write      (bool)  True will write out encodings to a file.
     @return patterns  (list)  A dict for each encoded data sample.
     """
     if self.numLabels == 0:
@@ -308,7 +312,8 @@ class ClassificationModel(object):
                         "ID": s[2]}
                        for i, s in samples.iteritems()]
 
-    self.writeOutEncodings()
+    if write:
+      self.writeOutEncodings()
 
     return self.patterns
 
@@ -327,116 +332,9 @@ class ClassificationModel(object):
     # Cast numpy arrays to list objects for serialization.
     jsonPatterns = copy.deepcopy(self.patterns)
     for jp in jsonPatterns:
-      jp["pattern"]["bitmap"] = jp["pattern"].get("bitmap", None).tolist()
-      jp["labels"] = jp.get("labels", None).tolist()
+      jp["pattern"]["bitmap"] = jp["pattern"].get(
+        "bitmap", numpy.array([])).tolist()
+      jp["labels"] = jp.get("labels", numpy.array([])).tolist()
 
     with open(os.path.join(self.modelDir, "encoding_log.json"), "w") as f:
       json.dump(jsonPatterns, f, indent=2)
-
-
-  @staticmethod
-  def calculateClassificationResults(classifications):
-    """
-    Calculate the classification accuracy for each category.
-
-    @param classifications  (list)          Two lists: (0) predictions and (1)
-        actual classifications. Items in the predictions list are lists of
-        ints or None, and items in actual classifications list are ints.
-
-    @return                 (list)          Tuples of class index and accuracy.
-    """
-    if len(classifications[0]) != len(classifications[1]):
-      raise ValueError("Classification lists must have same length.")
-
-    if len(classifications[1]) == 0:
-      return []
-
-    # Get all possible labels
-    labels = list(set([l for actual in classifications[1] for l in actual]))
-
-    labelsToIdx = {l: i for i,l in enumerate(labels)}
-    correctClassifications = numpy.zeros(len(labels))
-    totalClassifications = numpy.zeros(len(labels))
-    for actual, predicted in zip(classifications[1], classifications[0]):
-      for a in actual:
-        idx = labelsToIdx[a]
-        totalClassifications[idx] += 1
-        if a in predicted:
-          correctClassifications[idx] += 1
-
-    return zip(labels, correctClassifications / totalClassifications)
-
-
-  def evaluateResults(self, classifications, references, idx):
-    """
-    Calculate statistics for the predicted classifications against the actual.
-
-    @param classifications  (tuple)     Two lists: (0) predictions and
-        (1) actual classifications. Items in the predictions list are numpy
-        arrays of ints or [None], and items in actual classifications list
-        are numpy arrays of ints.
-
-    @param references       (list)            Classification label strings.
-
-    @param idx              (list)            Indices of test samples.
-
-    @return                 (tuple)           Returns a 2-item tuple w/ the
-        accuracy (float) and confusion matrix (numpy array).
-    """
-    accuracy = self.calculateAccuracy(classifications)
-    cm = self.calculateConfusionMatrix(classifications, references)
-
-    return (accuracy, cm)
-
-
-  @staticmethod
-  def calculateAccuracy(classifications):
-    """
-    @param classifications    (tuple)     First element is list of predicted
-        labels, second is list of actuals; items are numpy arrays.
-
-    @return                   (float)     Correct labels out of total labels,
-        where a label is correct if it is amongst the actuals.
-    """
-    if len(classifications[0]) != len(classifications[1]):
-      raise ValueError("Classification lists must have same length.")
-
-    if len(classifications[1]) == 0:
-      return None
-
-    accuracy = 0.0
-    for actual, predicted in zip(classifications[1], classifications[0]):
-      commonElems = numpy.intersect1d(actual, predicted)
-      accuracy += len(commonElems)/float(len(actual))
-
-    return accuracy/len(classifications[1])
-
-
-  @staticmethod
-  def calculateConfusionMatrix(classifications, references):
-    """
-    Returns confusion matrix as a pandas dataframe.
-    """
-    # TODO: Figure out better way to report multilabel outputs--only handles
-    # single label now. So for now return empty array.
-    return numpy.array([])
-
-    if len(classifications[0]) != len(classifications[1]):
-      raise ValueError("Classification lists must have same length.")
-
-    total = len(references)
-    cm = numpy.zeros((total, total+1))
-    for actual, predicted in zip(classifications[1], classifications[0]):
-      if predicted is not None:
-        cm[actual[0]][predicted[0]] += 1
-      else:
-        # No predicted label, so increment the "(none)" column.
-        cm[actual[0]][total] += 1
-    cm = numpy.vstack((cm, numpy.sum(cm, axis=0)))
-    cm = numpy.hstack((cm, numpy.sum(cm, axis=1).reshape(total+1,1)))
-
-    cm = pandas.DataFrame(data=cm,
-                          columns=references+["(none)"]+["Actual Totals"],
-                          index=references+["Prediction Totals"])
-
-    return cm

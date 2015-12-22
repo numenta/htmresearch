@@ -24,10 +24,7 @@ The methods here are a factory to create a classification network
 of any of sensor, SP, TM, TP, and classifier regions.
 """
 import copy
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 import logging
 import numpy
 import sys
@@ -206,6 +203,8 @@ def _linkRegions(network,
   network.link(previousRegionName, currentRegionName, "UniformLink", "")
   network.link(sensorRegionName, currentRegionName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
+  network.link(sensorRegionName, currentRegionName, "UniformLink", "",
+               srcOutput="sequenceIdOut", destInput="sequenceIdIn")
 
 
 def _validateRegionWidths(previousRegionWidth, currentRegionWidth):
@@ -323,9 +322,6 @@ def createNetwork(dataSource, networkConfig, encoder=None):
                  previousRegion,
                  regionName)
     previousRegion = regionName
-    network.link(sensorRegionName, regionName, "UniformLink", "",
-                 srcOutput="sequenceIdOut", destInput="sequenceIdIn")
-    
 
   # Create classifier region (always enabled)
   regionConfig = networkConfig["classifierRegionConfig"]
@@ -340,6 +336,9 @@ def createNetwork(dataSource, networkConfig, encoder=None):
                "",
                srcOutput="categoryOut",
                destInput="categoryIn")
+  network.link(sensorRegionName, regionName, "UniformLink", "",
+               srcOutput="sequenceIdOut", destInput="sequenceIdIn")
+  
 
   return network
 

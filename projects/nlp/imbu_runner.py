@@ -38,10 +38,7 @@ from htmresearch.frameworks.nlp.classify_windows import (
   ClassificationModelWindows)
 from htmresearch.support.csv_helper import readCSV
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 
 
 _MODEL_MAPPING = {

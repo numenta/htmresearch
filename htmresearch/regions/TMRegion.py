@@ -472,6 +472,14 @@ class TMRegion(PyRegion):
               regionLevel=True,
               isDefaultInput=False,
               requireSplitterMap=False),
+          sequenceIdIn=dict(
+              description="Sequence ID",
+              dataType='UInt64',
+              count=1,
+              required=False,
+              regionLevel=True,
+              isDefaultInput=False,
+              requireSplitterMap=False),
       ),
       outputs=dict(
           activeCells=dict(

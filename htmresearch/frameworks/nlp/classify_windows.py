@@ -31,11 +31,7 @@ from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.support.text_preprocess import TextPreprocess
 from nupic.algorithms.KNNClassifier import KNNClassifier
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
-
+import simplejson as json
 
 
 class ClassificationModelWindows(ClassificationModel):
@@ -51,7 +47,8 @@ class ClassificationModelWindows(ClassificationModel):
                unionSparsity=0.20,
                retinaScaling=1.0,
                retina="en_associative",
-               apiKey=None):
+               apiKey=None,
+               classifierMetric="rawOverlap"):
 
     super(ClassificationModelWindows, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
@@ -60,7 +57,7 @@ class ClassificationModelWindows(ClassificationModel):
     self.minSparsity = 0.9 * unionSparsity
 
     self.classifier = KNNClassifier(k=numLabels,
-                                    distanceMethod='rawOverlap',
+                                    distanceMethod=classifierMetric,
                                     exact=False,
                                     verbosity=verbosity-1)
 
@@ -98,8 +95,9 @@ class ClassificationModelWindows(ClassificationModel):
     jsonPatterns = copy.deepcopy(self.patterns)
     for jp in jsonPatterns:
       for tokenPattern in jp["pattern"]:
-        tokenPattern["bitmap"] = tokenPattern.get("bitmap", None).tolist()
-      jp["labels"] = jp.get("labels", None).tolist()
+        tokenPattern["bitmap"] = tokenPattern.get(
+          "bitmap", numpy.array([])).tolist()
+      jp["labels"] = jp.get("labels", numpy.array([])).tolist()
 
     with open(os.path.join(self.modelDir, "encoding_log.txt"), "w") as f:
       f.write(json.dumps(jsonPatterns, indent=1))

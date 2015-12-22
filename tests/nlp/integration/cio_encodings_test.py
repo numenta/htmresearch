@@ -27,10 +27,7 @@ from htmresearch.encoders import EncoderTypes
 from htmresearch.encoders.cio_encoder import CioEncoder
 from htmresearch.support.text_preprocess import TextPreprocess
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data")

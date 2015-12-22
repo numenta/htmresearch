@@ -26,10 +26,7 @@ import os
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from nupic.algorithms.KNNClassifier import KNNClassifier
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 
 
 
@@ -46,7 +43,8 @@ class ClassificationModelKeywords(ClassificationModel):
                w=20,
                verbosity=1,
                numLabels=3,
-               modelDir="ClassificationModelKeywords"):
+               modelDir="ClassificationModelKeywords",
+               classifierMetric="rawOverlap"):
 
     super(ClassificationModelKeywords, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
@@ -55,7 +53,7 @@ class ClassificationModelKeywords(ClassificationModel):
     # queryModel() output is consistent (i.e. 0.0-1.0). The KNN classifications
     # aren't affected b/c the raw overlap distance is still used under the hood.
     self.classifier = KNNClassifier(exact=True,
-                                    distanceMethod="pctOverlapOfInput",
+                                    distanceMethod=classifierMetric,
                                     k=numLabels,
                                     verbosity=verbosity-1)
 
@@ -94,8 +92,9 @@ class ClassificationModelKeywords(ClassificationModel):
     jsonPatterns = copy.deepcopy(self.patterns)
     for jp in jsonPatterns:
       for tokenPattern in jp["pattern"]:
-        tokenPattern["bitmap"] = tokenPattern.get("bitmap", None).tolist()
-      jp["labels"] = jp.get("labels", None).tolist()
+        tokenPattern["bitmap"] = tokenPattern.get(
+          "bitmap", numpy.array([])).tolist()
+      jp["labels"] = jp.get("labels", numpy.array([])).tolist()
 
     with open(os.path.join(self.modelDir, "encoding_log.txt"), "w") as f:
       f.write(json.dumps(jsonPatterns, indent=1))
