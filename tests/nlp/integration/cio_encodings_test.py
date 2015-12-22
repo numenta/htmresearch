@@ -110,7 +110,7 @@ class CioTest(unittest.TestCase):
 
   def testWindowEncodings(self):
     """Test the CioEncoder for the sliding window encodings."""
-    cio = CioEncoder(fingerprintType=EncoderTypes.document)
+    cio = CioEncoder(fingerprintType=EncoderTypes.word)
 
     text = """
       I grok people. I am people, so now I can say it in people talk. I've found
@@ -119,7 +119,7 @@ class CioTest(unittest.TestCase):
 
     tokens = TextPreprocess().tokenize(text)
 
-    encodingDicts = cio.getWindowEncoding(tokens)
+    encodingDicts = cio.getWindowEncoding(tokens, minSparsity=0.19)
     
     # Test that only dense windows get encoded
     self.assertTrue(len(tokens) > len(encodingDicts),

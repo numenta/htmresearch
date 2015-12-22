@@ -36,6 +36,13 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data")
 
 class ClassificationModelsTest(unittest.TestCase):
   """Test class for ClassificationModelKeywords."""
+  
+  def tearDown(self):
+    # remove the generated HTM network data file
+    networkDataFilePath = os.path.join(DATA_DIR, "responses_network_0.csv")
+    if os.path.exists(networkDataFilePath):
+      os.remove(networkDataFilePath)
+
 
   @staticmethod
   def runExperiment(runner):
@@ -206,16 +213,17 @@ class ClassificationModelsTest(unittest.TestCase):
 
   def testClassifyHTMAsExpectedWithKNN(self):
     """
-    Tests ClassificationModelHTM.
+    Tests ClassificationModelHTM, where the network is 
+    LanguageSensor->KNNClassifier.
 
     Training on the first five samples of the dataset, and testing on the rest,
     the model's classifications should match those in the expected classes
     data file.
     """
     modelName = "HTMNetwork"
-    runner = HTMRunner(dataPath=os.path.join(DATA_DIR, "responses_network.csv"),
+    runner = HTMRunner(dataPath=os.path.join(DATA_DIR, "responses.csv"),
                        networkConfigPath=os.path.join(
-                         DATA_DIR, "network_config_sp_tm_knn.json"),
+                         DATA_DIR, "network_config_ls_knn.json"),
                        resultsDir="",
                        experimentName="htm_test",
                        experimentType="incremental",
@@ -226,10 +234,8 @@ class ClassificationModelsTest(unittest.TestCase):
                        orderedSplit=True,
                        trainSizes=[5],
                        verbosity=0,
-                       generateData=False,
-                       votingMethod="last",
-                       classificationFile=os.path.join(
-                         DATA_DIR, "responses_categories.json"))
+                       generateData=True,
+                       votingMethod="most")
     runner.initModel(0)
     runner.runExperiment()
 
@@ -241,6 +247,8 @@ class ClassificationModelsTest(unittest.TestCase):
       for e, r in zip(expectedClasses, resultClasses)]
 
 
+  @unittest.skip(
+    "We do not yet know what the expected (correct) classifications are.")
   def testClassifyHTMUsingTPAsExpectedWithKNN(self):
     """
     Tests ClassificationModelHTM using TP region.
@@ -250,7 +258,7 @@ class ClassificationModelsTest(unittest.TestCase):
     data file.
     """
     modelName = "HTMNetwork"
-    runner = HTMRunner(dataPath=os.path.join(DATA_DIR, "responses_network.csv"),
+    runner = HTMRunner(dataPath=os.path.join(DATA_DIR, "responses.csv"),
                        networkConfigPath=os.path.join(
                          DATA_DIR, "network_config_tp_knn.json"),
                        resultsDir="",
@@ -263,10 +271,8 @@ class ClassificationModelsTest(unittest.TestCase):
                        orderedSplit=True,
                        trainSizes=[5],
                        verbosity=0,
-                       generateData=False,
-                       votingMethod="last",
-                       classificationFile=os.path.join(
-                         DATA_DIR, "responses_categories.json"))
+                       generateData=True,
+                       votingMethod="most")
     runner.initModel(0)
     runner.runExperiment()
 
@@ -279,8 +285,6 @@ class ClassificationModelsTest(unittest.TestCase):
 
 
 # TODO: add the following tests...
-
-#  def testClassifyHTMAsExpectedWithCLA(self):
 
 #  def testTrainOnAllTestOnAll(self):
 #    """Train on all samples, save model, load model, and test on all samples."""
