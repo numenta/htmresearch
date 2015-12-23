@@ -336,7 +336,7 @@ class TemporalPoolerRegion(PyRegion):
       inputs=dict(
         activeCells=dict(
           description="Active cells",
-          dataType="UInt32",
+          dataType="Real32",
           count=0,
           required=True,
           regionLevel=False,
@@ -345,7 +345,7 @@ class TemporalPoolerRegion(PyRegion):
 
         predictedActiveCells=dict(
           description="Predicted Actived Cells",
-          dataType="UInt32",
+          dataType="Real32",
           count=0,
           required=True,
           regionLevel=True,
