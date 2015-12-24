@@ -115,7 +115,7 @@ def createModel(args):
   return model
 
 
-def trainModel(args, model, trainingData):
+def trainModel(model, trainingData):
   """
   Train the given model on trainingData. Return the trained model instance.
   """
@@ -177,7 +177,7 @@ def runExperiment(args, trainingData, testData):
   """
 
   model = createModel(args)
-  model = trainModel(args, model, trainingData)
+  model = trainModel(model, trainingData)
   testModel(args, model, testData)
   model.saveModel()
 
