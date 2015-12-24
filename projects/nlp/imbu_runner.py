@@ -87,17 +87,19 @@ def _createModel(modelName, savePath, **htmArgs):
 
   if modelName == "CioWordFingerprint":
     model = modelCls(
-      fingerprintType=EncoderTypes.word)
+      fingerprintType=EncoderTypes.word,
+      classifierMetric="pctOverlapOfInput")
 
   elif modelName == "CioDocumentFingerprint":
     model =  modelCls(
-      fingerprintType=EncoderTypes.document)
+      fingerprintType=EncoderTypes.document,
+      classifierMetric="pctOverlapOfInput")
 
   elif modelName == "HTMNetwork":
     model = modelCls(**htmArgs)
 
   else:
-    model = modelCls()
+    model = modelCls(classifierMetric="pctOverlapOfInput")
 
   model.verbosity = 0
   model.numLabels = 0
@@ -162,7 +164,7 @@ def run(args):
     print "Now we query the model for samples (quit with 'q')..."
     input = raw_input("Enter a query: ")
     if input == "q": break
-    sortedDistances = model.queryModel(input, args.preprocess)
+    sortedDistances = model.queryModel(input)
     print printTemplate.format("Sample ID", "Distance from query")
     for sID, dist in sortedDistances:
       print printTemplate.format(sID, dist)
@@ -179,8 +181,8 @@ if __name__ == "__main__":
   parser.add_argument("-m", "--modelName",
 #                      default="CioWordFingerprint",
 #                      default="CioDocumentFingerprint",
-#                      default="Keywords",
-                      default="HTMNetwork",
+                      default="Keywords",
+#                      default="HTMNetwork",
 #                      default="CioWindows",
                       type=str,
                       help="Name of model class. Also used for model results "
