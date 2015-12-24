@@ -75,7 +75,7 @@ class ClassificationModelKeywords(ClassificationModel):
 
     @param token  (str)      String token
     @return       (list)     Numpy arrays, each with a bitmap of the
-                                        encoding.
+                             encoding.
     """
     return self.encodeRandomly(token, self.n, self.w)
 
