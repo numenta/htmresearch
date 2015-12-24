@@ -37,6 +37,7 @@ from htmresearch.frameworks.nlp.classify_keywords import (
 from htmresearch.frameworks.nlp.classify_windows import (
   ClassificationModelWindows)
 from htmresearch.support.csv_helper import readCSV
+from htmresearch.support.text_preprocess import TextPreprocess
 
 import simplejson as json
 
@@ -106,8 +107,28 @@ def _createModel(modelName, savePath, **htmArgs):
   return model
 
 
+from tqdm import tqdm
+def trainModel(model, trainingData):
+  """
+  Train the given model on trainingData. Return the trained model instance.
+  """
+  TP = TextPreprocess()
+  for seqId, (text, _, uniqueID) in enumerate(tqdm(trainingData.values())):
+    textTokens = TP.tokenize(text)
+    for i, token in enumerate(textTokens):
+      model.trainText(token, [-1], sequenceId=seqId, reset=int(i==0))
+
+  return model
+
+
 
 def run(args):
+
+  print "Getting and prepping the data..."
+  dataDict = readCSV(args.dataPath, numLabels=0)
+#  samples = OrderedDict((k, (TextPreprocess().tokenize(v[0]), v[1], v[2])) for (k,v) in dataDict.iteritems())
+
+  import pdb; pdb.set_trace()
 
   if args.loadPath:
     model = loadModel(args.loadPath)
@@ -116,28 +137,21 @@ def run(args):
     networkConfig = loadJSON(_NETWORK_JSON)
     
     print "Creating the network model..."
-    model = _createModel(modelName=args.modelName, savePath=args.savePath,
-      networkConfig=networkConfig, inputFilePath=args.dataPath, prepData=True,
-      numLabels=0, stripCats=True, retinaScaling=1.0)
-
-    numRecords = sum(
-      model.networkDataGen.getNumberOfTokens(model.networkDataPath))
-
-    print "Training the model..."
-    model.trainModel(iterations=numRecords)  # TODO: switch to using trainNetwork
+    model = _createModel(
+      modelName=args.modelName,
+      savePath=args.savePath,
+      networkConfig=networkConfig,
+      inputFilePath=None,
+      prepData=False,
+      numLabels=0,
+      retinaScaling=1.0)
 
   else:
     model = _createModel(modelName=args.modelName, savePath=args.savePath)
 
-    dataDict = readCSV(args.dataPath, numLabels=0)
+  print "Training the model (and encoding the data)..."
+  model = trainModel(model, dataDict)
 
-    print "Preparing and encoding the data..."
-    samples = model.prepData(dataDict, args.preprocess)
-    patterns = model.encodeSamples(samples)
-
-    print "Training the model..."
-    for i in xrange(len(samples)):
-      model.trainModel(i)
 
   if args.savePath:
     model.saveModel()
@@ -166,8 +180,8 @@ if __name__ == "__main__":
 #                      default="CioWordFingerprint",
 #                      default="CioDocumentFingerprint",
 #                      default="Keywords",
-#                      default="HTMNetwork",
-                      default="CioWindows",
+                      default="HTMNetwork",
+#                      default="CioWindows",
                       type=str,
                       help="Name of model class. Also used for model results "
                            "directory and pickle checkpoint.")
