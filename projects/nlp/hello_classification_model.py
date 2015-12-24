@@ -120,7 +120,7 @@ def trainModel(args, model, trainingData):
     print
     print "Document=", id, "text=",doc, "tokens=",docTokens, "label=",doc[1]
     for i, token in enumerate(docTokens):
-      # print "Training data: ", token, id, doc[1]
+      print "Training data: ", token, id, doc[1]
       model.trainText(token, doc[1], id, reset=int(i==0))
 
   return model
