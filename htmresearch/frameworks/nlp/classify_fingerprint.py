@@ -51,13 +51,13 @@ class ClassificationModelFingerprint(ClassificationModel):
     super(ClassificationModelFingerprint, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
 
-    # Init kNN classifier and Cortical.io encoder; need valid API key (see
-    # CioEncoder init for details).
     self.classifier = KNNClassifier(k=numLabels,
                                     distanceMethod=classifierMetric,
                                     exact=False,
                                     verbosity=verbosity-1)
 
+    # Need a valid API key for the Cortical.io encoder (see CioEncoder
+    # constructor for details).
     if fingerprintType is (not EncoderTypes.document or not EncoderTypes.word):
       raise ValueError("Invaid type of fingerprint encoding; see the "
                        "EncoderTypes class for eligble types.")
@@ -68,6 +68,9 @@ class ClassificationModelFingerprint(ClassificationModel):
                               unionSparsity=unionSparsity,
                               retina=retina,
                               apiKey=apiKey)
+
+    self.currentDocument = None
+    self.currentDocumentId = None
 
 
   def encodeSample(self, sample):
@@ -128,3 +131,50 @@ class ClassificationModelFingerprint(ClassificationModel):
     (_, inferenceResult, _, _) = self.classifier.infer(self.sparsifyPattern(
       self.patterns[i]["pattern"]["bitmap"], self.encoder.n))
     return self.getWinningLabels(inferenceResult, seed)
+
+
+  def trainText(self, token, labels, sequenceId=None, reset=0):
+    """
+    Train the model with the given text token, associated labels, and
+    sequence ID. The sequence ID is stored in sampleReference so we know which
+    samples the model has been trained on, and specifically where they
+    appear in the classifier space.
+
+    @param token      (str)  The text token to train on
+    @param labels     (list) A list of one or more integer labels associated
+                             with this token. If the list is empty, the
+                             classifier will not be trained.
+    @param sequenceId (int)  An integer ID associated with this token and its
+                             sequence (document).
+    @param reset      (int)  Flag for the start of a new sequence of tokens.
+    """
+    if self.currentDocument is None:
+      # start of training this model
+      self.currentDocument = [token]
+      return
+    if reset == 0:
+      # need full sequence of tokens to continue w/ training
+      self.currentDocument.append(token)
+      self.currentDocumentId = sequenceId
+      return
+
+    # Reset flagged, so we proceed training on the previous document.
+    document = " ".join(self.currentDocument)
+    bitmap = self.encoder.encode(document)["fingerprint"]["positions"]
+
+    if self.verbosity >= 1:
+      print "CioFP model training with: '{}'".format(document)
+      print "\tbitmap:", bitmap
+    for label in labels:
+      self.classifier.learn(bitmap, label, isSparse=self.encoder.n)
+      self.sampleReference.append(self.currentDocumentId)
+
+      # TODO: replace the need for sampleReference w/ partitionId.
+      # There is a bug in how partitionId is handled during infer if it is
+      # not passed in, so we won't pass it in for now (line 863 of
+      # KNNClassifier.py)
+      # self.classifier.learn(bitmap, label, isSparse=self.n,
+      #                       partitionId=sequenceId)
+
+    # start of the new document (specified by reset=1)
+    self.currentDocument = [token]
