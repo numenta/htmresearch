@@ -134,13 +134,13 @@ class ClassificationModelKeywords(ClassificationModel):
           self.classifier.learn(token["bitmap"], label, isSparse=self.n)
           self.sampleReference.append(self.patterns[i]["ID"])
           count += 1
-  
+
     return count
 
 
   def testModel(self, i, seed=42):
     """
-    Test the model on record i.  Returns the classifications most frequent 
+    Test the model on record i.  Returns the classifications most frequent
     amongst the classifications of the sample's individual tokens.
     We ignore the terms that are unclassified, picking the most frequent
     classifications among those that are detected.
@@ -189,7 +189,9 @@ class ClassificationModelKeywords(ClassificationModel):
   def trainText(self, token, labels, sequenceId=None, reset=0):
     """
     Train the model with the given text token, associated labels, and
-    sequence ID.
+    sequence ID. The sequence ID is stored in sampleReference so we know which
+    samples the model has been trained on, and specifically where they
+    appear in the classifier space.
 
     @param token      (str)  The text token to train on
     @param labels     (list) A list of one or more integer labels associated
@@ -205,7 +207,9 @@ class ClassificationModelKeywords(ClassificationModel):
       print "  bitmap:",bitmap
     for label in labels:
       self.classifier.learn(bitmap, label, isSparse=self.n)
+      self.sampleReference.append(sequenceId)
 
+      # TODO: replace the need for sampleReference w/ partitionId.
       # There is a bug in how partitionId is handled during infer if it is
       # not passed in, so we won't pass it in for now (line 863 of
       # KNNClassifier.py)

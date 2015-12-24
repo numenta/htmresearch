@@ -231,22 +231,16 @@ class ClassificationModel(object):
     return numpy.array([i for i in winners if labelFreq[i] > 0])
 
 
-  def queryModel(self, query, preprocess=False):
+  def queryModel(self, query):
     """
     Preprocesses the query, encodes it into a pattern, then queries the
     classifier to infer distances to trained-on samples.
     @return       (list)          Two-tuples of sample ID and distance, sorted
                                   closest to farthest from the query.
     """
-    if preprocess:
-      sample = TextPreprocess().tokenize(query,
-                                         ignoreCommon=100,
-                                         removeStrings=["[identifier deleted]"],
-                                         correctSpell=True)
-    else:
-      sample = TextPreprocess().tokenize(query)
-
-    encodedQuery = self.encodeSample(sample)
+    sample = TextPreprocess().tokenize(query)
+    encodedQuery = [{"text": token, "bitmap": self.encodeToken(token)}
+                    for token in sample]
 
     allDistances = self.infer(encodedQuery)
 
