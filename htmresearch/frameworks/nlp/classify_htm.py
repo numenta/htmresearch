@@ -85,6 +85,13 @@ class ClassificationModelHTM(ClassificationModel):
     self.classifierRegion = self.network.regions[
       self.networkConfig["classifierRegionConfig"].get("regionName")]
 
+    # There is sometimes a TP region
+    self.tpRegion = None
+    if self.networkConfig.has_key("tpRegionConfig"):
+      self.tpRegion = self.network.regions[
+        self.networkConfig["tpRegionConfig"].get("regionName")]
+
+
 
   def getClassifier(self):
     """
@@ -180,8 +187,6 @@ class ClassificationModelHTM(ClassificationModel):
       else:
         netPath = os.path.join(self.modelDir, "network.nta")
       self.network.save(netPath)
-      # with open(netPath, "wb") as f:
-      #   pkl.dump(self, f)
       if self.verbosity > 0:
         print "Model saved to '{}'.".format(netPath)
     except IOError as e:
@@ -336,3 +341,84 @@ class ClassificationModelHTM(ClassificationModel):
     qTuple = [(a, b) for a, b in zip(sortedSamples, sampleDistances[:catCount])]
 
     return sorted(qTuple, key=operator.itemgetter(1))
+
+
+  def trainText(self, token, labels, sequenceId=None, reset=0):
+    """
+    Train the model with the given text token, associated labels, and
+    sequence ID.
+
+    @param token      (str)  The text token to train on
+    @param labels     (list) A list of one or more integer labels associated
+                             with this token. If the list is empty, the
+                             classifier will not be trained.
+    @param sequenceId (int)  An integer ID associated with this token and its
+                             sequence (document).
+    @param reset      (int)  Should be 0 or 1. If 1, assumes we are at the
+                             beginning of a new sequence.
+    """
+    for region in self.learningRegions:
+      region.setParameter("learningMode", True)
+    sensor = self.sensorRegion.getSelf()
+    sensor.addDataToQueue(token, labels, sequenceId, reset)
+    self.network.run(1)
+
+    # Print the outputs of each region
+    if self.verbosity >= 2:
+      self.printRegionOutputs()
+
+
+  def classifyText(self, token, reset=0):
+    """
+    Classify the token and return a list of the best classifications.
+
+    @param token    (str)  The text token to train on
+    @param reset    (int)  Should be 0 or 1. If 1, assumes we are at the
+                           beginning of a new sequence.
+
+    @return  (numpy array) An array of size numLabels. Position i contains
+                           the likelihood that this sample belongs to the
+                           i'th category. An array containing all zeros
+                           implies no decision could be made.
+    """
+    for region in self.learningRegions:
+      region.setParameter("learningMode", False)
+      region.setParameter("inferenceMode", True)
+    sensor = self.sensorRegion.getSelf()
+    sensor.addDataToQueue(token, [None], -1, reset)
+    self.network.run(1)
+
+    if self.verbosity >= 2:
+      self.printRegionOutputs()
+
+    return self.classifierRegion.getOutputData("categoriesOut")[0:self.numLabels]
+
+
+  def printRegionOutputs(self):
+    """
+    Print the outputs of regions to console for debugging, depending on
+    verbosity level.
+    """
+
+    print "================== HTM Debugging output:"
+    print "Sensor output:",
+    print self.sensorRegion.getOutputData("dataOut").nonzero()
+    print "Sensor categoryOut:",
+    print self.sensorRegion.getOutputData("categoryOut")
+
+    if self.verbosity >= 3:
+      if self.tpRegion is not None:
+        print "TP region input:",
+        print self.tpRegion.getInputData("activeCells").nonzero()
+        print "TP region output:",
+        print self.tpRegion.getOutputData("mostActiveCells").nonzero()
+
+      print "Classifier bottomUpIn: ",
+      print self.classifierRegion.getInputData("bottomUpIn").nonzero()
+      print "Classifier categoryIn: ",
+      print self.classifierRegion.getInputData("categoryIn")[0:self.numLabels]
+
+    print "Classifier categoriesOut: ",
+    print self.classifierRegion.getOutputData("categoriesOut")[0:self.numLabels]
+    print "Classifier categoryProbabilitiesOut",
+    print self.classifierRegion.getOutputData("categoryProbabilitiesOut")[0:self.numLabels]

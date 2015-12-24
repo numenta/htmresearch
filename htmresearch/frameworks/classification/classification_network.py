@@ -336,8 +336,10 @@ def createNetwork(dataSource, networkConfig, encoder=None):
                "",
                srcOutput="categoryOut",
                destInput="categoryIn")
-  network.link(sensorRegionName, regionName, "UniformLink", "",
-               srcOutput="sequenceIdOut", destInput="sequenceIdIn")
+
+  # Commented out until NuPIC issue 2890 is resolved
+  # network.link(sensorRegionName, regionName, "UniformLink", "",
+  #              srcOutput="sequenceIdOut", destInput="sequenceIdIn")
   
 
   return network

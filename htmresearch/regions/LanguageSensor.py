@@ -75,7 +75,7 @@ class LanguageSensor(PyRegion):
       "outputs":{
         "dataOut":{
           "description":"Encoded text",
-          "dataType":"UInt32",
+          "dataType":"Real32",
           "count":0,
           "regionLevel":True,
           "isDefaultOutput":True,
@@ -183,27 +183,40 @@ class LanguageSensor(PyRegion):
     outputs["sequenceIdOut"][0] = data["_sequenceId"]
     outputs["sourceOut"] = data["_token"]
     self.populateCategoriesOut(data["_category"], outputs['categoryOut'])
-    if self.verbosity > 0:
-      print "SeqID: ", outputs["sequenceIdOut"]
-      print "Categories out: ", outputs['categoryOut']
-
     outputs["encodingOut"] = self.encoder.encodeIntoArray(
       data["_token"], outputs["dataOut"])
+
+    if self.verbosity > 0:
+      print "LanguageSensor outputs:"
+      print "SeqID: ", outputs["sequenceIdOut"]
+      print "Categories out: ", outputs['categoryOut']
+      print "dataOut: ",outputs["dataOut"].nonzero()[0]
 
     self._outputValues = copy.deepcopy(outputs)
 
     self._iterNum += 1
 
 
-  def addDataToQueue(self, token, categoryList, sequenceID, reset = 0):
+  def addDataToQueue(self, token, categoryList, sequenceId, reset=0):
     """
     Add the given data item to the sensor's internal queue. Calls to compute
     will cause items in the queue to be dequeued in FIFO order.
+
+    @param token        (str)  The text token
+    @param categoryList (list) A list of one or more integer labels associated
+                               with this token. If the list is [None], no
+                               categories will be associated with this item.
+    @param sequenceId   (int)  An integer ID associated with this token and its
+                               sequence (document).
+    @param reset        (int)  Should be 0 or 1. resetOut will be set to this
+                               value when this item is computed.
+
+
     """
-    self.queue.appendLeft ({
+    self.queue.appendleft ({
         "_token": token,
         "_category": categoryList,
-        "_sequenceID": sequenceID,
+        "_sequenceId": sequenceId,
         "_reset": reset
       })
 
