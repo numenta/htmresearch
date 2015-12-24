@@ -1,0 +1,22 @@
+{
+  "sensorRegionConfig": {
+    "regionEnabled": true,
+    "regionName": "sensor",
+    "regionType": "py.LanguageSensor",
+    "regionParams": {
+      "verbosity": 0,
+      "numCategories": 3
+      },
+    "encoders": {}
+  },
+  "classifierRegionConfig": {
+    "regionEnabled": true,
+    "regionName": "classifier",
+    "regionType": "py.KNNClassifierRegion",
+    "regionParams": {
+      "k": 9,
+      "distanceMethod": "rawOverlap",
+      "maxCategoryCount": 100
+    }
+  }
+}

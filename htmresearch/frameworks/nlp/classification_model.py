@@ -338,3 +338,36 @@ class ClassificationModel(object):
 
     with open(os.path.join(self.modelDir, "encoding_log.json"), "w") as f:
       json.dump(jsonPatterns, f, indent=2)
+
+
+  def trainText(self, token, labels, sequenceId=None, reset=0):
+    """
+    Train the model with the given text token, associated labels, and
+    sequence ID.
+
+    @param token      (str)  The text token to train on
+    @param labels     (list) A list of one or more integer labels associated
+                             with this token. If the list is empty, the
+                             classifier will not be trained.
+    @param sequenceId (int)  An integer ID associated with this token and its
+                             sequence (document).
+    @param reset      (int)  Should be 0 or 1. If 1, assumes we are at the
+                             beginning of a new sequence.
+    """
+    raise NotImplementedError
+
+
+  def classifyText(self, token, reset=0):
+    """
+    Classify the token
+
+    @param token    (str)  The text token to train on
+    @param reset    (int)  Should be 0 or 1. If 1, assumes we are at the
+                           beginning of a new sequence.
+
+    @return  (numpy array) An array of size numLabels. Position i contains
+                           the likelihood that this sample belongs to the
+                           i'th category. An array containing all zeros
+                           implies no decision could be made.
+    """
+    raise NotImplementedError

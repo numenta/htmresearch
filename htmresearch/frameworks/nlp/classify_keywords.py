@@ -44,21 +44,40 @@ class ClassificationModelKeywords(ClassificationModel):
                verbosity=1,
                numLabels=3,
                modelDir="ClassificationModelKeywords",
-               classifierMetric="rawOverlap"):
+               classifierMetric="rawOverlap",
+               k=None,
+               ):
 
     super(ClassificationModelKeywords, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
+
+    # Backward compatibility to support previous odd behavior
+    if k == None:
+      k = numLabels
 
     # We use the pctOverlapOfInput distance metric for this model so the
     # queryModel() output is consistent (i.e. 0.0-1.0). The KNN classifications
     # aren't affected b/c the raw overlap distance is still used under the hood.
     self.classifier = KNNClassifier(exact=True,
                                     distanceMethod=classifierMetric,
-                                    k=numLabels,
+                                    k=k,
                                     verbosity=verbosity-1)
 
     self.n = n
     self.w = w
+
+
+  def encodeToken(self, token):
+    """
+    Randomly encode an SDR of the input token. We seed the random number
+    generator such that a given string will yield the same SDR each time this
+    method is called.
+
+    @param token  (str)      String token
+    @return       (list)     Numpy arrays, each with a bitmap of the
+                                        encoding.
+    """
+    return self.encodeRandomly(token, self.n, self.w)
 
 
   def encodeSample(self, sample):
@@ -76,7 +95,7 @@ class ClassificationModelKeywords(ClassificationModel):
     for token in sample:
       patterns.append({"text":token,
                        "sparsity":float(self.w)/self.n,
-                       "bitmap":self.encodeRandomly(token, self.n, self.w)})
+                       "bitmap":self.encodeToken(token)})
     return patterns
 
 
@@ -165,3 +184,54 @@ class ClassificationModelKeywords(ClassificationModel):
       distances = numpy.array([sum(x) for x in zip(dist, distances)])
 
     return distances / (i+1)
+
+
+  def trainText(self, token, labels, sequenceId=None, reset=0):
+    """
+    Train the model with the given text token, associated labels, and
+    sequence ID.
+
+    @param token      (str)  The text token to train on
+    @param labels     (list) A list of one or more integer labels associated
+                             with this token. If the list is empty, the
+                             classifier will not be trained.
+    @param sequenceId (int)  An integer ID associated with this token and its
+                             sequence (document).
+    @param reset      (int)  Ignored.
+    """
+    bitmap = self.encodeToken(token)
+    if self.verbosity >= 1:
+      print "Keywords training with:",token
+      print "  bitmap:",bitmap
+    for label in labels:
+      self.classifier.learn(bitmap, label, isSparse=self.n)
+
+      # There is a bug in how partitionId is handled during infer if it is
+      # not passed in, so we won't pass it in for now (line 863 of
+      # KNNClassifier.py)
+      # self.classifier.learn(bitmap, label, isSparse=self.n,
+      #                       partitionId=sequenceId)
+
+
+  def classifyText(self, token, reset=0):
+    """
+    Classify the token
+
+    @param token    (str)  The text token to train on
+    @param reset    (int)  Ignored
+
+    @return  (numpy array) An array of size numLabels. Position i contains
+                           the likelihood that this sample belongs to the
+                           i'th category. An array containing all zeros
+                           implies no decision could be made.
+    """
+    bitmap = self.encodeToken(token)
+    densePattern = self.sparsifyPattern(bitmap,self.n)
+    if self.verbosity >= 1:
+      print "Inference with token=",token,"bitmap=",bitmap
+      print "Dense version:",densePattern
+    (_, inferenceResult, _, _) = self.classifier.infer(densePattern)
+    if self.verbosity >= 1:
+      print "Inference result=",inferenceResult
+
+    return inferenceResult
