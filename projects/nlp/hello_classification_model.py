@@ -22,6 +22,13 @@
 
 helpStr = """
 Simple script that explains how to run classification models.
+
+Example invocations:
+
+python hello_classification_model.py -m keywords
+python hello_classification_model.py -c data/network_configs/sensor_knn.json -m htm -v 2
+python hello_classification_model.py -c data/network_configs/tp_knn.json -m htm
+
 """
 
 import argparse
