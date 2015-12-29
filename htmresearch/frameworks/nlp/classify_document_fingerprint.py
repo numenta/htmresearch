@@ -44,9 +44,9 @@ modelConfig = {
     "regionName": "classifier",
     "regionType": "py.KNNClassifierRegion",
     "regionParams": {
-      "k": 9,
+      "k": None,  # To be filled in
       "distanceMethod": "rawOverlap",
-      "maxCategoryCount": 100
+      "maxCategoryCount": None,  # To be filled in
     }
   }
 }
