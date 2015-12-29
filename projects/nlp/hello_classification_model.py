@@ -37,6 +37,9 @@ import numpy
 import copy
 
 from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
+from htmresearch.frameworks.nlp.classify_document_fingerprint import (
+  ClassificationModelDocumentFingerprint
+)
 from htmresearch.frameworks.nlp.classify_keywords import (
   ClassificationModelKeywords
 )
@@ -109,6 +112,14 @@ def createModel(args):
       k=9,
       modelDir=args.modelDir)
 
+  elif args.modelName == "docfp":
+    # Instantiate the keywords model
+    model = ClassificationModelDocumentFingerprint(
+      verbosity=args.verbosity,
+      retina=args.retina,
+      numLabels=2,
+      k=3)
+
   else:
     raise RuntimeError("Unknown model type: " + args.modelName)
 
@@ -124,11 +135,12 @@ def trainModel(args, model, trainingData):
   print "=======================Training model on sample text================"
   for id, doc in enumerate(trainingData):
     docTokens = splitDocumentIntoTokens(doc[0])
+    lastToken = len(docTokens) - 1
     print
     print "Document=", id, "text=",doc, "tokens=",docTokens, "label=",doc[1]
     for i, token in enumerate(docTokens):
       print "Training data: ", token, id, doc[1]
-      model.trainText(token, doc[1], id, reset=int(i==0))
+      model.trainText(token, doc[1], id, reset=int(i==lastToken))
 
   return model
 
@@ -149,9 +161,10 @@ def testModel(args, model, testData):
     print
     print "Document=", doc[0],", desired label: ",doc[1]
     docTokens = splitDocumentIntoTokens(doc[0])
+    lastToken = len(docTokens) - 1
     categoryVotes = numpy.zeros(2)
     for i, token in enumerate(docTokens):
-      modelClassification = model.classifyText(token, reset=int(i==0))
+      modelClassification = model.classifyText(token, reset=int(i==lastToken))
       if modelClassification.sum() > 0:
         categoryVotes[modelClassification.argmax()] += 1
       if args.verbosity >= 2:
@@ -179,7 +192,13 @@ def runExperiment(args, trainingData, testData):
   model = createModel(args)
   model = trainModel(args, model, trainingData)
   testModel(args, model, testData)
-  model.saveModel()
+
+  # Serialization: this should work and give the same results as above
+  # model = createModel(args)
+  # model = trainModel(args, model, trainingData)
+  # model.save(args.modelDir)
+  # newmodel = createModelFromPath(args.modelDir)
+  # testModel(args, newmodel, testData)
 
 
 if __name__ == "__main__":

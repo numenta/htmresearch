@@ -33,7 +33,7 @@ from nupic.data.file_record_stream import FileRecordStream
 
 
 class ClassificationModelHTM(ClassificationModel):
-  """Class to run the classification experiments with HTM network models."""
+  """Classify text using generic network-API based models."""
 
   def __init__(self,
                networkConfig,
@@ -343,6 +343,20 @@ class ClassificationModelHTM(ClassificationModel):
     return sorted(qTuple, key=operator.itemgetter(1))
 
 
+  def reset(self):
+    """
+    Issue a reset signal to the model. The assumption is that a sequence has
+    just ended and a new sequence is about to begin.  The default behavior is
+    to do nothing - not all subclasses may re-implement this.
+    """
+    # TODO: Introduce a consistent reset method name.
+    for r in self.learningRegions:
+      if r.type == 'py.TemporalPoolerRegion':
+        r.executeCommand(['reset'])
+      elif r.type == 'py.TPRegion':
+        r.executeCommand(['resetSequenceStates'])
+
+
   def trainText(self, token, labels, sequenceId=None, reset=0):
     """
     Train the model with the given text token, associated labels, and
@@ -360,12 +374,15 @@ class ClassificationModelHTM(ClassificationModel):
     for region in self.learningRegions:
       region.setParameter("learningMode", True)
     sensor = self.sensorRegion.getSelf()
-    sensor.addDataToQueue(token, labels, sequenceId, reset)
+    sensor.addDataToQueue(token, labels, sequenceId, 0)
     self.network.run(1)
 
     # Print the outputs of each region
     if self.verbosity >= 2:
       self.printRegionOutputs()
+
+    if reset == 1:
+      self.reset()
 
 
   def classifyText(self, token, reset=0):
@@ -374,7 +391,8 @@ class ClassificationModelHTM(ClassificationModel):
 
     @param token    (str)  The text token to train on
     @param reset    (int)  Should be 0 or 1. If 1, assumes we are at the
-                           beginning of a new sequence.
+                           end of a sequence. A reset signal will be issued
+                           after the model has been trained on this token.
 
     @return  (numpy array) An array of size numLabels. Position i contains
                            the likelihood that this sample belongs to the
@@ -385,11 +403,15 @@ class ClassificationModelHTM(ClassificationModel):
       region.setParameter("learningMode", False)
       region.setParameter("inferenceMode", True)
     sensor = self.sensorRegion.getSelf()
-    sensor.addDataToQueue(token, [None], -1, reset)
+    sensor.addDataToQueue(token, [None], -1, 0)
     self.network.run(1)
 
+    # Print the outputs of each region
     if self.verbosity >= 2:
       self.printRegionOutputs()
+
+    if reset == 1:
+      self.reset()
 
     return self.classifierRegion.getOutputData("categoriesOut")[0:self.numLabels]
 

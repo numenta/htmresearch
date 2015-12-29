@@ -22,8 +22,15 @@
 from enum import Enum
 
 
-
+# TODO: this should be deleted (or at least moved to cio_encoder.py)
 class EncoderTypes(Enum):
   """Defines enumerations for the Cortical.io encoder types."""
+
+  # Encode an entire document at a time
   document = "document"
+
+  # Encode a document by encoding individual words and unioning the result
   word = "word"
+
+  # Encode a single token
+  token = "token"

@@ -340,6 +340,15 @@ class ClassificationModel(object):
       json.dump(jsonPatterns, f, indent=2)
 
 
+  def reset(self):
+    """
+    Issue a reset signal to the model. The assumption is that a sequence has
+    just ended and a new sequence is about to begin.  The default behavior is
+    to do nothing - not all subclasses may re-implement this.
+    """
+    pass
+
+
   def trainText(self, token, labels, sequenceId=None, reset=0):
     """
     Train the model with the given text token, associated labels, and
@@ -352,7 +361,8 @@ class ClassificationModel(object):
     @param sequenceId (int)  An integer ID associated with this token and its
                              sequence (document).
     @param reset      (int)  Should be 0 or 1. If 1, assumes we are at the
-                             beginning of a new sequence.
+                             end of a sequence. A reset signal will be issued
+                             after the model has been trained on this token.
     """
     raise NotImplementedError
 
@@ -363,7 +373,8 @@ class ClassificationModel(object):
 
     @param token    (str)  The text token to train on
     @param reset    (int)  Should be 0 or 1. If 1, assumes we are at the
-                           beginning of a new sequence.
+                           end of a sequence. A reset signal will be issued
+                           after the model has been trained on this token.
 
     @return  (numpy array) An array of size numLabels. Position i contains
                            the likelihood that this sample belongs to the
