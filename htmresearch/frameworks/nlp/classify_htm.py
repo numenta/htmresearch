@@ -23,12 +23,14 @@ import numpy
 import operator
 import os
 
+from nupic.data.file_record_stream import FileRecordStream
+from nupic.engine import Network
+
 from htmresearch.frameworks.classification.classification_network import (
   configureNetwork)
 from htmresearch.encoders.cio_encoder import CioEncoder
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.support.network_text_data_generator import NetworkDataGenerator
-from nupic.data.file_record_stream import FileRecordStream
 
 
 
@@ -69,28 +71,17 @@ class ClassificationModelHTM(ClassificationModel):
     self.retinaScaling = retinaScaling
     self.retina = retina
     self.apiKey = apiKey
+    self.inputFilePath = inputFilePath
 
     self.networkDataGen = NetworkDataGenerator()
     if prepData:
-      self.networkDataPath = self.prepData(inputFilePath, stripCats=stripCats)
+      self.networkDataPath = self.prepData(
+          self.inputFilePath, stripCats=stripCats)
     else:
-      self.networkDataPath = inputFilePath
+      self.networkDataPath = self.inputFilePath
 
     self.network = self.initModel()
-    self.learningRegions = self._getLearningRegions()
-
-    # Always a sensor and classifier region.
-    self.sensorRegion = self.network.regions[
-      self.networkConfig["sensorRegionConfig"].get("regionName")]
-    self.classifierRegion = self.network.regions[
-      self.networkConfig["classifierRegionConfig"].get("regionName")]
-
-    # There is sometimes a TP region
-    self.tpRegion = None
-    if self.networkConfig.has_key("tpRegionConfig"):
-      self.tpRegion = self.network.regions[
-        self.networkConfig["tpRegionConfig"].get("regionName")]
-
+    self._initializeRegionHelpers()
 
 
   def getClassifier(self):
@@ -136,15 +127,30 @@ class ClassificationModelHTM(ClassificationModel):
     return configureNetwork(recordStream, self.networkConfig, encoder)
 
 
-  def _getLearningRegions(self):
-    """Return tuple of the network's region objects that learn."""
+  def _initializeRegionHelpers(self):
+    """
+    Set helper member variables once network has been initialized. This will
+    also be called from _deSerializeExtraData()
+    """
     learningRegions = []
     for region in self.network.regions.values():
       spec = region.getSpec()
       if spec.parameters.contains('learningMode'):
         learningRegions.append(region)
 
-    return learningRegions
+    # Always a sensor and classifier region.
+    self.sensorRegion = self.network.regions[
+      self.networkConfig["sensorRegionConfig"].get("regionName")]
+    self.classifierRegion = self.network.regions[
+      self.networkConfig["classifierRegionConfig"].get("regionName")]
+
+    # There is sometimes a TP region
+    self.tpRegion = None
+    if self.networkConfig.has_key("tpRegionConfig"):
+      self.tpRegion = self.network.regions[
+        self.networkConfig["tpRegionConfig"].get("regionName")]
+
+    self.learningRegions = learningRegions
 
 
   # TODO: is this still needed?
@@ -444,3 +450,48 @@ class ClassificationModelHTM(ClassificationModel):
     print self.classifierRegion.getOutputData("categoriesOut")[0:self.numLabels]
     print "Classifier categoryProbabilitiesOut",
     print self.classifierRegion.getOutputData("categoryProbabilitiesOut")[0:self.numLabels]
+
+
+  def __getstate__(self):
+    """
+    Return serializable state.  This function will return a version of the
+    __dict__ with data that shouldn't be pickled stripped out. For example,
+    Network API instances are stripped out because they have their own
+    serialization mechanism.
+
+    See also: _serializeExtraData()
+    """
+    state = self.__dict__.copy()
+    # Remove member variables that we can't pickle
+    state.pop("network")
+    state.pop("sensorRegion")
+    state.pop("classifierRegion")
+    state.pop("tpRegion")
+    state.pop("learningRegions")
+    state.pop("networkDataGen")
+
+    return state
+
+
+  def _serializeExtraData(self, extraDataDir):
+    """
+    Protected method that is called during serialization with an external
+    directory path. It can be overridden by subclasses to save large binary
+    states, bypass pickle. or for saving Network API instances.
+
+    @param extraDataDir (string) Model's extra data directory path
+    """
+    self.network.save(os.path.join(extraDataDir, "network.nta"))
+
+
+  def _deSerializeExtraData(self, extraDataDir):
+    """
+    Protected method that is called during deserialization (after __setstate__)
+    with an external directory path. It can be overridden by subclasses to save
+    large binary states, bypass pickle. or for saving Network API instances.
+
+    @param extraDataDir (string) Model's extra data directory path
+    """
+    self.network = Network(os.path.join(extraDataDir, "network.nta"))
+    self._initializeRegionHelpers()
+    self.networkDataGen = NetworkDataGenerator()

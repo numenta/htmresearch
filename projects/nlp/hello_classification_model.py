@@ -26,6 +26,7 @@ Simple script that explains how to run classification models.
 Example invocations:
 
 python hello_classification_model.py -m keywords
+python hello_classification_model.py -m docfp
 python hello_classification_model.py -c data/network_configs/sensor_knn.json -m htm -v 2
 python hello_classification_model.py -c data/network_configs/tp_knn.json -m htm
 
@@ -36,6 +37,7 @@ import simplejson
 import numpy
 import copy
 
+from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
 from htmresearch.frameworks.nlp.classify_document_fingerprint import (
   ClassificationModelDocumentFingerprint
@@ -90,9 +92,8 @@ def getNetworkConfig(networkConfigPath):
 def createModel(args):
   """
   Return a classification model of the appropriate type. The model could be any
-  subclass of ClassficationModel based on args.
+  supported subclass of ClassficationModel based on args.
   """
-  model = None
   if args.modelName == "htm":
     # Instantiate the HTM model
     model = ClassificationModelHTM(
@@ -102,7 +103,7 @@ def createModel(args):
       verbosity=args.verbosity,
       numLabels=2,
       prepData=False,
-      modelDir=args.modelDir)
+      modelDir="tempdir")
 
   elif args.modelName == "keywords":
     # Instantiate the keywords model
@@ -110,10 +111,10 @@ def createModel(args):
       verbosity=args.verbosity,
       numLabels=2,
       k=9,
-      modelDir=args.modelDir)
+      modelDir="tempdir")
 
   elif args.modelName == "docfp":
-    # Instantiate the keywords model
+    # Instantiate the document fingerprint model
     model = ClassificationModelDocumentFingerprint(
       verbosity=args.verbosity,
       retina=args.retina,
@@ -185,20 +186,20 @@ def testModel(args, model, testData):
 
 def runExperiment(args, trainingData, testData):
   """
-  Create model according to args, train on training data, test on test data,
-  save model.
+  Create model according to args, train on training data, save model,
+  restore model, test on test data.
   """
 
   model = createModel(args)
   model = trainModel(args, model, trainingData)
   testModel(args, model, testData)
 
-  # Serialization: this should work and give the same results as above
-  # model = createModel(args)
-  # model = trainModel(args, model, trainingData)
-  # model.save(args.modelDir)
-  # newmodel = createModelFromPath(args.modelDir)
-  # testModel(args, newmodel, testData)
+  # Test serialization - should give same result as above
+  model.save(args.modelDir)
+  newmodel = ClassificationModel.load(args.modelDir)
+  print
+  print "==========================Testing after de-serialization========"
+  testModel(args, newmodel, testData)
 
 
 if __name__ == "__main__":
@@ -230,7 +231,7 @@ if __name__ == "__main__":
                       help="Key for Cortical.io API. If not specified will "
                       "use the environment variable CORTICAL_API_KEY.")
   parser.add_argument("--modelDir",
-                      default="test_model",
+                      default="MODELNAME.checkpoint",
                       help="Model will be saved in this directory.")
   parser.add_argument("--textPreprocess",
                       action="store_true",
@@ -244,5 +245,10 @@ if __name__ == "__main__":
                            "1 will print out preprocessed tokens and kNN "
                            "inference metrics.")
   args = parser.parse_args()
+
+  # By default set checkpoint directory name based on model name
+  if args.modelDir == "MODELNAME.checkpoint":
+    args.modelDir = args.modelName + ".checkpoint"
+    print "Save dir: ",args.modelDir
 
   runExperiment(args, trainingData, testData)

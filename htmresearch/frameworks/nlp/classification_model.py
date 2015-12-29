@@ -24,6 +24,7 @@ import cPickle as pkl
 import numpy
 import operator
 import os
+import shutil
 import random
 
 from collections import defaultdict, OrderedDict
@@ -382,3 +383,103 @@ class ClassificationModel(object):
                            implies no decision could be made.
     """
     raise NotImplementedError
+
+
+  def save(self, saveModelDir):
+    """ Save the model in the given directory via pickling.
+
+    @param saveModelDir (string)
+           Directory path for saving the model. This directory should
+           only be used to store a saved model. If the directory does not exist,
+           it will be created automatically and populated with model data. A
+           pre-existing directory will only be accepted if it contains previously
+           saved model data. If such a directory is given, the full contents of
+           the directory will be deleted and replaced with current model data.
+
+    Implementation note: Subclasses should override _serializeExtraData() to
+    save any data that cannot be pickled.
+    """
+    saveModelDir = os.path.abspath(saveModelDir)
+    modelPickleFilePath = os.path.join(saveModelDir, "model.pkl")
+
+    # Delete old model directory if we detect it
+    if os.path.exists(saveModelDir):
+      if not os.path.isdir(saveModelDir) or \
+         not os.path.isfile(modelPickleFilePath):
+        raise Exception(("Existing filesystem entry <%s> is not a model"
+                         " checkpoint -- refusing to delete"\
+                         " (%s missing or not a file)") % \
+                          (saveModelDir, modelPickleFilePath))
+
+      shutil.rmtree(saveModelDir)
+
+    # Create a new checkpoint directory for saving state
+    self.__makeDirectoryFromAbsolutePath(saveModelDir)
+
+    with open(modelPickleFilePath, "wb") as modelPickleFile:
+      pkl.dump(self, modelPickleFile)
+
+    # Tell the model to save extra data, if any.
+    self._serializeExtraData(saveModelDir)
+
+
+  @classmethod
+  def load(cls, savedModelDir):
+    """Create model from saved checkpoint and return it.
+
+    @param savedModelDir (string)
+           Directory where model was saved
+
+    @returns (ClassificationModel) The loaded model instance
+    """
+    savedModelDir = os.path.abspath(savedModelDir)
+    modelPickleFilePath = os.path.join(savedModelDir, "model.pkl")
+
+    with open(modelPickleFilePath, "rb") as modelPickleFile:
+      model = pkl.load(modelPickleFile)
+
+    # Tell the model to load extra data, if any.
+    model._deSerializeExtraData(savedModelDir)
+
+    return model
+
+
+  @staticmethod
+  def __makeDirectoryFromAbsolutePath(absDirPath):
+    """
+    Make directory for the given directory path if it doesn't already
+    exist in the filesystem.
+    @param absDirPath (string) Absolute path of the directory to create
+    """
+
+    assert os.path.isabs(absDirPath)
+
+    # Create the experiment directory
+    try:
+      os.makedirs(absDirPath)
+    except OSError as e:
+      if e.errno != os.errno.EEXIST:
+        raise
+
+
+  def _serializeExtraData(self, extraDataDir):
+    """
+    Protected method that is called during serialization with an external
+    directory path. It can be overridden by subclasses to save large binary
+    states, bypass pickle. or for saving Network API instances.
+
+    @param extraDataDir (string) Model's extra data directory path
+    """
+    pass
+
+
+  def _deSerializeExtraData(self, extraDataDir):
+    """
+    Protected method that is called during deserialization (after __setstate__)
+    with an external directory path. It can be overridden by subclasses to save
+    large binary states, bypass pickle. or for saving Network API instances.
+
+    @param extraDataDir (string) Model's extra data directory path
+    """
+    pass
+

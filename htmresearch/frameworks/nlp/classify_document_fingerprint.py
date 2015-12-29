@@ -22,6 +22,8 @@
 import os
 import numpy
 
+from nupic.engine import Network
+
 from htmresearch.frameworks.classification.classification_network import (
   configureNetwork)
 from htmresearch.encoders import EncoderTypes
@@ -44,9 +46,9 @@ modelConfig = {
     "regionName": "classifier",
     "regionType": "py.KNNClassifierRegion",
     "regionParams": {
-      "k": None,  # To be filled in
+      "k": None,  # To be filled in by constructor
       "distanceMethod": "rawOverlap",
-      "maxCategoryCount": None,  # To be filled in
+      "maxCategoryCount": None,  # To be filled in by constructor
     }
   }
 }
@@ -57,8 +59,9 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
   Classify documents using a KNN classifier and CIO fingerprints created from
   a full document at time, rather than individual words/tokens.
 
-  TODO: this should probably inherit from ClassificationModelHTM since it
-  shares a bunch of code.
+  TODO: this class shares a lot of code with ClassificationModelHTM.  We should
+  create a mid-level class for those models that use the network API. This class
+  can keep all the common code.
   """
 
   def __init__(self,
@@ -79,15 +82,14 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
     is done in the network config file.
     """
     super(ClassificationModelDocumentFingerprint, self).__init__(
-      verbosity=verbosity, numLabels=numLabels)
+      verbosity=verbosity, numLabels=numLabels, modelDir="tempdir")
 
     self.retinaScaling = retinaScaling
     self.retina = retina
     self.apiKey = apiKey
     self.currentDocument = None
     self._initModel(k)
-    self.learningRegions = self._getLearningRegions()
-
+    self._initializeRegionHelpers()
 
 
   def getClassifier(self):
@@ -114,23 +116,31 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
     self.networkConfig = modelConfig
     self.network = configureNetwork(None, self.networkConfig, encoder)
 
-    # This encoder specifies the LanguageSensor output width.
-    # Always a sensor and classifier region.
-    self.sensorRegion = self.network.regions[
-      self.networkConfig["sensorRegionConfig"].get("regionName")]
-    self.classifierRegion = self.network.regions[
-      self.networkConfig["classifierRegionConfig"].get("regionName")]
 
-
-  def _getLearningRegions(self):
-    """Return tuple of the network's region objects that learn."""
+  def _initializeRegionHelpers(self):
+    """
+    Set helper member variables once network has been initialized. This will
+    also be called from _deSerializeExtraData()
+    """
     learningRegions = []
     for region in self.network.regions.values():
       spec = region.getSpec()
       if spec.parameters.contains('learningMode'):
         learningRegions.append(region)
 
-    return learningRegions
+    # Always a sensor and classifier region.
+    self.sensorRegion = self.network.regions[
+      self.networkConfig["sensorRegionConfig"].get("regionName")]
+    self.classifierRegion = self.network.regions[
+      self.networkConfig["classifierRegionConfig"].get("regionName")]
+
+    # There is sometimes a TP region
+    self.tpRegion = None
+    if self.networkConfig.has_key("tpRegionConfig"):
+      self.tpRegion = self.network.regions[
+        self.networkConfig["tpRegionConfig"].get("regionName")]
+
+    self.learningRegions = learningRegions
 
 
   def reset(self):
@@ -251,3 +261,46 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
     print self.classifierRegion.getOutputData("categoriesOut")[0:self.numLabels]
     print "Classifier categoryProbabilitiesOut",
     print self.classifierRegion.getOutputData("categoryProbabilitiesOut")[0:self.numLabels]
+
+
+  def __getstate__(self):
+    """
+    Return serializable state.  This function will return a version of the
+    __dict__ with data that shouldn't be pickled stripped out. For example,
+    Network API instances are stripped out because they have their own
+    serialization mechanism.
+
+    See also: _serializeExtraData()
+    """
+    state = self.__dict__.copy()
+    # Remove member variables that we can't pickle
+    state.pop("network")
+    state.pop("sensorRegion")
+    state.pop("classifierRegion")
+    state.pop("tpRegion")
+    state.pop("learningRegions")
+
+    return state
+
+
+  def _serializeExtraData(self, extraDataDir):
+    """
+    Protected method that is called during serialization with an external
+    directory path. It can be overridden by subclasses to save large binary
+    states, bypass pickle. or for saving Network API instances.
+
+    @param extraDataDir (string) Model's extra data directory path
+    """
+    self.network.save(os.path.join(extraDataDir, "network.nta"))
+
+
+  def _deSerializeExtraData(self, extraDataDir):
+    """
+    Protected method that is called during deserialization (after __setstate__)
+    with an external directory path. It can be overridden by subclasses to save
+    large binary states, bypass pickle. or for saving Network API instances.
+
+    @param extraDataDir (string) Model's extra data directory path
+    """
+    self.network = Network(os.path.join(extraDataDir, "network.nta"))
+    self._initializeRegionHelpers()
