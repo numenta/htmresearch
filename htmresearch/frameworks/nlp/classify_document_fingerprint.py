@@ -56,6 +56,9 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
   """
   Classify documents using a KNN classifier and CIO fingerprints created from
   a full document at time, rather than individual words/tokens.
+
+  TODO: this should probably inherit from ClassificationModelHTM since it
+  shares a bunch of code.
   """
 
   def __init__(self,
