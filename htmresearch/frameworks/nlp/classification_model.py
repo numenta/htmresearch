@@ -179,7 +179,7 @@ class ClassificationModel(object):
 
     TODO: get rid of @staticmethod above and then we can remove this method.
     """
-    pass
+    return self.prepText(text, preprocess)
 
 
   def writeOutCategories(self, dirName, comparisons=None, labelRefs=None):

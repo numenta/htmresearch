@@ -202,6 +202,7 @@ class ClassificationModelKeywords(ClassificationModel):
     bitmap = self.encodeToken(token)
     if self.verbosity >= 1:
       print "Keywords training with:",token
+      print "labels=",labels
       print "  bitmap:",bitmap
     for label in labels:
       self.classifier.learn(bitmap, label, isSparse=self.n)
