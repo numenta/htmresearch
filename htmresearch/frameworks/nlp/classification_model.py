@@ -19,19 +19,18 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+from collections import defaultdict, OrderedDict
 import copy
 import cPickle as pkl
 import numpy
 import operator
 import os
-import shutil
 import random
-
-from collections import defaultdict, OrderedDict
-
-from htmresearch.support.text_preprocess import TextPreprocess
+import shutil
 
 import simplejson as json
+
+from htmresearch.support.text_preprocess import TextPreprocess
 
 
 
@@ -386,7 +385,8 @@ class ClassificationModel(object):
 
 
   def save(self, saveModelDir):
-    """ Save the model in the given directory via pickling.
+    """
+    Save the model in the given directory.
 
     @param saveModelDir (string)
            Directory path for saving the model. This directory should
@@ -397,18 +397,18 @@ class ClassificationModel(object):
            the directory will be deleted and replaced with current model data.
 
     Implementation note: Subclasses should override _serializeExtraData() to
-    save any data that cannot be pickled.
+    save additional data in custom formats.
     """
     saveModelDir = os.path.abspath(saveModelDir)
     modelPickleFilePath = os.path.join(saveModelDir, "model.pkl")
 
     # Delete old model directory if we detect it
     if os.path.exists(saveModelDir):
-      if not os.path.isdir(saveModelDir) or \
-         not os.path.isfile(modelPickleFilePath):
-        raise Exception(("Existing filesystem entry <%s> is not a model"
-                         " checkpoint -- refusing to delete"\
-                         " (%s missing or not a file)") % \
+      if (not os.path.isdir(saveModelDir) or
+          not os.path.isfile(modelPickleFilePath) ):
+        raise RuntimeError(("Existing filesystem entry <%s> is not a model"
+                         " checkpoint -- refusing to delete"
+                         " (%s missing or not a file)") %
                           (saveModelDir, modelPickleFilePath))
 
       shutil.rmtree(saveModelDir)
@@ -425,10 +425,10 @@ class ClassificationModel(object):
 
   @classmethod
   def load(cls, savedModelDir):
-    """Create model from saved checkpoint and return it.
+    """
+    Create model from saved checkpoint directory and return it.
 
-    @param savedModelDir (string)
-           Directory where model was saved
+    @param savedModelDir (string)  Directory where model was saved
 
     @returns (ClassificationModel) The loaded model instance
     """
@@ -449,6 +449,7 @@ class ClassificationModel(object):
     """
     Make directory for the given directory path if it doesn't already
     exist in the filesystem.
+
     @param absDirPath (string) Absolute path of the directory to create
     """
 
@@ -466,7 +467,7 @@ class ClassificationModel(object):
     """
     Protected method that is called during serialization with an external
     directory path. It can be overridden by subclasses to save large binary
-    states, bypass pickle. or for saving Network API instances.
+    states, bypass pickle, or for saving Network API instances.
 
     @param extraDataDir (string) Model's extra data directory path
     """
@@ -477,7 +478,7 @@ class ClassificationModel(object):
     """
     Protected method that is called during deserialization (after __setstate__)
     with an external directory path. It can be overridden by subclasses to save
-    large binary states, bypass pickle. or for saving Network API instances.
+    large binary states, bypass pickle, or for saving Network API instances.
 
     @param extraDataDir (string) Model's extra data directory path
     """

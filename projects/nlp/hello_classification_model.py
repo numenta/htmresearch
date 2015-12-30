@@ -136,12 +136,12 @@ def trainModel(args, model, trainingData):
   print "=======================Training model on sample text================"
   for id, doc in enumerate(trainingData):
     docTokens = splitDocumentIntoTokens(doc[0])
-    lastToken = len(docTokens) - 1
+    lastTokenIndex = len(docTokens) - 1
     print
     print "Document=", id, "text=",doc, "tokens=",docTokens, "label=",doc[1]
     for i, token in enumerate(docTokens):
       print "Training data: ", token, id, doc[1]
-      model.trainText(token, doc[1], id, reset=int(i==lastToken))
+      model.trainText(token, doc[1], id, reset=int(i==lastTokenIndex))
 
   return model
 
@@ -162,10 +162,11 @@ def testModel(args, model, testData):
     print
     print "Document=", doc[0],", desired label: ",doc[1]
     docTokens = splitDocumentIntoTokens(doc[0])
-    lastToken = len(docTokens) - 1
+    lastTokenIndex = len(docTokens) - 1
     categoryVotes = numpy.zeros(2)
     for i, token in enumerate(docTokens):
-      modelClassification = model.classifyText(token, reset=int(i==lastToken))
+      modelClassification = model.classifyText(token,
+                                               reset=int(i==lastTokenIndex))
       if modelClassification.sum() > 0:
         categoryVotes[modelClassification.argmax()] += 1
       if args.verbosity >= 2:

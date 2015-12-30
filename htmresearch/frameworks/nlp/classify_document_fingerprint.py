@@ -125,7 +125,7 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
     learningRegions = []
     for region in self.network.regions.values():
       spec = region.getSpec()
-      if spec.parameters.contains('learningMode'):
+      if spec.parameters.contains("learningMode"):
         learningRegions.append(region)
 
     # Always a sensor and classifier region.
@@ -151,10 +151,10 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
     """
     # TODO: Introduce a consistent reset method name
     for r in self.learningRegions:
-      if r.type == 'py.TemporalPoolerRegion':
-        r.executeCommand(['reset'])
-      elif r.type == 'py.TPRegion':
-        r.executeCommand(['resetSequenceStates'])
+      if r.type == "py.TemporalPoolerRegion":
+        r.executeCommand(["reset"])
+      elif r.type == "py.TPRegion":
+        r.executeCommand(["resetSequenceStates"])
 
 
   def trainText(self, token, labels, sequenceId=None, reset=0):
@@ -223,7 +223,8 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
         region.setParameter("inferenceMode", True)
       document = " ".join(self.currentDocument)
       sensor = self.sensorRegion.getSelf()
-      sensor.addDataToQueue(document, [None], -1, 0)
+      sensor.addDataToQueue(token=document, categoryList=[None],
+                            sequenceId=-1, reset=0)
       self.network.run(1)
       if reset == 1:
         self.reset()
