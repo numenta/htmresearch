@@ -110,13 +110,14 @@ class ClassificationModel(object):
       raise e
 
 
-  def loadModel(self, modelDir):
-    """Return the serialized model."""
+  @staticmethod
+  def loadModel(modelDir):
+    """Load and deserialize a previously serialized model."""
     modelPath = os.path.join(modelDir, "model.pkl")
     try:
       with open(modelPath, "rb") as f:
         model = pkl.load(f)
-      if self.verbosity > 0:
+      if model.verbosity > 0:
         print "Model loaded from \'{}\'.".format(modelPath)
       return model
     except IOError as e:
