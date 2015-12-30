@@ -23,10 +23,10 @@ import copy
 import numpy
 import os
 
+import simplejson as json
+
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from nupic.algorithms.KNNClassifier import KNNClassifier
-
-import simplejson as json
 
 
 

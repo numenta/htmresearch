@@ -19,18 +19,18 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+from collections import defaultdict, OrderedDict
 import copy
 import cPickle as pkl
 import numpy
 import operator
 import os
 import random
-
-from collections import defaultdict, OrderedDict
-
-from htmresearch.support.text_preprocess import TextPreprocess
+import shutil
 
 import simplejson as json
+
+from htmresearch.support.text_preprocess import TextPreprocess
 
 
 
@@ -340,6 +340,15 @@ class ClassificationModel(object):
       json.dump(jsonPatterns, f, indent=2)
 
 
+  def reset(self):
+    """
+    Issue a reset signal to the model. The assumption is that a sequence has
+    just ended and a new sequence is about to begin.  The default behavior is
+    to do nothing - not all subclasses may re-implement this.
+    """
+    pass
+
+
   def trainText(self, token, labels, sequenceId=None, reset=0):
     """
     Train the model with the given text token, associated labels, and
@@ -352,7 +361,8 @@ class ClassificationModel(object):
     @param sequenceId (int)  An integer ID associated with this token and its
                              sequence (document).
     @param reset      (int)  Should be 0 or 1. If 1, assumes we are at the
-                             beginning of a new sequence.
+                             end of a sequence. A reset signal will be issued
+                             after the model has been trained on this token.
     """
     raise NotImplementedError
 
@@ -363,7 +373,8 @@ class ClassificationModel(object):
 
     @param token    (str)  The text token to train on
     @param reset    (int)  Should be 0 or 1. If 1, assumes we are at the
-                           beginning of a new sequence.
+                           end of a sequence. A reset signal will be issued
+                           after the model has been trained on this token.
 
     @return  (numpy array) An array of size numLabels. Position i contains
                            the likelihood that this sample belongs to the
@@ -371,3 +382,105 @@ class ClassificationModel(object):
                            implies no decision could be made.
     """
     raise NotImplementedError
+
+
+  def save(self, saveModelDir):
+    """
+    Save the model in the given directory.
+
+    @param saveModelDir (string)
+           Directory path for saving the model. This directory should
+           only be used to store a saved model. If the directory does not exist,
+           it will be created automatically and populated with model data. A
+           pre-existing directory will only be accepted if it contains previously
+           saved model data. If such a directory is given, the full contents of
+           the directory will be deleted and replaced with current model data.
+
+    Implementation note: Subclasses should override _serializeExtraData() to
+    save additional data in custom formats.
+    """
+    saveModelDir = os.path.abspath(saveModelDir)
+    modelPickleFilePath = os.path.join(saveModelDir, "model.pkl")
+
+    # Delete old model directory if we detect it
+    if os.path.exists(saveModelDir):
+      if (not os.path.isdir(saveModelDir) or
+          not os.path.isfile(modelPickleFilePath) ):
+        raise RuntimeError(("Existing filesystem entry <%s> is not a model"
+                         " checkpoint -- refusing to delete"
+                         " (%s missing or not a file)") %
+                          (saveModelDir, modelPickleFilePath))
+
+      shutil.rmtree(saveModelDir)
+
+    # Create a new checkpoint directory for saving state
+    self.__makeDirectoryFromAbsolutePath(saveModelDir)
+
+    with open(modelPickleFilePath, "wb") as modelPickleFile:
+      pkl.dump(self, modelPickleFile)
+
+    # Tell the model to save extra data, if any.
+    self._serializeExtraData(saveModelDir)
+
+
+  @classmethod
+  def load(cls, savedModelDir):
+    """
+    Create model from saved checkpoint directory and return it.
+
+    @param savedModelDir (string)  Directory where model was saved
+
+    @returns (ClassificationModel) The loaded model instance
+    """
+    savedModelDir = os.path.abspath(savedModelDir)
+    modelPickleFilePath = os.path.join(savedModelDir, "model.pkl")
+
+    with open(modelPickleFilePath, "rb") as modelPickleFile:
+      model = pkl.load(modelPickleFile)
+
+    # Tell the model to load extra data, if any.
+    model._deSerializeExtraData(savedModelDir)
+
+    return model
+
+
+  @staticmethod
+  def __makeDirectoryFromAbsolutePath(absDirPath):
+    """
+    Make directory for the given directory path if it doesn't already
+    exist in the filesystem.
+
+    @param absDirPath (string) Absolute path of the directory to create
+    """
+
+    assert os.path.isabs(absDirPath)
+
+    # Create the experiment directory
+    try:
+      os.makedirs(absDirPath)
+    except OSError as e:
+      if e.errno != os.errno.EEXIST:
+        raise
+
+
+  def _serializeExtraData(self, extraDataDir):
+    """
+    Protected method that is called during serialization with an external
+    directory path. It can be overridden by subclasses to save large binary
+    states, bypass pickle, or for saving Network API instances.
+
+    @param extraDataDir (string) Model's extra data directory path
+    """
+    pass
+
+
+  def _deSerializeExtraData(self, extraDataDir):
+    """
+    Protected method that is called during deserialization (after __setstate__)
+    with an external directory path. It can be overridden by subclasses to save
+    large binary states, bypass pickle, or for saving Network API instances.
+
+    @param extraDataDir (string) Model's extra data directory path
+    """
+    pass
+

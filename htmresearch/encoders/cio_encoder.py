@@ -55,6 +55,8 @@ class CioEncoder(LanguageEncoder):
     @param cacheDir        (str)      Where to cache results of API queries.
     @param verbosity       (int)      Amount of info printed out, 0, 1, or 2.
     @param fingerprintType (Enum)     Specify word- or document-level encoding.
+
+    TODO: replace enum with a simple string
     """
     if apiKey is None and "CORTICAL_API_KEY" not in os.environ:
       print ("Missing CORTICAL_API_KEY environment variable. If you have a "
@@ -104,13 +106,20 @@ class CioEncoder(LanguageEncoder):
                                       encoding is at
                                       encoding["fingerprint"]["positions"].
     """
-    if not text:
-      return None
+    if not isinstance(text, str):
+      raise TypeError("Expected a string input but got input of type {}."
+                      .format(type(text)))
+
     try:
       if self.fingerprintType == EncoderTypes.document:
         encoding = self.client.getTextBitmap(text)
+
       elif self.fingerprintType == EncoderTypes.word:
         encoding = self.getUnionEncoding(text)
+
+      else:
+        encoding = self.client.getBitmap(text)
+
     except UnsuccessfulEncodingError:
       if self.verbosity > 0:
         print ("\tThe client returned no encoding for the text \'{0}\', so "
@@ -134,7 +143,7 @@ class CioEncoder(LanguageEncoder):
     # Count the ON bits represented in the encoded tokens.
     counts = Counter()
     for t in tokens:
-      bitmap = self.getWordBitmap(t)
+      bitmap = self._getWordBitmap(t)
       counts.update(bitmap)
 
     positions = self.sparseUnion(counts)
@@ -174,7 +183,7 @@ class CioEncoder(LanguageEncoder):
 
     bitmaps = []
     for t in tokens:
-      bitmaps.append(numpy.array(self.getWordBitmap(t)))
+      bitmaps.append(numpy.array(self._getWordBitmap(t)))
 
     windowBitmaps = []
     for i, bitmap in enumerate(bitmaps):
@@ -222,7 +231,7 @@ class CioEncoder(LanguageEncoder):
     return encoding
 
 
-  def getWordBitmap(self, term):
+  def _getWordBitmap(self, term):
     """
     Return a bitmap for the word. If the Cortical.io API can't encode, cortipy
     will use a random encoding for the word.
@@ -232,31 +241,12 @@ class CioEncoder(LanguageEncoder):
 
   def encodeIntoArray(self, inputText, output):
     """
-    See method description in language_encoder.py. It is expected the inputText
-    is a single word/token (str).
-
-    NOTE: nupic Encoder class method encodes output in place as sparse array
-    (commented out below), but this method returns a bitmap.
+    Encodes inputText and puts the encoded value into the numpy output array,
+    which is a 1-D array of length returned by getWidth().
     """
-    if not isinstance(inputText, str):
-      raise TypeError("Expected a string input but got input of type {}."
-                      .format(type(inputText)))
-
-    # Encode with term endpoint of Cio API
-    try:
-      encoding = self.client.getBitmap(inputText)
-    except UnsuccessfulEncodingError:
-      if self.verbosity > 0:
-        print ("\tThe client returned no encoding for the text \'{0}\', so "
-               "we'll use the encoding of the token that is least frequent in "
-               "the corpus.".format(inputText))
-      encoding = self._subEncoding(inputText)
-
-    # Populate output with sparse encoding
+    encoding = self.encode(inputText)
     output[:] = 0
     output[encoding["fingerprint"]["positions"]] = 1
-
-    return self.finishEncoding(encoding)
 
 
   def decode(self, encoding, numTerms=10):
