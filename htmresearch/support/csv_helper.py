@@ -22,6 +22,8 @@
 This file contains CSV utility functions to use with nupic.fluent experiments.
 """
 
+import itertools
+import numpy
 import csv
 import os
 
@@ -64,6 +66,23 @@ def readCSV(csvFile, numLabels=0):
 
   except IOError as e:
     print e
+
+
+def mapLabelRefs(dataDict):
+  """
+  Replace the label strings in dataDict with corresponding ints.
+
+  @return (tuple)   (ordered list of category names, dataDict with names
+                    replaced by array of category indices)
+  """
+  labelRefs = [label for label in set(
+    itertools.chain.from_iterable([x[1] for x in dataDict.values()]))]
+
+  for recordNumber, data in dataDict.iteritems():
+    dataDict[recordNumber] = (data[0], numpy.array(
+      [labelRefs.index(label) for label in data[1]]), data[2])
+
+  return labelRefs, dataDict
 
 
 def bucketCSVs(csvFile, bucketIdx=2):
