@@ -168,6 +168,19 @@ class ClassificationModel(object):
     return sample
 
 
+  def tokenize(self, text, preprocess=False):
+    """
+    Given a bunch of text (could be several sentences) return a single list
+    containing individual tokens.
+
+    @param text         (str)     A bunch of text.
+    @param preprocess   (bool)    Whether or not to preprocess the text data.
+
+    TODO: get rid of @staticmethod above and then we can remove this method.
+    """
+    pass
+
+
   def writeOutCategories(self, dirName, comparisons=None, labelRefs=None):
     """
     For models which define categories with bitmaps, log the categories (and
@@ -382,6 +395,14 @@ class ClassificationModel(object):
                            implies no decision could be made.
     """
     raise NotImplementedError
+
+
+  def dumpProfile(self):
+    """
+    Dump any profiling information. Subclasses can override this to provide
+    custom profile reports.
+    """
+    pass
 
 
   def save(self, saveModelDir):
