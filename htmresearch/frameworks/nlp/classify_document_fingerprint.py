@@ -101,7 +101,7 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
 
   def _initModel(self, k):
     """
-    Initialize the network; self.networdDataPath must already be set.
+    Initialize the network
     """
     root = os.path.dirname(os.path.realpath(__file__))
     encoder = CioEncoder(retinaScaling=self.retinaScaling,
@@ -287,8 +287,7 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
   def _serializeExtraData(self, extraDataDir):
     """
     Protected method that is called during serialization with an external
-    directory path. It can be overridden by subclasses to save large binary
-    states, bypass pickle. or for saving Network API instances.
+    directory path. We override it here to save the Network API instance.
 
     @param extraDataDir (string) Model's extra data directory path
     """
@@ -298,8 +297,8 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
   def _deSerializeExtraData(self, extraDataDir):
     """
     Protected method that is called during deserialization (after __setstate__)
-    with an external directory path. It can be overridden by subclasses to save
-    large binary states, bypass pickle. or for saving Network API instances.
+    with an external directory path. We override it here to load the Network API
+    instance.
 
     @param extraDataDir (string) Model's extra data directory path
     """

@@ -476,8 +476,7 @@ class ClassificationModelHTM(ClassificationModel):
   def _serializeExtraData(self, extraDataDir):
     """
     Protected method that is called during serialization with an external
-    directory path. It can be overridden by subclasses to save large binary
-    states, bypass pickle. or for saving Network API instances.
+    directory path. We override it here to save the Network API instance.
 
     @param extraDataDir (string) Model's extra data directory path
     """
@@ -487,8 +486,8 @@ class ClassificationModelHTM(ClassificationModel):
   def _deSerializeExtraData(self, extraDataDir):
     """
     Protected method that is called during deserialization (after __setstate__)
-    with an external directory path. It can be overridden by subclasses to save
-    large binary states, bypass pickle. or for saving Network API instances.
+    with an external directory path. We override it here to load the Network API
+    instance.
 
     @param extraDataDir (string) Model's extra data directory path
     """
