@@ -47,7 +47,8 @@ class ClassificationModelHTM(ClassificationModel):
                numLabels=3,
                modelDir="ClassificationModelHTM",
                prepData=True,
-               stripCats=False):
+               stripCats=False,
+               cacheRoot=None):
     """
     @param networkConfig      (dict)    Network configuration dict with region
                                         parameters.
@@ -59,6 +60,7 @@ class ClassificationModelHTM(ClassificationModel):
                                         format.
     @param stripCats          (bool)    Remove the categories and replace them
                                         with the sequence_Id.
+    @param cacheRoot          (str)     Root cache directory for CioEncoder
     See ClassificationModel for remaining parameters.
 
     Note classifierMetric is not specified here as it is in other models. This
@@ -82,6 +84,8 @@ class ClassificationModelHTM(ClassificationModel):
 
     self.network = self.initModel()
     self._initializeRegionHelpers()
+    self.cacheRoot = cacheRoot or os.path.dirname(os.path.realpath(__file__))
+
 
 
   def getClassifier(self):
@@ -117,9 +121,8 @@ class ClassificationModelHTM(ClassificationModel):
     else:
       recordStream = None
 
-    root = os.path.dirname(os.path.realpath(__file__))
     encoder = CioEncoder(retinaScaling=self.retinaScaling,
-                         cacheDir=os.path.join(root, "CioCache"),
+                         cacheDir=os.path.join(self.cacheRoot, "CioCache"),
                          retina=self.retina,
                          apiKey=self.apiKey)
 
