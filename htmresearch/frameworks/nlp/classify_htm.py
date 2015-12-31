@@ -23,6 +23,8 @@ import numpy
 import operator
 import os
 
+from tabulate import tabulate
+
 from nupic.data.file_record_stream import FileRecordStream
 from nupic.engine import Network
 
@@ -121,7 +123,8 @@ class ClassificationModelHTM(ClassificationModel):
     encoder = CioEncoder(retinaScaling=self.retinaScaling,
                          cacheDir=os.path.join(root, "CioCache"),
                          retina=self.retina,
-                         apiKey=self.apiKey)
+                         apiKey=self.apiKey,
+                         verbosity=self.verbosity-1)
 
     # This encoder specifies the LanguageSensor output width.
     return configureNetwork(recordStream, self.networkConfig, encoder)
@@ -151,6 +154,8 @@ class ClassificationModelHTM(ClassificationModel):
         self.networkConfig["tpRegionConfig"].get("regionName")]
 
     self.learningRegions = learningRegions
+
+    self.network.enableProfiling()
 
 
   # TODO: is this still needed?
@@ -349,6 +354,23 @@ class ClassificationModelHTM(ClassificationModel):
     return sorted(qTuple, key=operator.itemgetter(1))
 
 
+  def tokenize(self, text, preprocess=False):
+    """
+    Given a bunch of text (could be several sentences) return a single list
+    containing individual tokens. Text is tokenized using the CIO tokenize
+    method.
+
+    @param text         (str)     A bunch of text.
+    @param preprocess   (bool)    Whether or not to preprocess the text data.
+    """
+    encoder = self.sensorRegion.getSelf().encoder
+    sentenceList = encoder.client.tokenize(text)
+    tokenList = []
+    for sentence in sentenceList:
+      tokenList.extend(sentence.split(','))
+    return tokenList
+
+
   def reset(self):
     """
     Issue a reset signal to the model. The assumption is that a sequence has
@@ -450,6 +472,30 @@ class ClassificationModelHTM(ClassificationModel):
     print self.classifierRegion.getOutputData("categoriesOut")[0:self.numLabels]
     print "Classifier categoryProbabilitiesOut",
     print self.classifierRegion.getOutputData("categoryProbabilitiesOut")[0:self.numLabels]
+
+
+  def dumpProfile(self):
+    """
+    Print region profiling information in a nice format.
+    """
+    print "Profiling information for {}".format(type(self).__name__)
+    totalTime = 0.000001
+    for region in self.network.regions.values():
+      timer = region.computeTimer
+      totalTime += timer.getElapsed()
+
+    profileInfo = []
+    for region in self.network.regions.values():
+      timer = region.computeTimer
+      profileInfo.append([region.name,
+                          timer.getStartCount(),
+                          timer.getElapsed(),
+                          100.0*timer.getElapsed()/totalTime])
+
+    profileInfo.append(["Total time", "",totalTime,"100.0"])
+    print tabulate(profileInfo, headers=["Region", "Count",
+                                   "Elapsed", "Percent of total"],
+                   tablefmt = "grid")
 
 
   def __getstate__(self):

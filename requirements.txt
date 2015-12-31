@@ -3,3 +3,4 @@ pandas
 plotly
 simplejson
 nupic
+tabulate
