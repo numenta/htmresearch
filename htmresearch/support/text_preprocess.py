@@ -169,7 +169,7 @@ class TextPreprocess(object):
     @param expandContr        (bool)            Run text through contraction
                                                 expander
     """
-    if not isinstance(text, str):
+    if not isinstance(text, str) and not isinstance(text, unicode):
       raise ValueError("Must input a single string object to tokenize.")
 
     text = text.lower()
