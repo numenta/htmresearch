@@ -48,7 +48,8 @@ class ClassificationModelWindows(ClassificationModel):
                retinaScaling=1.0,
                retina="en_associative",
                apiKey=None,
-               classifierMetric="rawOverlap"):
+               classifierMetric="rawOverlap",
+               cacheRoot=None):
 
     super(ClassificationModelWindows, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
@@ -62,9 +63,9 @@ class ClassificationModelWindows(ClassificationModel):
                                     verbosity=verbosity-1)
 
     # need valid API key (see CioEncoder init for details)
-    root = os.path.dirname(os.path.realpath(__file__))
+    cacheRoot = cacheRoot or os.path.dirname(os.path.realpath(__file__))
     self.encoder = CioEncoder(retinaScaling=retinaScaling,
-                              cacheDir=os.path.join(root, "CioCache"),
+                              cacheDir=os.path.join(cacheRoot, "CioCache"),
                               fingerprintType=EncoderTypes.word,
                               unionSparsity=unionSparsity,
                               retina=retina,
