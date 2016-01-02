@@ -41,15 +41,17 @@ class ClassificationModelEndpoint(ClassificationModel):
                verbosity=1,
                numLabels=3,
                modelDir="ClassificationModelEndpoint",
-               unionSparsity=0.20):
+               unionSparsity=0.20,
+               cacheRoot=None):
     """
     Initializes the encoder as CioEncoder; requires a valid API key.
     """
     super(ClassificationModelEndpoint, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
-    
-    root = os.path.dirname(os.path.realpath(__file__))
-    self.encoder = CioEncoder(cacheDir=os.path.join(root, "CioCache"),
+
+    cacheRoot = cacheRoot or os.path.dirname(os.path.realpath(__file__))
+
+    self.encoder = CioEncoder(cacheDir=os.path.join(cacheRoot, "CioCache"),
                               unionSparsity=unionSparsity)
     self.compareEncoder = LanguageEncoder()
 
