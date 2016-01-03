@@ -82,9 +82,10 @@ class ClassificationModelHTM(ClassificationModel):
     else:
       self.networkDataPath = self.inputFilePath
 
+    self.cacheRoot = cacheRoot or os.path.dirname(os.path.realpath(__file__))
+
     self.network = self.initModel()
     self._initializeRegionHelpers()
-    self.cacheRoot = cacheRoot or os.path.dirname(os.path.realpath(__file__))
 
 
 
