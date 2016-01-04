@@ -149,35 +149,37 @@ class ClassificationModelFingerprint(ClassificationModel):
                              classifier will not be trained.
     @param sequenceId (int)  An integer ID associated with this token and its
                              sequence (document).
-    @param reset      (int)  Flag for the start of a new sequence of tokens.
+    @param reset      (int)  Should be 0 or 1. If 1, assumes we are at the
+                             beginning of a new sequence.
     """
     if self.currentDocument is None:
-      # start of training this model
+      # start of a new document
       self.currentDocument = [token]
-      return
-    if reset == 0:
-      # need full sequence of tokens to continue w/ training
+    else:
+      # accumulate text for this document
       self.currentDocument.append(token)
-      self.currentDocumentId = sequenceId
-      return
 
-    # Reset flagged, so we proceed training on the previous document.
-    document = " ".join(self.currentDocument)
-    bitmap = self.encoder.encode(document)["fingerprint"]["positions"]
+    self.currentDocumentId = sequenceId
 
-    if self.verbosity >= 1:
-      print "CioFP model training with: '{}'".format(document)
-      print "\tbitmap:", bitmap
-    for label in labels:
-      self.classifier.learn(bitmap, label, isSparse=self.encoder.n)
-      self.sampleReference.append(self.currentDocumentId)
+    if reset == 1:
+      # all text accumulated, proceed w/ training on this document
+      document = " ".join(self.currentDocument)
+      bitmap = self.encoder.encode(document)["fingerprint"]["positions"]
 
-      # TODO: replace the need for sampleReference w/ partitionId.
-      # There is a bug in how partitionId is handled during infer if it is
-      # not passed in, so we won't pass it in for now (line 863 of
-      # KNNClassifier.py)
-      # self.classifier.learn(bitmap, label, isSparse=self.n,
-      #                       partitionId=sequenceId)
+      if self.verbosity >= 1:
+        print "CioFP model training with: '{}'".format(document)
+        print "\tbitmap:", bitmap
 
-    # start of the new document (specified by reset=1)
-    self.currentDocument = [token]
+      for label in labels:
+        self.classifier.learn(bitmap, label, isSparse=self.encoder.n)
+        self.sampleReference.append(self.currentDocumentId)
+
+        # TODO: replace the need for sampleReference w/ partitionId.
+        # There is a bug in how partitionId is handled during infer if it is
+        # not passed in, so we won't pass it in for now (line 863 of
+        # KNNClassifier.py)
+        # self.classifier.learn(bitmap, label, isSparse=self.n,
+        #                       partitionId=sequenceId)
+
+      self.currentDocument = None
+      self.currentDocumentId = None
