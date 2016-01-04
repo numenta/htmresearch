@@ -161,7 +161,7 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
     sentenceList = encoder.client.tokenize(text)
     tokenList = []
     for sentence in sentenceList:
-      tokenList.extend(sentence.split(','))
+      tokenList.extend(sentence.split(","))
     return tokenList
 
 
@@ -304,9 +304,9 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
                           timer.getElapsed(),
                           100.0*timer.getElapsed()/totalTime])
 
-    profileInfo.append(["Total time", "",totalTime,"100.0"])
+    profileInfo.append(["Total time", "", totalTime, "100.0"])
     print tabulate(profileInfo, headers=["Region", "Count",
-                                   "Elapsed", "Percent of total"],
+                   "Elapsed", "Percent of total"],
                    tablefmt = "grid")
 
 

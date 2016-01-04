@@ -22,9 +22,9 @@
 This file contains CSV utility functions to use with nupic.fluent experiments.
 """
 
+import csv
 import itertools
 import numpy
-import csv
 import os
 
 from collections import defaultdict, OrderedDict

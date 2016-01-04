@@ -496,9 +496,9 @@ class ClassificationModelHTM(ClassificationModel):
                           timer.getElapsed(),
                           100.0*timer.getElapsed()/totalTime])
 
-    profileInfo.append(["Total time", "",totalTime,"100.0"])
+    profileInfo.append(["Total time", "", totalTime, "100.0"])
     print tabulate(profileInfo, headers=["Region", "Count",
-                                   "Elapsed", "Percent of total"],
+                   "Elapsed", "Percent of total"],
                    tablefmt = "grid")
 
 

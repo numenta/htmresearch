@@ -25,10 +25,10 @@ Simple script to run a labeled dataset.
 
 Example invocations:
 
-python hello_classification_model.py -m keywords --dataPath FILE --numLabels 3
-python hello_classification_model.py -m docfp --dataPath FILE
-python hello_classification_model.py -c data/network_configs/sensor_knn.json -m htm -v 2 --dataPath FILE
-python hello_classification_model.py -c data/network_configs/tp_knn.json -m htm --dataPath FILE
+python simple_labels.py -m keywords --dataPath FILE --numLabels 3
+python simple_labels.py -m docfp --dataPath FILE
+python simple_labels.py -c data/network_configs/sensor_knn.json -m htm -v 2 --dataPath FILE
+python simple_labels.py -c data/network_configs/tp_knn.json -m htm --dataPath FILE
 
 """
 
