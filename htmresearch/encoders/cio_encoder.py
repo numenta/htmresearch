@@ -106,7 +106,7 @@ class CioEncoder(LanguageEncoder):
                                       encoding is at
                                       encoding["fingerprint"]["positions"].
     """
-    if not isinstance(text, str):
+    if not isinstance(text, str) and not isinstance(text, unicode):
       raise TypeError("Expected a string input but got input of type {}."
                       .format(type(text)))
 
