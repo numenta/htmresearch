@@ -21,23 +21,23 @@
 # ----------------------------------------------------------------------
 
 helpStr = """
-Simple script that explains how to run classification models.
+Simple script to run a labeled dataset.
 
 Example invocations:
 
-python hello_classification_model.py -m keywords
-python hello_classification_model.py -m docfp
-python hello_classification_model.py -c data/network_configs/sensor_knn.json -m htm -v 2
-python hello_classification_model.py -c data/network_configs/tp_knn.json -m htm
+python simple_labels.py -m keywords --dataPath FILE --numLabels 3
+python simple_labels.py -m docfp --dataPath FILE
+python simple_labels.py -c data/network_configs/sensor_knn.json -m htm -v 2 --dataPath FILE
+python simple_labels.py -c data/network_configs/tp_knn.json -m htm --dataPath FILE
 
 """
 
 import argparse
 import simplejson
 import numpy
-import copy
+from textwrap import TextWrapper
 
-from htmresearch.frameworks.nlp.classification_model import ClassificationModel
+from htmresearch.support.csv_helper import readCSV, mapLabelRefs
 from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
 from htmresearch.frameworks.nlp.classify_document_fingerprint import (
   ClassificationModelDocumentFingerprint
@@ -46,35 +46,7 @@ from htmresearch.frameworks.nlp.classify_keywords import (
   ClassificationModelKeywords
 )
 
-# Training data we will feed the model. There are two categories here that can
-# be discriminated using bag of words
-trainingData = [
-  ["fox eats carrots", [0]],
-  ["fox eats broccoli", [0]],
-  ["fox eats lettuce", [0]],
-  ["fox eats peppers", [0]],
-  ["carrots are healthy", [1]],
-  ["broccoli is healthy", [1]],
-  ["lettuce is healthy", [1]],
-  ["peppers is healthy", [1]],
-]
-
-# Test data will be a copy of training data plus two additional documents.
-# The first is an incorrectly labeled version of a training sample.
-# The second is semantically similar to one of thr training samples.
-# Expected classification error using CIO encoder is 9 out of 10 = 90%
-# Expected classification error using keywords encoder is 8 out of 10 = 80%
-testData = copy.deepcopy(trainingData)
-testData.append(["fox eats carrots", [1]])     # Should get this wrong
-testData.append(["wolf consumes salad", [0]])  # CIO models should get this
-
-def splitDocumentIntoTokens(document):
-  """
-  Given a document (set of words), return a list containing individual tokens
-  to be fed into model.
-  """
-  return document.split()
-
+wrapper = TextWrapper(width=100)
 
 def getNetworkConfig(networkConfigPath):
   """
@@ -101,7 +73,7 @@ def createModel(args):
       inputFilePath=None,
       retina=args.retina,
       verbosity=args.verbosity,
-      numLabels=2,
+      numLabels=args.numLabels,
       prepData=False,
       modelDir="tempdir")
 
@@ -109,8 +81,8 @@ def createModel(args):
     # Instantiate the keywords model
     model = ClassificationModelKeywords(
       verbosity=args.verbosity,
-      numLabels=2,
-      k=9,
+      numLabels=args.numLabels,
+      k=21,
       modelDir="tempdir")
 
   elif args.modelName == "docfp":
@@ -118,8 +90,8 @@ def createModel(args):
     model = ClassificationModelDocumentFingerprint(
       verbosity=args.verbosity,
       retina=args.retina,
-      numLabels=2,
-      k=3)
+      numLabels=args.numLabels,
+      k=1)
 
   else:
     raise RuntimeError("Unknown model type: " + args.modelName)
@@ -127,26 +99,29 @@ def createModel(args):
   return model
 
 
-def trainModel(model, trainingData):
+def trainModel(args, model, trainingData, labelRefs):
   """
   Train the given model on trainingData. Return the trained model instance.
   """
 
   print
   print "=======================Training model on sample text================"
-  for id, doc in enumerate(trainingData):
-    docTokens = splitDocumentIntoTokens(doc[0])
-    lastTokenIndex = len(docTokens) - 1
+  for recordNum, doc in enumerate(trainingData):
+    docTokens = model.tokenize(doc[0])
+    lastToken = len(docTokens) - 1
     print
-    print "Document=", id, "text=",doc, "tokens=",docTokens, "label=",doc[1]
+    print "Document=", recordNum, "id=", doc[2]
+    print wrapper.fill(doc[0])
+    print "tokens=",docTokens
+    print "label=",labelRefs[doc[1][0]],"index=",doc[1]
     for i, token in enumerate(docTokens):
-      print "Training data: ", token, id, doc[1]
-      model.trainText(token, doc[1], id, reset=int(i==lastTokenIndex))
+      # print "Training data: ", token, id, doc[1]
+      model.trainText(token, doc[1], recordNum, reset=int(i==lastToken))
 
   return model
 
 
-def testModel(args, model, testData):
+def testModel(args, model, testData, labelRefs, documentCategoryMap):
   """
   Test the given model on testData and print out accuracy.
 
@@ -160,13 +135,13 @@ def testModel(args, model, testData):
   numCorrect = 0
   for id, doc in enumerate(testData):
     print
-    print "Document=", doc[0],", desired label: ",doc[1]
-    docTokens = splitDocumentIntoTokens(doc[0])
-    lastTokenIndex = len(docTokens) - 1
-    categoryVotes = numpy.zeros(2)
+    print wrapper.fill(doc[0])
+    print "desired category index:",doc[1],", label: ",labelRefs[doc[1][0]]
+    docTokens = model.tokenize(doc[0])
+    lastToken = len(docTokens) - 1
+    categoryVotes = numpy.zeros(args.numLabels)
     for i, token in enumerate(docTokens):
-      modelClassification = model.classifyText(token,
-                                               reset=int(i==lastTokenIndex))
+      modelClassification = model.classifyText(token, reset=int(i==lastToken))
       if modelClassification.sum() > 0:
         categoryVotes[modelClassification.argmax()] += 1
       if args.verbosity >= 2:
@@ -174,33 +149,93 @@ def testModel(args, model, testData):
         print "Result=",modelClassification,"categoryVotes:",categoryVotes
 
     if categoryVotes.sum() > 0:
-      print "Final classification for this doc:",categoryVotes.argmax()
-      if categoryVotes.argmax() == doc[1]:
+      # We will count classification as correct if the best category is any
+      # one of the categories associated with this docId
+      docId = doc[2]
+      print "Final classification for this doc:",categoryVotes.argmax(),
+      print "Label: ",labelRefs[categoryVotes.argmax()]
+      print "Labels associated: ", documentCategoryMap[docId]
+      if categoryVotes.argmax() in documentCategoryMap[docId]:
         numCorrect += 1
     else:
       print "No classification possible for this doc"
 
   # Compute and print out percent accuracy
+  print
+  print
   print "Total correct =",numCorrect,"out of",len(testData),"documents"
   print "Accuracy =",(float(numCorrect*100.0)/len(testData)),"%"
 
 
-def runExperiment(args, trainingData, testData):
+def readData(args):
+  """
+  Read data file and print out some statistics
+  Return a training set, test set, labelId to text map, and docId to categories
+  map.
+
+  Return format:
+      trainingData = [
+        ["fox eats carrots", [0], docId],
+        ["fox eats peppers", [0], docId],
+        ["carrots are healthy", [1], docId],
+        ["peppers is healthy", [1], docId],
+      ]
+  """
+  # Read data
+  dataDict = readCSV(args.dataPath, 1)
+  labelRefs, dataDict = mapLabelRefs(dataDict)
+  categoriesInOrderOfInterest=[8,9,10,5,6,11,13][0:args.numLabels]
+
+  # Select data based on categories of interest. Shift category indices down
+  # so we go from 0 to numLabels-1
+  trainingData = []
+  counts = numpy.zeros(len(labelRefs))
+  for document in dataDict.itervalues():
+    docId = document[2]
+    oldCategoryIndex = document[1][0]
+    if oldCategoryIndex in categoriesInOrderOfInterest:
+      newIndex = categoriesInOrderOfInterest.index(oldCategoryIndex)
+      trainingData.append([document[0], [newIndex], docId])
+      counts[newIndex] += 1
+
+  # For each document, figure out which categories it belongs to
+  # Include the shifted category index
+  documentCategoryMap = {}
+  for doc in dataDict.iteritems():
+    docId = doc[1][2]
+    oldCategoryIndex = doc[1][1][0]
+    if oldCategoryIndex in categoriesInOrderOfInterest:
+      newIndex = categoriesInOrderOfInterest.index(oldCategoryIndex)
+      v = documentCategoryMap.get(docId, [])
+      v.append(newIndex)
+      documentCategoryMap[docId] = v
+
+  labelRefs = [labelRefs[i] for i in categoriesInOrderOfInterest]
+  print "Total number of unique documents",len(documentCategoryMap)
+  print "Category counts: ",counts
+  print "Categories in training/test data:", labelRefs
+
+  return trainingData, trainingData, labelRefs, documentCategoryMap
+
+
+def runExperiment(args):
   """
   Create model according to args, train on training data, save model,
   restore model, test on test data.
   """
 
-  model = createModel(args)
-  model = trainModel(model, trainingData)
-  testModel(args, model, testData)
+  trainingData, testData, labelRefs, documentCategoryMap = readData(args)
 
-  # Test serialization - should give same result as above
+  model = createModel(args)
+  model = trainModel(args, model, trainingData, labelRefs)
   model.save(args.modelDir)
-  newmodel = ClassificationModel.load(args.modelDir)
+  testModel(args, model, testData, labelRefs, documentCategoryMap)
+
+  # Print profile information
   print
-  print "==========================Testing after de-serialization========"
-  testModel(args, newmodel, testData)
+  model.dumpProfile()
+
+  return model
 
 
 if __name__ == "__main__":
@@ -222,6 +257,10 @@ if __name__ == "__main__":
                       default=1.0,
                       type=float,
                       help="Factor by which to scale the Cortical.io retina.")
+  parser.add_argument("--numLabels",
+                      default=3,
+                      type=int,
+                      help="Number of unique labels to train on.")
   parser.add_argument("--retina",
                       default="en_associative_64_univ",
                       type=str,
@@ -234,6 +273,9 @@ if __name__ == "__main__":
   parser.add_argument("--modelDir",
                       default="MODELNAME.checkpoint",
                       help="Model will be saved in this directory.")
+  parser.add_argument("--dataPath",
+                      default=None,
+                      help="CSV file containing labeled dataset")
   parser.add_argument("--textPreprocess",
                       action="store_true",
                       default=False,
@@ -250,6 +292,6 @@ if __name__ == "__main__":
   # By default set checkpoint directory name based on model name
   if args.modelDir == "MODELNAME.checkpoint":
     args.modelDir = args.modelName + ".checkpoint"
-    print "Save dir: ",args.modelDir
 
-  runExperiment(args, trainingData, testData)
+  model = runExperiment(args)
+

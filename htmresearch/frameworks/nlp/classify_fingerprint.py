@@ -46,7 +46,8 @@ class ClassificationModelFingerprint(ClassificationModel):
                retinaScaling=1.0,
                retina="en_associative",
                apiKey=None,
-               classifierMetric="rawOverlap"):
+               classifierMetric="rawOverlap",
+               cacheRoot=None):
 
     super(ClassificationModelFingerprint, self).__init__(
       verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
@@ -61,9 +62,11 @@ class ClassificationModelFingerprint(ClassificationModel):
     if fingerprintType is (not EncoderTypes.document or not EncoderTypes.word):
       raise ValueError("Invaid type of fingerprint encoding; see the "
                        "EncoderTypes class for eligble types.")
-    root = os.path.dirname(os.path.realpath(__file__))
+
+    cacheRoot = cacheRoot or os.path.dirname(os.path.realpath(__file__))
+
     self.encoder = CioEncoder(retinaScaling=retinaScaling,
-                              cacheDir=os.path.join(root, "CioCache"),
+                              cacheDir=os.path.join(cacheRoot, "CioCache"),
                               fingerprintType=fingerprintType,
                               unionSparsity=unionSparsity,
                               retina=retina,

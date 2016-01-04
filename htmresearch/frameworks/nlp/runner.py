@@ -36,7 +36,8 @@ from htmresearch.frameworks.nlp.classify_keywords import (
   ClassificationModelKeywords)
 from htmresearch.frameworks.nlp.classify_windows import (
   ClassificationModelWindows)
-from htmresearch.support.csv_helper import readCSV, writeFromDict
+from htmresearch.support.csv_helper import (
+  readCSV, writeFromDict, mapLabelRefs)
 from htmresearch.support.data_split import KFolds
 from htmresearch.frameworks.nlp.classification_metrics import (
   evaluateResults, calculateClassificationResults)
@@ -218,23 +219,13 @@ class Runner(object):
           all([0 <= size <= len(self.dataDict) for size in self.trainSizes])):
         raise ValueError("Invalid size(s) for training set(s).")
 
-    self._mapLabelRefs()
+    self.labelRefs, self.dataDict = mapLabelRefs(self.dataDict)
 
     self.samples = self.model.prepData(self.dataDict, preprocess)
 
     if self.verbosity > 1:
       for i, s in self.samples.iteritems():
         print i, s
-
-
-  def _mapLabelRefs(self):
-    """Replace the label strings in self.dataDict with corresponding ints."""
-    self.labelRefs = [label for label in set(
-      itertools.chain.from_iterable([x[1] for x in self.dataDict.values()]))]
-
-    for recordNumber, data in self.dataDict.iteritems():
-      self.dataDict[recordNumber] = (data[0], numpy.array(
-        [self.labelRefs.index(label) for label in data[1]]), data[2])
 
 
   def encodeSamples(self, writeEncodings=False):
