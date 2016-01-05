@@ -166,9 +166,10 @@ class ClassificationModelFingerprint(ClassificationModel):
       document = " ".join(self.currentDocument)
       bitmap = self.encoder.encode(document)["fingerprint"]["positions"]
 
+
       if self.verbosity >= 1:
         print "CioFP model training with: '{}'".format(document)
-        print "\tbitmap:", bitmap
+        print "\tBitmap:", bitmap
 
       for label in labels:
         self.classifier.learn(bitmap, label, isSparse=self.encoder.n)
@@ -183,3 +184,51 @@ class ClassificationModelFingerprint(ClassificationModel):
 
       self.currentDocument = None
       self.currentDocumentId = None
+
+
+  def classifyText(self, token, reset=0, seed=42):
+    """
+    Classify the token
+
+    @param token    (str)  The text token to train on
+    @param reset    (int)  Should be 0 or 1. If 1, assumes we are at the
+                           beginning of a new sequence.
+    @param seed     (int)  Random seed used for deciding ties in
+                           getWinnningLabels().
+
+    @return  (numpy array) An array of size numLabels. Position i contains
+                           the likelihood that this sample belongs to the
+                           i'th category. An array containing all zeros
+                           implies no decision could be made.
+    """
+    if self.currentDocument is None:
+      # start of a new document
+      self.currentDocument = [token]
+    else:
+      # accumulate text for this document
+      self.currentDocument.append(token)
+
+    if reset == 1:
+      # all text accumulated, proceed w/ classifying this document
+      document = " ".join(self.currentDocument)
+      bitmap = self.encoder.encode(document)["fingerprint"]["positions"]
+
+      densePattern  =self.sparsifyPattern(bitmap, self.encoder.n)
+
+      (_, inferenceResult, _, _) = self.classifier.infer(densePattern)
+
+      winningLabels = self.getWinningLabels(inferenceResult, seed)
+
+      if self.verbosity >= 1:
+        print "CioFP model inference with: '{}'".format(document)
+        print "\tBitmap:", bitmap
+        print "\tInference result=", inferenceResult
+        print "\tWinning labels=", winningLabels
+
+      self.currentDocument = None
+      self.currentDocumentId = None
+
+      return winningLabels
+
+    else:
+      return numpy.zeros(self.numLabels)
