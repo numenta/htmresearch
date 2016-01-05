@@ -253,8 +253,10 @@ class ClassificationModel(object):
                                   closest to farthest from the query.
     """
     sample = TextPreprocess().tokenize(query)
-    encodedQuery = [{"text": token, "bitmap": self.encodeToken(token)}
-                    for token in sample]
+    encodedQuery = self.encodeSample(sample)
+    # TODO: with new CioEncoder, switch to encode by token (below).
+    # encodedQuery = [{"text": token, "bitmap": self.encodeToken(token)}
+    #                 for token in sample]
 
     allDistances = self.infer(encodedQuery)
 

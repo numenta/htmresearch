@@ -33,20 +33,26 @@ python simple_labels.py -c data/network_configs/tp_knn.json -m htm --dataPath FI
 """
 
 import argparse
-import simplejson
 import numpy
+import simplejson
 from textwrap import TextWrapper
 
+from htmresearch.encoders import EncoderTypes
 from htmresearch.support.csv_helper import readCSV, mapLabelRefs
 from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
 from htmresearch.frameworks.nlp.classify_document_fingerprint import (
   ClassificationModelDocumentFingerprint
 )
+from htmresearch.frameworks.nlp.classify_fingerprint import (
+  ClassificationModelFingerprint
+)
 from htmresearch.frameworks.nlp.classify_keywords import (
   ClassificationModelKeywords
 )
 
+
 wrapper = TextWrapper(width=100)
+
 
 def getNetworkConfig(networkConfigPath):
   """
@@ -92,6 +98,15 @@ def createModel(args):
       retina=args.retina,
       numLabels=args.numLabels,
       k=1)
+
+  elif args.modelName == "cioWord":
+    # Instantiate the Cio word fingerprint model
+    model = ClassificationModelFingerprint(
+      verbosity=args.verbosity,
+      retina=args.retina,
+      numLabels=args.numLabels,
+      modelDir="tempdir",
+      fingerprintType=EncoderTypes.word)
 
   else:
     raise RuntimeError("Unknown model type: " + args.modelName)
@@ -294,4 +309,3 @@ if __name__ == "__main__":
     args.modelDir = args.modelName + ".checkpoint"
 
   model = runExperiment(args)
-

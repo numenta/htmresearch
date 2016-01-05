@@ -231,12 +231,12 @@ class ClassificationModelKeywords(ClassificationModel):
                            implies no decision could be made.
     """
     bitmap = self.encodeToken(token)
-    densePattern = self.sparsifyPattern(bitmap,self.n)
+    densePattern = self.sparsifyPattern(bitmap, self.n)
     if self.verbosity >= 1:
-      print "Inference with token=",token,"bitmap=",bitmap
-      print "Dense version:",densePattern
+      print "Inference with token=",token,"bitmap=", bitmap
+      print "Dense version:", densePattern
     (_, inferenceResult, _, _) = self.classifier.infer(densePattern)
     if self.verbosity >= 1:
-      print "Inference result=",inferenceResult
+      print "Inference result=", inferenceResult
 
     return inferenceResult
