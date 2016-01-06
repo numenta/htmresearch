@@ -337,9 +337,11 @@ def createNetwork(dataSource, networkConfig, encoder=None):
                srcOutput="categoryOut",
                destInput="categoryIn")
 
-  # Commented out until NuPIC issue 2890 is resolved
-  # network.link(sensorRegionName, regionName, "UniformLink", "",
-  #              srcOutput="sequenceIdOut", destInput="sequenceIdIn")
+  # Link in sequenceId/partitionId if the appropriate input exists
+  classifierSpec = network.regions[regionName].getSpec()
+  if classifierSpec.inputs.contains('partitionIn'):
+    network.link(sensorRegionName, regionName, "UniformLink", "",
+                 srcOutput="sequenceIdOut", destInput="partitionIn")
   
 
   return network
