@@ -201,7 +201,7 @@ def queryModel(model, queryDocument, documentTextMap):
   for i, token in enumerate(docTokens):
     _ = model.classifyText(token, reset=int(i==lastToken))
 
-  # Retrieve the nearest
+  # Retrieve the nearest documentIds
   classifier = model.classifierRegion.getSelf()
   knn = model.getClassifier()
   distances = classifier.getLatestDistances()
@@ -210,7 +210,6 @@ def queryModel(model, queryDocument, documentTextMap):
   print queryDocument
   print
   print "Here are some similar documents in order of similarity"
-
   documentIds = []
   for i in sortedDistanceIndices[0:10]:
     docId = knn.getPartitionId(i)
@@ -221,7 +220,6 @@ def queryModel(model, queryDocument, documentTextMap):
       print
 
   print "Here are some dissimilar documents in reverse order of similarity"
-
   for i in reversed(sortedDistanceIndices[-10:]):
     docId = knn.getPartitionId(i)
     if not docId in documentIds:
