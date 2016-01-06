@@ -43,6 +43,7 @@ from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
 from htmresearch.frameworks.nlp.classify_document_fingerprint import (
   ClassificationModelDocumentFingerprint
 )
+from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.classify_fingerprint import (
   ClassificationModelFingerprint
 )
@@ -267,7 +268,8 @@ labelId to text map, and docId to categories
   # Read data
   dataDict = readCSV(args.dataPath, 1)
   labelRefs, dataDict = mapLabelRefs(dataDict)
-  categoriesInOrderOfInterest=[8,9,10,5,6,11,13][0:args.numLabels]
+  categoriesInOrderOfInterest=[8,9,10,5,6,11,13,0,1,2,3,4,7,
+                               12,14][0:args.numLabels]
 
   # Select data based on categories of interest. Shift category indices down
   # so we go from 0 to numLabels-1
@@ -318,8 +320,9 @@ def runExperiment(args):
 
   model = createModel(args)
   model = trainModel(args, model, trainingData, labelRefs)
-  # model.save(args.modelDir)
-  # testModel(args, model, testData, labelRefs, documentCategoryMap)
+  model.save(args.modelDir)
+  # newmodel = ClassificationModel.load(args.modelDir)
+  # testModel(args, newmodel, testData, labelRefs, documentCategoryMap)
 
   queryModel(model,
              "Begin by treating the employees of the department with the "
