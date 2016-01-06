@@ -167,8 +167,10 @@ class CioEncoder(LanguageEncoder):
 
   def getWindowEncoding(self, tokens, minSparsity=0.0):
     """
-    The encoding representation of a given token is a union of its bitmap with
-    the immediately previous tokens' bitmaps, up to the maximum sparsity.
+    The encodings simulate a "sliding window", where the encoding representation
+    of a given token is a union of its bitmap with the immediately previous
+    tokens' bitmaps, up to the maximum sparsity. The returned list only includes
+    those windows with sparsities larger than the minimum.
 
     @param tokens           (list)  Tokenized string.
     @param minSparsity      (float) Only window encodings denser than this value
@@ -181,29 +183,28 @@ class CioEncoder(LanguageEncoder):
       print ("Although the encoder type is not set for words, the window "
         "encodings use word-level fingerprints.")
 
-    bitmaps = []
-    for t in tokens:
-      bitmaps.append(numpy.array(self._getWordBitmap(t)))
+    bitmaps = [numpy.array(self._getWordBitmap(t)) for t in tokens]
 
     windowBitmaps = []
-    for i, bitmap in enumerate(bitmaps):
-      windowBitmap = bitmap
-      j = 0
-      for j in reversed(xrange(i)):
+    for tokenIndex, windowBitmap in enumerate(bitmaps):
+      # Each index in the tokens list is the end of a possible window.
+      for i in reversed(xrange(tokenIndex)):
+        # From the current token, increase the window by successively adding the
+        # previous tokens.
         windowSparsity = len(windowBitmap) / float(self.n)
-        nextSparsity = len(bitmaps[j]) / float(self.n)
+        nextSparsity = len(bitmaps[i]) / float(self.n)
         if windowSparsity + nextSparsity > self.unionSparsity:
-          # stopping criterion reached
+          # stopping criterion reached -- window is full
           break
         else:
-          # add bitmap to the current window
-          windowBitmap = numpy.union1d(windowBitmap, bitmaps[j])
+          # add bitmap to the current window bitmap
+          windowBitmap = numpy.union1d(windowBitmap, bitmaps[i])
 
       sparsity = len(windowBitmap) / float(self.n)
       if sparsity > minSparsity:
         # only include windows of sufficient density
         windowBitmaps.append(
-          {"text": tokens[j:i+1],
+          {"text": tokens[i:tokenIndex+1],
            "sparsity": sparsity,
            "bitmap": numpy.array(windowBitmap)})
 
