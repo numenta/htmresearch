@@ -172,7 +172,7 @@ layout = Layout(
         title='Number of synapses on segment',
         titlefont=Font(
             family='',
-            size=16,
+            size=22,
             color=''
         ),
         tickfont=Font(
@@ -191,7 +191,7 @@ layout = Layout(
         autorange=True,
         titlefont=Font(
             family='',
-            size=18,
+            size=22,
             color=''
         ),
         tickfont=Font(

@@ -126,7 +126,7 @@ layout = Layout(
               '\\theta)$',
         titlefont=Font(
             family='',
-            size=18,
+            size=22,
             color=''
         ),
         tickfont=Font(
@@ -143,7 +143,7 @@ layout = Layout(
         autorange=True,
         titlefont=Font(
             family='',
-            size=18,
+            size=22,
             color=''
         ),
         tickfont=Font(
@@ -217,4 +217,4 @@ fig = Figure(data=data, layout=layout)
 plot_url = py.plot(fig)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
-py.image.save_as(figure, 'optimal_threshold.png', scale=4)
+py.image.save_as(figure, 'optimal_threshold.png', scale=2)

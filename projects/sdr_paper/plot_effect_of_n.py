@@ -240,10 +240,10 @@ layout = Layout(
     width=855,
     height=700,
     xaxis=XAxis(
-        title='Cell population size ($n$)',
+        title='Cell population size (n)',
         titlefont=Font(
             family='',
-            size=16,
+            size=26,
             color=''
         ),
         tickfont=Font(
@@ -263,7 +263,7 @@ layout = Layout(
         autorange=True,
         titlefont=Font(
             family='',
-            size=18,
+            size=26,
             color=''
         ),
         tickfont=Font(
