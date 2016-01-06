@@ -49,9 +49,10 @@ _MODEL_MAPPING = {
   "Keywords": ClassificationModelKeywords,
   "HTMNetwork": ClassificationModelHTM,
 }
+_MODEL_CLASSIFIER_METRIC = "pctOverlapOfInput"
 
 root = os.path.dirname(os.path.realpath(__file__))
-_NETWORK_JSON = os.path.join(root, "data/network_configs/buckets_tp.json")
+_NETWORK_JSON = os.path.join(root, "data/network_configs/imbu.json")
 
 
 
@@ -88,18 +89,18 @@ def _createModel(modelName, savePath, **htmArgs):
   if modelName == "CioWordFingerprint":
     model = modelCls(
       fingerprintType=EncoderTypes.word,
-      classifierMetric="pctOverlapOfInput")
+      classifierMetric=_MODEL_CLASSIFIER_METRIC)
 
   elif modelName == "CioDocumentFingerprint":
     model =  modelCls(
       fingerprintType=EncoderTypes.document,
-      classifierMetric="pctOverlapOfInput")
+      classifierMetric=_MODEL_CLASSIFIER_METRIC)
 
   elif modelName == "HTMNetwork":
     model = modelCls(**htmArgs)
 
   else:
-    model = modelCls(classifierMetric="pctOverlapOfInput")
+    model = modelCls(classifierMetric=_MODEL_CLASSIFIER_METRIC)
 
   model.verbosity = 0
   model.numLabels = 0
@@ -109,16 +110,16 @@ def _createModel(modelName, savePath, **htmArgs):
   return model
 
 
-from tqdm import tqdm
+
 def trainModel(model, trainingData):
   """
   Train the given model on trainingData. Return the trained model instance.
   """
   TP = TextPreprocess()
-  for seqId, (text, _, uniqueID) in enumerate(tqdm(trainingData.values())):
+  for seqId, (text, _, uniqueID) in enumerate(trainingData.values()):
     textTokens = TP.tokenize(text)
     for i, token in enumerate(textTokens):
-      model.trainText(token, [-1], sequenceId=seqId, reset=int(i==0))
+      model.trainText(token, [seqId], sequenceId=seqId, reset=int(i==0))
 
   return model
 
@@ -128,9 +129,6 @@ def run(args):
 
   print "Getting and prepping the data..."
   dataDict = readCSV(args.dataPath, numLabels=0)
-#  samples = OrderedDict((k, (TextPreprocess().tokenize(v[0]), v[1], v[2])) for (k,v) in dataDict.iteritems())
-
-  import pdb; pdb.set_trace()
 
   if args.loadPath:
     model = loadModel(args.loadPath)
@@ -179,11 +177,7 @@ if __name__ == "__main__":
                       help="Path to data CSV; samples must be in column w/ "
                            "header 'Sample'; see readCSV() for more.")
   parser.add_argument("-m", "--modelName",
-#                      default="CioWordFingerprint",
-#                      default="CioDocumentFingerprint",
-                      default="Keywords",
-#                      default="HTMNetwork",
-#                      default="CioWindows",
+                      default="HTMNetwork",
                       type=str,
                       help="Name of model class. Also used for model results "
                            "directory and pickle checkpoint.")
