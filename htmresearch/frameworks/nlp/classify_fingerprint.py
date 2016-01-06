@@ -73,7 +73,6 @@ class ClassificationModelFingerprint(ClassificationModel):
                               apiKey=apiKey)
 
     self.currentDocument = None
-    self.currentDocumentId = None
 
 
   def encodeSample(self, sample):
@@ -159,8 +158,6 @@ class ClassificationModelFingerprint(ClassificationModel):
       # accumulate text for this document
       self.currentDocument.append(token)
 
-    self.currentDocumentId = sequenceId
-
     if reset == 1:
       # all text accumulated, proceed w/ training on this document
       document = " ".join(self.currentDocument)
@@ -173,7 +170,7 @@ class ClassificationModelFingerprint(ClassificationModel):
 
       for label in labels:
         self.classifier.learn(bitmap, label, isSparse=self.encoder.n)
-        self.sampleReference.append(self.currentDocumentId)
+        self.sampleReference.append(sequenceId)
 
         # TODO: replace the need for sampleReference w/ partitionId.
         # There is a bug in how partitionId is handled during infer if it is
@@ -183,7 +180,6 @@ class ClassificationModelFingerprint(ClassificationModel):
         #                       partitionId=sequenceId)
 
       self.currentDocument = None
-      self.currentDocumentId = None
 
 
   def classifyText(self, token, reset=0, seed=42):
@@ -226,7 +222,6 @@ class ClassificationModelFingerprint(ClassificationModel):
         print "\tWinning labels=", winningLabels
 
       self.currentDocument = None
-      self.currentDocumentId = None
 
       return winningLabels
 
