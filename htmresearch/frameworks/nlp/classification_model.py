@@ -407,12 +407,12 @@ class ClassificationModel(object):
     Save the model in the given directory.
 
     @param saveModelDir (string)
-           Directory path for saving the model. This directory should
-           only be used to store a saved model. If the directory does not exist,
-           it will be created automatically and populated with model data. A
-           pre-existing directory will only be accepted if it contains previously
-           saved model data. If such a directory is given, the full contents of
-           the directory will be deleted and replaced with current model data.
+           Directory path for saving the model. This directory should only be
+           used to store a saved model. If the directory does not exist, it will
+           be created automatically and populated with model data. A
+           pre-existing directory will only be accepted if it contains
+           previously saved model data. If such a directory is given, the full
+           contents of the directory will be deleted and replaced with current
 
     Implementation note: Subclasses should override _serializeExtraData() to
     save additional data in custom formats.
