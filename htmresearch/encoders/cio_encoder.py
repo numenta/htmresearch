@@ -250,7 +250,8 @@ class CioEncoder(LanguageEncoder):
     """
     encoding = self.encode(inputText)
     output[:] = 0
-    output[encoding["fingerprint"]["positions"]] = 1
+    if encoding["fingerprint"]["positions"].size > 0:
+      output[encoding["fingerprint"]["positions"]] = 1
 
 
   def decode(self, encoding, numTerms=10):

@@ -96,7 +96,7 @@ class LanguageSensor(PyRegion):
           },
         "sequenceIdOut":{
           "description":"Sequence ID",
-          "dataType":'UInt64',
+          "dataType":'Real32',
           "count":1,
           "regionLevel":True,
           "isDefaultOutput":False,

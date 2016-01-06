@@ -215,7 +215,9 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
       # Print the outputs of each region
       if self.verbosity >= 2:
         print "Training with document:",document
-        self.printRegionOutputs()
+        print "SequenceId:",sequenceId
+        if self.verbosity >= 3:
+          self.printRegionOutputs()
 
 
   def classifyText(self, token, reset=0):
@@ -248,6 +250,7 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
       sensor.addDataToQueue(token=document, categoryList=[None],
                             sequenceId=-1, reset=0)
       self.network.run(1)
+
       if reset == 1:
         self.reset()
 

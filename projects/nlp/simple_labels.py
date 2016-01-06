@@ -43,6 +43,7 @@ from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
 from htmresearch.frameworks.nlp.classify_document_fingerprint import (
   ClassificationModelDocumentFingerprint
 )
+from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.classify_fingerprint import (
   ClassificationModelFingerprint
 )
@@ -124,14 +125,16 @@ def trainModel(args, model, trainingData, labelRefs):
   for recordNum, doc in enumerate(trainingData):
     docTokens = model.tokenize(doc[0])
     lastToken = len(docTokens) - 1
-    print
-    print "Document=", recordNum, "id=", doc[2]
-    print wrapper.fill(doc[0])
-    print "tokens=",docTokens
-    print "label=",labelRefs[doc[1][0]],"index=",doc[1]
+    if args.verbosity > 0:
+      print
+      print "Document=", recordNum, "id=", doc[2]
+      print wrapper.fill(doc[0])
+      print "tokens=",docTokens
+      print "label=",labelRefs[doc[1][0]],"index=",doc[1]
     for i, token in enumerate(docTokens):
       # print "Training data: ", token, id, doc[1]
-      model.trainText(token, doc[1], recordNum, reset=int(i==lastToken))
+      model.trainText(token, labels=doc[1],
+                      sequenceId=doc[2], reset=int(i==lastToken))
 
   return model
 
@@ -182,32 +185,104 @@ def testModel(args, model, testData, labelRefs, documentCategoryMap):
   print "Accuracy =",(float(numCorrect*100.0)/len(testData)),"%"
 
 
+def queryModel(model, queryDocument, documentTextMap):
+  """
+  Demonstrates how querying might be done with the new partitionId scheme. The
+  code below assumes a document level classifier, so not appropriate for all
+  model types. The implementation should be cleaned up and moved into the
+  model, but this provides a basic idea.
+  """
+
+  print
+  print "=================Querying model on a sample document================"
+  print
+  print "Query document:"
+  print wrapper.fill(queryDocument)
+  print
+
+  # Feed the document to the model
+  docTokens = model.tokenize(queryDocument)
+  lastToken = len(docTokens) - 1
+  for i, token in enumerate(docTokens):
+    _ = model.classifyText(token, reset=int(i==lastToken))
+
+  # Retrieve the nearest documentIds
+  classifier = model.classifierRegion.getSelf()
+  knn = model.getClassifier()
+  distances = classifier.getLatestDistances()
+  sortedDistanceIndices = list(distances.argsort())
+
+  print "Here are some similar documents in order of similarity"
+  documentIds = []
+  for i in sortedDistanceIndices[0:10]:
+    docId = knn.getPartitionId(i)
+    if not docId in documentIds:
+      documentIds.append(docId)
+      print distances[i], docId
+      print "document=",wrapper.fill(documentTextMap[docId])
+      print
+
+  print "Here are some dissimilar documents in reverse order of similarity"
+  for i in reversed(sortedDistanceIndices[-10:]):
+    docId = knn.getPartitionId(i)
+    if not docId in documentIds:
+      documentIds.append(docId)
+      print distances[i], docId
+      print "document=",wrapper.fill(documentTextMap[docId])
+      print
+
+
 def readData(args):
   """
-  Read data file and print out some statistics
-  Return a training set, test set, labelId to text map, and docId to categories
-  map.
+  Read data file, print out some statistics, and return various data structures
+
+  Returns the tuple:
+    (training dataset, test dataset, labelRefs, documentCategoryMap,
+     documentTextMap)
 
   Return format:
-      trainingData = [
+      dataset = [
         ["fox eats carrots", [0], docId],
         ["fox eats peppers", [0], docId],
         ["carrots are healthy", [1], docId],
         ["peppers is healthy", [1], docId],
       ]
+
+      labelRefs = [Category0Name, Category1Name, ...]
+
+      documentCategoryMap = {
+        docId: [categoryIndex0, categoryIndex1, ...],
+        docId: [categoryIndex0, categoryIndex1, ...],
+                :
+      }
+
+      documentTextMap = {
+        docId: documentText,
+        docId: documentText,
+                :
+      }
+
+labelId to text map, and docId to categories
+
   """
   # Read data
   dataDict = readCSV(args.dataPath, 1)
   labelRefs, dataDict = mapLabelRefs(dataDict)
-  categoriesInOrderOfInterest=[8,9,10,5,6,11,13][0:args.numLabels]
+  categoriesInOrderOfInterest=[8,9,10,5,6,11,13,0,1,2,3,4,7,
+                               12,14][0:args.numLabels]
 
   # Select data based on categories of interest. Shift category indices down
   # so we go from 0 to numLabels-1
   trainingData = []
+  documentTextMap = {}
   counts = numpy.zeros(len(labelRefs))
   for document in dataDict.itervalues():
-    docId = document[2]
+    try:
+      docId = int(document[2])
+    except:
+      raise RuntimeError("docId "+str(docId)+" is not an integer")
     oldCategoryIndex = document[1][0]
+    documentTextMap[docId] = document[0]
     if oldCategoryIndex in categoriesInOrderOfInterest:
       newIndex = categoriesInOrderOfInterest.index(oldCategoryIndex)
       trainingData.append([document[0], [newIndex], docId])
@@ -230,7 +305,8 @@ def readData(args):
   print "Category counts: ",counts
   print "Categories in training/test data:", labelRefs
 
-  return trainingData, trainingData, labelRefs, documentCategoryMap
+  return (trainingData, trainingData, labelRefs, documentCategoryMap,
+          documentTextMap)
 
 
 def runExperiment(args):
@@ -239,12 +315,22 @@ def runExperiment(args):
   restore model, test on test data.
   """
 
-  trainingData, testData, labelRefs, documentCategoryMap = readData(args)
+  (trainingData, testData, labelRefs, documentCategoryMap,
+   documentTextMap) = readData(args)
 
   model = createModel(args)
   model = trainModel(args, model, trainingData, labelRefs)
   model.save(args.modelDir)
-  testModel(args, model, testData, labelRefs, documentCategoryMap)
+  # newmodel = ClassificationModel.load(args.modelDir)
+  # testModel(args, newmodel, testData, labelRefs, documentCategoryMap)
+
+  queryModel(model,
+             "Begin by treating the employees of the department with the "
+             "respect they deserve. Halt the unfair practices "
+             "that they are aware of doing. There is no compassion "
+             "or loyalty to its senior employees",
+             documentTextMap
+             )
 
   # Print profile information
   print
