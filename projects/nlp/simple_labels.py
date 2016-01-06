@@ -194,6 +194,10 @@ def queryModel(model, queryDocument, documentTextMap):
 
   print
   print "=================Querying model on a sample document================"
+  print
+  print "Query document:"
+  print wrapper.fill(queryDocument)
+  print
 
   # Feed the document to the model
   docTokens = model.tokenize(queryDocument)
@@ -206,9 +210,7 @@ def queryModel(model, queryDocument, documentTextMap):
   knn = model.getClassifier()
   distances = classifier.getLatestDistances()
   sortedDistanceIndices = list(distances.argsort())
-  print "Query document:"
-  print queryDocument
-  print
+
   print "Here are some similar documents in order of similarity"
   documentIds = []
   for i in sortedDistanceIndices[0:10]:
@@ -216,7 +218,7 @@ def queryModel(model, queryDocument, documentTextMap):
     if not docId in documentIds:
       documentIds.append(docId)
       print distances[i], docId
-      print "document=",documentTextMap[docId]
+      print "document=",wrapper.fill(documentTextMap[docId])
       print
 
   print "Here are some dissimilar documents in reverse order of similarity"
@@ -225,7 +227,7 @@ def queryModel(model, queryDocument, documentTextMap):
     if not docId in documentIds:
       documentIds.append(docId)
       print distances[i], docId
-      print "document=",documentTextMap[docId]
+      print "document=",wrapper.fill(documentTextMap[docId])
       print
 
 
@@ -320,10 +322,10 @@ def runExperiment(args):
   # testModel(args, model, testData, labelRefs, documentCategoryMap)
 
   queryModel(model,
-             "Start by treating the employees of the dept. with the "
-             "respect they deserve, and stop all the unfair practices "
-             "that they are totally aware of doing. There is no compassion "
-             "or loyalty to it's senior employees",
+             "Begin by treating the employees of the department with the "
+             "respect they deserve. Halt the unfair practices "
+             "that they are aware of doing. There is no compassion "
+             "or loyalty to its senior employees",
              documentTextMap
              )
 
