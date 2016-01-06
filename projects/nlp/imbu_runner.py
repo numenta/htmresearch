@@ -37,6 +37,7 @@ from htmresearch.frameworks.nlp.classify_keywords import (
 from htmresearch.frameworks.nlp.classify_windows import (
   ClassificationModelWindows)
 from htmresearch.support.csv_helper import readCSV
+from htmresearch.support.text_preprocess import TextPreprocess
 
 import simplejson as json
 
@@ -48,9 +49,10 @@ _MODEL_MAPPING = {
   "Keywords": ClassificationModelKeywords,
   "HTMNetwork": ClassificationModelHTM,
 }
+_MODEL_CLASSIFIER_METRIC = "pctOverlapOfInput"
 
 root = os.path.dirname(os.path.realpath(__file__))
-_NETWORK_JSON = os.path.join(root, "data/network_configs/buckets_tp.json")
+_NETWORK_JSON = os.path.join(root, "data/network_configs/imbu.json")
 
 
 
@@ -86,17 +88,19 @@ def _createModel(modelName, savePath, **htmArgs):
 
   if modelName == "CioWordFingerprint":
     model = modelCls(
-      fingerprintType=EncoderTypes.word)
+      fingerprintType=EncoderTypes.word,
+      classifierMetric=_MODEL_CLASSIFIER_METRIC)
 
   elif modelName == "CioDocumentFingerprint":
     model =  modelCls(
-      fingerprintType=EncoderTypes.document)
+      fingerprintType=EncoderTypes.document,
+      classifierMetric=_MODEL_CLASSIFIER_METRIC)
 
   elif modelName == "HTMNetwork":
     model = modelCls(**htmArgs)
 
   else:
-    model = modelCls()
+    model = modelCls(classifierMetric=_MODEL_CLASSIFIER_METRIC)
 
   model.verbosity = 0
   model.numLabels = 0
@@ -107,7 +111,24 @@ def _createModel(modelName, savePath, **htmArgs):
 
 
 
+def trainModel(model, trainingData):
+  """
+  Train the given model on trainingData. Return the trained model instance.
+  """
+  TP = TextPreprocess()
+  for seqId, (text, _, uniqueID) in enumerate(trainingData.values()):
+    textTokens = TP.tokenize(text)
+    for i, token in enumerate(textTokens):
+      model.trainText(token, [seqId], sequenceId=seqId, reset=int(i==0))
+
+  return model
+
+
+
 def run(args):
+
+  print "Getting and prepping the data..."
+  dataDict = readCSV(args.dataPath, numLabels=0)
 
   if args.loadPath:
     model = loadModel(args.loadPath)
@@ -116,28 +137,21 @@ def run(args):
     networkConfig = loadJSON(_NETWORK_JSON)
     
     print "Creating the network model..."
-    model = _createModel(modelName=args.modelName, savePath=args.savePath,
-      networkConfig=networkConfig, inputFilePath=args.dataPath, prepData=True,
-      numLabels=0, stripCats=True, retinaScaling=1.0)
-
-    numRecords = sum(
-      model.networkDataGen.getNumberOfTokens(model.networkDataPath))
-
-    print "Training the model..."
-    model.trainModel(iterations=numRecords)  # TODO: switch to using trainNetwork
+    model = _createModel(
+      modelName=args.modelName,
+      savePath=args.savePath,
+      networkConfig=networkConfig,
+      inputFilePath=None,
+      prepData=False,
+      numLabels=0,
+      retinaScaling=1.0)
 
   else:
     model = _createModel(modelName=args.modelName, savePath=args.savePath)
 
-    dataDict = readCSV(args.dataPath, numLabels=0)
+  print "Training the model (and encoding the data)..."
+  model = trainModel(model, dataDict)
 
-    print "Preparing and encoding the data..."
-    samples = model.prepData(dataDict, args.preprocess)
-    patterns = model.encodeSamples(samples)
-
-    print "Training the model..."
-    for i in xrange(len(samples)):
-      model.trainModel(i)
 
   if args.savePath:
     model.saveModel()
@@ -148,7 +162,7 @@ def run(args):
     print "Now we query the model for samples (quit with 'q')..."
     input = raw_input("Enter a query: ")
     if input == "q": break
-    sortedDistances = model.queryModel(input, args.preprocess)
+    sortedDistances = model.queryModel(input)
     print printTemplate.format("Sample ID", "Distance from query")
     for sID, dist in sortedDistances:
       print printTemplate.format(sID, dist)
@@ -163,11 +177,7 @@ if __name__ == "__main__":
                       help="Path to data CSV; samples must be in column w/ "
                            "header 'Sample'; see readCSV() for more.")
   parser.add_argument("-m", "--modelName",
-#                      default="CioWordFingerprint",
-#                      default="CioDocumentFingerprint",
-#                      default="Keywords",
-#                      default="HTMNetwork",
-                      default="CioWindows",
+                      default="HTMNetwork",
                       type=str,
                       help="Name of model class. Also used for model results "
                            "directory and pickle checkpoint.")

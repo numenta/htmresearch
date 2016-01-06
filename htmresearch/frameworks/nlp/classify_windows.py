@@ -177,9 +177,9 @@ class ClassificationModelWindows(ClassificationModel):
       sample = " ".join(sample)
       fpInfo = self.encoder.getUnionEncoding(sample)
       encodedQuery = [{
-        "text":fpInfo["text"],
-        "sparsity":fpInfo["sparsity"],
-        "bitmap":numpy.array(fpInfo["fingerprint"]["positions"])
+        "text": fpInfo["text"],
+        "sparsity": fpInfo["sparsity"],
+        "bitmap": fpInfo["fingerprint"]["positions"]
       }]
     allDistances = self.infer(encodedQuery)
 

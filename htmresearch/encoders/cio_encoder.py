@@ -97,7 +97,7 @@ class CioEncoder(LanguageEncoder):
   def encode(self, text):
     """
     Encodes the input text w/ a cortipy client. The client returns a
-    dictionary of "fingerprint" info, including the SDR bitmap.
+    dictionary of "fingerprint" info, including the SDR bitmap as a numpy.array.
 
     NOTE: returning this fingerprint dict differs from the base class spec.
 
@@ -206,7 +206,7 @@ class CioEncoder(LanguageEncoder):
         windowBitmaps.append(
           {"text": tokens[i:tokenIndex+1],
            "sparsity": sparsity,
-           "bitmap": windowBitmap})
+           "bitmap": numpy.array(windowBitmap)})
 
     return windowBitmaps
 
@@ -225,6 +225,9 @@ class CioEncoder(LanguageEncoder):
         encoding["fingerprint"]["positions"], self.retinaScaling)
       encoding["width"] = self.width
       encoding["height"] = self.height
+
+    encoding["fingerprint"]["positions"] = numpy.array(
+      encoding["fingerprint"]["positions"])
 
     encoding["sparsity"] = len(encoding["fingerprint"]["positions"]) / float(
       (encoding["width"] * encoding["height"]))

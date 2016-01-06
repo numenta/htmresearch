@@ -331,12 +331,13 @@ class ClassificationModelHTM(ClassificationModel):
     """
     for region in self.learningRegions:
       region.setParameter("learningMode", False)
-    self.classifierRegion.setParameter("inferenceMode", True)
+      region.setParameter("inferenceMode", True)
+
+    sensor = self.sensorRegion.getSelf()
 
     # Put query text in LanguageSensor data format.
     queryDicts = self.networkDataGen.generateSequence(query, preprocess)
 
-    sensor = self.sensorRegion.getSelf()
     sampleDistances = None
     for qD in queryDicts:
       # Sum together the inferred distances for each word of the query sequence.
@@ -371,7 +372,7 @@ class ClassificationModelHTM(ClassificationModel):
     sentenceList = encoder.client.tokenize(text)
     tokenList = []
     for sentence in sentenceList:
-      tokenList.extend(sentence.split(','))
+      tokenList.extend(sentence.split(","))
     return tokenList
 
 
@@ -382,11 +383,11 @@ class ClassificationModelHTM(ClassificationModel):
     to do nothing - not all subclasses may re-implement this.
     """
     # TODO: Introduce a consistent reset method name.
-    for r in self.learningRegions:
-      if r.type == 'py.TemporalPoolerRegion':
-        r.executeCommand(['reset'])
-      elif r.type == 'py.TPRegion':
-        r.executeCommand(['resetSequenceStates'])
+    for region in self.learningRegions:
+      if region.type == "py.TemporalPoolerRegion":
+        region.executeCommand(["reset"])
+      elif region.type == "py.TPRegion":
+        region.executeCommand(["resetSequenceStates"])
 
 
   def trainText(self, token, labels, sequenceId=None, reset=0):
