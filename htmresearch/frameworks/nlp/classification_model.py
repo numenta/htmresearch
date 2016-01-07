@@ -136,12 +136,12 @@ class ClassificationModel(object):
     tokenized (and preprocessed if specified).
 
     @param dataDict     (dict)          Keys are data record IDs, values are
-        two-tuples of text (str) and categories (numpy.array). If no labels,
-        the categories array is empty. E.g.:
+        three-tuples of text (str), categories (numpy.array), and record number.
+        If no labels, the categories array is empty. E.g.:
 
         dataDict = OrderedDict([
-            ('0', ('Hello world!', array([3])),
-            ('1', ('import this', array([0, 3]))
+            ('A', ('Hello world!', array([3]), '0'),
+            ('B', ('import this', array([0, 3]), '1')
         ])
     """
     outDict = OrderedDict()

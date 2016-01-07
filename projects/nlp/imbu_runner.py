@@ -113,15 +113,18 @@ def _createModel(modelName, savePath, **htmArgs):
 
 def trainModel(model, trainingData):
   """
-  Train the given model on trainingData. Return the trained model instance.
+  Train the given model on trainingData.
   """
   TP = TextPreprocess()
-  for seqId, (text, _, uniqueID) in enumerate(trainingData.values()):
+  for text, _, uniqueID in trainingData.values():
     textTokens = TP.tokenize(text)
+    lastToken = len(textTokens) - 1
     for i, token in enumerate(textTokens):
-      model.trainText(token, [seqId], sequenceId=seqId, reset=int(i==0))
-
-  return model
+      # use the sequence's ID as the category label
+      model.trainText(token,
+                      [int(uniqueID)],
+                      sequenceId=int(uniqueID),
+                      reset=int(i==lastToken))
 
 
 
@@ -150,7 +153,7 @@ def run(args):
     model = _createModel(modelName=args.modelName, savePath=args.savePath)
 
   print "Training the model (and encoding the data)..."
-  model = trainModel(model, dataDict)
+  trainModel(model, dataDict)
 
 
   if args.savePath:
