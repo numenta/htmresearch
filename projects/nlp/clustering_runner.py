@@ -30,32 +30,61 @@ from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.classify_document_fingerprint import (
   ClassificationModelDocumentFingerprint
 )
+from htmresearch.algorithms.hierarchical_clustering import (
+  HierarchicalClustering
+)
 
 
 wrapper = TextWrapper(width=100)
 
 
 def runExperiment(args):
-  (trainingData, testData, labelRefs, documentCategoryMap,
+  (trainingDataDup, testData, labelRefs, documentCategoryMap,
    documentTextMap) = readData(args)
   
+  # remove duplicates from training data
+  includedDocIds = set()
+  trainingData = []
+  for record in trainingDataDup:
+    if record[2] not in includedDocIds:
+      includedDocIds.add(record[2])
+      trainingData.append(record)
+
   model = ClassificationModelDocumentFingerprint(
     verbosity=args.verbosity,
     retina=args.retina,
-    numLabels=args.numLabels,
+    numLabels=len(labelRefs),
     k=1)
   model = trainModel(args, model, trainingData, labelRefs)
   model.save(args.modelDir)
   newmodel = ClassificationModel.load(args.modelDir)
   
-  # Print profile information
-  print
-  newmodel.dumpProfile()
+  print "Model trained with %d records" % (newmodel.getClassifier()._numPatterns,)
   
-  print dir(newmodel)
-  print dir(newmodel.getClassifier())
-  print newmodel.getClassifier()._numPatterns
+  knn = newmodel.getClassifier()
+  hc = HierarchicalClustering(knn)
   
+  hc.cluster("complete")
+  protos, clusterSizes = hc.getClusterPrototypes(args.numClusters,
+                                                 args.numPrototypes)
+    
+  for clusterId in xrange(len(clusterSizes)):
+    print
+    print "Cluster %d with %d items" % (clusterId, clusterSizes[clusterId])
+    print "==============="
+    for index in protos[clusterId]:
+      if index != -1:
+        docId = trainingData[index][2]
+        print "(%d) %s" % (docId, trainingData[index][0])
+        print "Buckets:"
+
+        # The docId keys in documentCategoryMap are strings rather than ints
+        if str(docId) in documentCategoryMap:
+          for bucketId in documentCategoryMap[str(docId)]:
+            print "    ", labelRefs[bucketId]
+        else:
+          print "    <None>"
+        print "\n\n"  
 
 
 def trainModel(args, model, trainingData, labelRefs):
@@ -165,10 +194,14 @@ if __name__ == "__main__":
                       default=1.0,
                       type=float,
                       help="Factor by which to scale the Cortical.io retina.")
-  parser.add_argument("--numLabels",
+  parser.add_argument("--numClusters",
+                      default=8,
+                      type=int,
+                      help="Number of clusters to form.")
+  parser.add_argument("--numPrototypes",
                       default=3,
                       type=int,
-                      help="Number of unique labels to train on.")
+                      help="Maximum number of prototypes to return per cluster.")
   parser.add_argument("--retina",
                       default="en_associative_64_univ",
                       type=str,

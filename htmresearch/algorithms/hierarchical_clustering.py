@@ -137,8 +137,11 @@ class HierarchicalClustering(object):
 
     @param numPrototypes (int) Number of prototypes to return per cluster.
 
-    @returns (numpy.ndarray) Array with rows containing the indices of the
-        prototypes for a single flat cluster.
+    @returns (tuple of numpy.ndarray) The first element is an array with rows
+        containing the indices of the prototypes for a single flat cluster.
+        If a cluster has less than numPrototypes members, missing indices are
+        filled in with -1. The second element is an array of number of elements
+        in each cluster.
     """
     linkage = self.getLinkageMatrix()
     linkage[:, 2] -= linkage[:, 2].min()
@@ -146,14 +149,20 @@ class HierarchicalClustering(object):
     clusters = scipy.cluster.hierarchy.fcluster(
       linkage, numClusters, criterion="maxclust")
     prototypes = []
+    clusterSizes = []
 
     for cluster_id in numpy.unique(clusters):
       ids = numpy.arange(len(clusters))[clusters == cluster_id]
-      cluster_prototypes = HierarchicalClustering._getPrototypes(
-        ids, self._overlaps, numPrototypes)
+      clusterSizes.append(len(ids))
+      if len(ids) > numPrototypes:
+        cluster_prototypes = HierarchicalClustering._getPrototypes(
+          ids, self._overlaps, numPrototypes)
+      else:
+        cluster_prototypes = numpy.ones(numPrototypes) * -1
+        cluster_prototypes[:len(ids)] = ids
       prototypes.append(cluster_prototypes)
 
-    return numpy.vstack(prototypes)
+    return numpy.vstack(prototypes).astype(int), numpy.array(clusterSizes)
 
 
   ##################
@@ -198,7 +207,7 @@ class HierarchicalClustering(object):
     meanSubsampledOverlaps = subsampledOverlaps.mean(1)
     biggestOverlapSubsetIdxs = numpy.argpartition(
       -meanSubsampledOverlaps, topNumber)[:topNumber]
-
+    
     return indices[biggestOverlapSubsetIdxs]
 
 
