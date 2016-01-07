@@ -134,14 +134,12 @@ def trainModel(model, trainingData):
 
   print
   print "=======================Training model on sample text================"
-  for id, doc in enumerate(trainingData):
-    docTokens = splitDocumentIntoTokens(doc[0])
-    lastTokenIndex = len(docTokens) - 1
+  for docId, doc in enumerate(trainingData):
+    document = doc[0]
+    labels = doc[1]
     print
-    print "Document=", id, "text=",doc, "tokens=",docTokens, "label=",doc[1]
-    for i, token in enumerate(docTokens):
-      print "Training data: ", token, id, doc[1]
-      model.trainText(token, doc[1], id, reset=int(i==lastTokenIndex))
+    print "Document=", document, "label=",doc[1], "id=",docId
+    model.trainDocument(document, labels, docId)
 
   return model
 
@@ -158,24 +156,16 @@ def testModel(args, model, testData):
   print
   print "==========================Classifying sample text================"
   numCorrect = 0
-  for id, doc in enumerate(testData):
+  for docId, doc in enumerate(testData):
+    document = doc[0]
+    desiredLabels = doc[1]
     print
-    print "Document=", doc[0],", desired label: ",doc[1]
-    docTokens = splitDocumentIntoTokens(doc[0])
-    lastTokenIndex = len(docTokens) - 1
-    categoryVotes = numpy.zeros(2)
-    for i, token in enumerate(docTokens):
-      modelClassification = model.classifyText(token,
-                                               reset=int(i==lastTokenIndex))
-      if modelClassification.sum() > 0:
-        categoryVotes[modelClassification.argmax()] += 1
-      if args.verbosity >= 2:
-        print "Token: ", token
-        print "Result=",modelClassification,"categoryVotes:",categoryVotes
+    print "Document=", document,", desired label: ",desiredLabels
+    categoryVotes, idList, distances = model.inferDocument(document)
 
     if categoryVotes.sum() > 0:
       print "Final classification for this doc:",categoryVotes.argmax()
-      if categoryVotes.argmax() == doc[1]:
+      if categoryVotes.argmax() in desiredLabels:
         numCorrect += 1
     else:
       print "No classification possible for this doc"
@@ -217,7 +207,7 @@ if __name__ == "__main__":
   parser.add_argument("-m", "--modelName",
                       default="htm",
                       type=str,
-                      help="Name of model class. Options: [keywords,htm]")
+                      help="Name of model class. Options: [keywords,htm,docfp]")
   parser.add_argument("--retinaScaling",
                       default=1.0,
                       type=float,

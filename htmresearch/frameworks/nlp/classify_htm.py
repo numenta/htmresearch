@@ -390,7 +390,7 @@ class ClassificationModelHTM(ClassificationModel):
         region.executeCommand(["resetSequenceStates"])
 
 
-  def trainText(self, token, labels, sequenceId=None, reset=0):
+  def trainToken(self, token, labels, sequenceId=None, reset=0):
     """
     Train the model with the given text token, associated labels, and
     sequence ID.
@@ -418,7 +418,7 @@ class ClassificationModelHTM(ClassificationModel):
       self.reset()
 
 
-  def classifyText(self, token, reset=0):
+  def inferToken(self, token, reset=0):
     """
     Classify the token and return a list of the best classifications.
 

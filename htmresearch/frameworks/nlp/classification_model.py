@@ -19,19 +19,12 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from collections import defaultdict, OrderedDict
-import copy
 import cPickle as pkl
 import numpy
-import operator
 import os
-import random
 import shutil
 
-import simplejson as json
-
 from htmresearch.support.text_preprocess import TextPreprocess
-
 
 
 class ClassificationModel(object):
@@ -40,125 +33,169 @@ class ClassificationModel(object):
   class please take note of which methods MUST be overridden, as documented
   below.
   """
-  # TODO: use nupic.bindings.math import Random
 
   def __init__(self,
                verbosity=1,
                numLabels=3,
-               modelDir="ClassificationModel"):
+               filterText=False,
+               **kwargs):
     """
-    If there are no labels set numLabels=0.
+    @param verbosity  (int) Verbosity level. Larger values lead to more
+                            printouts. 0 implies nothing will be printed.
+
+    @param numLabels  (int) The maximum number of categories.
+
+    @param filterText (bool) Whether text will be filtered when tokenized.
+                             Filtering may be model specific but by default
+                             this includes ignoring common words, correcting
+                             spelling, and removing the
+                             string "[identified deleted]"
     """
+    # TODO: we may want to provide more flexible filtering options, or even
+    # an instance of the TextPreprocess class.
     self.numLabels = numLabels
     self.verbosity = verbosity
-    self.modelDir = modelDir
-    if not os.path.exists(self.modelDir):
-      os.makedirs(self.modelDir)
-    self.modelPath = None
-
-    # each time a sample is trained on, its unique ID is appended
-    self.sampleReference = []
-
-    self.patterns = []
+    self.filterText = filterText
 
 
-  def encodeSample(self, sample):
+  ################## CORE METHODS #####################
+
+  def trainToken(self, token, labels, sampleId, reset=0):
     """
-    The subclass implementations must return the encoding in the following
-    format:
-      {
-        ["text"]:sample,
-        ["sparsity"]:sparsity,
-        ["bitmap"]:bitmapSDR
-      }
-    Note: sample is a string, sparsity is float, and bitmapSDR is a numpy array.
+    Train the model with the given text token, associated labels, and
+    sampleId.
+
+    @param token      (str)  The text token to train on
+    @param labels     (list) A list of one or more integer labels associated
+                             with this token.
+    @param sampleId   (int)  An integer ID associated with this token.
+    @param reset      (int)  Should be 0 or 1. If 1, assumes we are at the
+                             end of a sequence. A reset signal will be issued
+                             after the model has been trained on this token.
+
     """
     raise NotImplementedError
 
 
-  def trainModel(self, index):
+  def trainDocument(self, document, labels, sampleId):
+    """
+    Train the model with the given document, associated labels, and sampleId.
+    This routine will tokenize the document and train the model on these tokens
+    using the given labels and id.  A reset will be issued after the
+    document has been trained.
+
+    @param document   (str)  The text token to train on
+    @param labels     (list) A list of one or more integer labels associated
+                             with this token.
+    @param sampleId   (int)  An integer ID associated with the entire document.
+
+    """
+    # Default implementation, may be overridden
+    assert (sampleId is not None), "Must pass in a sampleId"
+    tokenList = self.tokenize(document)
+    lastTokenIndex = len(tokenList) - 1
+    for i,token in enumerate(tokenList):
+      self.trainToken(token, labels, sampleId, reset=int(i == lastTokenIndex))
+
+
+  def inferToken(self, token, reset=0, sortResults=True):
+    """
+    Classify the token (i.e. run inference on the model with this document) and
+    return classification results and a list of sampleIds and distances.
+    Repeated sampleIds are NOT removed from the results.
+
+    @param token    (str)     The text token to train on
+    @param reset    (int)     Should be 0 or 1. If 1, assumes we are at the
+                              end of a sequence. A reset signal will be issued
+                              after the model has been trained on this token.
+    @param sortResults (bool) If true the list of sampleIds and distances
+                              will be sorted in order of increasing distances.
+
+    @return  (numpy array) An array of size numLabels. Position i contains
+                           the likelihood that this token belongs to the
+                           i'th category. An array containing all zeros
+                           implies no decision could be made.
+             (list)        A list of sampleIds
+             (numpy array) An array of distances from each stored sample
+    """
+    # TODO: Should we specify that distances normalized between 0 and 1?
+    # Currently we use whatever the KNN returns.
+
+    # TODO: make it optional to return distances and ids as it could be
+    # a performance hog?
     raise NotImplementedError
 
 
-  def testModel(self, index, numLabels):
-    raise NotImplementedError
-
-
-  def getClassifier(self):
+  def inferDocument(self, document, sortResults=True):
     """
-    Returns the classifier for the model.
+    Run inference on the model with this document and return classification
+    results, sampleIds and distances.  By default this routine will tokenize the
+    document and classify using these tokens. A reset is issued after inference.
+    Repeated sampleIds ARE removed from the results.
+
+    @param document (str)     The document to classify
+    @param sortResults (bool) If true the list of sampleIds and distances
+                              will be sorted in order of increasing distances.
+
+    @return  (numpy array) An array of size numLabels. Position i contains
+                           the likelihood that this token belongs to the i'th
+                           category. An array containing all zeros implies no
+                           decision could be made.
+             (list)        A list of unique sampleIds
+             (numpy array) An array of distances from each stored sample
     """
-    return self.classifier
+    # Default implementation, can be overridden
+
+    # For each token run inference on the token and accumulate sum of distances
+    # from this token to all other sampleIds.
+    tokenList = self.tokenize(document)
+    lastTokenIndex = len(tokenList) - 1
+    categoryVotes = numpy.zeros(self.numLabels)
+    distancesForEachId = {}
+    for i, token in enumerate(tokenList):
+      votes, idList, distances = self.inferToken(token,
+                                                 reset=int(i == lastTokenIndex),
+                                                 sortResults=False)
+      if votes.sum() > 0:
+        categoryVotes[votes.argmax()] += 1
+
+      # For each id, accumulate sum of the distance to this document
+      for j, sampleId in enumerate(idList):
+        distancesForEachId[sampleId] = (
+          distancesForEachId.get(sampleId, 0) + distances[j]
+        )
+
+    # Compute average distance of this document to each id
+    averageDistances = numpy.zeros(len(distancesForEachId))
+    sampleIdList = []
+    for sampleId,d in distancesForEachId.iteritems():
+      averageDistances[sampleId] = (float(d))/len(tokenList)
+      sampleIdList.append(sampleId)
+
+    # Sort the results if requested
+    if sortResults:
+      sortedIndices = averageDistances.argsort()
+      sortedDistances = averageDistances[sortedIndices]
+      sortedIdList = []
+      for i in sortedIndices:
+        sortedIdList.append(sampleIdList[i])
+      return categoryVotes, sortedIdList, sortedDistances
+
+    else:
+      return categoryVotes, sampleIdList, averageDistances
 
 
-  def saveModel(self, trial=None):
-    """Save the serialized model."""
-    try:
-      if not os.path.exists(self.modelDir):
-        os.makedirs(self.modelDir)
-      if trial:
-        self.modelPath = os.path.join(
-          self.modelDir, "model_{}.pkl".format(trial))
-      else:
-        self.modelPath = os.path.join(self.modelDir, "model.pkl")
-      with open(self.modelPath, "wb") as f:
-        pkl.dump(self, f)
-      if self.verbosity > 0:
-        print "Model saved to '{}'.".format(self.modelPath)
-    except IOError as e:
-      print "Could not save model to '{}'.".format(self.modelPath)
-      raise e
-
-
-  @staticmethod
-  def loadModel(modelDir):
-    """Load and deserialize a previously serialized model."""
-    modelPath = os.path.join(modelDir, "model.pkl")
-    try:
-      with open(modelPath, "rb") as f:
-        model = pkl.load(f)
-      if model.verbosity > 0:
-        print "Model loaded from \'{}\'.".format(modelPath)
-      return model
-    except IOError as e:
-      print "Could not load model from \'{}\'.".format(modelPath)
-      raise e
-
-
-  def resetModel(self):
-    """Reset the model by clearing the classifier."""
-    self.classifier.clear()
-
-
-  def prepData(self, dataDict, preprocess):
+  def tokenize(self, text):
     """
-    Returns a dict of same format as dataDict where the text data has been
-    tokenized (and preprocessed if specified).
+    Given a bunch of text (could be several sentences) return a single list
+    containing individual tokens.  It will filterText if the global option
+    is set.
 
-    @param dataDict     (dict)          Keys are data record IDs, values are
-        three-tuples of text (str), categories (numpy.array), and record number.
-        If no labels, the categories array is empty. E.g.:
+    @param text         (str)     A bunch of text.
+    @return             (list)    A list of text tokens.
 
-        dataDict = OrderedDict([
-            ('A', ('Hello world!', array([3]), '0'),
-            ('B', ('import this', array([0, 3]), '1')
-        ])
     """
-    outDict = OrderedDict()
-    for dataID, data in dataDict.iteritems():
-      outDict[dataID] = (self.prepText(data[0], preprocess), data[1], data[2])
-
-    return outDict
-
-
-  @staticmethod
-  def prepText(text, preprocess=False):
-    """
-    Returns a list of the text tokens.
-
-    @param preprocess   (bool)    Whether or not to preprocess the text data.
-    """
-    if preprocess:
+    if self.filterText:
       sample = TextPreprocess().tokenize(text,
                                          ignoreCommon=100,
                                          removeStrings=["[identifier deleted]"],
@@ -167,187 +204,6 @@ class ClassificationModel(object):
       sample = TextPreprocess().tokenize(text)
 
     return sample
-
-
-  def tokenize(self, text, preprocess=False):
-    """
-    Given a bunch of text (could be several sentences) return a single list
-    containing individual tokens.
-
-    @param text         (str)     A bunch of text.
-    @param preprocess   (bool)    Whether or not to preprocess the text data.
-
-    TODO: get rid of @staticmethod above and then we can remove this method.
-    """
-    return self.prepText(text, preprocess)
-
-
-  def writeOutCategories(self, dirName, comparisons=None, labelRefs=None):
-    """
-    For models which define categories with bitmaps, log the categories (and
-    their relative distances) to a JSON specified by the dirName. The JSON will
-    contain the dict of category bitmaps, and if specified, dicts of label
-    references and category bitmap comparisons.
-    """
-    if not hasattr(self, "categoryBitmaps"):
-      raise TypeError("This model does not have category encodings compatible "
-                      "for logging.")
-
-    if not os.path.isdir(dirName):
-      raise ValueError("Invalid path to write file.")
-
-    with open(os.path.join(dirName, "category_distances.json"), "w") as f:
-      catDict = {"categoryBitmaps":self.categoryBitmaps,
-                 "labelRefs":dict(enumerate(labelRefs)) if labelRefs else None,
-                 "comparisons":comparisons if comparisons else None}
-      json.dump(catDict,
-                f,
-                sort_keys=True,
-                indent=2,
-                separators=(",", ": "))
-
-
-  @staticmethod
-  def classifyRandomly(labels):
-    """Return accuracy of random classifications for the labels."""
-    randomLabels = numpy.random.randint(0, labels.max(), labels.shape)
-    return (randomLabels == labels).sum() / float(labels.shape[0])
-
-
-  def getWinningLabels(self, labelFreq, seed=None):
-    """
-    Returns indices of input array, sorted for highest to lowest value. E.g.
-      >>> labelFreq = array([ 0., 4., 0., 1.])
-      >>> winners = getWinningLabels(labelFreq, seed=42)
-      >>> print winners
-      array([1, 3])
-    Note:
-      - indices of nonzero values are not included in the returned array
-      - ties are handled randomly
-
-    @param labelFreq    (numpy.array)   Ints that (in this context) represent
-                                        the frequency of inferred labels.
-    @param seed         (int)           Seed the numpy random generator.
-    @return             (numpy.array)   Indicates largest elements in labelFreq,
-                                        sorted greatest to least. Length is up
-                                        to numLabels.
-    """
-    if labelFreq is None:
-      return numpy.array([])
-
-    if seed:
-      numpy.random.seed(seed)
-    randomValues = numpy.random.random(labelFreq.size)
-
-    # First sort by labelFreq, then sort by random values.
-    winners = numpy.lexsort((randomValues, labelFreq))[::-1][:self.numLabels]
-
-    return numpy.array([i for i in winners if labelFreq[i] > 0])
-
-
-  def queryModel(self, query):
-    """
-    Preprocesses the query, encodes it into a pattern, then queries the
-    classifier to infer distances to trained-on samples.
-    @return       (list)          Two-tuples of sample ID and distance, sorted
-                                  closest to farthest from the query.
-    """
-    sample = TextPreprocess().tokenize(query)
-    encodedQuery = self.encodeSample(sample)
-    # TODO: with new CioEncoder, switch to encode by token (below).
-    # encodedQuery = [{"text": token, "bitmap": self.encodeToken(token)}
-    #                 for token in sample]
-
-    allDistances = self.infer(encodedQuery)
-
-    if len(allDistances) != len(self.sampleReference):
-      raise IndexError("Number of protoype distances must match number of "
-                       "samples trained on.")
-
-    sampleDistances = defaultdict()
-    for uniqueID in self.sampleReference:
-      sampleDistances[uniqueID] = min(
-        [allDistances[i] for i, x in enumerate(self.sampleReference)
-         if x == uniqueID])
-
-    return sorted(sampleDistances.items(), key=operator.itemgetter(1))
-
-
-  def infer(self, pattern):
-    """
-    Get the classifier output for a single input pattern; assumes classifier
-    has an infer() method (as specified in NuPIC kNN implementation).
-
-    @return dist    (numpy.array)       Each entry is the distance from the
-        input pattern to that prototype (pattern in the classifier). We divide
-        by the width of the input pattern such that all distances are between
-        0.0 and 1.0.
-    """
-    (_, _, dist, _) = self.classifier.infer(
-      self.sparsifyPattern(pattern["bitmap"], self.encoder.n))
-
-    return dist.astype("float64")
-
-
-  @staticmethod
-  def sparsifyPattern(bitmap, n):
-    """Return a numpy array of 0s and 1s to represent the input bitmap."""
-    sparsePattern = numpy.zeros(n)
-    for i in bitmap:
-      sparsePattern[i] = 1.0
-    return sparsePattern
-
-
-  def encodeSamples(self, samples, write=False):
-    """
-    Encode samples and store in self.patterns, write out encodings to a file.
-
-    @param samples    (dict)  Keys are samples' record numbers, values are
-                              3-tuples: list of tokens (str), list of labels
-                              (int), unique ID (int or str).
-    @param write      (bool)  True will write out encodings to a file.
-    @return patterns  (list)  A dict for each encoded data sample.
-    """
-    if self.numLabels == 0:
-      # No labels for classification, so populate labels with stand-ins
-      self.patterns = [{"recordNumber": i,
-                        "pattern": self.encodeSample(s[0]),
-                        "labels": numpy.array([-1]),
-                        "ID": s[2]}
-                       for i, s in samples.iteritems()]
-    else:
-      self.patterns = [{"recordNumber": i,
-                        "pattern": self.encodeSample(s[0]),
-                        "labels": s[1],
-                        "ID": s[2]}
-                       for i, s in samples.iteritems()]
-
-    if write:
-      self.writeOutEncodings()
-
-    return self.patterns
-
-
-  def encodeRandomly(self, sample, n, w):
-    """Return a random bitmap representation of the sample."""
-    random.seed(sample)
-    return numpy.sort(random.sample(xrange(n), w))
-
-
-  def writeOutEncodings(self):
-    """Log the encoding dictionaries to a txt file."""
-    if not os.path.isdir(self.modelDir):
-      raise ValueError("Invalid path to write encodings file.")
-
-    # Cast numpy arrays to list objects for serialization.
-    jsonPatterns = copy.deepcopy(self.patterns)
-    for jp in jsonPatterns:
-      jp["pattern"]["bitmap"] = jp["pattern"].get(
-        "bitmap", numpy.array([])).tolist()
-      jp["labels"] = jp.get("labels", numpy.array([])).tolist()
-
-    with open(os.path.join(self.modelDir, "encoding_log.json"), "w") as f:
-      json.dump(jsonPatterns, f, indent=2)
 
 
   def reset(self):
@@ -359,37 +215,22 @@ class ClassificationModel(object):
     pass
 
 
-  def trainText(self, token, labels, sequenceId=None, reset=0):
+  ################## UTILITY METHODS #####################
+
+  def setFilterText(self, filterText):
     """
-    Train the model with the given text token, associated labels, and
-    sequence ID.
-
-    @param token      (str)  The text token to train on
-    @param labels     (list) A list of one or more integer labels associated
-                             with this token. If the list is empty, the
-                             classifier will not be trained.
-    @param sequenceId (int)  An integer ID associated with this token and its
-                             sequence (document).
-    @param reset      (int)  Should be 0 or 1. If 1, assumes we are at the
-                             end of a sequence. A reset signal will be issued
-                             after the model has been trained on this token.
+    @param filterText (bool) If True, text will be filtered when tokenized.
     """
-    raise NotImplementedError
+    self.filterText = filterText
 
 
-  def classifyText(self, token, reset=0):
+  def getFilterText(self):
+    return self.filterText
+
+
+  def getClassifier(self):
     """
-    Classify the token
-
-    @param token    (str)  The text token to train on
-    @param reset    (int)  Should be 0 or 1. If 1, assumes we are at the
-                           end of a sequence. A reset signal will be issued
-                           after the model has been trained on this token.
-
-    @return  (numpy array) An array of size numLabels. Position i contains
-                           the likelihood that this sample belongs to the
-                           i'th category. An array containing all zeros
-                           implies no decision could be made.
+    Returns the classifier instance for the model.
     """
     raise NotImplementedError
 
@@ -397,7 +238,7 @@ class ClassificationModel(object):
   def dumpProfile(self):
     """
     Dump any profiling information. Subclasses can override this to provide
-    custom profile reports.
+    custom profile reports.  Default is to do nothing.
     """
     pass
 
@@ -501,4 +342,3 @@ class ClassificationModel(object):
     @param extraDataDir (string) Model's extra data directory path
     """
     pass
-

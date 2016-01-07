@@ -132,9 +132,8 @@ def trainModel(args, model, trainingData, labelRefs):
       print "tokens=",docTokens
       print "label=",labelRefs[doc[1][0]],"index=",doc[1]
     for i, token in enumerate(docTokens):
-      # print "Training data: ", token, id, doc[1]
-      model.trainText(token, labels=doc[1],
-                      sequenceId=doc[2], reset=int(i==lastToken))
+      model.trainToken(token, labels=doc[1],
+                       sequenceId=doc[2], reset=int(i==lastToken))
 
   return model
 
@@ -152,14 +151,15 @@ def testModel(args, model, testData, labelRefs, documentCategoryMap):
   print "==========================Classifying sample text================"
   numCorrect = 0
   for id, doc in enumerate(testData):
-    print
-    print wrapper.fill(doc[0])
-    print "desired category index:",doc[1],", label: ",labelRefs[doc[1][0]]
+    if args.verbosity > 1:
+      print
+      print wrapper.fill(doc[0])
+      print "desired category index:",doc[1],", label: ",labelRefs[doc[1][0]]
     docTokens = model.tokenize(doc[0])
     lastToken = len(docTokens) - 1
     categoryVotes = numpy.zeros(args.numLabels)
     for i, token in enumerate(docTokens):
-      modelClassification = model.classifyText(token, reset=int(i==lastToken))
+      modelClassification = model.inferToken(token, reset=int(i == lastToken))
       if modelClassification.sum() > 0:
         categoryVotes[modelClassification.argmax()] += 1
       if args.verbosity >= 2:
@@ -170,9 +170,10 @@ def testModel(args, model, testData, labelRefs, documentCategoryMap):
       # We will count classification as correct if the best category is any
       # one of the categories associated with this docId
       docId = doc[2]
-      print "Final classification for this doc:",categoryVotes.argmax(),
-      print "Label: ",labelRefs[categoryVotes.argmax()]
-      print "Labels associated: ", documentCategoryMap[docId]
+      if args.verbosity > 1:
+        print "Final classification for this doc:",categoryVotes.argmax(),
+        print "Label: ",labelRefs[categoryVotes.argmax()]
+        print "Labels associated: ", documentCategoryMap[docId]
       if categoryVotes.argmax() in documentCategoryMap[docId]:
         numCorrect += 1
     else:
@@ -185,56 +186,9 @@ def testModel(args, model, testData, labelRefs, documentCategoryMap):
   print "Accuracy =",(float(numCorrect*100.0)/len(testData)),"%"
 
 
-def queryModel(model, queryDocument, documentTextMap):
-  """
-  Demonstrates how querying might be done with the new partitionId scheme. The
-  code below assumes a document level classifier, so not appropriate for all
-  model types. The implementation should be cleaned up and moved into the
-  model, but this provides a basic idea.
-  """
-
-  print
-  print "=================Querying model on a sample document================"
-  print
-  print "Query document:"
-  print wrapper.fill(queryDocument)
-  print
-
-  # Feed the document to the model
-  docTokens = model.tokenize(queryDocument)
-  lastToken = len(docTokens) - 1
-  for i, token in enumerate(docTokens):
-    _ = model.classifyText(token, reset=int(i==lastToken))
-
-  # Retrieve the nearest documentIds
-  classifier = model.classifierRegion.getSelf()
-  knn = model.getClassifier()
-  distances = classifier.getLatestDistances()
-  sortedDistanceIndices = list(distances.argsort())
-
-  print "Here are some similar documents in order of similarity"
-  documentIds = []
-  for i in sortedDistanceIndices[0:10]:
-    docId = knn.getPartitionId(i)
-    if not docId in documentIds:
-      documentIds.append(docId)
-      print distances[i], docId
-      print "document=",wrapper.fill(documentTextMap[docId])
-      print
-
-  print "Here are some dissimilar documents in reverse order of similarity"
-  for i in reversed(sortedDistanceIndices[-10:]):
-    docId = knn.getPartitionId(i)
-    if not docId in documentIds:
-      documentIds.append(docId)
-      print distances[i], docId
-      print "document=",wrapper.fill(documentTextMap[docId])
-      print
-
-
 def readData(args):
   """
-  Read data file, print out some statistics, and return various data structures
+  Read data file, print out some statistics, and return various data structures.
 
   Returns the tuple:
     (training dataset, test dataset, labelRefs, documentCategoryMap,
@@ -292,7 +246,7 @@ labelId to text map, and docId to categories
   # Include the shifted category index
   documentCategoryMap = {}
   for doc in dataDict.iteritems():
-    docId = doc[1][2]
+    docId = int(doc[1][2])
     oldCategoryIndex = doc[1][1][0]
     if oldCategoryIndex in categoriesInOrderOfInterest:
       newIndex = categoriesInOrderOfInterest.index(oldCategoryIndex)
@@ -321,16 +275,8 @@ def runExperiment(args):
   model = createModel(args)
   model = trainModel(args, model, trainingData, labelRefs)
   model.save(args.modelDir)
-  # newmodel = ClassificationModel.load(args.modelDir)
-  # testModel(args, newmodel, testData, labelRefs, documentCategoryMap)
-
-  queryModel(model,
-             "Begin by treating the employees of the department with the "
-             "respect they deserve. Halt the unfair practices "
-             "that they are aware of doing. There is no compassion "
-             "or loyalty to its senior employees",
-             documentTextMap
-             )
+  newmodel = ClassificationModel.load(args.modelDir)
+  testModel(args, newmodel, testData, labelRefs, documentCategoryMap)
 
   # Print profile information
   print

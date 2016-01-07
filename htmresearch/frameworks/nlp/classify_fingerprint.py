@@ -135,7 +135,7 @@ class ClassificationModelFingerprint(ClassificationModel):
     return self.getWinningLabels(inferenceResult, seed)
 
 
-  def trainText(self, token, labels, sequenceId=None, reset=0):
+  def trainToken(self, token, labels, sequenceId=None, reset=0):
     """
     Train the model with the given text token, associated labels, and
     sequence ID. The sequence ID is stored in sampleReference so we know which
@@ -182,7 +182,7 @@ class ClassificationModelFingerprint(ClassificationModel):
       self.currentDocument = None
 
 
-  def classifyText(self, token, reset=0, seed=42):
+  def inferToken(self, token, reset=0, seed=42):
     """
     Classify the token
 
