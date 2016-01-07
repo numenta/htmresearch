@@ -104,7 +104,6 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
     """
     root = os.path.dirname(os.path.realpath(__file__))
     encoder = CioEncoder(retinaScaling=self.retinaScaling,
-                         cacheDir=os.path.join(root, "CioCache"),
                          retina=self.retina,
                          fingerprintType=EncoderTypes.document,
                          apiKey=self.apiKey,
@@ -148,11 +147,11 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
   def tokenize(self, text, preprocess=False):
     """
     Given a bunch of text (could be several sentences) return a single list
-    containing individual tokens. Text is tokenized using the CIO tokenize
-    method.
+    containing individual tokens.  It currently uses the CIO tokenize function
+    and ignores filterText.
 
     @param text         (str)     A bunch of text.
-    @param preprocess   (bool)    Whether or not to preprocess the text data.
+    @return             (list)    A list of text tokens.
     """
     encoder = self.sensorRegion.getSelf().encoder
     sentenceList = encoder.client.tokenize(text)
