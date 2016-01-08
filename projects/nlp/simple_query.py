@@ -153,7 +153,7 @@ def queryModel(model, queryDocument, documentTextMap,
   print "Here are some similar documents in order of similarity"
   for i, docId in enumerate(idList[0:10]):
     print distances[i], docId
-    print "document=",wrapper.fill(documentTextMap[docId])ddd
+    print "document=",wrapper.fill(documentTextMap[docId])
     print "Categories=",documentCategoryMap[str(docId)]
     print
 
