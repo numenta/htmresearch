@@ -24,6 +24,7 @@ import argparse
 import numpy
 import simplejson
 from textwrap import TextWrapper
+import matplotlib.pyplot as plt
 
 from htmresearch.support.csv_helper import readCSV, mapLabelRefs
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
@@ -59,33 +60,98 @@ def runExperiment(args):
   model.save(args.modelDir)
   newmodel = ClassificationModel.load(args.modelDir)
   
-  print "Model trained with %d documents" % (newmodel.getClassifier()._numPatterns,)
+  numDocs = newmodel.getClassifier()._numPatterns
+  
+  print "Model trained with %d documents" % (numDocs,)
   
   knn = newmodel.getClassifier()
   hc = HierarchicalClustering(knn)
   
   hc.cluster("complete")
   protos, clusterSizes = hc.getClusterPrototypes(args.numClusters,
-                                                 args.numPrototypes)
-    
+                                                 numDocs)
+
+  # Run test to ensure consistency with KNN
+  if args.knnTest:
+    knnTest(protos, knn)
+    return
+
+
+  # Summary statistics
+  # bucketCounts[i, j] is the number of occurrances of bucket j in cluster i
+  bucketCounts = numpy.zeros((args.numClusters, len(labelRefs)))
+
   for clusterId in xrange(len(clusterSizes)):
     print
-    print "Cluster %d with %d items" % (clusterId, clusterSizes[clusterId])
+    print "Cluster %d with %d documents" % (clusterId, clusterSizes[clusterId])
     print "==============="
+
+    prototypeNum = 0
     for index in protos[clusterId]:
       if index != -1:
         docId = trainingData[index][2]
-        print "(%d) %s" % (docId, trainingData[index][0])
-        print "Buckets:"
+        prototypeNum += 0
 
-        # The docId keys in documentCategoryMap are strings rather than ints
+        if prototypeNum <= args.numPrototypes:
+          print "(%d) %s" % (docId, trainingData[index][0])
+          print "Buckets:"
+
         if str(docId) in documentCategoryMap:
           for bucketId in documentCategoryMap[str(docId)]:
-            print "    ", labelRefs[bucketId]
-        else:
-          print "    <None>"
-        print "\n\n"
+            bucketCounts[clusterId, bucketId] += 1
 
+            if prototypeNum <= args.numPrototypes:
+              # The docId keys in documentCategoryMap are strings rather than ints
+              if str(docId) in documentCategoryMap:
+                for bucketId in documentCategoryMap[str(docId)]:
+                  print "    ", labelRefs[bucketId]
+              else:
+                print "    <None>"
+              print "\n\n"
+
+  
+  bucketCounts += 0
+  bucketDist = bucketCounts / bucketCounts.sum(1, keepdims=True)
+  
+  plt.pcolor(bucketDist, cmap=plt.cm.Blues)
+  # plt.bar(range(len(labelRefs)), bucketDist.T)
+  plt.xlabel("Bucket")
+  plt.ylabel("Cluster")
+  plt.title("%d clusters" % (bucketCounts.shape[0],))
+  
+  for rowIx in xrange(bucketCounts.shape[0]):
+    for colIx in xrange(bucketCounts.shape[1]):
+      if bucketCounts[rowIx, colIx] != 0:
+        plt.annotate(str(int(bucketCounts[rowIx, colIx])), xy=(colIx+0.2, rowIx+0.4))
+  
+  plt.savefig("out.png")
+
+
+
+def knnTest(protos, knn):
+  print "Running KNN Test"
+  testPassed = True
+  protoSets = [set(protoList)-set([-1]) for protoList in protos]
+
+  for cluster in protoSets:
+    if len(cluster) == 1:
+      continue
+      
+    for index in cluster:
+      if index != -1:
+        # print index
+        testPattern = knn.getPattern(index)
+        allDistances = knn._getDistances(testPattern)
+        closest = allDistances.argmin()
+        # print closest
+        if closest not in cluster:
+          testPassed = False
+  if testPassed:
+    print "KNN test passed"
+  else:
+    print "KNN test failed"
+  
+  
 
 def trainModel(args, model, trainingData, labelRefs):
   """
@@ -217,6 +283,11 @@ if __name__ == "__main__":
   parser.add_argument("--dataPath",
                       default=None,
                       help="CSV file containing labeled dataset")
+  parser.add_argument("--knnTest",
+                      default=False,
+                      action='store_true',
+                      help="Run test for consistency with KNN")
+
   # parser.add_argument("--textPreprocess",
   #                     action="store_true",
   #                     default=False,
