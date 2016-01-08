@@ -126,8 +126,6 @@ class ClassificationModel(object):
     # TODO: Should we specify that distances normalized between 0 and 1?
     # Currently we use whatever the KNN returns.
 
-    # TODO: make it optional to return distances and ids as it could be
-    # a performance hog?
     raise NotImplementedError
 
 
@@ -159,52 +157,24 @@ class ClassificationModel(object):
     # For each token run inference on the token and accumulate sum of distances
     # from this token to all other sampleIds.
     tokenList = self.tokenize(document)
+
     lastTokenIndex = len(tokenList) - 1
     categoryVotes = numpy.zeros(self.numLabels)
-    distancesForEachId = {}
+
+    if returnDetailedResults:
+      return self._inferDocumentDetailed(tokenList, sortResults=sortResults)
+
     for i, token in enumerate(tokenList):
-      if returnDetailedResults:
-        votes, idList, distances = self.inferToken(token,
-                                       reset=int(i == lastTokenIndex),
-                                       returnDetailedResults=True,
-                                       sortResults=False)
-
-        # For each id, accumulate sum of the distance to this document
-        for j, sampleId in enumerate(idList):
-          distancesForEachId[sampleId] = (
-            distancesForEachId.get(sampleId, 0) + distances[j]
-          )
-
-      else:
-        votes, _, _ = self.inferToken(token,
-                                       reset=int(i == lastTokenIndex),
-                                       returnDetailedResults=False,
-                                       sortResults=False)
+      votes, _, _ = self.inferToken(token,
+                                     reset=int(i == lastTokenIndex),
+                                     returnDetailedResults=False,
+                                     sortResults=False)
 
       if votes.sum() > 0:
         categoryVotes[votes.argmax()] += 1
 
 
-    if returnDetailedResults:
-      # Compute average distance of this document to each id
-      averageDistances = numpy.zeros(len(distancesForEachId))
-      sampleIdList = []
-      for sampleId,d in distancesForEachId.iteritems():
-        averageDistances[sampleId] = (float(d))/len(tokenList)
-        sampleIdList.append(sampleId)
-
-      # Sort the results if requested
-      if sortResults:
-        sortedIndices = averageDistances.argsort()
-        sortedDistances = averageDistances[sortedIndices]
-        sortedIdList = []
-        for i in sortedIndices:
-          sortedIdList.append(sampleIdList[i])
-        return categoryVotes, sortedIdList, sortedDistances
-
-    # Non-detailed results
-    else:
-      return categoryVotes, None, None
+    return categoryVotes, None, None
 
 
   def tokenize(self, text):
@@ -364,3 +334,75 @@ class ClassificationModel(object):
     @param extraDataDir (string) Model's extra data directory path
     """
     pass
+
+
+  def _inferDocumentDetailed(self, tokenList, sortResults=True):
+    """
+    Run inference on the model with this list of tokens and return classification
+    results, sampleIds and distances.  By default this routine will tokenize the
+    document and classify using these tokens. A reset is issued after inference.
+    Repeated sampleIds ARE removed from the results.
+
+    @param tokenList (str)     The list of tokens for inference
+    @param sortResults (bool) If true the list of sampleIds and distances
+                              will be sorted in order of increasing distances.
+
+    @return  (numpy array) An array of size numLabels. Position i contains
+                           the likelihood that this token belongs to the i'th
+                           category. An array containing all zeros implies no
+                           decision could be made.
+             (list)        A list of unique sampleIds
+             (numpy array) An array of distances from this document to each
+                           sampleId
+    """
+    # Default implementation, can be overridden
+
+    # For each token run inference on the token and accumulate sum of distances
+    # from this token to all other sampleIds.
+    lastTokenIndex = len(tokenList) - 1
+    categoryVotes = numpy.zeros(self.numLabels)
+    distancesForEachId = {}
+    classifier = self.getClassifier()
+
+    for i, token in enumerate(tokenList):
+      votes, idList, distances = self.inferToken(token,
+                                     reset=int(i == lastTokenIndex),
+                                     returnDetailedResults=True,
+                                     sortResults=False)
+
+      if votes.sum() > 0:
+        categoryVotes[votes.argmax()] += 1
+
+        # For each unique id, keep the minimum distance to this token
+        for j, sampleId in enumerate(idList):
+          # Find min distance of this sampleId to this token
+          closestDistance = distances[
+            classifier.getPatternIndicesWithPartitionId(sampleId)].min()
+
+          # Add this to our running minimum of how close this sampleId has
+          # been to this document
+          distancesForEachId[sampleId] = (
+            min(distancesForEachId.get(sampleId, numpy.inf), closestDistance)
+          )
+
+
+    # Put distance from each sampleId to this document into a numpy array
+    # ordered consistently with a list of sampleIds
+    sampleIdList = distancesForEachId.keys()
+    averageDistances = numpy.zeros(len(sampleIdList))
+    for i,sampleId in enumerate(sampleIdList):
+      averageDistances[i] = distancesForEachId.get(sampleId, numpy.inf)
+      # averageDistances[i] = (float(dist))/len(tokenList)
+
+    # Sort the results if requested
+    if sortResults:
+      sortedIndices = averageDistances.argsort()
+      sortedDistances = averageDistances[sortedIndices]
+      sortedIdList = []
+      for i in sortedIndices:
+        sortedIdList.append(sampleIdList[i])
+
+      return categoryVotes, sortedIdList, sortedDistances
+
+    else:
+      return categoryVotes, sampleIdList, averageDistances

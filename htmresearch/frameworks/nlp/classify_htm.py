@@ -201,7 +201,7 @@ class ClassificationModelHTM(ClassificationModel):
 
     dist = self.classifierRegion.getSelf().getLatestDistances()
 
-    categoryVotes = self.classifierRegion.getOutputData(
+    categoryLikelihoods = self.classifierRegion.getOutputData(
         "categoriesOut")[0:self.numLabels]
 
     # Print the outputs of each region
@@ -211,28 +211,25 @@ class ClassificationModelHTM(ClassificationModel):
     if reset == 1:
       self.reset()
 
-    if returnDetailedResults:
+    # If detailed results are not requested just return the category votes
+    if not returnDetailedResults:
+      return categoryLikelihoods, None, None
 
-      # Accumulate the ids. Sort results if requested
-      classifier = self.getClassifier()
-      if sortResults:
-        idList = []
-        sortedIndices = dist.argsort()
-        for i in sortedIndices:
-          idList.append(classifier.getPartitionId(i))
-        sortedDistances = dist[sortedIndices]
-        return categoryVotes, idList, sortedDistances
+    # Unsorted detailed results are easy
+    classifier = self.getClassifier()
+    partitionIdList = classifier.getPartitionIdPerPattern()
+    if not sortResults:
+      return categoryLikelihoods, partitionIdList, dist
 
-      # Unsorted detailed results
-      else:
-        idList = []
-        for i in range(len(dist)):
-          idList.append(classifier.getPartitionId(i))
-        return categoryVotes, idList, dist
+    # Sort results if requested
+    sortedIndices = dist.argsort()
+    sortedDistances = dist[sortedIndices]
+    sortedSampleIdList = []
+    for i in sortedIndices:
+      sortedSampleIdList.append(partitionIdList[i])
 
-    # Non-detailed results
-    else:
-        return categoryVotes, None, None
+    return categoryLikelihoods, sortedSampleIdList, sortedDistances
+
 
   def printRegionOutputs(self):
     """
