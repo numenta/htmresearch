@@ -116,14 +116,14 @@ def trainModel(model, trainingData):
   Train the given model on trainingData.
   """
   TP = TextPreprocess()
-  for text, _, uniqueID in trainingData.values():
+  for seqId, (text, _, _) in enumerate(trainingData.values()):
     textTokens = TP.tokenize(text)
     lastToken = len(textTokens) - 1
     for i, token in enumerate(textTokens):
       # use the sequence's ID as the category label
       model.trainText(token,
-                      [int(uniqueID)],
-                      sequenceId=int(uniqueID),
+                      [seqId],
+                      sequenceId=seqId,
                       reset=int(i==lastToken))
 
 
