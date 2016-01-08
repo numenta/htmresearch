@@ -205,9 +205,9 @@ class HierarchicalClustering(object):
     subsampledOverlaps = overlaps[idx]
 
     meanSubsampledOverlaps = subsampledOverlaps.mean(1)
-    biggestOverlapSubsetIdxs = numpy.argpartition(
-      -meanSubsampledOverlaps, topNumber)[:topNumber]
-    
+    biggestOverlapSubsetIdxs = numpy.argsort(
+      -meanSubsampledOverlaps)[:topNumber]
+
     return indices[biggestOverlapSubsetIdxs]
 
 

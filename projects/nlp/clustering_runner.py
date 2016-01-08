@@ -59,7 +59,7 @@ def runExperiment(args):
   model.save(args.modelDir)
   newmodel = ClassificationModel.load(args.modelDir)
   
-  print "Model trained with %d records" % (newmodel.getClassifier()._numPatterns,)
+  print "Model trained with %d documents" % (newmodel.getClassifier()._numPatterns,)
   
   knn = newmodel.getClassifier()
   hc = HierarchicalClustering(knn)
@@ -84,7 +84,7 @@ def runExperiment(args):
             print "    ", labelRefs[bucketId]
         else:
           print "    <None>"
-        print "\n\n"  
+        print "\n\n"
 
 
 def trainModel(args, model, trainingData, labelRefs):
