@@ -171,7 +171,8 @@ class ClassificationModelHTM(ClassificationModel):
       self.reset()
 
 
-  def inferToken(self, token, reset=0, sortResults=True):
+  def inferToken(self, token, reset=0, returnDetailedResults=False,
+                 sortResults=True):
     """
     Classify the token (i.e. run inference on the model with this document) and
     return classification results and a list of sampleIds and distances.
@@ -210,22 +211,28 @@ class ClassificationModelHTM(ClassificationModel):
     if reset == 1:
       self.reset()
 
-    # Accumulate the ids. Sort results if requested
-    classifier = self.getClassifier()
-    if sortResults:
-      idList = []
-      sortedIndices = dist.argsort()
-      for i in sortedIndices:
-        idList.append(classifier.getPartitionId(i))
-      sortedDistances = dist[sortedIndices]
-      return categoryVotes, idList, sortedDistances
+    if returnDetailedResults:
 
+      # Accumulate the ids. Sort results if requested
+      classifier = self.getClassifier()
+      if sortResults:
+        idList = []
+        sortedIndices = dist.argsort()
+        for i in sortedIndices:
+          idList.append(classifier.getPartitionId(i))
+        sortedDistances = dist[sortedIndices]
+        return categoryVotes, idList, sortedDistances
+
+      # Unsorted detailed results
+      else:
+        idList = []
+        for i in range(len(dist)):
+          idList.append(classifier.getPartitionId(i))
+        return categoryVotes, idList, dist
+
+    # Non-detailed results
     else:
-      idList = []
-      for i in range(len(dist)):
-        idList.append(classifier.getPartitionId(i))
-      return categoryVotes, idList, dist
-
+        return categoryVotes, None, None
 
   def printRegionOutputs(self):
     """

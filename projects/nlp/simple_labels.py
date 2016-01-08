@@ -77,20 +77,16 @@ def createModel(args):
     # Instantiate the HTM model
     model = ClassificationModelHTM(
       networkConfig=getNetworkConfig(args.networkConfigPath),
-      inputFilePath=None,
       retina=args.retina,
       verbosity=args.verbosity,
-      numLabels=args.numLabels,
-      prepData=False,
-      modelDir="tempdir")
+      numLabels=args.numLabels)
 
   elif args.modelName == "keywords":
     # Instantiate the keywords model
     model = ClassificationModelKeywords(
       verbosity=args.verbosity,
       numLabels=args.numLabels,
-      k=21,
-      modelDir="tempdir")
+      k=21)
 
   elif args.modelName == "docfp":
     # Instantiate the document fingerprint model
@@ -106,7 +102,6 @@ def createModel(args):
       verbosity=args.verbosity,
       retina=args.retina,
       numLabels=args.numLabels,
-      modelDir="tempdir",
       fingerprintType=EncoderTypes.word)
 
   else:
@@ -119,21 +114,14 @@ def trainModel(args, model, trainingData, labelRefs):
   """
   Train the given model on trainingData. Return the trained model instance.
   """
-
   print
   print "=======================Training model on sample text================"
-  for recordNum, doc in enumerate(trainingData):
-    docTokens = model.tokenize(doc[0])
-    lastToken = len(docTokens) - 1
-    if args.verbosity > 0:
-      print
-      print "Document=", recordNum, "id=", doc[2]
-      print wrapper.fill(doc[0])
-      print "tokens=",docTokens
-      print "label=",labelRefs[doc[1][0]],"index=",doc[1]
-    for i, token in enumerate(docTokens):
-      model.trainToken(token, labels=doc[1],
-                       sequenceId=doc[2], reset=int(i==lastToken))
+  for docId, doc in enumerate(trainingData):
+    document = doc[0]
+    labels = doc[1]
+    print
+    print "Document=", document, "label=",labelRefs[doc[1][0]], "id=",docId
+    model.trainDocument(document, labels, docId)
 
   return model
 
@@ -150,27 +138,22 @@ def testModel(args, model, testData, labelRefs, documentCategoryMap):
   print
   print "==========================Classifying sample text================"
   numCorrect = 0
-  for id, doc in enumerate(testData):
-    if args.verbosity > 1:
+  for recordNum, doc in enumerate(testData):
+    document = doc[0]
+    desiredLabels = doc[1]
+    if args.verbosity > 0:
       print
-      print wrapper.fill(doc[0])
-      print "desired category index:",doc[1],", label: ",labelRefs[doc[1][0]]
-    docTokens = model.tokenize(doc[0])
-    lastToken = len(docTokens) - 1
-    categoryVotes = numpy.zeros(args.numLabels)
-    for i, token in enumerate(docTokens):
-      modelClassification = model.inferToken(token, reset=int(i == lastToken))
-      if modelClassification.sum() > 0:
-        categoryVotes[modelClassification.argmax()] += 1
-      if args.verbosity >= 2:
-        print "Token: ", token
-        print "Result=",modelClassification,"categoryVotes:",categoryVotes
+      print wrapper.fill(document)
+      print "desired category index:",desiredLabels,
+      print ", label: ",labelRefs[doc[1][0]]
+
+    categoryVotes, _, _ = model.inferDocument(document)
 
     if categoryVotes.sum() > 0:
       # We will count classification as correct if the best category is any
       # one of the categories associated with this docId
       docId = doc[2]
-      if args.verbosity > 1:
+      if args.verbosity > 0:
         print "Final classification for this doc:",categoryVotes.argmax(),
         print "Label: ",labelRefs[categoryVotes.argmax()]
         print "Labels associated: ", documentCategoryMap[docId]
@@ -328,7 +311,7 @@ if __name__ == "__main__":
                       default=False,
                       help="Whether or not to use text preprocessing.")
   parser.add_argument("-v", "--verbosity",
-                      default=2,
+                      default=1,
                       type=int,
                       help="verbosity 0 will print out experiment steps, "
                            "verbosity 1 will include results, and verbosity > "

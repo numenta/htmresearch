@@ -98,17 +98,22 @@ class ClassificationModel(object):
       self.trainToken(token, labels, sampleId, reset=int(i == lastTokenIndex))
 
 
-  def inferToken(self, token, reset=0, sortResults=True):
+  def inferToken(self, token, reset=0, returnDetailedResults=False,
+                 sortResults=True):
     """
     Classify the token (i.e. run inference on the model with this document) and
-    return classification results and a list of sampleIds and distances.
-    Repeated sampleIds are NOT removed from the results.
+    return classification results and (optionally) a list of sampleIds and
+    distances.   Repeated sampleIds are NOT removed from the results.
 
     @param token    (str)     The text token to train on
     @param reset    (int)     Should be 0 or 1. If 1, assumes we are at the
                               end of a sequence. A reset signal will be issued
                               after the model has been trained on this token.
-    @param sortResults (bool) If true the list of sampleIds and distances
+    @param returnDetailedResults
+                    (bool)    If True will return sampleIds and distances
+                              This could slow things down depending on the
+                              number of stored patterns.
+    @param sortResults (bool) If True the list of sampleIds and distances
                               will be sorted in order of increasing distances.
 
     @return  (numpy array) An array of size numLabels. Position i contains
@@ -126,7 +131,8 @@ class ClassificationModel(object):
     raise NotImplementedError
 
 
-  def inferDocument(self, document, sortResults=True):
+  def inferDocument(self, document, returnDetailedResults=False,
+                    sortResults=True):
     """
     Run inference on the model with this document and return classification
     results, sampleIds and distances.  By default this routine will tokenize the
@@ -134,6 +140,10 @@ class ClassificationModel(object):
     Repeated sampleIds ARE removed from the results.
 
     @param document (str)     The document to classify
+    @param returnDetailedResults
+                    (bool)    If True will return sampleIds and distances.
+                              This could slow things down depending on the
+                              number of stored patterns.
     @param sortResults (bool) If true the list of sampleIds and distances
                               will be sorted in order of increasing distances.
 
@@ -153,36 +163,48 @@ class ClassificationModel(object):
     categoryVotes = numpy.zeros(self.numLabels)
     distancesForEachId = {}
     for i, token in enumerate(tokenList):
-      votes, idList, distances = self.inferToken(token,
-                                                 reset=int(i == lastTokenIndex),
-                                                 sortResults=False)
+      if returnDetailedResults:
+        votes, idList, distances = self.inferToken(token,
+                                       reset=int(i == lastTokenIndex),
+                                       returnDetailedResults=True,
+                                       sortResults=False)
+
+        # For each id, accumulate sum of the distance to this document
+        for j, sampleId in enumerate(idList):
+          distancesForEachId[sampleId] = (
+            distancesForEachId.get(sampleId, 0) + distances[j]
+          )
+
+      else:
+        votes, _, _ = self.inferToken(token,
+                                       reset=int(i == lastTokenIndex),
+                                       returnDetailedResults=False,
+                                       sortResults=False)
+
       if votes.sum() > 0:
         categoryVotes[votes.argmax()] += 1
 
-      # For each id, accumulate sum of the distance to this document
-      for j, sampleId in enumerate(idList):
-        distancesForEachId[sampleId] = (
-          distancesForEachId.get(sampleId, 0) + distances[j]
-        )
 
-    # Compute average distance of this document to each id
-    averageDistances = numpy.zeros(len(distancesForEachId))
-    sampleIdList = []
-    for sampleId,d in distancesForEachId.iteritems():
-      averageDistances[sampleId] = (float(d))/len(tokenList)
-      sampleIdList.append(sampleId)
+    if returnDetailedResults:
+      # Compute average distance of this document to each id
+      averageDistances = numpy.zeros(len(distancesForEachId))
+      sampleIdList = []
+      for sampleId,d in distancesForEachId.iteritems():
+        averageDistances[sampleId] = (float(d))/len(tokenList)
+        sampleIdList.append(sampleId)
 
-    # Sort the results if requested
-    if sortResults:
-      sortedIndices = averageDistances.argsort()
-      sortedDistances = averageDistances[sortedIndices]
-      sortedIdList = []
-      for i in sortedIndices:
-        sortedIdList.append(sampleIdList[i])
-      return categoryVotes, sortedIdList, sortedDistances
+      # Sort the results if requested
+      if sortResults:
+        sortedIndices = averageDistances.argsort()
+        sortedDistances = averageDistances[sortedIndices]
+        sortedIdList = []
+        for i in sortedIndices:
+          sortedIdList.append(sampleIdList[i])
+        return categoryVotes, sortedIdList, sortedDistances
 
+    # Non-detailed results
     else:
-      return categoryVotes, sampleIdList, averageDistances
+      return categoryVotes, None, None
 
 
   def tokenize(self, text):

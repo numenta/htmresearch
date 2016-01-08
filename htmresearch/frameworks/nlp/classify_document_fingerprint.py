@@ -215,7 +215,8 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
           self.printRegionOutputs()
 
 
-  def inferToken(self, token, reset=0, sortResults=True):
+  def inferToken(self, token, reset=0, returnDetailedResults=False,
+                 sortResults=True):
     """
     Classify the token (i.e. run inference on the model with this document) and
     return classification results and a list of sampleIds and distances.
@@ -225,6 +226,10 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
     @param reset    (int)  Should be 0 or 1. If 1, assumes we are at the
                            end of a sequence. A reset signal will be issued
                            after the model has been trained on this token.
+    @param returnDetailedResults
+                    (bool)    If True will return sampleIds and distances
+                              This could slow things down depending on the
+                              number of stored patterns.
     @param sortResults (bool) If true the list of sampleIds and distances
                               will be sorted in order of increasing distances.
 
@@ -253,8 +258,6 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
                             sequenceId=-1, reset=0)
       self.network.run(1)
 
-      dist = self.classifierRegion.getSelf().getLatestDistances()
-
       if self.verbosity >= 2:
         print "Classifying document:",document
         self.printRegionOutputs()
@@ -266,21 +269,28 @@ class ClassificationModelDocumentFingerprint(ClassificationModel):
       if reset == 1:
         self.reset()
 
-      # Accumulate the ids. Sort results if requested
-      classifier = self.getClassifier()
-      if sortResults:
-        idList = []
-        sortedIndices = dist.argsort()
-        for i in sortedIndices:
-          idList.append(classifier.getPartitionId(i))
-        sortedDistances = dist[sortedIndices]
-        return categoryVotes, idList, sortedDistances
+      if returnDetailedResults:
+        # Accumulate the ids. Sort results if requested
+        dist = self.classifierRegion.getSelf().getLatestDistances()
+
+        classifier = self.getClassifier()
+        if sortResults:
+          idList = []
+          sortedIndices = dist.argsort()
+          for i in sortedIndices:
+            idList.append(classifier.getPartitionId(i))
+          sortedDistances = dist[sortedIndices]
+          return categoryVotes, idList, sortedDistances
+
+        else:
+          idList = []
+          for i in range(len(dist)):
+            idList.append(classifier.getPartitionId(i))
+          return categoryVotes, idList, dist
 
       else:
-        idList = []
-        for i in range(len(dist)):
-          idList.append(classifier.getPartitionId(i))
-        return categoryVotes, idList, dist
+        # Non-detailed results
+        return categoryVotes, None, None
 
     else:
 

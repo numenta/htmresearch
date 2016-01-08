@@ -161,7 +161,7 @@ def testModel(args, model, testData):
     desiredLabels = doc[1]
     print
     print "Document=", document,", desired label: ",desiredLabels
-    categoryVotes, idList, distances = model.inferDocument(document)
+    categoryVotes, _, _ = model.inferDocument(document)
 
     if categoryVotes.sum() > 0:
       print "Final classification for this doc:",categoryVotes.argmax()

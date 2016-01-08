@@ -72,7 +72,7 @@ class ClassificationModelKeywords(ClassificationModel):
 
     """
     bitmap = self._encodeToken(token)
-    if self.verbosity >= 1:
+    if self.verbosity >= 2:
       print "Keywords training with:",token
       print "labels=",labels
       print "  bitmap:",bitmap
@@ -81,7 +81,8 @@ class ClassificationModelKeywords(ClassificationModel):
                             partitionId=sampleId)
 
 
-  def inferToken(self, token, reset=0, sortResults=True):
+  def inferToken(self, token, reset=0, returnDetailedResults=False,
+                 sortResults=True):
     """
     Classify the token (i.e. run inference on the model with this document) and
     return classification results and a list of sampleIds and distances.
@@ -101,29 +102,33 @@ class ClassificationModelKeywords(ClassificationModel):
     """
     bitmap = self._encodeToken(token)
     densePattern = self._densifyPattern(bitmap, self.n)
-    if self.verbosity >= 1:
+    if self.verbosity >= 2:
       print "Inference with token=",token,"bitmap=", bitmap
       print "Dense version:", densePattern
     (_, inferenceResult, dist, _) = self.classifier.infer(densePattern)
-    if self.verbosity >= 1:
+    if self.verbosity >= 2:
       print "Inference result=", inferenceResult
       print "Distances=", dist
 
-    # Accumulate the ids. Sort results if requested
-    if sortResults:
-      idList = []
-      sortedIndices = dist.argsort()
-      for i in sortedIndices:
-        idList.append(self.classifier.getPartitionId(i))
-      sortedDistances = dist[sortedIndices]
-      return inferenceResult, idList, sortedDistances
+    if returnDetailedResults:
+      # Accumulate the ids. Sort results if requested
+      if sortResults:
+        idList = []
+        sortedIndices = dist.argsort()
+        for i in sortedIndices:
+          idList.append(self.classifier.getPartitionId(i))
+        sortedDistances = dist[sortedIndices]
+        return inferenceResult, idList, sortedDistances
+
+      else:
+        idList = []
+        for i in range(len(dist)):
+          idList.append(self.classifier.getPartitionId(i))
+        return inferenceResult, idList, dist
 
     else:
-      idList = []
-      for i in range(len(dist)):
-        idList.append(self.classifier.getPartitionId(i))
-      return inferenceResult, idList, dist
-
+        # Return non-detailed results.
+        return inferenceResult, None, None
 
   def _encodeToken(self, token):
     """
