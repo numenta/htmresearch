@@ -90,24 +90,23 @@ def runExperiment(args):
     for index in protos[clusterId]:
       if index != -1:
         docId = trainingData[index][2]
-        prototypeNum += 0
+        prototypeNum += 1
+        display = prototypeNum <= args.numPrototypes
 
-        if prototypeNum <= args.numPrototypes:
+        if display:
           print "(%d) %s" % (docId, trainingData[index][0])
           print "Buckets:"
 
+        # The docId keys in documentCategoryMap are strings rather than ints
         if str(docId) in documentCategoryMap:
           for bucketId in documentCategoryMap[str(docId)]:
             bucketCounts[clusterId, bucketId] += 1
-
-            if prototypeNum <= args.numPrototypes:
-              # The docId keys in documentCategoryMap are strings rather than ints
-              if str(docId) in documentCategoryMap:
-                for bucketId in documentCategoryMap[str(docId)]:
-                  print "    ", labelRefs[bucketId]
-              else:
-                print "    <None>"
-              print "\n\n"
+            if display:
+              print "    ", labelRefs[bucketId]
+        elif display:
+          print "    <None>"
+        if display:
+          print "\n\n"
 
   
   bucketCounts += 0
