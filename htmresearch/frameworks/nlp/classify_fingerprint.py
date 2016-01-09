@@ -43,12 +43,13 @@ class ClassificationModelFingerprint(ClassificationModel):
                retinaScaling=1.0,
                retina="en_associative",
                apiKey=None,
+               k=3,
                classifierMetric="rawOverlap",
                **kwargs):
 
     super(ClassificationModelFingerprint, self).__init__(**kwargs)
 
-    self.classifier = KNNClassifier(k=self.numLabels,
+    self.classifier = KNNClassifier(k=k,
                                     distanceMethod=classifierMetric,
                                     exact=False,
                                     verbosity=self.verbosity-1)

@@ -43,7 +43,6 @@ from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
 from htmresearch.frameworks.nlp.classify_document_fingerprint import (
   ClassificationModelDocumentFingerprint
 )
-from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.classify_fingerprint import (
   ClassificationModelFingerprint
 )
@@ -96,7 +95,7 @@ def createModel(args):
       numLabels=args.numLabels,
       k=1)
 
-  elif args.modelName == "cioWord":
+  elif args.modelName == "cioword":
     # Instantiate the Cio word fingerprint model
     model = ClassificationModelFingerprint(
       verbosity=args.verbosity,

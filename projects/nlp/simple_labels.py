@@ -96,13 +96,14 @@ def createModel(args):
       numLabels=args.numLabels,
       k=1)
 
-  elif args.modelName == "cioWord":
+  elif args.modelName == "cioword":
     # Instantiate the Cio word fingerprint model
     model = ClassificationModelFingerprint(
       verbosity=args.verbosity,
       retina=args.retina,
       numLabels=args.numLabels,
-      fingerprintType=EncoderTypes.word)
+      fingerprintType=EncoderTypes.word,
+      k=1)
 
   else:
     raise RuntimeError("Unknown model type: " + args.modelName)
