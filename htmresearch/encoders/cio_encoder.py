@@ -353,3 +353,11 @@ class CioEncoder(LanguageEncoder):
 
   def getDescription(self):
     return self.description
+
+
+  def densifyPattern(self, bitmap):
+    """Return a numpy array of 0s and 1s to represent the given bitmap."""
+    sparsePattern = numpy.zeros(self.n)
+    for i in bitmap:
+      sparsePattern[i] = 1.0
+    return sparsePattern

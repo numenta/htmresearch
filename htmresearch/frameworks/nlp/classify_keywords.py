@@ -150,5 +150,3 @@ class ClassificationModelKeywords(ClassificationModel):
     for i in bitmap:
       sparsePattern[i] = 1.0
     return sparsePattern
-
-

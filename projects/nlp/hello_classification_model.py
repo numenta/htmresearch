@@ -45,6 +45,9 @@ from htmresearch.frameworks.nlp.classify_document_fingerprint import (
 from htmresearch.frameworks.nlp.classify_keywords import (
   ClassificationModelKeywords
 )
+from htmresearch.frameworks.nlp.classify_fingerprint import (
+  ClassificationModelFingerprint
+)
 
 # Training data we will feed the model. There are two categories here that can
 # be discriminated using bag of words
@@ -120,6 +123,13 @@ def createModel(args):
       retina=args.retina,
       numLabels=2,
       k=3)
+
+  elif args.modelName == "cioword":
+    # Instantiate the Cio word fingerprint model
+    model = ClassificationModelFingerprint(
+      verbosity=args.verbosity,
+      retina=args.retina,
+      numLabels=2)
 
   else:
     raise RuntimeError("Unknown model type: " + args.modelName)
@@ -229,7 +239,7 @@ if __name__ == "__main__":
                       default=False,
                       help="Whether or not to use text preprocessing.")
   parser.add_argument("-v", "--verbosity",
-                      default=2,
+                      default=1,
                       type=int,
                       help="verbosity 0 will print out experiment steps, "
                            "verbosity 1 will include results, and verbosity > "
