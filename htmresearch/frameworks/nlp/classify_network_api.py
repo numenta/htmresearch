@@ -38,8 +38,7 @@ class ClassificationNetworkAPI(ClassificationModel):
   API. This class will contain much of the repeated code.
 
   This class assumes subclasses will instantiate a model using the Network API.
-  It will be a model containing a LanguageSensor (with CIO encoder) and a
-  KNNCLassifierRegion.
+  It will be a model containing a LanguageSensor and a KNNCLassifierRegion.
   """
 
   def __init__(self,
