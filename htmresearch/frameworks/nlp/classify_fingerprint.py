@@ -94,8 +94,8 @@ class ClassificationModelFingerprint(ClassificationModel):
         print "\tBitmap:", bitmap
 
       for label in labels:
-        self.classifier.learn(bitmap, label, isSparse=self.encoder.n,
-                              partitionId=sampleId)
+        self.classifier.learn(
+            bitmap, label, isSparse=self.encoder.n, partitionId=sampleId)
 
       self.currentDocument = None
 
@@ -142,16 +142,12 @@ class ClassificationModelFingerprint(ClassificationModel):
       return inferenceResult, None, None
 
     if not sortResults:
-      idList = []
-      for i in range(len(dist)):
-        idList.append(self.classifier.getPartitionId(i))
+      idList = [self.classifier.getPartitionId(i) for i in xrange(len(dist))]
       return inferenceResult, idList, dist
 
     # Return sorted results
-    idList = []
     sortedIndices = dist.argsort()
-    for i in sortedIndices:
-      idList.append(self.classifier.getPartitionId(i))
+    idList = [self.classifier.getPartitionId(i) for i in sortedIndices]
     sortedDistances = dist[sortedIndices]
     return inferenceResult, idList, sortedDistances
 
@@ -161,25 +157,3 @@ class ClassificationModelFingerprint(ClassificationModel):
     Returns the classifier instance for the model.
     """
     return self.classifier
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -30,7 +30,6 @@ class ClassificationModelKeywords(ClassificationModel):
   """
   Class to run NLP classification task with random SDRs.
   """
-  # TODO: use nupic.bindings.math import Random?
 
   def __init__(self,
                n=100,
@@ -64,12 +63,7 @@ class ClassificationModelKeywords(ClassificationModel):
     Train the model with the given text token, associated labels, and
     sampleId.
 
-    @param token      (str)  The text token to train on
-    @param labels     (list) A list of one or more integer labels associated
-                             with this token.
-    @param sampleId   (int)  An integer ID associated with this token.
-    @param reset      (int)  Ignored.
-
+    See base class for description of parameters.
     """
     bitmap = self._encodeToken(token)
     if self.verbosity >= 2:
@@ -88,17 +82,7 @@ class ClassificationModelKeywords(ClassificationModel):
     return classification results and a list of sampleIds and distances.
     Repeated sampleIds are NOT removed from the results.
 
-    @param token    (str)     The text token to train on
-    @param reset    (int)     Ignored
-    @param sortResults (bool) If true the list of sampleIds and distances
-                              will be sorted in order of increasing distances.
-
-    @return  (numpy array) An array of size numLabels. Position i contains
-                           the likelihood that this token belongs to the
-                           i'th category. An array containing all zeros
-                           implies no decision could be made.
-             (list)        A list of sampleIds
-             (numpy array) An array of distances from each stored sample
+    See base class for description of parameters.
     """
     bitmap = self._encodeToken(token)
     densePattern = self._densifyPattern(bitmap, self.n)
@@ -110,30 +94,26 @@ class ClassificationModelKeywords(ClassificationModel):
       print "Inference result=", inferenceResult
       print "Distances=", dist
 
-    if returnDetailedResults:
-      # Accumulate the ids. Sort results if requested
-      if sortResults:
-        idList = []
-        sortedIndices = dist.argsort()
-        for i in sortedIndices:
-          idList.append(self.classifier.getPartitionId(i))
-        sortedDistances = dist[sortedIndices]
-        return inferenceResult, idList, sortedDistances
+    if not returnDetailedResults:
+        return inferenceResult, None, None
 
-      else:
-        idList = []
-        for i in range(len(dist)):
-          idList.append(self.classifier.getPartitionId(i))
-        return inferenceResult, idList, dist
+    # Accumulate the ids. Sort results if requested
+    if sortResults:
+      sortedIndices = dist.argsort()
+      idList = [self.classifier.getPartitionId(i) for i in sortedIndices]
+      sortedDistances = dist[sortedIndices]
+      return inferenceResult, idList, sortedDistances
 
     else:
-        # Return non-detailed results.
-        return inferenceResult, None, None
+      # Unsorted results
+      idList = [self.classifier.getPartitionId(i) for i in xrange(len(dist))]
+      return inferenceResult, idList, dist
+
 
   def _encodeToken(self, token):
     """
     Randomly encode an SDR of the input token. We seed the random number
-    generator such that a given string will yield the same SDR each time this
+    generator such that a given string will return the same SDR each time this
     method is called.
 
     @param token  (str)      String token

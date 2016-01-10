@@ -43,7 +43,7 @@ class ClassificationModel(object):
     @param verbosity  (int) Verbosity level. Larger values lead to more
                             printouts. 0 implies nothing will be printed.
 
-    @param numLabels  (int) The maximum number of categories.
+    @param numLabels  (int) The maximum number of categories in the dataset.
 
     @param filterText (bool) Whether text will be filtered when tokenized.
                              Filtering may be model specific but by default
@@ -120,8 +120,10 @@ class ClassificationModel(object):
                            the likelihood that this token belongs to the
                            i'th category. An array containing all zeros
                            implies no decision could be made.
-             (list)        A list of sampleIds
-             (numpy array) An array of distances from each stored sample
+             (list)        A list of sampleIds or None if
+                           returnDetailedResults is False.
+             (numpy array) An array of distances from each stored sample or
+                           None if returnDetailedResults is False.
     """
     # TODO: Should we specify that distances normalized between 0 and 1?
     # Currently we use whatever the KNN returns.
@@ -133,8 +135,7 @@ class ClassificationModel(object):
                     sortResults=True):
     """
     Run inference on the model with this document and return classification
-    results, sampleIds and distances.  By default this routine will tokenize the
-    document and classify using these tokens. A reset is issued after inference.
+    results, sampleIds and distances.  A reset is issued after inference.
     Repeated sampleIds ARE removed from the results.
 
     @param document (str)     The document to classify
@@ -149,10 +150,16 @@ class ClassificationModel(object):
                            the likelihood that this token belongs to the i'th
                            category. An array containing all zeros implies no
                            decision could be made.
-             (list)        A list of unique sampleIds
-             (numpy array) An array of distances from each stored sample
+             (list)        A list of unique sampleIds or None if
+                           returnDetailedResults is False.
+             (numpy array) An array of distances from each stored sample or
+                           None if returnDetailedResults is False.
     """
-    # Default implementation, can be overridden
+    # Default implementation, can be overridden This default routine will
+    # tokenize the document and classify using these tokens. The default
+    # classification involves summing the most likely classification for each
+    # token.
+
 
     # For each token run inference on the token and accumulate sum of distances
     # from this token to all other sampleIds.
@@ -177,23 +184,23 @@ class ClassificationModel(object):
     return categoryVotes, None, None
 
 
-  def tokenize(self, text):
+  def tokenize(self, preprocessedText):
     """
     Given a bunch of text (could be several sentences) return a single list
     containing individual tokens.  It will filterText if the global option
     is set.
 
-    @param text         (str)     A bunch of text.
-    @return             (list)    A list of text tokens.
+    @param preprocessedText  (str)     A bunch of text.
+    @return                  (list)    A list of text tokens.
 
     """
     if self.filterText:
-      sample = TextPreprocess().tokenize(text,
+      sample = TextPreprocess().tokenize(preprocessedText,
                                          ignoreCommon=100,
                                          removeStrings=["[identifier deleted]"],
                                          correctSpell=True)
     else:
-      sample = TextPreprocess().tokenize(text)
+      sample = TextPreprocess().tokenize(preprocessedText)
 
     return sample
 
@@ -366,9 +373,9 @@ class ClassificationModel(object):
 
     for i, token in enumerate(tokenList):
       votes, idList, distances = self.inferToken(token,
-                                     reset=int(i == lastTokenIndex),
-                                     returnDetailedResults=True,
-                                     sortResults=False)
+                                                 reset=int(i == lastTokenIndex),
+                                                 returnDetailedResults=True,
+                                                 sortResults=False)
 
       if votes.sum() > 0:
         categoryVotes[votes.argmax()] += 1
@@ -389,15 +396,14 @@ class ClassificationModel(object):
     # Put distance from each sampleId to this document into a numpy array
     # ordered consistently with a list of sampleIds
     sampleIdList = distancesForEachId.keys()
-    averageDistances = numpy.zeros(len(sampleIdList))
+    distancetoSampleIds = numpy.zeros(len(sampleIdList))
     for i,sampleId in enumerate(sampleIdList):
-      averageDistances[i] = distancesForEachId.get(sampleId, numpy.inf)
-      # averageDistances[i] = (float(dist))/len(tokenList)
+      distancetoSampleIds[i] = distancesForEachId.get(sampleId, numpy.inf)
 
     # Sort the results if requested
     if sortResults:
-      sortedIndices = averageDistances.argsort()
-      sortedDistances = averageDistances[sortedIndices]
+      sortedIndices = distancetoSampleIds.argsort()
+      sortedDistances = distancetoSampleIds[sortedIndices]
       sortedIdList = []
       for i in sortedIndices:
         sortedIdList.append(sampleIdList[i])
@@ -405,4 +411,4 @@ class ClassificationModel(object):
       return categoryVotes, sortedIdList, sortedDistances
 
     else:
-      return categoryVotes, sampleIdList, averageDistances
+      return categoryVotes, sampleIdList, distancetoSampleIds

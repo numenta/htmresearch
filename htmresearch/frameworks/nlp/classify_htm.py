@@ -19,16 +19,9 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import os
-
-from tabulate import tabulate
-
-from nupic.engine import Network
-
 from htmresearch.frameworks.classification.classification_network import (
   configureNetwork)
 from htmresearch.encoders.cio_encoder import CioEncoder
-from htmresearch.support.network_text_data_generator import NetworkDataGenerator
 from htmresearch.frameworks.nlp.classify_network_api import (
   ClassificationNetworkAPI
 )
@@ -95,19 +88,14 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
     Train the model with the given text token, associated labels, and
     sequence ID.
 
-    @param token      (str)  The text token to train on
-    @param labels     (list) A list of one or more integer labels associated
-                             with this token.
-    @param sampleId   (int)  An integer ID associated with this token and its
-                             sequence (document).
-    @param reset      (int)  Should be 0 or 1. If 1, assumes we are at the
-                             end of the document.
+    See base class for description of parameters.
     """
     for region in self.learningRegions:
       region.setParameter("learningMode", True)
-      region.setParameter("inferenceMode", True)
     sensor = self.sensorRegion.getSelf()
-    sensor.addDataToQueue(token, labels, sequenceId=sampleId, reset=0)
+    sensor.addDataToQueue(token,
+                          categoryList=labels,
+                          sequenceId=sampleId, reset=0)
     self.network.run(1)
 
     # Print the outputs of each region
@@ -125,25 +113,14 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
     return classification results and a list of sampleIds and distances.
     Repeated sampleIds are NOT removed from the results.
 
-    @param token    (str)     The text token to train on
-    @param reset    (int)     Should be 0 or 1. If 1, assumes we are at the
-                              end of a sequence. A reset signal will be issued
-                              after the model has been trained on this token.
-    @param sortResults (bool) If true the list of sampleIds and distances
-                              will be sorted in order of increasing distances.
-
-    @return  (numpy array) An array of size numLabels. Position i contains
-                           the likelihood that this token belongs to the
-                           i'th category. An array containing all zeros
-                           implies no decision could be made.
-             (list)        A list of sampleIds
-             (numpy array) An array of distances from each stored sample
+    See base class for description of parameters.
     """
     for region in self.learningRegions:
       region.setParameter("learningMode", False)
-      region.setParameter("inferenceMode", True)
     sensor = self.sensorRegion.getSelf()
-    sensor.addDataToQueue(token, [None], sequenceId=-1, reset=0)
+    sensor.addDataToQueue(token,
+                          categoryList=[None],
+                          sequenceId=-1, reset=0)
     self.network.run(1)
 
     dist = self.classifierRegion.getSelf().getLatestDistances()
@@ -171,8 +148,6 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
     # Sort results if requested
     sortedIndices = dist.argsort()
     sortedDistances = dist[sortedIndices]
-    sortedSampleIdList = []
-    for i in sortedIndices:
-      sortedSampleIdList.append(partitionIdList[i])
+    sortedSampleIdList = [partitionIdList[i] for i in sortedIndices]
 
     return categoryLikelihoods, sortedSampleIdList, sortedDistances

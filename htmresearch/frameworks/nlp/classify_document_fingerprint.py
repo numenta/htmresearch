@@ -19,12 +19,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import os
 import numpy
-
-from tabulate import tabulate
-
-from nupic.engine import Network
 
 from htmresearch.frameworks.classification.classification_network import (
   configureNetwork)
@@ -134,13 +129,7 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
     point the model is trained with the buffered tokens and the labels and
     sampleId sent in that call.
 
-    @param token      (str)  The text token to train on
-    @param labels     (list) A list of one or more integer labels associated
-                             with this token.
-    @param sampleId   (int)  An integer ID associated with this token and its
-                             sequence (document).
-    @param reset      (int)  Should be 0 or 1. If 1, assumes we are at the
-                             end of the document.
+    See base class for description of parameters.
     """
     # Accumulate text
     if self.currentDocument is None:
@@ -175,23 +164,7 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
     return classification results and a list of sampleIds and distances.
     Repeated sampleIds are NOT removed from the results.
 
-    @param token    (str)  The text token to train on
-    @param reset    (int)  Should be 0 or 1. If 1, assumes we are at the
-                           end of a sequence. A reset signal will be issued
-                           after the model has been trained on this token.
-    @param returnDetailedResults
-                    (bool)    If True will return sampleIds and distances
-                              This could slow things down depending on the
-                              number of stored patterns.
-    @param sortResults (bool) If true the list of sampleIds and distances
-                              will be sorted in order of increasing distances.
-
-    @return  (numpy array) An array of size numLabels. Position i contains
-                           the likelihood that this token belongs to the
-                           i'th category. An array containing all zeros
-                           implies no decision could be made.
-             (list)        A list of sampleIds
-             (numpy array) An array of distances from each stored sample
+    See base class for description of parameters.
     """
     # Accumulate text
     if self.currentDocument is None:
@@ -204,7 +177,6 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
 
       for region in self.learningRegions:
         region.setParameter("learningMode", False)
-        region.setParameter("inferenceMode", True)
       document = " ".join(self.currentDocument)
       sensor = self.sensorRegion.getSelf()
       sensor.addDataToQueue(token=document, categoryList=[None],
@@ -236,9 +208,7 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
           return categoryVotes, idList, sortedDistances
 
         else:
-          idList = []
-          for i in range(len(dist)):
-            idList.append(classifier.getPartitionId(i))
+          idList = [classifier.getPartitionId(i) for i in xrange(len(dist))]
           return categoryVotes, idList, dist
 
       else:
