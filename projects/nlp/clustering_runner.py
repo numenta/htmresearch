@@ -31,6 +31,9 @@ from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.classify_document_fingerprint import (
   ClassificationModelDocumentFingerprint
 )
+from htmresearch.frameworks.nlp.classify_fingerprint import (
+  ClassificationModelFingerprint
+)
 from htmresearch.algorithms.hierarchical_clustering import (
   HierarchicalClustering
 )
@@ -50,8 +53,15 @@ def runExperiment(args):
     if record[2] not in includedDocIds:
       includedDocIds.add(record[2])
       trainingData.append(record)
-
-  model = ClassificationModelDocumentFingerprint(
+  
+  if args.modelName == "docfp":
+    modelClass = ClassificationModelDocumentFingerprint
+  elif args.modelName == "cioword":
+    modelClass = ClassificationModelFingerprint
+  else:
+    raise RuntimeError("Unsupported model type")
+  
+  model = modelClass(
     verbosity=args.verbosity,
     retina=args.retina,
     numLabels=len(labelRefs),
@@ -108,7 +118,52 @@ def runExperiment(args):
         if display:
           print "\n\n"
 
+  createBucketClusterPlot(args, bucketCounts)
+  create2DSVDProjection(args, protos, trainingData, documentCategoryMap, knn)
+
+
+def create2DSVDProjection(args, protos, trainingData, documentCategoryMap, knn):
+  sparseDataMatrix = HierarchicalClustering._extractVectorsFromKNN(knn)
+  covarianceMatrix = numpy.cov(sparseDataMatrix.toarray(), rowvar=0)
+  u, s, v = numpy.linalg.svd(covarianceMatrix)
+  projectionMatrix = numpy.dot(u[:,:2], numpy.diag(s[:2]))
+  projectedData = sparseDataMatrix.dot(projectionMatrix)
   
+  colorSequenceBucket = [min(documentCategoryMap[docId]) for docId in documentCategoryMap]
+  print colorSequenceBucket
+  
+  plt.figure()
+  plt.subplot(121, aspect="equal")
+  plt.title("Bucket labels (%s)" % (args.modelName,))
+  plt.xlabel("PC 2")
+  plt.ylabel("PC 1")
+  plt.scatter(projectedData[:,1], projectedData[:,0], c=colorSequenceBucket)
+  
+  colorSequenceClusters = numpy.zeros(len(colorSequenceBucket))
+  clusterId = 0
+  for dataIndices in protos:
+    colorSequenceClusters[[d for d in dataIndices if d != -1]] = clusterId
+    clusterId += 1
+  
+  plt.subplot(122, aspect="equal")
+  plt.title("Clusters (%s)" % (args.modelName,))
+  plt.xlabel("PC 2")
+  plt.ylabel("PC 1")
+  plt.scatter(projectedData[:,1], projectedData[:,0], c=colorSequenceClusters)
+  
+  
+  plt.savefig("scatter.png")
+  
+  plt.figure()
+  plt.plot(s[:250])
+  plt.xlabel("Singular value #")
+  plt.ylabel("Singular value")
+  plt.savefig("singular_values.png")
+  
+  print s.min(), s.max()
+  print s[-10:]
+
+def createBucketClusterPlot(args, bucketCounts):
   bucketCounts += 0
   bucketDist = bucketCounts / bucketCounts.sum(1, keepdims=True)
   
@@ -116,7 +171,7 @@ def runExperiment(args):
   # plt.bar(range(len(labelRefs)), bucketDist.T)
   plt.xlabel("Bucket")
   plt.ylabel("Cluster")
-  plt.title("%d clusters" % (bucketCounts.shape[0],))
+  plt.title("%d clusters using model %s" % (bucketCounts.shape[0], args.modelName))
   
   for rowIx in xrange(bucketCounts.shape[0]):
     for colIx in xrange(bucketCounts.shape[1]):
@@ -124,7 +179,7 @@ def runExperiment(args):
         plt.annotate(str(int(bucketCounts[rowIx, colIx])), xy=(colIx+0.2, rowIx+0.4))
   
   plt.savefig("out.png")
-
+  
 
 
 def knnTest(protos, knn):
@@ -156,22 +211,14 @@ def trainModel(args, model, trainingData, labelRefs):
   """
   Train the given model on trainingData. Return the trained model instance.
   """
-
   print
   print "=======================Training model on sample text================"
-  for recordNum, doc in enumerate(trainingData):
-    docTokens = model.tokenize(doc[0])
-    lastToken = len(docTokens) - 1
-    if args.verbosity > 0:
-      print
-      print "Document=", recordNum, "id=", doc[2]
-      print wrapper.fill(doc[0])
-      print "tokens=",docTokens
-      print "label=",labelRefs[doc[1][0]],"index=",doc[1]
-    for i, token in enumerate(docTokens):
-      # print "Training data: ", token, id, doc[1]
-      model.trainText(token, labels=doc[1],
-                      sequenceId=doc[2], reset=int(i==lastToken))
+  for docId, doc in enumerate(trainingData):
+    document = doc[0]
+    labels = doc[1]
+    print
+    print "Document=", document, "label=",labelRefs[doc[1][0]], "id=",docId
+    model.trainDocument(document, labels, docId)
 
   return model
 
@@ -252,9 +299,9 @@ if __name__ == "__main__":
   )
 
   parser.add_argument("-m", "--modelName",
-                      default="docfp",
+                      default="cioword",
                       type=str,
-                      help="Name of model class. Options: [docfp]")
+                      help="Name of model class. Options: [docfp, cioword]")
   parser.add_argument("--retinaScaling",
                       default=1.0,
                       type=float,
