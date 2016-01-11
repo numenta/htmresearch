@@ -43,7 +43,6 @@ from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
 from htmresearch.frameworks.nlp.classify_document_fingerprint import (
   ClassificationModelDocumentFingerprint
 )
-from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.classify_fingerprint import (
   ClassificationModelFingerprint
 )
@@ -102,8 +101,7 @@ def createModel(args):
       verbosity=args.verbosity,
       retina=args.retina,
       numLabels=args.numLabels,
-      fingerprintType=EncoderTypes.word,
-      k=1)
+      fingerprintType=EncoderTypes.word)
 
   else:
     raise RuntimeError("Unknown model type: " + args.modelName)
@@ -117,62 +115,61 @@ def trainModel(args, model, trainingData, labelRefs):
   """
   print
   print "=======================Training model on sample text================"
-  for docId, doc in enumerate(trainingData):
+  for recordNum, doc in enumerate(trainingData):
     document = doc[0]
     labels = doc[1]
-    print
-    print "Document=", document, "label=",labelRefs[doc[1][0]], "id=",docId
+    docId = doc[2]
+    if args.verbosity > 0:
+      print
+      print "Document=", wrapper.fill(document)
+      print "label=",labelRefs[labels[0]], "id=",docId
     model.trainDocument(document, labels, docId)
 
   return model
 
 
-def testModel(args, model, testData, labelRefs, documentCategoryMap):
+def queryModel(model, queryDocument, documentTextMap,
+               labelRefs, documentCategoryMap):
   """
-  Test the given model on testData and print out accuracy.
-
-  Accuracy is calculated as follows. Each token in a document votes for a single
-  category. The document is classified with the category that received the most
-  votes. Note that it is possible for a token and/or document to receive no
-  votes, in which case it is counted as a misclassification.
+  Demonstrates how querying might be done with the new partitionId scheme. The
+  code below assumes a document level classifier, so not appropriate for all
+  model types. The implementation should be cleaned up and moved into the
+  model, but this provides a basic idea.
   """
+
   print
-  print "==========================Classifying sample text================"
-  numCorrect = 0
-  for recordNum, doc in enumerate(testData):
-    document = doc[0]
-    desiredLabels = doc[1]
-    if args.verbosity > 0:
-      print
-      print wrapper.fill(document)
-      print "desired category index:",desiredLabels,
-      print ", label: ",labelRefs[doc[1][0]]
-
-    categoryVotes, _, _ = model.inferDocument(document)
-
-    if categoryVotes.sum() > 0:
-      # We will count classification as correct if the best category is any
-      # one of the categories associated with this docId
-      docId = doc[2]
-      if args.verbosity > 0:
-        print "Final classification for this doc:",categoryVotes.argmax(),
-        print "Label: ",labelRefs[categoryVotes.argmax()]
-        print "Labels associated: ", documentCategoryMap[docId]
-      if categoryVotes.argmax() in documentCategoryMap[docId]:
-        numCorrect += 1
-    else:
-      print "No classification possible for this doc"
-
-  # Compute and print out percent accuracy
+  print "=================Querying model on a sample document================"
   print
+  print "Query document:"
+  print wrapper.fill(queryDocument)
   print
-  print "Total correct =",numCorrect,"out of",len(testData),"documents"
-  print "Accuracy =",(float(numCorrect*100.0)/len(testData)),"%"
+
+  categoryVotes, idList, distances = model.inferDocument(
+                                                queryDocument,
+                                                returnDetailedResults=True,
+                                                sortResults=True)
+
+  print "Here are some similar documents in order of similarity"
+  for i, docId in enumerate(idList[0:10]):
+    print distances[i], docId
+    print "document=",wrapper.fill(documentTextMap[docId])
+    print "Categories=",documentCategoryMap[str(docId)]
+    print
+
+  print "Here are some dissimilar documents in reverse order of similarity"
+  lastDocIndex = len(idList)-1
+  for i in range(lastDocIndex, lastDocIndex-10, -1):
+    print distances[i], idList[i]
+    print "document=",wrapper.fill(documentTextMap[idList[i]])
+    print
 
 
-def readData(args):
+def readData(args, categoriesInOrderOfInterest=None):
   """
-  Read data file, print out some statistics, and return various data structures.
+  Read data file, print out some statistics, and return various data structures
+
+  categoriesInOrderOfInterest (list) Optional list of integers representing
+                                     the priority order of various categories
 
   Returns the tuple:
     (training dataset, test dataset, labelRefs, documentCategoryMap,
@@ -206,8 +203,10 @@ labelId to text map, and docId to categories
   # Read data
   dataDict = readCSV(args.dataPath, 1)
   labelRefs, dataDict = mapLabelRefs(dataDict)
-  categoriesInOrderOfInterest=[8,9,10,5,6,11,13,0,1,2,3,4,7,
-                               12,14][0:args.numLabels]
+  if categoriesInOrderOfInterest is None:
+      categoriesInOrderOfInterest = range(0,args.numLabels)
+  else:
+    categoriesInOrderOfInterest=categoriesInOrderOfInterest[0:args.numLabels]
 
   # Select data based on categories of interest. Shift category indices down
   # so we go from 0 to numLabels-1
@@ -230,7 +229,7 @@ labelId to text map, and docId to categories
   # Include the shifted category index
   documentCategoryMap = {}
   for doc in dataDict.iteritems():
-    docId = int(doc[1][2])
+    docId = doc[1][2]
     oldCategoryIndex = doc[1][1][0]
     if oldCategoryIndex in categoriesInOrderOfInterest:
       newIndex = categoriesInOrderOfInterest.index(oldCategoryIndex)
@@ -254,13 +253,35 @@ def runExperiment(args):
   """
 
   (trainingData, testData, labelRefs, documentCategoryMap,
-   documentTextMap) = readData(args)
+   documentTextMap) = readData(args,
+                         [8,9,10,5,6,11,13,0,1,2,3,4,7,12,14])
 
   model = createModel(args)
   model = trainModel(args, model, trainingData, labelRefs)
-  model.save(args.modelDir)
-  newmodel = ClassificationModel.load(args.modelDir)
-  testModel(args, newmodel, testData, labelRefs, documentCategoryMap)
+
+  print labelRefs
+
+  # Now query the model using some example HR complaints about managers
+  queryModel(model,
+             "Begin by treating the employees of the department with the "
+             "respect they deserve. Halt the unfair practices "
+             "that they are aware of doing. There is no compassion "
+             "or loyalty to its senior employees",
+             documentTextMap, labelRefs, documentCategoryMap,
+             )
+
+  queryModel(model,
+             "My manager is really incompetent. He has no clue how to "
+             "properly supervise his employees and keep them motivated.",
+             documentTextMap, labelRefs, documentCategoryMap,
+             )
+
+  queryModel(model,
+             "I wish I had a lot more vacation and much more flexibility "
+             "in how I manage my own time. I should be able to choose "
+             "when I come in as long as I manage to get all my tasks done.",
+             documentTextMap, labelRefs, documentCategoryMap,
+             )
 
   # Print profile information
   print

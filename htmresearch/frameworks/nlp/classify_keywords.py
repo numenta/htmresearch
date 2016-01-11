@@ -19,45 +19,29 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import copy
 import numpy
-import os
-
-import simplejson as json
+import random
 
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from nupic.algorithms.KNNClassifier import KNNClassifier
 
 
-
 class ClassificationModelKeywords(ClassificationModel):
   """
-  Class to run the survey response classification task with random SDRs.
-
-  From the experiment runner, the methods expect to be fed one sample at a time.
+  Class to run NLP classification task with random SDRs.
   """
-  # TODO: use nupic.bindings.math import Random
 
   def __init__(self,
                n=100,
                w=20,
                verbosity=1,
-               numLabels=3,
-               modelDir="ClassificationModelKeywords",
                classifierMetric="rawOverlap",
                k=None,
+               **kwargs
                ):
 
-    super(ClassificationModelKeywords, self).__init__(
-      verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
+    super(ClassificationModelKeywords, self).__init__(**kwargs)
 
-    # Backward compatibility to support previous odd behavior
-    if k == None:
-      k = numLabels
-
-    # We use the pctOverlapOfInput distance metric for this model so the
-    # queryModel() output is consistent (i.e. 0.0-1.0). The KNN classifications
-    # aren't affected b/c the raw overlap distance is still used under the hood.
     self.classifier = KNNClassifier(exact=True,
                                     distanceMethod=classifierMetric,
                                     k=k,
@@ -67,176 +51,82 @@ class ClassificationModelKeywords(ClassificationModel):
     self.w = w
 
 
-  def encodeToken(self, token):
+  def getClassifier(self):
+    """
+    Returns the classifier instance for the model.
+    """
+    return self.classifier
+
+
+  def trainToken(self, token, labels, sampleId, reset=0):
+    """
+    Train the model with the given text token, associated labels, and
+    sampleId.
+
+    See base class for description of parameters.
+    """
+    bitmap = self._encodeToken(token)
+    if self.verbosity >= 2:
+      print "Keywords training with:",token
+      print "labels=",labels
+      print "  bitmap:",bitmap
+    for label in labels:
+      self.classifier.learn(bitmap, label, isSparse=self.n,
+                            partitionId=sampleId)
+
+
+  def inferToken(self, token, reset=0, returnDetailedResults=False,
+                 sortResults=True):
+    """
+    Classify the token (i.e. run inference on the model with this document) and
+    return classification results and a list of sampleIds and distances.
+    Repeated sampleIds are NOT removed from the results.
+
+    See base class for description of parameters.
+    """
+    bitmap = self._encodeToken(token)
+    densePattern = self._densifyPattern(bitmap, self.n)
+    if self.verbosity >= 2:
+      print "Inference with token=",token,"bitmap=", bitmap
+      print "Dense version:", densePattern
+    (_, inferenceResult, dist, _) = self.classifier.infer(densePattern)
+    if self.verbosity >= 2:
+      print "Inference result=", inferenceResult
+      print "Distances=", dist
+
+    if not returnDetailedResults:
+        return inferenceResult, None, None
+
+    # Accumulate the ids. Sort results if requested
+    if sortResults:
+      sortedIndices = dist.argsort()
+      idList = [self.classifier.getPartitionId(i) for i in sortedIndices]
+      sortedDistances = dist[sortedIndices]
+      return inferenceResult, idList, sortedDistances
+
+    else:
+      # Unsorted results
+      idList = [self.classifier.getPartitionId(i) for i in xrange(len(dist))]
+      return inferenceResult, idList, dist
+
+
+  def _encodeToken(self, token):
     """
     Randomly encode an SDR of the input token. We seed the random number
-    generator such that a given string will yield the same SDR each time this
+    generator such that a given string will return the same SDR each time this
     method is called.
 
     @param token  (str)      String token
     @return       (list)     Numpy arrays, each with a bitmap of the
                              encoding.
     """
-    return self.encodeRandomly(token, self.n, self.w)
+    random.seed(token)
+    return numpy.sort(random.sample(xrange(self.n), self.w))
 
 
-  def encodeSample(self, sample):
-    """
-    Randomly encode an SDR of the input strings. We seed the random number
-    generator such that a given string will yield the same SDR each time this
-    method is called.
-
-    @param sample     (list)            Tokenized sample, where each item is a
-                                        string token.
-    @return           (list)            Numpy arrays, each with a bitmap of the
-                                        encoding.
-    """
-    patterns = []
-    for token in sample:
-      patterns.append({"text":token,
-                       "sparsity":float(self.w)/self.n,
-                       "bitmap":self.encodeToken(token)})
-    return patterns
-
-
-  def writeOutEncodings(self):
-    """
-    Log the encoding dictionaries to a txt file; overrides the superclass
-    implementation.
-    """
-    if not os.path.isdir(self.modelDir):
-      raise ValueError("Invalid path to write file.")
-
-    # Cast numpy arrays to list objects for serialization.
-    jsonPatterns = copy.deepcopy(self.patterns)
-    for jp in jsonPatterns:
-      for tokenPattern in jp["pattern"]:
-        tokenPattern["bitmap"] = tokenPattern.get(
-          "bitmap", numpy.array([])).tolist()
-      jp["labels"] = jp.get("labels", numpy.array([])).tolist()
-
-    with open(os.path.join(self.modelDir, "encoding_log.txt"), "w") as f:
-      f.write(json.dumps(jsonPatterns, indent=1))
-
-
-  def trainModel(self, i):
-    # TODO: add batch training, where i is a list
-    """
-    Train the classifier on the sample and labels for record i. The list
-    sampleReference is populated to correlate classifier prototypes to sample
-    IDs. This model is unique in that a single sample contains multiple encoded
-    patterns.
-    """
-    count = 0
-    for token in self.patterns[i]["pattern"]:
-      if token["bitmap"].any():
-        for label in self.patterns[i]["labels"]:
-          self.classifier.learn(token["bitmap"], label, isSparse=self.n)
-          self.sampleReference.append(self.patterns[i]["ID"])
-          count += 1
-
-    return count
-
-
-  def testModel(self, i, seed=42):
-    """
-    Test the model on record i.  Returns the classifications most frequent
-    amongst the classifications of the sample's individual tokens.
-    We ignore the terms that are unclassified, picking the most frequent
-    classifications among those that are detected.
-    The random seed is used in getWinningLabels().
-
-    @return           (numpy array)   numLabels most-frequent classifications
-                                      for the data samples; int or empty.
-    """
-    totalInferenceResult = None
-    for pattern in self.patterns[i]["pattern"]:
-      if not pattern:
-        continue
-
-      (_, inferenceResult, _, _) = self.classifier.infer(
-        self.sparsifyPattern(pattern["bitmap"], self.n))
-
-      if totalInferenceResult is None:
-        totalInferenceResult = inferenceResult
-      else:
-        totalInferenceResult += inferenceResult
-
-    return self.getWinningLabels(totalInferenceResult, seed)
-
-
-  def infer(self, patterns):
-    """
-    Get the classifier output for a single input pattern; assumes classifier
-    has an infer() method (as specified in NuPIC kNN implementation). For this
-    model we sum the distances across the patterns and normalize
-    before returning.
-    @return       (numpy.array)       Each entry is the distance from the
-        input pattern to that prototype (pattern in the classifier). All
-        distances are between 0.0 and 1.0
-    """
-    # TODO: implement getNumPatterns() method in classifier.
-    distances = numpy.zeros((self.classifier._numPatterns))
-    for i, p in enumerate(patterns):
-      (_, _, dist, _) = self.classifier.infer(
-        self.sparsifyPattern(p["bitmap"], self.n))
-
-      distances = numpy.array([sum(x) for x in zip(dist, distances)])
-
-    return distances / (i+1)
-
-
-  def trainText(self, token, labels, sequenceId=None, reset=0):
-    """
-    Train the model with the given text token, associated labels, and
-    sequence ID. The sequence ID is stored in sampleReference so we know which
-    samples the model has been trained on, and specifically where they
-    appear in the classifier space.
-
-    @param token      (str)  The text token to train on
-    @param labels     (list) A list of one or more integer labels associated
-                             with this token. If the list is empty, the
-                             classifier will not be trained.
-    @param sequenceId (int)  An integer ID associated with this token and its
-                             sequence (document).
-    @param reset      (int)  Ignored.
-    """
-    bitmap = self.encodeToken(token)
-    if self.verbosity >= 1:
-      print "Keywords training with:",token
-      print "labels=",labels
-      print "  bitmap:",bitmap
-    for label in labels:
-      self.classifier.learn(bitmap, label, isSparse=self.n)
-      self.sampleReference.append(sequenceId)
-
-      # TODO: replace the need for sampleReference w/ partitionId.
-      # There is a bug in how partitionId is handled during infer if it is
-      # not passed in, so we won't pass it in for now (line 863 of
-      # KNNClassifier.py)
-      # self.classifier.learn(bitmap, label, isSparse=self.n,
-      #                       partitionId=sequenceId)
-
-
-  def classifyText(self, token, reset=0):
-    """
-    Classify the token
-
-    @param token    (str)  The text token to train on
-    @param reset    (int)  Ignored
-
-    @return  (numpy array) An array of size numLabels. Position i contains
-                           the likelihood that this sample belongs to the
-                           i'th category. An array containing all zeros
-                           implies no decision could be made.
-    """
-    bitmap = self.encodeToken(token)
-    densePattern = self.sparsifyPattern(bitmap, self.n)
-    if self.verbosity >= 1:
-      print "Inference with token=",token,"bitmap=", bitmap
-      print "Dense version:", densePattern
-    (_, inferenceResult, _, _) = self.classifier.infer(densePattern)
-    if self.verbosity >= 1:
-      print "Inference result=", inferenceResult
-
-    return inferenceResult
+  def _densifyPattern(self, bitmap, n):
+    """Return a numpy array of 0s and 1s to represent the input bitmap."""
+    sparsePattern = numpy.zeros(n)
+    for i in bitmap:
+      sparsePattern[i] = 1.0
+    return sparsePattern
