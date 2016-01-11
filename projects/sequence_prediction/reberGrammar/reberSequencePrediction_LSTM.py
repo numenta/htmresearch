@@ -20,7 +20,7 @@
 # ----------------------------------------------------------------------
 
 from __future__ import print_function
-from reberGrammar import *
+from htmresearch.support.reberGrammar import *
 
 import matplotlib.pyplot as plt
 from matplotlib import rcParams

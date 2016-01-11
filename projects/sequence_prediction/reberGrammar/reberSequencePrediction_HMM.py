@@ -19,7 +19,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from reberGrammar import *
+from htmresearch.support.reberGrammar import *
 from htmresearch.algorithms.hidden_markov_model import HMM
 
 import matplotlib.pyplot as plt
