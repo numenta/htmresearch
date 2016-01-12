@@ -38,6 +38,8 @@ def registerAllResearchRegions():
 
   registerRegion("LanguageSensor")
   registerRegion("TemporalPoolerRegion")
+
+  # For some reason this region doesn't work
   # registerRegion("TMRegion")
 
 
