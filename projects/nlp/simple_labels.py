@@ -34,79 +34,28 @@ python simple_labels.py -c data/network_configs/tp_knn.json -m htm --dataPath FI
 
 import argparse
 import numpy
-import simplejson
 from textwrap import TextWrapper
 
-from htmresearch.encoders import EncoderTypes
 from htmresearch.support.csv_helper import readCSV, mapLabelRefs
-from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
-from htmresearch.frameworks.nlp.classify_document_fingerprint import (
-  ClassificationModelDocumentFingerprint
-)
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
-from htmresearch.frameworks.nlp.classify_fingerprint import (
-  ClassificationModelFingerprint
-)
-from htmresearch.frameworks.nlp.classify_keywords import (
-  ClassificationModelKeywords
-)
+from htmresearch.frameworks.nlp.model_factory import (
+  createModel, getNetworkConfig)
 
 
 wrapper = TextWrapper(width=100)
 
-
-def getNetworkConfig(networkConfigPath):
+def instantiateModel(args):
   """
-  Given path to JSON model config file, return a dict.
+  Return an instance of the model we will use.
   """
-  try:
-    with open(networkConfigPath, "rb") as fin:
-      return simplejson.load(fin)
-  except IOError as e:
-    print "Could not find network configuration JSON at \'{}\'.".format(
-      networkConfigPath)
-    raise e
 
+  # Some values of K we know work well for this problem for specific model types
+  kValues = { "keywords": 21 }
 
-def createModel(args):
-  """
-  Return a classification model of the appropriate type. The model could be any
-  supported subclass of ClassficationModel based on args.
-  """
-  if args.modelName == "htm":
-    # Instantiate the HTM model
-    model = ClassificationModelHTM(
-      networkConfig=getNetworkConfig(args.networkConfigPath),
-      retina=args.retina,
-      verbosity=args.verbosity,
-      numLabels=args.numLabels)
-
-  elif args.modelName == "keywords":
-    # Instantiate the keywords model
-    model = ClassificationModelKeywords(
-      verbosity=args.verbosity,
-      numLabels=args.numLabels,
-      k=21)
-
-  elif args.modelName == "docfp":
-    # Instantiate the document fingerprint model
-    model = ClassificationModelDocumentFingerprint(
-      verbosity=args.verbosity,
-      retina=args.retina,
-      numLabels=args.numLabels,
-      k=1)
-
-  elif args.modelName == "cioword":
-    # Instantiate the Cio word fingerprint model
-    model = ClassificationModelFingerprint(
-      verbosity=args.verbosity,
-      retina=args.retina,
-      numLabels=args.numLabels,
-      fingerprintType=EncoderTypes.word,
-      k=1)
-
-  else:
-    raise RuntimeError("Unknown model type: " + args.modelName)
+  # Create model after setting specific arguments required for this experiment
+  args.networkConfig = getNetworkConfig(args.networkConfigPath)
+  args.k = kValues.get(args.modelName, 1)
+  model = createModel(**vars(args))
 
   return model
 
@@ -117,11 +66,12 @@ def trainModel(args, model, trainingData, labelRefs):
   """
   print
   print "=======================Training model on sample text================"
-  for docId, doc in enumerate(trainingData):
+  for i, doc in enumerate(trainingData):
     document = doc[0]
     labels = doc[1]
+    docId = doc[2]
     print
-    print "Document=", document, "label=",labelRefs[doc[1][0]], "id=",docId
+    print "Document=", document, "label=",labelRefs[doc[1][0]], "id=",docId,
     model.trainDocument(document, labels, docId)
 
   return model
@@ -256,7 +206,10 @@ def runExperiment(args):
   (trainingData, testData, labelRefs, documentCategoryMap,
    documentTextMap) = readData(args)
 
-  model = createModel(args)
+  # Create model
+  model = instantiateModel(args)
+
+  # model = createModel(args)
   model = trainModel(args, model, trainingData, labelRefs)
   model.save(args.modelDir)
   newmodel = ClassificationModel.load(args.modelDir)
