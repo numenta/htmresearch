@@ -36,8 +36,6 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
                apiKey=None,
                **kwargs):
     """
-    @param networkConfig      (dict)    Network configuration dict with region
-                                        parameters.
     @param retinaScaling      (float)   Scales the dimensions of the SDRs.
     @param retina             (str)     Name of Cio retina.
     @param apiKey             (str)     Key for Cio API.

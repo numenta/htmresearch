@@ -67,7 +67,7 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
                retinaScaling=1.0,
                retina="en_associative",
                apiKey=None,
-               k=3,
+               k=1,
                **kwargs):
     """
     @param retinaScaling      (float)   Scales the dimensions of the SDRs.

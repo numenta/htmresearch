@@ -45,10 +45,8 @@ class ClassificationNetworkAPI(ClassificationModel):
                networkConfig=None,
                **kwargs):
     """
-    @param retinaScaling      (float)   Scales the dimensions of the SDRs.
-    @param retina             (str)     Name of Cio retina.
-    @param apiKey             (str)     Key for Cio API.
-    @param k                  (int)     The k for KNN classifier
+    @param networkConfig      (dict)    Network configuration dict with region
+                                        parameters.
 
     Note classifierMetric is not specified here as it is in other models. This
     is done in the network config file.
@@ -58,6 +56,9 @@ class ClassificationNetworkAPI(ClassificationModel):
     self.networkConfig = networkConfig
     self.currentDocument = None
     self.network = None
+
+    if self.networkConfig is None:
+      raise RuntimeError("Must specify a network config dict")
 
 
   def getClassifier(self):

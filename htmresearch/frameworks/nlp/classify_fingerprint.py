@@ -43,7 +43,7 @@ class ClassificationModelFingerprint(ClassificationModel):
                retinaScaling=1.0,
                retina="en_associative",
                apiKey=None,
-               k=3,
+               k=1,
                classifierMetric="rawOverlap",
                **kwargs):
 

@@ -36,7 +36,7 @@ class ClassificationModelKeywords(ClassificationModel):
                w=20,
                verbosity=1,
                classifierMetric="rawOverlap",
-               k=None,
+               k=1,
                **kwargs
                ):
 
