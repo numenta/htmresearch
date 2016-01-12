@@ -29,6 +29,8 @@ import os
 from collections import OrderedDict
 
 from htmresearch.encoders import EncoderTypes
+from htmresearch.frameworks.nlp.classification_model import (
+  ClassificationModel)
 from htmresearch.frameworks.nlp.classify_fingerprint import (
   ClassificationModelFingerprint)
 from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
@@ -66,19 +68,6 @@ def loadJSON(jsonPath):
 
 
 
-def loadModel(modelPath):
-  """Load a serialized model."""
-  try:
-    with open(modelPath, "rb") as f:
-      model = pkl.load(f)
-    print "Model loaded from '{}'.".format(modelPath)
-    return model
-  except IOError as e:
-    print "Could not load model from '{}'.".format(modelPath)
-    raise e
-
-
-
 def _createModel(modelName, categoryCount, savePath, **htmArgs):
   """Return an instantiated model."""
   modelCls = _MODEL_MAPPING.get(modelName, None)
@@ -112,9 +101,7 @@ def _createModel(modelName, categoryCount, savePath, **htmArgs):
 
 
 def trainModel(model, trainingData):
-  """
-  Train the given model on trainingData.
-  """
+  """Train the given model on trainingData."""
   for seqId, (text, _, _) in enumerate(trainingData.values()):
     model.trainDocument(text, [seqId], seqId)
 
@@ -127,7 +114,7 @@ def run(args):
   categoryCount = len(dataDict)
 
   if args.loadPath:
-    model = loadModel(args.loadPath)
+    model = ClassificationModel().load(args.loadPath)
   
   elif args.modelName == "HTMNetwork":
     networkConfig = loadJSON(_NETWORK_JSON)
@@ -150,7 +137,7 @@ def run(args):
 
 
   if args.savePath:
-    model.saveModel()
+    model.save(args.savePath)
 
   # Query the model.
   printTemplate = "{0:<10}|{1:<30}"
