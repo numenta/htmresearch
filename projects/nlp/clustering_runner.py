@@ -128,10 +128,23 @@ def create2DSVDProjection(args, protos, trainingData, documentCategoryMap, knn):
   u, s, v = numpy.linalg.svd(covarianceMatrix)
   projectionMatrix = numpy.dot(u[:,:2], numpy.diag(s[:2]))
   projectedData = sparseDataMatrix.dot(projectionMatrix)
-  
-  colorSequenceBucket = [min(documentCategoryMap[docId]) for docId in documentCategoryMap]
-  print colorSequenceBucket
-  
+
+  categoryCounts = []
+  for document in documentCategoryMap:
+    for category in documentCategoryMap[document]:
+      if category >= len(categoryCounts):
+        categoryCounts.extend([0] * (category - len(categoryCounts) + 1))
+      categoryCounts[category] += 1
+  categoryCounts = numpy.array(categoryCounts)
+
+  colorSequenceBucket = []
+  for docId in documentCategoryMap:
+    buckets = documentCategoryMap[docId]
+    counts = categoryCounts[buckets]
+    maxBucketIndex = numpy.argmax(counts)
+    maxBucket = buckets[maxBucketIndex]
+    colorSequenceBucket.append(maxBucket)
+
   plt.figure()
   plt.subplot(121, aspect="equal")
   plt.title("Bucket labels (%s)" % (args.modelName,))
