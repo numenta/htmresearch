@@ -155,6 +155,31 @@ class TextPreprocess(object):
                expandAbbr=False,
                expandContr=False):
     """
+    LIGHTWEIGHT
+    Tokenize, returning only lower-case letters and "$".
+    """
+    originalWords = text.split(" ")
+    processedWords = []
+    mapping = []  # maps original to tokens
+    # import pdb; pdb.set_trace()
+    for i, word in enumerate(originalWords):
+      tokenized = re.findall("[a-z$]+", word.lower())
+      # mapping.extend([i for _ in tokenized])
+      mapping.extend([i]*len(tokenized))
+      processedWords.extend(tokenized)
+
+    # import pdb; pdb.set_trace()
+    return processedWords, mapping
+
+
+  def tokenizeAndFilter(self,
+               text,
+               ignoreCommon=None,
+               removeStrings=None,
+               correctSpell=False,
+               expandAbbr=False,
+               expandContr=False):
+    """
     Tokenize, returning only lower-case letters and "$".
     @param text               (str)             Single string to tokenize.
     @param ignoreCommon       (int)             This many most frequent words
