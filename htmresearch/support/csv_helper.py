@@ -51,17 +51,23 @@ def readCSV(csvFile, numLabels=0):
         sampleIdx = headers.index("Sample")
         idIdx = headers.index("ID")
       except ValueError as e:
-        print ("Could not find \'ID\' and/or \'Sample\' columns, so assuming "
+        print ("Could not find 'ID' and/or 'Sample' columns, so assuming "
                "they are 0 and 2, respectively.")
         sampleIdx = 2
         idIdx = 0
-      labelIdx = range(sampleIdx + 1, sampleIdx + 1 + numLabels)
-
+      
       dataDict = OrderedDict()
-      for lineNumber, line in enumerate(reader):
-        dataDict[lineNumber] = (line[sampleIdx],
-                                [line[i] for i in labelIdx if line[i]],
-                                line[idIdx])
+
+      if numLabels > 0:
+        labelIdx = range(sampleIdx + 1, sampleIdx + 1 + numLabels)
+        for lineNumber, line in enumerate(reader):
+          dataDict[lineNumber] = (line[sampleIdx],
+                                  [line[i] for i in labelIdx if line[i]],
+                                  line[idIdx])
+      else:
+        for lineNumber, line in enumerate(reader):
+          dataDict[lineNumber] = (line[sampleIdx], [], line[idIdx])
+
       return dataDict
 
   except IOError as e:
