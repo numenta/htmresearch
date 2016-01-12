@@ -37,6 +37,8 @@ from htmresearch.frameworks.nlp.classify_fingerprint import (
 from htmresearch.algorithms.hierarchical_clustering import (
   HierarchicalClustering
 )
+from htmresearch.frameworks.nlp.model_factory import (getNetworkConfig)
+
 
 
 wrapper = TextWrapper(width=100)
@@ -61,11 +63,8 @@ def runExperiment(args):
   else:
     raise RuntimeError("Unsupported model type")
   
-  model = modelClass(
-    verbosity=args.verbosity,
-    retina=args.retina,
-    numLabels=len(labelRefs),
-    k=1)
+  args.networkConfig = getNetworkConfig(args.networkConfigPath)
+  model = modelClass(numLabels=1, **vars(args))
   model = trainModel(args, model, trainingData, labelRefs)
   model.save(args.modelDir)
   newmodel = ClassificationModel.load(args.modelDir)
@@ -358,6 +357,10 @@ if __name__ == "__main__":
                            "verbosity 1 will include results, and verbosity > "
                            "1 will print out preprocessed tokens and kNN "
                            "inference metrics.")
+  parser.add_argument("-c", "--networkConfigPath",
+                      default="data/network_configs/sensor_knn.json",
+                      help="Path to JSON specifying the network params.",
+                      type=str)
   args = parser.parse_args()
 
   # By default set checkpoint directory name based on model name
