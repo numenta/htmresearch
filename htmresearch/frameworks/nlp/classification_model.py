@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Copyright (C) 2016, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -35,8 +35,8 @@ class ClassificationModel(object):
   """
 
   def __init__(self,
+               numLabels=None,
                verbosity=1,
-               numLabels=3,
                filterText=False,
                **kwargs):
     """
@@ -53,6 +53,10 @@ class ClassificationModel(object):
     """
     # TODO: we may want to provide more flexible filtering options, or even
     # an instance of the TextPreprocess class.
+
+    if numLabels is None:
+      raise RuntimeError("Must specify numLabels")
+
     self.numLabels = numLabels
     self.verbosity = verbosity
     self.filterText = filterText

@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Copyright (C) 2016, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -36,7 +36,7 @@ class ClassificationModelKeywords(ClassificationModel):
                w=20,
                verbosity=1,
                classifierMetric="rawOverlap",
-               k=None,
+               k=1,
                **kwargs
                ):
 

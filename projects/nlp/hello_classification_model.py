@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Copyright (C) 2016, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -33,21 +33,11 @@ python hello_classification_model.py -c data/network_configs/tp_knn.json -m htm
 """
 
 import argparse
-import simplejson
-import numpy
 import copy
 
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
-from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
-from htmresearch.frameworks.nlp.classify_document_fingerprint import (
-  ClassificationModelDocumentFingerprint
-)
-from htmresearch.frameworks.nlp.classify_keywords import (
-  ClassificationModelKeywords
-)
-from htmresearch.frameworks.nlp.classify_fingerprint import (
-  ClassificationModelFingerprint
-)
+from htmresearch.frameworks.nlp.model_factory import (
+  createModel, getNetworkConfig)
 
 # Training data we will feed the model. There are two categories here that can
 # be discriminated using bag of words
@@ -71,70 +61,22 @@ testData = copy.deepcopy(trainingData)
 testData.append(["fox eats carrots", [1]])     # Should get this wrong
 testData.append(["wolf consumes salad", [0]])  # CIO models should get this
 
-def splitDocumentIntoTokens(document):
+
+def instantiateModel(args):
   """
-  Given a document (set of words), return a list containing individual tokens
-  to be fed into model.
+  Return an instance of the model we will use.
   """
-  return document.split()
+  # Some values of K we know work well for this problem for specific model types
+  kValues = { "keywords": 21, "docfp": 3 }
 
-
-def getNetworkConfig(networkConfigPath):
-  """
-  Given path to JSON model config file, return a dict.
-  """
-  try:
-    with open(networkConfigPath, "rb") as fin:
-      return simplejson.load(fin)
-  except IOError as e:
-    print "Could not find network configuration JSON at \'{}\'.".format(
-      networkConfigPath)
-    raise e
-
-
-def createModel(args):
-  """
-  Return a classification model of the appropriate type. The model could be any
-  supported subclass of ClassficationModel based on args.
-  """
-  if args.modelName == "htm":
-    # Instantiate the HTM model
-    model = ClassificationModelHTM(
-      networkConfig=getNetworkConfig(args.networkConfigPath),
-      inputFilePath=None,
-      retina=args.retina,
-      verbosity=args.verbosity,
-      numLabels=2,
-      prepData=False,
-      modelDir="tempdir")
-
-  elif args.modelName == "keywords":
-    # Instantiate the keywords model
-    model = ClassificationModelKeywords(
-      verbosity=args.verbosity,
-      numLabels=2,
-      k=9,
-      modelDir="tempdir")
-
-  elif args.modelName == "docfp":
-    # Instantiate the document fingerprint model
-    model = ClassificationModelDocumentFingerprint(
-      verbosity=args.verbosity,
-      retina=args.retina,
-      numLabels=2,
-      k=3)
-
-  elif args.modelName == "cioword":
-    # Instantiate the Cio word fingerprint model
-    model = ClassificationModelFingerprint(
-      verbosity=args.verbosity,
-      retina=args.retina,
-      numLabels=2)
-
-  else:
-    raise RuntimeError("Unknown model type: " + args.modelName)
+  # Create model after setting specific arguments required for this experiment
+  args.networkConfig = getNetworkConfig(args.networkConfigPath)
+  args.k = kValues.get(args.modelName, 1)
+  args.numLabels = 2
+  model = createModel(**vars(args))
 
   return model
+
 
 
 def trainModel(model, trainingData):
@@ -191,11 +133,17 @@ def runExperiment(args, trainingData, testData):
   restore model, test on test data.
   """
 
-  model = createModel(args)
+  # Create model
+  model = instantiateModel(args)
+
+  # Train model
   model = trainModel(model, trainingData)
+
+  # Test model
   testModel(args, model, testData)
 
-  # Test serialization - should give same result as above
+  # Test serialization - testing after reloading should give same result as
+  # above
   model.save(args.modelDir)
   newmodel = ClassificationModel.load(args.modelDir)
   print
@@ -234,10 +182,6 @@ if __name__ == "__main__":
   parser.add_argument("--modelDir",
                       default="MODELNAME.checkpoint",
                       help="Model will be saved in this directory.")
-  parser.add_argument("--textPreprocess",
-                      action="store_true",
-                      default=False,
-                      help="Whether or not to use text preprocessing.")
   parser.add_argument("-v", "--verbosity",
                       default=1,
                       type=int,
