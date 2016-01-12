@@ -79,7 +79,7 @@ def loadModel(modelPath):
 
 
 
-def _createModel(modelName, savePath, **htmArgs):
+def _createModel(modelName, categoryCount, savePath, **htmArgs):
   """Return an instantiated model."""
   modelCls = _MODEL_MAPPING.get(modelName, None)
 
@@ -103,7 +103,7 @@ def _createModel(modelName, savePath, **htmArgs):
     model = modelCls(classifierMetric=_MODEL_CLASSIFIER_METRIC)
 
   model.verbosity = 0
-  model.numLabels = 0
+  model.numLabels = categoryCount
   if savePath:
     model.modelDir = savePath
 
@@ -115,16 +115,8 @@ def trainModel(model, trainingData):
   """
   Train the given model on trainingData.
   """
-  TP = TextPreprocess()
   for seqId, (text, _, _) in enumerate(trainingData.values()):
-    textTokens = TP.tokenize(text)
-    lastToken = len(textTokens) - 1
-    for i, token in enumerate(textTokens):
-      # use the sequence's ID as the category label
-      model.trainText(token,
-                      [seqId],
-                      sequenceId=seqId,
-                      reset=int(i==lastToken))
+    model.trainDocument(text, [seqId], seqId)
 
 
 
@@ -132,6 +124,7 @@ def run(args):
 
   print "Getting and prepping the data..."
   dataDict = readCSV(args.dataPath, numLabels=0)
+  categoryCount = len(dataDict)
 
   if args.loadPath:
     model = loadModel(args.loadPath)
@@ -146,11 +139,11 @@ def run(args):
       networkConfig=networkConfig,
       inputFilePath=None,
       prepData=False,
-      numLabels=0,
+      numLabels=categoryCount,
       retinaScaling=1.0)
 
   else:
-    model = _createModel(modelName=args.modelName, savePath=args.savePath)
+    model = _createModel(args.modelName, categoryCount, args.savePath)
 
   print "Training the model (and encoding the data)..."
   trainModel(model, dataDict)
@@ -165,9 +158,12 @@ def run(args):
     print "Now we query the model for samples (quit with 'q')..."
     input = raw_input("Enter a query: ")
     if input == "q": break
-    sortedDistances = model.queryModel(input)
+
+    _, idList, sortedDistances = model.inferDocument(
+      input, returnDetailedResults=True, sortResults=True)
+    
     print printTemplate.format("Sample ID", "Distance from query")
-    for sID, dist in sortedDistances:
+    for sID, dist in zip(idList, sortedDistances):
       print printTemplate.format(sID, dist)
   return
 
