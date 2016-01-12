@@ -64,8 +64,6 @@ def createModel(modelName, **kwargs):
                           model type should be passed in here.
   """
 
-  print kwargs
-
   if modelName == "htm":
     # Instantiate the HTM model
     model = ClassificationModelHTM(**kwargs)
@@ -83,7 +81,7 @@ def createModel(modelName, **kwargs):
     model = ClassificationModelFingerprint(**kwargs)
 
   else:
-    raise RuntimeError("Unknown model type: " + args.modelName)
+    raise RuntimeError("Unknown model type: " + modelName)
 
   return model
 
