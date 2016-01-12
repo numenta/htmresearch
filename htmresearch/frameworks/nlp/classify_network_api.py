@@ -92,12 +92,6 @@ class ClassificationNetworkAPI(ClassificationModel):
       self.tpRegion = self.network.regions[
         self.networkConfig["tpRegionConfig"].get("regionName")]
 
-    # There is sometimes an SP region
-    self.spRegion = None
-    if self.networkConfig.has_key("spRegionConfig"):
-      self.spRegion = self.network.regions[
-        self.networkConfig["spRegionConfig"].get("regionName")]
-
     self.learningRegions = learningRegions
 
     self.network.enableProfiling()
