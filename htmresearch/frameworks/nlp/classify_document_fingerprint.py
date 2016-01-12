@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Copyright (C) 2016, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -67,7 +67,7 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
                retinaScaling=1.0,
                retina="en_associative",
                apiKey=None,
-               k=3,
+               k=1,
                **kwargs):
     """
     @param retinaScaling      (float)   Scales the dimensions of the SDRs.

@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Copyright (C) 2016, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -36,8 +36,6 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
                apiKey=None,
                **kwargs):
     """
-    @param networkConfig      (dict)    Network configuration dict with region
-                                        parameters.
     @param retinaScaling      (float)   Scales the dimensions of the SDRs.
     @param retina             (str)     Name of Cio retina.
     @param apiKey             (str)     Key for Cio API.
