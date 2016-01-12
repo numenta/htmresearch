@@ -32,6 +32,7 @@ class SimpleUnionPoolerTest(unittest.TestCase):
 		self.unionPooler = SimpleUnionPooler(inputDimensions=(2048,),
 		                                     historyLength=10)
 
+
 	def testUnionCompute(self):
 		activeCells = []
 		activeCells.append([1, 3, 4])
@@ -45,7 +46,8 @@ class SimpleUnionPoolerTest(unittest.TestCase):
 		for i in xrange(len(activeCells)):
 			activeCellsUnion += activeCells[i]
 
-		self.assertSetEqual(set(numpy.where(outputVector)[0]), set(activeCellsUnion))
+		self.assertSetEqual(set(numpy.where(outputVector)[0]),
+		                    set(activeCellsUnion))
 
 
 	def testHistoryLength(self):
@@ -63,7 +65,8 @@ class SimpleUnionPoolerTest(unittest.TestCase):
 			inputVector[numpy.array(activeCells[i])] = 1
 			self.unionPooler.unionIntoArray(activeCells[i], outputVector)
 
-		self.assertSetEqual(set(numpy.where(outputVector)[0]), set(activeCellsUnion))
+		self.assertSetEqual(set(numpy.where(outputVector)[0]),
+		                    set(activeCellsUnion))
 
 
 if __name__ == '__main__':
