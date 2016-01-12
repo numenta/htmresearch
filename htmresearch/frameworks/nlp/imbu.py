@@ -17,7 +17,7 @@ from htmresearch.support.text_preprocess import TextPreprocess
 
 
 
-class ModelTypes(Enum):
+class ImbuModelTypes(Enum):
   CioWordFingerprint = ClassificationModelFingerprint
   CioDocumentFingerprint = ClassificationModelFingerprint
   CioWindows = ClassificationModelWindows
@@ -42,10 +42,10 @@ class ImbuUnableToLoadModelError(ImbuError):
 
 
 
-class Imbu(object):
+class ImbuModels(object):
 
   defaultSimilarityMetric = ModelSimilarityMetrics.pctOverlapOfInput
-  defaultModelType = ModelTypes.HTMNetwork
+  defaultModelType = ImbuModelTypes.HTMNetwork
 
   def __init__(self, cacheRoot, dataPath, loadPath, savePath,
       modelSimilarityMetric):
@@ -56,6 +56,7 @@ class Imbu(object):
     self.loadPath = loadPath
     self.savePath = savePath
     self.dataPath = dataPath
+    self.dataDict = self._loadTrainingData()
 
 
   def __repr__(self):
@@ -65,49 +66,54 @@ class Imbu(object):
             .format(**self.__dict__))
 
 
+  def _defaultModelFactoryKwargs(self):
+    return dict(
+      numLabels=len(self.dataDict),
+      modelDir=self.savePath,
+      classifierMetric=self.modelSimilarityMetric.value)
+
 
   def modelFactory(self, modelType, **kwargs):
 
     modelType = modelType or self.defaultModelType
 
-    if modelType is ModelTypes.CioWordFingerprint:
+    if modelType is ImbuModelTypes.CioWordFingerprint:
       model = modelType.value(retina=kwargs.get("retina"),
                               apiKey=kwargs.get("apiKey"),
                               fingerprintType=EncoderTypes.word,
-                              modelDir=self.savePath,
                               cacheRoot=self.cacheRoot,
-                              classifierMetric=self.modelSimilarityMetric.value)
+                              **self._defaultModelFactoryKwargs())
 
-    elif modelType is ModelTypes.CioDocumentFingerprint:
+    elif modelType is ImbuModelTypes.CioDocumentFingerprint:
       model = modelType.value(retina=kwargs.get("retina"),
                               apiKey=kwargs.get("apiKey"),
                               fingerprintType=EncoderTypes.document,
-                              modelDir=self.savePath,
                               cacheRoot=self.cacheRoot,
-                              classifierMetric=self.modelSimilarityMetric.value)
+                              **self._defaultModelFactoryKwargs())
 
-    elif modelType is ModelTypes.HTMNetwork:
+    elif modelType is ImbuModelTypes.HTMNetwork:
       raise NotImplementedError("HTMNetwork model type is not implemented.")
 
     else:
-      if modelType not in ModelTypes:
+      if modelType not in ImbuModelTypes:
         raise NotImplementedError()
 
-      model = modelType.value(modelDir=self.savePath,
-                              classifierMetric=self.modelSimilarityMetric.value)
+      model = modelType.value(**self._defaultModelFactoryKwargs())
 
     model.verbosity = 0
-    model.numLabels = 0
 
     return model
 
 
-  def loadModel(self):
-    try:
-      return ClassificationModel.load(self.loadPath)
-    except IOError as exc:
-      raise ImbuUnableToLoadModelError(exc)
+  def loadModel(self, *modelFactoryArgs, **modelFactoryKwargs):
 
+    try:
+      model = ClassificationModel.load(self.loadPath)
+    except IOError as exc:
+      model = self.modelFactory(*modelFactoryArgs, **modelFactoryKwargs)
+      self.train(model)
+
+    return model
 
 
   def _loadTrainingData(self):
@@ -115,8 +121,20 @@ class Imbu(object):
 
 
   def train(self, model):
-    dataDict = self._loadTrainingData()
-    raise NotImplementedError() # Not sure what to do here any more
+    for seqId, (text, _, _) in enumerate(self.dataDict.values()):
+      model.trainDocument(text, [seqId], seqId)
+
+    self.save(model)
+
+
+  def query(self, model, query, returnDetailedResults=True, sortResults=True):
+    return model.inferDocument(query,
+                               returnDetailedResults=returnDetailedResults,
+                               sortResults=sortResults)
+
+
+  def save(self, model):
+    model.save(self.savePath)
 
 
 
@@ -128,15 +146,15 @@ def main():
   parser.add_argument("--modelSimilarityMetric",
                       choices={metric.name
                                for metric in ModelSimilarityMetrics},
-                      default=Imbu.defaultSimilarityMetric.name,
+                      default=ImbuModels.defaultSimilarityMetric.name,
                       help="Classifier metric")
   parser.add_argument("--dataPath",
                       help="Path to data CSV; samples must be in column w/ "
                            "header 'Sample'; see readCSV() for more.",
                       required=True)
   parser.add_argument("--modelName",
-                      choices={modelType.name for modelType in ModelTypes},
-                      default=Imbu.defaultModelType.name,
+                      choices={modelType.name for modelType in ImbuModelTypes},
+                      default=ImbuModels.defaultModelType.name,
                       type=str,
                       help="Name of model class. Also used for model results "
                            "directory and pickle checkpoint.")
@@ -150,7 +168,7 @@ def main():
                       help="Path to save the serialized model.")
   args = parser.parse_args()
 
-  imbu = Imbu(
+  imbu = ImbuModels(
     cacheRoot=args.cacheRoot,
     modelSimilarityMetric=getattr(ModelSimilarityMetrics,
                                   args.modelSimilarityMetric),
@@ -159,17 +177,9 @@ def main():
     savePath=args.savePath
   )
 
-  if args.loadPath:
-    model = imbu.loadModel()
-  else:
-    model = imbu.modelFactory(getattr(ModelTypes, args.modelName),
-                              retina=os.environ["IMBU_RETINA_ID"],
-                              apiKey=os.environ["CORTICAL_API_KEY"])
-
-  imbu.train(model)
-
-  if args.savePath:
-    model.save()
+  model = imbu.loadModel(getattr(ImbuModelTypes, args.modelName),
+                         retina=os.environ.get("IMBU_RETINA_ID"),
+                         apiKey=os.environ.get("CORTICAL_API_KEY"))
 
   # Query the model.
   printTemplate = "{0:<10}|{1:<30}"
@@ -181,11 +191,10 @@ def main():
     if query == "q":
       break
 
-    sortedDistances = model.queryModel(query)
+    _, idList, sortedDistances = imbu.query(model, query)
 
     print printTemplate.format("Sample ID", "Distance from query")
-
-    for sID, dist in sortedDistances:
+    for sID, dist in zip(idList, sortedDistances):
       print printTemplate.format(sID, dist)
 
 
