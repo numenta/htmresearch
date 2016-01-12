@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Copyright (C) 2016, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -43,7 +43,7 @@ def getNetworkConfig(networkConfigPath):
     with open(networkConfigPath, "rb") as fin:
       return simplejson.load(fin)
   except IOError as e:
-    print "Could not find network configuration JSON at \'{}\'.".format(
+    print "Could not find network configuration JSON at '{}'.".format(
       networkConfigPath)
     raise e
 
