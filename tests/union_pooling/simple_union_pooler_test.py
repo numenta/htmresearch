@@ -22,7 +22,6 @@
 
 import unittest
 import numpy
-import numpy.testing as npt
 from htmresearch.algorithms.simple_union_pooler import SimpleUnionPooler
 
 REAL_DTYPE = numpy.float32
@@ -38,19 +37,16 @@ class SimpleUnionPoolerTest(unittest.TestCase):
 		activeCells.append([1, 3, 4])
 		activeCells.append([101, 302, 405])
 
+		outputVector = numpy.zeros(shape=(2048,))
 		for i in xrange(len(activeCells)):
-			inputVector = numpy.zeros(shape=(2048,))
-			inputVector[numpy.array(activeCells[i])] = 1
-			self.unionPooler.compute(inputVector)
+			self.unionPooler.unionIntoArray(activeCells[i], outputVector)
 
-		activeCellsUnion = set()
+		activeCellsUnion = []
 		for i in xrange(len(activeCells)):
-			activeCellsUnion = activeCellsUnion | set(activeCells[i])
-		self.assertSetEqual(self.unionPooler._activeCells, activeCellsUnion)
+			activeCellsUnion += activeCells[i]
 
-		for i in xrange(len(activeCells)):
-			npt.assert_allclose(self.unionPooler._activationTimer[numpy.array(activeCells[i])],
-			                    len(activeCells)-i)
+		self.assertSetEqual(set(numpy.where(outputVector)[0]), set(activeCellsUnion))
+
 
 	def testHistoryLength(self):
 		self.unionPooler = SimpleUnionPooler(inputDimensions=(2048,),
@@ -58,17 +54,16 @@ class SimpleUnionPoolerTest(unittest.TestCase):
 		activeCells = []
 		activeCells.append([1, 3, 4])
 		activeCells.append([101, 302, 405])
-		activeCells.append([240, 903, 858])
+		activeCells.append([240, 3, 858])
+		activeCellsUnion = [101, 302, 405, 240, 3, 858]
 
+		outputVector = numpy.zeros(shape=(2048,))
 		for i in xrange(len(activeCells)):
 			inputVector = numpy.zeros(shape=(2048,))
 			inputVector[numpy.array(activeCells[i])] = 1
-			self.unionPooler.compute(inputVector)
+			self.unionPooler.unionIntoArray(activeCells[i], outputVector)
 
-		activeCellsUnion = set()
-		for i in xrange(1, len(activeCells)):
-			activeCellsUnion = activeCellsUnion | set(activeCells[i])
-		self.assertSetEqual(self.unionPooler._activeCells, activeCellsUnion)
+		self.assertSetEqual(set(numpy.where(outputVector)[0]), set(activeCellsUnion))
 
 
 if __name__ == '__main__':

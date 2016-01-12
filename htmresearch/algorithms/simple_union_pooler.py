@@ -46,56 +46,81 @@ class SimpleUnionPooler(object):
 		@param historyLength: The union window length. For a union of the last
 		10 steps, use historyLength=10
 		"""
-		inputDimensions = numpy.array(inputDimensions, ndmin=1)
 
-		self._numInputs = inputDimensions.prod()
+		self._inputDimensions = inputDimensions
 		self._historyLength = historyLength
+		self._numInputs = 1
+		for d in inputDimensions:
+			self._numInputs *= d
 
 		# Current union SDR; the output of the union pooler algorithm
-		self._unionSDR = numpy.zeros(shape=inputDimensions, dtype=UINT_DTYPE)
+		self._unionSDR = numpy.zeros(shape=self._inputDimensions, dtype=UINT_DTYPE)
 
 		# Indices of currently active cells
-		self._activeCells = set()
-
-		# Activation time of all cells
-		self._activationTimer = numpy.zeros(self._numInputs, dtype=REAL_DTYPE)
+		self._activeCellsHistory = []
 
 
 	def reset(self):
-		self._unionSDR = numpy.array([], dtype=UINT_DTYPE)
-		self._activeCells = set()
-		self._activationTimer = numpy.zeros(self._numInputs, dtype=REAL_DTYPE)
-
-
-	def compute(self, inputVector):
 		"""
-		Computes one cycle of the Union Pooler algorithm.
-		@param inputVector: A numpy array of 0's and 1's that comprises the
-		input to the union pooler. The array will be treated as a one dimensional array
+		Reset Union Pooler, clear active cell history
 		"""
-
-		if not isinstance(inputVector, numpy.ndarray):
-			raise TypeError("Input vector must be a numpy array, not %s" %
-											str(type(inputVector)))
-
-		if inputVector.size != self._numInputs:
-			raise ValueError(
-					"Input vector dimensions don't match. Expecting %s but got %s" % (
-							inputVector.size, self._numInputs))
-
-		inputVector = numpy.array(inputVector, dtype=REAL_DTYPE)
-		inputVector.reshape(-1)
-
-		activeBits = set(numpy.where(inputVector)[0])
-
-		self._activeCells = self._activeCells | activeBits
-		self._activationTimer[list(self._activeCells)] += 1
-
-		cellsPastHistoryLength = set(numpy.where(self._activationTimer > self._historyLength)[0])
-		self._activeCells = self._activeCells - cellsPastHistoryLength
+		self._unionSDR = numpy.zeros(shape=self._inputDimensions, dtype=UINT_DTYPE)
+		self._activeCellsHistory = []
 
 
-	def getUnionSDR(self):
-		self._unionSDR = numpy.zeros(shape=(self._numInputs,), dtype=UINT_DTYPE)
-		self._unionSDR[list(self._activeCells)] = 1
+	def compute(self, activeCells):
+		"""
+		Computes one cycle of the Union Pooler algorithm. Return the union SDR
+		Parameters:
+		----------------------------
+		@param activeCells: A list that stores indices of active cells
+		"""
+		self._activeCellsHistory.append(activeCells)
+		if len(self._activeCellsHistory) > self._historyLength:
+			self._activeCellsHistory.pop(0)
+
+		self.createUnionSDR()
 		return self._unionSDR
+
+
+	def createUnionSDR(self):
+		"""
+		Create union SDR from a history of active cells
+		"""
+		self._unionSDR = numpy.zeros(shape=self._inputDimensions, dtype=UINT_DTYPE)
+		for i in self._activeCellsHistory:
+			self._unionSDR[i] = 1
+
+
+	def unionIntoArray(self, inputVector, outputVector):
+		"""
+		Create a union of the inputVector and copy the result into the output Vector
+		Parameters:
+		----------------------------
+		@param inputVector: The inputVector can be either a full numpy array containing
+		0's and 1's, or a list of non-zero entry indices
+		@param outputVector: A numpy array that matches the inputDimensions of the
+		union pooler.
+		"""
+		if isinstance(inputVector, numpy.ndarray):
+			if inputVector.size == self._numInputs:
+				activeBits = numpy.where(inputVector)[0]
+			else:
+				raise ValueError(
+					"Input vector dimensions don't match. Expecting %s but got %s" % (
+						self._numInputs, inputVector.size))
+		elif isinstance(inputVector, list):
+			if max(inputVector) >= self._numInputs:
+				raise ValueError(
+					"Non-zero entry indice exceeds input dimension of union pooler. "
+					"Expecting %s but got %s" % (self._numInputs, max(inputVector)))
+			else:
+				activeBits = inputVector
+		else:
+			raise ValueError("Unsuported input types")
+
+		self.compute(activeBits)
+
+		outputVector[:] = 0
+		for i in self._activeCellsHistory:
+			outputVector[i] = 1
