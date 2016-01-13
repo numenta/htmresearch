@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -62,8 +62,8 @@ class LogisticExciteFunction(ExciteFunctionBase):
     @param inputs            (numpy array) inputs for each cell
     """
 
-    currentActivation += self._minValue + (self._maxValue - self._minValue) / \
-                                          (1 + numpy.exp(-self._steepness * (inputs - self._xMidpoint)))
+    currentActivation += self._minValue + (self._maxValue - self._minValue) / (
+                         1 + numpy.exp(-self._steepness * (inputs - self._xMidpoint)))
 
     return currentActivation
 

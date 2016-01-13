@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -28,25 +28,25 @@ UINT_DTYPE = "uint32"
 
 class SimpleUnionPooler(object):
   """
-	Experimental Simple Union Pooler Python Implementation.
-	The simple union pooler computes a union of the last N SDRs
-	"""
+  Experimental Simple Union Pooler Python Implementation.
+  The simple union pooler computes a union of the last N SDRs
+  """
 
   def __init__(self,
                inputDimensions=(2048,),
                historyLength=10):
     """
-		Parameters:
-		----------------------------
-		@param inputDimensions:
-			A sequence representing the dimensions of the input vector. Format is
-			(height, width, depth, ...), where each value represents the size of the
-			dimension.  For a topology of one dimension with 100 inputs use 100, or
-			(100,). For a two dimensional topology of 10x5 use (10,5).
+    Parameters:
+    ----------------------------
+    @param inputDimensions:
+    A sequence representing the dimensions of the input vector. Format is
+    (height, width, depth, ...), where each value represents the size of the
+    dimension.  For a topology of one dimension with 100 inputs use 100, or
+    (100,). For a two dimensional topology of 10x5 use (10,5).
 
-		@param historyLength: The union window length. For a union of the last
-		10 steps, use historyLength=10
-		"""
+    @param historyLength: The union window length. For a union of the last
+    10 steps, use historyLength=10
+    """
 
     self._inputDimensions = inputDimensions
     self._historyLength = historyLength
@@ -54,28 +54,24 @@ class SimpleUnionPooler(object):
     for d in inputDimensions:
       self._numInputs *= d
 
-    # Current union SDR; the output of the union pooler algorithm
-    self._unionSDR = numpy.zeros(shape=self._inputDimensions, dtype=UINT_DTYPE)
-
-    # Indices of currently active cells
-    self._activeCellsHistory = []
+    self.reset()
 
 
   def reset(self):
     """
-		Reset Union Pooler, clear active cell history
-		"""
+    Reset Union Pooler, clear active cell history
+    """
     self._unionSDR = numpy.zeros(shape=self._inputDimensions, dtype=UINT_DTYPE)
     self._activeCellsHistory = []
 
 
   def compute(self, activeCells):
     """
-		Computes one cycle of the Union Pooler algorithm. Return the union SDR
-		Parameters:
-		----------------------------
-		@param activeCells: A list that stores indices of active cells
-		"""
+    Computes one cycle of the Union Pooler algorithm. Return the union SDR
+    Parameters:
+    ----------------------------
+    @param activeCells: A list that stores indices of active cells
+    """
     self._activeCellsHistory.append(activeCells)
     if len(self._activeCellsHistory) > self._historyLength:
       self._activeCellsHistory.pop(0)
@@ -86,8 +82,8 @@ class SimpleUnionPooler(object):
 
   def createUnionSDR(self):
     """
-		Create union SDR from a history of active cells
-		"""
+    Create union SDR from a history of active cells
+    """
     self._unionSDR = numpy.zeros(shape=self._inputDimensions, dtype=UINT_DTYPE)
     for i in self._activeCellsHistory:
       self._unionSDR[i] = 1
@@ -95,14 +91,14 @@ class SimpleUnionPooler(object):
 
   def unionIntoArray(self, inputVector, outputVector):
     """
-		Create a union of the inputVector and copy the result into the outputVector
-		Parameters:
-		----------------------------
-		@param inputVector: The inputVector can be either a full numpy array
-		containing 0's and 1's, or a list of non-zero entry indices
-		@param outputVector: A numpy array that matches the inputDimensions of the
-		union pooler.
-		"""
+    Create a union of the inputVector and copy the result into the outputVector
+    Parameters:
+    ----------------------------
+    @param inputVector: The inputVector can be either a full numpy array
+    containing 0's and 1's, or a list of non-zero entry indices
+    @param outputVector: A numpy array that matches the inputDimensions of the
+    union pooler.
+    """
     if isinstance(inputVector, numpy.ndarray):
       if inputVector.size == self._numInputs:
         activeBits = numpy.where(inputVector)[0]
@@ -113,15 +109,23 @@ class SimpleUnionPooler(object):
     elif isinstance(inputVector, list):
       if max(inputVector) >= self._numInputs:
         raise ValueError(
-          "Non-zero entry indice exceeds input dimension of union pooler. "
+          "Non-zero entry indices exceed input dimension of union pooler. "
           "Expecting %s but got %s" % (self._numInputs, max(inputVector)))
       else:
         activeBits = inputVector
     else:
-      raise ValueError("Unsuported input types")
+      raise TypeError("Unsuported input types")
 
     self.compute(activeBits)
 
     outputVector[:] = 0
     for i in self._activeCellsHistory:
       outputVector[i] = 1
+
+
+  def getSparsity(self):
+    """
+    Return the sparsity of the current union SDR
+    """
+    sparsity = numpy.sum(self._unionSDR) / self._numInputs
+    return sparsity

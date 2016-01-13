@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -28,46 +28,58 @@ REAL_DTYPE = numpy.float32
 
 
 class SimpleUnionPoolerTest(unittest.TestCase):
-	def setUp(self):
-		self.unionPooler = SimpleUnionPooler(inputDimensions=(2048,),
-		                                     historyLength=10)
+  def setUp(self):
+    self.unionPooler = SimpleUnionPooler(inputDimensions=(2048,),
+                                         historyLength=10)
 
 
-	def testUnionCompute(self):
-		activeCells = []
-		activeCells.append([1, 3, 4])
-		activeCells.append([101, 302, 405])
+  def testUnionCompute(self):
+    activeCells = []
+    activeCells.append([1, 3, 4])
+    activeCells.append([101, 302, 405])
+    activeCellsUnion = [1, 3, 4, 101, 302, 405]
 
-		outputVector = numpy.zeros(shape=(2048,))
-		for i in xrange(len(activeCells)):
-			self.unionPooler.unionIntoArray(activeCells[i], outputVector)
+    outputVector = numpy.zeros(shape=(2048,))
+    for i in xrange(len(activeCells)):
+      self.unionPooler.unionIntoArray(activeCells[i], outputVector)
 
-		activeCellsUnion = []
-		for i in xrange(len(activeCells)):
-			activeCellsUnion += activeCells[i]
-
-		self.assertSetEqual(set(numpy.where(outputVector)[0]),
-		                    set(activeCellsUnion))
+    self.assertSetEqual(set(numpy.where(outputVector)[0]),
+                        set(activeCellsUnion))
+    self.assertAlmostEqual(self.unionPooler.getSparsity(), 6.0/2048.0)
 
 
-	def testHistoryLength(self):
-		self.unionPooler = SimpleUnionPooler(inputDimensions=(2048,),
-		                                     historyLength=2)
-		activeCells = []
-		activeCells.append([1, 3, 4])
-		activeCells.append([101, 302, 405])
-		activeCells.append([240, 3, 858])
-		activeCellsUnion = [101, 302, 405, 240, 3, 858]
+  def testHistoryLength(self):
+    self.unionPooler = SimpleUnionPooler(inputDimensions=(2048,),
+                                         historyLength=2)
+    activeCells = []
+    activeCells.append([1, 3, 4])
+    activeCells.append([101, 302, 405])
+    activeCells.append([240, 3, 858])
+    activeCellsUnion = [101, 302, 405, 240, 3, 858]
 
-		outputVector = numpy.zeros(shape=(2048,))
-		for i in xrange(len(activeCells)):
-			inputVector = numpy.zeros(shape=(2048,))
-			inputVector[numpy.array(activeCells[i])] = 1
-			self.unionPooler.unionIntoArray(activeCells[i], outputVector)
+    outputVector = numpy.zeros(shape=(2048,))
+    for i in xrange(len(activeCells)):
+      inputVector = numpy.zeros(shape=(2048,))
+      inputVector[numpy.array(activeCells[i])] = 1
+      self.unionPooler.unionIntoArray(activeCells[i], outputVector)
 
-		self.assertSetEqual(set(numpy.where(outputVector)[0]),
-		                    set(activeCellsUnion))
+    self.assertSetEqual(set(numpy.where(outputVector)[0]),
+                        set(activeCellsUnion))
 
 
-if __name__ == '__main__':
-	unittest.main()
+  def testRepeatActiveCells(self):
+    activeCells = []
+    activeCells.append([13, 42, 58, 198])
+    activeCells.append([55, 72, 198, 272])
+    activeCellsUnion = [13, 42, 58, 198, 55, 72, 272]
+
+    outputVector = numpy.zeros(shape=(2048,))
+    for i in xrange(len(activeCells)):
+      self.unionPooler.unionIntoArray(activeCells[i], outputVector)
+
+    self.assertSetEqual(set(numpy.where(outputVector)[0]),
+                        set(activeCellsUnion))
+
+
+if __name__ == "__main__":
+  unittest.main()
