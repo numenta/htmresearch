@@ -192,7 +192,7 @@ class TextPreprocess(object):
     """Tokenize, returning only lower-case letters and "$"."""
     if not isinstance(text, str) and not isinstance(text, unicode):
       raise TypeError(
-        "{} is not an acceptable type for tokenization.".format(type(text)))
+          "{} is not an acceptable type for tokenization.".format(type(text)))
 
     return re.findall("[a-z$]+", text.lower())
 

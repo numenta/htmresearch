@@ -138,7 +138,7 @@ class NetworkDataGenerator(object):
       categories = string.join([str(self.categoryToId[c]) for c in categories])
 
       if textPreprocess:
-        tokens = preprocessor.tokenize(
+        tokens, _ = preprocessor.tokenizeAndFilter(
             comment, ignoreCommon, removeStrings, correctSpell, expandAbbr,
             expandContr)
       else:

@@ -96,7 +96,7 @@ class ClassificationModel(object):
     """
     # Default implementation, may be overridden
     assert (sampleId is not None), "Must pass in a sampleId"
-    tokenList = self.tokenize(document)
+    tokenList, _ = self.tokenize(document)
     lastTokenIndex = len(tokenList) - 1
     for i,token in enumerate(tokenList):
       self.trainToken(token, labels, sampleId, reset=int(i == lastTokenIndex))
@@ -167,19 +167,19 @@ class ClassificationModel(object):
 
     # For each token run inference on the token and accumulate sum of distances
     # from this token to all other sampleIds.
-    tokenList = self.tokenize(document)
-
-    lastTokenIndex = len(tokenList) - 1
-    categoryVotes = numpy.zeros(self.numLabels)
+    tokenList, _ = self.tokenize(document)
 
     if returnDetailedResults:
       return self._inferDocumentDetailed(tokenList, sortResults=sortResults)
 
+    lastTokenIndex = len(tokenList) - 1
+    categoryVotes = numpy.zeros(self.numLabels)
+
     for i, token in enumerate(tokenList):
       votes, _, _ = self.inferToken(token,
-                                     reset=int(i == lastTokenIndex),
-                                     returnDetailedResults=False,
-                                     sortResults=False)
+                                    reset=int(i == lastTokenIndex),
+                                    returnDetailedResults=False,
+                                    sortResults=False)
 
       if votes.sum() > 0:
         categoryVotes[votes.argmax()] += 1
@@ -188,25 +188,28 @@ class ClassificationModel(object):
     return categoryVotes, None, None
 
 
-  def tokenize(self, preprocessedText):
+  def tokenize(self, inputText):
     """
     Given a bunch of text (could be several sentences) return a single list
-    containing individual tokens.  It will filterText if the global option
+    containing individual tokens. It will filterText if the global option
     is set.
 
-    @param preprocessedText  (str)     A bunch of text.
-    @return                  (list)    A list of text tokens.
-
+    @param inputText  (str)   A bunch of text.
+    @return sample    (list)  A list of text tokens.
+    @return mapping   (dict)  Maps the original words to the sample tokens.
     """
     if self.filterText:
-      sample = TextPreprocess().tokenize(preprocessedText,
+      sample, mapping = TextPreprocess().tokenizeAndFilter(inputText,
                                          ignoreCommon=100,
                                          removeStrings=["[identifier deleted]"],
                                          correctSpell=True)
     else:
-      sample = TextPreprocess().tokenize(preprocessedText)
+      sample, mapping = TextPreprocess().tokenizeAndFilter(inputText)
+      # print
+      # print inputText
+      # for k, v in mapping.iteritems(): print k, v
 
-    return sample
+    return sample, mapping
 
 
   def reset(self):

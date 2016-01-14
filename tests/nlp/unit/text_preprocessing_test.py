@@ -107,5 +107,34 @@ class TestTextPreprocess(unittest.TestCase):
       "Didn't correctly map 'When' to an empty list of tokens.")
 
 
+  def testReadExpansionFileNoSuffixes(self):
+    """Tests TextPreprocess reads CSV files correctly."""
+    abbreviations = TextPreprocess().readExpansionFile("abbreviations.csv")
+    expectedAbbreviations = {"wfh": "work from home"}
+    self.assertEqual(abbreviations, expectedAbbreviations,
+      "Didn't read in abbreviations data correctly.")
+
+  
+  def testReadExpansionFileWithSuffixes(self):
+    """Tests TextPreprocess reads CSV files correctly and adds suffixes."""
+    suffixes = ["", "s", "'s"]
+    abbreviations = TextPreprocess().readExpansionFile("abbreviations.csv", suffixes)
+    expectedAbbreviations = {"wfh": "work from home",
+                             "wfhs": "work from homes",
+                             "wfh's": "work from home's"}
+    self.assertEqual(abbreviations, expectedAbbreviations,
+      "Didn't read in abbreviations data correctly.")
+
+
+  def testAllFilters(self):
+    tokenList, _ = self.preprocessor.tokenizeAndFilter(
+      self.testStrings[2], expandContr=True, expandAbbr=True, ignoreCommon=50,
+      correctSpell=True)
+    
+    self.assertSequenceEqual(["honor", "does", "get", "work", "home"],
+      tokenList, "Using all filters didn't preprocess the text as expected.")
+
+
+
 if __name__ == "__main__":
   unittest.main()
