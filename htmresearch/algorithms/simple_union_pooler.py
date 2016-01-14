@@ -76,7 +76,7 @@ class SimpleUnionPooler(object):
     ----------------------------
     @param inputVector: The inputVector can be either a full numpy array
     containing 0's and 1's, or a list of non-zero entry indices
-    @param outputVector: A numpy array that matches the inputDimensions of the
+    @param outputVector: A numpy array that matches the length of the
     union pooler.
     """
     if isinstance(inputVector, numpy.ndarray):
@@ -102,6 +102,7 @@ class SimpleUnionPooler(object):
         "Expecting %s but got %s" % (self._numInputs, len(outputVector)))
 
     unionSDR = self.updateHistory(activeBits)
+
     for i in xrange(len(unionSDR)):
       outputVector[i] = unionSDR[i]
 
