@@ -27,7 +27,7 @@ import pandas
 import re
 import string
 
-from collections import Counter
+from collections import Counter, OrderedDict
 from functools import partial
 
 
@@ -43,8 +43,8 @@ class TextPreprocess(object):
                contrCSV="contractions.csv"):
     """
     @param corpusTxt      (str)       A compilation of most frequent words. The
-        default file 'compilation.txt' is the most frequent words from both
-        British National Corpus, Wiktionary, and books from Project Guttenberg.
+        default file 'compilation.txt' is the most frequent words sourced from
+        British National Corpus, Wiktionary, and the Project Guttenberg books.
 
     @param abbrCSV        (str)       A compilation of domain specific
         abbreviations. The file is a csv with the header "Abbr,Expansion". The
@@ -68,12 +68,20 @@ class TextPreprocess(object):
 
   def _setupCorpus(self, corpusSource):
     """Create member vars for English language corpus and bag of words."""
-    corpusPath = os.path.abspath(os.path.join(
-      os.path.dirname(__file__), "../..", "projects/nlp/data/etc", corpusSource))
     try:
+      if os.path.isfile(corpusSource):
+        # absolute path
+        corpusPath = corpusSource
+      else:
+        # relative path
+        corpusPath = os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                                  "../../projects/nlp/data/etc",
+                                                  corpusSource))
       self.corpus = file(corpusPath).read()
-    except IOError:
-      raise
+
+    except IOError as e:
+      print "Error reading in the text corpus file '{}'".format(filename)
+      raise e
 
     self.bagOfWords = Counter(self.tokenize(self.corpus))
 
@@ -119,13 +127,13 @@ class TextPreprocess(object):
 
     expansionPairs = {}
     try:
-      # Allow absolute paths
-      if os.path.exists(filename):
+      if os.path.isfile(filename):
+        # absolute path
         path = filename
-      # Allow relative paths
       else:
+        # relative path
         path = os.path.abspath(os.path.join(
-          os.path.dirname(__file__), '../..', 'data/etc', filename))
+          os.path.dirname(__file__), "../../projects/nlp/data/etc", filename))
       dataFrame = pandas.read_csv(path)
 
       for i in xrange(dataFrame.shape[0]):
@@ -137,8 +145,9 @@ class TextPreprocess(object):
           expSuffix = "{}{}".format(expansion, suffix)
           expansionPairs[originalSuffix] = expSuffix
 
-    except IOError:
-      raise
+    except IOError as e:
+      print "Error reading in the expansion file '{}'".format(filename)
+      raise e
 
     # Add an empty string if empty so the regex compiles
     if not expansionPairs:
@@ -147,75 +156,97 @@ class TextPreprocess(object):
     return expansionPairs
 
 
-  def tokenize(self,
-               text,
-               ignoreCommon=None,
-               removeStrings=None,
-               correctSpell=False,
-               expandAbbr=False,
-               expandContr=False):
+  def tokenizeAndFilter(self, text, **preprocessSpecs):
     """
-    LIGHTWEIGHT
-    Tokenize, returning only lower-case letters and "$".
+    Tokenize and optionally filter the text, returning both the tokens and a
+    mapping of the original text to the preprocessed text.
+
+    @param text            (str)    Text to be tokenized and preprocessed.
+
+    @return processedWords (list)   String tokens.
+
+    @return mapping        (dict)   Keys are the indices of the input words.
+        Values are two-tuples, where the first item is the original string word
+        (w/ punctuation) and the second item is a list of string tokens. This
+        format is necessary to account for when there are more tokens than words
+        and vice-versa, and can't use words as keys b/c repeats would get
+        overwritten.
     """
     originalWords = text.split(" ")
     processedWords = []
-    mapping = []  # maps original to tokens
-    # import pdb; pdb.set_trace()
-    for i, word in enumerate(originalWords):
-      tokenized = re.findall("[a-z$]+", word.lower())
-      # mapping.extend([i for _ in tokenized])
-      mapping.extend([i]*len(tokenized))
-      processedWords.extend(tokenized)
+    mapping  = OrderedDict()
 
-    # import pdb; pdb.set_trace()
+    for i, word in enumerate(originalWords):
+      preprocessed = self.tokenize(word)
+      if preprocessSpecs:
+        # preprocessing options are specified
+        preprocessed = self._filterStuff(preprocessed, **preprocessSpecs)
+      mapping[i] = (word, preprocessed)
+      processedWords.extend(preprocessed)
+
     return processedWords, mapping
 
 
-  def tokenizeAndFilter(self,
-               text,
-               ignoreCommon=None,
-               removeStrings=None,
-               correctSpell=False,
-               expandAbbr=False,
-               expandContr=False):
-    """
-    Tokenize, returning only lower-case letters and "$".
-    @param text               (str)             Single string to tokenize.
-    @param ignoreCommon       (int)             This many most frequent words
-                                                will be filtered out from the
-                                                returned tokens.
-    @param removeStrings      (list)            List of strings to delete from
-                                                the text.
-    @param correctSpell       (bool)            Run tokens through spelling
-                                                correction.
-    @param expandAbbr         (bool)            Run text through abbreviation
-                                                expander
-    @param expandContr        (bool)            Run text through contraction
-                                                expander
-    """
+  @staticmethod
+  def tokenize(text):
+    """Tokenize, returning only lower-case letters and "$"."""
     if not isinstance(text, str) and not isinstance(text, unicode):
-      raise ValueError("Must input a single string object to tokenize.")
+      raise TypeError(
+        "{} is not an acceptable type for tokenization.".format(type(text)))
 
-    text = text.lower()
+    return re.findall("[a-z$]+", text.lower())
+
+
+  def _filterStuff(self,
+                   tokenList,
+                   ignoreCommon=None,
+                   removeStrings=None,
+                   correctSpell=False,
+                   expandAbbr=False,
+                   expandContr=False):
+    """
+    The order by which we filter the input text is by design:
+      1. Expand abbreviations and contractions so we have the full set of
+         possible words.
+      2. Remove specified strings; these don't need to go through the rest of
+         preprocessing.
+      3. Correct spelling, which must precede the final filtering step.
+      4. Remove the N most common words.
+
+    @param tokenList      (list)  Lower-case alpha token(s), as returned by
+                                  tokenize.
+    @param ignoreCommon   (int)   The most frequent words up to this rank
+                                  (in corpusTxt) will be removed.
+    @param removeStrings  (list)  List of strings to delete from the text.
+    @param correctSpell   (bool)  Correct the spelling; this utilizes a
+                                  simplistic implementation and is not
+                                  guaranteed to correct all misspellings.
+    @param expandAbbr     (bool)  Expand abbreviations (in abbrCSV).
+    @param expandContr    (bool)  Expand contractions (in contrCSV).
+
+    @return tokens        (list)  Filtered tokens
+    """
+    # Any input tokens are expected to have been split on an apostrophe by the
+    # tokenize() method.
+    textString = string.join(tokenList, "'")
 
     if expandAbbr:
       if not self.abbrs:
         self._setupAbbrs(self.abbrCSV)
       getAbbrExpansion = partial(self.getExpansion, table=self.abbrs)
-      text = self.abbrRegex.sub(getAbbrExpansion, text)
+      textString = self.abbrRegex.sub(getAbbrExpansion, textString)
 
     if expandContr:
       if not self.contrs:
         self._setupContr(self.contrCSV)
       getContrExpansion = partial(self.getExpansion, table=self.contrs)
-      text = self.contrRegex.sub(getContrExpansion, text)
+      textString = self.contrRegex.sub(getContrExpansion, textString)
 
     if removeStrings:
       for removal in removeStrings:
-        text = text.replace(removal, "")
+        textString = textString.replace(removal, "")
 
-    tokens = re.findall('[a-z$]+', text)
+    tokens = self.tokenize(textString)
 
     if correctSpell:
       tokens = [self.correct(t) for t in tokens]
