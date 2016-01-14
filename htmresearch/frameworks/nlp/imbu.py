@@ -103,6 +103,7 @@ class ImbuModels(object):
                     apiKey=kwargs.get("apiKey"),
                     fingerprintType=EncoderTypes.document,
                     cacheRoot=self.cacheRoot)
+
     elif modelType == "HTMNetwork":
       kwargs.update(networkConfig=_loadNetworkConfig(),
                     inputFilePath=None,
