@@ -19,20 +19,44 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+from enum import Enum
 import simplejson
 
-from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
-from htmresearch.frameworks.nlp.classify_keywords import (
-  ClassificationModelKeywords)
 from htmresearch.frameworks.nlp.classify_document_fingerprint import (
   ClassificationModelDocumentFingerprint)
 from htmresearch.frameworks.nlp.classify_fingerprint import (
   ClassificationModelFingerprint)
+from htmresearch.frameworks.nlp.classify_htm import (
+  ClassificationModelHTM)
+from htmresearch.frameworks.nlp.classify_keywords import (
+  ClassificationModelKeywords)
+from htmresearch.frameworks.nlp.classify_windows import (
+  ClassificationModelWindows)
+
+
 
 """
 This module contains functions helpful for creating ClassificationModel
 instances.
 """
+
+
+
+class ClassificationModelTypes(Enum):
+  """ Enumeration of supported classification model types, mapping userland
+  identifier to constructor.  See createModel() for actual factory method
+  implementation.
+  """
+  CioWordFingerprint = ClassificationModelFingerprint
+  CioDocumentFingerprint = ClassificationModelFingerprint
+  cioword = ClassificationModelFingerprint
+  CioWindows = ClassificationModelWindows
+  Keywords = ClassificationModelKeywords
+  keywords = ClassificationModelKeywords
+  HTMNetwork = ClassificationModelHTM
+  htm = ClassificationModelHTM
+  docfp = ClassificationModelDocumentFingerprint
+
 
 
 def getNetworkConfig(networkConfigPath):
@@ -48,40 +72,29 @@ def getNetworkConfig(networkConfigPath):
     raise e
 
 
-def createModel(modelName, **kwargs):
+
+def createModel(self, modelName, **kwargs):
   """
   Return a classification model of the appropriate type. The model could be any
   supported subclass of ClassficationModel based on modelName.
 
   @param modelName (str)  A string representing a supported model type:
-                            htm      : ClassificationModelHTM
-                            keywords : ClassificationModelKeywords
-                            docfp    : ClassificationModelDocumentFingerprint
-                            cioword  : ClassificationModelFingerprint
+                          HTMNetwork, htm,    : ClassificationModelHTM
+                          Keywords, keywords  : ClassificationModelKeywords
+                          docfp     : ClassificationModelDocumentFingerprint
+                          CioWordFingerprint, CioDocumentFingerprint, cioword:
+                              ClassificationModelFingerprint
 
   @param kwargs    (dict) Constructor argument for the class that will be
                           instantiated. Keyword parameters specific to each
                           model type should be passed in here.
   """
-
-  if modelName == "htm":
-    # Instantiate the HTM model
-    model = ClassificationModelHTM(**kwargs)
-
-  elif modelName == "keywords":
-    # Instantiate the keywords model
-    model = ClassificationModelKeywords(**kwargs)
-
-  elif modelName == "docfp":
-    # Instantiate the document fingerprint model
-    model = ClassificationModelDocumentFingerprint(**kwargs)
-
-  elif modelName == "cioword":
-    # Instantiate the Cio word fingerprint model
-    model = ClassificationModelFingerprint(**kwargs)
-
+  if modelName in ClassificationModelTypes:
+    modelConstructor = modelName
+  elif modelName in ClassificationModelTypes.__members__:
+    modelConstructor = getattr(ClassificationModelTypes, modelName)
   else:
     raise RuntimeError("Unknown model type: " + modelName)
 
-  return model
+  return modelConstructor.value(**kwargs)
 

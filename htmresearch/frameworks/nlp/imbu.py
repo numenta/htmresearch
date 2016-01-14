@@ -14,17 +14,9 @@ from htmresearch.frameworks.nlp.classify_windows import (
   ClassificationModelWindows)
 from htmresearch.support.csv_helper import readCSV
 from htmresearch.support.text_preprocess import TextPreprocess
-
-
-
-class ImbuModelTypes(Enum):
-  CioWordFingerprint = ClassificationModelFingerprint
-  CioDocumentFingerprint = ClassificationModelFingerprint
-  CioWindows = ClassificationModelWindows
-  Keywords = ClassificationModelKeywords
-  HTMNetwork = ClassificationModelHTM
-
-
+from htmresearch.frameworks.nlp.model_factory import (
+  ClassificationModelTypes,
+  createModel)
 
 class ModelSimilarityMetrics(Enum):
   pctOverlapOfInput = "pctOverlapOfInput"
@@ -45,7 +37,7 @@ class ImbuUnableToLoadModelError(ImbuError):
 class ImbuModels(object):
 
   defaultSimilarityMetric = ModelSimilarityMetrics.pctOverlapOfInput
-  defaultModelType = ImbuModelTypes.HTMNetwork
+  defaultModelType = ClassificationModelTypes.HTMNetwork
 
   def __init__(self, cacheRoot, dataPath, loadPath, savePath,
       modelSimilarityMetric):
@@ -77,28 +69,21 @@ class ImbuModels(object):
 
     modelType = modelType or self.defaultModelType
 
-    if modelType is ImbuModelTypes.CioWordFingerprint:
-      model = modelType.value(retina=kwargs.get("retina"),
-                              apiKey=kwargs.get("apiKey"),
-                              fingerprintType=EncoderTypes.word,
-                              cacheRoot=self.cacheRoot,
-                              **self._defaultModelFactoryKwargs())
+    kwargs.update(**self._defaultModelFactoryKwargs())
 
-    elif modelType is ImbuModelTypes.CioDocumentFingerprint:
-      model = modelType.value(retina=kwargs.get("retina"),
-                              apiKey=kwargs.get("apiKey"),
-                              fingerprintType=EncoderTypes.document,
-                              cacheRoot=self.cacheRoot,
-                              **self._defaultModelFactoryKwargs())
+    if modelType is ClassificationModelTypes.CioWordFingerprint:
+      kwargs.update(retina=kwargs.get("retina"),
+                    apiKey=kwargs.get("apiKey"),
+                    fingerprintType=EncoderTypes.word,
+                    cacheRoot=self.cacheRoot)
 
-    elif modelType is ImbuModelTypes.HTMNetwork:
-      raise NotImplementedError("HTMNetwork model type is not implemented.")
+    elif modelType is ClassificationModelTypes.CioDocumentFingerprint:
+      kwargs.update(retina=kwargs.get("retina"),
+                    apiKey=kwargs.get("apiKey"),
+                    fingerprintType=EncoderTypes.document,
+                    cacheRoot=self.cacheRoot)
 
-    else:
-      if modelType not in ImbuModelTypes:
-        raise NotImplementedError()
-
-      model = modelType.value(**self._defaultModelFactoryKwargs())
+    model = createModel(modelType, **kwargs)
 
     model.verbosity = 0
 
@@ -153,7 +138,8 @@ def main():
                            "header 'Sample'; see readCSV() for more.",
                       required=True)
   parser.add_argument("--modelName",
-                      choices={modelType.name for modelType in ImbuModelTypes},
+                      choices={modelType.name
+                               for modelType in ClassificationModelTypes},
                       default=ImbuModels.defaultModelType.name,
                       type=str,
                       help="Name of model class. Also used for model results "
@@ -177,7 +163,7 @@ def main():
     savePath=args.savePath
   )
 
-  model = imbu.loadModel(getattr(ImbuModelTypes, args.modelName),
+  model = imbu.loadModel(getattr(ClassificationModelTypes, args.modelName),
                          retina=os.environ.get("IMBU_RETINA_ID"),
                          apiKey=os.environ.get("CORTICAL_API_KEY"))
 
