@@ -4,4 +4,3 @@ plotly
 simplejson
 nupic
 tabulate
-enum34

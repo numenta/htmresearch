@@ -19,9 +19,9 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from enum import Enum
 import simplejson
 
+from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.classify_document_fingerprint import (
   ClassificationModelDocumentFingerprint)
 from htmresearch.frameworks.nlp.classify_fingerprint import (
@@ -30,9 +30,9 @@ from htmresearch.frameworks.nlp.classify_htm import (
   ClassificationModelHTM)
 from htmresearch.frameworks.nlp.classify_keywords import (
   ClassificationModelKeywords)
-from htmresearch.frameworks.nlp.classify_windows import (
-  ClassificationModelWindows)
-
+from htmresearch.frameworks.nlp.classify_network_api import (
+  ClassificationNetworkAPI
+)
 
 
 """
@@ -42,20 +42,30 @@ instances.
 
 
 
-class ClassificationModelTypes(Enum):
+class ClassificationModelTypes(object):
   """ Enumeration of supported classification model types, mapping userland
   identifier to constructor.  See createModel() for actual factory method
   implementation.
   """
   CioWordFingerprint = ClassificationModelFingerprint
   CioDocumentFingerprint = ClassificationModelFingerprint
-  cioword = ClassificationModelFingerprint
-  CioWindows = ClassificationModelWindows
   Keywords = ClassificationModelKeywords
-  keywords = ClassificationModelKeywords
   HTMNetwork = ClassificationModelHTM
-  htm = ClassificationModelHTM
+  DocumentFingerPrint = ClassificationModelDocumentFingerprint
+  cioword = ClassificationModelFingerprint
   docfp = ClassificationModelDocumentFingerprint
+  htm = ClassificationModelHTM
+  keywords = ClassificationModelKeywords
+
+
+  @classmethod
+  def getTypes(cls):
+    types = {attr
+            for attr in dir(cls)
+            if (isinstance(getattr(cls, attr), type) and
+                issubclass(getattr(cls, attr), (ClassificationModel,
+                                                ClassificationNetworkAPI)))}
+    return types
 
 
 
@@ -73,7 +83,7 @@ def getNetworkConfig(networkConfigPath):
 
 
 
-def createModel(self, modelName, **kwargs):
+def createModel(modelName, **kwargs):
   """
   Return a classification model of the appropriate type. The model could be any
   supported subclass of ClassficationModel based on modelName.
@@ -89,12 +99,9 @@ def createModel(self, modelName, **kwargs):
                           instantiated. Keyword parameters specific to each
                           model type should be passed in here.
   """
-  if modelName in ClassificationModelTypes:
-    modelConstructor = modelName
-  elif modelName in ClassificationModelTypes.__members__:
-    modelConstructor = getattr(ClassificationModelTypes, modelName)
-  else:
+
+  if modelName not in ClassificationModelTypes.getTypes():
     raise RuntimeError("Unknown model type: " + modelName)
 
-  return modelConstructor.value(**kwargs)
+  return getattr(ClassificationModelTypes, modelName)(**kwargs)
 

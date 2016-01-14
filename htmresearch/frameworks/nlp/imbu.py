@@ -1,24 +1,18 @@
 import argparse
 import os
 
-from enum import Enum
+import simplejson as json
 
 from htmresearch.encoders import EncoderTypes
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
-from htmresearch.frameworks.nlp.classify_fingerprint import (
-  ClassificationModelFingerprint)
-from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
-from htmresearch.frameworks.nlp.classify_keywords import (
-  ClassificationModelKeywords)
-from htmresearch.frameworks.nlp.classify_windows import (
-  ClassificationModelWindows)
 from htmresearch.support.csv_helper import readCSV
-from htmresearch.support.text_preprocess import TextPreprocess
 from htmresearch.frameworks.nlp.model_factory import (
   ClassificationModelTypes,
   createModel)
 
-class ModelSimilarityMetrics(Enum):
+
+
+class ModelSimilarityMetrics(object):
   pctOverlapOfInput = "pctOverlapOfInput"
 
 
@@ -34,10 +28,37 @@ class ImbuUnableToLoadModelError(ImbuError):
 
 
 
+def _loadJSON(jsonPath):
+  try:
+    with open(jsonPath, "rb") as fin:
+      return json.load(fin)
+  except IOError as e:
+    print "Could not find JSON at '{}'.".format(jsonPath)
+    raise e
+
+
+
+def _loadNetworkConfig():
+  root = (
+    os.path.dirname(
+      os.path.dirname(
+        os.path.dirname(
+          os.path.dirname(
+            os.path.realpath(__file__)
+          )
+        )
+      )
+    )
+  )
+  return _loadJSON(os.path.join(root,
+                                "projects/nlp/data/network_configs/imbu.json"))
+
+
+
 class ImbuModels(object):
 
   defaultSimilarityMetric = ModelSimilarityMetrics.pctOverlapOfInput
-  defaultModelType = ClassificationModelTypes.HTMNetwork
+  defaultModelType = "HTMNetwork"
 
   def __init__(self, cacheRoot, dataPath, loadPath, savePath,
       modelSimilarityMetric):
@@ -62,7 +83,7 @@ class ImbuModels(object):
     return dict(
       numLabels=len(self.dataDict),
       modelDir=self.savePath,
-      classifierMetric=self.modelSimilarityMetric.value)
+      classifierMetric=self.modelSimilarityMetric)
 
 
   def modelFactory(self, modelType, **kwargs):
@@ -71,19 +92,25 @@ class ImbuModels(object):
 
     kwargs.update(**self._defaultModelFactoryKwargs())
 
-    if modelType is ClassificationModelTypes.CioWordFingerprint:
+    if modelType == "CioWordFingerprint":
       kwargs.update(retina=kwargs.get("retina"),
                     apiKey=kwargs.get("apiKey"),
                     fingerprintType=EncoderTypes.word,
                     cacheRoot=self.cacheRoot)
 
-    elif modelType is ClassificationModelTypes.CioDocumentFingerprint:
+    elif modelType == "CioDocumentFingerprint":
       kwargs.update(retina=kwargs.get("retina"),
                     apiKey=kwargs.get("apiKey"),
                     fingerprintType=EncoderTypes.document,
                     cacheRoot=self.cacheRoot)
+    elif modelType == "HTMNetwork":
+      kwargs.update(networkConfig=_loadNetworkConfig(),
+                    inputFilePath=None,
+                    prepData=False,
+                    retinaScaling=1.0)
 
     model = createModel(modelType, **kwargs)
+
 
     model.verbosity = 0
 
@@ -112,7 +139,8 @@ class ImbuModels(object):
     self.save(model)
 
 
-  def query(self, model, query, returnDetailedResults=True, sortResults=True):
+  @staticmethod
+  def query(model, query, returnDetailedResults=True, sortResults=True):
     return model.inferDocument(query,
                                returnDetailedResults=returnDetailedResults,
                                sortResults=sortResults)
@@ -129,18 +157,15 @@ def main():
   parser.add_argument("--cacheRoot",
                       help="Root directory in which to cache encodings")
   parser.add_argument("--modelSimilarityMetric",
-                      choices={metric.name
-                               for metric in ModelSimilarityMetrics},
-                      default=ImbuModels.defaultSimilarityMetric.name,
+                      default=ImbuModels.defaultSimilarityMetric,
                       help="Classifier metric")
   parser.add_argument("--dataPath",
                       help="Path to data CSV; samples must be in column w/ "
                            "header 'Sample'; see readCSV() for more.",
                       required=True)
   parser.add_argument("--modelName",
-                      choices={modelType.name
-                               for modelType in ClassificationModelTypes},
-                      default=ImbuModels.defaultModelType.name,
+                      choices=ClassificationModelTypes.getTypes(),
+                      default=ImbuModels.defaultModelType,
                       type=str,
                       help="Name of model class. Also used for model results "
                            "directory and pickle checkpoint.")
@@ -156,14 +181,13 @@ def main():
 
   imbu = ImbuModels(
     cacheRoot=args.cacheRoot,
-    modelSimilarityMetric=getattr(ModelSimilarityMetrics,
-                                  args.modelSimilarityMetric),
+    modelSimilarityMetric=args.modelSimilarityMetric,
     dataPath=args.dataPath,
     loadPath=args.loadPath,
     savePath=args.savePath
   )
 
-  model = imbu.loadModel(getattr(ClassificationModelTypes, args.modelName),
+  model = imbu.loadModel(args.modelName,
                          retina=os.environ.get("IMBU_RETINA_ID"),
                          apiKey=os.environ.get("CORTICAL_API_KEY"))
 
