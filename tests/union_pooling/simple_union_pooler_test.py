@@ -29,7 +29,7 @@ REAL_DTYPE = numpy.float32
 
 class SimpleUnionPoolerTest(unittest.TestCase):
   def setUp(self):
-    self.unionPooler = SimpleUnionPooler(inputDimensions=(2048,),
+    self.unionPooler = SimpleUnionPooler(numInputs=2048,
                                          historyLength=10)
 
 
@@ -49,7 +49,7 @@ class SimpleUnionPoolerTest(unittest.TestCase):
 
 
   def testHistoryLength(self):
-    self.unionPooler = SimpleUnionPooler(inputDimensions=(2048,),
+    self.unionPooler = SimpleUnionPooler(numInputs=2048,
                                          historyLength=2)
     activeCells = []
     activeCells.append([1, 3, 4])
@@ -79,6 +79,20 @@ class SimpleUnionPoolerTest(unittest.TestCase):
 
     self.assertSetEqual(set(numpy.where(outputVector)[0]),
                         set(activeCellsUnion))
+
+  def testDimensionError(self):
+    self.unionPooler = SimpleUnionPooler(numInputs=2048,
+                                         historyLength=2)
+    outputVector = numpy.zeros(shape=(2048,))
+    activeCells = [2049]
+    with self.assertRaises(ValueError):
+      self.unionPooler.unionIntoArray(activeCells, outputVector)
+
+    activeCells = [1, 2, 3]
+    outputVector = numpy.zeros(shape=(2047,))
+    with self.assertRaises(ValueError):
+      self.unionPooler.unionIntoArray(activeCells, outputVector)
+
 
 
 if __name__ == "__main__":

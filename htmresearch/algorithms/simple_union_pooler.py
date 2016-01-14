@@ -20,11 +20,6 @@
 # ----------------------------------------------------------------------
 
 import numpy
-from nupic.bindings.math import GetNTAReal
-
-REAL_DTYPE = GetNTAReal()
-UINT_DTYPE = "uint32"
-
 
 class SimpleUnionPooler(object):
   """
@@ -33,27 +28,18 @@ class SimpleUnionPooler(object):
   """
 
   def __init__(self,
-               inputDimensions=(2048,),
+               numInputs=2048,
                historyLength=10):
     """
     Parameters:
     ----------------------------
-    @param inputDimensions:
-    A sequence representing the dimensions of the input vector. Format is
-    (height, width, depth, ...), where each value represents the size of the
-    dimension.  For a topology of one dimension with 100 inputs use 100, or
-    (100,). For a two dimensional topology of 10x5 use (10,5).
-
+    @param numInputs: The length of the input SDRs
     @param historyLength: The union window length. For a union of the last
     10 steps, use historyLength=10
     """
 
-    self._inputDimensions = inputDimensions
     self._historyLength = historyLength
-    self._numInputs = 1
-    for d in inputDimensions:
-      self._numInputs *= d
-
+    self._numInputs = numInputs
     self.reset()
 
 
@@ -61,11 +47,11 @@ class SimpleUnionPooler(object):
     """
     Reset Union Pooler, clear active cell history
     """
-    self._unionSDR = numpy.zeros(shape=self._inputDimensions, dtype=UINT_DTYPE)
+    self._unionSDR = numpy.zeros(shape=(self._numInputs,))
     self._activeCellsHistory = []
 
 
-  def compute(self, activeCells):
+  def updateHistory(self, activeCells):
     """
     Computes one cycle of the Union Pooler algorithm. Return the union SDR
     Parameters:
@@ -76,17 +62,11 @@ class SimpleUnionPooler(object):
     if len(self._activeCellsHistory) > self._historyLength:
       self._activeCellsHistory.pop(0)
 
-    self.createUnionSDR()
-    return self._unionSDR
-
-
-  def createUnionSDR(self):
-    """
-    Create union SDR from a history of active cells
-    """
-    self._unionSDR = numpy.zeros(shape=self._inputDimensions, dtype=UINT_DTYPE)
+    self._unionSDR = numpy.zeros(shape=(self._numInputs,))
     for i in self._activeCellsHistory:
       self._unionSDR[i] = 1
+
+    return self._unionSDR
 
 
   def unionIntoArray(self, inputVector, outputVector):
@@ -116,11 +96,14 @@ class SimpleUnionPooler(object):
     else:
       raise TypeError("Unsuported input types")
 
-    self.compute(activeBits)
+    if len(outputVector) != self._numInputs:
+      raise ValueError(
+        "Output vector dimension does match dimension of union pooler "
+        "Expecting %s but got %s" % (self._numInputs, len(outputVector)))
 
-    outputVector[:] = 0
-    for i in self._activeCellsHistory:
-      outputVector[i] = 1
+    unionSDR = self.updateHistory(activeBits)
+    for i in xrange(len(unionSDR)):
+      outputVector[i] = unionSDR[i]
 
 
   def getSparsity(self):
