@@ -8,7 +8,8 @@ from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.support.csv_helper import readCSV
 from htmresearch.frameworks.nlp.model_factory import (
   ClassificationModelTypes,
-  createModel)
+  createModel,
+  getNetworkConfig)
 
 
 
@@ -28,16 +29,6 @@ class ImbuUnableToLoadModelError(ImbuError):
 
 
 
-def _loadJSON(jsonPath):
-  try:
-    with open(jsonPath, "rb") as fin:
-      return json.load(fin)
-  except IOError as e:
-    print "Could not find JSON at '{}'.".format(jsonPath)
-    raise e
-
-
-
 def _loadNetworkConfig():
   root = (
     os.path.dirname(
@@ -50,8 +41,8 @@ def _loadNetworkConfig():
       )
     )
   )
-  return _loadJSON(os.path.join(root,
-                                "projects/nlp/data/network_configs/imbu.json"))
+  return getNetworkConfig(
+    os.path.join(root, "projects/nlp/data/network_configs/imbu.json"))
 
 
 
@@ -111,7 +102,6 @@ class ImbuModels(object):
                     retinaScaling=1.0)
 
     model = createModel(modelType, **kwargs)
-
 
     model.verbosity = 0
 

@@ -61,10 +61,10 @@ class ClassificationModelTypes(object):
   @classmethod
   def getTypes(cls):
     types = {attr
-            for attr in dir(cls)
-            if (isinstance(getattr(cls, attr), type) and
-                issubclass(getattr(cls, attr), (ClassificationModel,
-                                                ClassificationNetworkAPI)))}
+             for attr in dir(cls)
+             if (isinstance(getattr(cls, attr), type) and
+                 issubclass(getattr(cls, attr), (ClassificationModel,
+                                                 ClassificationNetworkAPI)))}
     return types
 
 
@@ -89,7 +89,7 @@ def createModel(modelName, **kwargs):
   supported subclass of ClassficationModel based on modelName.
 
   @param modelName (str)  A string representing a supported model type:
-                          HTMNetwork, htm,    : ClassificationModelHTM
+                          HTMNetwork, htm    : ClassificationModelHTM
                           Keywords, keywords  : ClassificationModelKeywords
                           docfp     : ClassificationModelDocumentFingerprint
                           CioWordFingerprint, CioDocumentFingerprint, cioword:
