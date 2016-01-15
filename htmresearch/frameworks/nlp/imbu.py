@@ -1,7 +1,40 @@
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2016, Numenta, Inc.  Unless you have purchased from
+# Numenta, Inc. a separate commercial license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
+"""
+Class for running models in Imbu app.
+
+The script is runnable to demo Imbu functionality:
+
+  python imbu.py \
+    --dataPath data/sample_reviews/sample_reviews.csv \
+    --modelName CioWordFingerprint
+
+  python imbu.py \
+    --dataPath data/sample_reviews/sample_reviews_unlabeled.csv \
+    --modelName HTMNetwork
+"""
+
 import argparse
 import os
-
-import simplejson as json
 
 from htmresearch.encoders import EncoderTypes
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
@@ -50,6 +83,7 @@ class ImbuModels(object):
 
   defaultSimilarityMetric = ModelSimilarityMetrics.pctOverlapOfInput
   defaultModelType = "HTMNetwork"
+  defaultRetina = "en_associative"
 
   def __init__(self, cacheRoot, dataPath, loadPath, savePath,
       modelSimilarityMetric):
@@ -84,13 +118,14 @@ class ImbuModels(object):
     kwargs.update(**self._defaultModelFactoryKwargs())
 
     if modelType == "CioWordFingerprint":
-      kwargs.update(retina=kwargs.get("retina"),
+      kwargs.update(retina=kwargs.get("retina") or self.defaultRetina,
                     apiKey=kwargs.get("apiKey"),
                     fingerprintType=EncoderTypes.word,
                     cacheRoot=self.cacheRoot)
 
+
     elif modelType == "CioDocumentFingerprint":
-      kwargs.update(retina=kwargs.get("retina"),
+      kwargs.update(retina=kwargs.get("retina") or self.defaultRetina,
                     apiKey=kwargs.get("apiKey"),
                     fingerprintType=EncoderTypes.document,
                     cacheRoot=self.cacheRoot)
@@ -108,26 +143,45 @@ class ImbuModels(object):
     return model
 
 
-  def loadModel(self, *modelFactoryArgs, **modelFactoryKwargs):
+  def createModel(self, modelType, *modelFactoryArgs, **modelFactoryKwargs):
 
-    try:
-      model = ClassificationModel.load(self.loadPath)
-    except IOError as exc:
-      model = self.modelFactory(*modelFactoryArgs, **modelFactoryKwargs)
-      self.train(model)
+    if self.loadPath:
+      # User has explicitly specified a load path and expects a model to exist
+      try:
+        model = ClassificationModel.load(self.loadPath)
+
+        if not isinstance(model, getattr(ClassificationModelTypes, modelType)):
+          raise ImbuError("Model ({}) loaded from {} is not the same type as "
+                          "requested ({})."
+                          .format(repr(model), self.loadPath, modelType))
+
+      except IOError as exc:
+        # Model was not found, user may have specified incorrect path, DO NOT
+        # attempt to create a new model and raise an exception
+        raise ImbuUnableToLoadModelError(exc)
+    else:
+      # User has not specified a load path, defer to default case and
+      # gracefully create a new model
+      try:
+        model = ClassificationModel.load(self.loadPath)
+      except IOError as exc:
+        model = self.modelFactory(*modelFactoryArgs, **modelFactoryKwargs)
+        self.train(model)
 
     return model
 
 
   def _loadTrainingData(self):
-    return readCSV(self.dataPath, numLabels=0)
+    return readCSV(self.dataPath,
+                   numLabels=0) # 0 to train models in unsupervised fashion
 
 
   def train(self, model):
     for seqId, (text, _, _) in enumerate(self.dataDict.values()):
       model.trainDocument(text, [seqId], seqId)
 
-    self.save(model)
+    if self.savePath:
+      self.save(model)
 
 
   @staticmethod
@@ -149,13 +203,15 @@ def main():
                       help="Root directory in which to cache encodings")
   parser.add_argument("--modelSimilarityMetric",
                       default=ImbuModels.defaultSimilarityMetric,
-                      help="Classifier metric")
-  parser.add_argument("--dataPath",
+                      help=("Classifier metric. Note: HTMNetwork model uses "
+                            "rawOverlap, as specified in the network config "
+                            "file."))
+  parser.add_argument("-d", "--dataPath",
                       help="Path to data CSV; samples must be in column w/ "
                            "header 'Sample'; see readCSV() for more.",
                       required=True)
-  parser.add_argument("--modelName",
-                      choices=ClassificationModelTypes.getTypes(),
+  parser.add_argument("-m", "--modelName",
+                      choices=list(ClassificationModelTypes.getTypes()),
                       default=ImbuModels.defaultModelType,
                       type=str,
                       help="Name of model class. Also used for model results "
@@ -167,7 +223,22 @@ def main():
   parser.add_argument("--savePath",
                       default="",
                       type=str,
-                      help="Path to save the serialized model.")
+                      help=("Directory path for saving the model. This "
+                            "directory should only be used to store a saved "
+                            "model. If the directory does not exist, it will "
+                            "be created automatically and populated with model"
+                            " data. A pre-existing directory will only be "
+                            "accepted if it contains previously saved model "
+                            "data. If such a directory is given, the full "
+                            "contents of the directory will be deleted and "
+                            "replaced with current"))
+  parser.add_argument("--imbuRetinaId",
+                      default=os.environ.get("IMBU_RETINA_ID"),
+                      type=str)
+  parser.add_argument("--corticalApiKey",
+                      default=os.environ.get("CORTICAL_API_KEY"),
+                      type=str)
+
   args = parser.parse_args()
 
   imbu = ImbuModels(
@@ -178,9 +249,9 @@ def main():
     savePath=args.savePath
   )
 
-  model = imbu.loadModel(args.modelName,
-                         retina=os.environ.get("IMBU_RETINA_ID"),
-                         apiKey=os.environ.get("CORTICAL_API_KEY"))
+  model = imbu.createModel(args.modelName,
+                           retina=args.imbuRetinaId,
+                           apiKey=args.corticalApiKey)
 
   # Query the model.
   printTemplate = "{0:<10}|{1:<30}"

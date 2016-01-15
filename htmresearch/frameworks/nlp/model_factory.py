@@ -60,12 +60,22 @@ class ClassificationModelTypes(object):
 
   @classmethod
   def getTypes(cls):
-    types = {attr
-             for attr in dir(cls)
-             if (isinstance(getattr(cls, attr), type) and
-                 issubclass(getattr(cls, attr), (ClassificationModel,
-                                                 ClassificationNetworkAPI)))}
-    return types
+    """ Get sequence of acceptable model types.  Iterates through class
+    attributes and separates the user-defined enumerations from the default
+    attributes implicit to Python classes. i.e. this function returns the names
+    of the attributes explicitly defined above.
+    """
+
+    acceptableClassImplementations = (
+      ClassificationModel,
+      ClassificationNetworkAPI
+    )
+
+    for attrName in dir(cls):
+      attrValue = getattr(cls, attrName)
+      if (isinstance(attrValue, type) and
+          issubclass(attrValue, acceptableClassImplementations)):
+        yield attrName # attrName is an acceptable model name and
 
 
 
