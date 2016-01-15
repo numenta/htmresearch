@@ -68,7 +68,7 @@ def loadJSON(jsonPath):
 
 
 
-def _createModel(modelName, categoryCount, savePath, **htmArgs):
+def _createModel(modelName, categoryCount, **htmArgs):
   """Return an instantiated model."""
   modelCls = _MODEL_MAPPING.get(modelName, None)
 
@@ -78,23 +78,24 @@ def _createModel(modelName, categoryCount, savePath, **htmArgs):
   if modelName == "CioWordFingerprint":
     model = modelCls(
       fingerprintType=EncoderTypes.word,
-      classifierMetric=_MODEL_CLASSIFIER_METRIC)
+      classifierMetric=_MODEL_CLASSIFIER_METRIC,
+      numLabels=categoryCount)
 
   elif modelName == "CioDocumentFingerprint":
     model =  modelCls(
       fingerprintType=EncoderTypes.document,
-      classifierMetric=_MODEL_CLASSIFIER_METRIC)
+      classifierMetric=_MODEL_CLASSIFIER_METRIC,
+      numLabels=categoryCount)
 
   elif modelName == "HTMNetwork":
-    model = modelCls(**htmArgs)
+    model = modelCls(numLabels=categoryCount, **htmArgs)
 
   else:
-    model = modelCls(classifierMetric=_MODEL_CLASSIFIER_METRIC)
+    model = modelCls(
+      classifierMetric=_MODEL_CLASSIFIER_METRIC,
+      numLabels=categoryCount)
 
   model.verbosity = 0
-  model.numLabels = categoryCount
-  if savePath:
-    model.modelDir = savePath
 
   return model
 
@@ -121,16 +122,15 @@ def run(args):
     
     print "Creating the network model..."
     model = _createModel(
-      modelName=args.modelName,
-      savePath=args.savePath,
+      args.modelName,
+      categoryCount,
       networkConfig=networkConfig,
       inputFilePath=None,
       prepData=False,
-      numLabels=categoryCount,
       retinaScaling=1.0)
 
   else:
-    model = _createModel(args.modelName, categoryCount, args.savePath)
+    model = _createModel(args.modelName, categoryCount)
 
   print "Training the model (and encoding the data)..."
   trainModel(model, dataDict)
