@@ -21,18 +21,62 @@
 
 import simplejson
 
-from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
-from htmresearch.frameworks.nlp.classify_keywords import (
-  ClassificationModelKeywords)
+from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.classify_document_fingerprint import (
   ClassificationModelDocumentFingerprint)
 from htmresearch.frameworks.nlp.classify_fingerprint import (
   ClassificationModelFingerprint)
+from htmresearch.frameworks.nlp.classify_htm import (
+  ClassificationModelHTM)
+from htmresearch.frameworks.nlp.classify_keywords import (
+  ClassificationModelKeywords)
+from htmresearch.frameworks.nlp.classify_network_api import (
+  ClassificationNetworkAPI
+)
+
 
 """
 This module contains functions helpful for creating ClassificationModel
 instances.
 """
+
+
+
+class ClassificationModelTypes(object):
+  """ Enumeration of supported classification model types, mapping userland
+  identifier to constructor.  See createModel() for actual factory method
+  implementation.
+  """
+  CioWordFingerprint = ClassificationModelFingerprint
+  CioDocumentFingerprint = ClassificationModelFingerprint
+  Keywords = ClassificationModelKeywords
+  HTMNetwork = ClassificationModelHTM
+  DocumentFingerPrint = ClassificationModelDocumentFingerprint
+  cioword = ClassificationModelFingerprint
+  docfp = ClassificationModelDocumentFingerprint
+  htm = ClassificationModelHTM
+  keywords = ClassificationModelKeywords
+
+
+  @classmethod
+  def getTypes(cls):
+    """ Get sequence of acceptable model types.  Iterates through class
+    attributes and separates the user-defined enumerations from the default
+    attributes implicit to Python classes. i.e. this function returns the names
+    of the attributes explicitly defined above.
+    """
+
+    acceptableClassImplementations = (
+      ClassificationModel,
+      ClassificationNetworkAPI
+    )
+
+    for attrName in dir(cls):
+      attrValue = getattr(cls, attrName)
+      if (isinstance(attrValue, type) and
+          issubclass(attrValue, acceptableClassImplementations)):
+        yield attrName # attrName is an acceptable model name and
+
 
 
 def getNetworkConfig(networkConfigPath):
@@ -48,40 +92,26 @@ def getNetworkConfig(networkConfigPath):
     raise e
 
 
+
 def createModel(modelName, **kwargs):
   """
   Return a classification model of the appropriate type. The model could be any
   supported subclass of ClassficationModel based on modelName.
 
   @param modelName (str)  A string representing a supported model type:
-                            htm      : ClassificationModelHTM
-                            keywords : ClassificationModelKeywords
-                            docfp    : ClassificationModelDocumentFingerprint
-                            cioword  : ClassificationModelFingerprint
+                          HTMNetwork, htm    : ClassificationModelHTM
+                          Keywords, keywords  : ClassificationModelKeywords
+                          docfp     : ClassificationModelDocumentFingerprint
+                          CioWordFingerprint, CioDocumentFingerprint, cioword:
+                              ClassificationModelFingerprint
 
   @param kwargs    (dict) Constructor argument for the class that will be
                           instantiated. Keyword parameters specific to each
                           model type should be passed in here.
   """
 
-  if modelName == "htm":
-    # Instantiate the HTM model
-    model = ClassificationModelHTM(**kwargs)
-
-  elif modelName == "keywords":
-    # Instantiate the keywords model
-    model = ClassificationModelKeywords(**kwargs)
-
-  elif modelName == "docfp":
-    # Instantiate the document fingerprint model
-    model = ClassificationModelDocumentFingerprint(**kwargs)
-
-  elif modelName == "cioword":
-    # Instantiate the Cio word fingerprint model
-    model = ClassificationModelFingerprint(**kwargs)
-
-  else:
+  if modelName not in ClassificationModelTypes.getTypes():
     raise RuntimeError("Unknown model type: " + modelName)
 
-  return model
+  return getattr(ClassificationModelTypes, modelName)(**kwargs)
 
