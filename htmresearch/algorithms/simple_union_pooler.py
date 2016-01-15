@@ -104,9 +104,6 @@ class SimpleUnionPooler(object):
     unionSDR = self.updateHistory(activeBits)
 
     numpy.copyto(outputVector, unionSDR, casting="unsafe")
-    #
-    # for i in xrange(len(unionSDR)):
-    #   outputVector[i] = unionSDR[i]
 
 
   def getSparsity(self):

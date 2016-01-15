@@ -93,6 +93,18 @@ class SimpleUnionPoolerTest(unittest.TestCase):
     with self.assertRaises(ValueError):
       self.unionPooler.unionIntoArray(activeCells, outputVector)
 
+  def testReset(self):
+    self.unionPooler = SimpleUnionPooler(numInputs=2048,
+                                         historyLength=2)
+    activeCells = [13, 42, 58, 198]
+    outputVector = numpy.zeros(shape=(2048,))
+    for i in xrange(len(activeCells)):
+      self.unionPooler.unionIntoArray(activeCells, outputVector)
+
+    self.unionPooler.reset()
+    self.assertEqual(len(self.unionPooler._activeCellsHistory), 0)
+    self.assertEqual(sum(self.unionPooler._unionSDR), 0)
+
 
 
 if __name__ == "__main__":
