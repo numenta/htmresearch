@@ -63,6 +63,9 @@ class ImbuUnableToLoadModelError(ImbuError):
 
 
 def _loadNetworkConfig():
+  """ Load network config by calculating path relative to this file, and load
+  with htmresearch.frameworks.nlp.model_factory.getNetworkConfig()
+  """
   root = (
     os.path.dirname(
       os.path.dirname(
@@ -105,13 +108,18 @@ class ImbuModels(object):
 
 
   def _defaultModelFactoryKwargs(self):
+    """ Default kwargs common to all model types
+    """
     return dict(
       numLabels=len(self.dataDict),
       modelDir=self.savePath,
       classifierMetric=self.modelSimilarityMetric)
 
 
-  def modelFactory(self, modelType, **kwargs):
+  def _modelFactory(self, modelType, **kwargs):
+    """ Imbu model factory.  Returns a concrete instance of a classification
+    model given a model type name and kwargs.
+    """
 
     modelType = modelType or self.defaultModelType
 
@@ -144,7 +152,9 @@ class ImbuModels(object):
 
 
   def createModel(self, modelType, *modelFactoryArgs, **modelFactoryKwargs):
-
+    """ Creates a new model and trains it, or loads a previously trained model
+    from specified loadPath.
+    """
     if self.loadPath:
       # User has explicitly specified a load path and expects a model to exist
       try:
@@ -165,18 +175,22 @@ class ImbuModels(object):
       try:
         model = ClassificationModel.load(self.loadPath)
       except IOError as exc:
-        model = self.modelFactory(*modelFactoryArgs, **modelFactoryKwargs)
+        model = self._modelFactory(*modelFactoryArgs, **modelFactoryKwargs)
         self.train(model)
 
     return model
 
 
   def _loadTrainingData(self):
+    """ Load training data
+    """
     return readCSV(self.dataPath,
                    numLabels=0) # 0 to train models in unsupervised fashion
 
 
   def train(self, model):
+    """ Train model
+    """
     for seqId, (text, _, _) in enumerate(self.dataDict.values()):
       model.trainDocument(text, [seqId], seqId)
 
@@ -186,17 +200,23 @@ class ImbuModels(object):
 
   @staticmethod
   def query(model, query, returnDetailedResults=True, sortResults=True):
+    """ Query classification model
+    """
     return model.inferDocument(query,
                                returnDetailedResults=returnDetailedResults,
                                sortResults=sortResults)
 
 
   def save(self, model):
+    """ Save classification model
+    """
     model.save(self.savePath)
 
 
 
 def main():
+  """ Main entry point for Imbu CLI utility to demonstration Imbu functionality
+  """
   parser = argparse.ArgumentParser()
 
   parser.add_argument("--cacheRoot",
