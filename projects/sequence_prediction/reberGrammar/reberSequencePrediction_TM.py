@@ -20,7 +20,7 @@
 # ----------------------------------------------------------------------
 
 from __future__ import print_function
-from reberGrammar import *
+from htmresearch.support.reberGrammar import *
 from nupic.encoders import SDRCategoryEncoder
 import numpy as np
 import matplotlib.pyplot as plt

@@ -24,7 +24,7 @@ import unittest
 import numpy
 import numpy.testing as npt
 
-from union_temporal_pooling.activation.excite_functions.excite_functions_all import (
+from htmresearch.frameworks.union_temporal_pooling.activation.excite_functions.excite_functions_all import (
   LogisticExciteFunction)
 
 class LogisticExciteFunctionTest(unittest.TestCase):
@@ -67,7 +67,8 @@ class LogisticExciteFunctionTest(unittest.TestCase):
     activation = numpy.array([0, 2, 4, 6, 8])
     expected = numpy.copy(activation) + self.fcn._maxValue
     inputs = 1000000
-    self.fcn.excite(activation, inputs)
+    activation = self.fcn.excite(activation, inputs)
+    print "activation: ", activation
     npt.assert_allclose(activation, expected)
 
 
