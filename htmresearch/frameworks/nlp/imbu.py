@@ -22,14 +22,14 @@
 """
 Class for running models in Imbu app.
 
-The script is runnable to demo Imbu functionality:
+The script is runnable to demo Imbu functionality (from repo's base dir):
 
-  python imbu.py \
-    --dataPath data/sample_reviews/sample_reviews.csv \
-    --modelName CioWordFingerprint
+  python htmresearch/frameworks/nlp/imbu.py \
+    --dataPath projects/nlp/data/sample_reviews/sample_reviews.csv \
+    --modelName Keywords
 
-  python imbu.py \
-    --dataPath data/sample_reviews/sample_reviews_unlabeled.csv \
+  python htmresearch/frameworks/nlp/imbu.py \
+    --dataPath projects/nlp/data/sample_reviews/sample_reviews_unlabeled.csv \
     --modelName HTMNetwork
 """
 
@@ -48,6 +48,7 @@ from htmresearch.frameworks.nlp.model_factory import (
 
 class ModelSimilarityMetrics(object):
   pctOverlapOfInput = "pctOverlapOfInput"
+  rawOverlap = "rawOverlap"
 
 
 
@@ -85,7 +86,7 @@ def _loadNetworkConfig():
 class ImbuModels(object):
 
   defaultSimilarityMetric = ModelSimilarityMetrics.pctOverlapOfInput
-  defaultModelType = "HTMNetwork"
+  defaultModelType = "CioWordFingerprint"
   defaultRetina = "en_associative"
 
   def __init__(self, cacheRoot, dataPath, loadPath, savePath,
@@ -108,7 +109,7 @@ class ImbuModels(object):
 
 
   def _defaultModelFactoryKwargs(self):
-    """ Default kwargs common to all model types
+    """ Default kwargs common to all model types.
     """
     return dict(
       numLabels=len(self.dataDict),
@@ -175,21 +176,23 @@ class ImbuModels(object):
       try:
         model = ClassificationModel.load(self.loadPath)
       except IOError as exc:
-        model = self._modelFactory(*modelFactoryArgs, **modelFactoryKwargs)
+        model = self._modelFactory(modelType,
+                                   *modelFactoryArgs,
+                                   **modelFactoryKwargs)
         self.train(model)
 
     return model
 
 
   def _loadTrainingData(self):
-    """ Load training data
+    """ Load training data.
     """
     return readCSV(self.dataPath,
                    numLabels=0) # 0 to train models in unsupervised fashion
 
 
   def train(self, model):
-    """ Train model
+    """ Train model.
     """
     for seqId, (text, _, _) in enumerate(self.dataDict.values()):
       model.trainDocument(text, [seqId], seqId)
@@ -200,7 +203,7 @@ class ImbuModels(object):
 
   @staticmethod
   def query(model, query, returnDetailedResults=True, sortResults=True):
-    """ Query classification model
+    """ Query classification model.
     """
     return model.inferDocument(query,
                                returnDetailedResults=returnDetailedResults,
@@ -208,14 +211,21 @@ class ImbuModels(object):
 
 
   def save(self, model):
-    """ Save classification model
+    """ Save classification model.
     """
     model.save(self.savePath)
 
 
+  @staticmethod
+  def formatResults(distanceArray):
+    """ Format distances to reflect the pctOverlapOfInput metric.
+    """
+    return (1.0 - distanceArray) * 100
+
+
 
 def main():
-  """ Main entry point for Imbu CLI utility to demonstration Imbu functionality
+  """ Main entry point for Imbu CLI utility to demonstration Imbu functionality.
   """
   parser = argparse.ArgumentParser()
 
@@ -224,7 +234,7 @@ def main():
   parser.add_argument("--modelSimilarityMetric",
                       default=ImbuModels.defaultSimilarityMetric,
                       help=("Classifier metric. Note: HTMNetwork model uses "
-                            "rawOverlap, as specified in the network config "
+                            "the metric specified in the network config "
                             "file."))
   parser.add_argument("-d", "--dataPath",
                       help="Path to data CSV; samples must be in column w/ "
@@ -285,8 +295,10 @@ def main():
 
     _, idList, sortedDistances = imbu.query(model, query)
 
-    print printTemplate.format("Sample ID", "Distance from query")
-    for sID, dist in zip(idList, sortedDistances):
+    formattedDistances = imbu.formatResults(sortedDistances)
+
+    print printTemplate.format("Sample ID", "% Overlap With Query")
+    for sID, dist in zip(idList, formattedDistances):
       print printTemplate.format(sID, dist)
 
 

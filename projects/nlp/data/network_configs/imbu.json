@@ -15,7 +15,7 @@
     "regionType": "py.KNNClassifierRegion",
     "regionParams": {
       "k": 2000,
-      "distanceMethod": "rawOverlap",
+      "distanceMethod": "pctOverlapOfInput",
       "maxCategoryCount": 2000
     }
   }
