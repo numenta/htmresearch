@@ -22,6 +22,7 @@
 
 import argparse
 import numpy
+import os
 import simplejson
 from textwrap import TextWrapper
 import matplotlib.pyplot as plt
@@ -39,12 +40,14 @@ from htmresearch.algorithms.hierarchical_clustering import (
 )
 from htmresearch.frameworks.nlp.model_factory import (getNetworkConfig)
 
-
-
-wrapper = TextWrapper(width=100)
+SAVE_PATH = os.path.join(os.path.dirname(__file__),
+                         "results/HierarchicalClustering/")
 
 
 def runExperiment(args):
+  if not os.path.exists(SAVE_PATH):
+    os.makedirs(SAVE_PATH)
+  
   (trainingDataDup, testData, labelRefs, documentCategoryMap,
    documentTextMap) = readData(args)
   
@@ -162,18 +165,14 @@ def create2DSVDProjection(args, protos, trainingData, documentCategoryMap, knn):
   plt.xlabel("PC 2")
   plt.ylabel("PC 1")
   plt.scatter(projectedData[:,1], projectedData[:,0], c=colorSequenceClusters)
-  
-  
-  plt.savefig("scatter.png")
-  
+  plt.savefig(os.path.join(SAVE_PATH, "scatter.png"))
+
   plt.figure()
   plt.plot(s[:250])
   plt.xlabel("Singular value #")
   plt.ylabel("Singular value")
-  plt.savefig("singular_values.png")
-  
-  print s.min(), s.max()
-  print s[-10:]
+  plt.savefig(os.path.join(SAVE_PATH, "singular_values.png"))
+
 
 def createBucketClusterPlot(args, bucketCounts):
   bucketCounts += 0
@@ -189,8 +188,8 @@ def createBucketClusterPlot(args, bucketCounts):
     for colIx in xrange(bucketCounts.shape[1]):
       if bucketCounts[rowIx, colIx] != 0:
         plt.annotate(str(int(bucketCounts[rowIx, colIx])), xy=(colIx+0.2, rowIx+0.4))
-  
-  plt.savefig("out.png")
+
+  plt.savefig(os.path.join(SAVE_PATH, "bucket_cluster_matrix.png"))
   
 
 
@@ -216,8 +215,7 @@ def knnTest(protos, knn):
     print "KNN test passed"
   else:
     print "KNN test failed"
-  
-  
+
 
 def trainModel(args, model, trainingData, labelRefs):
   """
@@ -345,11 +343,6 @@ if __name__ == "__main__":
                       default=False,
                       action='store_true',
                       help="Run test for consistency with KNN")
-
-  # parser.add_argument("--textPreprocess",
-  #                     action="store_true",
-  #                     default=False,
-  #                     help="Whether or not to use text preprocessing.")
   parser.add_argument("-v", "--verbosity",
                       default=2,
                       type=int,
