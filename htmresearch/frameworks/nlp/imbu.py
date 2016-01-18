@@ -89,22 +89,29 @@ class ImbuModels(object):
   defaultModelType = "CioWordFingerprint"
   defaultRetina = "en_associative"
 
-  def __init__(self, cacheRoot, dataPath, loadPath, savePath,
-      modelSimilarityMetric):
+  # Sequence of classification model types that accept CioEncoder kwargs
+  requiresCIOKwargs = {
+    ClassificationModelTypes.CioWordFingerprint,
+    ClassificationModelTypes.HTMNetwork,
+    ClassificationModelTypes.DocumentFingerPrint
+  }
+
+  def __init__(self, cacheRoot, dataPath,  modelSimilarityMetric=None,
+      apiKey=None, retina=None):
     self.cacheRoot = cacheRoot
     self.modelSimilarityMetric = (
       modelSimilarityMetric or self.defaultSimilarityMetric
     )
-    self.loadPath = loadPath
-    self.savePath = savePath
     self.dataPath = dataPath
     self.dataDict = self._loadTrainingData()
+    self.apiKey = apiKey
+    self.retina = retina or self.defaultRetina
 
 
   def __repr__(self):
     return ("Imbu<cacheRoot={cacheRoot}, dataPath={dataPath}, "
-            "loadPath={loadPath}, savePath={savePath}, "
-            "modelSimilarityMetric={modelSimilarityMetric}>"
+            "modelSimilarityMetric={modelSimilarityMetric}, "
+            "apiKey={apiKey}, retina={retina}>"
             .format(**self.__dict__))
 
 
@@ -113,11 +120,10 @@ class ImbuModels(object):
     """
     return dict(
       numLabels=len(self.dataDict),
-      modelDir=self.savePath,
       classifierMetric=self.modelSimilarityMetric)
 
 
-  def _modelFactory(self, modelType, **kwargs):
+  def _modelFactory(self, modelType, savePath, **kwargs):
     """ Imbu model factory.  Returns a concrete instance of a classification
     model given a model type name and kwargs.
     """
@@ -127,20 +133,25 @@ class ImbuModels(object):
     kwargs.update(**self._defaultModelFactoryKwargs())
 
     if modelType == "CioWordFingerprint":
-      kwargs.update(retina=kwargs.get("retina") or self.defaultRetina,
-                    apiKey=kwargs.get("apiKey"),
+      kwargs.update(modelDir=savePath,
+                    retina=self.retina,
+                    apiKey=self.apiKey,
                     fingerprintType=EncoderTypes.word,
                     cacheRoot=self.cacheRoot)
 
 
     elif modelType == "CioDocumentFingerprint":
-      kwargs.update(retina=kwargs.get("retina") or self.defaultRetina,
-                    apiKey=kwargs.get("apiKey"),
+      kwargs.update(modelDir=savePath,
+                    retina=self.retina,
+                    apiKey=self.apiKey,
                     fingerprintType=EncoderTypes.document,
                     cacheRoot=self.cacheRoot)
 
     elif modelType == "HTMNetwork":
-      kwargs.update(networkConfig=_loadNetworkConfig(),
+      kwargs.update(modelDir=savePath,
+                    retina=self.retina,
+                    apiKey=self.apiKey,
+                    networkConfig=_loadNetworkConfig(),
                     inputFilePath=None,
                     prepData=False,
                     retinaScaling=1.0)
@@ -152,19 +163,24 @@ class ImbuModels(object):
     return model
 
 
-  def createModel(self, modelType, *modelFactoryArgs, **modelFactoryKwargs):
+  def createModel(self, modelType, loadPath, savePath, *modelFactoryArgs,
+      **modelFactoryKwargs):
     """ Creates a new model and trains it, or loads a previously trained model
     from specified loadPath.
     """
-    if self.loadPath:
+
+
+
+
+    if loadPath:
       # User has explicitly specified a load path and expects a model to exist
       try:
-        model = ClassificationModel.load(self.loadPath)
+        model = ClassificationModel.load(loadPath)
 
         if not isinstance(model, getattr(ClassificationModelTypes, modelType)):
           raise ImbuError("Model ({}) loaded from {} is not the same type as "
                           "requested ({})."
-                          .format(repr(model), self.loadPath, modelType))
+                          .format(repr(model), loadPath, modelType))
 
       except IOError as exc:
         # Model was not found, user may have specified incorrect path, DO NOT
@@ -174,12 +190,13 @@ class ImbuModels(object):
       # User has not specified a load path, defer to default case and
       # gracefully create a new model
       try:
-        model = ClassificationModel.load(self.loadPath)
+        model = ClassificationModel.load(loadPath)
       except IOError as exc:
         model = self._modelFactory(modelType,
+                                   savePath,
                                    *modelFactoryArgs,
                                    **modelFactoryKwargs)
-        self.train(model)
+        self.train(model, savePath)
 
     return model
 
@@ -191,14 +208,14 @@ class ImbuModels(object):
                    numLabels=0) # 0 to train models in unsupervised fashion
 
 
-  def train(self, model):
+  def train(self, model, savePath=None):
     """ Train model.
     """
     for seqId, (text, _, _) in enumerate(self.dataDict.values()):
       model.trainDocument(text, [seqId], seqId)
 
-    if self.savePath:
-      self.save(model)
+    if savePath:
+      self.save(model, savePath)
 
 
   @staticmethod
@@ -210,10 +227,10 @@ class ImbuModels(object):
                                sortResults=sortResults)
 
 
-  def save(self, model):
+  def save(self, model, savePath=None):
     """ Save classification model.
     """
-    model.save(self.savePath)
+    model.save(savePath)
 
 
   @staticmethod
@@ -275,13 +292,13 @@ def main():
     cacheRoot=args.cacheRoot,
     modelSimilarityMetric=args.modelSimilarityMetric,
     dataPath=args.dataPath,
-    loadPath=args.loadPath,
-    savePath=args.savePath
+    retina=args.imbuRetinaId,
+    apiKey=args.corticalApiKey
   )
 
   model = imbu.createModel(args.modelName,
-                           retina=args.imbuRetinaId,
-                           apiKey=args.corticalApiKey)
+                           loadPath=args.loadPath,
+                           savePath=args.savePath)
 
   # Query the model.
   printTemplate = "{0:<10}|{1:<30}"
