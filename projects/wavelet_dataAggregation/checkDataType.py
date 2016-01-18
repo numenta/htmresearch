@@ -38,24 +38,28 @@ def downloadExampleData():
 	:return: lists of filename, filepath and datatype
 	"""
 	exampleDataURL = [
-		'http://data.numenta.org/nypd-motor-vehicle-collisions/nypd-motor-vehicle-collisions/data.csv',
-		'http://data.numenta.org/sfpd-incidents/sfpd-incidents/data.csv',
-		'http://data.numenta.org/usgs-earthquakes/usgs-earthquakes/data.csv',
-		'http://data.numenta.org/portland-911/portland-911/data.csv',
-		'http://data.numenta.org/planetlabs-ephemerides/DOVE%203/data.csv?limit=500',
-		'http://data.numenta.org/nyc-traffic/1/data.csv?limit=500',
-		'http://data.numenta.org/mn-traffic-sensors/10/data.csv?limit=500',
-		'http://data.numenta.org/chicago-beach-water-quality/63rd%20Street%20Beach/data.csv?limit=500'
+		"http://data.numenta.org/btcc-trades/btcc-trades/data.csv?limit=500",
+		"http://data.numenta.org/nypd-motor-vehicle-collisions/nypd-motor-vehicle-collisions/data.csv",
+		"http://data.numenta.org/sfpd-incidents/sfpd-incidents/data.csv",
+		"http://data.numenta.org/usgs-earthquakes/usgs-earthquakes/data.csv",
+		"http://data.numenta.org/portland-911/portland-911/data.csv",
+		"http://data.numenta.org/planetlabs-ephemerides/DOVE%203/data.csv?limit=500",
+		"http://data.numenta.org/nyc-traffic/1/data.csv?limit=500",
+		"http://data.numenta.org/mn-traffic-sensors/10/data.csv?limit=500",
+		"http://data.numenta.org/chicago-beach-water-quality/63rd%20Street%20Beach/data.csv?limit=500",
+		"http://data.numenta.org/mo-water-levels/CLKM7/data.csv?limit=500"
 	]
 	dataTypeList = [
-		'transactional',
-		'transactional',
-		'transactional',
-		'transactional',
-		'non-transactional',
-		'non-transactional',
-		'non-transactional',
-		'non-transactional',
+		"transactional",
+		"transactional",
+		"transactional",
+		"transactional",
+		"transactional",
+		"non-transactional",
+		"non-transactional",
+		"non-transactional",
+		"non-transactional",
+		"non-transactional",
 	]
 	fileNameList = []
 	filePathList = []
@@ -149,7 +153,8 @@ if __name__ == "__main__":
 	print "Test algorithm on NAB data ..."
 	NABPath = '/Users/ycui/nta/NAB/'
 	dataPath = NABPath + 'data/'
-	dataDirs = [join(dataPath, f) for f in listdir(dataPath) if not isfile(join(dataPath, f))]
+	dataDirs = [join(dataPath, f) for f in listdir(dataPath)
+	            if not isfile(join(dataPath, f))]
 
 	dataTypeList = []
 	predictedDataTypeList = []
@@ -167,21 +172,26 @@ if __name__ == "__main__":
 			print "File: %s DataType: %s predicted Data Type: %s" % (dataFile,
 			                                                         dataTypeList[-1],
 			                                                         predictedDataType)
+			print "indicator: %s " % dataTypeIndicatorList[-1]
+			print
 
 	checkAlgorithmPerformance(dataTypeList, predictedDataTypeList, dataTypeIndicatorList)
 
 	print "Test algorithm on river-view data streams ..."
 	fileNameList, filePathList, dataTypeList = downloadExampleData()
+
 	dataTypeIndicatorList = []
 	predictedDataTypeList = []
-	for i in xrange(len(filePathList)):
+	for i in xrange(len(filePathList)) :
 		filePath = filePathList[i]
 		predictedDataType, dataTypeIndicator = checkDataType(filePath)
-		print " File: %s DataType: %s predicted Data Type: %s " % (fileNameList[i],
-		                                                           dataTypeList[i],
-		                                                           predictedDataType)
-
 		predictedDataTypeList.append(predictedDataType)
 		dataTypeIndicatorList.append(dataTypeIndicator)
+
+		print "File: %s DataType: %s predicted Data Type: %s" % (filePath,
+		                                                         dataTypeList[-1],
+		                                                         predictedDataType)
+		print "indicator: %s " % dataTypeIndicatorList[-1]
+		print
 
 	checkAlgorithmPerformance(dataTypeList, predictedDataTypeList, dataTypeIndicatorList)
