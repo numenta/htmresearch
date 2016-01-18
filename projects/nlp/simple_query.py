@@ -36,7 +36,7 @@ import argparse
 import numpy
 from textwrap import TextWrapper
 
-from htmresearch.support.csv_helper import readCSV, mapLabelRefs
+from htmresearch.support.csv_helper import readDataAndReshuffle
 from htmresearch.frameworks.nlp.model_factory import (
   createModel, getNetworkConfig)
 
@@ -103,7 +103,7 @@ def queryModel(model, queryDocument, documentTextMap,
   for i, docId in enumerate(idList[0:10]):
     print distances[i], docId
     print "document=",wrapper.fill(documentTextMap[docId])
-    print "Categories=",documentCategoryMap[str(docId)]
+    print "Categories=",documentCategoryMap[docId]
     print
 
   print "Here are some dissimilar documents in reverse order of similarity"
@@ -114,88 +114,6 @@ def queryModel(model, queryDocument, documentTextMap,
     print
 
 
-def readData(args, categoriesInOrderOfInterest=None):
-  """
-  Read data file, print out some statistics, and return various data structures
-
-  categoriesInOrderOfInterest (list) Optional list of integers representing
-                                     the priority order of various categories
-
-  Returns the tuple:
-    (training dataset, test dataset, labelRefs, documentCategoryMap,
-     documentTextMap)
-
-  Return format:
-      dataset = [
-        ["fox eats carrots", [0], docId],
-        ["fox eats peppers", [0], docId],
-        ["carrots are healthy", [1], docId],
-        ["peppers is healthy", [1], docId],
-      ]
-
-      labelRefs = [Category0Name, Category1Name, ...]
-
-      documentCategoryMap = {
-        docId: [categoryIndex0, categoryIndex1, ...],
-        docId: [categoryIndex0, categoryIndex1, ...],
-                :
-      }
-
-      documentTextMap = {
-        docId: documentText,
-        docId: documentText,
-                :
-      }
-
-labelId to text map, and docId to categories
-
-  """
-  # Read data
-  dataDict = readCSV(args.dataPath, 1)
-  labelRefs, dataDict = mapLabelRefs(dataDict)
-  if categoriesInOrderOfInterest is None:
-      categoriesInOrderOfInterest = range(0,args.numLabels)
-  else:
-    categoriesInOrderOfInterest=categoriesInOrderOfInterest[0:args.numLabels]
-
-  # Select data based on categories of interest. Shift category indices down
-  # so we go from 0 to numLabels-1
-  trainingData = []
-  documentTextMap = {}
-  counts = numpy.zeros(len(labelRefs))
-  for document in dataDict.itervalues():
-    try:
-      docId = int(document[2])
-    except:
-      raise RuntimeError("docId "+str(docId)+" is not an integer")
-    oldCategoryIndex = document[1][0]
-    documentTextMap[docId] = document[0]
-    if oldCategoryIndex in categoriesInOrderOfInterest:
-      newIndex = categoriesInOrderOfInterest.index(oldCategoryIndex)
-      trainingData.append([document[0], [newIndex], docId])
-      counts[newIndex] += 1
-
-  # For each document, figure out which categories it belongs to
-  # Include the shifted category index
-  documentCategoryMap = {}
-  for doc in dataDict.iteritems():
-    docId = doc[1][2]
-    oldCategoryIndex = doc[1][1][0]
-    if oldCategoryIndex in categoriesInOrderOfInterest:
-      newIndex = categoriesInOrderOfInterest.index(oldCategoryIndex)
-      v = documentCategoryMap.get(docId, [])
-      v.append(newIndex)
-      documentCategoryMap[docId] = v
-
-  labelRefs = [labelRefs[i] for i in categoriesInOrderOfInterest]
-  print "Total number of unique documents",len(documentCategoryMap)
-  print "Category counts: ",counts
-  print "Categories in training/test data:", labelRefs
-
-  return (trainingData, trainingData, labelRefs, documentCategoryMap,
-          documentTextMap)
-
-
 def runExperiment(args):
   """
   Create model according to args, train on training data, save model,
@@ -203,8 +121,8 @@ def runExperiment(args):
   """
 
   # Read in data file
-  (trainingData, testData, labelRefs, documentCategoryMap,
-   documentTextMap) = readData(args,
+  (trainingData, labelRefs, documentCategoryMap,
+   documentTextMap) = readDataAndReshuffle(args,
                          [8,9,10,5,6,11,13,0,1,2,3,4,7,12,14])
 
   # Create model
