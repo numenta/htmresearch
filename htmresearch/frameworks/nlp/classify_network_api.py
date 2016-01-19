@@ -104,7 +104,7 @@ class ClassificationNetworkAPI(ClassificationModel):
     """
     # TODO: Introduce a consistent reset method name in Regions
     for r in self.learningRegions:
-      if r.type == "py.TemporalPoolerRegion":
+      if r.type in ["py.TemporalPoolerRegion", "py.TMRegion"]:
         r.executeCommand(["reset"])
       elif r.type == "py.TPRegion":
         r.executeCommand(["resetSequenceStates"])
