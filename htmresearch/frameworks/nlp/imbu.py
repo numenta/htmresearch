@@ -118,11 +118,11 @@ class ImbuModels(object):
   def _defaultModelFactoryKwargs(self):
     """ Default kwargs common to all model types.
 
-    numLabels is set to the number of data samples in order to use unlabeled
-    data for querying and still comply with models' inference logic.
+    For Imbu to function unsupervised, numLabels is set to 1 in order to use
+    unlabeled data for querying and still comply with models' inference logic.
     """
     return dict(
-      numLabels=len(self.dataDict),
+      numLabels=1,
       classifierMetric=self.modelSimilarityMetric)
 
 
@@ -154,9 +154,10 @@ class ImbuModels(object):
                     retinaScaling=1.0)
 
     elif modelType == "Keywords":
-      # k should be the number of data samples (i.e. numLabels) because Keywords
-      # uses exact matching.
-      kwargs.update(k=kwargs.get("numLabels", 1))
+      # k should be > the number of data samples because the Keywords model
+      # looks for exact matching tokens, so we want to consider all data
+      # samples in the search of k nearest neighbors.
+      kwargs.update(k=5 * len(self.dataDict))
 
     model = createModel(modelType, **kwargs)
 
@@ -208,10 +209,10 @@ class ImbuModels(object):
 
 
   def train(self, model, savePath=None):
-    """ Train model.
+    """ Train model, generically assigning category 0 to all documents.
     """
     for seqId, (text, _, _) in enumerate(self.dataDict.values()):
-      model.trainDocument(text, [seqId], seqId)
+      model.trainDocument(text, [0], seqId)
 
     if savePath:
       self.save(model, savePath)

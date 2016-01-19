@@ -180,8 +180,12 @@ class ClassificationModelKeywords(ClassificationModel):
 
       # We only care about 0 distances (exact matches), and disregard all others
       distances[numpy.where(distances != 0)] = numpy.inf
-      sorting = distances.argsort()
-      sortedIdList = [idList[j] for j in sorting]
-      sortedDistances = distances[sorting]
 
-      return categoryVotes, sortedIdList, sortedDistances
+      if sortResults:
+        sorting = distances.argsort()
+        sortedIdList = [idList[j] for j in sorting]
+        sortedDistances = distances[sorting]
+
+        return categoryVotes, sortedIdList, sortedDistances
+
+      return categoryVotes, idList, distances
