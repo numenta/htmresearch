@@ -150,7 +150,7 @@ class TMRegion(PyRegion):
                 defaultValue=1,
                 constraints="bool"),
             inferenceMode=dict(
-                description='1 if the node is inferring (default 0).',
+                description='1 if the node is inferring (default 1).',
                 accessMode='ReadWrite',
                 dataType='UInt32',
                 count=1,
@@ -227,7 +227,7 @@ class TMRegion(PyRegion):
                             "decremented.",
                 accessMode='ReadWrite',
                 dataType="Real32",
-                count=0),
+                count=1),
             seed=dict(
                 description="Seed for the random number generator.",
                 accessMode='ReadWrite',
@@ -354,6 +354,7 @@ class TMRegion(PyRegion):
                        learn=self.learningMode)
       predictedActiveCells = self._tm.predictedActiveCells
     else:
+      # Plain old temporal memory
       self._tm.compute(activeColumns, learn=self.learningMode)
       # Normal temporal memory doesn't compute predictedActiveCells
       predictedActiveCells = self._tm.activeCells & self.previouslyPredictedCells
@@ -429,19 +430,3 @@ class TMRegion(PyRegion):
       return self.columnCount * self.cellsPerColumn
     else:
       raise Exception("Invalid output name specified")
-
-
-  def getParameterArrayCount(self, name, index):
-    p = self.getParameter(name)
-    if not hasattr(p, "__len__"):
-      raise Exception("Attempt to access parameter '%s' as an array but it is not an array" % name)
-    return len(p)
-
-
-  def getParameterArray(self, name, index, a):
-    p = self.getParameter(name)
-    if not hasattr(p, "__len__"):
-      raise Exception("Attempt to access parameter '%s' as an array but it is not an array" % name)
-
-    if len(p) >  0:
-      a[:] = p[:]
