@@ -86,10 +86,10 @@ def _loadNetworkConfig():
 class ImbuModels(object):
 
   defaultSimilarityMetric = ModelSimilarityMetrics.pctOverlapOfInput
-  defaultModelType = "CioWordFingerprint"
+  defaultModelType = ClassificationModelTypes.CioWordFingerprint
   defaultRetina = "en_associative"
 
-  # Sequence of classification model types that accept CioEncoder kwargs
+  # Set of classification model types that accept CioEncoder kwargs
   requiresCIOKwargs = {
     ClassificationModelTypes.CioWordFingerprint,
     ClassificationModelTypes.HTMNetwork,
@@ -130,28 +130,22 @@ class ImbuModels(object):
 
     modelType = modelType or self.defaultModelType
 
-    kwargs.update(**self._defaultModelFactoryKwargs())
+    kwargs.update(modelDir=savePath, **self._defaultModelFactoryKwargs())
 
-    if modelType == "CioWordFingerprint":
-      kwargs.update(modelDir=savePath,
-                    retina=self.retina,
-                    apiKey=self.apiKey,
-                    fingerprintType=EncoderTypes.word,
+    if modelType in self.requiresCIOKwargs:
+      # Model type requires cortical.io credentials
+      kwargs.update(retina=self.retina, apiKey=self.apiKey)
+
+    if modelType == ClassificationModelTypes.CioWordFingerprint:
+      kwargs.update(fingerprintType=EncoderTypes.word,
                     cacheRoot=self.cacheRoot)
 
-
-    elif modelType == "CioDocumentFingerprint":
-      kwargs.update(modelDir=savePath,
-                    retina=self.retina,
-                    apiKey=self.apiKey,
-                    fingerprintType=EncoderTypes.document,
+    elif modelType == ClassificationModelTypes.CioDocumentFingerprint:
+      kwargs.update(fingerprintType=EncoderTypes.document,
                     cacheRoot=self.cacheRoot)
 
-    elif modelType == "HTMNetwork":
-      kwargs.update(modelDir=savePath,
-                    retina=self.retina,
-                    apiKey=self.apiKey,
-                    networkConfig=_loadNetworkConfig(),
+    elif modelType == ClassificationModelTypes.HTMNetwork:
+      kwargs.update(networkConfig=_loadNetworkConfig(),
                     inputFilePath=None,
                     prepData=False,
                     retinaScaling=1.0)
