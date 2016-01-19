@@ -110,6 +110,9 @@ class ImbuModels(object):
 
   def _defaultModelFactoryKwargs(self):
     """ Default kwargs common to all model types.
+
+    numLabels is set to the number of data samples in order to use unlabeled
+    data for querying and still comply with models' inference logic.
     """
     return dict(
       numLabels=len(self.dataDict),
@@ -132,7 +135,6 @@ class ImbuModels(object):
                     fingerprintType=EncoderTypes.word,
                     cacheRoot=self.cacheRoot)
 
-
     elif modelType == "CioDocumentFingerprint":
       kwargs.update(retina=kwargs.get("retina") or self.defaultRetina,
                     apiKey=kwargs.get("apiKey"),
@@ -144,6 +146,11 @@ class ImbuModels(object):
                     inputFilePath=None,
                     prepData=False,
                     retinaScaling=1.0)
+
+    elif modelType == "Keywords":
+      # k should be the number of data samples (i.e. numLabels) because Keywords
+      # uses exact matching.
+      kwargs.update(k=kwargs.get("numLabels", 1))
 
     model = createModel(modelType, **kwargs)
 
