@@ -164,7 +164,6 @@ class ClassificationModel(object):
     # classification involves summing the most likely classification for each
     # token.
 
-
     # For each token run inference on the token and accumulate sum of distances
     # from this token to all other sampleIds.
     tokenList = self.tokenize(document)
@@ -183,7 +182,6 @@ class ClassificationModel(object):
 
       if votes.sum() > 0:
         categoryVotes[votes.argmax()] += 1
-
 
     return categoryVotes, None, None
 
@@ -366,7 +364,9 @@ class ClassificationModel(object):
              (numpy array) An array of distances from this document to each
                            sampleId
     """
-    # Default implementation, can be overridden
+    # Default implementation, can be overridden.
+    # Note that some models specify a classifier with exact matching, which is
+    # reflected in the returned categoryVotes, but not the returned distances.
 
     # For each token run inference on the token and accumulate sum of distances
     # from this token to all other sampleIds.

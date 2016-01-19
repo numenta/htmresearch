@@ -129,6 +129,8 @@ def runExperiment(args):
   model = instantiateModel(args)
 
   model = trainModel(args, model, trainingData, labelRefs)
+  
+  model.save(args.modelDir)
 
   # Now query the model using some example HR complaints about managers
   queryModel(model,

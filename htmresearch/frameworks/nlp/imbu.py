@@ -117,9 +117,12 @@ class ImbuModels(object):
 
   def _defaultModelFactoryKwargs(self):
     """ Default kwargs common to all model types.
+
+    For Imbu to function unsupervised, numLabels is set to 1 in order to use
+    unlabeled data for querying and still comply with models' inference logic.
     """
     return dict(
-      numLabels=len(self.dataDict),
+      numLabels=1,
       classifierMetric=self.modelSimilarityMetric)
 
 
@@ -133,7 +136,7 @@ class ImbuModels(object):
     kwargs.update(modelDir=savePath, **self._defaultModelFactoryKwargs())
 
     if modelType in self.requiresCIOKwargs:
-      # Model type requires cortical.io credentials
+      # Model type requires Cortical.io credentials
       kwargs.update(retina=self.retina, apiKey=self.apiKey)
 
     if modelType == ClassificationModelTypes.CioWordFingerprint:
@@ -150,6 +153,12 @@ class ImbuModels(object):
                     prepData=False,
                     retinaScaling=1.0)
 
+    elif modelType == "Keywords":
+      # k should be > the number of data samples because the Keywords model
+      # looks for exact matching tokens, so we want to consider all data
+      # samples in the search of k nearest neighbors.
+      kwargs.update(k=5 * len(self.dataDict))
+
     model = createModel(modelType, **kwargs)
 
     model.verbosity = 0
@@ -162,9 +171,6 @@ class ImbuModels(object):
     """ Creates a new model and trains it, or loads a previously trained model
     from specified loadPath.
     """
-
-
-
 
     if loadPath:
       # User has explicitly specified a load path and expects a model to exist
@@ -203,10 +209,10 @@ class ImbuModels(object):
 
 
   def train(self, model, savePath=None):
-    """ Train model.
+    """ Train model, generically assigning category 0 to all documents.
     """
     for seqId, (text, _, _) in enumerate(self.dataDict.values()):
-      model.trainDocument(text, [seqId], seqId)
+      model.trainDocument(text, [0], seqId)
 
     if savePath:
       self.save(model, savePath)
