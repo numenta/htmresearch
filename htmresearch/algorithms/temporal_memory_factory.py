@@ -30,6 +30,7 @@ from htmresearch.algorithms.fast_general_temporal_memory import (
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 
+class MonitoredTemporalMemory(TemporalMemoryMonitorMixin, TemporalMemory): pass
 
 class TemporalMemoryTypes(object):
   """ Enumeration of supported classification model types, mapping userland
@@ -40,7 +41,7 @@ class TemporalMemoryTypes(object):
   fastGeneral = FastGeneralTemporalMemory
   tm = TemporalMemory
   fast = FastTemporalMemory
-  tmMixin = TemporalMemoryMonitorMixin
+  tmMixin = MonitoredTemporalMemory
 
 
   @classmethod
