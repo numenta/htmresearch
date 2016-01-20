@@ -2,3 +2,4 @@
 pandas
 plotly
 nupic
+simplejson
