@@ -199,6 +199,13 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass(), poolerType="union"
       count=1,
       constraints=""),
 
+    historyLength=dict(
+      description="The union window length",
+      accessMode="ReadWrite",
+      dataType="UInt32",
+      count=1,
+      constraints=""),
+
      poolerType=dict(
       description="Type of pooler to use: union",
       accessMode="ReadWrite",
