@@ -97,6 +97,21 @@ NRMSE_TM = plotAccuracy((square_deviation, xaxis_datetime),
                        errorType='square_deviation',
                        label='TM')
 
+
+filePath = './prediction/' + dataSet + '_ESN_pred.csv'
+predData_ESN = pd.read_csv(filePath, header=0, skiprows=[1, 2], names=['step', 'value', 'prediction5'])
+esn_truth = np.roll(predData_ESN['value'], -5)
+predData_ESN_five_step = np.array(predData_ESN['prediction5'])
+
+square_deviation = computeSquareDeviation(predData_ESN_five_step, esn_truth)
+square_deviation[:6000] = None
+
+NRMSE_ESN = plotAccuracy((square_deviation, xaxis_datetime),
+                       tm_truth,
+                       window=window,
+                       errorType='square_deviation',
+                       label='TM')
+
 filePath = './prediction/' + dataSet + '_ARIMA_pred.csv'
 predData_ARIMA = pd.read_csv(filePath, header=0, skiprows=[1, 2],
                              names=['step', 'value', 'prediction1', 'prediction5'])
@@ -197,12 +212,14 @@ altMAPE_LSTM3000 = computeAltMAPE(expResult_LSTM3000.truth, expResult_LSTM3000.p
 altMAPE_LSTM1000 = computeAltMAPE(expResult_LSTM1000.truth, expResult_LSTM1000.predictions, startFrom)
 altMAPE_TM = computeAltMAPE(tm_truth, predData_TM_five_step, startFrom)
 altMAPE_ARIMA = computeAltMAPE(arima_truth, predData_ARIMA_five_step, startFrom)
+altMAPE_ESN = computeAltMAPE(esn_truth, predData_ESN_five_step, startFrom)
 altMAPE_Shift = computeAltMAPE(tm_truth, predData_shift_five_step, startFrom)
 
 
 truth = tm_truth
 NRMSE_Shift_mean = np.sqrt(np.nanmean(NRMSE_Shift))/np.nanstd(truth)
 NRMSE_ARIMA_mean = np.sqrt(np.nanmean(NRMSE_ARIMA))/np.nanstd(truth)
+NRMSE_ESN_mean = np.sqrt(np.nanmean(NRMSE_ESN))/np.nanstd(truth)
 NRMSE_TM_mean = np.sqrt(np.nanmean(NRMSE_TM))/np.nanstd(truth)
 NRMSE_LSTM1000_mean = np.sqrt(np.nanmean(NRMSE_LSTM1000))/np.nanstd(truth)
 NRMSE_LSTM3000_mean = np.sqrt(np.nanmean(NRMSE_LSTM3000))/np.nanstd(truth)
@@ -239,24 +256,27 @@ plt.savefig(figPath  + 'model_performance_summary.pdf')
 
 
 fig, ax = plt.subplots(nrows=1, ncols=3)
-inds = np.arange(6)
+inds = np.arange(7)
 ax1 = ax[0]
 width = 0.5
 ax1.bar(inds, [NRMSE_Shift_mean,
                  NRMSE_ARIMA_mean,
+                 NRMSE_ESN_mean,
                  NRMSE_LSTM1000_mean,
                  NRMSE_LSTM3000_mean,
                  NRMSE_LSTM6000_mean,
                  NRMSE_TM_mean], width=width)
 ax1.set_xticks(inds+width/2)
-ax1.set_xticklabels( ('Shift', 'ARIMA', 'LSTM1000', 'LSTM3000', 'LSTM6000', 'TM') )
-ax1.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
-# Make the y-axis label and tick labels match the line color.
 ax1.set_ylabel('NRMSE')
+ax1.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
+ax1.set_xticklabels( ('Shift', 'ARIMA', 'ESN', 'LSTM1000', 'LSTM3000', 'LSTM6000', 'TM') )
+for tick in ax1.xaxis.get_major_ticks():
+  tick.label.set_rotation('vertical')
 
 ax3 = ax[1]
 ax3.bar(inds, [altMAPE_Shift,
                altMAPE_ARIMA,
+               altMAPE_ESN,
                altMAPE_LSTM1000,
                altMAPE_LSTM3000,
                altMAPE_LSTM6000,
@@ -264,17 +284,21 @@ ax3.bar(inds, [altMAPE_Shift,
 ax3.set_xticks(inds+width/2)
 ax3.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
 ax3.set_ylabel('MAPE')
-ax3.set_xticklabels( ('Shift', 'ARIMA', 'LSTM1000', 'LSTM3000', 'LSTM6000', 'TM') )
+ax3.set_xticklabels( ('Shift', 'ARIMA', 'ESN', 'LSTM1000', 'LSTM3000', 'LSTM6000', 'TM') )
+for tick in ax3.xaxis.get_major_ticks():
+  tick.label.set_rotation('vertical')
 
 ax2 = ax[2]
 ax2.set_ylabel('Negative Log-likelihood')
 ax2.bar(inds, [np.nanmean(negLL_LSTM1000),
                np.nanmean(negLL_LSTM3000),
                np.nanmean(negLL_LSTM6000),
-               np.nanmean(negLL_TM),0, 0], width=width, color='b')
+               np.nanmean(negLL_TM), 0, 0, 0], width=width, color='b')
 ax2.set_xticks(inds+width/2)
 ax2.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
 ax2.set_xticklabels(('LSTM1000', 'LSTM3000', 'LSTM6000', 'TM', '', ''))
+for tick in ax2.xaxis.get_major_ticks():
+  tick.label.set_rotation('vertical')
 
 plt.savefig(figPath + 'model_performance_summary_alternative.pdf')
 
