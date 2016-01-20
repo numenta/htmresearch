@@ -67,13 +67,13 @@ class TestCustomSensorRegionClassification(unittest.TestCase):
 
 
   def setUp(self):
-    shutil.rmtree(DATA_DIR)
+    shutil.rmtree(DATA_DIR, ignore_errors=True)  # Attempt to remove DATA_DIR
     with open("sensor_data_network_config.json", "rb") as jsonFile:
       self.templateNetworkConfig = simplejson.load(jsonFile)
 
 
-  def _train_and_test_network(self, network, networkConfig, networkPartitions,
-                              dataSource):
+  def _trainAndTestNetwork(self, network, networkConfig, networkPartitions,
+                           dataSource):
     """
     Train the network.
   
@@ -88,67 +88,64 @@ class TestCustomSensorRegionClassification(unittest.TestCase):
       predicted category and the actual category. If the actual category is 
       None, then return -1.
     """
-    # preserve original partitions
-    partitions = copy.deepcopy(networkPartitions)
 
+    # Preserve original partitions
+    partitions = copy.deepcopy(networkPartitions)
     classifierRegion = network.regions[networkConfig["classifierRegionConfig"]
       .get("regionName")]
 
-    trainedRegionNames = []
-    recordNumber = 0
     numCorrect = 0
+    recordNumber = 0
     numTestRecords = 0
     dataSourceEmpty = False
+    trainedRegionNames = []
     while not dataSourceEmpty:
+
+      # Get next input data to feed to the network
       data = dataSource.getNextRecordDict()
       if not data:
         dataSourceEmpty = True
       else:
-        nextTimestamp = data["x"]
-        nextValue = data["y"]
-        actualCategory = data["label"]
 
+        # Classify input data and get inferred category
+        timestamp = data["x"]
+        value = data["y"]
+        category = data["label"]
         classificationResults = classifyNextRecord(network, networkConfig,
-                                                   nextTimestamp, nextValue,
-                                                   actualCategory)
-
+                                                   timestamp, value, category)
         inferredCategory = classificationResults["bestInference"]
 
+        # Update network learning rules
         if recordNumber == partitions[0][1]:
-          # end of the current partition
-          partitionName = partitions[0][0]
-
-          if partitionName == TEST_PARTITION_NAME:
+          currentRegionName = partitions[0][0]
+          if currentRegionName == TEST_PARTITION_NAME:
             for regionName in trainedRegionNames:
               region = network.regions[regionName]
               region.setParameter("learningMode", False)
-
           else:
-            partitions.pop(0)
-            trainedRegionNames.append(partitionName)
-            network.regions[partitionName].setParameter("learningMode", True)
+            partitions.pop(0)  # We're done with the current region
+            trainedRegionNames.append(currentRegionName)
+            network.regions[currentRegionName].setParameter("learningMode",
+                                                            True)
 
+        # Evaluate the predictions on the test set
         if recordNumber >= partitions[-1][1]:
-          # evaluate the predictions on the test set
-          # classifierConfig = networkConfig["classifierRegionConfig"]
           classifierRegion.setParameter("inferenceMode", True)
 
-          if actualCategory == inferredCategory:
+          if category == inferredCategory:
             numCorrect += 1
           _LOGGER.debug("recordNum=%s, actualValue=%s, inferredCategory=%s"
-                        % (recordNumber, actualCategory, inferredCategory))
+                        % (recordNumber, category, inferredCategory))
           numTestRecords += 1
 
         recordNumber += 1
 
+    # Compute overall classification accuracy
     classificationAccuracy = round(100.0 * numCorrect / numTestRecords, 2)
-
-    results = (
-      "RESULTS: accuracy=%s | %s correctly classified records out of %s "
-      "test records \n" % (classificationAccuracy,
-                           numCorrect,
-                           numTestRecords))
-    _LOGGER.info(results)
+    _LOGGER.info("RESULTS: accuracy=%s | %s correctly classified records "
+                 "out of %s test records \n" % (classificationAccuracy,
+                                                numCorrect,
+                                                numTestRecords))
 
     return classificationAccuracy
 
@@ -229,10 +226,10 @@ class TestCustomSensorRegionClassification(unittest.TestCase):
               partitions = generateNetworkPartitions(config, NUM_RECORDS)
               dataSource = FileRecordStream(streamID=inputFile)
               network = configureNetwork(dataSource, config)
-              classificationAccuracy = self._train_and_test_network(network,
-                                                                    config,
-                                                                    partitions,
-                                                                    dataSource)
+              classificationAccuracy = self._trainAndTestNetwork(network,
+                                                                 config,
+                                                                 partitions,
+                                                                 dataSource)
 
               if (noiseAmplitude == 0
                   and signalMean == 1.0
