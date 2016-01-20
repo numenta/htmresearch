@@ -28,8 +28,9 @@ class SimpleUnionPooler(object):
   """
 
   def __init__(self,
-               numInputs=2048,
-               historyLength=10):
+               inputDimensions=[2048],
+               historyLength=10,
+               **kwargs):
     """
     Parameters:
     ----------------------------
@@ -39,7 +40,7 @@ class SimpleUnionPooler(object):
     """
 
     self._historyLength = historyLength
-    self._numInputs = numInputs
+    self._numInputs = inputDimensions[0]
     self.reset()
 
 

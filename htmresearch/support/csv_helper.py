@@ -161,3 +161,88 @@ def writeFromDict(dataDict, headers, csvFile):
     writer.writerow(headers)
     for row in sorted(dataDict.keys()):
       writer.writerow(dataDict[row])
+
+
+def readDataAndReshuffle(args, categoriesInOrderOfInterest=None):
+  """
+  Read data file specified in args, optionally reshuffle categories, print out
+  some statistics, and return various data structures. This routine is pretty
+  specific and only used in some simple test scripts.
+
+  categoriesInOrderOfInterest (list) Optional list of integers representing
+                                     the priority order of various categories.
+                                     The categories in the original data file
+                                     will be reshuffled to the order in this
+                                     array, up to args.numLabels.
+
+  Returns the tuple:
+    (dataset, labelRefs, documentCategoryMap, documentTextMap)
+
+  Return format:
+      dataset = [
+        ["fox eats carrots", [0], docId],
+        ["fox eats peppers", [0], docId],
+        ["carrots are healthy", [1], docId],
+        ["peppers is healthy", [1], docId],
+      ]
+
+      labelRefs = [Category0Name, Category1Name, ...]
+
+      documentCategoryMap = {
+        docId: [categoryIndex0, categoryIndex1, ...],
+        docId: [categoryIndex0, categoryIndex1, ...],
+                :
+      }
+
+      documentTextMap = {
+        docId: documentText,
+        docId: documentText,
+                :
+      }
+
+  """
+  # Read data
+  dataDict = readCSV(args.dataPath, 1)
+  labelRefs, dataDict = mapLabelRefs(dataDict)
+  if categoriesInOrderOfInterest is None:
+      categoriesInOrderOfInterest = range(0,args.numLabels)
+  else:
+    categoriesInOrderOfInterest=categoriesInOrderOfInterest[0:args.numLabels]
+
+  # Select data based on categories of interest. Shift category indices down
+  # so we go from 0 to numLabels-1
+  dataSet = []
+  documentTextMap = {}
+  counts = numpy.zeros(len(labelRefs))
+  for document in dataDict.itervalues():
+    try:
+      docId = int(document[2])
+    except:
+      raise RuntimeError("docId "+str(docId)+" is not an integer")
+    oldCategoryIndex = document[1][0]
+    documentTextMap[docId] = document[0]
+    if oldCategoryIndex in categoriesInOrderOfInterest:
+      newIndex = categoriesInOrderOfInterest.index(oldCategoryIndex)
+      dataSet.append([document[0], [newIndex], docId])
+      counts[newIndex] += 1
+
+  # For each document, figure out which categories it belongs to
+  # Include the shifted category index
+  documentCategoryMap = {}
+  for doc in dataDict.iteritems():
+    docId = int(doc[1][2])
+    oldCategoryIndex = doc[1][1][0]
+    if oldCategoryIndex in categoriesInOrderOfInterest:
+      newIndex = categoriesInOrderOfInterest.index(oldCategoryIndex)
+      v = documentCategoryMap.get(docId, [])
+      v.append(newIndex)
+      documentCategoryMap[docId] = v
+
+  labelRefs = [labelRefs[i] for i in categoriesInOrderOfInterest]
+  print "Total number of unique documents",len(documentCategoryMap)
+  print "Category counts: ",counts
+  print "Categories in training/test data:", labelRefs
+
+  return dataSet, labelRefs, documentCategoryMap, documentTextMap
+
+

@@ -36,7 +36,7 @@ import argparse
 import numpy
 from textwrap import TextWrapper
 
-from htmresearch.support.csv_helper import readCSV, mapLabelRefs
+from htmresearch.support.csv_helper import readDataAndReshuffle
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.model_factory import (
   createModel, getNetworkConfig)
@@ -120,91 +120,15 @@ def testModel(args, model, testData, labelRefs, documentCategoryMap):
   print "Accuracy =",(float(numCorrect*100.0)/len(testData)),"%"
 
 
-def readData(args):
-  """
-  Read data file, print out some statistics, and return various data structures.
-
-  Returns the tuple:
-    (training dataset, test dataset, labelRefs, documentCategoryMap,
-     documentTextMap)
-
-  Return format:
-      dataset = [
-        ["fox eats carrots", [0], docId],
-        ["fox eats peppers", [0], docId],
-        ["carrots are healthy", [1], docId],
-        ["peppers is healthy", [1], docId],
-      ]
-
-      labelRefs = [Category0Name, Category1Name, ...]
-
-      documentCategoryMap = {
-        docId: [categoryIndex0, categoryIndex1, ...],
-        docId: [categoryIndex0, categoryIndex1, ...],
-                :
-      }
-
-      documentTextMap = {
-        docId: documentText,
-        docId: documentText,
-                :
-      }
-
-labelId to text map, and docId to categories
-
-  """
-  # Read data
-  dataDict = readCSV(args.dataPath, 1)
-  labelRefs, dataDict = mapLabelRefs(dataDict)
-  categoriesInOrderOfInterest=[8,9,10,5,6,11,13,0,1,2,3,4,7,
-                               12,14][0:args.numLabels]
-
-  # Select data based on categories of interest. Shift category indices down
-  # so we go from 0 to numLabels-1
-  trainingData = []
-  documentTextMap = {}
-  counts = numpy.zeros(len(labelRefs))
-  for document in dataDict.itervalues():
-    try:
-      docId = int(document[2])
-    except:
-      raise RuntimeError("docId "+str(docId)+" is not an integer")
-    oldCategoryIndex = document[1][0]
-    documentTextMap[docId] = document[0]
-    if oldCategoryIndex in categoriesInOrderOfInterest:
-      newIndex = categoriesInOrderOfInterest.index(oldCategoryIndex)
-      trainingData.append([document[0], [newIndex], docId])
-      counts[newIndex] += 1
-
-  # For each document, figure out which categories it belongs to
-  # Include the shifted category index
-  documentCategoryMap = {}
-  for doc in dataDict.iteritems():
-    docId = int(doc[1][2])
-    oldCategoryIndex = doc[1][1][0]
-    if oldCategoryIndex in categoriesInOrderOfInterest:
-      newIndex = categoriesInOrderOfInterest.index(oldCategoryIndex)
-      v = documentCategoryMap.get(docId, [])
-      v.append(newIndex)
-      documentCategoryMap[docId] = v
-
-  labelRefs = [labelRefs[i] for i in categoriesInOrderOfInterest]
-  print "Total number of unique documents",len(documentCategoryMap)
-  print "Category counts: ",counts
-  print "Categories in training/test data:", labelRefs
-
-  return (trainingData, trainingData, labelRefs, documentCategoryMap,
-          documentTextMap)
-
-
 def runExperiment(args):
   """
   Create model according to args, train on training data, save model,
   restore model, test on test data.
   """
 
-  (trainingData, testData, labelRefs, documentCategoryMap,
-   documentTextMap) = readData(args)
+  (trainingData, labelRefs, documentCategoryMap,
+   documentTextMap) = readDataAndReshuffle(args,
+                         [8,9,10,5,6,11,13,0,1,2,3,4,7,12,14])
 
   # Create model
   model = instantiateModel(args)
@@ -213,7 +137,7 @@ def runExperiment(args):
   model = trainModel(args, model, trainingData, labelRefs)
   model.save(args.modelDir)
   newmodel = ClassificationModel.load(args.modelDir)
-  testModel(args, newmodel, testData, labelRefs, documentCategoryMap)
+  testModel(args, newmodel, trainingData, labelRefs, documentCategoryMap)
 
   # Print profile information
   print

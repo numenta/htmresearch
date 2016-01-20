@@ -34,6 +34,17 @@
       "pamLength": 3
     }
   },
+  "tpRegionConfig": {
+    "regionEnabled": true,
+    "regionName": "UP",
+    "regionType": "py.TemporalPoolerRegion",
+    "regionParams": {
+      "poolerType": "simpleUnion",
+      "columnCount": 65536,
+      "inputWidth": 65536,
+      "historyLength": 10
+    }
+  },
   "classifierRegionConfig": {
     "regionEnabled": true,
     "regionName": "classifier",
