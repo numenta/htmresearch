@@ -139,15 +139,15 @@ class ImbuModels(object):
       # Model type requires Cortical.io credentials
       kwargs.update(retina=self.retina, apiKey=self.apiKey)
 
-    if modelType == ClassificationModelTypes.CioWordFingerprint:
+    if modelType == "CioWordFingerprint":
       kwargs.update(fingerprintType=EncoderTypes.word,
                     cacheRoot=self.cacheRoot)
 
-    elif modelType == ClassificationModelTypes.CioDocumentFingerprint:
+    elif modelType == "CioDocumentFingerprint":
       kwargs.update(fingerprintType=EncoderTypes.document,
                     cacheRoot=self.cacheRoot)
 
-    elif modelType == ClassificationModelTypes.HTMNetwork:
+    elif modelType == "HTMNetwork":
       kwargs.update(networkConfig=_loadNetworkConfig(),
                     inputFilePath=None,
                     prepData=False,
