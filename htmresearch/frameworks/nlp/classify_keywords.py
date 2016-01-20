@@ -179,7 +179,7 @@ class ClassificationModelKeywords(ClassificationModel):
       categoryVotes[numpy.where(votes > 0)[0]] = 1
 
       # We only care about 0 distances (exact matches), and disregard all others
-      distances[numpy.where(distances != 0)] = numpy.inf
+      distances[numpy.where(distances != 0)] = 1.0
 
       if sortResults:
         sorting = distances.argsort()
