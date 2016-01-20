@@ -92,6 +92,12 @@ class ClassificationNetworkAPI(ClassificationModel):
       self.tpRegion = self.network.regions[
         self.networkConfig["tpRegionConfig"].get("regionName")]
 
+    # There is sometimes a TM region
+    self.tmRegion = None
+    if self.networkConfig.has_key("tmRegionConfig"):
+      self.tmRegion = self.network.regions[
+        self.networkConfig["tmRegionConfig"].get("regionName")]
+
     self.learningRegions = learningRegions
 
     self.network.enableProfiling()
@@ -116,21 +122,39 @@ class ClassificationNetworkAPI(ClassificationModel):
     verbosity level.
     """
     print "================== HTM Debugging output:"
-    print "Sensor output:",
-    print self.sensorRegion.getOutputData("dataOut").nonzero()
-    print "Sensor categoryOut:",
-    print self.sensorRegion.getOutputData("categoryOut")
 
-    if self.verbosity >= 3:
-      print "Classifier bottomUpIn: ",
-      print self.classifierRegion.getInputData("bottomUpIn").nonzero()
-      print "Classifier categoryIn: ",
-      print self.classifierRegion.getInputData("categoryIn")[0:self.numLabels]
+    # Basic output
+    print "Sensor number of nonzero bits:",
+    print len(self.sensorRegion.getOutputData("dataOut").nonzero()[0])
+    if self.tmRegion is not None:
+      print "TM region number of activeCells: ",
+      print len(self.tmRegion.getOutputData("bottomUpOut").nonzero()[0]),
+      print "Number of predictedActiveCells: ",
+      print len(self.tmRegion.getOutputData("predictedActiveCells").nonzero()[0])
 
     print "Classifier categoriesOut: ",
     print self.classifierRegion.getOutputData("categoriesOut")[0:self.numLabels]
     print "Classifier categoryProbabilitiesOut",
     print self.classifierRegion.getOutputData("categoryProbabilitiesOut")[0:self.numLabels]
+
+    # Really detailed output
+    if self.verbosity >= 3:
+      print "Sensor output:",
+      print self.sensorRegion.getOutputData("dataOut").nonzero()
+      print "Sensor categoryOut:",
+      print self.sensorRegion.getOutputData("categoryOut")
+
+      if self.tmRegion is not None:
+        print "TM region bottomUpOut: ",
+        print self.tmRegion.getOutputData("bottomUpOut").nonzero()
+        print "TM region predictedActiveCells: ",
+        print self.tmRegion.getOutputData("predictedActiveCells").nonzero()
+
+      print "Classifier bottomUpIn: ",
+      print self.classifierRegion.getInputData("bottomUpIn").nonzero()
+      print "Classifier categoryIn: ",
+      print self.classifierRegion.getInputData("categoryIn")[0:self.numLabels]
+
 
 
   def dumpProfile(self):
@@ -143,18 +167,25 @@ class ClassificationNetworkAPI(ClassificationModel):
       timer = region.computeTimer
       totalTime += timer.getElapsed()
 
+    count = 1
     profileInfo = []
     for region in self.network.regions.values():
       timer = region.computeTimer
+      count = max(timer.getStartCount(), count)
       profileInfo.append([region.name,
                           timer.getStartCount(),
                           timer.getElapsed(),
-                          100.0*timer.getElapsed()/totalTime])
+                          100.0*timer.getElapsed()/totalTime,
+                          timer.getElapsed()/max(timer.getStartCount(),1)])
 
-    profileInfo.append(["Total time", "", totalTime, "100.0"])
+    profileInfo.append(["Total time", "", totalTime, "100.0", totalTime/count])
     print tabulate(profileInfo, headers=["Region", "Count",
-                   "Elapsed", "Percent of total"],
-                   tablefmt = "grid")
+                   "Elapsed", "Pct of total", "Secs/iteration"],
+                   tablefmt = "grid", floatfmt="6.3f")
+
+    if self.tmRegion is not None:
+      if self.tmRegion.getSpec().commands.contains("prettyPrintTraces"):
+        self.tmRegion.executeCommand(["prettyPrintTraces"])
 
 
   def __getstate__(self):
@@ -173,6 +204,7 @@ class ClassificationNetworkAPI(ClassificationModel):
     state.pop("classifierRegion")
     state.pop("tpRegion")
     state.pop("learningRegions")
+    state.pop("tmRegion")
 
     return state
 
