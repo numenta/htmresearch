@@ -237,8 +237,9 @@ def configureNetwork(dataSource, networkParams, encoder=None):
 
   # if the sensor region has a scalar encoder, then set the min and max values.
   scalarEncoder = encoderDict.get("scalarEncoder")
-  if scalarEncoder:
-    _setScalarEncoderMinMax(networkParams, dataSource)
+  if scalarEncoder["type"] == "ScalarEncoder":
+    if scalarEncoder["minval"] is None or scalarEncoder["maxval"] is None:
+      _setScalarEncoderMinMax(networkParams, dataSource)
 
   network = createNetwork(dataSource, networkParams, encoder)
 
@@ -452,6 +453,64 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords):
   _LOGGER.info(results)
 
   return classificationAccuracy
+
+
+
+def classifyNextRecord(network, networkConfig, timestamp=None,
+                       value=None, category=None):
+  """
+  Classify the next record by running one iteration of the network. To be 
+  able to specify the next record manually, the sensor region type must be 
+  py.CustomRecordSensor (otherwise this raises a ValueError). If the next 
+  record is specified manually, the HTM network won't be getting the next 
+  record from the data source, but rather via the params that are being passed 
+  (i.e. timestamp, value, category). 
+  
+  :param network: (Network) A network instance to run.
+  :param networkConfig: (dict) The configuration of the network.
+  :param timestamp: (int) The timestamp of the next record to be processed 
+    by the network.
+  :param value:  (float) The value of the next record to be processed 
+    by the network.
+  :param category: (int) The category of the next record to be processed 
+    by the network.
+  :return classificationResults: (dict) classification results. E.g:
+    
+    classificationResults = {'bestInference': <float>,
+                             'inferences': [<float>, ..., <float>]}
+              
+  """
+
+  sensorRegionType = networkConfig["sensorRegionConfig"]["regionType"]
+  sensorRegionName = networkConfig["sensorRegionConfig"].get("regionName")
+  sensorRegion = network.regions[sensorRegionName]
+
+  if value is not None and category is not None:
+    
+    if not sensorRegionType == "py.CustomRecordSensor":
+      raise ValueError("To be able to pass custom data to the sensor region "
+                       "you must use a region of type 'py.CustomRecordSensor'"
+                       "(but region type is %s)." % sensorRegionType)
+    
+    # Don't get the data from the data source (by setting the param to False) 
+    # since we are passing the values of the next record manually.
+    sensorRegion.setParameter("useDataSource", False)
+
+    # Set the values of the next record manually
+    sensorRegion.setParameter("nextValue", value)
+    sensorRegion.setParameter("nextCategory", category)
+    sensorRegion.setParameter("nextTimestamp", timestamp)
+
+  # Run the network for a single iteration.
+  network.run(1)
+
+  classifierRegion = network.regions[
+    networkConfig["classifierRegionConfig"].get("regionName")]
+
+  return {
+    "bestInference": _getClassifierInference(classifierRegion),
+    "inferences": classifierRegion.getOutputData("categoriesOut")
+    }
 
 
 
