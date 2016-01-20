@@ -233,11 +233,19 @@ class ImbuModels(object):
     model.save(savePath)
 
 
-  @staticmethod
-  def formatResults(distanceArray):
-    """ Format distances to reflect the pctOverlapOfInput metric.
+  def formatResults(self, distanceArray, idList):
+    """ Format distances to reflect the pctOverlapOfInput metric, return a list
+    of results.
     """
-    return (1.0 - distanceArray) * 100
+    formattedDistances = (1.0 - distanceArray) * 100
+
+    results = []
+    for sID, dist in zip(idList, formattedDistances):
+      results.append({"id": sID,
+                      "text": self.dataDict[sID][0],
+                      "score": dist.item()})
+
+    return results
 
 
 
@@ -312,11 +320,12 @@ def main():
 
     _, idList, sortedDistances = imbu.query(model, query)
 
-    formattedDistances = imbu.formatResults(sortedDistances)
+    results = imbu.formatResults(sortedDistances, idList)
 
+    # Display results.
     print printTemplate.format("Sample ID", "% Overlap With Query")
-    for sID, dist in zip(idList, formattedDistances):
-      print printTemplate.format(sID, dist)
+    for r in results:
+      print printTemplate.format(r["id"], r["score"])
 
 
 
