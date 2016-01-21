@@ -137,15 +137,36 @@ class CioTest(unittest.TestCase):
     r5 = cio5.encode(text)
     r1 = cio1.encode(text)
 
+    length100 = len(r100['fingerprint']['positions'])
+    length10 = len(r10['fingerprint']['positions'])
+    length5 = len(r5['fingerprint']['positions'])
+    length1 = len(r1['fingerprint']['positions'])
+
+    # Encodings must have no more than desired sparsity
     self.assertLessEqual(r100['sparsity'], 1.0)
     self.assertLessEqual(r10['sparsity'], 0.1)
     self.assertLessEqual(r5['sparsity'], 0.05)
     self.assertLessEqual(r1['sparsity'], 0.01)
 
-    self.assertLessEqual(len(r100['fingerprint']['positions']), bitmapSize)
-    self.assertLessEqual(len(r10['fingerprint']['positions']), 0.1*bitmapSize)
-    self.assertLessEqual(len(r5['fingerprint']['positions']), 0.05*bitmapSize)
-    self.assertLessEqual(len(r1['fingerprint']['positions']), 0.01*bitmapSize)
+    self.assertLessEqual(length100, bitmapSize)
+    self.assertLessEqual(length10, 0.1*bitmapSize)
+    self.assertLessEqual(length5, 0.05*bitmapSize)
+    self.assertLessEqual(length1, 0.01*bitmapSize)
+
+    # Encodings can't be zero
+    self.assertGreater(length100, 0)
+    self.assertGreater(length10, 0)
+    self.assertGreater(length5, 0)
+    self.assertGreater(length1, 0)
+
+    # Encodings must have complete overlap with the next higher encoding
+    s100 = set(list(r100['fingerprint']['positions']))
+    s10 = set(list(r10['fingerprint']['positions']))
+    s5 = set(r5['fingerprint']['positions'])
+    s1 = set(r1['fingerprint']['positions'])
+    self.assertEqual(len(s100 & s10), length10)
+    self.assertEqual(len(s10 & s5), length5)
+    self.assertEqual(len(s5 & s1), length1)
 
     # Test that if you encode a second time, you get the same bitmap
     r100_2 = cio100.encode(text)
