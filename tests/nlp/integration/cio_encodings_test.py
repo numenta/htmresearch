@@ -160,8 +160,8 @@ class CioTest(unittest.TestCase):
     self.assertGreater(length1, 0)
 
     # Encodings must have complete overlap with the next higher encoding
-    s100 = set(list(r100['fingerprint']['positions']))
-    s10 = set(list(r10['fingerprint']['positions']))
+    s100 = set(r100['fingerprint']['positions'])
+    s10 = set(r10['fingerprint']['positions'])
     s5 = set(r5['fingerprint']['positions'])
     s1 = set(r1['fingerprint']['positions'])
     self.assertEqual(len(s100 & s10), length10)
