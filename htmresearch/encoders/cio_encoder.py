@@ -230,8 +230,7 @@ class CioEncoder(LanguageEncoder):
     """
     if self.retinaScaling != 1:
       encoding["fingerprint"]["positions"] = self.scaleEncoding(
-        encoding["fingerprint"]["positions"],
-          self.retinaScaling*self.retinaScaling)
+        encoding["fingerprint"]["positions"], self.retinaScaling**2)
       encoding["width"] = self.width
       encoding["height"] = self.height
 
@@ -284,7 +283,7 @@ class CioEncoder(LanguageEncoder):
     """
     terms = self.client.bitmapToTerms(encoding, numTerms=numTerms)
     # Convert cortipy response to list of tuples (term, weight)
-    return [((term["term"], term["score"])) for term in terms]
+    return [(term["term"], term["score"]) for term in terms]
 
 
   def _subEncoding(self, text, method="keyword"):
@@ -380,12 +379,12 @@ class CioEncoder(LanguageEncoder):
     """Reduce the sparsity of the encoding down to maxSparsity"""
 
     desiredBits = maxSparsity*encoding["width"]*encoding["height"]
-    bitmap = encoding['fingerprint']['positions']
+    bitmap = encoding["fingerprint"]["positions"]
 
     # Choose a random subsampling of the bits but seed the random number
     # generator so we get consistent bitmaps
     numpy.random.seed(bitmap.sum())
-    encoding['fingerprint']['positions'] = (
+    encoding["fingerprint"]["positions"] = (
       numpy.random.permutation(bitmap)[0:desiredBits] )
 
     encoding["sparsity"] = len(encoding["fingerprint"]["positions"]) / float(
