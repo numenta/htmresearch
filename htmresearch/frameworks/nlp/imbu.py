@@ -198,6 +198,7 @@ class ImbuModels(object):
                                    **modelFactoryKwargs)
         self.train(model, savePath)
 
+
     return model
 
 
@@ -233,16 +234,22 @@ class ImbuModels(object):
     model.save(savePath)
 
 
-  def formatResults(self, distanceArray, idList):
+  def formatResults(self, model, distanceArray, idList):
     """ Format distances to reflect the pctOverlapOfInput metric, return a list
     of results.
     """
     formattedDistances = (1.0 - distanceArray) * 100
 
+    indexingFactor = getattr(model, "indexingFactor", 1)
+
     results = []
-    for sID, dist in zip(idList, formattedDistances):
-      results.append({"id": sID,
-                      "text": self.dataDict[sID][0],
+    for protoId, dist in zip(idList, formattedDistances):
+      # get the sampleId from the protoId
+      wordId = protoId % indexingFactor
+      sampleId = (protoId - wordId) / indexingFactor
+      results.append({"sampleId": sampleId,
+                      "wordId": wordId,
+                      "text": self.dataDict[sampleId][0],
                       "score": dist.item()})
 
     return results
@@ -309,7 +316,7 @@ def main():
                            savePath=args.savePath)
 
   # Query the model.
-  printTemplate = "{0:<10}|{1:<30}"
+  printTemplate = "{0:<10}|{1:<10}|{2:<10}"
   while True:
     print "Now we query the model for samples (quit with 'q')..."
 
@@ -319,13 +326,12 @@ def main():
       break
 
     _, idList, sortedDistances = imbu.query(model, query)
-
-    results = imbu.formatResults(sortedDistances, idList)
+    results = imbu.formatResults(model, sortedDistances, idList)
 
     # Display results.
-    print printTemplate.format("Sample ID", "% Overlap With Query")
+    print printTemplate.format("Sample ID", "Word ID", "% Overlap With Query")
     for r in results:
-      print printTemplate.format(r["id"], r["score"])
+      print printTemplate.format(r["sampleId"], r["wordId"], r["score"])
 
 
 
