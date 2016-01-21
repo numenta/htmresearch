@@ -24,6 +24,7 @@ import numpy
 
 from nupic.support import getArgumentDescriptions
 from nupic.bindings.regions.PyRegion import PyRegion
+from nupic.bindings.algorithms import ConnectionsCell
 
 from htmresearch.algorithms.temporal_memory_factory import (
   createModel)
@@ -256,8 +257,9 @@ class TMRegion(PyRegion):
                 constraints="bool")
         ),
         commands=dict(
-            reset=dict(description='Explicitly reset TM states now.'),
-            debugPlot=dict(description='Show the mixin plot...'),
+            reset=dict(description="Explicitly reset TM states now."),
+            prettyPrintTraces=dict(description="Print monitoring info."),
+            debugPlot=dict(description="Show the mixin plot..."),
         )
     )
 
@@ -362,14 +364,26 @@ class TMRegion(PyRegion):
 
 
     # Set the various outputs
+
+    # HACK HACK: temporary until accessors are in place. Currently
+    # fast_temporal_memory doesn't have the same types
+    activeCells = list(self._tm.activeCells)
+    if isinstance(activeCells[0], ConnectionsCell):
+      activeCells = self._tm.getCellIndices(self._tm.activeCells)
+      predictiveCells = self._tm.getCellIndices(self._tm.predictiveCells)
+      predictedActiveCells = self._tm.getCellIndices(predictedActiveCells)
+    else:
+      predictiveCells = list(self._tm.predictiveCells)
+      predictedActiveCells = list(predictedActiveCells)
+
     outputs['bottomUpOut'][:] = 0
-    outputs['bottomUpOut'][list(self._tm.activeCells)] = 1
+    outputs['bottomUpOut'][activeCells] = 1
 
     outputs['predictiveCells'][:] = 0
-    outputs['predictiveCells'][list(self._tm.predictiveCells)] = 1
+    outputs['predictiveCells'][predictiveCells] = 1
 
     outputs['predictedActiveCells'][:] = 0
-    outputs['predictedActiveCells'][list(predictedActiveCells)] = 1
+    outputs['predictedActiveCells'][predictedActiveCells] = 1
 
 
   def reset(self):
@@ -430,3 +444,11 @@ class TMRegion(PyRegion):
       return self.columnCount * self.cellsPerColumn
     else:
       raise Exception("Invalid output name specified")
+
+
+  def prettyPrintTraces(self):
+    if "mixin" in self.temporalImp.lower():
+      print self._tm.mmPrettyPrintTraces([
+        self._tm.mmGetTraceNumSegments(),
+        self._tm.mmGetTraceNumSynapses(),
+      ])

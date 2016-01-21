@@ -65,8 +65,10 @@ def plotAccuracy(results, truth, train=None, window=100, label=None, params=None
   x = results[1]
   x = x[:len(error)]
 
-  if params is not None:
-    error[np.where(x < params['compute_after'])[0]] = np.nan
+  # print results
+  # print params['compute_after']
+  # if params is not None:
+  #   error[np.where(x < params['compute_after'])[0]] = np.nan
 
   error[:5904] = np.nan
 
