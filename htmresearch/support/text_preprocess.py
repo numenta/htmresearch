@@ -27,7 +27,7 @@ import pandas
 import re
 import string
 
-from collections import Counter, OrderedDict
+from collections import Counter
 from functools import partial
 
 
@@ -74,9 +74,9 @@ class TextPreprocess(object):
         corpusPath = corpusSource
       else:
         # relative path
-        corpusPath = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                                  "../../projects/nlp/data/etc",
-                                                  corpusSource))
+        corpusPath = os.path.abspath(os.path.join(
+          os.path.dirname(__file__), "..", "..", "projects/nlp/data/etc",
+          corpusSource))
       self.corpus = file(corpusPath).read()
 
     except IOError as e:
@@ -133,7 +133,8 @@ class TextPreprocess(object):
       else:
         # relative path
         path = os.path.abspath(os.path.join(
-          os.path.dirname(__file__), "../../projects/nlp/data/etc", filename))
+          os.path.dirname(__file__), "..", "..", "projects/nlp/data/etc",
+          filename))
       dataFrame = pandas.read_csv(path)
 
       for i in xrange(dataFrame.shape[0]):
@@ -174,7 +175,7 @@ class TextPreprocess(object):
     """
     originalWords = text.split(" ")
     processedWords = []
-    mapping  = OrderedDict()
+    mapping  = {}
 
     for i, word in enumerate(originalWords):
       preprocessed = self.tokenize(word)
