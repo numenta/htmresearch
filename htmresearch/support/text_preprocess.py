@@ -162,30 +162,34 @@ class TextPreprocess(object):
     Tokenize and optionally filter the text, returning both the tokens and a
     mapping of the original text to the preprocessed text.
 
-    @param text            (str)    Text to be tokenized and preprocessed.
+    @param text             (str)    Text to be tokenized and preprocessed.
 
-    @return processedWords (list)   String tokens.
+    @return processedTokens (list)   String tokens.
 
-    @return mapping        (dict)   Keys are the indices of the input words.
-        Values are two-tuples, where the first item is the original string word
-        (w/ punctuation) and the second item is a list of string tokens. This
-        format is necessary to account for when there are more tokens than words
-        and vice-versa, and can't use words as keys b/c repeats would get
-        overwritten.
+    @return mapping         (list)   Map of tokens to their corresponding words
+        in the original text. The original words are indexed via splitting on
+        spaces. The list indices of mapping increment with consecutive tokens.
+
+      E.g.
+        text = "I wanna WFH!"
+        ...
+        processedTokens = ["want", "work", "from", "home"]
+        mapping = [1, 2, 2, 2]  # e.g. the 3rd token points to the 2nd word
     """
     originalWords = text.split(" ")
-    processedWords = []
-    mapping  = {}
+    processedTokens = []
+    mapping = []
 
     for i, word in enumerate(originalWords):
       preprocessed = self.tokenize(word)
       if preprocessSpecs:
         # preprocessing options are specified
         preprocessed = self._filterStuff(preprocessed, **preprocessSpecs)
-      mapping[i] = (word, preprocessed)
-      processedWords.extend(preprocessed)
+      numTokens = len(preprocessed)
+      mapping.extend([i] * numTokens)
+      processedTokens.extend(preprocessed)
 
-    return processedWords, mapping
+    return processedTokens, mapping
 
 
   @staticmethod

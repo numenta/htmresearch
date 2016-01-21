@@ -27,6 +27,7 @@ import shutil
 from htmresearch.support.text_preprocess import TextPreprocess
 
 
+
 class ClassificationModel(object):
   """
   Base class for NLP models of classification tasks. When inheriting from this
@@ -64,7 +65,7 @@ class ClassificationModel(object):
 
   ################## CORE METHODS #####################
 
-  def trainToken(self, token, labels, sampleId, reset=0):
+  def trainToken(self, token, labels, wordId, reset=0):
     """
     Train the model with the given text token, associated labels, and
     sampleId.
@@ -72,7 +73,7 @@ class ClassificationModel(object):
     @param token      (str)  The text token to train on
     @param labels     (list) A list of one or more integer labels associated
                              with this token.
-    @param sampleId   (int)  An integer ID associated with this token.
+    @param wordId     (int)  An integer ID associated with this token.
     @param reset      (int)  Should be 0 or 1. If 1, assumes we are at the
                              end of a sequence. A reset signal will be issued
                              after the model has been trained on this token.
@@ -88,17 +89,17 @@ class ClassificationModel(object):
     using the given labels and id.  A reset will be issued after the
     document has been trained.
 
-    @param document   (str)  The text token to train on
+    @param document   (str)  The text token to train on.
     @param labels     (list) A list of one or more integer labels associated
                              with this token.
     @param sampleId   (int)  An integer ID associated with the entire document.
-
     """
-    # Default implementation, may be overridden
+    # Default implementation, may be overridden. Here we ignore the token-word
+    # mappings produced by the tokenizer.
     assert (sampleId is not None), "Must pass in a sampleId"
     tokenList, _ = self.tokenize(document)
     lastTokenIndex = len(tokenList) - 1
-    for i,token in enumerate(tokenList):
+    for i, token in enumerate(tokenList):
       self.trainToken(token, labels, sampleId, reset=int(i == lastTokenIndex))
 
 
@@ -159,6 +160,8 @@ class ClassificationModel(object):
              (numpy array) An array of distances from each stored sample or
                            None if returnDetailedResults is False.
     """
+    # TODO: normalize categoryVotes
+
     # Default implementation, can be overridden This default routine will
     # tokenize the document and classify using these tokens. The default
     # classification involves summing the most likely classification for each
@@ -181,7 +184,9 @@ class ClassificationModel(object):
                                     sortResults=False)
 
       if votes.sum() > 0:
-        categoryVotes[votes.argmax()] += 1
+        # Increment the most likely category, breaking ties in a random fashion
+        sortedVotes = self._sortArray(votes)
+        categoryVotes[sortedVotes[0]] += 1
 
     return categoryVotes, None, None
 
@@ -194,7 +199,8 @@ class ClassificationModel(object):
 
     @param inputText  (str)   A bunch of text.
     @return sample    (list)  A list of text tokens.
-    @return mapping   (dict)  Maps the original words to the sample tokens.
+    @return mapping   (list)  Maps the original words to the sample tokens. See
+                              TextPreprocess method for details.
     """
     if self.filterText:
       sample, mapping = TextPreprocess().tokenizeAndFilter(inputText,
@@ -203,9 +209,6 @@ class ClassificationModel(object):
                                          correctSpell=True)
     else:
       sample, mapping = TextPreprocess().tokenizeAndFilter(inputText)
-      # print
-      # print inputText
-      # for k, v in mapping.iteritems(): print k, v
 
     return sample, mapping
 
@@ -363,16 +366,19 @@ class ClassificationModel(object):
                            the likelihood that this token belongs to the i'th
                            category. An array containing all zeros implies no
                            decision could be made.
-             (list)        A list of unique sampleIds
-             (numpy array) An array of distances from this document to each
-                           sampleId
+             (list)        Distances from this document to all prototypes in the
+                           classifier, where each element is a 3-tuple:
+                           (distance, unique ID, corresponding token index).
     """
     # Default implementation, can be overridden.
     # Note that some models specify a classifier with exact matching, which is
     # reflected in the returned categoryVotes, but not the returned distances.
 
-    # For each token run inference on the token and accumulate sum of distances
-    # from this token to all other sampleIds.
+    # For each token in this document, run inference to get distances to all
+    # prototypes in the classifier (depending on the model these may represent
+    # documents or tokens), adding these distances to a cumulative sum of this
+    # document's distances.
+
     lastTokenIndex = len(tokenList) - 1
     categoryVotes = numpy.zeros(self.numLabels)
     distancesForEachId = {}
@@ -385,37 +391,51 @@ class ClassificationModel(object):
                                                  sortResults=False)
 
       if votes.sum() > 0:
-        categoryVotes[votes.argmax()] += 1
+        # Increment the most likely category, breaking ties in a random fashion
+        sortedVotes = self._sortArray(votes)
+        categoryVotes[sortedVotes[0]] += 1
 
-        # For each unique id, keep the minimum distance to this token
-        for j, sampleId in enumerate(idList):
-          # Find min distance of this sampleId to this token
+        # For each prototype id (in the classifier), keep the minimum distance
+        # to this inference token.
+        for j, protoId in enumerate(idList):
+          # Find min distance of this protoId to this token
           closestDistance = distances[
-            classifier.getPatternIndicesWithPartitionId(sampleId)].min()
+            classifier.getPatternIndicesWithPartitionId(protoId)].min()
 
-          # Add this to our running minimum of how close this sampleId has
+          # Add this to our running minimum of how close this protoId has
           # been to this document
-          distancesForEachId[sampleId] = (
-            min(distancesForEachId.get(sampleId, numpy.inf), closestDistance)
+          distancesForEachId[protoId] = (
+            min(distancesForEachId.get(protoId, numpy.inf), closestDistance)
           )
 
-
-    # Put distance from each sampleId to this document into a numpy array
-    # ordered consistently with a list of sampleIds
-    sampleIdList = distancesForEachId.keys()
-    distancetoSampleIds = numpy.zeros(len(sampleIdList))
-    for i,sampleId in enumerate(sampleIdList):
-      distancetoSampleIds[i] = distancesForEachId.get(sampleId, numpy.inf)
+    # Put distance from each prototype id to this document into a numpy array
+    # ordered consistently with a list of protoIds
+    protoIdList = distancesForEachId.keys()
+    distanceToProtoIds = numpy.zeros(len(protoIdList))
+    for i, protoId in enumerate(protoIdList):
+      distanceToProtoIds[i] = distancesForEachId.get(protoId, numpy.inf)
 
     # Sort the results if requested
     if sortResults:
-      sortedIndices = distancetoSampleIds.argsort()
-      sortedDistances = distancetoSampleIds[sortedIndices]
-      sortedIdList = []
-      for i in sortedIndices:
-        sortedIdList.append(sampleIdList[i])
+      sortedIndices = distanceToProtoIds.argsort()
+      sortedDistances = distanceToProtoIds[sortedIndices]
+      sortedIdList = [protoIdList[i] for i in sortedIndices]
 
       return categoryVotes, sortedIdList, sortedDistances
 
     else:
-      return categoryVotes, sampleIdList, distancetoSampleIds
+      return categoryVotes, protoIdList, distanceToProtoIds
+
+
+  @staticmethod
+  def _sortArray(array, seed=42):
+    """
+    Sort the input array, breaking ties in a random fashion.
+    @param array (numpy array)    Array of values to be sorted.
+    @param seed (int)             Seed the random number generator.
+    @return   (numpy array)       Sorted array indices, where the sort order is
+                                  greatest to least.
+    """
+    numpy.random.seed(seed)
+    randomValues = numpy.random.random(array.size)
+    return numpy.lexsort((randomValues, array))[::-1]
