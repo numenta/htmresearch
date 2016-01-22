@@ -27,7 +27,8 @@ import simplejson
 from textwrap import TextWrapper
 import matplotlib.pyplot as plt
 
-from htmresearch.support.csv_helper import readCSV, mapLabelRefs
+from htmresearch.support.csv_helper import (
+  readCSV, mapLabelRefs, readDataAndReshuffle)
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.classify_document_fingerprint import (
   ClassificationModelDocumentFingerprint
@@ -48,8 +49,8 @@ def runExperiment(args):
   if not os.path.exists(SAVE_PATH):
     os.makedirs(SAVE_PATH)
   
-  (trainingDataDup, testData, labelRefs, documentCategoryMap,
-   documentTextMap) = readData(args)
+  (trainingDataDup, labelRefs, documentCategoryMap,
+   documentTextMap) = readDataAndReshuffle(args)
   
   # remove duplicates from training data
   includedDocIds = set()
@@ -91,7 +92,7 @@ def runExperiment(args):
 
   # Summary statistics
   # bucketCounts[i, j] is the number of occurrances of bucket j in cluster i
-  bucketCounts = numpy.zeros((args.numClusters, len(labelRefs)))
+  bucketCounts = numpy.zeros((args.numClusters, len(labelRefs)))  
 
   for clusterId in xrange(len(clusterSizes)):
     print
@@ -110,8 +111,8 @@ def runExperiment(args):
           print "Buckets:"
 
         # The docId keys in documentCategoryMap are strings rather than ints
-        if str(docId) in documentCategoryMap:
-          for bucketId in documentCategoryMap[str(docId)]:
+        if docId in documentCategoryMap:
+          for bucketId in documentCategoryMap[docId]:
             bucketCounts[clusterId, bucketId] += 1
             if display:
               print "    ", labelRefs[bucketId]
@@ -183,7 +184,7 @@ def createBucketClusterPlot(args, bucketCounts):
   plt.xlabel("Bucket")
   plt.ylabel("Cluster")
   plt.title("%d clusters using model %s" % (bucketCounts.shape[0], args.modelName))
-  
+    
   for rowIx in xrange(bucketCounts.shape[0]):
     for colIx in xrange(bucketCounts.shape[1]):
       if bucketCounts[rowIx, colIx] != 0:
@@ -231,74 +232,6 @@ def trainModel(args, model, trainingData, labelRefs):
     model.trainDocument(document, labels, docId)
 
   return model
-
-
-def readData(args):
-  """
-  Read data file, print out some statistics, and return various data structures
-
-  Returns the tuple:
-    (training dataset, test dataset, labelRefs, documentCategoryMap,
-     documentTextMap)
-
-  Return format:
-      dataset = [
-        ["fox eats carrots", [0], docId],
-        ["fox eats peppers", [0], docId],
-        ["carrots are healthy", [1], docId],
-        ["peppers is healthy", [1], docId],
-      ]
-
-      labelRefs = [Category0Name, Category1Name, ...]
-
-      documentCategoryMap = {
-        docId: [categoryIndex0, categoryIndex1, ...],
-        docId: [categoryIndex0, categoryIndex1, ...],
-                :
-      }
-
-      documentTextMap = {
-        docId: documentText,
-        docId: documentText,
-                :
-      }
-
-labelId to text map, and docId to categories
-
-  """
-  # Read data
-  dataDict = readCSV(args.dataPath, 1)
-  labelRefs, dataDict = mapLabelRefs(dataDict)
-
-  # Populate trainingData, documentTextMap
-  trainingData = []
-  documentTextMap = {}
-  counts = numpy.zeros(len(labelRefs))
-  for document in dataDict.itervalues():
-    try:
-      docId = int(document[2])
-    except:
-      raise RuntimeError("docId "+str(docId)+" is not an integer")
-    documentTextMap[docId] = document[0]
-    categoryIndex = document[1][0]
-    trainingData.append([document[0], [categoryIndex], docId])
-    counts[categoryIndex] += 1
-
-  # For each document, figure out which categories it belongs to
-  documentCategoryMap = {}
-  for doc in dataDict.iteritems():
-    docId = doc[1][2]
-    categoryIndex = doc[1][1][0]
-    v = documentCategoryMap.get(docId, [])
-    v.append(categoryIndex)
-    documentCategoryMap[docId] = v
-
-  print "Total number of unique documents",len(documentCategoryMap)
-  print "Category counts: ",counts
-  print "Categories in training/test data:", labelRefs
-
-  return (trainingData, trainingData, labelRefs, documentCategoryMap,
-          documentTextMap)
 
 
 if __name__ == "__main__":

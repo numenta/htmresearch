@@ -167,7 +167,7 @@ def readDataAndReshuffle(args, categoriesInOrderOfInterest=None):
                                      the priority order of various categories.
                                      The categories in the original data file
                                      will be reshuffled to the order in this
-                                     array, up to args.numLabels.
+                                     array, up to args.numLabels, if specified.
 
   Returns the tuple:
     (dataset, labelRefs, documentCategoryMap, documentTextMap)
@@ -198,10 +198,16 @@ def readDataAndReshuffle(args, categoriesInOrderOfInterest=None):
   # Read data
   dataDict = readCSV(args.dataPath, 1)
   labelRefs, dataDict = mapLabelRefs(dataDict)
-  if categoriesInOrderOfInterest is None:
-      categoriesInOrderOfInterest = range(0,args.numLabels)
+
+  if "numLabels" in args:
+    numLabels = args.numLabels
   else:
-    categoriesInOrderOfInterest=categoriesInOrderOfInterest[0:args.numLabels]
+    numLabels = len(labelRefs)
+
+  if categoriesInOrderOfInterest is None:
+      categoriesInOrderOfInterest = range(0,numLabels)
+  else:
+    categoriesInOrderOfInterest=categoriesInOrderOfInterest[0:numLabels]
 
   # Select data based on categories of interest. Shift category indices down
   # so we go from 0 to numLabels-1
