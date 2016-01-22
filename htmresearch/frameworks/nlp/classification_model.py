@@ -185,8 +185,8 @@ class ClassificationModel(object):
 
       if votes.sum() > 0:
         # Increment the most likely category, breaking ties in a random fashion
-        sortedVotes = self._sortArray(votes)
-        categoryVotes[sortedVotes[0]] += 1
+        topCategory = self._sortArray(votes)[0]
+        categoryVotes[topCategory] += 1
 
     return categoryVotes, None, None
 
@@ -435,8 +435,10 @@ class ClassificationModel(object):
   def _sortArray(array, seed=42):
     """
     Sort the input array, breaking ties in a random fashion.
+
     @param array (numpy array)    Array of values to be sorted.
     @param seed (int)             Seed the random number generator.
+
     @return   (numpy array)       Sorted array indices, where the sort order is
                                   greatest to least.
     """
