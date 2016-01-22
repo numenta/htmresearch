@@ -46,15 +46,22 @@ class CioEncoder(LanguageEncoder):
 
   def __init__(self, retina=DEFAULT_RETINA, retinaScaling=1.0, cacheDir=None,
                verbosity=0, fingerprintType=EncoderTypes.document,
-               unionSparsity=0.20, apiKey=None):
+               unionSparsity=0.20, apiKey=None,
+               maxSparsity=0.50):
     """
     @param retina          (str)      Cortical.io retina, either "en_synonymous"
                                       or "en_associative".
-    @param retinaScaling   (float)    Scales the dimensions of the SDR topology,
-                                      where the width and height are both 128.
+    @param retinaScaling   (float)    Scale each dimension of the SDR bitmap
+                                      by this factor.
     @param cacheDir        (str)      Where to cache results of API queries.
     @param verbosity       (int)      Amount of info printed out, 0, 1, or 2.
     @param fingerprintType (Enum)     Specify word- or document-level encoding.
+    @param unionSparsity   (float)    Any union'ing done in this encoder will
+                                      stop once this sparsity is reached.
+    @param maxSparsity     (float)    The maximum sparsity of the returned
+                                      bitmap. If the percentage of bits in the
+                                      encoding is > maxSparsity, it will be
+                                      randomly subsampled.
 
     TODO: replace enum with a simple string
     """
@@ -80,17 +87,18 @@ class CioEncoder(LanguageEncoder):
     self.description = ("Cio Encoder", 0)
 
     self.verbosity = verbosity
+    self.maxSparsity = maxSparsity
 
 
   def _setDimensions(self, retina, scalingFactor):
-    if scalingFactor < 0 or scalingFactor > 1:
+    if scalingFactor <= 0 or scalingFactor > 1:
       raise ValueError("Retina can only be scaled by values between 0 and 1.")
 
     retinaDim = RETINA_SIZES[retina]["width"]
 
-    self.retinaScaling = scalingFactor
     self.width = int(retinaDim * scalingFactor)
     self.height = int(retinaDim * scalingFactor)
+    self.retinaScaling = float(self.width)/retinaDim
     self.n = self.width * self.height
 
 
@@ -222,7 +230,7 @@ class CioEncoder(LanguageEncoder):
     """
     if self.retinaScaling != 1:
       encoding["fingerprint"]["positions"] = self.scaleEncoding(
-        encoding["fingerprint"]["positions"], self.retinaScaling)
+        encoding["fingerprint"]["positions"], self.retinaScaling**2)
       encoding["width"] = self.width
       encoding["height"] = self.height
 
@@ -231,6 +239,10 @@ class CioEncoder(LanguageEncoder):
 
     encoding["sparsity"] = len(encoding["fingerprint"]["positions"]) / float(
       (encoding["width"] * encoding["height"]))
+
+    # Reduce sparsity if needed
+    if encoding["sparsity"] > self.maxSparsity:
+      self.reduceSparsity(encoding, self.maxSparsity)
 
     return encoding
 
@@ -271,7 +283,7 @@ class CioEncoder(LanguageEncoder):
     """
     terms = self.client.bitmapToTerms(encoding, numTerms=numTerms)
     # Convert cortipy response to list of tuples (term, weight)
-    return [((term["term"], term["score"])) for term in terms]
+    return [(term["term"], term["score"]) for term in terms]
 
 
   def _subEncoding(self, text, method="keyword"):
@@ -361,3 +373,19 @@ class CioEncoder(LanguageEncoder):
     for i in bitmap:
       sparsePattern[i] = 1.0
     return sparsePattern
+
+
+  def reduceSparsity(self, encoding, maxSparsity):
+    """Reduce the sparsity of the encoding down to maxSparsity"""
+
+    desiredBits = maxSparsity*encoding["width"]*encoding["height"]
+    bitmap = encoding["fingerprint"]["positions"]
+
+    # Choose a random subsampling of the bits but seed the random number
+    # generator so we get consistent bitmaps
+    numpy.random.seed(bitmap.sum())
+    encoding["fingerprint"]["positions"] = (
+      numpy.random.permutation(bitmap)[0:desiredBits] )
+
+    encoding["sparsity"] = len(encoding["fingerprint"]["positions"]) / float(
+      (encoding["width"] * encoding["height"]))
