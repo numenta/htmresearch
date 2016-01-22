@@ -23,6 +23,7 @@
 import os
 import unittest
 import hashlib
+import numpy
 
 import simplejson as json
 
@@ -99,21 +100,36 @@ class CioTest(unittest.TestCase):
       retinaScaling = 1.0, fingerprintType=EncoderTypes.document)
     cioScaled = CioEncoder(
       retinaScaling = 0.5, fingerprintType=EncoderTypes.document)
+    cioScaled2 = CioEncoder(
+      retinaScaling = 0.71, fingerprintType=EncoderTypes.document)
 
-    self.assertAlmostEqual(0.5*cio.width, cioScaled.width)
-    self.assertAlmostEqual(0.5*cio.height, cioScaled.height)
+    self.assertAlmostEqual(int(0.5*cio.width), cioScaled.width)
+    self.assertAlmostEqual(int(0.5*cio.height), cioScaled.height)
+    self.assertAlmostEqual(int(0.71*cio.height), cioScaled2.height)
 
     response = cio.encode(self.text)
     responseScaled = cioScaled.encode(self.text)
+    responseScaled2 = cioScaled2.encode(self.text)
 
     # Each bit position should be scaled down by retinaScaling*retinaScaling
     self.assertLessEqual(responseScaled["fingerprint"]["positions"].sum(),
                          0.5*0.5*response["fingerprint"]["positions"].sum())
 
+    self.assertLessEqual(responseScaled2["fingerprint"]["positions"].sum(),
+                         0.71*0.71*response["fingerprint"]["positions"].sum())
+
     # The number of on bits in scaled retina should normally be slightly less
     # than the original, but can be equal in some cases
     self.assertLessEqual(len(responseScaled["fingerprint"]["positions"]),
                          len(response["fingerprint"]["positions"]))
+    self.assertLessEqual(len(responseScaled["fingerprint"]["positions"]),
+                         len(responseScaled2["fingerprint"]["positions"]))
+
+    # Check that encodeIntoArray works even with weird scaling
+    a = numpy.zeros(cioScaled2.width*cioScaled2.height)
+    cioScaled2.encodeIntoArray(self.text, a)
+    self.assertEqual(len(responseScaled2["fingerprint"]["positions"]),
+                     a.sum())
 
 
   def testMaxSparsity(self):

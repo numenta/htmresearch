@@ -96,9 +96,9 @@ class CioEncoder(LanguageEncoder):
 
     retinaDim = RETINA_SIZES[retina]["width"]
 
-    self.retinaScaling = scalingFactor
     self.width = int(retinaDim * scalingFactor)
     self.height = int(retinaDim * scalingFactor)
+    self.retinaScaling = float(self.width)/retinaDim
     self.n = self.width * self.height
 
 
