@@ -157,7 +157,7 @@ class ImbuModels(object):
       # k should be > the number of data samples because the Keywords model
       # looks for exact matching tokens, so we want to consider all data
       # samples in the search of k nearest neighbors.
-      kwargs.update(k=5 * len(self.dataDict))
+      kwargs.update(k=10 * len(self.dataDict.keys()))
 
     model = createModel(modelType, **kwargs)
 

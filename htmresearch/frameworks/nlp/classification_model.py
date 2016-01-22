@@ -371,8 +371,6 @@ class ClassificationModel(object):
                            (distance, unique ID, corresponding token index).
     """
     # Default implementation, can be overridden.
-    # Note that some models specify a classifier with exact matching, which is
-    # reflected in the returned categoryVotes, but not the returned distances.
 
     # For each token in this document, run inference to get distances to all
     # prototypes in the classifier (depending on the model these may represent
@@ -391,13 +389,19 @@ class ClassificationModel(object):
                                                  sortResults=False)
 
       if votes.sum() > 0:
-        # Increment the most likely category, breaking ties in a random fashion
-        sortedVotes = self._sortArray(votes)
-        categoryVotes[sortedVotes[0]] += 1
+        if classifier.exact:
+          # Increment all because a vote implies an exact match
+          categoryVotes[numpy.where(votes > 0)[0]] = 1
+          # We only care about 0 distances (exact matches), disregard all others
+          distances[numpy.where(distances != 0)] = 1.0
+        else:
+          # Increment the most likely category, breaking ties in a random fashion
+          sortedVotes = self._sortArray(votes)
+          categoryVotes[sortedVotes[0]] += 1
 
         # For each prototype id (in the classifier), keep the minimum distance
         # to this inference token.
-        for j, protoId in enumerate(idList):
+        for protoId in idList:
           # Find min distance of this protoId to this token
           closestDistance = distances[
             classifier.getPatternIndicesWithPartitionId(protoId)].min()
