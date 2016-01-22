@@ -29,17 +29,12 @@ import matplotlib.pyplot as plt
 
 from htmresearch.support.csv_helper import (
   readCSV, mapLabelRefs, readDataAndReshuffle)
-from htmresearch.frameworks.nlp.classification_model import ClassificationModel
-from htmresearch.frameworks.nlp.classify_document_fingerprint import (
-  ClassificationModelDocumentFingerprint
-)
-from htmresearch.frameworks.nlp.classify_fingerprint import (
-  ClassificationModelFingerprint
-)
 from htmresearch.algorithms.hierarchical_clustering import (
   HierarchicalClustering
 )
-from htmresearch.frameworks.nlp.model_factory import (getNetworkConfig)
+from htmresearch.frameworks.nlp.model_factory import (
+  getNetworkConfig, createModel
+)
 
 SAVE_PATH = os.path.join(os.path.dirname(__file__),
                          "results/HierarchicalClustering/")
@@ -60,24 +55,15 @@ def runExperiment(args):
       includedDocIds.add(record[2])
       trainingData.append(record)
   
-  if args.modelName == "docfp":
-    modelClass = ClassificationModelDocumentFingerprint
-  elif args.modelName == "cioword":
-    modelClass = ClassificationModelFingerprint
-  else:
-    raise RuntimeError("Unsupported model type")
-  
   args.networkConfig = getNetworkConfig(args.networkConfigPath)
-  model = modelClass(numLabels=1, **vars(args))
+  model = createModel(numLabels=1, **vars(args))
   model = trainModel(args, model, trainingData, labelRefs)
-  model.save(args.modelDir)
-  newmodel = ClassificationModel.load(args.modelDir)
   
-  numDocs = newmodel.getClassifier()._numPatterns
+  numDocs = model.getClassifier()._numPatterns
   
   print "Model trained with %d documents" % (numDocs,)
   
-  knn = newmodel.getClassifier()
+  knn = model.getClassifier()
   hc = HierarchicalClustering(knn)
   
   hc.cluster("complete")
