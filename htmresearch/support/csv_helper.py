@@ -39,7 +39,7 @@ def readCSV(csvFile, numLabels=0):
 
   @param csvFile         (str)          File name for the input CSV.
   @param numLabels       (int)          Number of columns of category labels.
-  @return                (OrderedDict)  Keys are sample IDs, values are 3-tuples
+  @return                (dict)         Keys are sample IDs, values are 3-tuples
                                         of sample (str), categories (list of
                                         str), sample number (int).
   """
@@ -56,7 +56,7 @@ def readCSV(csvFile, numLabels=0):
         sampleIdx = 2
         idIdx = 0
       
-      dataDict = OrderedDict()
+      dataDict = {}
 
       if numLabels > 0:
         labelIdx = range(sampleIdx + 1, sampleIdx + 1 + numLabels)
