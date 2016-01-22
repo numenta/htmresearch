@@ -182,8 +182,8 @@ class ClassificationModel(object):
 
       if votes.sum() > 0:
         # Increment the most likely category, breaking ties in a random fashion
-        sortedVotes = self._sortArray(votes)
-        categoryVotes[sortedVotes[0]] += 1
+        topCategory = self._sortArray(votes)[0]
+        categoryVotes[topCategory] += 1
 
     return categoryVotes, None, None
 
@@ -385,8 +385,8 @@ class ClassificationModel(object):
 
       if votes.sum() > 0:
         # Increment the most likely category, breaking ties in a random fashion
-        sortedVotes = self._sortArray(votes)
-        categoryVotes[sortedVotes[0]] += 1
+        topCategory = self._sortArray(votes)[0]
+        categoryVotes[topCategory] += 1
 
         # For each unique id, keep the minimum distance to this token
         for j, sampleId in enumerate(idList):
