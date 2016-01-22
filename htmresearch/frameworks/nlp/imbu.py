@@ -325,8 +325,9 @@ def main():
     if query == "q":
       break
 
-    _, idList, sortedDistances = imbu.query(model, query)
-    results = imbu.formatResults(model, sortedDistances, idList)
+    _, sortedIds, sortedDistances = imbu.query(model, query)
+
+    results = imbu.formatResults(model, sortedDistances, sortedIds)
 
     # Display results.
     print printTemplate.format("Sample ID", "Word ID", "% Overlap With Query")
