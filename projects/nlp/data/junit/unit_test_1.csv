@@ -1,0 +1,37 @@
+ID,Sample,Label
+100,James quit smoking but it was not an easy decision.,Smoking
+101,James stopped smoking but it was not easy decision,Smoking
+102,James stopped smoking but it was not a simple decision,Smoking
+103,James stopped smoking but it was not a simple choice,Smoking
+104,Sue stopped smoking but it was not a simple choice,Smoking
+105,Sue stopped cigarettes but it was not a simple choice,Smoking
+200,Matthew looked for his kids because they were completely lost,Searching
+201,Matthew searched for his kids because they were completely lost,Searching
+202,Matthew searched for his children because they were completely lost,Searching
+203,Matthew searched for his children but they were completely lost,Searching
+204,James searched for his children but they were completely lost,Searching
+205,James searched for his boys but they were completely lost,Searching
+300,Jeff had so many meetings today he was quite unproductive,Meetings
+301,Jeff had several meetings today so he was quite unproductive,Meetings
+302,Jeff had several meetings yesterday so he was quite unproductive,Meetings
+303,Jeff has several meetings nowadays so he is quite unproductive,Meetings
+304,Jeff has so many meetings these days he is unproductive,Meetings
+305,Jeff has so many conferences these days he is unproductive,Meetings
+400,Our company needs to pay its employees a lot better,Pay
+401,Our organization needs to pay its employees a lot better,Pay
+402,Our organization needs to pay its employees a lot higher,Pay
+403,Our organization needs to pay its staff a lot more,Pay
+404,Our organization needs to compensate its staff a lot more,Pay
+405,Our organization should compensate its female staff a lot more,Pay
+500,The work hours at our company are not very flexible,Flextime
+501,The work hours at our organization are not very flexible,Flextime
+502,The work day at our organization is not very flexible,Flextime
+503,The hourly expectations at our organization are not very flexible,Flextime
+504,The hourly expectations at our organization are not very fair,Flextime
+505,The hourly expectations at our organization are not really fair,Flextime
+600,Joe's father is worried that he continuously plays video games,Games
+601,Joe's father is concerned that he continuously plays video games,Games
+602,Joe's father is concerned that he always plays video games,Games
+603,Joe's parents are concerned that he always plays video games,Games
+604,Joe's parents are concerned that he always plays online games,Games
+605,His parents are concerned that he always plays online games,Games
