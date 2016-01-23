@@ -65,15 +65,15 @@ class ClassificationModel(object):
 
   ################## CORE METHODS #####################
 
-  def trainToken(self, token, labels, wordId, reset=0):
+  def trainToken(self, token, labels, tokenId, reset=0):
     """
-    Train the model with the given text token, associated labels, and
-    sampleId.
+    Train the model with the given text token, associated labels, and ID
+    associated with this token.
 
     @param token      (str)  The text token to train on
     @param labels     (list) A list of one or more integer labels associated
                              with this token.
-    @param wordId     (int)  An integer ID associated with this token.
+    @param tokenId    (int)  An integer ID associated with this token.
     @param reset      (int)  Should be 0 or 1. If 1, assumes we are at the
                              end of a sequence. A reset signal will be issued
                              after the model has been trained on this token.
