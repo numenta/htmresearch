@@ -31,6 +31,10 @@ from htmresearch.support.text_preprocess import TextPreprocess
 
 class TestTextPreprocess(unittest.TestCase):
 
+  tokenIndexingFactor = 1000
+  documentLevel = {"CioDocumentFingerprint", "CioWordFingerprint"}
+
+
   def setUp(self):
     self.testDocuments = (
       ("Much of the world's data is streaming, time-series data, where "
@@ -74,39 +78,51 @@ class TestTextPreprocess(unittest.TestCase):
       3062, 3063] )
 
 
-  def _formatResults(self, model, distanceArray, idList):
+  def _formatResults(self, model, modelName, distanceArray, idList):
     """ As implemented in imbu.py: Format distances to reflect the
     pctOverlapOfInput metric, return a list of results.
     """
     formattedDistances = (1.0 - distanceArray) * 100
 
-    indexingFactor = getattr(model, "indexingFactor", 1)
-
     results = []
     for protoId, dist in zip(idList, formattedDistances):
-      # get the sampleId from the protoId
-      wordId = protoId % indexingFactor
-      sampleId = (protoId - wordId) / indexingFactor
-      results.append({"sampleId": sampleId,
-                      "wordId": wordId,
-                      "text": self.testDocuments[sampleId],
-                      "score": dist.item()})
+      if modelName in self.documentLevel:
+        results.append({"sampleId": protoId,
+                        "wordId": 0,
+                        "text": self.testDocuments[protoId],
+                        "score": dist.item()})
+      else:
+        # get the sampleId from the protoId
+        wordId = protoId % self.tokenIndexingFactor
+        sampleId = (protoId - wordId) / self.tokenIndexingFactor
+        results.append({"sampleId": sampleId,
+                        "wordId": wordId,
+                        "text": self.testDocuments[sampleId],
+                        "score": dist.item()})
 
     return results
 
 
   def testMappingsWithImbuWordModel(self):
     # Create a Keywords model
+    modelName = "Keywords"
     kwargs = {"numLabels": 1,
               "k": 42,
               "classifierMetric": "pctOverlapOfInput",
               "filterText": True,
               "verbosity": 0}
-    model = createModel("Keywords", **kwargs)
+    model = createModel(modelName, **kwargs)
 
     # Train the model for use in Imbu
     for seqId, text in enumerate(self.testDocuments):
-      model.trainDocument(text, [0], seqId)
+      tokenList, mapping = model.tokenize(text)
+      lastTokenIndex = len(tokenList) - 1
+      for i, (token, tokenIndex) in enumerate(zip(tokenList, mapping)):
+        wordId = seqId * self.tokenIndexingFactor + tokenIndex
+        model.trainToken(token,
+                         [0],
+                         wordId,
+                         reset=int(i == lastTokenIndex))
 
     # Query the model, expecting two matches from one sample
     query = ("The key to artificial intelligence has always been the "
@@ -124,7 +140,7 @@ class TestTextPreprocess(unittest.TestCase):
       "Expected two exact-matching prototypes.")
 
     # Test for multiple matches per sample
-    results = self._formatResults(model, sortedDistances, sortedIds)
+    results = self._formatResults(model, modelName, sortedDistances, sortedIds)
     self.assertEqual(results[0]["sampleId"], results[1]["sampleId"])
     self.assertEqual(results[0]["text"], results[1]["text"])
     self.assertNotEqual(results[0]["wordId"], results[1]["wordId"])
@@ -144,7 +160,7 @@ class TestTextPreprocess(unittest.TestCase):
       "Expected five exact-matching prototypes.")
 
     # Test the exact matches map back to the query term
-    results = self._formatResults(model, sortedDistances, sortedIds)
+    results = self._formatResults(model, modelName, sortedDistances, sortedIds)
     for r in results[:5]:
       self.assertIn(r["sampleId"], (2,3))
       matchingWord = r["text"].split(" ")[r["wordId"]]
@@ -154,6 +170,7 @@ class TestTextPreprocess(unittest.TestCase):
 
   def testMappingsWithImbuDocumentModel(self):
     # Create the CioDocumentFingerprint model
+    modelName = "CioDocumentFingerprint"
     kwargs = {"numLabels": 1,
               "classifierMetric": "pctOverlapOfInput",
               "filterText": True,
@@ -175,7 +192,7 @@ class TestTextPreprocess(unittest.TestCase):
     self.assertEqual(len(self.testDocuments), len(sortedIds),
       "Document-level models should have one prototype ID per document.")
 
-    results = self._formatResults(model, sortedDistances, sortedIds)
+    results = self._formatResults(model, modelName, sortedDistances, sortedIds)
 
     for r in results:
       self.assertEqual(0, r["wordId"],
