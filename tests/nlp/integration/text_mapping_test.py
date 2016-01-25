@@ -78,8 +78,8 @@ class TestTextPreprocess(unittest.TestCase):
       3062, 3063] )
 
 
-  def _formatResults(self, model, modelName, distanceArray, idList):
-    """ As implemented in imbu.py: Format distances to reflect the
+  def _formatResults(self, modelName, distanceArray, idList):
+    """ Mimics the implementation in imbu.py: Format distances to reflect the
     pctOverlapOfInput metric, return a list of results.
     """
     formattedDistances = (1.0 - distanceArray) * 100
@@ -140,7 +140,7 @@ class TestTextPreprocess(unittest.TestCase):
       "Expected two exact-matching prototypes.")
 
     # Test for multiple matches per sample
-    results = self._formatResults(model, modelName, sortedDistances, sortedIds)
+    results = self._formatResults(modelName, sortedDistances, sortedIds)
     self.assertEqual(results[0]["sampleId"], results[1]["sampleId"])
     self.assertEqual(results[0]["text"], results[1]["text"])
     self.assertNotEqual(results[0]["wordId"], results[1]["wordId"])
@@ -160,7 +160,7 @@ class TestTextPreprocess(unittest.TestCase):
       "Expected five exact-matching prototypes.")
 
     # Test the exact matches map back to the query term
-    results = self._formatResults(model, modelName, sortedDistances, sortedIds)
+    results = self._formatResults(modelName, sortedDistances, sortedIds)
     for r in results[:5]:
       self.assertIn(r["sampleId"], (2,3))
       matchingWord = r["text"].split(" ")[r["wordId"]]
@@ -192,7 +192,7 @@ class TestTextPreprocess(unittest.TestCase):
     self.assertEqual(len(self.testDocuments), len(sortedIds),
       "Document-level models should have one prototype ID per document.")
 
-    results = self._formatResults(model, modelName, sortedDistances, sortedIds)
+    results = self._formatResults(modelName, sortedDistances, sortedIds)
 
     for r in results:
       self.assertEqual(0, r["wordId"],

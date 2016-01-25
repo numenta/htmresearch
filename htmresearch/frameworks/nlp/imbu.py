@@ -39,6 +39,7 @@ import os
 from htmresearch.encoders import EncoderTypes
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.support.csv_helper import readCSV
+from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.frameworks.nlp.model_factory import (
   ClassificationModelTypes,
   createModel,
@@ -132,7 +133,8 @@ class ImbuModels(object):
     """
     return dict(
       numLabels=1,
-      classifierMetric=self.modelSimilarityMetric)
+      classifierMetric=self.modelSimilarityMetric,
+      textPreprocess=False)
 
 
   def _modelFactory(self, modelName, savePath, **kwargs):
@@ -147,7 +149,7 @@ class ImbuModels(object):
 
     if modelType in self.requiresCIOKwargs:
       # Model type requires Cortical.io credentials
-      kwargs.update(retina=self.retina, apiKey=self.apiKey)
+      kwargs.update(retina=self.retina, apiKey=self.apiKey, retinaScaling=1.0)
 
     if modelType == ClassificationModelTypes.CioWordFingerprint:
       kwargs.update(fingerprintType=EncoderTypes.word,
@@ -158,10 +160,7 @@ class ImbuModels(object):
                     cacheRoot=self.cacheRoot)
 
     elif modelType == ClassificationModelTypes.HTMNetwork:
-      kwargs.update(networkConfig=_loadNetworkConfig(),
-                    inputFilePath=None,
-                    prepData=False,
-                    retinaScaling=1.0)
+      kwargs.update(networkConfig=_loadNetworkConfig())
 
     elif modelType == ClassificationModelTypes.Keywords:
       # k should be > the number of data samples because the Keywords model
@@ -186,6 +185,9 @@ class ImbuModels(object):
     if loadPath:
       # User has explicitly specified a load path and expects a model to exist
       try:
+        if self.modelType == ClassificationModelTypes.HTMNetwork:
+          registerAllResearchRegions()
+
         model = ClassificationModel.load(loadPath)
 
         if not isinstance(model, self.modelType):
@@ -263,7 +265,7 @@ class ImbuModels(object):
     model.save(savePath)
 
 
-  def formatResults(self, model, distanceArray, idList):
+  def formatResults(self, distanceArray, idList):
     """ Format distances to reflect the pctOverlapOfInput metric, return a list
     of results.
     """
@@ -360,7 +362,7 @@ def main():
 
     _, sortedIds, sortedDistances = imbu.query(model, query)
 
-    results = imbu.formatResults(model, sortedDistances, sortedIds)
+    results = imbu.formatResults(sortedDistances, sortedIds)
 
     # Display results.
     print printTemplate.format("Sample ID", "Word ID", "% Overlap With Query")
