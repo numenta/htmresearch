@@ -58,10 +58,10 @@ class ClassificationModelKeywords(ClassificationModel):
     return self.classifier
 
 
-  def trainToken(self, token, labels, sampleId, reset=0):
+  def trainToken(self, token, labels, tokenId, reset=0):
     """
-    Train the model with the given text token, associated labels, and
-    sampleId.
+    Train the model with the given text token, associated labels, and ID
+    associated with this token.
 
     See base class for description of parameters.
     """
@@ -71,8 +71,10 @@ class ClassificationModelKeywords(ClassificationModel):
       print "labels=",labels
       print "  bitmap:",bitmap
     for label in labels:
-      self.classifier.learn(bitmap, label, isSparse=self.n,
-                            partitionId=sampleId)
+      self.classifier.learn(bitmap,
+                            label,
+                            isSparse=self.n,
+                            partitionId=tokenId)
 
 
   def inferToken(self, token, reset=0, returnDetailedResults=False,
@@ -131,61 +133,3 @@ class ClassificationModelKeywords(ClassificationModel):
     for i in bitmap:
       sparsePattern[i] = 1.0
     return sparsePattern
-
-
-  def _inferDocumentDetailed(self, tokenList, sortResults=True):
-    """
-    Run inference on the model with this list of tokens and return classification
-    results, sampleIds and distances.  By default this routine will tokenize the
-    document and classify using these tokens. A reset is issued after inference.
-    Repeated sampleIds ARE removed from the results.
-
-    @param tokenList (str)     The list of tokens for inference
-    @param sortResults (bool) If true the list of sampleIds and distances
-                              will be sorted in order of increasing distances.
-
-    @return  (numpy array) An array of size numLabels. Position i contains
-                           the likelihood that this token belongs to the i'th
-                           category. An array containing all zeros implies no
-                           decision could be made.
-             (list)        A list of unique sampleIds
-             (numpy array) An array of distances from this document to each
-                           sampleId
-    """
-    # This model calls for exact matching encodings, which is handled
-    # implicitly by the kNN classifier for category votes, but not for the
-    # returned distances -- i.e. the distances to all prototypes are returned,
-    # whereas a category will only be predicted if there is an exact matching
-    # prototype.
-
-    # For each token run inference on the token and accumulate sum of distances
-    # from this token to all other sampleIds.
-    lastTokenIndex = len(tokenList) - 1
-    categoryVotes = numpy.zeros(self.numLabels)
-
-    for i, token in enumerate(tokenList):
-      votes, idList, distances = self.inferToken(token,
-                                                 reset=int(i == lastTokenIndex),
-                                                 returnDetailedResults=True,
-                                                 sortResults=False)
-
-      if votes.sum() == 0:
-        # No exact matches
-        infDistances = numpy.empty(distances.shape)
-        infDistances[:] = numpy.inf
-        return categoryVotes, idList, infDistances
-
-      # Increment all because a vote implies an exact match
-      categoryVotes[numpy.where(votes > 0)[0]] = 1
-
-      # We only care about 0 distances (exact matches), and disregard all others
-      distances[numpy.where(distances != 0)] = 1.0
-
-      if sortResults:
-        sorting = distances.argsort()
-        sortedIdList = [idList[j] for j in sorting]
-        sortedDistances = distances[sorting]
-
-        return categoryVotes, sortedIdList, sortedDistances
-
-      return categoryVotes, idList, distances

@@ -27,6 +27,7 @@ import shutil
 from htmresearch.support.text_preprocess import TextPreprocess
 
 
+
 class ClassificationModel(object):
   """
   Base class for NLP models of classification tasks. When inheriting from this
@@ -64,15 +65,15 @@ class ClassificationModel(object):
 
   ################## CORE METHODS #####################
 
-  def trainToken(self, token, labels, sampleId, reset=0):
+  def trainToken(self, token, labels, tokenId, reset=0):
     """
-    Train the model with the given text token, associated labels, and
-    sampleId.
+    Train the model with the given text token, associated labels, and ID
+    associated with this token.
 
     @param token      (str)  The text token to train on
     @param labels     (list) A list of one or more integer labels associated
                              with this token.
-    @param sampleId   (int)  An integer ID associated with this token.
+    @param tokenId    (int)  An integer ID associated with this token.
     @param reset      (int)  Should be 0 or 1. If 1, assumes we are at the
                              end of a sequence. A reset signal will be issued
                              after the model has been trained on this token.
@@ -88,17 +89,17 @@ class ClassificationModel(object):
     using the given labels and id.  A reset will be issued after the
     document has been trained.
 
-    @param document   (str)  The text token to train on
+    @param document   (str)  The text token to train on.
     @param labels     (list) A list of one or more integer labels associated
                              with this token.
     @param sampleId   (int)  An integer ID associated with the entire document.
-
     """
-    # Default implementation, may be overridden
+    # Default implementation, may be overridden. Here we ignore the token-word
+    # mappings produced by the tokenizer.
     assert (sampleId is not None), "Must pass in a sampleId"
-    tokenList = self.tokenize(document)
+    tokenList, _ = self.tokenize(document)
     lastTokenIndex = len(tokenList) - 1
-    for i,token in enumerate(tokenList):
+    for i, token in enumerate(tokenList):
       self.trainToken(token, labels, sampleId, reset=int(i == lastTokenIndex))
 
 
@@ -159,6 +160,8 @@ class ClassificationModel(object):
              (numpy array) An array of distances from each stored sample or
                            None if returnDetailedResults is False.
     """
+    # TODO: normalize categoryVotes
+
     # Default implementation, can be overridden This default routine will
     # tokenize the document and classify using these tokens. The default
     # classification involves summing the most likely classification for each
@@ -166,19 +169,19 @@ class ClassificationModel(object):
 
     # For each token run inference on the token and accumulate sum of distances
     # from this token to all other sampleIds.
-    tokenList = self.tokenize(document)
-
-    lastTokenIndex = len(tokenList) - 1
-    categoryVotes = numpy.zeros(self.numLabels)
+    tokenList, _ = self.tokenize(document)
 
     if returnDetailedResults:
       return self._inferDocumentDetailed(tokenList, sortResults=sortResults)
 
+    lastTokenIndex = len(tokenList) - 1
+    categoryVotes = numpy.zeros(self.numLabels)
+
     for i, token in enumerate(tokenList):
       votes, _, _ = self.inferToken(token,
-                                     reset=int(i == lastTokenIndex),
-                                     returnDetailedResults=False,
-                                     sortResults=False)
+                                    reset=int(i == lastTokenIndex),
+                                    returnDetailedResults=False,
+                                    sortResults=False)
 
       if votes.sum() > 0:
         # Increment the most likely category, breaking ties in a random fashion
@@ -188,25 +191,26 @@ class ClassificationModel(object):
     return categoryVotes, None, None
 
 
-  def tokenize(self, preprocessedText):
+  def tokenize(self, inputText):
     """
     Given a bunch of text (could be several sentences) return a single list
-    containing individual tokens.  It will filterText if the global option
+    containing individual tokens. It will filterText if the global option
     is set.
 
-    @param preprocessedText  (str)     A bunch of text.
-    @return                  (list)    A list of text tokens.
-
+    @param inputText  (str)   A bunch of text.
+    @return sample    (list)  A list of text tokens.
+    @return mapping   (list)  Maps the original words to the sample tokens. See
+                              TextPreprocess method for details.
     """
     if self.filterText:
-      sample = TextPreprocess().tokenize(preprocessedText,
+      sample, mapping = TextPreprocess().tokenizeAndFilter(inputText,
                                          ignoreCommon=100,
                                          removeStrings=["[identifier deleted]"],
                                          correctSpell=True)
     else:
-      sample = TextPreprocess().tokenize(preprocessedText)
+      sample, mapping = TextPreprocess().tokenizeAndFilter(inputText)
 
-    return sample
+    return sample, mapping
 
 
   def reset(self):
@@ -362,16 +366,17 @@ class ClassificationModel(object):
                            the likelihood that this token belongs to the i'th
                            category. An array containing all zeros implies no
                            decision could be made.
-             (list)        A list of unique sampleIds
-             (numpy array) An array of distances from this document to each
-                           sampleId
+             (list)        Distances from this document to all prototypes in the
+                           classifier, where each element is a 3-tuple:
+                           (distance, unique ID, corresponding token index).
     """
     # Default implementation, can be overridden.
-    # Note that some models specify a classifier with exact matching, which is
-    # reflected in the returned categoryVotes, but not the returned distances.
 
-    # For each token run inference on the token and accumulate sum of distances
-    # from this token to all other sampleIds.
+    # For each token in this document, run inference to get distances to all
+    # prototypes in the classifier (depending on the model these may represent
+    # documents or tokens), adding these distances to a cumulative sum of this
+    # document's distances.
+
     lastTokenIndex = len(tokenList) - 1
     categoryVotes = numpy.zeros(self.numLabels)
     distancesForEachId = {}
@@ -384,42 +389,46 @@ class ClassificationModel(object):
                                                  sortResults=False)
 
       if votes.sum() > 0:
-        # Increment the most likely category, breaking ties in a random fashion
-        topCategory = self._sortArray(votes)[0]
-        categoryVotes[topCategory] += 1
+        if classifier.exact:
+          # Increment all because a vote implies an exact match
+          categoryVotes[numpy.where(votes > 0)[0]] = 1
+          # We only care about 0 distances (exact matches), disregard all others
+          distances[numpy.where(distances != 0)] = 1.0
+        else:
+          # Increment the most likely category, breaking ties in a random fashion
+          sortedVotes = self._sortArray(votes)
+          categoryVotes[sortedVotes[0]] += 1
 
-        # For each unique id, keep the minimum distance to this token
-        for j, sampleId in enumerate(idList):
-          # Find min distance of this sampleId to this token
+        # For each prototype id (in the classifier), keep the minimum distance
+        # to this inference token.
+        for protoId in idList:
+          # Find min distance of this protoId to this token
           closestDistance = distances[
-            classifier.getPatternIndicesWithPartitionId(sampleId)].min()
+            classifier.getPatternIndicesWithPartitionId(protoId)].min()
 
-          # Add this to our running minimum of how close this sampleId has
+          # Add this to our running minimum of how close this protoId has
           # been to this document
-          distancesForEachId[sampleId] = (
-            min(distancesForEachId.get(sampleId, numpy.inf), closestDistance)
+          distancesForEachId[protoId] = (
+            min(distancesForEachId.get(protoId, numpy.inf), closestDistance)
           )
 
-
-    # Put distance from each sampleId to this document into a numpy array
-    # ordered consistently with a list of sampleIds
-    sampleIdList = distancesForEachId.keys()
-    distancetoSampleIds = numpy.zeros(len(sampleIdList))
-    for i,sampleId in enumerate(sampleIdList):
-      distancetoSampleIds[i] = distancesForEachId.get(sampleId, numpy.inf)
+    # Put distance from each prototype id to this document into a numpy array
+    # ordered consistently with a list of protoIds
+    protoIdList = distancesForEachId.keys()
+    distanceToProtoIds = numpy.zeros(len(protoIdList))
+    for i, protoId in enumerate(protoIdList):
+      distanceToProtoIds[i] = distancesForEachId.get(protoId, numpy.inf)
 
     # Sort the results if requested
     if sortResults:
-      sortedIndices = distancetoSampleIds.argsort()
-      sortedDistances = distancetoSampleIds[sortedIndices]
-      sortedIdList = []
-      for i in sortedIndices:
-        sortedIdList.append(sampleIdList[i])
+      sortedIndices = distanceToProtoIds.argsort()
+      sortedDistances = distanceToProtoIds[sortedIndices]
+      sortedIdList = [protoIdList[i] for i in sortedIndices]
 
       return categoryVotes, sortedIdList, sortedDistances
 
     else:
-      return categoryVotes, sampleIdList, distancetoSampleIds
+      return categoryVotes, protoIdList, distanceToProtoIds
 
 
   @staticmethod

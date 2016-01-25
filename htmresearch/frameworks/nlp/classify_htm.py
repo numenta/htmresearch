@@ -64,27 +64,10 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
     return configureNetwork(None, self.networkConfig, encoder)
 
 
-  def tokenize(self, text):
+  def trainToken(self, token, labels, tokenId, reset=0):
     """
-    Given a bunch of text (could be several sentences) return a single list
-    containing individual tokens.  It currently uses the CIO tokenize function
-    and ignores filterText.
-
-    @param text         (str)     A bunch of text.
-    @return             (list)    A list of text tokens.
-    """
-    encoder = self.sensorRegion.getSelf().encoder
-    sentenceList = encoder.client.tokenize(text)
-    tokenList = []
-    for sentence in sentenceList:
-      tokenList.extend(sentence.split(","))
-    return tokenList
-
-
-  def trainToken(self, token, labels, sampleId, reset=0):
-    """
-    Train the model with the given text token, associated labels, and
-    sequence ID.
+    Train the model with the given text token, associated labels, and ID
+    associated with this token.
 
     See base class for description of parameters.
     """
@@ -93,7 +76,8 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
     sensor = self.sensorRegion.getSelf()
     sensor.addDataToQueue(token,
                           categoryList=labels,
-                          sequenceId=sampleId, reset=0)
+                          sequenceId=tokenId,
+                          reset=0)
     self.network.run(1)
 
     # Print the outputs of each region
