@@ -64,10 +64,13 @@ class ImbuUnableToLoadModelError(ImbuError):
 
 
 
-def _loadNetworkConfig():
+def _loadNetworkConfig(jsonName=None):
   """ Load network config by calculating path relative to this file, and load
   with htmresearch.frameworks.nlp.model_factory.getNetworkConfig()
   """
+  if not jsonName:
+    raise RuntimeError("Need a config file to build the network model.")
+
   root = (
     os.path.dirname(
       os.path.dirname(
@@ -79,8 +82,9 @@ def _loadNetworkConfig():
       )
     )
   )
+
   return getNetworkConfig(
-    os.path.join(root, "projects/nlp/data/network_configs/imbu.json"))
+    os.path.join(root, "projects/nlp/data/network_configs", jsonName))
 
 
 
@@ -141,7 +145,6 @@ class ImbuModels(object):
     """ Imbu model factory.  Returns a concrete instance of a classification
     model given a model type name and kwargs.
     """
-
     modelType = (
       getattr(ClassificationModelTypes, modelName) or self.defaultModelType )
 
@@ -160,7 +163,7 @@ class ImbuModels(object):
                     cacheRoot=self.cacheRoot)
 
     elif modelType == ClassificationModelTypes.HTMNetwork:
-      kwargs.update(networkConfig=_loadNetworkConfig())
+      kwargs.update(networkConfig=_loadNetworkConfig(kwargs["networkConfigName"]))
 
     elif modelType == ClassificationModelTypes.Keywords:
       # k should be > the number of data samples because the Keywords model
@@ -313,6 +316,12 @@ def main():
                       type=str,
                       help="Name of model class. Also used for model results "
                            "directory and pickle checkpoint.")
+  parser.add_argument("-c", "--networkConfigName",
+                      default="imbu_sensor_knn.json",
+                      help="Name of JSON specifying the network params. It's "
+                           "expected the file is in the data/network_configs/ "
+                           "dir.",
+                      type=str)
   parser.add_argument("--loadPath",
                       default="",
                       type=str,
@@ -348,7 +357,8 @@ def main():
 
   model = imbu.createModel(args.modelName,
                            loadPath=args.loadPath,
-                           savePath=args.savePath)
+                           savePath=args.savePath,
+                           networkConfigName=args.networkConfigName)
 
   # Query the model.
   printTemplate = "{0:<10}|{1:<10}|{2:<10}"
