@@ -75,7 +75,7 @@ class ClassificationModelTypes(object):
       attrValue = getattr(cls, attrName)
       if (isinstance(attrValue, type) and
           issubclass(attrValue, acceptableClassImplementations)):
-        yield attrName # attrName is an acceptable model name and
+        yield attrName # attrName is an acceptable model name
 
 
 
