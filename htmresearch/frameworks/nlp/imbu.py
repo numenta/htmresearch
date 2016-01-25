@@ -317,8 +317,8 @@ def main():
                       help="Name of model class. Also used for model results "
                            "directory and pickle checkpoint.")
   parser.add_argument("-c", "--networkConfigName",
-                      default="imbu.json",
-                      help="Path to JSON specifying the network params. It's "
+                      default="imbu_sensor_knn.json",
+                      help="Name of JSON specifying the network params. It's "
                            "expected the file is in the data/network_configs/ "
                            "dir.",
                       type=str)
