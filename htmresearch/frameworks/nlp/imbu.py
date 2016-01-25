@@ -68,7 +68,7 @@ def _loadNetworkConfig(jsonName=None):
   """ Load network config by calculating path relative to this file, and load
   with htmresearch.frameworks.nlp.model_factory.getNetworkConfig()
   """
-  if jsonName is None:
+  if not jsonName:
     raise RuntimeError("Need a config file to build the network model.")
 
   root = (
