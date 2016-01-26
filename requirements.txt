@@ -1,4 +1,5 @@
 # Program requirements
+matplotlib
 pandas
 plotly
 simplejson
