@@ -98,6 +98,7 @@ class ImbuModels(object):
   # Set of classification model types that accept CioEncoder kwargs
   requiresCIOKwargs = {
     ClassificationModelTypes.CioWordFingerprint,
+    ClassificationModelTypes.CioDocumentFingerprint,
     ClassificationModelTypes.HTMNetwork,
     ClassificationModelTypes.DocumentFingerPrint
   }
@@ -105,6 +106,7 @@ class ImbuModels(object):
   # Set of classification model types that run document-level training/inference
   documentLevel = {
     ClassificationModelTypes.CioWordFingerprint,
+    ClassificationModelTypes.CioDocumentFingerprint,
     ClassificationModelTypes.DocumentFingerPrint
   }
 
@@ -145,27 +147,24 @@ class ImbuModels(object):
     """ Imbu model factory.  Returns a concrete instance of a classification
     model given a model type name and kwargs.
     """
-    modelType = (
-      getattr(ClassificationModelTypes, modelName) or self.defaultModelType )
-
     kwargs.update(modelDir=savePath, **self._defaultModelFactoryKwargs())
 
-    if modelType in self.requiresCIOKwargs:
+    if self.modelType in self.requiresCIOKwargs:
       # Model type requires Cortical.io credentials
       kwargs.update(retina=self.retina, apiKey=self.apiKey, retinaScaling=1.0)
 
-    if modelType == ClassificationModelTypes.CioWordFingerprint:
+    if self.modelType == ClassificationModelTypes.CioWordFingerprint:
       kwargs.update(fingerprintType=EncoderTypes.word,
                     cacheRoot=self.cacheRoot)
 
-    elif modelType == ClassificationModelTypes.CioDocumentFingerprint:
+    elif self.modelType == ClassificationModelTypes.CioDocumentFingerprint:
       kwargs.update(fingerprintType=EncoderTypes.document,
                     cacheRoot=self.cacheRoot)
 
-    elif modelType == ClassificationModelTypes.HTMNetwork:
+    elif self.modelType == ClassificationModelTypes.HTMNetwork:
       kwargs.update(networkConfig=_loadNetworkConfig(kwargs["networkConfigName"]))
 
-    elif modelType == ClassificationModelTypes.Keywords:
+    elif self.modelType == ClassificationModelTypes.Keywords:
       # k should be > the number of data samples because the Keywords model
       # looks for exact matching tokens, so we want to consider all data
       # samples in the search of k nearest neighbors.
@@ -193,11 +192,6 @@ class ImbuModels(object):
           registerAllResearchRegions()
 
         model = ClassificationModel.load(loadPath)
-
-        if not isinstance(model, self.modelType):
-          raise ImbuError("Model ({}) loaded from {} is not the same type as "
-                          "requested ({})."
-                          .format(repr(model), loadPath, modelName))
 
       except IOError as exc:
         # Model was not found, user may have specified incorrect path, DO NOT
@@ -276,6 +270,7 @@ class ImbuModels(object):
     formattedDistances = (1.0 - distanceArray) * 100
 
     results = []
+
     for protoId, dist in zip(idList, formattedDistances):
       if self.modelType in self.documentLevel:
         results.append({"sampleId": protoId,
