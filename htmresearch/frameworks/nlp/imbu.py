@@ -183,6 +183,7 @@ class ImbuModels(object):
     """ Creates a new model and trains it, or loads a previously trained model
     from specified loadPath.
     """
+    # The model name must be an identifier defined in the model factory mapping.
     self.modelType = getattr(ClassificationModelTypes, modelName)
 
     if loadPath:

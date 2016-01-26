@@ -49,13 +49,16 @@ class ClassificationModelTypes(object):
   """
   CioWordFingerprint = ClassificationModelFingerprint
   CioDocumentFingerprint = ClassificationModelFingerprint
-  Keywords = ClassificationModelKeywords
-  HTMNetwork = ClassificationModelHTM
-  DocumentFingerPrint = ClassificationModelDocumentFingerprint
   cioword = ClassificationModelFingerprint
-  docfp = ClassificationModelDocumentFingerprint
-  htm = ClassificationModelHTM
+
+  Keywords = ClassificationModelKeywords
   keywords = ClassificationModelKeywords
+
+  HTMNetwork = ClassificationModelHTM
+  htm = ClassificationModelHTM
+
+  DocumentFingerPrint = ClassificationModelDocumentFingerprint
+  docfp = ClassificationModelDocumentFingerprint
 
 
   @classmethod
