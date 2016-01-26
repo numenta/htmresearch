@@ -331,7 +331,7 @@ ax2.set_ylabel('Negative Log-likelihood')
 ax2.bar(inds, [np.nanmean(negLL_LSTM1000),
                np.nanmean(negLL_LSTM3000),
                np.nanmean(negLL_LSTM6000),
-               np.nanmean(negLL_TM), 0, 0, 0, 0], width=width, color='b')
+               np.nanmean(negLL_TM), 0, 0, 0, 0, 0], width=width, color='b')
 ax2.set_xticks(inds+width/2)
 ax2.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
 ax2.set_xticklabels(('LSTM1000', 'LSTM3000', 'LSTM6000', 'TM', '', '', ''))
