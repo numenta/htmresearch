@@ -35,6 +35,7 @@ The script is runnable to demo Imbu functionality (from repo's base dir):
 
 import argparse
 import os
+import pprint
 
 from htmresearch.encoders import EncoderTypes
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
@@ -98,6 +99,7 @@ class ImbuModels(object):
   # Set of classification model types that accept CioEncoder kwargs
   requiresCIOKwargs = {
     ClassificationModelTypes.CioWordFingerprint,
+    ClassificationModelTypes.CioDocumentFingerprint,
     ClassificationModelTypes.HTMNetwork,
     ClassificationModelTypes.DocumentFingerPrint
   }
@@ -105,6 +107,7 @@ class ImbuModels(object):
   # Set of classification model types that run document-level training/inference
   documentLevel = {
     ClassificationModelTypes.CioWordFingerprint,
+    ClassificationModelTypes.CioDocumentFingerprint,
     ClassificationModelTypes.DocumentFingerPrint
   }
 
@@ -145,27 +148,24 @@ class ImbuModels(object):
     """ Imbu model factory.  Returns a concrete instance of a classification
     model given a model type name and kwargs.
     """
-    modelType = (
-      getattr(ClassificationModelTypes, modelName) or self.defaultModelType )
-
     kwargs.update(modelDir=savePath, **self._defaultModelFactoryKwargs())
 
-    if modelType in self.requiresCIOKwargs:
+    if self.modelType in self.requiresCIOKwargs:
       # Model type requires Cortical.io credentials
       kwargs.update(retina=self.retina, apiKey=self.apiKey, retinaScaling=1.0)
 
-    if modelType == ClassificationModelTypes.CioWordFingerprint:
+    if self.modelType == ClassificationModelTypes.CioWordFingerprint:
       kwargs.update(fingerprintType=EncoderTypes.word,
                     cacheRoot=self.cacheRoot)
 
-    elif modelType == ClassificationModelTypes.CioDocumentFingerprint:
+    elif self.modelType == ClassificationModelTypes.CioDocumentFingerprint:
       kwargs.update(fingerprintType=EncoderTypes.document,
                     cacheRoot=self.cacheRoot)
 
-    elif modelType == ClassificationModelTypes.HTMNetwork:
+    elif self.modelType == ClassificationModelTypes.HTMNetwork:
       kwargs.update(networkConfig=_loadNetworkConfig(kwargs["networkConfigName"]))
 
-    elif modelType == ClassificationModelTypes.Keywords:
+    elif self.modelType == ClassificationModelTypes.Keywords:
       # k should be > the number of data samples because the Keywords model
       # looks for exact matching tokens, so we want to consider all data
       # samples in the search of k nearest neighbors.
@@ -193,11 +193,6 @@ class ImbuModels(object):
           registerAllResearchRegions()
 
         model = ClassificationModel.load(loadPath)
-
-        if not isinstance(model, self.modelType):
-          raise ImbuError("Model ({}) loaded from {} is not the same type as "
-                          "requested ({})."
-                          .format(repr(model), loadPath, modelName))
 
       except IOError as exc:
         # Model was not found, user may have specified incorrect path, DO NOT
@@ -255,7 +250,7 @@ class ImbuModels(object):
 
 
   @staticmethod
-  def query(model, query, returnDetailedResults=True, sortResults=True):
+  def query(model, query, returnDetailedResults=True, sortResults=False):
     """ Query classification model.
     """
     return model.inferDocument(query,
@@ -270,26 +265,27 @@ class ImbuModels(object):
 
 
   def formatResults(self, distanceArray, idList):
-    """ Format distances to reflect the pctOverlapOfInput metric, return a list
-    of results.
+    """ Format distances to reflect the pctOverlapOfInput metric, return a dict
+    of results info.
     """
     formattedDistances = (1.0 - distanceArray) * 100
 
-    results = []
+    # Format results such that each entry represents one sample.
+    results = {}
     for protoId, dist in zip(idList, formattedDistances):
       if self.modelType in self.documentLevel:
-        results.append({"sampleId": protoId,
-                        "wordId": 0,
-                        "text": self.dataDict[protoId][0],
-                        "score": dist.item()})
+        # Only one match per sample, so wordId is insignificant (defaults to 0)
+        results[protoId] = {"text": self.dataDict[protoId][0],
+                            "scores": [dist.item()]}
       else:
         # Get the sampleId from the protoId via the indexing scheme
         wordId = protoId % self.tokenIndexingFactor
         sampleId = (protoId - wordId) / self.tokenIndexingFactor
-        results.append({"sampleId": sampleId,
-                        "wordId": wordId,
-                        "text": self.dataDict[sampleId][0],
-                        "score": dist.item()})
+        if results.get(sampleId, None) is None:
+          results[sampleId] = {"text": self.dataDict[sampleId][0],
+                               "scores": [dist.item()]}
+        else:
+          results[sampleId]["scores"].append(dist.item())
 
     return results
 
@@ -375,10 +371,12 @@ def main():
 
     results = imbu.formatResults(sortedDistances, sortedIds)
 
-    # Display results.
-    print printTemplate.format("Sample ID", "Word ID", "% Overlap With Query")
-    for r in results:
-      print printTemplate.format(r["sampleId"], r["wordId"], r["score"])
+    # TODO: redo results display for new (unsorted) format method.
+    # # Display results.
+    # print printTemplate.format("Sample ID", "Word ID", "% Overlap With Query")
+    # for i, r in results.iteritems():
+    #   print printTemplate.format(i, r["wordId"], r["score"])
+    pprint.pprint(results)
 
 
 
