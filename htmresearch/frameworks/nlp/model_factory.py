@@ -58,9 +58,8 @@ class ClassificationModelTypes(object):
 
   HTMNetwork = ClassificationModelHTM
   htm = ClassificationModelHTM
-  htm1 = ClassificationModelHTM
-  htm2 = ClassificationModelHTM
-  htm3 = ClassificationModelHTM
+  htm_sensor_knn = ClassificationModelHTM
+  htm_sensor_simple_tp_knn = ClassificationModelHTM
 
   DocumentFingerPrint = ClassificationModelDocumentFingerprint
   docfp = ClassificationModelDocumentFingerprint
