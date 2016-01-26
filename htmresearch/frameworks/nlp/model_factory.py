@@ -47,10 +47,8 @@ class ClassificationModelTypes(object):
   identifier to constructor.  See createModel() for actual factory method
   implementation.
   """
-  # Multiple names per model type enable us to run several instances in parallel
   CioWordFingerprint = ClassificationModelFingerprint
   CioDocumentFingerprint = ClassificationModelFingerprint
-  ciodoc = ClassificationModelFingerprint
   cioword = ClassificationModelFingerprint
 
   Keywords = ClassificationModelKeywords
@@ -58,8 +56,6 @@ class ClassificationModelTypes(object):
 
   HTMNetwork = ClassificationModelHTM
   htm = ClassificationModelHTM
-  htm_sensor_knn = ClassificationModelHTM
-  htm_sensor_simple_tp_knn = ClassificationModelHTM
 
   DocumentFingerPrint = ClassificationModelDocumentFingerprint
   docfp = ClassificationModelDocumentFingerprint
