@@ -205,7 +205,7 @@ if __name__ == "__main__":
     # run KNN within the selected data points using passengerCount as feature
     neighbors2 = getNeighbors(neighbors, testInstance, 10, [2])
 
-    weights = abs(np.array(neighbors2)[:, 2] - testInstance[2]) + 0.01
+    weights = 1/(abs(np.array(neighbors2)[:, 2] - testInstance[2]) + 0.01)
     weights = weights/np.sum(weights)
     predictedInput2[i] = getResponse(neighbors2, weights)
 
