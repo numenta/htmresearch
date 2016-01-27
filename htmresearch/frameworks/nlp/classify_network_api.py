@@ -20,17 +20,13 @@
 # ----------------------------------------------------------------------
 
 import os
-import numpy
 
 from tabulate import tabulate
 
 from nupic.engine import Network
 
-from htmresearch.frameworks.classification.classification_network import (
-  configureNetwork)
-from htmresearch.encoders import EncoderTypes
-from htmresearch.encoders.cio_encoder import CioEncoder
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
+from htmresearch.support.register_regions import registerAllResearchRegions
 
 class ClassificationNetworkAPI(ClassificationModel):
   """
@@ -227,5 +223,9 @@ class ClassificationNetworkAPI(ClassificationModel):
 
     @param extraDataDir (string) Model's extra data directory path
     """
+
+    # Must call this before loading any regions in the research repo
+    registerAllResearchRegions()
+
     self.network = Network(os.path.join(extraDataDir, "network.nta"))
     self._initializeRegionHelpers()

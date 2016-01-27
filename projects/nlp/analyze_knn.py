@@ -86,7 +86,6 @@ def runExperiment(args):
   Create model according to args, train on training data, save model,
   restore model, test on test data.
   """
-  registerAllResearchRegions()
 
   (trainingData, labelRefs, documentCategoryMap,
    documentTextMap) = readDataAndReshuffle(args,
