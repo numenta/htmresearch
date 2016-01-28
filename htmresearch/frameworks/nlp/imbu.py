@@ -34,6 +34,7 @@ The script is runnable to demo Imbu functionality (from repo's base dir):
 """
 
 import argparse
+import numpy
 import os
 import pprint
 
@@ -183,6 +184,22 @@ class ImbuModels(object):
     return model
 
 
+  def _initResultsDataStructure(self, modelType):
+    """ Initialize a results dict to be populated in formatResults().
+    """
+    resultsDict = {}
+    for sampleId, sample in self.dataDict.iteritems():
+      if modelType in self.documentLevel:
+        # Only one match per sample
+        scoresArray = numpy.zeros(1)
+      else:
+        scoresArray = numpy.zeros(len(sample[0].split(" ")))
+      resultsDict[sampleId] = {"text": sample[0],
+                               "scores": scoresArray}
+
+    return resultsDict
+
+
   def createModel(self, modelName, loadPath, savePath, *modelFactoryArgs,
       **modelFactoryKwargs):
     """ Creates a new model and trains it, or loads a previously trained model
@@ -279,22 +296,17 @@ class ImbuModels(object):
     modelType = (
       getattr(ClassificationModelTypes, modelName) or self.defaultModelType )
 
-    # Format results such that each entry represents one sample.
-    results = {}
+    # Format results - each entry represents one sample.
+    results = self._initResultsDataStructure(modelType)
+
     for protoId, dist in zip(idList, formattedDistances):
       if modelType in self.documentLevel:
-        # Only one match per sample, so wordId is insignificant (defaults to 0)
-        results[protoId] = {"text": self.dataDict[protoId][0],
-                            "scores": [dist.item()]}
+        results[protoId]["scores"][0] = dist.item()
       else:
         # Get the sampleId from the protoId via the indexing scheme
         wordId = protoId % self.tokenIndexingFactor
         sampleId = (protoId - wordId) / self.tokenIndexingFactor
-        if results.get(sampleId, None) is None:
-          results[sampleId] = {"text": self.dataDict[sampleId][0],
-                               "scores": [dist.item()]}
-        else:
-          results[sampleId]["scores"].append(dist.item())
+        results[sampleId]["scores"][wordId] = dist.item()
 
     return results
 
