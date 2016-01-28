@@ -147,27 +147,32 @@ class ImbuModels(object):
     """ Imbu model factory.  Returns a concrete instance of a classification
     model given a model type name and kwargs.
     """
-    modelType = (
-      getattr(ClassificationModelTypes, modelName) or self.defaultModelType )
+    if modelName not in {
+      "CioWordFingerprint",
+      "CioDocumentFingerprint",
+      "HTMNetwork",
+      "Keywords"
+    }:
+      raise ValueError("{} is not an acceptable Imbu model.".format(modelName))
 
     kwargs.update(modelDir=savePath, **self._defaultModelFactoryKwargs())
 
-    if modelType in self.requiresCIOKwargs:
+    if getattr(ClassificationModelTypes, modelName) in self.requiresCIOKwargs:
       # Model type requires Cortical.io credentials
       kwargs.update(retina=self.retina, apiKey=self.apiKey, retinaScaling=1.0)
 
-    if modelType == ClassificationModelTypes.CioWordFingerprint:
+    if modelName == "CioWordFingerprint":
       kwargs.update(fingerprintType=EncoderTypes.word,
                     cacheRoot=self.cacheRoot)
 
-    elif modelType == ClassificationModelTypes.CioDocumentFingerprint:
+    elif modelName == "CioDocumentFingerprint":
       kwargs.update(fingerprintType=EncoderTypes.document,
                     cacheRoot=self.cacheRoot)
 
-    elif modelType == ClassificationModelTypes.HTMNetwork:
+    elif modelName == "HTMNetwork":
       kwargs.update(networkConfig=_loadNetworkConfig(kwargs["networkConfigName"]))
 
-    elif modelType == ClassificationModelTypes.Keywords:
+    elif modelName == "Keywords":
       # k should be > the number of data samples because the Keywords model
       # looks for exact matching tokens, so we want to consider all data
       # samples in the search of k nearest neighbors.
@@ -317,8 +322,7 @@ def main():
                       choices=list(ClassificationModelTypes.getTypes()),
                       default=ImbuModels.defaultModelType,
                       type=str,
-                      help="Name of model class. Also used for model results "
-                           "directory and pickle checkpoint.")
+                      help="Name of model class.")
   parser.add_argument("-c", "--networkConfigName",
                       default="imbu_sensor_knn.json",
                       help="Name of JSON specifying the network params. It's "
