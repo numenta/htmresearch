@@ -182,7 +182,7 @@ class ImbuModels(object):
 
   def createModel(self, modelName, loadPath, savePath, *modelFactoryArgs,
       **modelFactoryKwargs):
-    """ Creates a new model and trais it, or loads a previously trained model
+    """ Creates a new model and trains it, or loads a previously trained model
     from specified loadPath.
     """
     # The model name must be an identifier defined in the model factory mapping.
