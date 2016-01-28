@@ -146,15 +146,10 @@ class ImbuModels(object):
   def _modelFactory(self, modelName, savePath, **kwargs):
     """ Imbu model factory.  Returns a concrete instance of a classification
     model given a model type name and kwargs.
-    """
-    if modelName not in {
-      "CioWordFingerprint",
-      "CioDocumentFingerprint",
-      "HTMNetwork",
-      "Keywords"
-    }:
-      raise ValueError("{} is not an acceptable Imbu model.".format(modelName))
 
+    @param modelName (str)    Must be one of 'CioWordFingerprint',
+        'CioDocumentFingerprint', 'HTMNetwork', 'Keywords'.
+    """
     kwargs.update(modelDir=savePath, **self._defaultModelFactoryKwargs())
 
     if getattr(ClassificationModelTypes, modelName) in self.requiresCIOKwargs:
@@ -177,6 +172,9 @@ class ImbuModels(object):
       # looks for exact matching tokens, so we want to consider all data
       # samples in the search of k nearest neighbors.
       kwargs.update(k=10 * len(self.dataDict.keys()))
+
+    else:
+      raise ValueError("{} is not an acceptable Imbu model.".format(modelName))
 
     model = createModel(modelName, **kwargs)
 
