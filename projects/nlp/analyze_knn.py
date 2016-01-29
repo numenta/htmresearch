@@ -29,7 +29,6 @@ import csv
 import numpy
 from textwrap import TextWrapper
 
-from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.support.csv_helper import readDataAndReshuffle
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 
