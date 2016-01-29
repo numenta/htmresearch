@@ -34,6 +34,7 @@ The script is runnable to demo Imbu functionality (from repo's base dir):
 """
 
 import argparse
+import numpy
 import os
 import pprint
 
@@ -118,7 +119,6 @@ class ImbuModels(object):
     self.modelSimilarityMetric = (
       modelSimilarityMetric or self.defaultSimilarityMetric
     )
-    self.modelType = None
     self.dataPath = dataPath
     self.dataDict = self._loadTrainingData()
     self.apiKey = apiKey
@@ -147,29 +147,35 @@ class ImbuModels(object):
   def _modelFactory(self, modelName, savePath, **kwargs):
     """ Imbu model factory.  Returns a concrete instance of a classification
     model given a model type name and kwargs.
+
+    @param modelName (str)    Must be one of 'CioWordFingerprint',
+        'CioDocumentFingerprint', 'HTMNetwork', 'Keywords'.
     """
     kwargs.update(modelDir=savePath, **self._defaultModelFactoryKwargs())
 
-    if self.modelType in self.requiresCIOKwargs:
+    if getattr(ClassificationModelTypes, modelName) in self.requiresCIOKwargs:
       # Model type requires Cortical.io credentials
       kwargs.update(retina=self.retina, apiKey=self.apiKey, retinaScaling=1.0)
 
-    if self.modelType == ClassificationModelTypes.CioWordFingerprint:
+    if modelName == "CioWordFingerprint":
       kwargs.update(fingerprintType=EncoderTypes.word,
                     cacheRoot=self.cacheRoot)
 
-    elif self.modelType == ClassificationModelTypes.CioDocumentFingerprint:
+    elif modelName == "CioDocumentFingerprint":
       kwargs.update(fingerprintType=EncoderTypes.document,
                     cacheRoot=self.cacheRoot)
 
-    elif self.modelType == ClassificationModelTypes.HTMNetwork:
+    elif modelName == "HTMNetwork":
       kwargs.update(networkConfig=_loadNetworkConfig(kwargs["networkConfigName"]))
 
-    elif self.modelType == ClassificationModelTypes.Keywords:
+    elif modelName == "Keywords":
       # k should be > the number of data samples because the Keywords model
       # looks for exact matching tokens, so we want to consider all data
       # samples in the search of k nearest neighbors.
       kwargs.update(k=10 * len(self.dataDict.keys()))
+
+    else:
+      raise ValueError("{} is not an acceptable Imbu model.".format(modelName))
 
     model = createModel(modelName, **kwargs)
 
@@ -178,18 +184,34 @@ class ImbuModels(object):
     return model
 
 
+  def _initResultsDataStructure(self, modelType):
+    """ Initialize a results dict to be populated in formatResults().
+    """
+    resultsDict = {}
+    for sampleId, sample in self.dataDict.iteritems():
+      if modelType in self.documentLevel:
+        # Only one match per sample
+        scoresArray = [0]
+      else:
+        scoresArray = [0] * len(sample[0].split(" "))
+      resultsDict[sampleId] = {"text": sample[0],
+                               "scores": scoresArray}
+
+    return resultsDict
+
+
   def createModel(self, modelName, loadPath, savePath, *modelFactoryArgs,
       **modelFactoryKwargs):
     """ Creates a new model and trains it, or loads a previously trained model
     from specified loadPath.
     """
     # The model name must be an identifier defined in the model factory mapping.
-    self.modelType = getattr(ClassificationModelTypes, modelName)
+    modelType = getattr(ClassificationModelTypes, modelName)
 
     if loadPath:
       # User has explicitly specified a load path and expects a model to exist
       try:
-        if self.modelType == ClassificationModelTypes.HTMNetwork:
+        if modelType == ClassificationModelTypes.HTMNetwork:
           registerAllResearchRegions()
 
         model = ClassificationModel.load(loadPath)
@@ -231,8 +253,9 @@ class ImbuModels(object):
     document will have ID #2009.
     """
     labels = [0]
+    modelType = type(model)
     for seqId, (text, _, _) in enumerate(self.dataDict.values()):
-      if self.modelType in self.documentLevel:
+      if modelType in self.documentLevel:
         model.trainDocument(text, labels, seqId)
       else:
         # Word-level model, so use token-word mappings
@@ -264,28 +287,26 @@ class ImbuModels(object):
     model.save(savePath)
 
 
-  def formatResults(self, distanceArray, idList):
+  def formatResults(self, modelName, distanceArray, idList):
     """ Format distances to reflect the pctOverlapOfInput metric, return a dict
     of results info.
     """
     formattedDistances = (1.0 - distanceArray) * 100
 
-    # Format results such that each entry represents one sample.
-    results = {}
+    modelType = (
+      getattr(ClassificationModelTypes, modelName) or self.defaultModelType )
+
+    # Format results - each entry represents one sample.
+    results = self._initResultsDataStructure(modelType)
+
     for protoId, dist in zip(idList, formattedDistances):
-      if self.modelType in self.documentLevel:
-        # Only one match per sample, so wordId is insignificant (defaults to 0)
-        results[protoId] = {"text": self.dataDict[protoId][0],
-                            "scores": [dist.item()]}
+      if modelType in self.documentLevel:
+        results[protoId]["scores"][0] = dist.item()
       else:
         # Get the sampleId from the protoId via the indexing scheme
         wordId = protoId % self.tokenIndexingFactor
         sampleId = (protoId - wordId) / self.tokenIndexingFactor
-        if results.get(sampleId, None) is None:
-          results[sampleId] = {"text": self.dataDict[sampleId][0],
-                               "scores": [dist.item()]}
-        else:
-          results[sampleId]["scores"].append(dist.item())
+        results[sampleId]["scores"][wordId] = dist.item()
 
     return results
 
@@ -311,8 +332,7 @@ def main():
                       choices=list(ClassificationModelTypes.getTypes()),
                       default=ImbuModels.defaultModelType,
                       type=str,
-                      help="Name of model class. Also used for model results "
-                           "directory and pickle checkpoint.")
+                      help="Name of model class.")
   parser.add_argument("-c", "--networkConfigName",
                       default="imbu_sensor_knn.json",
                       help="Name of JSON specifying the network params. It's "
@@ -369,7 +389,7 @@ def main():
 
     _, sortedIds, sortedDistances = imbu.query(model, query)
 
-    results = imbu.formatResults(sortedDistances, sortedIds)
+    results = imbu.formatResults(args.modelName, sortedDistances, sortedIds)
 
     # TODO: redo results display for new (unsorted) format method.
     # # Display results.
