@@ -191,9 +191,9 @@ class ImbuModels(object):
     for sampleId, sample in self.dataDict.iteritems():
       if modelType in self.documentLevel:
         # Only one match per sample
-        scoresArray = numpy.zeros(1)
+        scoresArray = [0]
       else:
-        scoresArray = numpy.zeros(len(sample[0].split(" ")))
+        scoresArray = [0] * len(sample[0].split(" "))
       resultsDict[sampleId] = {"text": sample[0],
                                "scores": scoresArray}
 
