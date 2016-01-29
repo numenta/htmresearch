@@ -67,7 +67,7 @@ if __name__ == '__main__':
 
   outdir = 'tm/result/'
   KILLCELL_PERCENT = list(numpy.arange(7) / 10.0)
-  accuracyList = []
+  accuracyListTM = []
   accuracyListLSTM = []
   for killCellPercent in KILLCELL_PERCENT:
     experiment = os.path.join(outdir, "kill_cell_percent{:1.1f}".format(
@@ -83,7 +83,7 @@ if __name__ == '__main__':
                                     resets=resets[killCellAt:],
                                     randoms=randoms[killCellAt:])
 
-    accuracyList.append(float(numpy.sum(accuracy)) / len(accuracy))
+    accuracyListTM.append(float(numpy.sum(accuracy)) / len(accuracy))
 
     experiment = 'lstm/results/high-order-distributed-random-kill-cell/' \
                  'kill_cell_percent' + "{:1.2f}".format(killCellPercent) + '/0.log'
@@ -100,10 +100,11 @@ if __name__ == '__main__':
     accuracyListLSTM.append(float(numpy.sum(accuracy)) / len(accuracy))
 
   pyplot.figure()
-  pyplot.plot(KILLCELL_PERCENT, accuracyList)
-  pyplot.plot(KILLCELL_PERCENT, accuracyListLSTM)
+  pyplot.plot(KILLCELL_PERCENT, accuracyListTM, label="TM")
+  pyplot.plot(KILLCELL_PERCENT, accuracyListLSTM, label="LSTM")
   pyplot.xlabel('Fraction of cell death ')
   pyplot.ylabel('Accuracy after cell death')
-  pyplot.ylim([-0.05, 1.05])
-  pyplot.savefig('./tm/result/model_performance_after_cell_death.pdf')
+  pyplot.ylim([0.1, 1.05])
+  pyplot.legend()
+  pyplot.savefig('./model_performance_after_cell_death.pdf')
 
