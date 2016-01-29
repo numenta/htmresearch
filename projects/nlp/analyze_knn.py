@@ -29,7 +29,6 @@ import csv
 import numpy
 from textwrap import TextWrapper
 
-from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.support.csv_helper import readDataAndReshuffle
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 
@@ -86,7 +85,6 @@ def runExperiment(args):
   Create model according to args, train on training data, save model,
   restore model, test on test data.
   """
-  registerAllResearchRegions()
 
   (trainingData, labelRefs, documentCategoryMap,
    documentTextMap) = readDataAndReshuffle(args,

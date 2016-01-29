@@ -29,19 +29,17 @@ from nupic.engine import pyRegions
 # The default NuPIC regions
 _PY_REGIONS = [r[1] for r in pyRegions]
 
-
 def registerAllResearchRegions():
   """
   Register all known research regions.
   """
   # TODO: add self discovery of all regions in nupic.research.regions
 
-  registerRegion("LanguageSensor")
-  registerRegion("TemporalPoolerRegion")
-  registerRegion("TMRegion")
+  for regionName in ["LanguageSensor", "TemporalPoolerRegion", "TMRegion"]:
+    registerResearchRegion(regionName)
 
 
-def registerRegion(regionTypeName, moduleName=None):
+def registerResearchRegion(regionTypeName, moduleName=None):
   """
   Register this region so that NuPIC can later find it.
 
@@ -49,6 +47,8 @@ def registerRegion(regionTypeName, moduleName=None):
   @param moduleName: (str) location of the region class, only needed if
     registering a region that is outside the expected "regions/" dir.
   """
+  global _PY_REGIONS
+
   if moduleName is None:
     # the region is located in the regions/ directory
     moduleName = "htmresearch.regions." + regionTypeName

@@ -33,6 +33,7 @@ from nupic.encoders import MultiEncoder
 from nupic.engine import Network
 from nupic.engine import pyRegions
 
+from htmresearch.support.register_regions import registerResearchRegion
 
 _PY_REGIONS = [r[1] for r in pyRegions]
 _LOGGER = logging.getLogger(__name__)
@@ -139,31 +140,9 @@ def _addRegisteredRegion(network, regionConfig, moduleName=None):
 
   regionTypeName = regionType.split(".")[1]
   if regionTypeName not in _PY_REGIONS:
-    _registerRegion(regionTypeName, moduleName)
+    registerResearchRegion(regionTypeName, moduleName)
 
   return network.addRegion(regionName, regionType, json.dumps(regionParams))
-
-
-
-def _registerRegion(regionTypeName, moduleName=None):
-  """
-  A region may be non-standard, so add custom region class to the network.
-
-  @param regionTypeName: (str) type name of the region. E.g SensorRegion.
-  @param moduleName: (str) location of the region class, only needed if
-    registering a region that is outside the expected "regions/" dir.
-  """
-  if moduleName is None:
-    # the region is located in the regions/ directory
-    moduleName = "htmresearch.regions." + regionTypeName
-  if regionTypeName not in _PY_REGIONS:
-    # Add new region class to the network.
-    module = __import__(moduleName, {}, {}, regionTypeName)
-    unregisteredClass = getattr(module, regionTypeName)
-    Network.registerRegion(unregisteredClass)
-    # Add region to list of registered PyRegions
-    _PY_REGIONS.append(regionTypeName)
-
 
 
 def _createRegion(network, regionConfig, moduleName=None):
