@@ -298,7 +298,7 @@ class ClassificationModel(object):
 
     @returns (ClassificationModel) The loaded model instance
     """
-    savedModelDir = os.path.abspath(savedModelDir)
+    savedModelDir = str(os.path.abspath(savedModelDir))
     modelPickleFilePath = os.path.join(savedModelDir, "model.pkl")
 
     with open(modelPickleFilePath, "rb") as modelPickleFile:
