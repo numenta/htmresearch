@@ -83,7 +83,7 @@ def plotAccuracy(results, train, window=100, type="sequences", label=None, hideT
 
 
 
-def computeAccuracy(predictions, truth, iteration, resets=None, randoms=None, num=None):
+def computeAccuracy(predictions, truths, iterations, resets=None, randoms=None, num=None):
   accuracy = []
   x = []
 
@@ -91,16 +91,16 @@ def computeAccuracy(predictions, truth, iteration, resets=None, randoms=None, nu
     if num is not None and i > num:
       continue
 
-    if truth[i] is None:
+    if truths[i] is None:
       continue
 
     if resets is not None or randoms is not None:
       if not (resets[i+1] or randoms[i+1]):
         continue
 
-    correct = truth[i] is None or truth[i] in predictions[i]
+    correct = truths[i] is None or truths[i] in predictions[i]
     accuracy.append(correct)
-    x.append(iteration[i])
+    x.append(iterations[i])
 
   return (accuracy, x)
 
