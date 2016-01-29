@@ -211,9 +211,6 @@ class ImbuModels(object):
     if loadPath:
       # User has explicitly specified a load path and expects a model to exist
       try:
-        if modelType == ClassificationModelTypes.HTMNetwork:
-          registerAllResearchRegions()
-
         model = ClassificationModel.load(loadPath)
 
       except IOError as exc:
@@ -287,11 +284,12 @@ class ImbuModels(object):
     model.save(savePath)
 
 
-  def formatResults(self, modelName, distanceArray, idList):
+  def formatResults(self, modelName, query, distanceArray, idList):
     """ Format distances to reflect the pctOverlapOfInput metric, return a dict
     of results info.
     """
     formattedDistances = (1.0 - distanceArray) * 100
+    queryLength = float(len(query.split(" ")))
 
     modelType = (
       getattr(ClassificationModelTypes, modelName) or self.defaultModelType )
@@ -306,7 +304,7 @@ class ImbuModels(object):
         # Get the sampleId from the protoId via the indexing scheme
         wordId = protoId % self.tokenIndexingFactor
         sampleId = (protoId - wordId) / self.tokenIndexingFactor
-        results[sampleId]["scores"][wordId] = dist.item()
+        results[sampleId]["scores"][wordId] = dist.item() / queryLength
 
     return results
 
@@ -389,7 +387,8 @@ def main():
 
     _, sortedIds, sortedDistances = imbu.query(model, query)
 
-    results = imbu.formatResults(args.modelName, sortedDistances, sortedIds)
+    results = imbu.formatResults(
+      args.modelName, query, sortedDistances, sortedIds)
 
     # TODO: redo results display for new (unsorted) format method.
     # # Display results.
