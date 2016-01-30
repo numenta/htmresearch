@@ -23,12 +23,13 @@ import csv
 import math
 import operator
 from optparse import OptionParser
-
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 
 plt.ion()
+
+
 
 def euclideanDistance(instance1, instance2, considerDimensions):
   """
@@ -90,12 +91,11 @@ def getResponse(neighbors, weights=None):
   for x in range(len(neighbors)):
     neighborResponse.append(neighbors[x][-1])
 
-
   neighborResponse = np.array(neighborResponse).astype('float')
   if weights is None:
     weightedAvg = np.mean(neighborResponse)
   else:
-    weightedAvg = np.sum(weights*neighborResponse)
+    weightedAvg = np.sum(weights * neighborResponse)
 
   return weightedAvg
 
@@ -114,7 +114,8 @@ def readDataSet(dataSet):
 
     seq = []
     for i in xrange(len(sequence)):
-      seq.append([timeofday[i], dayofweek[i], sequence5stepsAgo[i], sequence[i]])
+      seq.append(
+        [timeofday[i], dayofweek[i], sequence5stepsAgo[i], sequence[i]])
 
   else:
     raise (' unrecognized dataset type ')
@@ -148,6 +149,7 @@ def _getArgs():
   return options, remainder
 
 
+
 def saveResultToFile(dataSet, predictedInput, algorithmName):
   inputFileName = 'data/' + dataSet + '.csv'
   inputFile = open(inputFileName, "rb")
@@ -162,7 +164,8 @@ def saveResultToFile(dataSet, predictedInput, algorithmName):
   outputFileName = './prediction/' + dataSet + '_' + algorithmName + '_pred.csv'
   outputFile = open(outputFileName, "w")
   csvWriter = csv.writer(outputFile)
-  csvWriter.writerow(['timestamp', 'data', 'prediction-'+str(predictionStep)+'step'])
+  csvWriter.writerow(
+    ['timestamp', 'data', 'prediction-' + str(predictionStep) + 'step'])
   csvWriter.writerow(['datetime', 'float', 'float'])
   csvWriter.writerow(['', '', ''])
 
@@ -172,6 +175,28 @@ def saveResultToFile(dataSet, predictedInput, algorithmName):
 
   inputFile.close()
   outputFile.close()
+
+
+
+def normalizeSequence(sequence, considerDimensions=None):
+  """
+  normalize sequence by subtracting the mean and
+  :param sequence: a list of data samples
+  :param considerDimensions: a list of dimensions to consider
+  :return: normalized sequence
+  """
+  seq = np.array(sequence).astype('float64')
+  nSampleDim = seq.shape[1]
+
+  if considerDimensions is None:
+    considerDimensions = range(nSampleDim)
+
+  for dim in considerDimensions:
+    seq[:, dim] = (seq[:, dim] - np.mean(seq[:, dim])) / np.std(seq[:, dim])
+
+  sequence = seq.tolist()
+  return sequence
+
 
 
 if __name__ == "__main__":
@@ -187,38 +212,28 @@ if __name__ == "__main__":
   # predict 5 steps ahead
   predictionStep = 5
   nFeature = 2
+  k = 10
 
-  k = int(np.floor(numTrain/24)-1)
-
+  sequence = normalizeSequence(sequence, considerDimensions=[0, 1, 2])
 
   targetInput = np.zeros((len(sequence),))
   predictedInput = np.zeros((len(sequence),))
-  predictedInput2 = np.zeros((len(sequence),))
+
   for i in xrange(numTrain, len(sequence) - predictionStep):
     testInstance = sequence[i + predictionStep]
     targetInput[i] = testInstance[-1]
 
     # select data points at that shares same timeOfDay and dayOfWeek
-    neighbors = getNeighbors(sequence[:i], testInstance, k, [0, 1])
+    neighbors = getNeighbors(sequence[i - numTrain:i], testInstance, k, [0, 1, 2])
     predictedInput[i] = getResponse(neighbors)
 
-    # run KNN within the selected data points using passengerCount as feature
-    neighbors2 = getNeighbors(neighbors, testInstance, 10, [2])
-
-    weights = 1/(abs(np.array(neighbors2)[:, 2] - testInstance[2]) + 0.01)
-    weights = weights/np.sum(weights)
-    predictedInput2[i] = getResponse(neighbors2, weights)
-
-    print "step %d, target input: %d  predicted Input: %d, " \
-          "predicted Input2: %d " % (
-      i, targetInput[i], predictedInput[i], predictedInput2[i])
+    print "step %d, target input: %d  predicted Input: %d " % (
+      i, targetInput[i], predictedInput[i])
 
   saveResultToFile(dataSet, predictedInput, 'plainKNN')
-  saveResultToFile(dataSet, predictedInput2, 'kNN2')
 
   plt.figure()
   plt.plot(targetInput)
   plt.plot(predictedInput)
-  plt.plot(predictedInput2, color='red')
   plt.xlim([12800, 13500])
   plt.ylim([0, 30000])
