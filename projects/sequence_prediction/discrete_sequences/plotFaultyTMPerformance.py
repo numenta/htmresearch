@@ -25,9 +25,11 @@ import argparse
 import json
 import os
 from matplotlib import pyplot
+import matplotlib as mpl
 import numpy
 from plot import computeAccuracy
 
+mpl.rcParams['pdf.fonttype'] = 42
 pyplot.ion()
 
 
@@ -100,8 +102,8 @@ if __name__ == '__main__':
     accuracyListLSTM.append(float(numpy.sum(accuracy)) / len(accuracy))
 
   pyplot.figure()
-  pyplot.plot(KILLCELL_PERCENT, accuracyListTM, label="TM")
-  pyplot.plot(KILLCELL_PERCENT, accuracyListLSTM, label="LSTM")
+  pyplot.plot(KILLCELL_PERCENT, accuracyListTM, 'r-^', label="TM")
+  pyplot.plot(KILLCELL_PERCENT, accuracyListLSTM, 'b-s', label="LSTM")
   pyplot.xlabel('Fraction of cell death ')
   pyplot.ylabel('Accuracy after cell death')
   pyplot.ylim([0.1, 1.05])
