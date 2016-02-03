@@ -97,6 +97,11 @@ class ImbuModels(object):
   defaultRetina = "en_associative"
   tokenIndexingFactor = 1000
 
+  # Mapping of acceptable model names to names expected by the model factory
+  modelMappings = {name:name for name in ClassificationModelTypes.getTypes()}
+  modelMappings.update(HTM_sensor_knn="HTMNetwork",
+                       HTM_sensor_simple_tp_knn="HTMNetwork")
+
   # Set of classification model types that accept CioEncoder kwargs
   requiresCIOKwargs = {
     ClassificationModelTypes.CioWordFingerprint,
@@ -113,8 +118,9 @@ class ImbuModels(object):
   }
 
 
-  def __init__(self, cacheRoot, dataPath,  modelSimilarityMetric=None,
+  def __init__(self, cacheRoot, dataPath, modelSimilarityMetric=None,
       apiKey=None, retina=None):
+
     self.cacheRoot = cacheRoot
     self.modelSimilarityMetric = (
       modelSimilarityMetric or self.defaultSimilarityMetric
@@ -130,6 +136,17 @@ class ImbuModels(object):
             "modelSimilarityMetric={modelSimilarityMetric}, "
             "apiKey={apiKey}, retina={retina}>"
             .format(**self.__dict__))
+
+
+  def _mapModelName(self, modelName):
+    """ Return the model name that is expected by the model factory.
+    """
+    mappedName = self.modelMappings.get(modelName, None)
+    if mappedName is None:
+      raise ValueError(
+        "'{}' is not an acceptable model name for Imbu".format(modelName))
+
+    return mappedName
 
 
   def _defaultModelFactoryKwargs(self):
@@ -152,6 +169,8 @@ class ImbuModels(object):
         'CioDocumentFingerprint', 'HTMNetwork', 'Keywords'.
     """
     kwargs.update(modelDir=savePath, **self._defaultModelFactoryKwargs())
+
+    modelName = self._mapModelName(modelName)
 
     if getattr(ClassificationModelTypes, modelName) in self.requiresCIOKwargs:
       # Model type requires Cortical.io credentials
@@ -206,7 +225,7 @@ class ImbuModels(object):
     from specified loadPath.
     """
     # The model name must be an identifier defined in the model factory mapping.
-    modelType = getattr(ClassificationModelTypes, modelName)
+    modelType = getattr(ClassificationModelTypes, self._mapModelName(modelName))
 
     if loadPath:
       # User has explicitly specified a load path and expects a model to exist
@@ -292,7 +311,8 @@ class ImbuModels(object):
     queryLength = float(len(query.split(" ")))
 
     modelType = (
-      getattr(ClassificationModelTypes, modelName) or self.defaultModelType )
+      getattr(ClassificationModelTypes, self._mapModelName(modelName))
+      or self.defaultModelType )
 
     # Format results - each entry represents one sample.
     results = self._initResultsDataStructure(modelType)
@@ -327,7 +347,7 @@ def main():
                            "header 'Sample'; see readCSV() for more.",
                       required=True)
   parser.add_argument("-m", "--modelName",
-                      choices=list(ClassificationModelTypes.getTypes()),
+                      choices=ImbuModels.modelMappings,
                       default=ImbuModels.defaultModelType,
                       type=str,
                       help="Name of model class.")
