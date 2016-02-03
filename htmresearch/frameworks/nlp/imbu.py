@@ -98,15 +98,9 @@ class ImbuModels(object):
   tokenIndexingFactor = 1000
 
   # Mapping of acceptable model names to names expected by the model factory
-  modelMappings = {
-    "CioWordFingerprint": "CioWordFingerprint",
-    "CioDocumentFingerprint": "CioDocumentFingerprint",
-    "Keywords": "Keywords",
-    "DocumentFingerPrint": "DocumentFingerPrint",
-    "HTMNetwork": "HTMNetwork",
-    "HTM_sensor_knn": "HTMNetwork",
-    "HTM_sensor_simple_tp_knn": "HTMNetwork"
-  }
+  modelMappings = {name:name for name in ClassificationModelTypes.getTypes()}
+  modelMappings.update(HTM_sensor_knn="HTMNetwork",
+                       HTM_sensor_simple_tp_knn="HTMNetwork")
 
   # Set of classification model types that accept CioEncoder kwargs
   requiresCIOKwargs = {
@@ -353,7 +347,7 @@ def main():
                            "header 'Sample'; see readCSV() for more.",
                       required=True)
   parser.add_argument("-m", "--modelName",
-                      choices=ImbuModels.modelMappings.keys(),
+                      choices=ImbuModels.modelMappings,
                       default=ImbuModels.defaultModelType,
                       type=str,
                       help="Name of model class.")
