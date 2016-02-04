@@ -205,16 +205,21 @@ class ImbuModels(object):
 
   def _initResultsDataStructure(self, modelType):
     """ Initialize a results dict to be populated in formatResults().
+    The windowSize value specifies the number of previous words (inclusive) that
+    each score represents.
     """
     resultsDict = {}
     for sampleId, sample in self.dataDict.iteritems():
       if modelType in self.documentLevel:
         # Only one match per sample
         scoresArray = [0]
+        windowSize = 0
       else:
         scoresArray = [0] * len(sample[0].split(" "))
+        windowSize = 1
       resultsDict[sampleId] = {"text": sample[0],
-                               "scores": scoresArray}
+                               "scores": scoresArray,
+                               "windowSize": windowSize}
 
     return resultsDict
 
@@ -325,6 +330,9 @@ class ImbuModels(object):
         wordId = protoId % self.tokenIndexingFactor
         sampleId = (protoId - wordId) / self.tokenIndexingFactor
         results[sampleId]["scores"][wordId] = dist.item() / queryLength
+      if modelName == "HTM_sensor_simple_tp_knn":
+        # Windows always length 10
+        results[sampleId]["windowSize"] = 10
 
     return results
 
