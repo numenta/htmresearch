@@ -176,17 +176,18 @@ class ClassificationModel(object):
 
     lastTokenIndex = len(tokenList) - 1
     categoryVotes = numpy.zeros(self.numLabels)
-
+    voteTotals = numpy.zeros(self.numLabels)
     for i, token in enumerate(tokenList):
       votes, _, _ = self.inferToken(token,
                                     reset=int(i == lastTokenIndex),
                                     returnDetailedResults=False,
                                     sortResults=False)
 
-      if votes.sum() > 0:
-        # Increment the most likely category, breaking ties in a random fashion
-        topCategory = self._sortArray(votes)[0]
-        categoryVotes[topCategory] += 1
+      voteTotals += votes
+
+    # Increment the most likely category, breaking ties in a random fashion
+    topCategory = self._sortArray(voteTotals)[0]
+    categoryVotes[topCategory] += 1
 
     return categoryVotes, None, None
 
