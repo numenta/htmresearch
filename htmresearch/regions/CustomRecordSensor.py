@@ -99,13 +99,10 @@ class CustomRecordSensor(RecordSensor):
       if self.useDataSource:
         data = self.dataSource.getNextRecordDict()
       else:
-
-        # TODO: not sure if all the values are set correctly. Double check. 
         data = {
-          '_timestamp': None, '_category': [self.nextCategory], 'label':
-            self.nextCategory, '_sequenceId': 0, 'y': self.nextValue,
-          'x': self.nextTimestamp,
-          '_timestampRecordIdx': None, '_reset': 0
+          '_timestamp': None, '_category': [self.nextCategory],
+          'label': [self.nextCategory], '_sequenceId': 0, 'y': self.nextValue,
+          'x': self.nextTimestamp, '_timestampRecordIdx': None, '_reset': 0
         }
 
       if not data:

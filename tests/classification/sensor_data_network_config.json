@@ -11,11 +11,11 @@
       "scalarEncoder": {
         "name": "scalarEncoder",
         "fieldname": "y",
-        "type": "ScalarEncoder",
-        "n": 256,
+        "type": "AdaptiveScalarEncoder",
+        "n": 1024,
         "w": 21,
-        "minval": null,
-        "maxval": null
+        "minval": 0.0,
+        "maxval": 8.0
       }
     }
   },
@@ -46,7 +46,7 @@
       "columnCount": 2048,
       "cellsPerColumn": 32,
       "seed": 1960,
-      "temporalImp": "tm_py",
+      "temporalImp": "cpp",
       "newSynapseCount": 20,
       "maxSynapsesPerSegment": 32,
       "maxSegmentsPerCell": 128,

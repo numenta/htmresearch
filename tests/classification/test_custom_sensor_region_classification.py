@@ -41,7 +41,7 @@ OUTFILE_NAME = "white_noise"
 SEQUENCE_LENGTH = 200
 NUM_CATEGORIES = 3
 NUM_RECORDS = 2400
-WHITE_NOISE_AMPLITUDES = [0.0, 0.1]
+WHITE_NOISE_AMPLITUDES = [0.0, 1.0]
 SIGNAL_AMPLITUDES = [1.0]
 SIGNAL_MEANS = [1.0]
 SIGNAL_PERIODS = [20.0]
@@ -122,11 +122,13 @@ class TestCustomSensorRegionClassification(unittest.TestCase):
             for regionName in trainedRegionNames:
               region = network.regions[regionName]
               region.setParameter("learningMode", False)
+              _LOGGER.info("--> Learning OFF for %s" % regionName)
           else:
             partitions.pop(0)  # We're done with the current region
             trainedRegionNames.append(currentRegionName)
             network.regions[currentRegionName].setParameter("learningMode",
                                                             True)
+            _LOGGER.info("--> Learning ON for %s" % currentRegionName)
 
         # Evaluate the predictions on the test set
         if recordNumber >= partitions[-1][1]:
@@ -226,6 +228,9 @@ class TestCustomSensorRegionClassification(unittest.TestCase):
               partitions = generateNetworkPartitions(config, NUM_RECORDS)
               dataSource = FileRecordStream(streamID=inputFile)
               network = configureNetwork(dataSource, config)
+              # network.save("test.nta")
+              # from nupic.engine import Network
+              # network = Network("test.nta")
               classificationAccuracy = self._trainAndTestNetwork(network,
                                                                  config,
                                                                  partitions,

@@ -24,6 +24,7 @@ The methods here are a factory to create a classification network
 of any of sensor, SP, TM, TP, and classifier regions.
 """
 import copy
+
 try:
   import simplejson as json
 except ImportError:
@@ -35,7 +36,6 @@ import sys
 from nupic.encoders import MultiEncoder
 from nupic.engine import Network
 from nupic.engine import pyRegions
-
 
 _PY_REGIONS = [r[1] for r in pyRegions]
 _LOGGER = logging.getLogger(__name__)
@@ -93,7 +93,7 @@ def _setScalarEncoderMinMax(networkConfig, dataSource):
 
 
 def _createSensorRegion(network, regionConfig, dataSource, encoder=None,
-  moduleName=None):
+                        moduleName=None):
   """
   Register a sensor region and initialize it the sensor region with an encoder
   and data source.
@@ -208,6 +208,7 @@ def _linkRegions(network,
                srcOutput="resetOut", destInput="resetIn")
 
 
+
 def _validateRegionWidths(previousRegionWidth, currentRegionWidth):
   """
   Make sure previous and current region have compatible input and output width
@@ -220,6 +221,7 @@ def _validateRegionWidths(previousRegionWidth, currentRegionWidth):
     raise ValueError("Region widths do not fit. Output width = {}, "
                      "input width = {}.".format(previousRegionWidth,
                                                 currentRegionWidth))
+
 
 
 def configureNetwork(dataSource, networkParams, encoder=None):
@@ -237,7 +239,8 @@ def configureNetwork(dataSource, networkParams, encoder=None):
 
   # if the sensor region has a scalar encoder, then set the min and max values.
   scalarEncoder = encoderDict.get("scalarEncoder")
-  if scalarEncoder["type"] == "ScalarEncoder":
+  if (("ScalarEncoder" == scalarEncoder["type"])
+      or ("AdaptiveScalarEncoder" == scalarEncoder["type"])):
     if scalarEncoder["minval"] is None or scalarEncoder["maxval"] is None:
       _setScalarEncoderMinMax(networkParams, dataSource)
 
@@ -275,7 +278,7 @@ def createNetwork(dataSource, networkConfig, encoder=None):
   previousRegion = sensorRegionName
   previousRegionWidth = sensorRegion.encoder.getWidth()
 
-  networkRegions = [r for r in networkConfig.keys() 
+  networkRegions = [r for r in networkConfig.keys()
                     if networkConfig[r]["regionEnabled"]]
 
   if "spRegionConfig" in networkRegions:
@@ -316,7 +319,7 @@ def createNetwork(dataSource, networkConfig, encoder=None):
     regionParams = regionConfig["regionParams"]
     regionParams["inputWidth"] = previousRegionWidth
     tpRegion = _createRegion(network, regionConfig,
-      moduleName="htmresearch.regions.TemporalPoolerRegion")
+                             moduleName="htmresearch.regions.TemporalPoolerRegion")
     _validateRegionWidths(previousRegionWidth,
                           tpRegion.getSelf()._inputWidth)
     _linkRegions(network,
@@ -326,7 +329,6 @@ def createNetwork(dataSource, networkConfig, encoder=None):
     previousRegion = regionName
     network.link(sensorRegionName, regionName, "UniformLink", "",
                  srcOutput="sequenceIdOut", destInput="sequenceIdIn")
-    
 
   # Create classifier region (always enabled)
   regionConfig = networkConfig["classifierRegionConfig"]
@@ -400,9 +402,9 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords):
    region is to begin learning, including a test partition (the last entry).
   @param numRecords: (int) Number of records of the input dataset.
   """
-  
-  partitions = copy.deepcopy(networkPartitions) # preserve original partitions
-  
+
+  partitions = copy.deepcopy(networkPartitions)  # preserve original partitions
+
   sensorRegion = network.regions[
     networkConfig["sensorRegionConfig"].get("regionName")]
   classifierRegion = network.regions[
@@ -441,7 +443,7 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords):
       if actualValue == inferredValue:
         numCorrect += 1
       _LOGGER.debug("recordNum=%s, actualValue=%s, inferredValue=%s"
-               % (recordNumber, actualValue, inferredValue))
+                    % (recordNumber, actualValue, inferredValue))
       numTestRecords += 1
 
   classificationAccuracy = round(100.0 * numCorrect / numTestRecords, 2)
@@ -456,8 +458,22 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords):
 
 
 
-def classifyNextRecord(network, networkConfig, timestamp=None,
-                       value=None, category=None):
+def setNetworkLearningMode(network, regionNames, learningMode):
+  """
+  Set the learning mode of the regions in the network.
+  @param regionNames: (list of strings) list of regions for which the 
+    learning rule will be updated.
+  @param learningMode: (boolean) learning mode. 1 if learning is on. 0 otherwise
+  """
+
+  for regionName in regionNames:
+    region = network.regions[regionName]
+    region.setParameter("learningMode", False)
+
+
+
+def classifyNextRecord(network, networkConfig, timestamp,
+                       value, category):
   """
   Classify the next record by running one iteration of the network. To be 
   able to specify the next record manually, the sensor region type must be 
@@ -485,21 +501,19 @@ def classifyNextRecord(network, networkConfig, timestamp=None,
   sensorRegionName = networkConfig["sensorRegionConfig"].get("regionName")
   sensorRegion = network.regions[sensorRegionName]
 
-  if value is not None and category is not None:
-    
-    if not sensorRegionType == "py.CustomRecordSensor":
-      raise ValueError("To be able to pass custom data to the sensor region "
-                       "you must use a region of type 'py.CustomRecordSensor'"
-                       "(but region type is %s)." % sensorRegionType)
-    
-    # Don't get the data from the data source (by setting the param to False) 
-    # since we are passing the values of the next record manually.
-    sensorRegion.setParameter("useDataSource", False)
+  if not sensorRegionType == "py.CustomRecordSensor":
+    raise ValueError("To be able to pass custom data to the sensor region "
+                     "you must use a region of type 'py.CustomRecordSensor'"
+                     "(but region type is %s)." % sensorRegionType)
 
-    # Set the values of the next record manually
-    sensorRegion.setParameter("nextValue", value)
-    sensorRegion.setParameter("nextCategory", category)
-    sensorRegion.setParameter("nextTimestamp", timestamp)
+  # Don't get the data from the data source (by setting the param to False) 
+  # since we are passing the values of the next record manually.
+  sensorRegion.setParameter("useDataSource", False)
+
+  # Set the values of the next record manually
+  sensorRegion.setParameter("nextValue", value)
+  sensorRegion.setParameter("nextCategory", category)
+  sensorRegion.setParameter("nextTimestamp", timestamp)
 
   # Run the network for a single iteration.
   network.run(1)
@@ -510,7 +524,7 @@ def classifyNextRecord(network, networkConfig, timestamp=None,
   return {
     "bestInference": _getClassifierInference(classifierRegion),
     "inferences": classifierRegion.getOutputData("categoriesOut")
-    }
+  }
 
 
 
@@ -538,4 +552,4 @@ def getEncoderParam(networkConfig, encoderName, paramName):
   @return paramValue: None if key 'paramName' does not exist. Value otherwise.
   """
   return networkConfig["sensorRegionConfig"]["encoders"][encoderName].get(
-    paramName)
+      paramName)
