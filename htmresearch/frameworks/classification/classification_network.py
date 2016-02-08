@@ -468,7 +468,7 @@ def setNetworkLearningMode(network, regionNames, learningMode):
 
   for regionName in regionNames:
     region = network.regions[regionName]
-    region.setParameter("learningMode", False)
+    region.setParameter("learningMode", learningMode)
 
 
 
