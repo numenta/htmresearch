@@ -21,26 +21,28 @@
 # ----------------------------------------------------------------------
 
 helpStr = """
-Simple script to run unit test 1
+Simple script to run unit test 1:
+  Train on the first sentence of each set, test on the rest.
 """
 
 import argparse
+import logging
 import numpy
 from textwrap import TextWrapper
 
-from htmresearch.support.csv_helper import readDataAndReshuffle
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.model_factory import (
   createModel, getNetworkConfig)
+from htmresearch.support.csv_helper import readDataAndReshuffle
 
 
-wrapper = TextWrapper(width=100)
+wrapper = TextWrapper(width=65)
+
 
 def instantiateModel(args):
   """
   Return an instance of the model we will use.
   """
-
   # Some values of K we know work well for this problem for specific model types
   kValues = { "keywords": 21 }
 
@@ -52,24 +54,25 @@ def instantiateModel(args):
   return model
 
 
-def trainModel(args, model, trainingData, labelRefs):
+def _trainModel(args, model, trainingData, labelRefs):
   """
   Train the given model on trainingData. Return the trained model instance.
   """
   print
-  print "=======================Training model on sample text================"
-  for i, doc in enumerate(trainingData):
-    document = doc[0]
-    labels = doc[1]
-    docId = doc[2]
-    print
-    print "Document=", document, "label=",labelRefs[doc[1][0]], "id=",docId,
+  print "======================Training model on sample text==================="
+  if args.verbosity > 0:
+    printTemplate = "{0:<65}|{1:<10}|{2:<5}"
+    print printTemplate.format("Document", "Label", "ID")
+  for (document, labels, docId) in trainingData:
+    if args.verbosity > 0:
+      print printTemplate.format(
+        wrapper.fill(document), labelRefs[labels[0]], docId)
     model.trainDocument(document, labels, docId)
 
   return model
 
 
-def testModel(args, model, testData, labelRefs, documentCategoryMap):
+def _testModel(args, model, testData, labelRefs, documentCategoryMap):
   """
   Test the given model on testData and print out accuracy.
 
@@ -79,38 +82,34 @@ def testModel(args, model, testData, labelRefs, documentCategoryMap):
   votes, in which case it is counted as a misclassification.
   """
   print
-  print "==========================Classifying sample text================"
+  print "========================Classifying sample text======================="
   numCorrect = 0
-  for recordNum, doc in enumerate(testData):
-    document = doc[0]
-    desiredLabels = doc[1]
-    if args.verbosity > 0:
-      print
-      print wrapper.fill(document)
-      print "desired category index:",desiredLabels,
-      print ", label: ",labelRefs[doc[1][0]]
-
+  for (document, labels, docId) in testData:
     categoryVotes, _, _ = model.inferDocument(document)
 
     if categoryVotes.sum() > 0:
-      # We will count classification as correct if the best category is any
-      # one of the categories associated with this docId
-      docId = doc[2]
-      if categoryVotes.argmax() in documentCategoryMap[docId]:
-        numCorrect += 1
-      elif args.verbosity > 0:
-        print "INCORRECT!!!"
-        print "Final classification for this doc:",categoryVotes.argmax(),
-        print "Label: ",labelRefs[categoryVotes.argmax()]
-        print "Labels associated: ", documentCategoryMap[docId]
+      bestCategory = categoryVotes.argmax()
+      if args.verbosity > 0:
+        print
+        print "Doc {}: {}".format(docId, wrapper.fill(document))
+        print "Expected label: {}".format(labelRefs[labels[0]])
+        print "Predicted label: {}".format(labelRefs[bestCategory])
+        if bestCategory == labels[0]:
+          numCorrect += 1
+        else:
+          print "INCORRECT!!!"
+
     else:
       print "No classification possible for this doc"
 
   # Compute and print out percent accuracy
   print
   print
-  print "Total correct =",numCorrect,"out of",len(testData),"documents"
-  print "Accuracy =",(float(numCorrect*100.0)/len(testData)),"%"
+  print "Total correct =", numCorrect, "out of", len(testData), "documents"
+  accuracy = float(numCorrect) / len(testData)
+  print "Accuracy =", accuracy
+
+  return accuracy
 
 
 def runExperiment(args):
@@ -118,26 +117,28 @@ def runExperiment(args):
   Create model according to args, train on training data, save model,
   restore model, test on test data.
   """
-
   (dataSet, labelRefs, documentCategoryMap,
    documentTextMap) = readDataAndReshuffle(args)
 
-  # Train only with documents whose id's are divisible by 100
-  trainingData = [x for i,x in enumerate(dataSet) if x[2]%100==0]
-  testData = [x for i,x in enumerate(dataSet) if x[2]%100!=0]
+  # Train only on the first document of each set
+  trainingData = [x for x in dataSet if x[2]%100==0]
+  testData = [x for x in dataSet if x[2]%100!=0]
 
   print "Num training",len(trainingData),"num testing",len(testData)
 
-  # Create model
+  # Create a model, train it, save it, reload it, test it
   model = instantiateModel(args)
-
-  model = trainModel(args, model, trainingData, labelRefs)
+  model = _trainModel(args, model, trainingData, labelRefs)
   model.save(args.modelDir)
   newmodel = ClassificationModel.load(args.modelDir)
-  testModel(args, newmodel, trainingData, labelRefs, documentCategoryMap)
-  testModel(args, newmodel, testData, labelRefs, documentCategoryMap)
+
+  validationAccuracy = _testModel(
+    args, newmodel, trainingData, labelRefs, documentCategoryMap)
+  testAccuracy = _testModel(
+    args, newmodel, testData, labelRefs, documentCategoryMap)
 
   return model
+
 
 
 if __name__ == "__main__":
@@ -162,7 +163,7 @@ if __name__ == "__main__":
   parser.add_argument("--maxSparsity",
                       default=1.0,
                       type=float,
-                      help="Maximum sparsity of CIO encodings.")
+                      help="Maximum sparsity of Cio encodings.")
   parser.add_argument("--numLabels",
                       default=6,
                       type=int,
