@@ -354,6 +354,12 @@ class Suite(PyExperimentSuite):
 
 
   def train(self, params):
+    """
+    Train LSTM network on buffered dataset history
+    After training, run LSTM on history[:-1] to get the state correct
+    :param params:
+    :return:
+    """
     n = params['encoding_num']
     net = buildNetwork(n, params['num_cells'], n,
                        hiddenclass=LSTMLayer,
@@ -362,8 +368,11 @@ class Suite(PyExperimentSuite):
                        recurrent=True)
     net.reset()
 
+    # prepare training dataset
     ds = SequentialDataSet(n, n)
-    trainer = RPropMinusTrainer(net, dataset=ds)
+    trainer = RPropMinusTrainer(net,
+                                dataset=ds,
+                                verbose=params['verbosity'] > 0)
 
     history = self.window(self.history, params)
     resets = self.window(self.resets, params)
@@ -375,10 +384,13 @@ class Suite(PyExperimentSuite):
       if resets[i]:
         ds.newSequence()
 
+    print ds
+
     if len(history) > 1:
       trainer.trainEpochs(params['num_epochs'])
       net.reset()
 
+    # run network on buffered dataset after training to get the state right
     for i in xrange(len(history) - 1):
       symbol = history[i]
       output = net.activate(self.encoder.encode(symbol))
@@ -445,7 +457,29 @@ class Suite(PyExperimentSuite):
     self.net.connections[lstmLayer][0]._setParameters(
       newParams, connectionHiddenToOutput.owner)
 
+
+  def replenishSequence(self, params, iteration):
+    # replenish sequence
+    if iteration > params['perturb_after']:
+      sequence = self.dataset.generateSequence(perturbed=True)
+    else:
+      sequence = self.dataset.generateSequence()
+
+    if iteration > params['inject_noise_after']:
+      injectNoiseAt = random.randint(1, 3)
+      sequence[injectNoiseAt] = self.encoder.randomSymbol()
+
+    if params['separate_sequences_with'] == 'random':
+      sequence.append(self.encoder.randomSymbol())
+
+    if params['verbosity'] > 0:
+      print "Add sequence to buffer"
+      print sequence
+    self.currentSequence += sequence
+
+
   def iterate(self, params, repetition, iteration):
+    # update buffered dataset
     self.history.append(self.currentSequence.pop(0))
 
     resetFlag = (len(self.currentSequence) == 0 and
@@ -457,60 +491,70 @@ class Suite(PyExperimentSuite):
     self.randoms.append(randomFlag)
 
     if len(self.currentSequence) == 0:
-      if randomFlag:
-        self.currentSequence.append(self.encoder.randomSymbol())
+      self.replenishSequence(params, iteration)
 
-      if iteration > params['perturb_after']:
-        sequence = self.dataset.generateSequence(perturbed=True)
-      else:
-        sequence = self.dataset.generateSequence()
-
-      self.currentSequence += sequence
-
+    # kill cells
     killCell = False
     if iteration == params['kill_cell_after']:
       killCell = True
       self.killCells(params['kill_cell_percent'])
 
-
-    if iteration < params['compute_after']:
-      return None
-
+    # reset compute counter
     if iteration % params['compute_every'] == 0:
       self.computeCounter = params['compute_for']
 
-    if self.computeCounter == 0:
-      return None
+    if self.computeCounter == 0 or iteration < params['compute_after']:
+      computeLSTM = False
     else:
+      computeLSTM = True
+
+    if computeLSTM:
       self.computeCounter -= 1
 
-    train = (not params['compute_test_mode'] or
-             iteration % params['compute_every'] == 0)
+      train = (not params['compute_test_mode'] or
+               iteration % params['compute_every'] == 0)
 
-    if train:
-      self.net = self.train(params)
+      if train:
+        if params['verbosity'] > 0:
+          print "Training LSTM at iteration {}".format(iteration)
 
-    history = self.window(self.history, params)
-    resets = self.window(self.resets, params)
+        self.net = self.train(params)
 
-    if resets[-1]:
-      self.net.reset()
+      # run LSTM on the latest data record
+      history = self.window(self.history, params)
+      resets = self.window(self.resets, params)
 
-    symbol = history[-1]
-    output = self.net.activate(self.encoder.encode(symbol))
-    predictions = self.encoder.classify(output, num=params['num_predictions'])
+      symbol = history[-1]
+      output = self.net.activate(self.encoder.encode(symbol))
+      predictions = self.encoder.classify(output, num=params['num_predictions'])
 
-    truth = None if (self.resets[-1] or
-                     self.randoms[-1] or
-                     len(self.randoms) >= 2 and self.randoms[-2]) else self.currentSequence[0]
+      truth = None if (self.resets[-1] or
+                       self.randoms[-1] or
+                       len(self.randoms) >= 2 and self.randoms[-2]
+                       ) else self.currentSequence[0]
 
-    return {"current": self.history[-1],
-            "reset": self.resets[-1],
-            "random": self.randoms[-1],
-            "train": train,
-            "predictions": predictions,
-            "truth": truth,
-            "killCell": killCell}
+      correct = truth in predictions
+
+      if params['verbosity'] > 0:
+        print ("iteration: {0} \t"
+               "current: {1} \t"
+               "predictions: {2} \t"
+               "truth: {3} \t"
+               "correct: {4} \t").format(
+          iteration, symbol, predictions, truth, correct)
+
+      if resets[-1]:
+        if params['verbosity'] > 0:
+          print "Reset LSTM at iteration {}".format(iteration)
+        self.net.reset()
+
+      return {"current": self.history[-1],
+              "reset": self.resets[-1],
+              "random": self.randoms[-1],
+              "train": train,
+              "predictions": predictions,
+              "truth": truth,
+              "killCell": killCell}
 
 
 
