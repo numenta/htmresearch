@@ -21,8 +21,7 @@
 # ----------------------------------------------------------------------
 
 helpStr = """
-Simple script to run unit test 1:
-  Train on the first sentence of each set, test on the rest.
+Simple script to run unit test 1.
 """
 
 import argparse
