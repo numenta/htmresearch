@@ -21,6 +21,7 @@
 # ----------------------------------------------------------------------
 
 import argparse
+import json
 
 from matplotlib import pyplot
 import numpy
@@ -28,6 +29,50 @@ import numpy
 from expsuite import PyExperimentSuite
 
 
+def readExperiment(experiment):
+  with open(experiment, "r") as file:
+    predictions = []
+    truths = []
+    iterations = []
+    resets = []
+    randoms = []
+    trains = []
+    killCell = []
+    for line in file.readlines():
+      dataRec = json.loads(line)
+      iterations.append(dataRec['iteration'])
+
+      if 'predictions' in dataRec.keys():
+        predictions.append(dataRec['predictions'])
+      else:
+        predictions.append(None)
+
+      if 'truth' in dataRec.keys():
+        truths.append(dataRec['truth'])
+      else:
+        truths.append(None)
+
+      if 'reset' in dataRec.keys():
+        resets.append(dataRec['reset'])
+      else:
+        resets.append(None)
+
+      if 'random' in dataRec.keys():
+        randoms.append(dataRec['random'])
+      else:
+        randoms.append(None)
+
+      if 'train' in dataRec.keys():
+        trains.append(dataRec['train'])
+      else:
+        trains.append(None)
+
+      if 'killCell' in dataRec.keys():
+        killCell.append(dataRec['killCell'])
+      else:
+        killCell.append(None)
+
+  return predictions, truths, iterations, resets, randoms, trains, killCell
 
 def movingAverage(a, n):
   movingAverage = []
