@@ -36,7 +36,7 @@ from htmresearch.frameworks.nlp.model_factory import (
 from htmresearch.support.csv_helper import readDataAndReshuffle
 
 
-wrapper = TextWrapper(width=65)
+wrapper = TextWrapper(width=85)
 
 
 def instantiateModel(args):
@@ -61,7 +61,7 @@ def _trainModel(args, model, trainingData, labelRefs):
   print
   print "======================Training model on sample text==================="
   if args.verbosity > 0:
-    printTemplate = "{0:<65}|{1:<10}|{2:<5}"
+    printTemplate = "{0:<85}|{1:<10}|{2:<5}"
     print printTemplate.format("Document", "Label", "ID")
   for (document, labels, docId) in trainingData:
     if args.verbosity > 0:
@@ -74,42 +74,43 @@ def _trainModel(args, model, trainingData, labelRefs):
 
 def _testModel(args, model, testData, labelRefs, documentCategoryMap):
   """
-  Test the given model on testData and print out accuracy.
+  Test the given model on testData, print out and return results metrics.
 
-  Accuracy is calculated as follows. Each token in a document votes for a single
-  category. The document is classified with the category that received the most
-  votes. Note that it is possible for a token and/or document to receive no
-  votes, in which case it is counted as a misclassification.
+  For each data sample in testData the model infers the similarity to each other
+  sample. From a list sorted most-to-least similar, we then get the ranks of the
+  samples that share the same category as the inference sample. Ideally these
+  ranks would be low. The returned metrics are the min, mean, and max ranks of
+  the category samples.
   """
   print
-  print "========================Classifying sample text======================="
-  numCorrect = 0
-  for (document, labels, docId) in testData:
-    categoryVotes, _, _ = model.inferDocument(document)
+  print "========================Testing on sample text========================"
+  totalScore = 0
+  for i, (document, labels, docId) in enumerate(testData):
+    _, sortedIds, _ = model.inferDocument(
+      document, returnDetailedResults=True, sortResults=True)
 
-    if categoryVotes.sum() > 0:
-      bestCategory = categoryVotes.argmax()
-      if args.verbosity > 0:
-        print
-        print "Doc {}: {}".format(docId, wrapper.fill(document))
-        print "Expected label: {}".format(labelRefs[labels[0]])
-        print "Predicted label: {}".format(labelRefs[bestCategory])
-        if bestCategory == labels[0]:
-          numCorrect += 1
-        else:
-          print "INCORRECT!!!"
+    # Compute the test metrics for this document
+    expectedCategory = docId / 100
+    ranks = numpy.array(
+      [i for i, index in enumerate(sortedIds) if index/100 == expectedCategory])
 
-    else:
-      print "No classification possible for this doc"
+    score = ranks.sum()
 
-  # Compute and print out percent accuracy
+    if args.verbosity > 0:
+      print
+      print "Doc {}: {}".format(docId, wrapper.fill(document))
+      print "Sum of ranks =", score
+      print "Min, mean, max of ranks = {}, {}, {}".format(
+        ranks.min(), ranks.mean(), ranks.max())
+
+    totalScore += score
+
   print
   print
-  print "Total correct =", numCorrect, "out of", len(testData), "documents"
-  accuracy = float(numCorrect) / len(testData)
-  print "Accuracy =", accuracy
+  print "Total score =", totalScore
+  print "Avg. score per sample =", float(totalScore) / i
 
-  return accuracy
+  return totalScore
 
 
 def runExperiment(args):
@@ -128,16 +129,14 @@ def runExperiment(args):
 
   # Create a model, train it, save it, reload it, test it
   model = instantiateModel(args)
-  model = _trainModel(args, model, trainingData, labelRefs)
+  model = _trainModel(args, model, dataSet, labelRefs)
   model.save(args.modelDir)
   newmodel = ClassificationModel.load(args.modelDir)
 
-  validationAccuracy = _testModel(
-    args, newmodel, trainingData, labelRefs, documentCategoryMap)
-  testAccuracy = _testModel(
-    args, newmodel, testData, labelRefs, documentCategoryMap)
+  testScore = _testModel(
+    args, newmodel, dataSet, labelRefs, documentCategoryMap)
 
-  return model
+  return model, testScore
 
 
 
