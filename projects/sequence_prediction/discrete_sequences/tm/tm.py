@@ -36,11 +36,20 @@ from htmresearch.data.sequence_generator import SequenceGenerator
 
 
 
+# MIN_ORDER = 6
+# MAX_ORDER = 7
+# NUM_PREDICTIONS = [1, 2, 4]
+# NUM_RANDOM = 1
+# PERTURB_AFTER = 10000
+# TEMPORAL_NOISE_AFTER = 5000
+
 MIN_ORDER = 6
 MAX_ORDER = 7
-NUM_PREDICTIONS = [1, 2, 4]
+NUM_PREDICTIONS = [1]
 NUM_RANDOM = 1
-PERTURB_AFTER = 10000
+PERTURB_AFTER = 20000
+TEMPORAL_NOISE_AFTER = 6000
+TOTAL_ITERATION = 8000
 
 NUM_SYMBOLS = SequenceGenerator.numSymbols(MAX_ORDER, max(NUM_PREDICTIONS))
 RANDOM_START = NUM_SYMBOLS
@@ -364,26 +373,13 @@ class Runner(object):
     self.iteration = 0
     self.perturbed = False
     self.randoms = []
-
+    self.verbosity = 1
 
   def step(self):
     element = self.currentSequence.pop(0)
 
-    randomFlag = (len(self.currentSequence) == 0)
+    randomFlag = (len(self.currentSequence) == 1)
     self.randoms.append(randomFlag)
-
-    if len(self.currentSequence) == 0:
-      if randomFlag:
-        self.currentSequence.append(random.randrange(RANDOM_START, RANDOM_END))
-
-      if self.iteration > PERTURB_AFTER and not self.perturbed:
-        print "PERTURBING"
-        self.sequences = generateSequences(self.numPredictions, perturbed=True)
-        self.perturbed = True
-
-      sequence = random.choice(self.sequences)
-
-      self.currentSequence += sequence
 
     result = self.shifter.shift(self.model.run({"element": element}))
     tm = self.model._getTPRegion().getSelf()._tfdr
@@ -396,6 +392,7 @@ class Runner(object):
     truth = None if (self.randoms[-1] or
                      len(self.randoms) >= 2 and self.randoms[-2]) else self.currentSequence[0]
 
+    correct = truth in topPredictions
     data = {"iteration": self.iteration,
             "current": element,
             "reset": False,
@@ -409,6 +406,32 @@ class Runner(object):
 
     self.iteration += 1
 
+    if self.verbosity > 0:
+      print ("iteration: {0} \t"
+             "current: {1} \t"
+             "predictions: {2} \t"
+             "truth: {3} \t"
+             "correct: {4} \t").format(
+        self.iteration, element, topPredictions, truth, correct)
+
+    # replenish sequence
+    if len(self.currentSequence) == 0:
+      if self.iteration > PERTURB_AFTER and not self.perturbed:
+        print "PERTURBING"
+        self.sequences = generateSequences(self.numPredictions, perturbed=True)
+        self.perturbed = True
+      else:
+        self.sequences = generateSequences(self.numPredictions, perturbed=False)
+
+      sequence = random.choice(self.sequences)
+
+      if self.iteration > TEMPORAL_NOISE_AFTER:
+        injectNoiseAt = random.randint(1, 3)
+        sequence[injectNoiseAt] = random.randrange(RANDOM_START, RANDOM_END)
+
+      sequence.append(random.randrange(RANDOM_START, RANDOM_END))
+      self.currentSequence += sequence
+
 
 
 if __name__ == "__main__":
@@ -420,9 +443,11 @@ if __name__ == "__main__":
   runners = []
 
   for numPredictions in NUM_PREDICTIONS:
-    resultsDir = os.path.join(outdir, "num_predictions{0}".format(numPredictions))
+    resultsDir = os.path.join(outdir,
+                              "num_predictions{0}".format(numPredictions),
+                              "noise_at{0}".format(TEMPORAL_NOISE_AFTER))
     runners.append(Runner(numPredictions, resultsDir))
 
-  for i in iter(int, 1):
+  for i in xrange(TOTAL_ITERATION):
     for runner in runners:
       runner.step()
