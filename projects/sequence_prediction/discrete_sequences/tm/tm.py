@@ -375,6 +375,25 @@ class Runner(object):
     self.randoms = []
     self.verbosity = 1
 
+
+  def replenishSequence(self):
+    if self.iteration > PERTURB_AFTER and not self.perturbed:
+      print "PERTURBING"
+      self.sequences = generateSequences(self.numPredictions, perturbed=True)
+      self.perturbed = True
+    else:
+      self.sequences = generateSequences(self.numPredictions, perturbed=False)
+
+    sequence = random.choice(self.sequences)
+
+    if self.iteration > TEMPORAL_NOISE_AFTER:
+      injectNoiseAt = random.randint(1, 3)
+      sequence[injectNoiseAt] = random.randrange(RANDOM_START, RANDOM_END)
+
+    sequence.append(random.randrange(RANDOM_START, RANDOM_END))
+    self.currentSequence += sequence
+
+
   def step(self):
     element = self.currentSequence.pop(0)
 
@@ -392,7 +411,8 @@ class Runner(object):
     truth = None if (self.randoms[-1] or
                      len(self.randoms) >= 2 and self.randoms[-2]) else self.currentSequence[0]
 
-    correct = truth in topPredictions
+    correct = None if truth is None else (truth in topPredictions)
+
     data = {"iteration": self.iteration,
             "current": element,
             "reset": False,
@@ -416,21 +436,7 @@ class Runner(object):
 
     # replenish sequence
     if len(self.currentSequence) == 0:
-      if self.iteration > PERTURB_AFTER and not self.perturbed:
-        print "PERTURBING"
-        self.sequences = generateSequences(self.numPredictions, perturbed=True)
-        self.perturbed = True
-      else:
-        self.sequences = generateSequences(self.numPredictions, perturbed=False)
-
-      sequence = random.choice(self.sequences)
-
-      if self.iteration > TEMPORAL_NOISE_AFTER:
-        injectNoiseAt = random.randint(1, 3)
-        sequence[injectNoiseAt] = random.randrange(RANDOM_START, RANDOM_END)
-
-      sequence.append(random.randrange(RANDOM_START, RANDOM_END))
-      self.currentSequence += sequence
+      self.replenishSequence()
 
 
 
