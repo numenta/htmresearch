@@ -182,7 +182,7 @@ class ClassificationModel(object):
 
       voteTotals += votes
 
-    normalizedVotes = voteTotals / float(i+1)
+    normalizedVotes = voteTotals / float(len(tokenList))
 
     return normalizedVotes, None, None
 
@@ -404,7 +404,7 @@ class ClassificationModel(object):
             min(distancesForEachId.get(protoId, numpy.inf), closestDistance)
           )
 
-      normalizedVotes = voteTotals / float(i+1)
+      normalizedVotes = voteTotals / float(len(tokenList))
 
     # Put distance from each prototype id to this document into a numpy array
     # ordered consistently with a list of protoIds
