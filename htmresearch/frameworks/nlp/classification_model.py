@@ -152,7 +152,7 @@ class ClassificationModel(object):
                               will be sorted in order of increasing distances.
 
     @return  (numpy array) An array of size numLabels. Position i contains
-                           the likelihood that this token belongs to the i'th
+                           the likelihood that this document belongs to the i'th
                            category. An array containing all zeros implies no
                            decision could be made.
              (list)        A list of unique sampleIds or None if
@@ -160,8 +160,6 @@ class ClassificationModel(object):
              (numpy array) An array of distances from each stored sample or
                            None if returnDetailedResults is False.
     """
-    # TODO: normalize categoryVotes
-
     # Default implementation, can be overridden This default routine will
     # tokenize the document and classify using these tokens. The default
     # classification involves summing the most likely classification for each
@@ -175,7 +173,6 @@ class ClassificationModel(object):
       return self._inferDocumentDetailed(tokenList, sortResults=sortResults)
 
     lastTokenIndex = len(tokenList) - 1
-    categoryVotes = numpy.zeros(self.numLabels)
     voteTotals = numpy.zeros(self.numLabels)
     for i, token in enumerate(tokenList):
       votes, _, _ = self.inferToken(token,
@@ -185,11 +182,9 @@ class ClassificationModel(object):
 
       voteTotals += votes
 
-    # Increment the most likely category, breaking ties in a random fashion
-    topCategory = self._sortArray(voteTotals)[0]
-    categoryVotes[topCategory] += 1
+    normalizedVotes = voteTotals / (i+1)
 
-    return categoryVotes, None, None
+    return normalizedVotes, None, None
 
 
   def tokenize(self, inputText):
@@ -364,12 +359,13 @@ class ClassificationModel(object):
                               will be sorted in order of increasing distances.
 
     @return  (numpy array) An array of size numLabels. Position i contains
-                           the likelihood that this token belongs to the i'th
+                           the likelihood that this document belongs to the i'th
                            category. An array containing all zeros implies no
                            decision could be made.
-             (list)        Distances from this document to all prototypes in the
-                           classifier, where each element is a 3-tuple:
-                           (distance, unique ID, corresponding token index).
+             (list)        A list of unique sampleIds, sorted by distance to the
+                           test document if sortResults=True.
+             (numpy array) An array of distances to each stored sample, sorted
+                           if sortResults=True.
     """
     # Default implementation, can be overridden.
 
@@ -379,26 +375,21 @@ class ClassificationModel(object):
     # document's distances.
 
     lastTokenIndex = len(tokenList) - 1
-    categoryVotes = numpy.zeros(self.numLabels)
+    voteTotals = numpy.zeros(self.numLabels)
     distancesForEachId = {}
     classifier = self.getClassifier()
-
     for i, token in enumerate(tokenList):
       votes, idList, distances = self.inferToken(token,
                                                  reset=int(i == lastTokenIndex),
                                                  returnDetailedResults=True,
                                                  sortResults=False)
 
+      voteTotals += votes
+
       if votes.sum() > 0:
         if classifier.exact:
-          # Increment all because a vote implies an exact match
-          categoryVotes[numpy.where(votes > 0)[0]] = 1
           # We only care about 0 distances (exact matches), disregard all others
           distances[numpy.where(distances != 0)] = 1.0
-        else:
-          # Increment the most likely category, breaking ties in a random fashion
-          sortedVotes = self._sortArray(votes)
-          categoryVotes[sortedVotes[0]] += 1
 
         # For each prototype id (in the classifier), keep the minimum distance
         # to this inference token.
@@ -413,6 +404,8 @@ class ClassificationModel(object):
             min(distancesForEachId.get(protoId, numpy.inf), closestDistance)
           )
 
+      normalizedVotes = voteTotals / (i+1)
+
     # Put distance from each prototype id to this document into a numpy array
     # ordered consistently with a list of protoIds
     protoIdList = distancesForEachId.keys()
@@ -426,23 +419,7 @@ class ClassificationModel(object):
       sortedDistances = distanceToProtoIds[sortedIndices]
       sortedIdList = [protoIdList[i] for i in sortedIndices]
 
-      return categoryVotes, sortedIdList, sortedDistances
+      return normalizedVotes, sortedIdList, sortedDistances
 
     else:
-      return categoryVotes, protoIdList, distanceToProtoIds
-
-
-  @staticmethod
-  def _sortArray(array, seed=42):
-    """
-    Sort the input array, breaking ties in a random fashion.
-
-    @param array (numpy array)    Array of values to be sorted.
-    @param seed (int)             Seed the random number generator.
-
-    @return   (numpy array)       Sorted array indices, where the sort order is
-                                  greatest to least.
-    """
-    numpy.random.seed(seed)
-    randomValues = numpy.random.random(array.size)
-    return numpy.lexsort((randomValues, array))[::-1]
+      return normalizedVotes, protoIdList, distanceToProtoIds
