@@ -1,0 +1,81 @@
+ID,Sample,Label
+100,Smoking is bad for you,Smoking
+101,"James loved to puff on his cigarettes. However he recently read a bunch of articles describing their unhealthy effects. James decided to quit cigarettes completely. It clearly was not an easy decision, but he felt it was the right one.",Smoking
+102,The tobacco industry has long tried to hide the effects of second hand smoke. However there is now a preponderance of evidence demonstrating its ill effects. Second hand smoke is clearly dangerous to anyone who breathes it in. ,Smoking
+103,"Jeff spoke to his friends about the dangers of cigars. He explained to them that a cigar is basically a cancer stick. Cigars are known to contain over 7000 chemicals, at least 250 of which are directly tied to lung cancer.",Smoking
+104,There are steps you can take to avoid the dangers of cigarettes in your family. Avoid indoor public places that allow cigarettes. Choose smokefree restaurants. Get rid of all the ashtrays in your house. Teach your children to stay away from tobacco.,Smoking
+200,Pets can extend life,Pets
+201,"The AARP recently did a study that showed seniors who have a dog or cat live improved lives and can expect fewer visits to the doctor�s office. The results were consistent across gender, age, and social-economic status.",Pets
+202,"My aunt kept parakeets and they definitely improved her mental and physical well-being. Perhaps they acted as companions and perhaps they gave her life purpose, but I am sure it kept her healthy until an advanced age.",Pets
+203,"Humans have kept domesticated animals for thousands of years. Scientists now believe that in addition to providing food and security, the ownership of animals has other benefits and often leads to longer and happier lives.",Pets
+204,When my father died my mother became depressed. So I bought my mother a cat.  I immediately noticed a marked improvement in her outlook and I swear her physical problems improved too. I think the cat will add years to her longevity.,Pets
+300,Running is great,Running
+301,Many people with health problems are turning to jogging as a solution. It raises heart rate and causes a rush of endorphins to the body. It also makes people more resilient to disease. It's the ultimate preventative medicine for health issues.,Running
+302,"Have you ever heard of the runner's high? Apparently if you run for a long enough time, you start feeling very happy for no good reason. It's best to do this in cold weather rather than warm, because otherwise you feel too hot. I myself have not felt this high, but I probably haven't traveled long enough distances in one go yet.",Running
+303,"We need more motivation to get outdoors and sprint. Sprinting is an excellent way to take a break from work, and it's very good for you. Many people use sports tracking apps to motivate themselves to do this more. Whatever you do, you should definitely go out and sprint more.",Running
+304,"John has done over ten marathons in his life so far. Each one has made him a better person, both physically and mentally. John loves to do marathons; he loves to train, he loves the exercise, and he loves to travel. Doing marathons is John's favorite activity, and he wouldn't give it up for anything.",Running
+400,Decorated cosmonaut departs for the stars,Departure
+401,"Neil Armstrong, esteemed moonwalker, begins his final voyage on Thursday. He was the first person to walk on the moon and now hopes to be the first to walk on Mars. The months-long journey marks a second coming for space travel. Join us Thursday for the full coverage.",Departure
+402,"The first trip to the red planet will take nearly a year. The initial launch into orbit will only take a few hours. But once the target approaches, the shuttle will begin the departure from orbit and accelerate further into the primary phase of the jouney that lasts several months, cumulating in a descent onto the Martian surface in late 2025. And this all comes after years of preparation since the now-famous declaration of intent.",Departure
+403,The astronaut has gone through rigorous training to prepare for the venture. The new technology requires months of training overseen by experts. But this preparation ensures that Neil can stay fit and healthy throughout the flight without the dramatic muscle loss typically seen in astronauts. It also provides one of the few recreations that will be available on the trip.,Departure
+404,"Space travel is all-but-useless if we don't colonize other planets. Communications satellites are nice, but not very useful if Earth is no longer habitable. We give humanity hope as we take this first step out into the stars and start to protect ourselves against the numerous threats that will inevitably mark the end of our stay on Earth. And this must be just the start to a commited program with the singular goal of migrating to new solar systems.",Departure
+500,Exercise improves cognitive performance.,exerciseCognitive
+501,"Justin had always thought of himself as too sophisticated and bookish to break a sweat at the gym surrounded by the grunting steroid-using unwashed masses, but after reading the recent meta-analysis on the benefits of cardiovascular fitness on the very faculties he held dearest, he had to reconsider. Though the gym never suited his demeanor, he eventually found that a brisk jog before breakest complemented his lifestyle nicely.",exerciseCognitive
+502,"Though long lauded for its benefits to physical health, recent evidence points to a preventative role for moderate cardiovascular training in maintaining cognitive function in elderly populations.  Further investigation is required to determine the relationship between moderate cordiovascular training and cognitive function in young healthy individuals.",exerciseCognitive
+503,"Jane had always been a bit of a health nut in university, but after her first child she found it difficult to keep up her commitment to running and strength training. However, after her cousin convinced her to join her in running the half marathon, she found that the brain fog she'd experienced for years began to lift. This gave her the motivation to renew her commitment to staying active.",exerciseCognitive
+504,"Jill was nothing if not committed to passing the bar exam. She optimized every aspect of her day and her study habits to be at the top of her game, but she found that the biggest difference came from maintaining an active lifestyle. Twenty minutes on the elliptical cleared the cobwebs from her head and let her hit the books again with a renewed vigor and clarity.",exerciseCognitive
+600,Art adds value to life,Art
+601,"Learning to paint can help you observe more carefully your surroundings.  If you only take photos, you move through life too quickly.  Instead, you need to slow down and live in the moment.  Painting helps you do this.",Art
+602,"Different cultures express themselves in different ways.  Even the earliest cultures had a way of self expression, such as cave paintings.  Primitive people were passing along their world view to us.",Art
+603,My favorite classes in college were about art history.  I had never studied this field before and didn't realize how much there was to learn.  My professor just lit up when he described the works of Monet or Gaugin.,Art
+604,"I've tried to learn to sketch but it's really hard.  Sometimes I manage to capture the scene in a way that captures the moment.  When that happens, I feel proud of my work.",Art
+700,Travel is difficult,Travel
+701,"Sometimes when I take a trip, everything goes wrong.  First, the traffic is bad going to the airport.  Then, the airplane is late.  Sometimes they are out of food at the airport.",Travel
+702,"Reading airline itineraries can be challenging.  It is particularly hard when you are going to remote destinations that have multiple forms of transportation.  In these cases, I like to use my agent.",Travel
+703,"I try to pick out hotels online.  But there are many reviews, some negative and some positive.  All the web photos are beautiful, but the reality can be quite different.",Travel
+704,"As I've gotten older, I'm having a harder time with jet lag.  I can't seem to go to sleep when I should.  And I wake up when I shouldn't.",Travel
+800,Children impact your life,Kids
+801,"Some people decide that they do not want to have kids.  Perhaps they had a bad childhood themselves, and they do not feel that they know how to give a child a great environment.  This is a decision that is different for different people.",Kids
+802,"Having a big family can be quite a financial burden.  Not only do you have to buy all the clothing and toys, but imagine all those college bills.  Many colleges take family size into account when they give you a scholarship.",Kids
+803,"Once you have a kid, you can no longer do things on the spur of the moment.  If you want to go out, you have to find a babysitter and make sure you are back in time.  You have to watch your language and you have to be more responsible.",Kids
+804,"House prices can vary a lot depending on the school district.  When you are looking to buy a home, you might care a lot about the quality of the local elementary school if you have a family.  If your children are grown up, then you might not care as much.",Kids
+900,Brains are complex,Brain
+901,"Networks of human neurons form the most sophisticated structure in the universe. They are more mysterious than the least explored regions of the deepest ocean. We each have 100 billion neurons in our head, more than the number of stars in the milky way.",Brain
+902,"The task to understand how the cerebrum works is immense. Deciphering the biological conundrum of this most complicated of organs is tricky. It makes unravelling the genome, for example, look like child�s play.",Brain
+903,"Our neocortex is the most elaborate machine that ever existed. We can define the functionality of certain areas of the cortex. We can understand some of the mechanics at the neural chemical level. However we still remain ignorant of how neurons coordinate all of their activities and develops language, thought and a sense of self.",Brain
+904,"The human nervous system is so impenetrable not even top scientists can put a finger on what it actually is, or what consciousness is. They cannot define it with normal physics as it seems to defeat most laws. Some scientists suggest that it is not definable in physics",Brain
+1000,To the victor go the spoils.,Winnings
+1001,"Lord Stannis had rewarded Davos with choice lands on Cape Wrath, a small keep, and a knight's honors.",Winnings
+1002,"She heard King Renly declare the Lady Brienne of Tarth the victor of the great melee at Bitterbridge, last mounted of one hundred sixteen knights. �As champion, you may ask of me any prize that you desire. If it lies in my power, it is yours.�",Winnings
+1003,The Tyrell banner was raised in triumph over the castle. The sigil of a waving golden rose upon a grass-green field was calming in the early morning breeze.,Winnings
+1004,"Petyr rose. I trust that on my return, the king will see that I am suitably rewarded for my valiant efforts in his cause?�",Winnings
+1100,I like Monet,Art
+1101,I like Monet paintings,Art
+1102,I like to look at Monet paintings,Art
+1103,I like to look at Monet paintings of water lillies,Art
+1104,I really like to look at Monet paintings of water lillies when I am in France,Art
+1200,We are leaving,Travel
+1201,We are leaving on a trip,Travel
+1202,We are leaving on a trip to Cuba,Travel
+1203,We are leaving on a trip to Cuba tomorrow,Travel
+1204,We are leaving on a trip to Cuba tomorrow at noon for one week,Travel
+1300,Kids like cookies,Kids
+1301,Kids like to eat cookies,Kids
+1302,Kids like to eat chocolate chip cookies,Kids
+1303,Kids like to eat chocolate chip cookies after lunch,Kids
+1304,Some kids like to eat chocolate chip cookies after lunch with milk,Kids
+1400,Alice likes cheese,Cheese
+1401,Alice likes cream cheese,Cheese
+1402,Alice likes fresh fat cream cheese,Cheese
+1403,Alice likes fresh cream cheese more than bread,Cheese
+1404,Alice's favoriate food is fresh cream cheese,Cheese
+1500,Tyrion drank wine.,Wine
+1501,"Tyrion, sullen, drank his wine.",Wine
+1502,"Tyrion, in a sullen mood, drank his wine.",Wine
+1503,"Tyrion, in a sullen mood, drank his wine to drown his sorrows.",Wine
+1504,"Tyrion, in a sullen mood, drank his wine to drown his sorrows, and filled another cup.",Wine
+1600,Tyrion hopped down.,Stretch
+1601,Tyrion hopped down to stretch.,Stretch
+1602,"Tyrion, in a hammock above, hopped down to stretch.",Stretch
+1603,"Tryrion, in a hammock above, hopped down to stretch the cramps from his back.",Stretch
+1604,"Tryrion, resting in a hammock above for hours, hopped down to stretch the cramps from his back.",Stretch
