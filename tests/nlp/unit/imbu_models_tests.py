@@ -54,7 +54,7 @@ class TestImbu(unittest.TestCase):
       cacheRoot="fake_cache_root",
       dataPath=self.dataPath,
       retina="en_associative",
-      apiKey="fakeApiKey"
+      apiKey=os.environ.get("CORTICAL_API_KEY")
     )
 
     # You must specify a known model type
@@ -86,7 +86,7 @@ class TestImbu(unittest.TestCase):
       cacheRoot="fake_cache_root",
       dataPath=self.dataPath,
       retina="en_associative",
-      apiKey="fakeApiKey"
+      apiKey=os.environ.get("CORTICAL_API_KEY")
     )
 
     tmpDir = tempfile.mkdtemp()
