@@ -1,0 +1,81 @@
+ID,Sample,Label
+100,James quit smoking,Smoking
+101,Sue stopped using cigarettes,Smoking
+102,"Due to health concerns, Alex decided to quit using tobacco",Smoking
+103,Jeff suddenly decided that chain smoking was not for him and stopped completely,Smoking
+104,Joe finally understood that cigarette smoke was terrible for his lungs and resolved to abstain from such activities,Smoking
+200,John buys clothes,Clothes
+201,Samantha purchases skirts,Clothes
+202,"When she got a raise, Amanda shopped for a new jacket",Clothes
+203,"I made a lot of money, so I went to get a fresh pair of pants",Clothes
+204,"Scott likes to wear nice jeans, so he always gets new ones from the store",Clothes
+300,The astronaut boarded,Departure
+301,The old cosmonaut boarded,Departure
+302,The elderly cosmonaut entered the rocket,Departure
+303,The aged astronaut entered the space ship,Departure
+304,The ancient cosmonaut mounted the space shuttle bound for Mars,Departure
+400,Tom ate pizza,atePizza
+401,Tom consumed pizza,atePizza
+402,Jane ate a pepperoni pie,atePizza
+403,"Paul eagerly devoured the flatbread, topped with tomato sauce, melted cheese, and peppers",atePizza
+404,"Tim sat down to a meal at his favorite restaurant, the local pizzeria",atePizza
+500,I like art,Art
+501,Jorge enjoys painting,Art
+502,My husband likes to look at sculpture,Art
+503,"When we travel, we visit art museums",Art
+504,Art makes a positive difference in our lives,Art
+600,Travel can be fun,Travel
+601,People enjoy seeing new places,Travel
+602,"On trips, we like to try new things",Travel
+603,It's a pleasure to visit cities where we've never been before,Travel
+604,"When in another country, it is fantastic to try different kinds of foods",Travel
+700,Kids are crazy,Kids
+701,Children can be really wild,Kids
+702,Young people can act up when they are at a birthday party,Kids
+703,I wish my children behaved better,Kids
+704,Kids can get antsy if they are required to sit too long,Kids
+800,Ben likes cooking,Cooking
+801,Ben enjoys preparing food,Cooking
+802,Ben has a passion for culinary activities,Cooking
+803,Preparing a meal is the most enjoyable thing for Ben,Cooking
+804,Ben's favorite hobby is being a chef and making delicious dinners for his friends,Cooking
+900,The horse ran.,Horses
+901,The galloping made Tyrion feel nauseous,Horses
+902,"The mare splashed through the shallows, trampling down the reeds.",Horses
+903,"Saddled and briddle, Jon set off quickly on the long, hard road to Greyguard.",Horses
+904,"The knights on horseback plodded on, making little headway through the winter snow.",Horses
+1000,Jon was amused.,Amusement
+1001,Even the queen smirked at the jester's spectacle.,Amusement
+1002,The children's giggles echoed through the water gardens.,Amusement
+1003,Jamie couldn't help but crack a smile at the Bron's displeasure.,Amusement
+1004,"King Baratheon pounded his fist on the table in uproarious laughter, ignorant of the wine splashing on his guests.",Amusement
+1100,I like Monet,Art
+1101,I like Monet paintings,Art
+1102,I like to look at Monet paintings,Art
+1103,I like to look at Monet paintings of water lillies,Art
+1104,I really like to look at Monet paintings of water lillies when I am in France,Art
+1200,We are leaving,Travel
+1201,We are leaving on a trip,Travel
+1202,We are leaving on a trip to Cuba,Travel
+1203,We are leaving on a trip to Cuba tomorrow,Travel
+1204,We are leaving on a trip to Cuba tomorrow at noon for one week,Travel
+1300,Kids like cookies,Kids
+1301,Kids like to eat cookies,Kids
+1302,Kids like to eat chocolate chip cookies,Kids
+1303,Kids like to eat chocolate chip cookies after lunch,Kids
+1304,Some kids like to eat chocolate chip cookies after lunch with milk,Kids
+1400,Alice likes cheese,Cheese
+1401,Alice likes cream cheese,Cheese
+1402,Alice likes fresh fat cream cheese,Cheese
+1403,Alice likes fresh cream cheese more than bread,Cheese
+1404,Alice's favoriate food is fresh cream cheese,Cheese
+1500,Tyrion drank wine.,Wine
+1501,"Tyrion, sullen, drank his wine.",Wine
+1502,"Tyrion, in a sullen mood, drank his wine.",Wine
+1503,"Tyrion, in a sullen mood, drank his wine to drown his sorrows.",Wine
+1504,"Tyrion, in a sullen mood, drank his wine to drown his sorrows, and filled another cup.",Wine
+1600,Tyrion hopped down.,Stretch
+1601,Tyrion hopped down to stretch.,Stretch
+1602,"Tyrion, in a hammock above, hopped down to stretch.",Stretch
+1603,"Tryrion, in a hammock above, hopped down to stretch the cramps from his back.",Stretch
+1604,"Tryrion, resting in a hammock above for hours, hopped down to stretch the cramps from his back.",Stretch

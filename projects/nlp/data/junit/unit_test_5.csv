@@ -1,0 +1,109 @@
+ID,Sample,Label
+100,Someone left,SomeoneLeft
+101,Tom left the party after Sue but I think they went home together.,SomeoneLeft
+102,Did you see who left at the same time?,SomeoneLeft
+103,"After everyone left, it was my job to clean up.",SomeoneLeft
+104,She left me high and dry without considering my feelings.,SomeoneLeft
+105,We finished the food and then the party crashers left,SomeoneLeft
+200,Turn left,TurnLeft
+201,Take a left at the corner and you should see the door.,TurnLeft
+202,The entrance is on the left when you reach the end of the street.,TurnLeft
+203,You were supposed to take a left not a right.,TurnLeft
+204,Left hand turns are usually better when you are lost.,TurnLeft
+205,"When you can't go any further, turn left.",TurnLeft
+300,Spicy hot,SpicyHot
+301,This pepper is very hot.,SpicyHot
+302,"This food is very hot, I think I need some sugar.",SpicyHot
+303,Indian people tend to eat hot food.,SpicyHot
+304,I can't handle snacks that are too hot.,SpicyHot
+305,John likes to eat peanuts with hot sauce.,SpicyHot
+400,Temperature hot,TemperatureHot
+401,This soup is too hot for me to drink right now.,TemperatureHot
+402,It was very hot so we decided to go swimming.,TemperatureHot
+403,Don't touch the pan; it is hot and it will burn your fingers.,TemperatureHot
+404,It is hot in tropical climates.,TemperatureHot
+405,It gets hot at night so I have to turn on the AC.,TemperatureHot
+500,Rock music,RockMusic
+501,The guitarist said that he would only play rock.,RockMusic
+502,I usually listen to the rock but sometimes put on jazz.,RockMusic
+503,The best giveaways are on the rock station.,RockMusic
+504,The EMP museum was created as a tribute to the electronic rock bands of the 80s and 90s.,RockMusic
+505,The rock concert erupted into a massive mosh pit.,RockMusic
+600,Granite rock,GraniteRock
+601,Many rocks were embedded in the tires.,GraniteRock
+602,You always have to be careful for rocks hidden in the snow drifts.,GraniteRock
+603,The rock formation resembled a massive hammer hovering above the ground.,GraniteRock
+604,The plains were scattered with small shrubs and sun-baked rocks.,GraniteRock
+605,The granite rocks were perfectly marbled.,GraniteRock
+700,Recovery rest,recoveryRest
+701,Tom decided to rest after the long trip,recoveryRest
+702,It's best to rest when tired,recoveryRest
+703,She got the rest she needed after her busy day,recoveryRest
+704,I can't rest when there's work to be done,recoveryRest
+705,The vacation provided the rest he had wanted,recoveryRest
+800,Remainder rest,remainderRest
+801,She ate the rest of the cake,remainderRest
+802,"Except for the last season, the rest of the show was excellent",remainderRest
+803,Where is the rest of the pie?,remainderRest
+804,The government forgave the rest of his student debt,remainderRest
+805,When will the rest of the names be released?,remainderRest
+900,Place object,PlaceObject
+901,Please place that cup down here.,PlaceObject
+902,Where can I place my bet?,PlaceObject
+903,I was surprised to see the sculpture placed there.,PlaceObject
+904,It is best to place a boiling kettle on a hot pad.,PlaceObject
+905,"When you play this game, you must place your ante in the center of the table first.",PlaceObject
+1000,Go place,GoPlace
+1001,What is the best place to eat around here?,GoPlace
+1002,I know a place that has great martinis.,GoPlace
+1003,She didn't like that place very much.,GoPlace
+1004,New York is my favorite place to go.,GoPlace
+1005,We need a new pizza place in this neighborhood.,GoPlace
+1100,Pay fine,PayFine
+1101,"If you park incorrectly, you will incur a fine.",PayFine
+1102,It cost me a fine when I turned in my library book late.,PayFine
+1103,Francesca couldn't believe how high her traffic fine was.,PayFine
+1104,I wonder whether it is possible to pay this silly fine online.,PayFine
+1105,I don't think the town should fine us when our taxes are late.,PayFine
+1200,Fine day,FineDay
+1201,Yesterday when I woke up it was fine outside.,FineDay
+1202,We can only go on the picnic if the weather is fine.,FineDay
+1203,My cousin did a fine job at his piano recital.,FineDay
+1204,Jose loves a fine bottle of wine.,FineDay
+1205,"When you're in France, you can really eat fine food.",FineDay
+1300,Down direction,DownDirection
+1301,Go straight down this street to get to the pub.,DownDirection
+1302,I dropped the pen down on the table.,DownDirection
+1303,The apartment down below ours is a mess.,DownDirection
+1304,The horses on the carousel went up and down.,DownDirection
+1305,The family preferred to go down to the store rather than have it delivered.,DownDirection
+1400,Down feathers,DownFeathers
+1401,I just bought a comforter filled with down.,DownFeathers
+1402,Some down comes from ducks whereas some comes from geese.,DownFeathers
+1403,There are people who are allergic to down.,DownFeathers
+1404,I find a down blanket can be too hot at night.,DownFeathers
+1405,Down jackets were really popular for a while.,DownFeathers
+1500,Break noun,BreakNoun
+1501,I need a break from mental activity,BreakNoun
+1502,The magazine has been published without a break since 1950,BreakNoun
+1503,Break time is over,BreakNoun
+1504,You need a break from work,BreakNoun
+1505,I do not want to give up our tea break,BreakNoun
+1600,Break verb,BreakVerb
+1601,My glasses break easily,BreakVerb
+1602,I break the rope with a loud snap,BreakVerb
+1603,The courts deal with those who break the law,BreakVerb
+1604,We can break this stick into two parts,BreakVerb
+1605,I break the vase and I will pay for it,BreakVerb
+1700,Animal Bear,AnimalBear
+1701,Grizzly bears hibernate half the year.,AnimalBear
+1702,Black bears are phenomenal tree climbers.,AnimalBear
+1703,"The bear at the zoo looked sad, missing the great outdoors.",AnimalBear
+1704,Bears love honey.,AnimalBear
+1705,It's best to hide food in the trees to avoid bears while camping.,AnimalBear
+1800,Endure bear,EndureBear
+1801,The wind chill was too much to bear.,EndureBear
+1802,Please bear with me until I finish the story.,EndureBear
+1803,The Republican debates have been tough to bear.,EndureBear
+1804,She couldn't bear the smell any longer.,EndureBear
+1805,The Cubs loss is a disappointment we'll have to bear.,EndureBear
