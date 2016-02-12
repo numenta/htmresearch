@@ -112,7 +112,7 @@ class CioEncoder(LanguageEncoder):
 
 
   @cacheDir.setter
-  def _setCacheDir(self, value):
+  def cacheDir(self, value):
     if value:
       # Only set cacheDir if value explicitly provided
       self._cacheDir = value
