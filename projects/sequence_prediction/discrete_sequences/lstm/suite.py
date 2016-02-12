@@ -21,23 +21,20 @@
 # ----------------------------------------------------------------------
 
 import random
-
-
 import numpy
 from scipy import reshape, dot, outer
-
 from expsuite import PyExperimentSuite
 from pybrain.datasets import SequentialDataSet
 from pybrain.tools.shortcuts import buildNetwork
 from pybrain.structure.modules import LSTMLayer
 from pybrain.supervised import RPropMinusTrainer
-
-from htmresearch.support.reberGrammar import generateSequencesNumber
+from htmresearch.support.sequence_prediction_dataset import ReberDataset
+from htmresearch.support.sequence_prediction_dataset import SimpleDataset
+from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
 
 
 
 class Encoder(object):
-
   def __init__(self, num):
     self.num = num
 
@@ -56,7 +53,6 @@ class Encoder(object):
 
 
 class BasicEncoder(Encoder):
-
   def encode(self, symbol):
     encoding = numpy.zeros(self.num)
     encoding[symbol] = 1
@@ -83,7 +79,9 @@ class DistributedEncoder(Encoder):
   MUST FIX IF WE WANT TO USE classifyWithRandom = False!
   """
 
-  def __init__(self, num, maxValue=None, minValue=None, classifyWithRandom=None):
+
+  def __init__(self, num, maxValue=None, minValue=None,
+               classifyWithRandom=None):
     super(DistributedEncoder, self).__init__(num)
 
     if maxValue is None or minValue is None:
@@ -103,7 +101,8 @@ class DistributedEncoder(Encoder):
     if symbol in self.encodings:
       return self.encodings[symbol]
 
-    encoding = (self.maxValue - self.minValue) * numpy.random.random((1, self.num)) + self.minValue
+    encoding = (self.maxValue - self.minValue) * numpy.random.random(
+      (1, self.num)) + self.minValue
     self.encodings[symbol] = encoding
 
     return encoding
@@ -116,12 +115,13 @@ class DistributedEncoder(Encoder):
   @staticmethod
   def closest(node, nodes, num):
     nodes = numpy.array(nodes)
-    dist_2 = numpy.sum((nodes - node)**2, axis=2)
+    dist_2 = numpy.sum((nodes - node) ** 2, axis=2)
     return dist_2.flatten().argsort()[:num]
 
 
   def classify(self, encoding, num=1):
-    encodings = {k:v for (k, v) in self.encodings.iteritems() if k <= self.num or self.classifyWithRandom}
+    encodings = {k: v for (k, v) in self.encodings.iteritems() if
+                 k <= self.num or self.classifyWithRandom}
 
     if len(encodings) == 0:
       return []
@@ -131,191 +131,7 @@ class DistributedEncoder(Encoder):
 
 
 
-class Dataset(object):
-
-  def generateSequence(self):
-    pass
-
-
-
-class ReberDataset(Dataset):
-
-  def __init__(self, maxLength=None):
-    if maxLength is None:
-      raise "maxLength not specified"
-
-    self.maxLength = maxLength
-
-
-  def generateSequence(self):
-    return generateSequencesNumber(self.maxLength)[0]
-
-
-
-class SimpleDataset(Dataset):
-
-  def __init__(self):
-    self.sequences = [
-      [6, 8, 7, 4, 2, 3, 0],
-      [2, 9, 7, 8, 5, 3, 4, 6],
-    ]
-
-  def generateSequence(self):
-    return list(random.choice(self.sequences))
-
-
-
-class HighOrderDataset(Dataset):
-
-  def __init__(self, numPredictions=1):
-    self.numPredictions = numPredictions
-
-
-  def sequences(self, numPredictions, perturbed):
-    if numPredictions == 1:
-      if perturbed:
-        return [
-          [6, 8, 7, 4, 2, 3, 5],
-          [1, 8, 7, 4, 2, 3, 0],
-          [6, 3, 4, 2, 7, 8, 0],
-          [1, 3, 4, 2, 7, 8, 5],
-          [0, 9, 7, 8, 5, 3, 4, 6],
-          [2, 9, 7, 8, 5, 3, 4, 1],
-          [0, 4, 3, 5, 8, 7, 9, 1],
-          [2, 4, 3, 5, 8, 7, 9, 6]
-        ]
-      else:
-        return [
-          [6, 8, 7, 4, 2, 3, 0],
-          [1, 8, 7, 4, 2, 3, 5],
-          [6, 3, 4, 2, 7, 8, 5],
-          [1, 3, 4, 2, 7, 8, 0],
-          [0, 9, 7, 8, 5, 3, 4, 1],
-          [2, 9, 7, 8, 5, 3, 4, 6],
-          [0, 4, 3, 5, 8, 7, 9, 6],
-          [2, 4, 3, 5, 8, 7, 9, 1]
-        ]
-
-    elif numPredictions == 2:
-      if perturbed:
-        return [
-          [4, 8, 3, 10, 9, 6, 0],
-          [4, 8, 3, 10, 9, 6, 7],
-          [5, 8, 3, 10, 9, 6, 1],
-          [5, 8, 3, 10, 9, 6, 2],
-          [4, 6, 9, 10, 3, 8, 2],
-          [4, 6, 9, 10, 3, 8, 1],
-          [5, 6, 9, 10, 3, 8, 7],
-          [5, 6, 9, 10, 3, 8, 0],
-          [4, 3, 8, 6, 1, 10, 11, 0],
-          [4, 3, 8, 6, 1, 10, 11, 7],
-          [5, 3, 8, 6, 1, 10, 11, 9],
-          [5, 3, 8, 6, 1, 10, 11, 2],
-          [4, 11, 10, 1, 6, 8, 3, 2],
-          [4, 11, 10, 1, 6, 8, 3, 9],
-          [5, 11, 10, 1, 6, 8, 3, 7],
-          [5, 11, 10, 1, 6, 8, 3, 0]
-        ]
-      else:
-        return [
-          [4, 8, 3, 10, 9, 6, 1],
-          [4, 8, 3, 10, 9, 6, 2],
-          [5, 8, 3, 10, 9, 6, 0],
-          [5, 8, 3, 10, 9, 6, 7],
-          [4, 6, 9, 10, 3, 8, 7],
-          [4, 6, 9, 10, 3, 8, 0],
-          [5, 6, 9, 10, 3, 8, 2],
-          [5, 6, 9, 10, 3, 8, 1],
-          [4, 3, 8, 6, 1, 10, 11, 9],
-          [4, 3, 8, 6, 1, 10, 11, 2],
-          [5, 3, 8, 6, 1, 10, 11, 0],
-          [5, 3, 8, 6, 1, 10, 11, 7],
-          [4, 11, 10, 1, 6, 8, 3, 7],
-          [4, 11, 10, 1, 6, 8, 3, 0],
-          [5, 11, 10, 1, 6, 8, 3, 2],
-          [5, 11, 10, 1, 6, 8, 3, 9]
-        ]
-
-    elif numPredictions == 4:
-      if perturbed:
-        return [
-          [7, 4, 12, 5, 14, 1, 13],
-          [7, 4, 12, 5, 14, 1, 10],
-          [7, 4, 12, 5, 14, 1, 6],
-          [7, 4, 12, 5, 14, 1, 8],
-          [11, 4, 12, 5, 14, 1, 2],
-          [11, 4, 12, 5, 14, 1, 3],
-          [11, 4, 12, 5, 14, 1, 0],
-          [11, 4, 12, 5, 14, 1, 9],
-          [7, 1, 14, 5, 12, 4, 9],
-          [7, 1, 14, 5, 12, 4, 0],
-          [7, 1, 14, 5, 12, 4, 3],
-          [7, 1, 14, 5, 12, 4, 2],
-          [11, 1, 14, 5, 12, 4, 8],
-          [11, 1, 14, 5, 12, 4, 6],
-          [11, 1, 14, 5, 12, 4, 10],
-          [11, 1, 14, 5, 12, 4, 13],
-          [9, 4, 5, 15, 6, 1, 12, 14],
-          [9, 4, 5, 15, 6, 1, 12, 11],
-          [9, 4, 5, 15, 6, 1, 12, 7],
-          [9, 4, 5, 15, 6, 1, 12, 8],
-          [13, 4, 5, 15, 6, 1, 12, 2],
-          [13, 4, 5, 15, 6, 1, 12, 3],
-          [13, 4, 5, 15, 6, 1, 12, 0],
-          [13, 4, 5, 15, 6, 1, 12, 10],
-          [9, 1, 12, 6, 15, 4, 5, 10],
-          [9, 1, 12, 6, 15, 4, 5, 0],
-          [9, 1, 12, 6, 15, 4, 5, 3],
-          [9, 1, 12, 6, 15, 4, 5, 2],
-          [13, 1, 12, 6, 15, 4, 5, 8],
-          [13, 1, 12, 6, 15, 4, 5, 7],
-          [13, 1, 12, 6, 15, 4, 5, 11],
-          [13, 1, 12, 6, 15, 4, 5, 14]
-        ]
-      else:
-        return [
-          [7, 4, 12, 5, 14, 1, 2],
-          [7, 4, 12, 5, 14, 1, 3],
-          [7, 4, 12, 5, 14, 1, 0],
-          [7, 4, 12, 5, 14, 1, 9],
-          [11, 4, 12, 5, 14, 1, 13],
-          [11, 4, 12, 5, 14, 1, 10],
-          [11, 4, 12, 5, 14, 1, 6],
-          [11, 4, 12, 5, 14, 1, 8],
-          [7, 1, 14, 5, 12, 4, 8],
-          [7, 1, 14, 5, 12, 4, 6],
-          [7, 1, 14, 5, 12, 4, 10],
-          [7, 1, 14, 5, 12, 4, 13],
-          [11, 1, 14, 5, 12, 4, 9],
-          [11, 1, 14, 5, 12, 4, 0],
-          [11, 1, 14, 5, 12, 4, 3],
-          [11, 1, 14, 5, 12, 4, 2],
-          [9, 4, 5, 15, 6, 1, 12, 2],
-          [9, 4, 5, 15, 6, 1, 12, 3],
-          [9, 4, 5, 15, 6, 1, 12, 0],
-          [9, 4, 5, 15, 6, 1, 12, 10],
-          [13, 4, 5, 15, 6, 1, 12, 14],
-          [13, 4, 5, 15, 6, 1, 12, 11],
-          [13, 4, 5, 15, 6, 1, 12, 7],
-          [13, 4, 5, 15, 6, 1, 12, 8],
-          [9, 1, 12, 6, 15, 4, 5, 8],
-          [9, 1, 12, 6, 15, 4, 5, 7],
-          [9, 1, 12, 6, 15, 4, 5, 11],
-          [9, 1, 12, 6, 15, 4, 5, 14],
-          [13, 1, 12, 6, 15, 4, 5, 10],
-          [13, 1, 12, 6, 15, 4, 5, 0],
-          [13, 1, 12, 6, 15, 4, 5, 3],
-          [13, 1, 12, 6, 15, 4, 5, 2]
-        ]
-
-
-  def generateSequence(self, perturbed=False):
-    return list(random.choice(self.sequences(self.numPredictions, perturbed)))
-
-
-
 class Suite(PyExperimentSuite):
-
   def reset(self, params, repetition):
     random.seed(params['seed'])
 
@@ -325,7 +141,8 @@ class Suite(PyExperimentSuite):
       self.encoder = DistributedEncoder(params['encoding_num'],
                                         maxValue=params['encoding_max'],
                                         minValue=params['encoding_min'],
-                                        classifyWithRandom=params['classify_with_random'])
+                                        classifyWithRandom=params[
+                                          'classify_with_random'])
     else:
       raise Exception("Encoder not found")
 
@@ -346,7 +163,7 @@ class Suite(PyExperimentSuite):
     self.currentSequence = self.dataset.generateSequence()
 
     self.net = None
-
+    self.sequenceCounter = 0
 
   def window(self, data, params):
     start = max(0, len(data) - params['learning_window'])
@@ -354,6 +171,12 @@ class Suite(PyExperimentSuite):
 
 
   def train(self, params):
+    """
+    Train LSTM network on buffered dataset history
+    After training, run LSTM on history[:-1] to get the state correct
+    :param params:
+    :return:
+    """
     n = params['encoding_num']
     net = buildNetwork(n, params['num_cells'], n,
                        hiddenclass=LSTMLayer,
@@ -362,15 +185,18 @@ class Suite(PyExperimentSuite):
                        recurrent=True)
     net.reset()
 
+    # prepare training dataset
     ds = SequentialDataSet(n, n)
-    trainer = RPropMinusTrainer(net, dataset=ds)
+    trainer = RPropMinusTrainer(net,
+                                dataset=ds,
+                                verbose=params['verbosity'] > 0)
 
     history = self.window(self.history, params)
     resets = self.window(self.resets, params)
 
     for i in xrange(1, len(history)):
-      if not resets[i-1]:
-        ds.addSample(self.encoder.encode(history[i-1]),
+      if not resets[i - 1]:
+        ds.addSample(self.encoder.encode(history[i - 1]),
                      self.encoder.encode(history[i]))
       if resets[i]:
         ds.newSequence()
@@ -379,6 +205,7 @@ class Suite(PyExperimentSuite):
       trainer.trainEpochs(params['num_epochs'])
       net.reset()
 
+    # run network on buffered dataset after training to get the state right
     for i in xrange(len(history) - 1):
       symbol = history[i]
       output = net.activate(self.encoder.encode(symbol))
@@ -388,6 +215,7 @@ class Suite(PyExperimentSuite):
         net.reset()
 
     return net
+
 
   def killCells(self, killCellPercent):
     """
@@ -409,14 +237,15 @@ class Suite(PyExperimentSuite):
     # remove connections from input layer to dead LSTM cells
     connectionInputToHidden = self.net.connections[inputLayer][0]
     weightInputToHidden = reshape(connectionInputToHidden.params,
-                                   (connectionInputToHidden.outdim,
-                                    connectionInputToHidden.indim))
+                                  (connectionInputToHidden.outdim,
+                                   connectionInputToHidden.indim))
 
     for cell in deadCells:
       for dim in range(4):
-        weightInputToHidden[dim*numLSTMCell+cell, :] *= 0
+        weightInputToHidden[dim * numLSTMCell + cell, :] *= 0
 
-    newParams = reshape(weightInputToHidden, (connectionInputToHidden.paramdim,))
+    newParams = reshape(weightInputToHidden,
+                        (connectionInputToHidden.paramdim,))
     self.net.connections[inputLayer][0]._setParameters(
       newParams, connectionInputToHidden.owner)
 
@@ -429,7 +258,8 @@ class Suite(PyExperimentSuite):
     for cell in deadCells:
       weightHiddenToHidden[:, cell] *= 0
 
-    newParams = reshape(weightHiddenToHidden, (connectionHiddenToHidden.paramdim, ))
+    newParams = reshape(weightHiddenToHidden,
+                        (connectionHiddenToHidden.paramdim,))
     self.net.recurrentConns[0]._setParameters(
       newParams, connectionHiddenToHidden.owner)
 
@@ -441,76 +271,110 @@ class Suite(PyExperimentSuite):
     for cell in deadCells:
       weightHiddenToOutput[:, cell] *= 0
 
-    newParams = reshape(weightHiddenToOutput, (connectionHiddenToOutput.paramdim, ))
+    newParams = reshape(weightHiddenToOutput,
+                        (connectionHiddenToOutput.paramdim,))
     self.net.connections[lstmLayer][0]._setParameters(
       newParams, connectionHiddenToOutput.owner)
 
+
+  def replenishSequence(self, params, iteration):
+    if iteration > params['perturb_after']:
+      sequence = self.dataset.generateSequence(perturbed=True)
+    else:
+      sequence = self.dataset.generateSequence()
+
+    if iteration > params['inject_noise_after']:
+      injectNoiseAt = random.randint(1, 3)
+      sequence[injectNoiseAt] = self.encoder.randomSymbol()
+
+    if params['separate_sequences_with'] == 'random':
+      sequence.append(self.encoder.randomSymbol())
+
+    if params['verbosity'] > 0:
+      print "Add sequence to buffer"
+      print sequence
+    self.currentSequence += sequence
+
+
   def iterate(self, params, repetition, iteration):
+    # update buffered dataset
     self.history.append(self.currentSequence.pop(0))
 
+    # whether there will be a reset signal after the current record
     resetFlag = (len(self.currentSequence) == 0 and
                  params['separate_sequences_with'] == 'reset')
     self.resets.append(resetFlag)
 
-    randomFlag = (len(self.currentSequence) == 0 and
+    # whether there will be a random symbol after the current record
+    randomFlag = (len(self.currentSequence) == 1 and
                   params['separate_sequences_with'] == 'random')
+
     self.randoms.append(randomFlag)
 
     if len(self.currentSequence) == 0:
-      if randomFlag:
-        self.currentSequence.append(self.encoder.randomSymbol())
+      self.replenishSequence(params, iteration)
+      self.sequenceCounter += 1
 
-      if iteration > params['perturb_after']:
-        sequence = self.dataset.generateSequence(perturbed=True)
-      else:
-        sequence = self.dataset.generateSequence()
-
-      self.currentSequence += sequence
-
+    # kill cells
     killCell = False
     if iteration == params['kill_cell_after']:
       killCell = True
       self.killCells(params['kill_cell_percent'])
 
-
-    if iteration < params['compute_after']:
-      return None
-
+    # reset compute counter
     if iteration % params['compute_every'] == 0:
       self.computeCounter = params['compute_for']
 
-    if self.computeCounter == 0:
-      return None
+    if self.computeCounter == 0 or iteration < params['compute_after']:
+      computeLSTM = False
     else:
+      computeLSTM = True
+
+    if computeLSTM:
       self.computeCounter -= 1
 
-    train = (not params['compute_test_mode'] or
-             iteration % params['compute_every'] == 0)
+      train = (not params['compute_test_mode'] or
+               iteration % params['compute_every'] == 0)
 
-    if train:
-      self.net = self.train(params)
+      if train:
+        if params['verbosity'] > 0:
+          print "Training LSTM at iteration {}".format(iteration)
 
-    history = self.window(self.history, params)
-    resets = self.window(self.resets, params)
+        self.net = self.train(params)
 
-    if resets[-1]:
-      self.net.reset()
+      # run LSTM on the latest data record
+      symbol = self.history[-1]
+      output = self.net.activate(self.encoder.encode(symbol))
+      predictions = self.encoder.classify(output, num=params['num_predictions'])
 
-    symbol = history[-1]
-    output = self.net.activate(self.encoder.encode(symbol))
-    predictions = self.encoder.classify(output, num=params['num_predictions'])
+      truth = None if (self.resets[-1] or
+                       self.randoms[-1] or
+                       len(self.randoms) >= 2 and self.randoms[-2]
+                       ) else self.currentSequence[0]
 
-    truth = None if (self.resets[-1] or
-                     self.randoms[-1] or
-                     len(self.randoms) >= 2 and self.randoms[-2]) else self.currentSequence[0]
+      correct = None if truth is None else (truth in predictions)
 
-    return {"current": self.history[-1],
-            "reset": self.resets[-1],
-            "random": self.randoms[-1],
-            "train": train,
-            "predictions": predictions,
-            "truth": truth,
-            "killCell": killCell}
+      if params['verbosity'] > 0:
+        print ("iteration: {0} \t"
+               "current: {1} \t"
+               "predictions: {2} \t"
+               "truth: {3} \t"
+               "correct: {4} \t").format(
+          iteration, symbol, predictions, truth, correct)
+
+      if self.resets[-1]:
+        if params['verbosity'] > 0:
+          print "Reset LSTM at iteration {}".format(iteration)
+        self.net.reset()
+
+      return {"current": self.history[-1],
+              "reset": self.resets[-1],
+              "random": self.randoms[-1],
+              "train": train,
+              "predictions": predictions,
+              "truth": truth,
+              "killCell": killCell,
+              "sequenceCounter": self.sequenceCounter}
 
 
 

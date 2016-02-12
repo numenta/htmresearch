@@ -21,49 +21,16 @@
 # ----------------------------------------------------------------------
 
 
-import argparse
 import json
 import os
 from matplotlib import pyplot
 import matplotlib as mpl
 import numpy
 from plot import computeAccuracy
+from plot import readExperiment
 
 mpl.rcParams['pdf.fonttype'] = 42
 pyplot.ion()
-
-
-
-def readExperiment(experiment):
-  with open(experiment, "r") as file:
-    predictions = []
-    truths = []
-    iterations = []
-    resets = []
-    randoms = []
-    trains = []
-    killCell = []
-    for line in file.readlines():
-      dataRec = json.loads(line)
-      iterations.append(dataRec['iteration'])
-      if 'predictions' in dataRec.keys():
-        predictions.append(dataRec['predictions'])
-        truths.append(dataRec['truth'])
-        resets.append(dataRec['reset'])
-        randoms.append(dataRec['random'])
-        trains.append(dataRec['train'])
-        killCell.append(dataRec['killCell'])
-      else:
-        predictions.append(None)
-        truths.append(None)
-        resets.append(None)
-        randoms.append(None)
-        trains.append(None)
-        killCell.append(None)
-
-  return predictions, truths, iterations, resets, randoms, killCell
-
-
 
 if __name__ == '__main__':
 
@@ -76,7 +43,7 @@ if __name__ == '__main__':
       killCellPercent)) + '/0.log'
 
     (predictions, truths, iterations,
-     resets, randoms, killCell) = readExperiment(experiment)
+     resets, randoms, trains, killCell) = readExperiment(experiment)
 
     killCellAt = 10000
     (accuracy, x) = computeAccuracy(predictions[killCellAt:],

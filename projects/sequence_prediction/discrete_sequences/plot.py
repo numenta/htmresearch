@@ -21,6 +21,7 @@
 # ----------------------------------------------------------------------
 
 import argparse
+import json
 
 from matplotlib import pyplot
 import numpy
@@ -28,6 +29,63 @@ import numpy
 from expsuite import PyExperimentSuite
 
 
+def readExperiment(experiment):
+  with open(experiment, "r") as file:
+    predictions = []
+    truths = []
+    iterations = []
+    resets = []
+    randoms = []
+    trains = []
+    killCell = []
+    sequenceCounter = []
+    for line in file.readlines():
+      dataRec = json.loads(line)
+      iterations.append(dataRec['iteration'])
+
+      if 'predictions' in dataRec.keys():
+        predictions.append(dataRec['predictions'])
+      else:
+        predictions.append(None)
+
+      if 'truth' in dataRec.keys():
+        truths.append(dataRec['truth'])
+      else:
+        truths.append(None)
+
+      if 'reset' in dataRec.keys():
+        resets.append(dataRec['reset'])
+      else:
+        resets.append(None)
+
+      if 'random' in dataRec.keys():
+        randoms.append(dataRec['random'])
+      else:
+        randoms.append(None)
+
+      if 'train' in dataRec.keys():
+        trains.append(dataRec['train'])
+      else:
+        trains.append(None)
+
+      if 'killCell' in dataRec.keys():
+        killCell.append(dataRec['killCell'])
+      else:
+        killCell.append(None)
+
+      if 'sequenceCounter' in dataRec.keys():
+        sequenceCounter.append(dataRec['sequenceCounter'])
+      else:
+        sequenceCounter.append(None)
+
+  return {'predictions': predictions,
+          'truths': truths,
+          'iterations': iterations,
+          'resets': resets,
+          'randoms': randoms,
+          'trains': trains,
+          'killCell': killCell,
+          'sequenceCounter': sequenceCounter}
 
 def movingAverage(a, n):
   movingAverage = []
@@ -50,7 +108,7 @@ def plotMovingAverage(data, window, label=None):
 
 def plotAccuracy(results, train, window=100, type="sequences", label=None, hideTraining=True, lineSize=None):
   pyplot.title("High-order prediction")
-  pyplot.xlabel("# of elements seen")
+  pyplot.xlabel("# of sequences seen")
   pyplot.ylabel("High-order prediction accuracy over last {0} tested {1}".format(window, type))
 
   accuracy = results[0]
@@ -79,11 +137,13 @@ def plotAccuracy(results, train, window=100, type="sequences", label=None, hideT
         pyplot.axvline(i, color='orange')
 
   pyplot.xlim(0, x[-1])
-  pyplot.ylim(0, 1.001)
+  pyplot.ylim(0, 1.1)
 
 
 
-def computeAccuracy(predictions, truths, iterations, resets=None, randoms=None, num=None):
+def computeAccuracy(predictions, truths, iterations,
+                    resets=None, randoms=None, num=None,
+                    sequenceCounter=None):
   accuracy = []
   x = []
 
@@ -94,13 +154,17 @@ def computeAccuracy(predictions, truths, iterations, resets=None, randoms=None, 
     if truths[i] is None:
       continue
 
+    # identify the end of sequence
     if resets is not None or randoms is not None:
       if not (resets[i+1] or randoms[i+1]):
         continue
 
     correct = truths[i] is None or truths[i] in predictions[i]
     accuracy.append(correct)
-    x.append(iterations[i])
+    if sequenceCounter is not None:
+      x.append(sequenceCounter[i])
+    else:
+      x.append(iterations[i])
 
   return (accuracy, x)
 
