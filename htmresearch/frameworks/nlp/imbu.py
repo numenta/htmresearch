@@ -98,7 +98,10 @@ class ImbuModels(object):
   tokenIndexingFactor = 1000
 
   # Mapping of acceptable model names to names expected by the model factory
-  modelMappings = {name:name for name in ClassificationModelTypes.getTypes()}
+  modelMappings = dict((name, name) for name in ("CioWordFingerprint",
+                                                 "CioDocumentFingerprint",
+                                                 "HTMNetwork",
+                                                 "Keywords"))
   modelMappings.update(HTM_sensor_knn="HTMNetwork",
                        HTM_sensor_simple_tp_knn="HTMNetwork")
 
@@ -132,7 +135,7 @@ class ImbuModels(object):
 
 
   def __repr__(self):
-    return ("Imbu<cacheRoot={cacheRoot}, dataPath={dataPath}, "
+    return ("ImbuModels<cacheRoot={cacheRoot}, dataPath={dataPath}, "
             "modelSimilarityMetric={modelSimilarityMetric}, "
             "apiKey={apiKey}, retina={retina}>"
             .format(**self.__dict__))
