@@ -21,6 +21,7 @@
 # ----------------------------------------------------------------------
 
 import random
+import numbers
 import numpy
 from scipy import reshape, dot, outer
 from expsuite import PyExperimentSuite
@@ -160,7 +161,10 @@ class Suite(PyExperimentSuite):
     self.history = []
     self.resets = []
     self.randoms = []
-    self.currentSequence = self.dataset.generateSequence()
+
+    self.currentSequence = []
+    self.targetPrediction = []
+    self.replenishSequence(params, iteration=0)
 
     self.net = None
     self.sequenceCounter = 0
@@ -279,9 +283,9 @@ class Suite(PyExperimentSuite):
 
   def replenishSequence(self, params, iteration):
     if iteration > params['perturb_after']:
-      sequence = self.dataset.generateSequence(perturbed=True)
+      sequence, target = self.dataset.generateSequence(perturbed=True)
     else:
-      sequence = self.dataset.generateSequence()
+      sequence, target = self.dataset.generateSequence()
 
     if iteration > params['inject_noise_after']:
       injectNoiseAt = random.randint(1, 3)
@@ -289,16 +293,36 @@ class Suite(PyExperimentSuite):
 
     if params['separate_sequences_with'] == 'random':
       sequence.append(self.encoder.randomSymbol())
+      target.append(None)
 
     if params['verbosity'] > 0:
       print "Add sequence to buffer"
-      print sequence
+      print "sequence: ", sequence
+      print "target: ", target
+
     self.currentSequence += sequence
+    self.targetPrediction += target
+
+
+  def check_prediction(self, topPredictions, targets):
+    if targets is None:
+      correct = None
+    else:
+      if isinstance(targets, numbers.Number):
+        correct = targets in topPredictions
+      else:
+        correct = True
+        for prediction in topPredictions:
+           correct = correct and (prediction in targets)
+    return correct
 
 
   def iterate(self, params, repetition, iteration):
+    element = self.currentSequence.pop(0)
+    target = self.targetPrediction.pop(0)
+
     # update buffered dataset
-    self.history.append(self.currentSequence.pop(0))
+    self.history.append(element)
 
     # whether there will be a reset signal after the current record
     resetFlag = (len(self.currentSequence) == 0 and
@@ -343,16 +367,11 @@ class Suite(PyExperimentSuite):
         self.net = self.train(params)
 
       # run LSTM on the latest data record
-      symbol = self.history[-1]
-      output = self.net.activate(self.encoder.encode(symbol))
+
+      output = self.net.activate(self.encoder.encode(element))
       predictions = self.encoder.classify(output, num=params['num_predictions'])
 
-      truth = None if (self.resets[-1] or
-                       self.randoms[-1] or
-                       len(self.randoms) >= 2 and self.randoms[-2]
-                       ) else self.currentSequence[0]
-
-      correct = None if truth is None else (truth in predictions)
+      correct = self.check_prediction(predictions, target)
 
       if params['verbosity'] > 0:
         print ("iteration: {0} \t"
@@ -360,19 +379,19 @@ class Suite(PyExperimentSuite):
                "predictions: {2} \t"
                "truth: {3} \t"
                "correct: {4} \t").format(
-          iteration, symbol, predictions, truth, correct)
+          iteration, element, predictions, target, correct)
 
       if self.resets[-1]:
         if params['verbosity'] > 0:
           print "Reset LSTM at iteration {}".format(iteration)
         self.net.reset()
 
-      return {"current": self.history[-1],
+      return {"current": element,
               "reset": self.resets[-1],
               "random": self.randoms[-1],
               "train": train,
               "predictions": predictions,
-              "truth": truth,
+              "truth": target,
               "killCell": killCell,
               "sequenceCounter": self.sequenceCounter}
 

@@ -20,6 +20,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 import json
+import numbers
 import operator
 import os
 import random
@@ -39,14 +40,6 @@ from htmresearch.support.sequence_prediction_dataset import SimpleDataset
 from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
 
 
-
-
-# MIN_ORDER = 6
-# MAX_ORDER = 7
-# NUM_PREDICTIONS = [1, 2, 4]
-# NUM_RANDOM = 1
-# PERTURB_AFTER = 10000
-# TEMPORAL_NOISE_AFTER = 5000
 
 MIN_ORDER = 6
 MAX_ORDER = 7
@@ -175,7 +168,10 @@ class Suite(PyExperimentSuite):
     self.numPredictedInactiveCells = []
     self.numUnpredictedActiveColumns = []
 
-    self.currentSequence = self.dataset.generateSequence()
+    self.currentSequence = []
+    self.targetPrediction = []
+    self.replenish_sequence(params, iteration=0)
+
     self.perturbed = False
     self.randoms = []
     self.verbosity = 1
@@ -185,10 +181,10 @@ class Suite(PyExperimentSuite):
   def replenish_sequence(self, params, iteration):
     if iteration > params['perturb_after'] and not self.perturbed:
       print "PERTURBING"
-      sequence = self.dataset.generateSequence(perturbed=True)
+      sequence, target = self.dataset.generateSequence(perturbed=True)
       self.perturbed = True
     else:
-      sequence = self.dataset.generateSequence()
+      sequence, target = self.dataset.generateSequence()
 
     if iteration > params['inject_noise_after']:
       injectNoiseAt = random.randint(1, 3)
@@ -196,15 +192,35 @@ class Suite(PyExperimentSuite):
       sequence[injectNoiseAt] = random.randrange(RANDOM_START, RANDOM_END)
       print sequence[injectNoiseAt]
 
+    # separate sequences with random elements
     sequence.append(random.randrange(RANDOM_START, RANDOM_END))
+    target.append(None)
+
     if params['verbosity'] > 0:
       print "Add sequence to buffer"
-      print sequence
+      print "sequence: ", sequence
+      print "target: ", target
+
     self.currentSequence += sequence
+    self.targetPrediction += target
+
+
+  def check_prediction(self, topPredictions, targets):
+    if targets is None:
+      correct = None
+    else:
+      if isinstance(targets, numbers.Number):
+        correct = targets in topPredictions
+      else:
+        correct = True
+        for prediction in topPredictions:
+           correct = correct and (prediction in targets)
+    return correct
 
 
   def iterate(self, params, repetition, iteration):
     element = self.currentSequence.pop(0)
+    target = self.targetPrediction.pop(0)
 
     # whether there will be a random symbol after the current record
     randomFlag = (len(self.currentSequence) == 1)
@@ -216,13 +232,10 @@ class Suite(PyExperimentSuite):
     tm.mmClearHistory()
     # Use custom classifier (uses predicted cells to make predictions)
     predictiveColumns = set([tm.columnForCell(cell) for cell in tm.predictiveCells])
-    topPredictions = classify(self.mapping, predictiveColumns, params['num_predictions'])
+    topPredictions = classify(
+      self.mapping, predictiveColumns, params['num_predictions'])
 
-    truth = None if (self.randoms[-1] or
-                     len(self.randoms) >= 2 and self.randoms[-2]
-                     ) else self.currentSequence[0]
-
-    correct = None if truth is None else (truth in topPredictions)
+    correct = self.check_prediction(topPredictions, target)
 
     data = {"iteration": iteration,
             "current": element,
@@ -230,7 +243,7 @@ class Suite(PyExperimentSuite):
             "random": randomFlag,
             "train": True,
             "predictions": topPredictions,
-            "truth": truth,
+            "truth": target,
             "sequenceCounter": self.sequenceCounter}
 
     if params['verbosity'] > 0:
@@ -239,7 +252,7 @@ class Suite(PyExperimentSuite):
              "predictions: {2} \t"
              "truth: {3} \t"
              "correct: {4} \t").format(
-        iteration, element, topPredictions, truth, correct)
+        iteration, element, topPredictions, target, correct)
 
     if len(self.currentSequence) == 0:
       self.replenish_sequence(params, iteration)
