@@ -58,16 +58,16 @@ class TestImbu(unittest.TestCase):
     )
 
     # You must specify a known model type
-    self.assertRaises(Exception, imbu.createModel, "random model type")
+    self.assertRaises(TypeError, imbu.createModel, "random model type")
 
     # Assert that you can create models of known types from scratch (i.e. with
     # empty loadPath value)
     for modelType in imbu.modelMappings:
       # You _must_ specify loadPath and savePath.  Assert that attempts to not
       # specify will result in failure
-      self.assertRaises(Exception, imbu.createModel, modelType)
-      self.assertRaises(Exception, imbu.createModel, modelType, None)
-      self.assertRaises(Exception, imbu.createModel, modelType, None, None)
+      self.assertRaises(TypeError, imbu.createModel, modelType)
+      self.assertRaises(TypeError, imbu.createModel, modelType, None)
+      self.assertRaises(ValueError, imbu.createModel, modelType, None, None)
 
       # Attempt to create model using default arguments
       model = imbu.createModel(
