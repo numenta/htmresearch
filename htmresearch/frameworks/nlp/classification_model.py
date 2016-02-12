@@ -298,6 +298,14 @@ class ClassificationModel(object):
 
     @returns (ClassificationModel) The loaded model instance
     """
+
+    if not isinstance(savedModelDir, basestring):
+      raise ValueError("Invalid savedModelDir argument to {}.load(); "
+                       "Expected subclass of {}, got {}"
+                       .format(cls.__name__,
+                               repr(basestring),
+                               repr(type(savedModelDir))))
+
     savedModelDir = str(os.path.abspath(savedModelDir))
     modelPickleFilePath = os.path.join(savedModelDir, "model.pkl")
 
