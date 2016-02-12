@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Copyright (C) 2016, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -135,6 +135,7 @@ class BucketRunner(Runner):
         print "Skipping bucket '{}' because it has too few samples.".format(
           self.labelRefs[idx])
         continue
+
       queryIDs, rankIDs = self.prepBucket(idx, prototypeMap)
 
       self.testBucket(idx, prototypeMap, queryIDs, rankIDs)
@@ -174,7 +175,10 @@ class BucketRunner(Runner):
     rankIDs = [d[2] for d in
       [self.dataDict[rankIdx] for rankIdx in rankIndices]]
 
-    rankIDsCopy = copy.deepcopy(rankIDs)  # TODO: better way to do this?
+    # Remove IDs if they weren't included in the prototype mapping (i.e. no
+    # pattern). This is checked elsewhere for the query IDs.
+    # TODO: better way to do this? And better to do the queryIDs here too.
+    rankIDsCopy = copy.deepcopy(rankIDs)
     for rID in rankIDs:
       if rID not in protoIDs:
         rankIDsCopy.remove(rID)
@@ -205,6 +209,7 @@ class BucketRunner(Runner):
           print ("Not querying pattern {} of bucket {} because it doesn't have "
             "any encodings.".format(i, bucketNum))
           continue
+
         distances[pattern["ID"]] = self.model.infer(pattern["pattern"])
 
     accumulatedDistances = self.setupDistances(distances, protoIDs)
@@ -222,11 +227,9 @@ class BucketRunner(Runner):
     @param protoIDs   (dict)  Map of unique IDs to sequence numbers as they are
                               used when populating KNN space.
     """
-    lastProto = protoIDs[protoIDs.keys()[-1]]
-    if isinstance(lastProto, list):
-      numProtos = lastProto[-1] + 1
-    else:
-      numProtos = lastProto + 1
+    numProtos=0
+    for val in protoIDs.values():
+      numProtos += len(val)
 
     if self.concatenationMethod == "mean":
       summedDist = numpy.zeros(numProtos)
@@ -241,7 +244,7 @@ class BucketRunner(Runner):
       elif self.concatenationMethod == "min":
         tempDist = numpy.minimum(tempDist, dist)
       # In each iteration, exclude the queried samples.
-      tempDist[protoIDs[ID]] = 1.1  # TODO: better way to get rid of these?
+      tempDist[protoIDs[ID]] = 1.1  # TODO: w/ nupic #2890, use sequenceId
 
       accumulatedDistances.append(tempDist)
 

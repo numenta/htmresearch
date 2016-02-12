@@ -18,7 +18,7 @@
       "columnCount": 4096,
       "cellsPerColumn": 16,
       "seed": 1960,
-      "temporalImp": "tm_py",
+      "temporalImp": "monitored_tm_py",
       "newSynapseCount": 40,
       "maxSynapsesPerSegment": 80,
       "maxSegmentsPerCell": 128,

@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Copyright (C) 2016, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -38,90 +38,122 @@ class ClassificationModelFingerprint(ClassificationModel):
   """
 
   def __init__(self,
-               verbosity=1,
-               numLabels=3,
-               modelDir="ClassificationModelFingerprint",
                fingerprintType=EncoderTypes.word,
                unionSparsity=0.20,
                retinaScaling=1.0,
                retina="en_associative",
-               apiKey=None):
+               apiKey=None,
+               k=1,
+               classifierMetric="rawOverlap",
+               **kwargs):
 
-    super(ClassificationModelFingerprint, self).__init__(
-      verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
+    super(ClassificationModelFingerprint, self).__init__(**kwargs)
 
-    # Init kNN classifier and Cortical.io encoder; need valid API key (see
-    # CioEncoder init for details).
-    self.classifier = KNNClassifier(k=numLabels,
-                                    distanceMethod='rawOverlap',
+    self.classifier = KNNClassifier(k=k,
+                                    distanceMethod=classifierMetric,
                                     exact=False,
-                                    verbosity=verbosity-1)
+                                    verbosity=self.verbosity-1)
 
+    # Need a valid API key for the Cortical.io encoder (see CioEncoder
+    # constructor for details).
     if fingerprintType is (not EncoderTypes.document or not EncoderTypes.word):
-      raise ValueError("Invaid type of fingerprint encoding; see the "
+      raise ValueError("Invalid type of fingerprint encoding; see the "
                        "EncoderTypes class for eligble types.")
-    root = os.path.dirname(os.path.realpath(__file__))
+
     self.encoder = CioEncoder(retinaScaling=retinaScaling,
-                              cacheDir=os.path.join(root, "CioCache"),
                               fingerprintType=fingerprintType,
                               unionSparsity=unionSparsity,
                               retina=retina,
                               apiKey=apiKey)
 
+    self.currentDocument = None
 
-  def encodeSample(self, sample):
-    """
-    Encode an SDR of the input string by querying the Cortical.io API. If the
-    client returns None, we create a random SDR with the model's dimensions n
-    and w.
 
-    @param sample     (list)        Tokenized sample, where each item is a str.
-    @return fp        (dict)        The sample text, sparsity, and bitmap.
-    Example return dict:
-      {
-        "text": "Example text",
-        "sparsity": 0.03,
-        "bitmap": numpy.array([])
-      }
+  def trainToken(self, token, labels, sampleId, reset=0):
     """
-    sample = " ".join(sample)
-    fpInfo = self.encoder.encode(sample)
-    if fpInfo:
-      fp = {"text":fpInfo["text"] if "text" in fpInfo else fpInfo["term"],
-            "sparsity":fpInfo["sparsity"],
-            "bitmap":numpy.array(fpInfo["fingerprint"]["positions"])}
+    Train the model with the given text token, associated labels, and
+    sampleId.
+
+    See base class for params and return type descriptions.
+    """
+    if self.currentDocument is None:
+      # start of a new document
+      self.currentDocument = [token]
     else:
-      fp = {"text":sample,
-            "sparsity":float(self.encoder.w)/self.encoder.n,
-            "bitmap":self.encodeRandomly(
-              sample, self.encoder.n, self.encoder.w)}
+      # accumulate text for this document
+      self.currentDocument.append(token)
 
-    return fp
+    if reset == 1:
+      # all text accumulated, proceed w/ training on this document
+      document = " ".join(self.currentDocument)
+      bitmap = self.encoder.encode(document)["fingerprint"]["positions"]
 
 
-  def trainModel(self, i):
-    # TODO: add batch training, where i is a list
+      if self.verbosity >= 1:
+        print "CioFP model training with: '{}'".format(document)
+        print "\tBitmap:", bitmap
+
+      for label in labels:
+        self.classifier.learn(
+            bitmap, label, isSparse=self.encoder.n, partitionId=sampleId)
+
+      self.currentDocument = None
+
+
+  def inferToken(self, token, reset=0, returnDetailedResults=False,
+                 sortResults=True):
     """
-    Train the classifier on the sample and labels for record i. The list
-    sampleReference is populated to correlate classifier prototypes to sample
-    IDs.
+    Classify the token (i.e. run inference on the model with this document) and
+    return classification results and (optionally) a list of sampleIds and
+    distances.   Repeated sampleIds are NOT removed from the results.
+
+    See base class for params and return type descriptions.
     """
-    bitmap = self.patterns[i]["pattern"]["bitmap"]
-    if bitmap.any():
-      for count, label in enumerate(self.patterns[i]["labels"]):
-        self.classifier.learn(bitmap, label, isSparse=self.encoder.n)
-        self.sampleReference.append(self.patterns[i]["ID"])
+    if self.currentDocument is None:
+      # start of a new document
+      self.currentDocument = [token]
+    else:
+      # accumulate text for this document
+      self.currentDocument.append(token)
 
-    return count + 1
+    if reset == 0:
+      return numpy.zeros(self.numLabels), [], numpy.zeros(0)
+
+    # With reset=1, all text accumulated, proceed w/ classifying this document
+    document = " ".join(self.currentDocument)
+    bitmap = self.encoder.encode(document)["fingerprint"]["positions"]
+
+    densePattern  =self.encoder.densifyPattern(bitmap)
+
+    (_, inferenceResult, dist, _) = self.classifier.infer(densePattern)
+
+    if self.verbosity >= 2:
+      print "CioFP model inference with: '{}'".format(document)
+      print "\tBitmap:", bitmap
+      print "\tInference result=", inferenceResult
+      print "\tDistances=", dist
+
+    self.currentDocument = None
+
+    # Figure out format of returned results
+
+    if not returnDetailedResults:
+      # Return non-detailed results.
+      return inferenceResult, None, None
+
+    if not sortResults:
+      idList = [self.classifier.getPartitionId(i) for i in xrange(len(dist))]
+      return inferenceResult, idList, dist
+
+    # Return sorted results
+    sortedIndices = dist.argsort()
+    idList = [self.classifier.getPartitionId(i) for i in sortedIndices]
+    sortedDistances = dist[sortedIndices]
+    return inferenceResult, idList, sortedDistances
 
 
-  def testModel(self, i, seed=42):
+  def getClassifier(self):
     """
-    Test the model on record i. The random seed is used in getWinningLabels().
-
-    @return           (numpy array)   numLabels most-frequent classifications
-                                      for the data samples; int or empty.
+    Returns the classifier instance for the model.
     """
-    (_, inferenceResult, _, _) = self.classifier.infer(self.sparsifyPattern(
-      self.patterns[i]["pattern"]["bitmap"], self.encoder.n))
-    return self.getWinningLabels(inferenceResult, seed)
+    return self.classifier

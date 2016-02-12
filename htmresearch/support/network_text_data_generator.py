@@ -36,10 +36,7 @@ from collections import defaultdict, OrderedDict
 from htmresearch.support.csv_helper import readCSV
 from htmresearch.support.text_preprocess import TextPreprocess
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 
 
 
@@ -141,7 +138,7 @@ class NetworkDataGenerator(object):
       categories = string.join([str(self.categoryToId[c]) for c in categories])
 
       if textPreprocess:
-        tokens = preprocessor.tokenize(
+        tokens, _ = preprocessor.tokenizeAndFilter(
             comment, ignoreCommon, removeStrings, correctSpell, expandAbbr,
             expandContr)
       else:

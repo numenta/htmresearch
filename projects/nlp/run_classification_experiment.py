@@ -52,46 +52,13 @@ def run(args):
   start = time.time()
 
   root = os.path.dirname(os.path.realpath(__file__))
-  resultsDir = os.path.join(root, args.resultsDir)
+  args.resultsDir = os.path.join(root, args.resultsDir)
 
   if args.modelName == "HTMNetwork":
-    runner = HTMRunner(dataPath=args.dataPath,
-                       networkConfigPath=args.networkConfigPath,
-                       resultsDir=resultsDir,
-                       experimentName=args.experimentName,
-                       experimentType=args.experimentType,
-                       loadPath=args.loadPath,
-                       modelName=args.modelName,
-                       retinaScaling=args.retinaScaling,
-                       retina=args.retina,
-                       apiKey=args.apiKey,
-                       numClasses=args.numClasses,
-                       plots=args.plots,
-                       orderedSplit=args.orderedSplit,
-                       folds=args.folds,
-                       trainSizes=args.trainSizes,
-                       verbosity=args.verbosity,
-                       generateData=args.generateData,
-                       votingMethod=args.votingMethod,
-                       classificationFile=args.classificationFile,
-                       seed=args.seed)
+    runner = HTMRunner(**args.__dict__)
     runner.initModel(0)
   else:
-    runner = Runner(dataPath=args.dataPath,
-                    resultsDir=resultsDir,
-                    experimentName=args.experimentName,
-                    experimentType=args.experimentType,
-                    loadPath=args.loadPath,
-                    modelName=args.modelName,
-                    retinaScaling=args.retinaScaling,
-                    retina=args.retina,
-                    apiKey=args.apiKey,
-                    numClasses=args.numClasses,
-                    plots=args.plots,
-                    orderedSplit=args.orderedSplit,
-                    folds=args.folds,
-                    trainSizes=args.trainSizes,
-                    verbosity=args.verbosity)
+    runner = Runner(**args.__dict__)
     runner.initModel(args.modelName)
 
   print "Reading in data and preprocessing."
@@ -101,7 +68,7 @@ def run(args):
          "the data".format(time.time() - dataTime))
 
   encodeTime = time.time()
-  runner.encodeSamples()
+  runner.encodeSamples(args.writeEncodings)
   print ("Encoding complete; elapsed time is {0:.2f} seconds.\nNow running the "
          "experiment.".format(time.time() - encodeTime))
 
@@ -193,6 +160,10 @@ if __name__ == "__main__":
                       default=42,
                       type=int,
                       help="Random seed, used in partitioning the data.")
+  parser.add_argument("--writeEncodings",
+                      default=False,
+                      action="store_true",
+                      help="Write encoded patterns to a JSON.")
   parser.add_argument("--folds",
                       default=5,
                       type=int,
@@ -205,6 +176,10 @@ if __name__ == "__main__":
                       nargs="+",
                       help="For incremental, number of samples to use in "
                            "training. Separate w/ spaces for multiple trials.")
+  parser.add_argument("--classifierMetric",
+                      help="Distance metric (see classifier for the options).",
+                      type=str,
+                      default="pctOverlapOfInput")
   parser.add_argument("-v", "--verbosity",
                       default=1,
                       type=int,
@@ -234,4 +209,4 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
   if args.skipConfirmation or checkInputs(args):
-    run(args)
+    runner = run(args)

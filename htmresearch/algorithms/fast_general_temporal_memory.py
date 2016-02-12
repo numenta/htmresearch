@@ -26,7 +26,7 @@ General Temporal Memory implementation in Python.
 from nupic.bindings.algorithms import Connections
 from nupic.research.fast_temporal_memory import FastTemporalMemory, ConnectionsCell
 
-from sensorimotor.general_temporal_memory import GeneralTemporalMemory
+from htmresearch.algorithms.general_temporal_memory import GeneralTemporalMemory
 
 
 

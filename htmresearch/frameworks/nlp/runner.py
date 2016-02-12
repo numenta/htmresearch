@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Copyright (C) 2016, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -36,8 +36,11 @@ from htmresearch.frameworks.nlp.classify_keywords import (
   ClassificationModelKeywords)
 from htmresearch.frameworks.nlp.classify_windows import (
   ClassificationModelWindows)
-from htmresearch.support.csv_helper import readCSV, writeFromDict
+from htmresearch.support.csv_helper import (
+  readCSV, writeFromDict, mapLabelRefs)
 from htmresearch.support.data_split import KFolds
+from htmresearch.frameworks.nlp.classification_metrics import (
+  evaluateResults, calculateClassificationResults)
 
 
 _MODEL_MAPPING = {
@@ -65,6 +68,7 @@ class Runner(object):
                retinaScaling=1.0,
                retina="en_associative",
                apiKey=None,
+               classifierMetric="rawOverlap",
                loadPath=None,
                numClasses=3,
                plots=0,
@@ -82,6 +86,7 @@ class Runner(object):
     @param retinaScaling    (float)   For scaling dimensions of Cio encoders.
     @param retina           (str)     Name of Cio retina for encodings.
     @param apiKey           (str)     Key for Cio API.
+    @param classifierMetric (str)     Distance metric used by the classifier.
     @param loadPath         (str)     Path to serialized model for loading.
     @param numClasses       (int)     Number of classes (labels) per sample.
     @param plots            (int)     Specifies plotting of evaluation metrics.
@@ -110,6 +115,7 @@ class Runner(object):
     self.retinaScaling = retinaScaling
     self.retina = retina
     self.apiKey = apiKey
+    self.classifierMetric = classifierMetric
     self.verbosity = verbosity
 
     self.modelDir = os.path.join(
@@ -157,7 +163,8 @@ class Runner(object):
                       fingerprintType=EncoderTypes.word,
                       retinaScaling=self.retinaScaling,
                       retina=self.retina,
-                      apiKey=self.apiKey)
+                      apiKey=self.apiKey,
+                      classifierMetric=self.classifierMetric)
 
     elif modelName == "CioDocumentFingerprint":
       return modelCls(verbosity=self.verbosity,
@@ -166,12 +173,14 @@ class Runner(object):
                       fingerprintType=EncoderTypes.document,
                       retinaScaling=self.retinaScaling,
                       retina=self.retina,
-                      apiKey=self.apiKey)
+                      apiKey=self.apiKey,
+                      classifierMetric=self.classifierMetric)
 
     else:
       return modelCls(verbosity=self.verbosity,
                       numLabels=self.numClasses,
-                      modelDir=self.modelDir)
+                      modelDir=self.modelDir,
+                      classifierMetric=self.classifierMetric)
 
 
   def loadModel(self):
@@ -210,7 +219,7 @@ class Runner(object):
           all([0 <= size <= len(self.dataDict) for size in self.trainSizes])):
         raise ValueError("Invalid size(s) for training set(s).")
 
-    self._mapLabelRefs()
+    self.labelRefs, self.dataDict = mapLabelRefs(self.dataDict)
 
     self.samples = self.model.prepData(self.dataDict, preprocess)
 
@@ -219,23 +228,15 @@ class Runner(object):
         print i, s
 
 
-  def _mapLabelRefs(self):
-    """Replace the label strings in self.dataDict with corresponding ints."""
-    self.labelRefs = [label for label in set(
-      itertools.chain.from_iterable([x[1] for x in self.dataDict.values()]))]
-
-    for recordNumber, data in self.dataDict.iteritems():
-      self.dataDict[recordNumber] = (data[0], numpy.array(
-        [self.labelRefs.index(label) for label in data[1]]), data[2])
-
-
-  def encodeSamples(self):
+  def encodeSamples(self, writeEncodings=False):
     """
     The patterns list is in the same order as the samples in the original data
     file; the order is preserved by the OrderedDicts self.dataDict and
-    self.samples, which may or may not match the samples' unique IDs
+    self.samples, which may or may not match the samples' unique IDs.
+
+    @param writeEncodings   (bool)    True will write the encodings to a JSON.
     """
-    self.patterns = self.model.encodeSamples(self.samples)
+    self.patterns = self.model.encodeSamples(self.samples, write=writeEncodings)
 
 
   def runExperiment(self, seed=42):
@@ -334,8 +335,8 @@ class Runner(object):
     for i, sampleNum in enumerate(self.partitions):
       if self.verbosity > 0:
         self.printTrialReport(i, sampleNum[1])
-      resultCalcs.append(self.model.evaluateResults(
-        self.results[i], self.labelRefs, sampleNum[1]))
+      resultCalcs.append(evaluateResults(
+        self.results[i], self.labelRefs))
 
     trainSizes = [len(x[0]) for x in self.partitions]
     self.printFinalReport(trainSizes, [r[0] for r in resultCalcs])
@@ -348,11 +349,6 @@ class Runner(object):
       self.plotter.plotCategoryAccuracies(trialAccuracies, self.trainSizes)
       self.plotter.plotCumulativeAccuracies(
         classificationAccuracies, self.trainSizes)
-
-      if self.plots > 1:
-        # Plot extra evaluation figures -- confusion matrix.
-        self.plotter.plotConfusionMatrix(
-          self.setupConfusionMatrices(resultCalcs))
 
     return resultCalcs
 
@@ -397,7 +393,7 @@ class Runner(object):
     # trialSize -> (category -> list of accuracies)
     trialAccuracies = defaultdict(lambda: defaultdict(lambda: numpy.ndarray(0)))
     for result, size in itertools.izip(self.results, self.trainSizes):
-      accuracies = self.model.calculateClassificationResults(result)
+      accuracies = calculateClassificationResults(result)
       for label, acc in accuracies:
         category = self.labelRefs[label]
         accList = trialAccuracies[size][category]

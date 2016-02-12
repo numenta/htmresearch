@@ -22,8 +22,11 @@
 
 import random
 
-from expsuite import PyExperimentSuite
+
 import numpy
+from scipy import reshape, dot, outer
+
+from expsuite import PyExperimentSuite
 from pybrain.datasets import SequentialDataSet
 from pybrain.tools.shortcuts import buildNetwork
 from pybrain.structure.modules import LSTMLayer
@@ -386,6 +389,61 @@ class Suite(PyExperimentSuite):
 
     return net
 
+  def killCells(self, killCellPercent):
+    """
+    kill a fraction of LSTM cells from the network
+    :param killCellPercent:
+    :return:
+    """
+    if killCellPercent <= 0:
+      return
+
+    inputLayer = self.net['in']
+    lstmLayer = self.net['hidden0']
+
+    numLSTMCell = lstmLayer.outdim
+    numDead = round(killCellPercent * numLSTMCell)
+    zombiePermutation = numpy.random.permutation(numLSTMCell)
+    deadCells = zombiePermutation[0:numDead]
+
+    # remove connections from input layer to dead LSTM cells
+    connectionInputToHidden = self.net.connections[inputLayer][0]
+    weightInputToHidden = reshape(connectionInputToHidden.params,
+                                   (connectionInputToHidden.outdim,
+                                    connectionInputToHidden.indim))
+
+    for cell in deadCells:
+      for dim in range(4):
+        weightInputToHidden[dim*numLSTMCell+cell, :] *= 0
+
+    newParams = reshape(weightInputToHidden, (connectionInputToHidden.paramdim,))
+    self.net.connections[inputLayer][0]._setParameters(
+      newParams, connectionInputToHidden.owner)
+
+    # remove dead connections within LSTM layer
+    connectionHiddenToHidden = self.net.recurrentConns[0]
+    weightHiddenToHidden = reshape(connectionHiddenToHidden.params,
+                                   (connectionHiddenToHidden.outdim,
+                                    connectionHiddenToHidden.indim))
+
+    for cell in deadCells:
+      weightHiddenToHidden[:, cell] *= 0
+
+    newParams = reshape(weightHiddenToHidden, (connectionHiddenToHidden.paramdim, ))
+    self.net.recurrentConns[0]._setParameters(
+      newParams, connectionHiddenToHidden.owner)
+
+    # remove connections from dead LSTM cell to output layer
+    connectionHiddenToOutput = self.net.connections[lstmLayer][0]
+    weightHiddenToOutput = reshape(connectionHiddenToOutput.params,
+                                   (connectionHiddenToOutput.outdim,
+                                    connectionHiddenToOutput.indim))
+    for cell in deadCells:
+      weightHiddenToOutput[:, cell] *= 0
+
+    newParams = reshape(weightHiddenToOutput, (connectionHiddenToOutput.paramdim, ))
+    self.net.connections[lstmLayer][0]._setParameters(
+      newParams, connectionHiddenToOutput.owner)
 
   def iterate(self, params, repetition, iteration):
     self.history.append(self.currentSequence.pop(0))
@@ -408,6 +466,12 @@ class Suite(PyExperimentSuite):
         sequence = self.dataset.generateSequence()
 
       self.currentSequence += sequence
+
+    killCell = False
+    if iteration == params['kill_cell_after']:
+      killCell = True
+      self.killCells(params['kill_cell_percent'])
+
 
     if iteration < params['compute_after']:
       return None
@@ -445,7 +509,8 @@ class Suite(PyExperimentSuite):
             "random": self.randoms[-1],
             "train": train,
             "predictions": predictions,
-            "truth": truth}
+            "truth": truth,
+            "killCell": killCell}
 
 
 

@@ -1,5 +1,7 @@
 # Program requirements
+matplotlib
 pandas
 plotly
-nupic
 simplejson
+nupic
+tabulate

@@ -25,7 +25,6 @@ Faulty Temporal Memory implementation in Python.
 import numpy
 from collections import defaultdict
 from nupic.research.temporal_memory import TemporalMemory
-# from htmresearch.algorithms.general_temporal_memory import GeneralTemporalMemory
 
 class FaultyTemporalMemory(TemporalMemory):
   """
@@ -70,6 +69,70 @@ class FaultyTemporalMemory(TemporalMemory):
 
     print "Total number of dead cells=",len(self.deadCells)
 
+    numSegmentDeleted = 0
+    for cell in self.deadCells:
+      segmentsPerCell = list(self.connections.segmentsForCell(cell))
+      for segment in segmentsPerCell:
+        self.connections.destroySegment(segment)
+        numSegmentDeleted += 1
+
+    print "Total number of segments removed=", numSegmentDeleted
+
+
+  def activateCorrectlyPredictiveCells(self,
+                                       prevPredictiveCells,
+                                       prevMatchingCells,
+                                       activeColumns):
+    """
+    Phase 1: Activate the correctly predictive cells.
+
+    Pseudocode:
+
+      - for each prev predictive cell
+        - if in active column
+          - mark it as active
+          - mark it as winner cell
+          - mark column as predicted => active
+        - if not in active column
+          - mark it as an predicted but inactive cell
+
+    @param prevPredictiveCells (set) Indices of predictive cells in `t-1`
+    @param activeColumns       (set) Indices of active columns in `t`
+
+    @return (tuple) Contains:
+                      `activeCells`               (set),
+                      `winnerCells`               (set),
+                      `predictedActiveColumns`    (set),
+                      `predictedInactiveCells`    (set)
+    """
+    activeCells = set()
+    winnerCells = set()
+    predictedActiveColumns = set()
+    predictedInactiveCells = set()
+
+    prevPredictiveCells = prevPredictiveCells - self.deadCells
+    prevMatchingCells = prevMatchingCells - self.deadCells
+
+    for cell in prevPredictiveCells:
+      column = self.columnForCell(cell)
+
+      if column in activeColumns:
+        activeCells.add(cell)
+        winnerCells.add(cell)
+        predictedActiveColumns.add(column)
+
+    if self.predictedSegmentDecrement > 0:
+      for cell in prevMatchingCells:
+        column = self.columnForCell(cell)
+
+        if column not in activeColumns:
+          predictedInactiveCells.add(cell)
+
+    return (activeCells,
+            winnerCells,
+            predictedActiveColumns,
+            predictedInactiveCells)
+
 
   def computePredictiveCells(self, activeCells, connections):
     """
@@ -108,20 +171,13 @@ class FaultyTemporalMemory(TemporalMemory):
     matchingCells = set()
 
     for cell in activeCells:
+      assert(not (cell in self.deadCells))
       for synapseData in connections.synapsesForPresynapticCell(cell).values():
         segment = synapseData.segment
         permanence = synapseData.permanence
         postSynapticCell = connections.cellForSegment(segment)
 
-        if permanence > 0 and not(postSynapticCell in self.deadCells):
-
-          # Measure whether segment has sufficient weak activity, defined as
-          # total active synapses >= minThreshold. A synapse is active if it
-          # exists ( permanence > 0) and does not have to be connected.
-          numActiveSynapsesForSegment[segment] += 1
-
-          # Measure whether a segment has sufficient connected active
-          # synapses to cause the cell to enter predicted mode.
+        if not(postSynapticCell in self.deadCells):
           if permanence >= self.connectedPermanence:
             numActiveConnectedSynapsesForSegment[segment] += 1
 
@@ -130,9 +186,13 @@ class FaultyTemporalMemory(TemporalMemory):
               activeSegments.add(segment)
               predictiveCells.add(connections.cellForSegment(segment))
 
-          if numActiveSynapsesForSegment[segment] >= self.minThreshold:
-            matchingSegments.add(segment)
-            matchingCells.add(connections.cellForSegment(segment))
+          if permanence > 0 and self.predictedSegmentDecrement > 0:
+            numActiveSynapsesForSegment[segment] += 1
+
+            if numActiveSynapsesForSegment[segment] >= self.minThreshold:
+              matchingSegments.add(segment)
+              matchingCells.add(connections.cellForSegment(segment))
+
 
     return activeSegments, predictiveCells, matchingSegments, matchingCells
 
@@ -181,6 +241,9 @@ class FaultyTemporalMemory(TemporalMemory):
 
     for column in unpredictedActiveColumns:
       cells = self.cellsForColumn(column) - self.deadCells
+      if len(cells) == 0:
+        continue
+
       activeCells.update(cells)
 
       # if learnOnOneCell and (column in chosenCellForColumn):

@@ -31,7 +31,8 @@ from htmresearch.algorithms.faulty_temporal_memory import FaultyTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 
-class MonitoredTemporalMemory(TemporalMemoryMonitorMixin, FaultyTemporalMemory): pass
+class MonitoredTemporalMemory(TemporalMemoryMonitorMixin,
+                              FaultyTemporalMemory): pass
 
 #########################################################################
 #

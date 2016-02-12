@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Copyright (C) 2016, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -30,10 +30,7 @@ from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
 from htmresearch.support.data_split import KFolds
 from htmresearch.support.network_text_data_generator import NetworkDataGenerator
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 
 
 
@@ -219,7 +216,7 @@ class HTMRunner(Runner):
     pass
 
 
-  def encodeSamples(self):
+  def encodeSamples(self, _):
     """Passthrough b/c the network encodes the samples."""
     pass
 

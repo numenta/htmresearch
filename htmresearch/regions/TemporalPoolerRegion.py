@@ -20,13 +20,15 @@
 # ----------------------------------------------------------------------
 
 import numpy
+
 from nupic.bindings.math import GetNTAReal
+from nupic.support import getArgumentDescriptions
+from nupic.bindings.regions.PyRegion import PyRegion
+
 from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
+from htmresearch.algorithms.simple_union_pooler import SimpleUnionPooler
 from htmresearch.support.union_temporal_pooler_monitor_mixin import (
   UnionTemporalPoolerMonitorMixin)
-from nupic.support import getArgumentDescriptions
-from nupic.regions.PyRegion import PyRegion
-
 
 
 class MonitoredUnionTemporalPooler(UnionTemporalPoolerMonitorMixin,
@@ -34,11 +36,17 @@ class MonitoredUnionTemporalPooler(UnionTemporalPoolerMonitorMixin,
 
 
 
+uintDType = "uint32"
+
+
+
 def _getPoolerClass(name):
-    if name=="union":
+    if name == "union":
       return UnionTemporalPooler
-    elif name=="unionMonitored":
+    elif name == "unionMonitored":
       return MonitoredUnionTemporalPooler
+    elif name == "simpleUnion":
+      return SimpleUnionPooler
     else:
       raise RuntimeError("Invalid pooling implementation %s. Valid ones are:" +
         " union, unionMonitored" % (name))
@@ -60,7 +68,8 @@ def _getParentSpatialPoolerClass(name):
         baseClassList += list(v.__bases__)
 
     if spatialPoolerParent is None:
-      raise RuntimeError("Union pooler class does not inherit from spatial pooler class")
+      raise RuntimeError("Union pooler class does not inherit from "
+                         "spatial pooler class")
     return spatialPoolerParent
 
 
@@ -117,7 +126,7 @@ def _buildArgs(poolerClass, self=None, kwargs={}):
   return argTuples
 
 
-def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
+def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass(), poolerType="union"):
   """Build the additional specs in three groups (for the inspector)
 
   Use the type of the default argument to set the Spec type, defaulting
@@ -125,7 +134,8 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
 
   Determines the pooler parameters based on the selected implementation.
   """
-  typeNames = {int: "UInt32", float: "Real32", str: "Byte", bool: "bool", tuple: "tuple"}
+  typeNames = {int: "UInt32", float: "Real32", str: "Byte", bool: "bool",
+               tuple: "tuple"}
 
   def getArgType(arg):
     t = typeNames.get(type(arg), "Byte")
@@ -162,7 +172,7 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
   # Get arguments from spatial pooler constructors, figure out types of
   # variables and populate poolerSpec.
   # This allows setting SP parameters
-  pArgTuples = _buildArgs(_getParentSpatialPoolerClass())
+  pArgTuples = _buildArgs(_getParentSpatialPoolerClass(poolerType))
   for argTuple in pArgTuples:
     d = dict(
       description=argTuple[1],
@@ -184,6 +194,13 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass()):
 
     inputWidth=dict(
       description="Size of inputs to the UP.",
+      accessMode="ReadWrite",
+      dataType="UInt32",
+      count=1,
+      constraints=""),
+
+    historyLength=dict(
+      description="The union window length",
       accessMode="ReadWrite",
       dataType="UInt32",
       count=1,
@@ -250,17 +267,23 @@ class TemporalPoolerRegion(PyRegion):
   argument into TemporalPoolerRegion.__init__, which will override all the default handling.
   """
 
-  def __init__(self, columnCount, inputWidth, poolerType, **kwargs):
+  def __init__(self, columnCount, inputWidth, historyLength, poolerType, **kwargs):
 
     if columnCount <= 0 or inputWidth <=0:
       raise TypeError("Parameters columnCount and inputWidth must be > 0")
     # Pull out the pooler arguments automatically
     # These calls whittle down kwargs and create instance variables of TemporalPoolerRegion
+    self._poolerType = poolerType
     self._poolerClass = _getPoolerClass(poolerType)
     pArgTuples = _buildArgs(self._poolerClass, self, kwargs)
-    pArgTuplesSP = _buildArgs(_getParentSpatialPoolerClass(), self, kwargs)
-    # Make a list of automatic pooler arg names for later use
-    self._poolerArgNames = [t[0] for t in pArgTuples] + [t[0] for t in pArgTuplesSP]
+
+    # include parent spatial pooler parameters
+    if poolerType == "union" or poolerType == "unionMonitored":
+      pArgTuplesSP = _buildArgs(_getParentSpatialPoolerClass(poolerType), self, kwargs)
+      # Make a list of automatic pooler arg names for later use
+      self._poolerArgNames = [t[0] for t in pArgTuples] + [t[0] for t in pArgTuplesSP]
+    else:
+      self._poolerArgNames = [t[0] for t in pArgTuples]
 
     PyRegion.__init__(self, **kwargs)
 
@@ -269,6 +292,7 @@ class TemporalPoolerRegion(PyRegion):
     self.inferenceMode = True
     self._inputWidth = inputWidth
     self._columnCount = columnCount
+    self._historyLength = historyLength
 
     # pooler instance
     self._pooler = None
@@ -284,6 +308,7 @@ class TemporalPoolerRegion(PyRegion):
     autoArgs["inputDimensions"] = [self._inputWidth]
     autoArgs["columnDimensions"] = [self._columnCount]
     autoArgs["potentialRadius"] = self._inputWidth
+    autoArgs["historyLength"] = self._historyLength
 
     # Allocate the pooler
     self._pooler = self._poolerClass(**autoArgs)
@@ -296,8 +321,6 @@ class TemporalPoolerRegion(PyRegion):
     The guts of the compute are contained in the self._poolerClass compute() call
     """
     activeCells = inputs["activeCells"]
-    predictedActiveCells = inputs["predictedActiveCells"] if (
-      "predictedActiveCells" in inputs) else numpy.zeros(self._inputWidth)
 
     resetSignal = False
     if 'resetIn' in inputs:
@@ -307,11 +330,20 @@ class TemporalPoolerRegion(PyRegion):
       if inputs['resetIn'][0] != 0:
         self.reset()
 
-    mostActiveCellsIndices = self._pooler.compute(activeCells, predictedActiveCells, self.learningMode)
-
-    # Convert to SDR
     outputs["mostActiveCells"][:] = numpy.zeros(self._columnCount, dtype=GetNTAReal())
-    outputs["mostActiveCells"][mostActiveCellsIndices] = 1
+
+    if self._poolerType == "simpleUnion":
+      self._pooler.unionIntoArray(activeCells, outputs["mostActiveCells"])
+    else:
+      predictedActiveCells = inputs["predictedActiveCells"] if (
+        "predictedActiveCells" in inputs) else numpy.zeros(self._inputWidth,
+                                                           dtype=uintDType)
+
+      mostActiveCellsIndices = self._pooler.compute(activeCells,
+                                                    predictedActiveCells,
+                                                    self.learningMode)
+
+      outputs["mostActiveCells"][mostActiveCellsIndices] = 1
 
 
   def reset(self):
@@ -340,7 +372,7 @@ class TemporalPoolerRegion(PyRegion):
           requireSplitterMap=False),
 
         predictedActiveCells=dict(
-          description="Predicted Actived Cells",
+          description="Predicted Active Cells",
           dataType="Real32",
           count=0,
           required=True,
@@ -358,6 +390,16 @@ class TemporalPoolerRegion(PyRegion):
           regionLevel=True,
           isDefaultInput=False,
           requireSplitterMap=False),
+
+        sequenceIdIn=dict(
+          description="Sequence ID",
+          dataType='UInt64',
+          count=1,
+          required=False,
+          regionLevel=True,
+          isDefaultInput=False,
+          requireSplitterMap=False),
+
       ),
       outputs=dict(
         mostActiveCells=dict(

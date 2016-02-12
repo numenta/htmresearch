@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Copyright (C) 2016, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -19,150 +19,117 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import copy
 import numpy
-import os
+import random
 
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from nupic.algorithms.KNNClassifier import KNNClassifier
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
-
-
 
 class ClassificationModelKeywords(ClassificationModel):
   """
-  Class to run the survey response classification task with random SDRs.
-
-  From the experiment runner, the methods expect to be fed one sample at a time.
+  Class to run NLP classification task with random SDRs.
   """
-  # TODO: use nupic.bindings.math import Random
 
   def __init__(self,
                n=100,
                w=20,
                verbosity=1,
-               numLabels=3,
-               modelDir="ClassificationModelKeywords"):
+               classifierMetric="rawOverlap",
+               k=1,
+               **kwargs
+               ):
 
-    super(ClassificationModelKeywords, self).__init__(
-      verbosity=verbosity, numLabels=numLabels, modelDir=modelDir)
+    super(ClassificationModelKeywords, self).__init__(**kwargs)
 
-    # We use the pctOverlapOfInput distance metric for this model so the
-    # queryModel() output is consistent (i.e. 0.0-1.0). The KNN classifications
-    # aren't affected b/c the raw overlap distance is still used under the hood.
     self.classifier = KNNClassifier(exact=True,
-                                    distanceMethod="pctOverlapOfInput",
-                                    k=numLabels,
+                                    distanceMethod=classifierMetric,
+                                    k=k,
                                     verbosity=verbosity-1)
 
     self.n = n
     self.w = w
 
 
-  def encodeSample(self, sample):
+  def getClassifier(self):
     """
-    Randomly encode an SDR of the input strings. We seed the random number
-    generator such that a given string will yield the same SDR each time this
+    Returns the classifier instance for the model.
+    """
+    return self.classifier
+
+
+  def trainToken(self, token, labels, tokenId, reset=0):
+    """
+    Train the model with the given text token, associated labels, and ID
+    associated with this token.
+
+    See base class for description of parameters.
+    """
+    bitmap = self._encodeToken(token)
+    if self.verbosity >= 2:
+      print "Keywords training with:",token
+      print "labels=",labels
+      print "  bitmap:",bitmap
+    for label in labels:
+      self.classifier.learn(bitmap,
+                            label,
+                            isSparse=self.n,
+                            partitionId=tokenId)
+
+
+  def inferToken(self, token, reset=0, returnDetailedResults=False,
+                 sortResults=True):
+    """
+    Classify the token (i.e. run inference on the model with this document) and
+    return classification results and a list of sampleIds and distances.
+    Repeated sampleIds are NOT removed from the results.
+
+    See base class for description of parameters.
+    """
+    bitmap = self._encodeToken(token)
+    densePattern = self._densifyPattern(bitmap, self.n)
+    if self.verbosity >= 2:
+      print "Inference with token=",token,"bitmap=", bitmap
+      print "Dense version:", densePattern
+
+    (_, inferenceResult, dist, _) = self.classifier.infer(densePattern)
+    if self.verbosity >= 2:
+      print "Inference result=", inferenceResult
+      print "Distances=", dist
+
+    if not returnDetailedResults:
+      return inferenceResult, None, None
+
+    # Accumulate the ids. Sort results if requested
+    if sortResults:
+      sortedIndices = dist.argsort()
+      idList = [self.classifier.getPartitionId(i) for i in sortedIndices]
+      sortedDistances = dist[sortedIndices]
+      return inferenceResult, idList, sortedDistances
+
+    else:
+      # Unsorted results
+      idList = [self.classifier.getPartitionId(i) for i in xrange(len(dist))]
+      return inferenceResult, idList, dist
+
+
+  def _encodeToken(self, token):
+    """
+    Randomly encode an SDR of the input token. We seed the random number
+    generator such that a given string will return the same SDR each time this
     method is called.
 
-    @param sample     (list)            Tokenized sample, where each item is a
-                                        string token.
-    @return           (list)            Numpy arrays, each with a bitmap of the
-                                        encoding.
+    @param token  (str)      String token
+    @return       (list)     Numpy arrays, each with a bitmap of the
+                             encoding.
     """
-    patterns = []
-    for token in sample:
-      patterns.append({"text":token,
-                       "sparsity":float(self.w)/self.n,
-                       "bitmap":self.encodeRandomly(token, self.n, self.w)})
-    return patterns
+    random.seed(token)
+    return numpy.sort(random.sample(xrange(self.n), self.w))
 
 
-  def writeOutEncodings(self):
-    """
-    Log the encoding dictionaries to a txt file; overrides the superclass
-    implementation.
-    """
-    if not os.path.isdir(self.modelDir):
-      raise ValueError("Invalid path to write file.")
-
-    # Cast numpy arrays to list objects for serialization.
-    jsonPatterns = copy.deepcopy(self.patterns)
-    for jp in jsonPatterns:
-      for tokenPattern in jp["pattern"]:
-        tokenPattern["bitmap"] = tokenPattern.get("bitmap", None).tolist()
-      jp["labels"] = jp.get("labels", None).tolist()
-
-    with open(os.path.join(self.modelDir, "encoding_log.txt"), "w") as f:
-      f.write(json.dumps(jsonPatterns, indent=1))
-
-
-  def trainModel(self, i):
-    # TODO: add batch training, where i is a list
-    """
-    Train the classifier on the sample and labels for record i. The list
-    sampleReference is populated to correlate classifier prototypes to sample
-    IDs. This model is unique in that a single sample contains multiple encoded
-    patterns.
-    """
-    count = 0
-    for token in self.patterns[i]["pattern"]:
-      if token["bitmap"].any():
-        for label in self.patterns[i]["labels"]:
-          self.classifier.learn(token["bitmap"], label, isSparse=self.n)
-          self.sampleReference.append(self.patterns[i]["ID"])
-          count += 1
-  
-    return count
-
-
-  def testModel(self, i, seed=42):
-    """
-    Test the model on record i.  Returns the classifications most frequent 
-    amongst the classifications of the sample's individual tokens.
-    We ignore the terms that are unclassified, picking the most frequent
-    classifications among those that are detected.
-    The random seed is used in getWinningLabels().
-
-    @return           (numpy array)   numLabels most-frequent classifications
-                                      for the data samples; int or empty.
-    """
-    totalInferenceResult = None
-    for pattern in self.patterns[i]["pattern"]:
-      if not pattern:
-        continue
-
-      (_, inferenceResult, _, _) = self.classifier.infer(
-        self.sparsifyPattern(pattern["bitmap"], self.n))
-
-      if totalInferenceResult is None:
-        totalInferenceResult = inferenceResult
-      else:
-        totalInferenceResult += inferenceResult
-
-    return self.getWinningLabels(totalInferenceResult, seed)
-
-
-  def infer(self, patterns):
-    """
-    Get the classifier output for a single input pattern; assumes classifier
-    has an infer() method (as specified in NuPIC kNN implementation). For this
-    model we sum the distances across the patterns and normalize
-    before returning.
-    @return       (numpy.array)       Each entry is the distance from the
-        input pattern to that prototype (pattern in the classifier). All
-        distances are between 0.0 and 1.0
-    """
-    # TODO: implement getNumPatterns() method in classifier.
-    distances = numpy.zeros((self.classifier._numPatterns))
-    for i, p in enumerate(patterns):
-      (_, _, dist, _) = self.classifier.infer(
-        self.sparsifyPattern(p["bitmap"], self.n))
-
-      distances = numpy.array([sum(x) for x in zip(dist, distances)])
-
-    return distances / (i+1)
+  def _densifyPattern(self, bitmap, n):
+    """Return a numpy array of 0s and 1s to represent the input bitmap."""
+    sparsePattern = numpy.zeros(n)
+    for i in bitmap:
+      sparsePattern[i] = 1.0
+    return sparsePattern

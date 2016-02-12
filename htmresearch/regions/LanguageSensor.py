@@ -25,8 +25,7 @@ import numpy
 
 from collections import deque
 
-from nupic.regions.PyRegion import PyRegion
-
+from nupic.bindings.regions.PyRegion import PyRegion
 
 
 class LanguageSensor(PyRegion):
@@ -97,74 +96,13 @@ class LanguageSensor(PyRegion):
           },
         "sequenceIdOut":{
           "description":"Sequence ID",
-          "dataType":'UInt64',
+          "dataType":'Real32',
           "count":1,
           "regionLevel":True,
           "isDefaultOutput":False,
         },
-      ## commented out b/c dataType not cool w/ numpy
-        # "sourceOut":{
-        #   "description":"Unencoded data from the source, input to the encoder",
-        #   "dataType":str,
-        #   "count":0,
-        #   "regionLevel":True,
-        #   "isDefaultOutput":False,
-        # },
-      ## need these...??
-        # spatialTopDownOut=dict(
-        #   description="""The top-down output signal, generated from
-        #                 feedback from SP""",
-        #   dataType='Real32',
-        #   count=0,
-        #   regionLevel=True,
-        #   isDefaultOutput=False),
-        # temporalTopDownOut=dict(
-        #   description="""The top-down output signal, generated from
-        #                 feedback from TP through SP""",
-        #   dataType='Real32',
-        #   count=0,
-        #   regionLevel=True,
-        #   isDefaultOutput=False),
-        # classificationTopDownOut=dict(
-        #   description="The top-down input signal, generated via feedback "
-        #               "from classifier through TP through SP.",
-        #   dataType='Real32',
-        #   count=0,
-        #   regionLevel=True,
-        #   isDefaultOutput=False),
       },
-      "inputs":{
-        "spatialTopDownIn":{
-          "description":"The top-down input signal, generated via feedback "
-                        "from SP.",
-          "dataType":"Real32",
-          "count":0,
-          "required":False,
-          "regionLevel":True,
-          "isDefaultInput":False,
-          "requireSplitterMap":False,
-        },
-        "temporalTopDownIn":{
-          "description":"The top-down input signal, generated via feedback "
-                        "from TP through SP.",
-          "dataType":"Real32",
-          "count":0,
-          "required":False,
-          "regionLevel":True,
-          "isDefaultInput":False,
-          "requireSplitterMap":False,
-        },
-        "classificationTopDownIn":{
-          "description":"The top-down input signal, generated via feedback "
-                        "from classifier through TP through SP.",
-          "dataType":"int",
-          "count":0,
-          "required":False,
-          "regionLevel":True,
-          "isDefaultInput":False,
-          "requireSplitterMap":False,
-        },
-      },
+      "inputs":{},
       "parameters":{
         "verbosity":{
           "description":"Verbosity level",
@@ -190,9 +128,8 @@ class LanguageSensor(PyRegion):
   def initialize(self, inputs, outputs):
     """Initialize the node after the network is fully linked."""
     if self.encoder is None:
-      raise Exception("Unable to initialize LanguageSensor -- encoder has not been set")
-    if self.dataSource is None:
-      raise Exception("Unable to initialize LanguageSensor -- dataSource has not been set")
+      raise Exception("Unable to initialize LanguageSensor -- "
+                      "encoder has not been set")
 
 
   def rewind(self):
@@ -231,6 +168,10 @@ class LanguageSensor(PyRegion):
     if len(self.queue) > 0:
       # data has been added to the queue, so use it
       data = self.queue.pop()
+
+    elif self.dataSource is None:
+      raise Exception("LanguageSensor: No data to encode: queue is empty "
+                        "and the dataSource is None.")
     else:
       data = self.dataSource.getNextRecordDict()
       # Keys in data that are not column headers from the data source are standard
@@ -242,16 +183,42 @@ class LanguageSensor(PyRegion):
     outputs["sequenceIdOut"][0] = data["_sequenceId"]
     outputs["sourceOut"] = data["_token"]
     self.populateCategoriesOut(data["_category"], outputs['categoryOut'])
-    if self.verbosity > 0:
-      print "SeqID: ", outputs["sequenceIdOut"]
-      print "Categories out: ", outputs['categoryOut']
-
     outputs["encodingOut"] = self.encoder.encodeIntoArray(
       data["_token"], outputs["dataOut"])
+
+    if self.verbosity > 0:
+      print "LanguageSensor outputs:"
+      print "SeqID: ", outputs["sequenceIdOut"]
+      print "Categories out: ", outputs['categoryOut']
+      print "dataOut: ",outputs["dataOut"].nonzero()[0]
 
     self._outputValues = copy.deepcopy(outputs)
 
     self._iterNum += 1
+
+
+  def addDataToQueue(self, token, categoryList, sequenceId, reset=0):
+    """
+    Add the given data item to the sensor's internal queue. Calls to compute
+    will cause items in the queue to be dequeued in FIFO order.
+
+    @param token        (str)  The text token
+    @param categoryList (list) A list of one or more integer labels associated
+                               with this token. If the list is [None], no
+                               categories will be associated with this item.
+    @param sequenceId   (int)  An integer ID associated with this token and its
+                               sequence (document).
+    @param reset        (int)  Should be 0 or 1. resetOut will be set to this
+                               value when this item is computed.
+
+
+    """
+    self.queue.appendleft ({
+        "_token": token,
+        "_category": categoryList,
+        "_sequenceId": sequenceId,
+        "_reset": reset
+      })
 
 
   def getOutputValues(self, outputName):
@@ -279,15 +246,6 @@ class LanguageSensor(PyRegion):
 
     elif name == "categoryOut":
       return self.numCategories
-
-    elif (name == "sourceOut" or
-          name == 'spatialTopDownOut' or
-          name == 'temporalTopDownOut'):
-      if self.encoder == None:
-        raise Exception("Network requested output element count for {} on a "
-                        "LanguageSensor node, but the encoder has not been set."
-                        .format(name))
-      return len(self.encoder.getDescription())
 
     else:
       raise Exception("Unknown output {}.".format(name))

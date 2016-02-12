@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Copyright (C) 2016, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -154,7 +154,7 @@ class BucketHTMRunner(BucketRunner, HTMRunner):
 
     for dataFile in self.dataFiles:
       if self.verbosity > 0:
-        print "Running all the data through the netwrok for training..."
+        print "Running all the data through the network for training..."
       self.model.swapRecordStream(dataFile)
       numTokens = NetworkDataGenerator().getNumberOfTokens(dataFile)
       n = sum(numTokens)

@@ -31,10 +31,7 @@ import time
 from htmresearch.frameworks.nlp.bucket_runner import BucketRunner
 from htmresearch.frameworks.nlp.bucket_htm_runner import BucketHTMRunner
 
-try:
-  import simplejson as json
-except ImportError:
-  import json
+import simplejson as json
 
 
 
@@ -82,6 +79,7 @@ def run(args):
                                trainingReps=args.trainingReps,
                                seed=args.seed,
                                concatenationMethod=args.combineMethod,
+                               classifierMetric = args.classifierMetric,
                                numClasses=0)
       runner.initModel(0)
     else:
@@ -98,6 +96,7 @@ def run(args):
                             orderedSplit=args.orderedSplit,
                             verbosity=args.verbosity,
                             concatenationMethod=args.combineMethod,
+                            classifierMetric = args.classifierMetric,
                             numClasses=1)
       runner.initModel(args.modelName)
 
@@ -106,7 +105,7 @@ def run(args):
 
     runner.setupData(args.textPreprocess)
 
-    runner.encodeSamples()
+    runner.encodeSamples(args.writeEncodings)
 
     runner.bucketData()
 
@@ -202,6 +201,10 @@ if __name__ == "__main__":
                       default=42,
                       type=int,
                       help="Random seed, used in partitioning the data.")
+  parser.add_argument("--writeEncodings",
+                      default=False,
+                      action="store_true",
+                      help="Write encoded patterns to a JSON.")
   parser.add_argument("-v", "--verbosity",
                       default=1,
                       type=int,
@@ -234,6 +237,10 @@ if __name__ == "__main__":
                            "'mean'.",
                       type=str,
                       default="min")
+  parser.add_argument("--classifierMetric",
+                      help="Distance metric (see classifier for the options).",
+                      type=str,
+                      default="pctOverlapOfInput")
 
   args = parser.parse_args()
 

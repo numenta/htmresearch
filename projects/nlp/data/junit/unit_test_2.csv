@@ -1,0 +1,81 @@
+ID,Sample,Label
+100,James quit smoking,Smoking
+101,James decided to quit smoking,Smoking
+102,James decided to quit smoking but it was not easy,Smoking
+103,James decided to abruptly quit smoking but it was not an easy decision.,Smoking
+104,James and Sue decided to abruptly quit cigarette smoking to improve their health but it clearly was not an easy decision.,Smoking
+200,Matthew lost his kids,Searching
+201,Matthew has lost his kids,Searching
+202,Unfortunately Matthew has lost his kids,Searching
+203,Matthew looked everywhere but realized he has unfortunately lost his kids,Searching
+204,"Although Matthew looked everywhere, including his whole house, around his neighborhood, and the school, but realized he has unfortunately lost his kids",Searching
+300,Foxes are small,Fox
+301,Foxes are small canines,Fox
+302,Foxes are small canines compared to wolves,Fox
+303,Foxes are very small canines when compared to wolves,Fox
+304,"Most foxes are very small members of the canine family unlike wolves, jackals, and domestic dogs",Fox
+400,I drink water,Water
+401,I drink lots of water,Water
+402,I drink lots of water every single day,Water
+403,I drink lots of water every single day except on weekends,Water
+404,I drink lots of clear water every single day except on weekends to stay healthy,Water
+500,The astronaut boarded,Departure
+501,The old astronaut boarded,Departure
+502,The old astronaut boarded the rocket,Departure
+503,The old astronaut boarded the rocket ship,Departure
+504,The old astronaut boarded the rocket ship bound for Mars,Departure
+600,Sue ate pizza,atePizza
+601,Sue ate pizza and was satisfied,atePizza
+602,Sue ate authentic Italian pizza and was satisfied,atePizza
+603,Sue ate authentic Italian pizza at her favorite pizzaria and was satisfied,atePizza
+604,Sue ate authentic Italian pizza at her favorite pizzaria and was very satisfied,atePizza
+700,Tom woke up,tomWoke
+701,Tom woke up abruptly,tomWoke
+702,Tom woke up abruptly in the middle of the night,tomWoke
+703,Tom woke up abruptly in the middle of the night when he heard a loud noise,tomWoke
+704,Tom woke up abruptly in the middle of the night when he heard a loud noise coming from downstairs,tomWoke
+800,Mary left work,leftWork
+801,Mary hurriedly left work,leftWork
+802,Mary hurriedly left work because she had an appointment,leftWork
+803,Mary hurriedly left work because she had an appointment with her doctor,leftWork
+804,Mary hurriedly left work because she had an appointment with her doctor and was running late,leftWork
+900,Spencer liked football,football
+901,Spencer liked playing football,football
+902,Spencer liked playing football because he spent time with his friends,football
+903,Spencer liked playing football because he spent time with his friends and it kept him fit,football
+904,Spencer liked playing football because he spent time with his friends and it kept him fit,football
+1000,Jane felt sad,feltSad
+1001,Jane felt sad because she failed her test,feltSad
+1002,Jane felt sad because she failed her test that she had studied for all week,feltSad
+1003,"Jane felt sad because she failed her test that she had studied for all week, and thought she was well-prepared for",feltSad
+1004,"Jane felt tremendously sad because she failed her test that she had studied for all week, and thought she was well-prepared for",feltSad
+1100,I like Monet,Art
+1101,I like Monet paintings,Art
+1102,I like to look at Monet paintings,Art
+1103,I like to look at Monet paintings of water lillies,Art
+1104,I really like to look at Monet paintings of water lillies when I am in France,Art
+1200,We are leaving,Travel
+1201,We are leaving on a trip,Travel
+1202,We are leaving on a trip to Cuba,Travel
+1203,We are leaving on a trip to Cuba tomorrow,Travel
+1204,We are leaving on a trip to Cuba tomorrow at noon for one week,Travel
+1300,Kids like cookies,Kids
+1301,Kids like to eat cookies,Kids
+1302,Kids like to eat chocolate chip cookies,Kids
+1303,Kids like to eat chocolate chip cookies after lunch,Kids
+1304,Some kids like to eat chocolate chip cookies after lunch with milk,Kids
+1400,Alice likes cheese,Cheese
+1401,Alice likes cream cheese,Cheese
+1402,Alice likes fresh fat cream cheese,Cheese
+1403,Alice likes fresh cream cheese more than bread,Cheese
+1404,Alice's favoriate food is fresh cream cheese,Cheese
+1500,Tyrion drank wine.,Wine
+1501,"Tyrion, sullen, drank his wine.",Wine
+1502,"Tyrion, in a sullen mood, drank his wine.",Wine
+1503,"Tyrion, in a sullen mood, drank his wine to drown his sorrows.",Wine
+1504,"Tyrion, in a sullen mood, drank his wine to drown his sorrows, and filled another cup.",Wine
+1600,Tyrion hopped down.,Stretch
+1601,Tyrion hopped down to stretch.,Stretch
+1602,"Tyrion, in a hammock above, hopped down to stretch.",Stretch
+1603,"Tryrion, in a hammock above, hopped down to stretch the cramps from his back.",Stretch
+1604,"Tryrion, resting in a hammock above for hours, hopped down to stretch the cramps from his back.",Stretch
