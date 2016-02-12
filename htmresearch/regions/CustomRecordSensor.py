@@ -28,49 +28,52 @@ from nupic.regions.RecordSensor import RecordSensor
 class CustomRecordSensor(RecordSensor):
   """
   A slightly modified version of the nupic.regions.RecordSensor.
-  
+
   This region offers the following additional functionalities:
-  1. Getting input data from the InputStream can be turned off.
-  2. Set the next record manually
-  
+  1. Ability to stop using the RecordStream as the source of input data.
+  2. Ability to set the next record timestamp, value, and category manually.
   """
 
 
   @classmethod
   def getSpec(cls):
+    """
+    This extends the specs of the base class RecordSensor with a couple of 
+    params for increased flexibility.
+    """
     ns = super(CustomRecordSensor, cls).getSpec()
-
+    # Extend RecordSensor params
     return dict(ns,
                 parameters=dict(ns["parameters"],
                                 useDataSource=dict(
-                                    description='1 if the DataSource should '
-                                                'be used as the data '
-                                                'source (default 0).',
-                                    accessMode='ReadWrite',
-                                    dataType='UInt32',
-                                    count=1,
-                                    constraints='bool'),
+                                  description='1 if the RecordStream should '
+                                              'be used as the input source '
+                                              '(default is 0).',
+                                  accessMode='ReadWrite',
+                                  dataType='UInt32',
+                                  count=1,
+                                  constraints='bool'),
                                 nextTimestamp=dict(
-                                    description="Next timestamp (int) to be "
-                                                "processed by the network.",
-                                    dataType="Int32",
-                                    accessMode="ReadWrite",
-                                    count=1,
-                                    constraints=""),
+                                  description="Next timestamp to be processed "
+                                              "by the network.",
+                                  dataType="Int32",
+                                  accessMode="ReadWrite",
+                                  count=1,
+                                  constraints=""),
                                 nextValue=dict(
-                                    description="Next value to be processed by "
-                                                "the network.",
-                                    dataType="Real32",
-                                    accessMode="ReadWrite",
-                                    count=1,
-                                    constraints=""),
+                                  description="Next value to be processed by "
+                                              "the network.",
+                                  dataType="Real32",
+                                  accessMode="ReadWrite",
+                                  count=1,
+                                  constraints=""),
                                 nextCategory=dict(
-                                    description="Next category (int) to be "
-                                                "processed by the network.",
-                                    dataType="Int32",
-                                    accessMode="ReadWrite",
-                                    count=1,
-                                    constraints="")
+                                  description="Next category to be processed "
+                                              "by the network.",
+                                  dataType="Int32",
+                                  accessMode="ReadWrite",
+                                  count=1,
+                                  constraints="")
                                 )
                 )
 
@@ -85,65 +88,28 @@ class CustomRecordSensor(RecordSensor):
 
 
   def getNextRecord(self):
-    """Get the next record to encode. Includes getting a record
-    from the datasource and applying filters. If the filters
-    request more data from the datasource continue to get data
-    from the datasource until all filters are satisfied.
-    This method is separate from compute() so that we can use
-    a standalone RecordSensor to get filtered data"""
 
-    foundData = False
-    while not foundData:
+    if self.useDataSource:
+      super(CustomRecordSensor, self).getNextRecord()
+    else:
+      data = {
+        '_timestamp': None, '_category': [self.nextCategory],
+        'label': [self.nextCategory], '_sequenceId': 0, 'y': self.nextValue,
+        'x': self.nextTimestamp, '_timestampRecordIdx': None, '_reset': 0
+      }
 
-      # Get the data from the dataSource
-      if self.useDataSource:
-        data = self.dataSource.getNextRecordDict()
-      else:
-        data = {
-          '_timestamp': None, '_category': [self.nextCategory],
-          'label': [self.nextCategory], '_sequenceId': 0, 'y': self.nextValue,
-          'x': self.nextTimestamp, '_timestampRecordIdx': None, '_reset': 0
-        }
+      data, filterHasEnoughData = super(CustomRecordSensor, self).applyFilters(
+        data)
 
-      if not data:
-        raise StopIteration("Datasource has no more data")
+      if not filterHasEnoughData:
+        raise ValueError("One of the filters need more data but data is being "
+                         "fed manually with the CustomRecordSensor.py region. "
+                         "Consider using only filters that don't need "
+                         "additional data (i.e. avoid delta filter) or use "
+                         "the regular RecordSensor.py region.")
 
-      # temporary check
-      if "_reset" not in data:
-        data["_reset"] = 0
-      if "_sequenceId" not in data:
-        data["_sequenceId"] = 0
-      if "_category" not in data:
-        data["_category"] = [None]
-
-      if self.verbosity > 0:
-        print "RecordSensor got data: %s" % data
-
-      # Apply pre-encoding filters.
-      # These filters may modify or add data
-      # If a filter needs another record (e.g. a delta filter)
-      # it will request another record by returning False and the current record
-      # will be skipped (but will still be given to all filters)
-      #
-      # We have to be very careful about resets. A filter may add a reset,
-      # but other filters should not see the added reset, each filter sees
-      # the original reset value, and we keep track of whether any filter
-      # adds a reset.
-      foundData = True
-      if len(self.preEncodingFilters) > 0:
-        originalReset = data['_reset']
-        actualReset = originalReset
-        for f in self.preEncodingFilters:
-          # if filter needs more data, it returns False
-          result = f.process(data)
-          foundData = foundData and result
-          actualReset = actualReset or data['_reset']
-          data['_reset'] = originalReset
-        data['_reset'] = actualReset
-
-    self.lastRecord = data
-
-    return data
+      self.lastRecord = data
+      return data
 
 
   def setParameter(self, parameterName, index, parameterValue):
