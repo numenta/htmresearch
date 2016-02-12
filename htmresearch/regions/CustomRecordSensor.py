@@ -98,11 +98,11 @@ class CustomRecordSensor(RecordSensor):
         'x': self.nextTimestamp, '_timestampRecordIdx': None, '_reset': 0
       }
 
-      data, filterHasEnoughData = super(CustomRecordSensor, self).applyFilters(
-        data)
+      data, allFiltersHaveEnoughData = super(CustomRecordSensor, 
+                                             self).applyFilters(data)
 
-      if not filterHasEnoughData:
-        raise ValueError("One of the filters need more data but data is being "
+      if not allFiltersHaveEnoughData:
+        raise ValueError("One of the filters needs more data but data is being "
                          "fed manually with the CustomRecordSensor.py region. "
                          "Consider using only filters that don't need "
                          "additional data (i.e. avoid delta filter) or use "
