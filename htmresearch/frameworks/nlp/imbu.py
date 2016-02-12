@@ -125,7 +125,7 @@ class ImbuModels(object):
       apiKey=None, retina=None):
 
     if not dataPath:
-      raise RuntimeError("Need data!")
+      raise RuntimeError("Imbu needs a CSV datafile to run.")
 
     self.dataPath = dataPath
     self.cacheRoot = cacheRoot
@@ -347,7 +347,12 @@ class ImbuModels(object):
 def startImbu(argsDict):
   """
   Main entry point for Imbu CLI utility to demonstration Imbu functionality.
-  argsDict specifies params for instantiating ImbuModels and creating a model.
+
+  @param argsDict (dict) Specifies params for instantiating ImbuModels and
+      creating a model.
+
+  @return imbu (ImbuModels) A new Imbu instance.
+  @return model (ClassificationModel) A new or loaded NLP model instance.
   """
   imbu = ImbuModels(
     cacheRoot=argsDict.get("cacheRoot"),
@@ -452,7 +457,7 @@ def getArgs():
 if __name__ == "__main__":
 
   argsDict = getArgs()
-  import pdb; pdb.set_trace()
+
   imbu, model = startImbu(argsDict)
 
   runQueries(imbu, model, argsDict.get("modelName", ImbuModels.defaultModelType))
