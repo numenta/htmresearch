@@ -93,7 +93,7 @@ def _loadNetworkConfig(jsonName=None):
 class ImbuModels(object):
 
   defaultSimilarityMetric = ModelSimilarityMetrics.pctOverlapOfInput
-  defaultModelType = ClassificationModelTypes.CioWordFingerprint
+  defaultModelType = "CioWordFingerprint"
   defaultRetina = "en_associative"
   tokenIndexingFactor = 1000
 
