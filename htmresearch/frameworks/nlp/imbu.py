@@ -449,6 +449,11 @@ def getArgs():
   parser.add_argument("--corticalApiKey",
                       default=os.environ.get("CORTICAL_API_KEY"),
                       type=str)
+  parser.add_argument("--noQueries",
+                      default=False,
+                      action="store_true",
+                      help="Skip command line queries. This flag is used when "
+                           "running imbu.py for training models.")
 
   return vars(parser.parse_args())
 
@@ -460,4 +465,6 @@ if __name__ == "__main__":
 
   imbu, model = startImbu(argsDict)
 
-  runQueries(imbu, model, argsDict.get("modelName", ImbuModels.defaultModelType))
+  if not argsDict.get("noQueries"):
+    runQueries(imbu, model, argsDict.get("modelName",
+                                         ImbuModels.defaultModelType))
