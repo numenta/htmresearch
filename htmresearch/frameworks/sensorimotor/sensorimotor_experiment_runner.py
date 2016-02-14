@@ -28,8 +28,7 @@ from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 
-from sensorimotor.fast_general_temporal_memory import (
-  FastGeneralTemporalMemory as GeneralTemporalMemory)
+from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 # Uncomment the line below to use GeneralTemporalMemory
 # from sensorimotor.general_temporal_memory import GeneralTemporalMemory
 from sensorimotor.temporal_pooler import TemporalPooler
