@@ -344,30 +344,28 @@ class ImbuModels(object):
 
 
 
-def startImbu(argsDict):
+def startImbu(args):
   """
   Main entry point for Imbu CLI utility to demonstration Imbu functionality.
 
-  @param argsDict (dict) Specifies params for instantiating ImbuModels and
-      creating a model.
+  @param args (argparse.Namespace) Specifies params for instantiating ImbuModels
+      and creating a model.
 
   @return imbu (ImbuModels) A new Imbu instance.
   @return model (ClassificationModel) A new or loaded NLP model instance.
   """
   imbu = ImbuModels(
-    cacheRoot=argsDict.get("cacheRoot"),
-    modelSimilarityMetric=argsDict.get("modelSimilarityMetric",
-                                       ImbuModels.defaultSimilarityMetric),
-    dataPath=argsDict.get("dataPath"),
-    retina=argsDict.get("imbuRetinaId"),
-    apiKey=argsDict.get("corticalApiKey")
+    cacheRoot=args.cacheRoot,
+    modelSimilarityMetric=args.modelSimilarityMetric,
+    dataPath=args.dataPath,
+    retina=args.imbuRetinaId,
+    apiKey=args.corticalApiKey
   )
 
-  model = imbu.createModel(argsDict.get("modelName",
-                                        ImbuModels.defaultModelType),
-                           loadPath=argsDict.get("loadPath", ""),
-                           savePath=argsDict.get("savePath"),
-                           networkConfigName=argsDict.get("networkConfigName")
+  model = imbu.createModel(args.modelName,
+                           loadPath=arg.loadPath,
+                           savePath=args.savePath,
+                           networkConfigName=args.networkConfigName
   )
 
   return imbu, model
@@ -376,8 +374,11 @@ def startImbu(argsDict):
 
 def runQueries(imbu, model, modelName):
   """ Use an ImbuModels instance to query the model from the command line.
+
+  @param imbu (ImbuModels) A new Imbu instance.
+  @param model (ClassificationModel) A new or loaded NLP model instance.
+  @param modelName (str) Model type identifier; one of ImbuModels.modelMappings.
   """
-  printTemplate = "{0:<10}|{1:<10}|{2:<10}"
   while True:
     print "Now we query the model for samples (quit with 'q')..."
 
@@ -390,11 +391,6 @@ def runQueries(imbu, model, modelName):
 
     results = imbu.formatResults(modelName, query, sortedDistances, sortedIds)
 
-    # TODO: redo results display for new (unsorted) format method.
-    # # Display results.
-    # print printTemplate.format("Sample ID", "Word ID", "% Overlap With Query")
-    # for i, r in results.iteritems():
-    #   print printTemplate.format(i, r["wordId"], r["score"])
     pprint.pprint(results)
 
 
@@ -455,16 +451,15 @@ def getArgs():
                       help="Skip command line queries. This flag is used when "
                            "running imbu.py for training models.")
 
-  return vars(parser.parse_args())
+  return parser.parse_args()
 
 
 
 if __name__ == "__main__":
 
-  argsDict = getArgs()
+  args = getArgs()
 
-  imbu, model = startImbu(argsDict)
+  imbu, model = startImbu(args)
 
-  if not argsDict.get("noQueries"):
-    runQueries(imbu, model, argsDict.get("modelName",
-                                         ImbuModels.defaultModelType))
+  if not args.noQueries:
+    runQueries(imbu, model, args.modelName)
