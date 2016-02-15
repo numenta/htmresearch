@@ -124,12 +124,15 @@ class ImbuModels(object):
   def __init__(self, cacheRoot, dataPath, modelSimilarityMetric=None,
       apiKey=None, retina=None):
 
+    if not dataPath:
+      raise RuntimeError("Imbu needs a CSV datafile to run.")
+
+    self.dataPath = dataPath
     self.cacheRoot = cacheRoot
     self.modelSimilarityMetric = (
       modelSimilarityMetric or self.defaultSimilarityMetric
     )
-    self.dataPath = dataPath
-    self.dataDict = self._loadTrainingData()
+    self.dataDict = self._loadData()
     self.apiKey = apiKey
     self.retina = retina or self.defaultRetina
 
@@ -260,8 +263,8 @@ class ImbuModels(object):
     return model
 
 
-  def _loadTrainingData(self):
-    """ Load training data.
+  def _loadData(self):
+    """ Load data.
     """
     return readCSV(self.dataPath,
                    numLabels=0) # 0 to train models in unsupervised fashion
@@ -341,22 +344,75 @@ class ImbuModels(object):
 
 
 
-def main():
-  """ Main entry point for Imbu CLI utility to demonstration Imbu functionality.
+def startImbu(args):
+  """
+  Main entry point for Imbu CLI utility to demonstration Imbu functionality.
+
+  @param args (argparse.Namespace) Specifies params for instantiating ImbuModels
+      and creating a model.
+
+  @return imbu (ImbuModels) A new Imbu instance.
+  @return model (ClassificationModel) A new or loaded NLP model instance.
+  """
+  imbu = ImbuModels(
+    cacheRoot=args.cacheRoot,
+    modelSimilarityMetric=args.modelSimilarityMetric,
+    dataPath=args.dataPath,
+    retina=args.imbuRetinaId,
+    apiKey=args.corticalApiKey
+  )
+
+  model = imbu.createModel(args.modelName,
+                           loadPath=arg.loadPath,
+                           savePath=args.savePath,
+                           networkConfigName=args.networkConfigName
+  )
+
+  return imbu, model
+
+
+
+def runQueries(imbu, model, modelName):
+  """ Use an ImbuModels instance to query the model from the command line.
+
+  @param imbu (ImbuModels) A new Imbu instance.
+  @param model (ClassificationModel) A new or loaded NLP model instance.
+  @param modelName (str) Model type identifier; one of ImbuModels.modelMappings.
+  """
+  while True:
+    print "Now we query the model for samples (quit with 'q')..."
+
+    query = raw_input("Enter a query: ")
+
+    if query == "q":
+      break
+
+    _, sortedIds, sortedDistances = imbu.query(model, query)
+
+    results = imbu.formatResults(modelName, query, sortedDistances, sortedIds)
+
+    pprint.pprint(results)
+
+
+
+def getArgs():
+  """ Parse the command line options, returned as a dict.
   """
   parser = argparse.ArgumentParser()
 
   parser.add_argument("--cacheRoot",
+                      type=str,
                       help="Root directory in which to cache encodings")
   parser.add_argument("--modelSimilarityMetric",
                       default=ImbuModels.defaultSimilarityMetric,
-                      help=("Classifier metric. Note: HTMNetwork model uses "
-                            "the metric specified in the network config "
-                            "file."))
+                      type=str,
+                      help="Classifier metric. Note: HTMNetwork model uses "
+                           "the metric specified in the network config "
+                           "file.")
   parser.add_argument("-d", "--dataPath",
+                      type=str,
                       help="Path to data CSV; samples must be in column w/ "
-                           "header 'Sample'; see readCSV() for more.",
-                      required=True)
+                           "header 'Sample'; see readCSV() for more.")
   parser.add_argument("-m", "--modelName",
                       choices=ImbuModels.modelMappings,
                       default=ImbuModels.defaultModelType,
@@ -364,16 +420,15 @@ def main():
                       help="Name of model class.")
   parser.add_argument("-c", "--networkConfigName",
                       default="imbu_sensor_knn.json",
+                      type=str,
                       help="Name of JSON specifying the network params. It's "
                            "expected the file is in the data/network_configs/ "
-                           "dir.",
-                      type=str)
+                           "dir.")
   parser.add_argument("--loadPath",
                       default="",
                       type=str,
                       help="Path from which to load a serialized model.")
   parser.add_argument("--savePath",
-                      default="",
                       type=str,
                       help=("Directory path for saving the model. This "
                             "directory should only be used to store a saved "
@@ -390,45 +445,21 @@ def main():
   parser.add_argument("--corticalApiKey",
                       default=os.environ.get("CORTICAL_API_KEY"),
                       type=str)
+  parser.add_argument("--noQueries",
+                      default=False,
+                      action="store_true",
+                      help="Skip command line queries. This flag is used when "
+                           "running imbu.py for training models.")
 
-  args = parser.parse_args()
-
-  imbu = ImbuModels(
-    cacheRoot=args.cacheRoot,
-    modelSimilarityMetric=args.modelSimilarityMetric,
-    dataPath=args.dataPath,
-    retina=args.imbuRetinaId,
-    apiKey=args.corticalApiKey
-  )
-
-  model = imbu.createModel(args.modelName,
-                           loadPath=args.loadPath,
-                           savePath=args.savePath,
-                           networkConfigName=args.networkConfigName)
-
-  # Query the model.
-  printTemplate = "{0:<10}|{1:<10}|{2:<10}"
-  while True:
-    print "Now we query the model for samples (quit with 'q')..."
-
-    query = raw_input("Enter a query: ")
-
-    if query == "q":
-      break
-
-    _, sortedIds, sortedDistances = imbu.query(model, query)
-
-    results = imbu.formatResults(
-      args.modelName, query, sortedDistances, sortedIds)
-
-    # TODO: redo results display for new (unsorted) format method.
-    # # Display results.
-    # print printTemplate.format("Sample ID", "Word ID", "% Overlap With Query")
-    # for i, r in results.iteritems():
-    #   print printTemplate.format(i, r["wordId"], r["score"])
-    pprint.pprint(results)
+  return parser.parse_args()
 
 
 
 if __name__ == "__main__":
-  main()
+
+  args = getArgs()
+
+  imbu, model = startImbu(args)
+
+  if not args.noQueries:
+    runQueries(imbu, model, args.modelName)
