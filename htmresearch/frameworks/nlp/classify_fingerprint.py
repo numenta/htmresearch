@@ -89,7 +89,7 @@ class ClassificationModelFingerprint(ClassificationModel):
       bitmap = self.encoder.encode(document)["fingerprint"]["positions"]
 
 
-      if self.verbosity >= 1:
+      if self.verbosity >= 2:
         print "CioFP model training with: '{}'".format(document)
         print "\tBitmap:", bitmap
 
