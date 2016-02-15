@@ -81,6 +81,11 @@ class CioEncoder(LanguageEncoder):
     self.apiKey = apiKey if apiKey else os.environ["CORTICAL_API_KEY"]
     self.client = CorticalClient(self.apiKey, retina=retina, cacheDir=cacheDir)
 
+    self.cacheDir = cacheDir
+    self.client = CorticalClient(self.apiKey,
+                                 retina=retina,
+                                 cacheDir=self.cacheDir)
+
     self._setDimensions(retina, retinaScaling)
 
     self.fingerprintType = fingerprintType
@@ -88,6 +93,44 @@ class CioEncoder(LanguageEncoder):
 
     self.verbosity = verbosity
     self.maxSparsity = maxSparsity
+
+
+  @property
+  def cacheDir(self):
+     """ cacheDir property with unique property that if the user originally
+     passed in an explicit cacheDir to CioEncoder constructor, then that value
+     is used.  If not, the default value is calculated.  This is done in
+     conjunction with _setCacheDir() which only sets self._cacheDir if a value
+     is provided in the setter.
+     """
+     if hasattr(self, "_cacheDir"):
+       return self._cacheDir
+
+     # If user never explicitly sets cacheDir, return calculated cacheDir
+     root = os.path.dirname(os.path.realpath(__file__))
+     return os.path.join(root, "CioCache")
+
+
+  @cacheDir.setter
+  def cacheDir(self, value):
+    if value:
+      # Only set cacheDir if value explicitly provided
+      self._cacheDir = value
+
+
+  def __setstate__(self, state):
+    """ Called when CioEncoder is unpickled per pickle protocol.  This includes
+    a mechanism to gracefully re-init the CorticalClient instance with a
+    calculated cacheDir, in the event that the previously pickled
+    CorticalClient instance includes a cacheDir that does not exist, which is
+    likely the case when a model is trained on one machine for reuse elsewhere.
+    """
+    if "_cacheDir" not in state:
+      state["client"] = CorticalClient(state["apiKey"],
+                                       retina=state["client"].retina,
+                                       cacheDir=self.cacheDir)
+
+    self.__dict__ = state
 
 
   def _setDimensions(self, retina, scalingFactor):
