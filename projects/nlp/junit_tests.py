@@ -21,10 +21,11 @@
 # ----------------------------------------------------------------------
 
 helpStr = """
-Simple script to run unit test 1.
+Simple script to run unit tests 1 and 2.
 """
 
 import argparse
+import itertools
 import logging
 import numpy
 from textwrap import TextWrapper
@@ -71,7 +72,7 @@ def _trainModel(args, model, trainingData, labelRefs):
   return model
 
 
-def _testModel(args, model, testData, labelRefs):
+def _testModel(model, testData, verbosity):
   """
   Test the given model on testData, print out and return results metrics.
 
@@ -100,6 +101,7 @@ def _testModel(args, model, testData, labelRefs):
   """
   print
   print "========================Testing on sample text========================"
+  allRanks = []
   totalScore = 0
   for (document, labels, docId) in testData:
     _, sortedIds, sortedDistances = model.inferDocument(
@@ -107,9 +109,10 @@ def _testModel(args, model, testData, labelRefs):
 
     # Compute the "ranks" for this document
     expectedCategory = docId / 100
-    overallRanks = numpy.array(
+    ranks = numpy.array(
       [i for i, index in enumerate(sortedIds) if index/100 == expectedCategory])
-    totalScore += overallRanks.sum()
+    allRanks.append(ranks)
+    # totalScore += ranks.sum()
 
     # Compute the "degrees of separation" for this document
     distancesWithinCategory = {k: v for k, v in zip(sortedIds, sortedDistances)
@@ -134,18 +137,22 @@ def _testModel(args, model, testData, labelRefs):
       print
       print "Doc {}: {}".format(docId, wrapper.fill(document))
       print "Min, mean, max of ranks = {}, {}, {}".format(
-        overallRanks.min(), overallRanks.mean(), overallRanks.max())
+        ranks.min(), ranks.mean(), ranks.max())
       print "Degrees of separation =", degreesOfSeperation
 
+  return degreesOfSeperation, allRanks
+
+
+def printResults(testName, ranks):
+  """ Print ranking metric results."""
+  totalScore = sum(list(itertools.chain.from_iterable(ranks)))
   printTemplate = "{0:<32}|{1:<10}"
   print
   print
-  print "Final test scores (lower is better):"
+  print "Final test scores for {} (lower is better):".format(testName)
   print printTemplate.format("Total score", totalScore)
   print printTemplate.format("Avg. score per test sample",
-                             float(totalScore) / len(testData))
-
-  return degreesOfSeperation, overallRanks
+                             float(totalScore) / len(ranks))
 
 
 def runExperiment(args):
@@ -156,15 +163,29 @@ def runExperiment(args):
   (dataSet, labelRefs, documentCategoryMap,
    documentTextMap) = readDataAndReshuffle(args)
 
-  # Create a model, train it, save it, reload it, test it
+  # Create a model, train it, save it, reload it
   model = instantiateModel(args)
   model = _trainModel(args, model, dataSet, labelRefs)
   model.save(args.modelDir)
   newmodel = ClassificationModel.load(args.modelDir)
 
-  degrees, ranks = _testModel(args, newmodel, dataSet, labelRefs)
+  # JUnit test 1
+  _, ranks = _testModel(newmodel,
+                        dataSet,
+                        args.verbosity)
+  printResults("JUnit1", ranks)
 
-  return model, degrees, ranks
+  # JUnit test 2
+  _, ranks = _testModel(newmodel,
+                        [d for d in dataSet if d[2]%100==0],
+                        args.verbosity)
+  printResults("JUnit2a", ranks)
+  _, ranks = _testModel(newmodel,
+                        [d for d in dataSet if d[2]%100==5],
+                        args.verbosity)
+  printResults("JUnit2b", ranks)
+
+  return model
 
 
 
