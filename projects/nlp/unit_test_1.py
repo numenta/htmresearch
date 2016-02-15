@@ -35,16 +35,16 @@ from htmresearch.frameworks.nlp.model_factory import (
 from htmresearch.support.csv_helper import readDataAndReshuffle
 
 
-wrapper = TextWrapper(width=85)
+wrapper = TextWrapper(width=75)
+
+# Some values of K we know work well for this problem for specific model types
+kValues = { "keywords": 21 }
 
 
 def instantiateModel(args):
   """
   Return an instance of the model we will use.
   """
-  # Some values of K we know work well for this problem for specific model types
-  kValues = { "keywords": 21 }
-
   # Create model after setting specific arguments required for this experiment
   args.networkConfig = getNetworkConfig(args.networkConfigPath)
   args.k = kValues.get(args.modelName, 1)
@@ -60,7 +60,7 @@ def _trainModel(args, model, trainingData, labelRefs):
   print
   print "======================Training model on sample text==================="
   if args.verbosity > 0:
-    printTemplate = "{0:<85}|{1:<10}|{2:<5}"
+    printTemplate = "{0:<75}|{1:<20}|{2:<5}"
     print printTemplate.format("Document", "Label", "ID")
   for (document, labels, docId) in trainingData:
     if args.verbosity > 0:
@@ -71,45 +71,68 @@ def _trainModel(args, model, trainingData, labelRefs):
   return model
 
 
-def _testModel(args, model, testData, labelRefs, documentCategoryMap):
+def _testModel(args, model, testData, labelRefs):
   """
   Test the given model on testData, print out and return results metrics.
 
   For each data sample in testData the model infers the similarity to each other
-  sample. From a list sorted most-to-least similar, we then get the ranks of the
-  samples that share the same category as the inference sample. Ideally these
-  ranks would be low. The returned metrics are the min, mean, and max ranks of
-  the category samples.
+  sample; distances are number of bits apart. We then caclulate two types of
+  results metrics: (i) "degrees of separation" and (ii) "overall ranks".
+
+    i. For the test document we want the distances for each "degree of
+    separation" within the document's category -- e.g. doc #403,
+         degree 0: distance to #403
+         degree 1: mean of distances to #402 and #404
+         degree 2: mean of distances to #401 and #405
+         degree 3: distance to #400
+         degree 4: none
+         degree 5: none
+
+    ii. From the sorted inference results, we get the ranks of the
+    samples that share the same category as the inference sample. Ideally these
+    ranks would be low, and the test document itself would be at rank 0.
+
+  @return degreesOfSeperation (dict) Distance (bits away) for each degree of
+      separation from the test document.
+  @return overallRanks (numpy array) Positions within the inference results list
+      of the documents in the test document's category.
   """
   print
   print "========================Testing on sample text========================"
   totalScore = 0
   for i, (document, labels, docId) in enumerate(testData):
-    _, sortedIds, _ = model.inferDocument(
+    _, sortedIds, sortedDistances = model.inferDocument(
       document, returnDetailedResults=True, sortResults=True)
 
     # Compute the test metrics for this document
     expectedCategory = docId / 100
-    ranks = numpy.array(
-      [i for i, index in enumerate(sortedIds) if index/100 == expectedCategory])
-
-    score = ranks.sum()
+    overallRanks = numpy.array(
+      [j for j, index in enumerate(sortedIds) if index/100 == expectedCategory])
+    distancesWithinCategory = {k: v for k, v in zip(sortedIds, sortedDistances)
+                               if k/100 == expectedCategory}
+    degreesOfSeperation = {}
+    for degree in xrange(6):
+      separation = 0
+      count = 0
+      try:
+        separation += distancesWithinCategory[docId+degree]
+        count += 1
+      except KeyError:
+        pass
+      try:
+        separation += distancesWithinCategory[docId-degree]
+        count += 1
+      except KeyError:
+        pass
+      degreesOfSeperation[degree] = separation / float(count) if count else None
 
     if args.verbosity > 0:
       print
       print "Doc {}: {}".format(docId, wrapper.fill(document))
-      print "Sum of ranks =", score
-      print "Min, mean, max of ranks = {}, {}, {}".format(
-        ranks.min(), ranks.mean(), ranks.max())
+      print "Ranks =", overallRanks
+      print "Degrees of separation =", degreesOfSeperation
 
-    totalScore += score
-
-  print
-  print
-  print "Total score =", totalScore
-  print "Avg. score per sample =", float(totalScore) / i
-
-  return totalScore
+  return degreesOfSeperation, overallRanks
 
 
 def runExperiment(args):
@@ -120,22 +143,15 @@ def runExperiment(args):
   (dataSet, labelRefs, documentCategoryMap,
    documentTextMap) = readDataAndReshuffle(args)
 
-  # Train only on the first document of each set
-  trainingData = [x for x in dataSet if x[2]%100==0]
-  testData = [x for x in dataSet if x[2]%100!=0]
-
-  print "Num training",len(trainingData),"num testing",len(testData)
-
   # Create a model, train it, save it, reload it, test it
   model = instantiateModel(args)
   model = _trainModel(args, model, dataSet, labelRefs)
   model.save(args.modelDir)
   newmodel = ClassificationModel.load(args.modelDir)
 
-  testScore = _testModel(
-    args, newmodel, dataSet, labelRefs, documentCategoryMap)
+  degrees, ranks = _testModel(args, newmodel, dataSet, labelRefs)
 
-  return model, testScore
+  return model, degrees, ranks
 
 
 
