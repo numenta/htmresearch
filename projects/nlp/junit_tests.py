@@ -21,7 +21,21 @@
 # ----------------------------------------------------------------------
 
 helpStr = """
-Simple script to run unit tests 1 and 2.
+  Simple script to run unit tests 1 and 2.
+
+  1: The dataset is categories defined by base sentences (each with ten words).
+  For each base sentence there are five new sentences each, with an additional
+  word substitution that doesn’t change the meaning of the sentence. For the
+  test we use each of the sentences as a search term. A perfect result ranks the
+  four similar sentences closest to the search.
+
+  2: The dataset is categories defined by base sentences (each with three
+  words). For each base sentence there are four sentences created by
+  successively adding one or more words. The longer sentences still contain the
+  basic idea as in the base sentence. We run two variations of the same test on
+  this data set: we use (a) the shortest sentences as search terms, and then (b)
+  the longest. A perfect result ranks the four other sentences in the category
+  as closest to the search term.
 """
 
 import argparse
@@ -96,7 +110,7 @@ def _testModel(model, testData, verbosity):
 
   @return degreesOfSeperation (dict) Distance (bits away) for each degree of
       separation from the test document.
-  @return overallRanks (numpy array) Positions within the inference results list
+  @return allRanks (numpy array) Positions within the inference results list
       of the documents in the test document's category.
   """
   print
@@ -144,7 +158,7 @@ def _testModel(model, testData, verbosity):
 
 
 def printResults(testName, ranks):
-  """ Print ranking metric results."""
+  """ Print the ranking metric results."""
   totalScore = sum(list(itertools.chain.from_iterable(ranks)))
   printTemplate = "{0:<32}|{1:<10}"
   print
