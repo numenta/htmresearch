@@ -90,7 +90,8 @@ def _testModel(args, model, testData, labelRefs):
 
     ii. From the sorted inference results, we get the ranks of the
     samples that share the same category as the inference sample. Ideally these
-    ranks would be low, and the test document itself would be at rank 0.
+    ranks would be low, and the test document itself would be at rank 0. The
+    final score is the sum of these ranks across all test documents.
 
   @return degreesOfSeperation (dict) Distance (bits away) for each degree of
       separation from the test document.
@@ -100,14 +101,17 @@ def _testModel(args, model, testData, labelRefs):
   print
   print "========================Testing on sample text========================"
   totalScore = 0
-  for i, (document, labels, docId) in enumerate(testData):
+  for (document, labels, docId) in testData:
     _, sortedIds, sortedDistances = model.inferDocument(
       document, returnDetailedResults=True, sortResults=True)
 
-    # Compute the test metrics for this document
+    # Compute the "ranks" for this document
     expectedCategory = docId / 100
     overallRanks = numpy.array(
-      [j for j, index in enumerate(sortedIds) if index/100 == expectedCategory])
+      [i for i, index in enumerate(sortedIds) if index/100 == expectedCategory])
+    totalScore += overallRanks.sum()
+
+    # Compute the "degrees of separation" for this document
     distancesWithinCategory = {k: v for k, v in zip(sortedIds, sortedDistances)
                                if k/100 == expectedCategory}
     degreesOfSeperation = {}
@@ -129,8 +133,17 @@ def _testModel(args, model, testData, labelRefs):
     if args.verbosity > 0:
       print
       print "Doc {}: {}".format(docId, wrapper.fill(document))
-      print "Ranks =", overallRanks
+      print "Min, mean, max of ranks = {}, {}, {}".format(
+        overallRanks.min(), overallRanks.mean(), overallRanks.max())
       print "Degrees of separation =", degreesOfSeperation
+
+  printTemplate = "{0:<32}|{1:<10}"
+  print
+  print
+  print "Final test scores (lower is better):"
+  print printTemplate.format("Total score", totalScore)
+  print printTemplate.format("Avg. score per test sample",
+                             float(totalScore) / len(testData))
 
   return degreesOfSeperation, overallRanks
 
