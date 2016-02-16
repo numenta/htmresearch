@@ -316,7 +316,24 @@ class ImbuModels(object):
 
   def formatResults(self, modelName, query, distanceArray, idList):
     """ Format distances to reflect the pctOverlapOfInput metric, return a dict
-    of results info.
+    of results info:
+      {
+        0:                          # sample ID integer
+        {
+          'scores': [],             # scalar values, length > 0
+          'text': 'Hello world!',   # text string
+          'windowSize': 10          # integer >= 0
+        },
+        ...
+      }
+    For specific models we can expect some of the values:
+      a. Document-level models -- CioWordFingerprint and CioDocumentFingerprint:
+        windowSize = 0
+        length of scores lists = 1
+      b. Word-level, non-windows models -- Keywords, HTM_sensor_knn:
+        windowSize = 1
+      c. HTM_sensor_simple_tp_knn:
+        windowSize = 10
     """
     formattedDistances = (1.0 - distanceArray) * 100
     queryLength = float(len(query.split(" ")))
