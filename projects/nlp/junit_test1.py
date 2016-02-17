@@ -32,7 +32,7 @@ helpStr = """
 
 import argparse
 
-from projects.nlp.junit_testing import (
+from htmresearch.support.junit_testing import (
   printResults, setupExperiment, testModel)
 
 
