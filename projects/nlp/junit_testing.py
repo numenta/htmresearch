@@ -21,26 +21,10 @@
 # ----------------------------------------------------------------------
 
 helpStr = """
-  Simple script to run unit tests 1 and 2.
-
-  1: The dataset is categories defined by base sentences (each with ten words).
-  For each base sentence there are five new sentences each, with an additional
-  word substitution that doesn’t change the meaning of the sentence. For the
-  test we use each of the sentences as a search term. A perfect result ranks the
-  four similar sentences closest to the search.
-
-  2: The dataset is categories defined by base sentences (each with three
-  words). For each base sentence there are four sentences created by
-  successively adding one or more words. The longer sentences still contain the
-  basic idea as in the base sentence. We run two variations of the same test on
-  this data set: we use (a) the shortest sentences as search terms, and then (b)
-  the longest. A perfect result ranks the four other sentences in the category
-  as closest to the search term.
+  Methods to run unit tests.
 """
 
-import argparse
 import itertools
-import logging
 import numpy
 from textwrap import TextWrapper
 
@@ -68,17 +52,17 @@ def instantiateModel(args):
   return model
 
 
-def _trainModel(args, model, trainingData, labelRefs):
+def trainModel(model, trainingData, labelRefs, verbosity=0):
   """
   Train the given model on trainingData. Return the trained model instance.
   """
   print
   print "======================Training model on sample text==================="
-  if args.verbosity > 0:
+  if verbosity > 0:
     printTemplate = "{0:<75}|{1:<20}|{2:<5}"
     print printTemplate.format("Document", "Label", "ID")
   for (document, labels, docId) in trainingData:
-    if args.verbosity > 0:
+    if verbosity > 0:
       print printTemplate.format(
         wrapper.fill(document), labelRefs[labels[0]], docId)
     model.trainDocument(document, labels, docId)
@@ -86,7 +70,27 @@ def _trainModel(args, model, trainingData, labelRefs):
   return model
 
 
-def _testModel(model, testData, verbosity):
+def setupExperiment(args):
+  """
+  Create model according to args, train on training data, save model,
+  restore model.
+
+  @return newModel (ClassificationModel) The restored NLP model.
+  @return dataSet (list) Each item is a list representing a data sample, with
+      the text string, list of label indices, and the sample ID.
+  """
+  dataSet, labelRefs, _, _ = readDataAndReshuffle(args)
+
+  # Create a model, train it, save it, reload it
+  model = instantiateModel(args)
+  model = trainModel(model, dataSet, labelRefs, args.verbosity)
+  model.save(args.modelDir)
+  newModel = ClassificationModel.load(args.modelDir)
+
+  return newModel, dataSet
+
+
+def testModel(model, testData, verbosity=0):
   """
   Test the given model on testData, print out and return results metrics.
 
@@ -147,7 +151,7 @@ def _testModel(model, testData, verbosity):
         pass
       degreesOfSeperation[degree] = separation / float(count) if count else None
 
-    if args.verbosity > 0:
+    if verbosity > 0:
       print
       print "Doc {}: {}".format(docId, wrapper.fill(document))
       print "Min, mean, max of ranks = {}, {}, {}".format(
@@ -167,95 +171,3 @@ def printResults(testName, ranks):
   print printTemplate.format("Total score", totalScore)
   print printTemplate.format("Avg. score per test sample",
                              float(totalScore) / len(ranks))
-
-
-def runExperiment(args):
-  """
-  Create model according to args, train on training data, save model,
-  restore model, test on test data.
-  """
-  (dataSet, labelRefs, documentCategoryMap,
-   documentTextMap) = readDataAndReshuffle(args)
-
-  # Create a model, train it, save it, reload it
-  model = instantiateModel(args)
-  model = _trainModel(args, model, dataSet, labelRefs)
-  model.save(args.modelDir)
-  newmodel = ClassificationModel.load(args.modelDir)
-
-  # JUnit test 1
-  _, ranks = _testModel(newmodel,
-                        dataSet,
-                        args.verbosity)
-  printResults("JUnit1", ranks)
-
-  # JUnit test 2
-  _, ranks = _testModel(newmodel,
-                        [d for d in dataSet if d[2]%100==0],
-                        args.verbosity)
-  printResults("JUnit2a", ranks)
-  _, ranks = _testModel(newmodel,
-                        [d for d in dataSet if d[2]%100==5],
-                        args.verbosity)
-  printResults("JUnit2b", ranks)
-
-  return model
-
-
-
-if __name__ == "__main__":
-
-  parser = argparse.ArgumentParser(
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    description=helpStr
-  )
-
-  parser.add_argument("-c", "--networkConfigPath",
-                      default="data/network_configs/sensor_knn.json",
-                      help="Path to JSON specifying the network params.",
-                      type=str)
-  parser.add_argument("-m", "--modelName",
-                      default="htm",
-                      type=str,
-                      help="Name of model class. Options: [keywords,htm]")
-  parser.add_argument("--retinaScaling",
-                      default=1.0,
-                      type=float,
-                      help="Factor by which to scale the Cortical.io retina.")
-  parser.add_argument("--maxSparsity",
-                      default=1.0,
-                      type=float,
-                      help="Maximum sparsity of Cio encodings.")
-  parser.add_argument("--numLabels",
-                      default=6,
-                      type=int,
-                      help="Number of unique labels to train on.")
-  parser.add_argument("--retina",
-                      default="en_associative_64_univ",
-                      type=str,
-                      help="Name of Cortical.io retina.")
-  parser.add_argument("--apiKey",
-                      default=None,
-                      type=str,
-                      help="Key for Cortical.io API. If not specified will "
-                      "use the environment variable CORTICAL_API_KEY.")
-  parser.add_argument("--modelDir",
-                      default="MODELNAME.checkpoint",
-                      help="Model will be saved in this directory.")
-  parser.add_argument("--dataPath",
-                      default="data/junit/unit_test_1.csv",
-                      help="CSV file containing labeled dataset")
-  parser.add_argument("-v", "--verbosity",
-                      default=1,
-                      type=int,
-                      help="verbosity 0 will print out experiment steps, "
-                           "verbosity 1 will include results, and verbosity > "
-                           "1 will print out preprocessed tokens and kNN "
-                           "inference metrics.")
-  args = parser.parse_args()
-
-  # By default set checkpoint directory name based on model name
-  if args.modelDir == "MODELNAME.checkpoint":
-    args.modelDir = args.modelName + ".checkpoint"
-
-  model = runExperiment(args)
