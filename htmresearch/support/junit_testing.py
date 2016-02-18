@@ -92,14 +92,16 @@ def setupExperiment(args):
   return newModel, dataSet
 
 
-def testModel(model, testData, categorySize, verbosity=0):
+def testModel(model, testData, categorySize, verbosity=0,
+  separationMetric=False):
   """
   Test the given model on testData, print out and return results metrics. The
   categorySize specifies the number of documents per category.
 
   For each data sample in testData the model infers the similarity to each other
   sample; distances are number of bits apart. We then calculate two types of
-  results metrics: (i) "degrees of separation" and (ii) "overall ranks".
+  results metrics: (i) "degrees of separation" and (ii) "overall ranks". We only
+  compute (i) if specified by the separationMetric param.
 
     i. Doc #403 is separated from doc #s 402 and 404 by one degree, from doc #s
     401 and 405 by two degrees, and so on. The fewer degrees of separation, the
@@ -117,6 +119,10 @@ def testModel(model, testData, categorySize, verbosity=0):
     samples that share the same category as the inference sample. Ideally these
     ranks would be low, and the test document itself would be at rank 0. The
     final score is the sum of these ranks across all test documents.
+
+  @param categorySize (int) Number of documents per category; these unit tests
+      use datasets with an exact number of docs in each category.
+  @param separationMetric (bool) Compute the "degrees of separation" metric.
 
   @return degreesOfSeperation (dict) Distance (bits away) for each degree of
       separation from the test document.
@@ -156,25 +162,10 @@ def testModel(model, testData, categorySize, verbosity=0):
         result = "Fail"
       printTemplate.add_row([docId, document, result])
 
-    # Compute the "degrees of separation" for this document
-    distancesWithinCategory = {k: v for k, v in zip(sortedIds, sortedDistances)
-                               if k/100 == expectedCategory}
-    degreesOfSeperation = {}
-    for degree in xrange(categorySize):
-      separation = 0
-      count = 0
-      try:
-        separation += distancesWithinCategory[docId+degree]
-        count += 1
-      except KeyError:
-        pass
-      try:
-        separation += distancesWithinCategory[docId-degree]
-        count += 1
-      except KeyError:
-        pass
-      degreesOfSeperation[degree] = separation / float(count) if count else None
-    allSeparations.append(degreesOfSeperation)
+    if separationMetric:
+      allSeparations.append(_computeSeparationMetric(sortedIds,
+                                                     sortedDistances,
+                                                     expectedCategory)
 
   if verbosity > 0:
     print printTemplate
@@ -183,6 +174,30 @@ def testModel(model, testData, categorySize, verbosity=0):
       float(100*totalPassed/len(testData)), totalPassed, len(testData))
 
   return allSeparations, allRanks
+
+
+def _computeSeparationMetric(sortedIds, sortedDistances, expectedCategory):
+  """
+  Compute the "degrees of separation" for this document; metric is described
+  in the testModel() method.
+  """
+  distancesWithinCategory = {k: v for k, v in zip(sortedIds, sortedDistances)
+                             if k/100 == expectedCategory}
+  degreesOfSeperation = {}
+  for degree in xrange(categorySize):
+    # Get the mean separation for each relevant degree
+    separation = 0
+    count = 0
+    if distancesWithinCategory.has_key(docId+degree):
+      separation += distancesWithinCategory[docId+degree]
+      count += 1
+    if distancesWithinCategory.has_key(docId-degree):
+      separation += distancesWithinCategory[docId-degree]
+      count += 1
+    degreesOfSeperation[degree] = separation / float(count) if count else None
+
+  return degreesOfSeperation
+
 
 
 def printRankResults(testName, ranks):
