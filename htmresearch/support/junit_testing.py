@@ -165,7 +165,7 @@ def testModel(model, testData, categorySize, verbosity=0,
     if separationMetric:
       allSeparations.append(_computeSeparationMetric(sortedIds,
                                                      sortedDistances,
-                                                     expectedCategory)
+                                                     expectedCategory))
 
   if verbosity > 0:
     print printTemplate
