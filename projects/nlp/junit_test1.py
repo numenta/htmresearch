@@ -33,7 +33,7 @@ helpStr = """
 import argparse
 
 from htmresearch.support.junit_testing import (
-  printResults, setupExperiment, testModel)
+  printRankResults, setupExperiment, testModel)
 
 
 
@@ -43,8 +43,9 @@ def runExperiment(args):
 
   _, ranks = testModel(model,
                        dataSet,
-                       args.verbosity)
-  printResults("JUnit1", ranks)
+                       categorySize=6,
+                       verbosity=args.verbosity)
+  printRankResults("JUnit1", ranks)
 
   return model
 
@@ -65,18 +66,9 @@ if __name__ == "__main__":
                       default="htm",
                       type=str,
                       help="Name of model class. Options: [keywords,htm]")
-  parser.add_argument("--retinaScaling",
-                      default=1.0,
-                      type=float,
-                      help="Factor by which to scale the Cortical.io retina.")
-  parser.add_argument("--maxSparsity",
-                      default=1.0,
-                      type=float,
-                      help="Maximum sparsity of Cio encodings.")
-  parser.add_argument("--numLabels",
-                      default=6,
-                      type=int,
-                      help="Number of unique labels to train on.")
+  parser.add_argument("--modelDir",
+                      default="MODELNAME.checkpoint",
+                      help="Model will be saved in this directory.")
   parser.add_argument("--retina",
                       default="en_associative_64_univ",
                       type=str,
@@ -86,21 +78,20 @@ if __name__ == "__main__":
                       type=str,
                       help="Key for Cortical.io API. If not specified will "
                       "use the environment variable CORTICAL_API_KEY.")
-  parser.add_argument("--modelDir",
-                      default="MODELNAME.checkpoint",
-                      help="Model will be saved in this directory.")
-  parser.add_argument("--dataPath",
-                      default="data/junit/unit_test_1.csv",
-                      help="CSV file containing labeled dataset")
   parser.add_argument("-v", "--verbosity",
                       default=1,
                       type=int,
                       help="verbosity 0 will print out experiment steps, "
-                           "verbosity 1 will include results.")
+                           "verbosity 1 will include results, and verbosity > "
+                           "1 will print out preprocessed tokens and kNN "
+                           "inference metrics.")
   args = parser.parse_args()
 
   # By default set checkpoint directory name based on model name
   if args.modelDir == "MODELNAME.checkpoint":
     args.modelDir = args.modelName + ".checkpoint"
+
+  # Default dataset for this unit test
+  args.dataPath = "data/junit/unit_test_1.csv"
 
   model = runExperiment(args)

@@ -26,15 +26,13 @@ helpStr = """
 
 import itertools
 import numpy
-from textwrap import TextWrapper
+from prettytable import PrettyTable
 
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.model_factory import (
   createModel, getNetworkConfig)
 from htmresearch.support.csv_helper import readDataAndReshuffle
 
-
-wrapper = TextWrapper(width=75)
 
 # Some values of K we know work well for this problem for specific model types
 kValues = { "keywords": 21 }
@@ -59,13 +57,16 @@ def trainModel(model, trainingData, labelRefs, verbosity=0):
   print
   print "======================Training model on sample text==================="
   if verbosity > 0:
-    printTemplate = "{0:<75}|{1:<20}|{2:<5}"
-    print printTemplate.format("Document", "Label", "ID")
+    printTemplate = PrettyTable(["ID", "Document", "Label"])
+    printTemplate.align = "l"
+    printTemplate.header_style = "upper"
   for (document, labels, docId) in trainingData:
     if verbosity > 0:
-      print printTemplate.format(
-        wrapper.fill(document), labelRefs[labels[0]], docId)
+      printTemplate.add_row([docId, document, labelRefs[labels[0]]])
     model.trainDocument(document, labels, docId)
+  if verbosity > 0:
+    # printTemplate.set_style(align="l")
+    print printTemplate
 
   return model
 
@@ -80,6 +81,7 @@ def setupExperiment(args):
       the text string, list of label indices, and the sample ID.
   """
   dataSet, labelRefs, _, _ = readDataAndReshuffle(args)
+  args.numLabels = len(labelRefs)
 
   # Create a model, train it, save it, reload it
   model = instantiateModel(args)
@@ -90,15 +92,19 @@ def setupExperiment(args):
   return newModel, dataSet
 
 
-def testModel(model, testData, verbosity=0):
+def testModel(model, testData, categorySize, verbosity=0):
   """
-  Test the given model on testData, print out and return results metrics.
+  Test the given model on testData, print out and return results metrics. The
+  categorySize specifies the number of documents per category.
 
   For each data sample in testData the model infers the similarity to each other
-  sample; distances are number of bits apart. We then caclulate two types of
+  sample; distances are number of bits apart. We then calculate two types of
   results metrics: (i) "degrees of separation" and (ii) "overall ranks".
 
-    i. For the test document we want the distances for each "degree of
+    i. Doc #403 is separated from doc #s 402 and 404 by one degree, from doc #s
+    401 and 405 by two degrees, and so on. The fewer degrees of separation, the
+    more similarity we expect.
+    For the test document we want the distances for each "degree of
     separation" within the document's category -- e.g. doc #403,
          degree 0: distance to #403
          degree 1: mean of distances to #402 and #404
@@ -119,8 +125,18 @@ def testModel(model, testData, verbosity=0):
   """
   print
   print "========================Testing on sample text========================"
+  print "A document passes the test if the ranks show its category's docs in "
+  print "positions 0-{}.".format(categorySize-1)
+  if verbosity > 0:
+    print
+    printTemplate = PrettyTable(["ID", "Document", "Result"])
+    printTemplate.align = "l"
+    printTemplate.header_style = "upper"
+
   allRanks = []
-  totalScore = 0
+  allSeparations = []
+  totalPassed = 0
+  perfectScore = sum(xrange(categorySize))
   for (document, labels, docId) in testData:
     _, sortedIds, sortedDistances = model.inferDocument(
       document, returnDetailedResults=True, sortResults=True)
@@ -130,13 +146,21 @@ def testModel(model, testData, verbosity=0):
     ranks = numpy.array(
       [i for i, index in enumerate(sortedIds) if index/100 == expectedCategory])
     allRanks.append(ranks)
-    # totalScore += ranks.sum()
+    score = ranks.sum()
+
+    if verbosity > 0:
+      if score == perfectScore:
+        result = "Pass"
+        totalPassed += 1
+      else:
+        result = "Fail"
+      printTemplate.add_row([docId, document, result])
 
     # Compute the "degrees of separation" for this document
     distancesWithinCategory = {k: v for k, v in zip(sortedIds, sortedDistances)
                                if k/100 == expectedCategory}
     degreesOfSeperation = {}
-    for degree in xrange(6):
+    for degree in xrange(categorySize):
       separation = 0
       count = 0
       try:
@@ -150,18 +174,18 @@ def testModel(model, testData, verbosity=0):
       except KeyError:
         pass
       degreesOfSeperation[degree] = separation / float(count) if count else None
+    allSeparations.append(degreesOfSeperation)
 
-    if verbosity > 0:
-      print
-      print "Doc {}: {}".format(docId, wrapper.fill(document))
-      print "Min, mean, max of ranks = {}, {}, {}".format(
-        ranks.min(), ranks.mean(), ranks.max())
-      print "Degrees of separation =", degreesOfSeperation
+  if verbosity > 0:
+    print printTemplate
+    print
+    print "{}% of test documents passed ({}/{}).".format(
+      float(100*totalPassed/len(testData)), totalPassed, len(testData))
 
-  return degreesOfSeperation, allRanks
+  return allSeparations, allRanks
 
 
-def printResults(testName, ranks):
+def printRankResults(testName, ranks):
   """ Print the ranking metric results."""
   totalScore = sum(list(itertools.chain.from_iterable(ranks)))
   printTemplate = "{0:<32}|{1:<10}"

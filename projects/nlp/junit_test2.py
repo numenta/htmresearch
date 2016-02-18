@@ -35,7 +35,7 @@ helpStr = """
 import argparse
 
 from htmresearch.support.junit_testing import (
-  printResults, setupExperiment, testModel)
+  printRankResults, setupExperiment, testModel)
 
 
 
@@ -45,13 +45,15 @@ def runExperiment(args):
 
   _, ranks = testModel(model,
                        [d for d in dataSet if d[2]%100==0],
-                       args.verbosity)
-  printResults("JUnit2a", ranks)
+                       categorySize=5,
+                       verbosity=args.verbosity)
+  printRankResults("JUnit2a", ranks)
 
   _, ranks = testModel(model,
-                       [d for d in dataSet if d[2]%100==5],
-                       args.verbosity)
-  printResults("JUnit2b", ranks)
+                       [d for d in dataSet if d[2]%100==4],
+                       categorySize=5,
+                       verbosity=args.verbosity)
+  printRankResults("JUnit2b", ranks)
 
   return model
 
@@ -72,18 +74,9 @@ if __name__ == "__main__":
                       default="htm",
                       type=str,
                       help="Name of model class. Options: [keywords,htm]")
-  parser.add_argument("--retinaScaling",
-                      default=1.0,
-                      type=float,
-                      help="Factor by which to scale the Cortical.io retina.")
-  parser.add_argument("--maxSparsity",
-                      default=1.0,
-                      type=float,
-                      help="Maximum sparsity of Cio encodings.")
-  parser.add_argument("--numLabels",
-                      default=6,
-                      type=int,
-                      help="Number of unique labels to train on.")
+  parser.add_argument("--modelDir",
+                      default="MODELNAME.checkpoint",
+                      help="Model will be saved in this directory.")
   parser.add_argument("--retina",
                       default="en_associative_64_univ",
                       type=str,
@@ -93,12 +86,6 @@ if __name__ == "__main__":
                       type=str,
                       help="Key for Cortical.io API. If not specified will "
                       "use the environment variable CORTICAL_API_KEY.")
-  parser.add_argument("--modelDir",
-                      default="MODELNAME.checkpoint",
-                      help="Model will be saved in this directory.")
-  parser.add_argument("--dataPath",
-                      default="data/junit/unit_test_1.csv",
-                      help="CSV file containing labeled dataset")
   parser.add_argument("-v", "--verbosity",
                       default=1,
                       type=int,
@@ -111,5 +98,8 @@ if __name__ == "__main__":
   # By default set checkpoint directory name based on model name
   if args.modelDir == "MODELNAME.checkpoint":
     args.modelDir = args.modelName + ".checkpoint"
+
+  # Default dataset for this unit test
+  args.dataPath = "data/junit/unit_test_2.csv"
 
   model = runExperiment(args)
