@@ -27,10 +27,8 @@ import random
 
 from htmresearch.support.reberGrammar import generateSequencesNumber
 
-
-
 class Dataset(object):
-  def generateSequence(self):
+  def generateSequence(self, iteration):
     """
     :return: A two-tuple with
      sequence: a sequence of input elements
@@ -46,12 +44,14 @@ class ReberDataset(Dataset):
       raise "maxLength not specified"
 
     self.maxLength = maxLength
+    self.numSymbols = 8
 
 
-  def generateSequence(self):
-    (sequence, target) = generateSequencesNumber(self.maxLength)
+  def generateSequence(self, iteration):
+    (sequence, target) = generateSequencesNumber(self.maxLength, iteration)
     target.append(None)
     return (sequence, target)
+
 
 
 class SimpleDataset(Dataset):
@@ -60,9 +60,10 @@ class SimpleDataset(Dataset):
       [6, 8, 7, 4, 2, 3, 5],
       [1, 8, 7, 4, 2, 3, 0],
     ]
+    self.numSymbols = max(max(self.sequences))
 
-
-  def generateSequence(self):
+  def generateSequence(self, iteration):
+    random.seed(iteration)
     sequence = list(random.choice(self.sequences))
     target = sequence[1:] + [None]
     return (sequence, target)
@@ -72,7 +73,7 @@ class SimpleDataset(Dataset):
 class HighOrderDataset(Dataset):
   def __init__(self, numPredictions=1):
     self.numPredictions = numPredictions
-
+    self.numSymbols = max(max(self.sequences(numPredictions, perturbed=False)))
 
   def sequences(self, numPredictions, perturbed):
     if numPredictions == 1:
@@ -212,7 +213,8 @@ class HighOrderDataset(Dataset):
         ]
 
 
-  def generateSequence(self, perturbed=False):
+  def generateSequence(self, iteration, perturbed=False):
+    random.seed(iteration)
     sequence = list(random.choice(self.sequences(self.numPredictions, perturbed)))
     target = sequence[1:] + [None]
 
