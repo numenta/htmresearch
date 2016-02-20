@@ -34,7 +34,6 @@ from htmresearch.support.sequence_prediction_dataset import SimpleDataset
 from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
 
 
-
 class Encoder(object):
   def __init__(self, num):
     self.num = num
@@ -110,7 +109,7 @@ class DistributedEncoder(Encoder):
 
 
   def randomSymbol(self):
-    return random.randrange(self.num, 10000000)
+    return random.randrange(self.num, self.num+5000)
 
 
   @staticmethod
@@ -283,11 +282,12 @@ class Suite(PyExperimentSuite):
 
   def replenishSequence(self, params, iteration):
     if iteration > params['perturb_after']:
-      sequence, target = self.dataset.generateSequence(perturbed=True)
+      sequence, target = self.dataset.generateSequence(iteration, perturbed=True)
     else:
-      sequence, target = self.dataset.generateSequence()
+      sequence, target = self.dataset.generateSequence(iteration)
 
-    if iteration > params['inject_noise_after']:
+    if (iteration > params['inject_noise_after'] and
+            iteration < params['stop_inject_noise_after']):
       injectNoiseAt = random.randint(1, 3)
       sequence[injectNoiseAt] = self.encoder.randomSymbol()
 

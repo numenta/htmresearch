@@ -40,15 +40,9 @@ from htmresearch.support.sequence_prediction_dataset import SimpleDataset
 from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
 
 
-
-MIN_ORDER = 6
-MAX_ORDER = 7
-NUM_PREDICTIONS = [1]
 NUM_RANDOM = 1
-
-NUM_SYMBOLS = SequenceGenerator.numSymbols(MAX_ORDER, max(NUM_PREDICTIONS))
-RANDOM_START = NUM_SYMBOLS
-RANDOM_END = NUM_SYMBOLS + 5000
+NUM_SYMBOLS = 16
+RANDOM_END = 5016
 
 MODEL_PARAMS = {
   "model": "CLA",
@@ -120,7 +114,6 @@ MODEL_PARAMS = {
 
 
 
-
 def getEncoderMapping(model):
   encoder = model._getEncoder().encoders[0][1]
   mapping = dict()
@@ -153,6 +146,12 @@ class Suite(PyExperimentSuite):
     else:
       raise Exception("Dataset not found")
 
+    self.randomStart = self.dataset.numSymbols + 1
+    self.randomEnd = self.randomStart + 5000
+
+    MODEL_PARAMS['modelParams']['sensorParams']['encoders']['element']\
+      ['categoryList'] = range(self.randomEnd)
+
     # if not os.path.exists(resultsDir):
     #   os.makedirs(resultsDir)
     # self.resultsFile = open(os.path.join(resultsDir, "0.log"), 'w')
@@ -163,7 +162,6 @@ class Suite(PyExperimentSuite):
     self.shifter = InferenceShifter()
     self.mapping = getEncoderMapping(self.model)
 
-    self.currentSequence = self.dataset.generateSequence()
     self.numPredictedActiveCells = []
     self.numPredictedInactiveCells = []
     self.numUnpredictedActiveColumns = []
@@ -172,28 +170,32 @@ class Suite(PyExperimentSuite):
     self.targetPrediction = []
     self.replenish_sequence(params, iteration=0)
 
-    self.perturbed = False
     self.randoms = []
     self.verbosity = 1
     self.sequenceCounter = 0
 
 
-  def replenish_sequence(self, params, iteration):
-    if iteration > params['perturb_after'] and not self.perturbed:
-      print "PERTURBING"
-      sequence, target = self.dataset.generateSequence(perturbed=True)
-      self.perturbed = True
-    else:
-      sequence, target = self.dataset.generateSequence()
 
-    if iteration > params['inject_noise_after']:
+
+  def replenish_sequence(self, params, iteration):
+    if iteration > params['perturb_after']:
+      print "PERTURBING"
+      sequence, target = self.dataset.generateSequence(iteration, perturbed=True)
+    else:
+      sequence, target = self.dataset.generateSequence(iteration)
+
+    if (iteration > params['inject_noise_after'] and
+        iteration < params['stop_inject_noise_after']):
       injectNoiseAt = random.randint(1, 3)
-      print "injectNoiseAt: ", injectNoiseAt
-      sequence[injectNoiseAt] = random.randrange(RANDOM_START, RANDOM_END)
-      print sequence[injectNoiseAt]
+      sequence[injectNoiseAt] = random.randrange(self.randomStart, self.randomEnd)
+
+      if params['verbosity'] > 0:
+        print "injectNoise ", sequence[injectNoiseAt],  " at: ", injectNoiseAt
 
     # separate sequences with random elements
-    sequence.append(random.randrange(RANDOM_START, RANDOM_END))
+    random.seed(iteration)
+    print "seed {} start {} end {}".format(iteration, self.randomStart, self.randomEnd)
+    sequence.append(random.randrange(self.randomStart, self.randomEnd))
     target.append(None)
 
     if params['verbosity'] > 0:
@@ -210,8 +212,10 @@ class Suite(PyExperimentSuite):
       correct = None
     else:
       if isinstance(targets, numbers.Number):
+        # single target, multiple predictions
         correct = targets in topPredictions
       else:
+        # multiple targets, multiple predictions
         correct = True
         for prediction in topPredictions:
            correct = correct and (prediction in targets)
@@ -235,7 +239,10 @@ class Suite(PyExperimentSuite):
     topPredictions = classify(
       self.mapping, predictiveColumns, params['num_predictions'])
 
-    correct = self.check_prediction(topPredictions, target)
+    # correct = self.check_prediction(topPredictions, target)
+    truth = None if (self.randoms[-1] or
+                     len(self.randoms) >= 2 and self.randoms[-2]) else self.currentSequence[0]
+    correct = None if truth is None else (truth in topPredictions)
 
     data = {"iteration": iteration,
             "current": element,
