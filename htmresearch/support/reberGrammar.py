@@ -1,3 +1,26 @@
+#!/usr/bin/env python
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
+import random
 import numpy as np
 
 np.random.seed(1)
@@ -62,7 +85,7 @@ def generateSequences(maxLength):
     return inchars, outchars
 
 
-def generateSequencesNumber(maxLength):
+def generateSequencesNumber(maxLength, seed):
     """
     @param maxLength (int): maximum length of the sequence
     @return inchars (array): a generated reber Grammer
@@ -72,11 +95,12 @@ def generateSequencesNumber(maxLength):
     inchars = [0]
     node = 0
     outchars = []
+    random.seed(seed)
     while node != 6:
         # all possible transitions
         transitions = graph[node]
 
-        i = np.random.randint(0, len(transitions[0]))
+        i = random.randint(0, len(transitions[0]))
         inchars.append(transitions[0][i])
         outchars.append(transitions[0])
         node = transitions[0][i]
