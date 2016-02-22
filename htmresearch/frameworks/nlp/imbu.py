@@ -103,7 +103,8 @@ class ImbuModels(object):
                                                  "HTMNetwork",
                                                  "Keywords"))
   modelMappings.update(HTM_sensor_knn="HTMNetwork",
-                       HTM_sensor_simple_tp_knn="HTMNetwork")
+                       HTM_sensor_simple_tp_knn="HTMNetwork",
+                       HTM_sensor_tm_simple_tp_knn="HTMNetwork")
 
   # Set of classification model types that accept CioEncoder kwargs
   requiresCIOKwargs = {
@@ -353,7 +354,8 @@ class ImbuModels(object):
         wordId = protoId % self.tokenIndexingFactor
         sampleId = (protoId - wordId) / self.tokenIndexingFactor
         results[sampleId]["scores"][wordId] = dist.item() / queryLength
-      if modelName == "HTM_sensor_simple_tp_knn":
+      if modelName == ("HTM_sensor_simple_tp_knn" or
+                       "HTM_sensor_tm_simple_tp_knn"):
         # Windows always length 10
         results[sampleId]["windowSize"] = 10
 
@@ -380,7 +382,7 @@ def startImbu(args):
   )
 
   model = imbu.createModel(args.modelName,
-                           loadPath=arg.loadPath,
+                           loadPath=args.loadPath,
                            savePath=args.savePath,
                            networkConfigName=args.networkConfigName
   )
