@@ -273,28 +273,26 @@ NRMSE_LSTM6000_mean = np.sqrt(np.nanmean(NRMSE_LSTM6000))/np.nanstd(truth)
 
 
 fig, ax = plt.subplots(nrows=1, ncols=3)
-inds = np.arange(8)
+inds = np.arange(7)
 ax1 = ax[0]
 width = 0.5
-ax1.bar(inds, [NRMSE_Shift_mean,
-                 NRMSE_ARIMA_mean,
-                 NRMSE_KNN_mean,
-                 NRMSE_ESN_mean,
-                 NRMSE_LSTM1000_mean,
-                 NRMSE_LSTM3000_mean,
-                 NRMSE_LSTM6000_mean,
-                 NRMSE_TM_mean], width=width)
+ax1.bar(inds, [NRMSE_ARIMA_mean,
+               NRMSE_KNN_mean,
+               NRMSE_ESN_mean,
+               NRMSE_LSTM1000_mean,
+               NRMSE_LSTM3000_mean,
+               NRMSE_LSTM6000_mean,
+               NRMSE_TM_mean], width=width)
 ax1.set_xticks(inds+width/2)
 ax1.set_ylabel('NRMSE')
 ax1.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
-ax1.set_xticklabels( ('Shift', 'ARIMA', 'KNN',  'ESN',
-                      'LSTM1000', 'LSTM3000', 'LSTM6000', 'TM') )
+ax1.set_xticklabels( ('ARIMA', 'KNN',  'ESN',
+                      'LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM') )
 for tick in ax1.xaxis.get_major_ticks():
   tick.label.set_rotation('vertical')
 
 ax3 = ax[1]
-ax3.bar(inds, [altMAPE_Shift,
-               altMAPE_ARIMA,
+ax3.bar(inds, [altMAPE_ARIMA,
                altMAPE_KNN,
                altMAPE_ESN,
                altMAPE_LSTM1000,
@@ -304,8 +302,8 @@ ax3.bar(inds, [altMAPE_Shift,
 ax3.set_xticks(inds+width/2)
 ax3.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
 ax3.set_ylabel('MAPE')
-ax3.set_xticklabels( ('Shift', 'ARIMA', 'KNN', 'ESN',
-                      'LSTM1000', 'LSTM3000', 'LSTM6000', 'TM') )
+ax3.set_xticklabels( ('ARIMA', 'KNN', 'ESN',
+                      'LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM') )
 for tick in ax3.xaxis.get_major_ticks():
   tick.label.set_rotation('vertical')
 
@@ -314,10 +312,11 @@ ax2.set_ylabel('Negative Log-likelihood')
 ax2.bar(inds, [np.nanmean(negLL_LSTM1000),
                np.nanmean(negLL_LSTM3000),
                np.nanmean(negLL_LSTM6000),
-               np.nanmean(negLL_TM), 0, 0, 0, 0], width=width, color='b')
+               np.nanmean(negLL_TM), 0, 0, 0], width=width, color='b')
 ax2.set_xticks(inds+width/2)
 ax2.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
-ax2.set_xticklabels(('LSTM1000', 'LSTM3000', 'LSTM6000', 'TM', '', '', ''))
+ax2.set_ylim([0, 2.0])
+ax2.set_xticklabels(('LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM', '', '', ''))
 for tick in ax2.xaxis.get_major_ticks():
   tick.label.set_rotation('vertical')
 

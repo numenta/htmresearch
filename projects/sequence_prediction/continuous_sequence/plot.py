@@ -126,7 +126,7 @@ def computeLikelihood(predictions, truth, encoder):
   Likelihood = np.multiply(predictions, targetDistribution)
   Likelihood = np.sum(Likelihood, axis=1)
 
-  minProb = 0.00001
+  minProb = 0.01
   Likelihood[np.where(Likelihood < minProb)[0]] = minProb
   negLL = -np.log(Likelihood)
 
