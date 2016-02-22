@@ -380,7 +380,7 @@ def startImbu(args):
   )
 
   model = imbu.createModel(args.modelName,
-                           loadPath=arg.loadPath,
+                           loadPath=args.loadPath,
                            savePath=args.savePath,
                            networkConfigName=args.networkConfigName
   )

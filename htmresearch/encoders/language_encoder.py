@@ -183,11 +183,14 @@ class LanguageEncoder(object):
 
     @param counts     (Counter)   A count of the ON bits for the union bitmap.
 
-    @return           (list)      A sparsified union bitmap.
+    @return           (tuple)      A sparsified union bitmap.
     """
+    positionsSortedByCount = tuple(x[1] for x in counts.getNonZerosSorted())
+
     max_sparsity = int(self.unionSparsity * self.n)
-    w = min(len(counts), max_sparsity)
-    return [c[0] for c in counts.most_common(w)]  # TODO: how does this break ties?
+    w = min(len(positionsSortedByCount), max_sparsity)
+
+    return positionsSortedByCount[:w]
 
 
   @staticmethod

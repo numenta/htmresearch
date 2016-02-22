@@ -30,6 +30,8 @@ from htmresearch.encoders import EncoderTypes
 from htmresearch.encoders.language_encoder import LanguageEncoder
 from htmresearch.support.text_preprocess import TextPreprocess
 
+from nupic.bindings.math import SparseMatrix
+
 
 DEFAULT_RETINA = "en_synonymous"
 
@@ -192,10 +194,14 @@ class CioEncoder(LanguageEncoder):
     tokens = TextPreprocess().tokenize(text)
 
     # Count the ON bits represented in the encoded tokens.
-    counts = Counter()
+    counts = SparseMatrix()
+    counts.resize(1, self.width*self.height)
+    sparseBitmap = SparseMatrix()
+    sparseBitmap.resize(1, self.width*self.height)
     for t in tokens:
       bitmap = self._getWordBitmap(t)
-      counts.update(bitmap)
+      sparseBitmap.setRowFromSparse(0, bitmap, [1]*len(bitmap))
+      counts += sparseBitmap
 
     positions = self.sparseUnion(counts)
 
@@ -234,7 +240,7 @@ class CioEncoder(LanguageEncoder):
       print ("Although the encoder type is not set for words, the window "
         "encodings use word-level fingerprints.")
 
-    bitmaps = [numpy.array(self._getWordBitmap(t)) for t in tokens]
+    bitmaps = tuple(numpy.array(self._getWordBitmap(t)) for t in tokens)
 
     windowBitmaps = []
     for tokenIndex, windowBitmap in enumerate(bitmaps):
