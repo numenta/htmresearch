@@ -27,19 +27,20 @@ import os
 from matplotlib import pyplot
 import matplotlib as mpl
 
-
 from plot import plotAccuracy
 from plot import computeAccuracy
 from plot import readExperiment
 mpl.rcParams['pdf.fonttype'] = 42
 pyplot.ion()
-
+pyplot.close('all')
 
 
 if __name__ == '__main__':
 
-  experiments = [os.path.join("lstm/results", "high-order-noise", "0.log"),
-                 os.path.join("tm/results", "high-order-noise", "0.log")]
+  experiments = [os.path.join("lstm/results", "high-order-noise",
+                              "inject_noise_after0.0", "0.log"),
+                 os.path.join("tm/results", "high-order-noise",
+                              "inject_noise_after0.0", "0.log")]
 
   for experiment in experiments:
     data = readExperiment(experiment)
@@ -47,10 +48,8 @@ if __name__ == '__main__':
                                     data['truths'],
                                     data['iterations'],
                                     resets=data['resets'],
-                                    randoms=data['randoms'],
-                                    sequenceCounter=data['sequenceCounter'])
+                                    randoms=data['randoms'])
 
-    injectNoiseAt = data['sequenceCounter'][12000]
     plotAccuracy((accuracy, x),
                  data['trains'],
                  window=100,
@@ -58,6 +57,66 @@ if __name__ == '__main__':
                  label='NoiseExperiment',
                  hideTraining=True,
                  lineSize=1.0)
-    pyplot.xlim([1200, 1750])
-  pyplot.savefig('./model_performance_after_temporal_noise.pdf')
+    pyplot.xlim([10500, 14500])
+    pyplot.xlabel('Number of elements seen')
+    pyplot.ylabel(' Accuracy ')
+
   pyplot.legend(['LSTM', 'HTM'])
+  pyplot.savefig('./result/temporal_noise_train_with_noise.pdf')
+
+
+  experiments = [os.path.join("lstm/results", "high-order-noise",
+                              "inject_noise_after12000.0", "0.log"),
+                 os.path.join("tm/results", "high-order-noise",
+                              "inject_noise_after12000.0", "0.log")]
+
+  pyplot.close('all')
+  for experiment in experiments:
+    data = readExperiment(experiment)
+    (accuracy, x) = computeAccuracy(data['predictions'],
+                                    data['truths'],
+                                    data['iterations'],
+                                    resets=data['resets'],
+                                    randoms=data['randoms'])
+    # injectNoiseAt = data['sequenceCounter'][12000]
+    # x = numpy.array(x) - injectNoiseAt + 1400
+    plotAccuracy((accuracy, x),
+                 data['trains'],
+                 window=100,
+                 type=type,
+                 label='NoiseExperiment',
+                 hideTraining=True,
+                 lineSize=1.0)
+    pyplot.xlim([10500, 14500])
+    pyplot.xlabel('Number of elements seen')
+    pyplot.ylabel(' Accuracy ')
+
+  pyplot.axvline(x=12000, color='k')
+  pyplot.legend(['LSTM', 'HTM'])
+  pyplot.savefig('./result/temporal_noise_train_without_noise.pdf')
+
+  experiments = [
+    os.path.join("lstm/results", "high-order-noise-test-without-noise", "0.log"),
+    os.path.join("tm/results", "high-order-noise-test-without-noise", "0.log"),
+  ]
+  pyplot.close('all')
+  for experiment in experiments:
+    data = readExperiment(experiment)
+    (accuracy, x) = computeAccuracy(data['predictions'],
+                                    data['truths'],
+                                    data['iterations'],
+                                    resets=data['resets'],
+                                    randoms=data['randoms'])
+    plotAccuracy((accuracy, x),
+                 data['trains'],
+                 window=100,
+                 type=type,
+                 label='NoiseExperiment',
+                 hideTraining=True,
+                 lineSize=1.0)
+    pyplot.xlim([10500, 15000])
+    pyplot.axvline(x=12000, color='k')
+    pyplot.xlabel('Number of elements seen')
+    pyplot.ylabel(' Accuracy ')
+  pyplot.legend(['LSTM', 'HTM'])
+  pyplot.savefig('./result/temporal_noise_test_without_noise.pdf')
