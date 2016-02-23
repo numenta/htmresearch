@@ -22,11 +22,8 @@
 """Module providing a factory for instantiating a temporal memory instance."""
 
 from nupic.research.temporal_memory import TemporalMemory
-from nupic.research.fast_temporal_memory import FastTemporalMemory
 from htmresearch.algorithms.general_temporal_memory import (
   GeneralTemporalMemory)
-from htmresearch.algorithms.fast_general_temporal_memory import (
-  FastGeneralTemporalMemory)
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 
@@ -38,9 +35,7 @@ class TemporalMemoryTypes(object):
   implementation.
   """
   general = GeneralTemporalMemory
-  fastGeneral = FastGeneralTemporalMemory
   tm = TemporalMemory
-  fast = FastTemporalMemory
   tmMixin = MonitoredTemporalMemory
 
 

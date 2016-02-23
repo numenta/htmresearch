@@ -29,14 +29,11 @@ from nupic.bindings.algorithms import ConnectionsCell
 from htmresearch.algorithms.temporal_memory_factory import (
   createModel)
 from htmresearch.algorithms.general_temporal_memory import GeneralTemporalMemory
-from htmresearch.algorithms.fast_general_temporal_memory import FastGeneralTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 
 
 
-class MonitoredFastGeneralTemporalMemory(TemporalMemoryMonitorMixin,
-                                         FastGeneralTemporalMemory): pass
 class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
                                       GeneralTemporalMemory): pass
 
@@ -48,8 +45,7 @@ class TMRegion(PyRegion):
 
   The TMRegion's computation implementations come from the various
   Temporal Memory classes found in nupic and nupic.research
-  (TemporalMemory, FastTemporalMemory, GeneralTemporalMemory and
-  FastGeneralTemporalMemory).
+  (TemporalMemory, GeneralTemporalMemory).
 
   The region supports external inputs and top down inputs. If these inputs
   are specified, temporalImp must be one of the GeneralTemporalMemory
@@ -239,7 +235,7 @@ class TMRegion(PyRegion):
                 accessMode="ReadWrite",
                 dataType="Byte",
                 count=0,
-                constraints="enum: tm,general,fast,fastGeneral,tmMixin"),
+                constraints="enum: tm,general,tmMixin"),
             formInternalConnections=dict(
                 description="Flag to determine whether to form connections "
                             "with internal cells within this temporal memory",
@@ -279,7 +275,7 @@ class TMRegion(PyRegion):
                predictedSegmentDecrement=0.0,
                seed=42,
                learnOnOneCell=1,
-               temporalImp="fast",
+               temporalImp="tm",
                formInternalConnections = 1,
                **kwargs):
     # Defaults for all other parameters
@@ -365,8 +361,7 @@ class TMRegion(PyRegion):
 
     # Set the various outputs
 
-    # HACK HACK: temporary until accessors are in place. Currently
-    # fast_temporal_memory doesn't have the same types
+    # HACK HACK: temporary until accessors are in place.
     activeCells = list(self._tm.activeCells)
     if isinstance(activeCells[0], ConnectionsCell):
       activeCells = self._tm.getCellIndices(self._tm.activeCells)
