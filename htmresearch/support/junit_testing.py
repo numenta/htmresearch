@@ -62,8 +62,6 @@ def trainModel(model, trainingData, labelRefs, verbosity=0):
     printTemplate.header_style = "upper"
   for (document, labels, docId) in trainingData:
     if verbosity > 0:
-      print docId
-      print document
       printTemplate.add_row([docId, document, labelRefs[labels[0]]])
     model.trainDocument(document, labels, docId)
   if verbosity > 0:
