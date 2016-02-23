@@ -20,6 +20,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 import json
+import numbers
 import operator
 import os
 import random
@@ -39,23 +40,9 @@ from htmresearch.support.sequence_prediction_dataset import SimpleDataset
 from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
 
 
-
-
-# MIN_ORDER = 6
-# MAX_ORDER = 7
-# NUM_PREDICTIONS = [1, 2, 4]
-# NUM_RANDOM = 1
-# PERTURB_AFTER = 10000
-# TEMPORAL_NOISE_AFTER = 5000
-
-MIN_ORDER = 6
-MAX_ORDER = 7
-NUM_PREDICTIONS = [1]
 NUM_RANDOM = 1
-
-NUM_SYMBOLS = SequenceGenerator.numSymbols(MAX_ORDER, max(NUM_PREDICTIONS))
-RANDOM_START = NUM_SYMBOLS
-RANDOM_END = NUM_SYMBOLS + 5000
+NUM_SYMBOLS = 16
+RANDOM_END = 5016
 
 MODEL_PARAMS = {
   "model": "CLA",
@@ -127,7 +114,6 @@ MODEL_PARAMS = {
 
 
 
-
 def getEncoderMapping(model):
   encoder = model._getEncoder().encoders[0][1]
   mapping = dict()
@@ -160,6 +146,12 @@ class Suite(PyExperimentSuite):
     else:
       raise Exception("Dataset not found")
 
+    self.randomStart = self.dataset.numSymbols + 1
+    self.randomEnd = self.randomStart + 5000
+
+    MODEL_PARAMS['modelParams']['sensorParams']['encoders']['element']\
+      ['categoryList'] = range(self.randomEnd)
+
     # if not os.path.exists(resultsDir):
     #   os.makedirs(resultsDir)
     # self.resultsFile = open(os.path.join(resultsDir, "0.log"), 'w')
@@ -170,41 +162,69 @@ class Suite(PyExperimentSuite):
     self.shifter = InferenceShifter()
     self.mapping = getEncoderMapping(self.model)
 
-    self.currentSequence = self.dataset.generateSequence()
     self.numPredictedActiveCells = []
     self.numPredictedInactiveCells = []
     self.numUnpredictedActiveColumns = []
 
-    self.currentSequence = self.dataset.generateSequence()
-    self.perturbed = False
+    self.currentSequence = []
+    self.targetPrediction = []
+    self.replenish_sequence(params, iteration=0)
+
     self.randoms = []
     self.verbosity = 1
     self.sequenceCounter = 0
 
 
+
+
   def replenish_sequence(self, params, iteration):
-    if iteration > params['perturb_after'] and not self.perturbed:
+    if iteration > params['perturb_after']:
       print "PERTURBING"
-      sequence = self.dataset.generateSequence(perturbed=True)
-      self.perturbed = True
+      sequence, target = self.dataset.generateSequence(iteration, perturbed=True)
     else:
-      sequence = self.dataset.generateSequence()
+      sequence, target = self.dataset.generateSequence(iteration)
 
-    if iteration > params['inject_noise_after']:
+    if (iteration > params['inject_noise_after'] and
+        iteration < params['stop_inject_noise_after']):
       injectNoiseAt = random.randint(1, 3)
-      print "injectNoiseAt: ", injectNoiseAt
-      sequence[injectNoiseAt] = random.randrange(RANDOM_START, RANDOM_END)
-      print sequence[injectNoiseAt]
+      sequence[injectNoiseAt] = random.randrange(self.randomStart, self.randomEnd)
 
-    sequence.append(random.randrange(RANDOM_START, RANDOM_END))
+      if params['verbosity'] > 0:
+        print "injectNoise ", sequence[injectNoiseAt],  " at: ", injectNoiseAt
+
+    # separate sequences with random elements
+    random.seed(iteration)
+    print "seed {} start {} end {}".format(iteration, self.randomStart, self.randomEnd)
+    sequence.append(random.randrange(self.randomStart, self.randomEnd))
+    target.append(None)
+
     if params['verbosity'] > 0:
       print "Add sequence to buffer"
-      print sequence
+      print "sequence: ", sequence
+      print "target: ", target
+
     self.currentSequence += sequence
+    self.targetPrediction += target
+
+
+  def check_prediction(self, topPredictions, targets):
+    if targets is None:
+      correct = None
+    else:
+      if isinstance(targets, numbers.Number):
+        # single target, multiple predictions
+        correct = targets in topPredictions
+      else:
+        # multiple targets, multiple predictions
+        correct = True
+        for prediction in topPredictions:
+           correct = correct and (prediction in targets)
+    return correct
 
 
   def iterate(self, params, repetition, iteration):
     element = self.currentSequence.pop(0)
+    target = self.targetPrediction.pop(0)
 
     # whether there will be a random symbol after the current record
     randomFlag = (len(self.currentSequence) == 1)
@@ -216,12 +236,12 @@ class Suite(PyExperimentSuite):
     tm.mmClearHistory()
     # Use custom classifier (uses predicted cells to make predictions)
     predictiveColumns = set([tm.columnForCell(cell) for cell in tm.predictiveCells])
-    topPredictions = classify(self.mapping, predictiveColumns, params['num_predictions'])
+    topPredictions = classify(
+      self.mapping, predictiveColumns, params['num_predictions'])
 
+    # correct = self.check_prediction(topPredictions, target)
     truth = None if (self.randoms[-1] or
-                     len(self.randoms) >= 2 and self.randoms[-2]
-                     ) else self.currentSequence[0]
-
+                     len(self.randoms) >= 2 and self.randoms[-2]) else self.currentSequence[0]
     correct = None if truth is None else (truth in topPredictions)
 
     data = {"iteration": iteration,
@@ -230,7 +250,7 @@ class Suite(PyExperimentSuite):
             "random": randomFlag,
             "train": True,
             "predictions": topPredictions,
-            "truth": truth,
+            "truth": target,
             "sequenceCounter": self.sequenceCounter}
 
     if params['verbosity'] > 0:
@@ -239,7 +259,7 @@ class Suite(PyExperimentSuite):
              "predictions: {2} \t"
              "truth: {3} \t"
              "correct: {4} \t").format(
-        iteration, element, topPredictions, truth, correct)
+        iteration, element, topPredictions, target, correct)
 
     if len(self.currentSequence) == 0:
       self.replenish_sequence(params, iteration)
