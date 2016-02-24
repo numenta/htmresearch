@@ -65,7 +65,6 @@ def trainModel(model, trainingData, labelRefs, verbosity=0):
       printTemplate.add_row([docId, document, labelRefs[labels[0]]])
     model.trainDocument(document, labels, docId)
   if verbosity > 0:
-    # printTemplate.set_style(align="l")
     print printTemplate
 
   return model
@@ -154,12 +153,13 @@ def testModel(model, testData, categorySize, verbosity=0,
     allRanks.append(ranks)
     score = ranks.sum()
 
+    if score == perfectScore:
+      result = "Pass"
+      totalPassed += 1
+    else:
+      result = "Fail"
+
     if verbosity > 0:
-      if score == perfectScore:
-        result = "Pass"
-        totalPassed += 1
-      else:
-        result = "Fail"
       printTemplate.add_row([docId, document, result])
 
     if separationMetric:
@@ -169,9 +169,9 @@ def testModel(model, testData, categorySize, verbosity=0,
 
   if verbosity > 0:
     print printTemplate
-    print
-    print "{}% of test documents passed ({}/{}).".format(
-      float(100*totalPassed/len(testData)), totalPassed, len(testData))
+  print
+  print "{}% of test documents passed ({}/{}).".format(
+    float(100*totalPassed/len(testData)), totalPassed, len(testData))
 
   return allSeparations, allRanks
 

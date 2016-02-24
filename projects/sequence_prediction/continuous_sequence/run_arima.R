@@ -8,6 +8,7 @@ setwd('/Users/ycui/nta/nupic.research/projects/sequence_prediction/continuous_se
 
 # available data: "sine", "rec-center-hourly"
 dataSet <- 'nyc_taxi'
+dataSet <- 'nyc_taxi_perturb'
 # dataSet <- 'rec-center-hourly'
 # dataSet <- "sine"
 dataSetPath <- paste0("data/", dataSet, '.csv')
@@ -18,14 +19,20 @@ rt = ts(recDF[2])
 
 if(dataSet=="sine"){
   nTrain <- 1800
+  nSkip <- nTrain
 } else if (dataSet=='rec-center-hourly'){
   nTrain <- 3800
+  nSkip <- nTrain
 } else if (dataSet=='nyc_taxi'){
   nTrain <- 6000
+  nSkip <- nTrain
+} else if (dataSet=='nyc_taxi_perturb'){
+  nTrain <- 6000
+  nSkip <- 13152
 }
   
 nData <- length(rt)
-testLength <- nData - nTrain
+testLength <- nData - nSkip
 
 # testLength <- 1
 
@@ -34,15 +41,15 @@ arima_output1 = vector(mode="numeric", length=nData)
 arima_output5 = vector(mode="numeric", length=nData)
 
 pred2 <- arimapred(rt[seq(1, nTrain)], n.ahead=testLength)
-auto.arima(rt[seq(1, nTrain)])
+forecast::auto.arima(rt[seq(1, nTrain)])
 
 # Brute force ARIMA - recompute model every step
 # while making predictions for the next N hours.
-for(i in 1:testLength)
+for(i in nSkip+1:testLength)
 {
   # Compute ARIMA on the full dataset up to this point
-  trainSet = window(rt, start=i, end=nTrain+i)
-  fit_arima <- auto.arima(trainSet)
+  trainSet = window(rt, start=i-nTrain, end=i)
+  fit_arima <- forecast::auto.arima(trainSet)
   
 #   fcast_arima <- predict(fit_arima, n.ahead = 5, se.fit = TRUE)
 #   mean <- fcast_arima$pred
@@ -51,10 +58,10 @@ for(i in 1:testLength)
   fcast_arima <- forecast(fit_arima, h=5)
   pred <- fcast_arima$mean
 
-  arima_output1[nTrain+i] = pred[1]
-  arima_output5[nTrain+i] = pred[5]
+  arima_output1[i] = pred[1]
+  arima_output5[i] = pred[5]
   
-  cat("step: ",i ,"true : ", rt[nTrain+i], " prediction: ", pred, '\n')
+  cat("step: ",i ,"true : ", rt[i], " prediction: ", pred, '\n')
 }
 
 # save prediction as a figure

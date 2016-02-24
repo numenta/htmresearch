@@ -68,7 +68,7 @@ ID,Sample,Label
 1401,Alice likes cream cheese,Cheese
 1402,Alice likes fresh fat cream cheese,Cheese
 1403,Alice likes fresh cream cheese more than bread,Cheese
-1404,Alice's favoriate food is fresh cream cheese,Cheese
+1404,Alice's favorite food is fresh cream cheese,Cheese
 1500,Tyrion drank wine.,Wine
 1501,"Tyrion, sullen, drank his wine.",Wine
 1502,"Tyrion, in a sullen mood, drank his wine.",Wine
@@ -77,5 +77,5 @@ ID,Sample,Label
 1600,Tyrion hopped down.,Stretch
 1601,Tyrion hopped down to stretch.,Stretch
 1602,"Tyrion, in a hammock above, hopped down to stretch.",Stretch
-1603,"Tryrion, in a hammock above, hopped down to stretch the cramps from his back.",Stretch
-1604,"Tryrion, resting in a hammock above for hours, hopped down to stretch the cramps from his back.",Stretch
+1603,"Tyrion, in a hammock above, hopped down to stretch the cramps from his back.",Stretch
+1604,"Tyrion, resting in a hammock above for hours, hopped down to stretch the cramps from his back.",Stretch
