@@ -22,7 +22,7 @@ import itertools
 import numpy
 import os
 
-from collections import Counter
+import random
 
 from cortipy.cortical_client import CorticalClient, RETINA_SIZES
 from cortipy.exceptions import UnsuccessfulEncodingError
@@ -183,6 +183,41 @@ class CioEncoder(LanguageEncoder):
     return self.finishEncoding(encoding)
 
 
+  def getUnionEncodingFromTokens(self, tokens):
+    """
+    Create a single, sparsified bitmap from a union of bitmaps for given tokens
+
+    @param  tokens  (sequence) A sequence of tokens
+    @return         (sequence) Bitmap
+    """
+    # Accumulate counts by inplace-adding sparse matrices
+    counts = SparseMatrix()
+    counts.resize(1, self.width*self.height)
+
+    # Pre-allocate buffer sparse matrix
+    sparseBitmap = SparseMatrix()
+    sparseBitmap.resize(1, self.width*self.height)
+
+    for t in tokens:
+      bitmap = self._getWordBitmap(t)
+      sparseBitmap.setRowFromSparse(0, bitmap, [1]*len(bitmap))
+      counts += sparseBitmap
+
+    numNonZeros = counts.nNonZerosOnRow(0)
+
+    # Add some jitter to aid in tie-breaking during sort
+    jitterValues = tuple((random.random()/100)+0.1
+                         for _ in xrange(numNonZeros))
+    sparseBitmap.setRowFromSparse(0, counts.nonZeroCols(), jitterValues)
+    counts += sparseBitmap
+
+    maxSparsity = int(self.unionSparsity * self.n)
+    w = min(numNonZeros, maxSparsity)
+
+    # Return top w most popular positions
+    return  tuple(x[1] for x in counts.getNonZerosSorted())[:w]
+
+
   def getUnionEncoding(self, text):
     """
     Encode each token of the input text, take the union, and then sparsify.
@@ -193,17 +228,7 @@ class CioEncoder(LanguageEncoder):
     """
     tokens = TextPreprocess().tokenize(text)
 
-    # Count the ON bits represented in the encoded tokens.
-    counts = SparseMatrix()
-    counts.resize(1, self.width*self.height)
-    sparseBitmap = SparseMatrix()
-    sparseBitmap.resize(1, self.width*self.height)
-    for t in tokens:
-      bitmap = self._getWordBitmap(t)
-      sparseBitmap.setRowFromSparse(0, bitmap, [1]*len(bitmap))
-      counts += sparseBitmap
-
-    positions = self.sparseUnion(counts)
+    positions = self.getUnionEncodingFromTokens(tokens)
 
     # Populate encoding
     encoding = {

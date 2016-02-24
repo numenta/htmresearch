@@ -177,22 +177,6 @@ class LanguageEncoder(object):
     return distances
 
 
-  def sparseUnion(self, counts):
-    """
-    Bits from the input patterns are unionized and then sparsified.
-
-    @param counts     (Counter)   A count of the ON bits for the union bitmap.
-
-    @return           (tuple)      A sparsified union bitmap.
-    """
-    positionsSortedByCount = tuple(x[1] for x in counts.getNonZerosSorted())
-
-    max_sparsity = int(self.unionSparsity * self.n)
-    w = min(len(positionsSortedByCount), max_sparsity)
-
-    return positionsSortedByCount[:w]
-
-
   @staticmethod
   def scaleEncoding(encoding, scaleFactor):
     """
