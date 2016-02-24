@@ -41,10 +41,10 @@ def runExperiment(args):
   """ Build a model and test it."""
   model, dataSet = setupExperiment(args)
 
-  _, ranks = testModel(model,
-                       dataSet,
-                       categorySize=6,
-                       verbosity=args.verbosity)
+  ranks = testModel(model,
+                    dataSet,
+                    categorySize=6,
+                    verbosity=args.verbosity)
   printRankResults("JUnit1", ranks)
 
   return model

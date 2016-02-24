@@ -43,16 +43,16 @@ def runExperiment(args):
   """ Build a model and test it."""
   model, dataSet = setupExperiment(args)
 
-  _, ranks = testModel(model,
-                       [d for d in dataSet if d[2]%100==0],
-                       categorySize=5,
-                       verbosity=args.verbosity)
+  ranks = testModel(model,
+                    [d for d in dataSet if d[2]%100==0],
+                    categorySize=5,
+                    verbosity=args.verbosity)
   printRankResults("JUnit2a", ranks)
 
-  _, ranks = testModel(model,
-                       [d for d in dataSet if d[2]%100==4],
-                       categorySize=5,
-                       verbosity=args.verbosity)
+  ranks = testModel(model,
+                    [d for d in dataSet if d[2]%100==4],
+                    categorySize=5,
+                    verbosity=args.verbosity)
   printRankResults("JUnit2b", ranks)
 
   return model
