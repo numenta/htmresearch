@@ -40,14 +40,11 @@ kValues = { "keywords": 21 }
 
 def instantiateModel(args):
   """
-  Return an instance of the model we will use.
+  Set some specific arguments and return an instance of the model we will use.
   """
-  # Create model after setting specific arguments required for this experiment
   args.networkConfig = getNetworkConfig(args.networkConfigPath)
   args.k = kValues.get(args.modelName, 1)
-  model = createModel(**vars(args))
-
-  return model
+  return createModel(**vars(args))
 
 
 def trainModel(model, trainingData, labelRefs, verbosity=0):
