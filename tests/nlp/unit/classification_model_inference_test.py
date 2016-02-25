@@ -171,8 +171,6 @@ class ClassificationModelInferenceTest(unittest.TestCase):
     # import pdb; pdb.set_trace()
     self._validateInference(model, modelName)
     self._inferWithFirstDocument(model, modelName)
-    # categoryVotes, sortedIds, sortedDistances = model.inferDocument(self.dataSet[0][0], returnDetailedResults=True, sortResults=True)
-    # import pdb; pdb.set_trace()
 
 
   def testCioWordFingerprint(self):
