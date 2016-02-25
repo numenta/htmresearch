@@ -386,15 +386,17 @@ class ClassificationModel(object):
     voteTotals = numpy.zeros(self.numLabels)
     distancesForEachId = {}
     classifier = self.getClassifier()
+    voteCount = 0
     for i, token in enumerate(tokenList):
       votes, idList, distances = self.inferToken(token,
                                                  reset=int(i == lastTokenIndex),
                                                  returnDetailedResults=True,
                                                  sortResults=False)
 
-      voteTotals += votes
-
       if votes.sum() > 0:
+        voteTotals += votes
+        voteCount += 1
+
         if classifier.exact:
           # We only care about 0 distances (exact matches), disregard all others
           distances[numpy.where(distances != 0)] = 1.0
@@ -412,7 +414,7 @@ class ClassificationModel(object):
             min(distancesForEachId.get(protoId, numpy.inf), closestDistance)
           )
 
-      normalizedVotes = voteTotals / float(len(tokenList))
+      normalizedVotes = voteTotals / float(voteCount)
 
     # Put distance from each prototype id to this document into a numpy array
     # ordered consistently with a list of protoIds
