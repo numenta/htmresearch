@@ -19,6 +19,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+from collections import defaultdict
 import cPickle as pkl
 import numpy
 import os
@@ -379,40 +380,35 @@ class ClassificationModel(object):
 
     # For each token in this document, run inference to get distances to all
     # prototypes in the classifier (depending on the model these may represent
-    # documents or tokens), adding these distances to a cumulative sum of this
-    # document's distances.
+    # documents or tokens), as well as category likelihoods.
 
-    lastTokenIndex = len(tokenList) - 1
-    voteTotals = numpy.zeros(self.numLabels)
-    distancesForEachId = {}
     classifier = self.getClassifier()
+    lastTokenIndex = len(tokenList) - 1
+    distancesForEachId = defaultdict(float)
+    voteTotals = numpy.zeros(self.numLabels)
+    voteCount = 0
     for i, token in enumerate(tokenList):
       votes, idList, distances = self.inferToken(token,
                                                  reset=int(i == lastTokenIndex),
                                                  returnDetailedResults=True,
                                                  sortResults=False)
 
-      voteTotals += votes
-
       if votes.sum() > 0:
+        voteTotals += votes  # TODO: doesn't work for exact matching
+        voteCount += 1
+
         if classifier.exact:
           # We only care about 0 distances (exact matches), disregard all others
           distances[numpy.where(distances != 0)] = 1.0
 
-        # For each prototype id (in the classifier), keep the minimum distance
-        # to this inference token.
-        for protoId in idList:
-          # Find min distance of this protoId to this token
-          closestDistance = distances[
-            classifier.getPatternIndicesWithPartitionId(protoId)].min()
+        # For each prototype id (in the classifier), add the distance to this
+        # inference token. When there are multiple prototypes per id, we use the
+        # total add the minimum distance among the prototypes
+        for protoId in set(idList):
+          patternIds = classifier.getPatternIndicesWithPartitionId(protoId)
+          distancesForEachId[protoId] += distances[patternIds].min()
 
-          # Add this to our running minimum of how close this protoId has
-          # been to this document
-          distancesForEachId[protoId] = (
-            min(distancesForEachId.get(protoId, numpy.inf), closestDistance)
-          )
-
-      normalizedVotes = voteTotals / float(len(tokenList))
+    normalizedVotes = voteTotals / float(voteCount)
 
     # Put distance from each prototype id to this document into a numpy array
     # ordered consistently with a list of protoIds

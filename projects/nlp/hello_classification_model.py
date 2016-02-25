@@ -159,7 +159,7 @@ if __name__ == "__main__":
   )
 
   parser.add_argument("-c", "--networkConfigPath",
-                      default="data/network_configs/sensor_tp_knn.json",
+                      default="data/network_configs/sensor_simple_tp_knn.json",
                       help="Path to JSON specifying the network params.",
                       type=str)
   parser.add_argument("-m", "--modelName",
