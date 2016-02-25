@@ -72,7 +72,7 @@ class ClassificationModelInferenceTest(unittest.TestCase):
       ("Jane stopped smoking immediately.", [0], 1),
       ("Jane quit smoking immediately.", [0], 2),
       ("The car immediately stopped.", [1], 3),
-      ("Davis trashed his cigarettes for good.", [0], 4)
+      ("Davis trashed his cigarettes for good.", [0], 4),
     ]
     self.numLabels = 2
 
@@ -110,11 +110,10 @@ class ClassificationModelInferenceTest(unittest.TestCase):
     self.assertEquals(range(len(self.dataSet)), sortedIds,
       "{} did not infer the expected order of sorted doc IDs.".format(
       modelName))
-    self.assertEquals(1, categoryVotes[0],
+    self.assertGreater(categoryVotes[0], 0.8,
       "{} did not classify document 0 as expected.".format(modelName))
 
 
-  # @unittest.skip("hi")
   def testSensorKNN(self):
     # Build model
     modelName = "htm"
@@ -132,12 +131,10 @@ class ClassificationModelInferenceTest(unittest.TestCase):
     model = self._executeModelLifecycle(modelName, modelDir)
 
     # Test model inference
-    # import pdb; pdb.set_trace()
     self._validateInference(model, modelName)
-    self._inferFirstDocument(model, modelName)
+    self._inferWithFirstDocument(model, modelName)
 
 
-  # @unittest.skip("hi")
   def testSensorSimpleUPKNN(self):
     # Build model
     modelName = "htm"
@@ -155,12 +152,10 @@ class ClassificationModelInferenceTest(unittest.TestCase):
     model = self._executeModelLifecycle(modelName, modelDir)
 
     # Test model inference
-    # import pdb; pdb.set_trace()
     self._validateInference(model, modelName)
-    self._inferFirstDocument(model, modelName)
+    self._inferWithFirstDocument(model, modelName)
 
 
-  # @unittest.skip("hi")
   def testKeywords(self):
     # Build model
     modelName = "Keywords"
@@ -175,7 +170,7 @@ class ClassificationModelInferenceTest(unittest.TestCase):
     # Test model inference
     # import pdb; pdb.set_trace()
     self._validateInference(model, modelName)
-    self._inferFirstDocument(model, modelName)
+    self._inferWithFirstDocument(model, modelName)
     # categoryVotes, sortedIds, sortedDistances = model.inferDocument(self.dataSet[0][0], returnDetailedResults=True, sortResults=True)
     # import pdb; pdb.set_trace()
 
