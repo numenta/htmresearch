@@ -168,7 +168,6 @@ class ClassificationModelInferenceTest(unittest.TestCase):
     model = self._executeModelLifecycle(modelName, modelDir)
 
     # Test model inference
-    # import pdb; pdb.set_trace()
     self._validateInference(model, modelName)
     self._inferWithFirstDocument(model, modelName)
 
