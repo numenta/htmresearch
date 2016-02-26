@@ -79,7 +79,7 @@ class TestImbu(unittest.TestCase):
                       isinstance(model, ClassificationNetworkAPI))
 
 
-  def _exerciseModelLifecycle(self, modelType, queryTerm="food",
+  def _exerciseModelLifecycle(self, modelType, queryTerm="unicorn",
                               networkConfigName="imbu_sensor_knn.json"):
     # Setup fake ImbuModels instance
     imbu = ImbuModels(
