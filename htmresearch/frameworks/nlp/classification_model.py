@@ -408,7 +408,10 @@ class ClassificationModel(object):
           patternIds = classifier.getPatternIndicesWithPartitionId(protoId)
           distancesForEachId[protoId] += distances[patternIds].min()
 
-    normalizedVotes = voteTotals / float(voteCount)
+    if voteCount:
+      normalizedVotes = voteTotals / float(voteCount)
+    else:
+      normalizedVotes = voteTotals
 
     # Put distance from each prototype id to this document into a numpy array
     # ordered consistently with a list of protoIds

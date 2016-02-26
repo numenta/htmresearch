@@ -88,6 +88,7 @@ class ClassificationModelInferenceTest(unittest.TestCase):
     model = createModel(modelName, **self.modelParams)
     model = trainModel(model, self.dataSet)
     model.save(modelDir)
+    del model
     return ClassificationModel.load(modelDir)
 
 
