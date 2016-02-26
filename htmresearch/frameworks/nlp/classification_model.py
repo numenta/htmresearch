@@ -394,7 +394,7 @@ class ClassificationModel(object):
                                                  sortResults=False)
 
       if votes.sum() > 0:
-        voteTotals += votes  # TODO: doesn't work for exact matching
+        voteTotals += votes
         voteCount += 1
 
         if classifier.exact:
