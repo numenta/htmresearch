@@ -1,6 +1,9 @@
+
+import datetime
+import os
 import sys
 import argparse
-import os
+
 from nupic.bindings.math import SparseMatrix
 from cortipy.cortical_client import CorticalClient, RETINA_SIZES
 
@@ -22,11 +25,31 @@ def countBitFrequenciesForTerms(client, tokens):
 
   for term in tokens:
     term = term.strip()
-    bitmap = client.getBitmap(term)["fingerprint"]["positions"]
+
+    try:
+      bitmap = client.getBitmap(term)["fingerprint"]["positions"]
+    except Exception as err:
+      print "Skipping '{}', reason: {}".format(term, str(err))
+      continue
+
+    if not bitmap:
+      print "Skipping '{}', reason: empty".format(term)
+      continue
+
     sparseBitmap.setRowFromSparse(0, bitmap, [1]*len(bitmap))
     counts += sparseBitmap
 
   return counts
+
+
+def plotlyFrequencyHistogram(counts):
+  data = [
+    go.Histogram(
+      x=tuple(count for _, _, count in counts.getNonZerosSorted())
+    )
+  ]
+  py.plot(data, filename=os.environ.get("HEATMAP_NAME",
+                                        str(datetime.datetime.now())))
 
 
 def plotHistogram(counts):
@@ -42,7 +65,8 @@ def plotHistogram(counts):
 def plotlyHeatmap(counts):
   counts.reshape(128, 128)
   data = [go.Heatmap(z=counts.toDense())]
-  plot_url = py.plot(data, filename='basic-heatmap')
+  py.plot(data, filename=os.environ.get("HEATMAP_NAME",
+                                        str(datetime.datetime.now())))
 
 
 def main(terms):
@@ -55,11 +79,16 @@ def main(terms):
                       type=str)
   parser.add_argument("--plot",
                       default="histogram",
-                      choices=["histogram", "heatmap"])
+                      choices=["histogram", "heatmap", "frequencyHistogram"])
+  parser.add_argument("--cacheDir", default=None, type=str)
 
   opts = parser.parse_args()
 
-  client = CorticalClient(opts.corticalApiKey, retina=opts.retinaId)
+  client = CorticalClient(opts.corticalApiKey,
+                          retina=opts.retinaId,
+                          verbosity=0,
+                          cacheDir=opts.cacheDir,
+                          fillSDR=None)
 
   counts = countBitFrequenciesForTerms(client, terms)
 
@@ -67,6 +96,8 @@ def main(terms):
     plotHistogram(counts)
   elif opts.plot == "heatmap":
     plotlyHeatmap(counts)
+  elif opts.plot == "frequencyHistogram":
+    plotlyFrequencyHistogram(counts)
 
 
 
