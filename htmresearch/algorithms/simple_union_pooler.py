@@ -30,6 +30,7 @@ class SimpleUnionPooler(object):
   def __init__(self,
                inputDimensions=[2048],
                historyLength=10,
+               minHistory=1,
                **kwargs):
     """
     Parameters:
@@ -37,10 +38,13 @@ class SimpleUnionPooler(object):
     @param numInputs: The length of the input SDRs
     @param historyLength: The union window length. For a union of the last
     10 steps, use historyLength=10
+    @param minHistory: don't perform union (output all zeros) until buffer
+    length >= minHistory
     """
 
     self._historyLength = historyLength
     self._numInputs = inputDimensions[0]
+    self._minHistory = minHistory
     self.reset()
 
 
@@ -64,8 +68,9 @@ class SimpleUnionPooler(object):
       self._activeCellsHistory.pop(0)
 
     self._unionSDR = numpy.zeros(shape=(self._numInputs,))
-    for i in self._activeCellsHistory:
-      self._unionSDR[i] = 1
+    if len(self._activeCellsHistory) >= self._minHistory:
+      for i in self._activeCellsHistory:
+        self._unionSDR[i] = 1
 
     return self._unionSDR
 
