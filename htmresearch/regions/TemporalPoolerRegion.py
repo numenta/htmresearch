@@ -206,6 +206,14 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass(), poolerType="union"
       count=1,
       constraints=""),
 
+    minHistory=dict(
+      description="don't perform union (output all zeros) until buffer"
+                  " length >= minHistory",
+      accessMode="ReadWrite",
+      dataType="UInt32",
+      count=1,
+      constraints=""),
+
      poolerType=dict(
       description="Type of pooler to use: union",
       accessMode="ReadWrite",
@@ -267,7 +275,8 @@ class TemporalPoolerRegion(PyRegion):
   argument into TemporalPoolerRegion.__init__, which will override all the default handling.
   """
 
-  def __init__(self, columnCount, inputWidth, historyLength, poolerType, **kwargs):
+  def __init__(self, columnCount, inputWidth, historyLength,
+               minHistory, poolerType, **kwargs):
 
     if columnCount <= 0 or inputWidth <=0:
       raise TypeError("Parameters columnCount and inputWidth must be > 0")
@@ -293,6 +302,7 @@ class TemporalPoolerRegion(PyRegion):
     self._inputWidth = inputWidth
     self._columnCount = columnCount
     self._historyLength = historyLength
+    self._minHistory = minHistory
 
     # pooler instance
     self._pooler = None
@@ -309,6 +319,7 @@ class TemporalPoolerRegion(PyRegion):
     autoArgs["columnDimensions"] = [self._columnCount]
     autoArgs["potentialRadius"] = self._inputWidth
     autoArgs["historyLength"] = self._historyLength
+    autoArgs["minHistory"] = self._minHistory
 
     # Allocate the pooler
     self._pooler = self._poolerClass(**autoArgs)

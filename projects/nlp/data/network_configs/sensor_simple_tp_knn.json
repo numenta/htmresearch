@@ -17,7 +17,8 @@
       "poolerType": "simpleUnion",
       "columnCount": 4096,
       "inputWidth": 4096,
-      "historyLength": 10
+      "historyLength": 10,
+      "minHistory": 10
     }
   },
   "classifierRegionConfig": {
@@ -27,7 +28,8 @@
     "regionParams": {
       "k": 9,
       "distanceMethod": "rawOverlap",
-      "maxCategoryCount": 100
+      "maxCategoryCount": 100,
+      "minSparsity": 0.0001
     }
   }
 }
