@@ -31,23 +31,65 @@ helpStr = """
 """
 
 import argparse
+import os
 
 from htmresearch.support.junit_testing import (
-  printRankResults, setupExperiment, testModel)
+  htmConfigs, nlpModelTypes, plotResults, printRankResults, setupExperiment,
+  testModel,
+)
 
+
+# Dataset info
+CATEGORY_SIZE = 6
+NUMBER_OF_DOCS = 132
 
 
 def runExperiment(args):
-  """ Build a model and test it."""
+  """ Build a model, test it, print and return results metrics."""
   model, dataSet = setupExperiment(args)
 
-  ranks = testModel(model,
-                    dataSet,
-                    categorySize=6,
-                    verbosity=args.verbosity)
-  printRankResults("JUnit1", ranks)
+  allRanks, avgRanks, avgStats = testModel(model,
+                           dataSet,
+                           categorySize=CATEGORY_SIZE,
+                           verbosity=args.verbosity)
+  printRankResults("JUnit1", avgRanks, avgStats)
 
-  return model
+  return allRanks, avgRanks, avgStats
+
+
+def run(args):
+  """ Method to handle scenarios for running a single model or all of them."""
+  if args.modelName == "all":
+    modelNames = nlpModelTypes
+    runningAllModels = True
+  else:
+    modelNames = [args.modelName]
+    runningAllModels = False
+
+  allRanks = {}
+  ranks = {}
+  stats = {}
+  for name in modelNames:
+    # Setup args
+    args.modelName = name
+    args.modelDir = os.path.join(args.experimentDir, name)
+    if runningAllModels and name == "htm":
+      # Need to specify network config for htm models
+      try:
+        htmModelInfo = htmConfigs.pop()
+      except KeyError:
+        print "Not enough HTM configs, so skipping the HTM model."
+        continue
+      name = htmModelInfo[0]
+      args.networkConfigPath = htmModelInfo[1]
+
+    # Run the junit test, update metrics dicts
+    ar, r, s = runExperiment(args)
+    allRanks.update({name:ar})
+    ranks.update({name:r})
+    stats.update({name:s})
+
+  plotResults(allRanks, ranks, maxRank=NUMBER_OF_DOCS, testName="JUnit Test 1")
 
 
 
@@ -65,10 +107,11 @@ if __name__ == "__main__":
   parser.add_argument("-m", "--modelName",
                       default="htm",
                       type=str,
-                      help="Name of model class. Options: [keywords,htm]")
-  parser.add_argument("--modelDir",
-                      default="MODELNAME.checkpoint",
-                      help="Model will be saved in this directory.")
+                      help="Name of model class. If 'all', the models "
+                           "specified in nlpModelTypes will run.")
+  parser.add_argument("--experimentDir",
+                      default="junit1_checkpoints",
+                      help="Model(s) will be saved in this directory.")
   parser.add_argument("--retina",
                       default="en_associative_64_univ",
                       type=str,
@@ -82,16 +125,10 @@ if __name__ == "__main__":
                       default=1,
                       type=int,
                       help="verbosity 0 will print out experiment steps, "
-                           "verbosity 1 will include results, and verbosity > "
-                           "1 will print out preprocessed tokens and kNN "
-                           "inference metrics.")
+                           "verbosity 1 will include train and test data.")
   args = parser.parse_args()
-
-  # By default set checkpoint directory name based on model name
-  if args.modelDir == "MODELNAME.checkpoint":
-    args.modelDir = args.modelName + ".checkpoint"
 
   # Default dataset for this unit test
   args.dataPath = "data/junit/unit_test_1.csv"
 
-  model = runExperiment(args)
+  run(args)
