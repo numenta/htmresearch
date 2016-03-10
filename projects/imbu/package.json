@@ -1,0 +1,87 @@
+{
+  "name": "Imbu",
+  "version": "0.0.1",
+  "description": "Numenta Imbu HTM NLP Example Application",
+  "main": "gui/loader.js",
+  "engines": {
+    "node": "4.1.1",
+    "npm": "2.14.4"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "scripts": {
+    "check": "npm install && npm prune && npm outdated -depth 0",
+    "clean": "rm -Rf node_modules/",
+    "lint": "eslint --ext=js --ext=jsx gui/ tests/js/",
+    "prebuild": "npm run lint",
+    "build": "gulp webpack",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/numenta/numenta-apps"
+  },
+  "keywords": [
+    "Imbu",
+    "Numenta",
+    "Hierarchical",
+    "Temporal",
+    "Memory",
+    "HTM",
+    "NLP",
+    "Machine",
+    "Intelligence",
+    "Application"
+  ],
+  "homepage": "http://numenta.com",
+  "bugs": "https://github.com/numenta/numenta-apps/issues",
+  "author": {
+    "name": "Numenta",
+    "email": "info@numenta.com",
+    "url": "http://numenta.com"
+  },
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "dependencies": {
+    "fluxible": "1.0.3",
+    "fluxible-addons-react": "0.2.2",
+    "material-ui": "0.13.4",
+    "react": "0.14.3",
+    "react-addons-create-fragment": "0.14.3",
+    "react-addons-pure-render-mixin": "0.14.3",
+    "react-addons-transition-group": "0.14.3",
+    "react-addons-update": "0.14.3",
+    "react-dom": "0.14.3",
+    "react-tap-event-plugin": "0.2.1",
+    "superagent": "1.3.0"
+  },
+  "devDependencies": {
+    "babel-core": "6.3.17",
+    "babel-eslint": "5.0.0-beta6",
+    "babel-loader": "6.2.0",
+    "babel-plugin-add-module-exports": "0.1.1",
+    "babel-plugin-transform-decorators-legacy": "1.3.1",
+    "babel-plugin-typecheck": "3.5.1",
+    "babel-polyfill": "6.3.14",
+    "babel-preset-es2015": "6.3.13",
+    "babel-preset-react": "6.3.13",
+    "babel-preset-stage-0": "6.3.13",
+    "babel-runtime": "6.3.19",
+    "escope": "3.3.0",
+    "esdoc": "0.4.3",
+    "esdoc-es7-plugin": "0.0.3",
+    "esformatter": "0.7.3",
+    "eslint": "1.10.3",
+    "eslint-plugin-react": "3.11.3",
+    "gulp": "3.9.0",
+    "gulp-util": "3.0.7",
+    "mocha": "2.3.4",
+    "webpack": "1.12.9",
+    "webpack-stream": "3.1.0"
+  }
+}
