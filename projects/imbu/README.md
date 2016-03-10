@@ -106,11 +106,10 @@ TBD
 
 ### Run Imbu in Docker
 
-In the root of `numenta-apps/imbu`:
+In the root of `nupic.research`:
 
 ```
-cp /your/formatted/data.csv engine/data.csv
-docker build -t imbu:latest .
+docker build -t imbu:latest -f projects/imbu/Dockerfile .
 docker run \
   --name imbu \
   -d \
@@ -123,9 +122,11 @@ docker run \
 
 A few salient points about the command(s) above:
 
-- `docker build -t imbu:latest .` builds a docker image from the state of the
-  `imbu/` directory of `numenta-apps/`.  The repository is called `imbu`, and
-  the image is tagged `latest`.
+- `docker build -t imbu:latest -f projects/imbu/Dockerfile .` builds a docker
+   image from the `Dockerfile` in `projects/imbu`, specifying the root of
+   `nupic.research` as the build context.  This is required for inclusion of
+   `htmresearch` in addition to `projects/imbu/`.
+- The repository is called `imbu`, and the image is tagged `latest`.
 - `docker run` starts a container from the image tagged `latest` in the `imbu`
   repository.
 - `--name imbu` names the container `imbu`

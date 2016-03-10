@@ -42,7 +42,7 @@ setup(
   name="Imbu",
   version="0.1.0",
   description=("Sample application using nnupic.fluent platform"),
-  url="https://github.com/numenta/numenta-apps/imbu",
+  url="https://github.com/numenta/nupic.core/projects/imbu",
   package_dir = {"": "engine"},
   packages = find_packages("engine"),
   include_package_data=True,

@@ -1,5 +1,5 @@
 # nupic.research
--e git+https://github.com/numenta/nupic.research.git#egg=htmresearch-0.0.1
+htmresearch
 
 # required by htmresearch, but not specified there
 enum34==1.1.2

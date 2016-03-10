@@ -50,16 +50,21 @@ EXPOSE 80
 # Copy directory contents to /opt/numenta/imbu.  Changes to files anchored
 # here will trigger cascading creation of dependent file-system layers during
 # `docker build`
-COPY . /opt/numenta/imbu
+COPY . /opt/numenta/nupic.research
 
 # Set working directory to /opt/numenta/imbu for subsequent build instructions
-WORKDIR /opt/numenta/imbu
+WORKDIR /opt/numenta/nupic.research
+
+# Install python package and dependencies
+RUN python setup.py develop
+
+# Set working directory to /opt/numenta/imbu for subsequent build instructions
+WORKDIR /opt/numenta/nupic.research/projects/imbu
 
 # Install python package and dependencies
 RUN python setup.py develop
 
 # Install javascript packages
-COPY package.json /opt/numenta/imbu/package.json
 RUN npm install
 
 # Build javascript app using npm
@@ -77,12 +82,6 @@ VOLUME cache
 # nginx and supervisor.
 CMD ./start_imbu.sh
 
-# User may map nupic.research to a local dir to run a specific version of
-# htmresearch as opposed to installing master from
-# https://github.com/numenta/nupic.research.git by default as specified in
-# requirements.txt
-VOLUME /opt/numenta/nupic.research
-
 # User may map /opt/numenta/imbu/gui to a local dir for development purposes,
 # allowing for modification of gui files without requiring rebuild of image
-VOLUME /opt/numenta/imbu/gui
+VOLUME /opt/numenta/nupic.research/projects/imbu/gui

@@ -1,6 +1,7 @@
 #!/bin/bash
 # ----------------------------------------------------------------------
-# Copyright (C) 2015, Numenta, Inc.  Unless you have purchased from
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2016, Numenta, Inc.  Unless you have purchased from
 # Numenta, Inc. a separate commercial license for this software code, the
 # following terms and conditions apply:
 #
@@ -18,16 +19,17 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
-if [ -f /opt/numenta/nupic.research/setup.py ]; then
-  pushd /opt/numenta/nupic.research
-  # Remove previously installed htmresearch in favor of local clone
-  pip uninstall --yes htmresearch
-  # Install local htmresearch in development/editable mode
-  python setup.py develop
-  popd
-fi
-# Re-install in development mode
-python setup.py develop
+#
+
+# Be extra verbose and sensitive to failures
+set -o errexit
+set -o pipefail
+set -o verbose
+set -o xtrace
+set -o nounset
+
+pushd /opt/numenta/nupic.research/projects/imbu
+
 mkdir -p logs
 sudo nginx -p . -c conf/nginx-fluent.conf
 supervisord -c conf/supervisord.conf --nodaemon
