@@ -1,0 +1,7 @@
+*
+!projects/imbu/*
+!projects/nlp/data/*
+!htmresearch/*
+!requirements.txt
+!setup.py
+!tests/nlp/*
