@@ -145,19 +145,12 @@ A few salient points about the command(s) above:
 
 Additionally, there are some optional `docker run` arguments:
 
-- Map the `/opt/numenta/imbu/cache` directory in the container to one on on the
-  host external to the container to persist model state across containers.  For
-  example:
+- Map the `/opt/numenta/nupic.research/projects/imbu/cache` directory in the
+  container to one on on the host external to the container to persist model
+  state across containers.  For example:
 
   ```
-  -v `pwd`/cache:/opt/numenta/imbu/cache
-  ```
-- You may use a local clone of nupic.research in the container by mapping the
-  `/opt/numenta/nupic.research` directory.  This will allow you to test changes
-  to nupic.research locally before commiting changes and pushing to github.
-
-  ```
-  -v <path to nupic.research>:/opt/numenta/nupic.research
+  -v `pwd`/cache:/opt/numenta/nupic.research/projects/imbu/cache
   ```
 
 A few helper utilities are included for your convenience:
@@ -178,10 +171,10 @@ helpful to define all relevant environment variables in a file that you can
 either `source` at-will, or in your bash profile.  For example:
 
 ```
-export IMBU_DOCKER_EXTRAS="-v <path to cache>:/opt/numenta/imbu/cache -v <path to nupic.research>:/opt/numenta/nupic.research"
+export IMBU_DOCKER_EXTRAS="-v <path to cache>:/opt/numenta/nupic.research/projects/imbu/cache "
 export CORTICAL_API_KEY="<cortical.io api key>"
 export IMBU_RETINA_ID="en_associative"
-export IMBU_LOAD_PATH_PREFIX="/opt/numenta/imbu/engine"
+export IMBU_LOAD_PATH_PREFIX="/opt/numenta/nupic.research/projects/imbu/engine"
 export IMBU_DOCKER_OPTIONS="--tlsverify=false"
 ```
 
