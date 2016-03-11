@@ -26,6 +26,9 @@ helpStr = """
 
 import itertools
 import numpy
+import plotly.plotly as py
+
+from plotly.graph_objs import Box, Figure, Histogram, Layout
 from prettytable import PrettyTable
 from scipy.stats import skew
 
@@ -35,8 +38,42 @@ from htmresearch.frameworks.nlp.model_factory import (
 from htmresearch.support.csv_helper import readDataAndReshuffle
 
 
-# Some values of K we know work well for this problem for specific model types
-kValues = { "keywords": 21 }
+# There should be one "htm" model for each htm config entry.
+nlpModelTypes = [
+  "CioDocumentFingerprint",
+  "CioWordFingerprint",
+  "htm",
+  "htm",
+  "Keywords"]
+htmConfigs = {
+  ("HTM_sensor_knn", "data/network_configs/sensor_knn.json"),
+  ("HTM_sensor_simple_tp_knn", "data/network_configs/sensor_simple_tp_knn.json"),
+}
+
+# Some values of k we know work well.
+kValues = { "Keywords": 21 }
+
+
+
+def setupExperiment(args):
+  """
+  Create model according to args, train on training data, save model,
+  restore model.
+
+  @return newModel (ClassificationModel) The restored NLP model.
+  @return dataSet (list) Each item is a list representing a data sample, with
+      the text string, list of label indices, and the sample ID.
+  """
+  dataSet, labelRefs, _, _ = readDataAndReshuffle(args)
+  args.numLabels = len(labelRefs)
+
+  # Create a model, train it, save it, reload it
+  model = instantiateModel(args)
+  model = trainModel(model, dataSet, labelRefs, args.verbosity)
+  model.save(args.modelDir)
+  newModel = ClassificationModel.load(args.modelDir)
+
+  return newModel, dataSet
 
 
 def instantiateModel(args):
@@ -68,60 +105,33 @@ def trainModel(model, trainingData, labelRefs, verbosity=0):
   return model
 
 
-def setupExperiment(args):
-  """
-  Create model according to args, train on training data, save model,
-  restore model.
-
-  @return newModel (ClassificationModel) The restored NLP model.
-  @return dataSet (list) Each item is a list representing a data sample, with
-      the text string, list of label indices, and the sample ID.
-  """
-  dataSet, labelRefs, _, _ = readDataAndReshuffle(args)
-  args.numLabels = len(labelRefs)
-
-  # Create a model, train it, save it, reload it
-  model = instantiateModel(args)
-  model = trainModel(model, dataSet, labelRefs, args.verbosity)
-  model.save(args.modelDir)
-  newModel = ClassificationModel.load(args.modelDir)
-
-  return newModel, dataSet
-
-
 def testModel(model, testData, categorySize, verbosity=0):
   """
-  Test the given model on testData, print out and return results metrics. The
-  categorySize specifies the number of documents per category.
+  Test the given model on testData, print out and return results metrics.
 
   For each data sample in testData the model infers the similarity to each other
-  sample; distances are number of bits apart. We then calculate two types of
-  results metrics: (i) true positives (TPs) and (ii) "ranks" statistics.
+  sample; distances are number of bits apart. We then find the "ranks" of true
+  positive (TP) documents -- those that are in the same category as the test
+  document. Ideally these ranks will be low, and a perfect result would be ranks
+  0-categorySize.
 
-    i. From the sorted inference results, we get the top-ranked documents 1 to
-    the categorySize. A true positive is defined as a top-ranked document that
-    is in the same category as the test document. The max possible is thus the
-    category size.
-
-    ii. From the sorted inference results, we get the ranks of the
-    samples that share the same category as the inference sample. Ideally these
-    ranks would be low, and the test document itself would be at rank 0. The
-    stats to describe these ranks are mean and skewness -- about 0 for normally
-    distributed data, and a skewness value > 0 means that there is more weight
-    in the left tail of the distribution. For example,
-      [10, 11, 12, 13, 14, 15] --> mean=12.5, skew=0.0
-      [0, 1, 2, 3, 4, 72] --> mean=13.7, skew=1.8
+  The stats we use to describe these ranks are mean and skewness -- about 0 for
+  normally distributed data, and a skewness value > 0 means that there is more
+  weight in the left tail of the distribution. For example,
+    [10, 11, 12, 13, 14, 15] --> mean=12.5, skew=0.0
+    [0, 1, 2, 3, 4, 72] --> mean=13.7, skew=1.8
 
   @param categorySize (int) Number of documents per category; these unit tests
       use datasets with an exact number of docs in each category.
 
-  @return allRanks (numpy array) Positions within the inference results list
-      of the documents in the test document's category.
+  @return (numpy array) Rank positions of TPs for all test instances.
+  @return avgRanks (numpy array) Average rank positions of TPs -- length is the
+      categorySize.
+  @return avgStats (numpy array) Average stats of the TP ranks -- length is the
+      categorySize.
   """
   print
   print "========================Testing on sample text========================"
-  print "A document passes the test if the ranks show its category's docs in "
-  print "positions 0-{}.".format(categorySize-1)
   if verbosity > 0:
     print
     printTemplate = PrettyTable(["ID", "Document", "TP", "Ranks (Mean, Skew)"])
@@ -129,9 +139,8 @@ def testModel(model, testData, categorySize, verbosity=0):
     printTemplate.header_style = "upper"
 
   allRanks = []
+  summedRanks = numpy.zeros(categorySize)
   totalTPs = 0
-  totalMeans = 0
-  totalSkews = 0
   for (document, labels, docId) in testData:
     _, sortedIds, sortedDistances = model.inferDocument(
       document, returnDetailedResults=True, sortResults=True)
@@ -147,35 +156,87 @@ def testModel(model, testData, categorySize, verbosity=0):
     # Compute the rank metrics for this document
     ranks = numpy.array(
       [i for i, index in enumerate(sortedIds) if index/100 == expectedCategory])
-    allRanks.append(ranks)
+    allRanks.extend(ranks)
+    summedRanks += ranks
     ranksMean = round(ranks.mean(), 2)
     ranksSkew = round(skew(ranks), 2)
-    totalMeans += ranksMean
-    totalSkews += ranksSkew
 
     if verbosity > 0:
       printTemplate.add_row(
         [docId, document, truePositives, (ranksMean, ranksSkew)])
 
+  lengthOfTest = float(len(testData))
+  avgRanks = summedRanks/lengthOfTest
+  avgStats = (round(avgRanks.mean(), 2), round(skew(avgRanks), 2))
+
   if verbosity > 0:
     print printTemplate
-  lengthOfTest = float(len(testData))
   print
   print "Averages across all test documents:"
   print "TPs =", totalTPs/lengthOfTest
-  print "Rank metrics (mean, skew) = ({}, {})".format(
-    totalMeans/lengthOfTest, totalSkews/lengthOfTest)
+  print "Rank metrics (mean, skew) = ({}, {})".format(avgStats[0], avgStats[1])
 
-  return allRanks
+  return numpy.array(allRanks), avgRanks, avgStats
 
 
-def printRankResults(testName, ranks):
+def printRankResults(testName, avgRanks, avgStats):
   """ Print the ranking metric results."""
-  ranksSum = sum(list(itertools.chain.from_iterable(ranks)))
   printTemplate = "{0:<32}|{1:<10}"
   print
   print
-  print "Final rank sums for {} (lower is better):".format(testName)
-  print printTemplate.format("Total", ranksSum)
-  print printTemplate.format("Avg. per test sample",
-                             float(ranksSum) / len(ranks))
+  print "Averaged rank metrics for {}:".format(testName)
+  print printTemplate.format("Avg. ranks per doc", avgRanks)
+  print printTemplate.format("Avg. mean and skew", avgStats)
+
+
+def plotResults(ranksArrays, ranks, maxRank, testName="JUnit Test"):
+  """ Plot a histogram of the ranks.
+
+  @param ranksArrays (dict) Keys: model names. Values: List of TP ranks.
+  @param ranks (dict) Keys: model names. Values: Averaged TP ranks.
+  @param maxRank (int) Highest rank of TP possible.
+
+  @return (str) Plot URLs.
+  """
+  colors = ["rgba(93, 164, 214, 0.5)", "rgba(255, 144, 14, 0.5)",
+            "rgba(44, 160, 101, 0.5)", "rgba(255, 65, 54, 0.5)",
+            "rgba(207, 114, 255, 0.5)"]
+
+  histogramTraces = []
+  for i, (modelName, allRanks) in enumerate(ranksArrays.iteritems()):
+    # Display distribution stats in legend
+    mean = round(allRanks.mean(), 2)
+    sk = round(skew(allRanks), 2)
+
+    # Setup histogram for this model
+    histogramTraces.append(Histogram(
+      y=allRanks,
+      name="{}: ({}, {})".format(modelName, mean, sk),
+      autobiny=False,
+      ybins=dict(
+        start=0.0,
+        end=maxRank,
+        size=1.0,
+      ),
+      marker=dict(
+        color=colors[i],
+      ),
+      opacity=0.7,
+    ))
+
+  histogramLayout = Layout(
+    title="{} - Where are the True Positives?".format(testName),
+    xaxis=dict(
+      title="Count",
+    ),
+    yaxis=dict(
+      title="Rank of TPs",
+      range=[maxRank, 0],
+    ),
+    barmode="overlay",
+    showlegend=True,
+  )
+  histogramFig = Figure(data=histogramTraces, layout=histogramLayout)
+  histogramURL = py.plot(histogramFig)
+
+  return histogramURL
