@@ -51,3 +51,9 @@ def altMAPE(groundTruth, prediction):
   error = abs(groundTruth - prediction)
   altMAPE = 100.0 * np.sum(error) / np.sum(abs(groundTruth))
   return altMAPE
+
+
+def MAPE(groundTruth, prediction):
+  MAPE = np.nanmean(
+    np.abs(groundTruth - prediction)) / np.nanmean(np.abs(groundTruth))
+  return MAPE
