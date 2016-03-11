@@ -215,8 +215,8 @@ class NeuralNetClassifier(object):
         for nSteps in self.steps:
           self._weightMatrix[nSteps] = numpy.concatenate((
             self._weightMatrix[nSteps],
-            numpy.zeros(shape=(self.numInputs, bucketIdx-self._maxBucketIdx))
-          ), axis=1)
+            numpy.zeros(
+              shape=(self.numInputs, bucketIdx-self._maxBucketIdx))), axis=1)
 
         self._maxBucketIdx = max(self._maxBucketIdx, bucketIdx)
 
@@ -237,8 +237,9 @@ class NeuralNetClassifier(object):
         else:
           self._actualValues[bucketIdx] = actValue
 
-      error = self.calculateError(classification)
       for (iteration, learnPatternNZ) in self._patternNZHistory:
+        error = self.calculateError(classification)
+
         nSteps = self._learnIteration - iteration
         if nSteps in self.steps:
           for bit in learnPatternNZ:
@@ -321,6 +322,12 @@ class NeuralNetClassifier(object):
 
 
   def calculateError(self, classification):
+    """
+    Calculate error signal
+    :param classification:
+    :return: dict containing error. The key is the number of steps
+             The value is a numpy array of error at the output layer
+    """
     error = dict()
     targetDist = numpy.zeros(self._maxBucketIdx + 1)
     targetDist[classification["bucketIdx"]] = 1.0

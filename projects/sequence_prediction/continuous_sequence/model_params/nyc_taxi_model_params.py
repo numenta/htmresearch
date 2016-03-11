@@ -37,6 +37,7 @@ MODEL_PARAMS = {'aggregationInfo': {'days': 0,
    'clParams': {'alpha': 0.001,
                 'clVerbosity': 0,
                 'regionName': 'CLAClassifierRegion',
+                'implementation': 'py',
                 'steps': '5'},
    'inferenceType': 'TemporalMultiStep',
    'sensorParams': {'encoders': {
