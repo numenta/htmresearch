@@ -228,14 +228,14 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass(), poolerType="union"
     learningMode=dict(
       description="1 if the node is learning (default 1).",
       accessMode="ReadWrite",
-      dataType="bool",
+      dataType="UInt32",
       count=1,
       constraints="bool"),
 
     inferenceMode=dict(
       description="1 if the node outputs current inference (default 1).",
       accessMode="ReadWrite",
-      dataType="bool",
+      dataType="UInt32",
       count=1,
       constraints="bool"),
 
