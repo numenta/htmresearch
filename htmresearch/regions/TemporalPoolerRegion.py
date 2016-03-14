@@ -206,6 +206,14 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass(), poolerType="union"
       count=1,
       constraints=""),
 
+    minHistory=dict(
+      description="don't perform union (output all zeros) until buffer"
+                  " length >= minHistory",
+      accessMode="ReadWrite",
+      dataType="UInt32",
+      count=1,
+      constraints=""),
+
      poolerType=dict(
       description="Type of pooler to use: union",
       accessMode="ReadWrite",
@@ -267,7 +275,8 @@ class TemporalPoolerRegion(PyRegion):
   argument into TemporalPoolerRegion.__init__, which will override all the default handling.
   """
 
-  def __init__(self, columnCount, inputWidth, historyLength, poolerType, **kwargs):
+  def __init__(self, columnCount, inputWidth, historyLength,
+               minHistory, poolerType, **kwargs):
 
     if columnCount <= 0 or inputWidth <=0:
       raise TypeError("Parameters columnCount and inputWidth must be > 0")
@@ -293,6 +302,7 @@ class TemporalPoolerRegion(PyRegion):
     self._inputWidth = inputWidth
     self._columnCount = columnCount
     self._historyLength = historyLength
+    self._minHistory = minHistory
 
     # pooler instance
     self._pooler = None
@@ -309,6 +319,7 @@ class TemporalPoolerRegion(PyRegion):
     autoArgs["columnDimensions"] = [self._columnCount]
     autoArgs["potentialRadius"] = self._inputWidth
     autoArgs["historyLength"] = self._historyLength
+    autoArgs["minHistory"] = self._minHistory
 
     # Allocate the pooler
     self._pooler = self._poolerClass(**autoArgs)
@@ -318,9 +329,11 @@ class TemporalPoolerRegion(PyRegion):
     """
     Run one iteration of TemporalPoolerRegion's compute.
 
-    The guts of the compute are contained in the self._poolerClass compute() call
+    Note that if the reset signal is True (1) we assume this iteration
+    represents the *end* of a sequence. The output will contain the pooled
+    representation to this point and any history will then be reset. The output
+    at the next compute will start fresh.
     """
-    activeCells = inputs["activeCells"]
 
     resetSignal = False
     if 'resetIn' in inputs:
@@ -328,26 +341,32 @@ class TemporalPoolerRegion(PyRegion):
         raise Exception("resetIn has invalid length")
 
       if inputs['resetIn'][0] != 0:
-        self.reset()
+        resetSignal = True
 
-    outputs["mostActiveCells"][:] = numpy.zeros(self._columnCount, dtype=GetNTAReal())
+    outputs["mostActiveCells"][:] = numpy.zeros(
+                                      self._columnCount, dtype=GetNTAReal())
 
     if self._poolerType == "simpleUnion":
-      self._pooler.unionIntoArray(activeCells, outputs["mostActiveCells"])
+      self._pooler.unionIntoArray(inputs["activeCells"],
+                                  outputs["mostActiveCells"],
+                                  forceOutput = resetSignal)
     else:
       predictedActiveCells = inputs["predictedActiveCells"] if (
         "predictedActiveCells" in inputs) else numpy.zeros(self._inputWidth,
                                                            dtype=uintDType)
 
-      mostActiveCellsIndices = self._pooler.compute(activeCells,
+      mostActiveCellsIndices = self._pooler.compute(inputs["activeCells"],
                                                     predictedActiveCells,
                                                     self.learningMode)
 
       outputs["mostActiveCells"][mostActiveCellsIndices] = 1
 
+    if resetSignal:
+        self.reset()
+
 
   def reset(self):
-    """ Reset the state of the Union Temporal Pooler """
+    """Reset the history of the underlying pooling class."""
     if self._pooler is not None:
       self._pooler.reset()
 

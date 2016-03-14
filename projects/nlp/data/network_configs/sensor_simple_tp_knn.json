@@ -17,7 +17,8 @@
       "poolerType": "simpleUnion",
       "columnCount": 4096,
       "inputWidth": 4096,
-      "historyLength": 10
+      "historyLength": 10,
+      "minHistory": 10
     }
   },
   "classifierRegionConfig": {
@@ -25,9 +26,10 @@
     "regionName": "classifier",
     "regionType": "py.KNNClassifierRegion",
     "regionParams": {
-      "k": 9,
+      "k": 1,
       "distanceMethod": "rawOverlap",
-      "maxCategoryCount": 100
+      "maxCategoryCount": 100,
+      "minSparsity": 0.0001
     }
   }
 }

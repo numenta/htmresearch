@@ -99,19 +99,6 @@ class ClassificationNetworkAPI(ClassificationModel):
     self.network.enableProfiling()
 
 
-  def reset(self):
-    """
-    Issue a reset signal to the model. The assumption is that a sequence has
-    just ended and a new sequence is about to begin.
-    """
-    # TODO: Introduce a consistent reset method name in Regions
-    for r in self.learningRegions:
-      if r.type in ["py.TemporalPoolerRegion", "py.TMRegion"]:
-        r.executeCommand(["reset"])
-      elif r.type == "py.TPRegion":
-        r.executeCommand(["resetSequenceStates"])
-
-
   def printRegionOutputs(self):
     """
     Print the outputs of regions to console for debugging, depending on

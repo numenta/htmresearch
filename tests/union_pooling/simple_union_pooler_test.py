@@ -48,6 +48,29 @@ class SimpleUnionPoolerTest(unittest.TestCase):
     self.assertAlmostEqual(self.unionPooler.getSparsity(), 6.0/2048.0)
 
 
+  def testUnionMinHistory(self):
+    activeCells = []
+    activeCells.append([1, 3, 4])
+    activeCells.append([101, 302, 405])
+    activeCellsUnion = [1, 3, 4, 101, 302, 405]
+
+    unionPooler = SimpleUnionPooler(numInputs=2048, historyLength=10,
+                                    minHistory= 2)
+
+    # Should output all zeros
+    outputVector = numpy.zeros(shape=(2048,))
+    unionPooler.unionIntoArray(activeCells[0], outputVector)
+    self.assertSetEqual(set(numpy.where(outputVector)[0]), set())
+    self.assertAlmostEqual(unionPooler.getSparsity(), 0.0)
+
+    # Should output activeCellsUnion
+    outputVector = numpy.zeros(shape=(2048,))
+    unionPooler.unionIntoArray(activeCells[1], outputVector)
+    self.assertSetEqual(set(numpy.where(outputVector)[0]),
+                        set(activeCellsUnion))
+    self.assertAlmostEqual(unionPooler.getSparsity(), 6.0/2048.0)
+
+
   def testHistoryLength(self):
     self.unionPooler = SimpleUnionPooler(numInputs=2048,
                                          historyLength=2)

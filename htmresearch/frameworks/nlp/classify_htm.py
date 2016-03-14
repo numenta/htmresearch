@@ -81,7 +81,7 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
     sensor.addDataToQueue(token,
                           categoryList=labels,
                           sequenceId=tokenId,
-                          reset=0)
+                          reset=reset)
     self.network.run(1)
 
     # Print the outputs of each region
@@ -106,7 +106,7 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
     sensor = self.sensorRegion.getSelf()
     sensor.addDataToQueue(token,
                           categoryList=[None],
-                          sequenceId=-1, reset=0)
+                          sequenceId=-1, reset=reset)
     self.network.run(1)
 
     dist = self.classifierRegion.getSelf().getLatestDistances()

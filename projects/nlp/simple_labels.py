@@ -110,6 +110,8 @@ def testModel(args, model, testData, labelRefs, documentCategoryMap):
         print "Labels associated: ", documentCategoryMap[docId]
       if categoryVotes.argmax() in documentCategoryMap[docId]:
         numCorrect += 1
+      else:
+        print "Incorrect!!!"
     else:
       print "No classification possible for this doc"
 
@@ -133,7 +135,6 @@ def runExperiment(args):
   # Create model
   model = instantiateModel(args)
 
-  # model = createModel(args)
   model = trainModel(args, model, trainingData, labelRefs)
   model.save(args.modelDir)
   newmodel = ClassificationModel.load(args.modelDir)

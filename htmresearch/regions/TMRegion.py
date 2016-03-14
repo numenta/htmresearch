@@ -320,14 +320,11 @@ class TMRegion(PyRegion):
     """
     Run one iteration of TM's compute.
 
-    The guts of the compute are contained in the self._tmClass compute() call
+    Note that if the reset signal is True (1) we assume this iteration
+    represents the *end* of a sequence. The output will contain the TM
+    representation to this point and any history will then be reset. The output
+    at the next compute will start fresh, presumably with bursting columns.
     """
-
-    # Handle reset input
-    if 'resetIn' in inputs:
-      assert len(inputs['resetIn']) == 1
-      if inputs['resetIn'][0] != 0:
-        self.reset()
 
     activeColumns = set(numpy.where(inputs["bottomUpIn"] == 1)[0])
 
@@ -379,6 +376,13 @@ class TMRegion(PyRegion):
 
     outputs['predictedActiveCells'][:] = 0
     outputs['predictedActiveCells'][predictedActiveCells] = 1
+
+
+    # Handle reset after current input has been processed
+    if 'resetIn' in inputs:
+      assert len(inputs['resetIn']) == 1
+      if inputs['resetIn'][0] != 0:
+        self.reset()
 
 
   def reset(self):
