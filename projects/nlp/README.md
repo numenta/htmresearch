@@ -9,7 +9,7 @@ Additional requirements:
 - You must have a valid REST API key from [Cortical.io](http://www.cortical.io/developers.html).
 
 ## Use cases
-In this directory are scripts for several NLP applications. They each use one or more of the following models:
+In this directory are scripts for some NLP experiments. They each use one or more of the following models:
 
 - Keywords model gives a random (seeded) encoding to each word.
 - Cortical.io word fingerprints model encodes each word with their API, and then makes a union representation over the words in a block of text.
@@ -20,11 +20,7 @@ In this directory are scripts for several NLP applications. They each use one or
 
 #### Text querying
 
-For a set of text samples, query the model with a phrase to get a sorted print out of the most similar text samples. To run this on a subset of the [IMDb movie reviews dataset](http://ai.stanford.edu/~amaas/data/sentiment/):
-
-	python imbu_runner.py data/etc/imdb_subset.csv
-
-This runs the Cortical.io windows model, but you can swap models easily in the script. It may take some time to encode the IMDb data, but the Cortical.io API calls cache so this is slow only the first run.
+Please refer to the [Imbu project directory](https://github.com/numenta/nupic.research/tree/master/projects/imbu).
 
 #### Classification experiments
 
