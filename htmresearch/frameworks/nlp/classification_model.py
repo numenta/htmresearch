@@ -175,15 +175,21 @@ class ClassificationModel(object):
 
     lastTokenIndex = len(tokenList) - 1
     voteTotals = numpy.zeros(self.numLabels)
+    voteCount = 0
     for i, token in enumerate(tokenList):
       votes, _, _ = self.inferToken(token,
                                     reset=int(i == lastTokenIndex),
                                     returnDetailedResults=False,
                                     sortResults=False)
 
-      voteTotals += votes
+      if votes.sum() > 0:
+        voteTotals += votes
+        voteCount += 1
 
-    normalizedVotes = voteTotals / float(len(tokenList))
+    if voteCount > 0:
+      normalizedVotes = voteTotals / float(voteCount)
+    else:
+      normalizedVotes = voteTotals
 
     return normalizedVotes, None, None
 

@@ -56,7 +56,7 @@ class SimpleUnionPooler(object):
     self._activeCellsHistory = []
 
 
-  def updateHistory(self, activeCells):
+  def updateHistory(self, activeCells, forceOutput=False):
     """
     Computes one cycle of the Union Pooler algorithm. Return the union SDR
     Parameters:
@@ -68,22 +68,27 @@ class SimpleUnionPooler(object):
       self._activeCellsHistory.pop(0)
 
     self._unionSDR = numpy.zeros(shape=(self._numInputs,))
-    if len(self._activeCellsHistory) >= self._minHistory:
+    if (len(self._activeCellsHistory) >= self._minHistory) or forceOutput:
       for i in self._activeCellsHistory:
         self._unionSDR[i] = 1
 
     return self._unionSDR
 
 
-  def unionIntoArray(self, inputVector, outputVector):
+  def unionIntoArray(self, inputVector, outputVector, forceOutput=False):
     """
     Create a union of the inputVector and copy the result into the outputVector
     Parameters:
     ----------------------------
     @param inputVector: The inputVector can be either a full numpy array
-    containing 0's and 1's, or a list of non-zero entry indices
+                        containing 0's and 1's, or a list of non-zero entry
+                        indices
+
     @param outputVector: A numpy array that matches the length of the
-    union pooler.
+                         union pooler.
+
+    @param forceOutput: if True, a union will be created without regard to
+                        minHistory
     """
     if isinstance(inputVector, numpy.ndarray):
       if inputVector.size == self._numInputs:
@@ -107,7 +112,7 @@ class SimpleUnionPooler(object):
         "Output vector dimension does match dimension of union pooler "
         "Expecting %s but got %s" % (self._numInputs, len(outputVector)))
 
-    unionSDR = self.updateHistory(activeBits)
+    unionSDR = self.updateHistory(activeBits, forceOutput)
 
     numpy.copyto(outputVector, unionSDR, casting="unsafe")
 

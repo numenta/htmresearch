@@ -26,7 +26,7 @@
     "regionName": "classifier",
     "regionType": "py.KNNClassifierRegion",
     "regionParams": {
-      "k": 9,
+      "k": 1,
       "distanceMethod": "rawOverlap",
       "maxCategoryCount": 100,
       "minSparsity": 0.0001
