@@ -62,6 +62,9 @@ class SimpleUnionPooler(object):
     Parameters:
     ----------------------------
     @param activeCells: A list that stores indices of active cells
+
+    @param forceOutput: if True, a union will be created without regard to
+                        minHistory
     """
     self._activeCellsHistory.append(activeCells)
     if len(self._activeCellsHistory) > self._historyLength:
