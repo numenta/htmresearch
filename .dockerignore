@@ -4,4 +4,4 @@
 !htmresearch/*
 !requirements.txt
 !setup.py
-!tests/imbu/*
+!tests/*

@@ -36,8 +36,14 @@ from htmresearch.frameworks.nlp.classify_network_api import (
 
 
 
-TEST_DATA_DIR = os.path.join(
-  os.path.dirname(os.path.realpath(__file__)), "test_data")
+TEST_DATA_DIR = os.path.abspath(
+  os.path.join(
+    os.path.dirname(
+      os.path.realpath(__file__)
+    ),
+    "..", "..", "nlp", "unit", "test_data"
+  )
+)
 
 
 
