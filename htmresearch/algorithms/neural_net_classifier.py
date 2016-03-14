@@ -67,7 +67,6 @@ class NeuralNetClassifier(object):
 
 
   def __init__(self,
-               numInputs,
                steps=(1,),
                alpha=0.001,
                actValueAlpha=0.3,
@@ -86,7 +85,6 @@ class NeuralNetClassifier(object):
     @param verbosity (int) verbosity level, can be 0, 1, or 2
     """
     # Save constructor args
-    self.numInputs = numInputs
     self.steps = steps
     self.alpha = alpha
     self.actValueAlpha = actValueAlpha
@@ -114,6 +112,9 @@ class NeuralNetClassifier(object):
     # prediction desired for that bit.
     self._activeBitHistory = dict()
 
+    # This contains the value of the highest input number we've ever seen
+    # It is used to pre-allocate fixed size arrays that hold the weights
+    self._maxInputIdx = 1
 
     # This contains the value of the highest bucket index we've ever seen
     # It is used to pre-allocate fixed size arrays that hold the weights of
@@ -123,7 +124,7 @@ class NeuralNetClassifier(object):
     # The connection weight matrix
     self._weightMatrix = dict()
     for step in self.steps:
-      self._weightMatrix[step] = numpy.zeros(shape=(self.numInputs,
+      self._weightMatrix[step] = numpy.zeros(shape=(self._maxInputIdx+1,
                                                     self._maxBucketIdx+1))
 
     # This keeps track of the actual value to use for each bucket index. We
@@ -196,6 +197,16 @@ class NeuralNetClassifier(object):
     # of the inference block.
     retval = None
 
+    # Update maxInputIdx and augment weight matrix with zero padding
+    if max(patternNZ) > self._maxInputIdx:
+      newMaxInputIdx = max(patternNZ)
+      for nSteps in self.steps:
+        self._weightMatrix[nSteps] = numpy.concatenate((
+          self._weightMatrix[nSteps],
+          numpy.zeros(shape=(newMaxInputIdx-self._maxInputIdx,
+                             self._maxBucketIdx+1))), axis=0)
+      self._maxInputIdx = newMaxInputIdx
+
     # ------------------------------------------------------------------------
     # Inference:
     # For each active bit in the activationPattern, get the classification
@@ -209,16 +220,15 @@ class NeuralNetClassifier(object):
       bucketIdx = classification["bucketIdx"]
       actValue = classification["actValue"]
 
-      # Update maxBucketIndex
+      # Update maxBucketIndex and augment weight matrix with zero padding
       if bucketIdx > self._maxBucketIdx:
-        # augment weight matrix with zero paddings
         for nSteps in self.steps:
           self._weightMatrix[nSteps] = numpy.concatenate((
             self._weightMatrix[nSteps],
-            numpy.zeros(
-              shape=(self.numInputs, bucketIdx-self._maxBucketIdx))), axis=1)
+            numpy.zeros(shape=(self._maxInputIdx+1,
+                               bucketIdx-self._maxBucketIdx))), axis=1)
 
-        self._maxBucketIdx = max(self._maxBucketIdx, bucketIdx)
+        self._maxBucketIdx = bucketIdx
 
       retval = self.infer(patternNZ, classification)
 

@@ -219,13 +219,17 @@ if __name__ == "__main__":
   if dataSet == "rec-center-hourly":
     DATE_FORMAT = "%m/%d/%y %H:%M"  # '7/2/10 0:00'
     predictedField = "kw_energy_consumption"
-  elif dataSet == "nyc_taxi" or dataSet == "nyc_taxi_perturb" or dataSet == "nyc_taxi_perturb_baseline":
+  elif (dataSet == "nyc_taxi" or
+            dataSet == "nyc_taxi_perturb" or
+            dataSet == "nyc_taxi_perturb_baseline"):
     DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
     predictedField = "passenger_count"
   else:
     raise RuntimeError("un recognized dataset")
 
-  if dataSet == "nyc_taxi" or dataSet == "nyc_taxi_perturb" or dataSet == "nyc_taxi_perturb_baseline":
+  if (dataSet == "nyc_taxi" or
+          dataSet == "nyc_taxi_perturb" or
+          dataSet == "nyc_taxi_perturb_baseline"):
     modelParams = getModelParamsFromName("nyc_taxi")
   else:
     modelParams = getModelParamsFromName(dataSet)
@@ -254,8 +258,7 @@ if __name__ == "__main__":
 
   # initialize new classifier
   numTMcells = model._getTPRegion().getSelf()._tfdr.numberOfCells()
-  nn_classifier = NeuralNetClassifier(numInputs=numTMcells,
-                                      steps=[5], alpha=0.005)
+  nn_classifier = NeuralNetClassifier(steps=[5], alpha=0.005)
 
   _METRIC_SPECS = getMetricSpecs(predictedField, stepsAhead=_options.stepsAhead)
   metric = metrics.getModule(_METRIC_SPECS[0])

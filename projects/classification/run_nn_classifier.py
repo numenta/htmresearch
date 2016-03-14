@@ -44,8 +44,7 @@ def initializeEncoder(Nelements, seed):
 def initializeClassifiers(Nelements, encoder):
   cla = CLAClassifier(steps=[0])
 
-  nn_classifier = NeuralNetClassifier(numInputs=encoder.n,
-                                      steps=[0], alpha=0.1)
+  nn_classifier = NeuralNetClassifier(steps=[0], alpha=0.1)
 
   patternNZ = list(numpy.where(encoder.encode(Nelements-1))[0])
   classification = {'bucketIdx': Nelements-1, 'actValue': Nelements-1}
