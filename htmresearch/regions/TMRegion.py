@@ -305,15 +305,14 @@ class TMRegion(PyRegion):
 
   def initialize(self, inputs, outputs):
     """
-    Initialize the self._tm. We need to figure out the constructor
-    parameters for each class, and send it to that constructor.
+    Initialize the self._tm if not already initialized. We need to figure out
+    the constructor parameters for each class, and send it to that constructor.
     """
-    # Create dict of arguments we will pass to the temporal memory class
-    args = copy.deepcopy(self.__dict__)
-    args["columnDimensions"] = (self.columnCount,)
-
-    # Allocate the tm
-    self._tm = createModel(self.temporalImp, **args)
+    if self._tm is None:
+      # Create dict of arguments we will pass to the temporal memory class
+      args = copy.deepcopy(self.__dict__)
+      args["columnDimensions"] = (self.columnCount,)
+      self._tm = createModel(self.temporalImp, **args)
 
 
   def compute(self, inputs, outputs):

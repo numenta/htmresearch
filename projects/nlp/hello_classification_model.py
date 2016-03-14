@@ -36,6 +36,7 @@ import argparse
 import copy
 
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
+from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
 from htmresearch.frameworks.nlp.model_factory import (
   createModel, getNetworkConfig)
 
@@ -84,14 +85,20 @@ def trainModel(model, trainingData):
   Train the given model on trainingData. Return the trained model instance.
   """
 
+  # Do three passes if we're using a TM.
+  numPasses = 1
+  if isinstance(model, ClassificationModelHTM) and (model.tmRegion is not None):
+    numPasses = 3
+
   print
   print "=======================Training model on sample text================"
-  for docId, doc in enumerate(trainingData):
-    document = doc[0]
-    labels = doc[1]
-    print
-    print "Document=", document, "label=",doc[1], "id=",docId
-    model.trainDocument(document, labels, docId)
+  for passes in range(numPasses):
+    for docId, doc in enumerate(trainingData):
+      document = doc[0]
+      labels = doc[1]
+      print
+      print "Document=", document, "label=",doc[1], "id=",docId
+      model.trainDocument(document, labels, docId)
 
   return model
 
