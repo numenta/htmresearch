@@ -154,7 +154,7 @@ def testModel(model, testData, categorySize, verbosity=0):
         truePositives += 1
     totalTPs += truePositives
 
-    if (verbosity >= 1) and (truePositives < categorySize):
+    if (verbosity >= 2) and (truePositives < categorySize):
       print "\nIncorrect inference result:"
       print "docId=",docId,"document=",document
       print "sortedIds=",sortedIds
