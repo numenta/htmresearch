@@ -45,7 +45,7 @@ def runExperiment(args):
                     [d for d in dataSet if d[2]%100==0],
                     categorySize=5,
                     verbosity=args.verbosity)
-  printRankResults("JUnit4", ranks)
+  printRankResults("JUnit5", ranks)
 
   return model
 
