@@ -97,7 +97,8 @@ def trainModel(model, trainingData, labelRefs, verbosity=0):
     printTemplate.header_style = "upper"
   for (document, labels, docId) in trainingData:
     if verbosity > 0:
-      printTemplate.add_row([docId, document, labelRefs[labels[0]]])
+      docStr = unicode(document, errors='ignore')[0:100]
+      printTemplate.add_row([docId, docStr, labelRefs[labels[0]]])
     model.trainDocument(document, labels, docId)
   if verbosity > 0:
     print printTemplate
@@ -153,6 +154,12 @@ def testModel(model, testData, categorySize, verbosity=0):
         truePositives += 1
     totalTPs += truePositives
 
+    if (verbosity >= 1) and (truePositives < categorySize):
+      print "\nIncorrect inference result:"
+      print "docId=",docId,"document=",document
+      print "sortedIds=",sortedIds
+      print "truePositives = ",truePositives
+
     # Compute the rank metrics for this document
     ranks = numpy.array(
       [i for i, index in enumerate(sortedIds) if index/100 == expectedCategory])
@@ -162,8 +169,9 @@ def testModel(model, testData, categorySize, verbosity=0):
     ranksSkew = round(skew(ranks), 2)
 
     if verbosity > 0:
+      docStr = unicode(document, errors='ignore')[0:100]
       printTemplate.add_row(
-        [docId, document, truePositives, (ranksMean, ranksSkew)])
+        [docId, docStr, truePositives, (ranksMean, ranksSkew)])
 
   lengthOfTest = float(len(testData))
   avgRanks = summedRanks/lengthOfTest
