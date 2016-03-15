@@ -47,16 +47,24 @@ ENV PYTHONPATH=/opt/numenta/nupic.research:${PYTHONPATH}
 # Listen on container port 80
 EXPOSE 80
 
-# Copy directory contents to /opt/numenta/imbu.  Changes to files anchored
-# here will trigger cascading creation of dependent file-system layers during
-# `docker build`
-COPY . /opt/numenta/nupic.research
+# Copy htmresearch to /opt/numenta/nupic.research/htmresearch.  Changes to
+# files anchored here will trigger cascading creation of dependent file-system
+# layers during `docker build`
+RUN mkdir -p /opt/numenta/nupic.research
+COPY htmresearch/ /opt/numenta/nupic.research/htmresearch
+COPY setup.py /opt/numenta/nupic.research/
+COPY requirements.txt /opt/numenta/nupic.research/
 
 # Set working directory to /opt/numenta/imbu for subsequent build instructions
 WORKDIR /opt/numenta/nupic.research
 
 # Install python package and dependencies
 RUN python setup.py develop
+
+# Copy Imbu and nlp-relevant files to their respective locations
+COPY projects/imbu/ /opt/numenta/nupic.research/projects/imbu
+COPY projects/nlp/ /opt/numenta/nupic.research/projects/nlp
+COPY tests/ /opt/numenta/nupic.research/tests
 
 # Set working directory to /opt/numenta/imbu for subsequent build instructions
 WORKDIR /opt/numenta/nupic.research/projects/imbu
