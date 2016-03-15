@@ -27,8 +27,8 @@ ID,Sample,Label
 600,Sue ate pizza,atePizza
 601,Sue ate pizza and was satisfied,atePizza
 602,Sue ate authentic Italian pizza and was satisfied,atePizza
-603,Sue ate authentic Italian pizza at her favorite pizzaria and was satisfied,atePizza
-604,Sue ate authentic Italian pizza at her favorite pizzaria and was very satisfied,atePizza
+603,Sue ate authentic Italian pizza at her favorite pizzeria and was satisfied,atePizza
+604,Sue ate authentic Italian pizza at her favorite pizzeria and was very satisfied,atePizza
 700,Tom woke up,tomWoke
 701,Tom woke up abruptly,tomWoke
 702,Tom woke up abruptly in the middle of the night,tomWoke

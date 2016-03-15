@@ -46,11 +46,11 @@ def runExperiment(args):
   """ Build a model and test it."""
   model, dataSet = setupExperiment(args)
 
-  ranks = testModel(model,
+  allRanks, avgRanks, avgStats  = testModel(model,
                     [d for d in dataSet if d[2]%100==0],
-                    categorySize=CATEGORY_SIZE,
+                    categorySize=6,
                     verbosity=args.verbosity)
-  printRankResults("JUnit5", ranks)
+  printRankResults("JUnit5", avgRanks, avgStats)
 
   return model
 

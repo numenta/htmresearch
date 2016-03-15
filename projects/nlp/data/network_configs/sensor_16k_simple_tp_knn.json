@@ -1,0 +1,35 @@
+{
+  "sensorRegionConfig": {
+    "regionEnabled": true,
+    "regionName": "sensor",
+    "regionType": "py.LanguageSensor",
+    "regionParams": {
+      "verbosity": 0,
+      "numCategories": 3
+      },
+    "encoders": {}
+  },
+  "tpRegionConfig": {
+    "regionEnabled": true,
+    "regionName": "UP",
+    "regionType": "py.TemporalPoolerRegion",
+    "regionParams": {
+      "poolerType": "simpleUnion",
+      "columnCount": 16384,
+      "inputWidth": 16384,
+      "historyLength": 10,
+      "minHistory": 10
+    }
+  },
+  "classifierRegionConfig": {
+    "regionEnabled": true,
+    "regionName": "classifier",
+    "regionType": "py.KNNClassifierRegion",
+    "regionParams": {
+      "k": 1,
+      "distanceMethod": "rawOverlap",
+      "maxCategoryCount": 100,
+      "minSparsity": 0.0001
+    }
+  }
+}
