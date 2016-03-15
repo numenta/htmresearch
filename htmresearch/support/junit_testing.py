@@ -26,6 +26,7 @@ helpStr = """
 
 import itertools
 import numpy
+import os
 import plotly.plotly as py
 
 from plotly.graph_objs import Box, Figure, Histogram, Layout
@@ -44,10 +45,12 @@ nlpModelTypes = [
   "CioWordFingerprint",
   "htm",
   "htm",
+  "htm",
   "Keywords"]
 htmConfigs = {
   ("HTM_sensor_knn", "data/network_configs/sensor_knn.json"),
   ("HTM_sensor_simple_tp_knn", "data/network_configs/sensor_simple_tp_knn.json"),
+  ("HTM_sensor_tm_knn", "data/network_configs/sensor_tm_knn.json"),
 }
 
 # Some values of k we know work well.
@@ -89,8 +92,10 @@ def trainModel(model, trainingData, labelRefs, verbosity=0):
   """
   Train the given model on trainingData. Return the trained model instance.
   """
+  modelName = repr(model).split()[0].split(".")[-1]
   print
-  print "======================Training model on sample text==================="
+  print "===================Training {} on sample text================".format(
+    modelName)
   if verbosity > 0:
     printTemplate = PrettyTable(["ID", "Document", "Label"])
     printTemplate.align = "l"
@@ -131,8 +136,10 @@ def testModel(model, testData, categorySize, verbosity=0):
   @return avgStats (numpy array) Average stats of the TP ranks -- length is the
       categorySize.
   """
+  modelName = repr(model).split()[0].split(".")[-1]
   print
-  print "========================Testing on sample text========================"
+  print "===================Testing {} on sample text==================".format(
+    modelName)
   if verbosity > 0:
     print
     printTemplate = PrettyTable(["ID", "Document", "TP", "Ranks (Mean, Skew)"])
@@ -206,6 +213,7 @@ def plotResults(ranksArrays, ranks, maxRank, testName="JUnit Test"):
 
   @return (str) Plot URLs.
   """
+  py.sign_in(os.environ["PLOTLY_USERNAME"], os.environ["PLOTLY_API_KEY"])
   colors = ["rgba(93, 164, 214, 0.5)", "rgba(255, 144, 14, 0.5)",
             "rgba(44, 160, 101, 0.5)", "rgba(255, 65, 54, 0.5)",
             "rgba(207, 114, 255, 0.5)"]

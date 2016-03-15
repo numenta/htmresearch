@@ -1,9 +1,10 @@
 #!/bin/bash
 
 rm -rf `pwd`/cache/*
+pushd ../../
 docker ${IMBU_DOCKER_OPTIONS} kill imbu
 docker ${IMBU_DOCKER_OPTIONS} rm imbu
-docker ${IMBU_DOCKER_OPTIONS} build --no-cache --pull -t imbu:latest .
+docker ${IMBU_DOCKER_OPTIONS} build --no-cache --pull -t imbu:latest -f projects/imbu/Dockerfile .
 docker ${IMBU_DOCKER_OPTIONS} run \
   --name imbu \
   -d \
@@ -13,3 +14,4 @@ docker ${IMBU_DOCKER_OPTIONS} run \
   -e IMBU_RETINA_ID=${IMBU_RETINA_ID} \
   ${IMBU_DOCKER_EXTRAS} \
   imbu:latest
+popd

@@ -36,6 +36,11 @@ from htmresearch.support.junit_testing import (
   printRankResults, setupExperiment, testModel)
 
 
+# Dataset info
+CATEGORY_SIZE = 6
+NUMBER_OF_DOCS = 108
+
+
 
 def runExperiment(args):
   """ Build a model and test it."""
@@ -43,9 +48,9 @@ def runExperiment(args):
 
   ranks = testModel(model,
                     [d for d in dataSet if d[2]%100==0],
-                    categorySize=5,
+                    categorySize=CATEGORY_SIZE,
                     verbosity=args.verbosity)
-  printRankResults("JUnit4", ranks)
+  printRankResults("JUnit5", ranks)
 
   return model
 

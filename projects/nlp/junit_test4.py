@@ -51,10 +51,12 @@ def runExperiment(args):
 
   model, dataSet = setupExperiment(args)
 
-  allRanks, avgRanks, avgStats = testModel(model,
-                    [d for d in dataSet if d[2]%100==0],
-                    categorySize=CATEGORY_SIZE,
-                    verbosity=args.verbosity)
+  allRanks, avgRanks, avgStats = testModel(
+    model,
+    [d for d in dataSet if d[2]%100==0],
+    categorySize=CATEGORY_SIZE,
+    verbosity=args.verbosity
+  )
   printRankResults("JUnit4", avgRanks, avgStats)
 
   return allRanks, avgRanks, avgStats
