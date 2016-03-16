@@ -187,16 +187,14 @@ class ImbuModels(object):
 
     if modelName == "CioWordFingerprint":
       kwargs.update(fingerprintType=EncoderTypes.word)
-                    # cacheRoot=self.cacheRoot)
 
     elif modelName == "CioDocumentFingerprint":
       kwargs.update(fingerprintType=EncoderTypes.document)
-                    # cacheRoot=self.cacheRoot)
 
     elif modelName == "HTMNetwork":
-      # kwargs.update(cacheRoot=self.cacheRoot)
       try:
-        kwargs.update(networkConfig=_loadNetworkConfig(kwargs["networkConfigName"]))
+        kwargs.update(
+          networkConfig=_loadNetworkConfig(kwargs["networkConfigName"]))
         kwargs["networkConfig"]["sensorRegionConfig"]["regionParams"].update(
           cacheRoot=self.cacheRoot)
       except Exception as e:
@@ -211,9 +209,7 @@ class ImbuModels(object):
 
     else:
       raise ValueError("{} is not an acceptable Imbu model.".format(modelName))
-    # import pprint
-    # pprint.pprint(kwargs)
-    # import pdb; pdb.set_trace()
+
     model = createModel(modelName, **kwargs)
 
     model.verbosity = 0

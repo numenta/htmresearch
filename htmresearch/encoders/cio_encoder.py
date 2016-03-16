@@ -75,7 +75,7 @@ class CioEncoder(LanguageEncoder):
       raise OSError("Missing API key.")
 
     super(CioEncoder, self).__init__(unionSparsity=unionSparsity)
-    # import pdb; pdb.set_trace()
+
     if cacheDir is None:
       root = os.path.dirname(os.path.realpath(__file__))
       cacheDir = os.path.join(root, "CioCache")
