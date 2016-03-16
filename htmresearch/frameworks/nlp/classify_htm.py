@@ -35,12 +35,14 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
                retina="en_associative",
                apiKey=None,
                maxSparsity=1.0,
+               cacheRoot=None,
                **kwargs):
     """
     @param retinaScaling      (float)   Scales the dimensions of the SDRs.
     @param retina             (str)     Name of Cio retina.
     @param apiKey             (str)     Key for Cio API.
     @param maxSparsity        (float)   The maximum sparsity of the CIO bitmap.
+    @param cacheRoot          (str)     Directory for caching Cio encodings.
 
     See ClassificationModel for remaining parameters.
     """
@@ -50,6 +52,7 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
     self.retina = retina
     self.apiKey = apiKey
     self.maxSparsity = maxSparsity
+    self.cacheRoot = cacheRoot
     self.network = self.initModel()
     self._initializeRegionHelpers()
 
@@ -62,7 +65,8 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
                          retina=self.retina,
                          apiKey=self.apiKey,
                          maxSparsity=self.maxSparsity,
-                         verbosity=self.verbosity-1)
+                         verbosity=self.verbosity-1,
+                         cacheDir=self.cacheRoot)
 
     # This encoder specifies the LanguageSensor output width.
     return configureNetwork(None, self.networkConfig, encoder)

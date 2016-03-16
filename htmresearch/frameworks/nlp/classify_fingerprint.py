@@ -45,6 +45,7 @@ class ClassificationModelFingerprint(ClassificationModel):
                apiKey=None,
                k=1,
                classifierMetric="rawOverlap",
+               cacheRoot=None,
                **kwargs):
 
     super(ClassificationModelFingerprint, self).__init__(**kwargs)
@@ -64,7 +65,8 @@ class ClassificationModelFingerprint(ClassificationModel):
                               fingerprintType=fingerprintType,
                               unionSparsity=unionSparsity,
                               retina=retina,
-                              apiKey=apiKey)
+                              apiKey=apiKey,
+                              cacheDir=cacheRoot)
 
     self.currentDocument = None
 

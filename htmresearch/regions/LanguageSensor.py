@@ -50,8 +50,10 @@ class LanguageSensor(PyRegion):
 
   def __init__(self,
                verbosity=0,
-               numCategories=1):
+               numCategories=1,
+               cacheRoot=None):
     """Create a node without an encoder or datasource."""
+    self.cacheRoot = cacheRoot
     self.numCategories = numCategories
     self.verbosity = verbosity
 
@@ -104,6 +106,13 @@ class LanguageSensor(PyRegion):
       },
       "inputs":{},
       "parameters":{
+        "cacheRoot":{
+          "description":"Directory for caching Cio API requests.",
+          "dataType":"Byte",
+          "accessMode":"ReadWrite",
+          "count":0,
+          "constraints":"",
+        },
         "verbosity":{
           "description":"Verbosity level",
           "dataType":"UInt32",

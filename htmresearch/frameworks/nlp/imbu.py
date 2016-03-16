@@ -182,17 +182,26 @@ class ImbuModels(object):
     if getattr(ClassificationModelTypes, modelName) in self.requiresCIOKwargs:
       # Model type requires Cortical.io credentials
       kwargs.update(retina=self.retina, apiKey=self.apiKey, retinaScaling=1.0)
+      # Need to specify caching directory
+      kwargs.update(cacheRoot=self.cacheRoot)
 
     if modelName == "CioWordFingerprint":
-      kwargs.update(fingerprintType=EncoderTypes.word,
-                    cacheRoot=self.cacheRoot)
+      kwargs.update(fingerprintType=EncoderTypes.word)
+                    # cacheRoot=self.cacheRoot)
 
     elif modelName == "CioDocumentFingerprint":
-      kwargs.update(fingerprintType=EncoderTypes.document,
-                    cacheRoot=self.cacheRoot)
+      kwargs.update(fingerprintType=EncoderTypes.document)
+                    # cacheRoot=self.cacheRoot)
 
     elif modelName == "HTMNetwork":
-      kwargs.update(networkConfig=_loadNetworkConfig(kwargs["networkConfigName"]))
+      # kwargs.update(cacheRoot=self.cacheRoot)
+      try:
+        kwargs.update(networkConfig=_loadNetworkConfig(kwargs["networkConfigName"]))
+        kwargs["networkConfig"]["sensorRegionConfig"]["regionParams"].update(
+          cacheRoot=self.cacheRoot)
+      except Exception as e:
+        print "Could not add params to HTMNetwork model config."
+        raise e
 
     elif modelName == "Keywords":
       # k should be > the number of data samples because the Keywords model
@@ -202,7 +211,9 @@ class ImbuModels(object):
 
     else:
       raise ValueError("{} is not an acceptable Imbu model.".format(modelName))
-
+    # import pprint
+    # pprint.pprint(kwargs)
+    # import pdb; pdb.set_trace()
     model = createModel(modelName, **kwargs)
 
     model.verbosity = 0
