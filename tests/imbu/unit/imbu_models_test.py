@@ -25,8 +25,8 @@ import shutil
 import tempfile
 import unittest
 
+from htmresearch.encoders import EncoderTypes
 from htmresearch.frameworks.nlp.imbu import ImbuModels
-
 from htmresearch.frameworks.nlp.classification_model import (
   ClassificationModel
 )
@@ -156,6 +156,63 @@ class TestImbu(unittest.TestCase):
         "Incorrect mapping returned for model named '{}'".format(modelName))
 
     self.assertRaises(ValueError, imbu._mapModelName, "fakeModel")
+
+
+  def testSetParamsInModelFactory(self):
+    # Setup fake ImbuModels instance
+    imbu = ImbuModels(
+      cacheRoot="fake_cache_root",
+      dataPath=self.dataPath,
+      retina="en_associative",
+      apiKey=os.environ.get("CORTICAL_API_KEY")
+    )
+
+    tmpDir = tempfile.mkdtemp()
+    self.addCleanup(shutil.rmtree, tmpDir)
+
+    checkpointLocation = os.path.join(tmpDir, "checkpoint")
+
+    # Base set of params to check
+    paramsToCheck = dict(
+      retina="en_associative",
+      apiKey=os.environ.get("CORTICAL_API_KEY"),
+      retinaScaling=1.0,
+      cacheRoot="fake_cache_root",
+    )
+
+    # Create models and check params
+    model = imbu.createModel("CioWordFingerprint",
+                             loadPath="",
+                             savePath=checkpointLocation)
+    attributes = model.getattr()
+    encoder = model.getEncoder()
+    paramsToCheck.update(fingerprintType=EncoderTypes.word)
+    import pdb; pdb.set_trace()
+    self._checkModelParams(model, paramsToCheck)
+
+    model = imbu.createModel("CioDocumentFingerprint",
+                             loadPath="",
+                             savePath=checkpointLocation)
+    paramsToCheck.update(fingerprintType=EncoderTypes.document)
+    self._checkModelParams(model, paramsToCheck)
+
+    model = imbu.createModel("HTMNetwork",
+                             loadPath="",
+                             savePath=checkpointLocation,
+                             networkConfigName="imbu_sensor_knn.json")
+    paramsToCheck.update(
+
+
+
+    )
+    self._checkModelParams(model, paramsToCheck)
+
+    model = imbu.createModel("Keywords",
+                             loadPath="",
+                             savePath=checkpointLocation)
+    paramsToCheck = dict(k=10*len(self.dataDict))
+    self._checkModelParams(model, paramsToCheck)
+
 
 
   def testResultsFormatting(self):

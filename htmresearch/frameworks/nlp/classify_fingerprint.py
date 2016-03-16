@@ -159,3 +159,10 @@ class ClassificationModelFingerprint(ClassificationModel):
     Returns the classifier instance for the model.
     """
     return self.classifier
+
+
+  def getEncoder(self):
+    """
+    Returns the encoder instance for the model.
+    """
+    return self.encoder

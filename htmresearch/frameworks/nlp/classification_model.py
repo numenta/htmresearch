@@ -238,6 +238,13 @@ class ClassificationModel(object):
     return self.filterText
 
 
+  def getEncoder(self):
+    """
+    Returns the encoder instance for the model.
+    """
+    raise NotImplementedError
+
+
   def getClassifier(self):
     """
     Returns the classifier instance for the model.

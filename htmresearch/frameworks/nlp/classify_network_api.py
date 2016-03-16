@@ -64,6 +64,13 @@ class ClassificationNetworkAPI(ClassificationModel):
     return self.classifierRegion.getSelf().getAlgorithmInstance()
 
 
+  def getEncoder(self):
+    """
+    Returns the encoder instance for the model.
+    """
+    return self.encoder
+
+
   def _initializeRegionHelpers(self):
     """
     Set helper member variables once network has been initialized. This
