@@ -2575,9 +2575,6 @@ p527
 I0
 sg6
 I0
-sS'minSparsity'
-p528
-F0
 sS'numSVDSamples'
-p529
+p528
 Nsbsb.

@@ -57,18 +57,18 @@ class ClassificationNetworkAPI(ClassificationModel):
       raise RuntimeError("Must specify a network config dict")
 
 
-  def getClassifier(self):
-    """
-    Returns the classifier for the model.
-    """
-    return self.classifierRegion.getSelf().getAlgorithmInstance()
-
-
   def getEncoder(self):
     """
     Returns the encoder instance for the model.
     """
     return self.encoder
+
+
+  def getClassifier(self):
+    """
+    Returns the classifier for the model.
+    """
+    return self.classifierRegion.getSelf().getAlgorithmInstance()
 
 
   def _initializeRegionHelpers(self):
