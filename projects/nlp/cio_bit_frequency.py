@@ -4,6 +4,7 @@ import os
 import sys
 import argparse
 import cPickle as pickle
+import random
 
 from nupic.bindings.math import SparseMatrix
 from cortipy.cortical_client import CorticalClient, RETINA_SIZES
@@ -12,6 +13,64 @@ from htmresearch.support.text_preprocess import TextPreprocess
 import pylab
 import plotly.plotly as py
 import plotly.graph_objs as go
+
+def printFrequencyStatistics(counts, frequencies, numWords, size):
+  """
+  Print interesting statistics regarding the counts and frequency matrices
+  """
+  avgBits = float(counts.sum())/numWords
+  print "Retina width=128, height=128"
+  print "Total number of words processed=",numWords
+  print "Average number of bits per word=",avgBits,
+  print "avg sparsity=",avgBits/size
+  print "counts matrix sum=",counts.sum(),
+  print "max=",counts.max(), "min=",counts.min(),
+  print "mean=",counts.sum()/float(size)
+  print "frequency matrix sum=",frequencies.sum(),
+  print "max=",frequencies.max(), "min=",frequencies.min(),
+  print "mean=",frequencies.sum()/float(size)
+  print "Number of bits with zero entries",frequencies.nZeroCols()
+
+
+def countRandomBitFrequencies(numTerms = 100000, percentSparsity = 0.03):
+  """Create a uniformly random counts matrix through sampling."""
+  # Accumulate counts by inplace-adding sparse matrices
+  counts = SparseMatrix()
+  size = 128*128
+  counts.resize(1, size)
+
+  # Pre-allocate buffer sparse matrix
+  sparseBitmap = SparseMatrix()
+  sparseBitmap.resize(1, size)
+
+  random.seed(42)
+
+  # Accumulate counts for each bit for each word
+  numWords=0
+  for term in xrange(numTerms):
+
+    bitmap = random.sample(xrange(size), int(size*percentSparsity))
+    bitmap.sort()
+
+    sparseBitmap.setRowFromSparse(0, bitmap, [1]*len(bitmap))
+    counts += sparseBitmap
+    numWords += 1
+
+  # Compute normalized version of counts as a separate matrix
+  frequencies = SparseMatrix()
+  frequencies.resize(1, size)
+  frequencies.copy(counts)
+  frequencies.divide(float(numWords))
+
+  # Wrap up by printing some statistics and then saving the normalized version
+  printFrequencyStatistics(counts, frequencies, numWords, size)
+
+  frequencyFilename = "bit_frequencies_random.pkl"
+  print "Saving frequency matrix in",frequencyFilename
+  with open(frequencyFilename, "wb") as frequencyPickleFile:
+    pickle.dump(frequencies, frequencyPickleFile)
+
+  return counts
 
 
 def countBitFrequenciesForTerms(client, lines):
@@ -45,32 +104,28 @@ def countBitFrequenciesForTerms(client, lines):
       counts += sparseBitmap
       numWords += 1
 
-  # Compute normalized version of counts
+  # Compute normalized version of counts as a separate matrix
   frequencies = SparseMatrix()
   frequencies.resize(1, width*height)
   frequencies.copy(counts)
   frequencies.divide(float(numWords))
 
   # Wrap up by printing some statistics and then saving the normalized version
-  avgBits = float(counts.sum())/numWords
-  print "Retina width=",width,"height=",height
-  print "Total number of words processed=",numWords
-  print "Average number of bits per word=",avgBits,
-  print "avg sparsity=",avgBits/(width*height)
-  print "frequency matrix sum=",frequencies.sum(),
-  print "max=",frequencies.max(), "min=",frequencies.min(),
-  print "mean=",frequencies.sum()/float(width*height)
-  print "Number of bits with zero entries",frequencies.nZeroCols()
+  printFrequencyStatistics(counts, frequencies, numWords, width*height)
 
-  countsFilename = "bit_frequencies_"+client.retina+".pkl"
-  print "Saving counts matrix in",countsFilename
-  with open(countsFilename, "wb") as countsPickleFile:
-    pickle.dump(frequencies, countsPickleFile)
+  frequencyFilename = "bit_frequencies_"+client.retina+".pkl"
+  print "Saving frequency matrix in",frequencyFilename
+  with open(frequencyFilename, "wb") as frequencyPickleFile:
+    pickle.dump(frequencies, frequencyPickleFile)
 
   return counts
 
 
 def plotlyFrequencyHistogram(counts):
+  """
+  x-axis is a count of how many times a bit was active
+  y-axis is number of bits that have that frequency
+  """
   data = [
     go.Histogram(
       x=tuple(count for _, _, count in counts.getNonZerosSorted())
@@ -112,13 +167,16 @@ def main(terms):
 
   opts = parser.parse_args()
 
-  client = CorticalClient(opts.corticalApiKey,
-                          retina=opts.retinaId,
-                          verbosity=0,
-                          cacheDir=opts.cacheDir,
-                          fillSDR=None)
+  if opts.retinaId == "random":
+    counts = countRandomBitFrequencies()
+  else:
+    client = CorticalClient(opts.corticalApiKey,
+                            retina=opts.retinaId,
+                            verbosity=0,
+                            cacheDir=opts.cacheDir,
+                            fillSDR=None)
 
-  counts = countBitFrequenciesForTerms(client, terms)
+    counts = countBitFrequenciesForTerms(client, terms)
 
   if opts.plot == "histogram":
     plotHistogram(counts)
