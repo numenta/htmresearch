@@ -88,7 +88,8 @@ class CioEncoder(LanguageEncoder):
                                  retina=retina,
                                  cacheDir=self.cacheDir)
 
-    self._setDimensions(retina, retinaScaling)
+    self.retina = retina
+    self._setDimensions(retinaScaling)
 
     self.fingerprintType = fingerprintType
     self.description = ("Cio Encoder", 0)
@@ -135,11 +136,11 @@ class CioEncoder(LanguageEncoder):
     self.__dict__ = state
 
 
-  def _setDimensions(self, retina, scalingFactor):
+  def _setDimensions(self, scalingFactor):
     if scalingFactor <= 0 or scalingFactor > 1:
       raise ValueError("Retina can only be scaled by values between 0 and 1.")
 
-    retinaDim = RETINA_SIZES[retina]["width"]
+    retinaDim = RETINA_SIZES[self.retina]["width"]
 
     self.width = int(retinaDim * scalingFactor)
     self.height = int(retinaDim * scalingFactor)
