@@ -25,8 +25,8 @@ import shutil
 import tempfile
 import unittest
 
+from htmresearch.encoders import EncoderTypes
 from htmresearch.frameworks.nlp.imbu import ImbuModels
-
 from htmresearch.frameworks.nlp.classification_model import (
   ClassificationModel
 )
@@ -53,15 +53,17 @@ class TestImbu(unittest.TestCase):
     self.dataPath = os.path.join(TEST_DATA_DIR, "sample_reviews_subset.csv")
 
 
-  def testCreateModel(self):
-
-    # Setup fake ImbuModels instance
-    imbu = ImbuModels(
+  def _setupFakeImbuModelsInstance(self):
+    return ImbuModels(
       cacheRoot="fake_cache_root",
       dataPath=self.dataPath,
       retina="en_associative",
       apiKey=os.environ.get("CORTICAL_API_KEY")
     )
+
+
+  def testCreateModel(self):
+    imbu = self._setupFakeImbuModelsInstance()
 
     # You must specify a known model type
     self.assertRaises(TypeError, imbu.createModel, "random model type")
@@ -87,13 +89,7 @@ class TestImbu(unittest.TestCase):
 
   def _exerciseModelLifecycle(self, modelType, queryTerm="unicorn",
                               networkConfigName="imbu_sensor_knn.json"):
-    # Setup fake ImbuModels instance
-    imbu = ImbuModels(
-      cacheRoot="fake_cache_root",
-      dataPath=self.dataPath,
-      retina="en_associative",
-      apiKey=os.environ.get("CORTICAL_API_KEY")
-    )
+    imbu = self._setupFakeImbuModelsInstance()
 
     tmpDir = tempfile.mkdtemp()
     self.addCleanup(shutil.rmtree, tmpDir)
@@ -141,13 +137,6 @@ class TestImbu(unittest.TestCase):
     self._exerciseModelLifecycle("Keywords")
 
 
-  def checkResultsFormatting(self, results, modelName, windowSize=0):
-    self.assertEquals(["scores", "text", "windowSize"], sorted(results[0]),
-      "Results dict for {} has incorrect keys.".format(modelName))
-    self.assertEquals(windowSize, results[0]["windowSize"],
-      "Results give incorrect window size for {} model.".format(modelName))
-
-
   def testMappingModelNamesToModelTypes(self):
     imbu = ImbuModels(cacheRoot="fake_cache_root", dataPath=self.dataPath)
 
@@ -158,8 +147,77 @@ class TestImbu(unittest.TestCase):
     self.assertRaises(ValueError, imbu._mapModelName, "fakeModel")
 
 
+  def _checkNLPObjectParams(self, nlpObject, paramsToCheck):
+    for key, value in paramsToCheck.iteritems():
+      param = getattr(nlpObject, key)
+      self.assertEquals(value, param,
+        "The {} param for {} is not as expected.".format(key, repr(nlpObject)))
+
+
+  def testSetParamsInModelFactory(self):
+    imbu = self._setupFakeImbuModelsInstance()
+
+    tmpDir = tempfile.mkdtemp()
+    self.addCleanup(shutil.rmtree, tmpDir)
+
+    checkpointLocation = os.path.join(tmpDir, "checkpoint")
+
+    # Base set of required Cio params to check
+    cacheRoot = "fake_cache_root"
+    paramsToCheck = dict(
+      retina="en_associative",
+      apiKey=os.environ.get("CORTICAL_API_KEY"),
+      retinaScaling=1.0,
+      _cacheDir=cacheRoot,
+    )
+
+    # Create Cio models and check their special params
+    model = imbu.createModel("CioWordFingerprint",
+                             loadPath="",
+                             savePath=checkpointLocation)
+    paramsToCheck.update(fingerprintType=EncoderTypes.word)
+    self._checkNLPObjectParams(model.getEncoder(), paramsToCheck)
+
+    model = imbu.createModel("CioDocumentFingerprint",
+                             loadPath="",
+                             savePath=checkpointLocation)
+    paramsToCheck.update(fingerprintType=EncoderTypes.document)
+    self._checkNLPObjectParams(model.getEncoder(), paramsToCheck)
+
+    # Create HTM Network model and check Imbu specific config params
+    model = imbu.createModel("HTMNetwork",
+                             loadPath="",
+                             savePath=checkpointLocation,
+                             networkConfigName="imbu_sensor_knn.json")
+    networkConfig = getattr(model, "networkConfig")
+    self.assertEquals(
+      cacheRoot,
+      networkConfig["sensorRegionConfig"]["regionParams"]["cacheRoot"],
+      "HTM Network model does not set cacheRoot correctly."
+    )
+    self.assertEquals(
+      "pctOverlapOfInput",
+      networkConfig["classifierRegionConfig"]["regionParams"]["distanceMethod"],
+      "HTM Network model specifies an incorrect distance metric for Imbu."
+    )
+
+    # Create Keywords model and check specific params
+    model = imbu.createModel("Keywords",
+                             loadPath="",
+                             savePath=checkpointLocation)
+    paramsToCheck = dict(k=10*len(imbu.dataDict))
+    self._checkNLPObjectParams(model.getClassifier(), paramsToCheck)
+
+
+  def _checkResultsFormatting(self, results, modelName, windowSize=0):
+    self.assertEquals(["scores", "text", "windowSize"], sorted(results[0]),
+      "Results dict for {} has incorrect keys.".format(modelName))
+    self.assertEquals(windowSize, results[0]["windowSize"],
+      "Results give incorrect window size for {} model.".format(modelName))
+
+
   def testResultsFormatting(self):
-    imbu = ImbuModels(cacheRoot="fake_cache_root", dataPath=self.dataPath)
+    imbu = self._setupFakeImbuModelsInstance()
 
     query = "Hello world!"
     distanceArray = numpy.random.rand(35)
@@ -168,16 +226,16 @@ class TestImbu(unittest.TestCase):
     # Test a model with windows
     modelName = "HTM_sensor_simple_tp_knn"
     results = imbu.formatResults(modelName, query, distanceArray, idList)
-    self.checkResultsFormatting(results, modelName, windowSize=10)
+    self._checkResultsFormatting(results, modelName, windowSize=10)
 
     # Test a word-level model
     modelName = "HTM_sensor_knn"
     results = imbu.formatResults(modelName, query, distanceArray, idList)
-    self.checkResultsFormatting(results, modelName, windowSize=1)
+    self._checkResultsFormatting(results, modelName, windowSize=1)
 
     # Test a document-level model
     modelName = "CioDocumentFingerprint"
     distanceArray = numpy.random.rand(2)
     idList = range(1)
     results = imbu.formatResults(modelName, query, distanceArray, idList)
-    self.checkResultsFormatting(results, modelName)
+    self._checkResultsFormatting(results, modelName)
