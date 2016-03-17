@@ -22,7 +22,7 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy
-from htmresearch.algorithms.neural_net_classifier import NeuralNetClassifier
+from htmresearch.algorithms.sdr_classifier import SDRClassifier
 from nupic.algorithms.CLAClassifier import CLAClassifier
 
 
@@ -44,7 +44,7 @@ def initializeEncoder(Nelements, seed):
 def initializeClassifiers(Nelements, encoder):
   cla = CLAClassifier(steps=[0])
 
-  nn_classifier = NeuralNetClassifier(steps=[0], alpha=0.1)
+  nn_classifier = SDRClassifier(steps=[0], alpha=0.1)
 
   patternNZ = list(numpy.where(encoder.encode(Nelements-1))[0])
   classification = {'bucketIdx': Nelements-1, 'actValue': Nelements-1}
@@ -122,7 +122,7 @@ def runExperiemnt1():
   plt.ylabel(' Log-Likelihood')
   plt.xlabel(' Iteration ')
   plt.title(' Noise Level: ' + str(noiseLevel))
-  plt.legend(['NeuralNet', 'CLA'], loc=4)
+  plt.legend(['SDR', 'CLA'], loc=4)
   plt.savefig('./result/LLvsTraining.pdf')
 
   # prediction of one input element after training
@@ -140,7 +140,7 @@ def runExperiemnt1():
   plt.xlabel('Possible Inputs')
   plt.ylabel(' Predicted Probability')
   plt.title(' Noise Level: ' + str(noiseLevel))
-  plt.legend(['NeuralNet', 'CLA'])
+  plt.legend(['SDR', 'CLA'])
   plt.savefig('./result/ExamplePredictionAfterTraining.pdf')
   # plt.figure(2)
   # accuracyTrack = numpy.array(accuracyTrack)
@@ -175,7 +175,7 @@ def runExperiment2():
   plt.plot(noiseLevelList, negLLCLA)
   plt.xlabel(' Noise Level (# random bits) ')
   plt.ylabel(' Log-likelihood')
-  plt.legend(['NeuralNet', 'CLA'], loc=3)
+  plt.legend(['SDR', 'CLA'], loc=3)
   plt.savefig('./result/LLvsNoise.pdf')
 
 def runExperiment3():
@@ -198,7 +198,7 @@ def runExperiment3():
   plt.ylabel(' Log-Likelihood')
   plt.xlabel(' Iteration ')
   plt.title(' Noise Level: ' + str(noiseLevel))
-  plt.legend(['NeuralNet', 'CLA'], loc=4)
+  plt.legend(['SDR', 'CLA'], loc=4)
   plt.savefig('./result/LLvsTraining_ChangeAt500.pdf')
 
 if __name__ == "__main__":
