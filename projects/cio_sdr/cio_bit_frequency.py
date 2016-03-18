@@ -32,7 +32,7 @@ def printFrequencyStatistics(counts, frequencies, numWords, size):
   print "Number of bits with zero entries",frequencies.nZeroCols()
 
 
-def countRandomBitFrequencies(numTerms = 100000, percentSparsity = 0.03):
+def countRandomBitFrequencies(numTerms = 100000, percentSparsity = 0.01):
   """Create a uniformly random counts matrix through sampling."""
   # Accumulate counts by inplace-adding sparse matrices
   counts = SparseMatrix()
@@ -48,7 +48,6 @@ def countRandomBitFrequencies(numTerms = 100000, percentSparsity = 0.03):
   # Accumulate counts for each bit for each word
   numWords=0
   for term in xrange(numTerms):
-
     bitmap = random.sample(xrange(size), int(size*percentSparsity))
     bitmap.sort()
 
@@ -73,8 +72,12 @@ def countRandomBitFrequencies(numTerms = 100000, percentSparsity = 0.03):
   return counts
 
 
-def countBitFrequenciesForTerms(client, lines):
+def countBitFrequenciesForTerms(client, lines,
+                                acceptanceProbability = 0.1,
+                                usePlaceholderEncoding = True,
+                                percentSparsity = 0.0102):
   # Accumulate counts by inplace-adding sparse matrices
+  skippedWords = {}
   counts = SparseMatrix()
   width = RETINA_SIZES[client.retina]["width"]
   height = RETINA_SIZES[client.retina]["height"]
@@ -86,23 +89,38 @@ def countBitFrequenciesForTerms(client, lines):
 
   # Accumulate counts for each bit for each word
   numWords=0
+  numLines=0
   for line in lines:
     tokens = TextPreprocess().tokenize(line)
     for term in tokens:
 
-      try:
-        bitmap = client.getBitmap(term)["fingerprint"]["positions"]
-      except Exception as err:
-        print "Skipping '{}', reason: {}".format(term, str(err))
-        continue
+      p = random.uniform(0,1)
+      if p <= acceptanceProbability:
+        if usePlaceholderEncoding:
+          random.seed(term)
+          bitmap = random.sample(xrange(width*height),
+                                 int(width*height*percentSparsity))
+          bitmap.sort()
+          random.seed(p)
+        else:
+          try:
+            bitmap = client.getBitmap(term)["fingerprint"]["positions"]
+          except Exception as err:
+            print "Skipping '{}', reason: {}".format(term, str(err))
+            continue
 
-      if not bitmap:
-        print "Skipping '{}', reason: empty".format(term)
-        continue
+          if not bitmap:
+            skippedWords[term] = skippedWords.get(term,0)+1
+            # print "Skipping '{}', reason: empty".format(term)
+            continue
 
-      sparseBitmap.setRowFromSparse(0, bitmap, [1]*len(bitmap))
-      counts += sparseBitmap
-      numWords += 1
+        sparseBitmap.setRowFromSparse(0, bitmap, [1]*len(bitmap))
+        counts += sparseBitmap
+        numWords += 1
+
+    numLines += 1
+    if numLines%1000==0:
+      print "...processed=",numLines,"lines and",numWords,"words"
 
   # Compute normalized version of counts as a separate matrix
   frequencies = SparseMatrix()
@@ -111,12 +129,16 @@ def countBitFrequenciesForTerms(client, lines):
   frequencies.divide(float(numWords))
 
   # Wrap up by printing some statistics and then saving the normalized version
+  print "Processed",numLines,"lines"
   printFrequencyStatistics(counts, frequencies, numWords, width*height)
 
   frequencyFilename = "bit_frequencies_"+client.retina+".pkl"
   print "Saving frequency matrix in",frequencyFilename
   with open(frequencyFilename, "wb") as frequencyPickleFile:
     pickle.dump(frequencies, frequencyPickleFile)
+
+  print "These words were skipped N times because of empty bitmap result"
+  print skippedWords
 
   return counts
 
@@ -154,7 +176,7 @@ def plotlyHeatmap(counts):
 def main(terms):
   parser = argparse.ArgumentParser()
   parser.add_argument("--retinaId",
-                      default="en_associative",
+                      default="en_synonymous",
                       type=str)
   parser.add_argument("--corticalApiKey",
                       default=os.environ.get("CORTICAL_API_KEY"),
