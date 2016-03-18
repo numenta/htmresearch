@@ -83,13 +83,9 @@ class CioEncoder(LanguageEncoder):
     self.apiKey = apiKey if apiKey else os.environ["CORTICAL_API_KEY"]
     self.client = CorticalClient(self.apiKey, retina=retina, cacheDir=cacheDir)
 
-    self.cacheDir = cacheDir
-    self.client = CorticalClient(self.apiKey,
-                                 retina=retina,
-                                 cacheDir=self.cacheDir)
-
-    self.retina = retina
-    self._setDimensions(retinaScaling)
+    self.retina = retina ##
+    self._setDimensions(retinaScaling) ##
+    # self._setDimensions(retina, retinaScaling)
 
     self.fingerprintType = fingerprintType
     self.description = ("Cio Encoder", 0)

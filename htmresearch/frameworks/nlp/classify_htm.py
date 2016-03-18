@@ -52,26 +52,24 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
     self.retina = retina
     self.apiKey = apiKey
     self.maxSparsity = maxSparsity
-    self.cacheRoot = cacheRoot
 
-    self.encoder = None
-    self.network = self.initModel()
+    self.network = self._initModel(cacheRoot)
     self._initializeRegionHelpers()
 
 
-  def initModel(self):
+  def _initModel(self, cacheRoot):
     """
     Initialize the network; self.networdDataPath must already be set.
     """
-    self.encoder = CioEncoder(retinaScaling=self.retinaScaling,
-                              retina=self.retina,
-                              apiKey=self.apiKey,
-                              maxSparsity=self.maxSparsity,
-                              verbosity=self.verbosity-1,
-                              cacheDir=self.cacheRoot)
+    encoder = CioEncoder(retinaScaling=self.retinaScaling,
+                         retina=self.retina,
+                         apiKey=self.apiKey,
+                         maxSparsity=self.maxSparsity,
+                         verbosity=self.verbosity-1,
+                         cacheDir=cacheRoot)
 
     # This encoder specifies the LanguageSensor output width.
-    return configureNetwork(None, self.networkConfig, self.encoder)
+    return configureNetwork(None, self.networkConfig, encoder)
 
 
   def trainToken(self, token, labels, tokenId, reset=0):

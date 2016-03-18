@@ -182,21 +182,21 @@ class ImbuModels(object):
     if getattr(ClassificationModelTypes, modelName) in self.requiresCIOKwargs:
       # Model type requires Cortical.io credentials
       kwargs.update(retina=self.retina, apiKey=self.apiKey, retinaScaling=1.0)
-      # Need to specify caching directory
-      kwargs.update(cacheRoot=self.cacheRoot)
 
     if modelName == "CioWordFingerprint":
-      kwargs.update(fingerprintType=EncoderTypes.word)
+      kwargs.update(fingerprintType=EncoderTypes.word,
+                    cacheRoot=self.cacheRoot)
 
     elif modelName == "CioDocumentFingerprint":
-      kwargs.update(fingerprintType=EncoderTypes.document)
+      kwargs.update(fingerprintType=EncoderTypes.document,
+                    cacheRoot=self.cacheRoot)
 
     elif modelName == "HTMNetwork":
       try:
         kwargs.update(
           networkConfig=_loadNetworkConfig(kwargs["networkConfigName"]))
-        kwargs["networkConfig"]["sensorRegionConfig"]["regionParams"].update(
-          cacheRoot=self.cacheRoot)
+        # kwargs["networkConfig"]["sensorRegionConfig"]["regionParams"].update(
+        #   cacheRoot=self.cacheRoot)
       except Exception as e:
         print "Could not add params to HTMNetwork model config."
         raise e

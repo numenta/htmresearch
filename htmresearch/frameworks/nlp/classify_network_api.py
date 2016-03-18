@@ -61,7 +61,7 @@ class ClassificationNetworkAPI(ClassificationModel):
     """
     Returns the encoder instance for the model.
     """
-    return self.encoder
+    return self.sensorRegion.getSelf().encoder
 
 
   def getClassifier(self):
