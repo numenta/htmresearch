@@ -141,7 +141,7 @@ class TestImbu(unittest.TestCase):
 
 
   def testMappingModelNamesToModelTypes(self):
-    imbu = ImbuModels(cacheRoot="fake_cache_root", dataPath=self.dataPath)
+    imbu = ImbuModels(dataPath=self.dataPath)
 
     for modelName, mappedName in imbu.modelMappings.iteritems():
       self.assertEquals(mappedName, imbu._mapModelName(modelName),
@@ -162,13 +162,12 @@ class TestImbu(unittest.TestCase):
 
     checkpointLocation = self._createTempModelCheckpoint()
 
-    # Base set of required Cio params to check
+    # Base set of required Cio params to check (in the encoder)
     cacheRoot = "fake_cache_root"
     paramsToCheck = dict(
       retina="en_associative",
       apiKey=os.environ.get("CORTICAL_API_KEY"),
       retinaScaling=1.0,
-      _cacheDir=cacheRoot,
     )
 
     # Create Cio models and check their special params
@@ -178,11 +177,22 @@ class TestImbu(unittest.TestCase):
     paramsToCheck.update(fingerprintType=EncoderTypes.word)
     self._checkNLPObjectParams(model.getEncoder(), paramsToCheck)
 
+    self.assertEquals(
+      "fake_cache_root",
+      getattr(model.getEncoder(), "cacheDir"),
+      "ImbuModels did not set the Cio encoder cache dir properly for {} model.".
+      format(repr(model)))
+
     model = imbu.createModel("CioDocumentFingerprint",
                              loadPath="",
                              savePath=checkpointLocation)
     paramsToCheck.update(fingerprintType=EncoderTypes.document)
     self._checkNLPObjectParams(model.getEncoder(), paramsToCheck)
+    self.assertEquals(
+      "fake_cache_root",
+      getattr(model.getEncoder(), "cacheDir"),
+      "ImbuModels did not set the Cio encoder cache dir properly for {} model.".
+      format(repr(model)))
 
     # Create HTM Network model and check Imbu specific config params
     model = imbu.createModel("HTMNetwork",
@@ -191,13 +201,14 @@ class TestImbu(unittest.TestCase):
                              networkConfigName="imbu_sensor_knn.json")
     networkConfig = getattr(model, "networkConfig")
     self.assertEquals(
-      cacheRoot,
-      networkConfig["sensorRegionConfig"]["regionParams"]["cacheRoot"],
-      "HTM Network model does not set cacheRoot correctly.")
-    self.assertEquals(
       "pctOverlapOfInput",
       networkConfig["classifierRegionConfig"]["regionParams"]["distanceMethod"],
       "HTM Network model specifies an incorrect distance metric for Imbu.")
+    self.assertEquals(
+      "fake_cache_root",
+      getattr(model.getEncoder(), "cacheDir"),
+      "ImbuModels did not set the Cio encoder cache dir properly for {} model.".
+      format(repr(model)))
 
     # Create Keywords model and check specific params
     model = imbu.createModel("Keywords",
@@ -207,8 +218,8 @@ class TestImbu(unittest.TestCase):
     self._checkNLPObjectParams(model.getClassifier(), paramsToCheck)
 
 
-  def testDefaultParams(self):
-    imbu = ImbuModels(cacheRoot=None, dataPath=self.dataPath)
+  def testCacheDirProperty(self):
+    imbu = ImbuModels(dataPath=self.dataPath)
 
     checkpointLocation = self._createTempModelCheckpoint()
 
@@ -218,11 +229,19 @@ class TestImbu(unittest.TestCase):
                              networkConfigName="imbu_sensor_knn.json")
 
     # Test for default cache directory
+    encoder = model.getEncoder()
     defaultCacheLocation = "nupic.research/htmresearch/encoders/CioCache"
     self.assertIn(
       defaultCacheLocation,
-      getattr(model.getEncoder(), "_cacheDir"),
+      getattr(encoder, "cacheDir"),
       "Cio encoder cache dir is not the expected default location.")
+
+    # Now explicitly set the cache directory
+    encoder.cacheDir = "fake_cache_root"
+    self.assertEquals(
+      "fake_cache_root",
+      getattr(encoder, "cacheDir"),
+      "Cio encoder cache dir did not set properly.")
 
 
   def _checkResultsFormatting(self, results, modelName, windowSize=0):

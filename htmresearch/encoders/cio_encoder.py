@@ -77,15 +77,15 @@ class CioEncoder(LanguageEncoder):
     super(CioEncoder, self).__init__(unionSparsity=unionSparsity)
 
     if cacheDir is None:
+      # Use the default cache directory
       root = os.path.dirname(os.path.realpath(__file__))
       cacheDir = os.path.join(root, "CioCache")
 
     self.apiKey = apiKey if apiKey else os.environ["CORTICAL_API_KEY"]
     self.client = CorticalClient(self.apiKey, retina=retina, cacheDir=cacheDir)
 
-    self.retina = retina ##
-    self._setDimensions(retinaScaling) ##
-    # self._setDimensions(retina, retinaScaling)
+    self.retina = retina
+    self._setDimensions(retinaScaling)
 
     self.fingerprintType = fingerprintType
     self.description = ("Cio Encoder", 0)
