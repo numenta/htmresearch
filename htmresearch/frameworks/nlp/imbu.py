@@ -212,9 +212,6 @@ class ImbuModels(object):
 
     model.verbosity = 0
 
-    # Explicitly set the encoder's cache directory property
-    model.getEncoder().cacheDir(self.cacheRoot)
-
     return model
 
 

@@ -80,6 +80,8 @@ class CioEncoder(LanguageEncoder):
       # Use the default cache directory
       root = os.path.dirname(os.path.realpath(__file__))
       cacheDir = os.path.join(root, "CioCache")
+    # Explicitly set the cacheDir property so it matches the Cio client
+    self.cacheDir = cacheDir
 
     self.apiKey = apiKey if apiKey else os.environ["CORTICAL_API_KEY"]
     self.client = CorticalClient(self.apiKey, retina=retina, cacheDir=cacheDir)
