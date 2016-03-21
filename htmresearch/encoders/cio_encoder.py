@@ -82,10 +82,9 @@ class CioEncoder(LanguageEncoder):
       cacheDir = os.path.join(root, "CioCache")
 
     self.apiKey = apiKey if apiKey else os.environ["CORTICAL_API_KEY"]
-    self.client = CorticalClient(self.apiKey, retina=retina, cacheDir=cacheDir)
     self.retina = retina
 
-    # Explicitly set the cacheDir property so it matches the Cio client
+    # Init the Cio client by setting the cacheDir
     self.cacheDir = cacheDir
 
     self._setDimensions(retinaScaling)
