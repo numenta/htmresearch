@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -27,7 +27,7 @@ import plotly.plotly as py
 from plotly.graph_objs import *
 import os
 
-plotlyUser = os.environ['PLOTLY_USER_NAME']
+plotlyUser = os.environ['PLOTLY_USERNAME']
 plotlyAPIKey = os.environ['PLOTLY_API_KEY']
 
 

@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -27,7 +27,7 @@ import plotly.plotly as py
 from plotly.graph_objs import *
 import os
 
-plotlyUser = os.environ['PLOTLY_USER_NAME']
+plotlyUser = os.environ['PLOTLY_USERNAME']
 plotlyAPIKey = os.environ['PLOTLY_API_KEY']
 
 
@@ -87,7 +87,6 @@ e3 = [0.0317449840615038, 0.00149789666286458, 7.81322668823010e-5,
 2.87050187411583e-17, 1.65879779753702e-18, 9.57163117212011e-20]
 
 # a=512 cells active out of n=16000 cells, theta=s/2
-
 e4 = [0.0629779361210076, 0.00587483456448912, 0.000606169580170940,
 6.54824106515384e-5, 7.25889757236790e-6, 8.17841097774893e-7,
 9.31547832439269e-8, 1.06920037239144e-8, 1.23394545221835e-9,
