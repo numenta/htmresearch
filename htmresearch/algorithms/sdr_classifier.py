@@ -28,7 +28,7 @@ import itertools
 
 import numpy
 
-g_debugPrefix = "NeuralNetClassifier"
+g_debugPrefix = "SDRClassifier"
 
 
 def _pFormatArray(array_, fmt="%.2f"):
@@ -36,7 +36,7 @@ def _pFormatArray(array_, fmt="%.2f"):
   for each element"""
 
 
-class NeuralNetClassifier(object):
+class SDRClassifier(object):
   """
   The Neural Network Classifier accepts a binary input pattern from the
   level below (the "activationPattern") and information from the sensor and
@@ -134,7 +134,7 @@ class NeuralNetClassifier(object):
 
     # Set the version to the latest version.
     # This is used for serialization/deserialization
-    self._version = NeuralNetClassifier.__VERSION__
+    self._version = SDRClassifier.__VERSION__
 
 
   def compute(self, recordNum, patternNZ, classification, learn, infer):

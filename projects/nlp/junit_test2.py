@@ -99,9 +99,10 @@ def run(args):
       ranks.update({name:r})
       stats.update({name:s})
 
-    plotResults(
-      allRanks, ranks, maxRank=NUMBER_OF_DOCS,
-      testName="JUnit Test 2{}".format(testVariation))
+    if args.plot:
+      plotResults(
+        allRanks, ranks, maxRank=NUMBER_OF_DOCS,
+        testName="JUnit Test 2{}".format(testVariation))
 
 
 
@@ -137,6 +138,10 @@ if __name__ == "__main__":
                       type=int,
                       help="verbosity 0 will print out experiment steps, "
                            "verbosity 1 will include train and test data.")
+  parser.add_argument("--plot",
+                      action="store_true",
+                      default=False,
+                      help="If true will generate plotly Plots.")
   args = parser.parse_args()
 
   # Default dataset for this unit test
