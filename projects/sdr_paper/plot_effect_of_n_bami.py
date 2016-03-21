@@ -36,8 +36,8 @@ py.sign_in(plotlyUser, plotlyAPIKey)
 
 # Calculated error values
 
-# a=64 cells active, s=24 synapses on segment, dendritic threshold is theta=12
-errorsA64 = [0.00109461662333690, 5.69571108769533e-6, 1.41253230930730e-7,
+# w=64, s=24 synapses on segment, dendritic threshold is theta=12
+errorsW64 = [0.00109461662333690, 5.69571108769533e-6, 1.41253230930730e-7,
 8.30107183322324e-9, 8.36246969414003e-10, 1.21653747887184e-10,
 2.30980246348674e-11, 5.36606800342786e-12, 1.46020443491340e-12,
 4.51268292560082e-13, 1.54840085336688e-13, 5.79872960230082e-14,
@@ -71,8 +71,8 @@ errorsA64 = [0.00109461662333690, 5.69571108769533e-6, 1.41253230930730e-7,
 1.99302203415240e-24, 1.75701968882530e-24, 1.55099376138908e-24,
 1.37088386401156e-24, 1.21321318827475e-24, 1.07499989501613e-24]
 
-# a=128 cells active, s=24 synapses on segment, dendritic threshold is theta=12
-errorsA128 = [0.292078213737764, 0.00736788303358289, 0.000320106080889471,
+# w=128, s=24 synapses on segment, dendritic threshold is theta=12
+errorsW128 = [0.292078213737764, 0.00736788303358289, 0.000320106080889471,
 2.50255519815378e-5, 2.99642102590114e-6, 4.89399786076359e-7,
 1.00958512780931e-7, 2.49639031779358e-8, 7.13143762262004e-9,
 2.29143708340810e-9, 8.11722283609541e-10, 3.12183638427824e-10,
@@ -106,8 +106,8 @@ errorsA128 = [0.292078213737764, 0.00736788303358289, 0.000320106080889471,
 1.38655900262325e-20, 1.22285532217681e-20, 1.07988400985754e-20,
 9.54844958066234e-21, 8.45339347007471e-21, 7.49308887332261e-21]
 
-# a=256 cells active, s=24 synapses on segment, dendritic threshold is theta=12
-errorsA256 = [0.999997973443107, 0.629372754740777, 0.121087724790945,
+# w=256 s=24 synapses on segment, dendritic threshold is theta=12
+errorsW256 = [0.999997973443107, 0.629372754740777, 0.121087724790945,
 0.0193597645959856, 0.00350549721741729, 0.000748965962032781,
 0.000186510373919969, 5.30069204544174e-5, 1.68542688790000e-5,
 5.89560747849969e-6, 2.23767020178735e-6, 9.11225564771580e-7,
@@ -142,7 +142,7 @@ errorsA256 = [0.999997973443107, 0.629372754740777, 0.121087724790945,
 4.76112244136112e-17, 4.21826508250283e-17, 3.74182390049037e-17]
 
 # a=n/2 cells active, s=24 synapses on segment, dendritic threshold is theta=12
-errorsAHalfOfN = [0.00518604306750049, 0.00595902789913702, 0.00630387009654985,
+errorsWHalfOfN = [0.00518604306750049, 0.00595902789913702, 0.00630387009654985,
 0.00649883841432922, 0.00662414645898081, 0.00671145554136860,
 0.00677576979476038, 0.00682511455944402, 0.00686417048273405,
 0.00689585128896232, 0.00692206553525732, 0.00694411560202313,
@@ -187,40 +187,40 @@ listofNValues = [300, 500, 700, 900, 1100, 1300, 1500, 1700, 1900, 2100, 2300,
 19100, 19300, 19500, 19700, 19900]
 
 trace1 = Scatter(
-    y=errorsA64,
+    y=errorsW64,
     x=listofNValues,
     line=Line(
         color='rgb(0, 0, 0)',
         width=3,
         shape='spline'
     ),
-    name="a=64"
+    name="w=64"
 )
 
 trace2 = Scatter(
-    y=errorsA128,
+    y=errorsW128,
     x=listofNValues[1:],
     line=Line(
         color='rgb(0, 0, 0)',
         width=3,
         shape='spline'
     ),
-    name="a=128"
+    name="w=128"
 )
 
 trace3 = Scatter(
-    y=errorsA256,
+    y=errorsW256,
     x=listofNValues[1:],
     line=Line(
         color='rgb(0, 0, 0)',
         width=3,
         shape='spline'
     ),
-    name="a=256"
+    name="w=256"
 )
 
 trace4 = Scatter(
-    y=errorsAHalfOfN,
+    y=errorsWHalfOfN,
     x=listofNValues[1:],
     line=Line(
         color='rgb(0, 0, 0)',
@@ -228,7 +228,7 @@ trace4 = Scatter(
         dash='dash',
         shape='spline',
     ),
-    name="a=0.25*N"
+    name="w=0.5*n"
 )
 
 data = Data([trace1, trace2, trace3, trace4])
@@ -240,7 +240,7 @@ layout = Layout(
     width=855,
     height=700,
     xaxis=XAxis(
-        title='Cell population size (n)',
+        title='SDR size (n)',
         titlefont=Font(
             family='',
             size=26,
@@ -279,7 +279,7 @@ layout = Layout(
             y=0.1143,
             xref='x',
             yref='paper',
-            text='$a = 64$',
+            text='$w = 64$',
             showarrow=False,
             font=Font(
                 family='',
@@ -299,7 +299,7 @@ layout = Layout(
             y=0.259,
             xref='x',
             yref='paper',
-            text='$a = 128$',
+            text='$w = 128$',
             showarrow=False,
             font=Font(
                 family='',
@@ -319,7 +319,7 @@ layout = Layout(
             y=0.411,
             xref='x',
             yref='paper',
-            text='$a = 256$',
+            text='$w = 256$',
             showarrow=False,
             font=Font(
                 family='',
@@ -339,7 +339,7 @@ layout = Layout(
             y=0.933,
             xref='x',
             yref='paper',
-            text='$a = \\frac{n}{2}$',
+            text='$w = \\frac{n}{2}$',
             showarrow=False,
             font=Font(
                 family='',

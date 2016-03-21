@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -30,7 +30,7 @@ import os
 
 # Define the (global) equations
 # Equation from Neuron paper
-# 
+#
 #       A dendritic segment can robustly classify a pattern by
 #       subsampling a small number of cells from a larger population.  Assuming
 #       a random distribution of patterns, the exact probability of a false
@@ -47,7 +47,7 @@ b, n, s, a, theta = symbols("b n s a theta")
 
 subsampledOmega = (binomial(s, b) * binomial(n - s, a - b)) / binomial(n, a)
 subsampledFpF = Sum(subsampledOmega, (b, theta, s))
-subsampledOmegaSlow = (binomial(s, b) * binomial(n - s, a - b)) 
+subsampledOmegaSlow = (binomial(s, b) * binomial(n - s, a - b))
 subsampledFpFSlow = Sum(subsampledOmegaSlow, (b, theta, s))/ binomial(n, a)
 
 display(subsampledFpF)
@@ -139,7 +139,7 @@ def plotFalseMatchvsM():
   4.40336400781654e-5, 8.14089056445047e-5]
 
 
-  plotlyUser = os.environ['PLOTLY_USER_NAME']
+  plotlyUser = os.environ['PLOTLY_USERNAME']
   plotlyAPIKey = os.environ['PLOTLY_API_KEY']
   py.sign_in(plotlyUser, plotlyAPIKey)
 
@@ -275,7 +275,7 @@ def plotSynapsesvsM():
   385.746346537314, 404.173956141195, 422.048737456959, 439.387275333250]
 
 
-  plotlyUser = os.environ['PLOTLY_USER_NAME']
+  plotlyUser = os.environ['PLOTLY_USERNAME']
   plotlyAPIKey = os.environ['PLOTLY_API_KEY']
   py.sign_in(plotlyUser, plotlyAPIKey)
 
@@ -369,3 +369,6 @@ def plotSynapsesvsM():
   figure = py.get_figure(plot_url)
   py.image.save_as(figure, 'union_number_synapses.png', scale=4)
 
+
+plotFalseMatchvsM()
+plotSynapsesvsM()
