@@ -45,6 +45,7 @@ class ClassificationModelFingerprint(ClassificationModel):
                apiKey=None,
                k=1,
                classifierMetric="rawOverlap",
+               cacheRoot=None,
                **kwargs):
 
     super(ClassificationModelFingerprint, self).__init__(**kwargs)
@@ -64,7 +65,8 @@ class ClassificationModelFingerprint(ClassificationModel):
                               fingerprintType=fingerprintType,
                               unionSparsity=unionSparsity,
                               retina=retina,
-                              apiKey=apiKey)
+                              apiKey=apiKey,
+                              cacheDir=cacheRoot)
 
     self.currentDocument = None
 
@@ -150,6 +152,13 @@ class ClassificationModelFingerprint(ClassificationModel):
     idList = [self.classifier.getPartitionId(i) for i in sortedIndices]
     sortedDistances = dist[sortedIndices]
     return inferenceResult, idList, sortedDistances
+
+
+  def getEncoder(self):
+    """
+    Returns the encoder instance for the model.
+    """
+    return self.encoder
 
 
   def getClassifier(self):

@@ -17,7 +17,8 @@
       "poolerType": "simpleUnion",
       "columnCount": 4096,
       "inputWidth": 4096,
-      "historyLength": 10
+      "historyLength": 10,
+      "minHistory": 10
     }
   },
   "classifierRegionConfig": {
