@@ -7,51 +7,49 @@
 echo
 echo "Creating and training NLP models, saving to engine/"
 
-echo
-echo "HTM_sensor_simple_tp_knn..."
+echo "  HTM_sensor_simple_tp_knn..."
 python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
-  --dataPath engine/data.csv \
-  --cacheRoot cache \
+  --dataPath engine/sample_reviews/data.csv \
   -c ~/nta/nupic.research/projects/nlp/data/network_configs/imbu_sensor_simple_tp_knn.json \
   -m HTM_sensor_simple_tp_knn \
-  --savePath engine/HTM_sensor_simple_tp_knn \
+  --savePath engine/sample_reviews/HTM_sensor_simple_tp_knn \
   --noQueries
 
-echo
-echo "HTM_sensor_knn..."
+echo "  HTM_sensor_knn..."
 python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
-  --dataPath engine/data.csv \
-  --cacheRoot cache \
+  --dataPath engine/sample_reviews/data.csv \
   -c ~/nta/nupic.research/projects/nlp/data/network_configs/imbu_sensor_knn.json \
   -m HTM_sensor_knn \
-  --savePath engine/HTM_sensor_knn \
+  --savePath engine/sample_reviews/HTM_sensor_knn \
   --noQueries
 
-echo
-echo "CioWordFingerprint..."
+echo "  HTM_sensor_tm_knn..."
 python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
-  --dataPath engine/data.csv \
-  --cacheRoot cache \
+  --dataPath engine/sample_reviews/data.csv \
+  -c ~/nta/nupic.research/projects/nlp/data/network_configs/imbu_sensor_tm_knn.json \
+  -m HTM_sensor_tm_knn \
+  --savePath engine/sample_reviews/HTM_sensor_tm_knn \
+  --noQueries
+
+echo "  CioWordFingerprint..."
+python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
+  --dataPath engine/sample_reviews/data.csv \
   -m CioWordFingerprint \
-  --savePath engine/CioWordFingerprint \
+  --savePath engine/sample_reviews/CioWordFingerprint \
   --noQueries
 
-echo
-echo "CioDocumentFingerprint..."
+echo "  CioDocumentFingerprint..."
 python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
-  --dataPath engine/data.csv \
-  --cacheRoot cache \
+  --dataPath engine/sample_reviews/data.csv \
   -m CioDocumentFingerprint \
-  --savePath engine/CioDocumentFingerprint \
+  --savePath engine/sample_reviews/CioDocumentFingerprint \
   --noQueries
 
-echo
-echo "Keywords..."
+echo "  Keywords..."
 python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
-  --dataPath engine/data.csv \
-  --cacheRoot cache \
+  --dataPath engine/sample_reviews/data.csv \
   -m Keywords \
-  --savePath engine/Keywords \
+  --savePath engine/sample_reviews/Keywords \
   --noQueries
 
 echo "Done building models."
