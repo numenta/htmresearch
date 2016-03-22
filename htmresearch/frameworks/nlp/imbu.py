@@ -94,6 +94,7 @@ class ImbuModels(object):
 
   defaultSimilarityMetric = ModelSimilarityMetrics.pctOverlapOfInput
   defaultModelType = "CioWordFingerprint"
+  defaultDataset = "sample_reviews"
   defaultRetina = "en_associative"
   tokenIndexingFactor = 1000
 
