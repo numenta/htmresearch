@@ -47,7 +47,7 @@ for datasetName in os.listdir(_IMBU_LOAD_PATH_PREFIX):
   datasetPath = os.path.join(_IMBU_LOAD_PATH_PREFIX, datasetName)
   if os.path.isdir(datasetPath):
     # Create an imbu instance for each dataset
-    g_imbus.update(datasetName=ImbuModels(
+    imbu = ImbuModels(
       cacheRoot=os.environ.get("MODEL_CACHE_DIR", os.getcwd()),
       modelSimilarityMetric=None,
       # dataPath=os.environ.get("IMBU_DATA", pkg_resources.resource_filename(__name__, "data.csv")),
@@ -55,8 +55,8 @@ for datasetName in os.listdir(_IMBU_LOAD_PATH_PREFIX):
       dataPath=os.path.join(datasetPath, "data.csv"),
       retina=os.environ["IMBU_RETINA_ID"],
       apiKey=os.environ["CORTICAL_API_KEY"]
-      )
     )
+    g_imbus.update(((datasetName, imbu),))
     # Init the dict for this dataset's models
     g_models[datasetName] = {}
 
