@@ -93,6 +93,8 @@ class TestFluentAPI(unittest.TestCase):
     self._queryModelAndAssertResponse("HTM_sensor_knn")
 
 
+  @unittest.skip("IMBU-101 need to retrain models to overcome backwards "
+                 "incompatibility")
   def testQueryHTMSensorSimpleTpKnn(self):
     self._queryModelAndAssertResponse("HTM_sensor_simple_tp_knn")
 
