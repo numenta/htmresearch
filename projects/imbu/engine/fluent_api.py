@@ -110,7 +110,7 @@ class FluentWrapper(object):
     global g_models
 
     if model not in g_models[dataset]:
-      loadPath = os.path.join(_IMBU_LOAD_PATH_PREFIX, model)
+      loadPath = os.path.join(_IMBU_LOAD_PATH_PREFIX, dataset, model)
       g_models[dataset][model] = g_imbus[dataset].createModel(
         model, str(loadPath), None)
 
@@ -150,8 +150,8 @@ class FluentAPIHandler(object):
 
 
   def POST(self,
-           dataset=ImbuModels.defaultDataset,
-           modelName=ImbuModels.defaultModelType): # pylint: disable=R0201,C0103
+           modelName=ImbuModels.defaultModelType
+           dataset=ImbuModels.defaultDataset): # pylint: disable=R0201,C0103
     addStandardHeaders()
     addCORSHeaders()
 
@@ -179,7 +179,8 @@ urls = (
   "", "DefaultHandler",
   "/", "DefaultHandler",
   "/fluent", "FluentAPIHandler",
-  "/fluent/(.*)", "FluentAPIHandler"
+  "/fluent/(.*)", "FluentAPIHandler",
+  "/fluent/(.*)/(.*)", "FluentAPIHandler"
 )
 app = web.application(urls, globals())
 
