@@ -150,7 +150,7 @@ class FluentAPIHandler(object):
 
 
   def POST(self,
-           modelName=ImbuModels.defaultModelType
+           modelName=ImbuModels.defaultModelType,
            dataset=ImbuModels.defaultDataset): # pylint: disable=R0201,C0103
     addStandardHeaders()
     addCORSHeaders()
