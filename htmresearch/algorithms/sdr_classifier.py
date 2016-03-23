@@ -20,7 +20,10 @@
 # ----------------------------------------------------------------------
 
 """
-Experimental implementation for a new neural network classifier.
+Implementation for a SDR classifier.
+
+The SDR classifier takes the form of a single layer classification network
+that takes SDRs as input and outputs a predicted distribution of classes.
 """
 
 from collections import deque
@@ -39,11 +42,11 @@ def _pFormatArray(array_, fmt="%.2f"):
 
 class SDRClassifier(object):
   """
-  The Neural Network Classifier accepts a binary input pattern from the
+  The SDR Classifier accepts a binary input pattern from the
   level below (the "activationPattern") and information from the sensor and
   encoders (the "classification") describing the true (target) input.
 
-  The neural network maps input patterns to class labels. There are as many
+  The SDR classifier maps input patterns to class labels. There are as many
   output units as the number of class labels (buckets). The output is a
   probabilistic distribution over all class labels
 
@@ -72,11 +75,11 @@ class SDRClassifier(object):
                alpha=0.001,
                actValueAlpha=0.3,
                verbosity=0):
-    """Constructor for the CLA classifier.
+    """Constructor for the SDR classifier.
 
     Parameters:
     ---------------------------------------------------------------------
-    @param numInputs (int) length of the input activation pattern
+    @param numInputs (int) Length of the input activation pattern
     @param steps (list) Sequence of the different steps of multi-step
         predictions to learn
     @param alpha (float) The alpha used to adapt the weight matrix during
@@ -90,7 +93,6 @@ class SDRClassifier(object):
     self.alpha = alpha
     self.actValueAlpha = actValueAlpha
     self.verbosity = verbosity
-    # self.eta = 0.01
 
     # Init learn iteration index
     self._learnIteration = 0
@@ -154,13 +156,13 @@ class SDRClassifier(object):
     @param patternNZ  List of the active indices from the output below.
                 - When the input is from TemporalMemory, this list should be the
                   indices of the active cells.
-    @param classification dict of the classification information:
+    @param classification Dict of the classification information:
                     bucketIdx: index of the encoder bucket
                     actValue:  actual value going into the encoder
     @param learn (bool) if true, learn this sample
     @param infer (bool) if true, perform inference
 
-    @return     dict containing inference results, there is one entry for each
+    @return     Dict containing inference results, there is one entry for each
                 step in self.steps, where the key is the number of steps, and
                 the value is an array containing the relative likelihood for
                 each bucketIdx starting from bucketIdx 0.
