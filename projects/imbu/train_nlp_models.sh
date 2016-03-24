@@ -13,7 +13,8 @@ python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
   -c ~/nta/nupic.research/projects/nlp/data/network_configs/imbu_sensor_simple_tp_knn.json \
   -m HTM_sensor_simple_tp_knn \
   --savePath engine/sample_reviews/HTM_sensor_simple_tp_knn \
-  --noQueries
+  --noQueries \
+  --cacheRoot cache
 
 echo "  HTM_sensor_knn..."
 python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
@@ -21,7 +22,8 @@ python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
   -c ~/nta/nupic.research/projects/nlp/data/network_configs/imbu_sensor_knn.json \
   -m HTM_sensor_knn \
   --savePath engine/sample_reviews/HTM_sensor_knn \
-  --noQueries
+  --noQueries \
+  --cacheRoot cache
 
 echo "  HTM_sensor_tm_knn..."
 python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
@@ -29,27 +31,31 @@ python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
   -c ~/nta/nupic.research/projects/nlp/data/network_configs/imbu_sensor_tm_knn.json \
   -m HTM_sensor_tm_knn \
   --savePath engine/sample_reviews/HTM_sensor_tm_knn \
-  --noQueries
+  --noQueries \
+  --cacheRoot cache
 
 echo "  CioWordFingerprint..."
 python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
   --dataPath engine/sample_reviews/data.csv \
   -m CioWordFingerprint \
   --savePath engine/sample_reviews/CioWordFingerprint \
-  --noQueries
+  --noQueries \
+  --cacheRoot cache
 
 echo "  CioDocumentFingerprint..."
 python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
   --dataPath engine/sample_reviews/data.csv \
   -m CioDocumentFingerprint \
   --savePath engine/sample_reviews/CioDocumentFingerprint \
-  --noQueries
+  --noQueries \
+  --cacheRoot cache
 
 echo "  Keywords..."
 python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
   --dataPath engine/sample_reviews/data.csv \
   -m Keywords \
   --savePath engine/sample_reviews/Keywords \
-  --noQueries
+  --noQueries \
+  --cacheRoot cache
 
 echo "Done building models."

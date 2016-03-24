@@ -50,8 +50,6 @@ for datasetName in os.listdir(_IMBU_LOAD_PATH_PREFIX):
     imbu = ImbuModels(
       cacheRoot=os.environ.get("MODEL_CACHE_DIR", os.getcwd()),
       modelSimilarityMetric=None,
-      # dataPath=os.environ.get("IMBU_DATA", pkg_resources.resource_filename(__name__, "data.csv")),
-      # dataPath=os.path.join(datasetName, "data.csv"),
       dataPath=os.path.join(datasetPath, "data.csv"),
       retina=os.environ["IMBU_RETINA_ID"],
       apiKey=os.environ["CORTICAL_API_KEY"]
