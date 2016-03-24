@@ -49,6 +49,11 @@ NUMBER_OF_DOCS = 50
 def runExperiment(args):
   """ Build a model and test it."""
 
+  # Filtering text helps word level and union pooler models for test 4.
+  # It does not help keywords or document fingerprint models.
+  if args.modelName == "htm":
+    args.filterText = True
+
   model, dataSet = setupExperiment(args)
 
   allRanks, avgRanks, avgStats = testModel(
