@@ -249,7 +249,7 @@ class TextPreprocess(object):
 
     if removeStrings:
       for removal in removeStrings:
-        textString = textString.replace(removal, "")
+        textString = textString.replace(removal.lower(), "")
 
     tokens = self.tokenize(textString)
 
