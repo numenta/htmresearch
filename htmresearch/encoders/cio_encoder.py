@@ -77,18 +77,16 @@ class CioEncoder(LanguageEncoder):
     super(CioEncoder, self).__init__(unionSparsity=unionSparsity)
 
     if cacheDir is None:
+      # Use the default cache directory
       root = os.path.dirname(os.path.realpath(__file__))
       cacheDir = os.path.join(root, "CioCache")
 
     self.apiKey = apiKey if apiKey else os.environ["CORTICAL_API_KEY"]
+    self.retina = retina
+
     self.client = CorticalClient(self.apiKey, retina=retina, cacheDir=cacheDir)
 
-    self.cacheDir = cacheDir
-    self.client = CorticalClient(self.apiKey,
-                                 retina=retina,
-                                 cacheDir=self.cacheDir)
-
-    self._setDimensions(retina, retinaScaling)
+    self._setDimensions(retinaScaling)
 
     self.fingerprintType = fingerprintType
     self.description = ("Cio Encoder", 0)
@@ -118,6 +116,10 @@ class CioEncoder(LanguageEncoder):
     if value:
       # Only set cacheDir if value explicitly provided
       self._cacheDir = value
+      # Re-init the encoder's Cio client for the new cacheDir
+      self.client = CorticalClient(self.apiKey,
+                                   retina=self.retina,
+                                   cacheDir=value)
 
 
   def __setstate__(self, state):
@@ -135,11 +137,11 @@ class CioEncoder(LanguageEncoder):
     self.__dict__ = state
 
 
-  def _setDimensions(self, retina, scalingFactor):
+  def _setDimensions(self, scalingFactor):
     if scalingFactor <= 0 or scalingFactor > 1:
       raise ValueError("Retina can only be scaled by values between 0 and 1.")
 
-    retinaDim = RETINA_SIZES[retina]["width"]
+    retinaDim = RETINA_SIZES[self.retina]["width"]
 
     self.width = int(retinaDim * scalingFactor)
     self.height = int(retinaDim * scalingFactor)

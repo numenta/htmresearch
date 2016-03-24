@@ -94,6 +94,7 @@ class ImbuModels(object):
 
   defaultSimilarityMetric = ModelSimilarityMetrics.pctOverlapOfInput
   defaultModelType = "CioWordFingerprint"
+  defaultDataset = "sample_reviews"
   defaultRetina = "en_associative"
   tokenIndexingFactor = 1000
 
@@ -104,6 +105,7 @@ class ImbuModels(object):
                                                  "Keywords"))
   modelMappings.update(HTM_sensor_knn="HTMNetwork",
                        HTM_sensor_simple_tp_knn="HTMNetwork",
+                       HTM_sensor_tm_knn="HTMNetwork",
                        HTM_sensor_tm_simple_tp_knn="HTMNetwork")
 
   # Set of classification model types that accept CioEncoder kwargs
@@ -122,7 +124,7 @@ class ImbuModels(object):
   }
 
 
-  def __init__(self, cacheRoot, dataPath, modelSimilarityMetric=None,
+  def __init__(self, dataPath, cacheRoot=None, modelSimilarityMetric=None,
       apiKey=None, retina=None):
 
     if not dataPath:
@@ -181,18 +183,23 @@ class ImbuModels(object):
 
     if getattr(ClassificationModelTypes, modelName) in self.requiresCIOKwargs:
       # Model type requires Cortical.io credentials
-      kwargs.update(retina=self.retina, apiKey=self.apiKey, retinaScaling=1.0)
+      kwargs.update(retina=self.retina, apiKey=self.apiKey)
+      # Specify encoder params
+      kwargs.update(cacheRoot=self.cacheRoot, retinaScaling=1.0)
 
     if modelName == "CioWordFingerprint":
-      kwargs.update(fingerprintType=EncoderTypes.word,
-                    cacheRoot=self.cacheRoot)
+      kwargs.update(fingerprintType=EncoderTypes.word)
 
     elif modelName == "CioDocumentFingerprint":
-      kwargs.update(fingerprintType=EncoderTypes.document,
-                    cacheRoot=self.cacheRoot)
+      kwargs.update(fingerprintType=EncoderTypes.document)
 
     elif modelName == "HTMNetwork":
-      kwargs.update(networkConfig=_loadNetworkConfig(kwargs["networkConfigName"]))
+      try:
+        kwargs.update(
+          networkConfig=_loadNetworkConfig(kwargs["networkConfigName"]))
+      except Exception as e:
+        print "Could not add params to HTMNetwork model config."
+        raise e
 
     elif modelName == "Keywords":
       # k should be > the number of data samples because the Keywords model

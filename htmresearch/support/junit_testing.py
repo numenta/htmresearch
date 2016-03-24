@@ -217,7 +217,7 @@ def plotResults(ranksArrays, ranks, maxRank, testName="JUnit Test"):
   py.sign_in(os.environ["PLOTLY_USERNAME"], os.environ["PLOTLY_API_KEY"])
   colors = ["rgba(93, 164, 214, 0.5)", "rgba(255, 144, 14, 0.5)",
             "rgba(44, 160, 101, 0.5)", "rgba(255, 65, 54, 0.5)",
-            "rgba(207, 114, 255, 0.5)"]
+            "rgba(207, 114, 255, 0.5)", "rgba(193, 42, 72, 0.5)"]
 
   histogramTraces = []
   for i, (modelName, allRanks) in enumerate(ranksArrays.iteritems()):

@@ -34,6 +34,7 @@ g_debugPrefix = "SDRClassifier"
 def _pFormatArray(array_, fmt="%.2f"):
   """Return a string with pretty-print of a numpy array using the given format
   for each element"""
+  return "[ " + " ".join(fmt % x for x in array_) + " ]"
 
 
 class SDRClassifier(object):
@@ -114,12 +115,12 @@ class SDRClassifier(object):
 
     # This contains the value of the highest input number we've ever seen
     # It is used to pre-allocate fixed size arrays that hold the weights
-    self._maxInputIdx = 1
+    self._maxInputIdx = 0
 
     # This contains the value of the highest bucket index we've ever seen
     # It is used to pre-allocate fixed size arrays that hold the weights of
     # each bucket index during inference
-    self._maxBucketIdx = 1
+    self._maxBucketIdx = 0
 
     # The connection weight matrix
     self._weightMatrix = dict()
@@ -229,8 +230,6 @@ class SDRClassifier(object):
                                bucketIdx-self._maxBucketIdx))), axis=1)
 
         self._maxBucketIdx = bucketIdx
-
-      retval = self.infer(patternNZ, classification)
 
       # Update rolling average of actual values if it's a scalar. If it's
       # not, it must be a category, in which case each bucket only ever
