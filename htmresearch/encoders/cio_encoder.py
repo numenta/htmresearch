@@ -84,9 +84,6 @@ class CioEncoder(LanguageEncoder):
     self.apiKey = apiKey if apiKey else os.environ["CORTICAL_API_KEY"]
     self.retina = retina
 
-    # # Init the Cio client by setting the cacheDir
-    # import pdb; pdb.set_trace()
-    # self.cacheDir = cacheDir
     self.client = CorticalClient(self.apiKey, retina=retina, cacheDir=cacheDir)
 
     self._setDimensions(retinaScaling)
@@ -106,7 +103,6 @@ class CioEncoder(LanguageEncoder):
      conjunction with _setCacheDir() which only sets self._cacheDir if a value
      is provided in the setter.
      """
-     # import pdb; pdb.set_trace()
      if hasattr(self, "_cacheDir"):
        return self._cacheDir
 
@@ -117,14 +113,13 @@ class CioEncoder(LanguageEncoder):
 
   @cacheDir.setter
   def cacheDir(self, value):
-    # import pdb; pdb.set_trace()
     if value:
       # Only set cacheDir if value explicitly provided
       self._cacheDir = value
-      # Also need the encoder's Cio client to use the new cacheDir
-      # self.client = CorticalClient(self.apiKey,
-      #                              retina=self.retina,
-      #                              cacheDir=value)
+      # Re-init the encoder's Cio client for the new cacheDir
+      self.client = CorticalClient(self.apiKey,
+                                   retina=self.retina,
+                                   cacheDir=value)
 
 
   def __setstate__(self, state):
@@ -134,7 +129,6 @@ class CioEncoder(LanguageEncoder):
     CorticalClient instance includes a cacheDir that does not exist, which is
     likely the case when a model is trained on one machine for reuse elsewhere.
     """
-    # import pdb; pdb.set_trace()
     if "_cacheDir" not in state:
       state["client"] = CorticalClient(state["apiKey"],
                                        retina=state["client"].retina,

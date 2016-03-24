@@ -179,7 +179,7 @@ class TestImbu(unittest.TestCase):
 
     self.assertEquals(
       "fake_cache_root",
-      getattr(model.getEncoder(), "cacheDir"),
+      getattr(model.getEncoder().client, "cacheDir"),
       "ImbuModels did not set the Cio encoder cache dir properly for {} model.".
       format(repr(model)))
 
@@ -190,7 +190,7 @@ class TestImbu(unittest.TestCase):
     self._checkNLPObjectParams(model.getEncoder(), paramsToCheck)
     self.assertEquals(
       "fake_cache_root",
-      getattr(model.getEncoder(), "cacheDir"),
+      getattr(model.getEncoder().client, "cacheDir"),
       "ImbuModels did not set the Cio encoder cache dir properly for {} model.".
       format(repr(model)))
 
@@ -206,7 +206,7 @@ class TestImbu(unittest.TestCase):
       "HTM Network model specifies an incorrect distance metric for Imbu.")
     self.assertEquals(
       "fake_cache_root",
-      getattr(model.getEncoder(), "cacheDir"),
+      getattr(model.getEncoder().client, "cacheDir"),
       "ImbuModels did not set the Cio encoder cache dir properly for {} model.".
       format(repr(model)))
 
@@ -233,14 +233,14 @@ class TestImbu(unittest.TestCase):
     defaultCacheLocation = "nupic.research/htmresearch/encoders/CioCache"
     self.assertIn(
       defaultCacheLocation,
-      getattr(encoder, "cacheDir"),
+      getattr(encoder.client, "cacheDir"),
       "Cio encoder cache dir is not the expected default location.")
 
     # Now explicitly set the cache directory
     encoder.cacheDir = "fake_cache_root"
     self.assertEquals(
       "fake_cache_root",
-      getattr(encoder, "cacheDir"),
+      getattr(encoder.client, "cacheDir"),
       "Cio encoder cache dir did not set properly.")
 
 
