@@ -1,0 +1,60 @@
+Version: 2
+Regions:
+  - name: sensor
+    nodeType: py.LanguageSensor
+    dimensions:
+      - 1
+    phases:
+      - 0
+    label: R0
+  - name: TM
+    nodeType: py.TMRegion
+    dimensions:
+      - 1
+    phases:
+      - 1
+    label: R1
+  - name: classifier
+    nodeType: py.KNNClassifierRegion
+    dimensions:
+      - 1
+    phases:
+      - 2
+    label: R2
+Links:
+  - type: UniformLink
+    params: ""
+    srcRegion: sensor
+    srcOutput: dataOut
+    destRegion: TM
+    destInput: bottomUpIn
+  - type: UniformLink
+    params: ""
+    srcRegion: sensor
+    srcOutput: resetOut
+    destRegion: TM
+    destInput: resetIn
+  - type: UniformLink
+    params: ""
+    srcRegion: sensor
+    srcOutput: sequenceIdOut
+    destRegion: TM
+    destInput: sequenceIdIn
+  - type: UniformLink
+    params: ""
+    srcRegion: TM
+    srcOutput: bottomUpOut
+    destRegion: classifier
+    destInput: bottomUpIn
+  - type: UniformLink
+    params: ""
+    srcRegion: sensor
+    srcOutput: categoryOut
+    destRegion: classifier
+    destInput: categoryIn
+  - type: UniformLink
+    params: ""
+    srcRegion: sensor
+    srcOutput: sequenceIdOut
+    destRegion: classifier
+    destInput: partitionIn

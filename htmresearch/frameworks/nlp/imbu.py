@@ -94,6 +94,7 @@ class ImbuModels(object):
 
   defaultSimilarityMetric = ModelSimilarityMetrics.pctOverlapOfInput
   defaultModelType = "CioWordFingerprint"
+  defaultDataset = "sample_reviews"
   defaultRetina = "en_associative"
   tokenIndexingFactor = 1000
 
@@ -104,6 +105,7 @@ class ImbuModels(object):
                                                  "Keywords"))
   modelMappings.update(HTM_sensor_knn="HTMNetwork",
                        HTM_sensor_simple_tp_knn="HTMNetwork",
+                       HTM_sensor_tm_knn="HTMNetwork",
                        HTM_sensor_tm_simple_tp_knn="HTMNetwork")
 
   # Set of classification model types that accept CioEncoder kwargs

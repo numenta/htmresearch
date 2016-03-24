@@ -35,23 +35,28 @@ g_log = logging.getLogger(__name__)
 
 
 
-# There is no longer training in imbu web app.  User must specify loadPath
+# No training in Imbu web app, user must specify loadPath
 if "IMBU_LOAD_PATH_PREFIX" in os.environ:
   _IMBU_LOAD_PATH_PREFIX = os.environ["IMBU_LOAD_PATH_PREFIX"]
 else:
   raise KeyError("Required IMBU_LOAD_PATH_PREFIX missing from environment")
 
-g_models = {} # Global model cache
-
-imbu = ImbuModels(
-  cacheRoot=os.environ.get("MODEL_CACHE_DIR", os.getcwd()),
-  modelSimilarityMetric=None,
-  dataPath=os.environ.get("IMBU_DATA",
-                          pkg_resources.resource_filename(__name__,
-                                                          "data.csv")),
-  retina=os.environ["IMBU_RETINA_ID"],
-  apiKey=os.environ["CORTICAL_API_KEY"]
-)
+g_imbus = {}  # Global ImbuModels cache
+g_models = {}  # Global NLP model cache
+for datasetName in os.listdir(_IMBU_LOAD_PATH_PREFIX):
+  datasetPath = os.path.join(_IMBU_LOAD_PATH_PREFIX, datasetName)
+  if os.path.isdir(datasetPath):
+    # Create an imbu instance for each dataset
+    imbu = ImbuModels(
+      cacheRoot=os.environ.get("MODEL_CACHE_DIR", os.getcwd()),
+      modelSimilarityMetric=None,
+      dataPath=os.path.join(datasetPath, "data.csv"),
+      retina=os.environ["IMBU_RETINA_ID"],
+      apiKey=os.environ["CORTICAL_API_KEY"]
+    )
+    g_imbus.update(((datasetName, imbu),))
+    # Init the dict for this dataset's models
+    g_models[datasetName] = {}
 
 
 def addStandardHeaders(contentType="application/json; charset=UTF-8"):
@@ -83,12 +88,14 @@ def addCORSHeaders():
 
 class FluentWrapper(object):
 
-  def query(self, model, text):
+  def query(self, dataset, model, text):
     """
-    Queries the model and returns an ordered list of matching samples.
+    Queries the model (which is specific to this dataset) and returns an ordered
+        list of matching samples.
+    :param str dataset: Dataset name, specifying the ImbuModels instance to use.
+        Possible values correspond to data dirs in _IMBU_LOAD_PATH_PREFIX.
     :param str model: Name of the model to use. Possible values are mapped to
         classes in the NLP model factory.
-
     :param str text: The text to match.
     :returns: a sequence of matching samples.
     ::
@@ -97,16 +104,18 @@ class FluentWrapper(object):
         ...
     ]
     """
-
+    global g_imbus
     global g_models
 
-    if model not in g_models:
-      loadPath = os.path.join(_IMBU_LOAD_PATH_PREFIX, model)
-      g_models[model] = imbu.createModel(model, str(loadPath), None)
+    if model not in g_models[dataset]:
+      loadPath = os.path.join(_IMBU_LOAD_PATH_PREFIX, dataset, model)
+      g_models[dataset][model] = g_imbus[dataset].createModel(
+        model, str(loadPath), None)
 
     if text:
-      _, sortedIds, sortedDistances = imbu.query(g_models[model], text)
-      return imbu.formatResults(model, text, sortedDistances, sortedIds)
+      _, sortedIds, sortedDistances = g_imbus[dataset].query(
+        g_models[dataset][model], text)
+      return g_imbus[dataset].formatResults(model, text, sortedDistances, sortedIds)
 
     else:
       return []
@@ -138,7 +147,9 @@ class FluentAPIHandler(object):
     return json.dumps(True)
 
 
-  def POST(self, modelName=ImbuModels.defaultModelType): # pylint: disable=R0201,C0103
+  def POST(self,
+           modelName=ImbuModels.defaultModelType,
+           dataset=ImbuModels.defaultDataset): # pylint: disable=R0201,C0103
     addStandardHeaders()
     addCORSHeaders()
 
@@ -148,14 +159,14 @@ class FluentAPIHandler(object):
 
     if data:
       if isinstance(data, basestring):
-        response = g_fluent.query(modelName, data)
+        response = g_fluent.query(dataset, modelName, data)
       else:
         raise web.badrequest("Invalid Data. Query data must be a string")
 
     if len(response) == 0:
       # No data, just return all samples
       # See "ImbuModels.formatResults" for expected format
-      for item in imbu.dataDict.items():
+      for item in g_imbus[dataset].dataDict.items():
         response[item[0]] = {"text": item[1][0], "scores": [0]}
 
     return json.dumps(response)
@@ -166,7 +177,8 @@ urls = (
   "", "DefaultHandler",
   "/", "DefaultHandler",
   "/fluent", "FluentAPIHandler",
-  "/fluent/(.*)", "FluentAPIHandler"
+  "/fluent/(.*)", "FluentAPIHandler",
+  "/fluent/(.*)/(.*)", "FluentAPIHandler"
 )
 app = web.application(urls, globals())
 
