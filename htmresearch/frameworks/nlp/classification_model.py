@@ -63,6 +63,14 @@ class ClassificationModel(object):
     self.verbosity = verbosity
     self.filterText = filterText
 
+    # Options to use if filterText is true. See get/setFilterOptions
+    self.filterOptions = {
+      "ignoreCommon": 100,
+      "removeStrings": ["[identifier deleted]"],
+      "correctSpell": True
+    }
+
+
 
   ################## CORE METHODS #####################
 
@@ -207,13 +215,27 @@ class ClassificationModel(object):
     """
     if self.filterText:
       sample, mapping = TextPreprocess().tokenizeAndFilter(inputText,
-                                         ignoreCommon=100,
-                                         removeStrings=["[identifier deleted]"],
-                                         correctSpell=True)
+                            **self.filterOptions)
     else:
       sample, mapping = TextPreprocess().tokenizeAndFilter(inputText)
 
     return sample, mapping
+
+
+  def getFilterOptions(self):
+    """Return the filtering options used when pre-processing text."""
+    return self.filterOptions
+
+
+  def setFilterOptions(self, filterOptions):
+    """
+    Set filtering options for TextPreprocess().tokenizeAndFilter.
+
+    @param filterOptions (dict) A dict containing keyword arguments. Must be
+                                compatible with the preprocessSpecs options
+                                required for TextPreprocess.tokenizeAndFilter
+    """
+    self.filterOptions = filterOptions
 
 
   def reset(self):

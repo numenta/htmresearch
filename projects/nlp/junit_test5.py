@@ -75,7 +75,7 @@ if __name__ == "__main__":
                       default="MODELNAME.checkpoint",
                       help="Model will be saved in this directory.")
   parser.add_argument("--retina",
-                      default="en_associative_64_univ",
+                      default="en_synonymous",
                       type=str,
                       help="Name of Cortical.io retina.")
   parser.add_argument("--apiKey",
