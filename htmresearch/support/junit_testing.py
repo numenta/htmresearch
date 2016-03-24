@@ -157,23 +157,24 @@ def testModel(model, testData, categorySize, verbosity=0):
     expectedCategory = docId / 100
     truePositives = 0
     for i in xrange(categorySize):
-      if sortedIds[i]/100 == expectedCategory:
+      if (i < len(sortedIds)) and sortedIds[i]/100 == expectedCategory:
         truePositives += 1
     totalTPs += truePositives
 
-    if (verbosity >= 2) and (truePositives < categorySize):
+    if (verbosity >= 1) and (truePositives < categorySize):
       print "\nIncorrect inference result:"
       print "docId=",docId,"document=",document
       print "sortedIds=",sortedIds
       print "truePositives = ",truePositives
 
     # Compute the rank metrics for this document
-    ranks = numpy.array(
-      [i for i, index in enumerate(sortedIds) if index/100 == expectedCategory])
-    allRanks.extend(ranks)
-    summedRanks += ranks
-    ranksMean = round(ranks.mean(), 2)
-    ranksSkew = round(skew(ranks), 2)
+    if len(sortedIds) > 0:
+      ranks = numpy.array(
+        [i for i, index in enumerate(sortedIds) if index/100 == expectedCategory])
+      allRanks.extend(ranks)
+      summedRanks += ranks
+      ranksMean = round(ranks.mean(), 2)
+      ranksSkew = round(skew(ranks), 2)
 
     if verbosity > 0:
       docStr = unicode(document, errors='ignore')[0:100]
