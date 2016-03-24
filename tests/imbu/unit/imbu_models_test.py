@@ -53,6 +53,11 @@ class TestImbu(unittest.TestCase):
     self.dataPath = os.path.join(TEST_DATA_DIR, "sample_reviews_subset.csv")
 
 
+  def tearDown(self):
+    if os.path.exists("fake_cache_root"):
+      shutil.rmtree("fake_cache_root")
+
+
   def _setupFakeImbuModelsInstance(self):
     return ImbuModels(
       cacheRoot="fake_cache_root",
