@@ -30,6 +30,11 @@ helpStr = """
   the content words in the other sentences. For the test we use each of the
   sentences as a search term. A perfect result ranks the four similar sentences
   closest to the search.
+
+  The "3B" version of the unit test uses a simpler search term comprising of
+  the category label itself. This version only compares the search terms against
+  the other documents. A perfect result ranks the four similar sentences
+  closest to the search.
 """
 
 import argparse
