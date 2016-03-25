@@ -42,6 +42,7 @@ from htmresearch.support.csv_helper import readDataAndReshuffle
 from htmresearch.support.nlp_model_test_helpers import (
   executeModelLifecycle,
   htmConfigs,
+  nlpModelAccuracies,
   nlpModelTypes,
   printSummary,
   testModel
@@ -67,7 +68,7 @@ def queryModel(model, queryDocument, documentTextMap):
     queryDocument, returnDetailedResults=True, sortResults=True)
 
   print
-  print "Here are some similar documents in order of similarity: "
+  print "Here are some similar documents in order of similarity:"
   for i, docId in enumerate(sortedIds[:10]):
     print
     print "Document #{} ({} overlap):".format(docId, sortedDistances[i])
@@ -78,8 +79,19 @@ def queryModel(model, queryDocument, documentTextMap):
   lastDocIndex = len(sortedIds)-1
   for i in xrange(lastDocIndex, lastDocIndex-10, -1):
     print
-    print "Document #{} ({} overlap):".format(docId, sortedDistances[i])
-    print wrapper.fill(documentTextMap[docId])
+    print "Document #{} ({} overlap):".format(sortedIds[i], sortedDistances[i])
+    print wrapper.fill(documentTextMap[sortedIds[i]])
+
+
+def resultsCheck(modelName):
+  print
+  print "How are the query results?"
+
+  try:
+    expectation = nlpModelAccuracies["query"][modelName]
+    print "We expect them to be", expectation
+  except KeyError:
+    print "No expectation for querying with {}.".format(modelName)
 
 
 def run(args):
@@ -137,6 +149,8 @@ def run(args):
       # Print profile information
       print
       model.dumpProfile()
+
+  resultsCheck(args.modelName)
 
 
 

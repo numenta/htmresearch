@@ -78,7 +78,14 @@ nlpModelAccuracies = {
     "HTM_sensor_tm_knn": 90.0,
     "keywords": 80.0,
   },
-  "query": None,
+  "query": {
+    "docfp": "good but not great",
+    "cioword": "passable",
+    "HTM_sensor_knn": "passable",
+    "HTM_sensor_simple_tp_knn": None,
+    "HTM_sensor_tm_knn": None,
+    "keywords": "passable",
+  },
   "simple": {
     "docfp": 99.7, ## CioDocumentFingerprint gets 100.0
     "cioword": 100.0,
