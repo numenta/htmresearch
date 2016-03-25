@@ -19,25 +19,26 @@
 * -------------------------------------------------------------------------- */
 
 import connectToStores from 'fluxible-addons-react/connectToStores';
-import ReactDOM from 'react-dom';
 import React from 'react';
 import Material from 'material-ui';
 
 import CheckServerStatusAction from '../actions/server-status';
 import SearchQueryAction from '../actions/search-query';
+import DatasetStore from '../stores/dataset';
 import SearchStore from '../stores/search';
 import ServerStatusStore from '../stores/server-status';
 
 const {
-  RaisedButton, TextField, Styles, ClearFix, LinearProgress
+  RaisedButton, TextField, Styles, LinearProgress
 } = Material;
 
 const {
   Spacing, Colors
 } = Styles;
 
-@connectToStores([SearchStore, ServerStatusStore], (context) => ({
+@connectToStores([SearchStore, ServerStatusStore, DatasetStore], (context) => ({
   ready: context.getStore(ServerStatusStore).isReady(),
+  dataset:  context.getStore(DatasetStore).getCurrent(),
   query: context.getStore(SearchStore).getQuery()
 }))
 export default class SearchComponent extends React.Component {
@@ -47,19 +48,16 @@ export default class SearchComponent extends React.Component {
     getStore: React.PropTypes.func
   };
 
-  constructor() {
-    super();
+  constructor(props) {
+    super(props);
+    this.state = {
+      query: props.query
+    }
   }
 
   componentDidMount() {
     // Check server status
     this._checkServerStatus();
-  }
-
-  componentDidUpdate() {
-    const el = ReactDOM.findDOMNode(this.refs.query);
-    this.refs.query.setValue(this.props.query);
-    el.focus();
   }
 
   /**
@@ -74,25 +72,26 @@ export default class SearchComponent extends React.Component {
   }
 
   _search() {
-    let query = this.refs.query.getValue() || '';
-    this.context.executeAction(SearchQueryAction, {query});
+    let query = this.state.query;
+
+    // Make sure the search term has changes
+    if (query !== this.props.query) {
+      this.context.executeAction(SearchQueryAction, {query});
+    }
   }
 
   _getStyles() {
     return {
       content: {
-        padding: `${Spacing.desktopGutterMini}px`,
-        margin: '0 auto',
-        display: 'table',
-        boxSizing: 'border-box'
+        clear: 'both',
+        display: 'flex',
+        padding: `${Spacing.desktopGutterMini}px`
       },
       searchField: {
-        display: 'table-cell',
-        width: '100%'
+        flex: 1
       },
       searchButton: {
-        display: 'table-cell',
-        width: '1px',
+        marginTop: '1.5rem',
         float: 'right'
       },
       progress: {
@@ -103,35 +102,41 @@ export default class SearchComponent extends React.Component {
     };
   }
 
+  _handleQueryChange(event) {
+    this.setState({
+      query: event.target.value
+    });
+  }
+
   render() {
     let styles = this._getStyles();
     let progress;
     let ready = this.props.ready;
     if (!ready) {
       progress = (
-        <ClearFix>
+        <div>
           <h3 height={styles.progress.height} style={styles.progress}>
             Please wait while models are being built
           </h3>
           <LinearProgress mode="indeterminate"/>
-        </ClearFix>);
+        </div>);
     }
     return (
       <div>
         {progress}
-        <ClearFix style={styles.content}>
+        <div style={styles.content}>
           <TextField floatingLabelText="Enter query:"
                      fullWidth={true}
-                     id="query" name="query"
+                     value={this.state.query}
                      disabled={!ready}
-                     onEnterKeyDown={this._search.bind(this)}
-                     style={styles.searchField}
-                     ref="query"/>
-          <RaisedButton label="Search" onTouchTap={this._search.bind(this)}
+                     onChange={::this._handleQueryChange}
+                     onEnterKeyDown={::this._search}
+                     style={styles.searchField}/>
+          <RaisedButton label="Search" onTouchTap={::this._search}
                         disabled={!ready}
                         style={styles.searchButton}
                         role="search" secondary={true}/>
-      </ClearFix>
+      </div>
     </div>);
   }
 }

@@ -129,6 +129,17 @@ class DefaultHandler(object):
 
 
 
+class DatasetsHandler(object):
+  """Handles Dataset requests"""
+  def GET(self, *args):
+    """Use '/fluent/datasets' to get list of available datasets"""
+    addStandardHeaders()
+    addCORSHeaders()
+
+    return json.dumps(g_imbus.keys())
+
+
+
 class FluentAPIHandler(object):
   """Handles API requests"""
 
@@ -177,8 +188,9 @@ urls = (
   "", "DefaultHandler",
   "/", "DefaultHandler",
   "/fluent", "FluentAPIHandler",
-  "/fluent/(.*)", "FluentAPIHandler",
-  "/fluent/(.*)/(.*)", "FluentAPIHandler"
+  "/fluent/datasets", "DatasetsHandler",
+  "/fluent/(.*)/(.*)", "FluentAPIHandler",
+  "/fluent/(.*)", "FluentAPIHandler"
 )
 app = web.application(urls, globals())
 

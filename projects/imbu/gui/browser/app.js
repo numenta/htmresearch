@@ -26,8 +26,10 @@ import ReactDOM from 'react-dom';
 import tapEventInject from 'react-tap-event-plugin';
 import MainComponent from './components/main.jsx';
 import SearchStore from './stores/search';
+import DatasetStore from './stores/dataset';
 import ServerStatusStore from './stores/server-status';
 import CheckServerStatusAction from './actions/server-status';
+import ListDatasetAction from './actions/dataset-list';
 
 window.React = React; // dev tools @TODO remove for non-dev
 
@@ -36,12 +38,13 @@ tapEventInject(); // remove when >= React 1.0
 // create fluxible app
 let app = new Fluxible({
   component: MainComponent,
-  stores: [SearchStore, ServerStatusStore]
+  stores: [DatasetStore, SearchStore, ServerStatusStore]
 });
 
 // add context to app
 let context = app.createContext();
 context.executeAction(CheckServerStatusAction)
+  .then(() => context.executeAction(ListDatasetAction))
   .then(() => {
     let container = document.getElementById('main');
     ReactDOM.render(FluxibleReact.createElementWithContext(context), container);
