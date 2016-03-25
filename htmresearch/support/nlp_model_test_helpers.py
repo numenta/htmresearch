@@ -21,23 +21,19 @@
 # ----------------------------------------------------------------------
 
 helpStr = """
-Class and executable script for running NLP model API tests. The intent here is
+Methods and data for running NLP model API tests. The intent here is
 to ensure and changes to the models does not decrease their classification
-accuracies (see nlpModelAccuracies below). There are three tests:
+accuracies (see nlpModelAccuracies below). Three tests are supported:
 
   hello: Very simple, hello world classification test. There are two categories
     that can be discriminated using bag of words. The training set is 8 docs,
     and the test set is an additional 2 (i.e. 10 total) -- first is an
     incorrectly labeled version of a training sample, second is semantically
     similar to one of the training samples.
-  query:
-
+  query: Qualitative test where we query a trained model to see which data
+    samples are the most and least similar.
   simple: Less simple classification test. The dataset used here must be
     specified in the command line args.
-
-Example invocations:
-
-python model_api_tests.py --test all
 
 """
 import argparse
@@ -64,11 +60,11 @@ nlpModelTypes = [
   "keywords"]
 
 # Network models use 4k retina.
-htmConfigs = (
-  ("HTM_sensor_knn", "data/network_configs/sensor_knn.json"),
-  ("HTM_sensor_simple_tp_knn", "data/network_configs/sensor_simple_tp_knn.json"),
-  ("HTM_sensor_tm_knn", "data/network_configs/sensor_tm_knn.json"),
-)
+htmConfigs = [
+  ("HTM_sensor_knn", "../data/network_configs/sensor_knn.json"),
+  ("HTM_sensor_simple_tp_knn", "../data/network_configs/sensor_simple_tp_knn.json"),
+  ("HTM_sensor_tm_knn", "../data/network_configs/sensor_tm_knn.json"),
+]
 
 # Some values of k we know work well.
 kValues = { "keywords": 21, "docfp": 3}
@@ -84,7 +80,7 @@ nlpModelAccuracies = {
   },
   "query": None,
   "simple": {
-    "docfp": 99.7,
+    "docfp": 99.7, ## CioDocumentFingerprint gets 100.0
     "cioword": 100.0,
     "HTM_sensor_knn": 66.2,
     "HTM_sensor_simple_tp_knn": 99.7,
@@ -141,7 +137,7 @@ def trainModel(model, trainingData, labelRefs, verbosity=0):
   return model
 
 
-def testModel(model, testData, labelRefs, verbosity=0):
+def testModel(model, testData, labelRefs, docCategoryMap=None, verbosity=0):
   """
   Test the given model on testData, print out and return accuracy percentage.
 
@@ -168,16 +164,11 @@ def testModel(model, testData, labelRefs, verbosity=0):
 
     categoryVotes, _, _ = model.inferDocument(document)
 
-    if verbosity > 1:
-      print "Doc #{}:".format(docId)
-      print "  Category votes:", categoryVotes
-      print "  Actual categories:", labels
-
     if categoryVotes.sum() > 0:
       # We will count classification as correct if the best category is any
       # one of the categories associated with this docId
       predicted = categoryVotes.argmax()
-      if predicted in labels:
+      if predicted in docCategoryMap[docId]:
         numCorrect += 1
     else:
       # No classification possible for this doc
@@ -222,4 +213,6 @@ def printSummary(testName, accuracies):
     currentPct = currentAccuracies.get(modelName, "which model?")
     printTemplate.add_row([modelName, currentPct, accuracyPct])
 
+  print
+  print "Results summary:"
   print printTemplate
