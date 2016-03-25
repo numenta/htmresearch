@@ -62,10 +62,14 @@ class TestFluentAPI(unittest.TestCase):
       self.assertEqual(result["scores"], [0])
 
 
-  def _queryModelAndAssertResponse(self, model=None, query="test"):
+  def _queryModelAndAssertResponse(self, model=None,
+                                   dataset=None,
+                                   query="test"):
     uri = "/fluent"
     if model:
       uri = "{}/{}".format(uri, model)
+      if dataset:
+        uri = "{}/{}".format(uri, dataset)
 
     response = self.app.post(uri, json.dumps(query))
     self.assertEqual(response.status, 200)
@@ -82,22 +86,42 @@ class TestFluentAPI(unittest.TestCase):
 
 
   def testQueryCioWordFingerprint(self):
-    self._queryModelAndAssertResponse("CioWordFingerprint")
+    self._queryModelAndAssertResponse(model="CioWordFingerprint")
 
 
   def testQueryCioDocumentFingerprint(self):
-    self._queryModelAndAssertResponse("CioDocumentFingerprint")
+    self._queryModelAndAssertResponse(model="CioDocumentFingerprint")
 
 
   def testQueryHTMSensorKnn(self):
-    self._queryModelAndAssertResponse("HTM_sensor_knn")
+    self._queryModelAndAssertResponse(model="HTM_sensor_knn")
 
 
   @unittest.skip("IMBU-101 need to retrain models to overcome backwards "
                  "incompatibility")
   def testQueryHTMSensorSimpleTpKnn(self):
-    self._queryModelAndAssertResponse("HTM_sensor_simple_tp_knn")
+    self._queryModelAndAssertResponse(model="HTM_sensor_simple_tp_knn")
 
 
   def testQueryKeywords(self):
-    self._queryModelAndAssertResponse("Keywords")
+    self._queryModelAndAssertResponse(model="Keywords")
+
+
+  def testDatasetList(self):
+    response = self.app.get("/fluent/datasets")
+
+    self.assertEqual(response.status, 200)
+    self._assertCORSHeaders(response)
+
+    # Assert that response can be parsed as JSON
+    datasets = json.loads(response.body)
+
+    # Assert structure of response matches expected pattern
+    self.assertIsInstance(datasets, list)
+    self.assertGreaterEqual(len(datasets), 1)
+
+
+  def testQueryDatasetModel(self):
+    # Assume 'sample_reviews' dataset exists
+    self._queryModelAndAssertResponse(dataset="sample_reviews",
+                                      model="CioWordFingerprint")
