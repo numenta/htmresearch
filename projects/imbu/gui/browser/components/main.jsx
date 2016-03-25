@@ -19,20 +19,31 @@
 * -------------------------------------------------------------------------- */
 
 
+import connectToStores from 'fluxible-addons-react/connectToStores';
 import React from 'react';
 import Material from 'material-ui';
+import SelectDatasetAction from '../actions/dataset-select'
+import DatasetStore from '../stores/dataset';
 import SearchComponent from './search.jsx';
 import SearchResultsComponent from './search-results.jsx';
-import SearchHistoryComponent from './search-history.jsx';
+import ThemeDecorator from 'material-ui/lib/styles/theme-decorator';
 import ThemeManager from 'material-ui/lib/styles/theme-manager';
 import LightTheme from 'material-ui/lib/styles/raw-themes/light-raw-theme';
 const {
-  AppBar, IconButton, GridList, GridTile, Paper
+  Toolbar, ToolbarTitle, ToolbarGroup,
+  DropDownMenu, MenuItem,
+  IconButton, GridList, GridTile, Paper
 } = Material;
 
+@connectToStores([DatasetStore], (context) => ({
+  datasets: context.getStore(DatasetStore).getDatasets(),
+  currentDataset:  context.getStore(DatasetStore).getCurrent()
+}))
+@ThemeDecorator(ThemeManager.getMuiTheme(LightTheme)) // eslint-disable-line new-cap
 export default class Main extends React.Component {
 
-  static childContextTypes = {
+  static contextTypes = {
+    executeAction: React.PropTypes.func,
     muiTheme: React.PropTypes.object
   };
 
@@ -40,35 +51,86 @@ export default class Main extends React.Component {
     super(props);
   }
 
-  _onLeftIconButtonTouchTap() {
-    this.refs.history.toggle();
-  }
-
-  getChildContext() {
-    return {muiTheme: ThemeManager.getMuiTheme(LightTheme)};
-  }
   _getStyles() {
+    let theme = this.context.muiTheme.appBar;
     return {
+      toolbar: {
+        paddingLeft: theme.padding,
+        paddingRight: theme.padding,
+        backgroundColor: theme.color
+      },
+      title: {
+        lineHeight: `${theme.height}px`,
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        margin: 0,
+        paddingTop: 0,
+        letterSpacing: 0,
+        fontSize: 24,
+        fontWeight: theme.titleFontWeight,
+        color: theme.textColor
+      },
+      datasetTitle: {
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        paddingLeft: 0,
+        paddingRight: 0,
+        letterSpacing: 0,
+        fontSize: 18,
+        fontWeight: theme.titleFontWeight,
+        color: theme.textColor
+      },
+      menuLabel: {
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        letterSpacing: 0,
+        fontSize: 18,
+        fontWeight: theme.titleFontWeight,
+        color: theme.textColor
+      },
+      iconStyle: {
+        fill: theme.textColor,
+        color: theme.textColor
+      },
       tile: {
         margin: 1
       }
     };
   }
 
+  _selectDataset(e, index, value) {
+    if (value !== this.props.currentDataset) {
+      this.context.executeAction(SelectDatasetAction, value);
+    }
+  }
   render() {
     let styles = this._getStyles();
-
+    let datasetItems = this.props.datasets.map((dataset) => {
+      return (<MenuItem key={dataset} value={dataset} primaryText={dataset}/>);
+    });
     return (
       <div>
-        <AppBar title="Numenta Imbu Application"
-          onLeftIconButtonTouchTap={this._onLeftIconButtonTouchTap.bind(this)}
-          iconElementRight={
+        <Toolbar style={styles.toolbar}>
+          <ToolbarGroup float="left">
+            <ToolbarTitle style={styles.title} text="Numenta Imbu Application"/>
+          </ToolbarGroup>
+          <ToolbarGroup float="right" lastChild={true}>
+            <ToolbarTitle style={styles.datasetTitle} text="Dataset :"/>
+            <DropDownMenu value={this.props.currentDataset}
+              labelStyle={styles.menuLabel}
+              onChange={::this._selectDataset}>
+              {datasetItems}
+            </DropDownMenu>
             <IconButton href="http://www.numenta.com"
               linkButton={true}
+              iconStyle={styles.iconStyle}
               iconClassName="material-icons"
               tooltip="Go to numenta.com">home</IconButton>
-          }/>
-
+          </ToolbarGroup>
+        </Toolbar>
         <SearchComponent/>
         <br/>
         <GridList cols={2} cellHeight={800}>
@@ -83,7 +145,6 @@ export default class Main extends React.Component {
             </Paper>
           </GridTile>
         </GridList>
-        <SearchHistoryComponent ref="history"/>
       </div>
     );
   }

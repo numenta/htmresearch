@@ -23,6 +23,7 @@ import ReactDOM from 'react-dom';
 import Material from 'material-ui';
 import connectToStores from 'fluxible-addons-react/connectToStores';
 import SearchQueryAction from '../actions/search-query';
+import DatasetStore from '../stores/dataset';
 import SearchStore from '../stores/search';
 import ServerStatusStore from '../stores/server-status';
 
@@ -38,8 +39,9 @@ const {
 /**
  * Display Search Results on a Material UI Table
  */
-@connectToStores([SearchStore, ServerStatusStore], (context, props) => ({
+@connectToStores([SearchStore, ServerStatusStore, DatasetStore], (context, props) => ({ // eslint-disable-line
   ready: context.getStore(ServerStatusStore).isReady(),
+  dataset: context.getStore(DatasetStore).getCurrent(),
   query: context.getStore(SearchStore).getQuery()
 }))
 export default class SearchResultsComponent extends React.Component {
@@ -96,15 +98,15 @@ export default class SearchResultsComponent extends React.Component {
   _modelChanged(event) {
     let model = event.target.value;
     this.setState({model});
-    this._search(this.props.query, model);
+    this._search(this.props.query, this.props.dataset, model);
   }
 
-  _search(query, model) {
-    this.context.executeAction(SearchQueryAction, {query, model});
+  _search(query, dataset, model) {
+    this.context.executeAction(SearchQueryAction, {query, dataset, model});
   }
 
   componentDidMount() {
-    this._search(this.props.query, this.state.model);
+    this._search(this.props.query, this.props.dataset, this.state.model);
   }
 
   componentDidUpdate() {
@@ -116,12 +118,12 @@ export default class SearchResultsComponent extends React.Component {
 
   componentWillReceiveProps(nextProps) {
     let model = this.state.model;
-    let results = this.context.getStore(SearchStore).getResults(model);
-    if (results.length === 0) {
-      this._search(nextProps.query, this.state.model);
-    } else {
-      this.setState({model, results});
+    if (this.props.dataset !== nextProps.dataset ||
+        this.props.query !== nextProps.query) {
+      this._search(nextProps.query, nextProps.dataset, this.state.model);
     }
+    let results = this.context.getStore(SearchStore).getResults(model);
+    this.setState({model, results});
   }
 
   formatResults(data) {
