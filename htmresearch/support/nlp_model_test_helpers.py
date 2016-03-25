@@ -56,13 +56,14 @@ from htmresearch.support.csv_helper import readDataAndReshuffle
 
 # There should be one "htm" model for each htm config entry.
 nlpModelTypes = [
-  "CioDocumentFingerprint",
-  "CioWordFingerprint",
+  "docfp",
+  "cioword",
   "htm",
   "htm",
   "htm",
-  "Keywords"]
+  "keywords"]
 
+# Network models use 4k retina.
 htmConfigs = (
   ("HTM_sensor_knn", "data/network_configs/sensor_knn.json"),
   ("HTM_sensor_simple_tp_knn", "data/network_configs/sensor_simple_tp_knn.json"),
@@ -70,25 +71,25 @@ htmConfigs = (
 )
 
 # Some values of k we know work well.
-kValues = { "Keywords": 21, "CioDocumentFingerprint": 3}
+kValues = { "keywords": 21, "docfp": 3}
 
 nlpModelAccuracies = {
   "hello": {
-    "CioDocumentFingerprint": 90.0,
-    "CioWordFingerprint": 90.0,
+    "docfp": 90.0,
+    "cioword": 90.0,
     "HTM_sensor_knn": 80.0,
     "HTM_sensor_simple_tp_knn": 90.0,
-    "HTM_sensor_tm_knn": 0.0,
-    "Keywords": 80.0,
+    "HTM_sensor_tm_knn": 90.0,
+    "keywords": 80.0,
   },
   "query": None,
   "simple": {
-    "CioDocumentFingerprint": 99.7,
-    "CioWordFingerprint": 100.0,
+    "docfp": 99.7,
+    "cioword": 100.0,
     "HTM_sensor_knn": 66.2,
     "HTM_sensor_simple_tp_knn": 99.7,
     "HTM_sensor_tm_knn": 0.0,
-    "Keywords": 16.9,
+    "keywords": 16.9,
   },
 }
 
@@ -183,7 +184,7 @@ def testModel(model, testData, labelRefs, verbosity=0):
       predicted = -1
 
     if verbosity > 0:
-      docStr = unicode(document, errors="ignore")[:80]
+      docStr = unicode(document, errors="ignore")
       printTemplate.add_row(
         [docId,
          wrapper.fill(docStr),
@@ -218,8 +219,7 @@ def printSummary(testName, accuracies):
   printTemplate.header_style = "upper"
 
   for modelName, accuracyPct in accuracies.iteritems():
-    import pdb; pdb.set_trace()
-    currentPct = currentAccuracies.get(modelName, 0.0)
+    currentPct = currentAccuracies.get(modelName, "which model?")
     printTemplate.add_row([modelName, currentPct, accuracyPct])
 
   print printTemplate
