@@ -26,9 +26,10 @@ import SearchQueryAction from '../actions/search-query';
 import DatasetStore from '../stores/dataset';
 import SearchStore from '../stores/search';
 import ServerStatusStore from '../stores/server-status';
+import MODELS from '../constants/models';
 
 const {
-  Styles, Paper,
+  Styles, Paper, DropDownMenu, MenuItem,
   Table, TableHeader, TableRow, TableHeaderColumn, TableBody, TableRowColumn
 } = Material;
 
@@ -85,9 +86,25 @@ export default class SearchResultsComponent extends React.Component {
         margin: '1 auto'
       },
       modelsMenu: {
-        height: '36px',
-        fontSize: '12pt',
-        border: '1px solid lightgray'
+        border: '1px solid lightgray',
+        borderRadius: '5px',
+        backgroundColor: Colors.grey50
+      },
+      modelsMenuUnderline: {
+        display: 'none'
+      },
+      modelDescription: {
+        fontSize: 'smaller',
+        whiteSpace: 'normal',
+        fontStyle: 'italic',
+        position: 'relative',
+        color: Colors.black,
+        left: '1rem'
+      },
+      modelItem: {
+        lineHeight: '1rem',
+        paddingBottom: '1rem',
+        width: '40rem'
       },
       table: {
         height: '500px'
@@ -95,8 +112,8 @@ export default class SearchResultsComponent extends React.Component {
     };
   }
 
-  _modelChanged(event) {
-    let model = event.target.value;
+  _modelChanged(event, index, value) {
+    let model = value;
     this.setState({model});
     this._search(this.props.query, this.props.dataset, model);
   }
@@ -177,33 +194,28 @@ export default class SearchResultsComponent extends React.Component {
         </TableRow>);
     });
 
+    let modelMenuItems = Object.keys(MODELS).map((model) => (
+      <MenuItem style={styles.modelItem}
+                value={model}
+                label={MODELS[model].label}
+                primaryText={
+                  <span>{MODELS[model].label}<br/>
+                    <span style={styles.modelDescription}>
+                      {MODELS[model].description}
+                    </span>
+                  </span>
+                }>
+      </MenuItem>
+    ));
     return (
       <Paper style={styles.content} depth={1}>
-
-        <select height={styles.modelsMenu.height}
-                disabled={!ready}
-                onChange={this._modelChanged.bind(this)}
-                value={this.state.model}
-                style={styles.modelsMenu}>
-          <option value="CioDocumentFingerprint">
-            Cortical.io document-level fingerprints
-          </option>
-          <option value="CioWordFingerprint">
-            Cortical.io word-level fingerprints (unioned)
-          </option>
-          <option value="Keywords">
-            Keywords (random encodings)
-          </option>
-          <option value="HTM_sensor_knn">
-            Cortical.io word-level fingerprints
-          </option>
-          <option value="HTM_sensor_tm_knn">
-            Sensor-TM-kNN Network
-          </option>
-          <option value="HTM_sensor_simple_tp_knn">
-            Sensor-simple UP-kNN Network
-          </option>
-        </select>
+        <DropDownMenu style={styles.modelsMenu}
+                      underlineStyle={styles.modelsMenuUnderline}
+                      value={this.state.model}
+                      disabled={!ready}
+                      onChange={::this._modelChanged}>
+          {modelMenuItems}
+        </DropDownMenu>
 
         <Table selectable={false} fixedHeader={true}
           height={styles.table.height} ref="results">
