@@ -18,26 +18,26 @@
 export default {
   CioWordFingerprint: {
     label: 'CioWordFingerprint',
-    description: 'the Cortical.io API gives us one fingerprint per word, from which we create one (sparsified) union SDR to represent each document'
+    description: 'Cortical.io API gives us one fingerprint per word, from which we create one (sparsified) union SDR to represent each document.'
   },
   CioDocumentFingerprint: {
     label: 'CioDocumentFingerprint',
-    description: 'the Cortical.io API gives us one fingerprint per document.'
+    description: 'Cortical.io API gives us one fingerprint per document.'
   },
   Keywords: {
     label: 'Keywords',
-    description: 'encoding is a random SDR for each word, and the model looks for exact-matching SDRs.'
+    description: 'Encoding is a random SDR for each word, and the model looks for exact-matching SDRs.'
   },
   HTM_sensor_knn: {
     label: 'Sensor-kNN',
-    description: 'encoding is a fingerprint for each word, and the model looks in the kNN for overlapping SDRs.'
-  },
-  HTM_sensor_tm_knn: {
-    label: 'Sensor-TM-kNN',
-    description: 'encoding is a fingerprint for each word, which is then run through temporal memory and into the kNN, where the model looks for overlapping SDRs.'
+    description: 'Encoding is a fingerprint for each word, and the model looks in the kNN for overlapping SDRs.'
   },
   HTM_sensor_simple_tp_knn: {
     label: 'Sensor-simpleUP-kNN',
-    description: 'each window of 10 words is represented by a union SDR of the 10 individual fingerprints, and the model looks in the kNN for overlapping SDRs.'
+    description: 'Each window of 10 words is represented by a union SDR of the 10 individual fingerprints, and the model looks in the kNN for overlapping SDRs.'
+  },
+  HTM_sensor_tm_simple_tp_knn: {
+    label: 'Sensor-TM-simpleUP-kNN',
+    description: 'A fingerprint for each word is fed through temporal memory, into a sliding window of 10 unioned SDRs, and into the kNN, where the model looks for overlapping SDRs.'
   }
 };
