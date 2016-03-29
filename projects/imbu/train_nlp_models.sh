@@ -27,8 +27,8 @@ echo "  HTM_sensor_tm_simple_tp_knn..."
 python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
   --dataPath engine/sample_reviews/data.csv \
   -c ~/nta/nupic.research/projects/nlp/data/network_configs/imbu_sensor_tm_simple_tp_knn.json \
-  -m HTM_sensor_tm_knn \
-  --savePath engine/sample_reviews/HTM_sensor_tm_knn \
+  -m HTM_sensor_tm_simple_tp_knn \
+  --savePath engine/sample_reviews/HTM_sensor_tm_simple_tp_knn \
   --noQueries
 
 echo "  CioWordFingerprint..."
