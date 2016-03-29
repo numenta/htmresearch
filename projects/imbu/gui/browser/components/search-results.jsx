@@ -29,7 +29,7 @@ import ServerStatusStore from '../stores/server-status';
 import MODELS from '../constants/models';
 
 const {
-  Styles, Paper, DropDownMenu, MenuItem,
+  Styles, Paper, DropDownMenu, MenuItem, RefreshIndicator,
   Table, TableHeader, TableRow, TableHeaderColumn, TableBody, TableRowColumn
 } = Material;
 
@@ -60,7 +60,9 @@ export default class SearchResultsComponent extends React.Component {
     super(props);
     let model = props.model;
     let results = context.getStore(SearchStore).getResults(model);
-    this.state = {model, results};
+    let error = context.getStore(SearchStore).getError(model);
+    let status = context.getStore(SearchStore).getStatus(model);
+    this.state = {model, results, error, status};
   }
 
   _getStyles() {
@@ -108,6 +110,15 @@ export default class SearchResultsComponent extends React.Component {
       },
       table: {
         height: '500px'
+      },
+      refresh: {
+        margin: 5,
+        display: 'inline-block',
+        position: 'relative',
+        verticalAlign: 'bottom'
+      },
+      error: {
+        color: Colors.red500
       }
     };
   }
@@ -140,7 +151,9 @@ export default class SearchResultsComponent extends React.Component {
       this._search(nextProps.query, nextProps.dataset, this.state.model);
     }
     let results = this.context.getStore(SearchStore).getResults(model);
-    this.setState({model, results});
+    let error = this.context.getStore(SearchStore).getError(model);
+    let status = this.context.getStore(SearchStore).getStatus(model);
+    this.setState({model, results, error, status});
   }
 
   formatResults(data) {
@@ -179,8 +192,27 @@ export default class SearchResultsComponent extends React.Component {
 
   render() {
     let styles = this._getStyles();
+    let tableStyle = styles.table;
     let ready = this.props.ready;
+    let status = this.state.status;
+    let statusComponent;
+    if (status === 'pending') {
+      // Show Progress
+      statusComponent = (
+        <RefreshIndicator
+          size={40}
+          left={5}
+          top={0}
+          status="loading"
+          loadingColor={Colors.pinkA200}
+          style={styles.refresh}
+        />
 
+      );
+    } else if (status === 'error') {
+      // Show Error
+      statusComponent = (<p style={styles.error}>Error using this model with this dataset</p>);
+    }
     // Convert SearchStore results to Table rows
     let rows = this.state.results.map((result, idx) => {
       return (
@@ -216,8 +248,8 @@ export default class SearchResultsComponent extends React.Component {
                       onChange={::this._modelChanged}>
           {modelMenuItems}
         </DropDownMenu>
-
-        <Table selectable={false} fixedHeader={true}
+        {statusComponent}
+        <Table selectable={false} fixedHeader={true} style={tableStyle}
           height={styles.table.height} ref="results">
           <TableHeader  adjustForCheckbox={false} displaySelectAll={false}>
             <TableRow>
