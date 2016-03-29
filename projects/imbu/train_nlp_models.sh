@@ -23,12 +23,12 @@ python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
   --savePath engine/sample_reviews/HTM_sensor_knn \
   --noQueries
 
-echo "  HTM_sensor_tm_knn..."
+echo "  HTM_sensor_tm_simple_tp_knn..."
 python ~/nta/nupic.research/htmresearch/frameworks/nlp/imbu.py \
   --dataPath engine/sample_reviews/data.csv \
-  -c ~/nta/nupic.research/projects/nlp/data/network_configs/imbu_sensor_tm_knn.json \
-  -m HTM_sensor_tm_knn \
-  --savePath engine/sample_reviews/HTM_sensor_tm_knn \
+  -c ~/nta/nupic.research/projects/nlp/data/network_configs/imbu_sensor_tm_simple_tp_knn.json \
+  -m HTM_sensor_tm_simple_tp_knn \
+  --savePath engine/sample_reviews/HTM_sensor_tm_simple_tp_knn \
   --noQueries
 
 echo "  CioWordFingerprint..."
