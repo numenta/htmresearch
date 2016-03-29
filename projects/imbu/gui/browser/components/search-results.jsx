@@ -204,13 +204,14 @@ export default class SearchResultsComponent extends React.Component {
           left={5}
           top={0}
           status="loading"
+          loadingColor={Colors.pinkA200}
           style={styles.refresh}
         />
 
       );
     } else if (status === 'error') {
       // Show Error
-      statusComponent = (<p style={styles.error}>ERROR: {this.state.error}</p>);
+      statusComponent = (<p style={styles.error}>Error using this model with this dataset</p>);
     }
     // Convert SearchStore results to Table rows
     let rows = this.state.results.map((result, idx) => {
