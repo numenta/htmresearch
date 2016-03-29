@@ -45,7 +45,7 @@ g_imbus = {}  # Global ImbuModels cache
 g_models = {}  # Global NLP model cache
 for datasetName in os.listdir(_IMBU_LOAD_PATH_PREFIX):
   datasetPath = os.path.join(_IMBU_LOAD_PATH_PREFIX, datasetName)
-  if os.path.isdir(datasetPath):
+  if os.path.isdir(datasetPath) and "egg" not in datasetPath:
     # Create an imbu instance for each dataset
     imbu = ImbuModels(
       cacheRoot=os.environ.get("MODEL_CACHE_DIR", os.getcwd()),

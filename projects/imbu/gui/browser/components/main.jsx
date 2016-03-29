@@ -29,6 +29,8 @@ import SearchResultsComponent from './search-results.jsx';
 import ThemeDecorator from 'material-ui/lib/styles/theme-decorator';
 import ThemeManager from 'material-ui/lib/styles/theme-manager';
 import LightTheme from 'material-ui/lib/styles/raw-themes/light-raw-theme';
+import DATASETS from '../constants/datasets';
+
 const {
   Toolbar, ToolbarTitle, ToolbarGroup,
   DropDownMenu, MenuItem,
@@ -109,7 +111,8 @@ export default class Main extends React.Component {
   render() {
     let styles = this._getStyles();
     let datasetItems = this.props.datasets.map((dataset) => {
-      return (<MenuItem key={dataset} value={dataset} primaryText={dataset}/>);
+      let label = DATASETS[dataset] ? DATASETS[dataset].label : dataset;
+      return (<MenuItem key={dataset} value={dataset} primaryText={label}/>);
     });
     return (
       <div>
