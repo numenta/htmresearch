@@ -170,7 +170,7 @@ class Suite(PyExperimentSuite):
       print " initializing HTM model..."
     self.model = ModelFactory.create(MODEL_PARAMS)
     self.model.enableInference({"predictedField": "element"})
-    self.classifier = SDRClassifier(steps=[1], alpha=0.001)
+    # self.classifier = SDRClassifier(steps=[1], alpha=0.001)
 
     self.mapping = getEncoderMapping(self.model, self.dataset.numSymbols)
 

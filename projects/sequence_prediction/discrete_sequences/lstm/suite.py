@@ -155,7 +155,8 @@ class Suite(PyExperimentSuite):
     elif params['dataset'] == 'reber':
       self.dataset = ReberDataset(maxLength=params['max_length'])
     elif params['dataset'] == 'high-order':
-      self.dataset = HighOrderDataset(numPredictions=params['num_predictions'])
+      self.dataset = HighOrderDataset(numPredictions=params['num_predictions'],
+                                      seed=params['seed'])
     else:
       raise Exception("Dataset not found")
 
