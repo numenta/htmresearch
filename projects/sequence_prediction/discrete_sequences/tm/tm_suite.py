@@ -31,7 +31,7 @@ import numpy
 from expsuite import PyExperimentSuite
 
 from nupic.frameworks.opf.modelfactory import ModelFactory
-from nupic.algorithms.sdr_classifier import SDRClassifier
+# from nupic.algorithms.sdr_classifier import SDRClassifier
 
 from htmresearch.support.sequence_prediction_dataset import ReberDataset
 from htmresearch.support.sequence_prediction_dataset import SimpleDataset
@@ -256,15 +256,15 @@ class Suite(PyExperimentSuite):
 
     # Try use SDR classifier to classify active (not predicted) cells
     # The results is similar as classifying the predicted cells
-    classLabel = min(currentElement, self.dataset.numSymbols)
-    classification = {'bucketIdx': classLabel, 'actValue': classLabel}
-    result = self.classifier.compute(iteration, list(tm.activeCells),
-                                     classification,
-                                     learn=True, infer=True)
-    topPredictionsSDRClassifier = sorted(zip(result[1], result["actualValues"]),
-                                         reverse=True)[0]
-    topPredictionsSDRClassifier = [topPredictionsSDRClassifier[1]]
-
+    # classLabel = min(currentElement, self.dataset.numSymbols)
+    # classification = {'bucketIdx': classLabel, 'actValue': classLabel}
+    # result = self.classifier.compute(iteration, list(tm.activeCells),
+    #                                  classification,
+    #                                  learn=True, infer=True)
+    # topPredictionsSDRClassifier = sorted(zip(result[1], result["actualValues"]),
+    #                                      reverse=True)[0]
+    # topPredictionsSDRClassifier = [topPredictionsSDRClassifier[1]]
+    topPredictionsSDRClassifier = None
 
     # activeColumns = set([tm.columnForCell(cell) for cell in tm.activeCells])
     # print "active columns: "
