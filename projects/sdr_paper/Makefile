@@ -16,7 +16,7 @@ NUPIC_EXTERNAL_PLATFORM_INC = $(NUPIC_CORE_EXTERNAL)/darwin64/include
 #
 # Library paths
 #
-NUPIC_CORE_LIB = $(NUPIC_CORE)/external/darwin64/lib
+NUPIC_CORE_LIB = $(NUPIC_CORE)/build/release/lib
 
 ##########################################
 #
@@ -46,34 +46,30 @@ sdr: sdr_calculations2.cpp
 		-Wl,-headerpad_max_install_names -Wl,-u,_munmap -m64 \
 		-stdlib=libc++ \
 		-lc++abi -liconv -lsqlite3 -framework CoreServices -framework Accelerate \
-		-L$(NUPIC_CORE_EXTERNAL)/darwin64/lib sdr_calculations.o -o sdr_calculations \
-		$(NUPIC_CORE)/build/release/lib/libnupic_core.a \
-		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libyaml.a \
-		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libapr-1.a \
-		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libaprutil-1.a \
-		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libz.a
+		-L$(NUPIC_CORE_LIB) sdr_calculations.o -o sdr_calculations \
+		$(NUPIC_CORE_LIB)/libnupic_core.a $(NUPIC_CORE_LIB)/libyaml.a \
+		$(NUPIC_CORE_LIB)/libapr-1.a $(NUPIC_CORE_LIB)/libaprutil-1.a $(NUPIC_CORE_LIB)/libz.a \
+		$(NUPIC_CORE_LIB)/libcapnpc.a $(NUPIC_CORE_LIB)/libcapnp.a $(NUPIC_CORE_LIB)/libkj.a $(NUPIC_CORE_LIB)/libnpymath.a
+
 
 	clang++ -Wl,-search_paths_first \
 		-Wl,-headerpad_max_install_names -Wl,-u,_munmap -m64 \
 		-stdlib=libc++ \
 		-lc++abi -liconv -lsqlite3 -framework CoreServices -framework Accelerate \
-		-L$(NUPIC_CORE_EXTERNAL)/darwin64/lib sdr_calculations2.o -o sdr_calculations2 \
-		$(NUPIC_CORE)/build/release/lib/libnupic_core.a \
-		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libyaml.a \
-		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libapr-1.a \
-		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libaprutil-1.a \
-		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libz.a
+		-L$(NUPIC_CORE_LIB) sdr_calculations2.o -o sdr_calculations2 \
+		$(NUPIC_CORE_LIB)/libnupic_core.a $(NUPIC_CORE_LIB)/libyaml.a \
+		$(NUPIC_CORE_LIB)/libapr-1.a $(NUPIC_CORE_LIB)/libaprutil-1.a $(NUPIC_CORE_LIB)/libz.a \
+		$(NUPIC_CORE_LIB)/libcapnpc.a $(NUPIC_CORE_LIB)/libcapnp.a $(NUPIC_CORE_LIB)/libkj.a $(NUPIC_CORE_LIB)/libnpymath.a
 
 	clang++ -Wl,-search_paths_first \
 		-Wl,-headerpad_max_install_names -Wl,-u,_munmap -m64 \
 		-stdlib=libc++ \
 		-lc++abi -liconv -lsqlite3 -framework CoreServices -framework Accelerate \
-		-L$(NUPIC_CORE_EXTERNAL)/darwin64/lib test_binary_matrix.o -o test_binary_matrix \
-		$(NUPIC_CORE)/build/release/lib/libnupic_core.a \
-		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libyaml.a \
-		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libapr-1.a \
-		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libaprutil-1.a \
-		$(NUPIC_CORE_EXTERNAL)/darwin64/lib/libz.a
+		-L$(NUPIC_CORE_LIB) test_binary_matrix.o -o test_binary_matrix \
+		$(NUPIC_CORE_LIB)/libnupic_core.a $(NUPIC_CORE_LIB)/libyaml.a \
+		$(NUPIC_CORE_LIB)/libapr-1.a $(NUPIC_CORE_LIB)/libaprutil-1.a $(NUPIC_CORE_LIB)/libz.a \
+		$(NUPIC_CORE_LIB)/libcapnpc.a $(NUPIC_CORE_LIB)/libcapnp.a $(NUPIC_CORE_LIB)/libkj.a $(NUPIC_CORE_LIB)/libnpymath.a
+
 clean: sdr_calculations2.cpp
 	rm -f *.o
 	rm -f sdr_calculations
