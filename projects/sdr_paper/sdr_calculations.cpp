@@ -39,6 +39,8 @@
 using namespace std;
 using namespace nupic;
 
+extern void runMNIST();
+
 // populate choices with a random selection of nChoices elements from
 // population. throws exception when nPopulation < nChoices
 // templated functions must be defined in header
@@ -616,37 +618,38 @@ void runTrialRange(
 // about to run.
 int main(int argc, char * argv[])
 {
-  if (argc < 2)
-  {
-    cout << "Missing output path argument" << endl;
-    exit(1);
-  }
-  const char* outputPath = argv[1];
-
-  // This is for false negatives, commented out
-  /*
-  // noise (False negative only)
-  UInt noise = 5;
-  // False negative
-  classificationFalseNegativeProbability(n, w, w_p, M, k, noise, probWithThetas,
-                                         trials, r);
-  */
-
-  // verbosity
-  Byte verbosity = 1;
-  // random number generator
-  Random r(42);
-  // output values where index is theta and value is probability
-  vector<Real> probWithThetas;
-
-  if (verbosity > 0)
-  {
-    cout << "Simulations running. Please be patient. Think about\n"
-         << "all the things you have to be grateful for.\n\n";
-  }
-
-  //// TODO: Set float precision to max.
-  ofstream f(outputPath);
+  runMNIST();
+//  if (argc < 2)
+//  {
+//    cout << "Missing output path argument" << endl;
+//    exit(1);
+//  }
+//  const char* outputPath = argv[1];
+//
+//  // This is for false negatives, commented out
+//  /*
+//  // noise (False negative only)
+//  UInt noise = 5;
+//  // False negative
+//  classificationFalseNegativeProbability(n, w, w_p, M, k, noise, probWithThetas,
+//                                         trials, r);
+//  */
+//
+//  // verbosity
+//  Byte verbosity = 1;
+//  // random number generator
+//  Random r(42);
+//  // output values where index is theta and value is probability
+//  vector<Real> probWithThetas;
+//
+//  if (verbosity > 0)
+//  {
+//    cout << "Simulations running. Please be patient. Think about\n"
+//         << "all the things you have to be grateful for.\n\n";
+//  }
+//
+//  //// TODO: Set float precision to max.
+//  ofstream f(outputPath);
   ////runTrialRange(1000, 50000, 30, 180, 1, 100, 10000, r, f, verbosity);
   ////runOneTrial(n, w, w_p, M, k, probWithThetas, nTrials, r, f, verbosity);
   //runOneTrial(1000, 20, 20, 1, 100, probWithThetas, 10000, r, f, verbosity);
@@ -676,11 +679,11 @@ int main(int argc, char * argv[])
   //unionRunOneTrial(5000, 60, 60, 20, 100, probWithThetas, 10000, r, f, verbosity);
   //unionRunOneTrial(5000, 80, 80, 20, 100, probWithThetas, 10000, r, f, verbosity);
   //unionRunOneTrial(5000, 100, 100, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  unionRunOneTrial(10000, 20, 20, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  unionRunOneTrial(10000, 40, 40, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  unionRunOneTrial(10000, 60, 60, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  unionRunOneTrial(10000, 80, 80, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  unionRunOneTrial(10000, 100, 100, 20, 100, probWithThetas, 10000, r, f, verbosity);
-  f.close();
+//  unionRunOneTrial(10000, 20, 20, 20, 100, probWithThetas, 10000, r, f, verbosity);
+//  unionRunOneTrial(10000, 40, 40, 20, 100, probWithThetas, 10000, r, f, verbosity);
+//  unionRunOneTrial(10000, 60, 60, 20, 100, probWithThetas, 10000, r, f, verbosity);
+//  unionRunOneTrial(10000, 80, 80, 20, 100, probWithThetas, 10000, r, f, verbosity);
+//  unionRunOneTrial(10000, 100, 100, 20, 100, probWithThetas, 10000, r, f, verbosity);
+//  f.close();
 }
 
