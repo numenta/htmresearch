@@ -23,15 +23,17 @@
 import random
 import numbers
 import numpy
+
 from scipy import reshape, dot, outer
+
 from expsuite import PyExperimentSuite
+from htmresearch.support.sequence_prediction_dataset import ReberDataset
+from htmresearch.support.sequence_prediction_dataset import SimpleDataset
+from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
 from pybrain.datasets import SequentialDataSet
 from pybrain.tools.shortcuts import buildNetwork
 from pybrain.structure.modules import LSTMLayer
 from pybrain.supervised import RPropMinusTrainer
-from htmresearch.support.sequence_prediction_dataset import ReberDataset
-from htmresearch.support.sequence_prediction_dataset import SimpleDataset
-from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
 
 
 class Encoder(object):
@@ -43,7 +45,7 @@ class Encoder(object):
     pass
 
 
-  def random(self):
+  def randomSymbol(self):
     pass
 
 
@@ -59,7 +61,8 @@ class BasicEncoder(Encoder):
     return encoding
 
 
-  def randomSymbol(self):
+  def randomSymbol(self, seed):
+    random.seed(seed)
     return random.randrange(self.num)
 
 
@@ -108,8 +111,9 @@ class DistributedEncoder(Encoder):
     return encoding
 
 
-  def randomSymbol(self):
-    return random.randrange(self.num, self.num+5000)
+  def randomSymbol(self, seed):
+    random.seed(seed)
+    return random.randrange(self.num, self.num+50000)
 
 
   @staticmethod
@@ -282,9 +286,10 @@ class Suite(PyExperimentSuite):
 
   def replenishSequence(self, params, iteration):
     if iteration > params['perturb_after']:
-      sequence, target = self.dataset.generateSequence(iteration, perturbed=True)
+      sequence, target = self.dataset.generateSequence(params['seed']+iteration,
+                                                       perturbed=True)
     else:
-      sequence, target = self.dataset.generateSequence(iteration)
+      sequence, target = self.dataset.generateSequence(params['seed']+iteration)
 
     if (iteration > params['inject_noise_after'] and
             iteration < params['stop_inject_noise_after']):
@@ -292,7 +297,7 @@ class Suite(PyExperimentSuite):
       sequence[injectNoiseAt] = self.encoder.randomSymbol()
 
     if params['separate_sequences_with'] == 'random':
-      sequence.append(self.encoder.randomSymbol())
+      sequence.append(self.encoder.randomSymbol(seed=params['seed']+iteration))
       target.append(None)
 
     if params['verbosity'] > 0:
@@ -318,11 +323,11 @@ class Suite(PyExperimentSuite):
 
 
   def iterate(self, params, repetition, iteration):
-    element = self.currentSequence.pop(0)
+    currentElement = self.currentSequence.pop(0)
     target = self.targetPrediction.pop(0)
 
     # update buffered dataset
-    self.history.append(element)
+    self.history.append(currentElement)
 
     # whether there will be a reset signal after the current record
     resetFlag = (len(self.currentSequence) == 0 and
@@ -368,7 +373,7 @@ class Suite(PyExperimentSuite):
 
       # run LSTM on the latest data record
 
-      output = self.net.activate(self.encoder.encode(element))
+      output = self.net.activate(self.encoder.encode(currentElement))
       predictions = self.encoder.classify(output, num=params['num_predictions'])
 
       correct = self.check_prediction(predictions, target)
@@ -379,14 +384,14 @@ class Suite(PyExperimentSuite):
                "predictions: {2} \t"
                "truth: {3} \t"
                "correct: {4} \t").format(
-          iteration, element, predictions, target, correct)
+          iteration, currentElement, predictions, target, correct)
 
       if self.resets[-1]:
         if params['verbosity'] > 0:
           print "Reset LSTM at iteration {}".format(iteration)
         self.net.reset()
 
-      return {"current": element,
+      return {"current": currentElement,
               "reset": self.resets[-1],
               "random": self.randoms[-1],
               "train": train,

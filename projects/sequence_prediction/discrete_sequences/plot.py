@@ -32,6 +32,7 @@ from expsuite import PyExperimentSuite
 def readExperiment(experiment):
   with open(experiment, "r") as file:
     predictions = []
+    predictionsSDR = []
     truths = []
     iterations = []
     resets = []
@@ -47,6 +48,11 @@ def readExperiment(experiment):
         predictions.append(dataRec['predictions'])
       else:
         predictions.append(None)
+
+      if 'predictionsSDR' in dataRec.keys():
+        predictionsSDR.append(dataRec['predictionsSDR'])
+      else:
+        predictionsSDR.append(None)
 
       if 'truth' in dataRec.keys():
         truths.append(dataRec['truth'])
@@ -79,6 +85,7 @@ def readExperiment(experiment):
         sequenceCounter.append(None)
 
   return {'predictions': predictions,
+          'predictionsSDR': predictionsSDR,
           'truths': truths,
           'iterations': iterations,
           'resets': resets,
