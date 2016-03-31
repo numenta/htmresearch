@@ -73,12 +73,16 @@ sdr: sdr_calculations2.cpp
 
 mnist: mnist_sdrs.cpp
 	clang++ -c mnist_sdrs.cpp $(CXX_FLAGS)
+	clang++ -c read_mnist.cpp $(CXX_FLAGS)
+	clang++ -c dendrite_model.cpp $(CXX_FLAGS)
 
 	clang++ -Wl,-search_paths_first \
 		-Wl,-headerpad_max_install_names -Wl,-u,_munmap -m64 \
 		-stdlib=libc++ \
 		-lc++abi -liconv -lsqlite3 -framework CoreServices -framework Accelerate \
-		-L$(NUPIC_CORE_LIB) mnist_sdrs.o -o mnist_sdrs \
+		-L$(NUPIC_CORE_LIB) \
+		mnist_sdrs.o read_mnist.o dendrite_model.o \
+		-o mnist_sdrs \
 		$(NUPIC_CORE_LIB)/libnupic_core.a $(NUPIC_CORE_LIB)/libyaml.a \
 		$(NUPIC_CORE_LIB)/libapr-1.a $(NUPIC_CORE_LIB)/libaprutil-1.a $(NUPIC_CORE_LIB)/libz.a \
 		$(NUPIC_CORE_LIB)/libcapnpc.a $(NUPIC_CORE_LIB)/libcapnp.a $(NUPIC_CORE_LIB)/libkj.a $(NUPIC_CORE_LIB)/libnpymath.a

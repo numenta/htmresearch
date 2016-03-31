@@ -50,282 +50,32 @@
 using namespace std;
 using namespace nupic;
 
-// Populate choices with a random selection of nChoices elements from
-// the given row in the given sparse matrix. Throws exception when
-// nPopulation < nChoices. This function is used to randomly sample synapses
-// from an image.
+///////////////////////////////////////////////////////////
 //
-template <typename ChoicesIter>  void sample(SparseMatrix01<UInt, Int> *sm, UInt32 row,
-            ChoicesIter choices, UInt32 nChoices, Random &r)
-{
-  // Get our set of non-zero indices as the population we will sample from
-  UInt32 nPopulation = sm->nNonZerosRow(row);
-  vector<UInt> population;
-  population.resize(nPopulation);
-  sm->getRowSparse(row, population.begin());
-
-  // Print non-zeros
-  //  cout << "row " << row << "\n";
-  //  for (int i=0; i <= nPopulation; i++) cout << population[i] << " ";
-  //  cout << "\n";
-
-  if (nChoices == 0)
-  {
-    return;
-  }
-  if (nChoices > nPopulation)
-  {
-    NTA_THROW << "Error: population size " << nPopulation
-              << " cannot be greater than number of choices "
-              << nChoices << "\n";
-  }
-
-  UInt32 nextChoice = 0;
-  for (UInt32 i = 0; i < nPopulation; ++i)
-  {
-    if (r.getUInt32(nPopulation - i) < (nChoices - nextChoice))
-    {
-      *choices++ = population[i];
-      ++nextChoice;
-      if (nextChoice == nChoices)
-      {
-        break;
-      }
-    }
-  }
-
-}
-
-// Print the appropriate row of the sparse matrix
-void printRow(UInt32 row, SparseMatrix01<UInt, Int> *sm)
-{
-  if (row >= sm->nRows())
-  {
-    NTA_THROW << "Row size is too big!";
-  }
-  UInt32 nnz = sm->nNonZerosRow(row);
-  vector<UInt> indices;
-  indices.resize(nnz);
-  sm->getRowSparse(row, indices.begin());
-  cout << row << " : ";
-  for (int i= 0; i < nnz; i++)
-  {
-    cout << indices[i] << " ";
-  }
-  cout << "\n";
-}
-
-// Takes a directory containing a category of MNIST images, the number of
-// images, and a binarization threshold. Read each image into a row of the
-// sparse matrix sm. The image is binarized to 0/1 pixel values using the
-// threshold. The SparseMatrix must have 28*28 columns (corresponding to MNIST
-// image size)
-void readMNISTImages(const char* mnistPath,
-                     Int numImages, Int threshold,
-                     SparseMatrix01<UInt, Int> *sm)
-{
-  char fileName[256];
-  vector<UInt> activePixels;
-  int totalActivePixels = 0;
-
-  // Loop through each image, create filename, and read binarized version
-  vector<UInt> population;
-  for (int i= 0; i < numImages; i++)
-  {
-    sprintf(fileName, "%s/%06d.txt", mnistPath, i);
-    ifstream f(fileName, ifstream::in);
-
-    if (f)
-    {
-      Int w, h;
-      f >> w >> h;
-
-      // Read in pixels and binarize
-      Int p;
-      for (int j= 0; j < 28*28; j++)
-      {
-        f >> p;
-        if ( p >= threshold )
-        {
-          activePixels.push_back(j);
-        }
-      }
-      sm->addRow(activePixels.size(), activePixels.begin());
-
-      totalActivePixels += activePixels.size();
-
-//    cout << "Found " << activePixels.size() << " pixels:\n   ";
-//    for (int j= 0; j < activePixels.size(); j++)
-//    {
-//        cout << activePixels[j] << " ";
-//    }
-//    cout << "\n";
-
-      f.close();
-      activePixels.clear();
-    }
-    else
-    {
-      cerr << "File " << fileName << " could not be opened!\n";
-    }
-
-
-  }
-
-  cout << "Average number of active pixels= "
-       << ((float) totalActivePixels) / sm->nRows() << "\n";
-
-}
-
-// Run inference on the k'th row of dataSet using the trained dendritic
-// model. Return the number of dendrites whose overlap with the k'th row is
-// >= threshold.
-int runInferenceOnPattern(int row, int threshold,
-           SparseMatrix01<UInt, Int> *dataSet,
-           SparseMatrix01<UInt, Int> *dendrites)
-{
-  // Create vector to hold resulting overlaps
-  vector<UInt> overlaps;
-  overlaps.resize(dendrites->nRows(), 0);
-
-  // Create a dense version of pattern
-  vector<UInt> denseX;
-  denseX.resize(dataSet->nCols(), 0);
-  dataSet->getRow(row, denseX.begin());
-
-  dendrites->rightVecProd(denseX.begin(), overlaps.begin());
-
-  int nMatches = 0;
-  for (int i = 0; i < overlaps.size(); i++)
-  {
-    int nnz = dendrites->nNonZerosRow(i);
-    int t = min((int)(0.95*nnz), threshold);
-    if (overlaps[i] >= t)
-    {
-//      if (overlaps[i] == nnz) cout << "Overlap of " << i << " = " << overlaps[i] << "\n";
-      nMatches++;
-    }
-  }
-
-  return nMatches;
-}
-
-// Classify pattern the given row by running through each dendrite model
-// The dendrite model with the most matches wins
-int classifyPattern(int row, int threshold,
-           SparseMatrix01<UInt, Int> *dataSet,
-           std::vector< SparseMatrix01<UInt, Int> * > &dendrites)
-{
-  int bestClass = -1;
-  int bestOverlap = -1;
-  for (int i=0; i < dendrites.size(); i++)
-  {
-    int matches = runInferenceOnPattern(row, threshold, dataSet, dendrites[i]);
-//    cout << "For model " << i << ",  matches=" << matches<< "\n";
-    if (matches > bestOverlap)
-    {
-      bestOverlap = matches;
-      bestClass= i;
-    }
-  }
-
-//  cout << "bestOverlap=" << bestOverlap << "\n";
-  return bestClass;
-}
-
-// Go through all training examples of class k. Create a set of dendrites
-// that randomly sample for that class.
-void trainDendrites(int k, int nSynapses,
-           std::vector< SparseMatrix01<UInt, Int> * > &trainingSet,
-           std::vector< SparseMatrix01<UInt, Int> * > &dendrites,
-           Random &r)
-{
-  for (int i=0; i<trainingSet[k]->nRows(); i++)
-  {
-    int nnz = trainingSet[k]->nNonZerosRow(i);
-    UInt32 synapsesToCreate = nSynapses;
-    if (nnz < nSynapses) {
-      synapsesToCreate = nnz;
-//      cout << "For class " << k << " training image " << i << " has " << nnz
-//           << " non-zeros\n";
-    }
-
-    // Randomly sample from the non-zero pixels in the image
-    vector<UInt> synapseIndices;
-    synapseIndices.resize(synapsesToCreate);
-    sample(trainingSet[k], i, synapseIndices.begin(), synapsesToCreate, r);
-
-    // Add this to the k'th dendrites model
-    dendrites[k]->addRow(synapseIndices.size(), synapseIndices.begin());
-
-    // Verify by getting the last row and printing it out
-    // printRow(dendrites[k]->nRows()-1, dendrites[k]);
-  }
-}
+// External definitions, should really be in header files
 
 // Read test/training images from top-level directory and return number read
-int readImages(int *numImages, const char *path,
-                std::vector< SparseMatrix01<UInt, Int> * > &images)
-{
-  // Read in this percentage of all samples (for faster debugging only)
-  Real samplingFactor = 1.0;
+extern int readImages(int *numImages, const char *path,
+                std::vector< SparseMatrix01<UInt, Int> * > &images);
 
-  int n = 0;
-  for (int i=0; i<10; i++)
-  {
-    int numImagesToRead = (int)(samplingFactor*numImages[i]);
-    char dirName[256];
-    sprintf(dirName, path, i);
-    readMNISTImages(dirName, numImagesToRead, 64, images[i]);
-//    cout << "Read in " << images[i]->nRows() << " images from "
-//         << dirName << "\n";
-    n += images[i]->nRows();
-  }
-
-  return n;
-}
-
-// Classify the dataset using a trained dendrite model and the
-// given threshold, and report accuracy
-void classifyDataset(
+extern void classifyDataset(
            int threshold,
            std::vector< SparseMatrix01<UInt, Int> * > &dataSet,
-           std::vector< SparseMatrix01<UInt, Int> * > &dendrites)
-{
-  int numCorrect = 0, numInferences = 0;
-  for (int category=0; category < 10; category++)
-  {
-    int numCorrectClass = 0;
-    for (int k= 0; k<dataSet[category]->nRows(); k++)
-    {
-      int bestClass = classifyPattern(k, threshold, dataSet[category], dendrites);
-      if (bestClass == category)
-      {
-        numCorrect++;
-        numCorrectClass++;
-      }
-      numInferences++;
-    }
+           std::vector< SparseMatrix01<UInt, Int> * > &dendrites);
 
-    cout << "Category=" << category
-         << ", num examples=" << dataSet[category]->nRows()
-         << ", pct correct="
-         << ((float) numCorrectClass)/dataSet[category]->nRows()
-         << "\n";
-
-  }
-
-  cout << "Overall accuracy = " << (100.0 * numCorrect)/numInferences << "%\n";
-}
+extern void trainDendrites(int k, int nSynapses,
+           std::vector< SparseMatrix01<UInt, Int> * > &trainingSet,
+           std::vector< SparseMatrix01<UInt, Int> * > &dendrites,
+           Random &r);
 
 
 // Run the whole MNIST example.
-void runMNIST()
+void runMNIST(int nSynapses)
 {
   //////////////////////////////////////////////////////
   //
   // Initialize the sparse matrix data structures. Our classifier will be a set
-  // of dendrites. dendrites[k] will contain a list of dendrites trained on
+  // of dendrites. dendrites[k] will contain a set of dendrites trained on
   // class k.
   std::vector< SparseMatrix01<UInt, Int> * > dendrites;
   std::vector< SparseMatrix01<UInt, Int> * > trainingSet;
@@ -358,10 +108,11 @@ void runMNIST()
   //////////////////////////////////////////////////////
   //
   // Create trained model by randomly sampling from training images
-  cout << "Training dendrite model with 100 synapses per dendrite.\n";
+  cout << "Training dendrite model with " << nSynapses
+       << " synapses per dendrite.\n";
   for (int k= 0; k<10; k++)
   {
-    trainDendrites(k, 100, trainingSet, dendrites, r);
+    trainDendrites(k, nSynapses, trainingSet, dendrites, r);
   }
 
 
@@ -369,7 +120,7 @@ void runMNIST()
   //
   // Classify the data sets and compute accuracy
   cout << "Running classification with a bunch of different thresholds.\n";
-  for (int threshold = 68; threshold <= 68; threshold+= 2)
+  for (int threshold = 32; threshold <= 32; threshold+= 2)
   {
     cout << "\nUsing threshold = " << threshold << "\n";
 //    cout << "Training set:";
@@ -380,10 +131,11 @@ void runMNIST()
 
 }
 
+
 // Run the trials!  Currently need to hard code the specific trial you are
 // about to run.
 int main(int argc, char * argv[])
 {
-  runMNIST();
+  runMNIST(40);
 }
 
