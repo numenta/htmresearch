@@ -618,14 +618,13 @@ void runTrialRange(
 // about to run.
 int main(int argc, char * argv[])
 {
-  runMNIST();
-//  if (argc < 2)
-//  {
-//    cout << "Missing output path argument" << endl;
-//    exit(1);
-//  }
-//  const char* outputPath = argv[1];
-//
+  if (argc < 2)
+  {
+    cout << "Missing output path argument" << endl;
+    exit(1);
+  }
+  const char* outputPath = argv[1];
+
 //  // This is for false negatives, commented out
 //  /*
 //  // noise (False negative only)
@@ -649,8 +648,8 @@ int main(int argc, char * argv[])
 //  }
 //
 //  //// TODO: Set float precision to max.
-//  ofstream f(outputPath);
-  ////runTrialRange(1000, 50000, 30, 180, 1, 100, 10000, r, f, verbosity);
+  ofstream f(outputPath);
+  //runTrialRange(1000, 50000, 30, 180, 1, 100, 10000, r, f, verbosity);
   ////runOneTrial(n, w, w_p, M, k, probWithThetas, nTrials, r, f, verbosity);
   //runOneTrial(1000, 20, 20, 1, 100, probWithThetas, 10000, r, f, verbosity);
   //runOneTrial(1000, 40, 40, 1, 100, probWithThetas, 10000, r, f, verbosity);
@@ -684,6 +683,6 @@ int main(int argc, char * argv[])
 //  unionRunOneTrial(10000, 60, 60, 20, 100, probWithThetas, 10000, r, f, verbosity);
 //  unionRunOneTrial(10000, 80, 80, 20, 100, probWithThetas, 10000, r, f, verbosity);
 //  unionRunOneTrial(10000, 100, 100, 20, 100, probWithThetas, 10000, r, f, verbosity);
-//  f.close();
+  f.close();
 }
 
