@@ -41,10 +41,10 @@ using namespace nupic;
 
 // populate choices with a random selection of nChoices elements from
 // the given row in the given sparse matrix. Throws exception when nPopulation < nChoices
-// templated functions must be defined in header
+// templated functions must be defined in header.
+// Returns the number of choices actually made.
 //
-template <typename ChoicesIter>
-void sample(SparseMatrix01<UInt, Int> *sm, UInt32 row,
+template <typename ChoicesIter>  void sample(SparseMatrix01<UInt, Int> *sm, UInt32 row,
             ChoicesIter choices, UInt32 nChoices, Random &r)
 {
   // Get our set of non-zero indices as the population we will sample from
@@ -64,10 +64,12 @@ void sample(SparseMatrix01<UInt, Int> *sm, UInt32 row,
   }
   if (nChoices > nPopulation)
   {
-    NTA_THROW << "population size must be greater than number of choices";
+    NTA_THROW << "Error: population size " << nPopulation
+              << " cannot be greater than number of choices "
+              << nChoices << "\n";
   }
-  UInt32 nextChoice = 0;
 
+  UInt32 nextChoice = 0;
   for (UInt32 i = 0; i < nPopulation; ++i)
   {
     if (r.getUInt32(nPopulation - i) < (nChoices - nextChoice))
@@ -196,14 +198,17 @@ int classifyPattern(int row, int threshold,
   int bestOverlap = -1;
   for (int i=0; i < dendrites.size(); i++)
   {
+//    cout << "Running model " << i;
     int overlapScore = runInferenceOnPattern(row, threshold, dataSet, dendrites[i]);
+//    cout << ",  overlapScore=" << overlapScore<< "\n";
     if (overlapScore > bestOverlap)
     {
       bestOverlap = overlapScore;
-      bestClass= 1;
+      bestClass= i;
     }
   }
 
+//  cout << "bestOverlap=" << bestOverlap << "\n";
   return bestClass;
 }
 
@@ -216,14 +221,16 @@ void trainDendrites(int k, int nSynapses,
 {
   for (int i=0; i<trainingSet[k]->nRows(); i++)
   {
-//    int nnz = trainingSet[k]->nNonZerosRow(i);
+    int nnz = trainingSet[k]->nNonZerosRow(i);
 //    cout << "\nFor class " << k << " training image " << i << " has " << nnz
 //         << " non-zeros\n";
+    UInt32 synapsesToCreate = nSynapses;
+    if (nnz < nSynapses) synapsesToCreate = nnz;
 
     // Randomly sample from the non-zero pixels in the image
     vector<UInt> synapseIndices;
-    synapseIndices.resize(nSynapses);
-    sample(trainingSet[k], i, synapseIndices.begin(), nSynapses, r);
+    synapseIndices.resize(synapsesToCreate);
+    sample(trainingSet[k], i, synapseIndices.begin(), synapsesToCreate, r);
 
     // Add this to the k'th dendrites model
     dendrites[k]->addRow(synapseIndices.size(), synapseIndices.begin());
@@ -238,7 +245,7 @@ int readImages(int *numImages, const char *path,
                 std::vector< SparseMatrix01<UInt, Int> * > &images)
 {
   // Read in this percentage of all samples (for faster debugging only)
-  Real samplingFactor = 0.01;
+  Real samplingFactor = 1.0;
 
   int n = 0;
   for (int i=0; i<10; i++)
@@ -253,6 +260,34 @@ int readImages(int *numImages, const char *path,
   }
 
   return n;
+}
+
+// Classify the dataset using a trained dendrite model and the
+// given threshold, and report accuracy
+void classifyDataset(
+           int threshold,
+           std::vector< SparseMatrix01<UInt, Int> * > &dataSet,
+           std::vector< SparseMatrix01<UInt, Int> * > &dendrites)
+{
+  int numCorrect = 0, numInferences = 0;
+  for (int category=0; category < 10; category++)
+  {
+//    cout << "Category=" << category << ", num examples="
+//         << dataSet[category]->nRows() << "\n";
+    for (int k= 0; k<dataSet[category]->nRows(); k++)
+    {
+      int bestClass = classifyPattern(k, threshold, dataSet[category], dendrites);
+      if (bestClass == category)
+      {
+        numCorrect++;
+      }
+      numInferences++;
+//      cout << "pattern " << k << " bestClass=" << bestClass
+//           << " numCorrect=" << numCorrect << "\n";
+    }
+  }
+
+  cout << ", accuracy = " << (100.0 * numCorrect) / numInferences << "%\n";
 }
 
 
@@ -297,19 +332,20 @@ void runMNIST()
   cout << "Training dendrite model...\n";
   for (int k= 0; k<10; k++)
   {
-    trainDendrites(k, 30, trainingSet, dendrites, r);
+    trainDendrites(k, 60, trainingSet, dendrites, r);
   }
-  cout << "...done\n";
+  cout << "...done";
 
-  // Classify the first 10 rows of class 3
-  for (int k= 0; k<10; k++)
+  // Classify the training set
+  for (int threshold = 20; threshold <= 60; threshold+= 10)
   {
-    int bestClass = classifyPattern(k, 25, trainingSet[3], dendrites);
-    cout << "pattern " << k << " bestClass=" << bestClass << "\n";
+    cout << "\nUsing threshold = " << threshold << "\n";
+    cout << "Training set:";
+    classifyDataset(threshold, trainingSet, dendrites);
+    cout << "Test set:";
+    classifyDataset(threshold, testSet, dendrites);
   }
-
 
 }
-
 
 
