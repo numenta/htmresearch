@@ -98,8 +98,8 @@ void readMNISTImages(const char* mnistPath,
 
   }
 
-  cout << "Average number of active pixels= "
-       << ((float) totalActivePixels) / sm->nRows() << "\n";
+  cout << "Avg num of active pixels= "
+       << ((float) totalActivePixels) / sm->nRows();
 
 }
 
@@ -117,10 +117,23 @@ int readImages(int *numImages, const char *path,
     char dirName[256];
     sprintf(dirName, path, i);
     readMNISTImages(dirName, numImagesToRead, 64, images[i]);
-//    cout << "Read in " << images[i]->nRows() << " images from "
-//         << dirName << "\n";
+    cout << ", " << images[i]->nRows() << " images in "
+         << dirName << "\n";
     n += images[i]->nRows();
   }
 
   return n;
 }
+
+// Create a new dataset that is a noisy version of the provided one
+//void createNoisyDataset(
+//                std::vector< SparseMatrix01<UInt, Int> * > &dataset,
+//                std::vector< SparseMatrix01<UInt, Int> * > &noisyDataset,
+//                        float pctNoise,
+//                        Random &r
+//                        )
+//{
+//
+//}
+
+

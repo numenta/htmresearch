@@ -47,6 +47,8 @@
 #include <nupic/types/Types.hpp>
 #include <nupic/utils/Random.hpp>
 
+#include <DendriteClassifier.hpp>
+
 using namespace std;
 using namespace nupic;
 
@@ -68,6 +70,10 @@ extern void trainDendrites(int k, int nSynapses,
            std::vector< SparseMatrix01<UInt, Int> * > &dendrites,
            Random &r);
 
+extern void trainDendrites2(int k, int nSynapses,
+           std::vector< SparseMatrix01<UInt, Int> * > &trainingSet,
+           std::vector< SparseMatrix01<UInt, Int> * > &dendrites,
+           Random &r);
 
 // Run the whole MNIST example.
 void runMNIST(int nSynapses)
@@ -91,11 +97,12 @@ void runMNIST(int nSynapses)
 
   //////////////////////////////////////////////////////
   //
-  // Read in the given number of training and test sets
+  // Read in the given number of training and test images
   int trainingImages[] = {
     5923, 6742, 5958, 6131, 5842, 5421, 5918, 6265, 5851, 5949
   };
   int testImages[] = { 980, 1135, 1032, 1010, 982, 892, 958, 1028, 974, 1009 };
+
   int numImages = readImages(trainingImages,
              "../image_test/mnist_extraction_source/training/%d", trainingSet);
   cout << "Read in " << numImages << " total images\n";
@@ -107,12 +114,12 @@ void runMNIST(int nSynapses)
 
   //////////////////////////////////////////////////////
   //
-  // Create trained model by randomly sampling from training images
-  cout << "Training dendrite model with " << nSynapses
-       << " synapses per dendrite.\n";
-  for (int k= 0; k<10; k++)
+  // Create trained model for each category, by randomly sampling from
+  // training images.
+  cout << "Training dendrite model with " << nSynapses << " synapses per dendrite.\n";
+  for (int category= 0; category<10; category++)
   {
-    trainDendrites(k, nSynapses, trainingSet, dendrites, r);
+    trainDendrites2(category, nSynapses, trainingSet, dendrites, r);
   }
 
 
@@ -120,7 +127,7 @@ void runMNIST(int nSynapses)
   //
   // Classify the data sets and compute accuracy
   cout << "Running classification with a bunch of different thresholds.\n";
-  for (int threshold = 32; threshold <= 32; threshold+= 2)
+  for (int threshold = 66; threshold <= 70; threshold+= 2)
   {
     cout << "\nUsing threshold = " << threshold << "\n";
 //    cout << "Training set:";
@@ -136,6 +143,6 @@ void runMNIST(int nSynapses)
 // about to run.
 int main(int argc, char * argv[])
 {
-  runMNIST(40);
+  runMNIST(100);
 }
 

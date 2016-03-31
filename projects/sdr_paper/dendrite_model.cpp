@@ -48,7 +48,7 @@ using namespace nupic;
 class DendriteClassifier {
   public:
 
-    DendriteClassifier(int seed=42);
+    DendriteClassifier(int seed=42, int numClasses = 10);
     virtual ~DendriteClassifier();
 
     // Go through all training examples for each class. For each class, create
@@ -81,6 +81,7 @@ class DendriteClassifier {
     //
     // Internal variables and methods.
     // Leaving as public for ease of debugging.
+    int numClasses_;
     Random rng_;
     std::vector< SparseMatrix01<UInt, Int> * > dendrites_;
 
@@ -196,6 +197,39 @@ void trainDendrites(int k, int nSynapses,
 }
 
 
+// Choose N random training examples from class k. For each example, create
+// a dendrite that randomly samples from that image.
+void trainDendrites2(int k, int nSynapses,
+           std::vector< SparseMatrix01<UInt, Int> * > &trainingSet,
+           std::vector< SparseMatrix01<UInt, Int> * > &dendrites,
+           Random &r)
+{
+  const int nSamples = 10000;
+  for (int j=0; j<nSamples; j++)
+  {
+    // Choose i'th sample randomly with replacement
+    UInt32 i = r.getUInt32(trainingSet[k]->nRows());
+
+    int nnz = trainingSet[k]->nNonZerosRow(i);
+    UInt32 synapsesToCreate = nSynapses;
+    if (nnz < nSynapses) {
+      synapsesToCreate = nnz;
+//      cout << "For class " << k << " training image " << i << " has " << nnz
+//           << " non-zeros\n";
+    }
+
+    // Randomly sample from the non-zero pixels in the image
+    vector<UInt> synapseIndices;
+    synapseIndices.resize(synapsesToCreate);
+    sample(trainingSet[k], i, synapseIndices.begin(), synapsesToCreate, r);
+
+    // Add this to the k'th dendrites model
+    dendrites[k]->addRow(synapseIndices.size(), synapseIndices.begin());
+
+    // Verify by getting the last row and printing it out
+    // printRow(dendrites[k]->nRows()-1, dendrites[k]);
+  }
+}
 
 //////////////////////////////////////////////////////
 //
@@ -246,7 +280,7 @@ int classifyPattern(int row, int threshold,
   for (int i=0; i < dendrites.size(); i++)
   {
     int matches = runInferenceOnPattern(row, threshold, dataSet, dendrites[i]);
-    cout << "The model for class " << i << ",  has " << matches<< " matches\n";
+//  cout << "The model for class " << i << ",  has " << matches<< " matches\n";
     if (matches > bestOverlap)
     {
       bestOverlap = matches;
@@ -254,7 +288,7 @@ int classifyPattern(int row, int threshold,
     }
   }
 
-//  cout << "bestOverlap=" << bestOverlap << "\n";
+//  cout << "bestOverlap=" << bestOverlap << "\n\n";
   return bestClass;
 }
 
@@ -266,11 +300,11 @@ void classifyDataset(
            std::vector< SparseMatrix01<UInt, Int> * > &dendrites)
 {
   int numCorrect = 0, numInferences = 0;
-  for (int category=2; category < 3; category++)
+
+  for (int category=0; category < dataSet.size(); category++)
   {
     int numCorrectClass = 0;
-    for (int k= 0; 10; k++)
-//    for (int k= 0; k<dataSet[category]->nRows(); k++)
+    for (int k= 0; k<dataSet[category]->nRows(); k++)
     {
       int bestClass = classifyPattern(k, threshold, dataSet[category], dendrites);
       if (bestClass == category)
@@ -285,7 +319,6 @@ void classifyDataset(
          << ", num examples=" << dataSet[category]->nRows()
          << ", pct correct="
          << ((float) numCorrectClass)/dataSet[category]->nRows();
-
   }
 
   cout << "\nOverall accuracy = " << (100.0 * numCorrect)/numInferences << "%\n";
