@@ -39,7 +39,6 @@ CXX_FLAGS = -DNTA_ARCH_64 -DNTA_OS_DARWIN -DBOOST_NO_WREGEX -DHAVE_CONFIG_H -DNT
 
 sdr: sdr_calculations2.cpp
 	clang++ -c sdr_calculations.cpp $(CXX_FLAGS)
-	clang++ -c mnist_sdrs.cpp $(CXX_FLAGS)
 	clang++ -c sdr_calculations2.cpp $(CXX_FLAGS)
 	clang++ -c test_binary_matrix.cpp $(CXX_FLAGS)
 
@@ -47,7 +46,7 @@ sdr: sdr_calculations2.cpp
 		-Wl,-headerpad_max_install_names -Wl,-u,_munmap -m64 \
 		-stdlib=libc++ \
 		-lc++abi -liconv -lsqlite3 -framework CoreServices -framework Accelerate \
-		-L$(NUPIC_CORE_LIB) sdr_calculations.o mnist_sdrs.o -o sdr_calculations \
+		-L$(NUPIC_CORE_LIB) sdr_calculations.o -o sdr_calculations \
 		$(NUPIC_CORE_LIB)/libnupic_core.a $(NUPIC_CORE_LIB)/libyaml.a \
 		$(NUPIC_CORE_LIB)/libapr-1.a $(NUPIC_CORE_LIB)/libaprutil-1.a $(NUPIC_CORE_LIB)/libz.a \
 		$(NUPIC_CORE_LIB)/libcapnpc.a $(NUPIC_CORE_LIB)/libcapnp.a $(NUPIC_CORE_LIB)/libkj.a $(NUPIC_CORE_LIB)/libnpymath.a
@@ -71,8 +70,23 @@ sdr: sdr_calculations2.cpp
 		$(NUPIC_CORE_LIB)/libapr-1.a $(NUPIC_CORE_LIB)/libaprutil-1.a $(NUPIC_CORE_LIB)/libz.a \
 		$(NUPIC_CORE_LIB)/libcapnpc.a $(NUPIC_CORE_LIB)/libcapnp.a $(NUPIC_CORE_LIB)/libkj.a $(NUPIC_CORE_LIB)/libnpymath.a
 
+
+mnist: mnist_sdrs.cpp
+	clang++ -c mnist_sdrs.cpp $(CXX_FLAGS)
+
+	clang++ -Wl,-search_paths_first \
+		-Wl,-headerpad_max_install_names -Wl,-u,_munmap -m64 \
+		-stdlib=libc++ \
+		-lc++abi -liconv -lsqlite3 -framework CoreServices -framework Accelerate \
+		-L$(NUPIC_CORE_LIB) mnist_sdrs.o -o mnist_sdrs \
+		$(NUPIC_CORE_LIB)/libnupic_core.a $(NUPIC_CORE_LIB)/libyaml.a \
+		$(NUPIC_CORE_LIB)/libapr-1.a $(NUPIC_CORE_LIB)/libaprutil-1.a $(NUPIC_CORE_LIB)/libz.a \
+		$(NUPIC_CORE_LIB)/libcapnpc.a $(NUPIC_CORE_LIB)/libcapnp.a $(NUPIC_CORE_LIB)/libkj.a $(NUPIC_CORE_LIB)/libnpymath.a
+
+
 clean: sdr_calculations2.cpp
 	rm -f *.o
 	rm -f sdr_calculations
 	rm -f sdr_calculations2
 	rm -f test_binary_matrix
+	rm -f mnist_sdrs

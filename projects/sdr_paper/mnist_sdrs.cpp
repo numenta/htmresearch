@@ -20,6 +20,17 @@
  * ----------------------------------------------------------------------
  */
 
+/* ---------------------------------------------------------------------
+ * This file runs the MNIST dataset using a simple model composed of a
+ * set of dendrites. Each dendrite randomly samples pixels from one image.
+ *
+ * Key parameters:
+ *     Binarization threshold
+ *     Number of synapses per dendrite
+ *     Threshold
+ *     min threshold
+ * ----------------------------------------------------------------------
+ */
 
 #include <assert.h>
 #include <cstdlib>
@@ -39,10 +50,10 @@
 using namespace std;
 using namespace nupic;
 
-// populate choices with a random selection of nChoices elements from
-// the given row in the given sparse matrix. Throws exception when nPopulation < nChoices
-// templated functions must be defined in header.
-// Returns the number of choices actually made.
+// Populate choices with a random selection of nChoices elements from
+// the given row in the given sparse matrix. Throws exception when
+// nPopulation < nChoices. This function is used to randomly sample synapses
+// from an image.
 //
 template <typename ChoicesIter>  void sample(SparseMatrix01<UInt, Int> *sm, UInt32 row,
             ChoicesIter choices, UInt32 nChoices, Random &r)
@@ -104,17 +115,18 @@ void printRow(UInt32 row, SparseMatrix01<UInt, Int> *sm)
   cout << "\n";
 }
 
-// Takes a directory containing a category of MNIST images, the number of images,
-// and a binarization threshold.
-// Read each image into a row of the sparse matrix sm. The image is binarized
-// to 0/1 pixel values using the threshold.
-// The SparseMatrix must have 28*28 columns (corresponding to MNIST image size)
+// Takes a directory containing a category of MNIST images, the number of
+// images, and a binarization threshold. Read each image into a row of the
+// sparse matrix sm. The image is binarized to 0/1 pixel values using the
+// threshold. The SparseMatrix must have 28*28 columns (corresponding to MNIST
+// image size)
 void readMNISTImages(const char* mnistPath,
                      Int numImages, Int threshold,
                      SparseMatrix01<UInt, Int> *sm)
 {
   char fileName[256];
   vector<UInt> activePixels;
+  int totalActivePixels = 0;
 
   // Loop through each image, create filename, and read binarized version
   vector<UInt> population;
@@ -140,6 +152,8 @@ void readMNISTImages(const char* mnistPath,
       }
       sm->addRow(activePixels.size(), activePixels.begin());
 
+      totalActivePixels += activePixels.size();
+
 //    cout << "Found " << activePixels.size() << " pixels:\n   ";
 //    for (int j= 0; j < activePixels.size(); j++)
 //    {
@@ -157,6 +171,9 @@ void readMNISTImages(const char* mnistPath,
 
 
   }
+
+  cout << "Average number of active pixels= "
+       << ((float) totalActivePixels) / sm->nRows() << "\n";
 
 }
 
@@ -181,8 +198,13 @@ int runInferenceOnPattern(int row, int threshold,
   int nMatches = 0;
   for (int i = 0; i < overlaps.size(); i++)
   {
-//    cout << "Overlap of " << i << " = " << overlaps[i] << "\n";
-    if (overlaps[i] >= threshold) nMatches++;
+    int nnz = dendrites->nNonZerosRow(i);
+    int t = min((int)(0.95*nnz), threshold);
+    if (overlaps[i] >= t)
+    {
+//      if (overlaps[i] == nnz) cout << "Overlap of " << i << " = " << overlaps[i] << "\n";
+      nMatches++;
+    }
   }
 
   return nMatches;
@@ -198,12 +220,11 @@ int classifyPattern(int row, int threshold,
   int bestOverlap = -1;
   for (int i=0; i < dendrites.size(); i++)
   {
-//    cout << "Running model " << i;
-    int overlapScore = runInferenceOnPattern(row, threshold, dataSet, dendrites[i]);
-//    cout << ",  overlapScore=" << overlapScore<< "\n";
-    if (overlapScore > bestOverlap)
+    int matches = runInferenceOnPattern(row, threshold, dataSet, dendrites[i]);
+//    cout << "For model " << i << ",  matches=" << matches<< "\n";
+    if (matches > bestOverlap)
     {
-      bestOverlap = overlapScore;
+      bestOverlap = matches;
       bestClass= i;
     }
   }
@@ -222,10 +243,12 @@ void trainDendrites(int k, int nSynapses,
   for (int i=0; i<trainingSet[k]->nRows(); i++)
   {
     int nnz = trainingSet[k]->nNonZerosRow(i);
-//    cout << "\nFor class " << k << " training image " << i << " has " << nnz
-//         << " non-zeros\n";
     UInt32 synapsesToCreate = nSynapses;
-    if (nnz < nSynapses) synapsesToCreate = nnz;
+    if (nnz < nSynapses) {
+      synapsesToCreate = nnz;
+//      cout << "For class " << k << " training image " << i << " has " << nnz
+//           << " non-zeros\n";
+    }
 
     // Randomly sample from the non-zero pixels in the image
     vector<UInt> synapseIndices;
@@ -253,9 +276,9 @@ int readImages(int *numImages, const char *path,
     int numImagesToRead = (int)(samplingFactor*numImages[i]);
     char dirName[256];
     sprintf(dirName, path, i);
-    readMNISTImages(dirName, numImagesToRead, 128, images[i]);
-    cout << "Read in " << images[i]->nRows() << " images from "
-         << dirName << "\n";
+    readMNISTImages(dirName, numImagesToRead, 64, images[i]);
+//    cout << "Read in " << images[i]->nRows() << " images from "
+//         << dirName << "\n";
     n += images[i]->nRows();
   }
 
@@ -272,35 +295,42 @@ void classifyDataset(
   int numCorrect = 0, numInferences = 0;
   for (int category=0; category < 10; category++)
   {
-//    cout << "Category=" << category << ", num examples="
-//         << dataSet[category]->nRows() << "\n";
+    int numCorrectClass = 0;
     for (int k= 0; k<dataSet[category]->nRows(); k++)
     {
       int bestClass = classifyPattern(k, threshold, dataSet[category], dendrites);
       if (bestClass == category)
       {
         numCorrect++;
+        numCorrectClass++;
       }
       numInferences++;
-//      cout << "pattern " << k << " bestClass=" << bestClass
-//           << " numCorrect=" << numCorrect << "\n";
     }
+
+    cout << "Category=" << category
+         << ", num examples=" << dataSet[category]->nRows()
+         << ", pct correct="
+         << ((float) numCorrectClass)/dataSet[category]->nRows()
+         << "\n";
+
   }
 
-  cout << ", accuracy = " << (100.0 * numCorrect) / numInferences << "%\n";
+  cout << "Overall accuracy = " << (100.0 * numCorrect)/numInferences << "%\n";
 }
 
 
 // Run the whole MNIST example.
 void runMNIST()
 {
+  //////////////////////////////////////////////////////
+  //
+  // Initialize the sparse matrix data structures. Our classifier will be a set
+  // of dendrites. dendrites[k] will contain a list of dendrites trained on
+  // class k.
+  std::vector< SparseMatrix01<UInt, Int> * > dendrites;
   std::vector< SparseMatrix01<UInt, Int> * > trainingSet;
   std::vector< SparseMatrix01<UInt, Int> * > testSet;
   Random r(42);
-
-  // Our trained set of dendrites. dendrites[k] will contain a list of
-  // dendrites trained on class k.
-  std::vector< SparseMatrix01<UInt, Int> * > dendrites;
 
   for (int i= 0; i<10; i++)
   {
@@ -309,43 +339,51 @@ void runMNIST()
     testSet.push_back( new SparseMatrix01<UInt, Int>(28*28, 1));
   }
 
-  // Read in training set
+  //////////////////////////////////////////////////////
+  //
+  // Read in the given number of training and test sets
   int trainingImages[] = {
     5923, 6742, 5958, 6131, 5842, 5421, 5918, 6265, 5851, 5949
   };
+  int testImages[] = { 980, 1135, 1032, 1010, 982, 892, 958, 1028, 974, 1009 };
   int numImages = readImages(trainingImages,
-             "../image_test/mnist_extraction_source/training/%d",
-             trainingSet);
+             "../image_test/mnist_extraction_source/training/%d", trainingSet);
   cout << "Read in " << numImages << " total images\n";
 
-  // Read in test set
-  int testImages[] = {
-    980, 1135, 1032, 1010, 982, 892, 958, 1028, 974, 1009
-  };
-
   int numTestImages = readImages(testImages,
-             "../image_test/mnist_extraction_source/testing/%d",
-             testSet);
+             "../image_test/mnist_extraction_source/testing/%d", testSet);
   cout << "Read in " << numTestImages << " total test images\n";
 
+
+  //////////////////////////////////////////////////////
+  //
   // Create trained model by randomly sampling from training images
-  cout << "Training dendrite model...\n";
+  cout << "Training dendrite model with 100 synapses per dendrite.\n";
   for (int k= 0; k<10; k++)
   {
-    trainDendrites(k, 60, trainingSet, dendrites, r);
+    trainDendrites(k, 100, trainingSet, dendrites, r);
   }
-  cout << "...done";
 
-  // Classify the training set
-  for (int threshold = 20; threshold <= 60; threshold+= 10)
+
+  //////////////////////////////////////////////////////
+  //
+  // Classify the data sets and compute accuracy
+  cout << "Running classification with a bunch of different thresholds.\n";
+  for (int threshold = 68; threshold <= 68; threshold+= 2)
   {
     cout << "\nUsing threshold = " << threshold << "\n";
-    cout << "Training set:";
-    classifyDataset(threshold, trainingSet, dendrites);
-    cout << "Test set:";
+//    cout << "Training set:";
+//    classifyDataset(threshold, trainingSet, dendrites);
+    cout << "Test set: ";
     classifyDataset(threshold, testSet, dendrites);
   }
 
 }
 
+// Run the trials!  Currently need to hard code the specific trial you are
+// about to run.
+int main(int argc, char * argv[])
+{
+  runMNIST();
+}
 
