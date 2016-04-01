@@ -47,7 +47,7 @@
 #include <nupic/types/Types.hpp>
 #include <nupic/utils/Random.hpp>
 
-#include <DendriteClassifier.hpp>
+#include "DendriteClassifier.hpp"
 
 using namespace std;
 using namespace nupic;
@@ -83,17 +83,16 @@ void runMNIST(int nSynapses)
   // Initialize the sparse matrix data structures. Our classifier will be a set
   // of dendrites. dendrites[k] will contain a set of dendrites trained on
   // class k.
-  std::vector< SparseMatrix01<UInt, Int> * > dendrites;
   std::vector< SparseMatrix01<UInt, Int> * > trainingSet;
   std::vector< SparseMatrix01<UInt, Int> * > testSet;
-  Random r(42);
 
   for (int i= 0; i<10; i++)
   {
     trainingSet.push_back( new SparseMatrix01<UInt, Int>(28*28, 1));
-    dendrites.push_back( new SparseMatrix01<UInt, Int>(28*28, 1));
     testSet.push_back( new SparseMatrix01<UInt, Int>(28*28, 1));
   }
+
+  DendriteClassifier model;
 
   //////////////////////////////////////////////////////
   //
@@ -117,10 +116,7 @@ void runMNIST(int nSynapses)
   // Create trained model for each category, by randomly sampling from
   // training images.
   cout << "Training dendrite model with " << nSynapses << " synapses per dendrite.\n";
-  for (int category= 0; category<10; category++)
-  {
-    trainDendrites2(category, nSynapses, trainingSet, dendrites, r);
-  }
+  model.trainDataset(nSynapses, trainingSet);
 
 
   //////////////////////////////////////////////////////
@@ -133,7 +129,7 @@ void runMNIST(int nSynapses)
 //    cout << "Training set:";
 //    classifyDataset(threshold, trainingSet, dendrites);
     cout << "Test set: ";
-    classifyDataset(threshold, testSet, dendrites);
+    model.classifyDataset(threshold, testSet);
   }
 
 }

@@ -48,7 +48,7 @@ using namespace nupic;
 class DendriteClassifier {
   public:
 
-    DendriteClassifier(int seed=42, int numClasses = 10);
+    DendriteClassifier(int seed=42, int numClasses=10, int inputSize=784);
     virtual ~DendriteClassifier();
 
     // Go through all training examples for each class. For each class, create
@@ -71,7 +71,8 @@ class DendriteClassifier {
 
 
     int runInferenceOnPattern(int row, int threshold,
-               SparseMatrix01<UInt, Int> *dataSet);
+               SparseMatrix01<UInt, Int> *dataSet,
+               SparseMatrix01<UInt, Int> *dendrites);
 
 
     int classifyPattern(int row, int threshold,
