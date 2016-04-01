@@ -142,6 +142,7 @@ void printRow(UInt32 row, SparseMatrix01<UInt, Int> *sm)
   cout << "\n";
 }
 
+
 void DendriteClassifier::trainDataset(int nSynapses,
     std::vector< SparseMatrix01<UInt, Int> * > &trainingSet)
 {
@@ -184,8 +185,18 @@ void DendriteClassifier::trainClass(int k, int nSynapses,
 }
 
 
-// Choose N random training examples from class k. For each example, create
-// a dendrite that randomly samples from that image.
+// Choose N random training examples from class k with replacement. For each
+// example, create a dendrite that randomly samples from that image.
+//
+// Then run each image in training set through the dendrites and record the
+// vector of dendrites that are produced along with their category. The set of
+// dendrites plus the stored patterns comprise the trained model.
+//
+// For each test image, run the image through the dendrites, check the set
+// of active dendrites against the stored set by doing a dot product.
+// Choose category corresponding to highest dot product.
+//
+// This routine does step 1.
 //void DendriteClassifier::trainClass2(int k, int nSynapses,
 //           std::vector< SparseMatrix01<UInt, Int> * > &trainingSet)
 //{

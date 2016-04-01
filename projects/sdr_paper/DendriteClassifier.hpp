@@ -56,6 +56,8 @@ class DendriteClassifier {
     void trainDataset(int nSynapses,
           std::vector< SparseMatrix01<UInt, Int> * > &trainingSet);
 
+    // Classify the dataset using a trained dendrite model and the
+    // given threshold, and report accuracy
     void classifyDataset(int threshold,
                std::vector< SparseMatrix01<UInt, Int> * > &dataSet);
 
