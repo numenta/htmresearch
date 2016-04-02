@@ -116,20 +116,22 @@ void runMNIST(int nSynapses)
   // Create trained model for each category, by randomly sampling from
   // training images.
   cout << "Training dendrite model with " << nSynapses << " synapses per dendrite.\n";
-  model.trainDataset(nSynapses, trainingSet);
+  //  model.trainDataset(nSynapses, trainingSet);
+  model.trainDatasetKNN(nSynapses, 40, trainingSet);
 
 
   //////////////////////////////////////////////////////
   //
   // Classify the data sets and compute accuracy
   cout << "Running classification with a bunch of different thresholds.\n";
-  for (int threshold = 66; threshold <= 70; threshold+= 2)
+  for (int threshold = 40; threshold <= 40; threshold+= 2)
   {
     cout << "\nUsing threshold = " << threshold << "\n";
 //    cout << "Training set:";
 //    classifyDataset(threshold, trainingSet, dendrites);
     cout << "Test set: ";
-    model.classifyDataset(threshold, testSet);
+    model.classifyDatasetKNN(threshold, testSet);
+//    model.classifyDataset(threshold, testSet);
   }
 
 }
@@ -139,6 +141,6 @@ void runMNIST(int nSynapses)
 // about to run.
 int main(int argc, char * argv[])
 {
-  runMNIST(100);
+  runMNIST(50);
 }
 
