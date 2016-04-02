@@ -23,9 +23,30 @@
 """
 Dataset used for sequence prediction task
 """
+import copy
 import random
 
 from htmresearch.support.reberGrammar import generateSequencesNumber
+
+def scrambleSequence(sequences, seed):
+  numSymbols = max(max(e) for e in sequences) + 1
+  symbolSet = range(numSymbols)
+  shuffledSymbolSet = copy.copy(symbolSet)
+  random.seed(seed)
+  random.shuffle(shuffledSymbolSet)
+  symbolMapping = dict()
+  for i in range(numSymbols):
+    symbolMapping[symbolSet[i]] = shuffledSymbolSet[i]
+
+  shufledSequences = []
+  for sequence in sequences:
+    newSequence = []
+    for symbol in sequence:
+      newSequence.append(symbolMapping[symbol])
+    shufledSequences.append(newSequence)
+  return shufledSequences
+
+
 
 class Dataset(object):
   def generateSequence(self, iteration):
@@ -47,8 +68,8 @@ class ReberDataset(Dataset):
     self.numSymbols = 8
 
 
-  def generateSequence(self, iteration):
-    (sequence, target) = generateSequencesNumber(self.maxLength, iteration)
+  def generateSequence(self, seed):
+    (sequence, target) = generateSequencesNumber(self.maxLength, seed)
     target.append(None)
     return (sequence, target)
 
@@ -60,10 +81,10 @@ class SimpleDataset(Dataset):
       [6, 8, 7, 4, 2, 3, 5],
       [1, 8, 7, 4, 2, 3, 0],
     ]
-    self.numSymbols = max(max(self.sequences))
+    self.numSymbols = max(max(e) for e in self.sequences) + 1
 
-  def generateSequence(self, iteration):
-    random.seed(iteration)
+  def generateSequence(self, seed):
+    random.seed(seed)
     sequence = list(random.choice(self.sequences))
     target = sequence[1:] + [None]
     return (sequence, target)
@@ -71,11 +92,19 @@ class SimpleDataset(Dataset):
 
 
 class HighOrderDataset(Dataset):
-  def __init__(self, numPredictions=1):
+  def __init__(self, numPredictions=1, seed=1):
     self.numPredictions = numPredictions
-    self.numSymbols = max(max(self.sequences(numPredictions, perturbed=False)))
+    self.seed = seed
+    self.sequences = self.generateSequenceSet(numPredictions, False)
+    self.perturbedSequences = self.generateSequenceSet(numPredictions, True)
+    self.numSymbols = max(max(e) for e in self.sequences) + 1
 
-  def sequences(self, numPredictions, perturbed):
+    # scramble sequences
+    self.sequences = scrambleSequence(self.sequences, seed)
+    self.perturbedSequences = scrambleSequence(self.perturbedSequences, seed)
+
+
+  def generateSequenceSet(self, numPredictions, perturbed=False):
     if numPredictions == 1:
       if perturbed:
         return [
@@ -213,9 +242,54 @@ class HighOrderDataset(Dataset):
         ]
 
 
-  def generateSequence(self, iteration, perturbed=False):
-    random.seed(iteration)
-    sequence = list(random.choice(self.sequences(self.numPredictions, perturbed)))
-    target = sequence[1:] + [None]
+  def generateSequence(self, seed, perturbed=False):
+    random.seed(seed)
+    if perturbed:
+      sequence = list(random.choice(self.perturbedSequences))
+    else:
+      sequence = list(random.choice(self.sequences))
 
+    target = sequence[1:] + [None]
+    return (sequence, target)
+
+
+class LongHighOrderDataset(Dataset):
+
+  def __init__(self, sequenceLength=10, seed=1):
+    self.sequenceSeed = seed
+    self.sequenceLength = sequenceLength
+    self.symbolPoolSize = sequenceLength*2
+    self.sequences = self.generateSequenceSet(2, sequenceLength, seed)
+    self.numSymbols = max(max(e) for e in self.sequences) + 1
+
+  def generateSequenceSet(self, numSequenceGroups, sequenceLength, seed):
+    sequences = []
+    random.seed(seed)
+    symbolPool = range(self.symbolPoolSize)
+
+    for i in range(numSequenceGroups):
+      shuffledPool = copy.copy(symbolPool)
+      random.shuffle(shuffledPool)
+      startElement1 = [shuffledPool[0]]
+      startElement2 = [shuffledPool[1]]
+      endElement1 = [shuffledPool[2]]
+      endElement2 = [shuffledPool[3]]
+      sequenceElements = shuffledPool[4:(4+sequenceLength-2)]
+
+      sharedSubsequence1 = copy.copy(sequenceElements)
+      sharedSubsequence2 = copy.copy(sequenceElements)
+      while sharedSubsequence1 == sharedSubsequence2:
+        random.shuffle(sharedSubsequence1)
+        random.shuffle(sharedSubsequence2)
+
+      sequences.append(startElement1+sharedSubsequence1+endElement1)
+      sequences.append(startElement2+sharedSubsequence1+endElement2)
+      # sequences.append(startElement1+sharedSubsequence2+endElement2)
+      # sequences.append(startElement2+sharedSubsequence2+endElement1)
+    return sequences
+
+  def generateSequence(self, seed, perturbed=False):
+    random.seed(seed)
+    sequence = list(random.choice(self.sequences))
+    target = sequence[1:] + [None]
     return (sequence, target)
