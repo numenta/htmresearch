@@ -69,6 +69,12 @@ def plotWithErrBar(x, y, error, color):
 if __name__ == '__main__':
 
   try:
+    # Load raw experiment results
+    # You have to run the experiments
+    # In ./tm/
+    # python tm_suite.py --experiment="high-order-distributed-random-perturbed" -d
+    # In ./lstm/
+    # python suite.py --experiment="high-order-distributed-random-perturbed" -d
     expResults = {}
     tmResults = os.path.join("tm/results",
                              "high-order-distributed-random-perturbed")
