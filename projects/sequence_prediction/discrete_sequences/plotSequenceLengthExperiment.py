@@ -71,13 +71,13 @@ if __name__ == '__main__':
 
   lengths = [10, 20, 40, 60, 80, 100]
 
-  # Load raw experiment results
-  # You have to run the experiments in tm following
-  # python tm_suite.py --experiment="high-order-variable-length" -d
   tmResults = os.path.join("tm/results",
                            "high-order-variable-length")
 
   try:
+    # Load raw experiment results
+    # You have to run the experiments in ./tm
+    # python tm_suite.py --experiment="high-order-variable-length" -d
     expResults = {}
     for length in lengths:
       experiment = os.path.join(tmResults,
