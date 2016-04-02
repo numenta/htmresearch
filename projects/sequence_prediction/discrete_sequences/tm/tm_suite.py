@@ -30,19 +30,17 @@ import time
 import numpy
 from expsuite import PyExperimentSuite
 
-from nupic.data.inference_shifter import InferenceShifter
 from nupic.frameworks.opf.modelfactory import ModelFactory
-from nupic.research.monitor_mixin.trace import CountsTrace
+# from nupic.algorithms.sdr_classifier import SDRClassifier
 
-from htmresearch.data.sequence_generator import SequenceGenerator
 from htmresearch.support.sequence_prediction_dataset import ReberDataset
 from htmresearch.support.sequence_prediction_dataset import SimpleDataset
 from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
+from htmresearch.support.sequence_prediction_dataset import LongHighOrderDataset
 
 
-NUM_RANDOM = 1
 NUM_SYMBOLS = 16
-RANDOM_END = 5016
+RANDOM_END = 50000
 
 MODEL_PARAMS = {
   "model": "CLA",
@@ -93,7 +91,7 @@ MODEL_PARAMS = {
         "connectedPerm": 0.50,
         "permanenceInc": 0.1,
         "permanenceDec": 0.1,
-        "predictedSegmentDecrement": 0.01,
+        "predictedSegmentDecrement": 0.02,
         "globalDecay": 0.0,
         "maxAge": 0,
         "minThreshold": 15,
@@ -114,11 +112,11 @@ MODEL_PARAMS = {
 
 
 
-def getEncoderMapping(model):
+def getEncoderMapping(model, numSymbols):
   encoder = model._getEncoder().encoders[0][1]
   mapping = dict()
 
-  for i in range(NUM_SYMBOLS):
+  for i in range(numSymbols):
     mapping[i] = set(encoder.encode(i).nonzero()[0])
 
   return mapping
@@ -142,7 +140,20 @@ class Suite(PyExperimentSuite):
     elif params['dataset'] == 'reber':
       self.dataset = ReberDataset(maxLength=params['max_length'])
     elif params['dataset'] == 'high-order':
-      self.dataset = HighOrderDataset(numPredictions=params['num_predictions'])
+      self.dataset = HighOrderDataset(numPredictions=params['num_predictions'],
+                                      seed=params['seed'])
+      print "Sequence dataset: "
+      print " Symbol Number {}".format(self.dataset.numSymbols)
+      for seq in self.dataset.sequences:
+        print seq
+
+    elif params['dataset'] == 'high-order-long':
+      self.dataset = LongHighOrderDataset(params['sequence_length'],
+                                          seed=params['seed'])
+      print "Sequence dataset: "
+      print " Symbol Number {}".format(self.dataset.numSymbols)
+      for seq in self.dataset.sequences:
+        print seq
     else:
       raise Exception("Dataset not found")
 
@@ -159,8 +170,9 @@ class Suite(PyExperimentSuite):
       print " initializing HTM model..."
     self.model = ModelFactory.create(MODEL_PARAMS)
     self.model.enableInference({"predictedField": "element"})
-    self.shifter = InferenceShifter()
-    self.mapping = getEncoderMapping(self.model)
+    # self.classifier = SDRClassifier(steps=[1], alpha=0.001)
+
+    self.mapping = getEncoderMapping(self.model, self.dataset.numSymbols)
 
     self.numPredictedActiveCells = []
     self.numPredictedInactiveCells = []
@@ -170,19 +182,19 @@ class Suite(PyExperimentSuite):
     self.targetPrediction = []
     self.replenish_sequence(params, iteration=0)
 
+    self.resets = []
     self.randoms = []
     self.verbosity = 1
     self.sequenceCounter = 0
 
 
-
-
   def replenish_sequence(self, params, iteration):
     if iteration > params['perturb_after']:
       print "PERTURBING"
-      sequence, target = self.dataset.generateSequence(iteration, perturbed=True)
+      sequence, target = self.dataset.generateSequence(params['seed']+iteration,
+                                                       perturbed=True)
     else:
-      sequence, target = self.dataset.generateSequence(iteration)
+      sequence, target = self.dataset.generateSequence(params['seed']+iteration)
 
     if (iteration > params['inject_noise_after'] and
         iteration < params['stop_inject_noise_after']):
@@ -193,10 +205,10 @@ class Suite(PyExperimentSuite):
         print "injectNoise ", sequence[injectNoiseAt],  " at: ", injectNoiseAt
 
     # separate sequences with random elements
-    random.seed(iteration)
-    print "seed {} start {} end {}".format(iteration, self.randomStart, self.randomEnd)
-    sequence.append(random.randrange(self.randomStart, self.randomEnd))
-    target.append(None)
+    if params['separate_sequences_with'] == 'random':
+      random.seed(params['seed']+iteration)
+      sequence.append(random.randrange(self.randomStart, self.randomEnd))
+      target.append(None)
 
     if params['verbosity'] > 0:
       print "Add sequence to buffer"
@@ -223,33 +235,65 @@ class Suite(PyExperimentSuite):
 
 
   def iterate(self, params, repetition, iteration):
-    element = self.currentSequence.pop(0)
+    currentElement = self.currentSequence.pop(0)
     target = self.targetPrediction.pop(0)
 
+    # whether there will be a reset signal after the current record
+    resetFlag = (len(self.currentSequence) == 0 and
+                 params['separate_sequences_with'] == 'reset')
+    self.resets.append(resetFlag)
+
     # whether there will be a random symbol after the current record
-    randomFlag = (len(self.currentSequence) == 1)
+    randomFlag = (len(self.currentSequence) == 1 and
+                  params['separate_sequences_with'] == 'random')
+
     self.randoms.append(randomFlag)
 
-    result = self.shifter.shift(self.model.run({"element": element}))
+    result = self.model.run({"element": currentElement})
     tm = self.model._getTPRegion().getSelf()._tfdr
 
     tm.mmClearHistory()
+
+    # Try use SDR classifier to classify active (not predicted) cells
+    # The results is similar as classifying the predicted cells
+    # classLabel = min(currentElement, self.dataset.numSymbols)
+    # classification = {'bucketIdx': classLabel, 'actValue': classLabel}
+    # result = self.classifier.compute(iteration, list(tm.activeCells),
+    #                                  classification,
+    #                                  learn=True, infer=True)
+    # topPredictionsSDRClassifier = sorted(zip(result[1], result["actualValues"]),
+    #                                      reverse=True)[0]
+    # topPredictionsSDRClassifier = [topPredictionsSDRClassifier[1]]
+    topPredictionsSDRClassifier = None
+
+    # activeColumns = set([tm.columnForCell(cell) for cell in tm.activeCells])
+    # print "active columns: "
+    # print activeColumns
+    # print "sdr mapping current: "
+    # print self.mapping[element]
+    # print "sdr mapping next: "
+    # print self.mapping[target]
     # Use custom classifier (uses predicted cells to make predictions)
     predictiveColumns = set([tm.columnForCell(cell) for cell in tm.predictiveCells])
     topPredictions = classify(
       self.mapping, predictiveColumns, params['num_predictions'])
 
     # correct = self.check_prediction(topPredictions, target)
-    truth = None if (self.randoms[-1] or
-                     len(self.randoms) >= 2 and self.randoms[-2]) else self.currentSequence[0]
+    truth = target
+    if params['separate_sequences_with'] == 'random':
+      if (self.randoms[-1] or
+                len(self.randoms) >= 2 and self.randoms[-2]):
+        truth = None
+
     correct = None if truth is None else (truth in topPredictions)
 
     data = {"iteration": iteration,
-            "current": element,
-            "reset": False,
+            "current": currentElement,
+            "reset": resetFlag,
             "random": randomFlag,
             "train": True,
             "predictions": topPredictions,
+            "predictionsSDR": topPredictionsSDRClassifier,
             "truth": target,
             "sequenceCounter": self.sequenceCounter}
 
@@ -257,13 +301,21 @@ class Suite(PyExperimentSuite):
       print ("iteration: {0} \t"
              "current: {1} \t"
              "predictions: {2} \t"
-             "truth: {3} \t"
-             "correct: {4} \t").format(
-        iteration, element, topPredictions, target, correct)
+             "predictions SDR: {3} \t"
+             "truth: {4} \t"
+             "correct: {5} \t"
+             "predict column: {6}").format(
+        iteration, currentElement, topPredictions, topPredictionsSDRClassifier,
+        target, correct, len(predictiveColumns))
 
     if len(self.currentSequence) == 0:
       self.replenish_sequence(params, iteration)
       self.sequenceCounter += 1
+
+    if self.resets[-1]:
+      if params['verbosity'] > 0:
+        print "Reset TM at iteration {}".format(iteration)
+      tm.reset()
 
     return data
 
