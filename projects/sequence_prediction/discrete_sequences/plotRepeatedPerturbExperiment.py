@@ -60,11 +60,14 @@ def calculateMeanStd(accuracyAll):
   stdAccuracy = np.std(accuracyMat, axis=0)
   return (meanAccuracy, stdAccuracy)
 
-def plotWithErrBar(x, y, error, color):
-  plt.plot(x, meanAccuracy, color, color=color)
-  plt.fill_between(x, y-error, y+error,
-    alpha=0.5, edgecolor=color, facecolor=color)
 
+
+def plotWithErrBar(x, y, error, color):
+  plt.fill_between(x, y-error, y+error,
+    alpha=0.3, edgecolor=color, facecolor=color)
+  plt.plot(x, y, color, color=color, linewidth=4)
+  plt.ylabel('Prediction Accuracy')
+  plt.xlabel(' Number of elements seen')
 
 if __name__ == '__main__':
 
@@ -117,8 +120,8 @@ if __name__ == '__main__':
   expResults = pickle.load(input)
 
   plt.figure()
-  colorList = {"HTM": "r", "LSTM-1000": "m", "LSTM-3000": "b", "LSTM-9000": "g"}
-  for model in expResults.keys():
+  colorList = {"HTM": "r", "LSTM-1000": "b", "LSTM-3000": "y", "LSTM-9000": "g"}
+  for model in ['HTM', 'LSTM-1000', 'LSTM-3000', 'LSTM-9000']:
     expResult = expResults[model]
     plotWithErrBar(expResult['x'],
                    expResult['meanAccuracy'], expResult['stdAccuracy'],
