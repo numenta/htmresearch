@@ -136,8 +136,8 @@ if __name__ == '__main__':
                    colorList[model])
 
   plt.legend(['HTM: 2 predictions',
-              'HTM: 4 predictions',
               'LSTM: 2 predictions',
+              'HTM: 4 predictions',
               'LSTM: 4 predictions'], loc=4)
 
   retrainLSTMAt = np.arange(start=1000, stop=12000, step=1000)
