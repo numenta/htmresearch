@@ -22,13 +22,12 @@
 
 
 from matplotlib import pyplot as plt
-plt.ion()
-
 from errorMetrics import *
 import pandas as pd
 
 from pylab import rcParams
 from plot import ExperimentResult, plotAccuracy, computeSquareDeviation, computeLikelihood, plotLSTMresult
+from nupic.encoders.scalar import ScalarEncoder as NupicScalarEncoder
 
 rcParams.update({'figure.autolayout': True})
 rcParams.update({'figure.facecolor': 'white'})
@@ -36,318 +35,320 @@ rcParams.update({'ytick.labelsize': 8})
 rcParams.update({'figure.figsize': (12, 6)})
 import matplotlib as mpl
 mpl.rcParams['pdf.fonttype'] = 42
-
-window = 960
-figPath = './result/'
-
+plt.ion()
 plt.close('all')
 
-# use datetime as x-axis
-dataSet = 'nyc_taxi'
-filePath = './data/' + dataSet + '.csv'
-data = pd.read_csv(filePath, header=0, skiprows=[1, 2], names=['datetime', 'value', 'timeofday', 'dayofweek'])
+window = 960
+skipTrain = 6000
+figPath = './result/'
 
-xaxis_datetime = pd.to_datetime(data['datetime'])
+def getDatetimeAxis():
+  """
+  use datetime as x-axis
+  """
+  dataSet = 'nyc_taxi'
+  filePath = './data/' + dataSet + '.csv'
+  data = pd.read_csv(filePath, header=0, skiprows=[1, 2],
+                     names=['datetime', 'value', 'timeofday', 'dayofweek'])
+
+  xaxisDate = pd.to_datetime(data['datetime'])
+  return xaxisDate
 
 
 def computeAltMAPE(truth, prediction, startFrom=0):
   return np.nanmean(np.abs(truth[startFrom:] - prediction[startFrom:]))/np.nanmean(np.abs(truth[startFrom:]))
 
-expResult = ExperimentResult('results/nyc_taxi_experiment_continuous/learning_window6001.0/')
 
-### Figure 1: Continuous vs Batch LSTM
-fig = plt.figure()
-# NRMSE_StaticLSTM = plotLSTMresult('results/nyc_taxi_experiment_one_shot/',
-#                                   window, xaxis=xaxis_datetime, label='static lstm')
-(NRMSE_LSTM6000, expResult_LSTM6000) = \
-  plotLSTMresult('results/nyc_taxi_experiment_continuous/learning_window6001.0/',
-               window, xaxis=xaxis_datetime, label='continuous LSTM-6000')
-plt.legend()
-plt.savefig(figPath + 'continuousVsbatch.pdf')
+def computeNRMSE(truth, prediction, startFrom=0):
+  squareDeviation = computeSquareDeviation(prediction, truth)
+  squareDeviation[:startFrom] = None
+  return np.sqrt(np.nanmean(squareDeviation))/np.nanstd(truth)
 
 
-### Figure 2: Continuous LSTM with different window size
-
-fig = plt.figure()
-(NRMSE_LSTM1000, expResult_LSTM1000) = \
-  plotLSTMresult('results/nyc_taxi_experiment_continuous/learning_window1001.0/',
-               window, xaxis=xaxis_datetime, label='continuous LSTM-1000')
-
-(NRMSE_LSTM3000, expResult_LSTM3000) = \
-  plotLSTMresult('results/nyc_taxi_experiment_continuous/learning_window3001.0/',
-               window, xaxis=xaxis_datetime, label='continuous LSTM-3000')
-
-(NRMSE_LSTM6000, expResult_LSTM6000) = \
-  plotLSTMresult('results/nyc_taxi_experiment_continuous/learning_window6001.0/',
-               window, xaxis=xaxis_datetime, label='continuous LSTM-6000')
-
-dataSet = 'nyc_taxi'
-filePath = './prediction/' + dataSet + '_TM_pred.csv'
-predData_TM = pd.read_csv(filePath, header=0, skiprows=[1, 2], names=['step', 'value', 'prediction5'])
-tm_truth = np.roll(predData_TM['value'], -5)
-predData_TM_five_step = np.array(predData_TM['prediction5'])
-
-square_deviation = computeSquareDeviation(predData_TM_five_step, tm_truth)
-square_deviation[:6000] = None
-
-NRMSE_TM = plotAccuracy((square_deviation, xaxis_datetime),
-                       tm_truth,
-                       window=window,
-                       errorType='square_deviation',
-                       label='TM')
+def loadExperimentResult(filePath):
+  expResult = pd.read_csv(filePath, header=0, skiprows=[1, 2],
+                            names=['step', 'value', 'prediction5'])
+  groundTruth = np.roll(expResult['value'], -5)
+  prediction5step = np.array(expResult['prediction5'])
+  return (groundTruth, prediction5step)
 
 
-filePath = './prediction/' + dataSet + '_ESN_pred.csv'
-predData_ESN = pd.read_csv(filePath, header=0, skiprows=[1, 2], names=['step', 'value', 'prediction5'])
-esn_truth = np.roll(predData_ESN['value'], -5)
-predData_ESN_five_step = np.array(predData_ESN['prediction5'])
 
-square_deviation = computeSquareDeviation(predData_ESN_five_step, esn_truth)
-square_deviation[:6000] = None
+if __name__ == "__main__":
+  xaxisDate = getDatetimeAxis()
+  expResult = ExperimentResult('results/nyc_taxi_experiment_continuous/learning_window6001.0/')
 
-NRMSE_ESN = plotAccuracy((square_deviation, xaxis_datetime),
-                       tm_truth,
-                       window=window,
-                       errorType='square_deviation',
-                       label='ESN')
+  # ### Figure 1: Continuous vs Batch LSTM
+  # fig = plt.figure()
+  # # NRMSE_StaticLSTM = plotLSTMresult('results/nyc_taxi_experiment_one_shot/',
+  # #                                   window, xaxis=xaxis_datetime, label='static lstm')
+  # (nrmseLSTM6000, expResultLSTM6000) = \
+  #   plotLSTMresult('results/nyc_taxi_experiment_continuous/learning_window6001.0/',
+  #                  window, xaxis=xaxisDate, label='continuous LSTM-6000')
+  # plt.legend()
+  # plt.savefig(figPath + 'continuousVsbatch.pdf')
+  #
 
+  ### Figure 2: Continuous LSTM with different window size
 
-filePath = './prediction/' + dataSet + '_plainKNN_pred.csv'
-predData_KNN = pd.read_csv(filePath, header=0, skiprows=[1, 2], names=['step', 'value', 'prediction5'])
-knn_truth = np.roll(predData_KNN['value'], -5)
-predData_KNN_five_step = np.array(predData_KNN['prediction5'])
+  fig = plt.figure()
+  (nrmseLSTM1000, expResultLSTM1000) = \
+    plotLSTMresult('results/nyc_taxi_experiment_continuous/learning_window1001.0/',
+                   window, xaxis=xaxisDate, label='continuous LSTM-1000')
 
-square_deviation = computeSquareDeviation(predData_KNN_five_step, knn_truth)
-square_deviation[:6000] = None
+  (nrmseLSTM3000, expResultLSTM3000) = \
+    plotLSTMresult('results/nyc_taxi_experiment_continuous/learning_window3001.0/',
+                   window, xaxis=xaxisDate, label='continuous LSTM-3000')
 
-NRMSE_KNN = plotAccuracy((square_deviation, xaxis_datetime),
-                       tm_truth,
-                       window=window,
-                       errorType='square_deviation',
-                       label='KNN')
+  (nrmseLSTM6000, expResultLSTM6000) = \
+    plotLSTMresult('results/nyc_taxi_experiment_continuous/learning_window6001.0/',
+                   window, xaxis=xaxisDate, label='continuous LSTM-6000')
 
+  dataSet = 'nyc_taxi'
+  filePath = './prediction/' + dataSet + '_TM_pred.csv'
 
-filePath = './prediction/' + dataSet + '_ARIMA_pred.csv'
-predData_ARIMA = pd.read_csv(filePath, header=0, skiprows=[1, 2],
-                             names=['step', 'value', 'prediction1', 'prediction5'])
-arima_truth = np.roll(predData_ARIMA['value'], -5)
-predData_ARIMA_five_step = predData_ARIMA['prediction5']
+  (tmTruth, tmPrediction) = loadExperimentResult('./prediction/' + dataSet + '_TM_pred.csv')
 
-square_deviation = computeSquareDeviation(predData_ARIMA_five_step, arima_truth)
-square_deviation[:6000] = None
-NRMSE_ARIMA = plotAccuracy((square_deviation, xaxis_datetime),
-                       arima_truth,
-                       window=window,
-                       errorType='square_deviation',
-                       label='ARIMA')
+  squareDeviation = computeSquareDeviation(tmPrediction, tmTruth)
+  squareDeviation[:skipTrain] = None
 
-
-predData_shift_five_step = np.roll(tm_truth, 5).astype('float32')
-square_deviation = computeSquareDeviation(predData_shift_five_step, tm_truth)
-square_deviation[:6000] = None
-NRMSE_Shift = plotAccuracy((square_deviation, xaxis_datetime),
-                       tm_truth,
-                       window=window,
-                       errorType='square_deviation',
-                       label='Shift')
-
-plt.legend()
-plt.savefig(figPath + 'continuous.pdf')
+  nrmseTM = plotAccuracy((squareDeviation, xaxisDate),
+                         tmTruth,
+                         window=window,
+                         errorType='square_deviation',
+                         label='TM')
 
 
-### Figure 3: Continuous LSTM with different window size using the likelihood metric
+  (esnTruth, esnPrediction) = loadExperimentResult('./prediction/' + dataSet + '_ESN_pred.csv')
 
-fig = plt.figure()
-# negLL_StaticLSTM = \
-#   plotLSTMresult('results/nyc_taxi_experiment_one_shot_likelihood/',
-#                window, xaxis=xaxis_datetime, label='static LSTM ')
+  squareDeviation = computeSquareDeviation(esnPrediction, esnTruth)
+  squareDeviation[:skipTrain] = None
 
-plt.clf()
-(negLL_LSTM1000, expResult_LSTM1000_negLL) = \
-  plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window1001.0/',
-               window, xaxis=xaxis_datetime, label='continuous LSTM-1000')
-
-(negLL_LSTM3000, expResult_LSTM3000_negLL) = \
-  plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window3001.0/',
-               window, xaxis=xaxis_datetime, label='continuous LSTM-3000')
-
-(negLL_LSTM6000, expResult_LSTM6000_negLL) = \
-  plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window6001.0/',
-               window, xaxis=xaxis_datetime, label='continuous LSTM-6000')
-
-dataSet = 'nyc_taxi'
-tm_prediction = np.load('./result/'+dataSet+'TMprediction.npy')
-tm_truth = np.load('./result/'+dataSet+'TMtruth.npy')
-from nupic.encoders.scalar import ScalarEncoder as NupicScalarEncoder
-encoder = NupicScalarEncoder(w=1, minval=0, maxval=40000, n=22, forced=True)
-negLL = computeLikelihood(tm_prediction, tm_truth, encoder)
-negLL[:6000] = None
-negLL_TM = \
-  plotAccuracy((negLL, xaxis_datetime), tm_truth, window=window, errorType='negLL', label='TM')
-plt.legend()
-plt.savefig(figPath + 'continuous_likelihood.pdf')
+  nrmseESN = plotAccuracy((squareDeviation, xaxisDate),
+                          tmTruth,
+                          window=window,
+                          errorType='square_deviation',
+                          label='ESN')
 
 
-### Figure 4: Continuous LSTM with different window size using the likelihood metric
+  (knnTruth, knnPrediction) = loadExperimentResult('./prediction/' + dataSet + '_plainKNN_pred.csv')
 
-fig = plt.figure()
-# negLL_StaticLSTM = \
-#   plotLSTMresult('results/nyc_taxi_experiment_one_shot_likelihood/',
-#                window, xaxis=xaxis_datetime, label='static LSTM ')
+  squareDeviation = computeSquareDeviation(knnPrediction, knnTruth)
+  squareDeviation[:skipTrain] = None
 
-plt.clf()
-(negLL_LSTM1000, expResult_LSTM1000_negLL) = \
-  plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window1001.0/',
-               window, xaxis=xaxis_datetime, label='continuous LSTM-1000')
-
-(negLL_LSTM3000, expResult_LSTM3000_negLL) = \
-  plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window3001.0/',
-               window, xaxis=xaxis_datetime, label='continuous LSTM-3000')
-
-(negLL_LSTM6000, expResult_LSTM6000_negLL) = \
-  plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window6001.0/',
-               window, xaxis=xaxis_datetime, label='continuous LSTM-6000')
-
-dataSet = 'nyc_taxi'
-tm_prediction = np.load('./result/'+dataSet+'TMprediction.npy')
-tm_truth = np.load('./result/'+dataSet+'TMtruth.npy')
-from nupic.encoders.scalar import ScalarEncoder as NupicScalarEncoder
-encoder = NupicScalarEncoder(w=1, minval=0, maxval=40000, n=22, forced=True)
-negLL = computeLikelihood(tm_prediction, tm_truth, encoder)
-negLL[:6000] = None
-negLL_TM = \
-  plotAccuracy((negLL, xaxis_datetime), tm_truth, window=window, errorType='negLL', label='TM')
-plt.legend()
-plt.savefig(figPath + 'continuous_likelihood.pdf')
+  nrmseKNN = plotAccuracy((squareDeviation, xaxisDate),
+                          tmTruth,
+                          window=window,
+                          errorType='square_deviation',
+                          label='KNN')
 
 
-startFrom = 6000
-altMAPE_LSTM6000 = computeAltMAPE(expResult_LSTM6000.truth, expResult_LSTM6000.predictions, startFrom)
-altMAPE_LSTM3000 = computeAltMAPE(expResult_LSTM3000.truth, expResult_LSTM3000.predictions, startFrom)
-altMAPE_LSTM1000 = computeAltMAPE(expResult_LSTM1000.truth, expResult_LSTM1000.predictions, startFrom)
-altMAPE_TM = computeAltMAPE(tm_truth, predData_TM_five_step, startFrom)
-altMAPE_ARIMA = computeAltMAPE(arima_truth, predData_ARIMA_five_step, startFrom)
-altMAPE_ESN = computeAltMAPE(esn_truth, predData_ESN_five_step, startFrom)
-altMAPE_KNN = computeAltMAPE(knn_truth, predData_KNN_five_step, startFrom)
-altMAPE_Shift = computeAltMAPE(tm_truth, predData_shift_five_step, startFrom)
+  (arimaTruth, arimaPrediction) = loadExperimentResult('./prediction/' + dataSet + '_ARIMA_pred.csv')
+
+  squareDeviation = computeSquareDeviation(arimaPrediction, arimaTruth)
+  squareDeviation[:skipTrain] = None
+  nrmseARIMA = plotAccuracy((squareDeviation, xaxisDate),
+                            arimaTruth,
+                            window=window,
+                            errorType='square_deviation',
+                            label='ARIMA')
 
 
-truth = tm_truth
-NRMSE_Shift_mean = np.sqrt(np.nanmean(NRMSE_Shift))/np.nanstd(truth)
-NRMSE_ARIMA_mean = np.sqrt(np.nanmean(NRMSE_ARIMA))/np.nanstd(truth)
-NRMSE_ESN_mean = np.sqrt(np.nanmean(NRMSE_ESN))/np.nanstd(truth)
-NRMSE_KNN_mean = np.sqrt(np.nanmean(NRMSE_KNN))/np.nanstd(truth)
-NRMSE_TM_mean = np.sqrt(np.nanmean(NRMSE_TM))/np.nanstd(truth)
-NRMSE_LSTM1000_mean = np.sqrt(np.nanmean(NRMSE_LSTM1000))/np.nanstd(truth)
-NRMSE_LSTM3000_mean = np.sqrt(np.nanmean(NRMSE_LSTM3000))/np.nanstd(truth)
-NRMSE_LSTM6000_mean = np.sqrt(np.nanmean(NRMSE_LSTM6000))/np.nanstd(truth)
+  (adaptiveFilterTruth, adaptiveFilterPrediction) = loadExperimentResult('./prediction/' + dataSet + '_adaptiveFilter_pred.csv')
+  squareDeviation = computeSquareDeviation(adaptiveFilterPrediction, adaptiveFilterTruth)
+  squareDeviation[:skipTrain] = None
+  nrmseAdaptiveFilter = plotAccuracy((squareDeviation, xaxisDate),
+                                     adaptiveFilterTruth,
+                                     window=window,
+                                     errorType='square_deviation',
+                                     label='AdaptiveFilter')
 
 
-# fig, ax = plt.subplots(nrows=1, ncols=1)
-# inds = np.arange(6)
-# ax.bar(inds, [NRMSE_Shift_mean,
-#                  NRMSE_ARIMA_mean,
-#                  NRMSE_TM_mean,
-#                  NRMSE_LSTM1000_mean,
-#                  NRMSE_LSTM3000_mean,
-#                  NRMSE_LSTM6000_mean], width=0.2)
-# ax.set_xticks(inds+0.3/2)
-# ax.set_xticklabels( ('Shift', 'ARIMA', 'TM', 'LSTM1000', 'LSTM3000', 'LSTM6000') )
-# # Make the y-axis label and tick labels match the line color.
-# ax.set_ylabel('NRMSE', color='b')
-# for tl in ax.get_yticklabels():
-#     tl.set_color('b')
-#
-# inds = np.arange(6)
-# ax2 = ax.twinx()
-# ax2.set_ylabel('negative Log-likelihood', color='r')
-# for tl in ax2.get_yticklabels():
-#     tl.set_color('r')
-#
-# ax2.bar(inds+0.3, [0, 0,
-#                np.nanmean(negLL_TM),
-#                np.nanmean(negLL_LSTM1000),
-#                np.nanmean(negLL_LSTM3000),
-#                np.nanmean(negLL_LSTM6000)], width=0.2, color='r')
-# plt.savefig(figPath  + 'model_performance_summary.pdf')
+  (elmTruth, elmPrediction) = loadExperimentResult('./prediction/' + dataSet + '_elm_pred.csv')
+  squareDeviation = computeSquareDeviation(elmPrediction, elmTruth)
+  squareDeviation[:skipTrain] = None
+  nrmseELM = plotAccuracy((squareDeviation, xaxisDate),
+                          elmTruth,
+                          window=window,
+                          errorType='square_deviation',
+                          label='Extreme Learning Machine')
 
 
-fig, ax = plt.subplots(nrows=1, ncols=3)
-inds = np.arange(7)
-ax1 = ax[0]
-width = 0.5
-ax1.bar(inds, [NRMSE_ARIMA_mean,
-               NRMSE_KNN_mean,
-               NRMSE_ESN_mean,
-               NRMSE_LSTM1000_mean,
-               NRMSE_LSTM3000_mean,
-               NRMSE_LSTM6000_mean,
-               NRMSE_TM_mean], width=width)
-ax1.set_xticks(inds+width/2)
-ax1.set_ylabel('NRMSE')
-ax1.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
-ax1.set_xticklabels( ('ARIMA', 'KNN',  'ESN',
-                      'LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM') )
-for tick in ax1.xaxis.get_major_ticks():
-  tick.label.set_rotation('vertical')
+  shiftPrediction = np.roll(tmTruth, 5).astype('float32')
+  squareDeviation = computeSquareDeviation(shiftPrediction, tmTruth)
+  squareDeviation[:skipTrain] = None
+  nrmseShift = plotAccuracy((squareDeviation, xaxisDate),
+                            tmTruth,
+                            window=window,
+                            errorType='square_deviation',
+                            label='Shift')
 
-ax3 = ax[1]
-ax3.bar(inds, [altMAPE_ARIMA,
-               altMAPE_KNN,
-               altMAPE_ESN,
-               altMAPE_LSTM1000,
-               altMAPE_LSTM3000,
-               altMAPE_LSTM6000,
-               altMAPE_TM], width=width, color='b')
-ax3.set_xticks(inds+width/2)
-ax3.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
-ax3.set_ylabel('MAPE')
-ax3.set_xticklabels( ('ARIMA', 'KNN', 'ESN',
-                      'LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM') )
-for tick in ax3.xaxis.get_major_ticks():
-  tick.label.set_rotation('vertical')
-
-ax2 = ax[2]
-ax2.set_ylabel('Negative Log-likelihood')
-ax2.bar(inds, [np.nanmean(negLL_LSTM1000),
-               np.nanmean(negLL_LSTM3000),
-               np.nanmean(negLL_LSTM6000),
-               np.nanmean(negLL_TM), 0, 0, 0], width=width, color='b')
-ax2.set_xticks(inds+width/2)
-ax2.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
-ax2.set_ylim([0, 2.0])
-ax2.set_xticklabels(('LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM', '', '', ''))
-for tick in ax2.xaxis.get_major_ticks():
-  tick.label.set_rotation('vertical')
-
-plt.savefig(figPath + 'model_performance_summary_alternative.pdf')
+  plt.legend()
+  plt.savefig(figPath + 'continuous.pdf')
 
 
-### Figure 6:
-# fig = plt.figure(6)
-# plt.plot(xaxis_datetime, tm_truth, label='Before')
-# plt.plot(xaxis_datetime, tm_truth_perturb, label='After')
-# plt.xlim([xaxis_datetime[13050], xaxis_datetime[13480]])
-# plt.ylabel('30min Passenger Count')
-# plt.legend()
-# plt.savefig(figPath + 'example_perturbed_data.pdf')
+  ### Figure 3: Continuous LSTM with different window size using the likelihood metric
+
+  # fig = plt.figure()
+  # # negLL_StaticLSTM = \
+  # #   plotLSTMresult('results/nyc_taxi_experiment_one_shot_likelihood/',
+  # #                window, xaxis=xaxis_datetime, label='static LSTM ')
+  #
+  # plt.clf()
+  # (negLLLSTM1000, expResultLSTM1000negLL) = \
+  #   plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window1001.0/',
+  #                  window, xaxis=xaxisDate, label='continuous LSTM-1000')
+  #
+  # (negLLLSTM3000, expResultLSTM3000negLL) = \
+  #   plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window3001.0/',
+  #                  window, xaxis=xaxisDate, label='continuous LSTM-3000')
+  #
+  # (negLLLSTM6000, expResultLSTM6000negLL) = \
+  #   plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window6001.0/',
+  #                  window, xaxis=xaxisDate, label='continuous LSTM-6000')
+  #
+  # dataSet = 'nyc_taxi'
+  # tm_prediction = np.load('./result/'+dataSet+'TMprediction.npy')
+  # tmTruth = np.load('./result/' + dataSet + 'TMtruth.npy')
+  #
+  # encoder = NupicScalarEncoder(w=1, minval=0, maxval=40000, n=22, forced=True)
+  # negLL = computeLikelihood(tm_prediction, tmTruth, encoder)
+  # negLL[:skipTrain] = None
+  # negLLTM = plotAccuracy((negLL, xaxisDate), tmTruth,
+  #                        window=window, errorType='negLL', label='TM')
+  # plt.legend()
+  # plt.savefig(figPath + 'continuous_likelihood.pdf')
 
 
-### Plot Example Data Segments
-import datetime
-from matplotlib.dates import DayLocator, HourLocator, DateFormatter
-fig, ax = plt.subplots()
+  ### Figure 4: Continuous LSTM with different window size using the likelihood metric
 
-ax.plot(xaxis_datetime, tm_truth, 'k-o')
-ax.xaxis.set_major_locator( DayLocator() )
-ax.xaxis.set_minor_locator( HourLocator(range(0,25,6)) )
-ax.xaxis.set_major_formatter( DateFormatter('%Y-%m-%d') )
-ax.set_xlim([xaxis_datetime[14060], xaxis_datetime[14400]])
-yticklabel = ax.get_yticks()/1000
-new_yticklabel = []
-for i in range(len(yticklabel)):
-  new_yticklabel.append( str(int(yticklabel[i]))+' k')
-ax.set_yticklabels(new_yticklabel)
-ax.set_ylim([0, 30000])
-ax.set_ylabel('Passenger Count in 30 min window')
-plt.savefig(figPath + 'example_data.pdf')
+  fig = plt.figure()
+  plt.clf()
+  (negLLLSTM1000, expResultLSTM1000negLL) = \
+    plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window1001.0/',
+                   window, xaxis=xaxisDate, label='continuous LSTM-1000')
+
+  (negLLLSTM3000, expResultLSTM3000negLL) = \
+    plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window3001.0/',
+                   window, xaxis=xaxisDate, label='continuous LSTM-3000')
+
+  (negLLLSTM6000, expResultLSTM6000negLL) = \
+    plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window6001.0/',
+                   window, xaxis=xaxisDate, label='continuous LSTM-6000')
+
+  dataSet = 'nyc_taxi'
+  tmPredictionLL = np.load('./result/'+dataSet+'TMprediction.npy')
+  tmTruth = np.load('./result/' + dataSet + 'TMtruth.npy')
+
+  encoder = NupicScalarEncoder(w=1, minval=0, maxval=40000, n=22, forced=True)
+  negLL = computeLikelihood(tmPredictionLL, tmTruth, encoder)
+  negLL[:skipTrain] = None
+  negLLTM = plotAccuracy((negLL, xaxisDate), tmTruth,
+                         window=window, errorType='negLL', label='TM')
+  plt.legend()
+  plt.savefig(figPath + 'continuous_likelihood.pdf')
+
+
+  startFrom = skipTrain
+  altMAPELSTM6000 = computeAltMAPE(expResultLSTM6000.truth, expResultLSTM6000.predictions, startFrom)
+  altMAPELSTM3000 = computeAltMAPE(expResultLSTM3000.truth, expResultLSTM3000.predictions, startFrom)
+  altMAPELSTM1000 = computeAltMAPE(expResultLSTM1000.truth, expResultLSTM1000.predictions, startFrom)
+  altMAPETM = computeAltMAPE(tmTruth, tmPrediction, startFrom)
+  altMAPEARIMA = computeAltMAPE(arimaTruth, arimaPrediction, startFrom)
+  altMAPEESN = computeAltMAPE(esnTruth, esnPrediction, startFrom)
+  altMAPEKNN = computeAltMAPE(knnTruth, knnPrediction, startFrom)
+  altMAPEShift = computeAltMAPE(tmTruth, shiftPrediction, startFrom)
+  altMAPEAdaptiveFilter = computeAltMAPE(tmTruth, adaptiveFilterPrediction, startFrom)
+  altMAPEELM = computeAltMAPE(elmTruth, elmPrediction, startFrom)
+
+  truth = tmTruth
+  nrmseShiftMean = np.sqrt(np.nanmean(nrmseShift)) / np.nanstd(truth)
+  nrmseARIMAmean = np.sqrt(np.nanmean(nrmseARIMA)) / np.nanstd(truth)
+  nrmseESNmean = np.sqrt(np.nanmean(nrmseESN)) / np.nanstd(truth)
+  nrmseKNNmean = np.sqrt(np.nanmean(nrmseKNN)) / np.nanstd(truth)
+  nrmseTMmean = np.sqrt(np.nanmean(nrmseTM)) / np.nanstd(truth)
+  nrmseELMmean = np.sqrt(np.nanmean(nrmseELM)) / np.nanstd(truth)
+  nrmseLSTM1000mean = np.sqrt(np.nanmean(nrmseLSTM1000)) / np.nanstd(truth)
+  nrmseLSTM3000mean = np.sqrt(np.nanmean(nrmseLSTM3000)) / np.nanstd(truth)
+  nrmseLSTM6000mean = np.sqrt(np.nanmean(nrmseLSTM6000)) / np.nanstd(truth)
+
+
+  fig, ax = plt.subplots(nrows=1, ncols=3)
+  inds = np.arange(7)
+  ax1 = ax[0]
+  width = 0.5
+  ax1.bar(inds, [nrmseARIMAmean,
+                 nrmseELMmean,
+                 nrmseESNmean,
+                 nrmseLSTM1000mean,
+                 nrmseLSTM3000mean,
+                 nrmseLSTM6000mean,
+                 nrmseTMmean], width=width)
+  ax1.set_xticks(inds+width/2)
+  ax1.set_ylabel('NRMSE')
+  ax1.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
+  ax1.set_xticklabels( ('ARIMA', 'ELM',  'ESN',
+                        'LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM') )
+  for tick in ax1.xaxis.get_major_ticks():
+    tick.label.set_rotation('vertical')
+
+  ax3 = ax[1]
+  ax3.bar(inds, [altMAPEARIMA,
+                 altMAPEELM,
+                 altMAPEESN,
+                 altMAPELSTM1000,
+                 altMAPELSTM3000,
+                 altMAPELSTM6000,
+                 altMAPETM], width=width, color='b')
+  ax3.set_xticks(inds+width/2)
+  ax3.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
+  ax3.set_ylabel('MAPE')
+  ax3.set_xticklabels( ('ARIMA', 'ELM', 'ESN',
+                        'LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM') )
+  for tick in ax3.xaxis.get_major_ticks():
+    tick.label.set_rotation('vertical')
+
+  ax2 = ax[2]
+  ax2.set_ylabel('Negative Log-likelihood')
+  ax2.bar(inds, [np.nanmean(negLLLSTM1000),
+                 np.nanmean(negLLLSTM3000),
+                 np.nanmean(negLLLSTM6000),
+                 np.nanmean(negLLTM), 0, 0, 0], width=width, color='b')
+  ax2.set_xticks(inds+width/2)
+  ax2.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
+  ax2.set_ylim([0, 2.0])
+  ax2.set_xticklabels(('LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM', '', '', ''))
+  for tick in ax2.xaxis.get_major_ticks():
+    tick.label.set_rotation('vertical')
+
+  plt.savefig(figPath + 'model_performance_summary_alternative.pdf')
+
+
+  ### Figure 6:
+  # fig = plt.figure(6)
+  # plt.plot(xaxis_datetime, tm_truth, label='Before')
+  # plt.plot(xaxis_datetime, tm_truth_perturb, label='After')
+  # plt.xlim([xaxis_datetime[13050], xaxis_datetime[13480]])
+  # plt.ylabel('30min Passenger Count')
+  # plt.legend()
+  # plt.savefig(figPath + 'example_perturbed_data.pdf')
+
+
+  ### Plot Example Data Segments
+  import datetime
+  from matplotlib.dates import DayLocator, HourLocator, DateFormatter
+  fig, ax = plt.subplots()
+
+  ax.plot(xaxisDate, tmTruth, 'k-o')
+  ax.xaxis.set_major_locator( DayLocator() )
+  ax.xaxis.set_minor_locator( HourLocator(range(0,25,6)) )
+  ax.xaxis.set_major_formatter( DateFormatter('%Y-%m-%d') )
+  ax.set_xlim([xaxisDate[14060], xaxisDate[14400]])
+  yticklabel = ax.get_yticks()/1000
+  new_yticklabel = []
+  for i in range(len(yticklabel)):
+    new_yticklabel.append( str(int(yticklabel[i]))+' k')
+  ax.set_yticklabels(new_yticklabel)
+  ax.set_ylim([0, 30000])
+  ax.set_ylabel('Passenger Count in 30 min window')
+  plt.savefig(figPath + 'example_data.pdf')

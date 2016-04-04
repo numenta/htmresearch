@@ -108,12 +108,20 @@ def plotAccuracy(results, truth, train=None, window=100, label=None, params=None
 
   # plt.ylim(0, 1.001)
 
+def computeAltMAPE(truth, prediction, startFrom=0):
+  return np.nanmean(np.abs(truth[startFrom:] - prediction[startFrom:]))/np.nanmean(np.abs(truth[startFrom:]))
+
+
+def computeNRMSE(truth, prediction, startFrom=0):
+  squareDeviation = computeSquareDeviation(prediction, truth)
+  squareDeviation[:startFrom] = None
+  return np.sqrt(np.nanmean(squareDeviation))/np.nanstd(truth)
+
 
 def computeSquareDeviation(predictions, truth):
 
-  square_deviation = np.square(predictions-truth)
-
-  return square_deviation
+  squareDeviation = np.square(predictions-truth)
+  return squareDeviation
 
 
 def computeLikelihood(predictions, truth, encoder):
@@ -132,8 +140,11 @@ def computeLikelihood(predictions, truth, encoder):
 
   return negLL
 
+
 def computeAbsouteError(predictions, truth):
   return np.abs( (predictions-truth))
+
+
 
 class ExperimentResult(object):
   def __init__(self, experiment_name):
