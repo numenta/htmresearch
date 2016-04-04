@@ -65,7 +65,7 @@ if __name__ == '__main__':
 
     plotAccuracy((accuracy, x),
                  data['trains'],
-                 window=100,
+                 window=200,
                  type=type,
                  label='NoiseExperiment',
                  hideTraining=True,

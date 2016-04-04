@@ -21,7 +21,7 @@
 # ----------------------------------------------------------------------
 
 """
-Plot sequence prediction & perturbation experiment result
+Plot multiple prediction experiment result with error bars
 """
 
 import os
@@ -83,59 +83,66 @@ if __name__ == '__main__':
     # python suite.py --experiment="high-order-distributed-random-perturbed" -d
     expResults = {}
     tmResults = os.path.join("tm/results",
-                             "high-order-distributed-random-perturbed")
-    accuracyAll = []
-    for seed in range(20):
-      experiment = os.path.join(tmResults,
-                                "seed" + "{:.1f}".format(seed), "0.log")
-      (accuracy, x) = loadExperiment(experiment)
-      accuracyAll.append(np.array(accuracy))
-    (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyAll)
-    expResult = {'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
-    expResults['HTM'] = expResult
-
+                             "high-order-distributed-random-multiple-predictions")
     lstmResults = os.path.join("lstm/results",
-                                 "high-order-distributed-random-perturbed")
+                                 "high-order-distributed-random-multiple-predictions")
 
-
-    for learningWindow in [1000.0, 3000.0, 9000.0]:
-      accuracyAll = []
+    for numPrediction in [2, 4]:
+      accuracyTM = []
+      accuracyLSTM = []
       for seed in range(20):
-        experiment = os.path.join(
-          lstmResults, "seed{:.1f}learning_window{:.1f}".format(seed, learningWindow),
-          "0.log")
+        experiment = os.path.join(tmResults,
+                                  "num_predictions{:.1f}seed{:.1f}".format(numPrediction, seed),
+                                  "0.log")
         (accuracy, x) = loadExperiment(experiment)
-        accuracyAll.append(np.array(accuracy))
+        accuracyTM.append(np.array(accuracy))
 
-      (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyAll)
+        experiment = os.path.join(lstmResults,
+                                  "seed{:.1f}num_predictions{:.1f}".format(seed, numPrediction),
+                                  "0.log")
+        (accuracy, x) = loadExperiment(experiment)
+        accuracyLSTM.append(np.array(accuracy))
 
-      expResults['LSTM-'+"{:.0f}".format(learningWindow)] = {
-        'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
+      (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyTM)
+      expResult = {'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
+      expResults['HTMNumPrediction{:.0f}'.format(numPrediction)] = expResult
 
-    output = open('./result/ContinuousLearnExperiment.pkl', 'wb')
+
+      (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyLSTM)
+      expResult = {'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
+      expResults['LSTMNumPrediction{:.0f}'.format(numPrediction)] = expResult
+
+
+    output = open('./result/MultiPredictionExperiment.pkl', 'wb')
     pickle.dump(expResults, output, -1)
     output.close()
   except:
     print "Cannot find raw experiment results"
     print "Plot using saved processed experiment results"
 
-  input = open('./result/ContinuousLearnExperiment.pkl', 'rb')
+  input = open('./result/MultiPredictionExperiment.pkl', 'rb')
   expResults = pickle.load(input)
 
   plt.figure()
-  colorList = {"HTM": "r", "LSTM-1000": "b", "LSTM-3000": "y", "LSTM-9000": "g"}
-  for model in ['HTM', 'LSTM-1000', 'LSTM-3000', 'LSTM-9000']:
+  colorList = {"HTMNumPrediction2": "r",
+               "LSTMNumPrediction2": "b",
+               "HTMNumPrediction4": "y",
+               "LSTMNumPrediction4": "g"}
+
+  for model in ['HTMNumPrediction2', 'LSTMNumPrediction2', 'HTMNumPrediction4', 'LSTMNumPrediction4']:
     expResult = expResults[model]
     plotWithErrBar(expResult['x'],
                    expResult['meanAccuracy'], expResult['stdAccuracy'],
                    colorList[model])
 
-  plt.legend(['HTM', 'LSTM-1000', 'LSTM-3000', 'LSTM-9000'], loc=4)
+  plt.legend(['HTM: 2 predictions',
+              'LSTM: 2 predictions',
+              'HTM: 4 predictions',
+              'LSTM: 4 predictions'], loc=4)
 
-  retrainLSTMAt = np.arange(start=1000, stop=20000, step=1000)
+  retrainLSTMAt = np.arange(start=1000, stop=12000, step=1000)
   for line in retrainLSTMAt:
     plt.axvline(line, color='orange')
 
-  plt.axvline(10000, color='black')
   plt.ylim([-0.05, 1.05])
-  plt.savefig('./result/model_performance_high_order_prediction.pdf')
+  plt.savefig('./result/model_performance_multiple_prediction_errbar.pdf')
