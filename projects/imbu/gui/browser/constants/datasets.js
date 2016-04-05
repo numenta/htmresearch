@@ -19,22 +19,22 @@ export default {
   sample_reviews: {
     label: 'Sample Reviews'
   },
-    yale: {
+  yale: {
     label: 'Yale Reviews'
   },
-    junit1: {
+  junit1: {
     label: 'JUnit test 1'
   },
-    junit2: {
+  junit2: {
     label: 'JUnit test 2'
   },
-    junit3: {
+  junit3: {
     label: 'JUnit test 3'
   },
-    junit4: {
+  junit4: {
     label: 'JUnit test 4'
   },
-    junit5: {
+  junit5: {
     label: 'JUnit test 5'
   }
 };
