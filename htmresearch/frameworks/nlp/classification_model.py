@@ -446,8 +446,8 @@ class ClassificationModel(object):
     if count:
       # Normalize for the number of inferred tokens that yielded results
       normalizedVotes = voteTotals / float(count)
-      for k, v in distancesForEachId.iteritems():
-        distancesForEachId[k] = v / float(count)
+      for protoId, dist in distancesForEachId.iteritems():
+        distancesForEachId[protoId] = dist / float(count)
     else:
       normalizedVotes = voteTotals
 
