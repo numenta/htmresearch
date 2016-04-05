@@ -360,7 +360,7 @@ class ImbuModels(object):
         # Get the sampleId from the protoId via the indexing scheme
         wordId = protoId % self.tokenIndexingFactor
         sampleId = (protoId - wordId) / self.tokenIndexingFactor
-        results[sampleId]["scores"][wordId] = dist.item() / queryLength
+        results[sampleId]["scores"][wordId] = dist.item()
       if modelName == ("HTM_sensor_simple_tp_knn" or
                        "HTM_sensor_tm_simple_tp_knn"):
         # Windows always length 10
@@ -413,9 +413,10 @@ def runQueries(imbu, model, modelName):
     if query == "q":
       break
 
-    _, sortedIds, sortedDistances = imbu.query(model, query)
+    _, unSortedIds, unSortedDistances = imbu.query(model, query)
 
-    results = imbu.formatResults(modelName, query, sortedDistances, sortedIds)
+    results = imbu.formatResults(
+      modelName, query, unSortedDistances, unSortedIds)
 
     pprint.pprint(results)
 
