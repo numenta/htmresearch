@@ -46,7 +46,6 @@ def loadExperiment(experiment):
                                   data['iterations'],
                                   resets=data['resets'],
                                   randoms=data['randoms'])
-  accuracy = movingAverage(accuracy, min(len(accuracy), 100))
   return (accuracy, x)
 
 
@@ -72,6 +71,40 @@ def plotWithErrBar(x, y, error, color):
 
 
 
+def analyzeResult(x, accuracy, perturbAt=10000):
+  accuracy = movingAverage(accuracy, min(len(accuracy), 100))
+  # perform smoothing convolution
+  mask = np.ones(shape=(100,))
+  mask = mask/np.sum(mask)
+  accuracy = np.array(accuracy)
+  # extend accuracy vector to eliminate boundary effect of convolution
+  accuracy = np.concatenate((accuracy, np.ones((200, ))*accuracy[-1]))
+  accuracy = np.convolve(accuracy, mask, 'same')
+  accuracy = accuracy[:len(x)]
+  x = np.array(x)
+
+  perturbAtX = np.where(x > perturbAt)[0][0]
+
+  finalAccuracy = accuracy[perturbAtX-len(mask)/2]
+  learnTime = min(np.where(np.logical_and(accuracy > finalAccuracy * 0.99,
+                                          x < x[perturbAtX - len(mask)]))[0])
+  learnTime = x[learnTime]
+
+  finalAccuracyAfterPerturbation = accuracy[-1]
+  learnTimeAfterPerturbation = min(np.where(
+    np.logical_and(accuracy > finalAccuracyAfterPerturbation * 0.99,
+                   x > x[perturbAtX + len(mask)]))[0])
+
+  learnTimeAfterPerturbation = x[learnTimeAfterPerturbation] - perturbAt
+
+  result = {"finalAccuracy": finalAccuracy,
+            "learnTime": learnTime,
+            "finalAccuracyAfterPerturbation": finalAccuracyAfterPerturbation,
+            "learnTimeAfterPerturbation": learnTimeAfterPerturbation}
+  return result
+
+
+
 if __name__ == '__main__':
 
   try:
@@ -82,17 +115,24 @@ if __name__ == '__main__':
     # In ./lstm/
     # python suite.py --experiment="high-order-distributed-random-perturbed" -d
     expResults = {}
+    expResultsAnaly = {}
     tmResults = os.path.join("tm/results",
                              "high-order-distributed-random-perturbed")
     accuracyAll = []
+    exptLabel = 'HTM'
+    expResultsAnaly[exptLabel] = []
     for seed in range(20):
       experiment = os.path.join(tmResults,
                                 "seed" + "{:.1f}".format(seed), "0.log")
       (accuracy, x) = loadExperiment(experiment)
+      expResultsAnaly[exptLabel].append(analyzeResult(x, accuracy))
+      accuracy = movingAverage(accuracy, min(len(accuracy), 100))
       accuracyAll.append(np.array(accuracy))
+
     (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyAll)
-    expResult = {'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
-    expResults['HTM'] = expResult
+
+    expResults[exptLabel] = {
+      'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
 
     lstmResults = os.path.join("lstm/results",
                                  "high-order-distributed-random-perturbed")
@@ -100,36 +140,73 @@ if __name__ == '__main__':
 
     for learningWindow in [1000.0, 3000.0, 9000.0]:
       accuracyAll = []
+      exptLabel = 'LSTM-'+"{:.0f}".format(learningWindow)
+      expResultsAnaly[exptLabel] = []
       for seed in range(20):
         experiment = os.path.join(
           lstmResults, "seed{:.1f}learning_window{:.1f}".format(seed, learningWindow),
           "0.log")
         (accuracy, x) = loadExperiment(experiment)
+        expResultsAnaly[exptLabel].append(analyzeResult(x, accuracy))
+        accuracy = movingAverage(accuracy, min(len(accuracy), 100))
         accuracyAll.append(np.array(accuracy))
 
       (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyAll)
 
-      expResults['LSTM-'+"{:.0f}".format(learningWindow)] = {
+      expResults[exptLabel] = {
         'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
 
     output = open('./result/ContinuousLearnExperiment.pkl', 'wb')
     pickle.dump(expResults, output, -1)
     output.close()
+
+    output = open('./result/ContinuousLearnExperimentAnaly.pkl', 'wb')
+    pickle.dump(expResultsAnaly, output, -1)
+    output.close()
+
   except:
     print "Cannot find raw experiment results"
     print "Plot using saved processed experiment results"
 
-  input = open('./result/ContinuousLearnExperiment.pkl', 'rb')
-  expResults = pickle.load(input)
+  expResults = pickle.load(open('./result/ContinuousLearnExperiment.pkl', 'rb'))
+  expResultsAnaly = pickle.load(open('./result/ContinuousLearnExperimentAnaly.pkl', 'rb'))
 
-  plt.figure()
+  plt.figure(1)
+  fig, axs = plt.subplots(nrows=1, ncols=2, sharex=True)
   colorList = {"HTM": "r", "LSTM-1000": "b", "LSTM-3000": "y", "LSTM-9000": "g"}
   for model in ['HTM', 'LSTM-1000', 'LSTM-3000', 'LSTM-9000']:
     expResult = expResults[model]
+
+    plt.figure(1)
     plotWithErrBar(expResult['x'],
                    expResult['meanAccuracy'], expResult['stdAccuracy'],
                    colorList[model])
 
+    perturbAtX = np.where(np.array(expResult['x']) > 10000)[0][0]
+
+    result = analyzeResult(expResult['x'], expResult['meanAccuracy'])
+    resultub = analyzeResult(expResult['x'],
+                             expResult['meanAccuracy']-expResult['stdAccuracy'])
+    resultlb = analyzeResult(expResult['x'],
+                             expResult['meanAccuracy']+expResult['stdAccuracy'])
+
+    learnTimeErr = [result['learnTime']-resultlb['learnTime'],
+                    resultub['learnTime']-result['learnTime']]
+    learnTimeErrAfterPerturb = [
+      result['learnTimeAfterPerturbation']-resultlb['learnTimeAfterPerturbation'],
+      resultub['learnTimeAfterPerturbation']-result['learnTimeAfterPerturbation']]
+
+    axs[0].errorbar(x=result['learnTime'], y=result['finalAccuracy'],
+                 yerr=expResult['stdAccuracy'][perturbAtX],
+                 xerr=np.mean(learnTimeErr))
+
+
+    axs[1].errorbar(x=result['learnTimeAfterPerturbation'],
+                 y=result['finalAccuracyAfterPerturbation'],
+                 yerr=expResult['stdAccuracy'][-1],
+                 xerr=np.mean(learnTimeErrAfterPerturb))
+
+  plt.figure(1)
   plt.legend(['HTM', 'LSTM-1000', 'LSTM-3000', 'LSTM-9000'], loc=4)
 
   retrainLSTMAt = np.arange(start=1000, stop=20000, step=1000)
@@ -139,3 +216,44 @@ if __name__ == '__main__':
   plt.axvline(10000, color='black')
   plt.ylim([-0.05, 1.05])
   plt.savefig('./result/model_performance_high_order_prediction.pdf')
+
+  for ax in axs:
+    ax.legend(['HTM', 'LSTM-1000', 'LSTM-3000', 'LSTM-9000'], loc=4)
+    ax.set_xlabel(' Number of samples required to achieve final accuracy')
+    ax.set_ylabel(' Final accuracy ')
+    ax.set_ylim([0.6, 1.05])
+  axs[0].set_title("Before modification")
+  axs[1].set_title("After modification")
+  plt.figure(2)
+  plt.savefig('./result/model_performance_summary_high_order_prediction.pdf')
+  #
+  # # plot accuracy vs
+  # plt.figure(2)
+  # plt.figure(3)
+  # for model in ['HTM', 'LSTM-1000', 'LSTM-3000', 'LSTM-9000']:
+  #   finalAccuracy = []
+  #   finalAccuracyAfterPerturbation = []
+  #   learnTime = []
+  #   learnTimeAfterPerturbation = []
+  #
+  #   for result in expResultsAnaly[model]:
+  #     finalAccuracy.append(result['finalAccuracy'])
+  #     finalAccuracyAfterPerturbation.append(result['finalAccuracyAfterPerturbation'])
+  #     learnTime.append(result['learnTime'])
+  #     learnTimeAfterPerturbation.append(result['learnTimeAfterPerturbation'])
+  #
+  #   plt.figure(2)
+  #   plt.errorbar(x=np.mean(learnTime), y=np.mean(finalAccuracy),
+  #                yerr=np.std(finalAccuracy), xerr=np.std(learnTime))
+  #
+  #   plt.figure(3)
+  #   plt.errorbar(x=np.mean(learnTimeAfterPerturbation),
+  #                y=np.mean(finalAccuracyAfterPerturbation),
+  #                yerr=np.std(finalAccuracyAfterPerturbation),
+  #                xerr=np.std(learnTimeAfterPerturbation))
+  #
+  # for fig in [2, 3]:
+  #   plt.figure(fig)
+  #   plt.legend(['HTM', 'LSTM-1000', 'LSTM-3000', 'LSTM-9000'], loc=3)
+  #   plt.xlabel(' Number of sequences required to achieve final accuracy')
+  #   plt.ylabel(' Final accuracy ')
