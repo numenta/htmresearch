@@ -421,7 +421,7 @@ class ClassificationModel(object):
     lastTokenIndex = len(tokenList) - 1
     distancesForEachId = defaultdict(float)
     voteTotals = numpy.zeros(self.numLabels)
-    voteCount = 0
+    count = 0
     for i, token in enumerate(tokenList):
       votes, idList, distances = self.inferToken(token,
                                                  reset=int(i == lastTokenIndex),
@@ -430,7 +430,7 @@ class ClassificationModel(object):
 
       if votes.sum() > 0:
         voteTotals += votes
-        voteCount += 1
+        count += 1
 
         if classifier.exact:
           # We only care about 0 distances (exact matches), disregard all others
@@ -443,8 +443,11 @@ class ClassificationModel(object):
           patternIds = classifier.getPatternIndicesWithPartitionId(protoId)
           distancesForEachId[protoId] += distances[patternIds].min()
 
-    if voteCount:
-      normalizedVotes = voteTotals / float(voteCount)
+    if count:
+      # Normalize for the number of inferred tokens that yielded results
+      normalizedVotes = voteTotals / float(count)
+      for k, v in distancesForEachId.iteritems():
+        distancesForEachId[k] = v / float(count)
     else:
       normalizedVotes = voteTotals
 
