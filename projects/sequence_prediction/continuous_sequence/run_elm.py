@@ -33,7 +33,7 @@ from scipy import random
 import pandas as pd
 from errorMetrics import *
 
-from nupic.encoders.scalar import ScalarEncoder
+from htmresearch.algorithms.online_extreme_learning_machine import OSELM
 
 plt.ion()
 
@@ -41,8 +41,12 @@ def initializeELMnet(nDimInput, nDimOutput, numNeurons=10):
   # Build ELM network with nDim input units,
   # numNeurons hidden units (LSTM cells) and nDimOutput cells
 
-  net = ELM(nDimInput, nDimOutput)
-  net.add_neurons(numNeurons, "sigm")
+  # net = ELM(nDimInput, nDimOutput)
+  # net.add_neurons(numNeurons, "sigm")
+
+  net = OSELM(nDimInput, nDimOutput,
+            numHiddenNeurons=numNeurons, activationFunction='sig')
+
   return net
 
 
@@ -53,7 +57,8 @@ def readDataSet(dataSet):
   # sequence = df['data']
 
   if dataSet=='nyc_taxi':
-    df = pd.read_csv(filePath, header=0, skiprows=[1,2], names=['time', 'data', 'timeofday', 'dayofweek'])
+    df = pd.read_csv(filePath, header=0, skiprows=[1,2],
+                     names=['time', 'data', 'timeofday', 'dayofweek'])
     sequence = df['data']
     dayofweek = df['dayofweek']
     timeofday = df['timeofday']
@@ -83,7 +88,7 @@ def getTimeEmbeddedMatrix(sequence, numLags=100, predictionStep=1,
     print "include day of week as input field"
 
   X = np.zeros(shape=(len(sequence), inDim))
-  T = np.zeros(shape=(len(sequence)))
+  T = np.zeros(shape=(len(sequence), 1))
   for i in xrange(numLags-1, len(sequence)-predictionStep):
     if useTimeOfDay and useDayOfWeek:
       sample = np.concatenate([np.array(sequence['data'][(i-numLags+1):(i+1)]),
@@ -99,7 +104,7 @@ def getTimeEmbeddedMatrix(sequence, numLags=100, predictionStep=1,
       sample = np.array(sequence['data'][(i-numLags+1):(i+1)])
 
     X[i, :] = sample
-    T[i] = sequence['data'][i+predictionStep]
+    T[i, :] = sequence['data'][i+predictionStep]
 
   return (X, T)
 
@@ -124,12 +129,6 @@ def _getArgs():
   #                   dest="predictionstep",
   #                   help="number of steps ahead to be predicted")
 
-  parser.add_option("-r",
-                    "--repeatNumber",
-                    type=int,
-                    default=30,
-                    dest="repeatNumber",
-                    help="number of training epoches")
 
   (options, remainder) = parser.parse_args()
   print options
@@ -171,7 +170,6 @@ if __name__ == "__main__":
   (_options, _args) = _getArgs()
   dataSet = _options.dataSet
 
-  rptNum = _options.repeatNumber
 
   print "run ELM on ", dataSet
   SWARM_CONFIG = SwarmRunner.importSwarmDescription(dataSet)
@@ -204,26 +202,29 @@ if __name__ == "__main__":
   (X, T) = getTimeEmbeddedMatrix(sequence, numLags, predictionStep,
                                  useTimeOfDay, useDayOfWeek)
 
-  print "train LSTM with "+str(rptNum)+" epochs"
+
   random.seed(6)
   net = initializeELMnet(nDimInput=X.shape[1],
-                         nDimOutput=1, numNeurons=20)
+                         nDimOutput=1, numNeurons=50)
 
-  net.train(X, T, "LOO")
-  Y = net.predict(X)
+  net.initializePhase(X[:nTrain, :], T[:nTrain, :])
+  # net.train(X, T, "LOO")
+  # Y = net.predict(X)
 
   predictedInput = np.zeros((len(sequence),))
   targetInput = np.zeros((len(sequence),))
   trueData = np.zeros((len(sequence),))
   for i in xrange(nTrain, len(sequence)-predictionStep):
-
-    net.train(X[i-nTrain:i+1,:], T[i-nTrain:i+1], "LOO")
-    Y = net.predict(X[i-nTrain:i+1,:])
+    net.train(X[[i], :], T[[i], :])
+    Y = net.predict(X[i-nTrain:i+1, :])
+    # net.train(X[i-nTrain:i+1,:], T[i-nTrain:i+1], "R", "LOO")
+    # Y = net.predict(X[i-nTrain:i+1,:])
 
     predictedInput[i] = Y[-1]
     targetInput[i] = sequence['data'][i+predictionStep]
     trueData[i] = sequence['data'][i]
-    print " target input: ", targetInput[i], " predicted Input: ", predictedInput[i]
+    print "Iteration {} target input {:2.2f} predicted Input {:2.2f} ".format(
+      i, targetInput[i], predictedInput[i])
 
   predictedInput = (predictedInput * stdSeq) + meanSeq
   targetInput = (targetInput * stdSeq) + meanSeq
@@ -237,3 +238,10 @@ if __name__ == "__main__":
   plt.plot(predictedInput)
   plt.xlim([12800, 13500])
   plt.ylim([0, 30000])
+
+  skipTrain = 6000
+  from plot import computeSquareDeviation
+  squareDeviation = computeSquareDeviation(predictedInput, targetInput)
+  squareDeviation[:skipTrain] = None
+  nrmse = np.sqrt(np.nanmean(squareDeviation)) / np.nanstd(targetInput)
+  print "NRMSE {}".format(nrmse)
