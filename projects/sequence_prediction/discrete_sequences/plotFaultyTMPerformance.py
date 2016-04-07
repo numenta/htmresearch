@@ -67,7 +67,7 @@ if __name__ == '__main__':
     accuracyListLSTM.append(float(numpy.sum(accuracy)) / len(accuracy))
 
   plt.figure(2)
-  plt.plot(KILLCELL_PERCENT, accuracyListTM, 'r-^', label="TM")
+  plt.plot(KILLCELL_PERCENT, accuracyListTM, 'r-^', label="HTM")
   plt.plot(KILLCELL_PERCENT, accuracyListLSTM, 'b-s', label="LSTM")
   plt.xlabel('Fraction of cell death ')
   plt.ylabel('Accuracy after cell death')
