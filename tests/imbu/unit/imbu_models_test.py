@@ -263,8 +263,11 @@ class TestImbu(unittest.TestCase):
     distanceArray = numpy.random.rand(35)
     idList = range(27) + [x+1000 for x in xrange(8)]
 
-    # Test a model with windows
+    # Test the models with windows length 10
     modelName = "HTM_sensor_simple_tp_knn"
+    results = imbu.formatResults(modelName, query, distanceArray, idList)
+    self._checkResultsFormatting(results, modelName, windowSize=10)
+    modelName = "HTM_sensor_tm_simple_tp_knn"
     results = imbu.formatResults(modelName, query, distanceArray, idList)
     self._checkResultsFormatting(results, modelName, windowSize=10)
 
