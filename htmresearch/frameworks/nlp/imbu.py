@@ -361,8 +361,8 @@ class ImbuModels(object):
         wordId = protoId % self.tokenIndexingFactor
         sampleId = (protoId - wordId) / self.tokenIndexingFactor
         results[sampleId]["scores"][wordId] = dist.item()
-      if modelName == "HTM_sensor_simple_tp_knn" or \
-                      "HTM_sensor_tm_simple_tp_knn":
+      if modelName in ("HTM_sensor_simple_tp_knn",
+                       "HTM_sensor_tm_simple_tp_knn"):
         # Windows always length 10
         results[sampleId]["windowSize"] = 10
 
