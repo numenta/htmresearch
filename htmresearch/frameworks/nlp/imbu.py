@@ -22,15 +22,18 @@
 """
 Class for running models in Imbu app.
 
-The script is runnable to demo Imbu functionality (from repo's base dir):
+The script is runnable to demo Imbu functionality. Example invocations (from
+the repo's base dir):
 
   python htmresearch/frameworks/nlp/imbu.py \
-    --dataPath projects/nlp/data/sample_reviews/sample_reviews.csv \
-    --modelName Keywords
+    -d projects/nlp/data/sample_reviews/sample_reviews.csv \
+    -m Keywords
 
   python htmresearch/frameworks/nlp/imbu.py \
-    --dataPath projects/nlp/data/sample_reviews/sample_reviews_unlabeled.csv \
-    --modelName HTMNetwork
+    -d projects/nlp/data/sample_reviews/sample_reviews_unlabeled.csv \
+    -m HTM_sensor_tm_simple_tp_knn -c imbu_sensor_tm_simple_tp_knn.json \
+    --savePath imbu_sensor_tm_simple_tp_knn.checkpoint
+    # And then run again w/o training by specifying the loadPath
 """
 
 import argparse
