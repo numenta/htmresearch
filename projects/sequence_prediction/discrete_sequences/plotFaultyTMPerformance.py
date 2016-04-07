@@ -42,30 +42,28 @@ if __name__ == '__main__':
     experiment = os.path.join(outdir, "kill_cell_percent{:1.1f}".format(
       killCellPercent)) + '/0.log'
 
-    (predictions, truths, iterations,
-     resets, randoms, trains, killCell) = readExperiment(experiment)
+    expResults = readExperiment(experiment)
 
     killCellAt = 10000
-    (accuracy, x) = computeAccuracy(predictions[killCellAt:],
-                                    truths[killCellAt:],
-                                    iterations[killCellAt:],
-                                    resets=resets[killCellAt:],
-                                    randoms=randoms[killCellAt:])
+    (accuracy, x) = computeAccuracy(expResults['predictions'][killCellAt:],
+                                    expResults['truths'][killCellAt:],
+                                    expResults['iterations'][killCellAt:],
+                                    resets=expResults['resets'][killCellAt:],
+                                    randoms=expResults['randoms'][killCellAt:])
 
     accuracyListTM.append(float(numpy.sum(accuracy)) / len(accuracy))
 
     experiment = 'lstm/results/high-order-distributed-random-kill-cell/' \
                  'kill_cell_percent' + "{:1.2f}".format(killCellPercent) + '/0.log'
 
-    (predictions, truths, iterations,
-     resets, randoms, killCell) = readExperiment(experiment)
+    expResults = readExperiment(experiment)
 
     killCellAt = 10000
-    (accuracy, x) = computeAccuracy(predictions[killCellAt:],
-                                    truths[killCellAt:],
-                                    iterations[killCellAt:],
-                                    resets=resets[killCellAt:],
-                                    randoms=randoms[killCellAt:])
+    (accuracy, x) = computeAccuracy(expResults['predictions'][killCellAt:],
+                                    expResults['truths'][killCellAt:],
+                                    expResults['iterations'][killCellAt:],
+                                    resets=expResults['resets'][killCellAt:],
+                                    randoms=expResults['randoms'][killCellAt:])
     accuracyListLSTM.append(float(numpy.sum(accuracy)) / len(accuracy))
 
   pyplot.figure()
