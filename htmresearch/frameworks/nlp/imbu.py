@@ -40,6 +40,7 @@ import argparse
 import numpy
 import os
 import pprint
+from tqdm import tqdm
 
 from htmresearch.encoders import EncoderTypes
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
@@ -292,7 +293,7 @@ class ImbuModels(object):
     """
     labels = [0]
     modelType = type(model)
-    for seqId, (text, _, _) in enumerate(self.dataDict.values()):
+    for seqId, (text, _, _) in enumerate(tqdm(self.dataDict.values())):
       if modelType in self.documentLevel:
         model.trainDocument(text, labels, seqId)
       else:
