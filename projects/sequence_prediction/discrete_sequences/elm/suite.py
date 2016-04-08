@@ -279,18 +279,12 @@ class Suite(PyExperimentSuite):
       killCell = True
       self.killCells(params['kill_cell_percent'])
 
-    # reset compute counter
-    if iteration < params['compute_after']:
-      computeELM = False
-    else:
-      computeELM = True
-
-    if computeELM:
+    if iteration > params['train_after']:
       n = params['encoding_num']
 
       if self.finishInitializeX is False:
         # run initialization phase of OS-ELM
-        NT = params['compute_after']
+        NT = params['train_after']
         features = numpy.zeros(shape=(NT, n*params['num_lags']))
         targets = numpy.zeros(shape=(NT, n))
 
@@ -305,7 +299,7 @@ class Suite(PyExperimentSuite):
           features[:, lags*n:(lags+1)*n] = shiftTargets
 
         self.net.initializePhase(features[:, :], targets[:, :])
-        if iteration > params['compute_after']:
+        if iteration > params['train_after']:
           self.finishInitializeX = True
       else:
         # run sequential learning phase
@@ -320,26 +314,25 @@ class Suite(PyExperimentSuite):
       if iteration < params['stop_training_after']:
         self.net.train(features, targets)
 
-      # run ELM on the latest data record
-      currentFeatures = numpy.zeros((1, params['encoding_num'] * params['num_lags']))
-      for lags in xrange(params['num_lags']):
-        currentFeatures[0, lags*n:(lags+1)*n] = self.encoder.encode(
-          self.history[-1-lags])
+    # run ELM on the latest data record
+    n = params['encoding_num']
+    currentFeatures = numpy.zeros((1, params['encoding_num'] * params['num_lags']))
+    for lags in xrange(min(params['num_lags'], iteration)):
+      currentFeatures[0, lags*n:(lags+1)*n] = self.encoder.encode(self.history[-1-lags])
 
-      output = self.net.predict(currentFeatures)
+    output = self.net.predict(currentFeatures)
+    predictions = self.encoder.classify(output[0],
+                                        num=params['num_predictions'])
 
-      predictions = self.encoder.classify(output[0],
-                                          num=params['num_predictions'])
+    correct = self.check_prediction(predictions, target)
 
-      correct = self.check_prediction(predictions, target)
-
-      if params['verbosity'] > 0:
-        print ("iteration: {0} \t"
-               "current: {1} \t"
-               "predictions: {2} \t"
-               "truth: {3} \t"
-               "correct: {4} \t").format(
-          iteration, currentElement, predictions, target, correct)
+    if params['verbosity'] > 0:
+      print ("iteration: {0} \t"
+             "current: {1} \t"
+             "predictions: {2} \t"
+             "truth: {3} \t"
+             "correct: {4} \t").format(
+        iteration, currentElement, predictions, target, correct)
 
       return {"current": currentElement,
               "random": self.randoms[-1],

@@ -52,11 +52,11 @@ class OSELM(object):
     self.numHiddenNeurons = numHiddenNeurons
 
     # input to hidden weights
-    self.inputWeights = None
+    self.inputWeights = np.random.random((self.numHiddenNeurons, self.inputs))
     # bias of hidden units
-    self.bias = None
+    self.bias = np.random.random((1, self.numHiddenNeurons)) * 2 - 1
     # hidden to output layer connection
-    self.beta = None
+    self.beta = np.random.random((self.numHiddenNeurons, self.inputs))
 
     # auxiliary matrix used for sequential learning
     self.M = None
