@@ -21,16 +21,16 @@
 # ----------------------------------------------------------------------
 
 
-import json
 import os
-from matplotlib import pyplot
+from matplotlib import pyplot as plt
 import matplotlib as mpl
 import numpy
+from plot import movingAverage
 from plot import computeAccuracy
 from plot import readExperiment
 
 mpl.rcParams['pdf.fonttype'] = 42
-pyplot.ion()
+plt.ion()
 
 if __name__ == '__main__':
 
@@ -38,42 +38,40 @@ if __name__ == '__main__':
   KILLCELL_PERCENT = list(numpy.arange(7) / 10.0)
   accuracyListTM = []
   accuracyListLSTM = []
+
   for killCellPercent in KILLCELL_PERCENT:
     experiment = os.path.join(outdir, "kill_cell_percent{:1.1f}".format(
       killCellPercent)) + '/0.log'
 
-    (predictions, truths, iterations,
-     resets, randoms, trains, killCell) = readExperiment(experiment)
+    expResults = readExperiment(experiment)
 
     killCellAt = 10000
-    (accuracy, x) = computeAccuracy(predictions[killCellAt:],
-                                    truths[killCellAt:],
-                                    iterations[killCellAt:],
-                                    resets=resets[killCellAt:],
-                                    randoms=randoms[killCellAt:])
-
+    (accuracy, x) = computeAccuracy(expResults['predictions'][killCellAt:],
+                                    expResults['truths'][killCellAt:],
+                                    expResults['iterations'][killCellAt:],
+                                    resets=expResults['resets'][killCellAt:],
+                                    randoms=expResults['randoms'][killCellAt:])
     accuracyListTM.append(float(numpy.sum(accuracy)) / len(accuracy))
 
     experiment = 'lstm/results/high-order-distributed-random-kill-cell/' \
                  'kill_cell_percent' + "{:1.2f}".format(killCellPercent) + '/0.log'
 
-    (predictions, truths, iterations,
-     resets, randoms, killCell) = readExperiment(experiment)
+    expResults = readExperiment(experiment)
 
     killCellAt = 10000
-    (accuracy, x) = computeAccuracy(predictions[killCellAt:],
-                                    truths[killCellAt:],
-                                    iterations[killCellAt:],
-                                    resets=resets[killCellAt:],
-                                    randoms=randoms[killCellAt:])
+    (accuracy, x) = computeAccuracy(expResults['predictions'][killCellAt:],
+                                    expResults['truths'][killCellAt:],
+                                    expResults['iterations'][killCellAt:],
+                                    resets=expResults['resets'][killCellAt:],
+                                    randoms=expResults['randoms'][killCellAt:])
     accuracyListLSTM.append(float(numpy.sum(accuracy)) / len(accuracy))
 
-  pyplot.figure()
-  pyplot.plot(KILLCELL_PERCENT, accuracyListTM, 'r-^', label="TM")
-  pyplot.plot(KILLCELL_PERCENT, accuracyListLSTM, 'b-s', label="LSTM")
-  pyplot.xlabel('Fraction of cell death ')
-  pyplot.ylabel('Accuracy after cell death')
-  pyplot.ylim([0.1, 1.05])
-  pyplot.legend()
-  pyplot.savefig('./model_performance_after_cell_death.pdf')
+  plt.figure(2)
+  plt.plot(KILLCELL_PERCENT, accuracyListTM, 'r-^', label="HTM")
+  plt.plot(KILLCELL_PERCENT, accuracyListLSTM, 'b-s', label="LSTM")
+  plt.xlabel('Fraction of cell death ')
+  plt.ylabel('Accuracy after cell death')
+  plt.ylim([0.1, 1.05])
+  plt.legend()
+  plt.savefig('./result/model_performance_after_cell_death.pdf')
 

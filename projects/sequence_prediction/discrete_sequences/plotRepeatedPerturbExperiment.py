@@ -71,23 +71,27 @@ def plotWithErrBar(x, y, error, color):
 
 
 
-def analyzeResult(x, accuracy, perturbAt=10000):
-  accuracy = movingAverage(accuracy, min(len(accuracy), 100))
-  # perform smoothing convolution
-  mask = np.ones(shape=(100,))
-  mask = mask/np.sum(mask)
-  accuracy = np.array(accuracy)
-  # extend accuracy vector to eliminate boundary effect of convolution
-  accuracy = np.concatenate((accuracy, np.ones((200, ))*accuracy[-1]))
-  accuracy = np.convolve(accuracy, mask, 'same')
-  accuracy = accuracy[:len(x)]
+def analyzeResult(x, accuracy, perturbAt=10000, movingAvg=True, smooth=True):
+  if movingAvg:
+    accuracy = movingAverage(accuracy, min(len(accuracy), 100))
+
   x = np.array(x)
+  accuracy = np.array(accuracy)
+  if smooth:
+    # perform smoothing convolution
+    mask = np.ones(shape=(100,))
+    mask = mask/np.sum(mask)
+    # extend accuracy vector to eliminate boundary effect of convolution
+    accuracy = np.concatenate((accuracy, np.ones((200, ))*accuracy[-1]))
+    accuracy = np.convolve(accuracy, mask, 'same')
+    accuracy = accuracy[:len(x)]
+
 
   perturbAtX = np.where(x > perturbAt)[0][0]
 
   finalAccuracy = accuracy[perturbAtX-len(mask)/2]
   learnTime = min(np.where(np.logical_and(accuracy > finalAccuracy * 0.99,
-                                          x < x[perturbAtX - len(mask)]))[0])
+                                          x < x[perturbAtX - len(mask)/2-1]))[0])
   learnTime = x[learnTime]
 
   finalAccuracyAfterPerturbation = accuracy[-1]
@@ -116,6 +120,8 @@ if __name__ == '__main__':
     # python suite.py --experiment="high-order-distributed-random-perturbed" -d
     expResults = {}
     expResultsAnaly = {}
+
+    # HTM
     tmResults = os.path.join("tm/results",
                              "high-order-distributed-random-perturbed")
     accuracyAll = []
@@ -134,6 +140,26 @@ if __name__ == '__main__':
     expResults[exptLabel] = {
       'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
 
+    # ELM
+    elmResults = os.path.join("elm/results",
+                             "high-order-distributed-random-perturbed")
+    accuracyAll = []
+    exptLabel = 'ELM'
+    expResultsAnaly[exptLabel] = []
+    for seed in range(10):
+      experiment = os.path.join(elmResults,
+                                "seed" + "{:.1f}".format(seed), "0.log")
+      (accuracy, x) = loadExperiment(experiment)
+      expResultsAnaly[exptLabel].append(analyzeResult(x, accuracy))
+      accuracy = movingAverage(accuracy, min(len(accuracy), 100))
+      accuracyAll.append(np.array(accuracy))
+
+    (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyAll)
+    x = x[:len(meanAccuracy)]
+    expResults[exptLabel] = {
+      'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
+
+    # LSTM
     lstmResults = os.path.join("lstm/results",
                                  "high-order-distributed-random-perturbed")
 
@@ -173,8 +199,8 @@ if __name__ == '__main__':
 
   plt.figure(1)
   fig, axs = plt.subplots(nrows=1, ncols=2, sharex=True)
-  colorList = {"HTM": "r", "LSTM-1000": "b", "LSTM-3000": "y", "LSTM-9000": "g"}
-  for model in ['HTM', 'LSTM-1000', 'LSTM-3000', 'LSTM-9000']:
+  colorList = {"HTM": "r", "ELM": "b", "LSTM-1000": "y", "LSTM-9000": "g"}
+  for model in ['HTM', 'ELM', 'LSTM-1000',  'LSTM-9000']:
     expResult = expResults[model]
 
     plt.figure(1)
@@ -184,11 +210,13 @@ if __name__ == '__main__':
 
     perturbAtX = np.where(np.array(expResult['x']) > 10000)[0][0]
 
-    result = analyzeResult(expResult['x'], expResult['meanAccuracy'])
+    result = analyzeResult(expResult['x'], expResult['meanAccuracy'], movingAvg=False)
     resultub = analyzeResult(expResult['x'],
-                             expResult['meanAccuracy']-expResult['stdAccuracy'])
+                             expResult['meanAccuracy']-expResult['stdAccuracy'],
+                             movingAvg=False)
     resultlb = analyzeResult(expResult['x'],
-                             expResult['meanAccuracy']+expResult['stdAccuracy'])
+                             expResult['meanAccuracy']+expResult['stdAccuracy'],
+                             movingAvg=False)
 
     learnTimeErr = [result['learnTime']-resultlb['learnTime'],
                     resultub['learnTime']-result['learnTime']]
@@ -207,7 +235,7 @@ if __name__ == '__main__':
                  xerr=np.mean(learnTimeErrAfterPerturb))
 
   plt.figure(1)
-  plt.legend(['HTM', 'LSTM-1000', 'LSTM-3000', 'LSTM-9000'], loc=4)
+  plt.legend(['HTM', 'ELM', 'LSTM-1000',  'LSTM-9000'], loc=4)
 
   retrainLSTMAt = np.arange(start=1000, stop=20000, step=1000)
   for line in retrainLSTMAt:
@@ -215,15 +243,18 @@ if __name__ == '__main__':
 
   plt.axvline(10000, color='black')
   plt.ylim([-0.05, 1.05])
-  plt.savefig('./result/model_performance_high_order_prediction.pdf')
+  plt.xlim([0, 20000])
 
   for ax in axs:
-    ax.legend(['HTM', 'LSTM-1000', 'LSTM-3000', 'LSTM-9000'], loc=4)
+    ax.legend(['HTM', 'ELM', 'LSTM-1000',  'LSTM-9000'], loc=4)
     ax.set_xlabel(' Number of samples required to achieve final accuracy')
     ax.set_ylabel(' Final accuracy ')
-    ax.set_ylim([0.6, 1.05])
+    ax.set_ylim([0.5, 1.05])
   axs[0].set_title("Before modification")
   axs[1].set_title("After modification")
+
+  plt.figure(1)
+  plt.savefig('./result/model_performance_high_order_prediction.pdf')
   plt.figure(2)
   plt.savefig('./result/model_performance_summary_high_order_prediction.pdf')
   #
