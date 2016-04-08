@@ -24,15 +24,15 @@
 Plot sequence prediction & perturbation experiment result
 """
 import os
-from matplotlib import pyplot
+from matplotlib import pyplot as plt
 import matplotlib as mpl
 
 from plot import plotAccuracy
 from plot import computeAccuracy
 from plot import readExperiment
 mpl.rcParams['pdf.fonttype'] = 42
-pyplot.ion()
-pyplot.close('all')
+plt.ion()
+plt.close('all')
 
 
 if __name__ == '__main__':
@@ -42,11 +42,17 @@ if __name__ == '__main__':
                                   "high-order-distributed-random-perturbed",
                                   "0.log"))
 
-  for window in [1000.0, 3000.0, 9000.0]:
+  for window in [1000.0, 9000.0]:
     experiments.append(os.path.join("lstm/results",
                                 "high-order-distributed-random-perturbed",
-                                "learning_window{:6.1f}".format(window),
+                                "seed0.0learning_window{:6.1f}".format(window),
                                 "0.log"))
+
+
+  experiments.append(os.path.join("elm/results",
+                                  "high-order-distributed-random-perturbed",
+                                  "seed0.0",
+                                  "0.log"))
 
   for experiment in experiments:
     data = readExperiment(experiment)
@@ -65,9 +71,11 @@ if __name__ == '__main__':
                  label='NoiseExperiment',
                  hideTraining=True,
                  lineSize=1.0)
-    # pyplot.xlim([1200, 1750])
-    pyplot.xlabel('# of sequences seen')
+    # plt.xlim([1200, 1750])
+    plt.xlabel('# of sequences seen')
 
-  pyplot.axvline(x=10000, color='k')
-  pyplot.legend(['HTM', 'LSTM-1000', 'LSTM-3000', 'LSTM-9000'], loc=4)
-  pyplot.savefig('./result/model_performance_high_order_prediction.pdf')
+  plt.axvline(x=10000, color='k')
+  plt.legend(['HTM', 'LSTM-1000', 'LSTM-9000', 'Online-ELM'], loc=4)
+  plt.savefig('./result/model_performance_high_order_prediction.pdf')
+
+
