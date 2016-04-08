@@ -100,7 +100,7 @@ def generateSequencesNumber(maxLength, seed):
         # all possible transitions
         transitions = graph[node]
 
-        i = random.randint(0, len(transitions[0]))
+        i = random.randint(0, len(transitions[0])-1)
         inchars.append(transitions[0][i])
         outchars.append(transitions[0])
         node = transitions[0][i]

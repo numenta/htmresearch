@@ -31,6 +31,7 @@ from plot import readExperiment
 
 mpl.rcParams['pdf.fonttype'] = 42
 plt.ion()
+plt.close('all')
 
 if __name__ == '__main__':
 
@@ -38,8 +39,9 @@ if __name__ == '__main__':
   KILLCELL_PERCENT = list(numpy.arange(7) / 10.0)
   accuracyListTM = []
   accuracyListLSTM = []
-
+  accuracyListELM = []
   for killCellPercent in KILLCELL_PERCENT:
+    # HTM experiments
     experiment = os.path.join(outdir, "kill_cell_percent{:1.1f}".format(
       killCellPercent)) + '/0.log'
 
@@ -53,6 +55,7 @@ if __name__ == '__main__':
                                     randoms=expResults['randoms'][killCellAt:])
     accuracyListTM.append(float(numpy.sum(accuracy)) / len(accuracy))
 
+    # LSTM experiments
     experiment = 'lstm/results/high-order-distributed-random-kill-cell/' \
                  'kill_cell_percent' + "{:1.2f}".format(killCellPercent) + '/0.log'
 
@@ -66,9 +69,24 @@ if __name__ == '__main__':
                                     randoms=expResults['randoms'][killCellAt:])
     accuracyListLSTM.append(float(numpy.sum(accuracy)) / len(accuracy))
 
+    # ELM
+    experiment = 'elm/results/high-order-distributed-random-kill-cell/' \
+                 'kill_cell_percent' + "{:1.2f}".format(killCellPercent) + '/0.log'
+
+    expResults = readExperiment(experiment)
+
+    killCellAt = 20000
+    (accuracy, x) = computeAccuracy(expResults['predictions'][killCellAt:],
+                                    expResults['truths'][killCellAt:],
+                                    expResults['iterations'][killCellAt:],
+                                    resets=expResults['resets'][killCellAt:],
+                                    randoms=expResults['randoms'][killCellAt:])
+    accuracyListELM.append(float(numpy.sum(accuracy)) / len(accuracy))
+
   plt.figure(2)
   plt.plot(KILLCELL_PERCENT, accuracyListTM, 'r-^', label="HTM")
   plt.plot(KILLCELL_PERCENT, accuracyListLSTM, 'b-s', label="LSTM")
+  plt.plot(KILLCELL_PERCENT, accuracyListELM, 'g-s', label="ELM")
   plt.xlabel('Fraction of cell death ')
   plt.ylabel('Accuracy after cell death')
   plt.ylim([0.1, 1.05])
