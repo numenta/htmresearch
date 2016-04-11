@@ -39,7 +39,7 @@ plt.ion()
 plt.close('all')
 
 window = 960
-skipTrain = 6000
+skipTrain = 10000
 figPath = './result/'
 
 def getDatetimeAxis():
@@ -119,7 +119,7 @@ if __name__ == "__main__":
                          label='TM')
 
 
-  (esnTruth, esnPrediction) = loadExperimentResult('./prediction/' + dataSet + '_ESN_pred.csv')
+  (esnTruth, esnPrediction) = loadExperimentResult('./prediction/' + dataSet + '_esn_online_pred.csv')
 
   squareDeviation = computeSquareDeviation(esnPrediction, esnTruth)
   squareDeviation[:skipTrain] = None
@@ -323,6 +323,41 @@ if __name__ == "__main__":
 
   plt.savefig(figPath + 'model_performance_summary_alternative.pdf')
 
+
+
+  fig, ax = plt.subplots(nrows=1, ncols=3)
+  inds = np.arange(6)
+  ax1 = ax[0]
+  width = 0.5
+  ax1.bar(inds, [nrmseELMmean,
+                 nrmseESNmean,
+                 nrmseLSTM1000mean,
+                 nrmseLSTM3000mean,
+                 nrmseLSTM6000mean,
+                 nrmseTMmean], width=width)
+  ax1.set_xticks(inds+width/2)
+  ax1.set_ylabel('NRMSE')
+  ax1.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
+  ax1.set_xticklabels( ('ELM',  'ESN',
+                        'LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM') )
+  for tick in ax1.xaxis.get_major_ticks():
+    tick.label.set_rotation('vertical')
+
+  ax3 = ax[1]
+  ax3.bar(inds, [altMAPEELM,
+                 altMAPEESN,
+                 altMAPELSTM1000,
+                 altMAPELSTM3000,
+                 altMAPELSTM6000,
+                 altMAPETM], width=width, color='b')
+  ax3.set_xticks(inds+width/2)
+  ax3.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
+  ax3.set_ylabel('MAPE')
+  ax3.set_xticklabels( ('ELM', 'ESN',
+                        'LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM') )
+  for tick in ax3.xaxis.get_major_ticks():
+    tick.label.set_rotation('vertical')
+  plt.savefig(figPath + 'model_performance_summary_neural_networks.pdf')
 
   ### Figure 6:
   # fig = plt.figure(6)
