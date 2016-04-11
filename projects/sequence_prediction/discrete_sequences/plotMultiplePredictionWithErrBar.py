@@ -85,12 +85,15 @@ if __name__ == '__main__':
     tmResults = os.path.join("tm/results",
                              "high-order-distributed-random-multiple-predictions")
     lstmResults = os.path.join("lstm/results",
-                                 "high-order-distributed-random-multiple-predictions")
+                               "high-order-distributed-random-multiple-predictions")
+    elmResults = os.path.join("elm/results",
+                              "high-order-distributed-random-multiple-predictions")
 
     for numPrediction in [2, 4]:
       accuracyTM = []
       accuracyLSTM = []
-      for seed in range(20):
+      accuracyELM = []
+      for seed in range(10):
         experiment = os.path.join(tmResults,
                                   "num_predictions{:.1f}seed{:.1f}".format(numPrediction, seed),
                                   "0.log")
@@ -103,15 +106,24 @@ if __name__ == '__main__':
         (accuracy, x) = loadExperiment(experiment)
         accuracyLSTM.append(np.array(accuracy))
 
+        experiment = os.path.join(elmResults,
+                                  "seed{:.1f}num_predictions{:.1f}".format(seed, numPrediction),
+                                  "0.log")
+        (accuracy, x) = loadExperiment(experiment)
+        accuracyELM.append(np.array(accuracy))
+
       (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyTM)
-      expResult = {'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
+      expResult = {'x': x[:len(meanAccuracy)], 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
       expResults['HTMNumPrediction{:.0f}'.format(numPrediction)] = expResult
 
 
       (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyLSTM)
-      expResult = {'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
+      expResult = {'x': x[:len(meanAccuracy)], 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
       expResults['LSTMNumPrediction{:.0f}'.format(numPrediction)] = expResult
 
+      (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyELM)
+      expResult = {'x': x[:len(meanAccuracy)], 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
+      expResults['ELMNumPrediction{:.0f}'.format(numPrediction)] = expResult
 
     output = open('./result/MultiPredictionExperiment.pkl', 'wb')
     pickle.dump(expResults, output, -1)
@@ -123,26 +135,49 @@ if __name__ == '__main__':
   input = open('./result/MultiPredictionExperiment.pkl', 'rb')
   expResults = pickle.load(input)
 
-  plt.figure()
-  colorList = {"HTMNumPrediction2": "r",
-               "LSTMNumPrediction2": "b",
-               "HTMNumPrediction4": "y",
-               "LSTMNumPrediction4": "g"}
 
-  for model in ['HTMNumPrediction2', 'LSTMNumPrediction2', 'HTMNumPrediction4', 'LSTMNumPrediction4']:
+  colorList = {"HTMNumPrediction2": "r",
+               "LSTMNumPrediction2": "g",
+               "ELMNumPrediction2": "b",
+               "HTMNumPrediction4": "r",
+               "LSTMNumPrediction4": "g",
+               "ELMNumPrediction4": "b"}
+
+  modelList = ['HTMNumPrediction2',
+               'LSTMNumPrediction2',
+               'ELMNumPrediction2',
+               'HTMNumPrediction4',
+               'LSTMNumPrediction4',
+               'ELMNumPrediction4']
+  plt.figure(1)
+  for model in ['HTMNumPrediction2',
+               'LSTMNumPrediction2',
+               'ELMNumPrediction2']:
     expResult = expResults[model]
     plotWithErrBar(expResult['x'],
                    expResult['meanAccuracy'], expResult['stdAccuracy'],
                    colorList[model])
+  plt.legend(['HTM', 'LSTM', 'ELM'], loc=4)
 
-  plt.legend(['HTM: 2 predictions',
-              'LSTM: 2 predictions',
-              'HTM: 4 predictions',
-              'LSTM: 4 predictions'], loc=4)
+  plt.figure(2)
+  for model in ['HTMNumPrediction4',
+               'LSTMNumPrediction4',
+               'ELMNumPrediction4']:
+    expResult = expResults[model]
+    plotWithErrBar(expResult['x'],
+                   expResult['meanAccuracy'], expResult['stdAccuracy'],
+                   colorList[model])
+  plt.legend(['HTM', 'LSTM', 'ELM'], loc=4)
+  for fig in [1, 2]:
+    plt.figure(fig)
+    retrainLSTMAt = np.arange(start=1000, stop=12000, step=1000)
+    for line in retrainLSTMAt:
+      plt.axvline(line, color='orange')
+    plt.ylim([-0.05, 1.05])
+    # plt.xlim([0, 11000])
 
-  retrainLSTMAt = np.arange(start=1000, stop=12000, step=1000)
-  for line in retrainLSTMAt:
-    plt.axvline(line, color='orange')
+  plt.figure(1)
+  plt.savefig('./result/model_performance_2_prediction_errbar.pdf')
 
-  plt.ylim([-0.05, 1.05])
-  plt.savefig('./result/model_performance_multiple_prediction_errbar.pdf')
+  plt.figure(2)
+  plt.savefig('./result/model_performance_4_prediction_errbar.pdf')
