@@ -290,7 +290,7 @@ class Suite(PyExperimentSuite):
 
         history = self.window(self.history, NT)
 
-        for i in range(NT):
+        for i in range(params['num_lags'], NT):
           targets[i, :] = self.encoder.encode(history[i])
 
         for lags in xrange(params['num_lags']):
@@ -321,6 +321,9 @@ class Suite(PyExperimentSuite):
       currentFeatures[0, lags*n:(lags+1)*n] = self.encoder.encode(self.history[-1-lags])
 
     output = self.net.predict(currentFeatures)
+    # print self.net.beta.shape
+    # print output.shape
+    # print params['num_predictions']
     predictions = self.encoder.classify(output[0],
                                         num=params['num_predictions'])
 
@@ -335,6 +338,7 @@ class Suite(PyExperimentSuite):
         iteration, currentElement, predictions, target, correct)
 
       return {"current": currentElement,
+              "reset": self.resets[-1],
               "random": self.randoms[-1],
               "predictions": predictions,
               "truth": target,

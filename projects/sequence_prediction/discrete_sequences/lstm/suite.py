@@ -352,7 +352,7 @@ class Suite(PyExperimentSuite):
       self.killCells(params['kill_cell_percent'])
 
     # reset compute counter
-    if iteration % params['compute_every'] == 0:
+    if iteration > 0 and iteration % params['compute_every'] == 0:
       self.computeCounter = params['compute_for']
 
     if self.computeCounter == 0 or iteration < params['compute_after']:
@@ -392,7 +392,8 @@ class Suite(PyExperimentSuite):
           print "Reset LSTM at iteration {}".format(iteration)
         self.net.reset()
 
-      return {"current": currentElement,
+      return {"iteration": iteration,
+              "current": currentElement,
               "reset": self.resets[-1],
               "random": self.randoms[-1],
               "train": train,
