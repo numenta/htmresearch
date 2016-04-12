@@ -21,7 +21,7 @@
 # ----------------------------------------------------------------------
 
 import numpy as np
-
+from numpy.linalg import pinv
 """
 Implementation of the online-sequential extreme learning machine
 
@@ -56,7 +56,7 @@ class OSELM(object):
     # bias of hidden units
     self.bias = np.random.random((1, self.numHiddenNeurons)) * 2 - 1
     # hidden to output layer connection
-    self.beta = np.random.random((self.numHiddenNeurons, self.inputs))
+    self.beta = np.random.random((self.numHiddenNeurons, self.outputs))
 
     # auxiliary matrix used for sequential learning
     self.M = None
@@ -81,13 +81,14 @@ class OSELM(object):
     Step 1: Initialization phase
     :param features feature matrix with dimension (numSamples, numInputs)
     :param targets target matrix with dimension (numSamples, numOutputs)
-    :return:
     """
     assert features.shape[0] == targets.shape[0]
+    assert features.shape[1] == self.inputs
+    assert targets.shape[1] == self.outputs
 
     # randomly initialize the input->hidden connections
     self.inputWeights = np.random.random((self.numHiddenNeurons, self.inputs))
-    self.inputWeights = self.inputWeights * 2 -1
+    self.inputWeights = self.inputWeights * 2 - 1
 
     if self.activationFunction is "sig":
       self.bias = np.random.random((1, self.numHiddenNeurons)) * 2 - 1
@@ -96,8 +97,8 @@ class OSELM(object):
       raise NotImplementedError
 
     H0 = self.calculateHiddenLayerActivation(features)
-    self.M = np.linalg.pinv(np.dot(np.transpose(H0), H0))
-    self.beta = np.dot(np.linalg.pinv(H0), targets)
+    self.M = pinv(np.dot(np.transpose(H0), H0))
+    self.beta = np.dot(pinv(H0), targets)
 
 
   def train(self, features, targets):
@@ -111,13 +112,17 @@ class OSELM(object):
 
     H = self.calculateHiddenLayerActivation(features)
     Ht = np.transpose(H)
-    self.M -= np.dot(self.M,
-                     np.dot(Ht, np.dot(
-        np.linalg.pinv(np.eye(numSamples) + np.dot(H, np.dot(self.M, Ht))),
-        np.dot(H, self.M))))
+    try:
+      self.M -= np.dot(self.M,
+                       np.dot(Ht, np.dot(
+          pinv(np.eye(numSamples) + np.dot(H, np.dot(self.M, Ht))),
+          np.dot(H, self.M))))
 
-    self.beta += np.dot(self.M, np.dot(Ht, targets - np.dot(H, self.beta)))
-
+      self.beta += np.dot(self.M, np.dot(Ht, targets - np.dot(H, self.beta)))
+    except np.linalg.linalg.LinAlgError:
+      print "SVD not converge, ignore the current training cycle"
+    # else:
+    #   raise RuntimeError
 
   def predict(self, features):
     """

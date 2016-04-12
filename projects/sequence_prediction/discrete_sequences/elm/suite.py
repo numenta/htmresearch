@@ -24,13 +24,12 @@ import random
 import numbers
 import numpy
 
-from scipy import reshape, dot, outer
+from nupic.encoders.sdrcategory import SDRCategoryEncoder
 
 from expsuite import PyExperimentSuite
 from htmresearch.support.sequence_prediction_dataset import ReberDataset
 from htmresearch.support.sequence_prediction_dataset import SimpleDataset
 from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
-
 from htmresearch.algorithms.online_extreme_learning_machine import OSELM
 
 def initializeELMnet(nDimInput, nDimOutput, numNeurons=10):
@@ -43,6 +42,23 @@ def initializeELMnet(nDimInput, nDimOutput, numNeurons=10):
 
 
 
+def getEncoderMapping(encoder, numSymbols):
+  mapping = dict()
+
+  for i in range(numSymbols):
+    mapping[i] = set(encoder.encode(i).nonzero()[0])
+
+  return mapping
+
+
+
+def classify(mapping, activeColumns, numPredictions):
+  scores = [(len(encoding & activeColumns), i) for i, encoding in mapping.iteritems()]
+  random.shuffle(scores)  # break ties randomly
+  return [i for _, i in sorted(scores, reverse=True)[:numPredictions]]
+
+
+
 class Encoder(object):
   def __init__(self, num):
     self.num = num
@@ -52,7 +68,7 @@ class Encoder(object):
     pass
 
 
-  def randomSymbol(self):
+  def randomSymbol(self, seed):
     pass
 
 
@@ -90,19 +106,15 @@ class DistributedEncoder(Encoder):
   """
 
 
-  def __init__(self, num, maxValue=None, minValue=None,
-               classifyWithRandom=None):
+  def __init__(self, num, numNonRandom, maxValue=None, minValue=None):
     super(DistributedEncoder, self).__init__(num)
 
     if maxValue is None or minValue is None:
       raise "maxValue and minValue are required"
 
-    if classifyWithRandom is None:
-      raise "classifyWithRandom is required"
-
+    self.numNonRandom = numNonRandom
     self.maxValue = maxValue
     self.minValue = minValue
-    self.classifyWithRandom = classifyWithRandom
     self.seed = 42
     self.encodings = {}
 
@@ -120,7 +132,7 @@ class DistributedEncoder(Encoder):
 
   def randomSymbol(self, seed):
     random.seed(seed)
-    return random.randrange(self.num, self.num+50000)
+    return random.randrange(self.numNonRandom, self.numNonRandom+50000)
 
 
   @staticmethod
@@ -132,13 +144,88 @@ class DistributedEncoder(Encoder):
 
   def classify(self, encoding, num=1):
     encodings = {k: v for (k, v) in self.encodings.iteritems() if
-                 k <= self.num or self.classifyWithRandom}
+                 k <= self.numNonRandom}
 
     if len(encodings) == 0:
       return []
 
     idx = self.closest(encoding, encodings.values(), num)
     return [encodings.keys()[i] for i in idx]
+
+
+
+class SparseDistributedEncoder(Encoder):
+  """
+  Encode each element as SDR
+  """
+
+
+  def __init__(self, num, numNonRandom, numActiveBits):
+
+    self.num = num
+    self.numNonRandom = numNonRandom
+    self.seed = 42
+    self.numActiveBits = numActiveBits
+    self.encodings = {}
+
+
+  def encode(self, symbol):
+    if symbol in self.encodings:
+      return self.encodings[symbol]
+
+    goodEncoding = False
+
+    while goodEncoding is False:
+      bitIndices = range(self.num)
+      numpy.random.shuffle(bitIndices)
+      encoding = numpy.zeros((self.num, ))
+      encoding[bitIndices[:self.numActiveBits]] = 1
+
+      goodEncoding = True
+      for (_, sdr) in self.encodings.iteritems():
+        overlap = len(numpy.logical_and(encoding, sdr))
+        if overlap == self.numActiveBits:
+          goodEncoding = False
+
+    self.encodings[symbol] = encoding
+
+    return encoding
+
+
+  def randomSymbol(self, seed):
+    random.seed(seed)
+    return random.randrange(self.numNonRandom, self.numNonRandom+50000)
+
+
+  @staticmethod
+  def closest(node, nodes, num):
+    dist_2 = numpy.zeros((len(nodes), ))
+    for i in range(len(nodes)):
+      dist_2[i] = numpy.sum((nodes[i] - node) ** 2)
+    return dist_2.flatten().argsort()[:num]
+
+
+  def classify(self, encoding, num=1):
+    encodings = {k: v for (k, v) in self.encodings.iteritems() if
+                 k <= self.numNonRandom}
+
+    if len(encodings) == 0:
+      return []
+
+    idx = self.closest(encoding, encodings.values(), num)
+    return [encodings.keys()[i] for i in idx]
+
+  # def classify(self, encoding, num=1):
+  #   encodings = {k: v for (k, v) in self.encodings.iteritems() if
+  #                k <= self.num}
+  #
+  #   if len(encodings) == 0:
+  #     return []
+  #
+  #   scores = [(sum(numpy.logical_and(encoding, symbols)), i)
+  #             for i, symbols in self.encodings.iteritems()]
+  #
+  #   return [i for _, i in sorted(scores, reverse=True)[:num]]
 
 
 
@@ -150,10 +237,13 @@ class Suite(PyExperimentSuite):
       self.encoder = BasicEncoder(params['encoding_num'])
     elif params['encoding'] == 'distributed':
       self.encoder = DistributedEncoder(params['encoding_num'],
+                                        params['encoding_num_non_random'],
                                         maxValue=params['encoding_max'],
-                                        minValue=params['encoding_min'],
-                                        classifyWithRandom=params[
-                                          'classify_with_random'])
+                                        minValue=params['encoding_min'])
+    elif params['encoding'] == 'sparse-distributed':
+      self.encoder = SparseDistributedEncoder(params['encoding_num'],
+                                              params['encoding_num_non_random'],
+                                              params['encoding_active_bits'])
     else:
       raise Exception("Encoder not found")
 
