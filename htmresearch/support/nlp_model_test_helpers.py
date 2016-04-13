@@ -67,7 +67,7 @@ htmConfigs = [
 ]
 
 # Some values of k we know work well.
-kValues = { "keywords": 21, "docfp": 3}
+kValues = { "keywords": 21, "docfp": 1}
 
 nlpModelAccuracies = {
   "hello": {
@@ -87,7 +87,7 @@ nlpModelAccuracies = {
     "keywords": "passable",
   },
   "simple": {
-    "docfp": 99.7, ## CioDocumentFingerprint gets 100.0
+    "docfp": 100.0,
     "cioword": 100.0,
     "HTM_sensor_knn": 66.2,
     "HTM_sensor_simple_tp_knn": 99.7,
