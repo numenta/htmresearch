@@ -109,7 +109,8 @@ def trainModel(model, trainingData, labelRefs, verbosity=0):
     for (document, labels, docId) in tqdm(trainingData):
       if verbosity > 0:
         docStr = unicode(document, errors="ignore")
-        printTemplate.add_row([docId, wrapper.fill(docStr), labelRefs[labels[0]]])
+        printTemplate.add_row(
+          [docId, wrapper.fill(docStr), labelRefs[labels[0]]])
       model.trainDocument(document, labels, docId)
     if verbosity > 0:
       print printTemplate
