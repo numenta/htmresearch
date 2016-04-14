@@ -79,26 +79,74 @@ extern void trainDendrites2(int k, int nSynapses,
            Random &r);
 
 
-// Run the whole MNIST example.
-void runMNIST(int nSynapses, int trainingThreshold, Real samplingFactor)
+// Run the whole MNIST example using brute force KNN
+void runMNISTKNN(std::vector< SparseMatrix01<UInt, Int> * > &trainingSet,
+              std::vector< SparseMatrix01<UInt, Int> * > &testSet)
 {
+  KNNClassifier knnModel;
+
   //////////////////////////////////////////////////////
   //
-  // Initialize the sparse matrix data structures. Our classifier will be a set
-  // of dendrites. dendrites[k] will contain a set of dendrites trained on
-  // class k.
-  std::vector< SparseMatrix01<UInt, Int> * > trainingSet;
-  std::vector< SparseMatrix01<UInt, Int> * > testSet;
+  // Create trained model for each category, by randomly sampling from
+  // training images.
+  cout << "Training KNN model.\n";
+  knnModel.trainDataset(trainingSet);
 
-  for (int i= 0; i<10; i++)
-  {
-    trainingSet.push_back( new SparseMatrix01<UInt, Int>(28*28, 1));
-    testSet.push_back( new SparseMatrix01<UInt, Int>(28*28, 1));
-  }
+  cout << "Testing KNN model on training set\n";
+  knnModel.classifyDataset(1, trainingSet);
 
+  cout << "\nTesting KNN model on test set\n";
+  knnModel.classifyDataset(1, testSet);
+}
+
+
+// Run the whole MNIST example.
+void runMNIST(std::vector< SparseMatrix01<UInt, Int> * > &trainingSet,
+              std::vector< SparseMatrix01<UInt, Int> * > &testSet,
+              int nSynapses, int trainingThreshold)
+{
   DendriteClassifier1 model1(1000);
   DendriteClassifier model2;
   KNNClassifier knnModel;
+
+  //////////////////////////////////////////////////////
+  //
+  // Create trained model for each category, by randomly sampling from
+  // training images.
+  cout << "Training dendrite model1 with " << nSynapses
+       << " synapses per dendrite.\n";
+  model1.trainDataset(nSynapses, trainingSet);
+  cout << "Training dendrite model2 with " << nSynapses
+       << " synapses per dendrite.\n";
+  model2.trainDataset(nSynapses, trainingThreshold, trainingSet);
+
+
+  //////////////////////////////////////////////////////
+  //
+  // Classify the data sets and compute accuracy
+  cout << "Running classification with a bunch of different thresholds.\n";
+  for (int threshold = 36; threshold <= 40; threshold+= 2)
+  {
+    cout << "\nUsing threshold = " << threshold << "\n";
+    cout << "Training set using model1:\n";
+    model1.classifyDataset(threshold, trainingSet);
+    cout << "Training set using model2:\n";
+    model2.classifyDataset(threshold, trainingSet);
+
+    cout << "\nTest set: \n";
+//    model2.classifyDataset(threshold, testSet);
+    model1.classifyDataset(threshold, testSet);
+  }
+
+}
+
+
+// Run the trials!  Currently need to hard code the specific trial you are
+// about to run.
+int main(int argc, char * argv[])
+{
+  // Experiment parameters
+  Real samplingFactor = 0.1;
 
   //////////////////////////////////////////////////////
   //
@@ -107,6 +155,15 @@ void runMNIST(int nSynapses, int trainingThreshold, Real samplingFactor)
     5923, 6742, 5958, 6131, 5842, 5421, 5918, 6265, 5851, 5949
   };
   int testImages[] = { 980, 1135, 1032, 1010, 982, 892, 958, 1028, 974, 1009 };
+
+  std::vector< SparseMatrix01<UInt, Int> * > trainingSet;
+  std::vector< SparseMatrix01<UInt, Int> * > testSet;
+
+  for (int i= 0; i<10; i++)
+  {
+    trainingSet.push_back( new SparseMatrix01<UInt, Int>(28*28, 1));
+    testSet.push_back( new SparseMatrix01<UInt, Int>(28*28, 1));
+  }
 
   int numImages = readImages(trainingImages,
              "../image_test/mnist_extraction_source/training/%d", trainingSet,
@@ -118,49 +175,7 @@ void runMNIST(int nSynapses, int trainingThreshold, Real samplingFactor)
   cout << "Read in " << numTestImages << " total test images\n";
 
 
-  //////////////////////////////////////////////////////
-  //
-  // Create trained model for each category, by randomly sampling from
-  // training images.
-  cout << "Training KNN model.\n";
-  knnModel.trainDataset(trainingSet);
-//  cout << "Training dendrite model1 with " << nSynapses
-//       << " synapses per dendrite.\n";
-//  model1.trainDataset(nSynapses, trainingSet);
-//  cout << "Training dendrite model2 with " << nSynapses
-//       << " synapses per dendrite.\n";
-//  model2.trainDataset(nSynapses, trainingThreshold, trainingSet);
-//
-//
-//  //////////////////////////////////////////////////////
-//  //
-//  // Classify the data sets and compute accuracy
-//  cout << "Running classification with a bunch of different thresholds.\n";
-//  for (int threshold = 36; threshold <= 40; threshold+= 2)
-//  {
-//    cout << "\nUsing threshold = " << threshold << "\n";
-//    cout << "Training set using model1:\n";
-//    model1.classifyDataset(threshold, trainingSet);
-//    cout << "Training set using model2:\n";
-//    model2.classifyDataset(threshold, trainingSet);
-//
-//    cout << "\nTest set: \n";
-////    model2.classifyDataset(threshold, testSet);
-//    model1.classifyDataset(threshold, testSet);
-//  }
-
-  cout << "Testing KNN model on training set\n";
-  knnModel.classifyDataset(1, trainingSet);
-
-  cout << "\nTesting KNN model on test set\n";
-  knnModel.classifyDataset(1, testSet);
-}
-
-
-// Run the trials!  Currently need to hard code the specific trial you are
-// about to run.
-int main(int argc, char * argv[])
-{
-  runMNIST(40, 38, 1.0);
+  runMNISTKNN(trainingSet, testSet);
+//  runMNIST(trainingSet, testSet, 40, 38);
 }
 
