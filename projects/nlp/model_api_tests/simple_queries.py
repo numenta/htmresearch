@@ -25,9 +25,9 @@ Script to run the "simple queries" NLP models API test.
 
 Example invocations:
 
-python simple_query.py -m keywords --dataPath FILE --numLabels 3
-python simple_query.py -m docfp --dataPath FILE -v 0
-python simple_query.py -c ../data/network_configs/sensor_tm_knn.json \
+python simple_queries.py -m keywords --dataPath FILE --numLabels 3
+python simple_queries.py -m docfp --dataPath FILE -v 0
+python simple_queries.py -c ../data/network_configs/sensor_tm_knn.json \
   --dataPath FILE
   --retina en_associative_64_univ
 
@@ -154,7 +154,7 @@ def run(args):
       print
       model.dumpProfile()
 
-  resultsCheck(args.modelName)
+  resultsCheck(name)
 
 
 

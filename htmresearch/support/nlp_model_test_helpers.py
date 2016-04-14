@@ -25,14 +25,14 @@ Methods and data for running NLP model API tests. The intent here is
 to ensure and changes to the models does not decrease their classification
 accuracies (see nlpModelAccuracies below). Three tests are supported:
 
-  hello: Very simple, hello world classification test. There are two categories
-    that can be discriminated using bag of words. The training set is 8 docs,
-    and the test set is an additional 2 (i.e. 10 total) -- first is an
-    incorrectly labeled version of a training sample, second is semantically
-    similar to one of the training samples.
-  query: Qualitative test where we query a trained model to see which data
-    samples are the most and least similar.
-  simple: Less simple classification test. The dataset used here must be
+  hello classification: Very simple, hello world classification test. There are
+    two categories that can be discriminated using bag of words. The training
+    set is 8 docs, and the test set is an additional 2 (i.e. 10 total) -- first
+    is an incorrectly labeled version of a training sample, second is
+    semantically similar to one of the training samples.
+  simple queries: Qualitative test where we query a trained model to see which
+    data samples are the most and least similar.
+  simple labels: Less simple classification test. The dataset used here must be
     specified in the command line args.
 
 """
@@ -81,8 +81,8 @@ nlpModelAccuracies = {
     "docfp": "good but not great",
     "cioword": "passable",
     "HTM_sensor_knn": "passable",
-    "HTM_sensor_simple_tp_knn": None,
-    "HTM_sensor_tm_knn": None,
+    "HTM_sensor_simple_tp_knn": "idk, no results yet!",
+    "HTM_sensor_tm_knn": "idk, no results yet!",
     "keywords": "passable",
   },
   "simple_labels": {
