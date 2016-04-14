@@ -173,7 +173,7 @@ if __name__ == "__main__":
                       type=float,
                       help="Factor by which to scale the Cortical.io retina.")
   parser.add_argument("--retina",
-                      default="en_associative_64_univ",
+                      default="en_associative",
                       type=str,
                       help="Name of Cortical.io retina.")
   parser.add_argument("--apiKey",
