@@ -45,11 +45,12 @@ using namespace std;
 using namespace nupic;
 
 
-class DendriteClassifier {
+class DendriteClassifier1 {
   public:
 
-    DendriteClassifier(int seed=42, int numClasses=10, int inputSize=784);
-    virtual ~DendriteClassifier();
+    DendriteClassifier1(int nPrototypesPerClass=10000,
+              int seed=42, int numClasses=10, int inputSize=784);
+    virtual ~DendriteClassifier1();
 
     // Go through all training examples for each class. For each class, create
     // a set of dendrites that randomly sample from that class.
@@ -89,6 +90,9 @@ class DendriteClassifier {
     Random rng_;
     std::vector< SparseMatrix01<UInt, Int> * > dendrites_;
 
+    void createRandomlySampledDendrites(int k, int nSynapses,
+           std::vector< SparseMatrix01<UInt, Int> * > &trainingSet);
+
     template <typename ChoicesIter>  void sample(SparseMatrix01<UInt, Int> *sm,
           UInt32 row, ChoicesIter choices, UInt32 nChoices);
 
@@ -96,65 +100,6 @@ class DendriteClassifier {
      void deleteDendrites_();
 
 
-    //////////////////////////////////////////////////////
-    //
-    // Classification scheme 2
-    //
-    // A second KNN like classifier using dendrites:
-    //
-    // Step 1. Choose nPrototypesPerClass_ random training examples from class k
-    // with replacement. For each example, create a dendrite that randomly
-    // samples from that image.
-    //
-    // Step 2. Then run each image in training set through the dendrites and
-    // record the vector of dendrites that are produced along with their
-    // category. The set of dendrites plus the stored patterns comprise the
-    // trained model.
-    //
-    // Step 3. For each test image, run the image through the dendrites, check
-    // the set of active dendrites against the stored set by doing a dot
-    // product. Choose category corresponding to highest dot product.
-
-    // Go through all training examples for each class. For each class, create
-    // a set of dendrites that randomly sample from that class.
-    void trainDatasetKNN(int nSynapses, int threshold,
-          std::vector< SparseMatrix01<UInt, Int> * > &trainingSet);
-
-
-    // Classify the dataset using a trained dendrite model and the
-    // given threshold, and report accuracy
-    void classifyDatasetKNN(int threshold,
-               std::vector< SparseMatrix01<UInt, Int> * > &dataSet);
-
-
-
-    void createRandomlySampledDendrites(int k, int nSynapses,
-           std::vector< SparseMatrix01<UInt, Int> * > &trainingSet);
-
-
-    void trainKNN(int threshold,
-               std::vector< SparseMatrix01<UInt, Int> * > &trainingSet);
-
-
-    // Given the p'th pattern in the dataSet, run inference using all the
-    // dendrites and the given threshold. inferenceNonZeros will contain the
-    // concatenated list of the responses from all the dendrites.
-    void inferenceForKNN(int p, int threshold,
-            SparseMatrix01<UInt, Int> *dataSet,
-            vector<UInt> &inferenceNonZeros);
-
-
-    // For the p'th pattern in the dataset, run the image through the dendrites,
-    // check the set of active dendrites against the stored set by doing a dot
-    // product. Choose category corresponding to highest dot product.
-    int classifyPatternKNN(int p, int threshold,
-               SparseMatrix01<UInt, Int> *dataSet);
-
-    // If true, we will use the KNN based training/inference
-    bool usingKNN_;
-
     // The number of dendrite prototypes per class
     int nPrototypesPerClass_;
-    SparseMatrix01<UInt, Int> *knn_;
-    vector<UInt> knn_categories_;
 };

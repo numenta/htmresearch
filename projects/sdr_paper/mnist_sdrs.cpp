@@ -47,7 +47,9 @@
 #include <nupic/types/Types.hpp>
 #include <nupic/utils/Random.hpp>
 
-#include "DendriteClassifier.hpp"
+#include "dendrite_classifier1.hpp"
+#include "dendrite_classifier2.hpp"
+#include "knn_classifier.hpp"
 
 using namespace std;
 using namespace nupic;
@@ -58,7 +60,8 @@ using namespace nupic;
 
 // Read test/training images from top-level directory and return number read
 extern int readImages(int *numImages, const char *path,
-                std::vector< SparseMatrix01<UInt, Int> * > &images);
+                std::vector< SparseMatrix01<UInt, Int> * > &images,
+                Real samplingFactor = 1.0);
 
 extern void classifyDataset(
            int threshold,
@@ -75,8 +78,9 @@ extern void trainDendrites2(int k, int nSynapses,
            std::vector< SparseMatrix01<UInt, Int> * > &dendrites,
            Random &r);
 
+
 // Run the whole MNIST example.
-void runMNIST(int nSynapses)
+void runMNIST(int nSynapses, int trainingThreshold, Real samplingFactor)
 {
   //////////////////////////////////////////////////////
   //
@@ -92,7 +96,9 @@ void runMNIST(int nSynapses)
     testSet.push_back( new SparseMatrix01<UInt, Int>(28*28, 1));
   }
 
-  DendriteClassifier model;
+  DendriteClassifier1 model1(1000);
+  DendriteClassifier model2;
+  KNNClassifier knnModel;
 
   //////////////////////////////////////////////////////
   //
@@ -103,7 +109,8 @@ void runMNIST(int nSynapses)
   int testImages[] = { 980, 1135, 1032, 1010, 982, 892, 958, 1028, 974, 1009 };
 
   int numImages = readImages(trainingImages,
-             "../image_test/mnist_extraction_source/training/%d", trainingSet);
+             "../image_test/mnist_extraction_source/training/%d", trainingSet,
+             samplingFactor);
   cout << "Read in " << numImages << " total images\n";
 
   int numTestImages = readImages(testImages,
@@ -115,24 +122,32 @@ void runMNIST(int nSynapses)
   //
   // Create trained model for each category, by randomly sampling from
   // training images.
-  cout << "Training dendrite model with " << nSynapses << " synapses per dendrite.\n";
-  //  model.trainDataset(nSynapses, trainingSet);
-  model.trainDatasetKNN(nSynapses, 40, trainingSet);
-
-
-  //////////////////////////////////////////////////////
-  //
-  // Classify the data sets and compute accuracy
-  cout << "Running classification with a bunch of different thresholds.\n";
-  for (int threshold = 40; threshold <= 40; threshold+= 2)
-  {
-    cout << "\nUsing threshold = " << threshold << "\n";
-//    cout << "Training set:";
-//    classifyDataset(threshold, trainingSet, dendrites);
-    cout << "Test set: ";
-    model.classifyDatasetKNN(threshold, testSet);
-//    model.classifyDataset(threshold, testSet);
-  }
+  cout << "Training KNN model.\n";
+  knnModel.trainDataset(trainingSet);
+//  cout << "Training dendrite model1 with " << nSynapses
+//       << " synapses per dendrite.\n";
+//  model1.trainDataset(nSynapses, trainingSet);
+//  cout << "Training dendrite model2 with " << nSynapses
+//       << " synapses per dendrite.\n";
+//  model2.trainDataset(nSynapses, trainingThreshold, trainingSet);
+//
+//
+//  //////////////////////////////////////////////////////
+//  //
+//  // Classify the data sets and compute accuracy
+//  cout << "Running classification with a bunch of different thresholds.\n";
+//  for (int threshold = 36; threshold <= 40; threshold+= 2)
+//  {
+//    cout << "\nUsing threshold = " << threshold << "\n";
+//    cout << "Training set using model1:\n";
+//    model1.classifyDataset(threshold, trainingSet);
+//    cout << "Training set using model2:\n";
+//    model2.classifyDataset(threshold, trainingSet);
+//
+//    cout << "\nTest set: \n";
+////    model2.classifyDataset(threshold, testSet);
+//    model1.classifyDataset(threshold, testSet);
+//  }
 
 }
 
@@ -141,6 +156,6 @@ void runMNIST(int nSynapses)
 // about to run.
 int main(int argc, char * argv[])
 {
-  runMNIST(50);
+  runMNIST(40, 38, 0.01);
 }
 

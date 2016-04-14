@@ -104,12 +104,12 @@ void readMNISTImages(const char* mnistPath,
 }
 
 // Read test/training images from top-level directory and return number read
+// samplingFactor allows you to read in this percentage of all samples (for
+// faster debugging only)
 int readImages(int *numImages, const char *path,
-                std::vector< SparseMatrix01<UInt, Int> * > &images)
+                std::vector< SparseMatrix01<UInt, Int> * > &images,
+                Real samplingFactor = 1.0)
 {
-  // Read in this percentage of all samples (for faster debugging only)
-  Real samplingFactor = 1.0;
-
   int n = 0;
   for (int i=0; i<10; i++)
   {
