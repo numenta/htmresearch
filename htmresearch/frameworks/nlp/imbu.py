@@ -22,21 +22,25 @@
 """
 Class for running models in Imbu app.
 
-The script is runnable to demo Imbu functionality (from repo's base dir):
+The script is runnable to demo Imbu functionality. Example invocations (from
+the repo's base dir):
 
   python htmresearch/frameworks/nlp/imbu.py \
-    --dataPath projects/nlp/data/sample_reviews/sample_reviews.csv \
-    --modelName Keywords
+    -d projects/nlp/data/sample_reviews/sample_reviews.csv \
+    -m Keywords
 
   python htmresearch/frameworks/nlp/imbu.py \
-    --dataPath projects/nlp/data/sample_reviews/sample_reviews_unlabeled.csv \
-    --modelName HTMNetwork
+    -d projects/nlp/data/sample_reviews/sample_reviews_unlabeled.csv \
+    -m HTM_sensor_tm_simple_tp_knn -c imbu_sensor_tm_simple_tp_knn.json \
+    --savePath imbu_sensor_tm_simple_tp_knn.checkpoint
+    # And then run again w/o training by specifying the loadPath
 """
 
 import argparse
 import numpy
 import os
 import pprint
+from tqdm import tqdm
 
 from htmresearch.encoders import EncoderTypes
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
@@ -289,7 +293,7 @@ class ImbuModels(object):
     """
     labels = [0]
     modelType = type(model)
-    for seqId, (text, _, _) in enumerate(self.dataDict.values()):
+    for seqId, (text, _, _) in enumerate(tqdm(self.dataDict.values())):
       if modelType in self.documentLevel:
         model.trainDocument(text, labels, seqId)
       else:
@@ -360,8 +364,8 @@ class ImbuModels(object):
         # Get the sampleId from the protoId via the indexing scheme
         wordId = protoId % self.tokenIndexingFactor
         sampleId = (protoId - wordId) / self.tokenIndexingFactor
-        results[sampleId]["scores"][wordId] = dist.item() / queryLength
-      if modelName == ("HTM_sensor_simple_tp_knn" or
+        results[sampleId]["scores"][wordId] = dist.item()
+      if modelName in ("HTM_sensor_simple_tp_knn",
                        "HTM_sensor_tm_simple_tp_knn"):
         # Windows always length 10
         results[sampleId]["windowSize"] = 10
@@ -413,9 +417,10 @@ def runQueries(imbu, model, modelName):
     if query == "q":
       break
 
-    _, sortedIds, sortedDistances = imbu.query(model, query)
+    _, unSortedIds, unSortedDistances = imbu.query(model, query)
 
-    results = imbu.formatResults(modelName, query, sortedDistances, sortedIds)
+    results = imbu.formatResults(
+      modelName, query, unSortedDistances, unSortedIds)
 
     pprint.pprint(results)
 

@@ -173,7 +173,7 @@ class CioEncoder(LanguageEncoder):
         encoding = self.getUnionEncoding(text)
 
       else:
-        encoding = self.client.getBitmap(text)
+        encoding = self.client.getTextBitmap(text)
 
     except UnsuccessfulEncodingError:
       if self.verbosity > 0:

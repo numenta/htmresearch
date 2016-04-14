@@ -40,9 +40,13 @@ def readExperiment(experiment):
     trains = []
     killCell = []
     sequenceCounter = []
+    counter = 0
     for line in file.readlines():
       dataRec = json.loads(line)
-      iterations.append(dataRec['iteration'])
+      if 'iteration' in dataRec.keys():
+        iterations.append(dataRec['iteration'])
+      else:
+        iterations.append(counter)
 
       if 'predictions' in dataRec.keys():
         predictions.append(dataRec['predictions'])
@@ -83,7 +87,7 @@ def readExperiment(experiment):
         sequenceCounter.append(dataRec['sequenceCounter'])
       else:
         sequenceCounter.append(None)
-
+      counter += 1
   return {'predictions': predictions,
           'predictionsSDR': predictionsSDR,
           'truths': truths,

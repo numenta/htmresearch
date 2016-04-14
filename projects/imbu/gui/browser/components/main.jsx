@@ -118,7 +118,7 @@ export default class Main extends React.Component {
       <div>
         <Toolbar style={styles.toolbar}>
           <ToolbarGroup float="left">
-            <ToolbarTitle style={styles.title} text="Numenta Imbu Application"/>
+            <ToolbarTitle style={styles.title} text="Numenta Imbu"/>
           </ToolbarGroup>
           <ToolbarGroup float="right" lastChild={true}>
             <ToolbarTitle style={styles.datasetTitle} text="Dataset :"/>

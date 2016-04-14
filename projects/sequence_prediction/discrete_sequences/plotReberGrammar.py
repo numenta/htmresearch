@@ -32,7 +32,7 @@ from plot import plotAccuracy
 from plot import readExperiment
 mpl.rcParams['pdf.fonttype'] = 42
 pyplot.ion()
-
+pyplot.close('all')
 
 def computeAccuracy(predictions, truths, sequenceCounter):
   accuracy = []
@@ -51,8 +51,9 @@ def computeAccuracy(predictions, truths, sequenceCounter):
 
 if __name__ == '__main__':
 
-  experiments = [os.path.join("lstm/results", "reber-distributed", "0.log"),
-                 os.path.join("tm/results", "reber", "0.log")]
+  experiments = [os.path.join("tm/results", "reber", "0.log"),
+                 os.path.join("lstm/results", "reber-distributed", "0.log"),
+                 os.path.join("elm/results", "reber-basic", "0.log")]
 
   for experiment in experiments:
     data = readExperiment(experiment)
@@ -60,8 +61,6 @@ if __name__ == '__main__':
                                     data['truths'],
                                     data['sequenceCounter'])
 
-    # injectNoiseAt = data['sequenceCounter'][12000]
-    # x = numpy.array(x) - injectNoiseAt + 1400
     plotAccuracy((accuracy, x),
                  data['trains'],
                  window=100,
@@ -72,7 +71,7 @@ if __name__ == '__main__':
     pyplot.xlabel('# of sequences seen')
 
   pyplot.ylabel('Prediction accuracy')
-  pyplot.xlim([0, 200])
+  pyplot.xlim([0, 250])
   pyplot.ylim([0, 1.05])
-  pyplot.legend(['LSTM', 'HTM'], loc=4)
+  pyplot.legend(['HTM', 'LSTM', 'ELM'], loc=4)
   pyplot.savefig('./result/reber_grammar_performance.pdf')

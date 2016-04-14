@@ -46,12 +46,23 @@ if __name__ == '__main__':
                                 "num_predictions{:2.1f}".format(num_prediction),
                                 "0.log"))
 
+  # for num_prediction in [2, 4]:
+  #   experiments.append(os.path.join("lstm/results",
+  #                               "high-order-distributed-random-multiple-predictions",
+  #                               "seed0.0num_predictions{:2.1f}".format(num_prediction),
+  #                               "0.log"))
+
   for num_prediction in [2, 4]:
     experiments.append(os.path.join("lstm/results",
-                                "high-order-distributed-random-multiple-predictions",
-                                "learning_window9000.0num_predictions{:2.1f}".format(num_prediction),
+                                "high-order-basic-random-multiple-predictions",
+                                "seed0.0num_predictions{:2.1f}".format(num_prediction),
                                 "0.log"))
 
+  # for num_prediction in [2, 4]:
+  #   experiments.append(os.path.join("elm/results",
+  #                               "high-order-basic-random-multiple-predictions",
+  #                               "seed0.0num_predictions{:2.1f}".format(num_prediction),
+  #                               "0.log"))
   for experiment in experiments:
     data = readExperiment(experiment)
     (accuracy, x) = computeAccuracy(data['predictions'],
@@ -65,7 +76,7 @@ if __name__ == '__main__':
 
     plotAccuracy((accuracy, x),
                  data['trains'],
-                 window=100,
+                 window=200,
                  type=type,
                  label='NoiseExperiment',
                  hideTraining=True,

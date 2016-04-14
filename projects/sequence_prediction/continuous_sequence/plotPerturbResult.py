@@ -81,13 +81,21 @@ iteration = predData_TM.index
 tm_pred_perturb_truth = np.roll(predData_TM['value'], -5)
 tm_pred_perturb = np.array(predData_TM['prediction5'])
 
+
+filePath = './prediction/' + dataSet + '_esn_pred.csv'
+predDataESN = pd.read_csv(filePath, header=0, skiprows=[1, 2],
+                          names=['step', 'value', 'prediction5'])
+esnPredPerturbTruth = np.roll(predDataESN['value'], -5)
+esnPredPerturb = np.array(predDataESN['prediction5'])
+
+
 negLL_tm_perturb = computeLikelihood(tm_prediction_perturb, tm_truth_perturb, encoder)
 negLL_tm_perturb[:6000] = None
 nrmse_tm_perturb = computeSquareDeviation(tm_pred_perturb, tm_pred_perturb_truth)
 mape_tm_perturb = np.abs(tm_pred_perturb - tm_pred_perturb_truth)
+mape_esn_perturb = np.abs(esnPredPerturb - esnPredPerturbTruth)
 
 plt.figure()
-window = 480
 plotAccuracy((negLL_LSTM3000_perturb, xaxis_datetime), truth_LSTM3000_perturb,
              window=window, errorType='negLL', label='LSTM3000', train=expResult_perturb.train)
 # plotAccuracy((negLL_LSTM3000_perturb_baseline, xaxis_datetime), truth_LSTM3000_perturb, window=window, errorType='negLL', label='TM')
@@ -131,9 +139,12 @@ plotAccuracy((mape_LSTM3000_perturb, xaxis_datetime), truth_LSTM3000_perturb,
 
 plotAccuracy((mape_LSTM6000_perturb, xaxis_datetime), truth_LSTM6000_perturb,
              window=window, errorType='mape', label='LSTM6000')
+plotAccuracy((mape_esn_perturb, xaxis_datetime), esnPredPerturbTruth,
+             window=window, errorType='mape', label='ESN')
 
 plotAccuracy((mape_tm_perturb, xaxis_datetime), tm_truth_perturb,
              window=window, errorType='mape', label='TM')
+
 plt.axvline(xaxis_datetime[13152], color='black', linestyle='--')
 plt.xlim([xaxis_datetime[13000], xaxis_datetime[15000]])
 plt.legend()

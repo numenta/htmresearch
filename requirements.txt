@@ -5,3 +5,4 @@ plotly
 simplejson
 nupic
 tabulate
+tqdm
