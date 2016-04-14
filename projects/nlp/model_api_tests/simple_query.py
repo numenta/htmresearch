@@ -121,6 +121,11 @@ def run(args):
         continue
       name = htmModelInfo[0]
       args.networkConfigPath = htmModelInfo[1]
+    elif name == "htm":
+      # Get the specific model name from the config path
+      for (modelName, configPath) in htmConfigs:
+        if configPath == args.networkConfigPath:
+          name = modelName
 
     # Create a model, train it, save it, reload it
     _, model = executeModelLifecycle(args, trainingData, labelRefs)
