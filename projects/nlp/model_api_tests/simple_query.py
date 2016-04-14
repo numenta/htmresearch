@@ -21,7 +21,7 @@
 # ----------------------------------------------------------------------
 
 helpStr = """
-Script to run the "query" NLP models API test.
+Script to run the "simple queries" NLP models API test.
 
 Example invocations:
 
@@ -88,7 +88,7 @@ def resultsCheck(modelName):
   print "How are the query results?"
 
   try:
-    expectation = nlpModelAccuracies["query"][modelName]
+    expectation = nlpModelAccuracies["simple_queries"][modelName]
     print "We expect them to be", expectation
   except KeyError:
     print "No expectation for querying with {}.".format(modelName)
@@ -98,8 +98,7 @@ def run(args):
   """ Run the 'query' test.
   This method handles scenarios for running a single model or all of them.
   """
-  (trainingData, labelRefs, _, documentTextMap) = readDataAndReshuffle(
-    args, categoriesInOrderOfInterest=[8,9,10,5,6,11,13,0,1,2,3,4,7,12,14])
+  (trainingData, labelRefs, _, documentTextMap) = readDataAndReshuffle(args)
 
   if args.modelName == "all":
     modelNames = nlpModelTypes
@@ -194,7 +193,7 @@ if __name__ == "__main__":
                       default=False,
                       help="Whether or not to use text preprocessing.")
   parser.add_argument("--experimentDir",
-                      default="simple_query",
+                      default="simple_queries",
                       help="Models will be saved in this directory.")
   parser.add_argument("-v", "--verbosity",
                       default=1,

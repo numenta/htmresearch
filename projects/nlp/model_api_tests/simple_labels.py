@@ -21,14 +21,19 @@
 # ----------------------------------------------------------------------
 
 helpStr = """
-Script to run the "simple" NLP models API test.
+Script to run the NLP classification models API tests.
+
+To run the "hello classification" test, specify hello at the cmd line.
+
+To run the "simple labels" test, specify the dataPath.
 
 Example invocations:
 
-python simple_labels.py -m keywords --dataPath FILE --numLabels 3
-python simple_labels.py -m docfp --dataPath FILE -v 0
-python simple_labels.py -c ../data/network_configs/sensor_knn.json \
-  --dataPath FILE
+python simple_labels.py -m keywords --hello
+python simple_labels.py -m docfp --dataPath FILE --split None
+python simple_labels.py --dataPath FILE \
+  -m htm \
+  -c ../data/network_configs/sensor_knn.json \
   --retina en_associative_64_univ
 
 """
@@ -38,6 +43,7 @@ import os
 
 from htmresearch.support.csv_helper import readDataAndReshuffle
 from htmresearch.support.nlp_model_test_helpers import (
+  assertResults,
   executeModelLifecycle,
   htmConfigs,
   nlpModelTypes,
@@ -48,11 +54,15 @@ from htmresearch.support.nlp_model_test_helpers import (
 
 
 def run(args):
-  """ Run the 'simple' test.
+  """ Run the classification test.
   This method handles scenarios for running a single model or all of them.
+  Also tests serialization by checking the a model's results match before and
+  after saving/loading.
   """
-  (trainingData, labelRefs, documentCategoryMap, _) = readDataAndReshuffle(
-    args, categoriesInOrderOfInterest=[8,9,10,5,6,11,13,0,1,2,3,4,7,12,14])
+  if args.hello:
+    args = _setupHelloTest(args)
+
+  (dataset, labelRefs, documentCategoryMap, _) = readDataAndReshuffle(args)
 
   if args.modelName == "all":
     modelNames = nlpModelTypes
@@ -65,7 +75,7 @@ def run(args):
   for name in modelNames:
     # Setup args
     args.modelName = name
-    args.modelDir = os.path.join(args.experimentDir, name)
+    args.modelDir = os.path.join(args.experimentName, name)
     if runningAllModels and name == "htm":
       # Need to specify network config for htm models
       try:
@@ -76,12 +86,19 @@ def run(args):
       name = htmModelInfo[0]
       args.networkConfigPath = htmModelInfo[1]
 
+    # Split data for train/test (We still test on the training data!)
+    if args.split:
+      split = int(len(dataset) * args.split)
+      trainingData = dataset[:split]
+    else:
+      trainingData = dataset
+
     # Create a model, train it, save it, reload it
     _, model = executeModelLifecycle(args, trainingData, labelRefs)
 
-    # Test the model on the training data
+    # Test the model
     accuracies.update({name:testModel(model,
-                                      trainingData,
+                                      dataset,
                                       labelRefs,
                                       documentCategoryMap,
                                       args.verbosity)})
@@ -91,7 +108,21 @@ def run(args):
       print
       model.dumpProfile()
 
-  printSummary("simple", accuracies)
+  printSummary(args.experimentName, accuracies)
+
+  if args.hello:
+    assertResults("hello_classification", accuracies)
+
+
+
+def _setupHelloTest(args):
+  """ Setup args specific to the 'hello classification' test."""
+  args.dataPath = "../data/etc/hello_classification.csv"
+  args.experimentName = "hello_classification"
+  args.numLabels = 2
+  args.split = 0.80
+
+  return args
 
 
 
@@ -102,6 +133,17 @@ if __name__ == "__main__":
     description=helpStr
   )
 
+  parser.add_argument("--dataPath",
+                      default="",
+                      help="CSV file containing labeled dataset. Required if "
+                           "not runnning 'hello classification' test.")
+  parser.add_argument("--hello",
+                      default=False,
+                      action="store_true",
+                      help="Run the 'hello classification' test.")
+  parser.add_argument("--split",
+                      default=None,
+                      help="Portion [0,1] of data for training (test on all).")
   parser.add_argument("-c", "--networkConfigPath",
                       default="../data/network_configs/sensor_knn.json",
                       help="Path to JSON specifying the network params.",
@@ -124,9 +166,6 @@ if __name__ == "__main__":
                       type=str,
                       help="Key for Cortical.io API. If not specified will "
                       "use the environment variable CORTICAL_API_KEY.")
-  parser.add_argument("--dataPath",
-                      default="",
-                      help="CSV file containing labeled dataset")
   parser.add_argument("--numLabels",
                       default=10,
                       type=int,
@@ -135,7 +174,7 @@ if __name__ == "__main__":
                       action="store_true",
                       default=False,
                       help="Whether or not to use text preprocessing.")
-  parser.add_argument("--experimentDir",
+  parser.add_argument("--experimentName",
                       default="simple_labels",
                       help="Models will be saved in this directory.")
   parser.add_argument("-v", "--verbosity",
@@ -145,7 +184,7 @@ if __name__ == "__main__":
                            "verbosity 1 will include train and test data.")
   args = parser.parse_args()
 
-  if not os.path.isfile(args.dataPath):
+  if not (os.path.isfile(args.dataPath) or args.hello):
     raise RuntimeError("Need a data file for this experiment!")
 
   run(args)

@@ -46,7 +46,6 @@ from tqdm import tqdm
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.model_factory import (
   createModel, getNetworkConfig)
-from htmresearch.support.csv_helper import readDataAndReshuffle
 
 
 
@@ -70,7 +69,7 @@ htmConfigs = [
 kValues = { "keywords": 21, "docfp": 1}
 
 nlpModelAccuracies = {
-  "hello": {
+  "hello_classification": {
     "docfp": 90.0,
     "cioword": 90.0,
     "HTM_sensor_knn": 80.0,
@@ -78,7 +77,7 @@ nlpModelAccuracies = {
     "HTM_sensor_tm_knn": 90.0,
     "keywords": 80.0,
   },
-  "query": {
+  "simple_queries": {
     "docfp": "good but not great",
     "cioword": "passable",
     "HTM_sensor_knn": "passable",
@@ -86,7 +85,7 @@ nlpModelAccuracies = {
     "HTM_sensor_tm_knn": None,
     "keywords": "passable",
   },
-  "simple": {
+  "simple_labels": {
     "docfp": 100.0,
     "cioword": 100.0,
     "HTM_sensor_knn": 66.2,
@@ -202,7 +201,7 @@ def testModel(model, testData, labelRefs, docCategoryMap=None, verbosity=0):
 
 
 def printSummary(testName, accuracies):
-  """ Compare the new acuracies against the current values.
+  """ Print comparison of the new acuracies against the current values.
   @param testName (str) One of the nlpModelAccuracies keys.
   @param accuracies (dict) Keys are model names, values are accuracy percents.
   """
@@ -223,3 +222,21 @@ def printSummary(testName, accuracies):
   print
   print "Results summary:"
   print printTemplate
+
+
+def assertResults(testName, accuracies):
+  """ Assert the new acuracies against the current values.
+  @param testName (str) One of the nlpModelAccuracies keys.
+  @param accuracies (dict) Keys are model names, values are accuracy percents.
+  """
+  try:
+    currentAccuracies = nlpModelAccuracies[testName]
+  except KeyError as e:
+    print "No accuracy values for test '{}'".format(testName)
+    raise e
+
+  for modelName, accuracyPct in accuracies.iteritems():
+    currentPct = currentAccuracies.get(modelName, 0.0)
+    assert accuracyPct >= currentPct, \
+      "{} does not pass the test! Current accuracy is {}, new is {}.".format(
+      modelName, currentPct, accuracyPct)
