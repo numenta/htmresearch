@@ -149,6 +149,11 @@ void runMNIST(int nSynapses, int trainingThreshold, Real samplingFactor)
 //    model1.classifyDataset(threshold, testSet);
 //  }
 
+  cout << "Testing KNN model on training set\n";
+  knnModel.classifyDataset(1, trainingSet);
+
+  cout << "\nTesting KNN model on test set\n";
+  knnModel.classifyDataset(1, testSet);
 }
 
 
@@ -156,6 +161,6 @@ void runMNIST(int nSynapses, int trainingThreshold, Real samplingFactor)
 // about to run.
 int main(int argc, char * argv[])
 {
-  runMNIST(40, 38, 0.01);
+  runMNIST(40, 38, 1.0);
 }
 

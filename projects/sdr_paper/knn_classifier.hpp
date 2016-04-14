@@ -64,12 +64,15 @@ class KNNClassifier {
     void trainClass(int category,
            std::vector< SparseMatrix01<UInt, Int> * > &trainingSet);
 
+    int classifyPattern(int row, int k,
+               SparseMatrix01<UInt, Int> *dataSet);
+
     //////////////////////////////////////////////////////
     //
     // Internal variables and methods.
     // Leaving as public for ease of debugging.
     int numClasses_;
     int inputSize_;
-    NearestNeighbor<SparseMatrix<UInt, Int>> *knn_;
+    NearestNeighbor<SparseMatrix<UInt, Real>> *knn_;
     vector<UInt> knn_categories_;
 };

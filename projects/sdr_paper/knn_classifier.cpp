@@ -56,7 +56,7 @@ KNNClassifier::KNNClassifier(int numClasses, int inputSize)
 {
   numClasses_ = numClasses;
   inputSize_  = inputSize;
-  knn_ = new NearestNeighbor<SparseMatrix<UInt, Int>>(0, inputSize);
+  knn_ = new NearestNeighbor<SparseMatrix<UInt, Real>>(0, inputSize);
 
   cout << "KNN number of cols=" << knn_->nCols() << "\n";
 }
@@ -97,10 +97,77 @@ void KNNClassifier::trainDataset(
   }
 }
 
+
+int KNNClassifier::classifyPattern(int row, int k,
+           SparseMatrix01<UInt, Int> *dataSet)
+{
+  // Create a dense version of this row in the dataset
+  vector<Int> denseX;
+  denseX.resize(inputSize_);
+
+  int nnz = dataSet->nNonZerosRow(row);
+  vector<UInt> indices;
+  indices.resize(nnz);
+  dataSet->getRowSparse(row, indices.begin());
+  for (int j=0; j < indices.size(); j++)
+  {
+    denseX[indices[j]] = 1;
+  }
+
+  // Now find distances to dense vector
+  vector<Real> distances;
+  distances.resize(knn_->nRows(), 0.0);
+  knn_->L2Dist(denseX.begin(), distances.begin());
+
+  // Now find the closest vector and its category
+  int bestClass = knn_categories_[0];;
+  Real bestDistance = distances[0];
+  for (int i = 0; i < distances.size(); i++)
+  {
+//    cout << "    Overlap with stored pattern " << i << " with category: "
+//         << knn_categories_[i] << " is " << overlaps[i] << "\n";
+    if (distances[i] < bestDistance)
+    {
+      bestDistance = distances[i];
+      bestClass = knn_categories_[i];
+    }
+  }
+
+//  cout << "bestClass=" << bestClass << " bestDistance=" << bestDistance << "\n";
+  return bestClass;
+}
+
+
 // Classify the dataset using the given value of k, and report accuracy
 void KNNClassifier::classifyDataset(int k,
                      std::vector< SparseMatrix01<UInt, Int> * > &dataSet)
 {
+  int numCorrect = 0, numInferences = 0;
+
+  for (int category=0; category < dataSet.size(); category++)
+  {
+    int numCorrectClass = 0;
+
+    // Iterate through each test pattern in this category
+    for (int p= 0; p<dataSet[category]->nRows(); p++)
+    {
+//      cout << "\nClassifying pattern: " << p << "\n";
+      int bestClass = classifyPattern(p, k, dataSet[category]);
+      if (bestClass == category)
+      {
+        numCorrect++;
+        numCorrectClass++;
+      }
+      numInferences++;
+    }
+
+    cout << "Category=" << category
+         << ", num examples=" << dataSet[category]->nRows()
+         << ", pct correct="
+         << ((float) numCorrectClass)/dataSet[category]->nRows() << "\n";
+  }
+
+  cout << "\nOverall accuracy = " << (100.0 * numCorrect)/numInferences << "%\n";
 }
 
 
