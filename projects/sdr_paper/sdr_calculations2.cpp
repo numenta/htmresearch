@@ -174,7 +174,8 @@ void classificationFalseMatchProbability(
   if (verbosity > 0)
   {
     cout << "Classification: Probability of false match for n=" << n
-         << ", M=" << M << ", w=" << w << ", w'=" << w_p << "\n";
+         << ", M=" << M << ", w=" << w << ", w'=" << w_p
+         << ", k=" << k << ", nTrials=" << nTrials << "\n";
   }
   for (UInt theta = 1; theta <= w_p; theta++)
   {
@@ -338,7 +339,7 @@ int main(int argc, char * argv[]) {
   UInt M = 1;
   // number of patterns to test for each trial rather than doing just a
   // single sample per trial - this is purely to speed things up
-  UInt k = 100;
+  UInt k = 500;
   // verbosity
   Byte verbosity = 1;
   // random number generator
@@ -351,7 +352,7 @@ int main(int argc, char * argv[]) {
 
   if (verbosity > 0)
   {
-    cout << "Simulations running. Please be patient. Think about\n"
+    cout << "Simulations running. Please be patient. Think about "
          << "all the things you have to be grateful for.\n\n";
   }
 
