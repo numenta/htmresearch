@@ -47,15 +47,16 @@ def createNoiseExperimentArgs():
   """Run the probability of false negatives with noise experiment."""
   experimentArguments = []
   n = 4000
-  for a in [64, 128]:
+  for a in [64]:
     for noisePct in [0.05, 0.1, 0.15, 0.2, 0.25, 0.3,
-                     0.35, 0.4, 0.45, 0.5, 0.55, 0.6]:
+                     0.35, 0.4, 0.45, 0.5, 0.55, 0.6,
+                     0.65, 0.7, 0.75, 0.8, 0.85]:
       noise = int(round(noisePct*a,0))
       # Some parameter combinations are just not worth running!
       experimentArguments.append(
         ("./sdr_calculations2",
          "results_noise/temp_"+str(n)+"_"+str(a)+"_"+str(noise)+".csv",
-         "50000", str(n), str(a), str(noise))
+         "200000", str(n), str(a), str(noise))
       )
   return experimentArguments
 

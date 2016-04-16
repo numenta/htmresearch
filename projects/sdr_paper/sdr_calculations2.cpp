@@ -354,7 +354,7 @@ int main(int argc, char * argv[]) {
   UInt M = 1;
   // number of patterns to test for each trial rather than doing just a
   // single sample per trial - this is purely to speed things up
-  UInt k = 10;
+  UInt k = 50;
   // verbosity
   Byte verbosity = 1;
   // random number generator
