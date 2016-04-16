@@ -52,27 +52,29 @@ sdr: sdr_calculations2.cpp
 	clang++ -O4 -c sdr_calculations.cpp $(CXX_FLAGS)
 	clang++ -O4 -c sdr_calculations2.cpp $(CXX_FLAGS)
 	clang++ -O4 -c sdr_utilities.cpp $(CXX_FLAGS)
+	clang++ -O4 -c binary_algorithms.cpp $(CXX_FLAGS)
 	clang++ -O4 -c test_binary_matrix.cpp $(CXX_FLAGS)
 
 	clang++ -Wl,-search_paths_first \
 		-Wl,-headerpad_max_install_names -Wl,-u,_munmap -m64 \
 		-stdlib=libc++ \
 		-lc++abi -liconv -lsqlite3 -framework CoreServices -framework Accelerate \
-		-L$(NUPIC_CORE_LIB) sdr_calculations.o sdr_utilities.o -o sdr_calculations \
-    $(LINK_FLAGS)
+		-L$(NUPIC_CORE_LIB) sdr_calculations.o sdr_utilities.o binary_algorithms.o \
+		-o sdr_calculations $(LINK_FLAGS)
 
 
 	clang++ -Wl,-search_paths_first \
 		-Wl,-headerpad_max_install_names -Wl,-u,_munmap -m64 \
 		-stdlib=libc++ \
 		-lc++abi -liconv -lsqlite3 -framework CoreServices -framework Accelerate \
-		-L$(NUPIC_CORE_LIB) sdr_calculations2.o sdr_utilities.o \
+		-L$(NUPIC_CORE_LIB) sdr_calculations2.o sdr_utilities.o binary_algorithms.o \
 		-o sdr_calculations2  $(LINK_FLAGS)
 
 	clang++ -Wl,-search_paths_first \
 		-Wl,-headerpad_max_install_names -Wl,-u,_munmap -m64 -stdlib=libc++ \
 		-lc++abi -liconv -lsqlite3 -framework CoreServices -framework Accelerate \
-		-L$(NUPIC_CORE_LIB) test_binary_matrix.o -o test_binary_matrix $(LINK_FLAGS)
+		-L$(NUPIC_CORE_LIB) test_binary_matrix.o binary_algorithms.o \
+		-o test_binary_matrix $(LINK_FLAGS)
 
 
 

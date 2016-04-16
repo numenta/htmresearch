@@ -36,6 +36,8 @@
 #include <nupic/types/Types.hpp>
 #include <nupic/utils/Random.hpp>
 
+#include "binary_algorithms.hpp"
+
 using namespace std;
 using namespace nupic;
 
@@ -123,9 +125,7 @@ int unionNumMatches(set<UInt> &patterns, vector<UInt> &x, UInt theta)
     return 0;
 }
 
-// Change exactly `noise` bits from x and put the result in xp. The number
-// added vs removed is determined randomly with equal chance for each
-// combination
+// Change exactly `noise` of the ON bits from x and put the result in xp.
 void addNoise(const vector<UInt>& x, vector<UInt>& xp, UInt n, UInt w,
               UInt noise, Random& r)
 {
@@ -134,15 +134,27 @@ void addNoise(const vector<UInt>& x, vector<UInt>& xp, UInt n, UInt w,
   for (Int i=0; i < n; i++) addOptions.push_back(i);
   // Iterate in reverse order so indices in addOptions don't change
   for (Int i=w-1; i >= 0; --i) addOptions.erase(addOptions.begin() + x[i]);
-
-  UInt nAdded = r.getUInt32(noise + 1);
-  UInt nRemoved = noise - nAdded;
-
-  xp.resize(w + nAdded - nRemoved);
-  sample(x.begin(), w, xp.begin(), w - nRemoved, r);
   NTA_ASSERT(addOptions.size() == (n - w));
+
+//  cout << "addOptions: ";
+//  printSparseIndices(addOptions, addOptions.size());
+
+//  UInt nAdded = r.getUInt32(noise + 1);
+//  UInt nRemoved = noise - nAdded;
+//
+//  xp.resize(w + nAdded - nRemoved);
+//  sample(x.begin(), w, xp.begin(), w - nRemoved, r);
+//  sample(addOptions.begin(), addOptions.size(),
+//         xp.begin() + w - nRemoved, nAdded, r);
+
+  xp.resize(w);
+  // Randomly sample w-noise bits from x that we will keep
+  sample(x.begin(), w, xp.begin(), w - noise, r);
+
+  // Randomly sample noise bits from addOptions that we will put into xp
   sample(addOptions.begin(), addOptions.size(),
-         xp.begin() + w - nRemoved, nAdded, r);
+         xp.begin() + w - noise, noise, r);
+
 }
 
 // Create M different vectors, each with w random bits on, and add them to sm.

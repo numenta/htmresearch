@@ -29,6 +29,7 @@ def runOneExperiment(args):
 
 
 def createExperimentArgs():
+  """Run the basic probability of false positives experiment."""
   experimentArguments = []
   for n in [300, 500, 700, 900, 1100, 1300, 1500, 1700, 1900, 2100, 2300,
             2500, 2700, 2900, 3100, 3300, 3500, 3700, 3900]:
@@ -37,9 +38,27 @@ def createExperimentArgs():
       if ( a==64 and n<=1500 ) or ( a==128 and n<= 1900 ) or ( a==256 ):
         experimentArguments.append(
           ("./sdr_calculations2", "results/temp_"+str(n)+"_"+str(a)+".csv",
-           "200000", str(n), str(a))
+           "200000", str(n), str(a), "0"),
         )
   return experimentArguments
+
+
+def createNoiseExperimentArgs():
+  """Run the probability of false negatives with noise experiment."""
+  experimentArguments = []
+  n = 4000
+  for a in [64, 128]:
+    for noisePct in [0.05, 0.1, 0.15, 0.2, 0.25, 0.3,
+                     0.35, 0.4, 0.45, 0.5, 0.55, 0.6]:
+      noise = int(round(noisePct*a,0))
+      # Some parameter combinations are just not worth running!
+      experimentArguments.append(
+        ("./sdr_calculations2",
+         "results_noise/temp_"+str(n)+"_"+str(a)+"_"+str(noise)+".csv",
+         "50000", str(n), str(a), str(noise))
+      )
+  return experimentArguments
+
 
 def mp_handler(numProcesses, experimentArguments):
   print "Running",len(experimentArguments),"experiments with",
@@ -49,6 +68,10 @@ def mp_handler(numProcesses, experimentArguments):
 
 
 if __name__ == '__main__':
-  args = createExperimentArgs()
+  # Uncomment out based on which experiment you want to run:
+  # args = createExperimentArgs()
+  args = createNoiseExperimentArgs()
+
+  # Run the experiment using 6 processors
   pprint.pprint(args)
   mp_handler(6, args)
