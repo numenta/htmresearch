@@ -19,13 +19,8 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
-import json
 import numbers
-import operator
-import os
 import random
-import sys
-import time
 
 import numpy
 from expsuite import PyExperimentSuite
@@ -33,6 +28,7 @@ from expsuite import PyExperimentSuite
 from nupic.frameworks.opf.modelfactory import ModelFactory
 # from nupic.algorithms.sdr_classifier import SDRClassifier
 
+from htmresearch.algorithms.faulty_temporal_memory_shim import MonitoredFaultyTPShim
 from htmresearch.support.sequence_prediction_dataset import ReberDataset
 from htmresearch.support.sequence_prediction_dataset import SimpleDataset
 from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
@@ -172,6 +168,24 @@ class Suite(PyExperimentSuite):
     self.model.enableInference({"predictedField": "element"})
     # self.classifier = SDRClassifier(steps=[1], alpha=0.001)
 
+    if params['kill_cell_percent'] > 0:
+      # a hack to use faulty temporal memory instead
+      self.model._getTPRegion().getSelf()._tfdr = MonitoredFaultyTPShim(
+        numberOfCols=2048,
+        cellsPerColumn=32,
+        newSynapseCount=32,
+        maxSynapsesPerSegment=128,
+        maxSegmentsPerCell=128,
+        initialPerm=0.21,
+        connectedPerm=0.50,
+        permanenceInc=0.10,
+        permanenceDec=0.10,
+        predictedSegmentDecrement=0.01,
+        minThreshold=15,
+        activationThreshold=15,
+        seed=1960,
+      )
+
     self.mapping = getEncoderMapping(self.model, self.dataset.numSymbols)
 
     self.numPredictedActiveCells = []
@@ -248,6 +262,13 @@ class Suite(PyExperimentSuite):
                   params['separate_sequences_with'] == 'random')
 
     self.randoms.append(randomFlag)
+
+    killCell = False
+    if iteration == params['kill_cell_after'] and params['kill_cell_percent'] > 0:
+      killCell = True
+      tm = self.model._getTPRegion().getSelf()._tfdr
+      tm.killCells(percent=params['kill_cell_percent'])
+      self.model.disableLearning()
 
     result = self.model.run({"element": currentElement})
     tm = self.model._getTPRegion().getSelf()._tfdr

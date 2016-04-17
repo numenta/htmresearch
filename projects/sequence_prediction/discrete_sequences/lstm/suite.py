@@ -33,7 +33,7 @@ from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
 from pybrain.datasets import SequentialDataSet
 from pybrain.tools.shortcuts import buildNetwork
 from pybrain.structure.modules import LSTMLayer
-from pybrain.supervised import RPropMinusTrainer
+from pybrain.supervised import RPropMinusTrainer, BackpropTrainer
 
 
 class Encoder(object):
@@ -66,10 +66,17 @@ class BasicEncoder(Encoder):
     return random.randrange(self.num)
 
 
-  def classify(self, encoding, num=1):
-    idx = numpy.argpartition(encoding, -num)[-num:]
-    return idx[numpy.argsort(encoding[idx])][::-1].tolist()
+  # def classify(self, encoding, num=1):
+  #   idx = numpy.argpartition(encoding, -num)[-num:]
+  #   return idx[numpy.argsort(encoding[idx])][::-1].tolist()
 
+  def classify(self, encoding, num=1):
+    """
+    Classify with basic one-hot local incoding
+    """
+    probDist = numpy.exp(encoding) / numpy.sum(numpy.exp(encoding))
+    sortIdx = numpy.argsort(probDist)
+    return sortIdx[-num:].tolist()
 
 
 class DistributedEncoder(Encoder):
@@ -135,6 +142,7 @@ class DistributedEncoder(Encoder):
 
 
 
+
 class Suite(PyExperimentSuite):
   def reset(self, params, repetition):
     random.seed(params['seed'])
@@ -170,7 +178,20 @@ class Suite(PyExperimentSuite):
     self.targetPrediction = []
     self.replenishSequence(params, iteration=0)
 
-    self.net = None
+    self.net = buildNetwork(params['encoding_num'], params['num_cells'],
+                            params['encoding_num'],
+                            hiddenclass=LSTMLayer,
+                            bias=True,
+                            outputbias=params['output_bias'],
+                            recurrent=True)
+
+    self.trainer = BackpropTrainer(self.net,
+                          dataset=SequentialDataSet(params['encoding_num'], params['encoding_num']),
+                          learningrate=0.01,
+                          momentum=0,
+                          verbose=params['verbosity'] > 0)
+
+
     self.sequenceCounter = 0
 
   def window(self, data, params):
@@ -185,20 +206,17 @@ class Suite(PyExperimentSuite):
     :param params:
     :return:
     """
-    n = params['encoding_num']
-    net = buildNetwork(n, params['num_cells'], n,
-                       hiddenclass=LSTMLayer,
-                       bias=True,
-                       outputbias=params['output_bias'],
-                       recurrent=True)
-    net.reset()
+    if params['reset_every_training']:
+      n = params['encoding_num']
+      self.net = buildNetwork(n, params['num_cells'], n,
+                               hiddenclass=LSTMLayer,
+                               bias=True,
+                               outputbias=params['output_bias'],
+                               recurrent=True)
+      self.net.reset()
 
     # prepare training dataset
-    ds = SequentialDataSet(n, n)
-    trainer = RPropMinusTrainer(net,
-                                dataset=ds,
-                                verbose=params['verbosity'] > 0)
-
+    ds = SequentialDataSet(params['encoding_num'], params['encoding_num'])
     history = self.window(self.history, params)
     resets = self.window(self.resets, params)
 
@@ -209,20 +227,36 @@ class Suite(PyExperimentSuite):
       if resets[i]:
         ds.newSequence()
 
-    if len(history) > 1:
-      trainer.trainEpochs(params['num_epochs'])
-      net.reset()
+    if params['num_epochs'] > 1:
+      trainer = RPropMinusTrainer(self.net,
+                                  dataset=ds,
+                                  verbose=params['verbosity'] > 0)
 
-    # run network on buffered dataset after training to get the state right
-    for i in xrange(len(history) - 1):
-      symbol = history[i]
-      output = net.activate(self.encoder.encode(symbol))
-      predictions = self.encoder.classify(output, num=params['num_predictions'])
+      if len(history) > 1:
+        trainer.trainEpochs(params['num_epochs'])
 
-      if resets[i]:
-        net.reset()
+      # run network on buffered dataset after training to get the state right
+      self.net.reset()
+      for i in xrange(len(history) - 1):
+        symbol = history[i]
+        output = self.net.activate(self.encoder.encode(symbol))
+        self.encoder.classify(output, num=params['num_predictions'])
 
-    return net
+        if resets[i]:
+          self.net.reset()
+    else:
+      self.trainer.setData(ds)
+      self.trainer.train()
+
+      # run network on buffered dataset after training to get the state right
+      self.net.reset()
+      for i in xrange(len(history) - 1):
+        symbol = history[i]
+        output = self.net.activate(self.encoder.encode(symbol))
+        self.encoder.classify(output, num=params['num_predictions'])
+
+        if resets[i]:
+          self.net.reset()
 
 
   def killCells(self, killCellPercent):
@@ -370,12 +404,15 @@ class Suite(PyExperimentSuite):
         if params['verbosity'] > 0:
           print "Training LSTM at iteration {}".format(iteration)
 
-        self.net = self.train(params)
+        self.train(params)
 
       # run LSTM on the latest data record
 
       output = self.net.activate(self.encoder.encode(currentElement))
-      predictions = self.encoder.classify(output, num=params['num_predictions'])
+      if params['encoding'] == 'distributed':
+        predictions = self.encoder.classify(output, num=params['num_predictions'])
+      elif params['encoding'] == 'basic':
+        predictions = self.encoder.classify(output, num=params['num_predictions'])
 
       correct = self.check_prediction(predictions, target)
 
