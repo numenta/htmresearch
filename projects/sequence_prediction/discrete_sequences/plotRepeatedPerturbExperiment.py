@@ -136,7 +136,7 @@ if __name__ == '__main__':
       accuracyAll.append(np.array(accuracy))
 
     (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyAll)
-
+    x = x[:len(meanAccuracy)]
     expResults[exptLabel] = {
       'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
 
@@ -146,7 +146,7 @@ if __name__ == '__main__':
     accuracyAll = []
     exptLabel = 'ELM'
     expResultsAnaly[exptLabel] = []
-    for seed in range(10):
+    for seed in range(10, 20):
       experiment = os.path.join(elmResults,
                                 "seed" + "{:.1f}".format(seed), "0.log")
       (accuracy, x) = loadExperiment(experiment)
@@ -182,6 +182,28 @@ if __name__ == '__main__':
       expResults[exptLabel] = {
         'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
 
+    # online- LSTM
+    lstmResults = os.path.join("lstm/results",
+                                 "high-order-distributed-random-perturbed-online")
+
+    for learningWindow in [100.0]:
+      accuracyAll = []
+      exptLabel = 'onlineLSTM-'+"{:.0f}".format(learningWindow)
+      expResultsAnaly[exptLabel] = []
+      for seed in range(10):
+        experiment = os.path.join(
+          lstmResults, "seed{:.1f}learning_window{:.1f}".format(seed, learningWindow),
+          "0.log")
+        (accuracy, x) = loadExperiment(experiment)
+        expResultsAnaly[exptLabel].append(analyzeResult(x, accuracy))
+        accuracy = movingAverage(accuracy, min(len(accuracy), 100))
+        accuracyAll.append(np.array(accuracy))
+
+      (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyAll)
+      x = x[:len(meanAccuracy)]
+      expResults[exptLabel] = {
+        'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
+
     output = open('./result/ContinuousLearnExperiment.pkl', 'wb')
     pickle.dump(expResults, output, -1)
     output.close()
@@ -198,9 +220,11 @@ if __name__ == '__main__':
   expResultsAnaly = pickle.load(open('./result/ContinuousLearnExperimentAnaly.pkl', 'rb'))
 
   plt.figure(1)
-  fig, axs = plt.subplots(nrows=1, ncols=2, sharex=True)
-  colorList = {"HTM": "r", "ELM": "b", "LSTM-1000": "y", "LSTM-9000": "g"}
-  for model in ['HTM', 'ELM', 'LSTM-1000',  'LSTM-9000']:
+  fig, axs = plt.subplots(nrows=1, ncols=2, sharey=True)
+  colorList = {"HTM": "r", "ELM": "b", "LSTM-1000": "y", "LSTM-9000": "g",
+               "onlineLSTM-100": "m"}
+  modelList = ['HTM', 'ELM', 'LSTM-1000',  'LSTM-9000', 'onlineLSTM-100']
+  for model in modelList:
     expResult = expResults[model]
 
     plt.figure(1)
@@ -234,8 +258,11 @@ if __name__ == '__main__':
                  yerr=expResult['stdAccuracy'][-1],
                  xerr=np.mean(learnTimeErrAfterPerturb))
 
+    axs[0].set_title("Before modification")
+    axs[1].set_title("After modification")
+
   plt.figure(1)
-  plt.legend(['HTM', 'ELM', 'LSTM-1000',  'LSTM-9000'], loc=4)
+  plt.legend(modelList, loc=4)
 
   retrainLSTMAt = np.arange(start=1000, stop=20000, step=1000)
   for line in retrainLSTMAt:
@@ -246,12 +273,14 @@ if __name__ == '__main__':
   plt.xlim([0, 20000])
 
   for ax in axs:
-    ax.legend(['HTM', 'ELM', 'LSTM-1000',  'LSTM-9000'], loc=4)
+    ax.legend(modelList, loc=4)
     ax.set_xlabel(' Number of samples required to achieve final accuracy')
     ax.set_ylabel(' Final accuracy ')
     ax.set_ylim([0.5, 1.05])
-  axs[0].set_title("Before modification")
-  axs[1].set_title("After modification")
+    # axs[1].set_xlim([0, 30000])
+
+  axs[0].set_xlim([0, 10000])
+  axs[1].set_xlim([0, 30000])
 
   plt.figure(1)
   plt.savefig('./result/model_performance_high_order_prediction.pdf')
