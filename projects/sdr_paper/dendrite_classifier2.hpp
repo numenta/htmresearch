@@ -58,7 +58,7 @@ class DendriteClassifier {
     //
     // A KNN like classifier using dendrites:
     //
-    // Step 1. Choose nPrototypesPerClass_ random training examples from class k
+    // Step 1. Choose nDendritesPerClass_ random training examples from class k
     // with replacement. For each example, create a dendrite that randomly
     // samples from that image.
     //
@@ -74,7 +74,8 @@ class DendriteClassifier {
     // Go through all training examples for each class. For each class, create
     // a set of dendrites that randomly sample from that class.
     void trainDataset(int nSynapses, int threshold,
-          std::vector< SparseMatrix01<UInt, Int> * > &trainingSet);
+          std::vector< SparseMatrix01<UInt, Int> * > &trainingSet,
+          bool useDefaultWeights);
 
 
     // Classify the dataset using a trained dendrite model and the
@@ -88,7 +89,7 @@ class DendriteClassifier {
            std::vector< SparseMatrix01<UInt, Int> * > &trainingSet);
 
 
-    void train(int threshold,
+    void saveModelResponses(int threshold,
                std::vector< SparseMatrix01<UInt, Int> * > &trainingSet);
 
 
@@ -117,12 +118,28 @@ class DendriteClassifier {
     template <typename ChoicesIter>  void sample(SparseMatrix01<UInt, Int> *sm,
           UInt32 row, ChoicesIter choices, UInt32 nChoices);
 
-     // Clear memory
-     void deleteDendrites_();
+
+    // The default set of weights for category i contains 1 for dendrite models
+    // sampled from class i, 0 for all others.
+    void initializeDefaultWeights();
+
+    // Read the least squares weights we have saved to a file
+    void readLeastSquaresWeights();
+
+    // Clear memory
+    void deleteDendrites_();
 
 
     // The number of dendrite prototypes per class
-    int nPrototypesPerClass_;
-    SparseMatrix01<UInt, Int> *knn_;
-    vector<UInt> knn_categories_;
+    int nDendritesPerClass_;
+
+    // weights_[i] contains the weight vector Wi for class i
+    // W[i,j] represents the contribution of dendrite model j towards class i.
+    //
+    // weights_[i] will therefore contain nDendritesPerClass_*numClasses_
+    // entries.
+    vector< vector<Real> *> weights_;
+
+    // Number of times each dendrite responded for the training set
+    vector<UInt> dendrite_responses_;
 };

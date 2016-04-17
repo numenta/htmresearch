@@ -58,7 +58,8 @@ class DendriteClassifier1 {
           std::vector< SparseMatrix01<UInt, Int> * > &trainingSet);
 
     // Classify the dataset using a trained dendrite model and the
-    // given threshold, and report accuracy
+    // given threshold. For each pattern chose the class that contained
+    // the highest number of active dendrites
     void classifyDataset(int threshold,
                std::vector< SparseMatrix01<UInt, Int> * > &dataSet);
 
@@ -102,4 +103,5 @@ class DendriteClassifier1 {
 
     // The number of dendrite prototypes per class
     int nPrototypesPerClass_;
+
 };

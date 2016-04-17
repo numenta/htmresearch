@@ -98,6 +98,4 @@ mnist: mnist_sdrs.cpp
 clean: sdr_calculations2.cpp
 	rm -f *.o
 	rm -f sdr_calculations
-	rm -f sdr_calculations2
 	rm -f test_binary_matrix
-	rm -f mnist_sdrs

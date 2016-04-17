@@ -37,6 +37,17 @@
 using namespace std;
 using namespace nupic;
 
+
+// Print the given vector/array
+template <typename ValueType> void printVector(ValueType &indices, UInt w)
+{
+  for (UInt i = 0; i < w; i++)
+  {
+    std::cout << indices[i] << " ";
+  }
+  std::cout << std::endl;
+}
+
 //////////////////////////////////////////////////////
 //
 // Two helper methods to read images
@@ -125,15 +136,89 @@ int readImages(int *numImages, const char *path,
   return n;
 }
 
-// Create a new dataset that is a noisy version of the provided one
-//void createNoisyDataset(
-//                std::vector< SparseMatrix01<UInt, Int> * > &dataset,
-//                std::vector< SparseMatrix01<UInt, Int> * > &noisyDataset,
-//                        float pctNoise,
-//                        Random &r
-//                        )
-//{
-//
-//}
+
+// Insert a new image into new_sm that is an occludded version of the image in
+// the given row of sm. Occlusion rule: randomly choose noise pct bits from the
+// ON bits and turn them off (ala Kolankeh, et al)
+void createOccludedImage(int row,
+        SparseMatrix01<UInt, Int> *sm,
+        SparseMatrix01<UInt, Int> *new_sm,
+        float noisePct, Random &r )
+{
+  UInt32 nnz = sm->nNonZerosRow(row);
+
+  // Get sparse version of the image in this row
+  vector<UInt> x;
+  x.resize(nnz, 0);
+  sm->getRowSparse(row, x.begin());
+
+  // This will hold the image with occlusions
+  vector<UInt> xp;
+
+  // Randomly insert 1-noisePct of the active bits in image into the new image
+  for (int i=0; i < x.size(); i++)
+  {
+    if (r.getReal64() > noisePct)
+    {
+      xp.push_back(x[i]);
+    }
+  }
+
+  new_sm->addRow(xp.size(), xp.begin());
+
+//  cout << "\nImage before. Size=" << x.size() << " bits: ";
+//  printVector(x, x.size());
+//  cout << "Image after. Size=" << xp.size() << " bits: ";
+//  printVector(xp, xp.size());
+
+}
+
+
+// Create a new dataset that is a noisy version of the provided one.
+// Noise type 1: swap noise of the on bits with off bits
+// Noise type 2: occlusion. Randomly choose noise bits from the ON bits and
+//               turn them off (ala Kolankeh, et al)
+// Note: will clear out noiseDataset and create new SparseMatrix01 instances.
+void createNoisyDataset(
+        std::vector< SparseMatrix01<UInt, Int> * > &dataset,
+        std::vector< SparseMatrix01<UInt, Int> * > &noisyDataset,
+        float noisePct, int noiseType, Random &r )
+{
+  auto numClasses = dataset.size();
+  auto numPixels = dataset[0]->nCols();
+  noisyDataset.clear();
+  for (int category = 0; category < numClasses; category++)
+  {
+    // Create new empty dataset
+    noisyDataset.push_back( new SparseMatrix01<UInt, Int>(numPixels, 1));
+
+    for (int row=0; row < dataset[category]->nRows(); row++)
+    {
+      if (noiseType==2)
+      {
+        createOccludedImage(row, dataset[category], noisyDataset[category],
+                            noisePct, r);
+        // Output number of ON bits in image before and after
+//        cout << "(" << dataset[category]->nNonZerosRow(row) << ","
+//                    << noisyDataset[category]->nNonZerosRow(row) << ") ";
+      }
+      else
+      {
+        NTA_THROW << "Unsupported noise type!\n";
+      }
+    }
+
+    cout << "\n";
+
+    // Sanity check
+    if (noisyDataset[category]->nRows() != dataset[category]->nRows())
+    {
+      NTA_THROW << "Incorrect number of rows. Noise dataset has "
+                << noisyDataset[category]->nRows() << " rows. Expected: "
+                << dataset[category]->nRows() << "\n";
+    }
+  }
+
+}
 
 

@@ -306,7 +306,7 @@ void classificationFalseNegativeProbability(
 
   cout << "Classification: Probability of false negative for n=" << n
        << ", M=" << M << ", w=" << w << ", w'=" << w_p << ", noise=" << noise
-       << "\n";
+       << ", nTrials*k=" << nTrials*k << "\n";
   for (UInt theta = 1; theta <= w_p; theta++)
   {
     probWithThetas[theta] = (Real) probWithThetas[theta] / (Real) (nTrials*k);
@@ -349,7 +349,7 @@ int main(int argc, char * argv[]) {
   // Hard coded experiment parameters
 
   // w', number of bits to subsample and store for each representation
-  UInt w_p = 30;
+  UInt w_p = 24;
   // number of patterns to generate and store
   UInt M = 1;
   // number of patterns to test for each trial rather than doing just a
