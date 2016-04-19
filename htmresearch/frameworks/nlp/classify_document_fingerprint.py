@@ -129,7 +129,6 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
       for region in self.learningRegions:
         region.setParameter("learningMode", True)
       self.network.run(1)
-      self.reset()
       self.currentDocument = None
 
       # Print the outputs of each region
@@ -163,7 +162,7 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
       document = " ".join(self.currentDocument)
       sensor = self.sensorRegion.getSelf()
       sensor.addDataToQueue(token=document, categoryList=[None],
-                            sequenceId=-1, reset=0)
+                            sequenceId=-1, reset=reset)
       self.network.run(1)
 
       if self.verbosity >= 2:
@@ -173,9 +172,6 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
       self.currentDocument = None
       categoryVotes = self.classifierRegion.getOutputData(
           "categoriesOut")[0:self.numLabels]
-
-      if reset == 1:
-        self.reset()
 
       if returnDetailedResults:
         # Accumulate the ids. Sort results if requested
