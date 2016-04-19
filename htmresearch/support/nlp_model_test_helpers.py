@@ -22,8 +22,8 @@
 
 helpStr = """
 Methods and data for running NLP model API tests. The intent here is
-to ensure and changes to the models does not decrease their classification
-accuracies (see nlpModelAccuracies below). Three tests are supported:
+to ensure that changes to the models does not decrease their classification
+accuracies (see NLP_MODEL_ACCURACIES below). Three tests are supported:
 
   hello classification: Very simple, hello world classification test. There are
     two categories that can be discriminated using bag of words. The training
@@ -50,7 +50,7 @@ from htmresearch.frameworks.nlp.model_factory import (
 
 
 # There should be one "htm" model for each htm config entry.
-nlpModelTypes = [
+NLP_MODEL_TYPES = [
   "docfp",
   "cioword",
   "htm",
@@ -59,16 +59,16 @@ nlpModelTypes = [
   "keywords"]
 
 # Network models use 4k retina.
-htmConfigs = [
+HTM_CONFIGS = [
   ("HTM_sensor_knn", "../data/network_configs/sensor_knn.json"),
   ("HTM_sensor_simple_tp_knn", "../data/network_configs/sensor_simple_tp_knn.json"),
   ("HTM_sensor_tm_knn", "../data/network_configs/sensor_tm_knn.json"),
 ]
 
 # Some values of k we know work well.
-kValues = { "keywords": 21, "docfp": 1}
+K_VALUES = { "keywords": 21, "docfp": 1}
 
-nlpModelAccuracies = {
+NLP_MODEL_ACCURACIES = {
   "hello_classification": {
     "docfp": 90.0,
     "cioword": 90.0,
@@ -95,13 +95,19 @@ nlpModelAccuracies = {
   },
 }
 
-wrapper = TextWrapper(width=80)
+_WRAPPER = TextWrapper(width=80)
 
 
 
 def executeModelLifecycle(args, trainingData, labelRefs):
   """ Execute model lifecycle: create a model, train it, save it, reload it.
-  Returns both the original and new models.
+
+  @param args (argparse) Arguments used in classification model API experiments.
+  @param trainingData (dict) Keys are document numbers, values are three-tuples
+      of the document (str), labels (list), and document ID (int).
+  @param labelRefs (list) Label names (str) corresponding to label indices.
+
+  @return (two-tuple) Original and new models.
   """
   model = instantiateModel(args)
   model = trainModel(model, trainingData, labelRefs, args.verbosity)
@@ -115,7 +121,7 @@ def instantiateModel(args):
   Set some specific arguments and return an instance of the model we will use.
   """
   args.networkConfig = getNetworkConfig(args.networkConfigPath)
-  args.k = kValues.get(args.modelName, 1)
+  args.k = K_VALUES.get(args.modelName, 1)
 
   return createModel(**vars(args))
 
@@ -135,7 +141,8 @@ def trainModel(model, trainingData, labelRefs, verbosity=0):
   for (document, labels, docId) in tqdm(trainingData):
     if verbosity > 0:
       docStr = unicode(document, errors="ignore")
-      printTemplate.add_row([docId, wrapper.fill(docStr), labelRefs[labels[0]]])
+      printTemplate.add_row(
+        [docId, _WRAPPER.fill(docStr), labelRefs[labels[0]]])
     model.trainDocument(document, labels, docId)
   if verbosity > 0:
     print printTemplate
@@ -184,7 +191,7 @@ def testModel(model, testData, labelRefs, docCategoryMap=None, verbosity=0):
       docStr = unicode(document, errors="ignore")
       printTemplate.add_row(
         [docId,
-         wrapper.fill(docStr),
+         _WRAPPER.fill(docStr),
          [labelRefs[l] for l in labels],
          labelRefs[predicted]]
       )
@@ -202,14 +209,14 @@ def testModel(model, testData, labelRefs, docCategoryMap=None, verbosity=0):
 
 def printSummary(testName, accuracies):
   """ Print comparison of the new acuracies against the current values.
-  @param testName (str) One of the nlpModelAccuracies keys.
+  @param testName (str) One of the NLP_MODEL_ACCURACIES keys.
   @param accuracies (dict) Keys are model names, values are accuracy percents.
   """
   try:
-    currentAccuracies = nlpModelAccuracies[testName]
+    currentAccuracies = NLP_MODEL_ACCURACIES[testName]
   except KeyError as e:
     print "No accuracy values for test '{}'".format(testName)
-    raise e
+    raise
 
   printTemplate = PrettyTable(["NLP Model", "Current Accuracy", "New Accuracy"])
   printTemplate.align = "l"
@@ -226,11 +233,11 @@ def printSummary(testName, accuracies):
 
 def assertResults(testName, accuracies):
   """ Assert the new acuracies against the current values.
-  @param testName (str) One of the nlpModelAccuracies keys.
+  @param testName (str) One of the NLP_MODEL_ACCURACIES keys.
   @param accuracies (dict) Keys are model names, values are accuracy percents.
   """
   try:
-    currentAccuracies = nlpModelAccuracies[testName]
+    currentAccuracies = NLP_MODEL_ACCURACIES[testName]
   except KeyError as e:
     print "No accuracy values for test '{}'".format(testName)
     raise e

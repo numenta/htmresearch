@@ -45,8 +45,8 @@ from htmresearch.support.csv_helper import readDataAndReshuffle
 from htmresearch.support.nlp_model_test_helpers import (
   assertResults,
   executeModelLifecycle,
-  htmConfigs,
-  nlpModelTypes,
+  HTM_CONFIGS,
+  NLP_MODEL_TYPES,
   printSummary,
   testModel
 )
@@ -65,7 +65,7 @@ def run(args):
   (dataset, labelRefs, documentCategoryMap, _) = readDataAndReshuffle(args)
 
   if args.modelName == "all":
-    modelNames = nlpModelTypes
+    modelNames = NLP_MODEL_TYPES
     runningAllModels = True
   else:
     modelNames = [args.modelName]
@@ -76,20 +76,21 @@ def run(args):
     # Setup args
     args.modelName = name
     args.modelDir = os.path.join(args.experimentName, name)
-    if runningAllModels and name == "htm":
-      # Need to specify network config for htm models
-      try:
-        htmModelInfo = htmConfigs.pop()
-      except KeyError:
-        print "Not enough HTM configs, so skipping the HTM model."
-        continue
-      name = htmModelInfo[0]
-      args.networkConfigPath = htmModelInfo[1]
-    elif name == "htm":
-      # Get the specific model name from the config path
-      for (modelName, configPath) in htmConfigs:
-        if configPath == args.networkConfigPath:
-          name = modelName
+    if name == "htm":
+      if runningAllModels:
+        # Need to specify network config for htm models
+        try:
+          htmModelInfo = HTM_CONFIGS.pop()
+        except KeyError:
+          print "Not enough HTM configs, so skipping the HTM model."
+          continue
+        name = htmModelInfo[0]
+        args.networkConfigPath = htmModelInfo[1]
+      else:
+        # Get the specific model name from the config path
+        for (modelName, configPath) in HTM_CONFIGS:
+          if configPath == args.networkConfigPath:
+            name = modelName
 
     # Split data for train/test (We still test on the training data!)
     if args.split:
@@ -102,11 +103,11 @@ def run(args):
     _, model = executeModelLifecycle(args, trainingData, labelRefs)
 
     # Test the model
-    accuracies.update({name:testModel(model,
-                                      dataset,
-                                      labelRefs,
-                                      documentCategoryMap,
-                                      args.verbosity)})
+    accuracies[name] = testModel(model,
+                                 dataset,
+                                 labelRefs,
+                                 documentCategoryMap,
+                                 args.verbosity)
 
     if args.verbosity > 0:
       # Print profile information
@@ -157,7 +158,7 @@ if __name__ == "__main__":
                       default="htm",
                       type=str,
                       help="Name of model class. If 'all', the models "
-                           "specified in nlpModelTypes will run.")
+                           "specified in NLP_MODEL_TYPES will run.")
   parser.add_argument("--retinaScaling",
                       default=1.0,
                       type=float,

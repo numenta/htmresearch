@@ -41,15 +41,15 @@ from textwrap import TextWrapper
 from htmresearch.support.csv_helper import readDataAndReshuffle
 from htmresearch.support.nlp_model_test_helpers import (
   executeModelLifecycle,
-  htmConfigs,
-  nlpModelAccuracies,
-  nlpModelTypes,
+  HTM_CONFIGS,
+  NLP_MODEL_ACCURACIES,
+  NLP_MODEL_TYPES,
   printSummary,
   testModel
 )
 
 
-wrapper = TextWrapper(width=80)
+_WRAPPER = TextWrapper(width=80)
 
 
 
@@ -62,7 +62,7 @@ def queryModel(model, queryDocument, documentTextMap):
   print "=================Querying model on a sample document================"
   print
   print "Query document:"
-  print wrapper.fill(queryDocument)
+  print _WRAPPER.fill(queryDocument)
 
   _, sortedIds, sortedDistances = model.inferDocument(
     queryDocument, returnDetailedResults=True, sortResults=True)
@@ -72,7 +72,7 @@ def queryModel(model, queryDocument, documentTextMap):
   for i, docId in enumerate(sortedIds[:10]):
     print
     print "Document #{} ({} overlap):".format(docId, sortedDistances[i])
-    print " ", wrapper.fill(documentTextMap[docId])
+    print " ", _WRAPPER.fill(documentTextMap[docId])
 
   print
   print "Here are some dissimilar documents in reverse order of similarity:"
@@ -80,7 +80,7 @@ def queryModel(model, queryDocument, documentTextMap):
   for i in xrange(lastDocIndex, lastDocIndex-10, -1):
     print
     print "Document #{} ({} overlap):".format(sortedIds[i], sortedDistances[i])
-    print wrapper.fill(documentTextMap[sortedIds[i]])
+    print _WRAPPER.fill(documentTextMap[sortedIds[i]])
 
 
 def resultsCheck(modelName):
@@ -88,7 +88,7 @@ def resultsCheck(modelName):
   print "How are the query results?"
 
   try:
-    expectation = nlpModelAccuracies["simple_queries"][modelName]
+    expectation = NLP_MODEL_ACCURACIES["simple_queries"][modelName]
     print "We expect them to be", expectation
   except KeyError:
     print "No expectation for querying with {}.".format(modelName)
@@ -101,7 +101,7 @@ def run(args):
   (trainingData, labelRefs, _, documentTextMap) = readDataAndReshuffle(args)
 
   if args.modelName == "all":
-    modelNames = nlpModelTypes
+    modelNames = NLP_MODEL_TYPES
     runningAllModels = True
   else:
     modelNames = [args.modelName]
@@ -112,20 +112,21 @@ def run(args):
     # Setup args
     args.modelName = name
     args.modelDir = os.path.join(args.experimentDir, name)
-    if runningAllModels and name == "htm":
-      # Need to specify network config for htm models
-      try:
-        htmModelInfo = htmConfigs.pop()
-      except KeyError:
-        print "Not enough HTM configs, so skipping the HTM model."
-        continue
-      name = htmModelInfo[0]
-      args.networkConfigPath = htmModelInfo[1]
-    elif name == "htm":
-      # Get the specific model name from the config path
-      for (modelName, configPath) in htmConfigs:
-        if configPath == args.networkConfigPath:
-          name = modelName
+    if name == "htm":
+      if runningAllModels:
+        # Need to specify network config for htm models
+        try:
+          htmModelInfo = HTM_CONFIGS.pop()
+        except KeyError:
+          print "Not enough HTM configs, so skipping the HTM model."
+          continue
+        name = htmModelInfo[0]
+        args.networkConfigPath = htmModelInfo[1]
+      else:
+        # Get the specific model name from the config path
+        for (modelName, configPath) in HTM_CONFIGS:
+          if configPath == args.networkConfigPath:
+            name = modelName
 
     # Create a model, train it, save it, reload it
     _, model = executeModelLifecycle(args, trainingData, labelRefs)
