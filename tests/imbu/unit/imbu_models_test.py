@@ -58,11 +58,11 @@ class TestImbu(unittest.TestCase):
       shutil.rmtree("fake_cache_root")
 
 
-  def _setupFakeImbuModelsInstance(self):
+  def _setupFakeImbuModelsInstance(self, retina="en_associative"):
     return ImbuModels(
       cacheRoot="fake_cache_root",
       dataPath=self.dataPath,
-      retina="en_associative",
+      retina=retina,
       apiKey=os.environ.get("CORTICAL_API_KEY")
     )
 
@@ -99,8 +99,11 @@ class TestImbu(unittest.TestCase):
 
 
   def _exerciseModelLifecycle(self, modelType, queryTerm="unicorn",
-                              networkConfigName="imbu_sensor_knn.json"):
-    imbu = self._setupFakeImbuModelsInstance()
+                              networkConfigName="imbu_sensor_knn.json",
+                              retina="en_associative"):
+    """ Create, save, load, and assert consistent results."""
+
+    imbu = self._setupFakeImbuModelsInstance(retina=retina)
 
     checkpointLocation = self._createTempModelCheckpoint()
 
@@ -129,20 +132,36 @@ class TestImbu(unittest.TestCase):
                                imbu.query(model, queryTerm))))
 
 
-  def testCreateSaveLoadCioWordFingerprintModel(self):
+  def testCreateSaveLoadCioWordFingerprint(self):
     self._exerciseModelLifecycle("CioWordFingerprint")
 
 
-  def testCreateSaveLoadCioDocumentFingerprintModel(self):
+  def testCreateSaveLoadCioDocumentFingerprint(self):
     self._exerciseModelLifecycle("CioDocumentFingerprint")
 
 
-  def testCreateSaveLoadHTMNetworkModel(self):
-    self._exerciseModelLifecycle("HTMNetwork")
-
-
-  def testLoadKeywordsModel(self):
+  def testCreateSaveLoadKeywords(self):
     self._exerciseModelLifecycle("Keywords")
+
+
+  def testCreateSaveLoadSensorNetwork(self):
+    self._exerciseModelLifecycle(
+      "HTM_sensor_knn",
+      networkConfigName="imbu_sensor_knn.json")
+
+
+  def testCreateSaveLoadSensorSimpleTPNetwork(self):
+    self._exerciseModelLifecycle(
+      "HTM_sensor_simple_tp_knn",
+      networkConfigName="imbu_sensor_simple_tp_knn.json",
+      retina="en_associative_64_univ")
+
+
+  def testCreateSaveLoadSensorTMSimpleTPNetwork(self):
+    self._exerciseModelLifecycle(
+      "HTM_sensor_tm_simple_tp_knn",
+      networkConfigName="imbu_sensor_tm_simple_tp_knn.json",
+      retina="en_associative_64_univ")
 
 
   def testMappingModelNamesToModelTypes(self):
