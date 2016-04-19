@@ -105,7 +105,7 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
     self.network = configureNetwork(None, self.networkConfig, encoder)
 
 
-  def trainToken(self, token, labels, sampleId, reset=0):
+  def trainToken(self, token, labels, sampleId, resetSequence=0):
     """
     Train the model with the given text token, associated labels, and
     sequence ID. This model buffers the tokens, etc. until reset=1 at which
@@ -121,10 +121,10 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
       self.currentDocument.append(token)
 
     # If reset issued, train on this document
-    if reset == 1:
+    if resetSequence == 1:
       document = " ".join(self.currentDocument)
       sensor = self.sensorRegion.getSelf()
-      sensor.addDataToQueue(document, labels, sampleId, reset)
+      sensor.addDataToQueue(document, labels, sampleId, resetSequence)
 
       for region in self.learningRegions:
         region.setParameter("learningMode", True)
@@ -139,7 +139,7 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
           self.printRegionOutputs()
 
 
-  def inferToken(self, token, reset=0, returnDetailedResults=False,
+  def inferToken(self, token, resetSequence=0, returnDetailedResults=False,
                  sortResults=True):
     """
     Classify the token (i.e. run inference on the model with this document) and
@@ -155,14 +155,14 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
       self.currentDocument.append(token)
 
     # If reset issued, classify this document
-    if reset == 1:
+    if resetSequence == 1:
 
       for region in self.learningRegions:
         region.setParameter("learningMode", False)
       document = " ".join(self.currentDocument)
       sensor = self.sensorRegion.getSelf()
       sensor.addDataToQueue(token=document, categoryList=[None],
-                            sequenceId=-1, reset=reset)
+                            sequenceId=-1, reset=resetSequence)
       self.network.run(1)
 
       if self.verbosity >= 2:
