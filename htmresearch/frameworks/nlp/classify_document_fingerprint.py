@@ -111,7 +111,6 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
     sequence ID. This model buffers the tokens, etc. until reset=1 at which
     point the model is trained with the buffered tokens and the labels and
     sampleId sent in that call.
-
     See base class for description of parameters.
     """
     # Accumulate text
@@ -129,6 +128,7 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
       for region in self.learningRegions:
         region.setParameter("learningMode", True)
       self.network.run(1)
+      self.reset()
       self.currentDocument = None
 
       # Print the outputs of each region
@@ -145,7 +145,6 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
     Classify the token (i.e. run inference on the model with this document) and
     return classification results and a list of sampleIds and distances.
     Repeated sampleIds are NOT removed from the results.
-
     See base class for description of parameters.
     """
     # Accumulate text
@@ -162,7 +161,7 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
       document = " ".join(self.currentDocument)
       sensor = self.sensorRegion.getSelf()
       sensor.addDataToQueue(token=document, categoryList=[None],
-                            sequenceId=-1, reset=reset)
+                            sequenceId=-1, reset=0)
       self.network.run(1)
 
       if self.verbosity >= 2:
@@ -172,6 +171,9 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
       self.currentDocument = None
       categoryVotes = self.classifierRegion.getOutputData(
           "categoriesOut")[0:self.numLabels]
+
+      if reset == 1:
+        self.reset()
 
       if returnDetailedResults:
         # Accumulate the ids. Sort results if requested
