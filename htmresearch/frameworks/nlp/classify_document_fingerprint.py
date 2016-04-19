@@ -108,9 +108,8 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
   def trainToken(self, token, labels, sampleId, resetSequence=0):
     """
     Train the model with the given text token, associated labels, and
-    sequence ID. This model buffers the tokens, etc. until reset=1 at which
-    point the model is trained with the buffered tokens and the labels and
-    sampleId sent in that call.
+    sequence ID. This model buffers the tokens, labels, and IDs until
+    resetSequence=1, at which point the model is trained with the buffered data.
 
     See base class for description of parameters.
     """
