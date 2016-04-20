@@ -1,0 +1,11 @@
+ID,Sample,Category
+0,fox eats carrots,fox eats
+1,fox eats broccoli,fox eats
+2,fox eats kale,fox eats
+3,fox eats peppers,fox eats
+4,carrots are healthy,vegetables
+5,broccoli is healthy,vegetables
+6,kale is healthy,vegetables
+7,peppers are healthy,vegetables
+8,fox eats carrots,vegetables
+9,wolf consumes salad,fox eats
