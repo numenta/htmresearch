@@ -349,12 +349,12 @@ int main(int argc, char * argv[]) {
   // Hard coded experiment parameters
 
   // w', number of bits to subsample and store for each representation
-  UInt w_p = 24;
+  UInt w_p = 30;
   // number of patterns to generate and store
   UInt M = 1;
   // number of patterns to test for each trial rather than doing just a
   // single sample per trial - this is purely to speed things up
-  UInt k = 50;
+  UInt k = 500;
   // verbosity
   Byte verbosity = 1;
   // random number generator
@@ -368,7 +368,7 @@ int main(int argc, char * argv[]) {
          << "all the things you have to be grateful for.\n\n";
   }
 
-  bool runNoiseSimulations = true;
+  bool runNoiseSimulations = false;
 
   if (runNoiseSimulations)
   {
@@ -385,11 +385,11 @@ int main(int argc, char * argv[]) {
   {
     if (runNoiseSimulations)
     {
-      f << theta << "," << n << "," << w << "," << noise << ","
+      f << theta << "," << w_p << "," << n << "," << w << "," << noise << ","
         << probWithThetas[theta] << endl;
     } else
     {
-      f << theta << "," << n << "," << w << ","
+      f << theta << "," << w_p << "," << n << "," << w << ","
         << probWithThetas[theta] << endl;
     }
   }

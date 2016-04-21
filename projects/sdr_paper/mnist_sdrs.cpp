@@ -134,44 +134,45 @@ void runMNIST(std::vector< SparseMatrix01<UInt, Int> * > &trainingSet,
               bool useDefaultWeights,
               bool runTrainingSet = false)
 {
-  DendriteClassifier1 model1(1000);
-  DendriteClassifier model2(42, 10, 784, 500);
+  DendriteClassifier1 model1(6000);
+//  DendriteClassifier model2(42, 10, 784, 500);
 
   //////////////////////////////////////////////////////
   //
   // Create trained model for each category, by randomly sampling from
   // training images.
-//  cout << "Training dendrite model1 with " << nSynapses
-//       << " synapses per dendrite.\n";
-//  model1.trainDataset(nSynapses, trainingSet);
+  cout << "Training dendrite model1 with " << nSynapses
+       << " synapses per dendrite and " << model1.nPrototypesPerClass_
+       << " dendrite models per class.\n";
+  model1.trainDataset(nSynapses, trainingSet);
 
-  cout << "Training dendrite model2 with " << nSynapses
-       << " synapses per dendrite and training threshold "
-       << trainingThreshold << ".\n";
-  model2.trainDataset(nSynapses, trainingThreshold, trainingSet,
-                      useDefaultWeights);
+//  cout << "Training dendrite model2 with " << nSynapses
+//       << " synapses per dendrite and training threshold "
+//       << trainingThreshold << ".\n";
+//  model2.trainDataset(nSynapses, trainingThreshold, trainingSet,
+//                      useDefaultWeights);
 
   //////////////////////////////////////////////////////
   //
   // Classify the data sets and compute accuracy
   cout << "Running classification with a bunch of different thresholds.\n";
-  for (int threshold = trainingThreshold-10;
+  for (int threshold = trainingThreshold;
        threshold <= trainingThreshold; threshold+= 2)
   {
     cout << "\nUsing threshold = " << threshold << "\n";
   if (runTrainingSet)
   {
-  //    cout << "Training set using model1:\n";
-  //    model1.classifyDataset(threshold, trainingSet);
+      cout << "Training set using model1:\n";
+      model1.classifyDataset(threshold, trainingSet);
 
-      cout << "Training set using model2:\n";
-      model2.classifyDataset(threshold, trainingSet);
+//      cout << "Training set using model2:\n";
+//      model2.classifyDataset(threshold, trainingSet);
   }
 
-//    cout << "Test set using model1:\n";
-//    model1.classifyDataset(threshold, testSet);
-    cout << "Test set using model2:\n";
-    model2.classifyDataset(threshold, testSet);
+    cout << "Test set using model1:\n";
+    model1.classifyDataset(threshold, testSet);
+//    cout << "Test set using model2:\n";
+//    model2.classifyDataset(threshold, testSet);
   }
 
   //////////////////////////////////////////////////////
@@ -181,12 +182,14 @@ void runMNIST(std::vector< SparseMatrix01<UInt, Int> * > &trainingSet,
   // Random number generator
   Random rng(42);
 
-  for (Real noise=0.05; noise <= 0.06; noise += 0.05)
+  for (Real noise=0.05; noise <= 0.020; noise += 0.05)
   {
     std::vector< SparseMatrix01<UInt, Int> * > noiseTestSet;
     createNoisyDataset(testSet, noiseTestSet, noise, 2, rng);
-    cout << "Test set using model2 and " << noise << " noise:\n";
-    model2.classifyDataset(trainingThreshold, noiseTestSet);
+    cout << "Test set using model1 and " << noise << " noise:\n";
+    model1.classifyDataset(trainingThreshold, noiseTestSet);
+//    cout << "Test set using model2 and " << noise << " noise:\n";
+//    model2.classifyDataset(trainingThreshold, noiseTestSet);
   }
 
 }
@@ -227,7 +230,7 @@ int main(int argc, char * argv[])
 
 
 //  runMNISTKNN(trainingSet, testSet, false);
-  runMNIST(trainingSet, testSet, 50, 40, false, true);
+  runMNIST(trainingSet, testSet, 70, 50, false, false);
 
 }
 

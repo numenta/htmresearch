@@ -268,7 +268,8 @@ int DendriteClassifier1::classifyPattern(int row, int threshold,
   for (int i=0; i < dendrites_.size(); i++)
   {
     int matches = runInferenceOnPattern(row, threshold, dataSet, dendrites_[i]);
-//  cout << "The model for class " << i << ",  has " << matches<< " matches\n";
+    cout << "For pattern " << row << ", the model for class " << i
+         << ",  has " << matches<< " matches\n";
     if (matches > bestOverlap)
     {
       bestOverlap = matches;
