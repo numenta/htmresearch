@@ -111,7 +111,6 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
     sequence ID. This model buffers the tokens, etc. until reset=1 at which
     point the model is trained with the buffered tokens and the labels and
     sampleId sent in that call.
-
     See base class for description of parameters.
     """
     # Accumulate text
@@ -146,7 +145,6 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
     Classify the token (i.e. run inference on the model with this document) and
     return classification results and a list of sampleIds and distances.
     Repeated sampleIds are NOT removed from the results.
-
     See base class for description of parameters.
     """
     # Accumulate text

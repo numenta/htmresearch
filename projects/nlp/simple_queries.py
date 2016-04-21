@@ -22,14 +22,11 @@
 
 helpStr = """
 Simple script to run a labeled dataset.
-
 Example invocations:
-
 python simple_labels.py -m keywords --dataPath FILE --numLabels 3
 python simple_labels.py -m docfp --dataPath FILE
 python simple_labels.py -c data/network_configs/sensor_knn.json -m htm -v 2 --dataPath FILE
 python simple_labels.py -c data/network_configs/tp_knn.json -m htm --dataPath FILE
-
 """
 
 import argparse
@@ -129,7 +126,7 @@ def runExperiment(args):
   model = instantiateModel(args)
 
   model = trainModel(args, model, trainingData, labelRefs)
-  
+
   model.save(args.modelDir)
 
   # Now query the model using some example HR complaints about managers

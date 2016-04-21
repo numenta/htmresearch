@@ -24,43 +24,43 @@ helpStr = """
 Simple script that explains how to run classification models.
 
 Example invocations:
-
 python hello_classification_model.py -m keywords
 python hello_classification_model.py -m docfp
-python hello_classification_model.py -c data/network_configs/sensor_knn.json -m htm -v 2
-python hello_classification_model.py -c data/network_configs/tp_knn.json -m htm
-
+python hello_classification_model.py -m htm \
+  -c data/network_configs/sensor_simple_tp_knn.json \
+  --retina en_associative_64_univ
 """
 
 import argparse
-import copy
 
 from htmresearch.frameworks.nlp.classification_model import ClassificationModel
 from htmresearch.frameworks.nlp.classify_htm import ClassificationModelHTM
 from htmresearch.frameworks.nlp.model_factory import (
   createModel, getNetworkConfig)
 
-# Training data we will feed the model. There are two categories here that can
-# be discriminated using bag of words
-trainingData = [
-  ["fox eats carrots", [0]],
-  ["fox eats broccoli", [0]],
-  ["fox eats lettuce", [0]],
-  ["fox eats peppers", [0]],
-  ["carrots are healthy", [1]],
-  ["broccoli is healthy", [1]],
-  ["lettuce is healthy", [1]],
-  ["peppers is healthy", [1]],
+
+# The dataset is 10 documents of three-word sentences, each classified
+# into one of two categories. Bag of words (BOW) models should be able to
+# discriminate them.
+# The training set is the first 8 documents, and the full dataset will be used
+# for test. Of two documents for test, the first is an incorrectly labeled
+# version of a training sample, and the second is semantically similar to
+# one of the training samples.
+# Expected classification accuracy using Cio encoder is 9 out of 10 = 90%
+# Expected classification accuracy using keywords encoder is 8 out of 10 = 80%
+_DATASET = [
+  [0, "fox eats carrots", [0]],
+  [1, "fox eats broccoli", [0]],
+  [2, "fox eats lettuce", [0]],
+  [3, "fox eats peppers", [0]],
+  [4, "carrots are healthy", [1]],
+  [5, "broccoli is healthy", [1]],
+  [6, "kale is healthy", [1]],
+  [7, "peppers are healthy", [1]],
+  [8, "fox eats carrots", [1]],    # Models should get this wrong
+  [9, "wolf consumes salad", [0]]  # Cio models should get this correct
 ]
 
-# Test data will be a copy of training data plus two additional documents.
-# The first is an incorrectly labeled version of a training sample.
-# The second is semantically similar to one of thr training samples.
-# Expected classification error using CIO encoder is 9 out of 10 = 90%
-# Expected classification error using keywords encoder is 8 out of 10 = 80%
-testData = copy.deepcopy(trainingData)
-testData.append(["fox eats carrots", [1]])     # Should get this wrong
-testData.append(["wolf consumes salad", [0]])  # CIO models should get this
 
 
 def instantiateModel(args):
@@ -72,11 +72,10 @@ def instantiateModel(args):
 
   # Create model after setting specific arguments required for this experiment
   args.networkConfig = getNetworkConfig(args.networkConfigPath)
-  args.k = kValues.get(args.modelName, 1)
   args.numLabels = 2
-  model = createModel(**vars(args))
+  args.k = kValues.get(args.modelName, 1)
 
-  return model
+  return createModel(**vars(args))
 
 
 
@@ -84,78 +83,89 @@ def trainModel(model, trainingData):
   """
   Train the given model on trainingData. Return the trained model instance.
   """
-
-  # Do three passes if we're using a TM.
+  # Do three passes if we're using a TM
   numPasses = 1
   if isinstance(model, ClassificationModelHTM) and (model.tmRegion is not None):
     numPasses = 3
 
   print
-  print "=======================Training model on sample text================"
-  for passes in range(numPasses):
-    for docId, doc in enumerate(trainingData):
-      document = doc[0]
-      labels = doc[1]
-      print
-      print "Document=", document, "label=",doc[1], "id=",docId
+  print "==============Training the model============="
+  for _ in xrange(numPasses):
+    for (docId, document, labels) in trainingData:
+      print "{}. '{}' --> {}".format(docId, document, labels[0])
       model.trainDocument(document, labels, docId)
 
   return model
 
 
-def testModel(args, model, testData):
+
+def testModel(model, testData):
   """
-  Test the given model on testData and print out accuracy.
+  Test the given model on testData, print out and return accuracy percentage.
 
   Accuracy is calculated as follows. Each token in a document votes for a single
-  category. The document is classified with the category that received the most
-  votes. Note that it is possible for a token and/or document to receive no
-  votes, in which case it is counted as a misclassification.
+  category; it's possible for a token to contribute no votes. The document is
+  classified with the category that received the most votes. Note that it is
+  possible for a document to receive no votes, in which case it is counted as a
+  misclassification.
   """
   print
-  print "==========================Classifying sample text================"
+  print "==============Testing the model============="
+
   numCorrect = 0
-  for docId, doc in enumerate(testData):
-    document = doc[0]
-    desiredLabels = doc[1]
-    print
-    print "Document=", document,", desired label: ",desiredLabels
+  for (docId, document, labels) in testData:
+    print "{}. '{}'".format(docId, document)
     categoryVotes, _, _ = model.inferDocument(document)
 
     if categoryVotes.sum() > 0:
-      print "Final classification for this doc:",categoryVotes.argmax()
-      if categoryVotes.argmax() in desiredLabels:
+      # We will count classification as correct if the best category is any
+      # one of the categories associated with this document
+      predicted = categoryVotes.argmax()
+      if predicted in labels:
         numCorrect += 1
     else:
-      print "No classification possible for this doc"
+      # No classification possible for this doc
+      predicted = None
+    print "\tActual label:", labels[0]
+    print "\tPredicted label:", predicted
 
-  # Compute and print out percent accuracy
-  print "Total correct =",numCorrect,"out of",len(testData),"documents"
-  print "Accuracy =",(float(numCorrect*100.0)/len(testData)),"%"
+  accuracyPct = numCorrect * 100.0 / len(testData)
+
+  print
+  print "Total correct =", numCorrect, "out of", len(testData), "documents"
+  print "Accuracy =", accuracyPct, "%"
+
+  return accuracyPct
 
 
-def runExperiment(args, trainingData, testData):
+
+def runExperiment(args):
   """
   Create model according to args, train on training data, save model,
   restore model, test on test data.
   """
-
   # Create model
   model = instantiateModel(args)
 
-  # Train model
-  model = trainModel(model, trainingData)
+  # Train model on the first 80% of the dataset
+  trainingSplit = int(len(_DATASET) * 0.80)
+  model = trainModel(model, _DATASET[:trainingSplit])
 
-  # Test model
-  testModel(args, model, testData)
+  # Test model on the full dataset
+  accuracyPct = testModel(model, _DATASET)
 
-  # Test serialization - testing after reloading should give same result as
-  # above
+  # Validate serialization - testing after reloading should give same result
   model.save(args.modelDir)
-  newmodel = ClassificationModel.load(args.modelDir)
+  newModel = ClassificationModel.load(args.modelDir)
   print
-  print "==========================Testing after de-serialization========"
-  testModel(args, newmodel, testData)
+  print "Testing serialization..."
+  newAccuracyPct = testModel(newModel, _DATASET)
+  if accuracyPct == newAccuracyPct:
+    print "Serialization validated."
+  else:
+    print ("Inconsistent results before ({}) and after ({}) saving/loading "
+           "the model!".format(accuracyPct, newAccuracyPct))
+
 
 
 if __name__ == "__main__":
@@ -178,7 +188,7 @@ if __name__ == "__main__":
                       type=float,
                       help="Factor by which to scale the Cortical.io retina.")
   parser.add_argument("--retina",
-                      default="en_associative_64_univ",
+                      default="en_synonymous",
                       type=str,
                       help="Name of Cortical.io retina.")
   parser.add_argument("--apiKey",
@@ -189,13 +199,7 @@ if __name__ == "__main__":
   parser.add_argument("--modelDir",
                       default="MODELNAME.checkpoint",
                       help="Model will be saved in this directory.")
-  parser.add_argument("-v", "--verbosity",
-                      default=1,
-                      type=int,
-                      help="verbosity 0 will print out experiment steps, "
-                           "verbosity 1 will include results, and verbosity > "
-                           "1 will print out preprocessed tokens and kNN "
-                           "inference metrics.")
+
   args = parser.parse_args()
 
   # By default set checkpoint directory name based on model name
@@ -203,4 +207,4 @@ if __name__ == "__main__":
     args.modelDir = args.modelName + ".checkpoint"
     print "Save dir: ",args.modelDir
 
-  runExperiment(args, trainingData, testData)
+  runExperiment(args)
