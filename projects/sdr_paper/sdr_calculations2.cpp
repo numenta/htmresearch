@@ -35,98 +35,12 @@
 
 #include "binary_algorithms.hpp"
 
+
 using namespace std;
 using namespace nupic;
 
-// populate choices with a random selection of nChoices elements from
-// population. throws exception when nPopulation < nChoices
-// templated functions must be defined in header
-template <typename PopulationIter, typename ChoicesIter>
-void sample(PopulationIter population, UInt32 nPopulation,
-            ChoicesIter choices, UInt32 nChoices, Random &r)
-{
-  if (nChoices == 0)
-  {
-    return;
-  }
-  if (nChoices > nPopulation)
-  {
-    NTA_THROW << "population size must be greater than number of choices";
-  }
-  UInt32 nextChoice = 0;
-  for (UInt32 i = 0; i < nPopulation; ++i)
-  {
-    if (r.getUInt32(nPopulation - i) < (nChoices - nextChoice))
-    {
-      *choices++ = population[i];
-      ++nextChoice;
-      if (nextChoice == nChoices)
-      {
-        break;
-      }
-    }
-  }
-}
+#include "sdr_utilities.hpp"
 
-// Estimate the confidence bounds. This assumes a binomial distribution and
-// computes the +- for a 95% confidence bound on a probability prob computed
-// from the given number of trials.
-Real estimateBounds(Real prob, Int trials)
-{
-  const Real z = 1.96;  // 95% from normal distribution
-  Real stddev = sqrt((prob * (1.0 - prob)) / (Real)trials);
-  return z * stddev;
-}
-
-// Given a set of patterns, a new pattern x, and a match threshold theta,
-// return the number of matching vectors
-int numMatches(SparseMatrix01<UInt, Int> &patterns,
-               vector<UInt> &x, UInt theta)
-{
-  // Create a dense version of x
-  vector<UInt> denseX;
-  denseX.resize(patterns.nCols(), 0);
-  for (auto it = x.begin(); it != x.end(); ++it)
-  {
-    denseX[*it] = 1;
-  }
-
-  // Create empty overlaps vector
-  vector<UInt> overlaps;
-  overlaps.resize(patterns.nRows(), 0);
-
-  patterns.rightVecProd(denseX.begin(), overlaps.begin());
-
-  int numMatches = 0;
-  for (int i = 0; i < overlaps.size(); i++)
-  {
-    if (overlaps[i] >= theta) numMatches++;
-  }
-
-  return numMatches;
-}
-
-// Change exactly `noise` bits from x and put the result in xp. The number
-// added vs removed is determined randomly with equal chance for each
-// combination
-void addNoise(const vector<UInt>& x, vector<UInt>& xp, UInt n, UInt w,
-              UInt noise, Random& r)
-{
-  // Create a population that does not include the original bits
-  vector<UInt32> addOptions;
-  for (Int i=0; i < n; i++) addOptions.push_back(i);
-  // Iterate in reverse order so indices in addOptions don't change
-  for (Int i=w-1; i >= 0; --i) addOptions.erase(addOptions.begin() + x[i]);
-
-  UInt nAdded = r.getUInt32(noise + 1);
-  UInt nRemoved = noise - nAdded;
-
-  xp.resize(w + nAdded - nRemoved);
-  sample(x.begin(), w, xp.begin(), w - nRemoved, r);
-  NTA_ASSERT(addOptions.size() == (n - w));
-  sample(addOptions.begin(), addOptions.size(),
-         xp.begin() + w - nRemoved, nAdded, r);
-}
 
 // Create M different bit arrays, each with w random 1 bits, rest 0s.
 // The representations will use binary long[] with at least n bits. Any
@@ -176,9 +90,9 @@ void classificationFalseMatchTrial(
 
   // Create a list of stored patterns to put in the classifier
   BinaryMatrix classifier(M, n);
-  createRandomSDRs(M, n, w, r, classifier);
+  createRandomSDRs(M, n, w_p, r, classifier);
 
-  // Generate our single random vector
+  // x will hold the w non-zero indices for our single random vector
   UInt64* x = new UInt64[w];
 
   UInt matches = 0;
@@ -190,6 +104,9 @@ void classificationFalseMatchTrial(
   for (UInt i = 0; i < k; i++)
   {
     sample(population, n, x, w, r);
+
+//    cout << "Our random vector x:\n";
+//    printSparseIndices(x, w);
 
     //UInt64* y = new UInt64[w];
     //classifier.getRowSparse(44, y);
@@ -218,7 +135,7 @@ void classificationFalseMatchTrial(
 }
 
 // Given values for n, w, w_p, M, compute the probability of a false match for
-// each value of theta = [1,w]. This is done by performing nTrials separate
+// each value of theta = [1,w_p]. This is done by performing nTrials separate
 // simulations, and seeing how often there is at least one match.
 //
 // @param n number of bits per vector
@@ -243,7 +160,7 @@ void classificationFalseMatchProbability(
     vector<UInt> matchesWithThetas;
     matchesWithThetas.resize(w_p+1, 0);
     classificationFalseMatchTrial(n, w, w_p, M, k, matchesWithThetas, r);
-    if (verbosity > 0 && trial % 10 == 0)
+    if (verbosity > 0 && (trial>0) && trial % 20000 == 0)
     {
       cout << trial << " trials completed out of " << nTrials << "\n";
     }
@@ -257,7 +174,8 @@ void classificationFalseMatchProbability(
   if (verbosity > 0)
   {
     cout << "Classification: Probability of false match for n=" << n
-         << ", M=" << M << ", w=" << w << ", w'=" << w_p << "\n";
+         << ", M=" << M << ", w=" << w << ", w'=" << w_p
+         << ", k=" << k << ", nTrials=" << nTrials << "\n";
   }
   for (UInt theta = 1; theta <= w_p; theta++)
   {
@@ -265,14 +183,17 @@ void classificationFalseMatchProbability(
     if (verbosity > 0)
     {
       auto bounds = estimateBounds(probWithThetas[theta], nTrials*k);
-      cout << "    Theta = " << theta << " prob=" << probWithThetas[theta]
-           << " +/- " << bounds
-           << endl;
+      if (theta==12)
+      {
+        cout << "    Theta = " << theta << " prob=" << probWithThetas[theta]
+             << " +/- " << bounds
+             << endl;
+      }
     }
   }
 }
 
-/*
+
 // Do a single classification trial. Given values for n, w, and M create N
 // random vectors plus a random trial vector. For each value of theta from 1 to
 // w, return the number of vectors that match.
@@ -282,6 +203,8 @@ void classificationFalseNegativeTrial(
 {
   NTA_ASSERT(noise <= w_p <= w < n);
 
+  // The set of all indices, 0..n-1. We will sample from this population
+  // to create our sparse vectors
   UInt32 population[n];
   for (Int i=0; i < n; i++) population[i] = i;
 
@@ -323,7 +246,15 @@ void classificationFalseNegativeTrial(
     storedPatterns.getRowSparse(ri, x.begin());
 
     vector<UInt> xp;
+    xp.resize(w, 0);
+
+//    cout << "Original vector: ";
+//    printSparseIndices(x, w);
+//
     addNoise(x, xp, n, w, noise, r);
+
+//    cout << "Noisy vector:    ";
+//    printSparseIndices(xp, w);
 
     // Generate number of matches for each value of theta
     for (UInt theta = 1; theta <= w_p; theta++)
@@ -359,7 +290,7 @@ void classificationFalseNegativeProbability(
 
     classificationFalseNegativeTrial(n, w, w_p, M, k, noise,
                                      matchesWithThetas, r);
-    if (trial % 1000 == 0)
+    if (trial>0 && (trial % 20000 == 0) )
     {
       cout << trial << " trials completed out of " << nTrials << "\n";
     }
@@ -375,42 +306,55 @@ void classificationFalseNegativeProbability(
 
   cout << "Classification: Probability of false negative for n=" << n
        << ", M=" << M << ", w=" << w << ", w'=" << w_p << ", noise=" << noise
-       << "\n";
+       << ", nTrials*k=" << nTrials*k << "\n";
   for (UInt theta = 1; theta <= w_p; theta++)
   {
-    probWithThetas[theta] = (Real) probWithThetas[theta] / (Real) nTrials;
+    probWithThetas[theta] = (Real) probWithThetas[theta] / (Real) (nTrials*k);
     auto bounds = estimateBounds(probWithThetas[theta], nTrials);
-    cout << "    Theta = " << theta << " prob=" << probWithThetas[theta]
-         << " +/- " << bounds
-         << endl;
+    if ( (theta >= 8) && (theta <= 16) )
+    {
+      cout << "    Theta = " << theta << " prob=" << probWithThetas[theta]
+           << " +/- " << bounds << endl;
+    }
   }
 }
-*/
 
-// Run the trials!  Currently need to hard code the specific trial you are
-// about to run.
+
+// Run the trials!
+// Currently need to hard code the specific trial you are about to run.
 int main(int argc, char * argv[]) {
-  if (argc != 2)
+  if (argc != 6)
   {
-    cout << "Expected single argument for output path." << endl;
+    cout << "Wrong number of command line arguments!" << endl;
+    cout << "These arguments are expected, in this specific order\n"
+         << "  csv_filename numTrials n w noise\n"
+         << "For example:\n"
+         << "  " << argv[0] << " results.csv 100 500 64 5\n";
     exit(1);
   }
 
-  string outPath(argv[1]);
+  // User specified experiment parameters
 
+  // The CSV output file name
+  string outPath(argv[1]);
+  // number of trials
+  UInt trials = atoi(argv[2]);
   // number of total bits in each representation
-  UInt n = 1024;
+  UInt n = atoi(argv[3]);
   // number of active bits in each representation
-  UInt w = 30;
+  UInt w = atoi(argv[4]);
+  // noise (False negative only)
+  UInt noise = atoi(argv[5]);
+
+  // Hard coded experiment parameters
+
   // w', number of bits to subsample and store for each representation
-  UInt w_p = 20;
+  UInt w_p = 30;
   // number of patterns to generate and store
-  UInt M = 10000;
+  UInt M = 1;
   // number of patterns to test for each trial rather than doing just a
   // single sample per trial - this is purely to speed things up
-  UInt k = 10;
-  // number of trials
-  UInt trials = 10;
+  UInt k = 500;
   // verbosity
   Byte verbosity = 1;
   // random number generator
@@ -418,31 +362,36 @@ int main(int argc, char * argv[]) {
   // output values where index is theta and value is probability
   vector<Real> probWithThetas;
 
-  // noise (False negative only)
-  //UInt noise = 5;
-
-  if (verbosity > 0)
+  if (verbosity > 0 && trials*k > 50000)
   {
-    cout << "Simulations running. Please be patient. Think about\n"
+    cout << "Simulations running. Please be patient. Think about "
          << "all the things you have to be grateful for.\n\n";
   }
 
-  if (true)
+  bool runNoiseSimulations = false;
+
+  if (runNoiseSimulations)
   {
-    // False positive
+    classificationFalseNegativeProbability(n, w, w_p, M, k, noise, probWithThetas,
+                                           trials, r);
+  } else {
     classificationFalseMatchProbability(n, w, w_p, M, k, probWithThetas,
                                         trials, r, verbosity);
-  } else {
-    // False negative
-    //classificationFalseNegativeProbability(n, w, w_p, M, k, noise, probWithThetas,
-    //                                       trials, r);
   }
 
   // TODO: Set float precision to max.
-  ofstream f(outPath);
-  for (UInt theta = 1; theta <= 20; theta++)
+  ofstream f(outPath, std::ofstream::app);
+  for (UInt theta = 8; theta <= 16; theta++)
   {
-    f << theta << "," << probWithThetas[theta] << endl;
+    if (runNoiseSimulations)
+    {
+      f << theta << "," << w_p << "," << n << "," << w << "," << noise << ","
+        << probWithThetas[theta] << endl;
+    } else
+    {
+      f << theta << "," << w_p << "," << n << "," << w << ","
+        << probWithThetas[theta] << endl;
+    }
   }
   f.close();
 }

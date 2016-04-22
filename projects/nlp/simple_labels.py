@@ -22,14 +22,11 @@
 
 helpStr = """
 Simple script to run a labeled dataset.
-
 Example invocations:
-
 python simple_labels.py -m keywords --dataPath FILE --numLabels 3
 python simple_labels.py -m docfp --dataPath FILE
 python simple_labels.py -c data/network_configs/sensor_knn.json -m htm -v 2 --dataPath FILE
 python simple_labels.py -c data/network_configs/tp_knn.json -m htm --dataPath FILE
-
 """
 
 import argparse
@@ -80,7 +77,6 @@ def trainModel(args, model, trainingData, labelRefs):
 def testModel(args, model, testData, labelRefs, documentCategoryMap):
   """
   Test the given model on testData and print out accuracy.
-
   Accuracy is calculated as follows. Each token in a document votes for a single
   category. The document is classified with the category that received the most
   votes. Note that it is possible for a token and/or document to receive no
