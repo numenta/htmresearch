@@ -32,16 +32,18 @@ import numpy as np
 
 from plot import plotAccuracy
 from plot import movingAverage
-from plot import computeAccuracy
 from plot import readExperiment
 mpl.rcParams['pdf.fonttype'] = 42
 plt.ion()
 plt.close('all')
 
 
-def computeAccuracy(predictions, truths, iterations,
+def computeAccuracyEnding(predictions, truths, iterations,
                     resets=None, randoms=None, num=None,
                     sequenceCounter=None):
+  """
+  Compute accuracy on the sequence ending
+  """
   accuracy = []
   numIteration = []
   numSequences = []
@@ -66,6 +68,30 @@ def computeAccuracy(predictions, truths, iterations,
   return (accuracy, numIteration, numSequences)
 
 
+def computeAccuracy(predictions, truths, iterations,
+                    resets=None, randoms=None, num=None,
+                    sequenceCounter=None):
+  """
+  Compute accuracy on the whole sequence
+  """
+  accuracy = []
+  numIteration = []
+  numSequences = []
+
+  for i in xrange(len(predictions) - 1):
+    if num is not None and i > num:
+      continue
+
+    if truths[i] is None:
+      continue
+
+    correct = truths[i] is None or truths[i] in predictions[i]
+    accuracy.append(correct)
+    numSequences.append(sequenceCounter[i])
+    numIteration.append(iterations[i])
+
+  return (accuracy, numIteration, numSequences)
+
 
 if __name__ == '__main__':
 
@@ -83,9 +109,10 @@ if __name__ == '__main__':
       experiment = os.path.join(tmResults,
                                 "sequence_length"+"{:.1f}".format(length),
                                 "0.log")
+      print "Load Experiment", experiment
       data = readExperiment(experiment)
 
-      (accuracy, numIteration, numSequences) = computeAccuracy(
+      (accuracy, numIteration, numSequences) = computeAccuracyEnding(
         data['predictions'],
         data['truths'],
         data['iterations'],
@@ -93,10 +120,23 @@ if __name__ == '__main__':
         randoms=data['randoms'],
         sequenceCounter=data['sequenceCounter'])
 
+
+      (accuracyAll, numIterationAll, numSequencesAll) = computeAccuracy(
+        data['predictions'],
+        data['truths'],
+        data['iterations'],
+        resets=data['resets'],
+        randoms=data['randoms'],
+        sequenceCounter=data['sequenceCounter'])
+
+
       expResult = {"length": length,
                    "accuracy": accuracy,
                    "numIteration": numIteration,
-                   "numSequences": numSequences}
+                   "numSequences": numSequences,
+                   "accuracyAll": accuracyAll,
+                   "numIterationAll": numIterationAll,
+                   "numSequencesAll": numSequencesAll}
       expResults[length] = expResult
     output = open(os.path.join(tmResults,
                                'SequenceLengthExperiment.pkl'), 'wb')
@@ -114,6 +154,9 @@ if __name__ == '__main__':
   numSequenceRequired = []
   numIterationRequired = []
   lengths = np.sort(expResults.keys())
+
+  plt.close('all')
+  plt.figure(1)
   for length in lengths:
     expResult = expResults[length]
     accuracy = expResult["accuracy"]
@@ -125,22 +168,36 @@ if __name__ == '__main__':
       numSequences[np.where(np.array(movingData) >= 0.999)[0][1]])
     numIterationRequired.append(
       numIteration[np.where(np.array(movingData) >= 0.999)[0][1]])
-    # injectNoiseAt = data['sequenceCounter'][12000]
-    # x = numpy.array(x) - injectNoiseAt + 1400
-    plotAccuracy((accuracy, numIteration),
-                 data['trains'],
-                 window=50,
+    plt.figure(1)
+    plotAccuracy((accuracy, numSequences),
+                 window=100,
                  type=type,
                  label='NoiseExperiment',
                  hideTraining=True,
                  lineSize=1.0)
     plt.xlabel('# of sequences seen')
 
-  plt.ylabel('Prediction accuracy')
-  # plt.xlim([0, 200])
-  plt.ylim([0, 1.05])
-  plt.legend(lengths, loc=4)
+    plt.figure(2)
+    plotAccuracy((expResult["accuracyAll"], expResult["numSequencesAll"]),
+                 window=1000,
+                 type=type,
+                 label='NoiseExperiment',
+                 hideTraining=True,
+                 lineSize=1.0)
+    plt.xlabel('# of sequences seen')
+
+  for fig in [1, 2]:
+    plt.figure(fig)
+    plt.ylabel('Prediction accuracy')
+    plt.ylim([0, 1.05])
+    plt.legend(lengths, loc=4)
+  plt.figure(1)
   plt.savefig('./result/sequence_length_experiment_performance.pdf')
+
+  plt.figure(2)
+  plt.xlim([0, 100])
+  plt.savefig('./result/sequence_length_experiment_performance_overall.pdf')
+
 
   plt.figure()
   plt.plot(lengths, numSequenceRequired, '-*')

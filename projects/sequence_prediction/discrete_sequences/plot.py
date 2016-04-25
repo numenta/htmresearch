@@ -117,7 +117,7 @@ def plotMovingAverage(data, window, label=None):
 
 
 
-def plotAccuracy(results, train, window=100, type="sequences", label=None, hideTraining=True, lineSize=None):
+def plotAccuracy(results, train=None, window=100, type="sequences", label=None, hideTraining=True, lineSize=None):
   pyplot.title("High-order prediction")
   pyplot.xlabel("# of sequences seen")
   pyplot.ylabel("High-order prediction accuracy over last {0} tested {1}".format(window, type))

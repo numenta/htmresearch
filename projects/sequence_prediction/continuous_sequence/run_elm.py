@@ -180,7 +180,7 @@ if __name__ == "__main__":
   useTimeOfDay = True
   useDayOfWeek = True
 
-  nTrain = 5000
+  nTrain = 500
   numLags = 100
 
   # prepare dataset as pyBrain sequential dataset
