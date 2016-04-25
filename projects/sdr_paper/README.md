@@ -93,6 +93,14 @@ trials.  As an example, For theta=7 the  formula leads to 3.12352E-08 but we
 need to run hundreds of millions of  trials to get that number through
 simulations.
 
+An example plot
+===============
+
+The following image shows an example plot.
+
+!(images/effect_of_n.png)
+
+
 Note on using NuPIC Core
 ========================
 
