@@ -1,7 +1,7 @@
 
 This directory contains code and Excel files that simulate various scenarios in
 the SDR papers [1, 2] and the Neuron paper [3]. They are used to generate the numerical
-results. The code als serves to verify the formulas in the papers.
+results. The code also serves to verify the formulas in the papers.
 
 The papers are available here:
 
