@@ -1,3 +1,6 @@
 elm/results
 lstm/results
 tm/results
+testOSELM.py
+segment_test.csv
+vanilla_rnn.py
