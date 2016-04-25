@@ -1,7 +1,7 @@
 
 This directory contains code and Excel files that simulate various scenarios in
 the SDR papers [1, 2] and the Neuron paper [3]. They are used to generate the numerical
-results. The code als serves to verify the formulas in the paper.
+results. The code als serves to verify the formulas in the papers.
 
 The papers are available here:
 
@@ -19,8 +19,6 @@ Intelligence. Retrieved from http://arxiv.org/abs/1601.00720
 Theory of Sequence Memory in Neocortex. Front. Neural Circuits 10.
 doi:10.3389/fncir.2016.00023. PDF:
 http://journal.frontiersin.org/article/10.3389/fncir.2016.00023/full
-
-Subutai is working on a modified version for a journal publication.
 
 
 SDR Properties Calculations.xlsx
