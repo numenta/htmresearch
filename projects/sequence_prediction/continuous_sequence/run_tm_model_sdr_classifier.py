@@ -37,7 +37,7 @@ from nupic.frameworks.opf.predictionmetricsmanager import MetricsManager
 from nupic.frameworks.opf import metrics
 from htmresearch.frameworks.opf.clamodel_custom import CLAModel_custom
 import nupic_output
-from htmresearch.algorithms.sdr_classifier import SDRClassifier
+from nupic.algorithms.sdr_classifier import SDRClassifier
 from plot import computeLikelihood, plotAccuracy
 
 rcParams.update({'figure.autolayout': True})
@@ -476,7 +476,7 @@ if __name__ == "__main__":
   plotAccuracy((negLLCLA, range(len(negLLCLA))), truth, window=480, errorType='negLL')
   plotAccuracy((negLLNN, range(len(negLLNN))), truth, window=480, errorType='negLL')
 
-
+  # Compare NN classifier and CLA classifier
   plt.figure()
   shiftedActualData = np.roll(np.array(actualData), -_options.stepsAhead)
   plt.plot(shiftedActualData)
@@ -511,3 +511,17 @@ if __name__ == "__main__":
   ax3.set_ylabel('negLL')
   ax3.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
   ax3.set_xticklabels(('CLA', 'NN'))
+
+  # Plot Example Prediction
+  dataSet = 'nyc_taxi'
+  filePath = './data/' + dataSet + '.csv'
+  data = pd.read_csv(filePath, header=0, skiprows=[1, 2],
+                     names=['datetime', 'value', 'timeofday', 'dayofweek'])
+  xaxis_datetime = pd.to_datetime(data['datetime'])
+  plt.figure()
+  plt.plot(xaxis_datetime, actualData)
+  plt.plot(xaxis_datetime, predictDataNN)
+  plt.legend(['Ground Truth', 'HTM prediction'])
+  plt.ylabel(' Taxi Passenger Count')
+  plt.xlim([xaxis_datetime[16600], xaxis_datetime[17000]])
+  plt.savefig('result/ExamplePredictionsHTM.pdf')

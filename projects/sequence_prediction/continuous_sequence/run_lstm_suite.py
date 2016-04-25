@@ -27,7 +27,7 @@ from expsuite import PyExperimentSuite
 from pybrain.datasets import SequentialDataSet
 from pybrain.tools.shortcuts import buildNetwork
 from pybrain.structure.modules import LSTMLayer
-from pybrain.supervised import RPropMinusTrainer
+from pybrain.supervised import RPropMinusTrainer, BackpropTrainer
 from pybrain.structure.modules import SigmoidLayer
 
 from nupic.encoders.scalar import ScalarEncoder as NupicScalarEncoder
@@ -226,6 +226,12 @@ class Suite(PyExperimentSuite):
       self.net = buildNetwork(self.nDimInput, params['num_cells'], self.nDimOutput,
                          hiddenclass=LSTMLayer, bias=True, outclass=SigmoidLayer, recurrent=True)
 
+    self.trainer = BackpropTrainer(self.net,
+                          dataset=SequentialDataSet(self.nDimInput, self.nDimOutput),
+                          learningrate=0.01,
+                          momentum=0,
+                          verbose=params['verbosity'] > 0)
+
     (self.networkInput, self.targetPrediction, self.trueData) = \
       self.dataset.generateSequence(
       prediction_nstep=params['prediction_nstep'],
@@ -240,7 +246,7 @@ class Suite(PyExperimentSuite):
 
   def train(self, params, verbose=False):
 
-    if params['create_network_before_training']:
+    if params['reset_every_training']:
       if verbose:
         print 'create lstm network'
 
@@ -255,8 +261,6 @@ class Suite(PyExperimentSuite):
     self.net.reset()
 
     ds = SequentialDataSet(self.nDimInput, self.nDimOutput)
-    trainer = RPropMinusTrainer(self.net, dataset=ds, verbose=verbose)
-
     networkInput = self.window(self.networkInput, params)
     targetPrediction = self.window(self.targetPrediction, params)
 
@@ -264,11 +268,19 @@ class Suite(PyExperimentSuite):
     for i in xrange(len(networkInput)):
       ds.addSample(self.inputEncoder.encode(networkInput[i]),
                    self.outputEncoder.encode(targetPrediction[i]))
-    if verbose:
-      print " train LSTM on ", len(ds), " records for ", params['num_epochs'], " epochs "
 
-    if len(networkInput) > 1:
-      trainer.trainEpochs(params['num_epochs'])
+    if params['num_epochs'] > 1:
+      trainer = RPropMinusTrainer(self.net, dataset=ds, verbose=verbose)
+
+      if verbose:
+        print " train LSTM on ", len(ds), " records for ", params['num_epochs'], " epochs "
+
+      if len(networkInput) > 1:
+        trainer.trainEpochs(params['num_epochs'])
+
+    else:
+      self.trainer.setData(ds)
+      self.trainer.train()
 
     # run through the training dataset to get the lstm network state right
     self.net.reset()
@@ -297,6 +309,8 @@ class Suite(PyExperimentSuite):
                   self.dataset.sequence['time'][iteration].hour == 0 and
                   self.dataset.sequence['time'][iteration].minute == 0)
 
+      if params['online_training']:
+        train = True
     if verbose:
       print
       print "iteration: ", iteration, " time: ", self.dataset.sequence['time'][iteration]

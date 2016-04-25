@@ -92,17 +92,21 @@ if __name__ == "__main__":
   ### Figure 2: Continuous LSTM with different window size
 
   fig = plt.figure()
-  (nrmseLSTM1000, expResultLSTM1000) = \
-    plotLSTMresult('results/nyc_taxi_experiment_continuous/learning_window1001.0/',
-                   window, xaxis=xaxisDate, label='continuous LSTM-1000')
+  (nrmseLSTM1000, expResultLSTM1000) = plotLSTMresult(
+    'results/nyc_taxi_experiment_continuous/learning_window1001.0/',
+    window, xaxis=xaxisDate, label='continuous LSTM-1000')
 
-  (nrmseLSTM3000, expResultLSTM3000) = \
-    plotLSTMresult('results/nyc_taxi_experiment_continuous/learning_window3001.0/',
-                   window, xaxis=xaxisDate, label='continuous LSTM-3000')
+  (nrmseLSTM3000, expResultLSTM3000) = plotLSTMresult(
+    'results/nyc_taxi_experiment_continuous/learning_window3001.0/',
+    window, xaxis=xaxisDate, label='continuous LSTM-3000')
 
-  (nrmseLSTM6000, expResultLSTM6000) = \
-    plotLSTMresult('results/nyc_taxi_experiment_continuous/learning_window6001.0/',
-                   window, xaxis=xaxisDate, label='continuous LSTM-6000')
+  (nrmseLSTM6000, expResultLSTM6000) = plotLSTMresult(
+    'results/nyc_taxi_experiment_continuous/learning_window6001.0/',
+    window, xaxis=xaxisDate, label='continuous LSTM-6000')
+
+  (nrmseLSTMonline, expResultLSTMonline) = plotLSTMresult(
+    'results/nyc_taxi_experiment_continuous_online/learning_window100.0/',
+    window, xaxis=xaxisDate, label='continuous LSTM-online')
 
   dataSet = 'nyc_taxi'
   filePath = './prediction/' + dataSet + '_TM_pred.csv'
@@ -224,17 +228,21 @@ if __name__ == "__main__":
 
   fig = plt.figure()
   plt.clf()
-  (negLLLSTM1000, expResultLSTM1000negLL) = \
-    plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window1001.0/',
-                   window, xaxis=xaxisDate, label='continuous LSTM-1000')
+  (negLLLSTM1000, expResultLSTM1000negLL) = plotLSTMresult(
+    'results/nyc_taxi_experiment_continuous_likelihood/learning_window1001.0/',
+    window, xaxis=xaxisDate, label='continuous LSTM-1000')
 
-  (negLLLSTM3000, expResultLSTM3000negLL) = \
-    plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window3001.0/',
-                   window, xaxis=xaxisDate, label='continuous LSTM-3000')
+  (negLLLSTM3000, expResultLSTM3000negLL) = plotLSTMresult(
+    'results/nyc_taxi_experiment_continuous_likelihood/learning_window3001.0/',
+    window, xaxis=xaxisDate, label='continuous LSTM-3000')
 
-  (negLLLSTM6000, expResultLSTM6000negLL) = \
-    plotLSTMresult('results/nyc_taxi_experiment_continuous_likelihood/learning_window6001.0/',
-                   window, xaxis=xaxisDate, label='continuous LSTM-6000')
+  (negLLLSTM6000, expResultLSTM6000negLL) = plotLSTMresult(
+    'results/nyc_taxi_experiment_continuous_likelihood/learning_window6001.0/',
+    window, xaxis=xaxisDate, label='continuous LSTM-6000')
+
+  (negLLLSTMOnline, expResultLSTMOnlinenegLL) = plotLSTMresult(
+    'results/nyc_taxi_experiment_continuous_likelihood_online/learning_window100.0/',
+    window, xaxis=xaxisDate, label='continuous LSTM-6000')
 
   dataSet = 'nyc_taxi'
   tmPredictionLL = np.load('./result/'+dataSet+'TMprediction.npy')
@@ -253,6 +261,7 @@ if __name__ == "__main__":
   altMAPELSTM6000 = computeAltMAPE(expResultLSTM6000.truth, expResultLSTM6000.predictions, startFrom)
   altMAPELSTM3000 = computeAltMAPE(expResultLSTM3000.truth, expResultLSTM3000.predictions, startFrom)
   altMAPELSTM1000 = computeAltMAPE(expResultLSTM1000.truth, expResultLSTM1000.predictions, startFrom)
+  altMAPELSTMonline = computeAltMAPE(expResultLSTMonline.truth, expResultLSTMonline.predictions, startFrom)
   altMAPETM = computeAltMAPE(tmTruth, tmPrediction, startFrom)
   altMAPEARIMA = computeAltMAPE(arimaTruth, arimaPrediction, startFrom)
   altMAPEESN = computeAltMAPE(esnTruth, esnPrediction, startFrom)
@@ -271,15 +280,17 @@ if __name__ == "__main__":
   nrmseLSTM1000mean = np.sqrt(np.nanmean(nrmseLSTM1000)) / np.nanstd(truth)
   nrmseLSTM3000mean = np.sqrt(np.nanmean(nrmseLSTM3000)) / np.nanstd(truth)
   nrmseLSTM6000mean = np.sqrt(np.nanmean(nrmseLSTM6000)) / np.nanstd(truth)
+  nrmseLSTMonlinemean = np.sqrt(np.nanmean(nrmseLSTMonline)) / np.nanstd(truth)
 
 
   fig, ax = plt.subplots(nrows=1, ncols=3)
-  inds = np.arange(7)
+  inds = np.arange(8)
   ax1 = ax[0]
   width = 0.5
   ax1.bar(inds, [nrmseARIMAmean,
                  nrmseELMmean,
                  nrmseESNmean,
+                 nrmseLSTMonlinemean,
                  nrmseLSTM1000mean,
                  nrmseLSTM3000mean,
                  nrmseLSTM6000mean,
@@ -287,7 +298,7 @@ if __name__ == "__main__":
   ax1.set_xticks(inds+width/2)
   ax1.set_ylabel('NRMSE')
   ax1.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
-  ax1.set_xticklabels( ('ARIMA', 'ELM',  'ESN',
+  ax1.set_xticklabels( ('ARIMA', 'ELM',  'ESN', 'LSTM-online',
                         'LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM') )
   for tick in ax1.xaxis.get_major_ticks():
     tick.label.set_rotation('vertical')
@@ -296,6 +307,7 @@ if __name__ == "__main__":
   ax3.bar(inds, [altMAPEARIMA,
                  altMAPEELM,
                  altMAPEESN,
+                 altMAPELSTMonline,
                  altMAPELSTM1000,
                  altMAPELSTM3000,
                  altMAPELSTM6000,
@@ -303,21 +315,23 @@ if __name__ == "__main__":
   ax3.set_xticks(inds+width/2)
   ax3.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
   ax3.set_ylabel('MAPE')
-  ax3.set_xticklabels( ('ARIMA', 'ELM', 'ESN',
+  ax3.set_xticklabels( ('ARIMA', 'ELM', 'ESN', 'LSTM-online',
                         'LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM') )
   for tick in ax3.xaxis.get_major_ticks():
     tick.label.set_rotation('vertical')
 
   ax2 = ax[2]
   ax2.set_ylabel('Negative Log-likelihood')
-  ax2.bar(inds, [np.nanmean(negLLLSTM1000),
+  ax2.bar(inds, [np.nanmean(negLLLSTMOnline),
+                 np.nanmean(negLLLSTM1000),
                  np.nanmean(negLLLSTM3000),
                  np.nanmean(negLLLSTM6000),
                  np.nanmean(negLLTM), 0, 0, 0], width=width, color='b')
   ax2.set_xticks(inds+width/2)
   ax2.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
   ax2.set_ylim([0, 2.0])
-  ax2.set_xticklabels(('LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM', '', '', ''))
+  ax2.set_xticklabels(('LSTM-online', 'LSTM1000', 'LSTM3000', 'LSTM6000',
+                       'HTM', '', '', ''))
   for tick in ax2.xaxis.get_major_ticks():
     tick.label.set_rotation('vertical')
 
