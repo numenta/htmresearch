@@ -49,6 +49,8 @@
       "maxUnionActivity": 0.20,
       "synPermPredActiveInc": 0.1,
       "synPermPreviousPredActiveInc": 0.1,
+      "historyLength": 10, 
+      "minHistory": 1,
       "decayFunctionType": "Exponential"
     }
   },  
