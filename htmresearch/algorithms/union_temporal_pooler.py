@@ -301,7 +301,7 @@ class UnionTemporalPooler(SpatialPooler):
       self._unionSDR = numpy.sort(topCells).astype(UINT_DTYPE)
     else:
       self._unionSDR = []
-      
+
     return self._unionSDR
 
 
