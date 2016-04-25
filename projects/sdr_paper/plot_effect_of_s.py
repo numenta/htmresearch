@@ -322,4 +322,4 @@ fig = Figure(data=data, layout=layout)
 plot_url = py.plot(fig)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
-py.image.save_as(figure, 'effect_of_s.png', scale=4)
+py.image.save_as(figure, 'images/effect_of_s.png', scale=4)
