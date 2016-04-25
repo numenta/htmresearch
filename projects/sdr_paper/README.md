@@ -111,7 +111,7 @@ required to achieve low error rates. In all of these simulations, the number of
 synapses s=24 and the dendritic threshold theta=12, corresponding to 50% noise
 tolerance.
 
-![Effect of n](https://github.com/subutai/nupic.research/blob/cleanup_sdr/projects/sdr_paper/images/effect_of_n.png)
+![Effect of n](https://github.com/numenta/nupic.research/tree/master/projects/sdr_paper/images/effect_of_n.png)
 
 
 Note on using NuPIC Core
