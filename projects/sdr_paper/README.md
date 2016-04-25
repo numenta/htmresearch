@@ -1,14 +1,24 @@
 
-This directory contains code and Excel files that simulate various scenarios in 
-the SDR paper. They are used to generate the numerical results. The code also
-serves to verify the formulas in the paper.
+This directory contains code and Excel files that simulate various scenarios in
+the SDR papers [1, 2] and the Neuron paper [3]. They are used to generate the numerical
+results. The code als serves to verify the formulas in the paper.
 
-An arXiv version of the SDR paper is available here:
+The papers are available here:
 
-Ahmad, S., and Hawkins, J. (2015). *Properties of Sparse Distributed
-Representations and their Application to Hierarchical Temporal Memory*. Neurons
-and Cognition; Artificial Intelligence. Retrieved from
-http://arxiv.org/abs/1503.07469
+[1] Ahmad, S., and Hawkins, J. (2015). *Properties of Sparse Distributed
+Representations and their Application to Hierarchical Temporal Memory*.
+*arXiv:1503.07469** Neurons and Cognition; Artificial Intelligence. Retrieved
+from http://arxiv.org/abs/1503.07469
+
+[2] Ahmad, S., and Hawkins, J. (2016). *How do neurons operate on sparse
+distributed representations? A mathematical theory of sparsity, neurons and
+active dendrites*. **arXiv:1601.00720** Neurons and Cognition; Artificial
+Intelligence. Retrieved from http://arxiv.org/abs/1601.00720
+
+[3] Hawkins, J., and Ahmad, S. (2016). Why Neurons Have Thousands of Synapses, a
+Theory of Sequence Memory in Neocortex. Front. Neural Circuits 10.
+doi:10.3389/fncir.2016.00023. PDF:
+http://journal.frontiersin.org/article/10.3389/fncir.2016.00023/full
 
 Subutai is working on a modified version for a journal publication.
 
@@ -21,32 +31,34 @@ different numbers and it tells you the result of various formulas.  Excel  uses
 very high precision math, so you can compute the numbers for any  reasonable set
 of parameters. (A much wider range than you can by simulations.) This
 spreadsheet was used to compute the numbers in the examples and the tables in
-the SDR paper. 
+the SDR paper.
+
 
 sdr_math_neuron_paper.ipynb
 ===========================
 
 An ipython notebook showing how to implement and compute the functions in
-python using a symbolic math library.
+python using a symbolic math library.  This notebook also contains some of the
+loops used to generate the numbers in the plots.
 
 
 Optimal threshold
 =================
 
-compute_optimal_threshold.py computes averaged errors over a wide range of values.
-The file plot_optimal_threshold.py plots the curve as a function of theta and
-outlines the "optimal" area.
+compute_optimal_threshold.py computes averaged errors over a wide range of
+values. The file plot_optimal_threshold.py plots the curve as a function of
+theta and outlines the "optimal" area.
 
 
-sdr_calculations.cpp
-====================
+sdr_calculations[12].cpp
+=====================
 
-This C++ program simulates SDR classification with various parameters.  In
+These C++ programs simulate SDR classification with various parameters.  In
 particular it simulates the "Classifying a Set of Vectors" setup. You can set
 values for M, n, and w and it will return the probability of a false match
 for various values of theta. It computes these probabilities via simulations
 (i.e. generating millions of random vectors and using a classifier to compute
-whether there was a match or not).
+whether there was a match or not).  It can also test false negatives with noise.
 
 As such this can be used to verify that the math in the paper is accurate.
 
