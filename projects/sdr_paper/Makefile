@@ -77,24 +77,6 @@ sdr: sdr_calculations2.cpp
 		-o test_binary_matrix $(LINK_FLAGS)
 
 
-
-mnist: mnist_sdrs.cpp
-	clang++ -g -O4 -c mnist_sdrs.cpp $(CXX_FLAGS)
-	clang++ -g -O4 -c read_mnist.cpp $(CXX_FLAGS)
-	clang++ -g -O4 -c dendrite_classifier1.cpp $(CXX_FLAGS)
-	clang++ -g -O4 -c dendrite_classifier2.cpp $(CXX_FLAGS)
-	clang++ -g -O4 -c knn_classifier.cpp $(CXX_FLAGS)
-
-	clang++ -Wl,-search_paths_first \
-		-Wl,-headerpad_max_install_names -Wl,-u,_munmap -m64 \
-		-stdlib=libc++ \
-		-lc++abi -liconv -lsqlite3 -framework CoreServices -framework Accelerate \
-		-L$(NUPIC_CORE_LIB) \
-		-O4 mnist_sdrs.o read_mnist.o knn_classifier.o \
-		dendrite_classifier1.o dendrite_classifier2.o \
-		-o mnist_sdrs $(LINK_FLAGS)
-
-
 clean: sdr_calculations2.cpp
 	rm -f *.o
 	rm -f sdr_calculations
