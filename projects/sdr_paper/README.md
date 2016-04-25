@@ -98,7 +98,7 @@ An example plot
 
 The following image shows an example plot.
 
-!(https://github.com/subutai/nupic.research/blob/cleanup_sdr/projects/sdr_paper/images/effect_of_n.png)
+![Effect of n](https://github.com/subutai/nupic.research/blob/cleanup_sdr/projects/sdr_paper/images/effect_of_n.png)
 
 
 Note on using NuPIC Core
