@@ -164,7 +164,7 @@ class LanguageSensor(PyRegion):
     Expects the text data to be in under header "token" from the dataSource.
     """
     if len(self.queue) > 0:
-      # data has been added to the queue, so use it
+      # Data has been added to the queue, so use it
       data = self.queue.pop()
 
     elif self.dataSource is None:
@@ -172,18 +172,14 @@ class LanguageSensor(PyRegion):
                         "and the dataSource is None.")
     else:
       data = self.dataSource.getNextRecordDict()
-      # Keys in data that are not column headers from the data source are standard
-      # of RecordStreamIface objects.
+      # Keys in data that are not column headers from the data source are
+      # standard of RecordStreamIface objects
 
-    # Copy important data input fields over to outputs dict. We set "sourceOut"
-    # explicitly b/c PyRegion.getSpec() won't take an output field w/ type str.
+    # Copy important data input fields over to outputs dict.
     outputs["resetOut"][0] = data["_reset"]
     outputs["sequenceIdOut"][0] = data["_sequenceId"]
-    outputs.update({"sourceOut": data["_token"]})
-    self.populateCategoriesOut(data["_category"], outputs['categoryOut'])
-    # TODO: encodingOut should be an initialized field via the spec
-    encoding = self.encoder.encodeIntoArray(data["_token"], outputs["dataOut"])
-    outputs.update({"encodingOut": encoding})
+    self.populateCategoriesOut(data["_category"], outputs["categoryOut"])
+    self.encoder.encodeIntoArray(data["_token"], outputs["dataOut"])
 
     if self.verbosity > 0:
       print "LanguageSensor outputs:"
@@ -191,7 +187,8 @@ class LanguageSensor(PyRegion):
       print "Categories out: ", outputs['categoryOut']
       print "dataOut: ", outputs["dataOut"].nonzero()[0]
 
-    self._outputValues = copy.deepcopy(outputs)
+    self._outputValues = {field: value for field, value in outputs.iteritems()}
+    self._outputValues["sourceOut"] = data["_token"]
 
     self._iterNum += 1
 
@@ -221,9 +218,7 @@ class LanguageSensor(PyRegion):
 
 
   def getOutputValues(self, outputName):
-    """Return the dictionary of output values. Note that these are normal Python
-    lists, rather than numpy arrays. This is to support lists with mixed scalars
-    and strings, as in the case of records with categorical variables
+    """Return the region's values for outputName.
     """
     return self._outputValues[outputName]
 
