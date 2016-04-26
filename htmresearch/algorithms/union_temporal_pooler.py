@@ -60,6 +60,7 @@ class UnionTemporalPooler(SpatialPooler):
                synPermPredActiveInc=0.0,
                synPermPreviousPredActiveInc=0.0,
                historyLength=0,
+               minHistory=0,
                **kwargs):
     """
     Please see spatial_pooler.py in NuPIC for super class parameter
@@ -89,6 +90,9 @@ class UnionTemporalPooler(SpatialPooler):
     @param maxUnionActivity: Maximum sparsity of the union SDR
 
     @param decayTimeConst Time constant for the decay function
+
+    @param minHistory don't perform union (output all zeros) until buffer
+    length >= minHistory
     """
 
     super(UnionTemporalPooler, self).__init__(**kwargs)
@@ -103,6 +107,7 @@ class UnionTemporalPooler(SpatialPooler):
     self._synPermPreviousPredActiveInc = synPermPreviousPredActiveInc
 
     self._historyLength = historyLength
+    self._minHistory = minHistory
 
     # initialize excite/decay functions
     if exciteFunctionType == 'Fixed':
@@ -151,6 +156,7 @@ class UnionTemporalPooler(SpatialPooler):
     # predicted inputs from the last n steps
     self._prePredictedActiveInput = numpy.zeros((self.getNumInputs(), self._historyLength), dtype=REAL_DTYPE)
 
+
   def reset(self):
     """
     Reset the state of the Union Temporal Pooler.
@@ -186,7 +192,7 @@ class UnionTemporalPooler(SpatialPooler):
     # Compute proximal dendrite overlaps with active and active-predicted inputs
     overlapsActive = self._calculateOverlap(activeInput)
     overlapsPredictedActive = self._calculateOverlap(predictedActiveInput)
-    totalOverlap = (overlapsActive * self._activeOverlapWeight  +
+    totalOverlap = (overlapsActive * self._activeOverlapWeight +
                     overlapsPredictedActive *
                     self._predictedActiveOverlapWeight).astype(REAL_DTYPE)
 
@@ -235,8 +241,8 @@ class UnionTemporalPooler(SpatialPooler):
     # save inputs from the previous time step
     self._preActiveInput = copy.copy(activeInput)
     self._prePredictedActiveInput = numpy.roll(self._prePredictedActiveInput,1,1)
-    if self._historyLength>0:
-      self._prePredictedActiveInput[:,0] = predictedActiveInput
+    if self._historyLength > 0:
+      self._prePredictedActiveInput[:, 0] = predictedActiveInput
 
     return self._unionSDR
 
@@ -291,7 +297,11 @@ class UnionTemporalPooler(SpatialPooler):
 
     topCells = potentialUnionSDR[0: self._maxUnionCells]
 
-    self._unionSDR = numpy.sort(topCells).astype(UINT_DTYPE)
+    if max(self._poolingTimer) > self._minHistory:
+      self._unionSDR = numpy.sort(topCells).astype(UINT_DTYPE)
+    else:
+      self._unionSDR = []
+
     return self._unionSDR
 
 
