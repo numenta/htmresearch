@@ -162,8 +162,6 @@ class LanguageSensor(PyRegion):
     outputs are as defined in the spec above.
 
     Expects the text data to be in under header "token" from the dataSource.
-
-    TODO: validate we're handling resets correctly
     """
     if len(self.queue) > 0:
       # data has been added to the queue, so use it
@@ -181,16 +179,17 @@ class LanguageSensor(PyRegion):
     # explicitly b/c PyRegion.getSpec() won't take an output field w/ type str.
     outputs["resetOut"][0] = data["_reset"]
     outputs["sequenceIdOut"][0] = data["_sequenceId"]
-    outputs["sourceOut"] = data["_token"]
+    outputs.update({"sourceOut": data["_token"]})
     self.populateCategoriesOut(data["_category"], outputs['categoryOut'])
-    outputs["encodingOut"] = self.encoder.encodeIntoArray(
-      data["_token"], outputs["dataOut"])
+    # TODO: encodingOut should be an initialized field via the spec
+    encoding = self.encoder.encodeIntoArray(data["_token"], outputs["dataOut"])
+    outputs.update({"encodingOut": encoding})
 
     if self.verbosity > 0:
       print "LanguageSensor outputs:"
       print "SeqID: ", outputs["sequenceIdOut"]
       print "Categories out: ", outputs['categoryOut']
-      print "dataOut: ",outputs["dataOut"].nonzero()[0]
+      print "dataOut: ", outputs["dataOut"].nonzero()[0]
 
     self._outputValues = copy.deepcopy(outputs)
 
