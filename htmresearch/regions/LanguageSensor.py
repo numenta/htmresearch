@@ -187,7 +187,11 @@ class LanguageSensor(PyRegion):
       print "Categories out: ", outputs['categoryOut']
       print "dataOut: ", outputs["dataOut"].nonzero()[0]
 
-    self._outputValues = {field: value for field, value in outputs.iteritems()}
+    # Deep copy the outputs so self._outputValues doesn't point to the values
+    # used within the Network API
+    self._outputValues = {
+      field: copy.deepcopy(value) for field, value in outputs.iteritems()
+    }
     self._outputValues["sourceOut"] = data["_token"]
 
     self._iterNum += 1
