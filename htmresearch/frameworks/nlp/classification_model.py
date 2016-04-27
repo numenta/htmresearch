@@ -426,10 +426,12 @@ class ClassificationModel(object):
     voteTotals = numpy.zeros(self.numLabels)
     count = 0
     for i, token in enumerate(tokenList):
-      votes, idList, distances = self.inferToken(token,
-                                                 reset=int(i == lastTokenIndex),
-                                                 returnDetailedResults=True,
-                                                 sortResults=False)
+      (votes,
+       idList,
+       distances) = self.inferToken(token,
+                                    resetSequence=int(i == lastTokenIndex),
+                                    returnDetailedResults=True,
+                                    sortResults=False)
 
       if votes.sum() > 0:
         voteTotals += votes

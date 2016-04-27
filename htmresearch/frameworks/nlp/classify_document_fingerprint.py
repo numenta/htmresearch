@@ -123,7 +123,8 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
     if resetSequence == 1:
       document = " ".join(self.currentDocument)
       sensor = self.sensorRegion.getSelf()
-      sensor.addDataToQueue(document, labels, sampleId, resetSequence)
+      sensor.addDataToQueue(token=document, categoryList=labels,
+                            sequenceId=sampleId, reset=resetSequence)
 
       for region in self.learningRegions:
         region.setParameter("learningMode", True)
