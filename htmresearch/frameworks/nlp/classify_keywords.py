@@ -58,7 +58,7 @@ class ClassificationModelKeywords(ClassificationModel):
     return self.classifier
 
 
-  def trainToken(self, token, labels, tokenId, reset=0):
+  def trainToken(self, token, labels, tokenId, resetSequence=0):
     """
     Train the model with the given text token, associated labels, and ID
     associated with this token.
@@ -77,7 +77,7 @@ class ClassificationModelKeywords(ClassificationModel):
                             partitionId=tokenId)
 
 
-  def inferToken(self, token, reset=0, returnDetailedResults=False,
+  def inferToken(self, token, resetSequence=0, returnDetailedResults=False,
                  sortResults=True):
     """
     Classify the token (i.e. run inference on the model with this document) and

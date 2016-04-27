@@ -71,7 +71,7 @@ class ClassificationModelFingerprint(ClassificationModel):
     self.currentDocument = None
 
 
-  def trainToken(self, token, labels, sampleId, reset=0):
+  def trainToken(self, token, labels, sampleId, resetSequence=0):
     """
     Train the model with the given text token, associated labels, and
     sampleId.
@@ -85,7 +85,7 @@ class ClassificationModelFingerprint(ClassificationModel):
       # accumulate text for this document
       self.currentDocument.append(token)
 
-    if reset == 1:
+    if resetSequence == 1:
       # all text accumulated, proceed w/ training on this document
       document = " ".join(self.currentDocument)
       bitmap = self.encoder.encode(document)["fingerprint"]["positions"]
@@ -102,7 +102,7 @@ class ClassificationModelFingerprint(ClassificationModel):
       self.currentDocument = None
 
 
-  def inferToken(self, token, reset=0, returnDetailedResults=False,
+  def inferToken(self, token, resetSequence=0, returnDetailedResults=False,
                  sortResults=True):
     """
     Classify the token (i.e. run inference on the model with this document) and
@@ -118,10 +118,11 @@ class ClassificationModelFingerprint(ClassificationModel):
       # accumulate text for this document
       self.currentDocument.append(token)
 
-    if reset == 0:
+    if resetSequence == 0:
       return numpy.zeros(self.numLabels), [], numpy.zeros(0)
 
-    # With reset=1, all text accumulated, proceed w/ classifying this document
+    # With resetSequence=1, all text is accumulated, proceed with classifying
+    # this document
     document = " ".join(self.currentDocument)
     bitmap = self.encoder.encode(document)["fingerprint"]["positions"]
 
