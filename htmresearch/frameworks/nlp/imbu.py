@@ -304,7 +304,7 @@ class ImbuModels(object):
           model.trainToken(token,
                            labels,
                            wordId,
-                           reset=int(i == lastTokenIndex))
+                           resetSequence=int(i == lastTokenIndex))
 
     if savePath:
       self.save(model, savePath)
