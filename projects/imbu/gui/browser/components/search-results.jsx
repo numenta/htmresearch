@@ -79,7 +79,8 @@ export default class SearchResultsComponent extends React.Component {
         },
         score: {
           width: '120px',
-          textAlign: 'right'
+          textAlign: 'right',
+          verticalAlign: 'top'
         }
       },
       content: {
@@ -160,6 +161,7 @@ export default class SearchResultsComponent extends React.Component {
     let {text, scores, maxScore, windowSize} = data;
 
     if (scores.length > 1) {
+      // Consistent with ImbuModels methods, we tokenize simply on spaces.
       let words = text.split(' ');
       let elements = [];
       let highlightStyle = {
@@ -176,7 +178,7 @@ export default class SearchResultsComponent extends React.Component {
         elements.push(currentElement);
 
         if (score > 0 && score === maxScore) {
-          // Highlight word or window with maxScore
+          // Highlight word(s) or window(s) with maxScore
           elements.slice(-windowSize).forEach((obj) => {
             obj.style = highlightStyle;
           });
