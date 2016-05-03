@@ -398,8 +398,7 @@ class ImbuModels(object):
 
   def _fragmentResults(self, results, contextSize):
     """ Takes results dict (generated in formatResults()) and splits the results
-    entries into fragments.
-
+    entries into fragments--defined by the best matches within the documents.
     """
     # resultsFragments = {}
     resultsFragments = []  ## inconsistent return type with the calling method
@@ -410,25 +409,28 @@ class ImbuModels(object):
       if maxScore == 0: continue
       fragmentOrigins = [i for i, s in enumerate(docResult["scores"])
                          if s == maxScore]
+      # TODO: ^^ won't show all results for Keywords (problem?)
 
-      # Consistent with the JS components (search-results.jsx) we tokenize
+      # Consistent with Imbu's JS components (search-results.jsx) we tokenize
       # simply on spaces.
       docText = docResult["text"].split(" ")
       docLength = len(docText)
 
+      # Set the start and end indices for this doc's fragments
+      fragmentsIndices = []
       for i, origin in enumerate(fragmentOrigins):
-        # A new fragment dict is created for each "origin"
-        newDocFragment = copy.deepcopy(docResult)
-
-        # Start/end indices cannot be outside of the document
         startIndex = origin - docResult["windowSize"] - contextSize
         if startIndex <= 0:
           startIndex = 0
         endIndex = origin + contextSize + 1
         if endIndex >= (docLength):
           endIndex = docLength
+        fragmentsIndices.append((startIndex, endIndex))
 
-        # TODO: Do we want to merge fragments that overlap? YES
+      # Create fragments, merging those that overlap
+      for i, (startIndex, endIndex) in enumerate(self._mergeRanges(fragmentsIndices)):
+        # A new fragment dict is created for each (start, end)
+        newDocFragment = copy.deepcopy(docResult)
 
         # Populate new fragment dict with subsets of the doc's text and scores
         # And add ellipsis to show document continuation
@@ -445,12 +447,42 @@ class ImbuModels(object):
         # resultsFragments[docId] = newDocFragment
         resultsFragments.append(newDocFragment)
 
-        # If the first fragment contains the rest of the document, only make
-        # a fragment from the first origin; add'l fragments (from later origins)
-        # will just reflect repeated text.
-        if i==0 and endIndex==docLength: break
+        # If the fragment contains the rest of the document, add'l fragments
+        # (from later origins) will just reflect repeated text.
+        if endIndex==docLength: break
 
     return resultsFragments
+
+
+  def _mergeRanges(self, ranges):
+    """
+    Generator to merge overlapping (not adjacent) ranges. The argument must be
+    an iterable of two-tuples (start, end).
+    """
+    # TODO: unit tests:
+    # >>> list(mergeRanges([(5,7), (3,5), (-1,3)]))
+    # [(-1, 7)]
+    # >>> list(mergeRanges([(5,6), (3,4), (1,2)]))
+    # [(1, 2), (3, 4), (5, 6)]
+    # >>> list(mergeRanges([]))
+    # []
+    # ... assertRaises
+
+    # Ranges should be an iterator sorted no the start index
+    ranges = iter(sorted(ranges))
+
+    currentStart, currentEnd = next(ranges)
+    for start, end in ranges:
+      if start > end:
+        raise ValueError("Can't have a range with the start after the end.")
+      if start >= currentEnd:
+        # No overlap here, move along
+        yield currentStart, currentEnd
+        currentStart, currentEnd = start, end
+      else:
+        # Ranges overlap, so merge by taking the larger end index
+        currentEnd = max(currentEnd, end)
+    yield currentStart, currentEnd
 
 
 
