@@ -37,9 +37,11 @@ the repo's base dir):
 """
 
 import argparse
+import copy
 import numpy
 import os
 import pprint
+import string
 from tqdm import tqdm
 
 from htmresearch.encoders import EncoderTypes
@@ -100,6 +102,7 @@ class ImbuModels(object):
   defaultModelType = "CioDocumentFingerprint"
   defaultDataset = "sample_reviews"
   defaultRetina = "en_associative"
+  defaultContextSize = 20
   tokenIndexingFactor = 1000
 
   # Mapping of acceptable model names to names expected by the model factory
@@ -223,21 +226,30 @@ class ImbuModels(object):
 
   def _initResultsDataStructure(self, modelType):
     """ Initialize a results dict to be populated in formatResults().
-    The windowSize value specifies the number of previous words (inclusive) that
-    each score represents.
+
+    windowSize specifies the number of previous words (inclusive) that each
+    score represents.
     """
+
+    # fragmentOrigins is to list the indices that defined the center(s) of the
+    # document's fragment(s). If there are no fragments for a given document, this
+    # remains an empty list.
+
+    # fragmentContext is the number of tokens the precede and follow the fragment
+    # origin for any given fragment.
+
     resultsDict = {}
-    for sampleId, sample in self.dataDict.iteritems():
+    for docId, document in self.dataDict.iteritems():
       if modelType in self.documentLevel:
-        # Only one match per sample
+        # Only one match per document
         scoresArray = [0]
         windowSize = 0
       else:
-        scoresArray = [0] * len(sample[0].split(" "))
+        scoresArray = [0] * len(document[0].split(" "))
         windowSize = 1
-      resultsDict[sampleId] = {"text": sample[0],
-                               "scores": scoresArray,
-                               "windowSize": windowSize}
+      resultsDict[docId] = {"text": document[0],
+                            "scores": scoresArray,
+                            "windowSize": windowSize}
 
     return resultsDict
 
@@ -325,18 +337,18 @@ class ImbuModels(object):
     model.save(savePath)
 
 
-  def formatResults(self, modelName, query, distanceArray, idList):
-    """ Format distances to reflect the pctOverlapOfInput metric, return a dict
-    of results info:
-      {
-        0:                          # sample ID integer
+  def formatResults(self, modelName, query, distanceArray, idList,
+      contextSize=None):
+    """ Format results for passing to frontend of Imbu app:
+      [
         {
           'scores': [],             # scalar values, length > 0
           'text': 'Hello world!',   # text string
-          'windowSize': 10          # integer >= 0
+          'windowSize': 10,         # integer >= 0
         },
         ...
-      }
+      ]
+
     For specific models we can expect some of the values:
       a. Document-level models -- CioWordFingerprint and CioDocumentFingerprint:
         windowSize = 0
@@ -345,16 +357,24 @@ class ImbuModels(object):
         windowSize = 1
       c. HTM_sensor_simple_tp_knn:
         windowSize = 10
+
+    Windows correspond to the last token of the window, so a window of length
+    10 for index 13 implies the window contains indices 4-13.
     """
-    formattedDistances = (1.0 - distanceArray) * 100
+    # Consistent with the JS components (search-results.jsx) we tokenize simply
+    # on spaces.
     queryLength = float(len(query.split(" ")))
+    formattedDistances = (1.0 - distanceArray) * 100
 
     modelType = (
       getattr(ClassificationModelTypes, self._mapModelName(modelName))
       or self.defaultModelType )
 
-    # Format results - each entry represents one sample.
+    # Format results - initially each entry represents one document.
     results = self._initResultsDataStructure(modelType)
+
+    # Set fragment context size
+    contextSize = contextSize or self.defaultContextSize
 
     for protoId, dist in zip(idList, formattedDistances):
       if modelType in self.documentLevel:
@@ -369,7 +389,68 @@ class ImbuModels(object):
         # Windows always length 10
         results[sampleId]["windowSize"] = 10
 
-    return results
+    if modelType in self.documentLevel:
+      # Doc-level results remain documents, not fragments of documents
+      return [r for r in results.values()]  # TODO: go back to dict type b/c need keys for the doc popups??
+
+    return self._fragmentResults(results, contextSize)
+
+
+  def _fragmentResults(self, results, contextSize):
+    """ Takes results dict (generated in formatResults()) and splits the results
+    entries into fragments.
+
+    """
+    # resultsFragments = {}
+    resultsFragments = []  ## inconsistent return type with the calling method
+    for docId, docResult in results.iteritems():
+      # Find everywhere there is a max-scoring match. These indices of the doc
+      # are "origins" that define the center of fragments.
+      maxScore = max(docResult["scores"])
+      if maxScore == 0: continue
+      fragmentOrigins = [i for i, s in enumerate(docResult["scores"])
+                         if s == maxScore]
+
+      # Consistent with the JS components (search-results.jsx) we tokenize
+      # simply on spaces.
+      docText = docResult["text"].split(" ")
+      docLength = len(docText)
+
+      for i, origin in enumerate(fragmentOrigins):
+        # A new fragment dict is created for each "origin"
+        newDocFragment = copy.deepcopy(docResult)
+
+        # Start/end indices cannot be outside of the document
+        startIndex = origin - docResult["windowSize"] - contextSize
+        if startIndex <= 0:
+          startIndex = 0
+        endIndex = origin + contextSize + 1
+        if endIndex >= (docLength):
+          endIndex = docLength
+
+        # TODO: Do we want to merge fragments that overlap? YES
+
+        # Populate new fragment dict with subsets of the doc's text and scores
+        # And add ellipsis to show document continuation
+        fragmentText = docText[startIndex:endIndex]
+        newDocFragment["scores"] = docResult["scores"][startIndex:endIndex]
+        if startIndex > 0:
+          fragmentText.insert(0, "...")
+          newDocFragment["scores"].insert(0, 0.0)
+        if endIndex < docLength:
+          fragmentText.append("...")
+          newDocFragment["scores"].append(0.0)
+        newDocFragment["text"] = string.join(fragmentText)
+
+        # resultsFragments[docId] = newDocFragment
+        resultsFragments.append(newDocFragment)
+
+        # If the first fragment contains the rest of the document, only make
+        # a fragment from the first origin; add'l fragments (from later origins)
+        # will just reflect repeated text.
+        if i==0 and endIndex==docLength: break
+
+    return resultsFragments
 
 
 
