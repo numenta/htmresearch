@@ -224,36 +224,6 @@ class ImbuModels(object):
     return model
 
 
-  def _initResultsDataStructure(self, modelType):
-    """ Initialize a results dict to be populated in formatResults().
-
-    windowSize specifies the number of previous words (inclusive) that each
-    score represents.
-    """
-
-    # fragmentOrigins is to list the indices that defined the center(s) of the
-    # document's fragment(s). If there are no fragments for a given document, this
-    # remains an empty list.
-
-    # fragmentContext is the number of tokens the precede and follow the fragment
-    # origin for any given fragment.
-
-    resultsDict = {}
-    for docId, document in self.dataDict.iteritems():
-      if modelType in self.documentLevel:
-        # Only one match per document
-        scoresArray = [0]
-        windowSize = 0
-      else:
-        scoresArray = [0] * len(document[0].split(" "))
-        windowSize = 1
-      resultsDict[docId] = {"text": document[0],
-                            "scores": scoresArray,
-                            "windowSize": windowSize}
-
-    return resultsDict
-
-
   def createModel(self, modelName, loadPath, savePath, *modelFactoryArgs,
       **modelFactoryKwargs):
     """ Creates a new model and trains it, or loads a previously trained model
@@ -339,12 +309,13 @@ class ImbuModels(object):
 
   def formatResults(self, modelName, query, distanceArray, idList,
       contextSize=None):
-    """ Format results for passing to frontend of Imbu app:
+    """ Returns a dict of results as expected by the frontend of the Imbu app:
       [
-        {
+        {                           # dict of results info for the fragment
           'scores': [],             # scalar values, length > 0
           'text': 'Hello world!',   # text string
           'windowSize': 10,         # integer >= 0
+          'docID': 0                # int ID for the document
         },
         ...
       ]
@@ -361,9 +332,11 @@ class ImbuModels(object):
     Windows correspond to the last token of the window, so a window of length
     10 for index 13 implies the window contains indices 4-13.
     """
-    # Consistent with the JS components (search-results.jsx) we tokenize simply
-    # on spaces.
+    # Consistent with Imbu's JS components (search-results.jsx) we tokenize
+    # simply on spaces.
     queryLength = float(len(query.split(" ")))
+
+    # Format distances to reflect pctOverlap metric
     formattedDistances = (1.0 - distanceArray) * 100
 
     modelType = (
@@ -372,37 +345,74 @@ class ImbuModels(object):
 
     # Format results - initially each entry represents one document.
     results = self._initResultsDataStructure(modelType)
+    for docResult in results:
+      docID = docResult["docID"]
+      if modelType in self.documentLevel:
+        docResult["scores"][0] = formattedDistances[docID]
+      else:
+        # Get the prototype distances for this doc via the indexing scheme
+
+        # populate the scores array via wordIDs
+        lower = docID * self.tokenIndexingFactor
+        upper = (docID + 1) * self.tokenIndexingFactor
+        for i, protoID in enumerate(idList):
+          if (lower <= protoID and protoID < upper):
+            wordID = protoID % self.tokenIndexingFactor
+            docResult["scores"][wordID] = formattedDistances[i]
+        # wordIDs = [protoID % self.tokenIndexingFactor for protoID in idList if (lower <= protoID and protoID < upper)]
+
+        # indicesOfDocumentProtos = [i for i, protoID in enumerate(idList)
+        #     if (lower <= protoID and protoID < upper)]
+        # if docID==81:
+        #   import pdb; pdb.set_trace()
+
+        # docResult["scores"] = list(formattedDistances[indicesOfDocumentProtos])
+      if modelName in ("HTM_sensor_simple_tp_knn",
+                       "HTM_sensor_tm_simple_tp_knn"):
+        # Windows always length 10
+        docResult["windowSize"] = 10
+
+    if modelType in self.documentLevel:
+      # Doc-level results remain documents, not fragments of documents
+      return results
 
     # Set fragment context size
     contextSize = contextSize or self.defaultContextSize
 
-    for protoId, dist in zip(idList, formattedDistances):
-      if modelType in self.documentLevel:
-        results[protoId]["scores"][0] = dist.item()
-      else:
-        # Get the sampleId from the protoId via the indexing scheme
-        wordId = protoId % self.tokenIndexingFactor
-        sampleId = (protoId - wordId) / self.tokenIndexingFactor
-        results[sampleId]["scores"][wordId] = dist.item()
-      if modelName in ("HTM_sensor_simple_tp_knn",
-                       "HTM_sensor_tm_simple_tp_knn"):
-        # Windows always length 10
-        results[sampleId]["windowSize"] = 10
-
-    if modelType in self.documentLevel:
-      # Doc-level results remain documents, not fragments of documents
-      return [r for r in results.values()]  # TODO: go back to dict type b/c need keys for the doc popups??
-
     return self._fragmentResults(results, contextSize)
+
+
+  def _initResultsDataStructure(self, modelType):
+    """ Initialize a results list to be populated in formatResults(). There's
+    one entry for each document in the dataset.
+
+    windowSize specifies the number of previous words (inclusive) that each
+    score represents.
+    """
+    resultsList = []
+    for i, (docID, document) in enumerate(self.dataDict.iteritems()):
+      if modelType in self.documentLevel:
+        # Only one match per document
+        scoresArray = [0]
+        windowSize = 0
+      else:
+        scoresArray = [0] * len(document[0].split(" "))
+        windowSize = 1
+      assert(i == docID)  ## does this matter?? smells like coupling...
+      resultsList.append({"text": document[0],
+                          "scores": scoresArray,
+                          "windowSize": windowSize,
+                          "docID": docID})
+
+    return resultsList
 
 
   def _fragmentResults(self, results, contextSize):
     """ Takes results dict (generated in formatResults()) and splits the results
     entries into fragments--defined by the best matches within the documents.
     """
-    # resultsFragments = {}
-    resultsFragments = []  ## inconsistent return type with the calling method
-    for docId, docResult in results.iteritems():
+    resultsFragments = []
+    for docResult in results:
       # Find everywhere there is a max-scoring match. These indices of the doc
       # are "origins" that define the center of fragments.
       maxScore = max(docResult["scores"])
@@ -444,7 +454,6 @@ class ImbuModels(object):
           newDocFragment["scores"].append(0.0)
         newDocFragment["text"] = string.join(fragmentText)
 
-        # resultsFragments[docId] = newDocFragment
         resultsFragments.append(newDocFragment)
 
         # If the fragment contains the rest of the document, add'l fragments
@@ -454,20 +463,12 @@ class ImbuModels(object):
     return resultsFragments
 
 
-  def _mergeRanges(self, ranges):
+  @staticmethod
+  def _mergeRanges(ranges):
     """
     Generator to merge overlapping (not adjacent) ranges. The argument must be
     an iterable of two-tuples (start, end).
     """
-    # TODO: unit tests:
-    # >>> list(mergeRanges([(5,7), (3,5), (-1,3)]))
-    # [(-1, 7)]
-    # >>> list(mergeRanges([(5,6), (3,4), (1,2)]))
-    # [(1, 2), (3, 4), (5, 6)]
-    # >>> list(mergeRanges([]))
-    # []
-    # ... assertRaises
-
     # Ranges should be an iterator sorted no the start index
     ranges = iter(sorted(ranges))
 
