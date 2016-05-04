@@ -165,7 +165,7 @@ export default class SearchResultsComponent extends React.Component {
       let words = text.split(' ');
       let elements = [];
       let highlightStyle = {
-        backgroundColor: Colors.purple200
+        backgroundColor: Colors.purple100
       };
 
       for (let i=0; i < words.length; i++) {
