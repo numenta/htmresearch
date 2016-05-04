@@ -269,10 +269,13 @@ class TestImbu(unittest.TestCase):
 
 
   def _checkResultsFormatting(self, results, modelName, windowSize=0):
-    self.assertEquals(["scores", "text", "windowSize"], sorted(results[0]),
+    self.assertEquals(
+      ["docID", "scores", "text", "windowSize"], sorted(results[0]),
       "Results dict for {} has incorrect keys.".format(modelName))
     self.assertEquals(windowSize, results[0]["windowSize"],
       "Results give incorrect window size for {} model.".format(modelName))
+    self.assertEquals(0, results[0]["docID"],
+      "Results give incorrect docID for {} model.".format(modelName))
 
 
   def testResultsFormatting(self):
@@ -301,3 +304,89 @@ class TestImbu(unittest.TestCase):
     idList = range(1)
     results = imbu.formatResults(modelName, query, distanceArray, idList)
     self._checkResultsFormatting(results, modelName)
+
+
+  def testMergeRanges(self):
+    """ Tests the mergeRanges() method used in fragmenting Imbu results."""
+    imbu = self._setupFakeImbuModelsInstance()
+
+    def mergeIntoList(ranges):
+      return list(imbu._mergeRanges(ranges))
+
+    ranges = [(3, 7), (3, 5), (0, 4)]
+    self.assertItemsEqual([(0, 7)], mergeIntoList(ranges))
+    ranges = [(5, 6), (3, 4), (1, 2)]
+    self.assertItemsEqual([(1, 2), (3, 4), (5, 6)], mergeIntoList(ranges))
+    ranges = [(0, 13)]
+    self.assertItemsEqual(ranges, mergeIntoList(ranges))
+    ranges = [(0, 3), (6, 3)]
+    with self.assertRaises(ValueError):
+      mergeIntoList(ranges)
+
+
+  def testFragmentingResults(self):
+    imbu = self._setupFakeImbuModelsInstance()
+
+    checkpointLocation = self._createTempModelCheckpoint()
+
+    # Test fragmenting documents with Keywords (word-level) model
+    model = imbu.createModel("Keywords",
+                             loadPath="",
+                             savePath=checkpointLocation)
+
+    query = "showers"
+    _, unSortedIds, unSortedDistances = imbu.query(model, query)
+    resultsFrags = imbu.formatResults(
+      "Keywords", query, unSortedDistances, unSortedIds)
+    self.assertEquals(1, len(resultsFrags),
+      "Should only be one results fragment.")
+    self._assertFragmenting(resultsFrags, query, ellipsesIndex=-1)
+
+    query = "lunchtime"
+    _, unSortedIds, unSortedDistances = imbu.query(model, query)
+    resultsFrags = imbu.formatResults(
+      "Keywords", query, unSortedDistances, unSortedIds)
+    self.assertEquals(1, len(resultsFrags),
+      "Should only be one results fragment.")
+    self._assertFragmenting(resultsFrags, query, ellipsesIndex=0)
+
+    query = "work"
+    _, unSortedIds, unSortedDistances = imbu.query(model, query)
+    resultsFrags = imbu.formatResults(
+      "Keywords", query, unSortedDistances, unSortedIds)
+    self.assertEquals(2, len(resultsFrags),
+      "Should be two results fragments.")
+    self._assertFragmenting(resultsFrags, query)
+    for result in resultsFrags:
+      self.assertNotIn("...", result["text"],
+        "Fragment should reflect the full document.")
+
+    # Results for doc-level model should not be fragmented
+    model = imbu.createModel("CioDocumentFingerprint",
+                             loadPath="",
+                             savePath=checkpointLocation)
+    query = "unicorn"
+    _, unSortedIds, unSortedDistances = imbu.query(model, query)
+    resultsFrags = imbu.formatResults(
+      "CioDocumentFingerprint", query, unSortedDistances, unSortedIds)
+    self.assertEquals(2, len(resultsFrags),
+      "Should be two results fragments.")
+    for result in resultsFrags:
+      self.assertEquals(1, len(result["scores"]),
+        "Should only be one score per doc-level result.")
+      self.assertNotIn("...", result["text"],
+        "Fragment should reflect the full document.")
+
+
+  def _assertFragmenting(self, resultsFrags, query, ellipsesIndex=None):
+    ellipsis = "..."
+    for result in resultsFrags:
+      scores = result["scores"]
+      textList = result["text"].split(" ")
+      self.assertTrue(len(scores) == len(textList))
+      maxScore = max(scores)
+      for i, s in enumerate(scores):
+        if s == maxScore:
+          self.assertEquals(query, textList[i].lower())
+      if ellipsesIndex:
+        self.assertEquals(ellipsis, textList[ellipsesIndex])
