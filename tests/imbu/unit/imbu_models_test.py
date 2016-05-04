@@ -275,7 +275,7 @@ class TestImbu(unittest.TestCase):
         "Results dict for {} has incorrect keys.".format(modelName))
       self.assertEquals(windowSize, result["windowSize"],
         "Results give incorrect window size for {} model.".format(modelName))
-      self.assertEquals(i, results["docID"],
+      self.assertEquals(i, result["docID"],
         "Results give incorrect docID for {} model.".format(modelName))
 
 

@@ -361,7 +361,7 @@ class ImbuModels(object):
       if modelName in ("HTM_sensor_simple_tp_knn",
                        "HTM_sensor_tm_simple_tp_knn"):
         # Windows always length 10
-        docResult["windowSize"] = 10
+        results[docID]["windowSize"] = 10
 
     if modelType in self.documentLevel:
       # Doc-level results remain documents, not fragments of documents
@@ -428,7 +428,7 @@ class ImbuModels(object):
         fragmentsIndices.append((startIndex, endIndex))
 
       # Create fragments, merging those that overlap
-      for i, (startIndex, endIndex) in enumerate(self._mergeRanges(fragmentsIndices)):
+      for startIndex, endIndex in self._mergeRanges(fragmentsIndices):
         # A new fragment dict is created for each (start, end)
         newDocFragment = copy.deepcopy(docResult)
 
