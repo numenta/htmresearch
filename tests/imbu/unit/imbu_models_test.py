@@ -269,13 +269,14 @@ class TestImbu(unittest.TestCase):
 
 
   def _checkResultsFormatting(self, results, modelName, windowSize=0):
-    self.assertEquals(
-      ["docID", "scores", "text", "windowSize"], sorted(results[0]),
-      "Results dict for {} has incorrect keys.".format(modelName))
-    self.assertEquals(windowSize, results[0]["windowSize"],
-      "Results give incorrect window size for {} model.".format(modelName))
-    self.assertEquals(0, results[0]["docID"],
-      "Results give incorrect docID for {} model.".format(modelName))
+    for i, result in enumerate(results):
+      self.assertEquals(
+        ["docID", "scores", "text", "windowSize"], sorted(result),
+        "Results dict for {} has incorrect keys.".format(modelName))
+      self.assertEquals(windowSize, result["windowSize"],
+        "Results give incorrect window size for {} model.".format(modelName))
+      self.assertEquals(i, results["docID"],
+        "Results give incorrect docID for {} model.".format(modelName))
 
 
   def testResultsFormatting(self):
