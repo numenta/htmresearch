@@ -48,7 +48,7 @@ if __name__ == "__main__":
   rawScore2 = []
   encodingOverlap = []
   spOverlap = []
-  for i in range(5):  # range(len(dataset1.data)):
+  for i in range(10):  # range(len(dataset1.data)):
     print
     print "Step {}".format(i)
 
@@ -64,25 +64,24 @@ if __name__ == "__main__":
     rawScore2.append(rawScore)
 
     # Get the sensorRegion outputs
-    sensorRegion1 = detector1.model._getSensorRegion().getSelf()
-    timeEncoding1 = sensorRegion1.getOutputValues('sourceEncodings')[0]
-    valueEncoding1 = sensorRegion1.getOutputValues('sourceEncodings')[1]
+    sensorRegion1 = detector1.model._getSensorRegion()
+    encoding1 = sensorRegion1.getOutputData('dataOut')
 
-    sensorRegion2 = detector1.model._getSensorRegion().getSelf()
-    timeEncoding2 = sensorRegion2.getOutputValues('sourceEncodings')[0]
-    valueEncoding2 = sensorRegion2.getOutputValues('sourceEncodings')[1]
+    sensorRegion2 = detector2.model._getSensorRegion()
+    encoding2 = sensorRegion2.getOutputData('dataOut')
+
+    print "Encoding1: ", encoding1.nonzero()[0]
+    print "Encoding2: ", encoding1.nonzero()[0]
+
+    if encoding1.nonzero()[0].sum() != encoding2.nonzero()[0].sum() :
+      print "\nIteration",i,"encodings are different!"
 
     # Make sure the encoder outputs are the same
-    assert (np.sum(
-      np.logical_and(timeEncoding1, timeEncoding2)) == np.sum(timeEncoding1))
-
-    assert (np.sum(
-      np.logical_and(valueEncoding1, valueEncoding2)) == np.sum(valueEncoding1))
-
-    print "Encoder Output: "
-    print np.concatenate((timeEncoding1, valueEncoding1)).nonzero()[0]
-
-    encodingOverlap.append(np.sum(np.logical_and(valueEncoding1, valueEncoding2)))
+    #
+    # print "Encoder Output: "
+    # print np.concatenate((timeEncoding1, valueEncoding1)).nonzero()[0]
+    #
+    # encodingOverlap.append(np.sum(np.logical_and(valueEncoding1, valueEncoding2)))
 
     # Get SP inputs and outputs
     spRegion1 = detector1.model._getSPRegion().getSelf()
@@ -95,6 +94,9 @@ if __name__ == "__main__":
     print "Detector 2, SP input"
     print spInput2
     print
+
+    assert spInput1.sum() == encoding1.nonzero()[0].sum()
+    assert spInput2.sum() == encoding2.nonzero()[0].sum()
 
     spOutput1 = spRegion1._spatialPoolerOutput
     spOutput2 = spRegion2._spatialPoolerOutput
