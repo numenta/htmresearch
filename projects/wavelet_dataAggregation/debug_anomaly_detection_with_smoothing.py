@@ -73,15 +73,9 @@ if __name__ == "__main__":
     print "Encoding1: ", encoding1.nonzero()[0]
     print "Encoding2: ", encoding1.nonzero()[0]
 
+    # Report whenever the encoder outputs are different
     if encoding1.nonzero()[0].sum() != encoding2.nonzero()[0].sum() :
       print "\nIteration",i,"encodings are different!"
-
-    # Make sure the encoder outputs are the same
-    #
-    # print "Encoder Output: "
-    # print np.concatenate((timeEncoding1, valueEncoding1)).nonzero()[0]
-    #
-    # encodingOverlap.append(np.sum(np.logical_and(valueEncoding1, valueEncoding2)))
 
     # Get SP inputs and outputs
     spRegion1 = detector1.model._getSPRegion().getSelf()
@@ -95,6 +89,7 @@ if __name__ == "__main__":
     print spInput2
     print
 
+    # Ensure SP inputs are identical to encoder outputs
     assert spInput1.sum() == encoding1.nonzero()[0].sum()
     assert spInput2.sum() == encoding2.nonzero()[0].sum()
 
