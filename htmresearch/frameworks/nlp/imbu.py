@@ -367,10 +367,11 @@ class ImbuModels(object):
       # Doc-level results remain documents, not fragments of documents
       return results
 
-    # Set fragment context size
+    # Populate results with fragments indices
     contextSize = contextSize or self.defaultContextSize
+    self._fragmentResults(results, contextSize)
 
-    return self._fragmentResults(results, contextSize)
+    return results
 
 
   def _initResultsDataStructure(self, modelType):
@@ -379,37 +380,38 @@ class ImbuModels(object):
 
     windowSize specifies the number of previous words (inclusive) that each
     score represents.
+    indices specifies the location(s) of fragment(s) within the documents (as
+    [start, end]).
     """
-    resultsList = []
-    for docID, document in self.dataDict.iteritems():
+    results = {}
+    for docID, documentData in self.dataDict.iteritems():
+      docLength = len(documentData[0].split(" "))
       if modelType in self.documentLevel:
         # Only one match per document
         scoresArray = [0]
         windowSize = 0
       else:
-        scoresArray = [0] * len(document[0].split(" "))
+        scoresArray = [0] * docLength
         windowSize = 1
-      resultsList.append({"text": document[0],
-                          "scores": scoresArray,
-                          "windowSize": windowSize,
-                          "docID": docID})  # list index == document ID
+      results[docID] = {"text": documentData[0],
+                        "scores": scoresArray,
+                        "windowSize": windowSize,
+                        "indices": [[0, docLength]]}
 
-    return resultsList
+    return results
 
 
   def _fragmentResults(self, results, contextSize):
     """ Takes results dict (generated in formatResults()) and splits the results
     entries into fragments--defined by the best matches within the documents.
     """
-    resultsFragments = []
-    for docResult in results:
+    for docResult in results.values():
       # Find everywhere there is a max-scoring match. These indices of the doc
       # are "origins" that define the center of fragments.
       maxScore = max(docResult["scores"])
       if maxScore == 0: continue
       fragmentOrigins = [i for i, s in enumerate(docResult["scores"])
                          if s == maxScore]
-      # TODO: ^^ won't show all results for Keywords (problem?)
 
       # Consistent with Imbu's JS components (search-results.jsx) we tokenize
       # simply on spaces.
@@ -427,30 +429,10 @@ class ImbuModels(object):
           endIndex = docLength
         fragmentsIndices.append((startIndex, endIndex))
 
-      # Create fragments, merging those that overlap
-      for startIndex, endIndex in self._mergeRanges(fragmentsIndices):
-        # A new fragment dict is created for each (start, end)
-        newDocFragment = copy.deepcopy(docResult)
-
-        # Populate new fragment dict with subsets of the doc's text and scores
-        # And add ellipsis to show document continuation
-        fragmentText = docText[startIndex:endIndex]
-        newDocFragment["scores"] = docResult["scores"][startIndex:endIndex]
-        if startIndex > 0:
-          fragmentText.insert(0, "...")
-          newDocFragment["scores"].insert(0, 0.0)
-        if endIndex < docLength:
-          fragmentText.append("...")
-          newDocFragment["scores"].append(0.0)
-        newDocFragment["text"] = string.join(fragmentText)
-
-        resultsFragments.append(newDocFragment)
-
-        # If the fragment contains the rest of the document, add'l fragments
-        # (from later origins) will just reflect repeated text.
-        if endIndex==docLength: break
-
-    return resultsFragments
+      # Merge overlapping fragments
+      docResult["indices"] = []
+      for indices in self._mergeRanges(fragmentsIndices):
+        docResult["indices"].append(indices)
 
 
   @staticmethod
@@ -473,7 +455,7 @@ class ImbuModels(object):
       else:
         # Ranges overlap, so merge by taking the larger end index
         currentEnd = max(currentEnd, end)
-    yield currentStart, currentEnd
+    yield [currentStart, currentEnd]
 
 
 
