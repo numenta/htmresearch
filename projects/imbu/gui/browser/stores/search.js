@@ -138,32 +138,68 @@ export default class SearchStore extends BaseStore {
     if (error) {
       this.results.set(model, {status:'error', error});
     } else if (results) {
-      // Find and sort results by max score
-      let data = Object.keys(results)
+      // Split results into fragments, and sort
+      let data = []
+      Object.keys(results)
         .map((id) => {
           let record = results[id];
           let text = record.text;
           let scores = record.scores;
           let windowSize = record.windowSize;
+          let fragmentIndices = record.indices;
 
-          // Find max
-          let maxScore = record.scores.reduce((prev, current) => {
-            return prev > current ? prev : current;
-          });
-          let sumScore = record.scores.reduce((prev, current) => {
-            return prev + current ;
-          });
-          return {
-            text, maxScore, sumScore, scores, windowSize
-          };
-        })
-        .sort((a, b) => {
-          let res = b.maxScore - a.maxScore;
-          if (res === 0) {
-            res = b.sumScore - a.sumScore;
+          if (fragmentIndices) {
+            // Break results into their fragments
+            for (let i=0; i < fragmentIndices.length; i++) {
+              let startIndex = fragmentIndices[i][0]
+              let endIndex = fragmentIndices[i][1]
+
+              let fragScores = scores.slice(startIndex, endIndex)
+              // Consistent with ImbuModels methods, we tokenize simply on spaces.
+              let words = text.split(' ')
+              let fragWords = words.slice(startIndex, endIndex);
+              let nullScore = 0
+              if (startIndex > 0) {
+                fragWords.unshift('...')
+                fragScores.unshift(nullScore)
+              }
+              if (endIndex < words.length) {
+                fragWords.push('...')
+                fragScores.push(nullScore)
+              }
+              let fragText = fragWords.join(' ')
+
+              // Find this result's max score and sum of scores
+              let maxScore = fragScores.reduce((prev, current) => {
+                return prev > current ? prev : current;
+              });
+              let sumScore = fragScores.reduce((prev, current) => {
+                return prev + current ;
+              });
+              let fragment = {
+                fragText, maxScore, sumScore, fragScores, windowSize
+              };
+              data.push(fragment)
+            }
+          } else {
+            // No query results, just the dataset
+            let fragText = text
+            let fragScores = scores
+            let maxScore = 0
+            let sumScore = 0
+            let fragment = {
+              fragText, maxScore, sumScore, fragScores, windowSize
+            };
+            data.push(fragment)
           }
-          return res;
-        });
+        })
+      data.sort((a, b) => {
+        let res = b.maxScore - a.maxScore;
+        if (res === 0) {
+          res = b.sumScore - a.sumScore;
+        }
+        return res;
+      });
       this.results.set(model, {status:'ready', data});
     } else {
       // No data

@@ -158,18 +158,18 @@ export default class SearchResultsComponent extends React.Component {
   }
 
   formatResults(data) {
-    let {text, scores, maxScore, windowSize} = data;
+    let {fragText, fragScores, maxScore, windowSize} = data;
 
-    if (scores.length > 1) {
+    if (fragScores.length > 1) {
       // Consistent with ImbuModels methods, we tokenize simply on spaces.
-      let words = text.split(' ');
+      let words = fragText.split(' ');
       let elements = [];
       let highlightStyle = {
         backgroundColor: Colors.purple100
       };
 
       for (let i=0; i < words.length; i++) {
-        let score = scores[i];
+        let score = fragScores[i];
         let currentElement = {
           score,
           text: words[i],
@@ -189,7 +189,7 @@ export default class SearchResultsComponent extends React.Component {
         return (<span title={obj.score} style={obj.style}>{obj.text} </span>);
       });
     }
-    return text;
+    return fragText;
   }
 
   render() {
