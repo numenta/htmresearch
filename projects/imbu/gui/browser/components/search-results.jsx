@@ -161,7 +161,7 @@ export default class SearchResultsComponent extends React.Component {
     let {fragText, fragScores, maxScore, windowSize} = data;
 
     if (fragScores.length > 1) {
-      // Consistent with ImbuModels methods, we tokenize simply on spaces.
+      // Consistent with ImbuModels methods, we tokenize simply on spaces
       let words = fragText.split(' ');
       let elements = [];
       let highlightStyle = {

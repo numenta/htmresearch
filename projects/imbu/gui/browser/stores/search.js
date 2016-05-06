@@ -138,7 +138,7 @@ export default class SearchStore extends BaseStore {
     if (error) {
       this.results.set(model, {status:'error', error});
     } else if (results) {
-      // Split results into fragments, and sort
+      // Process results data
       let data = []
       Object.keys(results)
         .map((id) => {
@@ -149,13 +149,13 @@ export default class SearchStore extends BaseStore {
           let fragmentIndices = record.indices;
 
           if (fragmentIndices) {
-            // Break results into their fragments
+            // Data is query results, so break results into their fragments
             for (let i=0; i < fragmentIndices.length; i++) {
               let startIndex = fragmentIndices[i][0]
               let endIndex = fragmentIndices[i][1]
 
               let fragScores = scores.slice(startIndex, endIndex)
-              // Consistent with ImbuModels methods, we tokenize simply on spaces.
+              // Consistent with ImbuModels, we tokenize simply on spaces
               let words = text.split(' ')
               let fragWords = words.slice(startIndex, endIndex);
               let nullScore = 0
@@ -176,13 +176,14 @@ export default class SearchStore extends BaseStore {
               let sumScore = fragScores.reduce((prev, current) => {
                 return prev + current ;
               });
+              // Add this fragment
               let fragment = {
                 fragText, maxScore, sumScore, fragScores, windowSize
               };
               data.push(fragment)
             }
           } else {
-            // No query results, just the dataset
+            // Data is not query results, just the dataset
             let fragText = text
             let fragScores = scores
             let maxScore = 0
@@ -193,6 +194,7 @@ export default class SearchStore extends BaseStore {
             data.push(fragment)
           }
         })
+      // Sort the data by max scores, breaking ties with score sums
       data.sort((a, b) => {
         let res = b.maxScore - a.maxScore;
         if (res === 0) {

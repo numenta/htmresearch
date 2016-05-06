@@ -435,6 +435,7 @@ class ImbuModels(object):
         docResult["indices"].append(indices)
 
 
+  # TODO: no longer want as a generator?
   @staticmethod
   def _mergeRanges(ranges):
     """
