@@ -427,7 +427,7 @@ class ImbuModels(object):
         endIndex = origin + contextSize + 1
         if endIndex >= (docLength):
           endIndex = docLength
-        fragmentsIndices.append((startIndex, endIndex))
+        fragmentsIndices.append([startIndex, endIndex])
 
       # Merge overlapping fragments
       docResult["indices"] = []
@@ -451,7 +451,7 @@ class ImbuModels(object):
         raise ValueError("Can't have a range with the start after the end.")
       if start >= currentEnd:
         # No overlap here, move along
-        yield currentStart, currentEnd
+        yield [currentStart, currentEnd]
         currentStart, currentEnd = start, end
       else:
         # Ranges overlap, so merge by taking the larger end index
