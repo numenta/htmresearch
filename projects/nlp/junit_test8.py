@@ -101,8 +101,9 @@ def testModel(model, testData, categorySize=10, verbosity=0):
 
   print printTemplate
   print
-  print "Total score / avg score across all test documents:",
-  print summedScore, summedScore/lengthOfTest
+  print "Scores across all test documents:",
+  print "  Total:", summedScore
+  print "  Avg:", summedScore/float(lengthOfTest)
 
 
 
