@@ -22,10 +22,13 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import Material from 'material-ui';
 import connectToStores from 'fluxible-addons-react/connectToStores';
-import SearchQueryAction from '../actions/search-query';
+
 import DatasetStore from '../stores/dataset';
-import SearchStore from '../stores/search';
+import DetailsDialog from './details-dialog';
+import SearchQueryAction from '../actions/search-query';
+import DetailsDialogOpenAction from '../actions/details-dialog-open';
 import ServerStatusStore from '../stores/server-status';
+import SearchStore from '../stores/search';
 import MODELS from '../constants/models';
 
 const {
@@ -74,12 +77,15 @@ export default class SearchResultsComponent extends React.Component {
       },
       column: {
         summary: {
-          whiteSpace: 'normal',
-          overflow: 'auto'
+          cursor: 'pointer',
+          overflow: 'auto',
+          whiteSpace: 'normal'
         },
         score: {
-          width: '120px',
-          textAlign: 'right'
+          cursor: 'pointer',
+          textAlign: 'right',
+          verticalAlign: 'top',
+          width: '120px'
         }
       },
       content: {
@@ -127,6 +133,19 @@ export default class SearchResultsComponent extends React.Component {
     let model = value;
     this.setState({model});
     this._search(this.props.query, this.props.dataset, model);
+  }
+
+  /**
+   * Handle click on search results Table cell
+   * @param {Number} rowNumber - Clicked Table cell row index
+   * @param {Number} columnId - Clicked Table cell column index
+   */
+  _onTableCellClick(rowNumber, columnId) {
+    let payload = {
+      title: `Document Row #${rowNumber} Details`,
+      body: this.state.results[rowNumber]
+    };
+    this.context.executeAction(DetailsDialogOpenAction, payload);
   }
 
   _search(query, dataset, model) {
@@ -196,6 +215,7 @@ export default class SearchResultsComponent extends React.Component {
     let ready = this.props.ready;
     let status = this.state.status;
     let statusComponent;
+
     if (status === 'pending') {
       // Show Progress
       statusComponent = (
@@ -239,6 +259,7 @@ export default class SearchResultsComponent extends React.Component {
                 }>
       </MenuItem>
     ));
+
     return (
       <Paper style={styles.content} depth={1}>
         <DropDownMenu style={styles.modelsMenu}
@@ -249,9 +270,15 @@ export default class SearchResultsComponent extends React.Component {
           {modelMenuItems}
         </DropDownMenu>
         {statusComponent}
-        <Table selectable={false} fixedHeader={true} style={tableStyle}
-          height={styles.table.height} ref="results">
-          <TableHeader  adjustForCheckbox={false} displaySelectAll={false}>
+        <Table
+          fixedHeader={true}
+          height={styles.table.height}
+          onCellClick={this._onTableCellClick.bind(this)}
+          ref="results"
+          selectable={false}
+          style={tableStyle}
+        >
+          <TableHeader adjustForCheckbox={false} displaySelectAll={false}>
             <TableRow>
               <TableHeaderColumn key={0} style={styles.column.summary}>
                 Match
@@ -265,6 +292,7 @@ export default class SearchResultsComponent extends React.Component {
             {rows}
           </TableBody>
         </Table>
+        <DetailsDialog />
       </Paper>
     );
   }
