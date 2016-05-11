@@ -21,7 +21,10 @@
 
 """Module providing a factory for instantiating a temporal memory instance."""
 
+import inspect
+
 from nupic.research.temporal_memory import TemporalMemory
+from nupic.bindings.algorithms import TemporalMemory as TemporalMemoryCPP
 from htmresearch.algorithms.general_temporal_memory import (
   GeneralTemporalMemory)
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
@@ -37,6 +40,7 @@ class TemporalMemoryTypes(object):
   general = GeneralTemporalMemory
   tm = TemporalMemory
   tmMixin = MonitoredTemporalMemory
+  tmCPP = TemporalMemoryCPP
 
 
   @classmethod
@@ -73,14 +77,24 @@ def createModel(modelName, **kwargs):
 
 def getConstructorArguments(modelName):
   """
-  Return a list of strings corresponding to constructor arguments for the
+  Return constructor arguments and associated default values for the
   given model type.
 
   @param modelName (str)  A supported temporal memory type
 
+  @return argNames (list of str) a list of strings corresponding to constructor
+                                 arguments for the given model type, excluding
+                                 'self'.
+  @return defaults (list)        a list of default values for each argument
   """
 
   if modelName not in TemporalMemoryTypes.getTypes():
     raise RuntimeError("Unknown model type: " + modelName)
 
-  return getattr(TemporalMemoryTypes, modelName)(**kwargs)
+  return (
+    inspect.getargspec(
+      getattr(TemporalMemoryTypes, modelName).__init__).args[1:],
+    inspect.getargspec(
+      getattr(TemporalMemoryTypes, modelName).__init__).defaults
+  )
+

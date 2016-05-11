@@ -89,8 +89,10 @@ def trainModel(model, trainingData):
     numPasses = 3
 
   print
-  print "==============Training the model============="
-  for _ in xrange(numPasses):
+  print "==============Training the model, numPasses=",numPasses,"============="
+  for i in xrange(numPasses):
+    # Clear classifier - we only want it to store outputs from the last pass
+    model.getClassifier().clear()
     for (docId, document, labels) in trainingData:
       print "{}. '{}' --> {}".format(docId, document, labels[0])
       model.trainDocument(document, labels, docId)
