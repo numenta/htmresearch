@@ -261,8 +261,8 @@ class TMRegion(PyRegion):
                 count=1,
                 constraints="bool"),
             defaultOutputType=dict(
-                description="Controls whether to form connections "
-                            "with internal cells within this temporal memory",
+                description="Controls what type of cell output is placed into"
+                            " the default output 'bottomUpOut'",
                 accessMode="ReadWrite",
                 dataType="Byte",
                 count=0,
