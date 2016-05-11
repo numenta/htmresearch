@@ -74,6 +74,10 @@ def testModel(model, testData, categorySize=10, verbosity=0):
 
   summedScore = 0
   for (document, labels, docId) in testData:
+    if verbosity >= 2:
+      print "\nStarting inference with:"
+      print "docId=",docId,"document=",document
+
     _, sortedIds, sortedDistances = model.inferDocument(
       document, returnDetailedResults=True, sortResults=True)
 
