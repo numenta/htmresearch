@@ -16,7 +16,6 @@
 // http://numenta.org/licenses/
 //
 
-export default function DetailsDialogOpenAction(context, payload) {
-  console.log('!!!', payload);
-  context.dispatch('DETAILS_DIALOG_OPEN', payload);
+export default function DialogCloseAction(context, payload) {
+  return context.dispatch('DIALOG_CLOSE', payload);
 }

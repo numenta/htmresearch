@@ -22,15 +22,15 @@ import BaseStore from 'fluxible/addons/BaseStore';
 
 
 /**
- * IMBU Document Details Dialog store
+ * IMBU Dialog store (for Document/Row details, etc)
  */
-export default class DetailsDialogStore extends BaseStore {
+export default class DialogStore extends BaseStore {
 
-  static storeName = 'DetailsDialogStore';
+  static storeName = 'DialogStore';
 
   static handlers = {
-    DETAILS_DIALOG_CLOSE: '_close',
-    DETAILS_DIALOG_OPEN: '_open'
+    DIALOG_CLOSE: '_closeDialog',
+    DIALOG_OPEN: '_openDialog'
   };
 
   constructor(dispatcher) {
@@ -42,18 +42,29 @@ export default class DetailsDialogStore extends BaseStore {
     this._open = false;
     this._title = null;
     this._body = null;
+    this._actions = [];
   }
 
-  _close() {
+  _closeDialog() {
     this._clear();
     this.emitChange();
   }
 
-  _open(payload) {
+  _openDialog(payload) {
     this._open = true;
     this._title = payload.title;
     this._body = payload.body;
+    this._actions = payload.actions || [];
     this.emitChange();
+  }
+
+  getCurrent() {
+    return {
+      open: this._open,
+      title: this._title,
+      body: this._body,
+      actions: this._actions
+    };
   }
 
 }

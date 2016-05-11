@@ -24,9 +24,8 @@ import Material from 'material-ui';
 import connectToStores from 'fluxible-addons-react/connectToStores';
 
 import DatasetStore from '../stores/dataset';
-import DetailsDialog from './details-dialog';
 import SearchQueryAction from '../actions/search-query';
-import DetailsDialogOpenAction from '../actions/details-dialog-open';
+import DialogOpenAction from '../actions/dialog-open';
 import ServerStatusStore from '../stores/server-status';
 import SearchStore from '../stores/search';
 import MODELS from '../constants/models';
@@ -136,16 +135,19 @@ export default class SearchResultsComponent extends React.Component {
   }
 
   /**
-   * Handle click on search results Table cell
+   * Handle click on search results MaterialUI Table cell. Trigger a material-ui
+   *  Modal Dialog popup layer with Document/Row details.
    * @param {Number} rowNumber - Clicked Table cell row index
    * @param {Number} columnId - Clicked Table cell column index
+   * @see http://www.material-ui.com/#/components/table
    */
   _onTableCellClick(rowNumber, columnId) {
+    let result = this.state.results[rowNumber];
     let payload = {
-      title: `Document Row #${rowNumber} Details`,
-      body: this.state.results[rowNumber]
+      title: `Document Row#${rowNumber} Details`,
+      body: result.text
     };
-    this.context.executeAction(DetailsDialogOpenAction, payload);
+    this.context.executeAction(DialogOpenAction, payload);
   }
 
   _search(query, dataset, model) {
@@ -246,18 +248,22 @@ export default class SearchResultsComponent extends React.Component {
         </TableRow>);
     });
 
-    let modelMenuItems = Object.keys(MODELS).map((model) => (
-      <MenuItem style={styles.modelItem}
-                value={model}
-                label={MODELS[model].label}
-                primaryText={
-                  <span>{MODELS[model].label}<br/>
-                    <span style={styles.modelDescription}>
-                      {MODELS[model].description}
-                    </span>
-                  </span>
-                }>
-      </MenuItem>
+    let modelMenuItems = Object.keys(MODELS).map((model, idx) => (
+      <MenuItem
+        key={`model${idx}`}
+        label={MODELS[model].label}
+        primaryText={
+          <span>
+            {MODELS[model].label}
+            <br/>
+            <span style={styles.modelDescription}>
+              {MODELS[model].description}
+            </span>
+          </span>
+        }
+        style={styles.modelItem}
+        value={model}
+        />
     ));
 
     return (
@@ -292,7 +298,6 @@ export default class SearchResultsComponent extends React.Component {
             {rows}
           </TableBody>
         </Table>
-        <DetailsDialog />
       </Paper>
     );
   }

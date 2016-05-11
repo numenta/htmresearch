@@ -18,49 +18,56 @@
 * http://numenta.org/licenses/
 * -------------------------------------------------------------------------- */
 
-import React from 'react';
-import Material from 'material-ui';
 import connectToStores from 'fluxible-addons-react/connectToStores';
-import DatasetStore from '../stores/dataset';
+import Material from 'material-ui';
+import React from 'react';
+
+import DialogCloseAction from '../actions/dialog-close';
+import DialogStore from '../stores/dialog';
 
 const {Dialog, FlatButton} = Material;
 
 
 /**
- * Display Document Details GUI Dialog
+ * GUI Dialog (Document/Row Details, etc.) via Material-UI
+ * @see http://www.material-ui.com/#/components/dialog
  */
-@connectToStores([DatasetStore], (context, props) => ({ // eslint-disable-line
-  dataset: context.getStore(DatasetStore).getCurrent()
+@connectToStores([DialogStore], (context, props) => ({ // eslint-disable-line
+  dialog: context.getStore(DialogStore).getCurrent()
 }))
 export default class extends React.Component {
 
   static contextTypes = {
+    executeAction: React.PropTypes.func,
     getStore: React.PropTypes.func
   };
 
   constructor(props, context) {
     super(props);
-    console.log(this.props.dataset);
-    this.state = {open: false};
   }
 
   _handleClose() {
-    this.setState({open: false});
+    this.context.executeAction(DialogCloseAction);
   }
 
   render() {
-    const actions = (
-      <FlatButton label="Close" onTouchTap={this._handleClose.bind(this)} />
-    );
+    let {open, title, body, actions} = this.props.dialog;
+
+    if (! actions.length) {
+      actions = (
+        <FlatButton label="Close" onTouchTap={this._handleClose.bind(this)} />
+      );
+    }
 
     return (
       <Dialog
         actions={actions}
         modal={false}
-        open={this.state.open}
+        open={open}
         onRequestClose={this._handleClose.bind(this)}
+        title={title}
       >
-        Dialog Content
+        {body}
       </Dialog>
     );
   }
