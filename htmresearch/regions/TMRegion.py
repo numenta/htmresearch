@@ -373,8 +373,6 @@ class TMRegion(PyRegion):
     self.previouslyPredictedCells[:] = 0
     self.previouslyPredictedCells[self._tm.getPredictiveCells()] = 1
 
-    print predictedActiveCells.nonzero()
-
     # Copy numpy values into the various outputs
     outputs['bottomUpOut'][:] = self.activeState
     outputs['predictiveCells'][:] = self.previouslyPredictedCells
