@@ -83,10 +83,9 @@ def getConstructorArguments(modelName):
   @param modelName (str)  A supported temporal memory type
 
   @return argNames (list of str) a list of strings corresponding to constructor
-                                 arguments for the given model type. The first
-                                 item is usually 'self'.
+                                 arguments for the given model type, excluding
+                                 'self'.
   @return defaults (list)        a list of default values for each argument
-                                 (excluding self)
   """
 
   if modelName not in TemporalMemoryTypes.getTypes():
@@ -94,7 +93,7 @@ def getConstructorArguments(modelName):
 
   return (
     inspect.getargspec(
-      getattr(TemporalMemoryTypes, modelName).__init__).args,
+      getattr(TemporalMemoryTypes, modelName).__init__).args[1:],
     inspect.getargspec(
       getattr(TemporalMemoryTypes, modelName).__init__).defaults
   )
