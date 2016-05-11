@@ -91,10 +91,7 @@ def getConstructorArguments(modelName):
   if modelName not in TemporalMemoryTypes.getTypes():
     raise RuntimeError("Unknown model type: " + modelName)
 
-  return (
-    inspect.getargspec(
-      getattr(TemporalMemoryTypes, modelName).__init__).args[1:],
-    inspect.getargspec(
-      getattr(TemporalMemoryTypes, modelName).__init__).defaults
-  )
+  argspec = inspect.getargspec(
+                            getattr(TemporalMemoryTypes, modelName).__init__)
+  return (argspec.args[1:], argspec.defaults)
 
