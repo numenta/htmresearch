@@ -315,7 +315,7 @@ class TMRegion(PyRegion):
       # Ensure we only pass in those args that are expected by this
       # implementation. This is important for SWIG'ified classes, such as
       # TemporalMemoryCPP, which don't take kwargs.
-      expectedArgs = getConstructorArguments(self.temporalImp)
+      expectedArgs = getConstructorArguments(self.temporalImp)[0]
       for arg in args.keys():
         if not arg in expectedArgs:
           args.pop(arg)
@@ -374,7 +374,8 @@ class TMRegion(PyRegion):
     self.previouslyPredictedCells[self._tm.getPredictiveCells()] = 1
 
     # Copy numpy values into the various outputs
-    outputs['bottomUpOut'][:] = self.activeState
+    # outputs['bottomUpOut'][:] = self.activeState
+    outputs['bottomUpOut'][:] = predictedActiveCells
     outputs['predictiveCells'][:] = self.previouslyPredictedCells
     outputs['predictedActiveCells'][:] = predictedActiveCells
 

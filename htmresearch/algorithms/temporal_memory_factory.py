@@ -77,14 +77,25 @@ def createModel(modelName, **kwargs):
 
 def getConstructorArguments(modelName):
   """
-  Return a list of strings corresponding to constructor arguments for the
+  Return constructor arguments and associated default values for the
   given model type.
 
   @param modelName (str)  A supported temporal memory type
 
+  @return argNames (list of str) a list of strings corresponding to constructor
+                                 arguments for the given model type. The first
+                                 item is usually 'self'.
+  @return defaults (list)        a list of default values for each argument
+                                 (excluding self)
   """
 
   if modelName not in TemporalMemoryTypes.getTypes():
     raise RuntimeError("Unknown model type: " + modelName)
 
-  return inspect.getargspec(getattr(TemporalMemoryTypes, modelName).__init__)[0]
+  return (
+    inspect.getargspec(
+      getattr(TemporalMemoryTypes, modelName).__init__).args,
+    inspect.getargspec(
+      getattr(TemporalMemoryTypes, modelName).__init__).defaults
+  )
+
