@@ -154,43 +154,28 @@ export default class SearchStore extends BaseStore {
               let startIndex = fragmentIndices[i][0]
               let endIndex = fragmentIndices[i][1]
 
-              let fragScores = scores.slice(startIndex, endIndex)
-              // Consistent with ImbuModels, we tokenize simply on spaces
-              let words = text.split(' ')
-              let fragWords = words.slice(startIndex, endIndex);
-              let nullScore = 0
-              if (startIndex > 0) {
-                fragWords.unshift('...')
-                fragScores.unshift(nullScore)
-              }
-              if (endIndex < words.length) {
-                fragWords.push('...')
-                fragScores.push(nullScore)
-              }
-              let fragText = fragWords.join(' ')
-
               // Find this result's max score and sum of scores
-              let maxScore = fragScores.reduce((prev, current) => {
+              let maxScore = scores.reduce((prev, current) => {
                 return prev > current ? prev : current;
               });
-              let sumScore = fragScores.reduce((prev, current) => {
+              let sumScore = scores.reduce((prev, current) => {
                 return prev + current ;
               });
               // Add this fragment
               let fragment = {
-                fragText, maxScore, sumScore, fragScores, windowSize
-              };
+                text, id, startIndex, endIndex, scores, maxScore, sumScore, windowSize
+              }
               data.push(fragment)
             }
           } else {
             // Data is not query results, just the dataset
-            let fragText = text
-            let fragScores = scores
+            let startIndex = 0
+            let endIndex = text.split(' ').length
             let maxScore = 0
             let sumScore = 0
             let fragment = {
-              fragText, maxScore, sumScore, fragScores, windowSize
-            };
+              text, id, startIndex, endIndex, scores, maxScore, sumScore, windowSize
+            }
             data.push(fragment)
           }
         })
