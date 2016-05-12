@@ -3,6 +3,6 @@ matplotlib
 pandas
 plotly
 simplejson
-nupic
 tabulate
 tqdm
+prettytable
