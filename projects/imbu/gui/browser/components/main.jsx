@@ -5,37 +5,39 @@
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU Affero Public License version 3 as published by
-* the Free Software Foundation.
-*
-* This program is distributed in the hope that it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero Public License for
-* more details.
-*
+ * more details.
+ *
  * You should have received a copy of the GNU Affero Public License along with
-* this program. If not, see http://www.gnu.org/licenses.
-*
-* http://numenta.org/licenses/
-* -------------------------------------------------------------------------- */
-
+ * this program. If not, see http://www.gnu.org/licenses.
+ *
+ * http://numenta.org/licenses/
+ * -------------------------------------------------------------------------- */
 
 import connectToStores from 'fluxible-addons-react/connectToStores';
-import React from 'react';
+import LightTheme from 'material-ui/lib/styles/raw-themes/light-raw-theme';
 import Material from 'material-ui';
-import SelectDatasetAction from '../actions/dataset-select'
-import DatasetStore from '../stores/dataset';
-import SearchComponent from './search.jsx';
-import SearchResultsComponent from './search-results.jsx';
+import React from 'react';
 import ThemeDecorator from 'material-ui/lib/styles/theme-decorator';
 import ThemeManager from 'material-ui/lib/styles/theme-manager';
-import LightTheme from 'material-ui/lib/styles/raw-themes/light-raw-theme';
+
 import DATASETS from '../constants/datasets';
+import DatasetStore from '../stores/dataset';
+import Dialog from './dialog';
+import SearchComponent from './search.jsx';
+import SearchResultsComponent from './search-results.jsx';
+import SelectDatasetAction from '../actions/dataset-select'
 
 const {
   Toolbar, ToolbarTitle, ToolbarGroup,
   DropDownMenu, MenuItem,
   IconButton, GridList, GridTile, Paper
 } = Material;
+
 
 @connectToStores([DatasetStore], (context) => ({
   datasets: context.getStore(DatasetStore).getDatasets(),
@@ -108,12 +110,14 @@ export default class Main extends React.Component {
       this.context.executeAction(SelectDatasetAction, value);
     }
   }
+
   render() {
     let styles = this._getStyles();
     let datasetItems = this.props.datasets.map((dataset) => {
       let label = DATASETS[dataset] ? DATASETS[dataset].label : dataset;
       return (<MenuItem key={dataset} value={dataset} primaryText={label}/>);
     });
+
     return (
       <div>
         <Toolbar style={styles.toolbar}>
@@ -148,7 +152,9 @@ export default class Main extends React.Component {
             </Paper>
           </GridTile>
         </GridList>
+        <Dialog />
       </div>
     );
   }
+
 }

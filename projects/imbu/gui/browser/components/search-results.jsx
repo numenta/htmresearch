@@ -1,32 +1,34 @@
 /* -----------------------------------------------------------------------------
-* Copyright © 2015, Numenta, Inc. Unless you have purchased from
-* Numenta, Inc. a separate commercial license for this software code, the
-* following terms and conditions apply:
-*
-* This program is free software: you can redistribute it and/or modify it
+ * Copyright © 2015, Numenta, Inc. Unless you have purchased from
+ * Numenta, Inc. a separate commercial license for this software code, the
+ * following terms and conditions apply:
+ *
+ * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU Affero Public License version 3 as published by
-* the Free Software Foundation.
-*
-* This program is distributed in the hope that it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero Public License for
-* more details.
-*
+ * more details.
+ *
  * You should have received a copy of the GNU Affero Public License along with
-* this program. If not, see http://www.gnu.org/licenses.
-*
-* http://numenta.org/licenses/
-* -------------------------------------------------------------------------- */
+ * this program. If not, see http://www.gnu.org/licenses.
+ *
+ * http://numenta.org/licenses/
+ * -------------------------------------------------------------------------- */
 
+import connectToStores from 'fluxible-addons-react/connectToStores';
+import Material from 'material-ui';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import Material from 'material-ui';
-import connectToStores from 'fluxible-addons-react/connectToStores';
-import SearchQueryAction from '../actions/search-query';
+
 import DatasetStore from '../stores/dataset';
+import DialogOpenAction from '../actions/dialog-open';
+import MODELS from '../constants/models';
+import SearchQueryAction from '../actions/search-query';
 import SearchStore from '../stores/search';
 import ServerStatusStore from '../stores/server-status';
-import MODELS from '../constants/models';
 
 const {
   Styles, Paper, DropDownMenu, MenuItem, RefreshIndicator,
@@ -36,6 +38,7 @@ const {
 const {
   Spacing, Colors
 } = Styles;
+
 
 /**
  * Display Search Results on a Material UI Table
@@ -74,13 +77,15 @@ export default class SearchResultsComponent extends React.Component {
       },
       column: {
         summary: {
-          whiteSpace: 'normal',
-          overflow: 'auto'
+          cursor: 'pointer',
+          overflow: 'auto',
+          whiteSpace: 'normal'
         },
         score: {
-          width: '120px',
+          cursor: 'pointer',
           textAlign: 'right',
-          verticalAlign: 'top'
+          verticalAlign: 'top',
+          width: '120px'
         }
       },
       content: {
@@ -128,6 +133,22 @@ export default class SearchResultsComponent extends React.Component {
     let model = value;
     this.setState({model});
     this._search(this.props.query, this.props.dataset, model);
+  }
+
+  /**
+   * Handle click on search results MaterialUI Table cell. Trigger a material-ui
+   *  Modal Dialog popup layer with Document/Row details.
+   * @param {Number} rowNumber - Clicked Table cell row index
+   * @param {Number} columnId - Clicked Table cell column index
+   * @see http://www.material-ui.com/#/components/table
+   */
+  _onTableCellClick(rowNumber, columnId) {
+    let result = this.state.results[rowNumber];
+    let payload = {
+      title: `Document Row#${rowNumber} Details`,
+      body: result.text
+    };
+    this.context.executeAction(DialogOpenAction, payload);
   }
 
   _search(query, dataset, model) {
@@ -212,6 +233,7 @@ export default class SearchResultsComponent extends React.Component {
     let ready = this.props.ready;
     let status = this.state.status;
     let statusComponent;
+
     if (status === 'pending') {
       // Show Progress
       statusComponent = (
@@ -242,19 +264,24 @@ export default class SearchResultsComponent extends React.Component {
         </TableRow>);
     });
 
-    let modelMenuItems = Object.keys(MODELS).map((model) => (
-      <MenuItem style={styles.modelItem}
-                value={model}
-                label={MODELS[model].label}
-                primaryText={
-                  <span>{MODELS[model].label}<br/>
-                    <span style={styles.modelDescription}>
-                      {MODELS[model].description}
-                    </span>
-                  </span>
-                }>
-      </MenuItem>
+    let modelMenuItems = Object.keys(MODELS).map((model, idx) => (
+      <MenuItem
+        key={`model${idx}`}
+        label={MODELS[model].label}
+        primaryText={
+          <span>
+            {MODELS[model].label}
+            <br/>
+            <span style={styles.modelDescription}>
+              {MODELS[model].description}
+            </span>
+          </span>
+        }
+        style={styles.modelItem}
+        value={model}
+        />
     ));
+
     return (
       <Paper style={styles.content} depth={1}>
         <DropDownMenu style={styles.modelsMenu}
@@ -265,9 +292,15 @@ export default class SearchResultsComponent extends React.Component {
           {modelMenuItems}
         </DropDownMenu>
         {statusComponent}
-        <Table selectable={false} fixedHeader={true} style={tableStyle}
-          height={styles.table.height} ref="results">
-          <TableHeader  adjustForCheckbox={false} displaySelectAll={false}>
+        <Table
+          fixedHeader={true}
+          height={styles.table.height}
+          onCellClick={this._onTableCellClick.bind(this)}
+          ref="results"
+          selectable={false}
+          style={tableStyle}
+        >
+          <TableHeader adjustForCheckbox={false} displaySelectAll={false}>
             <TableRow>
               <TableHeaderColumn key={0} style={styles.column.summary}>
                 Match
