@@ -116,31 +116,30 @@ class TMRegion(PyRegion):
         ),
         outputs=dict(
             bottomUpOut=dict(
-              description="""The default output of TMRegion. By default this
-                   outputs the active cells. You can change this dynamically
-                   using the defaultOutputType parameter.
-                   """,
+              description="The default output of TMRegion. By default this"
+                   " outputs the active cells. You can change this dynamically"
+                   " using the defaultOutputType parameter.",
               dataType="Real32",
               count=0,
               regionLevel=True,
               isDefaultOutput=True),
 
             predictiveCells=dict(
-                description="A dense binary output containing a 1 for every "
+                description="A dense binary output containing a 1 for every"
                             " cell currently in predicted state.",
                 dataType="Real32",
                 count=0,
                 regionLevel=True,
                 isDefaultOutput=False),
             predictedActiveCells=dict(
-                description="A dense binary output containing a 1 for every "
+                description="A dense binary output containing a 1 for every"
                             " cell that transitioned from predicted to active.",
                 dataType="Real32",
                 count=0,
                 regionLevel=True,
                 isDefaultOutput=False),
             activeCells=dict(
-                description="A dense binary output containing a 1 for every "
+                description="A dense binary output containing a 1 for every"
                             " cell that is currently active.",
                 dataType="Real32",
                 count=0,
@@ -393,24 +392,24 @@ class TMRegion(PyRegion):
     self.previouslyPredictedCells[self._tm.getPredictiveCells()] = 1
 
     # Copy numpy values into the various outputs
-    outputs['activeCells'][:] = self.activeState
-    outputs['predictiveCells'][:] = self.previouslyPredictedCells
-    outputs['predictedActiveCells'][:] = predictedActiveCells
+    outputs["activeCells"][:] = self.activeState
+    outputs["predictiveCells"][:] = self.previouslyPredictedCells
+    outputs["predictedActiveCells"][:] = predictedActiveCells
 
     # Select appropriate output for bottomUpOut
     if self.defaultOutputType == "active":
-      outputs['bottomUpOut'][:] = self.activeState
+      outputs["bottomUpOut"][:] = self.activeState
     elif self.defaultOutputType == "predictive":
-      outputs['bottomUpOut'][:] = self.previouslyPredictedCells
+      outputs["bottomUpOut"][:] = self.previouslyPredictedCells
     elif self.defaultOutputType == "predictedActiveCells":
-      outputs['bottomUpOut'][:] = predictedActiveCells
+      outputs["bottomUpOut"][:] = predictedActiveCells
     else:
       raise Exception("Unknown outputType: " + self.defaultOutputType)
 
     # Handle reset after current input has been processed
-    if 'resetIn' in inputs:
-      assert len(inputs['resetIn']) == 1
-      if inputs['resetIn'][0] != 0:
+    if "resetIn" in inputs:
+      assert len(inputs["resetIn"]) == 1
+      if inputs["resetIn"][0] != 0:
         self.reset()
 
 
