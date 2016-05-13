@@ -109,7 +109,10 @@ TBD
 In the root of `nupic.research`:
 
 ```
+# build
 docker build -t imbu:latest -f projects/imbu/Dockerfile .
+
+# run
 docker run \
   --name imbu \
   -d \
@@ -118,6 +121,12 @@ docker run \
   -e CORTICAL_API_KEY=${CORTICAL_API_KEY} \
   -e IMBU_RETINA_ID=${IMBU_RETINA_ID} \
   imbu:latest
+
+# get ip (local docker network, maybe 192.168.x.x)
+docker-machine ls
+
+# open in browser:
+#   http://192.168.x.x:8080
 ```
 
 A few salient points about the command(s) above:
