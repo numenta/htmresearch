@@ -18,27 +18,29 @@
  * http://numenta.org/licenses/
  * -------------------------------------------------------------------------- */
 
-
 import Fluxible from 'fluxible';
 import FluxibleReact from 'fluxible-addons-react';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import tapEventInject from 'react-tap-event-plugin';
+
+import CheckServerStatusAction from './actions/server-status';
+import DatasetStore from './stores/dataset';
+import DialogStore from './stores/dialog';
+import ListDatasetAction from './actions/dataset-list';
 import MainComponent from './components/main.jsx';
 import SearchStore from './stores/search';
-import DatasetStore from './stores/dataset';
 import ServerStatusStore from './stores/server-status';
-import CheckServerStatusAction from './actions/server-status';
-import ListDatasetAction from './actions/dataset-list';
 
 window.React = React; // dev tools @TODO remove for non-dev
 
 tapEventInject(); // remove when >= React 1.0
 
+
 // create fluxible app
 let app = new Fluxible({
   component: MainComponent,
-  stores: [DatasetStore, SearchStore, ServerStatusStore]
+  stores: [DatasetStore, DialogStore, SearchStore, ServerStatusStore]
 });
 
 // add context to app
