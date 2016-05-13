@@ -15,7 +15,7 @@
     "regionType": "py.TMRegion",
     "regionParams": {
       "columnCount": 16384,
-      "cellsPerColumn": 1,
+      "cellsPerColumn": 8,
       "seed": 1960,
       "temporalImp": "tmCPP",
       "maxNewSynapseCount": 120,
@@ -24,7 +24,8 @@
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.1,
       "minThreshold": 15,
-      "activationThreshold": 25
+      "activationThreshold": 25,
+      "defaultOutputType": "predictedActiveCells"
     }
   },
   "classifierRegionConfig": {
@@ -34,7 +35,8 @@
     "regionParams": {
       "k": 1,
       "distanceMethod": "pctOverlapOfInput",
-      "maxCategoryCount": 2
+      "maxCategoryCount": 20,
+      "minSparsity": 0.000001
     }
   }
 }
