@@ -68,7 +68,7 @@ class TestFluentAPI(unittest.TestCase):
     responseBody = self._queryAndAssertAPI()
 
     # Assert structure of response matches expected pattern
-    for _, result in responseBody.iteritems():
+    for result in responseBody:
       self.assertIn("text", result)
       self.assertIn("scores", result)
       # Assert scores=0 b/c no query data sent
@@ -81,7 +81,7 @@ class TestFluentAPI(unittest.TestCase):
     responseBody = self._queryAndAssertAPI(model="CioDocumentFingerprint")
 
     # Assert structure of response matches expected pattern
-    for _, result in responseBody.iteritems():
+    for result in responseBody:
       self.assertIn("text", result)
       self.assertIn("scores", result)
       self.assertIn("windowSize", result)
@@ -92,7 +92,7 @@ class TestFluentAPI(unittest.TestCase):
     responseBody = self._queryAndAssertAPI(query="test")
 
     # Assert structure of response matches expected pattern
-    for _, result in responseBody.iteritems():
+    for result in responseBody:
       self.assertIn("text", result)
       self.assertIn("scores", result)
       self.assertIn("windowSize", result)
@@ -119,7 +119,7 @@ class TestFluentAPI(unittest.TestCase):
                                            query="test")
 
     # Assert structure of response matches expected pattern
-    for _, result in responseBody.iteritems():
+    for result in responseBody:
       self.assertIn("text", result)
       self.assertGreater(len(result["text"]), 0)
       self.assertIn("scores", result)

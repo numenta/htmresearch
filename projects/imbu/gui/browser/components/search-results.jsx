@@ -1,34 +1,34 @@
 /* -----------------------------------------------------------------------------
-* Copyright © 2015, Numenta, Inc. Unless you have purchased from
-* Numenta, Inc. a separate commercial license for this software code, the
-* following terms and conditions apply:
-*
-* This program is free software: you can redistribute it and/or modify it
+ * Copyright © 2015, Numenta, Inc. Unless you have purchased from
+ * Numenta, Inc. a separate commercial license for this software code, the
+ * following terms and conditions apply:
+ *
+ * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU Affero Public License version 3 as published by
-* the Free Software Foundation.
-*
-* This program is distributed in the hope that it will be useful, but WITHOUT
-* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero Public License for
-* more details.
-*
+ * more details.
+ *
  * You should have received a copy of the GNU Affero Public License along with
-* this program. If not, see http://www.gnu.org/licenses.
-*
-* http://numenta.org/licenses/
-* -------------------------------------------------------------------------- */
+ * this program. If not, see http://www.gnu.org/licenses.
+ *
+ * http://numenta.org/licenses/
+ * -------------------------------------------------------------------------- */
 
+import connectToStores from 'fluxible-addons-react/connectToStores';
+import Material from 'material-ui';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import Material from 'material-ui';
-import connectToStores from 'fluxible-addons-react/connectToStores';
 
 import DatasetStore from '../stores/dataset';
-import SearchQueryAction from '../actions/search-query';
 import DialogOpenAction from '../actions/dialog-open';
-import ServerStatusStore from '../stores/server-status';
-import SearchStore from '../stores/search';
 import MODELS from '../constants/models';
+import SearchQueryAction from '../actions/search-query';
+import SearchStore from '../stores/search';
+import ServerStatusStore from '../stores/server-status';
 
 const {
   Styles, Paper, DropDownMenu, MenuItem, RefreshIndicator,
@@ -38,6 +38,7 @@ const {
 const {
   Spacing, Colors
 } = Styles;
+
 
 /**
  * Display Search Results on a Material UI Table
@@ -178,26 +179,41 @@ export default class SearchResultsComponent extends React.Component {
   }
 
   formatResults(data) {
-    let {text, scores, maxScore, windowSize} = data;
+    let {text, startIndex, endIndex, scores, maxScore, windowSize} = data;
 
     if (scores.length > 1) {
+      // Consistent with ImbuModels methods, we tokenize simply on spaces
       let words = text.split(' ');
+      let fragWords = words.slice(startIndex, endIndex);
+      let fragScores = scores.slice(startIndex, endIndex)
+      let nullScore = 0
+      if (startIndex > 0) {
+        // Add ellipsis to show the document continues before fragment
+        fragWords.unshift('...')
+        fragScores.unshift(nullScore)
+      }
+      if (endIndex < words.length) {
+        // Add ellipsis to show the document continues after fragment
+        fragWords.push('...')
+        fragScores.push(nullScore)
+      }
+
       let elements = [];
       let highlightStyle = {
-        backgroundColor: Colors.purple200
+        backgroundColor: Colors.purple100
       };
 
-      for (let i=0; i < words.length; i++) {
-        let score = scores[i];
+      for (let i=0; i < fragWords.length; i++) {
+        let score = fragScores[i];
         let currentElement = {
           score,
-          text: words[i],
+          text: fragWords[i],
           style: {}
         };
         elements.push(currentElement);
 
         if (score > 0 && score === maxScore) {
-          // Highlight word or window with maxScore
+          // Highlight word(s) or window(s) with maxScore
           elements.slice(-windowSize).forEach((obj) => {
             obj.style = highlightStyle;
           });

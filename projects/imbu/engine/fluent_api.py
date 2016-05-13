@@ -90,19 +90,19 @@ class FluentWrapper(object):
 
   def query(self, dataset, model, text):
     """
-    Queries the model (which is specific to this dataset) and returns an ordered
-        list of matching samples.
+    Queries the model (which is specific to this dataset) and returns a dict of
+        matching documents.
     :param str dataset: Dataset name, specifying the ImbuModels instance to use.
         Possible values correspond to data dirs in _IMBU_LOAD_PATH_PREFIX.
     :param str model: Name of the model to use. Possible values are mapped to
         classes in the NLP model factory.
     :param str text: The text to match.
-    :returns: a sequence of matching samples.
+    :returns: dict of results.
     ::
-    [
-        {"0": {"text": "sampleText", "scores": [0.75, ...]},
+    {
+        "0": {"text": "sampleText", "scores": [0.75, ...]},
         ...
-    ]
+    }
     """
     global g_imbus
     global g_models
@@ -118,7 +118,7 @@ class FluentWrapper(object):
       return g_imbus[dataset].formatResults(model, text, sortedDistances, sortedIds)
 
     else:
-      return []
+      return {}
 
 
 
