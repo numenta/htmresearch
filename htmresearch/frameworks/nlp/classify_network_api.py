@@ -111,16 +111,18 @@ class ClassificationNetworkAPI(ClassificationModel):
     Print the outputs of regions to console for debugging, depending on
     verbosity level.
     """
-    print "================== HTM Debugging output:"
+    print "HTM Debugging output:"
 
     # Basic output
     print "Sensor number of nonzero bits:",
     print len(self.sensorRegion.getOutputData("dataOut").nonzero()[0])
     if self.tmRegion is not None:
       print "TM region number of activeCells: ",
-      print len(self.tmRegion.getOutputData("bottomUpOut").nonzero()[0]),
+      print len(self.tmRegion.getOutputData("activeCells").nonzero()[0]),
       print "Number of predictedActiveCells: ",
       print len(self.tmRegion.getOutputData("predictedActiveCells").nonzero()[0])
+      print "Number of predictiveCells: ",
+      print len(self.tmRegion.getOutputData("predictiveCells").nonzero()[0])
 
     print "Classifier categoriesOut: ",
     print self.classifierRegion.getOutputData("categoriesOut")[0:self.numLabels]
@@ -134,7 +136,7 @@ class ClassificationNetworkAPI(ClassificationModel):
       print "Sensor categoryOut:",
       print self.sensorRegion.getOutputData("categoryOut")
 
-      if self.tmRegion is not None:
+      if self.tmRegion is not None and self.verbosity >= 5:
         print "TM region bottomUpOut: ",
         print self.tmRegion.getOutputData("bottomUpOut").nonzero()
         print "TM region predictedActiveCells: ",
@@ -144,6 +146,8 @@ class ClassificationNetworkAPI(ClassificationModel):
       print self.classifierRegion.getInputData("bottomUpIn").nonzero()
       print "Classifier categoryIn: ",
       print self.classifierRegion.getInputData("categoryIn")[0:self.numLabels]
+      print "Number of stored patterns: ",
+      print self.classifierRegion.getParameter("patternCount")
 
 
 

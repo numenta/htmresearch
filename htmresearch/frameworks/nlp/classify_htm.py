@@ -90,6 +90,7 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
 
     # Print the outputs of each region
     if self.verbosity >= 2:
+      print "================== Training with token:",token,"label:",labels
       self.printRegionOutputs()
 
     if resetSequence == 1:
@@ -120,6 +121,7 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
 
     # Print the outputs of each region
     if self.verbosity >= 2:
+      print "================== Inference with token:",token
       self.printRegionOutputs()
 
     if resetSequence == 1:

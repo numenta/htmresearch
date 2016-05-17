@@ -24,7 +24,6 @@ import numpy
 
 from nupic.support import getArgumentDescriptions
 from nupic.bindings.regions.PyRegion import PyRegion
-from nupic.bindings.algorithms import ConnectionsCell
 
 from htmresearch.algorithms.temporal_memory_factory import (
   createModel, getConstructorArguments)
@@ -117,22 +116,31 @@ class TMRegion(PyRegion):
         ),
         outputs=dict(
             bottomUpOut=dict(
-              description="""The primary output of the temporal memory.""",
+              description="The default output of TMRegion. By default this"
+                   " outputs the active cells. You can change this dynamically"
+                   " using the defaultOutputType parameter.",
               dataType="Real32",
               count=0,
               regionLevel=True,
               isDefaultOutput=True),
 
             predictiveCells=dict(
-                description="An output containing a 1 for every cell currently"
-                            " in predicted state.",
+                description="A dense binary output containing a 1 for every"
+                            " cell currently in predicted state.",
                 dataType="Real32",
                 count=0,
                 regionLevel=True,
                 isDefaultOutput=False),
             predictedActiveCells=dict(
-                description="An output containing a 1 for every cell that"
-                            " transitioned from predicted to active",
+                description="A dense binary output containing a 1 for every"
+                            " cell that transitioned from predicted to active.",
+                dataType="Real32",
+                count=0,
+                regionLevel=True,
+                isDefaultOutput=False),
+            activeCells=dict(
+                description="A dense binary output containing a 1 for every"
+                            " cell that is currently active.",
                 dataType="Real32",
                 count=0,
                 regionLevel=True,
@@ -250,7 +258,15 @@ class TMRegion(PyRegion):
                 accessMode="ReadWrite",
                 dataType="UInt32",
                 count=1,
-                constraints="bool")
+                constraints="bool"),
+            defaultOutputType=dict(
+                description="Controls what type of cell output is placed into"
+                            " the default output 'bottomUpOut'",
+                accessMode="ReadWrite",
+                dataType="Byte",
+                count=0,
+                constraints="enum: active,predictive,predictedActiveCells",
+                defaultValue="active"),
         ),
         commands=dict(
             reset=dict(description="Explicitly reset TM states now."),
@@ -277,6 +293,7 @@ class TMRegion(PyRegion):
                learnOnOneCell=1,
                temporalImp="tm",
                formInternalConnections = 1,
+               defaultOutputType = "active",
                **kwargs):
     # Defaults for all other parameters
     self.columnCount = columnCount
@@ -295,6 +312,7 @@ class TMRegion(PyRegion):
     self.inferenceMode = True
     self.temporalImp = temporalImp
     self.formInternalConnections = bool(formInternalConnections)
+    self.defaultOutputType = defaultOutputType
 
     PyRegion.__init__(self, **kwargs)
 
@@ -374,15 +392,24 @@ class TMRegion(PyRegion):
     self.previouslyPredictedCells[self._tm.getPredictiveCells()] = 1
 
     # Copy numpy values into the various outputs
-    # outputs['bottomUpOut'][:] = self.activeState
-    outputs['bottomUpOut'][:] = predictedActiveCells
-    outputs['predictiveCells'][:] = self.previouslyPredictedCells
-    outputs['predictedActiveCells'][:] = predictedActiveCells
+    outputs["activeCells"][:] = self.activeState
+    outputs["predictiveCells"][:] = self.previouslyPredictedCells
+    outputs["predictedActiveCells"][:] = predictedActiveCells
+
+    # Select appropriate output for bottomUpOut
+    if self.defaultOutputType == "active":
+      outputs["bottomUpOut"][:] = self.activeState
+    elif self.defaultOutputType == "predictive":
+      outputs["bottomUpOut"][:] = self.previouslyPredictedCells
+    elif self.defaultOutputType == "predictedActiveCells":
+      outputs["bottomUpOut"][:] = predictedActiveCells
+    else:
+      raise Exception("Unknown outputType: " + self.defaultOutputType)
 
     # Handle reset after current input has been processed
-    if 'resetIn' in inputs:
-      assert len(inputs['resetIn']) == 1
-      if inputs['resetIn'][0] != 0:
+    if "resetIn" in inputs:
+      assert len(inputs["resetIn"]) == 1
+      if inputs["resetIn"][0] != 0:
         self.reset()
 
 
@@ -441,7 +468,8 @@ class TMRegion(PyRegion):
     """
     Return the number of elements for the given output.
     """
-    if name in ["bottomUpOut", "predictedActiveCells", "predictiveCells"]:
+    if name in ["bottomUpOut", "predictedActiveCells", "predictiveCells",
+                "activeCells"]:
       return self.columnCount * self.cellsPerColumn
     else:
       raise Exception("Invalid output name specified")
