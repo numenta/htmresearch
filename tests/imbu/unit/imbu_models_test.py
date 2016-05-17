@@ -380,22 +380,6 @@ class TestImbu(unittest.TestCase):
     self.assertEquals([[0, lengthDoc1]], resultsFrags[1]["indices"],
       "Incorrect fragment indices for '{}' query.".format(query))
 
-    # Test previous query with a windows model
-    model = imbu.createModel("HTM_sensor_simple_tp_knn",
-                             loadPath="",
-                             savePath=checkpointLocation,
-                             networkConfigName="imbu_sensor_simple_tp_knn.json",
-                             retina="en_associative_64_univ")
-    _, unSortedIds, unSortedDistances = imbu.query(model, query)
-    resultsFrags = imbu.formatResults(
-      "HTM_sensor_simple_tp_knn", query, unSortedDistances, unSortedIds)
-    import pdb; pdb.set_trace()
-    self.assertEquals([[0, lengthDoc0]], resultsFrags[0]["indices"],
-      "Incorrect fragment indices for windows model.")
-    self.assertEquals([[0, lengthDoc1]], resultsFrags[1]["indices"],
-      "Incorrect fragment indices for windows model.")
-
-
     # Results for doc-level model should not be fragmented
     model = imbu.createModel("CioDocumentFingerprint",
                              loadPath="",
