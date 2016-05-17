@@ -145,7 +145,7 @@ export default class SearchResultsComponent extends React.Component {
   _onTableCellClick(rowNumber, columnId) {
     let result = this.state.results[rowNumber];
     let payload = {
-      title: `Document Row#${rowNumber} Details`,
+      title: `Document #${result.id}`,
       body: result.text
     };
     this.context.executeAction(DialogOpenAction, payload);

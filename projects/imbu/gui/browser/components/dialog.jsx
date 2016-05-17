@@ -66,6 +66,7 @@ export default class extends React.Component {
         open={open}
         onRequestClose={this._handleClose.bind(this)}
         title={title}
+        titleStyle={{fontSize:14}}
       >
         {body}
       </Dialog>
