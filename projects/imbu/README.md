@@ -2,10 +2,7 @@
 
 Imbu is a web application to demonstrate applications of Hierarchical
 Temporal Memory (HTM) to Natural Language Processing (NLP) problems, as well as
-support ongoing research.  Originally based off of the
-[nupic.fluent](https://github.com/numenta-archive/nupic.fluent) OSS community
-project, Imbu is a project of its own in
-[nupic.research](https://github.com/numenta/nupic.research).
+support ongoing research.
 
 ## License
 
@@ -26,19 +23,22 @@ project, Imbu is a project of its own in
 │   ├── nginx-uwsgi.conf           # nGinx reverse proxy configuration
 │   └── supervisord.conf           # Main supervisor configuration file
 ├── engine/
-│   ├── data.csv                   # Imbu data set
 │   ├── fluent_api.py              # Python web application
-│   └── imbu_tp.json
+│   └── sample_reviews/				# Sample dataset and models
 ├── gui/
 │   ├── browser/
 │   │   ├── actions/
+│   │   │   ├── dataset-list.js	
+│   │   │   ├── dataset-select.js
+│   │   │   ├── dialog-close.js
+│   │   │   ├── dialog-open.js
 │   │   │   ├── search-clear.js
 │   │   │   ├── search-query.js
 │   │   │   └── server-status.js
 │   │   ├── app.js                 # Fluxible application entry point
 │   │   ├── components/
+│   │   │   ├── dialog.jsx         # Dialog component for viewing full documents
 │   │   │   ├── main.jsx           # Main JSX template
-│   │   │   ├── search-history.jsx
 │   │   │   ├── search-results.jsx
 │   │   │   └── search.jsx
 │   │   ├── css/
@@ -82,18 +82,11 @@ on the front end, Python on the back end.
 
 - [Cortical.io](http://www.cortical.io/)
 
-## Front End
-
-TBD
-
-## Back End
+## API
 
 Imbu implements a web service API at `/fluent`, supporting a `POST` HTTP
 method for querying Imbu models.
 
-## Data Flow
-
-TBD
 
 ## Running Imbu
 
