@@ -168,7 +168,7 @@ class TestImbu(unittest.TestCase):
     imbu = ImbuModels(dataPath=self.dataPath)
 
     for modelName, mappedName in imbu.modelMappings.iteritems():
-      self.assertEquals(mappedName, imbu._mapModelName(modelName),
+      self.assertEqual(mappedName, imbu._mapModelName(modelName),
         "Incorrect mapping returned for model named '{}'".format(modelName))
 
     self.assertRaises(ValueError, imbu._mapModelName, "fakeModel")
@@ -177,7 +177,7 @@ class TestImbu(unittest.TestCase):
   def _checkNLPObjectParams(self, nlpObject, paramsToCheck):
     for key, value in paramsToCheck.iteritems():
       param = getattr(nlpObject, key)
-      self.assertEquals(value, param,
+      self.assertEqual(value, param,
         "The {} param for {} is not as expected.".format(key, repr(nlpObject)))
 
 
@@ -201,7 +201,7 @@ class TestImbu(unittest.TestCase):
     paramsToCheck.update(fingerprintType=EncoderTypes.word)
     self._checkNLPObjectParams(model.getEncoder(), paramsToCheck)
 
-    self.assertEquals(
+    self.assertEqual(
       "fake_cache_root",
       getattr(model.getEncoder().client, "cacheDir"),
       "ImbuModels did not set the Cio encoder cache dir properly for {} model.".
@@ -212,7 +212,7 @@ class TestImbu(unittest.TestCase):
                              savePath=checkpointLocation)
     paramsToCheck.update(fingerprintType=EncoderTypes.document)
     self._checkNLPObjectParams(model.getEncoder(), paramsToCheck)
-    self.assertEquals(
+    self.assertEqual(
       "fake_cache_root",
       getattr(model.getEncoder().client, "cacheDir"),
       "ImbuModels did not set the Cio encoder cache dir properly for {} model.".
@@ -224,11 +224,11 @@ class TestImbu(unittest.TestCase):
                              savePath=checkpointLocation,
                              networkConfigName="imbu_sensor_knn.json")
     networkConfig = getattr(model, "networkConfig")
-    self.assertEquals(
+    self.assertEqual(
       "pctOverlapOfInput",
       networkConfig["classifierRegionConfig"]["regionParams"]["distanceMethod"],
       "HTM Network model specifies an incorrect distance metric for Imbu.")
-    self.assertEquals(
+    self.assertEqual(
       "fake_cache_root",
       getattr(model.getEncoder().client, "cacheDir"),
       "ImbuModels did not set the Cio encoder cache dir properly for {} model.".
@@ -262,7 +262,7 @@ class TestImbu(unittest.TestCase):
 
     # Now explicitly set the cache directory
     encoder.cacheDir = "fake_cache_root"
-    self.assertEquals(
+    self.assertEqual(
       "fake_cache_root",
       getattr(encoder.client, "cacheDir"),
       "Cio encoder cache dir did not set properly.")
@@ -270,24 +270,24 @@ class TestImbu(unittest.TestCase):
 
   def _checkResultsFormatting(self, results, modelName, windowSize=0):
     for result in results.values():
-      self.assertEquals(
+      self.assertEqual(
         ["indices", "scores", "text", "windowSize"], sorted(result),
         "Results dict for {} has incorrect keys.".format(modelName))
-      self.assertEquals(windowSize, result["windowSize"],
+      self.assertEqual(windowSize, result["windowSize"],
         "Results give incorrect window size for {} model.".format(modelName))
 
       # Assert models have correct number of scores in each result
       # TODO: use ImbuModels.documentLevel
       if "Cio" in modelName:
         # Doc-level models
-        self.assertEquals(1, len(result["scores"]),
+        self.assertEqual(1, len(result["scores"]),
           "Doc-level models should have one score per result.")
         scores = result["scores"]
       else:
         # Word-level models
         scores = result["scores"]
         textList = result["text"].split(" ")
-        self.assertTrue(len(scores) == len(textList),
+        self.assertEqual(len(scores), len(textList),
           "Word-level models should give equal number of scores and tokens.")
 
 
@@ -324,12 +324,12 @@ class TestImbu(unittest.TestCase):
     imbu = self._setupFakeImbuModelsInstance()
 
     ranges = [[3, 7], [3, 5], [0, 4]]
-    self.assertItemsEqual([[0, 7]], list(imbu._mergeRanges(ranges)))
+    self.assertSequenceEqual([[0, 7]], list(imbu._mergeRanges(ranges)))
     ranges = [[5, 6], [3, 4], [1, 2]]
-    self.assertItemsEqual([[1, 2], [3, 4], [5, 6]],
+    self.assertSequenceEqual([[1, 2], [3, 4], [5, 6]],
       list(imbu._mergeRanges(ranges)))
     ranges = [[0, 13]]
-    self.assertItemsEqual(ranges, list(imbu._mergeRanges(ranges)))
+    self.assertSequenceEqual(ranges, list(imbu._mergeRanges(ranges)))
     ranges = [[0, 3], [6, 3]]
     with self.assertRaises(ValueError):
       list(imbu._mergeRanges(ranges))
@@ -355,9 +355,9 @@ class TestImbu(unittest.TestCase):
     _, unSortedIds, unSortedDistances = imbu.query(model, query)
     resultsFrags = imbu.formatResults(
       "Keywords", query, unSortedDistances, unSortedIds)
-    self.assertEquals([[0, 21]], resultsFrags[0]["indices"],
+    self.assertSequenceEqual([[0, 21]], resultsFrags[0]["indices"],
       "Incorrect fragment indices for '{}' query.".format(query))
-    self.assertEquals([[0, lengthDoc1]], resultsFrags[1]["indices"],
+    self.assertSequenceEqual([[0, lengthDoc1]], resultsFrags[1]["indices"],
       "Incorrect fragment indices for '{}' query.".format(query))
 
     # Query --> no max score in the results, so no fragmenting of documents
@@ -365,9 +365,9 @@ class TestImbu(unittest.TestCase):
     _, unSortedIds, unSortedDistances = imbu.query(model, query)
     resultsFrags = imbu.formatResults(
       "Keywords", query, unSortedDistances, unSortedIds)
-    self.assertEquals([[0, lengthDoc0]], resultsFrags[0]["indices"],
+    self.assertSequenceEqual([[0, lengthDoc0]], resultsFrags[0]["indices"],
       "Incorrect fragment indices for '{}' query.".format(query))
-    self.assertEquals([[0, lengthDoc1]], resultsFrags[1]["indices"],
+    self.assertSequenceEqual([[0, lengthDoc1]], resultsFrags[1]["indices"],
       "Incorrect fragment indices for '{}' query.".format(query))
 
     # Query --> doc 0 fragment is based off of middle token
@@ -375,9 +375,9 @@ class TestImbu(unittest.TestCase):
     _, unSortedIds, unSortedDistances = imbu.query(model, query)
     resultsFrags = imbu.formatResults(
       "Keywords", query, unSortedDistances, unSortedIds)
-    self.assertEquals([[9, lengthDoc0]], resultsFrags[0]["indices"],
+    self.assertSequenceEqual([[9, lengthDoc0]], resultsFrags[0]["indices"],
       "Incorrect fragment indices for '{}' query.".format(query))
-    self.assertEquals([[0, lengthDoc1]], resultsFrags[1]["indices"],
+    self.assertSequenceEqual([[0, lengthDoc1]], resultsFrags[1]["indices"],
       "Incorrect fragment indices for '{}' query.".format(query))
 
     # Results for doc-level model should not be fragmented
@@ -388,7 +388,7 @@ class TestImbu(unittest.TestCase):
     _, unSortedIds, unSortedDistances = imbu.query(model, query)
     resultsFrags = imbu.formatResults(
       "CioDocumentFingerprint", query, unSortedDistances, unSortedIds)
-    self.assertEquals([[0, lengthDoc0]], resultsFrags[0]["indices"],
+    self.assertSequenceEqual([[0, lengthDoc0]], resultsFrags[0]["indices"],
       "Incorrect fragment indices for '{}' query.".format(query))
-    self.assertEquals([[0, lengthDoc1]], resultsFrags[1]["indices"],
+    self.assertSequenceEqual([[0, lengthDoc1]], resultsFrags[1]["indices"],
       "Incorrect fragment indices for '{}' query.".format(query))
