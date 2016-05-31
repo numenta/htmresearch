@@ -162,11 +162,9 @@ class LanguageSensor(PyRegion):
     outputs are as defined in the spec above.
 
     Expects the text data to be in under header "token" from the dataSource.
-
-    TODO: validate we're handling resets correctly
     """
     if len(self.queue) > 0:
-      # data has been added to the queue, so use it
+      # Data has been added to the queue, so use it
       data = self.queue.pop()
 
     elif self.dataSource is None:
@@ -174,25 +172,27 @@ class LanguageSensor(PyRegion):
                         "and the dataSource is None.")
     else:
       data = self.dataSource.getNextRecordDict()
-      # Keys in data that are not column headers from the data source are standard
-      # of RecordStreamIface objects.
+      # Keys in data that are not column headers from the data source are
+      # standard of RecordStreamIface objects
 
-    # Copy important data input fields over to outputs dict. We set "sourceOut"
-    # explicitly b/c PyRegion.getSpec() won't take an output field w/ type str.
+    # Copy important data input fields over to outputs dict.
     outputs["resetOut"][0] = data["_reset"]
     outputs["sequenceIdOut"][0] = data["_sequenceId"]
-    outputs["sourceOut"] = data["_token"]
-    self.populateCategoriesOut(data["_category"], outputs['categoryOut'])
-    outputs["encodingOut"] = self.encoder.encodeIntoArray(
-      data["_token"], outputs["dataOut"])
+    self.populateCategoriesOut(data["_category"], outputs["categoryOut"])
+    self.encoder.encodeIntoArray(data["_token"], outputs["dataOut"])
 
     if self.verbosity > 0:
       print "LanguageSensor outputs:"
       print "SeqID: ", outputs["sequenceIdOut"]
       print "Categories out: ", outputs['categoryOut']
-      print "dataOut: ",outputs["dataOut"].nonzero()[0]
+      print "dataOut: ", outputs["dataOut"].nonzero()[0]
 
-    self._outputValues = copy.deepcopy(outputs)
+    # Deep copy the outputs so self._outputValues doesn't point to the values
+    # used within the Network API
+    self._outputValues = {
+      field: copy.deepcopy(value) for field, value in outputs.iteritems()
+    }
+    self._outputValues["sourceOut"] = data["_token"]
 
     self._iterNum += 1
 
@@ -222,9 +222,7 @@ class LanguageSensor(PyRegion):
 
 
   def getOutputValues(self, outputName):
-    """Return the dictionary of output values. Note that these are normal Python
-    lists, rather than numpy arrays. This is to support lists with mixed scalars
-    and strings, as in the case of records with categorical variables
+    """Return the region's values for outputName.
     """
     return self._outputValues[outputName]
 

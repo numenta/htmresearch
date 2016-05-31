@@ -138,32 +138,55 @@ export default class SearchStore extends BaseStore {
     if (error) {
       this.results.set(model, {status:'error', error});
     } else if (results) {
-      // Find and sort results by max score
-      let data = Object.keys(results)
+      // Process results data
+      let data = []
+      Object.keys(results)
         .map((id) => {
           let record = results[id];
           let text = record.text;
           let scores = record.scores;
           let windowSize = record.windowSize;
+          let fragmentIndices = record.indices;
 
-          // Find max
-          let maxScore = record.scores.reduce((prev, current) => {
-            return prev > current ? prev : current;
-          });
-          let sumScore = record.scores.reduce((prev, current) => {
-            return prev + current ;
-          });
-          return {
-            text, maxScore, sumScore, scores, windowSize
-          };
-        })
-        .sort((a, b) => {
-          let res = b.maxScore - a.maxScore;
-          if (res === 0) {
-            res = b.sumScore - a.sumScore;
+          if (fragmentIndices) {
+            // Data is query results, so break results into their fragments
+            for (let i=0; i < fragmentIndices.length; i++) {
+              let startIndex = fragmentIndices[i][0]
+              let endIndex = fragmentIndices[i][1]
+
+              // Find this result's max score and sum of scores
+              let maxScore = scores.reduce((prev, current) => {
+                return prev > current ? prev : current;
+              });
+              let sumScore = scores.reduce((prev, current) => {
+                return prev + current ;
+              });
+              // Add this fragment
+              let fragment = {
+                text, id, startIndex, endIndex, scores, maxScore, sumScore, windowSize
+              }
+              data.push(fragment)
+            }
+          } else {
+            // Data is not query results, just the dataset
+            let startIndex = 0
+            let endIndex = text.split(' ').length
+            let maxScore = 0
+            let sumScore = 0
+            let fragment = {
+              text, id, startIndex, endIndex, scores, maxScore, sumScore, windowSize
+            }
+            data.push(fragment)
           }
-          return res;
-        });
+        })
+      // Sort the data by max scores, breaking ties with score sums
+      data.sort((a, b) => {
+        let res = b.maxScore - a.maxScore;
+        if (res === 0) {
+          res = b.sumScore - a.sumScore;
+        }
+        return res;
+      });
       this.results.set(model, {status:'ready', data});
     } else {
       // No data

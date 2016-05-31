@@ -2,10 +2,7 @@
 
 Imbu is a web application to demonstrate applications of Hierarchical
 Temporal Memory (HTM) to Natural Language Processing (NLP) problems, as well as
-support ongoing research.  Originally based off of the
-[nupic.fluent](https://github.com/numenta-archive/nupic.fluent) OSS community
-project, Imbu is a project of its own in
-[nupic.research](https://github.com/numenta/nupic.research).
+support ongoing research.
 
 ## License
 
@@ -26,19 +23,22 @@ project, Imbu is a project of its own in
 │   ├── nginx-uwsgi.conf           # nGinx reverse proxy configuration
 │   └── supervisord.conf           # Main supervisor configuration file
 ├── engine/
-│   ├── data.csv                   # Imbu data set
 │   ├── fluent_api.py              # Python web application
-│   └── imbu_tp.json
+│   └── sample_reviews/				# Sample dataset and models
 ├── gui/
 │   ├── browser/
 │   │   ├── actions/
+│   │   │   ├── dataset-list.js	
+│   │   │   ├── dataset-select.js
+│   │   │   ├── dialog-close.js
+│   │   │   ├── dialog-open.js
 │   │   │   ├── search-clear.js
 │   │   │   ├── search-query.js
 │   │   │   └── server-status.js
 │   │   ├── app.js                 # Fluxible application entry point
 │   │   ├── components/
+│   │   │   ├── dialog.jsx         # Dialog component for viewing full documents
 │   │   │   ├── main.jsx           # Main JSX template
-│   │   │   ├── search-history.jsx
 │   │   │   ├── search-results.jsx
 │   │   │   └── search.jsx
 │   │   ├── css/
@@ -82,18 +82,11 @@ on the front end, Python on the back end.
 
 - [Cortical.io](http://www.cortical.io/)
 
-## Front End
-
-TBD
-
-## Back End
+## API
 
 Imbu implements a web service API at `/fluent`, supporting a `POST` HTTP
 method for querying Imbu models.
 
-## Data Flow
-
-TBD
 
 ## Running Imbu
 
@@ -109,7 +102,10 @@ TBD
 In the root of `nupic.research`:
 
 ```
+# build
 docker build -t imbu:latest -f projects/imbu/Dockerfile .
+
+# run
 docker run \
   --name imbu \
   -d \
@@ -118,6 +114,12 @@ docker run \
   -e CORTICAL_API_KEY=${CORTICAL_API_KEY} \
   -e IMBU_RETINA_ID=${IMBU_RETINA_ID} \
   imbu:latest
+
+# get ip (local docker network, maybe 192.168.x.x)
+docker-machine ls
+
+# open in browser:
+#   http://192.168.x.x:8080
 ```
 
 A few salient points about the command(s) above:

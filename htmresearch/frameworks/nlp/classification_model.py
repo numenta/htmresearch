@@ -74,18 +74,18 @@ class ClassificationModel(object):
 
   ################## CORE METHODS #####################
 
-  def trainToken(self, token, labels, tokenId, reset=0):
+  def trainToken(self, token, labels, tokenId, resetSequence=0):
     """
     Train the model with the given text token, associated labels, and ID
     associated with this token.
 
-    @param token      (str)  The text token to train on
-    @param labels     (list) A list of one or more integer labels associated
-                             with this token.
-    @param tokenId    (int)  An integer ID associated with this token.
-    @param reset      (int)  Should be 0 or 1. If 1, assumes we are at the
-                             end of a sequence. A reset signal will be issued
-                             after the model has been trained on this token.
+    @param token         (str)  The text token to train on
+    @param labels        (list) A list of one or more integer labels associated
+                                with this token.
+    @param tokenId       (int)  An integer ID associated with this token.
+    @param resetSequence (int)  Should be 0 or 1. If 1, assumes we are at the
+                                end of a sequence. A reset signal will be issued
+                                after the model has been trained on this token.
 
     """
     raise NotImplementedError
@@ -109,35 +109,38 @@ class ClassificationModel(object):
     tokenList, _ = self.tokenize(document)
     lastTokenIndex = len(tokenList) - 1
     for i, token in enumerate(tokenList):
-      self.trainToken(token, labels, sampleId, reset=int(i == lastTokenIndex))
+      self.trainToken(
+        token, labels, sampleId, resetSequence=int(i == lastTokenIndex))
 
 
-  def inferToken(self, token, reset=0, returnDetailedResults=False,
+  def inferToken(self, token, resetSequence=0, returnDetailedResults=False,
                  sortResults=True):
     """
     Classify the token (i.e. run inference on the model with this document) and
     return classification results and (optionally) a list of sampleIds and
     distances.   Repeated sampleIds are NOT removed from the results.
 
-    @param token    (str)     The text token to train on
-    @param reset    (int)     Should be 0 or 1. If 1, assumes we are at the
-                              end of a sequence. A reset signal will be issued
-                              after the model has been trained on this token.
+    @param token         (str)    The text token to train on.
+    @param resetSequence (int)    Should be 0 or 1. If 1, assumes we are at the
+                                  end of a sequence. A reset signal will be
+                                  issued after the model has been trained on
+                                  this token.
     @param returnDetailedResults
-                    (bool)    If True will return sampleIds and distances
-                              This could slow things down depending on the
-                              number of stored patterns.
-    @param sortResults (bool) If True the list of sampleIds and distances
-                              will be sorted in order of increasing distances.
+                          (bool)  If True will return sampleIds and distances
+                                  This could slow things down depending on the
+                                  number of stored patterns.
+    @param sortResults    (bool)  If True the list of sampleIds and distances
+                                  will be sorted in order of increasing
+                                  distances.
 
-    @return  (numpy array) An array of size numLabels. Position i contains
-                           the likelihood that this token belongs to the
-                           i'th category. An array containing all zeros
-                           implies no decision could be made.
-             (list)        A list of sampleIds or None if
-                           returnDetailedResults is False.
-             (numpy array) An array of distances from each stored sample or
-                           None if returnDetailedResults is False.
+    @return  (numpy array)    An array of size numLabels. Position i contains
+                              the likelihood that this token belongs to the
+                              i'th category. An array containing all zeros
+                              implies no decision could be made.
+             (list)           A list of sampleIds or None if
+                              returnDetailedResults is False.
+             (numpy array)    An array of distances from each stored sample or
+                              None if returnDetailedResults is False.
     """
     # TODO: Should we specify that distances normalized between 0 and 1?
     # Currently we use whatever the KNN returns.
@@ -186,7 +189,7 @@ class ClassificationModel(object):
     voteCount = 0
     for i, token in enumerate(tokenList):
       votes, _, _ = self.inferToken(token,
-                                    reset=int(i == lastTokenIndex),
+                                    resetSequence=int(i == lastTokenIndex),
                                     returnDetailedResults=False,
                                     sortResults=False)
 
@@ -423,10 +426,12 @@ class ClassificationModel(object):
     voteTotals = numpy.zeros(self.numLabels)
     count = 0
     for i, token in enumerate(tokenList):
-      votes, idList, distances = self.inferToken(token,
-                                                 reset=int(i == lastTokenIndex),
-                                                 returnDetailedResults=True,
-                                                 sortResults=False)
+      (votes,
+       idList,
+       distances) = self.inferToken(token,
+                                    resetSequence=int(i == lastTokenIndex),
+                                    returnDetailedResults=True,
+                                    sortResults=False)
 
       if votes.sum() > 0:
         voteTotals += votes

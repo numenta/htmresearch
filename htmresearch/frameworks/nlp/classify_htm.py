@@ -72,7 +72,7 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
     return configureNetwork(None, self.networkConfig, encoder)
 
 
-  def trainToken(self, token, labels, tokenId, reset=0):
+  def trainToken(self, token, labels, tokenId, resetSequence=0):
     """
     Train the model with the given text token, associated labels, and ID
     associated with this token.
@@ -85,18 +85,19 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
     sensor.addDataToQueue(token,
                           categoryList=labels,
                           sequenceId=tokenId,
-                          reset=reset)
+                          reset=resetSequence)
     self.network.run(1)
 
     # Print the outputs of each region
     if self.verbosity >= 2:
+      print "================== Training with token:",token,"label:",labels
       self.printRegionOutputs()
 
-    if reset == 1:
+    if resetSequence == 1:
       self.reset()
 
 
-  def inferToken(self, token, reset=0, returnDetailedResults=False,
+  def inferToken(self, token, resetSequence=0, returnDetailedResults=False,
                  sortResults=True):
     """
     Classify the token (i.e. run inference on the model with this document) and
@@ -110,7 +111,7 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
     sensor = self.sensorRegion.getSelf()
     sensor.addDataToQueue(token,
                           categoryList=[None],
-                          sequenceId=-1, reset=reset)
+                          sequenceId=-1, reset=resetSequence)
     self.network.run(1)
 
     dist = self.classifierRegion.getSelf().getLatestDistances()
@@ -120,9 +121,10 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
 
     # Print the outputs of each region
     if self.verbosity >= 2:
+      print "================== Inference with token:",token
       self.printRegionOutputs()
 
-    if reset == 1:
+    if resetSequence == 1:
       self.reset()
 
     # If detailed results are not requested just return the category votes
