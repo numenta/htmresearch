@@ -101,12 +101,12 @@ class SimpleUnionPooler(object):
           "Input vector dimensions don't match. Expecting %s but got %s" % (
             self._numInputs, inputVector.size))
     elif isinstance(inputVector, list):
-      if max(inputVector) >= self._numInputs:
-        raise ValueError(
-          "Non-zero entry indices exceed input dimension of union pooler. "
-          "Expecting %s but got %s" % (self._numInputs, max(inputVector)))
-      else:
-        activeBits = inputVector
+      if len(inputVector) > 0:
+        if max(inputVector) >= self._numInputs:
+          raise ValueError(
+            "Non-zero entry indices exceed input dimension of union pooler. "
+            "Expecting %s but got %s" % (self._numInputs, max(inputVector)))
+      activeBits = inputVector
     else:
       raise TypeError("Unsuported input types")
 
