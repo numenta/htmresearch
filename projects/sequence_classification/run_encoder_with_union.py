@@ -23,6 +23,10 @@
 Run sequence classification experiment with
 Input -> RDSE encoder -> Union model
 Search for the optimal union window
+
+One needs to run the script "run_encoder_only.py" first to get the
+optimal encoder resolution
+
 """
 
 import pickle
@@ -130,39 +134,6 @@ def calculateEncoderModelAccuracy(nBuckets, numCols, w, trainData, trainLabel):
 
 
 
-def searchForOptimalEncoderResolution(nBucketList, trainData, trainLabel, numCols, w):
-
-  numCPU = multiprocessing.cpu_count()
-
-  # Establish communication queues
-  taskQueue = multiprocessing.JoinableQueue()
-  resultQueue = multiprocessing.Queue()
-
-  for nBuckets in nBucketList:
-    taskQueue.put({"nBuckets": nBuckets})
-  for _ in range(numCPU):
-    taskQueue.put(None)
-  jobs = []
-  for i in range(numCPU):
-    print "Start process ", i
-    p = multiprocessing.Process(target=calcualteEncoderModelWorker,
-                                args=(taskQueue, resultQueue, numCols, w, trainData, trainLabel))
-    jobs.append(p)
-    p.daemon = True
-    p.start()
-
-  while not taskQueue.empty():
-    time.sleep(0.1)
-  accuracyVsResolution = np.zeros((len(nBucketList,)))
-  while not resultQueue.empty():
-    exptResult = resultQueue.get()
-    nBuckets = exptResult.keys()[0]
-    accuracyVsResolution[nBucketList.index(nBuckets)] = exptResult[nBuckets]
-
-  return accuracyVsResolution
-
-
-
 def runDataSet(dataName, datasetName):
   trainData, trainLabel, testData, testLabel = loadDataset(dataName,
                                                            datasetName)
@@ -183,7 +154,8 @@ def runDataSet(dataName, datasetName):
   try:
     unionLengthList = [1, 5, 10, 15, 20]
     for unionLength in unionLengthList:
-      expResultTM = pickle.load(open('results/modelPerformance/{}_columnOnly_union_{}'.format(
+      expResultTM = pickle.load(
+        open('results/modelPerformance/{}_columnOnly_union_{}'.format(
         dataName, unionLength), 'r'))
     return
   except:
@@ -213,21 +185,7 @@ def runDataSet(dataName, datasetName):
     optimalResolution = (maxValue - minValue) / optNumBucket
   except:
     return
-    nBucketList = range(20, 200, 10)
-    accuracyVsResolution = searchForOptimalEncoderResolution(
-      nBucketList, trainData, trainLabel, numCols, w)
-    optNumBucket = nBucketList[np.argmax(np.array(accuracyVsResolution))]
-    optimalResolution = (maxValue - minValue) / optNumBucket
-    searchResolution = {
-      'nBucketList': nBucketList,
-      'accuracyVsResolution': accuracyVsResolution,
-      'optimalResolution': optimalResolution
-    }
-    # save optimal resolution for future use
-    outputFile = open('results/optimalEncoderResolution/{}'.format(dataName),
-                      'w')
-    pickle.dump(searchResolution, outputFile)
-    outputFile.close()
+
   print "optimal bucket # {}".format((maxValue - minValue) / optimalResolution)
 
   encoder = RandomDistributedScalarEncoder(optimalResolution, w=w, n=numCols)
@@ -287,19 +245,20 @@ if __name__ == "__main__":
   # dataSetList = ["synthetic_control"]
 
   numCPU = multiprocessing.cpu_count()
-  numTask = 8
+  numWorker = 2
   # Establish communication queues
   taskQueue = multiprocessing.JoinableQueue()
 
   for dataName in dataSetList:
     taskQueue.put({"dataName": dataName,
                    "datasetName": datasetName})
-  for _ in range(numTask):
+  for _ in range(numWorker):
     taskQueue.put(None)
   jobs = []
-  for i in range(numTask):
+  for i in range(numWorker):
     print "Start process ", i
-    p = multiprocessing.Process(target=runDataSetWorker, args=(taskQueue, datasetName))
+    p = multiprocessing.Process(target=runDataSetWorker,
+                                args=(taskQueue, datasetName))
     jobs.append(p)
     p.daemon = True
     p.start()
