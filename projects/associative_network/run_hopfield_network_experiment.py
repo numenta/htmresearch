@@ -28,6 +28,7 @@ each item can be reliably retrieved?
 2. Simultaneously retrieve multiple items by relaxing the sparsity
 """
 import numpy as np
+import numpy.matlib
 import matplotlib.pyplot as plt
 plt.ion()
 
@@ -124,6 +125,35 @@ def convertActiveCellsToSDRs(activeStateHistory, numCells):
   return sdrHistory
 
 
+
+def stripSDRHistoryForDisplay(sdrHistory, removePortion=0.5):
+  """
+  Strip SDR History (remove unused bits) for display purpose
+  :param sdrHistory:
+  :return: displayBitIndex
+  """
+  sdrHistorySum = np.sum(sdrHistory, axis=0)
+  unusedBitIndices = np.where(sdrHistorySum == 0)[0]
+  usedBitIndices = np.where(sdrHistorySum > 1)[0]
+
+  numUnusedBitKeep = int(len(unusedBitIndices) * (1-removePortion))
+  unusedBitIndices = np.random.permutation(unusedBitIndices)
+  unusedBitIndices = unusedBitIndices[:numUnusedBitKeep]
+
+  displayBitIndex = np.concatenate((usedBitIndices, unusedBitIndices))
+  displayBitIndex = np.sort(displayBitIndex)
+  return displayBitIndex
+
+
+
+def generateSDRforDisplay(numNeuron, activeBits, displayBitIndex):
+  sdrForDisplay = np.zeros((1, numNeuron))
+  sdrForDisplay[0, activeBits] = 1
+  sdrForDisplay = np.matlib.repmat(sdrForDisplay[:, displayBitIndex], 10, 1)
+  return sdrForDisplay
+
+
+
 def runSingleExperiment(numObjects, numBitNoise, seed=10):
   np.random.seed(seed)
   hcNet = hyperColumnNetwork(numHyperColumn=1,
@@ -147,7 +177,7 @@ def runSingleExperiment(numObjects, numBitNoise, seed=10):
 
     sdrHistory = convertActiveCellsToSDRs(activeStateHistory,
                                           hcNet.numNeuronTotal)
-    plt.imshow(sdrHistory[:, :], cmap='gray')
+
     initialActiveCells = np.where(sdrHistory[0, :] > 0)[0]
     finalActiveCells = np.where(sdrHistory[-1, :] > 0)[0]
     finalOverlap = len(
@@ -158,6 +188,7 @@ def runSingleExperiment(numObjects, numBitNoise, seed=10):
     finalOverlapList.append(finalOverlap)
     # print finalOverlap
   return finalOverlapList
+
 
 
 def capacityExperiment():
@@ -191,7 +222,7 @@ def capacityExperiment():
 
 
 
-def retriveMultipleItems():
+def retrieveMultipleItems():
   hcNet = hyperColumnNetwork(numHyperColumn=1,
                              numNeuronPerHyperColumn=1024,
                              numActiveNeuronPerHyperColumn=20,
@@ -208,11 +239,12 @@ def retriveMultipleItems():
   objectID2 = 1
   initialState[objectSDRActiveBits[objectID1][:10]] = 1
   initialState[objectSDRActiveBits[objectID2][:10]] = 1
-  activeStateHistory = hcNet.run(initialState, 5, numActiveBit=40)
+  activeStateHistory = hcNet.run(initialState, 10, numActiveBit=40)
 
   sdrHistory = convertActiveCellsToSDRs(activeStateHistory,
                                         hcNet.numNeuronTotal)
-  plt.imshow(sdrHistory[:, :], cmap='gray')
+  displayBitIndex = stripSDRHistoryForDisplay(sdrHistory, removePortion=0.9)
+
   initialActiveCells = np.where(sdrHistory[0, :] > 0)[0]
   finalActiveCells = np.where(sdrHistory[-1, :] > 0)[0]
 
@@ -234,8 +266,27 @@ def retriveMultipleItems():
   print "Final overlap with object SDR 1: {}".format(finalOverlap1)
   print "Final overlap with object SDR 2: {}".format(finalOverlap2)
 
+  fig, ax = plt.subplots(nrows=4, ncols=1)
+  object1SDR = generateSDRforDisplay(hcNet.numNeuronTotal,
+                                     objectSDRActiveBits[objectID1],
+                                     displayBitIndex)
+  object2SDR = generateSDRforDisplay(hcNet.numNeuronTotal,
+                                     objectSDRActiveBits[objectID2],
+                                     displayBitIndex)
+  querySDR = np.matlib.repmat(np.transpose(initialState[displayBitIndex]), 10, 1)
+  ax[0].imshow(object1SDR, cmap='gray')
+  ax[0].set_title('SDR for Object A')
+  ax[1].imshow(object2SDR, cmap='gray')
+  ax[1].set_title('SDR for Object B')
+  ax[2].imshow(querySDR, cmap='gray')
+  ax[2].set_title('query SDR')
+  ax[3].imshow(sdrHistory[:, displayBitIndex], cmap='gray')
+  ax[3].set_title('Network states over time')
+  plt.savefig('figures/retrieveMultipleItems.pdf')
+
+
 
 if __name__ == "__main__":
-  capacityExperiment()
+  retrieveMultipleItems()
 
 
