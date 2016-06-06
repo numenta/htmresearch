@@ -31,7 +31,7 @@ import numpy as np
 import numpy.matlib
 import matplotlib.pyplot as plt
 plt.ion()
-
+plt.close('all')
 
 class hyperColumnNetwork(object):
   def __init__(self,
@@ -39,13 +39,14 @@ class hyperColumnNetwork(object):
                numNeuronPerHyperColumn,
                numActiveNeuronPerHyperColumn,
                numInputs,
-               minThreshold=0):
+               minThreshold=0,
+               matchThreshold=10):
     self.numHyperColumn = numHyperColumn
     self.numNeuronPerHyperColumn = numNeuronPerHyperColumn
     self.numActiveNeuronPerHyperColumn = numActiveNeuronPerHyperColumn
     self.numInputs = numInputs
     self.minThreshold = minThreshold
-
+    self.matchThreshold = matchThreshold
     self.numNeuronTotal = numHyperColumn * numNeuronPerHyperColumn
 
     # initialize weight matrix
@@ -70,44 +71,39 @@ class hyperColumnNetwork(object):
   def memorizeObjectSDRs(self, objectSDRActiveBits):
     numObjects = len(objectSDRActiveBits)
     # initialize recurrent connections
+    self.weightRecurrent = np.zeros((self.numNeuronTotal, self.numNeuronTotal))
     for i in range(numObjects):
       offset = 0
       objectSDR = np.zeros((self.numNeuronTotal, 1))
       for j in range(self.numHyperColumn):
         objectSDR[offset+objectSDRActiveBits[i][j], 0] = 1
         offset += self.numNeuronPerHyperColumn
-        # w = 2 * objectSDR - 1
       self.weightRecurrent += np.dot(objectSDR, np.transpose(objectSDR))
 
     for i in range(self.numNeuronTotal):
       self.weightRecurrent[i, i] = 0
 
 
-  def run(self, initialState, feedforwardInputs, numActiveBit=None):
+  def run(self, initialState, feedforwardInputs):
     """
     Run network for multiple steps
     :param initialState:
     :param feedforwardInputs: list of feedforward inputs
     :return: list of active cell indices over time
     """
-    if numActiveBit is None:
-      numActiveBit = self.numActiveNeuronPerHyperColumn
-
     currentState = initialState
     activeStateHistory = [np.where(initialState > 0)[0]]
     numStep = len(feedforwardInputs)
     for i in range(numStep):
       currentState = self.runSingleStep(currentState,
-                                        feedforwardInputs[i],
-                                        numActiveBit)
+                                        feedforwardInputs[i])
       activeStateHistory.append([np.where(currentState > 0)[0]])
     return activeStateHistory
 
 
   def runSingleStep(self,
                     previousState,
-                    feedforwardInputs,
-                    maxNumberOfActiveCellsPerColumn):
+                    feedforwardInputs):
     """
     Run network for one step
     :param previousState: a (Ncell, 1) numpy array of network states
@@ -136,14 +132,14 @@ class hyperColumnNetwork(object):
       numberOfStrongActiveCellsInColumn = np.sum(
         strongActive[offset:offset+self.numNeuronPerHyperColumn])
       print "numberOfStrongActiveCellsInColumn: ", numberOfStrongActiveCellsInColumn
-      if numberOfStrongActiveCellsInColumn > 5:
-        w = self.numActiveNeuronPerHyperColumn/2
-      else:
-        w = self.numActiveNeuronPerHyperColumn
+      if numberOfStrongActiveCellsInColumn > self.matchThreshold:
+        self.numActiveNeuronPerHyperColumn = self.numActiveNeuronPerHyperColumn/2
+
+      w = self.numActiveNeuronPerHyperColumn
 
       cellIdx = np.argsort(totalInput[offset:offset+self.numNeuronPerHyperColumn, 0])
-
       activeCells = cellIdx[-w:]
+
       activeCells = activeCells[np.where(
         totalInput[activeCells] > self.minThreshold)[0]]
       newState[offset + activeCells] = 1
@@ -271,24 +267,29 @@ def retrieveMultipleItems():
                              numNeuronPerHyperColumn=1024,
                              numActiveNeuronPerHyperColumn=20,
                              numInputs=1024,
-                             minThreshold=1)
+                             minThreshold=0)
   numObjects = 100
   objectSDRActiveBits = hcNet.initializeObjectSDRs(numObjects=numObjects,
                                                    seed=42)
   hcNet.memorizeObjectSDRs(objectSDRActiveBits)
+  hcNet.numActiveNeuronPerHyperColumn = 40
 
-  objectID1 = 0
-  objectID2 = 1
+  objectID1 = 1
+  objectID2 = 2
   ambiguousInput = np.zeros((hcNet.numNeuronTotal, 1))
-  ambiguousInput[objectSDRActiveBits[objectID1][0][:10]] = 1
-  ambiguousInput[objectSDRActiveBits[objectID2][0][:10]] = 1
+  ambiguousInput[objectSDRActiveBits[objectID1][0][:10]] = 10
+  ambiguousInput[objectSDRActiveBits[objectID2][0][:10]] = 10
 
-  feedforwardInputs = [np.zeros((hcNet.numNeuronTotal, 1))] * 10
-  # feedforwardInputs[0] = ambiguousInput
-  # feedforwardInputs[5][objectSDRActiveBits[objectID1][0]] = 1
+  nStep = 20
+  feedforwardInputs = [ambiguousInput]
+  for i in range(1, nStep):
+    feedforwardInputs.append(np.zeros((hcNet.numNeuronTotal, 1)))
+  feedforwardInputs[10][objectSDRActiveBits[objectID1][0]] = 1
+
   initialState = np.zeros((hcNet.numNeuronTotal, 1))
-  initialState = ambiguousInput
-  activeStateHistory = hcNet.run(initialState, feedforwardInputs, numActiveBit=40)
+  # initialState = ambiguousInput
+
+  activeStateHistory = hcNet.run(initialState, feedforwardInputs)
 
   sdrHistory = convertActiveCellsToSDRs(activeStateHistory,
                                         hcNet.numNeuronTotal)
