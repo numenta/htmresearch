@@ -138,11 +138,11 @@ class hyperColumnNetwork(object):
       w = self.numActiveNeuronPerHyperColumn
 
       cellIdx = np.argsort(totalInput[offset:offset+self.numNeuronPerHyperColumn, 0])
-      activeCells = cellIdx[-w:]
+      activeCells = cellIdx[-w:] + offset
 
       activeCells = activeCells[np.where(
         totalInput[activeCells] > self.minThreshold)[0]]
-      newState[offset + activeCells] = 1
+      newState[activeCells] = 1
       print "activeCells ", np.sort(activeCells)
       offset += self.numNeuronPerHyperColumn
 
@@ -337,38 +337,76 @@ def retrieveMultipleItems():
 
 
 
+def multipleHyperColumn():
+  hcNet = hyperColumnNetwork(numHyperColumn=3,
+                             numNeuronPerHyperColumn=1024,
+                             numActiveNeuronPerHyperColumn=20,
+                             numInputs=1024*3,
+                             minThreshold=0)
+  numObjects = 10
+  objectSDRActiveBits = hcNet.initializeObjectSDRs(numObjects=numObjects,
+                                                   seed=40)
+  hcNet.memorizeObjectSDRs(objectSDRActiveBits)
+
+  initialState = np.zeros((hcNet.numNeuronTotal, 1))
+
+  objectID1 = 1
+  offset = 0
+  ambiguousInput = np.zeros((hcNet.numNeuronTotal, 1))
+  for i in range(hcNet.numHyperColumn):
+    if i != 1:
+      ambiguousInput[offset + objectSDRActiveBits[objectID1][i][:20]] = 1
+    # initialState[offset + objectSDRActiveBits[objectID2][i][:10]] = 1
+    offset += hcNet.numNeuronPerHyperColumn
+
+  nStep = 10
+  feedforwardInputs = [ambiguousInput]
+  for i in range(1, nStep):
+    feedforwardInputs.append(np.zeros((hcNet.numNeuronTotal, 1)))
+
+  hcNet.numActiveNeuronPerHyperColumn = 20
+  activeStateHistory = hcNet.run(initialState, feedforwardInputs)
+  sdrHistory = convertActiveCellsToSDRs(activeStateHistory,
+                                        hcNet.numNeuronTotal)
+
+  offset = 0
+  plt.figure()
+  fig, ax = plt.subplots(3, 3)
+  for i in range(hcNet.numHyperColumn):
+    activationColumnI = sdrHistory[:, offset:(offset+hcNet.numNeuronPerHyperColumn)]
+
+    initialOverlap1 = len(
+      set(objectSDRActiveBits[objectID1][i]).intersection(set(np.where(activationColumnI[0, :]>0)[0])))
+
+    finalOverlap1 = len(
+      set(objectSDRActiveBits[objectID1][i]).intersection(set(np.where(activationColumnI[-1, :]>0)[0])))
+
+    print "initial Overlap with column {} : {}".format(i, initialOverlap1)
+    print "final Overlap with column {} : {}".format(i, finalOverlap1)
+
+    displayBitIndex = stripSDRHistoryForDisplay(activationColumnI, removePortion=0.9)
+    displayBitIndex = displayBitIndex[:30]
+    object1SDR = generateSDRforDisplay(hcNet.numNeuronPerHyperColumn,
+                                       objectSDRActiveBits[objectID1][i],
+                                       displayBitIndex)
+    ffInput = np.zeros((nStep, hcNet.numNeuronPerHyperColumn))
+    for s in range(nStep):
+      ffInput[s, :] = feedforwardInputs[s][offset:(offset+hcNet.numNeuronPerHyperColumn)][:, 0]
+
+
+    ax[0, i].imshow(object1SDR, cmap='gray')
+    ax[0, i].set_title('Module {}'.format(i))
+
+    ax[1, i].imshow(ffInput[:, displayBitIndex], cmap='gray')
+    ax[1, i].set_ylabel('ffInput')
+
+    ax[2, i].imshow(activationColumnI[:, displayBitIndex], cmap='gray')
+    ax[2, i].set_ylabel('Network state')
+    offset += hcNet.numNeuronPerHyperColumn
+
+  plt.savefig('figures/experimentMultipleModules.pdf')
+
+
+
 if __name__ == "__main__":
-  retrieveMultipleItems()
-  #
-  # hcNet = hyperColumnNetwork(numHyperColumn=3,
-  #                            numNeuronPerHyperColumn=1024,
-  #                            numActiveNeuronPerHyperColumn=20,
-  #                            numInputs=1024,
-  #                            minThreshold=5)
-  # numObjects = 10
-  # objectSDRActiveBits = hcNet.initializeObjectSDRs(numObjects=numObjects,
-  #                                                  seed=42)
-  # hcNet.memorizeObjectSDRs(objectSDRActiveBits)
-  #
-  # initialState = np.zeros((hcNet.numNeuronTotal, 1))
-  #
-  # objectID1 = 0
-  # # objectID2 = 1
-  # offset = 0
-  # for i in range(hcNet.numHyperColumn):
-  #   initialState[offset + objectSDRActiveBits[objectID1][i][:10]] = 1
-  #   # initialState[offset + objectSDRActiveBits[objectID2][i][:10]] = 1
-  #   offset += hcNet.numNeuronPerHyperColumn
-  #
-  # activeStateHistory = hcNet.run(initialState, 10, numActiveBit=40)
-  # sdrHistory = convertActiveCellsToSDRs(activeStateHistory,
-  #                                       hcNet.numNeuronTotal)
-  #
-  # activationColumn1 = sdrHistory[:, :1024]
-  # c = 0
-  # initialOverlap1 = len(
-  #   set(objectSDRActiveBits[objectID1][c]).intersection(set(np.where(activationColumn1[0, :]>0)[0])))
-  #
-  # finalOverlap1 = len(
-  #   set(objectSDRActiveBits[objectID1][c]).intersection(set(np.where(activationColumn1[-1, :]>0)[0])))
-  # set(np.where(initialState > 0)[0])
+  multipleHyperColumn()
