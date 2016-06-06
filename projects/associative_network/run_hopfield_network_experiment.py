@@ -38,17 +38,18 @@ class hyperColumnNetwork(object):
                numHyperColumn,
                numNeuronPerHyperColumn,
                numActiveNeuronPerHyperColumn,
-               numInputs):
+               numInputs,
+               minThreshold=0):
     self.numHyperColumn = numHyperColumn
     self.numNeuronPerHyperColumn = numNeuronPerHyperColumn
     self.numActiveNeuronPerHyperColumn = numActiveNeuronPerHyperColumn
     self.numInputs = numInputs
-
+    self.minThreshold = minThreshold
 
     self.numNeuronTotal = numHyperColumn * numNeuronPerHyperColumn
 
     # initialize weight matrix
-    self.weightFF = np.zeros((self.numNeuronTotal, numInputs))
+    self.weightFF = np.eye(self.numNeuronTotal, numInputs)
     self.weightRecurrent = np.zeros((self.numNeuronTotal, self.numNeuronTotal))
 
 
@@ -57,8 +58,11 @@ class hyperColumnNetwork(object):
     np.random.seed(seed)
     objectSDRActiveBits = []
     for i in range(numObjects):
-      randomCells = np.random.permutation(range(self.numNeuronPerHyperColumn))
-      objectSDRActiveBits.append(randomCells[:self.numActiveNeuronPerHyperColumn])
+      objectSDRActiveBits.append([])
+      for j in range(self.numHyperColumn):
+        randomCells = np.random.permutation(range(self.numNeuronPerHyperColumn))
+        objectSDRActiveBits[i].append(
+          randomCells[:self.numActiveNeuronPerHyperColumn])
 
     return objectSDRActiveBits
 
@@ -67,20 +71,23 @@ class hyperColumnNetwork(object):
     numObjects = len(objectSDRActiveBits)
     # initialize recurrent connections
     for i in range(numObjects):
-      objectSDR = np.zeros((self.numNeuronPerHyperColumn, 1))
-      objectSDR[objectSDRActiveBits[i], 0] = 1
-      # w = 2 * objectSDR - 1
+      offset = 0
+      objectSDR = np.zeros((self.numNeuronTotal, 1))
+      for j in range(self.numHyperColumn):
+        objectSDR[offset+objectSDRActiveBits[i][j], 0] = 1
+        offset += self.numNeuronPerHyperColumn
+        # w = 2 * objectSDR - 1
       self.weightRecurrent += np.dot(objectSDR, np.transpose(objectSDR))
 
     for i in range(self.numNeuronTotal):
       self.weightRecurrent[i, i] = 0
 
 
-  def run(self, initialState, numStep, numActiveBit=None):
+  def run(self, initialState, feedforwardInputs, numActiveBit=None):
     """
     Run network for multiple steps
     :param initialState:
-    :param numStep:
+    :param feedforwardInputs: list of feedforward inputs
     :return: list of active cell indices over time
     """
     if numActiveBit is None:
@@ -88,40 +95,76 @@ class hyperColumnNetwork(object):
 
     currentState = initialState
     activeStateHistory = [np.where(initialState > 0)[0]]
+    numStep = len(feedforwardInputs)
     for i in range(numStep):
-      currentState = self.runSingleStep(currentState, numActiveBit)
+      currentState = self.runSingleStep(currentState,
+                                        feedforwardInputs[i],
+                                        numActiveBit)
       activeStateHistory.append([np.where(currentState > 0)[0]])
     return activeStateHistory
 
 
-  def runSingleStep(self, inputState, numActiveBit):
+  def runSingleStep(self,
+                    previousState,
+                    feedforwardInputs,
+                    maxNumberOfActiveCellsPerColumn):
     """
     Run network for one step
-    :param inputState:
-    :return:
+    :param previousState: a (Ncell, 1) numpy array of network states
+    :param maxNumberOfActiveCellsPerColumn: maximum number of active cells per
+          column
+    :return: newState
     """
-    inputOverlap = np.dot(self.weightRecurrent, inputState)
+    print "previous activeCells ", np.sort(np.where(previousState>0)[0])
+    feedforwardInputOverlap = np.dot(self.weightFF, feedforwardInputs)
+    lateralInputOverlap = np.dot(self.weightRecurrent, previousState)
+    totalInput = feedforwardInputOverlap + lateralInputOverlap
+    print "feedforwardInputOverlap: ", np.sort(np.where(feedforwardInputOverlap>0)[0])
+    # cells with active feedforward zone
+    feedforwardActive = feedforwardInputOverlap > self.minThreshold
+
+    # cells with active distal zone (that receives lateral connections)
+    lateralActive = lateralInputOverlap > self.minThreshold
+
+    # cells with both active feedforward zone and lateral zone
+    strongActive = np.logical_and(feedforwardActive, lateralActive)
+
     newState = np.zeros((self.numNeuronTotal, 1))
     offset = 0
-    for i in range(self.numHyperColumn):
-      cellIdx = np.argsort(
-        inputOverlap[offset:offset+self.numNeuronPerHyperColumn, 0])
 
-      activeCells = offset + cellIdx[-numActiveBit:]
-      inputForActiveCells = inputOverlap[activeCells]
-      activeCells = activeCells[np.where(inputForActiveCells>0)[0]]
+    for i in range(self.numHyperColumn):
+      numberOfStrongActiveCellsInColumn = np.sum(
+        strongActive[offset:offset+self.numNeuronPerHyperColumn])
+      print "numberOfStrongActiveCellsInColumn: ", numberOfStrongActiveCellsInColumn
+      if numberOfStrongActiveCellsInColumn > 5:
+        w = self.numActiveNeuronPerHyperColumn/2
+      else:
+        w = self.numActiveNeuronPerHyperColumn
+
+      cellIdx = np.argsort(totalInput[offset:offset+self.numNeuronPerHyperColumn, 0])
+
+      activeCells = cellIdx[-w:]
+      activeCells = activeCells[np.where(
+        totalInput[activeCells] > self.minThreshold)[0]]
+      newState[offset + activeCells] = 1
+      print "activeCells ", np.sort(activeCells)
       offset += self.numNeuronPerHyperColumn
-      newState[activeCells] = 1
+
     return newState
 
 
 
 def convertActiveCellsToSDRs(activeStateHistory, numCells):
+  """
+  Convert list of active cell indices to a list of SDRs
+  :param activeStateHistory: list of active cell indices per step
+  :param numCells: total number of cells
+  :return: sdrHistory numpy array of (numStep, numCells)
+  """
   numStep = len(activeStateHistory)
   sdrHistory = np.zeros((numStep, numCells))
   for i in range(numStep):
     sdrHistory[i, activeStateHistory[i]] = 1
-
   return sdrHistory
 
 
@@ -171,9 +214,10 @@ def runSingleExperiment(numObjects, numBitNoise, seed=10):
   for objectID in objectIDTest:
     initialState = np.zeros((hcNet.numNeuronTotal, 1))
     randomCells = np.random.permutation(range(hcNet.numNeuronTotal))
-    initialState[objectSDRActiveBits[objectID][:(20-numBitNoise)]] = 1
+    initialState[objectSDRActiveBits[objectID][0][:(20-numBitNoise)]] = 1
     initialState[randomCells[:numBitNoise]] = 1
-    activeStateHistory = hcNet.run(initialState, 5)
+    feedforwardInputs = [np.zeros((hcNet.numNeuronTotal, 1))] * 5
+    activeStateHistory = hcNet.run(initialState, feedforwardInputs)
 
     sdrHistory = convertActiveCellsToSDRs(activeStateHistory,
                                           hcNet.numNeuronTotal)
@@ -181,12 +225,12 @@ def runSingleExperiment(numObjects, numBitNoise, seed=10):
     initialActiveCells = np.where(sdrHistory[0, :] > 0)[0]
     finalActiveCells = np.where(sdrHistory[-1, :] > 0)[0]
     finalOverlap = len(
-      set(objectSDRActiveBits[objectID]).intersection(finalActiveCells))
+      set(objectSDRActiveBits[objectID][0]).intersection(finalActiveCells))
     initialOverlap = len(
-      set(objectSDRActiveBits[objectID]).intersection(initialActiveCells))
+      set(objectSDRActiveBits[objectID][0]).intersection(initialActiveCells))
 
     finalOverlapList.append(finalOverlap)
-    # print finalOverlap
+
   return finalOverlapList
 
 
@@ -226,39 +270,45 @@ def retrieveMultipleItems():
   hcNet = hyperColumnNetwork(numHyperColumn=1,
                              numNeuronPerHyperColumn=1024,
                              numActiveNeuronPerHyperColumn=20,
-                             numInputs=1024)
-
+                             numInputs=1024,
+                             minThreshold=1)
   numObjects = 100
   objectSDRActiveBits = hcNet.initializeObjectSDRs(numObjects=numObjects,
                                                    seed=42)
   hcNet.memorizeObjectSDRs(objectSDRActiveBits)
 
-  initialState = np.zeros((hcNet.numNeuronTotal, 1))
-
   objectID1 = 0
   objectID2 = 1
-  initialState[objectSDRActiveBits[objectID1][:10]] = 1
-  initialState[objectSDRActiveBits[objectID2][:10]] = 1
-  activeStateHistory = hcNet.run(initialState, 10, numActiveBit=40)
+  ambiguousInput = np.zeros((hcNet.numNeuronTotal, 1))
+  ambiguousInput[objectSDRActiveBits[objectID1][0][:10]] = 1
+  ambiguousInput[objectSDRActiveBits[objectID2][0][:10]] = 1
+
+  feedforwardInputs = [np.zeros((hcNet.numNeuronTotal, 1))] * 10
+  # feedforwardInputs[0] = ambiguousInput
+  # feedforwardInputs[5][objectSDRActiveBits[objectID1][0]] = 1
+  initialState = np.zeros((hcNet.numNeuronTotal, 1))
+  initialState = ambiguousInput
+  activeStateHistory = hcNet.run(initialState, feedforwardInputs, numActiveBit=40)
 
   sdrHistory = convertActiveCellsToSDRs(activeStateHistory,
                                         hcNet.numNeuronTotal)
   displayBitIndex = stripSDRHistoryForDisplay(sdrHistory, removePortion=0.9)
 
   initialActiveCells = np.where(sdrHistory[0, :] > 0)[0]
+  print initialActiveCells
   finalActiveCells = np.where(sdrHistory[-1, :] > 0)[0]
 
   initialOverlap1 = len(
-    set(objectSDRActiveBits[objectID1]).intersection(initialActiveCells))
+    set(objectSDRActiveBits[objectID1][0]).intersection(initialActiveCells))
 
   initialOverlap2 = len(
-    set(objectSDRActiveBits[objectID2]).intersection(initialActiveCells))
+    set(objectSDRActiveBits[objectID2][0]).intersection(initialActiveCells))
 
   finalOverlap1 = len(
-    set(objectSDRActiveBits[objectID1]).intersection(finalActiveCells))
+    set(objectSDRActiveBits[objectID1][0]).intersection(finalActiveCells))
 
   finalOverlap2 = len(
-    set(objectSDRActiveBits[objectID2]).intersection(finalActiveCells))
+    set(objectSDRActiveBits[objectID2][0]).intersection(finalActiveCells))
 
   print "Initial overlap with object SDR 1: {}".format(initialOverlap1)
   print "Initial overlap with object SDR 2: {}".format(initialOverlap2)
@@ -273,7 +323,7 @@ def retrieveMultipleItems():
   object2SDR = generateSDRforDisplay(hcNet.numNeuronTotal,
                                      objectSDRActiveBits[objectID2],
                                      displayBitIndex)
-  querySDR = np.matlib.repmat(np.transpose(initialState[displayBitIndex]), 10, 1)
+  querySDR = np.matlib.repmat(np.transpose(ambiguousInput[displayBitIndex]), 10, 1)
   ax[0].imshow(object1SDR, cmap='gray')
   ax[0].set_title('SDR for Object A')
   ax[1].imshow(object2SDR, cmap='gray')
@@ -288,5 +338,36 @@ def retrieveMultipleItems():
 
 if __name__ == "__main__":
   retrieveMultipleItems()
-
-
+  #
+  # hcNet = hyperColumnNetwork(numHyperColumn=3,
+  #                            numNeuronPerHyperColumn=1024,
+  #                            numActiveNeuronPerHyperColumn=20,
+  #                            numInputs=1024,
+  #                            minThreshold=5)
+  # numObjects = 10
+  # objectSDRActiveBits = hcNet.initializeObjectSDRs(numObjects=numObjects,
+  #                                                  seed=42)
+  # hcNet.memorizeObjectSDRs(objectSDRActiveBits)
+  #
+  # initialState = np.zeros((hcNet.numNeuronTotal, 1))
+  #
+  # objectID1 = 0
+  # # objectID2 = 1
+  # offset = 0
+  # for i in range(hcNet.numHyperColumn):
+  #   initialState[offset + objectSDRActiveBits[objectID1][i][:10]] = 1
+  #   # initialState[offset + objectSDRActiveBits[objectID2][i][:10]] = 1
+  #   offset += hcNet.numNeuronPerHyperColumn
+  #
+  # activeStateHistory = hcNet.run(initialState, 10, numActiveBit=40)
+  # sdrHistory = convertActiveCellsToSDRs(activeStateHistory,
+  #                                       hcNet.numNeuronTotal)
+  #
+  # activationColumn1 = sdrHistory[:, :1024]
+  # c = 0
+  # initialOverlap1 = len(
+  #   set(objectSDRActiveBits[objectID1][c]).intersection(set(np.where(activationColumn1[0, :]>0)[0])))
+  #
+  # finalOverlap1 = len(
+  #   set(objectSDRActiveBits[objectID1][c]).intersection(set(np.where(activationColumn1[-1, :]>0)[0])))
+  # set(np.where(initialState > 0)[0])
