@@ -42,7 +42,7 @@ import pandas as pd
 from errorMetrics import *
 from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
-
+rcParams['pdf.fonttype'] = 42
 
 plt.ion()
 DESCRIPTION = (
@@ -114,6 +114,13 @@ def _getArgs():
                     help="How many steps ahead to predict. [default: %default]",
                     default=5,
                     type=int)
+
+  parser.add_option("-c",
+                    "--classifier",
+                    type=str,
+                    default='SDRClassifierRegion',
+                    dest="classifier",
+                    help="Classifier Type: SDRClassifierRegion or CLAClassifierRegion")
 
   (options, remainder) = parser.parse_args()
   print options
@@ -191,6 +198,7 @@ if __name__ == "__main__":
   (_options, _args) = _getArgs()
   dataSet = _options.dataSet
   plot = _options.plot
+  classifierType = _options.classifier
 
   if dataSet == "rec-center-hourly":
     DATE_FORMAT = "%m/%d/%y %H:%M" # '7/2/10 0:00'
@@ -206,6 +214,7 @@ if __name__ == "__main__":
   else:
     modelParams = getModelParamsFromName(dataSet)
   modelParams['modelParams']['clParams']['steps'] = str(_options.stepsAhead)
+  modelParams['modelParams']['clParams']['regionName'] = classifierType
 
   print "Creating model from %s..." % dataSet
 
@@ -388,12 +397,16 @@ if __name__ == "__main__":
                  extent=(time_step_display[0], time_step_display[-1], 0, 40000),
                  interpolation='nearest', aspect='auto',
                  origin='lower', cmap='Reds')
+      plt.colorbar()
       plt.plot(time_step_display, actual_data_display, 'k', label='Data')
       plt.plot(time_step_display, predict_data_ML_display, 'b', label='Best Prediction')
       plt.xlim(xl)
       plt.xlabel('Time')
       plt.ylabel('Prediction')
-      plt.title('TM, useTimeOfDay='+str(True)+' '+dataSet+' test neg LL = '+str(negLL))
+      # plt.title('TM, useTimeOfDay='+str(True)+' '+dataSet+' test neg LL = '+str(np.nanmean(negLL)))
+      plt.xlim([17020, 17300])
+      plt.ylim([0, 30000])
+      plt.clim([0, 1])
       plt.draw()
 
   predData_TM_n_step = np.roll(np.array(predict_data_ML), _options.stepsAhead)
@@ -430,8 +443,8 @@ if __name__ == "__main__":
   plt.figure()
   plotAccuracy((negLL, x), truth, window=480, errorType='negLL')
 
-  np.save('./result/'+dataSet+'TMprediction.npy', predictions)
-  np.save('./result/'+dataSet+'TMtruth.npy', truth)
+  np.save('./result/'+dataSet+classifierType+'TMprediction.npy', predictions)
+  np.save('./result/'+dataSet+classifierType+'TMtruth.npy', truth)
 
 
 
