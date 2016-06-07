@@ -22,7 +22,7 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy
-from htmresearch.algorithms.sdr_classifier import SDRClassifier
+from nupic.algorithms.sdr_classifier import SDRClassifier
 from nupic.algorithms.CLAClassifier import CLAClassifier
 
 
@@ -31,6 +31,10 @@ from nupic.encoders.sdrcategory import SDRCategoryEncoder
 plt.ion()
 plt.close('all')
 mpl.rcParams['pdf.fonttype'] = 42
+
+def myLog(x):
+  x = 0.001 if x<0.001 else x
+  return numpy.log(x)
 
 def initializeEncoder(Nelements, seed):
 
@@ -41,28 +45,30 @@ def initializeEncoder(Nelements, seed):
   return encoder
 
 
-def initializeClassifiers(Nelements, encoder):
-  cla = CLAClassifier(steps=[0])
 
-  nn_classifier = SDRClassifier(steps=[0], alpha=0.1)
+def initializeClassifiers(Nelements, encoder):
+  claClassiiier = CLAClassifier(steps=[0])
+
+  sdrClassifier = SDRClassifier(steps=[0], alpha=0.1)
 
   patternNZ = list(numpy.where(encoder.encode(Nelements-1))[0])
   classification = {'bucketIdx': Nelements-1, 'actValue': Nelements-1}
 
   # feed in the pattern with the highest bucket index
-  claRetval = cla.compute(0, patternNZ, classification,
+  claRetval = claClassiiier.compute(0, patternNZ, classification,
                            learn=True, infer=True)
-  nnRetval = nn_classifier.compute(0, patternNZ, classification,
+  sdrRetval = sdrClassifier.compute(0, patternNZ, classification,
                                     learn=True, infer=True)
-  return cla, nn_classifier
+  return claClassiiier, sdrClassifier
 
 
-def runSimulation(encoder, cla, nn_classifier,
-                  noiseLevel=0.0, changeTaskAfter=-1):
+
+def runSimulation(encoder, cla, sdrClassifier,
+                  noiseLevel=0.0, changeTaskAfter=-1, nstep=1000):
   accuracyTrack = []
   negLLTrack = []
 
-  for recordNum in xrange(1000):
+  for recordNum in xrange(nstep):
     # use a different encoder to test continuous learning
     if recordNum == changeTaskAfter:
       encoder = initializeEncoder(encoder.ncategories-1, seed=2)
@@ -86,21 +92,22 @@ def runSimulation(encoder, cla, nn_classifier,
     claRetval = cla.compute(recordNum, patternNZ, classification,
                              learn=True, infer=True)
 
-    nnRetval = nn_classifier.compute(recordNum, patternNZ, classification,
+    sdrRetval = sdrClassifier.compute(recordNum, patternNZ, classification,
                                       learn=True, infer=True)
 
-    NNNegLL = numpy.log(nnRetval[0][inputSymbol])
-    ClaNegLL = numpy.log(claRetval[0][inputSymbol])
+    NNNegLL = myLog(sdrRetval[0][inputSymbol])
+    ClaNegLL = myLog(claRetval[0][inputSymbol])
 
-    NNBestPrediction = numpy.argmax(nnRetval[0])
+    NNBestPrediction = numpy.argmax(sdrRetval[0])
     NNAccuracy = (NNBestPrediction == inputSymbol)
 
     ClaBestPrediction = numpy.argmax(claRetval[0])
     ClaAccuracy = (ClaBestPrediction == inputSymbol)
 
     negLLTrack.append([ClaNegLL, NNNegLL])
-    accuracyTrack.append([ClaAccuracy, NNAccuracy])
+    accuracyTrack.append([int(ClaAccuracy), int(NNAccuracy)])
   return (negLLTrack, accuracyTrack)
+
 
 
 def runExperiemnt1():
@@ -108,21 +115,46 @@ def runExperiemnt1():
   Run both classifiers on noise-free streams
   :return:
   """
-  Nelements = 20
-  noiseLevel = 0.0
-  encoder = initializeEncoder(Nelements, seed=1)
-  cla, nn_classifier = initializeClassifiers(Nelements, encoder)
-  (negLLTrack,
-   accuracyTrack) = runSimulation(encoder, cla, nn_classifier, noiseLevel)
 
+  negLLTrackSum = 0
+  accuracyTrackSum = 0
+  Nrpt = 10
+  for rpt in range(Nrpt):
+    Nelements = 20
+    noiseLevel = 0.0
+    encoder = initializeEncoder(Nelements, seed=1)
+    cla, sdrClassifier = initializeClassifiers(Nelements, encoder)
+    (negLLTrack,
+     accuracyTrack) = runSimulation(encoder, cla, sdrClassifier, noiseLevel, nstep=500)
+
+    negLLTrack = numpy.array(negLLTrack)
+    accuracyTrack = numpy.array(accuracyTrack).astype('float32')
+
+    negLLTrackSum = negLLTrackSum + negLLTrack
+    accuracyTrackSum = accuracyTrackSum + accuracyTrack
+
+  negLLTrackSum /= Nrpt
+  accuracyTrackSum /= Nrpt
   plt.figure(1)
-  negLLTrack = numpy.array(negLLTrack)
-  plt.plot(negLLTrack[:, 1])
-  plt.plot(negLLTrack[:, 0])
+  plt.subplot(2,2,1)
+  v = numpy.ones((5, ))/5
+  plt.plot(numpy.convolve(negLLTrackSum[:, 1], v, 'valid'))
+  plt.plot(numpy.convolve(negLLTrackSum[:, 0], v, 'valid'), '--')
+  plt.ylim([-4, 0.1])
   plt.ylabel(' Log-Likelihood')
   plt.xlabel(' Iteration ')
   plt.title(' Noise Level: ' + str(noiseLevel))
-  plt.legend(['SDR', 'CLA'], loc=4)
+  plt.legend(['SDR Classifier', 'CLA Classifier'], loc=4)
+
+  plt.subplot(2,2,2)
+  plt.plot(numpy.convolve(accuracyTrackSum[:, 1], v, 'valid'))
+  plt.plot(numpy.convolve(accuracyTrackSum[:, 0], v, 'valid'), '--')
+  plt.ylim([0, 1.05])
+  plt.ylabel(' Accuracy ')
+  plt.xlabel(' Iteration ')
+  plt.title(' Noise Level: ' + str(noiseLevel))
+  plt.legend(['SDR Classifier', 'CLA Classifier'], loc=4)
+
   plt.savefig('./result/LLvsTraining.pdf')
 
   # prediction of one input element after training
@@ -131,11 +163,11 @@ def runExperiemnt1():
 
   claRetval = cla.compute(cla._learnIteration+1, patternNZ,
                           classification, learn=False, infer=True)
-  nnRetval = nn_classifier.compute(nn_classifier._learnIteration+1, patternNZ,
+  sdrRetval = sdrClassifier.compute(sdrClassifier._learnIteration+1, patternNZ,
                                    classification, learn=False, infer=True)
 
   plt.figure(3)
-  plt.plot(nnRetval[0])
+  plt.plot(sdrRetval[0])
   plt.plot(claRetval[0])
   plt.xlabel('Possible Inputs')
   plt.ylabel(' Predicted Probability')
@@ -155,28 +187,43 @@ def runExperiment2():
   """
 
   Nelements = 20
-  noiseLevelList = numpy.linspace(0, 1.0, num=20)
+  noiseLevelList = numpy.linspace(0, 1.0, num=21)
   negLLCLA = []
-  negLLNN = []
+  negLLSDR = []
+  accuracyCLA = []
+  accuracySDR = []
   for noiseLevel in noiseLevelList:
     encoder = initializeEncoder(Nelements, seed=1)
-    cla, nn_classifier = initializeClassifiers(Nelements, encoder)
-    (negLLTrack,
-     accuracyTrack) = runSimulation(encoder, cla, nn_classifier, noiseLevel)
+    claClassifier, sdrClassifier = initializeClassifiers(Nelements, encoder)
+    (negLLTrack, accuracyTrack) = runSimulation(
+      encoder, claClassifier, sdrClassifier, noiseLevel)
 
     negLLTrack = numpy.array(negLLTrack)
-    negLLCLA.append(numpy.mean(negLLTrack[-100, 0]))
-    negLLNN.append(numpy.mean(negLLTrack[-100, 1]))
+    accuracyTrack = numpy.array(accuracyTrack)
+    negLLCLA.append(numpy.mean(negLLTrack[-100:, 0]))
+    negLLSDR.append(numpy.mean(negLLTrack[-100:, 1]))
+    accuracyCLA.append(numpy.mean(accuracyTrack[-100:, 0]))
+    accuracySDR.append(numpy.mean(accuracyTrack[-100:, 1]))
 
   noiseLevelList = noiseLevelList * 40
 
   plt.figure(4)
-  plt.plot(noiseLevelList, negLLNN)
-  plt.plot(noiseLevelList, negLLCLA)
+  plt.subplot(2,2,1)
+  plt.plot(noiseLevelList, negLLSDR, '-o')
+  plt.plot(noiseLevelList, negLLCLA, '-s')
   plt.xlabel(' Noise Level (# random bits) ')
   plt.ylabel(' Log-likelihood')
-  plt.legend(['SDR', 'CLA'], loc=3)
+  plt.legend(['SDR Classifier', 'CLA Classifier'], loc=3)
+  plt.subplot(2,2,2)
+  plt.plot(noiseLevelList, accuracySDR, '-o')
+  plt.plot(noiseLevelList, accuracyCLA, '-s')
+  plt.xlabel(' Noise Level (# random bits) ')
+  plt.ylabel(' Accuracy ')
+  plt.legend(['SDR Classifier', 'CLA Classifier'], loc=3)
+
   plt.savefig('./result/LLvsNoise.pdf')
+
+
 
 def runExperiment3():
   """
@@ -186,19 +233,22 @@ def runExperiment3():
   Nelements = 20
   noiseLevel = 0.0
   encoder = initializeEncoder(Nelements, seed=1)
-  cla, nn_classifier = initializeClassifiers(Nelements, encoder)
+  cla, sdrClassifier = initializeClassifiers(Nelements, encoder)
   (negLLTrack,
-   accuracyTrack) = runSimulation(encoder, cla, nn_classifier,
+   accuracyTrack) = runSimulation(encoder, cla, sdrClassifier,
                                   noiseLevel, changeTaskAfter=500)
 
   plt.figure(5)
   negLLTrack = numpy.array(negLLTrack)
-  plt.plot(negLLTrack[:, 1])
-  plt.plot(negLLTrack[:, 0])
+  v = numpy.ones((5, ))/5
+  plt.subplot(2,2,1)
+  plt.plot(numpy.convolve(negLLTrack[:, 1], v, 'valid'))
+  plt.plot(numpy.convolve(negLLTrack[:, 0], v, 'valid'))
+  plt.ylim([-4, .1])
   plt.ylabel(' Log-Likelihood')
   plt.xlabel(' Iteration ')
   plt.title(' Noise Level: ' + str(noiseLevel))
-  plt.legend(['SDR', 'CLA'], loc=4)
+  plt.legend(['SDR Classifier', 'CLA Classifier'], loc=4)
   plt.savefig('./result/LLvsTraining_ChangeAt500.pdf')
 
 if __name__ == "__main__":
