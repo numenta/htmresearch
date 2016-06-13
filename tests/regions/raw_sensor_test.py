@@ -21,39 +21,70 @@
 
 import json
 import os
+import shutil
+import tempfile
 import unittest
 
-from htmresearch.support.register_regions import registerAllResearchRegions
 from nupic.engine import Network
+from htmresearch.support.register_regions import registerAllResearchRegions
 
 class RawSensorTest(unittest.TestCase):
+  """ Super simple test of RawSensor """
+
+  @classmethod
+  def setUpClass(cls):
+    cls.tmpDir = tempfile.mkdtemp()
+
+  @classmethod
+  def tearDownClass(cls):
+    if os.path.exists(cls.tmpDir):
+      shutil.rmtree(cls.tmpDir)
 
   def testSensor(self):
 
     # Setup
     registerAllResearchRegions()
-    if os.path.exists("temp.csv"):
-      os.unlink("temp.csv")
 
     # Create a simple network to test the sensor
-    rawParams = {"outputWidth": 1024}
+    rawParams = {"outputWidth": 1029}
     net = Network()
-    raw = net.addRegion("raw","py.RawSensor", json.dumps(rawParams))
+    rawSensor = net.addRegion("raw","py.RawSensor", json.dumps(rawParams))
     vfe = net.addRegion("output","VectorFileEffector","")
     net.link("raw", "output", "UniformLink", "")
 
+    self.assertEqual(rawSensor.getParameter("outputWidth"),1029)
+
     # Set an output file before we run anything
-    vfe.setParameter("outputFile","temp.csv")
+    vfe.setParameter("outputFile",os.path.join(self.tmpDir,"temp.csv"))
 
-    # Add vectors using two different methods
-    raw.executeCommand(["addDataToQueue", "[2, 4, 6]", "0", "42"])
-    sensor = raw.getSelf()
-    sensor.addDataToQueue([2, 42, 1023], 0, 42)
+    # Add vectors to the queue using two different methods
+    rawSensor.executeCommand(["addDataToQueue", "[2, 4, 6]", "0", "42"])
+    rawSensorPy = rawSensor.getSelf()
+    rawSensorPy.addDataToQueue([2, 42, 1023], 0, 42)
+    rawSensorPy.addDataToQueue([18, 19, 20], 0, 42)
 
-    # Run the network
-    net.run(2)
+    # Run the network and check outputs are as expected
+    net.run(1)
+    self.assertEqual(rawSensor.getOutputData("dataOut").nonzero()[0].sum(),
+                     sum([2, 4, 6]))
+    net.run(1)
+    self.assertEqual(rawSensor.getOutputData("dataOut").nonzero()[0].sum(),
+                     sum([2, 42, 1023]))
 
-    net.save("rawNetwork.nta")
+    # Make sure we can save and load the network after running
+    net.save(os.path.join(self.tmpDir,"rawNetwork.nta"))
+    net2 = Network(os.path.join(self.tmpDir,"rawNetwork.nta"))
+    rawSensor2 = net2.regions.get("raw")
+    vfe2 = net2.regions.get("output")
+
+    # Ensure parameters are preserved
+    self.assertEqual(rawSensor2.getParameter("outputWidth"),1029)
+
+    # Ensure the queue is preserved through save/load
+    vfe2.setParameter("outputFile",os.path.join(self.tmpDir,"temp.csv"))
+    net2.run(1)
+    self.assertEqual(rawSensor2.getOutputData("dataOut").nonzero()[0].sum(),
+                     sum([18, 19, 20]))
 
 
 if __name__ == "__main__":
