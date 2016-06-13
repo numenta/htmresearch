@@ -172,5 +172,5 @@ class RawSensor(PyRegion):
 
 
   def initialize(self, inputs, outputs):
-    """Initialize the Region after the network is fully linked"""
+    """ Initialize the Region - nothing to do here. """
     pass
