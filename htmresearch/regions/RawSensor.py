@@ -103,10 +103,8 @@ class RawSensor(PyRegion):
 
   def compute(self, inputs, outputs):
     """
-    Get a record from the dataSource and encode it. The fields for inputs and
+    Get the next record from the queue and encode it. The fields for inputs and
     outputs are as defined in the spec above.
-
-    Expects the text data to be in under header "token" from the dataSource.
     """
     if len(self.queue) > 0:
       # Take the top element of the data queue
@@ -141,7 +139,6 @@ class RawSensor(PyRegion):
                       this value when this item is computed.
     @param sequenceId An int or string with an integer ID associated with this
                       token and its sequence (document).
-
     """
     if type(nonZeros) == type(""):
       nonZeroList = eval(nonZeros)
@@ -150,11 +147,11 @@ class RawSensor(PyRegion):
     else:
       raise Exception("RawSensor.addDataToQueue: unknown type for nonZeros")
 
-    self.queue.appendleft ({
-        "sequenceId": int(sequenceId),
-        "reset": int(reset),
-        "nonZeros": nonZeroList,
-      })
+    self.queue.appendleft({
+      "sequenceId": int(sequenceId),
+      "reset": int(reset),
+      "nonZeros": nonZeroList,
+    })
 
 
   def getOutputElementCount(self, name):
@@ -174,3 +171,4 @@ class RawSensor(PyRegion):
   def initialize(self, inputs, outputs):
     """ Initialize the Region - nothing to do here. """
     pass
+
