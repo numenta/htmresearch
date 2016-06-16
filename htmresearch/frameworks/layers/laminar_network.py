@@ -21,10 +21,11 @@
 # ----------------------------------------------------------------------
 """
 The methods here contain factories to create networks of multiple layers
-and for experimenting with different structures.
+and for experimenting with different laminar structures.
 
-The first network type created is a single column containing and L4 and an L2
-layer. L4 gets two inputs and feeds into L2. The L2 column feeds back to L4.
+The first network type supported, "L4L2Column", is a single cortical column
+containing and L4 and an L2 layer. L4 gets two inputs and feeds into L2. The L2
+column feeds back to L4.
 
              L2Column  <------|
                ^  |           |
@@ -40,7 +41,6 @@ Regions will be named as shown above. The reset signal from sensorInput is
 sent to the other regions.
 
 How do you like my ascii art?
-
 """
 import json
 
@@ -51,17 +51,20 @@ from htmresearch.support.register_regions import registerAllResearchRegions
 def createL4L2Column(networkConfig):
   """
   Create a network consisting of a single column containing one L4 and one L2.
-  {
-    "networkType": "L4L2Column",
-    "externalInputSize": 1024,
-    "sensorInputSize": 1024,
-    "L4Params": {
-      <constructor parameters for GeneralTemporalMemoryRegion
-    },
-    "L2Params": {
-      <constructor parameters for L2Column>
+
+  networkConfig must be of the following format:
+
+    {
+      "networkType": "L4L2Column",
+      "externalInputSize": 1024,
+      "sensorInputSize": 1024,
+      "L4Params": {
+        <constructor parameters for GeneralTemporalMemoryRegion
+      },
+      "L2Params": {
+        <constructor parameters for L2Column>
+      }
     }
-  }
   """
   assert networkConfig["networkType"] == "L4L2Column"
 
@@ -95,7 +98,7 @@ def createL4L2Column(networkConfig):
   network.link("L2Column", "L4Column", "UniformLink", "",
                srcOutput="feedForwardOutput", destInput="topDownIn")
 
-  # Reset output
+  # Link reset output to L4 and L2
   network.link("sensorInput", "L4Column", "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
   network.link("sensorInput", "L2Column", "UniformLink", "",

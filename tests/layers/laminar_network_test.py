@@ -24,6 +24,7 @@ import unittest
 from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.frameworks.layers.laminar_network import createNetwork
 
+
 networkConfig1 = {
   "networkType": "L4L2Column",
   "externalInputSize": 1024,
@@ -31,16 +32,7 @@ networkConfig1 = {
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
-    "seed": 1960,
     "temporalImp": "tmCPP",
-    "maxNewSynapseCount": 120,
-    "initialPermanence": 0.21,
-    "connectedPermanence": 0.3,
-    "permanenceIncrement": 0.1,
-    "permanenceDecrement": 0.1,
-    "minThreshold": 15,
-    "activationThreshold": 25,
-    "defaultOutputType": "predictedActiveCells",
   },
   "L2Params": {
     "columnCount": 1024,
