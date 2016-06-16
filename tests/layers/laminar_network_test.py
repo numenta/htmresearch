@@ -1,0 +1,93 @@
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
+import unittest
+
+from htmresearch.support.register_regions import registerAllResearchRegions
+from htmresearch.frameworks.layers.laminar_network import createNetwork
+
+networkConfig1 = {
+  "networkType": "L4L2Column",
+  "externalInputSize": 1024,
+  "sensorInputSize": 1024,
+  "L4Params": {
+    "columnCount": 1024,
+    "cellsPerColumn": 8,
+    "seed": 1960,
+    "temporalImp": "tmCPP",
+    "maxNewSynapseCount": 120,
+    "initialPermanence": 0.21,
+    "connectedPermanence": 0.3,
+    "permanenceIncrement": 0.1,
+    "permanenceDecrement": 0.1,
+    "minThreshold": 15,
+    "activationThreshold": 25,
+    "defaultOutputType": "predictedActiveCells",
+  },
+  "L2Params": {
+    "columnCount": 1024,
+  }
+}
+
+
+class L2ColumnTest(unittest.TestCase):
+  """ Super simple test of RawSensor """
+
+  @classmethod
+  def setUpClass(cls):
+    registerAllResearchRegions()
+
+
+  def testNetworkCreate(self):
+    """
+    In this simplistic test we just create a network, ensure it has the
+    right number of regions and try to run some inputs through it without
+    crashing.
+    """
+
+    # Create a simple network to test the sensor
+    net = createNetwork(networkConfig1)
+
+    self.assertEqual(len(net.regions.keys()),4,
+                     "Incorrect number of regions")
+
+    # Add some input vectors to the queue
+    externalInput = net.regions["externalInput"].getSelf()
+    sensorInput = net.regions["sensorInput"].getSelf()
+
+    # Add 3 input vectors
+    externalInput.addDataToQueue([2, 42, 1023], 0, 9)
+    sensorInput.addDataToQueue([2, 42, 1023], 0, 0)
+
+    externalInput.addDataToQueue([1, 42, 1022], 0, 0)
+    sensorInput.addDataToQueue([1, 42, 1022], 0, 0)
+
+    externalInput.addDataToQueue([3, 42, 1021], 0, 0)
+    sensorInput.addDataToQueue([3, 42, 1021], 0, 0)
+
+    # Run the network and check outputs are as expected
+    net.run(3)
+
+
+
+if __name__ == "__main__":
+  unittest.main()
+
