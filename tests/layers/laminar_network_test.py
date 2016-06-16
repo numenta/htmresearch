@@ -55,8 +55,8 @@ networkConfig2 = {
 }
 
 
-class L2ColumnTest(unittest.TestCase):
-  """ Super simple test of RawSensor """
+class LaminarNetworkTest(unittest.TestCase):
+  """ Super simple test of laminar network factory"""
 
   @classmethod
   def setUpClass(cls):
@@ -96,12 +96,32 @@ class L2ColumnTest(unittest.TestCase):
 
   def testMultipleL4L2ColumnsCreate(self):
     """
-    In this simplistic test we create a network with 3 L4L2Columns.
+    In this simplistic test we create a network with 3 L4L2Columns, ensure it
+    has the right number of regions and try to run some inputs through it
+    without crashing.
     """
 
     net = createNetwork(networkConfig2)
     self.assertEqual(len(net.regions.keys()),4*3,
                      "Incorrect number of regions")
+
+    # Add some input vectors to the queue
+    externalInput0 = net.regions["externalInput_0"].getSelf()
+    sensorInput0 = net.regions["sensorInput_0"].getSelf()
+    externalInput1 = net.regions["externalInput_1"].getSelf()
+    sensorInput1 = net.regions["sensorInput_1"].getSelf()
+    externalInput2 = net.regions["externalInput_2"].getSelf()
+    sensorInput2 = net.regions["sensorInput_2"].getSelf()
+
+    externalInput0.addDataToQueue([2, 42, 1023], 0, 9)
+    sensorInput0.addDataToQueue([2, 42, 1023], 0, 0)
+    externalInput1.addDataToQueue([2, 42, 1023], 0, 9)
+    sensorInput1.addDataToQueue([2, 42, 1023], 0, 0)
+    externalInput2.addDataToQueue([2, 42, 1023], 0, 9)
+    sensorInput2.addDataToQueue([2, 42, 1023], 0, 0)
+
+    # Run the network and check outputs are as expected
+    net.run(1)
 
 
 if __name__ == "__main__":
