@@ -39,6 +39,21 @@ networkConfig1 = {
   }
 }
 
+networkConfig2 = {
+  "networkType": "MultipleL4L2Columns",
+  "numColumns": 3,
+  "externalInputSize": 1024,
+  "sensorInputSize": 1024,
+  "L4Params": {
+    "columnCount": 1024,
+    "cellsPerColumn": 8,
+    "temporalImp": "tmCPP",
+  },
+  "L2Params": {
+    "columnCount": 1024,
+  }
+}
+
 
 class L2ColumnTest(unittest.TestCase):
   """ Super simple test of RawSensor """
@@ -48,7 +63,7 @@ class L2ColumnTest(unittest.TestCase):
     registerAllResearchRegions()
 
 
-  def testNetworkCreate(self):
+  def testL4L2ColumnCreate(self):
     """
     In this simplistic test we just create a network, ensure it has the
     right number of regions and try to run some inputs through it without
@@ -78,6 +93,15 @@ class L2ColumnTest(unittest.TestCase):
     # Run the network and check outputs are as expected
     net.run(3)
 
+
+  def testMultipleL4L2ColumnsCreate(self):
+    """
+    In this simplistic test we create a network with 3 L4L2Columns.
+    """
+
+    net = createNetwork(networkConfig2)
+    self.assertEqual(len(net.regions.keys()),4*3,
+                     "Incorrect number of regions")
 
 
 if __name__ == "__main__":

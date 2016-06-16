@@ -41,6 +41,11 @@ Regions will be named as shown above. The reset signal from sensorInput is
 sent to the other regions.
 
 How do you like my ascii art?
+
+The second network type supported, "MultipleL4L2Columns", allows you to create
+N L4L2 columns with the above structure. In this case the L2 columns will also
+be laterally connected to one another (each one receives input from all other
+columns.)
 """
 import json
 
@@ -48,14 +53,81 @@ from nupic.engine import Network
 from htmresearch.support.register_regions import registerAllResearchRegions
 
 
-def createL4L2Column(networkConfig):
+def createL4L2Column(network, networkConfig, suffix=""):
   """
-  Create a network consisting of a single column containing one L4 and one L2.
+  Create a a single column containing one L4 and one L2.
+
+  networkConfig is a dict that must contain the following keys (additional keys
+  ok):
+
+    {
+      "externalInputSize": 1024,
+      "sensorInputSize": 1024,
+      "L4Params": {
+        <constructor parameters for GeneralTemporalMemoryRegion
+      },
+      "L2Params": {
+        <constructor parameters for L2Column>
+      }
+    }
+
+  Region names are externalInput, sensorInput, L4Column, and L2Column. Each
+  name has an optional string suffix appended to it.
+  """
+  externalInputName = "externalInput" + suffix
+  sensorInputName = "sensorInput" + suffix
+  L4ColumnName = "L4Column" + suffix
+  L2ColumnName = "L2Column" + suffix
+
+  # Create the two sensors
+  network.addRegion(
+    externalInputName, "py.RawSensor",
+    json.dumps({"outputWidth": networkConfig["externalInputSize"]}))
+  network.addRegion(
+    sensorInputName, "py.RawSensor",
+    json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
+
+  # We use TMRegion now as a placeholder until we have a
+  # GeneralTemporalMemoryRegion
+  network.addRegion(
+    L4ColumnName, "py.TMRegion", json.dumps(networkConfig["L4Params"]))
+
+  network.addRegion(
+    L2ColumnName, "py.L2Column", json.dumps(networkConfig["L2Params"]))
+
+
+  # Link sensors to L4
+  network.link(externalInputName, L4ColumnName, "UniformLink", "",
+               srcOutput="dataOut", destInput="externalInput")
+  network.link(sensorInputName, L4ColumnName, "UniformLink", "",
+               srcOutput="dataOut", destInput="bottomUpIn")
+
+  # Link L4 to L2, and L2's feedback to L4
+  network.link(L4ColumnName, L2ColumnName, "UniformLink", "")
+  network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
+               srcOutput="feedForwardOutput", destInput="topDownIn")
+
+  # Link reset output to L4 and L2
+  network.link(sensorInputName, L4ColumnName, "UniformLink", "",
+               srcOutput="resetOut", destInput="resetIn")
+  network.link(sensorInputName, L2ColumnName, "UniformLink", "",
+               srcOutput="resetOut", destInput="resetIn")
+
+  return network
+
+
+def createMultipleL4L2Columns(network, networkConfig):
+  """
+  Create a network consisting of multiple columns.  Each column contains one L4
+  and one L2, is identical in structure to the network created by
+  createL4L2Column. In addition all the L2 columns are fully connected to each
+  other through their lateral inputs.
 
   networkConfig must be of the following format:
 
     {
-      "networkType": "L4L2Column",
+      "networkType": "MultipleL4L2Columns",
+      "numColumns": 3,
       "externalInputSize": 1024,
       "sensorInputSize": 1024,
       "L4Params": {
@@ -66,46 +138,23 @@ def createL4L2Column(networkConfig):
       }
     }
   """
-  assert networkConfig["networkType"] == "L4L2Column"
+  # Create each column
+  for i in range(networkConfig["numColumns"]):
+    suffix = "_"+str(i)
+    network = createL4L2Column(network, networkConfig, suffix)
 
-  network = Network()
-
-  # Create the two sensors
-  extInput = network.addRegion(
-    "externalInput", "py.RawSensor",
-    json.dumps({"outputWidth": networkConfig["externalInputSize"]}))
-  sensorInput = network.addRegion(
-    "sensorInput", "py.RawSensor",
-    json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
-
-  # We use TMRegion now as a placeholder until we have a
-  # GeneralTemporalMemoryRegion
-  L4Column = network.addRegion("L4Column", "py.TMRegion",
-                               json.dumps(networkConfig["L4Params"]))
-
-  L2Column = network.addRegion("L2Column", "py.L2Column",
-                               json.dumps(networkConfig["L2Params"]))
-
-
-  # Link sensors to L4
-  network.link("externalInput", "L4Column", "UniformLink", "",
-               srcOutput="dataOut", destInput="externalInput")
-  network.link("sensorInput", "L4Column", "UniformLink", "",
-               srcOutput="dataOut", destInput="bottomUpIn")
-
-  # Link L4 to L2, and L2's feedback to L4
-  network.link("L4Column", "L2Column", "UniformLink", "")
-  network.link("L2Column", "L4Column", "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="topDownIn")
-
-  # Link reset output to L4 and L2
-  network.link("sensorInput", "L4Column", "UniformLink", "",
-               srcOutput="resetOut", destInput="resetIn")
-  network.link("sensorInput", "L2Column", "UniformLink", "",
-               srcOutput="resetOut", destInput="resetIn")
+  # Now connect the L2 columns laterally
+  for i in range(networkConfig["numColumns"]):
+    suffixSrc = "_"+str(i)
+    for j in range(networkConfig["numColumns"]):
+      if i != j:
+        suffixdest = "_"+str(j)
+        network.link(
+            "L2Column" + suffixSrc, "L2Column"+suffixdest,
+            "UniformLink", "",
+            srcOutput="feedForwardOutput", destInput="lateralInput")
 
   return network
-
 
 
 def createNetwork(networkConfig):
@@ -118,6 +167,9 @@ def createNetwork(networkConfig):
 
   registerAllResearchRegions()
 
-  if networkConfig["networkType"] == "L4L2Column":
-    return createL4L2Column(networkConfig)
+  network = Network()
 
+  if networkConfig["networkType"] == "L4L2Column":
+    return createL4L2Column(network, networkConfig)
+  elif networkConfig["networkType"] == "MultipleL4L2Columns":
+    return createMultipleL4L2Columns(network, networkConfig)
