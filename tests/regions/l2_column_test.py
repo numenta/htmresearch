@@ -31,7 +31,7 @@ from htmresearch.support.register_regions import registerAllResearchRegions
 
 
 class L2ColumnTest(unittest.TestCase):
-  """ Super simple test of RawSensor """
+  """ Super simple test of the L2Column region."""
 
   @classmethod
   def setUpClass(cls):
@@ -39,8 +39,8 @@ class L2ColumnTest(unittest.TestCase):
 
 
   def testNetworkCreate(self):
+    """Create a simple network to test the region."""
 
-    # Create a simple network to test the sensor
     rawParams = {"outputWidth": 16*2048}
     net = Network()
     rawSensor = net.addRegion("raw","py.RawSensor", json.dumps(rawParams))
