@@ -51,8 +51,8 @@ class L2ColumnTest(unittest.TestCase):
                      l2c.getParameter("inputWidth"),
                      "Incorrect outputWidth parameter")
 
-    rawSensor.executeCommand(["addDataToQueue", "[2, 4, 6]", "0", "42"])
     rawSensorPy = rawSensor.getSelf()
+    rawSensorPy.addDataToQueue([2, 4, 6], 0, 42)
     rawSensorPy.addDataToQueue([2, 42, 1023], 1, 43)
     rawSensorPy.addDataToQueue([18, 19, 20], 0, 44)
 
