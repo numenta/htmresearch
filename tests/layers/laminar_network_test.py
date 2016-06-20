@@ -32,7 +32,6 @@ networkConfig1 = {
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
-    "temporalImp": "tmCPP",
   },
   "L2Params": {
     "columnCount": 1024,
@@ -41,13 +40,12 @@ networkConfig1 = {
 
 networkConfig2 = {
   "networkType": "MultipleL4L2Columns",
-  "numColumns": 3,
+  "numCorticalColumns": 3,
   "externalInputSize": 1024,
   "sensorInputSize": 1024,
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
-    "temporalImp": "tmCPP",
   },
   "L2Params": {
     "columnCount": 1024,

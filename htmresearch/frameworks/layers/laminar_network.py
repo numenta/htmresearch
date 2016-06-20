@@ -64,7 +64,7 @@ def createL4L2Column(network, networkConfig, suffix=""):
       "externalInputSize": 1024,
       "sensorInputSize": 1024,
       "L4Params": {
-        <constructor parameters for GeneralTemporalMemoryRegion
+        <constructor parameters for ExtendedTMRegion
       },
       "L2Params": {
         <constructor parameters for L2Column>
@@ -87,25 +87,32 @@ def createL4L2Column(network, networkConfig, suffix=""):
     sensorInputName, "py.RawSensor",
     json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
 
-  # We use TMRegion now as a placeholder until we have a
-  # GeneralTemporalMemoryRegion
   network.addRegion(
-    L4ColumnName, "py.TMRegion", json.dumps(networkConfig["L4Params"]))
+    L4ColumnName, "py.ExtendedTMRegion",
+                  json.dumps(networkConfig["L4Params"]))
 
   network.addRegion(
     L2ColumnName, "py.L2Column", json.dumps(networkConfig["L2Params"]))
 
 
+  # Set phases appropriately so regions are executed in the proper sequence
+  # This is required when we create multiple columns - the order of execution
+  # is not the same as the order of region creation.
+  network.setPhases(externalInputName,[0])
+  network.setPhases(sensorInputName,[0])
+  network.setPhases(L4ColumnName,[1])
+  network.setPhases(L2ColumnName,[2])
+
   # Link sensors to L4
   network.link(externalInputName, L4ColumnName, "UniformLink", "",
                srcOutput="dataOut", destInput="externalInput")
   network.link(sensorInputName, L4ColumnName, "UniformLink", "",
-               srcOutput="dataOut", destInput="bottomUpIn")
+               srcOutput="dataOut", destInput="feedForwardInput")
 
   # Link L4 to L2, and L2's feedback to L4
   network.link(L4ColumnName, L2ColumnName, "UniformLink", "")
   network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="topDownIn")
+               srcOutput="feedForwardOutput", destInput="apicalInput")
 
   # Link reset output to L4 and L2
   network.link(sensorInputName, L4ColumnName, "UniformLink", "",
@@ -127,11 +134,11 @@ def createMultipleL4L2Columns(network, networkConfig):
 
     {
       "networkType": "MultipleL4L2Columns",
-      "numColumns": 3,
+      "numCorticalColumns": 3,
       "externalInputSize": 1024,
       "sensorInputSize": 1024,
       "L4Params": {
-        <constructor parameters for GeneralTemporalMemoryRegion
+        <constructor parameters for ExtendedTMRegion
       },
       "L2Params": {
         <constructor parameters for L2Column>
@@ -139,14 +146,14 @@ def createMultipleL4L2Columns(network, networkConfig):
     }
   """
   # Create each column
-  for i in range(networkConfig["numColumns"]):
+  for i in range(networkConfig["numCorticalColumns"]):
     suffix = "_"+str(i)
     network = createL4L2Column(network, networkConfig, suffix)
 
   # Now connect the L2 columns laterally
-  for i in range(networkConfig["numColumns"]):
+  for i in range(networkConfig["numCorticalColumns"]):
     suffixSrc = "_"+str(i)
-    for j in range(networkConfig["numColumns"]):
+    for j in range(networkConfig["numCorticalColumns"]):
       if i != j:
         suffixdest = "_"+str(j)
         network.link(
