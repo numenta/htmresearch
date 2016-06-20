@@ -121,6 +121,17 @@ class LaminarNetworkTest(unittest.TestCase):
     # Run the network and check outputs are as expected
     net.run(1)
 
+    # Spotcheck some of the phases
+    self.assertEqual(net.getPhases("externalInput_0"),(0,),
+                     "Incorrect phase externalInput_0")
+    self.assertEqual(net.getPhases("externalInput_1"),(0,),
+                     "Incorrect phase for externalInput_1")
+    self.assertEqual(net.getPhases("L4Column_0"),(1,),
+                     "Incorrect phase for L4Column_0")
+    self.assertEqual(net.getPhases("L4Column_1"),(1,),
+                     "Incorrect phase for L4Column_1")
+
+
 
 if __name__ == "__main__":
   unittest.main()

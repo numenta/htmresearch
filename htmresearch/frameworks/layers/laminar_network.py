@@ -130,6 +130,9 @@ def createMultipleL4L2Columns(network, networkConfig):
   createL4L2Column. In addition all the L2 columns are fully connected to each
   other through their lateral inputs.
 
+  Region names have a column number appended as in externalInput_0,
+  externalInput_1, etc.
+
   networkConfig must be of the following format:
 
     {
