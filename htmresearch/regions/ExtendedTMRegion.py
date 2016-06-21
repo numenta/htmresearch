@@ -310,7 +310,6 @@ class ExtendedTMRegion(PyRegion):
       # Create dict of arguments we will pass to the temporal memory class
       args = copy.deepcopy(self.__dict__)
       args["columnDimensions"] = (self.columnCount,)
-      args.pop("columnCount")
 
       # Create the TM instance
       self._tm = createModel("general", **args)
