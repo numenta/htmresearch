@@ -25,22 +25,18 @@ import numpy
 
 from nupic.bindings.math import GetNTAReal
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
-  TemporalMemoryMonitorMixin)
+from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import TemporalMemoryMonitorMixin
+from nupic.research.TP import TP
 
 # Uncomment the line below to use ExtendedTemporalMemory
-# from sensorimotor.extended_temporal_memory import ExtendedTemporalMemory
-from sensorimotor.temporal_pooler import TemporalPooler
-# Uncomment the line below to use SpatialTemporalPooler
-# from sensorimotor.spatial_temporal_pooler import SpatialTemporalPooler as TemporalPooler
-from sensorimotor.temporal_pooler_monitor_mixin import (
-  TemporalPoolerMonitorMixin)
+from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
+from htmresearch.support.temporal_pooler_monitor_mixin import TemporalPoolerMonitorMixin
 
 
 class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin, ExtendedTemporalMemory):
   pass
 
-class MonitoredTemporalPooler(TemporalPoolerMonitorMixin, TemporalPooler):
+class MonitoredTemporalPooler(TemporalPoolerMonitorMixin, TP):
   pass
 
 
