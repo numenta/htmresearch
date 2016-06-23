@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2015-2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -25,13 +25,13 @@ import numpy
 from nupic.bindings.regions.PyRegion import PyRegion
 
 from htmresearch.algorithms.temporal_memory_factory import  createModel
-from htmresearch.algorithms.general_temporal_memory import GeneralTemporalMemory
+from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 
 
-class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
-                                      GeneralTemporalMemory): pass
+class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin,
+                                      ExtendedTemporalMemory): pass
 
 
 
@@ -41,7 +41,7 @@ class ExtendedTMRegion(PyRegion):
   network API.
 
   The ExtendedTMRegion's computation implementations come from the
-  nupic.research class GeneralTemporalMemory.
+  nupic.research class ExtendedTemporalMemory.
 
   The region supports external inputs and top down apical inputs.
   """
@@ -312,7 +312,7 @@ class ExtendedTMRegion(PyRegion):
       args["columnDimensions"] = (self.columnCount,)
 
       # Create the TM instance
-      self._tm = createModel("general", **args)
+      self._tm = createModel("extended", **args)
 
       # numpy arrays we will use for some of the outputs
       self.activeState = numpy.zeros(self._tm.numberOfCells())

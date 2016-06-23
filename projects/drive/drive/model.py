@@ -1,10 +1,11 @@
 import numpy
 
-from sensorimotor.general_temporal_memory import GeneralTemporalMemory
+from sensorimotor.extended_temporal_memory import ExtendedTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
-class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
-                                     GeneralTemporalMemory): pass
+
+class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin, ExtendedTemporalMemory):
+  pass
 from sensorimotor.behavior_memory import BehaviorMemory
 
 from nupic.encoders.coordinate import CoordinateEncoder
@@ -36,7 +37,7 @@ class PositionPredictionModel(Model):
                sparsity=0.02, encoderResolution=1.0, tmParams=None):
     super(PositionPredictionModel, self).__init__(motorValues=motorValues)
     tmParams = tmParams or {}
-    self.tm = MonitoredGeneralTemporalMemory(mmName="TM", **tmParams)
+    self.tm = MonitoredExtendedTemporalMemory(mmName="TM", **tmParams)
     self.n = self.tm.numberOfColumns()
     self.w = int(self.n * sparsity) + 1
     self.encoderResolution = encoderResolution

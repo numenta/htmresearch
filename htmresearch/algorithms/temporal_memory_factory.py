@@ -25,8 +25,8 @@ import inspect
 
 from nupic.research.temporal_memory import TemporalMemory
 from nupic.bindings.algorithms import TemporalMemory as TemporalMemoryCPP
-from htmresearch.algorithms.general_temporal_memory import (
-  GeneralTemporalMemory)
+from htmresearch.algorithms.extended_temporal_memory import (
+  ExtendedTemporalMemory)
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 
@@ -37,7 +37,7 @@ class TemporalMemoryTypes(object):
   identifier to constructor.  See createModel() for actual factory method
   implementation.
   """
-  general = GeneralTemporalMemory
+  extended = ExtendedTemporalMemory
   tm = TemporalMemory
   tmMixin = MonitoredTemporalMemory
   tmCPP = TemporalMemoryCPP

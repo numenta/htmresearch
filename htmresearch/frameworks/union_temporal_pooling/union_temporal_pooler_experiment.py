@@ -30,8 +30,8 @@ from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
     TemporalMemoryMonitorMixin)
 
-from htmresearch.algorithms.general_temporal_memory import (
-     GeneralTemporalMemory)
+from htmresearch.algorithms.extended_temporal_memory import (
+     ExtendedTemporalMemory)
 from htmresearch.support.union_temporal_pooler_monitor_mixin import (
      UnionTemporalPoolerMonitorMixin)
 
@@ -39,8 +39,7 @@ from htmresearch.support.union_temporal_pooler_monitor_mixin import (
 # uncomment to use early version of union pooler
 from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
 
-class MonitoredFastGeneralTemporalMemory(TemporalMemoryMonitorMixin,
-                                         GeneralTemporalMemory):
+class MonitoredFastExtendedTemporalMemory(TemporalMemoryMonitorMixin, ExtendedTemporalMemory):
   pass
 
 
@@ -112,7 +111,7 @@ class UnionTemporalPoolerExperiment(object):
     params = dict(self.DEFAULT_TEMPORAL_MEMORY_PARAMS)
     params.update(tmOverrides or {})
     params["seed"] = seed
-    self.tm = MonitoredFastGeneralTemporalMemory(mmName="TM", **params)
+    self.tm = MonitoredFastExtendedTemporalMemory(mmName="TM", **params)
 
     print "Initializing Union Temporal Pooler..."
     start = time.time()

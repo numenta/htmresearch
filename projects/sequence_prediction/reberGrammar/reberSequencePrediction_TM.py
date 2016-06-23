@@ -30,14 +30,14 @@ rcParams.update({'figure.autolayout': True})
 
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
-from htmresearch.algorithms.general_temporal_memory import (
-     GeneralTemporalMemory)
+from htmresearch.algorithms.extended_temporal_memory import (
+     ExtendedTemporalMemory)
 
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
     TemporalMemoryMonitorMixin)
 
-class MonitoredFastGeneralTemporalMemory(TemporalMemoryMonitorMixin,
-                                         GeneralTemporalMemory):
+class MonitoredFastExtendedTemporalMemory(TemporalMemoryMonitorMixin,
+                                         ExtendedTemporalMemory):
   pass
 
 
@@ -72,7 +72,7 @@ def initializeTM():
   params = dict(DEFAULT_TEMPORAL_MEMORY_PARAMS)
   # params.update(tmOverrides or {})
   # params["seed"] = seed
-  tm = MonitoredFastGeneralTemporalMemory(mmName="TM", **params)
+  tm = MonitoredFastExtendedTemporalMemory(mmName="TM", **params)
   return tm
 
 

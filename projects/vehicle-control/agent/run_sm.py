@@ -30,11 +30,11 @@ from unity_client.server import Server
 from nupic.encoders.coordinate import CoordinateEncoder
 from nupic.encoders.scalar import ScalarEncoder
 from nupic.research.monitor_mixin.trace import CountsTrace
-from sensorimotor.general_temporal_memory import GeneralTemporalMemory
+from sensorimotor.extended_temporal_memory import ExtendedTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
-class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
-                                     GeneralTemporalMemory): pass
+class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin,
+                                     ExtendedTemporalMemory): pass
 
 
 
@@ -50,7 +50,7 @@ class Agent(object):
                                 w=21)
     self.motorEncoder = ScalarEncoder(21, -1, 1,
                                  n=1024)
-    self.tm = MonitoredGeneralTemporalMemory(
+    self.tm = MonitoredExtendedTemporalMemory(
       columnDimensions=[2048],
       cellsPerColumn=1,
       initialPermanence=0.5,

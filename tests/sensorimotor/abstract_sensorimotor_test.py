@@ -25,9 +25,9 @@ import numpy
 
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
-from sensorimotor.general_temporal_memory import GeneralTemporalMemory
+from sensorimotor.extended_temporal_memory import ExtendedTemporalMemory
 class MonitoredSensorimotorTemporalMemory(TemporalMemoryMonitorMixin,
-                                          GeneralTemporalMemory): pass
+                                          ExtendedTemporalMemory): pass
 
 
 

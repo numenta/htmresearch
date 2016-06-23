@@ -28,17 +28,21 @@ from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 
-from sensorimotor.general_temporal_memory import GeneralTemporalMemory
-# Uncomment the line below to use GeneralTemporalMemory
-# from sensorimotor.general_temporal_memory import GeneralTemporalMemory
+# Uncomment the line below to use ExtendedTemporalMemory
+# from sensorimotor.extended_temporal_memory import ExtendedTemporalMemory
 from sensorimotor.temporal_pooler import TemporalPooler
 # Uncomment the line below to use SpatialTemporalPooler
 # from sensorimotor.spatial_temporal_pooler import SpatialTemporalPooler as TemporalPooler
 from sensorimotor.temporal_pooler_monitor_mixin import (
   TemporalPoolerMonitorMixin)
-class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
-                                     GeneralTemporalMemory): pass
-class MonitoredTemporalPooler(TemporalPoolerMonitorMixin, TemporalPooler): pass
+
+
+class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin, ExtendedTemporalMemory):
+  pass
+
+class MonitoredTemporalPooler(TemporalPoolerMonitorMixin, TemporalPooler):
+  pass
+
 
 """
 
@@ -89,7 +93,7 @@ class SensorimotorExperimentRunner(object):
     params.update(tmOverrides or {})
     params["seed"] = seed
     self._checkParams(params)
-    self.tm = MonitoredGeneralTemporalMemory(mmName="TM", **params)
+    self.tm = MonitoredExtendedTemporalMemory(mmName="TM", **params)
 
     # Initialize Layer 3 temporal pooler
     params = dict(self.DEFAULT_TP_PARAMS)

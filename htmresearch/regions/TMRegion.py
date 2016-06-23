@@ -27,14 +27,14 @@ from nupic.bindings.regions.PyRegion import PyRegion
 
 from htmresearch.algorithms.temporal_memory_factory import (
   createModel, getConstructorArguments)
-from htmresearch.algorithms.general_temporal_memory import GeneralTemporalMemory
+from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 
 
 
-class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
-                                      GeneralTemporalMemory): pass
+class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin, ExtendedTemporalMemory):
+    pass
 
 
 
@@ -44,10 +44,10 @@ class TMRegion(PyRegion):
 
   The TMRegion's computation implementations come from the various
   Temporal Memory classes found in nupic and nupic.research
-  (TemporalMemory, GeneralTemporalMemory).
+  (TemporalMemory, ExtendedTemporalMemory).
 
   The region supports external inputs and top down inputs. If these inputs
-  are specified, temporalImp must be one of the GeneralTemporalMemory
+  are specified, temporalImp must be one of the ExtendedTemporalMemory
   implementations.
   """
 
@@ -243,7 +243,7 @@ class TMRegion(PyRegion):
                 accessMode="ReadWrite",
                 dataType="Byte",
                 count=0,
-                constraints="enum: tm,tmCPP, general,tmMixin"),
+                constraints="enum: tm,tmCPP, extended,tmMixin"),
             formInternalConnections=dict(
                 description="Flag to determine whether to form connections "
                             "with internal cells within this temporal memory",
@@ -372,7 +372,7 @@ class TMRegion(PyRegion):
     # Figure out if our class is one of the "general types"
     args = getArgumentDescriptions(self._tm.compute)
     if len(args) > 3:
-      # General temporal memory
+      # Extended temporal memory
       self._tm.compute(activeColumns,
                        activeExternalCells=activeExternalCells,
                        activeApicalCells=activeApicalCells,

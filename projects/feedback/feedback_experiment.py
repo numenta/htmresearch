@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2015-2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -28,7 +28,7 @@ from matplotlib import pyplot as plt
 from nupic.bindings.math import GetNTAReal
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
-from htmresearch.algorithms.general_temporal_memory import GeneralTemporalMemory
+from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
     TemporalMemoryMonitorMixin)
 from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
@@ -36,8 +36,8 @@ from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
 
 
-class MonitoredGeneralTemporalMemory(TemporalMemoryMonitorMixin,
-                   GeneralTemporalMemory):
+class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin,
+                   ExtendedTemporalMemory):
   pass
 
 
@@ -102,8 +102,8 @@ def setup(upSet=False):
 
   print "Initializing temporal memory..."
   params = dict(DEFAULT_TEMPORAL_MEMORY_PARAMS)
-  tmNoFeedback = MonitoredGeneralTemporalMemory(mmName="TM1", **params)
-  tmFeedback = MonitoredGeneralTemporalMemory(mmName="TM2", **params)
+  tmNoFeedback = MonitoredExtendedTemporalMemory(mmName="TM1", **params)
+  tmFeedback = MonitoredExtendedTemporalMemory(mmName="TM2", **params)
   feedback_n = 400
   trials = 30
   print "Done."
