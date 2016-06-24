@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2014, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2014-2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -20,7 +20,7 @@
 # ----------------------------------------------------------------------
 
 """
-General Temporal Memory implementation in Python.
+Extended Temporal Memory implementation in Python.
 """
 
 from collections import defaultdict
@@ -29,7 +29,7 @@ from nupic.research.temporal_memory import TemporalMemory
 from nupic.research.connections import Connections
 
 
-class GeneralTemporalMemory(TemporalMemory):
+class ExtendedTemporalMemory(TemporalMemory):
   """
   Class implementing the Temporal Memory algorithm with the added ability of
   being able to learn from both internal and external cell activation. This
@@ -49,7 +49,7 @@ class GeneralTemporalMemory(TemporalMemory):
     @param learnOnOneCell (boolean) If True, the winner cell for each column will be fixed between resets.
     """
 
-    super(GeneralTemporalMemory, self).__init__(**kwargs)
+    super(ExtendedTemporalMemory, self).__init__(**kwargs)
 
     self.activeExternalCells = set()
     self.learnOnOneCell = learnOnOneCell
@@ -76,7 +76,8 @@ class GeneralTemporalMemory(TemporalMemory):
 
     @param activeColumns           (set)     Indices of active columns in `t`
     @param activeExternalCells     (set)     Indices of active external inputs in `t`
-    @param formInternalConnections (boolean) Flag to determine whether to form connections with internal cells within this temporal memory
+    @param formInternalConnections (boolean) Flag to determine whether to form connections with
+                                             internal cells within this temporal memory
     """
 
     if activeExternalCells is None:
@@ -134,6 +135,7 @@ class GeneralTemporalMemory(TemporalMemory):
     self.matchingApicalSegments = matchingApicalSegments
     self.matchingCells = matchingCells
 
+
   def computeFn(self,
                 activeColumns,
                 activeExternalCells,
@@ -173,9 +175,12 @@ class GeneralTemporalMemory(TemporalMemory):
     @param prevMatchingCells               (set)         Indices of matching cells in `t-1`
     @param connections                     (Connections) Connectivity of layer
     @param apicalConnections               (Connections) Apical connectivity of layer
-    @param formInternalConnections         (boolean)     Flag to determine whether to form connections with internal cells within this temporal memory
-    @param learnOnOneCell                  (boolean)     If True, the winner cell for each column will be fixed between resets.
-    @param chosenCellForColumn             (dict)        The current winner cell for each column, if it exists.
+    @param formInternalConnections         (boolean)     Flag to determine whether to form connections
+                                                         with internal cells within this temporal memory
+    @param learnOnOneCell                  (boolean)     If True, the winner cell for each column will
+                                                         be fixed between resets.
+    @param chosenCellForColumn             (dict)        The current winner cell for each column, if
+                                                         it exists.
 
     @return (tuple) Contains:
                       `activeCells`               (set),
@@ -275,7 +280,7 @@ class GeneralTemporalMemory(TemporalMemory):
 
 
   def reset(self):
-    super(GeneralTemporalMemory, self).reset()
+    super(ExtendedTemporalMemory, self).reset()
 
     self.activeExternalCells = set()
     self.chosenCellForColumn = dict()
@@ -318,8 +323,10 @@ class GeneralTemporalMemory(TemporalMemory):
     @param prevActiveCells                 (set)         Indices of active cells in `t-1`
     @param prevActiveApicalCells           (set)         Indices of ext active cells in `t-1`
     @param prevWinnerCells                 (set)         Indices of winner cells in `t-1`
-    @param learnOnOneCell                  (boolean)     If True, the winner cell for each column will be fixed between resets.
-    @param chosenCellForColumn             (dict)        The current winner cell for each column, if it exists.
+    @param learnOnOneCell                  (boolean)     If True, the winner cell for each column will
+                                                         be fixed between resets.
+    @param chosenCellForColumn             (dict)        The current winner cell for each column,
+                                                         if it exists.
     @param connections                     (Connections) Connectivity of layer
     @param apicalConnections               (Connections) External connectivity of layer
 
@@ -369,6 +376,7 @@ class GeneralTemporalMemory(TemporalMemory):
 
     return (activeCells, winnerCells, learningSegments, apicalLearningSegments,
             chosenCellForColumn)
+
 
   def learnOnApicalSegments(self,
                             prevActiveSegments,
@@ -506,12 +514,14 @@ class GeneralTemporalMemory(TemporalMemory):
     numCells = self.numberOfCells()
     return set([index + numCells for index in activeExternalCells])
 
+
   def _reindexActiveApicalCells(self, activeApicalCells, numExtCells):
     """
     @params activeApicalCells (set) Indices of active apical cells in `t`
     """
     numCells = self.numberOfCells() + numExtCells
     return set([index + numCells for index in activeApicalCells])
+
 
   def calculatePredictiveCells(self, predictiveDistalCells,
                                predictiveApicalCells):

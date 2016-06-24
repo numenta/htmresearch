@@ -11,7 +11,7 @@ intelligence.
 The main files
 ==========
 
-- `general_temporal_memory.py` - this is a generalization of the HTM temporal
+- `extended_temporal_memory.py` - this is a generalization of the HTM temporal
 memory algorithm. It contains two new experimental features. 1) It allows
 additional external inputs that can connect to the distal dendritic segments.
 An example use case is to include external motor input (to simulate motor
@@ -33,7 +33,7 @@ pretty cool - you can read about it in projects/sequence_learning
 
 - `TM.py`, `TM_SM.py`, `spatial_temporal_memory.py`, `temporal_pooler.py` -
 older temporal memory, temporal pooling, and "temporal memory for sensorimotor"
-implementations. `general_temporal_memory.py` and `union_temporal_pooler.py` has
+implementations. `extended_temporal_memory.py` and `union_temporal_pooler.py` has
 taken over but some experiments may still rely on this code and we haven't had
 time to move them over.
 

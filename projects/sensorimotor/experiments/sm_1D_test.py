@@ -35,8 +35,8 @@ from nupic.research.temporal_memory_inspect_mixin import  (
 from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
 from sensorimotor.random_one_d_agent import RandomOneDAgent
-from sensorimotor.general_temporal_memory import (
-            GeneralTemporalMemory
+from sensorimotor.extended_temporal_memory import (
+            ExtendedTemporalMemory
 )
 
 
@@ -52,7 +52,7 @@ first order representation of this sequence.
 realDType = GetNTAReal()
 
 # Mixin class for TM statistics
-class TMI(TemporalMemoryInspectMixin,GeneralTemporalMemory): pass
+class TMI(TemporalMemoryInspectMixin, ExtendedTemporalMemory): pass
 
 
 def feedTM(tm, length, agents,

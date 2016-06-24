@@ -68,7 +68,7 @@ often, we highly recommend installing as follows:
 After this you can test by importing from htmresearch:
 
     python
-    from htmresearch.algorithms.general_temporal_memory import GeneralTemporalMemory
+    from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
 
 If this works installation probably worked fine. BTW, the above class is a
 modified version of TemporalMemory that we are currently researching. It
