@@ -25,7 +25,7 @@ import unittest
 from abc import ABCMeta
 
 from nupic.data.generators.pattern_machine import ConsecutivePatternMachine
-from nupic.test.abstract_temporal_memory_test import AbstractTemporalMemoryTest
+from nupic.support.unittesthelpers.abstract_temporal_memory_test import AbstractTemporalMemoryTest
 from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
 
 

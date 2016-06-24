@@ -26,10 +26,10 @@ from abc import ABCMeta
 
 from nupic.data.generators.pattern_machine import PatternMachine
 
-from nupic.test.abstract_temporal_memory_test import AbstractTemporalMemoryTest
+from nupic.support.unittesthelpers.abstract_temporal_memory_test import AbstractTemporalMemoryTest
 
 """
-COPIED FOR CONVENIENCE FROM nupic/tests/integration/algorithms
+Copied for import convenience from nupic/tests/integration/algorithms.
 """
 
 
