@@ -25,16 +25,15 @@ import unittest
 from abc import ABCMeta
 
 from nupic.data.generators.pattern_machine import PatternMachine
-
 from nupic.support.unittesthelpers.abstract_temporal_memory_test import AbstractTemporalMemoryTest
 
+from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
+
 """
-Copied for import convenience from nupic/tests/integration/algorithms.
+Runs Extended Temporal Memory (ETM) against regular temporal memory tests.
 """
 
-
-
-class ExtensiveTemporalMemoryTest(AbstractTemporalMemoryTest):
+class ExtensiveTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.TestCase):
   """
   ==============================================================================
                   Basic First Order Sequences
@@ -200,7 +199,10 @@ class ExtensiveTemporalMemoryTest(AbstractTemporalMemoryTest):
   def getPatternMachine(self):
     return PatternMachine(100, range(21, 26), num=300)
 
+
   def getDefaultTMParams(self):
+    """Those params are set to a combination that enables "fast learning", to quickly test basic
+    functionality."""
     return {
       "columnDimensions": (100,),
       "cellsPerColumn": 1,
@@ -211,8 +213,10 @@ class ExtensiveTemporalMemoryTest(AbstractTemporalMemoryTest):
       "permanenceIncrement": 0.4,
       "permanenceDecrement": 0,
       "activationThreshold": 11,
+      "learnOnOneCell": False,
       "seed": 42,
     }
+
 
   def testB1(self):
     """Basic sequence learner.  M=1, N=100, P=1."""
@@ -294,7 +298,7 @@ class ExtensiveTemporalMemoryTest(AbstractTemporalMemoryTest):
       connectedPermanence = 0.7
       permanenceIncrement = 0.2
 
-    Now we train the TP with the B1 sequence 4 times (P=4). This will increment
+    Now we train the TM with the B1 sequence 4 times (P=4). This will increment
     the permanences to be above 0.8 and at that point the inference will be correct.
     This test will ensure the basic match function and segment activation rules are
     working correctly.
@@ -570,9 +574,14 @@ class ExtensiveTemporalMemoryTest(AbstractTemporalMemoryTest):
     self.assertGreater(predictedInactiveColumnsMeanNoOrphanDecay, predictedInactiveColumnsMeanOrphanDecay)
     self.assertAlmostEqual(predictedActiveColumnsMeanNoOrphanDecay, predictedActiveColumnsMeanOrphanDecay)
 
+
   # ==============================
   # Overrides
   # ==============================
+
+  def getTMClass(self):
+    return ExtendedTemporalMemory
+
 
   def setUp(self):
     super(ExtensiveTemporalMemoryTest, self).setUp()

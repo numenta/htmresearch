@@ -21,9 +21,6 @@
 # ----------------------------------------------------------------------
 """
 Unit tests for Extended Temporal Memory.
-
-In its current implentation, this test suite only ports the TM tests to ETM, without testing
-the apical learning and activation.
 """
 
 import tempfile
