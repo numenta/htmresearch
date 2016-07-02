@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -24,20 +24,14 @@ import random
 import numbers
 import numpy
 
-
 from expsuite import PyExperimentSuite
 from htmresearch.support.sequence_prediction_dataset import ReberDataset
 from htmresearch.support.sequence_prediction_dataset import SimpleDataset
 from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
-from htmresearch.algorithms.online_extreme_learning_machine import OSELM
 
-def initializeELMnet(nDimInput, nDimOutput, numNeurons=10):
-  # Build ELM network with nDim input units,
-  # numNeurons hidden units and nDimOutput cells
-
-  net = OSELM(nDimInput, nDimOutput,
-              numHiddenNeurons=numNeurons, activationFunction='sig')
-  return net
+from pybrain.tools.shortcuts import buildNetwork
+from pybrain.supervised import BackpropTrainer
+from pybrain.datasets  import SupervisedDataSet
 
 
 
@@ -245,6 +239,7 @@ class Suite(PyExperimentSuite):
 
     self.numLags = params['num_lags']
 
+    self.computeCounter = 0
     self.history = []
     self.resets = []
 
@@ -256,9 +251,12 @@ class Suite(PyExperimentSuite):
     self.targetPrediction = []
     self.replenishSequence(params, iteration=0)
 
-    self.net = initializeELMnet(params['encoding_num'] * params['num_lags'],
-                                params['encoding_num'],
-                                numNeurons=params['num_cells'])
+    self.net = buildNetwork(params['encoding_num'] * params['num_lags'],
+                            params['num_cells'],
+                            params['encoding_num'],
+                            bias=True,
+                            outputbias=True)
+    # self.trainer = BackpropTrainer(self.net, dataset=trndata, momentum=0.1, verbose=True, weightdecay=0.01)
     self.sequenceCounter = 0
 
 
@@ -305,6 +303,62 @@ class Suite(PyExperimentSuite):
     return correct
 
 
+  def train(self, params):
+    """
+    Train TDNN network on buffered dataset history
+    :param params:
+    :return:
+    """
+    # self.net = buildNetwork(params['encoding_num'] * params['num_lags'],
+    #                         params['num_cells'],
+    #                         params['encoding_num'],
+    #                         bias=True,
+    #                         outputbias=True)
+
+    ds = SupervisedDataSet(params['encoding_num'] * params['num_lags'],
+                           params['encoding_num'])
+    history = self.window(self.history, params['learning_window'])
+
+    n = params['encoding_num']
+    for i in xrange(params['num_lags'], len(history)):
+      targets = numpy.zeros((1, n))
+      targets[0, :] = self.encoder.encode(history[i])
+
+      features = numpy.zeros((1, n * params['num_lags']))
+      for lags in xrange(params['num_lags']):
+        features[0, lags * n:(lags + 1) * n] = self.encoder.encode(
+          history[i - (lags + 1)])
+      ds.addSample(features, targets)
+
+    trainer = BackpropTrainer(self.net,
+                              dataset=ds,
+                              verbose=params['verbosity'] > 0)
+
+    if len(history) > 1:
+      trainer.trainEpochs(params['num_epochs'])
+
+    # self.net.reset()
+    #
+    # for i in xrange(params['num_lags'], len(history)):
+    #   targets = numpy.zeros((1, n))
+    #   targets[0, :] = self.encoder.encode(self.history[i])
+    #
+    #   features = numpy.zeros((1, n * params['num_lags']))
+    #   for lags in xrange(params['num_lags']):
+    #     features[0, lags * n:(lags + 1) * n] = self.encoder.encode(
+    #       self.history[i - (lags + 1)])
+    #
+    #   output = self.net.activate(features[0, :])
+    #   predictions = self.encoder.classify(output, num=params['num_predictions'])
+    #   correct = self.check_prediction(predictions, self.history[i])
+    #   print ("iteration: {0} \t"
+    #          "current: {1} \t"
+    #          "predictions: {2} \t"
+    #          "truth: {3} \t"
+    #          "correct: {4} \t").format(
+    #     i, self.history[i-1], predictions, self.history[i], correct)
+
+
   def killCells(self, killCellPercent):
     """
     kill a fraction of cells from the network
@@ -333,7 +387,6 @@ class Suite(PyExperimentSuite):
     # update buffered dataset
     self.history.append(currentElement)
 
-
     # whether there will be a reset signal after the current record
     resetFlag = (len(self.currentSequence) == 0 and
                  params['separate_sequences_with'] == 'reset')
@@ -349,77 +402,57 @@ class Suite(PyExperimentSuite):
       self.replenishSequence(params, iteration)
       self.sequenceCounter += 1
 
-    # # kill cells
     killCell = False
     if iteration == params['kill_cell_after']:
       killCell = True
       self.killCells(params['kill_cell_percent'])
 
-    if iteration > params['train_after']:
+    # reset compute counter
+    if iteration > 0 and iteration % params['compute_every'] == 0:
+      self.computeCounter = params['compute_for']
+
+    if self.computeCounter == 0 or iteration < params['compute_after']:
+      computeNet = False
+    else:
+      computeNet = True
+
+    if computeNet:
+      self.computeCounter -= 1
+
+      train = iteration % params['compute_every'] == 0
+
+      if train:
+        if params['verbosity'] > 0:
+          print "Training Network at iteration {}".format(iteration)
+        self.train(params)
+
+    if iteration > params['num_lags']:
+      # run network on the latest data record
       n = params['encoding_num']
+      currentFeatures = numpy.zeros((params['encoding_num'] * params['num_lags'], ))
+      for lags in xrange(min(params['num_lags'], iteration)):
+        currentFeatures[lags*n:(lags+1)*n] = self.encoder.encode(self.history[-1-lags])
 
-      if self.finishInitializeX is False:
-        # run initialization phase of OS-ELM
-        NT = params['train_after']
-        features = numpy.zeros(shape=(NT, n*params['num_lags']))
-        targets = numpy.zeros(shape=(NT, n))
+      output = self.net.activate(currentFeatures)
+      predictions = self.encoder.classify(output, num=params['num_predictions'])
 
-        history = self.window(self.history, NT)
+      correct = self.check_prediction(predictions, target)
 
-        for i in range(params['num_lags'], NT):
-          targets[i, :] = self.encoder.encode(history[i])
+      if params['verbosity'] > 0:
+        print ("iteration: {0} \t"
+               "current: {1} \t"
+               "predictions: {2} \t"
+               "truth: {3} \t"
+               "correct: {4} \t").format(
+          iteration, currentElement, predictions, target, correct)
 
-        for lags in xrange(params['num_lags']):
-          shiftTargets = numpy.roll(targets, lags, axis=0)
-          shiftTargets[:lags, :] = 0
-          features[:, lags*n:(lags+1)*n] = shiftTargets
-
-        self.net.initializePhase(features[:, :], targets[:, :])
-        if iteration > params['train_after']:
-          self.finishInitializeX = True
-      else:
-        # run sequential learning phase
-        targets = numpy.zeros((1, params['encoding_num']))
-        targets[0, :] = self.encoder.encode(self.history[-1])
-
-        features = numpy.zeros((1, params['encoding_num'] * params['num_lags']))
-        for lags in xrange(params['num_lags']):
-          features[0, lags*n:(lags+1)*n] = self.encoder.encode(
-            self.history[-1-(lags+1)])
-
-      if iteration < params['stop_training_after']:
-        self.net.train(features, targets)
-
-    # run ELM on the latest data record
-    n = params['encoding_num']
-    currentFeatures = numpy.zeros((1, params['encoding_num'] * params['num_lags']))
-    for lags in xrange(min(params['num_lags'], iteration)):
-      currentFeatures[0, lags*n:(lags+1)*n] = self.encoder.encode(self.history[-1-lags])
-
-    output = self.net.predict(currentFeatures)
-    # print self.net.beta.shape
-    # print output.shape
-    # print params['num_predictions']
-    predictions = self.encoder.classify(output[0],
-                                        num=params['num_predictions'])
-
-    correct = self.check_prediction(predictions, target)
-
-    if params['verbosity'] > 0:
-      print ("iteration: {0} \t"
-             "current: {1} \t"
-             "predictions: {2} \t"
-             "truth: {3} \t"
-             "correct: {4} \t").format(
-        iteration, currentElement, predictions, target, correct)
-
-      return {"current": currentElement,
-              "reset": self.resets[-1],
-              "random": self.randoms[-1],
-              "predictions": predictions,
-              "truth": target,
-              "killCell": killCell,
-              "sequenceCounter": self.sequenceCounter}
+        return {"current": currentElement,
+                "reset": self.resets[-1],
+                "random": self.randoms[-1],
+                "predictions": predictions,
+                "truth": target,
+                "killCell": killCell,
+                "sequenceCounter": self.sequenceCounter}
 
 
 

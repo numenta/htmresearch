@@ -38,16 +38,19 @@ plt.close('all')
 if __name__ == '__main__':
 
   experiments = []
-  experiments.append(os.path.join("lstm/results",
-                                  "high-order-distributed-random-perturbed-online",
-                                  "seed0.0",
-                                  "0.log"))
-
 
   experiments.append(os.path.join("tm/results",
-                                  "high-order-distributed-random-perturbed",
+                                  "high-order-distributed-random-perturbed/seed0.0",
                                   "0.log"))
 
+  experiments.append(os.path.join("lstm/results",
+                                  "high-order-distributed-random-perturbed",
+                                  "seed0.0learning_window3000.0",
+                                  "0.log"))
+
+  experiments.append(os.path.join("tdnn/results",
+                                  "high-order-distributed-random-perturbed/seed0.0learning_window3000.0",
+                                  "0.log"))
   # for window in [1000.0, 9000.0]:
   #   experiments.append(os.path.join("lstm/results",
   #                               "high-order-distributed-random-perturbed",
@@ -82,7 +85,7 @@ if __name__ == '__main__':
     plt.xlabel('# of sequences seen')
 
   plt.axvline(x=10000, color='k')
-  plt.legend(['HTM', 'LSTM-1000', 'LSTM-9000', 'Online-ELM'], loc=4)
+  plt.legend(['HTM', 'LSTM-3000', 'TDNN'], loc=4)
   plt.savefig('./result/model_performance_high_order_prediction.pdf')
 
 
