@@ -90,13 +90,13 @@ def analyzeResult(x, accuracy, perturbAt=10000, movingAvg=True, smooth=True):
   perturbAtX = np.where(x > perturbAt)[0][0]
 
   finalAccuracy = accuracy[perturbAtX-len(mask)/2]
-  learnTime = min(np.where(np.logical_and(accuracy > finalAccuracy * 0.99,
+  learnTime = min(np.where(np.logical_and(accuracy > finalAccuracy * 0.95,
                                           x < x[perturbAtX - len(mask)/2-1]))[0])
   learnTime = x[learnTime]
 
   finalAccuracyAfterPerturbation = accuracy[-1]
   learnTimeAfterPerturbation = min(np.where(
-    np.logical_and(accuracy > finalAccuracyAfterPerturbation * 0.99,
+    np.logical_and(accuracy > finalAccuracyAfterPerturbation * 0.95,
                    x > x[perturbAtX + len(mask)]))[0])
 
   learnTimeAfterPerturbation = x[learnTimeAfterPerturbation] - perturbAt
@@ -120,6 +120,26 @@ if __name__ == '__main__':
     # python suite.py --experiment="high-order-distributed-random-perturbed" -d
     expResults = {}
     expResultsAnaly = {}
+
+    # TDNN
+    tdnnResults = os.path.join("tdnn/results",
+                               "high-order-distributed-random-perturbed")
+    accuracyAll = []
+    exptLabel = 'TDNN'
+    expResultsAnaly[exptLabel] = []
+    for seed in range(20):
+      experiment = os.path.join(tdnnResults,
+                                "seed" + "{:.1f}".format(
+                                  seed) + "learning_window3000.0", "0.log")
+      (accuracy, x) = loadExperiment(experiment)
+      expResultsAnaly[exptLabel].append(analyzeResult(x, accuracy))
+      accuracy = movingAverage(accuracy, min(len(accuracy), 100))
+      accuracyAll.append(np.array(accuracy))
+
+    (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyAll)
+    x = x[:len(meanAccuracy)]
+    expResults[exptLabel] = {
+      'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
 
     # HTM
     tmResults = os.path.join("tm/results",
@@ -188,7 +208,7 @@ if __name__ == '__main__':
 
     for learningWindow in [100.0]:
       accuracyAll = []
-      exptLabel = 'onlineLSTM-'+"{:.0f}".format(learningWindow)
+      exptLabel = 'LSTM-online'+"{:.0f}".format(learningWindow)
       expResultsAnaly[exptLabel] = []
       for seed in range(10):
         experiment = os.path.join(
@@ -222,8 +242,8 @@ if __name__ == '__main__':
   plt.figure(1)
   fig, axs = plt.subplots(nrows=1, ncols=2, sharey=True)
   colorList = {"HTM": "r", "ELM": "b", "LSTM-1000": "y", "LSTM-9000": "g",
-               "onlineLSTM-100": "m"}
-  modelList = ['HTM', 'ELM', 'LSTM-1000',  'LSTM-9000', 'onlineLSTM-100']
+               "TDNN": "c", "LSTM-online100": "m"}
+  modelList = ['HTM', 'ELM', 'TDNN', 'LSTM-1000',  'LSTM-9000', 'LSTM-online100']
   for model in modelList:
     expResult = expResults[model]
 
@@ -250,13 +270,14 @@ if __name__ == '__main__':
 
     axs[0].errorbar(x=result['learnTime'], y=result['finalAccuracy'],
                  yerr=expResult['stdAccuracy'][perturbAtX],
-                 xerr=np.mean(learnTimeErr))
+                 xerr=np.mean(learnTimeErr), ecolor=colorList[model])
 
 
     axs[1].errorbar(x=result['learnTimeAfterPerturbation'],
                  y=result['finalAccuracyAfterPerturbation'],
                  yerr=expResult['stdAccuracy'][-1],
-                 xerr=np.mean(learnTimeErrAfterPerturb))
+                 xerr=np.mean(learnTimeErrAfterPerturb),
+                  ecolor=colorList[model])
 
     axs[0].set_title("Before modification")
     axs[1].set_title("After modification")
@@ -280,7 +301,7 @@ if __name__ == '__main__':
     # axs[1].set_xlim([0, 30000])
 
   axs[0].set_xlim([0, 10000])
-  axs[1].set_xlim([0, 30000])
+  axs[1].set_xlim([0, 10000])
 
   plt.figure(1)
   plt.savefig('./result/model_performance_high_order_prediction.pdf')
