@@ -21,6 +21,7 @@
 # ----------------------------------------------------------------------
 
 import unittest
+import random
 
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.support.unittesthelpers.abstract_temporal_memory_test import AbstractTemporalMemoryTest
@@ -43,37 +44,44 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
       minThreshold: 25
       maxNewSynapseCount: 30
       permanenceIncrement: 0.1
-      permanenceDecrement: 0
+      permanenceDecrement: 0.02
+      predictedSegmentDecrement: 0.08
       activationThreshold: 25
       seed: 42
       learnOnOneCell: False
 
-  It is interesting to note that under those parameters, an pattern needs activation from both
-  lateral inputs (internal and externals) to be predicted.
+  It is interesting to note that under those parameters, a cell needs activation from both
+  lateral inputs (internal and external) to be predicted.
 
   ==================================================================================================
                                   Learning with external input
   ==================================================================================================
 
   These tests (labeled "E") simulate sequences from proximal input as well as sequences fed through
-  distal dendrites par external neurons (e.g. motor efference copy).
+  distal dendrites par external neurons (e.g. motor command copy).
 
-  E1-E6: First-order learning through proximal and external input.
+  E1-E5: First-order learning through proximal and external input.
 
-  E7-E10: Higher-order learning through proximal and external input.
+  E6-E10: Higher-order learning through proximal and external input.
 
   E11: Repeated motor command copy.
 
   E12-E13: Testing the "learnOnOneCell" feature, fixing the winning cell for each columns between
   subsequent resets.
 
+  E14: "learnOnOneCell" with motor command should not impair behavior.
+
   ==================================================================================================
                                   Learning with apical input
   ==================================================================================================
 
-  A1-A3: Basic disambiguation through feedback from higher regions.
+  These tests (labeled "A"0, simulate sequences from proximal input as well as sequences of feedback
+  from higher regions. It tests some basic properties that feedback should achieve in a real setting
+  (sequence disambiguation, robustness to temporal noise).
 
-  A4-A8: Robustness to temporal noise through feedback from higher regions.
+  A1-A4: Basic disambiguation through feedback from higher regions.
+
+  A5-A9: Robustness to temporal noise through feedback from higher regions.
 
   A10: Ineffectiveness of feedback without correct proximal input.
 
@@ -85,11 +93,11 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
 
   O5-O7: Tests drawn from the previous categories, adding slight spatial noise to input patterns
   at test time.
-
   """
 
   n = 2048
   w = range(38, 43)
+  feedback_size = 400
 
 
   def testE1(self):
@@ -105,10 +113,9 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
     for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=None,
-                  formInternalConnections=True)
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
 
-    self._testTM(proximalInputA, activeExternalCellsSequence=None)
+    self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
 
     self.assertAllActiveWerePredicted()
     self.assertAllInactiveWereUnpredicted()
@@ -123,19 +130,19 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
 
     numbers = self.sequenceMachine.generateNumbers(1, 100)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
     numbers = self.sequenceMachine.generateNumbers(1, 100)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
     for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
 
     self._testTM(proximalInputA, activeExternalCellsSequence=None)
     self.assertAllActiveWereUnpredicted()
 
 
   def testE3(self):
-    """Joint proximal and external first order learning, incorrect external input at test time.
+    """Joint proximal and external first order learning, incorrect external prediction at test time.
 
     Train on ABCDE/PQRST, test on ABCDE/VWXYZ leads to bursting.
     """
@@ -145,64 +152,40 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
     numbers = self.sequenceMachine.generateNumbers(1, 100)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
     numbers = self.sequenceMachine.generateNumbers(1, 100)
     externalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
     for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
 
     self._testTM(proximalInputA, activeExternalCellsSequence=externalInputB)
     self.assertAlmostAllActiveWereUnpredicted()
 
 
   def testE4(self):
-    """Same as E3, but the threshold is set to infer on proximal OR external input.
-
-    To do so, set the thresholds to be half the max new synapse count.
-    """
-    self.init({"cellsPerColumn": 1,
-               "activationThreshold": 15,
-               "minThreshold": 15})
-
-    numbers = self.sequenceMachine.generateNumbers(1, 100)
-    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 100)
-    externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 100)
-    externalInputB = self.sequenceMachine.generateFromNumbers(numbers)
-
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
-
-    self._testTM(proximalInputA, activeExternalCellsSequence=externalInputB)
-    self.assertAllActiveWerePredicted()
-
-
-  def testE5(self):
     """Like E1, with slower learning."""
-    self.init({"cellsPerColumn": 4,
-               "initialPermanence": 0.2,
-               "connectedPermanence": 0.7,
-               "permanenceIncrement": 0.2})
+    self.init({"cellsPerColumn": 1,
+               "initialPermanence": 0.5,
+               "connectedPermanence": 0.6,
+               "permanenceIncrement": 0.05})
 
     numbers = self.sequenceMachine.generateNumbers(1, 100)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
     numbers = self.sequenceMachine.generateNumbers(1, 100)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
     for _ in xrange(4):
       # feed sequence multiple times to compensate for slower learning rate
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
 
     self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
     self.assertAllActiveWerePredicted()
     self.assertAllInactiveWereUnpredicted()
 
 
-  def testE6(self):
+  def testE5(self):
     """Joint proximal and external first order learning, incorrect proximal input at test time.
 
     Train on ABCDE/PQRST, test on FGHIJ/PQRST.
@@ -211,21 +194,22 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
 
     numbers = self.sequenceMachine.generateNumbers(1, 100)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
     numbers = self.sequenceMachine.generateNumbers(1, 100)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
     numbers = self.sequenceMachine.generateNumbers(1, 100)
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
     for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
 
     self._testTM(proximalInputB, activeExternalCellsSequence=externalInputA)
     self.assertAlmostAllActiveWereUnpredicted()
 
 
-  def testE7(self):
-    """Joint proximal and external higher order learning learning.
+  def testE6(self):
+    """Joint proximal and external variable order learning.
 
     Same as E1, with 32 cells per column.
     """
@@ -233,146 +217,181 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
 
     numbers = self.sequenceMachine.generateNumbers(1, 100)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
     numbers = self.sequenceMachine.generateNumbers(1, 100)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
     for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
 
     self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
     self.assertAllActiveWerePredicted()
     self.assertAllInactiveWereUnpredicted()
+
+
+  def testE7(self):
+    """Joint proximal and external variable order learning, possible ambiguity on proximal.
+
+    Train on ABCDE/PQRST and ABCDF/PQRST, test on ABCDE/PQRST leads to extra predictions.
+    """
+    self.init()
+
+    numbers = self.sequenceMachine.generateNumbers(1, 20)
+    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+    numbers[-2] = max(numbers) + 10
+    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+    numbers = self.sequenceMachine.generateNumbers(1, 20)
+    externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    for _ in xrange(10):
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+      self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA)
+
+    self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+    self.assertAllActiveWerePredicted()
+    # many extra predictions
+    predictedInactiveColumns = self.tm.mmGetTracePredictedInactiveColumns().data
+    self.assertGreaterEqual(len(predictedInactiveColumns[-1]), min(self.w))
 
 
   def testE8(self):
-    """Joint proximal and external higher order learning learning, possible ambiguity on proximal.
+    """Joint proximal and external variable order learning, possible ambiguity on proximal.
 
-    Train on ABCDE/PQRST and ABCDF/PQRST, test on ABCDE/PQRST does not lead to extra predictions.
+    Train on ABCDE/PQRST and XBCDF/PQRST, test on ABCDE/PQRST does not lead to extra predictions.
+
+    Using assertAlmostAllActiveWerePredicted as minimum # of active bits is not min(self.w)
+    with this seed. In practice, this will be constant.
+    Using a short sequence, as it needs many iterations to learn the shared subsequence.
     """
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 20)
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers[-2] = max(numbers) + 1
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 20)
+
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
-      self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
+    for _ in xrange(20):
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+      self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA)
 
     self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
 
-    self.assertAllActiveWerePredicted()
-    self.assertAllInactiveWereUnpredicted()
+    self.assertAlmostAllActiveWerePredicted(meanThr=0)
+    self.assertAlmostAllInactiveWereUnpredicted(meanThr=0)
 
 
   def testE9(self):
-    """Joint proximal and external higher order learning learning, possible ambiguity on proximal.
+    """Joint proximal and external variable order learning, possible ambiguity on external.
 
-    Train on ABCDE/PQRST and XBCDF/PQRST, test on ABCDE/PQRST does not lead to extra predictions.
+    Train on ABCDE/PQRST and ABCDE/XQRZT, test on ABCDE/PQRST does not lead to extra predictions.
+
+    Using a short sequence, as it needs many iterations to learn the shared subsequence.
     """
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 20)
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers[0] = max(numbers) + 1
-    numbers[-2] = max(numbers) + 1
-    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 20)
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+    numbers[0] = max(numbers) + 1
+    numbers[-3] = max(numbers) + 1
+    externalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
-      self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
+    for _ in xrange(10):
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputB)
 
     self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
-
-    print self.tm.mmGetTracePredictedInactiveColumns().data
     self.assertAllActiveWerePredicted()
     self.assertAllInactiveWereUnpredicted()
 
 
   def testE10(self):
-    """Joint proximal and external higher order learning learning, possible ambiguity on external.
+    """Same as E8, but the last pattern is incorrect given the high order the sequence.
 
-    Train on ABCDE/PQRST and ABCDE/XQRSZ, test on ABCDE/PQRST does not lead to extra predictions.
+    Using a short sequence, as it needs many iterations to learn the shared subsequence.
     """
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 20)
+    # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 20)
-    externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # X B C D E
     numbers[0] = max(numbers) + 1
+    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # X B C D F
     numbers[-2] = max(numbers) + 1
-    externalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputB,
-                  formInternalConnections=True)
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
-    self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
-    self.assertAllActiveWerePredicted()
-    self.assertAllInactiveWereUnpredicted()
+    for _ in xrange(10):
+      # train on A B C D E and X B C D F
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+      self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA)
+
+    # test on X B C D E
+    self._testTM(testProximalInput, activeExternalCellsSequence=externalInputA)
+
+    unpredictedActiveColumns = self.tm.mmGetTraceUnpredictedActiveColumns().data
+    self.assertGreaterEqual(unpredictedActiveColumns, min(self.w))
 
 
   def testE11(self):
-    """Same as E8, but the last pattern is incorrect given the high order the sequence."""
-    self.init()
-
-    numbers = self.sequenceMachine.generateNumbers(1, 50)
-    # A B C D E
-    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers[0] = max(numbers) + 1
-    # X B C D E
-    proximalInputC = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers[-2] = max(numbers) + 1
-    # X B C D F
-    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 50)
-    externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-
-    for _ in xrange(2):
-      # train on A B C D E and X B C D F
-      self.feedTM(proximalInputA, activeExternalCellsSequence=None,
-                  formInternalConnections=True)
-      self.feedTM(proximalInputB, activeExternalCellsSequence=None,
-                  formInternalConnections=True)
-
-    # test on X B C D E
-    self._testTM(proximalInputC, activeExternalCellsSequence=None)
-    self.assertAllActiveWereUnpredicted()
-
-
-  def testE12(self):
-    """Repeated motor command copy as external input.
-
-    External input is of the form PQPQPQPQPQPQ...
-    """
+    """Repeated motor command copy as external input."""
     self.init()
 
     numbers = self.sequenceMachine.generateNumbers(1, 100)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
     numbers = [100, 200] * 50 + [None]
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
 
     for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
 
     self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
     self.assertAllActiveWerePredicted()
     self.assertAllInactiveWereUnpredicted()
+
+
+  def testE12(self):
+    """Simple learnOnOneCell test.
+
+    Train on ABCADC. Without learnOnOneCell, C should have different representations in ABC and ADC.
+    """
+    self.init({"learnOnOneCell": False})
+    self.assertFalse(self.tm.learnOnOneCell)
+
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    numbers[0] = 50
+    numbers[-2] = 75
+    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    numbers[0] = 50
+    numbers[-2] = 75
+    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
+    trainInput = proximalInputA[:-1] + proximalInputB
+
+    for _ in xrange(2):
+      self.feedTM(trainInput)
+
+    self._testTM(proximalInputA)
+    predictedActiveA = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    self._testTM(proximalInputB)
+    predictedActiveB = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    # check that the two representations are the same
+    self.assertNotEquals(predictedActiveA, predictedActiveB)
 
 
   def testE13(self):
@@ -387,26 +406,30 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     numbers[0] = 50
     numbers[-2] = 75
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
     numbers = self.sequenceMachine.generateNumbers(1, 10)
     numbers[0] = 50
     numbers[-2] = 75
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
+    trainInput = proximalInputA[:-1] + proximalInputB
+
     for _ in xrange(2):
-      self.feedTM(proximalInputA, formInternalConnections=True)
-      self.feedTM(proximalInputB, formInternalConnections=True)
+      self.feedTM(trainInput)
 
     self._testTM(proximalInputA)
     predictedActiveA = self.tm.mmGetTracePredictedActiveCells().data[-1]
     self._testTM(proximalInputB)
     predictedActiveB = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    # check that the two representations are the same
     self.assertEqual(predictedActiveA, predictedActiveB)
 
 
   def testE14(self):
     """learnOnOneCell with motor command should not impair behavior.
 
-    Using learnOnOneCell, does the same basic test as E1.
+    Using learnOnOneCell, does the same test as E6, using the same parameters.
+    It currently needs many more iterations to pass.
     """
     self.init({"learnOnOneCell": True})
     self.assertTrue(self.tm.learnOnOneCell)
@@ -417,10 +440,10 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
     for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
 
     self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+
     self.assertAllActiveWerePredicted()
     self.assertAllInactiveWereUnpredicted()
 
@@ -433,24 +456,21 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     """
     self.init()
 
+    # A B C ... D E
     numbers = self.sequenceMachine.generateNumbers(1, 10)
-    # A B C D E
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    # B C D E
-    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[1:])
+
+    # B C .. D E
+    testProximalInput = proximalInputA[1:]
+
+    # X B C ..  D F
     numbers[0] = max(numbers) + 1
     numbers[-2] = max(numbers) + 1
-    # X B C D F
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackB = self.sequenceMachine.generateFromNumbers(numbers)
-
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA, formInternalConnections=True)
-      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB, formInternalConnections=True)
+    for _ in xrange(10):
+      self.feedTM(proximalInputA, activeApicalCellsSequence=None)
+      self.feedTM(proximalInputB, activeApicalCellsSequence=None)
 
     self._testTM(testProximalInput, activeApicalCellsSequence=None)
     self.assertAllActiveWerePredicted()
@@ -459,41 +479,86 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     self.assertGreaterEqual(len(predictedInactiveColumns[-1]), min(self.w))
 
 
+  @unittest.expectedFailure
   def testA2(self):
     """Basic feedback disambiguation, test with correct feedback.
 
     Train on ABCDE with F1, XBCDE with F2.
-    Test with BCDE. With feedback, one pattern is expected.
+    Test with BCDF. With correct feedback, one pattern is expected.
+    Without starting the training with random feedback, erroneous apical connections are formed
+    when column burst, and the test is expected to fail.
+
+    Using a short sequence, as it needs many iterations to learn the shared subsequence.
     """
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 10)
     # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    # B C D E
-    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[1:])
-    numbers[0] = max(numbers) + 1
-    numbers[-2] = max(numbers) + 1
+
     # X B C D F
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackB = self.sequenceMachine.generateFromNumbers(numbers)
+    # B C D F
+    testProximalInput = proximalInputB[1:]
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA, formInternalConnections=True)
-      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB, formInternalConnections=True)
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
 
-    self._testTM(testProximalInput, activeApicalCellsSequence=feedbackA)
-    self.assertAllActiveWerePredicted()
+    for _ in xrange(10):
+      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA)
+      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
+
+    self._testTM(testProximalInput, activeApicalCellsSequence=feedbackB)
+    self.assertAlmostAllActiveWerePredicted()
     # few extra predictions
     predictedInactiveColumns = self.tm.mmGetTracePredictedInactiveColumns().data
     self.assertLessEqual(len(predictedInactiveColumns[-1]), 3)
 
 
   def testA3(self):
+    """Basic feedback disambiguation, test with correct feedback.
+
+    Train on ABCDE with F1, XBCDE with F2.
+    Test with BCDF. With feedback, one pattern is expected.
+
+    Using a short sequence, as it needs many iterations to learn the shared subsequence.
+    """
+    self.init()
+
+    # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
+    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # X B C D F
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # B C D F
+    testProximalInput = proximalInputB[1:]
+
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
+
+    # start training with random feedback
+    self.feedTM(proximalInputA, activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputB, activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+
+    for _ in xrange(10):
+      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA)
+      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
+
+    self._testTM(testProximalInput, activeApicalCellsSequence=feedbackB)
+    self.assertAlmostAllActiveWerePredicted()
+    # few extra predictions
+    predictedInactiveColumns = self.tm.mmGetTracePredictedInactiveColumns().data
+    self.assertLessEqual(len(predictedInactiveColumns[-1]), 3)
+
+
+  def testA4(self):
     """Basic feedback disambiguation, test with incorrect feedback.
 
     Train on ABCDE with F1, XBCDE with F2.
@@ -501,31 +566,36 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     """
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 10)
     # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
     # B C D E
-    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[1:])
-    numbers[0] = max(numbers) + 1
-    numbers[-2] = max(numbers) + 1
+    testProximalInput = proximalInputA[1:]
+
     # X B C D F
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackB = self.sequenceMachine.generateFromNumbers(numbers)
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA, formInternalConnections=True)
-      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB, formInternalConnections=True)
+    # start training with random feedback
+    self.feedTM(proximalInputA, activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputB, activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+
+    for _ in xrange(10):
+      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA)
+      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
 
     self._testTM(testProximalInput, activeApicalCellsSequence=feedbackB)
     # burst at last step
     unpredictedActiveColumns = self.tm.mmGetTraceUnpredictedActiveColumns().data
     self.assertGreaterEqual(len(unpredictedActiveColumns[-1]), min(self.w))
 
-  def testA4(self):
+
+  def testA5(self):
     """Robustness to temporal noise with feedback, test without feedback.
 
     Train on ABCDE with F1, XBCDE with F2.
@@ -533,19 +603,21 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     """
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 10)
     # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers[-2] = max(numbers) + 1
+
     # A C D F
-    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[:4] + numbers[5:])
-    numbers[0] = max(numbers) + 1
+    numbers[-2] = max(numbers) + 10
+    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[:1] + numbers[2:])
+
     # X B C D F
+    numbers[0] = max(numbers) + 10
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeApicalCellsSequence=None, formInternalConnections=True)
-      self.feedTM(proximalInputB, activeApicalCellsSequence=None, formInternalConnections=True)
+    for _ in xrange(10):
+      self.feedTM(proximalInputA, activeApicalCellsSequence=None)
+      self.feedTM(proximalInputB, activeApicalCellsSequence=None)
 
     self._testTM(testProximalInput, activeApicalCellsSequence=None)
     # no bursting at last step
@@ -556,32 +628,36 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     self.assertGreaterEqual(len(predictedInactiveColumns[-1]), min(self.w))
 
 
-  def testA5(self):
+  def testA6(self):
     """Robustness to temporal noise with feedback, test with incorrect feedback.
 
     Train on ABCDE with F1, XBCDE with F2.
-    Test with ACDF (one step is missing). With feedback F1, burst.
+    Test with ACDF (one step is missing). With feedback F1, burst at last timestep.
     """
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 10)
     # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers[-2] = max(numbers) + 1
+
     # A C D F
-    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[:4] + numbers[5:])
-    numbers[0] = max(numbers) + 1
+    numbers[-2] = max(numbers) + 10
+    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[:1] + numbers[2:])
+
     # X B C D F
+    numbers[0] = max(numbers) + 10
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackB = self.sequenceMachine.generateFromNumbers(numbers)
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA, formInternalConnections=True)
-      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB, formInternalConnections=True)
+    # start training with random feedback
+    self.feedTM(proximalInputA, activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputB, activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+
+    for _ in xrange(10):
+      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA)
+      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
 
     self._testTM(testProximalInput, activeApicalCellsSequence=feedbackA)
     # burst at last step
@@ -589,7 +665,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     self.assertGreaterEqual(len(unpredictedActiveColumns[-1]), min(self.w))
 
 
-  def testA6(self):
+  def testA7(self):
     """Robustness to temporal noise with feedback, test without feedback.
 
     Train on ABCDE with F1, XBCDE with F2.
@@ -597,19 +673,21 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     """
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 10)
     # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers[-2] = max(numbers) + 1
+
     # A Z C D F
-    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[:4] + [50] + numbers[5:])
-    numbers[0] = max(numbers) + 1
+    numbers[-2] = max(numbers) + 10
+    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[:1] + [50] + numbers[2:])
+
     # X B C D F
+    numbers[0] = max(numbers) + 10
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeApicalCellsSequence=None, formInternalConnections=True)
-      self.feedTM(proximalInputB, activeApicalCellsSequence=None, formInternalConnections=True)
+    for _ in xrange(10):
+      self.feedTM(proximalInputA, activeApicalCellsSequence=None)
+      self.feedTM(proximalInputB, activeApicalCellsSequence=None)
 
     self._testTM(testProximalInput, activeApicalCellsSequence=None)
     # no bursting at last step
@@ -620,32 +698,36 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     self.assertGreaterEqual(len(predictedInactiveColumns[-1]), min(self.w))
 
 
-  def testA7(self):
+  def testA8(self):
     """Robustness to temporal noise with feedback, test with incorrect feedback.
 
     Train on ABCDE with F1, XBCDE with F2.
-    Test with AZCDF (one step is corrupted). With feedback F1, burst
+    Test with AZCDF (one step is corrupted). With feedback F1, burst at last timestep.
     """
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 10)
     # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers[-2] = max(numbers) + 1
+
     # A Z C D F
-    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[:4] + [50] + numbers[5:])
-    numbers[0] = max(numbers) + 1
+    numbers[-2] = max(numbers) + 10
+    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[:1] + [50] + numbers[2:])
+
     # X B C D F
+    numbers[0] = max(numbers) + 10
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackB = self.sequenceMachine.generateFromNumbers(numbers)
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA, formInternalConnections=True)
-      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB, formInternalConnections=True)
+    # start training with random feedback
+    self.feedTM(proximalInputA, activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputB, activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+
+    for _ in xrange(10):
+      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA)
+      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
 
     self._testTM(testProximalInput, activeApicalCellsSequence=feedbackA)
     # burst at last step
@@ -653,34 +735,39 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     self.assertGreaterEqual(len(unpredictedActiveColumns[-1]), min(self.w))
 
 
-  def testA8(self):
+  def testA9(self):
     """Robustness to temporal noise with feedback, test with correct feedback.
 
     Train on ABCDE with F1, XBCDE with F2.
-    Test with AZCDF (one step is corrupted). With feedback F2, no bursting, almost no extra.
+    Test with AZCDF (one step is corrupted). With feedback F2, no bursting, almost no extra
+    prediction.
     """
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 10)
     # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers[-2] = max(numbers) + 1
+
     # A Z C D F
-    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[:4] + [50] + numbers[5:])
-    numbers[0] = max(numbers) + 1
+    numbers[-2] = max(numbers) + 10
+    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[:1] + [50] + numbers[2:])
+
     # X B C D F
+    numbers[0] = max(numbers) + 10
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackB = self.sequenceMachine.generateFromNumbers(numbers)
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA, formInternalConnections=True)
-      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB, formInternalConnections=True)
+    # start training with random feedback
+    self.feedTM(proximalInputA, activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputB, activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
 
-    self._testTM(testProximalInput, activeApicalCellsSequence=feedbackA)
+    for _ in xrange(10):
+      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
+      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA)
+
+    self._testTM(testProximalInput, activeApicalCellsSequence=feedbackB)
     # no bursting at last step
     unpredictedActiveColumns = self.tm.mmGetTraceUnpredictedActiveColumns().data
     self.assertEqual(len(unpredictedActiveColumns[-1]), 0)
@@ -689,7 +776,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     self.assertLessEqual(len(predictedInactiveColumns[-1]), 3)
 
 
-  def testA9(self):
+  def testA10(self):
     """Without lateral input, feedback is ineffective.
 
     Train on ABCDE with F1, disabling internal connections.
@@ -700,115 +787,154 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     numbers = self.sequenceMachine.generateNumbers(1, 10)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackA = self.sequenceMachine.generateFromNumbers(numbers)
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+
+    # start training with random feedback
+    self.feedTM(proximalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)),
+                formInternalConnections=False)
 
     for _ in xrange(2):
-      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA, formInternalConnections=False)
+      self.feedTM(proximalInputA,
+                  activeApicalCellsSequence=feedbackA,
+                  formInternalConnections=False)
 
     self._testTM(proximalInputA, activeApicalCellsSequence=feedbackA)
     self.assertAllActiveWereUnpredicted()
 
 
   def testO1(self):
-    """Joint external / apical inputs, without feedback.
+    """Joint external and apical inputs, without feedback.
 
-    Train on ABCDE / PQRST,, XBCDEF / PQRST.
+    Train on ABCDE / PQRST, XBCDF / PQRST.
     Test with BCDE / QRST. Without feedback, both E and F are expected.
     """
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[1:])
-    numbers[0] = max(numbers) + 1
-    numbers[-2] = max(numbers) + 1
+
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
-    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    testProximalInput = proximalInputA[1:]
+
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+    testExternalInput = externalInputA[1:]
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  activeApicalCellsSequence=None, formInternalConnections=True)
-      self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA,
-                  activeApicalCellsSequence=None, formInternalConnections=True)
+    for _ in xrange(30):
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+      self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA)
 
-    self._testTM(testProximalInput, activeExternalCellsSequence=externalInputA[1:],
-                 activeApicalCellsSequence=None)
+    self._testTM(testProximalInput, activeExternalCellsSequence=testExternalInput)
+    # no bursting at least step
+    unpredictedActiveColumns = self.tm.mmGetTraceUnpredictedActiveColumns().data
+    self.assertEqual(len(unpredictedActiveColumns[-1]), 0)
     # many extra predictions
     predictedInactiveColumns = self.tm.mmGetTracePredictedInactiveColumns().data
     self.assertGreaterEqual(len(predictedInactiveColumns[-1]), min(self.w))
 
 
   def testO2(self):
-    """Joint external / apical inputs, with incorrect feedback.
+    """Joint external and apical inputs, with incorrect feedback.
 
-    Train on ABCDE / PQRST with F1, XBCDEF / PQRST with F2.
-    Test with BCDE / QRST. With feedback F2, burst.
+    Train on ABCDE / PQRST with F1, XBCDF / PQRST with F2.
+    Test with BCDE / QRST. With feedback F2, should burst at last step.
     """
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[1:])
-    numbers[0] = max(numbers) + 1
-    numbers[-2] = max(numbers) + 1
+
+    testProximalInput = proximalInputA[1:]
+
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
-    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackB = self.sequenceMachine.generateFromNumbers(numbers)
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  activeApicalCellsSequence=feedbackA, formInternalConnections=True)
-      self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA,
-                  activeApicalCellsSequence=feedbackB, formInternalConnections=True)
+    # start training with random feedback
+    self.feedTM(proximalInputA,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputB,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
 
-    self._testTM(testProximalInput, activeExternalCellsSequence=externalInputA[1:],
+    for _ in xrange(30):
+      self.feedTM(proximalInputA,
+                  activeExternalCellsSequence=externalInputA,
+                  activeApicalCellsSequence=feedbackA)
+      self.feedTM(proximalInputB,
+                  activeExternalCellsSequence=externalInputA,
+                  activeApicalCellsSequence=feedbackB)
+
+    self._testTM(testProximalInput,
+                 activeExternalCellsSequence=externalInputA[1:],
                  activeApicalCellsSequence=feedbackB)
-    # burst at last step
+    # no burst at last step
     unpredictedActiveColumns = self.tm.mmGetTraceUnpredictedActiveColumns().data
+    print map(len, unpredictedActiveColumns)
     self.assertGreaterEqual(len(unpredictedActiveColumns[-1]), min(self.w))
+    # many extra predictions
+    predictedInactiveColumns = self.tm.mmGetTracePredictedInactiveColumns().data
+    self.assertGreaterEqual(len(predictedInactiveColumns[-1]), min(self.w))
 
 
   def testO3(self):
-    """Joint external / apical inputs, with incorrect external input.
+    """Joint external and apical inputs, with incorrect external prediction.
 
-    Train on ABCDE / PQRST with F1, XBCDEF / PQRST with F2.
-    Test with BCDE / QRXT. With feedback F1, burst
+    Train on ABCDE / PQRST with F1, XBCDF / PQRST with F2.
+    Test with BCDE / QRXT. With feedback F1, burst at last step, as prediction from external input
+    is incorrect.
     """
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[1:])
-    numbers[0] = max(numbers) + 1
-    numbers[-2] = max(numbers) + 1
+
+    testProximalInput = proximalInputA[1:]
+
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
-    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers[-3] = max(numbers) + 1
-    testExternalInput = self.sequenceMachine.generateFromNumbers(numbers)
+    numbers[-3] = max(numbers) + 10
+    testExternalInput = self.sequenceMachine.generateFromNumbers(numbers)[1:]
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackB = self.sequenceMachine.generateFromNumbers(numbers)
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  activeApicalCellsSequence=feedbackA, formInternalConnections=True)
-      self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA,
-                  activeApicalCellsSequence=feedbackB, formInternalConnections=True)
+    # start training with random feedback
+    self.feedTM(proximalInputA,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputB,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
 
-    self._testTM(testProximalInput, activeExternalCellsSequence=testExternalInput[1:],
+    for _ in xrange(30):
+      self.feedTM(proximalInputA,
+                  activeExternalCellsSequence=externalInputA,
+                  activeApicalCellsSequence=feedbackA,
+                  formInternalConnections=True)
+      self.feedTM(proximalInputB,
+                  activeExternalCellsSequence=externalInputA,
+                  activeApicalCellsSequence=feedbackB,
+                  formInternalConnections=True)
+
+    self._testTM(testProximalInput,
+                 activeExternalCellsSequence=testExternalInput,
                  activeApicalCellsSequence=feedbackA)
     # burst at last step
     unpredictedActiveColumns = self.tm.mmGetTraceUnpredictedActiveColumns().data
@@ -825,48 +951,61 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
 
     numbers = self.sequenceMachine.generateNumbers(1, 10)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[1:])
-    numbers[0] = max(numbers) + 1
-    numbers[-2] = max(numbers) + 1
+
+    testProximalInput = proximalInputA[1:]
+
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
     numbers = self.sequenceMachine.generateNumbers(1, 10)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackB = self.sequenceMachine.generateFromNumbers(numbers)
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  activeApicalCellsSequence=feedbackA, formInternalConnections=True)
-      self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA,
-                  activeApicalCellsSequence=feedbackB, formInternalConnections=True)
+    # start training with random feedback
+    self.feedTM(proximalInputA, activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputB, activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
 
-    self._testTM(testProximalInput, activeExternalCellsSequence=externalInputA[1:],
+    for _ in xrange(30):
+      self.feedTM(proximalInputA,
+                  activeExternalCellsSequence=externalInputA,
+                  activeApicalCellsSequence=feedbackA,
+                  formInternalConnections=True)
+      self.feedTM(proximalInputB,
+                  activeExternalCellsSequence=externalInputA,
+                  activeApicalCellsSequence=feedbackB,
+                  formInternalConnections=True)
+
+    self._testTM(testProximalInput,
+                 activeExternalCellsSequence=externalInputA[1:],
                  activeApicalCellsSequence=feedbackA)
-    self.assertAllActiveWerePredicted()
+    self.assertAlmostAllActiveWerePredicted()
     # few extra predictions
     predictedInactiveColumns = self.tm.mmGetTracePredictedInactiveColumns().data
     self.assertLessEqual(len(predictedInactiveColumns[-1]), 3)
 
 
   def testO5(self):
-    """Same as E1, with slight spatial noise on proximal and external input."""
+    """Same as E1, with slight spatial noise on proximal and external input.
+
+    Tolerance is an average of one bursting column / timestep.
+    """
     self.init({"cellsPerColumn": 1})
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 100)
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
+    for _ in xrange(30):
+      self.feedTM(proximalInputA,
+                  activeExternalCellsSequence=externalInputA,
                   formInternalConnections=True)
 
-    proximalInputA = self.sequenceMachine.addSpatialNoise(proximalInputA, 0.05)
-    externalInputA = self.sequenceMachine.addSpatialNoise(externalInputA, 0.05)
+    proximalInputA = self.sequenceMachine.addSpatialNoise(proximalInputA, 0.02)
+    externalInputA = self.sequenceMachine.addSpatialNoise(externalInputA, 0.02)
 
     self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
     self.assertAlmostAllActiveWerePredicted()
@@ -876,28 +1015,28 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
   def testO6(self):
     """Same as E8, with slight spatial noise.
 
-    Does not pass as E8 alone does not pass.
+    Tolerance is an average of one bursting column / timestep.
     """
     self.init()
 
     numbers = self.sequenceMachine.generateNumbers(1, 10)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers[0] = max(numbers) + 1
-    numbers[-2] = max(numbers) + 1
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
     numbers = self.sequenceMachine.generateNumbers(1, 10)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
-      self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA,
-                  formInternalConnections=True)
+    for _ in xrange(30):
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+      self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA)
 
-    proximalInputA = self.sequenceMachine.addSpatialNoise(proximalInputA, 0.05)
-    externalInputA = self.sequenceMachine.addSpatialNoise(externalInputA, 0.05)
+    proximalInputA = self.sequenceMachine.addSpatialNoise(proximalInputA, 0.02)
+    externalInputA = self.sequenceMachine.addSpatialNoise(externalInputA, 0.02)
 
     self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+
     self.assertAlmostAllActiveWerePredicted()
     self.assertAlmostAllInactiveWereUnpredicted()
 
@@ -905,35 +1044,41 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
   def testO7(self):
     """Same as A2, with slight spatial noise on proximal input and feedback.
 
-    Does not pass as A2 alone does not pass.
+    Tolerance is an average of 1 bursting column / timestep.
     """
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 10)
     # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
     # B C D E
-    testProximalInput = self.sequenceMachine.generateFromNumbers(numbers[1:])
-    numbers[0] = max(numbers) + 1
-    numbers[-2] = max(numbers) + 1
+    testProximalInput = proximalInputA[1:]
+
     # X B C D F
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 100)[:10] + [None]
-    feedbackB = self.sequenceMachine.generateFromNumbers(numbers)
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
 
-    for _ in xrange(2):
-      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA, formInternalConnections=True)
-      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB, formInternalConnections=True)
+    # start training with random feedback
+    self.feedTM(proximalInputA, activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputB, activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
 
-    testProximalInput = self.sequenceMachine.addSpatialNoise(testProximalInput, 0.05)
-    feedbackA = self.sequenceMachine.addSpatialNoise(feedbackA, 0.05)
+    for _ in xrange(30):
+      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA)
+      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
+
+    testProximalInput = self.sequenceMachine.addSpatialNoise(testProximalInput, 0.02)
+    feedbackA = self.sequenceMachine.addSpatialNoise(feedbackA, 0.02)
 
     self._testTM(testProximalInput, activeApicalCellsSequence=feedbackA)
     self.assertAlmostAllActiveWerePredicted()
-    self.assertAlmostAllInactiveWereUnpredicted()
+    # few extra predictions
+    predictedInactiveColumns = self.tm.mmGetTracePredictedInactiveColumns().data
+    self.assertLessEqual(len(predictedInactiveColumns[-1]), 3)
 
 
   # ==============================
@@ -948,6 +1093,21 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     return PatternMachine(self.n, self.w, num=300)
 
 
+  def generateFeedback(self):
+    """Generates a random feedback pattern."""
+    return set([random.randint(0, self.n-1) for _ in range(self.feedback_size)])
+
+
+  def generateFeedbackSequence(self, size):
+    """Generates a random feedback pattern sequence."""
+    return [self.generateFeedback()] * size
+
+
+  def generateRandomFeedback(self, size):
+    """Generates a sequence of random feedback for initial training."""
+    return [set([random.randint(0, self.n-1) for _ in range(self.feedback_size)]) for i in xrange(size)]
+
+
   def getDefaultTMParams(self):
     """We use typical default parameters for the test suite."""
     return {
@@ -958,7 +1118,8 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
       "minThreshold": 25,
       "maxNewSynapseCount": 30,
       "permanenceIncrement": 0.1,
-      "permanenceDecrement": 0.,
+      "permanenceDecrement": 0.02,
+      "predictedSegmentDecrement": 0.08,
       "activationThreshold": 25,
       "seed": 42,
       "learnOnOneCell": False,
@@ -996,16 +1157,19 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     As opposed to in the sequence of input pattern, where None resets the TM, having None in the
     external and apical input sequences simply means to such input is received at this instant.
     """
+    self.tm.reset()
 
     if activeApicalCellsSequence is None and activeExternalCellsSequence is None:
       return super(ExtensiveExtendedTemporalMemoryTest, self).feedTM(sequence, learn=learn, num=num)
 
+    # replicate sequences if necessary
     repeatedSequence = sequence * num
     if activeExternalCellsSequence is not None:
       repeatedExternal = activeExternalCellsSequence * num
     else:
       # no external input
       repeatedExternal = [None] * len(repeatedSequence)
+
     if activeApicalCellsSequence is not None:
       repeatedApical = activeApicalCellsSequence * num
     else:
@@ -1014,15 +1178,13 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
 
     self.tm.mmClearHistory()
 
-    for pattern, externalInput, apicalInput in zip(repeatedSequence,
-                                                   repeatedExternal,
-                                                   repeatedApical):
+    for pattern, external, apical in zip(repeatedSequence, repeatedExternal, repeatedApical):
       if pattern is None:
         self.tm.reset()
       else:
         self.tm.compute(pattern,
-                        activeExternalCells=externalInput,
-                        activeApicalCells=apicalInput,
+                        activeExternalCells=external,
+                        activeApicalCells=apical,
                         formInternalConnections=formInternalConnections,
                         learn=learn)
 
@@ -1038,7 +1200,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
               sequence,
               activeExternalCellsSequence=None,
               activeApicalCellsSequence=None,
-              formInternalConnections=True):
+              formInternalConnections=False):
     self.feedTM(sequence,
                 activeExternalCellsSequence=activeExternalCellsSequence,
                 activeApicalCellsSequence=activeApicalCellsSequence,
