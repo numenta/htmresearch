@@ -95,6 +95,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
   at test time.
   """
 
+  VERBOSITY = 1
   n = 2048
   w = range(38, 43)
   feedback_size = 400
