@@ -430,7 +430,6 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
     """learnOnOneCell with motor command should not impair behavior.
 
     Using learnOnOneCell, does the same test as E6, using the same parameters.
-    It currently needs many more iterations to pass.
     """
     self.init({"learnOnOneCell": True})
     self.assertTrue(self.tm.learnOnOneCell)
@@ -883,7 +882,6 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.T
                  activeApicalCellsSequence=feedbackB)
     # no burst at last step
     unpredictedActiveColumns = self.tm.mmGetTraceUnpredictedActiveColumns().data
-    print map(len, unpredictedActiveColumns)
     self.assertGreaterEqual(len(unpredictedActiveColumns[-1]), min(self.w))
     # many extra predictions
     predictedInactiveColumns = self.tm.mmGetTracePredictedInactiveColumns().data
