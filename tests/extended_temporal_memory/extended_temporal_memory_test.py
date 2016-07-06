@@ -36,9 +36,8 @@ capnp = None
 
 class ExtendedTemporalMemoryTest(unittest.TestCase):
 
-
   def setUp(self):
-    self.tm = ExtendedTemporalMemory()
+    self.tm = ExtendedTemporalMemory(learnOnOneCell=False)
 
 
   def testInitInvalidParams(self):
@@ -51,6 +50,14 @@ class ExtendedTemporalMemoryTest(unittest.TestCase):
     self.assertRaises(ValueError, ExtendedTemporalMemory, **kwargs)
     kwargs = {"columnDimensions": [2048], "cellsPerColumn": -10}
     self.assertRaises(ValueError, ExtendedTemporalMemory, **kwargs)
+
+
+  def testlearnOnOneCellParam(self):
+    tm = self.tm
+    self.assertFalse(tm.learnOnOneCell)
+
+    tm = ExtendedTemporalMemory(learnOnOneCell=True)
+    self.assertTrue(tm.learnOnOneCell)
 
 
   def testActivateCorrectlyPredictiveCells(self):
@@ -665,8 +672,155 @@ class ExtendedTemporalMemoryTest(unittest.TestCase):
     self.assertEqual(columnsForCells[99], set([399]))
 
 
-  @unittest.skipUnless(
-      capnp, "pycapnp is not installed, skipping serialization test.")
+  def testCalculatePredictiveCells(self):
+    tm = ExtendedTemporalMemory(
+      columnDimensions=[4],
+      cellsPerColumn=5
+    )
+    predictiveDistalCells = set([2, 3, 5, 8, 10, 12, 13, 14])
+    predictiveApicalCells = set([1, 5, 7, 11, 14, 15, 17])
+    self.assertEqual(
+      tm.calculatePredictiveCells(predictiveDistalCells, predictiveApicalCells),
+      set([2, 3, 5, 14])
+    )
+
+
+  def testCompute(self):
+    tm = ExtendedTemporalMemory(
+      columnDimensions=[4],
+      cellsPerColumn=10,
+      learnOnOneCell=False,
+      initialPermanence=0.2,
+      connectedPermanence=0.7,
+      activationThreshold=1
+    )
+
+    seg1 = tm.connections.createSegment(0)
+    seg2 = tm.connections.createSegment(20)
+    seg3 = tm.connections.createSegment(25)
+    try:
+      tm.connections.createSynapse(seg1, 15, 0.9)
+      tm.connections.createSynapse(seg2, 35, 0.9)
+      tm.connections.createSynapse(seg2, 45, 0.9)  # external cell
+      tm.connections.createSynapse(seg3, 35, 0.9)
+      tm.connections.createSynapse(seg3, 50, 0.9)  # external cell
+    except IndexError:
+      self.fail("IndexError raised unexpectedly for distal segments")
+
+    aSeg1 = tm.apicalConnections.createSegment(1)
+    aSeg2 = tm.apicalConnections.createSegment(25)
+    try:
+      tm.apicalConnections.createSynapse(aSeg1, 3, 0.9)
+      tm.apicalConnections.createSynapse(aSeg2, 1, 0.9)
+    except IndexError:
+      self.fail("IndexError raised unexpectedly for apical segments")
+
+
+    activeColumns = set([1, 3])
+    activeExternalCells = set([5, 10, 15])
+    activeApicalCells = set([1, 2, 3, 4])
+
+    tm.compute(
+      activeColumns,
+      activeExternalCells=activeExternalCells,
+      activeApicalCells=activeApicalCells,
+      learn=False
+    )
+
+    activeColumns = set([0, 2])
+    tm.compute(
+      activeColumns,
+      activeExternalCells=set(),
+      activeApicalCells=set()
+    )
+
+    self.assertEqual(tm.activeCells, set([0, 20, 25]))
+
+
+  def testLearning(self):
+    tm = ExtendedTemporalMemory(
+      columnDimensions=[4],
+      cellsPerColumn=10,
+      learnOnOneCell=False,
+      initialPermanence=0.5,
+      connectedPermanence=0.6,
+      activationThreshold=1,
+      minThreshold=1,
+      maxNewSynapseCount=2,
+      permanenceDecrement=0.05,
+      permanenceIncrement=0.2
+    )
+
+    seg1 = tm.connections.createSegment(0)
+    seg2 = tm.connections.createSegment(10)
+    seg3 = tm.connections.createSegment(20)
+    seg4 = tm.connections.createSegment(30)
+    try:
+      tm.connections.createSynapse(seg1, 10, 0.9)
+      tm.connections.createSynapse(seg2, 20, 0.9)
+      tm.connections.createSynapse(seg3, 30, 0.9)
+      tm.connections.createSynapse(seg3, 41, 0.9)
+      tm.connections.createSynapse(seg3, 25, 0.9)
+      tm.connections.createSynapse(seg4, 0, 0.9)
+    except IndexError:
+      self.fail("IndexError raised unexpectedly for distal segments")
+
+    aSeg1 = tm.apicalConnections.createSegment(0)
+    aSeg2 = tm.apicalConnections.createSegment(20)
+    try:
+      tm.apicalConnections.createSynapse(aSeg1, 42, 0.8)
+      tm.apicalConnections.createSynapse(aSeg2, 43, 0.8)
+    except IndexError:
+      self.fail("IndexError raised unexpectedly for apical segments")
+
+
+    activeColumns = set([1, 3])
+    activeExternalCells = set([1])  # will be re-indexed to 41
+    activeApicalCells = set([1, 2])  # will be re-indexed to 42, 43
+
+    tm.compute(
+      activeColumns,
+      activeExternalCells=activeExternalCells,
+      activeApicalCells=activeApicalCells,
+      learn=False
+    )
+
+    activeColumns = set([0, 2])
+    tm.compute(
+      activeColumns,
+      activeExternalCells=None,
+      activeApicalCells=None,
+      learn=True
+    )
+
+    self.assertEqual(tm.activeCells, set([0, 20]))
+
+    # distal learning
+    synapse = list(tm.connections.synapsesForSegment(seg1))[0]
+    self.assertEqual(tm.connections.dataForSynapse(synapse).permanence, 1.0)
+
+    synapse = list(tm.connections.synapsesForSegment(seg2))[0]
+    self.assertEqual(tm.connections.dataForSynapse(synapse).permanence, 0.9)
+
+    synapse = list(tm.connections.synapsesForSegment(seg3))[0]
+    self.assertEqual(tm.connections.dataForSynapse(synapse).permanence, 1.0)
+    synapse = list(tm.connections.synapsesForSegment(seg3))[1]
+    self.assertEqual(tm.connections.dataForSynapse(synapse).permanence, 1.0)
+    synapse = list(tm.connections.synapsesForSegment(seg3))[2]
+    self.assertEqual(tm.connections.dataForSynapse(synapse).permanence, 0.85)
+
+    synapse = list(tm.connections.synapsesForSegment(seg4))[0]
+    self.assertEqual(tm.connections.dataForSynapse(synapse).permanence, 0.9)
+
+    # apical learning
+    synapse = list(tm.apicalConnections.synapsesForSegment(aSeg1))[0]
+    self.assertEqual(tm.apicalConnections.dataForSynapse(synapse).permanence, 1.0)
+
+    synapse = list(tm.apicalConnections.synapsesForSegment(aSeg2))[0]
+    self.assertEqual(tm.apicalConnections.dataForSynapse(synapse).permanence, 1.0)
+
+
+  @unittest.skipUnless(capnp is not None, "No serialization available for ETM, skipping test")
   def testWriteRead(self):
     tm1 = ExtendedTemporalMemory(
       columnDimensions=[100],
