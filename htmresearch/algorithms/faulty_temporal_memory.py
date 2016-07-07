@@ -24,7 +24,7 @@ Faulty Temporal Memory implementation in Python.
 """
 import numpy
 from collections import defaultdict
-from nupic.research.temporal_memory import TemporalMemory
+from temporal_memory_phases import TemporalMemory
 
 class FaultyTemporalMemory(TemporalMemory):
   """
