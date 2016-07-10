@@ -92,9 +92,11 @@ class SimpleDataset(Dataset):
 
 
 class HighOrderDataset(Dataset):
-  def __init__(self, numPredictions=1, seed=1):
+  def __init__(self, numPredictions=1, seed=1, smallAlphabet=False):
     self.numPredictions = numPredictions
     self.seed = seed
+    self.smallAlphabet = smallAlphabet
+
     self.sequences = self.generateSequenceSet(numPredictions, False)
     self.perturbedSequences = self.generateSequenceSet(numPredictions, True)
     self.numSymbols = max(max(e) for e in self.sequences) + 1
@@ -107,28 +109,51 @@ class HighOrderDataset(Dataset):
   def generateSequenceSet(self, numPredictions, perturbed=False):
     if numPredictions == 1:
       if perturbed:
-        return [
-          [6, 8, 7, 4, 2, 3, 5],
-          [1, 8, 7, 4, 2, 3, 0],
-          [6, 3, 4, 2, 7, 8, 0],
-          [1, 3, 4, 2, 7, 8, 5],
-          [0, 9, 7, 8, 5, 3, 4, 6],
-          [2, 9, 7, 8, 5, 3, 4, 1],
-          [0, 4, 3, 5, 8, 7, 9, 1],
-          [2, 4, 3, 5, 8, 7, 9, 6]
-        ]
+        if self.smallAlphabet:
+          return [
+            [6, 3, 4, 3, 4, 3, 5],
+            [1, 3, 4, 3, 4, 3, 0],
+            [6, 4, 3, 3, 4, 3, 0],
+            [1, 4, 3, 3, 4, 3, 5],
+            [0, 4, 4, 3, 3, 4, 3, 6],
+            [2, 4, 4, 3, 3, 4, 3, 1],
+            [0, 3, 3, 4, 4, 3, 4, 1],
+            [2, 3, 3, 4, 4, 3, 4, 6]
+          ]
+        else:
+          return [
+            [6, 8, 7, 4, 2, 3, 5],
+            [1, 8, 7, 4, 2, 3, 0],
+            [6, 3, 4, 2, 7, 8, 0],
+            [1, 3, 4, 2, 7, 8, 5],
+            [0, 9, 7, 8, 5, 3, 4, 6],
+            [2, 9, 7, 8, 5, 3, 4, 1],
+            [0, 4, 3, 5, 8, 7, 9, 1],
+            [2, 4, 3, 5, 8, 7, 9, 6]
+          ]
       else:
-        return [
-          [6, 8, 7, 4, 2, 3, 0],
-          [1, 8, 7, 4, 2, 3, 5],
-          [6, 3, 4, 2, 7, 8, 5],
-          [1, 3, 4, 2, 7, 8, 0],
-          [0, 9, 7, 8, 5, 3, 4, 1],
-          [2, 9, 7, 8, 5, 3, 4, 6],
-          [0, 4, 3, 5, 8, 7, 9, 6],
-          [2, 4, 3, 5, 8, 7, 9, 1]
-        ]
-
+        if self.smallAlphabet:
+          return [
+            [6, 3, 4, 3, 4, 3, 0],
+            [1, 3, 4, 3, 4, 3, 5],
+            [6, 4, 3, 3, 4, 3, 5],
+            [1, 4, 3, 3, 4, 3, 0],
+            [0, 4, 4, 3, 3, 4, 3, 1],
+            [2, 4, 4, 3, 3, 4, 3, 6],
+            [0, 3, 3, 4, 4, 3, 4, 6],
+            [2, 3, 3, 4, 4, 3, 4, 1]
+          ]
+        else:
+          return [
+            [6, 8, 7, 4, 2, 3, 0],
+            [1, 8, 7, 4, 2, 3, 5],
+            [6, 3, 4, 2, 7, 8, 5],
+            [1, 3, 4, 2, 7, 8, 0],
+            [0, 9, 7, 8, 5, 3, 4, 1],
+            [2, 9, 7, 8, 5, 3, 4, 6],
+            [0, 4, 3, 5, 8, 7, 9, 6],
+            [2, 4, 3, 5, 8, 7, 9, 1]
+          ]
     elif numPredictions == 2:
       if perturbed:
         return [
