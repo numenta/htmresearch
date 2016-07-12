@@ -262,7 +262,6 @@ if __name__ == "__main__":
   model = runMultiplePassSPonly(df, model, nMultiplePass, nTrain)
   model._spLearningEnabled = False
 
-
   maxBucket = classifier_encoder.n - classifier_encoder.w + 1
   likelihoodsVecAll = np.zeros((maxBucket, len(df)))
 
@@ -359,7 +358,6 @@ if __name__ == "__main__":
       result.inferences["multiStepBestPredictions"][_options.stepsAhead]
     output.write([i], [inputRecord[predictedField]], [float(prediction_nstep)])
 
-
     bucketLL = \
       result.inferences['multiStepBucketLikelihoods'][_options.stepsAhead]
     likelihoodsVec = np.zeros((maxBucket,))
@@ -374,7 +372,6 @@ if __name__ == "__main__":
     negLL_track.append(negLL)
 
     likelihoodsVecAll[0:len(likelihoodsVec), i] = likelihoodsVec
-
 
     if plot and i > 500:
       # prepare data for display

@@ -141,13 +141,51 @@ if __name__ == '__main__':
     expResults[exptLabel] = {
       'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
 
+    tdnnResults = os.path.join("tdnn/results",
+                               "high-order-distributed-random-perturbed-long-window")
+    accuracyAll = []
+    exptLabel = 'TDNN-long'
+    expResultsAnaly[exptLabel] = []
+    for seed in range(8):
+      experiment = os.path.join(tdnnResults,
+                                "seed" + "{:.1f}".format(
+                                  seed) + "learning_window3000.0", "0.log")
+      (accuracy, x) = loadExperiment(experiment)
+      expResultsAnaly[exptLabel].append(analyzeResult(x, accuracy))
+      accuracy = movingAverage(accuracy, min(len(accuracy), 100))
+      accuracyAll.append(np.array(accuracy))
+
+    (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyAll)
+    x = x[:len(meanAccuracy)]
+    expResults[exptLabel] = {
+      'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
+
+    tdnnResults = os.path.join("tdnn/results",
+                               "high-order-distributed-random-perturbed-short-window")
+    accuracyAll = []
+    exptLabel = 'TDNN-short'
+    expResultsAnaly[exptLabel] = []
+    for seed in range(8):
+      experiment = os.path.join(tdnnResults,
+                                "seed" + "{:.1f}".format(
+                                  seed) + "learning_window3000.0", "0.log")
+      (accuracy, x) = loadExperiment(experiment)
+      expResultsAnaly[exptLabel].append(analyzeResult(x, accuracy))
+      accuracy = movingAverage(accuracy, min(len(accuracy), 100))
+      accuracyAll.append(np.array(accuracy))
+
+    (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyAll)
+    x = x[:len(meanAccuracy)]
+    expResults[exptLabel] = {
+      'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
+
     # HTM
     tmResults = os.path.join("tm/results",
-                             "high-order-distributed-random-perturbed")
+                             "high-order-distributed-random-perturbed-small-alphabet")
     accuracyAll = []
     exptLabel = 'HTM'
     expResultsAnaly[exptLabel] = []
-    for seed in range(20):
+    for seed in range(10):
       experiment = os.path.join(tmResults,
                                 "seed" + "{:.1f}".format(seed), "0.log")
       (accuracy, x) = loadExperiment(experiment)
@@ -244,6 +282,7 @@ if __name__ == '__main__':
   colorList = {"HTM": "r", "ELM": "b", "LSTM-1000": "y", "LSTM-9000": "g",
                "TDNN": "c", "LSTM-online100": "m"}
   modelList = ['HTM', 'ELM', 'TDNN', 'LSTM-1000',  'LSTM-9000', 'LSTM-online100']
+
   for model in modelList:
     expResult = expResults[model]
 
