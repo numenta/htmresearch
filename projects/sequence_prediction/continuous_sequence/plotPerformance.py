@@ -167,6 +167,15 @@ if __name__ == "__main__":
                                      errorType='square_deviation',
                                      label='AdaptiveFilter')
 
+  (tdnnTruth, tdnnPrediction) = loadExperimentResult('./prediction/' + dataSet + '_tdnn_pred.csv')
+  squareDeviation = computeSquareDeviation(tdnnPrediction, tdnnTruth)
+  squareDeviation[:skipTrain] = None
+  nrmseTDNN = plotAccuracy((squareDeviation, xaxisDate),
+                          tdnnTruth,
+                          window=window,
+                          errorType='square_deviation',
+                          label='TDNN')
+
 
   (elmTruth, elmPrediction) = loadExperimentResult('./prediction/' + dataSet + '_elm_pred.csv')
   squareDeviation = computeSquareDeviation(elmPrediction, elmTruth)
@@ -241,8 +250,8 @@ if __name__ == "__main__":
     window, xaxis=xaxisDate, label='continuous LSTM-6000')
 
   (negLLLSTMOnline, expResultLSTMOnlinenegLL) = plotLSTMresult(
-    'results/nyc_taxi_experiment_continuous_likelihood_online/learning_window100.0/',
-    window, xaxis=xaxisDate, label='continuous LSTM-6000')
+    'results/nyc_taxi_experiment_continuous_likelihood_online/learning_window200.0/',
+    window, xaxis=xaxisDate, label='continuous LSTM-online')
 
   dataSet = 'nyc_taxi'
   tmPredictionLL = np.load('./result/'+dataSet+'TMprediction.npy')
@@ -269,6 +278,7 @@ if __name__ == "__main__":
   altMAPEShift = computeAltMAPE(tmTruth, shiftPrediction, startFrom)
   altMAPEAdaptiveFilter = computeAltMAPE(tmTruth, adaptiveFilterPrediction, startFrom)
   altMAPEELM = computeAltMAPE(elmTruth, elmPrediction, startFrom)
+  altMAPETDNN = computeAltMAPE(tdnnTruth, tdnnPrediction, startFrom)
 
   truth = tmTruth
   nrmseShiftMean = np.sqrt(np.nanmean(nrmseShift)) / np.nanstd(truth)
@@ -277,6 +287,7 @@ if __name__ == "__main__":
   nrmseKNNmean = np.sqrt(np.nanmean(nrmseKNN)) / np.nanstd(truth)
   nrmseTMmean = np.sqrt(np.nanmean(nrmseTM)) / np.nanstd(truth)
   nrmseELMmean = np.sqrt(np.nanmean(nrmseELM)) / np.nanstd(truth)
+  nrmseTDNNmean = np.sqrt(np.nanmean(nrmseTDNN)) / np.nanstd(truth)
   nrmseLSTM1000mean = np.sqrt(np.nanmean(nrmseLSTM1000)) / np.nanstd(truth)
   nrmseLSTM3000mean = np.sqrt(np.nanmean(nrmseLSTM3000)) / np.nanstd(truth)
   nrmseLSTM6000mean = np.sqrt(np.nanmean(nrmseLSTM6000)) / np.nanstd(truth)
@@ -284,11 +295,12 @@ if __name__ == "__main__":
 
 
   fig, ax = plt.subplots(nrows=1, ncols=3)
-  inds = np.arange(8)
+  inds = np.arange(9)
   ax1 = ax[0]
   width = 0.5
   ax1.bar(inds, [nrmseARIMAmean,
                  nrmseELMmean,
+                 nrmseTDNNmean,
                  nrmseESNmean,
                  nrmseLSTMonlinemean,
                  nrmseLSTM1000mean,
@@ -298,7 +310,7 @@ if __name__ == "__main__":
   ax1.set_xticks(inds+width/2)
   ax1.set_ylabel('NRMSE')
   ax1.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
-  ax1.set_xticklabels( ('ARIMA', 'ELM',  'ESN', 'LSTM-online',
+  ax1.set_xticklabels( ('ARIMA', 'ELM',  'TDNN', 'ESN', 'LSTM-online',
                         'LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM') )
   for tick in ax1.xaxis.get_major_ticks():
     tick.label.set_rotation('vertical')
@@ -306,6 +318,7 @@ if __name__ == "__main__":
   ax3 = ax[1]
   ax3.bar(inds, [altMAPEARIMA,
                  altMAPEELM,
+                 altMAPETDNN,
                  altMAPEESN,
                  altMAPELSTMonline,
                  altMAPELSTM1000,
@@ -315,7 +328,7 @@ if __name__ == "__main__":
   ax3.set_xticks(inds+width/2)
   ax3.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
   ax3.set_ylabel('MAPE')
-  ax3.set_xticklabels( ('ARIMA', 'ELM', 'ESN', 'LSTM-online',
+  ax3.set_xticklabels( ('ARIMA', 'ELM', 'TDNN', 'ESN', 'LSTM-online',
                         'LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM') )
   for tick in ax3.xaxis.get_major_ticks():
     tick.label.set_rotation('vertical')
@@ -326,7 +339,7 @@ if __name__ == "__main__":
                  np.nanmean(negLLLSTM1000),
                  np.nanmean(negLLLSTM3000),
                  np.nanmean(negLLLSTM6000),
-                 np.nanmean(negLLTM), 0, 0, 0], width=width, color='b')
+                 np.nanmean(negLLTM), 0, 0, 0, 0], width=width, color='b')
   ax2.set_xticks(inds+width/2)
   ax2.set_xlim([inds[0]-width*.6, inds[-1]+width*1.4])
   ax2.set_ylim([0, 2.0])

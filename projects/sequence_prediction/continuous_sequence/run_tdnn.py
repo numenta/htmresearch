@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013-2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -25,7 +25,6 @@ from optparse import OptionParser
 from matplotlib import pyplot as plt
 import numpy as np
 
-from hpelm import ELM
 
 from swarm_runner import SwarmRunner
 from scipy import random
@@ -33,20 +32,21 @@ from scipy import random
 import pandas as pd
 from errorMetrics import *
 
-from htmresearch.algorithms.online_extreme_learning_machine import OSELM
+from pybrain.tools.shortcuts import buildNetwork
+from pybrain.supervised import BackpropTrainer
+from pybrain.datasets  import SupervisedDataSet
 
 plt.ion()
 
-def initializeELMnet(nDimInput, nDimOutput, numNeurons=10):
-  # Build ELM network with nDim input units,
-  # numNeurons hidden units (LSTM cells) and nDimOutput cells
+def initializeTDNNnet(nDimInput, nDimOutput, numNeurons=10):
+  # Build TDNN network with nDim input units,
+  # numNeurons hidden units  and nDimOutput cells
 
-  # net = ELM(nDimInput, nDimOutput)
-  # net.add_neurons(numNeurons, "sigm")
-
-  net = OSELM(nDimInput, nDimOutput,
-            numHiddenNeurons=numNeurons, activationFunction='sig')
-
+  net = buildNetwork(nDimInput,
+                     numNeurons,
+                     nDimOutput,
+                     bias=True,
+                     outputbias=True)
   return net
 
 
@@ -170,8 +170,7 @@ if __name__ == "__main__":
   (_options, _args) = _getArgs()
   dataSet = _options.dataSet
 
-
-  print "run ELM on ", dataSet
+  print "run TDNN on ", dataSet
   SWARM_CONFIG = SwarmRunner.importSwarmDescription(dataSet)
   predictedField = SWARM_CONFIG['inferenceArgs']['predictedField']
   nTrain = SWARM_CONFIG["streamDef"]['streams'][0]['last_record']
@@ -180,7 +179,7 @@ if __name__ == "__main__":
   useTimeOfDay = True
   useDayOfWeek = True
 
-  nTrain = 500
+  nTrain = 3000
   numLags = 100
 
   # prepare dataset as pyBrain sequential dataset
@@ -203,17 +202,21 @@ if __name__ == "__main__":
                                  useTimeOfDay, useDayOfWeek)
 
   random.seed(6)
-  net = initializeELMnet(nDimInput=X.shape[1],
-                         nDimOutput=1, numNeurons=50)
-
-  net.initializePhase(X[:nTrain, :], T[:nTrain, :])
+  net = initializeTDNNnet(nDimInput=X.shape[1],
+                         nDimOutput=1, numNeurons=200)
 
   predictedInput = np.zeros((len(sequence),))
   targetInput = np.zeros((len(sequence),))
   trueData = np.zeros((len(sequence),))
   for i in xrange(nTrain, len(sequence)-predictionStep):
-    net.train(X[[i], :], T[[i], :])
-    Y = net.predict(X[[i], :])
+    Y = net.activate(X[i])
+
+    if i % 336 == 0 and i > numLags:
+      ds = SupervisedDataSet(X.shape[1], 1)
+      for i in xrange(i-nTrain, i):
+        ds.addSample(X[i], T[i])
+      trainer = BackpropTrainer(net, dataset=ds, verbose=1)
+      trainer.trainEpochs(30)
 
     predictedInput[i] = Y[-1]
     targetInput[i] = sequence['data'][i+predictionStep]
@@ -225,7 +228,7 @@ if __name__ == "__main__":
   targetInput = (targetInput * stdSeq) + meanSeq
   trueData = (trueData * stdSeq) + meanSeq
 
-  saveResultToFile(dataSet, predictedInput, 'elm')
+  saveResultToFile(dataSet, predictedInput, 'tdnn')
 
   plt.figure()
   plt.plot(targetInput)
