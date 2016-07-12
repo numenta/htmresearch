@@ -39,6 +39,10 @@ if __name__ == '__main__':
 
   experiments = []
 
+  experiments.append(os.path.join("tdnn/results",
+                                  "high-order-distributed-random-perturbed-long-window/seed0.0learning_window3000.0",
+                                  "0.log"))
+
   experiments.append(os.path.join("tm/results",
                                   "high-order-distributed-random-perturbed/seed0.0",
                                   "0.log"))
@@ -48,21 +52,14 @@ if __name__ == '__main__':
                                   "seed0.0learning_window3000.0",
                                   "0.log"))
 
-  experiments.append(os.path.join("tdnn/results",
-                                  "high-order-distributed-random-perturbed/seed0.0learning_window3000.0",
-                                  "0.log"))
-  # for window in [1000.0, 9000.0]:
-  #   experiments.append(os.path.join("lstm/results",
-  #                               "high-order-distributed-random-perturbed",
-  #                               "seed0.0learning_window{:6.1f}".format(window),
-  #                               "0.log"))
-  #
-  #
-  #
-  # experiments.append(os.path.join("elm/results",
-  #                                 "high-order-distributed-random-perturbed",
-  #                                 "seed0.0",
+  # experiments.append(os.path.join("tdnn/results",
+  #                                 "high-order-distributed-random-perturbed/seed0.0learning_window3000.0",
   #                                 "0.log"))
+
+  # experiments.append(os.path.join("tdnn/results",
+  #                                 "high-order-distributed-random-perturbed-short-window/seed0.0learning_window3000.0",
+  #                                 "0.log"))
+
 
   for experiment in experiments:
     data = readExperiment(experiment)
