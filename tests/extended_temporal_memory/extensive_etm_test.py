@@ -47,7 +47,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
       maxNewSynapseCount: 30
       permanenceIncrement: 0.1
       permanenceDecrement: 0.02
-      predictedSegmentDecrement: 0.08
+      predictedSegmentDecrement: 0.01
       activationThreshold: 25
       seed: 42
       learnOnOneCell: False
@@ -79,9 +79,9 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
   ============================================================================
 
   These tests (labeled "A"0, simulate sequences from proximal input as well as
-  sequences of feedback from higher regions. It tests some basic properties
-  that feedback should achieve in a real setting (sequence disambiguation,
-  robustness to temporal noise).
+  feedback from higher regions connected to apical dendrites. It tests some
+  basic properties that feedback should achieve in a real setting (sequence
+  disambiguation, robustness to temporal noise).
 
   A1-A4: Basic disambiguation through feedback from higher regions.
 
@@ -366,7 +366,12 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
 
 
   def testE11(self):
-    """Repeated motor command copy as external input."""
+    """Repeated motor command copy as external input.
+
+    This tests is straightforward but simulates a realistic setting where the
+    external input is the copy of motor command which is a repeated sequence
+    of the form XYXYXYXY.
+    """
     self.init()
 
     numbers = self.sequenceMachine.generateNumbers(1, 100)
@@ -472,7 +477,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
   def testA1(self):
     """Basic feedback disambiguation, test without feedback.
 
-    Train on ABCDE with F1, XBCDE with F2.
+    Train on ABCDE with F1, XBCDF with F2.
     Test with BCDE. Without feedback, two patterns are predicted.
     """
     self.init()
@@ -504,7 +509,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
   def testA2(self):
     """Basic feedback disambiguation, test with correct feedback.
 
-    Train on ABCDE with F1, XBCDE with F2.
+    Train on ABCDE with F1, XBCDF with F2.
     Test with BCDF. With correct feedback, one pattern is expected.
     Without starting the training with random feedback, erroneous apical
     connections are formed when column burst and the test is expected to fail.
@@ -543,7 +548,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
   def testA3(self):
     """Basic feedback disambiguation, test with correct feedback.
 
-    Train on ABCDE with F1, XBCDE with F2.
+    Train on ABCDE with F1, XBCDF with F2.
     Test with BCDF. With feedback, one pattern is expected.
 
     Using a short sequence, as it needs many iterations to learn the shared
@@ -586,7 +591,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
   def testA4(self):
     """Basic feedback disambiguation, test with incorrect feedback.
 
-    Train on ABCDE with F1, XBCDE with F2.
+    Train on ABCDE with F1, XBCDF with F2.
     Test with BCDE. With feedback, one pattern is expected.
     """
     self.init()
@@ -625,7 +630,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
   def testA5(self):
     """Robustness to temporal noise with feedback, test without feedback.
 
-    Train on ABCDE with F1, XBCDE with F2.
+    Train on ABCDE with F1, XBCDF with F2.
     Test with ACDF (one step is missing). Without feedback, both E and F are
     predicted.
     """
@@ -661,7 +666,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     """Robustness to temporal noise with feedback, test with incorrect
     feedback.
 
-    Train on ABCDE with F1, XBCDE with F2.
+    Train on ABCDE with F1, XBCDF with F2.
     Test with ACDF (one step is missing). With feedback F1, burst at last
     timestep.
     """
@@ -702,7 +707,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
   def testA7(self):
     """Robustness to temporal noise with feedback, test without feedback.
 
-    Train on ABCDE with F1, XBCDE with F2.
+    Train on ABCDE with F1, XBCDF with F2.
     Test with AZCDF (one step is corrupted). Without feedback, both E and F
     are predicted.
     """
@@ -737,7 +742,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
   def testA8(self):
     """Robustness to temporal noise with feedback, test with incorrect feedback.
 
-    Train on ABCDE with F1, XBCDE with F2.
+    Train on ABCDE with F1, XBCDF with F2.
     Test with AZCDF (one step is corrupted). With feedback F1, burst at last
     timestep.
     """
@@ -778,8 +783,8 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
   def testA9(self):
     """Robustness to temporal noise with feedback, test with correct feedback.
 
-    Train on ABCDE with F1, XBCDE with F2.
-    Test with AZCDF (one step is corrupted). With feedback F2, no bursting,
+    Train on ABCDE with F1, XBCDF with F2.
+    Test with XZCDF (one step is corrupted). With feedback F2, no bursting,
     almost no extra prediction.
     """
     self.init()
@@ -788,13 +793,13 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     numbers = self.sequenceMachine.generateNumbers(1, 5)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
-    # A Z C D F
+    # X Z C D F
+    numbers[0] = max(numbers) + 10
     numbers[-2] = max(numbers) + 10
     noisyNumbers = numbers[:1] + [50] + numbers[2:]
     testProximalInput = self.sequenceMachine.generateFromNumbers(noisyNumbers)
 
     # X B C D F
-    numbers[0] = max(numbers) + 10
     proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
 
     feedbackA = self.generateFeedbackSequence(len(numbers))
@@ -807,8 +812,8 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
                 activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
 
     for _ in xrange(10):
-      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
       self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA)
+      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
 
     self._testTM(testProximalInput, activeApicalCellsSequence=feedbackB)
     # no bursting at last step

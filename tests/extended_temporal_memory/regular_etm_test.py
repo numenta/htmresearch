@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2014, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -20,7 +20,6 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import numpy
 import unittest
 from abc import ABCMeta
 
@@ -56,7 +55,7 @@ class RegularExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
       maxNewSynapseCount: 30
       permanenceIncrement: 0.1
       permanenceDecrement: 0.02
-      predictedSegmentDecrement: 0.08
+      predictedSegmentDecrement: 0.01
       activationThreshold: 25
       seed: 42
       learnOnOneCell: False
