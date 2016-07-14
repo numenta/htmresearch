@@ -204,8 +204,8 @@ class ExtendedTemporalMemoryTest(unittest.TestCase):
                                          tm.apicalConnections)
 
     self.assertEqual(activeCells, set([0, 1, 2, 3, 4, 5, 6, 7]))
-    randomWinner = 4
-    self.assertEqual(winnerCells, set([0, randomWinner]))  # 4 is randomly chosen cell
+    randomWinner = 4  # 4 should be randomly chosen cell
+    self.assertEqual(winnerCells, set([0, randomWinner]))
     self.assertEqual(learningSegments, set([0, 4]))  # 4 is new segment created
 
     # Check that new segment was added to winner cell (6) in column 1
@@ -374,7 +374,7 @@ class ExtendedTemporalMemoryTest(unittest.TestCase):
                                          tm.apicalConnections),
                      (0, 0, None))
 
-    self.assertEqual(tm.bestMatchingCell(tm.cellsForColumn(3),  # column containing cell 108
+    self.assertEqual(tm.bestMatchingCell(tm.cellsForColumn(3),
                                          activeCells,
                                          activeApicalCells,
                                          connections,
@@ -814,13 +814,15 @@ class ExtendedTemporalMemoryTest(unittest.TestCase):
 
     # apical learning
     synapse = list(tm.apicalConnections.synapsesForSegment(aSeg1))[0]
-    self.assertEqual(tm.apicalConnections.dataForSynapse(synapse).permanence, 1.0)
+    self.assertEqual(tm.apicalConnections.dataForSynapse(synapse).permanence,
+                     1.0)
 
     synapse = list(tm.apicalConnections.synapsesForSegment(aSeg2))[0]
-    self.assertEqual(tm.apicalConnections.dataForSynapse(synapse).permanence, 1.0)
+    self.assertEqual(tm.apicalConnections.dataForSynapse(synapse).permanence,
+                     1.0)
 
 
-  @unittest.skipUnless(capnp is not None, "No serialization available for ETM, skipping test")
+  @unittest.skipUnless(capnp is not None, "No serialization available for ETM")
   def testWriteRead(self):
     tm1 = ExtendedTemporalMemory(
       columnDimensions=[100],

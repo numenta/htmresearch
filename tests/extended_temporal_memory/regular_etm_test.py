@@ -30,21 +30,23 @@ from nupic.support.unittesthelpers.abstract_temporal_memory_test import Abstract
 from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
 
 """
-Runs Extended Temporal Memory (ETM) against regular temporal memory tests, with the difference
-that typical default parameters are used.
+Runs Extended Temporal Memory (ETM) against regular temporal memory tests,
+with the difference that typical default parameters are used.
 """
 
-class RegularExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.TestCase):
+class RegularExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
+                                        unittest.TestCase):
   """
-  ==============================================================================
+  ============================================================================
                   Basic First Order Sequences
-  ==============================================================================
+  ============================================================================
 
-  These tests ensure the most basic (first order) sequence learning mechanism is
-  working.
+  These tests ensure the most basic (first order) sequence learning mechanism
+  is working.
 
   The parameters used in those tests are the typical default parameters for
-  temporal memory, unless stated otherwise in the experiment (when self.init() is called).
+  temporal memory, unless stated otherwise in the experiment (when self.init()
+  is called).
 
       columnDimensions: (2048,)
       cellsPerColumn: 32
@@ -74,8 +76,8 @@ class RegularExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.Tes
 
   Testing: Run inference through the same set of sequences, with a reset before
   each sequence. For each sequence the system should accurately predict the
-  pattern at the next time step up to and including the N-1'st pattern. The number
-  of predicted inactive cells at each time step should be reasonably low.
+  pattern at the next time step up to and including the N-1'st pattern. The
+  number of predicted inactive cells at each time step should be reasonably low.
 
   We can also calculate the number of synapses that should be
   learned. We raise an error if too many or too few were learned.
@@ -95,36 +97,37 @@ class RegularExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.Tes
   B6) Like B4 but with cellsPerColumn = 32. First order sequences should still
   work just fine.
 
-  B7) Like B1 but with slower learning. Set the following parameters differently:
+  B7) Like B1 but with slower learning. Set the following parameters
+  differently:
 
       initialPermanence = 0.2
       connectedPermanence = 0.7
       permanenceIncrement = 0.2
 
   Now we train the TP with the B1 sequence 4 times (P=4). This will increment
-  the permanences to be above 0.8 and at that point the inference will be correct.
-  This test will ensure the basic match function and segment activation rules are
-  working correctly.
+  the permanences to be above 0.8 and at that point the inference will be
+  correct. This test will ensure the basic match function and segment
+  activation rules are working correctly.
 
   B8) Like B7 but with 32 cells per column. Should still work.
 
-  B9) Like B7 but present the sequence less than 4 times: the inference should be
-  incorrect.
+  B9) Like B7 but present the sequence less than 4 times: the inference should
+  be incorrect.
 
-  B10) Like B2, except that cells per column = 32. Should still add zero additional
-  synapses. [TODO]
+  B10) Like B2, except that cells per column = 32. Should still add zero
+  additional synapses. [TODO]
 
   B11) Like B5, but with each pattern corrupted by a small amount of spatial
   noise (X = 0.05).
 
   B12) Test accessors.
 
-  ===============================================================================
+  ============================================================================
                   High Order Sequences
-  ===============================================================================
+  ============================================================================
 
-  These tests ensure that high order sequences can be learned in a multiple cells
-  per column instantiation.
+  These tests ensure that high order sequences can be learned in a multiple
+  cells per column instantiation.
 
   Parameters: Same as Basic First Order Tests above, but with varying cells per
   column.
@@ -158,15 +161,15 @@ class RegularExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.Tes
 
   H3) Like H2, except the shared subsequence is in the beginning (e.g.
   "ABCDEF" and "ABCGHIJ"). At the point where the shared subsequence ends, all
-  possible next patterns should be predicted. As soon as you see the first unique
-  pattern, the predictions should collapse to be a perfect prediction.
+  possible next patterns should be predicted. As soon as you see the first
+  unique pattern, the predictions should collapse to be a perfect prediction.
 
   H4) Shared patterns. Similar to H2 except that patterns are shared between
   sequences.  All sequences are different shufflings of the same set of N
   patterns (there is no shared subsequence).
 
-  H5) Combination of H4) and H2). Shared patterns in different sequences, with a
-  shared subsequence.
+  H5) Combination of H4) and H2). Shared patterns in different sequences, with
+  a shared subsequence.
 
   H6) Stress test: every other pattern is shared. [TODO]
 
@@ -174,7 +177,8 @@ class RegularExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.Tes
 
   H8) Hub capacity. How many patterns can use that hub? [TODO]
 
-  H9) Sensitivity to small amounts of spatial noise during inference (X = 0.05).
+  H9) Sensitivity to small amounts of spatial noise during inference
+  (X = 0.05).
   Parameters the same as B11, and sequences like H2.
 
   H10) Higher order patterns with alternating elements.
@@ -308,10 +312,10 @@ class RegularExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.Tes
       connectedPermanence = 0.7
       permanenceIncrement = 0.2
 
-    Now we train the TM with the B1 sequence 4 times (P=4). This will increment
-    the permanences to be above 0.8 and at that point the inference will be correct.
-    This test will ensure the basic match function and segment activation rules are
-    working correctly.
+    Now we train the TM with the B1 sequence 4 times (P=4). This will
+    increment the permanences to be above 0.8 and at that point the inference
+    will be correct. This test will ensure the basic match function and
+    segment activation rules are working correctly.
     """
     self.init({"initialPermanence": 0.2,
                "connectedPermanence": 0.7,
@@ -365,7 +369,8 @@ class RegularExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.Tes
 
 
   def testB11(self):
-    """Like B5, but with each pattern corrupted by a small amount of spatial noise (X = 0.02)."""
+    """Like B5, but with each pattern corrupted by a small amount of spatial
+    noise (X = 0.02)."""
     self.init()
 
     numbers = self.sequenceMachine.generateNumbers(1, 100)
@@ -544,10 +549,12 @@ class RegularExtendedTemporalMemoryTest(AbstractTemporalMemoryTest, unittest.Tes
 
 
   def testH10(self):
-    """Orphan Decay mechanism reduce predicted inactive cells (extra predictions).
+    """Orphan Decay mechanism reduce predicted inactive cells (extra
+    predictions).
 
-    Test feeds in noisy sequences (X = 0.05) to TM with and without orphan decay.
-    TM with orphan decay should has many fewer predicted inactive columns.
+    Test feeds in noisy sequences (X = 0.05) to TM with and without orphan
+    decay. TM with orphan decay should has many fewer predicted inactive
+    columns.
     Parameters are the same as in B11, and sequences like in H9.
     """
     # train TM on noisy sequences with orphan decay turned off
