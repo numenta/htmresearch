@@ -137,7 +137,8 @@ class Suite(PyExperimentSuite):
       self.dataset = ReberDataset(maxLength=params['max_length'])
     elif params['dataset'] == 'high-order':
       self.dataset = HighOrderDataset(numPredictions=params['num_predictions'],
-                                      seed=params['seed'])
+                                      seed=params['seed'],
+                                      smallAlphabet=params['use_small_alphabet'])
       print "Sequence dataset: "
       print " Symbol Number {}".format(self.dataset.numSymbols)
       for seq in self.dataset.sequences:
