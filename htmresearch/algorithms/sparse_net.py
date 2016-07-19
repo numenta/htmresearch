@@ -26,6 +26,8 @@ modified so that it uses a Locally Competitive Algorithm (LCA) to compute the
 coefficients, rather than a vanilla gradient descent, as proposed by Rozell
 et al. (2008).
 
+Images have to be flattened, else the specific ImageSparseNet has to be used.
+
 Example use:
   # create and train network
   net = SparseNet(inputDim=64,

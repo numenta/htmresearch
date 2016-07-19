@@ -20,11 +20,9 @@
 # ----------------------------------------------------------------------
 
 """
-This file also proposes a sub-class of SparseNet specific for natural images,
+This file proposes a sub-class of SparseNet specific for natural images,
 It uses random sub-parts of images of arbitrary size at
 training, but must be fed with images of correct dimensions when encoding.
-The regular SparseNet can also be used with images, but must be fed with
-flattened image, both at training and when encoding.
 
 Example use:
   # create and train network
