@@ -69,16 +69,18 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
 
   E11: Repeated motor command copy.
 
-  E12-E13: Testing the "learnOnOneCell" feature, fixing the winning cell for
+  E12-E15: Testing the "learnOnOneCell" feature, fixing the winning cell for
   each columns between subsequent resets.
 
-  E14: "learnOnOneCell" with motor command should not impair behavior.
+  E16-E17: "learnOnOneCell" with motor command should not impair behavior.
+
+  E18-E19: Ambiguous sequences should predict union of representations.
 
   ============================================================================
                         Learning with apical input
   ============================================================================
 
-  These tests (labeled "A"0, simulate sequences from proximal input as well as
+  These tests (labeled "A", simulate sequences from proximal input as well as
   feedback from higher regions connected to apical dendrites. It tests some
   basic properties that feedback should achieve in a real setting (sequence
   disambiguation, robustness to temporal noise).
@@ -89,6 +91,8 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
 
   A10: Ineffectiveness of feedback without correct proximal input.
 
+  A11-A13: Ambiguous feedback should lead to ambiguous predictions.
+
   ============================================================================
                              Other tests
   ============================================================================
@@ -97,6 +101,8 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
 
   O5-O7: Tests drawn from the previous categories, adding slight spatial noise
   to input patterns at test time.
+
+  O8-O10: Ambiguous feedback should lead to ambiguous predictions.
   """
 
   VERBOSITY = 1
@@ -451,18 +457,97 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     # check that the two representations are the same
     self.assertEqual(predictedActiveA, predictedActiveB)
 
-
   def testE14(self):
-    """learnOnOneCell with motor command should not impair behavior.
+    """Simple learnOnOneCell test.
 
-    Using learnOnOneCell, does the same test as E6, using the same parameters.
+    Train on ABCADC / XYZFGH. Without learnOnOneCell, C should have different
+    representations in ABC and ADC.
+    """
+    self.init({"learnOnOneCell": False})
+    self.assertFalse(self.tm.learnOnOneCell)
+
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    numbers[0] = 50
+    numbers[-2] = 75
+    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    numbers[0] = 50
+    numbers[-2] = 75
+    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    externalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
+    trainInput = proximalInputA[:-1] + proximalInputB
+    externalTrainInput = externalInputA[:-1] + externalInputB
+
+    for _ in xrange(2):
+      self.feedTM(trainInput, activeExternalCellsSequence=externalTrainInput)
+
+    self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+    predictedActiveA = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    self._testTM(proximalInputB, activeExternalCellsSequence=externalInputB)
+    predictedActiveB = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    # check that the two representations are the same
+    self.assertNotEquals(predictedActiveA, predictedActiveB)
+
+
+  def testE15(self):
+    """Simple learnOnOneCell test.
+
+    Train on ABCADC / XYZFGH, check that C has the same representation in
+    ADC and ABC.
     """
     self.init({"learnOnOneCell": True})
     self.assertTrue(self.tm.learnOnOneCell)
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    numbers[0] = 50
+    numbers[-2] = 75
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
-    numbers = self.sequenceMachine.generateNumbers(1, 100)
+
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    numbers[0] = 50
+    numbers[-2] = 75
+    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    externalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
+    trainInput = proximalInputA[:-1] + proximalInputB
+    externalTrainInput = externalInputA[:-1] + externalInputB
+
+    for _ in xrange(2):
+      self.feedTM(trainInput, activeExternalCellsSequence=externalTrainInput)
+
+    self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+    predictedActiveA = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    self._testTM(proximalInputB, activeExternalCellsSequence=externalInputB)
+    predictedActiveB = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    # check that the two representations are the same
+    self.assertEqual(predictedActiveA, predictedActiveB)
+
+
+  def testE16(self):
+    """learnOnOneCell with motor command should not impair behavior.
+
+    Using learnOnOneCell, does the same test as E6, using the same parameters.
+    This test is slightly less stringent as shared columns between patterns
+    can cause some bursting.
+    """
+    self.init({"learnOnOneCell": True})
+    self.assertTrue(self.tm.learnOnOneCell)
+
+    numbers = self.sequenceMachine.generateNumbers(1, 50)
+    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+    numbers = self.sequenceMachine.generateNumbers(1, 50)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
     for _ in xrange(2):
@@ -470,8 +555,107 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
 
     self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
 
+    self.assertAlmostAllActiveWerePredicted()
+    self.assertAlmostAllInactiveWereUnpredicted()
+
+
+  def testE17(self):
+    """learnOnOneCell with motor command should not impair behavior.
+
+    Same as E16, we need (#cellsPerColumn + 1) passes to learn all collisions
+    between patterns.
+    """
+    self.init({"learnOnOneCell": True, "cellsPerColumn": 8})
+    self.assertTrue(self.tm.learnOnOneCell)
+
+    numbers = self.sequenceMachine.generateNumbers(1, 50)
+    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+    numbers = self.sequenceMachine.generateNumbers(1, 50)
+    externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    for _ in xrange(self.tm.cellsPerColumn + 1):
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+
+    self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+
     self.assertAllActiveWerePredicted()
     self.assertAllInactiveWereUnpredicted()
+
+
+  def testE18(self):
+    """Ambiguous sequences should predict union of representations.
+
+    Train on ABCDE / PQRST and XB'C'D'F / PQRST.
+    Test with BCDE. prediction at third step should be the union of C and C'.
+    """
+    self.init()
+
+    # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
+    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # X B C D F
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # P Q R S T
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
+    externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    for _ in xrange(10):
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+      self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA)
+
+    self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+    predictedC = self.tm.mmGetTracePredictedActiveCells().data[2]
+    self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA)
+    predictedCPrime = self.tm.mmGetTracePredictedActiveCells().data[2]
+
+    self._testTM(proximalInputA[1:],
+                 activeExternalCellsSequence=externalInputA[1:])
+    # looking at predictive cells from previous step
+    predictedUnion = self.tm.mmGetTracePredictiveCells().data[0]
+    self.assertNotEquals(predictedC, predictedCPrime)
+    self.assertEqual(predictedUnion, predictedC | predictedCPrime)
+
+
+  def testE19(self):
+    """Ambiguous sequences should predict union of representations.
+
+    Train on ABCDE / PQRST and XB'C'D'F / PQRST.
+    Test with BCDE. prediction at last step should be the union of E and F.
+    """
+    self.init()
+
+    # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
+    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # X B C D F
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # P Q R S T
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
+    externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    for _ in xrange(10):
+      self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+      self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA)
+
+    self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
+    predictedE = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA)
+    predictedF = self.tm.mmGetTracePredictedActiveCells().data[-1]
+
+    self._testTM(proximalInputA[1:],
+                 activeExternalCellsSequence=externalInputA[1:])
+    # looking at predictive cells from previous step
+    predictedUnion = self.tm.mmGetTracePredictiveCells().data[-2]
+    self.assertNotEquals(predictedE, predictedF)
+    self.assertEqual(predictedUnion, predictedE | predictedF)
 
 
   def testA1(self):
@@ -851,6 +1035,193 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     self.assertAllActiveWereUnpredicted()
 
 
+  def testA11(self):
+    """Ambiguous feedback leads to ambiguous predictions.
+
+    Train on ABCDE with F1, XBCDF with F2, ZBCDG with F3.
+    Test with BCDE. With feedbacks F1 | F2, E and F are predicted at last step.
+
+    Using a short sequence, as it needs many iterations to learn the shared
+    subsequence.
+    """
+    self.init()
+
+    # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
+    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # X B C D F
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # Z B C D G
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+    proximalInputC = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # B C D F
+    testProximalInput = proximalInputA[1:]
+
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
+    feedbackC = self.generateFeedbackSequence(len(numbers))
+    unionFeedback = [feedbackA[0] | feedbackB[0]] * len(numbers)
+
+    # start training with random feedback
+    self.feedTM(proximalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputB,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputC,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+
+    for _ in xrange(10):
+      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA)
+      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
+      self.feedTM(proximalInputC, activeApicalCellsSequence=feedbackC)
+
+    # retrieving patterns
+    self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA)
+    predictedE = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
+    predictedF = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    self.feedTM(proximalInputC, activeApicalCellsSequence=feedbackC)
+
+    self._testTM(testProximalInput, activeApicalCellsSequence=unionFeedback)
+    predictedUnion = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    self.assertEqual(predictedUnion, predictedE | predictedF)
+
+
+  def testA12(self):
+    """Ambiguous feedback leads to ambiguous predictions.
+
+    Train on ABCDE with F1, XB'C'D'F with F2, ZB''C''D''G with F3.
+    Test with BCDE. With feedbacks F1 | F2, C and C' are predicted at 3rd step.
+
+    Using a short sequence, as it needs many iterations to learn the shared
+    subsequence.
+    """
+    self.init()
+
+    # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
+    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # X B C D F
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # Z B C D G
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+    proximalInputC = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # B C D E
+    testProximalInput = proximalInputA[1:]
+
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
+    feedbackC = self.generateFeedbackSequence(len(numbers))
+    unionFeedback = [feedbackA[0] | feedbackB[0]] * len(numbers)
+
+    # start training with random feedback
+    self.feedTM(proximalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputB,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputC,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+
+    for _ in xrange(20):
+      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA)
+      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
+      self.feedTM(proximalInputC, activeApicalCellsSequence=feedbackC)
+
+    # retrieving patterns
+    self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA)
+    predictedC = self.tm.mmGetTracePredictedActiveCells().data[2]
+    self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
+    predictedCPrime = self.tm.mmGetTracePredictedActiveCells().data[2]
+    self.feedTM(proximalInputC, activeApicalCellsSequence=feedbackC)
+    predictedCSecond = self.tm.mmGetTracePredictedActiveCells().data[2]
+
+    self._testTM(testProximalInput, activeApicalCellsSequence=unionFeedback)
+    predictedUnion = self.tm.mmGetTracePredictiveCells().data[0]
+    self.assertNotEquals(predictedC, predictedCPrime, predictedCSecond)
+    self.assertEqual(predictedUnion, predictedC | predictedCPrime)
+
+
+  def testA13(self):
+    """Ambiguous feedback leads to ambiguous predictions.
+
+    Train on ABCDE with F1, XB'C'D'F with F2, ZB''C''D''G with F3.
+    Test with BCDE. With feedbacks F1 | F2, then F1.
+    C and C'' are predicted, only E is at last step.
+    This simulates a case where the feedback is disambiguated by some higher
+    region along the process.
+
+    Using a short sequence, as it needs many iterations to learn the shared
+    subsequence.
+    """
+    self.init()
+
+    # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
+    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # X B C D F
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # Z B C D G
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+    proximalInputC = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # B C D E
+    testProximalInput = proximalInputA[1:]
+
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
+    feedbackC = self.generateFeedbackSequence(len(numbers))
+    unionFeedback = [feedbackA[0] | feedbackB[0]] * 2 + [feedbackA[0]] * 4
+
+    # start training with random feedback
+    self.feedTM(proximalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputB,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputC,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+
+    for _ in xrange(20):
+      self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA)
+      self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
+      self.feedTM(proximalInputC, activeApicalCellsSequence=feedbackC)
+
+    # retrieving patterns
+    self.feedTM(proximalInputA, activeApicalCellsSequence=feedbackA)
+    predictedC = self.tm.mmGetTracePredictedActiveCells().data[2]
+    predictedE = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    self.feedTM(proximalInputB, activeApicalCellsSequence=feedbackB)
+    predictedCPrime = self.tm.mmGetTracePredictedActiveCells().data[2]
+    predictedF = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    self.feedTM(proximalInputC, activeApicalCellsSequence=feedbackC)
+    predictedCSecond = self.tm.mmGetTracePredictedActiveCells().data[2]
+    predictedG = self.tm.mmGetTracePredictedActiveCells().data[-1]
+
+    self._testTM(testProximalInput,
+                 activeApicalCellsSequence=unionFeedback[1:])
+    predictedUnion1 = self.tm.mmGetTracePredictiveCells().data[0]
+    predictedUnion2 = self.tm.mmGetTracePredictiveCells().data[-2]
+    self.assertNotEquals(predictedC, predictedCPrime, predictedCSecond)
+    self.assertEqual(predictedUnion1, predictedC | predictedCPrime)
+    self.assertEqual(predictedUnion2, predictedE)
+
+
   def testO1(self):
     """Joint external and apical inputs, without feedback.
 
@@ -873,7 +1244,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
     testExternalInput = externalInputA[1:]
 
-    for _ in xrange(30):
+    for _ in xrange(20):
       self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
       self.feedTM(proximalInputB, activeExternalCellsSequence=externalInputA)
 
@@ -918,7 +1289,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
                 activeExternalCellsSequence=externalInputA,
                 activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
 
-    for _ in xrange(30):
+    for _ in xrange(20):
       self.feedTM(proximalInputA,
                   activeExternalCellsSequence=externalInputA,
                   activeApicalCellsSequence=feedbackA)
@@ -1019,7 +1390,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     self.feedTM(proximalInputB,
                 activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
 
-    for _ in xrange(30):
+    for _ in xrange(20):
       self.feedTM(proximalInputA,
                   activeExternalCellsSequence=externalInputA,
                   activeApicalCellsSequence=feedbackA,
@@ -1039,6 +1410,65 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
 
 
   def testO5(self):
+    """Joint external / apical inputs, with correct feedback, varying external
+    input length.
+
+    Train on ABCDE / PQRST with F1, XBCDEF / PQRST with F2.
+    Test with BCDE / QRST. With feedback F1, no burst nor extra (feedback
+    disambiguation).
+    The difference with the previous one is that external input has varying
+    number of active neurons.
+    """
+    self.init()
+
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    testProximalInput = proximalInputA[1:]
+
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
+    numbers = self.sequenceMachine.generateNumbers(1, 10)
+    externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
+
+    # start training with random feedback
+    self.feedTM(proximalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(
+                  len(numbers)))
+    self.feedTM(proximalInputB,
+                activeApicalCellsSequence=self.generateRandomFeedback(
+                  len(numbers)))
+
+    for i in xrange(len(externalInputA)-1):
+      numberNewInputs = random.randint(0, 50)
+      externalInputA[i] = externalInputA[i] | \
+            set([random.randint(0, self.n-1) for _ in xrange(numberNewInputs)])
+
+    for _ in xrange(20):
+      self.feedTM(proximalInputA,
+                  activeExternalCellsSequence=externalInputA,
+                  activeApicalCellsSequence=feedbackA,
+                  formInternalConnections=True)
+      self.feedTM(proximalInputB,
+                  activeExternalCellsSequence=externalInputA,
+                  activeApicalCellsSequence=feedbackB,
+                  formInternalConnections=True)
+
+    self._testTM(testProximalInput,
+                 activeExternalCellsSequence=externalInputA[1:],
+                 activeApicalCellsSequence=feedbackA)
+    self.assertAlmostAllActiveWerePredicted()
+    # few extra predictions
+    predictedInactiveColumns = self.tm.mmGetTracePredictedInactiveColumns().data
+    self.assertLessEqual(len(predictedInactiveColumns[-1]), 3)
+
+
+  def testO6(self):
     """Same as E1, with slight spatial noise on proximal and external input.
 
     Tolerance is an average of one bursting column / timestep.
@@ -1063,7 +1493,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     self.assertAlmostAllInactiveWereUnpredicted()
 
 
-  def testO6(self):
+  def testO7(self):
     """Same as E8, with slight spatial noise.
 
     Tolerance is an average of one bursting column / timestep.
@@ -1095,7 +1525,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     self.assertAlmostAllInactiveWereUnpredicted()
 
 
-  def testO7(self):
+  def testO8(self):
     """Same as A2, with slight spatial noise on proximal input and feedback.
 
     Tolerance is an average of 1 bursting column / timestep.
@@ -1137,6 +1567,171 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     # few extra predictions
     predictedInactiveColumns = self.tm.mmGetTracePredictedInactiveColumns().data
     self.assertLessEqual(len(predictedInactiveColumns[-1]), 3)
+
+
+  def testO9(self):
+    """Ambiguous feedback leads to ambiguous predictions, with external input.
+
+    Same test as A13, with external input.
+    """
+    self.init()
+
+    # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
+    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # X B C D F
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # Z B C D G
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+    proximalInputC = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # P Q R S T
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
+    externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # B C D E
+    testProximalInput = proximalInputA[1:]
+
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
+    feedbackC = self.generateFeedbackSequence(len(numbers))
+    unionFeedback = [feedbackA[0] | feedbackB[0]] * 2 + [feedbackA[0]] * 4
+
+    # start training with random feedback
+    self.feedTM(proximalInputA,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputB,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputC,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+
+    for _ in xrange(20):
+      self.feedTM(proximalInputA,
+                  activeExternalCellsSequence=externalInputA,
+                  activeApicalCellsSequence=feedbackA)
+      self.feedTM(proximalInputB,
+                  activeExternalCellsSequence=externalInputA,
+                  activeApicalCellsSequence=feedbackB)
+      self.feedTM(proximalInputC,
+                  activeExternalCellsSequence=externalInputA,
+                  activeApicalCellsSequence=feedbackC)
+
+    # retrieving patterns
+    self.feedTM(proximalInputA,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=feedbackA)
+    predictedC = self.tm.mmGetTracePredictedActiveCells().data[2]
+    predictedE = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    self.feedTM(proximalInputB,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=feedbackB)
+    predictedCPrime = self.tm.mmGetTracePredictedActiveCells().data[2]
+    predictedF = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    self.feedTM(proximalInputC,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=feedbackC)
+    predictedCSecond = self.tm.mmGetTracePredictedActiveCells().data[2]
+    predictedG = self.tm.mmGetTracePredictedActiveCells().data[-1]
+
+    self._testTM(testProximalInput,
+                 activeExternalCellsSequence=externalInputA[1:],
+                 activeApicalCellsSequence=unionFeedback[1:])
+    predictedUnion1 = self.tm.mmGetTracePredictiveCells().data[0]
+    predictedUnion2 = self.tm.mmGetTracePredictiveCells().data[-2]
+    self.assertNotEquals(predictedC, predictedCPrime, predictedCSecond)
+    self.assertEqual(predictedUnion1, predictedC | predictedCPrime)
+    self.assertEqual(predictedUnion2, predictedE)
+
+
+  def testO10(self):
+    """Ambiguous feedback leads to ambiguous predictions, with external input.
+
+    Same test as A13, with external input, and using learnOnOneCell.
+    """
+    self.init({"learnOnOneCell": True})
+    self.assertTrue(self.tm.learnOnOneCell)
+
+    # A B C D E
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
+    proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # X B C D F
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+    proximalInputB = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # Z B C D G
+    numbers[0] = max(numbers) + 10
+    numbers[-2] = max(numbers) + 10
+    proximalInputC = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # P Q R S T
+    numbers = self.sequenceMachine.generateNumbers(1, 5)
+    externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
+
+    # B C D E
+    testProximalInput = proximalInputA[1:]
+
+    feedbackA = self.generateFeedbackSequence(len(numbers))
+    feedbackB = self.generateFeedbackSequence(len(numbers))
+    feedbackC = self.generateFeedbackSequence(len(numbers))
+    unionFeedback = [feedbackA[0] | feedbackB[0]] * 2 + [feedbackA[0]] * 4
+
+    # start training with random feedback
+    self.feedTM(proximalInputA,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputB,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+    self.feedTM(proximalInputC,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=self.generateRandomFeedback(len(numbers)))
+
+    for _ in xrange(20):
+      self.feedTM(proximalInputA,
+                  activeExternalCellsSequence=externalInputA,
+                  activeApicalCellsSequence=feedbackA)
+      self.feedTM(proximalInputB,
+                  activeExternalCellsSequence=externalInputA,
+                  activeApicalCellsSequence=feedbackB)
+      self.feedTM(proximalInputC,
+                  activeExternalCellsSequence=externalInputA,
+                  activeApicalCellsSequence=feedbackC)
+
+    # retrieving patterns
+    self.feedTM(proximalInputA,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=feedbackA)
+    predictedC = self.tm.mmGetTracePredictedActiveCells().data[2]
+    predictedE = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    self.feedTM(proximalInputB,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=feedbackB)
+    predictedCPrime = self.tm.mmGetTracePredictedActiveCells().data[2]
+    predictedF = self.tm.mmGetTracePredictedActiveCells().data[-1]
+    self.feedTM(proximalInputC,
+                activeExternalCellsSequence=externalInputA,
+                activeApicalCellsSequence=feedbackC)
+    predictedCSecond = self.tm.mmGetTracePredictedActiveCells().data[2]
+    predictedG = self.tm.mmGetTracePredictedActiveCells().data[-1]
+
+    self._testTM(testProximalInput,
+                 activeExternalCellsSequence=externalInputA[1:],
+                 activeApicalCellsSequence=unionFeedback[1:])
+    predictedUnion1 = self.tm.mmGetTracePredictiveCells().data[0]
+    predictedUnion2 = self.tm.mmGetTracePredictiveCells().data[-2]
+    self.assertNotEquals(predictedC, predictedCPrime, predictedCSecond)
+    self.assertEqual(predictedUnion1, predictedC | predictedCPrime)
+    self.assertEqual(predictedUnion2, predictedE)
 
 
   # ==============================
