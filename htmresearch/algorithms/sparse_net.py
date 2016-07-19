@@ -21,33 +21,34 @@
 
 """
 Implementation of Bruno Olshausen's sparse coding algorithm.
-It uses the formulation developed by Olshausen and Field (1996), slightly
+It relies on the formulation developed by Olshausen and Field (1996), slightly
 modified so that it uses a Locally Competitive Algorithm (LCA) to compute the
 coefficients, rather than a vanilla gradient descent, as proposed by Rozell
 et al. (2008).
 
-This file also proposes a sub-class specific for natural images, which uses
-random sub-parts of images as training batches, and proposes a method for
-loading images from a .mat file. This is inspired by Bruno Olshausen's
-Neural Computation course.
+This file also proposes a sub-class specific for natural images,
+ImageSparseNet. It uses random sub-parts of images of arbitrary size at
+training, but must be fed with images of correct dimensions when encoding.
+The regular SparseNet can also be used with images, but must be fed with
+flattened image, both at training and when encoding.
 
 Example use:
   # create and train network
   net = ImageSparseNet(inputDim=64,
                        outputDim=64,
                        verbosity=2,
-                       learningRate=0.1,
-                       numIterations=400,
+                       numIterations=1000,
                        batchSize=100)
-  images = net.loadMatlabImages("IMAGES.mat", "IMAGES")
+  images = net.loadMatlabImages("../data/IMAGES.mat", "IMAGES")
   net.train(images)
 
   # visualize loss history and basis
   net.plotLoss(filename="loss_history.png")
   net.plotBasis(filename="basis_functions.png")
 
-  # encode images
-  encodings = net.encode(images)
+  # encode images, must have 64 pixels (also works with single image)
+  encodings = net.encode(imagesToEncode)
+
 """
 
 import random
@@ -56,11 +57,13 @@ import numpy as np
 import scipy.io as sc
 import matplotlib.pyplot as plt
 
+
 class SparseNet(object):
-  """Default SparseNet implementation, which works on most common data types.
+  """
+  Default SparseNet implementation, which works on most common data types.
 
   It provides public methods for training and encoding data, as well as methods
-  for plotting the network and loss.
+  for plotting the network's basis and loss history.
   """
 
   def __init__(self,
@@ -68,41 +71,55 @@ class SparseNet(object):
                outputDim=64,
                batchSize=100,
                numIterations=1000,
-               numLCAIterations=75,
-               learningRate=0.2,
-               decayCycle=50,
-               learningRateDecay=0.95,
+               numLcaIterations=75,
+               learningRate=2.0,
+               decayCycle=100,
+               learningRateDecay=1.0,
+               lcaLearningRate=0.1,
                thresholdDecay=0.95,
                minThreshold=0.1,
                thresholdType='soft',
-               verbosity=0):
+               verbosity=0,
+               seed=42):
     """
     Initializes the SparseNet.
-    :param inputDim:                (int) (Flattened) dimension of input data
-    :param outputDim:               (int) Output dimension
-    :param batchSize:               (int) Batch size for training
-    :param numIterations:           (int) Number of training iterations
-    :param numLCAIterations:        (int) Number of iterations in LCA
+    :param inputDim:                (int)   (Flattened) dimension of input data
+    :param outputDim:               (int)   Output dimension
+    :param batchSize:               (int)   Batch size for training
+    :param numIterations:           (int)   Number of training iterations
+    :param numLcaIterations:        (int)   Number of iterations in LCA
     :param learningRate:            (float) Learning rate
+    :param decayCycle:              (int)   Number of iterations between decays
+    :param learningRateDecay        (float) Learning rate decay rate
+    :param lcaLearningRate          (float) Learning rate in LCA
     :param minThreshold:            (float) Minimum activation threshold
-                                    during decay
-    :param verbosity:               (int) Verbosity level
+                                            during decay
+    :param verbosity:               (int)   Verbosity level
+    :param seed:                    (int)   Seed for random number generators
     """
     self.inputDim = inputDim
     self.outputDim = outputDim
     self.batchSize = batchSize
     self._reset()
 
+    # training parameters
     self.numIterations = numIterations
-    self.numLCAIterations = numLCAIterations
     self.learningRate = learningRate
     self.decayCycle = decayCycle
     self.learningRateDecay = learningRateDecay
+
+    # LCA parameters
+    self.numLcaIterations = numLcaIterations
+    self.lcaLearningRate = lcaLearningRate
     self.thresholdDecay = thresholdDecay
     self.minThreshold = minThreshold
     self.thresholdType = thresholdType
 
+    # debugging
     self.verbosity = verbosity
+    if seed is not None:
+      np.random.seed(seed)
+      random.seed(seed)
 
 
   def train(self, inputData, reset=True):
@@ -112,6 +129,8 @@ class SparseNet(object):
     The reset parameter can be set to False if the network should not be
     reset before training (for example for continuing a previous started
     training).
+    :param inputData:   (array) Input data, of dimension (inputDim, numPoints)
+    :param reset:       (bool)  If set to false, keep basis and history
     """
     if not isinstance(inputData, np.ndarray):
       inputData = np.array(inputData)
@@ -119,19 +138,21 @@ class SparseNet(object):
     if reset:
       self._reset()
 
-    for t in xrange(self.numIterations):
+    for _ in xrange(self.numIterations):
+      self._iteration += 1
+
       batch = self._getDataBatch(inputData)
+
+      # check input dimension, change if necessary
       if batch.shape[0] != self.inputDim:
-        print "Changing input dimension"
+        if self.verbosity >= 1:
+          print "Changing input dimension."
         self.inputDim = batch.shape[0]
 
       activations = self.encode(batch)
-      try:
-        self._learn(batch, activations, t)
-      except RuntimeWarning:
-        raise RuntimeWarning("Overflowed, try with a lower learning rate!")
+      self._learn(batch, activations)
 
-      if t % self.decayCycle == 0:
+      if self._iteration % self.decayCycle == 0:
         self.learningRate *= self.learningRateDecay
 
     if self.verbosity >= 1:
@@ -139,22 +160,37 @@ class SparseNet(object):
       self.plotBasis()
 
 
-  def encode(self, data):
+  def encode(self, data, flatten=False):
     """
     Encodes the provided input data, returning a sparse vector of activations.
 
     It solves a dynamic system to find optimal activations, as proposed by
     Rozell et al. (2008).
-    :param data:          (array) Input data, dimensions (inputDim, numPoints)
-    :return:              (array) Array of sparse activations
+    :param data:          (array) Input data (single point or multiple)
+    :param flatten        (bool)  Whether or not the data needs to be flattened,
+                                  in the case of images for example. Does not
+                                  need to be enabled during training.
+    :return:              (array) Array of sparse activations (dimOutput,
+                                  numPoints)
     """
     if not isinstance(data, np.ndarray):
       data = np.array(data)
+
+    # flatten if necessary
+    if flatten:
+      try:
+        data = np.reshape(data, (self.inputDim, data.shape[-1]))
+      except ValueError:
+        # only one data point
+        data = np.reshape(data, (self.inputDim, 1))
+
     if data.shape[0] != self.inputDim:
       raise ValueError("Input data does not have the correct dimension!")
+
     # if single data point, convert to 2-dimensional array for consistency
     if len(data.shape) == 1:
       data = data[:, np.newaxis]
+
 
     projection = self.basis.T.dot(data)
     representation = self.basis.T.dot(self.basis) - np.eye(self.outputDim)
@@ -162,10 +198,11 @@ class SparseNet(object):
 
     threshold = 0.5 * np.max(np.abs(projection), axis=0)
     activations = self._activation(states, threshold)
-    for t in xrange(self.numLCAIterations):
+
+    for _ in xrange(self.numLcaIterations):
       # update dynamic system
-      states *= (1 - self.learningRate)
-      states += self.learningRate * (projection - representation.dot(activations))
+      states *= (1 - self.lcaLearningRate)
+      states += self.lcaLearningRate * (projection - representation.dot(activations))
       activations = self._activation(states, threshold)
 
       # decay threshold
@@ -179,7 +216,7 @@ class SparseNet(object):
     """
     Plots the loss history.
 
-    :param filename            (string) Can be provided to save the figure
+    :param filename    (string) Can be provided to save the figure
     """
     plt.figure()
     plt.plot(self.losses.keys(), self.losses.values())
@@ -196,7 +233,7 @@ class SparseNet(object):
     Plots the basis functions, reshaped in 2-dimensional arrays.
 
     This representation makes the most sense for visual input.
-    :param:  filename            (string) Can be provided to save the figure
+    :param:  filename    (string) Can be provided to save the figure
     """
     if np.floor(np.sqrt(self.outputDim)) ** 2 != self.outputDim:
       print "Basis visualization is not available if outputDim is not a square."
@@ -233,7 +270,7 @@ class SparseNet(object):
 
   def _reset(self):
     """
-    Reinitializes basis functions and loss history.
+    Reinitializes basis functions, iteration number and loss history.
     """
     self.basis = np.random.randn(self.inputDim, self.outputDim)
     self.basis /= np.sqrt(np.sum(self.basis ** 2, axis=0))
@@ -241,18 +278,20 @@ class SparseNet(object):
     self.losses = dict()
 
 
-  def _learn(self, batch, activations, iteration):
+  def _learn(self, batch, activations):
     """
     Learns a single iteration on the provided batch and activations.
-    :param batch        (array) Training batch, of dimension (inputDim, batchSize)
-    :param coefficients (array) Computed activations, of dimension (outputDim, batchSize)
+    :param batch        (array) Training batch, of dimension (inputDim,
+                                batchSize)
+    :param coefficients (array) Computed activations, of dimension (outputDim,
+                                batchSize)
     """
     batchResiduals = batch - self.basis.dot(activations)
     loss = np.mean(np.sqrt(np.sum(batchResiduals ** 2, axis=0)))
-    self.losses[iteration] = loss
+    self.losses[self._iteration] = loss
 
     if self.verbosity >= 2:
-      print "At iteration {0}, loss is {1:.3f}".format(iteration, loss)
+      print "At iteration {0}, loss is {1:.3f}".format(self._iteration, loss)
 
     # update basis
     gradBasis = batchResiduals.dot(activations.T) / self.batchSize
@@ -266,8 +305,8 @@ class SparseNet(object):
     """
     Activation function, to transform the activations during training and
     encoding.
-    :param input:          (array) Activations
-    :param theta:          (float) Threshold
+    :param input:          (array)  Activations
+    :param threshold:      (array)  Thresholds
     :param thresholdType:  (string) 'soft', 'absoluteHard' or 'relativeHard'
     """
     if thresholdType == None:
@@ -317,11 +356,12 @@ class ImageSparseNet(SparseNet):
 
   BUFFER = 4
 
+
   def loadMatlabImages(self, path, name):
     """
     Loads images from a .mat file.
-    :param path:      (string) Path to .mat file
-    :param name:      (string) Object name in the .mat file, just before .mat
+    :param path:      (string)   Path to .mat file
+    :param name:      (string)   Object name in the .mat file, just before .mat
 
     Also stores image dimensions to later the original images. If there are
     multiple channels, self.numChannels will store the number of channels,
@@ -329,12 +369,41 @@ class ImageSparseNet(SparseNet):
     """
     try:
       images = sc.loadmat(path)[name]
-    except IndexError:
-      raise IndexError('Wrong filename for provided images.')
+    except KeyError:
+      raise KeyError('Wrong filename for provided images.')
 
     self._initializeDimensions(images)
 
     return images
+
+
+  def loadNumpyImages(self, path, key=None):
+    """
+    Loads images using numpy.
+
+    :param path:      (string)   Path to data file
+    :param key:       (string)   Object key in data file if it's a dict
+
+    Also stores image dimensions to later the original images. If there are
+    multiple channels, self.numChannels will store the number of channels,
+    otherwise it will be set to None.
+    """
+    data = np.load(path)
+
+    if isinstance(data, dict):
+      if key is None:
+        raise ValueError("Images are stored as a dict, a key must be provided!")
+      try:
+        data = data[key]
+      except KeyError:
+        raise KeyError("Wrong key for provided data.")
+
+    if not isinstance(data, np.ndarray):
+      raise TypeError("Data must be stored as a dict or numpy array.")
+
+    self._initializeDimensions(data)
+
+    return data
 
 
   def _initializeDimensions(self, inputData):
@@ -366,7 +435,7 @@ class ImageSparseNet(SparseNet):
     Returns an array of dimensions (inputDim, batchSize), to be used as
     batch for training data.
 
-    This implementation uses random sub-images from one random image as
+    This implementation uses random sub-images from a random image as
     training batch.
 
     Images are flattened to get a 2-dimensional batch.
@@ -375,10 +444,12 @@ class ImageSparseNet(SparseNet):
       self._initializeDimensions(inputData)
 
     batch = np.zeros((self.inputDim, self.batchSize))
-    imageIdx = np.random.choice(range(self.numImages))
     miniImageSize = int(np.sqrt(self.inputDim))
+    # choose random image
+    imageIdx = np.random.choice(range(self.numImages))
 
     for i in xrange(self.batchSize):
+      # pick random starting row
       rows = self.imageHeight - miniImageSize - 2 * self.BUFFER
       rowNumber = self.BUFFER + np.random.choice(range(rows))
 
@@ -386,6 +457,7 @@ class ImageSparseNet(SparseNet):
         miniImage = inputData[rowNumber : rowNumber + miniImageSize,
                               imageIdx]
       else:
+        # pick random starting column
         cols = self.imageWidth - miniImageSize - 2 * self.BUFFER
         colNumber = self.BUFFER + np.random.choice(range(cols))
 
@@ -394,6 +466,7 @@ class ImageSparseNet(SparseNet):
                                 colNumber : colNumber + miniImageSize,
                                 imageIdx]
         else:
+          # pick random channel
           channelNumber = np.random.choice(range(self.numChannels))
           miniImage = inputData[rowNumber : rowNumber + miniImageSize,
                                 colNumber : colNumber + miniImageSize,
@@ -404,16 +477,3 @@ class ImageSparseNet(SparseNet):
       batch[:, i] = miniImage
 
     return batch
-
-
-if __name__ == '__main__':
-  sn = ImageSparseNet(inputDim=64,
-                      outputDim=64,
-                      verbosity=5,
-                      numIterations=400,
-                      numLCAIterations=100,
-                      batchSize=100)
-  ds = sn.loadMatlabImages("../data/IMAGES.mat", "IMAGES")
-  sn.train(ds)
-  sn.plotBasis("fig.png")
-  sn.plotLoss("fig2.png")
