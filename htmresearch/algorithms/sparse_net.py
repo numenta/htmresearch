@@ -75,6 +75,7 @@ class SparseNet(object):
                minThreshold=0.1,
                thresholdType='soft',
                verbosity=0,
+               showEvery=500,
                seed=42):
     """
     Initializes the SparseNet.
@@ -112,6 +113,7 @@ class SparseNet(object):
 
     # debugging
     self.verbosity = verbosity
+    self.showEvery = showEvery
     if seed is not None:
       np.random.seed(seed)
       random.seed(seed)
@@ -230,21 +232,28 @@ class SparseNet(object):
     This representation makes the most sense for visual input.
     :param:  filename    (string) Can be provided to save the figure
     """
-    if np.floor(np.sqrt(self.outputDim)) ** 2 != self.outputDim:
-      print "Basis visualization is not available if outputDim is not a square."
-      return
     if np.floor(np.sqrt(self.inputDim)) ** 2 != self.inputDim:
       print "Basis visualization is not available if inputDim is not a square."
       return
 
     dim = int(np.sqrt(self.inputDim))
-    outDim = int(np.sqrt(self.outputDim))
-    basis = - np.ones((outDim * (dim + 1) + 1, outDim * (dim + 1) + 1))
+
+    if np.floor(np.sqrt(self.outputDim)) ** 2 != self.outputDim:
+      outDimJ = np.sqrt(np.floor(self.outputDim / 2))
+      outDimI = np.floor(self.outputDim / outDimJ)
+      if outDimI > outDimJ:
+        outDimI, outDimJ = outDimJ, outDimI
+    else:
+      outDimI = np.floor(np.sqrt(self.outputDim))
+      outDimJ = outDimI
+
+    outDimI, outDimJ = int(outDimI), int(outDimJ)
+    basis = - np.ones((1 + outDimI * (dim + 1), 1 + outDimJ * (dim + 1)))
 
     # populate array with basis values
     k = 0
-    for i in xrange(outDim):
-      for j in xrange(outDim):
+    for i in xrange(outDimI):
+      for j in xrange(outDimJ):
         colorLimit = np.max(np.abs(self.basis[:, k]))
         mat = np.reshape(self.basis[:, k], (dim, dim)) / colorLimit
         basis[1 + i * (dim + 1) : 1 + i * (dim + 1) + dim, \
@@ -252,8 +261,10 @@ class SparseNet(object):
         k += 1
 
     plt.figure()
-    plt.pcolor(basis)
-    plt.axis([0, 1 + (outDim + 1) * dim, 0, 1 + (outDim + 1) * dim])
+    plt.subplot(aspect="equal")
+    plt.pcolormesh(basis)
+
+    plt.axis([0, 1 + outDimJ * (dim + 1), 0, 1 + outDimI * (dim + 1)])
     # remove ticks
     plt.gca().xaxis.set_major_locator(plt.NullLocator())
     plt.gca().yaxis.set_major_locator(plt.NullLocator())
@@ -276,9 +287,9 @@ class SparseNet(object):
   def _learn(self, batch, activations):
     """
     Learns a single iteration on the provided batch and activations.
-    :param batch        (array) Training batch, of dimension (inputDim,
+    :param batch:      (array)  Training batch, of dimension (inputDim,
                                 batchSize)
-    :param coefficients (array) Computed activations, of dimension (outputDim,
+    :param activations:(array)  Computed activations, of dimension (outputDim,
                                 batchSize)
     """
     batchResiduals = batch - self.basis.dot(activations)
@@ -286,7 +297,8 @@ class SparseNet(object):
     self.losses[self._iteration] = loss
 
     if self.verbosity >= 2:
-      print "At iteration {0}, loss is {1:.3f}".format(self._iteration, loss)
+      if self._iteration % self.showEvery == 0:
+        print "At iteration {0}, loss is {1:.3f}".format(self._iteration, loss)
 
     # update basis
     gradBasis = batchResiduals.dot(activations.T) / self.batchSize

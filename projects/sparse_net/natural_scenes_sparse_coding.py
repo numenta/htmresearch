@@ -24,7 +24,7 @@ This experiment uses ImageSparseNet as well as data from Bruno Olshausen's lab
 (part of his Neural Computation course), to train an ImageSparseNet for sparse
 coding on natural images.
 
-The ImageSparseNet is trained on a few images of natural scences, using
+The ImageSparseNet is trained on a few images of natural scenes, using
 random patches of the encoder's expected input dimension.
 """
 
@@ -35,17 +35,18 @@ DEFAULT_SPARSENET_PARAMS = {
   "inputDim" : 64,
   "outputDim" : 64,
   "batchSize" : 100,
-  "numIterations" : 1000,
+  "numIterations" : 10000,  # can be reduced to 1000 for faster training
   "numLcaIterations" : 75,
   "learningRate" : 2.0,
   "decayCycle" : 100,
   "learningRateDecay" : 1.0,
   "lcaLearningRate" : 0.1,
   "thresholdDecay" : 0.95,
-  "minThreshold" : 0.1,
+  "minThreshold" : 1.0,
   "thresholdType" : 'soft',
   "verbosity" : 0,  # can be changed to print training loss
-  "seed" : 42
+  "showEvery" : 500,
+  "seed" : 42,
 }
 
 DATA_PATH = "data/IMAGES.mat"

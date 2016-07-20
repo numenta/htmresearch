@@ -53,7 +53,7 @@ class ImageSparseNet(SparseNet):
   """
   Implementation of SparseNet specifically suited for natural images.
 
-  It's particularity is a batch is composed with sub-components of one
+  It's particularity is that a training batch is composed with patches of one
   particular input image.
   """
 
