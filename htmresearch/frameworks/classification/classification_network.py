@@ -37,7 +37,7 @@ from htmresearch.support.register_regions import registerResearchRegion
 
 _PY_REGIONS = [r[1] for r in pyRegions]
 _LOGGER = logging.getLogger(__name__)
-logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.INFO,
+logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.DEBUG,
                     stream=sys.stdout)
 TEST_PARTITION_NAME = "test"
 
@@ -91,7 +91,7 @@ def _setScalarEncoderMinMax(networkConfig, dataSource):
 
 
 def _createSensorRegion(network, regionConfig, dataSource, encoder=None,
-  moduleName=None):
+                        moduleName=None):
   """
   Register a sensor region and initialize it the sensor region with an encoder
   and data source.
@@ -145,6 +145,7 @@ def _addRegisteredRegion(network, regionConfig, moduleName=None):
   return network.addRegion(regionName, regionType, json.dumps(regionParams))
 
 
+
 def _createRegion(network, regionConfig, moduleName=None):
   """
   Create the SP, TM, TP, or classifier region.
@@ -186,6 +187,7 @@ def _linkRegions(network,
                srcOutput="sequenceIdOut", destInput="sequenceIdIn")
 
 
+
 def _validateRegionWidths(previousRegionWidth, currentRegionWidth):
   """
   Make sure previous and current region have compatible input and output width
@@ -198,6 +200,7 @@ def _validateRegionWidths(previousRegionWidth, currentRegionWidth):
     raise ValueError("Region widths do not fit. Output width = {}, "
                      "input width = {}.".format(previousRegionWidth,
                                                 currentRegionWidth))
+
 
 
 def configureNetwork(dataSource, networkParams, encoder=None):
@@ -252,7 +255,7 @@ def createNetwork(dataSource, networkConfig, encoder=None):
   previousRegion = sensorRegionName
   previousRegionWidth = sensorRegion.encoder.getWidth()
 
-  networkRegions = [r for r in networkConfig.keys() 
+  networkRegions = [r for r in networkConfig.keys()
                     if networkConfig[r]["regionEnabled"]]
 
   if "spRegionConfig" in networkRegions:
@@ -293,7 +296,7 @@ def createNetwork(dataSource, networkConfig, encoder=None):
     regionParams = regionConfig["regionParams"]
     regionParams["inputWidth"] = previousRegionWidth
     tpRegion = _createRegion(network, regionConfig,
-      moduleName="htmresearch.regions.TemporalPoolerRegion")
+                             moduleName="htmresearch.regions.TemporalPoolerRegion")
     _validateRegionWidths(previousRegionWidth,
                           tpRegion.getSelf()._inputWidth)
     _linkRegions(network,
@@ -321,7 +324,6 @@ def createNetwork(dataSource, networkConfig, encoder=None):
   if classifierSpec.inputs.contains('partitionIn'):
     network.link(sensorRegionName, regionName, "UniformLink", "",
                  srcOutput="sequenceIdOut", destInput="partitionIn")
-  
 
   return network
 
@@ -371,7 +373,8 @@ def _stopLearning(network, trainedRegionNames, recordNumber):
 
 
 
-def trainNetwork(network, networkConfig, networkPartitions, numRecords):
+def trainNetwork(network, networkConfig, networkPartitions, numRecords,
+                 verbosity=0):
   """
   Train the network.
 
@@ -380,10 +383,11 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords):
   @param networkPartitions: (list of tuples) Region names and index at which the
    region is to begin learning, including a test partition (the last entry).
   @param numRecords: (int) Number of records of the input dataset.
+  @param verbosity: (0 or 1) How verbose the log is. (0 is less verbose)
   """
-  
-  partitions = copy.deepcopy(networkPartitions) # preserve original partitions
-  
+
+  partitions = copy.deepcopy(networkPartitions)  # preserve original partitions
+
   sensorRegion = network.regions[
     networkConfig["sensorRegionConfig"].get("regionName")]
   classifierRegion = network.regions[
@@ -401,6 +405,7 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords):
       # end of the current partition
       partitionName = partitions[0][0]
 
+      # stop learning for all regions
       if partitionName == TEST_PARTITION_NAME:
         _stopLearning(network, trainedRegionNames, recordNumber)
 
@@ -421,16 +426,20 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords):
       inferredValue = _getClassifierInference(classifierRegion)
       if actualValue == inferredValue:
         numCorrect += 1
-      _LOGGER.debug("recordNum=%s, actualValue=%s, inferredValue=%s"
-               % (recordNumber, actualValue, inferredValue))
+      else:
+        if verbosity > 0:
+          _LOGGER.debug("recordNum=%s, actualValue=%s, inferredValue=%s"
+                        % (recordNumber, actualValue, inferredValue))
       numTestRecords += 1
+      classificationAccuracy = round(100.0 * numCorrect / numTestRecords, 2)
+      results = (
+      "RESULTS: accuracy=%s | %s correctly classified records out of %s "
+      "test records \n" % (classificationAccuracy,
+                           numCorrect,
+                           numTestRecords))
+      if verbosity > 0:
+        _LOGGER.debug(results)
 
-  classificationAccuracy = round(100.0 * numCorrect / numTestRecords, 2)
-
-  results = ("RESULTS: accuracy=%s | %s correctly classified records out of %s "
-             "test records \n" % (classificationAccuracy,
-                                  numCorrect,
-                                  numTestRecords))
   _LOGGER.info(results)
 
   return classificationAccuracy
@@ -445,8 +454,7 @@ def _getClassifierInference(classifierRegion):
     inferenceValues = classifierRegion.getOutputData("categoriesOut")
     randomValues = numpy.random.random(inferenceValues.size)
     return numpy.lexsort((randomValues, inferenceValues))[-1]
-
-  elif classifierRegion.type == "py.CLAClassifierRegion":
+  else:
     return classifierRegion.getOutputData("categoriesOut")[0]
 
 
