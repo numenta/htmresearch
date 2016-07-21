@@ -28,7 +28,15 @@ The ImageSparseNet is trained on a few images of natural scenes, using
 random patches of the encoder's expected input dimension.
 """
 
+try:
+  import capnp
+except ImportError:
+  capnp = None
+
 from htmresearch.algorithms.image_sparse_net import ImageSparseNet
+
+if capnp:
+  from htmresearch.algorithms.sparse_net_capnp import SparseNetProto
 
 
 DEFAULT_SPARSENET_PARAMS = {
@@ -54,6 +62,10 @@ DATA_NAME = "IMAGES"
 LOSS_HISTORY_PATH = "output/loss_history.png"
 BASIS_FUNCTIONS_PATH = "output/basis_functions.png"
 
+SERIALIZATION_PATH = "output/model.txt"
+LOSS_HISTORY_PATH2 = "output/loss_history_2.png"
+BASIS_FUNCTIONS_PATH2 = "output/basis_functions_2.png"
+
 
 def runExperiment():
   print "Creating network..."
@@ -61,13 +73,42 @@ def runExperiment():
 
   print "Loading training data..."
   images = network.loadMatlabImages(DATA_PATH, DATA_NAME)
+  print
 
   print "Training {0}...".format(network)
-  network.train(images, numIterations=10000)
+  network.train(images, numIterations=5000)
 
   print "Saving loss history and function basis..."
   network.plotLoss(filename=LOSS_HISTORY_PATH)
   network.plotBasis(filename=BASIS_FUNCTIONS_PATH)
+
+  if capnp:
+    print
+    print "Saving model..."
+    proto1 = SparseNetProto.new_message()
+    network.write(proto1)
+    with open(SERIALIZATION_PATH, 'wb') as f:
+      proto1.write(f)
+
+    print "Loading model..."
+    with open(SERIALIZATION_PATH, 'rb') as f:
+      proto2 = SparseNetProto.read(f)
+      newNetwork = ImageSparseNet.read(proto2)
+
+      print "Checking that loaded model is the same as before..."
+      if newNetwork != network:
+        raise ValueError("Model is different!")
+      else:
+        print "Model is the same."
+
+      print
+      print "Training {0} again...".format(network)
+      newNetwork.train(images, numIterations=5000)
+
+      print "Saving loss history and function basis..."
+      newNetwork.plotLoss(filename=LOSS_HISTORY_PATH2)
+      newNetwork.plotBasis(filename=BASIS_FUNCTIONS_PATH2)
+
 
 
 if __name__ == "__main__":

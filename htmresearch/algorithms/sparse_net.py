@@ -116,7 +116,7 @@ class SparseNet(object):
       random.seed(seed)
 
 
-  def train(self, inputData, numIterations, reset=True):
+  def train(self, inputData, numIterations, reset=False):
     """
     Trains the SparseNet, with the provided data.
 
@@ -125,7 +125,7 @@ class SparseNet(object):
     training).
     :param inputData:     (array) Input data, of dimension (inputDim, numPoints)
     :param numIterations: (int)   Number of training iterations
-    :param reset:         (bool)  If set to false, keep basis and history
+    :param reset:         (bool)  If set to True, reset basis and history
     """
     if not isinstance(inputData, np.ndarray):
       inputData = np.array(inputData)
