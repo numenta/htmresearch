@@ -26,20 +26,16 @@ training, but must be fed with images of correct dimensions when encoding.
 
 Example use:
   # create and train network
-  net = ImageSparseNet(inputDim=64,
+  net = ImageSparseNet(filterDim=64,
                        outputDim=64,
                        verbosity=2,
-                       numIterations=1000,
                        batchSize=100)
   images = net.loadMatlabImages("../data/IMAGES.mat", "IMAGES")
-  net.train(images)
+  net.train(images, numIterations=1000)
 
   # visualize loss history and basis
   net.plotLoss(filename="loss_history.png")
   net.plotBasis(filename="basis_functions.png")
-
-  # encode images, must have inputDim pixels (also works with single image)
-  encodings = net.encode(imagesToEncode)
 
 """
 
@@ -56,9 +52,6 @@ class ImageSparseNet(SparseNet):
   It's particularity is that a training batch is composed with patches of one
   particular input image.
   """
-
-  BUFFER = 4
-
 
   def loadMatlabImages(self, path, name):
     """
@@ -135,48 +128,52 @@ class ImageSparseNet(SparseNet):
 
   def _getDataBatch(self, inputData):
     """
-    Returns an array of dimensions (inputDim, batchSize), to be used as
+    Returns an array of dimensions (filterDim, batchSize), to be used as
     batch for training data.
 
-    This implementation uses random sub-images from a random image as
-    training batch.
+    This implementation uses random sub-patches as training batch.
 
     Images are flattened to get a 2-dimensional batch.
     """
     if not hasattr(self, 'numImages'):
       self._initializeDimensions(inputData)
 
-    batch = np.zeros((self.inputDim, self.batchSize))
-    miniImageSize = int(np.sqrt(self.inputDim))
-    # choose random image
-    imageIdx = np.random.choice(range(self.numImages))
+    batch = np.zeros((self.filterDim, self.batchSize))
+
+    # choose correct patch size
+    if self.imageHeight is None:
+      patchSize = self.filterDim
+    elif self.numChannels is None or self.numChannels == 0:
+      patchSize = int(np.sqrt(self.filterDim))
+    else:
+      patchSize = int(np.sqrt(self.filterDim / self.numChannels))
+
+    minIndex = patchSize / 2
 
     for i in xrange(self.batchSize):
+      # choose random image
+      imageIdx = np.random.choice(range(self.numImages))
+
       # pick random starting row
-      rows = self.imageHeight - miniImageSize - 2 * self.BUFFER
-      rowNumber = self.BUFFER + np.random.choice(range(rows))
+      rows = self.imageHeight - 2 * patchSize
+      rowNumber = minIndex + np.random.choice(range(rows))
 
       if self.imageHeight is None:
-        miniImage = inputData[rowNumber : rowNumber + miniImageSize,
-                              imageIdx]
+        patch = inputData[rowNumber : rowNumber + patchSize, imageIdx]
       else:
         # pick random starting column
-        cols = self.imageWidth - miniImageSize - 2 * self.BUFFER
-        colNumber = self.BUFFER + np.random.choice(range(cols))
+        cols = self.imageWidth - 2 * patchSize
+        colNumber = minIndex + np.random.choice(range(cols))
 
         if self.numChannels is None:
-          miniImage = inputData[rowNumber : rowNumber + miniImageSize,
-                                colNumber : colNumber + miniImageSize,
-                                imageIdx]
+          patch = inputData[rowNumber : rowNumber + patchSize,
+                            colNumber : colNumber + patchSize,
+                            imageIdx]
         else:
-          # pick random channel
-          channelNumber = np.random.choice(range(self.numChannels))
-          miniImage = inputData[rowNumber : rowNumber + miniImageSize,
-                                colNumber : colNumber + miniImageSize,
-                                channelNumber,
-                                imageIdx]
-
-      miniImage = np.reshape(miniImage, (self.inputDim, ))
-      batch[:, i] = miniImage
+          patch = inputData[rowNumber : rowNumber + patchSize,
+                            colNumber : colNumber + patchSize,
+                            :, imageIdx]
+      patch = np.reshape(patch, newshape=(self.filterDim, ))
+      batch[:, i] = patch
 
     return batch

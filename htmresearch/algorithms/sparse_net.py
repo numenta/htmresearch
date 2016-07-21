@@ -26,46 +26,44 @@ modified so that it uses a Locally Competitive Algorithm (LCA) to compute the
 coefficients, rather than a vanilla gradient descent, as proposed by Rozell
 et al. (2008).
 
-Images have to be flattened, else the specific ImageSparseNet has to be used.
+The algorithm expresses image patches on a basis of filter functions, with the
+constraint that only a few of the coefficients on this basis (also called
+activations) are non-zero. Thus, it tries to find the basis decomposition such
+that the image projection is as close as possible to the original image,
+with as few non-zero activations as possible.
 
-Example use:
-  # create and train network
-  net = SparseNet(inputDim=64,
-                  outputDim=64,
-                  verbosity=2,
-                  numIterations=1000,
-                  batchSize=100)
-  data = np.random.randn(64, 700)
-  net.train(data)
-
-  # visualize loss history and basis
-  net.plotLoss(filename="loss_history.png")
-  net.plotBasis(filename="basis_functions.png")
-
-  # encode data (works with single point or dataset)
-  encodings = net.encode(dataToEncode)
-
+The algorithm for solving the resulting objective function solves a dynamical
+system by using thresholding functions to induce local competition between
+dimensions.
 """
 
 import random
+from abc import ABCMeta, abstractmethod
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 
+EPSILON = 0.000001
+
+
 class SparseNet(object):
   """
-  Default SparseNet implementation, which works on most common data types.
+  Base class for SparseNet implementation, which provides public methods for
+  training and encoding data, as well as methods for plotting the network's
+  basis and loss history.
 
-  It provides public methods for training and encoding data, as well as methods
-  for plotting the network's basis and loss history.
+  The method to get data batches must be implemented in sub-classes specific to
+  each data type.
   """
 
+  __metaclass__ = ABCMeta
+
+
   def __init__(self,
-               inputDim=64,
+               filterDim=64,
                outputDim=64,
                batchSize=100,
-               numIterations=1000,
                numLcaIterations=75,
                learningRate=2.0,
                decayCycle=100,
@@ -79,10 +77,9 @@ class SparseNet(object):
                seed=42):
     """
     Initializes the SparseNet.
-    :param inputDim:                (int)   (Flattened) dimension of input data
+    :param filterDim:               (int)   (Flattened) dimension of filters
     :param outputDim:               (int)   Output dimension
     :param batchSize:               (int)   Batch size for training
-    :param numIterations:           (int)   Number of training iterations
     :param numLcaIterations:        (int)   Number of iterations in LCA
     :param learningRate:            (float) Learning rate
     :param decayCycle:              (int)   Number of iterations between decays
@@ -93,13 +90,12 @@ class SparseNet(object):
     :param verbosity:               (int)   Verbosity level
     :param seed:                    (int)   Seed for random number generators
     """
-    self.inputDim = inputDim
+    self.filterDim = filterDim
     self.outputDim = outputDim
     self.batchSize = batchSize
     self._reset()
 
     # training parameters
-    self.numIterations = numIterations
     self.learningRate = learningRate
     self.decayCycle = decayCycle
     self.learningRateDecay = learningRateDecay
@@ -114,20 +110,22 @@ class SparseNet(object):
     # debugging
     self.verbosity = verbosity
     self.showEvery = showEvery
+    self.seed = seed
     if seed is not None:
       np.random.seed(seed)
       random.seed(seed)
 
 
-  def train(self, inputData, reset=True):
+  def train(self, inputData, numIterations, reset=True):
     """
     Trains the SparseNet, with the provided data.
 
     The reset parameter can be set to False if the network should not be
     reset before training (for example for continuing a previous started
     training).
-    :param inputData:   (array) Input data, of dimension (inputDim, numPoints)
-    :param reset:       (bool)  If set to false, keep basis and history
+    :param inputData:     (array) Input data, of dimension (inputDim, numPoints)
+    :param numIterations: (int)   Number of training iterations
+    :param reset:         (bool)  If set to false, keep basis and history
     """
     if not isinstance(inputData, np.ndarray):
       inputData = np.array(inputData)
@@ -135,16 +133,14 @@ class SparseNet(object):
     if reset:
       self._reset()
 
-    for _ in xrange(self.numIterations):
+    for _ in xrange(numIterations):
       self._iteration += 1
 
       batch = self._getDataBatch(inputData)
 
       # check input dimension, change if necessary
-      if batch.shape[0] != self.inputDim:
-        if self.verbosity >= 1:
-          print "Changing input dimension."
-        self.inputDim = batch.shape[0]
+      if batch.shape[0] != self.filterDim:
+        raise ValueError("Batches and filter dimesions don't match!")
 
       activations = self.encode(batch)
       self._learn(batch, activations)
@@ -163,7 +159,7 @@ class SparseNet(object):
 
     It solves a dynamic system to find optimal activations, as proposed by
     Rozell et al. (2008).
-    :param data:          (array) Input data (single point or multiple)
+    :param data:          (array) Data to be encoded (single point or multiple)
     :param flatten        (bool)  Whether or not the data needs to be flattened,
                                   in the case of images for example. Does not
                                   need to be enabled during training.
@@ -176,13 +172,13 @@ class SparseNet(object):
     # flatten if necessary
     if flatten:
       try:
-        data = np.reshape(data, (self.inputDim, data.shape[-1]))
+        data = np.reshape(data, (self.filterDim, data.shape[-1]))
       except ValueError:
         # only one data point
-        data = np.reshape(data, (self.inputDim, 1))
+        data = np.reshape(data, (self.filterDim, 1))
 
-    if data.shape[0] != self.inputDim:
-      raise ValueError("Input data does not have the correct dimension!")
+    if data.shape[0] != self.filterDim:
+      raise ValueError("Data does not have the correct dimension!")
 
     # if single data point, convert to 2-dimensional array for consistency
     if len(data.shape) == 1:
@@ -194,13 +190,13 @@ class SparseNet(object):
     states = np.zeros((self.outputDim, data.shape[1]))
 
     threshold = 0.5 * np.max(np.abs(projection), axis=0)
-    activations = self._activation(states, threshold)
+    activations = self._thresholdNonLinearity(states, threshold)
 
     for _ in xrange(self.numLcaIterations):
       # update dynamic system
       states *= (1 - self.lcaLearningRate)
       states += self.lcaLearningRate * (projection - representation.dot(activations))
-      activations = self._activation(states, threshold)
+      activations = self._thresholdNonLinearity(states, threshold)
 
       # decay threshold
       threshold *= self.thresholdDecay
@@ -232,11 +228,11 @@ class SparseNet(object):
     This representation makes the most sense for visual input.
     :param:  filename    (string) Can be provided to save the figure
     """
-    if np.floor(np.sqrt(self.inputDim)) ** 2 != self.inputDim:
-      print "Basis visualization is not available if inputDim is not a square."
+    if np.floor(np.sqrt(self.filterDim)) ** 2 != self.filterDim:
+      print "Basis visualization is not available if filterDim is not a square."
       return
 
-    dim = int(np.sqrt(self.inputDim))
+    dim = int(np.sqrt(self.filterDim))
 
     if np.floor(np.sqrt(self.outputDim)) ** 2 != self.outputDim:
       outDimJ = np.sqrt(np.floor(self.outputDim / 2))
@@ -278,16 +274,16 @@ class SparseNet(object):
     """
     Reinitializes basis functions, iteration number and loss history.
     """
-    self.basis = np.random.randn(self.inputDim, self.outputDim)
+    self.basis = np.random.randn(self.filterDim, self.outputDim)
     self.basis /= np.sqrt(np.sum(self.basis ** 2, axis=0))
     self._iteration = 0
-    self.losses = dict()
+    self.losses = {}
 
 
   def _learn(self, batch, activations):
     """
     Learns a single iteration on the provided batch and activations.
-    :param batch:      (array)  Training batch, of dimension (inputDim,
+    :param batch:      (array)  Training batch, of dimension (filterDim,
                                 batchSize)
     :param activations:(array)  Computed activations, of dimension (outputDim,
                                 batchSize)
@@ -308,9 +304,9 @@ class SparseNet(object):
     self.basis /= np.sqrt(np.sum(self.basis ** 2, axis=0))
 
 
-  def _activation(self, input, threshold, thresholdType=None):
+  def _thresholdNonLinearity(self, input, threshold, thresholdType=None):
     """
-    Activation function, to transform the activations during training and
+    Non linearity function, to transform the activations during training and
     encoding.
     :param input:          (array)  Activations
     :param threshold:      (array)  Thresholds
@@ -333,20 +329,163 @@ class SparseNet(object):
       return activation
 
 
+  @abstractmethod
   def _getDataBatch(self, inputData):
     """
-    Returns an array of dimensions (inputDim, batchSize), to be used as
+    Returns an array of dimensions (filterDim, batchSize), to be used as
     batch for training data.
 
-    The basis implementation simply samples a batch from the training data,
-    and sub-implementations should be used for particular data types (e.g.
-    natural images).
+    Must be implemented in sub-classes specific to different data types
+
+    :param: inputData:     (array)   Array of dimension (inputDim, numPoints)
+    :returns:              (array)   Batch of dimension (filterDim, batchSize)
     """
-    numSamples = inputData.shape[1]
-    return inputData[:, random.sample(range(numSamples), self.batchSize)]
+
+
+  @classmethod
+  def read(cls, proto):
+    """
+    Reads deserialized data from proto object
+
+    :param proto: (DynamicStructBuilder) Proto object
+    :return       (SparseNet)            SparseNet instance
+    """
+    sparsenet = object.__new__(cls)
+
+    sparsenet.filterDim = proto.filterDim
+    sparsenet.outputDim = proto.outputDim
+    sparsenet.batchSize = proto.batchSize
+
+    lossHistoryProto = proto.losses
+    sparsenet.losses = {}
+    for i in xrange(len(lossHistoryProto)):
+      sparsenet.losses[lossHistoryProto[i].iteration] = lossHistoryProto[i].loss
+    sparsenet._iteration = proto.iteration
+
+    sparsenet.basis = np.reshape(proto.basis, newshape=(sparsenet.filterDim,
+                                                        sparsenet.outputDim))
+
+    # training parameters
+    sparsenet.learningRate = proto.learningRate
+    sparsenet.decayCycle = proto.decayCycle
+    sparsenet.learningRateDecay = proto.learningRateDecay
+
+    # LCA parameters
+    sparsenet.numLcaIterations = proto.numLcaIterations
+    sparsenet.lcaLearningRate = proto.lcaLearningRate
+    sparsenet.thresholdDecay = proto.thresholdDecay
+    sparsenet.minThreshold = proto.minThreshold
+    sparsenet.thresholdType = proto.thresholdType
+
+    # debugging
+    sparsenet.verbosity = proto.verbosity
+    sparsenet.showEvery = proto.showEvery
+    sparsenet.seed = int(proto.seed)
+    if sparsenet.seed is not None:
+      np.random.seed(sparsenet.seed)
+      random.seed(sparsenet.seed)
+
+    return sparsenet
+
+
+  def write(self, proto):
+    """
+    Writes serialized data to proto object
+
+    :param proto: (DynamicStructBuilder) Proto object
+    """
+    proto.filterDim = self.filterDim
+    proto.outputDim = self.outputDim
+    proto.batchSize = self.batchSize
+
+    lossHistoryProto = proto.init("losses", len(self.losses))
+    i = 0
+    for iteration, loss in self.losses.iteritems():
+      iterationLossHistoryProto = lossHistoryProto[i]
+      iterationLossHistoryProto.iteration = iteration
+      iterationLossHistoryProto.loss = float(loss)
+      i += 1
+
+    proto.iteration = self._iteration
+
+    proto.basis = list(
+      self.basis.flatten().astype(type('float', (float,), {}))
+    )
+
+    # training parameters
+    proto.learningRate = self.learningRate
+    proto.decayCycle = self.decayCycle
+    proto.learningRateDecay = self.learningRateDecay
+
+    # LCA parameters
+    proto.numLcaIterations = self.numLcaIterations
+    proto.lcaLearningRate = self.lcaLearningRate
+    proto.thresholdDecay = self.thresholdDecay
+    proto.minThreshold = self.minThreshold
+    proto.thresholdType = self.thresholdType
+
+    # debugging
+    proto.verbosity = self.verbosity
+    proto.showEvery = self.showEvery
+    proto.seed = self.seed
+
+
+  def __eq__(self, other):
+    """
+    :param other:     (SparseNet) Other SparseNet to compare to
+    :return:          (bool)      True if both networks are equal
+    """
+    if self.filterDim != other.filterDim:
+      return False
+    if self.outputDim != other.outputDim:
+      return False
+    if self._iteration != other._iteration:
+      return False
+
+    for iteration, loss in self.losses.iteritems():
+      if iteration not in other.losses:
+        return False
+      if abs(loss - other.losses[iteration]) > EPSILON:
+        return False
+
+    if np.mean(np.abs(self.basis - other.basis)) > EPSILON:
+      return False
+
+    if self.learningRate != other.learningRate:
+      return False
+    if self.decayCycle != other.decayCycle:
+      return False
+    if self.learningRateDecay != other.learningRateDecay:
+      return False
+
+    if self.numLcaIterations != other.numLcaIterations:
+      return False
+    if self.lcaLearningRate != other.lcaLearningRate:
+      return False
+    if self.thresholdDecay != other.thresholdDecay:
+      return False
+    if self.minThreshold != other.minThreshold:
+      return False
+    if self.thresholdType != other.thresholdType:
+      return False
+
+    if self.seed != other.seed:
+      return False
+
+    return True
+
+
+  def __ne__(self, other):
+    """
+    :param other:     (SparseNet)  Other SparseNet to compare to
+    :return:          (bool)       True if both networks are not equal
+    """
+    return not self == other
 
 
   def __repr__(self):
-    """Custom representation."""
+    """
+    Custom representation method.
+    """
     className = self.__class__.__name__
-    return className + "({0}, {1})".format(self.inputDim, self.outputDim)
+    return className + "({0}, {1})".format(self.filterDim, self.outputDim)

@@ -28,14 +28,22 @@ The ImageSparseNet is trained on a few images of natural scenes, using
 random patches of the encoder's expected input dimension.
 """
 
+import tempfile
+
 from htmresearch.algorithms.image_sparse_net import ImageSparseNet
+
+try:
+  import capnp
+except ImportError:
+  capnp = None
+if capnp:
+  from htmresearch.algorithms.sparse_net_capnp import SparseNetProto
 
 
 DEFAULT_SPARSENET_PARAMS = {
-  "inputDim" : 64,
+  "filterDim" : 64,
   "outputDim" : 64,
   "batchSize" : 100,
-  "numIterations" : 10000,  # can be reduced to 1000 for faster training
   "numLcaIterations" : 75,
   "learningRate" : 2.0,
   "decayCycle" : 100,
@@ -64,11 +72,26 @@ def runExperiment():
   images = network.loadMatlabImages(DATA_PATH, DATA_NAME)
 
   print "Training {0}...".format(network)
-  network.train(images)
+  network.train(images, numIterations=100)
+
 
   print "Saving loss history and function basis..."
   network.plotLoss(filename=LOSS_HISTORY_PATH)
   network.plotBasis(filename=BASIS_FUNCTIONS_PATH)
+
+  proto1 = SparseNetProto.new_message()
+  network.write(proto1)
+
+  # Write the proto to a temp file and read it back into a new proto
+  with tempfile.TemporaryFile() as f:
+    proto1.write(f)
+    f.seek(0)
+    proto2 = SparseNetProto.read(f)
+
+  # Load the deserialized proto
+  net2 = ImageSparseNet.read(proto2)
+
+  print network.basis == net2.basis
 
 
 if __name__ == "__main__":
