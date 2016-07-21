@@ -23,18 +23,19 @@
 import csv
 import matplotlib.pyplot as plt
 
-EXPERIMENTS = ['jump',
+EXPERIMENTS = [#'sit',
+               'walk',
                'run',
-               'sit',
+               'jump',
                'stumble',
-               'stairs-down',
-               'stairs-up',
-               'walk'
-]
+               # 'stairs-down',
+               # 'stairs-up'
+               ]
 
-NUM_RECORDS_TO_PLOT = 80
+NUM_RECORDS_TO_PLOT = 500
+metrics_to_plot = ['x', 'y', 'z']
 
-plt.figure(figsize=(20, 10))
+plt.figure(figsize=(20, 13))
 for exp in EXPERIMENTS:
   filePath = "data/%s-5min.csv" % exp
   with open(filePath, 'rU') as f:
@@ -48,16 +49,29 @@ for exp in EXPERIMENTS:
 
     for i, values in enumerate(reader):
       record = dict(zip(headers, values))
-      t.append(i)
-      x.append(record['x'])
-      y.append(record['y'])
-      z.append(record['z'])
+
+      try:
+        for metric in metrics_to_plot:
+          float(record[metric])
+        x.append(float(record['x']))
+        y.append(float(record['y']))
+        z.append(float(record['z']))
+        t.append(i)
+      except ValueError:
+        print "Not possible to convert some values of %s to a float" % record
+
       if i > NUM_RECORDS_TO_PLOT:
         break
-        
+
     subplot_index = EXPERIMENTS.index(exp)
-    plt.subplot(4, 2, subplot_index + 1)
-    plt.plot(t, x, 'r', t, y, 'b', t, z, 'g')
+    ax = plt.subplot(4, 1, subplot_index + 1)
+    ax.plot(t, x, 'r', label='x')
+    ax.plot(t, y, 'b', label='y')
+    ax.plot(t, z, 'g', label='z')
+    
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles, labels)
+    
     plt.tight_layout()
     plt.title(exp)
     plt.xlim([0, NUM_RECORDS_TO_PLOT])
@@ -67,4 +81,3 @@ for exp in EXPERIMENTS:
     plt.grid()
 
 plt.show()
-
