@@ -33,6 +33,14 @@ from nupic.bindings.experimental import ExtendedTemporalMemory
 
 
 class DistalTimestamps1CellPerColumnDetector(AnomalyDetector):
+  """The 'numenta' detector, with the following changes:
+
+  - Use pure Temporal Memory, not the classic TP that uses backtracking.
+  - Don't spatial pool the timestamp. Pass it in as distal input.
+  - 1 cell per column.
+  - Use w=41 in the scalar encoding, rather than w=21, to make up for the
+    lost timestamp input to the spatial pooler.
+  """
   def __init__(self, *args, **kwargs):
     super(DistalTimestamps1CellPerColumnDetector, self).__init__(*args, **kwargs)
 
@@ -110,7 +118,6 @@ class DistalTimestamps1CellPerColumnDetector(AnomalyDetector):
       "potentialRadius": inputWidth,
       "numActiveColumnsPerInhArea": 40,
       "seed": 1956,
-      # "potentialPct": 0.16,
       "potentialPct": 0.8,
       "maxBoost": 1.0,
       "synPermActiveInc": 0.003,
