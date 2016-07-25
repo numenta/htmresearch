@@ -25,8 +25,9 @@ Extended Temporal Memory implementation in Python.
 
 from collections import defaultdict
 
-from nupic.research.temporal_memory import TemporalMemory
 from nupic.research.connections import Connections
+from htmresearch.algorithms.temporal_memory_phases import TemporalMemory
+
 
 
 class ExtendedTemporalMemory(TemporalMemory):

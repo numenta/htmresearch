@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2015-2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -24,7 +24,7 @@ Faulty Temporal Memory implementation in Python.
 """
 import numpy
 from collections import defaultdict
-from nupic.research.temporal_memory import TemporalMemory
+from htmresearch.algorithms.temporal_memory_phases import TemporalMemory
 
 class FaultyTemporalMemory(TemporalMemory):
   """
