@@ -42,7 +42,8 @@ class DistalTimestamps1CellPerColumnDetector(AnomalyDetector):
     lost timestamp input to the spatial pooler.
   """
   def __init__(self, *args, **kwargs):
-    super(DistalTimestamps1CellPerColumnDetector, self).__init__(*args, **kwargs)
+    super(DistalTimestamps1CellPerColumnDetector, self).__init__(*args,
+                                                                 **kwargs)
 
     self.valueEncoder = None
     self.encodedValue = None
@@ -59,36 +60,6 @@ class DistalTimestamps1CellPerColumnDetector(AnomalyDetector):
   def getAdditionalHeaders(self):
     """Returns a list of strings."""
     return ["raw_score"]
-
-
-  def handleRecord(self, inputData):
-    """Returns a tuple (anomalyScore, rawScore)."""
-
-    self.valueEncoder.encodeIntoArray(inputData["value"],
-                                      self.encodedValue)
-
-    self.timestampEncoder.encodeIntoArray(inputData["timestamp"],
-                                          self.encodedTimestamp)
-    self.prevActiveExternalCells = self.activeExternalCells
-    self.activeExternalCells = sorted(self.encodedTimestamp.nonzero()[0])
-
-    self.sp.compute(self.encodedValue, True, self.spOutput)
-
-    activeColumns = set(self.spOutput.nonzero()[0].tolist())
-    prevPredictedColumns = set(self.etm.columnForCell(cell)
-                               for cell in self.etm.getPredictiveCells())
-
-    rawScore = (len(activeColumns - prevPredictedColumns) /
-                float(len(activeColumns)))
-    anomalyScore = self.anomalyLikelihood.anomalyProbability(
-      inputData["value"], rawScore, inputData["timestamp"])
-    logScore = self.anomalyLikelihood.computeLogLikelihood(anomalyScore)
-
-    self.etm.compute(sorted(activeColumns),
-                     self.prevActiveExternalCells,
-                     self.activeExternalCells)
-
-    return (logScore, rawScore)
 
 
   def initialize(self):
@@ -147,3 +118,33 @@ class DistalTimestamps1CellPerColumnDetector(AnomalyDetector):
       estimationSamples=self.probationaryPeriod - learningPeriod,
       reestimationPeriod=100
     )
+
+
+  def handleRecord(self, inputData):
+    """Returns a tuple (anomalyScore, rawScore)."""
+
+    self.valueEncoder.encodeIntoArray(inputData["value"],
+                                      self.encodedValue)
+
+    self.timestampEncoder.encodeIntoArray(inputData["timestamp"],
+                                          self.encodedTimestamp)
+    self.prevActiveExternalCells = self.activeExternalCells
+    self.activeExternalCells = sorted(self.encodedTimestamp.nonzero()[0])
+
+    self.sp.compute(self.encodedValue, True, self.spOutput)
+
+    activeColumns = set(self.spOutput.nonzero()[0].tolist())
+    prevPredictedColumns = set(self.etm.columnForCell(cell)
+                               for cell in self.etm.getPredictiveCells())
+
+    rawScore = (len(activeColumns - prevPredictedColumns) /
+                float(len(activeColumns)))
+    anomalyScore = self.anomalyLikelihood.anomalyProbability(
+      inputData["value"], rawScore, inputData["timestamp"])
+    logScore = self.anomalyLikelihood.computeLogLikelihood(anomalyScore)
+
+    self.etm.compute(sorted(activeColumns),
+                     self.prevActiveExternalCells,
+                     self.activeExternalCells)
+
+    return (logScore, rawScore)
