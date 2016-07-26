@@ -24,7 +24,8 @@ import numpy as np
 
 from nupic.algorithms import anomaly_likelihood
 from nupic.encoders.date import DateEncoder
-from nupic.encoders.random_distributed_scalar import RandomDistributedScalarEncoder
+from nupic.encoders.random_distributed_scalar import (
+  RandomDistributedScalarEncoder)
 
 from nab.detectors.base import AnomalyDetector
 
@@ -44,6 +45,12 @@ class NumentaTMLowLevelDetector(AnomalyDetector):
     self.spOutput = None
     self.tm = None
     self.anomalyLikelihood = None
+
+    # Set this to False if you want to get results based on raw scores
+    # without using AnomalyLikelihood. This will give worse results, but
+    # useful for checking the efficacy of AnomalyLikelihood. You will need
+    # to re-optimize the thresholds when running with this setting.
+    self.useLikelihood = True
 
 
   def getAdditionalHeaders(self):
@@ -99,12 +106,13 @@ class NumentaTMLowLevelDetector(AnomalyDetector):
       "seed": 1960,
     })
 
-    learningPeriod = math.floor(self.probationaryPeriod / 2.0)
-    self.anomalyLikelihood = anomaly_likelihood.AnomalyLikelihood(
-      claLearningPeriod=learningPeriod,
-      estimationSamples=self.probationaryPeriod - learningPeriod,
-      reestimationPeriod=100
-    )
+    if self.useLikelihood:
+      learningPeriod = math.floor(self.probationaryPeriod / 2.0)
+      self.anomalyLikelihood = anomaly_likelihood.AnomalyLikelihood(
+        claLearningPeriod=learningPeriod,
+        estimationSamples=self.probationaryPeriod - learningPeriod,
+        reestimationPeriod=100
+      )
 
 
   def handleRecord(self, inputData):
@@ -124,12 +132,15 @@ class NumentaTMLowLevelDetector(AnomalyDetector):
     prevPredictedColumns = set(self.tm.columnForCell(cell)
                                for cell in self.tm.getPredictiveCells())
 
-    rawScore = (len(activeColumns - prevPredictedColumns) /
-                float(len(activeColumns)))
-    anomalyScore = self.anomalyLikelihood.anomalyProbability(
-      inputData["value"], rawScore, inputData["timestamp"])
-    logScore = self.anomalyLikelihood.computeLogLikelihood(anomalyScore)
-
     self.tm.compute(activeColumns)
 
-    return (logScore, rawScore)
+    rawScore = (len(activeColumns - prevPredictedColumns) /
+                float(len(activeColumns)))
+
+    if self.useLikelihood:
+      anomalyScore = self.anomalyLikelihood.anomalyProbability(
+        inputData["value"], rawScore, inputData["timestamp"])
+      logScore = self.anomalyLikelihood.computeLogLikelihood(anomalyScore)
+      return (logScore, rawScore)
+
+    return (rawScore, rawScore)
