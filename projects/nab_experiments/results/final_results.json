@@ -8,5 +8,10 @@
         "reward_low_FN_rate": 0.0,
         "reward_low_FP_rate": 0.0,
         "standard": 0.0
+    },
+    "numentaTMLowLevel": {
+        "reward_low_FN_rate": 65.87740608003449,
+        "reward_low_FP_rate": 52.61330345601724,
+        "standard": 61.31610912004311
     }
 }
