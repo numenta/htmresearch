@@ -173,7 +173,8 @@ if __name__ == "__main__":
   if "null" in args.detectors:
     from nab.detectors.null.null_detector import NullDetector
   if "distalTimestamps1CellPerColumn" in args.detectors:
-    from detectors.distal_timestamps_1_cell_per_column import DistalTimestamps1CellPerColumnDetector
+    from htmresearch.algorithms.anomaly_detection.distal_timestamps_1_cell_per_column import (
+      DistalTimestamps1CellPerColumnDetector)
 
   if args.skipConfirmation or checkInputs(args):
     main(args)
