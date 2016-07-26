@@ -175,6 +175,9 @@ if __name__ == "__main__":
   if "distalTimestamps1CellPerColumn" in args.detectors:
     from htmresearch.algorithms.anomaly_detection.distal_timestamps_1_cell_per_column import (
       DistalTimestamps1CellPerColumnDetector)
+  if "numentaTMLowLevel" in args.detectors:
+    from htmresearch.algorithms.anomaly_detection.numentaTM_low_level import (
+      NumentaTMLowLevelDetector)
 
   if args.skipConfirmation or checkInputs(args):
     main(args)
