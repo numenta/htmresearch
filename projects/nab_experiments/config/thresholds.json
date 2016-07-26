@@ -1,0 +1,30 @@
+{
+    "distalTimestamps1CellPerColumn": {
+        "reward_low_FN_rate": {
+            "score": -1.9864851282159404,
+            "threshold": 0.5126953125
+        },
+        "reward_low_FP_rate": {
+            "score": 16.58383054056154,
+            "threshold": 0.5126953125
+        },
+        "standard": {
+            "score": 29.013514871784068,
+            "threshold": 0.5126953125
+        }
+    },
+    "null": {
+        "reward_low_FN_rate": {
+            "score": -232.0,
+            "threshold": 0.6250000000000001
+        },
+        "reward_low_FP_rate": {
+            "score": -116.0,
+            "threshold": 0.6250000000000001
+        },
+        "standard": {
+            "score": -116.0,
+            "threshold": 0.6250000000000001
+        }
+    }
+}
