@@ -59,6 +59,9 @@ class NumentaTMLowLevelDetector(AnomalyDetector):
 
 
   def initialize(self):
+
+    # Initialize the RDSE with a resolution; calculated from the data min and
+    # max, the resolution is specific to the data stream.
     rangePadding = abs(self.inputMax - self.inputMin) * 0.2
     minVal = self.inputMin - rangePadding
     maxVal = (self.inputMax + rangePadding
@@ -70,7 +73,8 @@ class NumentaTMLowLevelDetector(AnomalyDetector):
     self.encodedValue = np.zeros(self.valueEncoder.getWidth(),
                                  dtype=np.uint32)
 
-    self.timestampEncoder = DateEncoder(timeOfDay=(21,9.49,))
+    # Initialize the timestamp encoder
+    self.timestampEncoder = DateEncoder(timeOfDay=(21, 9.49, ))
     self.encodedTimestamp = np.zeros(self.timestampEncoder.getWidth(),
                                      dtype=np.uint32)
 
@@ -118,26 +122,30 @@ class NumentaTMLowLevelDetector(AnomalyDetector):
   def handleRecord(self, inputData):
     """Returns a tuple (anomalyScore, rawScore)."""
 
-    self.valueEncoder.encodeIntoArray(inputData["value"],
-                                      self.encodedValue)
+    # Encode the input data record
+    self.valueEncoder.encodeIntoArray(
+        inputData["value"], self.encodedValue)
+    self.timestampEncoder.encodeIntoArray(
+        inputData["timestamp"], self.encodedTimestamp)
 
-    self.timestampEncoder.encodeIntoArray(inputData["timestamp"],
-                                          self.encodedTimestamp)
-
+    # Run the encoded data through the spatial pooler
     self.sp.compute(np.concatenate((self.encodedTimestamp,
                                     self.encodedValue,)),
                     True, self.spOutput)
 
+    # At the current state, the set of the region's active columns and the set
+    # of columns that have previously-predicted cells are used to calculate the
+    # raw anomaly score.
     activeColumns = set(self.spOutput.nonzero()[0].tolist())
     prevPredictedColumns = set(self.tm.columnForCell(cell)
                                for cell in self.tm.getPredictiveCells())
-
-    self.tm.compute(activeColumns)
-
     rawScore = (len(activeColumns - prevPredictedColumns) /
                 float(len(activeColumns)))
 
+    self.tm.compute(activeColumns)
+
     if self.useLikelihood:
+      # Compute the log-likelihood score
       anomalyScore = self.anomalyLikelihood.anomalyProbability(
         inputData["value"], rawScore, inputData["timestamp"])
       logScore = self.anomalyLikelihood.computeLogLikelihood(anomalyScore)
