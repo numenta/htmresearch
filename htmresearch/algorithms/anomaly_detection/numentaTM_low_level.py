@@ -24,7 +24,8 @@ import numpy as np
 
 from nupic.algorithms import anomaly_likelihood
 from nupic.encoders.date import DateEncoder
-from nupic.encoders.random_distributed_scalar import RandomDistributedScalarEncoder
+from nupic.encoders.random_distributed_scalar import (
+  RandomDistributedScalarEncoder)
 
 from nab.detectors.base import AnomalyDetector
 
@@ -45,6 +46,12 @@ class NumentaTMLowLevelDetector(AnomalyDetector):
     self.tm = None
     self.anomalyLikelihood = None
 
+    # Set this to False if you want to get results based on raw scores
+    # without using AnomalyLikelihood. This will give worse results, but
+    # useful for checking the efficacy of AnomalyLikelihood. You will need
+    # to re-optimize the thresholds when running with this setting.
+    self.useLikelihood = True
+
 
   def getAdditionalHeaders(self):
     """Returns a list of strings."""
@@ -52,6 +59,9 @@ class NumentaTMLowLevelDetector(AnomalyDetector):
 
 
   def initialize(self):
+
+    # Initialize the RDSE with a resolution; calculated from the data min and
+    # max, the resolution is specific to the data stream.
     rangePadding = abs(self.inputMax - self.inputMin) * 0.2
     minVal = self.inputMin - rangePadding
     maxVal = (self.inputMax + rangePadding
@@ -63,7 +73,8 @@ class NumentaTMLowLevelDetector(AnomalyDetector):
     self.encodedValue = np.zeros(self.valueEncoder.getWidth(),
                                  dtype=np.uint32)
 
-    self.timestampEncoder = DateEncoder(timeOfDay=(21,9.49,))
+    # Initialize the timestamp encoder
+    self.timestampEncoder = DateEncoder(timeOfDay=(21, 9.49, ))
     self.encodedTimestamp = np.zeros(self.timestampEncoder.getWidth(),
                                      dtype=np.uint32)
 
@@ -99,37 +110,45 @@ class NumentaTMLowLevelDetector(AnomalyDetector):
       "seed": 1960,
     })
 
-    learningPeriod = math.floor(self.probationaryPeriod / 2.0)
-    self.anomalyLikelihood = anomaly_likelihood.AnomalyLikelihood(
-      claLearningPeriod=learningPeriod,
-      estimationSamples=self.probationaryPeriod - learningPeriod,
-      reestimationPeriod=100
-    )
+    if self.useLikelihood:
+      learningPeriod = math.floor(self.probationaryPeriod / 2.0)
+      self.anomalyLikelihood = anomaly_likelihood.AnomalyLikelihood(
+        claLearningPeriod=learningPeriod,
+        estimationSamples=self.probationaryPeriod - learningPeriod,
+        reestimationPeriod=100
+      )
 
 
   def handleRecord(self, inputData):
     """Returns a tuple (anomalyScore, rawScore)."""
 
-    self.valueEncoder.encodeIntoArray(inputData["value"],
-                                      self.encodedValue)
+    # Encode the input data record
+    self.valueEncoder.encodeIntoArray(
+        inputData["value"], self.encodedValue)
+    self.timestampEncoder.encodeIntoArray(
+        inputData["timestamp"], self.encodedTimestamp)
 
-    self.timestampEncoder.encodeIntoArray(inputData["timestamp"],
-                                          self.encodedTimestamp)
-
+    # Run the encoded data through the spatial pooler
     self.sp.compute(np.concatenate((self.encodedTimestamp,
                                     self.encodedValue,)),
                     True, self.spOutput)
 
+    # At the current state, the set of the region's active columns and the set
+    # of columns that have previously-predicted cells are used to calculate the
+    # raw anomaly score.
     activeColumns = set(self.spOutput.nonzero()[0].tolist())
     prevPredictedColumns = set(self.tm.columnForCell(cell)
                                for cell in self.tm.getPredictiveCells())
-
     rawScore = (len(activeColumns - prevPredictedColumns) /
                 float(len(activeColumns)))
-    anomalyScore = self.anomalyLikelihood.anomalyProbability(
-      inputData["value"], rawScore, inputData["timestamp"])
-    logScore = self.anomalyLikelihood.computeLogLikelihood(anomalyScore)
 
     self.tm.compute(activeColumns)
 
-    return (logScore, rawScore)
+    if self.useLikelihood:
+      # Compute the log-likelihood score
+      anomalyScore = self.anomalyLikelihood.anomalyProbability(
+        inputData["value"], rawScore, inputData["timestamp"])
+      logScore = self.anomalyLikelihood.computeLogLikelihood(anomalyScore)
+      return (logScore, rawScore)
+
+    return (rawScore, rawScore)
