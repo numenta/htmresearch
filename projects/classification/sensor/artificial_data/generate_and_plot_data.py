@@ -25,20 +25,17 @@ from htmresearch.frameworks.classification.utils.sensor_data import (
 from htmresearch.frameworks.classification.utils.sensor_data import (
   plotSensorData)
 
-# Parameters to generate the artificial sensor data
-OUTFILE_NAME = "white_noise"
-SEQUENCE_LENGTH = 200
-NUM_CATEGORIES = 3
-NUM_RECORDS = 2400
-WHITE_NOISE_AMPLITUDES = [0.0, 1.0]
-SIGNAL_AMPLITUDES = [1.0]
-SIGNAL_MEANS = [1.0]
-SIGNAL_PERIODS = [20.0]
-
-# Additional parameters to run the classification experiments 
-RESULTS_DIR = "results"
-MODEL_PARAMS_DIR = 'model_params'
-DATA_DIR = "data"
+from settings import (OUTFILE_NAME,
+                      SEQUENCE_LENGTH,
+                      NUM_CATEGORIES,
+                      NUM_RECORDS,
+                      WHITE_NOISE_AMPLITUDES,
+                      SIGNAL_AMPLITUDES,
+                      SIGNAL_MEANS,
+                      SIGNAL_PERIODS,
+                      RESULTS_DIR,
+                      MODEL_PARAMS_DIR,
+                      DATA_DIR)
 
 
 

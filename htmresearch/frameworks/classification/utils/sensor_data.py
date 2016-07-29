@@ -83,9 +83,18 @@ def generateSensorData(dataDir,
         else:
           label -= 1
 
-      signal_modifier = 2 * (label + 1)
+      signal_modifier = (label**2 + 1)
       x = signal_modifier * (i * math.pi) / signalPeriod
-      m1 = signal_modifier * signalMean + signalAmplitude * math.sin(x) + noise
+      
+      lim = 0.99
+      sig = math.sin(x)
+      if sig > lim:
+        sig = lim
+      elif sig < -lim:
+        sig = -lim
+
+
+      m1 = signal_modifier * signalMean + signalAmplitude * sig + noise
 
       writer.writerow([x, m1, label])
 
