@@ -360,10 +360,10 @@ class ExtendedTemporalMemory(TemporalMemory):
                                                   apicalConnections)
       winnerCells.add(bestCell)
 
-      if bestSegment is None and len(prevWinnerCells):
+      if bestSegment is None and len(prevWinnerCells) > 0:
         bestSegment = connections.createSegment(bestCell)
 
-      if bestApicalSegment is None:
+      if bestApicalSegment is None and len(prevActiveApicalCells) > 0:
         bestApicalSegment = apicalConnections.createSegment(bestCell)
 
       if bestSegment is not None:
