@@ -259,6 +259,17 @@ def inspectSpatialPoolerStats(sp, inputVectors):
 
 
 
+def calculateEntropy(activeColumns):
+  MIN_ACTIVATION_PROB = 0.000001
+  activationProb = np.mean(activeColumns, 0)
+  activationProb[activationProb < MIN_ACTIVATION_PROB] = MIN_ACTIVATION_PROB
+  activationProb = activationProb / np.sum(activationProb)
+
+  entropy = -np.dot(activationProb, np.log2(activationProb))
+  return entropy
+
+
+
 if __name__ == "__main__":
   plt.close('all')
 
@@ -307,6 +318,7 @@ if __name__ == "__main__":
   numConnectedSynapsesTrace = []
   numNewlyConnectedSynapsesTrace = []
   numEliminatedSynapsesTrace = []
+  entropyTrace = []
 
   fig, ax = plt.subplots()
   cmap = cm.get_cmap('jet')
@@ -339,6 +351,8 @@ if __name__ == "__main__":
 
     sp.getConnectedCounts(connectedCounts)
 
+    entropyTrace.append(calculateEntropy(activeColumnsCurrentEpoch))
+
     if epoch >= 1:
       activeColumnsDiff = activeColumnsCurrentEpoch > activeColumnsPreviousEpoch
       numBitDiffTrace.append(np.mean(np.sum(activeColumnsDiff, 1)))
@@ -368,18 +382,22 @@ if __name__ == "__main__":
   plt.savefig('figures/overlap_over_training_{}_.pdf'.format(inputVectorType))
 
   # plot stats over training
-  fig, axs = plt.subplots(nrows=4, ncols=1)
-  axs[0].plot(numBitDiffTrace)
-  axs[0].set_ylabel('Active Column Diff')
+  fig, axs = plt.subplots(nrows=5, ncols=1)
 
-  axs[1].plot(numConnectedSynapsesTrace)
-  axs[1].set_ylabel('Syn #')
+  axs[0].plot(numConnectedSynapsesTrace)
+  axs[0].set_ylabel('Syn #')
 
-  axs[3].plot(numNewlyConnectedSynapsesTrace)
-  axs[3].set_ylabel('Newly Syn #')
+  axs[1].plot(numNewlyConnectedSynapsesTrace)
+  axs[1].set_ylabel('New Syn #')
 
   axs[2].plot(numEliminatedSynapsesTrace)
-  axs[2].set_ylabel('Eliminated Syns #')
+  axs[2].set_ylabel('Remove Syns #')
+
+  axs[3].plot(numBitDiffTrace)
+  axs[3].set_ylabel('Active Column Diff')
+
+  axs[4].plot(entropyTrace)
+  axs[4].set_ylabel('entropy (bits)')
   plt.savefig('figures/network_stats_over_training_{}.pdf'.format(inputVectorType))
 
   # inspect SP again
