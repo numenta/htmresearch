@@ -25,14 +25,14 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-
+import matplotlib as mpl
 from nupic.research.spatial_pooler import SpatialPooler
 
 # from nupic.bindings.algorithms import SpatialPooler
 
 uintType = "uint32"
 plt.ion()
-
+mpl.rcParams['pdf.fonttype'] = 42
 
 
 def percentOverlap(x1, x2):
@@ -299,8 +299,6 @@ if __name__ == "__main__":
     None, inputVectors, noiseLevelList)
 
   epochs = 800
-  plt.figure()
-  cmap = cm.get_cmap('jet')
 
   activeColumnsCurrentEpoch = np.zeros((numInputVector, columnNumber))
   activeColumnsPreviousEpoch = np.zeros((numInputVector, columnNumber))
@@ -310,6 +308,8 @@ if __name__ == "__main__":
   numNewlyConnectedSynapsesTrace = []
   numEliminatedSynapsesTrace = []
 
+  fig, ax = plt.subplots()
+  cmap = cm.get_cmap('jet')
   for epoch in range(epochs):
     print "training SP epoch {}".format(epoch)
     # calcualte overlap curve here
@@ -355,6 +355,16 @@ if __name__ == "__main__":
 
   plt.xlabel('Input overlap')
   plt.ylabel('Output overlap')
+
+  cax = fig.add_axes([0.05, 0.95, 0.4, 0.05])
+
+  fig2, ax2 = plt.subplots()
+  data = np.arange(0, 800).reshape((20, 40))
+  im = ax2.imshow(data, cmap='jet')
+
+  cbar = fig.colorbar(im, cax=cax, orientation='horizontal',
+                      ticks=[0, 400, 800])
+  plt.close(fig2)
   plt.savefig('figures/overlap_over_training_{}_.pdf'.format(inputVectorType))
 
   # plot stats over training
