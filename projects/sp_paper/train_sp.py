@@ -148,7 +148,8 @@ def calculateOverlapCurve(sp, inputVectors, inputVectorType):
   for i in range(numInputVector):
     for j in range(len(noiseLevelList)):
       inputVectorCorrupted = copy.deepcopy(inputVectors[i][:])
-      addNoiseToVector(inputVectorCorrupted, noiseLevelList[j], inputVectorType)
+      corruptSparseVector(inputVectorCorrupted, noiseLevelList[j])
+      # addNoiseToVector(inputVectorCorrupted, noiseLevelList[j], inputVectorType)
 
       sp.compute(inputVectors[i][:], False, outputColumns[i][:])
       sp.compute(inputVectorCorrupted, False,
@@ -189,7 +190,8 @@ def classificationAccuracyVsNoise(sp, inputVectors, noiseLevelList):
   for i in range(len(noiseLevelList)):
     for j in range(numInputVector):
       corruptedInputVector = copy.deepcopy(inputVectors[j][:])
-      addNoiseToVector(corruptedInputVector, noiseLevelList[i], inputVectorType)
+      corruptSparseVector(corruptedInputVector, noiseLevelList[i])
+      # addNoiseToVector(corruptedInputVector, noiseLevelList[i], inputVectorType)
 
       if sp is None:
         outputColumns = copy.deepcopy(corruptedInputVector)
@@ -214,7 +216,7 @@ def plotAccuracyVsNoise(noiseLevelList, predictionAccuracy):
 
 
 
-def inspectSpatialPoolerStats(sp, inputVectors):
+def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
   """
   Inspect the statistics of a spatial pooler given a set of input vectors
   :param sp: an spatial pooler instance
@@ -243,7 +245,9 @@ def inspectSpatialPoolerStats(sp, inputVectors):
   axs[0].set_title('input vectors')
   axs[1].imshow(outputColumns[:, :200], cmap='gray')
   axs[1].set_ylabel('sample #')
-  axs[1].set_title('input vectors')
+  axs[1].set_title('output vectors')
+  if saveFigPrefix is not None:
+    plt.savefig('figures/{}_example_input_output.pdf'.format(saveFigPrefix))
 
   fig, axs = plt.subplots(2, 2)
   axs[0, 0].hist(connectedCounts)
@@ -256,7 +260,8 @@ def inspectSpatialPoolerStats(sp, inputVectors):
   axs[1, 0].set_xlabel('activation prob')
 
   axs[1, 1].plot(connectedCounts, activationProb, '.')
-
+  if saveFigPrefix is not None:
+    plt.savefig('figures/{}_network_stats.pdf'.format(saveFigPrefix))
 
 
 def calculateEntropy(activeColumns):
@@ -267,6 +272,37 @@ def calculateEntropy(activeColumns):
 
   entropy = -np.dot(activationProb, np.log2(activationProb))
   return entropy
+
+
+
+def generateCorrelatedInputs():
+  numInputVector1 = 50
+  numInputVector2 = 50
+  w = 20
+  inputSize1 = w * numInputVector1
+  inputSize2 = w * numInputVector2
+
+  inputVectors1 = np.zeros((numInputVector1, inputSize1))
+  for i in range(numInputVector1):
+    inputVectors1[i][i*w:(i+1)*w] = 1
+  inputVectors2 = np.zeros((numInputVector2, inputSize2))
+  for i in range(numInputVector2):
+    inputVectors2[i][i*w:(i+1)*w] = 1
+
+  corrMatSparsity = 0.1
+  corrMat = np.random.rand(numInputVector1, numInputVector2) < corrMatSparsity
+
+  numInputVector = np.sum(corrMat)
+  inputSize = inputSize1 + inputSize2
+  inputVectors = np.zeros((numInputVector, inputSize))
+  counter = 0
+  for i in range(numInputVector1):
+    for j in range(numInputVector2):
+      if corrMat[i, j]:
+        inputVectors[counter][:] = np.concatenate((inputVectors1[i],
+                                                  inputVectors2[j]))
+        counter += 1
+  return inputVectors
 
 
 
@@ -284,6 +320,9 @@ if __name__ == "__main__":
   elif inputVectorType == 'dense':
     inputSize = 1000
     inputVectors = generateDenseVectors(numInputVector, inputSize)
+  elif inputVectorType == 'correlate-input':
+    inputVectors = generateCorrelatedInputs()
+    numInputVector, inputSize = inputVectors.shape
   else:
     raise ValueError
 
@@ -299,7 +338,7 @@ if __name__ == "__main__":
                      synPermActiveInc=0.001,
                      synPermInactiveDec=0.001)
 
-  inspectSpatialPoolerStats(sp, inputVectors)
+  inspectSpatialPoolerStats(sp, inputVectors, inputVectorType+"beforeTraining")
 
   # classification Accuracy before training
   noiseLevelList = np.linspace(0, 1.0, 21)
@@ -401,7 +440,7 @@ if __name__ == "__main__":
   plt.savefig('figures/network_stats_over_training_{}.pdf'.format(inputVectorType))
 
   # inspect SP again
-  inspectSpatialPoolerStats(sp, inputVectors)
+  inspectSpatialPoolerStats(sp, inputVectors, inputVectorType+"afterTraining")
   # classify SDRs with noise
   noiseLevelList = np.linspace(0, 1.0, 21)
   accuracyAfterTraining = classificationAccuracyVsNoise(
@@ -417,3 +456,26 @@ if __name__ == "__main__":
   plt.ylabel('Prediction Accuracy')
   plt.savefig('figures/noise_robustness_{}_.pdf'.format(inputVectorType))
 
+  numInputVector1 = 50
+  numInputVector2 = 50
+  w = 20
+  inputSize1 = w * numInputVector1
+  inputSize2 = w * numInputVector2
+
+  connectedCounts = np.zeros((columnNumber, ))
+  sp.getConnectedCounts(connectedCounts)
+  connectedSynapses = np.zeros((inputSize, ), dtype=uintType)
+  sp.getConnectedSynapses(20, connectedSynapses)
+  connectionToInput1 = connectedSynapses[:inputSize1]
+  connectionToInput2 = connectedSynapses[inputSize1:]
+
+  connectionToInput1DownSample = np.zeros((numInputVector1, ))
+  connectionToInput2DownSample = np.zeros((numInputVector2, ))
+  for i in range(numInputVector1):
+    connectionToInput1DownSample[i] = np.sum(connectionToInput1[i*w:(i+1)*w])
+  for i in range(numInputVector2):
+    connectionToInput2DownSample[i] = np.sum(connectionToInput2[i*w:(i+1)*w])
+
+  fig, ax = plt.subplots(nrows=2, ncols=1)
+  ax[0].plot(connectionToInput1DownSample)
+  ax[1].plot(connectionToInput2DownSample)
