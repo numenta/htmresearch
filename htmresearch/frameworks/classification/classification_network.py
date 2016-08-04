@@ -437,9 +437,6 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
       "test records \n" % (classificationAccuracy,
                            numCorrect,
                            numTestRecords))
-      if verbosity > 0:
-        _LOGGER.debug(results)
-
   _LOGGER.info(results)
 
   return classificationAccuracy
