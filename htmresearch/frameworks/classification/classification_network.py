@@ -488,7 +488,8 @@ def _getClassifierInference(classifierRegion):
 
 
 def _inspectTMPredictionQuality(tm, numRecordsToInspect):
-  """Inspect prediction quality of TM over the most recent N records"""
+  """ Inspect prediction quality of TM over the most recent
+  numRecordsToInspect records """
   # correct predictions: predicted -> active columns
   predictedActiveCols = tm.mmGetTracePredictedActiveColumns()
   numPredictedActiveCols = predictedActiveCols.makeCountsTrace().data
