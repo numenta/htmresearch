@@ -393,6 +393,19 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
   classifierRegion = network.regions[
     networkConfig["classifierRegionConfig"].get("regionName")]
 
+  trackTMmetrics = False
+  # track TM metrics if monitored_tm_py implementation is being used
+  if networkConfig["tmRegionConfig"].get("regionEnabled"):
+    tmRegion = network.regions[
+      networkConfig["tmRegionConfig"].get("regionName")].getSelf()
+
+    if tmRegion.getParameter("temporalImp") == "monitored_tm_py":
+      trackTMmetrics = True
+      tm = tmRegion.getAlgorithmInstance()
+  else:
+    tmRegion = None
+    tm = None
+
   # Keep track of the regions that have been trained.
   trainedRegionNames = []
   numCorrect = 0
@@ -416,6 +429,21 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
                               trainedRegionNames,
                               partitionName,
                               recordNumber)
+
+    if trackTMmetrics:
+      if tmRegion.getParameter("learningMode") and recordNumber % 100 == 0:
+        (avgPredictedActiveCols,
+         avgPredictedInactiveCols,
+         avgUnpredictedActiveCols) = _inspectTMPredictionQuality(
+          tm, numRecordsToInspect=100)
+        tmStats = ("# predicted -> active cols=%4.1f | "
+                   "# predicted -> inactive cols=%4.1f | "
+                   "# unpredicted -> active cols=%4.1f " % (
+                     avgPredictedActiveCols,
+                     avgPredictedInactiveCols,
+                     avgUnpredictedActiveCols
+                   ))
+        _LOGGER.info(tmStats)
 
     if recordNumber >= partitions[-1][1]:
       # evaluate the predictions on the test set
@@ -456,6 +484,33 @@ def _getClassifierInference(classifierRegion):
     return numpy.lexsort((randomValues, inferenceValues))[-1]
   else:
     return classifierRegion.getOutputData("categoriesOut")[0]
+
+
+
+def _inspectTMPredictionQuality(tm, numRecordsToInspect):
+  """Inspect prediction quality of TM over the most recent N records"""
+  # correct predictions: predicted -> active columns
+  predictedActiveCols = tm.mmGetTracePredictedActiveColumns()
+  numPredictedActiveCols = predictedActiveCols.makeCountsTrace().data
+
+  # false/extra predictions: predicted -> inactive column
+  predictedInactiveCols = tm.mmGetTracePredictedInactiveColumns()
+  numPredictedInactiveCols = predictedInactiveCols.makeCountsTrace().data
+
+  # unpredicted inputs: unpredicted -> active
+  unpredictedActiveCols = tm.mmGetTraceUnpredictedActiveColumns()
+  numUnpredictedActiveCols = unpredictedActiveCols.makeCountsTrace().data
+
+  avgPredictedActiveCols = numpy.mean(
+    numPredictedActiveCols[-numRecordsToInspect:])
+  avgPredictedInactiveCols = numpy.mean(
+    numPredictedInactiveCols[-numRecordsToInspect:])
+  avgUnpredictedActiveCols = numpy.mean(
+    numUnpredictedActiveCols[-numRecordsToInspect:])
+
+  return (avgPredictedActiveCols,
+          avgPredictedInactiveCols,
+          avgUnpredictedActiveCols)
 
 
 
