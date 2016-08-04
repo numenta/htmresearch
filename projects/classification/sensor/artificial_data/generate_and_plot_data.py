@@ -47,16 +47,19 @@ def _generateData():
     for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
       for signalMean in SIGNAL_MEANS:
         for signalAmplitude in SIGNAL_AMPLITUDES:
-          expSetup = generateSensorData(signalType,
-                                        DATA_DIR,
-                                        NUM_PHASES,
-                                        NUM_REPS,
-                                        signalMean,
-                                        signalAmplitude,
-                                        NUM_CATEGORIES,
-                                        noiseAmplitude)
-
-          expSetups.append(expSetup)
+            for numCategories in NUM_CATEGORIES:
+              for numReps in NUM_REPS:
+                for numPhases in NUM_PHASES:
+                  expSetup = generateSensorData(signalType,
+                                                DATA_DIR,
+                                                numPhases,
+                                                numReps,
+                                                signalMean,
+                                                signalAmplitude,
+                                                numCategories,
+                                                noiseAmplitude)
+        
+                  expSetups.append(expSetup)
 
   return expSetups
 
