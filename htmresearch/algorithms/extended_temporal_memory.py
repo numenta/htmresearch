@@ -25,8 +25,9 @@ Extended Temporal Memory implementation in Python.
 
 from collections import defaultdict
 
-from nupic.research.temporal_memory import TemporalMemory
 from nupic.research.connections import Connections
+from htmresearch.algorithms.temporal_memory_phases import TemporalMemory
+
 
 
 class ExtendedTemporalMemory(TemporalMemory):
@@ -86,9 +87,8 @@ class ExtendedTemporalMemory(TemporalMemory):
     if activeApicalCells is None:
       activeApicalCells = set()
 
-    activeExternalCells = self._reindexActiveExternalCells(activeExternalCells)
-    activeApicalCells = self._reindexActiveApicalCells(activeApicalCells,
-                                                       len(activeExternalCells))
+    activeExternalCells = self._reindexActiveCells(activeExternalCells)
+    activeApicalCells = self._reindexActiveCells(activeApicalCells)
 
     (activeCells,
      winnerCells,
@@ -505,22 +505,15 @@ class ExtendedTemporalMemory(TemporalMemory):
     return self.predictedActiveCells
 
 
-  def _reindexActiveExternalCells(self, activeExternalCells):
+  def _reindexActiveCells(self, activeCells):
     """
-    Move sensorimotor input indices to outside the range of valid cell indices
+    Move sensorimotor or apical input indices to outside the range of valid
+    cell indices
 
-    @params activeExternalCells (set) Indices of active external cells in `t`
+    @params activeCells (set) Indices of active external cells in `t`
     """
     numCells = self.numberOfCells()
-    return set([index + numCells for index in activeExternalCells])
-
-
-  def _reindexActiveApicalCells(self, activeApicalCells, numExtCells):
-    """
-    @params activeApicalCells (set) Indices of active apical cells in `t`
-    """
-    numCells = self.numberOfCells() + numExtCells
-    return set([index + numCells for index in activeApicalCells])
+    return set([index + numCells for index in activeCells])
 
 
   def calculatePredictiveCells(self, predictiveDistalCells,

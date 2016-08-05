@@ -81,7 +81,7 @@
         "maxAge": 0,
         "newSynapseCount": 20,
         "maxSegmentsPerCell": 128,
-        "temporalImp": "cpp"
+        "temporalImp": "monitored_tm_py"
       },
       "regionType": "py.TPRegion",
       "regionName": "TM"
@@ -169,7 +169,7 @@
         "maxAge": 0,
         "newSynapseCount": 20,
         "maxSegmentsPerCell": 128,
-        "temporalImp": "cpp"
+        "temporalImp": "monitored_tm_py"
       },
       "regionType": "py.TPRegion",
       "regionName": "TM"
@@ -257,7 +257,7 @@
         "maxAge": 0,
         "newSynapseCount": 20,
         "maxSegmentsPerCell": 128,
-        "temporalImp": "cpp"
+        "temporalImp": "monitored_tm_py"
       },
       "regionType": "py.TPRegion",
       "regionName": "TM"
@@ -345,7 +345,7 @@
         "maxAge": 0,
         "newSynapseCount": 20,
         "maxSegmentsPerCell": 128,
-        "temporalImp": "cpp"
+        "temporalImp": "monitored_tm_py"
       },
       "regionType": "py.TPRegion",
       "regionName": "TM"
@@ -433,7 +433,7 @@
         "maxAge": 0,
         "newSynapseCount": 20,
         "maxSegmentsPerCell": 128,
-        "temporalImp": "cpp"
+        "temporalImp": "monitored_tm_py"
       },
       "regionType": "py.TPRegion",
       "regionName": "TM"

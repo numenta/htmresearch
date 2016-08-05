@@ -776,7 +776,7 @@ class ExtendedTemporalMemoryTest(unittest.TestCase):
 
     activeColumns = set([1, 3])
     activeExternalCells = set([1])  # will be re-indexed to 41
-    activeApicalCells = set([1, 2])  # will be re-indexed to 42, 43
+    activeApicalCells = set([2, 3])  # will be re-indexed to 42, 43
 
     tm.compute(
       activeColumns,
