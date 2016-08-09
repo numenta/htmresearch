@@ -20,46 +20,29 @@
 # ----------------------------------------------------------------------
 
 import json
-import os
-import shutil
-import tempfile
 import unittest
 
-from nupic.engine import Network
-from htmresearch.support.register_regions import registerAllResearchRegions
+from htmresearch.algorithms.column_pooler import ColumnPooler
 
 
-
-class L2ColumnTest(unittest.TestCase):
-  """ Super simple test of the L2Column region."""
-
-  @classmethod
-  def setUpClass(cls):
-    registerAllResearchRegions()
+class ColumnPoolerTest(unittest.TestCase):
+  """ Super simple test of the ColumnPooler region."""
 
 
-  def testNetworkCreate(self):
+  def testConstructor(self):
     """Create a simple network to test the region."""
 
-    rawParams = {"outputWidth": 16*2048}
-    net = Network()
-    rawSensor = net.addRegion("raw","py.RawSensor", json.dumps(rawParams))
-    l2c = net.addRegion("L2", "py.L2Column", "")
-    net.link("raw", "L2", "UniformLink", "")
+    pooler = ColumnPooler(
+      inputWidth=2048*8,
+      columnDimensions=[2048, 1],
+      numActiveColumnsPerInhArea=40,
+      maxSynapsesPerSegment=2048*8
+    )
 
-    self.assertEqual(rawSensor.getParameter("outputWidth"),
-                     l2c.getParameter("inputWidth"),
-                     "Incorrect outputWidth parameter")
+    self.assertEqual(pooler.numberOfCells(), 2048, "Incorrect number of cells")
 
-    rawSensorPy = rawSensor.getSelf()
-    rawSensorPy.addDataToQueue([2, 4, 6], 0, 42)
-    rawSensorPy.addDataToQueue([2, 42, 1023], 1, 43)
-    rawSensorPy.addDataToQueue([18, 19, 20], 0, 44)
-
-    # Run the network and check outputs are as expected
-    net.run(3)
-
-
+    self.assertEqual(pooler.numberOfInputs(), 16384,
+                     "Incorrect number of inputs")
 
 if __name__ == "__main__":
   unittest.main()

@@ -19,12 +19,15 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import copy
+
 from nupic.bindings.regions.PyRegion import PyRegion
+from htmresearch.algorithms.column_pooler import ColumnPooler
 
 
-class L2Column(PyRegion):
+class ColumnPoolerRegion(PyRegion):
   """
-  The L2Column implements an L2 layer within a single cortical column / cortical
+  The ColumnPoolerRegion implements an L2 layer within a single cortical column / cortical
   module.
 
   The layer supports feed forward (proximal) and lateral inputs.
@@ -33,16 +36,16 @@ class L2Column(PyRegion):
   @classmethod
   def getSpec(cls):
     """
-    Return the Spec for L2Column.
+    Return the Spec for ColumnPoolerRegion.
 
     The parameters collection is constructed based on the parameters specified
     by the various components (tmSpec and otherSpec)
     """
     spec = dict(
-      description=L2Column.__doc__,
+      description=ColumnPoolerRegion.__doc__,
       singleNodeOnly=True,
       inputs=dict(
-        feedForwardInput=dict(
+        feedforwardInput=dict(
           description="The primary feed-forward input to the layer, this is a"
                       " binary array containing 0's and 1's",
           dataType="Real32",
@@ -77,7 +80,7 @@ class L2Column(PyRegion):
       ),
       outputs=dict(
         feedForwardOutput=dict(
-          description="The default output of L2Column. By default this"
+          description="The default output of ColumnPoolerRegion. By default this"
                       " outputs the active cells. You can change this "
                       " dynamically using the defaultOutputType parameter.",
           dataType="Real32",
@@ -197,6 +200,12 @@ class L2Column(PyRegion):
           accessMode='ReadWrite',
           dataType="Real32",
           count=1),
+        numActiveColumnsPerInhArea=dict(
+          description="The number of active cells invoked per object",
+          accessMode='ReadWrite',
+          dataType="UInt32",
+          count=1,
+          constraints=""),
         seed=dict(
           description="Seed for the random number generator.",
           accessMode='ReadWrite',
@@ -221,7 +230,8 @@ class L2Column(PyRegion):
 
   def __init__(self,
                columnCount=2048,
-               cellsPerColumn=16,
+               inputWidth=16384,
+               cellsPerColumn=1,
                activationThreshold=13,
                initialPermanence=0.21,
                connectedPermanence=0.50,
@@ -231,12 +241,13 @@ class L2Column(PyRegion):
                permanenceDecrement=0.10,
                predictedSegmentDecrement=0.0,
                seed=42,
+               numActiveColumnsPerInhArea=40,
                defaultOutputType = "active",
                **kwargs):
     # Defaults for all other parameters
     self.columnCount = columnCount
+    self.inputWidth = inputWidth
     self.cellsPerColumn = cellsPerColumn
-    self.inputWidth = self.columnCount*self.cellsPerColumn
     self.activationThreshold = activationThreshold
     self.initialPermanence = initialPermanence
     self.connectedPermanence = connectedPermanence
@@ -249,6 +260,9 @@ class L2Column(PyRegion):
     self.learningMode = True
     self.inferenceMode = True
     self.defaultOutputType = defaultOutputType
+    self.numActiveColumnsPerInhArea = numActiveColumnsPerInhArea
+
+    self._pooler = None
 
     PyRegion.__init__(self, **kwargs)
 
@@ -257,7 +271,13 @@ class L2Column(PyRegion):
     """
     Initialize the internal objects.
     """
-    pass
+    if self._pooler is None:
+      args = copy.deepcopy(self.__dict__)
+      self._pooler = ColumnPooler(
+        columnDimensions=[self.columnCount, 1],
+        maxSynapsesPerSegment = self.inputWidth,
+        **args
+      )
 
 
   def compute(self, inputs, outputs):
@@ -270,6 +290,11 @@ class L2Column(PyRegion):
     at the next compute will start fresh, presumably with bursting columns.
     """
     print "In L2 column"
+    self._pooler.compute(
+      feedforwardInput=inputs['feedforwardInput'],
+      activeExternalCells=inputs.get('lateralInput', None),
+      learn=self.learningMode
+    )
 
 
   def reset(self):

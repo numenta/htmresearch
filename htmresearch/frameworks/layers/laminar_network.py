@@ -36,15 +36,31 @@ column feeds back to L4.
         |          |          |
 externalInput  sensorInput -->|
 
-Regions will be named as shown above. The reset signal from sensorInput is
-sent to the other regions.
-
-How do you like my ascii art?
-
 The second network type supported, "MultipleL4L2Columns", allows you to create
 N L4L2 columns with the above structure. In this case the L2 columns will also
 be laterally connected to one another (each one receives input from all other
 columns.)
+
+                ----------------------------------
+                |                                |
+                v                                v
+             L2Column  <------|               L2Column  <------|
+               ^  |           |                 ^  |           |
+               |  |           |                 |  |           |
+               |  v           |                 |  v           |
+        --->  L4Column <------|          --->  L4Column <------|
+        |          ^          |          |          ^          |
+        |          |        reset        |          |        reset
+        |          |          |          |          |          |
+externalInput  sensorInput -->|  externalInput  sensorInput -->|
+
+
+For both network types, regions will be named as shown above plus a suffix
+indicating column number, such as "externalInput_0", "L2Column_3", etc. The
+reset signal from sensorInput is sent to the other regions.
+
+Also, how do you like my ascii art?
+
 """
 import json
 
@@ -66,33 +82,31 @@ def createL4L2Column(network, networkConfig, suffix=""):
         <constructor parameters for ExtendedTMRegion
       },
       "L2Params": {
-        <constructor parameters for L2Column>
+        <constructor parameters for ColumnPoolerRegion>
       }
     }
 
-  Region names are externalInput, sensorInput, L4Column, and L2Column. Each
-  name has an optional string suffix appended to it.
+  Region names are externalInput, sensorInput, L4Column, and ColumnPoolerRegion.
+  Each name has an optional string suffix appended to it.
   """
   externalInputName = "externalInput" + suffix
   sensorInputName = "sensorInput" + suffix
   L4ColumnName = "L4Column" + suffix
   L2ColumnName = "L2Column" + suffix
 
-  # Create the two sensors
+  # Create the two sensors, L4 column, and L2 column
   network.addRegion(
     externalInputName, "py.RawSensor",
     json.dumps({"outputWidth": networkConfig["externalInputSize"]}))
   network.addRegion(
     sensorInputName, "py.RawSensor",
     json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
-
   network.addRegion(
     L4ColumnName, "py.ExtendedTMRegion",
-                  json.dumps(networkConfig["L4Params"]))
-
+    json.dumps(networkConfig["L4Params"]))
   network.addRegion(
-    L2ColumnName, "py.L2Column", json.dumps(networkConfig["L2Params"]))
-
+    L2ColumnName, "py.ColumnPoolerRegion",
+    json.dumps(networkConfig["L2Params"]))
 
   # Set phases appropriately so regions are executed in the proper sequence
   # This is required when we create multiple columns - the order of execution
@@ -143,7 +157,7 @@ def createMultipleL4L2Columns(network, networkConfig):
         <constructor parameters for ExtendedTMRegion
       },
       "L2Params": {
-        <constructor parameters for L2Column>
+        <constructor parameters for ColumnPoolerRegion>
       }
     }
   """
@@ -179,6 +193,6 @@ def createNetwork(networkConfig):
   network = Network()
 
   if networkConfig["networkType"] == "L4L2Column":
-    return createL4L2Column(network, networkConfig)
+    return createL4L2Column(network, networkConfig, "_0")
   elif networkConfig["networkType"] == "MultipleL4L2Columns":
     return createMultipleL4L2Columns(network, networkConfig)
