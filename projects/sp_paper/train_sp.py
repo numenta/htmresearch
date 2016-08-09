@@ -82,6 +82,51 @@ def generateRandomSDR(numSDR, numDims, numActiveInputBits, seed=42):
   return randomSDRs
 
 
+def convertToBinaryImage(image, thresh=75):
+  binaryImage = np.zeros(image.shape)
+  binaryImage[image > np.percentile(image, thresh)] = 1
+  return binaryImage
+
+
+
+def getImageData(numInputVectors):
+  from htmresearch.algorithms.image_sparse_net import ImageSparseNet
+
+  DATA_PATH = "../sparse_net/data/IMAGES.mat"
+  DATA_NAME = "IMAGES"
+
+  DEFAULT_SPARSENET_PARAMS = {
+    "filterDim": 64,
+    "outputDim": 64,
+    "batchSize": numInputVectors,
+    "numLcaIterations": 75,
+    "learningRate": 2.0,
+    "decayCycle": 100,
+    "learningRateDecay": 1.0,
+    "lcaLearningRate": 0.1,
+    "thresholdDecay": 0.95,
+    "minThreshold": 1.0,
+    "thresholdType": 'soft',
+    "verbosity": 0,  # can be changed to print training loss
+    "showEvery": 500,
+    "seed": 42,
+  }
+
+  network = ImageSparseNet(**DEFAULT_SPARSENET_PARAMS)
+
+  print "Loading training data..."
+  images = network.loadMatlabImages(DATA_PATH, DATA_NAME)
+
+  nDim1, nDim2, numImages = images.shape
+  binaryImages = np.zeros(images.shape)
+  for i in range(numImages):
+    binaryImages[:, :, i] = convertToBinaryImage(images[:, :, i])
+
+  inputVectors = network._getDataBatch(binaryImages)
+  inputVectors = inputVectors.T
+  return inputVectors
+
+
 
 def corruptDenseVector(vector, noiseLevel):
   """
@@ -229,7 +274,7 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
   outputColumns = np.zeros((numInputVector, numColumns), dtype=uintType)
   inputOverlap = np.zeros((numInputVector, numColumns), dtype=uintType)
 
-  connectedCounts = np.zeros((numColumns, ))
+  connectedCounts = np.zeros((numColumns, ), dtype=uintType)
   sp.getConnectedCounts(connectedCounts)
 
   for i in range(numInputVector):
@@ -282,12 +327,16 @@ def generateCorrelatedInputs():
   inputSize1 = w * numInputVector1
   inputSize2 = w * numInputVector2
 
-  inputVectors1 = np.zeros((numInputVector1, inputSize1))
-  for i in range(numInputVector1):
-    inputVectors1[i][i*w:(i+1)*w] = 1
-  inputVectors2 = np.zeros((numInputVector2, inputSize2))
-  for i in range(numInputVector2):
-    inputVectors2[i][i*w:(i+1)*w] = 1
+  # inputVectors1 = np.zeros((numInputVector1, inputSize1))
+  # for i in range(numInputVector1):
+  #   inputVectors1[i][i*w:(i+1)*w] = 1
+  #
+  # inputVectors2 = np.zeros((numInputVector2, inputSize2))
+  # for i in range(numInputVector2):
+  #   inputVectors2[i][i*w:(i+1)*w] = 1
+
+  inputVectors1 = generateRandomSDR(numInputVector1, inputSize1, w, seed=1)
+  inputVectors2 = generateRandomSDR(numInputVector2, inputSize2, w, seed=2)
 
   corrMatSparsity = 0.1
   corrMat = np.random.rand(numInputVector1, numInputVector2) < corrMatSparsity
@@ -302,43 +351,165 @@ def generateCorrelatedInputs():
         inputVectors[counter][:] = np.concatenate((inputVectors1[i],
                                                   inputVectors2[j]))
         counter += 1
-  return inputVectors
+
+  randomOrder = np.random.permutation(range(numInputVector))
+  inputVectors = inputVectors[randomOrder, :]
+  return inputVectors, inputVectors1, inputVectors2
+
+
+
+def plotReceptiveFields(sp, nDim1=8, nDim2=8):
+  """
+  Plot 2D receptive fields for 16 randomly selected columns
+  :param sp:
+  :return:
+  """
+  fig, ax = plt.subplots(nrows=4, ncols=4)
+  for rowI in range(4):
+    for colI in range(4):
+      col = np.random.randint(columnNumber)
+      connectedSynapses = np.zeros((inputSize,), dtype=uintType)
+      sp.getConnectedSynapses(col, connectedSynapses)
+      receptiveField = connectedSynapses.reshape((nDim1, nDim2))
+      ax[rowI, colI].imshow(receptiveField, cmap='gray')
+      ax[rowI, colI].set_title("col: {}".format(col))
+
+
+def calculateInputOverlapMat(inputVectors, sp):
+  numColumns = np.product(sp.getColumnDimensions())
+  numInputVector, inputSize = inputVectors.shape
+  overlapMat = np.zeros((numColumns, numInputVector))
+  for c in range(numColumns):
+    connectedSynapses = np.zeros((inputSize, ), dtype=uintType)
+    sp.getConnectedSynapses(c, connectedSynapses)
+    for i in range(numInputVector):
+      overlapMat[c, i] = percentOverlap(connectedSynapses, inputVectors[i, :])
+  return overlapMat
+
+
+
+def analyzeReceptiveFieldSparseInputs(inputVectors, sp):
+  numColumns = np.product(sp.getColumnDimensions())
+  overlapMat = calculateInputOverlapMat(inputVectors, sp)
+
+  plt.figure()
+  plt.imshow(overlapMat[:100, :], interpolation="nearest", cmap="magma")
+  plt.xlabel("Input Vector #")
+  plt.ylabel("SP Column #")
+  plt.colorbar()
+  plt.title('percent overlap')
+
+  sortedOverlapMat = np.zeros(overlapMat.shape)
+  for c in range(numColumns):
+    sortedOverlapMat[c, :] = np.sort(overlapMat[c, :])
+
+  avgSortedOverlaps = np.flipud(np.mean(sortedOverlapMat, 0))
+  plt.figure()
+  plt.plot(avgSortedOverlaps, '-o')
+  plt.xlabel('sorted input vector #')
+  plt.ylabel('percent overlap')
+
+
+def analyzeReceptiveFieldCorrelatedInputs(
+        inputVectors, inputVectors1, inputVectors2, sp):
+
+  numInputVector, inputSize = inputVectors.shape
+  numInputVector1 = 50
+  numInputVector2 = 50
+  w = 20
+  inputSize1 = w * numInputVector1
+  inputSize2 = w * numInputVector2
+
+  connectedCounts = np.zeros((columnNumber,), dtype=uintType)
+  sp.getConnectedCounts(connectedCounts)
+
+  numColumns = np.product(sp.getColumnDimensions())
+  overlapMat1 = np.zeros((numColumns, inputVectors1.shape[0]))
+  overlapMat2 = np.zeros((numColumns, inputVectors2.shape[0]))
+  numColumns = np.product(sp.getColumnDimensions())
+  numInputVector, inputSize = inputVectors.shape
+
+  for c in range(numColumns):
+    connectedSynapses = np.zeros((inputSize,), dtype=uintType)
+    sp.getConnectedSynapses(c, connectedSynapses)
+    for i in range(inputVectors1.shape[0]):
+      overlapMat1[c, i] = percentOverlap(connectedSynapses[:inputSize1],
+                                         inputVectors1[i, :inputSize1])
+    for i in range(inputVectors2.shape[0]):
+      overlapMat2[c, i] = percentOverlap(connectedSynapses[inputSize1:],
+                                         inputVectors2[i, :inputSize2])
+
+  sortedOverlapMat1 = np.zeros(overlapMat1.shape)
+  sortedOverlapMat2 = np.zeros(overlapMat2.shape)
+  for c in range(numColumns):
+    sortedOverlapMat1[c, :] = np.sort(overlapMat1[c, :])
+    sortedOverlapMat2[c, :] = np.sort(overlapMat2[c, :])
+  fig, ax = plt.subplots(nrows=2, ncols=2)
+  ax[0, 0].plot(np.mean(sortedOverlapMat1, 0), '-o')
+  ax[0, 1].plot(np.mean(sortedOverlapMat2, 0), '-o')
+
+  fig, ax = plt.subplots(nrows=1, ncols=2)
+  ax[0].imshow(overlapMat1[:100, :], interpolation="nearest", cmap="magma")
+  ax[0].set_xlabel('# Input 1')
+  ax[0].set_ylabel('SP Column #')
+  ax[1].imshow(overlapMat2[:100, :], interpolation="nearest", cmap="magma")
+  ax[1].set_xlabel('# Input 2')
+  ax[1].set_ylabel('SP Column #')
 
 
 
 if __name__ == "__main__":
   plt.close('all')
 
-  numInputVector = 100
-  inputVectorType = 'sparse'  # 'sparse' or 'dense'
-  trackOverlapCurveOverTraining = True
+  inputVectorType = 'correlate-input'  # 'sparse' or 'dense'
+  trackOverlapCurveOverTraining = False
 
   if inputVectorType == 'sparse':
+    numInputVector = 100
     inputSize = 1024
     numActiveBits = int(0.02 * inputSize)
     inputVectors = generateRandomSDR(numInputVector, inputSize, numActiveBits)
   elif inputVectorType == 'dense':
+    numInputVector = 100
     inputSize = 1000
     inputVectors = generateDenseVectors(numInputVector, inputSize)
   elif inputVectorType == 'correlate-input':
-    inputVectors = generateCorrelatedInputs()
-    numInputVector, inputSize = inputVectors.shape
+    inputVectors, inputVectors1, inputVectors2 = generateCorrelatedInputs()
+  elif inputVectorType == 'natural_images':
+    numInputVector = 100
+    inputVectors = getImageData(numInputVector)
   else:
     raise ValueError
 
+  numInputVector, inputSize = inputVectors.shape
+
+  print "Training Data Type {}".format(inputVectorType)
+  print "Training Data Size {} Dimensions {}".format(numInputVector, inputSize)
+
   columnNumber = 2048
-  sp = SpatialPooler((inputSize, 1),
-                     (columnNumber, 1),
-                     potentialRadius=int(0.5 * inputSize),
-                     numActiveColumnsPerInhArea=int(0.02 * columnNumber),
-                     globalInhibition=True,
-                     seed=1936,
-                     maxBoost=1,
-                     dutyCyclePeriod=1000,
-                     synPermActiveInc=0.001,
-                     synPermInactiveDec=0.001)
+  spatialPoolerParameters = {
+    "inputDimensions": (inputSize, 1),
+    "columnDimensions": (columnNumber, 1),
+    "potentialRadius": int(0.5 * inputSize),
+    "globalInhibition": True,
+    "numActiveColumnsPerInhArea": int(0.02 * columnNumber),
+    "stimulusThreshold": 0,
+    "synPermInactiveDec": 0.005,
+    "synPermActiveInc": 0.001,
+    "synPermConnected": 0.1,
+    "minPctOverlapDutyCycle": 0.01,
+    "minPctActiveDutyCycle": 0.01,
+    "dutyCyclePeriod": 1000,
+    "maxBoost": 1.0,
+    "seed": 1936
+  }
+  sp = SpatialPooler(**spatialPoolerParameters)
 
   inspectSpatialPoolerStats(sp, inputVectors, inputVectorType+"beforeTraining")
+
+  if inputVectorType == "sparse":
+    analyzeReceptiveFieldSparseInputs(inputVectors, sp)
+    plt.savefig('figures/{}_inputOverlap_before_learning.pdf'.format(inputVectorType))
 
   # classification Accuracy before training
   noiseLevelList = np.linspace(0, 1.0, 21)
@@ -352,7 +523,7 @@ if __name__ == "__main__":
 
   activeColumnsCurrentEpoch = np.zeros((numInputVector, columnNumber))
   activeColumnsPreviousEpoch = np.zeros((numInputVector, columnNumber))
-  connectedCounts = np.zeros((columnNumber,))
+  connectedCounts = np.zeros((columnNumber,), dtype=uintType)
   numBitDiffTrace = []
   numConnectedSynapsesTrace = []
   numNewlyConnectedSynapsesTrace = []
@@ -388,7 +559,9 @@ if __name__ == "__main__":
       activeColumnsCurrentEpoch[sdrOrders[i]][:] = np.reshape(outputColumns,
                                                               (1, columnNumber))
 
+    connectedCounts = connectedCounts.astype(uintType)
     sp.getConnectedCounts(connectedCounts)
+    connectedCounts = connectedCounts.astype('float32')
 
     entropyTrace.append(calculateEntropy(activeColumnsCurrentEpoch))
 
@@ -456,26 +629,12 @@ if __name__ == "__main__":
   plt.ylabel('Prediction Accuracy')
   plt.savefig('figures/noise_robustness_{}_.pdf'.format(inputVectorType))
 
-  numInputVector1 = 50
-  numInputVector2 = 50
-  w = 20
-  inputSize1 = w * numInputVector1
-  inputSize2 = w * numInputVector2
-
-  connectedCounts = np.zeros((columnNumber, ))
-  sp.getConnectedCounts(connectedCounts)
-  connectedSynapses = np.zeros((inputSize, ), dtype=uintType)
-  sp.getConnectedSynapses(20, connectedSynapses)
-  connectionToInput1 = connectedSynapses[:inputSize1]
-  connectionToInput2 = connectedSynapses[inputSize1:]
-
-  connectionToInput1DownSample = np.zeros((numInputVector1, ))
-  connectionToInput2DownSample = np.zeros((numInputVector2, ))
-  for i in range(numInputVector1):
-    connectionToInput1DownSample[i] = np.sum(connectionToInput1[i*w:(i+1)*w])
-  for i in range(numInputVector2):
-    connectionToInput2DownSample[i] = np.sum(connectionToInput2[i*w:(i+1)*w])
-
-  fig, ax = plt.subplots(nrows=2, ncols=1)
-  ax[0].plot(connectionToInput1DownSample)
-  ax[1].plot(connectionToInput2DownSample)
+  # analyze RF properties
+  if inputVectorType == "sparse":
+    analyzeReceptiveFieldSparseInputs(inputVectors, sp)
+    plt.savefig('figures/{}_inputOverlap_after_learning.pdf'.format(inputVectorType))
+  elif inputVectorType == 'correlate-input':
+    analyzeReceptiveFieldCorrelatedInputs(
+      inputVectors, inputVectors1, inputVectors2, sp)
+    plt.savefig(
+      'figures/{}_inputOverlap_after_learning.pdf'.format(inputVectorType))
