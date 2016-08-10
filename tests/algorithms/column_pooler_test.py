@@ -19,8 +19,8 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import json
 import unittest
+import numpy
 
 from htmresearch.algorithms.column_pooler import ColumnPooler
 
@@ -30,12 +30,11 @@ class ColumnPoolerTest(unittest.TestCase):
 
 
   def testConstructor(self):
-    """Create a simple network to test the region."""
+    """Create a simple instance and test the constructor."""
 
     pooler = ColumnPooler(
       inputWidth=2048*8,
       columnDimensions=[2048, 1],
-      numActiveColumnsPerInhArea=40,
       maxSynapsesPerSegment=2048*8
     )
 
@@ -43,6 +42,40 @@ class ColumnPoolerTest(unittest.TestCase):
 
     self.assertEqual(pooler.numberOfInputs(), 16384,
                      "Incorrect number of inputs")
+
+
+  def testInitialNullInputLearnMode(self):
+    """Tests with no input in the beginning. """
+
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      columnDimensions=[2048, 1],
+      maxSynapsesPerSegment=2048 * 8
+    )
+    activatedCells = numpy.zeros(pooler.numberOfCells())
+
+    # Should be no active cells in beginning
+    self.assertEqual(len(pooler.getActiveCells()), 0,
+                     "Incorrect number of active cells")
+
+    # After computing with no input should have 40 active cells
+    pooler.compute(feedforwardInput=set(), learn=True)
+    activatedCells[pooler.getActiveCells()] = 1
+    self.assertEqual(activatedCells.sum(), 40,
+                     "Incorrect number of active cells")
+
+    # Should be no active cells after reset
+    pooler.reset()
+    self.assertEqual(len(pooler.getActiveCells()), 0,
+                     "Incorrect number of active cells")
+
+    # After computing again with no input should have different 40 active cells
+    pooler.compute(feedforwardInput=set(), learn=True)
+    activatedCells[pooler.getActiveCells()] += 1
+    self.assertLess((activatedCells>=2).sum(), 5,
+                    "SDRs not sufficiently different")
+
+
 
 if __name__ == "__main__":
   unittest.main()

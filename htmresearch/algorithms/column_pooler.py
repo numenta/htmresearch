@@ -33,12 +33,6 @@ uintType = "uint32"
 class ColumnPooler(ExtendedTemporalMemory):
   """
   This class constitutes a temporary implementation for a cross-column pooler.
-
-  the default implementation of the temporal pooler (TP).
-  The main goal of the TP is to form stable and unique representations of an
-  input data stream of cell activity from a Temporal Memory. More specifically,
-  the TP forms its stable representation based on input cells that were
-  correctly temporally predicted by Temporal Memory.
   """
 
   def __init__(self,
@@ -46,9 +40,10 @@ class ColumnPooler(ExtendedTemporalMemory):
                numActiveColumnsPerInhArea=40,
                **kwargs):
     """
-    Please see spatial_pooler.py in NuPIC for descriptions of common
-    constructor parameters.
+    Please see ExtendedTemporalMemory for descriptions of common constructor
+    parameters.
     """
+
     # Override: we only support one cell per column for now
     kwargs['cellsPerColumn'] = 1
     super(ColumnPooler, self).__init__(**kwargs)
@@ -68,8 +63,7 @@ class ColumnPooler(ExtendedTemporalMemory):
               learn=True):
     """
 
-    @param feedforwardInput     A numpy array of 0's and 1's that comprises
-                                the input (typically the active cells in TM)
+    @param feedforwardInput     (set) Indices of active input bits
 
     @param learn                If True, we are learning a new object
 
@@ -78,11 +72,11 @@ class ColumnPooler(ExtendedTemporalMemory):
       activeExternalCells = set()
 
     if learn:
-      self.computeLearningMode(feedforwardInput=feedforwardInput,
+      self._computeLearningMode(feedforwardInput=feedforwardInput,
                                lateralInput=activeExternalCells)
 
 
-  def computeLearningMode(self, feedforwardInput, lateralInput):
+  def _computeLearningMode(self, feedforwardInput, lateralInput):
     """
     Computes when learning new object
 
@@ -93,21 +87,22 @@ class ColumnPooler(ExtendedTemporalMemory):
     These cells will represent the object and learn distal connections to
     lateral cortical columns.
 
-    @param feedforwardInput     A numpy array of 0's and 1's that comprises
-                                the input (typically the active cells in TM)
+    @param feedforwardInput     (set) Indices of active input bits
+
     @param lateralInput         A list of list of active cells from neighboring
                                 columns. len(lateralInput) == number of
                                 connected neighboring cortical columns.
 
     """
-    assert (numpy.size(feedforwardInput) == self.inputWidth)
 
     # Figure out which cells are active due to feedforward proximal inputs
-    overlap = self.proximalSegments.dot(feedforwardInput)
+    ffInput = numpy.zeros(self.numberOfInputs())
+    ffInput[list(feedforwardInput)] = 1
+    overlaps = self.proximalSegments.dot(ffInput)
 
     # If we have bottom up input and there are no previously active cells,
     # select a random subset of the cells
-    if overlap.max() < self.minThreshold:
+    if overlaps.max() < self.minThreshold:
       if len(self.activeCells) == 0:
         # No previously active cells, need to create new SDR
         self.activeCells = set(self._random.shuffle(
@@ -115,7 +110,6 @@ class ColumnPooler(ExtendedTemporalMemory):
                           dtype="uint32"))[0:self.numActiveColumnsPerInhArea])
 
     # else: we maintain previous activity
-    print self.activeCells
 
     # Compute distal segment activity for each cell
     if len(lateralInput) > 0:
@@ -124,6 +118,7 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     # Reconcile and select the cells with sufficient bottom up activity plus
     # maximal lateral activity
+    # print "Max overlap=", overlaps.max()
 
 
     # Those cells that remain active will learn on their proximal and distal
