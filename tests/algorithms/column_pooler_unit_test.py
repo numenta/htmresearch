@@ -117,43 +117,89 @@ class ColumnPoolerTest(unittest.TestCase):
 
     # With no existing synapses, and number of inputs = newSynapseCount, should
     # return the full list
-    inputs = pooler._pickProximalInputsToLearnOn(newSynapseCount=10,
+    inputs,existing = pooler._pickProximalInputsToLearnOn(newSynapseCount=10,
                                         cell=100,
                                         activeInputs=set(range(10)),
                                         proximalSegments=proximalSegments)
     self.assertEqual(sum(inputs),45,"Did not select correct inputs")
+    self.assertEqual(len(existing),0,"Did not return correct existing inputs")
 
     # With no existing synapses, and number of inputs < newSynapseCount, should
     # return all inputs as synapses
-    inputs = pooler._pickProximalInputsToLearnOn(newSynapseCount=11,
+    inputs,existing = pooler._pickProximalInputsToLearnOn(newSynapseCount=11,
                                         cell=100,
                                         activeInputs=set(range(10)),
                                         proximalSegments=proximalSegments)
     self.assertEqual(sum(inputs),45,"Did not select correct inputs")
+    self.assertEqual(len(existing),0,"Did not return correct existing inputs")
 
     # With no existing synapses, and number of inputs > newSynapseCount
     # should return newSynapseCount indices
-    inputs = pooler._pickProximalInputsToLearnOn(newSynapseCount=9,
+    inputs,existing = pooler._pickProximalInputsToLearnOn(newSynapseCount=9,
                                         cell=100,
                                         activeInputs=set(range(10)),
                                         proximalSegments=proximalSegments)
     self.assertEqual(len(inputs),9,"Did not select correct inputs")
+    self.assertEqual(len(existing),0,"Did not return correct existing inputs")
 
     # With existing inputs to [0..9], should return [10..19]
-    inputs = pooler._pickProximalInputsToLearnOn(newSynapseCount=10,
+    inputs,existing = pooler._pickProximalInputsToLearnOn(newSynapseCount=10,
                                         cell=42,
                                         activeInputs=set(range(20)),
                                         proximalSegments=proximalSegments)
     self.assertEqual(sum(inputs),145,"Did not select correct inputs")
+    self.assertEqual(sum(existing),45,"Did not return correct existing inputs")
 
     # With existing inputs to [0..9], and active inputs [0..9] should
     # return none
-    inputs = pooler._pickProximalInputsToLearnOn(newSynapseCount=10,
+    inputs,existing = pooler._pickProximalInputsToLearnOn(newSynapseCount=10,
                                         cell=42,
                                         activeInputs=set(range(10)),
                                         proximalSegments=proximalSegments)
     self.assertEqual(len(inputs),0,"Did not select correct inputs")
-    print "inputs=",inputs,sum(inputs)
+    self.assertEqual(sum(existing),45,"Did not return correct existing inputs")
+
+
+  def testLearnProximal(self):
+    """Test picking of cells on proximal dendrite"""
+
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      columnDimensions=[2048, 1],
+      maxSynapsesPerSegment=2048 * 8
+    )
+
+    proximalSegments = sparse.lil_matrix(
+                (pooler.numberOfCells(), pooler.inputWidth),
+                dtype=realDType)
+
+    pooler._learnProximal(
+      activeInputs=set(range(20)), activeCells=set(range(10)),
+      maxNewSynapseCount=7, proximalSegments=proximalSegments,
+      initialPermanence=0.2, synPermProximalInc=0.2, synPermProximalDec=0.1
+    )
+
+    # There should be exactly 7 * 10 new connections, each with permanence 0.2
+    self.assertEqual(proximalSegments.nnz, 70, "Incorrect number of synapses")
+    self.assertAlmostEqual(proximalSegments.sum(), 0.2*70,
+                     msg="Incorrect permanence total", places=4)
+
+    # Ensure the correct indices are there and there are no extra ones
+    for cell in range(10):
+      nz = proximalSegments[cell].nonzero()[1]
+      for i in nz:
+        self.assertTrue(i in range(20), "Incorrect input index")
+
+    self.assertEqual(proximalSegments[10,:].sum(), 0.0, "Extra synapses exist")
+
+    # Do another learning step to ensure increments and decrements are handled
+    pooler._learnProximal(
+      activeInputs=set(range(5,15)), activeCells=set(range(10)),
+      maxNewSynapseCount=10, proximalSegments=proximalSegments,
+      initialPermanence=0.2, synPermProximalInc=0.2, synPermProximalDec=0.1
+    )
+
+    # print proximalSegments
 
 
 if __name__ == "__main__":

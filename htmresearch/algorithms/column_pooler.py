@@ -152,7 +152,9 @@ class ColumnPooler(ExtendedTemporalMemory):
       # Learn on proximal dendrite if appropriate
       if len(feedforwardInput) > 0:
         self._learnProximal(feedforwardInput, self.activeCells,
-                            self.maxNewSynapseCount)
+                            self.maxNewSynapseCount, self.proximalSegments,
+                            self.initialPermanence, self.synPermProximalInc,
+                            self.synPermProximalDec)
 
       # Learn on distal dendrites if appropriate
       if len(lateralInput) > 0:
@@ -186,21 +188,37 @@ class ColumnPooler(ExtendedTemporalMemory):
     return self.inputWidth
 
 
-  def _learnProximal(self, activeInputs, activeCells, maxNewSynapseCount):
-    """Learn on proximal dendrites of active cells"""
-    # print "activeInputs=",activeInputs
-    # print "activeCells=",activeCells
-    activeCellsShuffled = numpy.array(list(activeCells), dtype="uint32")
+  def _learnProximal(self,
+             activeInputs, activeCells, maxNewSynapseCount, proximalSegments,
+             initialPermanence, synPermProximalInc, synPermProximalDec):
+    """
+    Learn on proximal dendrites of active cells.  Updates proximalSegments
+
+    """
     for cell in activeCells:
-      # For existing connections, increment/decrement permanences appropriately
 
-      # Sample up to maxNewSynapseCount inputs and add to current segment with
-      # permanence initialPermanence.
+      # Get new and existing connections for this segment
+      newInputs, existingInputs = self._pickProximalInputsToLearnOn(
+        maxNewSynapseCount, cell, activeInputs, proximalSegments
+      )
 
-      # self._random.shuffle(activeCellsShuffled)[0:maxNewSynapseCount]
-      # print activeCellsShuffled
-      # self.proximalSegments[cell,]
-      pass
+      # Adjust existing connections appropriately
+      # First we decrement all permanences
+      nz = proximalSegments[cell].nonzero()[1]  # slowest line??
+      if len(nz) > 0:
+        t = proximalSegments[cell, nz].todense()
+        t -= synPermProximalDec
+        proximalSegments[cell, nz] = t
+
+      # Then we add inc + dec to existing active synapses
+      if len(existingInputs) > 0:
+        t = proximalSegments[cell, existingInputs].todense()
+        t += synPermProximalInc + synPermProximalDec
+        proximalSegments[cell, existingInputs] = t
+
+      # Add new connections
+      if len(newInputs) > 0:
+        proximalSegments[cell, newInputs] = initialPermanence
 
 
   def _learnDistal(self, lateralInput, activeCells):
@@ -210,37 +228,50 @@ class ColumnPooler(ExtendedTemporalMemory):
   def _pickProximalInputsToLearnOn(self, newSynapseCount, cell, activeInputs,
                                   proximalSegments):
     """
-    Pick inputs to form proximal connections to. We return
+    Pick inputs to form proximal connections to. We return a list of up to
+    newSynapseCount input indices from activeInputs that are valid new
+    connections for this cell. We also return a list containing all inputs
+    in activeInputs that are already connected to this cell.
 
     @param newSynapseCount  (int)        Number of inputs to pick
     @param cell             (int)        Cell index
     @param activeInputs     (set)        Indices of active inputs
     @param proximalSegments (sparse)     The matrix of proximal connections
 
-    @return (list) Indices of cells picked
+    @return (list, list) Indices of new inputs to connect to, inputs already
+                         connected
     """
-    candidates = set(activeInputs)
+    # print "activeInputs=",activeInputs
+    # activeInputs = sorted(activeInputs)
+    candidates = []
+    alreadyConnected = []
 
-    # Remove input indices that are already connected to this cell
-    for inputIdx in proximalSegments[cell].nonzero()[1]:
-      if inputIdx in candidates:
-        candidates.remove(inputIdx)
+    # Collect inputs already connected or new candidates
+    nz = proximalSegments[cell].nonzero()[1]  # Slowest line - need it?
+    for inputIdx in activeInputs:
+      if inputIdx in nz:
+        alreadyConnected += [inputIdx]
+      else:
+        candidates += [inputIdx]
+
+    # print "candidates=",candidates
+    # print "already connected=",alreadyConnected
 
     # Select min(newSynapseCount, len(candidates)) new inputs to connect to
     if newSynapseCount >= len(candidates):
-      return candidates
+      return candidates, alreadyConnected
 
     else:
-      candidates = sorted(candidates)
+      # candidates = sorted(activeInputs)
 
       # Pick newSynapseCount cells randomly
-      # TODO: we could implement this more efficiently with shuffle.
-      inputs = set()
+      # TODO: we could maybe implement this more efficiently with shuffle.
+      inputs = []
       for _ in range(newSynapseCount):
         i = self._random.getUInt32(len(candidates))
-        inputs.add(candidates[i])
-        del candidates[i]
+        inputs += [candidates[i]]
+        candidates.remove(candidates[i])
 
-      return inputs
+      return inputs, alreadyConnected
 
 
