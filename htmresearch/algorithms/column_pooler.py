@@ -38,10 +38,20 @@ class ColumnPooler(ExtendedTemporalMemory):
   def __init__(self,
                inputWidth,
                numActiveColumnsPerInhArea=40,
+               synPermProximalInc=0.1,
+               synPermProximalDec=0.001,
                **kwargs):
     """
     Please see ExtendedTemporalMemory for descriptions of common constructor
     parameters.
+
+    @param inputWidth                 (int) The number of proximal inputs into
+                                            this layer
+    @param numActiveColumnsPerInhArea (int) Number of active cells
+    @param synPermProximalInc       (float) Permanence increment for proximal
+                                            synapses
+    @param synPermProximalDec       (float) Permanence decrement for proximal
+                                            synapses
     """
 
     # Override: we only support one cell per column for now
@@ -52,6 +62,8 @@ class ColumnPooler(ExtendedTemporalMemory):
     self.numActiveColumnsPerInhArea = numActiveColumnsPerInhArea
     self.proximalSegments = sparse.lil_matrix((self.numberOfCells(),inputWidth),
                                              dtype=realDType)
+    self.synPermProximalInc = synPermProximalInc
+    self.synPermProximalDec = synPermProximalDec
     self.previousOverlaps = None
 
 
@@ -120,9 +132,27 @@ class ColumnPooler(ExtendedTemporalMemory):
     # maximal lateral activity
     # print "Max overlap=", overlaps.max()
 
+    # Calculate winners using stable sort algorithm (mergesort)
+    # for compatibility with C++
+    if overlaps.max() >= self.minThreshold:
+      winnerIndices = numpy.argsort(overlaps, kind='mergesort')
+      sortedWinnerIndices = winnerIndices[-self.numActiveColumnsPerInhArea:][::-1]
+      print sortedWinnerIndices
+
 
     # Those cells that remain active will learn on their proximal and distal
-    # dendrites.  If there are no cells active, no learning happens.
+    # dendrites as long as there is some input.  If there are no cells active,
+    # learning happens.
+    if len(self.activeCells) > 0:
+
+      # Learn on proximal dendrite if appropriate
+      if len(feedforwardInput) > 0:
+        self._learnProximal(feedforwardInput, self.activeCells,
+                            self.maxNewSynapseCount)
+
+      # Learn on distal dendrites if appropriate
+      if len(lateralInput) > 0:
+        self._learnDistal(lateralInput, self.activeCells)
 
 
   def computeInferenceMode(self, lateralInput, learn):
@@ -152,5 +182,59 @@ class ColumnPooler(ExtendedTemporalMemory):
     return self.inputWidth
 
 
+  def _learnProximal(self, activeInputs, activeCells, maxNewSynapseCount):
+    """Learn on proximal dendrites of active cells"""
+    print "activeInputs=",activeInputs
+    print "activeCells=",activeCells
+    activeCellsShuffled = numpy.array(list(activeCells), dtype="uint32")
+    for cell in activeCells:
+      # For existing connections, increment/decrement permanences appropriately
+
+      # Sample up to maxNewSynapseCount inputs and add to current segment with
+      # permanence initialPermanence.
+
+      self._random.shuffle(activeCellsShuffled)[0:maxNewSynapseCount]
+      print activeCellsShuffled
+      # self.proximalSegments[cell,]
+
+
+  def _learnDistal(self, lateralInput, activeCells):
+    pass
+
+
+  def _pickProximalInputsToLearnOn(self, newSynapseCount, cell, activeInputs,
+                                  proximalSegments):
+    """
+    Pick inputs to form proximal connections to.
+
+    @param newSynapseCount  (int)        Number of inputs to pick
+    @param cell             (int)        Cell index
+    @param activeInputs     (set)        Indices of active inputs
+    @param proximalSegments (sparse)     The matrix of proximal connections
+
+    @return (list) Indices of cells picked
+    """
+    candidates = set(activeInputs)
+
+    # Remove input indices that are already connected to this cell
+    for inputIdx in proximalSegments[cell].nonzero()[1]:
+      if inputIdx in candidates:
+        candidates.remove(inputIdx)
+
+    # Select min(newSynapseCount, len(candidates)) new inputs to connect to
+    if newSynapseCount >= len(candidates):
+      return candidates
+
+    else:
+      candidates = sorted(candidates)
+
+      # Pick newSynapseCount cells randomly
+      cells = set()
+      for _ in range(newSynapseCount):
+        i = self._random.getUInt32(len(candidates))
+        cells.add(candidates[i])
+        del candidates[i]
+
+      return cells
 
 

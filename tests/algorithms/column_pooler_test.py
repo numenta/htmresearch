@@ -69,12 +69,34 @@ class ColumnPoolerTest(unittest.TestCase):
     self.assertEqual(len(pooler.getActiveCells()), 0,
                      "Incorrect number of active cells")
 
-    # After computing again with no input should have different 40 active cells
+    # Computing again with no input should lead to different 40 active cells
     pooler.compute(feedforwardInput=set(), learn=True)
     activatedCells[pooler.getActiveCells()] += 1
     self.assertLess((activatedCells>=2).sum(), 5,
                     "SDRs not sufficiently different")
 
+
+  def testInitialProximalLearning(self):
+    """Tests the first proximal learning step. """
+
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      columnDimensions=[2048, 1],
+      maxSynapsesPerSegment=2048 * 8
+    )
+    activatedCells = numpy.zeros(pooler.numberOfCells())
+
+    # Should be no active cells in beginning
+    self.assertEqual(len(pooler.getActiveCells()), 0,
+                     "Incorrect number of active cells")
+
+    # After computing with no input should have 40 active cells
+    pooler.compute(feedforwardInput=set(range(0,40)), learn=True)
+    activatedCells[pooler.getActiveCells()] = 1
+    self.assertEqual(activatedCells.sum(), 40,
+                     "Incorrect number of active cells")
+
+    # Ensure we do actually add the number of synapses we want
 
 
 if __name__ == "__main__":
