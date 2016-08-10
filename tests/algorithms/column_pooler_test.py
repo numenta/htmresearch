@@ -22,7 +22,9 @@
 import unittest
 import numpy
 
-from htmresearch.algorithms.column_pooler import ColumnPooler
+import scipy.sparse as sparse
+
+from htmresearch.algorithms.column_pooler import ColumnPooler, realDType
 
 
 class ColumnPoolerTest(unittest.TestCase):
@@ -97,6 +99,61 @@ class ColumnPoolerTest(unittest.TestCase):
                      "Incorrect number of active cells")
 
     # Ensure we do actually add the number of synapses we want
+
+
+  def testPickProximalInputsToLearnOn(self):
+    """Test picking of cells on proximal dendrite"""
+
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      columnDimensions=[2048, 1],
+      maxSynapsesPerSegment=2048 * 8
+    )
+
+    proximalSegments = sparse.lil_matrix(
+                (pooler.numberOfCells(), pooler.inputWidth),
+                dtype=realDType)
+    proximalSegments[42,0:10] = 0.21
+
+    # With no existing synapses, and number of inputs = newSynapseCount, should
+    # return the full list
+    inputs = pooler._pickProximalInputsToLearnOn(newSynapseCount=10,
+                                        cell=100,
+                                        activeInputs=set(range(10)),
+                                        proximalSegments=proximalSegments)
+    self.assertEqual(sum(inputs),45,"Did not select correct inputs")
+
+    # With no existing synapses, and number of inputs < newSynapseCount, should
+    # return all inputs as synapses
+    inputs = pooler._pickProximalInputsToLearnOn(newSynapseCount=11,
+                                        cell=100,
+                                        activeInputs=set(range(10)),
+                                        proximalSegments=proximalSegments)
+    self.assertEqual(sum(inputs),45,"Did not select correct inputs")
+
+    # With no existing synapses, and number of inputs > newSynapseCount
+    # should return newSynapseCount indices
+    inputs = pooler._pickProximalInputsToLearnOn(newSynapseCount=9,
+                                        cell=100,
+                                        activeInputs=set(range(10)),
+                                        proximalSegments=proximalSegments)
+    self.assertEqual(len(inputs),9,"Did not select correct inputs")
+
+    # With existing inputs to [0..9], should return [10..19]
+    inputs = pooler._pickProximalInputsToLearnOn(newSynapseCount=10,
+                                        cell=42,
+                                        activeInputs=set(range(20)),
+                                        proximalSegments=proximalSegments)
+    self.assertEqual(sum(inputs),145,"Did not select correct inputs")
+
+    # With existing inputs to [0..9], and active inputs [0..9] should
+    # return none
+    inputs = pooler._pickProximalInputsToLearnOn(newSynapseCount=10,
+                                        cell=42,
+                                        activeInputs=set(range(10)),
+                                        proximalSegments=proximalSegments)
+    self.assertEqual(len(inputs),0,"Did not select correct inputs")
+    print "inputs=",inputs,sum(inputs)
 
 
 if __name__ == "__main__":

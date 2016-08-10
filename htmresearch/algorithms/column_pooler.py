@@ -60,11 +60,15 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     self.inputWidth = inputWidth
     self.numActiveColumnsPerInhArea = numActiveColumnsPerInhArea
-    self.proximalSegments = sparse.lil_matrix((self.numberOfCells(),inputWidth),
-                                             dtype=realDType)
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.previousOverlaps = None
+
+    # This sparse matrix will hold the proximal segment for each cell.
+    # self.proximalSegment[cell] = sparse vector of permanence values for cell
+    # self.proximalSegments[cell, i] = permanence for the i'th input to cell
+    self.proximalSegments = sparse.lil_matrix((self.numberOfCells(),inputWidth),
+                                             dtype=realDType)
 
 
   def compute(self,
@@ -184,8 +188,8 @@ class ColumnPooler(ExtendedTemporalMemory):
 
   def _learnProximal(self, activeInputs, activeCells, maxNewSynapseCount):
     """Learn on proximal dendrites of active cells"""
-    print "activeInputs=",activeInputs
-    print "activeCells=",activeCells
+    # print "activeInputs=",activeInputs
+    # print "activeCells=",activeCells
     activeCellsShuffled = numpy.array(list(activeCells), dtype="uint32")
     for cell in activeCells:
       # For existing connections, increment/decrement permanences appropriately
@@ -193,9 +197,10 @@ class ColumnPooler(ExtendedTemporalMemory):
       # Sample up to maxNewSynapseCount inputs and add to current segment with
       # permanence initialPermanence.
 
-      self._random.shuffle(activeCellsShuffled)[0:maxNewSynapseCount]
-      print activeCellsShuffled
+      # self._random.shuffle(activeCellsShuffled)[0:maxNewSynapseCount]
+      # print activeCellsShuffled
       # self.proximalSegments[cell,]
+      pass
 
 
   def _learnDistal(self, lateralInput, activeCells):
@@ -205,7 +210,7 @@ class ColumnPooler(ExtendedTemporalMemory):
   def _pickProximalInputsToLearnOn(self, newSynapseCount, cell, activeInputs,
                                   proximalSegments):
     """
-    Pick inputs to form proximal connections to.
+    Pick inputs to form proximal connections to. We return
 
     @param newSynapseCount  (int)        Number of inputs to pick
     @param cell             (int)        Cell index
@@ -229,12 +234,13 @@ class ColumnPooler(ExtendedTemporalMemory):
       candidates = sorted(candidates)
 
       # Pick newSynapseCount cells randomly
-      cells = set()
+      # TODO: we could implement this more efficiently with shuffle.
+      inputs = set()
       for _ in range(newSynapseCount):
         i = self._random.getUInt32(len(candidates))
-        cells.add(candidates[i])
+        inputs.add(candidates[i])
         del candidates[i]
 
-      return cells
+      return inputs
 
 
