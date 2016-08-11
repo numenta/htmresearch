@@ -39,10 +39,14 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
   """
   Algorithmic tests for the ColumnPooler region.
 
+  Each test actually tests multiple aspects of the algorithm. For more
+  atomic tests refer to column_pooler_unit_test.
+
   In these tests, the proximally-fed SDR's are simulated as unique (location,
   feature) pairs regardless of actual locations and features, unless stated
   otherwise.
   """
+  # TODO: add robustness to spatial noice
 
   inputWidth = 2048 * 8
   numInputActiveBits = int(0.02 * inputWidth)
@@ -218,7 +222,6 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     """
     Same test as before, except the two objects share a pattern
     """
-    # TODO: implement variations on this test
     self.init()
 
     objectA = self.generateObject(numPatterns=5)
@@ -274,6 +277,91 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     self.assertEqual(
       self._getActiveRepresentation(),
       representationA | representationB,
+      "The active representation is incorrect"
+    )
+
+  def testLearnThreeObjectsOneCommonPattern(self):
+    """
+    Same test as before, except the two objects share a pattern
+    """
+    self.init()
+
+    objectA = self.generateObject(numPatterns=5)
+    self.learn(objectA, numRepetitions=3, randomOrder=True, newObject=True)
+    representationA = self._getActiveRepresentation()
+
+    objectB = self.generateObject(numPatterns=5)
+    objectB[0] = objectA[0]
+    self.learn(objectB, numRepetitions=3, randomOrder=True, newObject=True)
+    representationB = self._getActiveRepresentation()
+
+    objectC = self.generateObject(numPatterns=5)
+    objectC[0] = objectB[1]
+    self.learn(objectC, numRepetitions=3, randomOrder=True, newObject=True)
+    representationC = self._getActiveRepresentation()
+
+    self.assertNotEquals(representationA, representationB, representationC)
+
+    # check that all patterns except the common one map to the same object
+    for pattern in objectA[1:]:
+      self.infer(feedforwardPattern=pattern)
+      self.assertEqual(
+        self._getActiveRepresentation(),
+        representationA,
+        "The pooled representation for the first object is not stable"
+      )
+
+    # check that all patterns except the common one map to the same object
+    for pattern in objectB[2:]:
+      self.infer(feedforwardPattern=pattern)
+      self.assertEqual(
+        self._getActiveRepresentation(),
+        representationB,
+        "The pooled representation for the second object is not stable"
+      )
+
+    # check that all patterns except the common one map to the same object
+    for pattern in objectC[1:]:
+      self.infer(feedforwardPattern=pattern)
+      self.assertEqual(
+        self._getActiveRepresentation(),
+        representationB,
+        "The pooled representation for the third object is not stable"
+      )
+
+    # feed shared pattern between A and B
+    pattern = objectA[0]
+    self.infer(feedforwardPattern=pattern)
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representationA | representationB,
+      "The active representation is incorrect"
+    )
+
+    # feed shared pattern between B and C
+    pattern = objectB[1]
+    self.infer(feedforwardPattern=pattern)
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representationB | representationC,
+      "The active representation is incorrect"
+    )
+
+    # feed union of patterns in object A
+    pattern = objectA[1] | objectA[2]
+    self.infer(feedforwardPattern=pattern)
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representationA,
+      "The active representation is incorrect"
+    )
+
+    # feed unions of patterns to activate all objects
+    pattern = objectA[1] | objectB[1]
+    self.infer(feedforwardPattern=pattern)
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representationA | representationB | representationC,
       "The active representation is incorrect"
     )
 
