@@ -45,6 +45,18 @@ class ColumnPoolerTest(unittest.TestCase):
     self.assertEqual(pooler.numberOfInputs(), 16384,
                      "Incorrect number of inputs")
 
+    self.assertEqual(
+      pooler.numberOfSynapses(range(2048)),
+      0,
+      "Should be no synapses on initialization"
+    )
+
+    self.assertEqual(
+      pooler.numberOfConnectedSynapses(range(2048)),
+      0,
+      "Should be no connected synapses on initialization"
+    )
+
 
   def testInitialNullInputLearnMode(self):
     """Tests with no input in the beginning. """
@@ -57,14 +69,18 @@ class ColumnPoolerTest(unittest.TestCase):
     activatedCells = numpy.zeros(pooler.numberOfCells())
 
     # Should be no active cells in beginning
-    self.assertEqual(len(pooler.getActiveCells()), 0,
-                     "Incorrect number of active cells")
+    self.assertEqual(
+      len(pooler.getActiveCells()),
+      0,
+      "Incorrect number of active cells")
 
     # After computing with no input should have 40 active cells
     pooler.compute(feedforwardInput=set(), learn=True)
     activatedCells[pooler.getActiveCells()] = 1
-    self.assertEqual(activatedCells.sum(), 40,
-                     "Incorrect number of active cells")
+    self.assertEqual(
+      activatedCells.sum(),
+      40,
+      "Incorrect number of active cells")
 
     # Should be no active cells after reset
     pooler.reset()
