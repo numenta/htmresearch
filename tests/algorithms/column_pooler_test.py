@@ -22,13 +22,11 @@
 import unittest
 import numpy as np
 
-import scipy.sparse as sparse
-
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin
 )
-from htmresearch.algorithms.column_pooler import ColumnPooler, realDType
+from htmresearch.algorithms.column_pooler import ColumnPooler
 
 
 
@@ -36,36 +34,248 @@ class MonitoredColumnPooler(TemporalMemoryMonitorMixin, ColumnPooler):
   pass
 
 
+
 class ExtensiveColumnPoolerTest(unittest.TestCase):
-  """Algorithmic tests for the ColumnPooler region."""
+  """
+  Algorithmic tests for the ColumnPooler region.
+
+  In these tests, the proximally-fed SDR's are simulated as unique (location,
+  feature) pairs regardless of actual locations and features, unless stated
+  otherwise.
+  """
 
   inputWidth = 2048 * 8
-  numInputActiveBits = 0.02 * inputWidth
+  numInputActiveBits = int(0.02 * inputWidth)
   outputWidth = 2048
   numOutputActiveBits = 40
   seed = 42
 
 
   def testNewInputs(self):
+    """
+    Checks that the behavior is correct when facing unseed inputs.
+    """
     self.init()
 
     # feed the first input, a random SDR should be generated
-    firstPattern = self.getObject(1)
-    self.learn(firstPattern, numRepetitions=1, newObject=True)
-    currentRespresentation = set(self.pooler.getActiveCells())
-    self.assertEqual(len(currentRespresentation), self.numOutputActiveBits)
+    initialPattern = self.generateObject(1)
+    self.learn(initialPattern, numRepetitions=1, newObject=True)
+    representation = self._getActiveRepresentation()
+    self.assertEqual(
+      len(representation),
+      self.numOutputActiveBits,
+      "The generated representation is incorrect"
+    )
 
     # feed a new input for the same object, the previous SDR should persist
-    secondPattern = self.getObject(1)
-    self.learn(secondPattern, numRepetitions=1, newObject=False)
-    newRepresentation = set(self.pooler.getActiveCells())
-    self.assertNotEqual(firstPattern, secondPattern)
-    self.assertEqual(newRepresentation, currentRespresentation)
+    newPattern = self.generateObject(1)
+    self.learn(newPattern, numRepetitions=1, newObject=False)
+    newRepresentation = self._getActiveRepresentation()
+    self.assertNotEqual(initialPattern, newPattern)
+    self.assertEqual(
+      newRepresentation,
+      representation,
+      "The SDR did not persist when learning the same object"
+    )
 
     # without sensory input, the SDR should persist as well
-    self.learn([None], numRepetitions=1, newObject=False)
-    newRepresentation = set(self.pooler.getActiveCells())
-    self.assertEqual(newRepresentation, currentRespresentation)
+    emptyPattern = [set()]
+    self.learn(emptyPattern, numRepetitions=1, newObject=False)
+    newRepresentation = self._getActiveRepresentation()
+    self.assertEqual(
+      newRepresentation,
+      representation,
+      "The SDR did not persist after an empty input."
+    )
+
+
+  def testLearnSinglePattern(self):
+    """
+    A single pattern is learnt for a single object.
+    """
+    self.init()
+
+    object = self.generateObject(1)
+    self.learn(object, numRepetitions=3, newObject=True)
+    # check that the active representation is sparse
+    representation = self._getActiveRepresentation()
+    self.assertEqual(
+      len(representation),
+      self.numOutputActiveBits,
+      "The generated representation is incorrect"
+    )
+
+    # check that the pattern was correctly learnt
+    self.infer(feedforwardPattern=object[0])
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representation,
+      "The pooled representation is not stable"
+    )
+
+    # present new pattern, it should be mapped to the same representation
+    object = self.generateObject(1)
+    self.learn(object, numRepetitions=3, newObject=False)
+    # check that the active representation is sparse
+    newRepresentation = self._getActiveRepresentation()
+    self.assertEqual(
+      newRepresentation,
+      representation,
+      "The new pattern did not map to the same object representation"
+    )
+
+    # check that the pattern was correctly learnt and is stable
+    self.infer(feedforwardPattern=object[0])
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representation,
+      "The pooled representation is not stable"
+    )
+
+
+  def testLearnSingleObject(self):
+    """
+    Many patterns are learnt for a single object.
+    """
+    self.init()
+
+    object = self.generateObject(numPatterns=5)
+    self.learn(object, numRepetitions=3, randomOrder=True, newObject=True)
+    representation = self._getActiveRepresentation()
+
+    # check that all patterns map to the same object
+    for pattern in object:
+      self.infer(feedforwardPattern=pattern)
+      self.assertEqual(
+        self._getActiveRepresentation(),
+        representation,
+        "The pooled representation is not stable"
+      )
+
+    # if activity stops, check that the representation persists
+    self.infer(feedforwardPattern=set())
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representation,
+      "The pooled representation did not persist"
+    )
+
+
+  def testLearnTwoObjectNoCommonPattern(self):
+    """
+    Same test as before, using two objects, without common pattern.
+    """
+    self.init()
+
+    objectA = self.generateObject(numPatterns=5)
+    self.learn(objectA, numRepetitions=3, randomOrder=True, newObject=True)
+    representationA = self._getActiveRepresentation()
+
+    objectB = self.generateObject(numPatterns=5)
+    self.learn(objectB, numRepetitions=3, randomOrder=True, newObject=True)
+    representationB = self._getActiveRepresentation()
+
+    self.assertNotEqual(representationA, representationB)
+
+    # check that all patterns map to the same object
+    for pattern in objectA:
+      self.infer(feedforwardPattern=pattern)
+      self.assertEqual(
+        self._getActiveRepresentation(),
+        representationA,
+        "The pooled representation for the first object is not stable"
+      )
+
+    # check that all patterns map to the same object
+    for pattern in objectB:
+      self.infer(feedforwardPattern=pattern)
+      self.assertEqual(
+        self._getActiveRepresentation(),
+        representationB,
+        "The pooled representation for the second object is not stable"
+      )
+
+    # feed union of patterns in object A
+    pattern = objectA[0] | objectA[1]
+    self.infer(feedforwardPattern=pattern)
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representationA,
+      "The active representation is incorrect"
+    )
+
+    # feed unions of patterns in objects A and B
+    pattern = objectA[0] | objectB[0]
+    self.infer(feedforwardPattern=pattern)
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representationA | representationB,
+      "The active representation is incorrect"
+    )
+
+
+  def testLearnTwoObjectsOneCommonPattern(self):
+    """
+    Same test as before, except the two objects share a pattern
+    """
+    # TODO: implement variations on this test
+    self.init()
+
+    objectA = self.generateObject(numPatterns=5)
+    self.learn(objectA, numRepetitions=3, randomOrder=True, newObject=True)
+    representationA = self._getActiveRepresentation()
+
+    objectB = self.generateObject(numPatterns=5)
+    objectB[0] = objectA[0]
+    self.learn(objectB, numRepetitions=3, randomOrder=True, newObject=True)
+    representationB = self._getActiveRepresentation()
+
+    self.assertNotEqual(representationA, representationB)
+
+    # check that all patterns except the common one map to the same object
+    for pattern in objectA[1:]:
+      self.infer(feedforwardPattern=pattern)
+      self.assertEqual(
+        self._getActiveRepresentation(),
+        representationA,
+        "The pooled representation for the first object is not stable"
+      )
+
+    # check that all patterns except the common one map to the same object
+    for pattern in objectB[1:]:
+      self.infer(feedforwardPattern=pattern)
+      self.assertEqual(
+        self._getActiveRepresentation(),
+        representationB,
+        "The pooled representation for the second object is not stable"
+      )
+
+    # feed shared pattern
+    pattern = objectA[0]
+    self.infer(feedforwardPattern=pattern)
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representationA | representationB,
+      "The active representation is incorrect"
+    )
+
+    # feed union of patterns in object A
+    pattern = objectA[1] | objectA[2]
+    self.infer(feedforwardPattern=pattern)
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representationA,
+      "The active representation is incorrect"
+    )
+
+    # feed unions of patterns in objects A and B
+    pattern = objectA[1] | objectB[1]
+    self.infer(feedforwardPattern=pattern)
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representationA | representationB,
+      "The active representation is incorrect"
+    )
 
 
   def setUp(self):
@@ -82,14 +292,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     np.random.seed(self.seed)
 
 
-  def getPattern(self):
-    """
-    Returns a random proximal input pattern.
-    """
-    pattern = self.proximalPatternMachine.get(self.patternId)
-    self.patternId += 1
-    return pattern
-
+  # Wrappers around ColumnPooler API
 
   def learn(self,
             feedforwardPatterns,
@@ -98,16 +301,27 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
             randomOrder=True,
             newObject=True):
     """
+    Parameters:
+    ----------------------------
     Learns a single object, with the provided patterns.
 
-    @feedforwardPatterns   (list(set)) List of proximal input patterns
-    @lateralPatterns       (list(set)) List of distal input patterns, or None
-                                       if no lateral input is used. This is
-                                       expected to have the same length as
-                                       feedforwardPatterns
-    @numRepetitions        (int)       Number of times the patterns will be fed
-    @randomOrder           (bool)      If true, the order of patterns will be
-                                       shuffled at each repetition
+    @param   feedforwardPatterns   (list(set))
+             List of proximal input patterns
+
+    @param   lateralPatterns       (list(list(set)))
+             List of distal input patterns, or None. If no lateral input is
+             used. The outer list is expected to have the same length as
+             feedforwardPatterns, whereas each inner list's length is the
+             number of cortical columns which are distally connected to the
+             pooler.
+
+    @param   numRepetitions        (int)
+             Number of times the patterns will be fed
+
+    @param   randomOrder           (bool)
+             If true, the order of patterns will be shuffled at each
+             repetition
+
     """
     if newObject:
       self.pooler.mmClearHistory()
@@ -128,28 +342,53 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
                             learn=True)
 
 
-  def infer(self, feedforwardPattern, lateralPattern=None, printMetrics=False):
+  def infer(self,
+            feedforwardPattern,
+            lateralPatterns=None,
+            printMetrics=False,
+            learn=False):
     """
     Feeds a single pattern to the column pooler (as well as an eventual lateral
     pattern).
 
-    @param feedforwardPattern       (set) Input proximal pattern to the pooler
-    @param lateralPattern           (set) Input dislal pattern to the pooler
-    @param printMetrics             (bool) If true, will print cell metrics
+    Parameters:
+    ----------------------------
+    @param feedforwardPattern       (set)
+           Input proximal pattern to the pooler
+
+    @param lateralPatterns          (list(set))
+           Input dislal patterns to the pooler (one for each neighboring CC's)
+
+    @param printMetrics             (bool)
+           If true, will print cell metrics
+
     """
-    self.pooler.compute(feedforwardPattern,
-                        activeExternalCells=lateralPattern,
-                        learn=False)
+    self.pooler.computeInferenceMode(feedforwardPattern,
+                                     lateralInput=lateralPatterns,
+                                     learn=learn)
 
     if printMetrics:
-      print self.pooler.mmPrettyPrintMetrics(self.pooler.mmGetDefaultMetrics())
+      print self.pooler.mmPrettyPrintMetrics(
+        self.pooler.mmGetDefaultMetrics()
+      )
 
 
-  def getObject(self, numPatterns):
+  # Helper functions
+
+  def generatePattern(self):
+    """
+    Returns a random proximal input pattern.
+    """
+    pattern = self.proximalPatternMachine.get(self.patternId)
+    self.patternId += 1
+    return pattern
+
+
+  def generateObject(self, numPatterns):
     """
     Creates a list of patterns, for a given object.
     """
-    return [self.getPattern() for _ in xrange(numPatterns)]
+    return [self.generatePattern() for _ in xrange(numPatterns)]
 
 
   def init(self, overrides=None):
@@ -160,7 +399,17 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     self.pooler = MonitoredColumnPooler(**params)
 
 
-  def getDefaultPoolerParams(self):
+  def _getActiveRepresentation(self):
+    """
+  	Retrieves the current active representation in the pooler.
+  	"""
+    if self.pooler is None:
+      raise ValueError("No pooler has been instantiated")
+
+    return set(self.pooler.getActiveCells())
+
+
+  def _getDefaultPoolerParams(self):
     """
     Default params to be used for the column pooler, if no override is
     specified.
@@ -170,6 +419,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       "numActivecolumnsPerInhArea": self.numOutputActiveBits,
       "synPermProximalInc": 0.1,
       "synPermProximalDec": 0.001,
+      "initialProximalPermanence": 0.51,
       "maxSynapsesPerSegment": self.inputWidth,
       "columnDimensions": (self.outputWidth,),
       "initialPermanence": 0.5,
@@ -193,7 +443,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     if overrides is None:
       overrides = {}
 
-    params = self.getDefaultPoolerParams()
+    params = self._getDefaultPoolerParams()
     params.update(overrides)
     return params
 
