@@ -567,7 +567,6 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
            If true, will print cell metrics
 
     """
-    self.pooler.reset()
     self.pooler.compute(feedforwardPattern,
                         activeExternalCells=lateralPatterns,
                         learn=False)
