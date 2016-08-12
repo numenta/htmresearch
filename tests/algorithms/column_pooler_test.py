@@ -383,6 +383,105 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     )
 
 
+  def testLearnThreeObjectsOneCommonPatternSpatialNoise(self):
+    """
+    Same test as before, with three objects
+    Objects: A{P, Q, R, S,T}   B{P, W, X, Y, Z}   C{W, H, I, K, L}
+    """
+    self.init()
+
+    objectA = self.generateObject(numPatterns=5)
+    self.learn(objectA, numRepetitions=1, randomOrder=True, newObject=True)
+    representationA = self._getActiveRepresentation()
+
+    objectB = self.generateObject(numPatterns=5)
+    objectB[0] = objectA[0]
+    self.learn(objectB, numRepetitions=1, randomOrder=True, newObject=True)
+    representationB = self._getActiveRepresentation()
+
+    objectC = self.generateObject(numPatterns=5)
+    objectC[0] = objectB[1]
+    self.learn(objectC, numRepetitions=1, randomOrder=True, newObject=True)
+    representationC = self._getActiveRepresentation()
+
+    self.assertNotEquals(representationA, representationB, representationC)
+    # very small overlap
+    self.assertLessEqual(len(representationA & representationB), 3)
+    self.assertLessEqual(len(representationB & representationC), 3)
+    self.assertLessEqual(len(representationA & representationC), 3)
+
+
+    # check that all patterns except the common one map to the same object
+    for pattern in objectA[1:]:
+      noisyPattern = self.proximalPatternMachine.addNoise(pattern, 0.05)
+      self.infer(feedforwardPattern=noisyPattern)
+      self.assertEqual(
+        self._getActiveRepresentation(),
+        representationA,
+        "The pooled representation for the first object is not stable"
+      )
+
+    # check that all patterns except the common one map to the same object
+    for pattern in objectB[2:]:
+      noisyPattern = self.proximalPatternMachine.addNoise(pattern, 0.05)
+      self.infer(feedforwardPattern=noisyPattern)
+      self.assertEqual(
+        self._getActiveRepresentation(),
+        representationB,
+        "The pooled representation for the second object is not stable"
+      )
+
+    # check that all patterns except the common one map to the same object
+    for pattern in objectC[1:]:
+      noisyPattern = self.proximalPatternMachine.addNoise(pattern, 0.05)
+      self.infer(feedforwardPattern=noisyPattern)
+      self.assertEqual(
+        self._getActiveRepresentation(),
+        representationC,
+        "The pooled representation for the third object is not stable"
+      )
+
+    # feed shared pattern between A and B
+    pattern = objectA[0]
+    noisyPattern = self.proximalPatternMachine.addNoise(pattern, 0.05)
+    self.infer(feedforwardPattern=noisyPattern)
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representationA | representationB,
+      "The active representation is incorrect"
+    )
+
+    # feed shared pattern between B and C
+    pattern = objectB[1]
+    noisyPattern = self.proximalPatternMachine.addNoise(pattern, 0.05)
+    self.infer(feedforwardPattern=noisyPattern)
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representationB | representationC,
+      "The active representation is incorrect"
+    )
+
+    # feed union of patterns in object A
+    pattern = objectA[1] | objectA[2]
+    noisyPattern = self.proximalPatternMachine.addNoise(pattern, 0.05)
+    self.infer(feedforwardPattern=noisyPattern)
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representationA,
+      "The active representation is incorrect"
+    )
+
+    # feed unions of patterns to activate all objects
+    pattern = objectA[1] | objectB[1]
+    noisyPattern = self.proximalPatternMachine.addNoise(pattern, 0.05)
+    self.infer(feedforwardPattern=noisyPattern)
+    self.assertEqual(
+      self._getActiveRepresentation(),
+      representationA | representationB | representationC,
+      "The active representation is incorrect"
+    )
+
+
   def setUp(self):
     """
     Sets up the test.
