@@ -24,8 +24,11 @@ import numpy
 from nupic.bindings.math import (SM32 as SparseMatrix,
                                  SM_01_32_32 as SparseBinaryMatrix,
                                  GetNTAReal)
+from nupic.research.connections import Connections
 
-from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
+from htmresearch.algorithms.extended_temporal_memory import (
+  ExtendedTemporalMemory
+)
 
 realDType = GetNTAReal()
 uintType = "uint32"
@@ -45,6 +48,11 @@ class ColumnPooler(ExtendedTemporalMemory):
                synPermProximalInc=0.1,
                synPermProximalDec=0.001,
                initialProximalPermanence=0.6,
+               distalActivationThreshold=13,
+               distalMinThreshold=13,
+               maxSynapsesPerDistalSegment=511,
+               numNeighboringColumns=0,
+               lateralInputWidth=None,
                **kwargs):
     """
     Please see ExtendedTemporalMemory for descriptions of common constructor
@@ -90,6 +98,23 @@ class ColumnPooler(ExtendedTemporalMemory):
     self.proximalConnections = SparseBinaryMatrix(inputWidth)
     self.proximalConnections.resize(self.numberOfColumns(), inputWidth)
 
+    # if no specified input width, assume that it is from similar Poolers
+    if lateralInputWidth is None:
+      lateralInputWidth = self.numberOfCells()
+    self.lateralInputWidth = lateralInputWidth
+
+    self.numNeighboringColumns = numNeighboringColumns
+    self.distalConnections = []
+    self.activeDistalSegments = []
+    # create one Connection object per neighboring Column
+    for _ in xrange(numNeighboringColumns):
+      self.distalConnections.append(
+        Connections(self.numberOfCells(), 1, maxSynapsesPerDistalSegment)
+      )
+      self.activeDistalSegments.append(set())
+
+    self.distalActivationThreshold = distalActivationThreshold
+    self.distalMinThreshold = distalMinThreshold
 
   def compute(self,
               feedforwardInput=None,
@@ -119,7 +144,7 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     """
     if activeExternalCells is None:
-      activeExternalCells = set()
+      activeExternalCells = []
 
     if activeApicalCells is None:
       activeApicalCells = set()
@@ -153,6 +178,10 @@ class ColumnPooler(ExtendedTemporalMemory):
             columns.
 
     """
+    if len(lateralInput) > 0 and \
+       len(lateralInput) < self.numNeighboringColumns:
+      raise ValueError("Incorrect dimension for lateral input!")
+
     # If there are no previously active cells, select random subset of cells
     if len(self.activeCells) == 0:
       self.activeCells = set(self._random.shuffle(
@@ -163,7 +192,7 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     # Incorporate distal segment activity and update list of active cells
     self.activeCells = self._winnersBasedOnLateralActivity(
-      self.activeCells, lateralInput, self.minThreshold
+      self.activeCells, lateralInput, self.distalMinThreshold
     )
 
     # Those cells that remain active will learn on their proximal and distal
@@ -209,13 +238,14 @@ class ColumnPooler(ExtendedTemporalMemory):
     self.proximalConnections.rightVecSumAtNZ_fast(inputVector.astype(realDType),
                                                  overlaps)
     overlaps[overlaps < self.minThreshold] = 0
+    bottomUpActivity =  set(overlaps.nonzero()[0])
 
-    # If there isn't enough bottom up activity, do nothing and maintain previous
-    # activity.
-    if overlaps.sum() > 0.0:
-
-      # In order to form unions, we keep all cells that are over threshold
-      self.activeCells = set(overlaps.nonzero()[0])
+    # In order to form unions, we keep all cells that are over threshold
+    self.activeCells = self._winnersBasedOnLateralActivity(
+      bottomUpActivity,
+      lateralInput,
+      self.distalMinThreshold
+    )
 
 
   def numberOfInputs(self):
@@ -305,25 +335,89 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     @return (set) list of new winner cell indices
     """
-    if len(lateralInput) == 0:
-      return activeCells
+    if len(lateralInput) == 0 or \
+       sum([len(latInput) for latInput in lateralInput]) == 0:
+      # if there is not enough bottom-up activity, persist
+      if len(activeCells) == 0:
+        return self.activeCells
+      else:
+        return activeCells
 
-    sortedWinnerIndices = activeCells
+    lateralActivity = {}
+    maxNumberOfDistalSegments = 0
+    # winner cells will be computed in one pass
+    winnerCells = []
 
-    # Figure out distal input into active cells
+    for cell in activeCells:
+      lateralActivity[cell] = self._numberOfActiveDistalSegments(
+        cell,
+        lateralInput,
+        self.connectedPermanence,
+        self.distalActivationThreshold,
+      )
 
-    # TODO: Reconcile and select the cells with sufficient bottom up activity
-    # plus maximal lateral activity
+      # keep track of maximum number of active distal segments
+      if lateralActivity[cell] > maxNumberOfDistalSegments:
+        maxNumberOfDistalSegments = lateralActivity[cell]
+        winnerCells = []
 
-    # Calculate winners using stable sort algorithm (mergesort)
-    # for compatibility with C++
-    # if overlaps.max() >= minThreshold:
-    #   winnerIndices = numpy.argsort(overlaps, kind='mergesort')
-    #   sortedWinnerIndices = winnerIndices[
-    #                         -self.numActiveColumnsPerInhArea:][::-1]
-    #   sortedWinnerIndices = set(sortedWinnerIndices)
+      if lateralActivity[cell] == maxNumberOfDistalSegments:
+        winnerCells.append(cell)
 
-    return sortedWinnerIndices
+    return set(winnerCells)
+
+
+  def _numberOfActiveDistalSegments(self,
+                                    cell,
+                                    lateralInput,
+                                    connectedPermanence,
+                                    activationThreshold):
+    """
+    Counts the number of active segments for the given cell.
+
+    Parameters:
+    ----------------------------
+    @param   cell                  (int)
+             Cell index
+
+    @param   lateralInput          (list(list))
+             List of lateral activations
+
+    @param   connectedPermanence   (float)
+             Permanence threshold for a synapse to be considered active
+
+    @param   activationThreshold   (int)
+             Number of synapses needed for a segment to be considered active
+
+    """
+    numActiveSegments = 0
+
+    for neighbor in xrange(self.numNeighboringColumns):
+
+      # for each set of connections, check if segment is active
+      connections = self.distalConnections[neighbor]
+      segments = connections.segmentsForCell(cell)
+      if len(segments) > 0:
+        segment = list(segments)[0]
+      else:
+        continue
+
+      numActiveSynapsesForSegment = 0
+      for synapse in connections.synapsesForSegment(segment):
+        synapseData = connections.dataForSynapse(synapse)
+        if synapseData.presynapticCell not in lateralInput[neighbor]:
+          continue
+
+        if synapseData.permanence >= connectedPermanence:
+          numActiveSynapsesForSegment += 1
+          if numActiveSynapsesForSegment >= activationThreshold:
+            # add active segment
+            self.activeDistalSegments[neighbor].add(segment)
+            # increment counter
+            numActiveSegments += 1
+            break
+
+    return numActiveSegments
 
 
   def _pickProximalInputsToLearnOn(self, newSynapseCount, activeInputs,
@@ -377,5 +471,4 @@ class ColumnPooler(ExtendedTemporalMemory):
 
   def _learnDistal(self, lateralInput, activeCells):
     pass
-
 

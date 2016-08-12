@@ -391,6 +391,114 @@ class ColumnPoolerTest(unittest.TestCase):
                              "Must be at least one decremented permanence.")
 
 
+  def testNumberOfActiveDistalSegments(self):
+    """Tests the function counting the number of active distal segments."""
+
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      columnDimensions=[2048, 1],
+      maxSynapsesPerDistalSegment=50,
+      numNeighboringColumns=4,
+      distalActivationThreshold=1
+    )
+
+    for connections in pooler.distalConnections:
+      seg = connections.createSegment(1)
+      _ = connections.createSynapse(seg, 4, 0.7)
+      _ = connections.createSynapse(seg, 5, 0.7)
+
+    numSegments = pooler._numberOfActiveDistalSegments(
+      cell=1,
+      lateralInput=[{4, 5}] * 4,
+      connectedPermanence=pooler.connectedPermanence,
+      activationThreshold=pooler.distalActivationThreshold,
+    )
+    self.assertEqual(numSegments, 4)
+
+    for connections in pooler.distalConnections:
+      seg = connections.createSegment(2)
+      _ = connections.createSynapse(seg, 4, 0.7)
+      _ = connections.createSynapse(seg, 3, 0.3)
+
+    numSegments = pooler._numberOfActiveDistalSegments(
+      cell=1,
+      lateralInput=[{4, 5}, {3}, {4}, {4, 5}],
+      connectedPermanence=pooler.connectedPermanence,
+      activationThreshold=pooler.distalActivationThreshold,
+    )
+    self.assertEqual(numSegments, 3)
+
+    numSegments = pooler._numberOfActiveDistalSegments(
+      cell=2,
+      lateralInput=[{4}, {3}, {1, 2, 3}, {7, 8, 9}],
+      connectedPermanence=pooler.connectedPermanence,
+      activationThreshold=pooler.distalActivationThreshold,
+    )
+    self.assertEqual(numSegments, 1)
+
+    numSegments = pooler._numberOfActiveDistalSegments(
+      cell=3,
+      lateralInput=[{4}, {3}, {1, 2, 3}, {7, 8, 9}],
+      connectedPermanence=pooler.connectedPermanence,
+      activationThreshold=pooler.distalActivationThreshold,
+    )
+    self.assertEqual(numSegments, 0)
+
+
+  def testWinnersBasedOnLateralActivity(self):
+    """Tests that the correct winners always get chosen."""
+
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      columnDimensions=[2048, 1],
+      maxSynapsesPerDistalSegment=50,
+      numNeighboringColumns=4,
+      distalActivationThreshold=1
+    )
+
+    proximallyActivatedCells = {1, 2 ,6}
+    previouslyActiveCells = {2, 3, 4}
+    pooler.activeCells = previouslyActiveCells
+
+    # no lateral input, proximally activated cells should win
+    cells = pooler._winnersBasedOnLateralActivity(
+      activeCells=proximallyActivatedCells,
+      lateralInput=[],
+      minThreshold=pooler.distalMinThreshold
+    )
+    self.assertEqual(cells, proximallyActivatedCells)
+
+    # create the same synapses as previously
+    for connections in pooler.distalConnections:
+      seg = connections.createSegment(1)
+      _ = connections.createSynapse(seg, 4, 0.7)
+      _ = connections.createSynapse(seg, 5, 0.7)
+
+    for connections in pooler.distalConnections:
+      seg = connections.createSegment(2)
+      _ = connections.createSynapse(seg, 4, 0.7)
+      _ = connections.createSynapse(seg, 3, 0.3)
+
+    lateralInput = [{4, 5}, {3}, {3}, {4, 5}]
+    pooler.activeCells = previouslyActiveCells
+    cells = pooler._winnersBasedOnLateralActivity(
+      activeCells=proximallyActivatedCells,
+      lateralInput=lateralInput,
+      minThreshold=pooler.distalMinThreshold
+    )
+    self.assertEqual(cells, {1, 2})
+
+    # test competition between lateral input
+    lateralInput = [{2, 5}, {3}, {1}, {2, 5}]
+    pooler.activeCells = previouslyActiveCells
+    cells = pooler._winnersBasedOnLateralActivity(
+      activeCells=proximallyActivatedCells,
+      lateralInput=lateralInput,
+      minThreshold=pooler.distalMinThreshold
+    )
+    self.assertEqual(cells, {1})
+
+
 if __name__ == "__main__":
   unittest.main()
 
