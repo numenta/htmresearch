@@ -42,11 +42,13 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
   Each test actually tests multiple aspects of the algorithm. For more
   atomic tests refer to column_pooler_unit_test.
 
+  The notation for objects is the following:
+    object{patternA, patternB, ...}
+
   In these tests, the proximally-fed SDR's are simulated as unique (location,
   feature) pairs regardless of actual locations and features, unless stated
   otherwise.
   """
-  # TODO: add robustness to spatial noice
 
   inputWidth = 2048 * 8
   numInputActiveBits = int(0.02 * inputWidth)
@@ -96,11 +98,12 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
   def testLearnSinglePattern(self):
     """
     A single pattern is learnt for a single object.
+    Objects: A{X, Y}
     """
     self.init()
 
     object = self.generateObject(1)
-    self.learn(object, numRepetitions=3, newObject=True)
+    self.learn(object, numRepetitions=1, newObject=True)
     # check that the active representation is sparse
     representation = self._getActiveRepresentation()
     self.assertEqual(
@@ -117,9 +120,10 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       "The pooled representation is not stable"
     )
 
-    # present new pattern, it should be mapped to the same representation
-    object = self.generateObject(1)
-    self.learn(object, numRepetitions=3, newObject=False)
+    # present new pattern for same object
+    # it should be mapped to the same representation
+    newPattern = [self.generatePattern()]
+    self.learn(newPattern, numRepetitions=1, newObject=False)
     # check that the active representation is sparse
     newRepresentation = self._getActiveRepresentation()
     self.assertEqual(
@@ -140,11 +144,12 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
   def testLearnSingleObject(self):
     """
     Many patterns are learnt for a single object.
+    Objects: A{P, Q, R, S, T}
     """
     self.init()
 
     object = self.generateObject(numPatterns=5)
-    self.learn(object, numRepetitions=3, randomOrder=True, newObject=True)
+    self.learn(object, numRepetitions=1, randomOrder=True, newObject=True)
     representation = self._getActiveRepresentation()
 
     # check that all patterns map to the same object
@@ -168,15 +173,16 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
   def testLearnTwoObjectNoCommonPattern(self):
     """
     Same test as before, using two objects, without common pattern.
+    Objects: A{P, Q, R, S,T}   B{V, W, X, Y, Z}
     """
     self.init()
 
     objectA = self.generateObject(numPatterns=5)
-    self.learn(objectA, numRepetitions=3, randomOrder=True, newObject=True)
+    self.learn(objectA, numRepetitions=1, randomOrder=True, newObject=True)
     representationA = self._getActiveRepresentation()
 
     objectB = self.generateObject(numPatterns=5)
-    self.learn(objectB, numRepetitions=3, randomOrder=True, newObject=True)
+    self.learn(objectB, numRepetitions=1, randomOrder=True, newObject=True)
     representationB = self._getActiveRepresentation()
 
     self.assertNotEqual(representationA, representationB)
@@ -184,6 +190,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # check that all patterns map to the same object
     for pattern in objectA:
       self.infer(feedforwardPattern=pattern)
+      print self._getActiveRepresentation()
       self.assertEqual(
         self._getActiveRepresentation(),
         representationA,
@@ -222,19 +229,22 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
   def testLearnTwoObjectsOneCommonPattern(self):
     """
     Same test as before, except the two objects share a pattern
+    Objects: A{P, Q, R, S,T}   B{P, W, X, Y, Z}
     """
     self.init()
 
     objectA = self.generateObject(numPatterns=5)
-    self.learn(objectA, numRepetitions=3, randomOrder=True, newObject=True)
+    self.learn(objectA, numRepetitions=1, randomOrder=True, newObject=True)
     representationA = self._getActiveRepresentation()
 
     objectB = self.generateObject(numPatterns=5)
     objectB[0] = objectA[0]
-    self.learn(objectB, numRepetitions=3, randomOrder=True, newObject=True)
+    self.learn(objectB, numRepetitions=1, randomOrder=True, newObject=True)
     representationB = self._getActiveRepresentation()
 
     self.assertNotEqual(representationA, representationB)
+    # very small overlap
+    self.assertLessEqual(len(representationA & representationB), 3)
 
     # check that all patterns except the common one map to the same object
     for pattern in objectA[1:]:
@@ -283,25 +293,31 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
   def testLearnThreeObjectsOneCommonPattern(self):
     """
-    Same test as before, except the two objects share a pattern
+    Same test as before, with three objects
+    Objects: A{P, Q, R, S,T}   B{P, W, X, Y, Z}   C{W, H, I, K, L}
     """
     self.init()
 
     objectA = self.generateObject(numPatterns=5)
-    self.learn(objectA, numRepetitions=3, randomOrder=True, newObject=True)
+    self.learn(objectA, numRepetitions=1, randomOrder=True, newObject=True)
     representationA = self._getActiveRepresentation()
 
     objectB = self.generateObject(numPatterns=5)
     objectB[0] = objectA[0]
-    self.learn(objectB, numRepetitions=3, randomOrder=True, newObject=True)
+    self.learn(objectB, numRepetitions=1, randomOrder=True, newObject=True)
     representationB = self._getActiveRepresentation()
 
     objectC = self.generateObject(numPatterns=5)
     objectC[0] = objectB[1]
-    self.learn(objectC, numRepetitions=3, randomOrder=True, newObject=True)
+    self.learn(objectC, numRepetitions=1, randomOrder=True, newObject=True)
     representationC = self._getActiveRepresentation()
 
     self.assertNotEquals(representationA, representationB, representationC)
+    # very small overlap
+    self.assertLessEqual(len(representationA & representationB), 3)
+    self.assertLessEqual(len(representationB & representationC), 3)
+    self.assertLessEqual(len(representationA & representationC), 3)
+
 
     # check that all patterns except the common one map to the same object
     for pattern in objectA[1:]:
@@ -373,9 +389,10 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     """
     self.pooler = None
     self.proximalPatternMachine = PatternMachine(
-      self.inputWidth,
-      self.numOutputActiveBits,
-      self.seed
+      n=self.inputWidth,
+      w=self.numOutputActiveBits,
+      num=200,
+      seed=self.seed
     )
     self.patternId = 0
     np.random.seed(self.seed)
@@ -451,6 +468,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
            If true, will print cell metrics
 
     """
+    self.pooler.reset()
     self.pooler.compute(feedforwardPattern,
                         activeExternalCells=lateralPatterns,
                         learn=False)
@@ -482,8 +500,21 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
   def init(self, overrides=None):
     """
     Creates the column pooler with specified parameter overrides.
+
+    Except for the specified overrides and problem-specific parameters, used
+    parameters are implementation defaults.
     """
-    params = self._computeParams(overrides)
+    params = {
+      "inputWidth": self.inputWidth,
+      "numActivecolumnsPerInhArea": self.numOutputActiveBits,
+      "columnDimensions": (self.outputWidth,),
+      "seed": self.seed,
+      "learnOnOneCell": False
+    }
+    if overrides is None:
+      overrides = {}
+    params.update(overrides)
+
     self.pooler = MonitoredColumnPooler(**params)
 
 
@@ -495,45 +526,6 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       raise ValueError("No pooler has been instantiated")
 
     return set(self.pooler.getActiveCells())
-
-
-  def _getDefaultPoolerParams(self):
-    """
-    Default params to be used for the column pooler, if no override is
-    specified.
-    """
-    return {
-      "inputWidth": self.inputWidth,
-      "numActivecolumnsPerInhArea": self.numOutputActiveBits,
-      "synPermProximalInc": 0.1,
-      "synPermProximalDec": 0.001,
-      "initialProximalPermanence": 0.51,
-      "maxSynapsesPerSegment": self.inputWidth,
-      "columnDimensions": (self.outputWidth,),
-      "initialPermanence": 0.5,
-      "connectedPermanence": 0.6,
-      "minThreshold": 20,
-      "maxNewSynapseCount": 30,
-      "permanenceIncrement": 0.1,
-      "permanenceDecrement": 0.02,
-      "predictedSegmentDecrement": 0.08,
-      "activationThreshold": 20,
-      "seed": self.seed,
-      "learnOnOneCell": False,
-    }
-
-
-  def _computeParams(self, overrides):
-    """
-    Overrides the default parameters with provided values and returns the
-    parameters to use in the constructor.
-    """
-    if overrides is None:
-      overrides = {}
-
-    params = self._getDefaultPoolerParams()
-    params.update(overrides)
-    return params
 
 
 
