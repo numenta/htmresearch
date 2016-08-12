@@ -113,6 +113,10 @@ class ColumnPooler(ExtendedTemporalMemory):
       self._computeLearningMode(feedforwardInput=feedforwardInput,
                                lateralInput=activeExternalCells)
 
+    else:
+      self._computeInferenceMode(feedforwardInput=feedforwardInput,
+                                 lateralInput=activeExternalCells)
+
 
   def _computeLearningMode(self, feedforwardInput, lateralInput):
     """
@@ -166,7 +170,7 @@ class ColumnPooler(ExtendedTemporalMemory):
         self._learnDistal(lateralInput, self.activeCells)
 
 
-  def _computeInferenceMode(self, feedforwardInput, lateralInput, learn):
+  def _computeInferenceMode(self, feedforwardInput, lateralInput):
     """
     Inference mode: if there is some feedforward activity, perform
     spatial pooling on it to recognize previously known objects. If there
@@ -182,14 +186,24 @@ class ColumnPooler(ExtendedTemporalMemory):
             len(lateralInput) == number of connected neighboring cortical
             columns.
 
-    @param  learn (bool)
-            If true, learn on distal segments.
-
     """
     # Figure out which cells are active due to feedforward proximal inputs
-    ffInput = numpy.zeros(self.numberOfInputs())
-    ffInput[list(feedforwardInput)] = 1
-    overlaps = self.proximalConnections.dot(ffInput)
+    inputVector = numpy.zeros(self.numberOfInputs(), dtype=realDType)
+    inputVector[list(feedforwardInput)] = 1
+    overlaps = numpy.zeros(self.numberOfColumns(), dtype=realDType)
+    self.proximalConnections.rightVecSumAtNZ_fast(inputVector.astype(realDType),
+                                                 overlaps)
+    overlaps[overlaps < self.minThreshold] = 0
+
+    # Calculate winners using stable sort algorithm (mergesort)
+    # for compatibility with C++
+    # If there isn't enough bottom up activity, do nothing and maintain previous
+    # activity.
+    if overlaps.max() >= self.minThreshold:
+      winnerIndices = numpy.argsort(overlaps, kind='mergesort')
+      sortedWinnerIndices = winnerIndices[
+                            -self.numActiveColumnsPerInhArea:][::-1]
+      self.activeCells = set(sortedWinnerIndices)
 
 
   def numberOfInputs(self):

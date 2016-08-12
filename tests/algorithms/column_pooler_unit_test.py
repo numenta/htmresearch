@@ -163,6 +163,109 @@ class ColumnPoolerTest(unittest.TestCase):
                "Incorrect number of active cells after reset")
 
 
+  def testInitialInference(self):
+    """Tests inference after learning one pattern. """
+
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      columnDimensions=[2048, 1],
+      maxSynapsesPerSegment=2048 * 8
+    )
+    activatedCells = numpy.zeros(pooler.numberOfCells())
+
+    # Learn one pattern
+    pooler.compute(feedforwardInput=set(range(0,40)), learn=True)
+    activatedCells[pooler.getActiveCells()] = 1
+    sum1 = sum(pooler.getActiveCells())
+
+    # Inferring on same pattern should lead to same result
+    pooler.reset()
+    pooler.compute(feedforwardInput=set(range(0,40)), learn=False)
+    self.assertEqual(sum1,
+                     sum(pooler.getActiveCells()),
+                     "Inference on pattern after learning it is incorrect")
+
+    # Inferring with no inputs should maintain same pattern
+    pooler.compute(feedforwardInput=set(), learn=False)
+    self.assertEqual(sum1,
+                     sum(pooler.getActiveCells()),
+                     "Inference doesn't maintain activity with no input.")
+
+
+  def testShortInferenceSequence(self):
+    """Tests inference after learning two objects with two patterns. """
+
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      columnDimensions=[2048, 1],
+      maxSynapsesPerSegment=2048 * 8
+    )
+    activatedCells = numpy.zeros(pooler.numberOfCells())
+
+    # Learn object one
+    pooler.compute(feedforwardInput=set(range(0,40)), learn=True)
+    activatedCells[pooler.getActiveCells()] = 1
+    sum1 = sum(pooler.getActiveCells())
+
+    pooler.compute(feedforwardInput=set(range(100,140)), learn=True)
+    activatedCells[pooler.getActiveCells()] = 1
+    self.assertEqual(sum1,
+                     sum(pooler.getActiveCells()),
+                     "Activity for second pattern is incorrect")
+
+    # Learn object two
+    pooler.reset()
+    pooler.compute(feedforwardInput=set(range(1000,1040)), learn=True)
+    activatedCells[pooler.getActiveCells()] = 1
+    sum2 = sum(pooler.getActiveCells())
+
+    pooler.compute(feedforwardInput=set(range(1100,1140)), learn=True)
+    activatedCells[pooler.getActiveCells()] = 1
+    self.assertEqual(sum2,
+                     sum(pooler.getActiveCells()),
+                     "Activity for second pattern is incorrect")
+
+    # Inferring on patterns in first object should lead to same result, even
+    # after gap
+    pooler.reset()
+    pooler.compute(feedforwardInput=set(range(100,140)), learn=False)
+    self.assertEqual(sum1,
+                     sum(pooler.getActiveCells()),
+                     "Inference on pattern after learning it is incorrect")
+
+    # Inferring with no inputs should maintain same pattern
+    pooler.compute(feedforwardInput=set(), learn=False)
+    self.assertEqual(sum1,
+                     sum(pooler.getActiveCells()),
+                     "Inference doesn't maintain activity with no input.")
+
+    pooler.reset()
+    pooler.compute(feedforwardInput=set(range(0,40)), learn=False)
+    self.assertEqual(sum1,
+                     sum(pooler.getActiveCells()),
+                     "Inference on pattern after learning it is incorrect")
+
+    # Inferring on patterns in second object should lead to same result, even
+    # after gap
+    pooler.reset()
+    pooler.compute(feedforwardInput=set(range(1100,1140)), learn=False)
+    self.assertEqual(sum2,
+                     sum(pooler.getActiveCells()),
+                     "Inference on pattern after learning it is incorrect")
+
+    # Inferring with no inputs should maintain same pattern
+    pooler.compute(feedforwardInput=set(), learn=False)
+    self.assertEqual(sum2,
+                     sum(pooler.getActiveCells()),
+                     "Inference doesn't maintain activity with no input.")
+
+    pooler.reset()
+    pooler.compute(feedforwardInput=set(range(1000,1040)), learn=False)
+    self.assertEqual(sum2,
+                     sum(pooler.getActiveCells()),
+                     "Inference on pattern after learning it is incorrect")
+
+
   def testPickProximalInputsToLearnOn(self):
     """Test _pickProximalInputsToLearnOn method"""
 
