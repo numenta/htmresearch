@@ -36,7 +36,7 @@ def registerAllResearchRegions():
   # TODO: add self discovery of all regions in nupic.research.regions
 
   for regionName in ["LanguageSensor", "TemporalPoolerRegion",
-                     "TMRegion", "RawSensor", "L2Column",
+                     "TMRegion", "RawSensor", "ColumnPoolerRegion",
                      "ExtendedTMRegion"]:
     registerResearchRegion(regionName)
 

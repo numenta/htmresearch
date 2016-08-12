@@ -35,6 +35,7 @@ networkConfig1 = {
   },
   "L2Params": {
     "columnCount": 1024,
+    "inputWidth": 1024*8,
   }
 }
 
@@ -49,6 +50,7 @@ networkConfig2 = {
   },
   "L2Params": {
     "columnCount": 1024,
+    "inputWidth": 1024 * 8,
   }
 }
 
@@ -75,8 +77,8 @@ class LaminarNetworkTest(unittest.TestCase):
                      "Incorrect number of regions")
 
     # Add some input vectors to the queue
-    externalInput = net.regions["externalInput"].getSelf()
-    sensorInput = net.regions["sensorInput"].getSelf()
+    externalInput = net.regions["externalInput_0"].getSelf()
+    sensorInput = net.regions["sensorInput_0"].getSelf()
 
     # Add 3 input vectors
     externalInput.addDataToQueue([2, 42, 1023], 0, 9)

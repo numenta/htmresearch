@@ -20,9 +20,6 @@
 # ----------------------------------------------------------------------
 
 import json
-import os
-import shutil
-import tempfile
 import unittest
 
 from nupic.engine import Network
@@ -30,8 +27,8 @@ from htmresearch.support.register_regions import registerAllResearchRegions
 
 
 
-class L2ColumnTest(unittest.TestCase):
-  """ Super simple test of the L2Column region."""
+class ColumnPoolerTest(unittest.TestCase):
+  """ Super simple test of the ColumnPooler region."""
 
   @classmethod
   def setUpClass(cls):
@@ -41,10 +38,10 @@ class L2ColumnTest(unittest.TestCase):
   def testNetworkCreate(self):
     """Create a simple network to test the region."""
 
-    rawParams = {"outputWidth": 16*2048}
+    rawParams = {"outputWidth": 8*2048}
     net = Network()
     rawSensor = net.addRegion("raw","py.RawSensor", json.dumps(rawParams))
-    l2c = net.addRegion("L2", "py.L2Column", "")
+    l2c = net.addRegion("L2", "py.ColumnPoolerRegion", "")
     net.link("raw", "L2", "UniformLink", "")
 
     self.assertEqual(rawSensor.getParameter("outputWidth"),
@@ -59,6 +56,27 @@ class L2ColumnTest(unittest.TestCase):
     # Run the network and check outputs are as expected
     net.run(3)
 
+
+  def testOverlap(self):
+    """Create a simple network to test the region."""
+
+    rawParams = {"outputWidth": 8 * 2048}
+    net = Network()
+    rawSensor = net.addRegion("raw", "py.RawSensor", json.dumps(rawParams))
+    l2c = net.addRegion("L2", "py.ColumnPoolerRegion", "")
+    net.link("raw", "L2", "UniformLink", "")
+
+    self.assertEqual(rawSensor.getParameter("outputWidth"),
+                     l2c.getParameter("inputWidth"),
+                     "Incorrect outputWidth parameter")
+
+    rawSensorPy = rawSensor.getSelf()
+    rawSensorPy.addDataToQueue([2, 4, 6], 0, 42)
+    rawSensorPy.addDataToQueue([2, 42, 1023], 1, 43)
+    rawSensorPy.addDataToQueue([18, 19, 20], 0, 44)
+
+    # Run the network and check outputs are as expected
+    net.run(3)
 
 
 if __name__ == "__main__":
