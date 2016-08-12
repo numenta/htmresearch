@@ -190,7 +190,6 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # check that all patterns map to the same object
     for pattern in objectA:
       self.infer(feedforwardPattern=pattern)
-      print self._getActiveRepresentation()
       self.assertEqual(
         self._getActiveRepresentation(),
         representationA,
