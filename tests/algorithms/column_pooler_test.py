@@ -218,6 +218,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     )
 
 
+
   def testLearnTwoObjectsOneCommonPattern(self):
     """
     Same test as before, except the two objects share a pattern
@@ -325,7 +326,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       self.infer(feedforwardPattern=pattern)
       self.assertEqual(
         self._getActiveRepresentation(),
-        representationB,
+        representationC,
         "The pooled representation for the third object is not stable"
       )
 
@@ -451,7 +452,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     """
     self.pooler.compute(feedforwardPattern,
-                        lateralInput=lateralPatterns,
+                        activeExternalCells=lateralPatterns,
                         learn=False)
 
     if printMetrics:
