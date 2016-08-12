@@ -21,11 +21,13 @@
 
 import numpy
 
-import scipy.sparse as sparse
+from nupic.bindings.math import (SM32 as SparseMatrix,
+                                 SM_01_32_32 as SparseBinaryMatrix,
+                                 GetNTAReal)
 
 from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
 
-realDType = numpy.float32
+realDType = GetNTAReal()
 uintType = "uint32"
 
 
@@ -79,16 +81,14 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     # These sparse matrices will hold the synapses for each proximal segment.
     #
-    # proximalPermanences[cell] = sparse vector of permanence values for cell
-    # proximalPermanences[cell, i] = permanence for the i'th input to cell
-    #
-    # proximalConnections[cell] = sparse vector of connected inputs into cell
-    # proximalConnections[cell, i] = 1 iff the permanence for the i'th input to
-    #                                 cell is above connectedPerm
-    self.proximalPermanences = sparse.lil_matrix(
-      (self.numberOfCells(), inputWidth), dtype=realDType)
-    self.proximalConnections = sparse.lil_matrix(
-      (self.numberOfCells(),inputWidth), dtype=realDType)
+    # proximalPermanences - SparseMatrix with permanence values
+    # proximalConnections - SparseBinaryMatrix of connected synapses
+
+
+    self.proximalPermanences = SparseMatrix(self.numberOfColumns(),
+                                               inputWidth)
+    self.proximalConnections = SparseBinaryMatrix(inputWidth)
+    self.proximalConnections.resize(self.numberOfColumns(), inputWidth)
 
 
   def compute(self,
@@ -166,7 +166,7 @@ class ColumnPooler(ExtendedTemporalMemory):
         self._learnDistal(lateralInput, self.activeCells)
 
 
-  def computeInferenceMode(self, feedforwardInput, lateralInput, learn):
+  def _computeInferenceMode(self, feedforwardInput, lateralInput, learn):
     """
     Inference mode: if there is some feedforward activity, perform
     spatial pooling on it to recognize previously known objects. If there
@@ -208,7 +208,10 @@ class ColumnPooler(ExtendedTemporalMemory):
     @param  cells (set or list)
             Indices of the cells
     """
-    return self.proximalConnections[list(cells)].nnz
+    n = 0
+    for cell in cells:
+      n += self.proximalConnections.nNonZerosOnRow(cell)
+    return n
 
 
   def numberOfSynapses(self, cells):
@@ -220,46 +223,48 @@ class ColumnPooler(ExtendedTemporalMemory):
     @param  cells (set or list)
             Indices of the cells
     """
-    return self.proximalPermanences[list(cells)].nnz
+    n = 0
+    for cell in cells:
+      n += self.proximalPermanences.nNonZerosOnRow(cell)
+    return n
 
 
   def _learnProximal(self,
              activeInputs, activeCells, maxNewSynapseCount, proximalPermanences,
-             proximalConnections,
-             initialPermanence, synPermProximalInc, synPermProximalDec,
-             connectedPermanence):
+             proximalConnections, initialPermanence, synPermProximalInc,
+             synPermProximalDec, connectedPermanence):
     """
     Learn on proximal dendrites of active cells.  Updates proximalPermanences
     """
     for cell in activeCells:
+      cellPermanencesDense = proximalPermanences.getRow(cell)
+      cellNonZeroIndices, _ = proximalPermanences.rowNonZeros(cell)
+      cellNonZeroIndices = list(cellNonZeroIndices)
 
       # Get new and existing connections for this segment
       newInputs, existingInputs = self._pickProximalInputsToLearnOn(
-        maxNewSynapseCount, cell, activeInputs, proximalPermanences
+        maxNewSynapseCount, activeInputs, cellNonZeroIndices
       )
 
       # Adjust existing connections appropriately
-      # First we decrement all permanences
-      nz = proximalPermanences[cell].nonzero()[1]  # slowest line??
-      if len(nz) > 0:
-        t = proximalPermanences[cell, nz].todense()
-        t -= synPermProximalDec
-        proximalPermanences[cell, nz] = t
+      # First we decrement all existing permanences
+      if len(cellNonZeroIndices) > 0:
+        cellPermanencesDense[cellNonZeroIndices] -= synPermProximalDec
 
       # Then we add inc + dec to existing active synapses
       if len(existingInputs) > 0:
-        t = proximalPermanences[cell, existingInputs].todense()
-        t += synPermProximalInc + synPermProximalDec
-        proximalPermanences[cell, existingInputs] = t
+        cellPermanencesDense[existingInputs] += synPermProximalInc + synPermProximalDec
 
       # Add new connections
       if len(newInputs) > 0:
-        proximalPermanences[cell, newInputs] = initialPermanence
+        cellPermanencesDense[newInputs] += initialPermanence
 
-      # Update proximalConnections
-      proximalConnections[cell,:] = 0
-      nz = (proximalPermanences[cell]>=connectedPermanence).nonzero()[1]
-      proximalConnections[cell,nz] = 1.0
+      # Update proximalPermanences and proximalConnections
+      proximalPermanences.setRowFromDense(cell, cellPermanencesDense)
+      newConnected = numpy.where(cellPermanencesDense >= connectedPermanence)[0]
+      proximalConnections.replaceSparseRow(cell, newConnected)
+
+      cellNonZeroIndices, _ = proximalPermanences.rowNonZeros(cell)
 
 
   def _winnersBasedOnLateralActivity(self,
@@ -295,13 +300,16 @@ class ColumnPooler(ExtendedTemporalMemory):
     return sortedWinnerIndices
 
 
-  def _pickProximalInputsToLearnOn(self, newSynapseCount, cell, activeInputs,
-                                  proximalPermanences):
+  def _pickProximalInputsToLearnOn(self, newSynapseCount, activeInputs,
+                                  cellNonZeros):
     """
-    Pick inputs to form proximal connections to. We return a list of up to
-    newSynapseCount input indices from activeInputs that are valid new
-    connections for this cell. We also return a list containing all inputs
-    in activeInputs that are already connected to this cell.
+    Pick inputs to form proximal connections to. We just randomly subsample
+    from activeInputs, regardless of whether they are already connected.
+
+    We return a list of up to newSynapseCount input indices from activeInputs
+    that are valid new connections for this cell. We also return a list
+    containing all inputs in activeInputs that are already connected to this
+    cell.
 
     Parameters:
     ----------------------------
@@ -316,10 +324,9 @@ class ColumnPooler(ExtendedTemporalMemory):
     candidates = []
     alreadyConnected = []
 
-    # Collect inputs already connected or new candidates
-    nz = proximalPermanences[cell].nonzero()[1]  # Slowest line - need it?
+    # Collect inputs that already have synapses and list of new candidate inputs
     for inputIdx in activeInputs:
-      if inputIdx in nz:
+      if inputIdx in cellNonZeros:
         alreadyConnected += [inputIdx]
       else:
         candidates += [inputIdx]
@@ -336,6 +343,8 @@ class ColumnPooler(ExtendedTemporalMemory):
         i = self._random.getUInt32(len(candidates))
         inputs += [candidates[i]]
         candidates.remove(candidates[i])
+
+      # print "number of new candidates:",len(inputs)
 
       return inputs, alreadyConnected
 
