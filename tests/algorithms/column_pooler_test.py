@@ -433,8 +433,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
   def infer(self,
             feedforwardPattern,
             lateralPatterns=None,
-            printMetrics=False,
-            learn=False):
+            printMetrics=False):
     """
     Feeds a single pattern to the column pooler (as well as an eventual lateral
     pattern).
@@ -451,9 +450,9 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
            If true, will print cell metrics
 
     """
-    self.pooler.computeInferenceMode(feedforwardPattern,
-                                     lateralInput=lateralPatterns,
-                                     learn=learn)
+    self.pooler.compute(feedforwardPattern,
+                        lateralInput=lateralPatterns,
+                        learn=False)
 
     if printMetrics:
       print self.pooler.mmPrettyPrintMetrics(
@@ -489,8 +488,8 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
   def _getActiveRepresentation(self):
     """
-  	Retrieves the current active representation in the pooler.
-  	"""
+    Retrieves the current active representation in the pooler.
+    """
     if self.pooler is None:
       raise ValueError("No pooler has been instantiated")
 
