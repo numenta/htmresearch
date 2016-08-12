@@ -44,7 +44,7 @@ class ColumnPooler(ExtendedTemporalMemory):
                numActiveColumnsPerInhArea=40,
                synPermProximalInc=0.1,
                synPermProximalDec=0.001,
-               initialProximalPermanence=0.51,
+               initialProximalPermanence=0.6,
                **kwargs):
     """
     Please see ExtendedTemporalMemory for descriptions of common constructor
