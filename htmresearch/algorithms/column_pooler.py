@@ -101,13 +101,28 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     Parameters:
     ----------------------------
-    @param feedforwardInput     (set) Indices of active input bits
+    @param  feedforwardInput     (set)
+            Indices of active input bits
+
+    @param  activeExternalCells  (set)
+            Indices of active cells that will form connections to distal
+            segments.
+
+    @param  activeApicalCells (set)
+            Indices of active cells that will form connections to apical
+            segments.
+
+    @param  formInternalConnections (bool)
+            If True, cells will form
 
     @param learn                If True, we are learning a new object
 
     """
     if activeExternalCells is None:
       activeExternalCells = set()
+
+    if activeApicalCells is None:
+      activeApicalCells = set()
 
     if learn:
       self._computeLearningMode(feedforwardInput=feedforwardInput,
@@ -195,15 +210,12 @@ class ColumnPooler(ExtendedTemporalMemory):
                                                  overlaps)
     overlaps[overlaps < self.minThreshold] = 0
 
-    # Calculate winners using stable sort algorithm (mergesort)
-    # for compatibility with C++
     # If there isn't enough bottom up activity, do nothing and maintain previous
     # activity.
-    if overlaps.max() >= self.minThreshold:
-      winnerIndices = numpy.argsort(overlaps, kind='mergesort')
-      sortedWinnerIndices = winnerIndices[
-                            -self.numActiveColumnsPerInhArea:][::-1]
-      self.activeCells = set(sortedWinnerIndices)
+    if overlaps.sum() > 0.0:
+
+      # In order to form unions, we keep all cells that are over threshold
+      self.activeCells = set(overlaps.nonzero()[0])
 
 
   def numberOfInputs(self):
