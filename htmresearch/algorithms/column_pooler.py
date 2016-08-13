@@ -19,6 +19,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+from collections import defaultdict
 import numpy
 
 from nupic.bindings.math import (SM32 as SparseMatrix,
@@ -120,7 +121,7 @@ class ColumnPooler(ExtendedTemporalMemory):
               feedforwardInput=None,
               activeExternalCells=None,
               activeApicalCells=None,
-              formInternalConnections=True,
+              formInternalConnections=False,
               learn=True):
     """
 
@@ -192,7 +193,8 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     # Incorporate distal segment activity and update list of active cells
     self.activeCells = self._winnersBasedOnLateralActivity(
-      self.activeCells, lateralInput, self.distalMinThreshold
+      self.activeCells,
+      lateralInput
     )
 
     # Those cells that remain active will learn on their proximal and distal
@@ -244,7 +246,6 @@ class ColumnPooler(ExtendedTemporalMemory):
     self.activeCells = self._winnersBasedOnLateralActivity(
       bottomUpActivity,
       lateralInput,
-      self.distalMinThreshold
     )
 
 
@@ -325,16 +326,23 @@ class ColumnPooler(ExtendedTemporalMemory):
 
   def _winnersBasedOnLateralActivity(self,
                                      activeCells,
-                                     lateralInput,
-                                     minThreshold):
+                                     lateralInput):
     """
-    Incorporate effect of lateral activity, if any, and update the set of
+    Incorporate effect of lateral activity, if any, and returns the set of
     winners.
 
-    UNIMPLEMENTED
+    Parameters:
+    ----------------------------
+    @param   activeCells           (set)
+             Indices of cells activated by bottom-up input
 
-    @return (set) list of new winner cell indices
+    @param   lateralInput          (list(list))
+             List of lateral activations
+
+    @return (set) List of new winner cell indices
+
     """
+    # handle the case where there is no lateral activity
     if len(lateralInput) == 0 or \
        sum([len(latInput) for latInput in lateralInput]) == 0:
       # if there is not enough bottom-up activity, persist
@@ -343,11 +351,16 @@ class ColumnPooler(ExtendedTemporalMemory):
       else:
         return activeCells
 
+    # if there is no activity in the pooler, lateral activity is driving
+    if len(self.activeCells) == 0:
+      return self._winningDistallyPredictedCells()
+
     lateralActivity = {}
     maxNumberOfDistalSegments = 0
     # winner cells will be computed in one pass
     winnerCells = []
 
+    # count number of predictive segments for each active cells
     for cell in activeCells:
       lateralActivity[cell] = self._numberOfActiveDistalSegments(
         cell,
@@ -413,7 +426,7 @@ class ColumnPooler(ExtendedTemporalMemory):
           if numActiveSynapsesForSegment >= activationThreshold:
             # add active segment
             self.activeDistalSegments[neighbor].add(segment)
-            # increment counter
+            # increment counter and exit inner loop
             numActiveSegments += 1
             break
 
@@ -470,5 +483,115 @@ class ColumnPooler(ExtendedTemporalMemory):
 
 
   def _learnDistal(self, lateralInput, activeCells):
-    pass
+    """
+    Learns on distal segments, using the same mechanism as Extended Temporal
+    Memory, except each segment samples from one neighboring column.
 
+    Parameters:
+    ----------------------------
+    @param lateralInput            (list(set))
+           List of active cells from neighboring columns
+
+    @param activeCells             (set)
+           Currently active cells
+
+    """
+    for connections in self.distalConnections:
+
+      # get active synapses for each segment
+      segments = connections._segments
+      for segment in segments:
+        activeSynapses = self.activeSynapsesForSegment(
+          segment, activeCells, connections
+        )
+
+        # update segment permanences
+        self.adaptSegment(segment, activeSynapses, connections,
+                          self.permanenceIncrement,
+                          self.permanenceDecrement)
+
+        # create new synapses if necessary
+        n = self.maxNewSynapseCount - len(activeSynapses)
+        for presynapticCell in self.pickCellsToLearnOn(n,
+                                                       segment,
+                                                       activeCells,
+                                                       connections):
+          connections.createSynapse(segment,
+                                    presynapticCell,
+                                    self.initialPermanence)
+
+      # decrement permanences for predicted inactive cells
+      if self.predictedSegmentDecrement > 0:
+        predictedInactiveCells = self._winningDistallyPredictedCells(
+          lateralInput,
+          self.connectedPermanence,
+          self.distalActivationThreshold
+        ) - activeCells
+
+        for segment in segments:
+          isPredictedInactiveCell = connections.cellForSegment(segment) \
+                                    in predictedInactiveCells
+          activeSynapses = self.activeSynapsesForSegment(
+            segment, activeCells, connections)
+
+          if isPredictedInactiveCell:
+            self.adaptSegment(segment, activeSynapses, connections,
+                              -self.predictedSegmentDecrement,
+                              0.0)
+
+
+  def _winningDistallyPredictedCells(self,
+                                     lateralInput,
+                                     connectedPermanence,
+                                     activationThreshold):
+    """
+    Returns indices of distally predicted cells with highest number of
+    predicting neighboring columns.
+    This function is used for lateral driving when there is no activity,
+    and to decide cells to learn on if predictedSegmentDecrement > 0.
+
+    Parameters:
+    ----------------------------
+    @param lateralInput            (list(set))
+           List of active cells from neighboring columns
+
+    @param   connectedPermanence   (float)
+             Permanence threshold for a synapse to be considered active
+
+    @param   activationThreshold   (int)
+             Number of synapses needed for a segment to be considered active
+
+    """
+    # keep track of the number of predicting segments
+    activeSegmentsForCell = defaultdict(int)
+    numActiveConnectedSynapsesForSegment = defaultdict(int)
+
+    # keep track of best number of predicting segments
+    maxNumberOfActiveSegments = 0
+
+    for neighbor in xrange(self.numNeighboringColumns):
+      connections = self.distalConnections[neighbor]
+
+      # count active synapses for each active cell from neighboring column
+      for cell in lateralInput[neighbor]:
+        for synapseData in connections.synapsesForPresynapticCell(cell).values():
+          segment = synapseData.segment
+          permanence = synapseData.permanence
+
+          if permanence >= self.connectedPermanence:
+            numActiveConnectedSynapsesForSegment[segment] += 1
+
+          # if threshold is exceeded, increment counter and update best count
+          if (numActiveConnectedSynapsesForSegment[segment] >=
+              self.distalActivationThreshold):
+            cell = connections.cellForSegment(segment)
+            activeSegmentsForCell[cell] += 1
+
+            # update best number of predictive neighbors
+            if activeSegmentsForCell[cell] > maxNumberOfActiveSegments:
+              maxNumberOfActiveSegments = activeSegmentsForCell[cell]
+
+    # only return winning predictions
+    return set(
+      [k for k, v in activeSegmentsForCell.items() if v == maxNumberOfActiveSegments]
+    )
