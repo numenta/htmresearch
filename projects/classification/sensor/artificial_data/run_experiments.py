@@ -57,8 +57,9 @@ def print_and_save_results(classificationResults, expSetups):
   :param expSetups: (list of dict) experiment setups
   """
   # we don't need the file path
-  expSetups = [expSetup.pop('filePath', None) for expSetup in expSetups]
-    
+  for expSetup in expSetups:
+    del expSetup['filePath']
+
   with open(RESULTS_FILE, 'wb') as fw:
     writer = csv.writer(fw)
     c_headers = classificationResults[0].keys()
@@ -108,7 +109,7 @@ def run():
                     "regionEnabled")
                   classifierType = networkConfig["classifierRegionConfig"].get(
                     "regionType")
-      
+
                   expSetup = generateSensorData(signalType,
                                                 DATA_DIR,
                                                 numPhases,
@@ -122,26 +123,23 @@ def run():
                   dataSource = FileRecordStream(streamID=expSetup['filePath'])
                   network = configureNetwork(dataSource,
                                              networkConfig)
-      
+
                   partitions = generateNetworkPartitions(networkConfig,
                                                          expSetup['numPoints'])
-      
-                  classificationAccuracy = trainNetwork(network,
-                                                        networkConfig,
-                                                        partitions,
-                                                        expSetup['numPoints'],
-                                                        VERBOSITY)
-      
-                  classificationResults.append(
-                    {
-                      'spEnabled': spEnabled,
-                      'tmEnabled': tmEnabled,
-                      'upEnabled': upEnabled,
-                      'classifierType':
-                        classifierType.split(".")[1],
-                      'classificationAccuracy':
-                        classificationAccuracy
-                    })
+
+                  traces = trainNetwork(network,
+                                        networkConfig,
+                                        partitions,
+                                        expSetup['numPoints'],
+                                        VERBOSITY)
+                  finalAccuracy = traces['testClassificationAccuracyTrace'][-1]
+                  classificationResults.append({
+                    'spEnabled': spEnabled,
+                    'tmEnabled': tmEnabled,
+                    'upEnabled': upEnabled,
+                    'classifierType': classifierType.split(".")[1],
+                    'classificationAccuracy': finalAccuracy
+                  })
 
   print_and_save_results(classificationResults, expSetups)
 

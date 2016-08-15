@@ -92,49 +92,26 @@ def generateSampleNetworkConfig(templateNetworkConfig, maxCategoryCount):
   """
 
   networkConfigurations = []
-  
+
   # Basic classifier params
   CLA_CLASSIFIER_PARAMS = {
-    "steps": 0,
-    "alpha": 0.01,
     "implementation": "cpp",
-    "maxCategoryCount": maxCategoryCount,
-    "verbosity": 0
-  }
-  
-  SDR_CLASSIFIER_PARAMS = {
-    "steps": 0,
     "alpha": 0.01,
-    "implementation": "py",
-    "maxCategoryCount": maxCategoryCount,
-    "verbosity": 0
-  }
-  
-  KNN_CLASSIFIER_PARAMS = {
-    "k": 1,
-    "maxCategoryCount": maxCategoryCount
+    "verbosity": 0,
+    "steps": 0,
+    "maxCategoryCount": 3
   }
 
-  # SP and TM enabled. UP disabled. KNN Classifier.
-  # networkConfig = copy.deepcopy(templateNetworkConfig)
-  # networkConfig[SP_CONFIG]["regionEnabled"] = True
-  # networkConfig[TM_CONFIG]["regionEnabled"] = True
-  # networkConfig[TP_CONFIG]["regionEnabled"] = False
-  # networkConfig[CLASSIFIER_CONFIG]["regionType"] = KNN_CLASSIFIER_TYPE
-  # networkConfig[CLASSIFIER_CONFIG]["regionParams"] = KNN_CLASSIFIER_PARAMS
-  # networkConfigurations.append(networkConfig)
-  # 
-  # SP enabled. TM and UP disabled. KNN Classifier.
-  # networkConfig = copy.deepcopy(templateNetworkConfig)
-  # networkConfig[SP_CONFIG]["regionEnabled"] = True
-  # networkConfig[TM_CONFIG]["regionEnabled"] = False
-  # networkConfig[TP_CONFIG]["regionEnabled"] = False
-  # networkConfig[CLASSIFIER_CONFIG]["regionType"] = KNN_CLASSIFIER_TYPE
-  # networkConfig[CLASSIFIER_CONFIG]["regionParams"] = KNN_CLASSIFIER_PARAMS
-  # networkConfigurations.append(networkConfig)
-  
+  SDR_CLASSIFIER_PARAMS = {
+    "implementation": "py",
+    "alpha": 0.01,
+    "verbosity": 0,
+    "steps": 0,
+    "maxCategoryCount": 3
+  }
+
   ## SDR Classifier ##
-  
+
   # SP and TM enabled. UP disabled. SDR Classifier.
   networkConfig = copy.deepcopy(templateNetworkConfig)
   networkConfig[SP_CONFIG]["regionEnabled"] = True
@@ -151,8 +128,8 @@ def generateSampleNetworkConfig(templateNetworkConfig, maxCategoryCount):
   networkConfig[TP_CONFIG]["regionEnabled"] = False
   networkConfig[CLASSIFIER_CONFIG]["regionType"] = SDR_CLASSIFIER_TYPE
   networkConfig[CLASSIFIER_CONFIG]["regionParams"] = SDR_CLASSIFIER_PARAMS
-  networkConfigurations.append(networkConfig)  
-  
+  networkConfigurations.append(networkConfig)
+
   # SP and TM and UP enabled. SDR Classifier.
   networkConfig = copy.deepcopy(templateNetworkConfig)
   networkConfig[SP_CONFIG]["regionEnabled"] = True
@@ -161,10 +138,9 @@ def generateSampleNetworkConfig(templateNetworkConfig, maxCategoryCount):
   networkConfig[CLASSIFIER_CONFIG]["regionType"] = SDR_CLASSIFIER_TYPE
   networkConfig[CLASSIFIER_CONFIG]["regionParams"] = SDR_CLASSIFIER_PARAMS
   networkConfigurations.append(networkConfig)
-  
-  
+
   ## CLA Classifier ##
-  
+
   # First config: SP and TM enabled. UP disabled. CLA Classifier.
   networkConfig = copy.deepcopy(templateNetworkConfig)
   networkConfig[SP_CONFIG]["regionEnabled"] = True

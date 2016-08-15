@@ -37,7 +37,6 @@ from htmresearch.support.register_regions import registerResearchRegion
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-plt.ion()
 
 _PY_REGIONS = [r[1] for r in pyRegions]
 _LOGGER = logging.getLogger(__name__)
@@ -412,12 +411,51 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
 
   # Keep track of the regions that have been trained.
   trainedRegionNames = []
-  numCorrect = 0
+  # Number of correctly classified records
+  numCorrectlyClassifiedRecords = 0
+  numCorrectlyClassifiedTestRecords = 0
   numTestRecords = 0
   sensorValueTrace = []
+  classificationAccuracyTrace = []
+  testClassificationAccuracyTrace = []
   for recordNumber in xrange(numRecords):
+
     # Run the network for a single iteration.
     network.run(1)
+
+    sensorValueTrace.append(sensorRegion.getOutputData("sourceOut")[0])
+    actualValue = sensorRegion.getOutputData("categoryOut")[0]
+    inferredValue = _getClassifierInference(classifierRegion)
+    if actualValue == inferredValue:
+      numCorrectlyClassifiedRecords += 1
+    else:
+      if verbosity > 0:
+        _LOGGER.debug("recordNum=%s, actualValue=%s, inferredValue=%s"
+                      % (recordNumber, actualValue, inferredValue))
+    clfAccuracy = round(100.0 * numCorrectlyClassifiedRecords / numRecords, 2)
+    classificationAccuracyTrace.append(clfAccuracy)
+
+    if trackTMmetrics:
+
+      activeColsTrace = tm.mmGetTraceActiveColumns()
+      predictedActiveColsTrace = tm.mmGetTracePredictedActiveColumns()
+      predictedActiveCellsTrace = tm.mmGetTracePredictedActiveCells()
+      activeCellsTrace = tm._mmTraces["activeCells"]
+
+      if tmRegion.getParameter("learningMode") and recordNumber % 100 == 0:
+        (avgPredictedActiveCols,
+         avgPredictedInactiveCols,
+         avgUnpredictedActiveCols) = _inspectTMPredictionQuality(
+          tm, numRecordsToInspect=100)
+        tmStats = ("recordNumber %4d # predicted -> active cols=%4.1f | "
+                   "# predicted -> inactive cols=%4.1f | "
+                   "# unpredicted -> active cols=%4.1f " % (
+                     recordNumber,
+                     avgPredictedActiveCols,
+                     avgPredictedInactiveCols,
+                     avgUnpredictedActiveCols
+                   ))
+        _LOGGER.info(tmStats)
 
     if recordNumber == partitions[0][1]:
       # end of the current partition
@@ -435,50 +473,43 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
                               partitionName,
                               recordNumber)
 
-    # track sensor values for display purpose
-    sensorValueTrace.append(sensorRegion.getOutputData("sourceOut")[0])
-    if trackTMmetrics:
-      if tmRegion.getParameter("learningMode") and recordNumber % 100 == 0:
-        (avgPredictedActiveCols,
-         avgPredictedInactiveCols,
-         avgUnpredictedActiveCols) = _inspectTMPredictionQuality(
-          tm, numRecordsToInspect=100)
-        tmStats = ("recordNumber %4d # predicted -> active cols=%4.1f | "
-                   "# predicted -> inactive cols=%4.1f | "
-                   "# unpredicted -> active cols=%4.1f " % (
-                      recordNumber,
-                     avgPredictedActiveCols,
-                     avgPredictedInactiveCols,
-                     avgUnpredictedActiveCols
-                   ))
-        _LOGGER.info(tmStats)
-
-        _LOGGER.info(sensorRegion.getOutputData("categoryOut")[0])
-        _plotTMActivation(tm, sensorValueTrace, numRecordsToPlot=100)
-
     if recordNumber >= partitions[-1][1]:
       # evaluate the predictions on the test set
       # classifierConfig = networkConfig["classifierRegionConfig"]
       classifierRegion.setParameter("inferenceMode", True)
 
-      actualValue = sensorRegion.getOutputData("categoryOut")[0]
-      inferredValue = _getClassifierInference(classifierRegion)
       if actualValue == inferredValue:
-        numCorrect += 1
-      else:
-        if verbosity > 0:
-          _LOGGER.debug("recordNum=%s, actualValue=%s, inferredValue=%s"
-                        % (recordNumber, actualValue, inferredValue))
-      numTestRecords += 1
-      classificationAccuracy = round(100.0 * numCorrect / numTestRecords, 2)
-      results = (
-      "RESULTS: accuracy=%s | %s correctly classified records out of %s "
-      "test records \n" % (classificationAccuracy,
-                           numCorrect,
-                           numTestRecords))
-  _LOGGER.info(results)
+        numCorrectlyClassifiedTestRecords += 1
 
-  return classificationAccuracy
+      numTestRecords += 1
+      testClassificationAccuracy = round(
+        100.0 * numCorrectlyClassifiedTestRecords / numTestRecords, 2)
+      testClassificationAccuracyTrace.append(testClassificationAccuracy)
+
+  _LOGGER.info("RESULTS: accuracy=%s | "
+               "%s correctly classified records out of %s test records \n" %
+               (testClassificationAccuracyTrace[-1],
+                numCorrectlyClassifiedTestRecords,
+                numTestRecords))
+
+  traces = {
+    'classificationAccuracyTrace': classificationAccuracyTrace,
+    'testClassificationAccuracyTrace': testClassificationAccuracyTrace,
+    'sensorValueTrace': sensorValueTrace
+  }
+
+  if trackTMmetrics:
+    traces['activeColsTrace'] = activeColsTrace.data
+    traces['predictedActiveColsTrace'] = predictedActiveColsTrace.data
+    traces['predictedActiveCellsTrace'] = predictedActiveCellsTrace.data
+    traces['activeCellsTrace'] = activeCellsTrace.data
+
+    _plotTMActivation(tm, sensorValueTrace,
+                      numberOfSPCellsToPlot=2048,
+                      numberOfTMCellsToPlot=65536,
+                      numRecordsToPlot=numRecords)
+
+  return traces
 
 
 
@@ -526,25 +557,22 @@ def _inspectTMPredictionQuality(tm, numRecordsToInspect):
 def _plotTMActivation(tm,
                       sensorValueTrace=None,
                       numRecordsToPlot=100,
-                      numberOfCellsToPlot=100):
+                      numberOfSPCellsToPlot=100,
+                      numberOfTMCellsToPlot=100):
   """ Plot activeCells, activeCols and predictiveActiveCells for the most
   recent numRecordsToPlot input records
   If sensorValueTrace is provided, plot sensorValues along with TM activation
   """
-  cellsToDisplay = set(range(numberOfCellsToPlot))
-  colsToDisplay = set(range(numberOfCellsToPlot))
+  cellsToDisplay = set(range(numberOfTMCellsToPlot))
+  colsToDisplay = set(range(numberOfSPCellsToPlot))
 
-  fig = plt.figure(num=1, figsize=(8, 12))
-  plt.clf()
+  plt.figure(figsize=(8, 10))
   if sensorValueTrace is None:
     nrows = 4
   else:
     nrows = 5
-  ncols = 1
 
-  ax = []
-  for i in range(nrows):
-    ax.append(fig.add_subplot(nrows, ncols, i+1))
+  f, ax = plt.subplots(nrows, sharex=True)
 
   activeColsTrace = tm.mmGetTraceActiveColumns()
   _plotCellTraces(ax[0], activeColsTrace.data[-numRecordsToPlot:],
@@ -556,14 +584,12 @@ def _plotTMActivation(tm,
                   cellsToDisplay,
                   "predictiedActiveCols")
 
-  predictedActiveColsTrace = tm.mmGetTracePredictedActiveCells()
-  # predictedActiveColsTrace = tm._mmTraces["predictedActiveCells"]
-  _plotCellTraces(ax[2], predictedActiveColsTrace.data[-numRecordsToPlot:],
+  predictedActiveCellsTrace = tm.mmGetTracePredictedActiveCells()
+  _plotCellTraces(ax[2], predictedActiveCellsTrace.data[-numRecordsToPlot:],
                   cellsToDisplay,
                   "predictiedActiveCells")
 
-
-  #TODO: Add activeCell Trace accessor in temporal_memory_monitor_mixin
+  # TODO: Add activeCell Trace accessor in temporal_memory_monitor_mixin
   activeCellsTrace = tm._mmTraces["activeCells"]
   _plotCellTraces(ax[3], activeCellsTrace.data[-numRecordsToPlot:],
                   cellsToDisplay,
@@ -624,4 +650,3 @@ def add2DArray(ax, data, xlabel=None, ylabel=None, cmap=None,
   ax.imshow(data, cmap=cmap, aspect=aspect, interpolation=interpolation)
   ax.set_xlabel(xlabel)
   ax.set_ylabel(ylabel)
-

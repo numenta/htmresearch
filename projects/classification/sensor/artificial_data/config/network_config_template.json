@@ -75,13 +75,14 @@
   },
   "classifierRegionConfig": {
     "regionEnabled": true,
-    "regionName": "classifier",
-    "regionType": "py.CLAClassifierRegion",
     "regionParams": {
-      "steps": "0",
-      "implementation": "cpp",
-      "maxCategoryCount": 3,
-      "clVerbosity": 0
-    }
+      "implementation": "py",
+      "alpha": 0.01,
+      "verbosity": 0,
+      "steps": 0,
+      "maxCategoryCount": 3
+    },
+    "regionType": "py.SDRClassifierRegion",
+    "regionName": "classifier"
   }
 }
