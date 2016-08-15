@@ -35,19 +35,46 @@ from htmresearch.frameworks.classification.utils.network_config import (
   generateSampleNetworkConfig,
   generateNetworkPartitions)
 
-from settings import (OUTFILE_NAME,
-                      SEQUENCE_LENGTH,
-                      NUM_CATEGORIES,
-                      NUM_RECORDS,
+from settings import (NUM_CATEGORIES,
+                      NUM_PHASES,
+                      NUM_REPS,
+                      SIGNAL_TYPES,
                       WHITE_NOISE_AMPLITUDES,
                       SIGNAL_AMPLITUDES,
                       SIGNAL_MEANS,
-                      SIGNAL_PERIODS,
                       DATA_DIR,
                       VERBOSITY,
                       USE_JSON_CONFIG)
 
 RESULTS_FILE = 'results/seq_classification_results.csv'
+
+
+
+def print_and_save_results(classificationResults, expSetups):
+  """
+  Pretty print exp info and results and save them to CSV file
+  :param classificationResults: (list of dict) classification results 
+  :param expSetups: (list of dict) experiment setups
+  """
+  # we don't need the file path
+  expSetups = [expSetup.pop('filePath', None) for expSetup in expSetups]
+    
+  with open(RESULTS_FILE, 'wb') as fw:
+    writer = csv.writer(fw)
+    c_headers = classificationResults[0].keys()
+    e_headers = expSetups[0].keys()
+    headers = e_headers + c_headers
+    writer.writerow(headers)
+    t = PrettyTable(headers)
+    for i in range(len(expSetups)):
+      c_row = [expSetups[i][eh] for eh in e_headers]
+      e_row = [classificationResults[i][ch] for ch in c_headers]
+      row = c_row + e_row
+      writer.writerow(row)
+      t.add_row(row)
+
+    print '%s\n' % t
+    print '==> Results saved to %s\n' % RESULTS_FILE
 
 
 
@@ -63,66 +90,60 @@ def run():
       networkConfigurations = generateSampleNetworkConfig(templateNetworkConfig,
                                                           NUM_CATEGORIES)
 
-  headers = ['numRecords', 'seqLength', 'numClasses', 'signalAmplitude',
-             'signalMean', 'signalPeriod', 'noiseAmplitude', 'spEnabled',
-             'tmEnabled', 'tpEnabled', 'classifierType',
-             'classificationAccuracy']
-
-  with open(RESULTS_FILE, 'wb') as fw:
-    writer = csv.writer(fw)
-    writer.writerow(headers)
-    t = PrettyTable(headers)
+  expSetups = []
+  classificationResults = []
+  for signalType in SIGNAL_TYPES:
     for networkConfig in networkConfigurations:
       for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
         for signalMean in SIGNAL_MEANS:
           for signalAmplitude in SIGNAL_AMPLITUDES:
-            for signalPeriod in SIGNAL_PERIODS:
-              spEnabled = networkConfig["sensorRegionConfig"].get(
-                "regionEnabled")
-              tmEnabled = networkConfig["tmRegionConfig"].get(
-                "regionEnabled")
-              upEnabled = networkConfig["tpRegionConfig"].get(
-                "regionEnabled")
-              classifierType = networkConfig["classifierRegionConfig"].get(
-                "regionType")
-              inputFile = generateSensorData(DATA_DIR,
-                                             OUTFILE_NAME,
-                                             signalMean,
-                                             signalPeriod,
-                                             SEQUENCE_LENGTH,
-                                             NUM_RECORDS,
-                                             signalAmplitude,
-                                             NUM_CATEGORIES,
-                                             noiseAmplitude)
+            for numCategories in NUM_CATEGORIES:
+              for numReps in NUM_REPS:
+                for numPhases in NUM_PHASES:
+                  spEnabled = networkConfig["sensorRegionConfig"].get(
+                    "regionEnabled")
+                  tmEnabled = networkConfig["tmRegionConfig"].get(
+                    "regionEnabled")
+                  upEnabled = networkConfig["tpRegionConfig"].get(
+                    "regionEnabled")
+                  classifierType = networkConfig["classifierRegionConfig"].get(
+                    "regionType")
+      
+                  expSetup = generateSensorData(signalType,
+                                                DATA_DIR,
+                                                numPhases,
+                                                numReps,
+                                                signalMean,
+                                                signalAmplitude,
+                                                numCategories,
+                                                noiseAmplitude)
+                  expSetup['expId'] = len(expSetups)
+                  expSetups.append(expSetup)
+                  dataSource = FileRecordStream(streamID=expSetup['filePath'])
+                  network = configureNetwork(dataSource,
+                                             networkConfig)
+      
+                  partitions = generateNetworkPartitions(networkConfig,
+                                                         expSetup['numPoints'])
+      
+                  classificationAccuracy = trainNetwork(network,
+                                                        networkConfig,
+                                                        partitions,
+                                                        expSetup['numPoints'],
+                                                        VERBOSITY)
+      
+                  classificationResults.append(
+                    {
+                      'spEnabled': spEnabled,
+                      'tmEnabled': tmEnabled,
+                      'upEnabled': upEnabled,
+                      'classifierType':
+                        classifierType.split(".")[1],
+                      'classificationAccuracy':
+                        classificationAccuracy
+                    })
 
-              dataSource = FileRecordStream(streamID=inputFile)
-              network = configureNetwork(dataSource,
-                                         networkConfig)
-              partitions = generateNetworkPartitions(networkConfig,
-                                                     NUM_RECORDS)
-
-              classificationAccuracy = trainNetwork(network, networkConfig,
-                                                    partitions, NUM_RECORDS,
-                                                    VERBOSITY)
-
-              results = [NUM_RECORDS,
-                         SEQUENCE_LENGTH,
-                         NUM_CATEGORIES,
-                         signalAmplitude,
-                         signalMean,
-                         signalPeriod,
-                         noiseAmplitude,
-                         spEnabled,
-                         tmEnabled,
-                         upEnabled,
-                         classifierType.split(".")[1],
-                         classificationAccuracy]
-
-              writer.writerow(results)
-              t.add_row(results)
-              
-  print '%s\n' % t
-  print '==> Results saved to %s\n' % RESULTS_FILE
+  print_and_save_results(classificationResults, expSetups)
 
 
 
