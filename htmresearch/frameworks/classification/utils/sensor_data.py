@@ -29,94 +29,272 @@ import random
 
 import matplotlib.pyplot as plt
 
+from prettytable import PrettyTable
 
 
-def generateSensorData(dataDir,
-                       outputFileName,
+
+def generateSensorData(signalType,
+                       dataDir,
+                       numPhases,
+                       numReps,
                        signalMean,
-                       signalPeriod,
-                       sequenceLength,
-                       numPoints,
                        signalAmplitude,
                        numCategories,
                        noiseAmplitude):
   """
   Generate the artificial sensor data.
+  @param signalType: (str) can be one of the following:
+  - 'sine': Sine wave with a different frequency per category.
+  - 'binary': periodic binary signal with a different period per category.
+  - 'triangle': triangular signal with a different sampling rate per category.
   @param dataDir: (str) directory where to save the CSV files
-  @param outputFileName: (str) base name for the output file
+  @param numPhases: (int) number of phases to train and test. E.g: 4 phases 
+    to train and 1 to test: (1) SP, (2) TM, (3) TP, (4) Classifier, (5) Test.
+  @param numReps: (int) Number of time each phase repeats.
   @param signalMean: (float) mean of the signal to generate
-  @param signalPeriod: (float) period of the signal to generate
-  @param sequenceLength: (int) sequence length of the signal to generate
-  @param numPoints: (int) total number of points in the sequence
   @param signalAmplitude: (float) amplitude of the signal to generate
   @param numCategories: (int) number of categories labels
   @param noiseAmplitude: (float) amplitude of the white noise
-  @return outFilePath: (str) path to the output file
+  @return expSetup: (dict) setup for each experiment
   """
+
+  # some info about the experiment setup
+  expSetup = {
+    'signalType': signalType,
+    'signalMean': signalMean,
+    'signalAmplitude': signalAmplitude,
+    'numCategories': numCategories,
+    'noiseAmplitude': noiseAmplitude,
+    'numPhases': numPhases,
+    'numReps': numReps,
+  }
+
+  if signalType == 'sine':
+    signal_generator = sine_wave_generator
+  elif signalType == 'binary':
+    signal_generator = binary_signal_generator
+  elif signalType == 'triangle':
+    signal_generator = triangular_signal_generator
+  else:
+    raise ValueError('Signal type can only be "sine", "triangle" or "step"')
+
   # make sure the directory exist. if not, create it.
   if not os.path.exists(dataDir):
     os.makedirs(dataDir)
 
-  filePath = "%s/%s_%s.csv" % (dataDir, outputFileName, noiseAmplitude)
+  filePath = "%s/%s_ampl=%s_mean=%s_noise=%s.csv" % (dataDir, signalType,
+                                                     signalAmplitude,
+                                                     signalMean,
+                                                     noiseAmplitude)
   with open(filePath, "wb") as f:
     writer = csv.writer(f)
     writer.writerow(["x", "y", "label"])
     writer.writerow(["float", "float", "int"])
     writer.writerow(["", "", "C"])  # C is for category. 
     # WARNING: if the C flag is forgotten in the dataset, then all records will
-    #  be arbitrarily put
-    # in the same category (i.e. category 0). So make sure to have the C flag 
-    # -- otherwise you'll get 100% classification accuracy regardless of 
-    # the input data :-P
+    #  be arbitrarily put in the same category (i.e. category 0). So make sure 
+    # to have the C flag -- otherwise you'll get 100% classification accuracy 
+    # regardless of the input data :-P
 
+    sequenceLength, numPoints = signal_generator(writer,
+                                                 numPhases,
+                                                 numReps,
+                                                 signalMean,
+                                                 noiseAmplitude,
+                                                 signalAmplitude,
+                                                 numCategories)
 
-    endOfSequence = sequenceLength
-    label = numCategories - 1
-    for i in range(numPoints):
+  expSetup['sequenceLenght'] = sequenceLength
+  expSetup['numPoints'] = numPoints
+  expSetup['filePath'] = filePath
 
-      noise = noiseAmplitude * random.random()
-
-      if i == endOfSequence:
-        endOfSequence += sequenceLength
-        if label == 0:
-          label = numCategories - 1
-        else:
-          label -= 1
-
-      signal_modifier = (label**2 + 1)
-      x = signal_modifier * (i * math.pi) / signalPeriod
-      
-      lim = 0.99
-      sig = math.sin(x)
-      if sig > lim:
-        sig = lim
-      elif sig < -lim:
-        sig = -lim
-
-
-      m1 = signal_modifier * signalMean + signalAmplitude * sig + noise
-
-      writer.writerow([x, m1, label])
-
-  return filePath
+  return expSetup
 
 
 
-def plotSensorData(csvFiles, sequenceLength):
+def sine_wave_generator(writer,
+                        numPhases,
+                        numReps,
+                        signalMean,
+                        noiseAmplitude,
+                        signalAmplitude,
+                        numCategories):
+  """
+  Generate the artificial sensor data.
+  @param writer: (csv.CSVWriter) csv file writer.
+  @param numPhases: (int) number of phases to train and test. E.g: 4 phases 
+    to train and 1 to test: (1) SP, (2) TM, (3) TP, (4) Classifier, (5) Test.
+  @param numReps: (int) Number of time each phase repeats.
+  @param signalMean: (float) mean of the signal to generate
+  @param noiseAmplitude: (float) amplitude of the white noise
+  @param signalAmplitude: (float) amplitude of the signal to generate
+  @param numCategories: (int) number of categories labels
+  """
+
+  signalPeriod = 20
+  sequenceLength = signalPeriod * 4
+  numPoints = numReps * numPhases * sequenceLength * numCategories
+
+  endOfSequence = sequenceLength
+  label = numCategories - 1
+  for i in range(numPoints):
+
+    noise = noiseAmplitude * random.random()
+
+    if i == endOfSequence:
+      endOfSequence += sequenceLength
+      if label == 0:
+        label = numCategories - 1
+      else:
+        label -= 1
+
+    signal_modifier = (label ** 2 + 1)
+    x = signal_modifier * (i * math.pi) / signalPeriod
+    sig = math.sin(x)
+    m1 = signal_modifier * signalMean + signalAmplitude * sig + noise
+
+    writer.writerow([x, m1, label])
+
+  return sequenceLength, numPoints
+
+
+
+def binary_signal_generator(writer,
+                            numPhases,
+                            numReps,
+                            signalMean,
+                            noiseAmplitude,
+                            signalAmplitude,
+                            numCategories):
+  """
+  Generate the artificial sensor data.
+  @param writer: (csv.CSVWriter) csv file writer.
+  @param numPhases: (int) number of phases to train and test. E.g: 4 phases 
+    to train and 1 to test: (1) SP, (2) TM, (3) TP, (4) Classifier, (5) Test.
+  @param numReps: (int) Number of time each phase repeats.
+  @param signalMean: (float) mean of the signal to generate
+  @param noiseAmplitude: (float) amplitude of the white noise
+  @param signalAmplitude: (float) amplitude of the signal to generate
+  @param numCategories: (int) number of categories labels
+  """
+
+  # if numCategories = 3, then sequenceLength = 4 * 3 * 2 = 24
+  # if numCategories = 2, then sequenceLength = 3 * 2 = 6
+  minSequenceLength = 1
+  for cat in range(numCategories + 1)[1:]:
+    minSequenceLength *= cat
+  sequenceLength = minSequenceLength * 3
+  numPoints = numReps * numPhases * sequenceLength * numCategories
+
+  endOfSequence = sequenceLength
+  label = numCategories - 1
+  periodCounter = [0 for _ in range(numCategories)]
+  sig = 0
+  for i in range(numPoints):
+    noise = noiseAmplitude * random.random()
+
+    if i == endOfSequence:
+      endOfSequence += sequenceLength
+      if label == 0:
+        label = numCategories - 1
+      else:
+        label -= 1
+
+    if periodCounter[label] == label + 1:
+      periodCounter = [0 for _ in range(numCategories)]
+      if sig == 0:
+        sig = 1
+      else:
+        sig = 0
+    else:
+      periodCounter[label] += 1
+
+    amplitude_modifier = float(label) ** 2
+    m1 = amplitude_modifier * signalMean + signalAmplitude * sig + noise
+
+    writer.writerow([i, m1, label])
+
+  return sequenceLength, numPoints
+
+
+
+def triangular_signal_generator(writer,
+                                numPhases,
+                                numReps,
+                                signalMean,
+                                noiseAmplitude,
+                                signalAmplitude,
+                                numCategories):
+  """
+  Generate the artificial sensor data.
+  @param writer: (csv.CSVWriter) csv file writer.
+  @param numPhases: (int) number of phases to train and test. E.g: 4 phases 
+    to train and 1 to test: (1) SP, (2) TM, (3) TP, (4) Classifier, (5) Test.
+  @param numReps: (int) Number of time each phase repeats.
+  @param signalMean: (float) mean of the signal to generate
+  @param noiseAmplitude: (float) amplitude of the white noise
+  @param signalAmplitude: (float) amplitude of the signal to generate
+  @param numCategories: (int) number of categories labels
+  """
+
+  # if numCategories = 3, then sequenceLength = 4 * 3 * 2 = 24
+  # if numCategories = 2, then sequenceLength = 3 * 2 = 6
+  minSequenceLength = math.factorial(numCategories + 1)
+  sequenceLength = minSequenceLength * 3
+  numPoints = numReps * numPhases * sequenceLength * numCategories
+
+  endOfSequence = sequenceLength
+  label = numCategories - 1
+  for i in range(numPoints):
+
+    noise = noiseAmplitude * random.random()
+
+    if i == endOfSequence:
+      endOfSequence += sequenceLength
+      if label == 0:
+        label = numCategories - 1
+      else:
+        label -= 1
+
+    x = i
+    mod = int(label) + 2
+    # if label = 0, then mod = 2, so sig = 0 or 1
+    # if label = 1, then mod = 3, so sig = 0 or 0.5 or 1
+    # if label = 2, then mod = 4, so sig = 0 or 0.33 or 0.66 or 1
+    sig = i % mod / (mod - 1.0)
+
+    amplitude_modifier = float(label) ** 2
+    m1 = amplitude_modifier * signalMean + signalAmplitude * sig + noise
+
+    writer.writerow([x, m1, label])
+
+  return sequenceLength, numPoints
+
+
+
+def plotSensorData(expSetups):
   """
   Plot several sensor data CSV recordings and highlights the sequences.
-  @param csvFiles: (list of strings) path(s) to csv file(s) to plot 
-  @param sequenceLength: (int) length of the sequence to plot
+  @param expSetups: (list of dict) list of setup for each experiment
   """
 
   plt.figure()
 
-  for filePath in csvFiles:
+  numExps = len(expSetups)
+  t_headers = ['expId'] + expSetups[0].keys()
+  t = PrettyTable(t_headers)
+  for expSetup in expSetups:
+    expId = expSetups.index(expSetup)
+    expSetup['expId'] = expId
+    row = [expSetup[th] for th in t_headers]
+    t.add_row(row)
 
+    filePath = expSetup['filePath']
     timesteps = []
     data = []
     labels = []
     categoriesLabelled = []
+    categoryColors = ['r', 'y', 'g']
     with open(filePath, 'rb') as f:
       reader = csv.reader(f)
       headers = reader.next()
@@ -129,37 +307,41 @@ def plotSensorData(csvFiles, sequenceLength):
         record = dict(zip(headers, values))
         timesteps.append(i)
         data.append(record['y'])
-        labels.append(record['label'])
+        labels.append(int(record['label']))
 
-      ax = plt.subplot(len(csvFiles), 1, csvFiles.index(filePath) + 1)
-      plt.plot(timesteps, data, label='signal')
+      plt.subplot(numExps, 1, expId + 1)
+      plt.plot(timesteps, data, 'xb-', label='signal')
 
-      for k in range(len(timesteps) / sequenceLength):
-        if k % 3 == 0:
-          categoryColor = 'g'
-        elif k % 3 == 1:
-          categoryColor = 'y'
-        elif k % 3 == 2:
-          categoryColor = 'r'
+      previousLabel = labels[0]
+      start = 0
+      labelCount = 0
+      numPoints = len(labels)
+      for label in labels:
 
-        start = k * sequenceLength
-        end = (k + 1) * sequenceLength
+        if previousLabel != label or labelCount == numPoints - 1:
 
-        if categoryColor not in categoriesLabelled:
-          label = 'sequence %s' % (k % 3)
-          categoriesLabelled.append(categoryColor)
-        else:
-          label = None
-        plt.axvspan(start, end, facecolor=categoryColor, alpha=0.5, label=label)
+          categoryColor = categoryColors[previousLabel]
+          if categoryColor not in categoriesLabelled:
+            labelLegend = 'sequence %s' % previousLabel
+            categoriesLabelled.append(categoryColor)
+          else:
+            labelLegend = None
+
+          end = labelCount
+          plt.axvspan(start, end, facecolor=categoryColor, alpha=0.5,
+                      label=labelLegend)
+          start = end
+          previousLabel = label
+
+        labelCount += 1
 
       plt.xlim(xmin=0, xmax=len(timesteps))
 
-      # title
-      titleWords = filePath.split("/")[-1].replace('.csv', '').split("_")
-      title = "%s amplitude = %s" % (' '.join(titleWords[:-1]), titleWords[-1])
+      csvName = expSetup['filePath'].split('/')[-1][:-4]
+      title = 'signal=%s' % ',  '.join(csvName.split('_'))
       plt.title(title)
-      plt.tight_layout()
 
       plt.legend()
 
+  print t
   plt.show()

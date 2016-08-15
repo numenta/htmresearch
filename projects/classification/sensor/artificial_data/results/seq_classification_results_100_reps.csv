@@ -1,0 +1,16 @@
+noiseAmplitude,numCategories,signalAmplitude,signalType,numPoints,signalMean,sequenceLenght,numPhases,numReps,classificationAccuracy,spEnabled,upEnabled,classifierType,tmEnabled
+0,2,10,binary,6000,0,6,5,100,100,TRUE,TRUE,SDRClassifierRegion,TRUE
+0,2,10,binary,6000,0,6,5,100,100,TRUE,FALSE,SDRClassifierRegion,TRUE
+0,2,10,binary,6000,0,6,5,100,50,TRUE,FALSE,SDRClassifierRegion,FALSE
+0,2,10,binary,6000,0,6,5,100,100,TRUE,FALSE,CLAClassifierRegion,TRUE
+0,2,10,binary,6000,0,6,5,100,50,TRUE,FALSE,CLAClassifierRegion,FALSE
+0,2,10,sine,80000,0,80,5,100,100,TRUE,TRUE,SDRClassifierRegion,TRUE
+0,2,10,sine,80000,0,80,5,100,100,TRUE,FALSE,SDRClassifierRegion,TRUE
+0,2,10,sine,80000,0,80,5,100,52.49,TRUE,FALSE,SDRClassifierRegion,FALSE
+0,2,10,sine,80000,0,80,5,100,99.06,TRUE,FALSE,CLAClassifierRegion,TRUE
+0,2,10,sine,80000,0,80,5,100,52.49,TRUE,FALSE,CLAClassifierRegion,FALSE
+0,2,10,triangle,18000,0,18,5,100,100,TRUE,TRUE,SDRClassifierRegion,TRUE
+0,2,10,triangle,18000,0,18,5,100,100,TRUE,FALSE,SDRClassifierRegion,TRUE
+0,2,10,triangle,18000,0,18,5,100,66.67,TRUE,FALSE,SDRClassifierRegion,FALSE
+0,2,10,triangle,18000,0,18,5,100,100,TRUE,FALSE,CLAClassifierRegion,TRUE
+0,2,10,triangle,18000,0,18,5,100,66.67,TRUE,FALSE,CLAClassifierRegion,FALSE
