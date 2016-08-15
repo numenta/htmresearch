@@ -418,20 +418,22 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
   sensorValueTrace = []
   classificationAccuracyTrace = []
   testClassificationAccuracyTrace = []
+  categoryTrace = []
   for recordNumber in xrange(numRecords):
 
     # Run the network for a single iteration.
     network.run(1)
 
     sensorValueTrace.append(sensorRegion.getOutputData("sourceOut")[0])
-    actualValue = sensorRegion.getOutputData("categoryOut")[0]
-    inferredValue = _getClassifierInference(classifierRegion)
-    if actualValue == inferredValue:
+    actualCategory = sensorRegion.getOutputData("categoryOut")[0]
+    inferredCategory = _getClassifierInference(classifierRegion)
+    categoryTrace.append(actualCategory)
+    if actualCategory == inferredCategory:
       numCorrectlyClassifiedRecords += 1
     else:
       if verbosity > 0:
-        _LOGGER.debug("recordNum=%s, actualValue=%s, inferredValue=%s"
-                      % (recordNumber, actualValue, inferredValue))
+        _LOGGER.debug("recordNum=%s, actualCategory=%s, inferredCategory=%s"
+                      % (recordNumber, actualCategory, inferredCategory))
     clfAccuracy = round(100.0 * numCorrectlyClassifiedRecords / numRecords, 2)
     classificationAccuracyTrace.append(clfAccuracy)
 
@@ -478,7 +480,7 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
       # classifierConfig = networkConfig["classifierRegionConfig"]
       classifierRegion.setParameter("inferenceMode", True)
 
-      if actualValue == inferredValue:
+      if actualCategory == inferredCategory:
         numCorrectlyClassifiedTestRecords += 1
 
       numTestRecords += 1
@@ -495,7 +497,8 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
   traces = {
     'classificationAccuracyTrace': classificationAccuracyTrace,
     'testClassificationAccuracyTrace': testClassificationAccuracyTrace,
-    'sensorValueTrace': sensorValueTrace
+    'sensorValueTrace': sensorValueTrace,
+    'categoryTrace': categoryTrace 
   }
 
   if trackTMmetrics:
