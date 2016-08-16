@@ -283,6 +283,7 @@ def createNetwork(dataSource, networkConfig, encoder=None):
     regionParams = regionConfig["regionParams"]
     regionParams["inputWidth"] = regionParams["columnCount"]
     tmRegion = _createRegion(network, regionConfig)
+    tmRegion.setParameter("computePredictedActiveCellIndices", True)
     _validateRegionWidths(previousRegionWidth, tmRegion.getSelf().columnCount)
     _linkRegions(network,
                  sensorRegionName,
@@ -395,16 +396,19 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
     networkConfig["sensorRegionConfig"].get("regionName")]
   classifierRegion = network.regions[
     networkConfig["classifierRegionConfig"].get("regionName")]
+  if networkConfig['tpRegionConfig'].get('regionEnabled'):
+    tpRegion = network.regions[networkConfig['tpRegionConfig'].get('regionName')]
+  else:
+    tpRegion = None
 
   trackTMmetrics = False
   # track TM metrics if monitored_tm_py implementation is being used
   if networkConfig["tmRegionConfig"].get("regionEnabled"):
-    tmRegion = network.regions[
-      networkConfig["tmRegionConfig"].get("regionName")].getSelf()
+    tmRegion = network.regions[networkConfig["tmRegionConfig"].get("regionName")]
 
     if tmRegion.getParameter("temporalImp") == "monitored_tm_py":
       trackTMmetrics = True
-      tm = tmRegion.getAlgorithmInstance()
+      tm = tmRegion.getSelf().getAlgorithmInstance()
   else:
     tmRegion = None
     tm = None
@@ -419,11 +423,27 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
   classificationAccuracyTrace = []
   testClassificationAccuracyTrace = []
   categoryTrace = []
+  tpActiveCellsTrace = []
+  tmActiveCellsTrace = []
+  tmPredictedActiveCellsTrace = []
   for recordNumber in xrange(numRecords):
 
     # Run the network for a single iteration.
     network.run(1)
-
+    
+    if tpRegion:
+      tpActiveCells = tpRegion.getOutputData("mostActiveCells")
+      tpActiveCells = tpActiveCells.nonzero()[0]
+      tpActiveCellsTrace.append(tpActiveCells)
+      
+    if tmRegion:
+      tmPredictedActiveCells = tmRegion.getOutputData("predictedActiveCells")
+      tmPredictedActiveCells = tmPredictedActiveCells.nonzero()[0]
+      tmActiveCells = tmRegion.getOutputData("activeCells")
+      tmActiveCells = tmActiveCells.nonzero()[0]
+      tmActiveCellsTrace.append(tmActiveCells)
+      tmPredictedActiveCellsTrace.append(tmPredictedActiveCells)
+    
     sensorValueTrace.append(sensorRegion.getOutputData("sourceOut")[0])
     actualCategory = sensorRegion.getOutputData("categoryOut")[0]
     inferredCategory = _getClassifierInference(classifierRegion)
@@ -498,14 +518,15 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
     'classificationAccuracyTrace': classificationAccuracyTrace,
     'testClassificationAccuracyTrace': testClassificationAccuracyTrace,
     'sensorValueTrace': sensorValueTrace,
-    'categoryTrace': categoryTrace 
+    'categoryTrace': categoryTrace ,
+    'tmActiveCellsTrace': tmActiveCellsTrace,
+    'tmPredictiveActiveCellsTrace': tmPredictedActiveCellsTrace,
+    'tpActiveCellsTrace': tpActiveCellsTrace
   }
 
   if trackTMmetrics:
     traces['activeColsTrace'] = activeColsTrace.data
     traces['predictedActiveColsTrace'] = predictedActiveColsTrace.data
-    traces['predictedActiveCellsTrace'] = predictedActiveCellsTrace.data
-    traces['activeCellsTrace'] = activeCellsTrace.data
 
     _plotTMActivation(tm, sensorValueTrace,
                       numberOfSPCellsToPlot=2048,
