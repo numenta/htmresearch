@@ -25,16 +25,13 @@ from htmresearch.frameworks.classification.utils.sensor_data import (
 from htmresearch.frameworks.classification.utils.sensor_data import (
   plotSensorData)
 
-from settings import (OUTFILE_NAME,
-                      SEQUENCE_LENGTH,
+from settings import (SIGNAL_TYPES,
+                      NUM_PHASES,
+                      NUM_REPS,
                       NUM_CATEGORIES,
-                      NUM_RECORDS,
                       WHITE_NOISE_AMPLITUDES,
                       SIGNAL_AMPLITUDES,
                       SIGNAL_MEANS,
-                      SIGNAL_PERIODS,
-                      RESULTS_DIR,
-                      MODEL_PARAMS_DIR,
                       DATA_DIR)
 
 
@@ -42,31 +39,35 @@ from settings import (OUTFILE_NAME,
 def _generateData():
   """
   Generate CSV data to plot.
-  @return outFiles: (list) paths to output files
+  @return expInfos: (list of dict) infos about each experiment.
   """
-  outFiles = []
-  for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
-    for signalMean in SIGNAL_MEANS:
-      for signalAmplitude in SIGNAL_AMPLITUDES:
-        for signalPeriod in SIGNAL_PERIODS:
-          outFile = generateSensorData(DATA_DIR,
-                                       OUTFILE_NAME,
-                                       signalMean,
-                                       signalPeriod,
-                                       SEQUENCE_LENGTH,
-                                       NUM_RECORDS,
-                                       signalAmplitude,
-                                       NUM_CATEGORIES,
-                                       noiseAmplitude)
-          outFiles.append(outFile)
 
-  return outFiles
+  expSetups = []
+  for signalType in SIGNAL_TYPES:
+    for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
+      for signalMean in SIGNAL_MEANS:
+        for signalAmplitude in SIGNAL_AMPLITUDES:
+            for numCategories in NUM_CATEGORIES:
+              for numReps in NUM_REPS:
+                for numPhases in NUM_PHASES:
+                  expSetup = generateSensorData(signalType,
+                                                DATA_DIR,
+                                                numPhases,
+                                                numReps,
+                                                signalMean,
+                                                signalAmplitude,
+                                                numCategories,
+                                                noiseAmplitude)
+        
+                  expSetups.append(expSetup)
+
+  return expSetups
 
 
 
 def main():
-  csvFiles = _generateData()
-  plotSensorData(csvFiles, SEQUENCE_LENGTH)
+  expSetups = _generateData()
+  plotSensorData(expSetups)
 
 
 

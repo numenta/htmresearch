@@ -31,7 +31,7 @@ from collections import defaultdict, namedtuple
 from operator import mul
 
 from nupic.bindings.math import Random
-from nupic.research.connections import Connections
+from htmresearch.algorithms.connections_phases import Connections
 
 
 
