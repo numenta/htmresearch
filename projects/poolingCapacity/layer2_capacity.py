@@ -34,49 +34,48 @@ Analyze L4-L2 pooling capacity
 """
 
 
-def calculateNumColsandCellsVsK(kVal, nVal, wVal, mVal):
+def calculateNumCellsVsK(kVal, nVal, wVal, mVal):
+  # number of columns
   n = Symbol("n", positive=True)
+  # number of cells
   m = Symbol("m", positive=True)
+  # number of connections per pattern
   w = Symbol("w", positive=True)
+  # number of (feature, location) pairs
   k = Symbol("k", positive=True)
 
   numCellsInUnion = n * m * (1 - pow(1 - w / (n * m), k))
-  numColsInUnion = n * (1 - pow(1 - w / n, k))
-  numCellsPerColumn = numCellsInUnion / numColsInUnion
-
-  numColsInUnionVal = numColsInUnion.subs(n, nVal).subs(w, wVal).subs(
-    k, kVal).evalf()
 
   numCellsInUnionVal = numCellsInUnion.subs(n, nVal).subs(w, wVal).subs(
     k, kVal).subs(m, mVal).evalf()
 
-  numCellsPerColumnVal = numCellsPerColumn.subs(n, nVal).subs(w, wVal).subs(
-    k, kVal).subs(m, mVal).evalf()
-
-  return numColsInUnionVal, numCellsInUnionVal, numCellsPerColumnVal
+  return numCellsInUnionVal
 
 
 
-def calculateSDRFalseMatchError(kVal, thetaVal=20, nVal=2048, wVal=40, mVal=32):
-  (numColsInUnionVal,
-   numCellsInUnionVal,
-   numCellsPerColumnVal) = calculateNumColsandCellsVsK(kVal, nVal, wVal, mVal)
+def calculateSDRFalseMatchError(kVal,
+                                thetaVal=20,
+                                nVal=2048,
+                                wVal=40,
+                                mVal=10,
+                                cVal=5):
+  numCellsInUnionVal = calculateNumCellsVsK(kVal, nVal, cVal, mVal)
 
-  pMatchBit = float((numColsInUnionVal / nVal) * (numCellsPerColumnVal / mVal))
+  pMatchBit = float(numCellsInUnionVal)/ (nVal * mVal)
 
   pFalseMatch = 1 - binom.cdf(thetaVal, wVal, pMatchBit)
   return pFalseMatch
 
 
 
-def calculateObjectFalseMatchError(kVal, thetaVal=20, nVal=2048, wVal=40, mVal=32):
+def calculateObjectFalseMatchError(kVal, thetaVal=20, nVal=2048, wVal=40, mVal=10):
   pFalseMatchSDR = calculateSDRFalseMatchError(kVal, thetaVal, nVal, wVal, mVal)
   pFalseMatchObj = 1 - pow(1-pFalseMatchSDR, kVal)
   return pFalseMatchObj
 
 
 
-def generateL4SDR(n=2048, m=32, w=40):
+def generateL4SDR(n=2048, m=10, w=40):
   colOrder = np.random.permutation(np.arange(n))
   activeCols = colOrder[:w]
   activeCells = np.random.randint(low=0, high=m, size=(w, ))
@@ -86,7 +85,7 @@ def generateL4SDR(n=2048, m=32, w=40):
 
 
 
-def generateUnionSDR(k, n=2048, m=32, w=40):
+def generateUnionSDR(k, n=2048, m=10, w=40):
   unionSDR = set()
   unionSDRcols = set()
   for i in range(k):
@@ -97,8 +96,8 @@ def generateUnionSDR(k, n=2048, m=32, w=40):
 
 
 
-def simulateFalseMatchError(threshList, k, n=2048, w=40, m=32):
-  unionSDR, unionSDRcols = generateUnionSDR(k, n, m, w)
+def simulateFalseMatchError(threshList, k, n=2048, w=40, m=10, c=10):
+  unionSDR, unionSDRcols = generateUnionSDR(k, n, m, c)
 
   numRpts = 10000
   numSDRMatch = []
@@ -117,96 +116,84 @@ def simulateFalseMatchError(threshList, k, n=2048, w=40, m=32):
 
 def simulateNumColsandCellsVsK(kVal, nVal, wVal, mVal):
   activeBits, activeCols = generateUnionSDR(kVal, n=nVal, m=mVal, w=wVal)
-  numColsInUnion = len(activeCols)
   numCellsInUnion = len(activeBits)
-  numCellsPerColumn = float(numCellsInUnion) / numColsInUnion
-  return numColsInUnion, numCellsInUnion, numCellsPerColumn
 
+  return numCellsInUnion
+
+
+
+def plotFalseMatchError(cValList, thetaValList):
+  kValList = np.arange(0, 500, 10)
+
+  fig, ax = plt.subplots(2, 1)
+  colorList = ['r', 'm', 'g', 'b', 'c']
+
+  legendList = []
+  for i in range(len(cValList)):
+    cVal = cValList[i]
+    thetaVal = thetaValList[i]
+
+    legendList.append('theta={}, c={}'.format(thetaVal, cVal))
+    FalseMatchRateSDR = []
+    numConnectedCells = []
+    for kVal in kValList:
+      FalseMatchRateSDR.append(calculateSDRFalseMatchError(
+        kVal, thetaVal, nVal, wVal, mVal, cVal))
+
+      numCellsInUnionVal = calculateNumCellsVsK(kVal, nVal, cVal, mVal)
+
+      numConnectedCells.append(numCellsInUnionVal)
+    ax[0].semilogy(kValList, FalseMatchRateSDR, colorList[i])
+    ax[1].plot(kValList, numConnectedCells, colorList[i])
+
+
+  ax[0].set_xlabel('# (feature, location)')
+  ax[0].set_ylabel('SDR false match error')
+  ax[0].set_ylim([pow(10, -13), 1])
+  ax[0].legend(legendList, loc=4)
+
+  ax[1].set_xlabel('# (feature, location)')
+  ax[1].set_ylabel('# connections')
 
 
 if __name__ == "__main__":
 
   nVal = 2048
-  mVal = 32
+  mVal = 10
   wVal = 40
+  cVal = 10
 
-  # theoretical values
-  numCellsVsK, numColsVsK, numCellPerColumnVsK = [], [], []
-  kValList = np.arange(1, 1000, 10)
-  for kVal in kValList:
-    (numColsInUnionVal,
-     numCellsInUnionVal,
-     numCellsPerColumnVal) = calculateNumColsandCellsVsK(
-      kVal, nVal, wVal, mVal)
+  fig, ax = plt.subplots(1, 1)
+  legendList = []
+  for cVal in [10, 20, 30, 40]:
+    # theoretical values
+    numCellsVsK = []
+    kValList = np.arange(1, 500, 10)
+    for kVal in kValList:
+      numCellsInUnionVal = calculateNumCellsVsK(kVal, nVal, cVal, mVal)
+      numCellsVsK.append(numCellsInUnionVal)
+    legendList.append("c={}".format(cVal))
+    ax.plot(kValList, numCellsVsK)
 
-    numColsVsK.append(numColsInUnionVal)
-    numCellsVsK.append(numCellsInUnionVal)
-    numCellPerColumnVsK.append(numCellsPerColumnVal)
+  for cVal in [10, 20, 30, 40]:
+    # simulation values
+    numCellsVsKsim = []
+    kValListSparse = np.arange(1, 500, 100)
+    for kVal in kValListSparse:
+      numCellsInUnionValSim = simulateNumColsandCellsVsK(kVal, nVal, cVal, mVal)
+      numCellsVsKsim.append(numCellsInUnionValSim)
+    ax.plot(kValListSparse, numCellsVsKsim, 'ko')
 
-  # simulation values
-  numCellsVsKsim, numColsVsKsim, numCellPerColumnVsKsim = [], [], []
-  kValListSparse = np.arange(1, 1000, 100)
-  for kVal in kValListSparse:
-    (numColsInUnionValSim,
-     numCellsInUnionValSim,
-     numCellsPerColumnValSim) = simulateNumColsandCellsVsK(
-      kVal, nVal, wVal, mVal)
-
-    numColsVsKsim.append(numColsInUnionValSim)
-    numCellsVsKsim.append(numCellsInUnionValSim)
-    numCellPerColumnVsKsim.append(numCellsPerColumnValSim)
-
-  fig, ax = plt.subplots(1, 2)
-  ax[0].plot(kValList, numCellsVsK)
-  ax[0].plot(kValList, numColsVsK, 'r')
-
-  ax[0].plot(kValListSparse, numCellsVsKsim, 'bo')
-  ax[0].plot(kValListSparse, numColsVsKsim, 'ro')
-
-  ax[0].set_xlabel("# (feature, object) pair")
-  ax[0].set_ylabel("# active bits in union")
-  ax[0].legend(['Cell', 'Column'], loc=2)
-
-  ax[1].plot(kValList, numCellPerColumnVsK)
-  ax[1].plot(kValListSparse, numCellPerColumnVsKsim, 'bo')
-  ax[1].set_xlabel("# (feature, object) pair")
-  ax[1].set_ylabel("# cell per column")
+  ax.set_xlabel("# (feature, object) pair")
+  ax.set_ylabel("# L4 inputs per L2 cell")
+  ax.legend(legendList, loc=2)
   plt.savefig('UnionSizeVsK.pdf')
 
+  plotFalseMatchError(cValList=[40, 40, 40, 40], thetaValList=[5, 10, 20, 30])
+  plt.savefig('FalseMatchErrVsK_FixedCVaryingTheta.pdf')
 
-  kValList = np.arange(0, 1000, 10)
-  fig, ax = plt.subplots(1, 2)
-  colorList = ['r', 'm', 'g', 'b']
-  i = 0
-  for thetaVal in [10, 20, 30]:
-    FalseMatchRateSDR = []
-    FalseMatchRateObj = []
-    for kVal in kValList:
-      FalseMatchRateSDR.append(calculateSDRFalseMatchError(
-        kVal, thetaVal, nVal, wVal, mVal))
-      FalseMatchRateObj.append(calculateObjectFalseMatchError(
-        kVal, thetaVal, nVal, wVal, mVal))
+  plotFalseMatchError(cValList=[10, 20, 30, 40], thetaValList=[10, 10, 10, 10])
+  plt.savefig('FalseMatchErrVsK_FixedThetaVaryingC.pdf')
 
-    ax[0].semilogy(kValList, FalseMatchRateSDR, colorList[i])
-    ax[1].semilogy(kValList, FalseMatchRateObj, colorList[i])
-    i += 1
-
-  kValList = np.arange(0, 1000, 100)
-
-  thetaList = [10, 20, 30]
-  for kVal in kValList:
-    falseMatchErr = simulateFalseMatchError(thetaList, kVal, nVal, wVal, mVal)
-    for i in range(len(thetaList)):
-      ax[0].semilogy(kVal, falseMatchErr[i], colorList[i]+'o')
-
-  ax[0].set_xlabel('# (feature, location)')
-  ax[1].set_xlabel('# (feature, location)')
-  ax[0].set_ylabel('SDR false match error')
-  ax[1].set_ylabel('Obj false match error')
-
-  ax[0].set_ylim([pow(10, -13), 1])
-  ax[1].set_ylim([pow(10, -13), 1])
-
-  ax[0].legend(['theta=10', 'theta=20', 'theta=30'], loc=4)
-  ax[1].legend(['theta=10', 'theta=20', 'theta=30'], loc=4)
-  plt.savefig('FalseMatchErrVsK.pdf')
+  plotFalseMatchError(cValList=[5, 10, 20, 30, 40], thetaValList=[3, 6, 12, 18, 24])
+  plt.savefig('FalseMatchErrVsK_VaryingThetaandC.pdf')
