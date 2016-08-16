@@ -32,12 +32,17 @@ from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
 
 class MonitoredTemporalMemory(TemporalMemoryMonitorMixin, TemporalMemory): pass
 
+
+class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin,
+                                      ExtendedTemporalMemory): pass
+
 class TemporalMemoryTypes(object):
   """ Enumeration of supported classification model types, mapping userland
   identifier to constructor.  See createModel() for actual factory method
   implementation.
   """
   extended = ExtendedTemporalMemory
+  extendedMixin = MonitoredExtendedTemporalMemory
   tm = TemporalMemory
   tmMixin = MonitoredTemporalMemory
   tmCPP = TemporalMemoryCPP

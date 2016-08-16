@@ -312,11 +312,14 @@ class ExtendedTMRegion(PyRegion):
       args["columnDimensions"] = (self.columnCount,)
 
       # Create the TM instance
-      self._tm = createModel("extended", **args)
+      self._tm = createModel("extendedMixin", **args)
 
       # numpy arrays we will use for some of the outputs
       self.activeState = numpy.zeros(self._tm.numberOfCells())
       self.previouslyPredictedCells = numpy.zeros(self._tm.numberOfCells())
+
+      # FIXME: for now we delay the feedforward input
+      self.prevActiveColumns = None
 
 
 
@@ -332,6 +335,10 @@ class ExtendedTMRegion(PyRegion):
 
     activeColumns = set(numpy.where(inputs["feedForwardInput"] == 1)[0])
 
+    # FIXME: for now we delay the feedforward input
+    if self.prevActiveColumns is None:
+      self.prevActiveColumns = activeColumns
+
     if "externalInput" in inputs:
       activeExternalCells = set(numpy.where(inputs["externalInput"] == 1)[0])
     else:
@@ -342,11 +349,14 @@ class ExtendedTMRegion(PyRegion):
     else:
       activeApicalCells = None
 
-    self._tm.compute(activeColumns,
+    self._tm.compute(self.prevActiveColumns,
                      activeExternalCells=activeExternalCells,
                      activeApicalCells=activeApicalCells,
                      formInternalConnections=self.formInternalConnections,
                      learn=self.learningMode)
+
+    # FIXME: for now we delay the feedforward input
+    self.prevActiveColumns = activeColumns
 
     # Compute predictedActiveCells explicitly
     self.activeState[:] = 0
@@ -371,10 +381,18 @@ class ExtendedTMRegion(PyRegion):
     else:
       raise Exception("Unknown outputType: " + self.defaultOutputType)
 
+    # FIXME: for now we delay the feedforward input, need to still compute last
+    if "delayedReset" in inputs:
+      del inputs["delayedReset"]
+      return
+
     # Handle reset after current input has been processed
     if "resetIn" in inputs:
       assert len(inputs["resetIn"]) == 1
       if inputs["resetIn"][0] != 0:
+        inputs["delayedReset"] = True
+        self.compute(inputs, outputs)
+        self.prevActiveColumns = None
         self.reset()
 
 

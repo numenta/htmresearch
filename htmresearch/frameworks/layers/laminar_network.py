@@ -123,7 +123,8 @@ def createL4L2Column(network, networkConfig, suffix=""):
                srcOutput="dataOut", destInput="feedForwardInput")
 
   # Link L4 to L2, and L2's feedback to L4
-  network.link(L4ColumnName, L2ColumnName, "UniformLink", "")
+  network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
+               srcOutput="feedForwardOutput", destInput="feedforwardInput")
   network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
                srcOutput="feedForwardOutput", destInput="apicalInput")
 

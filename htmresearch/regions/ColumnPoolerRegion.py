@@ -289,17 +289,28 @@ class ColumnPoolerRegion(PyRegion):
     representation to this point and any history will then be reset. The output
     at the next compute will start fresh, presumably with bursting columns.
     """
-    print "In L2 column"
+    feedforwardInput = inputs['feedforwardInput'].nonzero()[0]
+    lateralInput = inputs.get('lateralInput', None)
+    if lateralInput is not None:
+      lateralInput = lateralInput.nonzero()[0]
+
     self._pooler.compute(
-      feedforwardInput=inputs['feedforwardInput'],
-      activeExternalCells=inputs.get('lateralInput', None),
+      feedforwardInput=feedforwardInput,
+      activeExternalCells=lateralInput,
       learn=self.learningMode
     )
+
+    # Handle reset after current input has been processed
+    if "resetIn" in inputs:
+      assert len(inputs["resetIn"]) == 1
+      if inputs["resetIn"][0] != 0:
+        self.reset()
 
 
   def reset(self):
     """ Reset the state of the layer"""
-    pass
+    if self._pooler is not None:
+      self._pooler.reset()
 
 
   def getParameter(self, parameterName, index=-1):
