@@ -20,9 +20,11 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import numpy as np
 import csv
 from prettytable import PrettyTable
-import simplejson as json
+import simplejson
+import json
 
 from nupic.data.file_record_stream import FileRecordStream
 
@@ -47,9 +49,31 @@ from settings import (NUM_CATEGORIES,
                       USE_JSON_CONFIG)
 
 RESULTS_FILE = 'results/seq_classification_results.csv'
+TRACES_FILE = 'results/traces_%s.csv'
 
+def save_traces(traces, expID):
+    
+  f = TRACES_FILE % expID
+  with open(f, 'wb') as fw:
+    writer = csv.writer(fw)
+    headers = ['step'] + traces.keys()
+    writer.writerow(headers)
+    for i in range(len(traces['sensorValueTrace'])):
+      row = [i]
+      for t in traces.keys():
+        if len(traces[t]) > i:
+          if type(traces[t][i]) == np.ndarray:
+            traces[t][i] = list(traces[t][i])
+          if type(traces[t][i]) != list:
+            row.append(traces[t][i])
+          else:
+             row.append(json.dumps(traces[t][i]))
+        else:
+          row.append(None)
+      writer.writerow(row)
 
-
+  print '==> Results saved to %s\n' % f
+  
 def print_and_save_results(classificationResults, expSetups):
   """
   Pretty print exp info and results and save them to CSV file
@@ -84,10 +108,10 @@ def run():
 
   if USE_JSON_CONFIG:
     with open('config/network_configs.json', 'rb') as fr:
-      networkConfigurations = json.load(fr)
+      networkConfigurations = simplejson.load(fr)
   else:
     with open("config/network_config_template.json", "rb") as jsonFile:
-      templateNetworkConfig = json.load(jsonFile)
+      templateNetworkConfig = simplejson.load(jsonFile)
       networkConfigurations = generateSampleNetworkConfig(templateNetworkConfig,
                                                           NUM_CATEGORIES)
 
@@ -132,6 +156,12 @@ def run():
                                         partitions,
                                         expSetup['numPoints'],
                                         VERBOSITY)
+                  
+                  expId = "sp-%s_tm-%s_tp-%s" % (spEnabled,
+                                                 tmEnabled,
+                                                 upEnabled)
+                  save_traces(traces, expId)
+                  
                   finalAccuracy = traces['testClassificationAccuracyTrace'][-1]
                   classificationResults.append({
                     'spEnabled': spEnabled,
