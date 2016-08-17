@@ -125,7 +125,7 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     """
     if activeExternalCells is None:
-      activeExternalCells = []
+      activeExternalCells = set()
 
     if learn:
       self._computeLearningMode(feedforwardInput=feedforwardInput,
@@ -190,6 +190,7 @@ class ColumnPooler(ExtendedTemporalMemory):
     """
     Inference mode: if there is some feedforward activity, perform
     spatial pooling on it to recognize previously known objects. If there
+    is no feedforward activity, maintain previous activity.
 
     Parameters:
     ----------------------------
