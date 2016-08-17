@@ -420,8 +420,6 @@ class ColumnPooler(ExtendedTemporalMemory):
         inputs += [candidates[i]]
         candidates.remove(candidates[i])
 
-      # print "number of new candidates:",len(inputs)
-
       return inputs, alreadyConnected
 
 
@@ -433,9 +431,6 @@ class ColumnPooler(ExtendedTemporalMemory):
     """
     Given the set of cells active due to feedforward input, narrow down the
     list of active cells based on predictions due to previous lateralInput.
-
-    Compute new predictive cells for next time step based on current
-    lateralInput.
 
     Parameters:
     ----------------------------
