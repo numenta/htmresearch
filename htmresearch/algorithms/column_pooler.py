@@ -49,11 +49,6 @@ class ColumnPooler(ExtendedTemporalMemory):
                synPermProximalInc=0.1,
                synPermProximalDec=0.001,
                initialProximalPermanence=0.6,
-               distalActivationThreshold=13,
-               distalMinThreshold=13,
-               maxSynapsesPerDistalSegment=128,
-               numNeighboringColumns=2,
-               lateralInputWidth=None,
                **kwargs):
     """
     Please see ExtendedTemporalMemory for descriptions of common constructor
@@ -78,6 +73,7 @@ class ColumnPooler(ExtendedTemporalMemory):
     """
 
     # Override: we only support one cell per column for now
+    # TODO: we don't need to inherit from ETM - get rid of this dependence
     kwargs['cellsPerColumn'] = 1
     super(ColumnPooler, self).__init__(**kwargs)
 
@@ -86,7 +82,6 @@ class ColumnPooler(ExtendedTemporalMemory):
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
-    self.previousOverlaps = None
 
     # These sparse matrices will hold the synapses for each proximal segment.
     #
@@ -98,27 +93,8 @@ class ColumnPooler(ExtendedTemporalMemory):
     self.proximalConnections = SparseBinaryMatrix(inputWidth)
     self.proximalConnections.resize(self.numberOfColumns(), inputWidth)
 
-    # if no specified input width, assume that it is from similar Poolers
-    if lateralInputWidth is None:
-      lateralInputWidth = self.numberOfCells()
-    self.lateralInputWidth = lateralInputWidth
-
-    self.numNeighboringColumns = numNeighboringColumns
-    self.distalConnections = []
-    self.activeDistalSegments = []
-    # create one Connection object per neighboring Column
-    for _ in xrange(numNeighboringColumns):
-      self.distalConnections.append(
-        Connections(self.numberOfCells(), 1, maxSynapsesPerDistalSegment)
-      )
-      self.activeDistalSegments.append(set())
-
-    self.distalActivationThreshold = distalActivationThreshold
-    self.distalMinThreshold = distalMinThreshold
-
     # Create our own instance of extended temporal memory to handle distal
     # segments.
-    # TODO: don't inherit from ETM in this class.
     self.tm = ExtendedTemporalMemory(**kwargs)
 
 
@@ -146,7 +122,8 @@ class ColumnPooler(ExtendedTemporalMemory):
     @param  formInternalConnections (bool)
             If True, cells will form
 
-    @param learn                If True, we are learning a new object
+    @param learn                    (bool)
+            If True, we are learning a new object
 
     """
     if activeExternalCells is None:
@@ -257,7 +234,6 @@ class ColumnPooler(ExtendedTemporalMemory):
                     activeExternalCells=lateralInput,
                     formInternalConnections=False,
                     learn=False)
-
 
 
   def numberOfInputs(self):
