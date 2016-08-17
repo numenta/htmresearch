@@ -548,3 +548,11 @@ class ExtendedTemporalMemory(TemporalMemory):
         predictiveCells.add(candidate)
 
     return predictiveCells
+
+
+  def getLearnOnOneCell(self):
+    return self.learnOnOneCell
+
+
+  def setLearnOnOneCell(self, learnOnOneCell):
+    self.learnOnOneCell = learnOnOneCell
