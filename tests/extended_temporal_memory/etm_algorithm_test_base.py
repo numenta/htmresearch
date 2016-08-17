@@ -26,11 +26,8 @@ import random
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.support.unittesthelpers.abstract_temporal_memory_test import AbstractTemporalMemoryTest
 
-from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
 
-
-class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
-                                          unittest.TestCase):
+class ExtendedTemporalMemoryAlgorithmTest(AbstractTemporalMemoryTest):
   """
   Tests the specific aspects of extended temporal memory (external and apical
   input, learning on one cell, etc.
@@ -402,7 +399,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     representations in ABC and ADC.
     """
     self.init({"learnOnOneCell": False})
-    self.assertFalse(self.tm.learnOnOneCell)
+    self.assertFalse(self.tm.getLearnOnOneCell())
 
     numbers = self.sequenceMachine.generateNumbers(1, 10)
     numbers[0] = 50
@@ -433,7 +430,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     Train on ABCADC, check that C has the same representation in ADC and ABC.
     """
     self.init({"learnOnOneCell": True})
-    self.assertTrue(self.tm.learnOnOneCell)
+    self.assertTrue(self.tm.getLearnOnOneCell())
 
     numbers = self.sequenceMachine.generateNumbers(1, 10)
     numbers[0] = 50
@@ -464,7 +461,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     representations in ABC and ADC.
     """
     self.init({"learnOnOneCell": False})
-    self.assertFalse(self.tm.learnOnOneCell)
+    self.assertFalse(self.tm.getLearnOnOneCell())
 
     numbers = self.sequenceMachine.generateNumbers(1, 10)
     numbers[0] = 50
@@ -503,7 +500,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     ADC and ABC.
     """
     self.init({"learnOnOneCell": True})
-    self.assertTrue(self.tm.learnOnOneCell)
+    self.assertTrue(self.tm.getLearnOnOneCell())
 
     numbers = self.sequenceMachine.generateNumbers(1, 10)
     numbers[0] = 50
@@ -543,7 +540,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     can cause some bursting.
     """
     self.init({"learnOnOneCell": True})
-    self.assertTrue(self.tm.learnOnOneCell)
+    self.assertTrue(self.tm.getLearnOnOneCell())
 
     numbers = self.sequenceMachine.generateNumbers(1, 50)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
@@ -566,14 +563,14 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     between patterns.
     """
     self.init({"learnOnOneCell": True, "cellsPerColumn": 8})
-    self.assertTrue(self.tm.learnOnOneCell)
+    self.assertTrue(self.tm.getLearnOnOneCell())
 
     numbers = self.sequenceMachine.generateNumbers(1, 50)
     proximalInputA = self.sequenceMachine.generateFromNumbers(numbers)
     numbers = self.sequenceMachine.generateNumbers(1, 50)
     externalInputA = self.sequenceMachine.generateFromNumbers(numbers)
 
-    for _ in xrange(self.tm.cellsPerColumn + 1):
+    for _ in xrange(self.tm.getCellsPerColumn() + 1):
       self.feedTM(proximalInputA, activeExternalCellsSequence=externalInputA)
 
     self._testTM(proximalInputA, activeExternalCellsSequence=externalInputA)
@@ -1659,7 +1656,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     Same test as A13, with external input, and using learnOnOneCell.
     """
     self.init({"learnOnOneCell": True})
-    self.assertTrue(self.tm.learnOnOneCell)
+    self.assertTrue(self.tm.getLearnOnOneCell())
 
     # A B C D E
     numbers = self.sequenceMachine.generateNumbers(1, 5)
@@ -1740,10 +1737,6 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
   # Overrides
   # ==============================
 
-  def getTMClass(self):
-    return ExtendedTemporalMemory
-
-
   def getPatternMachine(self):
     return PatternMachine(self.n, self.w, num=300)
 
@@ -1782,7 +1775,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
 
 
   def setUp(self):
-    super(ExtensiveExtendedTemporalMemoryTest, self).setUp()
+    super(ExtendedTemporalMemoryAlgorithmTest, self).setUp()
 
     print ("\n"
            "======================================================\n"
@@ -1821,7 +1814,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     self.tm.reset()
 
     if activeApicalCellsSequence is None and activeExternalCellsSequence is None:
-      return super(ExtensiveExtendedTemporalMemoryTest, self).feedTM(sequence,
+      return super(ExtendedTemporalMemoryAlgorithmTest, self).feedTM(sequence,
                                                                      learn=learn,
                                                                      num=num)
 
