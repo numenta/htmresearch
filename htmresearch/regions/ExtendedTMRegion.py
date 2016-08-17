@@ -275,6 +275,7 @@ class ExtendedTMRegion(PyRegion):
                learnOnOneCell=1,
                formInternalConnections = 1,
                defaultOutputType = "active",
+               tmType="extended",
                **kwargs):
     # Defaults for all other parameters
 
@@ -294,6 +295,7 @@ class ExtendedTMRegion(PyRegion):
     self.inferenceMode = True
     self.formInternalConnections = bool(formInternalConnections)
     self.defaultOutputType = defaultOutputType
+    self.tmType = tmType
 
     PyRegion.__init__(self, **kwargs)
 
@@ -312,15 +314,15 @@ class ExtendedTMRegion(PyRegion):
       args["columnDimensions"] = (self.columnCount,)
 
       # Create the TM instance
-      self._tm = createModel("extendedMixin", **args)
+      self._tm = createModel(self.tmType, **args)
 
       # numpy arrays we will use for some of the outputs
       self.activeState = numpy.zeros(self._tm.numberOfCells())
       self.previouslyPredictedCells = numpy.zeros(self._tm.numberOfCells())
 
-      # FIXME: for now we delay the feedforward input
+      # FIXME: for now we delay the feedforward and apical input
       self.prevActiveColumns = None
-
+      self.prevApicalInput = None
 
 
   def compute(self, inputs, outputs):
@@ -335,7 +337,7 @@ class ExtendedTMRegion(PyRegion):
 
     activeColumns = set(numpy.where(inputs["feedForwardInput"] == 1)[0])
 
-    # FIXME: for now we delay the feedforward input
+    # FIXME: for now we delay the feedforward and apical input
     if self.prevActiveColumns is None:
       self.prevActiveColumns = activeColumns
 
@@ -344,19 +346,18 @@ class ExtendedTMRegion(PyRegion):
     else:
       activeExternalCells = None
 
-    if "apicalInput" in inputs:
-      activeApicalCells = set(numpy.where(inputs["apicalInput"] == 1)[0])
-    else:
-      activeApicalCells = None
-
     self._tm.compute(self.prevActiveColumns,
                      activeExternalCells=activeExternalCells,
-                     activeApicalCells=activeApicalCells,
+                     activeApicalCells=self.prevApicalInput,
                      formInternalConnections=self.formInternalConnections,
                      learn=self.learningMode)
 
-    # FIXME: for now we delay the feedforward input
+    # FIXME: for now we delay the feedforward and apical input
     self.prevActiveColumns = activeColumns
+    if "apicalInput" in inputs:
+      self.prevApicalInput = set(numpy.where(inputs["apicalInput"] == 1)[0])
+    else:
+      self.prevApicalInput = None
 
     # Compute predictedActiveCells explicitly
     self.activeState[:] = 0
@@ -393,6 +394,7 @@ class ExtendedTMRegion(PyRegion):
         inputs["delayedReset"] = True
         self.compute(inputs, outputs)
         self.prevActiveColumns = None
+        self.prevApicalInput = None
         self.reset()
 
 
