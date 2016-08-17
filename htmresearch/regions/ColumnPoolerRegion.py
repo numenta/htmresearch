@@ -20,6 +20,7 @@
 # ----------------------------------------------------------------------
 
 import copy
+import numpy
 
 from nupic.bindings.regions.PyRegion import PyRegion
 from htmresearch.algorithms.column_pooler import ColumnPooler
@@ -279,6 +280,10 @@ class ColumnPoolerRegion(PyRegion):
         **args
       )
 
+      # numpy arrays we will use for some of the outputs
+      self.activeState = numpy.zeros(self._pooler.numberOfCells())
+      self.previouslyPredictedCells = numpy.zeros(self._pooler.numberOfCells())
+
 
   def compute(self, inputs, outputs):
     """
@@ -299,6 +304,29 @@ class ColumnPoolerRegion(PyRegion):
       activeExternalCells=lateralInput,
       learn=self.learningMode
     )
+
+    # Compute predictedActiveCells explicitly
+    self.activeState[:] = 0
+    self.activeState[self._pooler.getActiveCells()] = 1
+    predictedActiveCells = self.activeState * self.previouslyPredictedCells
+
+    self.previouslyPredictedCells[:] = 0
+    self.previouslyPredictedCells[self._pooler.getPredictiveCells()] = 1
+
+    # Copy numpy values into the various outputs
+    outputs["activeCells"][:] = self.activeState
+    outputs["predictiveCells"][:] = self.previouslyPredictedCells
+    outputs["predictedActiveCells"][:] = predictedActiveCells
+
+    # Send appropriate output to feedForwardOutput
+    if self.defaultOutputType == "active":
+      outputs["feedForwardOutput"][:] = self.activeState
+    elif self.defaultOutputType == "predictive":
+      outputs["feedForwardOutput"][:] = self.previouslyPredictedCells
+    elif self.defaultOutputType == "predictedActiveCells":
+      outputs["feedForwardOutput"][:] = predictedActiveCells
+    else:
+      raise Exception("Unknown outputType: " + self.defaultOutputType)
 
     # Handle reset after current input has been processed
     if "resetIn" in inputs:
