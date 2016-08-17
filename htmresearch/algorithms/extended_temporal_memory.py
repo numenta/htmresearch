@@ -360,10 +360,10 @@ class ExtendedTemporalMemory(TemporalMemory):
                                                   apicalConnections)
       winnerCells.add(bestCell)
 
-      if bestSegment is None and len(prevWinnerCells):
+      if bestSegment is None and len(prevWinnerCells) > 0:
         bestSegment = connections.createSegment(bestCell)
 
-      if bestApicalSegment is None:
+      if bestApicalSegment is None and len(prevActiveApicalCells) > 0:
         bestApicalSegment = apicalConnections.createSegment(bestCell)
 
       if bestSegment is not None:
@@ -410,7 +410,7 @@ class ExtendedTemporalMemory(TemporalMemory):
     for winnerCell in winnerCells:
       winnerSegments = connections.segmentsForCell(winnerCell)
       if len(winnerSegments & (prevActiveSegments | learningSegments)) == 0:
-        maxActiveSynapses = 0
+        maxActiveSynapses = -1
         winnerSegment = None
         for segment in winnerSegments:
           activeSynapses = TemporalMemory.activeSynapsesForSegment(
@@ -421,8 +421,11 @@ class ExtendedTemporalMemory(TemporalMemory):
           if numActiveSynapses > maxActiveSynapses:
             maxActiveSynapses = numActiveSynapses
             winnerSegment = segment
-        if winnerSegment is not None:
+
+        if maxActiveSynapses >= self.minThreshold:
           learningSegments.add(winnerSegment)
+        else:
+          learningSegments.add(self.apicalConnections.createSegment(winnerCell))
 
     for segment in prevActiveSegments | learningSegments:
       isLearningSegment = segment in learningSegments
