@@ -19,13 +19,11 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from collections import defaultdict
 import numpy
 
 from nupic.bindings.math import (SM32 as SparseMatrix,
                                  SM_01_32_32 as SparseBinaryMatrix,
                                  GetNTAReal)
-from nupic.research.connections import Connections
 
 from htmresearch.algorithms.extended_temporal_memory import (
   ExtendedTemporalMemory
