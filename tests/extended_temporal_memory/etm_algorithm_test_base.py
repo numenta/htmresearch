@@ -26,11 +26,8 @@ import random
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.support.unittesthelpers.abstract_temporal_memory_test import AbstractTemporalMemoryTest
 
-from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
 
-
-class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
-                                          unittest.TestCase):
+class ExtendedTemporalMemoryAlgorithmTest(AbstractTemporalMemoryTest):
   """
   Tests the specific aspects of extended temporal memory (external and apical
   input, learning on one cell, etc.
@@ -1740,10 +1737,6 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
   # Overrides
   # ==============================
 
-  def getTMClass(self):
-    return ExtendedTemporalMemory
-
-
   def getPatternMachine(self):
     return PatternMachine(self.n, self.w, num=300)
 
@@ -1782,7 +1775,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
 
 
   def setUp(self):
-    super(ExtensiveExtendedTemporalMemoryTest, self).setUp()
+    super(ExtendedTemporalMemoryAlgorithmTest, self).setUp()
 
     print ("\n"
            "======================================================\n"
@@ -1821,7 +1814,7 @@ class ExtensiveExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
     self.tm.reset()
 
     if activeApicalCellsSequence is None and activeExternalCellsSequence is None:
-      return super(ExtensiveExtendedTemporalMemoryTest, self).feedTM(sequence,
+      return super(ExtendedTemporalMemoryAlgorithmTest, self).feedTM(sequence,
                                                                      learn=learn,
                                                                      num=num)
 
