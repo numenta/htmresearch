@@ -28,7 +28,10 @@ from htmresearch.algorithms.column_pooler import ColumnPooler, realDType
 
 
 class ColumnPoolerTest(unittest.TestCase):
-  """ Super simple test of the ColumnPooler region."""
+  """
+  Super simple tests of the ColumnPooler region, focusing on underlying
+  implementation.
+  """
 
 
   def testConstructor(self):
@@ -480,115 +483,172 @@ class ColumnPoolerTest(unittest.TestCase):
                      "Incorrect number of synapses after learning")
 
 
-
-  @unittest.skip("Method might not be required")
-  def testNumberOfActiveDistalSegments(self):
-    """Tests the function counting the number of active distal segments."""
-
+  def testInferenceWithLateralInputs(self):
+    """
+    After learning two objects, test that inference behaves as expected.
+    """
     pooler = ColumnPooler(
       inputWidth=2048 * 8,
       columnDimensions=[2048, 1],
-      maxSynapsesPerDistalSegment=50,
-      numNeighboringColumns=4,
-      distalActivationThreshold=1
+      numNeighboringColumns=2,
+      initialPermanence=0.41,
     )
 
-    for connections in pooler.distalConnections:
-      seg = connections.createSegment(1)
-      _ = connections.createSynapse(seg, 4, 0.7)
-      _ = connections.createSynapse(seg, 5, 0.7)
-
-    numSegments = pooler._numberOfActiveDistalSegments(
-      cell=1,
-      lateralInput=[{4, 5}] * 4,
-      connectedPermanence=pooler.connectedPermanence,
-      activationThreshold=pooler.distalActivationThreshold,
-    )
-    self.assertEqual(numSegments, 4)
-
-    for connections in pooler.distalConnections:
-      seg = connections.createSegment(2)
-      _ = connections.createSynapse(seg, 4, 0.7)
-      _ = connections.createSynapse(seg, 3, 0.3)
-
-    numSegments = pooler._numberOfActiveDistalSegments(
-      cell=1,
-      lateralInput=[{4, 5}, {3}, {4}, {4, 5}],
-      connectedPermanence=pooler.connectedPermanence,
-      activationThreshold=pooler.distalActivationThreshold,
-    )
-    self.assertEqual(numSegments, 3)
-
-    numSegments = pooler._numberOfActiveDistalSegments(
-      cell=2,
-      lateralInput=[{4}, {3}, {1, 2, 3}, {7, 8, 9}],
-      connectedPermanence=pooler.connectedPermanence,
-      activationThreshold=pooler.distalActivationThreshold,
-    )
-    self.assertEqual(numSegments, 1)
-
-    numSegments = pooler._numberOfActiveDistalSegments(
-      cell=3,
-      lateralInput=[{4}, {3}, {1, 2, 3}, {7, 8, 9}],
-      connectedPermanence=pooler.connectedPermanence,
-      activationThreshold=pooler.distalActivationThreshold,
-    )
-    self.assertEqual(numSegments, 0)
+    # Train pooler on first object
+    pooler.compute(feedforwardInput=set(range(0,40)),
+                   activeExternalCells=set(range(100,140)),
+                   learn=True)
+    pooler.compute(feedforwardInput=set(range(40,80)),
+                   activeExternalCells=set(range(100,140)),
+                   learn=True)
+    pooler.compute(feedforwardInput=set(range(80,120)),
+                   activeExternalCells=set(range(100,140)),
+                   learn=True)
+    pooler.reset()
+    activeCells = pooler.getActiveCells()
 
 
-  @unittest.skip("While working on algorithm")
+    # Test pooler on inference with first object
+    pooler.compute(feedforwardInput=set(range(0,40)),
+                   activeExternalCells=set(range(100,140)),
+                   learn=False)
+
+    pooler.compute(feedforwardInput=set(range(0,40)),
+                   activeExternalCells=set(range(100,140)),
+                   learn=False)
+
+    pooler.compute(feedforwardInput=set(range(0,40)),
+                   activeExternalCells=set(range(100,140)),
+                   learn=False)
+
+    # Train pooler on second object
+    # pooler.reset()
+    # pooler.compute(feedforwardInput=set(range(120,160)),
+    #                activeExternalCells=set(range(200,240)),
+    #                learn=True)
+    # activeCellsObject2 = pooler.getActiveCells()
+    # uniqueCellsObject2 = set(activeCellsObject2) - set(activeCells)
+    # numCommonCells = len(set(activeCells).intersection(set(activeCellsObject2)))
+    #
+    # pooler.compute(feedforwardInput=set(range(160,200)),
+    #                activeExternalCells=set(range(200,240)),
+    #                learn=True)
+    # pooler.compute(feedforwardInput=set(range(200,240)),
+    #                activeExternalCells=set(range(200,240)),
+    #                learn=True)
+
+
   def testWinnersBasedOnLateralActivity(self):
     """Tests that the correct winners always get chosen."""
 
     pooler = ColumnPooler(
       inputWidth=2048 * 8,
       columnDimensions=[2048, 1],
-      maxSynapsesPerDistalSegment=50,
-      numNeighboringColumns=4,
-      distalActivationThreshold=1
+      numNeighboringColumns=2,
+      initialPermanence=0.41,
     )
 
-    proximallyActivatedCells = {1, 2 ,6}
-    previouslyActiveCells = {2, 3, 4}
-    pooler.activeCells = previouslyActiveCells
-
-    # no lateral input, proximally activated cells should win
-    cells = pooler._winnersBasedOnLateralActivity(
-      activeCells=proximallyActivatedCells,
-      lateralInput=[],
-      minThreshold=pooler.distalMinThreshold
+    # With no lateral support end up with bottom up activity
+    overlaps = numpy.zeros(pooler.numberOfColumns(), dtype=realDType)
+    overlaps[range(0,40)] = 10
+    active = pooler._winnersBasedOnLateralActivity(
+      activeCells=set(range(0,40)),
+      predictiveCells=set(),
+      overlaps=overlaps,
+      targetActiveCells=40
     )
-    self.assertEqual(cells, proximallyActivatedCells)
+    self.assertEqual(sum(active), sum(range(0,40)),
+                     "Incorrect active cells with no lateral support")
 
-    # create the same synapses as previously
-    for connections in pooler.distalConnections:
-      seg = connections.createSegment(1)
-      _ = connections.createSynapse(seg, 4, 0.7)
-      _ = connections.createSynapse(seg, 5, 0.7)
 
-    for connections in pooler.distalConnections:
-      seg = connections.createSegment(2)
-      _ = connections.createSynapse(seg, 4, 0.7)
-      _ = connections.createSynapse(seg, 3, 0.3)
-
-    lateralInput = [{4, 5}, {3}, {3}, {4, 5}]
-    pooler.activeCells = previouslyActiveCells
-    cells = pooler._winnersBasedOnLateralActivity(
-      activeCells=proximallyActivatedCells,
-      lateralInput=lateralInput,
-      minThreshold=pooler.distalMinThreshold
+    # Test case where you have two objects in bottom up representation, but
+    # only one in lateral. In this case the laterally supported object
+    # should dominate.
+    overlaps = numpy.zeros(pooler.numberOfColumns(), dtype=realDType)
+    overlaps[range(0,80)] = 10
+    active = pooler._winnersBasedOnLateralActivity(
+      activeCells=set(range(0,80)),
+      predictiveCells=set(range(0,40)),
+      overlaps=overlaps,
+      targetActiveCells=40
     )
-    self.assertEqual(cells, {1, 2})
+    self.assertEqual(sum(active), sum(range(0,40)),
+                     "Incorrect active cells with bottom up union "
+                     "and some lateral support")
 
-    # test competition between lateral input
-    lateralInput = [{2, 5}, {3}, {1}, {2, 5}]
-    pooler.activeCells = previouslyActiveCells
-    cells = pooler._winnersBasedOnLateralActivity(
-      activeCells=proximallyActivatedCells,
-      lateralInput=lateralInput,
-      minThreshold=pooler.distalMinThreshold
+
+    # Test case where BU has support for O1+O2, and lateral support for O2+O3
+    # Should end up with O2
+    overlaps = numpy.zeros(pooler.numberOfColumns(), dtype=realDType)
+    overlaps[range(0,80)] = 10
+    active = pooler._winnersBasedOnLateralActivity(
+      activeCells=set(range(0,80)),
+      predictiveCells=set(range(40,120)),
+      overlaps=overlaps,
+      targetActiveCells=40
     )
-    self.assertEqual(cells, {1})
+    self.assertEqual(sum(active), sum(range(40,80)),
+                     "Incorrect active cells with bottom up union "
+                     "and lateral support that includes other objects")
+
+    # Test case where BU has support for O1, and lateral support for O2
+    # Should end up with O1
+    overlaps = numpy.zeros(pooler.numberOfColumns(), dtype=realDType)
+    overlaps[range(0,40)] = 10
+    active = pooler._winnersBasedOnLateralActivity(
+      activeCells=set(range(0,40)),
+      predictiveCells=set(range(40,80)),
+      overlaps=overlaps,
+      targetActiveCells=40
+    )
+    self.assertEqual(sum(active), sum(range(0,40)),
+                     "Incorrect active cells with bottom up union "
+                     "and conflicting lateral support")
+
+    # Test case where you have partial lateral support for O1 and a
+    # bottom up union that includes O1+O2, but higher overlap scores for O2.
+    # In this case you should end up the laterally predicted cells in O1, plus
+    # cells corresponding to O2.
+    overlaps = numpy.zeros(pooler.numberOfColumns(), dtype=realDType)
+    overlaps[range(0,80)] = range(0,80)
+    active = pooler._winnersBasedOnLateralActivity(
+      activeCells=set(range(0,80)),
+      predictiveCells=set(range(0,10)),
+      overlaps=overlaps,
+      targetActiveCells=40
+    )
+    self.assertEqual(sum(active), sum(range(0,10)) + sum(range(50,80)),
+                     "Incorrect active cells with bottom up activity "
+                     "and partial lateral support")
+
+    # No lateral support, BU for O1+O2. End up with O1+O2.
+
+    # Test case where you have two objects in bottom up representation, but
+    # only one in lateral. In this case the laterally supported object
+    # should dominate.
+
+    # BU activity for O1+O2 but no lateral support, should get O1+O2. Then
+    # lateral support for O1, no BU activity.  Should end up with O1 only.
+
+    # Test case where you have two objects in bottom up representation, and
+    # same two in lateral. End up with both active.
+
+    # Test case where you have O1, O2 in bottom up representation, but
+    # O1, O3 in lateral. In this case should end up with O1.
+
+    # Test case where you have bottom up for one, and lateral for another. In
+    # this case the bottom up one should dominate.
+
+    # Test case where you have BU support for two objects, less than adequate
+    # lateral support (below threshold) for one of them. Should end up with both
+    # BU objects.
+
+    # Test case where you have lateral support for object 1 but partial BU
+    # support for it, and strong BU support for object 2. In this case you
+    # should end up with partial support for O1 plus some of O2. ???
+
+
+
 
 
 if __name__ == "__main__":

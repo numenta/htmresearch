@@ -141,7 +141,7 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     @param  activeApicalCells (set)
             Indices of active cells that will form connections to apical
-            segments.
+            segments. Unused in this implementation.
 
     @param  formInternalConnections (bool)
             If True, cells will form
@@ -151,9 +151,6 @@ class ColumnPooler(ExtendedTemporalMemory):
     """
     if activeExternalCells is None:
       activeExternalCells = []
-
-    if activeApicalCells is None:
-      activeApicalCells = set()
 
     if learn:
       self._computeLearningMode(feedforwardInput=feedforwardInput,
@@ -184,10 +181,6 @@ class ColumnPooler(ExtendedTemporalMemory):
             columns.
 
     """
-    # if len(lateralInput) > 0 and \
-    #    len(lateralInput) < self.numNeighboringColumns:
-    #   raise ValueError("Incorrect number of lateral inputs!")
-
     # If there are no previously active cells, select random subset of cells
     if len(self.activeCells) == 0:
       self.activeCells = set(self._random.shuffle(
@@ -198,7 +191,8 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     # Those cells that remain active will learn on their proximal and distal
     # dendrites as long as there is some input.  If there are no
-    # cells active, no learning happens.
+    # cells active, no learning happens.  This only happens in the very
+    # beginning if there has been no bottom up activity at all.
     if len(self.activeCells) > 0:
 
       # Learn on proximal dendrite if appropriate
@@ -211,15 +205,16 @@ class ColumnPooler(ExtendedTemporalMemory):
                             self.connectedPermanence)
 
       # Learn on distal dendrites if appropriate
-      if len(lateralInput) > 0:
-        self._learnDistal(lateralInput, self.activeCells)
+      self.tm.compute(activeColumns=self.activeCells,
+                      activeExternalCells=lateralInput,
+                      formInternalConnections=False,
+                      learn=True)
 
 
   def _computeInferenceMode(self, feedforwardInput, lateralInput):
     """
     Inference mode: if there is some feedforward activity, perform
     spatial pooling on it to recognize previously known objects. If there
-    is no feedforward activity, maintain previous activity.
 
     Parameters:
     ----------------------------
@@ -233,6 +228,7 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     """
     # Figure out which cells are active due to feedforward proximal inputs
+    # In order to form unions, we keep all cells that are over threshold
     inputVector = numpy.zeros(self.numberOfInputs(), dtype=realDType)
     inputVector[list(feedforwardInput)] = 1
     overlaps = numpy.zeros(self.numberOfColumns(), dtype=realDType)
@@ -241,11 +237,27 @@ class ColumnPooler(ExtendedTemporalMemory):
     overlaps[overlaps < self.minThreshold] = 0
     bottomUpActivity =  set(overlaps.nonzero()[0])
 
-    # In order to form unions, we keep all cells that are over threshold
+    # If there is insufficient current bottom up activity, we incorporate all
+    # previous activity. We set their overlaps so they are sure to win.
+    if len(bottomUpActivity) < self.numActiveColumnsPerInhArea:
+      bottomUpActivity = bottomUpActivity.union(self.activeCells)
+      maxOverlap = overlaps.max()
+      overlaps[self.getActiveCells()] = maxOverlap+1
+
+    # Narrow down list of active cells based on lateral activity
     self.activeCells = self._winnersBasedOnLateralActivity(
       bottomUpActivity,
-      lateralInput,
+      self.tm.predictiveCells,
+      overlaps,
+      self.numActiveColumnsPerInhArea
     )
+
+    # Update predictive cells for next time step
+    self.tm.compute(activeColumns=self.activeCells,
+                    activeExternalCells=lateralInput,
+                    formInternalConnections=False,
+                    learn=False)
+
 
 
   def numberOfInputs(self):
@@ -364,115 +376,6 @@ class ColumnPooler(ExtendedTemporalMemory):
       cellNonZeroIndices, _ = proximalPermanences.rowNonZeros(cell)
 
 
-  def _winnersBasedOnLateralActivity(self,
-                                     activeCells,
-                                     lateralInput):
-    """
-    Incorporate effect of lateral activity, if any, and returns the set of
-    winners.
-
-    Parameters:
-    ----------------------------
-    @param   activeCells           (set)
-             Indices of cells activated by bottom-up input
-
-    @param   lateralInput          (list(list))
-             List of lateral activations
-
-    @return (set) List of new winner cell indices
-
-    """
-    # handle the case where there is no lateral activity
-    if len(lateralInput) == 0 or \
-       sum([len(latInput) for latInput in lateralInput]) == 0:
-      # if there is not enough bottom-up activity, persist
-      if len(activeCells) == 0:
-        return self.activeCells
-      else:
-        return activeCells
-
-    # if there is no activity in the pooler, lateral activity is driving
-    if len(self.activeCells) == 0:
-      return self._winningDistallyPredictedCells()
-
-    lateralActivity = {}
-    maxNumberOfDistalSegments = 0
-    # winner cells will be computed in one pass
-    winnerCells = []
-
-    # count number of predictive segments for each active cells
-    for cell in activeCells:
-      lateralActivity[cell] = self._numberOfActiveDistalSegments(
-        cell,
-        lateralInput,
-        self.connectedPermanence,
-        self.distalActivationThreshold,
-      )
-
-      # keep track of maximum number of active distal segments
-      if lateralActivity[cell] > maxNumberOfDistalSegments:
-        maxNumberOfDistalSegments = lateralActivity[cell]
-        winnerCells = []
-
-      if lateralActivity[cell] == maxNumberOfDistalSegments:
-        winnerCells.append(cell)
-
-    return set(winnerCells)
-
-
-  def _numberOfActiveDistalSegments(self,
-                                    cell,
-                                    lateralInput,
-                                    connectedPermanence,
-                                    activationThreshold):
-    """
-    Counts the number of active segments for the given cell.
-
-    Parameters:
-    ----------------------------
-    @param   cell                  (int)
-             Cell index
-
-    @param   lateralInput          (list(list))
-             List of lateral activations
-
-    @param   connectedPermanence   (float)
-             Permanence threshold for a synapse to be considered active
-
-    @param   activationThreshold   (int)
-             Number of synapses needed for a segment to be considered active
-
-    """
-    numActiveSegments = 0
-
-    for neighbor in xrange(self.numNeighboringColumns):
-
-      # for each set of connections, check if segment is active
-      connections = self.distalConnections[neighbor]
-      segments = connections.segmentsForCell(cell)
-      if len(segments) > 0:
-        segment = list(segments)[0]
-      else:
-        continue
-
-      numActiveSynapsesForSegment = 0
-      for synapse in connections.synapsesForSegment(segment):
-        synapseData = connections.dataForSynapse(synapse)
-        if synapseData.presynapticCell not in lateralInput[neighbor]:
-          continue
-
-        if synapseData.permanence >= connectedPermanence:
-          numActiveSynapsesForSegment += 1
-          if numActiveSynapsesForSegment >= activationThreshold:
-            # add active segment
-            self.activeDistalSegments[neighbor].add(segment)
-            # increment counter and exit inner loop
-            numActiveSegments += 1
-            break
-
-    return numActiveSegments
-
-
   def _pickProximalInputsToLearnOn(self, newSynapseCount, activeInputs,
                                   cellNonZeros):
     """
@@ -522,127 +425,59 @@ class ColumnPooler(ExtendedTemporalMemory):
       return inputs, alreadyConnected
 
 
-  def _learnDistal(self, lateralInput, activeCells):
+  def _winnersBasedOnLateralActivity(self,
+                                     activeCells,
+                                     predictiveCells,
+                                     overlaps,
+                                     targetActiveCells):
     """
-    Learns on distal segments, using the same mechanism as Extended Temporal
-    Memory.
+    Given the set of cells active due to feedforward input, narrow down the
+    list of active cells based on predictions due to previous lateralInput.
+
+    Compute new predictive cells for next time step based on current
+    lateralInput.
 
     Parameters:
     ----------------------------
-    @param lateralInput            (list(set))
-           List of active cells from neighboring columns
+    @param    activeCells           (set)
+              Indices of cells activated by bottom-up input.
 
-    @param activeCells             (set)
-           Currently active cells
+    @param    predictiveCells       (set)
+              Indices of cells that are laterally predicted.
 
-    """
-    # print "\n--------------"
-    # print "Active cells=",activeCells
-    # print "Lateral cells=", lateralInput
-    self.tm.compute(activeColumns=activeCells,
-                    activeExternalCells=lateralInput,
-                    formInternalConnections=False,
-                    learn=True)
-    # print "Predicted cells=", self.tm.predictiveCells
-    # print "Number of segments=",self.tm.connections.numSegments()
-    # print "Number of synapses=",self.tm.connections.numSynapses()
+    @param    overlaps              (numpy array)
+              Bottom up overlap scores for each proximal segment. This is used
+              to select additional cells if the narrowed down list contains less
+              than targetActiveCells.
 
-    # for connections in self.distalConnections:
-    #
-    #   # get active synapses for each segment
-    #   segments = connections._segments
-    #   for segment in segments:
-    #     activeSynapses = self.activeSynapsesForSegment(
-    #       segment, activeCells, connections
-    #     )
-    #
-    #     # update segment permanences
-    #     self.adaptSegment(segment, activeSynapses, connections,
-    #                       self.permanenceIncrement,
-    #                       self.permanenceDecrement)
-    #
-    #     # create new synapses if necessary
-    #     n = self.maxNewSynapseCount - len(activeSynapses)
-    #     for presynapticCell in self.pickCellsToLearnOn(n,
-    #                                                    segment,
-    #                                                    activeCells,
-    #                                                    connections):
-    #       connections.createSynapse(segment,
-    #                                 presynapticCell,
-    #                                 self.initialPermanence)
-    #
-    #   # decrement permanences for predicted inactive cells
-    #   if self.predictedSegmentDecrement > 0:
-    #     predictedInactiveCells = self._winningDistallyPredictedCells(
-    #       lateralInput,
-    #       self.connectedPermanence,
-    #       self.distalActivationThreshold
-    #     ) - activeCells
-    #
-    #     for segment in segments:
-    #       isPredictedInactiveCell = connections.cellForSegment(segment) \
-    #                                 in predictedInactiveCells
-    #       activeSynapses = self.activeSynapsesForSegment(
-    #         segment, activeCells, connections)
-    #
-    #       if isPredictedInactiveCell:
-    #         self.adaptSegment(segment, activeSynapses, connections,
-    #                           -self.predictedSegmentDecrement,
-    #                           0.0)
+    @param    targetActiveCells     (int)
+              The number of active cells we want to have active.
 
-
-  def _winningDistallyPredictedCells(self,
-                                     lateralInput,
-                                     connectedPermanence,
-                                     activationThreshold):
-    """
-    Returns indices of distally predicted cells with highest number of
-    predicting neighboring columns.
-    This function is used for lateral driving when there is no activity,
-    and to decide cells to learn on if predictedSegmentDecrement > 0.
-
-    Parameters:
-    ----------------------------
-    @param lateralInput            (list(set))
-           List of active cells from neighboring columns
-
-    @param   connectedPermanence   (float)
-             Permanence threshold for a synapse to be considered active
-
-    @param   activationThreshold   (int)
-             Number of synapses needed for a segment to be considered active
+    @return (set) List of new winner cell indices
 
     """
-    # keep track of the number of predicting segments
-    activeSegmentsForCell = defaultdict(int)
-    numActiveConnectedSynapsesForSegment = defaultdict(int)
+    # No TM accessors that return set so access internal member directly
+    predictedActiveCells = activeCells.intersection(predictiveCells)
 
-    # keep track of best number of predicting segments
-    maxNumberOfActiveSegments = 0
+    # If predicted cells don't intersect at all with active cells, we go with
+    # bottom up input. In these cases we can stick with existing active cells
+    # and skip the overlap sorting
+    if len(predictedActiveCells) == 0:
+      predictedActiveCells = activeCells
 
-    for neighbor in xrange(self.numNeighboringColumns):
-      connections = self.distalConnections[neighbor]
+    # We want to keep all cells that were predicted and currently active due to
+    # feedforward input. This set could be larger than our target number of
+    # active cells due to unions, which is ok. However if there are insufficient
+    # cells active after this intersection, we fill in with those currently
+    # active cells that have highest overlap.
+    elif len(predictedActiveCells) < targetActiveCells:
+      # Don't want to consider cells already chosen
+      overlaps[list(predictedActiveCells)] = 0
 
-      # count active synapses for each active cell from neighboring column
-      for cell in lateralInput[neighbor]:
-        for synapseData in connections.synapsesForPresynapticCell(cell).values():
-          segment = synapseData.segment
-          permanence = synapseData.permanence
+      # Add in the desired number of cells with highest activity
+      numActive = targetActiveCells - len(predictedActiveCells)
+      winnerIndices = numpy.argsort(overlaps, kind='mergesort')
+      sortedWinnerIndices = winnerIndices[-numActive:][::-1]
+      predictedActiveCells = predictedActiveCells.union(set(sortedWinnerIndices))
 
-          if permanence >= self.connectedPermanence:
-            numActiveConnectedSynapsesForSegment[segment] += 1
-
-          # if threshold is exceeded, increment counter and update best count
-          if (numActiveConnectedSynapsesForSegment[segment] >=
-              self.distalActivationThreshold):
-            cell = connections.cellForSegment(segment)
-            activeSegmentsForCell[cell] += 1
-
-            # update best number of predictive neighbors
-            if activeSegmentsForCell[cell] > maxNumberOfActiveSegments:
-              maxNumberOfActiveSegments = activeSegmentsForCell[cell]
-
-    # only return winning predictions
-    return set(
-      [k for k, v in activeSegmentsForCell.items() if v == maxNumberOfActiveSegments]
-    )
+    return predictedActiveCells
