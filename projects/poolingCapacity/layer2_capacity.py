@@ -81,29 +81,53 @@ def generateL4SDR(n=2048, m=10, w=40):
   activeCells = np.random.randint(low=0, high=m, size=(w, ))
 
   activeBits = activeCols * m + activeCells
-  return set(activeBits), set(activeCols)
+  return activeBits
 
 
 
-def generateUnionSDR(k, n=2048, m=10, w=40):
-  unionSDR = set()
-  unionSDRcols = set()
+def generateUnionSDR(k, n=2048, m=10, w=40, c=None):
+  if c is None:
+    c = w
+  activeCells = set()
+  connectedCells = set()
   for i in range(k):
-    activeBits, activeCols = generateL4SDR(n, m, w)
-    unionSDR = unionSDR.union(activeBits)
-    unionSDRcols = unionSDRcols.union(activeCols)
-  return unionSDR, unionSDRcols
+    activeBits = generateL4SDR(n, m, w)
+    activeBits = np.random.permutation(activeBits)
+    activeCells = activeCells.union(activeBits)
+    connectedCells = connectedCells.union(activeBits[:c])
+
+  return connectedCells, activeCells
+
+
+
+def generateMultipleUnionSDRs(numUnions, k, n=2048, m=10, w=40, c=None):
+  if c is None:
+    c = w
+  activeCells = np.zeros((n * m, ))
+  connectedCells = []
+  for j in range(numUnions):
+    connectedCells.append(np.zeros((n * m, )))
+
+  for i in range(k):
+    activeBits = generateL4SDR(n, m, w)
+    activeCells[activeBits] = 1
+
+    for j in range(numUnions):
+      activeBits = np.random.permutation(activeBits)
+      connectedCells[j][activeBits[:c]] = 1
+
+  return connectedCells, activeCells
 
 
 
 def simulateFalseMatchError(threshList, k, n=2048, w=40, m=10, c=10):
-  unionSDR, unionSDRcols = generateUnionSDR(k, n, m, c)
+  connectedCells, activeCells = generateUnionSDR(k, n, m, w, c)
 
   numRpts = 10000
   numSDRMatch = []
   for rpt in range(numRpts):
-    sdr, sdrCols = generateL4SDR(n, m, w)
-    numSDRMatch.append(len(unionSDR.intersection(sdr)))
+    sdr = set(generateL4SDR(n, m, w))
+    numSDRMatch.append(len(connectedCells.intersection(sdr)))
 
   numSDRMatch = np.array(numSDRMatch)
   falseMatchError = []
@@ -114,11 +138,47 @@ def simulateFalseMatchError(threshList, k, n=2048, w=40, m=10, c=10):
 
 
 
-def simulateNumColsandCellsVsK(kVal, nVal, wVal, mVal):
-  activeBits, activeCols = generateUnionSDR(kVal, n=nVal, m=mVal, w=wVal)
-  numCellsInUnion = len(activeBits)
+def simulateNumCellsVsK(kVal, nVal, wVal, mVal):
+  connectedCells, activeCells = generateUnionSDR(kVal, nVal, mVal, wVal)
+  numCellsInUnion = len(connectedCells)
 
   return numCellsInUnion
+
+
+
+def simulateNumL2CellsFalseMatch(b1, n=2048, w=40, m=10, c=10, k=100):
+  """
+  Given an SDR that has theta bits overlap with one L2 cell,
+  what is the chance that the SDR also has >theta bits overlap with
+  a second L2 cell for this object?
+  :param n: column # for L4
+  :param w: active cell # for L4
+  :param m: L4 cell # per column
+  :param c: connectivity per L4 column
+  :param k: (feature, location) # per object
+  :return:
+  """
+  numRpts = 10000
+  overlapList = np.zeros((numRpts,))
+
+  for i in range(numRpts):
+    (connectedCells, activeCells) = generateMultipleUnionSDRs(
+      2, k, n, m, w, c)
+
+    connectedCells1 = np.where(connectedCells[0])[0]
+    nonConnectedCells1 = np.where(connectedCells[0]==0)[0]
+
+    selectConnectedCell1 = connectedCells1[
+      np.random.randint(0, len(connectedCells1), (theta, ))]
+    selectNonConnectedCell1 = nonConnectedCells1[
+      np.random.randint(0, len(nonConnectedCells1), (w-theta, ))]
+
+    overlap = 0
+    overlap += np.sum(connectedCells[1][selectConnectedCell1])
+    overlap += np.sum(connectedCells[1][selectNonConnectedCell1])
+    overlapList[i] = overlap
+
+  return overlapList
 
 
 
@@ -156,12 +216,15 @@ def plotFalseMatchError(cValList, thetaValList):
   ax[1].set_ylabel('# connections')
 
 
+
 if __name__ == "__main__":
 
   nVal = 2048
   mVal = 10
   wVal = 40
   cVal = 10
+
+  overlapList = simulateNumL2CellsFalseMatch(b1, nVal, wVal, mVal, cVal, k=100)
 
   fig, ax = plt.subplots(1, 1)
   legendList = []
@@ -180,7 +243,7 @@ if __name__ == "__main__":
     numCellsVsKsim = []
     kValListSparse = np.arange(1, 500, 100)
     for kVal in kValListSparse:
-      numCellsInUnionValSim = simulateNumColsandCellsVsK(kVal, nVal, cVal, mVal)
+      numCellsInUnionValSim = simulateNumCellsVsK(kVal, nVal, cVal, mVal)
       numCellsVsKsim.append(numCellsInUnionValSim)
     ax.plot(kValListSparse, numCellsVsKsim, 'ko')
 
