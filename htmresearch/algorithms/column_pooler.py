@@ -51,8 +51,8 @@ class ColumnPooler(ExtendedTemporalMemory):
                initialProximalPermanence=0.6,
                distalActivationThreshold=13,
                distalMinThreshold=13,
-               maxSynapsesPerDistalSegment=511,
-               numNeighboringColumns=0,
+               maxSynapsesPerDistalSegment=128,
+               numNeighboringColumns=2,
                lateralInputWidth=None,
                **kwargs):
     """
@@ -93,7 +93,6 @@ class ColumnPooler(ExtendedTemporalMemory):
     # proximalPermanences - SparseMatrix with permanence values
     # proximalConnections - SparseBinaryMatrix of connected synapses
 
-
     self.proximalPermanences = SparseMatrix(self.numberOfColumns(),
                                                inputWidth)
     self.proximalConnections = SparseBinaryMatrix(inputWidth)
@@ -116,6 +115,12 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     self.distalActivationThreshold = distalActivationThreshold
     self.distalMinThreshold = distalMinThreshold
+
+    # Create our own instance of extended temporal memory to handle distal
+    # segments.
+    # TODO: don't inherit from ETM in this class.
+    self.tm = ExtendedTemporalMemory(**kwargs)
+
 
   def compute(self,
               feedforwardInput=None,
@@ -179,9 +184,9 @@ class ColumnPooler(ExtendedTemporalMemory):
             columns.
 
     """
-    if len(lateralInput) > 0 and \
-       len(lateralInput) < self.numNeighboringColumns:
-      raise ValueError("Incorrect dimension for lateral input!")
+    # if len(lateralInput) > 0 and \
+    #    len(lateralInput) < self.numNeighboringColumns:
+    #   raise ValueError("Incorrect number of lateral inputs!")
 
     # If there are no previously active cells, select random subset of cells
     if len(self.activeCells) == 0:
@@ -190,12 +195,6 @@ class ColumnPooler(ExtendedTemporalMemory):
                         dtype="uint32"))[0:self.numActiveColumnsPerInhArea])
 
     # else we maintain previous activity, nothing to do.
-
-    # Incorporate distal segment activity and update list of active cells
-    self.activeCells = self._winnersBasedOnLateralActivity(
-      self.activeCells,
-      lateralInput
-    )
 
     # Those cells that remain active will learn on their proximal and distal
     # dendrites as long as there is some input.  If there are no
@@ -284,6 +283,47 @@ class ColumnPooler(ExtendedTemporalMemory):
     for cell in cells:
       n += self.proximalPermanences.nNonZerosOnRow(cell)
     return n
+
+
+  def numberOfDistalSegments(self, cells):
+    """
+    Returns the total number of distal segments for these cells.
+
+    Parameters:
+    ----------------------------
+    @param  cells (set or list)
+            Indices of the cells
+    """
+    n = 0
+    for cell in cells:
+      n += len(self.tm.connections.segmentsForCell(cell))
+    return n
+
+
+  def numberOfDistalSynapses(self, cells):
+    """
+    Returns the total number of distal synapses for these cells.
+
+    Parameters:
+    ----------------------------
+    @param  cells (set or list)
+            Indices of the cells
+    """
+    n = 0
+    for cell in cells:
+      segments = self.tm.connections.segmentsForCell(cell)
+      for segment in segments:
+        n += len(self.tm.connections.synapsesForSegment(segment))
+    return n
+
+
+  def reset(self):
+    """
+    Reset internal states. When learning this signifies we are to learn a
+    unique new object.
+    """
+    super(ColumnPooler, self).reset()
+    self.tm.reset()
 
 
   def _learnProximal(self,
@@ -485,7 +525,7 @@ class ColumnPooler(ExtendedTemporalMemory):
   def _learnDistal(self, lateralInput, activeCells):
     """
     Learns on distal segments, using the same mechanism as Extended Temporal
-    Memory, except each segment samples from one neighboring column.
+    Memory.
 
     Parameters:
     ----------------------------
@@ -496,48 +536,59 @@ class ColumnPooler(ExtendedTemporalMemory):
            Currently active cells
 
     """
-    for connections in self.distalConnections:
+    # print "\n--------------"
+    # print "Active cells=",activeCells
+    # print "Lateral cells=", lateralInput
+    self.tm.compute(activeColumns=activeCells,
+                    activeExternalCells=lateralInput,
+                    formInternalConnections=False,
+                    learn=True)
+    # print "Predicted cells=", self.tm.predictiveCells
+    # print "Number of segments=",self.tm.connections.numSegments()
+    # print "Number of synapses=",self.tm.connections.numSynapses()
 
-      # get active synapses for each segment
-      segments = connections._segments
-      for segment in segments:
-        activeSynapses = self.activeSynapsesForSegment(
-          segment, activeCells, connections
-        )
-
-        # update segment permanences
-        self.adaptSegment(segment, activeSynapses, connections,
-                          self.permanenceIncrement,
-                          self.permanenceDecrement)
-
-        # create new synapses if necessary
-        n = self.maxNewSynapseCount - len(activeSynapses)
-        for presynapticCell in self.pickCellsToLearnOn(n,
-                                                       segment,
-                                                       activeCells,
-                                                       connections):
-          connections.createSynapse(segment,
-                                    presynapticCell,
-                                    self.initialPermanence)
-
-      # decrement permanences for predicted inactive cells
-      if self.predictedSegmentDecrement > 0:
-        predictedInactiveCells = self._winningDistallyPredictedCells(
-          lateralInput,
-          self.connectedPermanence,
-          self.distalActivationThreshold
-        ) - activeCells
-
-        for segment in segments:
-          isPredictedInactiveCell = connections.cellForSegment(segment) \
-                                    in predictedInactiveCells
-          activeSynapses = self.activeSynapsesForSegment(
-            segment, activeCells, connections)
-
-          if isPredictedInactiveCell:
-            self.adaptSegment(segment, activeSynapses, connections,
-                              -self.predictedSegmentDecrement,
-                              0.0)
+    # for connections in self.distalConnections:
+    #
+    #   # get active synapses for each segment
+    #   segments = connections._segments
+    #   for segment in segments:
+    #     activeSynapses = self.activeSynapsesForSegment(
+    #       segment, activeCells, connections
+    #     )
+    #
+    #     # update segment permanences
+    #     self.adaptSegment(segment, activeSynapses, connections,
+    #                       self.permanenceIncrement,
+    #                       self.permanenceDecrement)
+    #
+    #     # create new synapses if necessary
+    #     n = self.maxNewSynapseCount - len(activeSynapses)
+    #     for presynapticCell in self.pickCellsToLearnOn(n,
+    #                                                    segment,
+    #                                                    activeCells,
+    #                                                    connections):
+    #       connections.createSynapse(segment,
+    #                                 presynapticCell,
+    #                                 self.initialPermanence)
+    #
+    #   # decrement permanences for predicted inactive cells
+    #   if self.predictedSegmentDecrement > 0:
+    #     predictedInactiveCells = self._winningDistallyPredictedCells(
+    #       lateralInput,
+    #       self.connectedPermanence,
+    #       self.distalActivationThreshold
+    #     ) - activeCells
+    #
+    #     for segment in segments:
+    #       isPredictedInactiveCell = connections.cellForSegment(segment) \
+    #                                 in predictedInactiveCells
+    #       activeSynapses = self.activeSynapsesForSegment(
+    #         segment, activeCells, connections)
+    #
+    #       if isPredictedInactiveCell:
+    #         self.adaptSegment(segment, activeSynapses, connections,
+    #                           -self.predictedSegmentDecrement,
+    #                           0.0)
 
 
   def _winningDistallyPredictedCells(self,
