@@ -625,7 +625,6 @@ class ColumnPoolerTest(unittest.TestCase):
     # BU objects.
 
 
-  @unittest.skip("Test fails due to NuPIC issue #3268")
   def testInferenceWithChangingLateralInputs(self):
     """
     # Test case where the lateral inputs change while learning an object.
@@ -658,19 +657,31 @@ class ColumnPoolerTest(unittest.TestCase):
       [set(range(2300, 2340)), set(range(2340, 2380))]   # External column 2
     ]
 
-    # Train pooler on two objects, three iterations per object, using just
-    # lateral input from first column. Then repeat with second column.
+    # Train pooler on two objects. For each object we go through three
+    # iterations using just lateral input from first column. Then repeat with
+    # second column.
     objectRepresentations = []
-    for col in range(2):
-      for obj in range(2):
-        pooler.reset()
-        for i in range(3): # three iterations
-          for f in range(3): # three features per object
-            pooler.compute(
-              feedforwardInput=feedforwardInputs[obj][f],
-              activeExternalCells=lateralInputs[col][obj],
-              learn=True)
-        if col==0: objectRepresentations += [set(pooler.getActiveCells())]
+    for obj in range(2):
+      pooler.reset()
+      for col in range(2):
+          for i in range(3): # three iterations
+            for f in range(3): # three features per object
+              pooler.compute(
+                feedforwardInput=feedforwardInputs[obj][f],
+                activeExternalCells=lateralInputs[col][obj],
+                learn=True)
+      objectRepresentations += [set(pooler.getActiveCells())]
+
+    # We want to ensure that the learning for each cell happens on one distal
+    # segment only. Some cells could in theory be common across both
+    # representations so we just check the unique ones.
+    # TODO: this test currently fails due to NuPIC issue #3268
+    # uniqueCells = objectRepresentations[0].symmetric_difference(
+    #                                                   objectRepresentations[1])
+    # connections = pooler.tm.connections
+    # for cell in uniqueCells:
+    #   self.assertEqual(connections.segmentsForCell(cell), 1,
+    #                    "Too many segments")
 
     # Test case where both objects are present in bottom up representation, but
     # only one in lateral. In this case the laterally supported object
