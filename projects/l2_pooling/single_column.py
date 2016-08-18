@@ -21,8 +21,14 @@
 import random
 import collections
 
+try:
+  import htmsanity.nupic.runner as sanity
+except ImportError:
+  sanity = None
+
 from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.frameworks.layers.laminar_network import createNetwork
+
 
 NETWORK_CONFIG = {
   "networkType": "L4L2Column",
@@ -31,7 +37,7 @@ NETWORK_CONFIG = {
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
-    "formInternalConnections": 0,
+    "formInternalBasalConnections": 0,
     "learningMode": 1,
     "inferenceMode": 1,
     "learnOnOneCell": 0,
@@ -40,16 +46,21 @@ NETWORK_CONFIG = {
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
     "minThreshold": 10,
-    "predictedSegmentDecrement": 0.08,
-    "activationThreshold": 13,
+    "predictedSegmentDecrement": 0.004,
+    "activationThreshold": 10,
     "maxNewSynapseCount": 20,
+    "maxSegmentsPerCell": 255,
+    "maxSynapsesPerSegment": 255,
+    "implementation": "cpp",
+    "monitor": 0,
+    "seed": 40
   },
   "L2Params": {
     "columnCount": 1024,
     "inputWidth": 1024 * 8,
     "learningMode": 1,
     "inferenceMode": 1,
-    "minThreshold": 15
+    "minThreshold": 13,
   }
 }
 
@@ -67,9 +78,11 @@ class SingleColumnL4L2Experiment(object):
   def __init__(self,
                netConfig,
                numObjects,
-               numLearningPoints=3,
+               useSanity=False,
+               numBits=20,
+               numLearningPoints=4,
                overrides=None,
-               seed=42):
+               seed=40):
     """
     :param config:      (dict)  Default network parameters
     :param overrides:   (dict)  Overrides
@@ -98,41 +111,51 @@ class SingleColumnL4L2Experiment(object):
     self.L4Column = self.network.regions["L4Column_0"].getSelf()
     self.L2Column = self.network.regions["L2Column_0"].getSelf()
 
-    self.locations = []
-    self.features = []
+    self.locations = self._generateLocations(numBits=numBits)
+    self.features = self._generateFeatures(numBits=numBits)
     self.objects = []
+    # will be populated during training
+    self.objectL2Representations = []
 
     self.statistics = []
+    self.sanity = useSanity and sanity is not None
+    if useSanity:
+      self.sanityStarted = False
 
 
-  def learnObjects(self):
+  def learnObjects(self, debug=False):
     """
     Learns all objects.
     """
-    iterations = 0
     for object in self.objects:
+      iterations = 0
       if len(object) == 0:
         continue
 
-      # send initial signal (because of one-off problem in using ETM for L4)
-      self.addPointToQueue(object[0])
-      iterations += 1
+      self._addPointToQueue(object[0])
+      self.network.run(1)
+
+      if debug and self.sanity and not self.sanityStarted:
+        sanity.patchETM(self.L4Column._tm)
+        self.sanityStarted = True
+
+      self.objectL2Representations.append(self._getL2Representation())
 
       for pair in object:
         for _ in xrange(self.numLearningPoints):
-          self.addPointToQueue(pair)
+          self._addPointToQueue(pair)
           iterations += 1
 
       # send reset signal
-      self.addPointToQueue(object[-1], reset=True)
+      self._addPointToQueue(object[-1], reset=True)
       iterations += 1
 
-    # actually learn the objects
-    if iterations > 0:
-      self.network.run(iterations)
+      # actually learn the objects
+      if iterations > 0:
+        self.network.run(iterations)
 
 
-  def inferObject(self, objectIndex, order="first"):
+  def inferObject(self, objectIndex, order="first", addNoise=False):
     """
     Go over a list of locations / features and tries to recognize an object.
 
@@ -140,7 +163,7 @@ class SingleColumnL4L2Experiment(object):
     Note: locations / feature pairs are usually sorted in descending order
     of number of objects that have them.
     """
-    self.network.reset()
+    self._unsetLearningMode()
 
     pairs = self.objects[objectIndex]
     if len(pairs) == 0:
@@ -162,21 +185,32 @@ class SingleColumnL4L2Experiment(object):
       idx = order
 
     # send first signal
-    self.addPointToQueue(pairs[0])
+    self._addPointToQueue(pairs[idx[0]])
     self.network.run(1)
 
-    for i in idx[:-1]:
-      self.addPointToQueue(pairs[i])
+    if self.sanity and not self.sanityStarted:
+      sanity.patchETM(self.L4Column._tm)
+      self.sanityStarted = True
+
+    for i in idx:
+      self._addPointToQueue(pairs[i])
       self.network.run(1)
-      self.updateInferenceStats(statistics)
+      self._updateInferenceStats(statistics, objectIndex)
 
     # send reset signal
-    self.addPointToQueue(pairs[idx[-1]], reset=True)
+    self._addPointToQueue(pairs[idx[-1]], reset=True)
     self.network.run(1)
-    self.updateInferenceStats(statistics)
+
+    # save statistics
+    self.statistics.append(statistics)
 
 
-  def addPointToQueue(self, pair, reset=False, sequenceId=0):
+  def _unsetLearningMode(self):
+    self.L2Column.setParameter("learningMode", 0, 0)
+    self.L4Column.setParameter("learningMode", 0, 0)
+
+
+  def _addPointToQueue(self, pair, reset=False, sequenceId=0):
     """
     :param pair:
     :param reset:
@@ -184,20 +218,35 @@ class SingleColumnL4L2Experiment(object):
     """
     location, feature = pair
     self.sensorInput.addDataToQueue(
-      self.features[feature], int(reset), sequenceId
+      list(self.features[feature]), int(reset), sequenceId
     )
     self.externalInput.addDataToQueue(
-      self.locations[location], int(reset), sequenceId
+      list(self.locations[location]), int(reset), sequenceId
     )
 
 
-  def updateInferenceStats(self, statistics):
+  def _updateInferenceStats(self, statistics, objectIndex):
     """
     Updates the inference statistics.
 
     :param statistics:    (dict) Various statistics to save.
     """
-    pass
+    L4Representation = self._getL4Representation()
+    L4PredictiveCells = self._getL4PredictiveCells()
+    L2Representation = self._getL2Representation()
+
+    if len(L4Representation) > 100:
+      print "BURSTING"
+      print sorted(list(L4PredictiveCells))
+      print sorted(list(L4Representation))
+
+    objectRepresentation = self.objectL2Representations[objectIndex]
+    statistics["L4_representation"].append(len(L4Representation))
+    statistics["L4_predictive"].append(len(L4PredictiveCells))
+    statistics["L2_representation"].append(len(L2Representation))
+    statistics["L2_overlap_with_object"].append(
+      len(objectRepresentation & L2Representation)
+    )
 
 
   def plotInferenceStats(self, index, keys, path):
@@ -210,29 +259,33 @@ class SingleColumnL4L2Experiment(object):
     pass
 
 
-  def createObjects(self, numObjects, numPoints, numCommons=None):
+  def createObjects(self, numObjects, numPoints):
     """
     :param numObjects:     (int)  Number of objects to create
     :param numPoints:      (int)  Number of points per object
     :param numCommons:
     """
-    pass
+    objectA = [(3, 3), (1, 1), (3, 3), (2, 2), (1, 1)]
+    objectB = [(1, 1), (3, 5), (10, 10)]
+    self.objects = [objectA, objectB]
 
 
-  def generateLocations(self, numBits, numLocations=100, size=None):
+  def _generateLocations(self, numBits, numLocations=100, size=None):
     """
     Generates a pool of locations to be used for the experiments.
+
+    :return:       (list(s  `et))  List of patterns
     """
-    for _ in xrange(numLocations):
-      self.locations.append(self.generatePattern(numBits, size))
+    return [self.generatePattern(numBits, size) for _ in xrange(numLocations)]
 
 
-  def generateFeatures(self, numBits, numFeatures=100, size=None):
+  def _generateFeatures(self, numBits, numFeatures=100, size=None):
     """
     Generates a pool of features to be used for the experiments.
+
+    :return:       (list(set))  List of patterns
     """
-    for _ in xrange(numFeatures):
-      self.features.append(self.generatePattern(numBits, size))
+    return [self.generatePattern(numBits, size) for _ in xrange(numFeatures)]
 
 
   def generatePattern(self, numBits, size=None):
@@ -249,6 +302,26 @@ class SingleColumnL4L2Experiment(object):
     return set([random.randint(0, size - 1) for _ in xrange(numBits)])
 
 
+  def _getL4Representation(self):
+    return set(self.L4Column._tm.getActiveCells())
+
+
+  def _getL4PredictiveCells(self):
+    return set(self.L4Column._tm.getPredictiveCells())
+
+
+  def _getL2Representation(self):
+    return set(self.L2Column._pooler.getActiveCells())
+
 
 if __name__ == "__main__":
-  pass
+  exp = SingleColumnL4L2Experiment(NETWORK_CONFIG,
+                                   numObjects=2,
+                                   numLearningPoints=20,
+                                   useSanity=False)
+  exp.createObjects(1, 1)
+
+  exp.learnObjects(debug=False)
+  exp.inferObject(objectIndex=0, addNoise=False)
+
+  print exp.statistics
