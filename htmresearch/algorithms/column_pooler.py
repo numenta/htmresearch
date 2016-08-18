@@ -25,7 +25,9 @@ from nupic.bindings.math import (SM32 as SparseMatrix,
                                  SM_01_32_32 as SparseBinaryMatrix,
                                  GetNTAReal)
 
-from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
+from htmresearch.algorithms.extended_temporal_memory import (
+  ExtendedTemporalMemory
+)
 
 realDType = GetNTAReal()
 uintType = "uint32"
@@ -69,6 +71,7 @@ class ColumnPooler(ExtendedTemporalMemory):
     """
 
     # Override: we only support one cell per column for now
+    # TODO: we don't need to inherit from ETM - get rid of this dependence
     kwargs['cellsPerColumn'] = 1
     super(ColumnPooler, self).__init__(**kwargs)
 
@@ -77,25 +80,27 @@ class ColumnPooler(ExtendedTemporalMemory):
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
-    self.previousOverlaps = None
 
     # These sparse matrices will hold the synapses for each proximal segment.
     #
     # proximalPermanences - SparseMatrix with permanence values
     # proximalConnections - SparseBinaryMatrix of connected synapses
 
-
     self.proximalPermanences = SparseMatrix(self.numberOfColumns(),
                                                inputWidth)
     self.proximalConnections = SparseBinaryMatrix(inputWidth)
     self.proximalConnections.resize(self.numberOfColumns(), inputWidth)
+
+    # Create our own instance of extended temporal memory to handle distal
+    # segments.
+    self.tm = ExtendedTemporalMemory(**kwargs)
 
 
   def compute(self,
               feedforwardInput=None,
               activeExternalCells=None,
               activeApicalCells=None,
-              formInternalConnections=True,
+              formInternalConnections=False,
               learn=True):
     """
 
@@ -110,19 +115,17 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     @param  activeApicalCells (set)
             Indices of active cells that will form connections to apical
-            segments.
+            segments. Unused in this implementation.
 
     @param  formInternalConnections (bool)
             If True, cells will form
 
-    @param learn                If True, we are learning a new object
+    @param learn                    (bool)
+            If True, we are learning a new object
 
     """
     if activeExternalCells is None:
       activeExternalCells = set()
-
-    if activeApicalCells is None:
-      activeApicalCells = set()
 
     if learn:
       self._computeLearningMode(feedforwardInput=feedforwardInput,
@@ -161,14 +164,10 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     # else we maintain previous activity, nothing to do.
 
-    # Incorporate distal segment activity and update list of active cells
-    self.activeCells = self._winnersBasedOnLateralActivity(
-      self.activeCells, lateralInput, self.minThreshold
-    )
-
     # Those cells that remain active will learn on their proximal and distal
     # dendrites as long as there is some input.  If there are no
-    # cells active, no learning happens.
+    # cells active, no learning happens.  This only happens in the very
+    # beginning if there has been no bottom up activity at all.
     if len(self.activeCells) > 0:
 
       # Learn on proximal dendrite if appropriate
@@ -181,8 +180,10 @@ class ColumnPooler(ExtendedTemporalMemory):
                             self.connectedPermanence)
 
       # Learn on distal dendrites if appropriate
-      if len(lateralInput) > 0:
-        self._learnDistal(lateralInput, self.activeCells)
+      self.tm.compute(activeColumns=self.activeCells,
+                      activeExternalCells=lateralInput,
+                      formInternalConnections=False,
+                      learn=True)
 
 
   def _computeInferenceMode(self, feedforwardInput, lateralInput):
@@ -203,19 +204,35 @@ class ColumnPooler(ExtendedTemporalMemory):
 
     """
     # Figure out which cells are active due to feedforward proximal inputs
+    # In order to form unions, we keep all cells that are over threshold
     inputVector = numpy.zeros(self.numberOfInputs(), dtype=realDType)
     inputVector[list(feedforwardInput)] = 1
     overlaps = numpy.zeros(self.numberOfColumns(), dtype=realDType)
     self.proximalConnections.rightVecSumAtNZ_fast(inputVector.astype(realDType),
                                                  overlaps)
     overlaps[overlaps < self.minThreshold] = 0
+    bottomUpActivity =  set(overlaps.nonzero()[0])
 
-    # If there isn't enough bottom up activity, do nothing and maintain previous
-    # activity.
-    if overlaps.sum() > 0.0:
+    # If there is insufficient current bottom up activity, we incorporate all
+    # previous activity. We set their overlaps so they are sure to win.
+    if len(bottomUpActivity) < self.numActiveColumnsPerInhArea:
+      bottomUpActivity = bottomUpActivity.union(self.activeCells)
+      maxOverlap = overlaps.max()
+      overlaps[self.getActiveCells()] = maxOverlap+1
 
-      # In order to form unions, we keep all cells that are over threshold
-      self.activeCells = set(overlaps.nonzero()[0])
+    # Narrow down list of active cells based on lateral activity
+    self.activeCells = self._winnersBasedOnLateralActivity(
+      bottomUpActivity,
+      self.tm.predictiveCells,
+      overlaps,
+      self.numActiveColumnsPerInhArea
+    )
+
+    # Update predictive cells for next time step
+    self.tm.compute(activeColumns=self.activeCells,
+                    activeExternalCells=lateralInput,
+                    formInternalConnections=False,
+                    learn=False)
 
 
   def numberOfInputs(self):
@@ -255,6 +272,47 @@ class ColumnPooler(ExtendedTemporalMemory):
     return n
 
 
+  def numberOfDistalSegments(self, cells):
+    """
+    Returns the total number of distal segments for these cells.
+
+    Parameters:
+    ----------------------------
+    @param  cells (set or list)
+            Indices of the cells
+    """
+    n = 0
+    for cell in cells:
+      n += len(self.tm.connections.segmentsForCell(cell))
+    return n
+
+
+  def numberOfDistalSynapses(self, cells):
+    """
+    Returns the total number of distal synapses for these cells.
+
+    Parameters:
+    ----------------------------
+    @param  cells (set or list)
+            Indices of the cells
+    """
+    n = 0
+    for cell in cells:
+      segments = self.tm.connections.segmentsForCell(cell)
+      for segment in segments:
+        n += len(self.tm.connections.synapsesForSegment(segment))
+    return n
+
+
+  def reset(self):
+    """
+    Reset internal states. When learning this signifies we are to learn a
+    unique new object.
+    """
+    super(ColumnPooler, self).reset()
+    self.tm.reset()
+
+
   def _learnProximal(self,
              activeInputs, activeCells, maxNewSynapseCount, proximalPermanences,
              proximalConnections, initialPermanence, synPermProximalInc,
@@ -291,39 +349,6 @@ class ColumnPooler(ExtendedTemporalMemory):
       proximalConnections.replaceSparseRow(cell, newConnected)
 
       cellNonZeroIndices, _ = proximalPermanences.rowNonZeros(cell)
-
-
-  def _winnersBasedOnLateralActivity(self,
-                                     activeCells,
-                                     lateralInput,
-                                     minThreshold):
-    """
-    Incorporate effect of lateral activity, if any, and update the set of
-    winners.
-
-    UNIMPLEMENTED
-
-    @return (set) list of new winner cell indices
-    """
-    if len(lateralInput) == 0:
-      return activeCells
-
-    sortedWinnerIndices = activeCells
-
-    # Figure out distal input into active cells
-
-    # TODO: Reconcile and select the cells with sufficient bottom up activity
-    # plus maximal lateral activity
-
-    # Calculate winners using stable sort algorithm (mergesort)
-    # for compatibility with C++
-    # if overlaps.max() >= minThreshold:
-    #   winnerIndices = numpy.argsort(overlaps, kind='mergesort')
-    #   sortedWinnerIndices = winnerIndices[
-    #                         -self.numActiveColumnsPerInhArea:][::-1]
-    #   sortedWinnerIndices = set(sortedWinnerIndices)
-
-    return sortedWinnerIndices
 
 
   def _pickProximalInputsToLearnOn(self, newSynapseCount, activeInputs,
@@ -370,12 +395,59 @@ class ColumnPooler(ExtendedTemporalMemory):
         inputs += [candidates[i]]
         candidates.remove(candidates[i])
 
-      # print "number of new candidates:",len(inputs)
-
       return inputs, alreadyConnected
 
 
-  def _learnDistal(self, lateralInput, activeCells):
-    pass
+  def _winnersBasedOnLateralActivity(self,
+                                     activeCells,
+                                     predictiveCells,
+                                     overlaps,
+                                     targetActiveCells):
+    """
+    Given the set of cells active due to feedforward input, narrow down the
+    list of active cells based on predictions due to previous lateralInput.
 
+    Parameters:
+    ----------------------------
+    @param    activeCells           (set)
+              Indices of cells activated by bottom-up input.
 
+    @param    predictiveCells       (set)
+              Indices of cells that are laterally predicted.
+
+    @param    overlaps              (numpy array)
+              Bottom up overlap scores for each proximal segment. This is used
+              to select additional cells if the narrowed down list contains less
+              than targetActiveCells.
+
+    @param    targetActiveCells     (int)
+              The number of active cells we want to have active.
+
+    @return (set) List of new winner cell indices
+
+    """
+    # No TM accessors that return set so access internal member directly
+    predictedActiveCells = activeCells.intersection(predictiveCells)
+
+    # If predicted cells don't intersect at all with active cells, we go with
+    # bottom up input. In these cases we can stick with existing active cells
+    # and skip the overlap sorting
+    if len(predictedActiveCells) == 0:
+      predictedActiveCells = activeCells
+
+    # We want to keep all cells that were predicted and currently active due to
+    # feedforward input. This set could be larger than our target number of
+    # active cells due to unions, which is ok. However if there are insufficient
+    # cells active after this intersection, we fill in with those currently
+    # active cells that have highest overlap.
+    elif len(predictedActiveCells) < targetActiveCells:
+      # Don't want to consider cells already chosen
+      overlaps[list(predictedActiveCells)] = 0
+
+      # Add in the desired number of cells with highest activity
+      numActive = targetActiveCells - len(predictedActiveCells)
+      winnerIndices = numpy.argsort(overlaps, kind='mergesort')
+      sortedWinnerIndices = winnerIndices[-numActive:][::-1]
+      predictedActiveCells = predictedActiveCells.union(set(sortedWinnerIndices))
+
+    return predictedActiveCells
