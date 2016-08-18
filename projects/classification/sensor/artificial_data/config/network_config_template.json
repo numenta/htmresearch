@@ -46,7 +46,7 @@
       "columnCount": 2048,
       "cellsPerColumn": 32,
       "seed": 1960,
-      "temporalImp": "monitored_tm_py",
+      "temporalImp": "tm_cpp",
       "newSynapseCount": 20,
       "maxSynapsesPerSegment": 32,
       "maxSegmentsPerCell": 128,
@@ -75,13 +75,14 @@
   },
   "classifierRegionConfig": {
     "regionEnabled": true,
-    "regionName": "classifier",
-    "regionType": "py.CLAClassifierRegion",
     "regionParams": {
-      "steps": "0",
-      "implementation": "cpp",
-      "maxCategoryCount": 3,
-      "clVerbosity": 0
-    }
+      "implementation": "py",
+      "alpha": 0.01,
+      "verbosity": 0,
+      "steps": 0,
+      "maxCategoryCount": 3
+    },
+    "regionType": "py.SDRClassifierRegion",
+    "regionName": "classifier"
   }
 }

@@ -20,9 +20,11 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import numpy as np
 import csv
 from prettytable import PrettyTable
-import simplejson as json
+import simplejson
+import json
 
 from nupic.data.file_record_stream import FileRecordStream
 
@@ -34,6 +36,7 @@ from htmresearch.frameworks.classification.utils.sensor_data import (
 from htmresearch.frameworks.classification.utils.network_config import (
   generateSampleNetworkConfig,
   generateNetworkPartitions)
+from htmresearch.frameworks.classification.utils.traces import saveTraces
 
 from settings import (NUM_CATEGORIES,
                       NUM_PHASES,
@@ -47,6 +50,7 @@ from settings import (NUM_CATEGORIES,
                       USE_JSON_CONFIG)
 
 RESULTS_FILE = 'results/seq_classification_results.csv'
+TRACES_FILE = 'results/traces_%s.csv'
 
 
 
@@ -57,8 +61,9 @@ def print_and_save_results(classificationResults, expSetups):
   :param expSetups: (list of dict) experiment setups
   """
   # we don't need the file path
-  expSetups = [expSetup.pop('filePath', None) for expSetup in expSetups]
-    
+  for expSetup in expSetups:
+    del expSetup['filePath']
+
   with open(RESULTS_FILE, 'wb') as fw:
     writer = csv.writer(fw)
     c_headers = classificationResults[0].keys()
@@ -83,10 +88,10 @@ def run():
 
   if USE_JSON_CONFIG:
     with open('config/network_configs.json', 'rb') as fr:
-      networkConfigurations = json.load(fr)
+      networkConfigurations = simplejson.load(fr)
   else:
     with open("config/network_config_template.json", "rb") as jsonFile:
-      templateNetworkConfig = json.load(jsonFile)
+      templateNetworkConfig = simplejson.load(jsonFile)
       networkConfigurations = generateSampleNetworkConfig(templateNetworkConfig,
                                                           NUM_CATEGORIES)
 
@@ -108,7 +113,7 @@ def run():
                     "regionEnabled")
                   classifierType = networkConfig["classifierRegionConfig"].get(
                     "regionType")
-      
+
                   expSetup = generateSensorData(signalType,
                                                 DATA_DIR,
                                                 numPhases,
@@ -122,26 +127,31 @@ def run():
                   dataSource = FileRecordStream(streamID=expSetup['filePath'])
                   network = configureNetwork(dataSource,
                                              networkConfig)
-      
+
                   partitions = generateNetworkPartitions(networkConfig,
                                                          expSetup['numPoints'])
-      
-                  classificationAccuracy = trainNetwork(network,
-                                                        networkConfig,
-                                                        partitions,
-                                                        expSetup['numPoints'],
-                                                        VERBOSITY)
-      
-                  classificationResults.append(
-                    {
-                      'spEnabled': spEnabled,
-                      'tmEnabled': tmEnabled,
-                      'upEnabled': upEnabled,
-                      'classifierType':
-                        classifierType.split(".")[1],
-                      'classificationAccuracy':
-                        classificationAccuracy
-                    })
+
+                  traces = trainNetwork(network,
+                                        networkConfig,
+                                        partitions,
+                                        expSetup['numPoints'],
+                                        VERBOSITY)
+
+                  expId = "sp-%s_tm-%s_tp-%s" % (spEnabled,
+                                                 tmEnabled,
+                                                 upEnabled)
+                  fileName = TRACES_FILE % expId
+                  saveTraces(traces, fileName)
+                  print '==> Results saved to %s\n' % fileName
+
+                  finalAccuracy = traces['testClassificationAccuracyTrace'][-1]
+                  classificationResults.append({
+                    'spEnabled': spEnabled,
+                    'tmEnabled': tmEnabled,
+                    'upEnabled': upEnabled,
+                    'classifierType': classifierType.split(".")[1],
+                    'classificationAccuracy': finalAccuracy
+                  })
 
   print_and_save_results(classificationResults, expSetups)
 
