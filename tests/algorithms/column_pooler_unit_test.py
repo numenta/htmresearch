@@ -625,6 +625,86 @@ class ColumnPoolerTest(unittest.TestCase):
     # BU objects.
 
 
+  @unittest.skip("Test fails due to NuPIC issue #3268")
+  def testInferenceWithChangingLateralInputs(self):
+    """
+    # Test case where the lateral inputs change while learning an object.
+    # The same distal segments should continue to sample from the new inputs.
+    # During inference any of these lateral inputs should cause the pooler
+    # to disambiguate appropriately.
+    """
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      columnDimensions=[2048, 1],
+      numNeighboringColumns=2,
+      initialPermanence=0.41,
+    )
+
+    # Feed-forward representations:
+    # Object 1 = union(range(0,40), range(40,80), range(80,120))
+    # Object 2 = union(range(120, 160), range(160,200), range(200,240))
+    feedforwardInputs = [
+      [set(range(0, 40)), set(range(40, 80)), set(range(80, 120))],
+      [set(range(120, 160)), set(range(160, 200)), set(range(200, 240))]
+    ]
+
+    # Lateral representations:
+    # Object 1, Col 1 = range(200,240)
+    # Object 2, Col 1 = range(240,280)
+    # Object 1, Col 2 = range(2300,2340)
+    # Object 2, Col 2 = range(2340,2380)
+    lateralInputs = [
+      [set(range(200, 240)), set(range(240, 280))],      # External column 1
+      [set(range(2300, 2340)), set(range(2340, 2380))]   # External column 2
+    ]
+
+    # Train pooler on two objects, three iterations per object, using just
+    # lateral input from first column. Then repeat with second column.
+    objectRepresentations = []
+    for col in range(2):
+      for obj in range(2):
+        pooler.reset()
+        for i in range(3): # three iterations
+          for f in range(3): # three features per object
+            pooler.compute(
+              feedforwardInput=feedforwardInputs[obj][f],
+              activeExternalCells=lateralInputs[col][obj],
+              learn=True)
+        if col==0: objectRepresentations += [set(pooler.getActiveCells())]
+
+    # Test case where both objects are present in bottom up representation, but
+    # only one in lateral. In this case the laterally supported object
+    # should dominate after second iteration.
+
+    # Test where lateral input is from first column
+    pooler.reset()
+    pooler.compute(feedforwardInput=feedforwardInputs[0][0].union(
+                                    feedforwardInputs[1][1]),
+                   activeExternalCells=lateralInputs[0][0],
+                   learn=False)
+    pooler.compute(feedforwardInput=feedforwardInputs[0][0].union(
+                                    feedforwardInputs[1][1]),
+                   activeExternalCells=lateralInputs[0][0],
+                   learn=False)
+    self.assertEqual(sum(set(pooler.getActiveCells())),
+                     sum(objectRepresentations[0]),
+           "Incorrect object representations - expecting single object")
+
+    # Test lateral from second column
+    pooler.reset()
+    pooler.compute(feedforwardInput=feedforwardInputs[0][0].union(
+                                    feedforwardInputs[1][1]),
+                   activeExternalCells=set(lateralInputs[1][0]),
+                   learn=False)
+    pooler.compute(feedforwardInput=feedforwardInputs[0][0].union(
+                                    feedforwardInputs[1][1]),
+                   activeExternalCells=lateralInputs[1][0],
+                   learn=False)
+    self.assertEqual(sum(set(pooler.getActiveCells())),
+                     sum(objectRepresentations[0]),
+           "Incorrect object representations - expecting single object")
+
+
   def testWinnersBasedOnLateralActivity(self):
     """Tests internal pooler method _winnersBasedOnLateralActivity()."""
 
