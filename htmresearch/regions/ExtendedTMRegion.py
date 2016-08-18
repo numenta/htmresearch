@@ -157,6 +157,14 @@ class ExtendedTMRegion(PyRegion):
           dataType="UInt32",
           count=1,
           constraints=""),
+        columnDimensions=dict(
+          description="Number of colums in this temporal memory (vector"
+                      " version).",
+          dataType="Real32",
+          accessMode='ReadWrite',
+          count=0,
+          regionLevel=True,
+          isDefaultOutput=True),
         inputWidth=dict(
           description='Number of inputs to the TM.',
           accessMode='Read',
@@ -204,6 +212,16 @@ class ExtendedTMRegion(PyRegion):
           accessMode='ReadWrite',
           dataType="UInt32",
           count=1),
+        maxSegmentsPerCell=dict(
+          description="The maximum number of segments per cell",
+          accessMode='ReadWrite',
+          dataType="UInt32",
+          count=1),
+        maxSynapsesPerSegment=dict(
+          description="The maximum number of synapses per segment",
+          accessMode='ReadWrite',
+          dataType="UInt32",
+          count=1),
         permanenceIncrement=dict(
           description="Amount by which permanences of synapses are "
                       "incremented during learning.",
@@ -236,6 +254,14 @@ class ExtendedTMRegion(PyRegion):
           count=1,
           defaultValue=1,
           constraints="bool"),
+        formInternalBasalConnections=dict(
+          description="Flag to determine whether to form connections "
+                      "with internal cells within this temporal memory",
+          accessMode="ReadWrite",
+          dataType="UInt32",
+          count=1,
+          defaultValue=0,
+          constraints="bool"),
         learnOnOneCell=dict(
           description="If True, the winner cell for each column will be"
                       " fixed between resets.",
@@ -251,6 +277,20 @@ class ExtendedTMRegion(PyRegion):
           count=0,
           constraints="enum: active,predictive,predictedActiveCells",
           defaultValue="active"),
+        implementation=dict(
+          description="ETM implementation. If cpp is used, the order of steps"
+                      " will be artificially reversed, to use in L4.",
+          accessMode="ReadWrite",
+          dataType="Byte",
+          count=0,
+          constraints="enum: cpp, py",
+          defaultValue="py"),
+        monitor=dict(
+          description="If True, the temporal memory will be a monitored one",
+          accessMode="ReadWrite",
+          dataType="UInt32",
+          count=1,
+          constraints="bool"),
       ),
       commands=dict(
         reset=dict(description="Explicitly reset TM states now."),
@@ -273,9 +313,11 @@ class ExtendedTMRegion(PyRegion):
                predictedSegmentDecrement=0.0,
                seed=42,
                learnOnOneCell=1,
-               formInternalConnections = 1,
+               formInternalConnections=1,
+               formInternalBasalConnections=1,
                defaultOutputType = "active",
-               tmType="extended",
+               monitor=False,
+               implementation="cpp",
                **kwargs):
     # Defaults for all other parameters
 
@@ -294,8 +336,10 @@ class ExtendedTMRegion(PyRegion):
     self.learningMode = True
     self.inferenceMode = True
     self.formInternalConnections = bool(formInternalConnections)
+    self.formInternalBasalConnections = bool(formInternalBasalConnections)
     self.defaultOutputType = defaultOutputType
-    self.tmType = tmType
+    self.monitor = monitor
+    self.implementation = implementation
 
     PyRegion.__init__(self, **kwargs)
 
@@ -314,15 +358,24 @@ class ExtendedTMRegion(PyRegion):
       args["columnDimensions"] = (self.columnCount,)
 
       # Create the TM instance
-      self._tm = createModel(self.tmType, **args)
+      if self.monitor:
+        self._tm = createModel("extendedMixin", **args)
+      elif self.implementation == "cpp":
+        del args["columnCount"]
+        del args["formInternalConnections"]
+        del args["monitor"]
+        del args["implementation"]
+        del args["learningMode"]
+        del args["inferenceMode"]
+        del args["defaultOutputType"]
+        del args["_tm"]
+        self._tm = createModel("extendedCPP", **args)
+      else:
+        self._tm = createModel("extended", **args)
 
       # numpy arrays we will use for some of the outputs
       self.activeState = numpy.zeros(self._tm.numberOfCells())
       self.previouslyPredictedCells = numpy.zeros(self._tm.numberOfCells())
-
-      # FIXME: for now we delay the feedforward and apical input
-      self.prevActiveColumns = None
-      self.prevApicalInput = None
 
 
   def compute(self, inputs, outputs):
@@ -337,27 +390,21 @@ class ExtendedTMRegion(PyRegion):
 
     activeColumns = set(numpy.where(inputs["feedForwardInput"] == 1)[0])
 
-    # FIXME: for now we delay the feedforward and apical input
-    if self.prevActiveColumns is None:
-      self.prevActiveColumns = activeColumns
+    if "apicalInput" in inputs:
+      activeApicalCells = set(numpy.where(inputs["apicalInput"] == 1)[0])
+    else:
+      activeApicalCells = None
 
     if "externalInput" in inputs:
       activeExternalCells = set(numpy.where(inputs["externalInput"] == 1)[0])
     else:
       activeExternalCells = None
 
-    self._tm.compute(self.prevActiveColumns,
+    self._tm.compute(activeColumns,
                      activeExternalCells=activeExternalCells,
-                     activeApicalCells=self.prevApicalInput,
+                     activeApicalCells=activeApicalCells,
                      formInternalConnections=self.formInternalConnections,
                      learn=self.learningMode)
-
-    # FIXME: for now we delay the feedforward and apical input
-    self.prevActiveColumns = activeColumns
-    if "apicalInput" in inputs:
-      self.prevApicalInput = set(numpy.where(inputs["apicalInput"] == 1)[0])
-    else:
-      self.prevApicalInput = None
 
     # Compute predictedActiveCells explicitly
     self.activeState[:] = 0
@@ -382,19 +429,10 @@ class ExtendedTMRegion(PyRegion):
     else:
       raise Exception("Unknown outputType: " + self.defaultOutputType)
 
-    # FIXME: for now we delay the feedforward input, need to still compute last
-    if "delayedReset" in inputs:
-      del inputs["delayedReset"]
-      return
-
     # Handle reset after current input has been processed
     if "resetIn" in inputs:
       assert len(inputs["resetIn"]) == 1
       if inputs["resetIn"][0] != 0:
-        inputs["delayedReset"] = True
-        self.compute(inputs, outputs)
-        self.prevActiveColumns = None
-        self.prevApicalInput = None
         self.reset()
 
 
