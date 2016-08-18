@@ -181,7 +181,79 @@ def simulateL2CellPairsFalseMatch(b1, n=2048, w=40, m=10, c=10, k=100):
   return overlapList
 
 
-def computeL2CellPairsFalseMatchChance(b1Val, b2Val, nVal, mVal, wVal, kVal, cVal):
+def computeL2CellPairsFalseMatchChance(thetaVal, nVal, mVal, wVal, kVal, cVal):
+  n = Symbol("n", positive=True)
+  m = Symbol("m", positive=True)
+  w = Symbol("w", positive=True)
+  k = Symbol("k", positive=True)
+  c = Symbol("c", positive=True)
+  b1 = Symbol("b1", positive=True)
+  b2 = Symbol("b2", positive=True)
+
+  numOverlap = n * m * (1 - pow(1 - (c * c) / (w * n * m), k))
+  numCellsInUnion = n * m * (1 - pow(1 - c / (n * m), k))
+  numTotal = binomial(n*m - numCellsInUnion, w-b1) * binomial(numCellsInUnion, b1)
+
+  numCellsInUnionVal = int(numCellsInUnion.subs(k, kVal).subs(c, cVal).\
+    subs(n, nVal).subs(m, mVal).evalf())
+
+  numOverlapVal = int(
+    numOverlap.subs(k, kVal).subs(c, cVal).subs(n, nVal).subs(m, mVal).subs(
+      w, wVal).evalf())
+
+  pFalseMatchPair = 0
+
+  pFalseMatchb1ValDict = {}
+  pFalseMatchb1b2Dict  = {}
+  pFalseMatchb2Givenb1Dict = {}
+  for b1Val in range(thetaVal+1, wVal+1):
+    p = numCellsInUnion / (n * m)
+    pFalseMatchb1 = binomial(w, b1) * pow(p, b1) * pow(1 - p, w - b1)
+    pFalseMatchb1Val = pFalseMatchb1.subs(b1, b1Val).subs(n, nVal).\
+      subs(m, mVal).subs(k, kVal).subs(w, wVal).subs(c, cVal).evalf()
+
+    numTotalVal = numTotal.subs(n, nVal).subs(m, mVal). \
+      subs(k, kVal).subs(w, wVal).subs(c, cVal).subs(b1, b1Val).evalf()
+
+    pFalseMatchb1ValDict[b1Val] = pFalseMatchb1Val
+
+    for b2Val in range(thetaVal+1, wVal+1):
+
+      minI = max(max(b1Val - (numCellsInUnionVal - numOverlapVal), 0),
+                 max(b2Val - (numCellsInUnionVal - numOverlapVal), 0),
+                 max(b1Val + b2Val - wVal, 0))
+
+      maxI = min(b1Val, b2Val)
+
+      if minI > maxI:
+        continue
+      numMatchPair = 0
+      for i in range(minI, maxI+1):
+        numMatchPair += (binomial(numOverlapVal, i) *
+                         binomial(numCellsInUnionVal - numOverlapVal, b2Val - i) *
+                         binomial(numCellsInUnionVal - numOverlapVal, b1Val - i) *
+                         binomial(nVal*mVal-2*numCellsInUnionVal + numOverlapVal,
+                                  wVal-b1Val-b2Val+i))
+
+      pFalseMatchb2Givenb1 = (numMatchPair / numTotalVal)
+
+      pFalseMatchb2Givenb1Dict[(b1Val, b2Val)] = pFalseMatchb2Givenb1
+      pFalseMatchb1b2Dict[(b1Val, b2Val)] = pFalseMatchb2Givenb1 * pFalseMatchb1Val
+      pFalseMatchPair += pFalseMatchb2Givenb1 * pFalseMatchb1Val
+
+  pFalseMatchSingleCell = np.sum(np.array(pFalseMatchb1ValDict.values()))
+
+  return pFalseMatchPair, pFalseMatchSingleCell
+
+
+
+def computeL2CellPairsFalseMatchConditionalProb(
+        b1Val, b2Val, nVal, mVal, wVal, kVal, cVal):
+  """
+  Given that an L4 SDR with b1=10 bits overlap with L2 cell 1
+  What is the chance that this SDR has b2=10 bits overlap with L2 cell 2?
+  """
+
   n = Symbol("n", positive=True)
   m = Symbol("m", positive=True)
   w = Symbol("w", positive=True)
@@ -197,33 +269,33 @@ def computeL2CellPairsFalseMatchChance(b1Val, b2Val, nVal, mVal, wVal, kVal, cVa
   numOverlapVal = int(numOverlap.subs(k, kVal).subs(c, cVal).subs(n, nVal).subs(m, mVal).subs(w, wVal).evalf())
   numCellsInUnionVal = int(numCellsInUnion.subs(k, kVal).subs(c, cVal).subs(n, nVal).subs(m, mVal).evalf())
 
+  numTotalVal = numTotal.subs(b1, b1Val).subs(b2, b2Val).\
+    subs(n, nVal).subs(m, mVal).subs(k, kVal).subs(w, wVal).subs(c, cVal).evalf()
+  print "Total SDR # ", numTotalVal
+
   minI = max(max(b1Val - (numCellsInUnionVal - numOverlapVal), 0),
              max(b2Val - (numCellsInUnionVal - numOverlapVal), 0))
 
   maxI = min(b1Val, b2Val)
   numMatchPair = 0
   for i in range(minI, maxI+1):
-    numMatchPair += (binomial(numOverlap, i) *
-                     binomial(numCellsInUnion - numOverlap, b2 - i) *
-                     binomial(numCellsInUnion - numOverlap, b1 - i) *
-                     binomial(n*m-2*numCellsInUnion + numOverlap, w-b1-b2+i))
+    numMatchPair += (binomial(numOverlapVal, i) *
+                     binomial(numCellsInUnionVal - numOverlapVal, b2Val - i) *
+                     binomial(numCellsInUnionVal - numOverlapVal, b1Val - i) *
+                     binomial(nVal * mVal - 2 * numCellsInUnionVal + numOverlapVal,
+                       wVal - b1Val - b2Val + i))
 
-  numTotalVal = numTotal.subs(b1, b1Val).subs(b2, b2Val).\
-    subs(n, nVal).subs(m, mVal).subs(k, kVal).subs(w, wVal).subs(c, cVal).evalf()
-  print "Total SDR # ", numTotalVal
+  pFalseMatchPair = numMatchPair / numTotalVal
 
-  numMatchPairVal = numMatchPair.subs(b1, b1Val).subs(b2, b2Val).\
-    subs(n, nVal).subs(m, mVal).subs(k, kVal).subs(w, wVal).subs(c, cVal).evalf()
-  print "Qualified SDR # ", numMatchPairVal
-  pFalseMatchPair = numMatchPair / numTotal
-  pFalseMatchPairVal = pFalseMatchPair.subs(b1, b1Val).subs(b2, b2Val).\
-    subs(n, nVal).subs(m, mVal).subs(k, kVal).subs(w, wVal).subs(c, cVal).evalf()
-
-  return pFalseMatchPairVal.evalf()
+  return pFalseMatchPair
 
 
 
-def plotFalseMatchError(cValList, thetaValList):
+def plotFalseMatchErrorSingleCell(cValList, thetaValList):
+  """
+  False Match error for single L2 cell
+  :param cValList:
+  """
   kValList = np.arange(0, 500, 10)
 
   fig, ax = plt.subplots(2, 1)
@@ -247,7 +319,6 @@ def plotFalseMatchError(cValList, thetaValList):
     ax[0].semilogy(kValList, FalseMatchRateSDR, colorList[i])
     ax[1].plot(kValList, numConnectedCells, colorList[i])
 
-
   ax[0].set_xlabel('# (feature, location)')
   ax[0].set_ylabel('SDR false match error')
   ax[0].set_ylim([pow(10, -13), 1])
@@ -257,7 +328,8 @@ def plotFalseMatchError(cValList, thetaValList):
   ax[1].set_ylabel('# connections')
 
 
-def runExperimentFalseMatchPairError():
+
+def runExperimentFalseMatchConditionalPairError():
   nVal = 2048
   mVal = 10
   wVal = 40
@@ -268,7 +340,7 @@ def runExperimentFalseMatchPairError():
   cValList = [15, 20, 25, 30, 35, 38, 39, 40]
   pFalseMatchPair = []
   for cVal in cValList:
-    pFalseMatchPair.append(computeL2CellPairsFalseMatchChance(
+    pFalseMatchPair.append(computeL2CellPairsFalseMatchConditionalProb(
       b1Val, b2Val, nVal, mVal, wVal, kVal, cVal))
 
   print "Verify Equation with simulations"
@@ -278,6 +350,8 @@ def runExperimentFalseMatchPairError():
                                               kVal)
     pFalseMatchPairSimulate.append(np.mean(b2Overlap==b2Val))
 
+    print "b1 {} b2 {} c {} prob {}".format(
+      b1Val, b2Val, cVal, pFalseMatchPairSimulate[-1])
 
   fig, ax = plt.subplots(1)
   ax.plot(cValList, pFalseMatchPair,'-o')
@@ -285,17 +359,44 @@ def runExperimentFalseMatchPairError():
   ax.set_ylabel("P(oj=10|oi=10)")
   ax.set_xlabel("Connection # per SDR")
   plt.legend(['equation', 'simulation'])
-  plt.savefig('FalseMatchPairErrorVsC.pdf')
+  plt.savefig('ConditionalFalseMatchPairErrorVsC.pdf')
 
 
-if __name__ == "__main__":
 
+def runExperimentSingleVsPairMatchError():
   nVal = 2048
   mVal = 10
   wVal = 40
-  cVal = 10
+  kVal = 100
+  thetaValList = [3, 6, 12, 18, 24]
+  cValList = [5, 10, 20, 30, 40]
 
-  overlapList = simulateL2CellPairsFalseMatch(b1, nVal, wVal, mVal, cVal, k=100)
+  pFalseMatchPairSingle = []
+  pFalseMatchPairList = []
+  for i in range(len(cValList)):
+    pFalseMatchPair, pFalseMatchSingleCell = computeL2CellPairsFalseMatchChance(
+      thetaValList[i], nVal, mVal, wVal, kVal, cValList[i])
+
+    print "c={} theta={} single error {} pair error {}".format(cValList[i],
+                                                            thetaValList[i],
+                                                            pFalseMatchSingleCell,
+                                                            pFalseMatchPair)
+    pFalseMatchPairSingle.append(pFalseMatchSingleCell)
+    pFalseMatchPairList.append(pFalseMatchPair)
+
+  fig, ax = plt.subplots(1)
+  ax.semilogy(cValList, pFalseMatchPairSingle, '-bo')
+  ax.semilogy(cValList, pFalseMatchPairList, '-go')
+  ax.set_ylabel('False Match Error')
+  ax.set_xlabel('# connections per pattern')
+  plt.legend(['single L2', 'L2 neuron pairs'])
+  plt.savefig('FalseMatchPairErrorVsC.pdf')
+
+
+def runExperimentUnionSize():
+  nVal = 2048
+  mVal = 10
+  wVal = 40
 
   fig, ax = plt.subplots(1, 1)
   legendList = []
@@ -323,12 +424,33 @@ if __name__ == "__main__":
   ax.legend(legendList, loc=2)
   plt.savefig('UnionSizeVsK.pdf')
 
-  plotFalseMatchError(cValList=[40, 40, 40, 40], thetaValList=[5, 10, 20, 30])
+
+if __name__ == "__main__":
+
+  nVal = 2048
+  mVal = 10
+  wVal = 40
+  cVal = 10
+
+  # plot the number of L4 cells that are connected to L2, as a function of
+  # (feature locaiton) pairs per object
+  runExperimentUnionSize()
+
+  # plot the false match error for single L2 cell
+  plotFalseMatchErrorSingleCell(cValList=[40, 40, 40, 40], thetaValList=[5, 10, 20, 30])
   plt.savefig('FalseMatchErrVsK_FixedCVaryingTheta.pdf')
 
-  plotFalseMatchError(cValList=[10, 20, 30, 40], thetaValList=[10, 10, 10, 10])
+  plotFalseMatchErrorSingleCell(cValList=[10, 20, 30, 40], thetaValList=[10, 10, 10, 10])
   plt.savefig('FalseMatchErrVsK_FixedThetaVaryingC.pdf')
 
-  plotFalseMatchError(cValList=[5, 10, 20, 30, 40], thetaValList=[3, 6, 12, 18, 24])
+  plotFalseMatchErrorSingleCell(cValList=[5, 10, 20, 30, 40], thetaValList=[3, 6, 12, 18, 24])
   plt.savefig('FalseMatchErrVsK_VaryingThetaandC.pdf')
 
+  # plot conditional false match error
+  # given that an L4 SDR with b1=10 bits overlap with L2 cell 1
+  # what is the chance that this SDR has b2=10 bits overlap with L2 cell 2?
+  runExperimentFalseMatchConditionalPairError()
+
+  # plot simultaneous false match error for a pair of L2 cells
+  # what is the chance that an L4 SDR falsely activate two L2 cells?
+  runExperimentSingleVsPairMatchError()
