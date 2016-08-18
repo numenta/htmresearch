@@ -350,7 +350,9 @@ class TemporalMemory(object):
                           self.permanenceDecrement)
 
       if isLearningSegment:
-        n = self.maxNewSynapseCount - len(activeSynapses)
+        n = min(self.maxNewSynapseCount,
+                connections.maxSynapsesPerSegment
+                - len(connections.synapsesForSegment(segment)))
 
         for presynapticCell in self.pickCellsToLearnOn(n,
                                                        segment,
