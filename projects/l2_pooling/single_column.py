@@ -20,6 +20,7 @@
 
 import random
 import collections
+import matplotlib.pyplot as plt
 
 try:
   import htmsanity.nupic.runner as sanity
@@ -125,7 +126,7 @@ class SingleColumnL4L2Experiment(object):
 
   def learnObjects(self, debug=False):
     """
-    Learns all objects.
+    Learns all objects in self.objects.
     """
     for object in self.objects:
       iterations = 0
@@ -155,7 +156,7 @@ class SingleColumnL4L2Experiment(object):
         self.network.run(iterations)
 
 
-  def inferObject(self, objectIndex, order="first", addNoise=False):
+  def infer(self, pairs, objectIndex, noise=None):
     """
     Go over a list of locations / features and tries to recognize an object.
 
@@ -165,11 +166,38 @@ class SingleColumnL4L2Experiment(object):
     """
     self._unsetLearningMode()
 
+    statistics = collections.defaultdict(list)
+
+    # send first signal
+    self._addPointToQueue(pairs[0], noise=noise)
+    self.network.run(1)
+
+    if self.sanity and not self.sanityStarted:
+      sanity.patchETM(self.L4Column._tm)
+      self.sanityStarted = True
+
+    for pair in pairs:
+      self._addPointToQueue(pair, noise=noise)
+      self.network.run(1)
+      self._updateInferenceStats(statistics, objectIndex)
+
+    # send reset signal
+    self._addPointToQueue(pairs[-1], reset=True, noise=noise)
+    self.network.run(1)
+
+    # save statistics
+    self.statistics.append(statistics)
+
+
+  def inferObject(self, objectIndex, order="first", noise=None):
+    """
+    Simply infer a particular object, in the specified order.
+
+    Noise can be added to the patterns.
+    """
     pairs = self.objects[objectIndex]
     if len(pairs) == 0:
       raise ValueError("No location/feature pair for specified object")
-
-    statistics = collections.defaultdict(list)
 
     # determine order to go over pairs
     idx = range(len(pairs))
@@ -184,45 +212,61 @@ class SingleColumnL4L2Experiment(object):
       assert(set(order) == set(range(pairs)))
       idx = order
 
-    # send first signal
-    self._addPointToQueue(pairs[idx[0]])
-    self.network.run(1)
-
-    if self.sanity and not self.sanityStarted:
-      sanity.patchETM(self.L4Column._tm)
-      self.sanityStarted = True
-
-    for i in idx:
-      self._addPointToQueue(pairs[i])
-      self.network.run(1)
-      self._updateInferenceStats(statistics, objectIndex)
-
-    # send reset signal
-    self._addPointToQueue(pairs[idx[-1]], reset=True)
-    self.network.run(1)
-
-    # save statistics
-    self.statistics.append(statistics)
+    orderedPairs = [pairs[i] for i in idx]
+    self.infer(orderedPairs, objectIndex, noise=noise)
 
 
   def _unsetLearningMode(self):
+    """
+    Unsets the learning mode, to start inference.
+    """
     self.L2Column.setParameter("learningMode", 0, 0)
     self.L4Column.setParameter("learningMode", 0, 0)
 
 
-  def _addPointToQueue(self, pair, reset=False, sequenceId=0):
+  def _addPointToQueue(self, pair, reset=False, sequenceId=0, noise=None):
     """
-    :param pair:
-    :param reset:
+    :param pair:         (int, int) Indices of feature and location
+    :param reset:        (bool)     If True, a reset signal is sent at the end
+    :param sequenceId:   (int)      (Optional) Sequence ID
+    :param noise:        (float)    Noise level. Set to None for no noise
     :return:
     """
-    location, feature = pair
+    locIdx, featIdx = pair
+    feature = self.features[featIdx]
+    if locIdx == -1:
+      location = None
+    else:
+      location =self.locations[locIdx]
+
+    if noise is not None:
+      location = self._addNoise(location, noise)
+      feature = self._addNoise(feature, noise)
+
     self.sensorInput.addDataToQueue(
-      list(self.features[feature]), int(reset), sequenceId
+      list(feature), int(reset), sequenceId
     )
     self.externalInput.addDataToQueue(
-      list(self.locations[location]), int(reset), sequenceId
+      list(location), int(reset), sequenceId
     )
+
+
+  def _addNoise(self, pattern, noise):
+    """
+    Adds noise the given pattern.
+    """
+    if pattern is None:
+      return None
+
+    newBits = set()
+
+    for bit in pattern:
+      if random.random() < noise:
+        newBits.add(random.randint(0, max(pattern)))
+      else:
+        newBits.add(bit)
+
+    return newBits
 
 
   def _updateInferenceStats(self, statistics, objectIndex):
@@ -234,11 +278,6 @@ class SingleColumnL4L2Experiment(object):
     L4Representation = self._getL4Representation()
     L4PredictiveCells = self._getL4PredictiveCells()
     L2Representation = self._getL2Representation()
-
-    if len(L4Representation) > 100:
-      print "BURSTING"
-      print sorted(list(L4PredictiveCells))
-      print sorted(list(L4Representation))
 
     objectRepresentation = self.objectL2Representations[objectIndex]
     statistics["L4_representation"].append(len(L4Representation))
@@ -252,29 +291,61 @@ class SingleColumnL4L2Experiment(object):
   def plotInferenceStats(self, index, keys, path):
     """
     Plots and saves the desired inference statistics.
-    :param index:
-    :param keys:
-    :param path:
+    :param index:     (int)          Experiment index in self.statistics
+    :param keys:      (list(string)) Keys of statistics to plot
+    :param path:      (string)       Path to save the plot
     """
-    pass
+    plt.figure(1)
+    stats = self.statistics[index]
+
+    # plot request stats
+    for key in keys:
+      plt.plot(stats[key], figure=1, marker='+', label=key)
+
+    # format
+    plt.legend(loc="upper left")
+    plt.xlabel("Sensation #")
+    plt.xticks(range(len(stats[key])))
+    plt.ylabel("Number of active bits")
+    plt.ylim(plt.ylim()[0], plt.ylim()[1] + 5)
+    plt.title("Object inference")
+
+    # save
+    plt.savefig(path)
 
 
   def createObjects(self, numObjects, numPoints):
     """
-    :param numObjects:     (int)  Number of objects to create
-    :param numPoints:      (int)  Number of points per object
-    :param numCommons:
+    Simply creates numObjects, each of them having numPoints feature/location
+    pairs.
+
+    The pairs would be drawn randomly, set setObjects() to create personalized
+    experiments.
     """
-    objectA = [(3, 3), (1, 1), (3, 3), (2, 2), (1, 1)]
-    objectB = [(1, 1), (3, 5), (10, 10)]
-    self.objects = [objectA, objectB]
+    self.objects = []
+    for _ in xrange(numObjects):
+      self.objects.append(
+        [(random.randint(0, len(self.locations)-1),
+          random.randint(0, len(self.features)-1)) for _ in xrange(numPoints)]
+      )
+
+
+  def setObjects(self, objects):
+    """
+    Sets the experiment's object to work on.
+
+    The format should be a list of lists of tuples. Each list corresponds to
+    one object, and is a list of the (location, feature) indices on that
+    object.
+    """
+    self.objects = objects
 
 
   def _generateLocations(self, numBits, numLocations=100, size=None):
     """
     Generates a pool of locations to be used for the experiments.
 
-    :return:       (list(s  `et))  List of patterns
+    :return:       (list(set))  List of patterns
     """
     return [self.generatePattern(numBits, size) for _ in xrange(numLocations)]
 
@@ -303,25 +374,37 @@ class SingleColumnL4L2Experiment(object):
 
 
   def _getL4Representation(self):
+    """
+    Returns the active representation in L4.
+    """
     return set(self.L4Column._tm.getActiveCells())
 
 
   def _getL4PredictiveCells(self):
+    """
+    Returns the predictive cells in L4.
+    """
     return set(self.L4Column._tm.getPredictiveCells())
 
 
   def _getL2Representation(self):
+    """
+    Returns the active representation in L2.
+    """
     return set(self.L2Column._pooler.getActiveCells())
+
 
 
 if __name__ == "__main__":
   exp = SingleColumnL4L2Experiment(NETWORK_CONFIG,
                                    numObjects=2,
-                                   numLearningPoints=20,
+                                   numLearningPoints=3,
                                    useSanity=False)
-  exp.createObjects(1, 1)
-
+  exp.createObjects(3, 5)
   exp.learnObjects(debug=False)
-  exp.inferObject(objectIndex=0, addNoise=False)
-
-  print exp.statistics
+  exp.inferObject(objectIndex=0, noise=False)
+  exp.plotInferenceStats(
+    index=0,
+    keys=["L2_representation", "L2_overlap_with_object", "L4_representation"],
+    path="test.png"
+  )

@@ -36,21 +36,32 @@ class MonitoredTemporalMemory(TemporalMemoryMonitorMixin, TemporalMemory):
   pass
 
 
-
 class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin,
                                       ExtendedTemporalMemory):
   pass
 
 
-
 class ReversedExtendedTemporalMemory(FastETM):
+  """
+  Modified version of ETM. Should be implemented (or at least allowed) when
+  the "new" ETM is ported to Python.
+
+  This class inherits from Python binding of nupic.core's extended temporal
+  memory, to overwrite its compute() function. The goal is to reverse the two
+  steps of inference: depolarize before activate, so that external and
+  proximal input are used at the same time step.
+  """
+
   def compute(self,
               activeColumns,
               activeExternalCells=None,
               activeApicalCells=None,
               formInternalConnections=False,
               learn=True):
-    # custom compute, using C++ API for now
+    """
+    Use bindings methods to reverse the calls in compute.
+    """
+    # sort indices for consistency with C++ version
     activeColumns = sorted(list(activeColumns))
     activeExternalCells = sorted(list(activeExternalCells))
     activeApicalCells = sorted(list(activeApicalCells))
