@@ -35,9 +35,6 @@ from nupic.engine import pyRegions
 
 from htmresearch.support.register_regions import registerResearchRegion
 
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-
 _PY_REGIONS = [r[1] for r in pyRegions]
 _LOGGER = logging.getLogger(__name__)
 logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.DEBUG,
@@ -108,9 +105,7 @@ def _createSensorRegion(network, regionConfig, dataSource, encoder=None,
     registering a region that is outside the expected "regions/" dir.
   @return sensorRegion: (PyRegion) Sensor region of the network.
   """
-  regionType = regionConfig["regionType"]
   regionName = regionConfig["regionName"]
-  regionParams = regionConfig["regionParams"]
   encoders = regionConfig["encoders"]
   if not encoders:
     encoders = encoder
@@ -397,14 +392,16 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
   classifierRegion = network.regions[
     networkConfig["classifierRegionConfig"].get("regionName")]
   if networkConfig['tpRegionConfig'].get('regionEnabled'):
-    tpRegion = network.regions[networkConfig['tpRegionConfig'].get('regionName')]
+    tpRegion = network.regions[
+      networkConfig['tpRegionConfig'].get('regionName')]
   else:
     tpRegion = None
 
   trackTMmetrics = False
   # track TM metrics if monitored_tm_py implementation is being used
   if networkConfig["tmRegionConfig"].get("regionEnabled"):
-    tmRegion = network.regions[networkConfig["tmRegionConfig"].get("regionName")]
+    tmRegion = network.regions[
+      networkConfig["tmRegionConfig"].get("regionName")]
 
     if tmRegion.getParameter("temporalImp") == "monitored_tm_py":
       trackTMmetrics = True
@@ -415,10 +412,13 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
 
   # Keep track of the regions that have been trained.
   trainedRegionNames = []
+
   # Number of correctly classified records
   numCorrectlyClassifiedRecords = 0
   numCorrectlyClassifiedTestRecords = 0
   numTestRecords = 0
+
+  # Network traces
   sensorValueTrace = []
   classificationAccuracyTrace = []
   testClassificationAccuracyTrace = []
@@ -430,12 +430,12 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
 
     # Run the network for a single iteration.
     network.run(1)
-    
+
     if tpRegion:
       tpActiveCells = tpRegion.getOutputData("mostActiveCells")
       tpActiveCells = tpActiveCells.nonzero()[0]
       tpActiveCellsTrace.append(tpActiveCells)
-      
+
     if tmRegion:
       tmPredictedActiveCells = tmRegion.getOutputData("predictedActiveCells")
       tmPredictedActiveCells = tmPredictedActiveCells.nonzero()[0]
@@ -443,7 +443,7 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
       tmActiveCells = tmActiveCells.nonzero()[0]
       tmActiveCellsTrace.append(tmActiveCells)
       tmPredictedActiveCellsTrace.append(tmPredictedActiveCells)
-    
+
     sensorValueTrace.append(sensorRegion.getOutputData("sourceOut")[0])
     actualCategory = sensorRegion.getOutputData("categoryOut")[0]
     inferredCategory = _getClassifierInference(classifierRegion)
@@ -461,8 +461,6 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
 
       activeColsTrace = tm.mmGetTraceActiveColumns()
       predictedActiveColsTrace = tm.mmGetTracePredictedActiveColumns()
-      predictedActiveCellsTrace = tm.mmGetTracePredictedActiveCells()
-      activeCellsTrace = tm._mmTraces["activeCells"]
 
       if tmRegion.getParameter("learningMode") and recordNumber % 100 == 0:
         (avgPredictedActiveCols,
@@ -518,7 +516,7 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
     'classificationAccuracyTrace': classificationAccuracyTrace,
     'testClassificationAccuracyTrace': testClassificationAccuracyTrace,
     'sensorValueTrace': sensorValueTrace,
-    'categoryTrace': categoryTrace ,
+    'categoryTrace': categoryTrace,
     'tmActiveCellsTrace': tmActiveCellsTrace,
     'tmPredictiveActiveCellsTrace': tmPredictedActiveCellsTrace,
     'tpActiveCellsTrace': tpActiveCellsTrace
@@ -527,11 +525,6 @@ def trainNetwork(network, networkConfig, networkPartitions, numRecords,
   if trackTMmetrics:
     traces['activeColsTrace'] = activeColsTrace.data
     traces['predictedActiveColsTrace'] = predictedActiveColsTrace.data
-
-    _plotTMActivation(tm, sensorValueTrace,
-                      numberOfSPCellsToPlot=2048,
-                      numberOfTMCellsToPlot=65536,
-                      numRecordsToPlot=numRecords)
 
   return traces
 
@@ -578,55 +571,6 @@ def _inspectTMPredictionQuality(tm, numRecordsToInspect):
 
 
 
-def _plotTMActivation(tm,
-                      sensorValueTrace=None,
-                      numRecordsToPlot=100,
-                      numberOfSPCellsToPlot=100,
-                      numberOfTMCellsToPlot=100):
-  """ Plot activeCells, activeCols and predictiveActiveCells for the most
-  recent numRecordsToPlot input records
-  If sensorValueTrace is provided, plot sensorValues along with TM activation
-  """
-  cellsToDisplay = set(range(numberOfTMCellsToPlot))
-  colsToDisplay = set(range(numberOfSPCellsToPlot))
-
-  plt.figure(figsize=(8, 10))
-  if sensorValueTrace is None:
-    nrows = 4
-  else:
-    nrows = 5
-
-  f, ax = plt.subplots(nrows, sharex=True)
-
-  activeColsTrace = tm.mmGetTraceActiveColumns()
-  _plotCellTraces(ax[0], activeColsTrace.data[-numRecordsToPlot:],
-                  colsToDisplay,
-                  "activeCols")
-
-  predictedActiveColsTrace = tm.mmGetTracePredictedActiveColumns()
-  _plotCellTraces(ax[1], predictedActiveColsTrace.data[-numRecordsToPlot:],
-                  cellsToDisplay,
-                  "predictiedActiveCols")
-
-  predictedActiveCellsTrace = tm.mmGetTracePredictedActiveCells()
-  _plotCellTraces(ax[2], predictedActiveCellsTrace.data[-numRecordsToPlot:],
-                  cellsToDisplay,
-                  "predictiedActiveCells")
-
-  # TODO: Add activeCell Trace accessor in temporal_memory_monitor_mixin
-  activeCellsTrace = tm._mmTraces["activeCells"]
-  _plotCellTraces(ax[3], activeCellsTrace.data[-numRecordsToPlot:],
-                  cellsToDisplay,
-                  "activeCells")
-
-  if sensorValueTrace is not None:
-    ax[4].plot(sensorValueTrace[-numRecordsToPlot:])
-    ax[4].set_ylabel('Sensor Values')
-  plt.show()
-  plt.pause(.1)
-
-
-
 def getEncoderParam(networkConfig, encoderName, paramName):
   """
   Get the value of an encoder parameter for the sensor region.
@@ -638,39 +582,3 @@ def getEncoderParam(networkConfig, encoderName, paramName):
   """
   return networkConfig["sensorRegionConfig"]["encoders"][encoderName].get(
     paramName)
-
-
-
-def _plotCellTraces(ax, cellTrace, cellsToDisplay, activityType):
-  numberOfCellsTODisplay = len(cellsToDisplay)
-  data = numpy.zeros((numberOfCellsTODisplay, 1))
-  for i in xrange(len(cellTrace)):
-    activity = numpy.zeros((numberOfCellsTODisplay, 1))
-
-    activeIndices = cellTrace[i].intersection(cellsToDisplay)
-    activity[list(activeIndices)] = 1
-    data = numpy.concatenate((data, activity), 1)
-
-  add2DArray(ax, data, xlabel="Time", ylabel=activityType)
-  plt.draw()
-
-
-
-def add2DArray(ax, data, xlabel=None, ylabel=None, cmap=None,
-               aspect="auto", interpolation="nearest"):
-  """ Adds an image to the plot's figure.
-
-  @param data a 2D array. See matplotlib.Axes.imshow documentation.
-  @param xlabel text to be displayed on the x-axis
-  @param ylabel text to be displayed on the y-axis
-  @param cmap color map used in the rendering
-  @param aspect how aspect ratio is handled during resize
-  @param interpolation interpolation method
-  """
-  if cmap is None:
-    # The default colormodel is an ugly blue-red model.
-    cmap = cm.Greys
-
-  ax.imshow(data, cmap=cmap, aspect=aspect, interpolation=interpolation)
-  ax.set_xlabel(xlabel)
-  ax.set_ylabel(ylabel)
