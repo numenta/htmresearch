@@ -18,9 +18,16 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+"""
+This file introduces a class to easily create single-column L2-L4 experiments.
+
+Functions at the end show how to create such experiments.
+"""
+
 import random
 import collections
 import matplotlib.pyplot as plt
+from tabulate import tabulate
 
 try:
   import htmsanity.nupic.runner as sanity
@@ -78,21 +85,24 @@ class SingleColumnL4L2Experiment(object):
 
   def __init__(self,
                netConfig,
-               numObjects,
                useSanity=False,
-               numBits=20,
+               numInputBits=20,
                numLearningPoints=4,
                overrides=None,
-               seed=40):
+               seed=42):
     """
-    :param config:      (dict)  Default network parameters
-    :param overrides:   (dict)  Overrides
+    :param netConfig:        (dict)  Default network parameters
+    :param useSanity:        (bool)  Whether or not to use sanity
+    :param numInputBits:     (int)   Number of input bits
+    :param numLearningPoints (int)   Number of iterations to learn a pattern
+                                     in L4
+    :param overrides:        (dict)  Overrides
+    :param seed:             (int)   Seed to use
     """
     registerAllResearchRegions()
 
     self.config = dict(netConfig)
     self.numLearningPoints = numLearningPoints
-    self.numObjects = numObjects
     random.seed(seed)
 
     # update parameters with overrides
@@ -112,8 +122,8 @@ class SingleColumnL4L2Experiment(object):
     self.L4Column = self.network.regions["L4Column_0"].getSelf()
     self.L2Column = self.network.regions["L2Column_0"].getSelf()
 
-    self.locations = self._generateLocations(numBits=numBits)
-    self.features = self._generateFeatures(numBits=numBits)
+    self.locations = self._generateLocations(numBits=numInputBits)
+    self.features = self._generateFeatures(numBits=numInputBits)
     self.objects = []
     # will be populated during training
     self.objectL2Representations = []
@@ -124,10 +134,15 @@ class SingleColumnL4L2Experiment(object):
       self.sanityStarted = False
 
 
-  def learnObjects(self, debug=False):
+  def learnObjects(self, debug=False, profile=False):
     """
     Learns all objects in self.objects.
+
+    :param debug:    (bool) Use debugging tools (currently only sanity)
+    :param profile:  (bool) If true, will print profile info at the end
     """
+    self.network.resetProfiling()
+
     for object in self.objects:
       iterations = 0
       if len(object) == 0:
@@ -155,15 +170,25 @@ class SingleColumnL4L2Experiment(object):
       if iterations > 0:
         self.network.run(iterations)
 
+    if profile:
+      self._profile(source="learning")
 
-  def infer(self, pairs, objectIndex, noise=None):
+
+  def infer(self, pairs, objectIndex, noise=None, profile=False):
     """
     Go over a list of locations / features and tries to recognize an object.
 
     It updates various statistics as it goes.
     Note: locations / feature pairs are usually sorted in descending order
     of number of objects that have them.
+
+    :param pairs:        (list(tuple)) List of pairs of location and feature
+                                       indices to go over
+    :param objectIndex:  (int)         Index of the object being inferred
+    :param noise:        (float)       Noise level to add to the patterns
+    :param profile:      (bool)        Print profile info at the end
     """
+    self.network.resetProfiling()
     self._unsetLearningMode()
 
     statistics = collections.defaultdict(list)
@@ -188,12 +213,17 @@ class SingleColumnL4L2Experiment(object):
     # save statistics
     self.statistics.append(statistics)
 
+    if profile:
+      self._profile(source="inference")
 
-  def inferObject(self, objectIndex, order="first", noise=None):
+
+  def inferObject(self, objectIndex, order="first", noise=None, profile=False):
     """
     Simply infer a particular object, in the specified order.
 
-    Noise can be added to the patterns.
+    The specified order can be a string (either "first", "last" or "random"),
+    or an actual list of indices of the patterns to go over.
+    Noise can be added to the patternsm through the "noise" arg.
     """
     pairs = self.objects[objectIndex]
     if len(pairs) == 0:
@@ -213,7 +243,7 @@ class SingleColumnL4L2Experiment(object):
       idx = order
 
     orderedPairs = [pairs[i] for i in idx]
-    self.infer(orderedPairs, objectIndex, noise=noise)
+    self.infer(orderedPairs, objectIndex, noise=noise, profile=profile)
 
 
   def _unsetLearningMode(self):
@@ -233,21 +263,26 @@ class SingleColumnL4L2Experiment(object):
     :return:
     """
     locIdx, featIdx = pair
-    feature = self.features[featIdx]
+    feature = list(self.features[featIdx])
     if locIdx == -1:
-      location = None
+      location = list(self.generatePattern(20, 1024))
+    elif isinstance(locIdx, tuple):
+      location = set()
+      for idx in list(locIdx):
+        location = location | self.locations[idx]
+      location = list(location)
     else:
-      location =self.locations[locIdx]
+      location = list(self.locations[locIdx])
 
     if noise is not None:
       location = self._addNoise(location, noise)
       feature = self._addNoise(feature, noise)
 
     self.sensorInput.addDataToQueue(
-      list(feature), int(reset), sequenceId
+      feature, int(reset), sequenceId
     )
     self.externalInput.addDataToQueue(
-      list(location), int(reset), sequenceId
+      location, int(reset), sequenceId
     )
 
 
@@ -258,13 +293,13 @@ class SingleColumnL4L2Experiment(object):
     if pattern is None:
       return None
 
-    newBits = set()
+    newBits = []
 
     for bit in pattern:
       if random.random() < noise:
-        newBits.add(random.randint(0, max(pattern)))
+        newBits.append(random.randint(0, max(pattern)))
       else:
-        newBits.add(bit)
+        newBits.append(bit)
 
     return newBits
 
@@ -303,15 +338,16 @@ class SingleColumnL4L2Experiment(object):
       plt.plot(stats[key], figure=1, marker='+', label=key)
 
     # format
-    plt.legend(loc="upper left")
+    plt.legend(loc="upper right")
     plt.xlabel("Sensation #")
     plt.xticks(range(len(stats[key])))
     plt.ylabel("Number of active bits")
-    plt.ylim(plt.ylim()[0], plt.ylim()[1] + 5)
+    plt.ylim(plt.ylim()[0] - 5, plt.ylim()[1] + 5)
     plt.title("Object inference")
 
     # save
     plt.savefig(path)
+    plt.close()
 
 
   def createObjects(self, numObjects, numPoints):
@@ -370,7 +406,9 @@ class SingleColumnL4L2Experiment(object):
     if size is None:
       size = self.config["sensorInputSize"]
 
-    return set([random.randint(0, size - 1) for _ in xrange(numBits)])
+    cellsIndices = range(size)
+    random.shuffle(cellsIndices)
+    return set(cellsIndices[:numBits])
 
 
   def _getL4Representation(self):
@@ -394,17 +432,171 @@ class SingleColumnL4L2Experiment(object):
     return set(self.L2Column._pooler.getActiveCells())
 
 
+  def _profile(self, source):
+    """
+    Prints profiling information.
 
-if __name__ == "__main__":
-  exp = SingleColumnL4L2Experiment(NETWORK_CONFIG,
-                                   numObjects=2,
-                                   numLearningPoints=3,
-                                   useSanity=False)
-  exp.createObjects(3, 5)
-  exp.learnObjects(debug=False)
-  exp.inferObject(objectIndex=0, noise=False)
+    :param source:    (string) Source name (e.g "learning" or "inference")
+    """
+    print "Profiling information for {} in {}".format(
+      type(self).__name__, source
+    )
+    totalTime = 0.000001
+    for region in self.network.regions.values():
+      timer = region.computeTimer
+      totalTime += timer.getElapsed()
+
+    count = 1
+    profileInfo = []
+    for region in self.network.regions.values():
+      timer = region.computeTimer
+      count = max(timer.getStartCount(), count)
+      profileInfo.append([region.name,
+                          timer.getStartCount(),
+                          timer.getElapsed(),
+                          100.0 * timer.getElapsed() / totalTime,
+                          timer.getElapsed() / max(timer.getStartCount(), 1)])
+
+    profileInfo.append(
+      ["Total time", "", totalTime, "100.0", totalTime / count])
+    print tabulate(profileInfo, headers=["Region", "Count",
+                                         "Elapsed", "Pct of total",
+                                         "Secs/iteration"],
+                   tablefmt="grid", floatfmt="6.3f")
+    print ""
+
+
+
+# Actual experiments
+
+def createThreeObjects():
+  """
+  Helper function that creates a set of three objects used for basic
+  experiments.
+
+  :return:   (list(list(tuple))  List of lists of feature / location pairs.
+  """
+  objectA = zip(range(10), range(10))
+  objectB = [(0, 0), (2, 2), (1, 1), (1, 4), (4, 2), (4, 1)]
+  objectC = [(0, 0), (1, 1), (3, 1), (0, 1)]
+  return [objectA, objectB, objectC]
+
+
+
+def runSharedFeatures(sanity=False,
+                      debug=False,
+                      noiseLevel=None,
+                      profile=False):
+  """
+  Runs a simple experiment where three objects share a number of location,
+  feature pairs.
+
+  :param sanity:     (bool)  Use htmsanity during inference
+  :param debug:      (bool)  Use htmsanity during learning (only if sanity)
+  :param noiseLevel: (float) Noise level to add to the locations and features
+                             during inference
+
+  """
+  exp = SingleColumnL4L2Experiment(
+    NETWORK_CONFIG,
+    useSanity=sanity
+  )
+
+  objects = createThreeObjects()
+  exp.setObjects(objects)
+  exp.learnObjects(debug=debug, profile=profile)
+  exp.inferObject(objectIndex=0, noise=noiseLevel, profile=profile)
   exp.plotInferenceStats(
     index=0,
     keys=["L2_representation", "L2_overlap_with_object", "L4_representation"],
-    path="test.png"
+    path="shared_features.png"
   )
+
+
+
+def runSharedFeaturesWithMissingLocations(sanity=False,
+                                          debug=False,
+                                          missingLoc=None,
+                                          profile=False):
+  """
+  Runs the same experiment as above, with missing locations at some timesteps
+  during inference (if it was not successfully computed by the rest of the
+  network for example).
+
+  :param sanity:     (bool) Use htmsanity during inference
+  :param debug:      (bool) Use htmsanity during learning (only if sanity is T)
+  :param missingLoc: (dict) A dictionary mapping indices in the object to
+                            location index to replace with during inference
+                            (-1 means no location, a tuple means an union of
+                            locations).
+
+  """
+  if missingLoc is None:
+    missingLoc = {}
+
+  exp = SingleColumnL4L2Experiment(
+    NETWORK_CONFIG,
+    useSanity=sanity
+  )
+  objects = createThreeObjects()
+  exp.setObjects(objects)
+  exp.learnObjects(debug=debug, profile=profile)
+
+  # create pairs with missing locations
+  objectA = objects[0]
+  for key, val in missingLoc.iteritems():
+    objectA[key] = (val, key)
+
+  exp.infer(pairs=objectA, objectIndex=0, profile=profile)
+  exp.plotInferenceStats(
+    index=0,
+    keys=["L2_representation", "L2_overlap_with_object",
+          "L4_representation", "L4_predictive"],
+    path="shared_features_uncertain_location.png"
+  )
+
+
+
+def runStretchExperiment(sanity=False,
+                         debug=False,
+                         profile=False,
+                         numObjects=25):
+
+
+  """
+  Runs the same experiment as above, with missing locations at some timesteps
+  during inference (if it was not successfully computed by the rest of the
+  network for example).
+
+  :param sanity:     (bool) Use htmsanity during inference
+  :param debug:      (bool) Use htmsanity during learning (only if sanity is T)
+  :param missingLoc: (dict) A dictionary mapping indices in the object to
+                            location index to replace with during inference
+                            (-1 means no location, a tuple means an union of
+                            locations).
+
+  """
+  exp = SingleColumnL4L2Experiment(
+    NETWORK_CONFIG,
+    useSanity=sanity
+  )
+
+  exp.createObjects(numObjects=numObjects, numPoints=10)
+  exp.learnObjects(debug=debug, profile=profile)
+
+  exp.inferObject(objectIndex=0, order="random", profile=profile)
+  exp.plotInferenceStats(
+    index=0,
+    keys=["L2_representation", "L2_overlap_with_object",
+          "L4_representation", "L4_predictive"],
+    path="shared_features_stretch.png"
+  )
+
+
+
+if __name__ == "__main__":
+  runSharedFeatures(sanity=False, profile=False)
+
+  missingLoc = {3: (1,2,3), 6: (6,4,2)}
+  runSharedFeaturesWithMissingLocations(sanity=False, missingLoc=missingLoc)
+  # runStretchExperiment(profile=True)
