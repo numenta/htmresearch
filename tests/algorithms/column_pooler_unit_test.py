@@ -613,6 +613,33 @@ class ColumnPoolerTest(unittest.TestCase):
                      sum(objectRepresentations[0]),
            "Incorrect object representations - expecting first object")
 
+    # Test case where you have BU support O1+O2 with no lateral input Then see
+    # no input but get lateral support for O1. Should converge to O1 only.
+    pooler.reset()
+    pooler.compute(feedforwardInput=feedforwardInputs[0][0].union(
+                                    feedforwardInputs[1][1]),
+                   activeExternalCells=set(),
+                   learn=False)
+    pooler.compute(feedforwardInput=feedforwardInputs[0][0].union(
+                                    feedforwardInputs[1][1]),
+                   activeExternalCells=set(),
+                   learn=False)
+
+    # No bottom input, but lateral support for O1
+    pooler.compute(feedforwardInput=set(),
+                   activeExternalCells=lateralInputs[0][0].union(
+                                    lateralInputs[1][0]),
+                   learn=False)
+    pooler.compute(feedforwardInput=set(),
+                   activeExternalCells=lateralInputs[0][0].union(
+                                    lateralInputs[1][0]),
+                   learn=False)
+
+    self.assertEqual(sum(set(pooler.getActiveCells())),
+                     sum(objectRepresentations[0]),
+           "Incorrect object representations - expecting first object")
+
+
     # TODO: more tests we could write:
     # Test case where you have two objects in bottom up representation, and
     # same two in lateral. End up with both active.
