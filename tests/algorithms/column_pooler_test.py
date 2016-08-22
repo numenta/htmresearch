@@ -298,17 +298,17 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     self.init()
 
     objectA = self.generateObject(numPatterns=5)
-    self.learn(objectA, numRepetitions=1, randomOrder=True, newObject=True)
+    self.learn(objectA, numRepetitions=3, randomOrder=True, newObject=True)
     representationA = self._getActiveRepresentation()
 
     objectB = self.generateObject(numPatterns=5)
     objectB[0] = objectA[0]
-    self.learn(objectB, numRepetitions=1, randomOrder=True, newObject=True)
+    self.learn(objectB, numRepetitions=3, randomOrder=True, newObject=True)
     representationB = self._getActiveRepresentation()
 
     objectC = self.generateObject(numPatterns=5)
     objectC[0] = objectB[1]
-    self.learn(objectC, numRepetitions=1, randomOrder=True, newObject=True)
+    self.learn(objectC, numRepetitions=3, randomOrder=True, newObject=True)
     representationC = self._getActiveRepresentation()
 
     self.assertNotEquals(representationA, representationB, representationC)
@@ -390,17 +390,17 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     self.init()
 
     objectA = self.generateObject(numPatterns=5)
-    self.learn(objectA, numRepetitions=1, randomOrder=True, newObject=True)
+    self.learn(objectA, numRepetitions=3, randomOrder=True, newObject=True)
     representationA = self._getActiveRepresentation()
 
     objectB = self.generateObject(numPatterns=5)
     objectB[0] = objectA[0]
-    self.learn(objectB, numRepetitions=1, randomOrder=True, newObject=True)
+    self.learn(objectB, numRepetitions=3, randomOrder=True, newObject=True)
     representationB = self._getActiveRepresentation()
 
     objectC = self.generateObject(numPatterns=5)
     objectC[0] = objectB[1]
-    self.learn(objectC, numRepetitions=1, randomOrder=True, newObject=True)
+    self.learn(objectC, numRepetitions=3, randomOrder=True, newObject=True)
     representationC = self._getActiveRepresentation()
 
     self.assertNotEquals(representationA, representationB, representationC)
@@ -518,7 +518,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
 
   def testLearnTwoObjectsInTwoColumnsNoCommonPattern(self):
-    """Learns one object in two different columns."""
+    """Learns two objects in two different columns."""
     self.init(numCols=2)
     neighborsIndices = [[1], [0]]
 
@@ -599,7 +599,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
 
   def testLearnTwoObjectsInTwoColumnsOneCommonPattern(self):
-    """Learns one object in two different columns."""
+    """Learns two objects in two different columns, with a common pattern."""
     self.init(numCols=2)
     neighborsIndices = [[1], [0]]
 
@@ -684,6 +684,343 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
         )
 
 
+  def testLearnTwoObjectsInTwoColumnsOneCommonPatternEmptyFirstInput(self):
+    """Learns two objects in two different columns, with a common pattern."""
+    self.init(numCols=2)
+    neighborsIndices = [[1], [0]]
+
+    objectA = self.generateObject(numPatterns=5, numCols=2)
+    objectB = self.generateObject(numPatterns=5, numCols=2)
+
+    # second pattern in column 0 is shared
+    objectB[1][0] = objectA[1][0]
+
+    # learn object
+    self.learnMultipleColumns(
+      objectA,
+      numRepetitions=3,
+      neighborsIndices=neighborsIndices,
+      randomOrder=True,
+      newObject=True
+    )
+    activeRepresentationsA = self._getActiveRepresentations()
+
+    # learn object
+    self.learnMultipleColumns(
+      objectB,
+      numRepetitions=3,
+      neighborsIndices=neighborsIndices,
+      randomOrder=True,
+      newObject=True
+    )
+    activeRepresentationsB = self._getActiveRepresentations()
+
+    # check inference for object A
+    for pooler in self.poolers:
+      pooler.reset()
+
+    firstPattern = True
+    for patternsA in objectA:
+      activeRepresentations = self._getActiveRepresentations()
+      if firstPattern:
+        self.inferMultipleColumns(
+          feedforwardPatterns=[set(), patternsA[1]],
+          activeRepresentations=activeRepresentations,
+          neighborsIndices=neighborsIndices,
+        )
+        desiredRepresentation = [set(), activeRepresentationsA[1]]
+      else:
+        self.inferMultipleColumns(
+          feedforwardPatterns=patternsA,
+          activeRepresentations=activeRepresentations,
+          neighborsIndices=neighborsIndices,
+        )
+        desiredRepresentation = activeRepresentationsA
+      self.assertEqual(
+        desiredRepresentation,
+        self._getActiveRepresentations()
+      )
+
+
+  def testPersistence(self):
+    """After learning, representation should persist in L2 without input."""
+    self.init(numCols=2)
+    neighborsIndices = [[1], [0]]
+
+    objectA = self.generateObject(numPatterns=5, numCols=2)
+
+    # learn object
+    self.learnMultipleColumns(
+      objectA,
+      numRepetitions=3,
+      neighborsIndices=neighborsIndices,
+      randomOrder=True,
+      newObject=True
+    )
+    objectARepresentations = self._getActiveRepresentations()
+
+    for pooler in self.poolers:
+      pooler.reset()
+
+    for patterns in objectA:
+      for i in xrange(3):
+
+        # replace third pattern for column 2 by empty pattern
+        if i == 2:
+          patterns[1] = set()
+
+        activeRepresentations = self._getActiveRepresentations()
+
+        self.inferMultipleColumns(
+          feedforwardPatterns=patterns,
+          activeRepresentations=activeRepresentations,
+          neighborsIndices=neighborsIndices,
+        )
+        if i > 0:
+          self.assertEqual(activeRepresentations,
+                           self._getActiveRepresentations())
+          self.assertEqual(objectARepresentations,
+                           self._getActiveRepresentations())
+
+
+  def testLateralDisambiguation(self):
+    """Lateral disambiguation using a constant simulated distal input."""
+    self.init()
+
+    objectA = self.generateObject(numPatterns=5)
+    lateralInputA = [None] + [self.generatePattern() for _ in xrange(4)]
+    self.learn(objectA,
+               lateralPatterns=lateralInputA,
+               numRepetitions=3,
+               randomOrder=True,
+               newObject=True)
+    representationA = self._getActiveRepresentation()
+
+    objectB = self.generateObject(numPatterns=5)
+    objectB[3] = objectA[3]
+    lateralInputB = [None] + [self.generatePattern() for _ in xrange(4)]
+    self.learn(objectB,
+               lateralPatterns=lateralInputB,
+               numRepetitions=3,
+               randomOrder=True,
+               newObject=True)
+    representationB = self._getActiveRepresentation()
+
+    self.assertNotEqual(representationA, representationB)
+    # very small overlap
+    self.assertLessEqual(len(representationA & representationB), 3)
+
+    # no ambiguity with lateral input
+    for pattern in objectA:
+      self.infer(feedforwardPattern=pattern, lateralInput=lateralInputA[-1])
+      self.assertEqual(
+        self._getActiveRepresentation(),
+        representationA,
+        "The pooled representation for the first object is not stable"
+      )
+
+    # no ambiguity with lateral input
+    for pattern in objectB:
+      self.infer(feedforwardPattern=pattern, lateralInput=lateralInputB[-1])
+      self.assertEqual(
+        self._getActiveRepresentation(),
+        representationB,
+        "The pooled representation for the second object is not stable"
+      )
+
+
+  @unittest.skip("Fails, need to discuss")
+  def testMultiColumnCompetition(self):
+    """Competition between multiple conflicting lateral inputs."""
+    self.init(numCols=4)
+    neighborsIndices = [[1, 2, 3], [0, 2, 3], [0, 1, 3], [0, 1, 2]]
+
+    objectA = self.generateObject(numPatterns=5, numCols=4)
+    objectB = self.generateObject(numPatterns=5, numCols=4)
+
+    # second pattern in column 0 is shared
+    objectB[1][0] = objectA[1][0]
+
+    # learn object
+    self.learnMultipleColumns(
+      objectA,
+      numRepetitions=3,
+      neighborsIndices=neighborsIndices,
+      randomOrder=True,
+      newObject=True
+    )
+    activeRepresentationsA = self._getActiveRepresentations()
+
+    # learn object
+    self.learnMultipleColumns(
+      objectB,
+      numRepetitions=3,
+      neighborsIndices=neighborsIndices,
+      randomOrder=True,
+      newObject=True
+    )
+    activeRepresentationsB = self._getActiveRepresentations()
+
+    # check inference for object A
+    # for the first pattern, the distal predictions won't be correct
+    # for the second one, the prediction will be unique thanks to the
+    # distal predictions from the other column which has no ambiguity
+    for pooler in self.poolers:
+      pooler.reset()
+
+    # sensed patterns will be mixed
+    sensedPatterns = objectA[1][:-1] + [objectA[1][-1] | objectB[1][-1]]
+
+    # feed sensed patterns first time
+    # every one feels the correct object, except first column which feels
+    # the union (reminder: lateral input are delayed)
+    activeRepresentations = self._getActiveRepresentations()
+    self.inferMultipleColumns(
+      feedforwardPatterns=sensedPatterns,
+      activeRepresentations=activeRepresentations,
+      neighborsIndices=neighborsIndices,
+    )
+    firstSensedRepresentations = [
+      activeRepresentationsA[0] | activeRepresentationsB[0],
+      activeRepresentationsA[1],
+      activeRepresentationsA[2],
+      activeRepresentationsA[3] | activeRepresentationsB[3]
+    ]
+    self.assertEqual(
+      firstSensedRepresentations,
+      self._getActiveRepresentations()
+    )
+
+    # feed sensed patterns second time
+    # the distal predictions are still ambiguous in C1, but disambiguated
+    # in C4
+    activeRepresentations = self._getActiveRepresentations()
+    self.inferMultipleColumns(
+      feedforwardPatterns=sensedPatterns,
+      activeRepresentations=activeRepresentations,
+      neighborsIndices=neighborsIndices,
+    )
+    secondSensedRepresentations = [
+      activeRepresentationsA[0] | activeRepresentationsB[0],
+      activeRepresentationsA[1],
+      activeRepresentationsA[2],
+      activeRepresentationsA[3]
+    ]
+    self.assertEqual(
+      secondSensedRepresentations,
+      self._getActiveRepresentations()
+    )
+
+    # feed sensed patterns third time
+    # this time, it is all disambiguated
+    activeRepresentations = self._getActiveRepresentations()
+    self.inferMultipleColumns(
+      feedforwardPatterns=sensedPatterns,
+      activeRepresentations=activeRepresentations,
+      neighborsIndices=neighborsIndices,
+    )
+    self.assertEqual(
+      activeRepresentationsA,
+      self._getActiveRepresentations()
+    )
+
+
+  def testMutualDisambiguationThroughUnions(self):
+    """Learns three object in two different columns.
+
+    Feed ambiguous sensations, A u B and B u C. The system should narrow down
+    to B.
+    """
+    self.init(numCols=2)
+    neighborsIndices = [[1], [0]]
+
+    objectA = self.generateObject(numPatterns=5, numCols=2)
+    objectB = self.generateObject(numPatterns=5, numCols=2)
+    objectC = self.generateObject(numPatterns=5, numCols=2)
+
+    # learn object
+    self.learnMultipleColumns(
+      objectA,
+      numRepetitions=3,
+      neighborsIndices=neighborsIndices,
+      randomOrder=True,
+      newObject=True
+    )
+    activeRepresentationsA = self._getActiveRepresentations()
+
+    # learn object
+    self.learnMultipleColumns(
+      objectB,
+      numRepetitions=3,
+      neighborsIndices=neighborsIndices,
+      randomOrder=True,
+      newObject=True
+    )
+    activeRepresentationsB = self._getActiveRepresentations()
+
+    # learn object
+    self.learnMultipleColumns(
+      objectC,
+      numRepetitions=3,
+      neighborsIndices=neighborsIndices,
+      randomOrder=True,
+      newObject=True
+    )
+    activeRepresentationsC = self._getActiveRepresentations()
+
+    # create sensed patterns (ambiguous)
+    sensedPatterns = [objectA[1][0] | objectB[1][0],
+                      objectB[2][1] | objectC[2][1]]
+
+    for pooler in self.poolers:
+      pooler.reset()
+
+    # feed sensed patterns first time
+    # the L2 representations should be ambiguous
+    activeRepresentations = self._getActiveRepresentations()
+    self.inferMultipleColumns(
+      feedforwardPatterns=sensedPatterns,
+      activeRepresentations=activeRepresentations,
+      neighborsIndices=neighborsIndices,
+    )
+    firstRepresentations = [
+      activeRepresentationsA[0] | activeRepresentationsB[0],
+      activeRepresentationsB[1] | activeRepresentationsC[1]
+    ]
+    self.assertEqual(
+      firstRepresentations,
+      self._getActiveRepresentations()
+    )
+
+    # feed a second time
+    # the L2 representations should be ambiguous
+    activeRepresentations = self._getActiveRepresentations()
+    self.inferMultipleColumns(
+      feedforwardPatterns=sensedPatterns,
+      activeRepresentations=activeRepresentations,
+      neighborsIndices=neighborsIndices,
+    )
+    self.assertEqual(
+      firstRepresentations,
+      self._getActiveRepresentations()
+    )
+
+    # feed a third time, distal predictions should disambiguate
+    # we are using the third time because there is an off-by-one in pooler
+    activeRepresentations = self._getActiveRepresentations()
+    self.inferMultipleColumns(
+      feedforwardPatterns=sensedPatterns,
+      activeRepresentations=activeRepresentations,
+      neighborsIndices=neighborsIndices,
+    )
+
+    # currently, a few extra predictions
+    self.assertAlmostEqual(
+      activeRepresentationsB,
+      self._getActiveRepresentations()
+    )
+
+
   def setUp(self):
     """
     Sets up the test.
@@ -693,6 +1030,8 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # multi column case
     self.poolers = []
+
+    # create pattern machine
     self.proximalPatternMachine = PatternMachine(
       n=self.inputWidth,
       w=self.numOutputActiveBits,
@@ -756,7 +1095,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
   def infer(self,
             feedforwardPattern,
-            lateralPatterns=None,
+            lateralInput=None,
             printMetrics=False):
     """
     Feeds a single pattern to the column pooler (as well as an eventual lateral
@@ -776,7 +1115,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     """
     self.pooler.compute(feedforwardPattern,
-                        activeExternalCells=lateralPatterns,
+                        activeExternalCells=lateralInput,
                         learn=False)
 
     if printMetrics:
@@ -983,7 +1322,10 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     for col in range(len(self.poolers)):
       lateralInputs = [representations[idx] for idx in neighborsIndices[col]]
-      lateralInputs = set.union(*lateralInputs)
+      if len(lateralInputs) > 0:
+        lateralInputs = set.union(*lateralInputs)
+      else:
+        lateralInputs = set()
 
       self.poolers[col].compute(
         feedforwardPatterns[col],
@@ -1017,6 +1359,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     return [set(pooler.getActiveCells()) & set(pooler.tm.getPredictiveCells())\
             for pooler in self.poolers]
+
 
 
 if __name__ == "__main__":
