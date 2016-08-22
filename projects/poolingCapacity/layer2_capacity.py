@@ -76,6 +76,7 @@ def calculateObjectFalseMatchError(kVal, thetaVal=20, nVal=2048, wVal=40, mVal=1
 
 
 def generateL4SDR(n=2048, m=10, w=40):
+  """ Generate single  L4 SDR, return active bits"""
   colOrder = np.random.permutation(np.arange(n))
   activeCols = colOrder[:w]
   activeCells = np.random.randint(low=0, high=m, size=(w, ))
@@ -86,6 +87,7 @@ def generateL4SDR(n=2048, m=10, w=40):
 
 
 def generateUnionSDR(k, n=2048, m=10, w=40, c=None):
+  """ Generate a set of L4 cells that are connected to a L2 neuron """
   if c is None:
     c = w
   activeCells = set()
@@ -100,19 +102,22 @@ def generateUnionSDR(k, n=2048, m=10, w=40, c=None):
 
 
 
-def generateMultipleUnionSDRs(numUnions, k, n=2048, m=10, w=40, c=None):
+def generateMultipleUnionSDRs(numL2Cell, k, n=2048, m=10, w=40, c=None):
+  """ Generate numL2Cell set of L4 cells that are connected to numL2Cell
+  L2 cells
+  """
   if c is None:
     c = w
   activeCells = np.zeros((n * m, ))
   connectedCells = []
-  for j in range(numUnions):
+  for j in range(numL2Cell):
     connectedCells.append(np.zeros((n * m, )))
 
   for i in range(k):
     activeBits = generateL4SDR(n, m, w)
     activeCells[activeBits] = 1
 
-    for j in range(numUnions):
+    for j in range(numL2Cell):
       activeBits = np.random.permutation(activeBits)
       connectedCells[j][activeBits[:c]] = 1
 
@@ -146,7 +151,7 @@ def simulateNumCellsVsK(kVal, nVal, wVal, mVal):
 
 
 
-def simulateL2CellPairsFalseMatch(b1, n=2048, w=40, m=10, c=10, k=100):
+def simulateL2CellPairsConditionalFalseMatch(b1, n=2048, w=40, m=10, c=10, k=100):
   """
   Given an SDR that has b1 bits overlap with one L2 cell,
   what is the chance that the SDR also has >theta bits overlap with
@@ -177,8 +182,52 @@ def simulateL2CellPairsFalseMatch(b1, n=2048, w=40, m=10, c=10, k=100):
     overlap += np.sum(connectedCells[1][selectConnectedCell1])
     overlap += np.sum(connectedCells[1][selectNonConnectedCell1])
     overlapList[i] = overlap
-
   return overlapList
+
+
+
+def simulateL2CellPairFalseMatch(theta, n=2048, w=40, m=10, c=10, k=100):
+  numRpts = 100000
+  numL2cell = 2
+
+  numMatchPair = 0
+  numMatch = np.zeros((numL2cell, ))
+  for _ in range(numRpts):
+    (connectedCells, activeCells) = generateMultipleUnionSDRs(
+      numL2cell, k, n, m, w, c)
+    l4SDR = generateL4SDR(n, m, w)
+
+    match = 1
+    for j in range(numL2cell):
+      if np.sum(connectedCells[j][l4SDR]) <= theta:
+        match = 0
+      else:
+        numMatch[j] += 1
+
+    numMatchPair += match
+
+
+def simulateL4L2Pooling(theta=3, n=2048, w=40, m=10, c=5, k=100):
+  numRpts = 1000
+  numL2cell = 40
+
+  calculateNumCellsVsK(k, n, c, m)
+  numMatch = np.zeros((numRpts, numL2cell))
+  for i in range(numRpts):
+    print i
+    (connectedCells, activeCells) = generateMultipleUnionSDRs(
+      numL2cell, k, n, m, w, c)
+    l4SDR = generateL4SDR(n, m, w)
+
+    for j in range(numL2cell):
+      if np.sum(connectedCells[j][l4SDR]) > theta:
+        numMatch[i, j] += 1
+
+  plt.figure()
+  plt.hist(np.sum(numMatch, 1))
+  plt.xlabel('falsely activated L2 cells #')
+  plt.ylabel('Frequency ')
+  plt.savefig('L4L2PoolingSimulation.pdf')
 
 
 def computeL2CellPairsFalseMatchChance(thetaVal, nVal, mVal, wVal, kVal, cVal):
@@ -266,8 +315,10 @@ def computeL2CellPairsFalseMatchConditionalProb(
   numCellsInUnion = n * m * (1 - pow(1 - c / (n * m), k))
   numTotal = binomial(n*m - numCellsInUnion, w-b1) * binomial(numCellsInUnion, b1)
 
-  numOverlapVal = int(numOverlap.subs(k, kVal).subs(c, cVal).subs(n, nVal).subs(m, mVal).subs(w, wVal).evalf())
-  numCellsInUnionVal = int(numCellsInUnion.subs(k, kVal).subs(c, cVal).subs(n, nVal).subs(m, mVal).evalf())
+  numOverlapVal = int(numOverlap.subs(k, kVal).subs(c, cVal).subs(n, nVal).
+                      subs(m, mVal).subs(w, wVal).evalf())
+  numCellsInUnionVal = int(numCellsInUnion.subs(k, kVal).subs(c, cVal).
+                           subs(n, nVal).subs(m, mVal).evalf())
 
   numTotalVal = numTotal.subs(b1, b1Val).subs(b2, b2Val).\
     subs(n, nVal).subs(m, mVal).subs(k, kVal).subs(w, wVal).subs(c, cVal).evalf()
@@ -346,7 +397,7 @@ def runExperimentFalseMatchConditionalPairError():
   print "Verify Equation with simulations"
   pFalseMatchPairSimulate = []
   for cVal in cValList:
-    b2Overlap = simulateL2CellPairsFalseMatch(b1Val, nVal, wVal, mVal, cVal,
+    b2Overlap = simulateL2CellPairsConditionalFalseMatch(b1Val, nVal, wVal, mVal, cVal,
                                               kVal)
     pFalseMatchPairSimulate.append(np.mean(b2Overlap==b2Val))
 
@@ -391,6 +442,7 @@ def runExperimentSingleVsPairMatchError():
   ax.set_xlabel('# connections per pattern')
   plt.legend(['single L2', 'L2 neuron pairs'])
   plt.savefig('FalseMatchPairErrorVsC.pdf')
+
 
 
 def runExperimentUnionSize():
