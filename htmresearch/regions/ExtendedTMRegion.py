@@ -369,7 +369,7 @@ class ExtendedTMRegion(PyRegion):
         del args["inferenceMode"]
         del args["defaultOutputType"]
         del args["_tm"]
-        self._tm = createModel("extendedCPP", **args)
+        self._tm = createModel("reversedExtendedCPP", **args)
       else:
         self._tm = createModel("extended", **args)
 

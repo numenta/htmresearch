@@ -89,7 +89,8 @@ class TemporalMemoryTypes(object):
   implementation.
   """
   extended = ExtendedTemporalMemory
-  extendedCPP = ReversedExtendedTemporalMemory
+  extendedCPP = FastETM
+  reversedExtendedCPP = ReversedExtendedTemporalMemory
   extendedMixin = MonitoredExtendedTemporalMemory
   tm = TemporalMemory
   tmMixin = MonitoredTemporalMemory
