@@ -21,7 +21,11 @@
 # ----------------------------------------------------------------------
 
 import copy
+from optparse import OptionParser
 import random
+
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -47,10 +51,11 @@ def percentOverlap(x1, x2):
   """
   nonZeroX1 = np.count_nonzero(x1)
   nonZeroX2 = np.count_nonzero(x2)
-  minX1X2 = min(nonZeroX1, nonZeroX2)
+
   percentOverlap = 0
-  if minX1X2 > 0:
-    percentOverlap = float(np.dot(x1.T, x2)) / float(minX1X2)
+  if min(nonZeroX1, nonZeroX2) > 0:
+    overlap = np.dot(x1.T, x2)
+    percentOverlap = (overlap ** 2) / (nonZeroX1 * nonZeroX2)
   return percentOverlap
 
 
@@ -124,6 +129,45 @@ def getImageData(numInputVectors):
 
   inputVectors = network._getDataBatch(binaryImages)
   inputVectors = inputVectors.T
+  return inputVectors
+
+
+
+def getBar(nX, nY, barHalfLength, orientation=0):
+  bar = np.zeros((nX, nY), dtype=uintType)
+  if orientation == 0:
+    xLoc = np.random.randint(barHalfLength, nX - barHalfLength)
+    yLoc = np.random.randint(0, nY)
+    bar[(xLoc-barHalfLength):(xLoc + barHalfLength + 1), yLoc] = 1
+  else:
+    xLoc = np.random.randint(0, nX)
+    yLoc = np.random.randint(barHalfLength, nY - barHalfLength)
+    bar[xLoc, (yLoc-barHalfLength):(yLoc + barHalfLength+1)] = 1
+  return bar
+
+
+
+def getCross(nX, nY, barHalfLength):
+  cross = np.zeros((nX, nY), dtype=uintType)
+  xLoc = np.random.randint(barHalfLength, nX - barHalfLength)
+  yLoc = np.random.randint(barHalfLength, nY - barHalfLength)
+  cross[(xLoc - barHalfLength):(xLoc + barHalfLength+1), yLoc] = 1
+  cross[xLoc, (yLoc - barHalfLength):(yLoc + barHalfLength+1)] = 1
+  return cross
+
+
+
+def getBarCrossData(numInputVectors, dataType="bar", nX=10, nY=10, barHalfLength=2):
+  inputSize = nX * nY
+  inputVectors = np.zeros((numInputVectors, inputSize), dtype=uintType)
+  for i in range(numInputVectors):
+    if dataType == "bar":
+      bar1 = getBar(nX, nY, barHalfLength, 0)
+      bar2 = getBar(nX, nY, barHalfLength, 1)
+      data = bar1 + bar2
+    elif dataType == "cross":
+      data = getCross(nX, nY, barHalfLength)
+    inputVectors[i, :] = np.reshape(data, newshape=(1, inputSize))
   return inputVectors
 
 
@@ -458,11 +502,83 @@ def analyzeReceptiveFieldCorrelatedInputs(
 
 
 
+def plotReceptiveFields2D(sp, Nx, Ny):
+  inputSize = Nx * Ny
+  numColumns = np.product(sp.getColumnDimensions())
+
+  nrows = 4
+  ncols = 4
+  fig, ax = plt.subplots(nrows, ncols)
+  for r in range(nrows):
+    for c in range(ncols):
+      colID = np.random.randint(numColumns)
+      connectedSynapses = np.zeros((inputSize,), dtype=uintType)
+      sp.getConnectedSynapses(colID, connectedSynapses)
+      receptiveField = np.reshape(connectedSynapses, (Nx, Ny))
+      ax[r, c].imshow(receptiveField, interpolation="nearest", cmap='gray')
+      ax[r, c].set_title('col {}'.format(colID))
+
+
+
+def _getArgs():
+  parser = OptionParser(usage="Train HTM Spatial Pooler")
+  parser.add_option("-d",
+                    "--dataSet",
+                    type=str,
+                    default='bar',
+                    dest="dataSet",
+                    help="DataSet Name, choose from sparse, correlated-input"
+                         "bar, cross, image")
+
+  (options, remainder) = parser.parse_args()
+  print options
+
+  return options, remainder
+
+
+
+def plotBoostTrace(sp, inputVectors):
+  numInputVector, inputSize = inputVectors.shape
+  columnNumber = np.prod(sp.getColumnDimensions())
+  boostFactorsTrace = np.zeros((columnNumber, numInputVector))
+  activeDutyCycleTrace = np.zeros((columnNumber, numInputVector))
+  minActiveDutyCycleTrace = np.zeros((columnNumber, numInputVector))
+  for i in range(numInputVector):
+    outputColumns = np.zeros(sp.getColumnDimensions(), dtype=uintType)
+    inputVector = copy.deepcopy(inputVectors[i][:])
+    sp.compute(inputVector, learn, outputColumns)
+
+    boostFactors = np.zeros((columnNumber, ), dtype='float32')
+    sp.getBoostFactors(boostFactors)
+    boostFactorsTrace[:, i] = boostFactors
+
+    activeDutyCycle = np.zeros((columnNumber, ), dtype='float32')
+    sp.getActiveDutyCycles(activeDutyCycle)
+    activeDutyCycleTrace[:, i] = activeDutyCycle
+
+    minActiveDutyCycle = np.zeros((columnNumber, ), dtype='float32')
+    sp.getMinActiveDutyCycles(minActiveDutyCycle)
+    minActiveDutyCycleTrace[:, i] = minActiveDutyCycle
+
+  c = 103
+  plt.figure()
+  plt.subplot(2, 1, 1)
+  plt.plot(boostFactorsTrace[c, :])
+  plt.ylabel('Boost Factor')
+  plt.subplot(2, 1, 2)
+  plt.plot(activeDutyCycleTrace[c, :])
+  plt.plot(minActiveDutyCycleTrace[c, :])
+  plt.xlabel(' Time ')
+  plt.ylabel('Active Duty Cycle')
+
+
 if __name__ == "__main__":
   plt.close('all')
 
-  inputVectorType = 'correlate-input'  # 'sparse' or 'dense'
   trackOverlapCurveOverTraining = False
+
+  (_options, _args) = _getArgs()
+  inputVectorType = _options.dataSet
 
   if inputVectorType == 'sparse':
     numInputVector = 100
@@ -478,6 +594,10 @@ if __name__ == "__main__":
   elif inputVectorType == 'natural_images':
     numInputVector = 100
     inputVectors = getImageData(numInputVector)
+  elif inputVectorType == 'bar' or inputVectorType == 'cross':
+    numInputVector = 200
+    nX, nY = 20, 20
+    inputVectors = getBarCrossData(numInputVector, inputVectorType, nX, nY)
   else:
     raise ValueError
 
@@ -493,14 +613,14 @@ if __name__ == "__main__":
     "potentialRadius": int(0.5 * inputSize),
     "globalInhibition": True,
     "numActiveColumnsPerInhArea": int(0.02 * columnNumber),
-    "stimulusThreshold": 0,
-    "synPermInactiveDec": 0.005,
+    "stimulusThreshold": 3,
+    "synPermInactiveDec": 0.001,
     "synPermActiveInc": 0.001,
     "synPermConnected": 0.1,
-    "minPctOverlapDutyCycle": 0.01,
-    "minPctActiveDutyCycle": 0.01,
+    "minPctOverlapDutyCycle": 0.0,
+    "minPctActiveDutyCycle": 0.5,
     "dutyCyclePeriod": 1000,
-    "maxBoost": 1.0,
+    "maxBoost": 2.0,
     "seed": 1936
   }
   sp = SpatialPooler(**spatialPoolerParameters)
@@ -529,9 +649,11 @@ if __name__ == "__main__":
   numNewlyConnectedSynapsesTrace = []
   numEliminatedSynapsesTrace = []
   entropyTrace = []
+  meanBoostFactorTrace = []
 
-  fig, ax = plt.subplots()
-  cmap = cm.get_cmap('jet')
+  if trackOverlapCurveOverTraining:
+    fig, ax = plt.subplots()
+    cmap = cm.get_cmap('jet')
   for epoch in range(epochs):
     print "training SP epoch {}".format(epoch)
     # calcualte overlap curve here
@@ -565,6 +687,12 @@ if __name__ == "__main__":
 
     entropyTrace.append(calculateEntropy(activeColumnsCurrentEpoch))
 
+    boostFactors = np.zeros((columnNumber, ), dtype='float32')
+    sp.getBoostFactors(boostFactors)
+    meanBoostFactorTrace.append(np.mean(boostFactors))
+
+    activeDutyCycle = np.zeros((columnNumber, ), dtype='float32')
+    sp.getActiveDutyCycles(activeDutyCycle)
     if epoch >= 1:
       activeColumnsDiff = activeColumnsCurrentEpoch > activeColumnsPreviousEpoch
       numBitDiffTrace.append(np.mean(np.sum(activeColumnsDiff, 1)))
@@ -579,19 +707,20 @@ if __name__ == "__main__":
       numEliminatedSynapses[numEliminatedSynapses < 0] = 0
       numEliminatedSynapsesTrace.append(np.sum(numEliminatedSynapses))
 
-  plt.xlabel('Input overlap')
-  plt.ylabel('Output overlap')
+  if trackOverlapCurveOverTraining:
+    plt.xlabel('Input overlap')
+    plt.ylabel('Output overlap')
 
-  cax = fig.add_axes([0.05, 0.95, 0.4, 0.05])
+    cax = fig.add_axes([0.05, 0.95, 0.4, 0.05])
 
-  fig2, ax2 = plt.subplots()
-  data = np.arange(0, 800).reshape((20, 40))
-  im = ax2.imshow(data, cmap='jet')
+    fig2, ax2 = plt.subplots()
+    data = np.arange(0, 800).reshape((20, 40))
+    im = ax2.imshow(data, cmap='jet')
 
-  cbar = fig.colorbar(im, cax=cax, orientation='horizontal',
-                      ticks=[0, 400, 800])
-  plt.close(fig2)
-  plt.savefig('figures/overlap_over_training_{}_.pdf'.format(inputVectorType))
+    cbar = fig.colorbar(im, cax=cax, orientation='horizontal',
+                        ticks=[0, 400, 800])
+    plt.close(fig2)
+    plt.savefig('figures/overlap_over_training_{}_.pdf'.format(inputVectorType))
 
   # plot stats over training
   fig, axs = plt.subplots(nrows=5, ncols=1)
@@ -638,3 +767,7 @@ if __name__ == "__main__":
       inputVectors, inputVectors1, inputVectors2, sp)
     plt.savefig(
       'figures/{}_inputOverlap_after_learning.pdf'.format(inputVectorType))
+  elif inputVectorType == "bar" or inputVectorType == "cross":
+    plotReceptiveFields2D(sp, nX, nY)
+
+
