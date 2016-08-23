@@ -223,7 +223,7 @@ class ColumnPooler(ExtendedTemporalMemory):
     # Narrow down list of active cells based on lateral activity
     self.activeCells = self._winnersBasedOnLateralActivity(
       bottomUpActivity,
-      self.tm.predictiveCells,
+      self.getDistallyPredictiveCells(),
       overlaps,
       self.numActiveColumnsPerInhArea
     )
@@ -311,6 +311,25 @@ class ColumnPooler(ExtendedTemporalMemory):
     """
     super(ColumnPooler, self).reset()
     self.tm.reset()
+
+
+  def getDistallyPredictiveCells(self):
+    """
+    Get the set of distally predictive cells as a set.
+
+    @return (set) A set containing indices of the current distally predicted
+    cells.
+    """
+    return set(self.tm.getPredictiveCells())
+
+
+  def getPredictedActiveCells(self):
+    """
+    Get the set of cells that were predicted previously then became active
+
+    @return (set) A set containing indices.
+    """
+    return self.tm.predictedActiveCellsIndices()
 
 
   def _learnProximal(self,
