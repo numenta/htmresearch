@@ -63,10 +63,65 @@ networkConfig2 = {
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
+    "formInternalConnections": 0,
+    "learningMode": 1,
+    "inferenceMode": 1,
+    "learnOnOneCell": 0,
+    "initialPermanence": 0.51,
+    "connectedPermanence": 0.6,
+    "permanenceIncrement": 0.1,
+    "permanenceDecrement": 0.02,
+    "minThreshold": 10,
+    "predictedSegmentDecrement": 0.004,
+    "activationThreshold": 13,
+    "maxNewSynapseCount": 20,
+    "seed": 42
   },
   "L2Params": {
     "columnCount": 1024,
     "inputWidth": 1024 * 8,
+    "learningMode": 1,
+    "inferenceMode": 1,
+    "initialPermanence": 0.51,
+    "connectedPermanence": 0.6,
+    "permanenceIncrement": 0.1,
+    "permanenceDecrement": 0.02,
+    "minThreshold": 10,
+    "predictedSegmentDecrement": 0.004,
+    "activationThreshold": 10,
+    "maxNewSynapseCount": 20,
+    "maxSegmentsPerCell": 255,
+    "maxSynapsesPerSegment": 255,
+  }
+}
+
+networkConfig3 = {
+  "networkType": "MultipleL4L2Columns",
+  "numCorticalColumns": 2,
+  "externalInputSize": 1024,
+  "sensorInputSize": 1024,
+  "L4Params": {
+    "columnCount": 1024,
+    "cellsPerColumn": 8,
+    "formInternalConnections": 0,
+    "learningMode": 1,
+    "inferenceMode": 1,
+    "learnOnOneCell": 0,
+    "initialPermanence": 0.51,
+    "connectedPermanence": 0.6,
+    "permanenceIncrement": 0.1,
+    "permanenceDecrement": 0.02,
+    "minThreshold": 10,
+    "predictedSegmentDecrement": 0.004,
+    "activationThreshold": 13,
+    "maxNewSynapseCount": 20,
+  },
+  "L2Params": {
+    "columnCount": 1024,
+    "inputWidth": 1024 * 8,
+    "learningMode": 1,
+    "inferenceMode": 1,
+    "minThreshold": 10
   }
 }
 
@@ -110,7 +165,7 @@ class LaminarNetworkTest(unittest.TestCase):
     # Run the network and check outputs are as expected
     net.run(3)
 
-  @unittest.skip("Skipped until lateral connections in L2 are stable")
+
   def testMultipleL4L2ColumnsCreate(self):
     """
     In this simplistic test we create a network with 3 L4L2Columns, ensure it
@@ -119,7 +174,7 @@ class LaminarNetworkTest(unittest.TestCase):
     """
 
     net = createNetwork(networkConfig2)
-    self.assertEqual(len(net.regions.keys()),4*3,
+    self.assertEqual(len(net.regions.keys()), 4*3,
                      "Incorrect number of regions")
 
     # Add some input vectors to the queue
@@ -151,7 +206,7 @@ class LaminarNetworkTest(unittest.TestCase):
                      "Incorrect phase for L4Column_1")
 
 
-  def testL4L2DataFlow(self):
+  def testSingleColumnL4L2DataFlow(self):
     """
     This test trains a network with a few (feature, location) pairs and checks
     the data flows correctly, and that each intermediate representation is
@@ -334,6 +389,319 @@ class LaminarNetworkTest(unittest.TestCase):
     self.assertEqual(len(self.getL4BurstingCells(L4Column)), 40 * 8)
 
 
+  def testTwoColumnsL4L2DataFlow(self):
+    """
+    This test trains a network with a few (feature, location) pairs and checks
+    the data flows correctly, and that each intermediate representation is
+    correct.
+
+    Indices 0 and 1 in variable names refer to cortical column number.
+    """
+
+    # Create a simple network to test the sensor
+    net = createNetwork(networkConfig3)
+
+    self.assertEqual(
+      len(net.regions.keys()), 4 * 2,
+      "Incorrect number of regions"
+    )
+
+    # Get various regions
+    externalInput0 = net.regions["externalInput_0"].getSelf()
+    sensorInput0 = net.regions["sensorInput_0"].getSelf()
+    L4Column0 = net.regions["L4Column_0"].getSelf()
+    L2Column0 = net.regions["L2Column_0"].getSelf()
+
+    externalInput1 = net.regions["externalInput_1"].getSelf()
+    sensorInput1 = net.regions["sensorInput_1"].getSelf()
+    L4Column1 = net.regions["L4Column_1"].getSelf()
+    L2Column1 = net.regions["L2Column_1"].getSelf()
+
+    # create a feature and location pool for column 0
+    features0 = [self.generatePattern(1024, 40) for _ in xrange(2)]
+    locations0 = [self.generatePattern(1024, 40) for _ in xrange(3)]
+
+    # create a feature and location pool for column 1
+    features1 = [self.generatePattern(1024, 40) for _ in xrange(2)]
+    locations1 = [self.generatePattern(1024, 40) for _ in xrange(3)]
+
+    # train with following pairs:
+    # (F0, L0) (F1, L1) on object 1
+    # (F0, L2) (F1, L1) on object 2
+
+    # Object 1
+
+    # start with an object A input to get L2 representations for object A
+    sensorInput0.addDataToQueue(features0[0], 0, 0)
+    externalInput0.addDataToQueue(locations0[0], 0, 0)
+    sensorInput1.addDataToQueue(features1[0], 0, 0)
+    externalInput1.addDataToQueue(locations1[0], 0, 0)
+    net.run(1)
+
+    # get L2 representation for object B
+    L2RepresentationA0 = self.getCurrentL2Representation(L2Column0)
+    L2RepresentationA1 = self.getCurrentL2Representation(L2Column1)
+
+    for _ in xrange(3):
+      sensorInput0.addDataToQueue(features0[0], 0, 0)
+      externalInput0.addDataToQueue(locations0[0], 0, 0)
+      sensorInput1.addDataToQueue(features1[0], 0, 0)
+      externalInput1.addDataToQueue(locations1[0], 0, 0)
+      net.run(1)
+
+      # check L2
+      self.assertEqual(
+        self.getCurrentL2Representation(L2Column0),
+        L2RepresentationA0
+      )
+      # check L2
+      self.assertEqual(
+        self.getCurrentL2Representation(L2Column1),
+        L2RepresentationA1
+      )
+      sensorInput0.addDataToQueue(features0[1], 0, 0)
+      externalInput0.addDataToQueue(locations0[1], 0, 0)
+      sensorInput1.addDataToQueue(features1[1], 0, 0)
+      externalInput1.addDataToQueue(locations1[1], 0, 0)
+      net.run(1)
+
+      # check L2
+      self.assertEqual(
+        self.getCurrentL2Representation(L2Column0),
+        L2RepresentationA0
+      )
+      self.assertEqual(
+        self.getCurrentL2Representation(L2Column1),
+        L2RepresentationA1
+      )
+
+    # get L4 representations when they are stable
+    sensorInput0.addDataToQueue(features0[0], 0, 0)
+    externalInput0.addDataToQueue(locations0[0], 0, 0)
+    sensorInput1.addDataToQueue(features1[0], 0, 0)
+    externalInput1.addDataToQueue(locations1[0], 0, 0)
+    net.run(1)
+
+    L4Representation00_0 = self.getL4PredictedActiveCells(L4Column0)
+    L4Representation00_1 = self.getL4PredictedActiveCells(L4Column1)
+
+    # send reset signal
+    sensorInput0.addDataToQueue(features0[1], 1, 0)
+    externalInput0.addDataToQueue(locations0[1], 0, 0)
+    sensorInput1.addDataToQueue(features1[1], 1, 0)
+    externalInput1.addDataToQueue(locations1[1], 0, 0)
+    net.run(1)
+
+    # Object B
+
+    # start with input to get L2 representations
+    sensorInput0.addDataToQueue(features0[0], 0, 0)
+    externalInput0.addDataToQueue(locations0[2], 0, 0)
+    sensorInput1.addDataToQueue(features1[0], 0, 0)
+    externalInput1.addDataToQueue(locations1[2], 0, 0)
+    net.run(1)
+
+    # get L2 representations for object B
+    L2RepresentationB0 = self.getCurrentL2Representation(L2Column0)
+    L2RepresentationB1 = self.getCurrentL2Representation(L2Column1)
+    # check that it is very different from object A
+    self.assertLessEqual(len(L2RepresentationA0 & L2RepresentationB0), 5)
+    self.assertLessEqual(len(L2RepresentationA1 & L2RepresentationB1), 5)
+
+    for _ in xrange(3):
+      sensorInput0.addDataToQueue(features0[0], 0, 0)
+      externalInput0.addDataToQueue(locations0[2], 0, 0)
+      sensorInput1.addDataToQueue(features1[0], 0, 0)
+      externalInput1.addDataToQueue(locations1[2], 0, 0)
+      net.run(1)
+
+      # check L2
+      self.assertEqual(
+        self.getCurrentL2Representation(L2Column0),
+        L2RepresentationB0
+      )
+      # check L2
+      self.assertEqual(
+        self.getCurrentL2Representation(L2Column1),
+        L2RepresentationB1
+      )
+
+      sensorInput0.addDataToQueue(features0[1], 0, 0)
+      externalInput0.addDataToQueue(locations0[1], 0, 0)
+      sensorInput1.addDataToQueue(features1[1], 0, 0)
+      externalInput1.addDataToQueue(locations1[1], 0, 0)
+      net.run(1)
+
+      # check L2
+      self.assertEqual(
+        self.getCurrentL2Representation(L2Column0),
+        L2RepresentationB0
+      )
+      # check L2
+      self.assertEqual(
+        self.getCurrentL2Representation(L2Column1),
+        L2RepresentationB1
+      )
+
+    # get L4 representations when they are stable
+    sensorInput0.addDataToQueue(features0[0], 0, 0)
+    externalInput0.addDataToQueue(locations0[2], 0, 0)
+    sensorInput1.addDataToQueue(features1[0], 0, 0)
+    externalInput1.addDataToQueue(locations1[2], 0, 0)
+    net.run(1)
+
+    L4Representation02_0 = self.getL4PredictedActiveCells(L4Column0)
+    L4Representation02_1 = self.getL4PredictedActiveCells(L4Column1)
+
+    sensorInput0.addDataToQueue(features0[1], 0, 0)
+    externalInput0.addDataToQueue(locations0[1], 0, 0)
+    sensorInput1.addDataToQueue(features1[1], 0, 0)
+    externalInput1.addDataToQueue(locations1[1], 0, 0)
+    net.run(1)
+
+    L4Representation11_0 = self.getL4PredictedActiveCells(L4Column0)
+    L4Representation11_1 = self.getL4PredictedActiveCells(L4Column1)
+
+
+    # send reset signal
+    sensorInput0.addDataToQueue(features0[1], 1, 0)
+    externalInput0.addDataToQueue(locations0[1], 0, 0)
+    sensorInput1.addDataToQueue(features1[1], 1, 0)
+    externalInput1.addDataToQueue(locations1[1], 0, 0)
+    net.run(1)
+
+    # check inference with each (feature, location) pair
+    L2Column0.setParameter("learningMode", 0, 0)
+    L4Column0.setParameter("learningMode", 0, 0)
+    L2Column1.setParameter("learningMode", 0, 0)
+    L4Column1.setParameter("learningMode", 0, 0)
+
+    # (F0, L0)
+    sensorInput0.addDataToQueue(features0[0], 0, 0)
+    externalInput0.addDataToQueue(locations0[0], 0, 0)
+    sensorInput1.addDataToQueue(features1[0], 0, 0)
+    externalInput1.addDataToQueue(locations1[0], 0, 0)
+    net.run(1)
+
+    # check L2 representations, L4 representations, no bursting
+    self.assertLessEqual(
+      len(self.getCurrentL2Representation(L2Column0) - L2RepresentationA0),
+      5
+    )
+    self.assertGreaterEqual(
+      len(self.getCurrentL2Representation(L2Column0) & L2RepresentationA0),
+      35
+    )
+    self.assertEqual(
+      self.getL4PredictedActiveCells(L4Column0),
+      L4Representation00_0
+    )
+    self.assertEqual(len(self.getL4BurstingCells(L4Column0)), 0)
+
+    # be a little tolerant on this test
+    self.assertLessEqual(
+      len(self.getCurrentL2Representation(L2Column1) - L2RepresentationA1),
+      5
+    )
+    self.assertGreaterEqual(
+      len(self.getCurrentL2Representation(L2Column1) & L2RepresentationA1),
+      35
+    )
+    self.assertEqual(
+      self.getL4PredictedActiveCells(L4Column1),
+      L4Representation00_1
+    )
+    self.assertEqual(len(self.getL4BurstingCells(L4Column1)), 0)
+
+    # (F0, L2)
+    # It is fed twice, for the ambiguous prediction test, because of the
+    # one-off error in distal predictions
+    # FIXME when this is changed in ColumnPooler
+    sensorInput0.addDataToQueue(features0[0], 0, 0)
+    externalInput0.addDataToQueue(locations0[2], 0, 0)
+    sensorInput1.addDataToQueue(features1[0], 0, 0)
+    externalInput1.addDataToQueue(locations1[2], 0, 0)
+
+    sensorInput0.addDataToQueue(features0[0], 0, 0)
+    externalInput0.addDataToQueue(locations0[2], 0, 0)
+    sensorInput1.addDataToQueue(features1[0], 0, 0)
+    externalInput1.addDataToQueue(locations1[2], 0, 0)
+    net.run(2)
+
+    # check L2 representation, L4 representation, no bursting
+    self.assertEqual(
+      self.getCurrentL2Representation(L2Column0),
+      L2RepresentationB0
+    )
+    self.assertEqual(
+      self.getL4PredictedActiveCells(L4Column0),
+      L4Representation02_0
+    )
+    self.assertEqual(len(self.getL4BurstingCells(L4Column0)), 0)
+
+    self.assertEqual(
+      self.getCurrentL2Representation(L2Column1),
+      L2RepresentationB1
+    )
+    self.assertEqual(
+      self.getL4PredictedActiveCells(L4Column1),
+      L4Representation02_1
+    )
+    self.assertEqual(len(self.getL4BurstingCells(L4Column1)), 0)
+
+    # check predictions for next step...
+    self.assertEqual(
+      self.getCurrentL2PredictiveCells(L2Column0),
+      L2RepresentationB0
+    )
+    self.assertEqual(
+      self.getCurrentL2PredictiveCells(L2Column1),
+      L2RepresentationB1
+    )
+
+    # ambiguous pattern: (F1, L1)
+    sensorInput0.addDataToQueue(features0[1], 0, 0)
+    externalInput0.addDataToQueue(locations0[1], 0, 0)
+    sensorInput1.addDataToQueue(features1[1], 0, 0)
+    externalInput1.addDataToQueue(locations1[1], 0, 0)
+    net.run(1)
+
+    # check L2 representation, L4 representation, no bursting
+    # as opposed to the previous test, the representation is not ambiguous
+    self.assertEqual(
+      self.getCurrentL2Representation(L2Column0),
+      L2RepresentationB0
+    )
+    self.assertEqual(
+      self.getL4PredictedActiveCells(L4Column0),
+      L4Representation11_0
+    )
+    self.assertEqual(len(self.getL4BurstingCells(L4Column0)), 0)
+
+    self.assertEqual(
+      self.getCurrentL2Representation(L2Column1),
+      L2RepresentationB1
+    )
+    self.assertEqual(
+      self.getL4PredictedActiveCells(L4Column1),
+      L4Representation11_1
+    )
+    self.assertEqual(len(self.getL4BurstingCells(L4Column1)), 0)
+
+    # unknown signal
+    sensorInput0.addDataToQueue(features0[1], 0, 0)
+    externalInput0.addDataToQueue(locations0[2], 0, 0)
+    sensorInput1.addDataToQueue(features1[1], 0, 0)
+    externalInput1.addDataToQueue(locations1[2], 0, 0)
+    net.run(1)
+
+    # check bursting (representation in L2 should be like in a random SP)
+    self.assertLessEqual(len(self.getL4PredictedActiveCells(L4Column0)), 3)
+    self.assertGreaterEqual(len(self.getL4BurstingCells(L4Column0)), 40 * 7)
+    self.assertLessEqual(len(self.getL4PredictedActiveCells(L4Column1)), 3)
+    self.assertGreaterEqual(len(self.getL4BurstingCells(L4Column1)), 40 * 7)
+
+
   def generatePattern(self, max, size):
     """Generates a random feedback pattern."""
     return [random.randint(0, max-1) for _ in range(size)]
@@ -359,7 +727,13 @@ class LaminarNetworkTest(unittest.TestCase):
 
 
   def getCurrentL2Representation(self, column):
-    return set(column._pooler.getActiveCells())
+    """Returns the current active representation in a given L2 column."""
+    return set(column._pooler.activeCells)
+
+
+  def getCurrentL2PredictiveCells(self, column):
+    """Returns the current predictive cells in a given L2 column."""
+    return set(column._pooler.tm.getPredictiveCells())
 
 
 

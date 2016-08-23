@@ -297,7 +297,7 @@ class ColumnPoolerRegion(PyRegion):
     feedforwardInput = inputs['feedforwardInput'].nonzero()[0]
     lateralInput = inputs.get('lateralInput', None)
     if lateralInput is not None:
-      lateralInput = lateralInput.nonzero()[0]
+      lateralInput = set(lateralInput.nonzero()[0])
 
     self._pooler.compute(
       feedforwardInput=feedforwardInput,
