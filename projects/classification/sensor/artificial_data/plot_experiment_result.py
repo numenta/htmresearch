@@ -33,7 +33,7 @@ from htmresearch.frameworks.classification.utils.traces import loadTraces
 plt.ion()
 
 if __name__ == "__main__":
-  fileName = 'results/traces_sp-True_tm-True_tp-False.csv'
+  fileName = 'results/traces_sp-True_tm-True_tp-True.csv'
   traces = loadTraces(fileName)
 
   numTMcells = 2048 * 32
@@ -46,7 +46,7 @@ if __name__ == "__main__":
   selectRange = np.where(np.logical_and(t > xl[0],  t < xl[1]))[0]
 
   plt.figure()
-  f, ax = plt.subplots(3, sharex=True)
+  f, ax = plt.subplots(4, sharex=True)
 
   # plot sensor value and class labels
   ax[0].plot(t, sensorValue)
@@ -75,25 +75,33 @@ if __name__ == "__main__":
   # plot TM activations
   ax[1].set_axis_bgcolor('black')
   ax[2].set_axis_bgcolor('black')
+  ax[3].set_axis_bgcolor('black')
 
   tmPredictiveActiveCellsTrace = traces['tmPredictiveActiveCellsTrace']
   tmActiveCellsTrace = traces['tmActiveCellsTrace']
+  tpActiveCellsTrace = traces['tpActiveCellsTrace']
 
   tmPredictiveActiveCells = np.zeros((len(selectRange), numTMcells))
   for i in range(len(selectRange)):
-    tmActiveCells = tmActiveCellsTrace[selectRange[i]]
     tmPredictiveActiveCells = tmPredictiveActiveCellsTrace[selectRange[i]]
     sdrT = t[selectRange[i]] * np.ones((len(tmPredictiveActiveCells, )))
-    ax[1].plot(sdrT, tmPredictiveActiveCells, 's', color='white', ms=2)
+    ax[1].plot(sdrT, tmPredictiveActiveCells, 's', color='white', ms=3)
 
     tmActiveCells = tmActiveCellsTrace[selectRange[i]]
     sdrT = t[selectRange[i]] * np.ones((len(tmActiveCells, )))
-    ax[2].plot(sdrT, tmActiveCells, 's', color='white', ms=2)
+    ax[2].plot(sdrT, tmActiveCells, 's', color='white', ms=3)
 
-  ax[1].set_ylabel('Predicted Active Cells')
+    tpActiveCells = tpActiveCellsTrace[selectRange[i]]
+    sdrT = t[selectRange[i]] * np.ones((len(tpActiveCells, )))
+    ax[3].plot(sdrT, tpActiveCells, 's', color='white', ms=3)
+
+  ax[1].set_ylabel('Predicted Active TM Cells')
   ax[1].set_ylim([0, numTMcells])
 
-  ax[2].set_ylabel('Active Cells')
+  ax[2].set_ylabel('Active TM Cells')
   ax[2].set_ylim([0, numTMcells])
 
-  ax[2].set_xlabel('Time')
+  ax[3].set_ylabel('TP Cells')
+  ax[3].set_ylim([0, numTMcells])
+
+  ax[3].set_xlabel('Time')
