@@ -1014,10 +1014,10 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       neighborsIndices=neighborsIndices,
     )
 
-    # currently, a few extra predictions
-    self.assertAlmostEqual(
-      activeRepresentationsB,
-      self._getActiveRepresentations()
+    self.assertEquals(
+      self._getActiveRepresentations(),
+      self._getPredictedActiveCells(),
+      activeRepresentationsB
     )
 
 
