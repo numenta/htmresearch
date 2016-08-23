@@ -926,7 +926,8 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
 
   def testMutualDisambiguationThroughUnions(self):
-    """Learns three object in two different columns.
+    """
+    Learns three object in two different columns.
 
     Feed ambiguous sensations, A u B and B u C. The system should narrow down
     to B.
@@ -1014,10 +1015,30 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       neighborsIndices=neighborsIndices,
     )
 
-    self.assertEquals(
+    # check that representations are unique, being slightly tolerant
+    self.assertLessEqual(
+      len(self._getActiveRepresentations()[0] - activeRepresentationsB[0]),
+      5,
+    )
+
+    self.assertLessEqual(
+      len(self._getActiveRepresentations()[1] - activeRepresentationsB[1]),
+      5,
+    )
+
+    self.assertGreaterEqual(
+      len(self._getActiveRepresentations()[0] & activeRepresentationsB[0]),
+      35,
+    )
+
+    self.assertGreaterEqual(
+      len(self._getActiveRepresentations()[1] & activeRepresentationsB[1]),
+      35,
+    )
+
+    self.assertEqual(
       self._getActiveRepresentations(),
       self._getPredictedActiveCells(),
-      activeRepresentationsB
     )
 
 
