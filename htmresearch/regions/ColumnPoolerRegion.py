@@ -20,6 +20,7 @@
 # ----------------------------------------------------------------------
 
 import copy
+import numpy
 
 from nupic.bindings.regions.PyRegion import PyRegion
 from htmresearch.algorithms.column_pooler import ColumnPooler
@@ -279,6 +280,10 @@ class ColumnPoolerRegion(PyRegion):
         **args
       )
 
+      # numpy arrays we will use for some of the outputs
+      self.activeState = numpy.zeros(self._pooler.numberOfCells())
+      self.previouslyPredictedCells = numpy.zeros(self._pooler.numberOfCells())
+
 
   def compute(self, inputs, outputs):
     """
@@ -289,17 +294,51 @@ class ColumnPoolerRegion(PyRegion):
     representation to this point and any history will then be reset. The output
     at the next compute will start fresh, presumably with bursting columns.
     """
-    print "In L2 column"
+    feedforwardInput = inputs['feedforwardInput'].nonzero()[0]
+    lateralInput = inputs.get('lateralInput', None)
+    if lateralInput is not None:
+      lateralInput = lateralInput.nonzero()[0]
+
     self._pooler.compute(
-      feedforwardInput=inputs['feedforwardInput'],
-      activeExternalCells=inputs.get('lateralInput', None),
+      feedforwardInput=feedforwardInput,
+      activeExternalCells=lateralInput,
       learn=self.learningMode
     )
+
+    # Compute predictedActiveCells explicitly
+    self.activeState[:] = 0
+    self.activeState[self._pooler.getActiveCells()] = 1
+    predictedActiveCells = self.activeState * self.previouslyPredictedCells
+
+    self.previouslyPredictedCells[:] = 0
+    self.previouslyPredictedCells[self._pooler.getPredictiveCells()] = 1
+
+    # Copy numpy values into the various outputs
+    outputs["activeCells"][:] = self.activeState
+    outputs["predictiveCells"][:] = self.previouslyPredictedCells
+    outputs["predictedActiveCells"][:] = predictedActiveCells
+
+    # Send appropriate output to feedForwardOutput
+    if self.defaultOutputType == "active":
+      outputs["feedForwardOutput"][:] = self.activeState
+    elif self.defaultOutputType == "predictive":
+      outputs["feedForwardOutput"][:] = self.previouslyPredictedCells
+    elif self.defaultOutputType == "predictedActiveCells":
+      outputs["feedForwardOutput"][:] = predictedActiveCells
+    else:
+      raise Exception("Unknown outputType: " + self.defaultOutputType)
+
+    # Handle reset after current input has been processed
+    if "resetIn" in inputs:
+      assert len(inputs["resetIn"]) == 1
+      if inputs["resetIn"][0] != 0:
+        self.reset()
 
 
   def reset(self):
     """ Reset the state of the layer"""
-    pass
+    if self._pooler is not None:
+      self._pooler.reset()
 
 
   def getParameter(self, parameterName, index=-1):
