@@ -10,12 +10,9 @@ Compare HTM with other algorithms on standard sequence prediction problems
 
 # Installation
 
-	cd path/to/nupic.research/sequence_prediction
-	python setup.py develop
+	cd path/to/nupic.research/
+	python setup.py develop --user
 
-Or (doesn't require sudo but does require manual PYTHONPATH setup):
-
-	python setup.py develop --prefix=/some/other/path/
 
 ## On EC2
 
