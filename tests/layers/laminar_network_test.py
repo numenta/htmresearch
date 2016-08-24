@@ -51,7 +51,18 @@ networkConfig1 = {
     "inputWidth": 1024 * 8,
     "learningMode": 1,
     "inferenceMode": 1,
-    "minThreshold": 10
+    "initialPermanence": 0.51,
+    "connectedPermanence": 0.6,
+    "permanenceIncrement": 0.1,
+    "permanenceDecrement": 0.02,
+    "minThreshold": 10,
+    "predictedSegmentDecrement": 0.004,
+    "activationThreshold": 10,
+    "maxNewSynapseCount": 20,
+    "numActiveColumnsPerInhArea": 40,
+    "synPermProximalInc":  0.1,
+    "synPermProximalDec": 0.001,
+    "initialProximalPermanence": 0.6
   }
 }
 
@@ -90,8 +101,10 @@ networkConfig2 = {
     "predictedSegmentDecrement": 0.004,
     "activationThreshold": 10,
     "maxNewSynapseCount": 20,
-    "maxSegmentsPerCell": 255,
-    "maxSynapsesPerSegment": 255,
+    "numActiveColumnsPerInhArea": 40,
+    "synPermProximalInc":  0.1,
+    "synPermProximalDec": 0.001,
+    "initialProximalPermanence": 0.6
   }
 }
 
@@ -115,13 +128,25 @@ networkConfig3 = {
     "predictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
     "maxNewSynapseCount": 20,
+
   },
   "L2Params": {
     "columnCount": 1024,
     "inputWidth": 1024 * 8,
     "learningMode": 1,
     "inferenceMode": 1,
-    "minThreshold": 10
+    "initialPermanence": 0.51,
+    "connectedPermanence": 0.6,
+    "permanenceIncrement": 0.1,
+    "permanenceDecrement": 0.02,
+    "minThreshold": 10,
+    "predictedSegmentDecrement": 0.004,
+    "activationThreshold": 10,
+    "maxNewSynapseCount": 20,
+    "numActiveColumnsPerInhArea": 40,
+    "synPermProximalInc":  0.1,
+    "synPermProximalDec": 0.001,
+    "initialProximalPermanence": 0.6
   }
 }
 
@@ -206,6 +231,86 @@ class LaminarNetworkTest(unittest.TestCase):
                      "Incorrect phase for L4Column_1")
 
 
+  def testCustomParameters(self):
+    """
+    This test creates a network with custom parameters and tests that the
+    network gets correctly constructed.
+    """
+    customConfig = {
+      "networkType": "L4L2Column",
+      "externalInputSize": 256,
+      "sensorInputSize": 512,
+      "L4Params": {
+        "columnCount": 512,
+        "cellsPerColumn": 16,
+        "formInternalConnections": 1,
+        "learningMode": 1,
+        "inferenceMode": 1,
+        "learnOnOneCell": 0,
+        "initialPermanence": 0.23,
+        "connectedPermanence": 0.75,
+        "permanenceIncrement": 0.45,
+        "permanenceDecrement": 0.1,
+        "minThreshold": 15,
+        "predictedSegmentDecrement": 0.21,
+        "activationThreshold": 16,
+        "maxNewSynapseCount": 24,
+
+      },
+      "L2Params": {
+        "columnCount": 2048,
+        "inputWidth": 512 * 16,
+        "learningMode": 1,
+        "inferenceMode": 1,
+        "initialPermanence": 0.45,
+        "connectedPermanence": 0.75,
+        "permanenceIncrement": 0.23,
+        "permanenceDecrement": 0.2,
+        "minThreshold": 12,
+        "predictedSegmentDecrement": 0.03,
+        "activationThreshold": 8,
+        "maxNewSynapseCount": 15,
+        "numActiveColumnsPerInhArea": 35,
+        "synPermProximalInc": 0.12,
+        "synPermProximalDec": 0.1,
+        "initialProximalPermanence": 0.56
+      }
+    }
+
+    net = createNetwork(customConfig)
+
+    self.assertEqual(
+      len(net.regions.keys()), 4,
+      "Incorrect number of regions"
+    )
+
+    # Get various regions
+    externalInput = net.regions["externalInput_0"].getSelf()
+    sensorInput = net.regions["sensorInput_0"].getSelf()
+    L4Column = net.regions["L4Column_0"].getSelf()
+    L2Column = net.regions["L2Column_0"].getSelf()
+
+    # we need to do a first compute for the various elements to be constructed
+    sensorInput.addDataToQueue([], 0, 0)
+    externalInput.addDataToQueue([], 0, 0)
+    net.run(1)
+
+    # check that parameters are correct in L4
+    for param, value in customConfig["L4Params"].iteritems():
+      self.assertEqual(L4Column.getParameter(param), value)
+
+    # check that parameters are correct in L2
+    # some parameters are in the tm members
+    for param, value in customConfig["L2Params"].iteritems():
+      self.assertEqual(L2Column.getParameter(param), value)
+
+    # check that parameters are correct in L2
+    self.assertEqual(externalInput.outputWidth,
+                     customConfig["externalInputSize"])
+    self.assertEqual(sensorInput.outputWidth,
+                     customConfig["sensorInputSize"])
+
+
   def testSingleColumnL4L2DataFlow(self):
     """
     This test trains a network with a few (feature, location) pairs and checks
@@ -228,22 +333,23 @@ class LaminarNetworkTest(unittest.TestCase):
     L2Column = net.regions["L2Column_0"].getSelf()
 
     # create a feature and location pool
-    features = [self.generatePattern(1024, 40) for _ in xrange(2)]
-    locations = [self.generatePattern(1024, 40) for _ in xrange(3)]
+    features = [self.generatePattern(1024, 20) for _ in xrange(2)]
+    locations = [self.generatePattern(1024, 20) for _ in xrange(3)]
 
     # train with following pairs:
-    # (F0, L0) (F1, L1) on object 1
-    # (F0, L2) (F1, L1) on object 2
+    # (F0, L0) (F1, L1) on object A
+    # (F0, L2) (F1, L1) on object B
 
-    # Object 1
+    # Object A
 
     # start with an object 1 input to get L2 representation for object 1
     sensorInput.addDataToQueue(features[0], 0, 0)
     externalInput.addDataToQueue(locations[0], 0, 0)
     net.run(1)
 
-    # get L2 representation for object B
+    # get L2 representation for object A
     L2RepresentationA = self.getCurrentL2Representation(L2Column)
+    self.assertEqual(len(L2RepresentationA), 40)
 
     for _ in xrange(3):
       sensorInput.addDataToQueue(features[0], 0, 0)
@@ -271,6 +377,7 @@ class LaminarNetworkTest(unittest.TestCase):
     net.run(1)
 
     L4Representation00 = self.getL4PredictedActiveCells(L4Column)
+    self.assertEqual(len(L4Representation00), 20)
 
     # send reset signal
     sensorInput.addDataToQueue(features[1], 1, 0)
@@ -286,6 +393,7 @@ class LaminarNetworkTest(unittest.TestCase):
 
     # get L2 representation for object B
     L2RepresentationB = self.getCurrentL2Representation(L2Column)
+    self.assertEqual(len(L2RepresentationB), 40)
     # check that it is very different from object A
     self.assertLessEqual(len(L2RepresentationA & L2RepresentationB), 5)
 
@@ -316,13 +424,14 @@ class LaminarNetworkTest(unittest.TestCase):
     net.run(1)
 
     L4Representation02 = self.getL4PredictedActiveCells(L4Column)
-
+    self.assertEqual(len(L4Representation02), 20)
 
     sensorInput.addDataToQueue(features[1], 0, 0)
     externalInput.addDataToQueue(locations[1], 0, 0)
     net.run(1)
 
     L4Representation11 = self.getL4PredictedActiveCells(L4Column)
+    self.assertEqual(len(L4Representation11), 20)
 
     # send reset signal
     sensorInput.addDataToQueue(features[1], 1, 0)
@@ -365,7 +474,7 @@ class LaminarNetworkTest(unittest.TestCase):
     )
     self.assertEqual(len(self.getL4BurstingCells(L4Column)), 0)
 
-    # (F2, L2)
+    # (F1, L1)
     sensorInput.addDataToQueue(features[1], 0, 0)
     externalInput.addDataToQueue(locations[1], 0, 0)
     net.run(1)
@@ -386,7 +495,7 @@ class LaminarNetworkTest(unittest.TestCase):
 
     # check bursting (representation in L2 should be like in a random SP)
     self.assertEqual(len(self.getL4PredictedActiveCells(L4Column)), 0)
-    self.assertEqual(len(self.getL4BurstingCells(L4Column)), 40 * 8)
+    self.assertEqual(len(self.getL4BurstingCells(L4Column)), 20 * 8)
 
 
   def testTwoColumnsL4L2DataFlow(self):
@@ -418,12 +527,12 @@ class LaminarNetworkTest(unittest.TestCase):
     L2Column1 = net.regions["L2Column_1"].getSelf()
 
     # create a feature and location pool for column 0
-    features0 = [self.generatePattern(1024, 40) for _ in xrange(2)]
-    locations0 = [self.generatePattern(1024, 40) for _ in xrange(3)]
+    features0 = [self.generatePattern(1024, 20) for _ in xrange(2)]
+    locations0 = [self.generatePattern(1024, 20) for _ in xrange(3)]
 
     # create a feature and location pool for column 1
-    features1 = [self.generatePattern(1024, 40) for _ in xrange(2)]
-    locations1 = [self.generatePattern(1024, 40) for _ in xrange(3)]
+    features1 = [self.generatePattern(1024, 20) for _ in xrange(2)]
+    locations1 = [self.generatePattern(1024, 20) for _ in xrange(3)]
 
     # train with following pairs:
     # (F0, L0) (F1, L1) on object 1
@@ -441,6 +550,8 @@ class LaminarNetworkTest(unittest.TestCase):
     # get L2 representation for object B
     L2RepresentationA0 = self.getCurrentL2Representation(L2Column0)
     L2RepresentationA1 = self.getCurrentL2Representation(L2Column1)
+    self.assertEqual(len(L2RepresentationA0), 40)
+    self.assertEqual(len(L2RepresentationA0), 40)
 
     for _ in xrange(3):
       sensorInput0.addDataToQueue(features0[0], 0, 0)
@@ -484,6 +595,8 @@ class LaminarNetworkTest(unittest.TestCase):
 
     L4Representation00_0 = self.getL4PredictedActiveCells(L4Column0)
     L4Representation00_1 = self.getL4PredictedActiveCells(L4Column1)
+    self.assertEqual(len(L4Representation00_0), 20)
+    self.assertEqual(len(L4Representation00_1), 20)
 
     # send reset signal
     sensorInput0.addDataToQueue(features0[1], 1, 0)
@@ -504,6 +617,8 @@ class LaminarNetworkTest(unittest.TestCase):
     # get L2 representations for object B
     L2RepresentationB0 = self.getCurrentL2Representation(L2Column0)
     L2RepresentationB1 = self.getCurrentL2Representation(L2Column1)
+    self.assertEqual(len(L2RepresentationB0), 40)
+    self.assertEqual(len(L2RepresentationB1), 40)
     # check that it is very different from object A
     self.assertLessEqual(len(L2RepresentationA0 & L2RepresentationB0), 5)
     self.assertLessEqual(len(L2RepresentationA1 & L2RepresentationB1), 5)
@@ -552,6 +667,8 @@ class LaminarNetworkTest(unittest.TestCase):
 
     L4Representation02_0 = self.getL4PredictedActiveCells(L4Column0)
     L4Representation02_1 = self.getL4PredictedActiveCells(L4Column1)
+    self.assertEqual(len(L4Representation02_0), 20)
+    self.assertEqual(len(L4Representation02_1), 20)
 
     sensorInput0.addDataToQueue(features0[1], 0, 0)
     externalInput0.addDataToQueue(locations0[1], 0, 0)
@@ -561,7 +678,8 @@ class LaminarNetworkTest(unittest.TestCase):
 
     L4Representation11_0 = self.getL4PredictedActiveCells(L4Column0)
     L4Representation11_1 = self.getL4PredictedActiveCells(L4Column1)
-
+    self.assertEqual(len(L4Representation11_0), 20)
+    self.assertEqual(len(L4Representation11_1), 20)
 
     # send reset signal
     sensorInput0.addDataToQueue(features0[1], 1, 0)
@@ -697,14 +815,16 @@ class LaminarNetworkTest(unittest.TestCase):
 
     # check bursting (representation in L2 should be like in a random SP)
     self.assertLessEqual(len(self.getL4PredictedActiveCells(L4Column0)), 3)
-    self.assertGreaterEqual(len(self.getL4BurstingCells(L4Column0)), 40 * 7)
+    self.assertGreaterEqual(len(self.getL4BurstingCells(L4Column0)), 20 * 7)
     self.assertLessEqual(len(self.getL4PredictedActiveCells(L4Column1)), 3)
-    self.assertGreaterEqual(len(self.getL4BurstingCells(L4Column1)), 40 * 7)
+    self.assertGreaterEqual(len(self.getL4BurstingCells(L4Column1)), 20 * 7)
 
 
   def generatePattern(self, max, size):
     """Generates a random feedback pattern."""
-    return [random.randint(0, max-1) for _ in range(size)]
+    cellsIndices = range(max)
+    random.shuffle(cellsIndices)
+    return cellsIndices[:size]
 
 
   def getL4PredictiveCells(self, column):

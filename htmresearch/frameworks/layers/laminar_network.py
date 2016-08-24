@@ -162,7 +162,7 @@ def createMultipleL4L2Columns(network, networkConfig):
       }
     }
   """
-  # FIXME: for now, each L2 column should have a different seed
+  # TODO: for now, each L2 column should have a different seed
   networkConfig["L2Params"]["seed"] = 0
 
   # Create each column

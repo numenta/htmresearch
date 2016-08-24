@@ -194,6 +194,24 @@ class ColumnPoolerRegion(PyRegion):
           accessMode='ReadWrite',
           dataType="Real32",
           count=1),
+        synPermProximalInc=dict(
+          description="Amount by which permanences of proximal synapses are "
+                      "incremented during learning.",
+          accessMode='ReadWrite',
+          dataType="Real32",
+          count=1),
+        synPermProximalDec=dict(
+          description="Amount by which permanences of proximal synapses are "
+                      "decremented during learning.",
+          accessMode='ReadWrite',
+          dataType="Real32",
+          count=1),
+        initialProximalPermanence=dict(
+          description="Initial permanence of a new proximal synapse.",
+          accessMode='ReadWrite',
+          dataType="Real32",
+          count=1,
+          constraints=""),
         predictedSegmentDecrement=dict(
           description="Amount by which active permanences of synapses of "
                       "previously predicted but inactive segments are "
@@ -241,6 +259,9 @@ class ColumnPoolerRegion(PyRegion):
                permanenceIncrement=0.10,
                permanenceDecrement=0.10,
                predictedSegmentDecrement=0.0,
+               synPermProximalInc=0.1,
+               synPermProximalDec=0.001,
+               initialProximalPermanence = 0.6,
                seed=42,
                numActiveColumnsPerInhArea=40,
                defaultOutputType = "active",
@@ -257,6 +278,9 @@ class ColumnPoolerRegion(PyRegion):
     self.permanenceIncrement = permanenceIncrement
     self.permanenceDecrement = permanenceDecrement
     self.predictedSegmentDecrement = predictedSegmentDecrement
+    self.synPermProximalInc = synPermProximalInc
+    self.synPermProximalDec = synPermProximalDec
+    self.initialProximalPermanence = initialProximalPermanence
     self.seed = seed
     self.learningMode = True
     self.inferenceMode = True
