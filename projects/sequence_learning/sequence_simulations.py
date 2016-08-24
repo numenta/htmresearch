@@ -132,6 +132,14 @@ def computePredictionAccuracy(pac, pic):
     return (pac / pcols)
 
 
+def plotAccuracies(accuracies):
+  import matplotlib.pyplot as plt
+
+  plt.plot(accuracies)
+  plt.ylabel("Accuracy")
+  plt.show()
+
+
 def createReport(tm, options, sequenceString, numSegments, numSynapses):
   """
   Create CSV file with detailed trace of predictions, missed predictions,
@@ -169,6 +177,9 @@ def createReport(tm, options, sequenceString, numSegments, numSynapses):
                 numSegments[i], numSynapses[i]]
         csvWriter.writerow(row)
 
+  if options.plot:
+    plotAccuracies(accuracies)
+
 
 def killCells(i, options, tm):
   """
@@ -203,17 +214,17 @@ def runExperiment1(options):
     numpy.random.seed(options.seed)
 
     tm = MonitoredTemporalMemory(minThreshold=15,
-                                activationThreshold=15,
-                                maxNewSynapseCount=40,
-                                cellsPerColumn=options.cells,
-                                predictedSegmentDecrement = 0.01,
-                                columnDimensions=(2048,),
-                                initialPermanence=0.21,
-                                connectedPermanence=0.50,
-                                permanenceIncrement=0.10,
-                                permanenceDecrement=0.10,
-                                seed=42,
-                                )
+                                 activationThreshold=15,
+                                 maxNewSynapseCount=40,
+                                 cellsPerColumn=options.cells,
+                                 predictedSegmentDecrement = 0.01,
+                                 columnDimensions=(2048,),
+                                 initialPermanence=0.21,
+                                 connectedPermanence=0.50,
+                                 permanenceIncrement=0.10,
+                                 permanenceDecrement=0.10,
+                                 seed=42,
+                                 )
 
     printOptions(options, tm, outputFile)
 
@@ -300,16 +311,16 @@ def printTemporalMemory(tm, outFile):
   """
   table = PrettyTable(["Parameter name", "Value", ])
 
-  table.add_row(["columnDimensions", tm.columnDimensions])
-  table.add_row(["cellsPerColumn", tm.cellsPerColumn])
-  table.add_row(["activationThreshold", tm.activationThreshold])
-  table.add_row(["minThreshold", tm.minThreshold])
-  table.add_row(["maxNewSynapseCount", tm.maxNewSynapseCount])
-  table.add_row(["permanenceIncrement", tm.permanenceIncrement])
-  table.add_row(["permanenceDecrement", tm.permanenceDecrement])
-  table.add_row(["initialPermanence", tm.initialPermanence])
-  table.add_row(["connectedPermanence", tm.connectedPermanence])
-  table.add_row(["predictedSegmentDecrement", tm.predictedSegmentDecrement])
+  table.add_row(["columnDimensions", tm.getColumnDimensions()])
+  table.add_row(["cellsPerColumn", tm.getCellsPerColumn()])
+  table.add_row(["activationThreshold", tm.getActivationThreshold()])
+  table.add_row(["minThreshold", tm.getMinThreshold()])
+  table.add_row(["maxNewSynapseCount", tm.getMaxNewSynapseCount()])
+  table.add_row(["permanenceIncrement", tm.getPermanenceIncrement()])
+  table.add_row(["permanenceDecrement", tm.getPermanenceDecrement()])
+  table.add_row(["initialPermanence", tm.getInitialPermanence()])
+  table.add_row(["connectedPermanence", tm.getConnectedPermanence()])
+  table.add_row(["predictedSegmentDecrement", tm.getPredictedSegmentDecrement()])
 
   print >>outFile, table.get_string().encode("utf-8")
 
@@ -378,7 +389,13 @@ if __name__ == '__main__':
                     "%default)",
                     default="normal",
                     type=str)
+  parser.add_option("--plot",
+                    help="Plot accuracies. (requires matplotlib)",
+                    default=False,
+                    action="store_true")
 
   options, args = parser.parse_args(sys.argv[1:])
 
   runExperiment1(options)
+
+

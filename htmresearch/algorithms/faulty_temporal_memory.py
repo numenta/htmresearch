@@ -24,7 +24,8 @@ Faulty Temporal Memory implementation in Python.
 """
 import numpy
 from collections import defaultdict
-from htmresearch.algorithms.temporal_memory_phases import TemporalMemory
+from nupic.bindings.algorithms import TemporalMemory
+
 
 class FaultyTemporalMemory(TemporalMemory):
   """
@@ -48,7 +49,7 @@ class FaultyTemporalMemory(TemporalMemory):
     super(FaultyTemporalMemory, self).__init__(**kwargs)
     self.deadCells = set()
     self.zombiePermutation = None    # Contains the order in which cells
-                                      # will be killed
+                                     # will be killed
     self.numDead = 0
 
 
