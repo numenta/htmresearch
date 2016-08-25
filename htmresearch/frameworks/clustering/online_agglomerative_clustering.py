@@ -1,33 +1,21 @@
-#!/usr/bin/env python 
-
 import heapq
 import operator
 import scipy
-import numpy as np
-
-
-
-def percent_overlap(x, y):
-  """
-  Distance metric for SDRs defined as: |x1 and x2|^2 / (|x1| . |x2|)
-  :param x: binary vector
-  :param y: binary vector
-  :return: percent overlap (result between 0 and 1)
-  """
-  return np.linalg.norm(np.logical_and(x, y)) ** 2 / (np.linalg.norm(x)
-                                                      * np.linalg.norm(y))
 
 
 
 class Cluster(object):
-  def __init__(self, a, distance_func):
+  def __init__(self, a, distance_func, kernel):
     self.center = a
     self.size = 0
     self.distance_func = distance_func
-
+    self.kernel = kernel
 
   def add(self, e):
-    self.size += self.distance_func(self.center, e)
+    if self.kernel:
+      self.size += self.kernel(self.center, e)
+    else:
+      self.size += 1
     self.center += (e - self.center) / self.size
 
 
@@ -70,7 +58,7 @@ class Dist(object):
 
 
 class OnlineCluster(object):
-  def __init__(self, N, distance_func):
+  def __init__(self, N, distance_func, kernel=None):
     """
     N-1 is the largest number of clusters that can be found.
     Higher N makes clustering slower.
@@ -80,6 +68,7 @@ class OnlineCluster(object):
     self.N = N
 
     self.distance_func = distance_func
+    self.kernel = kernel
 
     self.clusters = []
     # max number of dimensions we've seen so far
@@ -120,7 +109,7 @@ class OnlineCluster(object):
       self.updatedist(m.x)
 
     # make a new cluster for this point
-    newc = Cluster(e, self.distance_func)
+    newc = Cluster(e, self.distance_func, self.kernel)
     self.clusters.append(newc)
     self.updatedist(newc)
 
@@ -155,60 +144,4 @@ class OnlineCluster(object):
 
 
 
-def generate_points():
-  import random
 
-  points = []
-  # create three random 2D gaussian clusters
-  for i in range(3):
-    x = i
-    y = i
-    c = [scipy.array(
-      (x + random.normalvariate(0, 0.1), y + random.normalvariate(0, 0.1))) for
-         j in range(100)]
-    points += c
-
-  random.shuffle(points)
-  return points
-
-
-
-if __name__ == "__main__":
-
-  import time
-  from matplotlib import pyplot as plt
-
-  plt.ion()  # interactive mode on
-
-  # the value of N is generally quite forgiving, i.e.
-  # giving 6 will still only find the 3 clusters.
-  # around 10 it will start finding more
-  N = 6
-
-  points = generate_points()
-  n = len(points)
-
-  start = time.time()
-  c = OnlineCluster(N, percent_overlap)
-  last_cx = []
-  last_cy = []
-  while len(points) > 0:
-    point = points.pop()
-    plt.plot(point[0], point[1], 'bo')
-
-    c.cluster(point)
-    clusters = c.trimclusters()
-    print "I clustered %d points in %.2f seconds and found %d clusters." % (
-      n, time.time() - start, len(clusters))
-
-    cx = [x.center[0] for x in clusters]
-    cy = [y.center[1] for y in clusters]
-
-    plt.plot(last_cx, last_cy, "bo")
-    plt.plot(cx, cy, "ro")
-    plt.pause(0.001)
-
-    last_cx = cx
-    last_cy = cy
-
-  plt.plot(cx, cy, "go")

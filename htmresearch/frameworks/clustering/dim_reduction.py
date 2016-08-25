@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 from sklearn import manifold
 import matplotlib.cm as cm
 
-from htmresearch.frameworks.clustering.utils import percentOverlap
+from htmresearch.frameworks.clustering.distances import percentOverlap
 
 
 

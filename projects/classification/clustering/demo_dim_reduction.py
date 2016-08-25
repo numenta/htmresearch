@@ -15,10 +15,10 @@ def main():
   w = 20
   
   sdrs = generateSDRs(numClasses, numSDRsPerClass, n, w, noiseLevel)
+
+  clusterAssignments = assignClusters(sdrs, numClasses, numSDRsPerClass)
   
   npos, distanceMat = project2D(sdrs)
-  
-  clusterAssignments = assignClusters(sdrs, numClasses, numSDRsPerClass)
   
   viz2DProjection(vizTitle, numClasses, clusterAssignments, npos)
   
