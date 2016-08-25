@@ -155,6 +155,7 @@ def createReport(tm, options, sequenceString, numSegments, numSynapses):
     csvWriter = csv.writer(resultsFile)
 
     accuracies = numpy.zeros(len(pac.data))
+    smoothedAccuracies = []
     am = 0
     csvWriter.writerow(["time", "element", "pac", "pic", "upac", "a",
                         "am", "accuracy", "sum", "nSegs", "nSyns"])
@@ -169,6 +170,7 @@ def createReport(tm, options, sequenceString, numSegments, numSynapses):
         accuracies[i] = am
         i0 = max(0, i-60+1)
         accuracy = numpy.mean(accuracies[i0:i+1])
+        smoothedAccuracies.append(accuracy)
 
         row=[i, sequenceString[i], len(j), len(pic.data[i]),
                 len(upac.data[i]), a, am,
@@ -177,8 +179,7 @@ def createReport(tm, options, sequenceString, numSegments, numSynapses):
                 numSegments[i], numSynapses[i]]
         csvWriter.writerow(row)
 
-  if options.plot:
-    plotAccuracies(accuracies)
+  return smoothedAccuracies
 
 
 def killCells(i, options, tm):
@@ -280,10 +281,12 @@ def runExperiment1(options):
       sequenceString += label
 
 
-    createReport(tm, options, sequenceString, numSegments, numSynapses)
+    accuracies = createReport(tm, options, sequenceString, numSegments, numSynapses)
 
     print >>outputFile, "End time=",datetime.datetime.now().isoformat(' ')
     print >>outputFile, "Duration=",str(datetime.datetime.now()-startTime)
+
+    return accuracies
 
 
 #########################################################################
@@ -336,64 +339,66 @@ def printOptions(options, tm, outFile):
     print >>outFile, "  %s : %s" % (k,str(v))
   outFile.flush()
 
+
+helpString = (
+  "\n%prog [options] [uid]"
+  "\n%prog --help"
+  "\n"
+  "\nRuns sequence simulations with artificial data."
+)
+
+# All the command line options
+parser = OptionParser(helpString)
+parser.add_option("--name",
+                  help="Name of experiment. Outputs will be written to"
+                       "results/name.csv & results/name.out (default: %default)",
+                  dest="name",
+                  default="temp")
+parser.add_option("--iterations",
+                  help="Number of iterations to run for. [default: %default]",
+                  default=9000,
+                  type=int)
+parser.add_option("--seed",
+                  help="Random seed to use. [default: %default]",
+                  default=42,
+                  type=int)
+parser.add_option("--noise",
+                  help="Percent noise for noisy simulations. [default: "
+                       "%default]",
+                  default=0.1,
+                  type=float)
+parser.add_option("--secondNoise",
+                  help="Percent noise for second kill. [default: "
+                       "%default]",
+                  default=0.5,
+                  type=float)
+parser.add_option("--switchover",
+                  help="Number of iterations after which to change "
+                       "statistics. [default: %default]",
+                  default=3500,
+                  type=int)
+parser.add_option("--secondKill",
+                  help="Number of iterations after which to kill again. "
+                       "[default: %default]",
+                  default=50000,
+                  type=int)
+parser.add_option("--cells",
+                  help="Number of per column. [default: %default]",
+                  default=32,
+                  type=int)
+parser.add_option("--simulation",
+                  help="Which simulation to run: 'normal', 'noisy', "
+                       "'clean_noise', 'killer', 'killingMeSoftly' (default: "
+                       "%default)",
+                  default="normal",
+                  type=str)
+parser.add_option("--plot",
+                  help="Plot accuracies. (requires matplotlib)",
+                  default=False,
+                  action="store_true")
+
+
 if __name__ == '__main__':
-  helpString = (
-    "\n%prog [options] [uid]"
-    "\n%prog --help"
-    "\n"
-    "\nRuns sequence simulations with artificial data."
-  )
-
-  # All the command line options
-  parser = OptionParser(helpString)
-  parser.add_option("--name",
-                    help="Name of experiment. Outputs will be written to"
-                    "results/name.csv & results/name.out (default: %default)",
-                    dest="name",
-                    default="temp")
-  parser.add_option("--iterations",
-                    help="Number of iterations to run for. [default: %default]",
-                    default=9000,
-                    type=int)
-  parser.add_option("--seed",
-                    help="Random seed to use. [default: %default]",
-                    default=42,
-                    type=int)
-  parser.add_option("--noise",
-                    help="Percent noise for noisy simulations. [default: "
-                         "%default]",
-                    default=0.1,
-                    type=float)
-  parser.add_option("--secondNoise",
-                    help="Percent noise for second kill. [default: "
-                         "%default]",
-                    default=0.5,
-                    type=float)
-  parser.add_option("--switchover",
-                    help="Number of iterations after which to change "
-                         "statistics. [default: %default]",
-                    default=3500,
-                    type=int)
-  parser.add_option("--secondKill",
-                    help="Number of iterations after which to kill again. "
-                         "[default: %default]",
-                    default=50000,
-                    type=int)
-  parser.add_option("--cells",
-                    help="Number of per column. [default: %default]",
-                    default=32,
-                    type=int)
-  parser.add_option("--simulation",
-                    help="Which simulation to run: 'normal', 'noisy', "
-                    "'clean_noise', 'killer', 'killingMeSoftly' (default: "
-                    "%default)",
-                    default="normal",
-                    type=str)
-  parser.add_option("--plot",
-                    help="Plot accuracies. (requires matplotlib)",
-                    default=False,
-                    action="store_true")
-
   options, args = parser.parse_args(sys.argv[1:])
 
   runExperiment1(options)
