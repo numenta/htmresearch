@@ -28,17 +28,15 @@ def fig6b(cliArgs, noises):
 
 
 
-parser = OptionParser("python %prog noise [noise ...]")
-parser.add_option("--figure",
-                  help="Which figure to plot.  Must be 'A' or 'B'.")
-parser.add_option("--passthru",
-                  help=("Pass options through to sequence_simulations.py.  "
-                        "See `python sequence_simulations.py --help` for "
-                        "options"))
-
-
-
 if __name__ == "__main__":
+
+  parser = OptionParser("python %prog noise [noise ...]")
+  parser.add_option("--figure",
+                    help="Which figure to plot.  Must be 'A' or 'B'.")
+  parser.add_option("--passthru",
+                    help=("Pass options through to sequence_simulations.py.  "
+                          "See `python sequence_simulations.py --help` for "
+                          "options"))
 
   # Parse CLI arguments
   options, args = parser.parse_args(sys.argv[1:])

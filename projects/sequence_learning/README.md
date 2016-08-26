@@ -45,7 +45,7 @@ figure 6A-B from the neuron paper.
 ### Figure 6A
 
 ```
-python generate_plots.py 0.0 --figure A --passthru="--name Fig6A --simulation killer"
+python generate_plots.py 0.0 --figure A --passthru="--name Fig6A"
 ```
 
 ### Figure 6B
