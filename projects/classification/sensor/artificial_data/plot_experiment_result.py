@@ -42,7 +42,7 @@ if __name__ == "__main__":
   classLabels = np.array(traces['categoryTrace'])
   sensorValue = np.array(traces['sensorValueTrace'])
 
-  xl = [1700, 1800]
+  xl = [500, 550]
   selectRange = np.where(np.logical_and(t > xl[0],  t < xl[1]))[0]
 
   plt.figure()
