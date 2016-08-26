@@ -25,7 +25,7 @@ inference over objects. It uses the network API and multiple regions (raw
 sensors for sensor and external input, column pooler region, extended temporal
 memory region).
 
-Here is a sample use of this class, to perform learn two very simple objects
+Here is a sample use of this class, to learn two very simple objects
 and infer one of them:
 
   exp = L4L2Experiment(
@@ -33,10 +33,10 @@ and infer one of them:
     numCorticalColumns=2,
   )
 
-  exp.addObject([(1, 2), (2, 3)], name=0)
-  exp.addObject([(1, 2), (4, 5)], name=1)
+  objects = exp.addObject([(1, 2), (2, 3)], name=0, objects={})
+  objects = exp.addObject([(1, 2), (4, 5)], name=1, objects=objects)
 
-  exp.learnAllObjects()
+  exp.learnObjects(objects)
   exp.printProfile()
 
   inferConfig = {
@@ -135,23 +135,14 @@ class L4L2Experiment(object):
     random.seed(seed)
 
     # update parameters with overrides
-    if self.numColumns > 1:
-      self.config = {
-        "networkType": "MultipleL4L2Columns",
-        "numCorticalColumns": numCorticalColumns,
-        "externalInputSize": externalInputSize,
-        "sensorInputSize": inputSize,
-        "L4Params": self.getDefaultL4Params(inputSize),
-        "L2Params": self.getDefaultL2Params(inputSize),
-      }
-    else:
-      self.config = {
-        "networkType": "L4L2Column",
-        "externalInputSize": externalInputSize,
-        "sensorInputSize": inputSize,
-        "L4Params": self.getDefaultL4Params(inputSize),
-        "L2Params": self.getDefaultL2Params(inputSize),
-      }
+    self.config = {
+      "networkType": "MultipleL4L2Columns",
+      "numCorticalColumns": numCorticalColumns,
+      "externalInputSize": externalInputSize,
+      "sensorInputSize": inputSize,
+      "L4Params": self.getDefaultL4Params(inputSize),
+      "L2Params": self.getDefaultL2Params(inputSize),
+    }
 
     if L2Overrides is not None:
       self.config["L2Params"].update(L2Overrides)
@@ -181,7 +172,6 @@ class L4L2Experiment(object):
         self.network.regions["L2Column_" + str(i)].getSelf()
       )
 
-    self.objects = {}
     self._generateLocations()
     self._generateFeatures()
 
@@ -193,13 +183,11 @@ class L4L2Experiment(object):
       os.makedirs(self.PLOT_DIRECTORY)
 
 
-  def learnAllObjects(self):
+  def learnObjects(self, objects):
     """
-    Learns all objects in self.objects.
+    Learns all objects in objects.
     """
-    self.network.resetProfiling()
-
-    for object, pairs in self.objects.iteritems():
+    for object, pairs in objects.iteritems():
       iterations = 0
       if len(pairs) == 0:
         continue
@@ -242,7 +230,6 @@ class L4L2Experiment(object):
     An additional parameter, giving a noise level to add to the sensed
     patterns, can be given.
     """
-    self.network.resetProfiling()
     self._unsetLearningMode()
 
     statistics = collections.defaultdict(list)
@@ -267,6 +254,7 @@ class L4L2Experiment(object):
     self._sendResetSignal()
 
     # save statistics
+    statistics["numSteps"] = numSteps
     self.statistics.append(statistics)
 
 
@@ -286,7 +274,7 @@ class L4L2Experiment(object):
              ID of the experiment (usually 0 if only one was conducted)
 
     @param   onePlot (bool)
-             If true, all cortical columns will be merged on one plot.
+             If true, all cortical columns will be merged in one plot.
 
     """
     plt.figure(0)
@@ -310,7 +298,7 @@ class L4L2Experiment(object):
       # format
       plt.legend(loc="upper right")
       plt.xlabel("Sensation #")
-      plt.xticks(range(len(stats[fields[0]])))
+      plt.xticks(range(stats["numSteps"]))
       plt.ylabel("Number of active bits")
       plt.ylim(plt.ylim()[0] - 5, plt.ylim()[1] + 5)
       plt.title("Object inference")
@@ -334,7 +322,7 @@ class L4L2Experiment(object):
     return self.statistics[experimentID]
 
 
-  def addObject(self, pairs, name=None):
+  def addObject(self, pairs, name=None, objects=None):
     """
     Adds an object to learn (giving the list of pairs of location, feature
     indices.
@@ -342,19 +330,21 @@ class L4L2Experiment(object):
     A name can be given to the object, otherwise it will be incrementally
     indexed.
     """
+    if objects is None:
+      objects = {}
+
     if name is None:
-      name = len(self.objects)
+      name = len(objects)
 
-    self.objects[name] = [tuple(pair) for pair in pairs]
+    objects[name] = pairs
+    return objects
 
 
-  def printProfile(self):
+  def printProfile(self, reset=False):
     """
     Prints profiling information.
     """
-    print "Profiling information for {}".format(
-      type(self).__name__,
-    )
+    print "Profiling information for {}".format(type(self).__name__)
     totalTime = 0.000001
     for region in self.network.regions.values():
       timer = region.computeTimer
@@ -377,7 +367,17 @@ class L4L2Experiment(object):
                                          "Elapsed", "Pct of total",
                                          "Secs/iteration"],
                    tablefmt="grid", floatfmt="6.3f")
-    print ""
+    print
+
+    if reset:
+      self.resetProfile()
+
+
+  def resetProfile(self):
+    """
+    Resets the network profiling.
+    """
+    self.network.resetProfiling()
 
 
   def createRandomObjects(self, numObjects, numPoints):
@@ -388,11 +388,14 @@ class L4L2Experiment(object):
     The pairs would be drawn randomly, set setObjects() to create personalized
     experiments.
     """
+    objects = {}
     for _ in xrange(numObjects):
       self.addObject(
         [(random.randint(0, numPoints),
-           random.randint(0, numPoints)) for _ in xrange(numPoints)]
+          random.randint(0, numPoints)) for _ in xrange(numPoints)],
+        objects=objects
       )
+    return objects
 
 
   def generatePattern(self, numBits, size=None):
@@ -400,7 +403,7 @@ class L4L2Experiment(object):
     Generates a pattern, represented as a set of active bits.
     """
     if size is None:
-      size = self.config["sensorInputSize"]
+      size = self.inputSize
 
     cellsIndices = range(size)
     random.shuffle(cellsIndices)
@@ -436,6 +439,7 @@ class L4L2Experiment(object):
       "columnCount": inputSize,
       "cellsPerColumn": 8,
       "formInternalConnections": 0,
+      "formInternalBasalConnections": 0,  # inconsistency between CPP and PY
       "learningMode": 1,
       "inferenceMode": 1,
       "learnOnOneCell": 0,
@@ -447,7 +451,8 @@ class L4L2Experiment(object):
       "predictedSegmentDecrement": 0.004,
       "activationThreshold": 13,
       "maxNewSynapseCount": 20,
-      "seed": 42
+      "monitor": 0,
+      "implementation": "cpp",
     }
 
 
@@ -460,13 +465,17 @@ class L4L2Experiment(object):
       "inputWidth": inputSize * 8,
       "learningMode": 1,
       "inferenceMode": 1,
-      "initialPermanence": 0.51,
-      "connectedPermanence": 0.6,
+      "initialPermanence": 0.21,
+      "connectedPermanence": 0.5,
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.02,
+      "numActiveColumnsPerInhArea": 40,
+      "synPermProximalInc": 0.1,
+      "synPermProximalDec": 0.001,
+      "initialProximalPermanence": 0.6,
       "minThreshold": 10,
       "predictedSegmentDecrement": 0.004,
-      "activationThreshold": 10,
+      "activationThreshold": 13,
       "maxNewSynapseCount": 20,
     }
 
@@ -483,7 +492,7 @@ class L4L2Experiment(object):
 
   def _setLearningMode(self):
     """
-    Sets the learning mode, to start inference.
+    Sets the learning mode.
     """
     for column in self.L4Columns:
       column.setParameter("learningMode", 0, 1)

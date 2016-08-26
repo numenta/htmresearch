@@ -55,11 +55,12 @@ def runSharedFeatures(noiseLevel=None, profile=False):
     "shared_features",
   )
 
-  objects = createThreeObjects()
-  for object in objects:
-    exp.addObject(object)
+  pairs = createThreeObjects()
+  objects = {}
+  for object in pairs:
+    objects = exp.addObject(object, objects=objects)
 
-  exp.learnAllObjects()
+  exp.learnObjects(objects)
   if profile:
     exp.printProfile()
 
@@ -75,6 +76,8 @@ def runSharedFeatures(noiseLevel=None, profile=False):
   if profile:
     exp.printProfile()
 
+  print exp.statistics
+
   exp.plotInferenceStats(
     fields=["L2 Representation",
             "Overlap L2 with object",
@@ -83,7 +86,7 @@ def runSharedFeatures(noiseLevel=None, profile=False):
 
 
 
-def runSharedFeaturesWithMissingLocations(missingLoc=None, profile=False):
+def runUncertainLocations(missingLoc=None, profile=False):
   """
   Runs the same experiment as above, with missing locations at some timesteps
   during inference (if it was not successfully computed by the rest of the
@@ -100,14 +103,15 @@ def runSharedFeaturesWithMissingLocations(missingLoc=None, profile=False):
     missingLoc = {}
 
   exp = L4L2Experiment(
-    "shared_features_uncertain_location",
+    "uncertain_location",
   )
 
-  objects = createThreeObjects()
-  for object in objects:
-    exp.addObject(object)
+  pairs = createThreeObjects()
+  objects = {}
+  for object in pairs:
+    objects = exp.addObject(object, objects=objects)
 
-  exp.learnAllObjects()
+  exp.learnObjects(objects)
   if profile:
     exp.printProfile()
 
@@ -145,15 +149,15 @@ def runStretchExperiment(numObjects=25):
     "profiling_experiment",
   )
 
-  exp.createRandomObjects(numObjects=numObjects, numPoints=10)
-  exp.learnAllObjects()
+  objects = exp.createRandomObjects(numObjects=numObjects, numPoints=10)
+  exp.learnObjects(objects)
   exp.printProfile()
 
   inferConfig = {
     "object": 0,
-    "numSteps": len(exp.objects[0]),
+    "numSteps": len(objects[0]),
     "pairs": {
-      0: exp.objects[0]
+      0: objects[0]
     }
   }
 
@@ -173,7 +177,7 @@ if __name__ == "__main__":
 
   # experiment with unions at locations
   missingLoc = {3: (1,2,3), 6: (6,4,2)}
-  runSharedFeaturesWithMissingLocations(missingLoc=missingLoc)
+  runUncertainLocations(missingLoc=missingLoc)
 
   # stretch experiment to profile the regions
   runStretchExperiment()
