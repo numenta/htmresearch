@@ -35,3 +35,21 @@ inactivated a random selection of neurons. At up to 40% cell death there is
 almost no impact on performance. At greater than 40% cell death the performance
 of the network declines but then recovers as the network relearns using
 remaining neurons.
+
+Generating plots
+----------------
+
+A helper utility `generate_plots.py` is provided to assist in reproducing
+figure 6A-B from the neuron paper.
+
+### Figure 6A
+
+```
+python generate_plots.py 0.0 --figure A --passthru="--name Fig6A --simulation killer"
+```
+
+### Figure 6B
+
+```
+python generate_plots.py 0.4 0.5 0.6 0.75 --figure B --passthru="--name Fig6B --simulation killer"
+```
