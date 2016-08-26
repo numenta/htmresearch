@@ -27,7 +27,7 @@ from htmresearch.support.register_regions import registerAllResearchRegions
 
 
 
-class ColumnPoolerTest(unittest.TestCase):
+class ColumnPoolerRegionTest(unittest.TestCase):
   """ Super simple test of the ColumnPooler region."""
 
   @classmethod

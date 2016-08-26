@@ -23,14 +23,12 @@ import unittest
 import numpy as np
 
 from nupic.data.generators.pattern_machine import PatternMachine
-from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
-  TemporalMemoryMonitorMixin
-)
+
 from htmresearch.algorithms.column_pooler import ColumnPooler
+from htmresearch.support.column_pooler_mixin import ColumnPoolerMonitorMixin
 
 
-
-class MonitoredColumnPooler(TemporalMemoryMonitorMixin, ColumnPooler):
+class MonitoredColumnPooler(ColumnPoolerMonitorMixin, ColumnPooler):
   pass
 
 
@@ -1181,10 +1179,9 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     """
     params = {
       "inputWidth": self.inputWidth,
-      "numActivecolumnsPerInhArea": self.numOutputActiveBits,
+      "numActiveColumnsPerInhArea": self.numOutputActiveBits,
       "columnDimensions": (self.outputWidth,),
       "seed": self.seed,
-      "learnOnOneCell": False,
       "initialPermanence": 0.51,
       "connectedPermanence": 0.6,
       "permanenceIncrement": 0.1,

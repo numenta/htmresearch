@@ -23,8 +23,7 @@ import numpy
 
 from nupic.bindings.math import (SM32 as SparseMatrix,
                                  SM_01_32_32 as SparseBinaryMatrix,
-                                 GetNTAReal)
-
+                                 GetNTAReal, Random)
 from htmresearch.algorithms.extended_temporal_memory import (
   ExtendedTemporalMemory
 )
@@ -34,7 +33,7 @@ uintType = "uint32"
 
 
 
-class ColumnPooler(ExtendedTemporalMemory):
+class ColumnPooler(object):
   """
   This class constitutes a temporary implementation for a cross-column pooler.
   The implementation goal of this class is to prove basic properties before
@@ -47,7 +46,18 @@ class ColumnPooler(ExtendedTemporalMemory):
                synPermProximalInc=0.1,
                synPermProximalDec=0.001,
                initialProximalPermanence=0.6,
-               **kwargs):
+               columnDimensions=(2048,),
+               activationThreshold=13,
+               initialPermanence=0.41,
+               connectedPermanence=0.50,
+               minThreshold=10,
+               maxNewSynapseCount=20,
+               permanenceIncrement=0.10,
+               permanenceDecrement=0.10,
+               predictedSegmentDecrement=0.0,
+               maxSegmentsPerCell=255,
+               maxSynapsesPerSegment=255,
+               seed=42):
     """
     Please see ExtendedTemporalMemory for descriptions of common constructor
     parameters.
@@ -70,16 +80,35 @@ class ColumnPooler(ExtendedTemporalMemory):
             Initial permanence value for proximal segments
     """
 
-    # Override: we only support one cell per column for now
-    # TODO: we don't need to inherit from ETM - get rid of this dependence
-    kwargs['cellsPerColumn'] = 1
-    super(ColumnPooler, self).__init__(**kwargs)
-
     self.inputWidth = inputWidth
     self.numActiveColumnsPerInhArea = numActiveColumnsPerInhArea
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
+    self.connectedPermanence = connectedPermanence
+    self.maxNewSynapseCount = maxNewSynapseCount
+    self.minThreshold = minThreshold
+    self.activeCells = set()
+    self._random = Random(seed)
+
+    # Create our own instance of extended temporal memory to handle distal
+    # segments.
+    self.tm = ExtendedTemporalMemory(
+                      columnDimensions=columnDimensions,
+                      cellsPerColumn=1,
+                      activationThreshold=activationThreshold,
+                      initialPermanence=initialPermanence,
+                      connectedPermanence=connectedPermanence,
+                      minThreshold=minThreshold,
+                      maxNewSynapseCount=maxNewSynapseCount,
+                      permanenceIncrement=permanenceIncrement,
+                      permanenceDecrement=permanenceDecrement,
+                      predictedSegmentDecrement=predictedSegmentDecrement,
+                      maxSegmentsPerCell=maxSegmentsPerCell,
+                      maxSynapsesPerSegment=maxSynapsesPerSegment,
+                      seed=seed,
+                      learnOnOneCell=False,
+    )
 
     # These sparse matrices will hold the synapses for each proximal segment.
     #
@@ -91,16 +120,11 @@ class ColumnPooler(ExtendedTemporalMemory):
     self.proximalConnections = SparseBinaryMatrix(inputWidth)
     self.proximalConnections.resize(self.numberOfColumns(), inputWidth)
 
-    # Create our own instance of extended temporal memory to handle distal
-    # segments.
-    self.tm = ExtendedTemporalMemory(**kwargs)
 
 
   def compute(self,
               feedforwardInput=None,
               activeExternalCells=None,
-              activeApicalCells=None,
-              formInternalConnections=False,
               learn=True):
     """
 
@@ -223,7 +247,7 @@ class ColumnPooler(ExtendedTemporalMemory):
     # Narrow down list of active cells based on lateral activity
     self.activeCells = self._winnersBasedOnLateralActivity(
       bottomUpActivity,
-      self.getDistallyPredictiveCells(),
+      self.getPredictiveCells(),
       overlaps,
       self.numActiveColumnsPerInhArea
     )
@@ -242,9 +266,43 @@ class ColumnPooler(ExtendedTemporalMemory):
     return self.inputWidth
 
 
+  def numberOfColumns(self):
+    """
+    Returns the number of columns in this layer.
+    @return (int) Number of columns
+    """
+    return self.tm.numberOfColumns()
+
+
+  def numberOfCells(self):
+    """
+    Returns the number of cells in this layer.
+    @return (int) Number of cells
+    """
+    return self.tm.numberOfCells()
+
+
+  def getActiveCells(self):
+    """
+    Returns the indices of the active cells.
+    @return (set) Indices of active cells.
+    """
+    return self.getCellIndices(self.activeCells)
+
+
+  @classmethod
+  def getCellIndices(cls, cells):
+    return [cls.getCellIndex(c) for c in cells]
+
+
+  @staticmethod
+  def getCellIndex(cell):
+    return cell
+
+
   def numberOfConnectedSynapses(self, cells):
     """
-    Returns the number of connected synapses on these cells.
+    Returns the number of proximal connected synapses on these cells.
 
     Parameters:
     ----------------------------
@@ -259,7 +317,7 @@ class ColumnPooler(ExtendedTemporalMemory):
 
   def numberOfSynapses(self, cells):
     """
-    Returns the number of synapses with permanence>0 on these cells.
+    Returns the number of proximal synapses with permanence>0 on these cells.
 
     Parameters:
     ----------------------------
@@ -309,18 +367,18 @@ class ColumnPooler(ExtendedTemporalMemory):
     Reset internal states. When learning this signifies we are to learn a
     unique new object.
     """
-    super(ColumnPooler, self).reset()
+    self.activeCells = set()
     self.tm.reset()
 
 
-  def getDistallyPredictiveCells(self):
+  def getPredictiveCells(self):
     """
     Get the set of distally predictive cells as a set.
 
-    @return (set) A set containing indices of the current distally predicted
+    @return (list) A list containing indices of the current distally predicted
     cells.
     """
-    return set(self.tm.getPredictiveCells())
+    return self.tm.getPredictiveCells()
 
 
   def getPredictedActiveCells(self):
@@ -330,6 +388,16 @@ class ColumnPooler(ExtendedTemporalMemory):
     @return (set) A set containing indices.
     """
     return self.tm.predictedActiveCellsIndices()
+
+
+  def getConnections(self):
+    """
+    Get the Connections structure associated with our TM. Beware of using
+    this as it is implementation specific and may change.
+
+    @return (object) A Connections object
+    """
+    return self.tm.connections
 
 
   def _learnProximal(self,

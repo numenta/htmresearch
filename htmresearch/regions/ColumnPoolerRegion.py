@@ -21,9 +21,19 @@
 
 import copy
 import numpy
+import inspect
 
 from nupic.bindings.regions.PyRegion import PyRegion
 from htmresearch.algorithms.column_pooler import ColumnPooler
+
+
+def getConstructorArguments():
+  """
+  Return constructor argument associated with ColumnPooler.
+  @return defaults (list)   a list of args and default values for each argument
+  """
+  argspec = inspect.getargspec(ColumnPooler.__init__)
+  return argspec.args[1:], argspec.defaults
 
 
 class ColumnPoolerRegion(PyRegion):
@@ -141,12 +151,6 @@ class ColumnPoolerRegion(PyRegion):
           dataType='UInt32',
           count=1,
           constraints=''),
-        cellsPerColumn=dict(
-          description="Number of cells per column",
-          accessMode='ReadWrite',
-          dataType="UInt32",
-          count=1,
-          constraints=""),
         activationThreshold=dict(
           description="If the number of active connected synapses on a "
                       "segment is at least this threshold, the segment "
@@ -250,7 +254,6 @@ class ColumnPoolerRegion(PyRegion):
   def __init__(self,
                columnCount=2048,
                inputWidth=16384,
-               cellsPerColumn=1,
                activationThreshold=13,
                initialPermanence=0.21,
                connectedPermanence=0.50,
@@ -269,7 +272,6 @@ class ColumnPoolerRegion(PyRegion):
     # Defaults for all other parameters
     self.columnCount = columnCount
     self.inputWidth = inputWidth
-    self.cellsPerColumn = cellsPerColumn
     self.activationThreshold = activationThreshold
     self.initialPermanence = initialPermanence
     self.connectedPermanence = connectedPermanence
@@ -298,6 +300,13 @@ class ColumnPoolerRegion(PyRegion):
     """
     if self._pooler is None:
       args = copy.deepcopy(self.__dict__)
+
+      # Ensure we only pass in those args that are expected.
+      expectedArgs = getConstructorArguments()[0]
+      for arg in args.keys():
+        if not arg in expectedArgs:
+          args.pop(arg)
+
       self._pooler = ColumnPooler(
         columnDimensions=[self.columnCount, 1],
         maxSynapsesPerSegment = self.inputWidth,
@@ -386,7 +395,7 @@ class ColumnPoolerRegion(PyRegion):
       setattr(self, parameterName, parameterValue)
     else:
       raise Exception("Unknown parameter: " + parameterName)
-    self.inputWidth = self.columnCount*self.cellsPerColumn
+    self.inputWidth = self.columnCount
 
 
   def getOutputElementCount(self, name):
@@ -395,7 +404,7 @@ class ColumnPoolerRegion(PyRegion):
     """
     if name in ["feedForwardOutput", "predictedActiveCells", "predictiveCells",
                 "activeCells"]:
-      return self.columnCount * self.cellsPerColumn
+      return self.columnCount
     else:
       raise Exception("Invalid output name specified")
 
