@@ -76,8 +76,6 @@ def runSharedFeatures(noiseLevel=None, profile=False):
   if profile:
     exp.printProfile()
 
-  print exp.statistics
-
   exp.plotInferenceStats(
     fields=["L2 Representation",
             "Overlap L2 with object",

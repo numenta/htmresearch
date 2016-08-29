@@ -327,6 +327,18 @@ class ColumnPoolerRegion(PyRegion):
     representation to this point and any history will then be reset. The output
     at the next compute will start fresh, presumably with bursting columns.
     """
+    # Handle reset first (should be sent with an empty signal)
+    if "resetIn" in inputs:
+      assert len(inputs["resetIn"]) == 1
+      if inputs["resetIn"][0] != 0:
+        # send empty output
+        self.reset()
+        outputs["feedForwardOutput"][:] = 0
+        outputs["activeCells"][:] = 0
+        outputs["predictiveCells"][:] = 0
+        outputs["predictedActiveCells"][:] = 0
+        return
+
     feedforwardInput = inputs['feedforwardInput'].nonzero()[0]
     lateralInput = inputs.get('lateralInput', None)
     if lateralInput is not None:
@@ -361,15 +373,12 @@ class ColumnPoolerRegion(PyRegion):
     else:
       raise Exception("Unknown outputType: " + self.defaultOutputType)
 
-    # Handle reset after current input has been processed
-    if "resetIn" in inputs:
-      assert len(inputs["resetIn"]) == 1
-      if inputs["resetIn"][0] != 0:
-        self.reset()
-
 
   def reset(self):
     """ Reset the state of the layer"""
+    self.activeState[:] = 0
+    self.previouslyPredictedCells[:] = 0
+
     if self._pooler is not None:
       self._pooler.reset()
 

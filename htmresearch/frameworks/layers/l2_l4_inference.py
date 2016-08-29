@@ -208,7 +208,7 @@ class L4L2Experiment(object):
       self.objectL2Representations[object] = self.getL2Representations()
 
       # send reset signal
-      self._sendResetSignal()
+      self.sendResetSignal()
 
 
   def infer(self, inferenceConfig, noise=None):
@@ -231,10 +231,14 @@ class L4L2Experiment(object):
     patterns, can be given.
     """
     self._unsetLearningMode()
+    self.sendResetSignal()
 
     statistics = collections.defaultdict(list)
     objectID = inferenceConfig["object"]
-    numSteps = inferenceConfig["numSteps"]
+    if "numSteps" in inferenceConfig:
+      numSteps = inferenceConfig["numSteps"]
+    else:
+      numSteps = len(inferenceConfig["pairs"][0])
 
     # some checks
     if numSteps == 0:
@@ -251,10 +255,11 @@ class L4L2Experiment(object):
       self._updateInferenceStats(statistics, objectID)
 
     # send reset signal
-    self._sendResetSignal()
+    self.sendResetSignal()
 
     # save statistics
     statistics["numSteps"] = numSteps
+    statistics["object"] = objectID
     self.statistics.append(statistics)
 
 
@@ -279,7 +284,8 @@ class L4L2Experiment(object):
     """
     plt.figure(0)
     stats = self.statistics[experimentID]
-    path = self.PLOT_DIRECTORY + self.name + "_exp_" + str(experimentID)
+    objectID = stats["object"]
+    initPath = self.PLOT_DIRECTORY + self.name + "_exp_" + str(experimentID)
 
     for i in xrange(self.numColumns):
       if onePlot:
@@ -301,16 +307,16 @@ class L4L2Experiment(object):
       plt.xticks(range(stats["numSteps"]))
       plt.ylabel("Number of active bits")
       plt.ylim(plt.ylim()[0] - 5, plt.ylim()[1] + 5)
-      plt.title("Object inference")
+      plt.title("Object inference for object {}".format(objectID))
 
       # save
       if not onePlot:
-        path = path + "_C" + str(i) + ".png"
+        path = initPath + "_C" + str(i) + ".png"
         plt.savefig(path)
         plt.close()
 
     if onePlot:
-      path = path + ".png"
+      path = initPath + ".png"
       plt.savefig(path)
       plt.close()
 
@@ -465,7 +471,7 @@ class L4L2Experiment(object):
       "inputWidth": inputSize * 8,
       "learningMode": 1,
       "inferenceMode": 1,
-      "initialPermanence": 0.21,
+      "initialPermanence": 0.41,
       "connectedPermanence": 0.5,
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.02,
@@ -478,6 +484,16 @@ class L4L2Experiment(object):
       "activationThreshold": 13,
       "maxNewSynapseCount": 20,
     }
+
+
+  def sendResetSignal(self, sequenceId=0):
+    """
+    Sends a reset signal to the network.
+    """
+    for col in xrange(self.numColumns):
+      self.sensorInputs[col].addResetToQueue(sequenceId)
+      self.externalInputs[col].addResetToQueue(sequenceId)
+    self.network.run(1)
 
 
   def _unsetLearningMode(self):
@@ -546,16 +562,6 @@ class L4L2Experiment(object):
       self.externalInputs[col].addDataToQueue(
         list(location), int(reset), sequenceId
       )
-
-
-  def _sendResetSignal(self):
-    """
-    Sends a reset signal to the network.
-    """
-    for col in xrange(self.numColumns):
-      self.sensorInputs[col].addDataToQueue([], 1, 0)
-      self.externalInputs[col].addDataToQueue([], 1, 0)
-    self.network.run(1)
 
 
   def _addNoise(self, pattern, noiseLevel):
