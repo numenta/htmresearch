@@ -300,30 +300,34 @@ class ColumnPooler(object):
     return cell
 
 
-  def numberOfConnectedSynapses(self, cells):
+  def numberOfConnectedSynapses(self, cells=None):
     """
     Returns the number of proximal connected synapses on these cells.
 
     Parameters:
     ----------------------------
     @param  cells (set or list)
-            Indices of the cells
+            Indices of the cells. If None return count for all cells.
     """
+    if cells is None:
+      cells = xrange(self.numberOfCells())
     n = 0
     for cell in cells:
       n += self.proximalConnections.nNonZerosOnRow(cell)
     return n
 
 
-  def numberOfSynapses(self, cells):
+  def numberOfSynapses(self, cells=None):
     """
     Returns the number of proximal synapses with permanence>0 on these cells.
 
     Parameters:
     ----------------------------
     @param  cells (set or list)
-            Indices of the cells
+            Indices of the cells. If None return count for all cells.
     """
+    if cells is None:
+      cells = xrange(self.numberOfCells())
     n = 0
     for cell in cells:
       n += self.proximalPermanences.nNonZerosOnRow(cell)

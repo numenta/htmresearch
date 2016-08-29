@@ -1282,7 +1282,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
         # Train each column
         for col in xrange(len(self.poolers)):
           self.poolers[col].compute(
-            activeColumns=feedforwardPatterns[indices[col][i]][col],
+            feedforwardInput=feedforwardPatterns[indices[col][i]][col],
             activeExternalCells=lateralInputs[col],
             learn=True
           )
