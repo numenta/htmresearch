@@ -191,9 +191,9 @@ def runStretch(noiseLevel=None, profile=False):
 
 def runAmbiguities(noiseLevel=None, profile=False):
   """
-  Runs a simple experiment where an object is disambiguated as each column
-  recognizes a union of two objects, and the real object is the only
-  common one.
+  Runs an experiment where three objects are being learnt, but share many
+  patterns. At inference, only one object is being moved over, and we should
+  see quick convergence.
 
   :param noiseLevel: (float) Noise level to add to the locations and features
                              during inference
@@ -238,7 +238,7 @@ def runAmbiguities(noiseLevel=None, profile=False):
 
 
 if __name__ == "__main__":
-  # runLateralDisambiguation()
-  # runDisambiguationByUnions()
-  # runStretch()
-  runAmbiguities()
+  runLateralDisambiguation()
+  runDisambiguationByUnions(noiseLevel=0.05)
+  runStretch()
+  runAmbiguities(noiseLevel=0.05)
