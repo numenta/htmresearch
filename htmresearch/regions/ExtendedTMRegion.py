@@ -394,7 +394,6 @@ class ExtendedTMRegion(PyRegion):
       if inputs["resetIn"][0] != 0:
         # send empty output
         self.reset()
-        self.activeState[:] = 0
         outputs["feedForwardOutput"][:] = 0
         outputs["activeCells"][:] = 0
         outputs["predictiveCells"][:] = 0
@@ -442,15 +441,12 @@ class ExtendedTMRegion(PyRegion):
     else:
       raise Exception("Unknown outputType: " + self.defaultOutputType)
 
-    # Handle reset after current input has been processed
-    # if "resetIn" in inputs:
-    #   assert len(inputs["resetIn"]) == 1
-    #   if inputs["resetIn"][0] != 0:
-    #     self.reset()
-
 
   def reset(self):
     """ Reset the state of the TM """
+    self.activeState[:] = 0
+    self.previouslyPredictedCells[:] = 0
+
     if self._tm is not None:
       self._tm.reset()
       self.previouslyPredictedCells[:] = 0
