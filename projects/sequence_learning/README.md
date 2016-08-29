@@ -19,8 +19,8 @@ implemented using a special class called `FaultyTemporalMemory` which kills off
 a random percentage of cells.
 
 
-We plan to use the graphs from these in some of our papers. Here are
-example results:
+This script was used to generate the graphs in (Hawkins & Ahmad, 2016). Here 
+are the images from that paper:
 
 ![](images/figure.tiff)
 
@@ -39,8 +39,8 @@ remaining neurons.
 Generating plots
 ----------------
 
-A helper utility `generate_plots.py` is provided to assist in reproducing
-figure 6A-B from the neuron paper.
+A helper utility generate_plots.py is provided to assist in reproducing figure 
+6A-B from (Hawkins & Ahmad, 2016)
 
 ### Figure 6A
 
@@ -53,3 +53,7 @@ python generate_plots.py 0.0 --figure A --passthru="--name Fig6A"
 ```
 python generate_plots.py 0.4 0.5 0.6 0.75 --figure B --passthru="--name Fig6B --simulation killer"
 ```
+
+<hr/>
+
+* J. Hawkins, S. Ahmad, <em>Why Neurons Have Thousands of Synapses, a Theory of Sequence Memory in Neocortex</em>, Front. Neural Circuits. 10 (2016) 1–13. doi:10.3389/fncir.2016.00023.  http://journal.frontiersin.org/article/10.3389/fncir.2016.00023/full
