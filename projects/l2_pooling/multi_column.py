@@ -215,8 +215,6 @@ def runAmbiguities(noiseLevel=None, profile=False):
   if profile:
     exp.printProfile()
 
-  print exp.objectL2Representations
-
   inferConfig = {
     "object": 1,
     "numSteps": 6,
@@ -236,8 +234,6 @@ def runAmbiguities(noiseLevel=None, profile=False):
             "L4 Representation"],
     onePlot=False,
   )
-
-  print exp.getInferenceStats(0)
 
 
 

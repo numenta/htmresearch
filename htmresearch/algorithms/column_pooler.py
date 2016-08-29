@@ -252,11 +252,6 @@ class ColumnPooler(object):
       self.numActiveColumnsPerInhArea
     )
 
-    print
-    print len(lateralInput), sorted(list(lateralInput))
-    print len(self.activeCells), sorted(list(self.activeCells))
-    print
-
     # Update predictive cells for next time step
     self.tm.compute(activeColumns=self.activeCells,
                     activeExternalCells=lateralInput,

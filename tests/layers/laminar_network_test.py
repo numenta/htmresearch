@@ -351,7 +351,7 @@ class LaminarNetworkTest(unittest.TestCase):
     L2RepresentationA = self.getCurrentL2Representation(L2Column)
     self.assertEqual(len(L2RepresentationA), 40)
 
-    for _ in xrange(3):
+    for _ in xrange(4):
       sensorInput.addDataToQueue(features[0], 0, 0)
       externalInput.addDataToQueue(locations[0], 0, 0)
       net.run(1)
@@ -380,8 +380,8 @@ class LaminarNetworkTest(unittest.TestCase):
     self.assertEqual(len(L4Representation00), 20)
 
     # send reset signal
-    sensorInput.addDataToQueue(features[1], 1, 0)
-    externalInput.addDataToQueue(locations[1], 0, 0)
+    sensorInput.addResetToQueue(0)
+    externalInput.addResetToQueue(0)
     net.run(1)
 
     # Object B
@@ -397,7 +397,7 @@ class LaminarNetworkTest(unittest.TestCase):
     # check that it is very different from object A
     self.assertLessEqual(len(L2RepresentationA & L2RepresentationB), 5)
 
-    for _ in xrange(3):
+    for _ in xrange(4):
       sensorInput.addDataToQueue(features[0], 0, 0)
       externalInput.addDataToQueue(locations[2], 0, 0)
       net.run(1)
@@ -434,8 +434,8 @@ class LaminarNetworkTest(unittest.TestCase):
     self.assertEqual(len(L4Representation11), 20)
 
     # send reset signal
-    sensorInput.addDataToQueue(features[1], 1, 0)
-    externalInput.addDataToQueue(locations[1], 0, 0)
+    sensorInput.addResetToQueue(0)
+    externalInput.addResetToQueue(0)
     net.run(1)
 
     # check inference with each (feature, location) pair
@@ -599,10 +599,10 @@ class LaminarNetworkTest(unittest.TestCase):
     self.assertEqual(len(L4Representation00_1), 20)
 
     # send reset signal
-    sensorInput0.addDataToQueue(features0[1], 1, 0)
-    externalInput0.addDataToQueue(locations0[1], 0, 0)
-    sensorInput1.addDataToQueue(features1[1], 1, 0)
-    externalInput1.addDataToQueue(locations1[1], 0, 0)
+    sensorInput0.addResetToQueue(0)
+    externalInput0.addResetToQueue(0)
+    sensorInput1.addResetToQueue(0)
+    externalInput1.addResetToQueue(0)
     net.run(1)
 
     # Object B
@@ -681,11 +681,10 @@ class LaminarNetworkTest(unittest.TestCase):
     self.assertEqual(len(L4Representation11_0), 20)
     self.assertEqual(len(L4Representation11_1), 20)
 
-    # send reset signal
-    sensorInput0.addDataToQueue(features0[1], 1, 0)
-    externalInput0.addDataToQueue(locations0[1], 0, 0)
-    sensorInput1.addDataToQueue(features1[1], 1, 0)
-    externalInput1.addDataToQueue(locations1[1], 0, 0)
+    sensorInput0.addResetToQueue(0)
+    externalInput0.addResetToQueue(0)
+    sensorInput1.addResetToQueue(0)
+    externalInput1.addResetToQueue(0)
     net.run(1)
 
     # check inference with each (feature, location) pair

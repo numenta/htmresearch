@@ -332,6 +332,19 @@ class ColumnPoolerRegion(PyRegion):
     if lateralInput is not None:
       lateralInput = set(lateralInput.nonzero()[0])
 
+    # Handle reset first (should be sent with an empty signal)
+    if "resetIn" in inputs:
+      assert len(inputs["resetIn"]) == 1
+      if inputs["resetIn"][0] != 0:
+        # send empty output
+        self.reset()
+        self.activeState[:] = 0
+        outputs["feedForwardOutput"][:] = 0
+        outputs["activeCells"][:] = 0
+        outputs["predictiveCells"][:] = 0
+        outputs["predictedActiveCells"][:] = 0
+        return
+
     self._pooler.compute(
       feedforwardInput=feedforwardInput,
       activeExternalCells=lateralInput,
@@ -362,10 +375,10 @@ class ColumnPoolerRegion(PyRegion):
       raise Exception("Unknown outputType: " + self.defaultOutputType)
 
     # Handle reset after current input has been processed
-    if "resetIn" in inputs:
-      assert len(inputs["resetIn"]) == 1
-      if inputs["resetIn"][0] != 0:
-        self.reset()
+    # if "resetIn" in inputs:
+    #   assert len(inputs["resetIn"]) == 1
+    #   if inputs["resetIn"][0] != 0:
+    #     self.reset()
 
 
   def reset(self):

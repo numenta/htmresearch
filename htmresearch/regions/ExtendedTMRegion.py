@@ -388,6 +388,19 @@ class ExtendedTMRegion(PyRegion):
     at the next compute will start fresh, presumably with bursting columns.
     """
 
+    # Handle reset first (should be sent with an empty signal)
+    if "resetIn" in inputs:
+      assert len(inputs["resetIn"]) == 1
+      if inputs["resetIn"][0] != 0:
+        # send empty output
+        self.reset()
+        self.activeState[:] = 0
+        outputs["feedForwardOutput"][:] = 0
+        outputs["activeCells"][:] = 0
+        outputs["predictiveCells"][:] = 0
+        outputs["predictedActiveCells"][:] = 0
+        return
+
     activeColumns = set(numpy.where(inputs["feedForwardInput"] == 1)[0])
 
     if "apicalInput" in inputs:
@@ -430,10 +443,10 @@ class ExtendedTMRegion(PyRegion):
       raise Exception("Unknown outputType: " + self.defaultOutputType)
 
     # Handle reset after current input has been processed
-    if "resetIn" in inputs:
-      assert len(inputs["resetIn"]) == 1
-      if inputs["resetIn"][0] != 0:
-        self.reset()
+    # if "resetIn" in inputs:
+    #   assert len(inputs["resetIn"]) == 1
+    #   if inputs["resetIn"][0] != 0:
+    #     self.reset()
 
 
   def reset(self):
