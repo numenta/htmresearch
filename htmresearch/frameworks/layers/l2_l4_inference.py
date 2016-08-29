@@ -231,6 +231,7 @@ class L4L2Experiment(object):
     patterns, can be given.
     """
     self._unsetLearningMode()
+    self._sendResetSignal()
 
     statistics = collections.defaultdict(list)
     objectID = inferenceConfig["object"]
@@ -254,7 +255,7 @@ class L4L2Experiment(object):
       self._updateInferenceStats(statistics, objectID)
 
     # send reset signal
-    # self._sendResetSignal()
+    self._sendResetSignal()
 
     # save statistics
     statistics["numSteps"] = numSteps
@@ -558,9 +559,8 @@ class L4L2Experiment(object):
     Sends a reset signal to the network.
     """
     for col in xrange(self.numColumns):
-      self.sensorInputs[col].addDataToQueue([], 1, 0)
-      self.externalInputs[col].addDataToQueue([], 1, 0)
-    self.network.run(1)
+      self.L4Columns[col].reset()
+      self.L2Columns[col].reset()
 
 
   def _addNoise(self, pattern, noiseLevel):
