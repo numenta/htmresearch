@@ -134,6 +134,8 @@ def createL4L2Column(network, networkConfig, suffix=""):
   network.link(sensorInputName, L2ColumnName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
 
+  enableProfiling(network)
+
   return network
 
 
@@ -181,7 +183,15 @@ def createMultipleL4L2Columns(network, networkConfig):
             "UniformLink", "",
             srcOutput="feedForwardOutput", destInput="lateralInput")
 
+  enableProfiling(network)
+
   return network
+
+
+def enableProfiling(network):
+  """Enable profiling for all regions in the network."""
+  for region in network.regions.values():
+    region.enableProfiling()
 
 
 def createNetwork(networkConfig):
@@ -200,3 +210,4 @@ def createNetwork(networkConfig):
     return createL4L2Column(network, networkConfig, "_0")
   elif networkConfig["networkType"] == "MultipleL4L2Columns":
     return createMultipleL4L2Columns(network, networkConfig)
+

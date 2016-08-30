@@ -355,19 +355,30 @@ class L4L2Experiment(object):
     print "Profiling information for {}".format(type(self).__name__)
     totalTime = 0.000001
     for region in self.network.regions.values():
-      timer = region.computeTimer
+      timer = region.getComputeTimer()
       totalTime += timer.getElapsed()
+
+    # Sort the region names
+    regionNames = list(self.network.regions.keys())
+    regionNames.sort()
 
     count = 1
     profileInfo = []
-    for region in self.network.regions.values():
-      timer = region.computeTimer
+    L2Time = 0.0
+    L4Time = 0.0
+    for regionName in regionNames:
+      region = self.network.regions[regionName]
+      timer = region.getComputeTimer()
       count = max(timer.getStartCount(), count)
       profileInfo.append([region.name,
                           timer.getStartCount(),
                           timer.getElapsed(),
                           100.0 * timer.getElapsed() / totalTime,
                           timer.getElapsed() / max(timer.getStartCount(), 1)])
+      if "L2Column" in regionName:
+        L2Time += timer.getElapsed()
+      elif "L4Column" in regionName:
+        L4Time += timer.getElapsed()
 
     profileInfo.append(
       ["Total time", "", totalTime, "100.0", totalTime / count])
@@ -376,6 +387,8 @@ class L4L2Experiment(object):
                                          "Secs/iteration"],
                    tablefmt="grid", floatfmt="6.3f")
     print
+    print "Total time in L2 =", L2Time
+    print "Total time in L4 =", L4Time
 
     if reset:
       self.resetProfile()

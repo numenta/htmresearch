@@ -149,7 +149,7 @@ def runStretch(noiseLevel=None, profile=False):
 
   exp.learnObjects(objects)
   if profile:
-    exp.printProfile()
+    exp.printProfile(reset=True)
 
   # For inference, we will check and plot convergence for object 0. We create a
   # sequence of random sensations for each column.  We will present each
