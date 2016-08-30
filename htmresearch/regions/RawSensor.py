@@ -154,6 +154,21 @@ class RawSensor(PyRegion):
     })
 
 
+  def addResetToQueue(self, sequenceId):
+    """
+    Add a reset signal to the sensor's internal queue. Calls to compute
+    will cause items in the queue to be dequeued in FIFO order.
+
+    @param sequenceId An int or string with an integer ID associated with this
+                      token and its sequence (document).
+    """
+    self.queue.appendleft({
+      "sequenceId": int(sequenceId),
+      "reset": 1,
+      "nonZeros": [],
+    })
+
+
   def getOutputElementCount(self, name):
     """Returns the width of dataOut."""
 

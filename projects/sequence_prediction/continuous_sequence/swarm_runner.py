@@ -201,4 +201,3 @@ if __name__ == "__main__":
     print " generate swarm description file for ", filePathTrain
   else:
     swarm_runner.runExperiment(SWARM_CONFIG)
-

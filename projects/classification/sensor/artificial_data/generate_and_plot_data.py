@@ -22,7 +22,7 @@
 
 from htmresearch.frameworks.classification.utils.sensor_data import (
   generateSensorData)
-from htmresearch.frameworks.classification.utils.sensor_data import (
+from htmresearch.frameworks.classification.utils.plot import (
   plotSensorData)
 
 from settings import (SIGNAL_TYPES,

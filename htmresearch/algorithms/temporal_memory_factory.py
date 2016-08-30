@@ -29,8 +29,59 @@ from htmresearch.algorithms.extended_temporal_memory import (
   ExtendedTemporalMemory)
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
+from nupic.bindings.experimental import ExtendedTemporalMemory as FastETM
 
-class MonitoredTemporalMemory(TemporalMemoryMonitorMixin, TemporalMemory): pass
+
+class MonitoredTemporalMemory(TemporalMemoryMonitorMixin, TemporalMemory):
+  pass
+
+
+class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin,
+                                      ExtendedTemporalMemory):
+  pass
+
+
+class ReversedExtendedTemporalMemory(FastETM):
+  """
+  Modified version of ETM. Should be implemented (or at least allowed) when
+  the "new" ETM is ported to Python.
+
+  This class inherits from Python binding of nupic.core's extended temporal
+  memory, to overwrite its compute() function. The goal is to reverse the two
+  steps of inference: depolarize before activate, so that external and
+  proximal input are used at the same time step.
+  """
+
+  def compute(self,
+              activeColumns,
+              activeExternalCells=None,
+              activeApicalCells=None,
+              formInternalConnections=False,
+              learn=True):
+    """
+    Use bindings methods to reverse the calls in compute.
+    """
+    # sort indices for consistency with C++ version
+    activeColumns = sorted(list(activeColumns))
+    activeExternalCells = sorted(list(activeExternalCells))
+    activeApicalCells = sorted(list(activeApicalCells))
+
+    self.activateBasalDendrites(
+      activeExternalCells,
+      learn
+    )
+    self.activateApicalDendrites(
+      activeApicalCells,
+      learn
+    )
+    self.activateCells(
+      activeColumns,
+      activeExternalCells,
+      activeApicalCells,
+      learn
+    )
+
+
 
 class TemporalMemoryTypes(object):
   """ Enumeration of supported classification model types, mapping userland
@@ -38,6 +89,9 @@ class TemporalMemoryTypes(object):
   implementation.
   """
   extended = ExtendedTemporalMemory
+  extendedCPP = FastETM
+  reversedExtendedCPP = ReversedExtendedTemporalMemory
+  extendedMixin = MonitoredExtendedTemporalMemory
   tm = TemporalMemory
   tmMixin = MonitoredTemporalMemory
   tmCPP = TemporalMemoryCPP

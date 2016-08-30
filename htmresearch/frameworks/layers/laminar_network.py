@@ -123,7 +123,8 @@ def createL4L2Column(network, networkConfig, suffix=""):
                srcOutput="dataOut", destInput="feedForwardInput")
 
   # Link L4 to L2, and L2's feedback to L4
-  network.link(L4ColumnName, L2ColumnName, "UniformLink", "")
+  network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
+               srcOutput="feedForwardOutput", destInput="feedforwardInput")
   network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
                srcOutput="feedForwardOutput", destInput="apicalInput")
 
@@ -132,6 +133,8 @@ def createL4L2Column(network, networkConfig, suffix=""):
                srcOutput="resetOut", destInput="resetIn")
   network.link(sensorInputName, L2ColumnName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
+
+  enableProfiling(network)
 
   return network
 
@@ -161,23 +164,34 @@ def createMultipleL4L2Columns(network, networkConfig):
       }
     }
   """
+  # TODO: for now, each L2 column should have a different seed
+  networkConfig["L2Params"]["seed"] = 0
+
   # Create each column
   for i in range(networkConfig["numCorticalColumns"]):
-    suffix = "_"+str(i)
+    suffix = "_" + str(i)
     network = createL4L2Column(network, networkConfig, suffix)
 
   # Now connect the L2 columns laterally
   for i in range(networkConfig["numCorticalColumns"]):
-    suffixSrc = "_"+str(i)
+    suffixSrc = "_" + str(i)
     for j in range(networkConfig["numCorticalColumns"]):
       if i != j:
-        suffixdest = "_"+str(j)
+        suffixDest = "_" + str(j)
         network.link(
-            "L2Column" + suffixSrc, "L2Column"+suffixdest,
+            "L2Column" + suffixSrc, "L2Column" + suffixDest,
             "UniformLink", "",
             srcOutput="feedForwardOutput", destInput="lateralInput")
 
+  enableProfiling(network)
+
   return network
+
+
+def enableProfiling(network):
+  """Enable profiling for all regions in the network."""
+  for region in network.regions.values():
+    region.enableProfiling()
 
 
 def createNetwork(networkConfig):
@@ -196,3 +210,4 @@ def createNetwork(networkConfig):
     return createL4L2Column(network, networkConfig, "_0")
   elif networkConfig["networkType"] == "MultipleL4L2Columns":
     return createMultipleL4L2Columns(network, networkConfig)
+

@@ -147,6 +147,7 @@ def createReport(tm, options, sequenceString, numSegments, numSynapses):
     csvWriter = csv.writer(resultsFile)
 
     accuracies = numpy.zeros(len(pac.data))
+    smoothedAccuracies = []
     am = 0
     csvWriter.writerow(["time", "element", "pac", "pic", "upac", "a",
                         "am", "accuracy", "sum", "nSegs", "nSyns"])
@@ -161,6 +162,7 @@ def createReport(tm, options, sequenceString, numSegments, numSynapses):
         accuracies[i] = am
         i0 = max(0, i-60+1)
         accuracy = numpy.mean(accuracies[i0:i+1])
+        smoothedAccuracies.append(accuracy)
 
         row=[i, sequenceString[i], len(j), len(pic.data[i]),
                 len(upac.data[i]), a, am,
@@ -168,6 +170,8 @@ def createReport(tm, options, sequenceString, numSegments, numSynapses):
                 numpy.sum(accuracies[i0:i+1]),
                 numSegments[i], numSynapses[i]]
         csvWriter.writerow(row)
+
+  return smoothedAccuracies
 
 
 def killCells(i, options, tm):
@@ -203,17 +207,17 @@ def runExperiment1(options):
     numpy.random.seed(options.seed)
 
     tm = MonitoredTemporalMemory(minThreshold=15,
-                                activationThreshold=15,
-                                maxNewSynapseCount=40,
-                                cellsPerColumn=options.cells,
-                                predictedSegmentDecrement = 0.01,
-                                columnDimensions=(2048,),
-                                initialPermanence=0.21,
-                                connectedPermanence=0.50,
-                                permanenceIncrement=0.10,
-                                permanenceDecrement=0.10,
-                                seed=42,
-                                )
+                                 activationThreshold=15,
+                                 maxNewSynapseCount=40,
+                                 cellsPerColumn=options.cells,
+                                 predictedSegmentDecrement = 0.01,
+                                 columnDimensions=(2048,),
+                                 initialPermanence=0.21,
+                                 connectedPermanence=0.50,
+                                 permanenceIncrement=0.10,
+                                 permanenceDecrement=0.10,
+                                 seed=42,
+                                 )
 
     printOptions(options, tm, outputFile)
 
@@ -269,10 +273,12 @@ def runExperiment1(options):
       sequenceString += label
 
 
-    createReport(tm, options, sequenceString, numSegments, numSynapses)
+    accuracies = createReport(tm, options, sequenceString, numSegments, numSynapses)
 
     print >>outputFile, "End time=",datetime.datetime.now().isoformat(' ')
     print >>outputFile, "Duration=",str(datetime.datetime.now()-startTime)
+
+    return accuracies
 
 
 #########################################################################
@@ -300,16 +306,16 @@ def printTemporalMemory(tm, outFile):
   """
   table = PrettyTable(["Parameter name", "Value", ])
 
-  table.add_row(["columnDimensions", tm.columnDimensions])
-  table.add_row(["cellsPerColumn", tm.cellsPerColumn])
-  table.add_row(["activationThreshold", tm.activationThreshold])
-  table.add_row(["minThreshold", tm.minThreshold])
-  table.add_row(["maxNewSynapseCount", tm.maxNewSynapseCount])
-  table.add_row(["permanenceIncrement", tm.permanenceIncrement])
-  table.add_row(["permanenceDecrement", tm.permanenceDecrement])
-  table.add_row(["initialPermanence", tm.initialPermanence])
-  table.add_row(["connectedPermanence", tm.connectedPermanence])
-  table.add_row(["predictedSegmentDecrement", tm.predictedSegmentDecrement])
+  table.add_row(["columnDimensions", tm.getColumnDimensions()])
+  table.add_row(["cellsPerColumn", tm.getCellsPerColumn()])
+  table.add_row(["activationThreshold", tm.getActivationThreshold()])
+  table.add_row(["minThreshold", tm.getMinThreshold()])
+  table.add_row(["maxNewSynapseCount", tm.getMaxNewSynapseCount()])
+  table.add_row(["permanenceIncrement", tm.getPermanenceIncrement()])
+  table.add_row(["permanenceDecrement", tm.getPermanenceDecrement()])
+  table.add_row(["initialPermanence", tm.getInitialPermanence()])
+  table.add_row(["connectedPermanence", tm.getConnectedPermanence()])
+  table.add_row(["predictedSegmentDecrement", tm.getPredictedSegmentDecrement()])
 
   print >>outFile, table.get_string().encode("utf-8")
 
@@ -325,6 +331,8 @@ def printOptions(options, tm, outFile):
     print >>outFile, "  %s : %s" % (k,str(v))
   outFile.flush()
 
+
+
 if __name__ == '__main__':
   helpString = (
     "\n%prog [options] [uid]"
@@ -337,7 +345,7 @@ if __name__ == '__main__':
   parser = OptionParser(helpString)
   parser.add_option("--name",
                     help="Name of experiment. Outputs will be written to"
-                    "results/name.csv & results/name.out (default: %default)",
+                         "results/name.csv & results/name.out (default: %default)",
                     dest="name",
                     default="temp")
   parser.add_option("--iterations",
@@ -374,11 +382,13 @@ if __name__ == '__main__':
                     type=int)
   parser.add_option("--simulation",
                     help="Which simulation to run: 'normal', 'noisy', "
-                    "'clean_noise', 'killer', 'killingMeSoftly' (default: "
-                    "%default)",
+                         "'clean_noise', 'killer', 'killingMeSoftly' (default: "
+                         "%default)",
                     default="normal",
                     type=str)
 
   options, args = parser.parse_args(sys.argv[1:])
 
   runExperiment1(options)
+
+

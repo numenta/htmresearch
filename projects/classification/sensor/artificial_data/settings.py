@@ -1,5 +1,9 @@
 # Signal types can be: 'binary', 'sine', 'triangle'
-SIGNAL_TYPES = ['binary', 'sine', 'triangle']
+SIGNAL_TYPES = [
+  'binary',
+  'sine', 
+  'triangle'
+]
 
 # Parameters to generate the artificial sensor data
 DATA_DIR = 'data'
@@ -15,8 +19,8 @@ NUM_PHASES = [5]
 NUM_REPS = [10]
 
 # Verbosity of network
-VERBOSITY = 1
+VERBOSITY = 0
 
 # Whether to use a JSON config file of the config generator.
 # See network_configs.json for an example of standard config file.
-USE_JSON_CONFIG = True
+USE_JSON_CONFIG = False
