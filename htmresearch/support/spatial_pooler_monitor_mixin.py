@@ -175,7 +175,7 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
 
 
 
-  def recoverPermanence(self, columnIndex):
+  def recoverPermanence(self, columnIndex, verbose=0):
     """
     Recover permamnece for a single column
     :param columnIndex: index of the column of interest
@@ -201,16 +201,21 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
     perm = numpy.copy(initialPermanence[columnIndex, :])
 
     numStep = len(activeColumns.data)
-    numConnectedSyn = numpy.zeros((numStep))
-    avgPermConnected = numpy.zeros((numStep))
-    avgPermNonConnected = numpy.zeros((numStep))
+    numConnectedSyn = []
+    avgPermConnected = []
+    avgPermNonConnected = []
+    activeSteps = []
 
+    permTrack = []
     for i in range(numStep):
       if learnTrace.data[i] is False:
         continue
 
       if columnIndex in activeColumns.data[i][0]:
-        # print "Column {} active at step {}".format(columnIndex, i)
+        activeSteps.append(i)
+        if verbose:
+          print "Column {} active at step {}".format(columnIndex, i)
+          print "active inputs: {}".format(activeInputs.data[i])
         # the logic here matches _adaptSynapses funciton in SP
         permChanges.fill(-1 * self._synPermInactiveDec)
         permChanges[activeInputs.data[i]] = self._synPermActiveInc
@@ -218,13 +223,14 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
 
         perm[perm < self._synPermTrimThreshold] = 0
         numpy.clip(perm, self._synPermMin, self._synPermMax, out=perm)
+      permTrack.append(perm[157])
 
-      numConnectedSyn[i] = numpy.sum(perm > self._synPermConnected)
+      numConnectedSyn.append(numpy.sum(perm > self._synPermConnected))
       permMask = perm[maskPotential]
-      avgPermConnected[i] = numpy.mean(permMask[
-                                         permMask > self._synPermConnected])
-      avgPermNonConnected[i] = numpy.mean(permMask[
-                                            permMask < self._synPermConnected])
+      avgPermConnected.append(numpy.mean(permMask[
+                                         permMask > self._synPermConnected]))
+      avgPermNonConnected.append(numpy.mean(permMask[
+                                            permMask < self._synPermConnected]))
 
     truePermanence = numpy.zeros((inputSize), dtype=realDType)
     self.getPermanence(columnIndex, truePermanence)
@@ -232,10 +238,11 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
       raise RuntimeError("Permamnence reconstruction failed. The reconstructed"
                          "permamnence does not match the real permamnence")
 
-    numNonConnectedSyn = len(maskPotential) - numConnectedSyn
-    permInfo = {"avgPermConnectedSyn": avgPermConnected,
-                "avgPermNonConnectedSyn": avgPermNonConnected,
-                "numConnectedSyn": numConnectedSyn,
-                "numNonConnectedSyn": numNonConnectedSyn}
+    numNonConnectedSyn = len(maskPotential) - numpy.array(numConnectedSyn)
+    permInfo = {"avgPermConnectedSyn": numpy.array(avgPermConnected),
+                "avgPermNonConnectedSyn": numpy.array(avgPermNonConnected),
+                "numConnectedSyn": numpy.array(numConnectedSyn),
+                "numNonConnectedSyn": numpy.array(numNonConnectedSyn),
+                "activeSteps": activeSteps}
 
     return permInfo
