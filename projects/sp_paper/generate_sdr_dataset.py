@@ -118,6 +118,52 @@ def generateDenseVectors(numVectors, inputSize, seed):
 
 
 
+def convertToBinaryImage(image, thresh=75):
+  binaryImage = np.zeros(image.shape)
+  binaryImage[image > np.percentile(image, thresh)] = 1
+  return binaryImage
+
+
+
+def getImageData(numInputVectors):
+  from htmresearch.algorithms.image_sparse_net import ImageSparseNet
+
+  DATA_PATH = "../sparse_net/data/IMAGES.mat"
+  DATA_NAME = "IMAGES"
+
+  DEFAULT_SPARSENET_PARAMS = {
+    "filterDim": 64,
+    "outputDim": 64,
+    "batchSize": numInputVectors,
+    "numLcaIterations": 75,
+    "learningRate": 2.0,
+    "decayCycle": 100,
+    "learningRateDecay": 1.0,
+    "lcaLearningRate": 0.1,
+    "thresholdDecay": 0.95,
+    "minThreshold": 1.0,
+    "thresholdType": 'soft',
+    "verbosity": 0,  # can be changed to print training loss
+    "showEvery": 500,
+    "seed": 42,
+  }
+
+  network = ImageSparseNet(**DEFAULT_SPARSENET_PARAMS)
+
+  print "Loading training data..."
+  images = network.loadMatlabImages(DATA_PATH, DATA_NAME)
+
+  nDim1, nDim2, numImages = images.shape
+  binaryImages = np.zeros(images.shape)
+  for i in range(numImages):
+    binaryImages[:, :, i] = convertToBinaryImage(images[:, :, i])
+
+  inputVectors = network._getDataBatch(binaryImages)
+  inputVectors = inputVectors.T
+  return inputVectors
+
+
+
 class SDRDataSet(object):
   """
   Generate, store, and manipulate SDR dataset
