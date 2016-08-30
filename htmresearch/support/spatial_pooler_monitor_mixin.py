@@ -45,6 +45,13 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
     return self._mmTraces["activeColumns"]
 
 
+  def mmGetTraceActiveInputs(self):
+    """
+    @return (Trace) Trace of active inputs
+    """
+    return self._mmTraces["activeInputs"]
+
+
   def mmGetTraceNumConnections(self):
     """
     @return (Trace) Trace of # connections
@@ -92,6 +99,7 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
     self.getConnectedCounts(connectedCounts)
     numConnections = numpy.sum(connectedCounts)
 
+    self._mmTraces["activeInputs"].data.append(numpy.where(inputVector)[0])
     self._mmTraces["activeColumns"].data.append(activeColumns)
     self._mmTraces["numConnections"].data.append(numConnections)
 
@@ -121,4 +129,5 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
     super(SpatialPoolerMonitorMixin, self).mmClearHistory()
 
     self._mmTraces["activeColumns"] = IndicesTrace(self, "active columns")
+    self._mmTraces["activeInputs"] = IndicesTrace(self, "active inputs")
     self._mmTraces["numConnections"] = CountsTrace(self, "connections")
