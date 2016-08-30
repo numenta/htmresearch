@@ -19,8 +19,8 @@
 # ----------------------------------------------------------------------
 
 """
-This file checks the convergence of L4-L2 as you increase the number of columns,
-or adjust the confusion across objects.
+This file plots the convergence of L4-L2 as you increase the number of columns,
+or adjust the confusion between objects.
 """
 
 import random
@@ -36,15 +36,21 @@ def runExperiment(noiseLevel=None,
                   numColumns=3,
                   ):
   """
-  Run experiment.
+  Run experiment.  What did you think this does?
 
-  :param noiseLevel: (float) Noise level to add to the locations and features
-                             during inference
-  :param profile:    (bool)  If True, the network will be profiled after
+  @param noiseLevel  (float) Noise level to add to the locations and features
+                             during inference.
+  @param profile     (bool)  If True, the network will be profiled after
                              learning and inference.
+  @param numObjects  (int)   The number of objects we will train.
+  @param numLocations (int)  For each point, the number of locations to choose
+                             from.
+  @param numFeatures (int)   For each point, the number of features to choose
+                             from.
+  @param numColumns  (int)   The total number of cortical columns in network.
 
   """
-  name = "convergencecf_O%03d_L%03d_F%03d_C%03d" % (
+  name = "convergence_O%03d_L%03d_F%03d_C%03d" % (
     numObjects, numLocations, numFeatures, numColumns
   )
   exp = L4L2Experiment(
@@ -52,7 +58,8 @@ def runExperiment(noiseLevel=None,
     numCorticalColumns=numColumns,
   )
 
-  objects = exp.createRandomObjects(numObjects, 10, numLocations=numLocations,
+  objects = exp.createRandomObjects(numObjects, 10,
+                                    numLocations=numLocations,
                                     numFeatures=numFeatures)
   print "Objects are:"
   for object, pairs in objects.iteritems():
