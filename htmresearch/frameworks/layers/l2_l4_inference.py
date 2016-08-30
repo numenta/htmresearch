@@ -479,7 +479,7 @@ class L4L2Experiment(object):
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.02,
       "minThreshold": 10,
-      "predictedSegmentDecrement": 0.004,
+      "predictedSegmentDecrement": 0.002,
       "activationThreshold": 13,
       "maxNewSynapseCount": 20,
       "monitor": 0,
@@ -505,7 +505,7 @@ class L4L2Experiment(object):
       "synPermProximalDec": 0.001,
       "initialProximalPermanence": 0.6,
       "minThreshold": 10,
-      "predictedSegmentDecrement": 0.004,
+      "predictedSegmentDecrement": 0.002,
       "activationThreshold": 13,
       "maxNewSynapseCount": 20,
     }
