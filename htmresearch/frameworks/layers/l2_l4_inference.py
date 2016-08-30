@@ -328,7 +328,8 @@ class L4L2Experiment(object):
     return self.statistics[experimentID]
 
 
-  def addObject(self, pairs, name=None, objects=None):
+  @staticmethod
+  def addObject(pairs, name=None, objects=None):
     """
     Adds an object to learn (giving the list of pairs of location, feature
     indices.
@@ -336,6 +337,7 @@ class L4L2Experiment(object):
     A name can be given to the object, otherwise it will be incrementally
     indexed.
     """
+    # TODO: pull out of class as part of generic object handling (RES-351)
     if objects is None:
       objects = {}
 
@@ -386,21 +388,44 @@ class L4L2Experiment(object):
     self.network.resetProfiling()
 
 
-  def createRandomObjects(self, numObjects, numPoints):
+  @classmethod
+  def createRandomObjects(cls, numObjects, numPoints,
+                          numLocations=None, numFeatures=None):
     """
-    Simply creates numObjects, each of them having numPoints feature/location
-    pairs.
+    Create numObjects, each with numPoints random location/feature pairs.
+
+    @param  numObjects (int)
+            The number of objects we are creating.
+
+    @param  numPoints (int)
+            The number of location/feature points per object.
+
+    @param  numLocations (int or None)
+            Each location index is chosen randomly from numLocations possible
+            locations. If None, defaults to numPoints
+
+    @param  numFeatures (int or None)
+            Each feature index is chosen randomly from numFeatures possible
+            locations. If None, defaults to numPoints
 
     The pairs would be drawn randomly, set setObjects() to create personalized
     experiments.
     """
+    # TODO: pull out of class as part of generic object handling (RES-351)
+
+    if numLocations is None:
+      numLocations = numPoints
+    if numFeatures is None:
+      numFeatures = numPoints
+
     objects = {}
     for _ in xrange(numObjects):
-      self.addObject(
-        [(random.randint(0, numPoints),
-          random.randint(0, numPoints)) for _ in xrange(numPoints)],
+      cls.addObject(
+        [(random.randint(0, numLocations),
+          random.randint(0, numFeatures)) for _ in xrange(numPoints)],
         objects=objects
       )
+
     return objects
 
 
