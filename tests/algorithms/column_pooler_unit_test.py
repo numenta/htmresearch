@@ -22,9 +22,12 @@
 import unittest
 import numpy
 
-import scipy.sparse as sparse
-
 from htmresearch.algorithms.column_pooler import ColumnPooler, realDType
+from htmresearch.support.column_pooler_mixin import ColumnPoolerMonitorMixin
+
+
+class MonitoredColumnPooler(ColumnPoolerMonitorMixin, ColumnPooler):
+  pass
 
 
 class ColumnPoolerTest(unittest.TestCase):
@@ -103,7 +106,15 @@ class ColumnPoolerTest(unittest.TestCase):
   def testInitialProximalLearning(self):
     """Tests the first few steps of proximal learning. """
 
-    pooler = self._initializeDefaultPooler()
+    pooler = MonitoredColumnPooler(
+      inputWidth=2048 * 8,
+      columnDimensions=[2048, 1],
+      initialPermanence=0.41,
+      # Temporary: a high maxNewSynapseCount is in place until NUP #3268 is
+      # addressed
+      maxNewSynapseCount=40,
+    )
+
     activatedCells = numpy.zeros(pooler.numberOfCells())
 
     # Get initial activity
@@ -115,7 +126,7 @@ class ColumnPoolerTest(unittest.TestCase):
 
     # Ensure we've added correct number synapses on the active cells
     self.assertEqual(
-      pooler.numberOfSynapses(pooler.getActiveCells()),
+      pooler.mmGetTraceNumProximalSynapses().data[-1],
       1600,
       "Incorrect number of nonzero permanences on active cells"
     )
@@ -135,7 +146,7 @@ class ColumnPoolerTest(unittest.TestCase):
 
     # Ensure we've added correct number of new synapses on the active cells
     self.assertEqual(
-      pooler.numberOfSynapses(pooler.getActiveCells()),
+      pooler.mmGetTraceNumProximalSynapses().data[-1],
       3200,
       "Incorrect number of nonzero permanences on active cells"
     )
