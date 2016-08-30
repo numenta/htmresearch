@@ -206,7 +206,6 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
     avgPermNonConnected = []
     activeSteps = []
 
-    permTrack = []
     for i in range(numStep):
       if learnTrace.data[i] is False:
         continue
@@ -223,7 +222,6 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
 
         perm[perm < self._synPermTrimThreshold] = 0
         numpy.clip(perm, self._synPermMin, self._synPermMax, out=perm)
-      permTrack.append(perm[157])
 
       numConnectedSyn.append(numpy.sum(perm > self._synPermConnected))
       permMask = perm[maskPotential]
