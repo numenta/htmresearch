@@ -24,9 +24,7 @@ import numpy
 from nupic.bindings.math import (SM32 as SparseMatrix,
                                  SM_01_32_32 as SparseBinaryMatrix,
                                  GetNTAReal, Random)
-from htmresearch.algorithms.extended_temporal_memory import (
-  ExtendedTemporalMemory
-)
+from htmresearch.algorithms.temporal_memory_factory import  createModel
 
 realDType = GetNTAReal()
 uintType = "uint32"
@@ -95,7 +93,8 @@ class ColumnPooler(object):
 
     # Create our own instance of extended temporal memory to handle distal
     # segments.
-    self.tm = ExtendedTemporalMemory(
+    self.tm = createModel(
+                      modelName="extendedCPP",
                       columnDimensions=columnDimensions,
                       cellsPerColumn=1,
                       activationThreshold=activationThreshold,

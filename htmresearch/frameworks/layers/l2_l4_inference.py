@@ -328,7 +328,8 @@ class L4L2Experiment(object):
     return self.statistics[experimentID]
 
 
-  def addObject(self, pairs, name=None, objects=None):
+  @staticmethod
+  def addObject(pairs, name=None, objects=None):
     """
     Adds an object to learn (giving the list of pairs of location, feature
     indices.
@@ -336,6 +337,7 @@ class L4L2Experiment(object):
     A name can be given to the object, otherwise it will be incrementally
     indexed.
     """
+    # TODO: pull out of class as part of generic object handling (RES-351)
     if objects is None:
       objects = {}
 
@@ -353,19 +355,30 @@ class L4L2Experiment(object):
     print "Profiling information for {}".format(type(self).__name__)
     totalTime = 0.000001
     for region in self.network.regions.values():
-      timer = region.computeTimer
+      timer = region.getComputeTimer()
       totalTime += timer.getElapsed()
+
+    # Sort the region names
+    regionNames = list(self.network.regions.keys())
+    regionNames.sort()
 
     count = 1
     profileInfo = []
-    for region in self.network.regions.values():
-      timer = region.computeTimer
+    L2Time = 0.0
+    L4Time = 0.0
+    for regionName in regionNames:
+      region = self.network.regions[regionName]
+      timer = region.getComputeTimer()
       count = max(timer.getStartCount(), count)
       profileInfo.append([region.name,
                           timer.getStartCount(),
                           timer.getElapsed(),
                           100.0 * timer.getElapsed() / totalTime,
                           timer.getElapsed() / max(timer.getStartCount(), 1)])
+      if "L2Column" in regionName:
+        L2Time += timer.getElapsed()
+      elif "L4Column" in regionName:
+        L4Time += timer.getElapsed()
 
     profileInfo.append(
       ["Total time", "", totalTime, "100.0", totalTime / count])
@@ -374,6 +387,8 @@ class L4L2Experiment(object):
                                          "Secs/iteration"],
                    tablefmt="grid", floatfmt="6.3f")
     print
+    print "Total time in L2 =", L2Time
+    print "Total time in L4 =", L4Time
 
     if reset:
       self.resetProfile()
@@ -386,21 +401,44 @@ class L4L2Experiment(object):
     self.network.resetProfiling()
 
 
-  def createRandomObjects(self, numObjects, numPoints):
+  @classmethod
+  def createRandomObjects(cls, numObjects, numPoints,
+                          numLocations=None, numFeatures=None):
     """
-    Simply creates numObjects, each of them having numPoints feature/location
-    pairs.
+    Create numObjects, each with numPoints random location/feature pairs.
+
+    @param  numObjects (int)
+            The number of objects we are creating.
+
+    @param  numPoints (int)
+            The number of location/feature points per object.
+
+    @param  numLocations (int or None)
+            Each location index is chosen randomly from numLocations possible
+            locations. If None, defaults to numPoints
+
+    @param  numFeatures (int or None)
+            Each feature index is chosen randomly from numFeatures possible
+            locations. If None, defaults to numPoints
 
     The pairs would be drawn randomly, set setObjects() to create personalized
     experiments.
     """
+    # TODO: pull out of class as part of generic object handling (RES-351)
+
+    if numLocations is None:
+      numLocations = numPoints
+    if numFeatures is None:
+      numFeatures = numPoints
+
     objects = {}
     for _ in xrange(numObjects):
-      self.addObject(
-        [(random.randint(0, numPoints),
-          random.randint(0, numPoints)) for _ in xrange(numPoints)],
+      cls.addObject(
+        [(random.randint(0, numLocations),
+          random.randint(0, numFeatures)) for _ in xrange(numPoints)],
         objects=objects
       )
+
     return objects
 
 
@@ -454,7 +492,7 @@ class L4L2Experiment(object):
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.02,
       "minThreshold": 10,
-      "predictedSegmentDecrement": 0.004,
+      "predictedSegmentDecrement": 0.002,
       "activationThreshold": 13,
       "maxNewSynapseCount": 20,
       "monitor": 0,
@@ -480,7 +518,7 @@ class L4L2Experiment(object):
       "synPermProximalDec": 0.001,
       "initialProximalPermanence": 0.6,
       "minThreshold": 10,
-      "predictedSegmentDecrement": 0.004,
+      "predictedSegmentDecrement": 0.002,
       "activationThreshold": 13,
       "maxNewSynapseCount": 20,
     }

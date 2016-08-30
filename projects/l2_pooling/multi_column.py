@@ -138,42 +138,54 @@ def runStretch(noiseLevel=None, profile=False):
 
   """
   exp = L4L2Experiment(
-    "stretch",
+    "stretch_L10_F10_C2",
     numCorticalColumns=2,
   )
 
-  objects = exp.createRandomObjects(10, 10)
+  objects = exp.createRandomObjects(10, 10, numLocations=10, numFeatures=10)
   print "Objects are:"
   for object, pairs in objects.iteritems():
     print str(object) + ": " + str(pairs)
 
   exp.learnObjects(objects)
   if profile:
-    exp.printProfile()
+    exp.printProfile(reset=True)
 
+  # For inference, we will check and plot convergence for object 0. We create a
+  # sequence of random sensations for each column.  We will present each
+  # sensation for 4 time steps to let it settle and ensure it converges.
   objectCopy1 = [pair for pair in objects[0]]
   objectCopy2 = [pair for pair in objects[0]]
+  objectCopy3 = [pair for pair in objects[0]]
   random.shuffle(objectCopy1)
   random.shuffle(objectCopy2)
+  random.shuffle(objectCopy3)
 
   # stay multiple steps on each sensation
-  object1 = []
+  objectSensations1 = []
   for pair in objectCopy1:
     for _ in xrange(4):
-      object1.append(pair)
+      objectSensations1.append(pair)
 
   # stay multiple steps on each sensation
-  object2 = []
+  objectSensations2 = []
   for pair in objectCopy2:
     for _ in xrange(4):
-      object2.append(pair)
+      objectSensations2.append(pair)
+
+  # stay multiple steps on each sensation
+  objectSensations3 = []
+  for pair in objectCopy3:
+    for _ in xrange(4):
+      objectSensations3.append(pair)
 
   inferConfig = {
     "object": 0,
-    "numSteps": len(object1),
+    "numSteps": len(objectSensations1),
     "pairs": {
-      0: object1,
-      1: object2,
+      0: objectSensations1,
+      1: objectSensations2,
+      # 2: objectSensations3,  # Uncomment for 3 columns
     }
   }
 
