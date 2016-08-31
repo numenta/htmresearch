@@ -203,7 +203,7 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject = 10):
 
   """
   result = None
-  for numObjects in [2, 3, 5, 10, 15, 20, 30, 40]:
+  for numObjects in [2, 3, 5, 10, 15, 20, 30, 40, 50, 60]:
 
     exp = L4L2Experiment("capacity_two_objects",
                          numLearningPoints=1)
