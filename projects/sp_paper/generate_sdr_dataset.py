@@ -22,6 +22,7 @@
 
 import random
 import numpy as np
+import pandas as pd
 
 uintType = "uint32"
 
@@ -187,13 +188,13 @@ class SDRDataSet(object):
         params['numActiveInputBits'],
         params['seed'])
 
-    if params['dataType'] == 'denseVectors':
+    elif params['dataType'] == 'denseVectors':
       self._inputVectors = generateDenseVectors(
         params['numInputVectors'],
         params['inputSize'],
         params['seed'])
 
-    if params['dataType'] == 'randomBarPairs':
+    elif params['dataType'] == 'randomBarPairs':
       inputSize = params['nX'] * params['nY']
       numInputVectors = params['numInputVectors']
       self._inputVectors = np.zeros((numInputVectors, inputSize), dtype=uintType)
@@ -203,7 +204,7 @@ class SDRDataSet(object):
         data = bar1 + bar2
         self._inputVectors[i, :] = np.reshape(data, newshape=(1, inputSize))
 
-    if params['dataType'] == 'randomCross':
+    elif params['dataType'] == 'randomCross':
       inputSize = params['nX'] * params['nY']
       numInputVectors = params['numInputVectors']
       self._inputVectors = np.zeros((numInputVectors, inputSize), dtype=uintType)
@@ -211,8 +212,7 @@ class SDRDataSet(object):
         data = getCross(params['nX'], params['nY'], params['barHalfLength'])
         self._inputVectors[i, :] = np.reshape(data, newshape=(1, inputSize))
 
-
-    if params['dataType'] == 'correlatedSDRPairs':
+    elif params['dataType'] == 'correlatedSDRPairs':
       (inputVectors, inputVectors1, inputVectors2, corrPairs) = \
         generateCorrelatedSDRPairs(
           params['numInputVectors'],
@@ -225,6 +225,25 @@ class SDRDataSet(object):
       self._additionalInfo = {"inputVectors1": inputVectors1,
                               "inputVectors2": inputVectors2,
                               "corrPairs": corrPairs}
+    elif params['dataType'] == 'nyc_taxi':
+      from nupic.encoders.scalar import ScalarEncoder
+      df = pd.read_csv('./data/nyc_taxi.csv', header=0, skiprows=[1, 2])
+      inputVectors = np.zeros((5000, params['n']))
+      for i in range(5000):
+        inputRecord = {
+          "passenger_count": float(df["passenger_count"][i]),
+          "timeofday": float(df["timeofday"][i]),
+          "dayofweek": float(df["dayofweek"][i]),
+        }
+
+        enc = ScalarEncoder(w=params['w'],
+                            minval=params['minval'],
+                            maxval=params['maxval'],
+                            n=params['n'])
+        inputSDR = enc.encode(inputRecord["passenger_count"])
+        inputVectors[i, :] = inputSDR
+      self._inputVectors = inputVectors
+
 
   def getInputVectors(self):
     return self._inputVectors
