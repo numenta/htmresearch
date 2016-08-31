@@ -24,8 +24,41 @@ or adjust the confusion between objects.
 """
 
 import random
+import pprint
+import numpy
 
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
+
+def locateConvergencePoint(stats, targetValue):
+  """
+  Walk backwards through stats until you locate the first point that diverges
+  from targetValue.  We need this to handle cases where it might get to
+  targetValue, diverge, and then get back again.  We want the last convergence
+  point.
+  """
+  for i,v in enumerate(stats[::-1]):
+    if v != targetValue:
+      return len(stats)-i
+
+  # Never differs - converged right away
+  return 0
+
+
+def averageConvergencePoint(inferenceStats, prefix, targetValue):
+  """
+  Given inference statistics for a bunch of runs, locate all traces with the
+  given prefix. For each trace locate the iteration where it finally settles
+  on targetValue. Return the average settling iteration across all runs.
+  """
+  itSum = 0
+  itNum = 0
+  for stats in inferenceStats:
+    for key in stats.iterkeys():
+      if prefix in key:
+        itSum += locateConvergencePoint(stats[key], targetValue)
+        itNum += 1
+
+  return float(itSum)/itNum
 
 
 def runExperiment(noiseLevel=None,
@@ -33,7 +66,7 @@ def runExperiment(noiseLevel=None,
                   numObjects=10,
                   numLocations=10,
                   numFeatures=10,
-                  numColumns=3,
+                  numColumns=3
                   ):
   """
   Run experiment.  What did you think this does?
@@ -50,6 +83,8 @@ def runExperiment(noiseLevel=None,
   @param numColumns  (int)   The total number of cortical columns in network.
 
   """
+  print "\n==============\nRunning experiment with params:"
+  pprint.pprint(locals())
   name = "convergence_O%03d_L%03d_F%03d_C%03d" % (
     numObjects, numLocations, numFeatures, numColumns
   )
@@ -58,49 +93,66 @@ def runExperiment(noiseLevel=None,
     numCorticalColumns=numColumns,
   )
 
+  # Create the objects and train the network
   objects = exp.createRandomObjects(numObjects, 10,
                                     numLocations=numLocations,
                                     numFeatures=numFeatures)
   print "Objects are:"
-  for object, pairs in objects.iteritems():
-    print str(object) + ": " + str(pairs)
+  for obj, pairs in objects.iteritems():
+    print str(obj) + ": " + str(pairs)
 
   exp.learnObjects(objects)
   if profile:
     exp.printProfile(reset=True)
 
-  # For inference, we will check and plot convergence for object 0. We create a
-  # sequence of random sensations for each column.  We will present each
-  # sensation for 4 time steps to let it settle and ensure it converges.
-  objectSensations = {}
-  for c in range(numColumns):
-    objectCopy = [pair for pair in objects[0]]
-    random.shuffle(objectCopy)
-    # stay multiple steps on each sensation
-    sensations = []
-    for pair in objectCopy:
-      for _ in xrange(4):
-        sensations.append(pair)
-    objectSensations[c] = sensations
+  # For inference, we will check and plot convergence for each object. For each
+  # object, we create a sequence of random sensations for each column.  We will
+  # present each sensation for 3 time steps to let it settle and ensure it
+  # converges.
+  for objectId, obj in objects.iteritems():
+    print "Running inference with:",objectId,obj
 
-  inferConfig = {
-    "object": 0,
-    "numSteps": len(objectSensations[0]),
-    "pairs": objectSensations
-  }
+    # Create sequence of sensations for this object for all columns
+    objectSensations = {}
+    for c in range(numColumns):
+      objectCopy = [pair for pair in obj]
+      random.shuffle(objectCopy)
+      # stay multiple steps on each sensation
+      sensations = []
+      for pair in objectCopy:
+        for _ in xrange(3):
+          sensations.append(pair)
+      objectSensations[c] = sensations
 
-  exp.infer(inferConfig, noise=noiseLevel)
-  if profile:
-    exp.printProfile(reset=True)
+    inferConfig = {
+      "object": objectId,
+      "numSteps": len(objectSensations[0]),
+      "pairs": objectSensations
+    }
 
-  exp.plotInferenceStats(
-    fields=["L2 Representation",
-            "Overlap L2 with object",
-            "L4 Representation"],
-    onePlot=False,
-  )
+    exp.infer(inferConfig, noise=noiseLevel)
+    if profile:
+      exp.printProfile(reset=True)
 
+    exp.plotInferenceStats(
+      fields=["L2 Representation",
+              "Overlap L2 with object",
+              "L4 Representation"],
+      experimentID=objectId,
+      onePlot=False,
+    )
+
+  convergencePoint = averageConvergencePoint(
+    exp.getInferenceStats(),"L2 Representation", 40)
+  print "Average convergence point=",convergencePoint
+
+  return convergencePoint
 
 
 if __name__ == "__main__":
-  runExperiment(numColumns=5, profile=True)
+  convergence = numpy.zeros(7)
+  for col in range(1,7):
+    convergence[col] = runExperiment(
+      numColumns=col, numLocations=10, numFeatures=10)
+
+  print "Convergence array=",convergence[1:]

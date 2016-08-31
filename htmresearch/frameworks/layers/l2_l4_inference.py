@@ -321,11 +321,15 @@ class L4L2Experiment(object):
       plt.close()
 
 
-  def getInferenceStats(self, experimentID):
+  def getInferenceStats(self, experimentID=None):
     """
-    Returns the statistics for the desired experiment.
+    Returns the statistics for the desired experiment. If experimentID is None
+    return all statistics
     """
-    return self.statistics[experimentID]
+    if experimentID is None:
+      return self.statistics
+    else:
+      return self.statistics[experimentID]
 
 
   @staticmethod
