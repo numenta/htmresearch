@@ -282,24 +282,19 @@ class L4L2Experiment(object):
              If true, all cortical columns will be merged in one plot.
 
     """
-    plt.figure(0)
+    plt.figure()
     stats = self.statistics[experimentID]
     objectID = stats["object"]
     initPath = self.PLOT_DIRECTORY + self.name + "_exp_" + str(experimentID)
 
     for i in xrange(self.numColumns):
-      if onePlot:
-        figIdx = 0
-      else:
-        figIdx = i
-
       if not onePlot:
-        plt.figure(i)
+        plt.figure()
 
       # plot request stats
       for field in fields:
         fieldKey = field + " C" + str(i)
-        plt.plot(stats[fieldKey], figure=figIdx, marker='+', label=fieldKey)
+        plt.plot(stats[fieldKey], marker='+', label=fieldKey)
 
       # format
       plt.legend(loc="upper right")
