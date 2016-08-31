@@ -26,6 +26,7 @@ or adjust the confusion between objects.
 import random
 import pprint
 import numpy
+from multiprocessing import Pool
 
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 
@@ -61,30 +62,39 @@ def averageConvergencePoint(inferenceStats, prefix, targetValue):
   return float(itSum)/itNum
 
 
-def runExperiment(noiseLevel=None,
-                  profile=False,
-                  numObjects=10,
-                  numLocations=10,
-                  numFeatures=10,
-                  numColumns=3
-                  ):
+def runExperiment(args):
   """
   Run experiment.  What did you think this does?
 
+  args is a dict representing the parameters. We do it this way to support
+  multiprocessing. args contains one or more of the following keys:
+
   @param noiseLevel  (float) Noise level to add to the locations and features
-                             during inference.
+                             during inference. Default: None
   @param profile     (bool)  If True, the network will be profiled after
-                             learning and inference.
+                             learning and inference. Default: False
   @param numObjects  (int)   The number of objects we will train.
+                             Default: 10
+  @param numPoints   (int)   The number of points on each object.
+                             Default: 10
   @param numLocations (int)  For each point, the number of locations to choose
-                             from.
+                             from.  Default: 10
   @param numFeatures (int)   For each point, the number of features to choose
-                             from.
+                             from.  Default: 10
   @param numColumns  (int)   The total number of cortical columns in network.
+                             Default: 2
 
   """
-  print "\n==============\nRunning experiment with params:"
-  pprint.pprint(locals())
+  numObjects = args.get("numObjects", 10)
+  numLocations = args.get("numLocations", 10)
+  numFeatures = args.get("numFeatures", 10)
+  numColumns = args.get("numColumns", 2)
+  profile = args.get("profile", False)
+  noiseLevel = args.get("noiseLevel", None)
+  numPoints = args.get("numPoints", 10)
+
+  # print "\n==============\nRunning experiment with params:"
+  pprint.pprint(args)
   name = "convergence_O%03d_L%03d_F%03d_C%03d" % (
     numObjects, numLocations, numFeatures, numColumns
   )
@@ -94,12 +104,13 @@ def runExperiment(noiseLevel=None,
   )
 
   # Create the objects and train the network
-  objects = exp.createRandomObjects(numObjects, 10,
+  objects = exp.createRandomObjects(numObjects, numPoints=numPoints,
                                     numLocations=numLocations,
                                     numFeatures=numFeatures)
-  print "Objects are:"
+  # print "Objects are:"
   for obj, pairs in objects.iteritems():
-    print str(obj) + ": " + str(pairs)
+    pairs.sort()
+    # print str(obj) + ": " + str(pairs)
 
   exp.learnObjects(objects)
   if profile:
@@ -110,8 +121,6 @@ def runExperiment(noiseLevel=None,
   # present each sensation for 3 time steps to let it settle and ensure it
   # converges.
   for objectId, obj in objects.iteritems():
-    print "Running inference with:",objectId,obj
-
     # Create sequence of sensations for this object for all columns
     objectSensations = {}
     for c in range(numColumns):
@@ -146,13 +155,68 @@ def runExperiment(noiseLevel=None,
     exp.getInferenceStats(),"L2 Representation", 40)
   print "Average convergence point=",convergencePoint
 
-  return convergencePoint
+  # Return our convergence point as well as all the parameters and objects
+  args.update({"objects": objects})
+  args.update({"convergencePoint":convergencePoint})
+  return args
+
+
+def runExperimentPool(numObjects,
+                      numLocations,
+                      numFeatures,
+                      numColumns,
+                      numWorkers=8):
+  """
+  Allows you to run a number of experiments using multiple processes.
+  For each parameter except numWorkers, pass in a list containing valid values
+  for that parameter. The cross product of everything is run.
+
+  Returns a dict containing detailed results from each experiment
+
+  Example:
+    results = runExperimentPool(
+                          numObjects=[10],
+                          numLocations=[5],
+                          numFeatures=[5],
+                          numColumns=[2,3,4,5,6],
+                          numWorkers=8)
+  """
+  # Create function arguments for every possibility
+  args = []
+  for c in numColumns:
+    for o in numObjects:
+      for l in numLocations:
+        for f in numFeatures:
+          args.append(
+            {"numObjects": o,
+             "numLocations": l,
+             "numFeatures": f,
+             "numColumns": c
+             }
+          )
+
+  # Run the pool
+  pool = Pool(processes=numWorkers)
+  result = pool.map(runExperiment, args)
+
+  return result
 
 
 if __name__ == "__main__":
-  convergence = numpy.zeros(7)
-  for col in range(1,7):
-    convergence[col] = runExperiment(
-      numColumns=col, numLocations=10, numFeatures=10)
 
-  print "Convergence array=",convergence[1:]
+  results = runExperimentPool(
+                    numObjects=[10],
+                    numLocations=[50],
+                    numFeatures=[50],
+                    numColumns=[2,3,4,5,6],
+                    numWorkers=8)
+
+  print "Full results:"
+  pprint.pprint(results, width=150)
+
+  # Accumulate all the results per column in a numpy array, and return it as
+  # well as raw results
+  # convergence = numpy.zeros(7)
+  # for r in results:
+  #   convergence[r["numColumns"]] = r["convergencePoint"]
+  # print "Convergence array=",convergence[1:]
