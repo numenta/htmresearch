@@ -40,7 +40,7 @@ NOISE_LENGTHS = [10]
 NUM_PHASES = [5]
 
 # Number of time each phase repeats
-NUM_REPS = [2]
+NUM_REPS = [1]
 
 # Verbosity of network
 VERBOSITY = 0
