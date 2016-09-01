@@ -20,11 +20,9 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import numpy as np
 import csv
 from prettytable import PrettyTable
 import simplejson
-import json
 
 from nupic.data.file_record_stream import FileRecordStream
 
@@ -48,33 +46,31 @@ from settings import (NUM_CATEGORIES,
                       SIGNAL_MEANS,
                       DATA_DIR,
                       VERBOSITY,
-                      USE_JSON_CONFIG)
+                      USE_CONFIG_TEMPLATE,
+                      NOISE_LENGTHS)
 
 RESULTS_FILE = 'results/seq_classification_results.csv'
 TRACES_FILE = 'results/traces_%s.csv'
 
 
 
-def print_and_save_results(classificationResults, expSetups):
+def print_and_save_results(expSetups, expTraces):
   """
   Pretty print exp info and results and save them to CSV file
-  :param classificationResults: (list of dict) classification results 
+  :param expTraces: (list of dict) experiment network traces
   :param expSetups: (list of dict) experiment setups
   """
-  # we don't need the file path
-  for expSetup in expSetups:
-    del expSetup['filePath']
 
   with open(RESULTS_FILE, 'wb') as fw:
     writer = csv.writer(fw)
-    c_headers = classificationResults[0].keys()
+    c_headers = expTraces[0].keys()
     e_headers = expSetups[0].keys()
     headers = e_headers + c_headers
     writer.writerow(headers)
     t = PrettyTable(headers)
     for i in range(len(expSetups)):
       c_row = [expSetups[i][eh] for eh in e_headers]
-      e_row = [classificationResults[i][ch] for ch in c_headers]
+      e_row = [expTraces[i][ch] for ch in c_headers]
       row = c_row + e_row
       writer.writerow(row)
       t.add_row(row)
@@ -87,14 +83,14 @@ def print_and_save_results(classificationResults, expSetups):
 def run():
   """ Run classification network(s) on artificial sensor data """
 
-  if USE_JSON_CONFIG:
-    with open('config/network_configs.json', 'rb') as fr:
-      networkConfigurations = simplejson.load(fr)
-  else:
+  if USE_CONFIG_TEMPLATE:
     with open("config/network_config_template.json", "rb") as jsonFile:
       templateNetworkConfig = simplejson.load(jsonFile)
       networkConfigurations = generateSampleNetworkConfig(templateNetworkConfig,
                                                           NUM_CATEGORIES)
+  else:
+    with open('config/network_configs.json', 'rb') as fr:
+      networkConfigurations = simplejson.load(fr)
 
   expSetups = []
   classificationResults = []
@@ -106,53 +102,61 @@ def run():
             for numCategories in NUM_CATEGORIES:
               for numReps in NUM_REPS:
                 for numPhases in NUM_PHASES:
-                  spEnabled = networkConfig["sensorRegionConfig"].get(
-                    "regionEnabled")
-                  tmEnabled = networkConfig["tmRegionConfig"].get(
-                    "regionEnabled")
-                  upEnabled = networkConfig["tpRegionConfig"].get(
-                    "regionEnabled")
-                  classifierType = networkConfig["classifierRegionConfig"].get(
-                    "regionType")
+                  for noiseLengths in NOISE_LENGTHS:
+                    spEnabled = networkConfig["sensorRegionConfig"].get(
+                      "regionEnabled")
+                    tmEnabled = networkConfig["tmRegionConfig"].get(
+                      "regionEnabled")
+                    upEnabled = networkConfig["tpRegionConfig"].get(
+                      "regionEnabled")
+                    classifierType = networkConfig[
+                      "classifierRegionConfig"].get(
+                      "regionType")
 
-                  expSetup = generateSensorData(signalType,
-                                                DATA_DIR,
-                                                numPhases,
-                                                numReps,
-                                                signalMean,
-                                                signalAmplitude,
-                                                numCategories,
-                                                noiseAmplitude)
-                  expSetup['expId'] = len(expSetups)
-                  expSetups.append(expSetup)
-                  dataSource = FileRecordStream(streamID=expSetup['filePath'])
-                  network = configureNetwork(dataSource,
-                                             networkConfig)
+                    expSetup = generateSensorData(signalType,
+                                                  DATA_DIR,
+                                                  numPhases,
+                                                  numReps,
+                                                  signalMean,
+                                                  signalAmplitude,
+                                                  numCategories,
+                                                  noiseAmplitude,
+                                                  noiseLengths)
+                    expSetup['expId'] = len(expSetups)
+                    expSetups.append(expSetup)
+                    dataSource = FileRecordStream(
+                      streamID=expSetup['inputFilePath'])
+                    network = configureNetwork(dataSource,
+                                               networkConfig)
 
-                  partitions = generateNetworkPartitions(networkConfig,
-                                                         expSetup['numPoints'])
+                    partitions = generateNetworkPartitions(networkConfig,
+                                                           expSetup[
+                                                             'numPoints'])
 
-                  traces = trainNetwork(network,
-                                        networkConfig,
-                                        partitions,
-                                        expSetup['numPoints'],
-                                        VERBOSITY)
+                    traces = trainNetwork(network,
+                                          networkConfig,
+                                          partitions,
+                                          expSetup['numPoints'],
+                                          VERBOSITY)
 
-                  expId = "sp-%s_tm-%s_tp-%s" % (spEnabled,
-                                                 tmEnabled,
-                                                 upEnabled)
-                  fileName = TRACES_FILE % expId
-                  saveTraces(traces, fileName)
-                  print '==> Results saved to %s\n' % fileName
+                    expId = "%s_sp-%s_tm-%s_tp-%s_%s" % (signalType,
+                                                      spEnabled,
+                                                      tmEnabled,
+                                                      upEnabled,
+                                                      classifierType[3:-6])
+                    fileName = TRACES_FILE % expId
+                    saveTraces(traces, fileName)
+                    print '==> Results saved to %s\n' % fileName
 
-                  finalAccuracy = traces['testClassificationAccuracyTrace'][-1]
-                  classificationResults.append({
-                    'spEnabled': spEnabled,
-                    'tmEnabled': tmEnabled,
-                    'upEnabled': upEnabled,
-                    'classifierType': classifierType.split(".")[1],
-                    'classificationAccuracy': finalAccuracy
-                  })
+                    finalAccuracy = traces['testClassificationAccuracyTrace'][
+                      -1]
+                    classificationResults.append({
+                      'spEnabled': spEnabled,
+                      'tmEnabled': tmEnabled,
+                      'upEnabled': upEnabled,
+                      'classifierType': classifierType.split(".")[1],
+                      'classificationAccuracy': finalAccuracy
+                    })
 
   print_and_save_results(classificationResults, expSetups)
 

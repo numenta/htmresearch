@@ -160,6 +160,7 @@ def loadTraces(fileName):
                             'classificationAccuracyTrace',
                             'sensorValueTrace',
                             'categoryTrace',
+                            'predictedCategoryTrace',
                             'testClassificationAccuracyTrace']:
             data = float(row[i])
           elif headers[i] in ['tmPredictiveActiveCellsTrace',
@@ -170,7 +171,7 @@ def loadTraces(fileName):
             else:
               data = map(int, row[i][1:-1].split(','))
           else:
-            raise ValueError('Unknown header name')
+            raise ValueError('Unknown header name: %s' % headers[i])
         traces[headers[i]].append(data)
 
   return traces

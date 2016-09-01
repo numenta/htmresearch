@@ -131,7 +131,8 @@ def generateSensorData(signalType,
                        signalMean,
                        signalAmplitude,
                        numCategories,
-                       noiseAmplitude):
+                       noiseAmplitude,
+                       noiseLength):
   """
   Generate the artificial sensor data.
   @param signalType: (str) can be one of the following:
@@ -146,6 +147,7 @@ def generateSensorData(signalType,
   @param signalAmplitude: (float) amplitude of the signal to generate
   @param numCategories: (int) number of categories labels
   @param noiseAmplitude: (float) amplitude of the white noise
+  @param noiseLength: (int) number of noisy points at the beginning of each seq.
   @return expSetup: (dict) setup for each experiment
   """
 
@@ -156,6 +158,7 @@ def generateSensorData(signalType,
     'signalAmplitude': signalAmplitude,
     'numCategories': numCategories,
     'noiseAmplitude': noiseAmplitude,
+    'noiseLength': noiseLength,
     'numPhases': numPhases,
     'numReps': numReps,
   }
@@ -193,11 +196,12 @@ def generateSensorData(signalType,
                                                  signalMean,
                                                  noiseAmplitude,
                                                  signalAmplitude,
-                                                 numCategories)
+                                                 numCategories,
+                                                 noiseLength)
 
-  expSetup['sequenceLenght'] = sequenceLength
+  expSetup['sequenceLength'] = sequenceLength
   expSetup['numPoints'] = numPoints
-  expSetup['filePath'] = filePath
+  expSetup['inputFilePath'] = filePath
 
   return expSetup
 
@@ -209,7 +213,8 @@ def sine_wave_generator(writer,
                         signalMean,
                         noiseAmplitude,
                         signalAmplitude,
-                        numCategories):
+                        numCategories,
+                        noiseLength=10):
   """
   Generate the artificial sensor data.
   @param writer: (csv.CSVWriter) csv file writer.
@@ -220,6 +225,7 @@ def sine_wave_generator(writer,
   @param noiseAmplitude: (float) amplitude of the white noise
   @param signalAmplitude: (float) amplitude of the signal to generate
   @param numCategories: (int) number of categories labels
+  @param noiseLength: (int) number of noisy points at the beginning of each seq.
   """
 
   signalPeriod = 20
@@ -227,25 +233,35 @@ def sine_wave_generator(writer,
   numPoints = numReps * numPhases * sequenceLength * numCategories
 
   endOfSequence = sequenceLength
-  label = numCategories - 1
+  label = 1
+  offset = 0
   for i in range(numPoints):
 
     noise = noiseAmplitude * random.random()
 
     if i == endOfSequence:
       endOfSequence += sequenceLength
-      if label == 0:
-        label = numCategories - 1
+      if label == numCategories:
+        label = 1
       else:
-        label -= 1
+        label += 1
+
+      for j in range(noiseLength):
+        offset += 1
+        t = i + offset
+        m1 = random.random() * signalAmplitude
+        writer.writerow([t, m1, 0])
 
     signal_modifier = (label ** 2 + 1)
-    x = signal_modifier * (i * math.pi) / signalPeriod
-    sig = math.sin(x)
+
+    t = i + offset
+    sig = math.sin(signal_modifier * (t * math.pi) / signalPeriod)
     m1 = signal_modifier * signalMean + signalAmplitude * sig + noise
 
-    writer.writerow([x, m1, label])
+    writer.writerow([t, m1, label])
 
+  numPoints = offset + numPoints
+  assert offset == (numReps * numPhases * numCategories - 1) * noiseLength
   return sequenceLength, numPoints
 
 
@@ -256,7 +272,8 @@ def binary_signal_generator(writer,
                             signalMean,
                             noiseAmplitude,
                             signalAmplitude,
-                            numCategories):
+                            numCategories,
+                            noiseLength=10):
   """
   Generate the artificial sensor data.
   @param writer: (csv.CSVWriter) csv file writer.
@@ -267,6 +284,7 @@ def binary_signal_generator(writer,
   @param noiseAmplitude: (float) amplitude of the white noise
   @param signalAmplitude: (float) amplitude of the signal to generate
   @param numCategories: (int) number of categories labels
+  @param noiseLength: (int) number of noisy points at the beginning of each seq.
   """
 
   # if numCategories = 3, then sequenceLength = 4 * 3 * 2 = 24
@@ -274,37 +292,45 @@ def binary_signal_generator(writer,
   minSequenceLength = 1
   for cat in range(numCategories + 1)[1:]:
     minSequenceLength *= cat
-  sequenceLength = minSequenceLength * 3
+  sequenceLength = minSequenceLength * 10
   numPoints = numReps * numPhases * sequenceLength * numCategories
 
   endOfSequence = sequenceLength
-  label = numCategories - 1
+  label = 1
   periodCounter = [0 for _ in range(numCategories)]
   sig = 0
+  offset = 0
   for i in range(numPoints):
     noise = noiseAmplitude * random.random()
 
     if i == endOfSequence:
       endOfSequence += sequenceLength
-      if label == 0:
-        label = numCategories - 1
+      if label == numCategories:
+        label = 1
       else:
-        label -= 1
+        label += 1
 
-    if periodCounter[label] == label + 1:
+      for j in range(noiseLength):
+        offset += 1
+        t = i + offset
+        m1 = random.random() * signalAmplitude
+        writer.writerow([t, m1, 0])
+
+    if periodCounter[label - 1] == label + 1:
       periodCounter = [0 for _ in range(numCategories)]
       if sig == 0:
         sig = 1
       else:
         sig = 0
     else:
-      periodCounter[label] += 1
+      periodCounter[label - 1] += 1
 
     amplitude_modifier = float(label) ** 2
     m1 = amplitude_modifier * signalMean + signalAmplitude * sig + noise
 
     writer.writerow([i, m1, label])
 
+  assert offset == (numReps * numPhases * numCategories - 1) * noiseLength
   return sequenceLength, numPoints
 
 
@@ -315,7 +341,8 @@ def triangular_signal_generator(writer,
                                 signalMean,
                                 noiseAmplitude,
                                 signalAmplitude,
-                                numCategories):
+                                numCategories,
+                                noiseLength=10):
   """
   Generate the artificial sensor data.
   @param writer: (csv.CSVWriter) csv file writer.
@@ -326,6 +353,7 @@ def triangular_signal_generator(writer,
   @param noiseAmplitude: (float) amplitude of the white noise
   @param signalAmplitude: (float) amplitude of the signal to generate
   @param numCategories: (int) number of categories labels
+  @param noiseLength: (int) number of noisy points at the beginning of each seq.
   """
 
   # if numCategories = 3, then sequenceLength = 4 * 3 * 2 = 24
@@ -335,17 +363,24 @@ def triangular_signal_generator(writer,
   numPoints = numReps * numPhases * sequenceLength * numCategories
 
   endOfSequence = sequenceLength
-  label = numCategories - 1
+  label = 1
+  offset = 0
   for i in range(numPoints):
 
     noise = noiseAmplitude * random.random()
 
     if i == endOfSequence:
       endOfSequence += sequenceLength
-      if label == 0:
-        label = numCategories - 1
+      if label == numCategories:
+        label = 1
       else:
-        label -= 1
+        label += 1
+
+      for j in range(noiseLength):
+        offset += 1
+        t = i + offset
+        m1 = random.random() * signalAmplitude
+        writer.writerow([t, m1, 0])
 
     x = i
     mod = int(label) + 2
@@ -359,4 +394,5 @@ def triangular_signal_generator(writer,
 
     writer.writerow([x, m1, label])
 
+  assert offset == (numReps * numPhases * numCategories - 1) * noiseLength
   return sequenceLength, numPoints
