@@ -299,7 +299,7 @@ class L4L2Experiment(object):
       # plot request stats
       for field in fields:
         fieldKey = field + " C" + str(i)
-        plt.plot(stats[fieldKey], figure=figIdx, marker='+', label=fieldKey)
+        plt.plot(stats[fieldKey], marker='+', label=fieldKey)
 
       # format
       plt.legend(loc="upper right")
