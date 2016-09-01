@@ -20,12 +20,107 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-""" Useful scripts for sensor data sequence classification experiments. """
+""" 
+Utilities to generate and plot sensor data sequence classification 
+experiments. """
 
 import csv
 import os
 import math
 import random
+
+import matplotlib.pyplot as plt
+
+
+
+def plotSensorData(expResults):
+  """
+  Plot several sensor data CSV recordings and highlights the sequences.
+  @param expResults: (list of dict) list of results for each experiment
+  """
+
+  categoryColors = ['grey', 'b', 'r', 'y']
+  plt.figure()
+
+  for expResult in expResults:
+
+    timesteps = []
+    data = []
+    labels = []
+    categoriesLabelled = []
+
+    filePath = expResult['expSetup']['inputFilePath']
+    with open(filePath, 'rb') as f:
+      reader = csv.reader(f)
+      headers = reader.next()
+
+      # skip the 2 first rows
+      reader.next()
+      reader.next()
+
+      for i, values in enumerate(reader):
+        record = dict(zip(headers, values))
+        timesteps.append(i)
+        data.append(record['y'])
+        labels.append(int(record['label']))
+
+      plt.subplot(len(expResults), 1, expResults.index(expResult) + 1)
+      plt.plot(timesteps, data, 'xb-', label='signal')
+
+      previousLabel = labels[0]
+      start = 0
+      labelCount = 0
+      numPoints = len(labels)
+      for label in labels:
+
+        if previousLabel != label or labelCount == numPoints - 1:
+
+          categoryColor = categoryColors[previousLabel]
+          if categoryColor not in categoriesLabelled:
+            if previousLabel > 0:
+              labelLegend = 'sequence %s' % previousLabel
+            else:
+              labelLegend = 'noise'
+            categoriesLabelled.append(categoryColor)
+          else:
+            labelLegend = None
+
+          end = labelCount
+          plt.axvspan(start, end, facecolor=categoryColor, alpha=0.5,
+                      label=labelLegend)
+          start = end
+          previousLabel = label
+
+        labelCount += 1
+
+      plt.xlim(xmin=0, xmax=len(timesteps))
+
+      title = cleanTitle(expResult)
+      plt.title(title)
+
+      plt.legend()
+
+  plt.show()
+
+
+
+def cleanTitle(expResult):
+  """
+  Clean up chart title based on expResult info
+  :param expResult: (dict) results of the experiment.
+  :return title: (str) cleaned up title 
+  """
+  title = expResult['expId'].split('_')
+  cleanTitle = [title[0] + ' signal']
+  for word in title[1:]:
+    if not 'False' in word:
+      if 'True' in word:
+        cleanTitle.append(word[:2])
+      else:
+        cleanTitle.append(word)
+
+  title = ' + '.join(cleanTitle)
+  return title
 
 
 

@@ -21,9 +21,7 @@
 # ----------------------------------------------------------------------
 
 from htmresearch.frameworks.classification.utils.sensor_data import (
-  generateSensorData)
-from htmresearch.frameworks.classification.utils.plot import (
-  plotSensorData)
+  generateSensorData, plotSensorData)
 
 from settings import (SIGNAL_TYPES,
                       NUM_PHASES,
