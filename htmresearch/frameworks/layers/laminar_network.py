@@ -165,12 +165,14 @@ def createMultipleL4L2Columns(network, networkConfig):
     }
   """
   # TODO: for now, each L2 column should have a different seed
-  networkConfig["L2Params"]["seed"] = 0
+  if "seed" not in networkConfig["L2Params"]:
+    networkConfig["L2Params"]["seed"] = 42
 
   # Create each column
   for i in range(networkConfig["numCorticalColumns"]):
     suffix = "_" + str(i)
     network = createL4L2Column(network, networkConfig, suffix)
+    networkConfig["L2Params"]["seed"] += 1
 
   # Now connect the L2 columns laterally
   for i in range(networkConfig["numCorticalColumns"]):
