@@ -125,7 +125,7 @@ class ExtendedTemporalMemory(object):
     self.minThreshold = minThreshold
     self.maxNewSynapseCount = maxNewSynapseCount
     self.formInternalBasalConnections = formInternalBasalConnections
-    self.learnOnOneCell = learnOnOnceCell
+    self.learnOnOneCell = learnOnOneCell
     self.permanenceIncrement = permanenceIncrement
     self.permanenceDecrement = permanenceDecrement
     self.predictedSegmentDecrement = predictedSegmentDecrement
@@ -239,9 +239,7 @@ class ExtendedTemporalMemory(object):
             prevActiveCells,
             prevWinnerCells,
             prevActiveExternalCellsBasal,
-            prevActiveExternalCellsApical
-            self.numActivePotentialSynapsesForBasalSegment,
-            self.numActivePotentialSynapsesForApicalSegment,
+            prevActiveExternalCellsApical,
             self.maxNewSynapseCount,
             self.initialPermanence,
             self.permanenceIncrement,
@@ -268,11 +266,9 @@ class ExtendedTemporalMemory(object):
              prevWinnerCells,
              prevActiveExternalCellsBasal,
              prevActiveExternalCellsApical,
-             self.numActivePotentialSynapsesForBasalSegment,
-             self.numActivePotentialSynapsesForApicalSegment,
              self.cellsPerColumn,
-             self.maxNewSynapseCount,
              self.initialPermanence,
+             self.maxNewSynapseCount,
              self.permanenceIncrement,
              self.permanenceDecrement,
              self.formInternalBasalConnections,
@@ -338,8 +334,6 @@ class ExtendedTemporalMemory(object):
                               prevActiveCells, prevWinnerCells,
                               prevActiveExternalCellsBasal,
                               prevActiveExternalCellsApical,
-                              numActivePotentialSynapsesForBasalSegment,
-                              numActivePotentialSynapsesForApicalSegment,
                               maxNewSynapseCount, initialPermanence,
                               permanenceIncrement, permanenceDecrement,
                               formInternalBasalConnections, learn):
@@ -349,6 +343,7 @@ class ExtendedTemporalMemory(object):
 
     @param random (Object)
     Random number generator. Gets mutated.
+
     @param columnActiveSegments (iter)
     Active segments in this column.
     @param prevActiveCells (list)
@@ -395,7 +390,7 @@ class ExtendedTemporalMemory(object):
             else tuple())
           ExtendedTemporalMemory.learnOnCell(
             basalConnections,
-            # random,
+            random,
             cell,
             prevActiveCells,
             internalBasalCandidates,
@@ -405,9 +400,7 @@ class ExtendedTemporalMemory(object):
             maxNewSynapseCount,
             initialPermanence,
             permanenceIncrement,
-            permanenceDecrement,
-            ## ??
-            numActivePotentialSynapsesForBasalSegment)
+            permanenceDecrement)
 
           # Do apical
           internalApicalCandidates = tuple()
@@ -425,21 +418,16 @@ class ExtendedTemporalMemory(object):
 
 
   @staticmethod
-  def learnOnCell(connections,
-                  cell,
-                  prevActiveCells,
-                  internalCandidates,
-                  externalCandidates,
-                  cellActiveSegments,
-                  cellMatchingSegments,
-                  maxNewSynapseCount,
-                  initialPermanence,
-                  permanenceIncrement,
-                  permanenceDecrement):
+  def learnOnCell(connections, random, cell, prevActiveCells,
+                  internalCandidates, externalCandidates, cellActiveSegments,
+                  cellMatchingSegments, maxNewSynapseCount, initialPermanence,
+                  permanenceIncrement, permanenceDecrement):
     """
 
     @param connections (Object)
     Connections for the TM. Gets mutated.
+    @param random (Object)
+    Random number generator. Gets mutated.
     """
     # TODO: use lambda rather than itertools?
     # bySegment = lambda segment: segment  #???
@@ -449,75 +437,38 @@ class ExtendedTemporalMemory(object):
     #   #  x, y, z) = segmentData  # what is unpacked here?
     #   segment = segmentData[0]
     for segment in itertools.chain(cellActiveSegments, cellMatchingSegments):
-    # for segment in cellActiveSegments:
 
-      TemporalMemory.adaptSegment(connections,
-                                  segment,
-                                  prevActiveCells,
-                                  externalCandidates,
-                                  permanenceIncrement,
-                                  permanenceDecrement)
+      self.adaptSegment(connections,
+                        segment,
+                        prevActiveCells,
+                        externalCandidates,
+                        permanenceIncrement,
+                        permanenceDecrement)
 
       active = numActivePotentialSynapsesForSegment[segment.flatIdx]
       numGrowDesired = maxNewSynapseCount - active
 
       if numGrowDesired > 0:
-        TemporalMemory.growSynapses(connections,
-                                    segment,
-                                    numGrowDesired,
-                                    internalCandidates,
-                                    externalCandidates,
-                                    initialPermanence)
-
-
-  # TODO: porting from https://github.com/numenta/nupic.research/blob/master/htmresearch/algorithms/temporal_memory_phases.py#L549
-  @staticmethod
-  def adaptSegment(connections,
-                   segment,
-                   prevActiveCells,
-                   externalCandidates,
-                   permanenceIncrement,
-                   permanenceDecrement):
-    """
-    Updates synapses on segment.
-    Strengthens active synapses; weakens inactive synapses.
-    @param segment              (int)         Segment index
-    @param activeSynapses       (set)         Indices of active synapses
-    @param connections          (Connections) Connectivity of layer
-    @param permanenceIncrement  (float)  Amount to increment active synapses
-    @param permanenceDecrement  (float)  Amount to decrement inactive synapses
-    """
-    for synapse in set(connections.synapsesForSegment(segment)):
-      synapseData = connections.dataForSynapse(synapse)
-      permanence = synapseData.permanence
-
-      if synapse in activeSynapses:
-        permanence += permanenceIncrement
-      else:
-        permanence -= permanenceDecrement
-
-      # Keep permanence within min/max bounds
-      permanence = max(0.0, min(1.0, permanence))
-
-      if (permanence < EPSILON):
-        connections.destroySynapse(synapse)
-      else:
-        connections.updateSynapsePermanence(synapse, permanence)
-
-
-  @staticmethod
-  def growSynapses():
-    return
-
+        self.growSynapses(connections,
+                          random,
+                          segment,
+                          numGrowDesired,
+                          internalCandidates,
+                          externalCandidates,
+                          initialPermanence)
 
 
   # TODO: make this an instance method -- https://github.com/numenta/nupic/issues/3309
   @staticmethod
-  def burstColumn(connections, random, column, columnMatchingSegments,
+  def burstColumn(basalConnections, apicalConnections, random,
+                  chosenCellForColumn, column,
+                  columnActiveBasal, columnMatchingBasal,
+                  columnActiveApical, columnMatchingApical,
                   prevActiveCells, prevWinnerCells,
-                  numActivePotentialSynapsesForSegment, cellsPerColumn,
-                  maxNewSynapseCount, initialPermanence, permanenceIncrement,
-                  permanenceDecrement, learn):
+                  prevActiveExternalCellsBasal, prevActiveExternalCellsApical,
+                  cellsPerColumn, initialPermanence, maxNewSynapseCount,
+                  permanenceIncrement, permanenceDecrement,
+                  formInternalBasalConnections, learnOnOneCell, learn):
     """
     @param connections (Object)
     Connections for the TM. Gets mutated.
@@ -546,38 +497,34 @@ class ExtendedTemporalMemory(object):
     Amount by which permanences of synapses are decremented during learning.
     @param learn (bool)
     Whether or not learning is enabled.
+
     @return (tuple) Contains:
                       `cells`         (iter),
                       `winnerCell`    (int),
     """
+    # Calculate the active cells -- all cells in the column become active
     start = cellsPerColumn * column
-    cells = xrange(start, start + cellsPerColumn)
+    activeCells = xrange(start, start + cellsPerColumn)
 
-    if columnMatchingSegments is not None:
-      numActive = lambda s: numActivePotentialSynapsesForSegment[s.flatIdx]
-      bestMatchingSegment = max(columnMatchingSegments, key=numActive)
-      winnerCell = bestMatchingSegment.cell
-
-      if learn:
-        TemporalMemory.adaptSegment(connections, bestMatchingSegment,
-                                    prevActiveCells, permanenceIncrement,
-                                    permanenceDecrement)
-
-        nGrowDesired = maxNewSynapseCount - numActive(bestMatchingSegment)
-
-        if nGrowDesired > 0:
-          TemporalMemory.growSynapses(connections, random, bestMatchingSegment,
-                                      nGrowDesired, prevWinnerCells,
-                                      initialPermanence)
+    # Calculate the winner cell
+    if learnOnOneCell and (column in chosenCellForColumn):
+      winnerCell = chosenCellForColumn[column]
     else:
-      winnerCell = TemporalMemory.leastUsedCell(random, cells, connections)
-      if learn:
-        nGrowExact = min(maxNewSynapseCount, len(prevWinnerCells))
-        if nGrowExact > 0:
-          segment = connections.createSegment(winnerCell)
-          TemporalMemory.growSynapses(connections, random, segment,
-                                      nGrowExact, prevWinnerCells,
-                                      initialPermanence)
+      if columnMatchingBasal is not None:
+        # numActive = lambda s: numActivePotentialSynapsesForSegment[s.flatIdx] ??????????
+        bestBasalSegment = max(columnMatchingBasal, key=numActive)
+        winnerCell = bestBasalSegment.cell
+      else:
+        winnerCell = self.getLeastUsedCell(random, activeCells, connections)
+      if learnOnOneCell:
+        chosenCellForColumn[column] = winnerCell
+
+    # Learn
+    if learn:
+
+      # TODO
+
+
 
     return cells, winnerCell
 
@@ -660,7 +607,7 @@ class ExtendedTemporalMemory(object):
 
 
   @staticmethod
-  def leastUsedCell(random, cells, connections):
+  def getLeastUsedCell(random, cells, connections):
     """ Gets the cell with the smallest number of segments.
     Break ties randomly.
     @param random (Object)
@@ -688,25 +635,30 @@ class ExtendedTemporalMemory(object):
 
 
   @staticmethod
-  def growSynapses(connections, random, segment, nDesiredNewSynapes,
-                   prevWinnerCells, initialPermanence):
+  def growSynapses(connections, random, segment, numDesiredNewSynapes,
+                   internalCandidates, externalCandidates, initialPermanence):
     """ Creates nDesiredNewSynapes synapses on the segment passed in if
     possible, choosing random cells from the previous winner cells that are
     not already on the segment.
-    @param  connections        (Object) Connections instance for the tm
-    @param  random             (Object) Tm object used to generate random
-                                        numbers
+    @param  connections        (Object) Connections instance for the TM
+    @param random (Object) Random number generator. Gets mutated.
     @param  segment            (int)    Segment to grow synapses on.
-    @params nDesiredNewSynapes (int)    Desired number of synapses to grow
-    @params prevWinnerCells    (list)   Winner cells in `t-1`
+    @param numDesiredNewSynapes (int)    Desired number of synapses to grow
+    @param internalCandidates    (list)   Winner cells in `t-1`
+    @param externalCandidates (list)  Active cells in `t-1`, external to the layer
     @param  initialPermanence  (float)  Initial permanence of a new synapse.
+
     Notes: The process of writing the last value into the index in the array
     that was most recently changed is to ensure the same results that we get
     in the c++ implentation using iter_swap with vectors.
     """
-    candidates = list(prevWinnerCells)
+    candidates = itertools.chain(internalCandidates, externalCandidates)
+
+    # Instead of erasing candidates, swap them to the end, and remember where
+    # the "eligible" candidates end
     eligibleEnd = len(candidates) - 1
 
+    # Remove cells that are already synapsed on by this segment
     for synapse in connections.synapsesForSegment(segment):
       try:
         index = candidates[:eligibleEnd + 1].index(synapse.presynapticCell)
@@ -717,9 +669,10 @@ class ExtendedTemporalMemory(object):
         eligibleEnd -= 1
 
     candidatesLength = eligibleEnd + 1
-    nActual = min(nDesiredNewSynapes, candidatesLength)
+    numActual = min(numDesiredNewSynapes, candidatesLength)
 
-    for _ in range(nActual):
+    # Pick numActual cells randomly
+    for _ in xrange(numActual):
       rand = random.getUInt32(candidatesLength)
       connections.createSynapse(segment, candidates[rand],
                                 initialPermanence)
@@ -728,21 +681,30 @@ class ExtendedTemporalMemory(object):
 
 
   @staticmethod
-  def adaptSegment(connections, segment, prevActiveCells, permanenceIncrement,
-                   permanenceDecrement):
+  def adaptSegment(connections, segment, prevActiveCells, prevActiveExternalCells,
+                   permanenceIncrement, permanenceDecrement):
     """ Updates synapses on segment.
     Strengthens active synapses; weakens inactive synapses.
-    @param connections          (Object) Connections instance for the tm
+    @param connections          (Object) Connections instance for the TM
     @param segment              (int)    Segment to adapt
     @param prevActiveCells      (list)   Active cells in `t-1`
+    @param prevActiveExternalCells   (list)   Active cells in `t-1`, external to the layer
     @param permanenceIncrement  (float)  Amount to increment active synapses
     @param permanenceDecrement  (float)  Amount to decrement inactive synapses
     """
-
     for synapse in connections.synapsesForSegment(segment):
+
+      # Check for activity in previusly active and external candidate cells
+      isActive = False
+      if synapse.presynapticCell < connections.numCells():
+        isActive = binSearch(prevActiveCells, synapse.presynapticCell)
+      else:
+        isActive = binSearch(prevActiveExternalCells,
+                             synapse.presynapticCell-connections.numCells())
+
       permanence = synapse.permanence
 
-      if binSearch(prevActiveCells, synapse.presynapticCell) != -1:
+      if isActive:
         permanence += permanenceIncrement
       else:
         permanence -= permanenceDecrement
