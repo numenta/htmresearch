@@ -206,6 +206,22 @@ class L4L2Experiment(object):
     from cortical column to a tuple of two SDR's respectively corresponding
     to the location in object space and the feature.
 
+    For example, the input can look as follows, if we are learning a simple
+    object with two sensations (with very few active bits for simplicity):
+
+    objects = {
+      "simple": [
+        {
+          0: (set([1, 5, 10]), set([6, 12, 52]),  # location, feature for CC0
+          1: (set([6, 2, 15]), set([64, 1, 5]),  # location, feature for CC1
+        },
+        {
+          0: (set([5, 46, 50]), set([8, 10, 11]),  # location, feature for CC0
+          1: (set([1, 6, 45]), set([12, 17, 23]),  # location, feature for CC1
+        },
+      ]
+    }
+
     In many uses cases, this object can be created by implementations of
     ObjectMachines (cf htm.research.object_machine_factory), through their
     method providedObjectsToLearn.
@@ -261,6 +277,21 @@ class L4L2Experiment(object):
     a mapping from cortical column to a tuple of two SDR's respectively
     corresponding to the location in object space and the feature.
 
+    For example, the input can look as follows, if we are inferring a simple
+    object with two sensations (with very few active bits for simplicity):
+
+    sensationList = [
+      {
+        0: (set([1, 5, 10]), set([6, 12, 52]),  # location, feature for CC0
+        1: (set([6, 2, 15]), set([64, 1, 5]),  # location, feature for CC1
+      },
+
+      {
+        0: (set([5, 46, 50]), set([8, 10, 11]),  # location, feature for CC0
+        1: (set([1, 6, 45]), set([12, 17, 23]),  # location, feature for CC1
+      },
+    ]
+
     In many uses cases, this object can be created by implementations of
     ObjectMachines (cf htm.research.object_machine_factory), through their
     method providedObjectsToInfer.
@@ -277,7 +308,7 @@ class L4L2Experiment(object):
              If set to True (which is the default value), the network will
              be reset after learning.
 
-   @param    objectName (str)
+    @param   objectName (str)
              Name of the objects (must match the names given during learning).
 
     """

@@ -45,6 +45,34 @@ class SimpleObjectMachine(ObjectMachineBase):
     """
     At creation, the SimpleObjectMachine creates a pool of locations and
     features SDR's.
+
+    Parameters:
+    ----------------------------
+    @param   numInputBits (int)
+             Number of ON bits in the input
+
+    @param   sensorInputSize (int)
+             Total number of bits in the sensory input
+
+    @param   externalInputSize (int)
+             Total number of bits the external (location) input
+
+    @param   numCorticalColumns (int)
+             Number of cortical columns used in the experiment
+
+    @param   numLocations (int)
+             Number of location SDRs to generate per cortical column. There is
+             typically no need to not use the default value, unless the user
+             knows he will use more than 400 patterns.
+
+    @param   numFeatures (int)
+             Number of feature SDRs to generate per cortical column. There is
+             typically no need to not use the default value, unless the user
+             knows he will use more than 400 patterns.
+
+    @param   seed (int)
+             Seed to be used in the machine
+
     """
     super(SimpleObjectMachine, self).__init__(numInputBits,
                                               sensorInputSize,
@@ -63,9 +91,15 @@ class SimpleObjectMachine(ObjectMachineBase):
     """
     Returns the objects in a canonical format to be sent to an experiment.
 
-    The format is a a dictionary where the keys are object names, and
+    The returned format is a a dictionary where the keys are object names, and
     values are lists of sensations, each sensation being a mapping from
     cortical column index to a pair of SDR's (one location and one feature).
+
+    Parameters:
+    ----------------------------
+    @param   objectNames (list)
+             List of object names to provide to the experiment
+
     """
     if objectNames is None:
       objectNames = self.objects.keys()
@@ -83,10 +117,6 @@ class SimpleObjectMachine(ObjectMachineBase):
     """
     Returns the sensations in a canonical format to be sent to an experiment.
 
-    The format is a a lists of sensations, each sensation being a
-    mapping from cortical column index to a pair of SDR's (one location and
-    one feature).
-
     The input inferenceConfig should be a dict with the following form:
     {
       "numSteps": 2  # number of sensations
@@ -103,6 +133,15 @@ class SimpleObjectMachine(ObjectMachineBase):
       - -1 as an index indicates that the input is empty for a feature, and
       is random for a location (since an empty location makes the layer 4
       burst for now)
+
+    The returned format is a a lists of sensations, each sensation being a
+    mapping from cortical column index to a pair of SDR's (one location and
+    one feature).
+
+    Parameters:
+    ----------------------------
+    @param   inferenceConfig (dict)
+             Inference spec for experiment (cf above for format)
 
     """
     if "numSteps" in inferenceConfig:

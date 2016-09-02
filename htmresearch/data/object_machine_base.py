@@ -46,12 +46,25 @@ class ObjectMachineBase(object):
                seed):
     """
     Creates the Machine, specifying its input and output size.
-    """
-    if type(self) == ObjectMachineBase:
-      raise TypeError(
-        "Subclasses of ObjectMachineBase should be used"
-      )
 
+    Parameters:
+    ----------------------------
+    @param   numInputBits (int)
+             Number of ON bits in the input
+
+    @param   sensorInputSize (int)
+             Total number of bits in the sensory input
+
+    @param   externalInputSize (int)
+             Total number of bits the external (location) input
+
+    @param   numCorticalColumns (int)
+             Number of cortical columns used in the experiment
+
+    @param   seed (int)
+             Seed to be used in the machine
+
+    """
     # input and output size
     self.numColumns = numCorticalColumns
     self.numInputBits = numInputBits
@@ -66,7 +79,7 @@ class ObjectMachineBase(object):
 
 
   @abstractmethod
-  def provideObjectsToLearn(self, objects=None):
+  def provideObjectsToLearn(self, objectNames=None):
     """
     This method provides the specified objects in an acceptable form for
     experiments, for the learning part.
@@ -74,6 +87,12 @@ class ObjectMachineBase(object):
     The expected form is a a dictionary where the keys are object names, and
     values are lists of sensations, each sensation being a mapping from
     cortical column index to a pair of SDR's (one location and one feature).
+
+    Parameters:
+    ----------------------------
+    @param   objectNames (list)
+             List of object names to provide to the experiment
+
     """
 
 
@@ -89,6 +108,13 @@ class ObjectMachineBase(object):
 
     Its argument is an inferenceConfig dictionary, whose fields may vary
     with the type of ObjectMachine.
+
+    Parameters:
+    ----------------------------
+    @param   inferenceConfig (dict)
+             Inference spec for experiment (specific to each object machine
+             type)
+
     """
 
 
