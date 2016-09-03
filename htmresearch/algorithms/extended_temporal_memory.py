@@ -429,14 +429,12 @@ class ExtendedTemporalMemory(object):
     @param random (Object)
     Random number generator. Gets mutated.
     """
-    # TODO: use lambda rather than itertools?
-    # bySegment = lambda segment: segment  #???
-    # for segmentData in groupBy2(cellActiveSegments, bySegment,
-    #                             cellMatchingSegments, bySegment):
-    #   # (segment,
-    #   #  x, y, z) = segmentData  # what is unpacked here?
-    #   segment = segmentData[0]
-    for segment in itertools.chain(cellActiveSegments, cellMatchingSegments):
+    bySegment = lambda segment: segment  #???
+    for segmentData in groupBy2(cellActiveSegments, bySegment,
+                                cellMatchingSegments, bySegment):
+      # (segment,
+      #  x, y, z) = segmentData  # what is unpacked here?
+      segment = segmentData[0]
 
       self.adaptSegment(connections,
                         segment,
@@ -637,7 +635,7 @@ class ExtendedTemporalMemory(object):
   @staticmethod
   def growSynapses(connections, random, segment, numDesiredNewSynapes,
                    internalCandidates, externalCandidates, initialPermanence):
-    """ Creates nDesiredNewSynapes synapses on the segment passed in if
+    """ Creates numDesiredNewSynapes synapses on the segment passed in if
     possible, choosing random cells from the previous winner cells that are
     not already on the segment.
     @param  connections        (Object) Connections instance for the TM
@@ -652,7 +650,8 @@ class ExtendedTemporalMemory(object):
     that was most recently changed is to ensure the same results that we get
     in the c++ implentation using iter_swap with vectors.
     """
-    candidates = itertools.chain(internalCandidates, externalCandidates)
+    candidates = internalCandidates + [connections.numCells() + cell
+                                      for cell in externalCandidates]
 
     # Instead of erasing candidates, swap them to the end, and remember where
     # the "eligible" candidates end
