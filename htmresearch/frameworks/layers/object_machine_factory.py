@@ -23,7 +23,9 @@
 Factory for creating object machines.
 """
 
-from htmresearch.data.simple_object_machine import SimpleObjectMachine
+from htmresearch.frameworks.layers.simple_object_machine import (
+  SimpleObjectMachine
+)
 
 
 

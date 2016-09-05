@@ -131,13 +131,13 @@ class ObjectMachineBase(object):
     Checks that objects have the correct format before being sent to the
     experiment.
     """
-    for name, object in objects.iteritems():
-      if name not in self.objects:
+    for objectName, sensationList in objects.iteritems():
+      if objectName not in self.objects:
         raise ValueError(
-          "Invalid object name \"{}\" sent to experiment".format(name)
+          "Invalid object name \"{}\" sent to experiment".format(objectName)
         )
 
-      for sensations in object:
+      for sensations in sensationList:
         if set(sensations.keys()) != set(range(self.numColumns)):
           raise ValueError(
             "Invalid number of cortical column sensations sent to experiment"

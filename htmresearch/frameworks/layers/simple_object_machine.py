@@ -21,7 +21,7 @@
 
 import random
 
-from htmresearch.data.object_machine_base import ObjectMachineBase
+from htmresearch.frameworks.layers.object_machine_base import ObjectMachineBase
 
 
 

@@ -238,7 +238,7 @@ class L4L2Experiment(object):
     """
     self._setLearningMode()
 
-    for object, sensationList in objects.iteritems():
+    for objectName, sensationList in objects.iteritems():
 
       # ignore empty sensation lists
       if len(sensationList) == 0:
@@ -262,7 +262,7 @@ class L4L2Experiment(object):
         self.network.run(iterations)
 
       # update L2 representations
-      self.objectL2Representations[object] = self.getL2Representations()
+      self.objectL2Representations[objectName] = self.getL2Representations()
 
       if reset:
         # send reset signal
