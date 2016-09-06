@@ -159,28 +159,38 @@ class ExtendedTemporalMemory(object):
 
   def compute(self,
               activeColumns,
+              prevActiveExternalCellsBasal,
               activeExternalCellsBasal,
+              prevActiveExternalCellsApical,
               activeExternalCellsApical,
               learn=True):
     """ Feeds input record through TM, performing inference and learning.
 
     @param activeColumns (iter)
     Indices of active columns
+
     @param activeExternalCellsBasal (iter)
     Sorted list of active external cells for activating basal dendrites at the
     end of this time step.
+
     @param activeExternalCellsApical (iter)
     Sorted list of active external cells for activating apical dendrites at the
     end of this time step.
+
     @param learn (bool)
     Whether or not learning is enabled
     """
-    self.activateCells(sorted(activeColumns), learn)
-    self.activateDendrites(learn, activeExternalCellsBasal,
-                           activeExternalCellsApical)
+    self.activateCells(sorted(activeColumns),
+                       prevActiveExternalCellsBasal,
+                       prevActiveExternalCellsApical,
+                       learn)
+    self.activateDendrites(activeExternalCellsBasal,
+                           activeExternalCellsApical,
+                           learn)
 
 
-  def activateCells(self, activeColumns, learn=True):
+  def activateCells(self, activeColumns, prevActiveExternalCellsBasal,
+                    prevActiveExternalCellsApical, learn=True):
     """ Calculate the active cells, using the current active columns and
     dendrite segments. Grow and reinforce synapses.
 
@@ -189,8 +199,8 @@ class ExtendedTemporalMemory(object):
     @param learn (bool)
         If true, reinforce/punish/grow synapses.
     """
-    prevActiveExternalCellsBasal = self.activeExternalCellsBasal
-    prevActiveExternalCellsApical = self.activeExternalCellsApical
+    # prevActiveExternalCellsBasal = self.activeExternalCellsBasal
+    # prevActiveExternalCellsApical = self.activeExternalCellsApical
 
     prevActiveCells = self.activeCells
     prevWinnerCells = self.winnerCells
@@ -338,6 +348,9 @@ class ExtendedTemporalMemory(object):
                               permanenceIncrement, permanenceDecrement,
                               formInternalBasalConnections, learn):
     """
+
+    Utilizes learnOnCell to learn on basal and apical connections.
+
     @param connections (Object)
     Connections for the TM. Gets mutated.
 
@@ -423,6 +436,9 @@ class ExtendedTemporalMemory(object):
                   cellMatchingSegments, maxNewSynapseCount, initialPermanence,
                   permanenceIncrement, permanenceDecrement):
     """
+    Coordinates learning in the TM: learns on either the active segments (if
+    there are any) or the best-matching segment, otherwise grows a new segment
+    for learning.
 
     @param connections (Object)
     Connections for the TM. Gets mutated.
@@ -468,6 +484,9 @@ class ExtendedTemporalMemory(object):
                   permanenceIncrement, permanenceDecrement,
                   formInternalBasalConnections, learnOnOneCell, learn):
     """
+
+    Utilizes learnOnCell to reinforce active segments.
+
     @param connections (Object)
     Connections for the TM. Gets mutated.
     @param random (Object)
@@ -500,32 +519,59 @@ class ExtendedTemporalMemory(object):
                       `cells`         (iter),
                       `winnerCell`    (int),
     """
-    # Calculate the active cells -- all cells in the column become active
+    # # Calculate the active cells -- all cells in the column become active
+    # start = cellsPerColumn * column
+    # activeCells = xrange(start, start + cellsPerColumn)
+
+    # # Calculate the winner cell
+    # if learnOnOneCell and (column in chosenCellForColumn):
+    #   winnerCell = chosenCellForColumn[column]
+    # else:
+    #   if columnMatchingBasal is not None:
+    #     # numActive = lambda s: numActivePotentialSynapsesForSegment[s.flatIdx] ??????????
+    #     bestBasalSegment = max(columnMatchingBasal, key=numActive)
+    #     winnerCell = bestBasalSegment.cell
+    #   else:
+    #     winnerCell = self.getLeastUsedCell(basalConnections, random, column, cellsPerColumn) # TODO: edit this method to match these args
+    #   if learnOnOneCell:
+    #     chosenCellForColumn[column] = winnerCell
+
+    # # Learn
+    # if learn:
+
+    #   # TODO
+
+
+
+    # return cells, winnerCell
+
     start = cellsPerColumn * column
-    activeCells = xrange(start, start + cellsPerColumn)
+    cells = xrange(start, start + cellsPerColumn)
 
-    # Calculate the winner cell
-    if learnOnOneCell and (column in chosenCellForColumn):
-      winnerCell = chosenCellForColumn[column]
+    if columnMatchingSegments is not None:
+      numActive = lambda s: numActivePotentialSynapsesForSegment[s.flatIdx]
+      bestMatchingSegment = max(columnMatchingSegments, key=numActive)
+      winnerCell = bestMatchingSegment.cell
+
+      if learn:
+        cls.adaptSegment(connections, bestMatchingSegment, prevActiveCells,
+                         permanenceIncrement, permanenceDecrement)
+
+        nGrowDesired = maxNewSynapseCount - numActive(bestMatchingSegment)
+
+        if nGrowDesired > 0:
+          cls.growSynapses(connections, random, bestMatchingSegment,
+                           nGrowDesired, prevWinnerCells, initialPermanence)
     else:
-      if columnMatchingBasal is not None:
-        # numActive = lambda s: numActivePotentialSynapsesForSegment[s.flatIdx] ??????????
-        bestBasalSegment = max(columnMatchingBasal, key=numActive)
-        winnerCell = bestBasalSegment.cell
-      else:
-        winnerCell = self.getLeastUsedCell(random, activeCells, connections)
-      if learnOnOneCell:
-        chosenCellForColumn[column] = winnerCell
-
-    # Learn
-    if learn:
-
-      # TODO
-
-
+      winnerCell = cls.leastUsedCell(random, cells, connections)
+      if learn:
+        nGrowExact = min(maxNewSynapseCount, len(prevWinnerCells))
+        if nGrowExact > 0:
+          segment = connections.createSegment(winnerCell)
+          cls.growSynapses(connections, random, segment, nGrowExact,
+                           prevWinnerCells, initialPermanence)
 
     return cells, winnerCell
-
 
   # TODO: make this an instance method -- https://github.com/numenta/nupic/issues/3309
   @staticmethod
