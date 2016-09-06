@@ -22,7 +22,9 @@
 This file creates simple experiment to test a single column L4-L2 network.
 """
 
-from htmresearch.data.object_machine_factory import createObjectMachine
+from htmresearch.frameworks.layers.object_machine_factory import (
+  createObjectMachine
+)
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 
 
