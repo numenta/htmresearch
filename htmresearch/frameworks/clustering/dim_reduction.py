@@ -1,8 +1,7 @@
 import numpy as np
-
+from collections import OrderedDict
 from matplotlib import pyplot as plt
 from sklearn import manifold
-import matplotlib.cm as cm
 
 from htmresearch.frameworks.clustering.distances import percentOverlap
 
@@ -38,9 +37,15 @@ def viz2DProjection(vizTitle, numClusters, clusterAssignments, npos):
     if clusterId not in colorNames:
       colorNames.append(clusterId)
     sdrProjection = npos[i]
-    plt.scatter(sdrProjection[0], sdrProjection[1], label=clusterId,
+    label = 'Category %s' % clusterId
+    plt.scatter(sdrProjection[0], sdrProjection[1], label=label,
                 color=colorList[clusterId], marker='o', edgecolor='black')
-    
+
+  # Add nicely formatted legend
+  handles, labels = plt.gca().get_legend_handles_labels()
+  by_label = OrderedDict(zip(labels, handles))
+  plt.legend(by_label.values(), by_label.keys(), scatterpoints=1)
+
   plt.title(vizTitle)
   plt.show()
 
