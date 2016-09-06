@@ -67,8 +67,11 @@ if __name__ == "__main__":
   (_options, _args) = _getArgs()
   fileName = _options.fileName
 
-  xl = [float(x) for x in _options.xl.split(',')]
-
+  if _options.xl:
+    xl = [float(x) for x in _options.xl.split(',')]
+  else:
+    xl = _options.xl
+    
   traces = loadTraces(fileName)
 
   title = fileName
