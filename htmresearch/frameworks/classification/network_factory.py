@@ -23,10 +23,8 @@
 The methods here are a factory to create a classification network
 of any of sensor, SP, TM, TP, and classifier regions.
 """
-import copy
-import simplejson as json
+import simplejson
 import logging
-import numpy
 import sys
 
 from nupic.encoders import MultiEncoder
@@ -39,7 +37,6 @@ _PY_REGIONS = [r[1] for r in pyRegions]
 _LOGGER = logging.getLogger(__name__)
 logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.DEBUG,
                     stream=sys.stdout)
-TEST_PARTITION_NAME = "test"
 
 
 
@@ -73,6 +70,20 @@ def _createEncoder(encoders):
 
 
 
+def _getEncoderParam(networkConfig, encoderName, paramName):
+  """
+  Get the value of an encoder parameter for the sensor region.
+
+  @param networkConfig: (dict) the configuration of the network
+  @param encoderName: (str) name of the encoder. E.g. 'ScalarEncoder'.
+  @param paramName: (str) name of the param to update. E.g. 'minval'.
+  @return paramValue: None if key 'paramName' does not exist. Value otherwise.
+  """
+  return networkConfig["sensorRegionConfig"]["encoders"][encoderName].get(
+    paramName)
+
+
+
 def _setScalarEncoderMinMax(networkConfig, dataSource):
   """
   Set the min and max values of a scalar encoder.
@@ -80,7 +91,7 @@ def _setScalarEncoderMinMax(networkConfig, dataSource):
   @param networkConfig: (dict) configuration of the network.
   @param dataSource: (RecordStream) the input source
   """
-  fieldName = getEncoderParam(networkConfig, "scalarEncoder", "fieldname")
+  fieldName = _getEncoderParam(networkConfig, "scalarEncoder", "fieldname")
   minval = dataSource.getFieldMin(fieldName)
   maxval = dataSource.getFieldMax(fieldName)
   networkConfig["sensorRegionConfig"]["encoders"]["scalarEncoder"]["minval"] = (
@@ -140,7 +151,8 @@ def _addRegisteredRegion(network, regionConfig, moduleName=None):
   if regionTypeName not in _PY_REGIONS:
     registerResearchRegion(regionTypeName, moduleName)
 
-  return network.addRegion(regionName, regionType, json.dumps(regionParams))
+  return network.addRegion(regionName, regionType,
+                           simplejson.dumps(regionParams))
 
 
 
@@ -325,260 +337,3 @@ def createNetwork(dataSource, networkConfig, encoder=None):
                  srcOutput="sequenceIdOut", destInput="partitionIn")
 
   return network
-
-
-
-def _enableRegionLearning(network,
-                          trainedRegionNames,
-                          regionName,
-                          recordNumber):
-  """
-  Enable learning for a specific region.
-
-  @param network: (Network) the network instance
-  @param trainedRegionNames: (list) regions that have been trained on the
-    input data.
-  @param regionName: (str) name of the current region
-  @param recordNumber: (int) value of the current record number
-  """
-
-  network.regions[regionName].setParameter("learningMode", True)
-  phaseInfo = ("-> Training '%s'. RecordNumber=%s. Learning is ON for %s, "
-               "but OFF for the remaining regions." % (regionName,
-                                                       recordNumber,
-                                                       trainedRegionNames))
-  _LOGGER.info(phaseInfo)
-
-
-
-def _stopLearning(network, trainedRegionNames, recordNumber):
-  """
-  Disable learning for all trained regions.
-
-  @param network: (Network) the network instance
-  @param trainedRegionNames: (list) regions that have been trained on the
-    input data.
-  @param recordNumber: (int) value of the current record number
-  """
-
-  for regionName in trainedRegionNames:
-    region = network.regions[regionName]
-    region.setParameter("learningMode", False)
-
-  phaseInfo = ("-> Test phase. RecordNumber=%s. "
-               "Learning is OFF for all regions: %s" % (recordNumber,
-                                                        trainedRegionNames))
-  _LOGGER.info(phaseInfo)
-
-
-
-def trainNetwork(network, networkConfig, networkPartitions, numRecords,
-                 verbosity=0):
-  """
-  Train the network.
-
-  @param network: (Network) a Network instance to run.
-  @param networkConfig: (dict) params for network regions.
-  @param networkPartitions: (list of tuples) Region names and index at which the
-   region is to begin learning, including a test partition (the last entry).
-  @param numRecords: (int) Number of records of the input dataset.
-  @param verbosity: (0 or 1) How verbose the log is. (0 is less verbose)
-  """
-
-  partitions = copy.deepcopy(networkPartitions)  # preserve original partitions
-
-  sensorRegion = network.regions[
-    networkConfig["sensorRegionConfig"].get("regionName")]
-  classifierRegion = network.regions[
-    networkConfig["classifierRegionConfig"].get("regionName")]
-  if networkConfig['tpRegionConfig'].get('regionEnabled'):
-    tpRegion = network.regions[
-      networkConfig['tpRegionConfig'].get('regionName')]
-  else:
-    tpRegion = None
-
-  trackTMmetrics = False
-  # track TM metrics if monitored_tm_py implementation is being used
-  if networkConfig["tmRegionConfig"].get("regionEnabled"):
-    tmRegion = network.regions[
-      networkConfig["tmRegionConfig"].get("regionName")]
-
-    if tmRegion.getParameter("temporalImp") == "monitored_tm_py":
-      trackTMmetrics = True
-      tm = tmRegion.getSelf().getAlgorithmInstance()
-  else:
-    tmRegion = None
-    tm = None
-
-  # Keep track of the regions that have been trained.
-  trainedRegionNames = []
-
-  # Number of correctly classified records
-  numCorrectlyClassifiedRecords = 0
-  numCorrectlyClassifiedTestRecords = 0
-  numTestRecords = 0
-
-  # Network traces
-  sensorValueTrace = []
-  classificationAccuracyTrace = []
-  testClassificationAccuracyTrace = []
-  categoryTrace = []
-  tpActiveCellsTrace = []
-  tmActiveCellsTrace = []
-  tmPredictedActiveCellsTrace = []
-  for recordNumber in xrange(numRecords):
-
-    # Run the network for a single iteration.
-    network.run(1)
-
-    if tpRegion:
-      tpActiveCells = tpRegion.getOutputData("mostActiveCells")
-      tpActiveCells = tpActiveCells.nonzero()[0]
-      tpActiveCellsTrace.append(tpActiveCells)
-
-    if tmRegion:
-      tmPredictedActiveCells = tmRegion.getOutputData("predictedActiveCells")
-      tmPredictedActiveCells = tmPredictedActiveCells.nonzero()[0]
-      tmActiveCells = tmRegion.getOutputData("activeCells")
-      tmActiveCells = tmActiveCells.nonzero()[0]
-      tmActiveCellsTrace.append(tmActiveCells)
-      tmPredictedActiveCellsTrace.append(tmPredictedActiveCells)
-
-    sensorValueTrace.append(sensorRegion.getOutputData("sourceOut")[0])
-    actualCategory = sensorRegion.getOutputData("categoryOut")[0]
-    inferredCategory = _getClassifierInference(classifierRegion)
-    categoryTrace.append(actualCategory)
-    if actualCategory == inferredCategory:
-      numCorrectlyClassifiedRecords += 1
-    else:
-      if verbosity > 0:
-        _LOGGER.debug("recordNum=%s, actualCategory=%s, inferredCategory=%s"
-                      % (recordNumber, actualCategory, inferredCategory))
-    clfAccuracy = round(100.0 * numCorrectlyClassifiedRecords / numRecords, 2)
-    classificationAccuracyTrace.append(clfAccuracy)
-
-    if trackTMmetrics:
-
-      activeColsTrace = tm.mmGetTraceActiveColumns()
-      predictedActiveColsTrace = tm.mmGetTracePredictedActiveColumns()
-
-      if tmRegion.getParameter("learningMode") and recordNumber % 100 == 0:
-        (avgPredictedActiveCols,
-         avgPredictedInactiveCols,
-         avgUnpredictedActiveCols) = _inspectTMPredictionQuality(
-          tm, numRecordsToInspect=100)
-        tmStats = ("recordNumber %4d # predicted -> active cols=%4.1f | "
-                   "# predicted -> inactive cols=%4.1f | "
-                   "# unpredicted -> active cols=%4.1f " % (
-                     recordNumber,
-                     avgPredictedActiveCols,
-                     avgPredictedInactiveCols,
-                     avgUnpredictedActiveCols
-                   ))
-        _LOGGER.info(tmStats)
-
-    if recordNumber == partitions[0][1]:
-      # end of the current partition
-      partitionName = partitions[0][0]
-
-      # stop learning for all regions
-      if partitionName == TEST_PARTITION_NAME:
-        _stopLearning(network, trainedRegionNames, recordNumber)
-
-      else:
-        partitions.pop(0)
-        trainedRegionNames.append(partitionName)
-        _enableRegionLearning(network,
-                              trainedRegionNames,
-                              partitionName,
-                              recordNumber)
-
-    if recordNumber >= partitions[-1][1]:
-      # evaluate the predictions on the test set
-      # classifierConfig = networkConfig["classifierRegionConfig"]
-      classifierRegion.setParameter("inferenceMode", True)
-
-      if actualCategory == inferredCategory:
-        numCorrectlyClassifiedTestRecords += 1
-
-      numTestRecords += 1
-      testClassificationAccuracy = round(
-        100.0 * numCorrectlyClassifiedTestRecords / numTestRecords, 2)
-      testClassificationAccuracyTrace.append(testClassificationAccuracy)
-
-  _LOGGER.info("RESULTS: accuracy=%s | "
-               "%s correctly classified records out of %s test records \n" %
-               (testClassificationAccuracyTrace[-1],
-                numCorrectlyClassifiedTestRecords,
-                numTestRecords))
-
-  traces = {
-    'classificationAccuracyTrace': classificationAccuracyTrace,
-    'testClassificationAccuracyTrace': testClassificationAccuracyTrace,
-    'sensorValueTrace': sensorValueTrace,
-    'categoryTrace': categoryTrace,
-    'tmActiveCellsTrace': tmActiveCellsTrace,
-    'tmPredictiveActiveCellsTrace': tmPredictedActiveCellsTrace,
-    'tpActiveCellsTrace': tpActiveCellsTrace
-  }
-
-  if trackTMmetrics:
-    traces['activeColsTrace'] = activeColsTrace.data
-    traces['predictedActiveColsTrace'] = predictedActiveColsTrace.data
-
-  return traces
-
-
-
-def _getClassifierInference(classifierRegion):
-  """Return output categories from the classifier region."""
-  if classifierRegion.type == "py.KNNClassifierRegion":
-    # The use of numpy.lexsort() here is to first sort by labelFreq, then
-    # sort by random values; this breaks ties in a random manner.
-    inferenceValues = classifierRegion.getOutputData("categoriesOut")
-    randomValues = numpy.random.random(inferenceValues.size)
-    return numpy.lexsort((randomValues, inferenceValues))[-1]
-  else:
-    return classifierRegion.getOutputData("categoriesOut")[0]
-
-
-
-def _inspectTMPredictionQuality(tm, numRecordsToInspect):
-  """ Inspect prediction quality of TM over the most recent
-  numRecordsToInspect records """
-  # correct predictions: predicted -> active columns
-  predictedActiveCols = tm.mmGetTracePredictedActiveColumns()
-  numPredictedActiveCols = predictedActiveCols.makeCountsTrace().data
-
-  # false/extra predictions: predicted -> inactive column
-  predictedInactiveCols = tm.mmGetTracePredictedInactiveColumns()
-  numPredictedInactiveCols = predictedInactiveCols.makeCountsTrace().data
-
-  # unpredicted inputs: unpredicted -> active
-  unpredictedActiveCols = tm.mmGetTraceUnpredictedActiveColumns()
-  numUnpredictedActiveCols = unpredictedActiveCols.makeCountsTrace().data
-
-  avgPredictedActiveCols = numpy.mean(
-    numPredictedActiveCols[-numRecordsToInspect:])
-  avgPredictedInactiveCols = numpy.mean(
-    numPredictedInactiveCols[-numRecordsToInspect:])
-  avgUnpredictedActiveCols = numpy.mean(
-    numUnpredictedActiveCols[-numRecordsToInspect:])
-
-  return (avgPredictedActiveCols,
-          avgPredictedInactiveCols,
-          avgUnpredictedActiveCols)
-
-
-
-def getEncoderParam(networkConfig, encoderName, paramName):
-  """
-  Get the value of an encoder parameter for the sensor region.
-
-  @param networkConfig: (dict) the configuration of the network
-  @param encoderName: (str) name of the encoder. E.g. 'ScalarEncoder'.
-  @param paramName: (str) name of the param to update. E.g. 'minval'.
-  @return paramValue: None if key 'paramName' does not exist. Value otherwise.
-  """
-  return networkConfig["sensorRegionConfig"]["encoders"][encoderName].get(
-    paramName)
