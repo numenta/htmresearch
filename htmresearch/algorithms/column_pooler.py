@@ -428,7 +428,6 @@ class ColumnPooler(object):
       newConnected = numpy.where(cellPermanencesDense >= connectedPermanence)[0]
       proximalConnections.replaceSparseRow(cell, newConnected)
 
-      cellNonZeroIndices, _ = proximalPermanences.rowNonZeros(cell)
 
 
   def _pickProximalInputsToLearnOn(self, newSynapseCount, activeInputs,

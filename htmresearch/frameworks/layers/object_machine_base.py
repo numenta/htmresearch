@@ -126,6 +126,13 @@ class ObjectMachineBase(object):
     """
 
 
+  def getObjects(self):
+    """
+    Return internal dictionary containing all objects
+    """
+    return self.objects
+
+
   def _checkObjectsToLearn(self, objects):
     """
     Checks that objects have the correct format before being sent to the

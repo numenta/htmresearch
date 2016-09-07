@@ -104,7 +104,7 @@ class L4L2Experiment(object):
                externalInputSize=1024,
                L2Overrides=None,
                L4Overrides=None,
-               numLearningPoints=3,
+               numLearningPoints=4,
                seed=42):
     """
     Creates the network.
@@ -521,6 +521,7 @@ class L4L2Experiment(object):
       "activationThreshold": 13,
       "maxNewSynapseCount": 20,
       "monitor": 0,
+      "defaultOutputType": "predictedActiveCells",
       "implementation": "cpp",
       "seed": self.seed
     }
