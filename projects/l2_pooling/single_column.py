@@ -22,6 +22,9 @@
 This file creates simple experiment to test a single column L4-L2 network.
 """
 
+from htmresearch.frameworks.layers.object_machine_factory import (
+  createObjectMachine
+)
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 
 
@@ -45,10 +48,13 @@ def runSharedFeatures(noiseLevel=None, profile=False):
   Runs a simple experiment where three objects share a number of location,
   feature pairs.
 
-  :param noiseLevel: (float) Noise level to add to the locations and features
-                             during inference
-  :param profile:    (bool)  If True, the network will be profiled after
-                             learning and inference.
+  Parameters:
+  ----------------------------
+  @param    noiseLevel (float)
+            Noise level to add to the locations and features during inference
+
+  @param    profile (bool)
+            If True, the network will be profiled after learning and inference
 
   """
   exp = L4L2Experiment(
@@ -56,23 +62,28 @@ def runSharedFeatures(noiseLevel=None, profile=False):
   )
 
   pairs = createThreeObjects()
-  objects = {}
+  objects = createObjectMachine(
+    machineType="simple",
+    numInputBits=20,
+    sensorInputSize=1024,
+    externalInputSize=1024
+  )
   for object in pairs:
-    objects = exp.addObject(object, objects=objects)
+    objects.addObject(object)
 
-  exp.learnObjects(objects)
+  exp.learnObjects(objects.provideObjectsToLearn())
   if profile:
     exp.printProfile()
 
   inferConfig = {
-    "object": 0,
     "numSteps": 10,
+    "noiseLevel": noiseLevel,
     "pairs": {
       0: zip(range(10), range(10))
     }
   }
 
-  exp.infer(inferConfig, noise=noiseLevel)
+  exp.infer(objects.provideObjectToInfer(inferConfig), objectName=0)
   if profile:
     exp.printProfile()
 
@@ -90,12 +101,14 @@ def runUncertainLocations(missingLoc=None, profile=False):
   during inference (if it was not successfully computed by the rest of the
   network for example).
 
-  :param missingLoc: (dict) A dictionary mapping indices in the object to
-                            location index to replace with during inference
-                            (-1 means no location, a tuple means an union of
-                            locations).
-  :param profile:    (bool)  If True, the network will be profiled after
-                             learning and inference.
+  @param   missingLoc (dict)
+           A dictionary mapping indices in the object to location index to
+           replace with during inference (-1 means no location, a tuple means
+           an union of locations).
+
+  @param   profile (bool)
+           If True, the network will be profiled after learning and inference
+
   """
   if missingLoc is None:
     missingLoc = {}
@@ -105,13 +118,16 @@ def runUncertainLocations(missingLoc=None, profile=False):
   )
 
   pairs = createThreeObjects()
-  objects = {}
+  objects = createObjectMachine(
+    machineType="simple",
+    numInputBits=20,
+    sensorInputSize=1024,
+    externalInputSize=1024
+  )
   for object in pairs:
-    objects = exp.addObject(object, objects=objects)
+    objects.addObject(object)
 
-  exp.learnObjects(objects)
-  if profile:
-    exp.printProfile()
+  exp.learnObjects(objects.provideObjectsToLearn())
 
   # create pairs with missing locations
   objectA = objects[0]
@@ -119,14 +135,13 @@ def runUncertainLocations(missingLoc=None, profile=False):
     objectA[key] = (val, key)
 
   inferConfig = {
-    "object": 0,
     "numSteps": 10,
     "pairs": {
       0: objectA
     }
   }
 
-  exp.infer(inferConfig)
+  exp.infer(objects.provideObjectToInfer(inferConfig), objectName=0)
   if profile:
     exp.printProfile()
 
@@ -142,24 +157,35 @@ def runUncertainLocations(missingLoc=None, profile=False):
 def runStretchExperiment(numObjects=25):
   """
   Generates a lot of random objects to profile the network.
+
+  Parameters:
+  ----------------------------
+  @param    numObjects (int)
+            Number of objects to create and learn.
+
   """
   exp = L4L2Experiment(
     "profiling_experiment",
   )
 
-  objects = exp.createRandomObjects(numObjects=numObjects, numPoints=10)
-  exp.learnObjects(objects)
+  objects = createObjectMachine(
+    machineType="simple",
+    numInputBits=20,
+    sensorInputSize=1024,
+    externalInputSize=1024
+  )
+  objects.createRandomObjects(numObjects=numObjects, numPoints=10)
+  exp.learnObjects(objects.provideObjectsToLearn())
   exp.printProfile()
 
   inferConfig = {
-    "object": 0,
     "numSteps": len(objects[0]),
     "pairs": {
       0: objects[0]
     }
   }
 
-  exp.infer(inferConfig)
+  exp.infer(objects.provideObjectToInfer(inferConfig), objectName=0)
   exp.printProfile()
 
   exp.plotInferenceStats(
@@ -167,6 +193,7 @@ def runStretchExperiment(numObjects=25):
             "Overlap L2 with object",
             "L4 Representation"]
   )
+
 
 
 if __name__ == "__main__":
