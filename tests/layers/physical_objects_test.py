@@ -33,6 +33,7 @@ from htmresearch.frameworks.layers.physical_objects import (
 class PhysicalObjectsTest(unittest.TestCase):
   """Unit tests for physical objects."""
 
+
   def testInitParams(self):
     """Simple construction test."""
     sphere = Sphere(radius=5, dimension=6)
@@ -85,7 +86,7 @@ class PhysicalObjectsTest(unittest.TestCase):
     self.assertFalse(box.contains([100] * box.dimension))
 
 
-  def testPlotSample(self):
+  def testPlotSampleLocations(self):
     """Samples points from objects and plots them in a 3D scatter."""
     objects = []
     objects.append(Sphere(radius=20, dimension=3))
@@ -101,11 +102,36 @@ class PhysicalObjectsTest(unittest.TestCase):
         x, y, z = tuple(objects[i].sampleLocation())
         ax.scatter(x, y, z)
 
-      ax.set_xlabel('X Label')
-      ax.set_ylabel('Y Label')
-      ax.set_zlabel('Z Label')
+      ax.set_xlabel('X')
+      ax.set_ylabel('Y')
+      ax.set_zlabel('Z')
       plt.title("Sampled point from {}".format(objects[i]))
       plt.savefig("object{}.png".format(str(i)))
+
+
+  def testPlotSampleFeatures(self):
+    """Samples points from objects and plots them in a 3D scatter."""
+    objects = []
+    objects.append(Sphere(radius=20, dimension=3))
+    objects.append(Cylinder(height=50, radius=100, epsilon=2))
+    objects.append(Box(dimensions=[10, 20, 30], dimension=3))
+    objects.append(Cube(width=20, dimension=3))
+    numPoints = 500
+
+    for i in xrange(4):
+
+      for feature in objects[i].features:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        for _ in xrange(numPoints):
+          x, y, z = tuple(objects[i].sampleLocationFromFeature(feature))
+          ax.scatter(x, y, z)
+
+        ax.set_xlabel('X Label')
+        ax.set_ylabel('Y Label')
+        ax.set_zlabel('Z Label')
+        plt.title("Sampled point on {} from {}".format(feature, objects[i]))
+        plt.savefig("object_{}_{}.png".format(str(i), feature))
 
 
 

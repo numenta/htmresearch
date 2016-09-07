@@ -47,7 +47,7 @@ class PhysicalObject(object):
 
   # default resolution to use for matching locations (to avoid having a zero
   # null probability of sampling an edge)
-  DEFAULT_EPSILON = 2
+  DEFAULT_EPSILON = 1
 
   @abstractmethod
   def getFeatureID(self, location):
@@ -71,6 +71,12 @@ class PhysicalObject(object):
     """
     Sample a location from the object. The locations should be sampled
     uniformly whenever is possible.
+    """
+
+  @abstractmethod
+  def sampleLocationFromFeature(self, feature):
+    """
+    Samples a location from the provided specific feature.
     """
 
 

@@ -51,6 +51,8 @@ class Sphere(PhysicalObject):
     else:
       self.epsilon = epsilon
 
+    self.features = ["surface"]
+
 
   def getFeatureID(self, location):
     """
@@ -77,9 +79,21 @@ class Sphere(PhysicalObject):
     """
     Gaussian method to sample uniformly from a sphere.
     """
-    coordinates = [random.gauss(0, 1.) for _ in xrange(self.dimension)]
-    norm = sqrt(sum([coord ** 2 for coord in coordinates]))
-    return [self.radius * coord / norm for coord in coordinates]
+    return self.sampleLocationFromFeature(self.features[0])
+
+
+  def sampleLocationFromFeature(self, feature):
+    """
+    Samples a location from the provided specific feature.
+
+    In the case of a sphere, there is only one feature.
+    """
+    if feature == "surface":
+      coordinates = [random.gauss(0, 1.) for _ in xrange(self.dimension)]
+      norm = sqrt(sum([coord ** 2 for coord in coordinates]))
+      return [self.radius * coord / norm for coord in coordinates]
+    else:
+      raise NameError("No such feature in {}: {}".format(self, feature))
 
 
   def __repr__(self):
@@ -114,6 +128,8 @@ class Cylinder(PhysicalObject):
       self.epsilon = self.DEFAULT_EPSILON
     else:
       self.epsilon = epsilon
+
+    self.features = ["topDisc", "bottomDisc", "topEdge", "bottomEdge", "side"]
 
 
   def getFeatureID(self, location):
@@ -156,19 +172,61 @@ class Cylinder(PhysicalObject):
     """
     areaRatio = self.radius ** 2 / (self.radius ** 2 + self.height)
     if random.random() < areaRatio:
-      return self._sampleLocationOnDiscs()
+      return self._sampleLocationOnDisc()
     else:
       return self._sampleLocationOnSide()
 
 
-  def _sampleLocationOnDiscs(self):
+  def sampleLocationFromFeature(self, feature):
+    """
+    Samples a location from the provided specific features.
+    """
+    if feature == "topDisc":
+      return self._sampleLocationOnDisc(top=True)
+    elif feature == "topEdge":
+      return self._sampleLocationOnEdge(top=True)
+    elif feature == "bottomDisc":
+      return self._sampleLocationOnDisc(top=False)
+    elif feature == "bottomEdge":
+      return self._sampleLocationOnEdge(top=False)
+    elif feature == "side":
+      return self._sampleLocationOnSide()
+    else:
+      raise NameError("No such feature in {}: {}".format(self, feature))
+
+
+  def _sampleLocationOnDisc(self, top=None):
     """
     Helper method to sample from the top and bottom discs of a cylinder.
+
+    If top is set to True, samples only from top disc. If top is set to False,
+    samples only from bottom disc. If not set (defaults to None), samples from
+    both discs.
     """
-    z = random.choice([-1, 1]) * self.height / 2.
+    if top is None:
+      z = random.choice([-1, 1]) * self.height / 2.
+    else:
+      z = self.height / 2. if top else - self.height / 2.
     sampledAngle = 2 * random.random() * pi
     sampledRadius = self.radius * sqrt(random.random())
     x, y = sampledRadius * cos(sampledAngle), sampledRadius * sin(sampledAngle)
+    return [x, y, z]
+
+
+  def _sampleLocationOnEdge(self, top=None):
+    """
+    Helper method to sample from the top and bottom edges of a cylinder.
+
+    If top is set to True, samples only from top edge. If top is set to False,
+    samples only from bottom edge. If not set (defaults to None), samples from
+    both edges.
+    """
+    if top is None:
+      z = random.choice([-1, 1]) * self.height / 2.
+    else:
+      z = self.height / 2. if top else - self.height / 2.
+    sampledAngle = 2 * random.random() * pi
+    x, y = self.radius * cos(sampledAngle), self.radius * sin(sampledAngle)
     return [x, y, z]
 
 
@@ -213,6 +271,8 @@ class Box(PhysicalObject):
     else:
       self.epsilon = epsilon
 
+    self.features = ["face", "edge", "vertex"]
+
 
   def getFeatureID(self, location):
     """
@@ -250,13 +310,62 @@ class Box(PhysicalObject):
 
   def sampleLocation(self):
     """
+    Random sampling fron any location corresponds to sampling form the faces.
+    """
+    return self._sampleFromFaces()
+
+
+  def sampleLocationFromFeature(self, feature):
+    """
+    Samples a location from one specific feature.
+
+    This is only supported with three dimensions.
+    """
+    if feature == "face":
+      return self._sampleFromFaces()
+    elif feature == "edge":
+      return self._sampleFromEdges()
+    elif feature == "vertex":
+      return self._sampleFromVertices()
+    else:
+      raise NameError("No such feature in {}: {}".format(self, feature))
+
+
+  def _sampleFromFaces(self):
+    """
     We start by sampling a dimension to "max out", then sample the sign and
     the other dimensions' values.
     """
-    maxedOutDim = random.choice(range(self.dimension))
     coordinates = [random.uniform(-1, 1) * dim / 2. for dim in self.dimensions]
-    coordinates[maxedOutDim] = self.dimensions[maxedOutDim] / 2. * \
-                               random.choice([-1, 1])
+    dim = random.choice(range(self.dimension))
+    coordinates[dim] = self.dimensions[dim] / 2. * random.choice([-1, 1])
+    return coordinates
+
+
+  def _sampleFromEdges(self):
+    """
+    We start by sampling dimensions to "max out", then sample the sign and
+    the other dimensions' values.
+    """
+    dimensionsToChooseFrom = range(self.dimension)
+    random.shuffle(dimensionsToChooseFrom)
+    dim1, dim2 = dimensionsToChooseFrom[0], dimensionsToChooseFrom[1]
+    coordinates = [random.uniform(-1, 1) * dim / 2. for dim in self.dimensions]
+    coordinates[dim1] = self.dimensions[dim1] / 2. * random.choice([-1, 1])
+    coordinates[dim2] = self.dimensions[dim2] / 2. * random.choice([-1, 1])
+    return coordinates
+
+
+  def _sampleFromVertices(self):
+    """
+    We start by sampling dimensions to "max out", then sample the sign and
+    the other dimensions' values.
+    """
+    coordinates = [
+      self.dimensions[0] / 2. * random.choice([-1, 1]),
+      self.dimensions[1] / 2. * random.choice([-1, 1]),
+      self.dimensions[2] / 2. * random.choice([-1, 1]),
+    ]
     return coordinates
 
 
@@ -284,7 +393,9 @@ class Cube(Box):
     """
     self.width = width
     dimensions = [width] * dimension
-    super(Cube, self).__init__(dimensions, dimension, epsilon)
+    super(Cube, self).__init__(dimensions=dimensions,
+                               dimension=dimension,
+                               epsilon=epsilon)
 
 
   def __repr__(self):
