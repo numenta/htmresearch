@@ -107,7 +107,7 @@ class Cylinder(PhysicalObject):
 
     """
     self.radius = radius
-    self.height = 2
+    self.height = height
     self.dimension = 3  # no choice for cylinder dimension
 
     if epsilon is None:
@@ -144,9 +144,9 @@ class Cylinder(PhysicalObject):
     Checks that the provided point is on the cylinder.
     """
     if self.almostEqual(location[0] ** 2 + location[1] ** 2, self.radius ** 2):
-      return True
+      return abs(location[2]) < self.height / 2.
     if self.almostEqual(location[2], self.height / 2.):
-      return True
+      return location[0] ** 2 + location[1] ** 2 < self.radius ** 2
     return False
 
 
@@ -178,7 +178,7 @@ class Cylinder(PhysicalObject):
     """
     z = random.uniform(-1, 1) * self.height / 2.
     sampledAngle = 2 * random.random() * pi
-    x, y = cos(sampledAngle), sin(sampledAngle)
+    x, y = self.radius * cos(sampledAngle), self.radius * sin(sampledAngle)
     return [x, y, z]
 
 
@@ -282,6 +282,7 @@ class Cube(Box):
       cube = Cube(width=100, dimension=3, epsilon=2)
 
     """
+    self.width = width
     dimensions = [width] * dimension
     super(Cube, self).__init__(dimensions, dimension, epsilon)
 
@@ -291,4 +292,4 @@ class Cube(Box):
     Custom representation.
     """
     template = self.__class__.__name__ + "(width={})"
-    return template.format(self.dimension)
+    return template.format(self.width)
