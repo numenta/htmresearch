@@ -68,16 +68,26 @@ class Sphere(PhysicalObject):
     """
     Checks that the provided point is on the sphere.
     """
-    return self.almostEqual(sum([coord ** 2 for coord in location]),
-                            self.radius)
+    return self.almostEqual(
+      sum([coord ** 2 for coord in location]), self.radius ** 2
+    )
+
 
   def sampleLocation(self):
     """
     Gaussian method to sample uniformly from a sphere.
     """
     coordinates = [random.gauss(0, 1.) for _ in xrange(self.dimension)]
-    norm = sum([coord ** 2 for coord in coordinates])
-    return tuple([int(coord / norm) for coord in coordinates])
+    norm = sqrt(sum([coord ** 2 for coord in coordinates]))
+    return [self.radius * coord / norm for coord in coordinates]
+
+
+  def __repr__(self):
+    """
+    Custom representation.
+    """
+    template = self.__class__.__name__ + "(R={})"
+    return template.format(self.radius)
 
 
 
@@ -120,7 +130,8 @@ class Cylinder(PhysicalObject):
       return self.EMPTY_FEATURE
 
     if self.almostEqual(abs(location[2]), self.height / 2.):
-      if self.almostEqual(location[0] ** 2 + location[1] ** 2, self.radius):
+      if self.almostEqual(location[0] ** 2 + location[1] ** 2,
+                          self.radius ** 2):
         return self.CYLINDER_EDGE
       else:
         return self.FLAT
@@ -132,11 +143,11 @@ class Cylinder(PhysicalObject):
     """
     Checks that the provided point is on the cylinder.
     """
-    if not self.almostEqual(location[0] ** 2 + location[1] ** 2, self.radius):
-      return False
-    if not self.almostEqual(location[2], self.height / 2.):
-      return False
-    return
+    if self.almostEqual(location[0] ** 2 + location[1] ** 2, self.radius ** 2):
+      return True
+    if self.almostEqual(location[2], self.height / 2.):
+      return True
+    return False
 
 
   def sampleLocation(self):
@@ -158,7 +169,7 @@ class Cylinder(PhysicalObject):
     sampledAngle = 2 * random.random() * pi
     sampledRadius = self.radius * sqrt(random.random())
     x, y = sampledRadius * cos(sampledAngle), sampledRadius * sin(sampledAngle)
-    return (x, y, z)
+    return [x, y, z]
 
 
   def _sampleLocationOnSide(self):
@@ -166,8 +177,17 @@ class Cylinder(PhysicalObject):
     Helper method to sample from the lateral surface of a cylinder.
     """
     z = random.uniform(-1, 1) * self.height / 2.
-    x, y = cos(2 * random.random() * pi), sin(2 * random.random() * pi)
-    return (x, y, z)
+    sampledAngle = 2 * random.random() * pi
+    x, y = cos(sampledAngle), sin(sampledAngle)
+    return [x, y, z]
+
+
+  def __repr__(self):
+    """
+    Custom representation.
+    """
+    template = self.__class__.__name__ + "(H={}, R={})"
+    return template.format(self.height, self.radius)
 
 
 
@@ -206,7 +226,7 @@ class Box(PhysicalObject):
       return self.EMPTY_FEATURE  # random feature
 
     numFaces = sum(
-      [self.almostEqual(coord, self.dimensions[i] / 2.) \
+      [self.almostEqual(abs(coord), self.dimensions[i] / 2.) \
        for i, coord in enumerate(location)]
     )
 
@@ -234,9 +254,18 @@ class Box(PhysicalObject):
     the other dimensions' values.
     """
     maxedOutDim = random.choice(range(self.dimension))
-    coordinates = [random.uniform(-1, 1) * dim for dim in self.dimensions]
-    coordinates[maxedOutDim] = random.choice(-1, 1)
+    coordinates = [random.uniform(-1, 1) * dim / 2. for dim in self.dimensions]
+    coordinates[maxedOutDim] = self.dimensions[maxedOutDim] / 2. * \
+                               random.choice([-1, 1])
     return coordinates
+
+
+  def __repr__(self):
+    """
+    Custom representation.
+    """
+    template = self.__class__.__name__ + "(dim=({}))"
+    return template.format(", ".join([str(dim) for dim in self.dimensions]))
 
 
 
@@ -255,3 +284,11 @@ class Cube(Box):
     """
     dimensions = [width] * dimension
     super(Cube, self).__init__(dimensions, dimension, epsilon)
+
+
+  def __repr__(self):
+    """
+    Custom representation.
+    """
+    template = self.__class__.__name__ + "(width={})"
+    return template.format(self.dimension)
