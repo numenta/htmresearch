@@ -273,6 +273,20 @@ class SDRDataSet(object):
         data = bar1 + bar2
         self._inputVectors[i, :] = np.reshape(data, newshape=(1, inputSize))
 
+    elif params['dataType'] == 'randomBarSets':
+      inputSize = params['nX'] * params['nY']
+      numInputVectors = params['numInputVectors']
+      self._inputVectors = np.zeros((numInputVectors, inputSize), dtype=uintType)
+      for i in range(numInputVectors):
+        data = 0
+        for barI in range(params['numBarsPerInput']):
+          orientation = np.random.choice(['horizontal', 'vertical'])
+          bar = getRandomBar((params['nX'], params['nY']),
+                              params['barHalfLength'], orientation)
+          data += bar
+        data[data > 0] = 1
+        self._inputVectors[i, :] = np.reshape(data, newshape=(1, inputSize))
+
     elif params['dataType'] == 'randomCross':
       inputSize = params['nX'] * params['nY']
       numInputVectors = params['numInputVectors']
