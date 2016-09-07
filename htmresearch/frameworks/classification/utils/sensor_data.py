@@ -314,12 +314,10 @@ def binary_signal_generator(writer,
         offset += 1
         t = i + offset
         m1 = random.random() * signalAmplitude
-        # print [t, m1, label]
         writer.writerow([t, m1, 0])
 
     amplitude_modifier = float(label) ** 2
     m1 = amplitude_modifier * signalMean + signalAmplitude * sig + noise
-    # print [i, m1, label]
     writer.writerow([i, m1, label])
 
     if periodCounter[label - 1] == label-1:
