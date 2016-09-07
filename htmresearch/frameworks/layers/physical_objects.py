@@ -248,6 +248,10 @@ class Cube(Box):
   def __init__(self, width, dimension=3, epsilon=None):
     """
     We simply pass the width as every dimension.
+
+    Example:
+      cube = Cube(width=100, dimension=3, epsilon=2)
+
     """
     dimensions = [width] * dimension
     super(Cube, self).__init__(dimensions, dimension, epsilon)
