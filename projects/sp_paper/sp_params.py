@@ -52,3 +52,24 @@ spParamWithBoosting = {
   "maxBoost": 5.0,
   "seed": 1936
 }
+
+
+spParamTopologyWithBoosting = {
+  "inputDimensions": (32, 32),
+  "columnDimensions": (32, 32),
+  "potentialRadius": 5,
+  "potentialPct": 1.0,
+  "globalInhibition": False,
+  "numActiveColumnsPerInhArea": 2,
+  "localAreaDensity": -1,
+  "wrapAround": False,
+  "stimulusThreshold": 1,
+  "synPermInactiveDec": 0.01,
+  "synPermActiveInc": 0.02,
+  "synPermConnected": 0.5,
+  "minPctOverlapDutyCycle": 0.0,
+  "minPctActiveDutyCycle": 0.001,
+  "dutyCyclePeriod": 1000,
+  "maxBoost": 5.0,
+  "seed": 1936
+}
