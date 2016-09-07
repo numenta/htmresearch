@@ -23,7 +23,7 @@
 import copy
 from optparse import OptionParser
 import random
-
+import pprint
 
 
 import numpy as np
@@ -49,11 +49,17 @@ mpl.rcParams['pdf.fonttype'] = 42
 
 
 
-def getSpatialPoolerParams(inputSize):
-  from sp_params import spParamNoBoosting
-  spatialPoolerParameters = spParamNoBoosting
+def getSpatialPoolerParams(inputSize, boosting=False):
+  if boosting is False:
+    from sp_params import spParamNoBoosting as spatialPoolerParameters
+  else:
+    from sp_params import spParamWithBoosting as spatialPoolerParameters
+
   spatialPoolerParameters['inputDimensions'] = (inputSize, 1)
   spatialPoolerParameters['potentialRadius'] = inputSize
+
+  print "Spatial Pooler Parameters: "
+  pprint.pprint(spatialPoolerParameters)
   return spatialPoolerParameters
 
 
@@ -271,6 +277,10 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
   axs[1, 0].set_xlabel('activation prob')
 
   axs[1, 1].plot(connectedCounts, activationProb, '.')
+  axs[1, 1].set_xlabel('connection #')
+  axs[1, 1].set_ylabel('activation freq')
+  plt.tight_layout()
+
   if saveFigPrefix is not None:
     plt.savefig('figures/{}_network_stats.pdf'.format(saveFigPrefix))
 
@@ -414,6 +424,27 @@ def _getArgs():
                     help="DataSet Name, choose from sparse, correlated-input"
                          "bar, cross, image")
 
+  parser.add_option("-b",
+                    "--boosting",
+                    type=int,
+                    default=0,
+                    dest="boosting",
+                    help="Whether to use boosting")
+
+  parser.add_option("-e",
+                    "--numEpochs",
+                    type=int,
+                    default=100,
+                    dest="numEpochs",
+                    help="number of epochs")
+
+  parser.add_option("-c",
+                    "--runClassification",
+                    type=int,
+                    default=0,
+                    dest="classification",
+                    help="Whether to run classification experiment")
+
   (options, remainder) = parser.parse_args()
   print options
 
@@ -457,57 +488,15 @@ def plotBoostTrace(sp, inputVectors):
 
 
 
-def recoverPermanence(sp, columnIndex, spParams, initialPermanence):
-  activeColumns = sp.mmGetTraceActiveColumns()
-  activeInputs = sp.mmGetTraceActiveInputs()
-  numStep = len(activeColumns.data)
-
-  (columnNumber, inputSize) = initialPermanence.shape
-
-  potential = np.zeros((inputSize), dtype=uintType)
-  sp.getPotential(columnIndex, potential)
-
-  maskPotential = np.where(potential > 0)[0]
-
-  synPermActiveInc = spParams['synPermActiveInc']
-  synPermInactiveDec = spParams['synPermInactiveDec']
-
-  permChanges = np.zeros(inputSize, dtype=realDType)
-  perm = copy.copy(initialPermanence[columnIndex, :])
-
-  numConnect = np.zeros((numStep))
-  avgPermConnected = np.zeros((numStep))
-  avgPermNonConnected = np.zeros((numStep))
-
-  for i in range(numStep):
-    if columnIndex in activeColumns.data[i][0]:
-      print "active at step: {}".format(i)
-      permChanges.fill(-1 * synPermInactiveDec)
-      permChanges[activeInputs.data[i]] = synPermActiveInc
-
-      perm[maskPotential] += permChanges[maskPotential]
-
-      perm[perm < sp._synPermTrimThreshold] = 0
-      np.clip(perm, sp._synPermMin, sp._synPermMax, out=perm)
-
-    numConnect[i] = np.sum(perm> spParams['synPermConnected'])
-    permMask = perm[maskPotential]
-    avgPermConnected[i] = np.mean(permMask[permMask > spParams['synPermConnected']])
-    avgPermNonConnected[i] = np.mean(permMask[permMask < spParams['synPermConnected']])
-
-  truePermanence = np.zeros((inputSize), dtype=realDType)
-  sp.getPermanence(columnIndex, truePermanence)
-
-  assert(np.max(np.abs(perm - truePermanence)) < 1e-10)
-
+def plotPermInfo(permInfo):
   fig, ax = plt.subplots(5, 1, sharex=True)
-  numNonConnect = len(maskPotential) - numConnect
-  ax[0].plot(numConnect)
-  ax[1].plot(numNonConnect)
-  ax[2].plot(avgPermConnected)
-  ax[2].set_ylabel('perm connected')
-  ax[3].plot(avgPermNonConnected)
-  ax[3].set_ylabel('perm unconnected')
+  ax[0].plot(permInfo['numConnectedSyn'])
+  ax[0].set_title('connected syn #')
+  ax[1].plot(permInfo['numNonConnectedSyn'])
+  ax[2].plot(permInfo['avgPermConnectedSyn'])
+  ax[2].set_title('perm connected')
+  ax[3].plot(permInfo['avgPermNonConnectedSyn'])
+  ax[3].set_title('perm unconnected')
   # plt.figure()
   # plt.subplot(3, 1, 1)
   # plt.plot(perm - initialPermanence[columnIndex, :])
@@ -525,6 +514,8 @@ if __name__ == "__main__":
 
   (_options, _args) = _getArgs()
   inputVectorType = _options.dataSet
+  numEpochs = _options.numEpochs
+  classification = _options.classification
 
   if inputVectorType == 'randomSDR':
     params = {'dataType': 'randomSDR',
@@ -559,6 +550,12 @@ if __name__ == "__main__":
               'nY': 20,
               'barHalfLength': 3,
               'seed': 41}
+  elif inputVectorType == 'nyc_taxi':
+    params = {'dataType': 'nyc_taxi',
+              'n': 109,
+              'w': 21,
+              'minval': 0,
+              'maxval': 40000}
   else:
     raise ValueError('unknown data type')
 
@@ -570,7 +567,7 @@ if __name__ == "__main__":
   print "Training Data Type {}".format(inputVectorType)
   print "Training Data Size {} Dimensions {}".format(numInputVector, inputSize)
 
-  spParams = getSpatialPoolerParams(inputSize)
+  spParams = getSpatialPoolerParams(inputSize, _options.boosting)
   sp = createSpatialPooler('monitored_sp', spParams)
   columnNumber = np.prod(sp.getColumnDimensions())
 
@@ -581,19 +578,18 @@ if __name__ == "__main__":
     plt.savefig('figures/{}_inputOverlap_before_learning.pdf'.format(inputVectorType))
 
   # classification Accuracy before training
-  noiseLevelList = np.linspace(0, 1.0, 21)
-  accuracyBeforeTraining = classificationAccuracyVsNoise(
-    sp, inputVectors, noiseLevelList)
+  if classification:
+    noiseLevelList = np.linspace(0, 1.0, 21)
+    accuracyBeforeTraining = classificationAccuracyVsNoise(
+      sp, inputVectors, noiseLevelList)
 
-  accuracyWithoutSP = classificationAccuracyVsNoise(
-    None, inputVectors, noiseLevelList)
-
-  epochs = 500
+    accuracyWithoutSP = classificationAccuracyVsNoise(
+      None, inputVectors, noiseLevelList)
 
   activeColumnsCurrentEpoch = np.zeros((numInputVector, columnNumber))
   activeColumnsPreviousEpoch = np.zeros((numInputVector, columnNumber))
   connectedCounts = np.zeros((columnNumber,), dtype=uintType)
-  numBitDiffTrace = []
+  stabilityTrace = []
   numConnectedSynapsesTrace = []
   numNewlyConnectedSynapsesTrace = []
   numEliminatedSynapsesTrace = []
@@ -606,27 +602,23 @@ if __name__ == "__main__":
     cmap = cm.get_cmap('jet')
 
   sp.mmClearHistory()
-  initialPermanence = np.zeros((columnNumber, inputSize), realDType)
-  for c in range(columnNumber):
-    sp.getPermanence(c, initialPermanence[c, :])
 
-
-  for epoch in range(epochs):
+  for epoch in range(numEpochs):
     print "training SP epoch {}".format(epoch)
     # calcualte overlap curve here
     if epoch % 50 == 0 and trackOverlapCurveOverTraining:
       inputOverlapScore, outputOverlapScore = calculateOverlapCurve(
         sp, inputVectors, inputVectorType)
       plt.plot(np.mean(inputOverlapScore, 0), np.mean(outputOverlapScore, 0),
-               color=cmap(float(epoch) / epochs))
+               color=cmap(float(epoch) / numEpochs))
 
     activeColumnsPreviousEpoch = copy.copy(activeColumnsCurrentEpoch)
     connectedCountsPreviousEpoch = copy.copy(connectedCounts)
 
     # train SP here,
     # Learn is turned off at the first epoch to gather stats of untrained SP
-    # learn = False if epoch == 0 else True
-    learn = True
+    learn = False if epoch == 0 else True
+
     # randomize the presentation order of input vectors
     sdrOrders = np.random.permutation(np.arange(numInputVector))
     for i in range(numInputVector):
@@ -651,8 +643,10 @@ if __name__ == "__main__":
     activeDutyCycle = np.zeros((columnNumber, ), dtype=realDType)
     sp.getActiveDutyCycles(activeDutyCycle)
     if epoch >= 1:
-      activeColumnsDiff = activeColumnsCurrentEpoch > activeColumnsPreviousEpoch
-      numBitDiffTrace.append(np.mean(np.sum(activeColumnsDiff, 1)))
+      activeColumnsStable = np.logical_and(activeColumnsCurrentEpoch,
+                                           activeColumnsPreviousEpoch)
+      stabilityTrace.append(np.mean(np.sum(activeColumnsStable, 1))/
+                             spParams['numActiveColumnsPerInhArea'])
 
       numConnectedSynapsesTrace.append(np.sum(connectedCounts))
 
@@ -664,11 +658,9 @@ if __name__ == "__main__":
       numEliminatedSynapses[numEliminatedSynapses < 0] = 0
       numEliminatedSynapsesTrace.append(np.sum(numEliminatedSynapses))
 
-  finalPermanence = np.zeros((columnNumber, inputSize), realDType)
-  for c in range(columnNumber):
-    sp.getPermanence(c, finalPermanence[c, :])
-  np.abs(np.max(finalPermanence - initialPermanence))
-
+  columnIndex = 240
+  permInfo = sp.recoverPermanence(columnIndex)
+  plotPermInfo(permInfo)
 
   if trackOverlapCurveOverTraining:
     plt.xlabel('Input overlap')
@@ -686,7 +678,7 @@ if __name__ == "__main__":
     plt.savefig('figures/overlap_over_training_{}_.pdf'.format(inputVectorType))
 
   # plot stats over training
-  fig, axs = plt.subplots(nrows=5, ncols=1)
+  fig, axs = plt.subplots(nrows=5, ncols=1, sharex=True)
 
   axs[0].plot(numConnectedSynapsesTrace)
   axs[0].set_ylabel('Syn #')
@@ -697,19 +689,21 @@ if __name__ == "__main__":
   axs[2].plot(numEliminatedSynapsesTrace)
   axs[2].set_ylabel('Remove Syns #')
 
-  axs[3].plot(numBitDiffTrace)
-  axs[3].set_ylabel('Active Column Diff')
+  axs[3].plot(stabilityTrace)
+  axs[3].set_ylabel('Stability')
 
   axs[4].plot(entropyTrace)
   axs[4].set_ylabel('entropy (bits)')
+  axs[4].set_xlabel('epochs')
   plt.savefig('figures/network_stats_over_training_{}.pdf'.format(inputVectorType))
 
-  # # inspect SP again
-  # inspectSpatialPoolerStats(sp, inputVectors, inputVectorType+"afterTraining")
-  # # classify SDRs with noise
-  # noiseLevelList = np.linspace(0, 1.0, 21)
-  # accuracyAfterTraining = classificationAccuracyVsNoise(
-  #   sp, inputVectors, noiseLevelList)
+  # inspect SP again
+  inspectSpatialPoolerStats(sp, inputVectors, inputVectorType+"afterTraining")
+  if classification:
+    # classify SDRs with noise
+    noiseLevelList = np.linspace(0, 1.0, 21)
+    accuracyAfterTraining = classificationAccuracyVsNoise(
+      sp, inputVectors, noiseLevelList)
   #
   # plt.figure()
   # plt.plot(noiseLevelList, accuracyBeforeTraining, 'r-x')
@@ -720,21 +714,21 @@ if __name__ == "__main__":
   # plt.xlabel('Noise level')
   # plt.ylabel('Classification Accuracy')
   # plt.savefig('figures/noise_robustness_{}_.pdf'.format(inputVectorType))
-  #
-  # # analyze RF properties
-  # if inputVectorType == "randomSDR":
-  #   analyzeReceptiveFieldSparseInputs(inputVectors, sp)
-  #   plt.savefig('figures/{}_inputOverlap_after_learning.pdf'.format(inputVectorType))
-  # elif inputVectorType == 'correlate-input':
-  #   additionalInfo = sdrData.getAdditionalInfo()
-  #   inputVectors1 = additionalInfo["inputVectors1"]
-  #   inputVectors2 = additionalInfo["inputVectors2"]
-  #   corrPairs = additionalInfo["corrPairs"]
-  #   analyzeReceptiveFieldCorrelatedInputs(
-  #     inputVectors, sp, params, inputVectors1, inputVectors2)
-  #   plt.savefig(
-  #     'figures/{}_inputOverlap_after_learning.pdf'.format(inputVectorType))
-  # elif inputVectorType == "randomBarPairs" or inputVectorType == "randomCross":
-  #   plotReceptiveFields2D(sp, params['nX'], params['nY'])
-  #
-  #
+
+  # analyze RF properties
+  if inputVectorType == "randomSDR":
+    analyzeReceptiveFieldSparseInputs(inputVectors, sp)
+    plt.savefig('figures/{}_inputOverlap_after_learning.pdf'.format(inputVectorType))
+  elif inputVectorType == 'correlate-input':
+    additionalInfo = sdrData.getAdditionalInfo()
+    inputVectors1 = additionalInfo["inputVectors1"]
+    inputVectors2 = additionalInfo["inputVectors2"]
+    corrPairs = additionalInfo["corrPairs"]
+    analyzeReceptiveFieldCorrelatedInputs(
+      inputVectors, sp, params, inputVectors1, inputVectors2)
+    plt.savefig(
+      'figures/{}_inputOverlap_after_learning.pdf'.format(inputVectorType))
+  elif inputVectorType == "randomBarPairs" or inputVectorType == "randomCross":
+    plotReceptiveFields2D(sp, params['nX'], params['nY'])
+
+

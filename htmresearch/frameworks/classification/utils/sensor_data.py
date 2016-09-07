@@ -20,12 +20,107 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-""" Useful scripts for sensor data sequence classification experiments. """
+""" 
+Utilities to generate and plot sensor data sequence classification 
+experiments. """
 
 import csv
 import os
 import math
 import random
+
+import matplotlib.pyplot as plt
+
+
+
+def plotSensorData(expResults):
+  """
+  Plot several sensor data CSV recordings and highlights the sequences.
+  @param expResults: (list of dict) list of results for each experiment
+  """
+
+  categoryColors = ['grey', 'b', 'r', 'y']
+  plt.figure()
+
+  for expResult in expResults:
+
+    timesteps = []
+    data = []
+    labels = []
+    categoriesLabelled = []
+
+    filePath = expResult['expSetup']['inputFilePath']
+    with open(filePath, 'rb') as f:
+      reader = csv.reader(f)
+      headers = reader.next()
+
+      # skip the 2 first rows
+      reader.next()
+      reader.next()
+
+      for i, values in enumerate(reader):
+        record = dict(zip(headers, values))
+        timesteps.append(i)
+        data.append(record['y'])
+        labels.append(int(record['label']))
+
+      plt.subplot(len(expResults), 1, expResults.index(expResult) + 1)
+      plt.plot(timesteps, data, 'xb-', label='signal')
+
+      previousLabel = labels[0]
+      start = 0
+      labelCount = 0
+      numPoints = len(labels)
+      for label in labels:
+
+        if previousLabel != label or labelCount == numPoints - 1:
+
+          categoryColor = categoryColors[previousLabel]
+          if categoryColor not in categoriesLabelled:
+            if previousLabel > 0:
+              labelLegend = 'sequence %s' % previousLabel
+            else:
+              labelLegend = 'noise'
+            categoriesLabelled.append(categoryColor)
+          else:
+            labelLegend = None
+
+          end = labelCount
+          plt.axvspan(start, end, facecolor=categoryColor, alpha=0.5,
+                      label=labelLegend)
+          start = end
+          previousLabel = label
+
+        labelCount += 1
+
+      plt.xlim(xmin=0, xmax=len(timesteps))
+
+      title = cleanTitle(expResult)
+      plt.title(title)
+
+      plt.legend()
+
+  plt.show()
+
+
+
+def cleanTitle(expResult):
+  """
+  Clean up chart title based on expResult info
+  :param expResult: (dict) results of the experiment.
+  :return title: (str) cleaned up title 
+  """
+  title = expResult['expId'].split('_')
+  cleanTitle = [title[0] + ' signal']
+  for word in title[1:]:
+    if not 'False' in word:
+      if 'True' in word:
+        cleanTitle.append(word[:2])
+      else:
+        cleanTitle.append(word)
+
+  title = ' + '.join(cleanTitle)
+  return title
 
 
 
@@ -36,7 +131,8 @@ def generateSensorData(signalType,
                        signalMean,
                        signalAmplitude,
                        numCategories,
-                       noiseAmplitude):
+                       noiseAmplitude,
+                       noiseLength):
   """
   Generate the artificial sensor data.
   @param signalType: (str) can be one of the following:
@@ -51,6 +147,7 @@ def generateSensorData(signalType,
   @param signalAmplitude: (float) amplitude of the signal to generate
   @param numCategories: (int) number of categories labels
   @param noiseAmplitude: (float) amplitude of the white noise
+  @param noiseLength: (int) number of noisy points at the beginning of each seq.
   @return expSetup: (dict) setup for each experiment
   """
 
@@ -61,6 +158,7 @@ def generateSensorData(signalType,
     'signalAmplitude': signalAmplitude,
     'numCategories': numCategories,
     'noiseAmplitude': noiseAmplitude,
+    'noiseLength': noiseLength,
     'numPhases': numPhases,
     'numReps': numReps,
   }
@@ -98,11 +196,12 @@ def generateSensorData(signalType,
                                                  signalMean,
                                                  noiseAmplitude,
                                                  signalAmplitude,
-                                                 numCategories)
+                                                 numCategories,
+                                                 noiseLength)
 
-  expSetup['sequenceLenght'] = sequenceLength
+  expSetup['sequenceLength'] = sequenceLength
   expSetup['numPoints'] = numPoints
-  expSetup['filePath'] = filePath
+  expSetup['inputFilePath'] = filePath
 
   return expSetup
 
@@ -114,7 +213,8 @@ def sine_wave_generator(writer,
                         signalMean,
                         noiseAmplitude,
                         signalAmplitude,
-                        numCategories):
+                        numCategories,
+                        noiseLength=10):
   """
   Generate the artificial sensor data.
   @param writer: (csv.CSVWriter) csv file writer.
@@ -125,6 +225,7 @@ def sine_wave_generator(writer,
   @param noiseAmplitude: (float) amplitude of the white noise
   @param signalAmplitude: (float) amplitude of the signal to generate
   @param numCategories: (int) number of categories labels
+  @param noiseLength: (int) number of noisy points at the beginning of each seq.
   """
 
   signalPeriod = 20
@@ -132,25 +233,35 @@ def sine_wave_generator(writer,
   numPoints = numReps * numPhases * sequenceLength * numCategories
 
   endOfSequence = sequenceLength
-  label = numCategories - 1
+  label = 1
+  offset = 0
   for i in range(numPoints):
 
     noise = noiseAmplitude * random.random()
 
     if i == endOfSequence:
       endOfSequence += sequenceLength
-      if label == 0:
-        label = numCategories - 1
+      if label == numCategories:
+        label = 1
       else:
-        label -= 1
+        label += 1
+
+      for j in range(noiseLength):
+        offset += 1
+        t = i + offset
+        m1 = random.random() * signalAmplitude
+        writer.writerow([t, m1, 0])
 
     signal_modifier = (label ** 2 + 1)
-    x = signal_modifier * (i * math.pi) / signalPeriod
-    sig = math.sin(x)
+
+    t = i + offset
+    sig = math.sin(signal_modifier * (t * math.pi) / signalPeriod)
     m1 = signal_modifier * signalMean + signalAmplitude * sig + noise
 
-    writer.writerow([x, m1, label])
+    writer.writerow([t, m1, label])
 
+  numPoints = offset + numPoints
+  assert offset == (numReps * numPhases * numCategories - 1) * noiseLength
   return sequenceLength, numPoints
 
 
@@ -161,7 +272,8 @@ def binary_signal_generator(writer,
                             signalMean,
                             noiseAmplitude,
                             signalAmplitude,
-                            numCategories):
+                            numCategories,
+                            noiseLength=10):
   """
   Generate the artificial sensor data.
   @param writer: (csv.CSVWriter) csv file writer.
@@ -172,6 +284,7 @@ def binary_signal_generator(writer,
   @param noiseAmplitude: (float) amplitude of the white noise
   @param signalAmplitude: (float) amplitude of the signal to generate
   @param numCategories: (int) number of categories labels
+  @param noiseLength: (int) number of noisy points at the beginning of each seq.
   """
 
   # if numCategories = 3, then sequenceLength = 4 * 3 * 2 = 24
@@ -179,37 +292,45 @@ def binary_signal_generator(writer,
   minSequenceLength = 1
   for cat in range(numCategories + 1)[1:]:
     minSequenceLength *= cat
-  sequenceLength = minSequenceLength * 3
+  sequenceLength = minSequenceLength * 10
   numPoints = numReps * numPhases * sequenceLength * numCategories
 
   endOfSequence = sequenceLength
-  label = numCategories - 1
+  label = 1
   periodCounter = [0 for _ in range(numCategories)]
   sig = 0
+  offset = 0
   for i in range(numPoints):
     noise = noiseAmplitude * random.random()
 
     if i == endOfSequence:
       endOfSequence += sequenceLength
-      if label == 0:
-        label = numCategories - 1
+      if label == numCategories:
+        label = 1
       else:
-        label -= 1
+        label += 1
 
-    if periodCounter[label] == label + 1:
+      for j in range(noiseLength):
+        offset += 1
+        t = i + offset
+        m1 = random.random() * signalAmplitude
+        writer.writerow([t, m1, 0])
+
+    if periodCounter[label - 1] == label + 1:
       periodCounter = [0 for _ in range(numCategories)]
       if sig == 0:
         sig = 1
       else:
         sig = 0
     else:
-      periodCounter[label] += 1
+      periodCounter[label - 1] += 1
 
     amplitude_modifier = float(label) ** 2
     m1 = amplitude_modifier * signalMean + signalAmplitude * sig + noise
 
     writer.writerow([i, m1, label])
 
+  assert offset == (numReps * numPhases * numCategories - 1) * noiseLength
   return sequenceLength, numPoints
 
 
@@ -220,7 +341,8 @@ def triangular_signal_generator(writer,
                                 signalMean,
                                 noiseAmplitude,
                                 signalAmplitude,
-                                numCategories):
+                                numCategories,
+                                noiseLength=10):
   """
   Generate the artificial sensor data.
   @param writer: (csv.CSVWriter) csv file writer.
@@ -231,6 +353,7 @@ def triangular_signal_generator(writer,
   @param noiseAmplitude: (float) amplitude of the white noise
   @param signalAmplitude: (float) amplitude of the signal to generate
   @param numCategories: (int) number of categories labels
+  @param noiseLength: (int) number of noisy points at the beginning of each seq.
   """
 
   # if numCategories = 3, then sequenceLength = 4 * 3 * 2 = 24
@@ -240,17 +363,24 @@ def triangular_signal_generator(writer,
   numPoints = numReps * numPhases * sequenceLength * numCategories
 
   endOfSequence = sequenceLength
-  label = numCategories - 1
+  label = 1
+  offset = 0
   for i in range(numPoints):
 
     noise = noiseAmplitude * random.random()
 
     if i == endOfSequence:
       endOfSequence += sequenceLength
-      if label == 0:
-        label = numCategories - 1
+      if label == numCategories:
+        label = 1
       else:
-        label -= 1
+        label += 1
+
+      for j in range(noiseLength):
+        offset += 1
+        t = i + offset
+        m1 = random.random() * signalAmplitude
+        writer.writerow([t, m1, 0])
 
     x = i
     mod = int(label) + 2
@@ -264,4 +394,5 @@ def triangular_signal_generator(writer,
 
     writer.writerow([x, m1, label])
 
+  assert offset == (numReps * numPhases * numCategories - 1) * noiseLength
   return sequenceLength, numPoints

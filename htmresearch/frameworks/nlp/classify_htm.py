@@ -19,7 +19,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from htmresearch.frameworks.classification.classification_network import (
+from htmresearch.frameworks.classification.network_factory import (
   configureNetwork)
 from htmresearch.encoders.cio_encoder import CioEncoder
 from htmresearch.frameworks.nlp.classify_network_api import (

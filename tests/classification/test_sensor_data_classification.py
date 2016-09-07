@@ -26,8 +26,9 @@ import simplejson as json
 
 from nupic.data.file_record_stream import FileRecordStream
 
-from htmresearch.frameworks.classification.classification_network import (
-  configureNetwork,
+from htmresearch.frameworks.classification.network_factory import (
+  configureNetwork)
+from htmresearch.frameworks.classification.network_training import (
   trainNetwork)
 from htmresearch.frameworks.classification.utils.sensor_data import (
   generateSensorData)

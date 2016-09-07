@@ -22,8 +22,74 @@
 
 import random
 import numpy as np
+import pandas as pd
 
 uintType = "uint32"
+
+
+
+def getMovingBar(startLocation,
+                 direction,
+                 imageSize=(20, 20),
+                 steps=5,
+                 barHalfLength=3,
+                 orientation='horizontal'):
+  """
+  Generate a list of bars
+  :param startLocation:
+         (list) start location of the bar center, e.g. (10, 10)
+  :param direction:
+         direction of movement, e.g., (1, 0)
+  :param imageSize:
+         (list) number of pixels on horizontal and vertical dimension
+  :param steps:
+         (int) number of steps
+  :param barHalfLength:
+         (int) length of the bar
+  :param orientation:
+         (string) "horizontal" or "vertical"
+  :return:
+  """
+  startLocation = np.array(startLocation)
+  direction = np.array(direction)
+  barMovie = []
+  for step in range(steps):
+    barCenter = startLocation + step * direction
+    barMovie.append(getBar(imageSize,
+                           barCenter,
+                           barHalfLength,
+                           orientation))
+
+  return barMovie
+
+def getBar(imageSize, barCenter, barHalfLength, orientation='horizontal'):
+  """
+  Generate a single horizontal or vertical bar
+  :param imageSize
+         a list of (numPixelX. numPixelY). The number of pixels on horizontal
+         and vertical dimension, e.g., (20, 20)
+  :param barCenter:
+         (list) center of the bar, e.g. (10, 10)
+  :param barHalfLength
+         (int) half length of the bar. Full length is 2*barHalfLength +1
+  :param orientation:
+         (string) "horizontal" or "vertical"
+  :return:
+  """
+  (nX, nY) = imageSize
+  (xLoc, yLoc) = barCenter
+  bar = np.zeros((nX, nY), dtype=uintType)
+  if orientation == 'horizontal':
+    xmin = max(0, (xLoc - barHalfLength))
+    xmax = min(nX-1, (xLoc + barHalfLength + 1))
+    bar[xmin:xmax, yLoc] = 1
+  elif orientation == 'vertical':
+    ymin = max(0, (yLoc - barHalfLength))
+    ymax = min(nY-1, (yLoc + barHalfLength + 1))
+    bar[xLoc, ymin:ymax] = 1
+  else:
+    raise RuntimeError("orientation has to be horizontal or vertical")
+  return bar
 
 
 
@@ -56,16 +122,18 @@ def generateRandomSDR(numSDR, numDims, numActiveInputBits, seed=42):
 
 
 
-def getBar(nX, nY, barHalfLength, orientation=0):
-  bar = np.zeros((nX, nY), dtype=uintType)
-  if orientation == 0:
+def getRandomBar(imageSize, barHalfLength, orientation='horizontal'):
+  (nX, nY) = imageSize
+  if orientation == 'horizontal':
     xLoc = np.random.randint(barHalfLength, nX - barHalfLength)
     yLoc = np.random.randint(0, nY)
-    bar[(xLoc - barHalfLength):(xLoc + barHalfLength + 1), yLoc] = 1
-  else:
+    bar = getBar(imageSize, (xLoc, yLoc), barHalfLength, orientation)
+  elif orientation == 'vertical':
     xLoc = np.random.randint(0, nX)
     yLoc = np.random.randint(barHalfLength, nY - barHalfLength)
-    bar[xLoc, (yLoc - barHalfLength):(yLoc + barHalfLength + 1)] = 1
+    bar = getBar(imageSize, (xLoc, yLoc), barHalfLength, orientation)
+  else:
+    raise RuntimeError("orientation has to be horizontal or vertical")
   return bar
 
 
@@ -187,23 +255,25 @@ class SDRDataSet(object):
         params['numActiveInputBits'],
         params['seed'])
 
-    if params['dataType'] == 'denseVectors':
+    elif params['dataType'] == 'denseVectors':
       self._inputVectors = generateDenseVectors(
         params['numInputVectors'],
         params['inputSize'],
         params['seed'])
 
-    if params['dataType'] == 'randomBarPairs':
+    elif params['dataType'] == 'randomBarPairs':
       inputSize = params['nX'] * params['nY']
       numInputVectors = params['numInputVectors']
       self._inputVectors = np.zeros((numInputVectors, inputSize), dtype=uintType)
       for i in range(numInputVectors):
-        bar1 = getBar(params['nX'], params['nY'], params['barHalfLength'], 0)
-        bar2 = getBar(params['nX'], params['nY'], params['barHalfLength'], 1)
+        bar1 = getRandomBar((params['nX'], params['nY']),
+                            params['barHalfLength'], 'horizontal')
+        bar2 = getRandomBar((params['nX'], params['nY']),
+                            params['barHalfLength'], 'vertical')
         data = bar1 + bar2
         self._inputVectors[i, :] = np.reshape(data, newshape=(1, inputSize))
 
-    if params['dataType'] == 'randomCross':
+    elif params['dataType'] == 'randomCross':
       inputSize = params['nX'] * params['nY']
       numInputVectors = params['numInputVectors']
       self._inputVectors = np.zeros((numInputVectors, inputSize), dtype=uintType)
@@ -211,8 +281,7 @@ class SDRDataSet(object):
         data = getCross(params['nX'], params['nY'], params['barHalfLength'])
         self._inputVectors[i, :] = np.reshape(data, newshape=(1, inputSize))
 
-
-    if params['dataType'] == 'correlatedSDRPairs':
+    elif params['dataType'] == 'correlatedSDRPairs':
       (inputVectors, inputVectors1, inputVectors2, corrPairs) = \
         generateCorrelatedSDRPairs(
           params['numInputVectors'],
@@ -225,6 +294,25 @@ class SDRDataSet(object):
       self._additionalInfo = {"inputVectors1": inputVectors1,
                               "inputVectors2": inputVectors2,
                               "corrPairs": corrPairs}
+    elif params['dataType'] == 'nyc_taxi':
+      from nupic.encoders.scalar import ScalarEncoder
+      df = pd.read_csv('./data/nyc_taxi.csv', header=0, skiprows=[1, 2])
+      inputVectors = np.zeros((5000, params['n']))
+      for i in range(5000):
+        inputRecord = {
+          "passenger_count": float(df["passenger_count"][i]),
+          "timeofday": float(df["timeofday"][i]),
+          "dayofweek": float(df["dayofweek"][i]),
+        }
+
+        enc = ScalarEncoder(w=params['w'],
+                            minval=params['minval'],
+                            maxval=params['maxval'],
+                            n=params['n'])
+        inputSDR = enc.encode(inputRecord["passenger_count"])
+        inputVectors[i, :] = inputSDR
+      self._inputVectors = inputVectors
+
 
   def getInputVectors(self):
     return self._inputVectors
