@@ -20,14 +20,18 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 import numpy as np
+import matplotlib.pyplot as plt
+from sklearn import manifold
 from optparse import OptionParser
 from itertools import permutations
 
 from htmresearch.frameworks.classification.utils.traces import loadTraces
 from htmresearch.frameworks.clustering.dim_reduction import (project2D,
+                                                             projectClusters2D,
                                                              viz2DProjection,
                                                              plotDistanceMat)
-from htmresearch.frameworks.clustering.distances import percentOverlap
+from htmresearch.frameworks.clustering.distances import (percentOverlap,
+                                                         clusterDist)
 
 
 
@@ -41,6 +45,13 @@ def _getArgs():
                             'tp-False_KNNClassifier.csv',
                     dest="fileName",
                     help="fileName of the csv trace file")
+
+  parser.add_option("--includeNoiseCategory",
+                    type=str,
+                    default=0,
+                    dest="includeNoiseCategory",
+                    help="whether to include noise category for viz")
+
 
   (options, remainder) = parser.parse_args()
   return options, remainder
@@ -118,24 +129,6 @@ def assignClusters(traces):
 
 
 
-def clusterDist(c1, c2):
-  """
-  Distance between 2 clusters
-
-  :param c1: (np.array) cluster 1
-  :param c2: (np.array) cluster 2
-  :return: distance between 2 clusters
-  """
-  minDists = []
-  for sdr1 in c1:
-    d = []
-    for sdr2 in c2:
-      d.append(1 - percentOverlap(sdr1, sdr2))
-    minDists.append(min(d))
-
-  return np.mean(minDists)
-
-
 def meanInClusterDistances(cluster):
   overlaps = []
   perms = list(permutations(cluster, 2))
@@ -144,18 +137,20 @@ def meanInClusterDistances(cluster):
     overlaps.append(overlap)
   return sum(overlaps) / len(overlaps)
   
-  
-  
+
 if __name__ == "__main__":
   (_options, _args) = _getArgs()
   fileName = _options.fileName
+  includeNoiseCategory = _options.includeNoiseCategory
 
   traces = loadTraces(fileName)
   cellsType = 'tmActiveCells'
   numCells = 1024 * 4
   numSteps = len(traces['step'])
   startFrom = int(numSteps * 0.6)
-  vizCellStates(traces, cellsType, numCells, startFrom=100)
+
+  # no clustering with individual cell states, remove?
+  # vizCellStates(traces, cellsType, numCells, startFrom=100)
 
   clusters = assignClusters(traces)
   tmActiveCellsClusters = [convertNonZeroToSDR(clusters['tmActiveCells'][i])
@@ -164,14 +159,7 @@ if __name__ == "__main__":
   c0 = tmActiveCellsClusters[0]
   c1 = tmActiveCellsClusters[1]
   c2 = tmActiveCellsClusters[2]
-  
-  print 'inter-cluster disatnces:'
-  d01 = clusterDist(c0, c1)
-  d02 = clusterDist(c0, c2)
-  d12 = clusterDist(c1, c2)
-  print '=> d(c0, c1): %s' %d01
-  print '=> d(c0, c2): %s' %d02
-  print '=> d(c1, c2): %s' %d12
+
 
   # compare c1 - c2 distance over time
   numRptsPerCategory = {}
@@ -181,6 +169,8 @@ if __name__ == "__main__":
     numRptsPerCategory[category] = np.max(
       repetition[np.array(traces['actualCategory']) == category])
 
+  SDRclusters = []
+  clusterAssignments = []
   numRptsMin = np.min(numRptsPerCategory.values()).astype('int32')
   for rpt in range(numRptsMin+1):
     idx0 = np.logical_and(np.array(traces['actualCategory']) == 0,
@@ -194,6 +184,14 @@ if __name__ == "__main__":
     c1slice = [traces['tmActiveCells'][i] for i in range(len(idx1)) if idx1[i]]
     c2slice = [traces['tmActiveCells'][i] for i in range(len(idx2)) if idx2[i]]
 
+    if includeNoiseCategory:
+      SDRclusters.append(c0slice)
+      clusterAssignments.append(0)
+    SDRclusters.append(c1slice)
+    clusterAssignments.append(1)
+    SDRclusters.append(c2slice)
+    clusterAssignments.append(2)
+
     d01 = clusterDist(convertNonZeroToSDR(c0slice),
                       convertNonZeroToSDR(c1slice))
     d02 = clusterDist(convertNonZeroToSDR(c0slice),
@@ -204,9 +202,15 @@ if __name__ == "__main__":
     print " Presentation # {} : ".format(rpt)
     print '=> d(c1, c2): %s' % d12
 
-  print 'mean in-cluster distances:'
-  print '=> c0 mean in-cluster dist: %s' % meanInClusterDistances(c0)
-  print '=> c1 mean in-cluster dist: %s' % meanInClusterDistances(c1)
-  print '=> c2 mean in-cluster dist: %s' % meanInClusterDistances(c2)
+  print " visualizing clusters with MDS "
+  npos, distanceMat = projectClusters2D(SDRclusters)
+  plt.figure()
+  plt.imshow(distanceMat)
+  plt.colorbar()
+  plt.xlabel('sequence #')
+  plt.ylabel('sequence #')
+  plt.savefig('results/cluster_distance_matrix_example.pdf')
 
+  viz2DProjection('sequenceCluster', 3, clusterAssignments, npos)
+  plt.savefig('results/sequence_clusters_example.pdf')
 
