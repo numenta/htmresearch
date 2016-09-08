@@ -205,7 +205,7 @@ if __name__ == "__main__":
   print " visualizing clusters with MDS "
   npos, distanceMat = projectClusters2D(SDRclusters)
   plt.figure()
-  plt.imshow(distanceMat)
+  plt.imshow(distanceMat, interpolation="nearest")
   plt.colorbar()
   plt.xlabel('sequence #')
   plt.ylabel('sequence #')
