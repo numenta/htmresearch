@@ -107,6 +107,7 @@ class PhysicalObjectsTest(unittest.TestCase):
       ax.set_zlabel('Z')
       plt.title("Sampled points from {}".format(objects[i]))
       plt.savefig("object{}.png".format(str(i)))
+      plt.close()
 
 
   def testPlotSampleFeatures(self):
@@ -132,6 +133,7 @@ class PhysicalObjectsTest(unittest.TestCase):
         ax.set_zlabel('Z')
         plt.title("Sampled points on {} from {}".format(feature, objects[i]))
         plt.savefig("object_{}_{}.png".format(str(i), feature))
+        plt.close()
 
 
 

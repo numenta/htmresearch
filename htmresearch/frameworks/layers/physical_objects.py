@@ -201,7 +201,7 @@ class Cylinder(PhysicalObject):
     """
     Simple method to sample uniformly from a cylinder.
     """
-    areaRatio = self.radius ** 2 / (self.radius ** 2 + self.height)
+    areaRatio = self.radius / (self.radius + self.height)
     if random.random() < areaRatio:
       return self._sampleLocationOnDisc()
     else:
