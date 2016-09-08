@@ -69,7 +69,7 @@ def viz2DProjection(vizTitle, numClusters, clusterAssignments, npos):
       colorNames.append(clusterId)
     sdrProjection = npos[i]
     label = 'Category %s' % clusterId
-    plt.scatter(sdrProjection[0], sdrProjection[1], label=label,
+    plt.scatter(sdrProjection[0], sdrProjection[1], label=label, alpha=0.5, 
                 color=colorList[clusterId], marker='o', edgecolor='black')
 
   # Add nicely formatted legend
