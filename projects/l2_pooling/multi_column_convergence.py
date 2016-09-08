@@ -26,6 +26,7 @@ or adjust the confusion between objects.
 import random
 import pprint
 import numpy
+import cPickle
 from multiprocessing import Pool
 
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
@@ -214,7 +215,7 @@ def runExperimentPool(numObjects,
   for that parameter. The cross product of everything is run, and each
   combination is run nTrials times.
 
-  Returns a dict containing detailed results from each experiment
+  Returns a dict containing detailed results from each experiment.
 
   Example:
     results = runExperimentPool(
@@ -222,7 +223,8 @@ def runExperimentPool(numObjects,
                           numLocations=[5],
                           numFeatures=[5],
                           numColumns=[2,3,4,5,6],
-                          numWorkers=8)
+                          numWorkers=8,
+                          nTrials=5)
   """
   # Create function arguments for every possibility
   args = []
@@ -254,7 +256,7 @@ if __name__ == "__main__":
   # results = runExperiment(
   #               {
   #                 "numObjects": 10,
-  #                 "numLocations": 5,
+  #                 "numLocations": 10,
   #                 "numFeatures": 5,
   #                 "numColumns": 3,
   #                 "trialNum": 0
@@ -263,23 +265,34 @@ if __name__ == "__main__":
 
   # This is how you run a bunch of experiments in a process pool
   # Here we want to see how the number of columns affects convergence.
-  # We run 20 trials for each column number to get good averages
-  numTrials = 20
+  # We run 10 trials for each column number and then analyze results
+  numTrials = 10
   results = runExperimentPool(
                     numObjects=[10],
-                    numLocations=[5],
-                    numFeatures=[5],
-                    numColumns=[2,3,4,5,6,7],
+                    numLocations=[10],
+                    numFeatures=[1,3,5,7,11,15],
+                    numColumns=[2,3,4,5,6,7,8],
                     nTrials=numTrials)
 
   print "Full results:"
   pprint.pprint(results, width=150)
 
+  # Pickle results for later use
+  with open("convergence_results.pkl","wb") as f:
+    cPickle.dump(results,f)
+
   # Accumulate all the results per column in a numpy array, and print it as
   # well as raw results.  This part can be specific to each experiment
-  convergence = numpy.zeros(8)
+  maxColumns = 8
+  maxFeatures = 15
+  convergence = numpy.zeros((maxFeatures, maxColumns))
   for r in results:
-    print r["numColumns"], r["trialNum"], r["convergencePoint"]
-    convergence[r["numColumns"]] += r["convergencePoint"]
+    convergence[r["numFeatures"]-1,
+                r["numColumns"]-1] += r["convergencePoint"]/2.0
 
-  print "Average convergence array=",convergence[1:]/numTrials
+  # For each column, print convergence as fct of number of unique features
+  for c in range(2,maxColumns+1):
+    print c,convergence[:, c-1]/numTrials
+
+  # Print everything anyway for debugging
+  print "Average convergence array=",convergence/numTrials

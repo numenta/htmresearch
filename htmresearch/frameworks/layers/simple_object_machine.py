@@ -20,6 +20,7 @@
 # ----------------------------------------------------------------------
 
 import random
+import numpy
 
 from htmresearch.frameworks.layers.object_machine_base import ObjectMachineBase
 
@@ -85,6 +86,7 @@ class SimpleObjectMachine(ObjectMachineBase):
     self.numFeatures = numFeatures
     self._generateLocations()
     self._generateFeatures()
+    numpy.random.seed(seed)
 
 
   def provideObjectsToLearn(self, objectNames=None):
@@ -197,10 +199,16 @@ class SimpleObjectMachine(ObjectMachineBase):
     if numFeatures is None:
       numFeatures = numPoints
 
+    assert(numPoints <= numLocations), ("Number of points in object cannot be "
+          "greater than number of locations")
+
+    locationArray = numpy.array(range(numLocations))
     for _ in xrange(numObjects):
+      # Permute the number of locations and select points from it
+      locationArray = numpy.random.permutation(locationArray)
       self.addObject(
-        [(random.randint(0, numLocations),
-          random.randint(0, numFeatures)) for _ in xrange(numPoints)],
+        [(locationArray[p],
+          random.randint(0, numFeatures)) for p in xrange(numPoints)],
       )
 
 
