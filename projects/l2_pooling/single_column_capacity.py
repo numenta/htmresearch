@@ -32,9 +32,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from htmresearch.frameworks.layers.object_machine_factory import (
+  createObjectMachine
+)
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 
 
+NUM_LOCATIONS = 500
+NUM_FEATURES = 500
 
 def getL4Params():
   """
@@ -134,8 +139,8 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
   :param numTestPoints: number of test points on the test object
   :return:
   """
-  numObjects = len(objects)
-  numPointsPerObject = len(objects[0])
+  numObjects = len(objects.getObjects())
+  numPointsPerObject = len(objects.getObjects()[0])
 
   testPts = np.random.choice(np.arange(numPointsPerObject),
                              (numTestPoints,),
@@ -143,15 +148,55 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
   testPairs = [objects[testObject][i] for i in testPts]
 
   exp._unsetLearningMode()
-  exp.sendResetSignal()
+  exp.sendReset()
 
   overlap = np.zeros((numTestPoints, numObjects))
+
   for step in xrange(numTestPoints):
-    exp._addPointToQueue([testPairs[step]], noise=None)
+
+    locationIdx, featureIdx = testPairs[step]
+    feature = objects.features[0][featureIdx]
+    location = objects.locations[0][locationIdx]
+    exp.sensorInputs[0].addDataToQueue(list(feature), 0, 0)
+    exp.externalInputs[0].addDataToQueue(list(location), 0, 0)
     exp.network.run(1)
     for obj in range(numObjects):
       overlap[step, obj] = (len(exp.objectL2Representations[obj][0]
-                          & exp.getL2Representations()[0]))
+                                & exp.getL2Representations()[0]))
+
+  inferConfig = {
+    "numSteps": 5,
+    "pairs": {
+      0: objects[testObject]
+    }
+  }
+  sensationList = objects.provideObjectToInfer(inferConfig)
+  overlap = np.zeros((len(sensationList), numObjects))
+  step = 0
+  exp._unsetLearningMode()
+  exp.sendReset()
+
+  for sensations in sensationList:
+    # feed all columns with sensations
+    for col in xrange(exp.numColumns):
+      location, feature = sensations[col]
+      exp.sensorInputs[col].addDataToQueue(list(feature), 0, 0)
+      exp.externalInputs[col].addDataToQueue(list(location), 0, 0)
+    exp.network.run(1)
+    L2Representation = exp.getL2Representations()
+    for obj in range(numObjects):
+      overlap[step, obj] = (len(exp.objectL2Representations[obj][0]
+                                & L2Representation[0]))
+    step += 1
+
+
+  inferConfig = {
+    "numSteps": 5,
+    "pairs": {
+      0: objects[testObject]
+    }
+  }
+  exp.infer(objects.provideObjectToInfer(inferConfig), objectName=0)
   return overlap
 
 
@@ -168,8 +213,8 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
   :return: a set of metrics for retrieval accuracy
   """
 
-  numObjects = len(objects)
-  numPointsPerObject = len(objects[0])
+  numObjects = len(objects.getObjects())
+  numPointsPerObject = len(objects.getObjects()[0])
   overlapTrueObj = np.zeros((numRepeats, ))
   confusion = np.zeros((numRepeats,))
   outcome = np.zeros((numRepeats,))
@@ -181,8 +226,8 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
     nonTargetObjs.remove(targetObject)
     nonTargetObjs = np.array(nonTargetObjs)
 
-    overlap = testNetworkWithOneObject(objects, exp, targetObject, 1)
-    outcome[i] = 1 if np.argmax(overlap[0, :]) == targetObject else 0
+    overlap = testNetworkWithOneObject(objects, exp, targetObject, 3)
+    outcome[i] = 1 if np.argmax(overlap[-1, :]) == targetObject else 0
     confusion[i] = np.max(overlap[0, nonTargetObjs])
     overlapTrueObj[i] = overlap[0, targetObject]
 
@@ -259,84 +304,103 @@ def runCapacityTest(numObjects,
   l2Params['activationThreshold'] = activationThreshold
   l2Params['minThreshold'] = activationThreshold
 
+  objects = createObjectMachine(
+    machineType="simple",
+    numInputBits=20,
+    sensorInputSize=1024,
+    externalInputSize=1024,
+    numCorticalColumns=1,
+    numLocations=NUM_LOCATIONS,
+    numFeatures=NUM_FEATURES
+  )
+
   exp = L4L2Experiment("capacity_two_objects",
                        numInputBits=int(l4Params["columnCount"]*0.02),
                        L4Overrides=l4Params,
                        L2Overrides=l2Params,
-                       numLearningPoints=1)
+                       numLearningPoints=10)
 
-  numLocations = len(exp.locations[0])
-  numFeatures = len(exp.features[0])
+  exp = L4L2Experiment("capacity_two_objects",
+                       numInputBits=int(l4Params["columnCount"]*0.02),
+                       numLearningPoints=10)
+
 
   pairs = createRandomObjects(
-    numObjects, numPointsPerObject, numLocations, numFeatures)
-
-  objects = {}
+    numObjects, numPointsPerObject, NUM_LOCATIONS, NUM_FEATURES)
   for object in pairs:
-    objects = exp.addObject(object, objects=objects)
+    objects.addObject(object)
 
-  exp.learnObjects(objects)
+  exp.learnObjects(objects.provideObjectsToLearn())
+
+  inferConfig = {
+    "numSteps": 5,
+    "pairs": {
+      0: objects[1]
+    }
+  }
+  exp.infer(objects.provideObjectToInfer(inferConfig), objectName=0)
+  exp.getInferenceStats()
 
   testResult = testOnSingleRandomSDR(objects, exp)
   return testResult
 
 
 
-def runSimulatedCapacityTest(numObjects,
-                    numPointsPerObject,
-                    maxNewSynapseCount,
-                    activationThreshold):
-  """
-  Generate [numObjects] objects with [numPointsPerObject] points per object
-  Create a set of simulated L2 neurons that randomly sample from L4 SDRs
-
-  Test on (feature, location) pairs and compute
-
-  :param numObjects:
-  :param numPointsPerObject:
-  :param maxNewSynapseCount:
-  :param activationThreshold:
-  :return:
-  """
-  l4Params = getL4Params()
-  l2Params = getL2Params()
-  l2Params['maxNewSynapseCount'] = maxNewSynapseCount
-  l2Params['activationThreshold'] = activationThreshold
-  l2Params['minThreshold'] = activationThreshold
-
-  exp = L4L2Experiment("capacity_two_objects",
-                       numInputBits=int(l4Params["columnCount"]*0.02),
-                       L4Overrides=l4Params,
-                       L2Overrides=l2Params,
-                       numLearningPoints=1)
-
-  numLocations = len(exp.locations[0])
-  numFeatures = len(exp.features[0])
-
-  pairs = createRandomObjects(
-    numObjects, numPointsPerObject, numLocations, numFeatures)
-
-  objects = {}
-  for object in pairs:
-    objects = exp.addObject(object, objects=objects)
-
-  for object, pairs in objects.iteritems():
-    for col in xrange(exp.numColumns):
-      locationID, featureID = pairs[col]
-      feature = exp.features[col][featureID]
-
-      # generate random location if requested
-      if locationID == -1:
-        location = list(exp.generatePattern(exp.numInputBits,
-                                            exp.config["sensorInputSize"]))
-      # generate union of locations if requested
-      elif isinstance(locationID, tuple):
-        location = set()
-        for idx in list(locationID):
-          location = location | exp.locations[col][idx]
-        location = list(location)
-      else:
-        location = exp.locations[col][locationID]
+# def runSimulatedCapacityTest(numObjects,
+#                     numPointsPerObject,
+#                     maxNewSynapseCount,
+#                     activationThreshold):
+#   """
+#   Generate [numObjects] objects with [numPointsPerObject] points per object
+#   Create a set of simulated L2 neurons that randomly sample from L4 SDRs
+#
+#   Test on (feature, location) pairs and compute
+#
+#   :param numObjects:
+#   :param numPointsPerObject:
+#   :param maxNewSynapseCount:
+#   :param activationThreshold:
+#   :return:
+#   """
+#   l4Params = getL4Params()
+#   l2Params = getL2Params()
+#   l2Params['maxNewSynapseCount'] = maxNewSynapseCount
+#   l2Params['activationThreshold'] = activationThreshold
+#   l2Params['minThreshold'] = activationThreshold
+#
+#   exp = L4L2Experiment("capacity_two_objects",
+#                        numInputBits=int(l4Params["columnCount"]*0.02),
+#                        L4Overrides=l4Params,
+#                        L2Overrides=l2Params,
+#                        numLearningPoints=1)
+#
+#   numLocations = len(exp.locations[0])
+#   numFeatures = len(exp.features[0])
+#
+#   pairs = createRandomObjects(
+#     numObjects, numPointsPerObject, numLocations, numFeatures)
+#
+#   objects = {}
+#   for object in pairs:
+#     objects = exp.addObject(object, objects=objects)
+#
+#   for object, pairs in objects.iteritems():
+#     for col in xrange(exp.numColumns):
+#       locationID, featureID = pairs[col]
+#       feature = exp.features[col][featureID]
+#
+#       # generate random location if requested
+#       if locationID == -1:
+#         location = list(exp.generatePattern(exp.numInputBits,
+#                                             exp.config["sensorInputSize"]))
+#       # generate union of locations if requested
+#       elif isinstance(locationID, tuple):
+#         location = set()
+#         for idx in list(locationID):
+#           location = location | exp.locations[col][idx]
+#         location = list(location)
+#       else:
+#         location = exp.locations[col][locationID]
 
 
 
