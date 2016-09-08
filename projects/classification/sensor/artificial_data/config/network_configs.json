@@ -15,9 +15,8 @@
     "tpRegionConfig": {
       "regionEnabled": true,
       "regionParams": {
-        "columnCount": 65536,
+        "columnCount": 4096,
         "poolerType": "simpleUnion",
-        "inputWidth": 65536,
         "minHistory": 1,
         "historyLength": 10
       },
@@ -27,7 +26,7 @@
     "spRegionConfig": {
       "regionEnabled": true,
       "regionParams": {
-        "columnCount": 2048,
+        "columnCount": 1024,
         "spVerbosity": 0,
         "maxBoost": 1.0,
         "spatialImp": "cpp",
@@ -65,10 +64,10 @@
     "tmRegionConfig": {
       "regionEnabled": true,
       "regionParams": {
-        "columnCount": 2048,
+        "columnCount": 1024,
         "activationThreshold": 12,
         "pamLength": 3,
-        "cellsPerColumn": 32,
+        "cellsPerColumn": 4,
         "permanenceInc": 0.1,
         "minThreshold": 9,
         "verbosity": 0,
@@ -81,7 +80,7 @@
         "maxAge": 0,
         "newSynapseCount": 20,
         "maxSegmentsPerCell": 128,
-        "temporalImp": "monitored_tm_py"
+        "temporalImp": "tm_cpp"
       },
       "regionType": "py.TPRegion",
       "regionName": "TM"
@@ -103,9 +102,8 @@
     "tpRegionConfig": {
       "regionEnabled": false,
       "regionParams": {
-        "columnCount": 65536,
+        "columnCount": 4096,
         "poolerType": "simpleUnion",
-        "inputWidth": 65536,
         "minHistory": 1,
         "historyLength": 10
       },
@@ -115,7 +113,7 @@
     "spRegionConfig": {
       "regionEnabled": true,
       "regionParams": {
-        "columnCount": 2048,
+        "columnCount": 1024,
         "spVerbosity": 0,
         "maxBoost": 1.0,
         "spatialImp": "cpp",
@@ -153,10 +151,10 @@
     "tmRegionConfig": {
       "regionEnabled": true,
       "regionParams": {
-        "columnCount": 2048,
+        "columnCount": 1024,
         "activationThreshold": 12,
         "pamLength": 3,
-        "cellsPerColumn": 32,
+        "cellsPerColumn": 4,
         "permanenceInc": 0.1,
         "minThreshold": 9,
         "verbosity": 0,
@@ -169,7 +167,7 @@
         "maxAge": 0,
         "newSynapseCount": 20,
         "maxSegmentsPerCell": 128,
-        "temporalImp": "monitored_tm_py"
+        "temporalImp": "tm_cpp"
       },
       "regionType": "py.TPRegion",
       "regionName": "TM"
@@ -191,9 +189,8 @@
     "tpRegionConfig": {
       "regionEnabled": false,
       "regionParams": {
-        "columnCount": 65536,
+        "columnCount": 4096,
         "poolerType": "simpleUnion",
-        "inputWidth": 65536,
         "minHistory": 1,
         "historyLength": 10
       },
@@ -203,7 +200,7 @@
     "spRegionConfig": {
       "regionEnabled": true,
       "regionParams": {
-        "columnCount": 2048,
+        "columnCount": 1024,
         "spVerbosity": 0,
         "maxBoost": 1.0,
         "spatialImp": "cpp",
@@ -241,10 +238,10 @@
     "tmRegionConfig": {
       "regionEnabled": false,
       "regionParams": {
-        "columnCount": 2048,
+        "columnCount": 1024,
         "activationThreshold": 12,
         "pamLength": 3,
-        "cellsPerColumn": 32,
+        "cellsPerColumn": 4,
         "permanenceInc": 0.1,
         "minThreshold": 9,
         "verbosity": 0,
@@ -257,183 +254,7 @@
         "maxAge": 0,
         "newSynapseCount": 20,
         "maxSegmentsPerCell": 128,
-        "temporalImp": "monitored_tm_py"
-      },
-      "regionType": "py.TPRegion",
-      "regionName": "TM"
-    }
-  },
-  {
-    "classifierRegionConfig": {
-      "regionEnabled": true,
-      "regionParams": {
-        "implementation": "cpp",
-        "alpha": 0.01,
-        "verbosity": 0,
-        "steps": 0,
-        "maxCategoryCount": 3
-      },
-      "regionType": "py.CLAClassifierRegion",
-      "regionName": "classifier"
-    },
-    "tpRegionConfig": {
-      "regionEnabled": false,
-      "regionParams": {
-        "columnCount": 65536,
-        "poolerType": "simpleUnion",
-        "inputWidth": 65536,
-        "minHistory": 1,
-        "historyLength": 10
-      },
-      "regionType": "py.TemporalPoolerRegion",
-      "regionName": "TP"
-    },
-    "spRegionConfig": {
-      "regionEnabled": true,
-      "regionParams": {
-        "columnCount": 2048,
-        "spVerbosity": 0,
-        "maxBoost": 1.0,
-        "spatialImp": "cpp",
-        "synPermInactiveDec": 0.0005,
-        "synPermConnected": 0.1,
-        "synPermActiveInc": 0.0001,
-        "seed": 1956,
-        "numActiveColumnsPerInhArea": 40,
-        "globalInhibition": 1,
-        "potentialPct": 0.8
-      },
-      "regionType": "py.SPRegion",
-      "regionName": "SP"
-    },
-    "sensorRegionConfig": {
-      "regionEnabled": true,
-      "encoders": {
-        "scalarEncoder": {
-          "maxval": null,
-          "name": "scalarEncoder",
-          "minval": null,
-          "n": 256,
-          "fieldname": "y",
-          "w": 21,
-          "type": "ScalarEncoder"
-        }
-      },
-      "regionParams": {
-        "numCategories": 3,
-        "verbosity": 0
-      },
-      "regionType": "py.RecordSensor",
-      "regionName": "sensor"
-    },
-    "tmRegionConfig": {
-      "regionEnabled": true,
-      "regionParams": {
-        "columnCount": 2048,
-        "activationThreshold": 12,
-        "pamLength": 3,
-        "cellsPerColumn": 32,
-        "permanenceInc": 0.1,
-        "minThreshold": 9,
-        "verbosity": 0,
-        "maxSynapsesPerSegment": 32,
-        "outputType": "normal",
-        "globalDecay": 0.0,
-        "initialPerm": 0.21,
-        "permanenceDec": 0.1,
-        "seed": 1960,
-        "maxAge": 0,
-        "newSynapseCount": 20,
-        "maxSegmentsPerCell": 128,
-        "temporalImp": "monitored_tm_py"
-      },
-      "regionType": "py.TPRegion",
-      "regionName": "TM"
-    }
-  },
-  {
-    "classifierRegionConfig": {
-      "regionEnabled": true,
-      "regionParams": {
-        "implementation": "cpp",
-        "alpha": 0.01,
-        "verbosity": 0,
-        "steps": 0,
-        "maxCategoryCount": 3
-      },
-      "regionType": "py.CLAClassifierRegion",
-      "regionName": "classifier"
-    },
-    "tpRegionConfig": {
-      "regionEnabled": false,
-      "regionParams": {
-        "columnCount": 65536,
-        "poolerType": "simpleUnion",
-        "inputWidth": 65536,
-        "minHistory": 1,
-        "historyLength": 10
-      },
-      "regionType": "py.TemporalPoolerRegion",
-      "regionName": "TP"
-    },
-    "spRegionConfig": {
-      "regionEnabled": true,
-      "regionParams": {
-        "columnCount": 2048,
-        "spVerbosity": 0,
-        "maxBoost": 1.0,
-        "spatialImp": "cpp",
-        "synPermInactiveDec": 0.0005,
-        "synPermConnected": 0.1,
-        "synPermActiveInc": 0.0001,
-        "seed": 1956,
-        "numActiveColumnsPerInhArea": 40,
-        "globalInhibition": 1,
-        "potentialPct": 0.8
-      },
-      "regionType": "py.SPRegion",
-      "regionName": "SP"
-    },
-    "sensorRegionConfig": {
-      "regionEnabled": true,
-      "encoders": {
-        "scalarEncoder": {
-          "maxval": null,
-          "name": "scalarEncoder",
-          "minval": null,
-          "n": 256,
-          "fieldname": "y",
-          "w": 21,
-          "type": "ScalarEncoder"
-        }
-      },
-      "regionParams": {
-        "numCategories": 3,
-        "verbosity": 0
-      },
-      "regionType": "py.RecordSensor",
-      "regionName": "sensor"
-    },
-    "tmRegionConfig": {
-      "regionEnabled": false,
-      "regionParams": {
-        "columnCount": 2048,
-        "activationThreshold": 12,
-        "pamLength": 3,
-        "cellsPerColumn": 32,
-        "permanenceInc": 0.1,
-        "minThreshold": 9,
-        "verbosity": 0,
-        "maxSynapsesPerSegment": 32,
-        "outputType": "normal",
-        "globalDecay": 0.0,
-        "initialPerm": 0.21,
-        "permanenceDec": 0.1,
-        "seed": 1960,
-        "maxAge": 0,
-        "newSynapseCount": 20,
-        "maxSegmentsPerCell": 128,
-        "temporalImp": "monitored_tm_py"
+        "temporalImp": "tm_cpp"
       },
       "regionType": "py.TPRegion",
       "regionName": "TM"

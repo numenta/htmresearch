@@ -398,13 +398,13 @@ class ColumnPoolerRegion(PyRegion):
     automatically by PyRegion's parameter set mechanism. The ones that need
     special treatment are explicitly handled here.
     """
+    # TODO: check for parameters that shouldn't be modified
     if parameterName in ["learningMode", "inferenceMode"]:
       setattr(self, parameterName, bool(parameterValue))
     elif hasattr(self, parameterName):
       setattr(self, parameterName, parameterValue)
     else:
       raise Exception("Unknown parameter: " + parameterName)
-    self.inputWidth = self.columnCount
 
 
   def getOutputElementCount(self, name):

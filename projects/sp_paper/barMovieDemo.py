@@ -20,34 +20,22 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+from htmresearch.support.generate_sdr_dataset import getMovingBar
+import matplotlib.pyplot as plt
+import numpy as np
+plt.ion()
 
-# Signal types can be: 'binary', 'sine', 'triangle'
-SIGNAL_TYPES = [
-  'binary',
-  'sine', 
-  'triangle'
-]
+if __name__ == "__main__":
+  bars = getMovingBar(startLocation=(10, 1),
+                      direction=(0, 1),
+                      imageSize=(20, 20),
+                      steps=19)
 
-# Parameters to generate the artificial sensor data
-DATA_DIR = 'data'
-NUM_CATEGORIES = [2]
-WHITE_NOISE_AMPLITUDES = [0.0]
-SIGNAL_AMPLITUDES = [10.0]
-SIGNAL_MEANS = [0.0]
-NOISE_LENGTHS = [10]
-
-# Number of phases. Eg: Train (1) SP, (2) TM, (3) TP, (4) Classifier, (5) Test
-NUM_PHASES = [5]
-
-# Number of time each phase repeats
-NUM_REPS = [1]
-
-# Verbosity of network
-VERBOSITY = 0
-
-# Whether to use a JSON config file of the template config generator.
-# See network_configs.json for an example of standard config file.
-USE_CONFIG_TEMPLATE = False
-
-# Whether or not to plot experiments data and results
-PLOT  = True
+  plt.figure(1)
+  i = 0
+  while True:
+    plt.imshow(np.transpose(bars[i]), cmap='gray')
+    plt.pause(.05)
+    i += 1
+    if i >= len(bars):
+      i = 0

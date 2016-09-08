@@ -25,7 +25,7 @@
 import copy
 from collections import namedtuple
 
-from htmresearch.frameworks.classification.classification_network import (
+from htmresearch.frameworks.classification.network_training import (
   TEST_PARTITION_NAME)
 
 # Region names

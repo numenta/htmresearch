@@ -21,7 +21,7 @@
 
 import numpy
 
-from htmresearch.frameworks.classification.classification_network import (
+from htmresearch.frameworks.classification.network_factory import (
   configureNetwork)
 from htmresearch.encoders import EncoderTypes
 from htmresearch.encoders.cio_encoder import CioEncoder
