@@ -238,15 +238,15 @@ class SimpleObjectMachine(ObjectMachineBase):
         feature = self.features[col][featureID]
 
       if noise is not None:
-        location = self._addNoise(location, noise)
-        feature = self._addNoise(feature, noise)
+        location = self._addNoise(location, noise, self.externalInputSize)
+        feature = self._addNoise(feature, noise, self.sensorInputSize)
 
       sensations[col] = (location, feature)
 
     return sensations
 
 
-  def _addNoise(self, pattern, noiseLevel):
+  def _addNoise(self, pattern, noiseLevel, inputSize):
     """
     Adds noise the given list of patterns and returns a list of noisy copies.
     """
@@ -256,7 +256,7 @@ class SimpleObjectMachine(ObjectMachineBase):
     newBits = set()
     for bit in pattern:
       if random.random() < noiseLevel:
-        newBits.add(random.randint(0, self.externalInputSize))
+        newBits.add(random.randint(0, inputSize))
       else:
         newBits.add(bit)
 
