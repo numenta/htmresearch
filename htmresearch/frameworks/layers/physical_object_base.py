@@ -21,6 +21,12 @@
 
 from abc import ABCMeta, abstractmethod
 
+try:
+  from mpl_toolkits.mplot3d import Axes3D
+except ImportError:
+  print "Update matplotlib or don't use plotting functions."
+import matplotlib.pyplot as plt
+
 
 
 class PhysicalObject(object):
@@ -88,3 +94,34 @@ class PhysicalObject(object):
     will be used.
     """
     return abs(number - other) <= self.epsilon
+
+
+  def getFeatures(self):
+    """
+    Returns the list of object feature spans, from which the user can sample.
+    """
+    return self.features
+
+
+  def plot(self, numPoints=100):
+    """
+    Plots the object in a 3D scatter.
+
+    This method should be overriden when possible. This default behavior simply
+    samples numPoints points from the object and plots them in a 3d scatter.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    for feature in self.features:
+
+      for _ in xrange(numPoints):
+        x, y, z = tuple(self.sampleLocationFromFeature(feature))
+        ax.scatter(x, y, z, marker=".")
+
+      ax.set_xlabel('X')
+      ax.set_ylabel('Y')
+      ax.set_zlabel('Z')
+
+    plt.title("{}".format(self))
+    return fig, ax

@@ -22,6 +22,9 @@
 import random
 from math import pi, cos, sin, sqrt
 
+import numpy as np
+import matplotlib.pyplot as plt
+
 from htmresearch.frameworks.layers.physical_object_base import PhysicalObject
 
 
@@ -92,8 +95,36 @@ class Sphere(PhysicalObject):
       coordinates = [random.gauss(0, 1.) for _ in xrange(self.dimension)]
       norm = sqrt(sum([coord ** 2 for coord in coordinates]))
       return [self.radius * coord / norm for coord in coordinates]
+    elif feature == "random":
+      return self.sampleLocation()
     else:
       raise NameError("No such feature in {}: {}".format(self, feature))
+
+
+  def plot(self, numPoints=100):
+    """
+    Specific plotting method for cylinders.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # generate sphere
+    phi, theta = np.meshgrid(
+      np.linspace(0, pi, numPoints),
+      np.linspace(0, 2 * pi, numPoints)
+    )
+    x = self.radius * np.sin(phi) * np.cos(theta)
+    y = self.radius * np.sin(phi) * np.sin(theta)
+    z = self.radius * np.cos(phi)
+
+    # plot
+    ax.plot_surface(x, y, z, alpha=0.2, rstride=20, cstride=10)
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+
+    plt.title("{}".format(self))
+    return fig, ax
 
 
   def __repr__(self):
@@ -191,6 +222,8 @@ class Cylinder(PhysicalObject):
       return self._sampleLocationOnEdge(top=False)
     elif feature == "side":
       return self._sampleLocationOnSide()
+    elif feature == "random":
+      return self.sampleLocation()
     else:
       raise NameError("No such feature in {}: {}".format(self, feature))
 
@@ -238,6 +271,30 @@ class Cylinder(PhysicalObject):
     sampledAngle = 2 * random.random() * pi
     x, y = self.radius * cos(sampledAngle), self.radius * sin(sampledAngle)
     return [x, y, z]
+
+
+  def plot(self, numPoints=100):
+    """
+    Specific plotting method for cylinders.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # generate cylinder
+    x = np.linspace(- self.radius, self.radius, numPoints)
+    z = np.linspace(- self.height / 2., self.height / 2., numPoints)
+    Xc, Zc = np.meshgrid(x, z)
+    Yc = np.sqrt(self.radius ** 2 - Xc ** 2)
+
+    # plot
+    ax.plot_surface(Xc, Yc, Zc, alpha=0.2, rstride=20, cstride=10)
+    ax.plot_surface(Xc, -Yc, Zc, alpha=0.2, rstride=20, cstride=10)
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+
+    plt.title("{}".format(self))
+    return fig, ax
 
 
   def __repr__(self):
@@ -327,6 +384,8 @@ class Box(PhysicalObject):
       return self._sampleFromEdges()
     elif feature == "vertex":
       return self._sampleFromVertices()
+    elif feature == "random":
+      return self.sampleLocation()
     else:
       raise NameError("No such feature in {}: {}".format(self, feature))
 
@@ -367,6 +426,44 @@ class Box(PhysicalObject):
       self.dimensions[2] / 2. * random.choice([-1, 1]),
     ]
     return coordinates
+
+  def plot(self, numPoints=100):
+    """
+    Specific plotting method for boxes.
+
+    Only supports 3-dimensional objects.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # generate cylinder
+    x = np.linspace(- self.dimensions[0]/2., self.dimensions[0]/2., numPoints)
+    y = np.linspace(- self.dimensions[1]/2., self.dimensions[1]/2., numPoints)
+    z = np.linspace(- self.dimensions[2]/2., self.dimensions[2]/2., numPoints)
+
+    # plot
+    Xc, Yc = np.meshgrid(x, y)
+    ax.plot_surface(Xc, Yc, -self.dimensions[2]/2,
+                    alpha=0.2, rstride=20, cstride=10)
+    ax.plot_surface(Xc, Yc, self.dimensions[2]/2,
+                    alpha=0.2, rstride=20, cstride=10)
+    Yc, Zc = np.meshgrid(y, z)
+    ax.plot_surface(-self.dimensions[0]/2, Yc, Zc,
+                    alpha=0.2, rstride=20, cstride=10)
+    ax.plot_surface(self.dimensions[0]/2, Yc, Zc,
+                    alpha=0.2, rstride=20, cstride=10)
+    Xc, Zc = np.meshgrid(x, z)
+    ax.plot_surface(Xc, -self.dimensions[1]/2, Zc,
+                    alpha=0.2, rstride=20, cstride=10)
+    ax.plot_surface(Xc, self.dimensions[1]/2, Zc,
+                    alpha=0.2, rstride=20, cstride=10)
+
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+
+    plt.title("{}".format(self))
+    return fig, ax
 
 
   def __repr__(self):

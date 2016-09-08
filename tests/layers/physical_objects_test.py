@@ -105,7 +105,7 @@ class PhysicalObjectsTest(unittest.TestCase):
       ax.set_xlabel('X')
       ax.set_ylabel('Y')
       ax.set_zlabel('Z')
-      plt.title("Sampled point from {}".format(objects[i]))
+      plt.title("Sampled points from {}".format(objects[i]))
       plt.savefig("object{}.png".format(str(i)))
 
 
@@ -127,10 +127,10 @@ class PhysicalObjectsTest(unittest.TestCase):
           x, y, z = tuple(objects[i].sampleLocationFromFeature(feature))
           ax.scatter(x, y, z)
 
-        ax.set_xlabel('X Label')
-        ax.set_ylabel('Y Label')
-        ax.set_zlabel('Z Label')
-        plt.title("Sampled point on {} from {}".format(feature, objects[i]))
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        plt.title("Sampled points on {} from {}".format(feature, objects[i]))
         plt.savefig("object_{}_{}.png".format(str(i), feature))
 
 
