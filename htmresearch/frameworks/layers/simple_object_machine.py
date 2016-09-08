@@ -216,8 +216,8 @@ class SimpleObjectMachine(ObjectMachineBase):
 
       # generate random location if requested
       if locationID == -1:
-        location = list(self._generatePattern(self.numInputBits,
-                                              self.sensorInputSize))
+        location = self._generatePattern(self.numInputBits,
+                                         self.sensorInputSize)
       # generate union of locations if requested
       elif isinstance(locationID, tuple):
         location = set()
@@ -253,12 +253,12 @@ class SimpleObjectMachine(ObjectMachineBase):
     if pattern is None:
       return None
 
-    newBits = []
+    newBits = set()
     for bit in pattern:
       if random.random() < noiseLevel:
-        newBits.append(random.randint(0, self.externalInputSize))
+        newBits.add(random.randint(0, self.externalInputSize))
       else:
-        newBits.append(bit)
+        newBits.add(bit)
 
     return newBits
 
