@@ -256,7 +256,7 @@ class SimpleObjectMachine(ObjectMachineBase):
     newBits = []
     for bit in pattern:
       if random.random() < noiseLevel:
-        newBits.append(random.randint(0, max(pattern)))
+        newBits.append(random.randint(0, self.externalInputSize))
       else:
         newBits.append(bit)
 
