@@ -267,9 +267,8 @@ class SimpleObjectMachine(ObjectMachineBase):
     """
     Generates a random SDR with specified number of bits and total size.
     """
-    cellsIndices = range(totalSize)
-    random.shuffle(cellsIndices)
-    return set(cellsIndices[:numBits])
+    indices = random.sample(xrange(totalSize), numBits)
+    return set(indices)
 
 
   def _generateLocations(self):
