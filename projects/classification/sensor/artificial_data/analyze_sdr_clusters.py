@@ -212,5 +212,4 @@ if __name__ == "__main__":
   plt.savefig('results/cluster_distance_matrix_example.pdf')
 
   viz2DProjection('sequenceCluster', 3, clusterAssignments, npos)
-  plt.savefig('results/sequence_clusters_example.pdf')
 
