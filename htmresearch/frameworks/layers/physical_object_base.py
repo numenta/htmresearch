@@ -96,7 +96,7 @@ class PhysicalObject(object):
     return abs(number - other) <= self.epsilon
 
 
-  def getFeatures(self):
+  def getLocations(self):
     """
     Returns the list of object feature spans, from which the user can sample.
     """
