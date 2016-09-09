@@ -153,12 +153,6 @@ if __name__ == "__main__":
   # vizCellStates(traces, cellsType, numCells, startFrom=100)
 
   clusters = assignClusters(traces)
-  tmActiveCellsClusters = [convertNonZeroToSDR(clusters['tmActiveCells'][i])
-                           for i in range(3)]
-  
-  c0 = tmActiveCellsClusters[0]
-  c1 = tmActiveCellsClusters[1]
-  c2 = tmActiveCellsClusters[2]
 
 
   # compare c1 - c2 distance over time
@@ -180,9 +174,9 @@ if __name__ == "__main__":
     idx2 = np.logical_and(np.array(traces['actualCategory']) == 2,
                           repetition == rpt)
 
-    c0slice = [traces['tmActiveCells'][i] for i in range(len(idx0)) if idx0[i]]
-    c1slice = [traces['tmActiveCells'][i] for i in range(len(idx1)) if idx1[i]]
-    c2slice = [traces['tmActiveCells'][i] for i in range(len(idx2)) if idx2[i]]
+    c0slice = [traces['tmPredictedActiveCells'][i] for i in range(len(idx0)) if idx0[i]]
+    c1slice = [traces['tmPredictedActiveCells'][i] for i in range(len(idx1)) if idx1[i]]
+    c2slice = [traces['tmPredictedActiveCells'][i] for i in range(len(idx2)) if idx2[i]]
 
     if includeNoiseCategory:
       SDRclusters.append(c0slice)
