@@ -71,8 +71,8 @@ def runBasic(noiseLevel=None, profile=False):
     "sphere": [("surface", 10)],
     # the two learning config below will be exactly the same
     "box": [("face", 5), ("edge", 5), ("vertex", 5)],
-    "cube": [(feature, 5) for feature in objects["cube"].getLocations()],
-    "cylinder": [(feature, 5) for feature in objects["cylinder"].getLocations()]
+    "cube": [(feature, 5) for feature in objects["cube"].getFeatures()],
+    "cylinder": [(feature, 5) for feature in objects["cylinder"].getFeatures()]
   }
 
   exp.learnObjects(

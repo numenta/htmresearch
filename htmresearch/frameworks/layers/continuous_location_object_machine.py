@@ -34,6 +34,9 @@ class ContinuousLocationObjectMachine(ObjectMachineBase):
   """
   This implementation of the object machine uses continuous locations instead
   of discrete random ones. They are created using a CoordinateEncoder.
+
+  The "objects" should be PhysicalObjects as defined in physical_object_base
+  and physical_objects. Subclass the base implementation for specific needs.
   """
 
   def __init__(self,
@@ -97,22 +100,31 @@ class ContinuousLocationObjectMachine(ObjectMachineBase):
     """
     Returns the objects in a canonical format to be sent to an experiment.
 
+    The input, learningConfig, should have the following format. It is a
+    mapping from object to a list of features to sample locations from, and
+    the number of points to sample from each feature. Note that these objects
+    should be first added with .addObjects().
+    These features can be either hard-coded with their key or accessed
+    with .getFeatures.
+
+    An other possibility is to directly specify locations. The machine will
+    use the object to find the corresponding feature (an empty feature will
+    be sent if the location is not on the object's surface).
+
+    learningConfig = {
+      # hard-coded keys and number of points
+      "cube": [("face", 5), ("edge", 5), ("vertex", 3)],
+
+      # programmatically-accessed keys and number of points
+      "cylinder": [(feature, 5) for feature in cylinder.getFeatures()],
+
+      # specific locations
+      "sphere": [(10, 5, 3), (12, 45, 32), (12, 5, 46)],
+    }
+
     The returned format is a a dictionary where the keys are object names, and
     values are lists of sensations, each sensation being a mapping from
     cortical column index to a pair of SDR's (one location and one feature).
-
-    The input, learningConfig, should have the following format. It is a
-    mapping from object to a list of locations to sample from, those and
-    the number of points to sample from each location. Note at these objects
-    should be first added with .addObjects()
-
-    learningConfig = {
-      "cube": [("face", 5), ("edge", 5)]
-      "cylinder": [(feature, 5) for feature in cylinder.getLocations()]
-    }
-
-    Note: instead of those tuples, an explicit location can be provided, e.g.:
-      "cube": [(10, 22, 33), (12, 45, 31)]
 
     Parameters:
     ----------------------------
@@ -176,18 +188,21 @@ class ContinuousLocationObjectMachine(ObjectMachineBase):
     """
     Returns the sensations in a canonical format to be sent to an experiment.
 
-    The input inferenceConfig should be a dict with the following form:
+    The input inferenceConfig should be a dict with the following form. The
+    "pairs" field provide a mapping from cortical column to a list of
+    sensations, each sensations being either:
+      - a feature key to sample a location from
+      - an explicit location
+
     {
       "numSteps": 2  # number of sensations
       "noiseLevel": 0.05  # noise to add to sensations (optional)
       "objectName": 0  # optional
       "pairs": {
-        0: ["random" 2), ("face", 2)]  # locations for cortical column 0
+        0: ["random", "face"]  # locations for cortical column 0
         1: [(12, 32, 34), (23, 23, 32)]  # locations for cortical column 1
       }
     }
-
-    Again, the locations can be explicitly provided.
 
     The returned format is a a lists of sensations, each sensation being a
     mapping from cortical column index to a pair of SDR's (one location and
@@ -314,6 +329,12 @@ class ContinuousLocationObjectMachine(ObjectMachineBase):
   def _getRadius(self, location):
     """
     Returns the radius associated with the given location.
+
+    This is a bit of an awkward argument to the CoordinateEncoder, which
+    specifies the resolution (in was used to encode differently depending on
+    speed in the GPS encoder). Since the coordinates are object-centric,
+    for now we use the "point radius" as an heuristic, but this should be
+    experimented and improved.
     """
     # TODO: find better heuristic
     return int(math.sqrt(sum([coord ** 2 for coord in location])))

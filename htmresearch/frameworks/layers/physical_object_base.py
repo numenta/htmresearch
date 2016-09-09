@@ -24,7 +24,8 @@ from abc import ABCMeta, abstractmethod
 try:
   from mpl_toolkits.mplot3d import Axes3D
 except ImportError:
-  print "Update matplotlib or don't use plotting functions."
+  print "Your Matplotlib version is not up to date. " \
+        "Don't use plotting functions"
 import matplotlib.pyplot as plt
 
 
@@ -32,12 +33,24 @@ import matplotlib.pyplot as plt
 class PhysicalObject(object):
   """
   Base class to create physical objects, for L4-L2 inference experiments.
-  It is assumed that objects have continuous locations (that will be encoded
-  by a coordinate encoder), and that features are constant over ranges of
-  locations. Features are defined as feature indices (which will be mapped
-  to random SDR's by the object machine.
 
-  All objects should implement the three abstract methods defined below.
+  Physical objects have a set of features, constant over ranges of locations,
+  so that locations can be sampled from these features.
+
+  As far as physical objects are concerned, features as encoded as integers.
+  The ObjectMachine will take care of mapping them to SDR's.
+
+  All objects should implement the abstract methods defined below.
+
+  The "epsilon" parameter specifies the resolution of methods matching
+  locations to features and checking if a location is on the object. It serves
+  two purposes:
+    - it avoids having a null probability of sampling an edge
+    - it compensates the fact that locations are converted to integers
+    before being passed to the encoder in the ObjectMachine
+
+  Note that because locations are integers, rather large object sizes should
+  be used.
   """
 
   __metaclass__ = ABCMeta
@@ -51,9 +64,12 @@ class PhysicalObject(object):
   CYLINDER_EDGE = 4
   POINTY = 5
 
-  # default resolution to use for matching locations (to avoid having a zero
-  # null probability of sampling an edge)
-  DEFAULT_EPSILON = 1
+  # default resolution to use for matching locations
+  DEFAULT_EPSILON = 2
+
+  # each physical objects has a list of features to sample from
+  _FEATURES = []
+
 
   @abstractmethod
   def getFeatureID(self, location):
@@ -96,11 +112,12 @@ class PhysicalObject(object):
     return abs(number - other) <= self.epsilon
 
 
-  def getLocations(self):
+  def getFeatures(self):
     """
-    Returns the list of object feature spans, from which the user can sample.
+    Returns the list of object feature spans, from which the user can sample
+    locations.
     """
-    return self.features
+    return self._FEATURES
 
 
   def plot(self, numPoints=100):
@@ -113,15 +130,15 @@ class PhysicalObject(object):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    for feature in self.features:
+    for feature in self._FEATURES:
 
       for _ in xrange(numPoints):
         x, y, z = tuple(self.sampleLocationFromFeature(feature))
         ax.scatter(x, y, z, marker=".")
 
-      ax.set_xlabel('X')
-      ax.set_ylabel('Y')
-      ax.set_zlabel('Z')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
 
     plt.title("{}".format(self))
     return fig, ax

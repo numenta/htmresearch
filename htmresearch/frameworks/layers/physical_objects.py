@@ -19,6 +19,13 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+"""
+Actual implementation of physical objects.
+
+Note that because locations are integers, rather large object sizes should be
+used.
+"""
+
 import random
 from math import pi, cos, sin, sqrt
 
@@ -38,13 +45,29 @@ class Sphere(PhysicalObject):
   Example:
     sphere = Sphere(radius=20, dimension=3, epsilon=1)
 
+  It's only feature is its surface.
+
   """
+
+  _FEATURES = ["surface"]
 
   def __init__(self, radius, dimension=3, epsilon=None):
     """
     The only key parameter to provide is the sphere's radius.
 
     Supports arbitrary dimensions.
+
+    Parameters:
+    ----------------------------
+    @param    radius (int)
+              Sphere radius.
+
+    @param    dimension (int)
+              Space dimension. Typically 3.
+
+    @param    epsilon (float)
+              Object resolution. Defaults to self.DEFAULT_EPSILON
+
     """
     self.radius = radius
     self.dimension = dimension
@@ -53,8 +76,6 @@ class Sphere(PhysicalObject):
       self.epsilon = self.DEFAULT_EPSILON
     else:
       self.epsilon = epsilon
-
-    self.features = ["surface"]
 
 
   def getFeatureID(self, location):
@@ -80,9 +101,9 @@ class Sphere(PhysicalObject):
 
   def sampleLocation(self):
     """
-    Gaussian method to sample uniformly from a sphere.
+    Samples from the only available feature.
     """
-    return self.sampleLocationFromFeature(self.features[0])
+    return self.sampleLocationFromFeature(self._FEATURES[0])
 
 
   def sampleLocationFromFeature(self, feature):
@@ -139,7 +160,16 @@ class Sphere(PhysicalObject):
 class Cylinder(PhysicalObject):
   """
   A classic cylinder.
+
+  Example:
+    cyl = Cylinder(height=20, radius=5, epsilon=1)
+
+  It has five different features to sample locations from: topDisc, bottomDisc,
+  topEdge, bottomEdge, and side.
   """
+
+  _FEATURES = ["topDisc", "bottomDisc", "topEdge", "bottomEdge", "side"]
+
 
   def __init__(self, height, radius, epsilon=None):
     """
@@ -147,8 +177,19 @@ class Cylinder(PhysicalObject):
 
     Does not support arbitrary dimensions.
 
-    Example:
-      cyl = Cylinder(height=20, radius=5, epsilon=1)
+    Parameters:
+    ----------------------------
+    @param    height (int)
+              Cylinder height.
+
+    @param    radius (int)
+              Cylinder radius.
+
+    @param    dimension (int)
+              Space dimension. Typically 3.
+
+    @param    epsilon (float)
+              Object resolution. Defaults to self.DEFAULT_EPSILON
 
     """
     self.radius = radius
@@ -159,8 +200,6 @@ class Cylinder(PhysicalObject):
       self.epsilon = self.DEFAULT_EPSILON
     else:
       self.epsilon = epsilon
-
-    self.features = ["topDisc", "bottomDisc", "topEdge", "bottomEdge", "side"]
 
 
   def getFeatureID(self, location):
@@ -309,15 +348,31 @@ class Cylinder(PhysicalObject):
 class Box(PhysicalObject):
   """
   A box is a classic cuboid.
+
+  Example:
+    box = Box(dimensions=[10, 10, 5], dimension=3, epsilon=1)
+
+  It has three features to sample locations from: face, edge, and vertex.
   """
+
+  _FEATURES = ["face", "edge", "vertex"]
+
 
   def __init__(self, dimensions, dimension=3, epsilon=None):
     """
     The only key parameter is the list (or tuple) of dimensions, which can be
     of any size as long as its length is equal to the "dimension" parameter.
 
-    Example:
-      box = Box(dimensions=[10, 10, 5], dimension=3, epsilon=1)
+    Parameters:
+    ----------------------------
+    @param    dimensions (list(int))
+              List of the box's dimensions.
+
+    @param    dimension (int)
+              Space dimension. Typically 3.
+
+    @param    epsilon (float)
+              Object resolution. Defaults to self.DEFAULT_EPSILON
 
     """
     self.dimensions = dimensions
@@ -327,8 +382,6 @@ class Box(PhysicalObject):
       self.epsilon = self.DEFAULT_EPSILON
     else:
       self.epsilon = epsilon
-
-    self.features = ["face", "edge", "vertex"]
 
 
   def getFeatureID(self, location):
@@ -478,14 +531,27 @@ class Box(PhysicalObject):
 class Cube(Box):
   """
   A cube is a particular box where all dimensions have equal length.
+
+
+  Example:
+    cube = Cube(width=100, dimension=3, epsilon=2)
   """
+
 
   def __init__(self, width, dimension=3, epsilon=None):
     """
     We simply pass the width as every dimension.
 
-    Example:
-      cube = Cube(width=100, dimension=3, epsilon=2)
+    Parameters:
+    ----------------------------
+    @param    width (int)
+              Cube width.
+
+    @param    dimension (int)
+              Space dimension. Typically 3.
+
+    @param    epsilon (float)
+              Object resolution. Defaults to self.DEFAULT_EPSILON
 
     """
     self.width = width
