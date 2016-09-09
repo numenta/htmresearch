@@ -63,8 +63,16 @@ class ReversedExtendedTemporalMemory(FastETM):
     """
     # sort indices for consistency with C++ version
     activeColumns = sorted(list(activeColumns))
-    activeExternalCells = sorted(list(activeExternalCells))
-    activeApicalCells = sorted(list(activeApicalCells))
+
+    if activeExternalCells is not None:
+      activeExternalCells = sorted(list(activeExternalCells))
+    else:
+      activeExternalCells = []
+
+    if activeApicalCells is not None:
+      activeApicalCells = sorted(list(activeApicalCells))
+    else:
+      activeApicalCells = []
 
     self.activateBasalDendrites(
       activeExternalCells,
