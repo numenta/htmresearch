@@ -154,7 +154,7 @@ if __name__ == "__main__":
   c1 = tmActiveCellsClusters[1]
   c2 = tmActiveCellsClusters[2]
   
-  print 'inter-cluster disatnces:'
+  print 'inter-cluster distances:'
   d01 = clusterDist(c0, c1)
   d02 = clusterDist(c0, c2)
   d12 = clusterDist(c1, c2)

@@ -291,6 +291,7 @@ def createNetwork(dataSource, networkConfig, encoder=None):
     regionParams["inputWidth"] = regionParams["columnCount"]
     tmRegion = _createRegion(network, regionConfig)
     tmRegion.setParameter("computePredictedActiveCellIndices", True)
+    tmRegion.setParameter("anomalyMode", True)
     _validateRegionWidths(previousRegionWidth, tmRegion.getSelf().columnCount)
     _linkRegions(network,
                  sensorRegionName,

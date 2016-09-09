@@ -40,7 +40,7 @@ NOISE_LENGTHS = [10]
 NUM_PHASES = [5]
 
 # Number of time each phase repeats
-NUM_REPS = [1]
+NUM_REPS = [5]
 
 # Verbosity of network
 VERBOSITY = 0
@@ -50,4 +50,4 @@ VERBOSITY = 0
 USE_CONFIG_TEMPLATE = False
 
 # Whether or not to plot experiments data and results
-PLOT  = True
+PLOT  = False

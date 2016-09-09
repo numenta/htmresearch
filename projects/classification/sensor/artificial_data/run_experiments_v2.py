@@ -25,6 +25,7 @@ import json
 import simplejson
 import numpy as np
 
+from htmresearch.frameworks.clustering.distances import clusterToClusterDist
 from nupic.data.file_record_stream import FileRecordStream
 from prettytable import PrettyTable
 
@@ -59,7 +60,10 @@ def initTrace():
     'sensorValue': [],
     'actualCategory': [],
     'predictedCategory': [],
-    'classificationAccuracy': []
+    'classificationAccuracy': [],
+    'anomalyScore': [],
+    'predictedClusterLabel': [],
+    'clusteringConfidence': []
   }
   return trace
 
@@ -139,8 +143,10 @@ def updateTrace(trace, expSetup, recordNumber, sensorRegion, tmRegion, tpRegion,
     tmPredictedActiveCells = tmPredictedActiveCells.nonzero()[0]
     tmActiveCells = tmRegion.getOutputData("activeCells")
     tmActiveCells = tmActiveCells.nonzero()[0]
+    anomalyScore = tmRegion.getOutputData("anomalyScore")[0]
     trace['tmActiveCells'].append(tmActiveCells)
     trace['tmPredictedActiveCells'].append(tmPredictedActiveCells)
+    trace['anomalyScore'].append(anomalyScore)
 
   trace['sensorValue'].append(sensorRegion.getOutputData("sourceOut")[0])
 
@@ -180,8 +186,7 @@ def updateExpSetup(expSetup, networkConfig):
     "regionEnabled")
   upEnabled = networkConfig["tpRegionConfig"].get(
     "regionEnabled")
-  classifierType = networkConfig[
-    "classifierRegionConfig"].get(
+  classifierType = networkConfig["classifierRegionConfig"].get(
     "regionType")
 
   cells = networkConfig["tmRegionConfig"]["regionParams"]["cellsPerColumn"]
@@ -238,6 +243,119 @@ def enableRegionsLearning(network, networkConfig):
 
 
 
+class Cluster(object):
+  def __init__(self, id):
+    self.label = id
+    self.points = []
+
+
+  def add(self, point):
+    self.points.append(point)
+
+
+  def label(self, name):
+    self.label = name
+
+
+  def size(self):
+    return len(self.points)
+
+
+  def merge(self, cluster):
+    for sdr in cluster:
+      self.add(sdr)
+
+
+
+def findClosestClusters(cluster, clusters):
+  """
+  
+  :param cluster: 
+  :param clusters: 
+  :return: ordered list of clusters and their distances 
+  """
+  dists = []
+  for c in clusters:
+    d = clusterToClusterDist(c, cluster)
+    dists.append((d, c))
+
+  return sorted(dists)
+
+
+
+class Clustering(object):
+  def __init__(self,
+               mergeThreshold,
+               anomalousThreshold,
+               stableThreshold):
+
+    # Clusters
+    self.newCluster = Cluster(0)
+    self.clusters = []
+
+    # Anomaly Score Thresholds
+    self.anomalousThreshold = anomalousThreshold  # to create new cluster
+    self.stableThreshold = stableThreshold  # to add point to cluster
+
+    # Cluster distance threshold
+    self.mergeThreshold = mergeThreshold
+
+
+  def cluster(self, sdr, anomalyScore):
+
+    # If the data is anomalous, create a new cluster (if we don't already 
+    # have one) 
+    if self.anomalousThreshold <= anomalyScore:
+
+      # Merge or keep newCluster
+      if self.newCluster.size() > 10:
+        # Merge newCluster with existing cluster or add to list of cluster
+        clusterDistPairs = findClosestClusters(self.newCluster, self.clusters)
+        if len(clusterDistPairs) > 0:
+          closestClusterToNew, closestClusterToNewDist = clusterDistPairs[0]
+          
+          if closestClusterToNewDist < self.mergeThreshold:
+            closestClusterToNew.merge(self.newCluster)
+          else:
+            self.clusters.append(self.newCluster)
+        else:
+          self.clusters.append(self.newCluster)
+  
+        self.newCluster = Cluster(len(self.clusters))
+
+      # Inference
+      predictedCluster = None
+      confidence = -3
+
+    # If the data is unstable, do nothing
+    elif self.stableThreshold <= anomalyScore < self.anomalousThreshold:
+
+      # Inference
+      predictedCluster = None
+      confidence = -2
+
+    # If the data is stable, then infer predicted cluster
+    else:
+
+      # Add point to new cluster for inference at the end of the cycle 
+      self.newCluster.add(sdr)
+      
+      # Inference: find the closest cluster
+      clusterDistPairs = findClosestClusters(self.newCluster, self.clusters)
+      if len(clusterDistPairs):
+        predictedCluster, distToCluster = clusterDistPairs[0]
+        # Confidence of inference
+        meanClusterDist = np.mean([p[0] for p in clusterDistPairs])
+        confidence = 1 - (distToCluster / meanClusterDist)
+      else:
+        predictedCluster = None
+        confidence = -1
+
+
+    return predictedCluster, confidence
+
+
+
 def runNetwork(networkConfig,
                signalType,
                inputDataDir,
@@ -272,6 +390,12 @@ def runNetwork(networkConfig,
    classifierRegion) = enableRegionsLearning(network, networkConfig)
 
   trace = initTrace()
+
+  # TODO: move this out
+  mergeThreshold = 0.25
+  anomalousThreshold = 0.5
+  stableThreshold = 0.1
+  c = Clustering(mergeThreshold, anomalousThreshold, stableThreshold)
   for i in range(expSetup['numPoints']):
     network.run(1)
     trace = updateTrace(trace,
@@ -281,6 +405,17 @@ def runNetwork(networkConfig,
                         tmRegion,
                         tpRegion,
                         classifierRegion)
+
+    tmActiveCells = trace['tmActiveCells'][-1]
+    anomalyScore = trace['anomalyScore'][-1]
+    predictedCluster, confidence = c.cluster(tmActiveCells, anomalyScore)
+    if predictedCluster:
+      predictedClusterLabel = predictedCluster.label
+    else:
+      predictedClusterLabel = None
+    trace['predictedClusterLabel'].append(predictedClusterLabel)
+    trace['clusteringConfidence'].append(confidence)
+
     if i % 50 == 0:
       print '=> Record: %s | Final accuracy: %s' % (
         i, trace['classificationAccuracy'][-1])
@@ -411,7 +546,7 @@ def main():
   saveTraces(EXP_TRACES_OUTFILE, expResults)
 
   if PLOT:
-    # plotSensorData(expResults)
+    plotSensorData(expResults)
     plotExpTraces(expResults)
 
 

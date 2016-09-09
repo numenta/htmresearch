@@ -21,6 +21,24 @@ def percentOverlap(x1, x2):
   return percentOverlap
 
 
+def clusterToClusterDist(c1, c2):
+  """
+  Distance between 2 clusters
+
+  :param c1: (np.array) cluster 1
+  :param c2: (np.array) cluster 2
+  :return: distance between 2 clusters
+  """
+  minDists = []
+  for sdr1 in c1:
+    d = []
+    for sdr2 in c2:
+      d.append(percentOverlap(sdr1, sdr2))
+    minDists.append(min(d))
+
+  return sum(minDists)
+
+
 
 def kernel_dist(kernel):
   return lambda x, y: kernel(x, x) - 2 * kernel(x, y) + kernel(y, y)

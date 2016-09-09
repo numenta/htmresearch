@@ -34,7 +34,7 @@
         "synPermConnected": 0.1,
         "synPermActiveInc": 0.0001,
         "seed": 1956,
-        "numActiveColumnsPerInhArea": 40,
+        "numActiveColumnsPerInhArea": 20,
         "globalInhibition": 1,
         "potentialPct": 0.8
       },
@@ -121,7 +121,7 @@
         "synPermConnected": 0.1,
         "synPermActiveInc": 0.0001,
         "seed": 1956,
-        "numActiveColumnsPerInhArea": 40,
+        "numActiveColumnsPerInhArea": 20,
         "globalInhibition": 1,
         "potentialPct": 0.8
       },
@@ -208,7 +208,7 @@
         "synPermConnected": 0.1,
         "synPermActiveInc": 0.0001,
         "seed": 1956,
-        "numActiveColumnsPerInhArea": 40,
+        "numActiveColumnsPerInhArea": 20,
         "globalInhibition": 1,
         "potentialPct": 0.8
       },
