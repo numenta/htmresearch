@@ -280,7 +280,8 @@ class SDRDataSet(object):
       for i in range(numInputVectors):
         data = 0
         for barI in range(params['numBarsPerInput']):
-          orientation = np.random.choice(['horizontal', 'vertical'])
+          orientation = np.random.choice(['horizontal'])
+          # orientation = np.random.choice(['horizontal', 'vertical'])
           bar = getRandomBar((params['nX'], params['nY']),
                               params['barHalfLength'], orientation)
           data += bar
