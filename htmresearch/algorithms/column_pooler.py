@@ -410,7 +410,7 @@ class ColumnPooler(object):
       punish = list(cellNonZeroIndices - activeInputs)
       growthCandidates = activeInputs - cellNonZeroIndices
       newSynapseCount = min(len(growthCandidates), maxNewSynapseCount)
-      grow = sample(growthCandidates, newSynapseCount, self._random)
+      grow = _sample(growthCandidates, newSynapseCount, self._random)
 
       # Make the changes.
       cellPermanencesDense[punish] -= synPermProximalDec
@@ -478,7 +478,7 @@ class ColumnPooler(object):
     return predictedActiveCells
 
 
-def sample(iterable, k, rng):
+def _sample(iterable, k, rng):
   """
   Return a list of k random samples from the supplied collection.
   """
