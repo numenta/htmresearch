@@ -339,7 +339,7 @@ class ColumnPoolerRegion(PyRegion):
         outputs["predictedActiveCells"][:] = 0
         return
 
-    feedforwardInput = inputs['feedforwardInput'].nonzero()[0]
+    feedforwardInput = set(inputs['feedforwardInput'].nonzero()[0])
     lateralInput = inputs.get('lateralInput', None)
     if lateralInput is not None:
       lateralInput = set(lateralInput.nonzero()[0])
