@@ -22,7 +22,6 @@
 
 import copy
 from optparse import OptionParser
-import random
 import pprint
 
 
@@ -32,6 +31,10 @@ import matplotlib.cm as cm
 import matplotlib as mpl
 from nupic.research.spatial_pooler import SpatialPooler as PYSpatialPooler
 
+from htmresearch.frameworks.sp_paper.sp_metrics import (
+  calculateEntropy, calculateInputOverlapMat, inspectSpatialPoolerStats,
+  classificationAccuracyVsNoise, percentOverlap, calculateOverlapCurve,
+)
 from htmresearch.support.spatial_pooler_monitor_mixin import (
   SpatialPoolerMonitorMixin)
 
@@ -40,27 +43,12 @@ class MonitoredSpatialPooler(SpatialPoolerMonitorMixin,
 
 from nupic.bindings.algorithms import SpatialPooler as CPPSpatialPooler
 from nupic.bindings.math import GetNTAReal
-from generate_sdr_dataset import SDRDataSet
+from htmresearch.support.generate_sdr_dataset import SDRDataSet
 
 realDType = GetNTAReal()
 uintType = "uint32"
 plt.ion()
 mpl.rcParams['pdf.fonttype'] = 42
-
-
-
-def getSpatialPoolerParams(inputSize, boosting=False):
-  if boosting is False:
-    from sp_params import spParamNoBoosting as spatialPoolerParameters
-  else:
-    from sp_params import spParamWithBoosting as spatialPoolerParameters
-
-  spatialPoolerParameters['inputDimensions'] = (inputSize, 1)
-  spatialPoolerParameters['potentialRadius'] = inputSize
-
-  print "Spatial Pooler Parameters: "
-  pprint.pprint(spatialPoolerParameters)
-  return spatialPoolerParameters
 
 
 
@@ -77,253 +65,64 @@ def createSpatialPooler(spatialImp, spatialPoolerParameters):
 
 
 
-def percentOverlap(x1, x2):
-  """
-  Computes the percentage of overlap between vectors x1 and x2.
-
-  @param x1   (array) binary vector
-  @param x2   (array) binary vector
-  @param size (int)   length of binary vectors
-
-  @return percentOverlap (float) percentage overlap between x1 and x2
-  """
-  nonZeroX1 = np.count_nonzero(x1)
-  nonZeroX2 = np.count_nonzero(x2)
-
-  percentOverlap = 0
-  minX1X2 = min(nonZeroX1, nonZeroX2)
-  if minX1X2 > 0:
-    overlap = float(np.dot(x1.T, x2))
-    percentOverlap = overlap / minX1X2
-
-  return percentOverlap
-
-
-
-def corruptDenseVector(vector, noiseLevel):
-  """
-  Corrupts a binary vector by inverting noiseLevel percent of its bits.
-
-  @param vector     (array) binary vector to be corrupted
-  @param noiseLevel (float) amount of noise to be applied on the vector.
-  """
-  size = len(vector)
-  for i in range(size):
-    rnd = random.random()
-    if rnd < noiseLevel:
-      if vector[i] == 1:
-        vector[i] = 0
-      else:
-        vector[i] = 1
-
-
-
-def corruptSparseVector(sdr, noiseLevel):
-  """
-  Add noise to sdr by turning off numNoiseBits active bits and turning on
-  numNoiseBits in active bits
-  @param sdr        (array) Numpy array of the  SDR
-  @param noiseLevel (float) amount of noise to be applied on the vector.
-  """
-
-  numNoiseBits = int(noiseLevel * np.sum(sdr))
-  if numNoiseBits <= 0:
-    return sdr
-  activeBits = np.where(sdr > 0)[0]
-  inActiveBits = np.where(sdr == 0)[0]
-
-  turnOffBits = np.random.permutation(activeBits)
-  turnOnBits = np.random.permutation(inActiveBits)
-  turnOffBits = turnOffBits[:numNoiseBits]
-  turnOnBits = turnOnBits[:numNoiseBits]
-
-  sdr[turnOffBits] = 0
-  sdr[turnOnBits] = 1
-
-
-
-def addNoiseToVector(inputVector, noiseLevel, vectorType):
-  if vectorType == 'sparse':
-    corruptSparseVector(inputVector, noiseLevel)
-  elif vectorType == 'dense':
-    corruptDenseVector(inputVector, noiseLevel)
+def getSpatialPoolerParams(inputSize, boosting=False):
+  if boosting == 0:
+    from sp_params import spParamNoBoosting as spatialPoolerParameters
   else:
-    raise ValueError("vectorType must be 'sparse' or 'dense' ")
+    from sp_params import spParamWithBoosting as spatialPoolerParameters
+
+  spatialPoolerParameters['inputDimensions'] = (inputSize, 1)
+  spatialPoolerParameters['potentialRadius'] = inputSize
+
+  print "Spatial Pooler Parameters: "
+  pprint.pprint(spatialPoolerParameters)
+  return spatialPoolerParameters
 
 
 
-def calculateOverlapCurve(sp, inputVectors, inputVectorType):
-  numInputVector, inputSize = inputVectors.shape
-
-  outputColumns = np.zeros((numInputVector, columnNumber), dtype=uintType)
-  outputColumnsCorrupted = np.zeros((numInputVector, columnNumber),
-                                    dtype=uintType)
-
-  noiseLevelList = np.linspace(0, 1.0, 21)
-  inputOverlapScore = np.zeros((numInputVector, len(noiseLevelList)))
-  outputOverlapScore = np.zeros((numInputVector, len(noiseLevelList)))
-  for i in range(numInputVector):
-    for j in range(len(noiseLevelList)):
-      inputVectorCorrupted = copy.deepcopy(inputVectors[i][:])
-      corruptSparseVector(inputVectorCorrupted, noiseLevelList[j])
-      # addNoiseToVector(inputVectorCorrupted, noiseLevelList[j], inputVectorType)
-
-      sp.compute(inputVectors[i][:], False, outputColumns[i][:])
-      sp.compute(inputVectorCorrupted, False,
-                 outputColumnsCorrupted[i][:])
-
-      inputOverlapScore[i][j] = percentOverlap(inputVectors[i][:],
-                                               inputVectorCorrupted)
-      outputOverlapScore[i][j] = percentOverlap(outputColumns[i][:],
-                                                outputColumnsCorrupted[i][:])
-
-  return inputOverlapScore, outputOverlapScore
-
-
-
-def classifySPoutput(targetOutputColumns, outputColumns):
-  numTargets, numDims = targetOutputColumns.shape
-  overlap = np.zeros((numTargets,))
-  for i in range(numTargets):
-    overlap[i] = percentOverlap(outputColumns, targetOutputColumns[i, :])
-  classLabel = np.argmax(overlap)
-  return classLabel
-
-
-
-def classificationAccuracyVsNoise(sp, inputVectors, noiseLevelList):
-  numInputVector, inputSize = inputVectors.shape
-
-  if sp is None:
-    targetOutputColumns = copy.deepcopy(inputVectors)
+def getSDRDataSetParams(inputVectorType):
+  if inputVectorType == 'randomSDR':
+    params = {'dataType': 'randomSDR',
+              'numInputVectors': 100,
+              'inputSize': 1024,
+              'numActiveInputBits': 20,
+              'seed': 41}
+  elif inputVectorType == 'dense':
+    params = {'dataType': 'denseVectors',
+              'numInputVectors': 100,
+              'inputSize': 1024,
+              'seed': 41}
+  elif inputVectorType == 'correlatedSDRPairs':
+    params = {'dataType': 'correlatedSDRPairs',
+              'numInputVectors': 100,
+              'inputSize': 1024,
+              'numInputVectorPerSensor': 50,
+              'corrStrength': 0.5,
+              'numActiveInputBits': 20,
+              'seed': 41}
+  elif inputVectorType == 'randomBarPairs':
+    params = {'dataType': 'randomBarPairs',
+              'numInputVectors': 100,
+              'nX': 20,
+              'nY': 20,
+              'barHalfLength': 3,
+              'seed': 41}
+  elif inputVectorType == 'randomCross':
+    params = {'dataType': 'randomCross',
+              'numInputVectors': 100,
+              'nX': 20,
+              'nY': 20,
+              'barHalfLength': 3,
+              'seed': 41}
+  elif inputVectorType == 'nyc_taxi':
+    params = {'dataType': 'nyc_taxi',
+              'n': 109,
+              'w': 21,
+              'minval': 0,
+              'maxval': 40000}
   else:
-    # calculate target output given the uncorrupted input vectors
-    targetOutputColumns = np.zeros((numInputVector, columnNumber),
-                                   dtype=uintType)
-    for i in range(numInputVector):
-      sp.compute(inputVectors[i][:], False, targetOutputColumns[i][:])
-
-  outcomes = np.zeros((len(noiseLevelList), numInputVector))
-  for i in range(len(noiseLevelList)):
-    for j in range(numInputVector):
-      corruptedInputVector = copy.deepcopy(inputVectors[j][:])
-      corruptSparseVector(corruptedInputVector, noiseLevelList[i])
-      # addNoiseToVector(corruptedInputVector, noiseLevelList[i], inputVectorType)
-
-      if sp is None:
-        outputColumns = copy.deepcopy(corruptedInputVector)
-      else:
-        outputColumns = np.zeros(sp.getColumnDimensions(), dtype=uintType)
-        sp.compute(corruptedInputVector, False, outputColumns)
-
-      predictedClassLabel = classifySPoutput(targetOutputColumns, outputColumns)
-      outcomes[i][j] = predictedClassLabel == j
-
-  predictionAccuracy = np.mean(outcomes, 1)
-  return predictionAccuracy
-
-
-
-def plotAccuracyVsNoise(noiseLevelList, predictionAccuracy):
-  plt.figure()
-  plt.plot(noiseLevelList, predictionAccuracy, '-o')
-  plt.ylim([0, 1.05])
-  plt.xlabel('Noise level')
-  plt.ylabel('Prediction Accuracy')
-
-
-
-def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
-  """
-  Inspect the statistics of a spatial pooler given a set of input vectors
-  :param sp: an spatial pooler instance
-  :param inputVectors: a set of input vectors
-  :return:
-  """
-  numInputVector, inputSize = inputVectors.shape
-  numColumns = np.prod(sp.getColumnDimensions())
-
-  outputColumns = np.zeros((numInputVector, numColumns), dtype=uintType)
-  inputOverlap = np.zeros((numInputVector, numColumns), dtype=uintType)
-
-  connectedCounts = np.zeros((numColumns, ), dtype=uintType)
-  sp.getConnectedCounts(connectedCounts)
-
-  for i in range(numInputVector):
-    sp.compute(inputVectors[i][:], False, outputColumns[i][:])
-    inputOverlap[i][:] = sp.getOverlaps()
-
-  avgInputOverlap = np.mean(inputOverlap, 0)
-  activationProb = np.mean(outputColumns.astype(realDType), 0)
-
-  fig, axs = plt.subplots(2, 1)
-  axs[0].imshow(inputVectors[:, :200], cmap='gray')
-  axs[0].set_ylabel('sample #')
-  axs[0].set_title('input vectors')
-  axs[1].imshow(outputColumns[:, :200], cmap='gray')
-  axs[1].set_ylabel('sample #')
-  axs[1].set_title('output vectors')
-  if saveFigPrefix is not None:
-    plt.savefig('figures/{}_example_input_output.pdf'.format(saveFigPrefix))
-
-  fig, axs = plt.subplots(2, 2)
-  axs[0, 0].hist(connectedCounts)
-  axs[0, 0].set_xlabel('# Connected Synapse')
-
-  axs[0, 1].hist(avgInputOverlap)
-  axs[0, 1].set_xlabel('# avgInputOverlap')
-
-  axs[1, 0].hist(activationProb)
-  axs[1, 0].set_xlabel('activation prob')
-
-  axs[1, 1].plot(connectedCounts, activationProb, '.')
-  axs[1, 1].set_xlabel('connection #')
-  axs[1, 1].set_ylabel('activation freq')
-  plt.tight_layout()
-
-  if saveFigPrefix is not None:
-    plt.savefig('figures/{}_network_stats.pdf'.format(saveFigPrefix))
-
-
-def calculateEntropy(activeColumns):
-  MIN_ACTIVATION_PROB = 0.000001
-  activationProb = np.mean(activeColumns, 0)
-  activationProb[activationProb < MIN_ACTIVATION_PROB] = MIN_ACTIVATION_PROB
-  activationProb = activationProb / np.sum(activationProb)
-
-  entropy = -np.dot(activationProb, np.log2(activationProb))
-  return entropy
-
-
-
-def plotReceptiveFields(sp, nDim1=8, nDim2=8):
-  """
-  Plot 2D receptive fields for 16 randomly selected columns
-  :param sp:
-  :return:
-  """
-  fig, ax = plt.subplots(nrows=4, ncols=4)
-  for rowI in range(4):
-    for colI in range(4):
-      col = np.random.randint(columnNumber)
-      connectedSynapses = np.zeros((inputSize,), dtype=uintType)
-      sp.getConnectedSynapses(col, connectedSynapses)
-      receptiveField = connectedSynapses.reshape((nDim1, nDim2))
-      ax[rowI, colI].imshow(receptiveField, cmap='gray')
-      ax[rowI, colI].set_title("col: {}".format(col))
-
-
-def calculateInputOverlapMat(inputVectors, sp):
-  numColumns = np.product(sp.getColumnDimensions())
-  numInputVector, inputSize = inputVectors.shape
-  overlapMat = np.zeros((numColumns, numInputVector))
-  for c in range(numColumns):
-    connectedSynapses = np.zeros((inputSize, ), dtype=uintType)
-    sp.getConnectedSynapses(c, connectedSynapses)
-    for i in range(numInputVector):
-      overlapMat[c, i] = percentOverlap(connectedSynapses, inputVectors[i, :])
-  return overlapMat
-
+    raise ValueError('unknown data type')
+  return params
 
 
 def analyzeReceptiveFieldSparseInputs(inputVectors, sp):
@@ -414,6 +213,25 @@ def plotReceptiveFields2D(sp, Nx, Ny):
 
 
 
+def plotReceptiveFields(sp, nDim1=8, nDim2=8):
+  """
+  Plot 2D receptive fields for 16 randomly selected columns
+  :param sp:
+  :return:
+  """
+  columnNumber = np.product(sp.getColumnDimensions())
+  fig, ax = plt.subplots(nrows=4, ncols=4)
+  for rowI in range(4):
+    for colI in range(4):
+      col = np.random.randint(columnNumber)
+      connectedSynapses = np.zeros((inputSize,), dtype=uintType)
+      sp.getConnectedSynapses(col, connectedSynapses)
+      receptiveField = connectedSynapses.reshape((nDim1, nDim2))
+      ax[rowI, colI].imshow(receptiveField, cmap='gray')
+      ax[rowI, colI].set_title("col: {}".format(col))
+
+
+
 def _getArgs():
   parser = OptionParser(usage="Train HTM Spatial Pooler")
   parser.add_option("-d",
@@ -445,14 +263,35 @@ def _getArgs():
                     dest="classification",
                     help="Whether to run classification experiment")
 
+  parser.add_option("--spatialImp",
+                    type=str,
+                    default="cpp",
+                    dest="spatialImp",
+                    help="spatial pooler implementations: py, c++, or "
+                         "monitored_sp")
+
+  parser.add_option("--trackOverlapCurve",
+                    type=int,
+                    default=0,
+                    dest="trackOverlapCurve",
+                    help="whether to track overlap curve during learning")
+
   (options, remainder) = parser.parse_args()
   print options
-
   return options, remainder
 
 
 
-def plotBoostTrace(sp, inputVectors):
+def plotBoostTrace(sp, inputVectors, columnIndex):
+  """
+  Plot boostfactor for a selected column
+
+  Note that learning is ON for SP here
+
+  :param sp: sp instance
+  :param inputVectors: input data
+  :param columnIndex: index for the column of interest
+  """
   numInputVector, inputSize = inputVectors.shape
   columnNumber = np.prod(sp.getColumnDimensions())
   boostFactorsTrace = np.zeros((columnNumber, numInputVector))
@@ -461,7 +300,7 @@ def plotBoostTrace(sp, inputVectors):
   for i in range(numInputVector):
     outputColumns = np.zeros(sp.getColumnDimensions(), dtype=uintType)
     inputVector = copy.deepcopy(inputVectors[i][:])
-    sp.compute(inputVector, learn, outputColumns)
+    sp.compute(inputVector, True, outputColumns)
 
     boostFactors = np.zeros((columnNumber, ), dtype=realDType)
     sp.getBoostFactors(boostFactors)
@@ -475,14 +314,13 @@ def plotBoostTrace(sp, inputVectors):
     sp.getMinActiveDutyCycles(minActiveDutyCycle)
     minActiveDutyCycleTrace[:, i] = minActiveDutyCycle
 
-  c = 103
   plt.figure()
   plt.subplot(2, 1, 1)
-  plt.plot(boostFactorsTrace[c, :])
+  plt.plot(boostFactorsTrace[columnIndex, :])
   plt.ylabel('Boost Factor')
   plt.subplot(2, 1, 2)
-  plt.plot(activeDutyCycleTrace[c, :])
-  plt.plot(minActiveDutyCycleTrace[c, :])
+  plt.plot(activeDutyCycleTrace[columnIndex, :])
+  plt.plot(minActiveDutyCycleTrace[columnIndex, :])
   plt.xlabel(' Time ')
   plt.ylabel('Active Duty Cycle')
 
@@ -507,57 +345,54 @@ def plotPermInfo(permInfo):
 
 
 
+def plotAccuracyVsNoise(noiseLevelList, predictionAccuracy):
+  plt.figure()
+  plt.plot(noiseLevelList, predictionAccuracy, '-o')
+  plt.ylim([0, 1.05])
+  plt.xlabel('Noise level')
+  plt.ylabel('Prediction Accuracy')
+
+
+
+def plotSPstatsOverTime(numConnectedSynapsesTrace,
+                        numNewlyConnectedSynapsesTrace,
+                        numEliminatedSynapsesTrace,
+                        stabilityTrace,
+                        entropyTrace,
+                        fileName=None):
+  fig, axs = plt.subplots(nrows=5, ncols=1, sharex=True)
+
+  axs[0].plot(numConnectedSynapsesTrace)
+  axs[0].set_ylabel('Syn #')
+
+  axs[1].plot(numNewlyConnectedSynapsesTrace)
+  axs[1].set_ylabel('New Syn #')
+
+  axs[2].plot(numEliminatedSynapsesTrace)
+  axs[2].set_ylabel('Remove Syns #')
+
+  axs[3].plot(stabilityTrace)
+  axs[3].set_ylabel('Stability')
+
+  axs[4].plot(entropyTrace)
+  axs[4].set_ylabel('entropy (bits)')
+  axs[4].set_xlabel('epochs')
+  if fileName is not None:
+    plt.savefig(fileName)
+
+
+
 if __name__ == "__main__":
   plt.close('all')
-
-  trackOverlapCurveOverTraining = False
 
   (_options, _args) = _getArgs()
   inputVectorType = _options.dataSet
   numEpochs = _options.numEpochs
   classification = _options.classification
+  spatialImp = _options.spatialImp
+  trackOverlapCurveOverTraining = _options.trackOverlapCurve
 
-  if inputVectorType == 'randomSDR':
-    params = {'dataType': 'randomSDR',
-              'numInputVectors': 100,
-              'inputSize': 1024,
-              'numActiveInputBits': 20,
-              'seed': 41}
-  elif inputVectorType == 'dense':
-    params = {'dataType': 'denseVectors',
-              'numInputVectors': 100,
-              'inputSize': 1024,
-              'seed': 41}
-  elif inputVectorType == 'correlatedSDRPairs':
-    params = {'dataType': 'correlatedSDRPairs',
-              'numInputVectors': 100,
-              'inputSize': 1024,
-              'numInputVectorPerSensor': 50,
-              'corrStrength': 0.5,
-              'numActiveInputBits': 20,
-              'seed': 41}
-  elif inputVectorType == 'randomBarPairs':
-    params = {'dataType': 'randomBarPairs',
-              'numInputVectors': 100,
-              'nX': 20,
-              'nY': 20,
-              'barHalfLength': 3,
-              'seed': 41}
-  elif inputVectorType == 'randomCross':
-    params = {'dataType': 'randomCross',
-              'numInputVectors': 100,
-              'nX': 20,
-              'nY': 20,
-              'barHalfLength': 3,
-              'seed': 41}
-  elif inputVectorType == 'nyc_taxi':
-    params = {'dataType': 'nyc_taxi',
-              'n': 109,
-              'w': 21,
-              'minval': 0,
-              'maxval': 40000}
-  else:
-    raise ValueError('unknown data type')
+  params = getSDRDataSetParams(inputVectorType)
 
   sdrData = SDRDataSet(params)
 
@@ -568,14 +403,13 @@ if __name__ == "__main__":
   print "Training Data Size {} Dimensions {}".format(numInputVector, inputSize)
 
   spParams = getSpatialPoolerParams(inputSize, _options.boosting)
-  sp = createSpatialPooler('monitored_sp', spParams)
+  sp = createSpatialPooler(spatialImp, spParams)
   columnNumber = np.prod(sp.getColumnDimensions())
 
-  inspectSpatialPoolerStats(sp, inputVectors, inputVectorType+"beforeTraining")
+  expName = "dataType_{}_boosting_{}".format(inputVectorType, _options.boosting)
+  # inspect SP stats before learning
+  inspectSpatialPoolerStats(sp, inputVectors, expName+"beforeTraining")
 
-  if inputVectorType == "sparse":
-    analyzeReceptiveFieldSparseInputs(inputVectors, sp)
-    plt.savefig('figures/{}_inputOverlap_before_learning.pdf'.format(inputVectorType))
 
   # classification Accuracy before training
   if classification:
@@ -596,19 +430,19 @@ if __name__ == "__main__":
   entropyTrace = []
   meanBoostFactorTrace = []
 
-
   if trackOverlapCurveOverTraining:
     fig, ax = plt.subplots()
     cmap = cm.get_cmap('jet')
 
-  sp.mmClearHistory()
+  if spatialImp == "monitored_sp":
+    sp.mmClearHistory()
 
   for epoch in range(numEpochs):
     print "training SP epoch {}".format(epoch)
     # calcualte overlap curve here
     if epoch % 50 == 0 and trackOverlapCurveOverTraining:
       inputOverlapScore, outputOverlapScore = calculateOverlapCurve(
-        sp, inputVectors, inputVectorType)
+        sp, inputVectors)
       plt.plot(np.mean(inputOverlapScore, 0), np.mean(outputOverlapScore, 0),
                color=cmap(float(epoch) / numEpochs))
 
@@ -658,9 +492,11 @@ if __name__ == "__main__":
       numEliminatedSynapses[numEliminatedSynapses < 0] = 0
       numEliminatedSynapsesTrace.append(np.sum(numEliminatedSynapses))
 
-  columnIndex = 240
-  permInfo = sp.recoverPermanence(columnIndex)
-  plotPermInfo(permInfo)
+  if spatialImp == "monitored_sp":
+    # plot permanence for a single column when monitored sp is used
+    columnIndex = 240
+    permInfo = sp.recoverPermanence(columnIndex)
+    plotPermInfo(permInfo)
 
   if trackOverlapCurveOverTraining:
     plt.xlabel('Input overlap')
@@ -675,50 +511,40 @@ if __name__ == "__main__":
     cbar = fig.colorbar(im, cax=cax, orientation='horizontal',
                         ticks=[0, 400, 800])
     plt.close(fig2)
-    plt.savefig('figures/overlap_over_training_{}_.pdf'.format(inputVectorType))
+    plt.savefig('figures/overlap_over_training_{}_.pdf'.format(expName))
 
   # plot stats over training
-  fig, axs = plt.subplots(nrows=5, ncols=1, sharex=True)
-
-  axs[0].plot(numConnectedSynapsesTrace)
-  axs[0].set_ylabel('Syn #')
-
-  axs[1].plot(numNewlyConnectedSynapsesTrace)
-  axs[1].set_ylabel('New Syn #')
-
-  axs[2].plot(numEliminatedSynapsesTrace)
-  axs[2].set_ylabel('Remove Syns #')
-
-  axs[3].plot(stabilityTrace)
-  axs[3].set_ylabel('Stability')
-
-  axs[4].plot(entropyTrace)
-  axs[4].set_ylabel('entropy (bits)')
-  axs[4].set_xlabel('epochs')
-  plt.savefig('figures/network_stats_over_training_{}.pdf'.format(inputVectorType))
+  fileName = 'figures/network_stats_over_training_{}.pdf'.format(expName)
+  plotSPstatsOverTime(numConnectedSynapsesTrace,
+                      numNewlyConnectedSynapsesTrace,
+                      numEliminatedSynapsesTrace,
+                      stabilityTrace,
+                      entropyTrace,
+                      fileName)
 
   # inspect SP again
-  inspectSpatialPoolerStats(sp, inputVectors, inputVectorType+"afterTraining")
+  inspectSpatialPoolerStats(sp, inputVectors, expName+"afterTraining")
+
   if classification:
     # classify SDRs with noise
     noiseLevelList = np.linspace(0, 1.0, 21)
     accuracyAfterTraining = classificationAccuracyVsNoise(
       sp, inputVectors, noiseLevelList)
-  #
-  # plt.figure()
-  # plt.plot(noiseLevelList, accuracyBeforeTraining, 'r-x')
-  # plt.plot(noiseLevelList, accuracyAfterTraining, 'b-o')
-  # plt.plot(noiseLevelList, accuracyWithoutSP, 'k--')
-  # plt.ylim([0, 1.05])
-  # plt.legend(['Before Training', 'After Training'], loc=3)
-  # plt.xlabel('Noise level')
-  # plt.ylabel('Classification Accuracy')
-  # plt.savefig('figures/noise_robustness_{}_.pdf'.format(inputVectorType))
+
+    plt.figure()
+    plt.plot(noiseLevelList, accuracyBeforeTraining, 'r-x')
+    plt.plot(noiseLevelList, accuracyAfterTraining, 'b-o')
+    plt.plot(noiseLevelList, accuracyWithoutSP, 'k--')
+    plt.ylim([0, 1.05])
+    plt.legend(['Before Training', 'After Training'], loc=3)
+    plt.xlabel('Noise level')
+    plt.ylabel('Classification Accuracy')
+    plt.savefig('figures/noise_robustness_{}_.pdf'.format(expName))
 
   # analyze RF properties
   if inputVectorType == "randomSDR":
     analyzeReceptiveFieldSparseInputs(inputVectors, sp)
-    plt.savefig('figures/{}_inputOverlap_after_learning.pdf'.format(inputVectorType))
+    plt.savefig('figures/{}_inputOverlap_after_learning.pdf'.format(expName))
   elif inputVectorType == 'correlate-input':
     additionalInfo = sdrData.getAdditionalInfo()
     inputVectors1 = additionalInfo["inputVectors1"]
@@ -727,7 +553,7 @@ if __name__ == "__main__":
     analyzeReceptiveFieldCorrelatedInputs(
       inputVectors, sp, params, inputVectors1, inputVectors2)
     plt.savefig(
-      'figures/{}_inputOverlap_after_learning.pdf'.format(inputVectorType))
+      'figures/{}_inputOverlap_after_learning.pdf'.format(expName))
   elif inputVectorType == "randomBarPairs" or inputVectorType == "randomCross":
     plotReceptiveFields2D(sp, params['nX'], params['nY'])
 

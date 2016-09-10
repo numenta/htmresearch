@@ -157,6 +157,60 @@ def accuracy(current, predicted):
   return acc   
 
 
+def sampleCellsRandom(numCellPairs, cellsPerColumn, numColumns, seed=42):
+  """
+  Generate indices of cell pairs randomly
+  @return cellPairs (list) list of cell pairs
+  """
+  np.random.seed(seed)
+  cellPairs = []
+  for i in range(numCellPairs):
+    randCols = np.random.choice(np.arange(numColumns), (2, ), replace=True)
+    randCells = np.random.choice(np.arange(cellsPerColumn), (2, ), replace=True)
+
+    cellsPair = np.zeros((2, ))
+    for j in range(2):
+      cellsPair[j] = randCols[j] * cellsPerColumn + randCells[j]
+    cellPairs.append(cellsPair.astype('int32'))
+  return cellPairs
+
+
+def sampleCellsWithinColumns(numCellPairs, cellsPerColumn, numColumns, seed=42):
+  """
+  Generate indices of cell pairs, each pair of cells are from the same column
+  @return cellPairs (list) list of cell pairs
+  """
+  np.random.seed(seed)
+  cellPairs = []
+  for i in range(numCellPairs):
+    randCol = np.random.randint(numColumns)
+    randCells = np.random.choice(np.arange(cellsPerColumn), (2, ), replace=False)
+
+    cellsPair = randCol * cellsPerColumn + randCells
+    cellPairs.append(cellsPair)
+  return cellPairs
+
+
+
+def sampleCellsAcrossColumns(numCellPairs, cellsPerColumn, numColumns, seed=42):
+  """
+  Generate indices of cell pairs, each pair of cells are from different column
+  @return cellPairs (list) list of cell pairs
+  """
+  np.random.seed(seed)
+  cellPairs = []
+  for i in range(numCellPairs):
+    randCols = np.random.choice(np.arange(numColumns), (2, ), replace=False)
+    randCells = np.random.choice(np.arange(cellsPerColumn), (2, ), replace=False)
+
+    cellsPair = np.zeros((2, ))
+    for j in range(2):
+      cellsPair[j] = randCols[j] * cellsPerColumn + randCells[j]
+    cellPairs.append(cellsPair.astype('int32'))
+  return cellPairs
+
+
+
 def subSample(spikeTrains, numCells, totalCells, currentTS):
   """
   Obtains a random sample of cells from the whole spike train matrix consisting of numCells cells
