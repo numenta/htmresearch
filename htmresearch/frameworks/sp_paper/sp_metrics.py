@@ -173,10 +173,11 @@ def classificationAccuracyVsNoise(sp, inputVectors, noiseLevelList):
   :return:
   """
   numInputVector, inputSize = inputVectors.shape
-  columnNumber = np.prod(sp.getColumnDimensions())
+
   if sp is None:
     targetOutputColumns = copy.deepcopy(inputVectors)
   else:
+    columnNumber = np.prod(sp.getColumnDimensions())
     # calculate target output given the uncorrupted input vectors
     targetOutputColumns = np.zeros((numInputVector, columnNumber),
                                    dtype=uintType)
@@ -253,7 +254,8 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
 
   if saveFigPrefix is not None:
     plt.savefig('figures/{}_network_stats.pdf'.format(saveFigPrefix))
-    plt.close(fig)
+
+
 
 def calculateEntropy(activeColumns):
   """
@@ -281,3 +283,5 @@ def calculateInputOverlapMat(inputVectors, sp):
     for i in range(numInputVector):
       overlapMat[c, i] = percentOverlap(connectedSynapses, inputVectors[i, :])
   return overlapMat
+
+
