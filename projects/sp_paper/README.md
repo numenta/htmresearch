@@ -2,6 +2,8 @@ Spatial Pooler Research
 =======================
 
 This repository contains research scripts for the HTM spatial pooler (SP).
+The goal is to demonstrate various computational properties of SP with
+artificial and real dataset.
 
 # SP metrics
 
