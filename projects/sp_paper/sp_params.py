@@ -49,7 +49,7 @@ spParamWithBoosting = {
   "minPctOverlapDutyCycle": 0.0,
   "minPctActiveDutyCycle": 0.001,
   "dutyCyclePeriod": 1000,
-  "maxBoost": 5.0,
+  "maxBoost": 20.0,
   "seed": 1936
 }
 
@@ -57,7 +57,7 @@ spParamWithBoosting = {
 spParamTopologyWithBoosting = {
   "inputDimensions": (32, 32),
   "columnDimensions": (32, 32),
-  "potentialRadius": 5,
+  "potentialRadius": 20,
   "potentialPct": .8,
   "globalInhibition": False,
   "numActiveColumnsPerInhArea": -1,
