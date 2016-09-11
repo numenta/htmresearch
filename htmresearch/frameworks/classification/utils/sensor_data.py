@@ -316,7 +316,11 @@ def binary_signal_generator(writer,
         m1 = random.random() * signalAmplitude
         writer.writerow([t, m1, 0])
 
-    if periodCounter[label - 1] == label + 1:
+    amplitude_modifier = float(label) ** 2
+    m1 = amplitude_modifier * signalMean + signalAmplitude * sig + noise
+    writer.writerow([i, m1, label])
+
+    if periodCounter[label - 1] == label-1:
       periodCounter = [0 for _ in range(numCategories)]
       if sig == 0:
         sig = 1
@@ -324,11 +328,6 @@ def binary_signal_generator(writer,
         sig = 0
     else:
       periodCounter[label - 1] += 1
-
-    amplitude_modifier = float(label) ** 2
-    m1 = amplitude_modifier * signalMean + signalAmplitude * sig + noise
-
-    writer.writerow([i, m1, label])
 
   assert offset == (numReps * numPhases * numCategories - 1) * noiseLength
   return sequenceLength, numPoints

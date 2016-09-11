@@ -271,57 +271,279 @@ class ColumnPoolerTest(unittest.TestCase):
                      "Inference on pattern after learning it is incorrect")
 
 
-  def testPickProximalInputsToLearnOn(self):
-    """Test _pickProximalInputsToLearnOn method"""
+  def testProximalLearning_Growth_MaxNewSynapseCount(self):
+    """
+    When the number of available active input bits is = maxNewSynapseCount,
+    cells should grow synapses to every active input bit.
 
-    pooler = self._initializeDefaultPooler()
+    """
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      numActiveColumnsPerInhArea=12,
+      initialProximalPermanence=0.60,
+      connectedPermanence=0.50,
+      maxNewSynapseCount=10,
+    )
 
-    proximalPermanences = pooler.proximalPermanences
-    a = numpy.zeros(pooler.inputWidth, dtype=realDType)
-    a[0:10] = 0.21
-    proximalPermanences.setRowFromDense(42, a)
+    feedforwardInput = set(range(10))
 
-    cellNonZeros42,_ = proximalPermanences.rowNonZeros(42)
-    cellNonZeros100,_ = proximalPermanences.rowNonZeros(100)
+    pooler.compute(feedforwardInput, learn=True)
 
-    # With no existing synapses, and number of inputs = newSynapseCount, should
-    # return the full list
-    inputs,existing = pooler._pickProximalInputsToLearnOn(newSynapseCount=10,
-                                        activeInputs=set(range(10)),
-                                        cellNonZeros=cellNonZeros100)
-    self.assertEqual(sum(inputs), 45, "Did not select correct inputs")
-    self.assertEqual(len(existing), 0, "Did not return correct existing inputs")
+    activeCells = pooler.getActiveCells()
+    self.assertEqual(len(activeCells), 12)
 
-    # With no existing synapses, and number of inputs < newSynapseCount, should
-    # return all inputs as synapses
-    inputs,existing = pooler._pickProximalInputsToLearnOn(newSynapseCount=11,
-                                        activeInputs=set(range(10)),
-                                        cellNonZeros=cellNonZeros100)
-    self.assertEqual(sum(inputs), 45, "Did not select correct inputs")
-    self.assertEqual(len(existing), 0, "Did not return correct existing inputs")
+    for cell in activeCells:
+      self.assertEqual(pooler.numberOfSynapses([cell]), 10,
+                       "Should connect to every active input bit.")
+      self.assertEqual(pooler.numberOfConnectedSynapses([cell]), 10,
+                       "Each synapse should be marked as connected.")
 
-    # With no existing synapses, and number of inputs > newSynapseCount
-    # should return newSynapseCount indices
-    inputs,existing = pooler._pickProximalInputsToLearnOn(newSynapseCount=9,
-                                        activeInputs=set(range(10)),
-                                        cellNonZeros=cellNonZeros100)
-    self.assertEqual(len(inputs), 9, "Did not select correct inputs")
-    self.assertEqual(len(existing), 0, "Did not return correct existing inputs")
+      (presynapticCells,
+       permanences) = pooler.proximalPermanences.rowNonZeros(cell)
 
-    # With existing inputs to [0..9], should return [10..19]
-    inputs,existing = pooler._pickProximalInputsToLearnOn(newSynapseCount=10,
-                                        activeInputs=set(range(20)),
-                                        cellNonZeros=cellNonZeros42)
-    self.assertEqual(sum(inputs), 145, "Did not select correct inputs")
-    self.assertEqual(sum(existing), 45, "Did not return correct existing inputs")
+      self.assertEqual(set(presynapticCells), feedforwardInput,
+                       "Should connect to every active input bit.")
+      for perm in permanences:
+        self.assertAlmostEqual(perm, 0.60,
+                               msg="Should use 'initialProximalPermanence'.")
 
-    # With existing inputs to [0..9], and active inputs [0..9] should
-    # return none
-    inputs,existing = pooler._pickProximalInputsToLearnOn(newSynapseCount=10,
-                                        activeInputs=set(range(10)),
-                                        cellNonZeros=cellNonZeros42)
-    self.assertEqual(len(inputs), 0, "Did not select correct inputs")
-    self.assertEqual(sum(existing), 45, "Did not return correct existing inputs")
+
+  def testProximalLearning_Growth_FewActiveInputBits(self):
+    """
+    When the number of available active input bits is < maxNewSynapseCount,
+    cells should grow synapses to every active input bit.
+
+    """
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      numActiveColumnsPerInhArea=12,
+      initialProximalPermanence=0.60,
+      connectedPermanence=0.50,
+      maxNewSynapseCount=10,
+    )
+
+    feedforwardInput = set(range(9))
+
+    pooler.compute(feedforwardInput, learn=True)
+
+    activeCells = pooler.getActiveCells()
+    self.assertEqual(len(activeCells), 12)
+
+    for cell in activeCells:
+      self.assertEqual(pooler.numberOfSynapses([cell]), 9,
+                       "Should connect to every active input bit.")
+      self.assertEqual(pooler.numberOfConnectedSynapses([cell]), 9,
+                       "Each synapse should be marked as connected.")
+
+      (presynapticCells,
+       permanences) = pooler.proximalPermanences.rowNonZeros(cell)
+
+      self.assertEqual(set(presynapticCells), feedforwardInput,
+                       "Should connect to every active input bit.")
+      for perm in permanences:
+        self.assertAlmostEqual(perm, 0.60,
+                               msg="Should use 'initialProximalPermanence'.")
+
+
+  def testProximalLearning_Growth_ManyActiveInputBits(self):
+    """
+    When the number of available active input bits is > maxNewSynapseCount,
+    each cell should grow 'maxNewSynapseCount' synapses.
+
+    """
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      numActiveColumnsPerInhArea=12,
+      initialProximalPermanence=0.60,
+      connectedPermanence=0.50,
+      maxNewSynapseCount=10,
+    )
+
+    feedforwardInput = set(range(11))
+
+    pooler.compute(feedforwardInput, learn=True)
+
+    activeCells = pooler.getActiveCells()
+    self.assertEqual(len(activeCells), 12)
+
+    for cell in activeCells:
+      self.assertEqual(pooler.numberOfSynapses([cell]), 10,
+                       "Should connect to every active input bit.")
+      self.assertEqual(pooler.numberOfConnectedSynapses([cell]), 10,
+                       "Each synapse should be marked as connected.")
+
+      (presynapticCells,
+       permanences) = pooler.proximalPermanences.rowNonZeros(cell)
+
+      self.assertTrue(set(presynapticCells).issubset(feedforwardInput),
+                      "Should connect to a subset of the active input bits.")
+      for perm in permanences:
+        self.assertAlmostEqual(perm, 0.60,
+                               msg="Should use 'initialProximalPermanence'.")
+
+
+  def testProximalLearning_SubsequentGrowth(self):
+    """
+    When all of the active input bits are synapsed, don't grow new synapses.
+    When some of them are not synapsed, grow new synapses to them.
+
+    """
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      numActiveColumnsPerInhArea=12,
+      synPermProximalInc=0.0,
+      synPermProximalDec=0.0,
+      initialProximalPermanence=0.60,
+      connectedPermanence=0.50,
+      maxNewSynapseCount=10,
+    )
+
+    # Grow synapses.
+    pooler.compute(set(range(10)), learn=True)
+    for cell in pooler.getActiveCells():
+      self.assertEqual(pooler.numberOfSynapses([cell]), 10,
+                       "Should connect to every active input bit.")
+
+    # Given the same input, no new synapses should form.
+    pooler.compute(set(range(10)), learn=True)
+    for cell in pooler.getActiveCells():
+      self.assertEqual(pooler.numberOfSynapses([cell]), 10,
+                       "No new synapses should form.")
+
+    # Given a superset of the input, some new synapses should form.
+    pooler.compute(set(range(20)), learn=True)
+    for cell in pooler.getActiveCells():
+      self.assertEqual(pooler.numberOfSynapses([cell]), 20,
+                       "Should connect to the new active input bits.")
+      self.assertEqual(pooler.numberOfConnectedSynapses([cell]), 20,
+                       "Each synapse should be marked as connected.")
+
+
+  def testProximalLearning_InitiallyDisconnected(self):
+    """
+    If the initialProximalPermanence is below the connectedPermanence, new
+    synapses should not be marked as connected.
+
+    """
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      numActiveColumnsPerInhArea=12,
+      initialProximalPermanence=0.45,
+      connectedPermanence=0.50,
+      maxNewSynapseCount=10,
+    )
+
+    feedforwardInput = set(range(10))
+
+    pooler.compute(feedforwardInput, learn=True)
+
+    activeCells = pooler.getActiveCells()
+    self.assertEqual(len(activeCells), 12)
+
+    for cell in activeCells:
+      self.assertEqual(pooler.numberOfSynapses([cell]), 10,
+                       "Should connect to every active input bit.")
+      self.assertEqual(pooler.numberOfConnectedSynapses([cell]), 0,
+                       "The synapses shouldn't have a high enough permanence"
+                       " to be connected.")
+
+
+  def testProximalLearning_ReinforceExisting(self):
+    """
+    When a cell has a synapse to an active input bit, increase its permanence by
+    'synPermProximalInc'.
+
+    """
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      numActiveColumnsPerInhArea=12,
+      synPermProximalInc=0.1,
+      synPermProximalDec=0.0,
+      initialProximalPermanence=0.45,
+      connectedPermanence=0.50,
+      maxNewSynapseCount=10,
+    )
+
+    # Grow some synapses.
+    pooler.compute(set(range(0, 10)), learn=True)
+    pooler.compute(set(range(10, 20)), learn=True)
+
+    # Reinforce some of them.
+    pooler.compute(set(range(0, 15)), learn=True)
+
+    activeCells = pooler.getActiveCells()
+    self.assertEqual(len(activeCells), 12)
+
+    for cell in activeCells:
+      self.assertEqual(pooler.numberOfSynapses([cell]), 20,
+                       "Should connect to every active input bit.")
+      self.assertEqual(pooler.numberOfConnectedSynapses([cell]), 15,
+                       "Each reinforced synapse should be marked as connected.")
+
+      (presynapticCells,
+       permanences) = pooler.proximalPermanences.rowNonZeros(cell)
+
+      d = dict(zip(presynapticCells, permanences))
+      for presynapticCell in xrange(0, 15):
+        perm = d[presynapticCell]
+        self.assertAlmostEqual(
+          perm, 0.55,
+          msg=("Should have permanence of 'initialProximalPermanence'"
+               " + 'synPermProximalInc'."))
+      for presynapticCell in xrange(15, 20):
+        perm = d[presynapticCell]
+        self.assertAlmostEqual(
+          perm, 0.45,
+          msg="Should have permanence of 'initialProximalPermanence'")
+
+
+  def testProximalLearning_PunishExisting(self):
+    """
+    When a cell has a synapse to an inactive input bit, decrease its permanence
+    by 'synPermProximalDec'.
+
+    """
+    pooler = ColumnPooler(
+      inputWidth=2048 * 8,
+      numActiveColumnsPerInhArea=12,
+      synPermProximalInc=0.0,
+      synPermProximalDec=0.1,
+      initialProximalPermanence=0.55,
+      connectedPermanence=0.50,
+      maxNewSynapseCount=10,
+    )
+
+    # Grow some synapses.
+    pooler.compute(set(range(0, 10)), learn=True)
+
+    # Punish some of them.
+    pooler.compute(set(range(0, 5)), learn=True)
+
+    activeCells = pooler.getActiveCells()
+    self.assertEqual(len(activeCells), 12)
+
+    for cell in activeCells:
+      self.assertEqual(pooler.numberOfSynapses([cell]), 10,
+                       "Should connect to every active input bit.")
+      self.assertEqual(pooler.numberOfConnectedSynapses([cell]), 5,
+                       "Each punished synapse should no longer be marked as"
+                       " connected.")
+
+      (presynapticCells,
+       permanences) = pooler.proximalPermanences.rowNonZeros(cell)
+
+      d = dict(zip(presynapticCells, permanences))
+      for presynapticCell in xrange(0, 5):
+        perm = d[presynapticCell]
+        self.assertAlmostEqual(
+          perm, 0.55,
+          msg="Should have permanence of 'initialProximalPermanence'")
+      for presynapticCell in xrange(5, 10):
+        perm = d[presynapticCell]
+        self.assertAlmostEqual(
+          perm, 0.45,
+          msg=("Should have permanence of 'initialProximalPermanence'"
+               " - 'synPermProximalDec'."))
 
 
   def testLearnProximal(self):

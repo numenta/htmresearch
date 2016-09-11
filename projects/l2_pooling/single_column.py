@@ -19,7 +19,7 @@
 # ----------------------------------------------------------------------
 
 """
-This file creates simple experiment to test a single column L4-L2 network.
+This file creates simple experiments to test a single column L4-L2 network.
 """
 
 from htmresearch.frameworks.layers.object_machine_factory import (

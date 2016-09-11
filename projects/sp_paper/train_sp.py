@@ -66,7 +66,7 @@ def createSpatialPooler(spatialImp, spatialPoolerParameters):
 
 
 def getSpatialPoolerParams(inputSize, boosting=False):
-  if boosting is False:
+  if boosting == 0:
     from sp_params import spParamNoBoosting as spatialPoolerParameters
   else:
     from sp_params import spParamWithBoosting as spatialPoolerParameters
@@ -78,6 +78,51 @@ def getSpatialPoolerParams(inputSize, boosting=False):
   pprint.pprint(spatialPoolerParameters)
   return spatialPoolerParameters
 
+
+
+def getSDRDataSetParams(inputVectorType):
+  if inputVectorType == 'randomSDR':
+    params = {'dataType': 'randomSDR',
+              'numInputVectors': 100,
+              'inputSize': 1024,
+              'numActiveInputBits': 20,
+              'seed': 41}
+  elif inputVectorType == 'dense':
+    params = {'dataType': 'denseVectors',
+              'numInputVectors': 100,
+              'inputSize': 1024,
+              'seed': 41}
+  elif inputVectorType == 'correlatedSDRPairs':
+    params = {'dataType': 'correlatedSDRPairs',
+              'numInputVectors': 100,
+              'inputSize': 1024,
+              'numInputVectorPerSensor': 50,
+              'corrStrength': 0.5,
+              'numActiveInputBits': 20,
+              'seed': 41}
+  elif inputVectorType == 'randomBarPairs':
+    params = {'dataType': 'randomBarPairs',
+              'numInputVectors': 100,
+              'nX': 20,
+              'nY': 20,
+              'barHalfLength': 3,
+              'seed': 41}
+  elif inputVectorType == 'randomCross':
+    params = {'dataType': 'randomCross',
+              'numInputVectors': 100,
+              'nX': 20,
+              'nY': 20,
+              'barHalfLength': 3,
+              'seed': 41}
+  elif inputVectorType == 'nyc_taxi':
+    params = {'dataType': 'nyc_taxi',
+              'n': 109,
+              'w': 21,
+              'minval': 0,
+              'maxval': 40000}
+  else:
+    raise ValueError('unknown data type')
+  return params
 
 
 def analyzeReceptiveFieldSparseInputs(inputVectors, sp):
@@ -218,13 +263,35 @@ def _getArgs():
                     dest="classification",
                     help="Whether to run classification experiment")
 
+  parser.add_option("--spatialImp",
+                    type=str,
+                    default="cpp",
+                    dest="spatialImp",
+                    help="spatial pooler implementations: py, c++, or "
+                         "monitored_sp")
+
+  parser.add_option("--trackOverlapCurve",
+                    type=int,
+                    default=0,
+                    dest="trackOverlapCurve",
+                    help="whether to track overlap curve during learning")
+
   (options, remainder) = parser.parse_args()
   print options
   return options, remainder
 
 
 
-def plotBoostTrace(sp, inputVectors):
+def plotBoostTrace(sp, inputVectors, columnIndex):
+  """
+  Plot boostfactor for a selected column
+
+  Note that learning is ON for SP here
+
+  :param sp: sp instance
+  :param inputVectors: input data
+  :param columnIndex: index for the column of interest
+  """
   numInputVector, inputSize = inputVectors.shape
   columnNumber = np.prod(sp.getColumnDimensions())
   boostFactorsTrace = np.zeros((columnNumber, numInputVector))
@@ -233,7 +300,7 @@ def plotBoostTrace(sp, inputVectors):
   for i in range(numInputVector):
     outputColumns = np.zeros(sp.getColumnDimensions(), dtype=uintType)
     inputVector = copy.deepcopy(inputVectors[i][:])
-    sp.compute(inputVector, learn, outputColumns)
+    sp.compute(inputVector, True, outputColumns)
 
     boostFactors = np.zeros((columnNumber, ), dtype=realDType)
     sp.getBoostFactors(boostFactors)
@@ -247,14 +314,13 @@ def plotBoostTrace(sp, inputVectors):
     sp.getMinActiveDutyCycles(minActiveDutyCycle)
     minActiveDutyCycleTrace[:, i] = minActiveDutyCycle
 
-  c = 103
   plt.figure()
   plt.subplot(2, 1, 1)
-  plt.plot(boostFactorsTrace[c, :])
+  plt.plot(boostFactorsTrace[columnIndex, :])
   plt.ylabel('Boost Factor')
   plt.subplot(2, 1, 2)
-  plt.plot(activeDutyCycleTrace[c, :])
-  plt.plot(minActiveDutyCycleTrace[c, :])
+  plt.plot(activeDutyCycleTrace[columnIndex, :])
+  plt.plot(minActiveDutyCycleTrace[columnIndex, :])
   plt.xlabel(' Time ')
   plt.ylabel('Active Duty Cycle')
 
@@ -288,57 +354,45 @@ def plotAccuracyVsNoise(noiseLevelList, predictionAccuracy):
 
 
 
+def plotSPstatsOverTime(numConnectedSynapsesTrace,
+                        numNewlyConnectedSynapsesTrace,
+                        numEliminatedSynapsesTrace,
+                        stabilityTrace,
+                        entropyTrace,
+                        fileName=None):
+  fig, axs = plt.subplots(nrows=5, ncols=1, sharex=True)
+
+  axs[0].plot(numConnectedSynapsesTrace)
+  axs[0].set_ylabel('Syn #')
+
+  axs[1].plot(numNewlyConnectedSynapsesTrace)
+  axs[1].set_ylabel('New Syn #')
+
+  axs[2].plot(numEliminatedSynapsesTrace)
+  axs[2].set_ylabel('Remove Syns #')
+
+  axs[3].plot(stabilityTrace)
+  axs[3].set_ylabel('Stability')
+
+  axs[4].plot(entropyTrace)
+  axs[4].set_ylabel('entropy (bits)')
+  axs[4].set_xlabel('epochs')
+  if fileName is not None:
+    plt.savefig(fileName)
+
+
+
 if __name__ == "__main__":
   plt.close('all')
-
-  trackOverlapCurveOverTraining = False
 
   (_options, _args) = _getArgs()
   inputVectorType = _options.dataSet
   numEpochs = _options.numEpochs
   classification = _options.classification
+  spatialImp = _options.spatialImp
+  trackOverlapCurveOverTraining = _options.trackOverlapCurve
 
-  if inputVectorType == 'randomSDR':
-    params = {'dataType': 'randomSDR',
-              'numInputVectors': 100,
-              'inputSize': 1024,
-              'numActiveInputBits': 20,
-              'seed': 41}
-  elif inputVectorType == 'dense':
-    params = {'dataType': 'denseVectors',
-              'numInputVectors': 100,
-              'inputSize': 1024,
-              'seed': 41}
-  elif inputVectorType == 'correlatedSDRPairs':
-    params = {'dataType': 'correlatedSDRPairs',
-              'numInputVectors': 100,
-              'inputSize': 1024,
-              'numInputVectorPerSensor': 50,
-              'corrStrength': 0.5,
-              'numActiveInputBits': 20,
-              'seed': 41}
-  elif inputVectorType == 'randomBarPairs':
-    params = {'dataType': 'randomBarPairs',
-              'numInputVectors': 100,
-              'nX': 20,
-              'nY': 20,
-              'barHalfLength': 3,
-              'seed': 41}
-  elif inputVectorType == 'randomCross':
-    params = {'dataType': 'randomCross',
-              'numInputVectors': 100,
-              'nX': 20,
-              'nY': 20,
-              'barHalfLength': 3,
-              'seed': 41}
-  elif inputVectorType == 'nyc_taxi':
-    params = {'dataType': 'nyc_taxi',
-              'n': 109,
-              'w': 21,
-              'minval': 0,
-              'maxval': 40000}
-  else:
-    raise ValueError('unknown data type')
+  params = getSDRDataSetParams(inputVectorType)
 
   sdrData = SDRDataSet(params)
 
@@ -349,14 +403,13 @@ if __name__ == "__main__":
   print "Training Data Size {} Dimensions {}".format(numInputVector, inputSize)
 
   spParams = getSpatialPoolerParams(inputSize, _options.boosting)
-  sp = createSpatialPooler('monitored_sp', spParams)
+  sp = createSpatialPooler(spatialImp, spParams)
   columnNumber = np.prod(sp.getColumnDimensions())
 
-  inspectSpatialPoolerStats(sp, inputVectors, inputVectorType+"beforeTraining")
+  expName = "dataType_{}_boosting_{}".format(inputVectorType, _options.boosting)
+  # inspect SP stats before learning
+  inspectSpatialPoolerStats(sp, inputVectors, expName+"beforeTraining")
 
-  if inputVectorType == "sparse":
-    analyzeReceptiveFieldSparseInputs(inputVectors, sp)
-    plt.savefig('figures/{}_inputOverlap_before_learning.pdf'.format(inputVectorType))
 
   # classification Accuracy before training
   if classification:
@@ -377,12 +430,12 @@ if __name__ == "__main__":
   entropyTrace = []
   meanBoostFactorTrace = []
 
-
   if trackOverlapCurveOverTraining:
     fig, ax = plt.subplots()
     cmap = cm.get_cmap('jet')
 
-  sp.mmClearHistory()
+  if spatialImp == "monitored_sp":
+    sp.mmClearHistory()
 
   for epoch in range(numEpochs):
     print "training SP epoch {}".format(epoch)
@@ -439,9 +492,11 @@ if __name__ == "__main__":
       numEliminatedSynapses[numEliminatedSynapses < 0] = 0
       numEliminatedSynapsesTrace.append(np.sum(numEliminatedSynapses))
 
-  columnIndex = 240
-  permInfo = sp.recoverPermanence(columnIndex)
-  plotPermInfo(permInfo)
+  if spatialImp == "monitored_sp":
+    # plot permanence for a single column when monitored sp is used
+    columnIndex = 240
+    permInfo = sp.recoverPermanence(columnIndex)
+    plotPermInfo(permInfo)
 
   if trackOverlapCurveOverTraining:
     plt.xlabel('Input overlap')
@@ -456,50 +511,40 @@ if __name__ == "__main__":
     cbar = fig.colorbar(im, cax=cax, orientation='horizontal',
                         ticks=[0, 400, 800])
     plt.close(fig2)
-    plt.savefig('figures/overlap_over_training_{}_.pdf'.format(inputVectorType))
+    plt.savefig('figures/overlap_over_training_{}_.pdf'.format(expName))
 
   # plot stats over training
-  fig, axs = plt.subplots(nrows=5, ncols=1, sharex=True)
-
-  axs[0].plot(numConnectedSynapsesTrace)
-  axs[0].set_ylabel('Syn #')
-
-  axs[1].plot(numNewlyConnectedSynapsesTrace)
-  axs[1].set_ylabel('New Syn #')
-
-  axs[2].plot(numEliminatedSynapsesTrace)
-  axs[2].set_ylabel('Remove Syns #')
-
-  axs[3].plot(stabilityTrace)
-  axs[3].set_ylabel('Stability')
-
-  axs[4].plot(entropyTrace)
-  axs[4].set_ylabel('entropy (bits)')
-  axs[4].set_xlabel('epochs')
-  plt.savefig('figures/network_stats_over_training_{}.pdf'.format(inputVectorType))
+  fileName = 'figures/network_stats_over_training_{}.pdf'.format(expName)
+  plotSPstatsOverTime(numConnectedSynapsesTrace,
+                      numNewlyConnectedSynapsesTrace,
+                      numEliminatedSynapsesTrace,
+                      stabilityTrace,
+                      entropyTrace,
+                      fileName)
 
   # inspect SP again
-  inspectSpatialPoolerStats(sp, inputVectors, inputVectorType+"afterTraining")
+  inspectSpatialPoolerStats(sp, inputVectors, expName+"afterTraining")
+
   if classification:
     # classify SDRs with noise
     noiseLevelList = np.linspace(0, 1.0, 21)
     accuracyAfterTraining = classificationAccuracyVsNoise(
       sp, inputVectors, noiseLevelList)
-  #
-  # plt.figure()
-  # plt.plot(noiseLevelList, accuracyBeforeTraining, 'r-x')
-  # plt.plot(noiseLevelList, accuracyAfterTraining, 'b-o')
-  # plt.plot(noiseLevelList, accuracyWithoutSP, 'k--')
-  # plt.ylim([0, 1.05])
-  # plt.legend(['Before Training', 'After Training'], loc=3)
-  # plt.xlabel('Noise level')
-  # plt.ylabel('Classification Accuracy')
-  # plt.savefig('figures/noise_robustness_{}_.pdf'.format(inputVectorType))
+
+    plt.figure()
+    plt.plot(noiseLevelList, accuracyBeforeTraining, 'r-x')
+    plt.plot(noiseLevelList, accuracyAfterTraining, 'b-o')
+    plt.plot(noiseLevelList, accuracyWithoutSP, 'k--')
+    plt.ylim([0, 1.05])
+    plt.legend(['Before Training', 'After Training'], loc=3)
+    plt.xlabel('Noise level')
+    plt.ylabel('Classification Accuracy')
+    plt.savefig('figures/noise_robustness_{}_.pdf'.format(expName))
 
   # analyze RF properties
   if inputVectorType == "randomSDR":
     analyzeReceptiveFieldSparseInputs(inputVectors, sp)
-    plt.savefig('figures/{}_inputOverlap_after_learning.pdf'.format(inputVectorType))
+    plt.savefig('figures/{}_inputOverlap_after_learning.pdf'.format(expName))
   elif inputVectorType == 'correlate-input':
     additionalInfo = sdrData.getAdditionalInfo()
     inputVectors1 = additionalInfo["inputVectors1"]
@@ -508,7 +553,7 @@ if __name__ == "__main__":
     analyzeReceptiveFieldCorrelatedInputs(
       inputVectors, sp, params, inputVectors1, inputVectors2)
     plt.savefig(
-      'figures/{}_inputOverlap_after_learning.pdf'.format(inputVectorType))
+      'figures/{}_inputOverlap_after_learning.pdf'.format(expName))
   elif inputVectorType == "randomBarPairs" or inputVectorType == "randomCross":
     plotReceptiveFields2D(sp, params['nX'], params['nY'])
 

@@ -22,6 +22,7 @@
 
 import csv
 import json
+import sys
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -143,6 +144,9 @@ def loadTraces(fileName):
   :param fileName: (str) name of the file
   :return traces: (dict) network traces. E.g: activeCells, sensorValues, etc.
   """
+  
+  csv.field_size_limit(sys.maxsize)
+  
   with open(fileName, 'rb') as fr:
     reader = csv.reader(fr)
     headers = reader.next()
@@ -157,15 +161,15 @@ def loadTraces(fileName):
           data = []
         else:
           if headers[i] in ['step',
-                            'classificationAccuracyTrace',
-                            'sensorValueTrace',
-                            'categoryTrace',
-                            'predictedCategoryTrace',
-                            'testClassificationAccuracyTrace']:
+                            'classificationAccuracy',
+                            'sensorValue',
+                            'actualCategory',
+                            'predictedCategory',
+                            'predictedCategoryTrace']:
             data = float(row[i])
-          elif headers[i] in ['tmPredictiveActiveCellsTrace',
-                              'tpActiveCellsTrace',
-                              'tmActiveCellsTrace']:
+          elif headers[i] in ['tmPredictedActiveCells',
+                              'tpActiveCells',
+                              'tmActiveCells']:
             if row[i] == '[]':
               data = []
             else:
