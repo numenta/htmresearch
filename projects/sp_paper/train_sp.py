@@ -34,6 +34,7 @@ from nupic.research.spatial_pooler import SpatialPooler as PYSpatialPooler
 from htmresearch.frameworks.sp_paper.sp_metrics import (
   calculateEntropy, calculateInputOverlapMat, inspectSpatialPoolerStats,
   classificationAccuracyVsNoise, percentOverlap, calculateOverlapCurve,
+  calculateStability
 )
 from htmresearch.support.spatial_pooler_monitor_mixin import (
   SpatialPoolerMonitorMixin)
@@ -113,6 +114,14 @@ def getSDRDataSetParams(inputVectorType):
               'nX': 20,
               'nY': 20,
               'barHalfLength': 3,
+              'seed': 41}
+  elif inputVectorType == 'randomBarSets':
+    params = {'dataType': 'randomBarSets',
+              'numInputVectors': 100,
+              'nX': 40,
+              'nY': 40,
+              'barHalfLength': 3,
+              'numBarsPerInput': 10,
               'seed': 41}
   elif inputVectorType == 'nyc_taxi':
     params = {'dataType': 'nyc_taxi',
@@ -276,6 +285,12 @@ def _getArgs():
                     dest="trackOverlapCurve",
                     help="whether to track overlap curve during learning")
 
+  parser.add_option("--changeDataSetContinuously",
+                    type=int,
+                    default=0,
+                    dest="changeDataSetContinuously",
+                    help="whether to change data set at every epoch")
+
   (options, remainder) = parser.parse_args()
   print options
   return options, remainder
@@ -391,6 +406,7 @@ if __name__ == "__main__":
   classification = _options.classification
   spatialImp = _options.spatialImp
   trackOverlapCurveOverTraining = _options.trackOverlapCurve
+  changeDataSetContinuously = _options.changeDataSetContinuously
 
   params = getSDRDataSetParams(inputVectorType)
 
@@ -429,6 +445,7 @@ if __name__ == "__main__":
   numEliminatedSynapsesTrace = []
   entropyTrace = []
   meanBoostFactorTrace = []
+  inputOverlapWinnerTrace = []
 
   if trackOverlapCurveOverTraining:
     fig, ax = plt.subplots()
@@ -438,6 +455,12 @@ if __name__ == "__main__":
     sp.mmClearHistory()
 
   for epoch in range(numEpochs):
+    if changeDataSetContinuously:
+      params['seed'] = epoch
+      sdrData.generateInputVectors(params)
+      inputVectors = sdrData.getInputVectors()
+      numInputVector, inputSize = inputVectors.shape
+
     print "training SP epoch {}".format(epoch)
     # calcualte overlap curve here
     if epoch % 50 == 0 and trackOverlapCurveOverTraining:
@@ -449,12 +472,13 @@ if __name__ == "__main__":
     activeColumnsPreviousEpoch = copy.copy(activeColumnsCurrentEpoch)
     connectedCountsPreviousEpoch = copy.copy(connectedCounts)
 
-    # train SP here,
     # Learn is turned off at the first epoch to gather stats of untrained SP
     learn = False if epoch == 0 else True
 
     # randomize the presentation order of input vectors
     sdrOrders = np.random.permutation(np.arange(numInputVector))
+
+    # train SP here,
     for i in range(numInputVector):
       outputColumns = np.zeros(sp.getColumnDimensions(), dtype=uintType)
       inputVector = copy.deepcopy(inputVectors[sdrOrders[i]][:])
@@ -464,6 +488,12 @@ if __name__ == "__main__":
       activeColumnsCurrentEpoch[sdrOrders[i]][:] = np.reshape(outputColumns,
                                                               (1, columnNumber))
 
+      overlaps = sp.getOverlaps()
+      inputOverlapWinner = overlaps[np.where(outputColumns > 0)[0]]
+      inputOverlapWinnerTrace.append(np.mean(inputOverlapWinner))
+
+
+    # gather trace stats here
     connectedCounts = connectedCounts.astype(uintType)
     sp.getConnectedCounts(connectedCounts)
     connectedCounts = connectedCounts.astype(realDType)
@@ -476,11 +506,11 @@ if __name__ == "__main__":
 
     activeDutyCycle = np.zeros((columnNumber, ), dtype=realDType)
     sp.getActiveDutyCycles(activeDutyCycle)
+
     if epoch >= 1:
-      activeColumnsStable = np.logical_and(activeColumnsCurrentEpoch,
-                                           activeColumnsPreviousEpoch)
-      stabilityTrace.append(np.mean(np.sum(activeColumnsStable, 1))/
-                             spParams['numActiveColumnsPerInhArea'])
+      stability = calculateStability(activeColumnsCurrentEpoch,
+                                     activeColumnsPreviousEpoch)
+      stabilityTrace.append(stability)
 
       numConnectedSynapsesTrace.append(np.sum(connectedCounts))
 
@@ -501,7 +531,6 @@ if __name__ == "__main__":
   if trackOverlapCurveOverTraining:
     plt.xlabel('Input overlap')
     plt.ylabel('Output overlap')
-
     cax = fig.add_axes([0.05, 0.95, 0.4, 0.05])
 
     fig2, ax2 = plt.subplots()
@@ -554,7 +583,9 @@ if __name__ == "__main__":
       inputVectors, sp, params, inputVectors1, inputVectors2)
     plt.savefig(
       'figures/{}_inputOverlap_after_learning.pdf'.format(expName))
-  elif inputVectorType == "randomBarPairs" or inputVectorType == "randomCross":
+  elif (inputVectorType == "randomBarPairs" or
+            inputVectorType == "randomCross" or
+            inputVectorType == "randomBarSets"):
     plotReceptiveFields2D(sp, params['nX'], params['nY'])
 
 
