@@ -62,6 +62,16 @@ def generateMovingBarDataset(Nx, Ny):
                         barHalfLength=barHalfLength,
                         steps=Ny-stratNy)
     barMovies.append(barMovie)
+
+  # vertical bars
+  # stratNx = 1
+  # for startNy in range(barHalfLength, Ny-barHalfLength+1, 2):
+  #   barMovie = getMovingBar(startLocation=(startNx, stratNy),
+  #                       direction=(1, 0),
+  #                       imageSize=(Nx, Ny),
+  #                       barHalfLength=barHalfLength,
+  #                       steps=Nx-stratNx)
+  #   barMovies.append(barMovie)
   return barMovies
 
 
@@ -222,6 +232,15 @@ if __name__ == "__main__":
     randomPairs = sampleCellsRandom(numPairs, cellsPerColumn, tmNumCols)
     corrRandomPairs = calculateCorrelation(spikeTrains, randomPairs)
 
+    fig, ax = plt.subplots(2, 2)
+    ax[0, 0].hist(corrWithinColumn, range=[-.2, 1], bins=50)
+    ax[0, 0].set_title('within column')
+    ax[0, 1].hist(corrAcrossColumn, range=[-.1, .1], bins=50)
+    ax[0, 1].set_title('across column')
+    ax[1, 0].hist(corrRandomPairs, range=[-.1, .1], bins=50)
+    ax[1, 0].set_title('random pairs')
+    plt.savefig('plots/corrHist/epoch_{}.pdf'.format(epoch))
+    plt.close(fig)
     print "Within column correlation {}".format(np.nanmean(corrWithinColumn))
     print "Across column correlation {}".format(np.nanmean(corrAcrossColumn))
     print "Random Cell Pair correlation {}".format(np.nanmean(corrRandomPairs))
