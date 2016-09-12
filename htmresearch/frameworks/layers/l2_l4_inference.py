@@ -104,7 +104,7 @@ class L4L2Experiment(object):
                externalInputSize=1024,
                L2Overrides=None,
                L4Overrides=None,
-               numLearningPoints=4,
+               numLearningPoints=3,
                seed=42):
     """
     Creates the network.
