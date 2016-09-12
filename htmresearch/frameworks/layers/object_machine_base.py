@@ -79,7 +79,7 @@ class ObjectMachineBase(object):
 
 
   @abstractmethod
-  def provideObjectsToLearn(self, objectNames=None):
+  def provideObjectsToLearn(self, *args, **kwargs):
     """
     This method provides the specified objects in an acceptable form for
     experiments, for the learning part.

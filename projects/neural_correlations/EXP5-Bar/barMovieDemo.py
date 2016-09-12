@@ -1,6 +1,7 @@
+#!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -18,3 +19,26 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+
+from htmresearch.support.generate_sdr_dataset import getMovingBar
+import matplotlib.pyplot as plt
+import numpy as np
+plt.ion()
+
+if __name__ == "__main__":
+  bars = getMovingBar(startLocation=(10, 1),
+                      direction=(0, 1),
+                      imageSize=(20, 20),
+                      steps=19)
+
+  plt.figure(1)
+  i = 0
+  stop = False
+  while stop is False:
+    plt.imshow(np.transpose(bars[i]), cmap='gray')
+    plt.pause(.05)
+    i += 1
+    plt.savefig('image_{}.png'.format(i))
+    if i >= len(bars):
+      stop = True
+      # i = 0

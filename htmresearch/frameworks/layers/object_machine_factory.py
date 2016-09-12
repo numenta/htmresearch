@@ -26,6 +26,9 @@ Factory for creating object machines.
 from htmresearch.frameworks.layers.simple_object_machine import (
   SimpleObjectMachine
 )
+from htmresearch.frameworks.layers.continuous_location_object_machine import (
+  ContinuousLocationObjectMachine
+)
 
 
 
@@ -35,6 +38,7 @@ class ObjectMachineTypes(object):
   """
 
   simple = SimpleObjectMachine
+  continuous = ContinuousLocationObjectMachine
 
 
   @classmethod

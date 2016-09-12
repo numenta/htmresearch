@@ -89,7 +89,7 @@ def run():
       networkConfigurations = generateSampleNetworkConfig(templateNetworkConfig,
                                                           NUM_CATEGORIES)
   else:
-    with open('config/network_configs.json', 'rb') as fr:
+    with open('config/sdr_network_configs.json', 'rb') as fr:
       networkConfigurations = simplejson.load(fr)
 
   expSetups = []

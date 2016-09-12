@@ -32,11 +32,11 @@ in a very specific format (cf. learnObjects() and infer() for more
 information).
 
   exp = L4L2Experiment(
-    name="sample"
+    name="sample",
     numCorticalColumns=2,
   )
 
-  objects = createMachine(
+  objects = createObjectMachine(
     machineType="simple",
     numInputBits=20,
     sensorInputSize=1024,
@@ -51,10 +51,10 @@ information).
 
   inferConfig = {
     "numSteps": 2,
-    "noiseLevel": 0.05
+    "noiseLevel": 0.05,
     "pairs": {
-      0: [(1, 2), (2, 3)]
-      1: [(2, 3), (1, 2)]
+      0: [(1, 2), (2, 3)],
+      1: [(2, 3), (1, 2)],
     }
   }
 

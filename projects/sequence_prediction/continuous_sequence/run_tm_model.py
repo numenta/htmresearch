@@ -174,6 +174,8 @@ def runMultiplePass(df, model, nMultiplePass, nTrain):
 
   return model
 
+
+
 def runMultiplePassSPonly(df, model, nMultiplePass, nTrain):
   """
   run CLA model SP through data record 0:nTrain nMultiplePass passes
@@ -190,6 +192,19 @@ def runMultiplePassSPonly(df, model, nMultiplePass, nTrain):
         print " pass %i, record %i" % (nPass, j)
 
   return model
+
+
+
+def movingAverage(a, n):
+  movingAverage = []
+
+  for i in xrange(len(a)):
+    start = max(0, i - n)
+    values = a[start:i+1]
+    movingAverage.append(sum(values) / float(len(values)))
+
+  return movingAverage
+
 
 
 if __name__ == "__main__":
@@ -286,7 +301,7 @@ if __name__ == "__main__":
     inputRecord = getInputRecord(df, predictedField, i)
     tp = model._getTPRegion()
     tm = tp.getSelf()._tfdr
-    prePredictiveCells = tm.predictiveCells
+    prePredictiveCells = tm.getPredictiveCells()
     prePredictiveColumn = np.array(list(prePredictiveCells)) / tm.cellsPerColumn
 
     result = model.run(inputRecord)
@@ -321,7 +336,7 @@ if __name__ == "__main__":
     tm = tp.getSelf()._tfdr
     tpOutput = tm.infActiveState['t']
 
-    predictiveCells = tm.predictiveCells
+    predictiveCells = tm.getPredictiveCells()
     predCellNum.append(len(predictiveCells))
     predColumn = np.array(list(predictiveCells))/ tm.cellsPerColumn
 
@@ -443,5 +458,10 @@ if __name__ == "__main__":
   np.save('./result/'+dataSet+classifierType+'TMprediction.npy', predictions)
   np.save('./result/'+dataSet+classifierType+'TMtruth.npy', truth)
 
-
-
+  plt.figure()
+  activeCellNumAvg = movingAverage(activeCellNum, 100)
+  plt.plot(np.array(activeCellNumAvg)/tm.numberOfCells())
+  plt.xlabel('data records')
+  plt.ylabel('sparsity')
+  plt.xlim([0, 5000])
+  plt.savefig('result/sparsity_over_training.pdf')
