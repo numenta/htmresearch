@@ -74,11 +74,8 @@ class ReversedExtendedTemporalMemory(FastETM):
     else:
       activeApicalCells = []
 
-    self.activateBasalDendrites(
+    self.activateDendrites(
       activeExternalCells,
-      learn
-    )
-    self.activateApicalDendrites(
       activeApicalCells,
       learn
     )
