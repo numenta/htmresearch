@@ -167,7 +167,7 @@ def runExperiment(args):
       # stay multiple steps on each sensation
       sensations = []
       for pair in objectCopy:
-        for _ in xrange(3):
+        for _ in xrange(2):
           sensations.append(pair)
       objectSensations[c] = sensations
 
@@ -252,47 +252,49 @@ def runExperimentPool(numObjects,
 if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
-  # for debugging.
-  # results = runExperiment(
-  #               {
-  #                 "numObjects": 10,
-  #                 "numLocations": 10,
-  #                 "numFeatures": 5,
-  #                 "numColumns": 3,
-  #                 "trialNum": 0
-  #               }
-  # )
+  # for debugging, profiling, etc.
+  results = runExperiment(
+                {
+                  "numObjects": 10,
+                  "numLocations": 10,
+                  "numFeatures": 7,
+                  "numColumns": 3,
+                  "trialNum": 0
+                }
+  )
+
 
   # This is how you run a bunch of experiments in a process pool
+
   # Here we want to see how the number of columns affects convergence.
   # We run 10 trials for each column number and then analyze results
-  numTrials = 10
-  results = runExperimentPool(
-                    numObjects=[10],
-                    numLocations=[10],
-                    numFeatures=[1,3,5,7,11,15],
-                    numColumns=[2,3,4,5,6,7,8],
-                    nTrials=numTrials)
-
-  print "Full results:"
-  pprint.pprint(results, width=150)
-
-  # Pickle results for later use
-  with open("convergence_results.pkl","wb") as f:
-    cPickle.dump(results,f)
-
-  # Accumulate all the results per column in a numpy array, and print it as
-  # well as raw results.  This part can be specific to each experiment
-  maxColumns = 8
-  maxFeatures = 15
-  convergence = numpy.zeros((maxFeatures, maxColumns))
-  for r in results:
-    convergence[r["numFeatures"]-1,
-                r["numColumns"]-1] += r["convergencePoint"]/2.0
-
-  # For each column, print convergence as fct of number of unique features
-  for c in range(2,maxColumns+1):
-    print c,convergence[:, c-1]/numTrials
-
-  # Print everything anyway for debugging
-  print "Average convergence array=",convergence/numTrials
+  # numTrials = 10
+  # results = runExperimentPool(
+  #                   numObjects=[10],
+  #                   numLocations=[10],
+  #                   numFeatures=[1,3,5,7,11,15],
+  #                   numColumns=[2,3,4,5,6,7,8],
+  #                   nTrials=numTrials)
+  #
+  # print "Full results:"
+  # pprint.pprint(results, width=150)
+  #
+  # # Pickle results for later use
+  # with open("convergence_results.pkl","wb") as f:
+  #   cPickle.dump(results,f)
+  #
+  # # Accumulate all the results per column in a numpy array, and print it as
+  # # well as raw results.  This part can be specific to each experiment
+  # maxColumns = 8
+  # maxFeatures = 15
+  # convergence = numpy.zeros((maxFeatures, maxColumns))
+  # for r in results:
+  #   convergence[r["numFeatures"]-1,
+  #               r["numColumns"]-1] += r["convergencePoint"]/2.0
+  #
+  # # For each column, print convergence as fct of number of unique features
+  # for c in range(2,maxColumns+1):
+  #   print c,convergence[:, c-1]/numTrials
+  #
+  # # Print everything anyway for debugging
+  # print "Average convergence array=",convergence/numTrials
