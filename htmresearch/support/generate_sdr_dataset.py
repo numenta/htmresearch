@@ -243,10 +243,10 @@ class SDRDataSet(object):
     self._inputVectors = []
     self._dataType = params['dataType']
     self._additionalInfo = {}
-    self.initialize(params)
+    self.generateInputVectors(params)
 
 
-  def initialize(self, params):
+  def generateInputVectors(self, params):
 
     if params['dataType'] == 'randomSDR':
       self._inputVectors = generateRandomSDR(
@@ -271,6 +271,7 @@ class SDRDataSet(object):
         bar2 = getRandomBar((params['nX'], params['nY']),
                             params['barHalfLength'], 'vertical')
         data = bar1 + bar2
+        data[data > 0] = 1
         self._inputVectors[i, :] = np.reshape(data, newshape=(1, inputSize))
 
     elif params['dataType'] == 'randomBarSets':
@@ -280,8 +281,7 @@ class SDRDataSet(object):
       for i in range(numInputVectors):
         data = 0
         for barI in range(params['numBarsPerInput']):
-          orientation = np.random.choice(['horizontal'])
-          # orientation = np.random.choice(['horizontal', 'vertical'])
+          orientation = np.random.choice(['horizontal', 'vertical'])
           bar = getRandomBar((params['nX'], params['nY']),
                               params['barHalfLength'], orientation)
           data += bar

@@ -220,11 +220,13 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
   connectedCounts = np.zeros((numColumns, ), dtype=uintType)
   sp.getConnectedCounts(connectedCounts)
 
+  winnerInputOverlap = np.zeros(numInputVector)
   for i in range(numInputVector):
     sp.compute(inputVectors[i][:], False, outputColumns[i][:])
     inputOverlap[i][:] = sp.getOverlaps()
-
+    winnerInputOverlap[i] = np.mean(inputOverlap[i][np.where(outputColumns[i][:] > 0)[0]])
   avgInputOverlap = np.mean(inputOverlap, 0)
+
   activationProb = np.mean(outputColumns.astype(realDType), 0)
 
   # fig, axs = plt.subplots(2, 1)
@@ -241,8 +243,8 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
   axs[0, 0].hist(connectedCounts)
   axs[0, 0].set_xlabel('# Connected Synapse')
 
-  axs[0, 1].hist(avgInputOverlap)
-  axs[0, 1].set_xlabel('# avgInputOverlap')
+  axs[0, 1].hist(winnerInputOverlap)
+  axs[0, 1].set_xlabel('# winner input overlap')
 
   axs[1, 0].hist(activationProb)
   axs[1, 0].set_xlabel('activation prob')
@@ -254,7 +256,7 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
 
   if saveFigPrefix is not None:
     plt.savefig('figures/{}_network_stats.pdf'.format(saveFigPrefix))
-
+  return fig
 
 
 def calculateEntropy(activeColumns):
@@ -285,3 +287,10 @@ def calculateInputOverlapMat(inputVectors, sp):
   return overlapMat
 
 
+
+def calculateStability(activeColumnsCurrentEpoch, activeColumnsPreviousEpoch):
+  activeColumnsStable = np.logical_and(activeColumnsCurrentEpoch,
+                                       activeColumnsPreviousEpoch)
+  stability = np.mean(np.sum(activeColumnsStable, 1))/\
+              np.mean(np.sum(activeColumnsCurrentEpoch))
+  return stability
