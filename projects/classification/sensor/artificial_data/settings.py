@@ -24,13 +24,13 @@
 # Signal types can be: 'binary', 'sine', 'triangle'
 SIGNAL_TYPES = [
   'binary',
-  'sine', 
-  'triangle'
+  #'sine', 
+  #'triangle'
 ]
 
 # Parameters to generate the artificial sensor data
 DATA_DIR = 'data'
-NUM_CATEGORIES = [2]
+NUM_CATEGORIES = [3]
 WHITE_NOISE_AMPLITUDES = [0.0]
 SIGNAL_AMPLITUDES = [10.0]
 SIGNAL_MEANS = [0.0]
@@ -40,7 +40,7 @@ NOISE_LENGTHS = [10]
 NUM_PHASES = [5]
 
 # Number of time each phase repeats
-NUM_REPS = [5]
+NUM_REPS = [3]
 
 # Verbosity of network
 VERBOSITY = 0

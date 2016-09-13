@@ -338,3 +338,36 @@ def createNetwork(dataSource, networkConfig, encoder=None):
                  srcOutput="sequenceIdOut", destInput="partitionIn")
 
   return network
+
+
+
+def getNetworkRegions(network, networkConfig):
+  sensorRegion = network.regions[
+    networkConfig["sensorRegionConfig"].get("regionName")]
+
+  if networkConfig["spRegionConfig"].get("regionEnabled"):
+    spRegion = network.regions[
+      networkConfig["spRegionConfig"].get("regionName")]
+    spRegion.setParameter("learningMode", True)
+  else:
+    spRegion = None
+
+  if networkConfig["tmRegionConfig"].get("regionEnabled"):
+    tmRegion = network.regions[
+      networkConfig["tmRegionConfig"].get("regionName")]
+    tmRegion.setParameter("learningMode", True)
+  else:
+    tmRegion = None
+
+  if networkConfig['tpRegionConfig'].get('regionEnabled'):
+    tpRegion = network.regions[
+      networkConfig['tpRegionConfig'].get('regionName')]
+    tpRegion.setParameter("learningMode", True)
+  else:
+    tpRegion = None
+
+  classifierRegion = network.regions[
+    networkConfig["classifierRegionConfig"].get("regionName")]
+  classifierRegion.setParameter("learningMode", True)
+
+  return sensorRegion, spRegion, tmRegion, tpRegion, classifierRegion

@@ -31,24 +31,6 @@ def percentOverlap(x1, x2):
   return percentOverlap
 
 
-def clusterToClusterDist(c1, c2):
-  """
-  Distance between 2 clusters
-
-  :param c1: (np.array) cluster 1
-  :param c2: (np.array) cluster 2
-  :return: distance between 2 clusters
-  """
-  minDists = []
-  for sdr1 in c1:
-    d = []
-    for sdr2 in c2:
-      d.append(percentOverlap(sdr1, sdr2))
-    minDists.append(min(d))
-
-  return sum(minDists)
-
-
 
 def clusterDist(c1, c2):
   """
@@ -73,9 +55,11 @@ def clusterDistDirected(c1, c2):
   :return: distance between 2 clusters
   """
   minDists = []
-  for sdr1 in c1:
+  for point1 in c1:
+    sdr1 = point1.getValue()
     d = []
-    for sdr2 in c2:
+    for point2 in c2:
+      sdr2 = point2.getValue()
       d.append(1 - percentOverlap(sdr1, sdr2))
     minDists.append(min(d))
   return np.mean(minDists)
@@ -84,3 +68,24 @@ def clusterDistDirected(c1, c2):
 
 def kernel_dist(kernel):
   return lambda x, y: kernel(x, x) - 2 * kernel(x, y) + kernel(y, y)
+
+
+
+def interClusterDistances(clusters, newCluster):
+  interClusterDist = {}
+  if len(clusters) > 0:
+    for k in range(len(clusters) - 1):
+      c1 = clusters[k]
+      c2 = clusters[k + 1]
+      name = "c%s-c%s" % (c1.getId(), c2.getId())
+      interClusterDist[name] = clusterDist(c1.getPoints(), c2.getPoints())
+      if len(newCluster.getPoints()) > 0:
+        name = "c%s-new%s" % (c1.getId(), newCluster.getId())
+        interClusterDist[name] = clusterDist(c1.getPoints(),
+                                             newCluster.getPoints())
+
+    if len(newCluster.getPoints()) > 0:
+      name = "c%s-new%s" % (clusters[-1].getId(), newCluster.getId())
+      interClusterDist[name] = clusterDist(clusters[-1].getPoints(),
+                                           newCluster.getPoints())
+  return interClusterDist

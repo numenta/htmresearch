@@ -180,9 +180,10 @@ if __name__ == "__main__":
     idx2 = np.logical_and(np.array(traces['actualCategory']) == 2,
                           repetition == rpt)
 
-    c0slice = [traces['tmActiveCells'][i] for i in range(len(idx0)) if idx0[i]]
-    c1slice = [traces['tmActiveCells'][i] for i in range(len(idx1)) if idx1[i]]
-    c2slice = [traces['tmActiveCells'][i] for i in range(len(idx2)) if idx2[i]]
+    c0slice = [traces['tmPredictedActiveCells'][i] for i in range(len(idx0)) if 
+               idx0[i]]
+    c1slice = [traces['tmPredictedActiveCells'][i] for i in range(len(idx1)) if idx1[i]]
+    c2slice = [traces['tmPredictedActiveCells'][i] for i in range(len(idx2)) if idx2[i]]
 
     if includeNoiseCategory:
       SDRclusters.append(c0slice)

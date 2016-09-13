@@ -165,6 +165,9 @@ def loadTraces(fileName):
                             'sensorValue',
                             'actualCategory',
                             'predictedCategory',
+                            'anomalyScore',
+                            'clusteringConfidence',
+                            'predictedClusterLabel',
                             'predictedCategoryTrace']:
             data = float(row[i])
           elif headers[i] in ['tmPredictedActiveCells',
