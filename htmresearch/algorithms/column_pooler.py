@@ -403,80 +403,24 @@ class ColumnPooler(object):
     for cell in activeCells:
       cellPermanencesDense = proximalPermanences.getRow(cell)
       cellNonZeroIndices, _ = proximalPermanences.rowNonZeros(cell)
-      cellNonZeroIndices = list(cellNonZeroIndices)
+      cellNonZeroIndices = set(cellNonZeroIndices)
 
-      # Get new and existing connections for this segment
-      newInputs, existingInputs = self._pickProximalInputsToLearnOn(
-        maxNewSynapseCount, activeInputs, cellNonZeroIndices
-      )
+      # Find the synapses that should be reinforced, punished, and grown.
+      reinforce = list(activeInputs & cellNonZeroIndices)
+      punish = list(cellNonZeroIndices - activeInputs)
+      growthCandidates = activeInputs - cellNonZeroIndices
+      newSynapseCount = min(len(growthCandidates), maxNewSynapseCount)
+      grow = _sample(growthCandidates, newSynapseCount, self._random)
 
-      # Adjust existing connections appropriately
-      # First we decrement all existing permanences
-      if len(cellNonZeroIndices) > 0:
-        cellPermanencesDense[cellNonZeroIndices] -= synPermProximalDec
+      # Make the changes.
+      cellPermanencesDense[punish] -= synPermProximalDec
+      cellPermanencesDense[reinforce] += synPermProximalInc
+      cellPermanencesDense[grow] = initialPermanence
 
-      # Then we add inc + dec to existing active synapses
-      if len(existingInputs) > 0:
-        cellPermanencesDense[existingInputs] += synPermProximalInc + synPermProximalDec
-
-      # Add new connections
-      if len(newInputs) > 0:
-        cellPermanencesDense[newInputs] += initialPermanence
-
-      # Update proximalPermanences and proximalConnections
+      # Update proximalPermanences and proximalConnections.
       proximalPermanences.setRowFromDense(cell, cellPermanencesDense)
       newConnected = numpy.where(cellPermanencesDense >= connectedPermanence)[0]
       proximalConnections.replaceSparseRow(cell, newConnected)
-
-
-
-  def _pickProximalInputsToLearnOn(self, newSynapseCount, activeInputs,
-                                  cellNonZeros):
-    """
-    Pick inputs to form proximal connections to a particular cell. We just
-    randomly subsample from activeInputs, regardless of whether they are already
-    connected.
-
-    We return a list of up to newSynapseCount input indices from activeInputs
-    that are valid new connections for this cell. We also return a list
-    containing all inputs in activeInputs that are already connected to this
-    cell.
-
-    Parameters:
-    ----------------------------
-    @param newSynapseCount  (int)        Number of inputs to pick
-    @param cell             (int)        Cell index
-    @param activeInputs     (set)        Indices of active inputs
-    @param cellNonZeros     (list)       Indices of inputs input this cell with
-                                         non-zero permanences.
-
-    @return (list, list) Indices of new inputs to connect to, inputs already
-                         connected
-    """
-    candidates = []
-    alreadyConnected = []
-
-    # Collect inputs that already have synapses and list of new candidate inputs
-    for inputIdx in activeInputs:
-      if inputIdx in cellNonZeros:
-        alreadyConnected += [inputIdx]
-      else:
-        candidates += [inputIdx]
-
-    # Select min(newSynapseCount, len(candidates)) new inputs to connect to
-    if newSynapseCount >= len(candidates):
-      return candidates, alreadyConnected
-
-    else:
-      # Pick newSynapseCount cells randomly
-      # TODO: we could maybe implement this more efficiently with shuffle.
-      inputs = []
-      for _ in range(newSynapseCount):
-        i = self._random.getUInt32(len(candidates))
-        inputs += [candidates[i]]
-        candidates.remove(candidates[i])
-
-      return inputs, alreadyConnected
 
 
   def _winnersBasedOnLateralActivity(self,
@@ -532,3 +476,22 @@ class ColumnPooler(object):
       predictedActiveCells = predictedActiveCells.union(set(sortedWinnerIndices))
 
     return predictedActiveCells
+
+
+def _sample(iterable, k, rng):
+  """
+  Return a list of k random samples from the supplied collection.
+  """
+  candidates = list(iterable)
+  if k < len(candidates):
+    chosen = []
+    for _ in xrange(k):
+      i = rng.getUInt32(len(candidates))
+      chosen.append(candidates[i])
+      del candidates[i]
+
+    return chosen
+  elif k == len(candidates):
+    return candidates
+  else:
+    raise ValueError("sample larger than population")

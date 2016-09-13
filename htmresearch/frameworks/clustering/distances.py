@@ -58,8 +58,12 @@ def clusterDistDirected(c1, c2):
   for point1 in c1:
     sdr1 = point1.getValue()
     d = []
+    # ignore SDRs with zero active bits
+    if np.sum(sdr1) == 0:
+      continue
+
     for point2 in c2:
-      sdr2 = point2.getValue()
+	  sdr2 = point2.getValue()
       d.append(1 - percentOverlap(sdr1, sdr2))
     minDists.append(min(d))
   return np.mean(minDists)

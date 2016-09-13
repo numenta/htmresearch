@@ -421,7 +421,7 @@ class ExtendedTMRegion(PyRegion):
     # Compute predictedActiveCells explicitly
     self.activeState[:] = 0
     self.activeState[self._tm.getActiveCells()] = 1
-    predictedActiveCells = self.activeState*self.previouslyPredictedCells
+    predictedActiveCells = self._tm.getPredictedActiveCells()
 
     self.previouslyPredictedCells[:] = 0
     self.previouslyPredictedCells[self._tm.getPredictiveCells()] = 1
@@ -429,7 +429,9 @@ class ExtendedTMRegion(PyRegion):
     # Copy numpy values into the various outputs
     outputs["activeCells"][:] = self.activeState
     outputs["predictiveCells"][:] = self.previouslyPredictedCells
-    outputs["predictedActiveCells"][:] = predictedActiveCells
+
+    outputs["predictedActiveCells"][:] = 0
+    outputs["predictedActiveCells"][self._tm.getPredictedActiveCells()] = 1
 
     # Send appropriate output to feedForwardOutput
     if self.defaultOutputType == "active":
@@ -437,7 +439,8 @@ class ExtendedTMRegion(PyRegion):
     elif self.defaultOutputType == "predictive":
       outputs["feedForwardOutput"][:] = self.previouslyPredictedCells
     elif self.defaultOutputType == "predictedActiveCells":
-      outputs["feedForwardOutput"][:] = predictedActiveCells
+      outputs["feedForwardOutput"][:] = 0
+      outputs["feedForwardOutput"][self._tm.getPredictedActiveCells()] = 1
     else:
       raise Exception("Unknown outputType: " + self.defaultOutputType)
 
