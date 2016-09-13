@@ -258,7 +258,7 @@ def runNetwork(networkConfig,
   trace = initTrace()
 
   # TODO: move this out
-  startClusteringIndex = expSetup['numPoints'] / 4
+  startClusteringIndex = expSetup['numPoints'] / 2
   mergeThreshold = 0.1
   anomalousThreshold = 0.5
   stableThreshold = 0.1

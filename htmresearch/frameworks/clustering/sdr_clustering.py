@@ -170,7 +170,7 @@ class Clustering(object):
 
     # The data is anomalous
     if self.anomalousThreshold <= anomalyScore:
-      if self.newCluster.size() > 10:
+      if self.newCluster.size() > 0:
         self.addOrMergeCluster(self.newCluster)
         self.newCluster = Cluster(len(self.clusters))
 
