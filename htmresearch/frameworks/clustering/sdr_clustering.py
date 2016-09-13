@@ -123,15 +123,18 @@ class Clustering(object):
 
     clusterDistPairs = self.findClosestClusters(cluster)
     if len(clusterDistPairs) > 0:
-      closestClusterToNewDist, closestClusterToNew = clusterDistPairs[0]
-
-      if closestClusterToNewDist < self.mergeThreshold:
-        _LOGGER.debug("Cluster %s merged with cluster %s. Inter-cluster "
-                      "distance: %s" % (cluster.getId(),
-                                        closestClusterToNew.getId(),
-                                        closestClusterToNewDist))
-        closestClusterToNew.merge(cluster)
-      else:
+      notMerged = True
+      for clusterDistPair in clusterDistPairs: 
+        closestClusterToNewDist, closestClusterToNew = clusterDistPair
+  
+        if closestClusterToNewDist < self.mergeThreshold:
+          _LOGGER.debug("Cluster %s merged with cluster %s. Inter-cluster "
+                        "distance: %s" % (cluster.getId(),
+                                          closestClusterToNew.getId(),
+                                          closestClusterToNewDist))
+          closestClusterToNew.merge(cluster)
+          notMerged = False
+      if notMerged:
         self.addCluster(cluster)
     else:
       self.addCluster(cluster)
