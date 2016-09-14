@@ -76,9 +76,10 @@ def kernel_dist(kernel):
 
 
 def interClusterDistances(clusters, newCluster):
+  numClusters = len(clusters)
   interClusterDist = {}
   if len(clusters) > 0:
-    for k in range(len(clusters) - 1):
+    for k in range(numClusters - 1):
       c1 = clusters[k]
       c2 = clusters[k + 1]
       name = "c%s-c%s" % (c1.getId(), c2.getId())
@@ -89,7 +90,8 @@ def interClusterDistances(clusters, newCluster):
                                              newCluster.getPoints())
 
     if len(newCluster.getPoints()) > 0:
-      name = "c%s-new%s" % (clusters[-1].getId(), newCluster.getId())
-      interClusterDist[name] = clusterDist(clusters[-1].getPoints(),
-                                           newCluster.getPoints())
+      name = "c%s-new%s" % (clusters[numClusters - 1].getId(),
+                            newCluster.getId())
+      interClusterDist[name] = clusterDist(
+        clusters[numClusters - 1].getPoints(), newCluster.getPoints())
   return interClusterDist

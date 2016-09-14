@@ -86,19 +86,30 @@ class Clustering(object):
                mergeThreshold,
                anomalousThreshold,
                stableThreshold,
+               minSequenceLength,
                fistClusterId=0):
 
     # Clusters
-    self.newCluster = Cluster(fistClusterId)
-    self.clusters = []
+    self._newCluster = Cluster(fistClusterId)
+    self._clusters = {}
 
     # Anomaly Score Thresholds
-    self.anomalousThreshold = anomalousThreshold  # to create new cluster
-    self.stableThreshold = stableThreshold  # to add point to cluster
+    self._anomalousThreshold = anomalousThreshold  # to create new cluster
+    self._stableThreshold = stableThreshold  # to add point to cluster
 
     # Cluster distance threshold
-    self.mergeThreshold = mergeThreshold
+    self._mergeThreshold = mergeThreshold
+    self._minSequenceLength = minSequenceLength
 
+
+  def getClusterById(self, clusterId):
+    return self._clusters[clusterId]
+  
+  def getClusters(self):
+    return self._clusters
+
+  def getNewCluster(self):
+    return self._newCluster
 
   def findClosestClusters(self, cluster):
     """
@@ -107,7 +118,7 @@ class Clustering(object):
     :return: ordered list of clusters and their distances 
     """
     dists = []
-    for c in self.clusters:
+    for c in self._clusters.values():
       d = clusterDist(c.getPoints(), cluster.getPoints())
       dists.append((d, c))
 
@@ -115,8 +126,12 @@ class Clustering(object):
 
 
   def addCluster(self, cluster):
-    self.clusters.append(cluster)
-    _LOGGER.debug("Cluster %s permanently added" % cluster.getId())
+    clusterId = cluster.getId()
+    if clusterId not in self._clusters:
+      self._clusters[clusterId] = cluster
+    else:
+      raise ValueError('Cluster ID %s is already in use.' % clusterId)
+    _LOGGER.debug("Cluster %s permanently added" % clusterId)
 
 
   def addOrMergeCluster(self, cluster):
@@ -124,10 +139,10 @@ class Clustering(object):
     clusterDistPairs = self.findClosestClusters(cluster)
     if len(clusterDistPairs) > 0:
       notMerged = True
-      for clusterDistPair in clusterDistPairs: 
+      for clusterDistPair in clusterDistPairs:
         closestClusterToNewDist, closestClusterToNew = clusterDistPair
-  
-        if closestClusterToNewDist < self.mergeThreshold:
+
+        if closestClusterToNewDist < self._mergeThreshold:
           _LOGGER.debug("Cluster %s merged with cluster %s. Inter-cluster "
                         "distance: %s" % (cluster.getId(),
                                           closestClusterToNew.getId(),
@@ -144,7 +159,7 @@ class Clustering(object):
     """
     Inference: find the closest cluster to the new cluster.
     """
-    clusterDistPairs = self.findClosestClusters(self.newCluster)
+    clusterDistPairs = self.findClosestClusters(self._newCluster)
     if len(clusterDistPairs) > 0:
       distToCluster, predictedCluster = clusterDistPairs[0]
       # Confidence of inference
@@ -152,9 +167,9 @@ class Clustering(object):
       if meanClusterDist > 0:
         confidence = 1 - (distToCluster / meanClusterDist)
       else:
-        if len(self.clusters) > 1:
+        if len(self._clusters) > 1:
           raise ValueError("The mean distance can't be 0. Number of "
-                           "clusters: %s" % len(self.clusters))
+                           "clusters: %s" % len(self._clusters))
         else:
           confidence = 1
     else:
@@ -169,22 +184,22 @@ class Clustering(object):
     point = Point(sdrId, sdrValue, trueLabel)
 
     # The data is anomalous
-    if self.anomalousThreshold <= anomalyScore:
-      if self.newCluster.size() > 0:
-        self.addOrMergeCluster(self.newCluster)
-        self.newCluster = Cluster(len(self.clusters))
+    if self._anomalousThreshold <= anomalyScore:
+      if self._newCluster.size() >= self._minSequenceLength:
+        self.addOrMergeCluster(self._newCluster)
+        self._newCluster = Cluster(len(self._clusters))
 
       predictedCluster = None
       confidence = -3
 
     # If the data is unstable, so do nothing
-    elif self.stableThreshold <= anomalyScore < self.anomalousThreshold:
+    elif self._stableThreshold <= anomalyScore < self._anomalousThreshold:
       predictedCluster = None
       confidence = -2
 
     # The data is stable
     else:
-      self.newCluster.add(point)
+      self._newCluster.add(point)
 
       predictedCluster, confidence = self.infer()
 
@@ -194,7 +209,7 @@ class Clustering(object):
   def inClusterActualCategoriesFrequencies(self):
 
     inClusterActualCategoriesFrequencies = []
-    for cluster in self.clusters:
+    for cluster in self._clusters.values():
       labels = []
       for point in cluster.getPoints():
         labels.append(int(point.getLabel()))

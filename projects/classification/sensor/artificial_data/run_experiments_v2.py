@@ -64,13 +64,14 @@ def initTrace():
     'predictedCategory': [],
     'classificationAccuracy': [],
     'anomalyScore': [],
-    'predictedClusterLabel': [],
+    'predictedClusterId': [],
     'clusteringConfidence': []
   }
   return trace
 
 
 
+# TODO: method unused for now. Remove during final cleanup if still unused.
 def rollingAccuracy(trace, expSetup, ignoreNoise=True):
   rollingWindowSize = expSetup['sequenceLength']
 
@@ -262,7 +263,9 @@ def runNetwork(networkConfig,
   mergeThreshold = 0.1
   anomalousThreshold = 0.5
   stableThreshold = 0.1
-  c = Clustering(mergeThreshold, anomalousThreshold, stableThreshold)
+  minSequenceLength = 4
+  c = Clustering(mergeThreshold, anomalousThreshold, stableThreshold,
+                 minSequenceLength)
   idsToActualLabels = {}
   for i in range(expSetup['numPoints']):
     network.run(1)
@@ -287,31 +290,85 @@ def runNetwork(networkConfig,
                                                actualLabel)
 
       if predictedCluster:
-        predictedClusterLabel = predictedCluster.getId()
+        predictedClusterId = predictedCluster.getId()
       else:
-        predictedClusterLabel = None
-      trace['predictedClusterLabel'].append(predictedClusterLabel)
+        predictedClusterId = None
+      trace['predictedClusterId'].append(predictedClusterId)
       trace['clusteringConfidence'].append(confidence)
 
       if i % 100 == 0:
-        numClusters = len(c.clusters)
+        numClusters = len(c.getClusters())
         print "--> index: %s" % i
         print "--> numClusters: %s" % numClusters
         print "--> actualLabel: %s" % actualLabel
-        print "--> predictedClusterLabel: %s" % predictedClusterLabel
+        print "--> predictedClusterId: %s" % predictedClusterId
         print "--> confidence: %s" % confidence
         print "--> anomalyScore: %s" % anomalyScore
-        for frequencyDict in c.inClusterActualCategoriesFrequencies():
-          clusterId = frequencyDict['clusterId']
-          actualCategoryFrequencies = frequencyDict['actualCategoryFrequencies']
-          print "--> frequencies of actual categories in cluster %s" % clusterId
-          pp(actualCategoryFrequencies)
+        outputClustersStructure(c)
         print "--------------------------------"
 
-  interClusterDist = interClusterDistances(c.clusters, c.newCluster)
+  interClusterDist = interClusterDistances(c.getClusters(), c.getNewCluster())
   print "--> inter-cluster distances: %s" % interClusterDist
 
+  labelClusters(c)
+  outputClustersStructure(c)
+  clusteringAccuracy = computeClusteringAccuracy(c)
+  print "--> clustering accuracy: %s / 100" % clusteringAccuracy
+  inferenceAccuracy = computeInferenceAccuracy(trace, c)
+  print "--> inference accuracy: %s / 100" % inferenceAccuracy
+
   return {'expId': expId, 'expTrace': trace, 'expSetup': expSetup}
+
+
+
+def computeInferenceAccuracy(trace, clustering):
+  numPredicted = 0
+  numCorrect = 0
+  numPoints = len(trace['predictedClusterId'])
+  for i in range(numPoints):
+    clusterId = trace['predictedClusterId'][i]
+    if clusterId is not None:
+      cluster = clustering.getClusterById(clusterId)
+      if cluster.getLabel() == trace['actualCategory'][i]:
+        numCorrect += 1
+      numPredicted += 1
+
+  return 100.0 * numCorrect / numPredicted
+
+
+
+def computeClusteringAccuracy(clustering):
+  numCorrect = 0
+  numPoints = 0
+  for cluster in clustering.getClusters().values():
+    for point in cluster.getPoints():
+      if point.getLabel() == cluster.getLabel():
+        numCorrect += 1
+      numPoints += 1
+
+  return 100.0 * numCorrect / numPoints
+
+
+
+def labelClusters(clustering):
+  for frequencyDict in clustering.inClusterActualCategoriesFrequencies():
+    actualCategoryFrequencies = frequencyDict['actualCategoryFrequencies']
+    clusterId = frequencyDict['clusterId']
+    cluster = clustering.getClusterById(clusterId)
+    highToLowFreqs = sorted(actualCategoryFrequencies,
+                            key=lambda x: -x['numberOfPoints'])
+    bestCategory = highToLowFreqs[0]['actualCategory']
+    cluster.setLabel(bestCategory)
+
+
+
+def outputClustersStructure(clustering):
+  for frequencyDict in clustering.inClusterActualCategoriesFrequencies():
+    clusterId = frequencyDict['clusterId']
+    actualCategoryFrequencies = frequencyDict['actualCategoryFrequencies']
+    print "--> frequencies of actual categories in cluster %s. Label: %s" % (
+      (clusterId, clustering.getClusterById(clusterId).getLabel()))
+    pp(actualCategoryFrequencies)
 
 
 

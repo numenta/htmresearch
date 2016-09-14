@@ -23,8 +23,8 @@
 
 # Signal types can be: 'binary', 'sine', 'triangle'
 SIGNAL_TYPES = [
-  #'binary',
-  'sine', 
+  'binary',
+  #'sine', 
   #'triangle'
 ]
 
@@ -40,7 +40,7 @@ NOISE_LENGTHS = [10]
 NUM_PHASES = [5]
 
 # Number of time each phase repeats
-NUM_REPS = [6]
+NUM_REPS = [3]
 
 # Verbosity of network
 VERBOSITY = 0
