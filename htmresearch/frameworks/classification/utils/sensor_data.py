@@ -110,17 +110,18 @@ def cleanTitle(expResult):
   :param expResult: (dict) results of the experiment.
   :return title: (str) cleaned up title 
   """
-  # title = expResult['expId'].split('_')
-  # cleanTitle = [title[0] + ' signal']
-  # for word in title[1:]:
-  #   if not 'False' in word:
-  #     if 'True' in word:
-  #       cleanTitle.append(word[:2])
-  #     else:
-  #       cleanTitle.append(word)
-  # 
-  # title = ' + '.join(cleanTitle)
-  title = ''
+  expId = expResult['inputFilePath'].split('/')[-1][:-4]
+  title = expId.split('_')
+  cleanTitle = [title[0] + ' signal']
+  for word in title[1:]:
+    if not 'False' in word:
+      if 'True' in word:
+        cleanTitle.append(word[:2])
+      else:
+        cleanTitle.append(word)
+  
+  title = ' + '.join(cleanTitle)
+
   return title
 
 
