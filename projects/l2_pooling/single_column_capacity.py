@@ -38,8 +38,8 @@ from htmresearch.frameworks.layers.object_machine_factory import (
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 
 
-NUM_LOCATIONS = 500
-NUM_FEATURES = 500
+NUM_LOCATIONS = 5000
+NUM_FEATURES = 5000
 
 def getL4Params():
   """
@@ -80,7 +80,7 @@ def getL2Params():
     "connectedPermanence": 0.5,
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
-    "numActiveColumnsPerInhArea": 40,
+    "numActiveColumnsPerInhArea": 20,
     "synPermProximalInc": 0.1,
     "synPermProximalDec": 0.001,
     "initialProximalPermanence": 0.6,
@@ -153,50 +153,23 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
   overlap = np.zeros((numTestPoints, numObjects))
 
   for step in xrange(numTestPoints):
-
     locationIdx, featureIdx = testPairs[step]
     feature = objects.features[0][featureIdx]
     location = objects.locations[0][locationIdx]
     exp.sensorInputs[0].addDataToQueue(list(feature), 0, 0)
     exp.externalInputs[0].addDataToQueue(list(location), 0, 0)
     exp.network.run(1)
+
+    # columnPooler = exp.L2Columns[0]._pooler
+    # tm = exp.L4Columns[0]._tm
+    # print "step : {}".format(step)
+    # print "predicted active cells: ", tm.getPredictedActiveCells()
+    # print "L2 activation: ", columnPooler.getActiveCells()
+
     for obj in range(numObjects):
       overlap[step, obj] = (len(exp.objectL2Representations[obj][0]
                                 & exp.getL2Representations()[0]))
-
-  inferConfig = {
-    "numSteps": 5,
-    "pairs": {
-      0: objects[testObject]
-    }
-  }
-  sensationList = objects.provideObjectToInfer(inferConfig)
-  overlap = np.zeros((len(sensationList), numObjects))
-  step = 0
-  exp._unsetLearningMode()
-  exp.sendReset()
-
-  for sensations in sensationList:
-    # feed all columns with sensations
-    for col in xrange(exp.numColumns):
-      location, feature = sensations[col]
-      exp.sensorInputs[col].addDataToQueue(list(feature), 0, 0)
-      exp.externalInputs[col].addDataToQueue(list(location), 0, 0)
-    exp.network.run(1)
-    L2Representation = exp.getL2Representations()
-    for obj in range(numObjects):
-      overlap[step, obj] = (len(exp.objectL2Representations[obj][0]
-                                & L2Representation[0]))
-    step += 1
-
-
-  inferConfig = {
-    "numSteps": 5,
-    "pairs": {
-      0: objects[testObject]
-    }
-  }
-  exp.infer(objects.provideObjectToInfer(inferConfig), objectName=0)
+  # print overlap
   return overlap
 
 
@@ -227,6 +200,8 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
     nonTargetObjs = np.array(nonTargetObjs)
 
     overlap = testNetworkWithOneObject(objects, exp, targetObject, 3)
+    # print "target {} non-target {}".format(targetObject, nonTargetObjs)
+    # print overlap
     outcome[i] = 1 if np.argmax(overlap[-1, :]) == targetObject else 0
     confusion[i] = np.max(overlap[0, nonTargetObjs])
     overlapTrueObj[i] = overlap[0, targetObject]
@@ -236,7 +211,12 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
     for j in range(i+1, numObjects):
       l2Overlap.append(len(exp.objectL2Representations[0][0] &
                            exp.objectL2Representations[1][0]))
-  return {"numObjects": numObjects,
+
+  columnPooler = exp.L2Columns[0]._pooler
+  numberOfConnectedSynapses = columnPooler.numberOfConnectedSynapses()
+
+  return {"numberOfConnectedSynapses": numberOfConnectedSynapses,
+          "numObjects": numObjects,
           "numPointsPerObject": numPointsPerObject,
           "confusion": np.mean(confusion),
           "accuracy": np.mean(outcome),
@@ -261,10 +241,9 @@ def plotResults(result, ax=None, xaxis="numPointsPerObject",
   ax[0, 0].set_ylabel("Accuracy")
   ax[0, 0].set_xlabel(xlabel)
 
-  ax[0, 1].plot(x, result.l2OverlapMean, marker)
-  ax[0, 1].set_ylabel("L2 Overlap")
+  ax[0, 1].plot(x, result.numberOfConnectedSynapses, marker)
+  ax[0, 1].set_ylabel("# connected synapses")
   ax[0, 1].set_xlabel("# Pts / Obj")
-  ax[0, 1].set_ylim([0, 41])
   ax[0, 1].set_xlabel(xlabel)
 
   ax[1, 0].plot(x, result.overlapTrueObj, marker)
@@ -302,28 +281,27 @@ def runCapacityTest(numObjects,
   l2Params = getL2Params()
   l2Params['maxNewSynapseCount'] = maxNewSynapseCount
   l2Params['activationThreshold'] = activationThreshold
-  l2Params['minThreshold'] = activationThreshold
+  l2Params['minThreshold'] = 1
 
+  l4ColumnCount = l4Params["columnCount"]
+  numInputBits = int(l4Params["columnCount"]*0.02)
   objects = createObjectMachine(
     machineType="simple",
-    numInputBits=20,
-    sensorInputSize=1024,
-    externalInputSize=1024,
+    numInputBits=numInputBits,
+    sensorInputSize=l4ColumnCount,
+    externalInputSize=l4ColumnCount,
     numCorticalColumns=1,
     numLocations=NUM_LOCATIONS,
     numFeatures=NUM_FEATURES
   )
 
   exp = L4L2Experiment("capacity_two_objects",
-                       numInputBits=int(l4Params["columnCount"]*0.02),
-                       L4Overrides=l4Params,
+                       numInputBits=numInputBits,
                        L2Overrides=l2Params,
-                       numLearningPoints=10)
-
-  exp = L4L2Experiment("capacity_two_objects",
-                       numInputBits=int(l4Params["columnCount"]*0.02),
-                       numLearningPoints=10)
-
+                       L4Overrides=l4Params,
+                       inputSize=l4ColumnCount,
+                       externalInputSize=l4ColumnCount,
+                       numLearningPoints=4)
 
   pairs = createRandomObjects(
     numObjects, numPointsPerObject, NUM_LOCATIONS, NUM_FEATURES)
@@ -331,15 +309,6 @@ def runCapacityTest(numObjects,
     objects.addObject(object)
 
   exp.learnObjects(objects.provideObjectsToLearn())
-
-  inferConfig = {
-    "numSteps": 5,
-    "pairs": {
-      0: objects[1]
-    }
-  }
-  exp.infer(objects.provideObjectToInfer(inferConfig), objectName=0)
-  exp.getInferenceStats()
 
   testResult = testOnSingleRandomSDR(objects, exp)
   return testResult
@@ -405,14 +374,15 @@ def runCapacityTest(numObjects,
 
 
 def runCapacityTestVaryingObjectSize(numObjects=2,
-                                               maxNewSynapseCount=5,
-                                               activationThreshold=3):
+                                     maxNewSynapseCount=5,
+                                     activationThreshold=3):
   """
   Runs experiment with two objects, varying number of points per object
   """
 
   result = None
-  for numPointsPerObject in [5, 10, 20, 30, 40, 50, 60, 80]:
+
+  for numPointsPerObject in np.arange(10, 270, 20):
     testResult = runCapacityTest(
       numObjects, numPointsPerObject, maxNewSynapseCount, activationThreshold)
     print testResult
@@ -421,13 +391,11 @@ def runCapacityTestVaryingObjectSize(numObjects=2,
     else:
       result = pd.concat([result, pd.DataFrame.from_dict([testResult])])
 
-  resultFileName = 'plots/single_column_capacity_varying_object_size_' \
+  resultFileName = 'results/single_column_capacity_varying_object_size_' \
                    'synapses_{}_thresh_{}'.format(
     maxNewSynapseCount, activationThreshold)
 
   pd.DataFrame.to_csv(result, resultFileName + '.csv')
-  plotResults(result, None,
-              xaxis="numPointsPerObject", filename=resultFileName+'.pdf')
 
 
 
@@ -440,7 +408,7 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
   """
   result = None
 
-  for numObjects in [2, 3, 5, 10, 15, 20, 30, 40, 50, 60]:
+  for numObjects in np.arange(20, 200, 20):
 
     testResult = runCapacityTest(
       numObjects, numPointsPerObject, maxNewSynapseCount, activationThreshold)
@@ -452,13 +420,10 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
     else:
       result = pd.concat([result, pd.DataFrame.from_dict([testResult])])
 
-  resultFileName = 'plots/single_column_capacity_varying_object_num_' \
+  resultFileName = 'results/single_column_capacity_varying_object_num_' \
                    'synapses_{}_thresh_{}'.format(
     maxNewSynapseCount, activationThreshold)
   pd.DataFrame.to_csv(result, resultFileName + '.csv')
-
-  plotResults(result, None, xaxis="numObjects",
-              filename=resultFileName + '.pdf')
 
 
 
@@ -468,8 +433,9 @@ def runExperiment1():
   Try different sampling and activation threshold
   """
   numObjects = 2
-  for maxNewSynapseCount in [20]: #[5, 10, 20, 40]:
-    activationThreshold=int(.6*maxNewSynapseCount)
+  maxNewSynapseCountRange = [5, 10, 15, 20]
+  for maxNewSynapseCount in maxNewSynapseCountRange:
+    activationThreshold=int(maxNewSynapseCount)-1
 
     print "maxNewSynapseCount: {} \nactivationThreshold: {} \n".format(
       maxNewSynapseCount, activationThreshold)
@@ -482,9 +448,9 @@ def runExperiment1():
   ploti = 0
   fig, ax = plt.subplots(2, 2)
   legendEntries = []
-  for maxNewSynapseCount in [5, 10, 20, 40]:
-    activationThreshold = int(.6 * maxNewSynapseCount)
-    resultFileName = 'plots/single_column_capacity_varying_object_size_' \
+  for maxNewSynapseCount in maxNewSynapseCountRange:
+    activationThreshold = int(maxNewSynapseCount) - 1
+    resultFileName = 'results/single_column_capacity_varying_object_size_' \
                      'synapses_{}_thresh_{}'.format(
       maxNewSynapseCount, activationThreshold)
     result = pd.read_csv(resultFileName+ '.csv')
@@ -492,7 +458,7 @@ def runExperiment1():
     plotResults(result, ax, "numPointsPerObject", None, markers[ploti])
     ploti += 1
     legendEntries.append("# syn {}".format(maxNewSynapseCount))
-  plt.legend(legendEntries)
+  plt.legend(legendEntries, loc=2)
   plt.savefig('plots/single_column_capacity_varying_object_size_summary.pdf')
 
 
@@ -503,8 +469,9 @@ def runExperiment2():
   Try different sampling and activation threshold
   """
   numPointsPerObject = 10
-  for maxNewSynapseCount in [5, 10, 20, 40]:
-    activationThreshold=int(.6*maxNewSynapseCount)
+  maxNewSynapseCountRange = [5, 10, 15, 20]
+  for maxNewSynapseCount in maxNewSynapseCountRange:
+    activationThreshold=int(maxNewSynapseCount)-1
 
     print "maxNewSynapseCount: {} \nactivationThreshold: {} \n".format(
       maxNewSynapseCount, activationThreshold)
@@ -517,9 +484,9 @@ def runExperiment2():
   ploti = 0
   fig, ax = plt.subplots(2, 2)
   legendEntries = []
-  for maxNewSynapseCount in [5, 10, 20, 40]:
-    activationThreshold = int(.6 * maxNewSynapseCount)
-    resultFileName = 'plots/single_column_capacity_varying_object_num_' \
+  for maxNewSynapseCount in maxNewSynapseCountRange:
+    activationThreshold = int(maxNewSynapseCount) - 1
+    resultFileName = 'results/single_column_capacity_varying_object_num_' \
                      'synapses_{}_thresh_{}'.format(
       maxNewSynapseCount, activationThreshold)
     result = pd.read_csv(resultFileName+ '.csv')
@@ -527,14 +494,14 @@ def runExperiment2():
     plotResults(result, ax, "numObjects", None, markers[ploti])
     ploti += 1
     legendEntries.append("# syn {}".format(maxNewSynapseCount))
-  plt.legend(legendEntries, loc=4)
+  plt.legend(legendEntries, loc=2)
   plt.savefig('plots/single_column_capacity_varying_object_num_summary.pdf')
 
 
 
 if __name__ == "__main__":
   # Varying number of pts per objects, two objects
-  runExperiment1()
+  # runExperiment1()
 
   # 10 pts per object, varying number of objects
-  # runExperiment2()
+  runExperiment2()
