@@ -168,7 +168,7 @@ def loadTraces(fileName):
                             'anomalyScore',
                             'clusteringConfidence',
                             'predictedClusterLabel',
-                            'predictedCategoryTrace']:
+                            'predictedClusterId']:
             data = float(row[i])
           elif headers[i] in ['tmPredictedActiveCells',
                               'tpActiveCells',
