@@ -189,7 +189,6 @@ def classificationAccuracyVsNoise(sp, inputVectors, noiseLevelList):
     for j in range(numInputVector):
       corruptedInputVector = copy.deepcopy(inputVectors[j][:])
       corruptSparseVector(corruptedInputVector, noiseLevelList[i])
-      # addNoiseToVector(corruptedInputVector, noiseLevelList[i], inputVectorType)
 
       if sp is None:
         outputColumns = copy.deepcopy(corruptedInputVector)
@@ -292,5 +291,5 @@ def calculateStability(activeColumnsCurrentEpoch, activeColumnsPreviousEpoch):
   activeColumnsStable = np.logical_and(activeColumnsCurrentEpoch,
                                        activeColumnsPreviousEpoch)
   stability = np.mean(np.sum(activeColumnsStable, 1))/\
-              np.mean(np.sum(activeColumnsCurrentEpoch))
+              np.mean(np.sum(activeColumnsCurrentEpoch, 1))
   return stability
