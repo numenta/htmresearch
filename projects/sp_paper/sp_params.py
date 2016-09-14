@@ -49,10 +49,10 @@ spParamWithBoosting = {
   "synPermInactiveDec": 0.01,
   "synPermActiveInc": 0.1,
   "synPermConnected": 0.5,
-  "minPctOverlapDutyCycle": 0.0,
+  "minPctOverlapDutyCycle": 0.001,
   "minPctActiveDutyCycle": 0.001,
   "dutyCyclePeriod": 1000,
-  "maxBoost": 20.0,
+  "maxBoost": 100.0,
   "seed": 1936
 }
 
