@@ -119,7 +119,8 @@ class Clustering(object):
     """
     dists = []
     for c in self._clusters.values():
-      d = clusterDist(c.getPoints(), cluster.getPoints())
+      d = clusterDist([p.getValue() for p in c.getPoints()], 
+                      [p.getValue() for p in cluster.getPoints()])
       dists.append((d, c))
 
     return sorted(dists)

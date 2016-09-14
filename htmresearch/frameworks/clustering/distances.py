@@ -55,15 +55,13 @@ def clusterDistDirected(c1, c2):
   :return: distance between 2 clusters
   """
   minDists = []
-  for point1 in c1:
-    sdr1 = point1.getValue()
+  for sdr1 in c1:
     d = []
     # ignore SDRs with zero active bits
     if np.sum(sdr1) == 0:
       continue
 
-    for point2 in c2:
-      sdr2 = point2.getValue()
+    for sdr2 in c2:
       d.append(1 - percentOverlap(sdr1, sdr2))
     minDists.append(min(d))
   return np.mean(minDists)
@@ -83,7 +81,9 @@ def interClusterDistances(clusters, newCluster):
       c1 = clusters[k]
       c2 = clusters[k + 1]
       name = "c%s-c%s" % (c1.getId(), c2.getId())
-      interClusterDist[name] = clusterDist(c1.getPoints(), c2.getPoints())
+      interClusterDist[name] = clusterDist(
+        [p.getValue() for p in c1.getPoints()],
+        [p.getValue() for p in c2.getPoints()])
       if len(newCluster.getPoints()) > 0:
         name = "c%s-new%s" % (c1.getId(), newCluster.getId())
         interClusterDist[name] = clusterDist(c1.getPoints(),
