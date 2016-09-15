@@ -23,7 +23,6 @@
 Faulty Temporal Memory implementation in Python.
 """
 import numpy
-from htmresearch.algorithms.temporal_memory_phases import TemporalMemory
 from nupic.research.temporal_memory import  TemporalMemory
 from nupic.research.connections import CellData, Connections
 
