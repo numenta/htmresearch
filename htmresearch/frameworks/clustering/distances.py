@@ -46,6 +46,11 @@ def clusterDist(c1, c2):
 
 
 
+def overlapDistance(sdr1, sdr2):
+  return 1 - percentOverlap(sdr1, sdr2)
+
+
+
 def clusterDistDirected(c1, c2):
   """
   Directed distance from cluster 1 to cluster 2
@@ -73,6 +78,11 @@ def kernel_dist(kernel):
 
 
 
+def pointsToSDRs(points):
+  return [p.getValue() for p in points]
+
+
+
 def interClusterDistances(clusters, newCluster):
   numClusters = len(clusters)
   interClusterDist = {}
@@ -81,17 +91,17 @@ def interClusterDistances(clusters, newCluster):
       c1 = clusters[k]
       c2 = clusters[k + 1]
       name = "c%s-c%s" % (c1.getId(), c2.getId())
-      interClusterDist[name] = clusterDist(
-        [p.getValue() for p in c1.getPoints()],
-        [p.getValue() for p in c2.getPoints()])
+      interClusterDist[name] = clusterDist(pointsToSDRs(c1.getPoints()),
+                                           pointsToSDRs(c2.getPoints()))
       if len(newCluster.getPoints()) > 0:
         name = "c%s-new%s" % (c1.getId(), newCluster.getId())
-        interClusterDist[name] = clusterDist(c1.getPoints(),
-                                             newCluster.getPoints())
+        interClusterDist[name] = clusterDist(
+          pointsToSDRs(c1.getPoints()), pointsToSDRs(newCluster.getPoints()))
 
     if len(newCluster.getPoints()) > 0:
       name = "c%s-new%s" % (clusters[numClusters - 1].getId(),
                             newCluster.getId())
       interClusterDist[name] = clusterDist(
-        clusters[numClusters - 1].getPoints(), newCluster.getPoints())
+        pointsToSDRs(clusters[numClusters - 1].getPoints()),
+        pointsToSDRs(newCluster.getPoints()))
   return interClusterDist

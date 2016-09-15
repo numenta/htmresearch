@@ -42,7 +42,7 @@ def _getArgs():
                     "--fileName",
                     type=str,
                     default='results/traces_binary_sp-True_tm-True_'
-                            'tp-True_SDRClassifier.csv',
+                            'tp-False_KNNClassifier.csv',
                     dest="fileName",
                     help="fileName of the csv trace file")
 
@@ -51,7 +51,7 @@ def _getArgs():
                     default=None,
                     dest="xl",
                     help="x-axis range")
-  
+
   parser.add_option("--numTmCells",
                     type=int,
                     default=32 * 2048,
@@ -71,10 +71,10 @@ if __name__ == "__main__":
     xl = [float(x) for x in _options.xl.split(',')]
   else:
     xl = _options.xl
-    
+
   traces = loadTraces(fileName)
 
   title = fileName
   numTmCells = _options.numTmCells
-  
+
   plotTraces(numTmCells, title, xl, traces)

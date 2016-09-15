@@ -1,7 +1,9 @@
 import logging
 import numpy as np
 
-from htmresearch.frameworks.clustering.distances import clusterDist
+from htmresearch.frameworks.clustering.distances import (clusterDist, 
+                                                         overlapDistance,
+                                                         pointsToSDRs)
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
@@ -87,6 +89,7 @@ class Clustering(object):
                anomalousThreshold,
                stableThreshold,
                minSequenceLength,
+               pointSimilarityThreshold,
                fistClusterId=0):
 
     # Clusters
@@ -100,13 +103,13 @@ class Clustering(object):
     # Cluster distance threshold
     self._mergeThreshold = mergeThreshold
     self._minSequenceLength = minSequenceLength
-
+    self._similarityThreshold = pointSimilarityThreshold
 
   def getClusterById(self, clusterId):
     return self._clusters[clusterId]
   
   def getClusters(self):
-    return self._clusters
+    return self._clusters.values()
 
   def getNewCluster(self):
     return self._newCluster
@@ -119,8 +122,8 @@ class Clustering(object):
     """
     dists = []
     for c in self._clusters.values():
-      d = clusterDist([p.getValue() for p in c.getPoints()], 
-                      [p.getValue() for p in cluster.getPoints()])
+      d = clusterDist(pointsToSDRs(c.getPoints()), 
+                      pointsToSDRs(cluster.getPoints()))
       dists.append((d, c))
 
     return sorted(dists)
@@ -201,7 +204,20 @@ class Clustering(object):
     # The data is stable
     else:
       self._newCluster.add(point)
-
+      # if self._newCluster.size() > 0:
+      #   dists = []
+      #   for p in self._newCluster.getPoints():
+      #     d = overlapDistance(p.getValue(), point.getValue())
+      #     dists.append(d)
+      #   if min(dists) > self._similarityThreshold:
+      #     self._newCluster.add(point)
+      #     _LOGGER.debug('Point added. Min dist: %s' % min(dists)) 
+      #   else:
+      #     if min(dists) > 0:
+      #       _LOGGER.debug('Point NOT added. Min dist: %s' % min(dists))       
+      # else:
+      #   self._newCluster.add(point)
+      ###
       predictedCluster, confidence = self.infer()
 
     return predictedCluster, confidence

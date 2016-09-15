@@ -39,7 +39,7 @@ def plotTraces(numTmCells, title, xlim, traces):
   :return: 
   """
 
-  t = np.array(traces['step'])
+  t = np.array(traces['recordNumber'])
   classLabels = np.array(traces['actualCategory'])
   sensorValue = np.array(traces['sensorValue'])
   if xlim is None:
@@ -89,8 +89,8 @@ def plotTraces(numTmCells, title, xlim, traces):
     ax[0].set_ylabel('Sensor Value')
 
     # plot classification accuracy
-    ax[1].set_title('Classification accuracy rolling average')
-    ax[1].plot(traces['classificationAccuracy'])
+    ax[1].set_title('Clustering accuracy rolling average')
+    ax[1].plot(traces['clusteringAccuracy'])
     
     
     # plot cell activations
@@ -160,17 +160,7 @@ def loadTraces(fileName):
         if len(row[i]) == 0:
           data = []
         else:
-          if headers[i] in ['step',
-                            'classificationAccuracy',
-                            'sensorValue',
-                            'actualCategory',
-                            'predictedCategory',
-                            'anomalyScore',
-                            'clusteringConfidence',
-                            'predictedClusterLabel',
-                            'predictedClusterId']:
-            data = float(row[i])
-          elif headers[i] in ['tmPredictedActiveCells',
+          if headers[i] in ['tmPredictedActiveCells',
                               'tpActiveCells',
                               'tmActiveCells']:
             if row[i] == '[]':
@@ -178,7 +168,7 @@ def loadTraces(fileName):
             else:
               data = map(int, row[i][1:-1].split(','))
           else:
-            raise ValueError('Unknown header name: %s' % headers[i])
+            data = float(row[i])
         traces[headers[i]].append(data)
 
   return traces
