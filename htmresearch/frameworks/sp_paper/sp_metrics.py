@@ -173,7 +173,7 @@ def classificationAccuracyVsNoise(sp, inputVectors, noiseLevelList):
   :return:
   """
   numInputVector, inputSize = inputVectors.shape
-  numColumns = np.prod(sp.getColumnDimensions())
+
   if sp is None:
     targetOutputColumns = copy.deepcopy(inputVectors)
   else:
@@ -193,7 +193,7 @@ def classificationAccuracyVsNoise(sp, inputVectors, noiseLevelList):
       if sp is None:
         outputColumns = copy.deepcopy(corruptedInputVector)
       else:
-        outputColumns = np.zeros((numColumns, ), dtype=uintType)
+        outputColumns = np.zeros((columnNumber, ), dtype=uintType)
         sp.compute(corruptedInputVector, False, outputColumns)
 
       predictedClassLabel = classifySPoutput(targetOutputColumns, outputColumns)
@@ -223,7 +223,10 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
   for i in range(numInputVector):
     sp.compute(inputVectors[i][:], False, outputColumns[i][:])
     inputOverlap[i][:] = sp.getOverlaps()
-    winnerInputOverlap[i] = np.mean(inputOverlap[i][np.where(outputColumns[i][:] > 0)[0]])
+    activeColumns = np.where(outputColumns[i][:] > 0)[0]
+    if len(activeColumns) > 0:
+      winnerInputOverlap[i] = np.mean(
+        inputOverlap[i][np.where(outputColumns[i][:] > 0)[0]])
   avgInputOverlap = np.mean(inputOverlap, 0)
 
   activationProb = np.mean(outputColumns.astype(realDType), 0)
