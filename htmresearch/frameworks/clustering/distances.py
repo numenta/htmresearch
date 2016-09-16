@@ -90,10 +90,9 @@ def interClusterDistances(clusters, newCluster):
       for c2 in clusters:
         name = "c%s-c%s" % (c1.getId(), c2.getId())
         interClusterDist[name] = clusterDist(pointsToSDRs(c1.getPoints()),
-                                           pointsToSDRs(c2.getPoints()))
+                                             pointsToSDRs(c2.getPoints()))
       if len(newCluster.getPoints()) > 0:
         name = "c%s-new%s" % (c1.getId(), newCluster.getId())
         interClusterDist[name] = clusterDist(
           pointsToSDRs(c1.getPoints()), pointsToSDRs(newCluster.getPoints()))
-
   return interClusterDist

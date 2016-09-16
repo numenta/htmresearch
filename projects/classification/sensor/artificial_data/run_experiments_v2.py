@@ -133,19 +133,6 @@ def updateTrace(trace,
   trace['clusteringAccuracy'].append(clusteringAccuracy)
   trace['clusterHomogeneity'].append(clusterHomogeneity)
   trace['clusteringConfidence'].append(clusteringConfidence)
-
-  if recordNumber % 50 == 0:
-    outputTraceInfo(recordNumber,
-                    sensorValue,
-                    actualCategory,
-                    anomalyScore,
-                    classificationInference,
-                    classificationAccuracy,
-                    clusteringInference,
-                    predictedClusterId,
-                    clusteringAccuracy,
-                    clusterHomogeneity,
-                    clusteringConfidence)
   return trace
 
 
@@ -169,12 +156,12 @@ def outputTraceInfo(recordNumber,
 
   # Classification
   _LOGGER.debug('-> classificationInference: %s' % classificationInference)
-  _LOGGER.debug('-> classificationAccuracy: %s / 100' % classificationAccuracy)
+  _LOGGER.debug('-> classificationAccuracy: %s / 1' % classificationAccuracy)
 
   # Clustering
   _LOGGER.debug('-> clusteringInference: %s' % clusteringInference)
   _LOGGER.debug('-> predictedClusterId: %s' % predictedClusterId)
-  _LOGGER.debug('-> clusteringAccuracy: %s / 100' % clusteringAccuracy)
+  _LOGGER.debug('-> clusteringAccuracy: %s / 1' % clusteringAccuracy)
   _LOGGER.debug('-> clusterHomogeneity: %s / 100' % clusterHomogeneity)
   _LOGGER.debug('-> clusteringConfidence: %s' % clusteringConfidence)
   _LOGGER.debug('---')
@@ -362,7 +349,24 @@ def runNetwork(networkConfig,
                         clusteringAccuracy,
                         clusterHomogeneity,
                         clusteringConfidence)
-  
+
+    if recordNumber % 50 == 0:
+      outputTraceInfo(recordNumber,
+                      sensorValue,
+                      actualCategory,
+                      anomalyScore,
+                      classificationInference,
+                      classificationAccuracy,
+                      clusteringInference,
+                      predictedClusterId,
+                      clusteringAccuracy,
+                      clusterHomogeneity,
+                      clusteringConfidence)
+      # _LOGGER.debug('recordNumber: %s' % recordNumber)
+      # for cluster in clustering.getClusters():
+      #   _LOGGER.debug('cluster %s size: %s' %(cluster.getId(), 
+      # cluster.size()))
+
   outputClustersStructure(clustering)
   outputInterClusterDist(clustering)
   expId = generateExpId(expSetup, signalType)

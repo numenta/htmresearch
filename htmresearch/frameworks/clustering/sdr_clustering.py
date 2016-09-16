@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 
-from htmresearch.frameworks.clustering.distances import (clusterDist, 
+from htmresearch.frameworks.clustering.distances import (clusterDist,
                                                          overlapDistance,
                                                          pointsToSDRs)
 
@@ -88,7 +88,7 @@ class Clustering(object):
                mergeThreshold,
                anomalousThreshold,
                stableThreshold,
-               minSequenceLength,
+               minClusterSize,
                pointSimilarityThreshold,
                fistClusterId=0):
 
@@ -102,19 +102,23 @@ class Clustering(object):
 
     # Cluster distance threshold
     self._mergeThreshold = mergeThreshold
-    self._minSequenceLength = minSequenceLength
+    self._minClusterSize = minClusterSize
     self._similarityThreshold = pointSimilarityThreshold
+
 
   def getClusterById(self, clusterId):
     return self._clusters[clusterId]
-  
+
+
   def getClusters(self):
     return self._clusters.values()
+
 
   def getNewCluster(self):
     return self._newCluster
 
-  def findClosestClusters(self, cluster):
+
+  def computeClusterDistances(self, cluster):
     """
     
     :param cluster: 
@@ -122,7 +126,7 @@ class Clustering(object):
     """
     dists = []
     for c in self._clusters.values():
-      d = clusterDist(pointsToSDRs(c.getPoints()), 
+      d = clusterDist(pointsToSDRs(c.getPoints()),
                       pointsToSDRs(cluster.getPoints()))
       dists.append((d, c))
 
@@ -140,7 +144,7 @@ class Clustering(object):
 
   def addOrMergeCluster(self, cluster):
 
-    clusterDistPairs = self.findClosestClusters(cluster)
+    clusterDistPairs = self.computeClusterDistances(cluster)
     notMerged = True
     if len(clusterDistPairs) > 0:
       for clusterDistPair in clusterDistPairs:
@@ -162,7 +166,7 @@ class Clustering(object):
     """
     Inference: find the closest cluster to the new cluster.
     """
-    clusterDistPairs = self.findClosestClusters(self._newCluster)
+    clusterDistPairs = self.computeClusterDistances(self._newCluster)
     if len(clusterDistPairs) > 0:
       distToCluster, predictedCluster = clusterDistPairs[0]
       # Confidence of inference
@@ -188,7 +192,7 @@ class Clustering(object):
 
     # The data is anomalous
     if self._anomalousThreshold <= anomalyScore:
-      if self._newCluster.size() >= self._minSequenceLength:
+      if self._newCluster.size() >= self._minClusterSize:
         self.addOrMergeCluster(self._newCluster)
         self._newCluster = Cluster(len(self._clusters))
 
@@ -196,27 +200,23 @@ class Clustering(object):
       confidence = -3
 
     # If the data is unstable, so do nothing
-    elif self._stableThreshold <= anomalyScore < self._anomalousThreshold:
+    elif self._stableThreshold <= anomalyScore:
       predictedCluster = None
       confidence = -2
 
     # The data is stable
     else:
-      self._newCluster.add(point)
-      # if self._newCluster.size() > 0:
-      #   dists = []
-      #   for p in self._newCluster.getPoints():
-      #     d = overlapDistance(p.getValue(), point.getValue())
-      #     dists.append(d)
-      #   if min(dists) > self._similarityThreshold:
-      #     self._newCluster.add(point)
-      #     _LOGGER.debug('Point added. Min dist: %s' % min(dists)) 
-      #   else:
-      #     if min(dists) > 0:
-      #       _LOGGER.debug('Point NOT added. Min dist: %s' % min(dists))       
-      # else:
-      #   self._newCluster.add(point)
-      ###
+
+      if self._newCluster.size() > self._minClusterSize:
+        dists = []
+        for p in self._newCluster.getPoints():
+          d = overlapDistance(p.getValue(), point.getValue())
+          dists.append(d)
+        if min(dists) > self._similarityThreshold:
+          self._newCluster.add(point)
+      else:
+        self._newCluster.add(point)
+
       predictedCluster, confidence = self.infer()
 
     return predictedCluster, confidence

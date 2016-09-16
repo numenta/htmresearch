@@ -23,8 +23,8 @@
 
 # Signal types can be: 'binary', 'sine', 'triangle'
 SIGNAL_TYPES = [
-  'binary',
-  #'sine', 
+  #'binary',
+  'sine', 
   #'triangle'
 ]
 
