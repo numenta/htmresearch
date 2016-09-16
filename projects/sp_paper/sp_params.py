@@ -73,7 +73,7 @@ spParamTopologyWithBoosting = {
   "minPctOverlapDutyCycle": 0.0,
   "minPctActiveDutyCycle": 0.001,
   "dutyCyclePeriod": 1000,
-  "maxBoost": 20.0,
+  "maxBoost": 100.0,
   "seed": 1936
 }
 
@@ -84,7 +84,7 @@ spParamTopologyNoBoosting = {
   "potentialRadius": 4,
   "potentialPct": 1.0,
   "globalInhibition": False,
-  "localAreaDensity": .05,
+  "localAreaDensity": .1,
   "numActiveColumnsPerInhArea": -1,
   "wrapAround": True,
   "stimulusThreshold": 1,
