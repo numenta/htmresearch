@@ -22,6 +22,7 @@
 
 from optparse import OptionParser
 import pprint
+from tabulate import tabulate
 
 from nupic.research.spatial_pooler import SpatialPooler as PYSpatialPooler
 from htmresearch.algorithms.faulty_spatial_pooler import FaultySpatialPooler
@@ -355,6 +356,15 @@ if __name__ == "__main__":
       numEliminatedSynapses[numEliminatedSynapses < 0] = 0
       numEliminatedSynapsesTrace.append(np.sum(numEliminatedSynapses))
 
+      metrics = {'connected syn': [numConnectedSynapsesTrace[-1]],
+                 'new syn': [numNewSynapses[-1]],
+                 'remove syn': [numEliminatedSynapsesTrace[-1]],
+                 'stability': [stabilityTrace[-1]]}
+      if trackOverlapCurveOverTraining:
+        metrics['noise-robustness'] = [noiseRobustnessTrace[-1]]
+      if classification:
+        metrics['classification'] = [classificationRobustnessTrace[-1]]
+      print tabulate(metrics, headers="keys")
 
   if spatialImp == "monitored_sp":
     # plot permanence for a single column when monitored sp is used
