@@ -173,7 +173,7 @@ def classificationAccuracyVsNoise(sp, inputVectors, noiseLevelList):
   :return:
   """
   numInputVector, inputSize = inputVectors.shape
-
+  numColumns = np.prod(sp.getColumnDimensions())
   if sp is None:
     targetOutputColumns = copy.deepcopy(inputVectors)
   else:
@@ -193,7 +193,7 @@ def classificationAccuracyVsNoise(sp, inputVectors, noiseLevelList):
       if sp is None:
         outputColumns = copy.deepcopy(corruptedInputVector)
       else:
-        outputColumns = np.zeros(sp.getColumnDimensions(), dtype=uintType)
+        outputColumns = np.zeros((numColumns, ), dtype=uintType)
         sp.compute(corruptedInputVector, False, outputColumns)
 
       predictedClassLabel = classifySPoutput(targetOutputColumns, outputColumns)

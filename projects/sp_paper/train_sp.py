@@ -140,7 +140,7 @@ def _getArgs():
                     type=str,
                     default='randomSDR',
                     dest="dataSet",
-                    help="DataSet Name, choose from sparse, correlated-input"
+                    help="DataSet Name, choose from sparse, correlatedSDRPairs"
                          "bar, cross, image")
 
   parser.add_option("-b",
@@ -294,7 +294,6 @@ if __name__ == "__main__":
       np.savez('./results/input_output_overlap/{}_{}'.format(expName, epoch),
               inputOverlapScore, outputOverlapScore)
 
-
     if classification:
       # classify SDRs with noise
       noiseLevelList = np.linspace(0, 1.0, 21)
@@ -390,19 +389,19 @@ if __name__ == "__main__":
   # analyze RF properties
   if inputVectorType == "randomSDR":
     analyzeReceptiveFieldSparseInputs(inputVectors, sp)
-    plt.savefig('figures/{}_inputOverlap_after_learning.pdf'.format(expName))
-  elif inputVectorType == 'correlate-input':
+    plt.savefig('figures/inputOverlap_after_learning_{}.pdf'.format(expName))
+  elif inputVectorType == 'correlatedSDRPairs':
     additionalInfo = sdrData.getAdditionalInfo()
     inputVectors1 = additionalInfo["inputVectors1"]
     inputVectors2 = additionalInfo["inputVectors2"]
     corrPairs = additionalInfo["corrPairs"]
     analyzeReceptiveFieldCorrelatedInputs(
       inputVectors, sp, params, inputVectors1, inputVectors2)
-    plt.savefig(
-      'figures/{}_inputOverlap_after_learning.pdf'.format(expName))
+    plt.savefig('figures/inputOverlap_after_learning_{}.pdf'.format(expName))
   elif (inputVectorType == "randomBarPairs" or
             inputVectorType == "randomCross" or
             inputVectorType == "randomBarSets"):
     plotReceptiveFields2D(sp, params['nX'], params['nY'])
+    plt.savefig('figures/inputOverlap_after_learning_{}.pdf'.format(expName))
 
 

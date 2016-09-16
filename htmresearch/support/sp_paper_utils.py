@@ -178,13 +178,6 @@ def analyzeReceptiveFieldSparseInputs(inputVectors, sp):
   numColumns = np.product(sp.getColumnDimensions())
   overlapMat = calculateInputOverlapMat(inputVectors, sp)
 
-  plt.figure()
-  plt.imshow(overlapMat[:100, :], interpolation="nearest", cmap="magma")
-  plt.xlabel("Input Vector #")
-  plt.ylabel("SP Column #")
-  plt.colorbar()
-  plt.title('percent overlap')
-
   sortedOverlapMat = np.zeros(overlapMat.shape)
   for c in range(numColumns):
     sortedOverlapMat[c, :] = np.sort(overlapMat[c, :])
@@ -194,6 +187,14 @@ def analyzeReceptiveFieldSparseInputs(inputVectors, sp):
   plt.plot(avgSortedOverlaps, '-o')
   plt.xlabel('sorted input vector #')
   plt.ylabel('percent overlap')
+
+  plt.figure()
+  plt.imshow(overlapMat[:100, :], interpolation="nearest", cmap="magma")
+  plt.xlabel("Input Vector #")
+  plt.ylabel("SP Column #")
+  plt.colorbar()
+  plt.title('percent overlap')
+
 
 
 def analyzeReceptiveFieldCorrelatedInputs(
