@@ -141,8 +141,8 @@ class Clustering(object):
   def addOrMergeCluster(self, cluster):
 
     clusterDistPairs = self.findClosestClusters(cluster)
+    notMerged = True
     if len(clusterDistPairs) > 0:
-      notMerged = True
       for clusterDistPair in clusterDistPairs:
         closestClusterToNewDist, closestClusterToNew = clusterDistPair
 
@@ -153,9 +153,8 @@ class Clustering(object):
                                           closestClusterToNewDist))
           closestClusterToNew.merge(cluster)
           notMerged = False
-      if notMerged:
-        self.addCluster(cluster)
-    else:
+
+    if notMerged:
       self.addCluster(cluster)
 
 
