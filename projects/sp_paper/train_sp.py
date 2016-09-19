@@ -272,6 +272,7 @@ if __name__ == "__main__":
   if spatialImp == "monitored_sp":
     sp.mmClearHistory()
 
+  checkPoints = [0, 49, numEpochs-1]
   for epoch in range(numEpochs):
     if changeDataSetContinuously or (epoch == changeDataSetAt):
       params['seed'] = epoch
@@ -318,7 +319,7 @@ if __name__ == "__main__":
     for i in range(numInputVector):
       outputColumns = np.zeros(sp.getColumnDimensions(), dtype=uintType)
       inputVector = copy.deepcopy(inputVectors[sdrOrders[i]][:])
-      # addNoiseToVector(inputVector, 0.05, inputVectorType)
+
       sp.compute(inputVector, learn, outputColumns)
 
       activeColumnsCurrentEpoch[sdrOrders[i]][:] = np.reshape(outputColumns,
@@ -357,14 +358,38 @@ if __name__ == "__main__":
       numEliminatedSynapsesTrace.append(np.sum(numEliminatedSynapses))
 
       metrics = {'connected syn': [numConnectedSynapsesTrace[-1]],
-                 'new syn': [numNewSynapses[-1]],
+                 'new syn': [numNewlyConnectedSynapsesTrace[-1]],
                  'remove syn': [numEliminatedSynapsesTrace[-1]],
-                 'stability': [stabilityTrace[-1]]}
+                 'stability': [stabilityTrace[-1]],
+                 'entropy': [entropyTrace[-1]]}
       if trackOverlapCurveOverTraining:
         metrics['noise-robustness'] = [noiseRobustnessTrace[-1]]
       if classification:
         metrics['classification'] = [classificationRobustnessTrace[-1]]
       print tabulate(metrics, headers="keys")
+
+    if epoch in checkPoints:
+      # inspect SP again
+      inspectSpatialPoolerStats(sp, inputVectors, expName+"epoch{}".format(epoch))
+
+      # analyze RF properties
+      if inputVectorType == "randomSDR":
+        analyzeReceptiveFieldSparseInputs(inputVectors, sp)
+        plt.savefig('figures/inputOverlap_epoch{}_{}.pdf'.format(epoch, expName))
+      elif inputVectorType == 'correlatedSDRPairs':
+        additionalInfo = sdrData.getAdditionalInfo()
+        inputVectors1 = additionalInfo["inputVectors1"]
+        inputVectors2 = additionalInfo["inputVectors2"]
+        corrPairs = additionalInfo["corrPairs"]
+        analyzeReceptiveFieldCorrelatedInputs(
+          inputVectors, sp, params, inputVectors1, inputVectors2)
+        plt.savefig('figures/inputOverlap_epoch{}_{}.pdf'.format(epoch, expName))
+      elif (inputVectorType == "randomBarPairs" or
+                inputVectorType == "randomCross" or
+                inputVectorType == "randomBarSets"):
+        plotReceptiveFields2D(sp, params['nX'], params['nY'])
+        plt.savefig('figures/inputOverlap_epoch{}_{}.pdf'.format(epoch, expName))
+
 
   if spatialImp == "monitored_sp":
     # plot permanence for a single column when monitored sp is used
@@ -388,30 +413,10 @@ if __name__ == "__main__":
                       entropyTrace,
                       fileName)
 
-  # inspect SP again
-  inspectSpatialPoolerStats(sp, inputVectors, expName+"afterTraining")
-
   if classification:
     # classify SDRs with noise
     for epoch in range(numEpochs):
-      npzfile = np.load('./results/classification/{}_{}.npz'.format(expName, epoch))
-
-  # analyze RF properties
-  if inputVectorType == "randomSDR":
-    analyzeReceptiveFieldSparseInputs(inputVectors, sp)
-    plt.savefig('figures/inputOverlap_after_learning_{}.pdf'.format(expName))
-  elif inputVectorType == 'correlatedSDRPairs':
-    additionalInfo = sdrData.getAdditionalInfo()
-    inputVectors1 = additionalInfo["inputVectors1"]
-    inputVectors2 = additionalInfo["inputVectors2"]
-    corrPairs = additionalInfo["corrPairs"]
-    analyzeReceptiveFieldCorrelatedInputs(
-      inputVectors, sp, params, inputVectors1, inputVectors2)
-    plt.savefig('figures/inputOverlap_after_learning_{}.pdf'.format(expName))
-  elif (inputVectorType == "randomBarPairs" or
-            inputVectorType == "randomCross" or
-            inputVectorType == "randomBarSets"):
-    plotReceptiveFields2D(sp, params['nX'], params['nY'])
-    plt.savefig('figures/inputOverlap_after_learning_{}.pdf'.format(expName))
+      npzfile = np.load(
+        './results/classification/{}_{}.npz'.format(expName, epoch))
 
 
