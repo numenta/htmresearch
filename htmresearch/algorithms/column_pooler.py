@@ -45,16 +45,19 @@ class ColumnPooler(object):
                synPermProximalDec=0.001,
                initialProximalPermanence=0.6,
                columnDimensions=(2048,),
-               activationThreshold=13,
-               minThreshold=10,
+               minThresholdProximal=10,
+               activationThresholdDistal=13,
+               minThresholdDistal=10,
                initialPermanence=0.41,
                connectedPermanence=0.50,
-               maxNewSynapseCount=20,
+               maxNewProximalSynapseCount=20,
+               maxNewDistalSynapseCount=20,
                permanenceIncrement=0.10,
                permanenceDecrement=0.10,
                predictedSegmentDecrement=0.0,
                maxSegmentsPerCell=255,
-               maxSynapsesPerSegment=255,
+               maxSynapsesPerProximalSegment=255,
+               maxSynapsesPerDistalSegment=255,
                seed=42):
     """
     This classes uses an ExtendedTemporalMemory internally to keep track of
@@ -86,8 +89,11 @@ class ColumnPooler(object):
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
     self.connectedPermanence = connectedPermanence
-    self.maxNewSynapseCount = maxNewSynapseCount
-    self.minThreshold = minThreshold
+    self.maxNewProximalSynapseCount = maxNewProximalSynapseCount
+    self.maxNewDistalSynapseCount = maxNewDistalSynapseCount
+    self.minThresholdProximal = minThresholdProximal
+    self.minThresholdDistal = minThresholdDistal
+    self.maxSynapsesPerProximalSegment = maxSynapsesPerProximalSegment
     self.activeCells = set()
     self._random = Random(seed)
 
@@ -97,16 +103,16 @@ class ColumnPooler(object):
                       modelName="extendedCPP",
                       columnDimensions=columnDimensions,
                       cellsPerColumn=1,
-                      activationThreshold=activationThreshold,
+                      activationThreshold=activationThresholdDistal,
                       initialPermanence=initialPermanence,
                       connectedPermanence=connectedPermanence,
-                      minThreshold=minThreshold,
-                      maxNewSynapseCount=maxNewSynapseCount,
+                      minThreshold=minThresholdDistal,
+                      maxNewSynapseCount=maxNewDistalSynapseCount,
                       permanenceIncrement=permanenceIncrement,
                       permanenceDecrement=permanenceDecrement,
                       predictedSegmentDecrement=predictedSegmentDecrement,
                       maxSegmentsPerCell=maxSegmentsPerCell,
-                      maxSynapsesPerSegment=maxSynapsesPerSegment,
+                      maxSynapsesPerSegment=maxSynapsesPerDistalSegment,
                       seed=seed,
                       learnOnOneCell=False,
     )
@@ -186,7 +192,8 @@ class ColumnPooler(object):
       # Learn on proximal dendrite if appropriate
       if len(feedforwardInput) > 0:
         self._learnProximal(feedforwardInput, self.activeCells,
-                            self.maxNewSynapseCount, self.proximalPermanences,
+                            self.maxNewProximalSynapseCount,
+                            self.proximalPermanences,
                             self.proximalConnections,
                             self.initialProximalPermanence,
                             self.synPermProximalInc, self.synPermProximalDec,
@@ -223,7 +230,7 @@ class ColumnPooler(object):
     overlaps = numpy.zeros(self.numberOfColumns(), dtype=realDType)
     self.proximalConnections.rightVecSumAtNZ_fast(inputVector.astype(realDType),
                                                  overlaps)
-    overlaps[overlaps < self.minThreshold] = 0
+    overlaps[overlaps < self.minThresholdProximal] = 0
     bottomUpActivity =  set(overlaps.nonzero()[0])
 
     # If there is insufficient current bottom up activity, we incorporate all
@@ -403,24 +410,80 @@ class ColumnPooler(object):
     for cell in activeCells:
       cellPermanencesDense = proximalPermanences.getRow(cell)
       cellNonZeroIndices, _ = proximalPermanences.rowNonZeros(cell)
-      cellNonZeroIndices = set(cellNonZeroIndices)
+      cellNonZeroIndices = list(cellNonZeroIndices)
 
-      # Find the synapses that should be reinforced, punished, and grown.
-      reinforce = list(activeInputs & cellNonZeroIndices)
-      punish = list(cellNonZeroIndices - activeInputs)
-      growthCandidates = activeInputs - cellNonZeroIndices
-      newSynapseCount = min(len(growthCandidates), maxNewSynapseCount)
-      grow = _sample(growthCandidates, newSynapseCount, self._random)
+      # Get new and existing connections for this segment
+      newInputs, existingInputs = self._pickProximalInputsToLearnOn(
+        maxNewSynapseCount, activeInputs, cellNonZeroIndices
+      )
 
-      # Make the changes.
-      cellPermanencesDense[punish] -= synPermProximalDec
-      cellPermanencesDense[reinforce] += synPermProximalInc
-      cellPermanencesDense[grow] = initialPermanence
+      # Adjust existing connections appropriately
+      # First we decrement all existing permanences
+      if len(cellNonZeroIndices) > 0:
+        cellPermanencesDense[cellNonZeroIndices] -= synPermProximalDec
 
-      # Update proximalPermanences and proximalConnections.
+      # Then we add inc + dec to existing active synapses
+      if len(existingInputs) > 0:
+        cellPermanencesDense[existingInputs] += synPermProximalInc + synPermProximalDec
+
+      # Add new connections
+      if len(newInputs) > 0:
+        cellPermanencesDense[newInputs] += initialPermanence
+
+      # Update proximalPermanences and proximalConnections
       proximalPermanences.setRowFromDense(cell, cellPermanencesDense)
       newConnected = numpy.where(cellPermanencesDense >= connectedPermanence)[0]
       proximalConnections.replaceSparseRow(cell, newConnected)
+
+
+
+  def _pickProximalInputsToLearnOn(self, newSynapseCount, activeInputs,
+                                  cellNonZeros):
+    """
+    Pick inputs to form proximal connections to a particular cell. We just
+    randomly subsample from activeInputs, regardless of whether they are already
+    connected.
+
+    We return a list of up to newSynapseCount input indices from activeInputs
+    that are valid new connections for this cell. We also return a list
+    containing all inputs in activeInputs that are already connected to this
+    cell.
+
+    Parameters:
+    ----------------------------
+    @param newSynapseCount  (int)        Number of inputs to pick
+    @param cell             (int)        Cell index
+    @param activeInputs     (set)        Indices of active inputs
+    @param cellNonZeros     (list)       Indices of inputs input this cell with
+                                         non-zero permanences.
+
+    @return (list, list) Indices of new inputs to connect to, inputs already
+                         connected
+    """
+    candidates = []
+    alreadyConnected = []
+
+    # Collect inputs that already have synapses and list of new candidate inputs
+    for inputIdx in activeInputs:
+      if inputIdx in cellNonZeros:
+        alreadyConnected += [inputIdx]
+      else:
+        candidates += [inputIdx]
+
+    # Select min(newSynapseCount, len(candidates)) new inputs to connect to
+    if newSynapseCount >= len(candidates):
+      return candidates, alreadyConnected
+
+    else:
+      # Pick newSynapseCount cells randomly
+      # TODO: we could maybe implement this more efficiently with shuffle.
+      inputs = []
+      for _ in range(newSynapseCount):
+        i = self._random.getUInt32(len(candidates))
+        inputs += [candidates[i]]
+        candidates.remove(candidates[i])
+
+      return inputs, alreadyConnected
 
 
   def _winnersBasedOnLateralActivity(self,
@@ -476,22 +539,3 @@ class ColumnPooler(object):
       predictedActiveCells = predictedActiveCells.union(set(sortedWinnerIndices))
 
     return predictedActiveCells
-
-
-def _sample(iterable, k, rng):
-  """
-  Return a list of k random samples from the supplied collection.
-  """
-  candidates = list(iterable)
-  if k < len(candidates):
-    chosen = []
-    for _ in xrange(k):
-      i = rng.getUInt32(len(candidates))
-      chosen.append(candidates[i])
-      del candidates[i]
-
-    return chosen
-  elif k == len(candidates):
-    return candidates
-  else:
-    raise ValueError("sample larger than population")
