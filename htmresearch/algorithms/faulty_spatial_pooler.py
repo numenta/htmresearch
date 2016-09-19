@@ -49,8 +49,8 @@ class FaultySpatialPooler(SpatialPooler):
     # will be killed
     self.numDead = 0
     self.deadColumnInputSpan = None
+    self.targetDensity = None
     super(FaultySpatialPooler, self).__init__(**kwargs)
-
 
 
   def killCells(self, percent=0.05):
@@ -181,16 +181,34 @@ class FaultySpatialPooler(SpatialPooler):
       self._adaptSynapses(inputVector, activeColumns)
       self._updateDutyCycles(self._overlaps, activeColumns)
       self._bumpUpWeakColumns()
+      self._updateTargetActivityDensity()
       self._updateBoostFactors()
       if self._isUpdateRound():
         self._updateInhibitionRadius()
         self._updateMinDutyCycles()
 
+      # self.growRandomSynapses()
+
     activeArray.fill(0)
     activeArray[activeColumns] = 1
 
 
+  def growRandomSynapses(self):
+    columnFraction = 0.02
 
+    selectColumns = numpy.random.choice(self._numColumns,
+                                        size=int(columnFraction * self._numColumns),
+                                        replace=False)
+    for columnIndex in selectColumns:
+      perm = self._permanences[columnIndex]
+      unConnectedSyn = numpy.where(numpy.logical_and(
+        self._potentialPools[columnIndex] > 0,
+        perm < self._synPermConnected))[0]
+      if len(unConnectedSyn) == 0:
+        continue
+      selectSyn = numpy.random.choice(unConnectedSyn)
+      perm[selectSyn] = self._synPermConnected + self._synPermActiveInc
+      self._updatePermanencesForColumn(perm, columnIndex, raisePerm=False)
 
 
   def _updateBoostFactors(self):
@@ -219,28 +237,8 @@ class FaultySpatialPooler(SpatialPooler):
             minActiveDutyCycle
     """
     if self._maxBoost > 1:
-      if (self._localAreaDensity > 0):
-        density = self._localAreaDensity
-      else:
-        inhibitionArea = ((2 * self._inhibitionRadius + 1)
-                          ** self._columnDimensions.size)
-        inhibitionArea = min(self._numColumns, inhibitionArea)
-        density = float(self._numActiveColumnsPerInhArea) / inhibitionArea
-        density = min(density, 0.5)
-
-      if self._globalInhibition:
-        targetDensity = density
-      else:
-        targetDensity = numpy.zeros(self._numColumns, dtype=realDType)
-        for i in xrange(self._numColumns):
-          if i in self.deadCols:
-            continue
-
-          maskNeighbors = self._getColumnNeighborhood(i)
-          targetDensity[i] = numpy.mean(self._activeDutyCycles[maskNeighbors])
-
       self._boostFactors = numpy.exp(-(
-        self._activeDutyCycles-targetDensity) * self._maxBoost)
+        self._activeDutyCycles-self.targetDensity) * self._maxBoost)
     else:
       pass
 
@@ -250,3 +248,26 @@ class FaultySpatialPooler(SpatialPooler):
     aliveColumns = numpy.ones(numColumns)
     aliveColumns[self.deadCols] = 0
     return aliveColumns.nonzero()[0]
+
+
+  def _updateTargetActivityDensity(self):
+    if (self._localAreaDensity > 0):
+      density = self._localAreaDensity
+    else:
+      inhibitionArea = ((2 * self._inhibitionRadius + 1)
+                        ** self._columnDimensions.size)
+      inhibitionArea = min(self._numColumns, inhibitionArea)
+      density = float(self._numActiveColumnsPerInhArea) / inhibitionArea
+      density = min(density, 0.5)
+
+    if self._globalInhibition:
+      targetDensity = density * numpy.ones(self._numColumns, dtype=realDType)
+    else:
+      targetDensity = numpy.zeros(self._numColumns, dtype=realDType)
+      for i in xrange(self._numColumns):
+        if i in self.deadCols:
+          continue
+
+        maskNeighbors = self._getColumnNeighborhood(i)
+        targetDensity[i] = numpy.mean(self._activeDutyCycles[maskNeighbors])
+    self.targetDensity = targetDensity
