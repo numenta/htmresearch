@@ -28,6 +28,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from nupic.bindings.math import GetNTAReal
+from nupic.math.topology import coordinatesFromIndex
+
 realDType = GetNTAReal()
 uintType = "uint32"
 
@@ -248,7 +250,8 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
   axs[0, 1].hist(winnerInputOverlap)
   axs[0, 1].set_xlabel('# winner input overlap')
 
-  axs[1, 0].hist(activationProb)
+  axs[1, 0].hist(activationProb, bins=20, range=[0, 0.1])
+  axs[1, 0].set_xlim([0, .1])
   axs[1, 0].set_xlabel('activation prob')
 
   axs[1, 1].plot(connectedCounts, activationProb, '.')
@@ -259,6 +262,46 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
   if saveFigPrefix is not None:
     plt.savefig('figures/{}_network_stats.pdf'.format(saveFigPrefix))
   return fig
+
+
+def getRFCenters(sp, params, type='connected'):
+  numColumns = np.product(sp.getColumnDimensions())
+  dimensions = (params['nX'], params['nY'])
+  meanCoordinates = np.zeros((numColumns, 2))
+  for columnIndex in range(numColumns):
+    receptiveField = np.zeros((sp.getNumInputs(), ))
+    if type == 'connected':
+      sp.getConnectedSynapses(columnIndex, receptiveField)
+    elif type == 'potential':
+      sp.getPotential(columnIndex, receptiveField)
+    else:
+      raise RuntimeError('unknown RF type')
+
+    connectedSynapseIndex = np.where(receptiveField)[0]
+    if len(connectedSynapseIndex) == 0:
+      continue
+    coordinates = []
+    for synapseIndex in connectedSynapseIndex:
+      coordinate = coordinatesFromIndex(synapseIndex, dimensions)
+      coordinates.append(coordinate)
+    coordinates = np.array(coordinates)
+
+    coordinates = coordinates.astype('float32')
+    angularCoordinates = np.array(coordinates)
+    angularCoordinates[:, 0] = coordinates[:, 0] / params['nX'] * 2 * np.pi
+    angularCoordinates[:, 1] = coordinates[:, 1] / params['nY'] * 2 * np.pi
+
+    meanCoordinate = np.zeros(2)
+
+    for i in range(2):
+      meanCoordinate[i] = np.arctan2(
+        np.sum(np.sin(angularCoordinates[:, i])),
+        np.sum(np.cos(angularCoordinates[:, i])))
+      if meanCoordinate[i] < 0:
+        meanCoordinate[i] += 2 * np.pi
+      meanCoordinate[i] *= dimensions[i] / (2 * np.pi)
+    meanCoordinates[columnIndex, :] = meanCoordinate
+  return meanCoordinates
 
 
 def calculateEntropy(activeColumns):
