@@ -412,9 +412,16 @@ class ColumnPooler(object):
       cellNonZeroIndices, _ = proximalPermanences.rowNonZeros(cell)
       cellNonZeroIndices = list(cellNonZeroIndices)
 
+      if len(cellNonZeroIndices) >= self.maxNewProximalSynapseCount:
+        continue
+      else:
+        newSynapseCount = min(
+          self.maxNewProximalSynapseCount - len(cellNonZeroIndices),
+          maxNewSynapseCount)
+        
       # Get new and existing connections for this segment
       newInputs, existingInputs = self._pickProximalInputsToLearnOn(
-        maxNewSynapseCount, activeInputs, cellNonZeroIndices
+        newSynapseCount, activeInputs, cellNonZeroIndices
       )
 
       # Adjust existing connections appropriately
