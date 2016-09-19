@@ -1,9 +1,8 @@
 import logging
 import numpy as np
 
-from htmresearch.frameworks.clustering.distances import (clusterDist,
-                                                         overlapDistance,
-                                                         pointsToSDRs)
+from htmresearch.frameworks.clustering.distances import (
+  computeClusterDistances, overlapDistance)
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
@@ -39,18 +38,32 @@ class Point(object):
 
 
 class Cluster(object):
-  def __init__(self, id, points=None, label=None):
+  def __init__(self, id, timeCreated, points=None, label=None):
     self._id = id
     self._label = label
     if points:
       self._points = points
     else:
       self._points = []
-    _LOGGER.debug("New cluster %s created!" % self._id)
+    _LOGGER.debug('CREATE: New cluster %s created!' % self._id)
+
+    self._timeCreated = timeCreated
+    self._lastUpdated = timeCreated
+    self._numPointsClustered = 0
 
 
-  def add(self, point):
+  def __repr__(self):
+    return repr({
+      '_id': self._id, '_label': self._label, 'numPoints': len(self._points),
+      '_timeCreated': self._timeCreated, '_lastUpdated': self._lastUpdated, 
+      '_numPointsClustered': self._numPointsClustered
+    })
+
+
+  def add(self, point, updateTime):
     self._points.append(point)
+    self._lastUpdated = updateTime
+    self._numPointsClustered += 1
 
 
   def setLabel(self, name):
@@ -77,9 +90,9 @@ class Cluster(object):
     return len(self._points)
 
 
-  def merge(self, cluster):
+  def merge(self, cluster, updateTime):
     for point in cluster.getPoints():
-      self.add(point)
+      self.add(point, updateTime)
 
 
 
@@ -90,10 +103,13 @@ class Clustering(object):
                stableThreshold,
                minClusterSize,
                pointSimilarityThreshold,
+               pruningFrequency,
+               pruneClusters,
                fistClusterId=0):
 
     # Clusters
-    self._newCluster = Cluster(fistClusterId)
+    self._numPointsClustered = 0
+    self._newCluster = Cluster(fistClusterId, self._numPointsClustered)
     self._clusters = {}
 
     # Anomaly Score Thresholds
@@ -104,6 +120,11 @@ class Clustering(object):
     self._mergeThreshold = mergeThreshold
     self._minClusterSize = minClusterSize
     self._similarityThreshold = pointSimilarityThreshold
+
+    # Cluster pruning
+    self._pruneClusters = pruneClusters
+    self._pruningFrequency = pruningFrequency
+    self._clusterIdCounter = fistClusterId + 1
 
 
   def getClusterById(self, clusterId):
@@ -118,22 +139,7 @@ class Clustering(object):
     return self._newCluster
 
 
-  def computeClusterDistances(self, cluster):
-    """
-    
-    :param cluster: 
-    :return: ordered list of clusters and their distances 
-    """
-    dists = []
-    for c in self._clusters.values():
-      d = clusterDist(pointsToSDRs(c.getPoints()),
-                      pointsToSDRs(cluster.getPoints()))
-      dists.append((d, c))
-
-    return sorted(dists)
-
-
-  def addCluster(self, cluster):
+  def _addCluster(self, cluster):
     clusterId = cluster.getId()
     if clusterId not in self._clusters:
       self._clusters[clusterId] = cluster
@@ -142,31 +148,82 @@ class Clustering(object):
     _LOGGER.debug("Cluster %s permanently added" % clusterId)
 
 
-  def addOrMergeCluster(self, cluster):
+  def _removeCluster(self, cluster):
+    clusterId = cluster.getId()
+    if clusterId in self._clusters:
+      self._clusters.pop(clusterId)
+      _LOGGER.debug('REMOVED: cluster with ID %s was removed' % clusterId)
 
-    clusterDistPairs = self.computeClusterDistances(cluster)
-    notMerged = True
+
+  def _mergeNewCluster(self):
+
+    clusterDistPairs = computeClusterDistances(self._newCluster, 
+                                               self.getClusters())
+    clusterMerged = False
+    if len(clusterDistPairs) > 0:
+      closestClusterDist, closestCluster = clusterDistPairs[0]
+      if closestClusterDist < self._mergeThreshold:
+        _LOGGER.debug("MERGE: Cluster %s merged with cluster %s. "
+                      "Inter-cluster distance: %s"
+                      % (self._newCluster.getId(),
+                         closestCluster.getId(),
+                         closestClusterDist))
+        updateTime = self._numPointsClustered
+        closestCluster.merge(self._newCluster, updateTime)
+        clusterMerged = True
+
+    return clusterMerged
+
+
+  def _mergeCluster(self, cluster, clusters):
+    """
+    Merge cluster if it is close enough to a cluster in the list and return 
+    True. Otherwise, don't merge the cluster and return False.
+    :param cluster: (Cluster) cluster to merge w/ one of the existing clusters. 
+    :param clusters: (list of Clusters) list of clusters to compare the first 
+    cluster to.
+    :return: (bool) Wether or not the cluster was merged.
+    """
+
+    clusterDistPairs = computeClusterDistances(cluster, clusters)
+    clusterMerged = False
     if len(clusterDistPairs) > 0:
       for clusterDistPair in clusterDistPairs:
-        closestClusterToNewDist, closestClusterToNew = clusterDistPair
+        closestClusterDist, closestCluster = clusterDistPair
 
-        if closestClusterToNewDist < self._mergeThreshold:
-          _LOGGER.debug("Cluster %s merged with cluster %s. Inter-cluster "
-                        "distance: %s" % (cluster.getId(),
-                                          closestClusterToNew.getId(),
-                                          closestClusterToNewDist))
-          closestClusterToNew.merge(cluster)
-          notMerged = False
+        if closestClusterDist < self._mergeThreshold:
+          _LOGGER.debug("MERGE: Cluster %s merged with cluster %s. "
+                        "Inter-cluster distance: %s" % (cluster.getId(),
+                                                        closestCluster.getId(),
+                                                        closestClusterDist))
+          closestCluster.merge(cluster, self._numPointsClustered)
+          self._removeCluster(cluster)
+          clusterMerged = True
 
-    if notMerged:
-      self.addCluster(cluster)
+    return clusterMerged
+
+
+  def _pruneClusters(self):
+    clusters = self.getClusters()
+    for i in range(len(clusters)):
+      cluster = clusters[i]
+      remainingClusters = []
+      if i == 0:
+        remainingClusters = clusters[1:]
+      elif i == len(clusters) - 1:
+        remainingClusters = clusters[:-1]
+      else:
+        remainingClusters.extend(clusters[:i])
+        remainingClusters.extend(clusters[i + 1:])
+      self._mergeCluster(cluster, remainingClusters)
 
 
   def infer(self):
     """
     Inference: find the closest cluster to the new cluster.
     """
-    clusterDistPairs = self.computeClusterDistances(self._newCluster)
+    clusterDistPairs = computeClusterDistances(self._newCluster,
+                                               self.getClusters())
     if len(clusterDistPairs) > 0:
       distToCluster, predictedCluster = clusterDistPairs[0]
       # Confidence of inference
@@ -193,38 +250,52 @@ class Clustering(object):
     # The data is anomalous
     if self._anomalousThreshold <= anomalyScore:
       if self._newCluster.size() >= self._minClusterSize:
-        self.addOrMergeCluster(self._newCluster)
-        self._newCluster = Cluster(len(self._clusters))
+        clusterMerged = self._mergeNewCluster()
+        if not clusterMerged:
+          self._addCluster(self._newCluster)
+      else:
+        _LOGGER.debug('DELETE: Cluster %s discarded. Not enough points :-$' %
+                      self._newCluster.getId())
+      self._newCluster = Cluster(self._clusterIdCounter,
+                                 self._numPointsClustered)
+      self._clusterIdCounter += 1
 
       predictedCluster = None
       confidence = -3
 
-    # If the data is unstable, so do nothing
+    # The data is unstable, so do nothing
     elif self._stableThreshold <= anomalyScore:
       predictedCluster = None
       confidence = -2
 
     # The data is stable
     else:
-
-      if self._newCluster.size() > self._minClusterSize:
-        dists = []
-        for p in self._newCluster.getPoints():
-          d = overlapDistance(p.getValue(), point.getValue())
-          dists.append(d)
-        if min(dists) > self._similarityThreshold:
-          self._newCluster.add(point)
-      else:
-        self._newCluster.add(point)
-
+      self._addPoint(point)
+      if (self._pruneClusters and
+                self._numPointsClustered % self._pruningFrequency == 0):
+        self._pruneClusters()
       predictedCluster, confidence = self.infer()
 
+    self._numPointsClustered += 1
     return predictedCluster, confidence
 
 
-  def inClusterActualCategoriesFrequencies(self):
+  def _addPoint(self, point):
 
-    inClusterActualCategoriesFrequencies = []
+    if self._newCluster.size() >= 1:
+      dists = []
+      for p in self._newCluster.getPoints():
+        d = overlapDistance(p.getValue(), point.getValue())
+        dists.append(d)
+      if min(dists) > self._similarityThreshold:
+        self._newCluster.add(point, self._numPointsClustered)
+    else:
+      self._newCluster.add(point, self._numPointsClustered)
+
+
+  def clusterActualCategoriesFrequencies(self):
+
+    clusterActualCategoriesFrequencies = []
     for cluster in self._clusters.values():
       labels = []
       for point in cluster.getPoints():
@@ -236,9 +307,9 @@ class Clustering(object):
           'actualCategory': actualCategory,
           'numberOfPoints': numberOfPoints
         })
-      inClusterActualCategoriesFrequencies.append({
+      clusterActualCategoriesFrequencies.append({
         'clusterId': cluster.getId(),
         'actualCategoryFrequencies': frequencies
       })
 
-    return inClusterActualCategoriesFrequencies
+    return clusterActualCategoriesFrequencies

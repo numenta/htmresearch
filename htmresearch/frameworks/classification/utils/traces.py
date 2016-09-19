@@ -43,7 +43,7 @@ def plotTraces(numTmCells, title, xlim, traces):
   classLabels = np.array(traces['actualCategory'])
   sensorValue = np.array(traces['sensorValue'])
   if xlim is None:
-    xlim = [t[-200], t[-1]]
+    xlim = [t[0], t[-1]]
   else:
     xlim = np.array(xlim)
     if np.max(xlim) > len(t):

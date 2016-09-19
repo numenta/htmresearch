@@ -147,7 +147,8 @@ def outputTraceInfo(recordNumber,
                     predictedClusterId,
                     clusteringAccuracy,
                     clusterHomogeneity,
-                    clusteringConfidence):
+                    clusteringConfidence,
+                    numClusters):
   # Network
   _LOGGER.debug('-> recordNumber: %s' % recordNumber)
   _LOGGER.debug('-> sensorValue: %s' % sensorValue)
@@ -164,6 +165,7 @@ def outputTraceInfo(recordNumber,
   _LOGGER.debug('-> clusteringAccuracy: %s / 1' % clusteringAccuracy)
   _LOGGER.debug('-> clusterHomogeneity: %s / 100' % clusterHomogeneity)
   _LOGGER.debug('-> clusteringConfidence: %s' % clusteringConfidence)
+  _LOGGER.debug('-> numClusters: %s' % numClusters)
   _LOGGER.debug('---')
 
 
@@ -179,12 +181,21 @@ def outputInterClusterDist(clustering):
 def outputClustersStructure(clustering):
   if _LOGGER.getEffectiveLevel() == logging.DEBUG:
     labelClusters(clustering)
-    for frequencyDict in clustering.inClusterActualCategoriesFrequencies():
+
+    # sort cluster-category frequencies by label and cumulative number of points
+    sortedFreqDicts = sorted(
+      clustering.clusterActualCategoriesFrequencies(),
+      key=lambda x: (clustering.getClusterById(x['clusterId']).getLabel(),
+                     sum([freq['numberOfPoints']
+                          for freq in x['actualCategoryFrequencies']])))
+
+    for frequencyDict in sortedFreqDicts:
       clusterId = frequencyDict['clusterId']
       actualCategoryFrequencies = frequencyDict['actualCategoryFrequencies']
-      clusterLabel = clustering.getClusterById(clusterId).getLabel()
-      _LOGGER.debug('-> frequencies of actual categories in cluster %s. '
-                    'Label: %s' % (clusterId, clusterLabel))
+      cluster = clustering.getClusterById(clusterId)
+      _LOGGER.debug('-> frequencies of actual categories in cluster %s.'
+                    % clusterId)
+      _LOGGER.debug('-> cluster info: %s' % cluster)
       for freq in actualCategoryFrequencies:
         _LOGGER.debug('* actualCategory: %s' % freq['actualCategory'])
         _LOGGER.debug('* numberPoints: %s' % freq['numberOfPoints'])
@@ -283,18 +294,22 @@ def runNetwork(networkConfig,
   trace = initTrace()
 
   # TODO: move this out
-  startClusteringIndex = expSetup['numPoints'] / 2
-  mergeThreshold = 0.1
+  startClusteringIndex = 0  # expSetup['numPoints'] / 2
+  mergeThreshold = 0.3
   anomalousThreshold = 0.5
   stableThreshold = 0.1
-  minSequenceLength = 4
+  minClusterSize = 1
   similarityThreshold = 0.01
+  pruningFrequency = 20
+  pruneClusters = False
 
   clustering = Clustering(mergeThreshold,
                           anomalousThreshold,
                           stableThreshold,
-                          minSequenceLength,
-                          similarityThreshold)
+                          minClusterSize,
+                          similarityThreshold,
+                          pruningFrequency,
+                          pruneClusters)
 
   for recordNumber in range(expSetup['numPoints']):
 
@@ -361,7 +376,8 @@ def runNetwork(networkConfig,
                       predictedClusterId,
                       clusteringAccuracy,
                       clusterHomogeneity,
-                      clusteringConfidence)
+                      clusteringConfidence,
+                      len(clustering.getClusters()))
       # _LOGGER.debug('recordNumber: %s' % recordNumber)
       # for cluster in clustering.getClusters():
       #   _LOGGER.debug('cluster %s size: %s' %(cluster.getId(), 
@@ -461,7 +477,7 @@ def computeClusterHomogeneity(clustering):
 
 
 def labelClusters(clustering):
-  for frequencyDict in clustering.inClusterActualCategoriesFrequencies():
+  for frequencyDict in clustering.clusterActualCategoriesFrequencies():
     actualCategoryFrequencies = frequencyDict['actualCategoryFrequencies']
     clusterId = frequencyDict['clusterId']
     cluster = clustering.getClusterById(clusterId)

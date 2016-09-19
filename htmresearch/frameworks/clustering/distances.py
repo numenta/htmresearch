@@ -96,3 +96,25 @@ def interClusterDistances(clusters, newCluster):
         interClusterDist[name] = clusterDist(
           pointsToSDRs(c1.getPoints()), pointsToSDRs(newCluster.getPoints()))
   return interClusterDist
+
+
+
+def computeClusterDistances(cluster, clusters):
+  """
+  Compute distance between a cluster and each cluster in a list of clusters 
+  :param cluster: (Cluster) cluster to compare to other clusters
+  :param clusters: (list of Cluster objects) 
+  :return: ordered list of clusters and their distances 
+  """
+  dists = []
+  for c in clusters:
+    d = clusterDist(pointsToSDRs(c.getPoints()),
+                    pointsToSDRs(cluster.getPoints()))
+    dists.append((d, c))
+
+  clusterDists = sorted(dists, key=lambda x: (x[0], x[1]._lastUpdated))
+  # print 'SORTED by distance:'
+  # for d in sorted(dists): print d
+  # print 'SORTED by distance and lastUpdated:'
+  # for d in clusterDists: print d
+  return clusterDists
