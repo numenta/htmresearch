@@ -381,7 +381,7 @@ class TemporalMemory(object):
   def computePredictiveCells(self, activeCells, connections):
     """
     Phase 4: Compute predictive cells due to lateral input
-    on distal dendrites.
+    on distal dendrites, or feedback input on apical dendrites
     Pseudocode:
       - for each distal dendrite segment with activity >= activationThreshold
         - mark the segment as active
