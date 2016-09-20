@@ -72,47 +72,49 @@ class FaultyTemporalMemory(TemporalMemory):
     print "Total number of segments removed=", numSegmentDeleted
 
 
-  def burstColumn(self, connections, random, column, columnMatchingSegments,
-                  prevActiveCells, prevWinnerCells,
-                  numActivePotentialSynapsesForSegment, cellsPerColumn,
-                  maxNewSynapseCount, initialPermanence, permanenceIncrement,
-                  permanenceDecrement, learn):
-    """ Originally copied from temporal_memory.py and augmented to ignore dead
-    cells.  See TemporalMemory.burstColumns() for original implementation.
+  def burstColumn(self, column, columnMatchingSegments, prevActiveCells,
+                  prevWinnerCells, learn):
     """
-    start = cellsPerColumn * column
-    cells = xrange(start, start + cellsPerColumn)
+    Activates all of the cells in an unpredicted active column, chooses a winner
+    cell, and, if learning is turned on, learns on one segment, growing a new
+    segment if necessary.
 
-    # Strip out destroyed cells
-    cells = [cellIdx
-             for cellIdx
-             in cells
-             if cellIdx not in self.deadCells]
+    Note: This differs from its base class implementation
 
-    if columnMatchingSegments is not None:
-      numActive = lambda s: numActivePotentialSynapsesForSegment[s.flatIdx]
-      bestMatchingSegment = max(columnMatchingSegments, key=numActive)
-      winnerCell = bestMatchingSegment.cell
+    @param column (int)
+    Index of bursting column.
 
-      if learn:
-        self.adaptSegment(connections, bestMatchingSegment, prevActiveCells,
-                          permanenceIncrement, permanenceDecrement)
+    @param columnMatchingSegments (iter)
+    Matching segments in this column, or None if there aren't any.
 
-        nGrowDesired = maxNewSynapseCount - numActive(bestMatchingSegment)
+    @param prevActiveCells (list)
+    Active cells in `t-1`.
 
-        if nGrowDesired > 0:
-          self.growSynapses(connections, random, bestMatchingSegment,
-                            nGrowDesired, prevWinnerCells, initialPermanence)
-    else:
-      winnerCell = self.leastUsedCell(random, cells, connections)
-      if learn:
-        nGrowExact = min(maxNewSynapseCount, len(prevWinnerCells))
-        if nGrowExact > 0:
-          segment = connections.createSegment(winnerCell)
-          self.growSynapses(connections, random, segment, nGrowExact,
-                            prevWinnerCells, initialPermanence)
+    @param prevWinnerCells (list)
+    Winner cells in `t-1`.
 
-    return cells, winnerCell
+    @param learn (bool)
+    Whether or not learning is enabled.
+
+    @return (tuple) Contains:
+                      `cells`         (iter),
+                      `winnerCell`    (int),
+    """
+
+    start = self.cellsPerColumn * column
+
+    # Strip out destroyed cells before passing along to base _burstColumn()
+    cellsForColumn = [cellIdx
+                      for cellIdx
+                      in xrange(start, start + self.cellsPerColumn)
+                      if cellIdx not in self.deadCells]
+
+    return self._burstColumn(
+      self.connections, self._random, column, columnMatchingSegments,
+      prevActiveCells, prevWinnerCells, cellsForColumn,
+      self.numActivePotentialSynapsesForSegment, self.maxNewSynapseCount,
+      self.initialPermanence, self.permanenceIncrement,
+      self.permanenceDecrement, learn)
 
 
   def printDeadCells(self):
