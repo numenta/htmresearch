@@ -71,6 +71,12 @@ class FaultyTemporalMemory(TemporalMemory):
 
     print "Total number of segments removed=", numSegmentDeleted
 
+    # Strip out segments for dead cells
+    self.activeSegments = [s for s in self.activeSegments if
+                           s.cell not in self.deadCells]
+    self.matchingSegments = [s for s in self.matchingSegments if
+                             s.cell not in self.deadCells]
+
 
   def burstColumn(self, column, columnMatchingSegments, prevActiveCells,
                   prevWinnerCells, learn):
