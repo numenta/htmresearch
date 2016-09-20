@@ -134,6 +134,10 @@ def getRandomBar(imageSize, barHalfLength, orientation='horizontal'):
     bar = getBar(imageSize, (xLoc, yLoc), barHalfLength, orientation)
   else:
     raise RuntimeError("orientation has to be horizontal or vertical")
+
+  # shift bar with random phases
+  bar = np.roll(bar, np.random.randint(10 * nX), 0)
+  bar = np.roll(bar, np.random.randint(10 * nY), 1)
   return bar
 
 
