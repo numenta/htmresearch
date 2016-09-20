@@ -438,16 +438,20 @@ class ColumnPooler(object):
     """
     Given the set of cells active due to feedforward input, narrow down the
     list of active cells based on predictions due to previous lateralInput.
+
     Parameters:
     ----------------------------
     @param    activeCells           (set)
               Indices of cells activated by bottom-up input.
+
     @param    predictiveCells       (set)
               Indices of cells that are laterally predicted.
+
     @param    overlaps              (numpy array)
               Bottom up overlap scores for each proximal segment. This is used
               to select additional cells if the narrowed down list contains less
               than targetActiveCells.
+
     @param    targetActiveCells     (int)
               The number of active cells we want to have active.
     @return (set) List of new winner cell indices

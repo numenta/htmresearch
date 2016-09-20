@@ -545,7 +545,7 @@ class L4L2Experiment(object):
       "synPermProximalDec": 0.001,
       "initialProximalPermanence": 0.6,
       "minThresholdDistal": 10,
-      "minThresholdProximal": 1,
+      "minThresholdProximal": 10,
       "predictedSegmentDecrement": 0.002,
       "activationThresholdDistal": 13,
       "maxNewProximalSynapseCount": 20,
