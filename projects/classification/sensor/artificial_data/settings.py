@@ -20,12 +20,11 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-
 # Signal types can be: 'binary', 'sine', 'triangle'
 SIGNAL_TYPES = [
   'binary',
-  #'sine', 
-  #'triangle'
+  # 'sine', 
+  # 'triangle'
 ]
 
 # Parameters to generate the artificial sensor data
@@ -45,9 +44,18 @@ NUM_REPS = [5]
 # Verbosity of network
 VERBOSITY = 0
 
+# Where to save the network output
+EXP_SETUPS_OUTPUT_FILE = 'results/seq_classification_results.csv'
+TRACES_OUTPUT_FILE = 'results/traces_%s.csv'
+
+# Whether to run the network on real data
+USE_REAL_DATA = True 
+INPUT_FILE = 'data/sensortag_x.csv'
+NUM_POINTS = 3000
+
 # Whether to use a JSON config file of the template config generator.
 # See network_configs.json for an example of standard config file.
 USE_CONFIG_TEMPLATE = False
 
-# Whether or not to plot experiments data and results
-PLOT  = False
+# Whether to plot experiments data and results
+PLOT = False

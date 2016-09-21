@@ -38,10 +38,9 @@ from settings import (SIGNAL_TYPES,
 def _generateExpData():
   """
   Generate CSV data to plot.
-  @return expSetups: (list of dict) info about each experiment setup.
   """
 
-  expSetups = []
+  filePaths = []
   for signalType in SIGNAL_TYPES:
     for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
       for signalMean in SIGNAL_MEANS:
@@ -50,25 +49,26 @@ def _generateExpData():
             for numReps in NUM_REPS:
               for numPhases in NUM_PHASES:
                 for noiseLength in NOISE_LENGTHS:
-                  expSetup = generateSensorData(signalType,
-                                                DATA_DIR,
-                                                numPhases,
-                                                numReps,
-                                                signalMean,
-                                                signalAmplitude,
-                                                numCategories,
-                                                noiseAmplitude,
-                                                noiseLength)
+                  (expSetup,
+                   numPoints,
+                   filePath) = generateSensorData(signalType,
+                                                  DATA_DIR,
+                                                  numPhases,
+                                                  numReps,
+                                                  signalMean,
+                                                  signalAmplitude,
+                                                  numCategories,
+                                                  noiseAmplitude,
+                                                  noiseLength)
+                  filePaths.append(filePath)
 
-                  expSetups.append(expSetup)
-
-  return expSetups
+  return filePaths
 
 
 
 def main():
-  expSetups = _generateExpData()
-  plotSensorData([e['inputFilePath'] for e in expSetups])
+  filePaths = _generateExpData()
+  plotSensorData(filePaths)
 
 
 

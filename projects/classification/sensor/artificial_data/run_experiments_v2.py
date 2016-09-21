@@ -46,9 +46,24 @@ from settings import (NUM_CATEGORIES,
                       SIGNAL_AMPLITUDES,
                       SIGNAL_MEANS,
                       DATA_DIR,
-                      USE_CONFIG_TEMPLATE,
                       NOISE_LENGTHS,
+                      EXP_SETUPS_OUTPUT_FILE,
+                      TRACES_OUTPUT_FILE,
+                      USE_REAL_DATA,
+                      INPUT_FILE,
+                      NUM_POINTS,
+                      USE_CONFIG_TEMPLATE,
                       PLOT)
+
+from clustering_settings import (startClusteringIndex,
+                                 mergeThreshold,
+                                 anomalousThreshold,
+                                 stableThreshold,
+                                 minClusterSize,
+                                 similarityThreshold,
+                                 pruningFrequency,
+                                 pruneClusters,
+                                 rollingAccuracyWindow)
 
 _LOGGER = logging.getLogger()
 _LOGGER.setLevel(logging.DEBUG)
@@ -78,7 +93,7 @@ def initTrace():
 
 
 def onlineRollingAccuracy(trace,
-                          expSetup,
+                          rollingWindowSize,
                           inferenceFieldName,
                           accuracyFieldName,
                           ignoreNoise=True):
@@ -93,7 +108,6 @@ def onlineRollingAccuracy(trace,
     else:
       x = 0
 
-    rollingWindowSize = expSetup['sequenceLength']
     if ignoreNoise and trace['actualCategory'][-1] > 0:
       ma += float(x - ma) / rollingWindowSize
 
@@ -203,8 +217,8 @@ def outputClustersStructure(clustering):
 
 
 
-def updateExpSetup(expSetup, networkConfig):
-  assert isinstance(expSetup, dict)
+def getNetworkSetup(networkConfig):
+  networkSetup = {}
 
   spEnabled = networkConfig['spRegionConfig'].get(
     'regionEnabled')
@@ -218,21 +232,22 @@ def updateExpSetup(expSetup, networkConfig):
   cells = networkConfig['tmRegionConfig']['regionParams']['cellsPerColumn']
   columns = networkConfig['tmRegionConfig']['regionParams']['columnCount']
 
-  expSetup['spEnabled'] = spEnabled
-  expSetup['tmEnabled'] = tmEnabled
-  expSetup['tpEnabled'] = tpEnabled
-  expSetup['classifierType'] = classifierType
-  expSetup['numTmCells'] = cells * columns
-  return expSetup
+  networkSetup['spEnabled'] = spEnabled
+  networkSetup['tmEnabled'] = tmEnabled
+  networkSetup['tpEnabled'] = tpEnabled
+  networkSetup['classifierType'] = classifierType
+  networkSetup['numTmCells'] = cells * columns
+  return networkSetup
 
 
 
-def generateExpId(expSetup, baseId):
-  return '%s_sp-%s_tm-%s_tp-%s_%s' % (baseId,
-                                      expSetup['spEnabled'],
-                                      expSetup['tmEnabled'],
-                                      expSetup['tpEnabled'],
-                                      expSetup['classifierType'][3:-6])
+def generateExpId(filePath, networkSetup):
+  baseName = filePath.split('/')[-1].split('.csv')[0]
+  return '%s_sp=%s_tm=%s_tp=%s_%s' % (baseName,
+                                      networkSetup['spEnabled'],
+                                      networkSetup['tmEnabled'],
+                                      networkSetup['tpEnabled'],
+                                      networkSetup['classifierType'][3:-6])
 
 
 
@@ -260,29 +275,10 @@ def convertNonZeroToSDR(patternNZs, sdrSize):
 
 
 
-def runNetwork(networkConfig,
-               signalType,
-               inputDataDir,
-               numPhases,
-               numReps,
-               signalMean,
-               signalAmplitude,
-               numCategories,
-               noiseAmplitude,
-               noiseLengths):
-  expSetup = generateSensorData(signalType,
-                                inputDataDir,
-                                numPhases,
-                                numReps,
-                                signalMean,
-                                signalAmplitude,
-                                numCategories,
-                                noiseAmplitude,
-                                noiseLengths)
-
-  expSetup = updateExpSetup(expSetup, networkConfig)
-
-  dataSource = FileRecordStream(streamID=expSetup['inputFilePath'])
+def runNetwork(networkConfig, expSetup):
+  filePath = expSetup['inputFilePath']
+  numPoints = expSetup['numPoints']
+  dataSource = FileRecordStream(streamID=filePath)
   network = configureNetwork(dataSource, networkConfig)
 
   (sensorRegion,
@@ -293,16 +289,6 @@ def runNetwork(networkConfig,
 
   trace = initTrace()
 
-  # TODO: move this out
-  startClusteringIndex = 0  # expSetup['numPoints'] / 2
-  mergeThreshold = 0.3
-  anomalousThreshold = 0.5
-  stableThreshold = 0.1
-  minClusterSize = 1
-  similarityThreshold = 0.01
-  pruningFrequency = 20
-  pruneClusters = False
-
   clustering = Clustering(mergeThreshold,
                           anomalousThreshold,
                           stableThreshold,
@@ -311,7 +297,7 @@ def runNetwork(networkConfig,
                           pruningFrequency,
                           pruneClusters)
 
-  for recordNumber in range(expSetup['numPoints']):
+  for recordNumber in range(numPoints):
 
     network.run(1)
     if recordNumber > startClusteringIndex:
@@ -341,7 +327,7 @@ def runNetwork(networkConfig,
      predictedClusterId,
      clusteringAccuracy,
      clusterHomogeneity) = computeStats(trace,
-                                        expSetup,
+                                        rollingAccuracyWindow,
                                         sensorRegion,
                                         tmRegion,
                                         tpRegion,
@@ -378,20 +364,15 @@ def runNetwork(networkConfig,
                       clusterHomogeneity,
                       clusteringConfidence,
                       len(clustering.getClusters()))
-      # _LOGGER.debug('recordNumber: %s' % recordNumber)
-      # for cluster in clustering.getClusters():
-      #   _LOGGER.debug('cluster %s size: %s' %(cluster.getId(), 
-      # cluster.size()))
 
   outputClustersStructure(clustering)
   outputInterClusterDist(clustering)
-  expId = generateExpId(expSetup, signalType)
-  return {'expId': expId, 'expTrace': trace, 'expSetup': expSetup}
+  return trace
 
 
 
 def computeStats(trace,
-                 expSetup,
+                 rollingAccuracyWindow,
                  sensorRegion,
                  tmRegion,
                  tpRegion,
@@ -419,7 +400,7 @@ def computeStats(trace,
 
   classificationInference = getClassifierInference(classifierRegion)
   classificationAccuracy = onlineRollingAccuracy(trace,
-                                                 expSetup,
+                                                 rollingAccuracyWindow,
                                                  'classificationInference',
                                                  'classificationAccuracy')
 
@@ -427,7 +408,7 @@ def computeStats(trace,
    predictedClusterId,
    clusterHomogeneity) = getClusteringInference(predictedCluster, clustering)
   clusteringAccuracy = onlineRollingAccuracy(trace,
-                                             expSetup,
+                                             rollingAccuracyWindow,
                                              'clusteringInference',
                                              'clusteringAccuracy')
 
@@ -488,40 +469,57 @@ def labelClusters(clustering):
 
 
 
-def runExperiments():
-  if USE_CONFIG_TEMPLATE:
-    with open('config/network_config_template.json', 'rb') as jsonFile:
-      templateNetworkConfig = simplejson.load(jsonFile)
-      networkConfigurations = generateSampleNetworkConfig(templateNetworkConfig,
-                                                          NUM_CATEGORIES)
-  else:
-    with open('config/knn_network_configs.json', 'rb') as jsonFile:
-      networkConfigurations = simplejson.load(jsonFile)
-
+def runExperiments(networkConfig):
   expResults = []
   for signalType in SIGNAL_TYPES:
-    for networkConfig in networkConfigurations:
-      for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
-        for signalMean in SIGNAL_MEANS:
-          for signalAmplitude in SIGNAL_AMPLITUDES:
-            for numCategories in NUM_CATEGORIES:
-              for numReps in NUM_REPS:
-                for numPhases in NUM_PHASES:
-                  for noiseLengths in NOISE_LENGTHS:
-                    _LOGGER.info('Exp #%s' % len(expResults))
-                    expResult = runNetwork(networkConfig,
-                                           signalType,
-                                           DATA_DIR,
-                                           numPhases,
-                                           numReps,
-                                           signalMean,
-                                           signalAmplitude,
-                                           numCategories,
-                                           noiseAmplitude,
-                                           noiseLengths)
-                    expResults.append(expResult)
+    for noiseAmplitude in WHITE_NOISE_AMPLITUDES:
+      for signalMean in SIGNAL_MEANS:
+        for signalAmplitude in SIGNAL_AMPLITUDES:
+          for numCategories in NUM_CATEGORIES:
+            for numReps in NUM_REPS:
+              for numPhases in NUM_PHASES:
+                for noiseLengths in NOISE_LENGTHS:
+                  _LOGGER.info('Exp #%s' % len(expResults))
+
+                  (expSetup,
+                   numPoints,
+                   filePath) = generateSensorData(signalType,
+                                                  DATA_DIR,
+                                                  numPhases,
+                                                  numReps,
+                                                  signalMean,
+                                                  signalAmplitude,
+                                                  numCategories,
+                                                  noiseAmplitude,
+                                                  noiseLengths)
+                  expResult = runExperiment(networkConfig,
+                                            filePath,
+                                            numPoints,
+                                            expSetup)
+                  expResults.append(expResult)
 
   return expResults
+
+
+
+def runExperiment(networkConfig, inputFilePath, numPoints, expSetup=None):
+  if expSetup is None:
+    expSetup = {}
+
+  expSetup['inputFilePath'] = inputFilePath
+  expSetup['numPoints'] = numPoints
+  networkTrace = runNetwork(networkConfig, expSetup)
+
+  networkSetup = getNetworkSetup(networkConfig)
+  expId = generateExpId(inputFilePath, networkSetup)
+  expResult = {
+    'expId': expId,
+    'expTrace': networkTrace,
+    'networkSetup': networkSetup,
+    'expSetup': expSetup
+  }
+
+  return expResult
 
 
 
@@ -532,7 +530,6 @@ def saveExpSetups(outFile, expResults):
   :param expResults: (list of dict) experiment results
   """
 
-  rows = []
   headers = expResults[0]['expSetup'].keys()
   headers.append('finalClassificationAccuracy')
 
@@ -543,10 +540,8 @@ def saveExpSetups(outFile, expResults):
       row = [expResults[i]['expSetup'][h] for h in headers[:-1]]
       row.append(expResults[i]['expTrace']['classificationAccuracy'][-1])
       writer.writerow(row)
-      rows.append(row)
 
     _LOGGER.info('Results saved to %s\n' % outFile)
-    return headers, rows
 
 
 
@@ -585,26 +580,55 @@ def saveTraces(baseOutFile, expResults):
 def plotExpTraces(expResults):
   for expResult in expResults:
     xlim = [0, expResult['expSetup']['numPoints']]
-    numTmCells = expResult['expSetup']['numTmCells']
+    numTmCells = expResult['networkSetup']['numTmCells']
     traces = expResult['expTrace']
     title = cleanTitle(expResult['expSetup']['inputFilePath'])
-    plotTraces(numTmCells, title, xlim, traces)
+    plotTraces(numTmCells, xlim, traces)
+
+
+
+def run(expSetupOutputFile,
+        tracesOutputFile,
+        useRealData,
+        inputFile,
+        numPoints,
+        useConfigTemplate,
+        plot):
+  if useConfigTemplate:
+    with open('config/network_config_template.json', 'rb') as jsonFile:
+      templateNetworkConfig = simplejson.load(jsonFile)
+      networkConfigurations = generateSampleNetworkConfig(templateNetworkConfig,
+                                                          NUM_CATEGORIES)
+  else:
+    with open('config/knn_network_configs.json', 'rb') as jsonFile:
+      networkConfigurations = simplejson.load(jsonFile)
+
+  expResults = []
+  for networkConfig in networkConfigurations:
+    if useRealData:
+      expResult = runExperiment(networkConfig, inputFile, numPoints)
+      expResults.append(expResult)
+    else:
+      expResults.extend(runExperiments(networkConfig))
+
+  saveExpSetups(expSetupOutputFile, expResults)
+
+  saveTraces(tracesOutputFile, expResults)
+
+  if plot:
+    plotSensorData([e['expSetup']['inputFilePath'] for e in expResults])
+    plotExpTraces(expResults)
 
 
 
 def main():
-  EXP_SETUPS_OUTFILE = 'results/seq_classification_results.csv'
-  EXP_TRACES_OUTFILE = 'results/traces_%s.csv'
-
-  expResults = runExperiments()
-
-  headers, rows = saveExpSetups(EXP_SETUPS_OUTFILE, expResults)
-
-  saveTraces(EXP_TRACES_OUTFILE, expResults)
-
-  if PLOT:
-    plotSensorData([e['expSetup']['inputFilePath'] for e in expResults])
-    plotExpTraces(expResults)
+  run(EXP_SETUPS_OUTPUT_FILE,
+      TRACES_OUTPUT_FILE,
+      USE_REAL_DATA,
+      INPUT_FILE,
+      NUM_POINTS,
+      USE_CONFIG_TEMPLATE,
+      PLOT)
 
 
 

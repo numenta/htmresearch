@@ -140,10 +140,10 @@ def run():
                                           VERBOSITY)
 
                     expId = "%s_sp-%s_tm-%s_tp-%s_%s" % (signalType,
-                                                      spEnabled,
-                                                      tmEnabled,
-                                                      upEnabled,
-                                                      classifierType[3:-6])
+                                                         spEnabled,
+                                                         tmEnabled,
+                                                         upEnabled,
+                                                         classifierType[3:-6])
                     fileName = TRACES_FILE % expId
                     saveTraces(traces, fileName)
                     print '==> Results saved to %s\n' % fileName

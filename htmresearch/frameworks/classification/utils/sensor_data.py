@@ -69,6 +69,8 @@ def plotSensorData(inpuFilePaths, markers=True, categoryLabels=None):
       else:
         marker = 'b'
       plt.plot(timesteps, data, marker, label='signal')
+      plt.xlabel('Time step')
+      plt.ylabel('Signal amplitude')
 
       previousLabel = labels[0]
       start = 0
@@ -123,7 +125,7 @@ def cleanTitle(inpuFilePath):
         cleanTitle.append(word[:2])
       else:
         cleanTitle.append(word)
-  
+
   title = title[0] + ' (' + ',  '.join(cleanTitle) + ')'
 
   return title
@@ -205,11 +207,7 @@ def generateSensorData(signalType,
                                                  numCategories,
                                                  noiseLength)
 
-  expSetup['sequenceLength'] = sequenceLength
-  expSetup['numPoints'] = numPoints
-  expSetup['inputFilePath'] = filePath
-
-  return expSetup
+  return expSetup, numPoints, filePath
 
 
 
@@ -326,7 +324,7 @@ def binary_signal_generator(writer,
     m1 = amplitude_modifier * signalMean + signalAmplitude * sig + noise
     writer.writerow([i, m1, label])
 
-    if periodCounter[label - 1] == label-1:
+    if periodCounter[label - 1] == label - 1:
       periodCounter = [0 for _ in range(numCategories)]
       if sig == 0:
         sig = 1
