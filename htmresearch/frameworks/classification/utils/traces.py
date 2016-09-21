@@ -100,8 +100,9 @@ def plotTraces(numTmCells, title, xlim, traces):
     if len(selectRange) <= len(cellTrace):
       for i in range(len(selectRange)):
         cells = cellTrace[selectRange[i]]
-        sdrT = t[selectRange[i]] * np.ones((len(cells, )))
-        ax[2].plot(sdrT, randomCellOrder[cells], 's', color='white', ms=1)
+        if cells is not None:
+          sdrT = t[selectRange[i]] * np.ones((len(cells, )))
+          ax[2].plot(sdrT, randomCellOrder[cells], 's', color='white', ms=1)
 
     ax[2].set_title('Cell activation')
     ax[2].set_ylabel(traceName)

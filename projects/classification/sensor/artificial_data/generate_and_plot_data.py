@@ -68,7 +68,7 @@ def _generateExpData():
 
 def main():
   expSetups = _generateExpData()
-  plotSensorData(expSetups)
+  plotSensorData([e['inputFilePath'] for e in expSetups])
 
 
 

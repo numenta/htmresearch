@@ -33,24 +33,23 @@ import matplotlib.pyplot as plt
 
 
 
-def plotSensorData(expResults):
+def plotSensorData(inpuFilePaths, markers=True, categoryLabels=None):
   """
   Plot several sensor data CSV recordings and highlights the sequences.
-  @param expResults: (list of dict) list of results for each experiment
   """
 
-  categoryColors = ['grey', 'b', 'r', 'y']
+  categoryColors = ['grey', 'blue', 'yellow', 'red', 'green', 'orange',
+                    'pink', 'purple']
   plt.figure()
 
-  for expResult in expResults:
+  for inpuFilePath in inpuFilePaths:
 
     timesteps = []
     data = []
     labels = []
     categoriesLabelled = []
 
-    filePath = expResult['inputFilePath']
-    with open(filePath, 'rb') as f:
+    with open(inpuFilePath, 'rb') as f:
       reader = csv.reader(f)
       headers = reader.next()
 
@@ -64,8 +63,12 @@ def plotSensorData(expResults):
         data.append(record['y'])
         labels.append(int(record['label']))
 
-      plt.subplot(len(expResults), 1, expResults.index(expResult) + 1)
-      plt.plot(timesteps, data, 'xb-', label='signal')
+      plt.subplot(len(inpuFilePaths), 1, inpuFilePaths.index(inpuFilePath) + 1)
+      if markers:
+        marker = 'xb-'
+      else:
+        marker = 'b'
+      plt.plot(timesteps, data, marker, label='signal')
 
       previousLabel = labels[0]
       start = 0
@@ -78,7 +81,10 @@ def plotSensorData(expResults):
           categoryColor = categoryColors[previousLabel]
           if categoryColor not in categoriesLabelled:
             if previousLabel > 0:
-              labelLegend = 'sequence %s' % previousLabel
+              if categoryLabels is None:
+                labelLegend = 'sequence %s' % previousLabel
+              else:
+                labelLegend = categoryLabels[previousLabel - 1]
             else:
               labelLegend = 'noise'
             categoriesLabelled.append(categoryColor)
@@ -86,7 +92,7 @@ def plotSensorData(expResults):
             labelLegend = None
 
           end = labelCount
-          plt.axvspan(start, end, facecolor=categoryColor, alpha=0.5,
+          plt.axvspan(start, end, facecolor=categoryColor, alpha=0.4,
                       label=labelLegend)
           start = end
           previousLabel = label
@@ -95,24 +101,22 @@ def plotSensorData(expResults):
 
       plt.xlim(xmin=0, xmax=len(timesteps))
 
-      title = cleanTitle(expResult)
+      title = cleanTitle(inpuFilePath)
       plt.title(title)
 
-      plt.legend()
+      plt.legend(ncol=4)
 
   plt.show()
 
 
 
-def cleanTitle(expResult):
+def cleanTitle(inpuFilePath):
   """
   Clean up chart title based on expResult info
-  :param expResult: (dict) results of the experiment.
-  :return title: (str) cleaned up title 
   """
-  expId = expResult['inputFilePath'].split('/')[-1][:-4]
+  expId = inpuFilePath.split('/')[-1][:-4]
   title = expId.split('_')
-  cleanTitle = [title[0] + ' signal']
+  cleanTitle = []
   for word in title[1:]:
     if not 'False' in word:
       if 'True' in word:
@@ -120,7 +124,7 @@ def cleanTitle(expResult):
       else:
         cleanTitle.append(word)
   
-  title = ' + '.join(cleanTitle)
+  title = title[0] + ' (' + ',  '.join(cleanTitle) + ')'
 
   return title
 

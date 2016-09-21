@@ -587,7 +587,7 @@ def plotExpTraces(expResults):
     xlim = [0, expResult['expSetup']['numPoints']]
     numTmCells = expResult['expSetup']['numTmCells']
     traces = expResult['expTrace']
-    title = cleanTitle(expResult)
+    title = cleanTitle(expResult['expSetup']['inputFilePath'])
     plotTraces(numTmCells, title, xlim, traces)
 
 
@@ -603,7 +603,7 @@ def main():
   saveTraces(EXP_TRACES_OUTFILE, expResults)
 
   if PLOT:
-    plotSensorData(expResults)
+    plotSensorData([e['expSetup']['inputFilePath'] for e in expResults])
     plotExpTraces(expResults)
 
 
