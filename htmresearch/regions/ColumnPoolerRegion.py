@@ -99,9 +99,9 @@ class ColumnPoolerRegion(PyRegion):
           regionLevel=True,
           isDefaultOutput=True),
 
-        predictiveCells=dict(
+        predictedCells=dict(
           description="A binary output containing a 1 for every"
-                      " cell currently in predicted state.",
+                      " cell that was predicted for this timestep.",
           dataType="Real32",
           count=0,
           regionLevel=True,
@@ -126,19 +126,17 @@ class ColumnPoolerRegion(PyRegion):
       ),
       parameters=dict(
         learningMode=dict(
-          description="1 if the node is learning (default 1).",
+          description="Whether the node is learning (default True).",
           accessMode="ReadWrite",
-          dataType="UInt32",
+          dataType="Bool",
           count=1,
-          defaultValue=1,
-          constraints="bool"),
+          defaultValue="true"),
         inferenceMode=dict(
-          description='1 if the node is inferring (default 1).',
+          description="Whether the node is inferring (default True).",
           accessMode='ReadWrite',
-          dataType='UInt32',
+          dataType='Bool',
           count=1,
-          defaultValue=1,
-          constraints='bool'),
+          defaultValue="true"),
         columnCount=dict(
           description="Number of columns in this layer",
           accessMode='ReadWrite',
@@ -151,24 +149,30 @@ class ColumnPoolerRegion(PyRegion):
           dataType='UInt32',
           count=1,
           constraints=''),
+        lateralInputWidth=dict(
+          description='Number of lateral inputs to the layer.',
+          accessMode='Read',
+          dataType='UInt32',
+          count=1,
+          constraints=''),
         activationThreshold=dict(
           description="If the number of active connected synapses on a "
                       "segment is at least this threshold, the segment "
                       "is said to be active.",
-          accessMode='ReadWrite',
+          accessMode="Read",
           dataType="UInt32",
           count=1,
           constraints=""),
         initialPermanence=dict(
           description="Initial permanence of a new synapse.",
-          accessMode='ReadWrite',
+          accessMode="Read",
           dataType="Real32",
           count=1,
           constraints=""),
         connectedPermanence=dict(
           description="If the permanence value for a synapse is greater "
                       "than this value, it is said to be connected.",
-          accessMode='ReadWrite',
+          accessMode="Read",
           dataType="Real32",
           count=1,
           constraints=""),
@@ -176,43 +180,43 @@ class ColumnPoolerRegion(PyRegion):
           description="If the number of synapses active on a segment is at "
                       "least this threshold, it is selected as the best "
                       "matching cell in a bursting column.",
-          accessMode='ReadWrite',
+          accessMode="Read",
           dataType="UInt32",
           count=1,
           constraints=""),
         maxNewSynapseCount=dict(
           description="The maximum number of synapses added to a segment "
                       "during learning.",
-          accessMode='ReadWrite',
+          accessMode="Read",
           dataType="UInt32",
           count=1),
         permanenceIncrement=dict(
           description="Amount by which permanences of synapses are "
                       "incremented during learning.",
-          accessMode='ReadWrite',
+          accessMode="Read",
           dataType="Real32",
           count=1),
         permanenceDecrement=dict(
           description="Amount by which permanences of synapses are "
                       "decremented during learning.",
-          accessMode='ReadWrite',
+          accessMode="Read",
           dataType="Real32",
           count=1),
         synPermProximalInc=dict(
           description="Amount by which permanences of proximal synapses are "
                       "incremented during learning.",
-          accessMode='ReadWrite',
+          accessMode="Read",
           dataType="Real32",
           count=1),
         synPermProximalDec=dict(
           description="Amount by which permanences of proximal synapses are "
                       "decremented during learning.",
-          accessMode='ReadWrite',
+          accessMode="Read",
           dataType="Real32",
           count=1),
         initialProximalPermanence=dict(
           description="Initial permanence of a new proximal synapse.",
-          accessMode='ReadWrite',
+          accessMode="Read",
           dataType="Real32",
           count=1,
           constraints=""),
@@ -220,18 +224,18 @@ class ColumnPoolerRegion(PyRegion):
           description="Amount by which active permanences of synapses of "
                       "previously predicted but inactive segments are "
                       "decremented.",
-          accessMode='ReadWrite',
+          accessMode="Read",
           dataType="Real32",
           count=1),
         numActiveColumnsPerInhArea=dict(
           description="The number of active cells invoked per object",
-          accessMode='ReadWrite',
+          accessMode="Read",
           dataType="UInt32",
           count=1,
           constraints=""),
         seed=dict(
           description="Seed for the random number generator.",
-          accessMode='ReadWrite',
+          accessMode="Read",
           dataType="UInt32",
           count=1),
         defaultOutputType=dict(
@@ -240,7 +244,7 @@ class ColumnPoolerRegion(PyRegion):
           accessMode="ReadWrite",
           dataType="Byte",
           count=0,
-          constraints="enum: active,predictive,predictedActiveCells",
+          constraints="enum: active,predicted,predictedActiveCells",
           defaultValue="active"),
       ),
       commands=dict(
@@ -254,6 +258,7 @@ class ColumnPoolerRegion(PyRegion):
   def __init__(self,
                columnCount=2048,
                inputWidth=16384,
+               lateralInputWidth=0,
                activationThreshold=13,
                initialPermanence=0.21,
                connectedPermanence=0.50,
@@ -269,9 +274,13 @@ class ColumnPoolerRegion(PyRegion):
                numActiveColumnsPerInhArea=40,
                defaultOutputType = "active",
                **kwargs):
-    # Defaults for all other parameters
+
+    # Modified Column Pooler params
     self.columnCount = columnCount
+
+    # Column Pooler params
     self.inputWidth = inputWidth
+    self.lateralInputWidth = lateralInputWidth
     self.activationThreshold = activationThreshold
     self.initialPermanence = initialPermanence
     self.connectedPermanence = connectedPermanence
@@ -284,10 +293,13 @@ class ColumnPoolerRegion(PyRegion):
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
     self.seed = seed
+    self.numActiveColumnsPerInhArea = numActiveColumnsPerInhArea
+    self.maxSynapsesPerSegment = inputWidth
+
+    # Region params
     self.learningMode = True
     self.inferenceMode = True
     self.defaultOutputType = defaultOutputType
-    self.numActiveColumnsPerInhArea = numActiveColumnsPerInhArea
 
     self._pooler = None
 
@@ -299,23 +311,26 @@ class ColumnPoolerRegion(PyRegion):
     Initialize the internal objects.
     """
     if self._pooler is None:
-      args = copy.deepcopy(self.__dict__)
-
-      # Ensure we only pass in those args that are expected.
-      expectedArgs = getConstructorArguments()[0]
-      for arg in args.keys():
-        if not arg in expectedArgs:
-          args.pop(arg)
-
-      self._pooler = ColumnPooler(
-        columnDimensions=[self.columnCount, 1],
-        maxSynapsesPerSegment = self.inputWidth,
-        **args
-      )
-
-      # numpy arrays we will use for some of the outputs
-      self.activeState = numpy.zeros(self._pooler.numberOfCells())
-      self.previouslyPredictedCells = numpy.zeros(self._pooler.numberOfCells())
+      params = {
+        "inputWidth": self.inputWidth,
+        "lateralInputWidth": self.lateralInputWidth,
+        "activationThreshold": self.activationThreshold,
+        "initialPermanence": self.initialPermanence,
+        "columnDimensions": (self.columnCount,),
+        "connectedPermanence": self.connectedPermanence,
+        "minThreshold": self.minThreshold,
+        "maxNewSynapseCount": self.maxNewSynapseCount,
+        "permanenceIncrement": self.permanenceIncrement,
+        "permanenceDecrement": self.permanenceDecrement,
+        "predictedSegmentDecrement": self.predictedSegmentDecrement,
+        "synPermProximalInc": self.synPermProximalInc,
+        "synPermProximalDec": self.synPermProximalDec,
+        "initialProximalPermanence": self.initialProximalPermanence,
+        "seed": self.seed,
+        "numActiveColumnsPerInhArea": self.numActiveColumnsPerInhArea,
+        "maxSynapsesPerSegment": self.inputWidth,
+      }
+      self._pooler = ColumnPooler(**params)
 
 
   def compute(self, inputs, outputs):
@@ -335,50 +350,46 @@ class ColumnPoolerRegion(PyRegion):
         self.reset()
         outputs["feedForwardOutput"][:] = 0
         outputs["activeCells"][:] = 0
-        outputs["predictiveCells"][:] = 0
+        outputs["predictedCells"][:] = 0
         outputs["predictedActiveCells"][:] = 0
         return
 
-    feedforwardInput = set(inputs['feedforwardInput'].nonzero()[0])
-    lateralInput = inputs.get('lateralInput', None)
-    if lateralInput is not None:
-      lateralInput = set(lateralInput.nonzero()[0])
+    feedforwardInput = set(inputs["feedforwardInput"].nonzero()[0])
 
-    self._pooler.compute(
+    if "lateralInput" in inputs:
+      lateralInput = set(inputs["lateralInput"].nonzero()[0])
+    else:
+      lateralInput = set()
+
+    # Send the inputs into the Column Pooler.
+    self._pooler.depolarizeCells(lateralInput)
+    self._pooler.activateCells(
       feedforwardInput=feedforwardInput,
-      activeExternalCells=lateralInput,
-      learn=self.learningMode
-    )
+      reinforceCandidatesExternal=lateralInput,
+      growthCandidatesExternal=lateralInput,
+      learn=self.learningMode)
 
-    # Compute predictedActiveCells explicitly
-    self.activeState[:] = 0
-    self.activeState[self._pooler.getActiveCells()] = 1
-    predictedActiveCells = self.activeState * self.previouslyPredictedCells
+    # Extract the active / predicted cells and put them into binary arrays.
+    outputs["activeCells"][:] = 0
+    outputs["activeCells"][self._pooler.getActiveCells()] = 1
+    outputs["predictedCells"][:] = 0
+    outputs["predictedCells"][self._pooler.getPredictiveCells()] = 1
+    outputs["predictedActiveCells"][:] = (outputs["activeCells"] *
+                                          outputs["predictedCells"])
 
-    self.previouslyPredictedCells[:] = 0
-    self.previouslyPredictedCells[self._pooler.getPredictiveCells()] = 1
-
-    # Copy numpy values into the various outputs
-    outputs["activeCells"][:] = self.activeState
-    outputs["predictiveCells"][:] = self.previouslyPredictedCells
-    outputs["predictedActiveCells"][:] = predictedActiveCells
-
-    # Send appropriate output to feedForwardOutput
+    # Send appropriate output to feedForwardOutput.
     if self.defaultOutputType == "active":
-      outputs["feedForwardOutput"][:] = self.activeState
-    elif self.defaultOutputType == "predictive":
-      outputs["feedForwardOutput"][:] = self.previouslyPredictedCells
+      outputs["feedForwardOutput"][:] = outputs["activeCells"]
+    elif self.defaultOutputType == "predicted":
+      outputs["feedForwardOutput"][:] = outputs["predictedCells"]
     elif self.defaultOutputType == "predictedActiveCells":
-      outputs["feedForwardOutput"][:] = predictedActiveCells
+      outputs["feedForwardOutput"][:] = outputs["predictedActiveCells"]
     else:
       raise Exception("Unknown outputType: " + self.defaultOutputType)
 
 
   def reset(self):
     """ Reset the state of the layer"""
-    self.activeState[:] = 0
-    self.previouslyPredictedCells[:] = 0
-
     if self._pooler is not None:
       self._pooler.reset()
 
@@ -394,14 +405,9 @@ class ColumnPoolerRegion(PyRegion):
 
   def setParameter(self, parameterName, index, parameterValue):
     """
-    Set the value of a Spec parameter. Most parameters are handled
-    automatically by PyRegion's parameter set mechanism. The ones that need
-    special treatment are explicitly handled here.
+    Set the value of a Spec parameter.
     """
-    # TODO: check for parameters that shouldn't be modified
-    if parameterName in ["learningMode", "inferenceMode"]:
-      setattr(self, parameterName, bool(parameterValue))
-    elif hasattr(self, parameterName):
+    if hasattr(self, parameterName):
       setattr(self, parameterName, parameterValue)
     else:
       raise Exception("Unknown parameter: " + parameterName)
@@ -411,9 +417,8 @@ class ColumnPoolerRegion(PyRegion):
     """
     Return the number of elements for the given output.
     """
-    if name in ["feedForwardOutput", "predictedActiveCells", "predictiveCells",
+    if name in ["feedForwardOutput", "predictedActiveCells", "predictedCells",
                 "activeCells"]:
       return self.columnCount
     else:
-      raise Exception("Invalid output name specified")
-
+      raise Exception("Invalid output name specified: " + name)

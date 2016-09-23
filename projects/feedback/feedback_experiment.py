@@ -29,14 +29,14 @@ from nupic.bindings.math import GetNTAReal
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
-from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
-    TemporalMemoryMonitorMixin)
+from htmresearch.support.etm_monitor_mixin import (
+  ExtendedTemporalMemoryMonitorMixin)
 from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
 
 
-class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin,
+class MonitoredExtendedTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
                    ExtendedTemporalMemory):
   pass
 

@@ -22,13 +22,11 @@
 
 import unittest
 
-from htmresearch.algorithms.extended_temporal_memory import (
-  ExtendedTemporalMemory)
-from etm_algorithm_test_base import ExtendedTemporalMemoryAlgorithmTest
+import nupic.bindings.experimental
+from tm_unit_test_base import TemporalMemoryUnitTest
 
 
 
-class ExtendedTemporalMemoryAlgorithmTestPY(
-        ExtendedTemporalMemoryAlgorithmTest, unittest.TestCase):
+class TemporalMemoryUnitTestCPP(TemporalMemoryUnitTest, unittest.TestCase):
   def getTMClass(self):
-    return ExtendedTemporalMemory
+    return nupic.bindings.experimental.ExtendedTemporalMemory

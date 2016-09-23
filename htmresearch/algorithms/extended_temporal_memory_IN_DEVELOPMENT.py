@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2014-2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -21,39 +21,30 @@
 
 """
 Extended Temporal Memory implementation in Python.
-The static methods in this file use the following parameter ordering convention:
-1. Output / mutated params
-2. Traditional parameters to the function, i.e. the ones that would still exist
-   if this function were a method on a class
-3. Model state (not mutated)
-4. Model parameters (including "learn")
 """
 
 from collections import defaultdict
-from itertools import imap, tee
+import itertools
 import operator
 
+
 from nupic.bindings.math import Random
-from nupic.research.connections import binSearch, Connections
+from nupic.research.connections import Connections, binSearch
 from nupic.support.group_by import groupby2
 
-
-
-_EPSILON = 0.00001  # constant error threshold to check equality of permanences
-                    # to other floats
-_MIN_PREDICTIVE_THRESHOLD = 2
+EPSILON = 0.00001 # constant error threshold to check equality of permanences to
+                  # other floats
+MIN_PREDICTIVE_THRESHOLD = 2
 
 
 
 class ExtendedTemporalMemory(object):
-  """ Class implementing the Temporal Memory algorithm with the added ability of
-  being able to learn from both internal and external cell activation. This
-  class has an option to learn on a single cell within a column and not
-  look for a new winner cell until a reset() is called.
-  """
+  """ Class implementing the Temporal Memory algorithm. """
 
   def __init__(self,
                columnDimensions=(2048,),
+               basalInputDimensions=(),
+               apicalInputDimensions=(),
                cellsPerColumn=32,
                activationThreshold=13,
                initialPermanence=0.21,
@@ -65,46 +56,65 @@ class ExtendedTemporalMemory(object):
                predictedSegmentDecrement=0.0,
                formInternalBasalConnections=True,
                learnOnOneCell=False,
-               seed=42,
                maxSegmentsPerCell=255,
                maxSynapsesPerSegment=255,
-               **kwargs):
+               seed=42,
+               checkInputs=True):
     """
-    @param columnDimensions (list) Dimensions of the column space
-    @param cellsPerColumn (int) Number of cells per column
-    @param activationThreshold (int) If the number of active connected synapses
-        on a segment is at least this threshold, the segment is said to be
-        active.
-    @param initialPermanence (float) Initial permanence of a new synapse
-    @param connectedPermanence (float) If the permanence value for a synapse is
-        greater than this value, it is said to be connected.
-    @param minThreshold (int) If the number of potential synapses active on a
-        segment is at least this threshold, it is said to be "matching" and is
-        eligible for learning.
+    @param columnDimensions (list)
+    Dimensions of the column space
+
+    @param basalInputDimensions (list)
+    Dimensions of the external basal input.
+
+    @param apicalInputDimensions (list)
+    Dimensions of the external apical input.
+
+    @param cellsPerColumn (int)
+    Number of cells per column
+
+    @param activationThreshold (int)
+    If the number of active connected synapses on a segment is at least this
+    threshold, the segment is said to be active.
+
+    @param initialPermanence (float)
+    Initial permanence of a new synapse
+
+    @param connectedPermanence (float)
+    If the permanence value for a synapse is greater than this value, it is said
+    to be connected.
+
+    @param minThreshold (int)
+    If the number of potential synapses active on a segment is at least this
+    threshold, it is said to be "matching" and is eligible for learning.
+
     @param maxNewSynapseCount (int)
-        The maximum number of synapses added to a segment during learning.
+    The maximum number of synapses added to a segment during learning.
+
     @param permanenceIncrement (float)
-        Amount by which permanences of synapses are incremented during learning.
+    Amount by which permanences of synapses are incremented during learning.
+
     @param permanenceDecrement (float)
     Amount by which permanences of synapses are decremented during learning.
+
     @param predictedSegmentDecrement (float)
     Amount by which segments are punished for incorrect predictions.
+
     @param formInternalBasalConnections (boolean)
     If True, the winner cell for each column will be fixed between resets.
+
     @param learnOnOneCell (boolean)
     If True, the winner cell for each column will be fixed between resets.
+
     @param maxSegmentsPerCell
     The maximum number of segments per cell.
+
     @param maxSynapsesPerSegment
     The maximum number of synapses per segment.
+
     @param seed (int)
     Seed for the random number generator.
 
-    Notes:
-    predictedSegmentDecrement: A good value is just a bit larger than
-    (the column-level sparsity * permanenceIncrement). So, if column-level
-    sparsity is 2% and permanenceIncrement is 0.01, this parameter should be
-    something like 4% * 0.01 = 0.0004).
     """
     # Error checking
     if not len(columnDimensions):
@@ -118,19 +128,27 @@ class ExtendedTemporalMemory(object):
         "The min threshold can't be greater than the activation threshold")
 
     self.columnDimensions = columnDimensions
+    self._numColumns = _numPoints(columnDimensions)
+
+    self.basalInputDimensions = basalInputDimensions
+    self._numBasalInputs = _numPoints(basalInputDimensions)
+
+    self.apicalInputDimensions = apicalInputDimensions
+    self._numApicalInputs = _numPoints(apicalInputDimensions)
+
     self.cellsPerColumn = cellsPerColumn
     self.activationThreshold = activationThreshold
     self.initialPermanence = initialPermanence
     self.connectedPermanence = connectedPermanence
     self.minThreshold = minThreshold
     self.maxNewSynapseCount = maxNewSynapseCount
-    self.formInternalBasalConnections = formInternalBasalConnections
-    self.learnOnOneCell = learnOnOneCell
     self.permanenceIncrement = permanenceIncrement
     self.permanenceDecrement = permanenceDecrement
     self.predictedSegmentDecrement = predictedSegmentDecrement
+    self.formInternalBasalConnections = formInternalBasalConnections
+    self.learnOnOneCell = learnOnOneCell
+    self.checkInputs = checkInputs
 
-    # Initialize connections
     self.basalConnections = Connections(
       self.numberOfCells(),
       maxSegmentsPerCell=maxSegmentsPerCell,
@@ -138,13 +156,14 @@ class ExtendedTemporalMemory(object):
     self.apicalConnections = Connections(self.numberOfCells(),
       maxSegmentsPerCell=maxSegmentsPerCell,
       maxSynapsesPerSegment=maxSynapsesPerSegment)
-
     self._random = Random(seed)
 
     self.activeCells = []
     self.winnerCells = []
-    self.activeSegments = []
-    self.matchingSegments = []
+    self.activeBasalSegments = []
+    self.matchingBasalSegments = []
+    self.activeApicalSegments = []
+    self.matchingApicalSegments = []
 
     self.numActiveConnectedSynapsesForBasalSegment = []
     self.numActivePotentialSynapsesForBasalSegment = []
@@ -153,450 +172,267 @@ class ExtendedTemporalMemory(object):
 
     self.chosenCellForColumn = {}
 
+
   # ==============================
-  # Main functions
+  # Main methods
   # ==============================
+
 
   def compute(self,
               activeColumns,
-              prevActiveExternalCellsBasal,
-              activeExternalCellsBasal,
-              prevActiveExternalCellsApical,
-              activeExternalCellsApical,
+              activeCellsExternalBasal=(),
+              activeCellsExternalApical=(),
+              reinforceCandidatesExternalBasal=(),
+              reinforceCandidatesExternalApical=(),
+              growthCandidatesExternalBasal=(),
+              growthCandidatesExternalApical=(),
               learn=True):
-    """ Feeds input record through TM, performing inference and learning.
+    """
+    Perform one time step of the Temporal Memory algorithm.
 
-    @param activeColumns (iter)
-    Indices of active columns
+    This method calls activateCells, then calls depolarizeCells. Using the
+    TemporalMemory via its compute method ensures that you'll always be able to
+    call getPredictiveCells to get predictions for the next time step.
 
-    @param activeExternalCellsBasal (iter)
+    @param activeColumns (list)
+    Sorted list of active columns.
+
+    @param activeCellsExternalBasal (list)
     Sorted list of active external cells for activating basal dendrites at the
     end of this time step.
 
-    @param activeExternalCellsApical (iter)
+    @param activeCellsExternalApical (list)
     Sorted list of active external cells for activating apical dendrites at the
     end of this time step.
 
+    @param reinforceCandidatesExternalBasal (list)
+    Sorted list of external cells. Any learning basal dendrite segments will use
+    this list to decide which synapses to reinforce and which synapses to
+    punish. Typically this list should be the 'activeCellsExternalBasal' from
+    the prevous time step.
+
+    @param reinforceCandidatesExternalApical (list)
+    Sorted list of external cells. Any learning apical dendrite segments will use
+    this list to decide which synapses to reinforce and which synapses to
+    punish. Typically this list should be the 'activeCellsExternalApical' from
+    the prevous time step.
+
+    @param growthCandidatesExternalBasal (list)
+    Sorted list of external cells. Any learning basal dendrite segments can grow
+    synapses to cells in this list. Typically this list should be a subset of
+    the 'activeCellsExternalBasal' from the prevous time step.
+
+    @param growthCandidatesExternalApical (list)
+    Sorted list of external cells. Any learning apical dendrite segments can grow
+    synapses to cells in this list. Typically this list should be a subset of
+    the 'activeCellsExternalApical' from the prevous time step.
+
     @param learn (bool)
     Whether or not learning is enabled
+
     """
-    self.activateCells(sorted(activeColumns),
-                       prevActiveExternalCellsBasal,
-                       prevActiveExternalCellsApical,
+    self.activateCells(activeColumns,
+                       reinforceCandidatesExternalBasal,
+                       reinforceCandidatesExternalApical,
+                       growthCandidatesExternalBasal,
+                       growthCandidatesExternalApical,
                        learn)
-    self.activateDendrites(activeExternalCellsBasal,
-                           activeExternalCellsApical,
-                           learn)
+    self.depolarizeCells(activeCellsExternalBasal,
+                         activeCellsExternalApical,
+                         learn)
 
 
-  def activateCells(self, activeColumns, prevActiveExternalCellsBasal,
-                    prevActiveExternalCellsApical, learn=True):
-    """ Calculate the active cells, using the current active columns and
+  def activateCells(self,
+                    activeColumns,
+                    reinforceCandidatesExternalBasal=(),
+                    reinforceCandidatesExternalApical=(),
+                    growthCandidatesExternalBasal=(),
+                    growthCandidatesExternalApical=(),
+                    learn=True):
+    """
+    Calculate the active cells, using the current active columns and
     dendrite segments. Grow and reinforce synapses.
 
-    @param activeColumns (iter)
-        A sorted list of active column indices.
+    @param activeColumns (list)
+    A sorted list of active column indices.
+
+    @param reinforceCandidatesExternalBasal (list)
+    Sorted list of external cells. Any learning basal dendrite segments will use
+    this list to decide which synapses to reinforce and which synapses to
+    punish. Typically this list should be the 'activeCellsExternalBasal' from
+    the prevous time step.
+
+    @param reinforceCandidatesExternalApical (list)
+    Sorted list of external cells. Any learning apical dendrite segments will use
+    this list to decide which synapses to reinforce and which synapses to
+    punish. Typically this list should be the 'activeCellsExternalApical' from
+    the prevous time step.
+
+    @param growthCandidatesExternalBasal (list)
+    Sorted list of external cells. Any learning basal dendrite segments can grow
+    synapses to cells in this list. Typically this list should be a subset of
+    the 'activeCellsExternalBasal' from the previous 'depolarizeCells'.
+
+    @param growthCandidatesExternalApical (list)
+    Sorted list of external cells. Any learning apical dendrite segments can grow
+    synapses to cells in this list. Typically this list should be a subset of
+    the 'activeCellsExternalApical' from the previous 'depolarizeCells'.
+
     @param learn (bool)
-        If true, reinforce/punish/grow synapses.
+    If true, reinforce / punish / grow synapses.
+
     """
-    # prevActiveExternalCellsBasal = self.activeExternalCellsBasal
-    # prevActiveExternalCellsApical = self.activeExternalCellsApical
 
-    prevActiveCells = self.activeCells
-    prevWinnerCells = self.winnerCells
-    self.activeCells = []
-    self.winnerCells = []
+    if self.checkInputs:
+      assert self._isSortedWithoutDuplicates(activeColumns)
+      assert self._isSortedWithoutDuplicates(reinforceCandidatesExternalBasal)
+      assert self._isSortedWithoutDuplicates(reinforceCandidatesExternalApical)
+      assert self._isSortedWithoutDuplicates(growthCandidatesExternalBasal)
+      assert self._isSortedWithoutDuplicates(growthCandidatesExternalApical)
+      assert all(c >= 0 and c < self._numColumns
+                 for c in activeColumns)
+      assert all(c >= 0 and c < self._numBasalInputs
+                 for c in reinforceCandidatesExternalBasal)
+      assert all(c >= 0 and c < self._numApicalInputs
+                 for c in reinforceCandidatesExternalApical)
+      assert all(c >= 0 and c < self._numBasalInputs
+                 for c in growthCandidatesExternalBasal)
+      assert all(c >= 0 and c < self._numApicalInputs
+                 for c in growthCandidatesExternalApical)
 
-    columnForSegment = lambda segment: int(segment.cell / self.cellsPerColumn)
+    newActiveCells = []
+    newWinnerCells = []
 
-    # Walk the columns -- do all cell activation and learning for each column
-    # before moving on to the next
-    for columnData in groupby2(activeColumns, identity,
-                               self.activeBasalSegments, columnForSegment,
-                               self.matchingBasalSegments, columnForSegment,
-                               self.activeApicalSegments, columnForSegment,
-                               self.matchingApicalSegments, columnForSegment):
+    segToCol = lambda segment: int(segment.cell / self.cellsPerColumn)
+
+    for columnData in groupby2(activeColumns, _identity,
+                               self.activeBasalSegments, segToCol,
+                               self.matchingBasalSegments, segToCol,
+                               self.activeApicalSegments, segToCol,
+                               self.matchingApicalSegments, segToCol):
       (column,
        activeColumns,
-       activeBasalSegmentsOnCol,
-       matchingBasalSegmentsOnCol,
-       activeApicalSegmentsOnCol,
-       matchingApicalSegmentsOnCol) = columnData
+       columnActiveBasalSegments,
+       columnMatchingBasalSegments,
+       columnActiveApicalSegments,
+       columnMatchingApicalSegments) = groupbyExpand(columnData)
 
-      if activeColumns:
+      isActiveColumn = len(activeColumns) > 0
+
+      if isActiveColumn:
         maxPredictiveScore = 0
 
-        for cellData in groupby2(activeBasalSegmentsOnCol, cellForSegment,
-                                 activeApicalSegmentsOnCol, cellForSegment):
+        for cellData in groupby2(columnActiveBasalSegments, _cellForSegment,
+                                 columnActiveApicalSegments, _cellForSegment):
           (cell,
-           activeBasalSegmentsOnCell,
-           activeApicalSegmentsOnCell) = cellData
+           cellActiveBasalSegments,
+           cellActiveApicalSegments) = groupbyExpand(cellData)
 
           maxPredictiveScore = max(maxPredictiveScore,
-                                   predictiveScore(activeBasalSegmentsOnCell,
-                                                   activeApicalSegmentsOnCell))
+                                   self._predictiveScore(cellActiveBasalSegments,
+                                                         cellActiveApicalSegments))
 
-        if maxPredictiveScore >= _MIN_PREDICTIVE_THRESHOLD:
+        if maxPredictiveScore >= MIN_PREDICTIVE_THRESHOLD:
           cellsToAdd = self.activatePredictedColumn(
-            self.basalConnections,
-            self.apicalConnections,
-            self._random,
-            activeBasalSegmentsOnCol,
-            matchingBasalSegmentsOnCol,
-            activeApicalSegmentsOnCol,
-            matchingApicalSegmentsOnCol,
+            column,
+            columnActiveBasalSegments,
+            columnMatchingBasalSegments,
+            columnActiveApicalSegments,
+            columnMatchingApicalSegments,
             maxPredictiveScore,
-            prevActiveCells,
-            prevWinnerCells,
-            prevActiveExternalCellsBasal,
-            prevActiveExternalCellsApical,
-            self.maxNewSynapseCount,
-            self.initialPermanence,
-            self.permanenceIncrement,
-            self.permanenceDecrement,
-            self.formInternalBasalConnections,
+            self.activeCells,
+            reinforceCandidatesExternalBasal,
+            reinforceCandidatesExternalApical,
+            self.winnerCells,
+            growthCandidatesExternalBasal,
+            growthCandidatesExternalApical,
             learn)
 
-          self.activeCells += cellsToAdd
-          self.winnerCells += cellsToAdd
-
+          newActiveCells += cellsToAdd
+          newWinnerCells += cellsToAdd
         else:
           (cellsToAdd,
            winnerCell) = self.burstColumn(
-             self.basalConnections,
-             self.apicalConnections,
-             self._random,
-             self.chosenCellForColumn,
              column,
-             activeBasalSegmentsOnCol,
-             matchingBasalSegmentsOnCol,
-             activeApicalSegmentsOnCol,
-             matchingApicalSegmentsOnCol,
-             prevActiveCells,
-             prevWinnerCells,
-             prevActiveExternalCellsBasal,
-             prevActiveExternalCellsApical,
-             self.cellsPerColumn,
-             self.initialPermanence,
-             self.maxNewSynapseCount,
-             self.permanenceIncrement,
-             self.permanenceDecrement,
-             self.formInternalBasalConnections,
-             self.learnOnOneCell,
+             columnActiveBasalSegments,
+             columnMatchingBasalSegments,
+             columnActiveApicalSegments,
+             columnMatchingApicalSegments,
+             self.activeCells,
+             reinforceCandidatesExternalBasal,
+             reinforceCandidatesExternalApical,
+             self.winnerCells,
+             growthCandidatesExternalBasal,
+             growthCandidatesExternalApical,
              learn)
 
-          self.activeCells += cellsToAdd
-          self.winnerCells.append(winnerCell)
-
+          newActiveCells += cellsToAdd
+          newWinnerCells.append(winnerCell)
       else:
         if learn:
-          ExtendedTemporalMemory.punishPredictedColumn(
-            self.basalConnections,
-            matchingBasalSegmentsOnCol,
-            prevActiveCells, prevActiveExternalCellsBasal,
-            self.predictedSegmentDecrement)
+          self.punishPredictedColumn(
+            columnActiveBasalSegments,
+            columnMatchingBasalSegments,
+            columnActiveApicalSegments,
+            columnMatchingApicalSegments,
+            self.activeCells,
+            reinforceCandidatesExternalBasal,
+            reinforceCandidatesExternalApical,
+            self.winnerCells,
+            growthCandidatesExternalBasal,
+            growthCandidatesExternalApical)
 
-          # Don't punish apical segments.
+    self.activeCells = newActiveCells
+    self.winnerCells = newWinnerCells
 
 
-  def activateDendrites(self, activeExternalCellsBasal,
-                        activeExternalCellsApical, learn=True):
-    """ Calculate dendrite segment activity, using the current active cells.
+  def depolarizeCells(self,
+                      activeCellsExternalBasal=(),
+                      activeCellsExternalApical=(),
+                      learn=True):
+    """
+    Calculate dendrite segment activity, using the current active cells.
 
-    @param activeExternalCellsBasal (iter)
+    @param activeCellsExternalBasal (list)
     Sorted list of active external cells for activating basal dendrites.
-    @param activeExternalCellsApical (iter)
+
+    @param activeCellsExternalApical (list)
     Sorted list of active external cells for activating apical dendrites.
+
     @param learn (bool)
     If true, segment activations will be recorded. This information is used
     during segment cleanup.
+
     """
 
-    basal = ExtendedTemporalMemory.calculateExcitations(
-      self.basalConnections, self.activeCells, activeExternalCellsBasal,
-      self.connectedPermanence, self.activationThreshold, self.minThreshold,
-      learn)
+    if self.checkInputs:
+      assert all(c >= 0 and c < self._numBasalInputs
+                 for c in activeCellsExternalBasal)
+      assert all(c >= 0 and c < self._numApicalInputs
+                 for c in activeCellsExternalApical)
 
     (self.activeBasalSegments,
      self.matchingBasalSegments,
      self.numActiveConnectedSynapsesForBasalSegment,
-     self.numActivePotentialSynapsesForBasalSegment) = basal
-
-    apical = ExtendedTemporalMemory.calculateExcitations(
-      self.apicalConnections, self.activeCells, activeExternalCellsApical,
+     self.numActivePotentialSynapsesForBasalSegment) = self._calculateExcitations(
+      self.basalConnections, self.activeCells, activeCellsExternalBasal,
       self.connectedPermanence, self.activationThreshold, self.minThreshold,
       learn)
 
     (self.activeApicalSegments,
      self.matchingApicalSegments,
      self.numActiveConnectedSynapsesForApicalSegment,
-     self.numActivePotentialSynapsesForApicalSegment) = apical
-
-
-  # TODO: make this an instance method -- https://github.com/numenta/nupic/issues/3309
-  @staticmethod
-  def activatePredictedColumn(basalConnections, apicalConnections, random,
-                              columnActiveBasalSegments,
-                              columnMatchingBasalSegments,
-                              columnActiveApicalSegments,
-                              columnMatchingApicalSegments,
-                              predictiveThreshold,
-                              prevActiveCells, prevWinnerCells,
-                              prevActiveExternalCellsBasal,
-                              prevActiveExternalCellsApical,
-                              maxNewSynapseCount, initialPermanence,
-                              permanenceIncrement, permanenceDecrement,
-                              formInternalBasalConnections, learn):
-    """
-
-    Utilizes learnOnCell to learn on basal and apical connections.
-
-    @param connections (Object)
-    Connections for the TM. Gets mutated.
-
-    @param random (Object)
-    Random number generator. Gets mutated.
-
-    @param columnActiveSegments (iter)
-    Active segments in this column.
-    @param prevActiveCells (list)
-    Active cells in `t-1`.
-    @param prevWinnerCells (list)
-    Winner cells in `t-1`.
-    @param numActivePotentialSynapsesForSegment (list)
-    Number of active potential synapses per segment, indexed by the segment's
-    flatIdx.
-    @param maxNewSynapseCount (int)
-    The maximum number of synapses added to a segment during learning
-    @param initialPermanence (float)
-    Initial permanence of a new synapse.
-    @permanenceIncrement (float)
-    Amount by which permanences of synapses are incremented during learning.
-    @permanenceDecrement (float)
-    Amount by which permanences of synapses are decremented during learning.
-    @param learn (bool)
-    If true, grow and reinforce synapses.
-
-    @return cellsToAdd (list)
-    A list of predicted cells that will be added to active cells and winner
-    cells.
-    """
-    cellsToAdd = []
-
-    for cellData in groupby2(columnActiveBasalSegments, cellForSegment,
-                             columnMatchingBasalSegments, cellForSegment,
-                             columnActiveApicalSegments, cellForSegment,
-                             columnMatchingApicalSegments, cellForSegment):
-      (cell,
-       cellActiveBasalSegments, cellMatchingBasalSegments,
-       cellActiveApicalSegments, cellMatchingApicalSegments) = cellData
-
-      if predictiveScore(cellActiveBasalSegments,
-                         cellActiveApicalSegments) >= predictiveThreshold:
-        cellsToAdd.append(cell)
-
-        if learn:
-
-          # Do basal
-          internalBasalCandidates = (  # TODO: reformat this to be readable
-            prevWinnerCells if formInternalBasalConnections
-            else tuple())
-          ExtendedTemporalMemory.learnOnCell(
-            basalConnections,
-            random,
-            cell,
-            prevActiveCells,
-            internalBasalCandidates,
-            prevActiveExternalCellsBasal,
-            cellActiveBasalSegments,
-            cellMatchingBasalSegments,
-            maxNewSynapseCount,
-            initialPermanence,
-            permanenceIncrement,
-            permanenceDecrement)
-
-          # Do apical
-          internalApicalCandidates = tuple()
-          ExtendedTemporalMemory.learnOnCell(
-            apicalConnections, random,
-            cell,
-            cellActiveApicalSegments, cellMatchingApicalSegments,
-            prevActiveCells,
-            internalApicalCandidates, prevActiveExternalCellsApical,
-            numActivePotentialSynapsesForApicalSegment,
-            maxNewSynapseCount,
-            initialPermanence, permanenceIncrement, permanenceDecrement)
-
-    return cellsToAdd
-
-
-  @staticmethod
-  def learnOnCell(connections, random, cell, prevActiveCells,
-                  internalCandidates, externalCandidates, cellActiveSegments,
-                  cellMatchingSegments, maxNewSynapseCount, initialPermanence,
-                  permanenceIncrement, permanenceDecrement):
-    """
-    Coordinates learning in the TM: learns on either the active segments (if
-    there are any) or the best-matching segment, otherwise grows a new segment
-    for learning.
-
-    @param connections (Object)
-    Connections for the TM. Gets mutated.
-    @param random (Object)
-    Random number generator. Gets mutated.
-    """
-    bySegment = lambda segment: segment  #???
-    for segmentData in groupBy2(cellActiveSegments, bySegment,
-                                cellMatchingSegments, bySegment):
-      # (segment,
-      #  x, y, z) = segmentData  # what is unpacked here?
-      segment = segmentData[0]
-
-      self.adaptSegment(connections,
-                        segment,
-                        prevActiveCells,
-                        externalCandidates,
-                        permanenceIncrement,
-                        permanenceDecrement)
-
-      active = numActivePotentialSynapsesForSegment[segment.flatIdx]
-      numGrowDesired = maxNewSynapseCount - active
-
-      if numGrowDesired > 0:
-        self.growSynapses(connections,
-                          random,
-                          segment,
-                          numGrowDesired,
-                          internalCandidates,
-                          externalCandidates,
-                          initialPermanence)
-
-
-  # TODO: make this an instance method -- https://github.com/numenta/nupic/issues/3309
-  @staticmethod
-  def burstColumn(basalConnections, apicalConnections, random,
-                  chosenCellForColumn, column,
-                  columnActiveBasal, columnMatchingBasal,
-                  columnActiveApical, columnMatchingApical,
-                  prevActiveCells, prevWinnerCells,
-                  prevActiveExternalCellsBasal, prevActiveExternalCellsApical,
-                  cellsPerColumn, initialPermanence, maxNewSynapseCount,
-                  permanenceIncrement, permanenceDecrement,
-                  formInternalBasalConnections, learnOnOneCell, learn):
-    """
-
-    Utilizes learnOnCell to reinforce active segments.
-
-    @param connections (Object)
-    Connections for the TM. Gets mutated.
-    @param random (Object)
-    Random number generator. Gets mutated.
-    @param column (int)
-    Index of bursting column.
-    @param columnMatchingSegments (iter)
-    Matching segments in this column.
-    @param prevActiveCells (list)
-    Active cells in `t-1`.
-    @param prevWinnerCells (list)
-    Winner cells in `t-1`.
-    @param numActivePotentialSynapsesForSegment (list)
-    Number of active potential synapses per segment, indexed by the segment's
-    flatIdx.
-    @param cellsPerColumn (int)
-    Number of cells per column.
-    @param maxNewSynapseCount (int)
-    The maximum number of synapses added to a segment during learning.
-    @param initialPermanence (float)
-    Initial permanence of a new synapse.
-    @param permanenceIncrement (float)
-    Amount by which permanences of synapses are incremented during learning.
-    @param permanenceDecrement (float)
-    Amount by which permanences of synapses are decremented during learning.
-    @param learn (bool)
-    Whether or not learning is enabled.
-
-    @return (tuple) Contains:
-                      `cells`         (iter),
-                      `winnerCell`    (int),
-    """
-    # # Calculate the active cells -- all cells in the column become active
-    # start = cellsPerColumn * column
-    # activeCells = xrange(start, start + cellsPerColumn)
-
-    # # Calculate the winner cell
-    # if learnOnOneCell and (column in chosenCellForColumn):
-    #   winnerCell = chosenCellForColumn[column]
-    # else:
-    #   if columnMatchingBasal is not None:
-    #     # numActive = lambda s: numActivePotentialSynapsesForSegment[s.flatIdx] ??????????
-    #     bestBasalSegment = max(columnMatchingBasal, key=numActive)
-    #     winnerCell = bestBasalSegment.cell
-    #   else:
-    #     winnerCell = self.getLeastUsedCell(basalConnections, random, column, cellsPerColumn) # TODO: edit this method to match these args
-    #   if learnOnOneCell:
-    #     chosenCellForColumn[column] = winnerCell
-
-    # # Learn
-    # if learn:
-
-    #   # TODO
-
-
-
-    # return cells, winnerCell
-
-    start = cellsPerColumn * column
-    cells = xrange(start, start + cellsPerColumn)
-
-    if columnMatchingSegments is not None:
-      numActive = lambda s: numActivePotentialSynapsesForSegment[s.flatIdx]
-      bestMatchingSegment = max(columnMatchingSegments, key=numActive)
-      winnerCell = bestMatchingSegment.cell
-
-      if learn:
-        cls.adaptSegment(connections, bestMatchingSegment, prevActiveCells,
-                         permanenceIncrement, permanenceDecrement)
-
-        nGrowDesired = maxNewSynapseCount - numActive(bestMatchingSegment)
-
-        if nGrowDesired > 0:
-          cls.growSynapses(connections, random, bestMatchingSegment,
-                           nGrowDesired, prevWinnerCells, initialPermanence)
-    else:
-      winnerCell = cls.leastUsedCell(random, cells, connections)
-      if learn:
-        nGrowExact = min(maxNewSynapseCount, len(prevWinnerCells))
-        if nGrowExact > 0:
-          segment = connections.createSegment(winnerCell)
-          cls.growSynapses(connections, random, segment, nGrowExact,
-                           prevWinnerCells, initialPermanence)
-
-    return cells, winnerCell
-
-  # TODO: make this an instance method -- https://github.com/numenta/nupic/issues/3309
-  @staticmethod
-  def punishPredictedColumn(connections, columnMatchingSegments,
-                            predictedSegmentDecrement, prevActiveCells):
-    """
-    @param connections (Object)
-    Connections for the TM. Gets mutated.
-    @param columnMatchingSegments (iter)
-    Matching segments for this column.
-    @param predictedSegmentDecrement (float)
-    Amount by which segments are punished for incorrect predictions.
-    @param prevActiveCells (list)
-    Active cells in `t-1`.
-    """
-    if predictedSegmentDecrement > 0.0 and columnMatchingSegments is not None:
-      for segment in columnMatchingSegments:
-        TemporalMemory.adaptSegment(connections, segment,
-                                    prevActiveCells,
-                                    -predictedSegmentDecrement, 0.0)
+     self.numActivePotentialSynapsesForApicalSegment) = self._calculateExcitations(
+      self.apicalConnections, self.activeCells, activeCellsExternalApical,
+      self.connectedPermanence, self.activationThreshold, self.minThreshold,
+      learn)
 
 
   def reset(self):
-    """ Indicates the start of a new sequence and resets the sequence
-        state of the TM. """
+    """
+    Indicates the start of a new sequence. Clears any predictions and makes sure
+    synapses don't grow to the currently active cells in the next time step.
+    """
     self.activeCells = []
     self.winnerCells = []
     self.activeBasalSegments = []
@@ -605,63 +441,430 @@ class ExtendedTemporalMemory(object):
     self.matchingApicalSegments = []
     self.chosenCellForColumn = {}
 
+
   # ==============================
-  # Helper functions
+  # Extension points
+  # These methods are designed to be overridden.
   # ==============================
 
-  @staticmethod
-  def calculateExcitations(connections, activeCells, activeExternalCells,
-                           connectedPermanence, activationThreshold,
-                           minThreshold, learn):
 
-    offset = connections.numCells()
+  def activatePredictedColumn(self,
+                              column,
+                              columnActiveBasalSegments,
+                              columnMatchingBasalSegments,
+                              columnActiveApicalSegments,
+                              columnMatchingApicalSegments,
+                              predictiveThreshold,
+                              reinforceCandidatesInternal,
+                              reinforceCandidatesExternalBasal,
+                              reinforceCandidatesExternalApical,
+                              growthCandidatesInternal,
+                              growthCandidatesExternalBasal,
+                              growthCandidatesExternalApical,
+                              learn):
+    """
+    @param column (int)
+    Index of column.
+
+    @param columnMatchingBasalSegments (tuple)
+    Active basal segments in this column.
+
+    @param columnMatchingBasalSegments (tuple)
+    Matching basal segments in this column.
+
+    @param columnMatchingApicalSegments (tuple)
+    Active apical segments in this column.
+
+    @param columnMatchingApicalSegments (tuple)
+    Matching apical segments in this column.
+
+    @param predictiveThreshold (int)
+    The minimum predictive score required for a cell to become active.
+
+    @param learn (bool)
+    If true, grow and reinforce synapses.
+
+    @return cellsToAdd (list)
+    A list of predicted cells that will be added to active cells and winner
+    cells.
+
+    """
+
+    return self._activatePredictedColumn(
+      self.basalConnections, self.apicalConnections, self._random,
+      columnActiveBasalSegments, columnMatchingBasalSegments,
+      columnActiveApicalSegments, columnMatchingApicalSegments,
+      predictiveThreshold,
+      reinforceCandidatesInternal,
+      reinforceCandidatesExternalBasal,
+      reinforceCandidatesExternalApical,
+      growthCandidatesInternal,
+      growthCandidatesExternalBasal,
+      growthCandidatesExternalApical,
+      self.numActivePotentialSynapsesForBasalSegment,
+      self.numActivePotentialSynapsesForApicalSegment,
+      self.maxNewSynapseCount, self.initialPermanence,
+      self.permanenceIncrement, self.permanenceDecrement,
+      self.formInternalBasalConnections, learn)
+
+
+  def burstColumn(self, column,
+                  columnActiveBasalSegments, columnMatchingBasalSegments,
+                  columnActiveApicalSegments, columnMatchingApicalSegments,
+                  reinforceCandidatesInternal,
+                  reinforceCandidatesExternalBasal,
+                  reinforceCandidatesExternalApical,
+                  growthCandidatesInternal,
+                  growthCandidatesExternalBasal,
+                  growthCandidatesExternalApical,
+                  learn):
+    """
+    @param column (int)
+    Index of column.
+
+    @param columnMatchingBasalSegments (tuple)
+    Active basal segments in this column.
+
+    @param columnMatchingBasalSegments (tuple)
+    Matching basal segments in this column.
+
+    @param columnMatchingApicalSegments (tuple)
+    Active apical segments in this column.
+
+    @param columnMatchingApicalSegments (tuple)
+    Matching apical segments in this column.
+
+    @param learn (bool)
+    Whether or not learning is enabled.
+
+    @return (tuple) Contains:
+                      `cells`         (iter),
+                      `winnerCell`    (int),
+
+    """
+
+    return self._burstColumn(
+      self.basalConnections, self.apicalConnections, self._random,
+      self.chosenCellForColumn,
+      column,
+      columnActiveBasalSegments, columnMatchingBasalSegments,
+      columnActiveApicalSegments, columnMatchingApicalSegments,
+      reinforceCandidatesInternal,
+      reinforceCandidatesExternalBasal,
+      reinforceCandidatesExternalApical,
+      growthCandidatesInternal,
+      growthCandidatesExternalBasal,
+      growthCandidatesExternalApical,
+      self.numActivePotentialSynapsesForBasalSegment,
+      self.numActivePotentialSynapsesForApicalSegment,
+      self.cellsPerColumn, self.maxNewSynapseCount, self.initialPermanence,
+      self.permanenceIncrement, self.permanenceDecrement,
+      self.formInternalBasalConnections, self.learnOnOneCell, learn)
+
+
+  def punishPredictedColumn(self,
+                            columnActiveBasalSegments,
+                            columnMatchingBasalSegments,
+                            columnActiveApicalSegments,
+                            columnMatchingApicalSegments,
+                            reinforceCandidatesInternal,
+                            reinforceCandidatesExternalBasal,
+                            reinforceCandidatesExternalApical,
+                            growthCandidatesInternal,
+                            growthCandidatesExternalBasal,
+                            growthCandidatesExternalApical):
+    """
+    @param columnMatchingBasalSegments (tuple)
+    Active basal segments in this column.
+
+    @param columnMatchingBasalSegments (tuple)
+    Matching basal segments in this column.
+
+    @param columnMatchingApicalSegments (tuple)
+    Active apical segments in this column.
+
+    @param columnMatchingApicalSegments (tuple)
+    Matching apical segments in this column.
+
+    """
+    # Punish basal segments.
+    self._punishPredictedColumn(self.basalConnections,
+                                columnMatchingBasalSegments,
+                                reinforceCandidatesInternal,
+                                reinforceCandidatesExternalBasal,
+                                self.predictedSegmentDecrement)
+
+    # Don't punish apical segments.
+
+
+  # ==============================
+  # Helper methods
+  #
+  # These class methods use the following parameter ordering convention:
+  #
+  # 1. Output / mutated params
+  # 2. Traditional parameters to the method, i.e. the ones that would still
+  #    exist if this were in instance method.
+  # 3. Model state (not mutated)
+  # 4. Model parameters (including "learn")
+  # ==============================
+
+
+  @classmethod
+  def _activatePredictedColumn(cls, basalConnections, apicalConnections, rng,
+                               columnActiveBasalSegments,
+                               columnMatchingBasalSegments,
+                               columnActiveApicalSegments,
+                               columnMatchingApicalSegments,
+                               predictiveThreshold,
+                               reinforceCandidatesInternal,
+                               reinforceCandidatesExternalBasal,
+                               reinforceCandidatesExternalApical,
+                               growthCandidatesInternal,
+                               growthCandidatesExternalBasal,
+                               growthCandidatesExternalApical,
+                               numActivePotentialSynapsesForBasalSegment,
+                               numActivePotentialSynapsesForApicalSegment,
+                               maxNewSynapseCount, initialPermanence,
+                               permanenceIncrement, permanenceDecrement,
+                               formInternalBasalConnections, learn):
+
+    cellsToAdd = []
+
+    for cellData in groupby2(columnActiveBasalSegments, _cellForSegment,
+                             columnMatchingBasalSegments, _cellForSegment,
+                             columnActiveApicalSegments, _cellForSegment,
+                             columnMatchingApicalSegments, _cellForSegment):
+      (cell,
+       cellActiveBasalSegments,
+       cellMatchingBasalSegments,
+       cellActiveApicalSegments,
+       cellMatchingApicalSegments) = groupbyExpand(cellData)
+
+      if cls._predictiveScore(cellActiveBasalSegments,
+                              cellActiveApicalSegments) >= predictiveThreshold:
+        cellsToAdd.append(cell)
+
+        if learn:
+          # Basal learning.
+          growthCandidatesInternalBasal = (
+            growthCandidatesInternal if formInternalBasalConnections
+            else tuple()
+          )
+          cls._learnOnCell(basalConnections, rng,
+                           cell,
+                           cellActiveBasalSegments, cellMatchingBasalSegments,
+                           reinforceCandidatesInternal,
+                           reinforceCandidatesExternalBasal,
+                           growthCandidatesInternalBasal,
+                           growthCandidatesExternalBasal,
+                           numActivePotentialSynapsesForBasalSegment,
+                           maxNewSynapseCount, initialPermanence,
+                           permanenceIncrement, permanenceDecrement)
+
+          # Apical learning.
+          growthCandidatesInternalApical = tuple()
+          cls._learnOnCell(apicalConnections, rng,
+                           cell,
+                           cellActiveApicalSegments, cellMatchingApicalSegments,
+                           reinforceCandidatesInternal,
+                           reinforceCandidatesExternalApical,
+                           growthCandidatesInternalApical,
+                           growthCandidatesExternalApical,
+                           numActivePotentialSynapsesForApicalSegment,
+                           maxNewSynapseCount, initialPermanence,
+                           permanenceIncrement, permanenceDecrement)
+
+    return cellsToAdd
+
+
+  @classmethod
+  def _burstColumn(cls, basalConnections, apicalConnections, rng,
+                   chosenCellForColumn,
+                   column,
+                   columnActiveBasalSegments, columnMatchingBasalSegments,
+                   columnActiveApicalSegments, columnMatchingApicalSegments,
+                   reinforceCandidatesInternal,
+                   reinforceCandidatesExternalBasal,
+                   reinforceCandidatesExternalApical,
+                   growthCandidatesInternal,
+                   growthCandidatesExternalBasal,
+                   growthCandidatesExternalApical,
+                   numActivePotentialSynapsesForBasalSegment,
+                   numActivePotentialSynapsesForApicalSegment,
+                   cellsPerColumn, maxNewSynapseCount, initialPermanence,
+                   permanenceIncrement, permanenceDecrement,
+                   formInternalBasalConnections, learnOnOneCell, learn):
+    start = cellsPerColumn * column
+    cells = xrange(start, start + cellsPerColumn)
+
+    # Calculate the winner cell.
+    if learnOnOneCell and column in chosenCellForColumn:
+      winnerCell = chosenCellForColumn[column]
+    else:
+      if len(columnMatchingBasalSegments) > 0:
+        numActive = lambda s: numActivePotentialSynapsesForBasalSegment[s.flatIdx]
+        bestBasalSegment = max(columnMatchingBasalSegments, key=numActive)
+        winnerCell = bestBasalSegment.cell
+
+        # Mini optimization: don't search for the best basal segment twice.
+        columnMatchingBasalSegments = (bestBasalSegment,)
+      else:
+        winnerCell = cls._getLeastUsedCell(rng, cells, basalConnections)
+
+      if learnOnOneCell:
+        chosenCellForColumn[column] = winnerCell
+
+    if learn:
+      # Basal learning.
+      cellActiveBasalSegments = [s for s in columnActiveBasalSegments
+                                 if s.cell == winnerCell]
+      cellMatchingBasalSegments = [s for s in columnMatchingBasalSegments
+                                   if s.cell == winnerCell]
+      growthCandidatesInternalBasal = (
+        growthCandidatesInternal if formInternalBasalConnections else tuple()
+      )
+      cls._learnOnCell(basalConnections, rng,
+                       winnerCell,
+                       cellActiveBasalSegments, cellMatchingBasalSegments,
+                       reinforceCandidatesInternal,
+                       reinforceCandidatesExternalBasal,
+                       growthCandidatesInternalBasal,
+                       growthCandidatesExternalBasal,
+                       numActivePotentialSynapsesForBasalSegment,
+                       maxNewSynapseCount, initialPermanence,
+                       permanenceIncrement, permanenceDecrement)
+
+      # Apical learning.
+      cellActiveApicalSegments = [s for s in columnActiveApicalSegments
+                                  if s.cell == winnerCell]
+      cellMatchingApicalSegments = [s for s in columnMatchingApicalSegments
+                                    if s.cell == winnerCell]
+      growthCandidatesInternalApical = tuple()
+      cls._learnOnCell(apicalConnections, rng,
+                       winnerCell,
+                       cellActiveApicalSegments, cellMatchingApicalSegments,
+                       reinforceCandidatesInternal,
+                       reinforceCandidatesExternalApical,
+                       growthCandidatesInternalApical,
+                       growthCandidatesExternalApical,
+                       numActivePotentialSynapsesForApicalSegment,
+                       maxNewSynapseCount, initialPermanence,
+                       permanenceIncrement, permanenceDecrement)
+
+    return cells, winnerCell
+
+
+  @classmethod
+  def _punishPredictedColumn(cls, connections, columnMatchingSegments,
+                             reinforceCandidatesInternal,
+                             reinforceCandidatesExternal,
+                             predictedSegmentDecrement):
+    if predictedSegmentDecrement > 0.0 and len(columnMatchingSegments) > 0:
+      for segment in columnMatchingSegments:
+        cls._adaptSegment(connections, segment,
+                          reinforceCandidatesInternal,
+                          reinforceCandidatesExternal,
+                          -predictedSegmentDecrement, 0.0)
+
+
+  @classmethod
+  def _learnOnCell(cls, connections, rng,
+                   cell,
+                   cellActiveSegments, cellMatchingSegments,
+                   reinforceCandidatesInternal,
+                   reinforceCandidatesExternal,
+                   growthCandidatesInternal,
+                   growthCandidatesExternal,
+                   numActivePotentialSynapsesForSegment,
+                   maxNewSynapseCount, initialPermanence,
+                   permanenceIncrement, permanenceDecrement):
+    if len(cellActiveSegments) > 0:
+      # Learn on every active segment.
+      for segment in cellActiveSegments:
+        cls._adaptSegment(connections, segment,
+                          reinforceCandidatesInternal,
+                          reinforceCandidatesExternal,
+                          permanenceIncrement, permanenceDecrement)
+
+        active = numActivePotentialSynapsesForSegment[segment.flatIdx]
+        nGrowDesired = maxNewSynapseCount - active
+
+        if nGrowDesired > 0:
+          cls._growSynapses(connections, rng, segment, nGrowDesired,
+                            growthCandidatesInternal,
+                            growthCandidatesExternal,
+                            initialPermanence)
+    elif len(cellMatchingSegments) > 0:
+      # No active segments.
+      # Learn on the best matching segment.
+      numActive = lambda s: numActivePotentialSynapsesForSegment[s.flatIdx]
+      bestMatchingSegment = max(cellMatchingSegments, key=numActive)
+
+      cls._adaptSegment(connections, bestMatchingSegment,
+                        reinforceCandidatesInternal,
+                        reinforceCandidatesExternal,
+                        permanenceIncrement, permanenceDecrement)
+
+      nGrowDesired = maxNewSynapseCount - numActive(bestMatchingSegment)
+
+      if nGrowDesired > 0:
+        cls._growSynapses(connections, rng, bestMatchingSegment, nGrowDesired,
+                          growthCandidatesInternal,
+                          growthCandidatesExternal,
+                          initialPermanence)
+    else:
+      # No matching segments.
+      # Grow a new segment and learn on it.
+      nGrowExact = min(maxNewSynapseCount,
+                       len(growthCandidatesInternal) + len(growthCandidatesExternal))
+      if nGrowExact > 0:
+        segment = connections.createSegment(cell)
+        cls._growSynapses(connections, rng, segment, nGrowExact,
+                          growthCandidatesInternal,
+                          growthCandidatesExternal,
+                          initialPermanence)
+
+
+  @classmethod
+  def _calculateExcitations(cls, connections, activeCells, activeExternalCells,
+                            connectedPermanence, activationThreshold,
+                            minThreshold, learn):
+
+    numCells = connections.numCells
     allActiveCells = itertools.chain(activeCells,
-                                     (c + offset for c in activeExternalCells))
+                                     (c + numCells
+                                      for c in activeExternalCells))
 
     (numActiveConnected,
-     numActivePotential) = connections.computeActivity(
-       allActiveCells,
-       connectedPermanence)
+     numActivePotential) = connections.computeActivity(allActiveCells,
+                                                       connectedPermanence)
 
-    activeSegments = (
+    activeSegments = list(
       connections.segmentForFlatIdx(i)
       for i in xrange(len(numActiveConnected))
       if numActiveConnected[i] >= activationThreshold
     )
 
-    matchingSegments = (
+    matchingSegments = list(
       connections.segmentForFlatIdx(i)
       for i in xrange(len(numActivePotential))
       if numActivePotential[i] >= minThreshold
     )
-
-    maxSegmentsPerCell = connections.maxSegmentsPerCell
-    segmentKey = lambda segment: (segment.cell * maxSegmentsPerCell
-                                  + segment.idx)
 
     if learn:
       for segment in activeSegments:
         connections.recordSegmentActivity(segment)
       connections.startNewIteration()
 
-    return (sorted(activeSegments, key = segmentKey),
-            sorted(matchingSegments, key = segmentKey),
+    return (sorted(activeSegments, key = connections.segmentPositionSortKey),
+            sorted(matchingSegments, key = connections.segmentPositionSortKey),
             numActiveConnected,
             numActivePotential)
 
 
-  @staticmethod
-  def getLeastUsedCell(random, cells, connections):
-    """ Gets the cell with the smallest number of segments.
-    Break ties randomly.
-    @param random (Object)
-    Random number generator. Gets mutated.
-    @param cells (list)
-    Indices of cells.
-    @param connections (Object)
-    Connections instance for the TM.
-    @return (int) Cell index.
-    """
+  @classmethod
+  def _getLeastUsedCell(cls, rng, cells, connections):
     leastUsedCells = []
     minNumSegments = float("inf")
     for cell in cells:
@@ -674,101 +877,104 @@ class ExtendedTemporalMemory(object):
       if numSegments == minNumSegments:
         leastUsedCells.append(cell)
 
-    i = random.getUInt32(len(leastUsedCells))
+    i = rng.getUInt32(len(leastUsedCells))
     return leastUsedCells[i]
 
 
-  @staticmethod
-  def growSynapses(connections, random, segment, numDesiredNewSynapes,
-                   internalCandidates, externalCandidates, initialPermanence):
-    """ Creates numDesiredNewSynapes synapses on the segment passed in if
-    possible, choosing random cells from the previous winner cells that are
-    not already on the segment.
-    @param  connections        (Object) Connections instance for the TM
-    @param random (Object) Random number generator. Gets mutated.
-    @param  segment            (int)    Segment to grow synapses on.
-    @param numDesiredNewSynapes (int)    Desired number of synapses to grow
-    @param internalCandidates    (list)   Winner cells in `t-1`
-    @param externalCandidates (list)  Active cells in `t-1`, external to the layer
-    @param  initialPermanence  (float)  Initial permanence of a new synapse.
+  @classmethod
+  def _growSynapses(cls, connections, rng, segment, nDesiredNewSynapes,
+                    growthCandidatesInternal, growthCandidatesExternal,
+                    initialPermanence):
+    numCells = connections.numCells
+    candidates = list(growthCandidatesInternal)
+    candidates.extend(cell + numCells for cell in growthCandidatesExternal)
 
-    Notes: The process of writing the last value into the index in the array
-    that was most recently changed is to ensure the same results that we get
-    in the c++ implentation using iter_swap with vectors.
-    """
-    candidates = internalCandidates + [connections.numCells() + cell
-                                      for cell in externalCandidates]
-
-    # Instead of erasing candidates, swap them to the end, and remember where
-    # the "eligible" candidates end
-    eligibleEnd = len(candidates) - 1
-
-    # Remove cells that are already synapsed on by this segment
     for synapse in connections.synapsesForSegment(segment):
-      try:
-        index = candidates[:eligibleEnd + 1].index(synapse.presynapticCell)
-      except ValueError:
-        index = -1
-      if index != -1:
-        candidates[index] = candidates[eligibleEnd]
-        eligibleEnd -= 1
+      i = binSearch(candidates, synapse.presynapticCell)
+      if i != -1:
+        del candidates[i]
 
-    candidatesLength = eligibleEnd + 1
-    numActual = min(numDesiredNewSynapes, candidatesLength)
+    nActual = min(nDesiredNewSynapes, len(candidates))
 
-    # Pick numActual cells randomly
-    for _ in xrange(numActual):
-      rand = random.getUInt32(candidatesLength)
-      connections.createSynapse(segment, candidates[rand],
-                                initialPermanence)
-      candidates[rand] = candidates[candidatesLength - 1]
-      candidatesLength -= 1
+    for _ in range(nActual):
+      i = rng.getUInt32(len(candidates))
+      connections.createSynapse(segment, candidates[i], initialPermanence)
+      del candidates[i]
 
 
-  @staticmethod
-  def adaptSegment(connections, segment, prevActiveCells, prevActiveExternalCells,
-                   permanenceIncrement, permanenceDecrement):
-    """ Updates synapses on segment.
-    Strengthens active synapses; weakens inactive synapses.
-    @param connections          (Object) Connections instance for the TM
-    @param segment              (int)    Segment to adapt
-    @param prevActiveCells      (list)   Active cells in `t-1`
-    @param prevActiveExternalCells   (list)   Active cells in `t-1`, external to the layer
-    @param permanenceIncrement  (float)  Amount to increment active synapses
-    @param permanenceDecrement  (float)  Amount to decrement inactive synapses
-    """
+  @classmethod
+  def _adaptSegment(cls, connections, segment,
+                    reinforceCandidatesInternal, reinforceCandidatesExternal,
+                    permanenceIncrement, permanenceDecrement):
+    numCells = connections.numCells
+
+    # Destroying a synapse modifies the set that we're iterating through.
+    synapsesToDestroy = []
+
     for synapse in connections.synapsesForSegment(segment):
-
-      # Check for activity in previusly active and external candidate cells
-      isActive = False
-      if synapse.presynapticCell < connections.numCells():
-        isActive = binSearch(prevActiveCells, synapse.presynapticCell)
-      else:
-        isActive = binSearch(prevActiveExternalCells,
-                             synapse.presynapticCell-connections.numCells())
-
       permanence = synapse.permanence
+      presynapticCell = synapse.presynapticCell
+
+      if presynapticCell < numCells:
+        isActive = -1 != binSearch(reinforceCandidatesInternal,
+                                   presynapticCell)
+      else:
+        isActive = -1 != binSearch(reinforceCandidatesExternal,
+                                   presynapticCell - numCells)
 
       if isActive:
         permanence += permanenceIncrement
       else:
         permanence -= permanenceDecrement
 
-      # Keep permanence within min/max bounds
+      # Keep permanence within min/max bounds.
       permanence = max(0.0, min(1.0, permanence))
 
-      if permanence < _EPSILON:
-        connections.destroySynapse(synapse)
+      if permanence < EPSILON:
+        synapsesToDestroy.append(synapse)
       else:
         connections.updateSynapsePermanence(synapse, permanence)
+
+    for synapse in synapsesToDestroy:
+      connections.destroySynapse(synapse)
 
     if connections.numSynapses(segment) == 0:
       connections.destroySegment(segment)
 
 
+  @staticmethod
+  def _isSortedWithoutDuplicates(iterable):
+    """
+    Returns True if the input is sorted and contains no duplicates.
+
+    @param iterable (iter)
+
+    @return (bool)
+    """
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return all(itertools.imap(operator.lt, a, b))
+
+
+  @classmethod
+  def _predictiveScore(cls, activeBasalSegmentsOnCell,
+                       activeApicalSegmentsOnCell):
+    score = 0
+
+    if len(activeBasalSegmentsOnCell) > 0:
+      score += 2
+
+    if len(activeApicalSegmentsOnCell) > 0:
+      score += 1
+
+    return score
+
+
   def columnForCell(self, cell):
     """ Returns the index of the column that a cell belongs to.
+
     @param cell (int) Cell index
+
     @return (int) Column index
     """
     self._validateCell(cell)
@@ -778,7 +984,9 @@ class ExtendedTemporalMemory(object):
 
   def cellsForColumn(self, column):
     """ Returns the indices of cells that belong to a column.
+
     @param column (int) Column index
+
     @return (list) Cell indices
     """
     self._validateColumn(column)
@@ -790,34 +998,23 @@ class ExtendedTemporalMemory(object):
 
   def numberOfColumns(self):
     """ Returns the number of columns in this layer.
+
     @return (int) Number of columns
     """
-    return reduce(operator.mul, self.columnDimensions, 1)
+    return self._numColumns
 
 
   def numberOfCells(self):
     """ Returns the number of cells in this layer.
+
     @return (int) Number of cells
     """
     return self.numberOfColumns() * self.cellsPerColumn
 
 
-  def mapCellsToColumns(self, cells):
-    """ Maps cells to the columns they belong to
-    @param cells (set) Cells
-    @return (dict) Mapping from columns to their cells in `cells`
-    """
-    cellsForColumns = defaultdict(set)
-
-    for cell in cells:
-      column = self.columnForCell(cell)
-      cellsForColumns[column].add(cell)
-
-    return cellsForColumns
-
-
   def getActiveCells(self):
     """ Returns the indices of the active cells.
+
     @return (list) Indices of active cells.
     """
     return self.getCellIndices(self.activeCells)
@@ -825,20 +1022,49 @@ class ExtendedTemporalMemory(object):
 
   def getPredictiveCells(self):
     """ Returns the indices of the predictive cells.
+
     @return (list) Indices of predictive cells.
     """
-    previousCell = None
+
     predictiveCells = []
-    for segment in self.activeSegments:
-      if segment.cell != previousCell:
-        predictiveCells.append(segment.cell)
-        previousCell = segment.cell
+
+    segToCol = lambda segment: int(segment.cell / self.cellsPerColumn)
+
+    for columnData in groupby2(self.activeBasalSegments, segToCol,
+                               self.activeApicalSegments, segToCol):
+      (column,
+       columnActiveBasalSegments,
+       columnActiveApicalSegments) = groupbyExpand(columnData)
+
+      maxPredictiveScore = 0
+
+      for cellData in groupby2(columnActiveBasalSegments, _cellForSegment,
+                               columnActiveApicalSegments, _cellForSegment):
+        (cell,
+         cellActiveBasalSegments,
+         cellActiveApicalSegments) = groupbyExpand(cellData)
+
+        maxPredictiveScore = max(maxPredictiveScore,
+                                 self._predictiveScore(cellActiveBasalSegments,
+                                                       cellActiveApicalSegments))
+
+      if maxPredictiveScore >= MIN_PREDICTIVE_THRESHOLD:
+        for cellData in groupby2(columnActiveBasalSegments, _cellForSegment,
+                                 columnActiveApicalSegments, _cellForSegment):
+          (cell,
+           cellActiveBasalSegments,
+           cellActiveApicalSegments) = groupbyExpand(cellData)
+
+          if self._predictiveScore(cellActiveBasalSegments,
+                                   cellActiveApicalSegments) >= maxPredictiveScore:
+            predictiveCells.append(cell)
 
     return predictiveCells
 
 
   def getWinnerCells(self):
     """ Returns the indices of the winner cells.
+
     @return (list) Indices of winner cells.
     """
     return self.getCellIndices(self.winnerCells)
@@ -846,6 +1072,7 @@ class ExtendedTemporalMemory(object):
 
   def getCellsPerColumn(self):
     """ Returns the number of cells per column.
+
     @return (int) The number of cells per column.
     """
     return self.cellsPerColumn
@@ -853,10 +1080,26 @@ class ExtendedTemporalMemory(object):
 
   def getColumnDimensions(self):
     """
-    Returns the dimensions of the columns in the region.
+    Returns the dimensions of the columns.
     @return (tuple) Column dimensions
     """
     return self.columnDimensions
+
+
+  def getBasalInputDimensions(self):
+    """
+    Returns the dimensions of the external basal input.
+    @return (tuple) External basal input dimensions
+    """
+    return self.basalInputDimensions
+
+
+  def getApicalInputDimensions(self):
+    """
+    Returns the dimensions of the external apical input.
+    @return (tuple) External apical input dimensions
+    """
+    return self.apicalInputDimensions
 
 
   def getActivationThreshold(self):
@@ -913,6 +1156,48 @@ class ExtendedTemporalMemory(object):
     @return (int) The max new synapse count.
     """
     return self.maxNewSynapseCount
+
+
+  def setMaxNewSynapseCount(self, maxNewSynapseCount):
+    """
+    Sets the max new synapse count.
+    @param maxNewSynapseCount (int) Max new synapse count.
+    """
+    self.maxNewSynapseCount = maxNewSynapseCount
+
+
+  def getFormInternalBasalConnections(self):
+    """
+    Returns whether to form internal connections between cells.
+    @return (bool) the formInternalBasalConnections parameter
+    """
+    return self.formInternalBasalConnections
+
+
+  def setFormInternalBasalConnections(self, formInternalBasalConnections):
+    """
+    Sets whether to form internal connections between cells.
+    @param formInternalBasalConnections (bool)
+    """
+    self.formInternalBasalConnections = formInternalBasalConnections
+
+
+  def getLearnOnOneCell(self):
+    """
+    Returns whether to always choose the same cell when bursting a column until
+    the next reset occurs.
+    @return (bool) the learnOnOneCell parameter
+    """
+    return self.learnOnOneCell
+
+
+  def setLearnOnOneCell(self, learnOnOneCell):
+    """
+    Sets whether to always choose the same cell when bursting a column until the
+    next reset occurs.
+    @param learnOnOneCell (bool)
+    """
+    self.learnOnOneCell = learnOnOneCell
 
 
   def setMaxNewSynapseCount(self, maxNewSynapseCount):
@@ -987,108 +1272,12 @@ class ExtendedTemporalMemory(object):
     self.connectedPermanence = connectedPermanence
 
 
-  def write(self, proto):
-    """ Writes serialized data to proto object
-    @param proto (DynamicStructBuilder) Proto object
-    """
-    proto.columnDimensions = self.columnDimensions
-    proto.cellsPerColumn = self.cellsPerColumn
-    proto.activationThreshold = self.activationThreshold
-    proto.initialPermanence = self.initialPermanence
-    proto.connectedPermanence = self.connectedPermanence
-    proto.minThreshold = self.minThreshold
-    proto.maxNewSynapseCount = self.maxNewSynapseCount
-    proto.permanenceIncrement = self.permanenceIncrement
-    proto.permanenceDecrement = self.permanenceDecrement
-    proto.predictedSegmentDecrement = self.predictedSegmentDecrement
-
-    self.connections.write(proto.connections)
-    self._random.write(proto.random)
-
-    proto.activeCells = list(self.activeCells)
-    proto.winnerCells = list(self.winnerCells)
-    activeSegmentOverlaps = \
-        proto.init('activeSegmentOverlaps', len(self.activeSegments))
-    for i, segment in enumerate(self.activeSegments):
-      activeSegmentOverlaps[i].cell = segment.cell
-      activeSegmentOverlaps[i].segment = segment.idx
-      activeSegmentOverlaps[i].overlap = (
-        self.numActiveConnectedSynapsesForSegment[segment.flatIdx]
-      )
-
-    matchingSegmentOverlaps = \
-        proto.init('matchingSegmentOverlaps', len(self.matchingSegments))
-    for i, segment in enumerate(self.matchingSegments):
-      matchingSegmentOverlaps[i].cell = segment.cell
-      matchingSegmentOverlaps[i].segment = segment.idx
-      matchingSegmentOverlaps[i].overlap = (
-        self.numActivePotentialSynapsesForSegment[segment.flatIdx]
-      )
-
-
-
-  @classmethod
-  def read(cls, proto):
-    """ Reads deserialized data from proto object
-    @param proto (DynamicStructBuilder) Proto object
-    @return (TemporalMemory) TemporalMemory instance
-    """
-    tm = object.__new__(cls)
-
-    tm.columnDimensions = list(proto.columnDimensions)
-    tm.cellsPerColumn = int(proto.cellsPerColumn)
-    tm.activationThreshold = int(proto.activationThreshold)
-    tm.initialPermanence = proto.initialPermanence
-    tm.connectedPermanence = proto.connectedPermanence
-    tm.minThreshold = int(proto.minThreshold)
-    tm.maxNewSynapseCount = int(proto.maxNewSynapseCount)
-    tm.permanenceIncrement = proto.permanenceIncrement
-    tm.permanenceDecrement = proto.permanenceDecrement
-    tm.predictedSegmentDecrement = proto.predictedSegmentDecrement
-
-    tm.connections = Connections.read(proto.connections)
-    #pylint: disable=W0212
-    tm._random = Random()
-    tm._random.read(proto.random)
-    #pylint: enable=W0212
-
-    tm.activeCells = [int(x) for x in proto.activeCells]
-    tm.winnerCells = [int(x) for x in proto.winnerCells]
-
-    flatListLength = tm.connections.segmentFlatListLength()
-    tm.numActiveConnectedSynapsesForSegment = [0] * flatListLength
-    tm.numActivePotentialSynapsesForSegment = [0] * flatListLength
-
-    tm.activeSegments = []
-    tm.matchingSegments = []
-
-    for i in xrange(len(proto.activeSegmentOverlaps)):
-      protoSegmentOverlap = proto.activeSegmentOverlaps[i]
-
-      segment = tm.connections.getSegment(protoSegmentOverlap.cell,
-                                          protoSegmentOverlap.segment)
-      tm.activeSegments.append(segment)
-
-      overlap = protoSegmentOverlap.overlap
-      tm.numActiveConnectedSynapsesForSegment[segment.flatIdx] = overlap
-
-    for i in xrange(len(proto.matchingSegmentOverlaps)):
-      protoSegmentOverlap = proto.matchingSegmentOverlaps[i]
-
-      segment = tm.connections.getSegment(protoSegmentOverlap.cell,
-                                          protoSegmentOverlap.segment)
-      tm.matchingSegments.append(segment)
-
-      overlap = protoSegmentOverlap.overlap
-      tm.numActivePotentialSynapsesForSegment[segment.flatIdx] = overlap
-
-    return tm
-
-
   def __eq__(self, other):
-    """ Equality operator for TemporalMemory instances.
+    """
+    Equality operator for ExtendedTemporalMemory instances.
     Checks if two instances are functionally identical
     (might have different internal state).
+
     @param other (TemporalMemory) TemporalMemory instance to compare to
     """
     if self.columnDimensions != other.columnDimensions:
@@ -1097,20 +1286,20 @@ class ExtendedTemporalMemory(object):
       return False
     if self.activationThreshold != other.activationThreshold:
       return False
-    if abs(self.initialPermanence - other.initialPermanence) > _EPSILON:
+    if abs(self.initialPermanence - other.initialPermanence) > EPSILON:
       return False
-    if abs(self.connectedPermanence - other.connectedPermanence) > _EPSILON:
+    if abs(self.connectedPermanence - other.connectedPermanence) > EPSILON:
       return False
     if self.minThreshold != other.minThreshold:
       return False
     if self.maxNewSynapseCount != other.maxNewSynapseCount:
       return False
-    if abs(self.permanenceIncrement - other.permanenceIncrement) > _EPSILON:
+    if abs(self.permanenceIncrement - other.permanenceIncrement) > EPSILON:
       return False
-    if abs(self.permanenceDecrement - other.permanenceDecrement) > _EPSILON:
+    if abs(self.permanenceDecrement - other.permanenceDecrement) > EPSILON:
       return False
     if abs(self.predictedSegmentDecrement -
-           other.predictedSegmentDecrement) > _EPSILON:
+           other.predictedSegmentDecrement) > EPSILON:
       return False
 
     if self.connections != other.connections:
@@ -1129,16 +1318,20 @@ class ExtendedTemporalMemory(object):
 
 
   def __ne__(self, other):
-    """ Non-equality operator for TemporalMemory instances.
+    """
+    Non-equality operator for ExtendedTemporalMemory instances.
     Checks if two instances are not functionally identical
     (might have different internal state).
-    @param other (TemporalMemory) TemporalMemory instance to compare to
+
+    @param other (ExtendedTemporalMemory)
+    ETM instance to compare to.
     """
     return not self.__eq__(other)
 
 
   def _validateColumn(self, column):
     """ Raises an error if column index is invalid.
+
     @param column (int) Column index
     """
     if column >= self.numberOfColumns() or column < 0:
@@ -1147,6 +1340,7 @@ class ExtendedTemporalMemory(object):
 
   def _validateCell(self, cell):
     """ Raises an error if cell index is invalid.
+
     @param cell (int) Cell index
     """
     if cell >= self.numberOfCells() or cell < 0:
@@ -1156,6 +1350,7 @@ class ExtendedTemporalMemory(object):
   @classmethod
   def getCellIndices(cls, cells):
     """ Returns the indices of the cells passed in.
+
     @param cells (list) cells to find the indices of
     """
     return [cls.getCellIndex(c) for c in cells]
@@ -1164,36 +1359,49 @@ class ExtendedTemporalMemory(object):
   @staticmethod
   def getCellIndex(cell):
     """ Returns the index of the cell
+
     @param cell (int) cell to find the index of
     """
     return cell
 
 
-def isSortedWithoutDuplicates(iterable):
-  """ Returns True if the input is sorted and contains no duplicates.
-  @param iterable (iter)
-  @return (bool)
-  """
-  a, b = itertools.tee(iterable)
-  next(b, None)
-  return all(itertools.imap(operator.lt, a, b))
-
-
-def identity(x):
+def _identity(x):
   return x
 
 
-def cellForSegment(segment):
+def _cellForSegment(segment):
   return segment.cell
 
+def _numPoints(dimensions):
+  if len(dimensions) == 0:
+    return 0
+  else:
+    return reduce(operator.mul, dimensions, 1)
 
-def predictiveScore(activeBasalSegmentsOnCell, activeApicalSegmentsOnCell):
-  score = 0
 
-  if activeBasalSegmentsOnCell is not None:
-    score += 2
+def groupbyExpand(groupbyIteration):
+  """
+  Convert iterators and 'None's from a groupby2 iteration into simple tuples.
 
-  if activeApicalSegmentsOnCell is not None:
-    score += 1
+  This lets you avoid the following hassles:
 
-  return score
+  - groupby2 returns iterators. Iterators are single-use.
+  - groupby2 returns values that don't support `len`.
+  - groupby2 returns iterators *or* None. It's messy to handle this in the
+    caller.
+
+  groupbyExpand has a performance trade-off. It copies the sequences into
+  tuples, using more memory. Using groupby2 + groupbyExpand is still a fast way
+  of computing the intersection and differences of an arbitrary number of sorted
+  lists.
+
+  @param groupbyIteration (tuple)
+  One yielded return value from groupby2.
+
+  @returns (list)
+  A copy of groupbyIteration, but with its iterators converted to tuples.
+  """
+  expanded = list(groupbyIteration)
+  for i in xrange(1, len(expanded)):
+    expanded[i] = tuple(expanded[i]) if expanded[i] is not None else ()
+  return expanded

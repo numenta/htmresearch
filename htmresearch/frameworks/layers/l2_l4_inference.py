@@ -507,11 +507,10 @@ class L4L2Experiment(object):
     return {
       "columnCount": inputSize,
       "cellsPerColumn": 8,
-      "formInternalConnections": 0,
-      "formInternalBasalConnections": 0,  # inconsistency between CPP and PY
-      "learningMode": 1,
-      "inferenceMode": 1,
-      "learnOnOneCell": 0,
+      "formInternalBasalConnections": False,
+      "learningMode": True,
+      "inferenceMode": True,
+      "learnOnOneCell": False,
       "initialPermanence": 0.51,
       "connectedPermanence": 0.6,
       "permanenceIncrement": 0.1,
@@ -520,9 +519,8 @@ class L4L2Experiment(object):
       "predictedSegmentDecrement": 0.002,
       "activationThreshold": 13,
       "maxNewSynapseCount": 20,
-      "monitor": 0,
       "defaultOutputType": "predictedActiveCells",
-      "implementation": "cpp",
+      "implementation": "etm_cpp",
       "seed": self.seed
     }
 
@@ -534,8 +532,8 @@ class L4L2Experiment(object):
     return {
       "columnCount": 1024,
       "inputWidth": inputSize * 8,
-      "learningMode": 1,
-      "inferenceMode": 1,
+      "learningMode": True,
+      "inferenceMode": True,
       "initialPermanence": 0.41,
       "connectedPermanence": 0.5,
       "permanenceIncrement": 0.1,
@@ -557,9 +555,9 @@ class L4L2Experiment(object):
     Unsets the learning mode, to start inference.
     """
     for column in self.L4Columns:
-      column.setParameter("learningMode", 0, 0)
+      column.setParameter("learningMode", 0, False)
     for column in self.L2Columns:
-      column.setParameter("learningMode", 0, 0)
+      column.setParameter("learningMode", 0, False)
 
 
   def _setLearningMode(self):
@@ -567,9 +565,9 @@ class L4L2Experiment(object):
     Sets the learning mode.
     """
     for column in self.L4Columns:
-      column.setParameter("learningMode", 0, 1)
+      column.setParameter("learningMode", 0, True)
     for column in self.L2Columns:
-      column.setParameter("learningMode", 0, 1)
+      column.setParameter("learningMode", 0, True)
 
 
   def _updateInferenceStats(self, statistics, objectName=None):

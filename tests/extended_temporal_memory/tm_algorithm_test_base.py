@@ -20,21 +20,23 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import unittest
-from abc import ABCMeta
-
-from nupic.data.generators.pattern_machine import PatternMachine
-from nupic.support.unittesthelpers.abstract_temporal_memory_test import AbstractTemporalMemoryTest
-
-from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
-
 """
 Runs Extended Temporal Memory (ETM) against regular temporal memory tests,
 with the difference that typical default parameters are used.
 """
 
-class RegularExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
-                                        unittest.TestCase):
+from abc import ABCMeta, abstractmethod
+import unittest
+
+from nupic.data.generators.pattern_machine import PatternMachine
+from nupic.data.generators.sequence_machine import SequenceMachine
+
+from htmresearch.support.etm_monitor_mixin import (
+  ExtendedTemporalMemoryMonitorMixin)
+
+
+
+class TemporalMemoryAlgorithmTest(object):
   """
   ============================================================================
                   Basic First Order Sequences
@@ -198,7 +200,6 @@ class RegularExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
   """
 
   __metaclass__ = ABCMeta
-
   VERBOSITY = 1
   n = 2048
   w = range(38, 43)
@@ -606,12 +607,51 @@ class RegularExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
   # Overrides
   # ==============================
 
+
+  @abstractmethod
   def getTMClass(self):
-    return ExtendedTemporalMemory
+    """
+    Implement this method to specify the Temporal Memory class.
+    """
+
+
+  def init(self, overrides=None):
+    """
+    Initialize Temporal Memory, and other member variables.
+
+    :param overrides: overrides for default Temporal Memory parameters
+    """
+    params = self._computeTMParams(overrides)
+
+    class MonitoredTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
+                                  self.getTMClass()): pass
+    self.tm = MonitoredTemporalMemory(**params)
+
+
+  def _computeTMParams(self, overrides):
+    params = {
+      "columnDimensions": (self.n,),
+      "cellsPerColumn": 32,
+      "initialPermanence": 0.5,
+      "connectedPermanence": 0.6,
+      "minThreshold": 25,
+      "maxNewSynapseCount": 30,
+      "permanenceIncrement": 0.1,
+      "permanenceDecrement": 0.02,
+      "predictedSegmentDecrement": 0.08,
+      "activationThreshold": 25,
+      "seed": 42,
+      "learnOnOneCell": False,
+    }
+    params.update(overrides or {})
+    return params
+
 
 
   def setUp(self):
-    super(RegularExtendedTemporalMemoryTest, self).setUp()
+    self.tm = None
+    self.patternMachine = PatternMachine(self.n, self.w, num=300)
+    self.sequenceMachine = SequenceMachine(self.patternMachine)
 
     print ("\n"
            "======================================================\n"
@@ -622,8 +662,15 @@ class RegularExtendedTemporalMemoryTest(AbstractTemporalMemoryTest,
 
 
   def feedTM(self, sequence, learn=True, num=1):
-    super(RegularExtendedTemporalMemoryTest, self).feedTM(
-      sequence, learn=learn, num=num)
+    repeatedSequence = sequence * num
+
+    self.tm.mmClearHistory()
+
+    for pattern in repeatedSequence:
+      if pattern is None:
+        self.tm.reset()
+      else:
+        self.tm.compute(sorted(pattern), learn=learn)
 
     if self.VERBOSITY >= 2:
       print self.tm.mmPrettyPrintTraces(
