@@ -494,7 +494,7 @@ def calculateOverlapCurve(sp, inputVectors):
       outputOverlapScore[i][j] = percentOverlap(outputColumns[i][:],
                                                 outputColumnsCorrupted[i][:])
 
-  return inputOverlapScore, outputOverlapScore
+  return noiseLevelList, inputOverlapScore, outputOverlapScore
 
 
 
@@ -554,6 +554,55 @@ def classificationAccuracyVsNoise(sp, inputVectors, noiseLevelList):
   return predictionAccuracy
 
 
+def plotExampleInputOutput(sp, inputVectors, saveFigPrefix=None):
+  """
+  Plot example input & output
+  @param sp: an spatial pooler instance
+  @param inputVectors: a set of input vectors
+  """
+  numInputVector, inputSize = inputVectors.shape
+  numColumns = np.prod(sp.getColumnDimensions())
+
+  outputColumns = np.zeros((numInputVector, numColumns), dtype=uintType)
+  inputOverlap = np.zeros((numInputVector, numColumns), dtype=uintType)
+
+  connectedCounts = np.zeros((numColumns,), dtype=uintType)
+  sp.getConnectedCounts(connectedCounts)
+
+  winnerInputOverlap = np.zeros(numInputVector)
+  for i in range(numInputVector):
+    sp.compute(inputVectors[i][:], False, outputColumns[i][:])
+    inputOverlap[i][:] = sp.getOverlaps()
+    activeColumns = np.where(outputColumns[i][:] > 0)[0]
+    if len(activeColumns) > 0:
+      winnerInputOverlap[i] = np.mean(
+        inputOverlap[i][np.where(outputColumns[i][:] > 0)[0]])
+
+  fig, axs = plt.subplots(2, 1)
+  axs[0].imshow(inputVectors[:, :200], cmap='gray', interpolation="nearest")
+  axs[0].set_ylabel('input #')
+  axs[0].set_title('input vectors')
+  axs[1].imshow(outputColumns[:, :200], cmap='gray', interpolation="nearest")
+  axs[1].set_ylabel('input #')
+  axs[1].set_title('output vectors')
+  if saveFigPrefix is not None:
+    plt.savefig('figures/{}_example_input_output.pdf'.format(saveFigPrefix))
+
+  inputDensity = np.sum(inputVectors, 1) / float(inputSize)
+  outputDensity = np.sum(outputColumns, 1) / float(numColumns)
+  fig, axs = plt.subplots(2, 1)
+  axs[0].plot(inputDensity)
+  axs[0].set_xlabel('input #')
+  axs[0].set_ylim([0, 0.2])
+
+  axs[1].plot(outputDensity)
+  axs[1].set_xlabel('input #')
+  axs[1].set_ylim([0, 0.05])
+
+  if saveFigPrefix is not None:
+    plt.savefig('figures/{}_example_input_output_density.pdf'.format(saveFigPrefix))
+
+
 
 def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
   """
@@ -582,16 +631,6 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
 
   activationProb = np.mean(outputColumns.astype(realDType), 0)
 
-  # fig, axs = plt.subplots(2, 1)
-  # axs[0].imshow(inputVectors[:, :200], cmap='gray')
-  # axs[0].set_ylabel('sample #')
-  # axs[0].set_title('input vectors')
-  # axs[1].imshow(outputColumns[:, :200], cmap='gray')
-  # axs[1].set_ylabel('sample #')
-  # axs[1].set_title('output vectors')
-  # if saveFigPrefix is not None:
-  #   plt.savefig('figures/{}_example_input_output.pdf'.format(saveFigPrefix))
-
   fig, axs = plt.subplots(2, 2)
   axs[0, 0].hist(connectedCounts)
   axs[0, 0].set_xlabel('# Connected Synapse')
@@ -616,7 +655,9 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
 def getRFCenters(sp, params, type='connected'):
   numColumns = np.product(sp.getColumnDimensions())
   dimensions = (params['nX'], params['nY'])
+
   meanCoordinates = np.zeros((numColumns, 2))
+  avgDistToCenter = np.zeros((numColumns, 2))
   for columnIndex in range(numColumns):
     receptiveField = np.zeros((sp.getNumInputs(), ))
     if type == 'connected':
@@ -640,17 +681,25 @@ def getRFCenters(sp, params, type='connected'):
     angularCoordinates[:, 0] = coordinates[:, 0] / params['nX'] * 2 * np.pi
     angularCoordinates[:, 1] = coordinates[:, 1] / params['nY'] * 2 * np.pi
 
-    meanCoordinate = np.zeros(2)
 
     for i in range(2):
-      meanCoordinate[i] = np.arctan2(
+      meanCoordinate = np.arctan2(
         np.sum(np.sin(angularCoordinates[:, i])),
         np.sum(np.cos(angularCoordinates[:, i])))
-      if meanCoordinate[i] < 0:
-        meanCoordinate[i] += 2 * np.pi
-      meanCoordinate[i] *= dimensions[i] / (2 * np.pi)
-    meanCoordinates[columnIndex, :] = meanCoordinate
-  return meanCoordinates
+      if meanCoordinate < 0:
+        meanCoordinate += 2 * np.pi
+
+      dist2Mean = angularCoordinates[:, i] - meanCoordinate
+      dist2Mean = np.arctan2(np.sin(dist2Mean), np.cos(dist2Mean))
+      dist2Mean = np.max(np.abs(dist2Mean))
+
+      meanCoordinate *= dimensions[i] / (2 * np.pi)
+      dist2Mean *= dimensions[i] / (2 * np.pi)
+
+      avgDistToCenter[columnIndex, i] = dist2Mean
+      meanCoordinates[columnIndex, i] = meanCoordinate
+
+  return meanCoordinates, avgDistToCenter
 
 
 def calculateEntropy(activeColumns):
@@ -688,3 +737,16 @@ def calculateStability(activeColumnsCurrentEpoch, activeColumnsPreviousEpoch):
   stability = np.mean(np.sum(activeColumnsStable, 1))/\
               np.mean(np.sum(activeColumnsCurrentEpoch, 1))
   return stability
+
+
+def calculateInputSpaceCoverage(sp):
+  numInputs = np.prod(sp.getInputDimensions())
+  numColumns = np.prod(sp.getColumnDimensions())
+  inputSpaceCoverage = np.zeros(numInputs)
+
+  connectedSynapses = np.zeros((numInputs), dtype=uintType)
+  for columnIndex in range(numColumns):
+    sp.getConnectedSynapses(columnIndex, connectedSynapses)
+    inputSpaceCoverage += connectedSynapses
+  inputSpaceCoverage = np.reshape(inputSpaceCoverage, sp.getColumnDimensions())
+  return inputSpaceCoverage
