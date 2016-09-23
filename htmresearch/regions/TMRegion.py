@@ -419,8 +419,6 @@ class TMRegion(PyRegion):
                        reinforceCandidatesExternalApical=self.prevActiveApicalCells,
                        growthCandidatesExternalBasal=self.prevActiveExternalCells,
                        growthCandidatesExternalApical=self.prevActiveApicalCells,
-                       activeExternalCells=self.prevActiveExternalCells,
-                       activeApicalCells=self.prevActiveApicalCells,
                        learn=self.learningMode)
       self.prevActiveExternalCells = activeExternalCells
       self.prevActiveApicalCells = activeApicalCells
