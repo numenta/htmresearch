@@ -29,7 +29,7 @@ from nupic.support.unittesthelpers.abstract_temporal_memory_test import Abstract
 
 class ExtendedTemporalMemoryAlgorithmTest(AbstractTemporalMemoryTest):
   """
-  Tests the specific aspects of extended temporal memory (external and apical
+  Tests the specific aspects of extended temporal memory -- external and apical
   input, learning on one cell, etc.
 
   The parameters used in those tests are the typical default parameters for
