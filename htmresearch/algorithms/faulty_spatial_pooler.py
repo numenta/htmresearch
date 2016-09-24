@@ -79,7 +79,7 @@ class FaultySpatialPooler(SpatialPooler):
     """
     Kill cells around a centerColumn, within radius
     """
-    self.deadCols = topology.neighborhood(centerColumn,
+    self.deadCols = topology.wrappingNeighborhood(centerColumn,
                                           radius,
                                           self._columnDimensions)
     self.deadColumnInputSpan = self.getConnectedSpan(self.deadCols)
