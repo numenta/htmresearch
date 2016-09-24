@@ -67,22 +67,19 @@
     "regionType": "py.TemporalPoolerRegion",
     "regionParams": {
       "poolerType": "simpleUnion",
-      "inputWidth": 65536,
       "columnCount": 65536,
-      "historyLength": 100,
+      "historyLength": 10,
       "minHistory": 1
     }
   },
   "classifierRegionConfig": {
     "regionEnabled": true,
+    "regionType": "py.KNNClassifierRegion",
     "regionParams": {
-      "implementation": "py",
-      "alpha": 0.01,
-      "verbosity": 0,
-      "steps": 0,
-      "maxCategoryCount": 3
+      "k": 13,
+      "distanceMethod": "pctOverlapOfInput",
+      "maxCategoryCount": 1
     },
-    "regionType": "py.SDRClassifierRegion",
     "regionName": "classifier"
   }
 }

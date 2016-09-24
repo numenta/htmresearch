@@ -144,8 +144,7 @@ def updateTrace(trace, expSetup, recordNumber, sensorRegion, tmRegion, tpRegion,
 
   trace['sensorValue'].append(sensorRegion.getOutputData("sourceOut")[0])
 
-  assert classifierRegion.type != 'py.KNNClassifierRegion'
-  predictedCategory = classifierRegion.getOutputData('categoriesOut')[0]
+  predictedCategory = getClassifierInference(classifierRegion)
   trace['predictedCategory'].append(predictedCategory)
 
   actualCategory = sensorRegion.getOutputData("categoryOut")[0]
@@ -156,6 +155,19 @@ def updateTrace(trace, expSetup, recordNumber, sensorRegion, tmRegion, tpRegion,
 
   trace['classificationAccuracy'].append(accuracy)
   return trace
+
+
+
+def getClassifierInference(classifierRegion):
+  """Return output categories from the classifier region."""
+  if classifierRegion.type == "py.KNNClassifierRegion":
+    # The use of numpy.lexsort() here is to first sort by labelFreq, then
+    # sort by random values; this breaks ties in a random manner.
+    inferenceValues = classifierRegion.getOutputData("categoriesOut")
+    randomValues = np.random.random(inferenceValues.size)
+    return np.lexsort((randomValues, inferenceValues))[-1]
+  else:
+    return classifierRegion.getOutputData("categoriesOut")[0]
 
 
 
@@ -174,7 +186,7 @@ def updateExpSetup(expSetup, networkConfig):
 
   cells = networkConfig["tmRegionConfig"]["regionParams"]["cellsPerColumn"]
   columns = networkConfig["tmRegionConfig"]["regionParams"]["columnCount"]
-  
+
   expSetup['spEnabled'] = spEnabled
   expSetup['tmEnabled'] = tmEnabled
   expSetup['upEnabled'] = upEnabled
@@ -284,7 +296,7 @@ def runExperiments():
       networkConfigurations = generateSampleNetworkConfig(templateNetworkConfig,
                                                           NUM_CATEGORIES)
   else:
-    with open('config/network_configs.json', 'rb') as jsonFile:
+    with open('config/knn_network_configs.json', 'rb') as jsonFile:
       networkConfigurations = simplejson.load(jsonFile)
 
   expResults = []

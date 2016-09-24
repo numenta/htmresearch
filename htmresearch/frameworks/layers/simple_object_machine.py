@@ -20,6 +20,7 @@
 # ----------------------------------------------------------------------
 
 import random
+import numpy
 
 from htmresearch.frameworks.layers.object_machine_base import ObjectMachineBase
 
@@ -85,6 +86,7 @@ class SimpleObjectMachine(ObjectMachineBase):
     self.numFeatures = numFeatures
     self._generateLocations()
     self._generateFeatures()
+    numpy.random.seed(seed)
 
 
   def provideObjectsToLearn(self, objectNames=None):
@@ -197,10 +199,16 @@ class SimpleObjectMachine(ObjectMachineBase):
     if numFeatures is None:
       numFeatures = numPoints
 
+    assert(numPoints <= numLocations), ("Number of points in object cannot be "
+          "greater than number of locations")
+
+    locationArray = numpy.array(range(numLocations))
     for _ in xrange(numObjects):
+      # Permute the number of locations and select points from it
+      locationArray = numpy.random.permutation(locationArray)
       self.addObject(
-        [(random.randint(0, numLocations),
-          random.randint(0, numFeatures)) for _ in xrange(numPoints)],
+        [(locationArray[p],
+          random.randint(0, numFeatures-1)) for p in xrange(numPoints)],
       )
 
 
@@ -216,8 +224,8 @@ class SimpleObjectMachine(ObjectMachineBase):
 
       # generate random location if requested
       if locationID == -1:
-        location = list(self._generatePattern(self.numInputBits,
-                                              self.sensorInputSize))
+        location = self._generatePattern(self.numInputBits,
+                                         self.sensorInputSize)
       # generate union of locations if requested
       elif isinstance(locationID, tuple):
         location = set()
@@ -238,27 +246,27 @@ class SimpleObjectMachine(ObjectMachineBase):
         feature = self.features[col][featureID]
 
       if noise is not None:
-        location = self._addNoise(location, noise)
-        feature = self._addNoise(feature, noise)
+        location = self._addNoise(location, noise, self.externalInputSize)
+        feature = self._addNoise(feature, noise, self.sensorInputSize)
 
       sensations[col] = (location, feature)
 
     return sensations
 
 
-  def _addNoise(self, pattern, noiseLevel):
+  def _addNoise(self, pattern, noiseLevel, inputSize):
     """
     Adds noise the given list of patterns and returns a list of noisy copies.
     """
     if pattern is None:
       return None
 
-    newBits = []
+    newBits = set()
     for bit in pattern:
       if random.random() < noiseLevel:
-        newBits.append(random.randint(0, max(pattern)))
+        newBits.add(random.randint(0, inputSize))
       else:
-        newBits.append(bit)
+        newBits.add(bit)
 
     return newBits
 
@@ -267,9 +275,8 @@ class SimpleObjectMachine(ObjectMachineBase):
     """
     Generates a random SDR with specified number of bits and total size.
     """
-    cellsIndices = range(totalSize)
-    random.shuffle(cellsIndices)
-    return set(cellsIndices[:numBits])
+    indices = random.sample(xrange(totalSize), numBits)
+    return set(indices)
 
 
   def _generateLocations(self):
