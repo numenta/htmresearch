@@ -39,20 +39,12 @@ import nupic_output
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from errorMetrics import *
+from htmresearch.support.sequence_learning_utils import *
 from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
 rcParams['pdf.fonttype'] = 42
 
 plt.ion()
-DESCRIPTION = (
-  "Starts a NuPIC model from the model params returned by the swarm\n"
-  "and pushes each line of input from the gym into the model. Results\n"
-  "are written to an output file (default) or plotted dynamically if\n"
-  "the --plot option is specified.\n"
-  "NOTE: You must run ./swarm.py before this, because model parameters\n"
-  "are required to run NuPIC.\n"
-)
 
 
 DATA_DIR = "./data"
@@ -143,16 +135,16 @@ def printTPRegionParams(tpregion):
   """
   tm = tpregion.getSelf()._tfdr
   print "------------PY  TemporalMemory Parameters ------------------"
-  print "numberOfCols             =", tm.columnDimensions
-  print "cellsPerColumn           =", tm.cellsPerColumn
-  print "minThreshold             =", tm.minThreshold
-  print "activationThreshold      =", tm.activationThreshold
-  print "newSynapseCount          =", tm.maxNewSynapseCount
-  print "initialPerm              =", tm.initialPermanence
-  print "connectedPerm            =", tm.connectedPermanence
-  print "permanenceInc            =", tm.permanenceIncrement
-  print "permanenceDec            =", tm.permanenceDecrement
-  print "predictedSegmentDecrement=", tm.predictedSegmentDecrement
+  print "numberOfCols             =", tm.getColumnDimensions()
+  print "cellsPerColumn           =", tm.getCellsPerColumn()
+  print "minThreshold             =", tm.getMinThreshold()
+  print "activationThreshold      =", tm.getActivationThreshold()
+  print "newSynapseCount          =", tm.getMaxNewSynapseCount()
+  print "initialPerm              =", tm.getInitialPermanence()
+  print "connectedPerm            =", tm.getConnectedPermanence()
+  print "permanenceInc            =", tm.getPermanenceIncrement()
+  print "permanenceDec            =", tm.getPermanenceDecrement()
+  print "predictedSegmentDecrement=", tm.getPredictedSegmentDecrement()
   print
 
 
@@ -208,8 +200,6 @@ def movingAverage(a, n):
 
 
 if __name__ == "__main__":
-  print DESCRIPTION
-
   (_options, _args) = _getArgs()
   dataSet = _options.dataSet
   plot = _options.plot

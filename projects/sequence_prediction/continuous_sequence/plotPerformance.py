@@ -22,7 +22,7 @@
 
 
 from matplotlib import pyplot as plt
-from errorMetrics import *
+from htmresearch.support.sequence_learning_utils import *
 import pandas as pd
 
 from pylab import rcParams
