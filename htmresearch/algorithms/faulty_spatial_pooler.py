@@ -26,7 +26,7 @@ import itertools
 import numpy
 from collections import defaultdict
 from nupic.research.spatial_pooler import SpatialPooler
-
+import nupic.math.topology as topology
 from nupic.bindings.math import GetNTAReal
 
 realDType = GetNTAReal()
@@ -48,9 +48,9 @@ class FaultySpatialPooler(SpatialPooler):
     self.zombiePermutation = None  # Contains the order in which cells
     # will be killed
     self.numDead = 0
-
+    self.deadColumnInputSpan = None
+    self.targetDensity = None
     super(FaultySpatialPooler, self).__init__(**kwargs)
-
 
 
   def killCells(self, percent=0.05):
@@ -71,14 +71,61 @@ class FaultySpatialPooler(SpatialPooler):
     else:
       self.deadCols = numpy.array([])
 
-    print "Total number of dead cells = {}".format(len(self.deadCols))
+    self.deadColumnInputSpan = self.getConnectedSpan(self.deadCols)
+    self.removeDeadColumns()
 
+
+  def killCellRegion(self, centerColumn, radius):
+    """
+    Kill cells around a centerColumn, within radius
+    """
+    self.deadCols = topology.neighborhood(centerColumn,
+                                          radius,
+                                          self._columnDimensions)
+    self.deadColumnInputSpan = self.getConnectedSpan(self.deadCols)
+    self.removeDeadColumns()
+
+
+  def removeDeadColumns(self):
+    print "Total number of dead cells = {}".format(len(self.deadCols))
     for columnIndex in self.deadCols:
       potential = numpy.zeros(self._numInputs, dtype=uintType)
       self._potentialPools.replace(columnIndex, potential.nonzero()[0])
 
       perm = numpy.zeros(self._numInputs, dtype=realDType)
       self._updatePermanencesForColumn(perm, columnIndex, raisePerm=False)
+
+
+  def getConnectedSpan(self, columns):
+    dimensions = self._inputDimensions
+
+    maxCoord = numpy.empty(self._inputDimensions.size)
+    minCoord = numpy.empty(self._inputDimensions.size)
+    maxCoord.fill(-1)
+    minCoord.fill(max(self._inputDimensions))
+    for columnIndex in columns:
+      connected = self._connectedSynapses[columnIndex].nonzero()[0]
+      if connected.size == 0:
+        continue
+      for i in connected:
+        maxCoord = numpy.maximum(maxCoord, numpy.unravel_index(i, dimensions))
+        minCoord = numpy.minimum(minCoord, numpy.unravel_index(i, dimensions))
+    return (minCoord, maxCoord)
+
+
+  def updatePotentialRadius(self, newPotentialRadius):
+    """
+    Change the potential radius for all columns
+    :return:
+    """
+    oldPotentialRadius = self._potentialRadius
+    self._potentialRadius = newPotentialRadius
+    numColumns = numpy.prod(self.getColumnDimensions())
+    for columnIndex in xrange(numColumns):
+      potential = self._mapPotential(columnIndex)
+      self._potentialPools.replace(columnIndex, potential.nonzero()[0])
+
+    self._updateInhibitionRadius()
 
 
 
@@ -134,76 +181,93 @@ class FaultySpatialPooler(SpatialPooler):
       self._adaptSynapses(inputVector, activeColumns)
       self._updateDutyCycles(self._overlaps, activeColumns)
       self._bumpUpWeakColumns()
+      self._updateTargetActivityDensity()
       self._updateBoostFactors()
       if self._isUpdateRound():
         self._updateInhibitionRadius()
         self._updateMinDutyCycles()
 
+      # self.growRandomSynapses()
+
     activeArray.fill(0)
     activeArray[activeColumns] = 1
 
 
+  def growRandomSynapses(self):
+    columnFraction = 0.02
 
-  def _getNeighborsND(self, columnIndex, dimensions, radius, wrapAround=False):
+    selectColumns = numpy.random.choice(self._numColumns,
+                                        size=int(columnFraction * self._numColumns),
+                                        replace=False)
+    for columnIndex in selectColumns:
+      perm = self._permanences[columnIndex]
+      unConnectedSyn = numpy.where(numpy.logical_and(
+        self._potentialPools[columnIndex] > 0,
+        perm < self._synPermConnected))[0]
+      if len(unConnectedSyn) == 0:
+        continue
+      selectSyn = numpy.random.choice(unConnectedSyn)
+      perm[selectSyn] = self._synPermConnected + self._synPermActiveInc
+      self._updatePermanencesForColumn(perm, columnIndex, raisePerm=False)
+
+
+  def _updateBoostFactors(self):
     """
-    Similar to _getNeighbors1D and _getNeighbors2D, this function Returns a
-    list of indices corresponding to the neighbors of a given column. Since the
-    permanence values are stored in such a way that information about topology
-    is lost. This method allows for reconstructing the topology of the inputs,
-    which are flattened to one array. Given a column's index, its neighbors are
-    defined as those columns that are 'radius' indices away from it in each
-    dimension. The method returns a list of the flat indices of these columns.
-    Parameters:
-    ----------------------------
-    @param columnIndex: The index identifying a column in the permanence, potential
-                    and connectivity matrices.
-    @param dimensions: An array containing a dimensions for the column space. A 2x3
-                    grid will be represented by [2,3].
-    @param radius:  Indicates how far away from a given column are other
-                    columns to be considered its neighbors. In the previous 2x3
-                    example, each column with coordinates:
-                    [2+/-radius, 3+/-radius] is considered a neighbor.
-    @param wrapAround: A boolean value indicating whether to consider columns at
-                    the border of a dimensions to be adjacent to columns at the
-                    other end of the dimension. For example, if the columns are
-                    laid out in one dimension, columns 1 and 10 will be
-                    considered adjacent if wrapAround is set to true:
-                    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    Update the boost factors for all columns. The boost factors are used to
+    increase the overlap of inactive columns to improve their chances of
+    becoming active. and hence encourage participation of more columns in the
+    learning process. This is a line defined as: y = mx + b boost =
+    (1-maxBoost)/minDuty * dutyCycle + maxFiringBoost. Intuitively this means
+    that columns that have been active enough have a boost factor of 1, meaning
+    their overlap is not boosted. Columns whose active duty cycle drops too much
+    below that of their neighbors are boosted depending on how infrequently they
+    have been active. The more infrequent, the more they are boosted. The exact
+    boost factor is linearly interpolated between the points (dutyCycle:0,
+    boost:maxFiringBoost) and (dutyCycle:minDuty, boost:1.0).
+
+            boostFactor
+                ^
+    maxBoost _  |
+                |\
+                | \
+          1  _  |  \ _ _ _ _ _ _ _
+                |
+                +--------------------> activeDutyCycle
+                   |
+            minActiveDutyCycle
     """
-    assert(dimensions.size > 0)
-
-    columnCoords = numpy.unravel_index(columnIndex, dimensions)
-    rangeND = []
-    for i in xrange(dimensions.size):
-      if wrapAround:
-        curRange = numpy.array(range(columnCoords[i]-radius,
-                                     columnCoords[i]+radius+1)) % dimensions[i]
-      else:
-        curRange = numpy.array(range(columnCoords[i]-radius,
-                                     columnCoords[i]+radius+1))
-        curRange = curRange[
-          numpy.logical_and(curRange >= 0, curRange < dimensions[i])]
-
-      rangeND.append(numpy.unique(curRange))
-
-    neighbors = numpy.ravel_multi_index(
-      numpy.array(list(itertools.product(*rangeND))).T,
-      dimensions).tolist()
-
-    neighbors.remove(columnIndex)
-
-    aliveNeighbors = []
-    for columnIndex in neighbors:
-      if columnIndex not in self.deadCols:
-        aliveNeighbors.append(columnIndex)
-    neighbors = aliveNeighbors
-
-    return neighbors
+    if self._maxBoost > 1:
+      self._boostFactors = numpy.exp(-(
+        self._activeDutyCycles-self.targetDensity) * self._maxBoost)
+    else:
+      pass
 
 
   def getAliveColumns(self):
     numColumns = numpy.prod(self.getColumnDimensions())
     aliveColumns = numpy.ones(numColumns)
     aliveColumns[self.deadCols] = 0
-    aliveColumnIdx = aliveColumns.nonzero()[0]
-    return aliveColumnIdx
+    return aliveColumns.nonzero()[0]
+
+
+  def _updateTargetActivityDensity(self):
+    if (self._localAreaDensity > 0):
+      density = self._localAreaDensity
+    else:
+      inhibitionArea = ((2 * self._inhibitionRadius + 1)
+                        ** self._columnDimensions.size)
+      inhibitionArea = min(self._numColumns, inhibitionArea)
+      density = float(self._numActiveColumnsPerInhArea) / inhibitionArea
+      density = min(density, 0.5)
+
+    if self._globalInhibition:
+      targetDensity = density * numpy.ones(self._numColumns, dtype=realDType)
+    else:
+      targetDensity = numpy.zeros(self._numColumns, dtype=realDType)
+      for i in xrange(self._numColumns):
+        if i in self.deadCols:
+          continue
+
+        maskNeighbors = self._getColumnNeighborhood(i)
+        targetDensity[i] = numpy.mean(self._activeDutyCycles[maskNeighbors])
+    self.targetDensity = targetDensity

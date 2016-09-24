@@ -22,13 +22,14 @@
 
 from optparse import OptionParser
 import pprint
+from tabulate import tabulate
 
 from nupic.research.spatial_pooler import SpatialPooler as PYSpatialPooler
 from htmresearch.algorithms.faulty_spatial_pooler import FaultySpatialPooler
 from htmresearch.frameworks.sp_paper.sp_metrics import (
   calculateEntropy, calculateInputOverlapMat, inspectSpatialPoolerStats,
   classificationAccuracyVsNoise, percentOverlap, calculateOverlapCurve,
-  calculateStability
+  calculateStability, plotExampleInputOutput
 )
 from htmresearch.support.spatial_pooler_monitor_mixin import (
   SpatialPoolerMonitorMixin)
@@ -85,6 +86,13 @@ def getSDRDataSetParams(inputVectorType):
               'numInputVectors': 100,
               'inputSize': 1024,
               'numActiveInputBits': 20,
+              'seed': 41}
+  elif inputVectorType == 'randomSDRVaryingSparsity':
+    params = {'dataType': 'randomSDRVaryingSparsity',
+              'numInputVectors': 100,
+              'inputSize': 512,
+              'minSparsity': 0.02,
+              'maxSparsity': 0.2,
               'seed': 41}
   elif inputVectorType == 'dense':
     params = {'dataType': 'denseVectors',
@@ -271,6 +279,7 @@ if __name__ == "__main__":
   if spatialImp == "monitored_sp":
     sp.mmClearHistory()
 
+  checkPoints = [0, 49, numEpochs-1]
   for epoch in range(numEpochs):
     if changeDataSetContinuously or (epoch == changeDataSetAt):
       params['seed'] = epoch
@@ -287,12 +296,12 @@ if __name__ == "__main__":
 
     # calcualte overlap curve here
     if trackOverlapCurveOverTraining:
-      inputOverlapScore, outputOverlapScore = calculateOverlapCurve(
-        sp, inputVectors[:20, :])
+      noiseLevelList, inputOverlapScore, outputOverlapScore = \
+        calculateOverlapCurve(sp, inputVectors[:20, :])
       noiseRobustnessTrace.append(np.trapz(np.flipud(np.mean(outputOverlapScore, 0)),
-                                           np.flipud(np.mean(inputOverlapScore, 0))))
+                                           noiseLevelList))
       np.savez('./results/input_output_overlap/{}_{}'.format(expName, epoch),
-              inputOverlapScore, outputOverlapScore)
+               noiseLevelList, inputOverlapScore, outputOverlapScore)
 
     if classification:
       # classify SDRs with noise
@@ -317,7 +326,7 @@ if __name__ == "__main__":
     for i in range(numInputVector):
       outputColumns = np.zeros(sp.getColumnDimensions(), dtype=uintType)
       inputVector = copy.deepcopy(inputVectors[sdrOrders[i]][:])
-      # addNoiseToVector(inputVector, 0.05, inputVectorType)
+
       sp.compute(inputVector, learn, outputColumns)
 
       activeColumnsCurrentEpoch[sdrOrders[i]][:] = np.reshape(outputColumns,
@@ -355,6 +364,45 @@ if __name__ == "__main__":
       numEliminatedSynapses[numEliminatedSynapses < 0] = 0
       numEliminatedSynapsesTrace.append(np.sum(numEliminatedSynapses))
 
+      metrics = {'connected syn': [numConnectedSynapsesTrace[-1]],
+                 'new syn': [numNewlyConnectedSynapsesTrace[-1]],
+                 'remove syn': [numEliminatedSynapsesTrace[-1]],
+                 'stability': [stabilityTrace[-1]],
+                 'entropy': [entropyTrace[-1]]}
+      if trackOverlapCurveOverTraining:
+        metrics['noise-robustness'] = [noiseRobustnessTrace[-1]]
+      if classification:
+        metrics['classification'] = [classificationRobustnessTrace[-1]]
+      print tabulate(metrics, headers="keys")
+    else:
+      stabilityTrace.append(np.nan)
+      numNewlyConnectedSynapsesTrace.append(np.nan)
+      numConnectedSynapsesTrace.append(np.nan)
+      numEliminatedSynapsesTrace.append(np.nan)
+
+
+    if epoch in checkPoints:
+      # inspect SP again
+      inspectSpatialPoolerStats(sp, inputVectors, expName+"epoch{}".format(epoch))
+
+      # analyze RF properties
+      if inputVectorType == "randomSDR":
+        analyzeReceptiveFieldSparseInputs(inputVectors, sp)
+        plt.savefig('figures/inputOverlap_epoch{}_{}.pdf'.format(epoch, expName))
+      elif inputVectorType == 'correlatedSDRPairs':
+        additionalInfo = sdrData.getAdditionalInfo()
+        inputVectors1 = additionalInfo["inputVectors1"]
+        inputVectors2 = additionalInfo["inputVectors2"]
+        corrPairs = additionalInfo["corrPairs"]
+        analyzeReceptiveFieldCorrelatedInputs(
+          inputVectors, sp, params, inputVectors1, inputVectors2)
+        plt.savefig('figures/inputOverlap_epoch{}_{}.pdf'.format(epoch, expName))
+      elif (inputVectorType == "randomBarPairs" or
+                inputVectorType == "randomCross" or
+                inputVectorType == "randomBarSets"):
+        plotReceptiveFields2D(sp, params['nX'], params['nY'])
+        plt.savefig('figures/inputOverlap_epoch{}_{}.pdf'.format(epoch, expName))
+
 
   if spatialImp == "monitored_sp":
     # plot permanence for a single column when monitored sp is used
@@ -362,46 +410,50 @@ if __name__ == "__main__":
     permInfo = sp.recoverPermanence(columnIndex)
     plotPermInfo(permInfo)
 
-  if trackOverlapCurveOverTraining:
-    plt.figure()
-    plt.plot(noiseRobustnessTrace)
-    plt.xlabel('epochs')
-    plt.ylabel('noise robustness')
-    plt.savefig('figures/noise_robustness_over_training_{}.pdf'.format(expName))
+  plotExampleInputOutput(sp, inputVectors, expName + "final")
 
   # plot stats over training
   fileName = 'figures/network_stats_over_training_{}.pdf'.format(expName)
-  plotSPstatsOverTime(numConnectedSynapsesTrace,
-                      numNewlyConnectedSynapsesTrace,
-                      numEliminatedSynapsesTrace,
-                      stabilityTrace,
-                      entropyTrace,
-                      fileName)
-
-  # inspect SP again
-  inspectSpatialPoolerStats(sp, inputVectors, expName+"afterTraining")
+  axs = plotSPstatsOverTime(numNewlyConnectedSynapsesTrace,
+                            numEliminatedSynapsesTrace,
+                            noiseRobustnessTrace,
+                            stabilityTrace,
+                            entropyTrace,
+                            fileName)
 
   if classification:
     # classify SDRs with noise
     for epoch in range(numEpochs):
-      npzfile = np.load('./results/classification/{}_{}.npz'.format(expName, epoch))
+      npzfile = np.load(
+        './results/classification/{}_{}.npz'.format(expName, epoch))
 
-  # analyze RF properties
-  if inputVectorType == "randomSDR":
-    analyzeReceptiveFieldSparseInputs(inputVectors, sp)
-    plt.savefig('figures/inputOverlap_after_learning_{}.pdf'.format(expName))
-  elif inputVectorType == 'correlatedSDRPairs':
-    additionalInfo = sdrData.getAdditionalInfo()
-    inputVectors1 = additionalInfo["inputVectors1"]
-    inputVectors2 = additionalInfo["inputVectors2"]
-    corrPairs = additionalInfo["corrPairs"]
-    analyzeReceptiveFieldCorrelatedInputs(
-      inputVectors, sp, params, inputVectors1, inputVectors2)
-    plt.savefig('figures/inputOverlap_after_learning_{}.pdf'.format(expName))
-  elif (inputVectorType == "randomBarPairs" or
-            inputVectorType == "randomCross" or
-            inputVectorType == "randomBarSets"):
-    plotReceptiveFields2D(sp, params['nX'], params['nY'])
-    plt.savefig('figures/inputOverlap_after_learning_{}.pdf'.format(expName))
+  plt.figure()
+  legendList = []
+  epochCheck = [0, 5, 10, 20, 40, 80]
+  for epoch in epochCheck:
+    nrData = np.load('./results/input_output_overlap/{}_{}.npz'.format(expName, epoch))
+    noiseLevelList =  nrData['arr_0']
+    inputOverlapScore =  nrData['arr_1']
+    outputOverlapScore = np.mean( nrData['arr_2'], 0)
+    plt.plot(noiseLevelList, outputOverlapScore)
+    legendList.append('epoch {}'.format(epoch))
+  plt.legend(legendList)
+  plt.xlabel('Noise Level')
+  plt.ylabel('Change of SP output')
+  plt.savefig('./figures/noise_robustness_{}.pdf'.format(expName))
 
-
+  plt.figure()
+  legendList = []
+  epochCheck = [79, 80, 219]
+  for epoch in epochCheck:
+    nrData = np.load(
+      './results/input_output_overlap/{}_{}.npz'.format(expName, epoch))
+    noiseLevelList = nrData['arr_0']
+    inputOverlapScore = nrData['arr_1']
+    outputOverlapScore = np.mean(nrData['arr_2'], 0)
+    plt.plot(noiseLevelList, outputOverlapScore)
+    legendList.append('epoch {}'.format(epoch))
+  plt.legend(legendList)
+  plt.xlabel('Noise Level')
+  plt.ylabel('Change of SP output')
+  plt.savefig('./figures/noise_robustness_{}.pdf'.format(expName))

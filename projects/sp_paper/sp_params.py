@@ -26,7 +26,7 @@ spParamNoBoosting = {
   "localAreaDensity": .02,
   "numActiveColumnsPerInhArea": -1,
   "stimulusThreshold": 1,
-  "synPermInactiveDec": 0.01,
+  "synPermInactiveDec": 0.004,
   "synPermActiveInc": 0.02,
   "synPermConnected": 0.5,
   "minPctOverlapDutyCycle": 0.0,
@@ -46,8 +46,8 @@ spParamWithBoosting = {
   "localAreaDensity": .02,
   "numActiveColumnsPerInhArea": -1,
   "stimulusThreshold": 1,
-  "synPermInactiveDec": 0.01,
-  "synPermActiveInc": 0.1,
+  "synPermInactiveDec": 0.004,
+  "synPermActiveInc": 0.02,
   "synPermConnected": 0.5,
   "minPctOverlapDutyCycle": 0.001,
   "minPctActiveDutyCycle": 0.001,
@@ -60,7 +60,7 @@ spParamWithBoosting = {
 spParamTopologyWithBoosting = {
   "inputDimensions": (32, 32),
   "columnDimensions": (32, 32),
-  "potentialRadius": 4,
+  "potentialRadius": 10,
   "potentialPct": 1.0,
   "globalInhibition": False,
   "localAreaDensity": .1,
@@ -73,7 +73,7 @@ spParamTopologyWithBoosting = {
   "minPctOverlapDutyCycle": 0.0,
   "minPctActiveDutyCycle": 0.001,
   "dutyCyclePeriod": 1000,
-  "maxBoost": 20.0,
+  "maxBoost": 100.0,
   "seed": 1936
 }
 
@@ -81,10 +81,10 @@ spParamTopologyWithBoosting = {
 spParamTopologyNoBoosting = {
   "inputDimensions": (32, 32),
   "columnDimensions": (32, 32),
-  "potentialRadius": 4,
+  "potentialRadius": 10,
   "potentialPct": 1.0,
   "globalInhibition": False,
-  "localAreaDensity": .05,
+  "localAreaDensity": .1,
   "numActiveColumnsPerInhArea": -1,
   "wrapAround": True,
   "stimulusThreshold": 1,

@@ -65,31 +65,35 @@ def plotAccuracyVsNoise(noiseLevelList, predictionAccuracy):
 
 
 
-def plotSPstatsOverTime(numConnectedSynapsesTrace,
-                        numNewlyConnectedSynapsesTrace,
+def plotSPstatsOverTime(numNewlyConnectedSynapsesTrace,
                         numEliminatedSynapsesTrace,
+                        noiseRobustnessTrace,
                         stabilityTrace,
                         entropyTrace,
                         fileName=None):
   fig, axs = plt.subplots(nrows=5, ncols=1, sharex=True)
 
-  axs[0].plot(numConnectedSynapsesTrace)
-  axs[0].set_ylabel('Syn #')
+  axs[0].plot(stabilityTrace)
+  axs[0].set_ylabel('Stability')
 
-  axs[1].plot(numNewlyConnectedSynapsesTrace)
-  axs[1].set_ylabel('New Syn #')
+  axs[1].plot(entropyTrace)
+  axs[1].set_ylabel('Entropy (bits)')
 
-  axs[2].plot(numEliminatedSynapsesTrace)
-  axs[2].set_ylabel('Remove Syns #')
 
-  axs[3].plot(stabilityTrace)
-  axs[3].set_ylabel('Stability')
+  if len(noiseRobustnessTrace) > 0:
+    axs[2].plot(noiseRobustnessTrace)
+    axs[2].set_ylabel('Noise Robustness')
 
-  axs[4].plot(entropyTrace)
-  axs[4].set_ylabel('entropy (bits)')
+  axs[3].plot(numNewlyConnectedSynapsesTrace)
+  axs[3].set_ylabel('Synapses Formation')
+
+  axs[4].plot(numEliminatedSynapsesTrace)
+  axs[4].set_ylabel('Synapse Removal')
+  axs[4].set_xlim([0, len(numEliminatedSynapsesTrace)])
   axs[4].set_xlabel('epochs')
   if fileName is not None:
     plt.savefig(fileName)
+  return axs
 
 
 
@@ -243,3 +247,15 @@ def analyzeReceptiveFieldCorrelatedInputs(
   ax[1].imshow(overlapMat2[:100, :], interpolation="nearest", cmap="magma")
   ax[1].set_xlabel('# Input 2')
   ax[1].set_ylabel('SP Column #')
+
+
+
+def runSPOnBatch(sp, inputVectors, learn):
+  numInputVector, inputSize = inputVectors.shape
+  numColumns = np.prod(sp.getColumnDimensions())
+
+  outputColumns = np.zeros((numInputVector, numColumns), dtype=uintType)
+  for i in range(numInputVector):
+    sp.compute(inputVectors[i][:], learn, outputColumns[i][:])
+
+  return outputColumns

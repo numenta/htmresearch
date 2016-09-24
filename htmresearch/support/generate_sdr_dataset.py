@@ -106,8 +106,8 @@ def getCross(nX, nY, barHalfLength):
 def generateRandomSDR(numSDR, numDims, numActiveInputBits, seed=42):
   """
   Generate a set of random SDR's
-  @param numSDR:
-  @param nDim:
+  :param numSDR: number of SDRs
+  :param numDims: length of SDRs
   @param numActiveInputBits:
   """
   randomSDRs = np.zeros((numSDR, numDims), dtype=uintType)
@@ -122,6 +122,28 @@ def generateRandomSDR(numSDR, numDims, numActiveInputBits, seed=42):
 
 
 
+def generateRandomSDRVaryingSparsity(numSDR, numDims, minSparsity, maxSparsity,
+                                     seed=42):
+  """
+  Generate a set of random SDRs with varying sparsity
+  :param numSDR: number of SDRs
+  :param numDims: length of SDRs
+  :param minSparsity: minimum sparsity
+  :param maxSparsity: maximum sparsity
+  :param seed:
+  """
+  randomSDRs = np.zeros((numSDR, numDims), dtype=uintType)
+  indices = np.array(range(numDims))
+  np.random.seed(seed)
+  for i in range(numSDR):
+    sparsity = np.random.random() * (maxSparsity - minSparsity) + minSparsity
+    numActiveInputBits = round(sparsity * numDims)
+    randomIndices = np.random.permutation(indices)
+    activeBits = randomIndices[:numActiveInputBits]
+    randomSDRs[i, activeBits] = 1
+  return randomSDRs
+
+
 def getRandomBar(imageSize, barHalfLength, orientation='horizontal'):
   (nX, nY) = imageSize
   if orientation == 'horizontal':
@@ -134,6 +156,10 @@ def getRandomBar(imageSize, barHalfLength, orientation='horizontal'):
     bar = getBar(imageSize, (xLoc, yLoc), barHalfLength, orientation)
   else:
     raise RuntimeError("orientation has to be horizontal or vertical")
+
+  # shift bar with random phases
+  bar = np.roll(bar, np.random.randint(10 * nX), 0)
+  bar = np.roll(bar, np.random.randint(10 * nY), 1)
   return bar
 
 
@@ -254,7 +280,13 @@ class SDRDataSet(object):
         params['inputSize'],
         params['numActiveInputBits'],
         params['seed'])
-
+    elif params['dataType'] == 'randomSDRVaryingSparsity':
+      self._inputVectors = generateRandomSDRVaryingSparsity(
+        params['numInputVectors'],
+        params['inputSize'],
+        params['minSparsity'],
+        params['maxSparsity'],
+        params['seed'])
     elif params['dataType'] == 'denseVectors':
       self._inputVectors = generateDenseVectors(
         params['numInputVectors'],
@@ -331,6 +363,7 @@ class SDRDataSet(object):
 
   def getInputVectors(self):
     return self._inputVectors
+
 
   def getAdditionalInfo(self):
     return self._additionalInfo
