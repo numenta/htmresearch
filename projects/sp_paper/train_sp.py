@@ -279,7 +279,7 @@ if __name__ == "__main__":
   if spatialImp == "monitored_sp":
     sp.mmClearHistory()
 
-  checkPoints = [0, 49, numEpochs-1]
+  checkPoints = [0, changeDataSetAt-1, changeDataSetAt, numEpochs-1]
   for epoch in range(numEpochs):
     if changeDataSetContinuously or (epoch == changeDataSetAt):
       params['seed'] = epoch
