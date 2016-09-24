@@ -29,7 +29,7 @@ kill a fraction of the SP columns
 ## Run with random SP (learning off)
 `run run_sp_tm_model.py --trainSP 0`
 ## Run with learning SP, but without boosting
-`run run_sp_tm_model.py --trainSP 0 --maxBoost 1`
+`run run_sp_tm_model.py --trainSP 1 --maxBoost 1`
 ## Run with learning SP, and boosting
-`run run_sp_tm_model.py --trainSP 0 --maxBoost 20`
+`run run_sp_tm_model.py --trainSP 1 --maxBoost 20`
 ## plot results

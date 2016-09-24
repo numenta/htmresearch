@@ -282,27 +282,6 @@ if __name__ == "__main__":
     spOutput = model._getSPRegion().getOutputData('bottomUpOut')
     spActiveCellsCount[spOutput.nonzero()[0]] += 1
 
-    activeDutyCycle = np.zeros(sp.getColumnDimensions(), dtype=np.float32)
-    sp.getActiveDutyCycles(activeDutyCycle)
-    overlapDutyCycle = np.zeros(sp.getColumnDimensions(), dtype=np.float32)
-    sp.getOverlapDutyCycles(overlapDutyCycle)
-
-    # if i % 100 == 0 and i > 0:
-    #   plt.figure(1)
-    #   plt.clf()
-    #   plt.subplot(2, 2, 1)
-    #   plt.hist(overlapDutyCycle)
-    #   plt.xlabel('overlapDutyCycle')
-    #
-    #   plt.subplot(2, 2, 2)
-    #   plt.hist(activeDutyCycle)
-    #   plt.xlabel('activeDutyCycle-1000')
-    #
-    #   plt.subplot(2, 2, 3)
-    #   plt.hist(spActiveCellsCount)
-    #   plt.xlabel('activeDutyCycle-Total')
-    #   plt.draw()
-
     tp = model._getTPRegion()
     tm = tp.getSelf()._tfdr
     activeColumn = tm.getActiveCells()
@@ -380,6 +359,32 @@ if __name__ == "__main__":
     dataSet, classifierType, trainSP, maxBoost),
     predictions, predict_data_ML, truth)
 
+  activeDutyCycle = np.zeros(sp.getColumnDimensions(), dtype=np.float32)
+  sp.getActiveDutyCycles(activeDutyCycle)
+  overlapDutyCycle = np.zeros(sp.getColumnDimensions(), dtype=np.float32)
+  sp.getOverlapDutyCycles(overlapDutyCycle)
 
+  plt.figure()
+  plt.clf()
+  plt.subplot(2, 2, 1)
+  plt.hist(overlapDutyCycle)
+  plt.xlabel('overlapDutyCycle')
+
+  plt.subplot(2, 2, 2)
+  plt.hist(activeDutyCycle)
+  plt.xlabel('activeDutyCycle-1000')
+
+  plt.subplot(2, 2, 3)
+  totalActiveDutyCycle = spActiveCellsCount.astype('float32') / len(df)
+  dutyCycleDist, binEdge = np.histogram(totalActiveDutyCycle,
+                                        bins=20, range=[-0.0025, 0.0975])
+  binCenter = (binEdge[1:] + binEdge[:-1])/2
+  dutyCycleDist = dutyCycleDist.astype('float32')/np.sum(dutyCycleDist)
+  plt.bar(binCenter, dutyCycleDist, width=0.005)
+  plt.xlim([0, .1])
+  plt.ylim([0, .7])
+  plt.xlabel('activeDutyCycle-Total')
+  plt.savefig('figures/nyc_taxi/DutyCycle_SPLearning_{}_boost_{}.pdf'.format(
+    trainSP, maxBoost))
 
 

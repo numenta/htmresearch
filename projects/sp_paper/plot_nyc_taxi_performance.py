@@ -63,7 +63,8 @@ if __name__ == "__main__":
 
   trainSPList = [False, True, True]
   boost = [1, 1, 10]
-
+  mapeTMList1 = []
+  mapeTMList2 = []
   for i in range(len(boost)):
     tmPrediction = np.load(
       './results/nyc_taxi/{}{}TMprediction_SPLearning_{}_boost_{}.npz'.format(
@@ -88,8 +89,20 @@ if __name__ == "__main__":
                            errorType='mape',
                            label='TrainSP_{}, r={}'.format(trainSPList[i], boost[i]))
     normFactor = np.nanmean(np.abs(tmTruth))
+    mapeTMList1.append(np.nanmean(mapeTM[:10000]) / normFactor)
+    mapeTMList2.append(np.nanmean(mapeTM[10000:]) / normFactor)
     altMAPETM = computeAltMAPE(tmTruth, tmPointEstimate, 10000)
     print "trainSP {} MAPE {}".format(trainSPList[i], altMAPETM)
 
   plt.legend()
   plt.savefig('figures/nyc_taxi_performance.pdf')
+
+  rcParams.update({'figure.figsize': (4, 6)})
+  plt.figure()
+  plt.subplot(221)
+  plt.bar(range(3), mapeTMList1)
+  plt.ylim([0, .14])
+  plt.subplot(222)
+  plt.bar(range(3), mapeTMList2)
+  plt.ylim([0, .14])
+  plt.savefig('figures/nyc_taxi_performance_summary.pdf')
