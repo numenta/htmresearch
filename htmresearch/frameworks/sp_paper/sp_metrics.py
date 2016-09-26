@@ -631,6 +631,11 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
 
   activationProb = np.mean(outputColumns.astype(realDType), 0)
 
+  dutyCycleDist, binEdge = np.histogram(activationProb,
+                                        bins=10, range=[-0.005, 0.095])
+  dutyCycleDist = dutyCycleDist.astype('float32') / np.sum(dutyCycleDist)
+  binCenter = (binEdge[1:] + binEdge[:-1])/2
+
   fig, axs = plt.subplots(2, 2)
   axs[0, 0].hist(connectedCounts)
   axs[0, 0].set_xlabel('# Connected Synapse')
@@ -638,9 +643,9 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
   axs[0, 1].hist(winnerInputOverlap)
   axs[0, 1].set_xlabel('# winner input overlap')
 
-  axs[1, 0].hist(activationProb, bins=20, range=[0, 0.1])
-  axs[1, 0].set_xlim([0, .1])
-  axs[1, 0].set_xlabel('activation prob')
+  axs[1, 0].bar(binEdge[:-1]+0.001, dutyCycleDist, width=.008)
+  axs[1, 0].set_xlim([-0.005, .1])
+  axs[1, 0].set_xlabel('Activation Frequency')
 
   axs[1, 1].plot(connectedCounts, activationProb, '.')
   axs[1, 1].set_xlabel('connection #')
