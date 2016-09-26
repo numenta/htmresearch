@@ -51,7 +51,6 @@ TRACES_OUTPUT_FILE = 'results/traces_%s.csv'
 # Whether to run the network on real data
 USE_REAL_DATA = True 
 INPUT_FILE = 'data/sensortag_x.csv'
-NUM_POINTS = 3000
 
 # Whether to use a JSON config file of the template config generator.
 # See network_configs.json for an example of standard config file.

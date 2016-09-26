@@ -51,7 +51,6 @@ from settings import (NUM_CATEGORIES,
                       TRACES_OUTPUT_FILE,
                       USE_REAL_DATA,
                       INPUT_FILE,
-                      NUM_POINTS,
                       USE_CONFIG_TEMPLATE,
                       PLOT)
 
