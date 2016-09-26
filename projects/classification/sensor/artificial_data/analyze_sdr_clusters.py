@@ -52,7 +52,6 @@ def _getArgs():
                     dest="includeNoiseCategory",
                     help="whether to include noise category for viz")
 
-
   (options, remainder) = parser.parse_args()
   return options, remainder
 
@@ -136,7 +135,8 @@ def meanInClusterDistances(cluster):
     overlap = percentOverlap(sdr1, sdr2)
     overlaps.append(overlap)
   return sum(overlaps) / len(overlaps)
-  
+
+
 
 if __name__ == "__main__":
   (_options, _args) = _getArgs()
@@ -146,14 +146,13 @@ if __name__ == "__main__":
   traces = loadTraces(fileName)
   cellsType = 'tmActiveCells'
   numCells = 1024 * 4
-  numSteps = len(traces['step'])
+  numSteps = len(traces['recordNumber'])
   startFrom = int(numSteps * 0.6)
 
   # no clustering with individual cell states, remove?
   # vizCellStates(traces, cellsType, numCells, startFrom=100)
 
   clusters = assignClusters(traces)
-
 
   # compare c1 - c2 distance over time
   numRptsPerCategory = {}
@@ -166,7 +165,7 @@ if __name__ == "__main__":
   SDRclusters = []
   clusterAssignments = []
   numRptsMin = np.min(numRptsPerCategory.values()).astype('int32')
-  for rpt in range(numRptsMin+1):
+  for rpt in range(numRptsMin + 1):
     idx0 = np.logical_and(np.array(traces['actualCategory']) == 0,
                           repetition == rpt)
     idx1 = np.logical_and(np.array(traces['actualCategory']) == 1,
@@ -174,9 +173,12 @@ if __name__ == "__main__":
     idx2 = np.logical_and(np.array(traces['actualCategory']) == 2,
                           repetition == rpt)
 
-    c0slice = [traces['tmPredictedActiveCells'][i] for i in range(len(idx0)) if idx0[i]]
-    c1slice = [traces['tmPredictedActiveCells'][i] for i in range(len(idx1)) if idx1[i]]
-    c2slice = [traces['tmPredictedActiveCells'][i] for i in range(len(idx2)) if idx2[i]]
+    c0slice = [traces['tmPredictedActiveCells'][i] for i in range(len(idx0)) if
+               idx0[i]]
+    c1slice = [traces['tmPredictedActiveCells'][i] for i in range(len(idx1)) if
+               idx1[i]]
+    c2slice = [traces['tmPredictedActiveCells'][i] for i in range(len(idx2)) if
+               idx2[i]]
 
     if includeNoiseCategory:
       SDRclusters.append(c0slice)
@@ -206,4 +208,3 @@ if __name__ == "__main__":
   plt.savefig('results/cluster_distance_matrix_example.pdf')
 
   viz2DProjection('sequenceCluster', 3, clusterAssignments, npos)
-

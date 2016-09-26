@@ -120,6 +120,7 @@ def projectClusters2D(sdrClusters):
 
   mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9, random_state=seed,
                      dissimilarity="precomputed", n_jobs=1)
+
   pos = mds.fit(distanceMat).embedding_
 
   nmds = manifold.MDS(n_components=2, metric=False, max_iter=3000, eps=1e-12,
