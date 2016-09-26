@@ -277,7 +277,6 @@ def convertNonZeroToSDR(patternNZs, sdrSize):
 
 def runNetwork(networkConfig, expSetup):
   filePath = expSetup['inputFilePath']
-  numPoints = expSetup['numPoints']
   dataSource = FileRecordStream(streamID=filePath)
   network = configureNetwork(dataSource, networkConfig)
 
@@ -296,73 +295,78 @@ def runNetwork(networkConfig, expSetup):
                           similarityThreshold,
                           pruningFrequency)
 
-  for recordNumber in range(numPoints):
-
-    network.run(1)
-    if recordNumber > startClusteringIndex:
-      tmPredictedActiveCells = tmRegion.getOutputData('predictedActiveCells')
-      tmPredictedActiveCells = tmPredictedActiveCells.astype(int)
-      anomalyScore = tmRegion.getOutputData('anomalyScore')[0]
-      actualCategory = sensorRegion.getOutputData('categoryOut')[0]
-      (predictedCluster,
-       clusteringConfidence) = clustering.cluster(recordNumber,
-                                                  tmPredictedActiveCells,
-                                                  anomalyScore,
-                                                  actualCategory)
-
-    else:
-      predictedCluster = None
-      clusteringConfidence = None
-
-    (sensorValue,
-     actualCategory,
-     tmActiveCells,
-     tmPredictedActiveCells,
-     anomalyScore,
-     tpActiveCells,
-     classificationInference,
-     classificationAccuracy,
-     clusteringInference,
-     predictedClusterId,
-     clusteringAccuracy,
-     clusterHomogeneity) = computeStats(trace,
-                                        rollingAccuracyWindow,
-                                        sensorRegion,
-                                        tmRegion,
-                                        tpRegion,
-                                        classifierRegion,
-                                        predictedCluster,
-                                        clustering)
-
-    trace = updateTrace(trace,
-                        recordNumber,
+  recordNumber = 0
+  while 1:
+    try:
+      network.run(1)
+      if recordNumber > startClusteringIndex:
+        tmPredictedActiveCells = tmRegion.getOutputData('predictedActiveCells')
+        tmPredictedActiveCells = tmPredictedActiveCells.astype(int)
+        anomalyScore = tmRegion.getOutputData('anomalyScore')[0]
+        actualCategory = sensorRegion.getOutputData('categoryOut')[0]
+        (predictedCluster,
+         clusteringConfidence) = clustering.cluster(recordNumber,
+                                                    tmPredictedActiveCells,
+                                                    anomalyScore,
+                                                    actualCategory)
+  
+      else:
+        predictedCluster = None
+        clusteringConfidence = None
+  
+      (sensorValue,
+       actualCategory,
+       tmActiveCells,
+       tmPredictedActiveCells,
+       anomalyScore,
+       tpActiveCells,
+       classificationInference,
+       classificationAccuracy,
+       clusteringInference,
+       predictedClusterId,
+       clusteringAccuracy,
+       clusterHomogeneity) = computeStats(trace,
+                                          rollingAccuracyWindow,
+                                          sensorRegion,
+                                          tmRegion,
+                                          tpRegion,
+                                          classifierRegion,
+                                          predictedCluster,
+                                          clustering)
+  
+      trace = updateTrace(trace,
+                          recordNumber,
+                          sensorValue,
+                          actualCategory,
+                          tmActiveCells,
+                          tmPredictedActiveCells,
+                          anomalyScore,
+                          tpActiveCells,
+                          classificationInference,
+                          classificationAccuracy,
+                          clusteringInference,
+                          predictedClusterId,
+                          clusteringAccuracy,
+                          clusterHomogeneity,
+                          clusteringConfidence)
+  
+      if recordNumber % 50 == 0:
+        outputTraceInfo(recordNumber,
                         sensorValue,
                         actualCategory,
-                        tmActiveCells,
-                        tmPredictedActiveCells,
                         anomalyScore,
-                        tpActiveCells,
                         classificationInference,
                         classificationAccuracy,
                         clusteringInference,
                         predictedClusterId,
                         clusteringAccuracy,
                         clusterHomogeneity,
-                        clusteringConfidence)
-
-    if recordNumber % 50 == 0:
-      outputTraceInfo(recordNumber,
-                      sensorValue,
-                      actualCategory,
-                      anomalyScore,
-                      classificationInference,
-                      classificationAccuracy,
-                      clusteringInference,
-                      predictedClusterId,
-                      clusteringAccuracy,
-                      clusterHomogeneity,
-                      clusteringConfidence,
-                      len(clustering.getClusters()))
+                        clusteringConfidence,
+                        len(clustering.getClusters()))
+      recordNumber += 1
+    except StopIteration:
+      print "Data streaming completed!"
+      break
 
   outputClustersStructure(clustering)
   outputInterClusterDist(clustering)
@@ -493,7 +497,6 @@ def runExperiments(networkConfig):
                                                   noiseLengths)
                   expResult = runExperiment(networkConfig,
                                             filePath,
-                                            numPoints,
                                             expSetup)
                   expResults.append(expResult)
 
@@ -501,12 +504,11 @@ def runExperiments(networkConfig):
 
 
 
-def runExperiment(networkConfig, inputFilePath, numPoints, expSetup=None):
+def runExperiment(networkConfig, inputFilePath, expSetup=None):
   if expSetup is None:
     expSetup = {}
 
   expSetup['inputFilePath'] = inputFilePath
-  expSetup['numPoints'] = numPoints
   networkTrace = runNetwork(networkConfig, expSetup)
 
   networkSetup = getNetworkSetup(networkConfig)
@@ -551,14 +553,14 @@ def saveTraces(baseOutFile, expResults):
   :param expResults: (list of dict) experiment results
   """
   for expResult in expResults:
-    expSetup = expResult['expSetup']
     expTrace = expResult['expTrace']
+    numPoints = len(expTrace['recordNumber'])
     outFile = baseOutFile % expResult['expId']
     with open(outFile, 'wb') as f:
       writer = csv.writer(f)
       headers = expTrace.keys()
       writer.writerow(headers)
-      for i in range(expSetup['numPoints']):
+      for i in range(numPoints):
         row = []
         for t in expTrace.keys():
           if len(expTrace[t]) > i:
@@ -578,7 +580,8 @@ def saveTraces(baseOutFile, expResults):
 
 def plotExpTraces(expResults):
   for expResult in expResults:
-    xlim = [0, expResult['expSetup']['numPoints']]
+    numPoints = len(expResult['expTrace']['recordNumber'])
+    xlim = [0, numPoints]
     numTmCells = expResult['networkSetup']['numTmCells']
     traces = expResult['expTrace']
     title = cleanTitle(expResult['expSetup']['inputFilePath'])
@@ -590,7 +593,6 @@ def run(expSetupOutputFile,
         tracesOutputFile,
         useRealData,
         inputFile,
-        numPoints,
         useConfigTemplate,
         plot):
   if useConfigTemplate:
@@ -605,7 +607,7 @@ def run(expSetupOutputFile,
   expResults = []
   for networkConfig in networkConfigurations:
     if useRealData:
-      expResult = runExperiment(networkConfig, inputFile, numPoints)
+      expResult = runExperiment(networkConfig, inputFile)
       expResults.append(expResult)
     else:
       expResults.extend(runExperiments(networkConfig))
@@ -625,7 +627,6 @@ def main():
       TRACES_OUTPUT_FILE,
       USE_REAL_DATA,
       INPUT_FILE,
-      NUM_POINTS,
       USE_CONFIG_TEMPLATE,
       PLOT)
 
