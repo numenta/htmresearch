@@ -320,12 +320,12 @@ if __name__ == "__main__":
 
   columnNumber = np.prod(sp.getColumnDimensions())
 
-  numTestInputs = 5
+  numTestInputs = 20
   testInputs = np.zeros((numTestInputs, inputSize))
   for i in range(numTestInputs):
     orientation = np.random.choice(['horizontal', 'vertical'])
-    xLoc = np.random.randint(16, 17)
-    yLoc = np.random.randint(15, 16)
+    xLoc = np.random.randint(13, 18)
+    yLoc = np.random.randint(13, 18)
     bar = getBar((params['nX'], params['nY']),
                  (xLoc, yLoc), 1, orientation)
     testInputs[i, :] = np.reshape(bar, newshape=(1, inputSize))
@@ -440,18 +440,11 @@ if __name__ == "__main__":
       outputColumns = np.zeros((columnNumber, 1), dtype=uintType)
       sp.compute(testInputs[inputIdx, :], False, outputColumns)
       activeColumns = np.where(outputColumns > 0)[0]
-      plt.figure(1)
-      plt.clf()
-      plt.imshow(
-        1 - np.transpose(
-          np.reshape(testInputs[inputIdx], (params['nX'], params['nY']))),
-        interpolation='nearest', cmap='gray')
-      plt.scatter(RFcenters[:, 0], RFcenters[:, 1])
+      fig = plotReceptiveFieldCenter(RFcenters[aliveColumns, :],
+                                     connectedCounts[aliveColumns],
+                                     (params['nX'], params['nY']))
       plt.scatter(RFcenters[activeColumns, 0], RFcenters[activeColumns, 1],
                   color='r')
-      plt.xlim([-1, params['nX'] + 1])
-      plt.ylim([-1, params['nY'] + 1])
-
       plt.savefig(
         './figures/ResponseToTestInputs/{}_epoch_{}.png'.format(expName, epoch))
 

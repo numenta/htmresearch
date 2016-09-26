@@ -32,7 +32,7 @@ kill a fraction of the SP columns
 
 # Fault tolerance experiment (with topology)
 ## Train faulty_SP on random bar set dataset
-`run train_sp_topology.py -d randomBarSets -b 1 --name trauma_boosting_with_topology --changeDataSetContinuously 1 --spatialImp faulty_sp --killCellsAt 180 --runClassification 0 --trackOverlapCurve 0 -e 600 --checkTestInput 1 --checkRFCenters 1`
+`run train_sp_topology.py -d randomBarSets -b 1 --name trauma_boosting_with_topology --changeDataSetContinuously 1 --spatialImp faulty_sp --killCellsAt 180 --trackOverlapCurve 1 -e 600 --checkTestInput 0 --checkRFCenters 1`
 ## analyze results
 `run analyze_trauma_experiment.py`
 ## make trauma movie (requires ffmpeg)
