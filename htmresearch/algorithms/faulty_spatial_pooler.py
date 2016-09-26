@@ -113,21 +113,6 @@ class FaultySpatialPooler(SpatialPooler):
     return (minCoord, maxCoord)
 
 
-  def updatePotentialRadius(self, newPotentialRadius):
-    """
-    Change the potential radius for all columns
-    :return:
-    """
-    oldPotentialRadius = self._potentialRadius
-    self._potentialRadius = newPotentialRadius
-    numColumns = numpy.prod(self.getColumnDimensions())
-    for columnIndex in xrange(numColumns):
-      potential = self._mapPotential(columnIndex)
-      self._potentialPools.replace(columnIndex, potential.nonzero()[0])
-
-    self._updateInhibitionRadius()
-
-
 
   def compute(self, inputVector, learn, activeArray):
     """
@@ -246,7 +231,8 @@ class FaultySpatialPooler(SpatialPooler):
   def getAliveColumns(self):
     numColumns = numpy.prod(self.getColumnDimensions())
     aliveColumns = numpy.ones(numColumns)
-    aliveColumns[self.deadCols] = 0
+    if len(self.deadCols) > 0:
+      aliveColumns[self.deadCols] = 0
     return aliveColumns.nonzero()[0]
 
 

@@ -46,8 +46,8 @@ spParamWithBoosting = {
   "localAreaDensity": .02,
   "numActiveColumnsPerInhArea": -1,
   "stimulusThreshold": 1,
-  "synPermInactiveDec": 0.004,
-  "synPermActiveInc": 0.02,
+  "synPermInactiveDec": 0.02,
+  "synPermActiveInc": 0.1,
   "synPermConnected": 0.5,
   "minPctOverlapDutyCycle": 0.001,
   "minPctActiveDutyCycle": 0.001,
@@ -57,10 +57,32 @@ spParamWithBoosting = {
 }
 
 
+spParamTopologyWithBoostingCross = {
+  "inputDimensions": (32, 32),
+  "columnDimensions": (32, 32),
+  "potentialRadius": 5,
+  "potentialPct": 1.0,
+  "globalInhibition": False,
+  "localAreaDensity": .1,
+  "numActiveColumnsPerInhArea": -1,
+  "wrapAround": True,
+  "stimulusThreshold": 1,
+  "synPermInactiveDec": 0.02,
+  "synPermActiveInc": 0.1,
+  "synPermConnected": 0.5,
+  "minPctOverlapDutyCycle": 0.0,
+  "minPctActiveDutyCycle": 0.001,
+  "dutyCyclePeriod": 1000,
+  "maxBoost": 100.0,
+  "seed": 1936
+}
+
+
+
 spParamTopologyWithBoosting = {
   "inputDimensions": (32, 32),
   "columnDimensions": (32, 32),
-  "potentialRadius": 10,
+  "potentialRadius": 5,
   "potentialPct": 1.0,
   "globalInhibition": False,
   "localAreaDensity": .1,
@@ -68,7 +90,7 @@ spParamTopologyWithBoosting = {
   "wrapAround": True,
   "stimulusThreshold": 1,
   "synPermInactiveDec": 0.01,
-  "synPermActiveInc": 0.1,
+  "synPermActiveInc": 0.05,
   "synPermConnected": 0.5,
   "minPctOverlapDutyCycle": 0.0,
   "minPctActiveDutyCycle": 0.001,
@@ -95,5 +117,25 @@ spParamTopologyNoBoosting = {
   "minPctActiveDutyCycle": 0.001,
   "dutyCyclePeriod": 1000,
   "maxBoost": 0.0,
+  "seed": 1936
+}
+
+spParamTopologyWithBoostingLarge = {
+  "inputDimensions": (64, 64),
+  "columnDimensions": (64, 64),
+  "potentialRadius": 15,
+  "potentialPct": 1.0,
+  "globalInhibition": False,
+  "localAreaDensity": .1,
+  "numActiveColumnsPerInhArea": -1,
+  "wrapAround": True,
+  "stimulusThreshold": 1,
+  "synPermInactiveDec": 0.02,
+  "synPermActiveInc": 0.1,
+  "synPermConnected": 0.5,
+  "minPctOverlapDutyCycle": 0.0,
+  "minPctActiveDutyCycle": 0.001,
+  "dutyCyclePeriod": 1000,
+  "maxBoost": 100.0,
   "seed": 1936
 }

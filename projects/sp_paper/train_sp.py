@@ -67,9 +67,9 @@ def createSpatialPooler(spatialImp, spatialPoolerParameters):
 
 def getSpatialPoolerParams(inputSize, boosting=0):
   if boosting == 0:
-    from sp_params import spParamNoBoosting as spatialPoolerParameters
+    from model_params.sp_params import spParamNoBoosting as spatialPoolerParameters
   else:
-    from sp_params import spParamWithBoosting as spatialPoolerParameters
+    from model_params.sp_params import spParamWithBoosting as spatialPoolerParameters
 
   spatialPoolerParameters['inputDimensions'] = (inputSize, 1)
   spatialPoolerParameters['potentialRadius'] = inputSize
@@ -109,21 +109,22 @@ def getSDRDataSetParams(inputVectorType):
               'seed': 41}
   elif inputVectorType == 'randomBarPairs':
     params = {'dataType': 'randomBarPairs',
-              'numInputVectors': 100,
+              'numInputVectors': 50,
               'nX': 20,
               'nY': 20,
               'barHalfLength': 3,
               'seed': 41}
   elif inputVectorType == 'randomCross':
     params = {'dataType': 'randomCross',
-              'numInputVectors': 100,
+              'numInputVectors': 50,
+              'numCrossPerInput': 1,
               'nX': 20,
               'nY': 20,
               'barHalfLength': 3,
               'seed': 41}
   elif inputVectorType == 'randomBarSets':
     params = {'dataType': 'randomBarSets',
-              'numInputVectors': 100,
+              'numInputVectors': 50,
               'nX': 40,
               'nY': 40,
               'barHalfLength': 3,
@@ -426,34 +427,3 @@ if __name__ == "__main__":
     for epoch in range(numEpochs):
       npzfile = np.load(
         './results/classification/{}_{}.npz'.format(expName, epoch))
-
-  plt.figure()
-  legendList = []
-  epochCheck = [0, 5, 10, 20, 40, 80]
-  for epoch in epochCheck:
-    nrData = np.load('./results/input_output_overlap/{}_{}.npz'.format(expName, epoch))
-    noiseLevelList =  nrData['arr_0']
-    inputOverlapScore =  nrData['arr_1']
-    outputOverlapScore = np.mean( nrData['arr_2'], 0)
-    plt.plot(noiseLevelList, outputOverlapScore)
-    legendList.append('epoch {}'.format(epoch))
-  plt.legend(legendList)
-  plt.xlabel('Noise Level')
-  plt.ylabel('Change of SP output')
-  plt.savefig('./figures/noise_robustness_{}.pdf'.format(expName))
-
-  plt.figure()
-  legendList = []
-  epochCheck = [79, 80, 219]
-  for epoch in epochCheck:
-    nrData = np.load(
-      './results/input_output_overlap/{}_{}.npz'.format(expName, epoch))
-    noiseLevelList = nrData['arr_0']
-    inputOverlapScore = nrData['arr_1']
-    outputOverlapScore = np.mean(nrData['arr_2'], 0)
-    plt.plot(noiseLevelList, outputOverlapScore)
-    legendList.append('epoch {}'.format(epoch))
-  plt.legend(legendList)
-  plt.xlabel('Noise Level')
-  plt.ylabel('Change of SP output')
-  plt.savefig('./figures/noise_robustness_{}.pdf'.format(expName))

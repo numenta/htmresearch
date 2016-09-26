@@ -378,9 +378,8 @@ if __name__ == "__main__":
   totalActiveDutyCycle = spActiveCellsCount.astype('float32') / len(df)
   dutyCycleDist, binEdge = np.histogram(totalActiveDutyCycle,
                                         bins=20, range=[-0.0025, 0.0975])
-  binCenter = (binEdge[1:] + binEdge[:-1])/2
   dutyCycleDist = dutyCycleDist.astype('float32')/np.sum(dutyCycleDist)
-  plt.bar(binCenter, dutyCycleDist, width=0.005)
+  plt.bar(binEdge[:-1], dutyCycleDist, width=0.005)
   plt.xlim([0, .1])
   plt.ylim([0, .7])
   plt.xlabel('activeDutyCycle-Total')
