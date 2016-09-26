@@ -45,7 +45,8 @@ class ColumnPoolerTest(unittest.TestCase):
       initialPermanence=0.41,
       # Temporary: a high maxNewSynapseCount is in place until NUP #3268 is
       # addressed
-      maxNewSynapseCount=40,
+      maxNewProximalSynapseCount=40,
+      maxNewDistalSynapseCount=40,
     )
 
 
@@ -114,7 +115,8 @@ class ColumnPoolerTest(unittest.TestCase):
       initialPermanence=0.41,
       # Temporary: a high maxNewSynapseCount is in place until NUP #3268 is
       # addressed
-      maxNewSynapseCount=40,
+      maxNewProximalSynapseCount=40,
+      maxNewDistalSynapseCount=40,
     )
 
     activatedCells = numpy.zeros(pooler.numberOfCells())
@@ -285,7 +287,8 @@ class ColumnPoolerTest(unittest.TestCase):
       numActiveColumnsPerInhArea=12,
       initialProximalPermanence=0.60,
       connectedPermanence=0.50,
-      maxNewSynapseCount=10,
+      maxNewProximalSynapseCount=10,
+      maxNewDistalSynapseCount=10,
     )
 
     feedforwardInput = set(range(10))
@@ -323,7 +326,8 @@ class ColumnPoolerTest(unittest.TestCase):
       numActiveColumnsPerInhArea=12,
       initialProximalPermanence=0.60,
       connectedPermanence=0.50,
-      maxNewSynapseCount=10,
+      maxNewProximalSynapseCount=10,
+      maxNewDistalSynapseCount=10,
     )
 
     feedforwardInput = set(range(9))
@@ -361,7 +365,8 @@ class ColumnPoolerTest(unittest.TestCase):
       numActiveColumnsPerInhArea=12,
       initialProximalPermanence=0.60,
       connectedPermanence=0.50,
-      maxNewSynapseCount=10,
+      maxNewProximalSynapseCount=10,
+      maxNewDistalSynapseCount=10,
     )
 
     feedforwardInput = set(range(11))
@@ -401,7 +406,8 @@ class ColumnPoolerTest(unittest.TestCase):
       synPermProximalDec=0.0,
       initialProximalPermanence=0.60,
       connectedPermanence=0.50,
-      maxNewSynapseCount=10,
+      maxNewProximalSynapseCount=10,
+      maxNewDistalSynapseCount=10,
     )
 
     # Grow synapses.
@@ -437,7 +443,8 @@ class ColumnPoolerTest(unittest.TestCase):
       numActiveColumnsPerInhArea=12,
       initialProximalPermanence=0.45,
       connectedPermanence=0.50,
-      maxNewSynapseCount=10,
+      maxNewProximalSynapseCount=10,
+      maxNewDistalSynapseCount=10,
     )
 
     feedforwardInput = set(range(10))
@@ -469,7 +476,8 @@ class ColumnPoolerTest(unittest.TestCase):
       synPermProximalDec=0.0,
       initialProximalPermanence=0.45,
       connectedPermanence=0.50,
-      maxNewSynapseCount=10,
+      maxNewProximalSynapseCount=10,
+      maxNewDistalSynapseCount=10,
     )
 
     # Grow some synapses.
@@ -519,7 +527,8 @@ class ColumnPoolerTest(unittest.TestCase):
       synPermProximalDec=0.1,
       initialProximalPermanence=0.55,
       connectedPermanence=0.50,
-      maxNewSynapseCount=10,
+      maxNewProximalSynapseCount=10,
+      maxNewDistalSynapseCount=10,
     )
 
     # Grow some synapses.
@@ -718,7 +727,8 @@ class ColumnPoolerTest(unittest.TestCase):
       lateralInputWidth=4096,
       columnDimensions=(2048,),
       initialPermanence=0.41,
-      maxNewSynapseCount=40,
+      maxNewProximalSynapseCount=40,
+      maxNewDistalSynapseCount=40,
     )
 
     # Feed-forward representations:
@@ -859,7 +869,8 @@ class ColumnPoolerTest(unittest.TestCase):
       lateralInputWidth=4096,
       columnDimensions=(2048,),
       initialPermanence=0.41,
-      maxNewSynapseCount=40,
+      maxNewProximalSynapseCount=40,
+      maxNewDistalSynapseCount=40,
     )
 
     # Feed-forward representations:

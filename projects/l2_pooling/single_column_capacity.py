@@ -82,10 +82,10 @@ def getL2Params():
     "synPermProximalInc": 0.1,
     "synPermProximalDec": 0.001,
     "initialProximalPermanence": 0.6,
-    "minThreshold": 3,
+    "minThresholdProximal": 1,
     "predictedSegmentDecrement": 0.002,
-    "activationThreshold": 3,
-    "maxNewSynapseCount": 5,
+    "activationThresholdDistal": 10,
+    "maxNewProximalSynapseCount": 5,
   }
 
 
@@ -277,9 +277,8 @@ def runCapacityTest(numObjects,
   """
   l4Params = getL4Params()
   l2Params = getL2Params()
-  l2Params['maxNewSynapseCount'] = maxNewSynapseCount
-  l2Params['activationThreshold'] = activationThreshold
-  l2Params['minThreshold'] = 1
+  l2Params['maxNewProximalSynapseCount'] = maxNewSynapseCount
+  l2Params['minThresholdProximal'] = activationThreshold
 
   l4ColumnCount = l4Params["columnCount"]
   numInputBits = int(l4Params["columnCount"]*0.02)
@@ -310,64 +309,6 @@ def runCapacityTest(numObjects,
 
   testResult = testOnSingleRandomSDR(objects, exp)
   return testResult
-
-
-
-# def runSimulatedCapacityTest(numObjects,
-#                     numPointsPerObject,
-#                     maxNewSynapseCount,
-#                     activationThreshold):
-#   """
-#   Generate [numObjects] objects with [numPointsPerObject] points per object
-#   Create a set of simulated L2 neurons that randomly sample from L4 SDRs
-#
-#   Test on (feature, location) pairs and compute
-#
-#   :param numObjects:
-#   :param numPointsPerObject:
-#   :param maxNewSynapseCount:
-#   :param activationThreshold:
-#   :return:
-#   """
-#   l4Params = getL4Params()
-#   l2Params = getL2Params()
-#   l2Params['maxNewSynapseCount'] = maxNewSynapseCount
-#   l2Params['activationThreshold'] = activationThreshold
-#   l2Params['minThreshold'] = activationThreshold
-#
-#   exp = L4L2Experiment("capacity_two_objects",
-#                        numInputBits=int(l4Params["columnCount"]*0.02),
-#                        L4Overrides=l4Params,
-#                        L2Overrides=l2Params,
-#                        numLearningPoints=1)
-#
-#   numLocations = len(exp.locations[0])
-#   numFeatures = len(exp.features[0])
-#
-#   pairs = createRandomObjects(
-#     numObjects, numPointsPerObject, numLocations, numFeatures)
-#
-#   objects = {}
-#   for object in pairs:
-#     objects = exp.addObject(object, objects=objects)
-#
-#   for object, pairs in objects.iteritems():
-#     for col in xrange(exp.numColumns):
-#       locationID, featureID = pairs[col]
-#       feature = exp.features[col][featureID]
-#
-#       # generate random location if requested
-#       if locationID == -1:
-#         location = list(exp.generatePattern(exp.numInputBits,
-#                                             exp.config["sensorInputSize"]))
-#       # generate union of locations if requested
-#       elif isinstance(locationID, tuple):
-#         location = set()
-#         for idx in list(locationID):
-#           location = location | exp.locations[col][idx]
-#         location = list(location)
-#       else:
-#         location = exp.locations[col][locationID]
 
 
 
@@ -499,7 +440,7 @@ def runExperiment2():
 
 if __name__ == "__main__":
   # Varying number of pts per objects, two objects
-  # runExperiment1()
+  runExperiment1()
 
   # 10 pts per object, varying number of objects
   runExperiment2()

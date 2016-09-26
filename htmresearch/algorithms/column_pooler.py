@@ -46,16 +46,19 @@ class ColumnPooler(object):
                synPermProximalDec=0.001,
                initialProximalPermanence=0.6,
                columnDimensions=(2048,),
-               activationThreshold=13,
-               minThreshold=10,
+               minThresholdProximal=10,
+               activationThresholdDistal=13,
+               minThresholdDistal=10,
                initialPermanence=0.41,
                connectedPermanence=0.50,
-               maxNewSynapseCount=20,
+               maxNewProximalSynapseCount=20,
+               maxNewDistalSynapseCount=20,
                permanenceIncrement=0.10,
                permanenceDecrement=0.10,
                predictedSegmentDecrement=0.0,
                maxSegmentsPerCell=255,
-               maxSynapsesPerSegment=255,
+               maxSynapsesPerProximalSegment=255,
+               maxSynapsesPerDistalSegment=255,
                seed=42):
     """
     This classes uses an ExtendedTemporalMemory internally to keep track of
@@ -91,8 +94,11 @@ class ColumnPooler(object):
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
     self.connectedPermanence = connectedPermanence
-    self.maxNewSynapseCount = maxNewSynapseCount
-    self.minThreshold = minThreshold
+    self.maxNewProximalSynapseCount = maxNewProximalSynapseCount
+    self.maxNewDistalSynapseCount = maxNewDistalSynapseCount
+    self.minThresholdProximal = minThresholdProximal
+    self.minThresholdDistal = minThresholdDistal
+    self.maxSynapsesPerProximalSegment = maxSynapsesPerProximalSegment
     self.activeCells = set()
     self._random = Random(seed)
 
@@ -104,18 +110,18 @@ class ColumnPooler(object):
                       basalInputDimensions=(lateralInputWidth,),
                       apicalInputDimensions=(),
                       cellsPerColumn=1,
-                      activationThreshold=activationThreshold,
+                      activationThreshold=activationThresholdDistal,
                       initialPermanence=initialPermanence,
                       connectedPermanence=connectedPermanence,
-                      minThreshold=minThreshold,
-                      maxNewSynapseCount=maxNewSynapseCount,
+                      minThreshold=minThresholdDistal,
+                      maxNewSynapseCount=maxNewDistalSynapseCount,
                       permanenceIncrement=permanenceIncrement,
                       permanenceDecrement=permanenceDecrement,
                       predictedSegmentDecrement=predictedSegmentDecrement,
                       formInternalBasalConnections=False,
                       learnOnOneCell=False,
                       maxSegmentsPerCell=maxSegmentsPerCell,
-                      maxSynapsesPerSegment=maxSynapsesPerSegment,
+                      maxSynapsesPerSegment=maxSynapsesPerDistalSegment,
                       seed=seed,
     )
 
@@ -208,7 +214,8 @@ class ColumnPooler(object):
       # Learn on proximal dendrite if appropriate
       if len(feedforwardInput) > 0:
         self._learnProximal(feedforwardInput, self.activeCells,
-                            self.maxNewSynapseCount, self.proximalPermanences,
+                            self.maxNewProximalSynapseCount,
+                            self.proximalPermanences,
                             self.proximalConnections,
                             self.initialProximalPermanence,
                             self.synPermProximalInc, self.synPermProximalDec,
@@ -240,8 +247,8 @@ class ColumnPooler(object):
     overlaps = numpy.zeros(self.numberOfColumns(), dtype=realDType)
     self.proximalConnections.rightVecSumAtNZ_fast(inputVector.astype(realDType),
                                                  overlaps)
-    overlaps[overlaps < self.minThreshold] = 0
-    bottomUpActivity = set(overlaps.nonzero()[0])
+    overlaps[overlaps < self.minThresholdProximal] = 0
+    bottomUpActivity =  set(overlaps.nonzero()[0])
 
     # If there is insufficient current bottom up activity, we incorporate all
     # previous activity. We set their overlaps so they are sure to win.
@@ -453,9 +460,7 @@ class ColumnPooler(object):
 
     @param    targetActiveCells     (int)
               The number of active cells we want to have active.
-
     @return (set) List of new winner cell indices
-
     """
     # No TM accessors that return set so access internal member directly
     predictedActiveCells = activeCells.intersection(predictiveCells)

@@ -139,7 +139,7 @@ class ColumnPoolerRegion(PyRegion):
           defaultValue="true"),
         columnCount=dict(
           description="Number of columns in this layer",
-          accessMode='ReadWrite',
+          accessMode="Read",
           dataType="UInt32",
           count=1,
           constraints=""),
@@ -155,9 +155,9 @@ class ColumnPoolerRegion(PyRegion):
           dataType='UInt32',
           count=1,
           constraints=''),
-        activationThreshold=dict(
+        activationThresholdDistal=dict(
           description="If the number of active connected synapses on a "
-                      "segment is at least this threshold, the segment "
+                      "distal segment is at least this threshold, the segment "
                       "is said to be active.",
           accessMode="Read",
           dataType="UInt32",
@@ -176,17 +176,41 @@ class ColumnPoolerRegion(PyRegion):
           dataType="Real32",
           count=1,
           constraints=""),
-        minThreshold=dict(
-          description="If the number of synapses active on a segment is at "
-                      "least this threshold, it is selected as the best "
+        minThresholdProximal=dict(
+          description="If the number of synapses active on a proximal segment "
+                      "is at least this threshold, it is considered as a "
+                      "candidate active cell",
+          accessMode="Read",
+          dataType="UInt32",
+          count=1,
+          constraints=""),
+        minThresholdDistal=dict(
+          description="If the number of synapses active on a distal segment is "
+                      "at least this threshold, it is selected as the best "
                       "matching cell in a bursting column.",
           accessMode="Read",
           dataType="UInt32",
           count=1,
           constraints=""),
-        maxNewSynapseCount=dict(
-          description="The maximum number of synapses added to a segment "
-                      "during learning.",
+        maxNewProximalSynapseCount=dict(
+          description="The maximum number of synapses added to a proximal segment "
+                      "at each iteration during learning.",
+          accessMode="Read",
+          dataType="UInt32",
+          count=1),
+        maxNewDistalSynapseCount=dict(
+          description="The maximum number of synapses added to a distal segment "
+                      "at each iteration during learning.",
+          accessMode="Read",
+          dataType="UInt32",
+          count=1),
+        maxSynapsesPerDistalSegment=dict(
+          description="The maximum number of synapses on a distal segment ",
+          accessMode="Read",
+          dataType="UInt32",
+          count=1),
+        maxSynapsesPerProximalSegment=dict(
+          description="The maximum number of synapses on a proximal segment ",
           accessMode="Read",
           dataType="UInt32",
           count=1),
@@ -259,11 +283,13 @@ class ColumnPoolerRegion(PyRegion):
                columnCount=2048,
                inputWidth=16384,
                lateralInputWidth=0,
-               activationThreshold=13,
+               activationThresholdDistal=13,
                initialPermanence=0.21,
                connectedPermanence=0.50,
-               minThreshold=10,
-               maxNewSynapseCount=20,
+               minThresholdProximal=1,
+               minThresholdDistal=10,
+               maxNewProximalSynapseCount=20,
+               maxNewDistalSynapseCount=20,
                permanenceIncrement=0.10,
                permanenceDecrement=0.10,
                predictedSegmentDecrement=0.0,
@@ -281,11 +307,13 @@ class ColumnPoolerRegion(PyRegion):
     # Column Pooler params
     self.inputWidth = inputWidth
     self.lateralInputWidth = lateralInputWidth
-    self.activationThreshold = activationThreshold
+    self.activationThresholdDistal = activationThresholdDistal
     self.initialPermanence = initialPermanence
     self.connectedPermanence = connectedPermanence
-    self.minThreshold = minThreshold
-    self.maxNewSynapseCount = maxNewSynapseCount
+    self.minThresholdProximal = minThresholdProximal
+    self.minThresholdDistal = minThresholdDistal
+    self.maxNewProximalSynapseCount = maxNewProximalSynapseCount
+    self.maxNewDistalSynapseCount = maxNewDistalSynapseCount
     self.permanenceIncrement = permanenceIncrement
     self.permanenceDecrement = permanenceDecrement
     self.predictedSegmentDecrement = predictedSegmentDecrement
@@ -314,12 +342,14 @@ class ColumnPoolerRegion(PyRegion):
       params = {
         "inputWidth": self.inputWidth,
         "lateralInputWidth": self.lateralInputWidth,
-        "activationThreshold": self.activationThreshold,
-        "initialPermanence": self.initialPermanence,
         "columnDimensions": (self.columnCount,),
+        "activationThresholdDistal": self.activationThresholdDistal,
+        "initialPermanence": self.initialPermanence,
         "connectedPermanence": self.connectedPermanence,
-        "minThreshold": self.minThreshold,
-        "maxNewSynapseCount": self.maxNewSynapseCount,
+        "minThresholdProximal": self.minThresholdProximal,
+        "minThresholdDistal": self.minThresholdDistal,
+        "maxNewProximalSynapseCount": self.maxNewProximalSynapseCount,
+        "maxNewDistalSynapseCount": self.maxNewDistalSynapseCount,
         "permanenceIncrement": self.permanenceIncrement,
         "permanenceDecrement": self.permanenceDecrement,
         "predictedSegmentDecrement": self.predictedSegmentDecrement,
@@ -328,7 +358,7 @@ class ColumnPoolerRegion(PyRegion):
         "initialProximalPermanence": self.initialProximalPermanence,
         "seed": self.seed,
         "numActiveColumnsPerInhArea": self.numActiveColumnsPerInhArea,
-        "maxSynapsesPerSegment": self.inputWidth,
+        "maxSynapsesPerProximalSegment": self.inputWidth,
       }
       self._pooler = ColumnPooler(**params)
 

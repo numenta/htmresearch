@@ -542,10 +542,14 @@ class L4L2Experiment(object):
       "synPermProximalInc": 0.1,
       "synPermProximalDec": 0.001,
       "initialProximalPermanence": 0.6,
-      "minThreshold": 10,
+      "minThresholdDistal": 10,
+      "minThresholdProximal": 10,
       "predictedSegmentDecrement": 0.002,
-      "activationThreshold": 13,
-      "maxNewSynapseCount": 20,
+      "activationThresholdDistal": 13,
+      "maxNewProximalSynapseCount": 20,
+      "maxNewDistalSynapseCount": 20,
+      "maxSynapsesPerDistalSegment": 255,
+      "maxSynapsesPerProximalSegment": 2000,
       "seed": self.seed
     }
 

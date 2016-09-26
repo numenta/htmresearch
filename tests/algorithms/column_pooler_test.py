@@ -1179,12 +1179,14 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       "connectedPermanence": 0.6,
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.02,
-      "minThreshold": 10,
+      "minThresholdDistal": 10,
+      "minThresholdProximal": 10,
       "predictedSegmentDecrement": 0.004,
-      "activationThreshold": 10,
-      "maxNewSynapseCount": 20,
-      "maxSegmentsPerCell": 255,
-      "maxSynapsesPerSegment": 255,
+      "activationThresholdDistal": 10,
+      "maxNewProximalSynapseCount": 255,
+      "maxNewDistalSynapseCount": 255,
+      "maxSynapsesPerDistalSegment": 255,
+      "maxSynapsesPerProximalSegment": 5000,
     }
     if overrides is None:
       overrides = {}
