@@ -1,3 +1,4 @@
+import itertools
 import logging
 import numpy as np
 
@@ -55,7 +56,7 @@ class Cluster(object):
   def __repr__(self):
     return repr({
       '_id': self._id, '_label': self._label, 'numPoints': len(self._points),
-      '_timeCreated': self._timeCreated, '_lastUpdated': self._lastUpdated, 
+      '_timeCreated': self._timeCreated, '_lastUpdated': self._lastUpdated,
       '_numPointsClustered': self._numPointsClustered
     })
 
@@ -104,7 +105,7 @@ class Clustering(object):
                minClusterSize,
                pointSimilarityThreshold,
                pruningFrequency,
-               pruneClusters,
+               prune=False,
                fistClusterId=0):
 
     # Clusters
@@ -122,7 +123,7 @@ class Clustering(object):
     self._similarityThreshold = pointSimilarityThreshold
 
     # Cluster pruning
-    self._pruneClusters = pruneClusters
+    self._prune = prune
     self._pruningFrequency = pruningFrequency
     self._clusterIdCounter = fistClusterId + 1
 
@@ -157,7 +158,7 @@ class Clustering(object):
 
   def _mergeNewCluster(self):
 
-    clusterDistPairs = computeClusterDistances(self._newCluster, 
+    clusterDistPairs = computeClusterDistances(self._newCluster,
                                                self.getClusters())
     clusterMerged = False
     if len(clusterDistPairs) > 0:
@@ -204,18 +205,9 @@ class Clustering(object):
 
 
   def _pruneClusters(self):
-    clusters = self.getClusters()
-    for i in range(len(clusters)):
-      cluster = clusters[i]
-      remainingClusters = []
-      if i == 0:
-        remainingClusters = clusters[1:]
-      elif i == len(clusters) - 1:
-        remainingClusters = clusters[:-1]
-      else:
-        remainingClusters.extend(clusters[:i])
-        remainingClusters.extend(clusters[i + 1:])
-      self._mergeCluster(cluster, remainingClusters)
+    # TODO: not needed for now. If needed later, make sure to go though all 
+    # cluster permutations.
+    raise NotImplementedError("Cluster pruning not implemented.")
 
 
   def infer(self):
@@ -271,8 +263,7 @@ class Clustering(object):
     # The data is stable
     else:
       self._addPoint(point)
-      if (self._pruneClusters and
-                self._numIterations % self._pruningFrequency == 0):
+      if self._prune and self._numIterations % self._pruningFrequency == 0:
         self._pruneClusters()
       predictedCluster, confidence = self.infer()
 

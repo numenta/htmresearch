@@ -301,15 +301,13 @@ def runNetwork(networkConfig,
   minClusterSize = 1
   similarityThreshold = 0.01
   pruningFrequency = 20
-  pruneClusters = False
 
   clustering = Clustering(mergeThreshold,
                           anomalousThreshold,
                           stableThreshold,
                           minClusterSize,
                           similarityThreshold,
-                          pruningFrequency,
-                          pruneClusters)
+                          pruningFrequency)
 
   for recordNumber in range(expSetup['numPoints']):
 
