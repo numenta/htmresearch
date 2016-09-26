@@ -41,8 +41,10 @@ def _getArgs():
   parser.add_option("-f",
                     "--fileName",
                     type=str,
-                    default='results/traces_binary_ampl=10.0_mean=0.0_noise=0'
-                            '.0_sp=True_tm=True_tp=False_KNNClassifier.csv',
+                    default='results/traces_sensortag_x_sp=True_tm=True_tp'
+                            '=False_KNNClassifier.csv',
+                    # default='results/traces_binary_ampl=10.0_mean=0.0_noise=0'
+                    #         '.0_sp=True_tm=True_tp=False_KNNClassifier.csv',
                     dest="fileName",
                     help="fileName of the csv trace file")
 
@@ -84,13 +86,17 @@ def vizCellStates(traces, cellsType, numCells, startFrom=0):
 
 
 def assignClusters(traces):
-  tmActiveCellsClusters = {}
-  tmPredictedActiveCellsClusters = {}
-  tpActiveCellsClusters = {}
-  numCategories = len(np.unique(traces['actualCategory']))
+  categories = np.unique(traces['actualCategory'])
+  numCategories = len(categories)
+  # The noise is labelled as 0, but there might not be noise
+  if 0 not in categories:
+    numCategories += 1
   repetitionCounter = np.zeros((numCategories,))
   lastCategory = None
   repetition = []
+  tmActiveCellsClusters = {i: [] for i in range(numCategories)}
+  tmPredictedActiveCellsClusters = {i: [] for i in range(numCategories)}
+  tpActiveCellsClusters = {i: [] for i in range(numCategories)}
   for i in range(len(traces['actualCategory'])):
     category = int(traces['actualCategory'][i])
     tmPredictedActiveCells = traces['tmPredictedActiveCells'][i]
@@ -101,20 +107,10 @@ def assignClusters(traces):
       repetitionCounter[category] += 1
     lastCategory = category
     repetition.append(repetitionCounter[category] - 1)
-    if category not in tmActiveCellsClusters:
-      tmActiveCellsClusters[category] = [tmActiveCells]
-    else:
-      tmActiveCellsClusters[category].append(tmActiveCells)
 
-    if category not in tmPredictedActiveCellsClusters:
-      tmPredictedActiveCellsClusters[category] = [tmPredictedActiveCells]
-    else:
-      tmPredictedActiveCellsClusters[category].append(tmPredictedActiveCells)
-
-    if category not in tpActiveCellsClusters:
-      tpActiveCellsClusters[category] = [tpActiveCells]
-    else:
-      tpActiveCellsClusters[category].append(tpActiveCells)
+    tmActiveCellsClusters[category].append(tmActiveCells)
+    tmPredictedActiveCellsClusters[category].append(tmPredictedActiveCells)
+    tpActiveCellsClusters[category].append(tpActiveCells)
 
   assert len(traces['actualCategory']) == sum([len(tpActiveCellsClusters[i])
                                                for i in [0, 1, 2]])
@@ -154,7 +150,7 @@ if __name__ == "__main__":
 
   clusters = assignClusters(traces)
 
-  # compare c1 - c2 distance over time
+  # compare inter-cluster distance over time
   numRptsPerCategory = {}
   categories = np.unique(traces['actualCategory'])
   repetition = np.array(clusters['repetition'])
@@ -188,14 +184,17 @@ if __name__ == "__main__":
     SDRclusters.append(c2slice)
     clusterAssignments.append(2)
 
-    d01 = clusterDist(convertNonZeroToSDR(c0slice),
-                      convertNonZeroToSDR(c1slice))
-    d02 = clusterDist(convertNonZeroToSDR(c0slice),
-                      convertNonZeroToSDR(c2slice))
+    print " Presentation #{}: ".format(rpt)
+    if includeNoiseCategory:
+      d01 = clusterDist(convertNonZeroToSDR(c0slice),
+                        convertNonZeroToSDR(c1slice))
+      print '=> d(c0, c1): %s' % d01
+      d02 = clusterDist(convertNonZeroToSDR(c0slice),
+                        convertNonZeroToSDR(c2slice))
+      print '=> d(c0, c2): %s' % d02
+    
     d12 = clusterDist(convertNonZeroToSDR(c1slice),
                       convertNonZeroToSDR(c2slice))
-
-    print " Presentation # {} : ".format(rpt)
     print '=> d(c1, c2): %s' % d12
 
   print " visualizing clusters with MDS "
