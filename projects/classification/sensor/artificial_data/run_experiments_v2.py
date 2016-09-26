@@ -294,8 +294,7 @@ def runNetwork(networkConfig, expSetup):
                           stableThreshold,
                           minClusterSize,
                           similarityThreshold,
-                          pruningFrequency,
-                          pruneClusters)
+                          pruningFrequency)
 
   for recordNumber in range(numPoints):
 

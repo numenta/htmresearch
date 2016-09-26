@@ -93,7 +93,8 @@ def getBar(imageSize, barCenter, barHalfLength, orientation='horizontal'):
 
 
 
-def getCross(nX, nY, barHalfLength):
+def getCross(nX, nY, barHalfLength, seed):
+  np.random.seed(seed)
   cross = np.zeros((nX, nY), dtype=uintType)
   xLoc = np.random.randint(barHalfLength, nX - barHalfLength)
   yLoc = np.random.randint(barHalfLength, nY - barHalfLength)
@@ -106,8 +107,8 @@ def getCross(nX, nY, barHalfLength):
 def generateRandomSDR(numSDR, numDims, numActiveInputBits, seed=42):
   """
   Generate a set of random SDR's
-  @param numSDR:
-  @param nDim:
+  :param numSDR: number of SDRs
+  :param numDims: length of SDRs
   @param numActiveInputBits:
   """
   randomSDRs = np.zeros((numSDR, numDims), dtype=uintType)
@@ -122,7 +123,32 @@ def generateRandomSDR(numSDR, numDims, numActiveInputBits, seed=42):
 
 
 
-def getRandomBar(imageSize, barHalfLength, orientation='horizontal'):
+def generateRandomSDRVaryingSparsity(numSDR, numDims, minSparsity, maxSparsity,
+                                     seed=42):
+  """
+  Generate a set of random SDRs with varying sparsity
+  :param numSDR: number of SDRs
+  :param numDims: length of SDRs
+  :param minSparsity: minimum sparsity
+  :param maxSparsity: maximum sparsity
+  :param seed:
+  """
+  randomSDRs = np.zeros((numSDR, numDims), dtype=uintType)
+  indices = np.array(range(numDims))
+  np.random.seed(seed)
+  for i in range(numSDR):
+    sparsity = np.random.random() * (maxSparsity - minSparsity) + minSparsity
+    numActiveInputBits = round(sparsity * numDims)
+    randomIndices = np.random.permutation(indices)
+    activeBits = randomIndices[:numActiveInputBits]
+    randomSDRs[i, activeBits] = 1
+  return randomSDRs
+
+
+def getRandomBar(imageSize, barHalfLength, seed=42, wrapAround=False, orientation='random'):
+  np.random.seed(seed)
+  if orientation == 'random':
+    orientation = np.random.choice(['horizontal', 'vertical'])
   (nX, nY) = imageSize
   if orientation == 'horizontal':
     xLoc = np.random.randint(barHalfLength, nX - barHalfLength)
@@ -134,6 +160,11 @@ def getRandomBar(imageSize, barHalfLength, orientation='horizontal'):
     bar = getBar(imageSize, (xLoc, yLoc), barHalfLength, orientation)
   else:
     raise RuntimeError("orientation has to be horizontal or vertical")
+
+  if wrapAround:
+    # shift bar with random phases
+    bar = np.roll(bar, np.random.randint(10 * nX), 0)
+    bar = np.roll(bar, np.random.randint(10 * nY), 1)
   return bar
 
 
@@ -243,10 +274,10 @@ class SDRDataSet(object):
     self._inputVectors = []
     self._dataType = params['dataType']
     self._additionalInfo = {}
-    self.initialize(params)
+    self.generateInputVectors(params)
 
 
-  def initialize(self, params):
+  def generateInputVectors(self, params):
 
     if params['dataType'] == 'randomSDR':
       self._inputVectors = generateRandomSDR(
@@ -254,7 +285,13 @@ class SDRDataSet(object):
         params['inputSize'],
         params['numActiveInputBits'],
         params['seed'])
-
+    elif params['dataType'] == 'randomSDRVaryingSparsity':
+      self._inputVectors = generateRandomSDRVaryingSparsity(
+        params['numInputVectors'],
+        params['inputSize'],
+        params['minSparsity'],
+        params['maxSparsity'],
+        params['seed'])
     elif params['dataType'] == 'denseVectors':
       self._inputVectors = generateDenseVectors(
         params['numInputVectors'],
@@ -266,11 +303,13 @@ class SDRDataSet(object):
       numInputVectors = params['numInputVectors']
       self._inputVectors = np.zeros((numInputVectors, inputSize), dtype=uintType)
       for i in range(numInputVectors):
+        seed = (params['seed'] * numInputVectors + i) * 2
         bar1 = getRandomBar((params['nX'], params['nY']),
-                            params['barHalfLength'], 'horizontal')
+                            params['barHalfLength'], seed, False, 'horizontal')
         bar2 = getRandomBar((params['nX'], params['nY']),
-                            params['barHalfLength'], 'vertical')
+                            params['barHalfLength'], seed + 1, False, 'vertical')
         data = bar1 + bar2
+        data[data > 0] = 1
         self._inputVectors[i, :] = np.reshape(data, newshape=(1, inputSize))
 
     elif params['dataType'] == 'randomBarSets':
@@ -279,11 +318,10 @@ class SDRDataSet(object):
       self._inputVectors = np.zeros((numInputVectors, inputSize), dtype=uintType)
       for i in range(numInputVectors):
         data = 0
+        seed = (params['seed'] * numInputVectors + i) * params['numBarsPerInput']
         for barI in range(params['numBarsPerInput']):
-          orientation = np.random.choice(['horizontal'])
-          # orientation = np.random.choice(['horizontal', 'vertical'])
           bar = getRandomBar((params['nX'], params['nY']),
-                              params['barHalfLength'], orientation)
+                              params['barHalfLength'], seed + barI, True)
           data += bar
         data[data > 0] = 1
         self._inputVectors[i, :] = np.reshape(data, newshape=(1, inputSize))
@@ -293,7 +331,11 @@ class SDRDataSet(object):
       numInputVectors = params['numInputVectors']
       self._inputVectors = np.zeros((numInputVectors, inputSize), dtype=uintType)
       for i in range(numInputVectors):
-        data = getCross(params['nX'], params['nY'], params['barHalfLength'])
+        seed = (params['seed'] * numInputVectors + i) * params['numCrossPerInput']
+        data = 0
+        for j in range(params['numCrossPerInput']):
+          data += getCross(params['nX'], params['nY'], params['barHalfLength'], seed+j)
+        data[data > 0] = 1
         self._inputVectors[i, :] = np.reshape(data, newshape=(1, inputSize))
 
     elif params['dataType'] == 'correlatedSDRPairs':
@@ -331,6 +373,7 @@ class SDRDataSet(object):
 
   def getInputVectors(self):
     return self._inputVectors
+
 
   def getAdditionalInfo(self):
     return self._additionalInfo

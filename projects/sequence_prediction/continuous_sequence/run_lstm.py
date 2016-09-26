@@ -38,7 +38,7 @@ from swarm_runner import SwarmRunner
 from scipy import random
 
 import pandas as pd
-from errorMetrics import *
+from htmresearch.support.sequence_learning_utils import *
 
 from nupic.encoders.scalar import ScalarEncoder
 

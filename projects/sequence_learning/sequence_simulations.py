@@ -178,6 +178,7 @@ def killCells(i, options, tm):
   """
   Kill cells as appropriate
   """
+
   # Kill cells if called for
   if options.simulation == "killer":
 
@@ -247,7 +248,7 @@ def runExperiment1(options):
       # Train with clean data and then test with noisy
       elif options.simulation == "clean_noise":
         noise = 0.0
-        vecs,label = getHighOrderSequenceChunk(i, i+1)
+        vecs, label = getHighOrderSequenceChunk(i, i+1)
         if i >= options.switchover:
           noise = options.noise
           learn= False
@@ -261,8 +262,7 @@ def runExperiment1(options):
         raise Exception("Unknown simulation: " + options.simulation)
 
       # Train on the next sequence chunk
-      for xi,vec in enumerate(vecs):
-
+      for xi, vec in enumerate(vecs):
         killCells(i, options, tm)
 
         tm.compute(vec, learn=learn)
@@ -332,60 +332,62 @@ def printOptions(options, tm, outFile):
   outFile.flush()
 
 
+helpString = (
+  "\n%prog [options] [uid]"
+  "\n%prog --help"
+  "\n"
+  "\nRuns sequence simulations with artificial data."
+)
+
+# All the command line options
+parser = OptionParser(helpString)
+parser.add_option("--name",
+                  help="Name of experiment. Outputs will be written to"
+                       "results/name.csv & results/name.out (default: %default)",
+                  dest="name",
+                  default="temp")
+parser.add_option("--iterations",
+                  help="Number of iterations to run for. [default: %default]",
+                  default=9000,
+                  type=int)
+parser.add_option("--seed",
+                  help="Random seed to use. [default: %default]",
+                  default=42,
+                  type=int)
+parser.add_option("--noise",
+                  help="Percent noise for noisy simulations. [default: "
+                       "%default]",
+                  default=0.1,
+                  type=float)
+parser.add_option("--secondNoise",
+                  help="Percent noise for second kill. [default: "
+                       "%default]",
+                  default=0.5,
+                  type=float)
+parser.add_option("--switchover",
+                  help="Number of iterations after which to change "
+                       "statistics. [default: %default]",
+                  default=3500,
+                  type=int)
+parser.add_option("--secondKill",
+                  help="Number of iterations after which to kill again. "
+                       "[default: %default]",
+                  default=50000,
+                  type=int)
+parser.add_option("--cells",
+                  help="Number of per column. [default: %default]",
+                  default=32,
+                  type=int)
+parser.add_option("--simulation",
+                  help="Which simulation to run: 'normal', 'noisy', "
+                       "'clean_noise', 'killer', 'killingMeSoftly' (default: "
+                       "%default)",
+                  default="normal",
+                  type=str)
+
+
 
 if __name__ == '__main__':
-  helpString = (
-    "\n%prog [options] [uid]"
-    "\n%prog --help"
-    "\n"
-    "\nRuns sequence simulations with artificial data."
-  )
-
-  # All the command line options
-  parser = OptionParser(helpString)
-  parser.add_option("--name",
-                    help="Name of experiment. Outputs will be written to"
-                         "results/name.csv & results/name.out (default: %default)",
-                    dest="name",
-                    default="temp")
-  parser.add_option("--iterations",
-                    help="Number of iterations to run for. [default: %default]",
-                    default=9000,
-                    type=int)
-  parser.add_option("--seed",
-                    help="Random seed to use. [default: %default]",
-                    default=42,
-                    type=int)
-  parser.add_option("--noise",
-                    help="Percent noise for noisy simulations. [default: "
-                         "%default]",
-                    default=0.1,
-                    type=float)
-  parser.add_option("--secondNoise",
-                    help="Percent noise for second kill. [default: "
-                         "%default]",
-                    default=0.5,
-                    type=float)
-  parser.add_option("--switchover",
-                    help="Number of iterations after which to change "
-                         "statistics. [default: %default]",
-                    default=3500,
-                    type=int)
-  parser.add_option("--secondKill",
-                    help="Number of iterations after which to kill again. "
-                         "[default: %default]",
-                    default=50000,
-                    type=int)
-  parser.add_option("--cells",
-                    help="Number of per column. [default: %default]",
-                    default=32,
-                    type=int)
-  parser.add_option("--simulation",
-                    help="Which simulation to run: 'normal', 'noisy', "
-                         "'clean_noise', 'killer', 'killingMeSoftly' (default: "
-                         "%default)",
-                    default="normal",
-                    type=str)
 
   options, args = parser.parse_args(sys.argv[1:])
 

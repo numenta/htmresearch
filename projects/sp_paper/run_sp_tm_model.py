@@ -1,6 +1,6 @@
 ## ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013-2015, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -33,11 +33,7 @@ from nupic.frameworks.opf.modelfactory import ModelFactory
 from nupic.frameworks.opf.predictionmetricsmanager import MetricsManager
 from nupic.frameworks.opf import metrics
 from htmresearch.frameworks.opf.clamodel_custom import CLAModel_custom
-import nupic_output
 
-
-import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 from htmresearch.support.sequence_learning_utils import *
 from matplotlib import rcParams
@@ -46,10 +42,8 @@ rcParams['pdf.fonttype'] = 42
 
 plt.ion()
 
-
-DATA_DIR = "./data"
+DATA_DIR = "../../htmresearch/data"
 MODEL_PARAMS_DIR = "./model_params"
-
 
 def getMetricSpecs(predictedField, stepsAhead=5):
   _METRIC_SPECS = (
@@ -105,6 +99,18 @@ def _getArgs():
   parser.add_option("--stepsAhead",
                     help="How many steps ahead to predict. [default: %default]",
                     default=5,
+                    type=int)
+
+  parser.add_option("--trainSP",
+                    help="Whether to train SP",
+                    default=True,
+                    dest="trainSP",
+                    type=int)
+
+  parser.add_option("--maxBoost",
+                    help="strength of boosting",
+                    default=1,
+                    dest="maxBoost",
                     type=int)
 
   parser.add_option("-c",
@@ -186,40 +192,22 @@ def runMultiplePassSPonly(df, model, nMultiplePass, nTrain):
   return model
 
 
-
-def movingAverage(a, n):
-  movingAverage = []
-
-  for i in xrange(len(a)):
-    start = max(0, i - n)
-    values = a[start:i+1]
-    movingAverage.append(sum(values) / float(len(values)))
-
-  return movingAverage
-
-
-
 if __name__ == "__main__":
   (_options, _args) = _getArgs()
   dataSet = _options.dataSet
   plot = _options.plot
   classifierType = _options.classifier
+  trainSP = bool(_options.trainSP)
+  maxBoost = _options.maxBoost
 
-  if dataSet == "rec-center-hourly":
-    DATE_FORMAT = "%m/%d/%y %H:%M" # '7/2/10 0:00'
-    predictedField = "kw_energy_consumption"
-  elif dataSet == "nyc_taxi" or dataSet == "nyc_taxi_perturb" or dataSet =="nyc_taxi_perturb_baseline":
-    DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
-    predictedField = "passenger_count"
-  else:
-    raise RuntimeError("un recognized dataset")
+  DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+  predictedField = "passenger_count"
 
-  if dataSet == "nyc_taxi" or dataSet == "nyc_taxi_perturb" or dataSet =="nyc_taxi_perturb_baseline":
-    modelParams = getModelParamsFromName("nyc_taxi")
-  else:
-    modelParams = getModelParamsFromName(dataSet)
+  modelParams = getModelParamsFromName("nyc_taxi")
+
   modelParams['modelParams']['clParams']['steps'] = str(_options.stepsAhead)
   modelParams['modelParams']['clParams']['regionName'] = classifierType
+  modelParams['modelParams']['spParams']['maxBoost'] = maxBoost
 
   print "Creating model from %s..." % dataSet
 
@@ -227,9 +215,10 @@ if __name__ == "__main__":
   model = CLAModel_custom(**modelParams['modelParams'])
   model.enableInference({"predictedField": predictedField})
   model.enableLearning()
-  model._spLearningEnabled = True
+  model._spLearningEnabled = bool(trainSP)
   model._tpLearningEnabled = True
 
+  print model._spLearningEnabled
   printTPRegionParams(model._getTPRegion())
 
   inputData = "%s/%s.csv" % (DATA_DIR, dataSet.replace(" ", "_"))
@@ -261,11 +250,11 @@ if __name__ == "__main__":
   print "Load dataset: ", dataSet
   df = pd.read_csv(inputData, header=0, skiprows=[1, 2])
 
-  nMultiplePass = 5
   nTrain = 5000
-  print " run SP through the first %i samples %i passes " %(nMultiplePass, nTrain)
-  model = runMultiplePassSPonly(df, model, nMultiplePass, nTrain)
-  model._spLearningEnabled = False
+
+  # nMultiplePass = 5
+  # print " run SP through the first %i samples %i passes " %(nMultiplePass, nTrain)
+  # model = runMultiplePassSPonly(df, model, nMultiplePass, nTrain)
 
   maxBucket = classifier_encoder.n - classifier_encoder.w + 1
   likelihoodsVecAll = np.zeros((maxBucket, len(df)))
@@ -279,63 +268,24 @@ if __name__ == "__main__":
   negLL_track = []
 
   activeCellNum = []
-  predCellNum = []
-  predictedActiveColumnsNum = []
   trueBucketIndex = []
   sp = model._getSPRegion().getSelf()._sfdr
   spActiveCellsCount = np.zeros(sp.getColumnDimensions())
 
-  output = nupic_output.NuPICFileOutput([dataSet])
-
   for i in xrange(len(df)):
     inputRecord = getInputRecord(df, predictedField, i)
-    tp = model._getTPRegion()
-    tm = tp.getSelf()._tfdr
-    prePredictiveCells = tm.getPredictiveCells()
-    prePredictiveColumn = np.array(list(prePredictiveCells)) / tm.cellsPerColumn
-
     result = model.run(inputRecord)
     trueBucketIndex.append(model._getClassifierInputRecord(inputRecord).bucketIndex)
 
+    # inspect SP
     sp = model._getSPRegion().getSelf()._sfdr
     spOutput = model._getSPRegion().getOutputData('bottomUpOut')
     spActiveCellsCount[spOutput.nonzero()[0]] += 1
 
-    activeDutyCycle = np.zeros(sp.getColumnDimensions(), dtype=np.float32)
-    sp.getActiveDutyCycles(activeDutyCycle)
-    overlapDutyCycle = np.zeros(sp.getColumnDimensions(), dtype=np.float32)
-    sp.getOverlapDutyCycles(overlapDutyCycle)
-
-    if i % 100 == 0 and i > 0:
-      plt.figure(1)
-      plt.clf()
-      plt.subplot(2, 2, 1)
-      plt.hist(overlapDutyCycle)
-      plt.xlabel('overlapDutyCycle')
-
-      plt.subplot(2, 2, 2)
-      plt.hist(activeDutyCycle)
-      plt.xlabel('activeDutyCycle-1000')
-
-      plt.subplot(2, 2, 3)
-      plt.hist(spActiveCellsCount)
-      plt.xlabel('activeDutyCycle-Total')
-      plt.draw()
-
     tp = model._getTPRegion()
     tm = tp.getSelf()._tfdr
-    tpOutput = tm.infActiveState['t']
-
-    predictiveCells = tm.getPredictiveCells()
-    predCellNum.append(len(predictiveCells))
-    predColumn = np.array(list(predictiveCells))/ tm.cellsPerColumn
-
-    patternNZ = tpOutput.reshape(-1).nonzero()[0]
-    activeColumn = patternNZ / tm.cellsPerColumn
-    activeCellNum.append(len(patternNZ))
-
-    predictedActiveColumns = np.intersect1d(prePredictiveColumn, activeColumn)
-    predictedActiveColumnsNum.append(len(predictedActiveColumns))
+    activeColumn = tm.getActiveCells()
+    activeCellNum.append(len(activeColumn))
 
     result.metrics = metricsManager.update(result)
 
@@ -351,17 +301,13 @@ if __name__ == "__main__":
                "field=%s"%(_options.stepsAhead, predictedField)]
 
       numActiveCell = np.mean(activeCellNum[-100:])
-      numPredictiveCells = np.mean(predCellNum[-100:])
-      numCorrectPredicted = np.mean(predictedActiveColumnsNum[-100:])
 
-      print "After %i records, %d-step negLL=%f nrmse=%f ActiveCell %f PredCol %f CorrectPredCol %f" % \
-            (i, _options.stepsAhead, negLL, nrmse, numActiveCell,
-             numPredictiveCells, numCorrectPredicted)
+      print "After %i records, %d-step negLL=%f nrmse=%f ActiveCell %f " % \
+            (i, _options.stepsAhead, negLL, nrmse, numActiveCell)
 
     last_prediction = prediction_nstep
     prediction_nstep = \
       result.inferences["multiStepBestPredictions"][_options.stepsAhead]
-    output.write([i], [inputRecord[predictedField]], [float(prediction_nstep)])
 
     bucketLL = \
       result.inferences['multiStepBucketLikelihoods'][_options.stepsAhead]
@@ -378,44 +324,11 @@ if __name__ == "__main__":
 
     likelihoodsVecAll[0:len(likelihoodsVec), i] = likelihoodsVec
 
-    if plot and i > 500:
-      # prepare data for display
-      if i > 100:
-        time_step_display = time_step[-500:-_options.stepsAhead]
-        actual_data_display = actual_data[-500+_options.stepsAhead:]
-        predict_data_ML_display = predict_data_ML[-500:-_options.stepsAhead]
-        likelihood_display = likelihoodsVecAll[:, i-499:i-_options.stepsAhead+1]
-        xl = [(i)-500, (i)]
-      else:
-        time_step_display = time_step
-        actual_data_display = actual_data
-        predict_data_ML_display = predict_data_ML
-        likelihood_display = likelihoodsVecAll[:, :i+1]
-        xl = [0, (i)]
-
-      plt.figure(2)
-      plt.clf()
-      plt.imshow(likelihood_display,
-                 extent=(time_step_display[0], time_step_display[-1], 0, 40000),
-                 interpolation='nearest', aspect='auto',
-                 origin='lower', cmap='Reds')
-      plt.colorbar()
-      plt.plot(time_step_display, actual_data_display, 'k', label='Data')
-      plt.plot(time_step_display, predict_data_ML_display, 'b', label='Best Prediction')
-      plt.xlim(xl)
-      plt.xlabel('Time')
-      plt.ylabel('Prediction')
-      # plt.title('TM, useTimeOfDay='+str(True)+' '+dataSet+' test neg LL = '+str(np.nanmean(negLL)))
-      plt.xlim([17020, 17300])
-      plt.ylim([0, 30000])
-      plt.clim([0, 1])
-      plt.draw()
 
   predData_TM_n_step = np.roll(np.array(predict_data_ML), _options.stepsAhead)
   nTest = len(actual_data) - nTrain - _options.stepsAhead
   NRMSE_TM = NRMSE(actual_data[nTrain:nTrain+nTest], predData_TM_n_step[nTrain:nTrain+nTest])
   print "NRMSE on test data: ", NRMSE_TM
-  output.close()
 
 
   # calculate neg-likelihood
@@ -424,7 +337,6 @@ if __name__ == "__main__":
 
   from nupic.encoders.scalar import ScalarEncoder as NupicScalarEncoder
   encoder = NupicScalarEncoder(w=1, minval=0, maxval=40000, n=22, forced=True)
-  from plot import computeLikelihood, plotAccuracy
 
   bucketIndex2 = []
   negLL  = []
@@ -442,16 +354,36 @@ if __name__ == "__main__":
   negLL = computeLikelihood(predictions, truth, encoder)
   negLL[:5000] = np.nan
   x = range(len(negLL))
-  plt.figure()
-  plotAccuracy((negLL, x), truth, window=480, errorType='negLL')
 
-  np.save('./result/'+dataSet+classifierType+'TMprediction.npy', predictions)
-  np.save('./result/'+dataSet+classifierType+'TMtruth.npy', truth)
+  np.savez('./results/nyc_taxi/{}{}TMprediction_SPLearning_{}_boost_{}'.format(
+    dataSet, classifierType, trainSP, maxBoost),
+    predictions, predict_data_ML, truth)
+
+  activeDutyCycle = np.zeros(sp.getColumnDimensions(), dtype=np.float32)
+  sp.getActiveDutyCycles(activeDutyCycle)
+  overlapDutyCycle = np.zeros(sp.getColumnDimensions(), dtype=np.float32)
+  sp.getOverlapDutyCycles(overlapDutyCycle)
 
   plt.figure()
-  activeCellNumAvg = movingAverage(activeCellNum, 100)
-  plt.plot(np.array(activeCellNumAvg)/tm.numberOfCells())
-  plt.xlabel('data records')
-  plt.ylabel('sparsity')
-  plt.xlim([0, 5000])
-  plt.savefig('result/sparsity_over_training.pdf')
+  plt.clf()
+  plt.subplot(2, 2, 1)
+  plt.hist(overlapDutyCycle)
+  plt.xlabel('overlapDutyCycle')
+
+  plt.subplot(2, 2, 2)
+  plt.hist(activeDutyCycle)
+  plt.xlabel('activeDutyCycle-1000')
+
+  plt.subplot(2, 2, 3)
+  totalActiveDutyCycle = spActiveCellsCount.astype('float32') / len(df)
+  dutyCycleDist, binEdge = np.histogram(totalActiveDutyCycle,
+                                        bins=20, range=[-0.0025, 0.0975])
+  dutyCycleDist = dutyCycleDist.astype('float32')/np.sum(dutyCycleDist)
+  plt.bar(binEdge[:-1], dutyCycleDist, width=0.005)
+  plt.xlim([0, .1])
+  plt.ylim([0, .7])
+  plt.xlabel('activeDutyCycle-Total')
+  plt.savefig('figures/nyc_taxi/DutyCycle_SPLearning_{}_boost_{}.pdf'.format(
+    trainSP, maxBoost))
+
+

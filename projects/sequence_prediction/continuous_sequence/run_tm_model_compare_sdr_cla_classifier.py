@@ -29,7 +29,7 @@ from matplotlib import rcParams
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from errorMetrics import *
+from htmresearch.support.sequence_learning_utils import *
 from nupic.encoders.scalar import ScalarEncoder as NupicScalarEncoder
 from nupic.frameworks.opf.metrics import MetricSpec
 from nupic.frameworks.opf.modelfactory import ModelFactory
