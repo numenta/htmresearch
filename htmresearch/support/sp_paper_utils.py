@@ -110,8 +110,10 @@ def plotReceptiveFields2D(sp, Nx, Ny):
       connectedSynapses = np.zeros((inputSize,), dtype=uintType)
       sp.getConnectedSynapses(colID, connectedSynapses)
       receptiveField = np.reshape(connectedSynapses, (Nx, Ny))
-      ax[r, c].imshow(receptiveField, interpolation="nearest", cmap='gray')
-      ax[r, c].set_title('col {}'.format(colID))
+      ax[r, c].imshow(1-receptiveField, interpolation="nearest", cmap='gray')
+      # ax[r, c].set_title('col {}'.format(colID))
+      ax[r, c].set_xticks([])
+      ax[r, c].set_yticks([])
 
 
 
@@ -131,6 +133,30 @@ def plotReceptiveFields(sp, nDim1=8, nDim2=8):
       receptiveField = connectedSynapses.reshape((nDim1, nDim2))
       ax[rowI, colI].imshow(receptiveField, cmap='gray')
       ax[rowI, colI].set_title("col: {}".format(col))
+
+
+
+def plotReceptiveFieldCenter(RFcenters, connectedCounts, inputDims,
+                             minConnection=None, maxConnection=None):
+  nX, nY = inputDims
+  import matplotlib.cm as cm
+  cmap = cm.get_cmap('jet')
+
+  if minConnection is None:
+    minConnection = np.min(connectedCounts)
+
+  if maxConnection is None:
+    maxConnection = np.max(connectedCounts)
+  fig = plt.figure()
+  sc = plt.scatter(RFcenters[:, 0], RFcenters[:, 1],
+                   vmin=minConnection, vmax=maxConnection,
+                   c=connectedCounts, cmap=cmap)
+  plt.colorbar(sc)
+  plt.axis('equal')
+  plt.xlim([-1, nX + 1])
+  plt.ylim([-1, nY + 1])
+
+  return fig
 
 
 
