@@ -113,8 +113,5 @@ def computeClusterDistances(cluster, clusters):
     dists.append((d, c))
 
   clusterDists = sorted(dists, key=lambda x: (x[0], x[1]._lastUpdated))
-  # print 'SORTED by distance:'
-  # for d in sorted(dists): print d
-  # print 'SORTED by distance and lastUpdated:'
-  # for d in clusterDists: print d
+
   return clusterDists

@@ -108,8 +108,8 @@ class Clustering(object):
                fistClusterId=0):
 
     # Clusters
-    self._numPointsClustered = 0
-    self._newCluster = Cluster(fistClusterId, self._numPointsClustered)
+    self._numIterations = 0
+    self._newCluster = Cluster(fistClusterId, self._numIterations)
     self._clusters = {}
 
     # Anomaly Score Thresholds
@@ -168,7 +168,7 @@ class Clustering(object):
                       % (self._newCluster.getId(),
                          closestCluster.getId(),
                          closestClusterDist))
-        updateTime = self._numPointsClustered
+        updateTime = self._numIterations
         closestCluster.merge(self._newCluster, updateTime)
         clusterMerged = True
 
@@ -196,7 +196,7 @@ class Clustering(object):
                         "Inter-cluster distance: %s" % (cluster.getId(),
                                                         closestCluster.getId(),
                                                         closestClusterDist))
-          closestCluster.merge(cluster, self._numPointsClustered)
+          closestCluster.merge(cluster, self._numIterations)
           self._removeCluster(cluster)
           clusterMerged = True
 
@@ -257,7 +257,7 @@ class Clustering(object):
         _LOGGER.debug('DELETE: Cluster %s discarded. Not enough points :-$' %
                       self._newCluster.getId())
       self._newCluster = Cluster(self._clusterIdCounter,
-                                 self._numPointsClustered)
+                                 self._numIterations)
       self._clusterIdCounter += 1
 
       predictedCluster = None
@@ -272,11 +272,11 @@ class Clustering(object):
     else:
       self._addPoint(point)
       if (self._pruneClusters and
-                self._numPointsClustered % self._pruningFrequency == 0):
+                self._numIterations % self._pruningFrequency == 0):
         self._pruneClusters()
       predictedCluster, confidence = self.infer()
 
-    self._numPointsClustered += 1
+    self._numIterations += 1
     return predictedCluster, confidence
 
 
@@ -288,9 +288,9 @@ class Clustering(object):
         d = overlapDistance(p.getValue(), point.getValue())
         dists.append(d)
       if min(dists) > self._similarityThreshold:
-        self._newCluster.add(point, self._numPointsClustered)
+        self._newCluster.add(point, self._numIterations)
     else:
-      self._newCluster.add(point, self._numPointsClustered)
+      self._newCluster.add(point, self._numIterations)
 
 
   def clusterActualCategoriesFrequencies(self):
