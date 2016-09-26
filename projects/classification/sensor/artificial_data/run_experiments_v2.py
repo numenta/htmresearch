@@ -31,7 +31,7 @@ from nupic.data.file_record_stream import FileRecordStream
 
 from htmresearch.frameworks.clustering.distances import interClusterDistances
 from htmresearch.frameworks.classification.network_factory import (
-  configureNetwork, getNetworkRegions)
+  configureNetwork, enableRegionLearning)
 from htmresearch.frameworks.classification.utils.sensor_data import (
   generateSensorData, plotSensorData, cleanTitle)
 from htmresearch.frameworks.classification.utils.network_config import (
@@ -283,7 +283,10 @@ def runNetwork(networkConfig, expSetup):
    spRegion,
    tmRegion,
    tpRegion,
-   classifierRegion) = getNetworkRegions(network, networkConfig)
+   classifierRegion) = enableRegionLearning(network, networkConfig)
+
+  if spRegion:
+    spRegion.setParameter("learningMode", False)
 
   trace = initTrace()
 
