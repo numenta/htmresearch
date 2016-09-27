@@ -13,15 +13,15 @@
           "name": "scalarEncoder",
           "fieldname": "y",
           "type": "ScalarEncoder",
-          "n": 256,
-          "w": 21,
+          "n": 1024,
+          "w": 81,
           "minval": null,
           "maxval": null
         }
       }
     },
     "spRegionConfig": {
-      "regionEnabled": true,
+      "regionEnabled": false,
       "regionName": "SP",
       "regionType": "py.SPRegion",
       "regionParams": {

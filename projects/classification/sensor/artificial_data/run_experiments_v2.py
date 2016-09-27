@@ -285,9 +285,6 @@ def runNetwork(networkConfig, expSetup):
    tpRegion,
    classifierRegion) = enableRegionLearning(network, networkConfig)
 
-  if spRegion:
-    spRegion.setParameter("learningMode", False)
-
   trace = initTrace()
 
   clustering = Clustering(mergeThreshold,
