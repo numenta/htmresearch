@@ -188,6 +188,12 @@ def _getArgs():
                     dest="changeDataSetContinuously",
                     help="whether to change data set at every epoch")
 
+  parser.add_option("--showExampleRFs",
+                    type=int,
+                    default=0,
+                    dest="showExampleRFs",
+                    help="whether to show example RFs over training")
+
   parser.add_option("--changeDataSetAt",
                     type=int,
                     default=0,
@@ -314,7 +320,7 @@ if __name__ == "__main__":
   killCellPrct = _options.killCellPrct
   expName = _options.expName
   inputVectorType = _options.dataSet
-  showExampleRFs = 0
+  showExampleRFs = _options.showExampleRFs
   params = getSDRDataSetParams(inputVectorType)
 
   if expName == 'defaultName':
@@ -341,7 +347,7 @@ if __name__ == "__main__":
 
   columnNumber = np.prod(sp.getColumnDimensions())
 
-  testInputs = inputVectors[:20, :]
+  testInputs = inputVectors[:40, :]
   numTestInputs = testInputs.shape[0]
   # numTestInputs = 20
   # testInputs = np.zeros((numTestInputs, inputSize))
@@ -375,6 +381,8 @@ if __name__ == "__main__":
   classificationRobustnessTrace = []
   activityTrace = []
 
+  connectedSyns = getConnectedSyns(sp)
+
   epoch = 0
   while epoch < numEpochs:
     print "training SP epoch {} ".format(epoch)
@@ -401,11 +409,6 @@ if __name__ == "__main__":
         calculateOverlapCurve(sp, inputVectors[:20, :])
       noiseRobustnessTrace.append(np.trapz(np.flipud(np.mean(outputOverlapScore, 0)),
                                            noiseLevelList))
-
-      # noiseLevelList, inputOverlapScore, outputOverlapScore = calculateOverlapCurve(
-      #   sp, testInputs)
-      # noiseRobustnessTrace.append(np.trapz(np.flipud(np.mean(outputOverlapScore, 0)),
-      #                                      noiseLevelList))
       np.savez('./results/input_output_overlap/{}/epoch_{}'.format(expName, epoch),
                noiseLevelList, inputOverlapScore, outputOverlapScore)
 
@@ -420,7 +423,7 @@ if __name__ == "__main__":
               noiseLevelList, classification_accuracy)
 
     activeColumnsPreviousEpoch = copy.copy(activeColumnsCurrentEpoch)
-    connectedCountsPreviousEpoch = copy.copy(connectedCounts)
+    connectedSynsPreviousEpoch = copy.copy(connectedSyns)
 
     # train SP here,
     # Learn is turned off at the first epoch to gather stats of untrained SP
@@ -431,9 +434,8 @@ if __name__ == "__main__":
     activeColumnsCurrentEpoch = runSPOnBatch(
       sp, inputVectors, learn, sdrOrders)
 
-    connectedCounts = connectedCounts.astype(uintType)
     sp.getConnectedCounts(connectedCounts)
-    connectedCounts = connectedCounts.astype(realDType)
+    connectedSyns = getConnectedSyns(sp)
 
     entropyTrace.append(calculateEntropy(activeColumnsCurrentEpoch))
 
@@ -496,11 +498,11 @@ if __name__ == "__main__":
 
       numConnectedSynapsesTrace.append(np.sum(connectedCounts))
 
-      numNewSynapses = connectedCounts - connectedCountsPreviousEpoch
+      numNewSynapses = connectedSyns - connectedSynsPreviousEpoch
       numNewSynapses[numNewSynapses < 0] = 0
       numNewlyConnectedSynapsesTrace.append(np.sum(numNewSynapses))
 
-      numEliminatedSynapses = connectedCountsPreviousEpoch - connectedCounts
+      numEliminatedSynapses = connectedSynsPreviousEpoch - connectedSyns
       numEliminatedSynapses[numEliminatedSynapses < 0] = 0
       numEliminatedSynapsesTrace.append(np.sum(numEliminatedSynapses))
 

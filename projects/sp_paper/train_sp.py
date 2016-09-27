@@ -280,6 +280,8 @@ if __name__ == "__main__":
   classificationRobustnessTrace = []
   noiseRobustnessTrace = []
 
+  connectedSyns = getConnectedSyns(sp)
+
   if spatialImp == "monitored_sp":
     sp.mmClearHistory()
 
@@ -318,7 +320,7 @@ if __name__ == "__main__":
               noiseLevelList, classification_accuracy)
 
     activeColumnsPreviousEpoch = copy.copy(activeColumnsCurrentEpoch)
-    connectedCountsPreviousEpoch = copy.copy(connectedCounts)
+    connectedSynsPreviousEpoch = copy.copy(connectedSyns)
 
     # Learn is turned off at the first epoch to gather stats of untrained SP
     learn = False if epoch == 0 else True
@@ -331,9 +333,8 @@ if __name__ == "__main__":
       sp, inputVectors, learn, sdrOrders)
 
     # gather trace stats here
-    connectedCounts = connectedCounts.astype(uintType)
     sp.getConnectedCounts(connectedCounts)
-    connectedCounts = connectedCounts.astype(realDType)
+    connectedSyns = getConnectedSyns(sp)
 
     entropyTrace.append(calculateEntropy(activeColumnsCurrentEpoch[:, aliveColumns]))
 
@@ -351,11 +352,11 @@ if __name__ == "__main__":
 
       numConnectedSynapsesTrace.append(np.sum(connectedCounts))
 
-      numNewSynapses = connectedCounts - connectedCountsPreviousEpoch
+      numNewSynapses = connectedSyns - connectedSynsPreviousEpoch
       numNewSynapses[numNewSynapses < 0] = 0
       numNewlyConnectedSynapsesTrace.append(np.sum(numNewSynapses))
 
-      numEliminatedSynapses = connectedCountsPreviousEpoch - connectedCounts
+      numEliminatedSynapses = connectedSynsPreviousEpoch - connectedSyns
       numEliminatedSynapses[numEliminatedSynapses < 0] = 0
       numEliminatedSynapsesTrace.append(np.sum(numEliminatedSynapses))
 
