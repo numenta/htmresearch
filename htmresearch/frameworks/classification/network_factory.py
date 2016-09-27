@@ -341,7 +341,7 @@ def createNetwork(dataSource, networkConfig, encoder=None):
 
 
 
-def getNetworkRegions(network, networkConfig):
+def enableRegionLearning(network, networkConfig):
   sensorRegion = network.regions[
     networkConfig["sensorRegionConfig"].get("regionName")]
 
