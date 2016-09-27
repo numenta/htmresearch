@@ -12,11 +12,11 @@
 
 # Param for accelerometer data
 startClusteringIndex = 0
-mergeThreshold = 0.5
+mergeThreshold = 0.25
 anomalousThreshold = 0.5
 stableThreshold = 0.1
 minClusterSize = 1
-similarityThreshold = 0.01
+similarityThreshold = 0.0
 pruningFrequency = 20
 pruneClusters = False
 rollingAccuracyWindow = 10

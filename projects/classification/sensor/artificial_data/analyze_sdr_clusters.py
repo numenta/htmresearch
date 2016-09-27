@@ -41,7 +41,7 @@ def _getArgs():
   parser.add_option("-f",
                     "--fileName",
                     type=str,
-                    default='results/traces_sensortag_x_sp=True_tm=True_tp'
+                    default='results/traces_sensortag_z_sp=False_tm=True_tp'
                             '=False_KNNClassifier.csv',
                     # default='results/traces_binary_ampl=10.0_mean=0.0_noise=0'
                     #         '.0_sp=True_tm=True_tp=False_KNNClassifier.csv',

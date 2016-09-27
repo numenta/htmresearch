@@ -49,8 +49,8 @@ EXP_SETUPS_OUTPUT_FILE = 'results/seq_classification_results.csv'
 TRACES_OUTPUT_FILE = 'results/traces_%s.csv'
 
 # Whether to run the network on real data
-USE_REAL_DATA = True 
-INPUT_FILE = 'data/sensortag_x.csv'
+USE_REAL_DATA = False 
+INPUT_FILE = 'data/sensortag_z.csv'
 
 # Whether to use a JSON config file of the template config generator.
 # See network_configs.json for an example of standard config file.

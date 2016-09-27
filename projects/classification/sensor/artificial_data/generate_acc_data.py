@@ -93,17 +93,18 @@ def writeData(outFileBaseName, inputData, inputHeaders, metrics,
 
 def main():
   _DATA_DIR = 'data/sensortag'
-  _INFILES = ['walk-5min.csv',
-              #'run-5min.csv',
-              #'stairs-up-5min.csv',
-              #'sit-5min.csv',
-              'jump-5min.csv',
-              #'stairs-down-5min.csv',
-              #'stumble-5min.csv'
-              ]
+  _INFILES = [
+    'walk-5min.csv',
+    # 'run-5min.csv',
+    # 'stairs-up-5min.csv',
+    # 'sit-5min.csv',
+    'jump-5min.csv',
+    # 'stairs-down-5min.csv',
+    # 'stumble-5min.csv'
+  ]
   _METRICS = ['x', 'y', 'z']
   _OUTFILE = 'data/sensortag_%s.csv'
-  _SLICES = 2
+  _SLICES = 10
 
   data, headers, categories = loadAccelerometerData(_DATA_DIR, _INFILES)
   outputFiles = writeData(_OUTFILE, data, headers, _METRICS, categories,
