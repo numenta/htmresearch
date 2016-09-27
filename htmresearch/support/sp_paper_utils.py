@@ -305,3 +305,13 @@ def createDirectories(expName):
   for path in paths:
     if not os.path.exists(path):
       os.makedirs(path)
+
+
+def getConnectedSyns(sp):
+  numInputs = sp.getNumInputs()
+  numColumns = np.prod(sp.getColumnDimensions())
+  connectedSyns = np.zeros((numColumns, numInputs), dtype=uintType)
+  for columnIndex in range(numColumns):
+    sp.getConnectedSynapses(columnIndex, connectedSyns[columnIndex, :])
+  connectedSyns = connectedSyns.astype('float32')
+  return connectedSyns
