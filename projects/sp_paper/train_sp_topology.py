@@ -24,14 +24,14 @@ from optparse import OptionParser
 import pprint
 from tabulate import tabulate
 from pylab import rcParams
-
+import pickle
 
 from nupic.research.spatial_pooler import SpatialPooler as PYSpatialPooler
 from htmresearch.algorithms.faulty_spatial_pooler import FaultySpatialPooler
 from htmresearch.frameworks.sp_paper.sp_metrics import (
   calculateEntropy, inspectSpatialPoolerStats,
   classificationAccuracyVsNoise, getRFCenters, calculateOverlapCurve,
-  calculateStability, calculateInputSpaceCoverage
+  calculateStability, calculateInputSpaceCoverage, plotExampleInputOutput
 )
 from htmresearch.support.spatial_pooler_monitor_mixin import (
   SpatialPoolerMonitorMixin)
@@ -50,7 +50,7 @@ from nupic.bindings.math import GetNTAReal
 
 from nupic.math.topology import indexFromCoordinates, coordinatesFromIndex
 
-from htmresearch.support.generate_sdr_dataset import SDRDataSet, getBar
+from htmresearch.support.generate_sdr_dataset import SDRDataSet
 
 realDType = GetNTAReal()
 uintType = "uint32"
@@ -272,6 +272,23 @@ def getSDRDataSetParams(inputVectorType):
               'barHalfLength': 3,
               'numCrossPerInput': 6,
               'seed': 41}
+  elif inputVectorType == 'randomSDRVaryingSparsity':
+    params = {'dataType': 'randomSDRVaryingSparsity',
+              'numInputVectors': 100,
+              'inputSize': 1024,
+              'nX': 32,
+              'nY': 32,
+              'minSparsity': 0.02,
+              'maxSparsity': 0.2,
+              'seed': 41}
+  elif inputVectorType == 'randomSDR':
+    params = {'dataType': 'randomSDR',
+              'numInputVectors': 200,
+              'inputSize': 1024,
+              'nX': 32,
+              'nY': 32,
+              'numActiveInputBits': 20,
+              'seed': 41}
   else:
     raise ValueError('unknown data type')
 
@@ -297,19 +314,23 @@ if __name__ == "__main__":
   killCellPrct = _options.killCellPrct
   expName = _options.expName
   inputVectorType = _options.dataSet
-
+  showExampleRFs = 0
   params = getSDRDataSetParams(inputVectorType)
 
   if expName == 'defaultName':
     expName = "dataType_{}_boosting_{}".format(
       inputVectorType, _options.boosting)
 
+  createDirectories(expName)
+
   sdrData = SDRDataSet(params)
   inputVectors = sdrData.getInputVectors()
   numInputVector, inputSize = inputVectors.shape
 
-  plt.imshow(np.reshape(inputVectors[0], (params['nX'], params['nY'])),
+  plt.figure()
+  plt.imshow(np.reshape(inputVectors[2], (params['nX'], params['nY'])),
              interpolation='nearest', cmap='gray')
+  plt.savefig('figures/exampleInputs/{}'.format(expName))
   print "Training Data Size {} Dimensions {}".format(numInputVector, inputSize)
 
   spParams = getSpatialPoolerParams(params, boosting, inputVectorType)
@@ -320,15 +341,17 @@ if __name__ == "__main__":
 
   columnNumber = np.prod(sp.getColumnDimensions())
 
-  numTestInputs = 20
-  testInputs = np.zeros((numTestInputs, inputSize))
-  for i in range(numTestInputs):
-    orientation = np.random.choice(['horizontal', 'vertical'])
-    xLoc = np.random.randint(13, 18)
-    yLoc = np.random.randint(13, 18)
-    bar = getBar((params['nX'], params['nY']),
-                 (xLoc, yLoc), 1, orientation)
-    testInputs[i, :] = np.reshape(bar, newshape=(1, inputSize))
+  testInputs = inputVectors[:20, :]
+  numTestInputs = testInputs.shape[0]
+  # numTestInputs = 20
+  # testInputs = np.zeros((numTestInputs, inputSize))
+  # for i in range(numTestInputs):
+  #   orientation = np.random.choice(['horizontal', 'vertical'])
+  #   xLoc = np.random.randint(13, 18)
+  #   yLoc = np.random.randint(13, 18)
+  #   bar = getBar((params['nX'], params['nY']),
+  #                (xLoc, yLoc), 1, orientation)
+  #   testInputs[i, :] = np.reshape(bar, newshape=(1, inputSize))
 
   activeColumnsTestInputs = np.zeros((numTestInputs, columnNumber))
   for i in range(numTestInputs):
@@ -365,7 +388,7 @@ if __name__ == "__main__":
       plt.imshow(np.reshape(np.sum(inputVectors, 0), (params['nX'], params['nY'])),
                  interpolation='nearest', cmap='jet')
       plt.colorbar()
-      plt.savefig('figures/avgInputs/{}_epoch_{}'.format(expName, epoch))
+      plt.savefig('figures/avgInputs/{}/epoch_{}'.format(expName, epoch))
 
     if epoch == killCellsAt:
       if spatialImp == "faulty_sp" or spatialImp == "monitored_faulty_sp":
@@ -374,11 +397,16 @@ if __name__ == "__main__":
         sp.killCellRegion(centerColumn, 5)
 
     if trackOverlapCurveOverTraining:
-      noiseLevelList, inputOverlapScore, outputOverlapScore = calculateOverlapCurve(
-        sp, testInputs)
+      noiseLevelList, inputOverlapScore, outputOverlapScore = \
+        calculateOverlapCurve(sp, inputVectors[:20, :])
       noiseRobustnessTrace.append(np.trapz(np.flipud(np.mean(outputOverlapScore, 0)),
                                            noiseLevelList))
-      np.savez('./results/input_output_overlap/{}_{}'.format(expName, epoch),
+
+      # noiseLevelList, inputOverlapScore, outputOverlapScore = calculateOverlapCurve(
+      #   sp, testInputs)
+      # noiseRobustnessTrace.append(np.trapz(np.flipud(np.mean(outputOverlapScore, 0)),
+      #                                      noiseLevelList))
+      np.savez('./results/input_output_overlap/{}/epoch_{}'.format(expName, epoch),
                noiseLevelList, inputOverlapScore, outputOverlapScore)
 
     if classification:
@@ -388,7 +416,7 @@ if __name__ == "__main__":
         sp, testInputs, noiseLevelList)
       classificationRobustnessTrace.append(
         np.trapz(classification_accuracy, noiseLevelList))
-      np.savez('./results/classification/{}_{}'.format(expName, epoch),
+      np.savez('./results/classification/{}/epoch_{}'.format(expName, epoch),
               noiseLevelList, classification_accuracy)
 
     activeColumnsPreviousEpoch = copy.copy(activeColumnsCurrentEpoch)
@@ -401,7 +429,7 @@ if __name__ == "__main__":
     # randomize the presentation order of input vectors
     sdrOrders = np.random.permutation(np .arange(numInputVector))
     activeColumnsCurrentEpoch = runSPOnBatch(
-      sp, inputVectors[sdrOrders, :], learn=True)
+      sp, inputVectors, learn, sdrOrders)
 
     connectedCounts = connectedCounts.astype(uintType)
     sp.getConnectedCounts(connectedCounts)
@@ -416,10 +444,6 @@ if __name__ == "__main__":
     activeDutyCycle = np.zeros((columnNumber, ), dtype=realDType)
     sp.getActiveDutyCycles(activeDutyCycle)
 
-    overlaps = sp.getOverlaps()
-    inputOverlapWinner = overlaps[np.where(outputColumns > 0)[0]]
-    inputOverlapWinnerTrace.append(np.mean(inputOverlapWinner))
-
     if checkRFCenters:
       RFcenters, avgDistToCenter = getRFCenters(sp, params, type='connected')
       if spatialImp == 'faulty_sp':
@@ -429,9 +453,9 @@ if __name__ == "__main__":
       fig = plotReceptiveFieldCenter(RFcenters[aliveColumns, :],
                                      connectedCounts[aliveColumns],
                                      (params['nX'], params['nY']))
-      plt.savefig('./figures/RFcenters/{}_epoch_{}.png'.format(expName, epoch))
+      plt.savefig('./figures/RFcenters/{}/epoch_{}.png'.format(expName, epoch))
       plt.close(fig)
-      np.savez('./results/RFcenters/{}_{}'.format(expName, epoch),
+      np.savez('./results/RFcenters/{}/epoch_{}'.format(expName, epoch),
                RFcenters, avgDistToCenter)
 
     if checkTestInput:
@@ -446,15 +470,16 @@ if __name__ == "__main__":
       plt.scatter(RFcenters[activeColumns, 0], RFcenters[activeColumns, 1],
                   color='r')
       plt.savefig(
-        './figures/ResponseToTestInputs/{}_epoch_{}.png'.format(expName, epoch))
+        './figures/ResponseToTestInputs/{}/epoch_{}.png'.format(expName, epoch))
 
-    fig = plotReceptiveFields2D(sp, params['nX'], params['nY'])
-    plt.savefig('figures/exampleRFs/{}/epoch_{}'.format(expName, epoch))
-    plt.close(fig)
+    if showExampleRFs:
+      fig = plotReceptiveFields2D(sp, params['nX'], params['nY'])
+      plt.savefig('figures/exampleRFs/{}/epoch_{}'.format(expName, epoch))
+      plt.close(fig)
 
     if epoch >= 0:
       inputSpaceCoverage = calculateInputSpaceCoverage(sp)
-      np.savez('./results/InputCoverage/{}_{}'.format(expName, epoch),
+      np.savez('./results/InputCoverage/{}/{}'.format(expName, epoch),
                inputSpaceCoverage, connectedCounts)
 
       plt.figure(2)
@@ -462,7 +487,7 @@ if __name__ == "__main__":
       plt.imshow(inputSpaceCoverage, interpolation='nearest', cmap="jet")
       plt.colorbar()
       plt.savefig(
-        './figures/InputCoverage/{}_epoch_{}.png'.format(expName, epoch))
+        './figures/InputCoverage/{}/epoch_{}.png'.format(expName, epoch))
 
     if epoch >= 1:
       stability = calculateStability(activeColumnsCurrentEpoch,
@@ -494,33 +519,26 @@ if __name__ == "__main__":
     epoch += 1
 
   # plot stats over training
-  fig, axs = plt.subplots(nrows=5, ncols=1, sharex=True)
+  fileName = 'figures/network_stats_over_training_{}.pdf'.format(expName)
+  axs = plotSPstatsOverTime(numNewlyConnectedSynapsesTrace,
+                            numEliminatedSynapsesTrace,
+                            noiseRobustnessTrace,
+                            stabilityTrace,
+                            entropyTrace,
+                            fileName)
 
-  axs[0].plot(numConnectedSynapsesTrace)
-  axs[0].set_ylabel('Syn #')
+  traces = {'numNewlyConnectedSynapsesTrace': numNewlyConnectedSynapsesTrace,
+            'numEliminatedSynapsesTrace': numEliminatedSynapsesTrace,
+            'noiseRobustnessTrace': noiseRobustnessTrace,
+            'stabilityTrace': stabilityTrace,
+            'entropyTrace': entropyTrace,
+            'expName': expName}
+  pickle.dump(traces, open('./results/traces/{}/trace'.format(expName), 'wb'))
 
-  axs[1].plot(numNewlyConnectedSynapsesTrace)
-  axs[1].set_ylabel('New Syn #')
-
-  axs[2].plot(numEliminatedSynapsesTrace)
-  axs[2].set_ylabel('Remove Syns #')
-
-  axs[3].plot(stabilityTrace)
-  axs[3].set_ylabel('Stability')
-
-  axs[4].plot(entropyTrace)
-  axs[4].set_ylabel('entropy (bits)')
-  axs[4].set_xlabel('epochs')
-  plt.savefig(
-    'figures/network_stats_over_training_{}.pdf'.format(inputVectorType))
 
   plotReceptiveFields2D(sp, params['nX'], params['nY'])
-  inspectSpatialPoolerStats(sp, inputVectors,
-                            inputVectorType + "afterTraining")
+  inspectSpatialPoolerStats(sp, inputVectors, inputVectorType + "afterTraining")
 
-  if trackOverlapCurveOverTraining:
-    plt.figure()
-    plt.plot(noiseRobustnessTrace)
-    plt.xlabel('epochs')
-    plt.ylabel('noise robustness')
-    plt.savefig('figures/noise_robustness_over_training_{}.pdf'.format(expName))
+  plotExampleInputOutput(sp, inputVectors, expName + "final")
+
+

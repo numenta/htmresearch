@@ -22,6 +22,8 @@
 
 from optparse import OptionParser
 import pprint
+import os
+import pickle
 from tabulate import tabulate
 
 from nupic.research.spatial_pooler import SpatialPooler as PYSpatialPooler
@@ -240,6 +242,7 @@ if __name__ == "__main__":
   if expName == 'defaultName':
     expName = "dataType_{}_boosting_{}".format(
       inputVectorType, _options.boosting)
+  createDirectories(expName)
 
   params = getSDRDataSetParams(inputVectorType)
 
@@ -308,10 +311,10 @@ if __name__ == "__main__":
       # classify SDRs with noise
       noiseLevelList = np.linspace(0, 1.0, 21)
       classification_accuracy = classificationAccuracyVsNoise(
-        sp, inputVectors[:20, :], noiseLevelList)
+        sp, inputVectors, noiseLevelList)
       classificationRobustnessTrace.append(
         np.trapz(classification_accuracy, noiseLevelList))
-      np.savez('./results/classification/{}_{}'.format(expName, epoch),
+      np.savez('./results/classification/{}/epoch_{}'.format(expName, epoch),
               noiseLevelList, classification_accuracy)
 
     activeColumnsPreviousEpoch = copy.copy(activeColumnsCurrentEpoch)
@@ -324,17 +327,8 @@ if __name__ == "__main__":
     sdrOrders = np.random.permutation(np.arange(numInputVector))
 
     # train SP here,
-    for i in range(numInputVector):
-      outputColumns = np.zeros(sp.getColumnDimensions(), dtype=uintType)
-      inputVector = copy.deepcopy(inputVectors[sdrOrders[i]][:])
-
-      sp.compute(inputVector, learn, outputColumns)
-
-      activeColumnsCurrentEpoch[sdrOrders[i]][:] = np.reshape(outputColumns,
-                                                              (1, columnNumber))
-      overlaps = sp.getOverlaps()
-      inputOverlapWinner = overlaps[np.where(outputColumns > 0)[0]]
-      inputOverlapWinnerTrace.append(np.mean(inputOverlapWinner))
+    activeColumnsCurrentEpoch = runSPOnBatch(
+      sp, inputVectors, learn, sdrOrders)
 
     # gather trace stats here
     connectedCounts = connectedCounts.astype(uintType)
@@ -389,7 +383,7 @@ if __name__ == "__main__":
       # analyze RF properties
       if inputVectorType == "randomSDR":
         analyzeReceptiveFieldSparseInputs(inputVectors, sp)
-        plt.savefig('figures/inputOverlap_epoch{}_{}.pdf'.format(epoch, expName))
+        plt.savefig('figures/inputOverlaps/{}/epoch{}.pdf'.format(expName, epoch))
       elif inputVectorType == 'correlatedSDRPairs':
         additionalInfo = sdrData.getAdditionalInfo()
         inputVectors1 = additionalInfo["inputVectors1"]
@@ -397,12 +391,14 @@ if __name__ == "__main__":
         corrPairs = additionalInfo["corrPairs"]
         analyzeReceptiveFieldCorrelatedInputs(
           inputVectors, sp, params, inputVectors1, inputVectors2)
-        plt.savefig('figures/inputOverlap_epoch{}_{}.pdf'.format(epoch, expName))
+        plt.savefig(
+          'figures/inputOverlaps/{}/epoch{}.pdf'.format(expName, epoch))
       elif (inputVectorType == "randomBarPairs" or
                 inputVectorType == "randomCross" or
                 inputVectorType == "randomBarSets"):
         plotReceptiveFields2D(sp, params['nX'], params['nY'])
-        plt.savefig('figures/inputOverlap_epoch{}_{}.pdf'.format(epoch, expName))
+        plt.savefig(
+          'figures/inputOverlaps/{}/epoch{}.pdf'.format(expName, epoch))
 
 
   if spatialImp == "monitored_sp":
@@ -426,4 +422,12 @@ if __name__ == "__main__":
     # classify SDRs with noise
     for epoch in range(numEpochs):
       npzfile = np.load(
-        './results/classification/{}_{}.npz'.format(expName, epoch))
+        './results/classification/{}/epoch_{}.npz'.format(expName, epoch))
+
+  traces = {'numNewlyConnectedSynapsesTrace': numNewlyConnectedSynapsesTrace,
+            'numEliminatedSynapsesTrace': numEliminatedSynapsesTrace,
+            'noiseRobustnessTrace': noiseRobustnessTrace,
+            'stabilityTrace': stabilityTrace,
+            'entropyTrace': entropyTrace,
+            'expName': expName}
+  pickle.dump(traces, open('./results/traces/{}/trace'.format(expName), 'wb'))
