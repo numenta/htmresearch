@@ -28,7 +28,7 @@ legendList = []
 epochCheck = [0, 5, 10, 20, 40, 80]
 for epoch in epochCheck:
   nrData = np.load \
-    ('./results/input_output_overlap/{}_{}.npz'.format(expName, epoch))
+    ('./results/input_output_overlap/{}/epoch_{}.npz'.format(expName, epoch))
   noiseLevelList =  nrData['arr_0']
   inputOverlapScore =  nrData['arr_1']
   outputOverlapScore = np.mean( nrData['arr_2'], 0)
@@ -40,13 +40,14 @@ plt.ylabel('Change of SP output')
 plt.savefig('./figures/noise_robustness_{}.pdf'.format(expName))
 
 
-expName = 'continuous_learning_without_topology'
+expName = 'randomSDRVaryingSparsityContinuousLearning'
+changeDataAt = 50
 plt.figure()
 legendList = []
-epochCheck = [79, 80, 219]
+epochCheck = [changeDataAt-1, changeDataAt, 99]
 for epoch in epochCheck:
   nrData = np.load(
-    './results/input_output_overlap/{}_{}.npz'.format(expName, epoch))
+    './results/input_output_overlap/{}/epoch_{}.npz'.format(expName, epoch))
   noiseLevelList = nrData['arr_0']
   inputOverlapScore = nrData['arr_1']
   outputOverlapScore = np.mean(nrData['arr_2'], 0)
