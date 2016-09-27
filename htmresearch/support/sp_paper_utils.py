@@ -21,7 +21,7 @@
 # ----------------------------------------------------------------------
 
 import copy
-
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -276,12 +276,32 @@ def analyzeReceptiveFieldCorrelatedInputs(
 
 
 
-def runSPOnBatch(sp, inputVectors, learn):
+def runSPOnBatch(sp, inputVectors, learn, sdrOrders):
   numInputVector, inputSize = inputVectors.shape
   numColumns = np.prod(sp.getColumnDimensions())
 
   outputColumns = np.zeros((numInputVector, numColumns), dtype=uintType)
   for i in range(numInputVector):
-    sp.compute(inputVectors[i][:], learn, outputColumns[i][:])
+    sp.compute(inputVectors[sdrOrders[i]][:], learn, outputColumns[sdrOrders[i]][:])
 
   return outputColumns
+
+
+
+def createDirectories(expName):
+  paths = []
+  paths.append('./results/traces/{}/'.format(expName))
+  paths.append('./results/InputCoverage/{}/'.format(expName))
+  paths.append('./results/classification/{}/'.format(expName))
+  paths.append('./results/input_output_overlap/{}/'.format(expName))
+
+  paths.append('./figures/InputCoverage/{}/'.format(expName))
+  paths.append('./figures/exampleRFs/{}/'.format(expName))
+  paths.append('./figures/ResponseToTestInputs/{}/'.format(expName))
+  paths.append('./figures/RFcenters/{}/'.format(expName))
+  paths.append('./figures/avgInputs/{}/'.format(expName))
+  paths.append('./figures/inputOverlaps/{}/'.format(expName))
+
+  for path in paths:
+    if not os.path.exists(path):
+      os.makedirs(path)

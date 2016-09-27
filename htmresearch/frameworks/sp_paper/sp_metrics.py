@@ -753,5 +753,5 @@ def calculateInputSpaceCoverage(sp):
   for columnIndex in range(numColumns):
     sp.getConnectedSynapses(columnIndex, connectedSynapses)
     inputSpaceCoverage += connectedSynapses
-  inputSpaceCoverage = np.reshape(inputSpaceCoverage, sp.getColumnDimensions())
+  inputSpaceCoverage = np.reshape(inputSpaceCoverage, sp.getInputDimensions())
   return inputSpaceCoverage
