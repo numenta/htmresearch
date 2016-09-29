@@ -28,6 +28,9 @@ In the test phase, we randomly pick a (feature, location) SDR and feed it to
 the network, and asked whether the correct object can be retrieved.
 """
 
+import os
+import os.path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -40,6 +43,29 @@ from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 
 NUM_LOCATIONS = 5000
 NUM_FEATURES = 5000
+
+
+def _prepareResultsDir(resultBaseName, resultDirName="results"):
+  """
+  Ensures that the requested resultDirName exists.  Attempt to create it if not.
+  Returns the combined absolute path to result.
+  """
+  resultDirName = os.path.abspath(resultDirName)
+  resultFileName = os.path.join(resultDirName, resultBaseName)
+
+  try:
+    if not os.path.isdir(resultDirName):
+      # Directory does not exist, attempt to create recursively
+      os.makedirs(resultDirName)
+  except os.error:
+    # Unlikely, but directory may have been created already.  Double check to
+    # make sure it's safe to ignore error in creation
+    if not os.path.isdir(resultDirName):
+      raise Exception("Unable to create results directory at {}"
+                      .format(resultDirName))
+
+  return resultFileName
+
 
 def getL4Params():
   """
@@ -332,11 +358,12 @@ def runCapacityTestVaryingObjectSize(numObjects=2,
     else:
       result = pd.concat([result, pd.DataFrame.from_dict([testResult])])
 
-  resultFileName = 'results/single_column_capacity_varying_object_size_' \
-                   'synapses_{}_thresh_{}'.format(
-    maxNewSynapseCount, activationThreshold)
+  resultFileName = _prepareResultsDir(
+    "single_column_capacity_varying_object_size_synapses_{}_thresh_{}.csv"
+    .format(maxNewSynapseCount, activationThreshold)
+  )
 
-  pd.DataFrame.to_csv(result, resultFileName + '.csv')
+  pd.DataFrame.to_csv(result, resultFileName)
 
 
 
@@ -361,10 +388,12 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
     else:
       result = pd.concat([result, pd.DataFrame.from_dict([testResult])])
 
-  resultFileName = 'results/single_column_capacity_varying_object_num_' \
-                   'synapses_{}_thresh_{}'.format(
-    maxNewSynapseCount, activationThreshold)
-  pd.DataFrame.to_csv(result, resultFileName + '.csv')
+  resultFileName = _prepareResultsDir(
+    "single_column_capacity_varying_object_num_synapses_{}_thresh_{}.csv"
+      .format(maxNewSynapseCount, activationThreshold)
+  )
+
+  pd.DataFrame.to_csv(result, resultFileName)
 
 
 
@@ -391,10 +420,13 @@ def runExperiment1():
   legendEntries = []
   for maxNewSynapseCount in maxNewSynapseCountRange:
     activationThreshold = int(maxNewSynapseCount) - 1
-    resultFileName = 'results/single_column_capacity_varying_object_size_' \
-                     'synapses_{}_thresh_{}'.format(
-      maxNewSynapseCount, activationThreshold)
-    result = pd.read_csv(resultFileName+ '.csv')
+
+    resultFileName = _prepareResultsDir(
+      "single_column_capacity_varying_object_size_synapses_{}_thresh_{}.csv"
+      .format(maxNewSynapseCount, activationThreshold)
+    )
+
+    result = pd.read_csv(resultFileName)
 
     plotResults(result, ax, "numPointsPerObject", None, markers[ploti])
     ploti += 1
@@ -427,10 +459,13 @@ def runExperiment2():
   legendEntries = []
   for maxNewSynapseCount in maxNewSynapseCountRange:
     activationThreshold = int(maxNewSynapseCount) - 1
-    resultFileName = 'results/single_column_capacity_varying_object_num_' \
-                     'synapses_{}_thresh_{}'.format(
-      maxNewSynapseCount, activationThreshold)
-    result = pd.read_csv(resultFileName+ '.csv')
+
+    resultFileName = _prepareResultsDir(
+      "single_column_capacity_varying_object_num_synapses_{}_thresh_{}.csv"
+      .format(maxNewSynapseCount, activationThreshold)
+    )
+
+    result = pd.read_csv(resultFileName)
 
     plotResults(result, ax, "numObjects", None, markers[ploti])
     ploti += 1
