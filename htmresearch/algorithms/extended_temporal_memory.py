@@ -61,13 +61,13 @@ class ExtendedTemporalMemory(object):
                seed=42,
                checkInputs=True):
     """
-    @param columnDimensions (list)
+    @param columnDimensions (sequence)
     Dimensions of the column space
 
-    @param basalInputDimensions (list)
+    @param basalInputDimensions (sequence)
     Dimensions of the external basal input.
 
-    @param apicalInputDimensions (list)
+    @param apicalInputDimensions (sequence)
     Dimensions of the external apical input.
 
     @param cellsPerColumn (int)
@@ -194,35 +194,35 @@ class ExtendedTemporalMemory(object):
     TemporalMemory via its compute method ensures that you'll always be able to
     call getPredictiveCells to get predictions for the next time step.
 
-    @param activeColumns (list)
+    @param activeColumns (sequence)
     Sorted list of active columns.
 
-    @param activeCellsExternalBasal (list)
+    @param activeCellsExternalBasal (sequence)
     Sorted list of active external cells for activating basal dendrites at the
     end of this time step.
 
-    @param activeCellsExternalApical (list)
+    @param activeCellsExternalApical (sequence)
     Sorted list of active external cells for activating apical dendrites at the
     end of this time step.
 
-    @param reinforceCandidatesExternalBasal (list)
+    @param reinforceCandidatesExternalBasal (sequence)
     Sorted list of external cells. Any learning basal dendrite segments will use
     this list to decide which synapses to reinforce and which synapses to
     punish. Typically this list should be the 'activeCellsExternalBasal' from
     the prevous time step.
 
-    @param reinforceCandidatesExternalApical (list)
+    @param reinforceCandidatesExternalApical (sequence)
     Sorted list of external cells. Any learning apical dendrite segments will use
     this list to decide which synapses to reinforce and which synapses to
     punish. Typically this list should be the 'activeCellsExternalApical' from
     the prevous time step.
 
-    @param growthCandidatesExternalBasal (list)
+    @param growthCandidatesExternalBasal (sequence)
     Sorted list of external cells. Any learning basal dendrite segments can grow
     synapses to cells in this list. Typically this list should be a subset of
     the 'activeCellsExternalBasal' from the prevous time step.
 
-    @param growthCandidatesExternalApical (list)
+    @param growthCandidatesExternalApical (sequence)
     Sorted list of external cells. Any learning apical dendrite segments can grow
     synapses to cells in this list. Typically this list should be a subset of
     the 'activeCellsExternalApical' from the prevous time step.
@@ -253,27 +253,27 @@ class ExtendedTemporalMemory(object):
     Calculate the active cells, using the current active columns and
     dendrite segments. Grow and reinforce synapses.
 
-    @param activeColumns (list)
+    @param activeColumns (sequence)
     A sorted list of active column indices.
 
-    @param reinforceCandidatesExternalBasal (list)
+    @param reinforceCandidatesExternalBasal (sequence)
     Sorted list of external cells. Any learning basal dendrite segments will use
     this list to decide which synapses to reinforce and which synapses to
     punish. Typically this list should be the 'activeCellsExternalBasal' from
     the prevous time step.
 
-    @param reinforceCandidatesExternalApical (list)
+    @param reinforceCandidatesExternalApical (sequence)
     Sorted list of external cells. Any learning apical dendrite segments will use
     this list to decide which synapses to reinforce and which synapses to
     punish. Typically this list should be the 'activeCellsExternalApical' from
     the prevous time step.
 
-    @param growthCandidatesExternalBasal (list)
+    @param growthCandidatesExternalBasal (sequence)
     Sorted list of external cells. Any learning basal dendrite segments can grow
     synapses to cells in this list. Typically this list should be a subset of
     the 'activeCellsExternalBasal' from the previous 'depolarizeCells'.
 
-    @param growthCandidatesExternalApical (list)
+    @param growthCandidatesExternalApical (sequence)
     Sorted list of external cells. Any learning apical dendrite segments can grow
     synapses to cells in this list. Typically this list should be a subset of
     the 'activeCellsExternalApical' from the previous 'depolarizeCells'.
@@ -393,10 +393,10 @@ class ExtendedTemporalMemory(object):
     """
     Calculate dendrite segment activity, using the current active cells.
 
-    @param activeCellsExternalBasal (list)
+    @param activeCellsExternalBasal (sequence)
     Sorted list of active external cells for activating basal dendrites.
 
-    @param activeCellsExternalApical (list)
+    @param activeCellsExternalApical (sequence)
     Sorted list of active external cells for activating apical dendrites.
 
     @param learn (bool)
@@ -484,7 +484,7 @@ class ExtendedTemporalMemory(object):
     @param learn (bool)
     If true, grow and reinforce synapses.
 
-    @return cellsToAdd (list)
+    @return cellsToAdd (iterable)
     A list of predicted cells that will be added to active cells and winner
     cells.
 
@@ -538,7 +538,7 @@ class ExtendedTemporalMemory(object):
     Whether or not learning is enabled.
 
     @return (tuple) Contains:
-                      `cells`         (iter),
+                      `cells`         (iterable),
                       `winnerCell`    (int),
 
     """
