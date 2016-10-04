@@ -173,6 +173,7 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
   testPts = np.random.choice(np.arange(numPointsPerObject),
                              (numTestPoints,),
                              replace=False)
+
   testPairs = [objects[testObject][i] for i in testPts]
 
   exp._unsetLearningMode()
@@ -320,6 +321,7 @@ def runCapacityTest(numObjects,
   :param numPointsPerObject:
   :param maxNewSynapseCount:
   :param activationThreshold:
+  :param numCorticalColumns:
   :return:
   """
   l4Params = getL4Params()
@@ -382,7 +384,9 @@ def runCapacityTestVaryingObjectSize(
   for numPointsPerObject in np.arange(10, 270, 20):
     testResult = runCapacityTest(
       numObjects,
-      numPointsPerObject,
+      # Scale numPointsPerObject by the number of columns so that there are
+      # consistently enough points to distribute to each column
+      numPointsPerObject*numCorticalColumns,
       maxNewSynapseCount,
       activationThreshold,
       numCorticalColumns
@@ -504,7 +508,7 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
   runCapacityTestVaryingObjectNum()
   Try different sampling and activation threshold
   """
-  numPointsPerObject = 10
+  numPointsPerObject = 10 * numCorticalColumns
   maxNewSynapseCountRange = (5, 10, 15, 20)
   for maxNewSynapseCount in maxNewSynapseCountRange:
     activationThreshold = int(maxNewSynapseCount) - 1
