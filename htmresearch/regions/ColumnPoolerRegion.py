@@ -392,7 +392,8 @@ class ColumnPoolerRegion(PyRegion):
       lateralInput = set()
 
     # Send the inputs into the Column Pooler.
-    self._pooler.depolarizeCells(lateralInput)
+    self._pooler.depolarizeCells(lateralInput,
+                                 learn=self.learningMode)
     self._pooler.activateCells(
       feedforwardInput=feedforwardInput,
       reinforceCandidatesExternal=lateralInput,

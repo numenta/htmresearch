@@ -40,7 +40,7 @@ class ColumnPoolerTest(unittest.TestCase):
     """Initialize and return a default ColumnPooler """
     return ColumnPooler(
       inputWidth=2048 * 8,
-      lateralInputWidth=512,
+      lateralInputWidth=4096,
       columnDimensions=(2048,),
       initialPermanence=0.41,
       # Temporary: a high maxNewSynapseCount is in place until NUP #3268 is
@@ -722,14 +722,7 @@ class ColumnPoolerTest(unittest.TestCase):
     After learning two objects, test that inference behaves as expected in
     a variety of scenarios.
     """
-    pooler = ColumnPooler(
-      inputWidth=2048 * 8,
-      lateralInputWidth=4096,
-      columnDimensions=(2048,),
-      initialPermanence=0.41,
-      maxNewProximalSynapseCount=40,
-      maxNewDistalSynapseCount=40,
-    )
+    pooler = self._initializeDefaultPooler()
 
     # Feed-forward representations:
     # Object 1 = union(range(0,40), range(40,80), range(80,120))
@@ -864,14 +857,7 @@ class ColumnPoolerTest(unittest.TestCase):
     # During inference any of these lateral inputs should cause the pooler
     # to disambiguate appropriately.
     """
-    pooler = ColumnPooler(
-      inputWidth=2048 * 8,
-      lateralInputWidth=4096,
-      columnDimensions=(2048,),
-      initialPermanence=0.41,
-      maxNewProximalSynapseCount=40,
-      maxNewDistalSynapseCount=40,
-    )
+    pooler = self._initializeDefaultPooler()
 
     # Feed-forward representations:
     # Object 1 = union(range(0,40), range(40,80), range(80,120))

@@ -136,7 +136,7 @@ class ColumnPooler(object):
     self.proximalConnections.resize(self.numberOfColumns(), inputWidth)
 
 
-  def depolarizeCells(self, activeExternalCells):
+  def depolarizeCells(self, activeExternalCells, learn=True):
     """
     Parameters:
     ----------------------------
@@ -144,8 +144,13 @@ class ColumnPooler(object):
             Indices of active cells that will form connections to distal
             segments.
 
+    @param  learn (bool)
+            If true, distal segment activations will be recorded. This
+            information is used during segment cleanup.
+
     """
-    self.tm.depolarizeCells(activeCellsExternalBasal=activeExternalCells)
+    self.tm.depolarizeCells(activeCellsExternalBasal=activeExternalCells,
+                            learn=learn)
 
 
   def activateCells(self,
