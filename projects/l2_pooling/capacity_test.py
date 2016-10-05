@@ -74,6 +74,7 @@ def _prepareResultsDir(resultBaseName, resultDirName=DEFAULT_RESULT_DIR_NAME):
   return resultFileName
 
 
+
 def getL4Params():
   """
   Returns a good default set of parameters to use in the L4 region.
@@ -81,11 +82,10 @@ def getL4Params():
   return {
     "columnCount": 2048,
     "cellsPerColumn": 8,
-    "formInternalConnections": 0,
-    "formInternalBasalConnections": 0,  # inconsistency between CPP and PY
-    "learningMode": 1,
-    "inferenceMode": 1,
-    "learnOnOneCell": 0,
+    "formInternalBasalConnections": True,
+    "learningMode": True,
+    "inferenceMode": True,
+    "learnOnOneCell": False,
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
@@ -94,8 +94,7 @@ def getL4Params():
     "predictedSegmentDecrement": 0.002,
     "activationThreshold": 13,
     "maxNewSynapseCount": 20,
-    "monitor": 0,
-    "implementation": "cpp",
+    "implementation": "etm_cpp",
   }
 
 
@@ -107,8 +106,8 @@ def getL2Params():
   return {
     "columnCount": 1024,
     "inputWidth": 2048 * 8,
-    "learningMode": 1,
-    "inferenceMode": 1,
+    "learningMode": True,
+    "inferenceMode": True,
     "initialPermanence": 0.41,
     "connectedPermanence": 0.5,
     "permanenceIncrement": 0.1,
@@ -151,6 +150,8 @@ def createRandomObjects(numObjects,
 
   randomFeatureLocPairs = (divmod(idx, numFeatures) for idx in randomPairIdx)
 
+  # Return sequences of random feature-location pairs.  Each sequence will
+  # contain a number of pairs defined by 'numPointsPerObject'
   return zip(*[iter(randomFeatureLocPairs)] * numPointsPerObject)
 
 
@@ -179,10 +180,26 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
   exp._unsetLearningMode()
   exp.sendReset()
 
-  # Split test points between columns
   numTestPointsPerColumn = numTestPoints / exp.numColumns
 
   overlap = np.zeros((numTestPointsPerColumn, numObjects))
+
+  # Divide testPairs, which is a single sequence of feature-location tuples for
+  # an object, into an enumerated sequence of sequences of feature-location
+  # tuples such that in each iteration the sensations for each column at that
+  # step are available.
+  #
+  # In the 1-column case, testPairs is iterated as:
+  #
+  #    [(0, ((2970, 1219),)),
+  #     (1, ((1985, 4010),)),
+  #     (2, ((4544, 4491),))]
+  #
+  # Meanwhile, for the 2-column case, testPairs is iterated as:
+  #
+  #    [(0, ((2566, 2285), (3259, 4611))),
+  #     (1, ((3218, 872), (2094, 3038))),
+  #     (2, ((428, 2521), (3326, 4876)))]
 
   for step, pairs in enumerate(zip(*zip(*[iter(testPairs)] * (len(testPairs) / exp.numColumns)))):
     for colIdx in xrange(exp.numColumns):
