@@ -1,4 +1,0 @@
-prettytable
-simplejson
-htmresearch
-nupic
