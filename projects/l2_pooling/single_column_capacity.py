@@ -74,11 +74,10 @@ def getL4Params():
   return {
     "columnCount": 2048,
     "cellsPerColumn": 8,
-    "formInternalConnections": 0,
-    "formInternalBasalConnections": 0,  # inconsistency between CPP and PY
-    "learningMode": 1,
-    "inferenceMode": 1,
-    "learnOnOneCell": 0,
+    "formInternalBasalConnections": True,
+    "learningMode": True,
+    "inferenceMode": True,
+    "learnOnOneCell": False,
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
@@ -87,8 +86,7 @@ def getL4Params():
     "predictedSegmentDecrement": 0.002,
     "activationThreshold": 13,
     "maxNewSynapseCount": 20,
-    "monitor": 0,
-    "implementation": "cpp",
+    "implementation": "etm_cpp",
   }
 
 
@@ -100,8 +98,8 @@ def getL2Params():
   return {
     "columnCount": 1024,
     "inputWidth": 2048 * 8,
-    "learningMode": 1,
-    "inferenceMode": 1,
+    "learningMode": True,
+    "inferenceMode": True,
     "initialPermanence": 0.41,
     "connectedPermanence": 0.5,
     "permanenceIncrement": 0.1,

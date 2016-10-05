@@ -17,7 +17,7 @@
       "columnCount": 4096,
       "cellsPerColumn": 16,
       "seed": 1960,
-      "temporalImp": "tm",
+      "temporalImp": "tm_py",
       "maxNewSynapseCount": 40,
       "initialPermanence": 0.21,
       "connectedPermanence": 0.3,

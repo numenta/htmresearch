@@ -1,10 +1,12 @@
 import numpy
 
 from sensorimotor.extended_temporal_memory import ExtendedTemporalMemory
-from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
-  TemporalMemoryMonitorMixin)
 
-class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin, ExtendedTemporalMemory):
+from htmresearch.support.etm_monitor_mixin import (
+  ExtendedTemporalMemoryMonitorMixin)
+
+class MonitoredExtendedTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
+                                      ExtendedTemporalMemory):
   pass
 from sensorimotor.behavior_memory import BehaviorMemory
 
@@ -30,19 +32,25 @@ class Model(object):
     return None
 
 
+DEFAULT_TM_PARAMS = {
+  "basalInputDimensions": (999999,), # Dodge the input checking.
+}
 
 class PositionPredictionModel(Model):
 
   def __init__(self, motorValues=range(-4, 4+1),
                sparsity=0.02, encoderResolution=1.0, tmParams=None):
     super(PositionPredictionModel, self).__init__(motorValues=motorValues)
-    tmParams = tmParams or {}
+
+    tmParams = dict(DEFAULT_TM_PARAMS)
+    tmParams.update(tmParams or {})
     self.tm = MonitoredExtendedTemporalMemory(mmName="TM", **tmParams)
     self.n = self.tm.numberOfColumns()
     self.w = int(self.n * sparsity) + 1
     self.encoderResolution = encoderResolution
     self.sensorEncoder = CoordinateEncoder(w=self.w, n=self.n)
     self.motorEncoder = CoordinateEncoder(w=self.w, n=self.n)
+    self.prevMotorPattern = ()
 
 
   def update(self, sensorValue, motorValue, goalValue=None):
@@ -54,9 +62,12 @@ class PositionPredictionModel(Model):
     motorPattern = set(self.motorEncoder.encode(motorInput).nonzero()[0])
 
     self.tm.compute(sensorPattern,
-                    activeExternalCells=motorPattern,
-                    formInternalConnections=True,
+                    activeCellsExternalBasal=motorPattern,
+                    reinforceCandidatesExternalBasal=self.prevMotorPattern,
+                    growthCandidatesExternalBasal=self.prevMotorPattern,
                     learn=True)
+
+    self.prevMotorPattern = motorPattern
 
 
 

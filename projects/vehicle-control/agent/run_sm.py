@@ -31,9 +31,9 @@ from nupic.encoders.coordinate import CoordinateEncoder
 from nupic.encoders.scalar import ScalarEncoder
 from nupic.research.monitor_mixin.trace import CountsTrace
 from sensorimotor.extended_temporal_memory import ExtendedTemporalMemory
-from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
-  TemporalMemoryMonitorMixin)
-class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin,
+from htmresearch.support.etm_monitor_mixin import (
+  ExtendedTemporalMemoryMonitorMixin)
+class MonitoredExtendedTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
                                      ExtendedTemporalMemory): pass
 
 
@@ -52,6 +52,7 @@ class Agent(object):
                                  n=1024)
     self.tm = MonitoredExtendedTemporalMemory(
       columnDimensions=[2048],
+      basalInputDimensions: (999999,) # Dodge input checking.
       cellsPerColumn=1,
       initialPermanence=0.5,
       connectedPermanence=0.6,
@@ -64,6 +65,7 @@ class Agent(object):
 
     self.lastState = None
     self.lastAction = None
+    self.prevMotorPattern = ()
 
 
   def sync(self, outputData):
@@ -92,8 +94,9 @@ class Agent(object):
     motorPattern = set(motorEncoding.nonzero()[0])
 
     self.tm.compute(sensorPattern,
-                    activeExternalCells=motorPattern,
-                    formInternalConnections=True)
+                    activeCellsExternalBasal=motorPattern,
+                    reinforceCandidatesExternalBasal=self.prevMotorPattern,
+                    growthCandidatesExternalBasal=self.prevMotorPattern)
 
     print self.tm.mmPrettyPrintMetrics(self.tm.mmGetDefaultMetrics())
 
@@ -104,6 +107,7 @@ class Agent(object):
 
     self.lastState = encoding
     self.lastAction = steer
+    self.prevMotorPattern = motorPattern
 
 
 

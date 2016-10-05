@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2014, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -20,7 +20,7 @@
 # ----------------------------------------------------------------------
 
 """
-ColumnPooler mixin that enables detailed monitoring of history.
+Extended Temporal Memory mixin that enables detailed monitoring of history.
 """
 
 from collections import defaultdict
@@ -35,14 +35,15 @@ from nupic.research.monitor_mixin.trace import (IndicesTrace, CountsTrace,
                                                 BoolsTrace, StringsTrace)
 
 
-class ColumnPoolerMonitorMixin(MonitorMixinBase):
+
+class ExtendedTemporalMemoryMonitorMixin(MonitorMixinBase):
   """
-  Mixin for ColumnPooler that stores a detailed history, for inspection and
-  debugging.
+  Mixin for ExtendedTemporalMemory that stores a detailed history, for
+  inspection and debugging.
   """
 
   def __init__(self, *args, **kwargs):
-    super(ColumnPoolerMonitorMixin, self).__init__(*args, **kwargs)
+    super(ExtendedTemporalMemoryMonitorMixin, self).__init__(*args, **kwargs)
 
     self._mmResetActive = True  # First iteration is always a reset
 
@@ -56,30 +57,37 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
 
   def mmGetTracePredictedCells(self):
     """
-    @return (Trace) Trace of predictive cells
+    @return (Trace) Trace of cells that were predicted for this timestep.
     """
     return self._mmTraces["predictedCells"]
 
 
-  def mmGetTraceNumSegments(self):
+  def mmGetTraceNumBasalSegments(self):
     """
     @return (Trace) Trace of # segments
     """
-    return self._mmTraces["numSegments"]
+    return self._mmTraces["numBasalSegments"]
 
 
-  def mmGetTraceNumSynapses(self):
+  def mmGetTraceNumBasalSynapses(self):
     """
     @return (Trace) Trace of # synapses
     """
-    return self._mmTraces["numSynapses"]
+    return self._mmTraces["numBasalSynapses"]
 
 
-  def mmGetTraceNumProximalSynapses(self):
+  def mmGetTraceNumApicalSegments(self):
     """
-    @return (Trace) Trace of # proximal synapses with permanence > 0
+    @return (Trace) Trace of # segments
     """
-    return self._mmTraces["numProximalSynapses"]
+    return self._mmTraces["numApicalSegments"]
+
+
+  def mmGetTraceNumApicalSynapses(self):
+    """
+    @return (Trace) Trace of # synapses
+    """
+    return self._mmTraces["numApicalSynapses"]
 
 
   def mmGetTraceSequenceLabels(self):
@@ -207,19 +215,17 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
 
     columns = range(self.numberOfColumns())
 
-    connections = self.getConnections()
-
     for column in columns:
       cells = self.cellsForColumn(column)
 
       for cell in cells:
         segmentDict = dict()
 
-        for seg in connections.segmentsForCell(cell):
+        for seg in self.connections.segmentsForCell(cell):
           synapseList = []
 
-          for synapse in connections.synapsesForSegment(seg):
-            synapseData = connections.dataForSynapse(synapse)
+          for synapse in self.connections.synapsesForSegment(seg):
+            synapseData = self.connections.dataForSynapse(synapse)
             synapseList.append(
                 (synapseData.presynapticCell, synapseData.permanence))
 
@@ -289,9 +295,9 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
     self._mmTraces["predictedActiveColumns"] = IndicesTrace(self,
       "predicted => active columns (correct)")
     self._mmTraces["predictedInactiveColumns"] = IndicesTrace(self,
-      "predicted => inactive cells (extra)")
+      "predicted => inactive columns (extra)")
     self._mmTraces["unpredictedActiveColumns"] = IndicesTrace(self,
-      "unpredicted => active cells")
+      "unpredicted => active columns (bursting)")
 
     predictedCellsTrace = self._mmTraces["predictedCells"]
 
@@ -316,7 +322,7 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
           predictedInactiveCells.add(predictedCell)
           predictedInactiveColumns.add(predictedColumn)
 
-      unpredictedActiveColumns = activeColumns - predictedActiveColumns
+      unpredictedActiveColumns = set(activeColumns) - set(predictedActiveColumns)
 
       self._mmTraces["predictedActiveCells"].data.append(predictedActiveCells)
       self._mmTraces["predictedInactiveCells"].data.append(predictedInactiveCells)
@@ -333,26 +339,33 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
   # Overrides
   # ==============================
   def activateCells(self,
-                    feedforwardInput=(),
-                    reinforceCandidatesExternal=(),
-                    growthCandidatesExternal=(),
+                    activeColumns,
+                    reinforceCandidatesExternalBasal=(),
+                    reinforceCandidatesExternalApical=(),
+                    growthCandidatesExternalBasal=(),
+                    growthCandidatesExternalApical=(),
                     learn=True,
-                    sequenceLabel=None,
-                    **kwargs):
-    super(ColumnPoolerMonitorMixin, self).activateCells(
-      feedforwardInput,
-      reinforceCandidatesExternal,
-      growthCandidatesExternal,
+                    sequenceLabel=None):
+
+    super(ExtendedTemporalMemoryMonitorMixin, self).activateCells(
+      activeColumns,
+      reinforceCandidatesExternalBasal,
+      reinforceCandidatesExternalApical,
+      growthCandidatesExternalBasal,
+      growthCandidatesExternalApical,
       learn)
 
     self._mmTraces["predictedCells"].data.append(set(self.getPredictiveCells()))
     self._mmTraces["activeCells"].data.append(set(self.getActiveCells()))
-    self._mmTraces["activeColumns"].data.append(set(self.getActiveCells()))
-    self._mmTraces["numSegments"].data.append(
-      self.getConnections().numSegments())
-    self._mmTraces["numSynapses"].data.append(
-      self.getConnections().numSynapses())
-    self._mmTraces["numProximalSynapses"].data.append(self.numberOfSynapses())
+    self._mmTraces["activeColumns"].data.append(activeColumns)
+    self._mmTraces["numBasalSegments"].data.append(
+      self.basalConnections.numSegments())
+    self._mmTraces["numBasalSynapses"].data.append(
+      self.basalConnections.numSynapses())
+    self._mmTraces["numApicalSegments"].data.append(
+      self.apicalConnections.numSegments())
+    self._mmTraces["numApicalSynapses"].data.append(
+      self.apicalConnections.numSynapses())
     self._mmTraces["sequenceLabels"].data.append(sequenceLabel)
     self._mmTraces["resets"].data.append(self._mmResetActive)
     self._mmResetActive = False
@@ -361,7 +374,7 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
 
 
   def reset(self):
-    super(ColumnPoolerMonitorMixin, self).reset()
+    super(ExtendedTemporalMemoryMonitorMixin, self).reset()
 
     self._mmResetActive = True
 
@@ -380,9 +393,10 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
       traces = [trace.makeCountsTrace() for trace in traces]
 
     traces += [
-      self.mmGetTraceNumSegments(),
-      self.mmGetTraceNumSynapses(),
-      self.mmGetTraceNumProximalSynapses()
+      self.mmGetTraceNumBasalSegments(),
+      self.mmGetTraceNumBasalSynapses(),
+      self.mmGetTraceNumApicalSegments(),
+      self.mmGetTraceNumApicalSynapses(),
     ]
 
     return traces + [self.mmGetTraceSequenceLabels()]
@@ -399,15 +413,15 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
 
 
   def mmClearHistory(self):
-    super(ColumnPoolerMonitorMixin, self).mmClearHistory()
+    super(ExtendedTemporalMemoryMonitorMixin, self).mmClearHistory()
 
-    self._mmTraces["predictedCells"] = IndicesTrace(self, "predicted cells")
-    self._mmTraces["activeColumns"] = IndicesTrace(self, "active cells")
+    self._mmTraces["activeColumns"] = IndicesTrace(self, "active columns")
     self._mmTraces["activeCells"] = IndicesTrace(self, "active cells")
-    self._mmTraces["numSegments"] = CountsTrace(self, "# distal segments")
-    self._mmTraces["numSynapses"] = CountsTrace(self, "# distal synapses")
-    self._mmTraces["numProximalSynapses"] = CountsTrace(
-      self, "# proximal synapses")
+    self._mmTraces["predictedCells"] = IndicesTrace(self, "predicted cells")
+    self._mmTraces["numBasalSegments"] = CountsTrace(self, "# basal segments")
+    self._mmTraces["numBasalSynapses"] = CountsTrace(self, "# basal synapses")
+    self._mmTraces["numApicalSegments"] = CountsTrace(self, "# apical segments")
+    self._mmTraces["numApicalSynapses"] = CountsTrace(self, "# apical synapses")
     self._mmTraces["sequenceLabels"] = StringsTrace(self, "sequence labels")
     self._mmTraces["resets"] = BoolsTrace(self, "resets")
     self._mmTransitionTracesStale = True
@@ -428,8 +442,8 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
                                   being white and 1.0 being black
 
     @param activityType (string)  The type of cell activity to display. Valid
-                                  types include "activeCells", "predictedCells",
-                                  and "predictedActiveCells"
+                                  types include "activeCells",
+                                  "predictedCells", and "predictedActiveCells"
 
     @return (Plot) plot
     """

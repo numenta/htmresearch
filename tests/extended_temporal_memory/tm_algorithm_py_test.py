@@ -24,11 +24,14 @@ import unittest
 
 from htmresearch.algorithms.extended_temporal_memory import (
   ExtendedTemporalMemory)
-from etm_algorithm_test_base import ExtendedTemporalMemoryAlgorithmTest
+from tm_algorithm_test_base import TemporalMemoryAlgorithmTest
 
 
 
-class ExtendedTemporalMemoryAlgorithmTestPY(
-        ExtendedTemporalMemoryAlgorithmTest, unittest.TestCase):
+class TemporalMemoryAlgorithmTestPY(
+        TemporalMemoryAlgorithmTest, unittest.TestCase):
   def getTMClass(self):
     return ExtendedTemporalMemory
+
+  def testFoo(self):
+      pass

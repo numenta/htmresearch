@@ -27,11 +27,11 @@ import numpy
 from nupic.algorithms.KNNClassifier import KNNClassifier
 from nupic.bindings.math import GetNTAReal
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
-    TemporalMemoryMonitorMixin)
 
 from htmresearch.algorithms.extended_temporal_memory import (
      ExtendedTemporalMemory)
+from htmresearch.support.etm_monitor_mixin import (
+     ExtendedTemporalMemoryMonitorMixin)
 from htmresearch.support.union_temporal_pooler_monitor_mixin import (
      UnionTemporalPoolerMonitorMixin)
 
@@ -39,7 +39,8 @@ from htmresearch.support.union_temporal_pooler_monitor_mixin import (
 # uncomment to use early version of union pooler
 from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
 
-class MonitoredFastExtendedTemporalMemory(TemporalMemoryMonitorMixin, ExtendedTemporalMemory):
+class MonitoredFastExtendedTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
+                                          ExtendedTemporalMemory):
   pass
 
 
@@ -198,7 +199,6 @@ class UnionTemporalPoolerExperiment(object):
       self.up.reset()
     else:
       self.tm.compute(sensorPattern,
-                      formInternalConnections=True,
                       learn=tmLearn,
                       sequenceLabel=sequenceLabel)
 
