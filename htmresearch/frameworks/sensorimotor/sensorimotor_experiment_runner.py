@@ -25,15 +25,18 @@ import numpy
 
 from nupic.bindings.math import GetNTAReal
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import TemporalMemoryMonitorMixin
 from nupic.research.TP import TP
+
+from htmresearch.support.etm_monitor_mixin import (
+  ExtendedTemporalMemoryMonitorMixin)
 
 # Uncomment the line below to use ExtendedTemporalMemory
 from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
 from htmresearch.support.temporal_pooler_monitor_mixin import TemporalPoolerMonitorMixin
 
 
-class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin, ExtendedTemporalMemory):
+class MonitoredExtendedTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
+                                      ExtendedTemporalMemory):
   pass
 
 class MonitoredTemporalPooler(TemporalPoolerMonitorMixin, TP):
@@ -61,6 +64,8 @@ class SensorimotorExperimentRunner(object):
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
+    "formInternalBasalConnections": True,
+    "basalInputDimensions": (999999,) # Dodge input checking.
 
     # We will force client to override these
     "columnDimensions": "Sorry",
@@ -99,6 +104,7 @@ class SensorimotorExperimentRunner(object):
     params.update(tpOverrides or {})
     self._checkParams(params)
     self.tp = MonitoredTemporalPooler(mmName="TP", **params)
+    self.prevMotorPattern = ()
 
 
   def _checkParams(self, params):
@@ -116,10 +122,11 @@ class SensorimotorExperimentRunner(object):
     else:
       # Feed the TM
       self.tm.compute(sensorPattern,
-                activeExternalCells=motorPattern,
-                formInternalConnections=True,
-                learn=tmLearn,
-                sequenceLabel=sequenceLabel)
+                      activeCellsExternalBasal=motorPattern,
+                      reinforceCandidatesExternalBasal=self.prevMotorPattern,
+                      growthCandidatesExternalBasal=self.prevMotorPattern,
+                      learn=tmLearn,
+                      sequenceLabel=sequenceLabel)
 
       # If requested, feed the TP
       if tpLearn is not None:
@@ -133,6 +140,8 @@ class SensorimotorExperimentRunner(object):
                         burstingColumns,
                         correctlyPredictedCells,
                         sequenceLabel=sequenceLabel)
+
+      self.prevMotorPattern = motorPattern
 
 
   def feedLayers(self, sequences, tmLearn=True, tpLearn=None, verbosity=0,

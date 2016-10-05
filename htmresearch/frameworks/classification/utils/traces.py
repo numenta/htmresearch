@@ -29,11 +29,10 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 
-def plotTraces(numTmCells, title, xlim, traces):
+def plotTraces(numTmCells, xlim, traces):
   """
   Plot network traces
   :param numTmCells: (int) number of cells in the TM
-  :param title: (str) plot title
   :param xlim: (list) min and max values used for the x-axis range
   :param traces: (list of dict) network traces to plot
   :return: 
@@ -64,7 +63,7 @@ def plotTraces(numTmCells, title, xlim, traces):
     f, ax = plt.subplots(3, sharex=True)
     
     # plot sensor value and class labels
-    ax[0].set_title(title)
+    ax[0].set_title('Sensor data')
     ax[0].plot(t, sensorValue)
     ax[0].set_xlim(xlim)
 
@@ -100,8 +99,9 @@ def plotTraces(numTmCells, title, xlim, traces):
     if len(selectRange) <= len(cellTrace):
       for i in range(len(selectRange)):
         cells = cellTrace[selectRange[i]]
-        sdrT = t[selectRange[i]] * np.ones((len(cells, )))
-        ax[2].plot(sdrT, randomCellOrder[cells], 's', color='white', ms=1)
+        if cells is not None:
+          sdrT = t[selectRange[i]] * np.ones((len(cells, )))
+          ax[2].plot(sdrT, randomCellOrder[cells], 's', color='white', ms=1)
 
     ax[2].set_title('Cell activation')
     ax[2].set_ylabel(traceName)

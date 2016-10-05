@@ -69,10 +69,12 @@ def feedTM(tm, length, agents,
     for i in xrange(len(sensorSequence)):
       sensorPattern = sensorSequence[i]
       sensorimotorPattern = sensorimotorSequence[i]
+      prevSensorimotorPattern = (sensorimotorSequence[i-1] if i >= 0 else ())
       tm.compute(sensorPattern,
-                activeExternalCells=sensorimotorPattern,
-                formInternalConnections=False,
-                learn=learn)
+                 activeCellsExternalBasal=sensorimotorPattern,
+                 reinforceCandidatesExternalBasal=prevSensorimotorPattern,
+                 growthCandidatesExternalBasal=prevSensorimotorPattern,
+                 learn=learn)
 
   if verbosity >= 2:
     print tm.prettyPrintHistory(verbosity=verbosity)
@@ -105,6 +107,7 @@ agents = [
 # The TM parameters
 DEFAULT_TM_PARAMS = {
   "columnDimensions": [nElements*wEncoders],
+  "basalInputDimensions": (999999,) # Dodge input checking.
   "cellsPerColumn": 8,
   "initialPermanence": 0.5,
   "connectedPermanence": 0.6,
@@ -112,7 +115,8 @@ DEFAULT_TM_PARAMS = {
   "maxNewSynapseCount": wEncoders*2,
   "permanenceIncrement": 0.1,
   "permanenceDecrement": 0.02,
-  "activationThreshold": wEncoders*2
+  "activationThreshold": wEncoders*2,
+  "formInternalBasalConnections": False,
 }
 
 tm = TMI(**dict(DEFAULT_TM_PARAMS))

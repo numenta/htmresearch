@@ -174,9 +174,8 @@ def runTestPhase(experiment, tmLearn=False, upLearn=True, outputfileName='result
         pass
       else:
         experiment.tm.compute(sensorPattern,
-                        formInternalConnections=True,
-                        learn=tmLearn,
-                        sequenceLabel=inputCategory)
+                              learn=tmLearn,
+                              sequenceLabel=inputCategory)
 
 
         activeCells, predActiveCells, burstingCols, = experiment.getUnionTemporalPoolerInput()
