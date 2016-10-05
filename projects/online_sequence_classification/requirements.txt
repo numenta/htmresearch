@@ -1,0 +1,5 @@
+prettytable
+simplejson
+htmresearch
+nupic
+matplotlib
