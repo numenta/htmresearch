@@ -171,13 +171,13 @@ layout = Layout(
         title='Number of synapses on segment',
         titlefont=Font(
             family='',
-            size=22,
-            color=''
+            size=24,
+            color='rgb(0, 0, 0)',
         ),
         tickfont=Font(
             family='',
-            size=16,
-            color=''
+            size=18,
+            color='rgb(0, 0, 0)',
         ),
         exponentformat="none",
         showline=True,
@@ -190,13 +190,13 @@ layout = Layout(
         autorange=True,
         titlefont=Font(
             family='',
-            size=22,
-            color=''
+            size=24,
+            color='rgb(0, 0, 0)',
         ),
         tickfont=Font(
             family='',
-            size=12,
-            color=''
+            size=18,
+            color='rgb(0, 0, 0)',
         ),
         showline=True,
     ),
@@ -213,8 +213,8 @@ layout = Layout(
             ay=60,
             font=Font(
                 family='',
-                size=16,
-                color=''
+                size=24,
+                color='rgba(0, 0, 0, 0)',
             ),
             align='right',
             textangle=0,
@@ -236,8 +236,8 @@ layout = Layout(
             ay = 72,
             font=Font(
                 family='',
-                size=16,
-                color=''
+                size=24,
+                color='rgba(0, 0, 0, 0)'
             ),
             align='right',
             textangle=0,
@@ -282,8 +282,8 @@ layout = Layout(
             ay=-46,
             font=Font(
                 family='',
-                size=16,
-                color=''
+                size=24,
+                color='rgba(0, 0, 0, 0)',
             ),
             align='left',
             textangle=0,
@@ -304,8 +304,8 @@ layout = Layout(
             ay=-30,
             font=Font(
                 family='',
-                size=16,
-                color=''
+                size=24,
+                color='rgba(0, 0, 0, 0)',
             ),
             align='left',
             textangle=0,
@@ -322,4 +322,4 @@ fig = Figure(data=data, layout=layout)
 plot_url = py.plot(fig)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
-py.image.save_as(figure, 'images/effect_of_s.png', scale=4)
+py.image.save_as(figure, 'images/effect_of_s.pdf', scale=4)
