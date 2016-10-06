@@ -315,7 +315,7 @@ if __name__ == "__main__":
   # Here we want to see how the number of columns affects convergence.
   # We run 10 trials for each column number and then analyze results
   # numTrials = 10
-  # columnRange = [2,3,4,5,6,7,8]
+  # columnRange = [2,3,4,5,6,7]
   # featureRange = [3,5,7,11]
   #
   # # Comment this out if you are re-running analysis on an already saved set of
@@ -338,7 +338,7 @@ if __name__ == "__main__":
   #   convergence[r["numFeatures"]-1,
   #               r["numColumns"]] += r["convergencePoint"]/2.0
   #
-  # convergence = convergence/numTrials
+  # convergence = convergence/numTrials + 1.0
   #
   # # For each column, print convergence as fct of number of unique features
   # for c in range(2,max(columnRange)+1):
