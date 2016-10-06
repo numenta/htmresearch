@@ -164,7 +164,6 @@ def experiment1():
         pass
       else:
         experiment.tm.compute(sensorPattern,
-                        formInternalConnections=True,
                         learn=tmLearn,
                         sequenceLabel=inputCategory)
 

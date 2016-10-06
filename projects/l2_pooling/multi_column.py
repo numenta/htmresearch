@@ -24,7 +24,11 @@ This file creates simple experiment to test a single column L4-L2 network.
 
 import random
 
+from htmresearch.frameworks.layers.object_machine_factory import (
+  createObjectMachine
+)
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
+
 
 
 def runLateralDisambiguation(noiseLevel=None, profile=False):
@@ -34,10 +38,13 @@ def runLateralDisambiguation(noiseLevel=None, profile=False):
   unique one. We should see the first column rapidly converge to a
   unique representation.
 
-  :param noiseLevel: (float) Noise level to add to the locations and features
-                             during inference
-  :param profile:    (bool)  If True, the network will be profiled after
-                             learning and inference.
+  Parameters:
+  ----------------------------
+  @param    noiseLevel (float)
+            Noise level to add to the locations and features during inference
+
+  @param    profile (bool)
+            If True, the network will be profiled after learning and inference
 
   """
   exp = L4L2Experiment(
@@ -45,16 +52,22 @@ def runLateralDisambiguation(noiseLevel=None, profile=False):
     numCorticalColumns=2,
   )
 
-  objects = {}
-  objects = exp.addObject([(1, 1), (2, 2)], objects=objects)
-  objects = exp.addObject([(1, 1), (3, 2)], objects=objects)
+  objects = createObjectMachine(
+    machineType="simple",
+    numInputBits=20,
+    sensorInputSize=1024,
+    externalInputSize=1024,
+    numCorticalColumns=2,
+  )
+  objects.addObject([(1, 1), (2, 2)])
+  objects.addObject([(1, 1), (3, 2)])
 
-  exp.learnObjects(objects)
+  exp.learnObjects(objects.provideObjectsToLearn())
   if profile:
     exp.printProfile()
 
   inferConfig = {
-    "object": 1,
+    "noiseLevel": noiseLevel,
     "numSteps": 6,
     "pairs": {
       # this should activate 0 and 1
@@ -64,7 +77,7 @@ def runLateralDisambiguation(noiseLevel=None, profile=False):
     }
   }
 
-  exp.infer(inferConfig, noise=noiseLevel)
+  exp.infer(objects.provideObjectToInfer(inferConfig), objectName=1)
   if profile:
     exp.printProfile()
 
@@ -83,10 +96,13 @@ def runDisambiguationByUnions(noiseLevel=None, profile=False):
   recognizes a union of two objects, and the real object is the only
   common one.
 
-  :param noiseLevel: (float) Noise level to add to the locations and features
-                             during inference
-  :param profile:    (bool)  If True, the network will be profiled after
-                             learning and inference.
+  Parameters:
+  ----------------------------
+  @param    noiseLevel (float)
+            Noise level to add to the locations and features during inference
+
+  @param    profile (bool)
+            If True, the network will be profiled after learning and inference
 
   """
   exp = L4L2Experiment(
@@ -94,18 +110,24 @@ def runDisambiguationByUnions(noiseLevel=None, profile=False):
     numCorticalColumns=2,
   )
 
-  objects = {}
-  objects = exp.addObject([(1, 1), (2, 2)], name=0, objects=objects)
-  objects = exp.addObject([(2, 2), (3, 3)], name=1, objects=objects)
-  objects = exp.addObject([(3, 3), (4, 4)], name=2, objects=objects)
+  objects = createObjectMachine(
+    machineType="simple",
+    numInputBits=20,
+    sensorInputSize=1024,
+    externalInputSize=1024,
+    numCorticalColumns=2,
+  )
+  objects.addObject([(1, 1), (2, 2)])
+  objects.addObject([(2, 2), (3, 3)])
+  objects.addObject([(3, 3), (4, 4)])
 
-  exp.learnObjects(objects)
+  exp.learnObjects(objects.provideObjectsToLearn())
   if profile:
     exp.printProfile()
 
   inferConfig = {
-    "object": 1,
     "numSteps": 6,
+    "noiseLevel": noiseLevel,
     "pairs": {
       # this should activate 1 and 2
       0: [(2, 2), (2, 2), (2, 2), (2, 2), (2, 2), (2, 2)],
@@ -114,7 +136,7 @@ def runDisambiguationByUnions(noiseLevel=None, profile=False):
     }
   }
 
-  exp.infer(inferConfig, noise=noiseLevel)
+  exp.infer(objects.provideObjectToInfer(inferConfig), objectName=1)
   if profile:
     exp.printProfile()
 
@@ -131,53 +153,75 @@ def runStretch(noiseLevel=None, profile=False):
   """
   Stretch test that learns a lot of objects.
 
-  :param noiseLevel: (float) Noise level to add to the locations and features
-                             during inference
-  :param profile:    (bool)  If True, the network will be profiled after
-                             learning and inference.
+  Parameters:
+  ----------------------------
+  @param    noiseLevel (float)
+            Noise level to add to the locations and features during inference
+
+  @param    profile (bool)
+            If True, the network will be profiled after learning and inference
 
   """
   exp = L4L2Experiment(
-    "stretch",
+    "stretch_L10_F10_C2",
     numCorticalColumns=2,
   )
 
-  objects = exp.createRandomObjects(10, 10)
+  objects = createObjectMachine(
+    machineType="simple",
+    numInputBits=20,
+    sensorInputSize=1024,
+    externalInputSize=1024,
+    numCorticalColumns=2,
+  )
+  objects.createRandomObjects(10, 10, numLocations=10, numFeatures=10)
   print "Objects are:"
-  for object, pairs in objects.iteritems():
+  for object, pairs in objects.objects.iteritems():
     print str(object) + ": " + str(pairs)
 
-  exp.learnObjects(objects)
+  exp.learnObjects(objects.provideObjectsToLearn())
   if profile:
-    exp.printProfile()
+    exp.printProfile(reset=True)
 
+  # For inference, we will check and plot convergence for object 0. We create a
+  # sequence of random sensations for each column.  We will present each
+  # sensation for 4 time steps to let it settle and ensure it converges.
   objectCopy1 = [pair for pair in objects[0]]
   objectCopy2 = [pair for pair in objects[0]]
+  objectCopy3 = [pair for pair in objects[0]]
   random.shuffle(objectCopy1)
   random.shuffle(objectCopy2)
+  random.shuffle(objectCopy3)
 
   # stay multiple steps on each sensation
-  object1 = []
+  objectSensations1 = []
   for pair in objectCopy1:
     for _ in xrange(4):
-      object1.append(pair)
+      objectSensations1.append(pair)
 
   # stay multiple steps on each sensation
-  object2 = []
+  objectSensations2 = []
   for pair in objectCopy2:
     for _ in xrange(4):
-      object2.append(pair)
+      objectSensations2.append(pair)
+
+  # stay multiple steps on each sensation
+  objectSensations3 = []
+  for pair in objectCopy3:
+    for _ in xrange(4):
+      objectSensations3.append(pair)
 
   inferConfig = {
-    "object": 0,
-    "numSteps": len(object1),
+    "numSteps": len(objectSensations1),
+    "noiseLevel": noiseLevel,
     "pairs": {
-      0: object1,
-      1: object2,
+      0: objectSensations1,
+      1: objectSensations2,
+      # 2: objectSensations3,  # Uncomment for 3 columns
     }
   }
 
-  exp.infer(inferConfig, noise=noiseLevel)
+  exp.infer(objects.provideObjectToInfer(inferConfig), objectName=0)
   if profile:
     exp.printProfile()
 
@@ -189,16 +233,20 @@ def runStretch(noiseLevel=None, profile=False):
   )
 
 
+
 def runAmbiguities(noiseLevel=None, profile=False):
   """
   Runs an experiment where three objects are being learnt, but share many
   patterns. At inference, only one object is being moved over, and we should
   see quick convergence.
 
-  :param noiseLevel: (float) Noise level to add to the locations and features
-                             during inference
-  :param profile:    (bool)  If True, the network will be profiled after
-                             learning and inference.
+  Parameters:
+  ----------------------------
+  @param    noiseLevel (float)
+            Noise level to add to the locations and features during inference
+
+  @param    profile (bool)
+            If True, the network will be profiled after learning and inference
 
   """
   exp = L4L2Experiment(
@@ -206,25 +254,31 @@ def runAmbiguities(noiseLevel=None, profile=False):
     numCorticalColumns=2,
   )
 
-  objects = {}
-  objects = exp.addObject([(1, 1), (2, 1), (3, 3)], name=0, objects=objects)
-  objects = exp.addObject([(2, 2), (3, 3), (2, 1)], name=1, objects=objects)
-  objects = exp.addObject([(3, 1), (2, 1), (1, 2)], name=2, objects=objects)
+  objects = createObjectMachine(
+    machineType="simple",
+    numInputBits=20,
+    sensorInputSize=1024,
+    externalInputSize=1024,
+    numCorticalColumns=2,
+  )
+  objects.addObject([(1, 1), (2, 1), (3, 3)])
+  objects.addObject([(2, 2), (3, 3), (2, 1)])
+  objects.addObject([(3, 1), (2, 1), (1, 2)])
 
-  exp.learnObjects(objects)
+  exp.learnObjects(objects.provideObjectsToLearn())
   if profile:
     exp.printProfile()
 
   inferConfig = {
-    "object": 1,
     "numSteps": 6,
+    "noiseLevel": noiseLevel,
     "pairs": {
       0: [(2, 1), (2, 1), (3, 3), (2, 2), (2, 2), (2, 2)],
       1: [(3, 3), (3, 3), (3, 3), (2, 2), (2, 1), (2, 1)]
     }
   }
 
-  exp.infer(inferConfig, noise=noiseLevel)
+  exp.infer(objects.provideObjectToInfer(inferConfig), objectName=1)
   if profile:
     exp.printProfile()
 
@@ -238,7 +292,14 @@ def runAmbiguities(noiseLevel=None, profile=False):
 
 
 if __name__ == "__main__":
+  # simple disambiguation by another cortical column
   runLateralDisambiguation()
-  runDisambiguationByUnions(noiseLevel=0.05)
+
+  # disambiguation between two cortical columns on ambiguous patterns
+  runDisambiguationByUnions()
+
+  # stretch experiment with a lot of objects
   runStretch()
-  runAmbiguities(noiseLevel=0.05)
+
+  # experiment with a lot of ambiguities between patterns and objects
+  runAmbiguities()

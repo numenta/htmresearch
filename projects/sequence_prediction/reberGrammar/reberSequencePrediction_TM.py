@@ -33,10 +33,11 @@ from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from htmresearch.algorithms.extended_temporal_memory import (
      ExtendedTemporalMemory)
 
-from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
-    TemporalMemoryMonitorMixin)
+from htmresearch.support.etm_monitor_mixin import (
+     ExtendedTemporalMemoryMonitorMixin)
 
-class MonitoredFastExtendedTemporalMemory(TemporalMemoryMonitorMixin,
+
+class MonitoredFastExtendedTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
                                          ExtendedTemporalMemory):
   pass
 

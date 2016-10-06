@@ -101,6 +101,7 @@ class DistalTimestamps1CellPerColumnDetector(AnomalyDetector):
       "activationThreshold": 13,
       "cellsPerColumn": 1,
       "columnDimensions": (2048,),
+      "basalInputDimensions": (self.timestampEncoder.getWidth(),),
       "initialPermanence": 0.21,
       "maxSegmentsPerCell": 128,
       "maxSynapsesPerSegment": 32,
@@ -109,7 +110,7 @@ class DistalTimestamps1CellPerColumnDetector(AnomalyDetector):
       "permanenceDecrement": 0.1,
       "permanenceIncrement": 0.1,
       "seed": 1960,
-      "formInternalConnections": True
+      "checkInputs": False,
     })
 
     learningPeriod = math.floor(self.probationaryPeriod / 2.0)
@@ -129,22 +130,24 @@ class DistalTimestamps1CellPerColumnDetector(AnomalyDetector):
     self.timestampEncoder.encodeIntoArray(inputData["timestamp"],
                                           self.encodedTimestamp)
     self.prevActiveExternalCells = self.activeExternalCells
-    self.activeExternalCells = sorted(self.encodedTimestamp.nonzero()[0])
+    self.activeExternalCells = self.encodedTimestamp.nonzero()[0]
 
     self.sp.compute(self.encodedValue, True, self.spOutput)
 
-    activeColumns = set(self.spOutput.nonzero()[0].tolist())
+    activeColumns = self.spOutput.nonzero()[0]
+    activeColumnsSet = set(activeColumns.tolist())
     prevPredictedColumns = set(self.etm.columnForCell(cell)
                                for cell in self.etm.getPredictiveCells())
 
-    rawScore = (len(activeColumns - prevPredictedColumns) /
+    rawScore = (len(activeColumnsSet - prevPredictedColumns) /
                 float(len(activeColumns)))
     anomalyScore = self.anomalyLikelihood.anomalyProbability(
       inputData["value"], rawScore, inputData["timestamp"])
     logScore = self.anomalyLikelihood.computeLogLikelihood(anomalyScore)
 
-    self.etm.compute(sorted(activeColumns),
-                     self.prevActiveExternalCells,
-                     self.activeExternalCells)
+    self.etm.compute(activeColumns,
+                     activeCellsExternalBasal=self.activeExternalCells,
+                     reinforceCandidatesExternalBasal=self.prevActiveExternalCells,
+                     growthCandidatesExternalBasal=self.prevActiveExternalCells)
 
     return (logScore, rawScore)

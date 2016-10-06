@@ -39,20 +39,12 @@ import nupic_output
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from errorMetrics import *
+from htmresearch.support.sequence_learning_utils import *
 from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
 rcParams['pdf.fonttype'] = 42
 
 plt.ion()
-DESCRIPTION = (
-  "Starts a NuPIC model from the model params returned by the swarm\n"
-  "and pushes each line of input from the gym into the model. Results\n"
-  "are written to an output file (default) or plotted dynamically if\n"
-  "the --plot option is specified.\n"
-  "NOTE: You must run ./swarm.py before this, because model parameters\n"
-  "are required to run NuPIC.\n"
-)
 
 
 DATA_DIR = "./data"
@@ -143,16 +135,16 @@ def printTPRegionParams(tpregion):
   """
   tm = tpregion.getSelf()._tfdr
   print "------------PY  TemporalMemory Parameters ------------------"
-  print "numberOfCols             =", tm.columnDimensions
-  print "cellsPerColumn           =", tm.cellsPerColumn
-  print "minThreshold             =", tm.minThreshold
-  print "activationThreshold      =", tm.activationThreshold
-  print "newSynapseCount          =", tm.maxNewSynapseCount
-  print "initialPerm              =", tm.initialPermanence
-  print "connectedPerm            =", tm.connectedPermanence
-  print "permanenceInc            =", tm.permanenceIncrement
-  print "permanenceDec            =", tm.permanenceDecrement
-  print "predictedSegmentDecrement=", tm.predictedSegmentDecrement
+  print "numberOfCols             =", tm.getColumnDimensions()
+  print "cellsPerColumn           =", tm.getCellsPerColumn()
+  print "minThreshold             =", tm.getMinThreshold()
+  print "activationThreshold      =", tm.getActivationThreshold()
+  print "newSynapseCount          =", tm.getMaxNewSynapseCount()
+  print "initialPerm              =", tm.getInitialPermanence()
+  print "connectedPerm            =", tm.getConnectedPermanence()
+  print "permanenceInc            =", tm.getPermanenceIncrement()
+  print "permanenceDec            =", tm.getPermanenceDecrement()
+  print "predictedSegmentDecrement=", tm.getPredictedSegmentDecrement()
   print
 
 
@@ -174,6 +166,8 @@ def runMultiplePass(df, model, nMultiplePass, nTrain):
 
   return model
 
+
+
 def runMultiplePassSPonly(df, model, nMultiplePass, nTrain):
   """
   run CLA model SP through data record 0:nTrain nMultiplePass passes
@@ -192,9 +186,20 @@ def runMultiplePassSPonly(df, model, nMultiplePass, nTrain):
   return model
 
 
-if __name__ == "__main__":
-  print DESCRIPTION
 
+def movingAverage(a, n):
+  movingAverage = []
+
+  for i in xrange(len(a)):
+    start = max(0, i - n)
+    values = a[start:i+1]
+    movingAverage.append(sum(values) / float(len(values)))
+
+  return movingAverage
+
+
+
+if __name__ == "__main__":
   (_options, _args) = _getArgs()
   dataSet = _options.dataSet
   plot = _options.plot
@@ -286,7 +291,7 @@ if __name__ == "__main__":
     inputRecord = getInputRecord(df, predictedField, i)
     tp = model._getTPRegion()
     tm = tp.getSelf()._tfdr
-    prePredictiveCells = tm.predictiveCells
+    prePredictiveCells = tm.getPredictiveCells()
     prePredictiveColumn = np.array(list(prePredictiveCells)) / tm.cellsPerColumn
 
     result = model.run(inputRecord)
@@ -321,7 +326,7 @@ if __name__ == "__main__":
     tm = tp.getSelf()._tfdr
     tpOutput = tm.infActiveState['t']
 
-    predictiveCells = tm.predictiveCells
+    predictiveCells = tm.getPredictiveCells()
     predCellNum.append(len(predictiveCells))
     predColumn = np.array(list(predictiveCells))/ tm.cellsPerColumn
 
@@ -443,5 +448,10 @@ if __name__ == "__main__":
   np.save('./result/'+dataSet+classifierType+'TMprediction.npy', predictions)
   np.save('./result/'+dataSet+classifierType+'TMtruth.npy', truth)
 
-
-
+  plt.figure()
+  activeCellNumAvg = movingAverage(activeCellNum, 100)
+  plt.plot(np.array(activeCellNumAvg)/tm.numberOfCells())
+  plt.xlabel('data records')
+  plt.ylabel('sparsity')
+  plt.xlim([0, 5000])
+  plt.savefig('result/sparsity_over_training.pdf')

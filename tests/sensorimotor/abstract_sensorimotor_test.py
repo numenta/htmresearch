@@ -23,10 +23,10 @@ import unittest2 as unittest
 
 import numpy
 
-from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
-  TemporalMemoryMonitorMixin)
+from htmresearch.support.etm_monitor_mixin import (
+  ExtendedTemporalMemoryMonitorMixin)
 from sensorimotor.extended_temporal_memory import ExtendedTemporalMemory
-class MonitoredSensorimotorTemporalMemory(TemporalMemoryMonitorMixin,
+class MonitoredSensorimotorTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
                                           ExtendedTemporalMemory): pass
 
 
@@ -34,7 +34,9 @@ class MonitoredSensorimotorTemporalMemory(TemporalMemoryMonitorMixin,
 class AbstractSensorimotorTest(unittest.TestCase):
 
   VERBOSITY = 1
-  DEFAULT_TM_PARAMS = {}
+  DEFAULT_TM_PARAMS = {
+    "basalInputDimensions": (999999,) # Dodge input checking.
+  }
   SEED = 42
 
 
@@ -61,16 +63,16 @@ class AbstractSensorimotorTest(unittest.TestCase):
     for i in xrange(len(sensorSequence)):
       sensorPattern = sensorSequence[i]
       motorPattern = motorSequence[i]
+      prevMotorPattern = (motorSequence[i-1] if i >= 0 else ())
       sensorimotorPattern = sensorimotorSequence[i]
       sequenceLabel = sequenceLabels[i]
       if sensorPattern is None:
         self.tm.reset()
       else:
         self.tm.compute(sensorPattern,
-                        activeExternalCells=motorPattern,
-                        formInternalConnections=True,
-                        learn=learn,
-                        sequenceLabel=sequenceLabel)
+                        activeCellsExternalBasal=motorPattern,
+                        reinforceCandidatesExternalBasal=prevMotorPattern,
+                        growthCandidatesExternalBasal=prevMotorPattern)
 
     if self.VERBOSITY >= 2:
       print self.tm.mmPrettyPrintTraces(

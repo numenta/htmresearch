@@ -23,63 +23,35 @@
 
 import inspect
 
-from nupic.research.temporal_memory import TemporalMemory
-from nupic.bindings.algorithms import TemporalMemory as TemporalMemoryCPP
 from htmresearch.algorithms.extended_temporal_memory import (
-  ExtendedTemporalMemory)
+  ExtendedTemporalMemory as ExtendedTemporalMemoryPY)
+from htmresearch.support.etm_monitor_mixin import (
+  ExtendedTemporalMemoryMonitorMixin)
+from nupic.research.temporal_memory import TemporalMemory as TemporalMemoryPY
+from nupic.bindings.algorithms import TemporalMemory as TemporalMemoryCPP
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
-from nupic.bindings.experimental import ExtendedTemporalMemory as FastETM
+from nupic.bindings.experimental import (
+  ExtendedTemporalMemory as ExtendedTemporalMemoryCPP)
 
 
-class MonitoredTemporalMemory(TemporalMemoryMonitorMixin, TemporalMemory):
+
+class MonitoredTemporalMemoryPY(TemporalMemoryMonitorMixin, TemporalMemoryPY):
   pass
 
 
-class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin,
-                                      ExtendedTemporalMemory):
+class MonitoredTemporalMemoryCPP(TemporalMemoryMonitorMixin, TemporalMemoryCPP):
   pass
 
 
-class ReversedExtendedTemporalMemory(FastETM):
-  """
-  Modified version of ETM. Should be implemented (or at least allowed) when
-  the "new" ETM is ported to Python.
+class MonitoredExtendedTemporalMemoryPY(ExtendedTemporalMemoryMonitorMixin,
+                                        ExtendedTemporalMemoryPY):
+  pass
 
-  This class inherits from Python binding of nupic.core's extended temporal
-  memory, to overwrite its compute() function. The goal is to reverse the two
-  steps of inference: depolarize before activate, so that external and
-  proximal input are used at the same time step.
-  """
 
-  def compute(self,
-              activeColumns,
-              activeExternalCells=None,
-              activeApicalCells=None,
-              formInternalConnections=False,
-              learn=True):
-    """
-    Use bindings methods to reverse the calls in compute.
-    """
-    # sort indices for consistency with C++ version
-    activeColumns = sorted(list(activeColumns))
-    activeExternalCells = sorted(list(activeExternalCells))
-    activeApicalCells = sorted(list(activeApicalCells))
-
-    self.activateBasalDendrites(
-      activeExternalCells,
-      learn
-    )
-    self.activateApicalDendrites(
-      activeApicalCells,
-      learn
-    )
-    self.activateCells(
-      activeColumns,
-      activeExternalCells,
-      activeApicalCells,
-      learn
-    )
+class MonitoredExtendedTemporalMemoryCPP(ExtendedTemporalMemoryMonitorMixin,
+                                         ExtendedTemporalMemoryCPP):
+  pass
 
 
 
@@ -88,13 +60,14 @@ class TemporalMemoryTypes(object):
   identifier to constructor.  See createModel() for actual factory method
   implementation.
   """
-  extended = ExtendedTemporalMemory
-  extendedCPP = FastETM
-  reversedExtendedCPP = ReversedExtendedTemporalMemory
-  extendedMixin = MonitoredExtendedTemporalMemory
-  tm = TemporalMemory
-  tmMixin = MonitoredTemporalMemory
-  tmCPP = TemporalMemoryCPP
+  etm_py = ExtendedTemporalMemoryPY
+  etm_cpp = ExtendedTemporalMemoryCPP
+  monitored_etm_py = MonitoredExtendedTemporalMemoryPY
+  monitored_etm_cpp = MonitoredExtendedTemporalMemoryCPP
+  tm_py = TemporalMemoryPY
+  tm_cpp = TemporalMemoryCPP
+  monitored_tm_py = MonitoredTemporalMemoryPY
+  monitored_tm_cpp = MonitoredTemporalMemoryCPP
 
 
   @classmethod
@@ -108,7 +81,7 @@ class TemporalMemoryTypes(object):
     for attrName in dir(cls):
       attrValue = getattr(cls, attrName)
       if (isinstance(attrValue, type)):
-        yield attrName # attrName is an acceptable model name and
+        yield attrName
 
 
 def createModel(modelName, **kwargs):
@@ -148,4 +121,3 @@ def getConstructorArguments(modelName):
   argspec = inspect.getargspec(
                             getattr(TemporalMemoryTypes, modelName).__init__)
   return (argspec.args[1:], argspec.defaults)
-

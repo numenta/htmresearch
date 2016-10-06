@@ -24,7 +24,7 @@
 from matplotlib import pyplot as plt
 plt.ion()
 
-from errorMetrics import *
+from htmresearch.support.sequence_learning_utils import *
 import pandas as pd
 import numpy as np
 from pylab import rcParams
