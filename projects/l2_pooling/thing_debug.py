@@ -23,7 +23,9 @@ This file is used to debug specific Thing experiments.
 """
 
 import pprint
-from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
+import cPickle
+from htmresearch.frameworks.layers.l2_l4_inference import (
+  L4L2Experiment, rerunExperimentFromLogfile)
 
 thingObjects = {
   "Capsule":[
@@ -92,25 +94,20 @@ def getObjectPair(objectName, pointNumber):
   return thingObjects[objectName][pointNumber][0]
 
 
-def runExperiment():
-  """
-  Runs a simple experiment where three objects share a number of location,
-  feature pairs.
-
-  Parameters:
-  ----------------------------
-  @param    noiseLevel (float)
-            Noise level to add to the locations and features during inference
-
-  @param    profile (bool)
-            If True, the network will be profiled after learning and inference
-
-  """
-  exp = L4L2Experiment(
-    "shared_features",
-  )
-
+def createExperiment(logFilename):
+  # Typically this would be done by Thing
+  exp = L4L2Experiment("shared_features", logCalls=True)
   exp.learnObjects(thingObjects)
+  exp.saveLog(logFilename)
+
+
+def debugExperiment(logFile):
+  """
+  Debug a thing experiment given a logFile
+  """
+
+  exp = rerunExperimentFromLogfile(logFile)
+  exp.logCalls = False
 
   L2Representations = exp.objectL2Representations
   print "Learned object representations:"
@@ -121,7 +118,7 @@ def runExperiment():
   sensationList = [
     {0: getObjectPair("Capsule", 0)},
   ]
-  exp.infer(sensationList, objectName="Capsule", reset= False)
+  exp.infer(sensationList, reset= False)
   print "Output for capsule:", exp.getL2Representations()
   print "Intersection with sphere:", len(
     exp.getL2Representations()[0] & L2Representations["Sphere"][0])
@@ -135,7 +132,7 @@ def runExperiment():
   sensationList = [
     {0: getObjectPair("Sphere", 0)},
   ]
-  exp.infer(sensationList, objectName="Sphere", reset= False)
+  exp.infer(sensationList, reset= False)
   print "Output for sphere:", exp.getL2Representations()
   print "Intersection with sphere:", len(
     exp.getL2Representations()[0] & L2Representations["Sphere"][0])
@@ -150,7 +147,7 @@ def runExperiment():
     {0: getObjectPair("Sphere", 0)},
     {0: getObjectPair("Sphere", 2)},
   ]
-  exp.infer(sensationList, objectName="Sphere", reset= False)
+  exp.infer(sensationList, reset= False)
   print "Output for sphere:", exp.getL2Representations()
   print "Intersection with sphere:", len(
     exp.getL2Representations()[0] & L2Representations["Sphere"][0])
@@ -165,7 +162,7 @@ def runExperiment():
   sensationList = [
     {0: getObjectPair("Cube", 2)},
   ]
-  exp.infer(sensationList, objectName="Cube", reset= False)
+  exp.infer(sensationList, reset= False)
   print "Output for cube:", exp.getL2Representations()
   print "Intersection with sphere:", len(
     exp.getL2Representations()[0] & L2Representations["Sphere"][0])
@@ -177,6 +174,19 @@ def runExperiment():
 
 
 
-
 if __name__ == "__main__":
-  runExperiment()
+
+  # Mimic thing, which will create a log file
+  createExperiment("callLog.pkl")
+
+  # Print out the log
+  print "\n========== CALL LOG ==============="
+  with open("callLog.pkl","rb") as f:
+    callLog = cPickle.load(f)
+  for call in callLog:
+    print call
+    print
+  print "=====================================\n"
+
+  # Recreate class from log and debug experiment
+  debugExperiment("callLog.pkl")
