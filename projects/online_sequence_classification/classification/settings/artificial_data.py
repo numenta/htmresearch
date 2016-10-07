@@ -52,3 +52,4 @@ similarityThreshold = 0.01
 pruningFrequency = 20
 pruneClusters = False
 rollingAccuracyWindow = 10
+cellsToCluster = 'tmPredictedActiveCells'

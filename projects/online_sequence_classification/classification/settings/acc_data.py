@@ -28,8 +28,8 @@ INPUT_FILES = [
   'walk-5min.csv',
   # 'run-5min.csv',
   # 'stairs-up-5min.csv',
-  # 'sit-5min.csv',
-  'jump-5min.csv',
+  'sit-5min.csv',
+  #'jump-5min.csv',
   # 'stairs-down-5min.csv',
   # 'stumble-5min.csv'
 ]
@@ -39,7 +39,6 @@ SLICES = 10
 
 
 # Clustering params
-startClusteringIndex = 0
 mergeThreshold = 0.25
 anomalousThreshold = 0.5
 stableThreshold = 0.1
@@ -48,3 +47,4 @@ similarityThreshold = 0.0
 pruningFrequency = 20
 pruneClusters = False
 rollingAccuracyWindow = 10
+cellsToCluster = 'tmActiveCells'

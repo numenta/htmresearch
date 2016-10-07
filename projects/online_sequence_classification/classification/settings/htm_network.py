@@ -37,3 +37,5 @@ OUTPUT_DIR = os.path.join(parentDir, 'results')
 HTM_NETWORK_CONFIGS = os.path.join(parentDir, 'htm_network_config', 
                                    'network_configs.json')
 PLOT_RESULTS = False
+
+CLUSTERING = True
