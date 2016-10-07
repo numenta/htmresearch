@@ -1,4 +1,4 @@
-Online Sequence CLassification
+Online Sequence Classification
 ===
 
 The online sequence classification projects has a couple of sub-folders:

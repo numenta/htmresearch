@@ -41,8 +41,9 @@ run `run_htm_network`.
 # 3. Plot results
 
 ## Plot Temporal Memory sequences
-To visualize 2D projections of TM sequences and inter-sequence distances, run   
-`python plot_tm_sequences.py -f <filepath>` where `filepath` can be:
+To visualize inter-sequence / inter-cluster distances and 2D projections of TM 
+states , run `python plot_tm_distances.py -f <filepath>` where `filepath` 
+can be:
 * `results/traces_binary_ampl=10.0_mean=0.0_noise=0.0_sp=False_tm=True_tp=False_SDRClassifier.csv`
 * `results/traces_sensortag_z_sp=False_tm=True_tp=False_SDRClassifier.csv`
 
