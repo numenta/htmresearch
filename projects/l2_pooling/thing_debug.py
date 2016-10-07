@@ -161,6 +161,21 @@ def runExperiment():
   exp.sendReset()
 
 
+  print "\nRun inference with a point on the cube"
+  sensationList = [
+    {0: getObjectPair("Cube", 2)},
+  ]
+  exp.infer(sensationList, objectName="Cube", reset= False)
+  print "Output for cube:", exp.getL2Representations()
+  print "Intersection with sphere:", len(
+    exp.getL2Representations()[0] & L2Representations["Sphere"][0])
+  print "Intersection with Capsule:", len(
+    exp.getL2Representations()[0] & L2Representations["Capsule"][0])
+  print "Intersection with cube:", len(
+    exp.getL2Representations()[0] & L2Representations["Cube"][0])
+  exp.sendReset()
+
+
 
 
 if __name__ == "__main__":
