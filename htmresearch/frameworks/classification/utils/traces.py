@@ -60,8 +60,8 @@ def plotTraces(numTmCells, xlim, traces):
                     'tmPredictedActiveCells',
                     'tmActiveCells']:
 
-    f, ax = plt.subplots(3, sharex=True)
-    
+    f, ax = plt.subplots(4, sharex=True)
+
     # plot sensor value and class labels
     ax[0].set_title('Sensor data')
     ax[0].plot(t, sensorValue)
@@ -88,12 +88,16 @@ def plotTraces(numTmCells, xlim, traces):
     ax[0].set_ylabel('Sensor Value')
 
     # plot classification accuracy
-    ax[1].set_title('Clustering accuracy rolling average')
-    ax[1].plot(traces['clusteringAccuracy'])
-    
-    
+    ax[1].set_title('Classification accuracy rolling average')
+    ax[1].plot(traces['classificationAccuracy'])
+
+    # plot clustering accuracy
+    ax[2].set_title('Clustering accuracy rolling average')
+    if 'clusteringAccuracy' in traces:
+      ax[2].plot(traces['clusteringAccuracy'])
+
     # plot cell activations
-    ax[2].set_axis_bgcolor('black')
+    ax[3].set_axis_bgcolor('black')
 
     cellTrace = traces[traceName]
     if len(selectRange) <= len(cellTrace):
@@ -101,12 +105,12 @@ def plotTraces(numTmCells, xlim, traces):
         cells = cellTrace[selectRange[i]]
         if cells is not None:
           sdrT = t[selectRange[i]] * np.ones((len(cells, )))
-          ax[2].plot(sdrT, randomCellOrder[cells], 's', color='white', ms=1)
+          ax[3].plot(sdrT, randomCellOrder[cells], 's', color='white', ms=1)
 
-    ax[2].set_title('Cell activation')
-    ax[2].set_ylabel(traceName)
-    ax[2].set_ylim([0, numTmCells])
-    ax[2].set_xlabel('Time')
+    ax[3].set_title('Cell activation')
+    ax[3].set_ylabel(traceName)
+    ax[3].set_ylim([0, numTmCells])
+    ax[3].set_xlabel('Time')
 
   plt.show()
 
@@ -144,9 +148,9 @@ def loadTraces(fileName):
   :param fileName: (str) name of the file
   :return traces: (dict) network traces. E.g: activeCells, sensorValues, etc.
   """
-  
+
   csv.field_size_limit(sys.maxsize)
-  
+
   with open(fileName, 'rb') as fr:
     reader = csv.reader(fr)
     headers = reader.next()
@@ -161,8 +165,8 @@ def loadTraces(fileName):
           data = []
         else:
           if headers[i] in ['tmPredictedActiveCells',
-                              'tpActiveCells',
-                              'tmActiveCells']:
+                            'tpActiveCells',
+                            'tmActiveCells']:
             if row[i] == '[]':
               data = []
             else:
