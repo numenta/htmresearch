@@ -405,7 +405,8 @@ class L4L2Experiment(object):
       values.pop('self')
       (_, filename,
        _, _, _, _) = inspect.getouterframes(inspect.currentframe())[1]
-      if os.path.basename(filename) != os.path.basename(__file__):
+      if os.path.splitext(os.path.basename(__file__))[0] != \
+         os.path.splitext(os.path.basename(filename))[0]:
         self.callLog.append([inspect.getframeinfo(frame)[2], values])
 
     for col in xrange(self.numColumns):
