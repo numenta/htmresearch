@@ -181,6 +181,32 @@ class ColumnPooler(object):
       self._activateCellsInferenceMode(feedforwardInput)
 
 
+  def compute(self, feedforwardInput=(), lateralInput=(), learn=True):
+    """
+    Runs one time step of the column pooler algorithm.
+
+    This method assumes:
+
+     - Lateral input should trigger predictions for this time step, i.e. for
+       this feedforward input.
+     - During learning, all lateral input is eligible for growth and
+       reinforcement.
+
+    If these are bad assumptions, use depolarizeCells and activateCells
+    directly.
+
+    @param  feedforwardInput (set)
+            Indices of active feedforward input bits
+
+    @param  lateralInput  (set)
+            Indices of active lateral input bits
+
+    @param learn                    (bool)
+            If True, we are learning a new object
+    """
+    self.depolarizeCells(lateralInput, learn)
+    self.activateCells(feedforwardInput, lateralInput, lateralInput, learn)
+
 
   def _activateCellsLearningMode(self,
                                  feedforwardInput,
