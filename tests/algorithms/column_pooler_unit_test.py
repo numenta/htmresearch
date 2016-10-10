@@ -86,7 +86,7 @@ class ColumnPoolerTest(unittest.TestCase):
       "Incorrect number of active cells")
 
     # After computing with no input should have 40 active cells
-    pooler.activateCells(feedforwardInput=set(), learn=True)
+    pooler.compute(feedforwardInput=set(), learn=True)
     activatedCells[pooler.getActiveCells()] = 1
     self.assertEqual(
       activatedCells.sum(),
@@ -99,7 +99,7 @@ class ColumnPoolerTest(unittest.TestCase):
                      "Incorrect number of active cells")
 
     # Computing again with no input should lead to different 40 active cells
-    pooler.activateCells(feedforwardInput=set(), learn=True)
+    pooler.compute(feedforwardInput=set(), learn=True)
     activatedCells[pooler.getActiveCells()] += 1
     self.assertLess((activatedCells>=2).sum(), 5,
                     "SDRs not sufficiently different")
@@ -122,7 +122,7 @@ class ColumnPoolerTest(unittest.TestCase):
     activatedCells = numpy.zeros(pooler.numberOfCells())
 
     # Get initial activity
-    pooler.activateCells(feedforwardInput=set(range(0, 40)), learn=True)
+    pooler.compute(feedforwardInput=set(range(0, 40)), learn=True)
     activatedCells[pooler.getActiveCells()] = 1
     self.assertEqual(activatedCells.sum(), 40,
                      "Incorrect number of active cells")
@@ -144,7 +144,7 @@ class ColumnPoolerTest(unittest.TestCase):
 
     # As multiple different feedforward inputs come in, the same set of cells
     # should be active.
-    pooler.activateCells(feedforwardInput=set(range(100, 140)), learn=True)
+    pooler.compute(feedforwardInput=set(range(100, 140)), learn=True)
     self.assertEqual(sum1, sum(pooler.getActiveCells()),
                      "Activity is not consistent for same input")
 
@@ -164,7 +164,7 @@ class ColumnPoolerTest(unittest.TestCase):
 
     # If there is no feedforward input we should still get the same set of
     # active cells
-    pooler.activateCells(feedforwardInput=set(), learn=True)
+    pooler.compute(feedforwardInput=set(), learn=True)
     self.assertEqual(sum1, sum(pooler.getActiveCells()),
                      "Activity is not consistent for same input")
 
@@ -173,7 +173,7 @@ class ColumnPoolerTest(unittest.TestCase):
     # In "learn new object mode", given a familiar feedforward input after reset
     # we should not get the same set of active cells
     pooler.reset()
-    pooler.activateCells(feedforwardInput=set(range(0, 40)), learn=True)
+    pooler.compute(feedforwardInput=set(range(0, 40)), learn=True)
     self.assertNotEqual(sum1, sum(pooler.getActiveCells()),
                "Activity should not be consistent for same input after reset")
     self.assertEqual(len(pooler.getActiveCells()), 40,
@@ -187,19 +187,19 @@ class ColumnPoolerTest(unittest.TestCase):
     activatedCells = numpy.zeros(pooler.numberOfCells())
 
     # Learn one pattern
-    pooler.activateCells(feedforwardInput=set(range(0, 40)), learn=True)
+    pooler.compute(feedforwardInput=set(range(0, 40)), learn=True)
     activatedCells[pooler.getActiveCells()] = 1
     sum1 = sum(pooler.getActiveCells())
 
     # Inferring on same pattern should lead to same result
     pooler.reset()
-    pooler.activateCells(feedforwardInput=set(range(0, 40)), learn=False)
+    pooler.compute(feedforwardInput=set(range(0, 40)), learn=False)
     self.assertEqual(sum1,
                      sum(pooler.getActiveCells()),
                      "Inference on pattern after learning it is incorrect")
 
     # Inferring with no inputs should maintain same pattern
-    pooler.activateCells(feedforwardInput=set(), learn=False)
+    pooler.compute(feedforwardInput=set(), learn=False)
     self.assertEqual(sum1,
                      sum(pooler.getActiveCells()),
                      "Inference doesn't maintain activity with no input.")
@@ -212,11 +212,11 @@ class ColumnPoolerTest(unittest.TestCase):
     activatedCells = numpy.zeros(pooler.numberOfCells())
 
     # Learn object one
-    pooler.activateCells(feedforwardInput=set(range(0, 40)), learn=True)
+    pooler.compute(feedforwardInput=set(range(0, 40)), learn=True)
     activatedCells[pooler.getActiveCells()] = 1
     sum1 = sum(pooler.getActiveCells())
 
-    pooler.activateCells(feedforwardInput=set(range(100, 140)), learn=True)
+    pooler.compute(feedforwardInput=set(range(100, 140)), learn=True)
     activatedCells[pooler.getActiveCells()] = 1
     self.assertEqual(sum1,
                      sum(pooler.getActiveCells()),
@@ -224,11 +224,11 @@ class ColumnPoolerTest(unittest.TestCase):
 
     # Learn object two
     pooler.reset()
-    pooler.activateCells(feedforwardInput=set(range(1000, 1040)), learn=True)
+    pooler.compute(feedforwardInput=set(range(1000, 1040)), learn=True)
     activatedCells[pooler.getActiveCells()] = 1
     sum2 = sum(pooler.getActiveCells())
 
-    pooler.activateCells(feedforwardInput=set(range(1100, 1140)), learn=True)
+    pooler.compute(feedforwardInput=set(range(1100, 1140)), learn=True)
     activatedCells[pooler.getActiveCells()] = 1
     self.assertEqual(sum2,
                      sum(pooler.getActiveCells()),
@@ -237,19 +237,19 @@ class ColumnPoolerTest(unittest.TestCase):
     # Inferring on patterns in first object should lead to same result, even
     # after gap
     pooler.reset()
-    pooler.activateCells(feedforwardInput=set(range(100, 140)), learn=False)
+    pooler.compute(feedforwardInput=set(range(100, 140)), learn=False)
     self.assertEqual(sum1,
                      sum(pooler.getActiveCells()),
                      "Inference on pattern after learning it is incorrect")
 
     # Inferring with no inputs should maintain same pattern
-    pooler.activateCells(feedforwardInput=set(), learn=False)
+    pooler.compute(feedforwardInput=set(), learn=False)
     self.assertEqual(sum1,
                      sum(pooler.getActiveCells()),
                      "Inference doesn't maintain activity with no input.")
 
     pooler.reset()
-    pooler.activateCells(feedforwardInput=set(range(0, 40)), learn=False)
+    pooler.compute(feedforwardInput=set(range(0, 40)), learn=False)
     self.assertEqual(sum1,
                      sum(pooler.getActiveCells()),
                      "Inference on pattern after learning it is incorrect")
@@ -257,19 +257,19 @@ class ColumnPoolerTest(unittest.TestCase):
     # Inferring on patterns in second object should lead to same result, even
     # after gap
     pooler.reset()
-    pooler.activateCells(feedforwardInput=set(range(1100, 1140)), learn=False)
+    pooler.compute(feedforwardInput=set(range(1100, 1140)), learn=False)
     self.assertEqual(sum2,
                      sum(pooler.getActiveCells()),
                      "Inference on pattern after learning it is incorrect")
 
     # Inferring with no inputs should maintain same pattern
-    pooler.activateCells(feedforwardInput=set(), learn=False)
+    pooler.compute(feedforwardInput=set(), learn=False)
     self.assertEqual(sum2,
                      sum(pooler.getActiveCells()),
                      "Inference doesn't maintain activity with no input.")
 
     pooler.reset()
-    pooler.activateCells(feedforwardInput=set(range(1000, 1040)), learn=False)
+    pooler.compute(feedforwardInput=set(range(1000, 1040)), learn=False)
     self.assertEqual(sum2,
                      sum(pooler.getActiveCells()),
                      "Inference on pattern after learning it is incorrect")
@@ -293,7 +293,7 @@ class ColumnPoolerTest(unittest.TestCase):
 
     feedforwardInput = set(range(10))
 
-    pooler.activateCells(feedforwardInput, learn=True)
+    pooler.compute(feedforwardInput, learn=True)
 
     activeCells = pooler.getActiveCells()
     self.assertEqual(len(activeCells), 12)
@@ -332,7 +332,7 @@ class ColumnPoolerTest(unittest.TestCase):
 
     feedforwardInput = set(range(9))
 
-    pooler.activateCells(feedforwardInput, learn=True)
+    pooler.compute(feedforwardInput, learn=True)
 
     activeCells = pooler.getActiveCells()
     self.assertEqual(len(activeCells), 12)
@@ -371,7 +371,7 @@ class ColumnPoolerTest(unittest.TestCase):
 
     feedforwardInput = set(range(11))
 
-    pooler.activateCells(feedforwardInput, learn=True)
+    pooler.compute(feedforwardInput, learn=True)
 
     activeCells = pooler.getActiveCells()
     self.assertEqual(len(activeCells), 12)
@@ -411,19 +411,19 @@ class ColumnPoolerTest(unittest.TestCase):
     )
 
     # Grow synapses.
-    pooler.activateCells(set(range(10)), learn=True)
+    pooler.compute(set(range(10)), learn=True)
     for cell in pooler.getActiveCells():
       self.assertEqual(pooler.numberOfSynapses([cell]), 10,
                        "Should connect to every active input bit.")
 
     # Given the same input, no new synapses should form.
-    pooler.activateCells(set(range(10)), learn=True)
+    pooler.compute(set(range(10)), learn=True)
     for cell in pooler.getActiveCells():
       self.assertEqual(pooler.numberOfSynapses([cell]), 10,
                        "No new synapses should form.")
 
     # Given a superset of the input, some new synapses should form.
-    pooler.activateCells(set(range(20)), learn=True)
+    pooler.compute(set(range(20)), learn=True)
     for cell in pooler.getActiveCells():
       self.assertEqual(pooler.numberOfSynapses([cell]), 20,
                        "Should connect to the new active input bits.")
@@ -449,7 +449,7 @@ class ColumnPoolerTest(unittest.TestCase):
 
     feedforwardInput = set(range(10))
 
-    pooler.activateCells(feedforwardInput, learn=True)
+    pooler.compute(feedforwardInput, learn=True)
 
     activeCells = pooler.getActiveCells()
     self.assertEqual(len(activeCells), 12)
@@ -481,11 +481,11 @@ class ColumnPoolerTest(unittest.TestCase):
     )
 
     # Grow some synapses.
-    pooler.activateCells(set(range(0, 10)), learn=True)
-    pooler.activateCells(set(range(10, 20)), learn=True)
+    pooler.compute(set(range(0, 10)), learn=True)
+    pooler.compute(set(range(10, 20)), learn=True)
 
     # Reinforce some of them.
-    pooler.activateCells(set(range(0, 15)), learn=True)
+    pooler.compute(set(range(0, 15)), learn=True)
 
     activeCells = pooler.getActiveCells()
     self.assertEqual(len(activeCells), 12)
@@ -532,10 +532,10 @@ class ColumnPoolerTest(unittest.TestCase):
     )
 
     # Grow some synapses.
-    pooler.activateCells(set(range(0, 10)), learn=True)
+    pooler.compute(set(range(0, 10)), learn=True)
 
     # Punish some of them.
-    pooler.activateCells(set(range(0, 5)), learn=True)
+    pooler.compute(set(range(0, 5)), learn=True)
 
     activeCells = pooler.getActiveCells()
     self.assertEqual(len(activeCells), 12)
@@ -637,11 +637,7 @@ class ColumnPoolerTest(unittest.TestCase):
 
     # Object 1
     lateralInput1 = set(xrange(100, 140))
-    pooler.depolarizeCells(lateralInput1)
-    pooler.activateCells(feedforwardInput=set(xrange(0, 40)),
-                         reinforceCandidatesExternal=lateralInput1,
-                         growthCandidatesExternal=lateralInput1,
-                         learn=True)
+    pooler.compute(set(xrange(0, 40)), lateralInput1, learn=True)
 
     # Get initial SDR for first object from pooler.
     activeCells = pooler.getActiveCells()
@@ -658,11 +654,7 @@ class ColumnPoolerTest(unittest.TestCase):
     # Cells corresponding to that initial SDR should continue to learn new
     # synapses on that same set of segments. There should be no segments on any
     # other cells.
-    pooler.depolarizeCells(lateralInput1)
-    pooler.activateCells(feedforwardInput=set(xrange(40, 80)),
-                         reinforceCandidatesExternal=lateralInput1,
-                         growthCandidatesExternal=lateralInput1,
-                         learn=True)
+    pooler.compute(set(xrange(40, 80)), lateralInput1, learn=True)
 
     self.assertEqual(pooler.numberOfDistalSegments(activeCells),
                      40,
@@ -678,11 +670,7 @@ class ColumnPoolerTest(unittest.TestCase):
     # Object 2
     pooler.reset()
     lateralInput2 = set(xrange(200, 240))
-    pooler.depolarizeCells(lateralInput2)
-    pooler.activateCells(feedforwardInput=set(xrange(120, 160)),
-                         reinforceCandidatesExternal=lateralInput2,
-                         growthCandidatesExternal=lateralInput2,
-                         learn=True)
+    pooler.compute(set(xrange(120, 160)), lateralInput2, learn=True)
 
     # Get initial SDR for second object from pooler.
     activeCellsObject2 = pooler.getActiveCells()
@@ -704,11 +692,7 @@ class ColumnPoolerTest(unittest.TestCase):
     # Cells corresponding to that initial SDR should continue to learn new
     # synapses on that same set of segments. There should be no segments on any
     # other cells.
-    pooler.depolarizeCells(lateralInput2)
-    pooler.activateCells(feedforwardInput=set(xrange(160, 200)),
-                         reinforceCandidatesExternal=lateralInput2,
-                         growthCandidatesExternal=lateralInput2,
-                         learn=True)
+    pooler.compute(set(xrange(160, 200)), lateralInput2, learn=True)
     self.assertEqual(pooler.numberOfDistalSegments(uniqueCellsObject2),
                      len(uniqueCellsObject2),
                      "Incorrect number of segments after learning")
@@ -749,28 +733,22 @@ class ColumnPoolerTest(unittest.TestCase):
       lateralInput = lateralInputs[0][obj] | lateralInputs[1][obj]
       for i in range(3): # three iterations
         for f in range(3): # three features per object
-          pooler.depolarizeCells(lateralInput)
-          pooler.activateCells(feedforwardInput=feedforwardInputs[obj][f],
-                               reinforceCandidatesExternal=lateralInput,
-                               growthCandidatesExternal=lateralInput,
-                               learn=True)
+          pooler.compute(feedforwardInputs[obj][f], lateralInput, learn=True)
 
       objectRepresentations += [set(pooler.getActiveCells())]
 
     # With no lateral support, BU for O1 feature 0 + O2 feature 1.
     # End up with object representations for O1+O2.
     pooler.reset()
-    pooler.depolarizeCells(activeExternalCells=set())
-    pooler.activateCells(feedforwardInput= (feedforwardInputs[0][0] |
-                                            feedforwardInputs[1][1]),
-                         learn=False)
+    pooler.compute(feedforwardInput= (feedforwardInputs[0][0] |
+                                      feedforwardInputs[1][1]),
+                   learn=False)
     self.assertEqual(set(pooler.getActiveCells()),
                      objectRepresentations[0] | objectRepresentations[1],
            "Incorrect object representations - expecting union of objects")
 
     # If you now get no input, should maintain the representation
-    pooler.activateCells(feedforwardInput=set(), learn=False)
-    pooler.activateCells(feedforwardInput=set(), learn=False)
+    pooler.compute(feedforwardInput=set(), learn=False)
     self.assertEqual(set(pooler.getActiveCells()),
                      objectRepresentations[0] | objectRepresentations[1],
            "Incorrect object representations - expecting union is maintained")
@@ -782,30 +760,31 @@ class ColumnPoolerTest(unittest.TestCase):
 
     # Test lateral from first column
     pooler.reset()
-    pooler.depolarizeCells(lateralInputs[0][0])
-    pooler.activateCells(feedforwardInput=(feedforwardInputs[0][0] |
-                                           feedforwardInputs[1][1]),
-                         learn=False)
+    pooler.compute(feedforwardInput=(feedforwardInputs[0][0] |
+                                     feedforwardInputs[1][1]),
+                   lateralInput=lateralInputs[0][0],
+                   learn=False)
     self.assertEqual(set(pooler.getActiveCells()),
                      objectRepresentations[0],
            "Incorrect object representations - expecting single object")
 
     # Test lateral from second column
     pooler.reset()
-    pooler.depolarizeCells(lateralInputs[1][0])
-    pooler.activateCells(feedforwardInput=(feedforwardInputs[0][0] |
-                                           feedforwardInputs[1][1]),
-                         learn=False)
+    pooler.compute(feedforwardInput=(feedforwardInputs[0][0] |
+                                     feedforwardInputs[1][1]),
+                   lateralInput=lateralInputs[1][0],
+                   learn=False)
     self.assertEqual(set(pooler.getActiveCells()),
                      objectRepresentations[0],
            "Incorrect object representations - expecting single object")
 
     # Test lateral from both columns
     pooler.reset()
-    pooler.depolarizeCells(lateralInputs[0][0] | lateralInputs[1][0])
-    pooler.activateCells(feedforwardInput=(feedforwardInputs[0][0] |
-                                           feedforwardInputs[1][1]),
-                         learn=False)
+    pooler.compute(feedforwardInput=(feedforwardInputs[0][0] |
+                                     feedforwardInputs[1][1]),
+                   lateralInput=(lateralInputs[0][0] |
+                                 lateralInputs[1][0]),
+                   learn=False)
     self.assertEqual(set(pooler.getActiveCells()),
                      objectRepresentations[0],
            "Incorrect object representations - expecting single object")
@@ -814,9 +793,9 @@ class ColumnPoolerTest(unittest.TestCase):
     # Test case where you have bottom up for O1, and lateral for O2. In
     # this case the bottom up one, O1, should dominate.
     pooler.reset()
-    pooler.depolarizeCells(lateralInputs[1][1])
-    pooler.activateCells(feedforwardInput=feedforwardInputs[0][0],
-                         learn=False)
+    pooler.compute(feedforwardInput=feedforwardInputs[0][0],
+                   lateralInput=lateralInputs[1][1],
+                   learn=False)
     self.assertEqual(set(pooler.getActiveCells()),
                      objectRepresentations[0],
            "Incorrect object representations - expecting first object")
@@ -824,14 +803,15 @@ class ColumnPoolerTest(unittest.TestCase):
     # Test case where you have BU support O1+O2 with no lateral input Then see
     # no input but get lateral support for O1. Should converge to O1 only.
     pooler.reset()
-    pooler.depolarizeCells(set())
-    pooler.activateCells(feedforwardInput=(feedforwardInputs[0][0] |
-                                           feedforwardInputs[1][1]),
-                         learn=False)
+    pooler.compute(feedforwardInput=(feedforwardInputs[0][0] |
+                                     feedforwardInputs[1][1]),
+                   lateralInput=set(),
+                   learn=False)
 
     # No bottom input, but lateral support for O1
-    pooler.depolarizeCells(lateralInputs[0][0] | lateralInputs[1][0])
-    pooler.activateCells(feedforwardInput=set(), learn=False)
+    pooler.compute(feedforwardInput=set(),
+                   lateralInput=(lateralInputs[0][0] | lateralInputs[1][0]),
+                   learn=False)
 
     self.assertEqual(set(pooler.getActiveCells()),
                      objectRepresentations[0],
@@ -887,12 +867,7 @@ class ColumnPoolerTest(unittest.TestCase):
         lateralInput = lateralInputs[col][obj]
         for i in range(3): # three iterations
           for f in range(3): # three features per object
-            pooler.depolarizeCells(lateralInput)
-            pooler.activateCells(
-              feedforwardInput=feedforwardInputs[obj][f],
-              reinforceCandidatesExternal=lateralInput,
-              growthCandidatesExternal=lateralInput,
-              learn=True)
+            pooler.compute(feedforwardInputs[obj][f], lateralInput, learn=True)
       objectRepresentations += [set(pooler.getActiveCells())]
 
     # We want to ensure that the learning for each cell happens on one distal
@@ -912,20 +887,20 @@ class ColumnPoolerTest(unittest.TestCase):
 
     # Test where lateral input is from first column
     pooler.reset()
-    pooler.depolarizeCells(lateralInputs[0][0])
-    pooler.activateCells(feedforwardInput=(feedforwardInputs[0][0] |
-                                           feedforwardInputs[1][1]),
-                         learn=False)
+    pooler.compute(feedforwardInput=(feedforwardInputs[0][0] |
+                                     feedforwardInputs[1][1]),
+                   lateralInput=lateralInputs[0][0],
+                   learn=False)
     self.assertEqual(set(pooler.getActiveCells()),
                      objectRepresentations[0],
            "Incorrect object representations - expecting single object")
 
     # Test lateral from second column
     pooler.reset()
-    pooler.depolarizeCells(lateralInputs[1][0])
-    pooler.activateCells(feedforwardInput=(feedforwardInputs[0][0] |
-                                           feedforwardInputs[1][1]),
-                         learn=False)
+    pooler.compute(feedforwardInput=(feedforwardInputs[0][0] |
+                                     feedforwardInputs[1][1]),
+                   lateralInput=lateralInputs[1][0],
+                   learn=False)
     self.assertEqual(set(pooler.getActiveCells()),
                      objectRepresentations[0],
            "Incorrect object representations - expecting single object")

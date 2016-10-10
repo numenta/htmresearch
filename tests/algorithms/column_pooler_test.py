@@ -1095,14 +1095,8 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
         np.random.shuffle(indices)
 
       for idx in indices:
-        activeExternalCells = lateralPatterns[idx]
-        self.pooler.depolarizeCells(activeExternalCells)
-        self.pooler.activateCells(
-          feedforwardInput=feedforwardPatterns[idx],
-          reinforceCandidatesExternal=activeExternalCells,
-          growthCandidatesExternal=activeExternalCells,
-          learn=True
-        )
+        self.pooler.compute(feedforwardPatterns[idx], lateralPatterns[idx],
+                            learn=True)
 
 
   def infer(self,
@@ -1126,8 +1120,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
            If true, will print cell metrics
 
     """
-    self.pooler.depolarizeCells(activeExternalCells=lateralInput)
-    self.pooler.activateCells(feedforwardInput=feedforwardPattern, learn=False)
+    self.pooler.compute(feedforwardPattern, lateralInput, learn=False)
 
     if printMetrics:
       print self.pooler.mmPrettyPrintMetrics(
@@ -1278,13 +1271,8 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
             lateralInput = lateralInput.union(cell + offset
                                               for cell in activeCells)
 
-          pooler.depolarizeCells(lateralInput)
-          pooler.activateCells(
-            feedforwardInput=feedforwardPatterns[indices[col][i]][col],
-            reinforceCandidatesExternal=lateralInput,
-            growthCandidatesExternal=lateralInput,
-            learn=True
-          )
+          pooler.compute(feedforwardPatterns[indices[col][i]][col],
+                         lateralInput, learn=True)
 
         prevActiveCells = self._getActiveRepresentations()
 
@@ -1336,9 +1324,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
         lateralInput = lateralInput.union(cell + offset
                                           for cell in activeCells)
 
-      pooler.depolarizeCells(activeExternalCells=lateralInput)
-      pooler.activateCells(feedforwardInput=feedforwardPatterns[col],
-                           learn=False)
+      pooler.compute(feedforwardPatterns[col], lateralInput, learn=False)
 
     if printMetrics:
       for pooler in self.poolers:

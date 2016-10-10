@@ -392,13 +392,8 @@ class ColumnPoolerRegion(PyRegion):
       lateralInput = set()
 
     # Send the inputs into the Column Pooler.
-    self._pooler.depolarizeCells(lateralInput,
-                                 learn=self.learningMode)
-    self._pooler.activateCells(
-      feedforwardInput=feedforwardInput,
-      reinforceCandidatesExternal=lateralInput,
-      growthCandidatesExternal=lateralInput,
-      learn=self.learningMode)
+    self._pooler.compute(feedforwardInput, lateralInput,
+                         learn=self.learningMode)
 
     # Extract the active / predicted cells and put them into binary arrays.
     outputs["activeCells"][:] = 0
