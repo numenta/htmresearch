@@ -180,9 +180,8 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
   exp._unsetLearningMode()
   exp.sendReset()
 
-  numTestPointsPerColumn = numTestPoints / exp.numColumns
 
-  overlap = np.zeros((numTestPointsPerColumn, numObjects))
+  overlap = np.zeros((numTestPoints, numObjects))
 
   # Divide testPairs, which is a single sequence of feature-location tuples for
   # an object, into an enumerated sequence of sequences of feature-location
@@ -201,9 +200,9 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
   #     (1, ((3218, 872), (2094, 3038))),
   #     (2, ((428, 2521), (3326, 4876)))]
 
-  for step, pairs in enumerate(zip(*zip(*[iter(testPairs)] * (len(testPairs) / exp.numColumns)))):
+  for step, pair in enumerate(testPairs):
+    (locationIdx, featureIdx) = pair
     for colIdx in xrange(exp.numColumns):
-      (locationIdx, featureIdx) = pairs[colIdx]
       feature = objects.features[colIdx][featureIdx]
       location = objects.locations[colIdx][locationIdx]
 
@@ -260,7 +259,7 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
       objects,
       exp,
       targetObject,
-      3 * exp.numColumns
+      3
     )
     # print "target {} non-target {}".format(targetObject, nonTargetObjs)
     # print overlap
@@ -401,9 +400,7 @@ def runCapacityTestVaryingObjectSize(
   for numPointsPerObject in np.arange(10, 270, 20):
     testResult = runCapacityTest(
       numObjects,
-      # Scale numPointsPerObject by the number of columns so that there are
-      # consistently enough points to distribute to each column
-      numPointsPerObject*numCorticalColumns,
+      numPointsPerObject,
       maxNewSynapseCount,
       activationThreshold,
       numCorticalColumns
@@ -525,7 +522,7 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
   runCapacityTestVaryingObjectNum()
   Try different sampling and activation threshold
   """
-  numPointsPerObject = 10 * numCorticalColumns
+  numPointsPerObject = 10
   maxNewSynapseCountRange = (5, 10, 15, 20)
   for maxNewSynapseCount in maxNewSynapseCountRange:
     activationThreshold = int(maxNewSynapseCount) - 1
