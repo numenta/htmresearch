@@ -180,25 +180,7 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
   exp._unsetLearningMode()
   exp.sendReset()
 
-
   overlap = np.zeros((numTestPoints, numObjects))
-
-  # Divide testPairs, which is a single sequence of feature-location tuples for
-  # an object, into an enumerated sequence of sequences of feature-location
-  # tuples such that in each iteration the sensations for each column at that
-  # step are available.
-  #
-  # In the 1-column case, testPairs is iterated as:
-  #
-  #    [(0, ((2970, 1219),)),
-  #     (1, ((1985, 4010),)),
-  #     (2, ((4544, 4491),))]
-  #
-  # Meanwhile, for the 2-column case, testPairs is iterated as:
-  #
-  #    [(0, ((2566, 2285), (3259, 4611))),
-  #     (1, ((3218, 872), (2094, 3038))),
-  #     (2, ((428, 2521), (3326, 4876)))]
 
   for step, pair in enumerate(testPairs):
     (locationIdx, featureIdx) = pair
