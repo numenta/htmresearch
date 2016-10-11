@@ -44,7 +44,7 @@ expName = 'randomSDRVaryingSparsityContinuousLearning'
 changeDataAt = 50
 plt.figure()
 legendList = []
-epochCheck = [changeDataAt-1, changeDataAt, 99]
+epochCheck = [changeDataAt-1, changeDataAt, 119]
 for epoch in epochCheck:
   nrData = np.load(
     './results/input_output_overlap/{}/epoch_{}.npz'.format(expName, epoch))
