@@ -108,7 +108,10 @@ def plotSensorData(inpuFilePaths, markers=True, categoryLabels=None):
 
       plt.legend(ncol=4)
 
-  plt.show()
+    figFile = '%s.png' %inpuFilePath[:-4]
+    plt.savefig(figFile)
+    print '==> figure saved: %s' % figFile
+
 
 
 

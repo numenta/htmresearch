@@ -45,6 +45,12 @@ def _getArgs():
                     help="File name of the CSV trace file. "
                          "Run 'run_htm_network.py' to generate trace file.")
 
+  parser.add_option("-p",
+                    "--plotTMStates",
+                    action="store_true",
+                    dest="plotTemporalMemoryStates",
+                    help="plot Temporal Memory States")
+
   parser.add_option("--xlim",
                     type=str,
                     default=None,
@@ -63,16 +69,23 @@ def _getArgs():
 
 
 if __name__ == "__main__":
+
   (_options, _args) = _getArgs()
-  fileName = _options.fileName
+  inputFile = _options.fileName
+
+  plotTemporalMemoryStates = _options.plotTemporalMemoryStates
 
   if _options.xl:
-    xl = [float(x) for x in _options.xl.split(',')]
+    xl = [int(x) for x in _options.xl.split(',')]
   else:
     xl = _options.xl
 
-  traces = loadTraces(fileName)
+  print inputFile
+  traces = loadTraces(inputFile)
 
   numTmCells = _options.numTmCells
 
-  plotTraces(numTmCells, xl, traces)
+  title = inputFile.split('/')[-1]
+  outputFile = '%s.png' % inputFile[:-4]
+  plotTraces(xl, traces, title, outputFile, numTmCells,
+             plotTemporalMemoryStates)

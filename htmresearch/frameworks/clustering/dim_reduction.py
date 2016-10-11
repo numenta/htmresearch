@@ -5,6 +5,7 @@ from matplotlib import colors
 from sklearn import manifold
 from htmresearch.frameworks.clustering.distances import (
   percentOverlap, clusterDist)
+import os
 
 
 
@@ -54,14 +55,15 @@ def computeClusterDistanceMat(sdrClusters):
 
 
 
-def viz2DProjection(vizTitle, numClusters, clusterAssignments, npos):
+def viz2DProjection(vizTitle, outputFile, numClusters, clusterAssignments,
+                    npos):
   """
   Visualize SDR clusters with MDS
   """
-  
-  colorList  = colors.cnames.keys()
+
+  colorList = colors.cnames.keys()
   plt.figure()
-  colorList = colorList[:numClusters]
+  colorList = colorList[:numClusters + 1]
   colorNames = []
   for i in range(len(clusterAssignments)):
     clusterId = int(clusterAssignments[i])
@@ -78,6 +80,7 @@ def viz2DProjection(vizTitle, numClusters, clusterAssignments, npos):
   plt.legend(by_label.values(), by_label.keys(), scatterpoints=1, loc=2)
 
   plt.title(vizTitle)
+  plt.savefig(outputFile)
 
 
 
@@ -132,11 +135,12 @@ def projectClusters2D(sdrClusters):
 
 
 
-def plotDistanceMat(distanceMat, title, showPlot=False):
+def plotDistanceMat(distanceMat, title, outputFile, showPlot=False):
   plt.figure()
   plt.imshow(distanceMat, interpolation="nearest")
   plt.colorbar()
   plt.title(title)
+  plt.savefig(outputFile)
   if showPlot:
     plt.show()
 

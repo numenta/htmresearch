@@ -26,25 +26,15 @@ parentDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)
 DATA_DIR = os.path.join(parentDir, 'data', 'sensortag')
 INPUT_FILES = [
   'walk-5min.csv',
-  # 'run-5min.csv',
+  'run-5min.csv',
   # 'stairs-up-5min.csv',
-  'sit-5min.csv',
+  #'sit-5min.csv',
   #'jump-5min.csv',
   # 'stairs-down-5min.csv',
   # 'stumble-5min.csv'
 ]
 METRICS = ['x', 'y', 'z']
 OUTPUT_FILE = os.path.join(parentDir, 'data', 'sensortag_%s.csv')
-SLICES = 10
+SLICES = 40
+MAX_POINTS = 1000
 
-
-# Clustering params
-mergeThreshold = 0.25
-anomalousThreshold = 0.5
-stableThreshold = 0.1
-minClusterSize = 1
-similarityThreshold = 0.0
-pruningFrequency = 20
-pruneClusters = False
-rollingAccuracyWindow = 10
-cellsToCluster = 'tmActiveCells'

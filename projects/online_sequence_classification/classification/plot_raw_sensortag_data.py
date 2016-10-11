@@ -71,5 +71,5 @@ for inputFile in INPUT_FILES:
     plt.xlabel('timestep')
     plt.ylabel('accelerometer')
     plt.grid()
-
+    plt.savefig(outputFile = '%s.png' % inputFile[:-4])
 plt.show()

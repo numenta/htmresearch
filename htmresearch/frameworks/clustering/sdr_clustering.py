@@ -104,7 +104,7 @@ class Clustering(object):
                stableThreshold,
                minClusterSize,
                pointSimilarityThreshold,
-               pruningFrequency,
+               pruningFrequency=None,
                prune=False,
                fistClusterId=0):
 
@@ -246,8 +246,13 @@ class Clustering(object):
         if not clusterMerged:
           self._addCluster(self._newCluster)
       else:
-        _LOGGER.debug('DELETE: Cluster %s discarded. Not enough points :-$' %
-                      self._newCluster.getId())
+        _LOGGER.debug('DELETE: Cluster %s discarded. Not enough points (%s '
+              'points. Min cluster size is %s)' %
+              (self._newCluster.getId(), 
+               self._newCluster.size(),
+               self._minClusterSize))
+      
+
       self._newCluster = Cluster(self._clusterIdCounter,
                                  self._numIterations)
       self._clusterIdCounter += 1
