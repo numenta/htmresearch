@@ -26,9 +26,9 @@ parentDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)
 DATA_DIR = os.path.join(parentDir, 'data', 'sensortag')
 INPUT_FILES = [
   'walk-5min.csv',
-  'run-5min.csv',
+  'sit-5min.csv',
+  #'run-5min.csv',
   # 'stairs-up-5min.csv',
-  #'sit-5min.csv',
   #'jump-5min.csv',
   # 'stairs-down-5min.csv',
   # 'stumble-5min.csv'

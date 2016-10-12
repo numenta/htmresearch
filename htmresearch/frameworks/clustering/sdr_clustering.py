@@ -223,11 +223,7 @@ class Clustering(object):
       if meanClusterDist > 0:
         confidence = 1 - (distToCluster / meanClusterDist)
       else:
-        if len(self._clusters) > 1:
-          raise ValueError("The mean distance can't be 0. Number of "
-                           "clusters: %s" % len(self._clusters))
-        else:
-          confidence = 1
+        confidence = 1
     else:
       predictedCluster = None
       confidence = -1

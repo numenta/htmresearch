@@ -63,7 +63,7 @@ def viz2DProjection(vizTitle, outputFile, numClusters, clusterAssignments,
 
   colorList = colors.cnames.keys()
   plt.figure()
-  colorList = colorList[:numClusters + 1]
+  colorList = colorList
   colorNames = []
   for i in range(len(clusterAssignments)):
     clusterId = int(clusterAssignments[i])
@@ -71,8 +71,12 @@ def viz2DProjection(vizTitle, outputFile, numClusters, clusterAssignments,
       colorNames.append(clusterId)
     sdrProjection = npos[i]
     label = 'Category %s' % clusterId
+    if len(colorList) > clusterId:
+      color = colorList[clusterId]
+    else:
+      color = 'black'
     plt.scatter(sdrProjection[0], sdrProjection[1], label=label, alpha=0.5,
-                color=colorList[clusterId], marker='o', edgecolor='black')
+                color=color, marker='o', edgecolor='black')
 
   # Add nicely formatted legend
   handles, labels = plt.gca().get_legend_handles_labels()
@@ -101,7 +105,8 @@ def project2D(sdrs):
 
   seed = np.random.RandomState(seed=3)
 
-  mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9, random_state=seed,
+  mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9,
+                     random_state=seed,
                      dissimilarity="precomputed", n_jobs=1)
   pos = mds.fit(distanceMat).embedding_
 
@@ -120,7 +125,8 @@ def projectClusters2D(sdrClusters):
 
   seed = np.random.RandomState(seed=3)
 
-  mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9, random_state=seed,
+  mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9,
+                     random_state=seed,
                      dissimilarity="precomputed", n_jobs=1)
 
   pos = mds.fit(distanceMat).embedding_
@@ -143,6 +149,3 @@ def plotDistanceMat(distanceMat, title, outputFile, showPlot=False):
   plt.savefig(outputFile)
   if showPlot:
     plt.show()
-
-
-

@@ -49,7 +49,7 @@ def constructStableIntervals(confidence):
 
 
 
-def plotTraces(xlim, traces, title,
+def plotTraces(xlim, traces, title, anomalyScoreType,
                outputFile, numTmCells=None, plotTemporalMemoryStates=False):
   """
   Plot network traces
@@ -116,8 +116,8 @@ def plotTraces(xlim, traces, title,
   #     ax[2].axvspan(start, end, facecolor='g', alpha=0.4)
 
   # plot anomaly score
-  ax[3].set_title('Rolling Anomaly Score')
-  ax[3].plot(traces['rollingAnomalyScore'])
+  ax[3].set_title(anomalyScoreType)
+  ax[3].plot(traces[anomalyScoreType])
 
   # plot clustering confidence
   ax[4].set_title('Clustering confidence')

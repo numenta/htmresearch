@@ -23,20 +23,36 @@ import os
 
 parentDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)
 
-DATA_DIR = os.path.join(parentDir, 'data')
+INPUT_DIR = os.path.join(parentDir, 'data')
+OUTPUT_DIR = os.path.join(parentDir, 'results')
+RESULTS_OUTPUT_FILE = os.path.join(OUTPUT_DIR, 'seq_classification_results.csv')
+FILE_NAMES = [
+  'binary_ampl=10.0_mean=0.0_noise=0.0.csv',
+  'binary_ampl=10.0_mean=0.0_noise=1.0.csv',
+  'sensortag_z.csv'
+]
+INPUT_FILES = [os.path.join(INPUT_DIR, f) for f in FILE_NAMES]
 
-# Signal types can be: 'binary', 'sine', 'triangle'
-SIGNAL_TYPES = ['binary']
+TRACES_OUTPUT_FILE = os.path.join(OUTPUT_DIR, 'traces_%s.csv')
 
-# Parameters to generate the artificial sensor data
-NUM_CATEGORIES = [2]
-WHITE_NOISE_AMPLITUDES = [0.0, 1.0]
-SIGNAL_AMPLITUDES = [10.0]
-SIGNAL_MEANS = [0.0]
-NOISE_LENGTHS = [10]
+# Verbosity of network
+VERBOSITY = 0
 
-# Number of phases. Eg: Train (1) SP, (2) TM, (3) TP, (4) Classifier, (5) Test
-NUM_PHASES = [3]
+HTM_NETWORK_CONFIGS = os.path.join(parentDir, 'htm_network_config',
+                                   'network_configs.json')
+PLOT_RESULTS = False
 
-# Number of time each phase repeats
-NUM_REPS = [5]
+# Clustering params
+CLUSTERING = True
+
+MERGE_THRESHOLD = 0.4
+ANOMALOUS_THRESHOLD = 0.8
+STABLE_THRESHOLD = 0.4
+MIN_CLUSTER_SIZE = 1
+SIMILARITY_THRESHOLD = 0.0
+CELLS_TO_CLUSTER = 'tmPredictedActiveCells'
+
+# Rolling average calculations
+ROLLING_ACCURACY_WINDOW = 10
+IGNORE_NOISE = False
+ANOMALY_SCORE = 'rawAnomalyScore'

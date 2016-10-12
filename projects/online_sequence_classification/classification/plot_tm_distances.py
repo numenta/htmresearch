@@ -30,6 +30,8 @@ from htmresearch.frameworks.clustering.viz import (vizInterSequenceClusters,
 from htmresearch.frameworks.clustering.distances import (percentOverlap,
                                                          clusterDist)
 
+from settings.htm_network import CELLS_TO_CLUSTER
+
 
 
 def _getArgs():
@@ -71,7 +73,7 @@ if __name__ == "__main__":
   outputDir = fileName[:-4]
   if not os.path.exists(outputDir):
     os.makedirs(outputDir)
-  cellsType = 'tmActiveCells'
+  cellsType = CELLS_TO_CLUSTER
   numCells = 2048 * 32
   numSteps = len(traces['recordNumber'])
   pointsToPlot = numSteps / 10

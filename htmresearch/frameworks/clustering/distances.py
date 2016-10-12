@@ -59,17 +59,20 @@ def clusterDistDirected(c1, c2):
   :param c2: (np.array) cluster 2
   :return: distance between 2 clusters
   """
-  minDists = []
-  for sdr1 in c1:
-    d = []
-    # ignore SDRs with zero active bits
-    if np.sum(sdr1) == 0:
-      continue
-
-    for sdr2 in c2:
-      d.append(1 - percentOverlap(sdr1, sdr2))
-    minDists.append(min(d))
-  return np.mean(minDists)
+  if len(c1) == 0 or len(c2) == 0:
+    return 0
+  else:
+    minDists = []
+    for sdr1 in c1:
+      # ignore SDRs with zero active bits
+      if np.sum(sdr1) == 0:
+        continue
+      
+      d = []
+      for sdr2 in c2:
+        d.append(1 - percentOverlap(sdr1, sdr2))
+      minDists.append(min(d))
+    return np.mean(minDists)
 
 
 
