@@ -280,6 +280,7 @@ if __name__ == "__main__":
 
   activeCellNum = []
   predCellNum = []
+  predSegmentNum = []
   predictedActiveColumnsNum = []
   trueBucketIndex = []
   sp = model._getSPRegion().getSelf()._sfdr
@@ -296,6 +297,8 @@ if __name__ == "__main__":
 
     result = model.run(inputRecord)
     trueBucketIndex.append(model._getClassifierInputRecord(inputRecord).bucketIndex)
+
+    predSegmentNum.append(len(tm.activeSegments))
 
     sp = model._getSPRegion().getSelf()._sfdr
     spOutput = model._getSPRegion().getOutputData('bottomUpOut')
@@ -454,4 +457,18 @@ if __name__ == "__main__":
   plt.xlabel('data records')
   plt.ylabel('sparsity')
   plt.xlim([0, 5000])
+
   plt.savefig('result/sparsity_over_training.pdf')
+
+  plt.figure()
+  predCellNumAvg = movingAverage(predCellNum, 100)
+  predSegmentNumAvg = movingAverage(predSegmentNum, 100)
+  # plt.plot(np.array(predCellNumAvg))
+  plt.plot(np.array(predSegmentNumAvg),'r', label='NMDA spike')
+  plt.plot(activeCellNumAvg,'b', label='spikes')
+  plt.xlabel('data records')
+  plt.ylabel('NMDA spike #')
+  plt.legend()
+  plt.xlim([0, 5000])
+  plt.ylim([0, 42])
+  plt.savefig('result/nmda_spike_over_training.pdf')
