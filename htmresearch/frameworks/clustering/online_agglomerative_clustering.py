@@ -5,24 +5,25 @@ import scipy
 
 
 class Cluster(object):
-  def __init__(self, a, distance_func, kernel):
-    self.center = a
+  def __init__(self, cluster_id, center, distance_func):
+    self.id = cluster_id
+    self.center = center
     self.size = 0
     self.distance_func = distance_func
-    self.kernel = kernel
+    self.points = []
 
-  def add(self, e):
-    if self.kernel:
-      self.size += self.kernel(self.center, e)
-    else:
-      self.size += 1
+
+  def add(self, e, label):
+    self.size += 1
     self.center += (e - self.center) / self.size
+    self.points.append({'point': e, 'label': label})
 
 
   def merge(self, c):
     self.center = (self.center * self.size + c.center * c.size) / (
       self.size + c.size)
     self.size += c.size
+    self.points.extend(c.points)
 
 
   def resize(self, dim):
@@ -31,7 +32,7 @@ class Cluster(object):
 
 
   def __str__(self):
-    return "Cluster( %s, %f )" % (self.center, self.size)
+    return "Cluster( %s, %s, %.2f )" % (self.id, self.center, self.size)
 
 
 
@@ -42,9 +43,9 @@ class Dist(object):
   """
 
 
-  def __init__(self, x, y, d):
-    self.x = x
-    self.y = y
+  def __init__(self, c1, c2, d):
+    self.c1 = c1
+    self.c2 = c2
     self.d = d
 
 
@@ -57,91 +58,113 @@ class Dist(object):
 
 
 
-class OnlineCluster(object):
-  def __init__(self, N, distance_func, kernel=None):
+class OnlineAgglomerativeClustering(object):
+  def __init__(self,
+               max_num_clusters,
+               distance_func,
+               cluster_size_cutoff=0.1):
     """
     N-1 is the largest number of clusters that can be found.
     Higher N makes clustering slower.
     """
 
-    self.n = 0
-    self.N = N
+    self._num_points_processed = 0
+    self._total_num_clusters_created = 0
+    self._max_num_clusters = max_num_clusters
 
-    self.distance_func = distance_func
-    self.kernel = kernel
+    self._distance_func = distance_func
+    self._cluster_size_cutoff = cluster_size_cutoff
 
-    self.clusters = []
+    self._clusters = []
     # max number of dimensions we've seen so far
-    self.dim = 0
+    self._dim = 0
 
     # cache inter-cluster distances
-    self.dist = []
+    self._dist = []
 
 
-  def resize(self, dim):
-    for c in self.clusters:
-      c.resize(dim)
-    self.dim = dim
+  def _resize(self, dim):
+    for c in self._clusters:
+      c._resize(dim)
+    self._dim = dim
 
 
-  def cluster(self, e):
+  def find_closest_cluster(self, point, clusters):
+    c = [(i, self._distance_func(c.center, point))
+         for i, c in enumerate(clusters)]
+    closest = clusters[min(c, key=operator.itemgetter(1))[0]]
+    return closest
 
-    if len(e) > self.dim:
-      self.resize(len(e))
 
-    if len(self.clusters) > 0:
-      # compare new points to each existing cluster
-      c = [(i, self.distance_func(x.center, e))
-           for i, x in enumerate(self.clusters)]
-      closest = self.clusters[min(c, key=operator.itemgetter(1))[0]]
-      closest.add(e)
+  def cluster(self, new_point, trim_clusters, label=None):
+
+    if len(new_point) > self._dim:
+      self._resize(len(new_point))
+
+    if len(self._clusters) > 0:
+      # compare new point to each existing cluster
+      closest = self.find_closest_cluster(new_point, self._clusters)
+      closest.add(new_point, label)
       # invalidate dist-cache for this cluster
-      self.updatedist(closest)
+      self._update_dist(closest)
+    else:
+      closest = None
 
-    if len(self.clusters) >= self.N and len(self.clusters) > 1:
+    if len(self._clusters) >= self._max_num_clusters and len(
+      self._clusters) > 1:
       # merge closest two clusters
-      m = heapq.heappop(self.dist)
-      m.x.merge(m.y)
+      inter_cluster_dist = heapq.heappop(self._dist)
+      cluster_to_merge = inter_cluster_dist.c2
+      inter_cluster_dist.c1.merge(cluster_to_merge)
+      if cluster_to_merge in self._clusters:
+        self._clusters.remove(cluster_to_merge)
 
-      self.clusters.remove(m.y)
-      self.removedist(m.y)
-
-      self.updatedist(m.x)
+      # update inter-cluster distances      
+      self._remove_dist(cluster_to_merge)
+      self._update_dist(inter_cluster_dist.c1)
 
     # make a new cluster for this point
-    newc = Cluster(e, self.distance_func, self.kernel)
-    self.clusters.append(newc)
-    self.updatedist(newc)
+    cluster_id = self._total_num_clusters_created + 1
+    new_cluster = Cluster(cluster_id, new_point, self._distance_func)
+    self._total_num_clusters_created += 1
+    self._clusters.append(new_cluster)
+    self._update_dist(new_cluster)
 
-    self.n += 1
+    self._num_points_processed += 1
+
+    if trim_clusters:
+      trimmed_clusters = self._trim_clusters()
+      # closest cluster might not be in the list of trimmed clusters
+      self.find_closest_cluster(new_point, trimmed_clusters)
+      return trimmed_clusters, closest
+    else:
+      return self._clusters, closest
 
 
-  def removedist(self, c):
-    """invalidate intercluster distance cache for c"""
-    r = []
-    for x in self.dist:
-      if x.x == c or x.y == c:
-        r.append(x)
-    for x in r: self.dist.remove(x)
-    heapq.heapify(self.dist)
+  def _remove_dist(self, d):
+    """Invalidate inter-cluster distance cache for c"""
+    inter_cluster_dist_to_remove = []
+    for inter_cluster_dist in self._dist:
+      if inter_cluster_dist.c1 == d or inter_cluster_dist.c2 == d:
+        inter_cluster_dist_to_remove.append(inter_cluster_dist)
+    for x in inter_cluster_dist_to_remove:
+      self._dist.remove(x)
+    heapq.heapify(self._dist)
 
 
-  def updatedist(self, c):
-    """Cluster c has changed, re-compute all intercluster distances"""
-    self.removedist(c)
+  def _update_dist(self, c):
+    """Cluster c has changed, re-compute all inter-cluster distances"""
+    self._remove_dist(c)
 
-    for x in self.clusters:
+    for x in self._clusters:
       if x == c: continue
-      d = self.distance_func(x.center, c.center)
-      t = Dist(x, c, d)
-      heapq.heappush(self.dist, t)
+      d = self._distance_func(x.center, c.center)
+      inter_cluster_dist = Dist(x, c, d)
+      heapq.heappush(self._dist, inter_cluster_dist)
 
 
-  def trimclusters(self):
+  def _trim_clusters(self):
     """Return only clusters over threshold"""
-    t = scipy.mean([x.size for x in self.clusters]) * 0.1
-    return filter(lambda x: x.size >= t, self.clusters)
-
-
-
-
+    mean_cluster_size = scipy.mean([x.size for x in self._clusters])
+    t = mean_cluster_size * self._cluster_size_cutoff
+    return filter(lambda x: x.size >= t, self._clusters)
