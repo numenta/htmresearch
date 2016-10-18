@@ -118,18 +118,15 @@ def vizInterSequenceClusters(traces, outputDir, cellsType, numCells, numClasses,
 
     print " Presentation #{}: ".format(rpt)
     if not ignoreNoise:
-      d01 = clusterDist(convertNonZeroToSDR(c0slice, numCells),
-                        convertNonZeroToSDR(c1slice, numCells))
+      d01 = clusterDist(c0slice, c1slice, numCells)
       print '=> d(c0, c1): %s' % d01
-      d02 = clusterDist(convertNonZeroToSDR(c0slice, numCells),
-                        convertNonZeroToSDR(c2slice, numCells))
+      d02 = clusterDist(c0slice, c2slice, numCells)
       print '=> d(c0, c2): %s' % d02
 
-    d12 = clusterDist(convertNonZeroToSDR(c1slice, numCells),
-                      convertNonZeroToSDR(c2slice, numCells))
+    d12 = clusterDist(c1slice, c2slice, numCells)
     print '=> d(c1, c2): %s' % d12
 
-  npos, distanceMat = projectClusters2D(SDRclusters)
+  npos, distanceMat = projectClusters2D(SDRclusters, numCells)
   title = 'Inter-sequence clusters in 2D (using %s)' % cellsType
   outputFile = '%s/%s' % (outputDir, title)
   viz2DProjection(title, outputFile, numClasses, clusterAssignments, npos)

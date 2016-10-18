@@ -208,10 +208,11 @@ def outputClassificationInfo(recordNumber,
 
 
 
-def outputInterClusterDist(clustering):
+def outputInterClusterDist(clustering, numCells):
   if _LOGGER.getEffectiveLevel() == logging.DEBUG:
     interClusterDist = interClusterDistances(clustering.getClusters(),
-                                             clustering.getNewCluster())
+                                             clustering.getNewCluster(), 
+                                             numCells)
     _LOGGER.debug('-> inter-cluster distances: %s' % interClusterDist)
 
 
@@ -220,7 +221,8 @@ def outputClustersStructure(clustering):
   if _LOGGER.getEffectiveLevel() == logging.DEBUG:
     labelClusters(clustering)
 
-    # sort cluster-category frequencies by label and cumulative number of points
+    # sort cluster-category frequencies by label and cumulative number of 
+    # points
     sortedFreqDicts = sorted(
       clustering.clusterActualCategoriesFrequencies(),
       key=lambda x: (clustering.getClusterById(x['clusterId']).getLabel(),
@@ -310,9 +312,11 @@ def runNetwork(networkConfig, filePath, runClustering):
    classifierRegion) = enableRegionLearning(network, networkConfig)
 
   trace = initTrace(runClustering)
-
+  numCells = networkConfig['tmRegionConfig']['regionParams']['inputWidth'] * \
+             networkConfig['tmRegionConfig']['regionParams']['cellsPerColumn']
   if runClustering:
-    clustering = Clustering(MERGE_THRESHOLD,
+    clustering = Clustering(numCells,
+                            MERGE_THRESHOLD,
                             ANOMALOUS_THRESHOLD,
                             STABLE_THRESHOLD,
                             MIN_CLUSTER_SIZE,
@@ -366,9 +370,10 @@ def runNetwork(networkConfig, filePath, runClustering):
         elif CELLS_TO_CLUSTER == 'tmPredictedActiveCells':
           tmCells = tmPredictedActiveCells
         else:
-          raise ValueError('CELLS_TO_CLUSTER value can only be "tmActiveCells" '
-                           'or "tmPredictedActiveCells" but is %s'
-                           % CELLS_TO_CLUSTER)
+          raise ValueError(
+            'CELLS_TO_CLUSTER value can only be "tmActiveCells" '
+            'or "tmPredictedActiveCells" but is %s'
+            % CELLS_TO_CLUSTER)
 
         if ANOMALY_SCORE == 'rollingAnomalyScore':
           anomalyScore = rollingAnomalyScore
@@ -398,7 +403,7 @@ def runNetwork(networkConfig, filePath, runClustering):
                                       rollingClusteringAccuracy,
                                       clusterHomogeneity,
                                       clusteringConfidence)
-        if recordNumber % 500 == 0:
+        if recordNumber % 100 == 0:
           numClusters = len(clustering.getClusters())
           outputClusteringInfo(clusteringInference,
                                predictedClusterId,
@@ -414,7 +419,7 @@ def runNetwork(networkConfig, filePath, runClustering):
 
   if runClustering:
     outputClustersStructure(clustering)
-    outputInterClusterDist(clustering)
+    outputInterClusterDist(clustering, numCells)
   return trace, recordNumber
 
 
@@ -640,7 +645,7 @@ def run(resultsOutputFile,
       expResult = runExperiment(networkConfig, inputFile, runClustering)
       expResults.append(expResult)
       if plotResults:
-        #traces = loadTraces(fileName)
+        # traces = loadTraces(fileName)
         traces = expResult['expTrace']
         tmParams = networkConfig['tmRegionConfig']['regionParams']
         numCells = tmParams['cellsPerColumn'] * tmParams['inputWidth']
@@ -651,14 +656,14 @@ def run(resultsOutputFile,
         cellsType = CELLS_TO_CLUSTER
         numSteps = len(traces['recordNumber'])
         pointsToPlot = numSteps / 10
-      
+
         vizInterCategoryClusters(traces,
                                  outputDir,
                                  cellsType,
                                  numCells,
                                  pointsToPlot)
-      
-        vizInterSequenceClusters(traces, outputDir, cellsType, numCells, 
+
+        vizInterSequenceClusters(traces, outputDir, cellsType, numCells,
                                  numClusters)
 
         xl = None

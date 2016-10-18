@@ -5,7 +5,6 @@ from matplotlib import colors
 from sklearn import manifold
 from htmresearch.frameworks.clustering.distances import (
   percentOverlap, clusterDist)
-import os
 
 
 
@@ -36,7 +35,7 @@ def computeDistanceMat(sdrs):
 
 
 
-def computeClusterDistanceMat(sdrClusters):
+def computeClusterDistanceMat(sdrClusters, numCells):
   """
   Compute distance matrix between clusters of SDRs
   :param sdrClusters: list of sdr clusters,
@@ -48,7 +47,7 @@ def computeClusterDistanceMat(sdrClusters):
   distanceMat = np.zeros((numClusters, numClusters), dtype=np.float64)
   for i in range(numClusters):
     for j in range(i, numClusters):
-      distanceMat[i, j] = clusterDist(sdrClusters[i], sdrClusters[j])
+      distanceMat[i, j] = clusterDist(sdrClusters[i], sdrClusters[j], numCells)
       distanceMat[j, i] = distanceMat[i, j]
 
   return distanceMat
@@ -120,8 +119,8 @@ def project2D(sdrs):
 
 
 
-def projectClusters2D(sdrClusters):
-  distanceMat = computeClusterDistanceMat(sdrClusters)
+def projectClusters2D(sdrClusters, numCells):
+  distanceMat = computeClusterDistanceMat(sdrClusters, numCells)
 
   seed = np.random.RandomState(seed=3)
 

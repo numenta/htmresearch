@@ -99,6 +99,7 @@ class Cluster(object):
 
 class Clustering(object):
   def __init__(self,
+               numCells,
                mergeThreshold,
                anomalousThreshold,
                stableThreshold,
@@ -107,7 +108,9 @@ class Clustering(object):
                pruningFrequency=None,
                prune=False,
                fistClusterId=0):
-
+    
+    self._numCells = numCells
+  
     # Clusters
     self._numIterations = 0
     self._newCluster = Cluster(fistClusterId, self._numIterations)
@@ -159,7 +162,8 @@ class Clustering(object):
   def _mergeNewCluster(self):
 
     clusterDistPairs = computeClusterDistances(self._newCluster,
-                                               self.getClusters())
+                                               self.getClusters(),
+                                               self._numCells)
     clusterMerged = False
     if len(clusterDistPairs) > 0:
       closestClusterDist, closestCluster = clusterDistPairs[0]
@@ -186,7 +190,9 @@ class Clustering(object):
     :return: (bool) Wether or not the cluster was merged.
     """
 
-    clusterDistPairs = computeClusterDistances(cluster, clusters)
+    clusterDistPairs = computeClusterDistances(cluster, 
+                                               clusters, 
+                                               self._numCells)
     clusterMerged = False
     if len(clusterDistPairs) > 0:
       for clusterDistPair in clusterDistPairs:
@@ -215,7 +221,8 @@ class Clustering(object):
     Inference: find the closest cluster to the new cluster.
     """
     clusterDistPairs = computeClusterDistances(self._newCluster,
-                                               self.getClusters())
+                                               self.getClusters(),
+                                               self._numCells)
     if len(clusterDistPairs) > 0:
       distToCluster, predictedCluster = clusterDistPairs[0]
       # Confidence of inference
