@@ -112,17 +112,17 @@ def getSDRDataSetParams(inputVectorType):
   elif inputVectorType == 'randomBarPairs':
     params = {'dataType': 'randomBarPairs',
               'numInputVectors': 50,
-              'nX': 20,
-              'nY': 20,
-              'barHalfLength': 3,
+              'nX': 10,
+              'nY': 10,
+              'barHalfLength': 2,
               'seed': 41}
   elif inputVectorType == 'randomCross':
     params = {'dataType': 'randomCross',
               'numInputVectors': 50,
               'numCrossPerInput': 1,
-              'nX': 20,
-              'nY': 20,
-              'barHalfLength': 3,
+              'nX': 10,
+              'nY': 10,
+              'barHalfLength': 2,
               'seed': 41}
   elif inputVectorType == 'randomBarSets':
     params = {'dataType': 'randomBarSets',
@@ -405,7 +405,8 @@ if __name__ == "__main__":
   if spatialImp == "monitored_sp":
     # plot permanence for a single column when monitored sp is used
     columnIndex = 240
-    permInfo = sp.recoverPermanence(columnIndex)
+    permInfo = sp.recoverPermanence(columnIndex, getPermTrace=1)
+    permTrace = permInfo['permTrace']
     plotPermInfo(permInfo)
 
   plotExampleInputOutput(sp, inputVectors, expName + "final")
