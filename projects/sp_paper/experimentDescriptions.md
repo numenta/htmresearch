@@ -18,8 +18,8 @@ kill a fraction of the SP columns
 `run train_sp.py -b 1 --name trauma_boosting_without_topology --spatialImp faulty_sp --killCellsAt 50 --killCellPrct 0.5 --runClassification 1 --trackOverlapCurve 1`
 
 ## Random Bar Pairs Vs. Random Cross (No Topology)
-`run train_sp.py -d randomBarPairs --spatialImp cpp -e 200 -b 1`
-`run train_sp.py -d randomCross --spatialImp cpp -e 200 -b 1`
+`run train_sp.py -d randomBarPairs --spatialImp monitored_sp -e 200 -b 1 --changeDataSetContinuously 1`
+`run train_sp.py -d randomCross --spatialImp monitored_sp -e 200 -b 1 --changeDataSetContinuously 0`
 
 ## two input fields
 `run train_sp.py -b 1 –d correlatedSDRPairs`
@@ -31,9 +31,10 @@ kill a fraction of the SP columns
 
 ## continuous learning experiment
 `run train_sp_topology.py -b 1 -d randomSDRVaryingSparsity --spatialImp cpp --runClassification 0 --trackOverlapCurve 1 -e 100 --changeDataSetAt 50 --name randomSDRVaryingSparsityContinuousLearning `
+
 ## Random Bar Pairs Vs. Random Cross (With Topology)
-`run train_large_sp_topology.py -d randomCross --spatialImp py -e 200 -b 1`
-`run train_sp_topology.py -d randomBarPairs --spatialImp py -e 200 -b 1`
+`run train_sp_topology.py -d randomCross --spatialImp py -e 200 -b 1 --changeDataSetContinuously 1`
+`run train_sp_topology.py -d randomBarPairs --spatialImp py -e 200 -b 1 --changeDataSetContinuously 1`
 
 # Topology experiment (random bar sets)
 `run train_sp_topology.py -d randomBarSets -b 1 --name random_bars_with_topology --spatialImp monitored_sp --changeDataSetContinuously 1 --boosting 1`
