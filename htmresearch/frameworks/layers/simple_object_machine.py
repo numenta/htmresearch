@@ -208,7 +208,7 @@ class SimpleObjectMachine(ObjectMachineBase):
       locationArray = numpy.random.permutation(locationArray)
       self.addObject(
         [(locationArray[p],
-          random.randint(0, numFeatures-1)) for p in xrange(numPoints)],
+          numpy.random.randint(0, numFeatures-1)) for p in xrange(numPoints)],
       )
 
 
