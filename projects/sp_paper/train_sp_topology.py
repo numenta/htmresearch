@@ -25,7 +25,7 @@ import pprint
 from tabulate import tabulate
 from pylab import rcParams
 
-
+import nupic.math.topology as topology
 from nupic.research.spatial_pooler import SpatialPooler as PYSpatialPooler
 from htmresearch.algorithms.faulty_spatial_pooler import FaultySpatialPooler
 from htmresearch.frameworks.sp_paper.sp_metrics import (
@@ -206,6 +206,12 @@ def _getArgs():
                     dest="killCellPrct",
                     help="the fraction of sp cells that will be removed")
 
+  parser.add_option("--killInputsAfter",
+                    type=int,
+                    default=-1,
+                    dest="killInputsAfter",
+                    help="kill a fraction of inputs")
+
   parser.add_option("--name",
                     type=str,
                     default='defaultName',
@@ -297,6 +303,7 @@ if __name__ == "__main__":
   killCellPrct = _options.killCellPrct
   expName = _options.expName
   inputVectorType = _options.dataSet
+  killInputsAfter = _options.killInputsAfter
 
   params = getSDRDataSetParams(inputVectorType)
 
@@ -366,6 +373,12 @@ if __name__ == "__main__":
                  interpolation='nearest', cmap='jet')
       plt.colorbar()
       plt.savefig('figures/avgInputs/{}_epoch_{}'.format(expName, epoch))
+
+    if killInputsAfter > 0 and epoch > killInputsAfter:
+      inputSpaceDim = (params['nX'], params['nY'])
+      centerColumn = indexFromCoordinates((15, 15), inputSpaceDim)
+      deadInputs = topology.wrappingNeighborhood(centerColumn, 5, inputSpaceDim)
+      inputVectors[:, deadInputs] = 0
 
     if epoch == killCellsAt:
       if spatialImp == "faulty_sp" or spatialImp == "monitored_faulty_sp":
