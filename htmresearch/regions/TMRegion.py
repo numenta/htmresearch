@@ -27,15 +27,6 @@ from nupic.bindings.regions.PyRegion import PyRegion
 
 from htmresearch.algorithms.temporal_memory_factory import (
   createModel, getConstructorArguments)
-from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
-from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
-  TemporalMemoryMonitorMixin)
-
-
-
-class MonitoredExtendedTemporalMemory(TemporalMemoryMonitorMixin, ExtendedTemporalMemory):
-    pass
-
 
 
 class TMRegion(PyRegion):
@@ -45,10 +36,6 @@ class TMRegion(PyRegion):
   The TMRegion's computation implementations come from the various
   Temporal Memory classes found in nupic and nupic.research
   (TemporalMemory, ExtendedTemporalMemory).
-
-  The region supports external inputs and top down inputs. If these inputs
-  are specified, temporalImp must be one of the ExtendedTemporalMemory
-  implementations.
   """
 
   @classmethod
@@ -123,10 +110,16 @@ class TMRegion(PyRegion):
               count=0,
               regionLevel=True,
               isDefaultOutput=True),
-
+            predictedCells=dict(
+                description="A dense binary output containing a 1 for every"
+                            " cell that was predicted for this time step.",
+                dataType="Real32",
+                count=0,
+                regionLevel=True,
+                isDefaultOutput=False),
             predictiveCells=dict(
                 description="A dense binary output containing a 1 for every"
-                            " cell currently in predicted state.",
+                            " cell predicted for the next time step.",
                 dataType="Real32",
                 count=0,
                 regionLevel=True,
@@ -163,19 +156,25 @@ class TMRegion(PyRegion):
                 constraints='bool'),
             columnCount=dict(
                 description="Number of columns in this temporal memory",
-                accessMode='ReadWrite',
+                accessMode="Read",
                 dataType="UInt32",
                 count=1,
                 constraints=""),
-            inputWidth=dict(
-                description='Number of inputs to the TM.',
-                accessMode='Read',
-                dataType='UInt32',
-                count=1,
-                constraints=''),
+            basalInputWidth=dict(
+              description='Number of basal inputs to the TM.',
+              accessMode='Read',
+              dataType='UInt32',
+              count=1,
+              constraints=''),
+            apicalInputWidth=dict(
+              description='Number of apical inputs to the TM.',
+              accessMode='Read',
+              dataType='UInt32',
+              count=1,
+              constraints=''),
             cellsPerColumn=dict(
                 description="Number of cells per column",
-                accessMode='ReadWrite',
+                accessMode="Read",
                 dataType="UInt32",
                 count=1,
                 constraints=""),
@@ -183,20 +182,20 @@ class TMRegion(PyRegion):
                 description="If the number of active connected synapses on a "
                             "segment is at least this threshold, the segment "
                             "is said to be active.",
-                accessMode='ReadWrite',
+                accessMode="Read",
                 dataType="UInt32",
                 count=1,
                 constraints=""),
             initialPermanence=dict(
                 description="Initial permanence of a new synapse.",
-                accessMode='ReadWrite',
+                accessMode="Read",
                 dataType="Real32",
                 count=1,
                 constraints=""),
             connectedPermanence=dict(
                 description="If the permanence value for a synapse is greater "
                             "than this value, it is said to be connected.",
-                accessMode='ReadWrite',
+                accessMode="Read",
                 dataType="Real32",
                 count=1,
                 constraints=""),
@@ -204,50 +203,51 @@ class TMRegion(PyRegion):
                 description="If the number of synapses active on a segment is at "
                             "least this threshold, it is selected as the best "
                             "matching cell in a bursting column.",
-                accessMode='ReadWrite',
+                accessMode="Read",
                 dataType="UInt32",
                 count=1,
                 constraints=""),
             maxNewSynapseCount=dict(
                 description="The maximum number of synapses added to a segment "
                             "during learning.",
-                accessMode='ReadWrite',
+                accessMode="Read",
                 dataType="UInt32",
                 count=1),
             permanenceIncrement=dict(
                 description="Amount by which permanences of synapses are "
                             "incremented during learning.",
-                accessMode='ReadWrite',
+                accessMode="Read",
                 dataType="Real32",
                 count=1),
             permanenceDecrement=dict(
                 description="Amount by which permanences of synapses are "
                             "decremented during learning.",
-                accessMode='ReadWrite',
+                accessMode="Read",
                 dataType="Real32",
                 count=1),
             predictedSegmentDecrement=dict(
                 description="Amount by which active permanences of synapses of "
                             "previously predicted but inactive segments are "
                             "decremented.",
-                accessMode='ReadWrite',
+                accessMode="Read",
                 dataType="Real32",
                 count=1),
             seed=dict(
                 description="Seed for the random number generator.",
-                accessMode='ReadWrite',
+                accessMode="Read",
                 dataType="UInt32",
                 count=1),
             temporalImp=dict(
                 description="Type of tm to use",
-                accessMode="ReadWrite",
+                accessMode="Read",
                 dataType="Byte",
                 count=0,
-                constraints="enum: tm,tmCPP, extended,tmMixin"),
-            formInternalConnections=dict(
+                constraints=("enum: tm_py, tm_cpp, monitored_tm_py, monitored_tm_cpp, "
+                             "etm_py, etm_cpp, monitored_etm_py, monitored_etm_cpp")),
+            formInternalBasalConnections=dict(
                 description="Flag to determine whether to form connections "
                             "with internal cells within this temporal memory",
-                accessMode="ReadWrite",
+                accessMode="Read",
                 dataType="UInt32",
                 count=1,
                 defaultValue=1,
@@ -255,7 +255,7 @@ class TMRegion(PyRegion):
             learnOnOneCell=dict(
                 description="If True, the winner cell for each column will be"
                             " fixed between resets.",
-                accessMode="ReadWrite",
+                accessMode="Read",
                 dataType="UInt32",
                 count=1,
                 constraints="bool"),
@@ -279,7 +279,13 @@ class TMRegion(PyRegion):
 
 
   def __init__(self,
+
+               # Modified TM params
                columnCount=2048,
+               basalInputWidth=0,
+               apicalInputWidth=0,
+
+               # ETM params
                cellsPerColumn=32,
                activationThreshold=13,
                initialPermanence=0.21,
@@ -289,14 +295,26 @@ class TMRegion(PyRegion):
                permanenceIncrement=0.10,
                permanenceDecrement=0.10,
                predictedSegmentDecrement=0.0,
+               formInternalBasalConnections=True,
+               learnOnOneCell=False,
+               maxSegmentsPerCell=255,
+               maxSynapsesPerSegment=255,
                seed=42,
-               learnOnOneCell=1,
-               temporalImp="tm",
-               formInternalConnections = 1,
+               checkInputs=True,
+
+               # Region params
                defaultOutputType = "active",
+               implementation="etm_cpp",
+               learningMode=True,
+               inferenceMode=True,
                **kwargs):
-    # Defaults for all other parameters
+
+    # Modified TM params
     self.columnCount = columnCount
+    self.basalInputWidth = basalInputWidth
+    self.apicalInputWidth = apicalInputWidth
+
+    # TM params
     self.cellsPerColumn = cellsPerColumn
     self.activationThreshold = activationThreshold
     self.initialPermanence = initialPermanence
@@ -306,13 +324,18 @@ class TMRegion(PyRegion):
     self.permanenceIncrement = permanenceIncrement
     self.permanenceDecrement = permanenceDecrement
     self.predictedSegmentDecrement = predictedSegmentDecrement
+    self.formInternalBasalConnections = formInternalBasalConnections
+    self.learnOnOneCell = learnOnOneCell
+    self.maxSegmentsPerCell = maxSegmentsPerCell
+    self.maxSynapsesPerSegment = maxSynapsesPerSegment
     self.seed = seed
-    self.learnOnOneCell = bool(learnOnOneCell)
-    self.learningMode = True
-    self.inferenceMode = True
-    self.temporalImp = temporalImp
-    self.formInternalConnections = bool(formInternalConnections)
+    self.checkInputs = checkInputs
+
+    # Region params
     self.defaultOutputType = defaultOutputType
+    self.implementation = implementation
+    self.learningMode = learningMode
+    self.inferenceMode = inferenceMode
 
     PyRegion.__init__(self, **kwargs)
 
@@ -326,9 +349,24 @@ class TMRegion(PyRegion):
     the constructor parameters for each class, and send it to that constructor.
     """
     if self._tm is None:
-      # Create dict of arguments we will pass to the temporal memory class
-      args = copy.deepcopy(self.__dict__)
-      args["columnDimensions"] = (self.columnCount,)
+      args = {
+        "columnDimensions": (self.columnCount,),
+        "cellsPerColumn": self.cellsPerColumn,
+        "activationThreshold": self.activationThreshold,
+        "initialPermanence": self.initialPermanence,
+        "connectedPermanence": self.connectedPermanence,
+        "minThreshold": self.minThreshold,
+        "maxNewSynapseCount": self.maxNewSynapseCount,
+        "permanenceIncrement": self.permanenceIncrement,
+        "permanenceDecrement": self.permanenceDecrement,
+        "predictedSegmentDecrement": self.predictedSegmentDecrement,
+        "formInternalBasalConnections": self.formInternalBasalConnections,
+        "learnOnOneCell": self.learnOnOneCell,
+        "maxSegmentsPerCell": self.maxSegmentsPerCell,
+        "maxSynapsesPerSegment": self.maxSynapsesPerSegment,
+        "seed": self.seed,
+        "checkInputs": self.checkInputs,
+      }
 
       # Ensure we only pass in those args that are expected by this
       # implementation. This is important for SWIG'ified classes, such as
@@ -338,12 +376,13 @@ class TMRegion(PyRegion):
         if not arg in expectedArgs:
           args.pop(arg)
 
-      # Create the TM instance
-      self._tm = createModel(self.temporalImp, **args)
+      # Create the TM instance.
+      self._tm = createModel(self.implementation, **args)
 
-      # numpy arrays we will use for some of the outputs
-      self.activeState = numpy.zeros(self._tm.numberOfCells())
-      self.previouslyPredictedCells = numpy.zeros(self._tm.numberOfCells())
+      # Carry some information to the next time step.
+      self.prevPredictiveCells = ()
+      self.prevActiveExternalCells = ()
+      self.prevActiveApicalCells = ()
 
 
 
@@ -357,52 +396,56 @@ class TMRegion(PyRegion):
     at the next compute will start fresh, presumably with bursting columns.
     """
 
-    activeColumns = set(numpy.where(inputs["bottomUpIn"] == 1)[0])
+    activeColumns = inputs["bottomUpIn"].nonzero()[0]
 
     if "externalInput" in inputs:
-      activeExternalCells = set(numpy.where(inputs["externalInput"] == 1)[0])
+      activeExternalCells = inputs["externalInput"].nonzero()[0]
     else:
-      activeExternalCells = None
+      activeExternalCells = ()
 
     if "topDownIn" in inputs:
-      activeApicalCells = set(numpy.where(inputs["topDownIn"] == 1)[0])
+      activeApicalCells = inputs["topDownIn"].nonzero()[0]
     else:
-      activeApicalCells = None
+      activeApicalCells = ()
 
-    # Figure out if our class is one of the "general types"
+    # Figure out if our class is one of the "extended types"
     args = getArgumentDescriptions(self._tm.compute)
     if len(args) > 3:
       # Extended temporal memory
       self._tm.compute(activeColumns,
-                       activeExternalCells=activeExternalCells,
-                       activeApicalCells=activeApicalCells,
-                       formInternalConnections=self.formInternalConnections,
+                       activeCellsExternalBasal=activeExternalCells,
+                       activeCellsExternalApical=activeApicalCells,
+                       reinforceCandidatesExternalBasal=self.prevActiveExternalCells,
+                       reinforceCandidatesExternalApical=self.prevActiveApicalCells,
+                       growthCandidatesExternalBasal=self.prevActiveExternalCells,
+                       growthCandidatesExternalApical=self.prevActiveApicalCells,
                        learn=self.learningMode)
+      self.prevActiveExternalCells = activeExternalCells
+      self.prevActiveApicalCells = activeApicalCells
     else:
       # Plain old temporal memory
       self._tm.compute(activeColumns, learn=self.learningMode)
 
-    # Normal temporal memory doesn't compute predictedActiveCells so we
-    # always compute it explicitly
-    self.activeState[:] = 0
-    self.activeState[self._tm.getActiveCells()] = 1
-    predictedActiveCells = self.activeState*self.previouslyPredictedCells
+    # Extract the active / predictive cells and put them into binary arrays.
+    outputs["activeCells"][:] = 0
+    outputs["activeCells"][self._tm.getActiveCells()] = 1
+    outputs["predictedCells"][:] = 0
+    outputs["predictedCells"][self.prevPredictiveCells] = 1
+    outputs["predictedActiveCells"][:] = (outputs["activeCells"] *
+                                          outputs["predictedActiveCells"])
 
-    self.previouslyPredictedCells[:] = 0
-    self.previouslyPredictedCells[self._tm.getPredictiveCells()] = 1
-
-    # Copy numpy values into the various outputs
-    outputs["activeCells"][:] = self.activeState
-    outputs["predictiveCells"][:] = self.previouslyPredictedCells
-    outputs["predictedActiveCells"][:] = predictedActiveCells
+    predictiveCells = self._tm.getPredictiveCells()
+    outputs["predictiveCells"][:] = 0
+    outputs["predictiveCells"][predictiveCells] = 0
+    self.prevPredictiveCells = predictiveCells
 
     # Select appropriate output for bottomUpOut
     if self.defaultOutputType == "active":
-      outputs["bottomUpOut"][:] = self.activeState
+      outputs["bottomUpOut"][:] = outputs["activeCells"]
     elif self.defaultOutputType == "predictive":
-      outputs["bottomUpOut"][:] = self.previouslyPredictedCells
+      outputs["bottomUpOut"][:] = outputs["predictiveCells"]
     elif self.defaultOutputType == "predictedActiveCells":
-      outputs["bottomUpOut"][:] = predictedActiveCells
+      outputs["bottomUpOut"][:] = outputs["predictedActiveCells"]
     else:
       raise Exception("Unknown outputType: " + self.defaultOutputType)
 
@@ -417,7 +460,7 @@ class TMRegion(PyRegion):
     """ Reset the state of the TM """
     if self._tm is not None:
       self._tm.reset()
-      self.previouslyPredictedCells[:] = 0
+      self.prevPredictiveCells = ()
 
 
   def debugPlot(self, name):
@@ -445,7 +488,6 @@ class TMRegion(PyRegion):
       automatically by PyRegion's parameter get mechanism. The ones that need
       special treatment are explicitly handled here.
     """
-    # TODO SPECIAL CASES
     return PyRegion.getParameter(self, parameterName, index)
 
 
@@ -455,8 +497,7 @@ class TMRegion(PyRegion):
     automatically by PyRegion's parameter set mechanism. The ones that need
     special treatment are explicitly handled here.
     """
-    if parameterName in ["learningMode", "inferenceMode",
-                         "formInternalConnections"]:
+    if parameterName in ["learningMode", "inferenceMode"]:
       setattr(self, parameterName, bool(parameterValue))
     elif hasattr(self, parameterName):
       setattr(self, parameterName, parameterValue)
@@ -470,7 +511,7 @@ class TMRegion(PyRegion):
     """
     if name in ["bottomUpOut", "predictedActiveCells", "predictiveCells",
                 "activeCells"]:
-      return self.columnCount * self.cellsPerColumn
+      return self._columnCount * self._cellsPerColumn
     else:
       raise Exception("Invalid output name specified")
 

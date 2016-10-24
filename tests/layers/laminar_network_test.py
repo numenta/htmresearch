@@ -33,10 +33,10 @@ networkConfig1 = {
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
-    "formInternalConnections": 0,
-    "learningMode": 1,
-    "inferenceMode": 1,
-    "learnOnOneCell": 0,
+    "formInternalBasalConnections": False,
+    "learningMode": True,
+    "inferenceMode": True,
+    "learnOnOneCell": False,
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
@@ -49,16 +49,18 @@ networkConfig1 = {
   "L2Params": {
     "columnCount": 1024,
     "inputWidth": 1024 * 8,
-    "learningMode": 1,
-    "inferenceMode": 1,
+    "learningMode": True,
+    "inferenceMode": True,
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
-    "minThreshold": 10,
+    "minThresholdDistal": 10,
+    "minThresholdProximal": 10,
     "predictedSegmentDecrement": 0.004,
-    "activationThreshold": 10,
-    "maxNewSynapseCount": 20,
+    "activationThresholdDistal": 10,
+    "maxNewProximalSynapseCount": 20,
+    "maxNewDistalSynapseCount": 20,
     "numActiveColumnsPerInhArea": 40,
     "synPermProximalInc":  0.1,
     "synPermProximalDec": 0.001,
@@ -74,10 +76,10 @@ networkConfig2 = {
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
-    "formInternalConnections": 0,
-    "learningMode": 1,
-    "inferenceMode": 1,
-    "learnOnOneCell": 0,
+    "formInternalBasalConnections": False,
+    "learningMode": True,
+    "inferenceMode": True,
+    "learnOnOneCell": False,
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
@@ -91,16 +93,18 @@ networkConfig2 = {
   "L2Params": {
     "columnCount": 1024,
     "inputWidth": 1024 * 8,
-    "learningMode": 1,
-    "inferenceMode": 1,
+    "learningMode": True,
+    "inferenceMode": True,
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
-    "minThreshold": 10,
+    "minThresholdDistal": 10,
+    "minThresholdProximal": 10,
     "predictedSegmentDecrement": 0.004,
-    "activationThreshold": 10,
-    "maxNewSynapseCount": 20,
+    "activationThresholdDistal": 10,
+    "maxNewProximalSynapseCount": 20,
+    "maxNewDistalSynapseCount": 20,
     "numActiveColumnsPerInhArea": 40,
     "synPermProximalInc":  0.1,
     "synPermProximalDec": 0.001,
@@ -116,10 +120,10 @@ networkConfig3 = {
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
-    "formInternalConnections": 0,
-    "learningMode": 1,
-    "inferenceMode": 1,
-    "learnOnOneCell": 0,
+    "formInternalBasalConnections": False,
+    "learningMode": True,
+    "inferenceMode": True,
+    "learnOnOneCell": False,
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
@@ -133,16 +137,18 @@ networkConfig3 = {
   "L2Params": {
     "columnCount": 1024,
     "inputWidth": 1024 * 8,
-    "learningMode": 1,
-    "inferenceMode": 1,
+    "learningMode": True,
+    "inferenceMode": True,
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
-    "minThreshold": 10,
+    "minThresholdDistal": 10,
+    "minThresholdProximal": 10,
     "predictedSegmentDecrement": 0.004,
-    "activationThreshold": 10,
-    "maxNewSynapseCount": 20,
+    "activationThresholdDistal": 10,
+    "maxNewProximalSynapseCount": 20,
+    "maxNewDistalSynapseCount": 20,
     "numActiveColumnsPerInhArea": 40,
     "synPermProximalInc":  0.1,
     "synPermProximalDec": 0.001,
@@ -243,10 +249,10 @@ class LaminarNetworkTest(unittest.TestCase):
       "L4Params": {
         "columnCount": 512,
         "cellsPerColumn": 16,
-        "formInternalConnections": 1,
-        "learningMode": 1,
-        "inferenceMode": 1,
-        "learnOnOneCell": 0,
+        "formInternalBasalConnections": True,
+        "learningMode": True,
+        "inferenceMode": True,
+        "learnOnOneCell": False,
         "initialPermanence": 0.23,
         "connectedPermanence": 0.75,
         "permanenceIncrement": 0.45,
@@ -260,16 +266,18 @@ class LaminarNetworkTest(unittest.TestCase):
       "L2Params": {
         "columnCount": 2048,
         "inputWidth": 512 * 16,
-        "learningMode": 1,
-        "inferenceMode": 1,
+        "learningMode": True,
+        "inferenceMode": True,
         "initialPermanence": 0.45,
         "connectedPermanence": 0.75,
         "permanenceIncrement": 0.23,
         "permanenceDecrement": 0.2,
-        "minThreshold": 12,
+        "minThresholdDistal": 8,
+        "minThresholdProximal": 12,
         "predictedSegmentDecrement": 0.03,
-        "activationThreshold": 8,
-        "maxNewSynapseCount": 15,
+        "activationThresholdDistal": 8,
+        "maxNewProximalSynapseCount": 15,
+        "activationThresholdDistal": 15,
         "numActiveColumnsPerInhArea": 35,
         "synPermProximalInc": 0.12,
         "synPermProximalDec": 0.1,
@@ -439,8 +447,8 @@ class LaminarNetworkTest(unittest.TestCase):
     net.run(1)
 
     # check inference with each (feature, location) pair
-    L2Column.setParameter("learningMode", 0, 0)
-    L4Column.setParameter("learningMode", 0, 0)
+    L2Column.setParameter("learningMode", 0, False)
+    L4Column.setParameter("learningMode", 0, False)
 
     # (F0, L0)
     sensorInput.addDataToQueue(features[0], 0, 0)
@@ -688,10 +696,10 @@ class LaminarNetworkTest(unittest.TestCase):
     net.run(1)
 
     # check inference with each (feature, location) pair
-    L2Column0.setParameter("learningMode", 0, 0)
-    L4Column0.setParameter("learningMode", 0, 0)
-    L2Column1.setParameter("learningMode", 0, 0)
-    L4Column1.setParameter("learningMode", 0, 0)
+    L2Column0.setParameter("learningMode", 0, False)
+    L4Column0.setParameter("learningMode", 0, False)
+    L2Column1.setParameter("learningMode", 0, False)
+    L4Column1.setParameter("learningMode", 0, False)
 
     # (F0, L0)
     sensorInput0.addDataToQueue(features0[0], 0, 0)

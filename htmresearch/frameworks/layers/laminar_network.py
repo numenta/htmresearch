@@ -62,6 +62,7 @@ reset signal from sensorInput is sent to the other regions.
 Also, how do you like my ascii art?
 
 """
+import copy
 import json
 
 from nupic.engine import Network
@@ -94,6 +95,10 @@ def createL4L2Column(network, networkConfig, suffix=""):
   L4ColumnName = "L4Column" + suffix
   L2ColumnName = "L2Column" + suffix
 
+  L4Params = copy.deepcopy(networkConfig["L4Params"])
+  L4Params["basalInputWidth"] = networkConfig["externalInputSize"]
+  L4Params["apicalInputWidth"] = networkConfig["L2Params"]["columnCount"]
+
   # Create the two sensors, L4 column, and L2 column
   network.addRegion(
     externalInputName, "py.RawSensor",
@@ -103,7 +108,7 @@ def createL4L2Column(network, networkConfig, suffix=""):
     json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
   network.addRegion(
     L4ColumnName, "py.ExtendedTMRegion",
-    json.dumps(networkConfig["L4Params"]))
+    json.dumps(L4Params))
   network.addRegion(
     L2ColumnName, "py.ColumnPoolerRegion",
     json.dumps(networkConfig["L2Params"]))
@@ -118,7 +123,7 @@ def createL4L2Column(network, networkConfig, suffix=""):
 
   # Link sensors to L4
   network.link(externalInputName, L4ColumnName, "UniformLink", "",
-               srcOutput="dataOut", destInput="externalInput")
+               srcOutput="dataOut", destInput="externalBasalInput")
   network.link(sensorInputName, L4ColumnName, "UniformLink", "",
                srcOutput="dataOut", destInput="feedForwardInput")
 
@@ -126,7 +131,7 @@ def createL4L2Column(network, networkConfig, suffix=""):
   network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
                srcOutput="feedForwardOutput", destInput="feedforwardInput")
   network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="apicalInput")
+               srcOutput="feedForwardOutput", destInput="externalApicalInput")
 
   # Link reset output to L4 and L2
   network.link(sensorInputName, L4ColumnName, "UniformLink", "",
@@ -164,15 +169,22 @@ def createMultipleL4L2Columns(network, networkConfig):
       }
     }
   """
-  # TODO: for now, each L2 column should have a different seed
-  if "seed" not in networkConfig["L2Params"]:
-    networkConfig["L2Params"]["seed"] = 42
 
   # Create each column
-  for i in range(networkConfig["numCorticalColumns"]):
+  numCellsInCorticalColumn = networkConfig["L2Params"]["columnCount"]
+  numCorticalColumns = networkConfig["numCorticalColumns"]
+  for i in xrange(numCorticalColumns):
+    networkConfigCopy = copy.deepcopy(networkConfig)
+    layerConfig = networkConfigCopy["L2Params"]
+    if "seed" not in layerConfig:
+      # TODO: for now, each L2 column should have a different seed
+      layerConfig["seed"] = 42 + i
+
+    layerConfig["lateralInputWidth"] = ((numCorticalColumns - 1)*
+                                        numCellsInCorticalColumn)
+
     suffix = "_" + str(i)
-    network = createL4L2Column(network, networkConfig, suffix)
-    networkConfig["L2Params"]["seed"] += 1
+    network = createL4L2Column(network, networkConfigCopy, suffix)
 
   # Now connect the L2 columns laterally
   for i in range(networkConfig["numCorticalColumns"]):
@@ -212,4 +224,3 @@ def createNetwork(networkConfig):
     return createL4L2Column(network, networkConfig, "_0")
   elif networkConfig["networkType"] == "MultipleL4L2Columns":
     return createMultipleL4L2Columns(network, networkConfig)
-

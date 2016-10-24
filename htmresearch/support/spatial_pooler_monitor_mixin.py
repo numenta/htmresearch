@@ -175,7 +175,7 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
 
 
 
-  def recoverPermanence(self, columnIndex, verbose=0):
+  def recoverPermanence(self, columnIndex, verbose=0, getPermTrace=0):
     """
     Recover permamnece for a single column
     :param columnIndex: index of the column of interest
@@ -206,6 +206,8 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
     avgPermNonConnected = []
     activeSteps = []
 
+    permTrace = {}
+
     for i in range(numStep):
       if learnTrace.data[i] is False:
         continue
@@ -222,6 +224,9 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
 
         perm[perm < self._synPermTrimThreshold] = 0
         numpy.clip(perm, self._synPermMin, self._synPermMax, out=perm)
+
+        if getPermTrace:
+          permTrace[i] = perm
 
       numConnectedSyn.append(numpy.sum(perm > self._synPermConnected))
       permMask = perm[maskPotential]
@@ -241,6 +246,7 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
                 "avgPermNonConnectedSyn": numpy.array(avgPermNonConnected),
                 "numConnectedSyn": numpy.array(numConnectedSyn),
                 "numNonConnectedSyn": numpy.array(numNonConnectedSyn),
+                "permTrace": permTrace,
                 "activeSteps": activeSteps}
 
     return permInfo

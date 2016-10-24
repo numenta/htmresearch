@@ -29,21 +29,20 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 
-def plotTraces(numTmCells, title, xlim, traces):
+def plotTraces(numTmCells, xlim, traces):
   """
   Plot network traces
   :param numTmCells: (int) number of cells in the TM
-  :param title: (str) plot title
   :param xlim: (list) min and max values used for the x-axis range
   :param traces: (list of dict) network traces to plot
   :return: 
   """
 
-  t = np.array(traces['step'])
+  t = np.array(traces['recordNumber'])
   classLabels = np.array(traces['actualCategory'])
   sensorValue = np.array(traces['sensorValue'])
   if xlim is None:
-    xlim = [t[-200], t[-1]]
+    xlim = [t[0], t[-1]]
   else:
     xlim = np.array(xlim)
     if np.max(xlim) > len(t):
@@ -64,7 +63,7 @@ def plotTraces(numTmCells, title, xlim, traces):
     f, ax = plt.subplots(3, sharex=True)
     
     # plot sensor value and class labels
-    ax[0].set_title(title)
+    ax[0].set_title('Sensor data')
     ax[0].plot(t, sensorValue)
     ax[0].set_xlim(xlim)
 
@@ -89,8 +88,8 @@ def plotTraces(numTmCells, title, xlim, traces):
     ax[0].set_ylabel('Sensor Value')
 
     # plot classification accuracy
-    ax[1].set_title('Classification accuracy rolling average')
-    ax[1].plot(traces['classificationAccuracy'])
+    ax[1].set_title('Clustering accuracy rolling average')
+    ax[1].plot(traces['clusteringAccuracy'])
     
     
     # plot cell activations
@@ -100,8 +99,9 @@ def plotTraces(numTmCells, title, xlim, traces):
     if len(selectRange) <= len(cellTrace):
       for i in range(len(selectRange)):
         cells = cellTrace[selectRange[i]]
-        sdrT = t[selectRange[i]] * np.ones((len(cells, )))
-        ax[2].plot(sdrT, randomCellOrder[cells], 's', color='white', ms=1)
+        if cells is not None:
+          sdrT = t[selectRange[i]] * np.ones((len(cells, )))
+          ax[2].plot(sdrT, randomCellOrder[cells], 's', color='white', ms=1)
 
     ax[2].set_title('Cell activation')
     ax[2].set_ylabel(traceName)
@@ -160,14 +160,7 @@ def loadTraces(fileName):
         if len(row[i]) == 0:
           data = []
         else:
-          if headers[i] in ['step',
-                            'classificationAccuracy',
-                            'sensorValue',
-                            'actualCategory',
-                            'predictedCategory',
-                            'predictedCategoryTrace']:
-            data = float(row[i])
-          elif headers[i] in ['tmPredictedActiveCells',
+          if headers[i] in ['tmPredictedActiveCells',
                               'tpActiveCells',
                               'tmActiveCells']:
             if row[i] == '[]':
@@ -175,7 +168,7 @@ def loadTraces(fileName):
             else:
               data = map(int, row[i][1:-1].split(','))
           else:
-            raise ValueError('Unknown header name: %s' % headers[i])
+            data = float(row[i])
         traces[headers[i]].append(data)
 
   return traces

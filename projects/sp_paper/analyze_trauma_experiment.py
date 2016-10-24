@@ -19,24 +19,21 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 from htmresearch.support.sp_paper_utils import *
+import matplotlib as mpl
+mpl.rcParams['pdf.fonttype'] = 42
 
 """
 Script to analyze trauma experiment result
 """
 
-if __name__ == "__main__":
-  plt.ion()
-  expName = 'trauma_boosting_with_topology'
-  numEpochs = 600
-  killAt = 150
-
+def getInputConverage(expName, numEpochs, killAt):
   inputCoverageTraumaRegion = []
   inputCoverageControlRegion = []
   inputCoverageBeforeTrauma = None
   inputCoverageAfterTrauma = None
-  inputCoverageAfterRecovery = None
+
   epochList = []
-  for epoch in range(99, 500):
+  for epoch in range(99, numEpochs):
     epochList.append(epoch)
     inputSpaceCoverage = np.load \
       ('./results/InputCoverage/{}_{}.npz'.format(expName, epoch))
@@ -51,21 +48,40 @@ if __name__ == "__main__":
       inputCoverageBeforeTrauma = inputSpaceCoverage
     if epoch == killAt:
       inputCoverageAfterTrauma = inputSpaceCoverage
-    if epoch == numEpochs-1:
-      inputCoverageAfterRecovery = inputSpaceCoverage
 
+  inputSpaceCoverage = np.load \
+    ('./results/InputCoverage/{}_{}.npz'.format(expName, numEpochs-1))
+  inputCoverageAfterRecovery = inputSpaceCoverage['arr_0']
+  return (epochList,
+          inputCoverageTraumaRegion,
+          inputCoverageControlRegion,
+          inputCoverageBeforeTrauma,
+          inputCoverageAfterTrauma,
+          inputCoverageAfterRecovery)
+
+
+def plotInputCoverage(expName, epochList, killAt,
+                      inputCoverageControlRegion,
+                      inputCoverageTraumaRegion):
   # Plot coverage factor for trauma region and a control region
   fig, axs = plt.subplots(2, 2)
   axs[0, 0].plot(epochList, inputCoverageControlRegion, label='control')
   axs[0, 0].plot(epochList, inputCoverageTraumaRegion, label='trauma')
+  axs[0, 0].plot([killAt, killAt], [19, 50], 'k--')
   # axs[0, 0].set_xlim([killAt-50, numEpochs])
   axs[0, 0].set_xlim([100, 500])
-  axs[0, 0].set_ylim([15, 50])
+  axs[0, 0].set_ylim([19, 50])
+  # axs[0, 0].set_ylim([-1, 50])
   axs[0, 0].set_xlabel('Time')
   # axs[0, 0].set_aspect('equal')
+  plt.axis('equal')
   plt.legend()
-  plt.savefig('figures/traumaRecovery.pdf')
+  plt.savefig('figures/traumaRecovery_{}.pdf'.format(expName))
 
+
+def plotSynapseGrowth(expName,
+                      inputCoverageAfterRecovery,
+                      inputCoverageAfterTrauma):
   # Compare before and after recovery
   fig, axs = plt.subplots(2, 2)
   im = axs[0, 0].pcolor(
@@ -79,8 +95,10 @@ if __name__ == "__main__":
   cax = fig.add_axes([0.15, 0.4, 0.3, 0.05])
   fig.colorbar(im, cax=cax, orientation='horizontal',
                ticks=[-10, -5, 0, 5, 10])
-  plt.savefig('figures/synapseGrowthAfterTrauma.pdf')
+  plt.savefig('figures/synapseGrowthAfterTrauma_{}.pdf'.format(expName))
 
+
+def plotMovie(expName, numEpochs, killAt):
   # plot RFcenters and inputCoverage over training
   for epoch in range(killAt-50, numEpochs):
     fig, axs = plt.subplots(2, 2)
@@ -109,5 +127,30 @@ if __name__ == "__main__":
 
     fig.delaxes(axs[1, 0])
     fig.delaxes(axs[1, 1])
-    plt.savefig('figures/traumaMovie/frame_{}.png'.format(epoch))
+    plt.savefig('figures/traumaMovie/{}_frame_{}.png'.format(expName, epoch))
     plt.close(fig)
+
+
+if __name__ == "__main__":
+  plt.ion()
+  # expName = 'trauma_boosting_with_topology'
+  expName = 'trauma_inputs_with_topology'
+  numEpochs = 500
+  killAt = 180
+
+  (epochList,
+   inputCoverageTraumaRegion,
+   inputCoverageControlRegion,
+   inputCoverageBeforeTrauma,
+   inputCoverageAfterTrauma,
+   inputCoverageAfterRecovery) = getInputConverage(expName, numEpochs, killAt)
+
+  plotInputCoverage(expName, epochList, killAt,
+                    inputCoverageControlRegion,
+                    inputCoverageTraumaRegion)
+
+  plotSynapseGrowth(expName,
+                    inputCoverageAfterRecovery,
+                    inputCoverageAfterTrauma)
+
+  plotMovie(expName, numEpochs, killAt)

@@ -46,6 +46,11 @@ def clusterDist(c1, c2):
 
 
 
+def overlapDistance(sdr1, sdr2):
+  return 1 - percentOverlap(sdr1, sdr2)
+
+
+
 def clusterDistDirected(c1, c2):
   """
   Directed distance from cluster 1 to cluster 2
@@ -70,3 +75,43 @@ def clusterDistDirected(c1, c2):
 
 def kernel_dist(kernel):
   return lambda x, y: kernel(x, x) - 2 * kernel(x, y) + kernel(y, y)
+
+
+
+def pointsToSDRs(points):
+  return [p.getValue() for p in points]
+
+
+
+def interClusterDistances(clusters, newCluster):
+  interClusterDist = {}
+  if len(clusters) > 0:
+    for c1 in clusters:
+      for c2 in clusters:
+        name = "c%s-c%s" % (c1.getId(), c2.getId())
+        interClusterDist[name] = clusterDist(pointsToSDRs(c1.getPoints()),
+                                             pointsToSDRs(c2.getPoints()))
+      if len(newCluster.getPoints()) > 0:
+        name = "c%s-new%s" % (c1.getId(), newCluster.getId())
+        interClusterDist[name] = clusterDist(
+          pointsToSDRs(c1.getPoints()), pointsToSDRs(newCluster.getPoints()))
+  return interClusterDist
+
+
+
+def computeClusterDistances(cluster, clusters):
+  """
+  Compute distance between a cluster and each cluster in a list of clusters 
+  :param cluster: (Cluster) cluster to compare to other clusters
+  :param clusters: (list of Cluster objects) 
+  :return: ordered list of clusters and their distances 
+  """
+  dists = []
+  for c in clusters:
+    d = clusterDist(pointsToSDRs(c.getPoints()),
+                    pointsToSDRs(cluster.getPoints()))
+    dists.append((d, c))
+
+  clusterDists = sorted(dists, key=lambda x: (x[0], x[1]._lastUpdated))
+
+  return clusterDists

@@ -22,7 +22,8 @@
 
 import unittest
 
-from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
+from htmresearch.algorithms.extended_temporal_memory import (
+  ExtendedTemporalMemory)
 from etm_algorithm_test_base import ExtendedTemporalMemoryAlgorithmTest
 
 

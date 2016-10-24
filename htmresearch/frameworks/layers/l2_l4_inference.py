@@ -75,12 +75,32 @@ projects/layers/multi_column.py
 import os
 import random
 import collections
+import inspect
+import cPickle
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
 from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.frameworks.layers.laminar_network import createNetwork
 
+
+def rerunExperimentFromLogfile(logFilename):
+  """
+  Create an experiment class according to the sequence of operations in logFile
+  and return resulting experiment instance.
+  """
+  with open(logFilename,"rb") as f:
+    callLog = cPickle.load(f)
+
+  # Assume first one is call to constructor
+  exp = L4L2Experiment(**callLog[0][1])
+
+  # Call subsequent methods, using stored parameters
+  for call in callLog[1:]:
+    method = getattr(exp, call[0])
+    method(**call[1])
+
+  return exp
 
 
 class L4L2Experiment(object):
@@ -105,7 +125,8 @@ class L4L2Experiment(object):
                L2Overrides=None,
                L4Overrides=None,
                numLearningPoints=3,
-               seed=42):
+               seed=42,
+               logCalls = False):
     """
     Creates the network.
 
@@ -135,7 +156,23 @@ class L4L2Experiment(object):
     @param   numLearningPoints (int)
              Number of times each pair should be seen to be learnt
 
+    @param   logCalls (bool)
+             If true, calls to main functions will be logged internally. The
+             log can then be saved with saveLogs(). This allows us to recreate
+             the complete network behavior using rerunExperimentFromLogfile
+             which is very useful for debugging.
+
     """
+    # Handle logging - this has to be done first
+    self.callLog = []
+    self.logCalls = logCalls
+    if self.logCalls:
+      frame = inspect.currentframe()
+      args, _, _, values = inspect.getargvalues(frame)
+      values.pop('frame')
+      values.pop('self')
+      self.callLog.append([inspect.getframeinfo(frame)[2], values])
+
     registerAllResearchRegions()
     self.name = name
 
@@ -236,6 +273,14 @@ class L4L2Experiment(object):
              be reset after learning.
 
     """
+    # Handle logging - this has to be done first
+    if self.logCalls:
+      frame = inspect.currentframe()
+      args, _, _, values = inspect.getargvalues(frame)
+      values.pop('frame')
+      values.pop('self')
+      self.callLog.append([inspect.getframeinfo(frame)[2], values])
+
     self._setLearningMode()
 
     for objectName, sensationList in objects.iteritems():
@@ -312,6 +357,14 @@ class L4L2Experiment(object):
              Name of the objects (must match the names given during learning).
 
     """
+    # Handle logging - this has to be done first
+    if self.logCalls:
+      frame = inspect.currentframe()
+      args, _, _, values = inspect.getargvalues(frame)
+      values.pop('frame')
+      values.pop('self')
+      self.callLog.append([inspect.getframeinfo(frame)[2], values])
+
     self._unsetLearningMode()
     statistics = collections.defaultdict(list)
 
@@ -344,6 +397,18 @@ class L4L2Experiment(object):
     """
     Sends a reset signal to the network.
     """
+    # Handle logging - this has to be done first
+    if self.logCalls:
+      frame = inspect.currentframe()
+      args, _, _, values = inspect.getargvalues(frame)
+      values.pop('frame')
+      values.pop('self')
+      (_, filename,
+       _, _, _, _) = inspect.getouterframes(inspect.currentframe())[1]
+      if os.path.splitext(os.path.basename(__file__))[0] != \
+         os.path.splitext(os.path.basename(filename))[0]:
+        self.callLog.append([inspect.getframeinfo(frame)[2], values])
+
     for col in xrange(self.numColumns):
       self.sensorInputs[col].addResetToQueue(sequenceId)
       self.externalInputs[col].addResetToQueue(sequenceId)
@@ -507,11 +572,10 @@ class L4L2Experiment(object):
     return {
       "columnCount": inputSize,
       "cellsPerColumn": 8,
-      "formInternalConnections": 0,
-      "formInternalBasalConnections": 0,  # inconsistency between CPP and PY
-      "learningMode": 1,
-      "inferenceMode": 1,
-      "learnOnOneCell": 0,
+      "formInternalBasalConnections": False,
+      "learningMode": True,
+      "inferenceMode": True,
+      "learnOnOneCell": False,
       "initialPermanence": 0.51,
       "connectedPermanence": 0.6,
       "permanenceIncrement": 0.1,
@@ -520,9 +584,8 @@ class L4L2Experiment(object):
       "predictedSegmentDecrement": 0.002,
       "activationThreshold": 13,
       "maxNewSynapseCount": 20,
-      "monitor": 0,
       "defaultOutputType": "predictedActiveCells",
-      "implementation": "cpp",
+      "implementation": "etm_cpp",
       "seed": self.seed
     }
 
@@ -534,8 +597,8 @@ class L4L2Experiment(object):
     return {
       "columnCount": 1024,
       "inputWidth": inputSize * 8,
-      "learningMode": 1,
-      "inferenceMode": 1,
+      "learningMode": True,
+      "inferenceMode": True,
       "initialPermanence": 0.41,
       "connectedPermanence": 0.5,
       "permanenceIncrement": 0.1,
@@ -544,12 +607,28 @@ class L4L2Experiment(object):
       "synPermProximalInc": 0.1,
       "synPermProximalDec": 0.001,
       "initialProximalPermanence": 0.6,
-      "minThreshold": 10,
+      "minThresholdDistal": 10,
+      "minThresholdProximal": 10,
       "predictedSegmentDecrement": 0.002,
-      "activationThreshold": 13,
-      "maxNewSynapseCount": 20,
+      "activationThresholdDistal": 13,
+      "maxNewProximalSynapseCount": 20,
+      "maxNewDistalSynapseCount": 20,
+      "maxSynapsesPerDistalSegment": 255,
+      "maxSynapsesPerProximalSegment": 2000,
       "seed": self.seed
     }
+
+
+  def saveLog(self, logFilename):
+    """
+    Save the call log history into this file.
+
+    @param  logFilename (path)
+            Filename in which to save a pickled version of the call logs.
+
+    """
+    with open(logFilename,"wb") as f:
+      cPickle.dump(self.callLog,f)
 
 
   def _unsetLearningMode(self):
@@ -557,9 +636,9 @@ class L4L2Experiment(object):
     Unsets the learning mode, to start inference.
     """
     for column in self.L4Columns:
-      column.setParameter("learningMode", 0, 0)
+      column.setParameter("learningMode", 0, False)
     for column in self.L2Columns:
-      column.setParameter("learningMode", 0, 0)
+      column.setParameter("learningMode", 0, False)
 
 
   def _setLearningMode(self):
@@ -567,9 +646,9 @@ class L4L2Experiment(object):
     Sets the learning mode.
     """
     for column in self.L4Columns:
-      column.setParameter("learningMode", 0, 1)
+      column.setParameter("learningMode", 0, True)
     for column in self.L2Columns:
-      column.setParameter("learningMode", 0, 1)
+      column.setParameter("learningMode", 0, True)
 
 
   def _updateInferenceStats(self, statistics, objectName=None):

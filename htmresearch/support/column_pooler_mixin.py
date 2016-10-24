@@ -54,11 +54,11 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
     return self._mmTraces["activeColumns"]
 
 
-  def mmGetTracePredictiveCells(self):
+  def mmGetTracePredictedCells(self):
     """
     @return (Trace) Trace of predictive cells
     """
-    return self._mmTraces["predictiveCells"]
+    return self._mmTraces["predictedCells"]
 
 
   def mmGetTraceNumSegments(self):
@@ -332,17 +332,20 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
   # ==============================
   # Overrides
   # ==============================
-  def compute(self, feedforwardInput=None, activeExternalCells=None, learn=True,
-              sequenceLabel=None, **kwargs):
-    # Append last cycle's predictiveCells to *predicTEDCells* trace
+  def activateCells(self,
+                    feedforwardInput=(),
+                    reinforceCandidatesExternal=(),
+                    growthCandidatesExternal=(),
+                    learn=True,
+                    sequenceLabel=None,
+                    **kwargs):
+    super(ColumnPoolerMonitorMixin, self).activateCells(
+      feedforwardInput,
+      reinforceCandidatesExternal,
+      growthCandidatesExternal,
+      learn)
+
     self._mmTraces["predictedCells"].data.append(set(self.getPredictiveCells()))
-
-    super(ColumnPoolerMonitorMixin, self).compute(feedforwardInput,
-                                                  activeExternalCells, learn)
-
-    # Append this cycle's predictiveCells to *predicTIVECells* trace
-    self._mmTraces["predictiveCells"].data.append(set(self.getPredictiveCells()))
-
     self._mmTraces["activeCells"].data.append(set(self.getActiveCells()))
     self._mmTraces["activeColumns"].data.append(set(self.getActiveCells()))
     self._mmTraces["numSegments"].data.append(
@@ -401,7 +404,6 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
     self._mmTraces["predictedCells"] = IndicesTrace(self, "predicted cells")
     self._mmTraces["activeColumns"] = IndicesTrace(self, "active cells")
     self._mmTraces["activeCells"] = IndicesTrace(self, "active cells")
-    self._mmTraces["predictiveCells"] = IndicesTrace(self, "predictive cells")
     self._mmTraces["numSegments"] = CountsTrace(self, "# distal segments")
     self._mmTraces["numSynapses"] = CountsTrace(self, "# distal synapses")
     self._mmTraces["numProximalSynapses"] = CountsTrace(
@@ -426,8 +428,7 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
                                   being white and 1.0 being black
 
     @param activityType (string)  The type of cell activity to display. Valid
-                                  types include "activeCells",
-                                  "predictiveCells", "predictedCells",
+                                  types include "activeCells", "predictedCells",
                                   and "predictedActiveCells"
 
     @return (Plot) plot
