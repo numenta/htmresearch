@@ -31,13 +31,19 @@ kill a fraction of the SP columns
 `run train_sp_topology.py -d randomBarSets -b 1 --name random_bars_with_topology --spatialImp monitored_sp --changeDataSetContinuously 1 --boosting 1`
 
 # Fault tolerance experiment (with topology)
-## Train faulty_SP on random bar set dataset
+
+## Fault tolerance to SP column death 
+Train faulty_SP on random bar set dataset
 `run train_sp_topology.py -d randomBarSets -b 1 --name trauma_boosting_with_topology --changeDataSetContinuously 1 --spatialImp faulty_sp --killCellsAt 180 --runClassification 0 --trackOverlapCurve 0 -e 600 --checkTestInput 1 --checkRFCenters 1`
+
+## Fault tolerance to input afferents death
+`run train_sp_topology.py -d randomBarSets -b 1 --name trauma_inputs_with_topology --changeDataSetContinuously 1 --spatialImp faulty_sp --killInputsAfter 180 --runClassification 0 --trackOverlapCurve 0 -e 600 --checkTestInput 1 --checkRFCenters 1`
+
 ## analyze results
 `run analyze_trauma_experiment.py`
 ## make trauma movie (requires ffmpeg)
  In figures/traumaMovie/
- `ffmpeg -start_number 100 -i frame_%03d.png traumaMovie.mp4`
+`ffmpeg -start_number 100 -i trauma_inputs_with_topology_frame_%03d.png traumaMovie1.mp4`
 
 # NYC Taxi experiment
 ## Run with random SP (learning off)
