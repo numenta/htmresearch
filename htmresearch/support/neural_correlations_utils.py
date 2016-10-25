@@ -219,13 +219,31 @@ def subSample(spikeTrains, numCells, totalCells, currentTS):
   @param currentTS (int) time-step upper bound of sample (sample will go from time-step 0 up to currentTS)
   @return subSpikeTrains (array) spike train matrix sampled from the total spike train matrix
   """
+  timeWindow = 1000
   indices = np.random.permutation(np.arange(totalCells))
-  if currentTS > 0:
+  if currentTS > 0 and currentTS < timeWindow:
     subSpikeTrains = np.zeros((numCells, currentTS), dtype = "uint32")
     for i in range(numCells):
       for t in range(currentTS):
         subSpikeTrains[i,t] = spikeTrains[indices[i],t]
-  else:
+  elif currentTS > 0 and currentTS >= timeWindow:
+    subSpikeTrains = np.zeros((numCells, timeWindow), dtype = "uint32")    
+    for i in range(numCells):
+      t1 = 0
+      t2 = currentTS - timeWindow
+      while t2 < currentTS:
+        subSpikeTrains[i,t1] = spikeTrains[indices[i],t2]
+        t1 += 1
+        t2 += 1
+  elif currentTS == 0:
+    # This option takes the whole spike train history
+    totalTS = np.shape(spikeTrains)[1]
+    subSpikeTrains = np.zeros((numCells, totalTS), dtype = "uint32")
+    for i in range(numCells):
+      for t in range(totalTS):
+        subSpikeTrains[i,t] = spikeTrains[indices[i],t]    
+  elif currentTS > 0:
+    # This option takes a timestep at random and a time window of 1000 ts after the chosen time step
     timeSteps = 1000
     totalTS = np.shape(spikeTrains)[1]
     subSpikeTrains = np.zeros((numCells, timeSteps), dtype = "uint32")
@@ -251,8 +269,9 @@ def subSampleWholeColumn(spikeTrains, colIndices, cellsPerColumn, currentTS):
   """
   numColumns = np.shape(colIndices)[0]
   numCells = numColumns * cellsPerColumn
+  timeWindow = 1000
 
-  if currentTS > 0:
+  if currentTS > 0 and currentTS < timeWindow:
     subSpikeTrains = np.zeros((numCells, currentTS), dtype = "uint32")
     for i in range(numColumns):
       currentCol = colIndices[i]
@@ -260,7 +279,19 @@ def subSampleWholeColumn(spikeTrains, colIndices, cellsPerColumn, currentTS):
       for j in range(cellsPerColumn):
         for t in range(currentTS):
           subSpikeTrains[(cellsPerColumn*i) + j,t] = spikeTrains[initialCell + j,t]
-  else:
+  elif currentTS > 0 and currentTS >= timeWindow:
+    subSpikeTrains = np.zeros((numCells, timeWindow), dtype = "uint32")
+    for i in range(numColumns):
+      currentCol = colIndices[i]
+      initialCell = cellsPerColumn * currentCol
+      for j in range(cellsPerColumn):
+        t1 = 0
+        t2 = currentTS - timeWindow
+        while t2 < currentTS:
+          subSpikeTrains[(cellsPerColumn*i) + j,t1] = spikeTrains[initialCell + j,t2]
+          t1 += 1
+          t2 += 1
+  elif currentTS < 0:
     timeSteps = 1000
     subSpikeTrains = np.zeros((numCells, timeSteps), dtype = "uint32")
     rnd = random.randrange(totalTS - timeSteps)
