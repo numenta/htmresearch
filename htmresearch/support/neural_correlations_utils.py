@@ -39,17 +39,17 @@ if capnp:
 
 
 
-def randomizeSequence(sequence, symbolsPerSequence, numColumns, sparsity):
+def randomizeSequence(sequence, symbolsPerSequence, numColumns, sparsity, p = 0.25):
   """
   Takes a sequence as input and randomizes a percentage p of it by choosing
   SDRs at random while preserving the remaining invariant.
   
   @param sequence (array) sequence to be randomized
+  @p (float) percentage of symbols to be replaced
   @return randomizedSequence (array) sequence that contains p percentage of new SDRs
   """
   randomizedSequence = []
   sparseCols = int(numColumns * sparsity)
-  p = 0.25 #percentage of symbols to be replaced
   numSymbolsToChange = int(symbolsPerSequence * p)
   symIndices = np.random.permutation(np.arange(symbolsPerSequence))  
   for symbol in range(symbolsPerSequence):
@@ -153,7 +153,7 @@ def accuracy(current, predicted):
   """  
   acc = 0
   if np.count_nonzero(predicted) > 0:
-    acc = float(np.dot(current, predicted))/float(np.count_nonzero(predicted))
+    acc = float(np.dot(current, predicted))/float(np.count_nonzero(current))
   return acc   
 
 
@@ -191,7 +191,6 @@ def sampleCellsWithinColumns(numCellPairs, cellsPerColumn, numColumns, seed=42):
   return cellPairs
 
 
-
 def sampleCellsAcrossColumns(numCellPairs, cellsPerColumn, numColumns, seed=42):
   """
   Generate indices of cell pairs, each pair of cells are from different column
@@ -208,7 +207,6 @@ def sampleCellsAcrossColumns(numCellPairs, cellsPerColumn, numColumns, seed=42):
       cellsPair[j] = randCols[j] * cellsPerColumn + randCells[j]
     cellPairs.append(cellsPair.astype('int32'))
   return cellPairs
-
 
 
 def subSample(spikeTrains, numCells, totalCells, currentTS):
@@ -391,6 +389,7 @@ def countInSample(binaryWord, spikeTrain):
       #print i
   return count
   
+
 def simpleAccuracyTest(model, tm, allSequences):
   """
   Computes a simple accuracy measure in-between two time-steps in the simulation.
@@ -440,6 +439,7 @@ def simpleAccuracyTest(model, tm, allSequences):
       print("Predicted cols: " + str(np.nonzero(predictedColumns)[0]))
       print ""
     
+
 def saveTM(tm):
   """
   Saves the temporal memory and the sequences generated for its training.
@@ -453,6 +453,7 @@ def saveTM(tm):
   with open('tm.nta', 'wb') as f:
     proto1.write(f)
     
+
 def inputAnalysis(allSequences, model, numColumns):
   """
   Calculates the overlap score of each SDR used as input to the temporal memory. Generates
@@ -489,4 +490,36 @@ def inputAnalysis(allSequences, model, numColumns):
   
   return overlapMatrix  
   
+
+def computePWCorrelationsWithinCol(spikeTrains, removeAutoCorr, cellsPerColumn):
+  """
+  Computes pairwise correlations from spikeTrains
   
+  @param spikeTrains (array) spike trains obtained from the activation of cells in the TM
+     the array dimensions are: numCells x timeSteps
+  @param removeAutoCorr (boolean) if true, auto-correlations are removed by substracting
+     the diagonal of the correlation matrix
+  @param cellsPerColumn (int)
+  @return corrMatrix (array) numCells x numCells matrix containing the Pearson correlation
+      coefficient of spike trains of cell i and cell j
+  @return numNegPCC (int) number of negative pairwise correlations (PCC(i,j) < 0)
+  """
+  numCells = np.shape(spikeTrains)[0]
+  numCols = numCells / cellsPerColumn
+  corrMatrix = np.zeros((numCells, numCells))
+  numNegPCC = 0
+  indices = np.zeros(cellsPerColumn, dtype="uint32")
+  
+  for col in range(numCols):
+    for k in range(cellsPerColumn):
+      indices[k] = (cellsPerColumn * col) + k
+    for i in indices:
+      for j in indices:
+        if i == j and removeAutoCorr == True:
+          continue
+        if not all(spikeTrains[i,:] == 0) and not all(spikeTrains[j,:] == 0):          
+          corrMatrix[i,j] = np.corrcoef(spikeTrains[i,:], spikeTrains[j,:])[0,1]  
+          if corrMatrix[i,j] < 0:
+            numNegPCC += 1
+          
+  return (corrMatrix, numNegPCC)
