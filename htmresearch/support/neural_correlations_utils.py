@@ -39,17 +39,20 @@ if capnp:
 
 
 
-def randomizeSequence(sequence, symbolsPerSequence, numColumns, sparsity):
+def randomizeSequence(sequence, symbolsPerSequence, numColumns, sparsity, p = 0.25):
   """
   Takes a sequence as input and randomizes a percentage p of it by choosing
   SDRs at random while preserving the remaining invariant.
   
   @param sequence (array) sequence to be randomized
+  @param symbolsPerSequence (int) number of symbols per sequence
+  @param numColumns (int) number of columns in the TM
+  @param sparsity (float) percentage of sparsity
+  @p (float) percentage of symbols to be replaced  
   @return randomizedSequence (array) sequence that contains p percentage of new SDRs
   """
   randomizedSequence = []
   sparseCols = int(numColumns * sparsity)
-  p = 0.25 #percentage of symbols to be replaced
   numSymbolsToChange = int(symbolsPerSequence * p)
   symIndices = np.random.permutation(np.arange(symbolsPerSequence))  
   for symbol in range(symbolsPerSequence):
@@ -60,6 +63,27 @@ def randomizeSequence(sequence, symbolsPerSequence, numColumns, sparsity):
     i += 1
     numSymbolsToChange -= 1
   return randomizedSequence
+  
+
+def generateHOSequence(sequence, symbolsPerSequence, numColumns, sparsity):
+  """
+  Generates a high-order sequence by taking an initial sequence and the changing
+  its first and last SDRs by random SDRs
+  
+  @param sequence (array) sequence to be randomized
+  @param symbolsPerSequence (int) number of symbols per sequence
+  @param numColumns (int) number of columns in the TM
+  @param sparsity (float) percentage of sparsity  
+  @return randomizedSequence (array) sequence that contains p percentage of new SDRs
+  """
+  sequenceHO = []
+  sparseCols = int(numColumns * sparsity)
+  for symbol in range(symbolsPerSequence):
+    if symbol == 0 or symbol == (symbolsPerSequence - 1):
+      sequenceHO.append(generateRandomSymbol(numColumns, sparseCols))
+    else:
+      sequenceHO.append(sequence[symbol])
+  return sequenceHO
 
 
 def percentOverlap(x1, x2, numColumns):
@@ -67,7 +91,7 @@ def percentOverlap(x1, x2, numColumns):
   Calculates the percentage of overlap between two SDRs
   
   @param x1 (array) SDR
-  @param x2 (array) SDR
+  @param x2 (array) SDR  
   @return percentageOverlap (float) percentage overlap between x1 and x2
   """  
   nonZeroX1 = np.count_nonzero(x1)
@@ -87,7 +111,7 @@ def generateRandomSymbol(numColumns, sparseCols):
   Generates a random SDR with sparseCols number of active columns
   
   @param numColumns (int) number of columns in the temporal memory
-  @param sparseCols (int) number of sparse columns for desired SDR
+  @param sparseCols (int) number of sparse columns for desired SDR  
   @return symbol (list) SDR
   """
   symbol = list()
@@ -106,7 +130,7 @@ def generateRandomSequence(numSymbols, numColumns, sparsity):
   
   @param numSymbols (int) number of SDRs in random sequence
   @param numColumns (int) number of columns in the temporal memory
-  @param sparsity (float) percentage of sparsity (real number between 0 and 1)
+  @param sparsity (float) percentage of sparsity (real number between 0 and 1)  
   @return sequence (array) random sequence generated
   """
   sequence = []
@@ -123,7 +147,7 @@ def computePWCorrelations(spikeTrains, removeAutoCorr):
   @param spikeTrains (array) spike trains obtained from the activation of cells in the TM
          the array dimensions are: numCells x timeSteps
   @param removeAutoCorr (boolean) if true, auto-correlations are removed by substracting
-         the diagonal of the correlation matrix
+         the diagonal of the correlation matrix         
   @return corrMatrix (array) numCells x numCells matrix containing the Pearson correlation
           coefficient of spike trains of cell i and cell j
   @return numNegPCC (int) number of negative pairwise correlations (PCC(i,j) < 0)
@@ -159,7 +183,7 @@ def accuracy(current, predicted):
 
 def sampleCellsRandom(numCellPairs, cellsPerColumn, numColumns, seed=42):
   """
-  Generate indices of cell pairs randomly
+  Generate indices of cell pairs randomly  
   @return cellPairs (list) list of cell pairs
   """
   np.random.seed(seed)
@@ -191,7 +215,6 @@ def sampleCellsWithinColumns(numCellPairs, cellsPerColumn, numColumns, seed=42):
   return cellPairs
 
 
-
 def sampleCellsAcrossColumns(numCellPairs, cellsPerColumn, numColumns, seed=42):
   """
   Generate indices of cell pairs, each pair of cells are from different column
@@ -210,69 +233,94 @@ def sampleCellsAcrossColumns(numCellPairs, cellsPerColumn, numColumns, seed=42):
   return cellPairs
 
 
-
-def subSample(spikeTrains, numCells, totalCells, currentTS):
+def subSample(spikeTrains, numCells, totalCells, currentTS, timeWindow):
   """
   Obtains a random sample of cells from the whole spike train matrix consisting of numCells cells
   from the start of simulation time up to currentTS
   
-  @param spikeTrains
+  @param spikeTrains (array) array containing the spike trains of cells in the TM
   @param numCells (int) number of cells to be sampled from the matrix of spike trains
+  @param totalCells (int) total number of cells in the TM
   @param currentTS (int) time-step upper bound of sample (sample will go from time-step 0 up to currentTS)
+  @param timeWindow (int) number of time-steps to sample from the spike trains
   @return subSpikeTrains (array) spike train matrix sampled from the total spike train matrix
   """
   indices = np.random.permutation(np.arange(totalCells))
-  if currentTS > 0:
+  if currentTS > 0 and currentTS < timeWindow:
     subSpikeTrains = np.zeros((numCells, currentTS), dtype = "uint32")
     for i in range(numCells):
-      for t in range(currentTS):
-        subSpikeTrains[i,t] = spikeTrains[indices[i],t]
-  else:
-    timeSteps = 1000
-    totalTS = np.shape(spikeTrains)[1]
-    subSpikeTrains = np.zeros((numCells, timeSteps), dtype = "uint32")
-    rnd = random.randrange(totalTS - timeSteps)
-    print rnd
+      subSpikeTrains[i,:] = spikeTrains[indices[i],:]
+  elif currentTS > 0 and currentTS >= timeWindow:
+    subSpikeTrains = np.zeros((numCells, timeWindow), dtype = "uint32")    
     for i in range(numCells):
-      for t in range(timeSteps):
-        subSpikeTrains[i,t] = spikeTrains[indices[i],rnd + t]
+      subSpikeTrains[i,:] = spikeTrains[indices[i],(currentTS-timeWindow):currentTS]
+  elif currentTS == 0:
+    # This option takes the whole spike train history
+    totalTS = np.shape(spikeTrains)[1]
+    subSpikeTrains = np.zeros((numCells, totalTS), dtype = "uint32")
+    for i in range(numCells):
+      subSpikeTrains[i,:] = spikeTrains[indices[i],:]
+  elif currentTS < 0:
+    # This option takes a timestep at random and a time window 
+    # specified by the user after the chosen time step
+    totalTS = np.shape(spikeTrains)[1]
+    subSpikeTrains = np.zeros((numCells, timeWindow), dtype = "uint32")
+    rnd = random.randrange(totalTS - timeWindow)
+    print "Starting from timestep: " + str(rnd)
+    for i in range(numCells):
+      subSpikeTrains[i,:] = spikeTrains[indices[i],rnd:(rnd+timeWindow)]
     
   return subSpikeTrains
 
 
-def subSampleWholeColumn(spikeTrains, colIndices, cellsPerColumn, currentTS):
+def subSampleWholeColumn(spikeTrains, colIndices, cellsPerColumn, currentTS, timeWindow):
   """
   Obtains subsample from matrix of spike trains by considering the cells in columns specified
   by colIndices. Thus, it returns a matrix of spike trains of cells within the same column.
     
-  @param spikeTrains
-  @param colIndices
-  @param cellsPerColumn
-  @param currentTs (int) time-step upper bound of sample (sample will go from time-step 0 up to currentTS)
+  @param spikeTrains (array) array containing the spike trains of cells in the TM
+  @param colIndices (array) array containing the indices of columns whose spike trains should be sampled
+  @param cellsPerColumn (int) number of cells per column in the TM
+  @param currentTS (int) time-step upper bound of sample (sample will go from time-step 0 up to currentTS)
+  @param timeWindow (int) number of time-steps to sample from the spike trains
   @return subSpikeTrains (array) spike train matrix sampled from the total spike train matrix
   """
   numColumns = np.shape(colIndices)[0]
   numCells = numColumns * cellsPerColumn
 
-  if currentTS > 0:
+  if currentTS > 0 and currentTS < timeWindow:
     subSpikeTrains = np.zeros((numCells, currentTS), dtype = "uint32")
     for i in range(numColumns):
       currentCol = colIndices[i]
       initialCell = cellsPerColumn * currentCol
       for j in range(cellsPerColumn):
-        for t in range(currentTS):
-          subSpikeTrains[(cellsPerColumn*i) + j,t] = spikeTrains[initialCell + j,t]
-  else:
-    timeSteps = 1000
-    subSpikeTrains = np.zeros((numCells, timeSteps), dtype = "uint32")
-    rnd = random.randrange(totalTS - timeSteps)
-    print rnd
+        subSpikeTrains[(cellsPerColumn*i) + j,:] = spikeTrains[initialCell + j,:]
+  elif currentTS > 0 and currentTS >= timeWindow:
+    subSpikeTrains = np.zeros((numCells, timeWindow), dtype = "uint32")
     for i in range(numColumns):
       currentCol = colIndices[i]
       initialCell = cellsPerColumn * currentCol
       for j in range(cellsPerColumn):
-        for t in range(timeSteps):
-          subSpikeTrains[(cellsPerColumn*i) + j,t] = spikeTrains[initialCell + j,rnd + t]
+        subSpikeTrains[(cellsPerColumn*i) + j,:] = spikeTrains[initialCell + j,(currentTS-timeWindow):currentTS]
+  elif currentTS == 0:
+    # This option takes the whole spike train history
+    totalTS = np.shape(spikeTrains)[1]
+    subSpikeTrains = np.zeros((numCells, totalTS), dtype = "uint32")
+    for i in range(numColumns):
+      currentCol = colIndices[i]
+      initialCell = cellsPerColumn * currentCol
+      for j in range(cellsPerColumn):
+        subSpikeTrains[(cellsPerColumn*i) + j,:] = spikeTrains[initialCell + j,:]
+  elif currentTS < 0:
+    totalTS = np.shape(spikeTrains)[1]
+    subSpikeTrains = np.zeros((numCells, timeWindow), dtype = "uint32")
+    rnd = random.randrange(totalTS - timeWindow)
+    print "Starting from timestep: " + str(rnd)
+    for i in range(numColumns):
+      currentCol = colIndices[i]
+      initialCell = cellsPerColumn * currentCol
+      for j in range(cellsPerColumn):
+        subSpikeTrains[(cellsPerColumn*i) + j,:] = spikeTrains[initialCell + j,rnd:(rnd+timeWindow)]
     
   return subSpikeTrains
 
@@ -323,9 +371,9 @@ def poissonSpikeGenerator(firingRate, nBins, nTrials):
   """
   Generates a Poisson spike train.
   
-  @param firingRate (int) 
-  @param nBins (int)
-  @param nTrials (int)
+  @param firingRate (int) firing rate of sample of Poisson spike trains to be generated
+  @param nBins (int) number of bins or timesteps for the Poisson spike train
+  @param nTrials (int) number of trials (or cells) in the spike train
   @return poissonSpikeTrain (array)
   """
   dt = 0.001 # we are simulating a ms as a single bin in a vector, ie 1sec = 1000bins
@@ -391,6 +439,7 @@ def countInSample(binaryWord, spikeTrain):
       #print i
   return count
   
+
 def simpleAccuracyTest(model, tm, allSequences):
   """
   Computes a simple accuracy measure in-between two time-steps in the simulation.
@@ -440,6 +489,7 @@ def simpleAccuracyTest(model, tm, allSequences):
       print("Predicted cols: " + str(np.nonzero(predictedColumns)[0]))
       print ""
     
+
 def saveTM(tm):
   """
   Saves the temporal memory and the sequences generated for its training.
@@ -453,6 +503,7 @@ def saveTM(tm):
   with open('tm.nta', 'wb') as f:
     proto1.write(f)
     
+
 def inputAnalysis(allSequences, model, numColumns):
   """
   Calculates the overlap score of each SDR used as input to the temporal memory. Generates
@@ -489,4 +540,36 @@ def inputAnalysis(allSequences, model, numColumns):
   
   return overlapMatrix  
   
+
+def computePWCorrelationsWithinCol(spikeTrains, removeAutoCorr, cellsPerColumn):
+  """
+  Computes pairwise correlations from spikeTrains
   
+  @param spikeTrains (array) spike trains obtained from the activation of cells in the TM
+     the array dimensions are: numCells x timeSteps
+  @param removeAutoCorr (boolean) if true, auto-correlations are removed by substracting
+     the diagonal of the correlation matrix
+  @param cellsPerColumn (int) number of cells per column in thr TM
+  @return corrMatrix (array) numCells x numCells matrix containing the Pearson correlation
+      coefficient of spike trains of cell i and cell j
+  @return numNegPCC (int) number of negative pairwise correlations (PCC(i,j) < 0)
+  """
+  numCells = np.shape(spikeTrains)[0]
+  numCols = numCells / cellsPerColumn
+  corrMatrix = np.zeros((numCells, numCells))
+  numNegPCC = 0
+  indices = np.zeros(cellsPerColumn, dtype="uint32")
+  
+  for col in range(numCols):
+    for k in range(cellsPerColumn):
+      indices[k] = (cellsPerColumn * col) + k
+    for i in indices:
+      for j in indices:
+        if i == j and removeAutoCorr == True:
+          continue
+        if not all(spikeTrains[i,:] == 0) and not all(spikeTrains[j,:] == 0):          
+          corrMatrix[i,j] = np.corrcoef(spikeTrains[i,:], spikeTrains[j,:])[0,1]  
+          if corrMatrix[i,j] < 0:
+            numNegPCC += 1
+          
+  return (corrMatrix, numNegPCC)
