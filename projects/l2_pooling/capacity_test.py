@@ -104,7 +104,7 @@ def getL2Params():
   Returns a good default set of parameters to use in the L4 region.
   """
   return {
-    "columnCount": 1024,
+    "columnCount": 4096,
     "inputWidth": 2048 * 8,
     "learningMode": True,
     "inferenceMode": True,
@@ -112,7 +112,7 @@ def getL2Params():
     "connectedPermanence": 0.5,
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
-    "numActiveColumnsPerInhArea": 20,
+    "numActiveColumnsPerInhArea": 40,
     "synPermProximalInc": 0.1,
     "synPermProximalDec": 0.001,
     "initialProximalPermanence": 0.6,
