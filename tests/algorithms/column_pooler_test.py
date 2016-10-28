@@ -101,7 +101,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     self.init()
 
     object = self.generateObject(1)
-    self.learn(object, numRepetitions=1, newObject=True)
+    self.learn(object, numRepetitions=2, newObject=True)
     # check that the active representation is sparse
     representation = self._getActiveRepresentation()
     self.assertEqual(
@@ -111,6 +111,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     )
 
     # check that the pattern was correctly learnt
+    self.pooler.reset()
     self.infer(feedforwardPattern=object[0])
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -121,7 +122,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # present new pattern for same object
     # it should be mapped to the same representation
     newPattern = [self.generatePattern()]
-    self.learn(newPattern, numRepetitions=1, newObject=False)
+    self.learn(newPattern, numRepetitions=2, newObject=False)
     # check that the active representation is sparse
     newRepresentation = self._getActiveRepresentation()
     self.assertEqual(
@@ -131,6 +132,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     )
 
     # check that the pattern was correctly learnt and is stable
+    self.pooler.reset()
     self.infer(feedforwardPattern=object[0])
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -147,11 +149,12 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     self.init()
 
     object = self.generateObject(numPatterns=5)
-    self.learn(object, numRepetitions=1, randomOrder=True, newObject=True)
+    self.learn(object, numRepetitions=2, randomOrder=True, newObject=True)
     representation = self._getActiveRepresentation()
 
     # check that all patterns map to the same object
     for pattern in object:
+      self.pooler.reset()
       self.infer(feedforwardPattern=pattern)
       self.assertEqual(
         self._getActiveRepresentation(),
@@ -187,6 +190,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # check that all patterns map to the same object
     for pattern in objectA:
+      self.pooler.reset()
       self.infer(feedforwardPattern=pattern)
       self.assertEqual(
         self._getActiveRepresentation(),
@@ -196,6 +200,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # check that all patterns map to the same object
     for pattern in objectB:
+      self.pooler.reset()
       self.infer(feedforwardPattern=pattern)
       self.assertEqual(
         self._getActiveRepresentation(),
@@ -205,6 +210,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # feed union of patterns in object A
     pattern = objectA[0] | objectA[1]
+    self.pooler.reset()
     self.infer(feedforwardPattern=pattern)
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -214,6 +220,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # feed unions of patterns in objects A and B
     pattern = objectA[0] | objectB[0]
+    self.pooler.reset()
     self.infer(feedforwardPattern=pattern)
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -244,6 +251,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # check that all patterns except the common one map to the same object
     for pattern in objectA[1:]:
+      self.pooler.reset()
       self.infer(feedforwardPattern=pattern)
       self.assertEqual(
         self._getActiveRepresentation(),
@@ -253,6 +261,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # check that all patterns except the common one map to the same object
     for pattern in objectB[1:]:
+      self.pooler.reset()
       self.infer(feedforwardPattern=pattern)
       self.assertEqual(
         self._getActiveRepresentation(),
@@ -262,6 +271,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # feed shared pattern
     pattern = objectA[0]
+    self.pooler.reset()
     self.infer(feedforwardPattern=pattern)
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -271,6 +281,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # feed union of patterns in object A
     pattern = objectA[1] | objectA[2]
+    self.pooler.reset()
     self.infer(feedforwardPattern=pattern)
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -280,6 +291,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # feed unions of patterns in objects A and B
     pattern = objectA[1] | objectB[1]
+    self.pooler.reset()
     self.infer(feedforwardPattern=pattern)
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -318,6 +330,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # check that all patterns except the common one map to the same object
     for pattern in objectA[1:]:
+      self.pooler.reset()
       self.infer(feedforwardPattern=pattern)
       self.assertEqual(
         self._getActiveRepresentation(),
@@ -327,6 +340,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # check that all patterns except the common one map to the same object
     for pattern in objectB[2:]:
+      self.pooler.reset()
       self.infer(feedforwardPattern=pattern)
       self.assertEqual(
         self._getActiveRepresentation(),
@@ -336,6 +350,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # check that all patterns except the common one map to the same object
     for pattern in objectC[1:]:
+      self.pooler.reset()
       self.infer(feedforwardPattern=pattern)
       self.assertEqual(
         self._getActiveRepresentation(),
@@ -345,6 +360,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # feed shared pattern between A and B
     pattern = objectA[0]
+    self.pooler.reset()
     self.infer(feedforwardPattern=pattern)
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -354,6 +370,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # feed shared pattern between B and C
     pattern = objectB[1]
+    self.pooler.reset()
     self.infer(feedforwardPattern=pattern)
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -363,6 +380,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # feed union of patterns in object A
     pattern = objectA[1] | objectA[2]
+    self.pooler.reset()
     self.infer(feedforwardPattern=pattern)
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -372,6 +390,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # feed unions of patterns to activate all objects
     pattern = objectA[1] | objectB[1]
+    self.pooler.reset()
     self.infer(feedforwardPattern=pattern)
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -411,6 +430,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # check that all patterns except the common one map to the same object
     for pattern in objectA[1:]:
       noisyPattern = self.proximalPatternMachine.addNoise(pattern, 0.05)
+      self.pooler.reset()
       self.infer(feedforwardPattern=noisyPattern)
       self.assertEqual(
         self._getActiveRepresentation(),
@@ -421,6 +441,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # check that all patterns except the common one map to the same object
     for pattern in objectB[2:]:
       noisyPattern = self.proximalPatternMachine.addNoise(pattern, 0.05)
+      self.pooler.reset()
       self.infer(feedforwardPattern=noisyPattern)
       self.assertEqual(
         self._getActiveRepresentation(),
@@ -431,6 +452,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # check that all patterns except the common one map to the same object
     for pattern in objectC[1:]:
       noisyPattern = self.proximalPatternMachine.addNoise(pattern, 0.05)
+      self.pooler.reset()
       self.infer(feedforwardPattern=noisyPattern)
       self.assertEqual(
         self._getActiveRepresentation(),
@@ -441,6 +463,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # feed shared pattern between A and B
     pattern = objectA[0]
     noisyPattern = self.proximalPatternMachine.addNoise(pattern, 0.05)
+    self.pooler.reset()
     self.infer(feedforwardPattern=noisyPattern)
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -451,6 +474,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # feed shared pattern between B and C
     pattern = objectB[1]
     noisyPattern = self.proximalPatternMachine.addNoise(pattern, 0.05)
+    self.pooler.reset()
     self.infer(feedforwardPattern=noisyPattern)
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -461,6 +485,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # feed union of patterns in object A
     pattern = objectA[1] | objectA[2]
     noisyPattern = self.proximalPatternMachine.addNoise(pattern, 0.05)
+    self.pooler.reset()
     self.infer(feedforwardPattern=noisyPattern)
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -471,6 +496,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # feed unions of patterns to activate all objects
     pattern = objectA[1] | objectB[1]
     noisyPattern = self.proximalPatternMachine.addNoise(pattern, 0.05)
+    self.pooler.reset()
     self.infer(feedforwardPattern=noisyPattern)
     self.assertEqual(
       self._getActiveRepresentation(),
@@ -812,6 +838,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # no ambiguity with lateral input
     for pattern in objectA:
+      self.pooler.reset()
       self.infer(feedforwardPattern=pattern, lateralInput=lateralInputA[-1])
       self.assertEqual(
         self._getActiveRepresentation(),
@@ -821,6 +848,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     # no ambiguity with lateral input
     for pattern in objectB:
+      self.pooler.reset()
       self.infer(feedforwardPattern=pattern, lateralInput=lateralInputB[-1])
       self.assertEqual(
         self._getActiveRepresentation(),
