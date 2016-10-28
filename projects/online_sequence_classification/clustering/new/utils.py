@@ -1,5 +1,3 @@
-import copy
-import copy
 import csv
 import os
 import scipy
@@ -7,7 +5,6 @@ import numpy as np
 from sklearn import manifold
 
 from distances import cluster_distance_factory
-from clustering import Cluster
 
 
 
@@ -257,24 +254,3 @@ def project_clusters_2D(distance_mat):
   npos = nmds.fit_transform(distance_mat, init=pos)
 
   return npos
-
-
-
-def copy_clusters(clusters):
-  """
-  Make a copy of the clusters
-  :param clusters: (list of clustering.Cluster) original clusters
-  :return clusters_copy: (list of clustering.Cluster) clusters copy
-  """
-  clusters_copy = []
-  for c in clusters:
-    cluster_copy = Cluster(copy.copy(c.id), copy.copy(c.center))
-    points_copy = []
-    for p in c.points:
-      points_copy.append({
-        'point': p['point'],
-        'label': p['label']
-      })
-    cluster_copy.points = points_copy
-    clusters_copy.append(cluster_copy)
-  return clusters_copy

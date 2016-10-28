@@ -1,3 +1,4 @@
+import copy
 import os
 import shutil
 import numpy as np
@@ -5,11 +6,11 @@ from matplotlib import pyplot as plt
 
 from htmresearch.frameworks.classification.utils.traces import loadTraces
 
-from clustering import PerfectClustering
+from clustering import PerfectClustering, Cluster
 from online_clustering import OnlineClustering
 from distances import euclidian
 from utils import (clustering_stats, moving_average, get_file_name,
-                   convert_to_sdrs, copy_clusters)
+                   convert_to_sdrs)
 from plot import (plot_accuracy, plot_cluster_assignments,
                   plot_inter_sequence_distances)
 
@@ -36,8 +37,8 @@ def run(points,
     closest = model.cluster(point, actual_category)
     closest_cluster_history.append(closest)
     if i in cluster_snapshot_indices:
-      clusters_copy = copy_clusters(model.clusters)
-      clusters_snapshots.append(clusters_copy)
+      clusters_snapshots.append([copy.deepcopy(c)
+                                 for c in model.clusters if c is not None])
 
     clustering_accuracy = clustering_stats(i,
                                            model.clusters,
