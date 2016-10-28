@@ -1,11 +1,41 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from utils import cluster_category_frequencies
+from utils import (cluster_category_frequencies,
+                   find_cluster_assignments,
+                   cluster_distance_matrix)
 
 
 
-def plot_accuracy(accuracy_moving_averages,
+def plot_inter_sequence_distances(output_dir,
+                                  plot_id,
+                                  distance_func,
+                                  sdrs,
+                                  cluster_ids,
+                                  ignore_noise):
+  cluster_assignments, sdr_slices = find_cluster_assignments(sdrs, cluster_ids,
+                                                             ignore_noise)
+
+  distance_mat = cluster_distance_matrix(sdr_slices, distance_func)
+
+  title = 'distance_matrix_%s' % plot_id
+  outputFile = '%s/%s' % (output_dir, '%s.png' % title)
+  plot_distance_mat(distance_mat, title, outputFile)
+
+
+
+def plot_distance_mat(distance_mat, title, output_file):
+  plt.figure()
+  plt.imshow(distance_mat, interpolation="nearest")
+  plt.colorbar()
+  plt.title(title)
+  plt.savefig(output_file)
+  plt.draw()
+
+
+
+def plot_accuracy(output_dir,
+                  accuracy_moving_averages,
                   rolling_window,
                   points,
                   labels,
@@ -59,13 +89,13 @@ def plot_accuracy(accuracy_moving_averages,
 
   plt.tight_layout(pad=0.5)
   fig_name = 'clustering_accuracy.png'
-  plt.savefig(fig_name)
+  plt.savefig('%s/%s' % (output_dir, fig_name))
   print('==> saved: %s' % fig_name)
   plt.draw()
 
 
 
-def plot_clustering_results(clusters, timestep):
+def plot_cluster_assignments(output_dir, clusters, timestep):
   fig, ax = plt.subplots()
   # cluster sizes
   num_clusters = len(clusters)
@@ -136,6 +166,6 @@ def plot_clustering_results(clusters, timestep):
   ax.set_xticks([])
   plt.tight_layout(pad=7)
   fig_name = 'cluster_assignments_t=%s.png' % timestep
-  plt.savefig(fig_name)
+  plt.savefig('%s/%s' % (output_dir, fig_name))
   print('==> saved: %s' % fig_name)
   plt.draw()

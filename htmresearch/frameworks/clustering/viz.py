@@ -78,8 +78,8 @@ def vizInterCategoryClusters(traces, outputDir, cellsType,
 
 
 
-def vizInterSequenceClusters(traces, outputDir, cellsType, numCells, numClasses,
-                             ignoreNoise=True):
+def vizInterSequenceClusters(traces, outputDir, cellsType, numCells, 
+                             numClasses, ignoreNoise=True):
   clusters = assignClusters(traces)
 
   # compare inter-cluster distance over time
@@ -132,4 +132,4 @@ def vizInterSequenceClusters(traces, outputDir, cellsType, numCells, numClasses,
   viz2DProjection(title, outputFile, numClasses, clusterAssignments, npos)
   title = 'Inter-sequence clusters distances (using %s)' % cellsType
   outputFile = '%s/%s' % (outputDir, title)
-  plotDistanceMat(distanceMat, title, outputFile)
+  plotDistanceMat(distanceMat, title, outputFile, showPlot=True)

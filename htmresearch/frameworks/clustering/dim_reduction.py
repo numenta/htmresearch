@@ -83,6 +83,7 @@ def viz2DProjection(vizTitle, outputFile, numClusters, clusterAssignments,
   plt.legend(by_label.values(), by_label.keys(), scatterpoints=1, loc=2)
 
   plt.title(vizTitle)
+  plt.draw()
   plt.savefig(outputFile)
 
 
@@ -146,5 +147,6 @@ def plotDistanceMat(distanceMat, title, outputFile, showPlot=False):
   plt.colorbar()
   plt.title(title)
   plt.savefig(outputFile)
+  plt.draw()
   if showPlot:
     plt.show()
