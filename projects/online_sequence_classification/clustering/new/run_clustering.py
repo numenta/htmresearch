@@ -4,51 +4,56 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from htmresearch.frameworks.classification.utils.traces import loadTraces
-from utils import (clustering_stats, moving_average, get_file_name,
-                   convert_to_sdrs)
-from plot import (plot_accuracy, plot_cluster_assignments,
-                  plot_inter_sequence_distances)
+
 from clustering import PerfectClustering
 from online_clustering import OnlineClustering
 from distances import euclidian
+from utils import (clustering_stats, moving_average, get_file_name,
+                   convert_to_sdrs, copy_clusters)
+from plot import (plot_accuracy, plot_cluster_assignments,
+                  plot_inter_sequence_distances)
 
 
 
 def run(points,
-        labels,
+        categories,
         distance_func,
-        rolling_window,
+        moving_average_window,
         max_num_clusters,
-        clustering_class):
+        ClusteringClass,
+        cluster_snapshot_indices):
   num_points = len(points)
-  model = clustering_class(max_num_clusters, distance_func)
+  model = ClusteringClass(max_num_clusters, distance_func)
 
-  clusters_history = []
+  clusters_snapshots = []
   closest_cluster_history = []
-  accuracy_ma_history = []
+  clustering_accuracies = []
   num_correct = 0
-  accuracy_ma = 0
+  clustering_accuracy = 0
   for i in range(num_points):
     point = points[i]
-    actual_label = labels[i]
-    closest = model.cluster(point, actual_label)
+    actual_category = categories[i]
+    closest = model.cluster(point, actual_category)
     closest_cluster_history.append(closest)
-    clusters_history.append(model.clusters)
+    if i in cluster_snapshot_indices:
+      clusters_copy = copy_clusters(model.clusters)
+      clusters_snapshots.append(clusters_copy)
 
-    accuracy_ma = clustering_stats(i,
-                                   model.clusters,
-                                   closest,
-                                   actual_label,
-                                   num_correct,
-                                   accuracy_ma,
-                                   rolling_window)
-    accuracy_ma_history.append(accuracy_ma)
+    clustering_accuracy = clustering_stats(i,
+                                           model.clusters,
+                                           closest,
+                                           actual_category,
+                                           num_correct,
+                                           clustering_accuracy,
+                                           moving_average_window)
+    clustering_accuracies.append(clustering_accuracy)
 
-  return accuracy_ma_history, clusters_history, closest_cluster_history
+  return clustering_accuracies, clusters_snapshots, closest_cluster_history
 
 
 
 def main():
+  distance_functions = [euclidian]
   clustering_classes = [PerfectClustering, OnlineClustering]
   network_config = 'sp=True_tm=True_tp=False_SDRClassifier'
   exp_names = ['binary_ampl=10.0_mean=0.0_noise=0.0',
@@ -56,19 +61,18 @@ def main():
                'sensortag_z']
 
   # Exp params
-  clustering_class = clustering_classes[0]
-  ignore_noise = True
-  distance_func = euclidian
+  moving_average_window = 10  # for all moving averages of the experiment
+  ClusteringClass = clustering_classes[0]
+  distance_func = distance_functions[0]
   exp_name = exp_names[0]
-  anomaly_score_type = 'rawAnomalyScore'
   start_idx = 0
   end_idx = -1
-  rolling_window = 10
   input_width = 2048 * 32
   active_cells_weight = 0
   predicted_active_cells_weight = 1
+  ignore_noise = True  # ignore noise when plotting results
   max_num_clusters = 3
-  cluster_assignments_timestep_slices = 1
+  num_cluster_snapshots = 2
 
   # Clean an create output directory
   output_dir = exp_name
@@ -79,16 +83,16 @@ def main():
   # load traces
   file_name = get_file_name(exp_name, network_config)
   traces = loadTraces(file_name)
-  input_data = traces['sensorValue'][start_idx:end_idx]
+  sensor_values = traces['sensorValue'][start_idx:end_idx]
   categories = traces['actualCategory'][start_idx:end_idx]
-  anomaly_scores = traces[anomaly_score_type][start_idx:end_idx]
-  anomaly_scores_mas = []
-  anomaly_scores_ma = 0.0
-  for anomaly_score in anomaly_scores:
-    anomaly_scores_ma = moving_average(anomaly_scores_ma,
-                                       anomaly_score,
-                                       rolling_window)
-    anomaly_scores_mas.append(anomaly_scores_ma)
+  raw_anomaly_scores = traces['rawAnomalyScore'][start_idx:end_idx]
+  anomaly_scores = []
+  anomaly_score_ma = 0.0
+  for raw_anomaly_score in raw_anomaly_scores:
+    anomaly_score_ma = moving_average(anomaly_score_ma,
+                                      raw_anomaly_score,
+                                      moving_average_window)
+    anomaly_scores.append(anomaly_score_ma)
 
   active_cells = traces['tmActiveCells'][start_idx:end_idx]
   predicted_active_cells = traces['tmPredictedActiveCells'][start_idx:end_idx]
@@ -99,6 +103,8 @@ def main():
                                                         input_width))
   sdrs = (active_cells_weight * np.array(active_cells_sdrs) +
           predicted_active_cells_weight * predicted_activeCells_sdrs)
+
+  # start and end for the x axis of the graphs
   start = start_idx
   if end_idx < 0:
     end = len(sdrs) - end_idx - 1
@@ -106,43 +112,50 @@ def main():
     end = end_idx
   xlim = [start, end]
 
+  # list of timesteps specifying when a snapshot of the clusters will be taken
+  step = (end - start) / num_cluster_snapshots - 1
+  cluster_snapshot_indices = range(start + step, end, step)
+
   # run clustering
-  (accuracy_ma_history,
-   clusters_history,
+  (clustering_accuracies,
+   cluster_snapshots,
    closest_cluster_history) = run(sdrs,
                                   categories,
                                   distance_func,
-                                  rolling_window,
+                                  moving_average_window,
                                   max_num_clusters,
-                                  clustering_class)
+                                  ClusteringClass,
+                                  cluster_snapshot_indices)
 
   # plot cluster assignments over time
-  step = len(sdrs) / cluster_assignments_timestep_slices - 1
-  timesteps = range(step, len(sdrs), step)
-  for timestep in timesteps:
-    clusters = clusters_history[timestep]
-    plot_cluster_assignments(output_dir, clusters, timestep)
+  for i in range(num_cluster_snapshots):
+    clusters = cluster_snapshots[i]
+    plot_cluster_assignments(output_dir, clusters, cluster_snapshot_indices[i])
 
-  # plot inter-cluster distance matrix
-  cluster_ids = [c.id for c in closest_cluster_history]
-  plot_id = 'inter-cluster'
-  plot_inter_sequence_distances(output_dir, plot_id, distance_func, sdrs,
-                                cluster_ids, ignore_noise)
+    # plot inter-cluster distance matrix
+    cluster_ids = [c.id for c in closest_cluster_history if c is not None]
+    plot_id = 'inter-cluster_t=%s' % cluster_snapshot_indices[i]
+    plot_inter_sequence_distances(output_dir, plot_id, distance_func, sdrs,
+                                  cluster_ids, ignore_noise)
 
-  # plot inter-category distance matrix
-  plot_id = 'inter-category'
-  plot_inter_sequence_distances(output_dir, plot_id, distance_func, sdrs,
-                                categories, ignore_noise)
+    # plot inter-category distance matrix
+    plot_id = 'inter-category_t=%s ' % cluster_snapshot_indices[i]
+    plot_inter_sequence_distances(output_dir,
+                                  plot_id,
+                                  distance_func,
+                                  sdrs[:cluster_snapshot_indices[i]],
+                                  categories[:cluster_snapshot_indices[i]],
+                                  ignore_noise)
 
   # plot clustering accuracy over time
+  plot_id = 'file=%s | moving_average_window=%s' % (exp_name,
+                                                    moving_average_window)
   plot_accuracy(output_dir,
-                accuracy_ma_history,
-                rolling_window,
-                input_data,
+                plot_id,
+                sensor_values,
                 categories,
-                anomaly_scores_mas,
-                exp_name,
-                anomaly_score_type,
+                anomaly_scores,
+                clustering_accuracies,
                 xlim)
 
   plt.show()

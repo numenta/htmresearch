@@ -1,9 +1,13 @@
+import copy
+import copy
 import csv
 import os
 import scipy
 import numpy as np
 from sklearn import manifold
+
 from distances import cluster_distance_factory
+from clustering import Cluster
 
 
 
@@ -38,45 +42,47 @@ def cluster_category_frequencies(cluster):
 
 
 
-def moving_average(last_ma, new_point_value, rolling_window_size):
+def moving_average(last_ma, new_point_value, moving_average_window):
   """
   Online computation of moving average.
   From: http://www.daycounter.com/LabBook/Moving-Average.phtml
   """
 
-  ma = last_ma + (new_point_value - last_ma) / float(rolling_window_size)
+  ma = last_ma + (new_point_value - last_ma) / float(moving_average_window)
   return ma
 
 
 
 def clustering_stats(record_number,
                      clusters,
-                     closest,
-                     actual_label,
+                     closest_cluster,
+                     actual_category,
                      num_correct,
-                     accuracy_ma,
-                     rolling_window):
-  if closest:
-    # info about predicted cluster
-    category_frequencies = cluster_category_frequencies(closest)
+                     clustering_accuracy,
+                     moving_average_window):
+  if closest_cluster:
+    # info about predicted cluster. The predicted cluster category is the 
+    # most frequent category found in the points of the cluster.
+    category_frequencies = cluster_category_frequencies(closest_cluster)
     cluster_category = category_frequencies[0]['actual_category']
 
     # compute accuracy      
-    if cluster_category == actual_label:
+    if cluster_category == actual_category:
       accuracy = 1
     else:
       accuracy = 0
     num_correct += accuracy
-    accuracy_ma = moving_average(accuracy_ma, accuracy, rolling_window)
-    cluster_id = closest.id
-    cluster_size = closest.size
+    clustering_accuracy = moving_average(clustering_accuracy, accuracy,
+                                         moving_average_window)
+    cluster_id = closest_cluster.id
+    cluster_size = closest_cluster.size
 
     print("Record: %s | Accuracy MA: %s | Total clusters: %s | "
           "Closest: {id=%s, size=%s, category=%s} | Actual category: %s"
-          % (record_number, accuracy_ma, len(clusters), cluster_id,
-             cluster_size, cluster_category, actual_label))
+          % (record_number, clustering_accuracy, len(clusters), cluster_id,
+             cluster_size, cluster_category, actual_category))
 
-  return accuracy_ma
+  return clustering_accuracy
 
 
 
@@ -251,3 +257,24 @@ def project_clusters_2D(distance_mat):
   npos = nmds.fit_transform(distance_mat, init=pos)
 
   return npos
+
+
+
+def copy_clusters(clusters):
+  """
+  Make a copy of the clusters
+  :param clusters: (list of clustering.Cluster) original clusters
+  :return clusters_copy: (list of clustering.Cluster) clusters copy
+  """
+  clusters_copy = []
+  for c in clusters:
+    cluster_copy = Cluster(copy.copy(c.id), copy.copy(c.center))
+    points_copy = []
+    for p in c.points:
+      points_copy.append({
+        'point': p['point'],
+        'label': p['label']
+      })
+    cluster_copy.points = points_copy
+    clusters_copy.append(cluster_copy)
+  return clusters_copy

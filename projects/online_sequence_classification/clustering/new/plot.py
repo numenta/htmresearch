@@ -30,67 +30,70 @@ def plot_distance_mat(distance_mat, title, output_file):
   plt.colorbar()
   plt.title(title)
   plt.savefig(output_file)
+  print('==> saved: %s' % output_file)
   plt.draw()
 
 
 
 def plot_accuracy(output_dir,
-                  accuracy_moving_averages,
-                  rolling_window,
-                  points,
-                  labels,
-                  anomalyScores,
-                  title,
-                  anomalyScoreType,
+                  plot_id,
+                  sensor_values,
+                  categories,
+                  anomaly_scores,
+                  clustering_accuracies,
                   xlim):
-  fig, ax = plt.subplots(nrows=3, sharex=True)
+  fig, ax = plt.subplots(nrows=3, sharex=True, figsize=(15,7))
+
+  # plot sensor data and categories
   t = range(xlim[0], xlim[1])
-  ax[0].plot(t, points, label='signal')
+  ax[0].plot(t, sensor_values, label='signal')
   ax[0].set_xlabel('Time step')
   ax[0].set_ylabel('Signal amplitude')
   ax[0].set_xlim(xmin=xlim[0], xmax=xlim[1])
-  categoryColors = ['grey', 'blue', 'yellow', 'red', 'green', 'orange']
-  previousLabel = labels[0]
+  category_colors = ['grey', 'blue', 'yellow', 'red', 'green', 'orange']
+  previous_category = categories[0]
   start = 0
-  labelCount = 0
-  numPoints = len(labels)
-  categoriesLabelled = []
-  for label in labels:
-    if previousLabel != label or labelCount == numPoints - 1:
+  category_count = 0
+  num_points = len(categories)
+  categories_labelled = []
+  for category in categories:
+    if previous_category != category or category_count == num_points - 1:
 
-      categoryColor = categoryColors[int(previousLabel)]
-      if categoryColor not in categoriesLabelled:
-        labelLegend = 'Cat. %s' % int(previousLabel)
-        categoriesLabelled.append(categoryColor)
+      category_color = category_colors[int(previous_category)]
+      if category_color not in categories_labelled:
+        labelLegend = 'class=%s' % int(previous_category)
+        categories_labelled.append(category_color)
       else:
         labelLegend = None
 
-      end = labelCount
-      ax[0].axvspan(start, end, facecolor=categoryColor, alpha=0.4,
+      end = category_count
+      ax[0].axvspan(start, end, facecolor=category_color, alpha=0.4,
                     label=labelLegend)
       start = end
-      previousLabel = label
+      previous_category = category
 
-    labelCount += 1
+    category_count += 1
 
+  title = 'Sensor data (%s)' % plot_id.split('|')[0]
   ax[0].set_title(title)
   ax[0].legend(ncol=4)
 
   # clustering accuracy
-  ax[1].plot(accuracy_moving_averages)
-  ax[1].set_title('Clustering Accuracy Moving Average (Window = %s)'
-                  % rolling_window)
+  title = 'Clustering accuracy (%s)' % plot_id
+  ax[1].plot(clustering_accuracies)
+  ax[1].set_title(title)
   ax[1].set_xlabel('Time step')
-  ax[1].set_ylabel('Accuracy MA')
+  ax[1].set_ylabel('Accuracy')
 
   # plot anomaly score
-  ax[2].set_title(anomalyScoreType)
-  ax[2].plot(anomalyScores)
+  title = 'Anomaly score (%s)' % plot_id
+  ax[2].set_title(title)
+  ax[2].plot(anomaly_scores)
 
   plt.tight_layout(pad=0.5)
   fig_name = 'clustering_accuracy.png'
   plt.savefig('%s/%s' % (output_dir, fig_name))
-  print('==> saved: %s' % fig_name)
+  print('==> saved: %s/%s' % (output_dir, fig_name))
   plt.draw()
 
 
@@ -167,5 +170,5 @@ def plot_cluster_assignments(output_dir, clusters, timestep):
   plt.tight_layout(pad=7)
   fig_name = 'cluster_assignments_t=%s.png' % timestep
   plt.savefig('%s/%s' % (output_dir, fig_name))
-  print('==> saved: %s' % fig_name)
+  print('==> saved: %s/%s' % (output_dir, fig_name))
   plt.draw()
