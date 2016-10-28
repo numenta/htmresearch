@@ -39,4 +39,4 @@ NOISE_LENGTHS = [10]
 NUM_PHASES = [3]
 
 # Number of time each phase repeats
-NUM_REPS = [5]
+NUM_REPS = [3]

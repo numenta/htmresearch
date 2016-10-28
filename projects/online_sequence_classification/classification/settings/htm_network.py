@@ -43,7 +43,7 @@ HTM_NETWORK_CONFIGS = os.path.join(parentDir, 'htm_network_config',
 PLOT_RESULTS = False
 
 # Clustering params
-CLUSTERING = True
+CLUSTERING = False
 
 MERGE_THRESHOLD = 2.0
 ANOMALOUS_THRESHOLD = 0.3
