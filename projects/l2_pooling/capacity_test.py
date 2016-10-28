@@ -104,7 +104,7 @@ def getL2Params():
   Returns a good default set of parameters to use in the L4 region.
   """
   return {
-    "columnCount": 1024,
+    "columnCount": 4096,
     "inputWidth": 2048 * 8,
     "learningMode": True,
     "inferenceMode": True,
@@ -112,7 +112,7 @@ def getL2Params():
     "connectedPermanence": 0.5,
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
-    "numActiveColumnsPerInhArea": 20,
+    "numActiveColumnsPerInhArea": 40,
     "synPermProximalInc": 0.1,
     "synPermProximalDec": 0.001,
     "initialProximalPermanence": 0.6,
@@ -200,10 +200,10 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
     # print "L2 activation: ", columnPooler.getActiveCells()
 
     for obj in xrange(numObjects):
-      overlap[step, obj] = sum(
+      overlap[step, obj] = np.mean([
         len(exp.objectL2Representations[obj][colIdx] &
             exp.getL2Representations()[colIdx])
-        for colIdx in xrange(exp.numColumns)
+        for colIdx in xrange(exp.numColumns)]
       )
 
   return overlap
@@ -271,6 +271,7 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
 
 def plotResults(result, ax=None, xaxis="numPointsPerObject",
                 filename=None, marker='-bo'):
+
   if xaxis == "numPointsPerObject":
     x = result.numPointsPerObject
     xlabel = "# Pts / Obj"
@@ -470,7 +471,13 @@ def runExperiment1(numObjects=2,
   markers = ("-bo", "-ro", "-co", "-go")
   ploti = 0
   fig, ax = plt.subplots(2, 2)
+  st = fig.suptitle(
+    "Varying points per object x 2 objects ({} cortical column{})"
+    .format(numCorticalColumns, "s" if numCorticalColumns > 1 else ""
+  ), fontsize="x-large")
+
   legendEntries = []
+
   for maxNewSynapseCount in maxNewSynapseCountRange:
     activationThreshold = int(maxNewSynapseCount) - 1
 
@@ -487,6 +494,11 @@ def runExperiment1(numObjects=2,
     legendEntries.append("# syn {}".format(maxNewSynapseCount))
 
   plt.legend(legendEntries, loc=2)
+  fig.tight_layout()
+
+  # shift subplots down:
+  st.set_y(0.95)
+  fig.subplots_adjust(top=0.85)
 
   plt.savefig(
     os.path.join(
@@ -521,6 +533,11 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
   markers = ("-bo", "-ro", "-co", "-go")
   ploti = 0
   fig, ax = plt.subplots(2, 2)
+  st = fig.suptitle(
+    "Varying number of objects ({} cortical column{})"
+      .format(numCorticalColumns, "s" if numCorticalColumns > 1 else ""
+              ), fontsize="x-large"
+  )
   legendEntries = []
   for maxNewSynapseCount in maxNewSynapseCountRange:
     activationThreshold = int(maxNewSynapseCount) - 1
@@ -537,6 +554,12 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
     ploti += 1
     legendEntries.append("# syn {}".format(maxNewSynapseCount))
   plt.legend(legendEntries, loc=2)
+  fig.tight_layout()
+
+  # shift subplots down:
+  st.set_y(0.95)
+  fig.subplots_adjust(top=0.85)
+
   plt.savefig(
     os.path.join(
       plotDirName,
