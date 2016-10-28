@@ -200,10 +200,10 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
     # print "L2 activation: ", columnPooler.getActiveCells()
 
     for obj in xrange(numObjects):
-      overlap[step, obj] = sum(
+      overlap[step, obj] = np.mean([
         len(exp.objectL2Representations[obj][colIdx] &
             exp.getL2Representations()[colIdx])
-        for colIdx in xrange(exp.numColumns)
+        for colIdx in xrange(exp.numColumns)]
       )
 
   return overlap
