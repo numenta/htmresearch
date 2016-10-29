@@ -19,37 +19,37 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import os
 
+parentDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)
 
-from htmresearch.frameworks.clustering.dim_reduction import (project2D,
-                                                             assignClusters,
-                                                             viz2DProjection,
-                                                             plotDistanceMat)
-from htmresearch.frameworks.clustering.utils import generateSDRs
+INPUT_DIR = os.path.join(parentDir, 'data')
+OUTPUT_DIR = os.path.join(parentDir, 'results')
+FILE_NAMES = [
+  os.path.join('artificial','binary_ampl=10.0_mean=0.0_noise=0.0.csv'),
+  os.path.join('artificial','binary_ampl=10.0_mean=0.0_noise=1.0.csv'),
+  os.path.join('sensortag','sensortag_z.csv')
+]
+INPUT_FILES = [os.path.join(INPUT_DIR, f) for f in FILE_NAMES]
 
+# Verbosity of network
+VERBOSITY = 0
 
+HTM_NETWORK_CONFIGS = os.path.join(parentDir, 'htm_network_config',
+                                   'network_configs.json')
+PLOT_RESULTS = False
 
-def main():
-  numClasses = 7
-  numSDRsPerClass = 20
-  noiseLevel = 0.1
-  vizTitle = 'MDS, noise level: {}'.format(noiseLevel)
+# Clustering params
+CLUSTERING = True
 
-  # SDR parameters
-  n = 1024
-  w = 20
+MERGE_THRESHOLD = 0.4
+ANOMALOUS_THRESHOLD = 0.8
+STABLE_THRESHOLD = 0.4
+MIN_CLUSTER_SIZE = 1
+SIMILARITY_THRESHOLD = 0.0
+CELLS_TO_CLUSTER = 'tmActiveCells'
 
-  sdrs = generateSDRs(numClasses, numSDRsPerClass, n, w, noiseLevel)
-
-  clusterAssignments = assignClusters(sdrs, numClasses, numSDRsPerClass)
-
-  npos, distanceMat = project2D(sdrs)
-
-  viz2DProjection(vizTitle, numClasses, clusterAssignments, npos)
-
-  plotDistanceMat(distanceMat, 'Inter-cluster distances', showPlot=True)
-
-
-
-if __name__ == '__main__':
-  main()
+# Rolling average calculations
+ROLLING_ACCURACY_WINDOW = 10
+IGNORE_NOISE = False
+ANOMALY_SCORE = 'rollingAnomalyScore'

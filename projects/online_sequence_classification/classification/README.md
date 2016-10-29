@@ -41,13 +41,17 @@ run `run_htm_network`.
 # 3. Plot results
 
 ## Plot Temporal Memory sequences
-To visualize 2D projections of TM sequences and inter-sequence distances, run   
-`python plot_tm_sequences.py -f <filepath>` where `filepath` can be:
-* `results/traces_binary_ampl=10.0_mean=0.0_noise=0.0_sp=False_tm=True_tp=False_SDRClassifier.csv`
-* `results/traces_sensortag_z_sp=False_tm=True_tp=False_SDRClassifier.csv`
+To visualize inter-sequence / inter-cluster distances and 2D projections of TM 
+states , run `python plot_tm_distances.py -f <filepath>` where `filepath` 
+can be:
+* `results/traces/binary_ampl=10.0_mean=0.0_noise=0.0_sp=True_tm=True_tp=False_SDRClassifier.csv`
+* `results/traces/sensortag_z_sp=True_tm=True_tp=False_SDRClassifier.csv`
 
 ## Plot clustering and classification accuracy results VS TM states
 To visualize clustering or classification accuracy results, run 
 `python plot_accuracy_results.py -f <filename>` where `filename` can be:
-* `results/traces_binary_ampl=10.0_mean=0.0_noise=0.0_sp=False_tm=True_tp=False_SDRClassifier.csv`
-* `results/traces_sensortag_z_sp=False_tm=True_tp=False_SDRClassifier.csv`
+* `results/traces/binary_ampl=10.0_mean=0.0_noise=0.0_sp=True_tm=True_tp=False_SDRClassifier.csv`
+* `results/traces/sensortag_z_sp=True_tm=True_tp=False_SDRClassifier.csv`
+> Note: Instead of specifying what trace file you want to analyze via a command
+> line argument, you could also omit this parameter and edit `TRACES_FILES` 
+> in the settings file `settings/htm_network.py`.  

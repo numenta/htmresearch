@@ -99,15 +99,18 @@ class Cluster(object):
 
 class Clustering(object):
   def __init__(self,
+               numCells,
                mergeThreshold,
                anomalousThreshold,
                stableThreshold,
                minClusterSize,
                pointSimilarityThreshold,
-               pruningFrequency,
+               pruningFrequency=None,
                prune=False,
                fistClusterId=0):
-
+    
+    self._numCells = numCells
+  
     # Clusters
     self._numIterations = 0
     self._newCluster = Cluster(fistClusterId, self._numIterations)
@@ -159,7 +162,8 @@ class Clustering(object):
   def _mergeNewCluster(self):
 
     clusterDistPairs = computeClusterDistances(self._newCluster,
-                                               self.getClusters())
+                                               self.getClusters(),
+                                               self._numCells)
     clusterMerged = False
     if len(clusterDistPairs) > 0:
       closestClusterDist, closestCluster = clusterDistPairs[0]
@@ -186,7 +190,9 @@ class Clustering(object):
     :return: (bool) Wether or not the cluster was merged.
     """
 
-    clusterDistPairs = computeClusterDistances(cluster, clusters)
+    clusterDistPairs = computeClusterDistances(cluster, 
+                                               clusters, 
+                                               self._numCells)
     clusterMerged = False
     if len(clusterDistPairs) > 0:
       for clusterDistPair in clusterDistPairs:
@@ -215,7 +221,8 @@ class Clustering(object):
     Inference: find the closest cluster to the new cluster.
     """
     clusterDistPairs = computeClusterDistances(self._newCluster,
-                                               self.getClusters())
+                                               self.getClusters(),
+                                               self._numCells)
     if len(clusterDistPairs) > 0:
       distToCluster, predictedCluster = clusterDistPairs[0]
       # Confidence of inference
@@ -223,11 +230,7 @@ class Clustering(object):
       if meanClusterDist > 0:
         confidence = 1 - (distToCluster / meanClusterDist)
       else:
-        if len(self._clusters) > 1:
-          raise ValueError("The mean distance can't be 0. Number of "
-                           "clusters: %s" % len(self._clusters))
-        else:
-          confidence = 1
+        confidence = 1
     else:
       predictedCluster = None
       confidence = -1
@@ -246,8 +249,13 @@ class Clustering(object):
         if not clusterMerged:
           self._addCluster(self._newCluster)
       else:
-        _LOGGER.debug('DELETE: Cluster %s discarded. Not enough points :-$' %
-                      self._newCluster.getId())
+        _LOGGER.debug('DELETE: Cluster %s discarded. Not enough points (%s '
+              'points. Min cluster size is %s)' %
+              (self._newCluster.getId(), 
+               self._newCluster.size(),
+               self._minClusterSize))
+      
+
       self._newCluster = Cluster(self._clusterIdCounter,
                                  self._numIterations)
       self._clusterIdCounter += 1

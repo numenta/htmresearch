@@ -3,13 +3,18 @@ Load, shuffle and plot accelerometer data.
 """
 
 import csv
+import json
+import os
+
 from htmresearch.frameworks.classification.utils.sensor_data import (
   plotSensorData)
 from settings.acc_data import (DATA_DIR,
                                INPUT_FILES,
-                               OUTPUT_FILE,
+                               OUTPUT_DIR,
                                METRICS,
-                               SLICES)
+                               SLICES,
+                               MAX_POINTS)
+
 
 
 def loadAccelerometerData(dataDir, fileNames):
@@ -86,6 +91,8 @@ def writeData(outFileBaseName, inputData, inputHeaders, metrics,
           start = categoryInfo['start'] + i * step
           end = categoryInfo['start'] + (i + 1) * step
           for row in inputData[start:end]:
+            if rowCounter > MAX_POINTS:
+              break
             csvWriter.writerow([rowCounter,
                                 row[value_idx],
                                 int(row[category_idx])])
@@ -96,10 +103,21 @@ def writeData(outFileBaseName, inputData, inputHeaders, metrics,
 
 
 def main():
+  dominoStats = {
+    "SLICES": SLICES,
+    "METRICS": METRICS,
+    "MAX_POINTS": MAX_POINTS,
+    "INPUT_FILES": INPUT_FILES
+  }
 
+  with open('dominostats.json', 'wb') as f:
+    f.write(json.dumps(dominoStats))
 
   data, headers, categories = loadAccelerometerData(DATA_DIR, INPUT_FILES)
-  outputFiles = writeData(OUTPUT_FILE, data, headers, METRICS, categories,
+  if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
+  outputFileTemplate = os.path.join(OUTPUT_DIR, 'sensortag_%s.csv')
+  outputFiles = writeData(outputFileTemplate, data, headers, METRICS, categories,
                           SLICES)
 
   categoryLabels = [f[:-9] for f in INPUT_FILES]

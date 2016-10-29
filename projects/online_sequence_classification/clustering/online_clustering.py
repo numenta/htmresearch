@@ -58,7 +58,7 @@ class Dist(object):
 
 
 
-class OnlineAgglomerativeClustering(object):
+class OnlineClustering(object):
   def __init__(self,
                max_num_clusters,
                distance_func,
@@ -75,7 +75,7 @@ class OnlineAgglomerativeClustering(object):
     self._distance_func = distance_func
     self._cluster_size_cutoff = cluster_size_cutoff
 
-    self._clusters = []
+    self.clusters = []
     # max number of dimensions we've seen so far
     self._dim = 0
 
@@ -84,7 +84,7 @@ class OnlineAgglomerativeClustering(object):
 
 
   def _resize(self, dim):
-    for c in self._clusters:
+    for c in self.clusters:
       c._resize(dim)
     self._dim = dim
 
@@ -96,28 +96,28 @@ class OnlineAgglomerativeClustering(object):
     return closest
 
 
-  def cluster(self, new_point, trim_clusters, label=None):
+  def cluster(self, new_point, label, trim_clusters=False):
 
     if len(new_point) > self._dim:
       self._resize(len(new_point))
 
-    if len(self._clusters) > 0:
+    if len(self.clusters) > 0:
       # compare new point to each existing cluster
-      closest = self.find_closest_cluster(new_point, self._clusters)
+      closest = self.find_closest_cluster(new_point, self.clusters)
       closest.add(new_point, label)
       # invalidate dist-cache for this cluster
       self._update_dist(closest)
     else:
       closest = None
 
-    if len(self._clusters) >= self._max_num_clusters and len(
-      self._clusters) > 1:
+    if len(self.clusters) >= self._max_num_clusters and len(
+      self.clusters) > 1:
       # merge closest two clusters
       inter_cluster_dist = heapq.heappop(self._dist)
       cluster_to_merge = inter_cluster_dist.c2
       inter_cluster_dist.c1.merge(cluster_to_merge)
-      if cluster_to_merge in self._clusters:
-        self._clusters.remove(cluster_to_merge)
+      if cluster_to_merge in self.clusters:
+        self.clusters.remove(cluster_to_merge)
 
       # update inter-cluster distances      
       self._remove_dist(cluster_to_merge)
@@ -127,7 +127,7 @@ class OnlineAgglomerativeClustering(object):
     cluster_id = self._total_num_clusters_created + 1
     new_cluster = Cluster(cluster_id, new_point, self._distance_func)
     self._total_num_clusters_created += 1
-    self._clusters.append(new_cluster)
+    self.clusters.append(new_cluster)
     self._update_dist(new_cluster)
 
     self._num_points_processed += 1
@@ -138,7 +138,7 @@ class OnlineAgglomerativeClustering(object):
       self.find_closest_cluster(new_point, trimmed_clusters)
       return trimmed_clusters, closest
     else:
-      return self._clusters, closest
+      return closest
 
 
   def _remove_dist(self, d):
@@ -156,7 +156,7 @@ class OnlineAgglomerativeClustering(object):
     """Cluster c has changed, re-compute all inter-cluster distances"""
     self._remove_dist(c)
 
-    for x in self._clusters:
+    for x in self.clusters:
       if x == c: continue
       d = self._distance_func(x.center, c.center)
       inter_cluster_dist = Dist(x, c, d)
@@ -165,6 +165,6 @@ class OnlineAgglomerativeClustering(object):
 
   def _trim_clusters(self):
     """Return only clusters over threshold"""
-    mean_cluster_size = scipy.mean([x.size for x in self._clusters])
+    mean_cluster_size = scipy.mean([x.size for x in self.clusters])
     t = mean_cluster_size * self._cluster_size_cutoff
-    return filter(lambda x: x.size >= t, self._clusters)
+    return filter(lambda x: x.size >= t, self.clusters)

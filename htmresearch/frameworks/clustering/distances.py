@@ -2,6 +2,13 @@ import numpy as np
 
 
 
+def convertNonZeroToSDR(patternNZ, numCells):
+  sdr = np.zeros(numCells)
+  sdr[np.array(patternNZ, dtype='int')] = 1
+  return sdr
+
+
+
 def percentOverlap(x1, x2):
   """
   Computes the percentage of overlap between SDRs x1 and x2.
@@ -32,7 +39,27 @@ def percentOverlap(x1, x2):
 
 
 
-def clusterDist(c1, c2):
+def clusterDist2(c1, c2, numCells):
+  if len(c1) == 0 or len(c2) == 0:
+    return 0
+  
+  c1Sum = np.sum([convertNonZeroToSDR(sdr, numCells) for sdr in c1],
+                 axis=0)
+ 
+  c2Sum = np.sum([convertNonZeroToSDR(sdr, numCells) for sdr in c2],
+                 axis=0)
+
+  return sumSDRDist(c1Sum, c2Sum)
+
+
+
+def sumSDRDist(sumSDR1, sumSDR2):
+  return np.linalg.norm(sumSDR1 / float(len(sumSDR1)) 
+                        - sumSDR2 / float(len(sumSDR2)))
+
+
+
+def clusterDist1(c1, c2, numCells):
   """
   symmetric distance between two clusters
 
@@ -59,17 +86,20 @@ def clusterDistDirected(c1, c2):
   :param c2: (np.array) cluster 2
   :return: distance between 2 clusters
   """
-  minDists = []
-  for sdr1 in c1:
-    d = []
-    # ignore SDRs with zero active bits
-    if np.sum(sdr1) == 0:
-      continue
-
-    for sdr2 in c2:
-      d.append(1 - percentOverlap(sdr1, sdr2))
-    minDists.append(min(d))
-  return np.mean(minDists)
+  if len(c1) == 0 or len(c2) == 0:
+    return 0
+  else:
+    minDists = []
+    for sdr1 in c1:
+      # ignore SDRs with zero active bits
+      if np.sum(sdr1) == 0:
+        continue
+      
+      d = []
+      for sdr2 in c2:
+        d.append(1 - percentOverlap(sdr1, sdr2))
+      minDists.append(min(d))
+    return np.mean(minDists)
 
 
 
@@ -83,23 +113,26 @@ def pointsToSDRs(points):
 
 
 
-def interClusterDistances(clusters, newCluster):
+def interClusterDistances(clusters, newCluster, numCells):
   interClusterDist = {}
   if len(clusters) > 0:
     for c1 in clusters:
       for c2 in clusters:
         name = "c%s-c%s" % (c1.getId(), c2.getId())
         interClusterDist[name] = clusterDist(pointsToSDRs(c1.getPoints()),
-                                             pointsToSDRs(c2.getPoints()))
+                                             pointsToSDRs(c2.getPoints()),
+                                             numCells)
       if len(newCluster.getPoints()) > 0:
         name = "c%s-new%s" % (c1.getId(), newCluster.getId())
         interClusterDist[name] = clusterDist(
-          pointsToSDRs(c1.getPoints()), pointsToSDRs(newCluster.getPoints()))
+          pointsToSDRs(c1.getPoints()),
+          pointsToSDRs(newCluster.getPoints()),
+          numCells)
   return interClusterDist
 
 
 
-def computeClusterDistances(cluster, clusters):
+def computeClusterDistances(cluster, clusters, numCells):
   """
   Compute distance between a cluster and each cluster in a list of clusters 
   :param cluster: (Cluster) cluster to compare to other clusters
@@ -109,9 +142,14 @@ def computeClusterDistances(cluster, clusters):
   dists = []
   for c in clusters:
     d = clusterDist(pointsToSDRs(c.getPoints()),
-                    pointsToSDRs(cluster.getPoints()))
+                    pointsToSDRs(cluster.getPoints()),
+                    numCells)
     dists.append((d, c))
 
   clusterDists = sorted(dists, key=lambda x: (x[0], x[1]._lastUpdated))
 
   return clusterDists
+
+
+
+clusterDist = clusterDist2

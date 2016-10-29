@@ -24,12 +24,33 @@ import csv
 import json
 import sys
 import numpy as np
+import os
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 
-def plotTraces(numTmCells, xlim, traces):
+
+def constructStableIntervals(confidence):
+  """
+  stableIndices = [31, 32, 34, 38, 39, 40]
+   
+  stableIndicesDiff = [1, 2, 4, 1, 1]
+   
+  consecutiveStableIndices = [0, 3, 4]  
+  
+  stableIntervals = [(0,1), (3,4)]
+  
+  """
+
+  stableIndices = np.where(np.array(confidence) > 0)[0]
+  stableIndicesDiff = np.diff(stableIndices)
+  consecutiveStableIndices = np.where(stableIndicesDiff == 1)
+
+
+
+def plotTraces(xlim, traces, title, anomalyScoreType,
+               outputFile, numTmCells=None, plotTemporalMemoryStates=False):
   """
   Plot network traces
   :param numTmCells: (int) number of cells in the TM
@@ -42,7 +63,7 @@ def plotTraces(numTmCells, xlim, traces):
   classLabels = np.array(traces['actualCategory'])
   sensorValue = np.array(traces['sensorValue'])
   if xlim is None:
-    xlim = [t[0], t[-1]]
+    xlim = [int(t[0]), int(t[-1])]
   else:
     xlim = np.array(xlim)
     if np.max(xlim) > len(t):
@@ -52,63 +73,113 @@ def plotTraces(numTmCells, xlim, traces):
       print
 
   selectRange = np.where(np.logical_and(t > xlim[0], t < xlim[1]))[0]
+  f, ax = plt.subplots(5, sharex=True)
+  # plot sensor value and class labels
+  ax[0].set_title('Sensor data \n %s' % title)
+  ax[0].plot(t, sensorValue)
+  ax[0].set_xlim(xlim)
+
+  yl = ax[0].get_ylim()
+  height = yl[1] - yl[0]
+
+  # plot class labels as transparent colored rectangles
+  classColor = {0: 'grey', 1: 'b', 2: 'r', 3: 'y'}
+  xStartLabel = xlim[0]
+  while xStartLabel < xlim[1]:
+    currentClassLabel = classLabels[xStartLabel]
+    if len(np.where(classLabels[xStartLabel:] != currentClassLabel)[0]) == 0:
+      width = len(classLabels[xStartLabel:])
+    else:
+      width = np.where(classLabels[xStartLabel:] != currentClassLabel)[0][0]
+
+    ax[0].add_patch(
+      patches.Rectangle((t[0] + xStartLabel, yl[0]), width, height,
+                        facecolor=classColor[currentClassLabel], alpha=0.6)
+    )
+    xStartLabel += width
+  ax[0].set_ylabel('Sensor Value')
+
+  # plot classification accuracy
+  ax[1].set_title('Classification accuracy rolling average')
+  ax[1].plot(traces['rollingClassificationAccuracy'])
+
+  # plot clustering accuracy
+  ax[2].set_title('Clustering accuracy rolling average')
+  if 'rollingClusteringAccuracy' in traces:
+    ax[2].plot(traces['rollingClusteringAccuracy'])
+
+  # highlight when the anomaly score is in a stable phase
+  # if 'clusteringConfidence' in traces:
+  #   confidence = traces['clusteringConfidence']
+  #   stableIntervals = constructStableIntervals(confidence)
+  #   for start, end in stableIntervals:
+  #     ax[2].axvspan(start, end, facecolor='g', alpha=0.4)
+
+  # plot anomaly score
+  ax[3].set_title(anomalyScoreType)
+  ax[3].plot(traces[anomalyScoreType])
+
+  # plot clustering confidence
+  ax[4].set_title('Clustering confidence')
+  if 'clusteringConfidence' in traces:
+    ax[4].plot(traces['clusteringConfidence'])
 
   np.random.seed(21)
   randomCellOrder = np.random.permutation(np.arange(numTmCells))
 
-  for traceName in ['tpActiveCells',
-                    'tmPredictedActiveCells',
-                    'tmActiveCells']:
+  if plotTemporalMemoryStates:
+    for traceName in ['tmPredictedActiveCells',
+                      'tmActiveCells']:
 
-    f, ax = plt.subplots(3, sharex=True)
-    
-    # plot sensor value and class labels
-    ax[0].set_title('Sensor data')
-    ax[0].plot(t, sensorValue)
-    ax[0].set_xlim(xlim)
+      f, ax = plt.subplots(3, sharex=True)
 
-    yl = ax[0].get_ylim()
-    height = yl[1] - yl[0]
+      # plot sensor value and class labels
+      ax[0].set_title('Sensor data')
+      ax[0].plot(t, sensorValue)
+      ax[0].set_xlim(xlim)
 
-    # plot class labels as transparent colored rectangles
-    classColor = {0: 'grey', 1: 'b', 2: 'r', 3: 'y'}
-    xStartLabel = xlim[0]
-    while xStartLabel < xlim[1]:
-      currentClassLabel = classLabels[xStartLabel]
-      if len(np.where(classLabels[xStartLabel:] != currentClassLabel)[0]) == 0:
-        width = len(classLabels[xStartLabel:])
-      else:
-        width = np.where(classLabels[xStartLabel:] != currentClassLabel)[0][0]
+      yl = ax[0].get_ylim()
+      height = yl[1] - yl[0]
 
-      ax[0].add_patch(
-        patches.Rectangle((t[0] + xStartLabel, yl[0]), width, height,
-                          facecolor=classColor[currentClassLabel], alpha=0.6)
-      )
-      xStartLabel += width
-    ax[0].set_ylabel('Sensor Value')
+      # plot class labels as transparent colored rectangles
+      classColor = {0: 'grey', 1: 'b', 2: 'r', 3: 'y'}
+      xStartLabel = xlim[0]
+      while xStartLabel < xlim[1]:
+        currentClassLabel = classLabels[xStartLabel]
+        if len(
+          np.where(classLabels[xStartLabel:] != currentClassLabel)[0]) == 0:
+          width = len(classLabels[xStartLabel:])
+        else:
+          width = np.where(classLabels[xStartLabel:] != currentClassLabel)[0][0]
 
-    # plot classification accuracy
-    ax[1].set_title('Clustering accuracy rolling average')
-    ax[1].plot(traces['clusteringAccuracy'])
-    
-    
-    # plot cell activations
-    ax[2].set_axis_bgcolor('black')
+        ax[0].add_patch(
+          patches.Rectangle((t[0] + xStartLabel, yl[0]), width, height,
+                            facecolor=classColor[currentClassLabel], alpha=0.6)
+        )
+        xStartLabel += width
+      ax[0].set_ylabel('Sensor Value')
 
-    cellTrace = traces[traceName]
-    if len(selectRange) <= len(cellTrace):
-      for i in range(len(selectRange)):
-        cells = cellTrace[selectRange[i]]
-        if cells is not None:
-          sdrT = t[selectRange[i]] * np.ones((len(cells, )))
-          ax[2].plot(sdrT, randomCellOrder[cells], 's', color='white', ms=1)
+      # plot anomaly score
+      ax[1].set_title('Rolling Anomaly Score')
+      ax[1].plot(traces['rollingAnomalyScore'])
 
-    ax[2].set_title('Cell activation')
-    ax[2].set_ylabel(traceName)
-    ax[2].set_ylim([0, numTmCells])
-    ax[2].set_xlabel('Time')
+      # plot cell activations
+      ax[2].set_axis_bgcolor('black')
 
-  plt.show()
+      cellTrace = traces[traceName]
+      if len(selectRange) <= len(cellTrace):
+        for i in range(len(selectRange)):
+          cells = cellTrace[selectRange[i]]
+          if cells is not None:
+            sdrT = t[selectRange[i]] * np.ones((len(cells, )))
+            ax[2].plot(sdrT, randomCellOrder[cells], 's', color='white', ms=1)
+
+      ax[2].set_title('Cell activation')
+      ax[2].set_ylabel(traceName)
+      ax[2].set_ylim([0, numTmCells])
+      ax[2].set_xlabel('Time')
+
+  plt.savefig(outputFile)
 
 
 
@@ -144,9 +215,9 @@ def loadTraces(fileName):
   :param fileName: (str) name of the file
   :return traces: (dict) network traces. E.g: activeCells, sensorValues, etc.
   """
-  
+
   csv.field_size_limit(sys.maxsize)
-  
+
   with open(fileName, 'rb') as fr:
     reader = csv.reader(fr)
     headers = reader.next()
@@ -161,8 +232,8 @@ def loadTraces(fileName):
           data = []
         else:
           if headers[i] in ['tmPredictedActiveCells',
-                              'tpActiveCells',
-                              'tmActiveCells']:
+                            'tpActiveCells',
+                            'tmActiveCells']:
             if row[i] == '[]':
               data = []
             else:

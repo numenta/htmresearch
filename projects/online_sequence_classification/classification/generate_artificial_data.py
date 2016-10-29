@@ -20,6 +20,8 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import json
+
 from htmresearch.frameworks.classification.utils.sensor_data import (
   generateSensorData, plotSensorData)
 
@@ -67,6 +69,20 @@ def _generateExpData():
 
 
 def main():
+  dominoStats = {
+    "SIGNAL_TYPES": SIGNAL_TYPES,
+    "NUM_PHASES": NUM_PHASES,
+    "NUM_REPS": NUM_REPS,
+    "NUM_CATEGORIES": NUM_CATEGORIES,
+    "WHITE_NOISE_AMPLITUDES": WHITE_NOISE_AMPLITUDES,
+    "SIGNAL_AMPLITUDES": SIGNAL_AMPLITUDES,
+    "SIGNAL_MEANS": SIGNAL_MEANS,
+    "NOISE_LENGTHS": NOISE_LENGTHS
+  }
+
+  with open('dominostats.json', 'wb') as f:
+    f.write(json.dumps(dominoStats))
+
   filePaths = _generateExpData()
   plotSensorData(filePaths)
 

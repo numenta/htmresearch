@@ -19,36 +19,24 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import os
+
+parentDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)
+
+DATA_DIR = os.path.join(parentDir, 'data', 'artificial')
 
 # Signal types can be: 'binary', 'sine', 'triangle'
-SIGNAL_TYPES = [
-  'binary',
-  # 'sine', 
-  # 'triangle'
-]
+SIGNAL_TYPES = ['binary']
 
 # Parameters to generate the artificial sensor data
-DATA_DIR = 'data'
 NUM_CATEGORIES = [2]
-WHITE_NOISE_AMPLITUDES = [0.0]
+WHITE_NOISE_AMPLITUDES = [0.0, 1.0]
 SIGNAL_AMPLITUDES = [10.0]
 SIGNAL_MEANS = [0.0]
 NOISE_LENGTHS = [10]
 
 # Number of phases. Eg: Train (1) SP, (2) TM, (3) TP, (4) Classifier, (5) Test
-NUM_PHASES = [3]
+NUM_PHASES = [5]
 
 # Number of time each phase repeats
-NUM_REPS = [5]
-
-
-# Clustering params
-startClusteringIndex = 0
-mergeThreshold = 0.3
-anomalousThreshold = 0.5
-stableThreshold = 0.1
-minClusterSize = 1
-similarityThreshold = 0.01
-pruningFrequency = 20
-pruneClusters = False
-rollingAccuracyWindow = 10
+NUM_REPS = [10]

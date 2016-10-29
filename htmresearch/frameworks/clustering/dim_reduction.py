@@ -35,7 +35,7 @@ def computeDistanceMat(sdrs):
 
 
 
-def computeClusterDistanceMat(sdrClusters):
+def computeClusterDistanceMat(sdrClusters, numCells):
   """
   Compute distance matrix between clusters of SDRs
   :param sdrClusters: list of sdr clusters,
@@ -47,21 +47,22 @@ def computeClusterDistanceMat(sdrClusters):
   distanceMat = np.zeros((numClusters, numClusters), dtype=np.float64)
   for i in range(numClusters):
     for j in range(i, numClusters):
-      distanceMat[i, j] = clusterDist(sdrClusters[i], sdrClusters[j])
+      distanceMat[i, j] = clusterDist(sdrClusters[i], sdrClusters[j], numCells)
       distanceMat[j, i] = distanceMat[i, j]
 
   return distanceMat
 
 
 
-def viz2DProjection(vizTitle, numClusters, clusterAssignments, npos):
+def viz2DProjection(vizTitle, outputFile, numClusters, clusterAssignments,
+                    npos):
   """
   Visualize SDR clusters with MDS
   """
-  
-  colorList  = colors.cnames.keys()
+
+  colorList = colors.cnames.keys()
   plt.figure()
-  colorList = colorList[:numClusters]
+  colorList = colorList
   colorNames = []
   for i in range(len(clusterAssignments)):
     clusterId = int(clusterAssignments[i])
@@ -69,8 +70,12 @@ def viz2DProjection(vizTitle, numClusters, clusterAssignments, npos):
       colorNames.append(clusterId)
     sdrProjection = npos[i]
     label = 'Category %s' % clusterId
+    if len(colorList) > clusterId:
+      color = colorList[clusterId]
+    else:
+      color = 'black'
     plt.scatter(sdrProjection[0], sdrProjection[1], label=label, alpha=0.5,
-                color=colorList[clusterId], marker='o', edgecolor='black')
+                color=color, marker='o', edgecolor='black')
 
   # Add nicely formatted legend
   handles, labels = plt.gca().get_legend_handles_labels()
@@ -78,6 +83,8 @@ def viz2DProjection(vizTitle, numClusters, clusterAssignments, npos):
   plt.legend(by_label.values(), by_label.keys(), scatterpoints=1, loc=2)
 
   plt.title(vizTitle)
+  plt.draw()
+  plt.savefig(outputFile)
 
 
 
@@ -98,7 +105,8 @@ def project2D(sdrs):
 
   seed = np.random.RandomState(seed=3)
 
-  mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9, random_state=seed,
+  mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9,
+                     random_state=seed,
                      dissimilarity="precomputed", n_jobs=1)
   pos = mds.fit(distanceMat).embedding_
 
@@ -112,12 +120,13 @@ def project2D(sdrs):
 
 
 
-def projectClusters2D(sdrClusters):
-  distanceMat = computeClusterDistanceMat(sdrClusters)
+def projectClusters2D(sdrClusters, numCells):
+  distanceMat = computeClusterDistanceMat(sdrClusters, numCells)
 
   seed = np.random.RandomState(seed=3)
 
-  mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9, random_state=seed,
+  mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9,
+                     random_state=seed,
                      dissimilarity="precomputed", n_jobs=1)
 
   pos = mds.fit(distanceMat).embedding_
@@ -132,13 +141,12 @@ def projectClusters2D(sdrClusters):
 
 
 
-def plotDistanceMat(distanceMat, title, showPlot=False):
+def plotDistanceMat(distanceMat, title, outputFile, showPlot=False):
   plt.figure()
   plt.imshow(distanceMat, interpolation="nearest")
   plt.colorbar()
   plt.title(title)
+  plt.savefig(outputFile)
+  plt.draw()
   if showPlot:
     plt.show()
-
-
-

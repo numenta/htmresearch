@@ -1,61 +1,16 @@
-#!/usr/bin/env python
-# ----------------------------------------------------------------------
-# Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
-# with Numenta, Inc., for a separate license for this software code, the
-# following terms and conditions apply:
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero Public License version 3 as
-# published by the Free Software Foundation.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU Affero Public License for more details.
-#
-# You should have received a copy of the GNU Affero Public License
-# along with this program.  If not, see http://www.gnu.org/licenses.
-#
-# http://numenta.org/licenses/
-# ----------------------------------------------------------------------
 import numpy as np
-import matplotlib.pyplot as plt
 
-from optparse import OptionParser
-from itertools import permutations
-
-from htmresearch.frameworks.classification.utils.traces import loadTraces
 from htmresearch.frameworks.clustering.dim_reduction import (project2D,
                                                              projectClusters2D,
                                                              viz2DProjection,
                                                              plotDistanceMat)
+
 from htmresearch.frameworks.clustering.distances import (percentOverlap,
                                                          clusterDist)
 
 
 
-def _getArgs():
-  parser = OptionParser(usage="Analyze SDR clusters")
-
-  parser.add_option("-f",
-                    "--fileName",
-                    type=str,
-                    dest="fileName",
-                    help="fileName of the csv trace file")
-
-  parser.add_option("--includeNoiseCategory",
-                    type=str,
-                    default=0,
-                    dest="includeNoiseCategory",
-                    help="whether to include noise category for viz")
-
-  (options, remainder) = parser.parse_args()
-  return options, remainder
-
-
-
-def convertNonZeroToSDR(patternNZs):
+def convertNonZeroToSDR(patternNZs, numCells):
   sdrs = []
   for patternNZ in patternNZs:
     sdr = np.zeros(numCells)
@@ -94,7 +49,7 @@ def assignClusters(traces):
     tpActiveCellsClusters[category].append(tpActiveCells)
 
   assert len(traces['actualCategory']) == sum([len(tpActiveCellsClusters[i])
-                                               for i in [0, 1, 2]])
+                                               for i in range(numCategories)])
 
   return {
     'tmActiveCells': tmActiveCellsClusters,
@@ -105,31 +60,26 @@ def assignClusters(traces):
 
 
 
-def meanInClusterDistances(cluster):
-  overlaps = []
-  perms = list(permutations(cluster, 2))
-  for (sdr1, sdr2) in perms:
-    overlap = percentOverlap(sdr1, sdr2)
-    overlaps.append(overlap)
-  return sum(overlaps) / len(overlaps)
-
-
-
-def vizInterCategoryClusters(traces, cellsType, numCells, pointsToPlot=100):
-  sdrs = convertNonZeroToSDR(traces[cellsType][-pointsToPlot:])
+def vizInterCategoryClusters(traces, outputDir, cellsType,
+                             numCells, pointsToPlot=100):
+  sdrs = convertNonZeroToSDR(traces[cellsType][-pointsToPlot:], numCells)
 
   clusterAssignments = traces['actualCategory'][-pointsToPlot:]
   numClasses = len(set(clusterAssignments))
 
   npos, distanceMat = project2D(sdrs)
 
-  title = 'Actual category clusters (using %s)' % cellsType
-  viz2DProjection(title, numClasses, clusterAssignments, npos)
-  plotDistanceMat(distanceMat, 'Inter-category distances')
+  title = 'Actual category clusters in 2D (using %s)' % cellsType
+  outputFile = '%s/%s' % (outputDir, title)
+  viz2DProjection(title, outputFile, numClasses, clusterAssignments, npos)
+  title = 'Actual category clusters distances (using %s)' % cellsType
+  outputFile = '%s/%s' % (outputDir, title)
+  plotDistanceMat(distanceMat, title, outputFile)
 
 
 
-def vizInterSequenceClusters(traces):
+def vizInterSequenceClusters(traces, outputDir, cellsType, numCells, 
+                             numClasses, ignoreNoise=True):
   clusters = assignClusters(traces)
 
   # compare inter-cluster distance over time
@@ -158,7 +108,7 @@ def vizInterSequenceClusters(traces):
     c2slice = [traces['tmPredictedActiveCells'][i] for i in range(len(idx2)) if
                idx2[i]]
 
-    if includeNoiseCategory:
+    if not ignoreNoise:
       SDRclusters.append(c0slice)
       clusterAssignments.append(0)
     SDRclusters.append(c1slice)
@@ -167,40 +117,19 @@ def vizInterSequenceClusters(traces):
     clusterAssignments.append(2)
 
     print " Presentation #{}: ".format(rpt)
-    if includeNoiseCategory:
-      d01 = clusterDist(convertNonZeroToSDR(c0slice),
-                        convertNonZeroToSDR(c1slice))
+    if not ignoreNoise:
+      d01 = clusterDist(c0slice, c1slice, numCells)
       print '=> d(c0, c1): %s' % d01
-      d02 = clusterDist(convertNonZeroToSDR(c0slice),
-                        convertNonZeroToSDR(c2slice))
+      d02 = clusterDist(c0slice, c2slice, numCells)
       print '=> d(c0, c2): %s' % d02
 
-    d12 = clusterDist(convertNonZeroToSDR(c1slice),
-                      convertNonZeroToSDR(c2slice))
+    d12 = clusterDist(c1slice, c2slice, numCells)
     print '=> d(c1, c2): %s' % d12
 
-  npos, distanceMat = projectClusters2D(SDRclusters)
-  numClusters = 3
-  title = 'Inter-sequence clusters (using %s)' % cellsType
-  viz2DProjection(title, numClusters, clusterAssignments, npos)
-  plotDistanceMat(distanceMat, 'Inter-sequence distances', showPlot=True)
-
-
-
-if __name__ == "__main__":
-  (_options, _args) = _getArgs()
-
-  fileName = _options.fileName
-  includeNoiseCategory = _options.includeNoiseCategory
-  traces = loadTraces(fileName)
-  cellsType = 'tmActiveCells'
-  numCells = 1024 * 4
-  numSteps = len(traces['recordNumber'])
-  pointsToPlot = numSteps / 10
-
-  vizInterCategoryClusters(traces,
-                           cellsType,
-                           numCells,
-                           pointsToPlot=pointsToPlot)
-
-  vizInterSequenceClusters(traces)
+  npos, distanceMat = projectClusters2D(SDRclusters, numCells)
+  title = 'Inter-sequence clusters in 2D (using %s)' % cellsType
+  outputFile = '%s/%s' % (outputDir, title)
+  viz2DProjection(title, outputFile, numClasses, clusterAssignments, npos)
+  title = 'Inter-sequence clusters distances (using %s)' % cellsType
+  outputFile = '%s/%s' % (outputDir, title)
+  plotDistanceMat(distanceMat, title, outputFile)

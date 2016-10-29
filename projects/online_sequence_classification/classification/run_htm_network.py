@@ -26,6 +26,7 @@ import logging
 import numpy as np
 import simplejson
 import os
+import shutil
 
 from htmresearch.frameworks.clustering.sdr_clustering import Clustering
 from nupic.data.file_record_stream import FileRecordStream
@@ -33,69 +34,92 @@ from nupic.data.file_record_stream import FileRecordStream
 from htmresearch.frameworks.clustering.distances import interClusterDistances
 from htmresearch.frameworks.classification.network_factory import (
   configureNetwork, enableRegionLearning)
-from htmresearch.frameworks.classification.utils.sensor_data import (
-  plotSensorData)
-from htmresearch.frameworks.classification.utils.traces import plotTraces
+from htmresearch.frameworks.classification.utils.traces import (loadTraces,
+                                                                plotTraces)
+from htmresearch.frameworks.clustering.viz import (
+  vizInterSequenceClusters, vizInterCategoryClusters)
 
-from settings.htm_network import (OUTPUT_DIR, INPUT_FILES, PLOT_RESULTS,
-                                  HTM_NETWORK_CONFIGS)
-
-RESULTS_OUTPUT_FILE = os.path.join(OUTPUT_DIR, 'seq_classification_results.csv')
-TRACES_OUTPUT_FILE = os.path.join(OUTPUT_DIR, 'traces_%s.csv')
-
-from settings.acc_data import (startClusteringIndex,
-                               mergeThreshold,
-                               anomalousThreshold,
-                               stableThreshold,
-                               minClusterSize,
-                               similarityThreshold,
-                               pruningFrequency,
-                               rollingAccuracyWindow)
+from settings.htm_network import (OUTPUT_DIR,
+                                  INPUT_FILES,
+                                  PLOT_RESULTS,
+                                  HTM_NETWORK_CONFIGS,
+                                  CLUSTERING,
+                                  FILE_NAMES,
+                                  MERGE_THRESHOLD,
+                                  ANOMALOUS_THRESHOLD,
+                                  STABLE_THRESHOLD,
+                                  MIN_CLUSTER_SIZE,
+                                  SIMILARITY_THRESHOLD,
+                                  ROLLING_ACCURACY_WINDOW,
+                                  CELLS_TO_CLUSTER,
+                                  IGNORE_NOISE,
+                                  ANOMALY_SCORE)
 
 _LOGGER = logging.getLogger()
 _LOGGER.setLevel(logging.DEBUG)
 
 
 
-def initTrace():
+def initTrace(runClustering):
   trace = {
     'recordNumber': [],
     'sensorValue': [],
     'actualCategory': [],
     'tmActiveCells': [],
     'tmPredictedActiveCells': [],
-    'anomalyScore': [],
+    'rawAnomalyScore': [],
+    'rollingAnomalyScore': [],
     'tpActiveCells': [],
     'classificationInference': [],
-    'classificationAccuracy': [],
-    'clusteringInference': [],
-    'predictedClusterId': [],
-    'clusteringAccuracy': [],
-    'clusterHomogeneity': [],
-    'clusteringConfidence': []
+    'rawClassificationAccuracy': [],
+    'rollingClassificationAccuracy': []
   }
+  if runClustering:
+    trace['clusteringInference'] = []
+    trace['predictedClusterId'] = []
+    trace['rollingClusteringAccuracy'] = []
+    trace['clusterHomogeneity'] = []
+    trace['clusteringConfidence'] = []
+    trace['rawClusteringAccuracy'] = []
 
   return trace
 
 
 
-def onlineRollingAccuracy(trace,
-                          rollingWindowSize,
-                          inferenceFieldName,
-                          accuracyFieldName,
-                          ignoreNoise=True):
+def computeAccuracy(value, expectedValue):
+  if value is None:
+    return None
+
+  if value != expectedValue:
+    accuracy = 0
+  else:
+    accuracy = 1
+  return accuracy
+
+
+
+def movingAverage(trace,
+                  maTraceFieldName,
+                  rollingWindowSize,
+                  newValue,
+                  actualCategory,
+                  ignoreNoise=False):
   """
   Online computation of moving average.
   From: http://www.daycounter.com/LabBook/Moving-Average.phtml
   """
-  if len(trace[accuracyFieldName]) > 0:
-    ma = trace[accuracyFieldName][-1]
-    if trace[inferenceFieldName][-1] == trace['actualCategory'][-1]:
-      x = 1
+  if len(trace[maTraceFieldName]) > 0:
+    ma = trace[maTraceFieldName][-1]
+    if newValue is None:
+      return ma
     else:
-      x = 0
-
-    if ignoreNoise and trace['actualCategory'][-1] > 0:
+      if ignoreNoise:
+        if actualCategory != 0:  # noise is labelled as 0
+          x = newValue
+        else:
+          x = ma
+      else:
+        x = newValue
       ma += float(x - ma) / rollingWindowSize
 
   else:
@@ -105,51 +129,72 @@ def onlineRollingAccuracy(trace,
 
 
 
-def updateTrace(trace,
-                recordNumber,
-                sensorValue,
-                actualCategory,
-                tmActiveCells,
-                tmPredictedActiveCells,
-                anomalyScore,
-                tpActiveCells,
-                classificationInference,
-                classificationAccuracy,
-                clusteringInference,
-                predictedClusterId,
-                clusteringAccuracy,
-                clusterHomogeneity,
-                clusteringConfidence):
-  trace['recordNumber'].append(recordNumber)
-  trace['sensorValue'].append(sensorValue)
-  trace['actualCategory'].append(actualCategory)
-  trace['tmActiveCells'].append(tmActiveCells)
-  trace['tmPredictedActiveCells'].append(tmPredictedActiveCells)
-  trace['anomalyScore'].append(anomalyScore)
-  trace['tpActiveCells'].append(tpActiveCells)
-  trace['classificationInference'].append(classificationInference)
-  trace['classificationAccuracy'].append(classificationAccuracy)
+def updateClusteringTrace(trace,
+                          clusteringInference,
+                          predictedClusterId,
+                          rawClusteringAccuracy,
+                          rollingClusteringAccuracy,
+                          clusterHomogeneity,
+                          clusteringConfidence):
   trace['clusteringInference'].append(clusteringInference)
   trace['predictedClusterId'].append(predictedClusterId)
-  trace['clusteringAccuracy'].append(clusteringAccuracy)
+  trace['rawClusteringAccuracy'].append(rawClusteringAccuracy)
+  trace['rollingClusteringAccuracy'].append(rollingClusteringAccuracy)
   trace['clusterHomogeneity'].append(clusterHomogeneity)
   trace['clusteringConfidence'].append(clusteringConfidence)
   return trace
 
 
 
-def outputTraceInfo(recordNumber,
-                    sensorValue,
-                    actualCategory,
-                    anomalyScore,
-                    classificationInference,
-                    classificationAccuracy,
-                    clusteringInference,
-                    predictedClusterId,
-                    clusteringAccuracy,
-                    clusterHomogeneity,
-                    clusteringConfidence,
-                    numClusters):
+def updateTrace(trace,
+                recordNumber,
+                sensorValue,
+                actualCategory,
+                tmActiveCells,
+                tmPredictedActiveCells,
+                rawAnomalyScore,
+                rollingAnomalyScore,
+                tpActiveCells,
+                classificationInference,
+                rawClassificationAccuracy,
+                rollingClassificationAccuracy):
+  trace['recordNumber'].append(recordNumber)
+  trace['sensorValue'].append(sensorValue)
+  trace['actualCategory'].append(actualCategory)
+  trace['tmActiveCells'].append(tmActiveCells)
+  trace['tmPredictedActiveCells'].append(tmPredictedActiveCells)
+  trace['rawAnomalyScore'].append(rawAnomalyScore)
+  trace['rollingAnomalyScore'].append(rollingAnomalyScore)
+  trace['tpActiveCells'].append(tpActiveCells)
+  trace['classificationInference'].append(classificationInference)
+  trace['rawClassificationAccuracy'].append(rawClassificationAccuracy)
+  trace['rollingClassificationAccuracy'].append(rollingClassificationAccuracy)
+  return trace
+
+
+
+def outputClusteringInfo(clusteringInference,
+                         predictedClusterId,
+                         clusteringAccuracy,
+                         clusterHomogeneity,
+                         clusteringConfidence,
+                         numClusters):
+  # Clustering
+  _LOGGER.debug('-> clusteringInference: %s' % clusteringInference)
+  _LOGGER.debug('-> predictedClusterId: %s' % predictedClusterId)
+  _LOGGER.debug('-> clusteringAccuracy: %s / 1' % clusteringAccuracy)
+  _LOGGER.debug('-> clusterHomogeneity: %s / 100' % clusterHomogeneity)
+  _LOGGER.debug('-> clusteringConfidence: %s' % clusteringConfidence)
+  _LOGGER.debug('-> numClusters: %s' % numClusters)
+
+
+
+def outputClassificationInfo(recordNumber,
+                             sensorValue,
+                             actualCategory,
+                             anomalyScore,
+                             classificationInference,
+                             classificationAccuracy):
   # Network
   _LOGGER.debug('-> recordNumber: %s' % recordNumber)
   _LOGGER.debug('-> sensorValue: %s' % sensorValue)
@@ -160,21 +205,13 @@ def outputTraceInfo(recordNumber,
   _LOGGER.debug('-> classificationInference: %s' % classificationInference)
   _LOGGER.debug('-> classificationAccuracy: %s / 1' % classificationAccuracy)
 
-  # Clustering
-  _LOGGER.debug('-> clusteringInference: %s' % clusteringInference)
-  _LOGGER.debug('-> predictedClusterId: %s' % predictedClusterId)
-  _LOGGER.debug('-> clusteringAccuracy: %s / 1' % clusteringAccuracy)
-  _LOGGER.debug('-> clusterHomogeneity: %s / 100' % clusterHomogeneity)
-  _LOGGER.debug('-> clusteringConfidence: %s' % clusteringConfidence)
-  _LOGGER.debug('-> numClusters: %s' % numClusters)
-  _LOGGER.debug('---')
 
 
-
-def outputInterClusterDist(clustering):
+def outputInterClusterDist(clustering, numCells):
   if _LOGGER.getEffectiveLevel() == logging.DEBUG:
     interClusterDist = interClusterDistances(clustering.getClusters(),
-                                             clustering.getNewCluster())
+                                             clustering.getNewCluster(), 
+                                             numCells)
     _LOGGER.debug('-> inter-cluster distances: %s' % interClusterDist)
 
 
@@ -183,7 +220,8 @@ def outputClustersStructure(clustering):
   if _LOGGER.getEffectiveLevel() == logging.DEBUG:
     labelClusters(clustering)
 
-    # sort cluster-category frequencies by label and cumulative number of points
+    # sort cluster-category frequencies by label and cumulative number of 
+    # points
     sortedFreqDicts = sorted(
       clustering.clusterActualCategoriesFrequencies(),
       key=lambda x: (clustering.getClusterById(x['clusterId']).getLabel(),
@@ -262,7 +300,7 @@ def convertNonZeroToSDR(patternNZs, sdrSize):
 
 
 
-def runNetwork(networkConfig, filePath):
+def runNetwork(networkConfig, filePath, runClustering):
   dataSource = FileRecordStream(streamID=filePath)
   network = configureNetwork(dataSource, networkConfig)
 
@@ -272,53 +310,37 @@ def runNetwork(networkConfig, filePath):
    tpRegion,
    classifierRegion) = enableRegionLearning(network, networkConfig)
 
-  trace = initTrace()
-
-  clustering = Clustering(mergeThreshold,
-                          anomalousThreshold,
-                          stableThreshold,
-                          minClusterSize,
-                          similarityThreshold,
-                          pruningFrequency)
+  trace = initTrace(runClustering)
+  numCells = networkConfig['tmRegionConfig']['regionParams']['inputWidth'] * \
+             networkConfig['tmRegionConfig']['regionParams']['cellsPerColumn']
+  if runClustering:
+    clustering = Clustering(numCells,
+                            MERGE_THRESHOLD,
+                            ANOMALOUS_THRESHOLD,
+                            STABLE_THRESHOLD,
+                            MIN_CLUSTER_SIZE,
+                            SIMILARITY_THRESHOLD)
 
   recordNumber = 0
   while 1:
     try:
       network.run(1)
-      if recordNumber > startClusteringIndex:
-        tmPredictedActiveCells = tmRegion.getOutputData('predictedActiveCells')
-        tmPredictedActiveCells = tmPredictedActiveCells.astype(int)
-        anomalyScore = tmRegion.getOutputData('anomalyScore')[0]
-        actualCategory = sensorRegion.getOutputData('categoryOut')[0]
-        (predictedCluster,
-         clusteringConfidence) = clustering.cluster(recordNumber,
-                                                    tmPredictedActiveCells,
-                                                    anomalyScore,
-                                                    actualCategory)
-
-      else:
-        predictedCluster = None
-        clusteringConfidence = None
 
       (sensorValue,
        actualCategory,
        tmActiveCells,
        tmPredictedActiveCells,
-       anomalyScore,
+       rawAnomalyScore,
+       rollingAnomalyScore,
        tpActiveCells,
        classificationInference,
-       classificationAccuracy,
-       clusteringInference,
-       predictedClusterId,
-       clusteringAccuracy,
-       clusterHomogeneity) = computeStats(trace,
-                                          rollingAccuracyWindow,
-                                          sensorRegion,
-                                          tmRegion,
-                                          tpRegion,
-                                          classifierRegion,
-                                          predictedCluster,
-                                          clustering)
+       rawClassificationAccuracy,
+       rollingClassificationAccuracy) = computeNetworkStats(trace,
+                                                            ROLLING_ACCURACY_WINDOW,
+                                                            sensorRegion,
+                                                            tmRegion,
+                                                            tpRegion,
+                                                            classifierRegion)
 
       trace = updateTrace(trace,
                           recordNumber,
@@ -326,48 +348,113 @@ def runNetwork(networkConfig, filePath):
                           actualCategory,
                           tmActiveCells,
                           tmPredictedActiveCells,
-                          anomalyScore,
+                          rawAnomalyScore,
+                          rollingAnomalyScore,
                           tpActiveCells,
                           classificationInference,
-                          classificationAccuracy,
-                          clusteringInference,
-                          predictedClusterId,
-                          clusteringAccuracy,
-                          clusterHomogeneity,
-                          clusteringConfidence)
+                          rawClassificationAccuracy,
+                          rollingClassificationAccuracy)
 
-      if recordNumber % 50 == 0:
-        outputTraceInfo(recordNumber,
-                        sensorValue,
-                        actualCategory,
-                        anomalyScore,
-                        classificationInference,
-                        classificationAccuracy,
-                        clusteringInference,
-                        predictedClusterId,
-                        clusteringAccuracy,
-                        clusterHomogeneity,
-                        clusteringConfidence,
-                        len(clustering.getClusters()))
+      if recordNumber % 500 == 0:
+        outputClassificationInfo(recordNumber,
+                                 sensorValue,
+                                 actualCategory,
+                                 rollingAnomalyScore,
+                                 classificationInference,
+                                 rollingClassificationAccuracy)
+
+      if runClustering:
+        if CELLS_TO_CLUSTER == 'tmActiveCells':
+          tmCells = tmActiveCells
+        elif CELLS_TO_CLUSTER == 'tmPredictedActiveCells':
+          tmCells = tmPredictedActiveCells
+        else:
+          raise ValueError(
+            'CELLS_TO_CLUSTER value can only be "tmActiveCells" '
+            'or "tmPredictedActiveCells" but is %s'
+            % CELLS_TO_CLUSTER)
+
+        if ANOMALY_SCORE == 'rollingAnomalyScore':
+          anomalyScore = rollingAnomalyScore
+        elif ANOMALY_SCORE == 'rawAnomalyScore':
+          anomalyScore = rawAnomalyScore
+        else:
+          raise ValueError('ANOMALY_SCORE value can only be "rawAnomalyScore" '
+                           'or "rollingAnomalyScore" but is %s'
+                           % ANOMALY_SCORE)
+        (predictedCluster,
+         clusteringConfidence) = clustering.cluster(recordNumber,
+                                                    tmCells,
+                                                    anomalyScore,
+                                                    actualCategory)
+        (clusteringInference,
+         predictedClusterId,
+         rawClusteringAccuracy,
+         rollingClusteringAccuracy,
+         clusterHomogeneity) = computeClusteringStats(trace,
+                                                      predictedCluster,
+                                                      clustering,
+                                                      actualCategory)
+        trace = updateClusteringTrace(trace,
+                                      clusteringInference,
+                                      predictedClusterId,
+                                      rawClusteringAccuracy,
+                                      rollingClusteringAccuracy,
+                                      clusterHomogeneity,
+                                      clusteringConfidence)
+        if recordNumber % 100 == 0:
+          numClusters = len(clustering.getClusters())
+          outputClusteringInfo(clusteringInference,
+                               predictedClusterId,
+                               rollingClusteringAccuracy,
+                               clusterHomogeneity,
+                               clusteringConfidence,
+                               numClusters)
+
       recordNumber += 1
     except StopIteration:
       print "Data streaming completed!"
       break
 
-  outputClustersStructure(clustering)
-  outputInterClusterDist(clustering)
+  if runClustering:
+    outputClustersStructure(clustering)
+    outputInterClusterDist(clustering, numCells)
   return trace, recordNumber
 
 
 
-def computeStats(trace,
-                 rollingAccuracyWindow,
-                 sensorRegion,
-                 tmRegion,
-                 tpRegion,
-                 classifierRegion,
-                 predictedCluster,
-                 clustering):
+def computeClusteringStats(trace,
+                           predictedCluster,
+                           clustering,
+                           actualCategory):
+  (clusteringInference,
+   predictedClusterId,
+   clusterHomogeneity) = getClusteringInference(predictedCluster, clustering)
+
+  # If clustering inference is None (meaning the data is not stable) then 
+  # rawClusteringAccuracy will be None as well
+  rawClusteringAccuracy = computeAccuracy(clusteringInference, actualCategory)
+
+  rollingClusteringAccuracy = movingAverage(trace,
+                                            'rollingClusteringAccuracy',
+                                            ROLLING_ACCURACY_WINDOW,
+                                            rawClusteringAccuracy,
+                                            actualCategory,
+                                            IGNORE_NOISE)
+  return (clusteringInference,
+          predictedClusterId,
+          rawClusteringAccuracy,
+          rollingClusteringAccuracy,
+          clusterHomogeneity)
+
+
+
+def computeNetworkStats(trace,
+                        rollingWindowSize,
+                        sensorRegion,
+                        tmRegion,
+                        tpRegion,
+                        classifierRegion):
   """ 
   Compute HTM network statistics 
   """
@@ -378,11 +465,18 @@ def computeStats(trace,
     tmPredictedActiveCells = tmRegion.getOutputData(
       'predictedActiveCells').astype(int)
     tmActiveCells = tmRegion.getOutputData('activeCells').astype(int)
-    anomalyScore = tmRegion.getOutputData('anomalyScore')[0]
+    rawAnomalyScore = tmRegion.getOutputData('anomalyScore')[0]
+    rollingAnomalyScore = movingAverage(trace,
+                                        'rollingAnomalyScore',
+                                        rollingWindowSize,
+                                        rawAnomalyScore,
+                                        actualCategory,
+                                        IGNORE_NOISE)
   else:
     tmActiveCells = None
     tmPredictedActiveCells = None
-    anomalyScore = None
+    rawAnomalyScore = None
+    rollingAnomalyScore = None
 
   if tpRegion:
     tpActiveCells = tpRegion.getOutputData('mostActiveCells')
@@ -391,35 +485,33 @@ def computeStats(trace,
     tpActiveCells = None
 
   classificationInference = getClassifierInference(classifierRegion)
-  classificationAccuracy = onlineRollingAccuracy(trace,
-                                                 rollingAccuracyWindow,
-                                                 'classificationInference',
-                                                 'classificationAccuracy')
+  rawClassificationAccuracy = computeAccuracy(classificationInference,
+                                              actualCategory)
 
-  (clusteringInference,
-   predictedClusterId,
-   clusterHomogeneity) = getClusteringInference(predictedCluster, clustering)
-  clusteringAccuracy = onlineRollingAccuracy(trace,
-                                             rollingAccuracyWindow,
-                                             'clusteringInference',
-                                             'clusteringAccuracy')
+  rollingClassificationAccuracy = movingAverage(trace,
+                                                'rollingClassificationAccuracy',
+                                                rollingWindowSize,
+                                                rawClassificationAccuracy,
+                                                actualCategory,
+                                                IGNORE_NOISE)
 
   return (sensorValue,
           actualCategory,
           tmActiveCells,
           tmPredictedActiveCells,
-          anomalyScore,
+          rawAnomalyScore,
+          rollingAnomalyScore,
           tpActiveCells,
           classificationInference,
-          classificationAccuracy,
-          clusteringInference,
-          predictedClusterId,
-          clusteringAccuracy,
-          clusterHomogeneity)
+          rawClassificationAccuracy,
+          rollingClassificationAccuracy)
 
 
 
 def getClusteringInference(predictedCluster, clustering):
+  if clustering is None:
+    return None, None, None
+
   if predictedCluster:
     predictedClusterId = predictedCluster.getId()
     labelClusters(clustering)
@@ -461,9 +553,11 @@ def labelClusters(clustering):
 
 
 
-def runExperiment(networkConfig, inputFilePath):
+def runExperiment(networkConfig, inputFilePath, runClustering):
   networkSetup = getNetworkSetup(networkConfig)
-  networkTrace, numPoints = runNetwork(networkConfig, inputFilePath)
+  networkTrace, numPoints = runNetwork(networkConfig,
+                                       inputFilePath,
+                                       runClustering)
   expId = generateExpId(inputFilePath, networkSetup)
   expResult = {
     'expId': expId,
@@ -474,29 +568,6 @@ def runExperiment(networkConfig, inputFilePath):
   }
 
   return expResult
-
-
-
-def saveResults(outFile, expResults):
-  """
-  Save final clustering and classification accuracies to CSV
-  :param outFile: (str) path to CSV file where to save data
-  :param expResults: (list of dict) experiment results
-  """
-  headers = ['fileName', 'finalClassificationAccuracy',
-             'finalClusteringAccuracy']
-
-  with open(outFile, 'wb') as fw:
-    writer = csv.writer(fw)
-    writer.writerow(headers)
-    for i in range(len(expResults)):
-      inputFile = expResults[i]['inputFilePath']
-      classifAccuracy = expResults[i]['expTrace']['classificationAccuracy'][-1]
-      clustAccuracy = expResults[i]['expTrace']['clusteringAccuracy'][-1]
-      writer.writerow([inputFile, classifAccuracy, clustAccuracy])
-
-    _LOGGER.info('Results saved to %s\n' % outFile)
-
 
 
 def saveTraces(baseOutFile, expResults):
@@ -532,47 +603,76 @@ def saveTraces(baseOutFile, expResults):
 
 
 
-def plotExpTraces(expResults):
-  for expResult in expResults:
-    numPoints = len(expResult['expTrace']['recordNumber'])
-    xlim = [0, numPoints]
-    numTmCells = expResult['networkSetup']['numTmCells']
-    traces = expResult['expTrace']
-    plotTraces(numTmCells, xlim, traces, )
-
-
-
-def run(resultsOutputFile,
-        tracesOutputFile,
-        inputFiles,
+def run(inputFiles,
         networkConfigsFile,
-        plotResults):
+        plotResults,
+        runClustering):
   with open(networkConfigsFile, 'rb') as jsonFile:
     networkConfigurations = simplejson.load(jsonFile)
 
   expResults = []
   for networkConfig in networkConfigurations:
     for inputFile in inputFiles:
-      expResult = runExperiment(networkConfig, inputFile)
+      expResult = runExperiment(networkConfig, inputFile, runClustering)
       expResults.append(expResult)
+      if plotResults:
+        # traces = loadTraces(fileName)
+        traces = expResult['expTrace']
+        tmParams = networkConfig['tmRegionConfig']['regionParams']
+        numCells = tmParams['cellsPerColumn'] * tmParams['inputWidth']
+        numClusters = len(set(traces['actualCategory']))
+        if os.path.exists(OUTPUT_DIR):
+          shutil.rmtree(OUTPUT_DIR)
+        os.makedirs(OUTPUT_DIR)
+        cellsType = CELLS_TO_CLUSTER
+        numSteps = len(traces['recordNumber'])
+        pointsToPlot = numSteps / 10
 
-  if not os.path.exists(OUTPUT_DIR):
-    os.makedirs(OUTPUT_DIR)
-  saveResults(resultsOutputFile, expResults)
-  saveTraces(tracesOutputFile, expResults)
+        vizInterCategoryClusters(traces,
+                                 OUTPUT_DIR,
+                                 cellsType,
+                                 numCells,
+                                 pointsToPlot)
 
-  if plotResults:
-    plotSensorData([e['expSetup']['inputFilePath'] for e in expResults])
-    plotExpTraces(expResults)
+        vizInterSequenceClusters(traces, OUTPUT_DIR, cellsType, numCells,
+                                 numClusters)
+
+        xl = None
+        plotTemporalMemoryStates = False
+        title = inputFile.split('/')[-1]
+        outputFile = '%s.png' % inputFile[:-4]
+        plotTraces(xl, traces, title, outputFile, plotTemporalMemoryStates)
+  
+  traceOutputDir = os.path.join(OUTPUT_DIR, 'traces')
+  if not os.path.exists(traceOutputDir):
+    os.makedirs(traceOutputDir)
+  saveTraces(os.path.join(traceOutputDir, '%s.csv'), expResults)
 
 
 
 def main():
-  run(RESULTS_OUTPUT_FILE,
-      TRACES_OUTPUT_FILE,
-      INPUT_FILES,
+  dominoStats = {
+    "FILE_NAMES": FILE_NAMES,
+    "HTM_NETWORK_CONFIGS": HTM_NETWORK_CONFIGS.split('/')[-1],
+    "CLUSTERING": CLUSTERING,
+    "MERGE_THRESHOLD": MERGE_THRESHOLD,
+    "ANOMALOUS_THRESHOLD": ANOMALOUS_THRESHOLD,
+    "STABLE_THRESHOLD": STABLE_THRESHOLD,
+    "MIN_CLUSTER_SIZE": MIN_CLUSTER_SIZE,
+    "SIMILARITY_THRESHOLD": SIMILARITY_THRESHOLD,
+    "ROLLING_ACCURACY_WINDOW": ROLLING_ACCURACY_WINDOW,
+    "CELLS_TO_CLUSTER": CELLS_TO_CLUSTER,
+    "IGNORE_NOISE": IGNORE_NOISE,
+    "ANOMALY_SCORE": ANOMALY_SCORE
+  }
+
+  with open('dominostats.json', 'wb') as f:
+    f.write(json.dumps(dominoStats))
+
+  run(INPUT_FILES,
       HTM_NETWORK_CONFIGS,
-      PLOT_RESULTS)
+      PLOT_RESULTS,
+      CLUSTERING)
 
 
 

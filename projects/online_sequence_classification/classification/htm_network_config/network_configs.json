@@ -13,29 +13,30 @@
           "name": "scalarEncoder",
           "fieldname": "y",
           "type": "ScalarEncoder",
-          "n": 1024,
-          "w": 81,
+          "n": 134,
+          "w": 21,
           "minval": null,
           "maxval": null
         }
       }
     },
     "spRegionConfig": {
-      "regionEnabled": false,
+      "regionEnabled": true,
       "regionName": "SP",
       "regionType": "py.SPRegion",
       "regionParams": {
-        "columnCount": 1024,
-        "spVerbosity": 0,
-        "maxBoost": 1.0,
         "spatialImp": "cpp",
-        "synPermInactiveDec": 0.000,
-        "synPermConnected": 0.1,
-        "synPermActiveInc": 0.000,
-        "seed": 1956,
-        "numActiveColumnsPerInhArea": 20,
+        "potentialPct": 0.8,
+        "columnCount": 2048,
         "globalInhibition": 1,
-        "potentialPct": 0.8
+        "inputWidth": 0,
+        "maxBoost": 1.0,
+        "numActiveColumnsPerInhArea": 40,
+        "seed": 1956,
+        "spVerbosity": 0,
+        "synPermActiveInc": 0.003,
+        "synPermConnected": 0.2,
+        "synPermInactiveDec": 0.0005
       }
     },
     "tmRegionConfig": {
@@ -43,23 +44,24 @@
       "regionName": "TM",
       "regionType": "py.TPRegion",
       "regionParams": {
-        "columnCount": 1024,
-        "activationThreshold": 12,
-        "pamLength": 3,
-        "cellsPerColumn": 4,
-        "permanenceInc": 0.1,
-        "minThreshold": 9,
-        "verbosity": 0,
-        "maxSynapsesPerSegment": 32,
-        "outputType": "normal",
+        "activationThreshold":20,
+        "cellsPerColumn": 32,
+        "columnCount": 2048,
         "globalDecay": 0.0,
-        "initialPerm": 0.21,
-        "permanenceDec": 0.1,
-        "seed": 1960,
+        "initialPerm": 0.24,
+        "inputWidth": 2048,
         "maxAge": 0,
-        "newSynapseCount": 20,
         "maxSegmentsPerCell": 128,
-        "temporalImp": "tm_cpp"
+        "maxSynapsesPerSegment": 128,
+        "minThreshold": 13,
+        "newSynapseCount": 31,
+        "outputType": "normal",
+        "permanenceDec": 0.008,
+        "permanenceInc": 0.04,
+        "predictedSegmentDecrement":0.001,
+        "seed": 1960,
+        "temporalImp": "tm_cpp",
+        "verbosity": 0
       }
     },
     "tpRegionConfig": {
