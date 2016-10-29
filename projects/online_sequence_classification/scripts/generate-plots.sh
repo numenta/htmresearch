@@ -11,13 +11,17 @@ orig_project_dir=../classification
 project_dir=$target_dir/classification-$exp_settings
 
 # copy into new folder
+rm -rf $project_dir || true
 cp -r $orig_project_dir $project_dir
 # copy setting file
 cp $orig_project_dir/settings/exps/$exp_settings $project_dir/settings/htm_network.py
+# copy data
+rm -rf $target_dir/data* || true
+cp -r $orig_project_dir/../data $target_dir/data
 
-sensortag_z='traces_sensortag_z_sp=True_tm=True_tp=False_SDRClassifier'
-binary_noise1='traces_binary_ampl=10.0_mean=0.0_noise=1.0_sp=True_tm=True_tp=False_SDRClassifier'
-binary_noise0='traces_binary_ampl=10.0_mean=0.0_noise=0.0_sp=True_tm=True_tp=False_SDRClassifier'
+sensortag_z='traces/sensortag_z_sp=True_tm=True_tp=False_SDRClassifier'
+binary_noise1='traces/binary_ampl=10.0_mean=0.0_noise=1.0_sp=True_tm=True_tp=False_SDRClassifier'
+binary_noise0='traces/binary_ampl=10.0_mean=0.0_noise=0.0_sp=True_tm=True_tp=False_SDRClassifier'
 
 # cleanup
 rm $project_dir/data/*.csv $project_dir/data/*.png || true

@@ -4,12 +4,13 @@ Load, shuffle and plot accelerometer data.
 
 import csv
 import json
+import os
 
 from htmresearch.frameworks.classification.utils.sensor_data import (
   plotSensorData)
 from settings.acc_data import (DATA_DIR,
                                INPUT_FILES,
-                               OUTPUT_FILE,
+                               OUTPUT_DIR,
                                METRICS,
                                SLICES,
                                MAX_POINTS)
@@ -113,7 +114,10 @@ def main():
     f.write(json.dumps(dominoStats))
 
   data, headers, categories = loadAccelerometerData(DATA_DIR, INPUT_FILES)
-  outputFiles = writeData(OUTPUT_FILE, data, headers, METRICS, categories,
+  if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
+  outputFileTemplate = os.path.join(OUTPUT_DIR, 'sensortag_%s.csv')
+  outputFiles = writeData(outputFileTemplate, data, headers, METRICS, categories,
                           SLICES)
 
   categoryLabels = [f[:-9] for f in INPUT_FILES]

@@ -84,9 +84,9 @@ def clustering_stats(record_number,
 
 
 def get_file_name(exp_name, network_config):
-  trace_csv = 'traces_%s_%s.csv' % (exp_name, network_config)
+  trace_csv = os.path.join('traces','%s_%s.csv' % (exp_name, network_config))
   return os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                      os.pardir, os.pardir, 'classification', 'results',
+                      os.pardir, 'classification', 'results',
                       trace_csv)
 
 

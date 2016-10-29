@@ -6,9 +6,9 @@ from matplotlib import pyplot as plt
 
 from htmresearch.frameworks.classification.utils.traces import loadTraces
 
-from clustering import PerfectClustering, Cluster
+from clustering import PerfectClustering
 from online_clustering import OnlineClustering
-from distances import euclidian
+from distances import euclidian_distance
 from utils import (clustering_stats, moving_average, get_file_name,
                    convert_to_sdrs)
 from plot import (plot_accuracy, plot_cluster_assignments,
@@ -54,7 +54,7 @@ def run(points,
 
 
 def main():
-  distance_functions = [euclidian]
+  distance_functions = [euclidian_distance]
   clustering_classes = [PerfectClustering, OnlineClustering]
   network_config = 'sp=True_tm=True_tp=False_SDRClassifier'
   exp_names = ['binary_ampl=10.0_mean=0.0_noise=0.0',
@@ -62,24 +62,25 @@ def main():
                'sensortag_z']
 
   # Exp params
-  moving_average_window = 10  # for all moving averages of the experiment
+  moving_average_window = 1  # for all moving averages of the experiment
   ClusteringClass = clustering_classes[0]
   distance_func = distance_functions[0]
   exp_name = exp_names[0]
   start_idx = 0
-  end_idx = -1
+  end_idx = 100
   input_width = 2048 * 32
   active_cells_weight = 0
   predicted_active_cells_weight = 1
-  ignore_noise = True  # ignore noise when plotting results
   max_num_clusters = 3
   num_cluster_snapshots = 2
+  show_plots = False
+  distance_matrix_ignore_noise = True  # whether to ignore label 0 (noise)
 
-  # Clean an create output directory
-  output_dir = exp_name
-  if os.path.exists(output_dir):
-    shutil.rmtree(output_dir)
-  os.makedirs(output_dir)
+  # Clean an create output directory for the graphs
+  plots_output_dir = 'plots/%s' % exp_name
+  if os.path.exists(plots_output_dir):
+    shutil.rmtree(plots_output_dir)
+  os.makedirs(plots_output_dir)
 
   # load traces
   file_name = get_file_name(exp_name, network_config)
@@ -131,27 +132,31 @@ def main():
   # plot cluster assignments over time
   for i in range(num_cluster_snapshots):
     clusters = cluster_snapshots[i]
-    plot_cluster_assignments(output_dir, clusters, cluster_snapshot_indices[i])
+    plot_cluster_assignments(plots_output_dir, clusters, cluster_snapshot_indices[i])
 
     # plot inter-cluster distance matrix
     cluster_ids = [c.id for c in closest_cluster_history if c is not None]
     plot_id = 'inter-cluster_t=%s' % cluster_snapshot_indices[i]
-    plot_inter_sequence_distances(output_dir, plot_id, distance_func, sdrs,
-                                  cluster_ids, ignore_noise)
+    plot_inter_sequence_distances(plots_output_dir, 
+                                  plot_id, 
+                                  distance_func, 
+                                  sdrs[:cluster_snapshot_indices[i]],
+                                  cluster_ids[:cluster_snapshot_indices[i]], 
+                                  distance_matrix_ignore_noise)
 
     # plot inter-category distance matrix
     plot_id = 'inter-category_t=%s ' % cluster_snapshot_indices[i]
-    plot_inter_sequence_distances(output_dir,
+    plot_inter_sequence_distances(plots_output_dir,
                                   plot_id,
                                   distance_func,
                                   sdrs[:cluster_snapshot_indices[i]],
                                   categories[:cluster_snapshot_indices[i]],
-                                  ignore_noise)
+                                  distance_matrix_ignore_noise)
 
   # plot clustering accuracy over time
   plot_id = 'file=%s | moving_average_window=%s' % (exp_name,
                                                     moving_average_window)
-  plot_accuracy(output_dir,
+  plot_accuracy(plots_output_dir,
                 plot_id,
                 sensor_values,
                 categories,
@@ -159,7 +164,8 @@ def main():
                 clustering_accuracies,
                 xlim)
 
-  plt.show()
+  if show_plots:
+    plt.show()
 
 
 

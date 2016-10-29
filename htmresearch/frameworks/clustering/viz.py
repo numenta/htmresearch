@@ -132,4 +132,4 @@ def vizInterSequenceClusters(traces, outputDir, cellsType, numCells,
   viz2DProjection(title, outputFile, numClasses, clusterAssignments, npos)
   title = 'Inter-sequence clusters distances (using %s)' % cellsType
   outputFile = '%s/%s' % (outputDir, title)
-  plotDistanceMat(distanceMat, title, outputFile, showPlot=True)
+  plotDistanceMat(distanceMat, title, outputFile)

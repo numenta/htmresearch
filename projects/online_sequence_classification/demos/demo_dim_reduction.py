@@ -45,9 +45,11 @@ def main():
 
   npos, distanceMat = project2D(sdrs)
 
-  viz2DProjection(vizTitle, numClasses, clusterAssignments, npos)
-
-  plotDistanceMat(distanceMat, 'Inter-cluster distances', showPlot=True)
+  outputFile = '2d_projections.png'
+  viz2DProjection(vizTitle, outputFile, numClasses, clusterAssignments, npos)
+  outputFile = 'distance_matrix.png'
+  plotDistanceMat(distanceMat, 'Inter-cluster distances', outputFile,
+                  showPlot=True)
 
 
 

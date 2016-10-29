@@ -76,20 +76,23 @@ def plot_accuracy(output_dir,
 
   title = 'Sensor data (%s)' % plot_id.split('|')[0]
   ax[0].set_title(title)
+  ax[0].set_ylim([-1,11]) 
   ax[0].legend(ncol=4)
-
-  # clustering accuracy
-  title = 'Clustering accuracy (%s)' % plot_id
-  ax[1].plot(clustering_accuracies)
-  ax[1].set_title(title)
-  ax[1].set_xlabel('Time step')
-  ax[1].set_ylabel('Accuracy')
 
   # plot anomaly score
   title = 'Anomaly score (%s)' % plot_id
-  ax[2].set_title(title)
-  ax[2].plot(anomaly_scores)
+  ax[1].set_title(title)
+  ax[1].set_ylim([-0.1,1.1])
+  ax[1].plot(anomaly_scores)
 
+  # clustering accuracy
+  title = 'Clustering accuracy (%s)' % plot_id
+  ax[2].plot(clustering_accuracies)
+  ax[2].set_title(title)
+  ax[2].set_ylim([-0.1,1.1])   
+  ax[2].set_xlabel('Time step')
+  ax[2].set_ylabel('Accuracy')
+  
   plt.tight_layout(pad=0.5)
   fig_name = 'clustering_accuracy.png'
   plt.savefig('%s/%s' % (output_dir, fig_name))

@@ -23,7 +23,7 @@ import os
 
 parentDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)
 
-DATA_DIR = os.path.join(parentDir, 'data')
+DATA_DIR = os.path.join(parentDir, 'data', 'artificial')
 
 # Signal types can be: 'binary', 'sine', 'triangle'
 SIGNAL_TYPES = ['binary']
@@ -36,7 +36,7 @@ SIGNAL_MEANS = [0.0]
 NOISE_LENGTHS = [10]
 
 # Number of phases. Eg: Train (1) SP, (2) TM, (3) TP, (4) Classifier, (5) Test
-NUM_PHASES = [3]
+NUM_PHASES = [5]
 
 # Number of time each phase repeats
-NUM_REPS = [3]
+NUM_REPS = [10]

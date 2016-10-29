@@ -26,6 +26,7 @@ import logging
 import numpy as np
 import simplejson
 import os
+import shutil
 
 from htmresearch.frameworks.clustering.sdr_clustering import Clustering
 from nupic.data.file_record_stream import FileRecordStream
@@ -43,8 +44,6 @@ from settings.htm_network import (OUTPUT_DIR,
                                   PLOT_RESULTS,
                                   HTM_NETWORK_CONFIGS,
                                   CLUSTERING,
-                                  RESULTS_OUTPUT_FILE,
-                                  TRACES_OUTPUT_FILE,
                                   FILE_NAMES,
                                   MERGE_THRESHOLD,
                                   ANOMALOUS_THRESHOLD,
@@ -571,32 +570,6 @@ def runExperiment(networkConfig, inputFilePath, runClustering):
   return expResult
 
 
-
-def saveResults(outFile, expResults, runClustering):
-  """
-  Save final clustering and classification accuracies to CSV
-  :param outFile: (str) path to CSV file where to save data
-  :param expResults: (list of dict) experiment results
-  """
-  headers = ['fileName', 'finalClassificationAccuracy']
-  if runClustering:
-    headers.append('finalClusteringAccuracy')
-
-  with open(outFile, 'wb') as fw:
-    writer = csv.writer(fw)
-    writer.writerow(headers)
-    for i in range(len(expResults)):
-      inputFile = expResults[i]['inputFilePath']
-      expTrace = expResults[i]['expTrace']
-      classifAccuracy = expTrace['rollingClassificationAccuracy'][-1]
-      if runClustering:
-        clustAccuracy = expTrace['rollingClusteringAccuracy'][-1]
-        writer.writerow([inputFile, classifAccuracy, clustAccuracy])
-
-    _LOGGER.info('Results saved to %s\n' % outFile)
-
-
-
 def saveTraces(baseOutFile, expResults):
   """
   Save experiments network traces to CSV
@@ -630,9 +603,7 @@ def saveTraces(baseOutFile, expResults):
 
 
 
-def run(resultsOutputFile,
-        tracesOutputFile,
-        inputFiles,
+def run(inputFiles,
         networkConfigsFile,
         plotResults,
         runClustering):
@@ -650,20 +621,20 @@ def run(resultsOutputFile,
         tmParams = networkConfig['tmRegionConfig']['regionParams']
         numCells = tmParams['cellsPerColumn'] * tmParams['inputWidth']
         numClusters = len(set(traces['actualCategory']))
-        outputDir = TRACES_OUTPUT_FILE[:-4] % inputFile.split('/')[-1][:-4]
-        if not os.path.exists(outputDir):
-          os.makedirs(outputDir)
+        if os.path.exists(OUTPUT_DIR):
+          shutil.rmtree(OUTPUT_DIR)
+        os.makedirs(OUTPUT_DIR)
         cellsType = CELLS_TO_CLUSTER
         numSteps = len(traces['recordNumber'])
         pointsToPlot = numSteps / 10
 
         vizInterCategoryClusters(traces,
-                                 outputDir,
+                                 OUTPUT_DIR,
                                  cellsType,
                                  numCells,
                                  pointsToPlot)
 
-        vizInterSequenceClusters(traces, outputDir, cellsType, numCells,
+        vizInterSequenceClusters(traces, OUTPUT_DIR, cellsType, numCells,
                                  numClusters)
 
         xl = None
@@ -671,11 +642,11 @@ def run(resultsOutputFile,
         title = inputFile.split('/')[-1]
         outputFile = '%s.png' % inputFile[:-4]
         plotTraces(xl, traces, title, outputFile, plotTemporalMemoryStates)
-
-  if not os.path.exists(OUTPUT_DIR):
-    os.makedirs(OUTPUT_DIR)
-  saveTraces(tracesOutputFile, expResults)
-  saveResults(resultsOutputFile, expResults, runClustering)
+  
+  traceOutputDir = os.path.join(OUTPUT_DIR, 'traces')
+  if not os.path.exists(traceOutputDir):
+    os.makedirs(traceOutputDir)
+  saveTraces(os.path.join(traceOutputDir, '%s.csv'), expResults)
 
 
 
@@ -698,9 +669,7 @@ def main():
   with open('dominostats.json', 'wb') as f:
     f.write(json.dumps(dominoStats))
 
-  run(RESULTS_OUTPUT_FILE,
-      TRACES_OUTPUT_FILE,
-      INPUT_FILES,
+  run(INPUT_FILES,
       HTM_NETWORK_CONFIGS,
       PLOT_RESULTS,
       CLUSTERING)
