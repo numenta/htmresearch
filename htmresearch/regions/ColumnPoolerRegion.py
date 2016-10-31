@@ -99,22 +99,6 @@ class ColumnPoolerRegion(PyRegion):
           regionLevel=True,
           isDefaultOutput=True),
 
-        predictedCells=dict(
-          description="A binary output containing a 1 for every"
-                      " cell that was predicted for this timestep.",
-          dataType="Real32",
-          count=0,
-          regionLevel=True,
-          isDefaultOutput=False),
-
-        predictedActiveCells=dict(
-          description="A binary output containing a 1 for every"
-                      " cell that transitioned from predicted to active.",
-          dataType="Real32",
-          count=0,
-          regionLevel=True,
-          isDefaultOutput=False),
-
         activeCells=dict(
           description="A binary output containing a 1 for every"
                       " cell that is currently active.",
@@ -137,8 +121,8 @@ class ColumnPoolerRegion(PyRegion):
           dataType='Bool',
           count=1,
           defaultValue="true"),
-        columnCount=dict(
-          description="Number of columns in this layer",
+        cellCount=dict(
+          description="Number of cells in this layer",
           accessMode="Read",
           dataType="UInt32",
           count=1,
@@ -149,83 +133,24 @@ class ColumnPoolerRegion(PyRegion):
           dataType='UInt32',
           count=1,
           constraints=''),
-        lateralInputWidth=dict(
-          description='Number of lateral inputs to the layer.',
-          accessMode='Read',
-          dataType='UInt32',
-          count=1,
-          constraints=''),
-        activationThresholdDistal=dict(
-          description="If the number of active connected synapses on a "
-                      "distal segment is at least this threshold, the segment "
-                      "is said to be active.",
+        numOtherCorticalColumns=dict(
+          description="The number of lateral inputs that this L2 will receive. "
+                      "This region assumes that every lateral input is of size "
+                      "'cellCount'.",
           accessMode="Read",
           dataType="UInt32",
           count=1,
           constraints=""),
-        initialPermanence=dict(
-          description="Initial permanence of a new synapse.",
-          accessMode="Read",
-          dataType="Real32",
-          count=1,
-          constraints=""),
-        connectedPermanence=dict(
-          description="If the permanence value for a synapse is greater "
-                      "than this value, it is said to be connected.",
-          accessMode="Read",
-          dataType="Real32",
-          count=1,
-          constraints=""),
-        minThresholdProximal=dict(
-          description="If the number of synapses active on a proximal segment "
-                      "is at least this threshold, it is considered as a "
-                      "candidate active cell",
+        numActiveColumnsPerInhArea=dict(
+          description="The number of active cells invoked per object",
           accessMode="Read",
           dataType="UInt32",
           count=1,
           constraints=""),
-        minThresholdDistal=dict(
-          description="If the number of synapses active on a distal segment is "
-                      "at least this threshold, it is selected as the best "
-                      "matching cell in a bursting column.",
-          accessMode="Read",
-          dataType="UInt32",
-          count=1,
-          constraints=""),
-        maxNewProximalSynapseCount=dict(
-          description="The maximum number of synapses added to a proximal segment "
-                      "at each iteration during learning.",
-          accessMode="Read",
-          dataType="UInt32",
-          count=1),
-        maxNewDistalSynapseCount=dict(
-          description="The maximum number of synapses added to a distal segment "
-                      "at each iteration during learning.",
-          accessMode="Read",
-          dataType="UInt32",
-          count=1),
-        maxSynapsesPerDistalSegment=dict(
-          description="The maximum number of synapses on a distal segment ",
-          accessMode="Read",
-          dataType="UInt32",
-          count=1),
-        maxSynapsesPerProximalSegment=dict(
-          description="The maximum number of synapses on a proximal segment ",
-          accessMode="Read",
-          dataType="UInt32",
-          count=1),
-        permanenceIncrement=dict(
-          description="Amount by which permanences of synapses are "
-                      "incremented during learning.",
-          accessMode="Read",
-          dataType="Real32",
-          count=1),
-        permanenceDecrement=dict(
-          description="Amount by which permanences of synapses are "
-                      "decremented during learning.",
-          accessMode="Read",
-          dataType="Real32",
-          count=1),
+
+        #
+        # Proximal
+        #
         synPermProximalInc=dict(
           description="Amount by which permanences of proximal synapses are "
                       "incremented during learning.",
@@ -244,19 +169,72 @@ class ColumnPoolerRegion(PyRegion):
           dataType="Real32",
           count=1,
           constraints=""),
-        predictedSegmentDecrement=dict(
-          description="Amount by which active permanences of synapses of "
-                      "previously predicted but inactive segments are "
-                      "decremented.",
+        maxNewProximalSynapseCount=dict(
+          description="The maximum number of synapses added to a proximal segment "
+                      "at each iteration during learning.",
           accessMode="Read",
-          dataType="Real32",
+          dataType="UInt32",
           count=1),
-        numActiveColumnsPerInhArea=dict(
-          description="The number of active cells invoked per object",
+        minThresholdProximal=dict(
+          description="If the number of synapses active on a proximal segment "
+                      "is at least this threshold, it is considered as a "
+                      "candidate active cell",
           accessMode="Read",
           dataType="UInt32",
           count=1,
           constraints=""),
+        connectedPermanenceProximal=dict(
+          description="If the permanence value for a synapse is greater "
+                      "than this value, it is said to be connected.",
+          accessMode="Read",
+          dataType="Real32",
+          count=1,
+          constraints=""),
+
+        #
+        # Distal
+        #
+        synPermDistalInc=dict(
+          description="Amount by which permanences of synapses are "
+                      "incremented during learning.",
+          accessMode="Read",
+          dataType="Real32",
+          count=1),
+        synPermDistalDec=dict(
+          description="Amount by which permanences of synapses are "
+                      "decremented during learning.",
+          accessMode="Read",
+          dataType="Real32",
+          count=1),
+        initialDistalPermanence=dict(
+          description="Initial permanence of a new synapse.",
+          accessMode="Read",
+          dataType="Real32",
+          count=1,
+          constraints=""),
+        maxNewDistalSynapseCount=dict(
+          description="The maximum number of synapses added to a distal segment "
+                      "at each iteration during learning.",
+          accessMode="Read",
+          dataType="UInt32",
+          count=1),
+        minThresholdDistal=dict(
+          description="If the number of synapses active on a distal segment is "
+                      "at least this threshold, the segment is considered "
+                      "active",
+          accessMode="Read",
+          dataType="UInt32",
+          count=1,
+          constraints=""),
+        connectedPermanenceDistal=dict(
+          description="If the permanence value for a synapse is greater "
+                      "than this value, it is said to be connected.",
+          accessMode="Read",
+          dataType="Real32",
+          count=1,
+          constraints=""),
+
+
         seed=dict(
           description="Seed for the random number generator.",
           accessMode="Read",
@@ -280,49 +258,51 @@ class ColumnPoolerRegion(PyRegion):
 
 
   def __init__(self,
-               columnCount=2048,
+               cellCount=4096,
                inputWidth=16384,
-               lateralInputWidth=0,
-               activationThresholdDistal=13,
-               initialPermanence=0.21,
-               connectedPermanence=0.50,
-               minThresholdProximal=1,
-               minThresholdDistal=10,
-               maxNewProximalSynapseCount=20,
-               maxNewDistalSynapseCount=20,
-               permanenceIncrement=0.10,
-               permanenceDecrement=0.10,
-               predictedSegmentDecrement=0.0,
+               numOtherCorticalColumns=0,
+               numActiveColumnsPerInhArea=40,
+
+               # Proximal
                synPermProximalInc=0.1,
                synPermProximalDec=0.001,
-               initialProximalPermanence = 0.6,
+               initialProximalPermanence=0.6,
+               maxNewProximalSynapseCount=20,
+               minThresholdProximal=1,
+               connectedPermanenceProximal=0.50,
+
+               # Distal
+               synPermDistalInc=0.10,
+               synPermDistalDec=0.10,
+               initialDistalPermanence=0.21,
+               maxNewDistalSynapseCount=20,
+               minThresholdDistal=13,
+               connectedPermanenceDistal=0.50,
+
                seed=42,
-               numActiveColumnsPerInhArea=40,
                defaultOutputType = "active",
                **kwargs):
 
-    # Modified Column Pooler params
-    self.columnCount = columnCount
+    # Used to derive Column Pooler params
+    self.numOtherCorticalColumns = numOtherCorticalColumns
 
     # Column Pooler params
     self.inputWidth = inputWidth
-    self.lateralInputWidth = lateralInputWidth
-    self.activationThresholdDistal = activationThresholdDistal
-    self.initialPermanence = initialPermanence
-    self.connectedPermanence = connectedPermanence
-    self.minThresholdProximal = minThresholdProximal
-    self.minThresholdDistal = minThresholdDistal
-    self.maxNewProximalSynapseCount = maxNewProximalSynapseCount
-    self.maxNewDistalSynapseCount = maxNewDistalSynapseCount
-    self.permanenceIncrement = permanenceIncrement
-    self.permanenceDecrement = permanenceDecrement
-    self.predictedSegmentDecrement = predictedSegmentDecrement
+    self.cellCount = cellCount
+    self.numActiveColumnsPerInhArea = numActiveColumnsPerInhArea
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
+    self.maxNewProximalSynapseCount = maxNewProximalSynapseCount
+    self.minThresholdProximal = minThresholdProximal
+    self.connectedPermanenceProximal = connectedPermanenceProximal
+    self.synPermDistalInc = synPermDistalInc
+    self.synPermDistalDec = synPermDistalDec
+    self.initialDistalPermanence = initialDistalPermanence
+    self.maxNewDistalSynapseCount = maxNewDistalSynapseCount
+    self.minThresholdDistal = minThresholdDistal
+    self.connectedPermanenceDistal = connectedPermanenceDistal
     self.seed = seed
-    self.numActiveColumnsPerInhArea = numActiveColumnsPerInhArea
-    self.maxSynapsesPerSegment = inputWidth
 
     # Region params
     self.learningMode = True
@@ -341,24 +321,22 @@ class ColumnPoolerRegion(PyRegion):
     if self._pooler is None:
       params = {
         "inputWidth": self.inputWidth,
-        "lateralInputWidth": self.lateralInputWidth,
-        "columnDimensions": (self.columnCount,),
-        "activationThresholdDistal": self.activationThresholdDistal,
-        "initialPermanence": self.initialPermanence,
-        "connectedPermanence": self.connectedPermanence,
-        "minThresholdProximal": self.minThresholdProximal,
-        "minThresholdDistal": self.minThresholdDistal,
-        "maxNewProximalSynapseCount": self.maxNewProximalSynapseCount,
-        "maxNewDistalSynapseCount": self.maxNewDistalSynapseCount,
-        "permanenceIncrement": self.permanenceIncrement,
-        "permanenceDecrement": self.permanenceDecrement,
-        "predictedSegmentDecrement": self.predictedSegmentDecrement,
+        "lateralInputWidths": [self.cellCount] * self.numOtherCorticalColumns,
+        "cellCount": self.cellCount,
+        "numActiveColumnsPerInhArea": self.numActiveColumnsPerInhArea,
         "synPermProximalInc": self.synPermProximalInc,
         "synPermProximalDec": self.synPermProximalDec,
         "initialProximalPermanence": self.initialProximalPermanence,
+        "minThresholdProximal": self.minThresholdProximal,
+        "maxNewProximalSynapseCount": self.maxNewProximalSynapseCount,
+        "connectedPermanenceProximal": self.connectedPermanenceProximal,
+        "synPermDistalInc": self.synPermDistalInc,
+        "synPermDistalDec": self.synPermDistalDec,
+        "initialDistalPermanence": self.initialDistalPermanence,
+        "minThresholdDistal": self.minThresholdDistal,
+        "maxNewDistalSynapseCount": self.maxNewDistalSynapseCount,
+        "connectedPermanenceDistal": self.connectedPermanenceDistal,
         "seed": self.seed,
-        "numActiveColumnsPerInhArea": self.numActiveColumnsPerInhArea,
-        "maxSynapsesPerProximalSegment": self.inputWidth,
       }
       self._pooler = ColumnPooler(**params)
 
@@ -380,36 +358,29 @@ class ColumnPoolerRegion(PyRegion):
         self.reset()
         outputs["feedForwardOutput"][:] = 0
         outputs["activeCells"][:] = 0
-        outputs["predictedCells"][:] = 0
-        outputs["predictedActiveCells"][:] = 0
         return
 
-    feedforwardInput = set(inputs["feedforwardInput"].nonzero()[0])
+    feedforwardInput = inputs["feedforwardInput"].nonzero()[0]
 
     if "lateralInput" in inputs:
-      lateralInput = set(inputs["lateralInput"].nonzero()[0])
+      lateralInputs = tuple(singleInput.nonzero()[0]
+                            for singleInput
+                            in numpy.split(inputs["lateralInput"],
+                                           self.numOtherCorticalColumns))
     else:
-      lateralInput = set()
+      lateralInputs = ()
 
     # Send the inputs into the Column Pooler.
-    self._pooler.compute(feedforwardInput, lateralInput,
+    self._pooler.compute(feedforwardInput, lateralInputs,
                          learn=self.learningMode)
 
     # Extract the active / predicted cells and put them into binary arrays.
     outputs["activeCells"][:] = 0
     outputs["activeCells"][self._pooler.getActiveCells()] = 1
-    outputs["predictedCells"][:] = 0
-    outputs["predictedCells"][self._pooler.getPredictiveCells()] = 1
-    outputs["predictedActiveCells"][:] = (outputs["activeCells"] *
-                                          outputs["predictedCells"])
 
     # Send appropriate output to feedForwardOutput.
     if self.defaultOutputType == "active":
       outputs["feedForwardOutput"][:] = outputs["activeCells"]
-    elif self.defaultOutputType == "predicted":
-      outputs["feedForwardOutput"][:] = outputs["predictedCells"]
-    elif self.defaultOutputType == "predictedActiveCells":
-      outputs["feedForwardOutput"][:] = outputs["predictedActiveCells"]
     else:
       raise Exception("Unknown outputType: " + self.defaultOutputType)
 
@@ -443,8 +414,7 @@ class ColumnPoolerRegion(PyRegion):
     """
     Return the number of elements for the given output.
     """
-    if name in ["feedForwardOutput", "predictedActiveCells", "predictedCells",
-                "activeCells"]:
-      return self.columnCount
+    if name in ["feedForwardOutput", "activeCells"]:
+      return self.cellCount
     else:
       raise Exception("Invalid output name specified: " + name)

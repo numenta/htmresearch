@@ -256,9 +256,11 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
                            exp.objectL2Representations[1][0]))
 
   columnPooler = exp.L2Columns[0]._pooler
-  numberOfConnectedSynapses = columnPooler.numberOfConnectedSynapses()
+  numConnectedProximal = columnPooler.numberOfConnectedProximalSynapses()
+  numConnectedDistal = columnPooler.numberOfConnectedDistalSynapses()
 
-  return {"numberOfConnectedSynapses": numberOfConnectedSynapses,
+  return {"numberOfConnectedProximalSynapses": numConnectedProximal,
+          "numberOfConnectedDistalSynapses": numConnectedDistal,
           "numObjects": numObjects,
           "numPointsPerObject": numPointsPerObject,
           "confusion": np.mean(confusion),

@@ -50,7 +50,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
   inputWidth = 2048 * 8
   numInputActiveBits = int(0.02 * inputWidth)
-  outputWidth = 2048
+  outputWidth = 4096
   numOutputActiveBits = 40
   seed = 42
 
@@ -505,6 +505,32 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     )
 
 
+  def testInferObjectOverTime(self):
+    """Infer an object after touching only ambiguous points."""
+    self.init()
+
+    patterns = [self.generatePattern() for _ in xrange(3)]
+
+    objectA = [patterns[0], patterns[1]]
+    objectB = [patterns[1], patterns[2]]
+    objectC = [patterns[2], patterns[0]]
+
+    self.learn(objectA, numRepetitions=3, newObject=True)
+    representationA = set(self.pooler.getActiveCells())
+    self.learn(objectB, numRepetitions=3, newObject=True)
+    representationB = set(self.pooler.getActiveCells())
+    self.learn(objectC, numRepetitions=3, newObject=True)
+    representationC = set(self.pooler.getActiveCells())
+
+    self.pooler.reset()
+    self.infer(patterns[0])
+    self.assertEqual(set(self.pooler.getActiveCells()),
+                     representationA | representationC)
+    self.infer(patterns[1])
+    self.assertEqual(set(self.pooler.getActiveCells()),
+                     representationA)
+
+
   def testLearnOneObjectInTwoColumns(self):
     """Learns one object in two different columns."""
     self.init(numCols=2)
@@ -573,8 +599,6 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       pooler.reset()
 
     # check inference for object A
-    # for the first pattern, the distal predictions won't be correct
-    firstPattern = True
     for patternsA in objectA:
       for i in xrange(3):
         activeRepresentations = self._getActiveRepresentations()
@@ -583,13 +607,6 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
           activeRepresentations=activeRepresentations,
           neighborsIndices=neighborsIndices,
         )
-        if firstPattern:
-          firstPattern = False
-        else:
-          self.assertEqual(
-            activeRepresentationsA,
-            self._getPredictedActiveCells()
-          )
         self.assertEqual(
           activeRepresentationsA,
           self._getActiveRepresentations()
@@ -599,7 +616,6 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       pooler.reset()
 
     # check inference for object B
-    firstPattern = True
     for patternsB in objectB:
       for i in xrange(3):
         activeRepresentations = self._getActiveRepresentations()
@@ -609,13 +625,6 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
           neighborsIndices=neighborsIndices
         )
 
-        if firstPattern:
-          firstPattern = False
-        else:
-          self.assertEqual(
-            activeRepresentationsB,
-            self._getPredictedActiveCells()
-          )
         self.assertEqual(
           activeRepresentationsB,
           self._getActiveRepresentations()
@@ -660,7 +669,6 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     for pooler in self.poolers:
       pooler.reset()
 
-    firstPattern = True
     for patternsA in objectA:
       for i in xrange(3):
         activeRepresentations = self._getActiveRepresentations()
@@ -669,13 +677,6 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
           activeRepresentations=activeRepresentations,
           neighborsIndices=neighborsIndices,
         )
-        if firstPattern:
-          firstPattern = False
-        else:
-          self.assertEqual(
-            activeRepresentationsA,
-            self._getPredictedActiveCells()
-          )
         self.assertEqual(
           activeRepresentationsA,
           self._getActiveRepresentations()
@@ -685,7 +686,6 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       pooler.reset()
 
     # check inference for object B
-    firstPattern = True
     for patternsB in objectB:
       for i in xrange(3):
         activeRepresentations = self._getActiveRepresentations()
@@ -695,13 +695,6 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
           neighborsIndices=neighborsIndices
         )
 
-        if firstPattern:
-          firstPattern = False
-        else:
-          self.assertEqual(
-            activeRepresentationsB,
-            self._getPredictedActiveCells()
-          )
         self.assertEqual(
           activeRepresentationsB,
           self._getActiveRepresentations()
@@ -810,11 +803,11 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
   def testLateralDisambiguation(self):
     """Lateral disambiguation using a constant simulated distal input."""
     self.init(overrides={
-      "lateralInputWidth": self.inputWidth,
+      "lateralInputWidths": [self.inputWidth],
     })
 
     objectA = self.generateObject(numPatterns=5)
-    lateralInputA = [()] + [self.generatePattern() for _ in xrange(4)]
+    lateralInputA = [[set()]] + [[self.generatePattern()] for _ in xrange(4)]
     self.learn(objectA,
                lateralPatterns=lateralInputA,
                numRepetitions=3,
@@ -824,7 +817,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     objectB = self.generateObject(numPatterns=5)
     objectB[3] = objectA[3]
-    lateralInputB = [()] + [self.generatePattern() for _ in xrange(4)]
+    lateralInputB = [[set()]] + [[self.generatePattern()] for _ in xrange(4)]
     self.learn(objectB,
                lateralPatterns=lateralInputB,
                numRepetitions=3,
@@ -839,7 +832,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # no ambiguity with lateral input
     for pattern in objectA:
       self.pooler.reset()
-      self.infer(feedforwardPattern=pattern, lateralInput=lateralInputA[-1])
+      self.infer(feedforwardPattern=pattern, lateralInputs=lateralInputA[-1])
       self.assertEqual(
         self._getActiveRepresentation(),
         representationA,
@@ -849,12 +842,50 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # no ambiguity with lateral input
     for pattern in objectB:
       self.pooler.reset()
-      self.infer(feedforwardPattern=pattern, lateralInput=lateralInputB[-1])
+      self.infer(feedforwardPattern=pattern, lateralInputs=lateralInputB[-1])
       self.assertEqual(
         self._getActiveRepresentation(),
         representationB,
         "The pooled representation for the second object is not stable"
       )
+
+
+  def testLateralContest(self):
+    """
+    Infer an object via lateral disambiguation even if some other columns are
+    also ambiguous.
+    """
+
+    self.init(overrides={"lateralInputWidths": [self.inputWidth,
+                                                self.inputWidth]})
+
+    patterns = [self.generatePattern() for _ in xrange(3)]
+
+    objectA = [patterns[0], patterns[1]]
+    objectB = [patterns[1], patterns[2]]
+
+    lateralInput1A = self.generatePattern()
+    lateralInput2A = self.generatePattern()
+    lateralInput1B = self.generatePattern()
+    lateralInput2B = self.generatePattern()
+
+    self.learn(objectA, lateralPatterns=[[lateralInput1A, lateralInput2A]]*2,
+               numRepetitions=3, newObject=True)
+    representationA = set(self.pooler.getActiveCells())
+    self.learn(objectB, lateralPatterns=[[lateralInput1B, lateralInput2B]]*2,
+               numRepetitions=3, newObject=True)
+    representationB = set(self.pooler.getActiveCells())
+
+    self.pooler.reset()
+
+    # This column will say A | B
+    # One lateral column says A | B
+    # Another lateral column says A
+    self.infer(patterns[1], lateralInputs=[lateralInput1A | lateralInput1B,
+                                           lateralInput2A])
+
+    # A should win
+    self.assertEqual(set(self.pooler.getActiveCells()), representationA)
 
 
   @unittest.skip("Fails, need to discuss")
@@ -1050,11 +1081,6 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       35,
     )
 
-    self.assertEqual(
-      self._getActiveRepresentations(),
-      self._getPredictedActiveCells(),
-    )
-
 
   def setUp(self):
     """
@@ -1094,7 +1120,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     @param   feedforwardPatterns   (list(set))
              List of proximal input patterns
 
-    @param   lateralPatterns       (list(list(set)))
+    @param   lateralPatterns       (list(list(iterable)))
              List of distal input patterns, or None. If no lateral input is
              used. The outer list is expected to have the same length as
              feedforwardPatterns, whereas each inner list's length is the
@@ -1116,7 +1142,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # set-up
     indices = range(len(feedforwardPatterns))
     if lateralPatterns is None:
-      lateralPatterns = [set() for _ in xrange(len(feedforwardPatterns))]
+      lateralPatterns = [[] for _ in xrange(len(feedforwardPatterns))]
 
     for _ in xrange(numRepetitions):
       if randomOrder:
@@ -1129,7 +1155,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
   def infer(self,
             feedforwardPattern,
-            lateralInput=set(),
+            lateralInputs=(),
             printMetrics=False):
     """
     Feeds a single pattern to the column pooler (as well as an eventual lateral
@@ -1140,15 +1166,15 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     @param feedforwardPattern       (set)
            Input proximal pattern to the pooler
 
-    @param lateralPatterns          (list(set))
-           Input dislal patterns to the pooler (one for each neighboring CC's)
+    @param lateralInputs            (list(set))
+           Input distal patterns to the pooler (one for each neighboring CC's)
 
 
     @param printMetrics             (bool)
            If true, will print cell metrics
 
     """
-    self.pooler.compute(feedforwardPattern, lateralInput, learn=False)
+    self.pooler.compute(feedforwardPattern, lateralInputs, learn=False)
 
     if printMetrics:
       print self.pooler.mmPrettyPrintMetrics(
@@ -1192,22 +1218,17 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     """
     params = {
       "inputWidth": self.inputWidth,
-      "lateralInputWidth": (numCols-1) * self.outputWidth,
+      "lateralInputWidths": [self.outputWidth]*(numCols-1),
+      "cellCount": self.outputWidth,
       "numActiveColumnsPerInhArea": self.numOutputActiveBits,
-      "columnDimensions": (self.outputWidth,),
-      "seed": self.seed,
-      "initialPermanence": 0.51,
-      "connectedPermanence": 0.6,
-      "permanenceIncrement": 0.1,
-      "permanenceDecrement": 0.02,
-      "minThresholdDistal": 10,
       "minThresholdProximal": 10,
-      "predictedSegmentDecrement": 0.004,
-      "activationThresholdDistal": 10,
       "maxNewProximalSynapseCount": 255,
+      "connectedPermanenceProximal": 0.6,
+      "initialDistalPermanence": 0.51,
+      "minThresholdDistal": 10,
       "maxNewDistalSynapseCount": 255,
-      "maxSynapsesPerDistalSegment": 255,
-      "maxSynapsesPerProximalSegment": 5000,
+      "connectedPermanenceDistal": 0.6,
+      "seed": self.seed,
     }
     if overrides is None:
       overrides = {}
@@ -1290,17 +1311,13 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
         # Train each column
         for col, pooler in enumerate(self.poolers):
           # get union of relevant lateral representations
-          lateralInput = set()
-          for inputNumber, activeCells in enumerate(activeCells
-                                                    for presynapticCol, activeCells
-                                                    in enumerate(prevActiveCells)
-                                                    if col != presynapticCol):
-            offset = inputNumber * self.outputWidth
-            lateralInput = lateralInput.union(cell + offset
-                                              for cell in activeCells)
+          lateralInputs =  [activeCells
+                            for presynapticCol, activeCells
+                            in enumerate(prevActiveCells)
+                            if col != presynapticCol]
 
           pooler.compute(feedforwardPatterns[indices[col][i]][col],
-                         lateralInput, learn=True)
+                         lateralInputs, learn=True)
 
         prevActiveCells = self._getActiveRepresentations()
 
@@ -1343,16 +1360,12 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     for col, pooler in enumerate(self.poolers):
       # get union of relevant lateral representations
-      lateralInput = set()
-      for inputNumber, activeCells in enumerate(activeCells
-                                                for presynapticCol, activeCells
-                                                in enumerate(activeRepresentations)
-                                                if col != presynapticCol):
-        offset = inputNumber * self.outputWidth
-        lateralInput = lateralInput.union(cell + offset
-                                          for cell in activeCells)
+      lateralInputs = [activeCells
+                       for presynapticCol, activeCells
+                       in enumerate(activeRepresentations)
+                       if col != presynapticCol]
 
-      pooler.compute(feedforwardPatterns[col], lateralInput, learn=False)
+      pooler.compute(feedforwardPatterns[col], lateralInputs, learn=False)
 
     if printMetrics:
       for pooler in self.poolers:
@@ -1369,17 +1382,6 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       raise ValueError("No pooler has been instantiated")
 
     return [set(pooler.getActiveCells()) for pooler in self.poolers]
-
-
-  def _getPredictedActiveCells(self):
-    """
-    Retrieves the current active representations in the poolers.
-    """
-    if len(self.poolers) == 0:
-      raise ValueError("No pooler has been instantiated")
-
-    return [set(pooler.getActiveCells()) & set(pooler.tm.getPredictiveCells())\
-            for pooler in self.poolers]
 
 
 
