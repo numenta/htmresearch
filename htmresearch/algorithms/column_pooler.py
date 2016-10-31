@@ -444,7 +444,7 @@ class ColumnPooler(object):
       activeCells, activeInput, permanenceIncrement)
     permanences.incrementNonZerosOnRowsExcludingCols(
       activeCells, activeInput, -permanenceDecrement)
-    permanences.clipRowsAboveAndBelow(
+    permanences.clipRowsBelowAndAbove(
       activeCells, 0.0, 1.0)
     permanences.setRandomZerosOnOuter(
       activeCells, activeInput, maxNewSynapseCount, initialPermanence, rng)
