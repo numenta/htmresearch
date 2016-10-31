@@ -104,22 +104,23 @@ def getL2Params():
   Returns a good default set of parameters to use in the L4 region.
   """
   return {
-    "columnCount": 4096,
     "inputWidth": 2048 * 8,
-    "learningMode": True,
-    "inferenceMode": True,
-    "initialPermanence": 0.41,
-    "connectedPermanence": 0.5,
-    "permanenceIncrement": 0.1,
-    "permanenceDecrement": 0.02,
+    "cellCount": 4096,
     "numActiveColumnsPerInhArea": 40,
     "synPermProximalInc": 0.1,
     "synPermProximalDec": 0.001,
     "initialProximalPermanence": 0.6,
     "minThresholdProximal": 1,
-    "predictedSegmentDecrement": 0.002,
-    "activationThresholdDistal": 10,
     "maxNewProximalSynapseCount": 5,
+    "connectedPermanenceProximal": 0.5,
+    "synPermDistalInc": 0.1,
+    "synPermDistalDec": 0.001,
+    "initialDistalPermanence": 0.41,
+    "minThresholdDistal": 10,
+    "maxNewDistalSynapseCount": 20,
+    "connectedPermanenceDistal": 0.5,
+    "learningMode": True,
+    "inferenceMode": True,
   }
 
 
