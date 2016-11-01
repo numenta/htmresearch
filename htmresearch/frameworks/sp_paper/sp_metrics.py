@@ -718,7 +718,8 @@ def calculateEntropy(activeColumns):
   activationProb[activationProb < MIN_ACTIVATION_PROB] = MIN_ACTIVATION_PROB
   activationProb = activationProb / np.sum(activationProb)
 
-  entropy = -np.dot(activationProb, np.log2(activationProb))
+  entropy = -(np.dot(activationProb, np.log2(activationProb)) +
+              np.dot(1 - activationProb, np.log2(1-activationProb)))
   return entropy
 
 

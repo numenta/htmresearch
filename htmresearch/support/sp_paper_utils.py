@@ -73,7 +73,7 @@ def plotSPstatsOverTime(numNewlyConnectedSynapsesTrace,
                         fileName=None):
   fig, axs = plt.subplots(nrows=5, ncols=1, sharex=True)
 
-  axs[0].plot(stabilityTrace)
+  axs[0].plot([0] + stabilityTrace)
   axs[0].set_ylabel('Stability')
 
   axs[1].plot(entropyTrace)
@@ -84,10 +84,10 @@ def plotSPstatsOverTime(numNewlyConnectedSynapsesTrace,
     axs[2].plot(noiseRobustnessTrace)
     axs[2].set_ylabel('Noise Robustness')
 
-  axs[3].plot(numNewlyConnectedSynapsesTrace)
+  axs[3].plot([0] + numNewlyConnectedSynapsesTrace)
   axs[3].set_ylabel('Synapses Formation')
 
-  axs[4].plot(numEliminatedSynapsesTrace)
+  axs[4].plot([0] + numEliminatedSynapsesTrace)
   axs[4].set_ylabel('Synapse Removal')
   axs[4].set_xlim([0, len(numEliminatedSynapsesTrace)])
   axs[4].set_xlabel('epochs')

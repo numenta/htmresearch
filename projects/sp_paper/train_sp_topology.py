@@ -22,6 +22,7 @@
 
 from optparse import OptionParser
 import pprint
+import pickle
 from tabulate import tabulate
 from pylab import rcParams
 

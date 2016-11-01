@@ -30,7 +30,7 @@ kill a fraction of the SP columns
 `run train_sp_topology.py -b 1 -d randomSDRVaryingSparsity --spatialImp cpp --runClassification 1 --trackOverlapCurve 1 -e 100 --name randomSDRVaryingSparsity`
 
 ## continuous learning experiment
-`run train_sp_topology.py -b 1 -d randomSDRVaryingSparsity --spatialImp cpp --runClassification 0 --trackOverlapCurve 1 -e 100 --changeDataSetAt 50 --name randomSDRVaryingSparsityContinuousLearning `
+`run train_sp_topology.py -b 1 -d randomSDRVaryingSparsity --spatialImp cpp --runClassification 0 --trackOverlapCurve 1 -e 120 --changeDataSetAt 50 --name randomSDRVaryingSparsityContinuousLearning `
 
 ## Random Bar Pairs Vs. Random Cross (With Topology)
 `run train_sp_topology.py -d randomCross --spatialImp py -e 200 -b 1 --changeDataSetContinuously 1`

@@ -22,10 +22,13 @@
 
 from htmresearch.support.sp_paper_utils import *
 
-expName = 'randomSDRVaryingSparsity'
+import matplotlib as mpl
+mpl.rcParams['pdf.fonttype'] = 42
+
+expName = 'randomSDRVaryingSparsityContinuousLearning'
 plt.figure()
 legendList = []
-epochCheck = [0, 5, 10, 20, 40, 80]
+epochCheck = [0, 5, 10, 20, 40]
 for epoch in epochCheck:
   nrData = np.load \
     ('./results/input_output_overlap/{}/epoch_{}.npz'.format(expName, epoch))
@@ -37,7 +40,7 @@ for epoch in epochCheck:
 plt.legend(legendList)
 plt.xlabel('Noise Level')
 plt.ylabel('Change of SP output')
-plt.savefig('./figures/noise_robustness_{}.pdf'.format(expName))
+plt.savefig('./figures/noise_robustness_{}_beforeChange.pdf'.format(expName))
 
 
 expName = 'randomSDRVaryingSparsityContinuousLearning'
