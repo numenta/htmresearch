@@ -138,7 +138,7 @@ def generateRandomSDRVaryingSparsity(numSDR, numDims, minSparsity, maxSparsity,
   np.random.seed(seed)
   for i in range(numSDR):
     sparsity = np.random.random() * (maxSparsity - minSparsity) + minSparsity
-    numActiveInputBits = round(sparsity * numDims)
+    numActiveInputBits = int(sparsity * numDims)
     randomIndices = np.random.permutation(indices)
     activeBits = randomIndices[:numActiveInputBits]
     randomSDRs[i, activeBits] = 1
@@ -297,7 +297,6 @@ class SDRDataSet(object):
         params['numInputVectors'],
         params['inputSize'],
         params['seed'])
-
     elif params['dataType'] == 'randomBarPairs':
       inputSize = params['nX'] * params['nY']
       numInputVectors = params['numInputVectors']
