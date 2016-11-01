@@ -30,10 +30,12 @@ the network, and asked whether the correct object can be retrieved.
 """
 
 import argparse
+import multiprocessing
 import os
 import os.path
 
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
 
@@ -373,22 +375,25 @@ def runCapacityTestVaryingObjectSize(
     maxNewSynapseCount=5,
     activationThreshold=3,
     numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
-    resultDirName=DEFAULT_RESULT_DIR_NAME):
+    resultDirName=DEFAULT_RESULT_DIR_NAME,
+    cpuCount=None):
   """
   Runs experiment with two objects, varying number of points per object
   """
 
   result = None
 
-  for numPointsPerObject in np.arange(10, 270, 20):
-    testResult = runCapacityTest(
-      numObjects,
-      numPointsPerObject,
-      maxNewSynapseCount,
-      activationThreshold,
-      numCorticalColumns
-    )
+  cpuCount = cpuCount or multiprocessing.cpu_count()
+  pool = multiprocessing.Pool(cpuCount, maxtasksperchild=1)
 
+  params = [(numObjects,
+             numPointsPerObject,
+             maxNewSynapseCount,
+             activationThreshold,
+             numCorticalColumns)
+            for numPointsPerObject in np.arange(10, 270, 20)]
+
+  for testResult in pool.map(invokeRunCapacityTest, params):
     print testResult
 
     result = (
@@ -407,27 +412,36 @@ def runCapacityTestVaryingObjectSize(
 
 
 
+def invokeRunCapacityTest(params):
+  """ Splits out params so that runCapacityTest may be invoked with
+  multiprocessing.Pool.map() to support parallelism
+  """
+  return runCapacityTest(*params)
+
+
+
 def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
                                     maxNewSynapseCount=5,
                                     activationThreshold=3,
                                     numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
-                                    resultDirName=DEFAULT_RESULT_DIR_NAME):
+                                    resultDirName=DEFAULT_RESULT_DIR_NAME,
+                                    cpuCount=None):
   """
   Run experiment with fixed number of pts per object, varying number of objects
-
   """
   result = None
 
-  for numObjects in np.arange(20, 200, 20):
+  cpuCount = cpuCount or multiprocessing.cpu_count()
+  pool = multiprocessing.Pool(cpuCount, maxtasksperchild=1)
 
-    testResult = runCapacityTest(
-      numObjects,
-      numPointsPerObject,
-      maxNewSynapseCount,
-      activationThreshold,
-      numCorticalColumns
-    )
+  params = [(numObjects,
+             numPointsPerObject,
+             maxNewSynapseCount,
+             activationThreshold,
+             numCorticalColumns)
+            for numObjects in np.arange(20, 1371, 150)]
 
+  for testResult in pool.map(invokeRunCapacityTest, params):
     print testResult
 
     result = (
@@ -447,11 +461,11 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
 
 
 def runExperiment1(numObjects=2,
-                   maxNewSynapseCountRange=(5, 10, 15, 20),
+                   maxNewSynapseCountRange=(10, ),
                    numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
                    resultDirName=DEFAULT_RESULT_DIR_NAME,
-                   plotDirName=DEFAULT_PLOT_DIR_NAME
-                   ):
+                   plotDirName=DEFAULT_PLOT_DIR_NAME,
+                   cpuCount=None):
   """
   Varying number of pts per objects, two objects
   Try different sampling and activation threshold
@@ -466,7 +480,8 @@ def runExperiment1(numObjects=2,
                                      maxNewSynapseCount,
                                      activationThreshold,
                                      numCorticalColumns,
-                                     resultDirName)
+                                     resultDirName,
+                                     cpuCount)
 
   markers = ("-bo", "-ro", "-co", "-go")
   ploti = 0
@@ -511,24 +526,25 @@ def runExperiment1(numObjects=2,
 
 def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
                    resultDirName=DEFAULT_RESULT_DIR_NAME,
-                   plotDirName=DEFAULT_PLOT_DIR_NAME):
+                   plotDirName=DEFAULT_PLOT_DIR_NAME,
+                   cpuCount=None):
   """
   runCapacityTestVaryingObjectNum()
   Try different sampling and activation threshold
   """
+
+  maxNewSynapseCountRange = (10, ) # Expand this tuple to include other ranges
+                                   # Settled at 10 since we did not observe
+                                   # much variance between 5, 10, 15, and 20
   numPointsPerObject = 10
-  maxNewSynapseCountRange = (5, 10, 15, 20)
+
   for maxNewSynapseCount in maxNewSynapseCountRange:
-    activationThreshold = int(maxNewSynapseCount) - 1
-
-    print "maxNewSynapseCount: {}".format(maxNewSynapseCount)
-    print "nactivationThreshold: {}".format(activationThreshold)
-
     runCapacityTestVaryingObjectNum(numPointsPerObject,
                                     maxNewSynapseCount,
-                                    activationThreshold,
+                                    int(maxNewSynapseCount) - 1,
                                     numCorticalColumns,
-                                    resultDirName)
+                                    resultDirName,
+                                    cpuCount)
 
   markers = ("-bo", "-ro", "-co", "-go")
   ploti = 0
@@ -538,6 +554,11 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
       .format(numCorticalColumns, "s" if numCorticalColumns > 1 else ""
               ), fontsize="x-large"
   )
+
+  for axi in (0, 1):
+    for axj in (0, 1):
+      ax[axi][axj].xaxis.set_major_locator(ticker.MultipleLocator(300))
+
   legendEntries = []
   for maxNewSynapseCount in maxNewSynapseCountRange:
     activationThreshold = int(maxNewSynapseCount) - 1
@@ -569,16 +590,19 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
 
 
 
-def runExperiments(numCorticalColumns, resultDirName, plotDirName):
+def runExperiments(numCorticalColumns, resultDirName, plotDirName, cpuCount):
+
   # Varying number of pts per objects, two objects
   runExperiment1(numCorticalColumns=numCorticalColumns,
                  resultDirName=resultDirName,
-                 plotDirName=plotDirName)
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
 
   # 10 pts per object, varying number of objects
   runExperiment2(numCorticalColumns=numCorticalColumns,
                  resultDirName=resultDirName,
-                 plotDirName=plotDirName)
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
 
 
 
@@ -602,9 +626,17 @@ if __name__ == "__main__":
     type=str,
     metavar="DIRECTORY"
   )
+  parser.add_argument(
+    "--cpuCount",
+    default=None,
+    type=int,
+    metavar="NUM",
+    help="Limit number of cpu cores.  Defaults to `multiprocessing.cpu_count()`"
+  )
 
   opts = parser.parse_args()
 
   runExperiments(numCorticalColumns=opts.numCorticalColumns,
                  resultDirName=opts.resultDirName,
-                 plotDirName=opts.plotDirName)
+                 plotDirName=opts.plotDirName,
+                 cpuCount=opts.cpuCount)
