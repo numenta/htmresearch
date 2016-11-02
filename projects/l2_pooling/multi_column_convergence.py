@@ -330,8 +330,6 @@ if __name__ == "__main__":
   numTrials = 4
   columnRange = [2,3,4,5,6,7]
   featureRange = [3,5,7,11]
-  # columnRange = [2]
-  # featureRange = [10]
   # Comment this out if you are re-running analysis on an already saved set of
   # results
   results = runExperimentPool(
