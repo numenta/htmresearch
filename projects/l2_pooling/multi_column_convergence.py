@@ -121,6 +121,7 @@ def runExperiment(args):
   noiseLevel = args.get("noiseLevel", None)  # TODO: implement this?
   numPoints = args.get("numPoints", 10)
   trialNum = args.get("trialNum", 42)
+  plotInferenceStats = args.get("plotInferenceStats", True)
 
   # Create the objects
   objects = createObjectMachine(
@@ -134,11 +135,11 @@ def runExperiment(args):
                                     numLocations=numLocations,
                                     numFeatures=numFeatures)
 
-  print "Objects are:"
-  for o in objects:
-    pairs = objects[o]
-    pairs.sort()
-    print str(o) + ": " + str(pairs)
+  # print "Objects are:"
+  # for o in objects:
+  #   pairs = objects[o]
+  #   pairs.sort()
+  #   print str(o) + ": " + str(pairs)
 
   # Setup experiment and train the network
   name = "convergence_O%03d_L%03d_F%03d_C%03d_T%03d" % (
@@ -183,16 +184,21 @@ def runExperiment(args):
     if profile:
       exp.printProfile(reset=True)
 
-    exp.plotInferenceStats(
-      fields=["L2 Representation",
-              "Overlap L2 with object",
-              "L4 Representation"],
-      experimentID=objectId,
-      onePlot=False,
-    )
+    if plotInferenceStats:
+      exp.plotInferenceStats(
+        fields=["L2 Representation",
+                "Overlap L2 with object",
+                "L4 Representation"],
+        experimentID=objectId,
+        onePlot=False,
+      )
 
   convergencePoint = averageConvergencePoint(
     exp.getInferenceStats(),"L2 Representation", 40)
+
+  print
+  print "# objects {} # features {} # locations {} # columns {} trial # {}".format(
+    numObjects, numFeatures, numLocations, numColumns, trialNum)
   print "Average convergence point=",convergencePoint
 
   # Return our convergence point as well as all the parameters and objects
@@ -218,8 +224,8 @@ def runExperimentPool(numObjects,
   for that parameter. The cross product of everything is run, and each
   combination is run nTrials times.
 
-  Returns a dict containing detailed results from each experiment. Also pickles
-  the results in resultsName for later analysis.
+  Returns a list of dict containing detailed results from each experiment.
+  Also pickles the results in resultsName for later analysis.
 
   Example:
     results = runExperimentPool(
@@ -243,12 +249,19 @@ def runExperimentPool(numObjects,
                "numFeatures": f,
                "numColumns": c,
                "trialNum": t,
+               "plotInferenceStats": False,
                }
             )
 
+  print "{} experiments to run, {} workers".format(len(args), numWorkers)
   # Run the pool
-  pool = Pool(processes=numWorkers)
-  result = pool.map(runExperiment, args)
+  if numWorkers > 1:
+    pool = Pool(processes=numWorkers)
+    result = pool.map(runExperiment, args)
+  else:
+    result = []
+    for arg in args:
+      result.append(runExperiment(arg))
 
   print "Full results:"
   pprint.pprint(result, width=150)
@@ -299,53 +312,54 @@ if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
-  results = runExperiment(
-                {
-                  "numObjects": 10,
-                  "numLocations": 10,
-                  "numFeatures": 7,
-                  "numColumns": 3,
-                  "trialNum": 0
-                }
-  )
+  # results = runExperiment(
+  #               {
+  #                 "numObjects": 10,
+  #                 "numLocations": 10,
+  #                 "numFeatures": 7,
+  #                 "numColumns": 3,
+  #                 "trialNum": 0
+  #               }
+  # )
 
 
   # This is how you run a bunch of experiments in a process pool
 
   # Here we want to see how the number of columns affects convergence.
   # We run 10 trials for each column number and then analyze results
-  # numTrials = 10
-  # columnRange = [2,3,4,5,6,7]
-  # featureRange = [3,5,7,11]
-  #
-  # # Comment this out if you are re-running analysis on an already saved set of
-  # # results
-  # # results = runExperimentPool(
-  # #                   numObjects=[10],
-  # #                   numLocations=[10],
-  # #                   numFeatures=featureRange,
-  # #                   numColumns=columnRange,
-  # #                   nTrials=numTrials)
-  #
-  # # Analyze results
-  # with open("convergence_results.pkl","rb") as f:
-  #   results = cPickle.load(f)
-  #
-  # # Accumulate all the results per column in a numpy array, and print it as
-  # # well as raw results.  This part can be specific to each experiment
-  # convergence = numpy.zeros((max(featureRange), max(columnRange)+1))
-  # for r in results:
-  #   convergence[r["numFeatures"]-1,
-  #               r["numColumns"]] += r["convergencePoint"]/2.0
-  #
-  # convergence = convergence/numTrials + 1.0
-  #
-  # # For each column, print convergence as fct of number of unique features
-  # for c in range(2,max(columnRange)+1):
-  #   print c,convergence[:, c]
-  #
-  # # Print everything anyway for debugging
-  # print "Average convergence array=",convergence
-  #
-  # plotConvergenceStats(convergence, columnRange, featureRange)
+  numTrials = 4
+  columnRange = [2,3,4,5,6,7]
+  featureRange = [3,5,7,11]
+  # columnRange = [2]
+  # featureRange = [10]
+  # Comment this out if you are re-running analysis on an already saved set of
+  # results
+  results = runExperimentPool(
+                    numObjects=[10],
+                    numLocations=[10],
+                    numFeatures=featureRange,
+                    numColumns=columnRange,
+                    nTrials=numTrials)
+
+  # Analyze results
+  with open("convergence_results.pkl","rb") as f:
+    results = cPickle.load(f)
+
+  # Accumulate all the results per column in a numpy array, and print it as
+  # well as raw results.  This part can be specific to each experiment
+  convergence = numpy.zeros((max(featureRange), max(columnRange)+1))
+  for r in results:
+    convergence[r["numFeatures"]-1,
+                r["numColumns"]] += r["convergencePoint"]/2.0
+
+  convergence = convergence/numTrials + 1.0
+
+  # For each column, print convergence as fct of number of unique features
+  for c in range(2,max(columnRange)+1):
+    print c,convergence[:, c]
+
+  # Print everything anyway for debugging
+  print "Average convergence array=",convergence
+
+  plotConvergenceStats(convergence, columnRange, featureRange)
 
