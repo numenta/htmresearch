@@ -718,7 +718,8 @@ def calculateEntropy(activeColumns):
   activationProb[activationProb < MIN_ACTIVATION_PROB] = MIN_ACTIVATION_PROB
   activationProb = activationProb / np.sum(activationProb)
 
-  entropy = -np.dot(activationProb, np.log2(activationProb))
+  entropy = -(np.dot(activationProb, np.log2(activationProb)) +
+              np.dot(1 - activationProb, np.log2(1-activationProb)))
   return entropy
 
 
@@ -753,5 +754,5 @@ def calculateInputSpaceCoverage(sp):
   for columnIndex in range(numColumns):
     sp.getConnectedSynapses(columnIndex, connectedSynapses)
     inputSpaceCoverage += connectedSynapses
-  inputSpaceCoverage = np.reshape(inputSpaceCoverage, sp.getColumnDimensions())
+  inputSpaceCoverage = np.reshape(inputSpaceCoverage, sp.getInputDimensions())
   return inputSpaceCoverage

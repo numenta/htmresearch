@@ -21,7 +21,7 @@
 # ----------------------------------------------------------------------
 
 import copy
-
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -73,7 +73,7 @@ def plotSPstatsOverTime(numNewlyConnectedSynapsesTrace,
                         fileName=None):
   fig, axs = plt.subplots(nrows=5, ncols=1, sharex=True)
 
-  axs[0].plot(stabilityTrace)
+  axs[0].plot([0] + stabilityTrace)
   axs[0].set_ylabel('Stability')
 
   axs[1].plot(entropyTrace)
@@ -84,10 +84,10 @@ def plotSPstatsOverTime(numNewlyConnectedSynapsesTrace,
     axs[2].plot(noiseRobustnessTrace)
     axs[2].set_ylabel('Noise Robustness')
 
-  axs[3].plot(numNewlyConnectedSynapsesTrace)
+  axs[3].plot([0] + numNewlyConnectedSynapsesTrace)
   axs[3].set_ylabel('Synapses Formation')
 
-  axs[4].plot(numEliminatedSynapsesTrace)
+  axs[4].plot([0] + numEliminatedSynapsesTrace)
   axs[4].set_ylabel('Synapse Removal')
   axs[4].set_xlim([0, len(numEliminatedSynapsesTrace)])
   axs[4].set_xlabel('epochs')
@@ -276,12 +276,42 @@ def analyzeReceptiveFieldCorrelatedInputs(
 
 
 
-def runSPOnBatch(sp, inputVectors, learn):
+def runSPOnBatch(sp, inputVectors, learn, sdrOrders):
   numInputVector, inputSize = inputVectors.shape
   numColumns = np.prod(sp.getColumnDimensions())
 
   outputColumns = np.zeros((numInputVector, numColumns), dtype=uintType)
   for i in range(numInputVector):
-    sp.compute(inputVectors[i][:], learn, outputColumns[i][:])
+    sp.compute(inputVectors[sdrOrders[i]][:], learn, outputColumns[sdrOrders[i]][:])
 
   return outputColumns
+
+
+
+def createDirectories(expName):
+  paths = []
+  paths.append('./results/traces/{}/'.format(expName))
+  paths.append('./results/InputCoverage/{}/'.format(expName))
+  paths.append('./results/classification/{}/'.format(expName))
+  paths.append('./results/input_output_overlap/{}/'.format(expName))
+
+  paths.append('./figures/InputCoverage/{}/'.format(expName))
+  paths.append('./figures/exampleRFs/{}/'.format(expName))
+  paths.append('./figures/ResponseToTestInputs/{}/'.format(expName))
+  paths.append('./figures/RFcenters/{}/'.format(expName))
+  paths.append('./figures/avgInputs/{}/'.format(expName))
+  paths.append('./figures/inputOverlaps/{}/'.format(expName))
+
+  for path in paths:
+    if not os.path.exists(path):
+      os.makedirs(path)
+
+
+def getConnectedSyns(sp):
+  numInputs = sp.getNumInputs()
+  numColumns = np.prod(sp.getColumnDimensions())
+  connectedSyns = np.zeros((numColumns, numInputs), dtype=uintType)
+  for columnIndex in range(numColumns):
+    sp.getConnectedSynapses(columnIndex, connectedSyns[columnIndex, :])
+  connectedSyns = connectedSyns.astype('float32')
+  return connectedSyns

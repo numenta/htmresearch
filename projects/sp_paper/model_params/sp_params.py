@@ -79,13 +79,34 @@ spParamTopologyWithBoostingCross = {
 
 
 
+# spParamTopologyWithBoosting = {
+#   "inputDimensions": (32, 32),
+#   "columnDimensions": (64, 64),
+#   "potentialRadius": 15,
+#   "potentialPct": 1.0,
+#   "globalInhibition": False,
+#   "localAreaDensity": .02,
+#   "numActiveColumnsPerInhArea": -1,
+#   "wrapAround": True,
+#   "stimulusThreshold": 1,
+#   "synPermInactiveDec": 0.01,
+#   "synPermActiveInc": 0.05,
+#   "synPermConnected": 0.5,
+#   "minPctOverlapDutyCycle": 0.0,
+#   "minPctActiveDutyCycle": 0.001,
+#   "dutyCyclePeriod": 1000,
+#   "maxBoost": 50.0,
+#   "seed": 1936
+# }
+
+
 spParamTopologyWithBoosting = {
   "inputDimensions": (32, 32),
   "columnDimensions": (32, 32),
-  "potentialRadius": 5,
+  "potentialRadius": 12,
   "potentialPct": 1.0,
   "globalInhibition": False,
-  "localAreaDensity": .1,
+  "localAreaDensity": .02,
   "numActiveColumnsPerInhArea": -1,
   "wrapAround": True,
   "stimulusThreshold": 1,
