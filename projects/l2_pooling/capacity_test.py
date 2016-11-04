@@ -247,10 +247,19 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
     )
 
     lastOverlap = overlap[-1, :]
+
     maxOverlapIndices = (
       np.where(lastOverlap == lastOverlap[np.argmax(lastOverlap)])[0].tolist()
     )
-    outcome[i] = 1 if targetObject in maxOverlapIndices else 0
+
+    if targetObject in maxOverlapIndices:
+      # We're going to set outcome[i] to 1/k where k is the number of indices
+      # that share the same maximum overlap.  Remove the denominator and set to
+      # 1 for better results.
+      outcome[i] = 1/len(maxOverlapIndices)
+    else:
+      outcome[i] = 0
+
     confusion[i] = np.max(overlap[0, nonTargetObjs])
     overlapTrueObj[i] = overlap[0, targetObject]
 
