@@ -302,7 +302,7 @@ def plotResults(result, ax=None, xaxis="numPointsPerObject",
 
   ax[1, 1].plot(x, result.confusion, marker)
   ax[1, 1].set_ylabel("OverlapFalseObject")
-  ax[1, 1].set_ylim([0, 41])
+  ax[1, 1].set_ylim([0, 4])
   ax[1, 1].set_xlabel(xlabel)
 
   plt.tight_layout()
@@ -685,10 +685,10 @@ if __name__ == "__main__":
 
   opts = parser.parse_args()
 
-  # runExperiments(numCorticalColumns=opts.numCorticalColumns,
-  #                resultDirName=opts.resultDirName,
-  #                plotDirName=opts.plotDirName,
-  #                cpuCount=opts.cpuCount)
+  runExperiments(numCorticalColumns=opts.numCorticalColumns,
+                 resultDirName=opts.resultDirName,
+                 plotDirName=opts.plotDirName,
+                 cpuCount=opts.cpuCount)
 
   # uncomment to plot capacity vs. column number
-  plotCapacityVsColumnNumber([1, 2, 3, 4, 5])
+  # plotCapacityVsColumnNumber([1, 2, 3, 4, 5])
