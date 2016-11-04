@@ -44,7 +44,7 @@ class ColumnPooler(object):
                synPermProximalInc=0.1,
                synPermProximalDec=0.001,
                initialProximalPermanence=0.6,
-               maxNewProximalSynapseCount=20,
+               sampleSizeProximal=20,
                minThresholdProximal=10,
                connectedPermanenceProximal=0.50,
 
@@ -52,7 +52,7 @@ class ColumnPooler(object):
                synPermDistalInc=0.1,
                synPermDistalDec=0.001,
                initialDistalPermanence=0.6,
-               maxNewDistalSynapseCount=20,
+               sampleSizeDistal=20,
                minThresholdDistal=13,
                connectedPermanenceDistal=0.50,
 
@@ -78,6 +78,10 @@ class ColumnPooler(object):
     @param  initialProximalPermanence (float)
             Initial permanence value for proximal synapses
 
+    @param  sampleSizeProximal (int)
+            Number of proximal synapses a cell should grow to each feedforward
+            pattern, or -1 to connect to every active bit
+
     @param  minThresholdProximal (int)
             Number of active synapses required for a cell to have feedforward
             support
@@ -90,6 +94,10 @@ class ColumnPooler(object):
 
     @param  synPermDistalDec (float)
             Permanence decrement for distal synapses
+
+    @param  sampleSizeDistal (int)
+            Number of distal synapses a cell should grow to each lateral
+            pattern, or -1 to connect to every active bit
 
     @param  initialDistalPermanence (float)
             Initial permanence value for distal synapses
@@ -111,13 +119,13 @@ class ColumnPooler(object):
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
     self.connectedPermanenceProximal = connectedPermanenceProximal
-    self.maxNewProximalSynapseCount = maxNewProximalSynapseCount
+    self.sampleSizeProximal = sampleSizeProximal
     self.minThresholdProximal = minThresholdProximal
     self.synPermDistalInc = synPermDistalInc
     self.synPermDistalDec = synPermDistalDec
     self.initialDistalPermanence = initialDistalPermanence
     self.connectedPermanenceDistal = connectedPermanenceDistal
-    self.maxNewDistalSynapseCount = maxNewDistalSynapseCount
+    self.sampleSizeDistal = sampleSizeDistal
     self.minThresholdDistal = minThresholdDistal
 
     self.activeCells = ()
@@ -184,25 +192,25 @@ class ColumnPooler(object):
       # Proximal learning
       self._learn(self.proximalPermanences, self._random,
                   self.activeCells, sorted(feedforwardInput),
-                  self.maxNewProximalSynapseCount,
-                  self.initialProximalPermanence,  self.synPermProximalInc,
-                  self.synPermProximalDec, self.connectedPermanenceProximal)
+                  self.sampleSizeProximal, self.initialProximalPermanence,
+                  self.synPermProximalInc, self.synPermProximalDec,
+                  self.connectedPermanenceProximal)
 
       # Internal distal learning
       if len(prevActiveCells) > 0:
         self._learn(self.internalDistalPermanences, self._random,
                     self.activeCells, prevActiveCells,
-                    self.maxNewDistalSynapseCount,
-                    self.initialDistalPermanence,  self.synPermDistalInc,
-                    self.synPermDistalDec, self.connectedPermanenceDistal)
+                    self.sampleSizeDistal, self.initialDistalPermanence,
+                    self.synPermDistalInc, self.synPermDistalDec,
+                    self.connectedPermanenceDistal)
 
       # External distal learning
       for i, lateralInput in enumerate(lateralInputs):
         self._learn(self.distalPermanences[i], self._random,
                     self.activeCells, sorted(lateralInput),
-                    self.maxNewDistalSynapseCount,
-                    self.initialDistalPermanence,  self.synPermDistalInc,
-                    self.synPermDistalDec, self.connectedPermanenceDistal)
+                    self.sampleSizeDistal, self.initialDistalPermanence,
+                    self.synPermDistalInc, self.synPermDistalDec,
+                    self.connectedPermanenceDistal)
 
 
   def _computeInferenceMode(self, feedforwardInput, lateralInputs):
@@ -416,7 +424,7 @@ class ColumnPooler(object):
              activeCells, activeInput,
 
              # configuration
-             maxNewSynapseCount, initialPermanence, permanenceIncrement,
+             sampleSize, initialPermanence, permanenceIncrement,
              permanenceDecrement, connectedPermanence):
     """
     For each active cell, reinforce active synapses, punish inactive synapses,
@@ -446,8 +454,12 @@ class ColumnPooler(object):
       activeCells, activeInput, -permanenceDecrement)
     permanences.clipRowsBelowAndAbove(
       activeCells, 0.0, 1.0)
-    permanences.setRandomZerosOnOuter(
-      activeCells, activeInput, maxNewSynapseCount, initialPermanence, rng)
+    if sampleSize == -1:
+      permanences.setZerosOnOuter(
+        activeCells, activeInput, initialPermanence)
+    else:
+      permanences.increaseRowNonZeroCountsOnOuterTo(
+        activeCells, activeInput, sampleSize, initialPermanence, rng)
 
 
 #

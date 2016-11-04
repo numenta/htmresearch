@@ -113,13 +113,13 @@ def getL2Params():
     "synPermProximalDec": 0.001,
     "initialProximalPermanence": 0.6,
     "minThresholdProximal": 1,
-    "maxNewProximalSynapseCount": 5,
+    "sampleSizeProximal": 5,
     "connectedPermanenceProximal": 0.5,
     "synPermDistalInc": 0.1,
     "synPermDistalDec": 0.001,
     "initialDistalPermanence": 0.41,
     "minThresholdDistal": 10,
-    "maxNewDistalSynapseCount": 20,
+    "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
     "learningMode": True,
     "inferenceMode": True,
@@ -290,8 +290,8 @@ def plotResults(result, ax=None, xaxis="numPointsPerObject",
   ax[0, 0].set_ylabel("Accuracy")
   ax[0, 0].set_xlabel(xlabel)
 
-  ax[0, 1].plot(x, result.numberOfConnectedSynapses, marker)
-  ax[0, 1].set_ylabel("# connected synapses")
+  ax[0, 1].plot(x, result.numberOfConnectedProximalSynapses, marker)
+  ax[0, 1].set_ylabel("# connected proximal synapses")
   ax[0, 1].set_xlabel("# Pts / Obj")
   ax[0, 1].set_xlabel(xlabel)
 
@@ -313,7 +313,7 @@ def plotResults(result, ax=None, xaxis="numPointsPerObject",
 
 def runCapacityTest(numObjects,
                     numPointsPerObject,
-                    maxNewSynapseCount,
+                    sampleSize,
                     activationThreshold,
                     numCorticalColumns):
   """
@@ -323,14 +323,14 @@ def runCapacityTest(numObjects,
 
   :param numObjects:
   :param numPointsPerObject:
-  :param maxNewSynapseCount:
+  :param sampleSize:
   :param activationThreshold:
   :param numCorticalColumns:
   :return:
   """
   l4Params = getL4Params()
   l2Params = getL2Params()
-  l2Params["maxNewProximalSynapseCount"] = maxNewSynapseCount
+  l2Params["sampleSizeProximal"] = sampleSize # TODO
   l2Params["minThresholdProximal"] = activationThreshold
 
   l4ColumnCount = l4Params["columnCount"]
@@ -375,7 +375,7 @@ def runCapacityTest(numObjects,
 
 def runCapacityTestVaryingObjectSize(
     numObjects=2,
-    maxNewSynapseCount=5,
+    sampleSize=5,
     activationThreshold=3,
     numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
     resultDirName=DEFAULT_RESULT_DIR_NAME,
@@ -391,7 +391,7 @@ def runCapacityTestVaryingObjectSize(
 
   params = [(numObjects,
              numPointsPerObject,
-             maxNewSynapseCount,
+             sampleSize,
              activationThreshold,
              numCorticalColumns)
             for numPointsPerObject in np.arange(10, 270, 20)]
@@ -407,7 +407,7 @@ def runCapacityTestVaryingObjectSize(
 
   resultFileName = _prepareResultsDir(
     "multiple_column_capacity_varying_object_size_synapses_{}_thresh_{}.csv"
-    .format(maxNewSynapseCount, activationThreshold),
+    .format(sampleSize, activationThreshold),
     resultDirName=resultDirName
   )
 
@@ -424,7 +424,7 @@ def invokeRunCapacityTest(params):
 
 
 def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
-                                    maxNewSynapseCount=5,
+                                    sampleSize=5,
                                     activationThreshold=3,
                                     numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
                                     resultDirName=DEFAULT_RESULT_DIR_NAME,
@@ -439,7 +439,7 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
 
   params = [(numObjects,
              numPointsPerObject,
-             maxNewSynapseCount,
+             sampleSize,
              activationThreshold,
              numCorticalColumns)
             for numObjects in np.arange(20, 1371, 150)]
@@ -455,7 +455,7 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
 
   resultFileName = _prepareResultsDir(
     "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}.csv"
-      .format(maxNewSynapseCount, activationThreshold),
+      .format(sampleSize, activationThreshold),
     resultDirName=resultDirName
   )
 
@@ -464,7 +464,7 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
 
 
 def runExperiment1(numObjects=2,
-                   maxNewSynapseCountRange=(10, ),
+                   sampleSizeRange=(10,),
                    numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
                    resultDirName=DEFAULT_RESULT_DIR_NAME,
                    plotDirName=DEFAULT_PLOT_DIR_NAME,
@@ -473,14 +473,14 @@ def runExperiment1(numObjects=2,
   Varying number of pts per objects, two objects
   Try different sampling and activation threshold
   """
-  for maxNewSynapseCount in maxNewSynapseCountRange:
-    activationThreshold = int(maxNewSynapseCount) - 1
+  for sampleSize in sampleSizeRange:
+    activationThreshold = int(sampleSize) - 1
 
-    print "maxNewSynapseCount: {}".format(maxNewSynapseCount)
+    print "sampleSize: {}".format(sampleSize)
     print "activationThreshold: {}".format(activationThreshold)
 
     runCapacityTestVaryingObjectSize(numObjects,
-                                     maxNewSynapseCount,
+                                     sampleSize,
                                      activationThreshold,
                                      numCorticalColumns,
                                      resultDirName,
@@ -496,12 +496,12 @@ def runExperiment1(numObjects=2,
 
   legendEntries = []
 
-  for maxNewSynapseCount in maxNewSynapseCountRange:
-    activationThreshold = int(maxNewSynapseCount) - 1
+  for sampleSize in sampleSizeRange:
+    activationThreshold = int(sampleSize) - 1
 
     resultFileName = _prepareResultsDir(
       "multiple_column_capacity_varying_object_size_synapses_{}_thresh_{}.csv"
-      .format(maxNewSynapseCount, activationThreshold),
+      .format(sampleSize, activationThreshold),
       resultDirName=resultDirName
     )
 
@@ -509,7 +509,7 @@ def runExperiment1(numObjects=2,
 
     plotResults(result, ax, "numPointsPerObject", None, markers[ploti])
     ploti += 1
-    legendEntries.append("# syn {}".format(maxNewSynapseCount))
+    legendEntries.append("# syn {}".format(sampleSize))
 
   plt.legend(legendEntries, loc=2)
   fig.tight_layout()
@@ -536,15 +536,15 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
   Try different sampling and activation threshold
   """
 
-  maxNewSynapseCountRange = (10, ) # Expand this tuple to include other ranges
+  sampleSizeRange = (10, ) # Expand this tuple to include other ranges
                                    # Settled at 10 since we did not observe
                                    # much variance between 5, 10, 15, and 20
   numPointsPerObject = 10
 
-  for maxNewSynapseCount in maxNewSynapseCountRange:
+  for sampleSize in sampleSizeRange:
     runCapacityTestVaryingObjectNum(numPointsPerObject,
-                                    maxNewSynapseCount,
-                                    int(maxNewSynapseCount) - 1,
+                                    sampleSize,
+                                    int(sampleSize) - 1,
                                     numCorticalColumns,
                                     resultDirName,
                                     cpuCount)
@@ -563,12 +563,12 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
       ax[axi][axj].xaxis.set_major_locator(ticker.MultipleLocator(300))
 
   legendEntries = []
-  for maxNewSynapseCount in maxNewSynapseCountRange:
-    activationThreshold = int(maxNewSynapseCount) - 1
+  for sampleSize in sampleSizeRange:
+    activationThreshold = int(sampleSize) - 1
 
     resultFileName = _prepareResultsDir(
       "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}.csv"
-      .format(maxNewSynapseCount, activationThreshold),
+      .format(sampleSize, activationThreshold),
       resultDirName=resultDirName
     )
 
@@ -576,7 +576,7 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
 
     plotResults(result, ax, "numObjects", None, markers[ploti])
     ploti += 1
-    legendEntries.append("# syn {}".format(maxNewSynapseCount))
+    legendEntries.append("# syn {}".format(sampleSize))
   plt.legend(legendEntries, loc=2)
   fig.tight_layout()
 

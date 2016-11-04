@@ -1222,11 +1222,11 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       "cellCount": self.outputWidth,
       "numActiveColumnsPerInhArea": self.numOutputActiveBits,
       "minThresholdProximal": 10,
-      "maxNewProximalSynapseCount": 255,
+      "sampleSizeProximal": 20,
       "connectedPermanenceProximal": 0.6,
       "initialDistalPermanence": 0.51,
       "minThresholdDistal": 10,
-      "maxNewDistalSynapseCount": 255,
+      "sampleSizeDistal": 20,
       "connectedPermanenceDistal": 0.6,
       "seed": self.seed,
     }

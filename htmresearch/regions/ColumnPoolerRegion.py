@@ -169,9 +169,8 @@ class ColumnPoolerRegion(PyRegion):
           dataType="Real32",
           count=1,
           constraints=""),
-        maxNewProximalSynapseCount=dict(
-          description="The maximum number of synapses added to a proximal segment "
-                      "at each iteration during learning.",
+        sampleSizeProximal=dict(
+          description="The desired number of active synapses for an active cell",
           accessMode="Read",
           dataType="UInt32",
           count=1),
@@ -212,9 +211,9 @@ class ColumnPoolerRegion(PyRegion):
           dataType="Real32",
           count=1,
           constraints=""),
-        maxNewDistalSynapseCount=dict(
-          description="The maximum number of synapses added to a distal segment "
-                      "at each iteration during learning.",
+        sampleSizeDistal=dict(
+          description="The desired number of active synapses for an active "
+                      "segment.",
           accessMode="Read",
           dataType="UInt32",
           count=1),
@@ -267,7 +266,7 @@ class ColumnPoolerRegion(PyRegion):
                synPermProximalInc=0.1,
                synPermProximalDec=0.001,
                initialProximalPermanence=0.6,
-               maxNewProximalSynapseCount=20,
+               sampleSizeProximal=20,
                minThresholdProximal=1,
                connectedPermanenceProximal=0.50,
 
@@ -275,7 +274,7 @@ class ColumnPoolerRegion(PyRegion):
                synPermDistalInc=0.10,
                synPermDistalDec=0.10,
                initialDistalPermanence=0.21,
-               maxNewDistalSynapseCount=20,
+               sampleSizeDistal=20,
                minThresholdDistal=13,
                connectedPermanenceDistal=0.50,
 
@@ -293,13 +292,13 @@ class ColumnPoolerRegion(PyRegion):
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
-    self.maxNewProximalSynapseCount = maxNewProximalSynapseCount
+    self.sampleSizeProximal = sampleSizeProximal
     self.minThresholdProximal = minThresholdProximal
     self.connectedPermanenceProximal = connectedPermanenceProximal
     self.synPermDistalInc = synPermDistalInc
     self.synPermDistalDec = synPermDistalDec
     self.initialDistalPermanence = initialDistalPermanence
-    self.maxNewDistalSynapseCount = maxNewDistalSynapseCount
+    self.sampleSizeDistal = sampleSizeDistal
     self.minThresholdDistal = minThresholdDistal
     self.connectedPermanenceDistal = connectedPermanenceDistal
     self.seed = seed
@@ -328,13 +327,13 @@ class ColumnPoolerRegion(PyRegion):
         "synPermProximalDec": self.synPermProximalDec,
         "initialProximalPermanence": self.initialProximalPermanence,
         "minThresholdProximal": self.minThresholdProximal,
-        "maxNewProximalSynapseCount": self.maxNewProximalSynapseCount,
+        "sampleSizeProximal": self.sampleSizeProximal,
         "connectedPermanenceProximal": self.connectedPermanenceProximal,
         "synPermDistalInc": self.synPermDistalInc,
         "synPermDistalDec": self.synPermDistalDec,
         "initialDistalPermanence": self.initialDistalPermanence,
         "minThresholdDistal": self.minThresholdDistal,
-        "maxNewDistalSynapseCount": self.maxNewDistalSynapseCount,
+        "sampleSizeDistal": self.sampleSizeDistal,
         "connectedPermanenceDistal": self.connectedPermanenceDistal,
         "seed": self.seed,
       }
