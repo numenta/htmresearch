@@ -158,13 +158,11 @@ if __name__ == "__main__":
   plt.legend()
   plt.savefig('plots/L2_active_cell_vs_time.pdf')
 
-  numSteps = len(l2ActiveCellsSingleColumn)
-  numL2Cells = exp1.config["L2Params"]['cellCount']
+  fig3 = plotActivity(l2ActiveCellsMultiColumn)
+  st = fig3.suptitle("Three Cortical Column")
+  plt.savefig('plots/L2_active_cell_multi_column.pdf')
 
-  fig1 = plotActivity(l2ActiveCellsMultiColumn)
+  fig1 = plotActivity(l2ActiveCellsSingleColumn)
   st = fig1.suptitle("Single Cortical Column")
   plt.savefig('plots/L2_active_cell_single_column.pdf')
 
-  fig3 = plotActivity(l2ActiveCellsSingleColumn)
-  st = fig1.suptitle("Three Cortical Column")
-  plt.savefig('plots/L2_active_cell_multi_column.pdf')
