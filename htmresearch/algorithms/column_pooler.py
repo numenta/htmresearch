@@ -249,10 +249,10 @@ class ColumnPooler(object):
     # First, activate cells that have feedforward support, ranking them by
     # lateral support.
     orderedCandidates = sorted((cell for cell in feedforwardSupportedCells),
-                               key=lambda x: numActiveSegmentsByCell[x],
+                               key=numActiveSegmentsByCell.__getitem__,
                                reverse=True)
     for _, cells in itertools.groupby(orderedCandidates,
-                                      lambda x: numActiveSegmentsByCell[x]):
+                                      numActiveSegmentsByCell.__getitem__):
       activeCells.extend(cells)
       if len(activeCells) >= self.numActiveColumnsPerInhArea:
         break
@@ -263,10 +263,10 @@ class ColumnPooler(object):
       orderedCandidates = sorted((cell for cell in prevActiveCells
                                   if cell not in feedforwardSupportedCells
                                   and numActiveSegmentsByCell[cell] > 0),
-                                 key=lambda x: numActiveSegmentsByCell[x],
+                                 key=numActiveSegmentsByCell.__getitem__,
                                  reverse=True)
       for _, cells in itertools.groupby(orderedCandidates,
-                                        lambda x: numActiveSegmentsByCell[x]):
+                                        numActiveSegmentsByCell.__getitem__):
         activeCells.extend(cells)
         if len(activeCells) >= self.numActiveColumnsPerInhArea:
           break
