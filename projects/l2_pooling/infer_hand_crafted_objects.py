@@ -50,7 +50,7 @@ OBJECTS = {"Object 1": ("A", "A", "A",
 
 TIMESTEPS_PER_SENSATION = 3
 
-def experiment(numColumns, sampleSize, lateralConnectionsImpl):
+def experiment(numColumns, sampleSize):
   locationSDRsByColumn = [dict((name,
                                 set(random.sample(xrange(1024), 40)))
                                for name in LOCATIONS)
@@ -66,7 +66,6 @@ def experiment(numColumns, sampleSize, lateralConnectionsImpl):
     numCorticalColumns=numColumns,
     L2Overrides={
       "sampleSizeDistal": sampleSize,
-      "lateralConnectionsImpl": lateralConnectionsImpl
     },
     seed=random.randint(2048, 4096)
   )
@@ -107,24 +106,24 @@ def experiment(numColumns, sampleSize, lateralConnectionsImpl):
 
 def go():
   numColumnsOptions = range(1, len(LOCATIONS) + 1)
-  configs = ((20, "TwoSegmentsPerCell"),
-             (40, "TwoSegmentsPerCell"),
-             (-1, "TwoSegmentsPerCell"),
-             (-1, "PairwiseSegments"),
+  configs = (("Placeholder 13", 13),
+             ("Placeholder 20", 20),
+             ("Placeholder 30", 30),
+             ("Placeholder everything", -1),
   )
 
   numTouchesLog = defaultdict(list)
 
   for config in configs:
-    sampleSize, lateralConnectionsImpl = config
+    _, sampleSize = config
     print "sampleSize %d" % sampleSize
 
     for numColumns in numColumnsOptions:
       print "%d columns" % numColumns
 
       for _ in xrange(10):
-        numTouchesLog[(numColumns, config)].append(
-          experiment(numColumns, sampleSize, lateralConnectionsImpl))
+        numTouches = experiment(numColumns, sampleSize)
+        numTouchesLog[(numColumns, config)].append(numTouches)
 
   averages = dict((k,
                    sum(numsTouches) / float(len(numsTouches)))
@@ -143,10 +142,7 @@ def go():
              color=colorList[config],
              marker=markerList[config])
 
-  plt.legend(["Distal sample size=20",
-              "Distal sample size=40",
-              "Connect to everything",
-              "Connect to everything, pairwise segments"],
+  plt.legend([description for description, _ in configs],
              loc="upper right")
   plt.xlabel("Columns")
   plt.xticks(numColumnsOptions)
