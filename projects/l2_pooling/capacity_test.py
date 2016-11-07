@@ -34,6 +34,7 @@ import multiprocessing
 import os
 import os.path
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
@@ -43,7 +44,7 @@ from htmresearch.frameworks.layers.object_machine_factory import (
   createObjectMachine
 )
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
-
+mpl.rcParams['pdf.fonttype'] = 42
 
 
 NUM_LOCATIONS = 5000
