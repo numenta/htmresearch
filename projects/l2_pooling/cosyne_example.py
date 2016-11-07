@@ -55,11 +55,12 @@ def plotActivity(l2ActiveCellsMultiColumn):
 
 
 if __name__ == "__main__":
-  numColumns = [1, 3]
+  numColumns = 3
   numFeatures = 3
   numPoints = 10
   numLocations = 10
   numObjects = 10
+  numRptsPerSensation = 2
 
   objectMachine = createObjectMachine(
     machineType="simple",
@@ -72,7 +73,6 @@ if __name__ == "__main__":
   objectMachine.createRandomObjects(numObjects, numPoints=numPoints,
                               numLocations=numLocations,
                               numFeatures=numFeatures)
-
 
   objects = objectMachine.provideObjectsToLearn()
 
@@ -103,18 +103,20 @@ if __name__ == "__main__":
   print "train multi-column "
   exp3.learnObjects(objects)
 
+  # test on the first object
   objectId = 0
   obj = objectMachine[objectId]
 
   # Create sequence of sensations for this object for all columns
-  numColumns = 3
   objectSensations = {}
+
   for c in range(numColumns):
     objectCopy = [pair for pair in obj]
     random.shuffle(objectCopy)
     # stay multiple steps on each sensation
     sensations = []
     for pair in objectCopy:
+      for _ in xrange(numRptsPerSensation):
         sensations.append(pair)
     objectSensations[c] = sensations
 
@@ -125,9 +127,8 @@ if __name__ == "__main__":
       objectSensations[col][step] for col in xrange(numColumns)
       ]
     sdrs = objectMachine._getSDRPairs(pairs)
-    sdrSingleColumn = {0: sdrs[0]}
     sensationStepsMultiColumn.append(sdrs)
-    sensationStepsSingleColumn.append(sdrs)
+    sensationStepsSingleColumn.append({0: sdrs[0]})
 
   print "inference: multi-columns "
   exp3.sendReset()
