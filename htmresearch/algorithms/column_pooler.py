@@ -40,6 +40,8 @@ class ColumnPooler(object):
                cellCount=4096,
                numActiveColumnsPerInhArea=40,
 
+               lateralConnectionsImpl="PairwiseSegments",
+
                # Proximal
                synPermProximalInc=0.1,
                synPermProximalDec=0.001,
@@ -121,12 +123,6 @@ class ColumnPooler(object):
     self.connectedPermanenceProximal = connectedPermanenceProximal
     self.sampleSizeProximal = sampleSizeProximal
     self.minThresholdProximal = minThresholdProximal
-    self.synPermDistalInc = synPermDistalInc
-    self.synPermDistalDec = synPermDistalDec
-    self.initialDistalPermanence = initialDistalPermanence
-    self.connectedPermanenceDistal = connectedPermanenceDistal
-    self.sampleSizeDistal = sampleSizeDistal
-    self.minThresholdDistal = minThresholdDistal
 
     self.activeCells = ()
     self._random = Random(seed)
@@ -135,9 +131,33 @@ class ColumnPooler(object):
     # Each row represents one segment on a cell, so each cell potentially has
     # 1 proximal segment and 1+len(lateralInputWidths) distal segments.
     self.proximalPermanences = SparseMatrix(cellCount, inputWidth)
-    self.internalDistalPermanences = SparseMatrix(cellCount, cellCount)
-    self.distalPermanences = tuple(SparseMatrix(cellCount, n)
-                                   for n in lateralInputWidths)
+
+    if lateralConnectionsImpl == "PairwiseSegments":
+      self.lateralConnections = PairwiseSegments(
+        cellCount,
+        lateralInputWidths,
+        synPermDistalInc,
+        synPermDistalDec,
+        initialDistalPermanence,
+        sampleSizeDistal,
+        minThresholdDistal,
+        connectedPermanenceDistal,
+        self._random
+      )
+    elif lateralConnectionsImpl == "TwoSegmentsPerCell":
+      self.lateralConnections = TwoSegmentsPerCell(
+        cellCount,
+        sum(lateralInputWidths),
+        synPermDistalInc,
+        synPermDistalDec,
+        initialDistalPermanence,
+        sampleSizeDistal,
+        minThresholdDistal,
+        connectedPermanenceDistal,
+        self._random
+      )
+    else:
+      raise ValueError("Unknown lateralConnectionsImpl", lateralConnectionsImpl)
 
 
   def compute(self, feedforwardInput=(), lateralInputs=(), learn=True):
@@ -147,8 +167,8 @@ class ColumnPooler(object):
     @param  feedforwardInput (iterable)
             Indices of active feedforward input bits
 
-    @param  lateralInputs (list of iterables)
-            Sets of indices of active lateral input bits, one per lateral layer
+    @param  lateralInputs (varying type based on lateralConnectionsImpl)
+            Input to the lateralConnections.
 
     @param  learn (bool)
             If True, we are learning a new object
@@ -174,7 +194,8 @@ class ColumnPooler(object):
     @param  feedforwardInput (iterable)
             List of indices of active feedforward input bits
 
-    @param  lateralInputs (list of iterables)
+    @param  lateralInputs (varying type based on lateralConnectionsImpl)
+            Input to the lateralConnections.
             Lists of indices of active lateral input bits, one per lateral layer
     """
 
@@ -190,27 +211,14 @@ class ColumnPooler(object):
 
     if len(feedforwardInput) > 0:
       # Proximal learning
-      self._learn(self.proximalPermanences, self._random,
-                  self.activeCells, sorted(feedforwardInput),
-                  self.sampleSizeProximal, self.initialProximalPermanence,
-                  self.synPermProximalInc, self.synPermProximalDec,
-                  self.connectedPermanenceProximal)
+      _learn(self.proximalPermanences, self._random,
+             self.activeCells, sorted(feedforwardInput),
+             self.sampleSizeProximal, self.initialProximalPermanence,
+             self.synPermProximalInc, self.synPermProximalDec,
+             self.connectedPermanenceProximal)
 
-      # Internal distal learning
-      if len(prevActiveCells) > 0:
-        self._learn(self.internalDistalPermanences, self._random,
-                    self.activeCells, prevActiveCells,
-                    self.sampleSizeDistal, self.initialDistalPermanence,
-                    self.synPermDistalInc, self.synPermDistalDec,
-                    self.connectedPermanenceDistal)
-
-      # External distal learning
-      for i, lateralInput in enumerate(lateralInputs):
-        self._learn(self.distalPermanences[i], self._random,
-                    self.activeCells, sorted(lateralInput),
-                    self.sampleSizeDistal, self.initialDistalPermanence,
-                    self.synPermDistalInc, self.synPermDistalDec,
-                    self.connectedPermanenceDistal)
+      self.lateralConnections.learn(self.activeCells, prevActiveCells,
+                                    lateralInputs)
 
 
   def _computeInferenceMode(self, feedforwardInput, lateralInputs):
@@ -226,8 +234,8 @@ class ColumnPooler(object):
     @param  feedforwardInput (iterable)
             Indices of active feedforward input bits
 
-    @param  lateralInputs (list of iterables)
-            Sets of indices of active lateral input bits, one per lateral layer
+    @param  lateralInputs (varying type based on lateralConnectionsImpl)
+            Input to lateralConnections
     """
 
     prevActiveCells = self.activeCells
@@ -240,27 +248,18 @@ class ColumnPooler(object):
       numpy.where(overlaps >= self.minThresholdProximal)[0])
 
     # Calculate lateral support
-    numActiveSegmentsByCell = numpy.zeros(self.cellCount, dtype="int")
-    overlaps = _rightVecSumAtNZGtThreshold_sparse(
-      self.internalDistalPermanences, prevActiveCells,
-      self.connectedPermanenceDistal)
-    numActiveSegmentsByCell[overlaps >= self.minThresholdDistal] += 1
-    for i, lateralInput in enumerate(lateralInputs):
-      overlaps = _rightVecSumAtNZGtThreshold_sparse(
-        self.distalPermanences[i], sorted(lateralInput),
-        self.connectedPermanenceDistal)
-      numActiveSegmentsByCell[overlaps >= self.minThresholdDistal] += 1
-
+    lateralScores = self.lateralConnections.depolarizeCells(prevActiveCells,
+                                                            lateralInputs)
 
     activeCells = []
 
     # First, activate cells that have feedforward support, ranking them by
     # lateral support.
     orderedCandidates = sorted((cell for cell in feedforwardSupportedCells),
-                               key=numActiveSegmentsByCell.__getitem__,
+                               key=lateralScores.__getitem__,
                                reverse=True)
     for _, cells in itertools.groupby(orderedCandidates,
-                                      numActiveSegmentsByCell.__getitem__):
+                                      lateralScores.__getitem__):
       activeCells.extend(cells)
       if len(activeCells) >= self.numActiveColumnsPerInhArea:
         break
@@ -270,11 +269,11 @@ class ColumnPooler(object):
     if len(activeCells) < self.numActiveColumnsPerInhArea:
       orderedCandidates = sorted((cell for cell in prevActiveCells
                                   if cell not in feedforwardSupportedCells
-                                  and numActiveSegmentsByCell[cell] > 0),
-                                 key=numActiveSegmentsByCell.__getitem__,
+                                  and lateralScores[cell] > 0),
+                                 key=lateralScores.__getitem__,
                                  reverse=True)
       for _, cells in itertools.groupby(orderedCandidates,
-                                        numActiveSegmentsByCell.__getitem__):
+                                        lateralScores.__getitem__):
         activeCells.extend(cells)
         if len(activeCells) >= self.numActiveColumnsPerInhArea:
           break
@@ -353,17 +352,7 @@ class ColumnPooler(object):
     if cells is None:
       cells = xrange(self.numberOfCells())
 
-    n = 0
-
-    for cell in cells:
-      if self.internalDistalPermanences.nNonZerosOnRow(cell) > 0:
-        n += 1
-
-      for permanences in self.distalPermanences:
-        if permanences.nNonZerosOnRow(cell) > 0:
-          n += 1
-
-    return n
+    return self.lateralConnections.numberOfSegments(cells)
 
 
   def numberOfConnectedDistalSynapses(self, cells=None):
@@ -378,14 +367,7 @@ class ColumnPooler(object):
     if cells is None:
       cells = xrange(self.numberOfCells())
 
-    n = _countWhereGreaterEqualInRows(self.internalDistalPermanences, cells,
-                                      self.connectedPermanenceDistal)
-
-    for permanences in self.distalPermanences:
-      n += _countWhereGreaterEqualInRows(permanences, cells,
-                                         self.connectedPermanenceDistal)
-
-    return n
+    return self.lateralConnections.numberOfConnectedSynapses(cells)
 
 
   def numberOfDistalSynapses(self, cells=None):
@@ -399,13 +381,8 @@ class ColumnPooler(object):
     """
     if cells is None:
       cells = xrange(self.numberOfCells())
-    n = 0
-    for cell in cells:
-      n += self.internalDistalPermanences.nNonZerosOnRow(cell)
 
-      for permanences in self.distalPermanences:
-        n += permanences.nNonZerosOnRow(cell)
-    return n
+    return self.lateralConnections.numberOfSynapses(cells)
 
 
   def reset(self):
@@ -416,50 +393,263 @@ class ColumnPooler(object):
     self.activeCells = ()
 
 
-  @staticmethod
-  def _learn(# mutated args
-             permanences, rng,
 
-             # activity
-             activeCells, activeInput,
+class TwoSegmentsPerCell(object):
+  """
+  An implementation of lateral connections that uses two dendrite segments per
+  cell. One segment is dedicated to connections within this cortical column,
+  and the other is dedicated to external connections.
+  """
+  def __init__(self,
+               cellCount,
+               lateralInputWidth,
+               synPermInc,
+               synPermDec,
+               initialPermanence,
+               sampleSize,
+               minThreshold,
+               connectedPermanence,
+               rng):
+    self.synPermInc = synPermInc
+    self.synPermDec = synPermDec
+    self.initialPermanence = initialPermanence
+    self.sampleSize = sampleSize
+    self.minThreshold = minThreshold
+    self.connectedPermanence = connectedPermanence
+    self.rng = rng
 
-             # configuration
-             sampleSize, initialPermanence, permanenceIncrement,
-             permanenceDecrement, connectedPermanence):
+    self.internalPermanences = SparseMatrix(cellCount, cellCount)
+    self.externalPermanences = SparseMatrix(cellCount, lateralInputWidth)
+
+
+  def learn(self, learningCells, prevActiveCells, lateralInputs):
+    # Internal learning
+    if len(prevActiveCells) > 0:
+      _learn(self.internalPermanences, self.rng,
+             learningCells, prevActiveCells,
+             self.sampleSize, self.initialPermanence,
+             self.synPermInc, self.synPermDec,
+             self.connectedPermanence)
+
+    # External learning
+    _learn(self.externalPermanences, self.rng,
+           learningCells, sorted(lateralInputs),
+           self.sampleSize, self.initialPermanence,
+           self.synPermInc, self.synPermDec,
+           self.connectedPermanence)
+
+
+  def depolarizeCells(self, prevActiveCells, lateralInputs):
     """
-    For each active cell, reinforce active synapses, punish inactive synapses,
-    and grow new synapses to a subset of the active input bits that the cell
-    isn't already connected to.
+    @param  lateralInputs (list of iterables)
+            Sets of indices of active lateral input bits, one per lateral layer
 
-    Parameters:
-    ----------------------------
-    @param  permanences (SparseMatrix)
-            Matrix of permanences, with cells as rows and inputs as columns
-
-    @param  rng (Random)
-            Random number generator
-
-    @param  activeCells (sorted sequence)
-            Sorted list of the cells that are learning
-
-    @param  activeInput (sorted sequence)
-            Sorted list of active bits in the input
-
-    For remaining parameters, see the __init__ docstring.
+    @returns (numpy array)
+    A score for every cell.
     """
 
-    permanences.incrementNonZerosOnOuter(
-      activeCells, activeInput, permanenceIncrement)
-    permanences.incrementNonZerosOnRowsExcludingCols(
-      activeCells, activeInput, -permanenceDecrement)
-    permanences.clipRowsBelowAndAbove(
-      activeCells, 0.0, 1.0)
-    if sampleSize == -1:
-      permanences.setZerosOnOuter(
-        activeCells, activeInput, initialPermanence)
-    else:
-      permanences.increaseRowNonZeroCountsOnOuterTo(
-        activeCells, activeInput, sampleSize, initialPermanence, rng)
+    numActiveSegmentsByCell = numpy.zeros(self.internalPermanences.nRows(),
+                                          dtype="uint32")
+    overlaps = _rightVecSumAtNZGtThreshold_sparse(
+      self.internalPermanences, prevActiveCells,
+      self.connectedPermanence)
+    numActiveSegmentsByCell[overlaps >= self.minThreshold] += 1
+
+    overlaps = _rightVecSumAtNZGtThreshold_sparse(
+      self.externalPermanences, lateralInputs,
+      self.connectedPermanence)
+    numActiveSegmentsByCell[overlaps >= self.minThreshold] += 1
+
+    return numActiveSegmentsByCell
+
+
+  def numberOfSegments(self, cells):
+    n = 0
+
+    for cell in cells:
+      if self.internalPermanences.nNonZerosOnRow(cell) > 0:
+        n += 1
+
+      if self.externalPermanences.nNonZerosOnRow(cell) > 0:
+        n += 1
+
+    return n
+
+
+  def numberOfConnectedSynapses(self, cells):
+    n = _countWhereGreaterEqualInRows(self.internalPermanences, cells,
+                                      self.connectedPermanence)
+
+    n += _countWhereGreaterEqualInRows(self.externalPermanences, cells,
+                                       self.connectedPermanence)
+
+    return n
+
+
+  def numberOfSynapses(self, cells):
+    n = 0
+    for cell in cells:
+      n += self.internalPermanences.nNonZerosOnRow(cell)
+      n += self.externalPermanences.nNonZerosOnRow(cell)
+    return n
+
+
+
+class PairwiseSegments(object):
+  """
+  Each cell in a cortical column will devote one dendrite segment to each
+  cortical column that it connects to laterally. So, one segment will be used
+  for distal connections within the layer, and an additional segment will be
+  used for each external layer.
+  """
+
+  def __init__(self,
+               cellCount,
+               lateralInputWidths,
+               synPermInc,
+               synPermDec,
+               initialPermanence,
+               sampleSize,
+               minThreshold,
+               connectedPermanence,
+               rng):
+
+    self.lateralInputWidths = lateralInputWidths
+
+    self.synPermInc = synPermInc
+    self.synPermDec = synPermDec
+    self.initialPermanence = initialPermanence
+    self.sampleSize = sampleSize
+    self.minThreshold = minThreshold
+    self.connectedPermanence = connectedPermanence
+    self.rng = rng
+
+    self.internalPermanences = SparseMatrix(cellCount, cellCount)
+    self.externalPermanences = tuple(SparseMatrix(cellCount, n)
+                                     for n in lateralInputWidths)
+
+
+  def learn(self, learningCells, prevActiveCells, lateralInputs):
+    # Internal learning
+    if len(prevActiveCells) > 0:
+      _learn(self.internalPermanences, self.rng,
+             learningCells, prevActiveCells,
+             self.sampleSize, self.initialPermanence,
+             self.synPermInc, self.synPermDec,
+             self.connectedPermanence)
+
+    # External learning
+    for i, lateralInput in enumerate(lateralInputs):
+      _learn(self.externalPermanences[i], self.rng,
+             learningCells, sorted(lateralInput),
+             self.sampleSize, self.initialPermanence,
+             self.synPermInc, self.synPermDec,
+             self.connectedPermanence)
+
+
+  def depolarizeCells(self, prevActiveCells, lateralInputs):
+    """
+    @param  lateralInput (list of iterables)
+            Sets of indices of active lateral input bits, one per lateral layer
+
+    @returns (numpy array)
+    A score for every cell.
+    """
+
+    numActiveSegmentsByCell = numpy.zeros(self.internalPermanences.nRows(),
+                                          dtype="uint32")
+    overlaps = _rightVecSumAtNZGtThreshold_sparse(
+      self.internalPermanences, prevActiveCells,
+      self.connectedPermanence)
+    numActiveSegmentsByCell[overlaps >= self.minThreshold] += 1
+
+    for i, lateralInput in enumerate(lateralInputs):
+      overlaps = _rightVecSumAtNZGtThreshold_sparse(
+        self.externalPermanences[i], sorted(lateralInput),
+        self.connectedPermanence)
+      numActiveSegmentsByCell[overlaps >= self.minThreshold] += 1
+
+    return numActiveSegmentsByCell
+
+
+  def numberOfSegments(self, cells):
+    n = 0
+
+    for cell in cells:
+      if self.internalPermanences.nNonZerosOnRow(cell) > 0:
+        n += 1
+
+      for permanences in self.externalPermanences:
+        if permanences.nNonZerosOnRow(cell) > 0:
+          n += 1
+
+    return n
+
+
+  def numberOfConnectedSynapses(self, cells):
+    n = _countWhereGreaterEqualInRows(self.internalPermanences, cells,
+                                      self.connectedPermanence)
+
+    for permanences in self.externalPermanences:
+      n += _countWhereGreaterEqualInRows(permanences, cells,
+                                         self.connectedPermanence)
+
+    return n
+
+
+  def numberOfSynapses(self, cells):
+    n = 0
+    for cell in cells:
+      n += self.internalPermanences.nNonZerosOnRow(cell)
+
+      for permanences in self.externalPermanences:
+        n += permanences.nNonZerosOnRow(cell)
+    return n
+
+
+def _learn(# mutated args
+           permanences, rng,
+
+           # activity
+           activeCells, activeInput,
+
+           # configuration
+           sampleSize, initialPermanence, permanenceIncrement,
+           permanenceDecrement, connectedPermanence):
+  """
+  For each active cell, reinforce active synapses, punish inactive synapses,
+  and grow new synapses to a subset of the active input bits that the cell
+  isn't already connected to.
+
+  Parameters:
+  ----------------------------
+  @param  permanences (SparseMatrix)
+          Matrix of permanences, with cells as rows and inputs as columns
+
+  @param  rng (Random)
+          Random number generator
+
+  @param  activeCells (sorted sequence)
+          Sorted list of the cells that are learning
+
+  @param  activeInput (sorted sequence)
+          Sorted list of active bits in the input
+
+  For remaining parameters, see the __init__ docstring.
+  """
+
+  permanences.incrementNonZerosOnOuter(
+    activeCells, activeInput, permanenceIncrement)
+  permanences.incrementNonZerosOnRowsExcludingCols(
+    activeCells, activeInput, -permanenceDecrement)
+  permanences.clipRowsBelowAndAbove(
+    activeCells, 0.0, 1.0)
+  if sampleSize == -1:
+    permanences.setZerosOnOuter(
+      activeCells, activeInput, initialPermanence)
+  else:
+    permanences.increaseRowNonZeroCountsOnOuterTo(
+      activeCells, activeInput, sampleSize, initialPermanence, rng)
 
 
 #

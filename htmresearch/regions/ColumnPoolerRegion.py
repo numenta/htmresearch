@@ -115,12 +115,6 @@ class ColumnPoolerRegion(PyRegion):
           dataType="Bool",
           count=1,
           defaultValue="true"),
-        inferenceMode=dict(
-          description="Whether the node is inferring (default True).",
-          accessMode='ReadWrite',
-          dataType='Bool',
-          count=1,
-          defaultValue="true"),
         cellCount=dict(
           description="Number of cells in this layer",
           accessMode="Read",
@@ -147,6 +141,12 @@ class ColumnPoolerRegion(PyRegion):
           dataType="UInt32",
           count=1,
           constraints=""),
+        lateralConnectionsImpl=dict(
+          description="'PairwiseSegments' or 'TwoSegmentsPerCell'",
+          accessMode="Read",
+          dataType="Byte",
+          count=0,
+          constraints=""),
 
         #
         # Proximal
@@ -172,7 +172,7 @@ class ColumnPoolerRegion(PyRegion):
         sampleSizeProximal=dict(
           description="The desired number of active synapses for an active cell",
           accessMode="Read",
-          dataType="UInt32",
+          dataType="Int32",
           count=1),
         minThresholdProximal=dict(
           description="If the number of synapses active on a proximal segment "
@@ -215,7 +215,7 @@ class ColumnPoolerRegion(PyRegion):
           description="The desired number of active synapses for an active "
                       "segment.",
           accessMode="Read",
-          dataType="UInt32",
+          dataType="Int32",
           count=1),
         minThresholdDistal=dict(
           description="If the number of synapses active on a distal segment is "
@@ -262,6 +262,8 @@ class ColumnPoolerRegion(PyRegion):
                numOtherCorticalColumns=0,
                numActiveColumnsPerInhArea=40,
 
+               lateralConnectionsImpl="TwoSegmentsPerCell",
+
                # Proximal
                synPermProximalInc=0.1,
                synPermProximalDec=0.001,
@@ -289,6 +291,7 @@ class ColumnPoolerRegion(PyRegion):
     self.inputWidth = inputWidth
     self.cellCount = cellCount
     self.numActiveColumnsPerInhArea = numActiveColumnsPerInhArea
+    self.lateralConnectionsImpl = lateralConnectionsImpl
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
@@ -305,7 +308,6 @@ class ColumnPoolerRegion(PyRegion):
 
     # Region params
     self.learningMode = True
-    self.inferenceMode = True
     self.defaultOutputType = defaultOutputType
 
     self._pooler = None
@@ -323,6 +325,7 @@ class ColumnPoolerRegion(PyRegion):
         "lateralInputWidths": [self.cellCount] * self.numOtherCorticalColumns,
         "cellCount": self.cellCount,
         "numActiveColumnsPerInhArea": self.numActiveColumnsPerInhArea,
+        "lateralConnectionsImpl": self.lateralConnectionsImpl,
         "synPermProximalInc": self.synPermProximalInc,
         "synPermProximalDec": self.synPermProximalDec,
         "initialProximalPermanence": self.initialProximalPermanence,
@@ -362,10 +365,16 @@ class ColumnPoolerRegion(PyRegion):
     feedforwardInput = inputs["feedforwardInput"].nonzero()[0]
 
     if "lateralInput" in inputs:
-      lateralInputs = tuple(singleInput.nonzero()[0]
-                            for singleInput
-                            in numpy.split(inputs["lateralInput"],
-                                           self.numOtherCorticalColumns))
+      if self.lateralConnectionsImpl == "PairwiseSegments":
+        lateralInputs = tuple(singleInput.nonzero()[0]
+                              for singleInput
+                              in numpy.split(inputs["lateralInput"],
+                                             self.numOtherCorticalColumns))
+      elif self.lateralConnectionsImpl == "TwoSegmentsPerCell":
+        lateralInputs = inputs["lateralInput"].nonzero()[0];
+      else:
+        raise ValueError("Unrecognized lateralConnectionsImpl",
+                         self.lateralConnectionsImpl)
     else:
       lateralInputs = ()
 

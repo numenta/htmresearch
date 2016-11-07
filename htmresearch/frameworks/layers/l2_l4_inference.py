@@ -612,7 +612,6 @@ class L4L2Experiment(object):
       "connectedPermanenceDistal": 0.5,
       "seed": self.seed,
       "learningMode": True,
-      "inferenceMode": True,
     }
 
 
