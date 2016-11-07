@@ -30,6 +30,8 @@ import numpy
 import cPickle
 from multiprocessing import Pool
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.rcParams['pdf.fonttype'] = 42
 
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 from htmresearch.frameworks.layers.object_machine_factory import (
@@ -283,21 +285,22 @@ def plotConvergenceStats(convergence, columnRange, featureRange):
   Features: the list of features we want to plot
   """
   plt.figure()
-  plotPath = os.path.join("plots", "convergence_1.png")
+  plotPath = os.path.join("plots", "convergence_1.pdf")
 
   # Plot each curve
-  colorList = {3: 'r', 5: 'b', 7: 'g', 11: 'k'}
-  markerList = {3: 'o', 5: 'D', 7: '*', 11: 'x'}
-  for f in featureRange:
+  legendList = []
+  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
+
+  for i in range(len(featureRange)):
+    f = featureRange[i]
     print columnRange
     print convergence[f-1,columnRange]
+    legendList.append('unique features={}'.format(f))
     plt.plot(columnRange, convergence[f-1,columnRange],
-             color=colorList[f],
-             marker=markerList[f])
+             color=colorList[i])
 
   # format
-  plt.legend(['Unique features=3', 'Unique features=5',
-              'Unique features=7', 'Unique features=11'], loc="upper right")
+  plt.legend(legendList, loc="upper right")
   plt.xlabel("Columns")
   plt.xticks(columnRange)
   plt.ylabel("Number of sensations")
