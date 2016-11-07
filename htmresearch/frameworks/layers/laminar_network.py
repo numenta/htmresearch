@@ -176,9 +176,7 @@ def createMultipleL4L2Columns(network, networkConfig):
   for i in xrange(numCorticalColumns):
     networkConfigCopy = copy.deepcopy(networkConfig)
     layerConfig = networkConfigCopy["L2Params"]
-    if "seed" not in layerConfig:
-      # TODO: for now, each L2 column should have a different seed
-      layerConfig["seed"] = 42 + i
+    layerConfig["seed"] = layerConfig.get("seed", 42) + i
 
     layerConfig["lateralInputWidth"] = ((numCorticalColumns - 1)*
                                         numCellsInCorticalColumn)
