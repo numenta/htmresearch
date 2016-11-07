@@ -27,6 +27,7 @@ This file demonstrate convergence of single vs multiple columns
 import random
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.patches as patches
 
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 from htmresearch.frameworks.layers.object_machine_factory import (
@@ -46,10 +47,40 @@ def plotActivity(l2ActiveCellsMultiColumn):
     for step in range(len(l2ActiveCellsMultiColumn)):
       activeCellList = list(l2ActiveCellsMultiColumn[step][c])
       for activeCells in activeCellList:
-        axs[c].plot(step, activeCells, '-ko')
+        # axs[c].plot(step, activeCells, '-ks')
+        axs[c].add_patch(
+          patches.Rectangle(
+            (step, activeCells),  # (x,y)
+            1,  # width
+            3,  # height
+          )
+        )
     axs[c].set_title('column {}'.format(c))
     axs[c].set_xlabel('Time')
+    axs[c].set_xlim([0, 20])
+    axs[c].set_ylim([0, 4096])
   axs[0].set_ylabel('Neuron #')
+  return fig
+
+
+
+def plotL2ObjectRepresentations(exp1):
+  fig, axs = plt.subplots(1, 1)
+  numObjects = len(exp1.objectL2Representations)
+  for i in range(numObjects):
+    activeCells = exp1.objectL2Representations[i][0]
+    for c in activeCells:
+      axs.add_patch(
+        patches.Rectangle(
+          (float(5*i), c),  # (x,y)
+          3,  # width
+          3,  # height
+        )
+      )
+  axs.set_xlim([0, numObjects * 5])
+  axs.set_ylim([0, 4096])
+  axs.set_ylabel('Neuron #')
+  axs.set_xlabel('Object #')
   return fig
 
 
@@ -68,7 +99,7 @@ if __name__ == "__main__":
     sensorInputSize=1024,
     externalInputSize=1024,
     numCorticalColumns=3,
-    seed=37,
+    seed=40,
   )
   objectMachine.createRandomObjects(numObjects, numPoints=numPoints,
                               numLocations=numLocations,
@@ -167,3 +198,6 @@ if __name__ == "__main__":
   st = fig1.suptitle("Single Cortical Column")
   plt.savefig('plots/L2_active_cell_single_column.pdf')
 
+
+  fig = plotL2ObjectRepresentations(exp1)
+  plt.savefig('plots/target_object_representations.pdf')
