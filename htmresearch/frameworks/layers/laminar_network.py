@@ -101,9 +101,6 @@ def createL4L2Column(network, networkConfig, suffix=""):
 
   # Create the two sensors, L4 column, and L2 column
   network.addRegion(
-    externalInputName, "py.RawSensor",
-    json.dumps({"outputWidth": networkConfig["externalInputSize"]}))
-  network.addRegion(
     sensorInputName, "py.RawSensor",
     json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
   network.addRegion(
@@ -116,14 +113,21 @@ def createL4L2Column(network, networkConfig, suffix=""):
   # Set phases appropriately so regions are executed in the proper sequence
   # This is required when we create multiple columns - the order of execution
   # is not the same as the order of region creation.
-  network.setPhases(externalInputName,[0])
   network.setPhases(sensorInputName,[0])
   network.setPhases(L4ColumnName,[1])
   network.setPhases(L2ColumnName,[2])
 
-  # Link sensors to L4
-  network.link(externalInputName, L4ColumnName, "UniformLink", "",
-               srcOutput="dataOut", destInput="externalBasalInput")
+  # Add and link in external sensor only if requested
+  if networkConfig["externalInputSize"] > 0:
+    network.addRegion(
+      externalInputName, "py.RawSensor",
+      json.dumps({"outputWidth": networkConfig["externalInputSize"]}))
+    network.setPhases(externalInputName,[0])
+
+    network.link(externalInputName, L4ColumnName, "UniformLink", "",
+                 srcOutput="dataOut", destInput="externalBasalInput")
+
+  # Link other sensors to L4
   network.link(sensorInputName, L4ColumnName, "UniformLink", "",
                srcOutput="dataOut", destInput="feedForwardInput")
 
