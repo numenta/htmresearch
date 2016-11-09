@@ -26,6 +26,7 @@ when noisy inputs.
 import os
 import matplotlib.pyplot as plt
 from copy import deepcopy
+import numpy
 
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
@@ -100,6 +101,19 @@ def addTemporalNoise(sequenceMachine, sequences, pos,
           newSequence.append(newsdr)
         else:
           newSequence.append(sdr)
+      elif noiseType == 'swap':
+        if p == pos:
+          newSequence.append(s[pos+1])
+        if p == pos+1:
+          newSequence.append(s[pos-1])
+        else:
+          newSequence.append(sdr)
+      elif noiseType == 'insert':
+        if p == pos:
+          # Insert new SDR which swaps out all the bits
+          newsdr = patternMachine.addNoise(sdr, 1.0)
+          newSequence.append(newsdr)
+        newSequence.append(sdr)
       else:
         raise Exception("Unknown noise type: "+noiseType)
     newSequences.append(newSequence)
@@ -128,7 +142,7 @@ def runInference(exp, sequences, enableFeedback=True):
      avgActiveCells,avgPredictedActiveCells) = exp.infer(
       sequence, sequenceNumber=i, enableFeedback=enableFeedback)
     error += avgActiveCells
-  error = error / len(sequences)
+  error /= len(sequences)
   print "Average error = ",error
   return error
 
@@ -185,46 +199,66 @@ def runExperiment(args):
   # Run various inference experiments
 
   # Run without any noise
-  runInference(exp, sequences)
+  standardError = runInference(exp, sequences)
 
   # Run without spatial noise for all patterns
-  print "\n\nAdding spatial noise, noiseLevel=", noiseLevel
-  noisySequences = convertSequenceMachineSequence(addSpatialNoise(sequenceMachine, generatedSequences, noiseLevel))
-  runInference(exp, noisySequences, enableFeedback=True)
-  runInference(exp, noisySequences, enableFeedback=False)
+  # print "\n\nAdding spatial noise, noiseLevel=", noiseLevel
+  # noisySequences = convertSequenceMachineSequence(addSpatialNoise(sequenceMachine, generatedSequences, noiseLevel))
+  # runInference(exp, noisySequences, enableFeedback=True)
+  # runInference(exp, noisySequences, enableFeedback=False)
 
   # Successively delete elements from each sequence
-  print "\n\nAdding temporal noise..."
+  print "\n\nAdding skip temporal noise..."
   noisySequences = deepcopy(sequences)
+  skipErrors = numpy.zeros((2,15))
+  skipErrors[0,0] = standardError
+  skipErrors[1,0] = standardError
   for t in range(14):
     print "\n\nAdding temporal skip noise, level=",t+1
     noisySequences = addTemporalNoise(sequenceMachine, noisySequences, 4+t, noiseType='skip')
-    runInference(exp, noisySequences, enableFeedback=True)
-    runInference(exp, noisySequences, enableFeedback=False)
+    skipErrors[0,t+1] = runInference(exp, noisySequences, enableFeedback=True)
+    skipErrors[1,t+1] = runInference(exp, noisySequences, enableFeedback=False)
 
-  # print "\n\nEven more temporal noise..."
-  # noisySequences = addTemporalNoise(sequenceMachine, noisySequences, 5, noiseType='skip')
-  # runInference(exp, noisySequences, enableFeedback=True)
-  # runInference(exp, noisySequences, enableFeedback=False)
-  #
-  # print "\n\nEven more temporal noise..."
-  # noisySequences = addTemporalNoise(sequenceMachine, noisySequences, 6, noiseType='skip')
-  # runInference(exp, noisySequences, enableFeedback=True)
-  # runInference(exp, noisySequences, enableFeedback=False)
+  # Successively swap elements from each sequence
+  print "\n\nAdding swap temporal noise..."
+  noisySequences = deepcopy(sequences)
+  swapErrors = numpy.zeros((2,11))
+  swapErrors[0,0] = standardError
+  swapErrors[1,0] = standardError
+  for t in range(10):
+    print "\n\nAdding temporal swap noise, level=",t+1
+    noisySequences = addTemporalNoise(sequenceMachine, noisySequences, 4+2*t, noiseType='swap')
+    swapErrors[0,t+1] = runInference(exp, noisySequences, enableFeedback=True)
+    swapErrors[1,t+1] = runInference(exp, noisySequences, enableFeedback=False)
+
+  # Successively insert elements from each sequence
+  print "\n\nAdding insert temporal noise..."
+  noisySequences = deepcopy(sequences)
+  insertErrors = numpy.zeros((2,11))
+  swapErrors[0,0] = standardError
+  swapErrors[1,0] = standardError
+  for t in range(10):
+    print "\n\nAdding insert noise, level=",t+1
+    noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
+                                      4+t*2, noiseType='insert')
+    insertErrors[0,t+1] = runInference(exp, noisySequences, enableFeedback=True)
+    insertErrors[1,t+1] = runInference(exp, noisySequences, enableFeedback=False)
 
   # Add spatial noise to some subset of the sequences
   print "\n\nAdding spatial pollution...."
   noisySequences = deepcopy(sequences)
+  pollutionErrors = numpy.zeros((2,11))
   for pos in range(4,10):
     noisySequences = addTemporalNoise(sequenceMachine, sequences, pos,
                                       spatialNoise=0.2,
                                       noiseType='pollute')
-  runInference(exp, noisySequences, enableFeedback=True)
-  runInference(exp, noisySequences, enableFeedback=False)
+  pollutionErrors[0,pos-4] = runInference(exp, noisySequences, enableFeedback=True)
+  pollutionErrors[1,pos-4] = runInference(exp, noisySequences, enableFeedback=False)
 
   # Can't pickle experiment so can't return it. However this is very useful
   # for debugging when running in a single thread.
   args.update({"experiment": exp})
+  args.update({"swapErrors": swapErrors})
   return args
 
 
@@ -269,8 +303,8 @@ if __name__ == "__main__":
   # for debugging, profiling, etc.
   results = runExperiment(
                 {
-                  "numSequences": 5,
-                  "sequenceLen": 20,
+                  "numSequences": 10,
+                  "sequenceLen": 30,
                   "numColumns": 1,
                   "trialNum": 0,
                   "noiseLevel": 0.6,
@@ -278,3 +312,6 @@ if __name__ == "__main__":
                 }
   )
   exp = results['experiment']
+  for v in results['swapErrors'][0]:
+    print v
+  print results['swapErrors'][1]
