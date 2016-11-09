@@ -23,33 +23,20 @@ This file runs a number of experiments testing the effectiveness of feedback
 when noisy inputs.
 """
 
-import random
 import os
-import pprint
-import numpy
-import cPickle
-from multiprocessing import Pool
 import matplotlib.pyplot as plt
+from copy import deepcopy
 
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 from htmresearch.frameworks.layers.feedback_experiment import FeedbackExperiment
 
 
-def generateSequences(n=2048, w=20, sequenceLength=5, sequenceCount=2,
-                      sharedRange=None):
+def convertSequenceMachineSequence(generatedSequences):
   """
-  Generate high order sequences using SequenceMachine
+  Convert a sequence from the SequenceMachine into a list of sequences, such
+  that each sequence is a list of set of SDRs.
   """
-  patternAlphabetSize = sequenceLength * sequenceCount + sequenceLength
-  patternMachine = PatternMachine(n, w, patternAlphabetSize)
-  sequenceMachine = SequenceMachine(patternMachine)
-  numbers = sequenceMachine.generateNumbers(sequenceCount, sequenceLength,
-                                            sharedRange=sharedRange )
-  generatedSequences = sequenceMachine.generateFromNumbers(numbers)
-
-  # Convert generated sequences to a list of sequences, such that each
-  # sequence is a list of set of SDRs.
   sequenceList = []
   currentSequence = []
   for s in generatedSequences:
@@ -59,11 +46,92 @@ def generateSequences(n=2048, w=20, sequenceLength=5, sequenceCount=2,
     else:
       currentSequence.append(s)
 
-  return sequenceList, numbers
+  return sequenceList
 
 
-def computeAccuracy():
-  return 0.0
+def generateSequences(n=2048, w=40, sequenceLength=5, sequenceCount=2,
+                      sharedRange=None):
+  """
+  Generate high order sequences using SequenceMachine
+  """
+  # Lots of room for noise sdrs
+  patternAlphabetSize = 10*(sequenceLength * sequenceCount)
+  patternMachine = PatternMachine(n, w, patternAlphabetSize)
+  sequenceMachine = SequenceMachine(patternMachine)
+  numbers = sequenceMachine.generateNumbers(sequenceCount, sequenceLength,
+                                            sharedRange=sharedRange )
+  generatedSequences = sequenceMachine.generateFromNumbers(numbers)
+
+  return sequenceMachine, generatedSequences, numbers
+
+
+def addSpatialNoise(sequenceMachine, generatedSequences, amount):
+  """
+  Add spatial noise to sequences.
+  """
+  noisySequences = sequenceMachine.addSpatialNoise(generatedSequences, amount)
+  return noisySequences
+
+
+def addTemporalNoise(sequenceMachine, sequences, pos,
+                     spatialNoise = 0.5,
+                     noiseType='skip'):
+  """
+  For each sequence, add temporal noise at position 'pos'. Possible types of
+  noise:
+    'skip'   : skip element pos
+    'swap'   : swap sdr at position pos with sdr at position pos+1
+    'insert' : insert a new random sdr at position pos
+    'pollute': add a lot of noise to sdr at position pos
+  """
+  patternMachine = sequenceMachine.patternMachine
+  newSequences = []
+  for s in sequences:
+    newSequence = []
+    for p,sdr in enumerate(s):
+      if noiseType == 'skip':
+        if p == pos:
+          pass
+        else:
+          newSequence.append(sdr)
+      elif noiseType == 'pollute':
+        if p == pos:
+          newsdr = patternMachine.addNoise(sdr, spatialNoise)
+          newSequence.append(newsdr)
+        else:
+          newSequence.append(sdr)
+      else:
+        raise Exception("Unknown noise type: "+noiseType)
+    newSequences.append(newSequence)
+
+  return newSequences
+
+
+def printSequences(sequences):
+  for i,s in enumerate(sequences):
+    print i,":",s
+    print
+
+
+def runInference(exp, sequences, enableFeedback=True):
+  """
+  Run inference on this set of sequences and compute error
+  """
+  if enableFeedback:
+    print "Feedback enabled: ",
+  else:
+    print "Feedback disabled: ",
+
+  error = 0
+  for i,sequence in enumerate(sequences):
+    (totalActiveCells,totalPredictedActiveCells,
+     avgActiveCells,avgPredictedActiveCells) = exp.infer(
+      sequence, sequenceNumber=i, enableFeedback=enableFeedback)
+    error += avgActiveCells
+  error = error / len(sequences)
+  print "Average error = ",error
+  return error
+
 
 def runExperiment(args):
   """
@@ -73,9 +141,7 @@ def runExperiment(args):
   multiprocessing. args contains one or more of the following keys:
 
   @param noiseLevel  (float) Noise level to add to the locations and features
-                             during inference. Default: None
-  @param profile     (bool)  If True, the network will be profiled after
-                             learning and inference. Default: False
+                             during inference. Default: 0.0
   @param numSequences (int)  The number of sequences.
                              Default: 10
   @param sequenceLen  (int)  The length of each sequence
@@ -92,153 +158,74 @@ def runExperiment(args):
   numSequences = args.get("numSequences", 10)
   sequenceLen = args.get("sequenceLen", 10)
   numColumns = args.get("numColumns", 1)
-  profile = args.get("profile", False)
-  noiseLevel = args.get("noiseLevel", None)  # TODO: implement this?
+  noiseLevel = args.get("noiseLevel", 0.0)  # TODO: implement this?
   trialNum = args.get("trialNum", 42)
-  plotInferenceStats = args.get("plotInferenceStats", True)
 
   # Create the objects
-  sequences, numbers = generateSequences(sequenceLength=sequenceLen,
-                                sequenceCount=numSequences)
+  sequenceMachine, generatedSequences, numbers = generateSequences(
+    sequenceLength=sequenceLen, sequenceCount=numSequences,
+    sharedRange=(3,26))
+  sequences = convertSequenceMachineSequence(generatedSequences)
 
-  # print "Sequences are:"
-  # print numbers
-  # print
-  # for s in sequences:
-  #   print s
-
-  # Setup experiment and train the network
-  name = "convergence_S%03d_SL%03d_C%03d_T%03d" % (
+  # Setup experiment and train the network on sequences
+  name = "feedback_S%03d_SL%03d_C%03d_T%03d" % (
     numSequences, sequenceLen, numColumns, trialNum
   )
+
+  # Use previously trained network if requested
   exp = FeedbackExperiment(
     name,
     numCorticalColumns=numColumns,
+    numLearningPasses=60,
     seed=trialNum
   )
 
   exp.learnSequences(sequences)
-  if profile:
-    exp.printProfile(reset=True)
 
-  for sequenceNum, sequence in enumerate(sequences):
-    print "Running inference with sequence",sequenceNum
-    exp.infer(sequence, sequenceNumber=sequenceNum)
+  # Run various inference experiments
 
+  # Run without any noise
+  runInference(exp, sequences)
+
+  # Run without spatial noise for all patterns
+  print "\n\nAdding spatial noise, noiseLevel=", noiseLevel
+  noisySequences = convertSequenceMachineSequence(addSpatialNoise(sequenceMachine, generatedSequences, noiseLevel))
+  runInference(exp, noisySequences, enableFeedback=True)
+  runInference(exp, noisySequences, enableFeedback=False)
+
+  # Successively delete elements from each sequence
+  print "\n\nAdding temporal noise..."
+  noisySequences = deepcopy(sequences)
+  for t in range(14):
+    print "\n\nAdding temporal skip noise, level=",t+1
+    noisySequences = addTemporalNoise(sequenceMachine, noisySequences, 4+t, noiseType='skip')
+    runInference(exp, noisySequences, enableFeedback=True)
+    runInference(exp, noisySequences, enableFeedback=False)
+
+  # print "\n\nEven more temporal noise..."
+  # noisySequences = addTemporalNoise(sequenceMachine, noisySequences, 5, noiseType='skip')
+  # runInference(exp, noisySequences, enableFeedback=True)
+  # runInference(exp, noisySequences, enableFeedback=False)
   #
-  # # For inference, we will check and plot convergence for each object. For each
-  # # object, we create a sequence of random sensations for each column.  We will
-  # # present each sensation for 3 time steps to let it settle and ensure it
-  # # converges.
-  # for objectId in objects:
-  #   obj = objects[objectId]
-  #
-  #   # Create sequence of sensations for this object for all columns
-  #   objectSensations = {}
-  #   for c in range(numColumns):
-  #     objectCopy = [pair for pair in obj]
-  #     random.shuffle(objectCopy)
-  #     # stay multiple steps on each sensation
-  #     sensations = []
-  #     for pair in objectCopy:
-  #       for _ in xrange(2):
-  #         sensations.append(pair)
-  #     objectSensations[c] = sensations
-  #
-  #   inferConfig = {
-  #     "object": objectId,
-  #     "numSteps": len(objectSensations[0]),
-  #     "pairs": objectSensations
-  #   }
-  #
-  #   exp.infer(objects.provideObjectToInfer(inferConfig), objectName=objectId)
-  #   if profile:
-  #     exp.printProfile(reset=True)
-  #
-  #   if plotInferenceStats:
-  #     exp.plotInferenceStats(
-  #       fields=["L2 Representation",
-  #               "Overlap L2 with object",
-  #               "L4 Representation"],
-  #       experimentID=objectId,
-  #       onePlot=False,
-  #     )
-  #
-  # convergencePoint = averageConvergencePoint(
-  #   exp.getInferenceStats(),"L2 Representation", 40)
-  #
-  # print
-  # print "# objects {} # features {} # locations {} # columns {} trial # {}".format(
-  #   numObjects, numFeatures, numLocations, numColumns, trialNum)
-  # print "Average convergence point=",convergencePoint
-  #
-  # # Return our convergence point as well as all the parameters and objects
-  # args.update({"objects": objects.getObjects()})
-  # args.update({"convergencePoint":convergencePoint})
+  # print "\n\nEven more temporal noise..."
+  # noisySequences = addTemporalNoise(sequenceMachine, noisySequences, 6, noiseType='skip')
+  # runInference(exp, noisySequences, enableFeedback=True)
+  # runInference(exp, noisySequences, enableFeedback=False)
+
+  # Add spatial noise to some subset of the sequences
+  print "\n\nAdding spatial pollution...."
+  noisySequences = deepcopy(sequences)
+  for pos in range(4,10):
+    noisySequences = addTemporalNoise(sequenceMachine, sequences, pos,
+                                      spatialNoise=0.2,
+                                      noiseType='pollute')
+  runInference(exp, noisySequences, enableFeedback=True)
+  runInference(exp, noisySequences, enableFeedback=False)
 
   # Can't pickle experiment so can't return it. However this is very useful
   # for debugging when running in a single thread.
   args.update({"experiment": exp})
   return args
-
-
-def runExperimentPool(numSequences,
-                      sequenceLen,
-                      numColumns,
-                      numWorkers=7,
-                      nTrials=1,
-                      resultsName="feedback_results.pkl"):
-  """
-  Allows you to run a number of experiments using multiple processes.
-  For each parameter except numWorkers, pass in a list containing valid values
-  for that parameter. The cross product of everything is run, and each
-  combination is run nTrials times.
-
-  Returns a list of dict containing detailed results from each experiment.
-  Also pickles the results in resultsName for later analysis.
-
-  Example:
-    results = runExperimentPool(
-                          numObjects=[10],
-                          numLocations=[5],
-                          numFeatures=[5],
-                          numColumns=[2,3,4,5,6],
-                          numWorkers=8,
-                          nTrials=5)
-  """
-  # Create function arguments for every possibility
-  args = []
-  for t in range(nTrials):
-    for c in numColumns:
-      for s in numSequences:
-        for l in sequenceLen:
-            args.append(
-              {"numSequences": s,
-               "sequenceLen": l,
-               "numColumns": c,
-               "trialNum": t,
-               "plotInferenceStats": False,
-               }
-            )
-
-  print "{} experiments to run, {} workers".format(len(args), numWorkers)
-  # Run the pool
-  if numWorkers > 1:
-    pool = Pool(processes=numWorkers)
-    result = pool.map(runExperiment, args)
-  else:
-    result = []
-    for arg in args:
-      result.append(runExperiment(arg))
-
-  print "Full results:"
-  pprint.pprint(result, width=150)
-
-  # Pickle results for later use
-  with open(resultsName,"wb") as f:
-    cPickle.dump(result,f)
-
-  return result
 
 
 def plotConvergenceStats(convergence, columnRange, featureRange):
@@ -282,50 +269,12 @@ if __name__ == "__main__":
   # for debugging, profiling, etc.
   results = runExperiment(
                 {
-                  "numSequences": 10,
-                  "sequenceLen": 10,
+                  "numSequences": 5,
+                  "sequenceLen": 20,
                   "numColumns": 1,
                   "trialNum": 0,
-                  "profile": False
+                  "noiseLevel": 0.6,
+                  "profile": False,
                 }
   )
   exp = results['experiment']
-
-  # This is how you run a bunch of experiments in a process pool
-
-  # Here we want to see how the number of columns affects convergence.
-  # We run 10 trials for each column number and then analyze results
-  # numTrials = 4
-  # columnRange = [2,3,4,5,6,7]
-  # featureRange = [3,5,7,11]
-  # # Comment this out if you are re-running analysis on an already saved set of
-  # # results
-  # results = runExperimentPool(
-  #                   numObjects=[10],
-  #                   numLocations=[10],
-  #                   numFeatures=featureRange,
-  #                   numColumns=columnRange,
-  #                   nTrials=numTrials)
-  #
-  # # Analyze results
-  # with open("convergence_results.pkl","rb") as f:
-  #   results = cPickle.load(f)
-  #
-  # # Accumulate all the results per column in a numpy array, and print it as
-  # # well as raw results.  This part can be specific to each experiment
-  # convergence = numpy.zeros((max(featureRange), max(columnRange)+1))
-  # for r in results:
-  #   convergence[r["numFeatures"]-1,
-  #               r["numColumns"]] += r["convergencePoint"]/2.0
-  #
-  # convergence = convergence/numTrials + 1.0
-  #
-  # # For each column, print convergence as fct of number of unique features
-  # for c in range(2,max(columnRange)+1):
-  #   print c,convergence[:, c]
-  #
-  # # Print everything anyway for debugging
-  # print "Average convergence array=",convergence
-  #
-  # plotConvergenceStats(convergence, columnRange, featureRange)
-
