@@ -245,17 +245,19 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
       targetObject,
       3
     )
-    # print "target {} non-target {}".format(targetObject, nonTargetObjs)
-    # print overlap
-    outcome[i] = 1 if np.argmax(overlap[-1, :]) == targetObject else 0
+
+    lastOverlap = overlap[-1, :]
+
+    maxOverlapIndices = (
+      np.where(lastOverlap == lastOverlap[np.argmax(lastOverlap)])[0].tolist()
+    )
+
+    # Only set to 1 iff target object is the lone max overlap index.  Otherwise
+    # the network failed to conclusively identify the target object.
+    outcome[i] = 1 if maxOverlapIndices == [targetObject] else 0
+
     confusion[i] = np.max(overlap[0, nonTargetObjs])
     overlapTrueObj[i] = overlap[0, targetObject]
-
-  l2Overlap = []
-  for i in xrange(numObjects):
-    for _ in xrange(i+1, numObjects):
-      l2Overlap.append(len(exp.objectL2Representations[0][0] &
-                           exp.objectL2Representations[1][0]))
 
   columnPooler = exp.L2Columns[0]._pooler
   numberOfConnectedSynapses = columnPooler.numberOfConnectedSynapses()
@@ -265,9 +267,7 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
           "numPointsPerObject": numPointsPerObject,
           "confusion": np.mean(confusion),
           "accuracy": np.mean(outcome),
-          "overlapTrueObj": np.mean(overlapTrueObj),
-          "l2OverlapMean": np.mean(l2Overlap),
-          "l2OverlapMax": np.max(l2Overlap)}
+          "overlapTrueObj": np.mean(overlapTrueObj)}
 
 
 
