@@ -28,6 +28,7 @@ import os
 import random
 import inspect
 import cPickle
+import numpy
 
 from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.frameworks.layers.laminar_network import createNetwork
@@ -213,7 +214,7 @@ class FeedbackExperiment(object):
     #   4) We run inference to store L2 representations for each sequence
     # retrieve L2 representations
 
-    print "1) Train L4 sequence memory"
+    # print "1) Train L4 sequence memory"
     self._disableL2()
     self._setLearningMode(l4Learning=True, l2Learning=False)
     for sequenceNum, sequence in enumerate(sequences):
@@ -234,7 +235,7 @@ class FeedbackExperiment(object):
       if iterations > 0:
         self.network.run(iterations)
 
-    print "2) Train L2"
+    # print "2) Train L2"
     self._enableL2()
     self._setLearningMode(l4Learning=False, l2Learning=True)
     for sequenceNum, sequence in enumerate(sequences):
@@ -243,7 +244,7 @@ class FeedbackExperiment(object):
         self.network.run(1)
       self.sendReset()
 
-    print "3) Train L4 apical segments"
+    # print "3) Train L4 apical segments"
     self._setLearningMode(l4Learning=True, l2Learning=False)
     for p in range(5):
       for sequenceNum, sequence in enumerate(sequences):
@@ -253,19 +254,13 @@ class FeedbackExperiment(object):
         self.sendReset()
 
     # Re-run the sequences once each and store L2 representations for each
-    print "Retrieving L2 representations"
     self._setLearningMode(l4Learning=False, l2Learning=False)
     for sequenceNum, sequence in enumerate(sequences):
       for s in sequence:
         self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
         self.network.run(1)
-
       self.objectL2Representations[sequenceNum] = self.getL2Representations()
-      print sequenceNum, "L2 representation size=",len(self.objectL2Representations[sequenceNum][0])
-      # print sequenceNum, self.objectL2Representations[sequenceNum]
-
       self.sendReset()
-
 
 
   def infer(self, sequence, reset=True, sequenceNumber=None, burnIn=2,
@@ -316,12 +311,15 @@ class FeedbackExperiment(object):
         raise ValueError("The provided sequence was not given during"
                          " learning")
 
+    activityTrace = numpy.zeros(len(sequence))
+
     totalActiveCells = 0
     totalPredictedActiveCells = 0
     for i,s in enumerate(sequence):
       self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
       self.network.run(1)
 
+      activityTrace[i] = len(self.getL4Representations()[0])
       if i >= burnIn:
         totalActiveCells += len(self.getL4Representations()[0])
         totalPredictedActiveCells += len(self.getL4PredictedActiveCells()[0])
@@ -335,7 +333,7 @@ class FeedbackExperiment(object):
     # print "totalActiveCells=",totalActiveCells,"totalPredictedActiveCells=",totalPredictedActiveCells
     # print "avgActiveCells=",avgActiveCells,"avgPredictedActiveCells",avgPredictedActiveCells
 
-    return totalActiveCells,totalPredictedActiveCells,avgActiveCells,avgPredictedActiveCells
+    return avgActiveCells,avgPredictedActiveCells,activityTrace
 
 
   def sendReset(self, sequenceId=0):
@@ -398,7 +396,7 @@ class FeedbackExperiment(object):
     """
     return {
       "columnCount": inputSize,
-      "cellsPerColumn": 16,
+      "cellsPerColumn": 8,
       "formInternalBasalConnections": True,
       "learningMode": True,
       "inferenceMode": True,
@@ -408,7 +406,7 @@ class FeedbackExperiment(object):
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.02,
       "minThreshold": 13,
-      "predictedSegmentDecrement": 0.01,
+      "predictedSegmentDecrement": 0.00,
       "activationThreshold": 15,
       "maxNewSynapseCount": 20,
       "defaultOutputType": "predictedActiveCells",
