@@ -92,10 +92,10 @@ def _linkLateralSPRegion(network, networkConfig, externalInputName, L4ColumnName
     return
 
   # Link lateral input to SP input, SP output to L4 lateral input
-
-  network.link(externalInputName, "lateralSPRegion", "UniformLink", "")
-  network.link(externalInputName, L4ColumnName, "UniformLink", "",
-               srcOutput="dataOut", destInput="externalBasalInput")
+  network.link(externalInputName, "lateralSPRegion", "UniformLink", "",
+               srcOutput="dataOut", destInput="bottomUpIn")
+  network.link("lateralSPRegion", L4ColumnName, "UniformLink", "",
+               srcOutput="bottomUpOut", destInput="externalBasalInput")
 
 
 def _setLateralSPPhases(network, networkConfig):

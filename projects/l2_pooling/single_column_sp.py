@@ -116,6 +116,7 @@ def runUncertainLocations(missingLoc=None, profile=False):
 
   exp = L4L2Experiment(
     "uncertain_location",
+    enableLateralSP = True
   )
 
   pairs = createThreeObjects()
@@ -167,6 +168,7 @@ def runStretchExperiment(numObjects=25):
   """
   exp = L4L2Experiment(
     "profiling_experiment",
+    enableLateralSP = True
   )
 
   objects = createObjectMachine(
@@ -199,7 +201,7 @@ def runStretchExperiment(numObjects=25):
 
 if __name__ == "__main__":
   # basic experiment with shared features
-  runSharedFeatures()
+  runSharedFeatures(profile=True)
 
   # experiment with unions at locations
   missingLoc = {3: (1,2,3), 6: (6,4,2)}
