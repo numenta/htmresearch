@@ -69,6 +69,45 @@ from nupic.engine import Network
 from htmresearch.support.register_regions import registerAllResearchRegions
 
 
+
+def _addLateralSPRegion(network, networkConfig, suffix=""):
+  spParams = networkConfig.get("lateralSPParams", {})
+
+  if not spParams:
+    return # User has not specified SpatialPooler parameters and we can safely
+           # skip this part
+
+  spParams["inputWidth"] = networkConfig["externalInputSize"]
+
+  network.addRegion("lateralSPRegion", "py.SPRegion", json.dumps(spParams))
+
+
+def _linkLateralSPRegion(network, networkConfig, externalInputName, L4ColumnName):
+  spParams = networkConfig.get("lateralSPParams", {})
+
+  if not spParams:
+    # Link sensors to L4, ignoring SP
+    network.link(externalInputName, L4ColumnName, "UniformLink", "",
+                 srcOutput="dataOut", destInput="externalBasalInput")
+    return
+
+  # Link lateral input to SP input, SP output to L4 lateral input
+
+  network.link(externalInputName, "lateralSPRegion", "UniformLink", "")
+  network.link(externalInputName, L4ColumnName, "UniformLink", "",
+               srcOutput="dataOut", destInput="externalBasalInput")
+
+
+def _setLateralSPPhases(network, networkConfig):
+  spParams = networkConfig.get("lateralSPParams", {})
+
+  if not spParams:
+    return  # User has not specified SpatialPooler parameters and we can safely
+    # skip this part
+
+  network.setPhases("lateralSPRegion", [1])
+
+
 def createL4L2Column(network, networkConfig, suffix=""):
   """
   Create a a single column containing one L4 and one L2.
@@ -90,6 +129,7 @@ def createL4L2Column(network, networkConfig, suffix=""):
   Region names are externalInput, sensorInput, L4Column, and ColumnPoolerRegion.
   Each name has an optional string suffix appended to it.
   """
+
   externalInputName = "externalInput" + suffix
   sensorInputName = "sensorInput" + suffix
   L4ColumnName = "L4Column" + suffix
@@ -99,13 +139,16 @@ def createL4L2Column(network, networkConfig, suffix=""):
   L4Params["basalInputWidth"] = networkConfig["externalInputSize"]
   L4Params["apicalInputWidth"] = networkConfig["L2Params"]["columnCount"]
 
-  # Create the two sensors, L4 column, and L2 column
   network.addRegion(
     externalInputName, "py.RawSensor",
     json.dumps({"outputWidth": networkConfig["externalInputSize"]}))
   network.addRegion(
     sensorInputName, "py.RawSensor",
     json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
+
+  # Fixup network to include SP, if defined in networkConfig
+  _addLateralSPRegion(network, networkConfig, suffix)
+
   network.addRegion(
     L4ColumnName, "py.ExtendedTMRegion",
     json.dumps(L4Params))
@@ -118,12 +161,15 @@ def createL4L2Column(network, networkConfig, suffix=""):
   # is not the same as the order of region creation.
   network.setPhases(externalInputName,[0])
   network.setPhases(sensorInputName,[0])
-  network.setPhases(L4ColumnName,[1])
-  network.setPhases(L2ColumnName,[2])
 
-  # Link sensors to L4
-  network.link(externalInputName, L4ColumnName, "UniformLink", "",
-               srcOutput="dataOut", destInput="externalBasalInput")
+  _setLateralSPPhases(network, networkConfig)
+
+  network.setPhases(L4ColumnName,[2])
+  network.setPhases(L2ColumnName,[3])
+
+  # Link SP region, if applicable
+  _linkLateralSPRegion(network, networkConfig, externalInputName, L4ColumnName)
+
   network.link(sensorInputName, L4ColumnName, "UniformLink", "",
                srcOutput="dataOut", destInput="feedForwardInput")
 

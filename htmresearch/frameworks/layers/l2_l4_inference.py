@@ -126,7 +126,9 @@ class L4L2Experiment(object):
                L4Overrides=None,
                numLearningPoints=3,
                seed=42,
-               logCalls = False):
+               logCalls = False,
+               enableLateralSP=False,
+               lateralSPOverrides=None):
     """
     Creates the network.
 
@@ -195,6 +197,11 @@ class L4L2Experiment(object):
       "L4Params": self.getDefaultL4Params(inputSize),
       "L2Params": self.getDefaultL2Params(inputSize),
     }
+
+    if enableLateralSP:
+      self.config["lateralSPParams"] = self.getDefaultLateralSPParams(inputSize)
+      if lateralSPOverrides:
+        self.config["lateralSPParams"].update(lateralSPOverrides)
 
     if L2Overrides is not None:
       self.config["L2Params"].update(L2Overrides)
@@ -616,6 +623,21 @@ class L4L2Experiment(object):
       "maxSynapsesPerDistalSegment": 255,
       "maxSynapsesPerProximalSegment": 2000,
       "seed": self.seed
+    }
+
+  def getDefaultLateralSPParams(self, inputSize):
+    return {
+      "spatialImp": "cpp",
+      "globalInhibition": 1,
+      "columnCount": 1024,
+      "inputWidth": inputSize,
+      "numActiveColumnsPerInhArea": 40,
+      "seed": self.seed,
+      "potentialPct": 0.8,
+      "synPermConnected": 0.1,
+      "synPermActiveInc": 0.0001,
+      "synPermInactiveDec": 0.0005,
+      "maxBoost": 1.0,
     }
 
 
