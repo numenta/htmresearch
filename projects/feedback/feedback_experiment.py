@@ -158,105 +158,89 @@ def runExperiment(args):
   args is a dict representing the parameters. We do it this way to support
   multiprocessing. args contains one or more of the following keys:
 
-  @param noiseLevel  (float) Noise level to add to the locations and features
-                             during inference. Default: 0.0
+  @param noiseLevel  (int)   Noise level to add during inference. This an
+                             integer corresponding to how many times temporal
+                             noise is added to the sequence.
+                             Default: 1
+  @param noiseStart  (int)   The position in the sequence at which noise starts
+                             Default: 4
   @param numSequences (int)  The number of sequences.
                              Default: 10
   @param sequenceLen  (int)  The length of each sequence
-                             Default: 10
-  @param numColumns  (int)   The total number of cortical columns in network.
-                             Default: 1
-  @param trialNum     (int)  Trial number, for reporting
+                             Default: 30
+  @param noiseType    (str)  One of the noise types for addTemporalNoise()
+                             Default: 'swap'
+  @param seed         (int)  Random seed for network and for sequences
+                             Default: 42
+  @param L4Overrides  (dict) Parameters to override default L4 settings.
+                             Default: {}
 
-  The method returns the args dict updated with two additional keys:
-    convergencePoint (int)   The average number of iterations it took
-                             to converge across all objects
-    objects          (pairs) The list of objects we trained on
+  The method returns the args dict updated with additional keys:
+    experiment      (object) The instance of FeedbackExperiment we used.
   """
   numSequences = args.get("numSequences", 10)
-  sequenceLen = args.get("sequenceLen", 10)
-  numColumns = args.get("numColumns", 1)
-  trialNum = args.get("trialNum", 42)
+  sequenceLen = args.get("sequenceLen", 30)
+  noiseLevel = args.get("noiseLevel", 1)
+  noiseType = args.get("noiseType", "swap")
+  noiseStart = args.get("noiseStart", 4)
+  L4Overrides = args.get("L4Overrides", {})
+  seed = args.get("seed", 42)
 
-  # Create the sequences
+  # Create the sequences and arrays
   sequenceMachine, generatedSequences, numbers = generateSequences(
     sequenceLength=sequenceLen, sequenceCount=numSequences,
-    sharedRange=(3,20), seed=trialNum)
+    sharedRange=(3,int(0.8*sequenceLen)),  # Need min of 3
+    seed=seed)
   sequences = convertSequenceMachineSequence(generatedSequences)
+  noisySequences = deepcopy(sequences)
+
+  # inferenceErrors[0, ...] - average error with feedback
+  # inferenceErrors[1, ...] - average error without feedback
+  # inferenceErrors[i, j]   - average error with noiseLevel = j
+  inferenceErrors = numpy.zeros((2,noiseLevel+1))
 
   # Setup experiment and train the network on sequences
   exp = FeedbackExperiment(
     "feedback_experiment",
-    numCorticalColumns=numColumns,
-    numLearningPasses=60,
-    seed=trialNum
+    numLearningPasses=2*sequenceLen,    # To handle high order sequences
+    seed=seed,
+    L4Overrides=L4Overrides,
   )
   exp.learnSequences(sequences)
 
   # Run various inference experiments
 
-  # Run without any noise
+  # Run without any noise. This becomes our baseline error
   standardError, _ = runInference(exp, sequences)
-
-  # Run with spatial noise for all patterns
-  # print "\n\nAdding spatial noise, noiseLevel=", noiseLevel
-  # noisySequences = convertSequenceMachineSequence(addSpatialNoise(sequenceMachine, generatedSequences, noiseLevel))
-  # runInference(exp, noisySequences, enableFeedback=True)
-  # runInference(exp, noisySequences, enableFeedback=False)
+  inferenceErrors[0,0] = standardError
+  inferenceErrors[1,0] = standardError
 
   # Successively delete elements from each sequence
-  # print "\n\nAdding skip temporal noise..."
-  # noisySequences = deepcopy(sequences)
-  # skipErrors = numpy.zeros((2,15))
-  # skipErrors[0,0] = standardError
-  # skipErrors[1,0] = standardError
-  # for t in range(14):
-  #   print "\n\nAdding temporal skip noise, level=",t+1
-  #   noisySequences = addTemporalNoise(sequenceMachine, noisySequences, 4+t, noiseType='skip')
-  #   skipErrors[0,t+1], _ = runInference(exp, noisySequences, enableFeedback=True)
-  #   skipErrors[1,t+1], _ = runInference(exp, noisySequences, enableFeedback=False)
+  for t in range(noiseLevel):
+    print "\n\nnoiseType=",noiseType, "level=",t+1
+    if noiseType == 'skip':
+        noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
+                                          noiseStart+t, noiseType=noiseType)
+    elif noiseType == 'swap':
+      noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
+                                        noiseStart+2*t, noiseType=noiseType)
+    elif noiseType == 'insert':
+      noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
+                                        noiseStart+t*2, noiseType=noiseType)
+    elif noiseType == 'pollute':
+      inferenceErrors = numpy.zeros((2,11))
+      noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
+                                        noiseStart+t,
+                                        spatialNoise=0.3, noiseType=noiseType)
+    inferenceErrors[0,t+1], activityFeedback = runInference(exp, noisySequences, enableFeedback=True)
+    inferenceErrors[1,t+1], activityNoFeedback = runInference(exp, noisySequences, enableFeedback=False)
 
-  # Successively swap elements from each sequence
-  noisySequences = deepcopy(sequences)
-  swapErrors = numpy.zeros((2,11))
-  swapErrors[0,0] = standardError
-  swapErrors[1,0] = standardError
-  for t in range(1):
-    print "Adding temporal swap noise, level=",t+1
-    noisySequences = addTemporalNoise(sequenceMachine, noisySequences, 4+2*t, noiseType='swap')
-    swapErrors[0,t+1], _ = runInference(exp, noisySequences, enableFeedback=True)
-    swapErrors[1,t+1], _ = runInference(exp, noisySequences, enableFeedback=False)
 
-  # # Successively insert elements from each sequence
-  # print "\n\nAdding insert temporal noise..."
-  # noisySequences = deepcopy(sequences)
-  # insertErrors = numpy.zeros((2,30))
-  # swapErrors[0,0] = standardError
-  # swapErrors[1,0] = standardError
-  # for t in [10]:
-  #   print "\n\nAdding insert noise, level=",t+1
-  #   noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
-  #                                     t, noiseType='insert')
-  #   insertErrors[0,t+1], activityFeedback = runInference(exp, noisySequences, enableFeedback=True)
-  #   insertErrors[1,t+1], activityNoFeedback = runInference(exp, noisySequences, enableFeedback=False)
-
-  # Add spatial noise to some subset of the sequences
-  # print "\n\nAdding spatial pollution...."
-  # noisySequences = deepcopy(sequences)
-  # pollutionErrors = numpy.zeros((2,11))
-  # for pos in range(5,10):
-  #   noisySequences = addTemporalNoise(sequenceMachine, noisySequences, pos,
-  #                                     spatialNoise=0.3,
-  #                                     noiseType='pollute')
-  # pollutionErrors[0,pos-4], _ = runInference(exp, noisySequences, enableFeedback=True)
-  # pollutionErrors[1,pos-4], _ = runInference(exp, noisySequences, enableFeedback=False)
-
-  # Can't pickle experiment so can't return it. However this is very useful
-  # for debugging when running in a single thread.
+  # Return our various structures
   args.update({"experiment": exp})
-  args.update({"swapErrors": swapErrors,
-               # "activityFeedback": activityFeedback,
-               # "activityNoFeedback": activityNoFeedback,
+  args.update({"inferenceErrors": inferenceErrors,
+               "activityFeedback": activityFeedback,
+               "activityNoFeedback": activityNoFeedback,
                })
   return args
 
@@ -311,8 +295,8 @@ def plotActivity(activityFeedback, activityNoFeedback):
   # Plot each curve
   colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
   position = range(0,len(a))
-  plt.plot(position, a, color=colorList[0])
-  plt.plot(position, an, color=colorList[1])
+  plt.plot(position[1:], a[1:], color=colorList[0])
+  plt.plot(position[1:], an[1:], color=colorList[1])
 
   # format
   plt.legend(['Feedback enabled', 'Feedback disabled'], loc="upper right")
@@ -334,17 +318,17 @@ def computeErrorvsComplexity():
   errors = []
   for numSequences in range(2,32,2):
     print "numSequences=",numSequences
-    for trial in range(5):
+    for seed in range(5):
       result = runExperiment(
                     {
                       "numSequences": numSequences,
                       "sequenceLen": 30,
-                      "noiseLevel": 0.6,
+                      "noiseLevel": 10,
                       "profile": False,
-                      "trialNum": trial
+                      "seed": seed
                     }
       )
-      err = result['swapErrors']
+      err = result['inferenceErrors']
       results[0,(numSequences-2)/2] += err[0,1] - err[0,0]  # w feedback
       results[1,(numSequences-2)/2] += err[1,1] - err[1,0]  # w/o feedback
       errors.append(err)
@@ -382,29 +366,53 @@ def plotErrorvsComplexity(errors):
 
 if __name__ == "__main__":
 
-  # Train a single network and test on a number of different noise situations
-  if False:
+  # This script produces three charts. Set the appropriate if-statements
+  # to True to generate them.
+
+  # Train a single network and show error for a single example noisy sequence
+  if True:
     results = runExperiment(
                   {
                     "numSequences": 2,
                     "sequenceLen": 30,
-                    "noiseLevel": 0.6,
+                    "noiseLevel": 2,
+                    "noiseType": 'skip',
+                    "noiseStart": 10,
+                    "profile": False,
+                    "L4Overrides": {"cellsPerColumn": 4}
+                  }
+    )
+    exp = results['experiment']
+    activityFeedback = results["activityFeedback"]
+    activityNoFeedback = results["activityNoFeedback"]
+    plotActivity(activityFeedback, activityNoFeedback)
+
+  # Train a single network and plot error vs amount of noise
+  if False:
+    results = runExperiment(
+                  {
+                    "numSequences": 10,
+                    "sequenceLen": 30,
+                    "noiseLevel": 10,
+                    "noiseType": 'swap',
                     "profile": False,
                   }
     )
     exp = results['experiment']
-    for v in results['swapErrors'][0]:
+    for v in results['inferenceErrors'][0]:
       print v
-    print results['swapErrors'][1]
-    err = results['swapErrors']
+    print results['inferenceErrors'][1]
+    err = results['inferenceErrors']
     errScaled = (err - err[0,0]) / 457
     plotErrorsvsNoise(errScaled)
     activityFeedback = results["activityFeedback"]
     activityNoFeedback = results["activityNoFeedback"]
     plotActivity(activityFeedback, activityNoFeedback)
 
-  # Train a sequence of models, each with a different number of sequences
-  else:
+  # Train a bunch of models, each with a different number of sequences.
+  # Plot the prediction error vs model complexity with noisy sequences.
+  # Note that this plot takes about 70-80 minutes to generate.
+  if False:
     results,errors = computeErrorvsComplexity()
     with open("results.pkl","wb") as f:
       cPickle.dump(results,f)
