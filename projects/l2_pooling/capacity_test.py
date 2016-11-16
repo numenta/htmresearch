@@ -108,7 +108,7 @@ def getL2Params():
   return {
     "inputWidth": 2048 * 8,
     "cellCount": 4096,
-    "numActiveColumnsPerInhArea": 40,
+    "sdrSize": 40,
     "synPermProximalInc": 0.1,
     "synPermProximalDec": 0.001,
     "initialProximalPermanence": 0.6,
@@ -121,8 +121,8 @@ def getL2Params():
     "minThresholdDistal": 10,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
+    "distalSegmentInhibitionFactor": 1.5,
     "learningMode": True,
-    "inferenceMode": True,
   }
 
 

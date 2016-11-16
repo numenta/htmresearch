@@ -1220,7 +1220,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       "inputWidth": self.inputWidth,
       "lateralInputWidths": [self.outputWidth]*(numCols-1),
       "cellCount": self.outputWidth,
-      "numActiveColumnsPerInhArea": self.numOutputActiveBits,
+      "sdrSize": self.numOutputActiveBits,
       "minThresholdProximal": 10,
       "sampleSizeProximal": 20,
       "connectedPermanenceProximal": 0.6,

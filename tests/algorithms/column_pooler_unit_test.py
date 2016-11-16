@@ -370,7 +370,7 @@ class ColumnPoolerTest(unittest.TestCase):
 
     """
     pooler = self._initializeDefaultPooler(
-      numActiveColumnsPerInhArea=12,
+      sdrSize=40,
       initialProximalPermanence=0.45,
       connectedPermanenceProximal=0.50,
       sampleSizeProximal=10,
@@ -381,7 +381,7 @@ class ColumnPoolerTest(unittest.TestCase):
     pooler.compute(feedforwardInput, learn=True)
 
     activeCells = pooler.getActiveCells()
-    self.assertEqual(len(activeCells), 12)
+    self.assertEqual(len(activeCells), 40)
 
     for cell in activeCells:
       self.assertEqual(pooler.numberOfProximalSynapses([cell]), 10,
@@ -398,7 +398,7 @@ class ColumnPoolerTest(unittest.TestCase):
 
     """
     pooler = self._initializeDefaultPooler(
-      numActiveColumnsPerInhArea=12,
+      sdrSize=40,
       initialProximalPermanence=0.45,
       connectedPermanenceProximal=0.50,
       sampleSizeProximal=10,
@@ -414,7 +414,7 @@ class ColumnPoolerTest(unittest.TestCase):
     pooler.compute(set(range(0, 15)), learn=True)
 
     activeCells = pooler.getActiveCells()
-    self.assertEqual(len(activeCells), 12)
+    self.assertEqual(len(activeCells), 40)
 
     for cell in activeCells:
       self.assertEqual(pooler.numberOfProximalSynapses([cell]), 20,
@@ -446,7 +446,7 @@ class ColumnPoolerTest(unittest.TestCase):
 
     """
     pooler = self._initializeDefaultPooler(
-      numActiveColumnsPerInhArea=12,
+      sdrSize=40,
       initialProximalPermanence=0.55,
       connectedPermanenceProximal=0.50,
       sampleSizeProximal=10,
@@ -461,7 +461,7 @@ class ColumnPoolerTest(unittest.TestCase):
     pooler.compute(set(range(0, 5)), learn=True)
 
     activeCells = pooler.getActiveCells()
-    self.assertEqual(len(activeCells), 12)
+    self.assertEqual(len(activeCells), 40)
 
     for cell in activeCells:
       self.assertEqual(pooler.numberOfProximalSynapses([cell]), 10,

@@ -135,7 +135,7 @@ class ColumnPoolerRegion(PyRegion):
           dataType="UInt32",
           count=1,
           constraints=""),
-        numActiveColumnsPerInhArea=dict(
+        sdrSize=dict(
           description="The number of active cells invoked per object",
           accessMode="Read",
           dataType="UInt32",
@@ -226,6 +226,13 @@ class ColumnPoolerRegion(PyRegion):
           dataType="Real32",
           count=1,
           constraints=""),
+        distalSegmentInhibitionFactor=dict(
+          description="Controls how many active segments are required for a "
+                      "cell to inhibit another cell.",
+          accessMode="Read",
+          dataType="Real32",
+          count=1,
+          constraints=""),
 
 
         seed=dict(
@@ -254,7 +261,7 @@ class ColumnPoolerRegion(PyRegion):
                cellCount=4096,
                inputWidth=16384,
                numOtherCorticalColumns=0,
-               numActiveColumnsPerInhArea=40,
+               sdrSize=40,
 
                # Proximal
                synPermProximalInc=0.1,
@@ -271,6 +278,7 @@ class ColumnPoolerRegion(PyRegion):
                sampleSizeDistal=20,
                minThresholdDistal=13,
                connectedPermanenceDistal=0.50,
+               distalSegmentInhibitionFactor=1.5,
 
                seed=42,
                defaultOutputType = "active",
@@ -282,7 +290,7 @@ class ColumnPoolerRegion(PyRegion):
     # Column Pooler params
     self.inputWidth = inputWidth
     self.cellCount = cellCount
-    self.numActiveColumnsPerInhArea = numActiveColumnsPerInhArea
+    self.sdrSize = sdrSize
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
@@ -295,6 +303,7 @@ class ColumnPoolerRegion(PyRegion):
     self.sampleSizeDistal = sampleSizeDistal
     self.minThresholdDistal = minThresholdDistal
     self.connectedPermanenceDistal = connectedPermanenceDistal
+    self.distalSegmentInhibitionFactor = distalSegmentInhibitionFactor
     self.seed = seed
 
     # Region params
@@ -315,7 +324,7 @@ class ColumnPoolerRegion(PyRegion):
         "inputWidth": self.inputWidth,
         "lateralInputWidths": [self.cellCount] * self.numOtherCorticalColumns,
         "cellCount": self.cellCount,
-        "numActiveColumnsPerInhArea": self.numActiveColumnsPerInhArea,
+        "sdrSize": self.sdrSize,
         "synPermProximalInc": self.synPermProximalInc,
         "synPermProximalDec": self.synPermProximalDec,
         "initialProximalPermanence": self.initialProximalPermanence,
@@ -328,6 +337,7 @@ class ColumnPoolerRegion(PyRegion):
         "minThresholdDistal": self.minThresholdDistal,
         "sampleSizeDistal": self.sampleSizeDistal,
         "connectedPermanenceDistal": self.connectedPermanenceDistal,
+        "distalSegmentInhibitionFactor": self.distalSegmentInhibitionFactor,
         "seed": self.seed,
       }
       self._pooler = ColumnPooler(**params)

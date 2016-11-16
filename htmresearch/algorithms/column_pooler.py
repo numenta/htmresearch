@@ -19,8 +19,6 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import itertools
-
 import numpy
 
 from nupic.bindings.math import SparseMatrix, GetNTAReal, Random
@@ -38,7 +36,7 @@ class ColumnPooler(object):
                inputWidth,
                lateralInputWidths=(),
                cellCount=4096,
-               numActiveColumnsPerInhArea=40,
+               sdrSize=40,
 
                # Proximal
                synPermProximalInc=0.1,
@@ -55,6 +53,7 @@ class ColumnPooler(object):
                sampleSizeDistal=20,
                minThresholdDistal=13,
                connectedPermanenceDistal=0.50,
+               distalSegmentInhibitionFactor=1.5,
 
                seed=42):
     """
@@ -64,10 +63,10 @@ class ColumnPooler(object):
             The number of proximal inputs into this layer
 
     @param  lateralInputWidths (list of ints)
-            The number of input bits in each lateral input layer.
+            The number of input bits in each lateral input layer
 
-    @param  numActiveColumnsPerInhArea (int)
-            Target number of active cells
+    @param  sdrSize (int)
+            The number of active cells in an object SDR
 
     @param  synPermProximalInc (float)
             Permanence increment for proximal synapses
@@ -108,13 +107,19 @@ class ColumnPooler(object):
     @param  connectedPermanenceDistal (float)
             Permanence required for a distal synapse to be connected
 
+    @param  distalSegmentInhibitionFactor (float)
+            The minimum ratio of active dendrite segment counts that will lead
+            to inhibition. For example, with value 1.5, cells with 2 active
+            segments will be inhibited by cells with 3 active segments, but
+            cells with 3 active segments will not be inhibited by cells with 4.
+
     @param  seed (int)
             Random number generator seed
     """
 
     self.inputWidth = inputWidth
     self.cellCount = cellCount
-    self.numActiveColumnsPerInhArea = numActiveColumnsPerInhArea
+    self.sdrSize = sdrSize
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
@@ -127,6 +132,7 @@ class ColumnPooler(object):
     self.connectedPermanenceDistal = connectedPermanenceDistal
     self.sampleSizeDistal = sampleSizeDistal
     self.minThresholdDistal = minThresholdDistal
+    self.distalSegmentInhibitionFactor = distalSegmentInhibitionFactor
 
     self.activeCells = ()
     self._random = Random(seed)
@@ -183,10 +189,9 @@ class ColumnPooler(object):
     # If there are no previously active cells, select random subset of cells.
     # Else we maintain previous activity.
     if len(self.activeCells) == 0:
-      self.activeCells = sorted(_sampleRange(self._random, 0,
-                                             self.numberOfCells(),
-                                             1,
-                                             self.numActiveColumnsPerInhArea))
+      self.activeCells = sorted(_sampleRange(self._random,
+                                             0, self.numberOfCells(),
+                                             step=1, k=self.sdrSize))
 
     if len(feedforwardInput) > 0:
       # Proximal learning
@@ -251,35 +256,83 @@ class ColumnPooler(object):
         self.connectedPermanenceDistal)
       numActiveSegmentsByCell[overlaps >= self.minThresholdDistal] += 1
 
+    # Choose from the feedforward supported cells
+    minNumActiveCells = self.sdrSize / 2
+    chosenCells = self._chooseCells(feedforwardSupportedCells,
+                                    minNumActiveCells, numActiveSegmentsByCell)
 
-    activeCells = []
+    # If necessary, choose from previously active cells
+    if len(chosenCells) < minNumActiveCells:
+      remainingCandidates = [cell for cell in prevActiveCells
+                             if cell not in feedforwardSupportedCells]
+      chosenCells.extend(self._chooseCells(remainingCandidates,
+                                           minNumActiveCells - len(chosenCells),
+                                           numActiveSegmentsByCell))
 
-    # First, activate cells that have feedforward support, ranking them by
-    # lateral support.
-    orderedCandidates = sorted((cell for cell in feedforwardSupportedCells),
+    self.activeCells = sorted(chosenCells)
+
+
+  def _chooseCells(self, candidates, n, numActiveSegmentsByCell):
+    """
+    Choose cells to activate, using their active segment counts to determine
+    inhibition.
+
+    The first inhibition group is defined by the highest number of active
+    segments. It includes every cell that isn't inhibited by this segment count.
+
+    The second inhibition group is defined by the second highest number of
+    active segments. It includes every cell that wasn't part of the first
+    inhibition group and isn't inhibited by this segment count.
+
+    And so on.
+
+    These groups are computed and activated until we reach n or until there
+    are no remaining candidates.
+
+    Parameters:
+    ----------------------------
+    @param  candidates (iterable)
+            List of cells to consider activating
+
+    @param  n (int)
+            Minimum number of cells to activate, if possible
+
+    @param  numActiveSegmentsByCell (associative)
+            A mapping from cells to number of active segments.
+            This can be any data structure that associates an index with a
+            value. (list, dict, numpy array)
+
+    @return (list) Cells to activate
+    """
+
+    orderedCandidates = sorted(candidates,
                                key=numActiveSegmentsByCell.__getitem__,
                                reverse=True)
-    for _, cells in itertools.groupby(orderedCandidates,
-                                      numActiveSegmentsByCell.__getitem__):
-      activeCells.extend(cells)
-      if len(activeCells) >= self.numActiveColumnsPerInhArea:
+    activeSegmentCounts = sorted(set(numActiveSegmentsByCell[cell]
+                                     for cell in candidates),
+                                 reverse=True)
+
+    chosenCells = []
+    i = 0
+
+    for activeSegmentCount in activeSegmentCounts:
+      if len(chosenCells) >= n or i >= len(orderedCandidates):
         break
 
-    # If necessary, activate cells that were previously active and have lateral
-    # support.
-    if len(activeCells) < self.numActiveColumnsPerInhArea:
-      orderedCandidates = sorted((cell for cell in prevActiveCells
-                                  if cell not in feedforwardSupportedCells
-                                  and numActiveSegmentsByCell[cell] > 0),
-                                 key=numActiveSegmentsByCell.__getitem__,
-                                 reverse=True)
-      for _, cells in itertools.groupby(orderedCandidates,
-                                        numActiveSegmentsByCell.__getitem__):
-        activeCells.extend(cells)
-        if len(activeCells) >= self.numActiveColumnsPerInhArea:
-          break
+      if activeSegmentCount == 0:
+        chosenCells.extend(orderedCandidates[i:])
+        break
 
-    self.activeCells = sorted(activeCells)
+      # If one cell has 'distalSegmentInhibitionFactor' * the number of active
+      # segments of another cell, the latter cell is inhibited.
+      boundary = float(activeSegmentCount) / self.distalSegmentInhibitionFactor
+
+      while (i < len(orderedCandidates) and
+             numActiveSegmentsByCell[orderedCandidates[i]] > boundary):
+        chosenCells.append(orderedCandidates[i])
+        i += 1
+
+    return chosenCells
 
 
   def numberOfInputs(self):
