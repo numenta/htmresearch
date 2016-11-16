@@ -850,10 +850,14 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       )
 
 
-  def testLateralContest(self):
+  def testLateralContestResolved(self):
     """
-    Infer an object via lateral disambiguation even if some other columns are
-    also ambiguous.
+    Infer an object via lateral disambiguation even if some other columns have
+    similar ambiguity.
+
+    If an object SDR has at least distalSegmentInhibitionFactor times as many
+    votes (i.e. active distal segments) as another object, it should inhibit the
+    other object.
     """
 
     self.init(overrides={"lateralInputWidths": [self.inputWidth,
@@ -884,8 +888,59 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     self.infer(patterns[1], lateralInputs=[lateralInput1A | lateralInput1B,
                                            lateralInput2A])
 
-    # A should win
+    # 3 segments should beat 2 segments if distalSegmentInhibitionFactor is
+    # <= 3/2.
     self.assertEqual(set(self.pooler.getActiveCells()), representationA)
+
+
+  def testLateralContestUnresolved(self):
+    """
+    If an object SDR has fewer than distalSegmentInhibitionFactor times as many
+    votes (i.e. active distal segments) as another object, it shouldn't inhibit
+    the other object.
+    """
+
+    self.init(overrides={"lateralInputWidths": [self.inputWidth,
+                                                self.inputWidth,
+                                                self.inputWidth]})
+
+    patterns = [self.generatePattern() for _ in xrange(3)]
+
+    objectA = [patterns[0], patterns[1]]
+    objectB = [patterns[1], patterns[2]]
+
+    lateralInput1A = self.generatePattern()
+    lateralInput2A = self.generatePattern()
+    lateralInput3A = self.generatePattern()
+    lateralInput1B = self.generatePattern()
+    lateralInput2B = self.generatePattern()
+    lateralInput3B = self.generatePattern()
+
+    self.learn(objectA, lateralPatterns=[[lateralInput1A,
+                                          lateralInput2A,
+                                          lateralInput3A]]*2,
+               numRepetitions=3, newObject=True)
+    representationA = set(self.pooler.getActiveCells())
+    self.learn(objectB, lateralPatterns=[[lateralInput1B,
+                                          lateralInput2B,
+                                          lateralInput3B]]*2,
+               numRepetitions=3, newObject=True)
+    representationB = set(self.pooler.getActiveCells())
+
+    self.pooler.reset()
+
+    # This column will say A | B
+    # One lateral column says A | B
+    # Another lateral column says A | B
+    # Another lateral column says A
+    self.infer(patterns[1], lateralInputs=[lateralInput1A | lateralInput1B,
+                                           lateralInput2A | lateralInput2B,
+                                           lateralInput3A])
+
+    # 4 segments should only beat 3 segments if distalSegmentInhibitionFactor is
+    # <= 4/3
+    self.assertEqual(set(self.pooler.getActiveCells()),
+                     representationA | representationB)
 
 
   @unittest.skip("Fails, need to discuss")
