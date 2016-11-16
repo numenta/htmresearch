@@ -59,7 +59,8 @@ def runSharedFeatures(noiseLevel=None, profile=False):
   """
   exp = L4L2Experiment(
     "shared_features",
-    enableLateralSP=True
+    enableLateralSP=True,
+    enableFeedForwardSP=True
   )
 
   pairs = createThreeObjects()
@@ -116,7 +117,8 @@ def runUncertainLocations(missingLoc=None, profile=False):
 
   exp = L4L2Experiment(
     "uncertain_location",
-    enableLateralSP = True
+    enableLateralSP = True,
+    enableFeedForwardSP=True
   )
 
   pairs = createThreeObjects()
@@ -168,7 +170,8 @@ def runStretchExperiment(numObjects=25):
   """
   exp = L4L2Experiment(
     "profiling_experiment",
-    enableLateralSP = True
+    enableLateralSP = True,
+    enableFeedForwardSP=True
   )
 
   objects = createObjectMachine(

@@ -128,7 +128,10 @@ class L4L2Experiment(object):
                seed=42,
                logCalls = False,
                enableLateralSP=False,
-               lateralSPOverrides=None):
+               lateralSPOverrides=None,
+               enableFeedForwardSP=False,
+               feedForwardSPOverrides=None
+               ):
     """
     Creates the network.
 
@@ -163,6 +166,20 @@ class L4L2Experiment(object):
              log can then be saved with saveLogs(). This allows us to recreate
              the complete network behavior using rerunExperimentFromLogfile
              which is very useful for debugging.
+
+    @param   enableLateralSP (bool)
+             If true, Spatial Pooler will be added between external input and
+             L4 lateral input
+
+    @param   lateralSPOverrides
+             Parameters to override in the lateral SP region
+
+    @param   enableFeedForwardSP (bool)
+             If true, Spatial Pooler will be added between external input and
+             L4 feed-forward input
+
+    @param   feedForwardSPOverrides
+             Parameters to override in the feed-forward SP region
 
     """
     # Handle logging - this has to be done first
@@ -202,6 +219,11 @@ class L4L2Experiment(object):
       self.config["lateralSPParams"] = self.getDefaultLateralSPParams(inputSize)
       if lateralSPOverrides:
         self.config["lateralSPParams"].update(lateralSPOverrides)
+
+    if enableFeedForwardSP:
+      self.config["feedForwardSPParams"] = self.getDefaultFeedForwardSPParams(inputSize)
+      if feedForwardSPOverrides:
+        self.config["feedForwardSPParams"].update(feedForwardSPOverrides)
 
     if L2Overrides is not None:
       self.config["L2Params"].update(L2Overrides)
@@ -626,6 +648,21 @@ class L4L2Experiment(object):
     }
 
   def getDefaultLateralSPParams(self, inputSize):
+    return {
+      "spatialImp": "cpp",
+      "globalInhibition": 1,
+      "columnCount": 1024,
+      "inputWidth": inputSize,
+      "numActiveColumnsPerInhArea": 40,
+      "seed": self.seed,
+      "potentialPct": 0.8,
+      "synPermConnected": 0.1,
+      "synPermActiveInc": 0.0001,
+      "synPermInactiveDec": 0.0005,
+      "maxBoost": 1.0,
+    }
+
+  def getDefaultFeedForwardSPParams(self, inputSize):
     return {
       "spatialImp": "cpp",
       "globalInhibition": 1,
