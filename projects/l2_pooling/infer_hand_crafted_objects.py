@@ -25,8 +25,8 @@ import os
 
 import matplotlib.pyplot as plt
 
-from htmresearch.algorithms.sensor_placement import greedySensorPositions
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
+from htmresearch.frameworks.layers.sensor_placement import greedySensorPositions
 
 
 
