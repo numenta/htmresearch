@@ -76,7 +76,7 @@ def getL2Params():
   return {
     "inputWidth": 2048 * 8,
     "cellCount": 4096,
-    "numActiveColumnsPerInhArea": 40,
+    "sdrSize": 40,
     "synPermProximalInc": 0.1,
     "synPermProximalDec": 0.001,
     "initialProximalPermanence": 0.6,
@@ -91,7 +91,6 @@ def getL2Params():
     "connectedPermanenceDistal": 0.5,
     "seed": 41,
     "learningMode": True,
-    "inferenceMode": True,
   }
 
 
@@ -245,18 +244,11 @@ def runExperiment(args):
 
   convergencePoint = averageConvergencePoint(
     exp.getInferenceStats(),"L2 Representation", 40)
-<<<<<<< HEAD
-  print "# distal syn {} # proximal syn {}, # convergence point={}" \
-        "train time {} infer time {}".format(
-    l2Params["sampleSizeDistal"],
-    l2Params["sampleSizeProximal"],
-=======
   print "objectSeed {} # distal syn {} # proximal syn {}, " \
         "# convergence point={:4.2f} train time {:4.3f} infer time {:4.3f}".format(
     objectSeed,
-    l2Params["maxNewDistalSynapseCount"],
-    l2Params["maxNewProximalSynapseCount"],
->>>>>>> master
+    l2Params["sampleSizeDistal"],
+    l2Params["sampleSizeProximal"],
     convergencePoint, L2TimeLearn, L2TimeInfer)
 
   # Return our convergence point as well as all the parameters and objects
@@ -264,21 +256,21 @@ def runExperiment(args):
   args.update({"convergencePoint": convergencePoint})
 
   # prepare experiment results
-  numLateralConnctions = []
+  numLateralConnections = []
   numProximalConnections = []
   for l2Columns in exp.L2Columns:
-    numLateralConnctions.append(
-      l2Columns._pooler.tm.basalConnections.numSynapses())
+    numLateralConnections.append(
+      l2Columns._pooler.numberOfDistalSynapses())
     numProximalConnections.append(
-      np.sum(l2Columns._pooler.proximalConnections.colSums()))
+      np.sum(l2Columns._pooler.numberOfProximalSynapses()))
 
   result = {
     'trial': objectSeed,
     'L2TimeLearn': args['L2TimeLearn'],
     'L2TimeInfer': args['L2TimeInfer'],
-    'maxNewProximalSynapseCount': l2Params["maxNewProximalSynapseCount"],
-    'maxNewDistalSynapseCount': l2Params["maxNewDistalSynapseCount"],
-    'numLateralConnctions': np.mean(np.array(numLateralConnctions)),
+    'sampleSizeProximal': l2Params["sampleSizeProximal"],
+    'sampleSizeDistal': l2Params["sampleSizeDistal"],
+    'numLateralConnections': np.mean(np.array(numLateralConnections)),
     'numProximalConnections': np.mean(np.array(numProximalConnections)),
     'convergencePoint': args['convergencePoint']}
   return result
@@ -324,29 +316,20 @@ def getProfileInfo(exp):
   return L2Time
 
 
-<<<<<<< HEAD
-def experimentVaryingSynapseSampling(sampleSizeDistalList,
-                                     sampleSizeProximalList):
-=======
 def experimentVaryingSynapseSampling(expParams,
-                                     maxNewDistalSynapseCountList,
-                                     maxNewProximalSynapseCountList):
+                                     sampleSizeDistalList,
+                                     sampleSizeProximalList):
   """
   Test multi-column convergence with varying amount of proximal/distal sampling
->>>>>>> master
 
   :return:
   """
   numRpts = 20
   df = None
-<<<<<<< HEAD
+  args = []
   for sampleSizeProximal in sampleSizeProximalList:
     for sampleSizeDistal in sampleSizeDistalList:
-=======
-  args = []
-  for maxNewProximalSynapseCount in maxNewProximalSynapseCountList:
-    for maxNewDistalSynapseCount in maxNewDistalSynapseCountList:
->>>>>>> master
+
       for rpt in range(numRpts):
         l4Params = getL4Params()
         l2Params = getL2Params()
@@ -369,29 +352,6 @@ def experimentVaryingSynapseSampling(expParams,
           }
         )
 
-<<<<<<< HEAD
-        numLateralConnections = []
-        numProximalConnections = []
-        for l2Columns in exp.L2Columns:
-          numLateralConnections.append(
-            l2Columns._pooler.numberOfDistalSynapses())
-          numProximalConnections.append(
-            l2Columns._pooler.numberOfProximalSynapses())
-
-        result = {
-          'trial': rpt,
-          'L2TimeLearn': results['L2TimeLearn'],
-          'L2TimeInfer': results['L2TimeInfer'],
-          'sampleSizeProximal': sampleSizeProximal,
-          'sampleSizeDistal': sampleSizeDistal,
-          'numLateralConnections': np.mean(np.array(numLateralConnections)),
-          'numProximalConnections': np.mean(np.array(numProximalConnections)),
-          'convergencePoint': results['convergencePoint']}
-        if df is None:
-          df = pd.DataFrame.from_dict(result, orient='index')
-        else:
-          df = pd.concat([df, pd.DataFrame.from_dict(result, orient='index')], axis=1)
-=======
   pool = Pool(processes=expParams['numWorkers'])
   result = pool.map(runExperiment, args)
 
@@ -404,7 +364,6 @@ def experimentVaryingSynapseSampling(expParams,
   # df = df.transpose()
   return result
 
->>>>>>> master
 
 def convertResultsToDataFrames(results):
   df = None
@@ -417,77 +376,16 @@ def convertResultsToDataFrames(results):
   return df
 
 
-<<<<<<< HEAD
-def experimentVaryingDistalSynapseNumber():
+def experimentVaryingDistalSynapseNumber(expParams):
   sampleSizeDistalList = [2, 3, 4, 5, 6, 8, 10, 15, 20]
   sampleSizeProximalList = [5]
-  df = experimentVaryingSynapseSampling(sampleSizeDistalList,
-                                        sampleSizeProximalList)
-  l2LearnTimeList = []
-  l2InferTimeList = []
-  convergencePointList =[]
-  numLateralConnectionsList = []
-  for sampleSizeDistal in sampleSizeDistalList:
-    idx = np.where(np.logical_and(
-      df['sampleSizeDistal'] == sampleSizeDistal,
-      df['sampleSizeProximal'] == sampleSizeProximalList[0]))[0]
-
-    l2LearnTimeList.append(np.mean(df['L2TimeLearn'].iloc[idx]))
-    l2InferTimeList.append(np.mean(df['L2TimeInfer'].iloc[idx]))
-    convergencePointList.append(np.mean(df['convergencePoint'].iloc[idx]))
-    numLateralConnectionsList.append(np.mean(df['numLateralConnections'].iloc[idx]))
-
-  fig, ax = plt.subplots(2, 2)
-
-  ax[0, 0].plot(sampleSizeDistalList, convergencePointList, '-o')
-  ax[0, 0].set_ylabel('# pts to converge')
-  ax[0, 0].set_xlabel('# new distal syns')
-
-  ax[0, 1].plot(sampleSizeDistalList, numLateralConnectionsList, '-o')
-  ax[0, 1].set_ylabel('# lateral connections')
-  ax[0, 1].set_xlabel('# new distal syns')
-
-  ax[1, 0].plot(sampleSizeDistalList, l2LearnTimeList, '-o')
-  ax[1, 0].set_ylabel('L2 training time (s)')
-  ax[1, 0].set_xlabel('# new distal syns')
-
-  ax[1, 1].plot(sampleSizeDistalList, l2InferTimeList, '-o')
-  ax[1, 1].set_ylabel('L2 infer time (s)')
-  ax[1, 1].set_xlabel('# new distal syns')
-
-  plt.tight_layout()
-  plt.savefig('plots/L2PoolingDistalSynapseSampling.pdf')
-
-
-def experimentVaryingProximalSynapseNumber():
-  sampleSizeDistalList = [5]
-  sampleSizeProximalList = [1, 2, 3, 4, 5, 6, 8, 10, 15]
-  df = experimentVaryingSynapseSampling(sampleSizeDistalList,
-                                        sampleSizeProximalList)
-  l2LearnTimeList = []
-  l2InferTimeList = []
-  convergencePointList =[]
-  numProximalConnectionsList = []
-  for sampleSizeProximal in sampleSizeProximalList:
-    idx = np.where(np.logical_and(
-      df['sampleSizeDistal'] == sampleSizeDistalList[0],
-      df['sampleSizeProximal'] == sampleSizeProximal))[0]
-
-    l2LearnTimeList.append(np.mean(df['L2TimeLearn'].iloc[idx]))
-    l2InferTimeList.append(np.mean(df['L2TimeInfer'].iloc[idx]))
-    convergencePointList.append(np.mean(df['convergencePoint'].iloc[idx]))
-    numProximalConnectionsList.append(np.mean(df['numProximalConnections'].iloc[idx]))
-=======
-def experimentVaryingDistalSynapseNumber(expParams):
-  maxNewDistalSynapseCountList = [2, 3, 4, 5, 6, 8, 10, 15, 20]
-  maxNewProximalSynapseCountList = [5]
   result = experimentVaryingSynapseSampling(expParams,
-                                        maxNewDistalSynapseCountList,
-                                        maxNewProximalSynapseCountList)
+                                            sampleSizeDistalList,
+                                            sampleSizeProximalList)
 
   resultsName = './results/multi_column_distal_sampling_' \
                 'numFeature_{}_numColumn_{}'.format(expParams['numFeatures'],
-                                                expParams['numColumns'])
+                                                    expParams['numColumns'])
   with open(resultsName,"wb") as f:
     cPickle.dump(result, f)
   return result
@@ -499,18 +397,17 @@ def experimentVaryingProximalSynapseNumber(expParams):
   :param expParams:
   :return:
   """
-  maxNewDistalSynapseCountList = [5]
-  maxNewProximalSynapseCountList = [1, 2, 3, 4, 5, 6, 8, 10, 15]
+  sampleSizeDistalList = [5]
+  sampleSizeProximalList = [1, 2, 3, 4, 5, 6, 8, 10, 15]
   result = experimentVaryingSynapseSampling(expParams,
-                                        maxNewDistalSynapseCountList,
-                                        maxNewProximalSynapseCountList)
+                                            sampleSizeDistalList,
+                                            sampleSizeProximalList)
   resultsName = './results/multi_column_proximal_sampling_' \
                 'numFeature_{}_numColumn_{}'.format(expParams['numFeatures'],
-                                                expParams['numColumns'])
+                                                    expParams['numColumns'])
   with open(resultsName,"wb") as f:
     cPickle.dump(result, f)
 
->>>>>>> master
 
 def plotDistalSynSamplingResult():
   fig, ax = plt.subplots(2, 2)
@@ -527,54 +424,37 @@ def plotDistalSynSamplingResult():
     l2LearnTimeList = []
     l2InferTimeList = []
     convergencePointList =[]
-    numLateralConnctionsList = []
+    numLateralConnectionsList = []
 
-    maxNewDistalSynapseCountList = np.sort(np.unique(df['maxNewDistalSynapseCount']))
-    maxNewProximalSynapseCountList = np.sort(np.unique(df['maxNewProximalSynapseCount']))
-    for maxNewDistalSynapseCount in maxNewDistalSynapseCountList:
+    sampleSizeDistalList = np.sort(np.unique(df['sampleSizeDistal']))
+    sampleSizeProximalList = np.sort(np.unique(df['sampleSizeProximal']))
+    for sampleSizeDistal in sampleSizeDistalList:
       idx = np.where(np.logical_and(
-        df['maxNewDistalSynapseCount'] == maxNewDistalSynapseCount,
-        df['maxNewProximalSynapseCount'] == maxNewProximalSynapseCountList[0]))[0]
+        df['sampleSizeDistal'] == sampleSizeDistal,
+        df['sampleSizeProximal'] == sampleSizeProximalList[0]))[0]
 
       l2LearnTimeList.append(np.mean(df['L2TimeLearn'].iloc[idx]))
       l2InferTimeList.append(np.mean(df['L2TimeInfer'].iloc[idx]))
       convergencePointList.append(np.mean(df['convergencePoint'].iloc[idx]))
-      numLateralConnctionsList.append(np.mean(df['numLateralConnctions'].iloc[idx]))
+      numLateralConnectionsList.append(np.mean(df['numLateralConnections'].iloc[idx]))
 
-<<<<<<< HEAD
-  ax[0, 0].plot(sampleSizeProximalList, convergencePointList, '-o')
-  ax[0, 0].set_ylabel('# pts to converge')
-  ax[0, 0].set_xlabel('# new proximal syns')
 
-  ax[0, 1].plot(sampleSizeProximalList, numProximalConnectionsList, '-o')
-  ax[0, 1].set_ylabel('# lateral connections')
-  ax[0, 1].set_xlabel('# new proximal syns')
-
-  ax[1, 0].plot(sampleSizeProximalList, l2LearnTimeList, '-o')
-  ax[1, 0].set_ylabel('L2 training time (s)')
-  ax[1, 0].set_xlabel('# new proximal syns')
-
-  ax[1, 1].plot(sampleSizeProximalList, l2InferTimeList, '-o')
-  ax[1, 1].set_ylabel('L2 infer time (s)')
-  ax[0, 1].set_xlabel('# new proximal syns')
-=======
-    ax[0, 0].plot(maxNewDistalSynapseCountList, convergencePointList, '-o',
+    ax[0, 0].plot(sampleSizeDistalList, convergencePointList, '-o',
                   label='numColumn_{}'.format(numColumns))
     ax[0, 0].set_ylabel('# pts to converge')
-    ax[0, 0].set_xlabel('# new distal syns')
+    ax[0, 0].set_xlabel('Distal sample size')
 
-    ax[0, 1].plot(maxNewDistalSynapseCountList, numLateralConnctionsList, '-o')
+    ax[0, 1].plot(sampleSizeDistalList, numLateralConnectionsList, '-o')
     ax[0, 1].set_ylabel('# lateral connections / column')
-    ax[0, 1].set_xlabel('# new distal syns')
+    ax[0, 1].set_xlabel('Distal sample size')
 
-    ax[1, 0].plot(maxNewDistalSynapseCountList, l2LearnTimeList, '-o')
+    ax[1, 0].plot(sampleSizeDistalList, l2LearnTimeList, '-o')
     ax[1, 0].set_ylabel('L2 training time (s)')
-    ax[1, 0].set_xlabel('# new distal syns')
+    ax[1, 0].set_xlabel('Distal sample size')
 
-    ax[1, 1].plot(maxNewDistalSynapseCountList, l2InferTimeList, '-o')
+    ax[1, 1].plot(sampleSizeDistalList, l2InferTimeList, '-o')
     ax[1, 1].set_ylabel('L2 infer time (s)')
-    ax[1, 1].set_xlabel('# new distal syns')
->>>>>>> master
+    ax[1, 1].set_xlabel('Distal sample size')
 
     legends.append('{}-column'.format(numColumns))
   plt.tight_layout()
@@ -598,37 +478,37 @@ def plotProximalSynSamplingResult():
     l2LearnTimeList = []
     l2InferTimeList = []
     convergencePointList =[]
-    numLateralConnctionsList = []
-    numProximalConnctionsList = []
+    numLateralConnectionsList = []
+    numProximalConnectionsList = []
 
-    maxNewDistalSynapseCountList = np.sort(np.unique(df['maxNewDistalSynapseCount']))
-    maxNewProximalSynapseCountList = np.sort(np.unique(df['maxNewProximalSynapseCount']))
-    for maxNewProximalSynapseCount in maxNewProximalSynapseCountList:
+    sampleSizeDistalList = np.sort(np.unique(df['sampleSizeDistal']))
+    sampleSizeProximalList = np.sort(np.unique(df['sampleSizeProximal']))
+    for sampleSizeProximal in sampleSizeProximalList:
       idx = np.where(np.logical_and(
-        df['maxNewDistalSynapseCount'] == maxNewDistalSynapseCountList[0],
-        df['maxNewProximalSynapseCount'] == maxNewProximalSynapseCount))[0]
+        df['sampleSizeDistal'] == sampleSizeDistalList[0],
+        df['sampleSizeProximal'] == sampleSizeProximal))[0]
 
       l2LearnTimeList.append(np.mean(df['L2TimeLearn'].iloc[idx]))
       l2InferTimeList.append(np.mean(df['L2TimeInfer'].iloc[idx]))
       convergencePointList.append(np.mean(df['convergencePoint'].iloc[idx]))
-      numProximalConnctionsList.append(np.mean(df['numProximalConnections'].iloc[idx]))
+      numProximalConnectionsList.append(np.mean(df['numProximalConnections'].iloc[idx]))
 
-    ax[0, 0].plot(maxNewProximalSynapseCountList, convergencePointList, '-o',
+    ax[0, 0].plot(sampleSizeProximalList, convergencePointList, '-o',
                   label='numColumn_{}'.format(numColumns))
     ax[0, 0].set_ylabel('# pts to converge')
-    ax[0, 0].set_xlabel('# new proximal syns')
+    ax[0, 0].set_xlabel('Proximal sample size')
 
-    ax[0, 1].plot(maxNewProximalSynapseCountList, numProximalConnctionsList, '-o')
+    ax[0, 1].plot(sampleSizeProximalList, numProximalConnectionsList, '-o')
     ax[0, 1].set_ylabel('# proximal connections / column')
-    ax[0, 1].set_xlabel('# new proximal syns')
+    ax[0, 1].set_xlabel('Proximal sample size')
 
-    ax[1, 0].plot(maxNewProximalSynapseCountList, l2LearnTimeList, '-o')
+    ax[1, 0].plot(sampleSizeProximalList, l2LearnTimeList, '-o')
     ax[1, 0].set_ylabel('L2 training time (s)')
-    ax[1, 0].set_xlabel('# new proximal syns')
+    ax[1, 0].set_xlabel('Proximal sample size')
 
-    ax[1, 1].plot(maxNewProximalSynapseCountList, l2InferTimeList, '-o')
+    ax[1, 1].plot(sampleSizeProximalList, l2InferTimeList, '-o')
     ax[1, 1].set_ylabel('L2 infer time (s)')
-    ax[1, 1].set_xlabel('# new proximal syns')
+    ax[1, 1].set_xlabel('Proximal sample size')
 
     legends.append('{}-column'.format(numColumns))
   plt.tight_layout()
