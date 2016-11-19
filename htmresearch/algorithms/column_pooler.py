@@ -60,10 +60,10 @@ class ColumnPooler(object):
     Parameters:
     ----------------------------
     @param  inputWidth (int)
-            The number of proximal inputs into this layer
+            The number of bits in the feedforward input
 
     @param  lateralInputWidths (list of ints)
-            The number of input bits in each lateral input layer
+            The number of bits in each lateral input
 
     @param  sdrSize (int)
             The number of active cells in an object SDR
@@ -169,7 +169,7 @@ class ColumnPooler(object):
   def _computeLearningMode(self, feedforwardInput, lateralInputs):
     """
     Learning mode: we are learning a new object. If there is no prior
-    activity, we randomly activate 1% of cells and create connections to
+    activity, we randomly activate 'sdrSize' cells and create connections to
     incoming input. If there was prior activity, we maintain it.
 
     These cells will represent the object and learn distal connections to each
@@ -538,7 +538,10 @@ def _rightVecSumAtNZGtThreshold_sparse(sparseMatrix,
                                        sparseBinaryArray,
                                        threshold):
   """
-  Like rightVecSumAtNZGtThreshold, but it supports sparse binary arrays.
+  For each row in 'sparseMatrix', computes the sum of ones in 'sparseBinaryArray'
+  for all indices i where sparseMatrix[row, i] >= threshold.
+
+  This is like rightVecSumAtNZGtThreshold, but it supports sparse binary arrays.
 
   @param sparseBinaryArray (sorted sequence)
   A sorted list of indices.
