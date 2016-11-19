@@ -186,7 +186,7 @@ def createL4L2Column(network, networkConfig, suffix=""):
 
   L4Params = copy.deepcopy(networkConfig["L4Params"])
   L4Params["basalInputWidth"] = networkConfig["externalInputSize"]
-  L4Params["apicalInputWidth"] = networkConfig["L2Params"]["columnCount"]
+  L4Params["apicalInputWidth"] = networkConfig["L2Params"]["cellCount"]
 
   network.addRegion(
     externalInputName, "py.RawSensor",
@@ -272,15 +272,14 @@ def createMultipleL4L2Columns(network, networkConfig):
   """
 
   # Create each column
-  numCellsInCorticalColumn = networkConfig["L2Params"]["columnCount"]
+  numCellsInCorticalColumn = networkConfig["L2Params"]["cellCount"]
   numCorticalColumns = networkConfig["numCorticalColumns"]
   for i in xrange(numCorticalColumns):
     networkConfigCopy = copy.deepcopy(networkConfig)
     layerConfig = networkConfigCopy["L2Params"]
     layerConfig["seed"] = layerConfig.get("seed", 42) + i
 
-    layerConfig["lateralInputWidth"] = ((numCorticalColumns - 1)*
-                                        numCellsInCorticalColumn)
+    layerConfig["numOtherCorticalColumns"] = numCorticalColumns - 1
 
     suffix = "_" + str(i)
     network = createL4L2Column(network, networkConfigCopy, suffix)

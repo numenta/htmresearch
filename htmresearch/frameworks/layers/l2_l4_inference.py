@@ -621,30 +621,27 @@ class L4L2Experiment(object):
 
   def getDefaultL2Params(self, inputSize):
     """
-    Returns a good default set of parameters to use in the L4 region.
+    Returns a good default set of parameters to use in the L2 region.
     """
     return {
-      "columnCount": 1024,
       "inputWidth": inputSize * 8,
-      "learningMode": True,
-      "inferenceMode": True,
-      "initialPermanence": 0.41,
-      "connectedPermanence": 0.5,
-      "permanenceIncrement": 0.1,
-      "permanenceDecrement": 0.02,
-      "numActiveColumnsPerInhArea": 40,
+      "cellCount": 4096,
+      "sdrSize": 40,
       "synPermProximalInc": 0.1,
       "synPermProximalDec": 0.001,
       "initialProximalPermanence": 0.6,
-      "minThresholdDistal": 10,
       "minThresholdProximal": 10,
-      "predictedSegmentDecrement": 0.002,
+      "sampleSizeProximal": 20,
+      "connectedPermanenceProximal": 0.5,
+      "synPermDistalInc": 0.1,
+      "synPermDistalDec": 0.001,
+      "initialDistalPermanence": 0.41,
       "activationThresholdDistal": 13,
-      "maxNewProximalSynapseCount": 20,
-      "maxNewDistalSynapseCount": 20,
-      "maxSynapsesPerDistalSegment": 255,
-      "maxSynapsesPerProximalSegment": 2000,
-      "seed": self.seed
+      "sampleSizeDistal": 20,
+      "connectedPermanenceDistal": 0.5,
+      "distalSegmentInhibitionFactor": 1.5,
+      "seed": self.seed,
+      "learningMode": True,
     }
 
   def getDefaultLateralSPParams(self, inputSize):
