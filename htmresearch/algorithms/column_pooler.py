@@ -237,14 +237,14 @@ class ColumnPooler(object):
 
     prevActiveCells = self.activeCells
 
-    # Calculate feedforward support
+    # Calculate the feedforward supported cells
     overlaps = _rightVecSumAtNZGtThreshold_sparse(
       self.proximalPermanences, sorted(feedforwardInput),
       self.connectedPermanenceProximal)
     feedforwardSupportedCells = set(
       numpy.where(overlaps >= self.minThresholdProximal)[0])
 
-    # Calculate lateral support
+    # Calculate the number of active segments on each cell
     numActiveSegmentsByCell = numpy.zeros(self.cellCount, dtype="int")
     overlaps = _rightVecSumAtNZGtThreshold_sparse(
       self.internalDistalPermanences, prevActiveCells,
@@ -256,12 +256,12 @@ class ColumnPooler(object):
         self.connectedPermanenceDistal)
       numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
 
-    # Choose from the feedforward supported cells
+    # Activate some of the feedforward supported cells
     minNumActiveCells = self.sdrSize / 2
     chosenCells = self._chooseCells(feedforwardSupportedCells,
                                     minNumActiveCells, numActiveSegmentsByCell)
 
-    # If necessary, choose from previously active cells
+    # If necessary, activate some of the previously active cells
     if len(chosenCells) < minNumActiveCells:
       remainingCandidates = [cell for cell in prevActiveCells
                              if cell not in feedforwardSupportedCells]
@@ -277,17 +277,10 @@ class ColumnPooler(object):
     Choose cells to activate, using their active segment counts to determine
     inhibition.
 
-    The first inhibition group is defined by the highest number of active
-    segments. It includes every cell that isn't inhibited by this segment count.
-
-    The second inhibition group is defined by the second highest number of
-    active segments. It includes every cell that wasn't part of the first
-    inhibition group and isn't inhibited by this segment count.
-
-    And so on.
-
-    These groups are computed and activated until we reach n or until there
-    are no remaining candidates.
+    Count backwards through the active segment counts. For each count, find all
+    of the cells that this count is unable to inhibit. Activate these cells.
+    If there aren't at least n active cells, repeat with the next lowest
+    segment count.
 
     Parameters:
     ----------------------------
