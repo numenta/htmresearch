@@ -32,7 +32,9 @@ column feeds back to L4.
                |  v           |
         --->  L4Column <------|
         |          ^          |
-        |          |        reset
+     + - - +       |       + - - +
+        SP       reset        SP
+     + - - +       |       + - - +
         |          |          |
 externalInput  sensorInput -->|
 
@@ -50,7 +52,10 @@ columns.)
                |  v           |                 |  v           |
         --->  L4Column <------|          --->  L4Column <------|
         |          ^          |          |          ^          |
-        |          |        reset        |          |        reset
+        |          |          |          |          |          |
+     + - - +    + - - +       |       + - - +    + - - +       |
+        SP         SP       reset        SP         SP       reset
+     + - - +    + - - +       |       + - - +    + - - +       |
         |          |          |          |          |          |
 externalInput  sensorInput -->|  externalInput  sensorInput -->|
 
@@ -69,6 +74,83 @@ from nupic.engine import Network
 from htmresearch.support.register_regions import registerAllResearchRegions
 
 
+
+def _addLateralSPRegion(network, networkConfig, suffix=""):
+  spParams = networkConfig.get("lateralSPParams", {})
+
+  if not spParams:
+    return # User has not specified SpatialPooler parameters and we can safely
+           # skip this part
+
+  spParams["inputWidth"] = networkConfig["externalInputSize"]
+
+  network.addRegion("lateralSPRegion", "py.SPRegion", json.dumps(spParams))
+
+
+def _addFeedForwardSPRegion(network, networkConfig, suffix=""):
+  spParams = networkConfig.get("feedForwardSPParams", {})
+
+  if not spParams:
+    return # User has not specified SpatialPooler parameters and we can safely
+           # skip this part
+
+  spParams["inputWidth"] = networkConfig["sensorInputSize"]
+
+  network.addRegion("feedForwardSPRegion", "py.SPRegion", json.dumps(spParams))
+
+
+def _linkLateralSPRegion(network, networkConfig, externalInputName, L4ColumnName):
+  spParams = networkConfig.get("lateralSPParams", {})
+
+  if not spParams:
+    # Link sensors to L4, ignoring SP
+    network.link(externalInputName, L4ColumnName, "UniformLink", "",
+                 srcOutput="dataOut", destInput="externalBasalInput")
+    return
+
+  # Link lateral input to SP input, SP output to L4 lateral input
+  network.link(externalInputName, "lateralSPRegion", "UniformLink", "",
+               srcOutput="dataOut", destInput="bottomUpIn")
+  network.link("lateralSPRegion", L4ColumnName, "UniformLink", "",
+               srcOutput="bottomUpOut", destInput="externalBasalInput")
+
+
+def _linkFeedForwardSPRegion(network, networkConfig, sensorInputName, L4ColumnName):
+  spParams = networkConfig.get("feedForwardSPParams", {})
+
+  if not spParams:
+    # Link sensors to L4, ignoring SP
+    network.link(sensorInputName, L4ColumnName, "UniformLink", "",
+                 srcOutput="dataOut", destInput="feedForwardInput")
+    return
+
+  # Link lateral input to SP input, SP output to L4 lateral input
+  network.link(sensorInputName, "feedForwardSPRegion", "UniformLink", "",
+               srcOutput="dataOut", destInput="bottomUpIn")
+  network.link("feedForwardSPRegion", L4ColumnName, "UniformLink", "",
+               srcOutput="bottomUpOut", destInput="feedForwardInput")
+
+
+def _setLateralSPPhases(network, networkConfig):
+  spParams = networkConfig.get("lateralSPParams", {})
+
+  if not spParams:
+    return  # User has not specified SpatialPooler parameters and we can safely
+    # skip this part
+
+  network.setPhases("lateralSPRegion", [1])
+
+
+def _setFeedForwardSPPhases(network, networkConfig):
+  spParams = networkConfig.get("feedForwardSPParams", {})
+
+  if not spParams:
+    return  # User has not specified SpatialPooler parameters and we can safely
+    # skip this part
+
+  network.setPhases("feedForwardSPRegion", [1])
+
+
 def createL4L2Column(network, networkConfig, suffix=""):
   """
   Create a a single column containing one L4 and one L2.
@@ -84,12 +166,19 @@ def createL4L2Column(network, networkConfig, suffix=""):
       },
       "L2Params": {
         <constructor parameters for ColumnPoolerRegion>
+      },
+      "lateralSPParams": {
+        <constructor parameters for optional SPRegion>
+      },
+      "feedForwardSPParams": {
+        <constructor parameters for optional SPRegion>
       }
     }
 
   Region names are externalInput, sensorInput, L4Column, and ColumnPoolerRegion.
   Each name has an optional string suffix appended to it.
   """
+
   externalInputName = "externalInput" + suffix
   sensorInputName = "sensorInput" + suffix
   L4ColumnName = "L4Column" + suffix
@@ -99,13 +188,17 @@ def createL4L2Column(network, networkConfig, suffix=""):
   L4Params["basalInputWidth"] = networkConfig["externalInputSize"]
   L4Params["apicalInputWidth"] = networkConfig["L2Params"]["cellCount"]
 
-  # Create the two sensors, L4 column, and L2 column
   network.addRegion(
     externalInputName, "py.RawSensor",
     json.dumps({"outputWidth": networkConfig["externalInputSize"]}))
   network.addRegion(
     sensorInputName, "py.RawSensor",
     json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
+
+  # Fixup network to include SP, if defined in networkConfig
+  _addLateralSPRegion(network, networkConfig, suffix)
+  _addFeedForwardSPRegion(network, networkConfig, suffix)
+
   network.addRegion(
     L4ColumnName, "py.ExtendedTMRegion",
     json.dumps(L4Params))
@@ -118,14 +211,16 @@ def createL4L2Column(network, networkConfig, suffix=""):
   # is not the same as the order of region creation.
   network.setPhases(externalInputName,[0])
   network.setPhases(sensorInputName,[0])
-  network.setPhases(L4ColumnName,[1])
-  network.setPhases(L2ColumnName,[2])
 
-  # Link sensors to L4
-  network.link(externalInputName, L4ColumnName, "UniformLink", "",
-               srcOutput="dataOut", destInput="externalBasalInput")
-  network.link(sensorInputName, L4ColumnName, "UniformLink", "",
-               srcOutput="dataOut", destInput="feedForwardInput")
+  _setLateralSPPhases(network, networkConfig)
+  _setFeedForwardSPPhases(network, networkConfig)
+
+  network.setPhases(L4ColumnName,[2])
+  network.setPhases(L2ColumnName,[3])
+
+  # Link SP region(s), if applicable
+  _linkLateralSPRegion(network, networkConfig, externalInputName, L4ColumnName)
+  _linkFeedForwardSPRegion(network, networkConfig, sensorInputName, L4ColumnName)
 
   # Link L4 to L2, and L2's feedback to L4
   network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
@@ -166,6 +261,12 @@ def createMultipleL4L2Columns(network, networkConfig):
       },
       "L2Params": {
         <constructor parameters for ColumnPoolerRegion>
+      },
+      "lateralSPParams": {
+        <constructor parameters for optional SPRegion>
+      },
+      "feedForwardSPParams": {
+        <constructor parameters for optional SPRegion>
       }
     }
   """
@@ -176,9 +277,7 @@ def createMultipleL4L2Columns(network, networkConfig):
   for i in xrange(numCorticalColumns):
     networkConfigCopy = copy.deepcopy(networkConfig)
     layerConfig = networkConfigCopy["L2Params"]
-    if "seed" not in layerConfig:
-      # TODO: for now, each L2 column should have a different seed
-      layerConfig["seed"] = 42 + i
+    layerConfig["seed"] = layerConfig.get("seed", 42) + i
 
     layerConfig["numOtherCorticalColumns"] = numCorticalColumns - 1
 
