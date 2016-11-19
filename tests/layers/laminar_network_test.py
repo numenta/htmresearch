@@ -47,25 +47,24 @@ networkConfig1 = {
     "maxNewSynapseCount": 20,
   },
   "L2Params": {
-    "columnCount": 1024,
     "inputWidth": 1024 * 8,
-    "learningMode": True,
-    "inferenceMode": True,
-    "initialPermanence": 0.51,
-    "connectedPermanence": 0.6,
-    "permanenceIncrement": 0.1,
-    "permanenceDecrement": 0.02,
-    "activationThresholdDistal": 10,
-    "minThresholdProximal": 10,
-    "predictedSegmentDecrement": 0.004,
-    "activationThresholdDistal": 10,
-    "maxNewProximalSynapseCount": 20,
-    "maxNewDistalSynapseCount": 20,
-    "numActiveColumnsPerInhArea": 40,
-    "synPermProximalInc":  0.1,
+    "cellCount": 4096,
+    "sdrSize": 40,
+    "synPermProximalInc": 0.1,
     "synPermProximalDec": 0.001,
-    "initialProximalPermanence": 0.6
-  }
+    "initialProximalPermanence": 0.6,
+    "minThresholdProximal": 10,
+    "sampleSizeProximal": 20,
+    "connectedPermanenceProximal": 0.5,
+    "synPermDistalInc": 0.1,
+    "synPermDistalDec": 0.001,
+    "initialDistalPermanence": 0.41,
+    "activationThresholdDistal": 13,
+    "sampleSizeDistal": 20,
+    "connectedPermanenceDistal": 0.5,
+    "distalSegmentInhibitionFactor": 1.5,
+    "learningMode": True,
+  },
 }
 
 networkConfig2 = {
@@ -91,24 +90,23 @@ networkConfig2 = {
     "seed": 42
   },
   "L2Params": {
-    "columnCount": 1024,
     "inputWidth": 1024 * 8,
-    "learningMode": True,
-    "inferenceMode": True,
-    "initialPermanence": 0.51,
-    "connectedPermanence": 0.6,
-    "permanenceIncrement": 0.1,
-    "permanenceDecrement": 0.02,
-    "activationThresholdDistal": 10,
-    "minThresholdProximal": 10,
-    "predictedSegmentDecrement": 0.004,
-    "activationThresholdDistal": 10,
-    "maxNewProximalSynapseCount": 20,
-    "maxNewDistalSynapseCount": 20,
-    "numActiveColumnsPerInhArea": 40,
-    "synPermProximalInc":  0.1,
+    "cellCount": 4096,
+    "sdrSize": 40,
+    "synPermProximalInc": 0.1,
     "synPermProximalDec": 0.001,
-    "initialProximalPermanence": 0.6
+    "initialProximalPermanence": 0.6,
+    "minThresholdProximal": 10,
+    "sampleSizeProximal": 20,
+    "connectedPermanenceProximal": 0.5,
+    "synPermDistalInc": 0.1,
+    "synPermDistalDec": 0.001,
+    "initialDistalPermanence": 0.41,
+    "activationThresholdDistal": 13,
+    "sampleSizeDistal": 20,
+    "connectedPermanenceDistal": 0.5,
+    "distalSegmentInhibitionFactor": 1.5,
+    "learningMode": True,
   }
 }
 
@@ -135,24 +133,23 @@ networkConfig3 = {
 
   },
   "L2Params": {
-    "columnCount": 1024,
     "inputWidth": 1024 * 8,
-    "learningMode": True,
-    "inferenceMode": True,
-    "initialPermanence": 0.51,
-    "connectedPermanence": 0.6,
-    "permanenceIncrement": 0.1,
-    "permanenceDecrement": 0.02,
-    "activationThresholdDistal": 10,
-    "minThresholdProximal": 10,
-    "predictedSegmentDecrement": 0.004,
-    "activationThresholdDistal": 10,
-    "maxNewProximalSynapseCount": 20,
-    "maxNewDistalSynapseCount": 20,
-    "numActiveColumnsPerInhArea": 40,
-    "synPermProximalInc":  0.1,
+    "cellCount": 4096,
+    "sdrSize": 40,
+    "synPermProximalInc": 0.1,
     "synPermProximalDec": 0.001,
-    "initialProximalPermanence": 0.6
+    "initialProximalPermanence": 0.6,
+    "minThresholdProximal": 10,
+    "sampleSizeProximal": 20,
+    "connectedPermanenceProximal": 0.5,
+    "synPermDistalInc": 0.1,
+    "synPermDistalDec": 0.001,
+    "initialDistalPermanence": 0.41,
+    "activationThresholdDistal": 13,
+    "sampleSizeDistal": 20,
+    "connectedPermanenceDistal": 0.5,
+    "distalSegmentInhibitionFactor": 1.5,
+    "learningMode": True,
   }
 }
 
@@ -264,25 +261,24 @@ class LaminarNetworkTest(unittest.TestCase):
 
       },
       "L2Params": {
-        "columnCount": 2048,
-        "inputWidth": 512 * 16,
-        "learningMode": True,
-        "inferenceMode": True,
-        "initialPermanence": 0.45,
-        "connectedPermanence": 0.75,
-        "permanenceIncrement": 0.23,
-        "permanenceDecrement": 0.2,
-        "activationThresholdDistal": 8,
-        "minThresholdProximal": 12,
-        "predictedSegmentDecrement": 0.03,
-        "activationThresholdDistal": 8,
-        "maxNewProximalSynapseCount": 15,
-        "activationThresholdDistal": 15,
-        "numActiveColumnsPerInhArea": 35,
+        "inputWidth": 512 * 8,
+        "cellCount": 2048,
+        "sdrSize": 30,
         "synPermProximalInc": 0.12,
-        "synPermProximalDec": 0.1,
-        "initialProximalPermanence": 0.56
-      }
+        "synPermProximalDec": 0.011,
+        "initialProximalPermanence": 0.8,
+        "minThresholdProximal": 8,
+        "sampleSizeProximal": 17,
+        "connectedPermanenceProximal": 0.6,
+        "synPermDistalInc": 0.09,
+        "synPermDistalDec": 0.002,
+        "initialDistalPermanence": 0.52,
+        "activationThresholdDistal": 15,
+        "sampleSizeDistal": 25,
+        "connectedPermanenceDistal": 0.6,
+        "distalSegmentInhibitionFactor": 1.2,
+        "learningMode": True,
+      },
     }
 
     net = createNetwork(customConfig)
@@ -481,6 +477,11 @@ class LaminarNetworkTest(unittest.TestCase):
       L4Representation02
     )
     self.assertEqual(len(self.getL4BurstingCells(L4Column)), 0)
+
+    # send reset signal
+    sensorInput.addResetToQueue(0)
+    externalInput.addResetToQueue(0)
+    net.run(1)
 
     # (F1, L1)
     sensorInput.addDataToQueue(features[1], 0, 0)
@@ -774,16 +775,6 @@ class LaminarNetworkTest(unittest.TestCase):
     )
     self.assertEqual(len(self.getL4BurstingCells(L4Column1)), 0)
 
-    # check predictions for next step...
-    self.assertEqual(
-      self.getCurrentL2PredictiveCells(L2Column0),
-      L2RepresentationB0
-    )
-    self.assertEqual(
-      self.getCurrentL2PredictiveCells(L2Column1),
-      L2RepresentationB1
-    )
-
     # ambiguous pattern: (F1, L1)
     sensorInput0.addDataToQueue(features0[1], 0, 0)
     externalInput0.addDataToQueue(locations0[1], 0, 0)
@@ -856,11 +847,6 @@ class LaminarNetworkTest(unittest.TestCase):
   def getCurrentL2Representation(self, column):
     """Returns the current active representation in a given L2 column."""
     return set(column._pooler.activeCells)
-
-
-  def getCurrentL2PredictiveCells(self, column):
-    """Returns the current predictive cells in a given L2 column."""
-    return set(column._pooler.tm.getPredictiveCells())
 
 
 
