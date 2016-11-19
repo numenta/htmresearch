@@ -86,7 +86,7 @@ def getL2Params():
     "synPermDistalInc": 0.1,
     "synPermDistalDec": 0.001,
     "initialDistalPermanence": 0.41,
-    "minThresholdDistal": 13,
+    "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
     "seed": 41,
@@ -336,7 +336,7 @@ def experimentVaryingSynapseSampling(expParams,
         l2Params["sampleSizeProximal"] = sampleSizeProximal
         l2Params["minThresholdProximal"] = sampleSizeProximal
         l2Params["sampleSizeDistal"] = sampleSizeDistal
-        l2Params["minThresholdDistal"] = sampleSizeDistal
+        l2Params["activationThresholdDistal"] = sampleSizeDistal
 
         args.append(
           {

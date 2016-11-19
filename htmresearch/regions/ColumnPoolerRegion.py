@@ -211,7 +211,7 @@ class ColumnPoolerRegion(PyRegion):
           accessMode="Read",
           dataType="Int32",
           count=1),
-        minThresholdDistal=dict(
+        activationThresholdDistal=dict(
           description="If the number of synapses active on a distal segment is "
                       "at least this threshold, the segment is considered "
                       "active",
@@ -276,7 +276,7 @@ class ColumnPoolerRegion(PyRegion):
                synPermDistalDec=0.10,
                initialDistalPermanence=0.21,
                sampleSizeDistal=20,
-               minThresholdDistal=13,
+               activationThresholdDistal=13,
                connectedPermanenceDistal=0.50,
                distalSegmentInhibitionFactor=1.5,
 
@@ -301,7 +301,7 @@ class ColumnPoolerRegion(PyRegion):
     self.synPermDistalDec = synPermDistalDec
     self.initialDistalPermanence = initialDistalPermanence
     self.sampleSizeDistal = sampleSizeDistal
-    self.minThresholdDistal = minThresholdDistal
+    self.activationThresholdDistal = activationThresholdDistal
     self.connectedPermanenceDistal = connectedPermanenceDistal
     self.distalSegmentInhibitionFactor = distalSegmentInhibitionFactor
     self.seed = seed
@@ -334,7 +334,7 @@ class ColumnPoolerRegion(PyRegion):
         "synPermDistalInc": self.synPermDistalInc,
         "synPermDistalDec": self.synPermDistalDec,
         "initialDistalPermanence": self.initialDistalPermanence,
-        "minThresholdDistal": self.minThresholdDistal,
+        "activationThresholdDistal": self.activationThresholdDistal,
         "sampleSizeDistal": self.sampleSizeDistal,
         "connectedPermanenceDistal": self.connectedPermanenceDistal,
         "distalSegmentInhibitionFactor": self.distalSegmentInhibitionFactor,

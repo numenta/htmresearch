@@ -607,7 +607,7 @@ class L4L2Experiment(object):
       "synPermDistalInc": 0.1,
       "synPermDistalDec": 0.001,
       "initialDistalPermanence": 0.41,
-      "minThresholdDistal": 13,
+      "activationThresholdDistal": 13,
       "sampleSizeDistal": 20,
       "connectedPermanenceDistal": 0.5,
       "distalSegmentInhibitionFactor": 1.5,

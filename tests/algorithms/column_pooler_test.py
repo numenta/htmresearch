@@ -1280,7 +1280,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
       "sampleSizeProximal": 20,
       "connectedPermanenceProximal": 0.6,
       "initialDistalPermanence": 0.51,
-      "minThresholdDistal": 10,
+      "activationThresholdDistal": 10,
       "sampleSizeDistal": 20,
       "connectedPermanenceDistal": 0.6,
       "seed": self.seed,

@@ -118,7 +118,7 @@ def getL2Params():
     "synPermDistalInc": 0.1,
     "synPermDistalDec": 0.001,
     "initialDistalPermanence": 0.41,
-    "minThresholdDistal": 10,
+    "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
     "distalSegmentInhibitionFactor": 1.5,

@@ -51,7 +51,7 @@ class ColumnPooler(object):
                synPermDistalDec=0.001,
                initialDistalPermanence=0.6,
                sampleSizeDistal=20,
-               minThresholdDistal=13,
+               activationThresholdDistal=13,
                connectedPermanenceDistal=0.50,
                distalSegmentInhibitionFactor=1.5,
 
@@ -101,7 +101,7 @@ class ColumnPooler(object):
     @param  initialDistalPermanence (float)
             Initial permanence value for distal synapses
 
-    @param  minThresholdDistal (int)
+    @param  activationThresholdDistal (int)
             Number of active synapses required to activate a distal segment
 
     @param  connectedPermanenceDistal (float)
@@ -131,7 +131,7 @@ class ColumnPooler(object):
     self.initialDistalPermanence = initialDistalPermanence
     self.connectedPermanenceDistal = connectedPermanenceDistal
     self.sampleSizeDistal = sampleSizeDistal
-    self.minThresholdDistal = minThresholdDistal
+    self.activationThresholdDistal = activationThresholdDistal
     self.distalSegmentInhibitionFactor = distalSegmentInhibitionFactor
 
     self.activeCells = ()
@@ -249,12 +249,12 @@ class ColumnPooler(object):
     overlaps = _rightVecSumAtNZGtThreshold_sparse(
       self.internalDistalPermanences, prevActiveCells,
       self.connectedPermanenceDistal)
-    numActiveSegmentsByCell[overlaps >= self.minThresholdDistal] += 1
+    numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
     for i, lateralInput in enumerate(lateralInputs):
       overlaps = _rightVecSumAtNZGtThreshold_sparse(
         self.distalPermanences[i], sorted(lateralInput),
         self.connectedPermanenceDistal)
-      numActiveSegmentsByCell[overlaps >= self.minThresholdDistal] += 1
+      numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
 
     # Choose from the feedforward supported cells
     minNumActiveCells = self.sdrSize / 2
