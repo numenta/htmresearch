@@ -24,42 +24,19 @@ This class supports using an L4-L2 network for experiments with feedback
 and pure temporal sequences.
 """
 
-import os
 import random
-import inspect
-import cPickle
 import numpy
 
 from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.frameworks.layers.laminar_network import createNetwork
 
 
-def rerunExperimentFromLogfile(logFilename):
-  """
-  Create an experiment class according to the sequence of operations in logFile
-  and return resulting experiment instance.
-  """
-  with open(logFilename,"rb") as f:
-    callLog = cPickle.load(f)
-
-  # Assume first one is call to constructor
-  exp = FeedbackExperiment(**callLog[0][1])
-
-  # Call subsequent methods, using stored parameters
-  for call in callLog[1:]:
-    method = getattr(exp, call[0])
-    method(**call[1])
-
-  return exp
-
-
 class FeedbackExperiment(object):
   """
-  Feedback experiment.
+  Class for running simple feedback experiments.
 
-  This experiment uses a laminar network to test out various properties of
+  These experiments use a laminar network to test out various properties of
   inference and learning using a sensors and a network with feedback.
-
   """
 
   def __init__(self,
@@ -70,10 +47,9 @@ class FeedbackExperiment(object):
                L2Overrides=None,
                L4Overrides=None,
                numLearningPasses=4,
-               seed=42,
-               logCalls = False):
+               seed=42):
     """
-    Creates the network.
+    Creates the network and initialize the experiment.
 
     Parameters:
     ----------------------------
@@ -97,24 +73,7 @@ class FeedbackExperiment(object):
 
     @param   numLearningPasses (int)
              Number of times each pair should be seen to be learnt
-
-    @param   logCalls (bool)
-             If true, calls to main functions will be logged internally. The
-             log can then be saved with saveLogs(). This allows us to recreate
-             the complete network behavior using rerunExperimentFromLogfile
-             which is very useful for debugging.
-
     """
-    # Handle logging - this has to be done first
-    self.callLog = []
-    self.logCalls = logCalls
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      self.callLog.append([inspect.getframeinfo(frame)[2], values])
-
     registerAllResearchRegions()
     self.name = name
 
@@ -169,9 +128,10 @@ class FeedbackExperiment(object):
     self.statistics = []
 
 
-  def learnSequences(self, sequences, reset=True):
+  def learnSequences(self, sequences):
     """
-    Learns all provided sequences, and optionally resets the network in between.
+    Learns all provided sequences. Always reset the network in between
+    sequences.
 
     Sequences format:
 
@@ -193,20 +153,7 @@ class FeedbackExperiment(object):
     ----------------------------
     @param   sequences (list)
              Sequences to learn, in the canonical format specified above
-
-    @param   reset (bool)
-             If set to True (which is the default value), the network will
-             be reset after learning.
-
     """
-    # Handle logging - this has to be done first
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      self.callLog.append([inspect.getframeinfo(frame)[2], values])
-
     # This method goes through four phases:
     #   1) We first train L4 on the sequences, over multiple passes
     #   2) We then train L2 in one pass.
@@ -229,11 +176,13 @@ class FeedbackExperiment(object):
           self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
           iterations += 1
 
+        # Reset signal
         self.sensorInputs[0].addDataToQueue([], 1, 0)
         iterations += 1
 
       if iterations > 0:
         self.network.run(iterations)
+
 
     # print "2) Train L2"
     self._enableL2()
@@ -291,14 +240,6 @@ class FeedbackExperiment(object):
              accuracy figures
 
     """
-    # Handle logging - this has to be done first
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      self.callLog.append([inspect.getframeinfo(frame)[2], values])
-
     if enableFeedback is False:
       self._disableL2()
     else:
@@ -329,9 +270,6 @@ class FeedbackExperiment(object):
 
     avgActiveCells = float(totalActiveCells) / len(sequence)
     avgPredictedActiveCells = float(totalPredictedActiveCells) / len(sequence)
-    # print "Sequence length=",len(sequence)
-    # print "totalActiveCells=",totalActiveCells,"totalPredictedActiveCells=",totalPredictedActiveCells
-    # print "avgActiveCells=",avgActiveCells,"avgPredictedActiveCells",avgPredictedActiveCells
 
     return avgActiveCells,avgPredictedActiveCells,activityTrace
 
@@ -340,18 +278,6 @@ class FeedbackExperiment(object):
     """
     Sends a reset signal to the network.
     """
-    # Handle logging - this has to be done first
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      (_, filename,
-       _, _, _, _) = inspect.getouterframes(inspect.currentframe())[1]
-      if os.path.splitext(os.path.basename(__file__))[0] != \
-         os.path.splitext(os.path.basename(filename))[0]:
-        self.callLog.append([inspect.getframeinfo(frame)[2], values])
-
     for col in xrange(self.numColumns):
       self.sensorInputs[col].addResetToQueue(sequenceId)
     self.network.run(1)
@@ -439,18 +365,6 @@ class FeedbackExperiment(object):
       "distalSegmentInhibitionFactor": 1.5,
       "seed": self.seed,
     }
-
-
-  def saveLog(self, logFilename):
-    """
-    Save the call log history into this file.
-
-    @param  logFilename (path)
-            Filename in which to save a pickled version of the call logs.
-
-    """
-    with open(logFilename,"wb") as f:
-      cPickle.dump(self.callLog,f)
 
 
   def _setLearningMode(self, l4Learning = False, l2Learning=False):
