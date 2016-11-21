@@ -153,10 +153,8 @@ def runInference(exp, sequences, enableFeedback=True):
 
 def runExperiment(args):
   """
-  Run experiment.  What did you think this does?
-
-  args is a dict representing the parameters. We do it this way to support
-  multiprocessing. args contains one or more of the following keys:
+  Run experiment.  args is a dict representing the parameters. We do it this way
+  to support multiprocessing. args contains one or more of the following keys:
 
   @param noiseLevel  (int)   Noise level to add during inference. This an
                              integer corresponding to how many times temporal
@@ -201,21 +199,18 @@ def runExperiment(args):
 
   # Setup experiment and train the network on sequences
   exp = FeedbackExperiment(
-    "feedback_experiment",
     numLearningPasses=2*sequenceLen,    # To handle high order sequences
     seed=seed,
     L4Overrides=L4Overrides,
   )
   exp.learnSequences(sequences)
 
-  # Run various inference experiments
-
-  # Run without any noise. This becomes our baseline error
+  # Run inference without any noise. This becomes our baseline error
   standardError, _ = runInference(exp, sequences)
   inferenceErrors[0,0] = standardError
   inferenceErrors[1,0] = standardError
 
-  # Successively delete elements from each sequence
+  # Apply noise to sequences and run inference with and without feedback
   for t in range(noiseLevel):
     print "\n\nnoiseType=",noiseType, "level=",t+1
     if noiseType == 'skip':
@@ -232,8 +227,10 @@ def runExperiment(args):
       noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
                                         noiseStart+t,
                                         spatialNoise=0.3, noiseType=noiseType)
-    inferenceErrors[0,t+1], activityFeedback = runInference(exp, noisySequences, enableFeedback=True)
-    inferenceErrors[1,t+1], activityNoFeedback = runInference(exp, noisySequences, enableFeedback=False)
+    inferenceErrors[0,t+1], activityFeedback = runInference(
+      exp, noisySequences, enableFeedback=True)
+    inferenceErrors[1,t+1], activityNoFeedback = runInference(
+      exp, noisySequences, enableFeedback=False)
 
 
   # Return our various structures

@@ -40,7 +40,6 @@ class FeedbackExperiment(object):
   """
 
   def __init__(self,
-               name,
                numCorticalColumns=1,
                inputSize=2048,
                numInputBits=40,
@@ -53,9 +52,6 @@ class FeedbackExperiment(object):
 
     Parameters:
     ----------------------------
-    @param   name (str)
-             Experiment name
-
     @param   numCorticalColumns (int)
              Number of cortical columns in the network
 
@@ -75,7 +71,6 @@ class FeedbackExperiment(object):
              Number of times each pair should be seen to be learnt
     """
     registerAllResearchRegions()
-    self.name = name
 
     self.numLearningPoints = numLearningPasses
     self.numColumns = numCorticalColumns
