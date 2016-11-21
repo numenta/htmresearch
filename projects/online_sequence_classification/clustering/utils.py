@@ -7,38 +7,6 @@ from sklearn import manifold
 from distances import cluster_distance_factory
 
 
-
-def cluster_category_frequencies(cluster):
-  """
-  Returns frequency of each category in this cluster. E.g:
-  [
-    {
-      'actual_category': 1.0,
-      'num_points': 20
-    },
-       ...
-    {
-      'actual_category': 5.0,
-      'num_points': 30
-    }   
-  ]
-  """
-  labels = []
-  for point in cluster.points:
-    labels.append(point['label'])
-
-  unique, counts = np.unique(labels, return_counts=True)
-  category_frequencies = []
-  for actualCategory, numberOfPoints in np.asarray((unique, counts)).T:
-    category_frequencies.append({
-      'actual_category': actualCategory,
-      'num_points': numberOfPoints
-    })
-
-  return category_frequencies
-
-
-
 def moving_average(last_ma, new_point_value, moving_average_window):
   """
   Online computation of moving average.
@@ -60,8 +28,8 @@ def clustering_stats(record_number,
   if closest_cluster:
     # info about predicted cluster. The predicted cluster category is the 
     # most frequent category found in the points of the cluster.
-    category_frequencies = cluster_category_frequencies(closest_cluster)
-    cluster_category = category_frequencies[0]['actual_category']
+    category_frequencies = closest_cluster.label_distribution()
+    cluster_category = category_frequencies[0]['label']
 
     # compute accuracy      
     if cluster_category == actual_category:
@@ -154,21 +122,22 @@ def find_cluster_repetitions(sdrs, cluster_ids):
   :return sdr_clusters: (dict of list) keys are the cluster IDs. Values are 
     the SDRs in the cluster.
   """
-  num_clusters = get_num_clusters(cluster_ids)
-  repetition_counter = np.zeros((num_clusters,))
+  unique_cluster_ids = list(set(cluster_ids))
+  repetition_counter = {cluster_id: 0 for cluster_id in unique_cluster_ids}
   last_category = None
   cluster_repetitions = []
-  sdr_clusters = {i: [] for i in range(num_clusters)}
+  sdr_clusters = {cluster_id: [] for cluster_id in unique_cluster_ids}
   for i in range(len(cluster_ids)):
-    category = int(cluster_ids[i])
+    category = cluster_ids[i]
+    sdr = sdrs[i]
     if category != last_category:
       repetition_counter[category] += 1
     last_category = category
     cluster_repetitions.append(repetition_counter[category] - 1)
-    sdr_clusters[category].append(sdrs[i])
+    sdr_clusters[category].append(sdr)
 
-  assert len(cluster_ids) == sum([len(sdr_clusters[i])
-                                  for i in range(num_clusters)])
+  assert len(cluster_ids) == sum([len(sdr_clusters[cluster_id])
+                                  for cluster_id in unique_cluster_ids])
 
   return cluster_repetitions, sdr_clusters
 

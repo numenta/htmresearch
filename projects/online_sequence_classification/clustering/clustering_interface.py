@@ -8,7 +8,7 @@ from abc import ABCMeta, abstractmethod
 class Point(object):
   def __init__(self, value, label=None):
     """
-    Point holding the value of an SDR and it's optional actual 
+    Point holding the value of an SDR and its optional actual 
     label (ground truth).
     
     :param value: (np.array) point value (SDR)
@@ -22,7 +22,8 @@ class Point(object):
 class Cluster(object):
   def __init__(self, id, center):
     """
-    Cluster of points
+    Cluster of points.
+    
     :param id: (int) ID of the cluster
     :param center: (Point) center of the cluster
     """
@@ -31,7 +32,6 @@ class Cluster(object):
     self.points = []
     self.labels = []
     self.size = 0
-    self.cluster_distances = []
 
 
   def add(self, point):
@@ -98,11 +98,6 @@ class ClusteringInterface(object):
     
     :param distance_func: (function) distance metric. The function signature 
       is "distance_func(p1, p2)" where p1 and p2 are instances of Point.
-    
-    :param max_num_clusters: (int) the max number of clusters allowed. 
-      - If the number of clusters reaches max_num_clusters then start pruning 
-        (merging) clusters that are close together. 
-      - If max_num_clusters is "None" then don't prune / merge clusters.
     """
     self.distance_func = distance_func
     self.clusters = {}  # Keys are cluster IDs; Values are Clusters.
@@ -115,16 +110,23 @@ class ClusteringInterface(object):
     :param point: (Point) input point
     :return closest: (Cluster) closet cluster to the point.
     """
-    
+
     return self.find_closest_cluster(point)
 
 
   def prune(self, max_num_clusters):
+    """
+    If there are too many clusters clusters than the max number of clusters 
+    allowed, merge the closest clusters.
+    
+    :param max_num_clusters: (int) max number of clusters allowed.
+    """
     while len(self.clusters) >= max_num_clusters:
       self.merge_closest_clusters()
 
 
-  def noisy_sequence(self, anomaly_score, noisy_anomaly_score=0.3):
+  @staticmethod
+  def noisy_sequence(anomaly_score, noisy_anomaly_score=0.3):
     """
     Determine whether a temporal sequence is noisy.
     
@@ -139,7 +141,8 @@ class ClusteringInterface(object):
       return False
 
 
-  def stable_sequence(self, anomaly_score, stable_anomaly_score=0.2):
+  @staticmethod
+  def stable_sequence(anomaly_score, stable_anomaly_score=0.2):
     """
     Determine whether a temporal sequence is stable.
     
@@ -157,6 +160,7 @@ class ClusteringInterface(object):
   def average_cluster_distance(self):
     """
     Average cluster distance between clusters.
+    
     :return average_distance: (float) average distance between clusters. 
     """
     cluster_distances = []
@@ -177,7 +181,8 @@ class ClusteringInterface(object):
 
   def add_or_merge_cluster(self, cluster, merge_threshold):
     """
-    Add cluster to the existing clusters or merge it with the closest cluster. 
+    Add cluster to the existing clusters or merge it with the closest cluster.
+    
     :param cluster: (Cluster) the cluster to assign
     :param merge_threshold: (float) If the distance to the closest 
       cluster is below the merge threshold, the cluster will be merged with 
@@ -185,7 +190,7 @@ class ClusteringInterface(object):
       is  above the merge threshold, then the cluster will be added to the 
       existing clusters.
     """
-    distance_to_closest, closest,  = self.find_closest_cluster(cluster.center)
+    distance_to_closest, closest, = self.find_closest_cluster(cluster.center)
     if closest and distance_to_closest < merge_threshold:
       closest.merge(cluster)
     else:
@@ -205,7 +210,8 @@ class ClusteringInterface(object):
 
   def add_cluster(self, cluster):
     """
-    Add cluster to the existing clusters
+    Add cluster to the existing clusters.
+    
     :param cluster: (Cluster) cluster to add.
     :raise: (ValueError) raise error if the cluster ID is already used. 
     """
@@ -213,10 +219,12 @@ class ClusteringInterface(object):
       raise ValueError('Cluster ID %s already exists' % cluster.id)
     self.clusters[cluster.id] = cluster
 
+
   @abstractmethod
   def find_closest_cluster(self, point):
     """
-    Find the closest cluster to a point
+    Find the closest cluster to a point.
+    
     :param point: (Point) The point of interest.
     :return distance_to_closest: (float) distance between closest cluster 
       center and point.
@@ -227,17 +235,8 @@ class ClusteringInterface(object):
 
   def merge_closest_clusters(self):
     """
-    Merge closest two clusters
+    Merge closest two clusters.
     """
-    # smallest_inter_cluster_dist = heapq.heappop(self.inter_cluster_dists)
-    # cluster_to_merge = smallest_inter_cluster_dist.c2
-    # smallest_inter_cluster_dist.c1.merge(cluster_to_merge)
-    # if cluster_to_merge in self.clusters:
-    #   self.clusters.pop(cluster_to_merge.id, None)
-    # 
-    # self._remove_dist(cluster_to_merge)
-    # self._update_dist(smallest_inter_cluster_dist.c1)
-
     inter_cluster_dists = []
     for c1 in self.clusters.values():
       for c2 in self.clusters.values():
