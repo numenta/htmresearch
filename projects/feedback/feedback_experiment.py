@@ -258,8 +258,6 @@ def plotErrorsvsNoise(errors):
 
   # Plot each curve
   colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
-  # colorList = {3: 'r', 5: 'b', 7: 'g', 11: 'k'}
-  # markerList = {3: 'o', 5: 'D', 7: '*', 11: 'x'}
   noiseRange = range(0,len(errors[0]))
   for f in [0,1]:
     print errors[f]
@@ -268,7 +266,6 @@ def plotErrorsvsNoise(errors):
   # format
   plt.legend(['Feedback enabled', 'Feedback disabled'], loc="lower right")
   plt.xlabel("Noise")
-  # plt.xticks(columnRange)
   plt.ylabel("Prediction error")
   plt.title("Prediction error vs noise")
 
