@@ -126,7 +126,12 @@ class L4L2Experiment(object):
                L4Overrides=None,
                numLearningPoints=3,
                seed=42,
-               logCalls = False):
+               logCalls = False,
+               enableLateralSP=False,
+               lateralSPOverrides=None,
+               enableFeedForwardSP=False,
+               feedForwardSPOverrides=None
+               ):
     """
     Creates the network.
 
@@ -162,6 +167,20 @@ class L4L2Experiment(object):
              the complete network behavior using rerunExperimentFromLogfile
              which is very useful for debugging.
 
+    @param   enableLateralSP (bool)
+             If true, Spatial Pooler will be added between external input and
+             L4 lateral input
+
+    @param   lateralSPOverrides
+             Parameters to override in the lateral SP region
+
+    @param   enableFeedForwardSP (bool)
+             If true, Spatial Pooler will be added between external input and
+             L4 feed-forward input
+
+    @param   feedForwardSPOverrides
+             Parameters to override in the feed-forward SP region
+
     """
     # Handle logging - this has to be done first
     self.callLog = []
@@ -195,6 +214,16 @@ class L4L2Experiment(object):
       "L4Params": self.getDefaultL4Params(inputSize),
       "L2Params": self.getDefaultL2Params(inputSize),
     }
+
+    if enableLateralSP:
+      self.config["lateralSPParams"] = self.getDefaultLateralSPParams(inputSize)
+      if lateralSPOverrides:
+        self.config["lateralSPParams"].update(lateralSPOverrides)
+
+    if enableFeedForwardSP:
+      self.config["feedForwardSPParams"] = self.getDefaultFeedForwardSPParams(inputSize)
+      if feedForwardSPOverrides:
+        self.config["feedForwardSPParams"].update(feedForwardSPOverrides)
 
     if L2Overrides is not None:
       self.config["L2Params"].update(L2Overrides)
@@ -592,30 +621,57 @@ class L4L2Experiment(object):
 
   def getDefaultL2Params(self, inputSize):
     """
-    Returns a good default set of parameters to use in the L4 region.
+    Returns a good default set of parameters to use in the L2 region.
     """
     return {
-      "columnCount": 1024,
       "inputWidth": inputSize * 8,
-      "learningMode": True,
-      "inferenceMode": True,
-      "initialPermanence": 0.41,
-      "connectedPermanence": 0.5,
-      "permanenceIncrement": 0.1,
-      "permanenceDecrement": 0.02,
-      "numActiveColumnsPerInhArea": 40,
+      "cellCount": 4096,
+      "sdrSize": 40,
       "synPermProximalInc": 0.1,
       "synPermProximalDec": 0.001,
       "initialProximalPermanence": 0.6,
-      "minThresholdDistal": 10,
       "minThresholdProximal": 10,
-      "predictedSegmentDecrement": 0.002,
+      "sampleSizeProximal": 20,
+      "connectedPermanenceProximal": 0.5,
+      "synPermDistalInc": 0.1,
+      "synPermDistalDec": 0.001,
+      "initialDistalPermanence": 0.41,
       "activationThresholdDistal": 13,
-      "maxNewProximalSynapseCount": 20,
-      "maxNewDistalSynapseCount": 20,
-      "maxSynapsesPerDistalSegment": 255,
-      "maxSynapsesPerProximalSegment": 2000,
-      "seed": self.seed
+      "sampleSizeDistal": 20,
+      "connectedPermanenceDistal": 0.5,
+      "distalSegmentInhibitionFactor": 1.5,
+      "seed": self.seed,
+      "learningMode": True,
+    }
+
+  def getDefaultLateralSPParams(self, inputSize):
+    return {
+      "spatialImp": "cpp",
+      "globalInhibition": 1,
+      "columnCount": 1024,
+      "inputWidth": inputSize,
+      "numActiveColumnsPerInhArea": 40,
+      "seed": self.seed,
+      "potentialPct": 0.8,
+      "synPermConnected": 0.1,
+      "synPermActiveInc": 0.0001,
+      "synPermInactiveDec": 0.0005,
+      "maxBoost": 1.0,
+    }
+
+  def getDefaultFeedForwardSPParams(self, inputSize):
+    return {
+      "spatialImp": "cpp",
+      "globalInhibition": 1,
+      "columnCount": 1024,
+      "inputWidth": inputSize,
+      "numActiveColumnsPerInhArea": 40,
+      "seed": self.seed,
+      "potentialPct": 0.8,
+      "synPermConnected": 0.1,
+      "synPermActiveInc": 0.0001,
+      "synPermInactiveDec": 0.0005,
+      "maxBoost": 1.0,
     }
 
 
