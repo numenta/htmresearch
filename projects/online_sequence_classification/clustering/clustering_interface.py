@@ -1,0 +1,275 @@
+import heapq
+import numpy as np
+
+from abc import ABCMeta, abstractmethod
+
+
+
+class Point(object):
+  def __init__(self, value, label=None):
+    """
+    Point holding the value of an SDR and it's optional actual 
+    label (ground truth).
+    
+    :param value: (np.array) point value (SDR)
+    :param label: (int) point label
+    """
+    self.value = value
+    self.label = label
+
+
+
+class Cluster(object):
+  def __init__(self, id, center):
+    """
+    Cluster of points
+    :param id: (int) ID of the cluster
+    :param center: (Point) center of the cluster
+    """
+    self.id = id
+    self.center = center
+    self.points = []
+    self.labels = []
+    self.size = 0
+    self.cluster_distances = []
+
+
+  def add(self, point):
+    """
+    Add point to cluster.
+    
+    :param point: (Point) point to add to cluster.
+    """
+    assert type(point) == Point
+    self.points.append(point)
+    self.labels.append(point.label)
+    if self.center is None:
+      self.center = point
+    self.center.value = ((self.center.value * self.size + point.value) /
+                         (self.size + 1))
+    self.size += 1
+
+
+  def merge(self, cluster):
+    self.center.value = ((self.center.value * self.size +
+                          cluster.center.value * cluster.size) /
+                         (self.size + cluster.size))
+    self.size += cluster.size
+    while len(cluster.points) > 0:
+      point = cluster.points.pop()
+      self.points.append(point)
+      self.labels.append(point.label)
+
+
+  def label_distribution(self):
+    """
+    Returns distribution of each label in this cluster. E.g:
+    [
+      {
+        'label': 1,
+        'num_points': 20
+      },
+         ...
+      {
+        'label': 5,
+        'num_points': 30
+      }   
+    ]
+    """
+    unique, counts = np.unique(self.labels, return_counts=True)
+    label_distribution = []
+    for label, num_points in np.asarray((unique, counts)).T:
+      label_distribution.append({
+        'label': label,
+        'num_points': num_points
+      })
+
+    return label_distribution
+
+
+
+class ClusteringInterface(object):
+  __metaclass__ = ABCMeta
+
+
+  def __init__(self, distance_func):
+    """
+    Clustering algorithm.
+    
+    :param distance_func: (function) distance metric. The function signature 
+      is "distance_func(p1, p2)" where p1 and p2 are instances of Point.
+    
+    :param max_num_clusters: (int) the max number of clusters allowed. 
+      - If the number of clusters reaches max_num_clusters then start pruning 
+        (merging) clusters that are close together. 
+      - If max_num_clusters is "None" then don't prune / merge clusters.
+    """
+    self.distance_func = distance_func
+    self.clusters = {}  # Keys are cluster IDs; Values are Clusters.
+
+
+  def infer(self, point):
+    """
+    Find the closest cluster to a point.
+    
+    :param point: (Point) input point
+    :return closest: (Cluster) closet cluster to the point.
+    """
+    
+    return self.find_closest_cluster(point)
+
+
+  def prune(self, max_num_clusters):
+    while len(self.clusters) >= max_num_clusters:
+      self.merge_closest_clusters()
+
+
+  def noisy_sequence(self, anomaly_score, noisy_anomaly_score=0.3):
+    """
+    Determine whether a temporal sequence is noisy.
+    
+    :param anomaly_score: (float) anomaly score of the temporal memory
+    :param noisy_anomaly_score: (float) threshold to determine whether the 
+      anomaly score is noisy.
+    :return: (bool) whether the sequence is noisy 
+    """
+    if anomaly_score > noisy_anomaly_score:
+      return True
+    else:
+      return False
+
+
+  def stable_sequence(self, anomaly_score, stable_anomaly_score=0.2):
+    """
+    Determine whether a temporal sequence is stable.
+    
+    :param anomaly_score: (float) anomaly score of the temporal memory
+    :param stable_anomaly_score: (float) threshold to determine whether the 
+      anomaly score is stable.
+    :return: (bool) whether the sequence is stable 
+    """
+    if anomaly_score < stable_anomaly_score:
+      return True
+    else:
+      return False
+
+
+  def average_cluster_distance(self):
+    """
+    Average cluster distance between clusters.
+    :return average_distance: (float) average distance between clusters. 
+    """
+    cluster_distances = []
+    cluster_ids = self.clusters.keys()
+    for i in cluster_ids:
+      for j in cluster_ids:
+        if i != j:
+          ci = self.clusters[i].center.value
+          cj = self.clusters[j].center.value
+          d = self.distance_func(ci, cj)
+          cluster_distances.append(d)
+
+    if len(cluster_distances) > 0:
+      return np.mean(cluster_distances)
+    else:
+      return 0.0
+
+
+  def add_or_merge_cluster(self, cluster, merge_threshold):
+    """
+    Add cluster to the existing clusters or merge it with the closest cluster. 
+    :param cluster: (Cluster) the cluster to assign
+    :param merge_threshold: (float) If the distance to the closest 
+      cluster is below the merge threshold, the cluster will be merged with 
+      the closest cluster. Otherwise, if the distance to the closest cluster 
+      is  above the merge threshold, then the cluster will be added to the 
+      existing clusters.
+    """
+    distance_to_closest, closest,  = self.find_closest_cluster(cluster.center)
+    if closest and distance_to_closest < merge_threshold:
+      closest.merge(cluster)
+    else:
+      self.add_cluster(cluster)
+
+
+  def create_cluster(self, center=None):
+    """
+    Create a cluster.
+    
+    :param center: (Point) point to add.
+    """
+    cluster_id = len(self.clusters) + 1
+    cluster = Cluster(cluster_id, center)
+    return cluster
+
+
+  def add_cluster(self, cluster):
+    """
+    Add cluster to the existing clusters
+    :param cluster: (Cluster) cluster to add.
+    :raise: (ValueError) raise error if the cluster ID is already used. 
+    """
+    if cluster.id in self.clusters:
+      raise ValueError('Cluster ID %s already exists' % cluster.id)
+    self.clusters[cluster.id] = cluster
+
+  @abstractmethod
+  def find_closest_cluster(self, point):
+    """
+    Find the closest cluster to a point
+    :param point: (Point) The point of interest.
+    :return distance_to_closest: (float) distance between closest cluster 
+      center and point.
+    :return closest: (Cluster) closest cluster to point.
+    """
+    raise NotImplementedError()
+
+
+  def merge_closest_clusters(self):
+    """
+    Merge closest two clusters
+    """
+    # smallest_inter_cluster_dist = heapq.heappop(self.inter_cluster_dists)
+    # cluster_to_merge = smallest_inter_cluster_dist.c2
+    # smallest_inter_cluster_dist.c1.merge(cluster_to_merge)
+    # if cluster_to_merge in self.clusters:
+    #   self.clusters.pop(cluster_to_merge.id, None)
+    # 
+    # self._remove_dist(cluster_to_merge)
+    # self._update_dist(smallest_inter_cluster_dist.c1)
+
+    inter_cluster_dists = []
+    for c1 in self.clusters.values():
+      for c2 in self.clusters.values():
+        if c1 != c2:
+          d = self.distance_func(c1.center.value, c2.center.value)
+          inter_cluster_dists.append(InterClusterDist(c1, c2, d))
+
+    heapq.heapify(inter_cluster_dists)
+    smallest_inter_cluster_dist = heapq.heappop(inter_cluster_dists)
+    cluster_to_merge = smallest_inter_cluster_dist.c2
+    smallest_inter_cluster_dist.c1.merge(cluster_to_merge)
+    del self.clusters[cluster_to_merge.id]
+
+
+
+class InterClusterDist(object):
+  """
+  Inter-cluster distance.
+   
+  Useful to define cmp() for heapq.
+  """
+
+
+  def __init__(self, c1, c2, c1_c2_dist):
+    self.c1 = c1
+    self.c2 = c2
+    self.dist = c1_c2_dist
+
+
+  def __cmp__(self, inter_cluster_dist):
+    return cmp(self.dist, inter_cluster_dist.dist)
+
+
+  def __str__(self):
+    return "InterClusterDist(%f)" % self.dist
