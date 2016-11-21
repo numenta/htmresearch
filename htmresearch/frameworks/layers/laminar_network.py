@@ -24,7 +24,8 @@ and for experimenting with different laminar structures.
 
 The first network type supported, "L4L2Column", is a single cortical column
 containing and L4 and an L2 layer. L4 gets two inputs and feeds into L2. The L2
-column feeds back to L4.
+column feeds back to L4. There is an option to include a SpatialPooler
+in between the inputs and L4:
 
              L2Column  <------|
                ^  |           |
@@ -58,7 +59,6 @@ columns.)
      + - - +    + - - +       |       + - - +    + - - +       |
         |          |          |          |          |          |
 externalInput  sensorInput -->|  externalInput  sensorInput -->|
-
 
 For both network types, regions will be named as shown above plus a suffix
 indicating column number, such as "externalInput_0", "L2Column_3", etc. The
@@ -177,6 +177,15 @@ def createL4L2Column(network, networkConfig, suffix=""):
 
   Region names are externalInput, sensorInput, L4Column, and ColumnPoolerRegion.
   Each name has an optional string suffix appended to it.
+
+  Configuration options:
+
+    "lateralSPParams" and "feedForwardSPParams" are optional. If included
+    appropriate spatial pooler regions will be added to the network.
+
+    If externalInputSize is 0, the externalInput sensor (and SP if appropriate)
+    will NOT be created. In this case it is expected that L4 will have
+    formInternalBasalConnections set to True.
   """
 
   externalInputName = "externalInput" + suffix
@@ -188,15 +197,17 @@ def createL4L2Column(network, networkConfig, suffix=""):
   L4Params["basalInputWidth"] = networkConfig["externalInputSize"]
   L4Params["apicalInputWidth"] = networkConfig["L2Params"]["cellCount"]
 
-  network.addRegion(
-    externalInputName, "py.RawSensor",
-    json.dumps({"outputWidth": networkConfig["externalInputSize"]}))
+  if networkConfig["externalInputSize"] > 0:
+    network.addRegion(
+      externalInputName, "py.RawSensor",
+      json.dumps({"outputWidth": networkConfig["externalInputSize"]}))
   network.addRegion(
     sensorInputName, "py.RawSensor",
     json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
 
   # Fixup network to include SP, if defined in networkConfig
-  _addLateralSPRegion(network, networkConfig, suffix)
+  if networkConfig["externalInputSize"] > 0:
+    _addLateralSPRegion(network, networkConfig, suffix)
   _addFeedForwardSPRegion(network, networkConfig, suffix)
 
   network.addRegion(
@@ -209,17 +220,20 @@ def createL4L2Column(network, networkConfig, suffix=""):
   # Set phases appropriately so regions are executed in the proper sequence
   # This is required when we create multiple columns - the order of execution
   # is not the same as the order of region creation.
-  network.setPhases(externalInputName,[0])
+  if networkConfig["externalInputSize"] > 0:
+    network.setPhases(externalInputName,[0])
   network.setPhases(sensorInputName,[0])
 
   _setLateralSPPhases(network, networkConfig)
   _setFeedForwardSPPhases(network, networkConfig)
 
+  # L4 and L2 regions always have phases 2 and 3, respectively
   network.setPhases(L4ColumnName,[2])
   network.setPhases(L2ColumnName,[3])
 
   # Link SP region(s), if applicable
-  _linkLateralSPRegion(network, networkConfig, externalInputName, L4ColumnName)
+  if networkConfig["externalInputSize"] > 0:
+    _linkLateralSPRegion(network, networkConfig, externalInputName, L4ColumnName)
   _linkFeedForwardSPRegion(network, networkConfig, sensorInputName, L4ColumnName)
 
   # Link L4 to L2, and L2's feedback to L4
@@ -249,7 +263,8 @@ def createMultipleL4L2Columns(network, networkConfig):
   Region names have a column number appended as in externalInput_0,
   externalInput_1, etc.
 
-  networkConfig must be of the following format:
+  networkConfig must be of the following format (see createL4L2Column for
+  further documentation):
 
     {
       "networkType": "MultipleL4L2Columns",
@@ -272,7 +287,6 @@ def createMultipleL4L2Columns(network, networkConfig):
   """
 
   # Create each column
-  numCellsInCorticalColumn = networkConfig["L2Params"]["cellCount"]
   numCorticalColumns = networkConfig["numCorticalColumns"]
   for i in xrange(numCorticalColumns):
     networkConfigCopy = copy.deepcopy(networkConfig)
