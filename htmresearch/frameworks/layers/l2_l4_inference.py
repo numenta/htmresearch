@@ -36,6 +36,7 @@ information).
     numCorticalColumns=2,
   )
 
+  # Set up inputs for learning
   objects = createObjectMachine(
     machineType="simple",
     numInputBits=20,
@@ -45,10 +46,13 @@ information).
   )
   objects.addObject([(1, 2), (2, 3)], name=0)
   objects.addObject([(1, 2), (4, 5)], name=1)
+  objectsToLearn = objects.provideObjectsToLearn()
 
-  exp.learnObjects(objects.provideObjectsToLearn(), reset=True)
+  # Do the learning phase
+  exp.learnObjects(objectsToLearn, reset=True)
   exp.printProfile()
 
+  # Set up inputs for inference
   inferConfig = {
     "numSteps": 2,
     "noiseLevel": 0.05,
@@ -57,14 +61,17 @@ information).
       1: [(2, 3), (1, 2)],
     }
   }
+  objectsToInfer = objects.provideObjectToInfer(inferConfig)
 
-  exp.infer(objects.provideObjectToInfer(inferConfig),
+  # Do the inference phase
+  exp.infer(objectsToInfer,
             objectName=0, reset=True)
 
   exp.plotInferenceStats(
     fields=["L2 Representation",
             "Overlap L2 with object",
             "L4 Representation"],
+    plotDir="plots",
   )
 
 More examples are available in projects/layers/single_column.py and
@@ -112,8 +119,6 @@ class L4L2Experiment(object):
   we directly use the locations on the object.
 
   """
-
-  PLOT_DIRECTORY = "plots/"
 
 
   def __init__(self,
@@ -256,9 +261,6 @@ class L4L2Experiment(object):
     # will be populated during training
     self.objectL2Representations = {}
     self.statistics = []
-
-    if not os.path.exists(self.PLOT_DIRECTORY):
-      os.makedirs(self.PLOT_DIRECTORY)
 
 
   def learnObjects(self, objects, reset=True):
@@ -446,6 +448,7 @@ class L4L2Experiment(object):
 
   def plotInferenceStats(self,
                          fields,
+                         plotDir="plots",
                          experimentID=0,
                          onePlot=True):
     """
@@ -463,10 +466,12 @@ class L4L2Experiment(object):
              If true, all cortical columns will be merged in one plot.
 
     """
+    if not os.path.exists(plotDir):
+      os.makedirs(plotDir)
+
     plt.figure()
     stats = self.statistics[experimentID]
     objectName = stats["object"]
-    initPath = self.PLOT_DIRECTORY + self.name + "_exp_" + str(experimentID)
 
     for i in xrange(self.numColumns):
       if not onePlot:
@@ -487,12 +492,14 @@ class L4L2Experiment(object):
 
       # save
       if not onePlot:
-        path = initPath + "_C" + str(i) + ".png"
+        relPath = "{}_exp_{}_C{}.png".format(self.name, experimentID, i)
+        path = os.path.join(plotDir, relPath)
         plt.savefig(path)
         plt.close()
 
     if onePlot:
-      path = initPath + ".png"
+      relPath = "{}_exp_{}.png".format(self.name, experimentID)
+      path = os.path.join(plotDir, relPath)
       plt.savefig(path)
       plt.close()
 
