@@ -22,6 +22,8 @@
 
 from optparse import OptionParser
 import pprint
+import os
+import pickle
 from tabulate import tabulate
 
 from nupic.research.spatial_pooler import SpatialPooler as PYSpatialPooler
@@ -110,17 +112,17 @@ def getSDRDataSetParams(inputVectorType):
   elif inputVectorType == 'randomBarPairs':
     params = {'dataType': 'randomBarPairs',
               'numInputVectors': 50,
-              'nX': 20,
-              'nY': 20,
-              'barHalfLength': 3,
+              'nX': 10,
+              'nY': 10,
+              'barHalfLength': 2,
               'seed': 41}
   elif inputVectorType == 'randomCross':
     params = {'dataType': 'randomCross',
               'numInputVectors': 50,
               'numCrossPerInput': 1,
-              'nX': 20,
-              'nY': 20,
-              'barHalfLength': 3,
+              'nX': 10,
+              'nY': 10,
+              'barHalfLength': 2,
               'seed': 41}
   elif inputVectorType == 'randomBarSets':
     params = {'dataType': 'randomBarSets',
@@ -240,6 +242,7 @@ if __name__ == "__main__":
   if expName == 'defaultName':
     expName = "dataType_{}_boosting_{}".format(
       inputVectorType, _options.boosting)
+  createDirectories(expName)
 
   params = getSDRDataSetParams(inputVectorType)
 
@@ -277,6 +280,8 @@ if __name__ == "__main__":
   classificationRobustnessTrace = []
   noiseRobustnessTrace = []
 
+  connectedSyns = getConnectedSyns(sp)
+
   if spatialImp == "monitored_sp":
     sp.mmClearHistory()
 
@@ -308,14 +313,14 @@ if __name__ == "__main__":
       # classify SDRs with noise
       noiseLevelList = np.linspace(0, 1.0, 21)
       classification_accuracy = classificationAccuracyVsNoise(
-        sp, inputVectors[:20, :], noiseLevelList)
+        sp, inputVectors, noiseLevelList)
       classificationRobustnessTrace.append(
         np.trapz(classification_accuracy, noiseLevelList))
-      np.savez('./results/classification/{}_{}'.format(expName, epoch),
+      np.savez('./results/classification/{}/epoch_{}'.format(expName, epoch),
               noiseLevelList, classification_accuracy)
 
     activeColumnsPreviousEpoch = copy.copy(activeColumnsCurrentEpoch)
-    connectedCountsPreviousEpoch = copy.copy(connectedCounts)
+    connectedSynsPreviousEpoch = copy.copy(connectedSyns)
 
     # Learn is turned off at the first epoch to gather stats of untrained SP
     learn = False if epoch == 0 else True
@@ -324,22 +329,12 @@ if __name__ == "__main__":
     sdrOrders = np.random.permutation(np.arange(numInputVector))
 
     # train SP here,
-    for i in range(numInputVector):
-      outputColumns = np.zeros(sp.getColumnDimensions(), dtype=uintType)
-      inputVector = copy.deepcopy(inputVectors[sdrOrders[i]][:])
-
-      sp.compute(inputVector, learn, outputColumns)
-
-      activeColumnsCurrentEpoch[sdrOrders[i]][:] = np.reshape(outputColumns,
-                                                              (1, columnNumber))
-      overlaps = sp.getOverlaps()
-      inputOverlapWinner = overlaps[np.where(outputColumns > 0)[0]]
-      inputOverlapWinnerTrace.append(np.mean(inputOverlapWinner))
+    activeColumnsCurrentEpoch = runSPOnBatch(
+      sp, inputVectors, learn, sdrOrders)
 
     # gather trace stats here
-    connectedCounts = connectedCounts.astype(uintType)
     sp.getConnectedCounts(connectedCounts)
-    connectedCounts = connectedCounts.astype(realDType)
+    connectedSyns = getConnectedSyns(sp)
 
     entropyTrace.append(calculateEntropy(activeColumnsCurrentEpoch[:, aliveColumns]))
 
@@ -357,11 +352,11 @@ if __name__ == "__main__":
 
       numConnectedSynapsesTrace.append(np.sum(connectedCounts))
 
-      numNewSynapses = connectedCounts - connectedCountsPreviousEpoch
+      numNewSynapses = connectedSyns - connectedSynsPreviousEpoch
       numNewSynapses[numNewSynapses < 0] = 0
       numNewlyConnectedSynapsesTrace.append(np.sum(numNewSynapses))
 
-      numEliminatedSynapses = connectedCountsPreviousEpoch - connectedCounts
+      numEliminatedSynapses = connectedSynsPreviousEpoch - connectedSyns
       numEliminatedSynapses[numEliminatedSynapses < 0] = 0
       numEliminatedSynapsesTrace.append(np.sum(numEliminatedSynapses))
 
@@ -389,7 +384,7 @@ if __name__ == "__main__":
       # analyze RF properties
       if inputVectorType == "randomSDR":
         analyzeReceptiveFieldSparseInputs(inputVectors, sp)
-        plt.savefig('figures/inputOverlap_epoch{}_{}.pdf'.format(epoch, expName))
+        plt.savefig('figures/inputOverlaps/{}/epoch{}.pdf'.format(expName, epoch))
       elif inputVectorType == 'correlatedSDRPairs':
         additionalInfo = sdrData.getAdditionalInfo()
         inputVectors1 = additionalInfo["inputVectors1"]
@@ -397,18 +392,21 @@ if __name__ == "__main__":
         corrPairs = additionalInfo["corrPairs"]
         analyzeReceptiveFieldCorrelatedInputs(
           inputVectors, sp, params, inputVectors1, inputVectors2)
-        plt.savefig('figures/inputOverlap_epoch{}_{}.pdf'.format(epoch, expName))
+        plt.savefig(
+          'figures/inputOverlaps/{}/epoch{}.pdf'.format(expName, epoch))
       elif (inputVectorType == "randomBarPairs" or
                 inputVectorType == "randomCross" or
                 inputVectorType == "randomBarSets"):
         plotReceptiveFields2D(sp, params['nX'], params['nY'])
-        plt.savefig('figures/inputOverlap_epoch{}_{}.pdf'.format(epoch, expName))
+        plt.savefig(
+          'figures/inputOverlaps/{}/epoch{}.pdf'.format(expName, epoch))
 
 
   if spatialImp == "monitored_sp":
     # plot permanence for a single column when monitored sp is used
     columnIndex = 240
-    permInfo = sp.recoverPermanence(columnIndex)
+    permInfo = sp.recoverPermanence(columnIndex, getPermTrace=1)
+    permTrace = permInfo['permTrace']
     plotPermInfo(permInfo)
 
   plotExampleInputOutput(sp, inputVectors, expName + "final")
@@ -426,4 +424,12 @@ if __name__ == "__main__":
     # classify SDRs with noise
     for epoch in range(numEpochs):
       npzfile = np.load(
-        './results/classification/{}_{}.npz'.format(expName, epoch))
+        './results/classification/{}/epoch_{}.npz'.format(expName, epoch))
+
+  traces = {'numNewlyConnectedSynapsesTrace': numNewlyConnectedSynapsesTrace,
+            'numEliminatedSynapsesTrace': numEliminatedSynapsesTrace,
+            'noiseRobustnessTrace': noiseRobustnessTrace,
+            'stabilityTrace': stabilityTrace,
+            'entropyTrace': entropyTrace,
+            'expName': expName}
+  pickle.dump(traces, open('./results/traces/{}/trace'.format(expName), 'wb'))

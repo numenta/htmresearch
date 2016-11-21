@@ -30,6 +30,8 @@ import numpy
 import cPickle
 from multiprocessing import Pool
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.rcParams['pdf.fonttype'] = 42
 
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 from htmresearch.frameworks.layers.object_machine_factory import (
@@ -121,6 +123,7 @@ def runExperiment(args):
   noiseLevel = args.get("noiseLevel", None)  # TODO: implement this?
   numPoints = args.get("numPoints", 10)
   trialNum = args.get("trialNum", 42)
+  plotInferenceStats = args.get("plotInferenceStats", True)
 
   # Create the objects
   objects = createObjectMachine(
@@ -134,11 +137,11 @@ def runExperiment(args):
                                     numLocations=numLocations,
                                     numFeatures=numFeatures)
 
-  print "Objects are:"
-  for o in objects:
-    pairs = objects[o]
-    pairs.sort()
-    print str(o) + ": " + str(pairs)
+  # print "Objects are:"
+  # for o in objects:
+  #   pairs = objects[o]
+  #   pairs.sort()
+  #   print str(o) + ": " + str(pairs)
 
   # Setup experiment and train the network
   name = "convergence_O%03d_L%03d_F%03d_C%03d_T%03d" % (
@@ -183,16 +186,21 @@ def runExperiment(args):
     if profile:
       exp.printProfile(reset=True)
 
-    exp.plotInferenceStats(
-      fields=["L2 Representation",
-              "Overlap L2 with object",
-              "L4 Representation"],
-      experimentID=objectId,
-      onePlot=False,
-    )
+    if plotInferenceStats:
+      exp.plotInferenceStats(
+        fields=["L2 Representation",
+                "Overlap L2 with object",
+                "L4 Representation"],
+        experimentID=objectId,
+        onePlot=False,
+      )
 
   convergencePoint = averageConvergencePoint(
     exp.getInferenceStats(),"L2 Representation", 40)
+
+  print
+  print "# objects {} # features {} # locations {} # columns {} trial # {}".format(
+    numObjects, numFeatures, numLocations, numColumns, trialNum)
   print "Average convergence point=",convergencePoint
 
   # Return our convergence point as well as all the parameters and objects
@@ -218,8 +226,8 @@ def runExperimentPool(numObjects,
   for that parameter. The cross product of everything is run, and each
   combination is run nTrials times.
 
-  Returns a dict containing detailed results from each experiment. Also pickles
-  the results in resultsName for later analysis.
+  Returns a list of dict containing detailed results from each experiment.
+  Also pickles the results in resultsName for later analysis.
 
   Example:
     results = runExperimentPool(
@@ -243,12 +251,19 @@ def runExperimentPool(numObjects,
                "numFeatures": f,
                "numColumns": c,
                "trialNum": t,
+               "plotInferenceStats": False,
                }
             )
 
+  print "{} experiments to run, {} workers".format(len(args), numWorkers)
   # Run the pool
-  pool = Pool(processes=numWorkers)
-  result = pool.map(runExperiment, args)
+  if numWorkers > 1:
+    pool = Pool(processes=numWorkers)
+    result = pool.map(runExperiment, args)
+  else:
+    result = []
+    for arg in args:
+      result.append(runExperiment(arg))
 
   print "Full results:"
   pprint.pprint(result, width=150)
@@ -270,21 +285,22 @@ def plotConvergenceStats(convergence, columnRange, featureRange):
   Features: the list of features we want to plot
   """
   plt.figure()
-  plotPath = os.path.join("plots", "convergence_1.png")
+  plotPath = os.path.join("plots", "convergence_1.pdf")
 
   # Plot each curve
-  colorList = {3: 'r', 5: 'b', 7: 'g', 11: 'k'}
-  markerList = {3: 'o', 5: 'D', 7: '*', 11: 'x'}
-  for f in featureRange:
+  legendList = []
+  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
+
+  for i in range(len(featureRange)):
+    f = featureRange[i]
     print columnRange
     print convergence[f-1,columnRange]
+    legendList.append('unique features={}'.format(f))
     plt.plot(columnRange, convergence[f-1,columnRange],
-             color=colorList[f],
-             marker=markerList[f])
+             color=colorList[i])
 
   # format
-  plt.legend(['Unique features=3', 'Unique features=5',
-              'Unique features=7', 'Unique features=11'], loc="upper right")
+  plt.legend(legendList, loc="upper right")
   plt.xlabel("Columns")
   plt.xticks(columnRange)
   plt.ylabel("Number of sensations")
@@ -299,53 +315,52 @@ if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
-  results = runExperiment(
-                {
-                  "numObjects": 10,
-                  "numLocations": 10,
-                  "numFeatures": 7,
-                  "numColumns": 3,
-                  "trialNum": 0
-                }
-  )
+  # results = runExperiment(
+  #               {
+  #                 "numObjects": 10,
+  #                 "numLocations": 10,
+  #                 "numFeatures": 7,
+  #                 "numColumns": 3,
+  #                 "trialNum": 0
+  #               }
+  # )
 
 
   # This is how you run a bunch of experiments in a process pool
 
   # Here we want to see how the number of columns affects convergence.
   # We run 10 trials for each column number and then analyze results
-  # numTrials = 10
-  # columnRange = [2,3,4,5,6,7]
-  # featureRange = [3,5,7,11]
-  #
-  # # Comment this out if you are re-running analysis on an already saved set of
-  # # results
-  # # results = runExperimentPool(
-  # #                   numObjects=[10],
-  # #                   numLocations=[10],
-  # #                   numFeatures=featureRange,
-  # #                   numColumns=columnRange,
-  # #                   nTrials=numTrials)
-  #
-  # # Analyze results
-  # with open("convergence_results.pkl","rb") as f:
-  #   results = cPickle.load(f)
-  #
-  # # Accumulate all the results per column in a numpy array, and print it as
-  # # well as raw results.  This part can be specific to each experiment
-  # convergence = numpy.zeros((max(featureRange), max(columnRange)+1))
-  # for r in results:
-  #   convergence[r["numFeatures"]-1,
-  #               r["numColumns"]] += r["convergencePoint"]/2.0
-  #
-  # convergence = convergence/numTrials + 1.0
-  #
-  # # For each column, print convergence as fct of number of unique features
-  # for c in range(2,max(columnRange)+1):
-  #   print c,convergence[:, c]
-  #
-  # # Print everything anyway for debugging
-  # print "Average convergence array=",convergence
-  #
-  # plotConvergenceStats(convergence, columnRange, featureRange)
+  numTrials = 4
+  columnRange = [2,3,4,5,6,7]
+  featureRange = [3,5,7,11]
+  # Comment this out if you are re-running analysis on an already saved set of
+  # results
+  results = runExperimentPool(
+                    numObjects=[10],
+                    numLocations=[10],
+                    numFeatures=featureRange,
+                    numColumns=columnRange,
+                    nTrials=numTrials)
+
+  # Analyze results
+  with open("convergence_results.pkl","rb") as f:
+    results = cPickle.load(f)
+
+  # Accumulate all the results per column in a numpy array, and print it as
+  # well as raw results.  This part can be specific to each experiment
+  convergence = numpy.zeros((max(featureRange), max(columnRange)+1))
+  for r in results:
+    convergence[r["numFeatures"]-1,
+                r["numColumns"]] += r["convergencePoint"]/2.0
+
+  convergence = convergence/numTrials + 1.0
+
+  # For each column, print convergence as fct of number of unique features
+  for c in range(2,max(columnRange)+1):
+    print c,convergence[:, c]
+
+  # Print everything anyway for debugging
+  print "Average convergence array=",convergence
+
+  plotConvergenceStats(convergence, columnRange, featureRange)
 
