@@ -22,7 +22,7 @@ HTM can be used for online sequence prediction tasks. The figure below shows the
 ![alt text](figures/Figure2_ModelSetup.png)
 
 # Discrete sequence prediction
-We compared HTM, LSTM, ELM and TDNN on the task of high-order sequence prediction. The data stream consists of sequences with shared subsequences. It is necessary to main a context of the starting element to correctly predict the ending elements. Sequences are presented in a continuously online fashion, with noise elements inserted between sequences. The dataset is implemented [here](https://github.com/numenta/nupic.research/blob/master/htmresearch/support/sequence_prediction_dataset.py).
+We compared HTM, LSTM, ELM and TDNN on the task of high-order sequence prediction. The data stream consists of sequences with shared subsequences. It is necessary to maintain a context of the starting element to correctly predict the ending elements. Sequences are presented in a continuously online fashion, with noise elements inserted between sequences. The dataset is implemented [here](https://github.com/numenta/nupic.research/blob/master/htmresearch/support/sequence_prediction_dataset.py).
 
 ![alt text](figures/Figure3_SequenceLearningTask.png)
 
@@ -41,7 +41,7 @@ The results can be visualized with the script `plotPerturbExperiment.py`
 We have designed a set of experiments to illustrate properties of HTM. These experiments are variations of the discrete sequence learning task.
 
 ## Multiple predictions
-In this experiment, each high-order sequence have two or four possible endings. Due to the use of SDRs, HTM is capable to represent multiple predictions internally, as a union of multiple SDRs. However, it is much harder to do that with dense representations. The figure below shows the prediction accuracy over training for HTM and LSTM and ELM. To reproduce the results for HTM, run
+In this experiment, each high-order sequence has two or four possible endings. Due to the use of SDRs, HTM is capable to represent multiple predictions internally, as a union of multiple SDRs. However, it is much harder to do that with dense representations. The figure below shows the prediction accuracy over training for HTM and LSTM and ELM. To reproduce the results for HTM, run
 
 	cd discrete_sequences/tm/
 	python suite.py -e high-order-distributed-random-multiple-predictions
@@ -51,7 +51,7 @@ The results can be visualized with the script `plotMultiplePredictionWithErrBar.
 ![alt text](figures/Figure6_DiscreteMultiplePrediction.png)
 
 ## Fault Tolerance
-Because of the use of sparse distributed representations, HTM sequence memory is tolerant to system faults such as cell dealths or synapse losses. In this experiment, we killed a fraction of the cells after the model achieves perfect performance on a sequence prediction task, and monitored how prediction accuracy is affected by the system faults. The results is shown below.
+Because of the use of sparse distributed representations, HTM sequence memory is tolerant to system faults such as cell death or synapse loss. In this experiment, we killed a fraction of the cells after the model achieves perfect performance on a sequence prediction task, and monitored how prediction accuracy is affected by the system faults. The results are shown below.
 
 ![alt text](figures/Figure9_FaultTolerance.png)
 
@@ -62,7 +62,7 @@ To reproduce this experiment for HTM, run
 The results can be visualized with the script `plotFaultyTMPerformance.py`
 
 ## Sensitivity to temporal noise
-We evaluated the sensitivity to temporal noise that are inserted in the middle of high-order sequences in this experiment. Such temproal noise can disrupt contextual information in both HTM and LSTM networks. The figure below shows that the networks are unable to learn high-order sequences if temporal noise present during learning (left), and will have worse performance if temporal noise is inserted after learning (right)
+We evaluated the sensitivity to temporal noise that is inserted in the middle of high-order sequences in this experiment. Such temporal noise can disrupt contextual information in both HTM and LSTM networks. The figure below shows that the networks are unable to learn high-order sequences if temporal noise present during learning (left), and will have worse performance if temporal noise is inserted after learning (right)
 
 ![alt text](figures/Figure8_TemporalNoise.png)
 
@@ -88,7 +88,7 @@ We are able to show that HTM can adapt changes quickly due to its ability to lea
 
 ![alt text](figures/Figure11_TaxiPerturbation.png)
 
-This reuslt can be reproduced with
+This result can be reproduced with
 
 	cd continuous_sequence/
 	python run_tm_model.py -d nyc_taxi_perturb

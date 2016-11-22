@@ -19,7 +19,7 @@ run LSTM on dataset (requires pyBrain)
 
     python run_lstm_suite.py -e EXPERIMENT_NAME -d
 
-EXPREIMENT_NAME are defined in experiments.cfg (e.g., nyc_taxi_experiment_continuous)
+EXPREIMENT_NAME is defined in experiments.cfg (e.g., nyc_taxi_experiment_continuous)
 The -d flag removes existing experiment logs and starts a new experiments
 
 run ARIMA on dataset (requires R)

@@ -9,9 +9,9 @@ Cui Y, Ahmad S, Hawkins J. Continuous online sequence learning with an unsupervi
 
 # run HTM model
 	cd ./tm/ 
-	python suite.py -e EXPERIMENTNAME
+	python suite.py -e EXPERIMENT_NAME
 	
-EXPERIMENTNAME is defined in experiments.cfg (e.g., reber, )
+EXPERIMENT_NAME is defined in experiments.cfg (e.g., reber, )
 Below is a list of experiment.
 
 * **high-order-distributed-random-perturbed**. High-order sequence prediction task. We switch to a new dataset after 10000 to evalulate ho fast the algorithms adapt to changes. (Figure 4, 5)
@@ -25,11 +25,11 @@ The experiment names are the same for LSTM, ELM and TDNN models.
 
 # run LSTM model
 	cd ./lstm/ 
-	python suite.py -e EXPERIMENTNAME
+	python suite.py -e EXPERIMENT_NAME
 
 # run TDNN model
 	cd ./tdnn/ 
-	python suite.py -e EXPERIMENTNAME
+	python suite.py -e EXPERIMENT_NAME
 
 Experiment results can be visualized with the set of "plot" scripts
 
