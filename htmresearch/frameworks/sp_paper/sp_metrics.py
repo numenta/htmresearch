@@ -50,12 +50,25 @@ from nupic.bindings.math import GetNTAReal
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+
 import random
 import numpy as np
 import pandas as pd
 
+
+
+
 uintType = "uint32"
 
+
+def getConnectedSyns(sp):
+  numInputs = sp.getNumInputs()
+  numColumns = np.prod(sp.getColumnDimensions())
+  connectedSyns = np.zeros((numColumns, numInputs), dtype=uintType)
+  for columnIndex in range(numColumns):
+    sp.getConnectedSynapses(columnIndex, connectedSyns[columnIndex, :])
+  connectedSyns = connectedSyns.astype('float32')
+  return connectedSyns
 
 
 def getMovingBar(startLocation,
@@ -707,20 +720,31 @@ def getRFCenters(sp, params, type='connected'):
   return meanCoordinates, avgDistToCenter
 
 
+def entropy(x):
+  """
+  Calculate entropy of a binary random variable.
+  (https://en.wikipedia.org/wiki/Entropy_(information_theory))
+  @param x (float) the probability of the variable to be 1.
+  @return (flaot) entropy
+  """
+  if  x*(1 - x) == 0:
+    return 0;
+  else:
+    return x*np.log2(x) + (1-x)*np.log2(1-x)
+
+entropyVectorized = np.vectorize(entropy)
+
 def calculateEntropy(activeColumns):
   """
-  calculate entropy given activation history
+  calculate the mean entropy given activation history
   @param activeColumns (array) 2D numpy array of activation history
-  @return entropy (flaot) entropy
+  @return entropy (flaot) mean entropy
   """
-  MIN_ACTIVATION_PROB = 0.000001
-  activationProb = np.mean(activeColumns, 0)
-  activationProb[activationProb < MIN_ACTIVATION_PROB] = MIN_ACTIVATION_PROB
-  activationProb = activationProb / np.sum(activationProb)
-
-  entropy = -(np.dot(activationProb, np.log2(activationProb)) +
-              np.dot(1 - activationProb, np.log2(1-activationProb)))
-  return entropy
+  activationProb   = np.mean(activeColumns, 0)
+  entropy          = - np.sum(entropyVectorized(activationProb))
+  normalizingConst = activeColumns.shape[1]
+  # return mean entropy
+  return entropy/normalizingConst
 
 
 
@@ -756,3 +780,147 @@ def calculateInputSpaceCoverage(sp):
     inputSpaceCoverage += connectedSynapses
   inputSpaceCoverage = np.reshape(inputSpaceCoverage, sp.getInputDimensions())
   return inputSpaceCoverage
+
+
+def reconstructionError(sp, activeColumnsCurrentEpoch, inputVectors):
+  """
+  Computes a reconstruction error. The reconstuction $r(x)$ of an input vector $x$
+  is given by the sum of the active column's connected synapses vector of 
+  the SDR representation $sdr(x)$ of $x$ normalized by $1/numActiveColumns$. 
+  The error is the normalized sum over the "hamming distance" (i.e. distance 
+  induced by L1 norm) of $x$ and its reconstruction $r(x)$, i.e. (mathy stuff in LaTex)
+  \[
+      Reconstruction Error = (1/batchSize) * \sum_{x \in InputBatch} \| x - r(x) \|_1 .
+  \]
+  Note that $r(x)$ can be expressed as
+  \[
+      r(x) = (1/sdrSize) * C * sdr(x) ,
+  \]
+  where we view $sdr(x)$ as a binary column vector and $C$ is the 
+  binary matrix whose jth column encodes the synaptic connectivity of 
+  the pooler's columns and the input bits, i.e. 
+  \[
+        c_{i,j} = 1   :<=>  column j has a stable synaptic 
+                            connection to input bit i.
+  \]  
+  """
+  connectionMatrix = getConnectedSyns(sp)
+  batchSize        = inputVectors.shape[0]
+  normalizingConst = batchSize
+  numColumns       = np.prod(sp.getColumnDimensions())
+  SDRSize          = sp.getLocalAreaDensity() * numColumns
+
+  reconstructedVectors = np.dot(connectionMatrix.T, activeColumnsCurrentEpoch.T)
+  reconstructedVectors = reconstructedVectors/SDRSize
+
+  Err = np.sum(np.absolute(reconstructedVectors  - inputVectors.T))
+
+  return Err/normalizingConst
+
+
+def witnessError(sp, activeColumnsCurrentEpoch, inputVectors):
+  """
+  Computes a variation of a reconstruction error. It measures the average 
+  hamming distance of an active column's connected synapses vector and its witnesses. 
+  An input vector is called witness for a column, iff the column is among 
+  the active columns for the input computed by the spatial pooler. 
+  The error is given by
+  \[     
+      Witness Error = (1/batchSize) * \sum_{x \in InputBatch} 
+                          (1/sdrSize) * \sum_{i \in sdr(x)} \| x -  syn(i) \|_1.
+  \]
+  Note: Turns out that in our setting (x and syn(i) binary vectors) we have 
+  \[
+      Witness Error = Reconstruction Error.
+  \]
+  """
+  connectionMatrix = getConnectedSyns(sp)
+  batchSize        = inputVectors.shape[0]
+  normalizingConst = batchSize
+  # 1st sum... over each input in batch
+  Err = 0.
+  for i in range(batchSize):
+    activeColumns = np.where(activeColumnsCurrentEpoch[i] > 0.)[0]
+    numActive     = activeColumns.shape[0]
+    # 2nd sum... over each active colum
+    err = 0.
+    for j in activeColumns:
+      # Compute hamming distance and accumulate
+      connectionVector = connectionMatrix[j]
+      diff = connectionVector - inputVectors[i]
+      err += np.sum(np.absolute(diff))
+
+    Err += err/numActive
+
+  
+  return Err/normalizingConst
+
+
+def evolutionOfwitnessesErrorOfColumn(sp, connectionSynsCurrentEpoch, activeColumnsCurrentEpoch, inputVectors, colIndex):
+  """
+  Computes the evolution of the witness error for a single column.
+  """
+  batchSize        = inputVectors.shape[0]
+  distanceTrace    = np.ones(batchSize)*(-1)
+
+  for t in range(batchSize):
+    if activeColumnsCurrentEpoch[t,colIndex] > 0:
+      connectionVector = connectionSynsCurrentEpoch[t,colIndex,:]
+      diff             = connectionVector - inputVectors[t]
+      distanceTrace[t] = np.sum(np.absolute(diff))
+
+  return distanceTrace[ np.where(distanceTrace >= 0 )].tolist()
+
+def mutualInformation(sp, activeColumnsCurrentEpoch, column_1, column_2):
+  """
+  Computes the mutual information of the two binary random variables associated 
+  with two columns (https://en.wikipedia.org/wiki/Mutual_information).
+  The mutual information I(X,Y) of two random variables is given by
+  \[
+       I (X,Y)  = \sum_{x,y} p(x,y) log( p(x,y) / ( p(x) p(y) ) ).
+  \]
+  """
+  i, j        = column_1, column_2
+  batchSize   = activeColumnsCurrentEpoch.shape[0]
+
+  # Activity Counts
+  ci, cj, cij = 0., 0., dict([((0,0),0.), ((1,0),0.), ((0,1),0.), ((1,1),0.)])
+  for t in range(batchSize):
+    ai = activeColumnsCurrentEpoch[t, i]
+    aj = activeColumnsCurrentEpoch[t, j]
+    cij[(ai, aj)] += 1.
+    ci += ai
+    cj += aj
+
+  # Mutual information calculation 
+  Iij = 0
+  for a,b in [(0,0), (1,0), (0,1), (1,1)]:
+    # Compute probabilities
+    pij = cij[(a,b)]/batchSize
+    pi  = ci/batchSize if a == 1 else 1. - ci/batchSize
+    pj  = cj/batchSize if b == 1 else 1. - cj/batchSize
+    # Add current term of mutual information 
+    Iij += pij * np.log2(pij/(pi*pj)) if pij > 0 else 0
+
+  return Iij
+
+def meanMutualInformation(sp, activeColumnsCurrentEpoch, columnsUnderInvestigation = []):
+  """
+  Computes the mean of the mutual information 
+  of pairs taken from a list of columns. 
+  """
+  if len(columnsUnderInvestigation) == 0:
+    columns = range(np.prod(sp.getColumnDimensions()))
+  else:
+    columns = columnsUnderInvestigation
+  numCols = len(columns)
+  sumMutualInfo = 0
+  normalizingConst = numCols*(numCols - 1)/2
+  for i in range(numCols):
+    for j in range(i+1, numCols):
+      sumMutualInfo += mutualInformation(sp, activeColumnsCurrentEpoch, columns[i], columns[j])
+
+  return sumMutualInfo/normalizingConst
+
+
+
