@@ -730,7 +730,7 @@ def entropy(x):
   if  x*(1 - x) == 0:
     return 0;
   else:
-    return x*np.log2(x) + (1-x)*np.log2(1-x)
+    return - x*np.log2(x) - (1-x)*np.log2(1-x)
 
 entropyVectorized = np.vectorize(entropy)
 
@@ -741,7 +741,7 @@ def calculateEntropy(activeColumns):
   @return entropy (flaot) mean entropy
   """
   activationProb   = np.mean(activeColumns, 0)
-  entropy          = - np.sum(entropyVectorized(activationProb))
+  entropy          = np.sum(entropyVectorized(activationProb))
   normalizingConst = activeColumns.shape[1]
   # return mean entropy
   return entropy/normalizingConst
