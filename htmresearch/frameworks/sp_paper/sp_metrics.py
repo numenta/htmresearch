@@ -782,7 +782,7 @@ def calculateInputSpaceCoverage(sp):
   return inputSpaceCoverage
 
 
-def reconstructionError(sp, activeColumnsCurrentEpoch, inputVectors):
+def reconstructionError(sp, inputVectors, activeColumnVectors, threshold=0.):
   """
   Computes a reconstruction error. The reconstuction $r(x)$ of an input vector $x$
   is given by the sum of the active column's connected synapses vector of 
@@ -804,16 +804,22 @@ def reconstructionError(sp, activeColumnsCurrentEpoch, inputVectors):
                             connection to input bit i.
   \]  
   """
-  connectionMatrix = getConnectedSyns(sp)
   batchSize        = inputVectors.shape[0]
   normalizingConst = batchSize
   numColumns       = np.prod(sp.getColumnDimensions())
   SDRSize          = sp.getLocalAreaDensity() * numColumns
+  connectionMatrix = getConnectedSyns(sp)
 
-  reconstructedVectors = np.dot(connectionMatrix.T, activeColumnsCurrentEpoch.T)
-  reconstructedVectors = reconstructedVectors/SDRSize
+  reconstructionVectors = np.dot(activeColumnVectors, connectionMatrix)
+  reconstructionVectors = reconstructionVectors/SDRSize
+  
+  if threshold > 0.:
+    reconstructionVectors =np.where( 
+                            reconstructionVectors > threshold, 
+                            np.ones( reconstructionVectors.shape), 
+                            np.zeros(reconstructionVectors.shape))
 
-  Err = np.sum(np.absolute(reconstructedVectors  - inputVectors.T))
+  Err = np.sum(np.absolute(reconstructionVectors  - inputVectors))
 
   return Err/normalizingConst
 
@@ -856,20 +862,6 @@ def witnessError(sp, activeColumnsCurrentEpoch, inputVectors):
   return Err/normalizingConst
 
 
-def evolutionOfwitnessesErrorOfColumn(sp, connectionSynsCurrentEpoch, activeColumnsCurrentEpoch, inputVectors, colIndex):
-  """
-  Computes the evolution of the witness error for a single column.
-  """
-  batchSize        = inputVectors.shape[0]
-  distanceTrace    = np.ones(batchSize)*(-1)
-
-  for t in range(batchSize):
-    if activeColumnsCurrentEpoch[t,colIndex] > 0:
-      connectionVector = connectionSynsCurrentEpoch[t,colIndex,:]
-      diff             = connectionVector - inputVectors[t]
-      distanceTrace[t] = np.sum(np.absolute(diff))
-
-  return distanceTrace[ np.where(distanceTrace >= 0 )].tolist()
 
 def mutualInformation(sp, activeColumnsCurrentEpoch, column_1, column_2):
   """
@@ -903,6 +895,8 @@ def mutualInformation(sp, activeColumnsCurrentEpoch, column_1, column_2):
     Iij += pij * np.log2(pij/(pi*pj)) if pij > 0 else 0
 
   return Iij
+
+
 
 def meanMutualInformation(sp, activeColumnsCurrentEpoch, columnsUnderInvestigation = []):
   """
