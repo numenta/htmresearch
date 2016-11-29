@@ -725,7 +725,7 @@ def entropy(x):
   Calculate entropy of a binary random variable.
   (https://en.wikipedia.org/wiki/Entropy_(information_theory))
   @param x (float) the probability of the variable to be 1.
-  @return (flaot) entropy
+  @return (float) entropy
   """
   if  x*(1 - x) == 0:
     return 0;
@@ -738,13 +738,13 @@ def calculateEntropy(activeColumns):
   """
   calculate the mean entropy given activation history
   @param activeColumns (array) 2D numpy array of activation history
-  @return entropy (flaot) mean entropy
+  @return entropy (float) mean entropy
   """
   activationProb   = np.mean(activeColumns, 0)
   entropy          = np.sum(entropyVectorized(activationProb))
-  normalizingConst = activeColumns.shape[1]
+  numberOfColumns  = activeColumns.shape[1]
   # return mean entropy
-  return entropy/normalizingConst
+  return entropy/numberOfColumns
 
 
 
@@ -794,7 +794,7 @@ def reconstructionError(sp, inputVectors, activeColumnVectors, threshold=0.):
   \]
   Note that $r(x)$ can be expressed as
   \[
-      r(x) = (1/sdrSize) * C * sdr(x) ,
+      r(x) = (1/numActiveColumns) * C * sdr(x) ,
   \]
   where we view $sdr(x)$ as a binary column vector and $C$ is the 
   binary matrix whose jth column encodes the synaptic connectivity of 
@@ -802,7 +802,21 @@ def reconstructionError(sp, inputVectors, activeColumnVectors, threshold=0.):
   \[
         c_{i,j} = 1   :<=>  column j has a stable synaptic 
                             connection to input bit i.
-  \]  
+  \]
+  Note: Turns out that in our setting (x and syn(i) binary vectors) we have 
+  \[
+        Reconstruction Error = Witness Error.
+  \]
+  It can be shown that the error is optimized by the Hebbian-like update rule 
+  of the spatial pooler. 
+  
+  @param sp (SpatialPooler) the spatial pooler instance
+  @param inputVectors (array) 2D numpy array of input vectors
+  @param activeColumnVectors (array) 2D numpy array of activation history
+  @param threshold (float) if set > 0 it serves as threshold for a step function 
+                           applied to the reconstruction vectors (values smaller than 
+                           threshold are set to zero, and values bigger to one)
+  @return error (float) the reconstruction error
   """
   batchSize        = inputVectors.shape[0]
   normalizingConst = batchSize
@@ -833,12 +847,14 @@ def witnessError(sp, activeColumnsCurrentEpoch, inputVectors):
   The error is given by
   \[     
       Witness Error = (1/batchSize) * \sum_{x \in InputBatch} 
-                          (1/sdrSize) * \sum_{i \in sdr(x)} \| x -  syn(i) \|_1.
+                          (1/numActiveColumns) * \sum_{i active column of sdr(x)} \| x -  syn(i) \|_1.
   \]
   Note: Turns out that in our setting (x and syn(i) binary vectors) we have 
   \[
       Witness Error = Reconstruction Error.
   \]
+  It can be shown that the error is optimized by the Hebbian-like update rule 
+  of the spatial pooler. 
   """
   connectionMatrix = getConnectedSyns(sp)
   batchSize        = inputVectors.shape[0]
