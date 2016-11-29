@@ -71,6 +71,7 @@ def getConnectedSyns(sp):
   return connectedSyns
 
 
+
 def getMovingBar(startLocation,
                  direction,
                  imageSize=(20, 20),
@@ -819,14 +820,12 @@ def reconstructionError(sp, inputVectors, activeColumnVectors, threshold=0.):
   @return error (float) the reconstruction error
   """
   batchSize        = inputVectors.shape[0]
-  normalizingConst = batchSize
-  numColumns       = np.prod(sp.getColumnDimensions())
-  SDRSize          = sp.getLocalAreaDensity() * numColumns
   connectionMatrix = getConnectedSyns(sp)
 
   reconstructionVectors = np.dot(activeColumnVectors, connectionMatrix)
-  reconstructionVectors = reconstructionVectors/SDRSize
-  
+  numActiveColumns      = np.sum(activeColumnVectors, 1)[0]
+  reconstructionVectors = reconstructionVectors/numActiveColumns
+
   if threshold > 0.:
     reconstructionVectors =np.where( 
                             reconstructionVectors > threshold, 
@@ -835,10 +834,10 @@ def reconstructionError(sp, inputVectors, activeColumnVectors, threshold=0.):
 
   Err = np.sum(np.absolute(reconstructionVectors  - inputVectors))
 
-  return Err/normalizingConst
+  return Err/batchSize
 
 
-def witnessError(sp, activeColumnsCurrentEpoch, inputVectors):
+def witnessError(sp, inputVectors, activeColumnsCurrentEpoch):
   """
   Computes a variation of a reconstruction error. It measures the average 
   hamming distance of an active column's connected synapses vector and its witnesses. 
@@ -858,35 +857,33 @@ def witnessError(sp, activeColumnsCurrentEpoch, inputVectors):
   """
   connectionMatrix = getConnectedSyns(sp)
   batchSize        = inputVectors.shape[0]
-  normalizingConst = batchSize
+
   # 1st sum... over each input in batch
   Err = 0.
   for i in range(batchSize):
-    activeColumns = np.where(activeColumnsCurrentEpoch[i] > 0.)[0]
-    numActive     = activeColumns.shape[0]
+    activeColumns    = np.where(activeColumnsCurrentEpoch[i] > 0.)[0]
+    numActiveColumns = activeColumns.shape[0]
     # 2nd sum... over each active colum
     err = 0.
     for j in activeColumns:
       # Compute hamming distance and accumulate
-      connectionVector = connectionMatrix[j]
-      diff = connectionVector - inputVectors[i]
-      err += np.sum(np.absolute(diff))
+      err += np.sum(np.absolute(connectionMatrix[j] - inputVectors[i]))
 
-    Err += err/numActive
+    Err += err/numActiveColumns
 
-  
-  return Err/normalizingConst
+  return Err/batchSize
 
 
 
 def mutualInformation(sp, activeColumnsCurrentEpoch, column_1, column_2):
   """
-  Computes the mutual information of the two binary random variables associated 
-  with two columns (https://en.wikipedia.org/wiki/Mutual_information).
-  The mutual information I(X,Y) of two random variables is given by
+  Computes the mutual information of the binary variables that represent 
+  the activation probabilities of two columns. The mutual information I(X,Y) 
+  of two random variables is given by
   \[
        I (X,Y)  = \sum_{x,y} p(x,y) log( p(x,y) / ( p(x) p(y) ) ).
   \]
+  (https://en.wikipedia.org/wiki/Mutual_information)
   """
   i, j        = column_1, column_2
   batchSize   = activeColumnsCurrentEpoch.shape[0]

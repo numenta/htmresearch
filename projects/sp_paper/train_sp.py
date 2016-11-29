@@ -31,7 +31,8 @@ from htmresearch.algorithms.faulty_spatial_pooler import FaultySpatialPooler
 from htmresearch.frameworks.sp_paper.sp_metrics import (
   calculateEntropy, calculateInputOverlapMat, inspectSpatialPoolerStats,
   classificationAccuracyVsNoise, percentOverlap, calculateOverlapCurve,
-  calculateStability, plotExampleInputOutput
+  calculateStability, plotExampleInputOutput,
+  reconstructionError, witnessError
 )
 from htmresearch.support.spatial_pooler_monitor_mixin import (
   SpatialPoolerMonitorMixin)
@@ -279,6 +280,8 @@ if __name__ == "__main__":
   inputOverlapWinnerTrace = []
   classificationRobustnessTrace = []
   noiseRobustnessTrace = []
+  reconstructionErrorTrace = []
+  witnessErrorTrace = []
 
   connectedSyns = getConnectedSyns(sp)
 
@@ -345,6 +348,9 @@ if __name__ == "__main__":
     activeDutyCycle = np.zeros((columnNumber, ), dtype=realDType)
     sp.getActiveDutyCycles(activeDutyCycle)
 
+    reconstructionErrorTrace.append(reconstructionError(sp, inputVectors, activeColumnsCurrentEpoch))
+    witnessErrorTrace.append(witnessError(sp, inputVectors, activeColumnsCurrentEpoch))
+
     if epoch >= 1:
       stability = calculateStability(activeColumnsCurrentEpoch,
                                      activeColumnsPreviousEpoch)
@@ -364,7 +370,9 @@ if __name__ == "__main__":
                  'new syn': [numNewlyConnectedSynapsesTrace[-1]],
                  'remove syn': [numEliminatedSynapsesTrace[-1]],
                  'stability': [stabilityTrace[-1]],
-                 'entropy': [entropyTrace[-1]]}
+                 'entropy': [entropyTrace[-1]],
+                 'reconstr error': [reconstructionErrorTrace[-1]],
+                 'witness error': [witnessErrorTrace[-1]]}
       if trackOverlapCurveOverTraining:
         metrics['noise-robustness'] = [noiseRobustnessTrace[-1]]
       if classification:
