@@ -21,16 +21,17 @@
 # ----------------------------------------------------------------------
 import os
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
-                          os.pardir, os.pardir, 'data', 'sensortag')
-classificationDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
-                          os.pardir)
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        os.pardir, os.pardir, 'datasets', 'sensortag',
+                        'data')
+classificationDir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 os.pardir)
 INPUT_FILES = [
   'walk-5min.csv',
   'sit-5min.csv',
-  #'run-5min.csv',
+  # 'run-5min.csv',
   # 'stairs-up-5min.csv',
-  #'jump-5min.csv',
+  # 'jump-5min.csv',
   # 'stairs-down-5min.csv',
   # 'stumble-5min.csv'
 ]
@@ -38,4 +39,3 @@ METRICS = ['x', 'y', 'z']
 OUTPUT_DIR = os.path.join(classificationDir, 'data', 'sensortag')
 SLICES = 40
 MAX_POINTS = 1000
-
