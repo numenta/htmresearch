@@ -24,8 +24,8 @@ from subprocess import call
 
 print("Downloading...")
 if not os.path.exists("UCI HAR Dataset.zip"):
-    call('wget "https://d396qusza40orc.cloudfront.net/'
-         'getdata/projectfiles/UCI%20HAR%20Dataset.zip"', shell=True)
+    call('wget "https://archive.ics.uci.edu/ml/machine-learning-databases/'
+         '00240/UCI%20HAR%20Dataset.zip"', shell=True)
     print("Downloading done.\n")
 else:
     print("Dataset already downloaded. Did not download twice.\n")
