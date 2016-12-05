@@ -11,9 +11,10 @@ export SYN_PWD='<you_synapse.org_password>'
 ```
 * Run `download_synapse_data.py`
 
-
 ## Visualize the data
 * Start Jupyter notebook. Run `jupyter notebook`.
 * Open `analysis_plotly_offline.ipynb`
+> Note: if you don't want to use jupyter notebook, you ran run 
+`plot_synapse_data.py`
 
 
