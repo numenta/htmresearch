@@ -1,3 +1,23 @@
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
 import csv
 import os
 import scipy
@@ -5,38 +25,6 @@ import numpy as np
 from sklearn import manifold
 
 from distances import cluster_distance_factory
-
-
-
-def cluster_category_frequencies(cluster):
-  """
-  Returns frequency of each category in this cluster. E.g:
-  [
-    {
-      'actual_category': 1.0,
-      'num_points': 20
-    },
-       ...
-    {
-      'actual_category': 5.0,
-      'num_points': 30
-    }   
-  ]
-  """
-  labels = []
-  for point in cluster.points:
-    labels.append(point['label'])
-
-  unique, counts = np.unique(labels, return_counts=True)
-  category_frequencies = []
-  for actualCategory, numberOfPoints in np.asarray((unique, counts)).T:
-    category_frequencies.append({
-      'actual_category': actualCategory,
-      'num_points': numberOfPoints
-    })
-
-  return category_frequencies
-
 
 
 def moving_average(last_ma, new_point_value, moving_average_window):
@@ -60,8 +48,8 @@ def clustering_stats(record_number,
   if closest_cluster:
     # info about predicted cluster. The predicted cluster category is the 
     # most frequent category found in the points of the cluster.
-    category_frequencies = cluster_category_frequencies(closest_cluster)
-    cluster_category = category_frequencies[0]['actual_category']
+    category_frequencies = closest_cluster.label_distribution()
+    cluster_category = category_frequencies[0]['label']
 
     # compute accuracy      
     if cluster_category == actual_category:
@@ -154,21 +142,22 @@ def find_cluster_repetitions(sdrs, cluster_ids):
   :return sdr_clusters: (dict of list) keys are the cluster IDs. Values are 
     the SDRs in the cluster.
   """
-  num_clusters = get_num_clusters(cluster_ids)
-  repetition_counter = np.zeros((num_clusters,))
+  unique_cluster_ids = list(set(cluster_ids))
+  repetition_counter = {cluster_id: 0 for cluster_id in unique_cluster_ids}
   last_category = None
   cluster_repetitions = []
-  sdr_clusters = {i: [] for i in range(num_clusters)}
+  sdr_clusters = {cluster_id: [] for cluster_id in unique_cluster_ids}
   for i in range(len(cluster_ids)):
-    category = int(cluster_ids[i])
+    category = cluster_ids[i]
+    sdr = sdrs[i]
     if category != last_category:
       repetition_counter[category] += 1
     last_category = category
     cluster_repetitions.append(repetition_counter[category] - 1)
-    sdr_clusters[category].append(sdrs[i])
+    sdr_clusters[category].append(sdr)
 
-  assert len(cluster_ids) == sum([len(sdr_clusters[i])
-                                  for i in range(num_clusters)])
+  assert len(cluster_ids) == sum([len(sdr_clusters[cluster_id])
+                                  for cluster_id in unique_cluster_ids])
 
   return cluster_repetitions, sdr_clusters
 
@@ -238,19 +227,32 @@ def cluster_distance_matrix(sdr_clusters, distance_func):
 
 
 
-def project_clusters_2D(distance_mat):
+def project_clusters_2D(distance_mat, method='mds'):
+  """
+  Project SDRs onto a 2D space using manifold learning algorithms
+  :param distance_mat: A square matrix with pairwise distances
+  :param method: Select method from 'mds' and 'tSNE'
+  :return: an array with dimension (numSDRs, 2). It contains the 2D projections
+     of each SDR
+  """
   seed = np.random.RandomState(seed=3)
 
-  mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9,
-                     random_state=seed,
-                     dissimilarity="precomputed", n_jobs=1)
+  if method == 'mds':
+    mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9,
+                       random_state=seed,
+                       dissimilarity="precomputed", n_jobs=1)
 
-  pos = mds.fit(distance_mat).embedding_
+    pos = mds.fit(distance_mat).embedding_
 
-  nmds = manifold.MDS(n_components=2, metric=False, max_iter=3000, eps=1e-12,
-                      dissimilarity="precomputed", random_state=seed, n_jobs=1,
-                      n_init=1)
+    nmds = manifold.MDS(n_components=2, metric=False, max_iter=3000, eps=1e-12,
+                        dissimilarity="precomputed", random_state=seed,
+                        n_jobs=1, n_init=1)
 
-  npos = nmds.fit_transform(distance_mat, init=pos)
+    pos = nmds.fit_transform(distance_mat, init=pos)
+  elif method == 'tSNE':
+    tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
+    pos = tsne.fit_transform(distance_mat)
+  else:
+    raise NotImplementedError
 
-  return npos
+  return pos
