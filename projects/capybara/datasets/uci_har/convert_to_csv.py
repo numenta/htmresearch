@@ -25,22 +25,33 @@ import os
 import numpy as np
 
 
+"""
+Data pre-processing from: 
+https://github.com/guillaume-chevalier/LSTM-Human-Activity-Recognition
+"""
+
 
 def load_X(X_signals_paths):
   """
   Load X (inputs)
 
   :param X_signals_paths: (list of strings) path to input files 
-  :return: (np.Array) formatted input data
+  return headers: (list) columns headers
+  :return: (np.Array) formatted input data.
+  
+  Fixed-width sliding windows of 2.56 sec and 50% overlap (128 
+  readings/window).
   """
   X_signals = []
-
+  headers = []
   for signal_type_path in X_signals_paths:
+    header = '_'.join(signal_type_path.split('/')[-1].split('_')[:-1])
+    headers.append(header)
     with open(signal_type_path, 'rb') as f:
       X_signals.append([np.array(r, dtype=np.float32)
                         for r in [row.replace('  ', ' ').strip().split(' ')
                                   for row in f]])
-  return np.transpose(np.array(X_signals), (1, 2, 0))
+  return headers, np.transpose(np.array(X_signals), (1, 2, 0))
 
 
 
@@ -70,15 +81,18 @@ def generate_data(X_train_signals_paths,
   :param y_train_path: (str) path to train data (targets)
   :param y_test_path: (str) path to test data (targets)
   """
-  X_train = load_X(X_train_signals_paths)
-  X_test = load_X(X_test_signals_paths)
+  headers_train, X_train = load_X(X_train_signals_paths)
+  headers_test, X_test = load_X(X_test_signals_paths)
   y_train = load_y(y_train_path)
   y_test = load_y(y_test_path)
 
+  assert headers_test == headers_train
+  headers_train.append('label')
   train_csv = 'inertial_signals_train.csv'
 
   with open(train_csv, 'w') as f:
     writer = csv.writer(f)
+    writer.writerow(headers_train)
     for i in range(len(X_train)):
       for x in X_train[i]:
         row = list(x)
@@ -88,6 +102,7 @@ def generate_data(X_train_signals_paths,
   test_csv = 'inertial_signals_test.csv'
   with open(test_csv, 'w') as f:
     writer = csv.writer(f)
+    writer.writerow(headers_test)
     for i in range(len(X_test)):
       for x in X_test[i]:
         row = list(x)
