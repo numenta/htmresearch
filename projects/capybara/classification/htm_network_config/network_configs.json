@@ -1,0 +1,91 @@
+[
+  {
+    "sensorRegionConfig": {
+      "regionEnabled": true,
+      "regionName": "sensor",
+      "regionType": "py.RecordSensor",
+      "regionParams": {
+        "verbosity": 0,
+        "numCategories": 3
+      },
+      "encoders": {
+        "scalarEncoder": {
+          "name": "scalarEncoder",
+          "fieldname": "y",
+          "type": "ScalarEncoder",
+          "n": 134,
+          "w": 21,
+          "minval": null,
+          "maxval": null
+        }
+      }
+    },
+    "spRegionConfig": {
+      "regionEnabled": true,
+      "regionName": "SP",
+      "regionType": "py.SPRegion",
+      "regionParams": {
+        "spatialImp": "cpp",
+        "potentialPct": 0.8,
+        "columnCount": 2048,
+        "globalInhibition": 1,
+        "inputWidth": 0,
+        "maxBoost": 1.0,
+        "numActiveColumnsPerInhArea": 40,
+        "seed": 1956,
+        "spVerbosity": 0,
+        "synPermActiveInc": 0.003,
+        "synPermConnected": 0.2,
+        "synPermInactiveDec": 0.0005
+      }
+    },
+    "tmRegionConfig": {
+      "regionEnabled": true,
+      "regionName": "TM",
+      "regionType": "py.TPRegion",
+      "regionParams": {
+        "activationThreshold":20,
+        "cellsPerColumn": 32,
+        "columnCount": 2048,
+        "globalDecay": 0.0,
+        "initialPerm": 0.24,
+        "inputWidth": 2048,
+        "maxAge": 0,
+        "maxSegmentsPerCell": 128,
+        "maxSynapsesPerSegment": 128,
+        "minThreshold": 13,
+        "newSynapseCount": 31,
+        "outputType": "normal",
+        "permanenceDec": 0.008,
+        "permanenceInc": 0.04,
+        "predictedSegmentDecrement":0.001,
+        "seed": 1960,
+        "temporalImp": "tm_cpp",
+        "verbosity": 0
+      }
+    },
+    "tpRegionConfig": {
+      "regionEnabled": false,
+      "regionName": "TP",
+      "regionType": "py.TemporalPoolerRegion",
+      "regionParams": {
+        "poolerType": "simpleUnion",
+        "columnCount": 4096,
+        "historyLength": 10,
+        "minHistory": 1
+      }
+    },
+    "classifierRegionConfig": {
+      "regionEnabled": true,
+      "regionParams": {
+        "implementation": "py",
+        "alpha": 0.01,
+        "verbosity": 0,
+        "steps": 0,
+        "maxCategoryCount": 3
+      },
+      "regionType": "py.SDRClassifierRegion",
+      "regionName": "classifier"
+    }
+  }
+]
