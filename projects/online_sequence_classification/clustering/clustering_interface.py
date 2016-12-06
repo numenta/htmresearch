@@ -12,6 +12,7 @@ from abc import ABCMeta, abstractmethod
 from queue import PriorityQueue
 
 
+
 class Point(object):
   def __init__(self, value, label=None):
     """
@@ -22,7 +23,8 @@ class Point(object):
     """
     self.value = value
     self.label = label
-    
+
+
 
 class Cluster(object):
   def __init__(self, id, center):
@@ -35,7 +37,6 @@ class Cluster(object):
     self.id = id
     self.center = center
     self.points = []
-    self.labels = []
     self.size = 0
 
 
@@ -47,7 +48,6 @@ class Cluster(object):
     """
     assert type(point) == Point
     self.points.append(point)
-    self.labels.append(point.label)
     if self.center is None:
       self.center = point
     self.center.value = ((self.center.value * self.size + point.value) /
@@ -63,7 +63,6 @@ class Cluster(object):
     while len(cluster.points) > 0:
       point = cluster.points.pop()
       self.points.append(point)
-      self.labels.append(point.label)
 
 
   def label_distribution(self):
@@ -81,7 +80,8 @@ class Cluster(object):
       }   
     ]
     """
-    unique, counts = np.unique(self.labels, return_counts=True)
+    labels = [p.label for p in self.points]
+    unique, counts = np.unique(labels, return_counts=True)
     label_distribution = []
     for label, num_points in np.asarray((unique, counts)).T:
       label_distribution.append({
