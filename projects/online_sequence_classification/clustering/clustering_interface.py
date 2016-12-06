@@ -10,13 +10,19 @@ import heapq
 import numpy as np
 
 from abc import ABCMeta, abstractmethod
-from collections import namedtuple
-
-# Point holding the value of an SDR and its optional label (ground truth).
-Point = namedtuple('Point', 'value label')
-Point.__new__.__defaults__ = (None,)
 
 
+class Point(object):
+  def __init__(self, value, label=None):
+    """
+    Point holding the value of an SDR and its optional label (ground truth).
+
+    :param value: (np.Array) point value (SDR)
+    :param label: (int) point label
+    """
+    self.value = value
+    self.label = label
+    
 
 class Cluster(object):
   def __init__(self, id, center):
