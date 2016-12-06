@@ -6,10 +6,10 @@
 #  may be used, reproduced, stored or distributed in any form,
 #  without explicit written authorization from Numenta Inc.
 # ----------------------------------------------------------------------
-import heapq
 import numpy as np
 
 from abc import ABCMeta, abstractmethod
+from queue import PriorityQueue
 
 
 class Point(object):
@@ -242,15 +242,14 @@ class ClusteringInterface(object):
     """
     Merge closest two clusters.
     """
-    inter_cluster_dists = []
+    inter_cluster_dists = PriorityQueue()
     for c1 in self.clusters.values():
       for c2 in self.clusters.values():
         if c1 != c2:
           d = self.distance_func(c1.center.value, c2.center.value)
-          inter_cluster_dists.append(InterClusterDist(c1, c2, d))
+          inter_cluster_dists.put(InterClusterDist(c1, c2, d))
 
-    heapq.heapify(inter_cluster_dists)
-    smallest_inter_cluster_dist = heapq.heappop(inter_cluster_dists)
+    smallest_inter_cluster_dist = inter_cluster_dists.get()
     cluster_to_merge = smallest_inter_cluster_dist.c2
     smallest_inter_cluster_dist.c1.merge(cluster_to_merge)
     del self.clusters[cluster_to_merge.id]
@@ -261,7 +260,7 @@ class InterClusterDist(object):
   """
   Inter-cluster distance.
    
-  Useful to define cmp() for heapq.
+  Useful to define cmp() for queue.PriorityQueue.
   """
 
 
