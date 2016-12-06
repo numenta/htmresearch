@@ -155,8 +155,7 @@ def main():
   # generate sdrs to cluster
   active_cells_sdrs = convert_to_sdrs(active_cells, input_width)
   predicted_active_cells_sdrs = np.array(
-    convert_to_sdrs(predicted_active_cells,
-                    input_width))
+    convert_to_sdrs(predicted_active_cells, input_width))
   sdrs = (active_cells_weight * np.array(active_cells_sdrs) +
           predicted_active_cells_weight * predicted_active_cells_sdrs)
 

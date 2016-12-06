@@ -90,7 +90,7 @@ def convert_to_sdrs(patterNZs, input_width):
   sdrs = []
   for i in range(len(patterNZs)):
     patternNZ = patterNZs[i]
-    sdr = np.zeros(input_width)
+    sdr = np.zeros(input_width, dtype='int32')
     sdr[patternNZ] = 1
     sdrs.append(sdr)
   return sdrs
