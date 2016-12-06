@@ -56,6 +56,11 @@ class Cluster(object):
 
 
   def merge(self, cluster):
+    """
+    Merge a cluster into this cluster.
+    
+    :param cluster: (Cluster) cluster to merge into this cluster. 
+    """
     self.center.value = ((self.center.value * self.size +
                           cluster.center.value * cluster.size) /
                          (self.size + cluster.size))
