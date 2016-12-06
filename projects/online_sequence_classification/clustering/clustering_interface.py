@@ -212,10 +212,13 @@ class ClusteringInterface(object):
     """
     Create a cluster.
     
-    :param center: (Point) point to add.
+    :param center: (Point) optional center of the cluster. If a center is 
+      provided, it will be added to the cluster list of points.
     """
     cluster_id = len(self.clusters) + 1
     cluster = Cluster(cluster_id, center)
+    if center:
+      cluster.add(center)
     return cluster
 
 
