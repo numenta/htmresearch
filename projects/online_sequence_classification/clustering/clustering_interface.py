@@ -175,13 +175,14 @@ class ClusteringInterface(object):
     """
     cluster_distances = []
     cluster_ids = self.clusters.keys()
-    for i in cluster_ids:
-      for j in cluster_ids:
-        if i != j:
-          ci = self.clusters[i].center.value
-          cj = self.clusters[j].center.value
-          d = self.distance_func(ci, cj)
-          cluster_distances.append(d)
+
+    numClusters = len(cluster_ids)
+    for i in range(numClusters):
+      for j in range(i + 1, numClusters):
+        ci = self.clusters[cluster_ids[i]].center.value
+        cj = self.clusters[cluster_ids[j]].center.value
+        d = self.distance_func(ci, cj)
+        cluster_distances.append(d)
 
     if len(cluster_distances) > 0:
       return np.mean(cluster_distances)
@@ -248,11 +249,14 @@ class ClusteringInterface(object):
     Merge closest two clusters.
     """
     inter_cluster_dists = PriorityQueue()
-    for c1 in self.clusters.values():
-      for c2 in self.clusters.values():
-        if c1 != c2:
-          d = self.distance_func(c1.center.value, c2.center.value)
-          inter_cluster_dists.put(InterClusterDist(c1, c2, d))
+
+    numClusters = len(self.clusters)
+    for i in range(numClusters):
+      for j in range(i + 1, numClusters):
+        c1 = self.clusters.values()[i]
+        c2 = self.clusters.values()[j]
+        d = self.distance_func(c1.center.value, c2.center.value)
+        inter_cluster_dists.put(InterClusterDist(c1, c2, d))
 
     smallest_inter_cluster_dist = inter_cluster_dists.get()
     cluster_to_merge = smallest_inter_cluster_dist.c2
