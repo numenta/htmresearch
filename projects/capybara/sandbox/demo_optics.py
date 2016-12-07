@@ -22,16 +22,16 @@
 
 
 """
-Install: 
+Install pyclustering: 
     git clone https://github.com/annoviko/pyclustering
     cd pyclustering
     pip install . --user
 """
 import numpy as np
 import random as rd
+import colorlover as cl
 
-from pyclustering.cluster.optics import optics, ordering_analyser, \
-  ordering_visualizer
+from pyclustering.cluster.optics import optics, ordering_analyser
 from pyclustering.samples.definitions import FCPS_SAMPLES
 from pyclustering.utils import read_sample
 
@@ -46,17 +46,17 @@ def gaussian_clusters(num_clusters):
   for i in range(1, num_clusters + 1):
     for _ in range(40):
       sample.append([i * 1.5 + rd.random(), i * 1.5 + rd.random()])
+
+  sample = np.array(sample)
+  np.random.shuffle(sample)
+  sample = sample.tolist()
   return sample
 
 
 
-# Read sample for clustering from some file
-# 2D matrix
-# sample = read_sample(FCPS_SAMPLES.SAMPLE_LSUN)[0:95]
-# sample = read_sample(FCPS_SAMPLES.SAMPLE_LSUN)[100:190]
-# sample = read_sample(FCPS_SAMPLES.SAMPLE_LSUN)[200:402]
-# sample = read_sample(FCPS_SAMPLES.SAMPLE_LSUN)
-sample = gaussian_clusters(3)
+# Read sample for clustering from some file (2D matrix)
+sample = read_sample(FCPS_SAMPLES.SAMPLE_LSUN)
+# sample = gaussian_clusters(3)
 
 # Run cluster analysis where connectivity radius is bigger than real
 radius = 2.0
@@ -78,54 +78,74 @@ ordering = ordering_analyser(optics_instance.get_ordering())
 # Cluster assignments
 epsilon_cutoff = 0.5
 
+# Find valleys boundaries
 cluster_ordering = np.array(ordering.cluster_ordering)
-valleys = np.where(cluster_ordering < epsilon_cutoff)
-val = np.where(np.diff(valleys[0]) > 1)[0] + 1
-val_boundaries = [int(i) for i in val]
+peaks = np.where(cluster_ordering > epsilon_cutoff)[0]
+val_boundaries = [int(i) for i in peaks]
 val_boundaries.insert(0, 0)
 val_boundaries.append(len(ordering.cluster_ordering))
 print 'valleys boundaries: %s' % val_boundaries
 num_valleys = len(val_boundaries) - 1
-# Visualization of cluster ordering in line with reachability distance.
-# ordering_visualizer.show_ordering_diagram(ordering)
-
 
 # Plot input data and clustering structure
-colors = ['r', 'g', 'b']
 
+# ordering_visualizer.show_ordering_diagram(ordering)
+
+# Save and look at the color palette :-)
+color_palette = cl.scales['3']  # 3 colors
+palette_file = 'palette.html'
+with open(palette_file, 'w+') as f:
+  f.write(cl.to_html(color_palette))
+  print 'color palette saved to: %s' % palette_file
+colors = color_palette['qual']['Set1']
+
+# Data traces to plot
 traces1 = [go.Scatter(
-  name='Cluster %s' % i,
-  # buffer of points (before and after) around the peak
-  x=[s[0] for s in sample[val_boundaries[i] + 2:val_boundaries[i + 1] - 1]],
-  y=[s[1] for s in sample[val_boundaries[i] + 2:val_boundaries[i + 1] - 1]],
+  name='Cluster %s data' % i,
+  x=[sample[sample_id][0] for sample_id in
+     clusters[0][val_boundaries[i] + 1:val_boundaries[i + 1]]],
+  y=[sample[sample_id][1] for sample_id in
+     clusters[0][val_boundaries[i] + 1:val_boundaries[i + 1]]],
   mode='markers',
   marker=dict(color=colors[i])
 ) for i in range(num_valleys)]
 
 traces2 = [go.Scatter(
-  name='Cluster %s' % i,
-  x=range(val_boundaries[i] + 2, val_boundaries[i + 1] - 1),
-  y=ordering.cluster_ordering[val_boundaries[i] + 2:val_boundaries[i + 1] - 1],
+  name='Cluster %s reachability distances' % i,
+  x=range(val_boundaries[i], val_boundaries[i + 1] + 1),
+  y=ordering.cluster_ordering[val_boundaries[i]:val_boundaries[i + 1] + 1],
   mode='lines',
   line=dict(color=colors[i])
 ) for i in range(num_valleys)]
 
-traces2.extend([go.Scatter(
-  name='Not included in clusters',
-  x=range(val_boundaries[i] - 2, val_boundaries[i] + 3),
-  y=ordering.cluster_ordering[val_boundaries[i] - 2:val_boundaries[i] + 3],
+traces2.append(go.Scatter(
+  name='Reachability threshold',
+  y=[epsilon_cutoff for _ in ordering.cluster_ordering],
   mode='lines',
-  line=dict(color='black')
-) for i in range(1, num_valleys)])
+  line=dict(color='grey', dash='dash')
+))
 
 layout1 = go.Layout(title='Input data',
-                    xaxis=go.XAxis(title='x'),
-                    yaxis=go.YAxis(title='y'))
-
+                    xaxis=go.XAxis(title='x', range=[0, 6]),
+                    yaxis=go.YAxis(title='y', range=[0, 6]))
 layout2 = go.Layout(title='Clustering structure',
                     xaxis=go.XAxis(title='Index (cluster order of the '
                                          'objects)'),
-                    yaxis=go.YAxis(title='Reachability distance'))
+                    yaxis=go.YAxis(title='Reachability distance',
+                                   range=[0, 1]),
+                    annotations=[
+                      dict(
+                        x=val_boundaries[i],
+                        y=ordering.cluster_ordering[val_boundaries[i]],
+                        xref='x',
+                        yref='y',
+                        text='Reachability distance over threshold',
+                        showarrow=True,
+                        arrowhead=7,
+                        ax=0,
+                        ay=-40
+                      ) for i in range(1, num_valleys)]
+                    )
 
 fig1 = {'data': traces1, 'layout': layout1}
 url1 = plot(fig1, auto_open=False, filename='data.html')
@@ -152,7 +172,12 @@ fig3['layout']['yaxis1'].update(title='Y values', range=[0, 6])
 fig3['layout']['xaxis2'].update(title='Index (cluster order of the objects)')
 fig3['layout']['yaxis2'].update(title='Reachability distance', range=[0, 1])
 
-fig3['layout'].update(width=1200, height=600, title='OPTICS 2D Example')
+description = """
+<b><a href="https://en.wikipedia.org/wiki/OPTICS_algorithm">OPTICS
+</a> 2D Example</b>
+"""
+
+fig3['layout'].update(width=1200, height=600, title=description)
 
 url3 = plot(fig3, filename='clustering-structure.html', auto_open=False)
 print url3
