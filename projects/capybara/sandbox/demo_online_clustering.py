@@ -5,12 +5,11 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from htmresearch.frameworks.clustering.online_agglomerative_clustering \
-  import (
-  OnlineAgglomerativeClustering)
+  import OnlineAgglomerativeClustering
 
 from htmresearch.frameworks.clustering.distances import kernel_dist
-from htmresearch.frameworks.clustering.kernels import \
-  normalized_gaussian_kernel
+from htmresearch.frameworks.clustering.kernels \
+  import normalized_gaussian_kernel
 
 
 
@@ -170,9 +169,9 @@ def demo_gaussian_noise():
   # the value of N is generally quite forgiving, i.e.
   # giving 6 will still only find the 3 clusters.
   # around 10 it will start finding more
-  max_num_clusters = 10
+  max_num_clusters = 6
   cluster_size_cutoff = 0.5
-  trim_clusters = False
+  trim_clusters = True
   plot = True
   rolling_window = 10
   distance_func = kernel_dist(normalized_gaussian_kernel)
@@ -187,7 +186,7 @@ def demo_gaussian_noise():
                                    num_points_per_class,
                                    noise_level,
                                    dim)
-  # TODO: we can't plot in 2D for now if dim > 2. Will fix with projection algo
+  # We can't plot in 2D for now if dim > 2
   if dim > 2:
     plot = False
   run(max_num_clusters,

@@ -35,8 +35,10 @@ SIGNAL_AMPLITUDES = [10.0]
 SIGNAL_MEANS = [0.0]
 NOISE_LENGTHS = [10]
 
-# Number of phases. Eg: Train (1) SP, (2) TM, (3) TP, (4) Classifier, (5) Test
-NUM_PHASES = [5]
+# Number of phases.
+NUM_PHASES = [1]
 
 # Number of time each phase repeats
-NUM_REPS = [10]
+# Best: NUM_REPS = [50]
+NUM_REPS = [50]
+

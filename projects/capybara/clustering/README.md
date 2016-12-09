@@ -1,10 +1,10 @@
 # Clustering
 
 How to run:
-* `cd capybara/classification`
+* Change to `capybara/classification`
 * Generate data with `generate_acc_data.py` or `generate_artificial_data.py` 
 * Run the HTM network that will generate traces with `run_htm_network.py`
-* `cd capybara/clustering`
+* Change to `capybara/clustering`
 * Run the clustering with `run_clustering.py`
 
 > Note: settings can be found in `capybara/classification/settings/` and 
