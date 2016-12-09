@@ -156,8 +156,8 @@ def main():
   active_cells_sdrs = convert_to_sdrs(active_cells, input_width)
   predicted_active_cells_sdrs = np.array(
     convert_to_sdrs(predicted_active_cells, input_width))
-  sdrs = (active_cells_weight * np.array(active_cells_sdrs) +
-          predicted_active_cells_weight * predicted_active_cells_sdrs)
+  sdrs = (float(active_cells_weight) * np.array(active_cells_sdrs) +
+          float(predicted_active_cells_weight) * predicted_active_cells_sdrs)
 
   # list of timesteps specifying when a snapshot of the clusters will be taken
   step = (end - start) / num_cluster_snapshots - 1

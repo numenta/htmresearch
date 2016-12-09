@@ -51,7 +51,7 @@ class Cluster(object):
     if self.center is None:
       self.center = point
     self.center.value = ((self.center.value * self.size + point.value) /
-                         (self.size + 1))
+                         float(self.size + 1))
     self.size += 1
 
 
@@ -63,7 +63,7 @@ class Cluster(object):
     """
     self.center.value = ((self.center.value * self.size +
                           cluster.center.value * cluster.size) /
-                         (self.size + cluster.size))
+                         float(self.size + cluster.size))
     self.size += cluster.size
     while len(cluster.points) > 0:
       point = cluster.points.pop()
