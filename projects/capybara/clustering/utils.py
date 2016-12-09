@@ -27,6 +27,7 @@ from sklearn import manifold
 from distances import cluster_distance_factory
 
 
+
 def moving_average(last_ma, new_point_value, moving_average_window):
   """
   Online computation of moving average.
@@ -53,26 +54,31 @@ def clustering_stats(record_number,
 
     # compute accuracy      
     if cluster_category == actual_category:
-      accuracy = 1
+      accuracy = 1.0
     else:
-      accuracy = 0
+      accuracy = 0.0
     num_correct += accuracy
-    clustering_accuracy = moving_average(clustering_accuracy, accuracy,
-                                         moving_average_window)
+
     cluster_id = closest_cluster.id
     cluster_size = closest_cluster.size
 
-    print("Record: %s | Accuracy MA: %s | Total clusters: %s | "
+    print("Record: %s | Total clusters: %s | "
           "Closest: {id=%s, size=%s, category=%s} | Actual category: %s"
-          % (record_number, clustering_accuracy, len(clusters), cluster_id,
+          % (record_number, len(clusters), cluster_id,
              cluster_size, cluster_category, actual_category))
+  else:
+    # If no cluster is predicted, consider this a wrong prediction.
+    accuracy = 0.0
+
+  clustering_accuracy = moving_average(clustering_accuracy, accuracy,
+                                       moving_average_window)
 
   return clustering_accuracy
 
 
 
 def get_file_name(exp_name, network_config):
-  trace_csv = os.path.join('traces','%s_%s.csv' % (exp_name, network_config))
+  trace_csv = os.path.join('traces', '%s_%s.csv' % (exp_name, network_config))
   return os.path.join(os.path.dirname(os.path.abspath(__file__)),
                       os.pardir, 'classification', 'results',
                       trace_csv)
@@ -90,7 +96,7 @@ def convert_to_sdrs(patterNZs, input_width):
   sdrs = []
   for i in range(len(patterNZs)):
     patternNZ = patterNZs[i]
-    sdr = np.zeros(input_width)
+    sdr = np.zeros(input_width, dtype='int32')
     sdr[patternNZ] = 1
     sdrs.append(sdr)
   return sdrs

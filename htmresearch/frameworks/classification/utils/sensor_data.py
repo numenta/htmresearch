@@ -102,6 +102,10 @@ def plotSensorData(inpuFilePaths, markers=True, categoryLabels=None):
         labelCount += 1
 
       plt.xlim(xmin=0, xmax=len(timesteps))
+      delta = (float(max(data)) - float(min(data))) / 10.0
+      ymin = float(min(data)) - delta
+      ymax = float(max(data)) + delta
+      plt.ylim(ymin=ymin, ymax=ymax)
 
       title = cleanTitle(inpuFilePath)
       plt.title(title)
