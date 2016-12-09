@@ -26,7 +26,7 @@ import copy
 from htmresearch.frameworks.layers.laminar_network import createNetwork
 
 
-networkConfig1 = {
+networkConfig = {
   "networkType": "L2456Columns",
   "numCorticalColumns": 1,
   "randomSeedBase": 42,
@@ -194,7 +194,7 @@ class L2456NetworkTest(unittest.TestCase):
     """
 
     # Create a simple network to test the sensor
-    net = createNetwork(networkConfig1)
+    net = createNetwork(networkConfig)
 
     # Does it have the correct number of regions?
     self.assertEqual(len(net.regions.keys()),7,
@@ -211,7 +211,7 @@ class L2456NetworkTest(unittest.TestCase):
     """
     We create a network with 5 columns
     """
-    config = copy.deepcopy(networkConfig1)
+    config = copy.deepcopy(networkConfig)
     config["numCorticalColumns"] = 6
 
     # Create a simple network to test the sensor
@@ -232,7 +232,7 @@ class L2456NetworkTest(unittest.TestCase):
     """
     We create a network with 5 columns and check all the links are correct
     """
-    config = copy.deepcopy(networkConfig1)
+    config = copy.deepcopy(networkConfig)
     config["numCorticalColumns"] = 5
 
     # Create a simple network to test the sensor

@@ -62,7 +62,11 @@ def createNetwork(networkConfig):
 
 def printNetwork(network):
   """
-  Given a network, print out its information, mostly for debugging.
+  Given a network, print out regions sorted by phase
   """
-  for region in network.regions.values():
-    print region.name,"phase=",network.getPhases(region.name)
+  print "The network has",len(network.regions.values()),"regions"
+  for p in range(network.getMaxPhase()):
+    print "=== Phase",p
+    for region in network.regions.values():
+      if network.getPhases(region.name)[0] == p:
+        print "   ",region.name

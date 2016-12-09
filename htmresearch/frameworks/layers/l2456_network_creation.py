@@ -201,9 +201,9 @@ def _createL2456Column(network, networkConfig, suffix=""):
                srcOutput="resetOut", destInput="resetIn")
 
 
-  # Set phases appropriately so regions are executed in the proper sequence
-  # This is required particularly when we create multiple columns - the order of execution
-  # is not the same as the order of region creation.
+  # Set phases appropriately so regions are executed in the proper sequence.
+  # This is required particularly when we create multiple columns - the order of
+  # execution is not the same as the order of region creation.
   # All sensors have phase 0
   # All L6's have phase 2
   # All L5's have phase 3
@@ -245,7 +245,8 @@ def createL2456Columns(network, networkConfig):
     suffix = "_" + str(i)
     network = _createL2456Column(network, networkConfigCopy, suffix)
 
-  # Now connect the L2 and L5 columns laterally
+  # Now connect the L2 columns laterally to every other L2 column, and
+  # the same for L5 columns.
   for i in range(networkConfig["numCorticalColumns"]):
     suffixSrc = "_" + str(i)
     for j in range(networkConfig["numCorticalColumns"]):
