@@ -1,10 +1,23 @@
+#!/usr/bin/env python
 # ----------------------------------------------------------------------
-#  Copyright (C) 2016, Numenta Inc. All rights reserved.
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
 #
-#  The information and source code contained herein is the
-#  exclusive property of Numenta Inc. No part of this software
-#  may be used, reproduced, stored or distributed in any form,
-#  without explicit written authorization from Numenta Inc.
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 import numpy as np
 
@@ -113,99 +126,26 @@ class ClusteringInterface(object):
     self.clusters = {}  # Keys are cluster IDs; Values are Clusters.
 
 
+  @abstractmethod
   def infer(self, point):
     """
-    Find the closest cluster to a point.
+    Find the best cluster for an input point.
     
-    :param point: (Point) input point
-    :return closest: (Cluster) closet cluster to the point.
+    :param point: (Point) input point.
+    :return confidence, closest: (Cluster) best cluster for the input point.
     """
+    raise NotImplementedError()
 
-    return self.find_closest_cluster(point)
 
-
-  def prune(self, max_num_clusters):
+  @abstractmethod
+  def learn(self, new_cluster):
     """
-    If there are too many clusters clusters than the max number of clusters 
-    allowed, merge the closest clusters.
+    Learn a new cluster. Once the cluster is learned, it can be used in the
+    inference step to make predictions. 
     
-    :param max_num_clusters: (int) max number of clusters allowed.
+    :param new_cluster: (Cluster) cluster of points to learn.
     """
-    while len(self.clusters) >= max_num_clusters:
-      self.merge_closest_clusters()
-
-
-  @staticmethod
-  def noisy_sequence(anomaly_score, noisy_anomaly_score=0.3):
-    """
-    Determine whether a temporal sequence is noisy.
-    
-    :param anomaly_score: (float) anomaly score of the temporal memory
-    :param noisy_anomaly_score: (float) threshold to determine whether the 
-      anomaly score is noisy.
-    :return: (bool) whether the sequence is noisy 
-    """
-    if anomaly_score > noisy_anomaly_score:
-      return True
-    else:
-      return False
-
-
-  @staticmethod
-  def stable_sequence(anomaly_score, stable_anomaly_score=0.2):
-    """
-    Determine whether a temporal sequence is stable.
-    
-    :param anomaly_score: (float) anomaly score of the temporal memory
-    :param stable_anomaly_score: (float) threshold to determine whether the 
-      anomaly score is stable.
-    :return: (bool) whether the sequence is stable 
-    """
-    if anomaly_score < stable_anomaly_score:
-      return True
-    else:
-      return False
-
-
-  def average_cluster_distance(self):
-    """
-    Average cluster distance between clusters.
-    
-    :return average_distance: (float) average distance between clusters. 
-    """
-    cluster_distances = []
-    cluster_ids = self.clusters.keys()
-
-    numClusters = len(cluster_ids)
-    for i in range(numClusters):
-      for j in range(i + 1, numClusters):
-        ci = self.clusters[cluster_ids[i]].center.value
-        cj = self.clusters[cluster_ids[j]].center.value
-        d = self.distance_func(ci, cj)
-        cluster_distances.append(d)
-
-    if len(cluster_distances) > 0:
-      return np.mean(cluster_distances)
-    else:
-      return 0.0
-
-
-  def add_or_merge_cluster(self, cluster, merge_threshold):
-    """
-    Add cluster to the existing clusters or merge it with the closest cluster.
-    
-    :param cluster: (Cluster) the cluster to assign
-    :param merge_threshold: (float) If the distance to the closest 
-      cluster is below the merge threshold, the cluster will be merged with 
-      the closest cluster. Otherwise, if the distance to the closest cluster 
-      is  above the merge threshold, then the cluster will be added to the 
-      existing clusters.
-    """
-    distance_to_closest, closest, = self.find_closest_cluster(cluster.center)
-    if closest and distance_to_closest < merge_threshold:
-      closest.merge(cluster)
-    else:
-      self.add_cluster(cluster)
+    raise NotImplementedError()
 
 
   def create_cluster(self, center=None):
@@ -222,29 +162,15 @@ class ClusteringInterface(object):
     return cluster
 
 
-  def add_cluster(self, cluster):
+  def prune(self, max_num_clusters):
     """
-    Add cluster to the existing clusters.
+    If there are more clusters clusters than the max number of clusters 
+    allowed, merge the closest clusters.
     
-    :param cluster: (Cluster) cluster to add.
-    :raise: (ValueError) raise error if the cluster ID is already used. 
+    :param max_num_clusters: (int) max number of clusters allowed.
     """
-    if cluster.id in self.clusters:
-      raise ValueError('Cluster ID %s already exists' % cluster.id)
-    self.clusters[cluster.id] = cluster
-
-
-  @abstractmethod
-  def find_closest_cluster(self, point):
-    """
-    Find the closest cluster to a point.
-    
-    :param point: (Point) The point of interest.
-    :return distance_to_closest: (float) distance between closest cluster 
-      center and point.
-    :return closest: (Cluster) closest cluster to point.
-    """
-    raise NotImplementedError()
+    while len(self.clusters) >= max_num_clusters:
+      self.merge_closest_clusters()
 
 
   def merge_closest_clusters(self):

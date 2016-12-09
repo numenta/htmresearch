@@ -42,7 +42,6 @@ def run(sdrs,
         distance_func,
         moving_average_window,
         max_num_clusters,
-        merge_threshold,
         ClusteringClass,
         cluster_snapshot_indices):
   num_sdrs = len(sdrs)
@@ -54,25 +53,26 @@ def run(sdrs,
   num_correct = 0
   clustering_accuracy = 0
   last_category = int(categories[0])
+  # Create a new empty cluster at the begining
   new_cluster = model.create_cluster()
   for i in range(num_sdrs):
     sdr = sdrs[i]
     actual_category = int(categories[i])
     point = Point(sdr, actual_category)
 
-    # Create a new cluster.
-    # Note: the anomaly score could be used to create new clusters, but for 
-    # now we'll use an artificial signal (i.e. new category)
+    # Learn the cluster and create a new one.
+    # Note: the anomaly score could be used as a signal to create 
+    #       and learn new clusters, but for now we'll use an artificial 
+    #       signal (i.e. new category)
+
     # anomaly_score = anomaly_scores[i]
     if last_category != actual_category:
-      if merge_threshold is None:
-        merge_threshold = model.average_cluster_distance() / 2.0
-      model.add_or_merge_cluster(new_cluster, merge_threshold)
+      model.learn(new_cluster)
       new_cluster = model.create_cluster()
 
     # Inference.
     new_cluster.add(point)
-    distance_to_closest, closest_cluster = model.infer(new_cluster.center)
+    confidence, closest_cluster = model.infer(new_cluster.center)
     closest_cluster_history.append(closest_cluster)
     if i in cluster_snapshot_indices:
       clusters_snapshots.append([copy.deepcopy(c)
@@ -111,7 +111,6 @@ def main():
   active_cells_weight = 0
   predicted_active_cells_weight = 1
   max_num_clusters = 3
-  merge_threshold = 3.15  # 3.0 or 3.15
   num_cluster_snapshots = 5
   show_plots = True
   distance_matrix_ignore_noise = True  # whether to ignore label 0 (noise)
@@ -172,7 +171,6 @@ def main():
                                   distance_func,
                                   moving_average_window,
                                   max_num_clusters,
-                                  merge_threshold,
                                   ClusteringClass,
                                   cluster_snapshot_indices)
   # cluster_categories = []
