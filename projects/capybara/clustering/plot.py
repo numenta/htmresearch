@@ -82,6 +82,8 @@ def plot_2D_projections(title, output_file, cluster_assignments, projections):
   plt.draw()
   plt.savefig(output_file)
   print('==> saved: %s' % output_file)
+  return plt
+
 
 
 def plot_distance_mat(distance_mat, title, output_file):
