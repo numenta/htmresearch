@@ -23,9 +23,9 @@ This file is used to debug specific Thing experiments.
 """
 
 import pprint
-import cPickle
+from htmresearch.support.logging_decorator import LoggingDecorator
 from htmresearch.frameworks.layers.l2_l4_inference import (
-  L4L2Experiment, rerunExperimentFromLogfile, LoggingDecorator)
+  L4L2Experiment, rerunExperimentFromLogfile)
 
 thingObjects = {
   "Capsule":[
@@ -99,7 +99,7 @@ def createExperiment(logFilename):
   exp = L4L2Experiment("shared_features", logCalls=True)
   exp.learnObjects(thingObjects)
 
-  LoggingDecorator().save(logFilename)
+  LoggingDecorator.save(exp.callLog, logFilename)
 
 
 def debugExperiment(logFile):
@@ -183,10 +183,12 @@ if __name__ == "__main__":
   # Print out the log
   print "\n========== CALL LOG ==============="
 
-  for call in LoggingDecorator.load("callLog.pkl").callLog:
+  for call in LoggingDecorator.load("callLog.pkl"):
     print call
     print
   print "=====================================\n"
 
   # Recreate class from log and debug experiment
   debugExperiment("callLog.pkl")
+
+

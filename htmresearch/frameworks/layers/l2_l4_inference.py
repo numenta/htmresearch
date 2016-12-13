@@ -80,85 +80,14 @@ projects/layers/multi_column.py
 """
 
 import collections
-import cPickle
-import inspect
 import os
 import random
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
+from htmresearch.support.logging_decorator import LoggingDecorator
 from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.frameworks.layers.laminar_network import createNetwork
-
-
-
-class LoggingDecorator(object):
-
-  _loggingInstance = None  # Singleton instance
-
-  def __new__(cls, *args, **kwargs):
-    if not cls._loggingInstance:
-      cls._loggingInstance = (
-        super(LoggingDecorator, cls).__new__(cls, *args, **kwargs)
-      )
-
-    return cls._loggingInstance
-
-
-  def __init__(self, *args, **kwargs):
-    if not hasattr(self, "callLog"):
-      self.callLog = []
-
-
-  def __call__(self, fn):
-    """ Returns decorated function that logs calls
-    """
-    def _fn(instance, *args, **kwargs):
-      (_, filename, _, _, _, _) = inspect.getouterframes(inspect.currentframe())[1]
-
-      # Log if, and only if logCalls is set to True, either as an attr on instance
-      # or as a kwarg to the called function (e.g. constructor/__init__) AND
-      # call originated internally
-
-      if (getattr(instance, "logCalls", kwargs.get("logCalls", False)) and
-          os.path.splitext(os.path.basename(__file__))[0] !=
-          os.path.splitext(os.path.basename(filename))[0]):
-        self.callLog.append([fn.__name__, {"args": args, "kwargs": kwargs}])
-
-      return fn(instance, *args, **kwargs)
-
-
-    return _fn
-
-
-  def save(self, logFilename):
-    """
-    Save the call log history into this file.
-
-    @param  logFilename (path)
-            Filename in which to save a pickled version of the call logs.
-
-    """
-    with open(logFilename, "wb") as outp:
-      cPickle.dump(self.callLog, outp)
-
-
-  @classmethod
-  def load(cls, logFilename):
-    """
-    Load a previously saved call log history from file, returns new
-    LoggingDecorator instance separate from singleton.
-
-    @param  logFilename (path)
-            Filename from which to load a pickled version of the call logs.
-    """
-    with open(logFilename, "rb") as inp:
-      callLog = cPickle.load(inp)
-
-      _loggingInstance = super(LoggingDecorator, cls).__new__(cls)
-      _loggingInstance.callLog = callLog
-
-      return _loggingInstance
 
 
 
@@ -167,19 +96,19 @@ def rerunExperimentFromLogfile(logFilename):
   Create an experiment class according to the sequence of operations in logFile
   and return resulting experiment instance.
   """
-  loggingDecoratorObj = LoggingDecorator.load(logFilename)
+  callLog = LoggingDecorator.load(logFilename)
 
   # Assume first one is call to constructor
 
-  exp = L4L2Experiment(*loggingDecoratorObj.callLog[0][1]["args"],
-                       **loggingDecoratorObj.callLog[0][1]["kwargs"])
+  exp = L4L2Experiment(*callLog[0][1]["args"], **callLog[0][1]["kwargs"])
 
   # Call subsequent methods, using stored parameters
-  for call in loggingDecoratorObj.callLog[1:]:
+  for call in callLog[1:]:
     method = getattr(exp, call[0])
     method(*call[1]["args"], **call[1]["kwargs"])
 
   return exp
+
 
 
 class L4L2Experiment(object):
@@ -401,7 +330,7 @@ class L4L2Experiment(object):
 
       if reset:
         # send reset signal
-        self.sendReset()
+        self._sendReset()
 
   @LoggingDecorator()
   def infer(self, sensationList, reset=True, objectName=None):
@@ -467,15 +396,14 @@ class L4L2Experiment(object):
 
     if reset:
       # send reset signal
-      self.sendReset()
+      self._sendReset()
 
     # save statistics
     statistics["numSteps"] = len(sensationList)
     statistics["object"] = objectName if objectName is not None else "Unknown"
     self.statistics.append(statistics)
 
-  @LoggingDecorator()
-  def sendReset(self, sequenceId=0):
+  def _sendReset(self, sequenceId=0):
     """
     Sends a reset signal to the network.
     """
@@ -484,6 +412,12 @@ class L4L2Experiment(object):
       self.externalInputs[col].addResetToQueue(sequenceId)
     self.network.run(1)
 
+  @LoggingDecorator()
+  def sendReset(self, *args, **kwargs):
+    """
+    Public interface to sends a reset signal to the network.  This is logged.
+    """
+    self._sendReset(*args, **kwargs)
 
   def plotInferenceStats(self,
                          fields,
