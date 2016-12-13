@@ -20,10 +20,13 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 import numpy as np
+from collections import OrderedDict
 from matplotlib import pyplot as plt
+from matplotlib import colors
 
 from utils import (find_cluster_assignments,
-                   cluster_distance_matrix)
+                   cluster_distance_matrix,
+                   project_clusters_2D)
 
 
 
@@ -39,8 +42,47 @@ def plot_inter_sequence_distances(output_dir,
   distance_mat = cluster_distance_matrix(sdr_slices, distance_func)
 
   title = 'distance_matrix_%s' % plot_id
-  outputFile = '%s/%s' % (output_dir, '%s.png' % title)
-  plot_distance_mat(distance_mat, title, outputFile)
+  output_file = '%s/%s' % (output_dir, '%s.png' % title)
+  plot_distance_mat(distance_mat, title, output_file)
+
+  projections = project_clusters_2D(distance_mat, method='mds')
+  title = '2d_projections_%s' % plot_id
+  output_file = '%s/%s' % (output_dir, '%s.png' % title)
+  plot_2D_projections(title, output_file, cluster_assignments, projections)
+
+
+def plot_2D_projections(title, output_file, cluster_assignments, projections):
+  """
+  Visualize SDR cluster projections
+  """
+
+  color_list = colors.cnames.keys()
+  plt.figure()
+  color_list = color_list
+  color_names = []
+  for i in range(len(cluster_assignments)):
+    cluster_id = int(cluster_assignments[i])
+    if cluster_id not in color_names:
+      color_names.append(cluster_id)
+    projection = projections[i]
+    label = 'Category %s' % cluster_id
+    if len(color_list) > cluster_id:
+      color = color_list[cluster_id]
+    else:
+      color = 'black'
+    plt.scatter(projection[0], projection[1], label=label, alpha=0.5,
+                color=color, marker='o', edgecolor='black')
+
+  # Add nicely formatted legend
+  handles, labels = plt.gca().get_legend_handles_labels()
+  by_label = OrderedDict(zip(labels, handles))
+  plt.legend(by_label.values(), by_label.keys(), scatterpoints=1, loc=2)
+
+  plt.title(title)
+  plt.draw()
+  plt.savefig(output_file)
+  print('==> saved: %s' % output_file)
+  return plt
 
 
 

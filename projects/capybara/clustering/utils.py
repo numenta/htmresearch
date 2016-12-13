@@ -19,6 +19,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 import csv
+import copy
 import os
 import scipy
 import numpy as np
@@ -262,3 +263,57 @@ def project_clusters_2D(distance_mat, method='mds'):
     raise NotImplementedError
 
   return pos
+
+
+
+
+
+def generate_sdr(n, w):
+  """
+  Generate a random n-dimensional SDR with w bits active
+  """
+  sdr = np.zeros((n,))
+  random_order = np.random.permutation(np.arange(n))
+  active_bits = random_order[:w]
+  sdr[active_bits] = 1
+  return sdr
+
+
+
+def corrupt_sparse_vector(sdr, noise_level):
+  """
+  Add noise to sdr by turning off num_noise_bits active bits and turning on
+  num_noise_bits in active bits
+  :param sdr: (array) Numpy array of the  SDR
+  :param noise_level: (float) amount of noise to be applied on the vector.
+  """
+  num_noise_bits = int(noise_level * np.sum(sdr))
+  if num_noise_bits <= 0:
+    return sdr
+  active_bits = np.where(sdr > 0)[0]
+  inactive_bits = np.where(sdr == 0)[0]
+
+  turn_off_bits = np.random.permutation(active_bits)
+  turn_on_bits = np.random.permutation(inactive_bits)
+  turn_off_bits = turn_off_bits[:num_noise_bits]
+  turn_on_bits = turn_on_bits[:num_noise_bits]
+
+  sdr[turn_off_bits] = 0
+  sdr[turn_on_bits] = 1
+
+
+
+def generate_sdrs(num_sdr_classes, num_sdr_per_class, n, w, noise_level):
+  sdrs = []
+  class_ids = []
+  for class_id in range(num_sdr_classes):
+    class_ids.append(class_id)
+    template_sdr = generate_sdr(n, w)
+    sdr_cluster = []
+    for _ in range(num_sdr_per_class):
+      noisy_sdr = copy.copy(template_sdr)
+      corrupt_sparse_vector(noisy_sdr, noise_level)
+      sdrs.append(noisy_sdr)
+      sdr_cluster.append(noisy_sdr)
+  return sdrs, class_ids
+

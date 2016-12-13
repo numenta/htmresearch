@@ -33,7 +33,7 @@ def main():
   numClasses = 7
   numSDRsPerClass = 20
   noiseLevel = 0.1
-  vizTitle = 'MDS, noise level: {}'.format(noiseLevel)
+  vizTitle = '2D projection, noise level: {}'.format(noiseLevel)
 
   # SDR parameters
   n = 1024
@@ -43,7 +43,7 @@ def main():
 
   clusterAssignments = assignClusters(sdrs, numClasses, numSDRsPerClass)
 
-  npos, distanceMat = project2D(sdrs)
+  npos, distanceMat = project2D(sdrs, method='mds')
 
   outputFile = '2d_projections.png'
   viz2DProjection(vizTitle, outputFile, numClasses, clusterAssignments, npos)
