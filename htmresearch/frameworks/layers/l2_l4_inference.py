@@ -79,11 +79,11 @@ projects/layers/multi_column.py
 
 """
 
+import collections
+import cPickle
+import inspect
 import os
 import random
-import collections
-import inspect
-import cPickle
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
@@ -91,21 +91,93 @@ from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.frameworks.layers.laminar_network import createNetwork
 
 
+
+class LoggingDecorator(object):
+
+  _loggingInstance = None  # Singleton instance
+
+  def __new__(cls, *args, **kwargs):
+    if not cls._loggingInstance:
+      cls._loggingInstance = (
+        super(LoggingDecorator, cls).__new__(cls, *args, **kwargs)
+      )
+
+    return cls._loggingInstance
+
+
+  def __init__(self, *args, **kwargs):
+    if not hasattr(self, "callLog"):
+      self.callLog = []
+
+
+  def __call__(self, fn):
+    """ Returns decorated function that logs calls
+    """
+    def _fn(instance, *args, **kwargs):
+      (_, filename, _, _, _, _) = inspect.getouterframes(inspect.currentframe())[1]
+
+      # Log if, and only if logCalls is set to True, either as an attr on instance
+      # or as a kwarg to the called function (e.g. constructor/__init__) AND
+      # call originated internally
+
+      if (getattr(instance, "logCalls", kwargs.get("logCalls", False)) and
+          os.path.splitext(os.path.basename(__file__))[0] !=
+          os.path.splitext(os.path.basename(filename))[0]):
+        self.callLog.append([fn.__name__, {"args": args, "kwargs": kwargs}])
+
+      return fn(instance, *args, **kwargs)
+
+
+    return _fn
+
+
+  def save(self, logFilename):
+    """
+    Save the call log history into this file.
+
+    @param  logFilename (path)
+            Filename in which to save a pickled version of the call logs.
+
+    """
+    with open(logFilename, "wb") as outp:
+      cPickle.dump(self.callLog, outp)
+
+
+  @classmethod
+  def load(cls, logFilename):
+    """
+    Load a previously saved call log history from file, returns new
+    LoggingDecorator instance separate from singleton.
+
+    @param  logFilename (path)
+            Filename from which to load a pickled version of the call logs.
+    """
+    with open(logFilename, "rb") as inp:
+      callLog = cPickle.load(inp)
+
+      _loggingInstance = super(LoggingDecorator, cls).__new__(cls)
+      _loggingInstance.callLog = callLog
+
+      return _loggingInstance
+
+
+
 def rerunExperimentFromLogfile(logFilename):
   """
   Create an experiment class according to the sequence of operations in logFile
   and return resulting experiment instance.
   """
-  with open(logFilename,"rb") as f:
-    callLog = cPickle.load(f)
+  loggingDecoratorObj = LoggingDecorator.load(logFilename)
 
   # Assume first one is call to constructor
-  exp = L4L2Experiment(**callLog[0][1])
+
+  exp = L4L2Experiment(*loggingDecoratorObj.callLog[0][1]["args"],
+                       **loggingDecoratorObj.callLog[0][1]["kwargs"])
 
   # Call subsequent methods, using stored parameters
-  for call in callLog[1:]:
+  for call in loggingDecoratorObj.callLog[1:]:
     method = getattr(exp, call[0])
-    method(**call[1])
+    method(*call[1]["args"], **call[1]["kwargs"])
 
   return exp
 
@@ -121,6 +193,7 @@ class L4L2Experiment(object):
   """
 
 
+  @LoggingDecorator()
   def __init__(self,
                name,
                numCorticalColumns=1,
@@ -131,7 +204,7 @@ class L4L2Experiment(object):
                L4Overrides=None,
                numLearningPoints=3,
                seed=42,
-               logCalls = False,
+               logCalls=False,
                enableLateralSP=False,
                lateralSPOverrides=None,
                enableFeedForwardSP=False,
@@ -188,14 +261,7 @@ class L4L2Experiment(object):
 
     """
     # Handle logging - this has to be done first
-    self.callLog = []
     self.logCalls = logCalls
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      self.callLog.append([inspect.getframeinfo(frame)[2], values])
 
     registerAllResearchRegions()
     self.name = name
@@ -263,6 +329,7 @@ class L4L2Experiment(object):
     self.statistics = []
 
 
+  @LoggingDecorator()
   def learnObjects(self, objects, reset=True):
     """
     Learns all provided objects, and optionally resets the network.
@@ -304,14 +371,6 @@ class L4L2Experiment(object):
              be reset after learning.
 
     """
-    # Handle logging - this has to be done first
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      self.callLog.append([inspect.getframeinfo(frame)[2], values])
-
     self._setLearningMode()
 
     for objectName, sensationList in objects.iteritems():
@@ -344,7 +403,7 @@ class L4L2Experiment(object):
         # send reset signal
         self.sendReset()
 
-
+  @LoggingDecorator()
   def infer(self, sensationList, reset=True, objectName=None):
     """
     Infer on given sensations.
@@ -388,14 +447,6 @@ class L4L2Experiment(object):
              Name of the objects (must match the names given during learning).
 
     """
-    # Handle logging - this has to be done first
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      self.callLog.append([inspect.getframeinfo(frame)[2], values])
-
     self._unsetLearningMode()
     statistics = collections.defaultdict(list)
 
@@ -423,23 +474,11 @@ class L4L2Experiment(object):
     statistics["object"] = objectName if objectName is not None else "Unknown"
     self.statistics.append(statistics)
 
-
+  @LoggingDecorator()
   def sendReset(self, sequenceId=0):
     """
     Sends a reset signal to the network.
     """
-    # Handle logging - this has to be done first
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      (_, filename,
-       _, _, _, _) = inspect.getouterframes(inspect.currentframe())[1]
-      if os.path.splitext(os.path.basename(__file__))[0] != \
-         os.path.splitext(os.path.basename(filename))[0]:
-        self.callLog.append([inspect.getframeinfo(frame)[2], values])
-
     for col in xrange(self.numColumns):
       self.sensorInputs[col].addResetToQueue(sequenceId)
       self.externalInputs[col].addResetToQueue(sequenceId)
@@ -680,18 +719,6 @@ class L4L2Experiment(object):
       "synPermInactiveDec": 0.0005,
       "maxBoost": 1.0,
     }
-
-
-  def saveLog(self, logFilename):
-    """
-    Save the call log history into this file.
-
-    @param  logFilename (path)
-            Filename in which to save a pickled version of the call logs.
-
-    """
-    with open(logFilename,"wb") as f:
-      cPickle.dump(self.callLog,f)
 
 
   def _unsetLearningMode(self):
