@@ -29,7 +29,7 @@ from nupic.encoders.coordinate import CoordinateEncoder
 class CoordinateSensorRegion(PyRegion):
   """
   CoordinateSensorRegion is a simple sensor for sending coordinate data into
-  networks.
+  networks using NuPIC's CoordinateEncoder.
 
   It accepts data using the command "addDataToQueue" or through the function
   addDataToQueue() which can be called directly from Python. Data is queued up
