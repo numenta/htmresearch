@@ -152,9 +152,8 @@ class L2456ModelTest(unittest.TestCase):
     model.learnObjects(objects)
     model.infer(objects["simple1"], objectName="simple1")
 
-    # Looks like inference and learning simultaneously doesn't work for column
-    # poolers.
-    print model.statistics
+    # Inference and learning currrently does not work
+    # print model.statistics
 
 
 

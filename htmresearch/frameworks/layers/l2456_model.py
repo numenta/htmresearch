@@ -60,8 +60,29 @@ import cPickle
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
+from htmresearch.support.logging_decorator import LoggingDecorator
 from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.frameworks.layers.laminar_network import createNetwork
+
+
+def rerunExperimentFromLogfile(logFilename):
+  """
+  Create an experiment class according to the sequence of operations in logFile
+  and return resulting experiment instance.
+  """
+  callLog = LoggingDecorator.load(logFilename)
+
+  # Assume first one is call to constructor
+
+  exp = L2456Model(*callLog[0][1]["args"], **callLog[0][1]["kwargs"])
+
+  # Call subsequent methods, using stored parameters
+  for call in callLog[1:]:
+    method = getattr(exp, call[0])
+    method(*call[1]["args"], **call[1]["kwargs"])
+
+  return exp
+
 
 class L2456Model(object):
   """
@@ -74,6 +95,7 @@ class L2456Model(object):
   """
 
 
+  @LoggingDecorator()
   def __init__(self,
                name,
                numCorticalColumns=1,
@@ -118,14 +140,7 @@ class L2456Model(object):
              which is very useful for debugging.
     """
     # Handle logging - this has to be done first
-    self.callLog = []
     self.logCalls = logCalls
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      self.callLog.append([inspect.getframeinfo(frame)[2], values])
 
     registerAllResearchRegions()
     self.name = name
@@ -165,6 +180,7 @@ class L2456Model(object):
     self.statistics = []
 
 
+  @LoggingDecorator()
   def learnObjects(self, objects, reset=True):
     """
     Learns all provided objects, and optionally resets the network.
@@ -217,14 +233,6 @@ class L2456Model(object):
              be reset after learning.
 
     """
-    # Handle logging - this has to be done first
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      self.callLog.append([inspect.getframeinfo(frame)[2], values])
-
     self._setLearningMode()
 
     for objectName, sensationList in objects.iteritems():
@@ -257,9 +265,10 @@ class L2456Model(object):
 
       if reset:
         # send reset signal
-        self.sendReset()
+        self._sendReset()
 
 
+  @LoggingDecorator()
   def infer(self, sensationList, reset=True, objectName=None):
     """
     Infer on a given set of sensations for a single object.
@@ -304,14 +313,6 @@ class L2456Model(object):
              Name of the objects (must match the names given during learning).
 
     """
-    # Handle logging - this has to be done first
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      self.callLog.append([inspect.getframeinfo(frame)[2], values])
-
     self._unsetLearningMode()
     statistics = collections.defaultdict(list)
 
@@ -333,7 +334,7 @@ class L2456Model(object):
 
     if reset:
       # send reset signal
-      self.sendReset()
+      self._sendReset()
 
     # save statistics
     statistics["numSteps"] = len(sensationList)
@@ -341,7 +342,15 @@ class L2456Model(object):
     self.statistics.append(statistics)
 
 
-  def sendReset(self, sequenceId=0):
+  @LoggingDecorator()
+  def sendReset(self, *args, **kwargs):
+    """
+    Public interface to sends a reset signal to the network.  This is logged.
+    """
+    self._sendReset(*args, **kwargs)
+
+
+  def _sendReset(self, sequenceId=0):
     """
     Sends a reset signal to the network.
     """
