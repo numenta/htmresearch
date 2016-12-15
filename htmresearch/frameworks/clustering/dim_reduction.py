@@ -100,23 +100,30 @@ def assignClusters(sdrs, numClusters, numSDRsPerCluster):
 
 
 
-def project2D(sdrs):
-  distanceMat = computeDistanceMat(sdrs)
+def project2D(sdrs, method='mds'):
+  distance_mat = computeDistanceMat(sdrs)
 
   seed = np.random.RandomState(seed=3)
 
-  mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9,
-                     random_state=seed,
-                     dissimilarity="precomputed", n_jobs=1)
-  pos = mds.fit(distanceMat).embedding_
+  if method == 'mds':
+    mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9,
+                       random_state=seed,
+                       dissimilarity="precomputed", n_jobs=1)
 
-  nmds = manifold.MDS(n_components=2, metric=False, max_iter=3000, eps=1e-12,
-                      dissimilarity="precomputed", random_state=seed, n_jobs=1,
-                      n_init=1)
+    pos = mds.fit(distance_mat).embedding_
 
-  npos = nmds.fit_transform(distanceMat, init=pos)
+    nmds = manifold.MDS(n_components=2, metric=False, max_iter=3000, eps=1e-12,
+                        dissimilarity="precomputed", random_state=seed,
+                        n_jobs=1, n_init=1)
 
-  return npos, distanceMat
+    pos = nmds.fit_transform(distance_mat, init=pos)
+  elif method == 'tSNE':
+    tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
+    pos = tsne.fit_transform(distance_mat)
+  else:
+    raise NotImplementedError
+
+  return pos, distance_mat
 
 
 

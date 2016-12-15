@@ -84,7 +84,8 @@ def main():
     f.write(json.dumps(dominoStats))
 
   filePaths = _generateExpData()
-  plotSensorData(filePaths)
+  plt = plotSensorData(filePaths)
+  plt.show()
 
 
 

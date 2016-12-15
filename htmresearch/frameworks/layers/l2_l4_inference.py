@@ -79,16 +79,16 @@ projects/layers/multi_column.py
 
 """
 
+import collections
 import os
 import random
-import collections
-import inspect
-import cPickle
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
+from htmresearch.support.logging_decorator import LoggingDecorator
 from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.frameworks.layers.laminar_network import createNetwork
+
 
 
 def rerunExperimentFromLogfile(logFilename):
@@ -96,18 +96,19 @@ def rerunExperimentFromLogfile(logFilename):
   Create an experiment class according to the sequence of operations in logFile
   and return resulting experiment instance.
   """
-  with open(logFilename,"rb") as f:
-    callLog = cPickle.load(f)
+  callLog = LoggingDecorator.load(logFilename)
 
   # Assume first one is call to constructor
-  exp = L4L2Experiment(**callLog[0][1])
+
+  exp = L4L2Experiment(*callLog[0][1]["args"], **callLog[0][1]["kwargs"])
 
   # Call subsequent methods, using stored parameters
   for call in callLog[1:]:
     method = getattr(exp, call[0])
-    method(**call[1])
+    method(*call[1]["args"], **call[1]["kwargs"])
 
   return exp
+
 
 
 class L4L2Experiment(object):
@@ -121,6 +122,7 @@ class L4L2Experiment(object):
   """
 
 
+  @LoggingDecorator()
   def __init__(self,
                name,
                numCorticalColumns=1,
@@ -131,7 +133,7 @@ class L4L2Experiment(object):
                L4Overrides=None,
                numLearningPoints=3,
                seed=42,
-               logCalls = False,
+               logCalls=False,
                enableLateralSP=False,
                lateralSPOverrides=None,
                enableFeedForwardSP=False,
@@ -188,14 +190,7 @@ class L4L2Experiment(object):
 
     """
     # Handle logging - this has to be done first
-    self.callLog = []
     self.logCalls = logCalls
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      self.callLog.append([inspect.getframeinfo(frame)[2], values])
 
     registerAllResearchRegions()
     self.name = name
@@ -263,6 +258,7 @@ class L4L2Experiment(object):
     self.statistics = []
 
 
+  @LoggingDecorator()
   def learnObjects(self, objects, reset=True):
     """
     Learns all provided objects, and optionally resets the network.
@@ -304,14 +300,6 @@ class L4L2Experiment(object):
              be reset after learning.
 
     """
-    # Handle logging - this has to be done first
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      self.callLog.append([inspect.getframeinfo(frame)[2], values])
-
     self._setLearningMode()
 
     for objectName, sensationList in objects.iteritems():
@@ -342,9 +330,9 @@ class L4L2Experiment(object):
 
       if reset:
         # send reset signal
-        self.sendReset()
+        self._sendReset()
 
-
+  @LoggingDecorator()
   def infer(self, sensationList, reset=True, objectName=None):
     """
     Infer on given sensations.
@@ -388,14 +376,6 @@ class L4L2Experiment(object):
              Name of the objects (must match the names given during learning).
 
     """
-    # Handle logging - this has to be done first
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      self.callLog.append([inspect.getframeinfo(frame)[2], values])
-
     self._unsetLearningMode()
     statistics = collections.defaultdict(list)
 
@@ -416,35 +396,28 @@ class L4L2Experiment(object):
 
     if reset:
       # send reset signal
-      self.sendReset()
+      self._sendReset()
 
     # save statistics
     statistics["numSteps"] = len(sensationList)
     statistics["object"] = objectName if objectName is not None else "Unknown"
     self.statistics.append(statistics)
 
-
-  def sendReset(self, sequenceId=0):
+  def _sendReset(self, sequenceId=0):
     """
     Sends a reset signal to the network.
     """
-    # Handle logging - this has to be done first
-    if self.logCalls:
-      frame = inspect.currentframe()
-      args, _, _, values = inspect.getargvalues(frame)
-      values.pop('frame')
-      values.pop('self')
-      (_, filename,
-       _, _, _, _) = inspect.getouterframes(inspect.currentframe())[1]
-      if os.path.splitext(os.path.basename(__file__))[0] != \
-         os.path.splitext(os.path.basename(filename))[0]:
-        self.callLog.append([inspect.getframeinfo(frame)[2], values])
-
     for col in xrange(self.numColumns):
       self.sensorInputs[col].addResetToQueue(sequenceId)
       self.externalInputs[col].addResetToQueue(sequenceId)
     self.network.run(1)
 
+  @LoggingDecorator()
+  def sendReset(self, *args, **kwargs):
+    """
+    Public interface to sends a reset signal to the network.  This is logged.
+    """
+    self._sendReset(*args, **kwargs)
 
   def plotInferenceStats(self,
                          fields,
@@ -680,18 +653,6 @@ class L4L2Experiment(object):
       "synPermInactiveDec": 0.0005,
       "maxBoost": 1.0,
     }
-
-
-  def saveLog(self, logFilename):
-    """
-    Save the call log history into this file.
-
-    @param  logFilename (path)
-            Filename in which to save a pickled version of the call logs.
-
-    """
-    with open(logFilename,"wb") as f:
-      cPickle.dump(self.callLog,f)
 
 
   def _unsetLearningMode(self):
