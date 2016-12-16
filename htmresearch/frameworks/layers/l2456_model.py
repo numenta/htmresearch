@@ -390,53 +390,22 @@ class L2456Model(object):
              If true, all cortical columns will be merged in one plot.
 
     """
-    if not os.path.exists(plotDir):
-      os.makedirs(plotDir)
 
-    plt.figure()
-    stats = self.statistics[experimentID]
-    objectName = stats["object"]
-
-    for i in xrange(self.numColumns):
-      if not onePlot:
-        plt.figure()
-
-      # plot request stats
-      for field in fields:
-        fieldKey = field + " C" + str(i)
-        plt.plot(stats[fieldKey], marker='+', label=fieldKey)
-
-      # format
-      plt.legend(loc="upper right")
-      plt.xlabel("Sensation #")
-      plt.xticks(range(stats["numSteps"]))
-      plt.ylabel("Number of active bits")
-      plt.ylim(plt.ylim()[0] - 5, plt.ylim()[1] + 5)
-      plt.title("Object inference for object {}".format(objectName))
-
-      # save
-      if not onePlot:
-        relPath = "{}_exp_{}_C{}.png".format(self.name, experimentID, i)
-        path = os.path.join(plotDir, relPath)
-        plt.savefig(path)
-        plt.close()
-
-    if onePlot:
-      relPath = "{}_exp_{}.png".format(self.name, experimentID)
-      path = os.path.join(plotDir, relPath)
-      plt.savefig(path)
-      plt.close()
+    # TODO: implement it once learning and inference are working
+    raise RuntimeError("Unimplemented method")
 
 
   def getInferenceStats(self, experimentID=None):
     """
     Returns the statistics for the desired experiment. If experimentID is None
-    return all statistics
+    return all statistics.
 
     Parameters:
     ----------------------------
     @param   experimentID (int)
-             ID of the experiment (usually 0 if only one was conducted)
+             Each time you call infer() you get a new set of inference
+             statistics. experimentID refers to which call you want stats for
+             (usually 0 if only one was conducted).
 
     """
     if experimentID is None:

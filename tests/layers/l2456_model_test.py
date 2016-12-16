@@ -153,10 +153,12 @@ class L2456ModelTest(unittest.TestCase):
     model.infer(objects["simple1"], objectName="simple1")
 
     # Check that L56 are learning
-    self.assertEqual(sum(model.statistics[0]['L5 Representation C0']), 80,
-                     "L5 doesn't have correct object representation")
-    self.assertEqual(sum(model.statistics[0]['Overlap L5 with object C0']), 80,
-                     "L5 doesn't have correct object representation")
+    self.assertEqual(
+      sum(model.getInferenceStats(0)['L5 Representation C0']), 80,
+      "L5 doesn't have correct object representation")
+    self.assertEqual(
+      sum(model.getInferenceStats(0)['Overlap L5 with object C0']), 80,
+      "L5 doesn't have correct object representation")
 
     # Inference and learning currently do not fully work
     # TODO: Need to get L42 learning something useful!
