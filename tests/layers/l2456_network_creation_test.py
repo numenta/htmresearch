@@ -30,9 +30,21 @@ networkConfig = {
   "networkType": "L2456Columns",
   "numCorticalColumns": 1,
   "randomSeedBase": 42,
-  "sensorInputSize": 2048,
-  "coarseSensorInputSize": 2048,
-  "locationInputSize": 2048,
+
+  "sensorParams": {
+    "outputWidth": 2048,
+  },
+
+  "coarseSensorParams": {
+    "outputWidth": 2048,
+  },
+
+  "locationParams": {
+    "activeBits": 41,
+    "outputWidth": 2048,
+    "radius": 2,
+    "verbosity": 0,
+  },
 
   "L4Params": {
     "columnCount": 2048,
@@ -161,6 +173,7 @@ class L2456NetworkTest(unittest.TestCase):
       net.run(1)
 
       # Check L6 and L4 regions are getting the right sensor input
+      # We won't verify location output other than to ensure there is input
       for i in range(numColumns):
         # Add some input vectors to the queue
         suffix = "_" + str(i)
@@ -173,10 +186,9 @@ class L2456NetworkTest(unittest.TestCase):
           "Feedforward input to L6Column is incorrect"
         )
 
-        self.assertEqual(
+        self.assertGreaterEqual(
           L6Column.getInputData("externalBasalInput").nonzero()[0].sum(),
-          sum([2 + i + k * 10, 42 + i + k * 10, 100 + i + k * 10]),
-          "External input to L6Column is incorrect"
+          40, "External input to L6Column is incorrect"
         )
 
         self.assertEqual(
@@ -225,6 +237,24 @@ class L2456NetworkTest(unittest.TestCase):
 
     # Check we can run the network
     self._runNetwork(net, config["numCorticalColumns"])
+
+
+  def testIncorrectWidths(self):
+    """
+    We create a network with sensor and coarse sensor widths that don't match
+    column counts. We expect assertion errors in this case
+    """
+    config = copy.deepcopy(networkConfig)
+    config["numCorticalColumns"] = 2
+    config["L4Params"]["columnCount"] = 42
+    with self.assertRaises(AssertionError):
+      createNetwork(config)
+
+    config = copy.deepcopy(networkConfig)
+    config["numCorticalColumns"] = 2
+    config["L6Params"]["columnCount"] = 42
+    with self.assertRaises(AssertionError):
+      createNetwork(config)
 
 
   @unittest.skip("TODO: depends on NUP-2309")

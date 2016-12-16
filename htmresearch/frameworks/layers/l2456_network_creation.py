@@ -80,10 +80,13 @@ networkConfig must be a dict with the following format:
     "networkType": "L2456Columns",
     "numCorticalColumns": 3,
     "randomSeedBase": 42,
-    "sensorInputSize": 2048,
-    "coarseSensorInputSize": 2048,
-    "locationInputSize": 2048,
 
+    "sensorParams": {
+      <constructor parameters for RawSensor>
+    },
+    "coarseSensorParams": {
+      <constructor parameters for RawSensor>
+    },
     "locationParams": {
       <constructor parameters for CoordinateSensorRegion>
     },
@@ -123,6 +126,7 @@ def _createL2456Column(network, networkConfig, suffix=""):
   """
   Create a single L2456 column with appropriate suffix on the name.
   """
+
   locationInputName = "locationInput" + suffix
   sensorInputName = "sensorInput" + suffix
   coarseSensorInputName = "coarseSensorInput" + suffix
@@ -134,14 +138,14 @@ def _createL2456Column(network, networkConfig, suffix=""):
   # TODO: Convert locationInput to a coordinate sensor region once its ready
   # Add the three sensors to network.
   network.addRegion(
-    locationInputName, "py.RawSensor",
-    json.dumps({"outputWidth": networkConfig["locationInputSize"]}))
+    locationInputName, "py.CoordinateSensorRegion",
+    json.dumps(networkConfig["locationParams"]))
   network.addRegion(
     coarseSensorInputName, "py.RawSensor",
-    json.dumps({"outputWidth": networkConfig["coarseSensorInputSize"]}))
+    json.dumps(networkConfig["coarseSensorParams"]))
   network.addRegion(
     sensorInputName, "py.RawSensor",
-    json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
+    json.dumps(networkConfig["sensorParams"]))
 
   # Add L2/L5 column pooler regions
   network.addRegion(
@@ -153,7 +157,7 @@ def _createL2456Column(network, networkConfig, suffix=""):
 
   # Add L4/L6 extended temporal memory regions
   L6Params = copy.deepcopy(networkConfig["L6Params"])
-  L6Params["basalInputWidth"] = networkConfig["locationInputSize"]
+  L6Params["basalInputWidth"] = networkConfig["locationParams"]["outputWidth"]
   L6Params["apicalInputWidth"] = networkConfig["L5Params"]["cellCount"]
   network.addRegion(
     L6ColumnName, "py.ExtendedTMRegion",
@@ -167,6 +171,14 @@ def _createL2456Column(network, networkConfig, suffix=""):
     L4ColumnName, "py.ExtendedTMRegion",
     json.dumps(L4Params))
 
+  # Once regions are created, ensure inputs match column counts
+  assert(network.regions[L6ColumnName].getParameter("columnCount") ==
+         network.regions[coarseSensorInputName].getParameter("outputWidth")), \
+         "L6 column count must equal coarse sensor width"
+
+  assert(network.regions[L4ColumnName].getParameter("columnCount") ==
+         network.regions[sensorInputName].getParameter("outputWidth")), \
+         "L4 column count must equal sensor width"
 
   # Link up the sensors
   network.link(locationInputName, L6ColumnName, "UniformLink", "",

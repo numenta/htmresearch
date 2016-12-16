@@ -46,29 +46,29 @@ class L2456ModelTest(unittest.TestCase):
       "simple1": [
         {
           # location, coarse feature, fine feature for column 0, sensation 1
-          0: (_randomSDR(), _randomSDR(), _randomSDR()),
+          0: ([0, 1, 2], _randomSDR(), _randomSDR()),
           # location, coarse feature, fine feature for column 1, sensation 1
-          1: (_randomSDR(), _randomSDR(), _randomSDR()),
+          1: ([0, 2, 2], _randomSDR(), _randomSDR()),
         },
         {
           # location, coarse feature, fine feature for column 0, sensation 2
-          0: (_randomSDR(), _randomSDR(), _randomSDR()),
+          0: ([0, 2, 3], _randomSDR(), _randomSDR()),
           # location, coarse feature, fine feature for column 1, sensation 2
-          1: (_randomSDR(), _randomSDR(), _randomSDR()),
+          1: ([1, 1, 2], _randomSDR(), _randomSDR()),
         },
       ],
       "simple2": [
         {
           # location, coarse feature, fine feature for column 0, sensation 1
-          0: (_randomSDR(), _randomSDR(), _randomSDR()),
+          0: ([1, 2, 2], _randomSDR(), _randomSDR()),
           # location, coarse feature, fine feature for column 1, sensation 1
-          1: (_randomSDR(), _randomSDR(), _randomSDR()),
+          1: ([2, 1, 2], _randomSDR(), _randomSDR()),
         },
         {
           # location, coarse feature, fine feature for column 0, sensation 2
-          0: (_randomSDR(), _randomSDR(), _randomSDR()),
+          0: ([3, 1, 2], _randomSDR(), _randomSDR()),
           # location, coarse feature, fine feature for column 1, sensation 2
-          1: (_randomSDR(), _randomSDR(), _randomSDR()),
+          1: ([3, 2, 2], _randomSDR(), _randomSDR()),
         },
       ]
     }

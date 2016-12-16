@@ -159,9 +159,6 @@ class L2456Model(object):
       "networkType": "L2456Columns",
       "numCorticalColumns": numCorticalColumns,
       "randomSeedBase": self.seed,
-      "sensorInputSize": self.sensorInputSize,
-      "coarseSensorInputSize": self.sensorInputSize,
-      "locationInputSize": self.sensorInputSize,
     }
     self.config.update(self.getDefaultParams())
 
@@ -554,6 +551,21 @@ class L2456Model(object):
     Returns a good default set of parameters to use in L2456 regions
     """
     return   {
+      "sensorParams": {
+        "outputWidth": self.sensorInputSize,
+      },
+
+      "coarseSensorParams": {
+        "outputWidth": self.sensorInputSize,
+      },
+
+      "locationParams": {
+        "activeBits": 41,
+        "outputWidth": self.sensorInputSize,
+        "radius": 2,
+        "verbosity": 0,
+      },
+
       "L4Params": {
         "columnCount": self.sensorInputSize,
         "cellsPerColumn": 8,
