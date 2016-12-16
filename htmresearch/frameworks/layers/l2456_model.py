@@ -644,6 +644,7 @@ class L2456Model(object):
 
     }
 
+
   def _retrieveRegions(self):
     """
     Retrieve and store Python region instances for each column
@@ -713,7 +714,7 @@ class L2456Model(object):
     """
     L4Representations = self.getL4Representations()
     L4PredictiveCells = self.getL4PredictiveCells()
-    L2Representation = self.getL2Representations()
+    L2Representations = self.getL2Representations()
     L5Representations = self.getL5Representations()
     L6Representations = self.getL6Representations()
     L6PredictiveCells = self.getL6PredictiveCells()
@@ -726,15 +727,8 @@ class L2456Model(object):
         len(L4PredictiveCells[i])
       )
       statistics["L2 Representation C" + str(i)].append(
-        len(L2Representation[i])
+        len(L2Representations[i])
       )
-
-      # add true overlap if objectName was provided
-      if objectName is not None:
-        objectRepresentation = self.objectRepresentationsL2[objectName]
-        statistics["Overlap L2 with object C" + str(i)].append(
-          len(objectRepresentation[i] & L2Representation[i])
-        )
 
       statistics["L6 Representation C" + str(i)].append(
         len(L6Representations[i])
@@ -745,3 +739,16 @@ class L2456Model(object):
       statistics["L5 Representation C" + str(i)].append(
         len(L5Representations[i])
       )
+
+      # add true overlap if objectName was provided
+      if objectName is not None:
+        objectRepresentationL2 = self.objectRepresentationsL2[objectName]
+        statistics["Overlap L2 with object C" + str(i)].append(
+          len(objectRepresentationL2[i] & L2Representations[i])
+        )
+
+        objectRepresentationL5 = self.objectRepresentationsL5[objectName]
+        statistics["Overlap L5 with object C" + str(i)].append(
+          len(objectRepresentationL5[i] & L5Representations[i])
+        )
+

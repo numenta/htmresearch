@@ -139,8 +139,7 @@ class L2456ModelTest(unittest.TestCase):
 
 
   def testModelInference(self):
-    """Simple test of the basic interface for L4L2Experiment. We set custom
-    parameters to ensure they are passed through to the region."""
+    """Simple test of the basic interface for L2456Experiment."""
 
     # Set up experiment and train on two random objects
     model = l2456_model.L2456Model(
@@ -150,11 +149,17 @@ class L2456ModelTest(unittest.TestCase):
 
     objects = self._getObjects()
     model.learnObjects(objects)
+
     model.infer(objects["simple1"], objectName="simple1")
 
-    # Inference and learning currrently does not work
-    # print model.statistics
+    # Check that L56 are learning
+    self.assertEqual(sum(model.statistics[0]['L5 Representation C0']), 80,
+                     "L5 doesn't have correct object representation")
+    self.assertEqual(sum(model.statistics[0]['Overlap L5 with object C0']), 80,
+                     "L5 doesn't have correct object representation")
 
+    # Inference and learning currently do not fully work
+    # TODO: Need to get L42 learning something useful!
 
 
 if __name__ == "__main__":
