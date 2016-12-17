@@ -173,74 +173,76 @@ def plot_cluster_assignments(output_dir, clusters, timestep):
   fig, ax = plt.subplots(figsize=(15, 7))
   # cluster sizes
   num_clusters = len(clusters)
-  categories_to_num_points = {}
-  for i in range(num_clusters):
-    cluster = clusters[i]
-    cluster_id = cluster.id
-    freqs = cluster.label_distribution()
-    for freq in freqs:
-      num_points = int(freq['num_points'])
-      category = int(freq['label'])
-      if category not in categories_to_num_points:
-        categories_to_num_points[category] = {}
-      categories_to_num_points[category][cluster_id] = num_points
-
-  cluster_ids = []
-  for clusters_to_num_points in categories_to_num_points.values():
-    cluster_ids.extend(clusters_to_num_points.keys())
-  cluster_ids = list(set(cluster_ids))
-
-  # Get some pastel shades for the colors. Note: category index start at 0 
-  num_bars = len(cluster_ids)
-  num_categories = max(categories_to_num_points.keys()) + 1
-  colors = plt.cm.BuPu(np.linspace(0, 0.5, num_categories))
-  bottom = np.array([0 for _ in range(num_bars)])
-  # Plot bars and create text labels for the table
-  cell_text = []
-  categories = []
-  for category, clusters_to_num_points in categories_to_num_points.items():
-    categories.append(category)
-    bars = []
-    for cid in cluster_ids:
-      if cid in clusters_to_num_points:
-        bars.append(clusters_to_num_points[cid])
-      else:
-        bars.append(0)
-
-    # draw the bars for this category
-    x = np.array([i for i in range(num_bars)])
-    ax.bar(x,
-           bars,
-           align='center',
-           bottom=bottom,
-           color=colors[category])
-    bottom += np.array(bars)
-    ax.set_xticks(x)
-    cell_text.append([x for x in bars])
-
-  ax.set_title('Number of points per category by cluster ID (Timestep: %s)'
-               % timestep)
-  ax.set_ylabel('Number of points')
-
-  # Reverse colors and text labels to display the last value at the top.
-  colors = colors[::-1]
-  cell_text.reverse()
-
-  # Add a table at the bottom of the axes
-  rowLabels = ['category %s' % c for c in categories]
-  colLabels = ['c%s' % c for c in cluster_ids]
-  the_table = plt.table(cellText=cell_text,
-                        cellLoc='center',
-                        rowLabels=rowLabels,
-                        rowColours=colors,
-                        colLabels=colLabels,
-                        loc='bottom')
-  the_table.auto_set_font_size(False)
-  the_table.set_fontsize(9)
-  the_table.scale(1, 2)
-  ax.set_xticks([])
-  plt.tight_layout(pad=7)
-  fig_name = 'cluster_assignments_t=%s.png' % timestep
-  plt.savefig('%s/%s' % (output_dir, fig_name))
-  print('==> saved: %s/%s' % (output_dir, fig_name))
-  plt.draw()
+  if num_clusters > 0:
+  
+    categories_to_num_points = {}
+    for i in range(num_clusters):
+      cluster = clusters[i]
+      cluster_id = cluster.id
+      freqs = cluster.label_distribution()
+      for freq in freqs:
+        num_points = int(freq['num_points'])
+        category = int(freq['label'])
+        if category not in categories_to_num_points:
+          categories_to_num_points[category] = {}
+        categories_to_num_points[category][cluster_id] = num_points
+  
+    cluster_ids = []
+    for clusters_to_num_points in categories_to_num_points.values():
+      cluster_ids.extend(clusters_to_num_points.keys())
+    cluster_ids = list(set(cluster_ids))
+  
+    # Get some pastel shades for the colors. Note: category index start at 0 
+    num_bars = len(cluster_ids)
+    num_categories = max(categories_to_num_points.keys()) + 1
+    colors = plt.cm.BuPu(np.linspace(0, 0.5, num_categories))
+    bottom = np.array([0 for _ in range(num_bars)])
+    # Plot bars and create text labels for the table
+    cell_text = []
+    categories = []
+    for category, clusters_to_num_points in categories_to_num_points.items():
+      categories.append(category)
+      bars = []
+      for cid in cluster_ids:
+        if cid in clusters_to_num_points:
+          bars.append(clusters_to_num_points[cid])
+        else:
+          bars.append(0)
+  
+      # draw the bars for this category
+      x = np.array([i for i in range(num_bars)])
+      ax.bar(x,
+             bars,
+             align='center',
+             bottom=bottom,
+             color=colors[category])
+      bottom += np.array(bars)
+      ax.set_xticks(x)
+      cell_text.append([x for x in bars])
+  
+    ax.set_title('Number of points per category by cluster ID (Timestep: %s)'
+                 % timestep)
+    ax.set_ylabel('Number of points')
+  
+    # Reverse colors and text labels to display the last value at the top.
+    colors = colors[::-1]
+    cell_text.reverse()
+  
+    # Add a table at the bottom of the axes
+    rowLabels = ['category %s' % c for c in categories]
+    colLabels = ['c%s' % c for c in cluster_ids]
+    the_table = plt.table(cellText=cell_text,
+                          cellLoc='center',
+                          rowLabels=rowLabels,
+                          rowColours=colors,
+                          colLabels=colLabels,
+                          loc='bottom')
+    the_table.auto_set_font_size(False)
+    the_table.set_fontsize(9)
+    the_table.scale(1, 2)
+    ax.set_xticks([])
+    plt.tight_layout(pad=7)
+    fig_name = 'cluster_assignments_t=%s.png' % timestep
+    plt.savefig('%s/%s' % (output_dir, fig_name))
+    print('==> saved: %s/%s' % (output_dir, fig_name))
+    plt.draw()
