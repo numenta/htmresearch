@@ -96,22 +96,25 @@ def main():
   distance_functions = [euclidian_distance]
   clustering_classes = [PerfectClustering, OnlineClusteringV2]
   network_config = 'sp=True_tm=True_tp=False_SDRClassifier'
-  exp_names = ['binary_ampl=10.0_mean=0.0_noise=0.0',
-               'binary_ampl=10.0_mean=0.0_noise=1.0',
-               'sensortag_z']
+  exp_names = [
+    'body_acc_x',
+    'binary_ampl=10.0_mean=0.0_noise=0.0',
+    'binary_ampl=10.0_mean=0.0_noise=1.0',
+    'sensortag_z'
+  ]
 
   # Exp params
   moving_average_window = 2  # for all moving averages of the experiment
   ClusteringClass = clustering_classes[1]
   distance_func = distance_functions[0]
-  exp_name = exp_names[2]
-  start_idx = -700
-  end_idx = -200
+  exp_name = exp_names[0]
+  start_idx = 1000
+  end_idx = 12000
   input_width = 2048 * 32
   active_cells_weight = 0
-  predicted_active_cells_weight = 1
+  predicted_active_cells_weight = 10
   max_num_clusters = 3
-  num_cluster_snapshots = 5
+  num_cluster_snapshots = 1
   show_plots = True
   distance_matrix_ignore_noise = True  # whether to ignore label 0 (noise)
 

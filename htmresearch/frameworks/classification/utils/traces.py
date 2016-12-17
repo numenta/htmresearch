@@ -50,15 +50,23 @@ def constructStableIntervals(confidence):
 
 
 def plotTraces(xlim, traces, title, anomalyScoreType,
-               outputFile, numTmCells=None, plotTemporalMemoryStates=False):
+               outputFile, clustering,
+               numTmCells=None, plotTemporalMemoryStates=False):
   """
   Plot network traces
-  :param numTmCells: (int) number of cells in the TM
+
   :param xlim: (list) min and max values used for the x-axis range
   :param traces: (list of dict) network traces to plot
+  :param title: (string) title of the plot
+  :param anomalyScoreType: (str) type of the anomaly score to plot. Values can
+    be 'rawAnomalyScore' or 'rollingAnomalyScore'
+  :param outputFile: (str) path to the output file
+  :param clustering: (bool) whether or not to plot the clustering subplots
+  :param numTmCells: (int) number of cells in the TM
   :return: 
   """
-
+  
+  categoriesLabelled = []
   t = np.array(traces['recordNumber'])
   classLabels = np.array(traces['actualCategory'])
   sensorValue = np.array(traces['sensorValue'])
@@ -73,7 +81,11 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
       print
 
   selectRange = np.where(np.logical_and(t > xlim[0], t < xlim[1]))[0]
-  f, ax = plt.subplots(5, sharex=True)
+  if clustering:
+    numSubplots = 5
+  else: 
+    numSubplots = 3
+  f, ax = plt.subplots(numSubplots, sharex=True)
   # plot sensor value and class labels
   ax[0].set_title('Sensor data \n %s' % title)
   ax[0].plot(t, sensorValue)
@@ -83,7 +95,8 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
   height = yl[1] - yl[0]
 
   # plot class labels as transparent colored rectangles
-  classColor = {0: 'grey', 1: 'b', 2: 'r', 3: 'y'}
+  classColor = {0: 'grey', 1: 'blue', 2: 'red', 3: 'yellow', 4: 'pink', 
+                5: 'green', 6: 'purple', 8: 'brown', 9: 'white'}
   xStartLabel = xlim[0]
   while xStartLabel < xlim[1]:
     currentClassLabel = classLabels[xStartLabel]
@@ -92,21 +105,36 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
     else:
       width = np.where(classLabels[xStartLabel:] != currentClassLabel)[0][0]
 
+
+    if currentClassLabel not in categoriesLabelled:
+      labelLegend = 'Category %s' % int(currentClassLabel)
+    else:
+      labelLegend = None
+    
+    categoriesLabelled.append(currentClassLabel)
     ax[0].add_patch(
       patches.Rectangle((t[0] + xStartLabel, yl[0]), width, height,
-                        facecolor=classColor[currentClassLabel], alpha=0.6)
+                        facecolor=classColor[currentClassLabel], alpha=0.6,
+                        label=labelLegend)
     )
     xStartLabel += width
   ax[0].set_ylabel('Sensor Value')
+  ax[0].legend(ncol=4)
 
   # plot classification accuracy
   ax[1].set_title('Classification accuracy rolling average')
   ax[1].plot(traces['rollingClassificationAccuracy'])
 
-  # plot clustering accuracy
-  ax[2].set_title('Clustering accuracy rolling average')
-  if 'rollingClusteringAccuracy' in traces:
-    ax[2].plot(traces['rollingClusteringAccuracy'])
+  if clustering: 
+    # plot clustering accuracy
+    ax[3].set_title('Clustering accuracy rolling average')
+    if 'rollingClusteringAccuracy' in traces:
+      ax[3].plot(traces['rollingClusteringAccuracy'])
+    
+    # plot clustering confidence
+    ax[4].set_title('Clustering confidence')
+    if 'clusteringConfidence' in traces:
+      ax[4].plot(traces['clusteringConfidence'])
 
   # highlight when the anomaly score is in a stable phase
   # if 'clusteringConfidence' in traces:
@@ -116,13 +144,8 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
   #     ax[2].axvspan(start, end, facecolor='g', alpha=0.4)
 
   # plot anomaly score
-  ax[3].set_title(anomalyScoreType)
-  ax[3].plot(traces[anomalyScoreType])
-
-  # plot clustering confidence
-  ax[4].set_title('Clustering confidence')
-  if 'clusteringConfidence' in traces:
-    ax[4].plot(traces['clusteringConfidence'])
+  ax[2].set_title(anomalyScoreType)
+  ax[2].plot(traces[anomalyScoreType])
 
   np.random.seed(21)
   randomCellOrder = np.random.permutation(np.arange(numTmCells))
@@ -180,6 +203,7 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
       ax[2].set_xlabel('Time')
 
   plt.savefig(outputFile)
+  return plt
 
 
 
