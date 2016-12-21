@@ -6,7 +6,7 @@
       "regionType": "py.RecordSensor",
       "regionParams": {
         "verbosity": 0,
-        "numCategories": 3
+        "numCategories": 10
       },
       "encoders": {
         "scalarEncoder": {
@@ -82,7 +82,7 @@
         "alpha": 0.01,
         "verbosity": 0,
         "steps": 0,
-        "maxCategoryCount": 3
+        "maxCategoryCount": 10
       },
       "regionType": "py.SDRClassifierRegion",
       "regionName": "classifier"
