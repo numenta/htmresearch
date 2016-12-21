@@ -205,7 +205,8 @@ class TemporalMemory(object):
       self.basalConnections, matchingCellsInBurstingColumns,
       matchingBasalSegments, basalPotentialExcitations, self.cellsPerColumn)
     newBasalSegmentCells = self._getCellsWithFewestSegments(
-      self.basalConnections, burstingColumnsWithNoMatch, self.cellsPerColumn)
+      self.basalConnections, self.rng, burstingColumnsWithNoMatch,
+      self.cellsPerColumn)
 
     # Learning cells were determined completely from basal segments.
     # Do all apical learning on the same cells.
@@ -520,13 +521,15 @@ class TemporalMemory(object):
 
 
   @classmethod
-  def _getCellsWithFewestSegments(cls, connections, columns, cellsPerColumn):
+  def _getCellsWithFewestSegments(cls, connections, rng, columns,
+                                  cellsPerColumn):
     """
     For each column, get the cell that has the fewest total basal segments.
     Break ties randomly.
 
-    @param columns (numpy array)
-    Columns to check
+    @param connections (SegmentSparseMatrix)
+    @param rng (Random)
+    @param columns (numpy array) Columns to check
 
     @return (numpy array)
     One cell for each of the provided columns
@@ -550,8 +553,12 @@ class TemporalMemory(object):
      onePerColumnFilter,
      numCandidatesInColumns) = np.unique(candidateCells / cellsPerColumn,
                                          return_index=True, return_counts=True)
+
+    offsetPercents = np.empty(len(columns), dtype="float32")
+    rng.initializeReal32Array(offsetPercents)
+
     np.add(onePerColumnFilter,
-           np.random.rand(len(columns))*numCandidatesInColumns,
+           offsetPercents*numCandidatesInColumns,
            out=onePerColumnFilter,
            casting="unsafe")
 

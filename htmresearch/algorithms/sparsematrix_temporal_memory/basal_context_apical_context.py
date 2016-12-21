@@ -483,8 +483,12 @@ class TemporalMemory(object):
      onePerColumnFilter,
      numCandidatesInColumns) = np.unique(candidateCells / self.cellsPerColumn,
                                          return_index=True, return_counts=True)
+
+    offsetPercents = np.empty(len(columns), dtype="float32")
+    self.rng.initializeReal32Array(offsetPercents)
+
     np.add(onePerColumnFilter,
-           np.random.rand(len(columns))*numCandidatesInColumns,
+           offsetPercents*numCandidatesInColumns,
            out=onePerColumnFilter,
            casting="unsafe")
 
