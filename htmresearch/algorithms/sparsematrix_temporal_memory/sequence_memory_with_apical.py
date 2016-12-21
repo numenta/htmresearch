@@ -214,7 +214,7 @@ class TemporalMemory(object):
     # Learning cells were determined completely from basal segments.
     # Do all apical learning on the same cells.
     learningCells = np.concatenate(
-      (self.basalConnections.mapSegmentsToCells(learningActiveBasalSegments),
+      (correctPredictedCells,
        self.basalConnections.mapSegmentsToCells(learningMatchingBasalSegments),
        newBasalSegmentCells))
     learningCells.sort()
