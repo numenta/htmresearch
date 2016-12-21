@@ -143,6 +143,7 @@ class CoordinateSensorRegion(PyRegion):
 
     if self.verbosity > 1:
       print "CoordinateSensor outputs:"
+      print "Coordinate = ", data["coordinate"]
       print "sequenceIdOut: ", outputs["sequenceIdOut"]
       print "resetOut: ", outputs["resetOut"]
       print "dataOut: ", outputs["dataOut"].nonzero()[0]

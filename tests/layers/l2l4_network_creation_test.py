@@ -228,10 +228,21 @@ class LaminarNetworkTest(unittest.TestCase):
                      "Incorrect phase externalInput_0")
     self.assertEqual(net.getPhases("externalInput_1"),(0,),
                      "Incorrect phase for externalInput_1")
-    self.assertEqual(net.getPhases("L4Column_0"),(1,),
+    self.assertEqual(net.getPhases("L4Column_0"),(2,),
                      "Incorrect phase for L4Column_0")
-    self.assertEqual(net.getPhases("L4Column_1"),(1,),
+    self.assertEqual(net.getPhases("L4Column_1"),(2,),
                      "Incorrect phase for L4Column_1")
+
+
+  @unittest.skip("Need to implement")
+  def testMultipleL4L2ColumnsSPCreate(self):
+    """
+    In this simplistic test we create a network with 3 L4L2Columns, with spatial
+    poolers. We ensure it has the right number of regions, that spatial poolers
+    are named appropriately, and try to run some inputs through it without
+    crashing.
+    """
+    pass
 
 
   def testCustomParameters(self):
