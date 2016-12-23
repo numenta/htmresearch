@@ -121,9 +121,14 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
   ax[0].set_ylabel('Sensor Value')
   ax[0].legend(ncol=4)
 
+
+  # plot anomaly score
+  ax[1].set_title(anomalyScoreType)
+  ax[1].plot(traces[anomalyScoreType])
+
   # plot classification accuracy
-  ax[1].set_title('Classification accuracy rolling average')
-  ax[1].plot(traces['rollingClassificationAccuracy'])
+  ax[2].set_title('Classification accuracy rolling average')
+  ax[2].plot(traces['rollingClassificationAccuracy'])
 
   if clustering: 
     # plot clustering accuracy
@@ -142,10 +147,6 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
   #   stableIntervals = constructStableIntervals(confidence)
   #   for start, end in stableIntervals:
   #     ax[2].axvspan(start, end, facecolor='g', alpha=0.4)
-
-  # plot anomaly score
-  ax[2].set_title(anomalyScoreType)
-  ax[2].plot(traces[anomalyScoreType])
 
   np.random.seed(21)
   randomCellOrder = np.random.permutation(np.arange(numTmCells))
