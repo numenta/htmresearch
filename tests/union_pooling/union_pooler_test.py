@@ -49,7 +49,7 @@ class UnionTemporalPoolerTest(unittest.TestCase):
                                    synPermConnected=0.3,
                                    minPctOverlapDutyCycle=0.001,
                                    dutyCyclePeriod=1000,
-                                   boostStrength=1.0,
+                                   boostStrength=0.0,
                                    seed=42,
                                    spVerbosity=0,
                                    wrapAround=True,
