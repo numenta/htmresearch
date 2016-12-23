@@ -70,7 +70,7 @@ MODEL_PARAMS = {
         "synPermConnected": 0.1,
         "synPermActiveInc": 0.1,
         "synPermInactiveDec": 0.01,
-        "maxBoost": 0.0
+        "boostStrength": 0.0
     },
     "tpEnable" : True,
     "tpParams": {

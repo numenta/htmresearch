@@ -36,9 +36,8 @@ unionTemporalPoolerParams:
   synPermActiveInc: 0.10
   synPermConnected: 0.10
   minPctOverlapDutyCycle: 0.001
-  minPctActiveDutyCycle: 0.001
   dutyCyclePeriod: 1000
-  maxBoost: 10.0
+  boostStrength: 10.0
   seed: 42
   spVerbosity: 0
   wrapAround: True

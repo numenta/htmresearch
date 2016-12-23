@@ -636,7 +636,7 @@ class L4L2Experiment(object):
       "synPermConnected": 0.1,
       "synPermActiveInc": 0.0001,
       "synPermInactiveDec": 0.0005,
-      "maxBoost": 1.0,
+      "boostStrength": 0.0,
     }
 
   def getDefaultFeedForwardSPParams(self, inputSize):
@@ -651,7 +651,7 @@ class L4L2Experiment(object):
       "synPermConnected": 0.1,
       "synPermActiveInc": 0.0001,
       "synPermInactiveDec": 0.0005,
-      "maxBoost": 1.0,
+      "boostStrength": 0.0,
     }
 
 
