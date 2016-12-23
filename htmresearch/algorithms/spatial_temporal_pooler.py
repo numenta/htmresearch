@@ -41,7 +41,7 @@ class SpatialTemporalPooler(object):
                synPermConnected=0.3,
                minPctOverlapDutyCycle=0.001,
                dutyCyclePeriod=1000,
-              _boostStrength=0.0,
+               boostStrength=0.0,
                useBurstingRule = False,
                usePoolingRule = True,
                poolingLife = 1000,
