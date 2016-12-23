@@ -30,7 +30,7 @@ spParamNoBoosting = {
   "synPermConnected": 0.5,
   "minPctOverlapDutyCycle": 0.0,
   "dutyCyclePeriod": 1000,
-  "boostStrength": 1.0,
+  "boostStrength": 0.0,
   "seed": 1936
 }
 
