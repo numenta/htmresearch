@@ -69,9 +69,8 @@ class TemporalPooler(SpatialPooler):
                synPredictedInc=0.5,
                synPermConnected=0.3,
                minPctOverlapDutyCycle=0.001,
-               minPctActiveDutyCycle=0.001,
                dutyCyclePeriod=1000,
-               maxBoost=1.0,
+               boostStrength=0.0,
                useBurstingRule = False,
                usePoolingRule = True,
                poolingLife = 1000,
@@ -128,9 +127,8 @@ class TemporalPooler(SpatialPooler):
                     synPredictedInc,
                     synPermConnected,
                     minPctOverlapDutyCycle,
-                    minPctActiveDutyCycle,
                     dutyCyclePeriod,
-                    maxBoost,
+                    boostStrength,
                     useBurstingRule,
                     usePoolingRule,
                     poolingLife,
@@ -155,9 +153,8 @@ class TemporalPooler(SpatialPooler):
                synPredictedInc=0.1,
                synPermConnected=0.10,
                minPctOverlapDutyCycle=0.001,
-               minPctActiveDutyCycle=0.001,
                dutyCyclePeriod=1000,
-               maxBoost=10.0,
+               boostStrength=10.0,
                useBurstingRule=True,
                usePoolingRule=True,
                poolingLife=1000,
@@ -195,9 +192,8 @@ class TemporalPooler(SpatialPooler):
     self._synPermBelowStimulusInc = synPermConnected / 10.0
     self._synPermConnected = synPermConnected
     self._minPctOverlapDutyCycles = minPctOverlapDutyCycle
-    self._minPctActiveDutyCycles = minPctActiveDutyCycle
     self._dutyCyclePeriod = dutyCyclePeriod
-    self._maxBoost = maxBoost
+    self._boostStrength = boostStrength
     self._spVerbosity = spVerbosity
     self._wrapAround = wrapAround
     self.useBurstingRule = useBurstingRule
@@ -593,7 +589,7 @@ class TemporalPooler(SpatialPooler):
     # Pooling TP cells that receive predicted input
     # will have their overlap boosted by a large factor so that they are likely
     # to win the inhibition competition
-    boostFactorPooling = self._maxBoost * self._numInputs
+    boostFactorPooling = self._boostStrength * self._numInputs
     overlaps = boostFactorPooling * overlaps
 
     if self._spVerbosity > 3:
@@ -695,9 +691,8 @@ class TemporalPooler(SpatialPooler):
     print "synPermInactiveDec         = ", self.getSynPermInactiveDec()
     print "synPermConnected           = ", self.getSynPermConnected()
     print "minPctOverlapDutyCycle     = ", self.getMinPctOverlapDutyCycles()
-    print "minPctActiveDutyCycle      = ", self.getMinPctActiveDutyCycles()
     print "dutyCyclePeriod            = ", self.getDutyCyclePeriod()
-    print "maxBoost                   = ", self.getMaxBoost()
+    print "boostStrength              = ", self.getBoostStrength()
     print "spVerbosity                = ", self.getSpVerbosity()
     print "version                    = ", self._version
 

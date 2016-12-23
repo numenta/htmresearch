@@ -196,38 +196,6 @@ class FaultySpatialPooler(SpatialPooler):
       self._updatePermanencesForColumn(perm, columnIndex, raisePerm=False)
 
 
-  def _updateBoostFactors(self):
-    """
-    Update the boost factors for all columns. The boost factors are used to
-    increase the overlap of inactive columns to improve their chances of
-    becoming active. and hence encourage participation of more columns in the
-    learning process. This is a line defined as: y = mx + b boost =
-    (1-maxBoost)/minDuty * dutyCycle + maxFiringBoost. Intuitively this means
-    that columns that have been active enough have a boost factor of 1, meaning
-    their overlap is not boosted. Columns whose active duty cycle drops too much
-    below that of their neighbors are boosted depending on how infrequently they
-    have been active. The more infrequent, the more they are boosted. The exact
-    boost factor is linearly interpolated between the points (dutyCycle:0,
-    boost:maxFiringBoost) and (dutyCycle:minDuty, boost:1.0).
-
-            boostFactor
-                ^
-    maxBoost _  |
-                |\
-                | \
-          1  _  |  \ _ _ _ _ _ _ _
-                |
-                +--------------------> activeDutyCycle
-                   |
-            minActiveDutyCycle
-    """
-    if self._maxBoost > 1:
-      self._boostFactors = numpy.exp(-(
-        self._activeDutyCycles-self.targetDensity) * self._maxBoost)
-    else:
-      pass
-
-
   def getAliveColumns(self):
     numColumns = numpy.prod(self.getColumnDimensions())
     aliveColumns = numpy.ones(numColumns)

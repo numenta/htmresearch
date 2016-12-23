@@ -90,7 +90,7 @@ class DistalTimestamps1CellPerColumnDetector(AnomalyDetector):
       "numActiveColumnsPerInhArea": 40,
       "seed": 1956,
       "potentialPct": 0.8,
-      "maxBoost": 1.0,
+      "boostStrength": 0.0,
       "synPermActiveInc": 0.003,
       "synPermConnected": 0.2,
       "synPermInactiveDec": 0.0005,
