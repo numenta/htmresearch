@@ -303,7 +303,7 @@ def binary_signal_generator(writer,
   minSequenceLength = 1
   for cat in range(numCategories + 1)[1:]:
     minSequenceLength *= cat
-  sequenceLength = minSequenceLength * 10
+  sequenceLength = minSequenceLength * 20
   numPoints = numReps * numPhases * sequenceLength * numCategories
 
   endOfSequence = sequenceLength
@@ -312,7 +312,7 @@ def binary_signal_generator(writer,
   sig = 0
   offset = 0
   for i in range(numPoints):
-    noise = noiseAmplitude * random.random()
+    noise = label * noiseAmplitude * random.random()
 
     if i == endOfSequence:
       endOfSequence += sequenceLength
