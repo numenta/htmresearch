@@ -88,7 +88,7 @@ def createSpatialPooler():
           synPermActiveInc = 0.0001,
           synPermInactiveDec = 0.0005,
           synPermConnected = 0.5,
-          boostStrength = 1.0,
+          boostStrength = 0.0,
           spVerbosity = 1
          )
   return sp
