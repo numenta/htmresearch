@@ -176,13 +176,11 @@ def _getArgs():
                     dest="checkRFCenters",
                     help="whether to track RF cneters")
 
-
   parser.add_option("--checkTestInput",
                     type=int,
                     default=0,
                     dest="checkTestInput",
                     help="whether to check response to test inputs")
-
 
   parser.add_option("--changeDataSetContinuously",
                     type=int,
@@ -226,6 +224,12 @@ def _getArgs():
                     dest="expName",
                     help="the fraction of sp cells that will be removed")
 
+  parser.add_option("--seed",
+                    type=str,
+                    default=41,
+                    dest="seed",
+                    help="random seed for SP and dataset")
+
   (options, remainder) = parser.parse_args()
   print options
   return options, remainder
@@ -261,7 +265,7 @@ def initializeSPConnections(sp, potentialRaidus=10, initConnectionRadius=5):
   updatePotentialRadius(sp, newPotentialRadius=potentialRaidus)
 
 
-def getSDRDataSetParams(inputVectorType):
+def getSDRDataSetParams(inputVectorType, seed):
   if inputVectorType == 'randomBarSets':
     params = {'dataType': 'randomBarSets',
               'numInputVectors': 100,
@@ -269,7 +273,7 @@ def getSDRDataSetParams(inputVectorType):
               'nY': 32,
               'barHalfLength': 6,
               'numBarsPerInput': 6,
-              'seed': 41}
+              'seed': seed}
   elif inputVectorType == 'randomBarPairs':
     params = {'dataType': 'randomBarSets',
               'numInputVectors': 1000,
@@ -277,7 +281,7 @@ def getSDRDataSetParams(inputVectorType):
               'nY': 32,
               'barHalfLength': 3,
               'numBarsPerInput': 6,
-              'seed': 41}
+              'seed': seed}
   elif inputVectorType == 'randomCross':
     params = {'dataType': 'randomCross',
               'numInputVectors': 200,
@@ -285,7 +289,7 @@ def getSDRDataSetParams(inputVectorType):
               'nY': 32,
               'barHalfLength': 3,
               'numCrossPerInput': 6,
-              'seed': 41}
+              'seed': seed}
   elif inputVectorType == 'randomSDRVaryingSparsity':
     params = {'dataType': 'randomSDRVaryingSparsity',
               'numInputVectors': 100,
@@ -294,7 +298,7 @@ def getSDRDataSetParams(inputVectorType):
               'nY': 32,
               'minSparsity': 0.02,
               'maxSparsity': 0.2,
-              'seed': 41}
+              'seed': seed}
   elif inputVectorType == 'randomSDR':
     params = {'dataType': 'randomSDR',
               'numInputVectors': 200,
@@ -302,10 +306,12 @@ def getSDRDataSetParams(inputVectorType):
               'nX': 32,
               'nY': 32,
               'numActiveInputBits': 20,
-              'seed': 41}
+              'seed': seed}
   else:
     raise ValueError('unknown data type')
-
+  print
+  print "dataset parameters"
+  pprint.pprint(params)
   return params
 
 
@@ -328,16 +334,16 @@ if __name__ == "__main__":
   killCellPrct = _options.killCellPrct
   expName = _options.expName
   inputVectorType = _options.dataSet
-
+  seed = int(_options.seed)
   showExampleRFs = _options.showExampleRFs
   killInputsAfter = _options.killInputsAfter
 
-  params = getSDRDataSetParams(inputVectorType)
+  params = getSDRDataSetParams(inputVectorType, seed)
 
   if expName == 'defaultName':
     expName = "dataType_{}_boosting_{}".format(
       inputVectorType, _options.boosting)
-
+  expName = expName + '_seed_{}'.format(seed)
   createDirectories(expName)
 
   sdrData = SDRDataSet(params)
@@ -423,7 +429,7 @@ if __name__ == "__main__":
 
     if trackOverlapCurveOverTraining:
       noiseLevelList, inputOverlapScore, outputOverlapScore = \
-        calculateOverlapCurve(sp, inputVectors[:20, :])
+        calculateOverlapCurve(sp, testInputs)
       noiseRobustnessTrace.append(np.trapz(np.flipud(np.mean(outputOverlapScore, 0)),
                                            noiseLevelList))
       np.savez('./results/input_output_overlap/{}/epoch_{}'.format(expName, epoch),
@@ -553,7 +559,6 @@ if __name__ == "__main__":
             'entropyTrace': entropyTrace,
             'expName': expName}
   pickle.dump(traces, open('./results/traces/{}/trace'.format(expName), 'wb'))
-
 
   plotReceptiveFields2D(sp, params['nX'], params['nY'])
   inspectSpatialPoolerStats(sp, inputVectors, inputVectorType + "afterTraining")

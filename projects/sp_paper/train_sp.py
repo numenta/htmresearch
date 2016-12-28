@@ -83,25 +83,25 @@ def getSpatialPoolerParams(inputSize, boosting=0):
 
 
 
-def getSDRDataSetParams(inputVectorType):
+def getSDRDataSetParams(inputVectorType, seed):
   if inputVectorType == 'randomSDR':
     params = {'dataType': 'randomSDR',
               'numInputVectors': 100,
               'inputSize': 1024,
               'numActiveInputBits': 20,
-              'seed': 41}
+              'seed': seed}
   elif inputVectorType == 'randomSDRVaryingSparsity':
     params = {'dataType': 'randomSDRVaryingSparsity',
               'numInputVectors': 100,
               'inputSize': 512,
               'minSparsity': 0.02,
               'maxSparsity': 0.2,
-              'seed': 41}
+              'seed': seed}
   elif inputVectorType == 'dense':
     params = {'dataType': 'denseVectors',
               'numInputVectors': 100,
               'inputSize': 1024,
-              'seed': 41}
+              'seed': seed}
   elif inputVectorType == 'correlatedSDRPairs':
     params = {'dataType': 'correlatedSDRPairs',
               'numInputVectors': 100,
@@ -109,14 +109,14 @@ def getSDRDataSetParams(inputVectorType):
               'numInputVectorPerSensor': 50,
               'corrStrength': 0.5,
               'numActiveInputBits': 20,
-              'seed': 41}
+              'seed': seed}
   elif inputVectorType == 'randomBarPairs':
     params = {'dataType': 'randomBarPairs',
               'numInputVectors': 50,
               'nX': 10,
               'nY': 10,
               'barHalfLength': 2,
-              'seed': 41}
+              'seed': seed}
   elif inputVectorType == 'randomCross':
     params = {'dataType': 'randomCross',
               'numInputVectors': 50,
@@ -124,7 +124,7 @@ def getSDRDataSetParams(inputVectorType):
               'nX': 10,
               'nY': 10,
               'barHalfLength': 2,
-              'seed': 41}
+              'seed': seed}
   elif inputVectorType == 'randomBarSets':
     params = {'dataType': 'randomBarSets',
               'numInputVectors': 50,
@@ -132,7 +132,7 @@ def getSDRDataSetParams(inputVectorType):
               'nY': 40,
               'barHalfLength': 3,
               'numBarsPerInput': 10,
-              'seed': 41}
+              'seed': seed}
   elif inputVectorType == 'nyc_taxi':
     params = {'dataType': 'nyc_taxi',
               'n': 109,
@@ -141,6 +141,9 @@ def getSDRDataSetParams(inputVectorType):
               'maxval': 40000}
   else:
     raise ValueError('unknown data type')
+  print
+  print "dataset parameters"
+  pprint.pprint(params)
   return params
 
 
@@ -219,6 +222,11 @@ def _getArgs():
                     dest="expName",
                     help="the fraction of sp cells that will be removed")
 
+  parser.add_option("--seed",
+                    type=str,
+                    default=41,
+                    dest="seed",
+                    help="random seed for SP and dataset")
 
   (options, remainder) = parser.parse_args()
   print options
@@ -240,12 +248,14 @@ if __name__ == "__main__":
   killCellsAt = _options.killCellsAt
   killCellPrct = _options.killCellPrct
   expName = _options.expName
+  seed = _options.seed
   if expName == 'defaultName':
     expName = "dataType_{}_boosting_{}".format(
       inputVectorType, _options.boosting)
+  expName = expName + '_seed_{}'.format(seed)
   createDirectories(expName)
 
-  params = getSDRDataSetParams(inputVectorType)
+  params = getSDRDataSetParams(inputVectorType, seed)
 
   sdrData = SDRDataSet(params)
 
@@ -261,6 +271,9 @@ if __name__ == "__main__":
   aliveColumns = np.arange(columnNumber)
   # inspect SP stats before learning
   inspectSpatialPoolerStats(sp, inputVectors, expName+"beforeTraining")
+
+  testInputs = inputVectors[:40, :]
+  numTestInputs = testInputs.shape[0]
 
   # classification Accuracy before training
   if classification:
@@ -296,17 +309,16 @@ if __name__ == "__main__":
       inputVectors = sdrData.getInputVectors()
       numInputVector, inputSize = inputVectors.shape
 
-    if epoch == killCellsAt:
-      if spatialImp == "faulty_sp":
+    if epoch == killCellsAt and spatialImp == "faulty_sp":
         sp.killCells(killCellPrct)
         aliveColumns = sp.getAliveColumns()
 
     print "training SP epoch {}".format(epoch)
 
-    # calcualte overlap curve here
+    # calculate overlap curve here
     if trackOverlapCurveOverTraining:
       noiseLevelList, inputOverlapScore, outputOverlapScore = \
-        calculateOverlapCurve(sp, inputVectors[:20, :])
+        calculateOverlapCurve(sp, testInputs)
       noiseRobustnessTrace.append(np.trapz(np.flipud(np.mean(outputOverlapScore, 0)),
                                            noiseLevelList))
       np.savez('./results/input_output_overlap/{}_{}'.format(expName, epoch),
