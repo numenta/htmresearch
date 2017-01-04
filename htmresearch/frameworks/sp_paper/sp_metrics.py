@@ -643,6 +643,7 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
         inputOverlap[i][np.where(outputColumns[i][:] > 0)[0]])
   avgInputOverlap = np.mean(inputOverlap, 0)
 
+  entropy = calculateEntropy(outputColumns)
   activationProb = np.mean(outputColumns.astype(realDType), 0)
 
   dutyCycleDist, binEdge = np.histogram(activationProb,
@@ -660,6 +661,7 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
   axs[1, 0].bar(binEdge[:-1]+0.001, dutyCycleDist, width=.008)
   axs[1, 0].set_xlim([-0.005, .1])
   axs[1, 0].set_xlabel('Activation Frequency')
+  axs[1, 0].set_title('Entropy: {}'.format(entropy))
 
   axs[1, 1].plot(connectedCounts, activationProb, '.')
   axs[1, 1].set_xlabel('connection #')

@@ -35,31 +35,31 @@
 
 * Random SDRs with varying sparsity
 
-`run train_sp_topology.py -b 1 -d randomSDRVaryingSparsity --spatialImp cpp --trackOverlapCurve 1 -e 100 --name randomSDRVaryingSparsity`
+`run train_sp.py -t 1 -b 1 -d randomSDRVaryingSparsity --spatialImp cpp --trackOverlapCurve 1 -e 100 --name randomSDRVaryingSparsity`
 
 * Continuous learning experiment
 
-`run train_sp_topology.py -b 1 -d randomSDRVaryingSparsity --spatialImp cpp --trackOverlapCurve 1 -e 120 --changeDataSetAt 50 --name randomSDRVaryingSparsityContinuousLearning `
+`run train_sp.py -t 1 -b 1 -d randomSDRVaryingSparsity --spatialImp cpp --trackOverlapCurve 1 -e 120 --changeDataSetAt 50 --name randomSDRVaryingSparsityContinuousLearning `
 
 * Random Bar Pairs Vs. Random Cross (With Topology)
 
-`run train_sp_topology.py -d randomCross --spatialImp py -e 200 -b 1 --changeDataSetContinuously 1`
-`run train_sp_topology.py -d randomBarPairs --spatialImp py -e 200 -b 1 --changeDataSetContinuously 1`
+`run train_sp.py -t 1 -d randomCross --spatialImp py -e 200 -b 1 --changeDataSetContinuously 1`
+`run train_sp.py -t 1 -d randomBarPairs --spatialImp py -e 200 -b 1 --changeDataSetContinuously 1`
 
 * Random bar sets (more than two random bars per input)
 
-`run train_sp_topology.py -d randomBarSets -b 1 --name random_bars_with_topology --spatialImp monitored_sp --changeDataSetContinuously 1 --boosting 1`
+`run train_sp.py -t 1 -d randomBarSets -b 1 --name random_bars_with_topology --spatialImp monitored_sp --changeDataSetContinuously 1 --boosting 1`
 
 # Fault tolerance experiment (with topology)
 
 * Fault tolerance to SP column death 
 Train faulty_SP on random bar set dataset
 
-`run train_sp_topology.py -d randomBarSets -b 1 --name trauma_boosting_with_topology --changeDataSetContinuously 1 --spatialImp faulty_sp --killCellsAt 180 --trackOverlapCurve 0 -e 600 --checkTestInput 1 --checkRFCenters 1`
+`run train_sp.py -t 1 -d randomBarSets -b 1 --name trauma_boosting_with_topology --changeDataSetContinuously 1 --spatialImp faulty_sp --killCellsAt 180 --trackOverlapCurve 0 -e 600 --checkTestInput 1 --checkRFCenters 1`
 
 * Fault tolerance to input afferents death
 
-`run train_sp_topology.py -d randomBarSets -b 1 --name trauma_inputs_with_topology --changeDataSetContinuously 1 --spatialImp faulty_sp --killInputsAfter 180 --trackOverlapCurve 0 -e 600 --checkTestInput 1 --checkRFCenters 1`
+`run train_sp.py -t 1 -d randomBarSets -b 1 --name trauma_inputs_with_topology --changeDataSetContinuously 1 --spatialImp faulty_sp --killInputsAfter 180 --trackOverlapCurve 0 -e 600 --checkTestInput 1 --checkRFCenters 1`
 
 * Analyze fault tolerance experiment results
 
