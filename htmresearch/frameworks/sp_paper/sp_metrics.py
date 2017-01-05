@@ -643,6 +643,7 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
         inputOverlap[i][np.where(outputColumns[i][:] > 0)[0]])
   avgInputOverlap = np.mean(inputOverlap, 0)
 
+  entropy = calculateEntropy(outputColumns)
   activationProb = np.mean(outputColumns.astype(realDType), 0)
 
   dutyCycleDist, binEdge = np.histogram(activationProb,
@@ -660,6 +661,7 @@ def inspectSpatialPoolerStats(sp, inputVectors, saveFigPrefix=None):
   axs[1, 0].bar(binEdge[:-1]+0.001, dutyCycleDist, width=.008)
   axs[1, 0].set_xlim([-0.005, .1])
   axs[1, 0].set_xlabel('Activation Frequency')
+  axs[1, 0].set_title('Entropy: {}'.format(entropy))
 
   axs[1, 1].plot(connectedCounts, activationProb, '.')
   axs[1, 1].set_xlabel('connection #')
@@ -721,6 +723,7 @@ def getRFCenters(sp, params, type='connected'):
   return meanCoordinates, avgDistToCenter
 
 
+
 def entropy(x):
   """
   Calculate entropy of a binary random variable.
@@ -728,12 +731,22 @@ def entropy(x):
   @param x (float) the probability of the variable to be 1.
   @return (float) entropy
   """
-  if  x*(1 - x) == 0:
-    return 0;
+  if x*(1 - x) == 0:
+    return 0
   else:
     return - x*np.log2(x) - (1-x)*np.log2(1-x)
 
-entropyVectorized = np.vectorize(entropy)
+
+def entropyVectorized(x):
+  """
+  Calculate entropy for a list of binary random variables
+  :param x: (numpy array) the probability of the variable to be 1.
+  :return: entropy: (numpy array) entropy
+  """
+  entropy = - x*np.log2(x) - (1-x)*np.log2(1-x)
+  entropy[x*(1 - x) == 0] = 0
+  return entropy
+
 
 def calculateEntropy(activeColumns):
   """
@@ -742,10 +755,10 @@ def calculateEntropy(activeColumns):
   @return entropy (float) mean entropy
   """
   activationProb   = np.mean(activeColumns, 0)
-  entropy          = np.sum(entropyVectorized(activationProb))
+  totalEntropy     = np.sum(entropyVectorized(activationProb))
   numberOfColumns  = activeColumns.shape[1]
   # return mean entropy
-  return entropy/numberOfColumns
+  return totalEntropy/numberOfColumns
 
 
 
