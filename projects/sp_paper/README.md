@@ -17,6 +17,7 @@ The SP performance is quantified using a set of metrics
 
 A variety of input datasets were considered, such as
 * random SDRs ('randomSDR')
+* random SDRs with varying sparsity ('randomSDRVaryingSparsity')
 * correlated SDRs from two input fields ('correlatedSDRPairs')
 * random bars (horizontal or vertical) ('randomBarPairs')
 * random crosses ('randomCross')

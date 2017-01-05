@@ -174,7 +174,7 @@ config = {
 
             'synPermInactiveDec': 0.0005,
             
-            'maxBoost': 2.0
+            'boostStrength': 2.0
         },
 
         # Controls whether TP is enabled or disabled;

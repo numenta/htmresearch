@@ -24,7 +24,8 @@ from optparse import OptionParser
 
 from htmresearch.frameworks.classification.utils.traces import (loadTraces,
                                                                 plotTraces)
-from settings.htm_network import ANOMALY_SCORE
+from settings.htm_network import ANOMALY_SCORE, CLUSTERING
+
 """
 Script to visualize the TM states
 Example Usage:
@@ -87,5 +88,6 @@ if __name__ == "__main__":
 
   title = inputFile.split('/')[-1]
   outputFile = '%s.png' % inputFile[:-4]
-  plotTraces(xl, traces, title, ANOMALY_SCORE, outputFile, numTmCells,
-             plotTemporalMemoryStates)
+  plt = plotTraces(xl, traces, title, ANOMALY_SCORE, outputFile, CLUSTERING,
+                   numTmCells, plotTemporalMemoryStates)
+  plt.show()

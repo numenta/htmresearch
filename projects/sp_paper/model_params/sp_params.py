@@ -10,9 +10,8 @@ spParamSmall = {
   "synPermActiveInc": 0.001,
   "synPermConnected": 0.1,
   "minPctOverlapDutyCycle": 0.0,
-  "minPctActiveDutyCycle": 0.0,
   "dutyCyclePeriod": 1000,
-  "maxBoost": 2.0,
+  "boostStrength": 2.0,
   "seed": 1936
 }
 
@@ -30,9 +29,8 @@ spParamNoBoosting = {
   "synPermActiveInc": 0.02,
   "synPermConnected": 0.5,
   "minPctOverlapDutyCycle": 0.0,
-  "minPctActiveDutyCycle": 0.0,
   "dutyCyclePeriod": 1000,
-  "maxBoost": 1.0,
+  "boostStrength": 0.0,
   "seed": 1936
 }
 
@@ -50,9 +48,8 @@ spParamWithBoosting = {
   "synPermActiveInc": 0.1,
   "synPermConnected": 0.5,
   "minPctOverlapDutyCycle": 0.001,
-  "minPctActiveDutyCycle": 0.001,
   "dutyCyclePeriod": 1000,
-  "maxBoost": 100.0,
+  "boostStrength": 100.0,
   "seed": 1936
 }
 
@@ -71,9 +68,8 @@ spParamTopologyWithBoostingCross = {
   "synPermActiveInc": 0.1,
   "synPermConnected": 0.5,
   "minPctOverlapDutyCycle": 0.0,
-  "minPctActiveDutyCycle": 0.001,
   "dutyCyclePeriod": 1000,
-  "maxBoost": 100.0,
+  "boostStrength": 100.0,
   "seed": 1936
 }
 
@@ -93,9 +89,8 @@ spParamTopologyWithBoostingCross = {
 #   "synPermActiveInc": 0.05,
 #   "synPermConnected": 0.5,
 #   "minPctOverlapDutyCycle": 0.0,
-#   "minPctActiveDutyCycle": 0.001,
 #   "dutyCyclePeriod": 1000,
-#   "maxBoost": 50.0,
+#   "boostStrength": 50.0,
 #   "seed": 1936
 # }
 
@@ -114,9 +109,8 @@ spParamTopologyWithBoosting = {
   "synPermActiveInc": 0.05,
   "synPermConnected": 0.5,
   "minPctOverlapDutyCycle": 0.0,
-  "minPctActiveDutyCycle": 0.001,
   "dutyCyclePeriod": 1000,
-  "maxBoost": 100.0,
+  "boostStrength": 100.0,
   "seed": 1936
 }
 
@@ -135,9 +129,8 @@ spParamTopologyNoBoosting = {
   "synPermActiveInc": 0.1,
   "synPermConnected": 0.5,
   "minPctOverlapDutyCycle": 0.0,
-  "minPctActiveDutyCycle": 0.001,
   "dutyCyclePeriod": 1000,
-  "maxBoost": 0.0,
+  "boostStrength": 0.0,
   "seed": 1936
 }
 
@@ -155,8 +148,7 @@ spParamTopologyWithBoostingLarge = {
   "synPermActiveInc": 0.1,
   "synPermConnected": 0.5,
   "minPctOverlapDutyCycle": 0.0,
-  "minPctActiveDutyCycle": 0.001,
   "dutyCyclePeriod": 1000,
-  "maxBoost": 100.0,
+  "boostStrength": 100.0,
   "seed": 1936
 }

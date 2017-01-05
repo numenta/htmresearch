@@ -57,7 +57,7 @@ SP_PARAMS = {
     "synPermConnected": 0.1,
     "synPermActiveInc": 0.0001,
     "synPermInactiveDec": 0.0005,
-    "maxBoost": 1.0,
+    "boostStrength": 0.0,
 }
 
 # Config field for TPRegion
@@ -105,9 +105,8 @@ UP_PARAMS = {
     "potentialPct": 0.5,
     "globalInhibition": 1,
     "minPctOverlapDutyCycle": 0.001,
-    "minPctActiveDutyCycle": 0.001,
     "dutyCyclePeriod": 1000,
-    "maxBoost": 10.0,
+    "boostStrength": 10.0,
     "spVerbosity": 0,
     "wrapAround": 1,
     "activeOverlapWeight": 1.0,

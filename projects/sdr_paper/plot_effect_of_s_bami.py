@@ -168,7 +168,7 @@ layout = Layout(
     width=855,
     height=700,
     xaxis=XAxis(
-        title='Number of subsampled bits',
+        title='$\\text{Number of subsampled bits, } w_x$',
         titlefont=Font(
             family='',
             size=22,
@@ -193,6 +193,7 @@ layout = Layout(
             size=22,
             color=''
         ),
+        ticks='outside',
         tickfont=Font(
             family='',
             size=12,
@@ -207,7 +208,7 @@ layout = Layout(
             y=0.28,
             xref='x',
             yref='paper',
-            text='$w = 32, n=4000$',
+            text='$w_y = 32, n=4000$',
             showarrow=True,
             ax=-21,
             ay=60,
@@ -230,7 +231,7 @@ layout = Layout(
             y=0.47,
             xref='x',
             yref='paper',
-            text='$w = 32, n=2000$',
+            text='$w_y = 32, n=2000$',
             showarrow=True,
             ax = -89,
             ay = 72,
@@ -276,7 +277,7 @@ layout = Layout(
             y=0.63,
             xref='x',
             yref='paper',
-            text='$w = 512, n=16000$',
+            text='$w_y = 512, n=16000$',
             showarrow=True,
             ax = 42,
             ay=-46,
@@ -298,7 +299,7 @@ layout = Layout(
             y=0.90,
             xref='x',
             yref='paper',
-            text='$w = 4000, n=16000$',
+            text='$w_y = 4000, n=16000$',
             showarrow=True,
             ax = 0,
             ay=-30,
@@ -322,4 +323,4 @@ fig = Figure(data=data, layout=layout)
 plot_url = py.plot(fig)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
-py.image.save_as(figure, 'images/effect_of_s_bami.png', scale=4)
+py.image.save_as(figure, 'images/effect_of_s_bami.pdf', scale=4)

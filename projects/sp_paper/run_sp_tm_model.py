@@ -107,10 +107,10 @@ def _getArgs():
                     dest="trainSP",
                     type=int)
 
-  parser.add_option("--maxBoost",
+  parser.add_option("--boostStrength",
                     help="strength of boosting",
                     default=1,
-                    dest="maxBoost",
+                    dest="boostStrength",
                     type=int)
 
   parser.add_option("-c",
@@ -198,7 +198,7 @@ if __name__ == "__main__":
   plot = _options.plot
   classifierType = _options.classifier
   trainSP = bool(_options.trainSP)
-  maxBoost = _options.maxBoost
+  boostStrength = _options.boostStrength
 
   DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
   predictedField = "passenger_count"
@@ -207,7 +207,7 @@ if __name__ == "__main__":
 
   modelParams['modelParams']['clParams']['steps'] = str(_options.stepsAhead)
   modelParams['modelParams']['clParams']['regionName'] = classifierType
-  modelParams['modelParams']['spParams']['maxBoost'] = maxBoost
+  modelParams['modelParams']['spParams']['boostStrength'] = boostStrength
 
   print "Creating model from %s..." % dataSet
 
@@ -356,7 +356,7 @@ if __name__ == "__main__":
   x = range(len(negLL))
 
   np.savez('./results/nyc_taxi/{}{}TMprediction_SPLearning_{}_boost_{}'.format(
-    dataSet, classifierType, trainSP, maxBoost),
+    dataSet, classifierType, trainSP, boostStrength),
     predictions, predict_data_ML, truth)
 
   activeDutyCycle = np.zeros(sp.getColumnDimensions(), dtype=np.float32)
@@ -384,6 +384,6 @@ if __name__ == "__main__":
   plt.ylim([0, .7])
   plt.xlabel('activeDutyCycle-Total')
   plt.savefig('figures/nyc_taxi/DutyCycle_SPLearning_{}_boost_{}.pdf'.format(
-    trainSP, maxBoost))
+    trainSP, boostStrength))
 
 
