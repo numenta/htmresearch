@@ -91,9 +91,9 @@ class TemporalMemory(object):
      activeApicalSegments,
      matchingBasalSegments,
      matchingApicalSegments,
-     basalPotentialExcitations,
-     apicalPotentialExcitations) = self._calculateSegmentActivity(basalInput,
-                                                                  apicalInput)
+     basalPotentialOverlaps,
+     apicalPotentialOverlaps) = self._calculateSegmentActivity(basalInput,
+                                                               apicalInput)
     predictedCells = np.intersect1d(
       self.basalConnections.mapSegmentsToCells(activeBasalSegments),
       self.apicalConnections.mapSegmentsToCells(activeApicalSegments))
@@ -122,8 +122,8 @@ class TemporalMemory(object):
                                               activeApicalSegments,
                                               matchingBasalSegments,
                                               matchingApicalSegments,
-                                              basalPotentialExcitations,
-                                              apicalPotentialExcitations)
+                                              basalPotentialOverlaps,
+                                              apicalPotentialOverlaps)
 
     # Learn
     if learn:
@@ -138,8 +138,8 @@ class TemporalMemory(object):
                   basalGrowthCandidates,
                   apicalInput,
                   apicalGrowthCandidates,
-                  basalPotentialExcitations,
-                  apicalPotentialExcitations)
+                  basalPotentialOverlaps,
+                  apicalPotentialOverlaps)
 
 
     # Save the results
@@ -156,8 +156,8 @@ class TemporalMemory(object):
                          activeApicalSegments,
                          matchingBasalSegments,
                          matchingApicalSegments,
-                         basalPotentialExcitations,
-                         apicalPotentialExcitations):
+                         basalPotentialOverlaps,
+                         apicalPotentialOverlaps):
     """
     Learning occurs on pairs of segments. Correctly predicted cells always have
     active basal and apical segments, and we learn on these segments. In
@@ -171,8 +171,8 @@ class TemporalMemory(object):
     @param activeApicalSegments (numpy array)
     @param matchingBasalSegments (numpy array)
     @param matchingApicalSegments (numpy array)
-    @param basalPotentialExcitations (numpy array)
-    @param apicalPotentialExcitations (numpy array)
+    @param basalPotentialOverlaps (numpy array)
+    @param apicalPotentialOverlaps (numpy array)
 
     @return (tuple)
     - learningActiveBasalSegments (numpy array)
@@ -220,8 +220,7 @@ class TemporalMemory(object):
     (learningMatchingBasalSegments,
      learningMatchingApicalSegments) = self._chooseBestSegmentPairPerColumn(
        matchingCellsInBurstingColumns, matchingBasalSegments,
-       matchingApicalSegments, basalPotentialExcitations,
-       apicalPotentialExcitations)
+       matchingApicalSegments, basalPotentialOverlaps, apicalPotentialOverlaps)
     newSegmentCells = self._getCellsWithFewestSegments(
       burstingColumnsWithNoMatch)
 
@@ -278,11 +277,11 @@ class TemporalMemory(object):
       Apical dendrite segments with enough active potential synapses to be
       selected for learning in a bursting column
 
-    - basalPotentialExcitations (numpy array)
+    - basalPotentialOverlaps (numpy array)
       The number of active potential synapses for each basal segment.
       Includes counts for active, matching, and nonmatching segments.
 
-    - apicalPotentialExcitations (numpy array)
+    - apicalPotentialOverlaps (numpy array)
       The number of active potential synapses for each apical segment
       Includes counts for active, matching, and nonmatching segments.
     """
@@ -291,39 +290,39 @@ class TemporalMemory(object):
     apicalPermanences = self.apicalConnections.matrix
 
     # Active basal
-    basalExcitations = basalPermanences.rightVecSumAtNZGteThresholdSparse(
+    basalOverlaps = basalPermanences.rightVecSumAtNZGteThresholdSparse(
       basalInput, self.connectedPermanence)
     activeBasalSegments = np.flatnonzero(
-      basalExcitations >= self.activationThreshold).astype("uint32")
+      basalOverlaps >= self.activationThreshold).astype("uint32")
     self.basalConnections.sortSegmentsByCell(activeBasalSegments)
 
     # Matching basal
-    basalPotentialExcitations = basalPermanences.rightVecSumAtNZSparse(
+    basalPotentialOverlaps = basalPermanences.rightVecSumAtNZSparse(
       basalInput)
     matchingBasalSegments = np.flatnonzero(
-      basalPotentialExcitations >= self.minThreshold).astype("uint32")
+      basalPotentialOverlaps >= self.minThreshold).astype("uint32")
     self.basalConnections.sortSegmentsByCell(matchingBasalSegments)
 
     # Active apical
-    apicalExcitations = apicalPermanences.rightVecSumAtNZGteThresholdSparse(
+    apicalOverlaps = apicalPermanences.rightVecSumAtNZGteThresholdSparse(
       apicalInput, self.connectedPermanence)
     activeApicalSegments = np.flatnonzero(
-      apicalExcitations >= self.activationThreshold).astype("uint32")
+      apicalOverlaps >= self.activationThreshold).astype("uint32")
     self.apicalConnections.sortSegmentsByCell(activeApicalSegments)
 
     # Matching apical
-    apicalPotentialExcitations = apicalPermanences.rightVecSumAtNZSparse(
+    apicalPotentialOverlaps = apicalPermanences.rightVecSumAtNZSparse(
       apicalInput)
     matchingApicalSegments = np.flatnonzero(
-      apicalPotentialExcitations >= self.minThreshold).astype("uint32")
+      apicalPotentialOverlaps >= self.minThreshold).astype("uint32")
     self.apicalConnections.sortSegmentsByCell(matchingApicalSegments)
 
     return (activeBasalSegments,
             activeApicalSegments,
             matchingBasalSegments,
             matchingApicalSegments,
-            basalPotentialExcitations,
-            apicalPotentialExcitations)
+            basalPotentialOverlaps,
+            apicalPotentialOverlaps)
 
 
   def _learn(self,
@@ -338,8 +337,8 @@ class TemporalMemory(object):
              basalGrowthCandidates,
              apicalInput,
              apicalGrowthCandidates,
-             basalPotentialExcitations,
-             apicalPotentialExcitations):
+             basalPotentialOverlaps,
+             apicalPotentialOverlaps):
     """
     Adjust synapse permanences, grow new synapses, and grow new segments.
 
@@ -354,8 +353,8 @@ class TemporalMemory(object):
     @param basalGrowthCandidates (numpy array)
     @param apicalInput (numpy array)
     @param apicalGrowthCandidates (numpy array)
-    @param basalPotentialExcitations (numpy array)
-    @param apicalPotentialExcitations (numpy array)
+    @param basalPotentialOverlaps (numpy array)
+    @param apicalPotentialOverlaps (numpy array)
     """
 
     basalPermanences = self.basalConnections.matrix
@@ -365,7 +364,7 @@ class TemporalMemory(object):
     self._learnOnExistingSegments(basalPermanences, self.rng,
                                   learningActiveBasalSegments, basalInput,
                                   basalGrowthCandidates,
-                                  basalPotentialExcitations, self.sampleSize,
+                                  basalPotentialOverlaps, self.sampleSize,
                                   self.initialPermanence,
                                   self.permanenceIncrement,
                                   self.permanenceDecrement,
@@ -373,7 +372,7 @@ class TemporalMemory(object):
     self._learnOnExistingSegments(basalPermanences, self.rng,
                                   learningMatchingBasalSegments, basalInput,
                                   basalGrowthCandidates,
-                                  basalPotentialExcitations, self.sampleSize,
+                                  basalPotentialOverlaps, self.sampleSize,
                                   self.initialPermanence,
                                   self.permanenceIncrement,
                                   self.permanenceDecrement,
@@ -383,7 +382,7 @@ class TemporalMemory(object):
     self._learnOnExistingSegments(apicalPermanences, self.rng,
                                   learningActiveApicalSegments, apicalInput,
                                   apicalGrowthCandidates,
-                                  apicalPotentialExcitations, self.sampleSize,
+                                  apicalPotentialOverlaps, self.sampleSize,
                                   self.initialPermanence,
                                   self.permanenceIncrement,
                                   self.permanenceDecrement,
@@ -391,7 +390,7 @@ class TemporalMemory(object):
     self._learnOnExistingSegments(apicalPermanences, self.rng,
                                   learningMatchingApicalSegments, apicalInput,
                                   apicalGrowthCandidates,
-                                  apicalPotentialExcitations, self.sampleSize,
+                                  apicalPotentialOverlaps, self.sampleSize,
                                   self.initialPermanence,
                                   self.permanenceIncrement,
                                   self.permanenceDecrement,
@@ -421,11 +420,11 @@ class TemporalMemory(object):
                                       matchingCellsInBurstingColumns,
                                       matchingBasalSegments,
                                       matchingApicalSegments,
-                                      basalPotentialExcitations,
-                                      apicalPotentialExcitations):
+                                      basalPotentialOverlaps,
+                                      apicalPotentialOverlaps):
     """
     Choose the best pair of matching segments - one basal and one apical - for
-    each column. Pairs are ranked by the sum of their potential excitations.
+    each column. Pairs are ranked by the sum of their potential overlaps.
     When there's a tie, the first pair wins.
 
     @param matchingCellsInBurstingColumns (numpy array)
@@ -434,8 +433,8 @@ class TemporalMemory(object):
 
     @param matchingBasalSegments (numpy array)
     @param matchingApicalSegments (numpy array)
-    @param basalPotentialExcitations (numpy array)
-    @param apicalPotentialExcitations (numpy array)
+    @param basalPotentialOverlaps (numpy array)
+    @param apicalPotentialOverlaps (numpy array)
 
     @return (tuple)
     - learningBasalSegments (numpy array)
@@ -452,17 +451,17 @@ class TemporalMemory(object):
 
     # Narrow it down to one pair per cell.
     oneBasalPerCellFilter = self._argmaxMulti(
-      basalPotentialExcitations[basalCandidateSegments],
+      basalPotentialOverlaps[basalCandidateSegments],
       self.basalConnections.mapSegmentsToCells(basalCandidateSegments))
     basalCandidateSegments = basalCandidateSegments[oneBasalPerCellFilter]
     oneApicalPerCellFilter = self._argmaxMulti(
-      apicalPotentialExcitations[apicalCandidateSegments],
+      apicalPotentialOverlaps[apicalCandidateSegments],
       self.apicalConnections.mapSegmentsToCells(apicalCandidateSegments))
     apicalCandidateSegments = apicalCandidateSegments[oneApicalPerCellFilter]
 
     # Narrow it down to one pair per column.
-    cellScores = (basalPotentialExcitations[basalCandidateSegments] +
-                  apicalPotentialExcitations[apicalCandidateSegments])
+    cellScores = (basalPotentialOverlaps[basalCandidateSegments] +
+                  apicalPotentialOverlaps[apicalCandidateSegments])
     columnsForCandidates = (
       self.basalConnections.mapSegmentsToCells(basalCandidateSegments) /
       self.cellsPerColumn)
@@ -612,7 +611,7 @@ class TemporalMemory(object):
   def _learnOnExistingSegments(cls, permanences, rng,
                                learningSegments,
                                activeInput, growthCandidates,
-                               potentialExcitations,
+                               potentialOverlaps,
                                sampleSize, initialPermanence,
                                permanenceIncrement, permanenceDecrement,
                                maxSynapsesPerSegment):
@@ -633,7 +632,7 @@ class TemporalMemory(object):
       learningSegments, 0.0, 1.0)
 
     numNewNonzeros = cls._getSynapseGrowthCounts(
-      permanences, learningSegments, activeInput, potentialExcitations,
+      permanences, learningSegments, activeInput, potentialOverlaps,
       sampleSize, maxSynapsesPerSegment)
 
     permanences.setRandomZerosOnOuter(
@@ -643,7 +642,7 @@ class TemporalMemory(object):
 
   @staticmethod
   def _getSynapseGrowthCounts(permanences, learningSegments, growthCandidates,
-                              potentialExcitations, sampleSize,
+                              potentialOverlaps, sampleSize,
                               maxSynapsesPerSegment):
     """
     Calculate the number of new synapses to attempt to grow for each segment,
@@ -657,7 +656,7 @@ class TemporalMemory(object):
     @param permanences (SparseMatrix)
     @param learningSegments (numpy array)
     @param growthCandidates (numpy array)
-    @param potentialExcitations (numpy array)
+    @param potentialOverlaps (numpy array)
 
     @return (numpy array) or (int)
     """
@@ -668,7 +667,7 @@ class TemporalMemory(object):
       if sampleSize == -1:
         maxNew = np.full(len(learningSegments), len(winnerInput), dtype="int32")
       else:
-        numActiveSynapsesBySegment = potentialExcitations[
+        numActiveSynapsesBySegment = potentialOverlaps[
           learningSegments].astype("int32")
         maxNew = sampleSize - numActiveSynapsesBySegment
 
