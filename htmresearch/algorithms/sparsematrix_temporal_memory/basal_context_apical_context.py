@@ -112,8 +112,8 @@ class TemporalMemory(object):
      learningActiveApicalSegments,
      learningMatchingBasalSegments,
      learningMatchingApicalSegments,
-     punishedBasalSegments,
-     punishedApicalSegments,
+     basalSegmentsToPunish,
+     apicalSegmentsToPunish,
      newSegmentCells,
      learningCells) = self._calculateLearning(activeColumns,
                                               burstingColumns,
@@ -131,8 +131,8 @@ class TemporalMemory(object):
                   learningActiveApicalSegments,
                   learningMatchingBasalSegments,
                   learningMatchingApicalSegments,
-                  punishedBasalSegments,
-                  punishedApicalSegments,
+                  basalSegmentsToPunish,
+                  apicalSegmentsToPunish,
                   newSegmentCells,
                   basalInput,
                   basalGrowthCandidates,
@@ -187,10 +187,10 @@ class TemporalMemory(object):
     - learningMatchingApicalSegments (numpy array)
       Matching apical segments selected for learning in bursting columns
 
-    - punishedBasalSegments (numpy array)
+    - basalSegmentsToPunish (numpy array)
       Basal segments that should be punished for predicting an inactive column
 
-    - punishedApicalSegments (numpy array)
+    - apicalSegmentsToPunish (numpy array)
       Apical segments that should be punished for predicting an inactive column
 
     - newSegmentCells (numpy array)
@@ -231,11 +231,11 @@ class TemporalMemory(object):
       correctMatchingApicalMask = np.in1d(
         cellsForMatchingApical / self.cellsPerColumn, activeColumns)
 
-      punishedBasalSegments = matchingBasalSegments[~correctMatchingBasalMask]
-      punishedApicalSegments = matchingApicalSegments[~correctMatchingApicalMask]
+      basalSegmentsToPunish = matchingBasalSegments[~correctMatchingBasalMask]
+      apicalSegmentsToPunish = matchingApicalSegments[~correctMatchingApicalMask]
     else:
-      punishedBasalSegments = ()
-      punishedApicalSegments = ()
+      basalSegmentsToPunish = ()
+      apicalSegmentsToPunish = ()
 
     # Make a list of every cell that is learning
     learningCells =  np.concatenate(
@@ -247,8 +247,8 @@ class TemporalMemory(object):
             learningActiveApicalSegments,
             learningMatchingBasalSegments,
             learningMatchingApicalSegments,
-            punishedBasalSegments,
-            punishedApicalSegments,
+            basalSegmentsToPunish,
+            apicalSegmentsToPunish,
             newSegmentCells,
             learningCells)
 
@@ -330,8 +330,8 @@ class TemporalMemory(object):
              learningActiveApicalSegments,
              learningMatchingBasalSegments,
              learningMatchingApicalSegments,
-             punishedBasalSegments,
-             punishedApicalSegments,
+             basalSegmentsToPunish,
+             apicalSegmentsToPunish,
              newSegmentCells,
              basalInput,
              basalGrowthCandidates,
@@ -346,8 +346,8 @@ class TemporalMemory(object):
     @param learningActiveApicalSegments (numpy array)
     @param learningMatchingBasalSegments (numpy array)
     @param learningMatchingApicalSegments (numpy array)
-    @param punishedBasalSegments (numpy array)
-    @param punishedApicalSegments (numpy array)
+    @param basalSegmentsToPunish (numpy array)
+    @param apicalSegmentsToPunish (numpy array)
     @param newSegmentCells (numpy array)
     @param basalInput (numpy array)
     @param basalGrowthCandidates (numpy array)
@@ -410,9 +410,9 @@ class TemporalMemory(object):
                                self.maxSynapsesPerSegment)
 
     # Punish incorrect predictions.
-    self._punishSegments(basalPermanences, punishedBasalSegments,
+    self._punishSegments(basalPermanences, basalSegmentsToPunish,
                          basalInput, self.predictedSegmentDecrement)
-    self._punishSegments(apicalPermanences, punishedApicalSegments,
+    self._punishSegments(apicalPermanences, apicalSegmentsToPunish,
                          apicalInput, self.predictedSegmentDecrement)
 
 
@@ -714,19 +714,19 @@ class TemporalMemory(object):
 
 
   @staticmethod
-  def _punishSegments(permanences, punishedSegments, activeInput,
+  def _punishSegments(permanences, segmentsToPunish, activeInput,
                       predictedSegmentDecrement):
     """
     Weaken active synapses on the provided segments.
 
     @param permanences (SparseMatrix)
-    @param punishedSegments (numpy array)
+    @param segmentsToPunish (numpy array)
     @param activeInput (numpy array)
     """
     permanences.incrementNonZerosOnOuter(
-      punishedSegments, activeInput, -predictedSegmentDecrement)
+      segmentsToPunish, activeInput, -predictedSegmentDecrement)
     permanences.clipRowsBelowAndAbove(
-      punishedSegments, 0.0, 1.0)
+      segmentsToPunish, 0.0, 1.0)
 
 
   @staticmethod
