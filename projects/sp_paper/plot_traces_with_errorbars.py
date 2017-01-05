@@ -118,10 +118,17 @@ if __name__ == "__main__":
     x = range(numEpochs)
     axs[i].fill_between(x, mean - std, mean + std,
                     alpha=0.3, edgecolor=color, facecolor=color)
-    axs[i].plot(x, mean, color, color=color, linewidth=1)
+    axs[i].plot(x, mean, color, color=color, linewidth=.5)
     axs[i].set_ylabel(ylabelList[i])
 
     axs[i].plot([changeDataAt, changeDataAt], axs[i].get_ylim(), 'k--')
+
+  # adjust axis limit and tick spacings
+  for i in [3, 4]:
+    yl = axs[i].get_ylim()
+    axs[i].set_ylim([0, yl[1]])
+  axs[0].set_yticks(np.linspace(.6, 1, 5))
+  axs[1].set_yticks(np.linspace(.08, .14, 4))
 
   axs[4].set_xlabel('Epochs')
   plt.savefig('figures/ContinuousLearning_WithErrBars.pdf')
