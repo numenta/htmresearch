@@ -460,7 +460,7 @@ def runSPexperiments(expConfig):
 
     # randomize the presentation order of input vectors
     sdrOrders = np.random.permutation(np.arange(numInputVector))
-    runSPOnBatch(sp, inputVectors, learn, sdrOrders)
+    activeColumnsTrain = runSPOnBatch(sp, inputVectors, learn, sdrOrders)
 
     # run SP on test dataset and compute metrics
     activeColumnsPreviousEpoch = copy.copy(activeColumnsCurrentEpoch)
