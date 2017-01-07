@@ -1,7 +1,7 @@
 import operator
 
 import numpy as np
-from nupic.bindings.math import Random, SegmentSparseMatrix
+from nupic.bindings.math import Random, SparseMatrixConnections
 
 
 EMPTY_UINT_ARRAY = np.array((), dtype="uint32")
@@ -76,9 +76,9 @@ class TemporalMemory(object):
     self.activationThreshold = activationThreshold
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
 
-    self.basalConnections = SegmentSparseMatrix(
+    self.basalConnections = SparseMatrixConnections(
       self.numColumns*cellsPerColumn, self._numPoints(basalInputDimensions))
-    self.apicalConnections = SegmentSparseMatrix(
+    self.apicalConnections = SparseMatrixConnections(
       self.numColumns*cellsPerColumn, self._numPoints(apicalInputDimensions))
     self.rng = Random(seed)
     self.activeCells = EMPTY_UINT_ARRAY
@@ -333,32 +333,29 @@ class TemporalMemory(object):
       Includes counts for active, matching, and nonmatching segments.
     """
 
-    basalPermanences = self.basalConnections.matrix
-    apicalPermanences = self.apicalConnections.matrix
-
     # Active basal
-    basalOverlaps = basalPermanences.rightVecSumAtNZGteThresholdSparse(
+    basalOverlaps = self.basalConnections.computeActivity(
       basalInput, self.connectedPermanence)
     activeBasalSegments = np.flatnonzero(
       basalOverlaps >= self.activationThreshold).astype("uint32")
     self.basalConnections.sortSegmentsByCell(activeBasalSegments)
 
     # Matching basal
-    basalPotentialOverlaps = basalPermanences.rightVecSumAtNZSparse(
+    basalPotentialOverlaps = self.basalConnections.computeActivity(
       basalInput)
     matchingBasalSegments = np.flatnonzero(
       basalPotentialOverlaps >= self.minThreshold).astype("uint32")
     self.basalConnections.sortSegmentsByCell(matchingBasalSegments)
 
     # Active apical
-    apicalOverlaps = apicalPermanences.rightVecSumAtNZGteThresholdSparse(
+    apicalOverlaps = self.apicalConnections.computeActivity(
       apicalInput, self.connectedPermanence)
     activeApicalSegments = np.flatnonzero(
       apicalOverlaps >= self.activationThreshold).astype("uint32")
     self.apicalConnections.sortSegmentsByCell(activeApicalSegments)
 
     # Matching apical
-    apicalPotentialOverlaps = apicalPermanences.rightVecSumAtNZSparse(
+    apicalPotentialOverlaps = self.apicalConnections.computeActivity(
       apicalInput)
     matchingApicalSegments = np.flatnonzero(
       apicalPotentialOverlaps >= self.minThreshold).astype("uint32")
@@ -441,18 +438,15 @@ class TemporalMemory(object):
     @param apicalPotentialOverlaps (numpy array)
     """
 
-    basalPermanences = self.basalConnections.matrix
-    apicalPermanences = self.apicalConnections.matrix
-
     # Existing basal
-    self._learnOnExistingSegments(basalPermanences, self.rng,
+    self._learnOnExistingSegments(self.basalConnections, self.rng,
                                   learningActiveBasalSegments, basalInput,
                                   basalGrowthCandidates, basalPotentialOverlaps,
                                   self.sampleSize, self.initialPermanence,
                                   self.permanenceIncrement,
                                   self.permanenceDecrement,
                                   self.maxSynapsesPerSegment)
-    self._learnOnExistingSegments(basalPermanences, self.rng,
+    self._learnOnExistingSegments(self.basalConnections, self.rng,
                                   learningMatchingBasalSegments, basalInput,
                                   basalGrowthCandidates, basalPotentialOverlaps,
                                   self.sampleSize, self.initialPermanence,
@@ -461,7 +455,7 @@ class TemporalMemory(object):
                                   self.maxSynapsesPerSegment)
 
     # Existing apical
-    self._learnOnExistingSegments(apicalPermanences, self.rng,
+    self._learnOnExistingSegments(self.apicalConnections, self.rng,
                                   learningActiveApicalSegments, apicalInput,
                                   apicalGrowthCandidates,
                                   apicalPotentialOverlaps, self.sampleSize,
@@ -469,7 +463,7 @@ class TemporalMemory(object):
                                   self.permanenceIncrement,
                                   self.permanenceDecrement,
                                   self.maxSynapsesPerSegment)
-    self._learnOnExistingSegments(apicalPermanences, self.rng,
+    self._learnOnExistingSegments(self.apicalConnections, self.rng,
                                   learningMatchingApicalSegments, apicalInput,
                                   apicalGrowthCandidates,
                                   apicalPotentialOverlaps, self.sampleSize,
@@ -482,7 +476,7 @@ class TemporalMemory(object):
     if len(basalGrowthCandidates) > 0:
       newBasalSegments = self.basalConnections.createSegments(
         newBasalSegmentCells)
-      self._learnOnNewSegments(basalPermanences, self.rng, newBasalSegments,
+      self._learnOnNewSegments(self.basalConnections, self.rng, newBasalSegments,
                                basalGrowthCandidates, self.sampleSize,
                                self.initialPermanence,
                                self.maxSynapsesPerSegment)
@@ -491,15 +485,15 @@ class TemporalMemory(object):
     if len(apicalGrowthCandidates) > 0:
       newApicalSegments = self.apicalConnections.createSegments(
         newApicalSegmentCells)
-      self._learnOnNewSegments(apicalPermanences, self.rng, newApicalSegments,
+      self._learnOnNewSegments(self.apicalConnections, self.rng, newApicalSegments,
                                apicalGrowthCandidates, self.sampleSize,
                                self.initialPermanence,
                                self.maxSynapsesPerSegment)
 
     # Punish incorrect predictions.
-    self._punishSegments(basalPermanences, basalSegmentsToPunish,
+    self._punishSegments(self.basalConnections, basalSegmentsToPunish,
                          basalInput, self.predictedSegmentDecrement)
-    self._punishSegments(apicalPermanences, apicalSegmentsToPunish,
+    self._punishSegments(self.apicalConnections, apicalSegmentsToPunish,
                          apicalInput, self.predictedSegmentDecrement)
 
 
@@ -513,7 +507,7 @@ class TemporalMemory(object):
     For each specified cell, choose its matching segment with largest number
     of active potential synapses. When there's a tie, the first segment wins.
 
-    @param connections (SegmentSparseMatrix)
+    @param connections (SparseMatrixConnections)
     @param cells (numpy array)
     @param allMatchingSegments (numpy array)
     @param potentialOverlaps (numpy array)
@@ -543,7 +537,7 @@ class TemporalMemory(object):
     segment with largest number of active potential synapses. When there's a
     tie, the first segment wins.
 
-    @param connections (SegmentSparseMatrix)
+    @param connections (SparseMatrixConnections)
     @param matchingCells (numpy array)
     @param allMatchingSegments (numpy array)
     @param potentialOverlaps (numpy array)
@@ -570,7 +564,7 @@ class TemporalMemory(object):
     For each column, get the cell that has the fewest total basal segments.
     Break ties randomly.
 
-    @param connections (SegmentSparseMatrix)
+    @param connections (SparseMatrixConnections)
     @param rng (Random)
     @param columns (numpy array) Columns to check
 
@@ -698,7 +692,7 @@ class TemporalMemory(object):
 
 
   @classmethod
-  def _learnOnExistingSegments(cls, permanences, rng,
+  def _learnOnExistingSegments(cls, connections, rng,
                                learningSegments,
                                activeInput, growthCandidates,
                                potentialOverlaps,
@@ -709,29 +703,24 @@ class TemporalMemory(object):
     Learn on segments. Reinforce active synapses, punish inactive synapses, and
     grow new synapses.
 
-    @param permanences (SparseMatrix)
+    @param connections (SparseMatrixConnections)
     @param rng (Random)
     @param learningSegments (numpy array)
     @param activeInput (numpy array)
     """
-    permanences.incrementNonZerosOnOuter(
-      learningSegments, activeInput, permanenceIncrement)
-    permanences.incrementNonZerosOnRowsExcludingCols(
-      learningSegments, activeInput, -permanenceDecrement)
-    permanences.clipRowsBelowAndAbove(
-      learningSegments, 0.0, 1.0)
+    connections.adjustSynapses(learningSegments, activeInput,
+                               permanenceIncrement, -permanenceDecrement)
 
     maxNewNonzeros = cls._getMaxSynapseGrowthCounts(
-      permanences, learningSegments, growthCandidates, potentialOverlaps,
+      connections, learningSegments, growthCandidates, potentialOverlaps,
       sampleSize, maxSynapsesPerSegment)
 
-    permanences.setRandomZerosOnOuter(
-      learningSegments, growthCandidates, maxNewNonzeros, initialPermanence,
-      rng)
+    connections.growSynapsesToSample(learningSegments, growthCandidates,
+                                     maxNewNonzeros, initialPermanence, rng)
 
 
   @staticmethod
-  def _getMaxSynapseGrowthCounts(permanences, learningSegments,
+  def _getMaxSynapseGrowthCounts(connections, learningSegments,
                                  growthCandidates, potentialOverlaps,
                                  sampleSize, maxSynapsesPerSegment):
     """
@@ -743,7 +732,7 @@ class TemporalMemory(object):
     of the active synapses are to winner cells. We can only calculate the
     maximums.
 
-    @param permanences (SparseMatrix)
+    @param connections (SparseMatrixConnections)
     @param learningSegments (numpy array)
     @param growthCandidates (numpy array)
     @param potentialOverlaps (numpy array)
@@ -762,7 +751,7 @@ class TemporalMemory(object):
         maxNew = sampleSize - numActiveSynapsesBySegment
 
       if maxSynapsesPerSegment != -1:
-        totalSynapsesPerSegment = permanences.nNonZerosPerRow(
+        totalSynapsesPerSegment = connections.mapSegmentsToSynapseCounts(
           learningSegments).astype("int32")
         numSynapsesToReachMax = maxSynapsesPerSegment - totalSynapsesPerSegment
         maxNew = np.where(maxNew <= numSynapsesToReachMax,
@@ -777,7 +766,7 @@ class TemporalMemory(object):
 
 
   @staticmethod
-  def _learnOnNewSegments(permanences, rng, newSegments, growthCandidates,
+  def _learnOnNewSegments(connections, rng, newSegments, growthCandidates,
                           sampleSize, initialPermanence, maxSynapsesPerSegment):
     """
     Grow synapses on the provided segments.
@@ -785,7 +774,7 @@ class TemporalMemory(object):
     Because each segment has no synapses, we don't have to calculate how many
     synapses to grow.
 
-    @param permanences (SparseMatrix)
+    @param connections (SparseMatrixConnections)
     @param rng (Random)
     @param newSegments (numpy array)
     @param growthCandidates (numpy array)
@@ -799,24 +788,22 @@ class TemporalMemory(object):
     if maxSynapsesPerSegment != -1:
       numGrow = min(numGrow, maxSynapsesPerSegment)
 
-    permanences.setRandomZerosOnOuter(
-      newSegments, growthCandidates, numGrow, initialPermanence, rng)
+    connections.growSynapsesToSample(newSegments, growthCandidates, numGrow,
+                                     initialPermanence, rng)
 
 
   @staticmethod
-  def _punishSegments(permanences, segmentsToPunish, activeInput,
+  def _punishSegments(connections, segmentsToPunish, activeInput,
                       predictedSegmentDecrement):
     """
     Weaken active synapses on the provided segments.
 
-    @param permanences (SparseMatrix)
+    @param connections (SparseMatrixConnections)
     @param segmentsToPunish (numpy array)
     @param activeInput (numpy array)
     """
-    permanences.incrementNonZerosOnOuter(
-      segmentsToPunish, activeInput, -predictedSegmentDecrement)
-    permanences.clipRowsBelowAndAbove(
-      segmentsToPunish, 0.0, 1.0)
+    connections.adjustActiveSynapses(segmentsToPunish, activeInput,
+                                     -predictedSegmentDecrement)
 
 
   @staticmethod
