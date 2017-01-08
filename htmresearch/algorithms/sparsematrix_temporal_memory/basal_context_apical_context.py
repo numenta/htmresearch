@@ -1,6 +1,30 @@
+#!/usr/bin/env python
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2017, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
 import operator
 
 import numpy as np
+
+from htmresearch.support import numpy_helpers as np2
 from nupic.bindings.math import Random, SparseMatrixConnections
 
 
@@ -29,7 +53,7 @@ class TemporalMemory(object):
                maxNewSynapseCount=None,
                maxSynapsesPerSegment=-1,
                maxSegmentsPerCell=None,
-               seed=42):
+               seed=42, **kwargs):
 
     self.columnDimensions = columnDimensions
     self.numColumns = self._numPoints(columnDimensions)
@@ -88,24 +112,29 @@ class TemporalMemory(object):
     """
     # Calculate predictions for this timestep
     (activeBasalSegments,
-     activeApicalSegments,
      matchingBasalSegments,
+     basalPotentialOverlaps) = self._calculateSegmentActivity(
+       self.basalConnections, basalInput, self.connectedPermanence,
+       self.activationThreshold, self.minThreshold)
+
+    (activeApicalSegments,
      matchingApicalSegments,
-     basalPotentialOverlaps,
-     apicalPotentialOverlaps) = self._calculateSegmentActivity(basalInput,
-                                                               apicalInput)
+     apicalPotentialOverlaps) = self._calculateSegmentActivity(
+       self.apicalConnections, apicalInput, self.connectedPermanence,
+       self.activationThreshold, self.minThreshold)
+
     predictedCells = np.intersect1d(
       self.basalConnections.mapSegmentsToCells(activeBasalSegments),
       self.apicalConnections.mapSegmentsToCells(activeApicalSegments))
 
     # Calculate active cells
     (correctPredictedCells,
-     burstingColumns) = self._getColumnCoverage(predictedCells, activeColumns,
-                                                self.cellsPerColumn)
+     burstingColumns) = np2.setCompare(predictedCells, activeColumns,
+                                       predictedCells / self.cellsPerColumn,
+                                       rightMinusLeft=True)
     newActiveCells = np.concatenate((correctPredictedCells,
-                                     self._getAllCellsInColumns(
+                                     np2.getAllCellsInColumns(
                                        burstingColumns, self.cellsPerColumn)))
-    newActiveCells.sort()
 
     # Calculate learning
     (learningActiveBasalSegments,
@@ -125,21 +154,42 @@ class TemporalMemory(object):
                                               basalPotentialOverlaps,
                                               apicalPotentialOverlaps)
 
-    # Learn
     if learn:
-      self._learn(learningActiveBasalSegments,
-                  learningActiveApicalSegments,
-                  learningMatchingBasalSegments,
-                  learningMatchingApicalSegments,
-                  basalSegmentsToPunish,
-                  apicalSegmentsToPunish,
-                  newSegmentCells,
-                  basalInput,
-                  basalGrowthCandidates,
-                  apicalInput,
-                  apicalGrowthCandidates,
-                  basalPotentialOverlaps,
-                  apicalPotentialOverlaps)
+      # Learn on existing segments
+      for learningSegments in (learningActiveBasalSegments,
+                               learningMatchingBasalSegments):
+        self._learn(self.basalConnections, self.rng, learningSegments,
+                    basalInput, basalGrowthCandidates, basalPotentialOverlaps,
+                    self.initialPermanence, self.sampleSize,
+                    self.permanenceIncrement, self.permanenceDecrement,
+                    self.maxSynapsesPerSegment)
+
+      for learningSegments in (learningActiveApicalSegments,
+                               learningMatchingApicalSegments):
+
+        self._learn(self.apicalConnections, self.rng, learningSegments,
+                    apicalInput, apicalGrowthCandidates,
+                    apicalPotentialOverlaps, self.initialPermanence,
+                    self.sampleSize, self.permanenceIncrement,
+                    self.permanenceDecrement, self.maxSynapsesPerSegment)
+
+      # Punish incorrect predictions
+      if self.predictedSegmentDecrement != 0.0:
+        self.basalConnections.adjustActiveSynapses(
+          basalSegmentsToPunish, basalInput, -self.predictedSegmentDecrement)
+        self.apicalConnections.adjustActiveSynapses(
+          apicalSegmentsToPunish, apicalInput, -self.predictedSegmentDecrement)
+
+      # Only grow segments if there is basal *and* apical input.
+      if len(basalGrowthCandidates) > 0 and len(apicalGrowthCandidates) > 0:
+        self._learnOnNewSegments(self.basalConnections, self.rng,
+                                 newSegmentCells, basalGrowthCandidates,
+                                 self.initialPermanence, self.sampleSize,
+                                 self.maxSynapsesPerSegment)
+        self._learnOnNewSegments(self.apicalConnections, self.rng,
+                                 newSegmentCells, apicalGrowthCandidates,
+                                 self.initialPermanence, self.sampleSize,
+                                 self.maxSynapsesPerSegment)
 
 
     # Save the results
@@ -213,10 +263,12 @@ class TemporalMemory(object):
       matchingApicalSegments)
     matchingCells = np.intersect1d(
       cellsForMatchingBasal, cellsForMatchingApical)
+
     (matchingCellsInBurstingColumns,
-     burstingColumnsWithNoMatch) = self._getColumnCoverage(matchingCells,
-                                                           burstingColumns,
-                                                           self.cellsPerColumn)
+     burstingColumnsWithNoMatch) = np2.setCompare(
+       matchingCells, burstingColumns, matchingCells / self.cellsPerColumn,
+       rightMinusLeft=True)
+
     (learningMatchingBasalSegments,
      learningMatchingApicalSegments) = self._chooseBestSegmentPairPerColumn(
        matchingCellsInBurstingColumns, matchingBasalSegments,
@@ -253,161 +305,105 @@ class TemporalMemory(object):
             learningCells)
 
 
-  def _calculateSegmentActivity(self, basalInput, apicalInput):
+  @staticmethod
+  def _calculateSegmentActivity(connections, activeInput, connectedPermanence,
+                                activationThreshold, minThreshold):
     """
     Calculate the active and matching segments for this timestep.
 
-    @param basalInput (numpy array)
-    @param apicalInput (numpy array)
+    @param connections (SparseMatrixConnections)
+    @param activeInput (numpy array)
 
     @return (tuple)
-    - activeBasalSegments (numpy array)
-      Basal dendrite segments with enough active connected synapses to cause a
+    - activeSegments (numpy array)
+      Dendrite segments with enough active connected synapses to cause a
       dendritic spike
 
-    - activeApicalSegments (numpy array)
-      Apical dendrite segments with enough active connected synapses to cause a
-      dendritic spike
+    - matchingSegments (numpy array)
+      Dendrite segments with enough active potential synapses to be selected for
+      learning in a bursting column
 
-    - matchingBasalSegments (numpy array)
-      Basal dendrite segments with enough active potential synapses to be
-      selected for learning in a bursting column
-
-    - matchingApicalSegments (numpy array)
-      Apical dendrite segments with enough active potential synapses to be
-      selected for learning in a bursting column
-
-    - basalPotentialOverlaps (numpy array)
-      The number of active potential synapses for each basal segment.
-      Includes counts for active, matching, and nonmatching segments.
-
-    - apicalPotentialOverlaps (numpy array)
-      The number of active potential synapses for each apical segment
+    - potentialOverlaps (numpy array)
+      The number of active potential synapses for each segment.
       Includes counts for active, matching, and nonmatching segments.
     """
 
-    # Active basal
-    basalOverlaps = self.basalConnections.computeActivity(
-      basalInput, self.connectedPermanence)
-    activeBasalSegments = np.flatnonzero(
-      basalOverlaps >= self.activationThreshold).astype("uint32")
-    self.basalConnections.sortSegmentsByCell(activeBasalSegments)
+    # Active
+    overlaps = connections.computeActivity(activeInput, connectedPermanence)
+    activeSegments = np.flatnonzero(overlaps >= activationThreshold)
 
-    # Matching basal
-    basalPotentialOverlaps = self.basalConnections.computeActivity(
-      basalInput)
-    matchingBasalSegments = np.flatnonzero(
-      basalPotentialOverlaps >= self.minThreshold).astype("uint32")
-    self.basalConnections.sortSegmentsByCell(matchingBasalSegments)
+    # Matching
+    potentialOverlaps = connections.computeActivity(activeInput)
+    matchingSegments = np.flatnonzero(potentialOverlaps >= minThreshold)
 
-    # Active apical
-    apicalOverlaps = self.apicalConnections.computeActivity(
-      apicalInput, self.connectedPermanence)
-    activeApicalSegments = np.flatnonzero(
-      apicalOverlaps >= self.activationThreshold).astype("uint32")
-    self.apicalConnections.sortSegmentsByCell(activeApicalSegments)
-
-    # Matching apical
-    apicalPotentialOverlaps = self.apicalConnections.computeActivity(
-      apicalInput)
-    matchingApicalSegments = np.flatnonzero(
-      apicalPotentialOverlaps >= self.minThreshold).astype("uint32")
-    self.apicalConnections.sortSegmentsByCell(matchingApicalSegments)
-
-    return (activeBasalSegments,
-            activeApicalSegments,
-            matchingBasalSegments,
-            matchingApicalSegments,
-            basalPotentialOverlaps,
-            apicalPotentialOverlaps)
+    return (activeSegments,
+            matchingSegments,
+            potentialOverlaps)
 
 
-  def _learn(self,
-             learningActiveBasalSegments,
-             learningActiveApicalSegments,
-             learningMatchingBasalSegments,
-             learningMatchingApicalSegments,
-             basalSegmentsToPunish,
-             apicalSegmentsToPunish,
-             newSegmentCells,
-             basalInput,
-             basalGrowthCandidates,
-             apicalInput,
-             apicalGrowthCandidates,
-             basalPotentialOverlaps,
-             apicalPotentialOverlaps):
+  @staticmethod
+  def _learn(connections, rng, learningSegments, activeInput, growthCandidates,
+             potentialOverlaps, initialPermanence, sampleSize,
+             permanenceIncrement, permanenceDecrement, maxSynapsesPerSegment):
     """
-    Adjust synapse permanences, grow new synapses, and grow new segments.
+    Adjust synapse permanences, and grow new synapses.
 
-    @param learningActiveBasalSegments (numpy array)
-    @param learningActiveApicalSegments (numpy array)
-    @param learningMatchingBasalSegments (numpy array)
-    @param learningMatchingApicalSegments (numpy array)
-    @param basalSegmentsToPunish (numpy array)
-    @param apicalSegmentsToPunish (numpy array)
+    @param learningActiveSegments (numpy array)
+    @param learningMatchingSegments (numpy array)
+    @param segmentsToPunish (numpy array)
     @param newSegmentCells (numpy array)
-    @param basalInput (numpy array)
-    @param basalGrowthCandidates (numpy array)
-    @param apicalInput (numpy array)
-    @param apicalGrowthCandidates (numpy array)
-    @param basalPotentialOverlaps (numpy array)
-    @param apicalPotentialOverlaps (numpy array)
+    @param activeInput (numpy array)
+    @param growthCandidates (numpy array)
+    @param potentialOverlaps (numpy array)
     """
 
-    # Existing basal
-    self._learnOnExistingSegments(self.basalConnections, self.rng,
-                                  learningActiveBasalSegments, basalInput,
-                                  basalGrowthCandidates,
-                                  basalPotentialOverlaps, self.sampleSize,
-                                  self.initialPermanence,
-                                  self.permanenceIncrement,
-                                  self.permanenceDecrement,
-                                  self.maxSynapsesPerSegment)
-    self._learnOnExistingSegments(self.basalConnections, self.rng,
-                                  learningMatchingBasalSegments, basalInput,
-                                  basalGrowthCandidates,
-                                  basalPotentialOverlaps, self.sampleSize,
-                                  self.initialPermanence,
-                                  self.permanenceIncrement,
-                                  self.permanenceDecrement,
-                                  self.maxSynapsesPerSegment)
+    # Learn on existing segments
+    connections.adjustSynapses(learningSegments, activeInput,
+                               permanenceIncrement, -permanenceDecrement)
 
-    # Existing apical
-    self._learnOnExistingSegments(self.apicalConnections, self.rng,
-                                  learningActiveApicalSegments, apicalInput,
-                                  apicalGrowthCandidates,
-                                  apicalPotentialOverlaps, self.sampleSize,
-                                  self.initialPermanence,
-                                  self.permanenceIncrement,
-                                  self.permanenceDecrement,
-                                  self.maxSynapsesPerSegment)
-    self._learnOnExistingSegments(self.apicalConnections, self.rng,
-                                  learningMatchingApicalSegments, apicalInput,
-                                  apicalGrowthCandidates,
-                                  apicalPotentialOverlaps, self.sampleSize,
-                                  self.initialPermanence,
-                                  self.permanenceIncrement,
-                                  self.permanenceDecrement,
-                                  self.maxSynapsesPerSegment)
+    # Grow new synapses. Calculate "maxNew", the maximum number of synapses to
+    # grow per segment. "maxNew" might be a number or it might be a list of
+    # numbers.
+    if sampleSize == -1:
+      maxNew = len(growthCandidates)
+    else:
+      maxNew = sampleSize - potentialOverlaps[learningSegments]
 
-    # New segments: Only grow segments if there is basal *and* apical input.
-    if len(basalInput) > 0 and len(apicalInput) > 0:
-      newBasalSegments = self.basalConnections.createSegments(newSegmentCells)
-      self._learnOnNewSegments(self.basalConnections, self.rng, newBasalSegments,
-                               basalGrowthCandidates, self.sampleSize,
-                               self.initialPermanence,
-                               self.maxSynapsesPerSegment)
-      newApicalSegments = self.apicalConnections.createSegments(newSegmentCells)
-      self._learnOnNewSegments(self.apicalConnections, self.rng, newApicalSegments,
-                               apicalGrowthCandidates, self.sampleSize,
-                               self.initialPermanence,
-                               self.maxSynapsesPerSegment)
+    if maxSynapsesPerSegment != -1:
+      synapseCounts = connections.mapSegmentsToSynapseCounts(
+        learningSegments)
+      numSynapsesToReachMax = maxSynapsesPerSegment - synapseCounts
+      maxNew = np.where(maxNew <= numSynapsesToReachMax,
+                        maxNew, numSynapsesToReachMax)
 
-    # Punish incorrect predictions.
-    self._punishSegments(self.basalConnections, basalSegmentsToPunish,
-                         basalInput, self.predictedSegmentDecrement)
-    self._punishSegments(self.apicalConnections, apicalSegmentsToPunish,
-                         apicalInput, self.predictedSegmentDecrement)
+    connections.growSynapsesToSample(learningSegments, growthCandidates,
+                                     maxNew, initialPermanence, rng)
+
+
+  @staticmethod
+  def _learnOnNewSegments(connections, rng, newSegmentCells, growthCandidates,
+                          initialPermanence, sampleSize, maxSynapsesPerSegment):
+    """
+    Create new segments, and grow synapses on them.
+
+    @param connections (SparseMatrixConnections)
+    @param rng (Random)
+    @param newSegmentCells (numpy array)
+    @param growthCandidates (numpy array)
+    """
+
+    numNewSynapses = len(growthCandidates)
+
+    if sampleSize != -1:
+      numNewSynapses = min(numNewSynapses, sampleSize)
+
+    if maxSynapsesPerSegment != -1:
+      numNewSynapses = min(numNewSynapses, maxSynapsesPerSegment)
+
+    newSegments = connections.createSegments(newSegmentCells)
+    connections.growSynapsesToSample(newSegments, growthCandidates,
+                                     numNewSynapses, initialPermanence,
+                                     rng)
 
 
   def _chooseBestSegmentPairPerColumn(self,
@@ -443,14 +439,20 @@ class TemporalMemory(object):
     apicalCandidateSegments = self.apicalConnections.filterSegmentsByCell(
       matchingApicalSegments, matchingCellsInBurstingColumns)
 
+    # Sort everything once rather than inside of each call to argmaxMulti.
+    self.basalConnections.sortSegmentsByCell(basalCandidateSegments)
+    self.apicalConnections.sortSegmentsByCell(apicalCandidateSegments)
+
     # Narrow it down to one pair per cell.
-    oneBasalPerCellFilter = self._argmaxMulti(
+    oneBasalPerCellFilter = np2.argmaxMulti(
       basalPotentialOverlaps[basalCandidateSegments],
-      self.basalConnections.mapSegmentsToCells(basalCandidateSegments))
+      self.basalConnections.mapSegmentsToCells(basalCandidateSegments),
+      assumeSorted=True)
     basalCandidateSegments = basalCandidateSegments[oneBasalPerCellFilter]
-    oneApicalPerCellFilter = self._argmaxMulti(
+    oneApicalPerCellFilter = np2.argmaxMulti(
       apicalPotentialOverlaps[apicalCandidateSegments],
-      self.apicalConnections.mapSegmentsToCells(apicalCandidateSegments))
+      self.apicalConnections.mapSegmentsToCells(apicalCandidateSegments),
+      assumeSorted=True)
     apicalCandidateSegments = apicalCandidateSegments[oneApicalPerCellFilter]
 
     # Narrow it down to one pair per column.
@@ -459,7 +461,8 @@ class TemporalMemory(object):
     columnsForCandidates = (
       self.basalConnections.mapSegmentsToCells(basalCandidateSegments) /
       self.cellsPerColumn)
-    onePerColumnFilter = self._argmaxMulti(cellScores, columnsForCandidates)
+    onePerColumnFilter = np2.argmaxMulti(cellScores, columnsForCandidates,
+                                         assumeSorted=True)
 
     learningBasalSegments = basalCandidateSegments[onePerColumnFilter]
     learningApicalSegments = apicalCandidateSegments[onePerColumnFilter]
@@ -479,7 +482,7 @@ class TemporalMemory(object):
     @return (numpy array)
     One cell for each of the provided columns
     """
-    candidateCells = self._getAllCellsInColumns(columns, self.cellsPerColumn)
+    candidateCells = np2.getAllCellsInColumns(columns, self.cellsPerColumn)
 
     # Arrange the segment counts into one row per minicolumn.
     segmentCounts = np.reshape(
@@ -510,210 +513,6 @@ class TemporalMemory(object):
            casting="unsafe")
 
     return candidateCells[onePerColumnFilter]
-
-
-  @staticmethod
-  def _argmaxMulti(a, groupKeys):
-    """
-    This is like numpy's argmax, but it returns multiple maximums.
-
-    It gets the indices of the max values of each group in 'a', grouping the
-    elements by their corresponding value in 'groupKeys'.
-
-    @param a (numpy array)
-    An array of values that will be compared
-
-    @param groupKeys (numpy array)
-    An array with the same length of 'a'. Each entry identifies the group for
-    each 'a' value. Group numbers must be organized together (e.g. sorted).
-
-    @return (numpy array)
-    The indices of one maximum value per group
-
-    @example
-      _argmaxMulti([5, 4, 7, 2, 9, 8],
-                   [0, 0, 0, 1, 1, 1])
-    returns
-      [2, 4]
-    """
-    _, indices, lengths = np.unique(groupKeys, return_index=True,
-                                    return_counts=True)
-
-    maxValues = np.maximum.reduceat(a, indices)
-    allMaxIndices = np.flatnonzero(np.repeat(maxValues, lengths) == a)
-
-    # Break ties by finding the insertion points of the the group start indices
-    # and using the values currently at those points. This approach will choose
-    # the first occurrence of each max value.
-    return allMaxIndices[np.searchsorted(allMaxIndices, indices)]
-
-
-  @staticmethod
-  def _getColumnCoverage(cells, columns, cellsPerColumn):
-    """
-    Get the cells that fall within the specified columns and the columns that
-    don't contain any of the specified cells
-
-    @param cells (numpy array)
-    @param columns (numpy array)
-    @param cellsPerColumn (int)
-
-    @return (tuple)
-    - cellsInColumns (numpy array)
-      The provided cells that are within these columns
-
-    - columnsWithoutCells (numpy array)
-      The provided columns that weren't covered by any of the provided cells.
-    """
-    columnsWithCells = np.intersect1d(columns, cells / cellsPerColumn)
-    cellsInColumnsMask = np.in1d(cells / cellsPerColumn, columnsWithCells)
-    cellsInColumns = cells[cellsInColumnsMask]
-    columnsWithoutCells = np.setdiff1d(columns, columnsWithCells)
-
-    return cellsInColumns, columnsWithoutCells
-
-
-  @staticmethod
-  def _getAllCellsInColumns(columns, cellsPerColumn):
-    """
-    Get all cells in the specified columns.
-
-    @param columns (numpy array)
-    @param cellsPerColumn (int)
-
-    @return (numpy array)
-    All cells within the specified columns. The cells are in the same order as the
-    provided columns, so they're sorted if the columns are sorted.
-    """
-
-    # Add
-    #   [[beginningOfColumn0],
-    #    [beginningOfColumn1],
-    #     ...]
-    # to
-    #   [0, 1, 2, ..., cellsPerColumn - 1]
-    # to get
-    #   [beginningOfColumn0 + 0, beginningOfColumn0 + 1, ...
-    #    beginningOfColumn1 + 0, ...
-    #    ...]
-    # then flatten it.
-    return ((columns * cellsPerColumn).reshape((-1, 1)) +
-            np.arange(cellsPerColumn, dtype="uint32")).flatten()
-
-
-  @classmethod
-  def _learnOnExistingSegments(cls, connections, rng,
-                               learningSegments,
-                               activeInput, growthCandidates,
-                               potentialOverlaps,
-                               sampleSize, initialPermanence,
-                               permanenceIncrement, permanenceDecrement,
-                               maxSynapsesPerSegment):
-    """
-    Learn on segments. Reinforce active synapses, punish inactive synapses, and
-    grow new synapses.
-
-    @param connections (SparseMatrixConnections)
-    @param rng (Random)
-    @param learningSegments (numpy array)
-    @param activeInput (numpy array)
-    """
-    connections.adjustSynapses(learningSegments, activeInput,
-                               permanenceIncrement, -permanenceDecrement)
-
-    maxNewNonzeros = cls._getMaxSynapseGrowthCounts(
-      connections, learningSegments, growthCandidates, potentialOverlaps,
-      sampleSize, maxSynapsesPerSegment)
-
-    connections.growSynapsesToSample(learningSegments, growthCandidates,
-                                     maxNewNonzeros, initialPermanence, rng)
-
-
-  @staticmethod
-  def _getMaxSynapseGrowthCounts(connections, learningSegments, growthCandidates,
-                                 potentialOverlaps, sampleSize,
-                                 maxSynapsesPerSegment):
-    """
-    Calculate the number of new synapses to attempt to grow for each segment,
-    considering the sampleSize and maxSynapsesPerSegment parameters.
-
-    Because the growth candidates are a subset of the active cells, we can't
-    actually calculate the number of synapses to grow. We don't know how many
-    of the active synapses are to winner cells. We can only calculate the
-    maximums.
-
-    @param connections (SparseMatrixConnections)
-    @param learningSegments (numpy array)
-    @param growthCandidates (numpy array)
-    @param potentialOverlaps (numpy array)
-
-    @return (numpy array) or (int)
-    """
-
-    if sampleSize != -1 or maxSynapsesPerSegment != -1:
-      # Use signed integers to handle differences, then zero any negative numbers
-      # and convert back to unsigned.
-      if sampleSize == -1:
-        maxNew = np.full(len(learningSegments), len(winnerInput), dtype="int32")
-      else:
-        numActiveSynapsesBySegment = potentialOverlaps[
-          learningSegments].astype("int32")
-        maxNew = sampleSize - numActiveSynapsesBySegment
-
-      if maxSynapsesPerSegment != -1:
-        totalSynapsesPerSegment = connections.mapSegmentsToSynapseCounts(
-          learningSegments).astype("int32")
-        numSynapsesToReachMax = maxSynapsesPerSegment - totalSynapsesPerSegment
-        maxNew = np.where(maxNew <= numSynapsesToReachMax,
-                          maxNew, numSynapsesToReachMax)
-
-      maxNewUnsigned = np.empty(len(learningSegments), dtype="uint32")
-      np.clip(maxNew, 0, float("inf"), out=maxNewUnsigned)
-
-      return maxNewUnsigned
-    else:
-      return len(winnerInput)
-
-
-  @staticmethod
-  def _learnOnNewSegments(connections, rng, newSegments, growthCandidates,
-                          sampleSize, initialPermanence, maxSynapsesPerSegment):
-    """
-    Grow synapses on the provided segments.
-
-    Because each segment has no synapses, we don't have to calculate how many
-    synapses to grow.
-
-    @param connections (SparseMatrixConnections)
-    @param rng (Random)
-    @param newSegments (numpy array)
-    @param growthCandidates (numpy array)
-    """
-
-    numGrow = len(growthCandidates)
-
-    if sampleSize != -1:
-      numGrow = min(numGrow, sampleSize)
-
-    if maxSynapsesPerSegment != -1:
-      numGrow = min(numGrow, maxSynapsesPerSegment)
-
-    connections.growSynapsesToSample(newSegments, growthCandidates, numGrow,
-                                     initialPermanence, rng)
-
-
-  @staticmethod
-  def _punishSegments(connections, segmentsToPunish, activeInput,
-                      predictedSegmentDecrement):
-    """
-    Weaken active synapses on the provided segments.
-
-    @param connections (SparseMatrixConnections)
-    @param segmentsToPunish (numpy array)
-    @param activeInput (numpy array)
-    """
-    connections.adjustActiveSynapses(segmentsToPunish, activeInput,
-                                     -predictedSegmentDecrement)
 
 
   @staticmethod
