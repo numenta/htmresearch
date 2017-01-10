@@ -20,14 +20,10 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-"""An implementation of TemporalMemory"""
-
-
 import operator
 
 import numpy as np
 
-from htmresearch.algorithms.synapse_learning import createSynapseLearningRules
 from htmresearch.support import numpy_helpers as np2
 from nupic.bindings.math import Random, SparseMatrixConnections
 
@@ -65,6 +61,7 @@ class TemporalMemory(object):
     self.apicalInputDimensions = apicalInputDimensions
 
     self.cellsPerColumn = cellsPerColumn
+    self.initialPermanence = initialPermanence
     self.connectedPermanence = connectedPermanence
     self.minThreshold = minThreshold
 
@@ -76,23 +73,17 @@ class TemporalMemory(object):
     if maxSegmentsPerCell is not None:
       print "Warning: ignoring parameter 'maxSegmentsPerCell'"
 
+    self.permanenceIncrement = permanenceIncrement
+    self.permanenceDecrement = permanenceDecrement
     self.predictedSegmentDecrement = predictedSegmentDecrement
     self.activationThreshold = activationThreshold
-
-    self.synapseLearning = createSynapseLearningRules(
-      sampleSize=sampleSize,
-      initialPermanence=initialPermanence,
-      permanenceIncrement=permanenceIncrement,
-      permanenceDecrement=permanenceDecrement,
-      maxSynapsesPerSegment=maxSynapsesPerSegment
-    )
+    self.maxSynapsesPerSegment = maxSynapsesPerSegment
 
     self.basalConnections = SparseMatrixConnections(
       self.numColumns*cellsPerColumn, self._numPoints(basalInputDimensions))
     self.apicalConnections = SparseMatrixConnections(
       self.numColumns*cellsPerColumn, self._numPoints(apicalInputDimensions))
     self.rng = Random(seed)
-
     self.activeCells = EMPTY_UINT_ARRAY
     self.winnerCells = EMPTY_UINT_ARRAY
     self.prevPredictedCells = EMPTY_UINT_ARRAY
@@ -167,19 +158,20 @@ class TemporalMemory(object):
       # Learn on existing segments
       for learningSegments in (learningActiveBasalSegments,
                                learningMatchingBasalSegments):
-
-        self.synapseLearning.learnOnExistingSegments(
-          self.basalConnections, learningSegments, basalInput,
-          basalGrowthCandidates, rng=self.rng,
-          potentialOverlaps=basalPotentialOverlaps)
+        self._learn(self.basalConnections, self.rng, learningSegments,
+                    basalInput, basalGrowthCandidates, basalPotentialOverlaps,
+                    self.initialPermanence, self.sampleSize,
+                    self.permanenceIncrement, self.permanenceDecrement,
+                    self.maxSynapsesPerSegment)
 
       for learningSegments in (learningActiveApicalSegments,
                                learningMatchingApicalSegments):
 
-        self.synapseLearning.learnOnExistingSegments(
-          self.apicalConnections, learningSegments, apicalInput,
-          apicalGrowthCandidates, rng=self.rng,
-          potentialOverlaps=apicalPotentialOverlaps)
+        self._learn(self.apicalConnections, self.rng, learningSegments,
+                    apicalInput, apicalGrowthCandidates,
+                    apicalPotentialOverlaps, self.initialPermanence,
+                    self.sampleSize, self.permanenceIncrement,
+                    self.permanenceDecrement, self.maxSynapsesPerSegment)
 
       # Punish incorrect predictions
       if self.predictedSegmentDecrement != 0.0:
@@ -190,12 +182,14 @@ class TemporalMemory(object):
 
       # Only grow segments if there is basal *and* apical input.
       if len(basalGrowthCandidates) > 0 and len(apicalGrowthCandidates) > 0:
-        self.synapseLearning.learnOnNewSegments(
-          self.basalConnections, newSegmentCells, basalGrowthCandidates,
-          rng=self.rng)
-        self.synapseLearning.learnOnNewSegments(
-          self.apicalConnections, newSegmentCells, apicalGrowthCandidates,
-          rng=self.rng)
+        self._learnOnNewSegments(self.basalConnections, self.rng,
+                                 newSegmentCells, basalGrowthCandidates,
+                                 self.initialPermanence, self.sampleSize,
+                                 self.maxSynapsesPerSegment)
+        self._learnOnNewSegments(self.apicalConnections, self.rng,
+                                 newSegmentCells, apicalGrowthCandidates,
+                                 self.initialPermanence, self.sampleSize,
+                                 self.maxSynapsesPerSegment)
 
 
     # Save the results
@@ -345,6 +339,71 @@ class TemporalMemory(object):
     return (activeSegments,
             matchingSegments,
             potentialOverlaps)
+
+
+  @staticmethod
+  def _learn(connections, rng, learningSegments, activeInput, growthCandidates,
+             potentialOverlaps, initialPermanence, sampleSize,
+             permanenceIncrement, permanenceDecrement, maxSynapsesPerSegment):
+    """
+    Adjust synapse permanences, and grow new synapses.
+
+    @param learningActiveSegments (numpy array)
+    @param learningMatchingSegments (numpy array)
+    @param segmentsToPunish (numpy array)
+    @param newSegmentCells (numpy array)
+    @param activeInput (numpy array)
+    @param growthCandidates (numpy array)
+    @param potentialOverlaps (numpy array)
+    """
+
+    # Learn on existing segments
+    connections.adjustSynapses(learningSegments, activeInput,
+                               permanenceIncrement, -permanenceDecrement)
+
+    # Grow new synapses. Calculate "maxNew", the maximum number of synapses to
+    # grow per segment. "maxNew" might be a number or it might be a list of
+    # numbers.
+    if sampleSize == -1:
+      maxNew = len(growthCandidates)
+    else:
+      maxNew = sampleSize - potentialOverlaps[learningSegments]
+
+    if maxSynapsesPerSegment != -1:
+      synapseCounts = connections.mapSegmentsToSynapseCounts(
+        learningSegments)
+      numSynapsesToReachMax = maxSynapsesPerSegment - synapseCounts
+      maxNew = np.where(maxNew <= numSynapsesToReachMax,
+                        maxNew, numSynapsesToReachMax)
+
+    connections.growSynapsesToSample(learningSegments, growthCandidates,
+                                     maxNew, initialPermanence, rng)
+
+
+  @staticmethod
+  def _learnOnNewSegments(connections, rng, newSegmentCells, growthCandidates,
+                          initialPermanence, sampleSize, maxSynapsesPerSegment):
+    """
+    Create new segments, and grow synapses on them.
+
+    @param connections (SparseMatrixConnections)
+    @param rng (Random)
+    @param newSegmentCells (numpy array)
+    @param growthCandidates (numpy array)
+    """
+
+    numNewSynapses = len(growthCandidates)
+
+    if sampleSize != -1:
+      numNewSynapses = min(numNewSynapses, sampleSize)
+
+    if maxSynapsesPerSegment != -1:
+      numNewSynapses = min(numNewSynapses, maxSynapsesPerSegment)
+
+    newSegments = connections.createSegments(newSegmentCells)
+    connections.growSynapsesToSample(newSegments, growthCandidates,
+                                     numNewSynapses, initialPermanence,
+                                     rng)
 
 
   def _chooseBestSegmentPairPerColumn(self,
