@@ -45,6 +45,9 @@ class TemporalMemory(object):
   unless one of them also has an active apical segment, in which case only the
   cells with active basal and apical segments are predicted.
 
+  In other words, the apical connections have no effect unless the basal input
+  is a union of SDRs (e.g. from bursting minicolumns).
+
   This TemporalMemory is unaware of whether its basalInput or apicalInput are
   from internal or external cells. They are just cell numbers. The caller knows
   what these cell numbers mean, but the TemporalMemory doesn't. This allows the

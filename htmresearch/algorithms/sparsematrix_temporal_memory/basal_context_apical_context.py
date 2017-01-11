@@ -19,7 +19,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-"""An implementation of TemporalMemory"""
+"""An implementation of ApicalDependentTemporalMemory"""
 
 
 import operator
@@ -33,10 +33,19 @@ from nupic.bindings.math import Random, SparseMatrixConnections
 EMPTY_UINT_ARRAY = np.array((), dtype="uint32")
 
 
-class TemporalMemory(object):
+class ApicalDependentTemporalMemory(object):
   """
   An alternate approach to apical dendrites. Every cell SDR is specific to both
   the basal the apical input. Prediction requires both basal and apical support.
+
+  A normal TemporalMemory trained on the sequences "A B C D" and "A B C E" will
+  not assign "B" and "C" SDRs specific to their full sequence. These two
+  sequences will use the same B' and C' SDRs. When the sequence reaches D/E,
+  the SDRs finally diverge.
+
+  With this algorithm, the SDRs diverge immediately, because the SDRs are
+  specific to the apical input. But if there's never any apical input, there
+  will never be predictions.
   """
 
   def __init__(self,
