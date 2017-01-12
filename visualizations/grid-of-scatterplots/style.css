@@ -2,48 +2,7 @@ body {
     text-align:center;
 }
 
-text.gridAxisTopLabel,
-text.numColumnsLabel {
-    font: 12px Verdana;
-    font-weight:bold;
-}
-
-text.axisLeftLabel,
-text.axisBottomLabel {
-    font: 10px Verdana;
-    font-weight:bold;
-}
-
-
-text.noiseLabel,
-.boxPlot text {
-    font: 10px Verdana;
-}
-
-.correctActiveBoxPlot line,
-.correctActiveBoxPlot rect {
-    stroke: mediumblue;
-}
-
-.correctActiveBoxPlot text {
-    fill: mediumblue;
-}
-
-.incorrectActiveBoxPlot line,
-.incorrectActiveBoxPlot rect {
-    stroke: crimson;
-}
-
-.incorrectActiveBoxPlot text {
-    fill: crimson;
-}
-
-text.axisLeftLabel {
-    fill: crimson;
-}
-
-text.axisBottomLabel {
-    fill: mediumblue;
+svg {
 }
 
 .noselect {
@@ -82,4 +41,8 @@ text.axisBottomLabel {
 .bigPlus {
     font-size:64px;
     margin-bottom:8px;
+}
+
+.exportArea {
+    font: 10px Verdana;
 }

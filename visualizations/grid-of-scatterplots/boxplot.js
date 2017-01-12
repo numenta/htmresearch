@@ -1,6 +1,7 @@
 function boxPlotLeft() {
   var y,
-      radius = 3;
+      radius = 3,
+      color = "black";
 
   function chart(selection) {
     var boxPlot = selection.selectAll(".boxPlot")
@@ -9,23 +10,25 @@ function boxPlotLeft() {
     boxPlot = boxPlot.enter()
       .append("g")
       .attr("class", "boxPlot")
+      .attr("font-family", "Verdana")
+      .attr("font-size", "10px")
       .call(entering => {
 
         entering.append("line")
           .attr("class", "upperQuartile")
-          .attr("stroke", "black")
+          .attr("stroke", color)
           .attr("x1", 0)
           .attr("x2", 0);
 
         entering.append("line")
           .attr("class", "median")
-          .attr("stroke", "black")
+          .attr("stroke", color)
           .attr("x1", -radius)
           .attr("x2", radius);
 
         entering.append("line")
           .attr("class", "lowerQuartile")
-          .attr("stroke", "black")
+          .attr("stroke", color)
           .attr("x1", 0)
           .attr("x2", 0);
 
@@ -33,7 +36,7 @@ function boxPlotLeft() {
           .attr("class", "box")
           .attr("x", -radius)
           .attr("width", 2*radius)
-          .attr("stroke", "black")
+          .attr("stroke", color)
           .attr("fill", "none");
 
 
@@ -43,30 +46,35 @@ function boxPlotLeft() {
           .attr("class", "label0")
           .attr("dominant-baseline", "central")
           .attr("text-anchor", "end")
+          .attr("fill", color)
           .attr("x", xPos);
 
         entering.append("text")
           .attr("class", "label1")
           .attr("dominant-baseline", "central")
           .attr("text-anchor", "end")
+          .attr("fill", color)
           .attr("x", xPos);
 
         entering.append("text")
           .attr("class", "label2")
           .attr("dominant-baseline", "central")
           .attr("text-anchor", "end")
+          .attr("fill", color)
           .attr("x", xPos);
 
         entering.append("text")
           .attr("class", "label3")
           .attr("dominant-baseline", "central")
           .attr("text-anchor", "end")
+          .attr("fill", color)
           .attr("x", xPos);
 
         entering.append("text")
           .attr("class", "label4")
           .attr("dominant-baseline", "central")
           .attr("text-anchor", "end")
+          .attr("fill", color)
           .attr("x", xPos);
       })
       .merge(boxPlot);
@@ -161,12 +169,19 @@ function boxPlotLeft() {
     return chart;
   };
 
+  chart.color = function(_) {
+    if (!arguments.length) return color;
+    color = _;
+    return chart;
+  };
+
   return chart;
 }
 
 function boxPlotBottom() {
   var x,
-      radius = 3;
+      radius = 3,
+      color = "black";
 
   function chart(selection) {
     var boxPlot = selection.selectAll(".boxPlot")
@@ -175,23 +190,25 @@ function boxPlotBottom() {
     boxPlot = boxPlot.enter()
       .append("g")
       .attr("class", "boxPlot")
+      .attr("font-family", "Verdana")
+      .attr("font-size", "10px")
       .call(entering => {
 
         entering.append("line")
           .attr("class", "upperQuartile")
-          .attr("stroke", "black")
+          .attr("stroke", color)
           .attr("y1", 0)
           .attr("y2", 0);
 
         entering.append("line")
           .attr("class", "median")
-          .attr("stroke", "black")
+          .attr("stroke", color)
           .attr("y1", -radius)
           .attr("y2", radius);
 
         entering.append("line")
           .attr("class", "lowerQuartile")
-          .attr("stroke", "black")
+          .attr("stroke", color)
           .attr("y1", 0)
           .attr("y2", 0);
 
@@ -199,7 +216,7 @@ function boxPlotBottom() {
           .attr("class", "box")
           .attr("y", -radius)
           .attr("height", 2*radius)
-          .attr("stroke", "black")
+          .attr("stroke", color)
           .attr("fill", "none");
 
         var yPos = radius + 11;
@@ -207,26 +224,31 @@ function boxPlotBottom() {
         entering.append("text")
           .attr("class", "label0")
           .attr("text-anchor", "middle")
+          .attr("fill", color)
           .attr("y", yPos);
 
         entering.append("text")
           .attr("class", "label1")
           .attr("text-anchor", "middle")
+          .attr("fill", color)
           .attr("y", yPos);
 
         entering.append("text")
           .attr("class", "label2")
           .attr("text-anchor", "middle")
+          .attr("fill", color)
           .attr("y", yPos);
 
         entering.append("text")
           .attr("class", "label3")
           .attr("text-anchor", "middle")
+          .attr("fill", color)
           .attr("y", yPos);
 
         entering.append("text")
           .attr("class", "label4")
           .attr("text-anchor", "middle")
+          .attr("fill", color)
           .attr("y", yPos);
       })
       .merge(boxPlot);
@@ -312,6 +334,12 @@ function boxPlotBottom() {
   chart.x = function(_) {
     if (!arguments.length) return x;
     x = _;
+    return chart;
+  };
+
+  chart.color = function(_) {
+    if (!arguments.length) return color;
+    color = _;
     return chart;
   };
 

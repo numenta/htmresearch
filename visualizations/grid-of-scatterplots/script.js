@@ -49,6 +49,47 @@ function insertScatterplotGrid_numColumns_noiseLevel(experiments) {
       .attr("width", padding.left + gridWidth + padding.right)
       .attr("height", padding.top + gridHeight + padding.bottom);
 
+  var exportArea = d3.select("#graphics").append("div")
+      .attr("class", "exportArea")
+      .style("width", `${padding.left + gridWidth + padding.right}px`)
+      .style("margin-left", "auto")
+      .style("margin-right", "auto")
+      .style("text-align", "right");
+
+  var button = exportArea.append("div").append("button")
+      .on("click", () => {
+        var svgElement = svg.node();
+        var svgElementCopy = document.createElement("svg");
+
+        svgElementCopy.innerHTML = svgElement.innerHTML;
+
+        for (let i = 0; i < svgElement.attributes.length; i++) {
+          let kv = svgElement.attributes[i];
+          svgElementCopy.setAttribute(kv.name, kv.value);
+        }
+
+        svgElementCopy.setAttribute("title", "Scatterplot grid: L2 columns with noise");
+        svgElementCopy.setAttribute("version", 1.1);
+        svgElementCopy.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+
+        let descendents = svgElementCopy.getElementsByTagName("*");
+
+        for (let i = 0; i < descendents.length; i++) {
+          descendents[i].removeAttribute("class");
+          descendents[i].removeAttribute("style");
+        }
+
+        saveText('<?xml version="1.0" standalone="no"?>\r\n' +
+                 (new XMLSerializer()).serializeToString(svgElementCopy),
+                 "scatterplot-grid.svg");
+    })
+      .text("Export SVG");
+
+  exportArea
+    .append("div")
+    .attr("class", "textBelow")
+    .text("(Only works in some browsers, e.g. Chrome)");
+
   var container = svg.append("g")
       .attr("transform", `translate(${padding.left},${padding.top})`);
 
@@ -95,7 +136,8 @@ function insertScatterplotGrid_numColumns_noiseLevel(experiments) {
       return quartiles;
     })
     .call(boxPlotLeft()
-          .y(y));
+          .y(y)
+          .color("crimson"));
 
   chart
     .append("g")
@@ -108,10 +150,14 @@ function insertScatterplotGrid_numColumns_noiseLevel(experiments) {
       return quartiles;
     })
     .call(boxPlotBottom()
-          .x(x));
+          .x(x)
+          .color("mediumblue"));
 
   container.append("text")
     .attr("class", "gridAxisTopLabel")
+    .attr("font-family", "Verdana")
+    .attr("font-size", "12px")
+    .attr("font-weight", "bold")
     .attr("x", chartWidth * allNoiseLevels.length / 2)
     .attr("y", -30)
     .attr("text-anchor", "middle")
@@ -136,6 +182,10 @@ function insertScatterplotGrid_numColumns_noiseLevel(experiments) {
 
   container.append("text")
     .attr("class", "axisLeftLabel")
+    .attr("font-family", "Verdana")
+    .attr("font-size", "10px")
+    .attr("font-weight", "bold")
+    .attr("fill", "crimson")
     .attr("y", legendY + 5)
     .attr("text-anchor", "end")
     .call(text => {
@@ -151,6 +201,10 @@ function insertScatterplotGrid_numColumns_noiseLevel(experiments) {
 
   container.append("text")
     .attr("class", "axisBottomLabel")
+    .attr("font-family", "Verdana")
+    .attr("font-size", "10px")
+    .attr("font-weight", "bold")
+    .attr("fill", "mediumblue")
     .attr("y", legendY + 45)
     .attr("text-anchor", "beginning")
     .call(text => {
@@ -169,6 +223,8 @@ function insertScatterplotGrid_numColumns_noiseLevel(experiments) {
   noiseLabel = noiseLabel.enter()
     .append("text")
     .attr("class", "noiseLabel")
+    .attr("font-family", "Verdana")
+    .attr("font-size", "10px")
     .attr("text-anchor", "middle")
     .attr("y", -5)
     .merge(noiseLabel)
@@ -180,6 +236,9 @@ function insertScatterplotGrid_numColumns_noiseLevel(experiments) {
   numColumnsLabel = numColumnsLabel.enter()
     .append("text")
     .attr("class", "numColumnsLabel")
+    .attr("font-family", "Verdana")
+    .attr("font-size", "12px")
+    .attr("font-weight", "bold")
     .merge(numColumnsLabel)
     .attr("x", d => allNoiseLevels.length * chartWidth)
     .attr("y", d => gridY(d) + chartHeight / 2)
@@ -210,6 +269,21 @@ function insertScatterplotGrid_numColumns_noiseLevel(experiments) {
       .attr("y2", chartHeight*allColumnCounts.length);
 
 }
+
+var saveText = (function () {
+  var a = document.createElement("a");
+  document.body.appendChild(a);
+  a.style = "display: none";
+
+    return function (text, fileName) {
+      var blob = new Blob([text], {type: "octet/stream"}),
+          url = window.URL.createObjectURL(blob);
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    };
+}());
 
 function handleFile(file) {
   var fileReader = new FileReader();
