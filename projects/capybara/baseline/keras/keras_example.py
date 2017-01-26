@@ -1,18 +1,19 @@
-# Data pre-processing imports 
 import pandas as pd
 import numpy as np
-from keras.utils import np_utils
-import seaborn as sns
 
-# Keras imports
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout
+from keras.utils import np_utils
+from keras.utils.visualize_util import plot
+
+import plotly.offline as py
+import plotly.graph_objs as go
 
 # Constants
 batch_size = 128
 hidden_layers_dim = 100
 dropout_ratio = 0.2
-num_epochs = 100
+num_epochs = 200
 verbose = 0
 
 print('batch_size: ', batch_size)
@@ -58,18 +59,40 @@ y = np_utils.to_categorical(y, output_dim)
 #       during training time.
 model = Sequential()
 model.add(Dense(hidden_layers_dim,
-                input_dim=input_dim, init='uniform', activation='tanh'))
+                input_dim=input_dim, init='uniform', activation='relu'))
 model.add(Dropout(dropout_ratio))
-model.add(Dense(hidden_layers_dim, init='uniform', activation='tanh'))
+model.add(Dense(hidden_layers_dim, init='uniform', activation='relu'))
 model.add(Dropout(dropout_ratio))
 model.add(Dense(output_dim, init='uniform', activation='softmax'))
-model.compile(loss='mse', optimizer='sgd', metrics=['accuracy'])
+
+# For a multi-class classification problem
+model.compile(loss='categorical_crossentropy',
+              optimizer='rmsprop', metrics=['accuracy'])
 
 # Train
-model.fit(
+# The input data is shuffled at each epoch
+hist = model.fit(
   X, y,
   validation_split=0.2,
   batch_size=batch_size, nb_epoch=num_epochs, verbose=verbose)
+
+loss = hist.history['loss']
+acc = hist.history['acc']
+epochs = range(num_epochs)
+
+trace0 = go.Scatter(x=epochs, y=loss, name='Loss')
+trace1 = go.Scatter(x=epochs, y=acc, name='Accuracy')
+
+layout = go.Layout(showlegend=True, title='Loss & Accuracy')
+fig = go.Figure(data=[trace0, trace1], layout=layout)
+
+py.plot(fig,
+        filename='metrics.html',
+        auto_open=False,
+        link_text=False)
+
+# Plot model
+plot(model, show_shapes=True, to_file='model.png')
 
 # Evaluate
 loss, accuracy = model.evaluate(X, y, verbose=verbose)
@@ -83,15 +106,44 @@ print('prediction of [1, 1]: ',
 print('prediction of [8, 8]: ',
       model.predict_classes(np.array([[8, 8]]), verbose=verbose))
 
-# Plot
-sns.lmplot('x', 'y', data, 'class', fit_reg=False).set(title='Data')
+# Plot input data
+class0 = data[data['class'] == 0]
+class1 = data[data['class'] == 1]
+trace0 = go.Scatter(x=class0['x'], y=class0['y'], name='Data (class 0)',
+                    mode='lines+markers', marker={'color': 'grey'})
+
+trace1 = go.Scatter(x=class1['x'], y=class1['y'], name='Data (class 1)',
+                    mode='lines+markers', marker={'color': 'blue'})
+
+layout = go.Layout(showlegend=True, title='Data')
+fig = go.Figure(data=[trace0, trace1], layout=layout)
+py.plot(fig,
+        filename='data.html',
+        auto_open=False,
+        link_text=False)
+
+# Plot results (correct and incorrect)
 results = pd.DataFrame(data.copy())
 results['class'] = model.predict_classes(X, verbose=0)
-sns.lmplot('x', 'y', results, 'class',
-           fit_reg=False).set(title='Trained Result')
-results['class'] = ['Error' if is_error
-                    else 'Non Error'
-                    for is_error in data['class'] != results['class']]
-sns.lmplot('x', 'y', results, 'class', fit_reg=False).set(title='Errors')
 
-sns.plt.show()
+results['class'] = ['Error' if is_error
+                    else 'Correct'
+                    for is_error in data['class'] != results['class']]
+
+correct = results[results['class'] == 'Correct']
+incorrect = results[results['class'] == 'Incorrect']
+
+trace0 = go.Scatter(x=correct['x'], y=correct['y'], name='Correct predictions',
+                    mode='lines+markers', marker={'color': 'green'})
+
+trace1 = go.Scatter(x=incorrect['x'], y=incorrect['y'],
+                    name='Incorrect predictions)',
+                    mode='lines+markers', marker={'color': 'red'})
+
+layout = go.Layout(showlegend=True, title='Predictions')
+fig = go.Figure(data=[trace0, trace1], layout=layout)
+
+py.plot(fig,
+        filename='predictions.html',
+        auto_open=False,
+        link_text=False)

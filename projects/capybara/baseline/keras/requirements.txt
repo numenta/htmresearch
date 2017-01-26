@@ -1,0 +1,12 @@
+# Matplotlib wrapper
+seaborn
+
+# Neural nets
+tensorflow
+keras
+
+# For Keras viz
+pydot
+pydot-ng
+graphviz
+pydotplus
