@@ -23,7 +23,14 @@
 from htmresearch.support.sp_paper_utils import *
 
 import matplotlib as mpl
+from scipy.optimize import curve_fit
 mpl.rcParams['pdf.fonttype'] = 42
+
+def nakaRushton(x, c50):
+  n=5
+  c = 1-x
+  y = 1/(1 + 1/(c/c50)**n)
+  return y
 
 expName = 'randomSDRVaryingSparsityContinuousLearning'
 plt.figure()
@@ -33,9 +40,15 @@ for epoch in epochCheck:
   nrData = np.load \
     ('./results/input_output_overlap/{}/epoch_{}.npz'.format(expName, epoch))
   noiseLevelList =  nrData['arr_0']
-  inputOverlapScore =  nrData['arr_1']
+  inputOverlapScore =  np.mean(nrData['arr_1'], 0)
   outputOverlapScore = np.mean( nrData['arr_2'], 0)
   plt.plot(noiseLevelList, outputOverlapScore)
+
+  popt, pcov = curve_fit(nakaRushton, noiseLevelList, outputOverlapScore,
+                         p0=[0.5])
+  yfit = nakaRushton(noiseLevelList, popt)
+  plt.plot(noiseLevelList, yfit, 'k--')
+
   legendList.append('epoch {}'.format(epoch))
 plt.legend(legendList)
 plt.xlabel('Noise Level')
