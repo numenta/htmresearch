@@ -33,7 +33,7 @@ from htmresearch.frameworks.sp_paper.sp_metrics import (
   calculateEntropy, inspectSpatialPoolerStats,
   classificationAccuracyVsNoise, getRFCenters, calculateOverlapCurve,
   calculateStability, calculateInputSpaceCoverage, plotExampleInputOutput,
-  reconstructionError, witnessError, entropy
+  reconstructionError, witnessError
 )
 from htmresearch.support.spatial_pooler_monitor_mixin import (
   SpatialPoolerMonitorMixin)
