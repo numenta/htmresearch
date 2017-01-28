@@ -38,22 +38,22 @@ from htmresearch.frameworks.layers.object_machine_factory import (
   createObjectMachine
 )
 
-def locateConvergencePoint(stats, targetValue):
+def locateConvergencePoint(stats, minOverlap, maxOverlap):
   """
   Walk backwards through stats until you locate the first point that diverges
-  from targetValue.  We need this to handle cases where it might get to
-  targetValue, diverge, and then get back again.  We want the last convergence
-  point.
+  from target overlap values.  We need this to handle cases where it might get
+  to target values, diverge, and then get back again.  We want the last
+  convergence point.
   """
   for i,v in enumerate(stats[::-1]):
-    if v != targetValue:
-      return len(stats)-i
+    if not (v >= minOverlap and v <= maxOverlap):
+      return len(stats)-i + 1
 
-  # Never differs - converged right away
-  return 0
+  # Never differs - converged in one iteration
+  return 1
 
 
-def averageConvergencePoint(inferenceStats, prefix, targetValue):
+def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap):
   """
   Given inference statistics for a bunch of runs, locate all traces with the
   given prefix. For each trace locate the iteration where it finally settles
@@ -64,7 +64,7 @@ def averageConvergencePoint(inferenceStats, prefix, targetValue):
   for stats in inferenceStats:
     for key in stats.iterkeys():
       if prefix in key:
-        itSum += locateConvergencePoint(stats[key], targetValue)
+        itSum += locateConvergencePoint(stats[key], minOverlap, maxOverlap)
         itNum += 1
 
   return float(itSum)/itNum
@@ -74,18 +74,34 @@ def objectConfusion(objects):
   """
   For debugging, print overlap between each pair of objects.
   """
+  sumCommonLocations = 0
+  sumCommonFeatures = 0
+  sumCommonPairs = 0
+  numObjects = 0
   for o1,s1 in objects.iteritems():
     for o2,s2 in objects.iteritems():
-      # Count number of common locations id's and common feature id's
-      commonLocations = 0
-      commonFeatures = 0
-      for pair1 in s1:
-        for pair2 in s2:
-          if pair1[0] == pair2[0]: commonLocations += 1
-          if pair1[1] == pair2[1]: commonFeatures += 1
+      if o1 != o2:
+        # Count number of common locations id's and common feature id's
+        commonLocations = 0
+        commonFeatures = 0
+        for pair1 in s1:
+          for pair2 in s2:
+            if pair1[0] == pair2[0]: commonLocations += 1
+            if pair1[1] == pair2[1]: commonFeatures += 1
 
-      print "Confusion",o1,o2,", common pairs=",len(set(s1)&set(s2)),
-      print ", locations=",commonLocations,"features=",commonFeatures
+        # print "Confusion",o1,o2,", common pairs=",len(set(s1)&set(s2)),
+        # print ", common locations=",commonLocations,"common features=",commonFeatures
+
+        assert(len(set(s1)&set(s2)) != len(s1) ), "Two objects are identical!"
+
+        sumCommonPairs += len(set(s1)&set(s2))
+        sumCommonLocations += commonLocations
+        sumCommonFeatures += commonFeatures
+        numObjects += 1
+
+  print "Average common pairs=", sumCommonPairs / float(numObjects),
+  print ", locations=",sumCommonLocations / float(numObjects),
+  print ", features=",sumCommonFeatures / float(numObjects)
 
 
 def runExperiment(args):
@@ -103,6 +119,11 @@ def runExperiment(args):
                              Default: 10
   @param numPoints   (int)   The number of points on each object.
                              Default: 10
+  @param pointRange  (int)   Creates objects each with points ranging from
+                             [numPoints,...,numPoints+pointRange-1]
+                             A total of numObjects * pointRange objects will be
+                             created.
+                             Default: 1
   @param numLocations (int)  For each point, the number of locations to choose
                              from.  Default: 10
   @param numFeatures (int)   For each point, the number of features to choose
@@ -123,25 +144,33 @@ def runExperiment(args):
   noiseLevel = args.get("noiseLevel", None)  # TODO: implement this?
   numPoints = args.get("numPoints", 10)
   trialNum = args.get("trialNum", 42)
+  pointRange = args.get("pointRange", 1)
   plotInferenceStats = args.get("plotInferenceStats", True)
 
   # Create the objects
   objects = createObjectMachine(
     machineType="simple",
-    numInputBits=20,
-    sensorInputSize=1024,
+    numInputBits=40,
+    sensorInputSize=2048,
     externalInputSize=1024,
     numCorticalColumns=numColumns,
+    numFeatures=numFeatures,
+    seed=trialNum
   )
-  objects.createRandomObjects(numObjects, numPoints=numPoints,
-                                    numLocations=numLocations,
-                                    numFeatures=numFeatures)
 
+  for p in range(pointRange):
+    objects.createRandomObjects(numObjects, numPoints=numPoints+p,
+                                      numLocations=numLocations,
+                                      numFeatures=numFeatures)
+
+  objectConfusion(objects.getObjects())
+
+  # print "Total number of objects created:",len(objects.getObjects())
   # print "Objects are:"
-  # for o in objects:
-  #   pairs = objects[o]
-  #   pairs.sort()
-  #   print str(o) + ": " + str(pairs)
+  for o in objects:
+    pairs = objects[o]
+    pairs.sort()
+    # print str(o) + ": " + str(pairs)
 
   # Setup experiment and train the network
   name = "convergence_O%03d_L%03d_F%03d_C%03d_T%03d" % (
@@ -150,6 +179,8 @@ def runExperiment(args):
   exp = L4L2Experiment(
     name,
     numCorticalColumns=numColumns,
+    inputSize=2048,
+    numInputBits=40,
     seed=trialNum
   )
 
@@ -159,7 +190,7 @@ def runExperiment(args):
 
   # For inference, we will check and plot convergence for each object. For each
   # object, we create a sequence of random sensations for each column.  We will
-  # present each sensation for 3 time steps to let it settle and ensure it
+  # present each sensation for 2 time steps to let it settle and ensure it
   # converges.
   for objectId in objects:
     obj = objects[objectId]
@@ -172,7 +203,7 @@ def runExperiment(args):
       # stay multiple steps on each sensation
       sensations = []
       for pair in objectCopy:
-        for _ in xrange(2):
+        for _ in xrange(1):
           sensations.append(pair)
       objectSensations[c] = sensations
 
@@ -196,7 +227,7 @@ def runExperiment(args):
       )
 
   convergencePoint = averageConvergencePoint(
-    exp.getInferenceStats(),"L2 Representation", 40)
+    exp.getInferenceStats(),"L2 Representation", 30, 40)
 
   print
   print "# objects {} # features {} # locations {} # columns {} trial # {}".format(
@@ -219,6 +250,8 @@ def runExperimentPool(numObjects,
                       numColumns,
                       numWorkers=7,
                       nTrials=1,
+                      pointRange=1,
+                      numPoints=10,
                       resultsName="convergence_results.pkl"):
   """
   Allows you to run a number of experiments using multiple processes.
@@ -251,6 +284,8 @@ def runExperimentPool(numObjects,
                "numFeatures": f,
                "numColumns": c,
                "trialNum": t,
+               "pointRange": pointRange,
+               "numPoints": numPoints,
                "plotInferenceStats": False,
                }
             )
@@ -265,8 +300,8 @@ def runExperimentPool(numObjects,
     for arg in args:
       result.append(runExperiment(arg))
 
-  print "Full results:"
-  pprint.pprint(result, width=150)
+  # print "Full results:"
+  # pprint.pprint(result, width=150)
 
   # Pickle results for later use
   with open(resultsName,"wb") as f:
@@ -275,17 +310,37 @@ def runExperimentPool(numObjects,
   return result
 
 
-def plotConvergenceStats(convergence, columnRange, featureRange):
+def plotConvergenceByColumn(results, columnRange, featureRange):
   """
-  Plots the convergence graph
-
-  Convergence[f,c] = how long it took it to converge with f unique features
-  and c columns.
-
-  Features: the list of features we want to plot
+  Plots the convergence graph: iterations vs number of columns.
+  Each curve shows the convergence for a given number of unique features.
   """
+  ########################################################################
+  #
+  # Accumulate all the results per column in a convergence array.
+  #
+  # Convergence[f,c] = how long it took it to converge with f unique features
+  # and c columns.
+
+  convergence = numpy.zeros((max(featureRange), max(columnRange) + 1))
+  for r in results:
+    convergence[r["numFeatures"] - 1,
+                r["numColumns"]] += r["convergencePoint"]
+
+  convergence /= numTrials
+
+  # For each column, print convergence as fct of number of unique features
+  for c in range(2, max(columnRange) + 1):
+    print c, convergence[:, c]
+
+  # Print everything anyway for debugging
+  print "Average convergence array=", convergence
+
+  ########################################################################
+  #
+  # Create the plot. x-axis=
   plt.figure()
-  plotPath = os.path.join("plots", "convergence_1.pdf")
+  plotPath = os.path.join("plots", "convergence_by_column.jpg")
 
   # Plot each curve
   legendList = []
@@ -295,16 +350,68 @@ def plotConvergenceStats(convergence, columnRange, featureRange):
     f = featureRange[i]
     print columnRange
     print convergence[f-1,columnRange]
-    legendList.append('unique features={}'.format(f))
+    legendList.append('Feature pool={}'.format(f))
     plt.plot(columnRange, convergence[f-1,columnRange],
              color=colorList[i])
 
   # format
   plt.legend(legendList, loc="upper right")
-  plt.xlabel("Columns")
+  plt.xlabel("Number of columns")
   plt.xticks(columnRange)
-  plt.ylabel("Number of sensations")
-  plt.title("Convergence")
+  plt.yticks(range(0,int(convergence.max())+1))
+  plt.ylabel("Average number of sensations")
+  plt.title("Average convergence time vs number of columns")
+
+    # save
+  plt.savefig(plotPath)
+  plt.close()
+
+
+def plotConvergenceByObject(results, objectRange, featureRange):
+  """
+  Plots the convergence graph: iterations vs number of objects.
+  Each curve shows the convergence for a given number of unique features.
+  """
+  ########################################################################
+  #
+  # Accumulate all the results per column in a convergence array.
+  #
+  # Convergence[f,o] = how long it took it to converge with f unique features
+  # and o objects.
+
+  convergence = numpy.zeros((max(featureRange), max(objectRange) + 1))
+  for r in results:
+    convergence[r["numFeatures"] - 1, r["numObjects"]] += r["convergencePoint"]
+
+  convergence /= numTrials
+
+  # print "Average convergence array=", convergence
+
+  ########################################################################
+  #
+  # Create the plot. x-axis=
+  plt.figure()
+  plotPath = os.path.join("plots", "convergence_by_object.jpg")
+
+  # Plot each curve
+  legendList = []
+  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
+
+  for i in range(len(featureRange)):
+    f = featureRange[i]
+    print "features={} objectRange={} convergence={}".format(
+      f,objectRange, convergence[f-1,objectRange])
+    legendList.append('Feature pool={}'.format(f))
+    plt.plot(objectRange, convergence[f-1,objectRange],
+             color=colorList[i])
+
+  # format
+  plt.legend(legendList, loc="lower right")
+  plt.xlabel("Number of objects")
+  plt.xticks(range(0,max(objectRange)+1,10))
+  plt.yticks(range(0,int(convergence.max())+2))
+  plt.ylabel("Average number of sensations")
+  plt.title("Average convergence time vs number of objects")
 
     # save
   plt.savefig(plotPath)
@@ -315,52 +422,72 @@ if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
-  # results = runExperiment(
-  #               {
-  #                 "numObjects": 10,
-  #                 "numLocations": 10,
-  #                 "numFeatures": 7,
-  #                 "numColumns": 3,
-  #                 "trialNum": 0
-  #               }
-  # )
+  if False:
+    results = runExperiment(
+                  {
+                    "numObjects": 40,
+                    "numPoints": 10,
+                    "numLocations": 10,
+                    "numFeatures": 1000,
+                    "numColumns": 1,
+                    "trialNum": 4,
+                    "pointRange": 1,
+                    "plotInferenceStats": True,
+                  }
+    )
 
-
-  # This is how you run a bunch of experiments in a process pool
 
   # Here we want to see how the number of columns affects convergence.
-  # We run 10 trials for each column number and then analyze results
-  numTrials = 4
-  columnRange = [2,3,4,5,6,7]
-  featureRange = [3,5,7,11]
-  # Comment this out if you are re-running analysis on an already saved set of
-  # results
-  results = runExperimentPool(
-                    numObjects=[10],
-                    numLocations=[10],
-                    numFeatures=featureRange,
-                    numColumns=columnRange,
-                    nTrials=numTrials)
+  # This experiment is run using a process pool
+  if True:
+    # We run 10 trials for each column number and then analyze results
+    numTrials = 10
+    columnRange = [1,2,4,6,8]
+    featureRange = [5,10,15,30]
+    objectRange = [50]
 
-  # Analyze results
-  with open("convergence_results.pkl","rb") as f:
-    results = cPickle.load(f)
+    # Comment this out if you are re-running analysis on already saved results
+    # Very useful for debugging the plots
+    # results = runExperimentPool(
+    #                   numObjects=objectRange,
+    #                   numLocations=[10],
+    #                   numFeatures=featureRange,
+    #                   numColumns=columnRange,
+    #                   numPoints=10,
+    #                   nTrials=numTrials,
+    #                   resultsName="column_convergence_results.pkl")
 
-  # Accumulate all the results per column in a numpy array, and print it as
-  # well as raw results.  This part can be specific to each experiment
-  convergence = numpy.zeros((max(featureRange), max(columnRange)+1))
-  for r in results:
-    convergence[r["numFeatures"]-1,
-                r["numColumns"]] += r["convergencePoint"]/2.0
+    # Analyze results
+    with open("column_convergence_results.pkl","rb") as f:
+      results = cPickle.load(f)
 
-  convergence = convergence/numTrials + 1.0
+    plotConvergenceByColumn(results, columnRange, featureRange)
 
-  # For each column, print convergence as fct of number of unique features
-  for c in range(2,max(columnRange)+1):
-    print c,convergence[:, c]
 
-  # Print everything anyway for debugging
-  print "Average convergence array=",convergence
+  # Here we want to see how the number of objects affects convergence for a
+  # single column.
+  # This experiment is run using a process pool
+  if True:
+    # We run 10 trials for each column number and then analyze results
+    numTrials = 10
+    columnRange = [1]
+    featureRange = [5,10,15,30,1000]
+    objectRange = [2,5,10,20,30,40,50,60,80,100]
 
-  plotConvergenceStats(convergence, columnRange, featureRange)
+    # Comment this out if you are re-running analysis on already saved results.
+    # Very useful for debugging the plots
+    # results = runExperimentPool(
+    #                   numObjects=objectRange,
+    #                   numLocations=[10],
+    #                   numFeatures=featureRange,
+    #                   numColumns=columnRange,
+    #                   numPoints=10,
+    #                   nTrials=numTrials,
+    #                   resultsName="object_convergence_results.pkl")
+
+    # Analyze results
+    with open("object_convergence_results.pkl","rb") as f:
+      results = cPickle.load(f)
+
+    plotConvergenceByObject(results, objectRange, featureRange)
 
