@@ -65,7 +65,7 @@ class SensorimotorExperimentRunner(object):
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
     "formInternalBasalConnections": True,
-    "basalInputDimensions": (999999,) # Dodge input checking.
+    "basalInputDimensions": (999999,), # Dodge input checking.
 
     # We will force client to override these
     "columnDimensions": "Sorry",
