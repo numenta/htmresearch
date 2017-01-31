@@ -21,6 +21,11 @@
 """
 This file plots the convergence of L4-L2 as you increase the number of columns,
 or adjust the confusion between objects.
+
+TODO:
+- ensure two fingers don't touch the object at the same time
+- Change notion of iterations to allow lateral settling
+
 """
 
 import random
@@ -401,17 +406,68 @@ def plotConvergenceByObject(results, objectRange, featureRange):
     f = featureRange[i]
     print "features={} objectRange={} convergence={}".format(
       f,objectRange, convergence[f-1,objectRange])
-    legendList.append('Feature pool={}'.format(f))
+    legendList.append('Unique features={}'.format(f))
     plt.plot(objectRange, convergence[f-1,objectRange],
              color=colorList[i])
 
   # format
   plt.legend(legendList, loc="lower right")
-  plt.xlabel("Number of objects")
+  plt.xlabel("Number of objects in training set")
   plt.xticks(range(0,max(objectRange)+1,10))
   plt.yticks(range(0,int(convergence.max())+2))
   plt.ylabel("Average number of sensations")
-  plt.title("Average convergence time vs number of objects")
+  plt.title("Average number of sensations to uniquely recognize an object")
+
+    # save
+  plt.savefig(plotPath)
+  plt.close()
+
+
+def plotConvergenceByObjectMultiColumn(results, objectRange, columnRange):
+  """
+  Plots the convergence graph: iterations vs number of objects.
+  Each curve shows the convergence for a given number of columns.
+  """
+  ########################################################################
+  #
+  # Accumulate all the results per column in a convergence array.
+  #
+  # Convergence[c,o] = how long it took it to converge with f unique features
+  # and c columns.
+
+  convergence = numpy.zeros((max(columnRange), max(objectRange) + 1))
+  for r in results:
+    convergence[r["numColumns"] - 1, r["numObjects"]] += r["convergencePoint"]
+
+  convergence /= numTrials
+
+  # print "Average convergence array=", convergence
+
+  ########################################################################
+  #
+  # Create the plot. x-axis=
+  plt.figure()
+  plotPath = os.path.join("plots", "convergence_by_object_multicolumn.jpg")
+
+  # Plot each curve
+  legendList = []
+  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
+
+  for i in range(len(columnRange)):
+    c = columnRange[i]
+    print "columns={} objectRange={} convergence={}".format(
+      c, objectRange, convergence[c-1,objectRange])
+    legendList.append('No. columns={}'.format(c))
+    plt.plot(objectRange, convergence[c-1,objectRange],
+             color=colorList[i])
+
+  # format
+  plt.legend(legendList, loc="lower right")
+  plt.xlabel("Number of objects in training set")
+  plt.xticks(range(0,max(objectRange)+1,10))
+  plt.yticks(range(0,int(convergence.max())+2))
+  plt.ylabel("Average number of sensations")
+  plt.title("Average number of sensations to uniquely recognize an object")
 
     # save
   plt.savefig(plotPath)
@@ -439,7 +495,7 @@ if __name__ == "__main__":
 
   # Here we want to see how the number of columns affects convergence.
   # This experiment is run using a process pool
-  if True:
+  if False:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1,2,4,6,8]
@@ -448,14 +504,14 @@ if __name__ == "__main__":
 
     # Comment this out if you are re-running analysis on already saved results
     # Very useful for debugging the plots
-    # results = runExperimentPool(
-    #                   numObjects=objectRange,
-    #                   numLocations=[10],
-    #                   numFeatures=featureRange,
-    #                   numColumns=columnRange,
-    #                   numPoints=10,
-    #                   nTrials=numTrials,
-    #                   resultsName="column_convergence_results.pkl")
+    results = runExperimentPool(
+                      numObjects=objectRange,
+                      numLocations=[10],
+                      numFeatures=featureRange,
+                      numColumns=columnRange,
+                      numPoints=10,
+                      nTrials=numTrials,
+                      resultsName="column_convergence_results.pkl")
 
     # Analyze results
     with open("column_convergence_results.pkl","rb") as f:
@@ -467,7 +523,7 @@ if __name__ == "__main__":
   # Here we want to see how the number of objects affects convergence for a
   # single column.
   # This experiment is run using a process pool
-  if True:
+  if False:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1]
@@ -490,4 +546,32 @@ if __name__ == "__main__":
       results = cPickle.load(f)
 
     plotConvergenceByObject(results, objectRange, featureRange)
+
+
+  # Here we want to see how the number of objects affects convergence for
+  # multiple columns.
+  # This experiment is run using a process pool
+  if True:
+    # We run 10 trials for each column number and then analyze results
+    numTrials = 10
+    columnRange = [1,2,4,8]
+    featureRange = [5]
+    objectRange = [2,5,10,20,40,60,80,100]
+
+    # Comment this out if you are re-running analysis on already saved results.
+    # Very useful for debugging the plots
+    results = runExperimentPool(
+                      numObjects=objectRange,
+                      numLocations=[10],
+                      numFeatures=featureRange,
+                      numColumns=columnRange,
+                      numPoints=10,
+                      nTrials=numTrials,
+                      resultsName="object_convergence_multi_column_results.pkl")
+
+    # Analyze results
+    with open("object_convergence_multi_column_results.pkl","rb") as f:
+      results = cPickle.load(f)
+
+    plotConvergenceByObjectMultiColumn(results, objectRange, columnRange)
 
