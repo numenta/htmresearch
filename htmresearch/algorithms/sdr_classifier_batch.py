@@ -4,7 +4,7 @@ Training is achieved with gradient descent
 """
 import numpy as np
 import scipy
-
+from scipy import optimize
 
 def L2regularization(w, regularizationLambda):
   dW = np.zeros(w.shape)
