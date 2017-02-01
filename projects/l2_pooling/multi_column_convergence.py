@@ -449,7 +449,7 @@ def plotConvergenceByObject(results, objectRange, featureRange):
              color=colorList[i])
 
   # format
-  plt.legend(legendList, loc="lower right")
+  plt.legend(legendList, loc="upper left", prop={'size':10})
   plt.xlabel("Number of objects in training set")
   plt.xticks(range(0,max(objectRange)+1,10))
   plt.yticks(range(0,int(convergence.max())+2))
@@ -500,7 +500,7 @@ def plotConvergenceByObjectMultiColumn(results, objectRange, columnRange):
              color=colorList[i])
 
   # format
-  plt.legend(legendList, loc="lower right")
+  plt.legend(legendList, loc="upper left", prop={'size':10})
   plt.xlabel("Number of objects in training set")
   plt.xticks(range(0,max(objectRange)+1,10))
   plt.yticks(range(0,int(convergence.max())+2))
@@ -562,7 +562,7 @@ if __name__ == "__main__":
   # Here we want to see how the number of objects affects convergence for a
   # single column.
   # This experiment is run using a process pool
-  if False:
+  if True:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1]
