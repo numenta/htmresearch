@@ -22,14 +22,11 @@
 This file plots the convergence of L4-L2 as you increase the number of columns,
 or adjust the confusion between objects.
 
-TODO:
-- ensure two fingers don't touch the object at the same time
-- Change notion of iterations to allow lateral settling
-
 """
 
 import random
 import os
+from math import ceil
 import pprint
 import numpy
 import cPickle
@@ -58,21 +55,39 @@ def locateConvergencePoint(stats, minOverlap, maxOverlap):
   return 1
 
 
-def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap):
+def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
+                            settlingTime):
   """
+  inferenceStats contains activity traces while the system visits each object.
+
+  Given the i'th object, inferenceStats[i] contains activity statistics for
+  each column for each region for the entire sequence of sensations.
+
+  For each object, compute the convergence time - the first point when all
+  L2 columns have converged.
+
+  Return the average convergence time across all objects.
+
   Given inference statistics for a bunch of runs, locate all traces with the
   given prefix. For each trace locate the iteration where it finally settles
   on targetValue. Return the average settling iteration across all runs.
   """
-  itSum = 0
-  itNum = 0
+  convergenceSum = 0.0
+
+  # For each object
   for stats in inferenceStats:
+
+    # For each L2 column locate convergence time
+    convergencePoint = 0.0
     for key in stats.iterkeys():
       if prefix in key:
-        itSum += locateConvergencePoint(stats[key], minOverlap, maxOverlap)
-        itNum += 1
+        convergencePoint = max(
+          convergencePoint,
+          locateConvergencePoint(stats[key], minOverlap, maxOverlap))
 
-  return float(itSum)/itNum
+    convergenceSum += ceil(float(convergencePoint)/settlingTime)
+
+  return convergenceSum/len(inferenceStats)
 
 
 def objectConfusion(objects):
@@ -135,6 +150,9 @@ def runExperiment(args):
                              from.  Default: 10
   @param numColumns  (int)   The total number of cortical columns in network.
                              Default: 2
+  @param settlingTime (int)  Number of iterations we wait to let columns
+                             stabilize. Important for multicolumn experiments
+                             with lateral connections.
 
   The method returns the args dict updated with two additional keys:
     convergencePoint (int)   The average number of iterations it took
@@ -151,6 +169,7 @@ def runExperiment(args):
   trialNum = args.get("trialNum", 42)
   pointRange = args.get("pointRange", 1)
   plotInferenceStats = args.get("plotInferenceStats", True)
+  settlingTime = args.get("settlingTime", 3)
 
   # Create the objects
   objects = createObjectMachine(
@@ -172,10 +191,10 @@ def runExperiment(args):
 
   # print "Total number of objects created:",len(objects.getObjects())
   # print "Objects are:"
-  for o in objects:
-    pairs = objects[o]
-    pairs.sort()
-    # print str(o) + ": " + str(pairs)
+  # for o in objects:
+  #   pairs = objects[o]
+  #   pairs.sort()
+  #   print str(o) + ": " + str(pairs)
 
   # Setup experiment and train the network
   name = "convergence_O%03d_L%03d_F%03d_C%03d_T%03d" % (
@@ -200,17 +219,35 @@ def runExperiment(args):
   for objectId in objects:
     obj = objects[objectId]
 
-    # Create sequence of sensations for this object for all columns
     objectSensations = {}
     for c in range(numColumns):
+      objectSensations[c] = []
+
+    if numColumns > 1:
+      # Create sequence of random sensations for this object for all columns At
+      # any point in time, ensure each column touches a unique loc,feature pair
+      # on the object.  It is ok for a given column to sense a loc,feature pair
+      # more than once. The total number of sensations is equal to the number of
+      # points on the object.
+      for sensationNumber in range(len(obj)):
+        # Randomly shuffle points for each sensation
+        objectCopy = [pair for pair in obj]
+        random.shuffle(objectCopy)
+        for c in range(numColumns):
+          # stay multiple steps on each sensation
+          for _ in xrange(settlingTime):
+            objectSensations[c].append(objectCopy[c])
+
+    else:
+      # Create sequence of sensations for this object for one column. The total
+      # number of sensations is equal to the number of points on the object. No
+      # point should be visited more than once.
       objectCopy = [pair for pair in obj]
       random.shuffle(objectCopy)
-      # stay multiple steps on each sensation
-      sensations = []
       for pair in objectCopy:
-        for _ in xrange(1):
-          sensations.append(pair)
-      objectSensations[c] = sensations
+        # stay multiple steps on each sensation
+        for _ in xrange(settlingTime):
+          objectSensations[0].append(pair)
 
     inferConfig = {
       "object": objectId,
@@ -232,7 +269,7 @@ def runExperiment(args):
       )
 
   convergencePoint = averageConvergencePoint(
-    exp.getInferenceStats(),"L2 Representation", 30, 40)
+    exp.getInferenceStats(),"L2 Representation", 30, 40, settlingTime)
 
   print
   print "# objects {} # features {} # locations {} # columns {} trial # {}".format(
@@ -292,6 +329,7 @@ def runExperimentPool(numObjects,
                "pointRange": pointRange,
                "numPoints": numPoints,
                "plotInferenceStats": False,
+               "settlingTime": 3,
                }
             )
 
@@ -481,14 +519,15 @@ if __name__ == "__main__":
   if False:
     results = runExperiment(
                   {
-                    "numObjects": 40,
+                    "numObjects": 20,
                     "numPoints": 10,
                     "numLocations": 10,
-                    "numFeatures": 1000,
-                    "numColumns": 1,
+                    "numFeatures": 5,
+                    "numColumns": 2,
                     "trialNum": 4,
                     "pointRange": 1,
                     "plotInferenceStats": True,
+                    "settlingTime": 3,
                   }
     )
 
@@ -554,20 +593,20 @@ if __name__ == "__main__":
   if True:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
-    columnRange = [1,2,4,8]
+    columnRange = [1,2,3,4,6,8]
     featureRange = [5]
-    objectRange = [2,5,10,20,40,60,80,100]
+    objectRange = [2,5,10,20,30,40,50,60,80,100]
 
     # Comment this out if you are re-running analysis on already saved results.
     # Very useful for debugging the plots
-    results = runExperimentPool(
-                      numObjects=objectRange,
-                      numLocations=[10],
-                      numFeatures=featureRange,
-                      numColumns=columnRange,
-                      numPoints=10,
-                      nTrials=numTrials,
-                      resultsName="object_convergence_multi_column_results.pkl")
+    # results = runExperimentPool(
+    #                   numObjects=objectRange,
+    #                   numLocations=[10],
+    #                   numFeatures=featureRange,
+    #                   numColumns=columnRange,
+    #                   numPoints=10,
+    #                   nTrials=numTrials,
+    #                   resultsName="object_convergence_multi_column_results.pkl")
 
     # Analyze results
     with open("object_convergence_multi_column_results.pkl","rb") as f:
