@@ -424,7 +424,8 @@ def plotConvergenceByObject(results, objectRange, featureRange):
 
   convergence = numpy.zeros((max(featureRange), max(objectRange) + 1))
   for r in results:
-    convergence[r["numFeatures"] - 1, r["numObjects"]] += r["convergencePoint"]
+    if r["numFeatures"] in featureRange:
+      convergence[r["numFeatures"] - 1, r["numObjects"]] += r["convergencePoint"]
 
   convergence /= numTrials
 
@@ -453,11 +454,11 @@ def plotConvergenceByObject(results, objectRange, featureRange):
   plt.xlabel("Number of objects in training set")
   plt.xticks(range(0,max(objectRange)+1,10))
   plt.yticks(range(0,int(convergence.max())+2))
-  plt.ylabel("Average number of sensations")
-  plt.title("Average number of sensations to uniquely recognize an object")
+  plt.ylabel("Average number of touches")
+  plt.title("Number of touches to recognize one object (single column)")
 
     # save
-  plt.savefig(plotPath)
+  plt.savefig(plotPath, dpi=50)
   plt.close()
 
 
@@ -475,7 +476,8 @@ def plotConvergenceByObjectMultiColumn(results, objectRange, columnRange):
 
   convergence = numpy.zeros((max(columnRange), max(objectRange) + 1))
   for r in results:
-    convergence[r["numColumns"] - 1, r["numObjects"]] += r["convergencePoint"]
+    if r["numColumns"] in columnRange:
+      convergence[r["numColumns"] - 1, r["numObjects"]] += r["convergencePoint"]
 
   convergence /= numTrials
 
@@ -495,7 +497,10 @@ def plotConvergenceByObjectMultiColumn(results, objectRange, columnRange):
     c = columnRange[i]
     print "columns={} objectRange={} convergence={}".format(
       c, objectRange, convergence[c-1,objectRange])
-    legendList.append('No. columns={}'.format(c))
+    if c == 1:
+      legendList.append('1 column')
+    else:
+      legendList.append('{} columns'.format(c))
     plt.plot(objectRange, convergence[c-1,objectRange],
              color=colorList[i])
 
@@ -504,11 +509,11 @@ def plotConvergenceByObjectMultiColumn(results, objectRange, columnRange):
   plt.xlabel("Number of objects in training set")
   plt.xticks(range(0,max(objectRange)+1,10))
   plt.yticks(range(0,int(convergence.max())+2))
-  plt.ylabel("Average number of sensations")
-  plt.title("Average number of sensations to uniquely recognize an object")
+  plt.ylabel("Average number of touches")
+  plt.title("Object recognition with multiple columns (unique features = 5)")
 
     # save
-  plt.savefig(plotPath)
+  plt.savefig(plotPath, dpi=50)
   plt.close()
 
 
@@ -566,7 +571,7 @@ if __name__ == "__main__":
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1]
-    featureRange = [5,10,15,30,1000]
+    featureRange = [5,10,15,30]
     objectRange = [2,5,10,20,30,40,50,60,80,100]
 
     # Comment this out if you are re-running analysis on already saved results.
@@ -593,7 +598,7 @@ if __name__ == "__main__":
   if True:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
-    columnRange = [1,2,3,4,6,8]
+    columnRange = [1,2,4,6]
     featureRange = [5]
     objectRange = [2,5,10,20,30,40,50,60,80,100]
 
