@@ -85,6 +85,9 @@ def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
           convergencePoint,
           locateConvergencePoint(stats[key], minOverlap, maxOverlap))
 
+        # Ensure system has converged by the last iteration
+        assert(convergencePoint <= len(stats[key]))
+
     convergenceSum += ceil(float(convergencePoint)/settlingTime)
 
   return convergenceSum/len(inferenceStats)
@@ -458,7 +461,7 @@ def plotConvergenceByObject(results, objectRange, featureRange):
   plt.title("Number of touches to recognize one object (single column)")
 
     # save
-  plt.savefig(plotPath, dpi=50)
+  plt.savefig(plotPath)
   plt.close()
 
 
@@ -513,7 +516,7 @@ def plotConvergenceByObjectMultiColumn(results, objectRange, columnRange):
   plt.title("Object recognition with multiple columns (unique features = 5)")
 
     # save
-  plt.savefig(plotPath, dpi=50)
+  plt.savefig(plotPath)
   plt.close()
 
 
@@ -521,17 +524,17 @@ if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
-  if False:
+  if True:
     results = runExperiment(
                   {
-                    "numObjects": 20,
+                    "numObjects": 10,
                     "numPoints": 10,
                     "numLocations": 10,
                     "numFeatures": 5,
                     "numColumns": 2,
                     "trialNum": 4,
                     "pointRange": 1,
-                    "plotInferenceStats": True,
+                    "plotInferenceStats": True,  # Outputs detailed graphs
                     "settlingTime": 3,
                   }
     )
@@ -567,7 +570,7 @@ if __name__ == "__main__":
   # Here we want to see how the number of objects affects convergence for a
   # single column.
   # This experiment is run using a process pool
-  if True:
+  if False:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1]
@@ -576,14 +579,14 @@ if __name__ == "__main__":
 
     # Comment this out if you are re-running analysis on already saved results.
     # Very useful for debugging the plots
-    # results = runExperimentPool(
-    #                   numObjects=objectRange,
-    #                   numLocations=[10],
-    #                   numFeatures=featureRange,
-    #                   numColumns=columnRange,
-    #                   numPoints=10,
-    #                   nTrials=numTrials,
-    #                   resultsName="object_convergence_results.pkl")
+    results = runExperimentPool(
+                      numObjects=objectRange,
+                      numLocations=[10],
+                      numFeatures=featureRange,
+                      numColumns=columnRange,
+                      numPoints=10,
+                      nTrials=numTrials,
+                      resultsName="object_convergence_results.pkl")
 
     # Analyze results
     with open("object_convergence_results.pkl","rb") as f:
@@ -595,7 +598,7 @@ if __name__ == "__main__":
   # Here we want to see how the number of objects affects convergence for
   # multiple columns.
   # This experiment is run using a process pool
-  if True:
+  if False:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1,2,4,6]
@@ -604,14 +607,14 @@ if __name__ == "__main__":
 
     # Comment this out if you are re-running analysis on already saved results.
     # Very useful for debugging the plots
-    # results = runExperimentPool(
-    #                   numObjects=objectRange,
-    #                   numLocations=[10],
-    #                   numFeatures=featureRange,
-    #                   numColumns=columnRange,
-    #                   numPoints=10,
-    #                   nTrials=numTrials,
-    #                   resultsName="object_convergence_multi_column_results.pkl")
+    results = runExperimentPool(
+                      numObjects=objectRange,
+                      numLocations=[10],
+                      numFeatures=featureRange,
+                      numColumns=columnRange,
+                      numPoints=10,
+                      nTrials=numTrials,
+                      resultsName="object_convergence_multi_column_results.pkl")
 
     # Analyze results
     with open("object_convergence_multi_column_results.pkl","rb") as f:
