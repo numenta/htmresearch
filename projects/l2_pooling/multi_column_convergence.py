@@ -217,8 +217,8 @@ def runExperiment(args):
 
   # For inference, we will check and plot convergence for each object. For each
   # object, we create a sequence of random sensations for each column.  We will
-  # present each sensation for 2 time steps to let it settle and ensure it
-  # converges.
+  # present each sensation for settlingTime time steps to let it settle and
+  # ensure it converges.
   for objectId in objects:
     obj = objects[objectId]
 
@@ -305,7 +305,7 @@ def runExperimentPool(numObjects,
   combination is run nTrials times.
 
   Returns a list of dict containing detailed results from each experiment.
-  Also pickles the results in resultsName for later analysis.
+  Also pickles and saves the results in resultsName for later analysis.
 
   Example:
     results = runExperimentPool(
@@ -376,7 +376,7 @@ def plotConvergenceByColumn(results, columnRange, featureRange):
   convergence /= numTrials
 
   # For each column, print convergence as fct of number of unique features
-  for c in range(2, max(columnRange) + 1):
+  for c in range(1, max(columnRange) + 1):
     print c, convergence[:, c]
 
   # Print everything anyway for debugging
