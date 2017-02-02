@@ -591,7 +591,7 @@ class L4L2Experiment(object):
       "permanenceDecrement": 0.02,
       "minThreshold": 13,
       "predictedSegmentDecrement": 0.0,
-      "activationThreshold": 15,
+      "activationThreshold": 13,
       "maxNewSynapseCount": 30,
       "defaultOutputType": "predictedActiveCells",
       "implementation": "etm_cpp",
