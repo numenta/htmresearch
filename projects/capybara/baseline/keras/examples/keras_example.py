@@ -9,20 +9,6 @@ from keras.utils.visualize_util import plot
 import plotly.offline as py
 import plotly.graph_objs as go
 
-# Constants
-batch_size = 128
-hidden_layers_dim = 100
-dropout_ratio = 0.2
-num_epochs = 200
-verbose = 0
-
-print('batch_size: ', batch_size)
-print('hidden_layers_dim: ', hidden_layers_dim)
-print('dropout: ', dropout_ratio)
-print('num_epochs: ', num_epochs)
-print('verbose: ', verbose)
-print()
-
 # Data
 data = np.array([
   [0, 0, 0],
@@ -43,6 +29,20 @@ data = pd.DataFrame(data, columns=['x', 'y', 'class'])
 # Split X and y
 X = data[['x', 'y']].values
 y = data['class'].values
+
+# Constants
+batch_size = 128
+hidden_layers_dim = 100
+dropout_ratio = 0.2
+num_epochs = 200
+verbose = 0
+
+print('batch_size: ', batch_size)
+print('hidden_layers_dim: ', hidden_layers_dim)
+print('dropout: ', dropout_ratio)
+print('num_epochs: ', num_epochs)
+print('verbose: ', verbose)
+print()
 
 # Get dimensions of input and output
 input_dim = X.shape[1]
@@ -69,6 +69,10 @@ model.add(Dense(output_dim, init='uniform', activation='softmax'))
 model.compile(loss='categorical_crossentropy',
               optimizer='rmsprop', metrics=['accuracy'])
 
+# Plot model
+plot(model, show_shapes=True, to_file='model.png')
+
+
 # Train
 # The input data is shuffled at each epoch
 hist = model.fit(
@@ -91,8 +95,6 @@ py.plot(fig,
         auto_open=False,
         link_text=False)
 
-# Plot model
-plot(model, show_shapes=True, to_file='model.png')
 
 # Evaluate
 loss, accuracy = model.evaluate(X, y, verbose=verbose)
@@ -123,7 +125,7 @@ py.plot(fig,
         link_text=False)
 
 # Plot results (correct and incorrect)
-results = pd.DataFrame(data.copy())
+results = pd.DataFrame(data)
 results['class'] = model.predict_classes(X, verbose=0)
 
 results['class'] = ['Error' if is_error

@@ -236,7 +236,7 @@ def saveTraces(traces, fileName):
 
 def loadTraces(fileName):
   """
-  Load netwrok traces from CSV
+  Load network traces from CSV
   :param fileName: (str) name of the file
   :return traces: (dict) network traces. E.g: activeCells, sensorValues, etc.
   """

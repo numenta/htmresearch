@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2017, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -19,15 +19,27 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from sklearn.neural_network import MLPClassifier
+from baseline_utils import load_traces, save_traces, get_file_name, CONFIG
 
-X = [[0., 0.], [1., 1.], [1.5, 1.5], [2., 2.]]
-y = [0, 0, 1, 1]
-clf = MLPClassifier(solver='lbfgs', alpha=1e-5,
-                    hidden_layer_sizes=(5, 2), random_state=1)
+# Split between train, validation and test
+exp_name = 'body_acc_x'
+headers = [exp_name, 'sdr', 'label']
+datasets_boundaries = {
+  'train': [10000, 12000],
+  'val': [19300, 21300],
+  'test': [26000, 28000]
+}
 
-clf.fit(X, y)
+# Load data
+min_idx = datasets_boundaries['train'][0]
+max_idx = datasets_boundaries['test'][1]
 
+# load traces
+file_name = get_file_name(exp_name, CONFIG)
+traces = load_traces(file_name, min_idx, max_idx)
 
-predictions = clf.predict([[0.5, 0.5], [1.7, 1.7]])
-print "Predictions: %s. Expected: [0, 1]" % predictions
+# Save data
+for phase, idx in datasets_boundaries.items():
+  start = idx[0] - min_idx
+  end = idx[1] - min_idx
+  save_traces('%s_%s' % (phase, exp_name), traces, start, end)
