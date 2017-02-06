@@ -141,12 +141,15 @@ if __name__ == "__main__":
   maxEntropy = np.mean(np.mean(traceAll['maxEntropy'][10:, :], 1))
 
   print "test entropy difference before/after learning: "
-  print stats.ttest_ind(traceAll['entropy'][0, :], traceAll['entropy'][49, :])
+  print stats.ttest_rel(traceAll['entropy'][0, :], traceAll['entropy'][49, :])
 
   meanNoiseRobustness = np.mean(traceAll['noiseRobustness'][checkPoints, :], 1)
   stdNoiseRobustness = np.std(traceAll['noiseRobustness'][checkPoints, :], 1)
   xtickLabels = ['Before Training', 'Before Change', 'After Change',
                  'After Recovery']
+
+  print "test noise robustness before/after learning: "
+  print stats.ttest_rel(traceAll['noiseRobustness'][0, :], traceAll['noiseRobustness'][49, :])
 
   plotBarWithErr(ax[0], meanEntropy, stdEntropy, 'Entropy (bits)', xtickLabels)
   ax[0].plot(ax[0].get_xlim(), [maxEntropy, maxEntropy], 'k--')

@@ -279,7 +279,7 @@ def analyzeReceptiveFieldCorrelatedInputs(
 
 
 
-def runSPOnBatch(sp, inputVectors, learn, sdrOrders=None):
+def runSPOnBatch(sp, inputVectors, learn, sdrOrders=None, verbose=0):
   numInputVector, inputSize = inputVectors.shape
   numColumns = np.prod(sp.getColumnDimensions())
 
@@ -287,10 +287,25 @@ def runSPOnBatch(sp, inputVectors, learn, sdrOrders=None):
     sdrOrders = range(numInputVector)
 
   outputColumns = np.zeros((numInputVector, numColumns), dtype=uintType)
+  if learn:
+    avgBoostFactors = np.zeros((numColumns,), dtype=realDType)
+  else:
+    avgBoostFactors = np.ones((numColumns,), dtype=realDType)
+
   for i in range(numInputVector):
     sp.compute(inputVectors[sdrOrders[i]][:], learn, outputColumns[sdrOrders[i]][:])
+    if learn:
+      boostFactors = np.zeros((numColumns,), dtype=realDType)
+      sp.getBoostFactors(boostFactors)
+      avgBoostFactors += boostFactors
 
-  return outputColumns
+    if verbose > 0:
+      if i % 100 == 0:
+        print "{} % finished".format(100 * float(i) / float(numInputVector))
+
+  if learn:
+    avgBoostFactors = avgBoostFactors/numInputVector
+  return outputColumns, avgBoostFactors
 
 
 
