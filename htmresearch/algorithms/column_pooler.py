@@ -264,7 +264,8 @@ class ColumnPooler(object):
     # If necessary, activate some of the previously active cells
     if len(chosenCells) < minNumActiveCells:
       remainingCandidates = [cell for cell in prevActiveCells
-                             if cell not in feedforwardSupportedCells]
+                             if cell not in feedforwardSupportedCells
+                             if numActiveSegmentsByCell[cell] > 0]
       chosenCells.extend(self._chooseCells(remainingCandidates,
                                            minNumActiveCells - len(chosenCells),
                                            numActiveSegmentsByCell))
