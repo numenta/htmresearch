@@ -20,6 +20,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import os
 from optparse import OptionParser
 import pprint
 import pickle
@@ -101,6 +102,8 @@ def getSpatialPoolerParams(params, expConfig):
       from model_params.sp_params import \
         spParamWithBoosting as spatialPoolerParameters
 
+    if expConfig.dataSet in ['mnist']:
+      spatialPoolerParameters['inputDimensions'] = (784, 1)
   print
   print "Spatial Pooler Parameters: "
   pprint.pprint(spatialPoolerParameters)
@@ -206,6 +209,12 @@ def _getArgs():
                     dest="checkInputSpaceCoverage",
                     help="whether to check coverage of input space")
 
+  parser.add_option("--saveBoostFactors",
+                    type=int,
+                    default=0,
+                    dest="saveBoostFactors",
+                    help="save boost factors for future inspection")
+
   parser.add_option("--changeDataSetContinuously",
                     type=int,
                     default=0,
@@ -305,11 +314,11 @@ def getSDRDataSetParams(inputVectorType, seed):
               'nX': 32,
               'nY': 32,
               'barHalfLength': 3,
-              'numBarsPerInput': 6,
+              'numBarsPerInput': 2,
               'seed': seed}
   elif inputVectorType == 'randomCross':
     params = {'dataType': 'randomCross',
-              'numInputVectors': 200,
+              'numInputVectors': 1000,
               'nX': 32,
               'nY': 32,
               'barHalfLength': 3,
@@ -332,6 +341,13 @@ def getSDRDataSetParams(inputVectorType, seed):
               'nY': 32,
               'numActiveInputBits': 20,
               'seed': seed}
+  elif inputVectorType == 'mnist':
+    params = {'dataType': 'mnist',
+              'numInputVectors': 1000,
+              'inputSize': 1024,
+              'nX': 28,
+              'nY': 28,
+              'seed': seed}
   else:
     raise ValueError('unknown data type')
   print
@@ -347,9 +363,31 @@ def getExperimentName(expConfig):
       expConfig.dataSet, expConfig.boosting)
   else:
     expName = expConfig.expName
-
   expName = expName + '_seed_{}'.format(expConfig.seed)
   return expName
+
+
+
+def createDirectories(expName):
+  def createDirectoryIfNotExist(directory):
+    if not os.path.exists(directory):
+      os.makedirs(directory)
+
+  auxDirectoryList = [
+    'figures/exampleInputs/',
+    'results/input_output_overlap/{}/'.format(expName),
+    'results/classification/{}/'.format(expName),
+    'figures/RFcenters/{}/'.format(expName),
+    'results/RFcenters/{}/'.format(expName),
+    'results/InputCoverage/{}/'.format(expName),
+    'figures/InputCoverage/{}/'.format(expName),
+    'figures/ResponseToTestInputs/{}/'.format(expName),
+    'results/boostFactors/{}/'.format(expName),
+    'figures/exampleRFs/{}/'.format(expName),
+    'results/traces/{}/'.format(expName),
+  ]
+  for dir in auxDirectoryList:
+    createDirectoryIfNotExist(dir)
 
 
 
@@ -367,6 +405,9 @@ def runSPexperiments(expConfig):
   plt.imshow(np.reshape(inputVectors[2], (params['nX'], params['nY'])),
              interpolation='nearest', cmap='gray')
   plt.savefig('figures/exampleInputs/{}'.format(expName))
+
+  print
+  print "Runnning experiment: {}".format(expName)
   print "Training Data Size {} Dimensions {}".format(numInputVector, inputSize)
 
   spParams = getSpatialPoolerParams(params, expConfig)
@@ -398,7 +439,7 @@ def runSPexperiments(expConfig):
              'witnessError': []}
 
   connectedSyns = getConnectedSyns(sp)
-  activeColumnsCurrentEpoch = runSPOnBatch(sp, testInputs, learn=False)
+  activeColumnsCurrentEpoch, dum = runSPOnBatch(sp, testInputs, learn=False)
 
   inspectSpatialPoolerStats(sp, inputVectors, expName + "beforeTraining")
 
@@ -460,11 +501,10 @@ def runSPexperiments(expConfig):
 
     # randomize the presentation order of input vectors
     sdrOrders = np.random.permutation(np.arange(numInputVector))
-    activeColumnsTrain = runSPOnBatch(sp, inputVectors, learn, sdrOrders)
-
+    activeColumnsTrain, meanBoostFactors = runSPOnBatch(sp, inputVectors, learn, sdrOrders)
     # run SP on test dataset and compute metrics
     activeColumnsPreviousEpoch = copy.copy(activeColumnsCurrentEpoch)
-    activeColumnsCurrentEpoch = runSPOnBatch(sp, testInputs, learn=False)
+    activeColumnsCurrentEpoch, dum = runSPOnBatch(sp, testInputs, learn=False)
 
     stability = calculateStability(activeColumnsCurrentEpoch,
                                    activeColumnsPreviousEpoch)
@@ -485,8 +525,7 @@ def runSPexperiments(expConfig):
     sp.getConnectedCounts(connectedCounts)
     connectedSyns = getConnectedSyns(sp)
 
-    sp.getBoostFactors(boostFactors)
-    metrics['meanBoostFactor'].append(np.mean(boostFactors))
+    metrics['meanBoostFactor'].append(np.mean(meanBoostFactors))
     sp.getActiveDutyCycles(activeDutyCycle)
 
     metrics['numConnectedSyn'].append(np.sum(connectedCounts))
@@ -517,15 +556,15 @@ def runSPexperiments(expConfig):
       fig = plotReceptiveFieldCenter(RFcenters[aliveColumns, :],
                                      connectedCounts[aliveColumns],
                                      (params['nX'], params['nY']))
-      plt.savefig('./figures/RFcenters/{}/epoch_{}.png'.format(expName, epoch))
+      plt.savefig('figures/RFcenters/{}/epoch_{}.png'.format(expName, epoch))
       plt.close(fig)
-      np.savez('./results/RFcenters/{}/epoch_{}'.format(expName, epoch),
+      np.savez('results/RFcenters/{}/epoch_{}'.format(expName, epoch),
                RFcenters, avgDistToCenter)
 
     if expConfig.checkInputSpaceCoverage:
       # check coverage of input space, useful to monitor recovery from trauma
       inputSpaceCoverage = calculateInputSpaceCoverage(sp)
-      np.savez('./results/InputCoverage/{}/{}'.format(expName, epoch),
+      np.savez('results/InputCoverage/{}/epoch_{}'.format(expName, epoch),
                inputSpaceCoverage, connectedCounts)
 
       plt.figure(2)
@@ -533,7 +572,7 @@ def runSPexperiments(expConfig):
       plt.imshow(inputSpaceCoverage, interpolation='nearest', cmap="jet")
       plt.colorbar()
       plt.savefig(
-        './figures/InputCoverage/{}/epoch_{}.png'.format(expName, epoch))
+        'figures/InputCoverage/{}/epoch_{}.png'.format(expName, epoch))
 
     if expConfig.checkTestInput:
       RFcenters, avgDistToCenter = getRFCenters(sp, params, type='connected')
@@ -547,7 +586,11 @@ def runSPexperiments(expConfig):
       plt.scatter(RFcenters[activeColumns, 0], RFcenters[activeColumns, 1],
                   color='r')
       plt.savefig(
-        './figures/ResponseToTestInputs/{}/epoch_{}.png'.format(expName, epoch))
+        'figures/ResponseToTestInputs/{}/epoch_{}.png'.format(expName, epoch))
+
+    if expConfig.saveBoostFactors:
+      np.savez('results/boostFactors/{}/epoch_{}'.format(expName, epoch),
+               meanBoostFactors)
 
     if expConfig.showExampleRFs:
       fig = plotReceptiveFields2D(sp, params['nX'], params['nY'])
@@ -565,7 +608,7 @@ def runSPexperiments(expConfig):
   plotSPstatsOverTime(metrics, fileName)
 
   metrics['expName'] = expName
-  pickle.dump(metrics, open('./results/traces/{}/trace'.format(expName), 'wb'))
+  pickle.dump(metrics, open('results/traces/{}/trace'.format(expName), 'wb'))
 
   plotReceptiveFields2D(sp, params['nX'], params['nY'])
   inspectSpatialPoolerStats(sp, inputVectors, inputVectorType + "afterTraining")
