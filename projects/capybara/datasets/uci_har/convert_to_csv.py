@@ -24,11 +24,11 @@ import csv
 import os
 import numpy as np
 
-
 """
 Data pre-processing from: 
 https://github.com/guillaume-chevalier/LSTM-Human-Activity-Recognition
 """
+
 
 
 def load_X(X_signals_paths):
@@ -65,7 +65,7 @@ def load_y(y_path):
   with open(y_path, 'rb') as f:
     y_ = np.array([elem for elem in [row.replace('  ', ' ').strip().split(' ')
                                      for row in f]], dtype=np.int32)
-    return y_ - 1  # 0-based indexing
+    return y_
 
 
 
@@ -86,10 +86,11 @@ def generate_data(X_train_signals_paths,
   y_train = load_y(y_train_path)
   y_test = load_y(y_test_path)
 
-  assert headers_test == headers_train
   headers_train.append('label')
-  train_csv = 'inertial_signals_train.csv'
+  headers_test.append('label')
+  assert headers_test == headers_train
 
+  train_csv = 'inertial_signals_train.csv'
   with open(train_csv, 'w') as f:
     writer = csv.writer(f)
     writer.writerow(headers_train)
@@ -108,6 +109,8 @@ def generate_data(X_train_signals_paths,
         row = list(x)
         row.append(y_test[i][0])
         writer.writerow(row)
+        
+  print 'Files saved: %s' % [train_csv, test_csv]
 
 
 
@@ -123,16 +126,14 @@ if __name__ == '__main__':
     'total_acc_y_',
     'total_acc_z_'
   ]
-
-  LABELS = [
-    'WALKING',
-    'WALKING_UPSTAIRS',
-    'WALKING_DOWNSTAIRS',
-    'SITTING',
-    'STANDING',
-    'LAYING'
-  ]
-
+  LABELS = {
+    1: 'WALKING',
+    2: 'WALKING_UPSTAIRS',
+    3: 'WALKING_DOWNSTAIRS',
+    4: ' SITTING',
+    5: 'STANDING',
+    6: 'LAYING'
+  }
   DATASET_PATH = 'UCI HAR Dataset'
   TRAIN = 'train'
   TEST = 'test'
