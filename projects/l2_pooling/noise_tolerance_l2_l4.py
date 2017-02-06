@@ -39,21 +39,42 @@ from htmresearch.frameworks.layers.sensor_placement import greedySensorPositions
 
 
 TIMESTEPS_PER_SENSATION = 3
+NUM_L4_COLUMNS = 2048
 
 
-def withDropout(pattern, dropoutPercent):
+def noisy(pattern, noiseLevel, totalNumCells):
   """
-  Take the input pattern and suppress a portion of its active bits.
+  Generate a noisy copy of a pattern.
 
-  @param pattern (sequence)
-  Sequence of active indices
+  Given number of active bits w = len(pattern),
+  deactivate noiseLevel*w cells, and activate noiseLevel*w other cells.
 
-  @return
-  A new pattern consisting of the previous pattern with some active bits removed
+  @param pattern (set)
+  A set of active indices
+
+  @param noiseLevel (float)
+  The percentage of the bits to shuffle
+
+  @param totalNumCells (int)
+  The number of cells in the SDR, active and inactive
+
+  @return (set)
+  A noisy set of active indices
   """
-  n = int(len(pattern) * (1.0 - dropoutPercent))
+  n = int(noiseLevel * len(pattern))
 
-  return set(random.sample(pattern, n))
+  noised = set(pattern)
+
+  noised.difference_update(random.sample(noised, n))
+
+  for _ in xrange(n):
+    while True:
+      v = random.randint(0, totalNumCells - 1)
+      if v not in pattern and v not in noised:
+        noised.add(v)
+        break
+
+  return noised
 
 
 def createRandomObjects(numObjects, locationsPerObject, featurePoolSize):
@@ -88,7 +109,7 @@ def createRandomObjects(numObjects, locationsPerObject, featurePoolSize):
 
 
 def doExperiment(numColumns, objects, l2Overrides, noiseLevels, numInitialTraversals,
-                 featureDropout, locationDropout):
+                 noisyFeature, noisyLocation):
   """
   Touch every point on an object 'numInitialTraversals' times, then evaluate
   whether it has inferred the object by touching every point once more and
@@ -110,14 +131,14 @@ def doExperiment(numColumns, objects, l2Overrides, noiseLevels, numInitialTraver
   It's applied to the same cortical column every time, and this is the cortical
   column that is measured.
 
-  @param featureDropout (bool)
+  @param noisyFeature (bool)
   Whether to use a noisy feature
 
-  @param locationDropout (bool)
+  @param noisyLocation (bool)
   Whether to use a noisy location
   """
 
-  featureSDR = lambda : set(random.sample(xrange(2048), 40))
+  featureSDR = lambda : set(random.sample(xrange(NUM_L4_COLUMNS), 40))
   locationSDR = lambda : set(random.sample(xrange(1024), 40))
 
   featureSDRsByColumn = [defaultdict(featureSDR) for _ in xrange(numColumns)]
@@ -126,6 +147,7 @@ def doExperiment(numColumns, objects, l2Overrides, noiseLevels, numInitialTraver
   exp = L4L2Experiment(
     "Experiment",
     numCorticalColumns=numColumns,
+    inputSize=NUM_L4_COLUMNS,
     externalInputSize=1024,
     seed=random.randint(2048, 4096)
   )
@@ -139,10 +161,9 @@ def doExperiment(numColumns, objects, l2Overrides, noiseLevels, numInitialTraver
            for location in xrange(len(features))])
          for objectName, features in objects.iteritems()))
 
-  if locationDropout:
-    # Now that the objects are learned, allow bursting L4 minicolumns to
-    # activate cells in L2.
-    exp.L4Columns[0].setParameter("defaultOutputType", 0, "active")
+  # Now that the objects are learned, allow bursting L4 minicolumns to activate
+  # cells in L2.
+  exp.L4Columns[0].setParameter("defaultOutputType", 0, "active")
 
   results = defaultdict(list)
 
@@ -172,19 +193,19 @@ def doExperiment(numColumns, objects, l2Overrides, noiseLevels, numInitialTraver
             featureSDRsByColumn[column][features[sensorPositions[column]]]))
           for column in xrange(1, numColumns))
 
-        for _ in xrange(TIMESTEPS_PER_SENSATION):
-          # Add noise to the first column.
-          featureSDR = featureSDRsByColumn[0][features[sensorPositions[0]]]
-          if featureDropout:
-            featureSDR = withDropout(featureSDR, noiseLevel)
+        # Add noise to the first column.
+        featureSDR = featureSDRsByColumn[0][features[sensorPositions[0]]]
+        if noisyFeature:
+          featureSDR = noisy(featureSDR, noiseLevel, NUM_L4_COLUMNS)
 
-          locationSDR = locationSDRsByColumn[0][sensorPositions[0]]
-          if locationDropout:
-            locationSDR = withDropout(locationSDR, noiseLevel)
+        locationSDR = locationSDRsByColumn[0][sensorPositions[0]]
+        if noisyLocation:
+          locationSDR = noisy(locationSDR, noiseLevel, 1024)
 
-          sensation[0] = (locationSDR, featureSDR)
+        sensation[0] = (locationSDR, featureSDR)
 
-          exp.infer([sensation], reset=False, objectName=objectName)
+        exp.infer([sensation]*TIMESTEPS_PER_SENSATION, reset=False,
+                  objectName=objectName)
 
         if touch >= numInitialTouches:
           activeCells = exp.getL2Representations()[0]
@@ -195,13 +216,14 @@ def doExperiment(numColumns, objects, l2Overrides, noiseLevels, numInitialTraver
   return results
 
 
-def logCellActivity_featureDropout_varyNumColumns(name="cellActivity"):
+def logCellActivity_noisyFeature_varyNumColumns(name="cellActivity"):
   """
   Run the experiment, varying the column counts, and save each
     [# correctly active cells, # incorrectly active cells]
   pair to a JSON file that can be visualized.
   """
-  noiseLevels = [0.0, 0.30, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90]
+  noiseLevels = [0.0, 0.30, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75,
+                 0.80, 0.85, 0.90]
   l2Overrides = {"sampleSizeDistal": 20}
   columnCounts = [1, 2, 3, 4]
 
@@ -215,8 +237,8 @@ def logCellActivity_featureDropout_varyNumColumns(name="cellActivity"):
     for numColumns in columnCounts:
       print "numColumns", numColumns
       r = doExperiment(numColumns, objects, l2Overrides, noiseLevels,
-                       numInitialTraversals=6, featureDropout=True,
-                       locationDropout=False)
+                       numInitialTraversals=6, noisyFeature=True,
+                       noisyLocation=False)
 
       for noiseLevel, counts in r.iteritems():
         results[(numColumns, noiseLevel)].extend(counts)
@@ -237,7 +259,7 @@ def logCellActivity_featureDropout_varyNumColumns(name="cellActivity"):
   print "Visualize this file at: http://numenta.github.io/nupic.research/visualizations/grid-of-scatterplots/L2-columns-with-noise.html"
 
 
-def logCellActivity_locationDropout_varyNumColumns(name, objects):
+def logCellActivity_noisyLocation_varyNumColumns(name, objects):
   """
   Run the experiment, varying the column counts, and save each
     [# correctly active cells, # incorrectly active cells]
@@ -255,7 +277,7 @@ def logCellActivity_locationDropout_varyNumColumns(name, objects):
     for numColumns in columnCounts:
       print "numColumns", numColumns
       r = doExperiment(numColumns, objects, l2Overrides, noiseLevels, numInitialTraversals=6,
-                       featureDropout=False, locationDropout=True)
+                       noisyFeature=False, noisyLocation=True)
 
       for noiseLevel, counts in r.iteritems():
         results[(numColumns, noiseLevel)].extend(counts)
@@ -278,22 +300,22 @@ def logCellActivity_locationDropout_varyNumColumns(name, objects):
 
 
 if __name__ == "__main__":
-  # Suppress active minicolumns in the L4 feature SDR, observing the impact on
-  # L2. Suppress a constant percent of the minicolumns in one cortical column,
-  # but leave the other cortical columns untouched. Observe what happens as more
-  # untouched columns are added.
+  # Add noise to the L4 minicolumns SDR, observing the impact on L2. Add a
+  # constant amount of noise to one cortical column, but leave the other
+  # cortical columns untouched. Observe what happens as more untouched columns
+  # are added.
   #
   # We find that the lateral input from other columns can help correctly active
   # cells inhibit cells that shouldn't be active, but it doesn't help increase
   # the number of correctly active cells. So the accuracy of inference is
   # improved, but the confidence of the inference isn't.
-  print "Test: Suppress the L4 minicolumn SDR"
-  logCellActivity_featureDropout_varyNumColumns(name="suppressFeatureSDR")
+  print "Test: Noisy L4 minicolumn SDR"
+  logCellActivity_noisyFeature_varyNumColumns(name="noisyFeatureSDR")
 
 
-  # Suppress active bits in L4's location input, observing the impact on
-  # L2. Suppress a constant percent of the location input to one cortical
-  # column, but leave the other cortical columns untouched.
+  # Add noise to L4's location input, observing the impact on L2. Add a constant
+  # amount of noise to the location input of one cortical column, but leave the
+  # other cortical columns untouched.
   #
   # We find that:
   # - After the L4 loses a sufficient amount of its location input, the L2 + L4
@@ -301,17 +323,17 @@ if __name__ == "__main__":
   #   set of features (irrespective of location) can still be classified by the
   #   L2. L2 will infer a union of all objects that have the observed set of
   #   features.
-  # - As we add cortical columns, the suppressed column quickly becomes able to
-  #   infer any object. The lateral input causes the union of objects in L2 to
-  #   narrow down to the correct object. So it's not totally necessary for every
+  # - As we add cortical columns, the noisy column quickly becomes able to infer
+  #   any object. The lateral input causes the union of objects in L2 to narrow
+  #   down to the correct object. So it's not totally necessary for every
   #   cortical column to receive location input.
 
   # Random objects with a small feature pool. Once noisy, a single column never
   # infers an object, since most objects contain the exact same 3 features.
 
-  print ("Test: Suppress the L4 location SDR, "
+  print ("Test: Noisy L4 location SDR, "
          "using random objects with a feature pool size of 3")
-  logCellActivity_locationDropout_varyNumColumns(
+  logCellActivity_noisyLocation_varyNumColumns(
     "smallFeaturePool", createRandomObjects(numObjects=10,
                                             locationsPerObject=10,
                                             featurePoolSize=3))
@@ -320,9 +342,9 @@ if __name__ == "__main__":
   # A larger feature pool. Once noisy, a single column infers an object > 75% of
   # the time, since many objects are unique in their set of features.
 
-  print ("Test: Suppress the L4 location SDR, "
+  print ("Test: Noisy L4 location SDR, "
          "using random objects with a feature pool size of 10")
-  logCellActivity_locationDropout_varyNumColumns(
+  logCellActivity_noisyLocation_varyNumColumns(
     "mediumFeaturePool", createRandomObjects(numObjects=10,
                                              locationsPerObject=10,
                                              featurePoolSize=10))
@@ -332,9 +354,9 @@ if __name__ == "__main__":
   # the object is never inferred with a single column. L2 always infers the
   # union of the 3 objects.
 
-  print ("Test: Suppress the L4 location SDR, "
+  print ("Test: Noisy L4 location SDR, "
          "using hand-crafted objects made of the same features")
-  logCellActivity_locationDropout_varyNumColumns(
+  logCellActivity_noisyLocation_varyNumColumns(
     name="sameBagsOfFeatures",
     objects={
     0: [0, 1, 2],
@@ -346,9 +368,9 @@ if __name__ == "__main__":
   # Hand-crafted objects that are each a unique combination of features. The
   # object is always inferred with a single column.
 
-  print ("Test: Suppress the L4 location SDR, "
+  print ("Test: Noisy L4 location SDR, "
          "using hand-crafted objects made of the unique sets of features")
-  logCellActivity_locationDropout_varyNumColumns(
+  logCellActivity_noisyLocation_varyNumColumns(
     name="uniqueBagsOfFeatures",
     objects={
     0: [0, 1, 2],
