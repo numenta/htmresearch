@@ -91,4 +91,4 @@ Train faulty_SP on random bar set dataset
 * plot results
 
 # MNIST experiment
-`python train_sp.py -t 1 -d mnist --spatialImp py -e 200 -b 1`
+`python train_sp.py -t 1 -d mnist --spatialImp py -e 2 -b 1`

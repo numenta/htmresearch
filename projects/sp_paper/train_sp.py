@@ -345,8 +345,8 @@ def getSDRDataSetParams(inputVectorType, seed):
     params = {'dataType': 'mnist',
               'numInputVectors': 1000,
               'inputSize': 1024,
-              'nX': 28,
-              'nY': 28,
+              'nX': 32,
+              'nY': 32,
               'seed': seed}
   else:
     raise ValueError('unknown data type')
