@@ -543,7 +543,8 @@ def _rightVecSumAtNZGtThreshold_sparse(sparseMatrix,
   an eventual C implementation would.
   """
   denseArray = numpy.zeros(sparseMatrix.nCols(), dtype=GetNTAReal())
-  denseArray[sparseBinaryArray] = 1
+  if len(sparseBinaryArray) > 0:
+    denseArray[numpy.array(sparseBinaryArray)] = 1
   return sparseMatrix.rightVecSumAtNZGtThreshold(denseArray, threshold)
 
 
