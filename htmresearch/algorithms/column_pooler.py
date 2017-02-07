@@ -238,22 +238,19 @@ class ColumnPooler(object):
     prevActiveCells = self.activeCells
 
     # Calculate the feedforward supported cells
-    overlaps = _rightVecSumAtNZGtThreshold_sparse(
-      self.proximalPermanences, sorted(feedforwardInput),
-      self.connectedPermanenceProximal)
+    overlaps = self.proximalPermanences.rightVecSumAtNZGteThresholdSparse(
+      list(feedforwardInput), self.connectedPermanenceProximal)
     feedforwardSupportedCells = set(
       numpy.where(overlaps >= self.minThresholdProximal)[0])
 
     # Calculate the number of active segments on each cell
     numActiveSegmentsByCell = numpy.zeros(self.cellCount, dtype="int")
-    overlaps = _rightVecSumAtNZGtThreshold_sparse(
-      self.internalDistalPermanences, prevActiveCells,
-      self.connectedPermanenceDistal)
+    overlaps = self.internalDistalPermanences.rightVecSumAtNZGteThresholdSparse(
+      list(prevActiveCells), self.connectedPermanenceDistal)
     numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
     for i, lateralInput in enumerate(lateralInputs):
-      overlaps = _rightVecSumAtNZGtThreshold_sparse(
-        self.distalPermanences[i], sorted(lateralInput),
-        self.connectedPermanenceDistal)
+      overlaps = self.distalPermanences[i].rightVecSumAtNZGteThresholdSparse(
+        list(lateralInput), self.connectedPermanenceDistal)
       numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
 
     # Activate some of the feedforward supported cells
@@ -526,25 +523,6 @@ def _sampleRange(rng, start, end, step, k):
   rng.sample(numpy.arange(start, end, step, dtype="uint32"), array)
   return array
 
-
-def _rightVecSumAtNZGtThreshold_sparse(sparseMatrix,
-                                       sparseBinaryArray,
-                                       threshold):
-  """
-  For each row in 'sparseMatrix', computes the sum of ones in 'sparseBinaryArray'
-  for all indices i where sparseMatrix[row, i] >= threshold.
-
-  This is like rightVecSumAtNZGtThreshold, but it supports sparse binary arrays.
-
-  @param sparseBinaryArray (sorted sequence)
-  A sorted list of indices.
-
-  Note: this Python implementation doesn't require the list to be sorted, but
-  an eventual C implementation would.
-  """
-  denseArray = numpy.zeros(sparseMatrix.nCols(), dtype=GetNTAReal())
-  denseArray[sparseBinaryArray] = 1
-  return sparseMatrix.rightVecSumAtNZGtThreshold(denseArray, threshold)
 
 
 def _countWhereGreaterEqualInRows(sparseMatrix, rows, threshold):
