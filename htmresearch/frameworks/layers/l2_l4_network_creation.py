@@ -301,6 +301,7 @@ def createMultipleL4L2Columns(network, networkConfig):
 
   # Now connect the L2 columns laterally
   for i in range(networkConfig["numCorticalColumns"]):
+    network.setPhases("L2Column_{}".format(i), [i+3])
     suffixSrc = "_" + str(i)
     for j in range(networkConfig["numCorticalColumns"]):
       suffixDest = "_" + str(j)
