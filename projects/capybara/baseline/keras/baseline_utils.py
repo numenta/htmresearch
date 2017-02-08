@@ -25,6 +25,8 @@ import numpy as np
 import pandas as pd
 import os
 
+from sklearn.metrics import accuracy_score
+
 from keras.utils import np_utils
 from keras.models import Sequential
 from keras.layers.core import Dense
@@ -272,27 +274,54 @@ def plot_data(X, y_labels, t, title):
 
 
 
-def evaluate(model, X, y_one_hot, verbose):
-  loss, accuracy = model.evaluate(X, y_one_hot, verbose=verbose)
-  print 'loss: %s' % loss
-  print 'accuracy: %s' % accuracy
-  print ''
-  return loss, accuracy
+def evaluate(y_true, y_pred):
+  accuracy = accuracy_score(y_true, y_pred)
+  return accuracy
+  
+  
+def predict(model, X, vote_window):
+  y_pred = model.predict_classes(X)
+  if vote_window:
+    return predictions_vote(y_pred, vote_window)
+  else:
+    return y_pred
+
+
+def predictions_vote(y_pred, vote_window=10):
+  """
+  Take the most common label over a voting window.
+  
+  :param y_pred: (np.array) class predictions
+  :param vote_window: (int) size of the voting window
+  :return: (np.array) prediction votes
+  """
+  if len(y_pred) < vote_window:
+    raise ValueError('The number of raw predictions (%s) must be at least the '
+                     'size of the vote window (%s)' % (len(y_pred),
+                                                       vote_window))
+  votes = []
+  for i in range(len(y_pred)):
+    if i < vote_window:
+      vote = y_pred[i]
+    else:
+      predictions = [int(y_pred[k]) for k in range(i - vote_window, i)]
+      counts = np.bincount(predictions)
+      vote = np.argmax(counts)
+    votes.append(vote)
+  return np.array(votes)
 
 
 
-def predict(model, X, y_labels, verbose):
-  y_pred = model.predict_classes(X, verbose=verbose)
-
-  ground_truth = pd.DataFrame(y_labels)
-  predictions = pd.DataFrame(y_pred)
-  correct_predictions = ground_truth == predictions
-  return correct_predictions, y_pred
-
-
-
-def plot_predictions(X_values_test, t, prediction_results, title):
-  # Plot results (correct and incorrect)
+def plot_predictions(X_values, t, y_true, y_pred, title):
+  """
+  Plot results (correct and incorrect)  
+  
+  :param X_values: (np.array) input scalar values (before any encoding)
+  :param t: (np.array) timesteps
+  """
+  
+  prediction_results = pd.DataFrame(y_true) == pd.DataFrame(y_pred)
+  
   correct = []
   incorrect = []
   for r in prediction_results.values:
@@ -302,8 +331,8 @@ def plot_predictions(X_values_test, t, prediction_results, title):
   t_correct = t[correct]
   t_incorrect = t[incorrect]
 
-  X_values_test_correct = X_values_test[correct]
-  X_values_test_incorrect = X_values_test[incorrect]
+  X_values_test_correct = X_values[correct]
+  X_values_test_incorrect = X_values[incorrect]
 
   trace0 = go.Scatter(x=t_correct, y=X_values_test_correct[:, 0],
                       name='Correct predictions',

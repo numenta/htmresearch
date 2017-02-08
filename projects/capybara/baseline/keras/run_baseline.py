@@ -25,8 +25,9 @@ from sklearn.metrics import classification_report, confusion_matrix
 
 from classif_report import plot_classification_report
 from baseline_utils import (load_sdrs, create_model, train, plot_train_history,
-                            plot_data, plot_predictions, evaluate, predict,
-                            convert_to_one_hot, plot_confusion_matrix,
+                            plot_data, plot_predictions,
+                            evaluate, predict, convert_to_one_hot,
+                            plot_confusion_matrix,
                             save_model, load_model, find_labels_used)
 
 LABELS = {
@@ -38,7 +39,11 @@ LABELS = {
   6: 'LAYING'
 }
 
-EXP_NAME = 'body_acc_x'  # 'mini' 
+BATCH_SIZE = 32  # 128
+NUM_EPOCHS = 200
+VERBOSE = 1
+VOTE_WINDOW = 125  # Needs to be an un-even number to break ties
+EXP_NAME = 'body_acc_x'
 
 if __name__ == "__main__":
   # Classification options.
@@ -118,28 +123,23 @@ if __name__ == "__main__":
       for j in range(i, len(signals)):
         assert len(d[signals[i]]) == len(d[signals[j]])
 
-  # Neural net constants
-  batch_size = 32  # 128
-  num_epochs = 200
-  verbose = 1
-
   # Print some info about the network
-  print 'num_epochs: %s' % num_epochs
-  print 'verbose: %s' % verbose
-  print 'batch_size: %s' % batch_size
+  print 'num_epochs: %s' % NUM_EPOCHS
+  print 'verbose: %s' % VERBOSE
+  print 'batch_size: %s' % BATCH_SIZE
   print 'input_dim: %s' % input_dim
   print 'output_dim: %s' % output_dim
 
   # Create and train network
   model_name = 'model'
   if TRAIN:
-    model = create_model(input_dim, output_dim, num_epochs, verbose)
+    model = create_model(input_dim, output_dim, NUM_EPOCHS, VERBOSE)
 
     history = train(model, data['train']['X'], data['train']['y'],
                     data['val']['X'], data['val']['y'],
-                    batch_size, num_epochs, verbose)
+                    BATCH_SIZE, NUM_EPOCHS, VERBOSE)
 
-    plot_train_history(num_epochs, history, INPUT)
+    plot_train_history(NUM_EPOCHS, history, INPUT)
 
     save_model(model, model_name)
   else:
@@ -152,13 +152,31 @@ if __name__ == "__main__":
       plot_data(d['X_values'], d['y_labels'], d['t'],
                 '%s_%s' % (INPUT, phase))
 
-      # Evaluate trained model
-      print 'Evaluate %s set' % phase
-      _, _ = evaluate(model, d['X'], d['y'], verbose)
-      results, y_pred = predict(model, d['X'], d['y_labels'], verbose)
+      # Evaluate trained model: 
+      print '== Evaluate %s set ==' % phase
+      loss, accuracy = model.evaluate(d['X'], d['y'], verbose=0)
+      print '\n--> Model loss and accuracy: %.4f' % accuracy
+
+      # 1) With no window
+      y_pred = predict(model, d['X'], None)
+      accuracy_no_voting = evaluate(d['y_labels'], y_pred)
+      print ('--> Accuracy (no voting window): %.4f' % accuracy_no_voting)
+
+      # 3) With voting window = 1
+      y_pred = predict(model, d['X'], 1)
+      accuracy_1_vote = evaluate(d['y_labels'], y_pred)
+      print ('--> Accuracy (voting window = 1): %.4f' % accuracy_1_vote)
+      # assert abs(accuracy - accuracy_1_vote) <= 0.01
+
+
+      # 4) With another voting window
+      y_pred = predict(model, d['X'], VOTE_WINDOW)
+      accuracy_w_voting = evaluate(d['y_labels'], y_pred)
+      print ('--> Accuracy (voting window = %s): %.4f' % (VOTE_WINDOW,
+                                                          accuracy_w_voting))
 
       # Plot predictions
-      plot_predictions(d['X_values'], d['t'], results,
+      plot_predictions(d['X_values'], d['t'], d['y_labels'], y_pred,
                        '%s_%s' % (INPUT, phase))
 
       # Compute confusion matrix
