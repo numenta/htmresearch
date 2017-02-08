@@ -26,9 +26,10 @@ parentDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir)
 INPUT_DIR = os.path.join(parentDir, 'data')
 OUTPUT_DIR = os.path.join(parentDir, 'results')
 FILE_NAMES = [
-  os.path.join('uci','body_acc_x.csv'),
-  # os.path.join('artificial','binary_ampl=10.0_mean=0.0_noise=0.0.csv'),
-  # os.path.join('artificial','binary_ampl=10.0_mean=0.0_noise=1.0.csv'),
+  os.path.join('uci','body_acc_x_inertial_signals_train.csv'),
+  os.path.join('uci','body_acc_x_inertial_signals_test.csv'),
+  #os.path.join('artificial','binary_ampl=10.0_mean=0.0_noise=0.0.csv'),
+  #os.path.join('artificial','binary_ampl=10.0_mean=0.0_noise=1.0.csv'),
   # os.path.join('sensortag','sensortag_z.csv')
 ]
 INPUT_FILES = [os.path.join(INPUT_DIR, f) for f in FILE_NAMES]
