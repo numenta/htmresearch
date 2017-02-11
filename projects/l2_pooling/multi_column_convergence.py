@@ -81,12 +81,13 @@ def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
     convergencePoint = 0.0
     for key in stats.iterkeys():
       if prefix in key:
-        convergencePoint = max(
-          convergencePoint,
-          locateConvergencePoint(stats[key], minOverlap, maxOverlap))
+        columnConvergence = locateConvergencePoint(
+          stats[key], minOverlap, maxOverlap)
 
-        # Ensure system has converged by the last iteration
-        assert(convergencePoint <= len(stats[key]))
+        # Ensure this column has converged by the last iteration
+        # assert(columnConvergence <= len(stats[key]))
+
+        convergencePoint = max(convergencePoint, columnConvergence)
 
     convergenceSum += ceil(float(convergencePoint)/settlingTime)
 
@@ -283,9 +284,10 @@ def runExperiment(args):
   args.update({"objects": objects.getObjects()})
   args.update({"convergencePoint":convergencePoint})
 
-  # Can't pickle experiment so can't return it. However this is very useful
-  # for debugging when running in a single thread.
-  # args.update({"experiment": exp})
+  # Can't pickle experiment so can't return it for batch multiprocessing runs.
+  # However this is very useful for debugging when running in a single thread.
+  if plotInferenceStats:
+    args.update({"experiment": exp})
   return args
 
 

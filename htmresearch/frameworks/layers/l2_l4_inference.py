@@ -401,7 +401,9 @@ class L4L2Experiment(object):
     # save statistics
     statistics["numSteps"] = len(sensationList)
     statistics["object"] = objectName if objectName is not None else "Unknown"
+
     self.statistics.append(statistics)
+
 
   def _sendReset(self, sequenceId=0):
     """
@@ -412,12 +414,14 @@ class L4L2Experiment(object):
       self.externalInputs[col].addResetToQueue(sequenceId)
     self.network.run(1)
 
+
   @LoggingDecorator()
   def sendReset(self, *args, **kwargs):
     """
     Public interface to sends a reset signal to the network.  This is logged.
     """
     self._sendReset(*args, **kwargs)
+
 
   def plotInferenceStats(self,
                          fields,
@@ -624,6 +628,7 @@ class L4L2Experiment(object):
       "learningMode": True,
     }
 
+
   def getDefaultLateralSPParams(self, inputSize):
     return {
       "spatialImp": "cpp",
@@ -638,6 +643,7 @@ class L4L2Experiment(object):
       "synPermInactiveDec": 0.0005,
       "boostStrength": 0.0,
     }
+
 
   def getDefaultFeedForwardSPParams(self, inputSize):
     return {
@@ -661,6 +667,7 @@ class L4L2Experiment(object):
     """
     for column in self.L4Columns:
       column.setParameter("learningMode", 0, False)
+      column.setParameter("defaultOutputType", 0, "active")
     for column in self.L2Columns:
       column.setParameter("learningMode", 0, False)
 
@@ -671,6 +678,7 @@ class L4L2Experiment(object):
     """
     for column in self.L4Columns:
       column.setParameter("learningMode", 0, True)
+      column.setParameter("defaultOutputType", 0, "predictedActiveCells")
     for column in self.L2Columns:
       column.setParameter("learningMode", 0, True)
 
@@ -701,6 +709,9 @@ class L4L2Experiment(object):
       )
       statistics["L2 Representation C" + str(i)].append(
         len(L2Representation[i])
+      )
+      statistics["L4 Apical Segments C" + str(i)].append(
+        len(self.L4Columns[i]._tm.getActiveApicalSegments())
       )
 
       # add true overlap if objectName was provided
