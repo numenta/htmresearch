@@ -27,7 +27,7 @@ import simplejson as json
 from nupic.data.file_record_stream import FileRecordStream
 
 from htmresearch.frameworks.classification.network_factory import (
-  configureNetwork)
+  createAndConfigureNetwork)
 from htmresearch.frameworks.classification.network_training import (
   trainNetwork)
 from htmresearch.frameworks.classification.utils.sensor_data import (
@@ -122,8 +122,8 @@ class TestSensorDataClassification(unittest.TestCase):
                                              noiseAmplitude)
 
               dataSource = FileRecordStream(streamID=inputFile)
-              network = configureNetwork(dataSource,
-                                         networkConfig)
+              network = createAndConfigureNetwork(dataSource,
+                                                  networkConfig)
               partitions = generateNetworkPartitions(networkConfig,
                                                      NUM_RECORDS)
 

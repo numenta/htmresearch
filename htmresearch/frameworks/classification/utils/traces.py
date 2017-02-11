@@ -65,7 +65,7 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
   :param numTmCells: (int) number of cells in the TM
   :return: 
   """
-  
+
   categoriesLabelled = []
   t = np.array(traces['recordNumber'])
   classLabels = np.array(traces['actualCategory'])
@@ -83,7 +83,7 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
   selectRange = np.where(np.logical_and(t > xlim[0], t < xlim[1]))[0]
   if clustering:
     numSubplots = 5
-  else: 
+  else:
     numSubplots = 3
   f, ax = plt.subplots(numSubplots, sharex=True)
   # plot sensor value and class labels
@@ -95,8 +95,10 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
   height = yl[1] - yl[0]
 
   # plot class labels as transparent colored rectangles
-  classColor = {0: 'grey', 1: 'blue', 2: 'red', 3: 'yellow', 4: 'pink', 
-                5: 'green', 6: 'purple', 8: 'brown', 9: 'white'}
+  classColor = {
+    0: 'grey', 1: 'blue', 2: 'red', 3: 'yellow', 4: 'pink',
+    5: 'green', 6: 'purple', 8: 'brown', 9: 'white'
+    }
   xStartLabel = xlim[0]
   while xStartLabel < xlim[1]:
     currentClassLabel = classLabels[xStartLabel]
@@ -105,12 +107,11 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
     else:
       width = np.where(classLabels[xStartLabel:] != currentClassLabel)[0][0]
 
-
     if currentClassLabel not in categoriesLabelled:
       labelLegend = 'Category %s' % int(currentClassLabel)
     else:
       labelLegend = None
-    
+
     categoriesLabelled.append(currentClassLabel)
     ax[0].add_patch(
       patches.Rectangle((t[0] + xStartLabel, yl[0]), width, height,
@@ -121,7 +122,6 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
   ax[0].set_ylabel('Sensor Value')
   ax[0].legend(ncol=4)
 
-
   # plot anomaly score
   ax[1].set_title(anomalyScoreType)
   ax[1].plot(traces[anomalyScoreType])
@@ -130,12 +130,12 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
   ax[2].set_title('Classification accuracy rolling average')
   ax[2].plot(traces['rollingClassificationAccuracy'])
 
-  if clustering: 
+  if clustering:
     # plot clustering accuracy
     ax[3].set_title('Clustering accuracy rolling average')
     if 'rollingClusteringAccuracy' in traces:
       ax[3].plot(traces['rollingClusteringAccuracy'])
-    
+
     # plot clustering confidence
     ax[4].set_title('Clustering confidence')
     if 'clusteringConfidence' in traces:
@@ -174,7 +174,8 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
           np.where(classLabels[xStartLabel:] != currentClassLabel)[0]) == 0:
           width = len(classLabels[xStartLabel:])
         else:
-          width = np.where(classLabels[xStartLabel:] != currentClassLabel)[0][0]
+          width = np.where(classLabels[xStartLabel:] != currentClassLabel)[0][
+            0]
 
         ax[0].add_patch(
           patches.Rectangle((t[0] + xStartLabel, yl[0]), width, height,
@@ -253,18 +254,10 @@ def loadTraces(fileName):
 
     for row in reader:
       for i in range(len(row)):
-        if len(row[i]) == 0:
-          data = []
+        if row[i] == '':
+          data = None
         else:
-          if headers[i] in ['tmPredictedActiveCells',
-                            'tpActiveCells',
-                            'tmActiveCells']:
-            if row[i] == '[]':
-              data = []
-            else:
-              data = map(int, row[i][1:-1].split(','))
-          else:
-            data = float(row[i])
+          data = json.loads(row[i])
         traces[headers[i]].append(data)
 
   return traces

@@ -89,28 +89,60 @@ def generate_data(X_train_signals_paths,
   headers_train.append('label')
   headers_test.append('label')
   assert headers_test == headers_train
+  headers = headers_train
 
+  batch_size = 128
+  # 1 third of the train data is left out for validation
+  total_num_batches = len(X_train)
+  num_train_batches = total_num_batches * 2/3
+    
   train_csv = 'inertial_signals_train.csv'
+  train_counter = 0
   with open(train_csv, 'w') as f:
     writer = csv.writer(f)
     writer.writerow(headers_train)
-    for i in range(len(X_train)):
+    for i in range(num_train_batches):
       for x in X_train[i]:
         row = list(x)
         row.append(y_train[i][0])
         writer.writerow(row)
+        train_counter += 1
+
+
+  val_csv = 'inertial_signals_val.csv'
+  val_counter = 0
+  with open(val_csv, 'w') as f:
+    writer = csv.writer(f)
+    writer.writerow(headers)
+    for i in range(num_train_batches, total_num_batches):
+      for x in X_train[i]:
+        row = list(x)
+        row.append(y_train[i][0])
+        writer.writerow(row)
+        val_counter += 1 
+ 
+  assert val_counter + train_counter == total_num_batches * batch_size
 
   test_csv = 'inertial_signals_test.csv'
+  test_counter = 0
+  num_test_batches = len(X_test)
   with open(test_csv, 'w') as f:
     writer = csv.writer(f)
-    writer.writerow(headers_test)
-    for i in range(len(X_test)):
+    writer.writerow(headers)
+    for i in range(num_test_batches):
       for x in X_test[i]:
         row = list(x)
         row.append(y_test[i][0])
         writer.writerow(row)
+        test_counter += 1
         
-  print 'Files saved: %s' % [train_csv, test_csv]
+  assert test_counter == num_test_batches * batch_size
+
+  print 'Train set size: %s' % train_counter
+  print 'Val set size: %s' % val_counter
+  print 'Test set size: %s' % test_counter
+
+  print 'Files saved: %s' % [train_csv, val_csv, test_csv]
 
 
 
