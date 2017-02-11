@@ -723,21 +723,7 @@ def getRFCenters(sp, params, type='connected'):
   return meanCoordinates, avgDistToCenter
 
 
-
-def entropy(x):
-  """
-  Calculate entropy of a binary random variable.
-  (https://en.wikipedia.org/wiki/Entropy_(information_theory))
-  @param x (float) the probability of the variable to be 1.
-  @return (float) entropy
-  """
-  if x*(1 - x) == 0:
-    return 0
-  else:
-    return - x*np.log2(x) - (1-x)*np.log2(1-x)
-
-
-def entropyVectorized(x):
+def binaryEntropyVectorized(x):
   """
   Calculate entropy for a list of binary random variables
   :param x: (numpy array) the probability of the variable to be 1.
@@ -748,14 +734,25 @@ def entropyVectorized(x):
   return entropy
 
 
-def calculateEntropy(activeColumns):
+def renyiEntropyVectorized(x):
+  entropy = -np.log2(np.square(x) + np.square(1-x))
+  return entropy
+
+
+def calculateEntropy(activeColumns, type='binary'):
   """
   calculate the mean entropy given activation history
   @param activeColumns (array) 2D numpy array of activation history
   @return entropy (float) mean entropy
   """
   activationProb   = np.mean(activeColumns, 0)
-  totalEntropy     = np.sum(entropyVectorized(activationProb))
+  if type == 'binary':
+    totalEntropy     = np.sum(binaryEntropyVectorized(activationProb))
+  elif type == 'renyi':
+    totalEntropy = np.sum(renyiEntropyVectorized(activationProb))
+  else:
+    raise ValueError('unknown entropy type')
+
   numberOfColumns  = activeColumns.shape[1]
   # return mean entropy
   return totalEntropy/numberOfColumns
