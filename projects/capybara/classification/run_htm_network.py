@@ -74,6 +74,8 @@ def computeNetworkStats(sensorRegion,
   actualCategory = sensorRegion.getOutputData('categoryOut')[0]
 
   if spRegion:
+    encoderNZ = spRegion.getInputData('bottomUpIn').astype(int).nonzero()[0]
+    _LOGGER.debug('Encoder non-zero indices: %s' % encoderNZ)
     spActiveColumns = spRegion.getOutputData(
       'bottomUpOut').astype(int).nonzero()[0]
   else:
@@ -312,14 +314,9 @@ def main():
 
   # Parse input options
   options = parser.parse_args()
-  inputFile = options.inputFile
   outputDir = options.outputDir
-  networkConfig = options.htmConfig
-  inputModelPath = options.inputModel
-  outputModelPath = options.outputModel
+  networkConfigPath = options.htmConfig
   batchSize = options.batchSize
-  disableLearning = options.disableLearning
-  learningMode = not disableLearning
 
   # FIXME RES-464: until the serialization process is fixed, don't save the 
   # model .
@@ -329,40 +326,67 @@ def main():
   # - outputModelPath
   # - learningMode
 
+  # TODO: Re-introduce these command line args when serialization is fixed.
+  # inputFile = options.inputFile
+  # inputModelPath = options.inputModel
+  # outputModelPath = options.outputModel
+  # learningMode = not options.disableLearning
+
   inputModelPath = None
   outputModelPath = None
-
   phases = ['train', 'val', 'test']
-  inputDir = os.path.join('data', 'uci')
-  expName = 'body_acc_x_inertial_signals'  # 'small'
-  for phase in phases:
+  inputDir = os.path.join('data', 'artificial')
+  expName = 'binary_ampl=10.0_mean=0.0_noise=0.0'  # 'body_acc_x_inertial_signals'  
+  network = None
+  with open(networkConfigPath, 'r') as f:
+    networkConfig = simplejson.load(f)
+    for phase in phases:
 
-    inputFile = os.path.join(inputDir, '%s_%s.csv' % (expName, phase))
-    if phase == 'train':
-      learningMode = True
-    else:
-      learningMode = False
+      # Data source
+      inputFile = os.path.join(inputDir, '%s_%s.csv' % (expName, phase))
+      dataSource = FileRecordStream(streamID=inputFile)
+      numRecords = dataSource.getDataRowCount()
+      _LOGGER.debug('Number of records to be processed: %s' % numRecords)
 
-    _LOGGER.debug('Running network with inputFile=%s '
-                  'and learningMode=%s' % (inputFile, learningMode))
+      # Trace output info
+      traceFileName = getTraceFileName(inputFile)
+      traceFilePath = os.path.join(outputDir, '%s.csv' % traceFileName)
+      if not os.path.exists(outputDir):
+        os.makedirs(outputDir)
 
-    # FIXME RES-464 (end)
+      # If there is not network, create one and train it.
+      if not network:
+        assert phase == 'train'  # Make sure that we create a network for 
+        learningMode = True
+        network = createNetwork(dataSource, networkConfig, inputModelPath)
+      else:
+        learningMode = False
+        regionName = networkConfig["sensorRegionConfig"]["regionName"]
+        sensorRegion = network.regions[regionName].getSelf()
+        sensorRegion.dataSource = dataSource
+        if 'train' in sensorRegion.dataSource._filename:
+          raise ValueError('Learning mode should not be disabled for the '
+                           'train set.')
+
+      _LOGGER.debug('Running network with inputFile=%s '
+                    'and learningMode=%s' % (inputFile, learningMode))
+
+      # FIXME RES-464 (end)
+
+      run(network,
+          numRecords,
+          traceFilePath,
+          networkConfig,
+          outputModelPath,
+          batchSize,
+          learningMode)
 
 
-    run(inputFile,
-        outputDir,
+
+def run(network,
+        numRecords,
+        traceFilePath,
         networkConfig,
-        inputModelPath,
-        outputModelPath,
-        batchSize,
-        learningMode)
-
-
-
-def run(inputFile,
-        outputDir,
-        networkConfig,
-        inputModelPath,
         outputModelPath,
         batchSize,
         learningMode):
@@ -371,23 +395,7 @@ def run(inputFile,
     _LOGGER.warning('There is already a model named %s. This model will be '
                     'erased.' % outputModelPath)
 
-  # Trace output info
-  traceFileName = getTraceFileName(inputFile)
-  traceFilePath = os.path.join(outputDir, '%s.csv' % traceFileName)
-  if not os.path.exists(outputDir):
-    os.makedirs(outputDir)
-
-  # Data source
-  dataSource = FileRecordStream(streamID=inputFile)
-  numRecords = dataSource.getDataRowCount()
-  _LOGGER.debug('Number fo records to be processed: %s' % numRecords)
-
-  # Network config
-  with open(networkConfig, 'rb') as jsonFile:
-    networkConfig = simplejson.load(jsonFile)
-
   # HTM network
-  network = createNetwork(dataSource, networkConfig, inputModelPath)
   runNetwork(network, networkConfig, traceFilePath, numRecords, batchSize,
              learningMode)
 

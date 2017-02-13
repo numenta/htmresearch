@@ -8,12 +8,14 @@
       "numCategories": 6
     },
     "encoders": {
-      "rdse": {
-        "name": "y",
+      "scalarEncoder": {
+        "name": "scalarEncoder",
         "fieldname": "y",
-        "type": "RandomDistributedScalarEncoder",
-        "resolution": 0.015384615384615385,
-        "seed": 42
+        "type": "ScalarEncoder",
+        "n": 134,
+        "w": 21,
+        "minval": null,
+        "maxval": null
       }
     }
   },
