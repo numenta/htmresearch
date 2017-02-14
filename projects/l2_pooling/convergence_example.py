@@ -80,8 +80,8 @@ def plotActivity(l2ActiveCellsMultiColumn):
     shapes.append(
       {
         'type': 'rect',
-        'x0': 12,
-        'x1': 12.6,
+        'x0': 11,
+        'x1': 11.6,
         'y0': -95,
         'y1': 4100,
         'line': {
@@ -111,7 +111,7 @@ def plotActivity(l2ActiveCellsMultiColumn):
     'font': {'size': 16},
     'xanchor': 'center',
     'yanchor': 'bottom',
-    'text': 'No. of touches',
+    'text': 'Number of touches',
     'xref': 'paper',
     'yref': 'paper',
     'x': 0.5,
@@ -163,7 +163,7 @@ def plotActivity(l2ActiveCellsMultiColumn):
   plotly.offline.plot(fig, filename=basename+'.html', auto_open=True)
 
   # Can't save image files in offline mode
-  # plotly.plotly.image.save_as(fig, filename=basename+'.pdf', scale=4)
+  plotly.plotly.image.save_as(fig, filename=basename+'.pdf', scale=4)
 
 
 
@@ -222,13 +222,24 @@ def plotL2ObjectRepresentations(exp1):
     'shapes': shapes,
     'annotations': [ {
       'xanchor': 'middle',
-      'yanchor': 'top',
+      'yanchor': 'bottom',
       'text': 'Target object',
       'x': 1,
       'y': 4100,
-      'ax': 4,
-      'ay': -35,
+      'ax': 10,
+      'ay': -25,
       'arrowcolor': 'rgba(255, 0, 0, 1)',
+      },
+      {
+        'font': {'size': 16},
+        'xanchor': 'center',
+        'yanchor': 'bottom',
+        'text': 'Object representations',
+        'xref': 'paper',
+        'yref': 'paper',
+        'x': 0.5,
+        'y': 1.1,
+        'showarrow': False,
       }
     ]
   }
@@ -241,8 +252,8 @@ def plotL2ObjectRepresentations(exp1):
   print "url=", plotPath
 
   # Can't save image files in offline mode
-  # plotly.plotly.image.save_as(
-  #   fig, filename='plots/target_object_representations.pdf', scale=4)
+  plotly.plotly.image.save_as(
+    fig, filename='plots/target_object_representations.pdf', scale=4)
 
 
 if __name__ == "__main__":
