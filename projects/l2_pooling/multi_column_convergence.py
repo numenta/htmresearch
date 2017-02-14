@@ -259,7 +259,13 @@ def runExperiment(args):
       "pairs": objectSensations
     }
 
-    exp.infer(objects.provideObjectToInfer(inferConfig), objectName=objectId)
+    inferenceSDRs = objects.provideObjectToInfer(inferConfig)
+    # print "----------- Infer config -------------------"
+    # pprint.pprint(inferConfig)
+    # print "----------- SDRS -------------------"
+    # pprint.pprint(inferenceSDRs)
+
+    exp.infer(inferenceSDRs, objectName=objectId)
     if profile:
       exp.printProfile(reset=True)
 
@@ -440,7 +446,7 @@ def plotConvergenceByObject(results, objectRange, featureRange):
   #
   # Create the plot. x-axis=
   plt.figure()
-  plotPath = os.path.join("plots", "convergence_by_object.jpg")
+  plotPath = os.path.join("plots", "convergence_by_object_random_location.jpg")
 
   # Plot each curve
   legendList = []
@@ -455,12 +461,12 @@ def plotConvergenceByObject(results, objectRange, featureRange):
              color=colorList[i])
 
   # format
-  plt.legend(legendList, loc="upper left", prop={'size':10})
+  plt.legend(legendList, loc="lower right", prop={'size':10})
   plt.xlabel("Number of objects in training set")
   plt.xticks(range(0,max(objectRange)+1,10))
   plt.yticks(range(0,int(convergence.max())+2))
   plt.ylabel("Average number of touches")
-  plt.title("Number of touches to recognize one object (single column)")
+  plt.title("No. of touches to recognize one object (single column, unknown locations)")
 
     # save
   plt.savefig(plotPath)
@@ -526,14 +532,14 @@ if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
-  if True:
+  if False:
     results = runExperiment(
                   {
                     "numObjects": 10,
                     "numPoints": 10,
                     "numLocations": 10,
-                    "numFeatures": 5,
-                    "numColumns": 2,
+                    "numFeatures": 30,
+                    "numColumns": 1,
                     "trialNum": 4,
                     "pointRange": 1,
                     "plotInferenceStats": True,  # Outputs detailed graphs
@@ -572,7 +578,7 @@ if __name__ == "__main__":
   # Here we want to see how the number of objects affects convergence for a
   # single column.
   # This experiment is run using a process pool
-  if False:
+  if True:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1]
@@ -581,14 +587,14 @@ if __name__ == "__main__":
 
     # Comment this out if you are re-running analysis on already saved results.
     # Very useful for debugging the plots
-    results = runExperimentPool(
-                      numObjects=objectRange,
-                      numLocations=[10],
-                      numFeatures=featureRange,
-                      numColumns=columnRange,
-                      numPoints=10,
-                      nTrials=numTrials,
-                      resultsName="object_convergence_results.pkl")
+    # results = runExperimentPool(
+    #                   numObjects=objectRange,
+    #                   numLocations=[10],
+    #                   numFeatures=featureRange,
+    #                   numColumns=columnRange,
+    #                   numPoints=10,
+    #                   nTrials=numTrials,
+    #                   resultsName="object_convergence_results.pkl")
 
     # Analyze results
     with open("object_convergence_results.pkl","rb") as f:
