@@ -470,9 +470,6 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
              numInputBits)
             for numObjects in np.arange(20, 1000, 100)] #np.arange(20, 1371, 150)]
 
-  # for param in params:
-  #   testResult = invokeRunCapacityTest(param)
-  #   print testResult
   for testResult in pool.map(invokeRunCapacityTest, params):
     print testResult
 
