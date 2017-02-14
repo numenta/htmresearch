@@ -128,16 +128,6 @@ def getL2Params():
 
 
 
-def getL4InputBits(l4ColumnCount):
-  numInputBits = int(l4ColumnCount * 0.02)
-  if l4ColumnCount < 512: # use denser activation for small L4
-    numInputBits = int(l4ColumnCount * 0.08)
-  else:
-    numInputBits = int(l4ColumnCount * 0.02)
-  return numInputBits
-
-
-
 def createRandomObjects(numObjects,
                         numPointsPerObject,
                         numLocations,
