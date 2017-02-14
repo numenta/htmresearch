@@ -44,7 +44,8 @@ from htmresearch.frameworks.layers.object_machine_factory import (
 )
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 
-
+import matplotlib as mpl
+mpl.rcParams['pdf.fonttype'] = 42
 
 NUM_LOCATIONS = 5000
 NUM_FEATURES = 5000
@@ -127,6 +128,16 @@ def getL2Params():
 
 
 
+def getL4InputBits(l4ColumnCount):
+  numInputBits = int(l4ColumnCount * 0.02)
+  if l4ColumnCount < 512: # use denser activation for small L4
+    numInputBits = int(l4ColumnCount * 0.08)
+  else:
+    numInputBits = int(l4ColumnCount * 0.02)
+  return numInputBits
+
+
+
 def createRandomObjects(numObjects,
                         numPointsPerObject,
                         numLocations,
@@ -184,6 +195,8 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
   exp.sendReset()
 
   overlap = np.zeros((numTestPoints, numObjects))
+  numL2ActiveCells = np.zeros((numTestPoints))
+  numL4ActiveCells = np.zeros((numTestPoints))
 
   for step, pair in enumerate(testPairs):
     (locationIdx, featureIdx) = pair
@@ -196,11 +209,9 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
 
     exp.network.run(1)
 
-    # columnPooler = exp.L2Columns[0]._pooler
-    # tm = exp.L4Columns[0]._tm
-    # print "step : {}".format(step)
-    # print "predicted active cells: ", tm.getPredictedActiveCells()
-    # print "L2 activation: ", columnPooler.getActiveCells()
+    for colIdx in xrange(exp.numColumns):
+      numL2ActiveCells[step] += len(exp.getL2Representations()[colIdx])
+      numL4ActiveCells[step] += len(exp.getL4Representations()[colIdx])
 
     for obj in xrange(numObjects):
       overlap[step, obj] = np.mean([
@@ -209,7 +220,15 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
         for colIdx in xrange(exp.numColumns)]
       )
 
-  return overlap
+    # columnPooler = exp.L2Columns[0]._pooler
+    # tm = exp.L4Columns[0]._tm
+    # print "step : {}".format(step)
+    # print "{} L4 cells predicted : ".format(
+    #   len(exp.getL4PredictiveCells()[0])), exp.getL4PredictiveCells()
+    # print "{} L4 cells active : ".format(len(exp.getL4Representations()[0])), exp.getL4Representations()
+    # print "L2 activation: ", columnPooler.getActiveCells()
+    # print "overlap : ", (overlap[step, :])
+  return overlap, numL2ActiveCells, numL4ActiveCells
 
 
 
@@ -230,6 +249,8 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
   numObjects = len(innerObjs)
   numPointsPerObject = len(innerObjs[0])
   overlapTrueObj = np.zeros((numRepeats, ))
+  l2ActivationSize = np.zeros((numRepeats, ))
+  l4ActivationSize = np.zeros((numRepeats,))
   confusion = overlapTrueObj.copy()
   outcome = overlapTrueObj.copy()
 
@@ -240,7 +261,7 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
       [obj for obj in xrange(numObjects) if obj != targetObject]
     )
 
-    overlap = testNetworkWithOneObject(
+    overlap, numActiveL2Cells, numL4ActiveCells = testNetworkWithOneObject(
       objects,
       exp,
       targetObject,
@@ -257,8 +278,11 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
     # the network failed to conclusively identify the target object.
     outcome[i] = 1 if maxOverlapIndices == [targetObject] else 0
 
-    confusion[i] = np.max(overlap[0, nonTargetObjs])
-    overlapTrueObj[i] = overlap[0, targetObject]
+    confusion[i] = np.max(lastOverlap[nonTargetObjs])
+    overlapTrueObj[i] = lastOverlap[targetObject]
+    l2ActivationSize[i] = numActiveL2Cells[-1]
+    l4ActivationSize[i] = numL4ActiveCells[-1]
+    # print "repeat {} target obj {} overlap {}".format(i, targetObject, overlapTrueObj[i])
 
   columnPooler = exp.L2Columns[0]._pooler
   numConnectedProximal = columnPooler.numberOfConnectedProximalSynapses()
@@ -266,6 +290,8 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
 
   return {"numberOfConnectedProximalSynapses": numConnectedProximal,
           "numberOfConnectedDistalSynapses": numConnectedDistal,
+          "l2ActivationSize": np.mean(l2ActivationSize),
+          "l4ActivationSize": np.mean(l4ActivationSize),
           "numObjects": numObjects,
           "numPointsPerObject": numPointsPerObject,
           "confusion": np.mean(confusion),
@@ -295,9 +321,9 @@ def plotResults(result, ax=None, xaxis="numPointsPerObject",
   ax[0, 1].set_xlabel("# Pts / Obj")
   ax[0, 1].set_xlabel(xlabel)
 
-  ax[1, 0].plot(x, result.overlapTrueObj, marker)
-  ax[1, 0].set_ylabel("OverlapTrueObject")
-  ax[1, 0].set_ylim([0, 41])
+  ax[1, 0].plot(x, result.l2ActivationSize, marker)
+  ax[1, 0].set_ylabel("l2ActivationSize")
+  # ax[1, 0].set_ylim([0, 41])
   ax[1, 0].set_xlabel(xlabel)
 
   ax[1, 1].plot(x, result.confusion, marker)
@@ -315,7 +341,9 @@ def runCapacityTest(numObjects,
                     numPointsPerObject,
                     sampleSize,
                     activationThreshold,
-                    numCorticalColumns):
+                    numCorticalColumns,
+                    l4Params,
+                    numInputBits):
   """
   Generate [numObjects] objects with [numPointsPerObject] points per object
   Train L4-l2 network all the objects with single pass learning
@@ -328,13 +356,13 @@ def runCapacityTest(numObjects,
   :param numCorticalColumns:
   :return:
   """
-  l4Params = getL4Params()
   l2Params = getL2Params()
   l2Params["sampleSizeProximal"] = sampleSize # TODO
   l2Params["minThresholdProximal"] = activationThreshold
 
   l4ColumnCount = l4Params["columnCount"]
-  numInputBits = int(l4Params["columnCount"]*0.02)
+  if numInputBits is None:
+    numInputBits = int(l4ColumnCount * 0.02)
 
   objects = createObjectMachine(
     machineType="simple",
@@ -352,7 +380,7 @@ def runCapacityTest(numObjects,
                        L4Overrides=l4Params,
                        inputSize=l4ColumnCount,
                        externalInputSize=l4ColumnCount,
-                       numLearningPoints=4,
+                       numLearningPoints=3,
                        numCorticalColumns=numCorticalColumns)
 
   pairs = createRandomObjects(
@@ -379,7 +407,8 @@ def runCapacityTestVaryingObjectSize(
     activationThreshold=3,
     numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
     resultDirName=DEFAULT_RESULT_DIR_NAME,
-    cpuCount=None):
+    cpuCount=None,
+    l4Params=None):
   """
   Runs experiment with two objects, varying number of points per object
   """
@@ -389,11 +418,14 @@ def runCapacityTestVaryingObjectSize(
   cpuCount = cpuCount or multiprocessing.cpu_count()
   pool = multiprocessing.Pool(cpuCount, maxtasksperchild=1)
 
+  l4Params = l4Params or getL4Params()
+
   params = [(numObjects,
              numPointsPerObject,
              sampleSize,
              activationThreshold,
-             numCorticalColumns)
+             numCorticalColumns,
+             l4Params)
             for numPointsPerObject in np.arange(10, 270, 20)]
 
   for testResult in pool.map(invokeRunCapacityTest, params):
@@ -406,8 +438,8 @@ def runCapacityTestVaryingObjectSize(
     )
 
   resultFileName = _prepareResultsDir(
-    "multiple_column_capacity_varying_object_size_synapses_{}_thresh_{}.csv"
-    .format(sampleSize, activationThreshold),
+    "multiple_column_capacity_varying_object_size_synapses_{}_thresh_{}_l4column_{}.csv"
+    .format(sampleSize, activationThreshold, l4Params["columnCount"]),
     resultDirName=resultDirName
   )
 
@@ -428,7 +460,9 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
                                     activationThreshold=3,
                                     numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
                                     resultDirName=DEFAULT_RESULT_DIR_NAME,
-                                    cpuCount=None):
+                                    cpuCount=None,
+                                    l4Params=None,
+                                    numInputBits=None):
   """
   Run experiment with fixed number of pts per object, varying number of objects
   """
@@ -441,9 +475,14 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
              numPointsPerObject,
              sampleSize,
              activationThreshold,
-             numCorticalColumns)
-            for numObjects in np.arange(20, 1371, 150)]
+             numCorticalColumns,
+             l4Params,
+             numInputBits)
+            for numObjects in np.arange(20, 1000, 100)] #np.arange(20, 1371, 150)]
 
+  # for param in params:
+  #   testResult = invokeRunCapacityTest(param)
+  #   print testResult
   for testResult in pool.map(invokeRunCapacityTest, params):
     print testResult
 
@@ -454,8 +493,8 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
     )
 
   resultFileName = _prepareResultsDir(
-    "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}.csv"
-      .format(sampleSize, activationThreshold),
+    "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}.csv"
+      .format(sampleSize, activationThreshold, l4Params['columnCount']),
     resultDirName=resultDirName
   )
 
@@ -540,6 +579,7 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
                                    # Settled at 10 since we did not observe
                                    # much variance between 5, 10, 15, and 20
   numPointsPerObject = 10
+  l4Params = getL4Params()
 
   for sampleSize in sampleSizeRange:
     runCapacityTestVaryingObjectNum(numPointsPerObject,
@@ -547,7 +587,8 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
                                     int(sampleSize) - 1,
                                     numCorticalColumns,
                                     resultDirName,
-                                    cpuCount)
+                                    cpuCount,
+                                    l4Params)
 
   markers = ("-bo", "-ro", "-co", "-go")
   ploti = 0
@@ -567,8 +608,8 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
     activationThreshold = int(sampleSize) - 1
 
     resultFileName = _prepareResultsDir(
-      "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}.csv"
-      .format(sampleSize, activationThreshold),
+      "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}.csv"
+      .format(sampleSize, activationThreshold, l4Params["columnCount"]),
       resultDirName=resultDirName
     )
 
@@ -593,6 +634,97 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
 
 
 
+def runExperiment3(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
+                   resultDirName=DEFAULT_RESULT_DIR_NAME,
+                   plotDirName=DEFAULT_PLOT_DIR_NAME,
+                   cpuCount=None):
+  """
+  runCapacityTestVaryingObjectNum()
+  Try different L4 network size
+  """
+
+  numPointsPerObject = 10
+  l4Params = getL4Params()
+
+  expParams = []
+  expParams.append({'l4Column': 150, 'w': 20, 'sample': 10, 'thresh': 6})
+  expParams.append({'l4Column': 256, 'w': 20, 'sample': 10, 'thresh': 6})
+  expParams.append({'l4Column': 256, 'w': 10, 'sample': 6, 'thresh': 4})
+  expParams.append({'l4Column': 512, 'w': 20, 'sample': 10, 'thresh': 6})
+  expParams.append({'l4Column': 512, 'w': 10, 'sample': 6, 'thresh': 4})
+
+  for expParam in expParams:
+    l4Params["columnCount"] = expParam['l4Column']
+    numInputBits = expParam['w']
+    sampleSize = expParam['sample']
+    activationThreshold = expParam['thresh']
+
+    l4Params["activationThreshold"] = int(numInputBits*.6)
+    l4Params["minThreshold"] = int(numInputBits*.6)
+    l4Params["maxNewSynapseCount"] = int(2*l4Params["activationThreshold"])
+
+    print "L4 column count {} active bits {} sample size {} thresh {}".format(
+      l4Params["columnCount"], numInputBits, sampleSize, activationThreshold
+    )
+
+    print "l4Params: ", l4Params
+    runCapacityTestVaryingObjectNum(numPointsPerObject,
+                                    sampleSize,
+                                    activationThreshold,
+                                    numCorticalColumns,
+                                    resultDirName,
+                                    cpuCount,
+                                    l4Params,
+                                    numInputBits)
+
+  # plot result
+  markers = ("-bo", "-ro", "-co", "-go", '-mo')
+  ploti = 0
+  fig, ax = plt.subplots(2, 2)
+  st = fig.suptitle(
+    "Varying number of objects ({} cortical column{})"
+      .format(numCorticalColumns, "s" if numCorticalColumns > 1 else ""
+              ), fontsize="x-large"
+  )
+
+  for axi in (0, 1):
+    for axj in (0, 1):
+      ax[axi][axj].xaxis.set_major_locator(ticker.MultipleLocator(300))
+
+  legendEntries = []
+  for expParam in expParams:
+    l4Params["columnCount"] = expParam['l4Column']
+    numInputBits = expParam['w']
+    sampleSize = expParam['sample']
+    activationThreshold = expParam['thresh']
+
+    resultFileName = _prepareResultsDir(
+      "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}.csv"
+      .format(sampleSize, activationThreshold, l4Params["columnCount"]),
+      resultDirName=resultDirName
+    )
+
+    result = pd.read_csv(resultFileName)
+
+    plotResults(result, ax, "numObjects", None, markers[ploti])
+    ploti += 1
+    legendEntries.append("L4 mcs {} w {} s {} thresh {}".format(
+      l4Params["columnCount"], numInputBits, sampleSize, activationThreshold))
+  ax[0, 0].legend(legendEntries, loc=4, fontsize=8)
+  fig.tight_layout()
+
+  # shift subplots down:
+  st.set_y(0.95)
+  fig.subplots_adjust(top=0.85)
+
+  plt.savefig(
+    os.path.join(
+      plotDirName,
+      "multiple_column_capacity_varying_object_num_summary.pdf"
+    )
+  )
+
+
 def runExperiments(numCorticalColumns, resultDirName, plotDirName, cpuCount):
 
   # Varying number of pts per objects, two objects
@@ -606,6 +738,14 @@ def runExperiments(numCorticalColumns, resultDirName, plotDirName, cpuCount):
                  resultDirName=resultDirName,
                  plotDirName=plotDirName,
                  cpuCount=cpuCount)
+
+
+  # # 10 pts per object, varying number of objects, varying L4 size
+  runExperiment3(numCorticalColumns=numCorticalColumns,
+                 resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
+  pass
 
 
 
