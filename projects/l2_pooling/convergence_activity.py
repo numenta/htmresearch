@@ -21,7 +21,7 @@
 # ----------------------------------------------------------------------
 
 """
-This file demonstrate convergence of single vs multiple columns
+This file plots activity of single vs multiple columns as they converge.
 """
 
 import random
