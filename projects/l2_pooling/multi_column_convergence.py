@@ -158,6 +158,9 @@ def runExperiment(args):
                              stabilize. Important for multicolumn experiments
                              with lateral connections.
 
+  @param includeRandomLocation (bool) If True, a random location SDR will be
+                             generated during inference for each feature.
+
   The method returns the args dict updated with two additional keys:
     convergencePoint (int)   The average number of iterations it took
                              to converge across all objects
@@ -174,6 +177,7 @@ def runExperiment(args):
   pointRange = args.get("pointRange", 1)
   plotInferenceStats = args.get("plotInferenceStats", True)
   settlingTime = args.get("settlingTime", 3)
+  includeRandomLocation = args.get("includeRandomLocation", False)
 
   # Create the objects
   objects = createObjectMachine(
@@ -256,7 +260,8 @@ def runExperiment(args):
     inferConfig = {
       "object": objectId,
       "numSteps": len(objectSensations[0]),
-      "pairs": objectSensations
+      "pairs": objectSensations,
+      "includeRandomLocation": includeRandomLocation,
     }
 
     inferenceSDRs = objects.provideObjectToInfer(inferConfig)
@@ -305,6 +310,7 @@ def runExperimentPool(numObjects,
                       nTrials=1,
                       pointRange=1,
                       numPoints=10,
+                      includeRandomLocation=False,
                       resultsName="convergence_results.pkl"):
   """
   Allows you to run a number of experiments using multiple processes.
@@ -340,6 +346,7 @@ def runExperimentPool(numObjects,
                "pointRange": pointRange,
                "numPoints": numPoints,
                "plotInferenceStats": False,
+               "includeRandomLocation": includeRandomLocation,
                "settlingTime": 3,
                }
             )
@@ -532,18 +539,19 @@ if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
-  if False:
+  if True:
     results = runExperiment(
                   {
-                    "numObjects": 10,
+                    "numObjects": 30,
                     "numPoints": 10,
                     "numLocations": 10,
-                    "numFeatures": 30,
+                    "numFeatures": 10,
                     "numColumns": 1,
                     "trialNum": 4,
                     "pointRange": 1,
                     "plotInferenceStats": True,  # Outputs detailed graphs
                     "settlingTime": 3,
+                    "includeRandomLocation": False
                   }
     )
 
@@ -578,7 +586,7 @@ if __name__ == "__main__":
   # Here we want to see how the number of objects affects convergence for a
   # single column.
   # This experiment is run using a process pool
-  if True:
+  if False:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1]
@@ -587,14 +595,15 @@ if __name__ == "__main__":
 
     # Comment this out if you are re-running analysis on already saved results.
     # Very useful for debugging the plots
-    # results = runExperimentPool(
-    #                   numObjects=objectRange,
-    #                   numLocations=[10],
-    #                   numFeatures=featureRange,
-    #                   numColumns=columnRange,
-    #                   numPoints=10,
-    #                   nTrials=numTrials,
-    #                   resultsName="object_convergence_results.pkl")
+    results = runExperimentPool(
+                      numObjects=objectRange,
+                      numLocations=[10],
+                      numFeatures=featureRange,
+                      numColumns=columnRange,
+                      numPoints=10,
+                      nTrials=numTrials,
+                      numWorkers=7,
+                      resultsName="object_convergence_results.pkl")
 
     # Analyze results
     with open("object_convergence_results.pkl","rb") as f:
@@ -621,6 +630,7 @@ if __name__ == "__main__":
                       numFeatures=featureRange,
                       numColumns=columnRange,
                       numPoints=10,
+                      numWorkers=7,
                       nTrials=numTrials,
                       resultsName="object_convergence_multi_column_results.pkl")
 
