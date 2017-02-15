@@ -131,10 +131,6 @@ def plotActivity(l2ActiveCellsMultiColumn):
   })
   layout = {
     'height': 600,
-    # 'xaxis': {
-    #   'title': "# touches",
-    #   'showticklabels': False,
-    # },
     'yaxis': {
       'title': "Neuron #",
       'range': [-100, 4201],

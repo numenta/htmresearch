@@ -265,10 +265,6 @@ def runExperiment(args):
     }
 
     inferenceSDRs = objects.provideObjectToInfer(inferConfig)
-    # print "----------- Infer config -------------------"
-    # pprint.pprint(inferConfig)
-    # print "----------- SDRS -------------------"
-    # pprint.pprint(inferenceSDRs)
 
     exp.infer(inferenceSDRs, objectName=objectId)
     if profile:
@@ -446,8 +442,6 @@ def plotConvergenceByObject(results, objectRange, featureRange):
       convergence[r["numFeatures"] - 1, r["numObjects"]] += r["convergencePoint"]
 
   convergence /= numTrials
-
-  # print "Average convergence array=", convergence
 
   ########################################################################
   #
