@@ -207,7 +207,7 @@ def runExperiment(args):
   exp = L4L2Experiment(
     name,
     numCorticalColumns=numColumns,
-    inputSize=256,
+    inputSize=150,
     externalInputSize=2400,
     numInputBits=20,
     seed=trialNum
