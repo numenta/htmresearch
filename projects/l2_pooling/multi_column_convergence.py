@@ -182,9 +182,9 @@ def runExperiment(args):
   # Create the objects
   objects = createObjectMachine(
     machineType="simple",
-    numInputBits=40,
-    sensorInputSize=2048,
-    externalInputSize=1024,
+    numInputBits=20,
+    sensorInputSize=150,
+    externalInputSize=2400,
     numCorticalColumns=numColumns,
     numFeatures=numFeatures,
     seed=trialNum
@@ -211,8 +211,9 @@ def runExperiment(args):
   exp = L4L2Experiment(
     name,
     numCorticalColumns=numColumns,
-    inputSize=2048,
-    numInputBits=40,
+    inputSize=150,
+    externalInputSize=2400,
+    numInputBits=20,
     seed=trialNum
   )
 
