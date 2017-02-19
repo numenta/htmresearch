@@ -158,6 +158,9 @@ def runExperiment(args):
                              stabilize. Important for multicolumn experiments
                              with lateral connections.
 
+  @param includeRandomLocation (bool) If True, a random location SDR will be
+                             generated during inference for each feature.
+
   The method returns the args dict updated with two additional keys:
     convergencePoint (int)   The average number of iterations it took
                              to converge across all objects
@@ -174,13 +177,14 @@ def runExperiment(args):
   pointRange = args.get("pointRange", 1)
   plotInferenceStats = args.get("plotInferenceStats", True)
   settlingTime = args.get("settlingTime", 3)
+  includeRandomLocation = args.get("includeRandomLocation", False)
 
   # Create the objects
   objects = createObjectMachine(
     machineType="simple",
-    numInputBits=40,
-    sensorInputSize=2048,
-    externalInputSize=1024,
+    numInputBits=20,
+    sensorInputSize=150,
+    externalInputSize=2400,
     numCorticalColumns=numColumns,
     numFeatures=numFeatures,
     seed=trialNum
@@ -207,8 +211,9 @@ def runExperiment(args):
   exp = L4L2Experiment(
     name,
     numCorticalColumns=numColumns,
-    inputSize=2048,
-    numInputBits=40,
+    inputSize=150,
+    externalInputSize=2400,
+    numInputBits=20,
     seed=trialNum
   )
 
@@ -256,10 +261,13 @@ def runExperiment(args):
     inferConfig = {
       "object": objectId,
       "numSteps": len(objectSensations[0]),
-      "pairs": objectSensations
+      "pairs": objectSensations,
+      "includeRandomLocation": includeRandomLocation,
     }
 
-    exp.infer(objects.provideObjectToInfer(inferConfig), objectName=objectId)
+    inferenceSDRs = objects.provideObjectToInfer(inferConfig)
+
+    exp.infer(inferenceSDRs, objectName=objectId)
     if profile:
       exp.printProfile(reset=True)
 
@@ -299,6 +307,7 @@ def runExperimentPool(numObjects,
                       nTrials=1,
                       pointRange=1,
                       numPoints=10,
+                      includeRandomLocation=False,
                       resultsName="convergence_results.pkl"):
   """
   Allows you to run a number of experiments using multiple processes.
@@ -334,6 +343,7 @@ def runExperimentPool(numObjects,
                "pointRange": pointRange,
                "numPoints": numPoints,
                "plotInferenceStats": False,
+               "includeRandomLocation": includeRandomLocation,
                "settlingTime": 3,
                }
             )
@@ -434,13 +444,11 @@ def plotConvergenceByObject(results, objectRange, featureRange):
 
   convergence /= numTrials
 
-  # print "Average convergence array=", convergence
-
   ########################################################################
   #
   # Create the plot. x-axis=
   plt.figure()
-  plotPath = os.path.join("plots", "convergence_by_object.jpg")
+  plotPath = os.path.join("plots", "convergence_by_object_random_location.jpg")
 
   # Plot each curve
   legendList = []
@@ -455,12 +463,12 @@ def plotConvergenceByObject(results, objectRange, featureRange):
              color=colorList[i])
 
   # format
-  plt.legend(legendList, loc="upper left", prop={'size':10})
+  plt.legend(legendList, loc="lower right", prop={'size':10})
   plt.xlabel("Number of objects in training set")
   plt.xticks(range(0,max(objectRange)+1,10))
   plt.yticks(range(0,int(convergence.max())+2))
   plt.ylabel("Average number of touches")
-  plt.title("Number of touches to recognize one object (single column)")
+  plt.title("No. of touches to recognize one object (single column, unknown locations)")
 
     # save
   plt.savefig(plotPath)
@@ -529,15 +537,16 @@ if __name__ == "__main__":
   if True:
     results = runExperiment(
                   {
-                    "numObjects": 10,
+                    "numObjects": 30,
                     "numPoints": 10,
                     "numLocations": 10,
-                    "numFeatures": 5,
-                    "numColumns": 2,
+                    "numFeatures": 10,
+                    "numColumns": 1,
                     "trialNum": 4,
                     "pointRange": 1,
                     "plotInferenceStats": True,  # Outputs detailed graphs
                     "settlingTime": 3,
+                    "includeRandomLocation": False
                   }
     )
 
@@ -588,6 +597,7 @@ if __name__ == "__main__":
                       numColumns=columnRange,
                       numPoints=10,
                       nTrials=numTrials,
+                      numWorkers=7,
                       resultsName="object_convergence_results.pkl")
 
     # Analyze results
@@ -615,6 +625,7 @@ if __name__ == "__main__":
                       numFeatures=featureRange,
                       numColumns=columnRange,
                       numPoints=10,
+                      numWorkers=7,
                       nTrials=numTrials,
                       resultsName="object_convergence_multi_column_results.pkl")
 
