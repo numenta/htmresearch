@@ -504,7 +504,7 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
   cpuCount = cpuCount or multiprocessing.cpu_count()
   pool = multiprocessing.Pool(cpuCount, maxtasksperchild=1)
 
-  numObjectsList = np.arange(50, 500, 100)
+  numObjectsList = np.arange(50, 500, 25)
   params = []
   for rpt in range(numRpts):
     for numObjects in numObjectsList:
@@ -540,7 +540,7 @@ def runExperiment1(numObjects=2,
                    cpuCount=None):
   """
   Varying number of pts per objects, two objects
-  Try different sampling and activation threshold
+  Try different sample sizes
   """
   objectParams = {'numInputBits': 20, 'externalInputSize': 2400}
   l4Params = getL4Params()
@@ -609,7 +609,7 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
                    cpuCount=None):
   """
   runCapacityTestVaryingObjectNum()
-  Try different sampling and activation threshold
+  Try different sample sizes
   """
   sampleSizeRange = (10, )
   numPointsPerObject = 10
@@ -784,7 +784,7 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
                    cpuCount=None):
   """
   runCapacityTestVaryingObjectNum()
-  Try different sampling and activation threshold
+  varying number of cortical columns
   """
 
   numPointsPerObject = 10
@@ -795,11 +795,11 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
   expParams = []
   expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 10, 'thresh': 6, 'l2Column': 1})
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 10, 'sample': 6, 'thresh': 3, 'l2Column': 1})
   expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 10, 'thresh': 6, 'l2Column': 2})
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 10, 'sample': 6, 'thresh': 3, 'l2Column': 2})
   expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 10, 'thresh': 6, 'l2Column': 3})
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 10, 'sample': 6, 'thresh': 3, 'l2Column': 3})
 
   for expParam in expParams:
     l2Params['sampleSizeProximal'] = expParam['sample']
@@ -835,11 +835,7 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
   # plot result
   ploti = 0
   fig, ax = plt.subplots(2, 2)
-  st = fig.suptitle(
-    "Varying number of objects ({} cortical column{})"
-      .format(numCorticalColumns, "s" if numCorticalColumns > 1 else ""
-              ), fontsize="x-large"
-  )
+  st = fig.suptitle("Varying number of objects", fontsize="x-large")
 
   for axi in (0, 1):
     for axj in (0, 1):
@@ -847,7 +843,6 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
   legendEntries = []
   for expParam in expParams:
-    l4Params["columnCount"] = expParam['l4Column']
     expName = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}_l2column_{}".format(
       expParam['sample'], expParam['thresh'], expParam["l4Column"], expParam['l2Column'])
 
@@ -860,8 +855,8 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
     plotResults(result, ax, "numObjects", None, DEFAULT_COLORS[ploti])
     ploti += 1
     legendEntries.append("L4 mcs {} #cc {} ".format(
-      l4Params["columnCount"], numCorticalColumns))
-  ax[0, 0].legend(legendEntries, loc=4, fontsize=8)
+      expParam['l4Column'], expParam['l2Column']))
+  ax[0, 0].legend(legendEntries, loc=3, fontsize=8)
   fig.tight_layout()
 
   # shift subplots down:
@@ -892,13 +887,14 @@ def runExperiments(resultDirName, plotDirName, cpuCount):
                  cpuCount=cpuCount)
 
 
-  # # # 10 pts per object, varying number of objects, varying L4 size
+  # 10 pts per object, varying number of objects, varying L4 size
   runExperiment3(numCorticalColumns=1,
                  resultDirName=resultDirName,
                  plotDirName=plotDirName,
                  cpuCount=cpuCount)
 
 
+  # 10 pts per object, varying number of objects and number of columns
   runExperiment4(resultDirName=resultDirName,
                  plotDirName=plotDirName,
                  cpuCount=cpuCount)
