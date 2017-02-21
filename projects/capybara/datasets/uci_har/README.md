@@ -52,8 +52,5 @@ https://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartph
 ## Convert the data
 * Run `convert_to_csv.py`
 
-## To convert to nupic format
-* Run `convert_to_nupic.py`
-
 ## To plot the data
 * Run `plot_data.py`

@@ -319,13 +319,7 @@ def main():
   batchSize = options.batchSize
 
   # FIXME RES-464: until the serialization process is fixed, don't save the 
-  # model .
-  # Run serially each phase (train -> validation -> test) and override:
-  # - inputFile
-  # - inputModelPath
-  # - outputModelPath
-  # - learningMode
-
+  # model. Run serially each phase (train -> validation -> test) 
   # TODO: Re-introduce these command line args when serialization is fixed.
   # inputFile = options.inputFile
   # inputModelPath = options.inputModel

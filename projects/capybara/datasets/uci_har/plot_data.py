@@ -27,9 +27,6 @@ import plotly.graph_objs as go
 import colorlover as cl
 
 colors = cl.scales['10']['qual']['Set3']
-cwd = os.getcwd()
-input_dir = os.path.join(cwd, os.pardir, os.pardir,
-                         'classification', 'data', 'uci')
 
 LABELS = {
   1: 'WALKING',
@@ -40,38 +37,36 @@ LABELS = {
   6: 'LAYING'
 }
 
-# range to plot
+# Range to plot
 x_min = 0
-x_max = 50000
+x_max = 10000
 metric = 'body_acc_x'
-test_file = '%s_inertial_signals_test.csv' % metric
-train_file = '%s_inertial_signals_train.csv' % metric
 
-train = pd.read_csv(os.path.join(input_dir, train_file))[x_min:x_max]
-test = pd.read_csv(os.path.join(input_dir, test_file))[x_min:x_max]
+# Input data to plot
+test_file = 'inertial_signals_test.csv'
+train_file = 'inertial_signals_train.csv'
+train = pd.read_csv(train_file)[x_min:x_max]
+test = pd.read_csv(test_file)[x_min:x_max]
 
-train = train.drop([0, 1])
-test = test.drop([0, 1])
-
-train.y = train.y.astype(float)
-test.y = test.y.astype(float)
+train[metric] = train[metric].astype(float)
+test[metric] = test[metric].astype(float)
 train.label = train.label.astype(int)
 test.label = test.label.astype(int)
 
 data = {
-  'training': train,
+  'train': train,
   'test': test
 }
 
 filenames = []
 for phase in data.keys():
   df = data[phase]
-  min_val = min(df.y.values)
-  max_val = max(df.y.values)
+  min_val = min(df[metric].values)
+  max_val = max(df[metric].values)
 
   traces = []
-  traces.append(go.Scatter(x=df.x,
-                           y=df.y,
+  traces.append(go.Scatter(x=range(len(df)),
+                           y=df[metric],
                            name='Data'))
   layout = go.Layout(title='%s data (%s)' % (phase, metric))
   labels = [l for l in df.label.unique()]
@@ -84,20 +79,20 @@ for phase in data.keys():
     lower_bound = df.copy()
     upper_bound = df.copy()
 
-    lower_bound.y = min_val
-    upper_bound.y[df.label == label] = max_val
-    upper_bound.y[df.label != label] = min_val
+    lower_bound[metric] = min_val
+    upper_bound[metric][df.label == label] = max_val
+    upper_bound[metric][df.label != label] = min_val
 
-    traces.append(go.Scatter(x=upper_bound.x,
-                             y=upper_bound.y,
+    traces.append(go.Scatter(x=range(len(df)),
+                             y=upper_bound[metric],
                              mode='lines',
                              fill=None,
                              line=dict(color=colors[label]),
                              legendgroup=str(label),
                              name='label %s' % label))
 
-    traces.append(go.Scatter(x=lower_bound.x,
-                             y=lower_bound.y,
+    traces.append(go.Scatter(x=range(len(df)),
+                             y=lower_bound[metric],
                              mode='lines',
                              fill='tonexty',
                              legendgroup=str(label),
