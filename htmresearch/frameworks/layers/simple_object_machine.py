@@ -146,15 +146,8 @@ class SimpleObjectMachine(ObjectMachineBase):
              Inference spec for experiment (cf above for format)
 
     """
-    if "numSteps" in inferenceConfig:
-      numSteps = inferenceConfig["numSteps"]
-    else:
-      numSteps = len(inferenceConfig["pairs"][0])
-
-    if "noiseLevel" in inferenceConfig:
-      noise = inferenceConfig["noiseLevel"]
-    else:
-      noise = None
+    numSteps = inferenceConfig.get("numSteps",
+                                   len(inferenceConfig["pairs"][0]))
 
     # some checks
     if numSteps == 0:
@@ -168,7 +161,12 @@ class SimpleObjectMachine(ObjectMachineBase):
       pairs = [
         inferenceConfig["pairs"][col][step] for col in xrange(self.numColumns)
       ]
-      sensationSteps.append(self._getSDRPairs(pairs, noise=noise))
+      sdrPairs = self._getSDRPairs(
+        pairs,
+        noise=inferenceConfig.get("noiseLevel", None),
+        includeRandomLocation=inferenceConfig.get("includeRandomLocation",
+                                                  False))
+      sensationSteps.append(sdrPairs)
 
     self._checkObjectToInfer(sensationSteps)
     return sensationSteps
@@ -208,11 +206,11 @@ class SimpleObjectMachine(ObjectMachineBase):
       locationArray = numpy.random.permutation(locationArray)
       self.addObject(
         [(locationArray[p],
-          numpy.random.randint(0, numFeatures-1)) for p in xrange(numPoints)],
+          numpy.random.randint(0, numFeatures)) for p in xrange(numPoints)],
       )
 
 
-  def _getSDRPairs(self, pairs, noise=None):
+  def _getSDRPairs(self, pairs, noise=None, includeRandomLocation=False):
     """
     This method takes a list of (location, feature) index pairs (one pair per
     cortical column), and returns a sensation dict in the correct format,
@@ -223,9 +221,10 @@ class SimpleObjectMachine(ObjectMachineBase):
       locationID, featureID = pairs[col]
 
       # generate random location if requested
-      if locationID == -1:
+      if includeRandomLocation:
         location = self._generatePattern(self.numInputBits,
-                                         self.sensorInputSize)
+                                         self.externalInputSize)
+
       # generate union of locations if requested
       elif isinstance(locationID, tuple):
         location = set()

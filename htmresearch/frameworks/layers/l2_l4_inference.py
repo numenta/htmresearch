@@ -211,8 +211,8 @@ class L4L2Experiment(object):
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
-      "L4Params": self.getDefaultL4Params(inputSize),
-      "L2Params": self.getDefaultL2Params(inputSize),
+      "L4Params": self.getDefaultL4Params(inputSize, numInputBits),
+      "L2Params": self.getDefaultL2Params(inputSize, numInputBits),
     }
 
     if enableLateralSP:
@@ -401,7 +401,9 @@ class L4L2Experiment(object):
     # save statistics
     statistics["numSteps"] = len(sensationList)
     statistics["object"] = objectName if objectName is not None else "Unknown"
+
     self.statistics.append(statistics)
+
 
   def _sendReset(self, sequenceId=0):
     """
@@ -412,12 +414,14 @@ class L4L2Experiment(object):
       self.externalInputs[col].addResetToQueue(sequenceId)
     self.network.run(1)
 
+
   @LoggingDecorator()
   def sendReset(self, *args, **kwargs):
     """
     Public interface to sends a reset signal to the network.  This is logged.
     """
     self._sendReset(*args, **kwargs)
+
 
   def plotInferenceStats(self,
                          fields,
@@ -574,13 +578,25 @@ class L4L2Experiment(object):
     return [set(column._pooler.getActiveCells()) for column in self.L2Columns]
 
 
-  def getDefaultL4Params(self, inputSize):
+  def getDefaultL4Params(self, inputSize, numInputBits):
     """
     Returns a good default set of parameters to use in the L4 region.
     """
+    maxNewSynapseCount = int(1.5 * numInputBits)
+
+    if numInputBits == 20:
+      activationThreshold = 13
+      minThreshold = 13
+    elif numInputBits == 10:
+      activationThreshold = 8
+      minThreshold = 8
+    else:
+      activationThreshold = int(numInputBits * .6)
+      minThreshold = activationThreshold
+
     return {
       "columnCount": inputSize,
-      "cellsPerColumn": 8,
+      "cellsPerColumn": 16,
       "formInternalBasalConnections": False,
       "learningMode": True,
       "inferenceMode": True,
@@ -589,29 +605,39 @@ class L4L2Experiment(object):
       "connectedPermanence": 0.6,
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.02,
-      "minThreshold": 10,
-      "predictedSegmentDecrement": 0.002,
-      "activationThreshold": 13,
-      "maxNewSynapseCount": 20,
+      "minThreshold": minThreshold,
+      "predictedSegmentDecrement": 0.0,
+      "activationThreshold": activationThreshold,
+      "maxNewSynapseCount": maxNewSynapseCount,
       "defaultOutputType": "predictedActiveCells",
       "implementation": "etm_cpp",
       "seed": self.seed
     }
 
 
-  def getDefaultL2Params(self, inputSize):
+  def getDefaultL2Params(self, inputSize, numInputBits):
     """
     Returns a good default set of parameters to use in the L2 region.
     """
+    if numInputBits == 20:
+      sampleSizeProximal = 10
+      minThresholdProximal = 6
+    elif numInputBits == 10:
+      sampleSizeProximal = 6
+      minThresholdProximal = 3
+    else:
+      sampleSizeProximal = int(numInputBits * .6)
+      minThresholdProximal = int(sampleSizeProximal * .6)
+
     return {
-      "inputWidth": inputSize * 8,
+      "inputWidth": inputSize * 16,
       "cellCount": 4096,
       "sdrSize": 40,
       "synPermProximalInc": 0.1,
       "synPermProximalDec": 0.001,
       "initialProximalPermanence": 0.6,
-      "minThresholdProximal": 10,
-      "sampleSizeProximal": 20,
+      "minThresholdProximal": minThresholdProximal,
+      "sampleSizeProximal": sampleSizeProximal,
       "connectedPermanenceProximal": 0.5,
       "synPermDistalInc": 0.1,
       "synPermDistalDec": 0.001,
@@ -623,6 +649,7 @@ class L4L2Experiment(object):
       "seed": self.seed,
       "learningMode": True,
     }
+
 
   def getDefaultLateralSPParams(self, inputSize):
     return {
@@ -636,8 +663,9 @@ class L4L2Experiment(object):
       "synPermConnected": 0.1,
       "synPermActiveInc": 0.0001,
       "synPermInactiveDec": 0.0005,
-      "maxBoost": 1.0,
+      "boostStrength": 0.0,
     }
+
 
   def getDefaultFeedForwardSPParams(self, inputSize):
     return {
@@ -651,7 +679,7 @@ class L4L2Experiment(object):
       "synPermConnected": 0.1,
       "synPermActiveInc": 0.0001,
       "synPermInactiveDec": 0.0005,
-      "maxBoost": 1.0,
+      "boostStrength": 0.0,
     }
 
 
@@ -661,6 +689,7 @@ class L4L2Experiment(object):
     """
     for column in self.L4Columns:
       column.setParameter("learningMode", 0, False)
+      column.setParameter("defaultOutputType", 0, "active")
     for column in self.L2Columns:
       column.setParameter("learningMode", 0, False)
 
@@ -671,6 +700,7 @@ class L4L2Experiment(object):
     """
     for column in self.L4Columns:
       column.setParameter("learningMode", 0, True)
+      column.setParameter("defaultOutputType", 0, "predictedActiveCells")
     for column in self.L2Columns:
       column.setParameter("learningMode", 0, True)
 
@@ -701,6 +731,9 @@ class L4L2Experiment(object):
       )
       statistics["L2 Representation C" + str(i)].append(
         len(L2Representation[i])
+      )
+      statistics["L4 Apical Segments C" + str(i)].append(
+        len(self.L4Columns[i]._tm.getActiveApicalSegments())
       )
 
       # add true overlap if objectName was provided

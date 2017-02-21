@@ -57,9 +57,8 @@ synPermActiveInc            = 0
 synPermInactiveDec          = 0
 synPermConnected            = 0.2
 minPctOverlapDutyCycles     = 0.001
-minPctActiveDutyCycles      = 0.001
 dutyCyclePeriod             = 1000
-maxBoost                    = 1
+boostStrength               = 0
 wrapAround                  = 1
 CPP SP seed                 = 1956
 
@@ -86,7 +85,7 @@ DEFAULT_SP_PARAMS = {
   'numActiveColumnsPerInhArea': 1600,
   'globalInhibition': 1,
   'potentialPct': 0.4,
-  'maxBoost': 1.0
+  'boostStrength': 0.0
 }
 
 DEFAULT_CLASSIFIER_PARAMS = {
