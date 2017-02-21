@@ -20,7 +20,7 @@
 # ----------------------------------------------------------------------
 
 from htmresearch.frameworks.classification.network_factory import (
-  configureNetwork)
+  createAndConfigureNetwork)
 from htmresearch.encoders.cio_encoder import CioEncoder
 from htmresearch.frameworks.nlp.classify_network_api import (
   ClassificationNetworkAPI
@@ -69,7 +69,7 @@ class ClassificationModelHTM(ClassificationNetworkAPI):
                          cacheDir=cacheRoot)
 
     # This encoder specifies the LanguageSensor output width.
-    return configureNetwork(None, self.networkConfig, encoder)
+    return createAndConfigureNetwork(None, self.networkConfig, encoder)
 
 
   def trainToken(self, token, labels, tokenId, resetSequence=0):

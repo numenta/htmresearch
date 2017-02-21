@@ -33,10 +33,7 @@ Run `generate_acc_data.py`. You can edit the parameters to clean up and
 concatenate the accelerometer data in `settings/acc_data.py`
 
 # 2. Run network 
-
-Edit `settings/htm_network.py` and make sure you will run the network with the 
-appropriate `INPUT_FILES` - the data that you just generated at step 1. Then 
-run `run_htm_network`.
+* Run: `python run_htm_network`.
 
 # 3. Plot results
 
@@ -44,14 +41,11 @@ run `run_htm_network`.
 To visualize inter-sequence / inter-cluster distances and 2D projections of TM 
 states , run `python plot_tm_distances.py -f <filepath>` where `filepath` 
 can be:
-* `results/traces/binary_ampl=10.0_mean=0.0_noise=0.0_sp=True_tm=True_tp=False_SDRClassifier.csv`
-* `results/traces/sensortag_z_sp=True_tm=True_tp=False_SDRClassifier.csv`
+* `results/traces/binary_ampl=10.0_mean=0.0_noise=0.0.csv`
+* `results/traces/sensortag_z.csv`
 
 ## Plot clustering and classification accuracy results VS TM states
 To visualize clustering or classification accuracy results, run 
 `python plot_accuracy_results.py -f <filename>` where `filename` can be:
-* `results/traces/binary_ampl=10.0_mean=0.0_noise=0.0_sp=True_tm=True_tp=False_SDRClassifier.csv`
-* `results/traces/sensortag_z_sp=True_tm=True_tp=False_SDRClassifier.csv`
-> Note: Instead of specifying what trace file you want to analyze via a command
-> line argument, you could also omit this parameter and edit `TRACES_FILES` 
-> in the settings file `settings/htm_network.py`.  
+* `results/traces/binary_ampl=10.0_mean=0.0_noise=0.0.csv`
+* `results/traces/sensortag_z.csv`

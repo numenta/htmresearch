@@ -10,20 +10,22 @@ of it as a form of temporal pooling for HTM networks.
 
 ## Project file structure
 
-* `anomaly_detection`: The goal of these experiments is to detect anomalies on 
-the SensorTag data (accelerometer data). These were preliminary experiments 
-before diving into the network API setup. See README in folder for more details.
- 
-* `cla_vs_sdr_classifier`: Compares results between the SDRClassifier and 
-CLAClassifier on the same datasets.
+* `htm`: contains the code to the htm network and generate TM traces. See 
+README in folder for more details.
 
-* `classification`: contains the code to generate data and run the htm 
-network to generate TM traces and visualize them. The clustering code in there 
-is deprecated and has been replaced by the code in `clustering`. See README in 
-folder for more details.
-
-* `sandbox`: contains an example of an online clustering algorithm with 
-scalar data, as well as a demo the 2D projection of SDR clusters.
+* `baseline`: contains scripts to establish a supervised baseline for the 
+classification of sensor data.
 
 * `clustering`: contains the bulk of the clustering code. See README in 
 folder for more details.
+
+* `cla_vs_sdr_classifier`: Compares results between the SDRClassifier and 
+CLAClassifier on the same datasets.
+
+* `anomaly_detection`: The goal of these experiments is to detect anomalies in 
+the SensorTag data (accelerometer data). These were preliminary experiments 
+before diving into online classification. See README in folder for more 
+details.
+
+* `sandbox`: contains a bunch of scripts used for quick prototyping. These 
+scripts are not used in any of the main experiments and are not maintained. 

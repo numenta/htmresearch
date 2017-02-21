@@ -30,7 +30,7 @@ from settings.htm_network import ANOMALY_SCORE, CLUSTERING
 Script to visualize the TM states
 Example Usage:
 
-python plot_experiment_result.py --xlim "1700,1750"
+python plot_accuracy_results.py --xlim "1700,1750" -f <path/to/htm/trace.json>
 
 """
 

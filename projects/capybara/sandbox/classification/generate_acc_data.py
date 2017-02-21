@@ -44,8 +44,8 @@ def loadAccelerometerData(dataDir, fileNames):
   :param dataDir: (str) parent file of the input data
   :param fileNames: (list of str) names of the input CSV files
   :return data: (list of list)concatenated accelerometer data
-  :return headers: (list of str) headers of the first file that was loaded. All 
-    files should have the same headers.
+  :return headers: (list of str) headers of the first file that was loaded. 
+    All files should have the same headers.
   :return categories: (dict) start and end indices of each category
   """
   data = []
@@ -124,22 +124,12 @@ def writeData(outFileBaseName, inputData, inputHeaders, metrics,
 
 
 def main():
-  dominoStats = {
-    "SLICES": SLICES,
-    "METRICS": METRICS,
-    "MAX_POINTS": MAX_POINTS,
-    "INPUT_FILES": INPUT_FILES
-  }
-
-  with open('dominostats.json', 'wb') as f:
-    f.write(json.dumps(dominoStats))
-
   data, headers, categories = loadAccelerometerData(DATA_DIR, INPUT_FILES)
   if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
   outputFileTemplate = os.path.join(OUTPUT_DIR, 'sensortag_%s.csv')
-  outputFiles = writeData(outputFileTemplate, data, headers, METRICS, categories,
-                          SLICES)
+  outputFiles = writeData(outputFileTemplate, data, headers, METRICS,
+                          categories, SLICES)
 
   categoryLabels = [f[:-9] for f in INPUT_FILES]
   for outputFile in outputFiles:

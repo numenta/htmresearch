@@ -89,28 +89,91 @@ def generate_data(X_train_signals_paths,
   headers_train.append('label')
   headers_test.append('label')
   assert headers_test == headers_train
+  headers = headers_train
 
   train_csv = 'inertial_signals_train.csv'
-  with open(train_csv, 'w') as f:
-    writer = csv.writer(f)
-    writer.writerow(headers_train)
-    for i in range(len(X_train)):
-      for x in X_train[i]:
-        row = list(x)
-        row.append(y_train[i][0])
-        writer.writerow(row)
-
   test_csv = 'inertial_signals_test.csv'
+  val_csv = None  # 'inertial_signals_val.csv'
+
+  debug_train_csv = 'debug_train.csv'
+  debug_val_csv = 'debug_val.csv'
+  debug_test_csv = 'debug_test.csv'
+
+  files = [train_csv, test_csv]
+  debug_files = [debug_train_csv, debug_test_csv]
+
+  debug_files_size = 10
+  batch_size = 128
+  if val_csv is not None:
+    train_val_split = 0.8
+    files.append(val_csv)
+    debug_files.append(debug_val_csv)
+  else:
+    train_val_split = 1
+
+  total_num_batches = len(X_train)
+  num_train_batches = total_num_batches * train_val_split
+
+  train_counter = 0
+  with open(train_csv, 'w') as f:
+    with open(debug_train_csv, 'w') as sf:
+      writer = csv.writer(f)
+      writer.writerow(headers_train)
+      debug_writer = csv.writer(sf)
+      debug_writer.writerow(headers)
+      for i in range(num_train_batches):
+        for x in X_train[i]:
+          row = list(x)
+          row.append(y_train[i][0])
+          writer.writerow(row)
+          if train_counter < debug_files_size:
+            debug_writer.writerow(row)
+          train_counter += 1
+
+  val_counter = 0
+  if val_csv is not None:
+    with open(val_csv, 'w') as f:
+      with open(debug_val_csv, 'w') as sf:
+        writer = csv.writer(f)
+        writer.writerow(headers)
+        debug_writer = csv.writer(sf)
+        debug_writer.writerow(headers)
+        for i in range(num_train_batches, total_num_batches):
+          for x in X_train[i]:
+            row = list(x)
+            row.append(y_train[i][0])
+            writer.writerow(row)
+            if val_counter < debug_files_size:
+              debug_writer.writerow(row)
+            val_counter += 1
+
+  assert val_counter + train_counter == total_num_batches * batch_size
+
+  test_counter = 0
+  num_test_batches = len(X_test)
   with open(test_csv, 'w') as f:
-    writer = csv.writer(f)
-    writer.writerow(headers_test)
-    for i in range(len(X_test)):
-      for x in X_test[i]:
-        row = list(x)
-        row.append(y_test[i][0])
-        writer.writerow(row)
-        
-  print 'Files saved: %s' % [train_csv, test_csv]
+    with open(debug_test_csv, 'w') as sf:
+      writer = csv.writer(f)
+      writer.writerow(headers)
+      debug_writer = csv.writer(sf)
+      debug_writer.writerow(headers)
+      for i in range(num_test_batches):
+        for x in X_test[i]:
+          row = list(x)
+          row.append(y_test[i][0])
+          writer.writerow(row)
+          if test_counter < debug_files_size:
+            debug_writer.writerow(row)
+          test_counter += 1
+
+  assert test_counter == num_test_batches * batch_size
+
+  print 'Train set size: %s' % train_counter
+  print 'Val set size: %s' % val_counter
+  print 'Test set size: %s' % test_counter
+
+  print 'Files saved:', files
+  print 'Debug files saved:', debug_files
 
 
 
@@ -130,7 +193,7 @@ if __name__ == '__main__':
     1: 'WALKING',
     2: 'WALKING_UPSTAIRS',
     3: 'WALKING_DOWNSTAIRS',
-    4: ' SITTING',
+    4: 'SITTING',
     5: 'STANDING',
     6: 'LAYING'
   }

@@ -33,27 +33,26 @@ from nupic.data.file_record_stream import FileRecordStream
 
 from htmresearch.frameworks.clustering.distances import interClusterDistances
 from htmresearch.frameworks.classification.network_factory import (
-  configureNetwork, enableRegionLearning)
+  createAndConfigureNetwork, setRegionLearning)
 from htmresearch.frameworks.classification.utils.traces import (loadTraces,
                                                                 plotTraces)
 from htmresearch.frameworks.clustering.viz import (
   vizInterSequenceClusters, vizInterCategoryClusters)
 
-from settings.htm_network import (OUTPUT_DIR,
-                                  INPUT_FILES,
-                                  PLOT_RESULTS,
-                                  HTM_NETWORK_CONFIGS,
-                                  CLUSTERING,
-                                  FILE_NAMES,
-                                  MERGE_THRESHOLD,
-                                  ANOMALOUS_THRESHOLD,
-                                  STABLE_THRESHOLD,
-                                  MIN_CLUSTER_SIZE,
-                                  SIMILARITY_THRESHOLD,
-                                  ROLLING_ACCURACY_WINDOW,
-                                  CELLS_TO_CLUSTER,
-                                  IGNORE_NOISE,
-                                  ANOMALY_SCORE)
+from settings.htm_network_old import (OUTPUT_DIR,
+                                      INPUT_FILES,
+                                      PLOT_RESULTS,
+                                      HTM_NETWORK_CONFIGS,
+                                      CLUSTERING,
+                                      MERGE_THRESHOLD,
+                                      ANOMALOUS_THRESHOLD,
+                                      STABLE_THRESHOLD,
+                                      MIN_CLUSTER_SIZE,
+                                      SIMILARITY_THRESHOLD,
+                                      ROLLING_ACCURACY_WINDOW,
+                                      CELLS_TO_CLUSTER,
+                                      IGNORE_NOISE,
+                                      ANOMALY_SCORE)
 
 _LOGGER = logging.getLogger()
 _LOGGER.setLevel(logging.DEBUG)
@@ -210,7 +209,7 @@ def outputClassificationInfo(recordNumber,
 def outputInterClusterDist(clustering, numCells):
   if _LOGGER.getEffectiveLevel() == logging.DEBUG:
     interClusterDist = interClusterDistances(clustering.getClusters(),
-                                             clustering.getNewCluster(), 
+                                             clustering.getNewCluster(),
                                              numCells)
     _LOGGER.debug('-> inter-cluster distances: %s' % interClusterDist)
 
@@ -302,13 +301,13 @@ def convertNonZeroToSDR(patternNZs, sdrSize):
 
 def runNetwork(networkConfig, filePath, runClustering):
   dataSource = FileRecordStream(streamID=filePath)
-  network = configureNetwork(dataSource, networkConfig)
+  network = createAndConfigureNetwork(dataSource, networkConfig)
 
   (sensorRegion,
    spRegion,
    tmRegion,
    tpRegion,
-   classifierRegion) = enableRegionLearning(network, networkConfig)
+   classifierRegion) = setRegionLearning(network, networkConfig)
 
   trace = initTrace(runClustering)
   numCells = networkConfig['tmRegionConfig']['regionParams']['inputWidth'] * \
@@ -570,6 +569,7 @@ def runExperiment(networkConfig, inputFilePath, runClustering):
   return expResult
 
 
+
 def saveTraces(baseOutFile, expResults):
   """
   Save experiments network traces to CSV
@@ -641,8 +641,10 @@ def run(inputFiles,
         plotTemporalMemoryStates = False
         title = inputFile.split('/')[-1]
         outputFile = '%s.png' % inputFile[:-4]
-        plotTraces(xl, traces, title, outputFile, plotTemporalMemoryStates)
-  
+
+        plotTraces(xl, traces, title, ANOMALY_SCORE, outputFile,
+                   runClustering)
+
   traceOutputDir = os.path.join(OUTPUT_DIR, 'traces')
   if not os.path.exists(traceOutputDir):
     os.makedirs(traceOutputDir)
@@ -651,24 +653,6 @@ def run(inputFiles,
 
 
 def main():
-  dominoStats = {
-    "FILE_NAMES": FILE_NAMES,
-    "HTM_NETWORK_CONFIGS": HTM_NETWORK_CONFIGS.split('/')[-1],
-    "CLUSTERING": CLUSTERING,
-    "MERGE_THRESHOLD": MERGE_THRESHOLD,
-    "ANOMALOUS_THRESHOLD": ANOMALOUS_THRESHOLD,
-    "STABLE_THRESHOLD": STABLE_THRESHOLD,
-    "MIN_CLUSTER_SIZE": MIN_CLUSTER_SIZE,
-    "SIMILARITY_THRESHOLD": SIMILARITY_THRESHOLD,
-    "ROLLING_ACCURACY_WINDOW": ROLLING_ACCURACY_WINDOW,
-    "CELLS_TO_CLUSTER": CELLS_TO_CLUSTER,
-    "IGNORE_NOISE": IGNORE_NOISE,
-    "ANOMALY_SCORE": ANOMALY_SCORE
-  }
-
-  with open('dominostats.json', 'wb') as f:
-    f.write(json.dumps(dominoStats))
-
   run(INPUT_FILES,
       HTM_NETWORK_CONFIGS,
       PLOT_RESULTS,
