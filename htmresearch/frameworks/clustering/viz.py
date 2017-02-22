@@ -23,7 +23,7 @@ def convertNonZeroToSDR(patternNZs, numCells):
 
 def assignClusters(traces):
   categories = np.unique(traces['actualCategory'])
-  numCategories = int(max(categories)) + 1
+  numCategories = len(categories)
   # The noise is labelled as 0, but there might not be noise
   if 0 not in categories:
     numCategories += 1

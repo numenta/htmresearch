@@ -98,24 +98,24 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
   classColor = {
     0: 'grey', 1: 'blue', 2: 'red', 3: 'yellow', 4: 'pink',
     5: 'green', 6: 'purple', 8: 'brown', 9: 'white'
-    }
+  }
   xStartLabel = xlim[0]
   while xStartLabel < xlim[1]:
-    currentClassLabel = classLabels[xStartLabel]
-    if len(np.where(classLabels[xStartLabel:] != currentClassLabel)[0]) == 0:
+    currClassLabel = classLabels[xStartLabel]
+    if len(np.where(classLabels[xStartLabel:] != currClassLabel)[0]) == 0:
       width = len(classLabels[xStartLabel:])
     else:
-      width = np.where(classLabels[xStartLabel:] != currentClassLabel)[0][0]
+      width = np.where(classLabels[xStartLabel:] != currClassLabel)[0][0]
 
-    if currentClassLabel not in categoriesLabelled:
-      labelLegend = 'Category %s' % int(currentClassLabel)
+    if currClassLabel not in categoriesLabelled:
+      labelLegend = 'Category %s' % int(currClassLabel)
     else:
       labelLegend = None
 
-    categoriesLabelled.append(currentClassLabel)
+    categoriesLabelled.append(currClassLabel)
     ax[0].add_patch(
       patches.Rectangle((t[0] + xStartLabel, yl[0]), width, height,
-                        facecolor=classColor[currentClassLabel], alpha=0.6,
+                        facecolor=classColor[currClassLabel], alpha=0.6,
                         label=labelLegend)
     )
     xStartLabel += width
@@ -169,17 +169,16 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
       classColor = {0: 'grey', 1: 'b', 2: 'r', 3: 'y'}
       xStartLabel = xlim[0]
       while xStartLabel < xlim[1]:
-        currentClassLabel = classLabels[xStartLabel]
+        currClassLabel = classLabels[xStartLabel]
         if len(
-          np.where(classLabels[xStartLabel:] != currentClassLabel)[0]) == 0:
+          np.where(classLabels[xStartLabel:] != currClassLabel)[0]) == 0:
           width = len(classLabels[xStartLabel:])
         else:
-          width = np.where(classLabels[xStartLabel:] != currentClassLabel)[0][
-            0]
+          width = np.where(classLabels[xStartLabel:] != currClassLabel)[0][0]
 
         ax[0].add_patch(
           patches.Rectangle((t[0] + xStartLabel, yl[0]), width, height,
-                            facecolor=classColor[currentClassLabel], alpha=0.6)
+                            facecolor=classColor[currClassLabel], alpha=0.6)
         )
         xStartLabel += width
       ax[0].set_ylabel('Sensor Value')
