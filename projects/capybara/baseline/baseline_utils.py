@@ -141,7 +141,7 @@ def filter_sdr_columns(x):
 
 
 
-def predictions_vote(y_pred, vote_window=10):
+def predictions_vote(y_pred, vote_window=11):
   """
   Take the most common label over a voting window.
   
@@ -150,7 +150,9 @@ def predictions_vote(y_pred, vote_window=10):
   :return: (np.array) prediction votes
   """
   n = len(y_pred)
-
+  if vote_window > n:
+    vote_window = n
+    
   # Last bin vote
   last_bin_predictions = [int(y_pred[k]) for k in range(n - vote_window, n)]
   last_bin_counts = np.bincount(last_bin_predictions)
