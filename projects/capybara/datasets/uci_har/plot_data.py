@@ -28,18 +28,16 @@ import colorlover as cl
 
 colors = cl.scales['10']['qual']['Set3']
 
-LABELS = {
-  1: 'WALKING',
-  2: 'WALKING_UPSTAIRS',
-  3: 'WALKING_DOWNSTAIRS',
-  4: ' SITTING',
-  5: 'STANDING',
-  6: 'LAYING'
-}
+LABELS = ['WALKING',
+          'WALKING_UPSTAIRS',
+          'WALKING_DOWNSTAIRS',
+          'SITTING',
+          'STANDING',
+          'LAYING']
 
 # Range to plot
 x_min = 0
-x_max = 10000
+x_max = 40000
 metric = 'body_acc_x'
 
 # Input data to plot

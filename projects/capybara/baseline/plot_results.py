@@ -22,18 +22,17 @@ import argparse
 import os
 import pandas as pd
 
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import (classification_report, confusion_matrix,
+                             accuracy_score)
 from plot_utils import (plot_confusion_matrix, plot_train_history,
                         plot_classification_report)
 
-LABELS = {
-  1: 'WALKING',
-  2: 'WALKING_UPSTAIRS',
-  3: 'WALKING_DOWNSTAIRS',
-  4: ' SITTING',
-  5: 'STANDING',
-  6: 'LAYING'
-}
+LABELS = ['WALKING',
+          'WALKING_UPSTAIRS',
+          'WALKING_DOWNSTAIRS',
+          'SITTING',
+          'STANDING',
+          'LAYING']
 
 OUTPUT_DIR = 'plots'
 
@@ -66,8 +65,12 @@ if __name__ == '__main__':
   y_pred = df.y_pred.values
   y_vote = df.y_vote.values
 
+  # Accuracy
+  acc = accuracy_score(y_true, y_pred)
+  print 'Accuracy on test set:', acc
+  
   # Find labels in use
-  label_list = df.y_true.unique()
+  label_list = sorted(df.y_true.unique())
   label_list = [LABELS[l] for l in label_list]
 
   # Plot normalized confusion matrix
@@ -77,7 +80,7 @@ if __name__ == '__main__':
                             output_file,
                             classes=label_list,
                             normalize=True,
-                            title='Confusion matrix')
+                            title='Confusion matrix (accuracy=%.2f)' % acc)
 
   # Classification report (F1 score, etc.)
   clf_report = classification_report(y_true, y_pred, target_names=label_list)
