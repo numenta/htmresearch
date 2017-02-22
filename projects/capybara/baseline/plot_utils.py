@@ -162,7 +162,7 @@ def plot_classification_report(classification_report, filename,
 
 
 
-def plot_train_history(epochs, loss, acc, output_file):
+def plot_train_history(epochs, acc, loss, output_file):
   trace0 = go.Scatter(x=epochs, y=loss, name='Loss')
   trace1 = go.Scatter(x=epochs, y=acc, name='Accuracy')
 

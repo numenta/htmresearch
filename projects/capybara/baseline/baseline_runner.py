@@ -154,4 +154,4 @@ if __name__ == "__main__":
 
       acc = accuracy_score(y_true, y_pred)
       now = int(time.time() - start)
-      print 'Elapsed time: %ss', now
+      print 'Elapsed time: %ss - Row: %s' % (now, chunks._currow)
