@@ -23,22 +23,23 @@ import csv
 import json
 import os
 import pandas as pd
+import time
 from sklearn.metrics import accuracy_score
 
 from baseline_utils import (create_model, predictions_vote,
                             convert_to_one_hot, save_keras_model,
                             load_keras_model, convert_to_sdrs, moving_average)
 
-CHUNK_SIZE = 32
+CHUNK_SIZE = 2048
 BATCH_SIZE = 32
-NUM_EPOCHS = 10
+NUM_EPOCHS = 200
 VERBOSE = 0
 MA_WINDOW = 10
 VOTE_WINDOW = 125  # Needs to be an odd number to break ties
 NUM_TM_CELLS = 2048 * 32
 
 TRACE_DIR = '../htm/traces'
-EXP_NAME = 'debug'  # 'body_acc_x_inertial_signals'
+EXP_NAME = 'body_acc_x_inertial_signals'
 
 RESULTS_OUTDIR = 'results'
 MODEL_OUTDIR = 'model'
@@ -46,16 +47,14 @@ HISTORY_FILE = 'train_history.csv'
 PREDICTIONS_FILE = 'predictions.csv'
 MODEL_NAME = 'baseline.h5'
 
-LABELS = {
-  1: 'WALKING',
-  2: 'WALKING_UPSTAIRS',
-  3: 'WALKING_DOWNSTAIRS',
-  4: ' SITTING',
-  5: 'STANDING',
-  6: 'LAYING'
-}
-
+LABELS = ['WALKING',
+          'WALKING_UPSTAIRS',
+          'WALKING_DOWNSTAIRS',
+          'SITTING',
+          'STANDING',
+          'LAYING']
 if __name__ == "__main__":
+  start = time.time()
 
   # Make sure output directories exist
   if not os.path.exists(RESULTS_OUTDIR):
@@ -93,6 +92,7 @@ if __name__ == "__main__":
       historyWriter.writerow(['epoch', 'acc', 'loss'])
 
       for epoch in range(NUM_EPOCHS):
+        print 'Epoch: %s/%s' % (epoch, NUM_EPOCHS)
         train_file = os.path.join(TRACE_DIR, 'trace_%s_train.csv' % EXP_NAME)
         chunks = pd.read_csv(train_file, iterator=True,
                              chunksize=CHUNK_SIZE,
@@ -100,6 +100,8 @@ if __name__ == "__main__":
                              usecols=['t', 'label', 'scalarValue',
                                       'tmPredictedActiveCells'])
         for chunk in chunks:
+          now = int(time.time() - start)
+          print '-> Elapsed time: %ss - Row: %s' % (now, chunks._currow)
           tmPredictedActiveCellsNZ = chunk.tmPredictedActiveCells.values
           tmPredictedActiveCells = convert_to_sdrs(tmPredictedActiveCellsNZ,
                                                    NUM_TM_CELLS)
@@ -115,9 +117,6 @@ if __name__ == "__main__":
           loss = hist.history['loss']
           assert len(acc) == 1  # Should be only one epoch
           historyWriter.writerow([epoch, acc[0], loss[0]])
-          if chunks._currow % (CHUNK_SIZE * 100) == 0:
-            print ('Epoch: %s/%s - Row: %s - Accuracy: %s'
-                   % (epoch, NUM_EPOCHS, chunks._currow, acc[0]))
 
     save_keras_model(model, model_path)
   else:
@@ -154,4 +153,5 @@ if __name__ == "__main__":
                               y_vote[i], y_true[i]])
 
       acc = accuracy_score(y_true, y_pred)
-      print '--> test chunk accuracy: %.4f' % acc
+      now = int(time.time() - start)
+      print 'Elapsed time: %ss', now
