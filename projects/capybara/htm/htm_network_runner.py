@@ -66,7 +66,6 @@ class NetworkRunner(object):
     self.observedMax = None
 
     # Keep track of repeating encodings
-    self.lastEncoding = None
     self.encodingRepetitionCounter = 0
     self.encodingRepetitionThreshold = 2
 
@@ -116,14 +115,14 @@ class NetworkRunner(object):
       self.observedMax = scalarValue
 
 
-  def _isEncodingChanging(self, encoding):
+  def _isEncodingChanging(self, encoding, lastEncoding):
     """
     Determine if the encoding has been stable for too long or not, 
     with respect to a repetition threshold.
     """
     encodingIsChanging = True
-    if self.lastEncoding is not None:
-      encodingIsStable = (self.lastEncoding == encoding).all()
+    if lastEncoding is not None:
+      encodingIsStable = (lastEncoding == encoding).all()
       if encodingIsStable:
         self.encodingRepetitionCounter += 1
       else:
@@ -166,6 +165,7 @@ class NetworkRunner(object):
         inputHeaders = reader.next()
 
         # Run the network.
+        lastEncoding = None
         for row in reader:
           t = int(reader.line_num)
           data = dict(zip(inputHeaders, row))
@@ -176,7 +176,9 @@ class NetworkRunner(object):
           # Encode input data and run network only if encoding is different.
           self.network.encodeValue(scalarValue)
           encoding = self.network.getEncoderOutputNZ()
-          encodingIsChanging = self._isEncodingChanging(encoding)
+          encodingIsChanging = self._isEncodingChanging(encoding,
+                                                        lastEncoding)
+
           if encodingIsChanging:
             # The scalar value was already encoded, so don't do it again.
             self.network.handleRecord(scalarValue, label=label,
@@ -191,7 +193,7 @@ class NetworkRunner(object):
                               self.network.getRawAnomalyScore())
           else:
             _LOGGER.debug('STABLE: label=%s, encoding=%s' % (label, encoding))
-          self.lastEncoding = encoding
+          lastEncoding = encoding
 
           # Write and reset trace periodically to optimize memory usage.
           if t % self.batchSize == 0:

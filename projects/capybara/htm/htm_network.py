@@ -134,7 +134,7 @@ class BaseNetwork(object):
 
     # Encode the input data record if it hasn't already been encoded.
     if not skipEncoding:
-      self.encoder.encodeIntoArray(scalarValue, self.encoderOutput)
+      self.encodeValue(scalarValue)
 
     # Run the encoded data through the spatial pooler
     self.sp.compute(self.encoderOutput, learningMode, self.spOutput)
