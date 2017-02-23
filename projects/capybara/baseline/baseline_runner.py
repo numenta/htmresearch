@@ -99,9 +99,11 @@ if __name__ == "__main__":
                              converters={'tmPredictedActiveCells': json.loads},
                              usecols=['t', 'label', 'scalarValue',
                                       'tmPredictedActiveCells'])
+        chunk_counter = 0
         for chunk in chunks:
           now = int(time.time() - start)
-          print '-> Elapsed time: %ss - Row: %s' % (now, chunks._currow)
+          row_id = CHUNK_SIZE * chunk_counter
+          print '-> Elapsed time: %ss - Row: %s' % (now, row_id)
           tmPredictedActiveCellsNZ = chunk.tmPredictedActiveCells.values
           tmPredictedActiveCells = convert_to_sdrs(tmPredictedActiveCellsNZ,
                                                    NUM_TM_CELLS)
@@ -117,6 +119,7 @@ if __name__ == "__main__":
           loss = hist.history['loss']
           assert len(acc) == 1  # Should be only one epoch
           historyWriter.writerow([epoch, acc[0], loss[0]])
+          chunk_counter += 1 
 
     save_keras_model(model, model_path)
   else:
@@ -137,6 +140,7 @@ if __name__ == "__main__":
     pred_writer = csv.writer(f)
     pred_writer.writerow(['t', 'scalar_value', 'y_pred', 'y_vote', 'y_true'])
 
+    chunks_counter = 0
     for chunk in chunks:
       t = chunk.t.values
       X_values = chunk.scalarValue.values
@@ -154,4 +158,6 @@ if __name__ == "__main__":
 
       acc = accuracy_score(y_true, y_pred)
       now = int(time.time() - start)
-      print 'Elapsed time: %ss - Row: %s' % (now, chunks._currow)
+      row_id = CHUNK_SIZE * chunk_counter
+      print 'Elapsed time: %ss - Row: %s' % (now, row_id)
+      chunks_counter +=1
