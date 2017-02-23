@@ -31,13 +31,6 @@ from nupic.encoders import MultiEncoder
 from nupic.engine import Network
 from nupic.engine import pyRegions
 
-try:
-  import capnp
-except ImportError:
-  capnp = None
-if capnp:
-  from nupic.proto import NetworkProto_capnp
-
 from htmresearch.support.register_regions import registerResearchRegion
 
 _PY_REGIONS = [r[1] for r in pyRegions]
@@ -246,43 +239,6 @@ def createAndConfigureNetwork(dataSource, networkParams, encoder=None):
   network.initialize()
   return network
 
-
-
-def loadNetwork(networkPath, dataSource):
-  """
-  Load a serialized network from disk.
-  :param networkPath: (str) path to the serialized network.
-  :param dataSource: (FileRecordStream) source of data for the HTM network.
-  :return: (Network) HTM network.
-  """
-  with open(networkPath, 'r') as f:
-    proto = NetworkProto_capnp.NetworkProto.read(f)
-    loadedNetwork = Network.read(proto)
-
-    # Set loaded network's data source
-    loadedSensor = loadedNetwork.regions["sensor"].getSelf()
-    loadedSensor.dataSource = dataSource
-
-    # Initialize loaded network
-    loadedNetwork.initialize()
-
-
-  return loadedNetwork
-
-
-
-def saveNetwork(network, networkPath):
-  """
-  Serialize a network to disk.
-  :param network: (Network) HTM network.
-  :param networkPath: (str) path to the serialized network.
-  """
-
-  #network.save(networkPath)
-  proto = NetworkProto_capnp.NetworkProto.new_message()
-  network.write(proto)
-  with open(networkPath, 'w') as f:
-    proto.write(f)
 
 
 def createNetwork(dataSource, networkConfig, encoder=None):
