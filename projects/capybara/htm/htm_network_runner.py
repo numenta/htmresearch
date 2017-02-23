@@ -27,6 +27,7 @@ import numpy as np
 import os
 import time
 import yaml
+from collections import deque
 
 from htm_network import BaseNetwork
 
@@ -51,6 +52,46 @@ def _newTrace():
 
 
 
+def _processEncoding(encoding, recentEncodings):
+  """
+  An encoding shouldn't be processed if it is identical to all recent encodings 
+  """
+
+  if len(recentEncodings) == 0:
+    return True
+
+  for e in recentEncodings:
+    if not (e == encoding).all():
+      return True
+
+  return False
+
+
+
+def _getConfig(configFilePath):
+  with open(configFilePath, 'r') as ymlFile:
+    config = yaml.load(ymlFile)
+
+  inputDir = config['inputs']['inputDir']
+  baseName = config['inputs']['baseName']
+  metricName = config['inputs']['metricName']
+  inputMin = config['inputs']['metricMin']
+  inputMax = config['inputs']['metricMax']
+  outputDir = config['outputs']['outputDir']
+  batchSize = config['networkRunner']['batchSize']
+  runSanity = config['networkRunner']['runSanity']
+
+  return (inputDir,
+          baseName,
+          metricName,
+          inputMin,
+          inputMax,
+          outputDir,
+          batchSize,
+          runSanity)
+
+
+
 class NetworkRunner(object):
   def __init__(self, batchSize, inputMin, inputMax, runSanity):
 
@@ -66,8 +107,8 @@ class NetworkRunner(object):
     self.observedMax = None
 
     # Keep track of repeating encodings
-    self.encodingRepetitionCounter = 0
-    self.encodingRepetitionThreshold = 2
+    self.maxEncodingRepetitions = 1
+    self.recentEncodings = deque(maxlen=self.maxEncodingRepetitions)
 
     # Keep track of the processing time
     self.startTime = time.time()
@@ -115,25 +156,6 @@ class NetworkRunner(object):
       self.observedMax = scalarValue
 
 
-  def _isEncodingChanging(self, encoding, lastEncoding):
-    """
-    Determine if the encoding has been stable for too long or not, 
-    with respect to a repetition threshold.
-    """
-    encodingIsChanging = True
-    if lastEncoding is not None:
-      encodingIsStable = (lastEncoding == encoding).all()
-      if encodingIsStable:
-        self.encodingRepetitionCounter += 1
-      else:
-        self.encodingRepetitionCounter = 0
-
-      if self.encodingRepetitionCounter >= self.encodingRepetitionThreshold:
-        encodingIsChanging = False
-
-    return encodingIsChanging
-
-
   def run(self, inputDir, inputFileName, inputMetricName, outputDir,
           learningMode=True):
 
@@ -165,35 +187,34 @@ class NetworkRunner(object):
         inputHeaders = reader.next()
 
         # Run the network.
-        lastEncoding = None
         for row in reader:
           t = int(reader.line_num)
           data = dict(zip(inputHeaders, row))
           label = int(data['label'])
-          scalarValue = float(data[inputMetricName])
-          self._setObservedMinMax(scalarValue)
+          value = float(data[inputMetricName])
+          self._setObservedMinMax(value)
 
-          # Encode input data and run network only if encoding is different.
-          self.network.encodeValue(scalarValue)
+          # Encode scalar value and optionally run the network.
+          self.network.encodeValue(value)
           encoding = self.network.getEncoderOutputNZ()
-          encodingIsChanging = self._isEncodingChanging(encoding,
-                                                        lastEncoding)
+          runNetwork = _processEncoding(encoding, self.recentEncodings)
+          self.recentEncodings.append(encoding)
 
-          if encodingIsChanging:
+          if runNetwork:
             # The scalar value was already encoded, so don't do it again.
-            self.network.handleRecord(scalarValue, label=label,
+            self.network.handleRecord(value, label=label,
                                       skipEncoding=True,
                                       learningMode=learningMode)
-            self._updateTrace(t, scalarValue, label,
+            self._updateTrace(t, value, label,
                               self.network.getEncoderOutputNZ(),
                               self.network.getSpOutputNZ(),
                               self.network.getTmActiveCellsNZ(),
                               self.network.getTmPredictiveCellsNZ(),
                               self.network.getTmPredictedActiveCellsNZ(),
                               self.network.getRawAnomalyScore())
+            _LOGGER.debug('PROCESS: value=%s, encoding=%s' % (value, encoding))
           else:
-            _LOGGER.debug('STABLE: label=%s, encoding=%s' % (label, encoding))
-          lastEncoding = encoding
+            _LOGGER.debug('SKIP: value=%s, encoding=%s' % (value, encoding))
 
           # Write and reset trace periodically to optimize memory usage.
           if t % self.batchSize == 0:
@@ -209,30 +230,6 @@ class NetworkRunner(object):
       if len(self.traceNZ) > 0:
         self._writeTraceBatch(traceWriter)
         self.traceNZ = _newTrace()
-
-
-
-def _getConfig(configFilePath):
-  with open(configFilePath, 'r') as ymlFile:
-    config = yaml.load(ymlFile)
-
-  inputDir = config['inputs']['inputDir']
-  baseName = config['inputs']['baseName']
-  metricName = config['inputs']['metricName']
-  inputMin = config['inputs']['metricMin']
-  inputMax = config['inputs']['metricMax']
-  outputDir = config['outputs']['outputDir']
-  batchSize = config['networkRunner']['batchSize']
-  runSanity = config['networkRunner']['runSanity']
-
-  return (inputDir,
-          baseName,
-          metricName,
-          inputMin,
-          inputMax,
-          outputDir,
-          batchSize,
-          runSanity)
 
 
 
