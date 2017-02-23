@@ -96,7 +96,7 @@ class BaseNetwork(object):
       "numActiveColumnsPerInhArea": 40,
       "seed": 1956,
       "potentialPct": 0.8,
-      "boostStrength": 0.0,
+      "boostStrength": 5.0,
       "synPermActiveInc": 0.003,
       "synPermConnected": 0.2,
       "synPermInactiveDec": 0.0005,
