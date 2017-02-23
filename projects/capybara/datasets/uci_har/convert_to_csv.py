@@ -23,6 +23,7 @@
 import csv
 import os
 import numpy as np
+from collections import Counter
 
 """
 Data pre-processing from: 
@@ -86,8 +87,7 @@ def write_to_csv(X, y, output_file, debug_file, debug_file_size, headers,
   :return num_rows: (list) number of rows of the output CSV file.  
   """
   t = 0
-  if max_label_reps is not None:
-    label_reps = {i: 0 for i in max_label_reps.keys()}
+  label_counter = Counter()
   with open(output_file, 'w') as f:
     with open(debug_file, 'w') as sf:
       writer = csv.writer(f)
@@ -102,8 +102,8 @@ def write_to_csv(X, y, output_file, debug_file, debug_file_size, headers,
           row.append(t)
           if max_label_reps:
             if label in max_label_reps:
-              label_reps[label] += 1
-              if label_reps[label] < max_label_reps[label]:
+              label_counter[label] += 1
+              if label_counter[label] < max_label_reps[label]:
                 writer.writerow(row)
                 if t < debug_file_size:
                   debug_writer.writerow(row)
@@ -192,7 +192,7 @@ if __name__ == '__main__':
 
   # How many times labels are allowed to repeat. E.g: {1: 20000, 2: 20000}
   # Set it MAX_LABEL_REPS to 'None' to keep all data and labels.
-  MAX_LABEL_REPS = None
+  MAX_LABEL_REPS = {i: 5000 for i in range(len(LABELS))}
 
   X_train_signals_paths = [os.path.join(DATASET_PATH,
                                         TRAIN,
