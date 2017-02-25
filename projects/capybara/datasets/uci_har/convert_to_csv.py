@@ -189,11 +189,13 @@ if __name__ == '__main__':
   DATASET_PATH = 'UCI HAR Dataset'
   TRAIN = 'train'
   TEST = 'test'
-
+  
   # How many times labels are allowed to repeat. E.g: {1: 20000, 2: 20000}
-  # Set it MAX_LABEL_REPS to 'None' to keep all data and labels.
-  MAX_LABEL_REPS = {i: 5000 for i in range(len(LABELS))}
-
+  # Set MAX_LABEL_REPS to 'None' to keep all data and labels.
+  
+  # With WALKING and STANDING
+  MAX_LABEL_REPS = {0: 5000, 4:5000}
+  
   X_train_signals_paths = [os.path.join(DATASET_PATH,
                                         TRAIN,
                                         'Inertial Signals',
