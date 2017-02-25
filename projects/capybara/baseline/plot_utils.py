@@ -201,7 +201,7 @@ def plot_data(X, y_labels, t, title):
 
 
 
-def plot_predictions(t, X_values, y_true, y_pred, output_file_path):
+def plot_predictions(t, X_values, y_true, y_pred, output_file_path, title):
   """
   Plot prediction results (correct and incorrect)  
   
@@ -210,6 +210,7 @@ def plot_predictions(t, X_values, y_true, y_pred, output_file_path):
   :param y_true: (list) true labels
   :param y_pred: (list) predicted labels
   :param output_file_path: (str) path to output file
+  :param title: (str) title of the plot.
   """
   if type(t) != np.ndarray:
     t = np.array(t)
@@ -222,25 +223,21 @@ def plot_predictions(t, X_values, y_true, y_pred, output_file_path):
 
   correct = []
   incorrect = []
-  for r in y_true == y_pred:
-    correct.append(r[0])
-    incorrect.append(not r[0])
+  for prediction in y_true == y_pred:
+    correct.append(prediction)
+    incorrect.append(not prediction)
 
-  t_correct = t[correct]
-  t_incorrect = t[incorrect]
-
-  X_values_test_correct = X_values[correct]
-  X_values_test_incorrect = X_values[incorrect]
-
-  trace0 = go.Scatter(x=t_correct, y=X_values_test_correct[:, 0],
+  trace0 = go.Scatter(x=t[correct], 
+                      y=X_values[correct],
                       name='Correct predictions',
                       mode='markers', marker={'color': 'green'})
 
-  trace1 = go.Scatter(x=t_incorrect, y=X_values_test_incorrect[:, 0],
+  trace1 = go.Scatter(x=t[incorrect], 
+                      y=X_values[incorrect],
                       name='Incorrect predictions',
                       mode='markers', marker={'color': 'red'})
 
-  layout = go.Layout(showlegend=True, title='Predictions')
+  layout = go.Layout(showlegend=True, title=title)
   fig = go.Figure(data=[trace0, trace1], layout=layout)
 
   py.plot(fig,

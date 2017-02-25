@@ -24,8 +24,11 @@ import pandas as pd
 
 from sklearn.metrics import (classification_report, confusion_matrix,
                              accuracy_score)
+
+from baseline_utils import predictions_vote
+
 from plot_utils import (plot_confusion_matrix, plot_train_history,
-                        plot_classification_report)
+                        plot_classification_report, plot_predictions)
 
 LABELS = ['WALKING',
           'WALKING_UPSTAIRS',
@@ -35,6 +38,7 @@ LABELS = ['WALKING',
           'LAYING']
 
 OUTPUT_DIR = 'plots'
+VOTE_WINDOW = 125  # Needs to be an odd number to break ties
 
 if __name__ == '__main__':
   
@@ -58,12 +62,17 @@ if __name__ == '__main__':
   loss = df.loss.values
   output_file = os.path.join(OUTPUT_DIR, 'train_history.html')
   plot_train_history(epochs, acc, loss, output_file)
+  print 'Plot saved:', output_file
 
   # Predictions
   df = pd.read_csv(predictions_path)
+  t = df.t.values
+  X_values = df.scalar_value.values
   y_true = df.y_true.values
   y_pred = df.y_pred.values
-  y_vote = df.y_vote.values
+  
+  if VOTE_WINDOW is not None:
+    y_pred = predictions_vote(y_pred, VOTE_WINDOW)
 
   # Accuracy
   acc = accuracy_score(y_true, y_pred)
@@ -81,8 +90,16 @@ if __name__ == '__main__':
                             classes=label_list,
                             normalize=True,
                             title='Confusion matrix (accuracy=%.2f)' % acc)
+  print 'Plot saved:', output_file
 
   # Classification report (F1 score, etc.)
   clf_report = classification_report(y_true, y_pred, target_names=label_list)
   output_file = os.path.join(OUTPUT_DIR, 'classification_report.png')
   plot_classification_report(clf_report, output_file)
+  print 'Plot saved:', output_file
+
+  # Plot predictions
+  output_file = os.path.join(OUTPUT_DIR, 'predictions.html')
+  title = 'Predictions (accuracy=%s)' % acc
+  plot_predictions(t, X_values, y_true, y_pred, output_file, title)
+  print 'Plot saved:', output_file

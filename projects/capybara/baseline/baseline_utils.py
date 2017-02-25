@@ -185,20 +185,3 @@ def load_keras_model(model_name):
   print("Loaded model from disk")
   return loaded_model
 
-
-
-def online_moving_average(last_ma, new_value, moving_average_window):
-  """
-  Online computation of moving average.
-  From: http://www.daycounter.com/LabBook/Moving-Average.phtml
-  """
-
-  ma = last_ma + (new_value - last_ma) / float(moving_average_window)
-  return ma
-
-
-
-def moving_average(a, n=10):
-  ret = np.cumsum(a, axis=0, dtype=float)
-  ret[n:] = ret[n:] - ret[:-n]
-  return np.append(a[:n - 1], ret[n - 1:] / n, 0)

@@ -24,18 +24,16 @@ import json
 import os
 import pandas as pd
 import time
-from sklearn.metrics import accuracy_score
+import numpy as np
 
-from baseline_utils import (create_model, predictions_vote,
+from baseline_utils import (create_model,
                             convert_to_one_hot, save_keras_model,
-                            load_keras_model, convert_to_sdrs, moving_average)
+                            load_keras_model)
 
 CHUNK_SIZE = 2048
 BATCH_SIZE = 32
-NUM_EPOCHS = 200
-VERBOSE = 0
-MA_WINDOW = 10
-VOTE_WINDOW = 125  # Needs to be an odd number to break ties
+NUM_EPOCHS = 10
+MA_WINDOW = 255
 NUM_TM_CELLS = 2048 * 32
 
 TRACE_DIR = '../htm/traces'
@@ -54,60 +52,133 @@ LABELS = ['WALKING',
           'STANDING',
           'LAYING']
 
+# If LAZY=True, don't load all the data in memory and train the model chunk by 
+# chunk. Repeat for each epoch. (Memory efficient but slower because 
+# at each epoch, the lazy panda data frame iterator needs to re-created).
+
+# If LAZY=False, load all the data in memory and train the model for 
+# multiple epochs (Memory intensive, but faster - since the panda data 
+# frame is only loaded at the beginning).
+
+LAZY = False
 
 
-def _process_chunk(chunk, output_dim):
-  tmPredictedActiveCellsNZ = chunk.tmPredictedActiveCells.values
-  tmPredictedActiveCells = convert_to_sdrs(tmPredictedActiveCellsNZ,
-                                           NUM_TM_CELLS)
-  X = moving_average(tmPredictedActiveCells, MA_WINDOW)
-  y_labels = chunk.label.values
-  y = convert_to_one_hot(y_labels, output_dim)
-  return X, y
+
+def _convert_df(df, y_dim):
+  union = df.tmPredictedActiveCells.rolling(MA_WINDOW).mean()
+  union[:MA_WINDOW - 1] = df.tmPredictedActiveCells[:MA_WINDOW - 1]  # no NaNs
+  X = np.array([u for u in union.values])
+  y_labels = df.label.values
+  y = convert_to_one_hot(y_labels, y_dim)
+  t = df.t.values
+  X_values = df.scalarValue.values
+  return t, X, X_values, y, y_labels
 
 
 
-def _train_and_save_model(model_path, input_dim, output_dim,
-                          model_history_path):
+def _convert_patternNZ_json_string_to_sdr(patternNZ_json_string, sdr_width):
+  patternNZ = np.array(json.loads(patternNZ_json_string), dtype=int)
+  sdr = np.zeros(sdr_width)
+  sdr[patternNZ] = 1
+  return sdr
+
+
+
+def _sdr_converter(sdr_width):
+  return lambda x: _convert_patternNZ_json_string_to_sdr(x, sdr_width)
+
+
+
+def _train_on_chunks(model, output_dim, input_dim, input_file, history_writer):
+  """
+  Don't load all the data in memory. Read it chunk by chunk to train the model.
+  :param model: (keras.Model) model to train. 
+  :param output_dim: (int) dimension of the output layer.
+  :param input_dim: (int) dimension of the input layer.
+  :param input_file: (str) path to the input training set.
+  :param history_writer: (csv.writer) file writer.
+  """
+  start = time.time()
+  for epoch in range(NUM_EPOCHS):
+    print 'Epoch %s/%s' % (epoch, NUM_EPOCHS)
+
+    # Note: http://stackoverflow.com/a/1271353
+    df_generator = pd.read_csv(
+      input_file, chunksize=CHUNK_SIZE, iterator=True,
+      converters={'tmPredictedActiveCells': _sdr_converter(input_dim)},
+      usecols=['t', 'label', 'scalarValue', 'tmPredictedActiveCells'])
+
+    chunk_counter = 0
+    for df in df_generator:
+      t, X, X_values, y, y_labels = _convert_df(df, output_dim)
+      hist = model.fit(X, y, validation_split=0.0,
+                       batch_size=BATCH_SIZE, shuffle=False,
+                       verbose=0, nb_epoch=1)
+      acc = hist.history['acc']
+      loss = hist.history['loss']
+      assert len(acc) == 1  # Should be only one epoch
+      history_writer.writerow([epoch, acc[0], loss[0]])
+      chunk_counter += 1
+
+      # Print elapsed time and # of rows processed.
+      now = int(time.time() - start)
+      row_id = CHUNK_SIZE * chunk_counter
+      print '-> Elapsed train time: %ss - Rows processed: %s' % (now, row_id)
+
+
+
+def _train(model, output_dim, input_dim, input_file, history_writer):
+  """
+  Load all the data in memory and train the model.
+  :param model: (keras.Model) model to train. 
+  :param output_dim: (int) dimension of the output layer.
+  :param input_dim: (int) dimension of the input layer.
+  :param input_file: (str) path to the input training set.
+  :param history_writer: (csv.writer) file writer.
+  """
+  start = time.time()
+  df = pd.read_csv(
+    input_file,
+    converters={'tmPredictedActiveCells': _sdr_converter(input_dim)},
+    usecols=['t', 'label', 'scalarValue', 'tmPredictedActiveCells'])
+  t, X, X_values, y, y_labels = _convert_df(df, output_dim)
+
+  hist = model.fit(X, y, validation_split=0.0,
+                   batch_size=BATCH_SIZE, shuffle=False,
+                   verbose=1, nb_epoch=NUM_EPOCHS)
+  acc = hist.history['acc']
+  loss = hist.history['loss']
+  for epoch in range(NUM_EPOCHS):
+    history_writer.writerow([epoch, acc[epoch], loss[epoch]])
+  print 'Elapsed time: %s' % (time.time() - start)
+
+
+
+def _train_and_save_model(model_path, model_history_path,
+                          input_dim, output_dim, lazy=False):
   """
   Train model, save train history and trained model.
   
   :param model_path: (str) path to serialized model.
+  :param model_history_path: (str) path to model train history.
   :param input_dim: (int) input layer dimension.
   :param output_dim: (int) output layer dimension.
-  :param model_history_path: (str) path to model train history.
+  :param lazy: (bool) whether to load the whole input file in memory or to 
+    read it lazily in chunks. 
   :return model: (keras.Model) trained model.
   """
-  start = time.time()
   model = create_model(input_dim, output_dim)
 
   with open(model_history_path, 'a') as historyFile:
-    historyWriter = csv.writer(historyFile)
-    historyWriter.writerow(['epoch', 'acc', 'loss'])
+    history_writer = csv.writer(historyFile)
+    history_writer.writerow(['epoch', 'acc', 'loss'])
+    train_file = os.path.join(TRACE_DIR, 'trace_%s_train.csv' % EXP_NAME)
 
-    for epoch in range(NUM_EPOCHS):
-      print 'Epoch: %s/%s' % (epoch, NUM_EPOCHS)
-      train_file = os.path.join(TRACE_DIR, 'trace_%s_train.csv' % EXP_NAME)
-      chunks = pd.read_csv(train_file, iterator=True,
-                           chunksize=CHUNK_SIZE,
-                           converters={'tmPredictedActiveCells': json.loads},
-                           usecols=['t', 'label', 'scalarValue',
-                                    'tmPredictedActiveCells'])
-      chunk_counter = 0
-      for chunk in chunks:
-        X, y = _process_chunk(chunk, output_dim)
-        hist = model.fit(X, y, batch_size=BATCH_SIZE, shuffle=False,
-                         verbose=VERBOSE, nb_epoch=1)
-        acc = hist.history['acc']
-        loss = hist.history['loss']
-        assert len(acc) == 1  # Should be only one epoch
-        historyWriter.writerow([epoch, acc[0], loss[0]])
-
-        # Print elapsed time and row id.
-        now = int(time.time() - start)
-        row_id = CHUNK_SIZE * chunk_counter
-        print '-> Elapsed train time: %ss - Row: %s' % (now, row_id)
-        chunk_counter += 1
+    if lazy:
+      _train_on_chunks(model, output_dim, input_dim, train_file,
+                       history_writer)
+    else:
+      _train(model, output_dim, input_dim, train_file, history_writer)
 
   save_keras_model(model, model_path)
   print 'Trained model saved:', model_path
@@ -116,47 +187,42 @@ def _train_and_save_model(model_path, input_dim, output_dim,
 
 
 
-def _test_model(model, predictions_history_path):
+def _test_model(model, predictions_history_path, input_dim, output_dim):
   """
   Evaluate model on test set and save prediction history.
   
   :param model: (keras.Model) trained model.
   :param predictions_history_path: (str) path to prediction history file.
-  :return: 
+  :param input_dim: (int) input layer dimension.
+  :param output_dim: (int) output layer dimension.
   """
 
   start = time.time()
   test_file = os.path.join(TRACE_DIR, 'trace_%s_test.csv' % EXP_NAME)
-  chunks = pd.read_csv(test_file, iterator=True, chunksize=CHUNK_SIZE,
-                       converters={'tmPredictedActiveCells': json.loads},
-                       usecols=['t', 'label', 'scalarValue',
-                                'tmPredictedActiveCells'])
+  chunks = pd.read_csv(
+    test_file, iterator=True, chunksize=CHUNK_SIZE,
+    converters={'tmPredictedActiveCells': _sdr_converter(input_dim)},
+    usecols=['t', 'label', 'scalarValue', 'tmPredictedActiveCells'])
 
   with open(predictions_history_path, 'a') as f:
     pred_writer = csv.writer(f)
-    pred_writer.writerow(['t', 'scalar_value', 'y_pred', 'y_vote', 'y_true'])
+    pred_writer.writerow(['t', 'scalar_value', 'y_pred', 'y_true'])
 
     chunk_counter = 0
     for chunk in chunks:
-      t = chunk.t.values
-      X_values = chunk.scalarValue.values
-      y_true = chunk.label.values
-      tmPredictedActiveCellsNZ = chunk.tmPredictedActiveCells.values
-      tmPredictedActiveCells = convert_to_sdrs(tmPredictedActiveCellsNZ,
-                                               NUM_TM_CELLS)
-      X = moving_average(tmPredictedActiveCells, MA_WINDOW)
+      t, X, X_values, y, y_labels = _convert_df(chunk, output_dim)
       y_pred = model.predict_classes(X)
-      y_vote = predictions_vote(y_pred, VOTE_WINDOW)
+      y_true = y_labels
 
       for i in range(len(y_pred)):
-        pred_writer.writerow([t[i], X_values[i], y_pred[i],
-                              y_vote[i], y_true[i]])
+        pred_writer.writerow([t[i], X_values[i], y_pred[i], y_true[i]])
 
       now = int(time.time() - start)
       row_id = CHUNK_SIZE * chunk_counter
       print 'Elapsed test time: %ss - Row: %s' % (now, row_id)
       chunk_counter += 1
 
+  print 'Elapsed time: %ss' % (time.time() - start)
   print 'Test prediction history saved:', predictions_history_path
 
 
@@ -197,13 +263,13 @@ def main():
 
   # Train
   if train:
-    model = _train_and_save_model(model_path, input_dim, output_dim,
-                                  model_history_path)
+    model = _train_and_save_model(model_path, model_history_path,
+                                  input_dim, output_dim, lazy=LAZY)
   else:
     model = load_keras_model(model_path)
 
   # Test
-  _test_model(model, prediction_history_path)
+  _test_model(model, prediction_history_path, input_dim, output_dim)
 
 
 
