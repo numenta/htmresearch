@@ -38,7 +38,8 @@ LABELS = ['WALKING',
 # Range to plot
 x_min = 0
 x_max = 40000
-metric = 'body_acc_x'
+axis = ['x', 'y', 'z']
+metrics = ['body_gyro', 'body_acc', 'total_acc']
 
 # Input data to plot
 test_file = 'inertial_signals_test.csv'
@@ -46,61 +47,64 @@ train_file = 'inertial_signals_train.csv'
 train = pd.read_csv(train_file)[x_min:x_max]
 test = pd.read_csv(test_file)[x_min:x_max]
 
-train[metric] = train[metric].astype(float)
-test[metric] = test[metric].astype(float)
-train.label = train.label.astype(int)
-test.label = test.label.astype(int)
-
-data = {
-  'train': train,
-  'test': test
-}
-
-filenames = []
-for phase in data.keys():
-  df = data[phase]
-  min_val = min(df[metric].values)
-  max_val = max(df[metric].values)
-
-  traces = []
-  traces.append(go.Scatter(x=range(len(df)),
-                           y=df[metric],
-                           name='Data'))
-  layout = go.Layout(title='%s data (%s)' % (phase, metric))
-  labels = [l for l in df.label.unique()]
-  num_labels = len(labels)
-
-  # make sure we have enough colors
-  colors *= num_labels // 10 + 1
-
-  for label in labels:
-    lower_bound = df.copy()
-    upper_bound = df.copy()
-
-    lower_bound[metric] = min_val
-    upper_bound[metric][df.label == label] = max_val
-    upper_bound[metric][df.label != label] = min_val
-
-    traces.append(go.Scatter(x=range(len(df)),
-                             y=upper_bound[metric],
-                             mode='lines',
-                             fill=None,
-                             line=dict(color=colors[label]),
-                             legendgroup=str(label),
-                             name='label %s' % label))
-
-    traces.append(go.Scatter(x=range(len(df)),
-                             y=lower_bound[metric],
-                             mode='lines',
-                             fill='tonexty',
-                             legendgroup=str(label),
-                             line=dict(color=colors[label]),
-                             name='label %s (%s)' % (label, LABELS[label])))
-
-  fig = go.Figure(data=traces, layout=layout)
-  filename = '%s_%s.html' % (metric, phase)
-  filenames.append(filename)
-  py.plot(fig, filename=filename,
-          auto_open=False)
+for m in metrics:
+  for ax in axis:
+    metric = '%s_%s' % (m, ax)
+    train[metric] = train[metric].astype(float)
+    test[metric] = test[metric].astype(float)
+    train.label = train.label.astype(int)
+    test.label = test.label.astype(int)
+    
+    data = {
+      'train': train,
+      'test': test
+    }
+    
+    filenames = []
+    for phase in data.keys():
+      df = data[phase]
+      min_val = min(df[metric].values)
+      max_val = max(df[metric].values)
+    
+      traces = []
+      traces.append(go.Scatter(x=range(len(df)),
+                               y=df[metric],
+                               name='Data'))
+      layout = go.Layout(title='%s data (%s)' % (phase, metric))
+      labels = [l for l in df.label.unique()]
+      num_labels = len(labels)
+    
+      # make sure we have enough colors
+      colors *= num_labels // 10 + 1
+    
+      for label in labels:
+        lower_bound = df.copy()
+        upper_bound = df.copy()
+    
+        lower_bound[metric] = min_val
+        upper_bound[metric][df.label == label] = max_val
+        upper_bound[metric][df.label != label] = min_val
+    
+        traces.append(go.Scatter(x=range(len(df)),
+                                 y=upper_bound[metric],
+                                 mode='lines',
+                                 fill=None,
+                                 line=dict(color=colors[label]),
+                                 legendgroup=str(label),
+                                 name='label %s' % label))
+    
+        traces.append(go.Scatter(x=range(len(df)),
+                                 y=lower_bound[metric],
+                                 mode='lines',
+                                 fill='tonexty',
+                                 legendgroup=str(label),
+                                 line=dict(color=colors[label]),
+                                 name='label %s (%s)' % (label, LABELS[label])))
+    
+      fig = go.Figure(data=traces, layout=layout)
+      filename = '%s_%s.html' % (metric, phase)
+      filenames.append(filename)
+      py.plot(fig, filename=filename,
+              auto_open=False)
 
 print 'HTML plots saved: %s' % filenames
