@@ -36,7 +36,6 @@ _LOGGER = logging.getLogger('NetworkRunner')
 _LOGGER.setLevel(logging.INFO)
 
 
-
 def _newTrace():
   return {
     't': [],
@@ -50,11 +49,13 @@ def _newTrace():
     'label': []
   }
 
+SKIP_STABLE_ENCODINGS = False
+MAX_STABLE_ENCODING_REPS = 1
 
 
 def _processEncoding(encoding, recentEncodings):
   """
-  An encoding shouldn't be processed if it is identical to all recent encodings 
+  An encoding shouldn't be processed if it is identical to all recent encodings
   """
 
   if len(recentEncodings) == 0:
@@ -106,9 +107,8 @@ class NetworkRunner(object):
     self.observedMin = None
     self.observedMax = None
 
-    # Keep track of repeating encodings
-    self.maxEncodingRepetitions = 1
-    self.recentEncodings = deque(maxlen=self.maxEncodingRepetitions)
+    # Keep track of stable encodings repetitions.
+    self.recentEncodings = deque(maxlen=MAX_STABLE_ENCODING_REPS)
 
     # Keep track of the processing time
     self.startTime = time.time()
@@ -193,12 +193,15 @@ class NetworkRunner(object):
           label = int(data['label'])
           value = float(data[inputMetricName])
           self._setObservedMinMax(value)
-
-          # Encode scalar value and optionally run the network.
           self.network.encodeValue(value)
-          encoding = self.network.getEncoderOutputNZ()
-          runNetwork = _processEncoding(encoding, self.recentEncodings)
-          self.recentEncodings.append(encoding)
+          
+          runNetwork = True
+          # Optionally run the network if too many stable encodings are 
+          # seen consecutively.
+          if SKIP_STABLE_ENCODINGS:
+            encoding = self.network.getEncoderOutputNZ()
+            runNetwork = _processEncoding(encoding, self.recentEncodings)
+            self.recentEncodings.append(encoding)
 
           if runNetwork:
             # The scalar value was already encoded, so don't do it again.
@@ -212,9 +215,6 @@ class NetworkRunner(object):
                               self.network.getTmPredictiveCellsNZ(),
                               self.network.getTmPredictedActiveCellsNZ(),
                               self.network.getRawAnomalyScore())
-            _LOGGER.debug('PROCESS: value=%s, encoding=%s' % (value, encoding))
-          else:
-            _LOGGER.debug('SKIP: value=%s, encoding=%s' % (value, encoding))
 
           # Write and reset trace periodically to optimize memory usage.
           if t % self.batchSize == 0:
