@@ -94,9 +94,11 @@ def _setScalarEncoderMinMax(networkConfig, dataSource):
   fieldName = _getEncoderParam(networkConfig, "scalarEncoder", "fieldname")
   minval = dataSource.getFieldMin(fieldName)
   maxval = dataSource.getFieldMax(fieldName)
-  networkConfig["sensorRegionConfig"]["encoders"]["scalarEncoder"]["minval"] = (
+  networkConfig["sensorRegionConfig"]["encoders"]["scalarEncoder"][
+    "minval"] = (
     minval)
-  networkConfig["sensorRegionConfig"]["encoders"]["scalarEncoder"]["maxval"] = (
+  networkConfig["sensorRegionConfig"]["encoders"]["scalarEncoder"][
+    "maxval"] = (
     maxval)
 
 
@@ -213,9 +215,9 @@ def _validateRegionWidths(previousRegionWidth, currentRegionWidth):
 
 
 
-def configureNetwork(dataSource, networkParams, encoder=None):
+def createAndConfigureNetwork(dataSource, networkParams, encoder=None):
   """
-  Configure the network for various experiment values.
+  Create and configure a new network.
 
   @param dataSource: (RecordStream) CSV file record stream.
   @param networkParams: (dict) the configuration of this network.
@@ -248,7 +250,8 @@ def createNetwork(dataSource, networkConfig, encoder=None):
   @param networkConfig: (dict) the configuration of this network.
   @param encoder: (Encoder) encoding object to use instead of specifying in
     networkConfig.
-  @return network: (Network) Sample network. E.g. Sensor -> SP -> TM -> Classif.
+  @return network: (Network) HTM network. 
+    E.g. Sensor -> SP -> TM -> SDRClassifier
   """
   network = Network()
 
@@ -341,33 +344,38 @@ def createNetwork(dataSource, networkConfig, encoder=None):
 
 
 
-def enableRegionLearning(network, networkConfig):
+def setRegionLearning(network, networkConfig, learningMode=True):
   sensorRegion = network.regions[
     networkConfig["sensorRegionConfig"].get("regionName")]
 
   if networkConfig["spRegionConfig"].get("regionEnabled"):
     spRegion = network.regions[
       networkConfig["spRegionConfig"].get("regionName")]
-    spRegion.setParameter("learningMode", True)
+    spRegion.setParameter("learningMode", learningMode)
   else:
     spRegion = None
 
   if networkConfig["tmRegionConfig"].get("regionEnabled"):
     tmRegion = network.regions[
       networkConfig["tmRegionConfig"].get("regionName")]
-    tmRegion.setParameter("learningMode", True)
+    tmRegion.setParameter("learningMode", learningMode)
   else:
     tmRegion = None
 
   if networkConfig['tpRegionConfig'].get('regionEnabled'):
     tpRegion = network.regions[
       networkConfig['tpRegionConfig'].get('regionName')]
-    tpRegion.setParameter("learningMode", True)
+    tpRegion.setParameter("learningMode", learningMode)
   else:
     tpRegion = None
 
   classifierRegion = network.regions[
     networkConfig["classifierRegionConfig"].get("regionName")]
-  classifierRegion.setParameter("learningMode", True)
+  classifierRegion.setParameter("learningMode", learningMode)
+
+  if learningMode:
+    _LOGGER.info('Learning is ENABLED.')
+  else:
+    _LOGGER.info('Learning is DISABLED.')
 
   return sensorRegion, spRegion, tmRegion, tpRegion, classifierRegion

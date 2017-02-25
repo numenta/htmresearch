@@ -22,7 +22,7 @@
 import numpy
 
 from htmresearch.frameworks.classification.network_factory import (
-  configureNetwork)
+  createAndConfigureNetwork)
 from htmresearch.encoders import EncoderTypes
 from htmresearch.encoders.cio_encoder import CioEncoder
 from htmresearch.frameworks.nlp.classify_network_api import (
@@ -102,7 +102,7 @@ class ClassificationModelDocumentFingerprint(ClassificationNetworkAPI):
     modelConfig["classifierRegionConfig"]["regionParams"][
                 "maxCategoryCount"] = self.numLabels
     self.networkConfig = modelConfig
-    self.network = configureNetwork(None, self.networkConfig, encoder)
+    self.network = createAndConfigureNetwork(None, self.networkConfig, encoder)
 
 
   def trainToken(self, token, labels, sampleId, resetSequence=0):
