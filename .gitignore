@@ -82,3 +82,4 @@ robotium-solo-5.0.1.jar.properties
 
 *checkpoint.ipynb
 *.h5
+projects/sequence_classification/.ipynb_checkpoints
