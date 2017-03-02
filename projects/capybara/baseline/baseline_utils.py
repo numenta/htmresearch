@@ -97,7 +97,7 @@ def create_model(input_dim, output_dim):
 
   # For a multi-class classification problem
   model.compile(loss='categorical_crossentropy',
-                optimizer='sgd', metrics=['accuracy'])
+                optimizer='rmsprop', metrics=['accuracy'])
 
   return model
 
@@ -181,7 +181,7 @@ def save_keras_model(model, model_path):
 
 
 def load_keras_model(model_name):
-  loaded_model = load_model("%s.h5" % model_name)
+  loaded_model = load_model(model_name)
   print("Loaded model from disk")
   return loaded_model
 

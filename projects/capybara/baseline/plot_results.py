@@ -30,37 +30,35 @@ from baseline_utils import predictions_vote
 from plot_utils import (plot_confusion_matrix, plot_train_history,
                         plot_classification_report, plot_predictions)
 
-LABELS = ['WALKING',
-          'WALKING_UPSTAIRS',
-          'WALKING_DOWNSTAIRS',
-          'SITTING',
-          'STANDING',
-          'LAYING']
-
-OUTPUT_DIR = 'plots'
-VOTE_WINDOW = 125  # Needs to be an odd number to break ties
-
 if __name__ == '__main__':
   
-  if not os.path.exists(OUTPUT_DIR):
-    os.makedirs(OUTPUT_DIR)
+
   
   # Path to CSV files (training history and predictions)
   parser = argparse.ArgumentParser()
-  parser.add_argument('--train-history', '-t', dest='train_history',type=str,
-                      default='results/train_history.csv')
-  parser.add_argument('--predictions', '-p', dest='predictions',type=str,
-                      default='results/predictions.csv')
+  parser.add_argument('--vote_window', '-v', dest='vote_window',
+                      type=int, default=11)
+  parser.add_argument('--input_dir', '-i', dest='input_dir',
+                      type=str, default='results')
+  parser.add_argument('--output_dir', '-o', dest='output_dir',type=str,
+                      default='plots')
   options = parser.parse_args()
-  train_history_path = options.train_history
-  predictions_path = options.predictions
+  vote_window = options.vote_window
+  input_dir = options.input_dir
+  output_dir = options.output_dir
+  
+  if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+  
+  train_history_path = os.path.join(input_dir, 'train_history.csv')
+  predictions_path = os.path.join(input_dir, 'predictions.csv')
   
   # Training history
   df = pd.read_csv(train_history_path)
   epochs = range(len(df.epoch.values))
   acc = df.acc.values
   loss = df.loss.values
-  output_file = os.path.join(OUTPUT_DIR, 'train_history.html')
+  output_file = os.path.join(output_dir, 'train_history.html')
   plot_train_history(epochs, acc, loss, output_file)
   print 'Plot saved:', output_file
 
@@ -71,20 +69,18 @@ if __name__ == '__main__':
   y_true = df.y_true.values
   y_pred = df.y_pred.values
   
-  if VOTE_WINDOW is not None:
-    y_pred = predictions_vote(y_pred, VOTE_WINDOW)
+  if vote_window > 0:
+    y_pred = predictions_vote(y_pred, vote_window)
 
   # Accuracy
   acc = accuracy_score(y_true, y_pred)
   print 'Accuracy on test set:', acc
   
-  # Find labels in use
   label_list = sorted(df.y_true.unique())
-  label_list = [LABELS[l] for l in label_list]
 
   # Plot normalized confusion matrix
   cnf_matrix = confusion_matrix(y_true, y_pred)
-  output_file = os.path.join(OUTPUT_DIR, 'confusion_matrix.png')
+  output_file = os.path.join(output_dir, 'confusion_matrix.png')
   _ = plot_confusion_matrix(cnf_matrix,
                             output_file,
                             classes=label_list,
@@ -93,13 +89,13 @@ if __name__ == '__main__':
   print 'Plot saved:', output_file
 
   # Classification report (F1 score, etc.)
-  clf_report = classification_report(y_true, y_pred, target_names=label_list)
-  output_file = os.path.join(OUTPUT_DIR, 'classification_report.png')
+  clf_report = classification_report(y_true, y_pred)
+  output_file = os.path.join(output_dir, 'classification_report.png')
   plot_classification_report(clf_report, output_file)
   print 'Plot saved:', output_file
 
   # Plot predictions
-  output_file = os.path.join(OUTPUT_DIR, 'predictions.html')
+  output_file = os.path.join(output_dir, 'predictions.html')
   title = 'Predictions (accuracy=%s)' % acc
   plot_predictions(t, X_values, y_true, y_pred, output_file, title)
   print 'Plot saved:', output_file

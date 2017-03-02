@@ -36,6 +36,7 @@ _LOGGER = logging.getLogger('NetworkRunner')
 _LOGGER.setLevel(logging.INFO)
 
 
+
 def _newTrace():
   return {
     't': [],
@@ -49,8 +50,11 @@ def _newTrace():
     'label': []
   }
 
+
+
 SKIP_STABLE_ENCODINGS = False
 MAX_STABLE_ENCODING_REPS = 1
+
 
 
 def _processEncoding(encoding, recentEncodings):
@@ -79,8 +83,8 @@ def _getConfig(configFilePath):
   inputMin = config['inputs']['metricMin']
   inputMax = config['inputs']['metricMax']
   outputDir = config['outputs']['outputDir']
-  batchSize = config['networkRunner']['batchSize']
-  runSanity = config['networkRunner']['runSanity']
+  batchSize = config['params']['batchSize']
+  runSanity = config['params']['runSanity']
 
   return (inputDir,
           baseName,
@@ -190,11 +194,11 @@ class NetworkRunner(object):
         for row in reader:
           t = int(reader.line_num)
           data = dict(zip(inputHeaders, row))
-          label = int(data['label'])
-          value = float(data[inputMetricName])
+          label = json.loads(data['label'])
+          value = json.loads(data[inputMetricName])
           self._setObservedMinMax(value)
           self.network.encodeValue(value)
-          
+
           runNetwork = True
           # Optionally run the network if too many stable encodings are 
           # seen consecutively.

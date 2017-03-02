@@ -1,0 +1,35 @@
+inputs:
+  input_dir: 'traces_ucr'
+  # Note: 'baseName' is used to form the CSV input file names. 
+  # E.g: '<baseName>_train.csv' and '<baseName>_test.csv'
+  base_name: 'synthetic_control' 
+  metric_name: 'scalar'
+
+outputs:
+  results_output_dir: 'results_ucr_sp'
+  model_output_dir: 'model_ucr_sp'
+  history_file: 'train_history.csv'
+  prediction_file: 'predictions.csv'
+  model_name: 'baseline.h5'
+
+params:
+  chunk_size: 2048
+  batch_size: 32
+  num_epochs: 10
+  ma_window: 10
+  input_name: 'spActiveColumns'
+  input_dim: 2048 
+  output_dim: 6
+  labels: ['Random','SineWave','LineUp','LineDown', 'TrendUp', 'TrendDown']
+  # If lazy=True, don't load all the data in memory and train the model chunk
+  # by chunk. Repeat for each epoch. (Memory efficient but slower because 
+  # at each epoch, the lazy panda data frame iterator needs to re-created).
+  # If lazy=False, load all the data in memory and train the model for 
+  # multiple epochs (Memory intensive, but faster - since the panda data 
+  # frame is only loaded at the beginning).
+  lazy: True
+  # If train=True, train a model.
+  # If train=False, load a model from disk.
+  train: True 
+  
+
