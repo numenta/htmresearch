@@ -1,11 +1,11 @@
+"""Helper plot functions"""
+
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from sklearn.metrics import confusion_matrix, accuracy_score
 import itertools
-
-"""Helper plot functions"""
 
 
 

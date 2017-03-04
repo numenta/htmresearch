@@ -1,27 +1,13 @@
-import pandas as pd
+import argparse
 import itertools
 import os
 import shutil
-from collections import Counter
-
-HELP_TEXT = """
-  Individual time series files were stored with a two levels folder structure:
-
-      %s/
-          category_1_folder/
-              file_1.txt
-              file_2.txt
-              ...
-              file_42.txt
-          category_2_folder/
-              file_43.txt
-              file_44.txt
-              ...
-"""
+import numpy as np
+import pandas as pd
 
 
 
-def convert_to_sequences(csv_path, output_dir):
+def convert_to_sequences(input_dir, base_name, phase, chunk_size=100):
   """
   Look for homogeneous chunk of time series with the same label.
   
@@ -29,27 +15,28 @@ def convert_to_sequences(csv_path, output_dir):
   structure such as the following:
 
       container_folder/
-          category_1_folder/
-              file_1.txt
-              file_2.txt
-              ...
-              file_42.txt
-          category_2_folder/
-              file_43.txt
-              file_44.txt
-              ...
+          metric_1/
+            metric_1_TRAIN.txt
+            metric_1_TEST.txt
+            
+            ...
+          
+          metric_N/
+            metric_N_TRAIN.txt
+            metric_N_TRAIN.txt
               
+  Each .txt file has the following structure: 
+      label, metric_1(t1), ..., metric_1(tN)
+        ...
+      label, metric_N(t1), ..., value(tM)
 
-  :param csv_path: (str) path to the input data to convert.
-  :param output_dir: (str) path to the output directory
+  Where N is the number of metrics, M is the number of timesteps, 
+  and metric_N(tM) is the value of metric_N at time tM.
   """
 
-  df = pd.read_csv(csv_path)
+  csv_path = os.path.join(input_dir, '%s_%s.csv' % (base_name, phase))
 
-  # Create output dir
-  labels = list(df.label.unique())
-  if os.path.exists(output_dir):
-    shutil.rmtree(output_dir)
+  df = pd.read_csv(csv_path)
 
   # Group time series by label chunks  
   metrics = list(df.columns.values)
@@ -57,49 +44,61 @@ def convert_to_sequences(csv_path, output_dir):
   if 't' in metrics:   metrics.remove('t')
 
   for metric in metrics:
-    grouping = itertools.groupby(zip(df.label, df[metric]), lambda x: x[0])
 
-    for label in labels:
-      os.makedirs(os.path.join(output_dir, metric, str(label)))
+    # Create output dir
+    output_dir = os.path.join(base_name, metric)
+    if not os.path.exists(output_dir):
+      os.makedirs(output_dir)
+    txt_file = os.path.join(output_dir, '%s_%s' % (metric, phase.upper()))
 
-    counter = Counter()
-    for label, group in grouping:
-      values = [g[1] for g in group]
-      df_out = pd.DataFrame(data={'value': values, 't': range(len(values))})
+    # Find sequences with chunks of homogeneous labels
+    grouping = itertools.groupby(zip(df.label, df[metric]),
+                                 lambda x: x[0])
 
-      output_file = 'series_%s.txt' % counter[label]
-      output_path = os.path.join(output_dir, metric, str(label), output_file)
-      df_out.to_csv(output_path, index=False)
-      counter[label] += 1
+    txt_rows = []
+    for label, groups in grouping:
 
-  print HELP_TEXT % output_dir
+      ts_values = []
+      for group in groups:
+        ts_values.append(group[1])
+        if len(ts_values) % chunk_size == 0:
+          txt_rows.append([int(label)] + ts_values)
+          ts_values = []
 
+      # If txt_rows is empty (meaning that no sequence was long 
+      # enough for this label), then use ts_values seen so far, if any.
+      if len(ts_values) > 0 and len(txt_rows) == 0:
+        txt_rows.append([int(label)] + ts_values)
 
-
-def test_data_import():
-  """Just testing that the conversion worked."""
-  from sklearn.datasets import load_files
-  train_dataset = load_files('inertial_signals_train/body_acc_x')
-  test_dataset = load_files('inertial_signals_train/body_acc_x')
-
-  X_train = train_dataset['data']
-  y_train = train_dataset['target']
-  assert len(X_train) == len(y_train)
-
-  X_test = test_dataset['data']
-  y_test = test_dataset['target']
-  assert len(X_test) == len(y_test)
+    np.savetxt(txt_file, txt_rows, delimiter=',', fmt='%.10f')
 
 
 
 if __name__ == '__main__':
-  csv_paths = ['debug_train.csv',
-               'debug_test.csv',
-               'inertial_signals_train.csv',
-               'inertial_signals_test.csv']
+  base_names = ['inertial_signals', 'debug']
+  phases = ['train', 'test']
 
-  for csv_path in csv_paths:
-    output_dir = os.path.basename(csv_path)[:-4]
-    convert_to_sequences(csv_path, output_dir)
+  # Parse input options.
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--input_dir', '-i',
+                      dest='input_dir',
+                      default=os.getcwd(),
+                      type=str)
+  parser.add_argument('--chunk_size', '-c',
+                      dest='chunk_size',
+                      default=100,
+                      type=int)
 
-  test_data_import()
+  options = parser.parse_args()
+  input_dir = options.input_dir
+  chunk_size = options.chunk_size
+
+  for base_name in base_names:
+
+    if os.path.exists(base_name):  # clean and create parent output dir
+      shutil.rmtree(base_name)
+
+    for phase in phases:
+      convert_to_sequences(input_dir, base_name, phase, chunk_size)
+
+    print 'Path to converted files: %s/' % base_name
