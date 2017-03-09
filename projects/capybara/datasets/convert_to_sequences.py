@@ -7,7 +7,24 @@ import pandas as pd
 
 
 
-def convert_to_sequences(input_dir, base_name, phase, chunk_size=100):
+def find_phase_name(file_path):
+  """
+  Find the phase name ('test', 'train' or 'val') in the base name of a file.
+  If not found then return 'all'.
+  
+  @param file_path: (str) path to file.
+  @return phase: (str) phase name
+  """
+  base_name = os.path.basename(file_path)
+  phases = ['train', 'test', 'val']
+  for phase in phases:
+    if phase in base_name.lower():
+      return phase
+  return 'all'
+
+
+
+def convert_to_sequences(csv_path, parent_output_dir, phase, chunk_size):
   """
   Look for homogeneous chunk of time series with the same label.
   
@@ -34,10 +51,10 @@ def convert_to_sequences(input_dir, base_name, phase, chunk_size=100):
   and metric_N(tM) is the value of metric_N at time tM.
   """
 
-  csv_path = os.path.join(input_dir, '%s_%s.csv' % (base_name, phase))
-
+  print 'csv_path:', csv_path
+  
   df = pd.read_csv(csv_path)
-
+  
   # Group time series by label chunks  
   metrics = list(df.columns.values)
   if 'label' in metrics:  metrics.remove('label')
@@ -45,8 +62,8 @@ def convert_to_sequences(input_dir, base_name, phase, chunk_size=100):
 
   for metric in metrics:
 
-    # Create output dir
-    output_dir = os.path.join(base_name, metric)
+    # Create output dir if it does not already exists
+    output_dir = os.path.join(parent_output_dir, metric)
     if not os.path.exists(output_dir):
       os.makedirs(output_dir)
     txt_file = os.path.join(output_dir, '%s_%s' % (metric, phase.upper()))
@@ -58,9 +75,15 @@ def convert_to_sequences(input_dir, base_name, phase, chunk_size=100):
     txt_rows = []
     for label, groups in grouping:
 
+      try:
+        label = int(label)
+      except:
+        print 'skip label:', label
+        continue
+        
       ts_values = []
       for group in groups:
-        ts_values.append(group[1])
+        ts_values.append(float(group[1]))
         if len(ts_values) % chunk_size == 0:
           txt_rows.append([int(label)] + ts_values)
           ts_values = []
@@ -73,32 +96,35 @@ def convert_to_sequences(input_dir, base_name, phase, chunk_size=100):
     np.savetxt(txt_file, txt_rows, delimiter=',', fmt='%.10f')
 
 
-
 if __name__ == '__main__':
-  base_names = ['inertial_signals', 'debug']
-  phases = ['train', 'test']
 
-  # Parse input options.
   parser = argparse.ArgumentParser()
-  parser.add_argument('--input_dir', '-i',
-                      dest='input_dir',
-                      default=os.getcwd(),
+  parser.add_argument('--input_file', '-i',
+                      dest='input_file',
+                      type=str,
+                      default=os.path.join(
+                        os.getcwd(), 'uci_har', 'inertial_signals_train.csv'))
+
+  parser.add_argument('--output_dir', '-o',
+                      dest='output_dir',
+                      default=os.path.join(
+                        os.getcwd(), 'uci_sequences', 'inertial_signals'),
                       type=str)
+  
   parser.add_argument('--chunk_size', '-c',
                       dest='chunk_size',
                       default=100,
                       type=int)
-
+  
   options = parser.parse_args()
-  input_dir = options.input_dir
+  csv_path = options.input_file
+  output_dir = options.output_dir
   chunk_size = options.chunk_size
 
-  for base_name in base_names:
+  if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 
-    if os.path.exists(base_name):  # clean and create parent output dir
-      shutil.rmtree(base_name)
+  phase = find_phase_name(csv_path)
+  convert_to_sequences(csv_path, output_dir, phase, chunk_size)
 
-    for phase in phases:
-      convert_to_sequences(input_dir, base_name, phase, chunk_size)
-
-    print 'Path to converted files: %s/' % base_name
+  print 'Path to converted files: %s/' % output_dir

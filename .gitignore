@@ -85,3 +85,4 @@ robotium-solo-5.0.1.jar.properties
 projects/sequence_classification/.ipynb_checkpoints
 *_TEST
 *_TRAIN
+*_ALL

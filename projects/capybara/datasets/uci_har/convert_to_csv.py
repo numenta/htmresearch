@@ -20,11 +20,12 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-
+import argparse
 import csv
 import os
 import numpy as np
 from collections import Counter
+import json
 
 """
 Data pre-processing from: 
@@ -123,6 +124,7 @@ def generate_data(X_train_signals_paths,
                   X_test_signals_paths,
                   y_train_path,
                   y_test_path,
+                  output_dir,
                   max_label_reps):
   """
   Generate data. Example for M metrics and N timesteps:
@@ -137,6 +139,7 @@ def generate_data(X_train_signals_paths,
   :param X_test_signals_paths: (list of str) paths to test data (inputs) 
   :param y_train_path: (str) path to train data (targets)
   :param y_test_path: (str) path to test data (targets)
+  :param output_dir: (str) path to output directory
   :param max_label_reps: (dict) how many times a label is allowed to repeat.
   """
   debug_file_size = 10
@@ -151,12 +154,12 @@ def generate_data(X_train_signals_paths,
   headers.append('label')
   headers.append('t')
 
-  train_csv = 'inertial_signals_train.csv'
-  test_csv = 'inertial_signals_test.csv'
+  train_csv = os.path.join(output_dir, 'inertial_signals_train.csv')
+  test_csv = os.path.join(output_dir, 'inertial_signals_test.csv')
   files = [train_csv, test_csv]
 
-  debug_train_csv = 'debug_train.csv'
-  debug_test_csv = 'debug_test.csv'
+  debug_train_csv = os.path.join(output_dir, 'debug_train.csv')
+  debug_test_csv = os.path.join(output_dir, 'debug_test.csv')
   debug_files = [debug_train_csv, debug_test_csv]
 
   t_train = write_to_csv(X_train, y_train, train_csv, debug_train_csv,
@@ -174,6 +177,41 @@ def generate_data(X_train_signals_paths,
 
 
 if __name__ == '__main__':
+  
+  # Parse input options.
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--input_dir', '-i',
+                    dest='input_dir',
+                    default=os.path.join(os.getcwd()),
+                    type=str)
+  parser.add_argument('--output_dir', '-o',
+                    dest='output_dir',
+                    default=os.path.join(os.getcwd()),
+                    type=str)
+  parser.add_argument('--labels', '-l',
+                    dest='labels',
+                    default='[0,1,2,3,4,5]',
+                    type=str)
+  parser.add_argument('--nb_samples', '-n',
+                    dest='nb_samples',
+                    default=5000,
+                    type=int)
+  
+  options = parser.parse_args()
+  input_dir = options.input_dir
+  output_dir = options.output_dir
+  labels = json.loads(options.labels)
+  nb_samples = options.nb_samples # number of samples per label
+  
+  # Note about UCI labels:  
+  # LABELS = ['WALKING',
+  #           'WALKING_UPSTAIRS',
+  #           'WALKING_DOWNSTAIRS',
+  #           'SITTING',
+  #           'STANDING',
+  #           'LAYING']
+
+  
   INPUT_SIGNAL_TYPES = [
     'body_acc_x_',
     'body_acc_y_',
@@ -186,14 +224,7 @@ if __name__ == '__main__':
     'total_acc_z_'
   ]
 
-  LABELS = ['WALKING',
-            'WALKING_UPSTAIRS',
-            'WALKING_DOWNSTAIRS',
-            'SITTING',
-            'STANDING',
-            'LAYING']
-
-  DATASET_PATH = 'UCI HAR Dataset'
+  DATASET_PATH = os.path.join(input_dir, 'UCI HAR Dataset')
   TRAIN = 'train'
   TEST = 'test'
 
@@ -201,7 +232,7 @@ if __name__ == '__main__':
   # Set MAX_LABEL_REPS to 'None' to keep all data and labels.
 
   # With WALKING and STANDING
-  MAX_LABEL_REPS = {0: 5000, 4: 5000}
+  MAX_LABEL_REPS = {label: nb_samples for label in labels}
 
   X_train_signals_paths = [os.path.join(DATASET_PATH,
                                         TRAIN,
@@ -222,4 +253,5 @@ if __name__ == '__main__':
                 X_test_signals_paths,
                 y_train_path,
                 y_test_path,
+                output_dir,
                 MAX_LABEL_REPS)

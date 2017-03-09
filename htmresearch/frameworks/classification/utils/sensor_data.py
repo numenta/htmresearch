@@ -33,7 +33,8 @@ import matplotlib.pyplot as plt
 
 
 
-def plotSensorData(inpuFilePaths, markers=True, categoryLabels=None):
+def plotSensorData(inputFilePaths, xlim=None, markers=True,
+                   categoryLabels=None):
   """
   Plot several sensor data CSV recordings and highlights the sequences.
   """
@@ -42,14 +43,14 @@ def plotSensorData(inpuFilePaths, markers=True, categoryLabels=None):
                     'pink', 'purple']
   plt.figure()
 
-  for inpuFilePath in inpuFilePaths:
+  for inputFilePath in inputFilePaths:
 
     timesteps = []
     data = []
     labels = []
     categoriesLabelled = []
 
-    with open(inpuFilePath, 'rb') as f:
+    with open(inputFilePath, 'rb') as f:
       reader = csv.reader(f)
       headers = reader.next()
 
@@ -60,10 +61,11 @@ def plotSensorData(inpuFilePaths, markers=True, categoryLabels=None):
       for i, values in enumerate(reader):
         record = dict(zip(headers, values))
         timesteps.append(i)
-        data.append(record['y'])
+        data.append(float(record['y']))
         labels.append(int(record['label']))
 
-      plt.subplot(len(inpuFilePaths), 1, inpuFilePaths.index(inpuFilePath) + 1)
+      plt.subplot(len(inputFilePaths), 1,
+                  inputFilePaths.index(inputFilePath) + 1)
       if markers:
         marker = 'xb-'
       else:
@@ -101,18 +103,21 @@ def plotSensorData(inpuFilePaths, markers=True, categoryLabels=None):
 
         labelCount += 1
 
-      plt.xlim(xmin=0, xmax=len(timesteps))
-      delta = (float(max(data)) - float(min(data))) / 10.0
-      ymin = float(min(data)) - delta
-      ymax = float(max(data)) + delta
+      if xlim is None:
+        plt.xlim(xmin=0, xmax=len(timesteps))
+      else:
+        plt.xlim(xmin=xlim[0], xmax=xlim[1])
+      delta = (max(data) - min(data)) / 10.0
+      ymin = min(data) - delta
+      ymax = max(data) + delta
       plt.ylim(ymin=ymin, ymax=ymax)
 
-      title = cleanTitle(inpuFilePath)
+      title = cleanTitle(inputFilePath)
       plt.title(title)
 
-      plt.legend(ncol=4)
+      plt.legend(ncol=4, loc=2)
 
-    figFile = '%s.png' %inpuFilePath[:-4]
+    figFile = '%s.png' % inputFilePath[:-4]
     plt.savefig(figFile)
     print '==> figure saved: %s' % figFile
     return plt
@@ -162,7 +167,8 @@ def generateSensorData(signalType,
   @param signalAmplitude: (float) amplitude of the signal to generate
   @param numCategories: (int) number of categories labels
   @param noiseAmplitude: (float) amplitude of the white noise
-  @param noiseLength: (int) number of noisy points at the beginning of each seq.
+  @param noiseLength: (int) number of noisy points at the beginning of each 
+  seq.
   @return expSetup: (dict) setup for each experiment
   """
 
@@ -198,7 +204,7 @@ def generateSensorData(signalType,
   with open(filePath, "wb") as f:
     writer = csv.writer(f)
     writer.writerow(["x", "y", "label"])
-    writer.writerow(["float", "float", "int"])
+    writer.writerow(["x", "float", "int"])
     writer.writerow(["", "", "C"])  # C is for category. 
     # WARNING: if the C flag is forgotten in the dataset, then all records will
     #  be arbitrarily put in the same category (i.e. category 0). So make sure 
@@ -236,7 +242,8 @@ def sine_wave_generator(writer,
   @param noiseAmplitude: (float) amplitude of the white noise
   @param signalAmplitude: (float) amplitude of the signal to generate
   @param numCategories: (int) number of categories labels
-  @param noiseLength: (int) number of noisy points at the beginning of each seq.
+  @param noiseLength: (int) number of noisy points at the beginning of each 
+  seq.
   """
 
   signalPeriod = 20
@@ -295,7 +302,8 @@ def binary_signal_generator(writer,
   @param noiseAmplitude: (float) amplitude of the white noise
   @param signalAmplitude: (float) amplitude of the signal to generate
   @param numCategories: (int) number of categories labels
-  @param noiseLength: (int) number of noisy points at the beginning of each seq.
+  @param noiseLength: (int) number of noisy points at the beginning of each 
+  seq.
   """
 
   # if numCategories = 3, then sequenceLength = 4 * 3 * 2 = 24
@@ -363,7 +371,8 @@ def triangular_signal_generator(writer,
   @param noiseAmplitude: (float) amplitude of the white noise
   @param signalAmplitude: (float) amplitude of the signal to generate
   @param numCategories: (int) number of categories labels
-  @param noiseLength: (int) number of noisy points at the beginning of each seq.
+  @param noiseLength: (int) number of noisy points at the beginning of each 
+  seq.
   """
 
   # if numCategories = 3, then sequenceLength = 4 * 3 * 2 = 24
