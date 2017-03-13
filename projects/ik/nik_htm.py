@@ -49,36 +49,47 @@ class NIK(object):
   """Class implementing NIK"""
 
   def __init__(self,
-               minDx=-6.0, maxDx=6.0,
-               minDy=-4.0, maxDy=4.0,
-               minTheta1=0.0, maxTheta1=90.0,
-               minTheta2=30.0, maxTheta2=330.0,
+               minDx=-1.0, maxDx=1.0,
+               minDy=-1.0, maxDy=1.0,
+               minTheta1=0.0, maxTheta1=70.0,
+               minTheta2=0.0, maxTheta2=350.0,
                ):
 
     self.dxEncoder = ScalarEncoder(5, minDx, maxDx, n=100, forced=True)
     self.dyEncoder = ScalarEncoder(5, minDy, maxDy, n=100, forced=True)
     self.externalSize = self.dxEncoder.getWidth()**2
+    self.externalOnBits = self.dxEncoder.w**2
 
     self.theta1Encoder = ScalarEncoder(5, minTheta1, maxTheta1, n=100, forced=True)
     self.theta2Encoder = ScalarEncoder(5, minTheta2, maxTheta2, n=100, forced=True)
     self.bottomUpInputSize = self.theta1Encoder.getWidth()**2
+    self.bottomUpOnBits = self.theta1Encoder.w**2
+
+    self.minDx = 100.0
+    self.maxDx = -100.0
 
     self.tm = TM(columnDimensions = (self.bottomUpInputSize,),
             basalInputDimensions = (self.externalSize,),
             cellsPerColumn=1,
-            initialPermanence=0.5,
+            initialPermanence=0.4,
             connectedPermanence=0.5,
-            minThreshold=self.externalSize,
+            minThreshold= self.externalOnBits,
             maxNewSynapseCount=40,
             permanenceIncrement=0.1,
             permanenceDecrement=0.00,
-            activationThreshold=int(0.75*(self.externalSize+self.bottomUpInputSize)),
+            activationThreshold=int(0.75*(self.externalOnBits+self.bottomUpOnBits)),
             predictedSegmentDecrement=0.00,
             checkInputs=False
             )
 
-    print >>sys.stderr, "Number of TM columns=",self.tm.getColumnDimensions()
-    print >>sys.stderr, "External input size=",self.tm.getBasalInputDimensions()
+    print >>sys.stderr, "TM parameters:"
+    print >>sys.stderr, "  num columns=",self.tm.getColumnDimensions()
+    print >>sys.stderr, "  activation threshold=",self.tm.getActivationThreshold()
+    print >>sys.stderr, "  min threshold=",self.tm.getMinThreshold()
+    print >>sys.stderr, "  basal input dimensions=",self.tm.getBasalInputDimensions()
+    print >>sys.stderr
+    print >>sys.stderr
+
 
 
   def compute(self, xt1, yt1, xt, yt, theta1t1, theta2t1, theta1, theta2, learn):
@@ -89,22 +100,22 @@ class NIK(object):
     dx = xt - xt1
     dy = yt - yt1
 
+    self.minDx = min(self.minDx, dx)
+    self.maxDx = max(self.maxDx, dx)
+
     print >>sys.stderr, "Learn: ", learn
     print >>sys.stderr, "Xt's: ", xt1, yt1, xt, yt, "Delta's: ", dx, dy
     print >>sys.stderr, "Theta t-1: ", theta1t1, theta2t1, "t:",theta1, theta2
 
-    # Encode the inputs.
+    # Encode the inputs appropriately and train the HTM
     externalSDR = self.encodeDeltas(dx,dy)
     if learn:
       # During learning we provide the current pose angle as bottom up input
       bottomUpSDR = self.encodeThetas(theta1, theta2)
+      self.trainTM(bottomUpSDR, externalSDR)
     else:
       # During inference we provide the previous pose angle as bottom up input
       bottomUpSDR = self.encodeThetas(theta1t1, theta2t1)
-
-    if learn:
-      self.trainTM(bottomUpSDR, externalSDR)
-    else:
       self.inferTM(bottomUpSDR, externalSDR)
 
     print >> sys.stderr
@@ -139,28 +150,39 @@ class NIK(object):
     a = a.reshape((self.theta1Encoder.getWidth(), self.theta1Encoder.getWidth()))
 
 
+  def printStats(self):
+    print "min/max dx=",self.minDx, self.maxDx
+    print "Total number of segments=", numSegments(self.tm  )
+
+
   def trainTM(self, bottomUp, externalInput):
+    print >> sys.stderr, "Bottom up: ", bottomUp
+    print >> sys.stderr, "ExternalInput: ",externalInput
     self.tm.depolarizeCells(externalInput, learn=True)
     self.tm.activateCells(bottomUp,
            reinforceCandidatesExternalBasal=externalInput,
            growthCandidatesExternalBasal=externalInput,
            learn=True)
-    print("new active cells " + str(self.tm.getActiveCells()))
+    print >> sys.stderr, ("new active cells " + str(self.tm.getActiveCells()))
+    print >> sys.stderr, "Total number of segments=", numSegments(self.tm  )
 
 
   def inferTM(self, bottomUp, externalInput):
+    print >> sys.stderr, "Bottom up: ", bottomUp
+    print >> sys.stderr, "ExternalInput: ",externalInput
     self.tm.compute(bottomUp,
             activeCellsExternalBasal=externalInput,
             learn=False)
-    print("new predictive cells " + str(self.tm.getPredictiveCells()))
+    print >> sys.stderr, ("new active cells " + str(self.tm.getActiveCells()))
+    print >> sys.stderr, ("new predictive cells " + str(self.tm.getPredictiveCells()))
     self.tm.reset()
 
 
 if __name__ == "__main__":
-  print """
+  usage = """
   This program shows how to do HTM mapping. It reads in 9 inputs from stdin:
 
-  x(t-1), y(t-1), x(t), y(t), theta1(t-1), theta1(t), theta2(t-1), theta2(t), training
+  x(t-1), y(t-1), x(t), y(t), theta1(t-1), theta2(t-1), theta1(t), theta2(t), training
 
   learn is either True or False
 
@@ -177,11 +199,16 @@ if __name__ == "__main__":
       xs = raw_input()
       line += 1
       x = xs.split(",")
-      nik.compute(xt1=float(x[0]), yt1=float(x[1]),
-                  xt=float(x[2]), yt=float(x[3]),
-                  theta1t1=float(x[4]), theta2t1=float(x[5]),
-                  theta1=float(x[6]), theta2=float(x[7]),
-                  learn=str2bool(x[8]))
+      if len(x) != 9 or xs[0] == "x":
+        print >> sys.stderr, "Resetting at line",line
+        print >> sys.stderr
+        nik.reset()
+      else:
+        nik.compute(xt1=float(x[0]), yt1=float(x[1]),
+                    xt=float(x[2]), yt=float(x[3]),
+                    theta1t1=float(x[4]), theta2t1=float(x[5]),
+                    theta1=float(x[6]), theta2=float(x[7]),
+                    learn=str2bool(x[8]))
     except EOFError:
       print >>sys.stderr, "Quitting!!!"
       break
@@ -190,4 +217,6 @@ if __name__ == "__main__":
       print >>sys.stderr, xs
       print >>sys.stderr, str(e)
       break
+
+  nik.printStats()
 
