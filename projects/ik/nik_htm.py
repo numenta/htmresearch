@@ -31,6 +31,8 @@ from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemo
 def numSegments(tm):
   return tm.basalConnections.numSegments()
 
+def str2bool(v):
+  return v.lower() in ("yes", "true", "t", "1")
 
 def printSegmentForCell(tm, cell):
   """Print segment information for this cell"""
@@ -64,12 +66,12 @@ class NIK(object):
     self.tm = TM(columnDimensions = (self.bottomUpInputSize,),
             basalInputDimensions = (self.externalSize,),
             cellsPerColumn=1,
-            initialPermanence=0.4,
+            initialPermanence=0.5,
             connectedPermanence=0.5,
             minThreshold=self.externalSize,
-            maxNewSynapseCount=20,
+            maxNewSynapseCount=40,
             permanenceIncrement=0.1,
-            permanenceDecrement=0.02,
+            permanenceDecrement=0.00,
             activationThreshold=int(0.75*(self.externalSize+self.bottomUpInputSize)),
             predictedSegmentDecrement=0.00,
             checkInputs=False
@@ -106,6 +108,10 @@ class NIK(object):
       self.inferTM(bottomUpSDR, externalSDR)
 
     print >> sys.stderr
+
+
+  def reset(self):
+    self.tm.reset()
 
 
   def encodeDeltas(self, dx,dy):
@@ -146,6 +152,8 @@ class NIK(object):
     self.tm.compute(bottomUp,
             activeCellsExternalBasal=externalInput,
             learn=False)
+    print("new predictive cells " + str(self.tm.getPredictiveCells()))
+    self.tm.reset()
 
 
 if __name__ == "__main__":
@@ -173,7 +181,7 @@ if __name__ == "__main__":
                   xt=float(x[2]), yt=float(x[3]),
                   theta1t1=float(x[4]), theta2t1=float(x[5]),
                   theta1=float(x[6]), theta2=float(x[7]),
-                  learn=bool(x[8]))
+                  learn=str2bool(x[8]))
     except EOFError:
       print >>sys.stderr, "Quitting!!!"
       break
