@@ -21,36 +21,13 @@
 
 
 print """
-This program shows how to access the Temporal Memory directly by demonstrating
-how to create a TM instance, train it with vectors, get predictions, and
-inspect the state.
-
-The code here runs a very simple version of sequence learning, with one
-cell per column. The TP is trained with the simple sequence A->B->C->D->E
-
-HOMEWORK: once you have understood exactly what is going on here, try changing
-cellsPerColumn to 4. What is the difference between once cell per column and 4
-cells per column?
-
-PLEASE READ THROUGH THE CODE COMMENTS - THEY EXPLAIN THE OUTPUT IN DETAIL
-
+This program shows how to do HTM mapping.
 """
 
 # Can't live without numpy
 import numpy
 
 from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory as TM
-
-# Utility routine for printing the input vector
-def formatRow(x):
-  s = ''
-  for c in range(len(x)):
-    if c > 0 and c % 10 == 0:
-      s += ' '
-    s += str(x[c])
-  s += ' '
-  return s
-
 
 def numSegments(tm):
   return tm.basalConnections.numSegments()
@@ -79,6 +56,7 @@ tm = TM(columnDimensions = (50,),
         permanenceIncrement=0.1,
         permanenceDecrement=0.0,
         activationThreshold=15,
+        predictedSegmentDecrement=0.01
         )
 
 
