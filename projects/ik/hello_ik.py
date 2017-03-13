@@ -134,6 +134,14 @@ def feedTM(tm, bottomUp, growthCandidates, learn=True):
   printSegmentForCell(tm,20)
 
 
+def inferTM(tm, bottomUp, externalInput):
+  tm.compute(bottomUp.nonzero()[0],
+             activeCellsExternalBasal=externalInput.nonzero()[0])
+  print("new active cells " + str(tm.getActiveCells()))
+  print("new predictive cells " + str(tm.getPredictiveCells()))
+  tm.reset()
+
+
 # Step 3: send this simple sequence to the temporal memory for learning
 # We repeat the sequence 10 times
 for i in range(3):
@@ -191,45 +199,54 @@ for i in range(3):
 #######################################################################
 #
 # Test inference
-# for j in range(1):
-#   print "\n\n--------","ABCDE"[j],"-----------"
-#   print "Raw input vector : " + formatRow(x[j])
-#
-#   # Send each vector to the TM, with learning turned off
-#   tm.compute(x[j].nonzero()[0], learn = False)
-#
-#   # The following print statements prints out the active cells, predictive
-#   # cells, active segments and winner cells.
-#   #
-#   # What you should notice is that the columns where active state is 1
-#   # represent the SDR for the current input pattern and the columns where
-#   # predicted state is 1 represent the SDR for the next expected pattern
-#   print "\nAll the active and predicted cells:"
-#
-#   print("active cells " + str(tm.getActiveCells()))
-#   print("predictive cells " + str(tm.getPredictiveCells()))
-#   print("winner cells " + str(tm.getWinnerCells()))
-#   print("# of active segments " + str(tm.basalConnections.numSegments()))
-#
-#   activeColumnsIndeces = [tm.columnForCell(i) for i in tm.getActiveCells()]
-#   predictedColumnIndeces = [tm.columnForCell(i) for i in tm.getPredictiveCells()]
-#
-#
-#   # Reconstructing the active and inactive columns with 1 as active and 0 as
-#   # inactive representation.
-#
-#   actColState = ['1' if i in activeColumnsIndeces else '0' for i in range(tm.numberOfColumns())]
-#   actColStr = ("".join(actColState))
-#   predColState = ['1' if i in predictedColumnIndeces else '0' for i in range(tm.numberOfColumns())]
-#   predColStr = ("".join(predColState))
-#
-#   # For convenience the cells are grouped
-#   # 10 at a time. When there are multiple cells per column the printout
-#   # is arranged so the cells in a column are stacked together
-#   print "Active columns:    " + formatRow(actColStr)
-#   print "Predicted columns: " + formatRow(predColStr)
-#
-#   # predictedCells[c][i] represents the state of the i'th cell in the c'th
-#   # column. To see if a column is predicted, we can simply take the OR
-#   # across all the cells in that column. In numpy we can do this by taking
-#   # the max along axis 1.
+
+for i in range(1):
+
+  print "\n\n--------- ITERATION ",i,"--------------"
+
+  # At each step feed in previous external input and current bottom up input
+
+  print "\n------------------------"
+  print "First step: (E0, X0) -> X1"
+  # Depolarize with E0. Feed in X1 as bottom up with E0 as external input.
+  inferTM(tm, x[0], ex[0])
+
+  print "\n------------------------"
+  print "Second step: (E0, X1) -> X0"
+  # Depolarize with previous E0 (X1 already active). Feed in X0 with E0
+  # as external
+  inferTM(tm, x[1], ex[0])
+
+  print "\n------------------------"
+  print "Third step: (E1, X0) -> X2"
+  # Depolarize with previous E0, X0 already active.
+  # Feed in X2 as bottom up with E1 as external
+  inferTM(tm, x[0], ex[1])
+
+  print "\n------------------------"
+  print "(E1, X2) -> X1"
+  # Depolarize with previous E1, X2 already active.
+  # Feed in X1 as bottom up with E1 as external
+  inferTM(tm, x[2], ex[1])
+
+  print "\n------------------------"
+  print "(E1, X1) -> X2"
+  # Depolarize with previous E1. X1 already active
+  # Feed in X2 as bottom up, E1 as external
+  inferTM(tm, x[1], ex[1])
+
+  print "\n------------------------"
+  print "(E0, X2) -> X0"
+  # (E0, X2) -> X0. Depolarize with previous E1. X2 already active
+  # Feed in X0 as bottom up, E0 as external
+  inferTM(tm, x[2], ex[0])
+
+  print "\n------------------------"
+  print "Redo first step: (E0, X0) -> X1"
+  # Depolarize with E0. Feed in X1 as bottom up with E0 as external input.
+  inferTM(tm, x[0], ex[0])
+
+  # The reset command tells the TP that a sequence just ended and essentially
+  # zeros out all the states. It is not strictly necessary but it's a bit
+  # messier without resets, and the TP learns quicker with resets.
+  tm.reset()
