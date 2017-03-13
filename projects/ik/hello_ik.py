@@ -114,7 +114,8 @@ def feedTM(tm, bottomUp, growthCandidates, learn=True):
 
 def inferTM(tm, bottomUp, externalInput):
   tm.compute(bottomUp.nonzero()[0],
-             activeCellsExternalBasal=externalInput.nonzero()[0])
+             activeCellsExternalBasal=externalInput.nonzero()[0],
+             learn=False)
   print("new active cells " + str(tm.getActiveCells()))
   print("new predictive cells " + str(tm.getPredictiveCells()))
   tm.reset()

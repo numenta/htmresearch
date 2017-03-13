@@ -23,6 +23,8 @@ import sys
 
 import numpy
 
+from nupic.encoders.scalar import ScalarEncoder
+
 from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory as TM
 
 
@@ -44,57 +46,140 @@ def printSegmentForCell(tm, cell):
 class NIK(object):
   """Class implementing NIK"""
 
-  def __init__(self):
-    self.tm = TM(columnDimensions = (2048,),
-            basalInputDimensions = (30,),
+  def __init__(self,
+               minDx=-6.0, maxDx=6.0,
+               minDy=-4.0, maxDy=4.0,
+               minTheta1=0.0, maxTheta1=90.0,
+               minTheta2=30.0, maxTheta2=330.0,
+               ):
+
+    self.dxEncoder = ScalarEncoder(5, minDx, maxDx, n=100, forced=True)
+    self.dyEncoder = ScalarEncoder(5, minDy, maxDy, n=100, forced=True)
+    self.externalSize = self.dxEncoder.getWidth()**2
+
+    self.theta1Encoder = ScalarEncoder(5, minTheta1, maxTheta1, n=100, forced=True)
+    self.theta2Encoder = ScalarEncoder(5, minTheta2, maxTheta2, n=100, forced=True)
+    self.bottomUpInputSize = self.theta1Encoder.getWidth()**2
+
+    self.tm = TM(columnDimensions = (self.bottomUpInputSize,),
+            basalInputDimensions = (self.externalSize,),
             cellsPerColumn=1,
             initialPermanence=0.4,
             connectedPermanence=0.5,
-            minThreshold=10,
+            minThreshold=self.externalSize,
             maxNewSynapseCount=20,
             permanenceIncrement=0.1,
-            permanenceDecrement=0.0,
-            activationThreshold=15,
-            predictedSegmentDecrement=0.01
+            permanenceDecrement=0.02,
+            activationThreshold=int(0.75*(self.externalSize+self.bottomUpInputSize)),
+            predictedSegmentDecrement=0.00,
+            checkInputs=False
             )
+
+    print >>sys.stderr, "Number of TM columns=",self.tm.getColumnDimensions()
+    print >>sys.stderr, "External input size=",self.tm.getBasalInputDimensions()
+
+
+  def compute(self, xt1, yt1, xt, yt, theta1t1, theta2t1, theta1, theta2, learn):
+    """
+    The main function to call.
+    Return a prediction for theta1 and theta2
+    """
+    dx = xt - xt1
+    dy = yt - yt1
+
+    print >>sys.stderr, "Learn: ", learn
+    print >>sys.stderr, "Xt's: ", xt1, yt1, xt, yt, "Delta's: ", dx, dy
+    print >>sys.stderr, "Theta t-1: ", theta1t1, theta2t1, "t:",theta1, theta2
+
+    # Encode the inputs.
+    externalSDR = self.encodeDeltas(dx,dy)
+    if learn:
+      # During learning we provide the current pose angle as bottom up input
+      bottomUpSDR = self.encodeThetas(theta1, theta2)
+    else:
+      # During inference we provide the previous pose angle as bottom up input
+      bottomUpSDR = self.encodeThetas(theta1t1, theta2t1)
+
+    if learn:
+      self.trainTM(bottomUpSDR, externalSDR)
+    else:
+      self.inferTM(bottomUpSDR, externalSDR)
+
+    print >> sys.stderr
 
 
   def encodeDeltas(self, dx,dy):
     """Return the SDR for dx,dy"""
-    pass
+    dxe = self.dxEncoder.encode(dx)
+    dye = self.dyEncoder.encode(dy)
+    ex = numpy.outer(dxe,dye)
+    return ex.flatten().nonzero()[0]
+
 
   def encodeThetas(self, theta1, theta2):
     """Return the SDR for theta1 and theta2"""
-    pass
+    t1e = self.theta1Encoder.encode(theta1)
+    t2e = self.theta2Encoder.encode(theta2)
+    ex = numpy.outer(t1e,t2e)
+    return ex.flatten().nonzero()[0]
 
-  def trainTM(self, dx, dy, xt, yt, theta1, theta2):
-    pass
 
-  def compute(self, dx, dy, xt, yt, theta1, theta2, learn):
-    print >>sys.stderr, dx, dy, xt, yt, theta1, theta2, learn
+  def decodeThetas(self, predictedCells):
+    """
+    Given the set of predicted cells, return the predicted theta1 and theta2
+    """
+    a = numpy.zeros(self.bottomUpInputSize)
+    a[predictedCells] = 1
+    a = a.reshape((self.theta1Encoder.getWidth(), self.theta1Encoder.getWidth()))
+
+
+  def trainTM(self, bottomUp, externalInput):
+    self.tm.depolarizeCells(externalInput, learn=True)
+    self.tm.activateCells(bottomUp,
+           reinforceCandidatesExternalBasal=externalInput,
+           growthCandidatesExternalBasal=externalInput,
+           learn=True)
+    print("new active cells " + str(self.tm.getActiveCells()))
+
+
+  def inferTM(self, bottomUp, externalInput):
+    self.tm.compute(bottomUp,
+            activeCellsExternalBasal=externalInput,
+            learn=False)
 
 
 if __name__ == "__main__":
   print """
-  This program shows how to do HTM mapping. It reads in 7 numbers from stdin:
-    dx dy x_t y_t theta1_t theta2_t learn
+  This program shows how to do HTM mapping. It reads in 9 inputs from stdin:
+
+  x(t-1), y(t-1), x(t), y(t), theta1(t-1), theta1(t), theta2(t-1), theta2(t), training
 
   learn is either True or False
-  dx should be x_t - x_(t-1)
-  dy should be y_t - y_(t-1)
 
   Example:
-    -1.2 2.1 10 20 0.3 0.4 True
+    -3.998477,0.1047044,-3.996574,0.1570263,86,85,86,85,true
 
   """
 
   nik = NIK()
+  line = 0
 
-  x = ""
-  while x != "quit":
-    xs = raw_input()
-    x = xs.split()
-    nik.compute(dx=float(x[0]), dy=float(x[1]),
-                xt=float(x[2]), yt=float(x[3]),
-                theta1=float(x[4]), theta2=float(x[5]),
-                learn=bool(x[6]))
+  while True:
+    try:
+      xs = raw_input()
+      line += 1
+      x = xs.split(",")
+      nik.compute(xt1=float(x[0]), yt1=float(x[1]),
+                  xt=float(x[2]), yt=float(x[3]),
+                  theta1t1=float(x[4]), theta2t1=float(x[5]),
+                  theta1=float(x[6]), theta2=float(x[7]),
+                  learn=bool(x[8]))
+    except EOFError:
+      print >>sys.stderr, "Quitting!!!"
+      break
+    except Exception as e:
+      print >>sys.stderr, "Error in line",line,"!!!!"
+      print >>sys.stderr, xs
+      print >>sys.stderr, str(e)
+      break
+
