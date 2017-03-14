@@ -51,7 +51,7 @@ class NIK(object):
   def __init__(self,
                minDx=-1.0, maxDx=1.0,
                minDy=-1.0, maxDy=1.0,
-               minTheta1=0.0, maxTheta1=70.0,
+               minTheta1=0.0, maxTheta1=85.0,
                minTheta2=0.0, maxTheta2=350.0,
                ):
 
@@ -67,6 +67,9 @@ class NIK(object):
 
     self.minDx = 100.0
     self.maxDx = -100.0
+
+    self.trainingIterations = 0
+    self.maxPredictionError = 0
 
     self.tm = TM(columnDimensions = (self.bottomUpInputSize,),
             basalInputDimensions = (self.externalSize,),
@@ -104,6 +107,7 @@ class NIK(object):
     self.maxDx = max(self.maxDx, dx)
 
     print >>sys.stderr, "Learn: ", learn
+    print >>sys.stderr, "Training iterations: ", self.trainingIterations
     print >>sys.stderr, "Xt's: ", xt1, yt1, xt, yt, "Delta's: ", dx, dy
     print >>sys.stderr, "Theta t-1: ", theta1t1, theta2t1, "t:",theta1, theta2
 
@@ -116,11 +120,19 @@ class NIK(object):
       # During learning we provide the current pose angle as bottom up input
       bottomUpSDR = self.encodeThetas(theta1, theta2)
       self.trainTM(bottomUpSDR, externalSDR)
+      self.trainingIterations += 1
     else:
       # During inference we provide the previous pose angle as bottom up input
       bottomUpSDR = self.encodeThetas(theta1t1, theta2t1)
       predictedCells = self.inferTM(bottomUpSDR, externalSDR)
-      print self.decodeThetas(predictedCells)
+      predictedValues = self.decodeThetas(predictedCells)
+
+      error = abs(predictedValues[0] - theta1) + abs(predictedValues[1] - theta2)
+      if self.maxPredictionError < error:
+        self.maxPredictionError = error
+        print >> sys.stderr, "Error: ", error
+
+      print predictedValues
 
     print >> sys.stderr
 
@@ -181,17 +193,17 @@ class NIK(object):
   def printStats(self):
     print >> sys.stderr, "min/max dx=",self.minDx, self.maxDx
     print >> sys.stderr, "Total number of segments=", numSegments(self.tm  )
-
+    print >> sys.stderr, "Maximum prediction error: ", self.maxPredictionError
 
   def trainTM(self, bottomUp, externalInput):
-    print >> sys.stderr, "Bottom up: ", bottomUp
-    print >> sys.stderr, "ExternalInput: ",externalInput
+    # print >> sys.stderr, "Bottom up: ", bottomUp
+    # print >> sys.stderr, "ExternalInput: ",externalInput
     self.tm.depolarizeCells(externalInput, learn=True)
     self.tm.activateCells(bottomUp,
            reinforceCandidatesExternalBasal=externalInput,
            growthCandidatesExternalBasal=externalInput,
            learn=True)
-    print >> sys.stderr, ("new active cells " + str(self.tm.getActiveCells()))
+    # print >> sys.stderr, ("new active cells " + str(self.tm.getActiveCells()))
     print >> sys.stderr, "Total number of segments=", numSegments(self.tm  )
 
 
@@ -200,13 +212,13 @@ class NIK(object):
     Run inference and return the set of predicted cells
     """
     self.reset()
-    print >> sys.stderr, "Bottom up: ", bottomUp
-    print >> sys.stderr, "ExternalInput: ",externalInput
+    # print >> sys.stderr, "Bottom up: ", bottomUp
+    # print >> sys.stderr, "ExternalInput: ",externalInput
     self.tm.compute(bottomUp,
             activeCellsExternalBasal=externalInput,
             learn=False)
-    print >> sys.stderr, ("new active cells " + str(self.tm.getActiveCells()))
-    print >> sys.stderr, ("new predictive cells " + str(self.tm.getPredictiveCells()))
+    # print >> sys.stderr, ("new active cells " + str(self.tm.getActiveCells()))
+    # print >> sys.stderr, ("new predictive cells " + str(self.tm.getPredictiveCells()))
     return self.tm.getPredictiveCells()
 
 
