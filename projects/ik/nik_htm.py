@@ -169,6 +169,7 @@ class NIK(object):
         numAttempts += 1
         if numAttempts % 10 == 0: angleRange += 2
 
+      print predictedValues
       # Accumulate errors for our metrics
       if len(predictedCells) == 0:
         self.numMissedPredictions += 1
