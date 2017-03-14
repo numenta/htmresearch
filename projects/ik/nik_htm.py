@@ -23,6 +23,7 @@ import sys
 import cPickle
 
 import numpy
+import random
 
 from nupic.encoders.scalar import ScalarEncoder
 
@@ -53,26 +54,31 @@ class NIK(object):
                minDx=-2.0, maxDx=2.0,
                minDy=-2.0, maxDy=2.0,
                minTheta1=0.0, maxTheta1=85.0,
-               minTheta2=0.0, maxTheta2=350.0,
+               minTheta2=0.0, maxTheta2=360.0,
                ):
 
-    self.dxEncoder = ScalarEncoder(5, minDx, maxDx, n=100, forced=True)
-    self.dyEncoder = ScalarEncoder(5, minDy, maxDy, n=100, forced=True)
+    self.dxEncoder = ScalarEncoder(5, minDx, maxDx, n=75, forced=True)
+    self.dyEncoder = ScalarEncoder(5, minDy, maxDy, n=75, forced=True)
     self.externalSize = self.dxEncoder.getWidth()**2
     self.externalOnBits = self.dxEncoder.w**2
 
-    self.theta1Encoder = ScalarEncoder(5, minTheta1, maxTheta1, n=100, forced=True)
-    self.theta2Encoder = ScalarEncoder(5, minTheta2, maxTheta2, n=100, forced=True)
+    self.theta1Encoder = ScalarEncoder(5, minTheta1, maxTheta1, n=75, forced=True)
+    self.theta2Encoder = ScalarEncoder(5, minTheta2, maxTheta2, n=75, forced=True)
     self.bottomUpInputSize = self.theta1Encoder.getWidth()*self.theta2Encoder.getWidth()
     self.bottomUpOnBits = self.theta1Encoder.w*self.theta2Encoder.w
 
     self.minDx = 100.0
     self.maxDx = -100.0
+    self.minTheta1 = minTheta1
+    self.minTheta2 = minTheta2
+    self.maxTheta1 = maxTheta1
+    self.maxTheta2 = maxTheta2
 
     self.trainingIterations = 0
     self.testIterations = 0
     self.maxPredictionError = 0
     self.totalPredictionError = 0
+    self.numMissedPredictions = 0
 
     self.tm = TM(columnDimensions = (self.bottomUpInputSize,),
             basalInputDimensions = (self.externalSize,),
@@ -128,12 +134,44 @@ class NIK(object):
       self.trainingIterations += 1
     else:
       # During inference we provide the previous pose angle as bottom up input
-      bottomUpSDR = self.encodeThetas(theta1t1, theta2t1)
-      predictedCells = self.inferTM(bottomUpSDR, externalSDR)
-      predictedValues = self.decodeThetas(predictedCells)
-      print predictedValues
+      # If we don't get a prediction, we keep trying random shifts until we get
+      # something.
+      predictedCells = []
+      newt1 = theta1t1
+      newt2 = theta2t1
+      newdx = dx
+      newdy = dy
+      angleRange = 10
+      numAttempts = 1
+      while len(predictedCells) == 0 and numAttempts < 100:
+        print >> sys.stderr, "Attempt:", numAttempts,
+        print >> sys.stderr, "Trying to predict using thetas:", newt1, newt2,
+        print >> sys.stderr, "and deltas:", newdx, newdy
+
+        externalSDR = self.encodeDeltas(newdx, newdy)
+        bottomUpSDR = self.encodeThetas(newt1, newt2)
+        predictedCells = self.inferTM(bottomUpSDR, externalSDR)
+        predictedValues = self.decodeThetas(predictedCells)
+
+        print >> sys.stderr, "Predicted values",predictedValues
+
+        newt1 = theta1t1 + random.randrange(-angleRange,angleRange)
+        newt2 = theta2t1 + random.randrange(-angleRange,angleRange)
+        newdx = dx + (random.random()/2.0 - 0.25)
+        newdy = dy + (random.random()/2.0 - 0.25)
+
+        # Ensure we are in bounds otherwise we get an exception
+        newt1 = min(self.maxTheta1, max(self.minTheta1, newt1))
+        newt2 = min(self.maxTheta2, max(self.minTheta2, newt2))
+        newdx = min(2.0, max(-2.0, newdx))
+        newdy = min(2.0, max(-2.0, newdy))
+
+        numAttempts += 1
+        if numAttempts % 10 == 0: angleRange += 2
 
       # Accumulate errors for our metrics
+      if len(predictedCells) == 0:
+        self.numMissedPredictions += 1
       self.testIterations += 1
       error = abs(predictedValues[0] - theta1) + abs(predictedValues[1] - theta2)
       self.totalPredictionError += error
@@ -190,6 +228,7 @@ class NIK(object):
     t2[theta2PredictedBits] = 1
     t2Prediction = self.theta2Encoder.topDownCompute(t2)[0].value
 
+    # print >> sys.stderr, "predicted cells = ", predictedCells
     # print >> sys.stderr, "decoded theta1 bits = ", theta1PredictedBits
     # print >> sys.stderr, "decoded theta2 bits = ", theta2PredictedBits
     # print >> sys.stderr, "decoded theta1 value = ", t1Prediction
@@ -204,6 +243,7 @@ class NIK(object):
     if self.testIterations > 0:
       print >> sys.stderr, "Maximum prediction error: ", self.maxPredictionError
       print >> sys.stderr, "Mean prediction error: ", self.totalPredictionError / self.testIterations
+      print >> sys.stderr, "Num missed predictions: ", self.numMissedPredictions
 
   def trainTM(self, bottomUp, externalInput):
     # print >> sys.stderr, "Bottom up: ", bottomUp
@@ -272,8 +312,9 @@ if __name__ == "__main__":
       x = xs.split(",")
       if x[0] == "load":
         filename = x[1]
-        print >> sys.stderr, "Loading from filename",filename
+        print >> sys.stderr, "Loading from file:",filename
         nik.load(filename)
+        print >> sys.stderr, "Done loading file:",filename
 
       elif x[0] == "save":
         filename = x[1]
