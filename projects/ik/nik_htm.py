@@ -33,7 +33,7 @@ def numSegments(tm):
   return tm.basalConnections.numSegments()
 
 def str2bool(v):
-  return v.lower() in ("yes", "true", "t", "1")
+  return v[0].lower() in ("yes", "true", "t", "1")
 
 def printSegmentForCell(tm, cell):
   """Print segment information for this cell"""
@@ -63,8 +63,8 @@ class NIK(object):
 
     self.theta1Encoder = ScalarEncoder(5, minTheta1, maxTheta1, n=100, forced=True)
     self.theta2Encoder = ScalarEncoder(5, minTheta2, maxTheta2, n=100, forced=True)
-    self.bottomUpInputSize = self.theta1Encoder.getWidth()**2
-    self.bottomUpOnBits = self.theta1Encoder.w**2
+    self.bottomUpInputSize = self.theta1Encoder.getWidth()*self.theta2Encoder.getWidth()
+    self.bottomUpOnBits = self.theta1Encoder.w*self.theta2Encoder.w
 
     self.minDx = 100.0
     self.maxDx = -100.0
@@ -120,6 +120,7 @@ class NIK(object):
 
     # Encode the inputs appropriately and train the HTM
     externalSDR = self.encodeDeltas(dx,dy)
+
     if learn:
       # During learning we provide the current pose angle as bottom up input
       bottomUpSDR = self.encodeThetas(theta1, theta2)
@@ -266,6 +267,7 @@ if __name__ == "__main__":
   while True:
     try:
       xs = raw_input()
+      xs = xs.strip()
       line += 1
       x = xs.split(",")
       if x[0] == "load":
@@ -289,6 +291,7 @@ if __name__ == "__main__":
                     theta1t1=float(x[4]), theta2t1=float(x[5]),
                     theta1=float(x[6]), theta2=float(x[7]),
                     learn=str2bool(x[8]))
+      sys.stdout.flush()
     except EOFError:
       print >>sys.stderr, "Quitting!!!"
       break
