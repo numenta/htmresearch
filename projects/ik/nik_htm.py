@@ -20,6 +20,7 @@
 # ----------------------------------------------------------------------
 
 import sys
+import cPickle
 
 import numpy
 
@@ -69,7 +70,9 @@ class NIK(object):
     self.maxDx = -100.0
 
     self.trainingIterations = 0
+    self.testIterations = 0
     self.maxPredictionError = 0
+    self.totalPredictionError = 0
 
     self.tm = TM(columnDimensions = (self.bottomUpInputSize,),
             basalInputDimensions = (self.externalSize,),
@@ -98,7 +101,7 @@ class NIK(object):
   def compute(self, xt1, yt1, xt, yt, theta1t1, theta2t1, theta1, theta2, learn):
     """
     The main function to call.
-    Return a prediction for theta1 and theta2
+    If learn is False, it will print a prediction: (theta1, theta2)
     """
     dx = xt - xt1
     dy = yt - yt1
@@ -108,6 +111,7 @@ class NIK(object):
 
     print >>sys.stderr, "Learn: ", learn
     print >>sys.stderr, "Training iterations: ", self.trainingIterations
+    print >>sys.stderr, "Test iterations: ", self.testIterations
     print >>sys.stderr, "Xt's: ", xt1, yt1, xt, yt, "Delta's: ", dx, dy
     print >>sys.stderr, "Theta t-1: ", theta1t1, theta2t1, "t:",theta1, theta2
 
@@ -126,13 +130,16 @@ class NIK(object):
       bottomUpSDR = self.encodeThetas(theta1t1, theta2t1)
       predictedCells = self.inferTM(bottomUpSDR, externalSDR)
       predictedValues = self.decodeThetas(predictedCells)
+      print predictedValues
 
+      # Accumulate errors for our metrics
+      self.testIterations += 1
       error = abs(predictedValues[0] - theta1) + abs(predictedValues[1] - theta2)
+      self.totalPredictionError += error
       if self.maxPredictionError < error:
         self.maxPredictionError = error
         print >> sys.stderr, "Error: ", error
 
-      print predictedValues
 
     print >> sys.stderr
 
@@ -193,7 +200,9 @@ class NIK(object):
   def printStats(self):
     print >> sys.stderr, "min/max dx=",self.minDx, self.maxDx
     print >> sys.stderr, "Total number of segments=", numSegments(self.tm  )
-    print >> sys.stderr, "Maximum prediction error: ", self.maxPredictionError
+    if self.testIterations > 0:
+      print >> sys.stderr, "Maximum prediction error: ", self.maxPredictionError
+      print >> sys.stderr, "Mean prediction error: ", self.totalPredictionError / self.testIterations
 
   def trainTM(self, bottomUp, externalInput):
     # print >> sys.stderr, "Bottom up: ", bottomUp
@@ -222,6 +231,22 @@ class NIK(object):
     return self.tm.getPredictiveCells()
 
 
+  def save(self, filename="temp.pkl"):
+    """
+    Save TM in the filename specified above
+    """
+    output = open(filename, 'wb')
+    cPickle.dump(self.tm, output, protocol=cPickle.HIGHEST_PROTOCOL)
+
+
+  def load(self, filename="temp.pkl"):
+    """
+    Save TM in the filename specified above
+    """
+    inputFile = open(filename, 'rb')
+    self.tm = cPickle.load(inputFile)
+
+
 if __name__ == "__main__":
   usage = """
   This program shows how to do HTM mapping. It reads in 9 inputs from stdin:
@@ -243,10 +268,21 @@ if __name__ == "__main__":
       xs = raw_input()
       line += 1
       x = xs.split(",")
-      if len(x) != 9 or xs[0] == "x":
+      if x[0] == "load":
+        filename = x[1]
+        print >> sys.stderr, "Loading from filename",filename
+        nik.load(filename)
+
+      elif x[0] == "save":
+        filename = x[1]
+        print >> sys.stderr, "Saving to filename", filename
+        nik.save(filename)
+
+      elif len(x) != 9 or xs[0] == "x":
         print >> sys.stderr, "Resetting at line",line
         print >> sys.stderr
         nik.reset()
+
       else:
         nik.compute(xt1=float(x[0]), yt1=float(x[1]),
                     xt=float(x[2]), yt=float(x[3]),
@@ -263,4 +299,3 @@ if __name__ == "__main__":
       break
 
   nik.printStats()
-
