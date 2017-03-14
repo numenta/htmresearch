@@ -50,8 +50,8 @@ class NIK(object):
   """Class implementing NIK"""
 
   def __init__(self,
-               minDx=-1.0, maxDx=1.0,
-               minDy=-1.0, maxDy=1.0,
+               minDx=-2.0, maxDx=2.0,
+               minDy=-2.0, maxDy=2.0,
                minTheta1=0.0, maxTheta1=85.0,
                minTheta2=0.0, maxTheta2=350.0,
                ):
