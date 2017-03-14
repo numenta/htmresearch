@@ -107,6 +107,9 @@ class NIK(object):
     print >>sys.stderr, "Xt's: ", xt1, yt1, xt, yt, "Delta's: ", dx, dy
     print >>sys.stderr, "Theta t-1: ", theta1t1, theta2t1, "t:",theta1, theta2
 
+    bottomUpSDR = self.encodeThetas(theta1, theta2)
+    self.decodeThetas(bottomUpSDR)
+
     # Encode the inputs appropriately and train the HTM
     externalSDR = self.encodeDeltas(dx,dy)
     if learn:
@@ -116,7 +119,8 @@ class NIK(object):
     else:
       # During inference we provide the previous pose angle as bottom up input
       bottomUpSDR = self.encodeThetas(theta1t1, theta2t1)
-      self.inferTM(bottomUpSDR, externalSDR)
+      predictedCells = self.inferTM(bottomUpSDR, externalSDR)
+      print self.decodeThetas(predictedCells)
 
     print >> sys.stderr
 
@@ -135,9 +139,13 @@ class NIK(object):
 
   def encodeThetas(self, theta1, theta2):
     """Return the SDR for theta1 and theta2"""
+    # print >> sys.stderr, "encoded theta1 value = ", theta1
+    # print >> sys.stderr, "encoded theta2 value = ", theta2
     t1e = self.theta1Encoder.encode(theta1)
     t2e = self.theta2Encoder.encode(theta2)
-    ex = numpy.outer(t1e,t2e)
+    # print >> sys.stderr, "encoded theta1 = ", t1e.nonzero()[0]
+    # print >> sys.stderr, "encoded theta2 = ", t2e.nonzero()[0]
+    ex = numpy.outer(t2e,t1e)
     return ex.flatten().nonzero()[0]
 
 
@@ -148,11 +156,31 @@ class NIK(object):
     a = numpy.zeros(self.bottomUpInputSize)
     a[predictedCells] = 1
     a = a.reshape((self.theta1Encoder.getWidth(), self.theta1Encoder.getWidth()))
+    theta1PredictedBits = a.mean(axis=0).nonzero()[0]
+    theta2PredictedBits = a.mean(axis=1).nonzero()[0]
+
+    # To decode it we need to create a flattened array again and pass it
+    # to encoder.
+    # TODO: We use encoder's topDownCompute method - not sure if that is best.
+    t1 = numpy.zeros(self.theta1Encoder.getWidth())
+    t1[theta1PredictedBits] = 1
+    t1Prediction = self.theta1Encoder.topDownCompute(t1)[0].value
+
+    t2 = numpy.zeros(self.theta2Encoder.getWidth())
+    t2[theta2PredictedBits] = 1
+    t2Prediction = self.theta2Encoder.topDownCompute(t2)[0].value
+
+    # print >> sys.stderr, "decoded theta1 bits = ", theta1PredictedBits
+    # print >> sys.stderr, "decoded theta2 bits = ", theta2PredictedBits
+    # print >> sys.stderr, "decoded theta1 value = ", t1Prediction
+    # print >> sys.stderr, "decoded theta2 value = ", t2Prediction
+
+    return t1Prediction, t2Prediction
 
 
   def printStats(self):
-    print "min/max dx=",self.minDx, self.maxDx
-    print "Total number of segments=", numSegments(self.tm  )
+    print >> sys.stderr, "min/max dx=",self.minDx, self.maxDx
+    print >> sys.stderr, "Total number of segments=", numSegments(self.tm  )
 
 
   def trainTM(self, bottomUp, externalInput):
@@ -168,6 +196,10 @@ class NIK(object):
 
 
   def inferTM(self, bottomUp, externalInput):
+    """
+    Run inference and return the set of predicted cells
+    """
+    self.reset()
     print >> sys.stderr, "Bottom up: ", bottomUp
     print >> sys.stderr, "ExternalInput: ",externalInput
     self.tm.compute(bottomUp,
@@ -175,7 +207,7 @@ class NIK(object):
             learn=False)
     print >> sys.stderr, ("new active cells " + str(self.tm.getActiveCells()))
     print >> sys.stderr, ("new predictive cells " + str(self.tm.getPredictiveCells()))
-    self.tm.reset()
+    return self.tm.getPredictiveCells()
 
 
 if __name__ == "__main__":
