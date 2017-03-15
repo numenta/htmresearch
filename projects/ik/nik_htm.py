@@ -143,7 +143,7 @@ class NIK(object):
       newdy = dy
       angleRange = 10
       numAttempts = 1
-      while len(predictedCells) == 0 and numAttempts < 100:
+      while len(predictedCells) == 0 and numAttempts < 3:
         print >> sys.stderr, "Attempt:", numAttempts,
         print >> sys.stderr, "Trying to predict using thetas:", newt1, newt2,
         print >> sys.stderr, "and deltas:", newdx, newdy
