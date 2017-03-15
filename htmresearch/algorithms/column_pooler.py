@@ -151,10 +151,11 @@ class ColumnPooler(object):
     Runs one time step of the column pooler algorithm.
 
     @param  feedforwardInput (sequence)
-            Indices of active feedforward input bits
+            Sorted indices of active feedforward input bits
 
     @param  lateralInputs (list of sequences)
-            Sets of indices of active lateral input bits, one per lateral layer
+            For each lateral layer, a list of sorted indices of active lateral
+            input bits
 
     @param  learn (bool)
             If True, we are learning a new object
@@ -178,10 +179,11 @@ class ColumnPooler(object):
     Parameters:
     ----------------------------
     @param  feedforwardInput (sequence)
-            List of indices of active feedforward input bits
+            Sorted indices of active feedforward input bits
 
     @param  lateralInputs (list of sequences)
-            Lists of indices of active lateral input bits, one per lateral layer
+            For each lateral layer, a list of sorted indices of active lateral
+            input bits
     """
 
     prevActiveCells = self.activeCells
@@ -230,10 +232,11 @@ class ColumnPooler(object):
     Parameters:
     ----------------------------
     @param  feedforwardInput (sequence)
-            List of indices of active feedforward input bits
+            Sorted indices of active feedforward input bits
 
     @param  lateralInputs (list of sequences)
-            Lists of indices of active lateral input bits, one per lateral layer
+            For each lateral layer, a list of sorted indices of active lateral
+            input bits
     """
 
     prevActiveCells = self.activeCells
