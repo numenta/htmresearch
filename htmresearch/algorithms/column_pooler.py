@@ -117,6 +117,8 @@ class ColumnPooler(object):
             Random number generator seed
     """
 
+    assert distalSegmentInhibitionFactor > 0.0
+
     self.inputWidth = inputWidth
     self.cellCount = cellCount
     self.sdrSize = sdrSize
