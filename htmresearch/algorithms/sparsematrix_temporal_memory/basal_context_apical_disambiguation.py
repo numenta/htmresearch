@@ -128,9 +128,9 @@ class TemporalMemory(object):
   def compute(self,
               activeColumns,
               basalInput,
-              basalGrowthCandidates,
               apicalInput=EMPTY_UINT_ARRAY,
-              apicalGrowthCandidates=EMPTY_UINT_ARRAY,
+              basalGrowthCandidates=None,
+              apicalGrowthCandidates=None,
               learn=True):
     """
     @param activeColumns (numpy array)
@@ -140,6 +140,12 @@ class TemporalMemory(object):
     @param apicalGrowthCandidates (numpy array)
     @param learn (bool)
     """
+    if basalGrowthCandidates is None:
+      basalGrowthCandidates = basalInput
+
+    if apicalGrowthCandidates is None:
+      apicalGrowthCandidates = apicalInput
+
     # Calculate predictions for this timestep
     (activeBasalSegments,
      matchingBasalSegments,
@@ -624,6 +630,10 @@ class TemporalMemory(object):
 
   def getActiveCells(self):
     return self.activeCells
+
+
+  def getPredictedActiveCells(self):
+    return np.intersect1d(self.activeCells, self.prevPredictedCells)
 
 
   def getWinnerCells(self):

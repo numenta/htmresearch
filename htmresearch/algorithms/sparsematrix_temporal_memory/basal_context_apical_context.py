@@ -113,9 +113,9 @@ class ApicalDependentTemporalMemory(object):
   def compute(self,
               activeColumns,
               basalInput,
-              basalGrowthCandidates,
               apicalInput,
-              apicalGrowthCandidates,
+              basalGrowthCandidates=None,
+              apicalGrowthCandidates=None,
               learn=True):
     """
     @param activeColumns (numpy array)
@@ -125,6 +125,12 @@ class ApicalDependentTemporalMemory(object):
     @param apicalGrowthCandidates (numpy array)
     @param learn (bool)
     """
+    if basalGrowthCandidates is None:
+      basalGrowthCandidates = basalInput
+
+    if apicalGrowthCandidates is None:
+      apicalGrowthCandidates = apicalInput
+
     # Calculate predictions for this timestep
     (activeBasalSegments,
      matchingBasalSegments,
@@ -548,6 +554,10 @@ class ApicalDependentTemporalMemory(object):
 
   def getActiveCells(self):
     return self.activeCells
+
+
+  def getPredictedActiveCells(self):
+    return np.intersect1d(self.activeCells, self.prevPredictedCells)
 
 
   def getWinnerCells(self):
