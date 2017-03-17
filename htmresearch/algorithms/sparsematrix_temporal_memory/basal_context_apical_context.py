@@ -114,8 +114,8 @@ class ApicalDependentTemporalMemory(object):
               activeColumns,
               basalInput,
               apicalInput,
-              basalGrowthCandidates,
-              apicalGrowthCandidates,
+              basalGrowthCandidates=None,
+              apicalGrowthCandidates=None,
               learn=True):
     """
     @param activeColumns (numpy array)
