@@ -632,6 +632,10 @@ class TemporalMemory(object):
     return self.activeCells
 
 
+  def getPredictedActiveCells(self):
+    return np.intersect1d(self.activeCells, self.prevPredictedCells)
+
+
   def getWinnerCells(self):
     return self.winnerCells
 
