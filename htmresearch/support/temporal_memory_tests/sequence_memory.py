@@ -590,11 +590,16 @@ class SequenceMemoryTestBase(object):
 
     elements = [self.randomPattern() for _ in xrange(10)]
 
-    sequences = []
-    for _ in xrange(2):
-      sequence = list(elements)
-      random.shuffle(sequence)
-      sequences.append(sequence)
+    while True:
+      sequences = []
+      for _ in xrange(2):
+        sequence = list(elements)
+        random.shuffle(sequence)
+        sequences.append(sequence)
+
+      # If we're not careful, randomness will cause this test to fail.
+      if len(getLongestSharedSubsequence(sequences)) < 4:
+        break
 
     # Learn
     for _ in xrange(40):
@@ -642,7 +647,7 @@ class SequenceMemoryTestBase(object):
                        sublist[10:])
 
     # Learn
-    for _ in xrange(50):
+    for _ in xrange(80):
       for sequence in sequences:
         for pattern in sequence:
           self.compute(pattern, learn=True)
@@ -941,3 +946,50 @@ def noisy(pattern, wFlip, n):
         break
 
   return noised
+
+
+def containsSublist(list1, sublist):
+  for i in xrange(len(list1)):
+    if list1[i:i+len(sublist)] == sublist:
+      return True
+
+  return False
+
+
+def getLongestSharedSubsequence(sequences):
+  """
+  Find the longest subsequence that occurs more than once in the provided
+  sequences.
+
+  @param sequences (list of list of patterns)
+  """
+
+  best = []
+
+  for sequenceNumber, currentSequence in enumerate(sequences):
+    for i, startPoint in enumerate(currentSequence):
+      currentSubsequence = [startPoint]
+
+      while True:
+
+        foundIt = False
+
+        otherSequences = [currentSequence[i+1:]] + sequences[sequenceNumber+1:]
+        for otherSequence in otherSequences:
+          foundIt = containsSublist(otherSequence, currentSubsequence)
+          if foundIt:
+            break
+
+        if foundIt:
+          if len(currentSubsequence) > len(best):
+            best = currentSubsequence
+
+          if i+1 == len(currentSequence):
+            break
+          else:
+            i += 1
+            currentSubsequence = currentSubsequence + [currentSequence[i]]
+        else:
+          break
+
+  return best
