@@ -22,12 +22,50 @@
 
 import unittest
 
-import nupic.bindings.experimental
-from tm_algorithm_test_base import TemporalMemoryAlgorithmTest
+from nupic.bindings.experimental import ExtendedTemporalMemory
+from tm_algorithm_test_base import SequenceMemoryAlgorithmTest
 
 
+class ExtendedTemporalMemoryCPP_SequenceMemoryTests(SequenceMemoryAlgorithmTest,
+                                                    unittest.TestCase):
 
-class TemporalMemoryAlgorithmTestCPP(TemporalMemoryAlgorithmTest,
-                                     unittest.TestCase):
-  def getTMClass(self):
-    return nupic.bindings.experimental.ExtendedTemporalMemory
+  def constructTM(self, columnDimensions, cellsPerColumn, initialPermanence,
+                  connectedPermanence, minThreshold, sampleSize,
+                  permanenceIncrement, permanenceDecrement,
+                  predictedSegmentDecrement, activationThreshold, seed):
+
+    params = {
+      "columnDimensions": columnDimensions,
+      "cellsPerColumn": cellsPerColumn,
+      "initialPermanence": initialPermanence,
+      "connectedPermanence": connectedPermanence,
+      "minThreshold": minThreshold,
+      "maxNewSynapseCount": sampleSize,
+      "permanenceIncrement": permanenceIncrement,
+      "permanenceDecrement": permanenceDecrement,
+      "predictedSegmentDecrement": predictedSegmentDecrement,
+      "activationThreshold": activationThreshold,
+      "seed": seed,
+      "learnOnOneCell": False,
+    }
+
+    self.tm = ExtendedTemporalMemory(**params)
+
+
+  def compute(self, activeColumns, learn):
+    # Use depolarizeCells + activateCells rather than tm.compute so that
+    # getPredictiveCells returns predictions for the current timestep.
+    self.tm.depolarizeCells(learn=learn)
+    self.tm.activateCells(sorted(activeColumns), learn=learn)
+
+
+  def reset(self):
+    self.tm.reset()
+
+
+  def getActiveCells(self):
+    return self.tm.getActiveCells()
+
+
+  def getPreviouslyPredictedCells(self):
+    return self.tm.getPredictiveCells()

@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2016-2017, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -21,22 +20,16 @@
 # ----------------------------------------------------------------------
 
 """
-Runs Extended Temporal Memory (ETM) against regular temporal memory tests,
-with the difference that typical default parameters are used.
+Sequence memory tests
 """
 
 from abc import ABCMeta, abstractmethod
+import random
 import unittest
 
-from nupic.data.generators.pattern_machine import PatternMachine
-from nupic.data.generators.sequence_machine import SequenceMachine
-
-from htmresearch.support.etm_monitor_mixin import (
-  ExtendedTemporalMemoryMonitorMixin)
 
 
-
-class TemporalMemoryAlgorithmTest(object):
+class SequenceMemoryAlgorithmTest(object):
   """
   ============================================================================
                   Basic First Order Sequences
@@ -60,7 +53,6 @@ class TemporalMemoryAlgorithmTest(object):
       predictedSegmentDecrement: 0.01
       activationThreshold: 25
       seed: 42
-      learnOnOneCell: False
 
   Note: this is not a high order sequence, so one cell per column is fine.
 
@@ -202,11 +194,8 @@ class TemporalMemoryAlgorithmTest(object):
   __metaclass__ = ABCMeta
   VERBOSITY = 1
   n = 2048
-  w = range(38, 43)
+  w = 40
   feedback_size = 400
-
-  def getPatternMachine(self):
-    return PatternMachine(self.n, self.w, num=300)
 
 
   def getDefaultTMParams(self):
@@ -222,8 +211,7 @@ class TemporalMemoryAlgorithmTest(object):
       "permanenceDecrement": 0.02,
       "predictedSegmentDecrement": 0.08,
       "activationThreshold": 25,
-      "seed": 42,
-      "learnOnOneCell": False,
+      "seed": 42
     }
 
 
@@ -231,76 +219,125 @@ class TemporalMemoryAlgorithmTest(object):
     """Basic sequence learner.  M=1, N=100, P=1."""
     self.init({"cellsPerColumn": 1})
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
+    sequence = [self.randomPattern() for _ in xrange(100)]
 
+    # Learn
     for _ in xrange(2):
-      self.feedTM(sequence)
+      for pattern in sequence:
+        self.compute(pattern, learn=True)
 
-    self._testTM(sequence)
-    self.assertAllActiveWerePredicted()
-    self.assertAllInactiveWereUnpredicted()
+      self.reset()
+
+    # Predict
+    for i, pattern in enumerate(sequence):
+      self.compute(pattern, learn=False)
+
+      if i > 0:
+        self.assertEqual(set(self.getPreviouslyPredictedCells()),
+                         set(self.getActiveCells()))
+
 
 
   def testB3(self):
     """N=300, M=1, P=1. (See how high we can go with N)"""
     self.init({"cellsPerColumn": 1})
 
-    numbers = self.sequenceMachine.generateNumbers(1, 300)
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
+    sequence = [self.randomPattern() for _ in xrange(300)]
 
+    # Learn
     for _ in xrange(2):
-      self.feedTM(sequence)
+      for pattern in sequence:
+        self.compute(pattern, learn=True)
 
-    self._testTM(sequence)
-    self.assertAllActiveWerePredicted()
-    self.assertAllInactiveWereUnpredicted()
+      self.reset()
+
+    # Predict
+    for i, pattern in enumerate(sequence):
+      self.compute(pattern, learn=False)
+
+      if i > 0:
+        self.assertEqual(set(self.getPreviouslyPredictedCells()),
+                         set(self.getActiveCells()))
 
 
   def testB4(self):
     """N=100, M=3, P=1. (See how high we can go with N*M)"""
     self.init({"cellsPerColumn": 1})
 
-    numbers = self.sequenceMachine.generateNumbers(3, 100)
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
+    sequences = [[self.randomPattern() for _ in xrange(300)]
+                 for _ in xrange(3)]
 
+    # Learn
     for _ in xrange(2):
-      self.feedTM(sequence)
+      for sequence in sequences:
+        for pattern in sequence:
+          self.compute(pattern, learn=True)
 
-    self._testTM(sequence)
-    self.assertAllActiveWerePredicted()
+        self.reset()
+
+    # Predict
+    for sequence in sequences:
+      for i, pattern in enumerate(sequence):
+        self.compute(pattern, learn=False)
+
+        if i > 0:
+          self.assertEqual(set(self.getPreviouslyPredictedCells()),
+                           set(self.getActiveCells()))
+
+      self.reset()
 
 
   def testB5(self):
     """Like B1 but with cellsPerColumn = 32.
     First order sequences should still work just fine."""
+
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
+    sequence = [self.randomPattern() for _ in xrange(100)]
 
+    # Learn
     for _ in xrange(2):
-      self.feedTM(sequence)
+      for pattern in sequence:
+        self.compute(pattern, learn=True)
 
-    self._testTM(sequence)
-    self.assertAllActiveWerePredicted()
-    self.assertAllInactiveWereUnpredicted()
+      self.reset()
+
+    # Predict
+    for i, pattern in enumerate(sequence):
+      self.compute(pattern, learn=False)
+
+      if i > 0:
+        self.assertEqual(set(self.getPreviouslyPredictedCells()),
+                         set(self.getActiveCells()))
 
 
   def testB6(self):
     """Like B4 but with cellsPerColumn = 32.
     First order sequences should still work just fine."""
+
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(3, 100)
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
+    sequences = [[self.randomPattern() for _ in xrange(300)]
+                 for _ in xrange(3)]
 
+    # Learn
     for _ in xrange(2):
-      self.feedTM(sequence)
+      for sequence in sequences:
+        for pattern in sequence:
+          self.compute(pattern, learn=True)
 
-    self._testTM(sequence)
-    self.assertAllActiveWerePredicted()
-    self.assertAllInactiveWereUnpredicted()
+        self.reset()
+
+    # Predict
+    for sequence in sequences:
+      for i, pattern in enumerate(sequence):
+        self.compute(pattern, learn=False)
+
+        if i > 0:
+          self.assertEqual(set(self.getPreviouslyPredictedCells()),
+                           set(self.getActiveCells()))
+
+      self.reset()
 
 
   def testB7(self):
@@ -317,74 +354,108 @@ class TemporalMemoryAlgorithmTest(object):
     will be correct. This test will ensure the basic match function and
     segment activation rules are working correctly.
     """
+
     self.init({"initialPermanence": 0.2,
                "connectedPermanence": 0.7,
                "permanenceIncrement": 0.2,
                "cellsPerColumn": 1})
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
+    sequence = [self.randomPattern() for _ in xrange(100)]
 
+    # Learn
     for _ in xrange(4):
-      self.feedTM(sequence)
+      for pattern in sequence:
+        self.compute(pattern, learn=True)
 
-    self._testTM(sequence)
-    self.assertAllActiveWerePredicted()
-    self.assertAllInactiveWereUnpredicted()
+      self.reset()
+
+    # Predict
+    for i, pattern in enumerate(sequence):
+      self.compute(pattern, learn=False)
+
+      if i > 0:
+        self.assertEqual(set(self.getPreviouslyPredictedCells()),
+                         set(self.getActiveCells()))
 
 
   def testB8(self):
     """Like B7 but with 32 cells per column.
     Should still work."""
+
     self.init({"initialPermanence": 0.2,
                "connectedPermanence": 0.7,
                "permanenceIncrement": 0.2})
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
+    sequence = [self.randomPattern() for _ in xrange(100)]
 
+    # Learn
     for _ in xrange(4):
-      self.feedTM(sequence)
+      for pattern in sequence:
+        self.compute(pattern, learn=True)
 
-    self._testTM(sequence)
-    self.assertAllActiveWerePredicted()
-    self.assertAllInactiveWereUnpredicted()
+      self.reset()
+
+    # Predict
+    for i, pattern in enumerate(sequence):
+      self.compute(pattern, learn=False)
+
+      if i > 0:
+        self.assertEqual(set(self.getPreviouslyPredictedCells()),
+                         set(self.getActiveCells()))
 
 
   def testB9(self):
     """Like B7 but present the sequence less than 4 times.
     The inference should be incorrect."""
+
     self.init({"initialPermanence": 0.2,
                "connectedPermanence": 0.7,
                "permanenceIncrement": 0.2})
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
+    sequence = [self.randomPattern() for _ in xrange(100)]
 
+    # Learn
     for _ in xrange(3):
-      self.feedTM(sequence)
+      for pattern in sequence:
+        self.compute(pattern, learn=True)
 
-    self._testTM(sequence)
-    self.assertAllActiveWereUnpredicted()
+      self.reset()
+
+    # Predict
+    for i, pattern in enumerate(sequence):
+      self.compute(pattern, learn=False)
+
+      if i > 0:
+        self.assertEqual(set(), set(self.getPreviouslyPredictedCells()))
+        self.assertEqual(self.w * 32, len(self.getActiveCells()))
 
 
   def testB11(self):
     """Like B5, but with each pattern corrupted by a small amount of spatial
     noise (X = 0.02)."""
+
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(1, 100)
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
+    sequence = [self.randomPattern() for _ in xrange(100)]
 
-    for _ in xrange(4):
-      self.feedTM(sequence)
+    # Learn
+    for _ in xrange(2):
+      for pattern in sequence:
+        self.compute(pattern, learn=True)
 
-    sequence = self.sequenceMachine.addSpatialNoise(sequence, 0.02)
+      self.reset()
 
-    self._testTM(sequence)
-    unpredictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTraceUnpredictedActiveColumns())
-    self.assertTrue(unpredictedActiveColumnsMetric.mean < 1)
+    # Predict
+    for i, pattern in enumerate(sequence):
+
+      pattern = noisy(pattern, 3, self.n)
+
+      self.compute(pattern, learn=False)
+
+      if i > 0:
+        self.assertEqual(self.w - 3, len(self.getPredictedActiveCells()))
+        self.assertEqual(3, len(self.getPredictedInactiveCells()))
+        self.assertEqual(3, len(self.getBurstingColumns()))
 
 
   def testH1(self):
@@ -395,25 +466,39 @@ class TemporalMemoryAlgorithmTest(object):
     """
     self.init({"cellsPerColumn": 1})
 
-    numbers = self.sequenceMachine.generateNumbers(2, 20, (10, 15))
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
+    sharedSubsequence = [self.randomPattern() for _ in xrange(5)]
 
-    for _ in xrange(10):
-      self.feedTM(sequence)
+    sequences = [[self.randomPattern() for _ in xrange(10)] +
+                 sharedSubsequence +
+                 [self.randomPattern() for _ in xrange(5)]
+                 for _ in xrange(2)]
 
-    self._testTM(sequence)
-    self.assertAllActiveWerePredicted()
+    # Learn
+    for _ in xrange(20):
+      for sequence in sequences:
+        for pattern in sequence:
+          self.compute(pattern, learn=True)
 
-    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTracePredictedInactiveColumns())
-    self.assertTrue(predictedInactiveColumnsMetric.mean > 0)
+        self.reset()
 
-    # At the end of both shared sequences, there should be
-    # predicted but inactive columns
-    self.assertTrue(
-      len(self.tm.mmGetTracePredictedInactiveColumns().data[15]) > 0)
-    self.assertTrue(
-      len(self.tm.mmGetTracePredictedInactiveColumns().data[35]) > 0)
+    # Predict
+    for sequence in sequences:
+      for i, pattern in enumerate(sequence):
+        self.compute(pattern, learn=False)
+
+        if i > 0:
+          if i == 15:
+            # At the end of both shared sequences, there should be
+            # predicted but inactive columns
+            self.assertTrue(set(self.getActiveCells()).issubset(
+              self.getPreviouslyPredictedCells()))
+            self.assertGreater(len(self.getPreviouslyPredictedCells()),
+                               len(self.getActiveCells()))
+          else:
+            self.assertEqual(set(self.getPreviouslyPredictedCells()),
+                             set(self.getActiveCells()))
+
+      self.reset()
 
 
   def testH2(self):
@@ -421,27 +506,34 @@ class TemporalMemoryAlgorithmTest(object):
 
     It should make just the right number of predictions.
     """
+
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(2, 20, (10, 15))
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
+    sharedSubsequence = [self.randomPattern() for _ in xrange(5)]
 
+    sequences = [[self.randomPattern() for _ in xrange(10)] +
+                 sharedSubsequence +
+                 [self.randomPattern() for _ in xrange(5)]
+                 for _ in xrange(2)]
+
+    # Learn
     for _ in xrange(20):
-      self.feedTM(sequence)
+      for sequence in sequences:
+        for pattern in sequence:
+          self.compute(pattern, learn=True)
 
-    self._testTM(sequence)
-    self.assertAllActiveWerePredicted()
+        self.reset()
 
-    # Without some kind of decay, expect predicted inactive columns at the
-    # end of the first shared sequence
-    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTracePredictedInactiveColumns())
-    self.assertTrue(predictedInactiveColumnsMetric.sum < 26)
+    # Predict
+    for sequence in sequences:
+      for i, pattern in enumerate(sequence):
+        self.compute(pattern, learn=False)
 
-    # At the end of the second shared sequence, there should be no
-    # predicted but inactive columns
-    self.assertEqual(
-      len(self.tm.mmGetTracePredictedInactiveColumns().data[36]), 0)
+        if i > 0:
+          self.assertEqual(set(self.getPreviouslyPredictedCells()),
+                           set(self.getActiveCells()))
+
+      self.reset()
 
 
   def testH3(self):
@@ -450,27 +542,41 @@ class TemporalMemoryAlgorithmTest(object):
     ends, all possible next patterns should be predicted. As soon as you see
     the first unique pattern, the predictions should collapse to be a perfect
     prediction."""
+
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(2, 20, (0, 5))
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
+    sharedSubsequence = [self.randomPattern() for _ in xrange(5)]
 
-    for _ in xrange(10):
-      self.feedTM(sequence)
+    sequences = [sharedSubsequence +
+                 [self.randomPattern() for _ in xrange(15)]
+                 for _ in xrange(2)]
 
-    self._testTM(sequence)
-    self.assertAllActiveWerePredicted()
+    # Learn
+    for _ in xrange(20):
+      for sequence in sequences:
+        for pattern in sequence:
+          self.compute(pattern, learn=True)
 
-    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTracePredictedInactiveColumns())
-    self.assertTrue(predictedInactiveColumnsMetric.sum < (max(self.w) + 1) * 2)
+        self.reset()
 
-    # At the end of each shared sequence, there should be
-    # predicted but inactive columns
-    self.assertTrue(
-      len(self.tm.mmGetTracePredictedInactiveColumns().data[5]) > 0)
-    self.assertTrue(
-      len(self.tm.mmGetTracePredictedInactiveColumns().data[25]) > 0)
+    # Predict
+    for sequence in sequences:
+      for i, pattern in enumerate(sequence):
+        self.compute(pattern, learn=False)
+
+        if i > 0:
+          if i == 5:
+            # At the end of each shared sequence, there should be
+            # predicted but inactive columns
+            self.assertTrue(set(self.getActiveCells()).issubset(
+              self.getPreviouslyPredictedCells()))
+            self.assertGreater(len(self.getPreviouslyPredictedCells()),
+                               len(self.getActiveCells()))
+          else:
+            self.assertEqual(set(self.getPreviouslyPredictedCells()),
+                             set(self.getActiveCells()))
+
+      self.reset()
 
 
   def testH4(self):
@@ -478,25 +584,42 @@ class TemporalMemoryAlgorithmTest(object):
 
     Similar to H2 except that patterns are shared between
     sequences. All sequences are different shufflings of the same set of N
-    patterns (there is no shared subsequence).
+    patterns (there is no intentional shared subsequence).
     """
     self.init()
 
-    numbers = []
+    elements = [self.randomPattern() for _ in xrange(10)]
+
+    sequences = []
     for _ in xrange(2):
-      numbers += self.sequenceMachine.generateNumbers(1, 10)
+      sequence = list(elements)
+      random.shuffle(sequence)
+      sequences.append(sequence)
 
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
-
+    # Learn
     for _ in xrange(40):
-      self.feedTM(sequence)
+      for sequence in sequences:
+        for pattern in sequence:
+          self.compute(pattern, learn=True)
 
-    self._testTM(sequence)
-    self.assertAllActiveWerePredicted()
+        self.reset()
 
-    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTracePredictedInactiveColumns())
-    self.assertTrue(predictedInactiveColumnsMetric.mean < 5)
+    # Predict
+    for sequence in sequences:
+      for i, pattern in enumerate(sequence):
+        self.compute(pattern, learn=False)
+
+        if i > 0:
+          if i > 5:
+            self.assertEqual(set(self.getPreviouslyPredictedCells()),
+                             set(self.getActiveCells()))
+          else:
+            # Allow it a few timesteps to disambiguate, in case there are random
+            # shared subsequences.
+            self.assertTrue(set(self.getActiveCells()).issubset(
+              self.getPreviouslyPredictedCells()))
+
+      self.reset()
 
 
   def testH5(self):
@@ -504,26 +627,44 @@ class TemporalMemoryAlgorithmTest(object):
 
     Shared patterns in different sequences, with a shared subsequence.
     """
+
     self.init()
 
-    numbers = []
-    shared = self.sequenceMachine.generateNumbers(1, 5)[:-1]
+    elements = [self.randomPattern() for _ in xrange(20)]
+    sharedSubsequence = [self.randomPattern() for _ in xrange(5)]
+
+    sequences = []
     for _ in xrange(2):
-      sublist = self.sequenceMachine.generateNumbers(1, 20)
-      sublist = [x for x in sublist if x not in xrange(5)]
-      numbers += sublist[0:10] + shared + sublist[10:]
+      sublist = list(elements)
+      random.shuffle(sublist)
+      sequences.append(sublist[0:10] +
+                       sharedSubsequence +
+                       sublist[10:])
 
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
-
+    # Learn
     for _ in xrange(50):
-      self.feedTM(sequence)
+      for sequence in sequences:
+        for pattern in sequence:
+          self.compute(pattern, learn=True)
 
-    self._testTM(sequence)
-    self.assertAllActiveWerePredicted()
+        self.reset()
 
-    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTracePredictedInactiveColumns())
-    self.assertTrue(predictedInactiveColumnsMetric.mean < 5)
+    # Predict
+    for sequence in sequences:
+      for i, pattern in enumerate(sequence):
+        self.compute(pattern, learn=False)
+
+        if i > 0:
+          if i > 5:
+            self.assertEqual(set(self.getPreviouslyPredictedCells()),
+                             set(self.getActiveCells()))
+          else:
+            # Allow it a few timesteps to disambiguate, in case there are random
+            # shared subsequences.
+            self.assertTrue(set(self.getActiveCells()).issubset(
+              self.getPreviouslyPredictedCells()))
+
+      self.reset()
 
 
   def testH9(self):
@@ -532,20 +673,38 @@ class TemporalMemoryAlgorithmTest(object):
 
     Parameters are the same as in B11, and sequences are like in H2.
     """
+
     self.init()
 
-    numbers = self.sequenceMachine.generateNumbers(2, 20, (10, 15))
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
+    sharedSubsequence = [self.randomPattern() for _ in xrange(5)]
 
-    for _ in xrange(10):
-      self.feedTM(sequence)
+    sequences = [[self.randomPattern() for _ in xrange(10)] +
+                 sharedSubsequence +
+                 [self.randomPattern() for _ in xrange(5)]
+                 for _ in xrange(2)]
 
-    sequence = self.sequenceMachine.addSpatialNoise(sequence, 0.05)
+    # Learn
+    for _ in xrange(20):
+      for sequence in sequences:
+        for pattern in sequence:
+          self.compute(pattern, learn=True)
 
-    self._testTM(sequence)
-    unpredictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTraceUnpredictedActiveColumns())
-    self.assertTrue(unpredictedActiveColumnsMetric.mean < 5)
+        self.reset()
+
+    # Predict
+    for sequence in sequences:
+      for i, pattern in enumerate(sequence):
+
+        pattern = noisy(pattern, 3, self.n)
+
+        self.compute(pattern, learn=False)
+
+        if i > 0:
+          self.assertEqual(self.w - 3, len(self.getPredictedActiveCells()))
+          self.assertEqual(3, len(self.getPredictedInactiveCells()))
+          self.assertEqual(3, len(self.getBurstingColumns()))
+
+      self.reset()
 
 
   def testH10(self):
@@ -557,62 +716,73 @@ class TemporalMemoryAlgorithmTest(object):
     columns.
     Parameters are the same as in B11, and sequences like in H9.
     """
+
+    sharedSubsequence = [self.randomPattern() for _ in xrange(3)]
+
+    sequences = [[self.randomPattern() for _ in xrange(5)] +
+                 sharedSubsequence +
+                 [self.randomPattern() for _ in xrange(2)]
+                 for _ in xrange(2)]
+
+    # Add the same noise for both tests.
+    allNoisySequences = [[[noisy(pattern, 2, self.n) for pattern in sequence]
+                          for sequence in sequences]
+                         for _ in xrange(10)]
+
+    # Learn immediately so that we're sure there will be incorrect predictions.
+
     # train TM on noisy sequences with orphan decay turned off
-    self.init({"predictedSegmentDecrement": 0.0})
+    self.init({"initialPermanence": 0.70,
+               "predictedSegmentDecrement": 0.0})
 
-    numbers = self.sequenceMachine.generateNumbers(2, 10, (5, 8))
-    sequence = self.sequenceMachine.generateFromNumbers(numbers)
+    for noisySequences in allNoisySequences:
+      for sequence in noisySequences:
+        for pattern in sequence:
+          self.compute(pattern, learn=True)
 
-    sequenceNoisy = dict()
-    for i in xrange(40):
-      sequenceNoisy[i] = self.sequenceMachine.addSpatialNoise(sequence, 0.05)
-      self.feedTM(sequenceNoisy[i])
-    self.tm.mmClearHistory()
+        self.reset()
 
-    self._testTM(sequence)
+    numPredictedInactiveColumnsBefore = 0
 
-    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTracePredictedInactiveColumns())
-    predictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTracePredictedActiveColumns())
+    for sequence in sequences:
+      for pattern in sequence:
+        self.compute(pattern, learn=False)
 
-    predictedInactiveColumnsMeanNoOrphanDecay = predictedInactiveColumnsMetric.mean
-    predictedActiveColumnsMeanNoOrphanDecay = predictedActiveColumnsMetric.mean
+        numPredictedInactiveColumnsBefore += len(
+          self.getPredictedInactiveColumns())
+
+      self.reset()
+
 
     # train TM on the same set of noisy sequences with orphan decay turned on
-    self.init({"predictedSegmentDecrement": 0.08})
+    self.init({"initialPermanence": 0.70,
+               "predictedSegmentDecrement": 0.08})
 
-    for i in xrange(40):
-      self.feedTM(sequenceNoisy[i])
-    self.tm.mmClearHistory()
+    for noisySequences in allNoisySequences:
+      for sequence in noisySequences:
+        for pattern in sequence:
+          self.compute(pattern, learn=True)
 
-    self._testTM(sequence)
+        self.reset()
 
-    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTracePredictedInactiveColumns())
-    predictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTracePredictedActiveColumns())
+    numPredictedInactiveColumnsAfter = 0
 
-    predictedInactiveColumnsMeanOrphanDecay = predictedInactiveColumnsMetric.mean
-    predictedActiveColumnsMeanOrphanDecay = predictedActiveColumnsMetric.mean
+    for sequence in sequences:
+      for i, pattern in enumerate(sequence):
+        self.compute(pattern, learn=False)
 
-    self.assertGreater(predictedInactiveColumnsMeanNoOrphanDecay, 0)
-    self.assertGreater(predictedInactiveColumnsMeanNoOrphanDecay,
-                       predictedInactiveColumnsMeanOrphanDecay)
-    self.assertAlmostEqual(predictedActiveColumnsMeanNoOrphanDecay,
-                           predictedActiveColumnsMeanOrphanDecay)
+        numPredictedInactiveColumnsAfter += len(
+          self.getPredictedInactiveColumns())
 
+        if i > 0:
+          self.assertEqual(len(self.getPredictedActiveColumns()),
+                           self.w)
 
-  # ==============================
-  # Overrides
-  # ==============================
+      self.reset()
 
-
-  @abstractmethod
-  def getTMClass(self):
-    """
-    Implement this method to specify the Temporal Memory class.
-    """
+    self.assertGreater(numPredictedInactiveColumnsBefore, 0)
+    self.assertGreater(numPredictedInactiveColumnsBefore,
+                       numPredictedInactiveColumnsAfter)
 
 
   def init(self, overrides=None):
@@ -621,37 +791,29 @@ class TemporalMemoryAlgorithmTest(object):
 
     :param overrides: overrides for default Temporal Memory parameters
     """
-    params = self._computeTMParams(overrides)
 
-    class MonitoredTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
-                                  self.getTMClass()): pass
-    self.tm = MonitoredTemporalMemory(**params)
-
-
-  def _computeTMParams(self, overrides):
     params = {
       "columnDimensions": (self.n,),
       "cellsPerColumn": 32,
       "initialPermanence": 0.5,
       "connectedPermanence": 0.6,
       "minThreshold": 25,
-      "maxNewSynapseCount": 30,
+      "sampleSize": 30,
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.02,
       "predictedSegmentDecrement": 0.08,
       "activationThreshold": 25,
       "seed": 42,
-      "learnOnOneCell": False,
     }
-    params.update(overrides or {})
-    return params
 
+    params.update(overrides or {})
+
+    self.cellsPerColumn = params["cellsPerColumn"]
+
+    self.constructTM(**params)
 
 
   def setUp(self):
-    self.tm = None
-    self.patternMachine = PatternMachine(self.n, self.w, num=300)
-    self.sequenceMachine = SequenceMachine(self.patternMachine)
 
     print ("\n"
            "======================================================\n"
@@ -661,62 +823,121 @@ class TemporalMemoryAlgorithmTest(object):
     ).format(self.id(), self.shortDescription())
 
 
-  def feedTM(self, sequence, learn=True, num=1):
-    repeatedSequence = sequence * num
-
-    self.tm.mmClearHistory()
-
-    for pattern in repeatedSequence:
-      if pattern is None:
-        self.tm.reset()
-      else:
-        self.tm.compute(sorted(pattern), learn=learn)
-
-    if self.VERBOSITY >= 2:
-      print self.tm.mmPrettyPrintTraces(
-        self.tm.mmGetDefaultTraces(verbosity=self.VERBOSITY-1))
-      print
-
-    if learn and self.VERBOSITY >= 3:
-      print self.tm.mmPrettyPrintConnections()
-
-
   # ==============================
   # Helper functions
   # ==============================
 
-  def _testTM(self, sequence):
-    self.feedTM(sequence, learn=False)
 
-    print self.tm.mmPrettyPrintMetrics(self.tm.mmGetDefaultMetrics())
-
-
-  def assertAllActiveWerePredicted(self):
-    unpredictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTraceUnpredictedActiveColumns())
-    predictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTracePredictedActiveColumns())
-
-    self.assertEqual(unpredictedActiveColumnsMetric.sum, 0)
-
-    self.assertEqual(predictedActiveColumnsMetric.min, min(self.w))
-    self.assertEqual(predictedActiveColumnsMetric.max, max(self.w))
+  def getPredictedActiveCells(self):
+    return set(self.getPreviouslyPredictedCells()) & set(self.getActiveCells())
 
 
-  def assertAllInactiveWereUnpredicted(self):
-    predictedInactiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTracePredictedInactiveColumns())
-
-    self.assertEqual(predictedInactiveColumnsMetric.sum, 0)
+  def getPredictedInactiveCells(self):
+    return set(self.getPreviouslyPredictedCells()) - set(self.getActiveCells())
 
 
-  def assertAllActiveWereUnpredicted(self):
-    unpredictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTraceUnpredictedActiveColumns())
-    predictedActiveColumnsMetric = self.tm.mmGetMetricFromTrace(
-      self.tm.mmGetTracePredictedActiveColumns())
+  def getPredictedActiveColumns(self):
+    predicted = set(cell / self.cellsPerColumn
+                    for cell in  self.getPreviouslyPredictedCells())
+    active = set(cell / self.cellsPerColumn
+                 for cell in  self.getActiveCells())
 
-    self.assertEqual(predictedActiveColumnsMetric.sum, 0)
+    return active & predicted
 
-    self.assertEqual(unpredictedActiveColumnsMetric.min, min(self.w))
-    self.assertEqual(unpredictedActiveColumnsMetric.max, max(self.w))
+
+  def getBurstingColumns(self):
+    predicted = set(cell / self.cellsPerColumn
+                    for cell in  self.getPreviouslyPredictedCells())
+    active = set(cell / self.cellsPerColumn
+                 for cell in  self.getActiveCells())
+
+    return active - predicted
+
+
+  def getPredictedInactiveColumns(self):
+    predicted = set(cell / self.cellsPerColumn
+                    for cell in  self.getPreviouslyPredictedCells())
+    active = set(cell / self.cellsPerColumn
+                 for cell in  self.getActiveCells())
+
+    return predicted - active
+
+
+  def randomPattern(self):
+    return random.sample(xrange(self.n), self.w)
+
+
+  # ==============================
+  # Extension points
+  # ==============================
+
+  @abstractmethod
+  def constructTM(self, columnDimensions, cellsPerColumn, initialPermanence,
+                  connectedPermanence, minThreshold, sampleSize,
+                  permanenceIncrement, permanenceDecrement,
+                  predictedSegmentDecrement, activationThreshold, seed):
+    """
+    Construct a new TemporalMemory from these parameters.
+    """
+    pass
+
+
+  @abstractmethod
+  def compute(self, activeColumns, learn):
+    """
+    Run one timestep of the TemporalMemory.
+    """
+    pass
+
+
+  @abstractmethod
+  def getActiveCells(self):
+    """
+    Get the currently active cells.
+    """
+    pass
+
+
+  @abstractmethod
+  def getPreviouslyPredictedCells(self):
+    """
+    Get the cells that were predicted for the current timestep.
+
+    In other words, the set of "correctly predicted cells" is the intersection
+    of these cells and the active cells.
+    """
+    pass
+
+
+
+def noisy(pattern, wFlip, n):
+  """
+  Generate a noisy copy of a pattern.
+
+  Deactivate wFlip cells, and activate wFlip other cells.
+
+  @param pattern (iterable)
+  A set of active indices
+
+  @param wFlip (int)
+  The number of bits to shuffle
+
+  @param n (int)
+  The number of bits in the SDR, active and inactive
+
+  @return (set)
+  A noisy set of active indices
+  """
+
+  noised = set(pattern)
+
+  noised.difference_update(random.sample(noised, wFlip))
+
+  for _ in xrange(wFlip):
+    while True:
+      v = random.randint(0, n - 1)
+      if v not in pattern and v not in noised:
+        noised.add(v)
+        break
+
+  return noised
