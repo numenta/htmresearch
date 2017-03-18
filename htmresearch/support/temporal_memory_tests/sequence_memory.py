@@ -29,7 +29,7 @@ import unittest
 
 
 
-class SequenceMemoryAlgorithmTest(object):
+class SequenceMemoryTestBase(object):
   """
   ============================================================================
                   Basic First Order Sequences

@@ -23,10 +23,10 @@
 import unittest
 
 from nupic.bindings.experimental import ExtendedTemporalMemory
-from tm_algorithm_test_base import SequenceMemoryAlgorithmTest
+from htmresearch.support.temporal_memory_tests.sequence_memory import SequenceMemoryTestBase
 
 
-class ExtendedTemporalMemoryCPP_SequenceMemoryTests(SequenceMemoryAlgorithmTest,
+class ExtendedTemporalMemoryCPP_SequenceMemoryTests(SequenceMemoryTestBase,
                                                     unittest.TestCase):
 
   def constructTM(self, columnDimensions, cellsPerColumn, initialPermanence,
