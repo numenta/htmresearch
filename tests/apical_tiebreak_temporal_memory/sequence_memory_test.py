@@ -28,8 +28,8 @@ from htmresearch.algorithms.sparsematrix_temporal_memory.basal_context_apical_di
 from htmresearch.support.temporal_memory_tests.sequence_memory import SequenceMemoryTestBase
 
 
-class SparseMatrixTM_SequenceMemoryTests(SequenceMemoryTestBase,
-                                         unittest.TestCase):
+class ApicalTiebreakTM_SequenceMemoryTests(SequenceMemoryTestBase,
+                                           unittest.TestCase):
 
   def constructTM(self, columnDimensions, cellsPerColumn, initialPermanence,
                   connectedPermanence, minThreshold, sampleSize,
