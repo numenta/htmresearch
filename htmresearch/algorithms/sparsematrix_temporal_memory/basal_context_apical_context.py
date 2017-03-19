@@ -60,7 +60,8 @@ class ApicalDependentTemporalMemory(object):
                sampleSize=20,
                permanenceIncrement=0.1,
                permanenceDecrement=0.1,
-               predictedSegmentDecrement=0.0,
+               basalPredictedSegmentDecrement=0.0,
+               apicalPredictedSegmentDecrement=0.0,
                maxNewSynapseCount=None,
                maxSynapsesPerSegment=-1,
                maxSegmentsPerCell=None,
@@ -86,7 +87,8 @@ class ApicalDependentTemporalMemory(object):
 
     self.permanenceIncrement = permanenceIncrement
     self.permanenceDecrement = permanenceDecrement
-    self.predictedSegmentDecrement = predictedSegmentDecrement
+    self.basalPredictedSegmentDecrement = basalPredictedSegmentDecrement
+    self.apicalPredictedSegmentDecrement = apicalPredictedSegmentDecrement
     self.activationThreshold = activationThreshold
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
 
@@ -187,7 +189,6 @@ class ApicalDependentTemporalMemory(object):
 
       for learningSegments in (learningActiveApicalSegments,
                                learningMatchingApicalSegments):
-
         self._learn(self.apicalConnections, self.rng, learningSegments,
                     apicalInput, apicalGrowthCandidates,
                     apicalPotentialOverlaps, self.initialPermanence,
@@ -195,11 +196,15 @@ class ApicalDependentTemporalMemory(object):
                     self.permanenceDecrement, self.maxSynapsesPerSegment)
 
       # Punish incorrect predictions
-      if self.predictedSegmentDecrement != 0.0:
+      if self.basalPredictedSegmentDecrement != 0.0:
         self.basalConnections.adjustActiveSynapses(
-          basalSegmentsToPunish, basalInput, -self.predictedSegmentDecrement)
+          basalSegmentsToPunish, basalInput,
+          -self.basalPredictedSegmentDecrement)
+
+      if self.apicalPredictedSegmentDecrement != 0.0:
         self.apicalConnections.adjustActiveSynapses(
-          apicalSegmentsToPunish, apicalInput, -self.predictedSegmentDecrement)
+          apicalSegmentsToPunish, apicalInput,
+          -self.apicalPredictedSegmentDecrement)
 
       # Only grow segments if there is basal *and* apical input.
       if len(basalGrowthCandidates) > 0 and len(apicalGrowthCandidates) > 0:
@@ -302,16 +307,18 @@ class ApicalDependentTemporalMemory(object):
       burstingColumnsWithNoMatch)
 
     # Incorrectly predicted columns
-    if self.predictedSegmentDecrement > 0.0:
+    if self.basalPredictedSegmentDecrement > 0.0:
       correctMatchingBasalMask = np.in1d(
         cellsForMatchingBasal / self.cellsPerColumn, activeColumns)
-      correctMatchingApicalMask = np.in1d(
-        cellsForMatchingApical / self.cellsPerColumn, activeColumns)
-
       basalSegmentsToPunish = matchingBasalSegments[~correctMatchingBasalMask]
-      apicalSegmentsToPunish = matchingApicalSegments[~correctMatchingApicalMask]
     else:
       basalSegmentsToPunish = ()
+
+    if self.apicalPredictedSegmentDecrement > 0.0:
+      correctMatchingApicalMask = np.in1d(
+        cellsForMatchingApical / self.cellsPerColumn, activeColumns)
+      apicalSegmentsToPunish = matchingApicalSegments[~correctMatchingApicalMask]
+    else:
       apicalSegmentsToPunish = ()
 
     # Make a list of every cell that is learning
