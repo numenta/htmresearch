@@ -58,7 +58,7 @@ class NIKAnalysis(object):
       # print >>sys.stderr, "Theta t-1: ", theta1t1, theta2t1, "t:",theta1, theta2
 
     elif self.numPoints == self.maxPoints:
-      print >> sys.stderr,"Max points exceeded!"
+      print >> sys.stderr,"Max points exceeded, analyzing ",self.maxPoints,"points only"
       self.numPoints += 1
 
 
@@ -128,7 +128,6 @@ if __name__ == "__main__":
                     theta1=float(x[6]), theta2=float(x[7]))
       sys.stdout.flush()
     except EOFError:
-      print >>sys.stderr, "Quitting!!!"
       break
     except Exception as e:
       print >>sys.stderr, "Error in line",line,"!!!!"
