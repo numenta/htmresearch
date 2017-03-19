@@ -198,23 +198,6 @@ class SequenceMemoryTestBase(object):
   feedback_size = 400
 
 
-  def getDefaultTMParams(self):
-    """We use typical default parameters for the test suite."""
-    return {
-      "columnDimensions": (self.n,),
-      "cellsPerColumn": 32,
-      "initialPermanence": 0.5,
-      "connectedPermanence": 0.6,
-      "minThreshold": 25,
-      "maxNewSynapseCount": 30,
-      "permanenceIncrement": 0.1,
-      "permanenceDecrement": 0.02,
-      "predictedSegmentDecrement": 0.08,
-      "activationThreshold": 25,
-      "seed": 42
-    }
-
-
   def testB1(self):
     """Basic sequence learner.  M=1, N=100, P=1."""
     self.init({"cellsPerColumn": 1})
