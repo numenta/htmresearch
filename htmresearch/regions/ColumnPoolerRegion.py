@@ -362,10 +362,12 @@ class ColumnPoolerRegion(PyRegion):
         outputs["activeCells"][:] = 0
         return
 
-    feedforwardInput = inputs["feedforwardInput"].nonzero()[0]
+    feedforwardInput = numpy.asarray(inputs["feedforwardInput"].nonzero()[0],
+                                     dtype="uint32")
 
     if "lateralInput" in inputs:
-      lateralInputs = tuple(singleInput.nonzero()[0]
+      lateralInputs = tuple(numpy.asarray(singleInput.nonzero()[0],
+                                          dtype="uint32")
                             for singleInput
                             in numpy.split(inputs["lateralInput"],
                                            self.numOtherCorticalColumns))
