@@ -301,14 +301,24 @@ def createMultipleL4L2Columns(network, networkConfig):
 
   # Now connect the L2 columns laterally
   for i in range(networkConfig["numCorticalColumns"]):
+    network.setPhases("L2Column_{}".format(i), [i+3])
     suffixSrc = "_" + str(i)
     for j in range(networkConfig["numCorticalColumns"]):
-      if i != j:
-        suffixDest = "_" + str(j)
+      suffixDest = "_" + str(j)
+      if i < j:
+        # use delayed link for lateral connections because c_i is computed
+        # before c_j
         network.link(
-            "L2Column" + suffixSrc, "L2Column" + suffixDest,
-            "UniformLink", "",
-            srcOutput="feedForwardOutput", destInput="lateralInput")
+          "L2Column" + suffixSrc, "L2Column" + suffixDest,
+          "UniformLink", "",
+          srcOutput="feedForwardOutput", destInput="lateralInput",
+          propagationDelay=1)
+      elif i > j:
+        network.link(
+          "L2Column" + suffixSrc, "L2Column" + suffixDest,
+          "UniformLink", "",
+          srcOutput="feedForwardOutput", destInput="lateralInput",
+          propagationDelay=0)
 
   enableProfiling(network)
 

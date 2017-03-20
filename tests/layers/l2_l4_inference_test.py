@@ -21,10 +21,16 @@
 
 """Tests for l2_l4_inference module."""
 
+import copy
 import unittest
 
 from htmresearch.frameworks.layers import l2_l4_inference
 
+from htmresearch.frameworks.layers.object_machine_factory import (
+  createObjectMachine
+)
+
+import numpy
 
 
 class L4L2ExperimentTest(unittest.TestCase):
@@ -34,7 +40,7 @@ class L4L2ExperimentTest(unittest.TestCase):
   and the real work is all done inside the network. The tests here make sure
   that the interface works and has some basic sanity checks for the experiment
   statistics. These are intended to make sure that the code works but do not go
-  far enought to validate that the experiments are set up correctly and getting
+  far enough to validate that the experiments are set up correctly and getting
   meaningful experimental results.
   """
 
@@ -94,6 +100,67 @@ class L4L2ExperimentTest(unittest.TestCase):
 
     self.assertSequenceEqual(exp.getL4Representations(),
                              [set(xrange(0, 40)), set(xrange(40, 80))])
+
+
+  def testDelayedLateralInputs(self):
+    """Test whether lateral inputs are synchronized across columns"""
+    # Set up experiment
+    exp = l2_l4_inference.L4L2Experiment(
+      name="sample",
+      numCorticalColumns=2,
+    )
+
+    objects = createObjectMachine(
+      machineType="simple",
+      numInputBits=20,
+      sensorInputSize=1024,
+      externalInputSize=1024,
+      numCorticalColumns=2,
+    )
+    objects.addObject([(1, 1), (2, 2)])
+    objects.addObject([(1, 1), (3, 2)])
+
+    exp.learnObjects(objects.provideObjectsToLearn())
+    exp._sendReset()
+
+    sensationC0 = [(1, 1), (1, 1), (1, 1)]
+    sensationC1 = [(3, 2), (3, 2), (3, 2)]
+
+    lateralInputs = []
+    activeCells = []
+    for step in range(3):
+      inferConfig = {
+        "noiseLevel": None,
+        "numSteps": 1,
+        "pairs": {0: [sensationC0[step]], 1: [sensationC1[step]]}
+      }
+
+      exp.infer(objects.provideObjectToInfer(inferConfig),
+                objectName=1, reset=False)
+
+      lateralInputs.append(
+        {0: copy.copy(
+          exp.network.regions['L2Column_0'].getInputData("lateralInput")),
+         1: copy.copy(
+           exp.network.regions['L2Column_1'].getInputData("lateralInput"))}
+      )
+      activeCells.append(
+        {0: copy.copy(
+          exp.network.regions['L2Column_0'].getOutputData("feedForwardOutput")),
+         1: copy.copy(
+           exp.network.regions['L2Column_1'].getOutputData("feedForwardOutput"))}
+      )
+
+    # no lateral inputs on first iteration
+    self.assertEqual(numpy.sum(numpy.abs(lateralInputs[0][0])), 0)
+    self.assertEqual(numpy.sum(numpy.abs(lateralInputs[0][1])), 0)
+
+    # lateral inputs of C0 at time t+1 = active cells of C1 at time t
+    for step in range(2):
+      self.assertEqual(
+        numpy.sum(numpy.abs(lateralInputs[step+1][0]-activeCells[step][1])), 0)
+      self.assertEqual(
+        numpy.sum(numpy.abs(lateralInputs[step+1][1]-activeCells[step][0])), 0)
 
 
   def testCapacity(self):
