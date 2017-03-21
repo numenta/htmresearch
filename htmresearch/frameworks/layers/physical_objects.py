@@ -673,8 +673,7 @@ class PlyModel(PhysicalObject):
 
   def contains(self, location):
     """
-    Checks that the provided point is on the sphere.
-    TODO: Temporary Hack... need math for this
+    Checks that the provided point is on the model (object).
     """
     for vertex in self.vertices:
       V = np.array((vertex['x'], vertex['y'], vertex['z'])).T
@@ -704,8 +703,7 @@ class PlyModel(PhysicalObject):
     forwarded to sample from face instead.
     """
     if feature == "surface":
-        #TODO
-        pass
+      return self.sampleLocationFromFeature('face') # Temporary workaround for surfaces
     elif feature=="face":
       indx = self.rng.choice(range(self.faces.count))
       rndFace = self.faces[indx]
