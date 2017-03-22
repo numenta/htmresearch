@@ -23,15 +23,32 @@ import argparse
 import csv
 import json
 import logging
+import numpy as np
 import os
 import time
 import yaml
+from collections import deque
 
 from htm_network import BaseNetwork
 
 logging.basicConfig()
 _LOGGER = logging.getLogger('NetworkRunner')
 _LOGGER.setLevel(logging.INFO)
+
+
+
+def _newTrace():
+  return {
+    't': [],
+    'scalarValue': [],
+    'encoderOutput': [],
+    'spActiveColumns': [],
+    'tmActiveCells': [],
+    'tmPredictiveCells': [],
+    'tmPredictedActiveCells': [],
+    'rawAnomalyScore': [],
+    'label': []
+  }
 
 
 
@@ -61,40 +78,46 @@ def _getConfig(configFilePath):
 
 
 
-def _newTrace():
-  return {
-    'label': [],
-    'spActiveColumns': [],
-    'tmPredictedActiveCells': [],
-  }
-
-
-
-def _updateTrace(traceNZ, label, spActiveColumns, tmPredictedActiveCells):
+def _updateTrace(traceNZ, t, scalarValue, label, encoderOutput,
+                 spActiveColumns, tmActiveCells,
+                 tmPredictiveCells, tmPredictedActiveCells, rawAnomalyScore):
+  traceNZ['t'].append(t)
+  traceNZ['scalarValue'].append(scalarValue)
   traceNZ['label'].append(label)
+  traceNZ['encoderOutput'].append(encoderOutput)
   traceNZ['spActiveColumns'].append(spActiveColumns)
+  traceNZ['tmActiveCells'].append(tmActiveCells)
+  traceNZ['tmPredictiveCells'].append(tmPredictiveCells)
   traceNZ['tmPredictedActiveCells'].append(tmPredictedActiveCells)
+  traceNZ['rawAnomalyScore'].append(rawAnomalyScore)
   return traceNZ
 
 
 
 def _writeTraceBatch(traceNZ, traceWriter):
-  numSequences = len(traceNZ['label'])
-  for i in range(numSequences):
+  numPoints = len(traceNZ['t'])
+  for i in range(numPoints):
     row = []
     for traceName in traceNZ.keys():
-      row.append(json.dumps(traceNZ[traceName][i]))
+      trace = traceNZ[traceName]
+      if trace:
+        if type(trace[i]) == np.ndarray:
+          trace[i] = trace[i].tolist()
+        row.append(json.dumps(trace[i]))
+      else:
+        row.append(None)
     traceWriter.writerow(row)
 
 
 
-def run(network, inputDir, inputFileName, outputDir, learningMode, chunkSize):
+def run(network, inputDir, inputFileName, inputMetricName, outputDir,
+        learningMode, chunkSize):
   # Make sure the output dir exists
   if not os.path.exists(outputDir):
     os.makedirs(outputDir)
 
   # Remove trace file if it already exists
-  traceFileName = 'trace_%s' % inputFileName
+  traceFileName = 'trace_%s_%s' % (inputMetricName, inputFileName)
   traceFilePath = os.path.join(outputDir, traceFileName)
   if os.path.exists(traceFilePath):
     os.remove(traceFilePath)
@@ -111,32 +134,31 @@ def run(network, inputDir, inputFileName, outputDir, learningMode, chunkSize):
     inputFilePath = os.path.join(inputDir, inputFileName)
     with open(inputFilePath, 'r') as inputFile:
       reader = csv.reader(inputFile)
+      inputHeaders = reader.next()
 
       # Run the network.
       for row in reader:
-        label = int(float(row[0]))
-        sequence_values = row[1:]
+        t = int(reader.line_num)
+        data = dict(zip(inputHeaders, row))
+        label = json.loads(data['label'])
+        value = json.loads(data[inputMetricName])
 
-        spActiveColumns = []
-        tmPredictedActiveCells = []
-        for valueString in sequence_values:
-          value = float(valueString)
-          network.handleRecord(value, label=label, learningMode=learningMode)
-          spActiveColumns.append(network.getSpOutputNZ().tolist())
-          tmPredictedActiveCells.append(
-            network.getTmPredictedActiveCellsNZ().tolist())
+        network.handleRecord(value, label=label,
+                             learningMode=learningMode)
 
-
-        traceNZ = _updateTrace(traceNZ, label, spActiveColumns, 
-                               tmPredictedActiveCells)
+        traceNZ = _updateTrace(traceNZ, t, value, label,
+                               network.getEncoderOutputNZ(),
+                               network.getSpOutputNZ(),
+                               network.getTmActiveCellsNZ(),
+                               network.getTmPredictiveCellsNZ(),
+                               network.getTmPredictedActiveCellsNZ(),
+                               network.getRawAnomalyScore())
 
         # Write and reset trace periodically to optimize memory usage.
-        sequenceNumber = int(reader.line_num)
-        if sequenceNumber % chunkSize == 0:
+        if t % chunkSize == 0:
           _writeTraceBatch(traceNZ, traceWriter)
           traceNZ = _newTrace()
-          _LOGGER.info('Wrote to file (label=%s, sequenceNumber=%s)'
-                       % (label, sequenceNumber))
+          _LOGGER.info('Wrote to file (t=%s, label=%s)' % (t, label))
 
           # Log elapsed time.            
           elapsedTime = time.time() - startTime
@@ -155,7 +177,7 @@ def main():
   parser.add_argument('--config', '-c',
                       dest='config',
                       type=str,
-                      default='configs/body_acc_x.yml',
+                      default='configs/body_acc_x.metric.yml',
                       help='Name of YML config file.')
   options = parser.parse_args()
   configFile = options.config
@@ -178,12 +200,14 @@ def main():
   # Run HTM on train set
   learningMode = True
   _LOGGER.info('Input file: %s' % trainFileName)
-  run(network, inputDir, trainFileName, outputDir, learningMode, chunkSize)
+  run(network, inputDir, trainFileName, metricName, outputDir,
+      learningMode, chunkSize)
 
   # Run HTM on test set (learning disabled)
   learningMode = False
   _LOGGER.info('Input file: %s' % testFileName)
-  run(network, inputDir, testFileName, outputDir, learningMode, chunkSize)
+  run(network, inputDir, testFileName, metricName, outputDir,
+      learningMode, chunkSize)
 
 
 

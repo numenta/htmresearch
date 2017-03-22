@@ -237,7 +237,8 @@ def _getConfig(configFilePath):
     config = yaml.load(ymlFile)
 
   input_dir = config['inputs']['input_dir']
-  base_name = config['inputs']['base_name']
+  train_file_name = config['inputs']['train_file_name']
+  test_file_name = config['inputs']['test_file_name']
   metric_name = config['inputs']['metric_name']
   results_output_dir = config['outputs']['results_output_dir']
   model_output_dir = config['outputs']['model_output_dir']
@@ -248,7 +249,6 @@ def _getConfig(configFilePath):
   batch_size = config['params']['batch_size']
   num_epochs = config['params']['num_epochs']
   ma_window = config['params']['ma_window']
-  input_name = config['params']['input_name']
   input_dim = config['params']['input_dim']
   output_dim = config['params']['output_dim']
   labels = config['params']['labels']
@@ -256,7 +256,8 @@ def _getConfig(configFilePath):
   train = config['params']['train']
 
   return (input_dir,
-          base_name,
+          train_file_name,
+          test_file_name,
           metric_name,
           results_output_dir,
           model_output_dir,
@@ -267,7 +268,6 @@ def _getConfig(configFilePath):
           batch_size,
           num_epochs,
           ma_window,
-          input_name,
           input_dim,
           output_dim,
           labels,
@@ -282,14 +282,15 @@ def main():
   parser.add_argument('--config', '-c',
                       dest='config',
                       type=str,
-                      default='config.yml',
+                      default='configs/uci.yml',
                       help='Name of YAML config file.')
   options = parser.parse_args()
   configFile = options.config
 
   # Get config options.
   (input_dir,
-   base_name,
+   train_file_name,
+   test_file_name,
    metric_name,
    results_output_dir,
    model_output_dir,
@@ -300,17 +301,14 @@ def main():
    batch_size,
    num_epochs,
    ma_window,
-   input_name,
    input_dim,
    output_dim,
    labels,
    lazy,
    train) = _getConfig(configFile)
 
-  train_file = os.path.join(input_dir,
-                            'trace_%s_%s_train.csv' % (metric_name, base_name))
-  test_file = os.path.join(input_dir,
-                           'trace_%s_%s_test.csv' % (metric_name, base_name))
+  train_file = os.path.join(input_dir, train_file_name)
+  test_file = os.path.join(input_dir, test_file_name)
 
   # Model dimensions
   print 'input_dim', input_dim
@@ -340,13 +338,13 @@ def main():
     model = _train_and_save_model(model_path, model_history_path,
                                   input_dim, output_dim, lazy, train_file,
                                   ma_window, chunk_size, batch_size,
-                                  num_epochs, input_name)
+                                  num_epochs, metric_name)
   else:
     model = load_keras_model(model_path)
 
   # Test
   _test_model(model, prediction_history_path, input_dim, output_dim, test_file,
-              chunk_size, ma_window, input_name)
+              chunk_size, ma_window, metric_name)
 
 
 

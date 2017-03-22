@@ -86,8 +86,12 @@ def convert_to_one_hot(y_labels, output_dim):
 
 
 
-def create_model(input_dim, output_dim):
-  # Create model.
+def create_model(input_shape, output_dim):
+  if isinstance(input_shape, (tuple, list)) and len(input_shape) > 0:
+    input_dim = input_shape[0] * input_shape[1]
+  else:
+    input_dim = input_shape
+
   model = Sequential()
   model.add(Dense(output_dim,
                   input_dim=input_dim,
