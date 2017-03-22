@@ -164,3 +164,4 @@ testData = generateSequences(
 np.savetxt('Test1/Test1_TRAIN', trainData, delimiter=',', fmt='%.10f')
 np.savetxt('Test1/Test1_TEST', testData, delimiter=',', fmt='%.10f')
 
+plt.savefig('Test1/Test1.png')

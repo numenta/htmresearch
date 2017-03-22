@@ -1,7 +1,6 @@
 import argparse
 import itertools
 import os
-import shutil
 import numpy as np
 import pandas as pd
 
@@ -51,10 +50,8 @@ def convert_to_sequences(csv_path, parent_output_dir, phase, chunk_size):
   and metric_N(tM) is the value of metric_N at time tM.
   """
 
-  print 'csv_path:', csv_path
-  
   df = pd.read_csv(csv_path)
-  
+
   # Group time series by label chunks  
   metrics = list(df.columns.values)
   if 'label' in metrics:  metrics.remove('label')
@@ -80,7 +77,7 @@ def convert_to_sequences(csv_path, parent_output_dir, phase, chunk_size):
       except:
         print 'skip label:', label
         continue
-        
+
       ts_values = []
       for group in groups:
         ts_values.append(float(group[1]))
@@ -94,6 +91,7 @@ def convert_to_sequences(csv_path, parent_output_dir, phase, chunk_size):
         txt_rows.append([int(label)] + ts_values)
 
     np.savetxt(txt_file, txt_rows, delimiter=',', fmt='%.10f')
+
 
 
 if __name__ == '__main__':
@@ -110,12 +108,12 @@ if __name__ == '__main__':
                       default=os.path.join(
                         os.getcwd(), 'uci_sequences', 'inertial_signals'),
                       type=str)
-  
+
   parser.add_argument('--chunk_size', '-c',
                       dest='chunk_size',
                       default=100,
                       type=int)
-  
+
   options = parser.parse_args()
   csv_path = options.input_file
   output_dir = options.output_dir
