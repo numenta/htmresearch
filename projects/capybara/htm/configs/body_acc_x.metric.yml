@@ -1,0 +1,14 @@
+inputs:
+  inputDir: '../datasets/uci_har/'
+  trainFileName: 'inertial_signals_train.csv'
+  testFileName: 'inertial_signals_test.csv'
+  metricName: 'body_acc_x'
+  metricMin: -1.0
+  metricMax: 1.0
+
+outputs:
+  outputDir: 'traces'
+
+params:
+  chunkSize: 1000
+  runSanity: False

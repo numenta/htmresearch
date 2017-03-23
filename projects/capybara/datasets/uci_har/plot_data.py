@@ -20,6 +20,7 @@
 # ----------------------------------------------------------------------
 
 import os
+import shutil
 import pandas as pd
 
 import plotly.offline as py
@@ -35,6 +36,8 @@ LABELS = ['WALKING',
           'STANDING',
           'LAYING']
 
+OUTPUT_DIR = 'plots'
+
 # Range to plot
 x_min = 0
 x_max = 40000
@@ -47,6 +50,11 @@ train_file = 'inertial_signals_train.csv'
 train = pd.read_csv(train_file)[x_min:x_max]
 test = pd.read_csv(test_file)[x_min:x_max]
 
+if os.path.exists(OUTPUT_DIR):
+  shutil.rmtree(OUTPUT_DIR)  
+os.makedirs(OUTPUT_DIR)
+  
+filenames = []
 for m in metrics:
   for ax in axis:
     metric = '%s_%s' % (m, ax)
@@ -59,8 +67,7 @@ for m in metrics:
       'train': train,
       'test': test
     }
-    
-    filenames = []
+
     for phase in data.keys():
       df = data[phase]
       min_val = min(df[metric].values)
@@ -82,8 +89,8 @@ for m in metrics:
         upper_bound = df.copy()
     
         lower_bound[metric] = min_val
-        upper_bound[metric][df.label == label] = max_val
-        upper_bound[metric][df.label != label] = min_val
+        upper_bound.loc[df.label == label, metric] = max_val
+        upper_bound.loc[df.label != label, metric] = min_val
     
         traces.append(go.Scatter(x=range(len(df)),
                                  y=upper_bound[metric],
@@ -102,9 +109,8 @@ for m in metrics:
                                  name='label %s (%s)' % (label, LABELS[label])))
     
       fig = go.Figure(data=traces, layout=layout)
-      filename = '%s_%s.html' % (metric, phase)
+      filename = os.path.join(OUTPUT_DIR, '%s_%s.html' % (metric, phase))
       filenames.append(filename)
-      py.plot(fig, filename=filename,
-              auto_open=False)
+      py.plot(fig, filename=filename, auto_open=False)
 
 print 'HTML plots saved: %s' % filenames

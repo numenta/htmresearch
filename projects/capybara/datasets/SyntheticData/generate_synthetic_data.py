@@ -27,9 +27,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from sklearn import decomposition
-import random
-plt.ion()
-plt.close('all')
+import os
+
+
+plt.figure()
+
 # Generate a set of sequence motifs
 def generateSequenceMotifs(numMotif, motifLength, seed=None):
   if seed is not None:
@@ -52,7 +54,7 @@ def generateSequence(sequenceLength, useMotif, currentClass, sequenceMotifs):
   sequence = np.zeros((sequenceLength + 20,))
   motifState = np.zeros((sequenceLength + 20,))
   randomLengthList = np.linspace(1, 10, 10).astype('int')
-  # randomLengthList = [1]
+
   t = 0
   while t < sequenceLength:
     randomLength = np.random.choice(randomLengthList)
@@ -78,10 +80,8 @@ def generateSequences(numSeq, numClass, sequenceLength, useMotif, sequenceMotifs
   for classIdx in range(numClass):
     classList += [classIdx] * numSeqPerClass
 
-  # classList = np.random.permutation(classList)
   for seq in range(numSeq):
     currentClass = classList[seq]
-    # print "useMotif, {}".format(useMotif)
     sequence, motifState = generateSequence(sequenceLength, useMotif,
                                             currentClass, sequenceMotifs)
     trainData[seq, 0] = currentClass
@@ -112,7 +112,8 @@ sequenceLength = 100
 
 
 currentClass = 0
-sequence, motifState = generateSequence(sequenceLength, useMotif, currentClass, sequenceMotifs)
+sequence, motifState = generateSequence(sequenceLength, useMotif,
+                                        currentClass, sequenceMotifs)
 
 MotifColor = {}
 colorList = ['r','g','b','c','m','y']
@@ -126,7 +127,8 @@ fig, ax = plt.subplots(nrows=4, ncols=1, figsize=(20, 3 * 4))
 
 for plti in xrange(4):
   currentClass = [0 if plti < 2 else 1][0]
-  sequence, motifState = generateSequence(sequenceLength, useMotif, currentClass, sequenceMotifs)
+  sequence, motifState = generateSequence(sequenceLength, useMotif, 
+                                          currentClass, sequenceMotifs)
   ax[plti].plot(sequence, 'k-')
 
   startPatch = False
@@ -151,20 +153,15 @@ for plti in xrange(4):
   ax[plti].set_xlim([0, 100])
   ax[plti].set_ylabel('class {}'.format(currentClass))
 
-# ax[1].plot(motifState)
+outputDir = 'Test1'
+if not os.path.exists(outputDir):
+  os.makedirs(outputDir)
 
+trainData = generateSequences(
+  numTrain, numClass, sequenceLength, useMotif, sequenceMotifs)
+testData = generateSequences(
+  numTest, numClass, sequenceLength, useMotif, sequenceMotifs)
+np.savetxt('Test1/Test1_TRAIN', trainData, delimiter=',', fmt='%.10f')
+np.savetxt('Test1/Test1_TEST', testData, delimiter=',', fmt='%.10f')
 
-trainData = generateSequences(numTrain, numClass, sequenceLength, useMotif, sequenceMotifs)
-testData = generateSequences(numTest, numClass, sequenceLength, useMotif, sequenceMotifs)
-np.savetxt('SyntheticData/Test1/Test1_TRAIN', trainData, delimiter=',', fmt='%.10f')
-np.savetxt('SyntheticData/Test1/Test1_TEST', testData, delimiter=',', fmt='%.10f')
-# writeSequenceToFile('SyntheticData/Test1/Test1_TRAIN', 100, numClass, sequenceLength, useMotif, sequenceMotifs)
-# writeSequenceToFile('SyntheticData/Test1/Test1_TEST', 100, numClass, sequenceLength, useMotif, sequenceMotifs)
-#
-
-
-#plt.figure()
-#trainLabel = trainData[:, 0].astype('int')
-#trainData = trainData[:, 1:]
-#plt.imshow(trainData[np.where(trainLabel==0)[0],:])
-# plt.plot(motifState)
+plt.savefig('Test1/Test1.png')
