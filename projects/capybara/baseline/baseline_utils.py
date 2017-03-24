@@ -86,8 +86,12 @@ def convert_to_one_hot(y_labels, output_dim):
 
 
 
-def create_model(input_dim, output_dim):
-  # Create model.
+def create_model(input_shape, output_dim):
+  if isinstance(input_shape, (tuple, list)) and len(input_shape) > 0:
+    input_dim = input_shape[0] * input_shape[1]
+  else:
+    input_dim = input_shape
+
   model = Sequential()
   model.add(Dense(output_dim,
                   input_dim=input_dim,
@@ -97,7 +101,7 @@ def create_model(input_dim, output_dim):
 
   # For a multi-class classification problem
   model.compile(loss='categorical_crossentropy',
-                optimizer='sgd', metrics=['accuracy'])
+                optimizer='rmsprop', metrics=['accuracy'])
 
   return model
 
@@ -181,7 +185,7 @@ def save_keras_model(model, model_path):
 
 
 def load_keras_model(model_name):
-  loaded_model = load_model("%s.h5" % model_name)
+  loaded_model = load_model(model_name)
   print("Loaded model from disk")
   return loaded_model
 

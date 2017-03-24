@@ -20,14 +20,19 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import unittest
+import os
+INPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 
-import nupic.bindings.experimental
-from tm_algorithm_test_base import TemporalMemoryAlgorithmTest
-
-
-
-class TemporalMemoryAlgorithmTestCPP(TemporalMemoryAlgorithmTest,
-                                     unittest.TestCase):
-  def getTMClass(self):
-    return nupic.bindings.experimental.ExtendedTemporalMemory
+INPUT_FILES = [
+  'walk-5min.csv',
+  'sit-5min.csv',
+  'run-5min.csv',
+  'stairs-up-5min.csv',
+  'jump-5min.csv',
+  'stairs-down-5min.csv',
+  'stumble-5min.csv'
+]
+METRICS = ['x', 'y', 'z']
+OUTPUT_DIR = 'converted'
+SLICES = 1
+MAX_POINTS = 10000

@@ -34,6 +34,7 @@ import os
 import time
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from htmresearch.algorithms.column_pooler import ColumnPooler
 from htmresearch.frameworks.layers.sensor_placement import greedySensorPositions
@@ -71,8 +72,8 @@ def noisy(pattern, noiseLevel, totalNumCells):
   @param totalNumCells (int)
   The number of cells in the SDR, active and inactive
 
-  @return (set)
-  A noisy set of active indices
+  @return (numpy array)
+  A noisy list of active indices
   """
   n = int(noiseLevel * len(pattern))
 
@@ -87,7 +88,7 @@ def noisy(pattern, noiseLevel, totalNumCells):
         noised.add(v)
         break
 
-  return noised
+  return np.array(sorted(noised), dtype="uint32")
 
 
 def doExperiment(numColumns, l2Overrides, objectDescriptions, noiseMu,
@@ -127,7 +128,8 @@ def doExperiment(numColumns, l2Overrides, objectDescriptions, noiseMu,
   """
 
   # For each column, keep a mapping from feature-location names to their SDRs
-  layer4sdr = lambda : set(random.sample(xrange(L4_CELL_COUNT), 40))
+  layer4sdr = lambda : np.array(sorted(random.sample(xrange(L4_CELL_COUNT),
+                                                     40)), dtype="uint32")
   featureLocationSDRs = [defaultdict(layer4sdr) for _ in xrange(numColumns)]
 
   params = {"inputWidth": L4_CELL_COUNT,

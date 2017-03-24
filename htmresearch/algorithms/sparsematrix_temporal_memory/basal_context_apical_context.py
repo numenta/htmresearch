@@ -60,7 +60,8 @@ class ApicalDependentTemporalMemory(object):
                sampleSize=20,
                permanenceIncrement=0.1,
                permanenceDecrement=0.1,
-               predictedSegmentDecrement=0.0,
+               basalPredictedSegmentDecrement=0.0,
+               apicalPredictedSegmentDecrement=0.0,
                maxNewSynapseCount=None,
                maxSynapsesPerSegment=-1,
                maxSegmentsPerCell=None,
@@ -86,7 +87,8 @@ class ApicalDependentTemporalMemory(object):
 
     self.permanenceIncrement = permanenceIncrement
     self.permanenceDecrement = permanenceDecrement
-    self.predictedSegmentDecrement = predictedSegmentDecrement
+    self.basalPredictedSegmentDecrement = basalPredictedSegmentDecrement
+    self.apicalPredictedSegmentDecrement = apicalPredictedSegmentDecrement
     self.activationThreshold = activationThreshold
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
 
@@ -98,20 +100,24 @@ class ApicalDependentTemporalMemory(object):
     self.activeCells = EMPTY_UINT_ARRAY
     self.winnerCells = EMPTY_UINT_ARRAY
     self.prevPredictedCells = EMPTY_UINT_ARRAY
+    self.activeBasalSegments = EMPTY_UINT_ARRAY
+    self.activeApicalSegments = EMPTY_UINT_ARRAY
 
 
   def reset(self):
     self.activeCells = EMPTY_UINT_ARRAY
     self.winnerCells = EMPTY_UINT_ARRAY
     self.prevPredictedCells = EMPTY_UINT_ARRAY
+    self.activeBasalSegments = EMPTY_UINT_ARRAY
+    self.activeApicalSegments = EMPTY_UINT_ARRAY
 
 
   def compute(self,
               activeColumns,
               basalInput,
-              basalGrowthCandidates,
               apicalInput,
-              apicalGrowthCandidates,
+              basalGrowthCandidates=None,
+              apicalGrowthCandidates=None,
               learn=True):
     """
     @param activeColumns (numpy array)
@@ -121,6 +127,12 @@ class ApicalDependentTemporalMemory(object):
     @param apicalGrowthCandidates (numpy array)
     @param learn (bool)
     """
+    if basalGrowthCandidates is None:
+      basalGrowthCandidates = basalInput
+
+    if apicalGrowthCandidates is None:
+      apicalGrowthCandidates = apicalInput
+
     # Calculate predictions for this timestep
     (activeBasalSegments,
      matchingBasalSegments,
@@ -177,7 +189,6 @@ class ApicalDependentTemporalMemory(object):
 
       for learningSegments in (learningActiveApicalSegments,
                                learningMatchingApicalSegments):
-
         self._learn(self.apicalConnections, self.rng, learningSegments,
                     apicalInput, apicalGrowthCandidates,
                     apicalPotentialOverlaps, self.initialPermanence,
@@ -185,11 +196,15 @@ class ApicalDependentTemporalMemory(object):
                     self.permanenceDecrement, self.maxSynapsesPerSegment)
 
       # Punish incorrect predictions
-      if self.predictedSegmentDecrement != 0.0:
+      if self.basalPredictedSegmentDecrement != 0.0:
         self.basalConnections.adjustActiveSynapses(
-          basalSegmentsToPunish, basalInput, -self.predictedSegmentDecrement)
+          basalSegmentsToPunish, basalInput,
+          -self.basalPredictedSegmentDecrement)
+
+      if self.apicalPredictedSegmentDecrement != 0.0:
         self.apicalConnections.adjustActiveSynapses(
-          apicalSegmentsToPunish, apicalInput, -self.predictedSegmentDecrement)
+          apicalSegmentsToPunish, apicalInput,
+          -self.apicalPredictedSegmentDecrement)
 
       # Only grow segments if there is basal *and* apical input.
       if len(basalGrowthCandidates) > 0 and len(apicalGrowthCandidates) > 0:
@@ -204,9 +219,13 @@ class ApicalDependentTemporalMemory(object):
 
 
     # Save the results
-    self.prevPredictedCells = predictedCells
+    newActiveCells.sort()
+    learningCells.sort()
     self.activeCells = newActiveCells
     self.winnerCells = learningCells
+    self.prevPredictedCells = predictedCells
+    self.activeBasalSegments = activeBasalSegments
+    self.activeApicalSegments = activeApicalSegments
 
 
   def _calculateLearning(self,
@@ -288,16 +307,18 @@ class ApicalDependentTemporalMemory(object):
       burstingColumnsWithNoMatch)
 
     # Incorrectly predicted columns
-    if self.predictedSegmentDecrement > 0.0:
+    if self.basalPredictedSegmentDecrement > 0.0:
       correctMatchingBasalMask = np.in1d(
         cellsForMatchingBasal / self.cellsPerColumn, activeColumns)
-      correctMatchingApicalMask = np.in1d(
-        cellsForMatchingApical / self.cellsPerColumn, activeColumns)
-
       basalSegmentsToPunish = matchingBasalSegments[~correctMatchingBasalMask]
-      apicalSegmentsToPunish = matchingApicalSegments[~correctMatchingApicalMask]
     else:
       basalSegmentsToPunish = ()
+
+    if self.apicalPredictedSegmentDecrement > 0.0:
+      correctMatchingApicalMask = np.in1d(
+        cellsForMatchingApical / self.cellsPerColumn, activeColumns)
+      apicalSegmentsToPunish = matchingApicalSegments[~correctMatchingApicalMask]
+    else:
       apicalSegmentsToPunish = ()
 
     # Make a list of every cell that is learning
@@ -361,8 +382,6 @@ class ApicalDependentTemporalMemory(object):
 
     @param learningActiveSegments (numpy array)
     @param learningMatchingSegments (numpy array)
-    @param segmentsToPunish (numpy array)
-    @param newSegmentCells (numpy array)
     @param activeInput (numpy array)
     @param growthCandidates (numpy array)
     @param potentialOverlaps (numpy array)
@@ -544,9 +563,21 @@ class ApicalDependentTemporalMemory(object):
     return self.activeCells
 
 
+  def getPredictedActiveCells(self):
+    return np.intersect1d(self.activeCells, self.prevPredictedCells)
+
+
   def getWinnerCells(self):
     return self.winnerCells
 
 
   def getPreviouslyPredictedCells(self):
     return self.prevPredictedCells
+
+
+  def getActiveBasalSegments(self):
+    return self.activeBasalSegments
+
+
+  def getActiveApicalSegments(self):
+    return self.activeApicalSegments

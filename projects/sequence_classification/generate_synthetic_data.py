@@ -61,7 +61,6 @@ def generateSequence(sequenceLength, useMotif, currentClass, sequenceMotifs):
     t += randomLength
 
     motifIdx = np.random.choice(useMotif[currentClass])
-    print "motifIdx: ", motifIdx
     sequence[t:t + motifLength] = sequenceMotifs[motifIdx]
     motifState[t:t + motifLength] = motifIdx
     t += motifLength
@@ -123,7 +122,7 @@ for c in useMotif.keys():
     MotifColor[v] = colorList[i]
     i += 1
 
-fig, ax = plt.subplots(nrows=4, ncols=1)
+fig, ax = plt.subplots(nrows=4, ncols=1, figsize=(20, 3 * 4))
 
 for plti in xrange(4):
   currentClass = [0 if plti < 2 else 1][0]
@@ -157,15 +156,15 @@ for plti in xrange(4):
 
 trainData = generateSequences(numTrain, numClass, sequenceLength, useMotif, sequenceMotifs)
 testData = generateSequences(numTest, numClass, sequenceLength, useMotif, sequenceMotifs)
-np.savetxt('SyntheticData/Test1/Test1_TRAIN', trainData, delimiter=',')
-np.savetxt('SyntheticData/Test1/Test1_TEST', testData, delimiter=',')
+np.savetxt('SyntheticData/Test1/Test1_TRAIN', trainData, delimiter=',', fmt='%.10f')
+np.savetxt('SyntheticData/Test1/Test1_TEST', testData, delimiter=',', fmt='%.10f')
 # writeSequenceToFile('SyntheticData/Test1/Test1_TRAIN', 100, numClass, sequenceLength, useMotif, sequenceMotifs)
 # writeSequenceToFile('SyntheticData/Test1/Test1_TEST', 100, numClass, sequenceLength, useMotif, sequenceMotifs)
 #
 
 
-plt.figure()
-trainLabel = trainData[:, 0].astype('int')
-trainData = trainData[:, 1:]
-plt.imshow(trainData[np.where(trainLabel==0)[0],:])
+#plt.figure()
+#trainLabel = trainData[:, 0].astype('int')
+#trainData = trainData[:, 1:]
+#plt.imshow(trainData[np.where(trainLabel==0)[0],:])
 # plt.plot(motifState)

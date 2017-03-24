@@ -19,19 +19,22 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import os
 
-import unittest
+INPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 
-from htmresearch.algorithms.extended_temporal_memory import (
-  ExtendedTemporalMemory)
-from tm_algorithm_test_base import TemporalMemoryAlgorithmTest
+# Signal types can be: 'binary', 'sine', 'triangle'
+SIGNAL_TYPES = ['binary']
 
+# Parameters to generate the artificial sensor data
+NUM_CATEGORIES = [2]
+WHITE_NOISE_AMPLITUDES = [0.0, 1.0]
+SIGNAL_AMPLITUDES = [10.0]
+SIGNAL_MEANS = [0.0]
+NOISE_LENGTHS = [10]
 
+# Number of phases. Eg: Train (1) SP, (2) TM, (3) TP, (4) Classifier, (5) Test
+NUM_PHASES = [5]
 
-class TemporalMemoryAlgorithmTestPY(
-        TemporalMemoryAlgorithmTest, unittest.TestCase):
-  def getTMClass(self):
-    return ExtendedTemporalMemory
-
-  def testFoo(self):
-      pass
+# Number of time each phase repeats
+NUM_REPS = [10]

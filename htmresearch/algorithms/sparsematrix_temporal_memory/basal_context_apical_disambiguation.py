@@ -113,20 +113,24 @@ class TemporalMemory(object):
     self.activeCells = EMPTY_UINT_ARRAY
     self.winnerCells = EMPTY_UINT_ARRAY
     self.prevPredictedCells = EMPTY_UINT_ARRAY
+    self.activeBasalSegments = EMPTY_UINT_ARRAY
+    self.activeApicalSegments = EMPTY_UINT_ARRAY
 
 
   def reset(self):
     self.activeCells = EMPTY_UINT_ARRAY
     self.winnerCells = EMPTY_UINT_ARRAY
     self.prevPredictedCells = EMPTY_UINT_ARRAY
+    self.activeBasalSegments = EMPTY_UINT_ARRAY
+    self.activeApicalSegments = EMPTY_UINT_ARRAY
 
 
   def compute(self,
               activeColumns,
               basalInput,
-              basalGrowthCandidates,
               apicalInput=EMPTY_UINT_ARRAY,
-              apicalGrowthCandidates=EMPTY_UINT_ARRAY,
+              basalGrowthCandidates=None,
+              apicalGrowthCandidates=None,
               learn=True):
     """
     @param activeColumns (numpy array)
@@ -136,6 +140,12 @@ class TemporalMemory(object):
     @param apicalGrowthCandidates (numpy array)
     @param learn (bool)
     """
+    if basalGrowthCandidates is None:
+      basalGrowthCandidates = basalInput
+
+    if apicalGrowthCandidates is None:
+      apicalGrowthCandidates = apicalInput
+
     # Calculate predictions for this timestep
     (activeBasalSegments,
      matchingBasalSegments,
@@ -218,9 +228,13 @@ class TemporalMemory(object):
                                  self.maxSynapsesPerSegment)
 
     # Save the results
+    newActiveCells.sort()
+    learningCells.sort()
     self.activeCells = newActiveCells
     self.winnerCells = learningCells
     self.prevPredictedCells = predictedCells
+    self.activeBasalSegments = activeBasalSegments
+    self.activeApicalSegments = activeApicalSegments
 
 
   def _calculateBasalLearning(self,
@@ -449,8 +463,6 @@ class TemporalMemory(object):
 
     @param learningActiveSegments (numpy array)
     @param learningMatchingSegments (numpy array)
-    @param segmentsToPunish (numpy array)
-    @param newSegmentCells (numpy array)
     @param activeInput (numpy array)
     @param growthCandidates (numpy array)
     @param potentialOverlaps (numpy array)
@@ -620,9 +632,21 @@ class TemporalMemory(object):
     return self.activeCells
 
 
+  def getPredictedActiveCells(self):
+    return np.intersect1d(self.activeCells, self.prevPredictedCells)
+
+
   def getWinnerCells(self):
     return self.winnerCells
 
 
   def getPreviouslyPredictedCells(self):
     return self.prevPredictedCells
+
+
+  def getActiveBasalSegments(self):
+    return self.activeBasalSegments
+
+
+  def getActiveApicalSegments(self):
+    return self.activeApicalSegments
