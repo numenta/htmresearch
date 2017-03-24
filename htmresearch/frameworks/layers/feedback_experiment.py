@@ -254,10 +254,6 @@ class FeedbackExperiment(object):
       self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
       self.network.run(1)
 
-      # DEBUGGING
-      # Prints the first three elements of the current L2 representation
-      #print list(self.getL2Representations()[0])[:3]
-
       activityTrace[i] = len(self.getL4Representations()[0])
       if i >= burnIn:
         totalActiveCells += len(self.getL4Representations()[0])
