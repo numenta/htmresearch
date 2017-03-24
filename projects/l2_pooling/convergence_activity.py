@@ -80,8 +80,8 @@ def plotActivity(l2ActiveCellsMultiColumn):
     shapes.append(
       {
         'type': 'rect',
-        'x0': 11,
-        'x1': 11.6,
+        'x0': 6,
+        'x1': 6.6,
         'y0': -95,
         'y1': 4100,
         'line': {
@@ -108,21 +108,22 @@ def plotActivity(l2ActiveCellsMultiColumn):
 
   # Legend for x-axis and appropriate title
   fig['layout']['annotations'].append({
-    'font': {'size': 16},
+    'font': {'size': 20},
     'xanchor': 'center',
     'yanchor': 'bottom',
     'text': 'Number of touches',
     'xref': 'paper',
     'yref': 'paper',
     'x': 0.5,
-    'y': -0.1,
+    'y': -0.15,
     'showarrow': False,
   })
   fig['layout']['annotations'].append({
-    'font': {'size': 16},
+    'font': {'size': 24},
     'xanchor': 'center',
     'yanchor': 'bottom',
-    'text': ['','One cortical column','','Three cortical columns'][numColumns],
+    'text': ['','<b>One cortical column</b>','',
+             '<b>Three cortical columns</b>'][numColumns],
     'xref': 'paper',
     'yref': 'paper',
     'x': 0.5,
@@ -131,6 +132,7 @@ def plotActivity(l2ActiveCellsMultiColumn):
   })
   layout = {
     'height': 600,
+    'font': {'size': 18},
     'yaxis': {
       'title': "Neuron #",
       'range': [-100, 4201],
@@ -204,6 +206,7 @@ def plotL2ObjectRepresentations(exp1):
   layout = {
     'width': 320,
     'height': 600,
+    'font': {'size': 20},
     'xaxis': {
       'title': "Object #",
       'range': [0, 10],
@@ -227,10 +230,10 @@ def plotL2ObjectRepresentations(exp1):
       'arrowcolor': 'rgba(255, 0, 0, 1)',
       },
       {
-        'font': {'size': 16},
+        'font': {'size': 24},
         'xanchor': 'center',
         'yanchor': 'bottom',
-        'text': 'Object representations',
+        'text': '<b>Object representations</b>',
         'xref': 'paper',
         'yref': 'paper',
         'x': 0.5,
@@ -254,7 +257,7 @@ def plotL2ObjectRepresentations(exp1):
 
 if __name__ == "__main__":
   numColumns = 3
-  numFeatures = 10
+  numFeatures = 3
   numPoints = 10
   numLocations = 10
   numObjects = 10
@@ -306,8 +309,10 @@ if __name__ == "__main__":
   obj = objectMachine[objectId]
 
   # Create sequence of sensations for this object for all columns
+  # We need to set the seed to get specific convergence points for the red
+  # rectangle in the graph.
   objectSensations = {}
-  random.seed(10)
+  random.seed(12)
   for c in range(numColumns):
     objectCopy = [pair for pair in obj]
     random.shuffle(objectCopy)
@@ -348,6 +353,11 @@ if __name__ == "__main__":
     exp1.infer([sensation], objectName=objectId, reset=False)
     l2ActiveCellsSingleColumn.append(exp1.getL2Representations())
     L2ActiveCellNVsTimeSingleColumn.append(len(exp1.getL2Representations()[0]))
+
+  # Used to figure out where to put the red rectangle!
+  print numFeatures
+  for i,sdrs in enumerate(l2ActiveCellsSingleColumn):
+    print i,len(l2ActiveCellsSingleColumn[i][0]),len(l2ActiveCellsMultiColumn[i][0])
 
   plotActivity(l2ActiveCellsMultiColumn)
   plotActivity(l2ActiveCellsSingleColumn)
