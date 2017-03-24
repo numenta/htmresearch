@@ -86,11 +86,14 @@ def addTemporalNoise(sequenceMachine, sequences, pos,
     'skip'   : skip element pos
     'swap'   : swap sdr at position pos with sdr at position pos+1
     'insert' : insert a new random sdr at position pos
+    'repeat' : duplicate the same sdr n times
+    'stutter': duplicate n successive sdr twice each
+    'cross'  : replace rest of sequence with other sequence (note: independent of noise level)
     'pollute': add a lot of noise to sdr at position pos
   """
   patternMachine = sequenceMachine.patternMachine
   newSequences = []
-  for s in sequences:
+  for (numseq, s) in enumerate(sequences):
     newSequence = []
     for p,sdr in enumerate(s):
       if noiseType == 'skip':
@@ -102,6 +105,11 @@ def addTemporalNoise(sequenceMachine, sequences, pos,
         if p == pos:
           newsdr = patternMachine.addNoise(sdr, spatialNoise)
           newSequence.append(newsdr)
+        else:
+          newSequence.append(sdr)
+      elif noiseType == 'cross':
+        if p >= pos:
+          newSequence.append(sequences[(numseq + 1) % len(sequences)][p])
         else:
           newSequence.append(sdr)
       elif noiseType == 'swap':
@@ -116,6 +124,13 @@ def addTemporalNoise(sequenceMachine, sequences, pos,
           # Insert new SDR which swaps out all the bits
           newsdr = patternMachine.addNoise(sdr, 1.0)
           newSequence.append(newsdr)
+        newSequence.append(sdr)
+      elif noiseType == 'stutter' or noiseType == 'repeat':
+        # Insert the current sdr twice at position pos. 
+        # NB: 'stutter' and 'repeat' only differ when considering
+        # multiple noise steps, which is dealt with later
+        if p == pos:
+            newSequence.append(sdr)
         newSequence.append(sdr)
       else:
         raise Exception("Unknown noise type: "+noiseType)
@@ -205,6 +220,8 @@ def runExperiment(args):
   )
   exp.learnSequences(sequences)
 
+  print "Number of columns in exp: ", exp.numColumns
+
   # Run inference without any noise. This becomes our baseline error
   standardError, _ = runInference(exp, sequences)
   inferenceErrors[0,0] = standardError
@@ -219,6 +236,17 @@ def runExperiment(args):
     elif noiseType == 'swap':
       noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
                                         noiseStart+2*t, noiseType=noiseType)
+    elif noiseType == 'cross':
+      noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
+                                        noiseStart+t, noiseType=noiseType)
+    elif noiseType == 'repeat':
+      noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
+                                        #noiseStart+t*2, noiseType=noiseType)  # duplicates two neighboring items
+                                        noiseStart+t, noiseType=noiseType)   # duplicates the same item twice
+    elif noiseType == 'stutter':
+      noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
+                                        noiseStart+t*2, noiseType=noiseType)  # duplicates two neighboring items
+                                        #noiseStart+t, noiseType=noiseType)   # duplicates the same item twice
     elif noiseType == 'insert':
       noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
                                         noiseStart+t*2, noiseType=noiseType)
@@ -238,6 +266,8 @@ def runExperiment(args):
   args.update({"inferenceErrors": inferenceErrors,
                "activityFeedback": activityFeedback,
                "activityNoFeedback": activityNoFeedback,
+               "noisySequences": noisySequences,
+               "sequences": sequences,
                })
   return args
 
