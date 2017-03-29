@@ -879,6 +879,14 @@ class SequenceMemoryTestBase(object):
 
 
   @abstractmethod
+  def reset(self):
+    """
+    Reset the TemporalMemory.
+    """
+    pass
+
+
+  @abstractmethod
   def getActiveCells(self):
     """
     Get the currently active cells.

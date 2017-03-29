@@ -23,7 +23,8 @@ import unittest
 
 from htmresearch.algorithms.extended_temporal_memory import (
   ExtendedTemporalMemory)
-from htmresearch.support.temporal_memory_tests.sequence_memory import SequenceMemoryTestBase
+from htmresearch.support.shared_tests.sequence_memory_test_base import (
+  SequenceMemoryTestBase)
 
 
 class ExtendedTemporalMemoryCPP_SequenceMemoryTests(SequenceMemoryTestBase,

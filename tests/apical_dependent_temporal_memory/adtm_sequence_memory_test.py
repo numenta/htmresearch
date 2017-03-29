@@ -25,8 +25,10 @@ import unittest
 
 import numpy as np
 
-from htmresearch.algorithms.sparsematrix_temporal_memory.basal_context_apical_context import ApicalDependentTemporalMemory
-from htmresearch.support.temporal_memory_tests.sequence_memory import SequenceMemoryTestBase
+from htmresearch.algorithms.sparsematrix_temporal_memory.basal_context_apical_context import (
+  ApicalDependentTemporalMemory)
+from htmresearch.support.shared_tests.sequence_memory_test_base import(
+  SequenceMemoryTestBase)
 
 
 class ApicalDependentTM_BasalSequenceMemoryTests(SequenceMemoryTestBase,

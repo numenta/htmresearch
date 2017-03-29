@@ -33,7 +33,7 @@ from nupic.bindings.math import Random, SparseMatrixConnections
 EMPTY_UINT_ARRAY = np.array((), dtype="uint32")
 
 
-class TemporalMemory(object):
+class ApicalTiebreakTemporalMemory(object):
   """
   TemporalMemory with basal and apical connections, and with the ability to
   connect to external cells.
@@ -75,7 +75,8 @@ class TemporalMemory(object):
                sampleSize=20,
                permanenceIncrement=0.1,
                permanenceDecrement=0.1,
-               predictedSegmentDecrement=0.0,
+               basalPredictedSegmentDecrement=0.0,
+               apicalPredictedSegmentDecrement=0.0,
                maxNewSynapseCount=None,
                maxSynapsesPerSegment=-1,
                maxSegmentsPerCell=None,
@@ -101,7 +102,8 @@ class TemporalMemory(object):
 
     self.permanenceIncrement = permanenceIncrement
     self.permanenceDecrement = permanenceDecrement
-    self.predictedSegmentDecrement = predictedSegmentDecrement
+    self.basalPredictedSegmentDecrement = basalPredictedSegmentDecrement
+    self.apicalPredictedSegmentDecrement = apicalPredictedSegmentDecrement
     self.activationThreshold = activationThreshold
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
 
@@ -140,6 +142,7 @@ class TemporalMemory(object):
     @param apicalGrowthCandidates (numpy array)
     @param learn (bool)
     """
+
     if basalGrowthCandidates is None:
       basalGrowthCandidates = basalInput
 
@@ -208,11 +211,13 @@ class TemporalMemory(object):
                     self.permanenceDecrement, self.maxSynapsesPerSegment)
 
       # Punish incorrect predictions
-      if self.predictedSegmentDecrement != 0.0:
+      if self.basalPredictedSegmentDecrement != 0.0:
         self.basalConnections.adjustActiveSynapses(
-          basalSegmentsToPunish, basalInput, -self.predictedSegmentDecrement)
+          basalSegmentsToPunish, basalInput, -self.basalPredictedSegmentDecrement)
+
+      if self.apicalPredictedSegmentDecrement != 0.0:
         self.apicalConnections.adjustActiveSynapses(
-          apicalSegmentsToPunish, apicalInput, -self.predictedSegmentDecrement)
+          apicalSegmentsToPunish, apicalInput, -self.apicalPredictedSegmentDecrement)
 
       # Grow new segments
       if len(basalGrowthCandidates) > 0:
