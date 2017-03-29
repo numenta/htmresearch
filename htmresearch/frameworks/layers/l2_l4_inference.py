@@ -585,8 +585,8 @@ class L4L2Experiment(object):
     A dict with a score for each object. Score goes from 0 to 1. A 1 means
     every col (that has received input since the last reset) currently has
     overlap >= minOverlap with the representation for that object.
-   
-    :param minOverlap: min overlap to consider the object as recognized. 
+
+    :param minOverlap: min overlap to consider the object as recognized.
                        Defaults to half of the SDR size
     :return: dict of object names and their score
     """

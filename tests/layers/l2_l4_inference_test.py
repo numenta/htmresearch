@@ -29,7 +29,7 @@ from htmresearch.frameworks.layers import l2_l4_inference
 
 def _randomSDR(numOfBits, size):
   """
-  Creates a random SDR for the given cell count and SDR size 
+  Creates a random SDR for the given cell count and SDR size
   :param numOfBits: Total number of bits
   :param size: Number of active bits desired in the SDR
   :return: list with active bits indexes in SDR
@@ -323,7 +323,7 @@ class L4L2ExperimentTest(unittest.TestCase):
     sensations = [
         objectsToLearn["Can"][0]
     ]
-    exp.sendReset();
+    exp.sendReset()
     exp.infer(sensations, reset=False)
     results = exp.getCurrentClassification(10)
     self.assertEquals(results["Mug"], 0)
@@ -334,7 +334,7 @@ class L4L2ExperimentTest(unittest.TestCase):
     sensations = [
         objectsToLearn["Box"][0]
     ]
-    exp.sendReset();
+    exp.sendReset()
     exp.infer(sensations, reset=False)
     results = exp.getCurrentClassification(10)
     self.assertEquals(results["Mug"], 0)
@@ -351,7 +351,7 @@ class L4L2ExperimentTest(unittest.TestCase):
         4: ([], []),
       }
     ]
-    exp.sendReset();
+    exp.sendReset()
     exp.infer(sensations, reset=False)
     results = exp.getCurrentClassification(10)
     self.assertEquals(results["Mug"], 0.5)
