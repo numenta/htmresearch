@@ -183,7 +183,7 @@ class RawSensor(PyRegion):
       raise Exception("Unknown output {}.".format(name))
 
 
-  def initialize(self, inputs, outputs):
+  def initialize(self):
     """ Initialize the Region - nothing to do here. """
     pass
 

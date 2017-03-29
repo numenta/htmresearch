@@ -343,7 +343,7 @@ class TMRegion(PyRegion):
     self._tm = None
 
 
-  def initialize(self, inputs, outputs):
+  def initialize(self):
     """
     Initialize the self._tm if not already initialized. We need to figure out
     the constructor parameters for each class, and send it to that constructor.
