@@ -609,7 +609,10 @@ class L4L2Experiment(object):
         if overlap >= minOverlap:
           score += overlap
 
-      results[objectName] = score / (count * sdrSize)
+      if count == 0:
+        results[objectName] = 0
+      else:
+        results[objectName] = score / (count * sdrSize)
 
     return results
 
