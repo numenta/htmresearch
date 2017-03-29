@@ -315,7 +315,7 @@ class ColumnPoolerRegion(PyRegion):
     PyRegion.__init__(self, **kwargs)
 
 
-  def initialize(self, inputs, outputs):
+  def initialize(self):
     """
     Initialize the internal objects.
     """
