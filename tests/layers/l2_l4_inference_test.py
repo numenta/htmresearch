@@ -22,9 +22,19 @@
 """Tests for l2_l4_inference module."""
 
 import unittest
+import numpy
 
 from htmresearch.frameworks.layers import l2_l4_inference
 
+
+def _randomSDR(numOfBits, size):
+  """
+  Creates a random SDR for the given cell count and SDR size 
+  :param numOfBits: Total number of bits
+  :param size: Number of active bits desired in the SDR
+  :return: list with active bits indexes in SDR
+  """
+  return list(numpy.random.permutation(numOfBits)[0:size])
 
 
 class L4L2ExperimentTest(unittest.TestCase):
@@ -37,6 +47,10 @@ class L4L2ExperimentTest(unittest.TestCase):
   far enought to validate that the experiments are set up correctly and getting
   meaningful experimental results.
   """
+
+
+  def setUp(self):
+    numpy.random.seed(42)
 
 
   def testSimpleExperiment(self):
@@ -191,6 +205,158 @@ class L4L2ExperimentTest(unittest.TestCase):
     self.assertSequenceEqual(stats[0]["Overlap L2 with object C1"],
                              [10, 10, 10, 10])
 
+
+  def testObjectClassification(self):
+    """
+    Test multi column object classification
+    """
+    exp = l2_l4_inference.L4L2Experiment(
+        "testClassification",
+        numCorticalColumns=5,
+        inputSize=1024,
+        numInputBits=20,
+        externalInputSize=1024,
+        numLearningPoints=3,
+        )
+
+    # Location and feature pool
+    features = [_randomSDR(1024, 20) for _ in xrange(4)]
+    locations = [_randomSDR(1024, 20) for _ in xrange(17)]
+
+    # Learn 3 different objects (Can, Mug, Box)
+    objectsToLearn = dict()
+
+    # Soda can (cylinder) grasp from top.
+    # Same feature at different locations, not all columns have input
+    objectsToLearn["Can"] = [
+      {
+         0: (locations[0], features[0]),  # NW - round
+         1: (locations[1], features[0]),  # N  - round
+         2: (locations[2], features[0]),  # NE - round
+         3: (locations[3], features[0]),  # SE - round
+         4: ([], []),  # Little Finger has no input
+      },
+      {
+         0: (locations[1], features[0]),  # N  - round
+         1: (locations[2], features[0]),  # NE - round
+         2: (locations[3], features[0]),  # SE - round
+         3: (locations[4], features[0]),  # S  - round
+         4: ([], []),  # Little Finger has no input
+      },
+      {
+         0: (locations[2], features[0]),  # NE - round
+         1: (locations[3], features[0]),  # SE - round
+         2: (locations[4], features[0]),  # S  - round
+         3: (locations[0], features[0]),  # NW - round
+         4: ([], []),  # Little Finger has no input
+      },
+    ]
+
+    # Coffee mug grasp from top
+    # Same as cylinder with extra feature (handle)
+    objectsToLearn["Mug"] = [
+      {
+         0: (locations[0], features[0]),  # NW - round
+         1: (locations[1], features[1]),  # N  - handle
+         2: (locations[2], features[0]),  # NE - round
+         3: (locations[3], features[0]),  # SE - round
+         4: (locations[4], features[0]),  # S  - round
+      },
+      {
+        0: (locations[3], features[0]),  # SE - round
+        1: (locations[0], features[0]),  # NW - round
+        2: (locations[1], features[1]),  # N  - handle
+        3: (locations[2], features[0]),  # NE - round
+        4: (locations[4], features[0]),  # S  - round
+      },
+      {
+        0: (locations[4], features[0]),  # S  - round
+        1: (locations[3], features[0]),  # SE - round
+        2: (locations[0], features[0]),  # NW - round
+        3: (locations[1], features[1]),  # N  - handle
+        4: (locations[2], features[0]),  # NE - round
+      },
+    ]
+
+    # Box grasp from top
+    # Symetrical features at different locations.
+    objectsToLearn["Box"] = [
+      {
+         # Top/Front of the box
+         0: (locations[5], features[2]),  # W1 - flat
+         1: (locations[6], features[3]),  # N1 - corner
+         2: (locations[7], features[3]),  # N2 - corner
+         3: (locations[8], features[2]),  # E1 - flat
+         4: (locations[9], features[2]),  # E2 - flat
+      },
+      {
+         # Top/Side of the box
+         0: (locations[5], features[2]),   # W1 - flat
+         1: (locations[8], features[2]),   # E1 - flat
+         2: (locations[9], features[2]),   # E2 - flat
+         3: (locations[10], features[2]),  # E3 - flat
+         4: (locations[11], features[2]),  # E4 - flat
+      },
+      {
+         # Top/Back of the box
+         0: (locations[9], features[2]),   # E2 - flat
+         1: (locations[12], features[3]),  # S1 - corner
+         2: (locations[13], features[3]),  # S2 - corner
+         3: (locations[14], features[2]),  # W3 - flat
+         4: (locations[5], features[2]),   # W1 - flat
+      },
+    ]
+    exp.learnObjects(objectsToLearn)
+
+    # Try to infer "Mug" using first learned grasp
+    sensations = [
+        objectsToLearn["Mug"][0]
+    ]
+    exp.sendReset()
+    exp.infer(sensations, reset=False)
+    results = exp.getCurrentClassification(10)
+    self.assertEquals(results["Mug"], 1)
+    self.assertEquals(results["Box"], 0)
+    self.assertEquals(results["Can"], 0)
+
+    # Try to infer "Cylinder" using first learned grasp
+    sensations = [
+        objectsToLearn["Can"][0]
+    ]
+    exp.sendReset();
+    exp.infer(sensations, reset=False)
+    results = exp.getCurrentClassification(10)
+    self.assertEquals(results["Mug"], 0)
+    self.assertEquals(results["Box"], 0)
+    self.assertEquals(results["Can"], 1)
+
+    # Try to infer "Box" using first learned grasp
+    sensations = [
+        objectsToLearn["Box"][0]
+    ]
+    exp.sendReset();
+    exp.infer(sensations, reset=False)
+    results = exp.getCurrentClassification(10)
+    self.assertEquals(results["Mug"], 0)
+    self.assertEquals(results["Box"], 1)
+    self.assertEquals(results["Can"], 0)
+
+    # Try to infer half "Box" half "Mug" to confuse
+    sensations = [
+      {
+        0: objectsToLearn["Box"][0][0],
+        1: objectsToLearn["Box"][0][1],
+        2: objectsToLearn["Mug"][0][0],
+        3: objectsToLearn["Mug"][0][1],
+        4: ([], []),
+      }
+    ]
+    exp.sendReset();
+    exp.infer(sensations, reset=False)
+    results = exp.getCurrentClassification(10)
+    self.assertEquals(results["Mug"], 0.5)
+    self.assertEquals(results["Box"], 0.5)
+    self.assertEquals(results["Can"], 0)
 
 
 if __name__ == "__main__":

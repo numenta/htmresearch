@@ -78,6 +78,8 @@ More examples are available in projects/layers/single_column.py and
 projects/layers/multi_column.py
 
 """
+# Disable variable/field name restrictions
+# pylint: disable=C0103
 
 import collections
 import os
@@ -577,6 +579,39 @@ class L4L2Experiment(object):
     """
     return [set(column._pooler.getActiveCells()) for column in self.L2Columns]
 
+
+  def getCurrentClassification(self, minOverlap=None):
+    """
+    A dict with a score for each object. Score goes from 0 to 1. A 1 means
+    every col (that has received input since the last reset) currently has
+    overlap >= minOverlap with the representation for that object.
+   
+    :param minOverlap: min overlap to consider the object as recognized. 
+                       Defaults to half of the SDR size
+    :return: dict of object names and their score
+    """
+    results = {}
+    l2sdr = self.getL2Representations()
+    sdrSize = self.config["L2Params"]["sdrSize"]
+    if minOverlap is None:
+      minOverlap = sdrSize / 2
+
+    for objectName, objectSdr in self.objectL2Representations.iteritems():
+      count = 0
+      score = 0.0
+      for i in xrange(self.numColumns):
+        # Ignore inactive column
+        if len(l2sdr[i]) == 0:
+          continue
+
+        count += 1
+        overlap = len(l2sdr[i] & objectSdr[i])
+        if overlap >= minOverlap:
+          score += overlap
+
+      results[objectName] = score / (count * sdrSize)
+
+    return results
 
   def getDefaultL4Params(self, inputSize, numInputBits):
     """
