@@ -87,7 +87,7 @@ class ApicalTiebreakSequencesTestBase(object):
     self.reset()
     self.compute(abcde[1], apicalInput=feedback, learn=False)
 
-    self.assertEqual([], list(self.getPreviouslyPredictedCells()))
+    self.assertEqual([], list(self.getPredictedCells()))
     self.assertEqual(set(abcde[1]), self.getBurstingColumns())
 
 
@@ -141,7 +141,7 @@ class ApicalTiebreakSequencesTestBase(object):
     expectedActive = eCells | set(self.filterCellsByColumn(yCells, abcde[4]))
 
     self.assertEqual(expectedActive, set(self.getActiveCells()))
-    self.assertEqual(eCells | yCells, set(self.getPreviouslyPredictedCells()))
+    self.assertEqual(eCells | yCells, set(self.getPredictedCells()))
 
 
   def testSequenceMemory_FeedbackNarrowsThePredictions(self):
@@ -190,7 +190,7 @@ class ApicalTiebreakSequencesTestBase(object):
       self.compute(pattern, apicalInput=feedback1, learn=False)
 
     self.assertEqual(eCells, set(self.getActiveCells()))
-    self.assertEqual(eCells, set(self.getPreviouslyPredictedCells()))
+    self.assertEqual(eCells, set(self.getPredictedCells()))
 
 
   def testSequenceMemory_IncorrectFeedbackLeadsToBursting(self):
@@ -238,7 +238,7 @@ class ApicalTiebreakSequencesTestBase(object):
     for pattern in abcde[1:]:
       self.compute(pattern, apicalInput=feedback2, learn=False)
 
-    self.assertEqual(yCells, set(self.getPreviouslyPredictedCells()))
+    self.assertEqual(yCells, set(self.getPredictedCells()))
 
     # E should burst, except for columns that happen to be shared with Y.
     self.assertEqual(set(abcde[4]) - set(xbcdy[4]),
@@ -305,7 +305,7 @@ class ApicalTiebreakSequencesTestBase(object):
     expectedActive = eCells | set(self.filterCellsByColumn(yCells, abcde[4]))
 
     self.assertEqual(expectedActive, set(self.getActiveCells()))
-    self.assertEqual(eCells | yCells, set(self.getPreviouslyPredictedCells()))
+    self.assertEqual(eCells | yCells, set(self.getPredictedCells()))
 
 
 
@@ -346,7 +346,7 @@ class ApicalTiebreakSequencesTestBase(object):
 
   def getBurstingColumns(self):
     predicted = set(cell / self.cellsPerColumn
-                    for cell in  self.getPreviouslyPredictedCells())
+                    for cell in  self.getPredictedCells())
     active = set(cell / self.cellsPerColumn
                  for cell in  self.getActiveCells())
 
@@ -407,7 +407,7 @@ class ApicalTiebreakSequencesTestBase(object):
 
 
   @abstractmethod
-  def getPreviouslyPredictedCells(self):
+  def getPredictedCells(self):
     """
     Get the cells that were predicted for the current timestep.
 
