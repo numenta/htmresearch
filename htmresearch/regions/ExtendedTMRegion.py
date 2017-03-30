@@ -52,9 +52,9 @@ class ExtendedTMRegion(PyRegion):
       description=ExtendedTMRegion.__doc__,
       singleNodeOnly=True,
       inputs=dict(
-        feedForwardInput=dict(
-          description="The primary feed-forward input to the layer, this is a"
-                      " binary array containing 0's and 1's",
+        activeColumns=dict(
+          description=("An array of 0's and 1's representing the active "
+                       "minicolumns, i.e. the input to the TemporalMemory"),
           dataType="Real32",
           count=0,
           required=True,
@@ -74,7 +74,7 @@ class ExtendedTMRegion(PyRegion):
           isDefaultInput=False,
           requireSplitterMap=False),
 
-        externalBasalInput=dict(
+        basalInput=dict(
           description="An array of 0's and 1's representing external input"
                       " such as motor commands that are available to basal"
                       " segments",
@@ -85,7 +85,7 @@ class ExtendedTMRegion(PyRegion):
           isDefaultInput=False,
           requireSplitterMap=False),
 
-        externalApicalInput=dict(
+        apicalInput=dict(
           description="An array of 0's and 1's representing top down input."
                       " The input will be provided to apical dendrites.",
           dataType="Real32",
@@ -98,16 +98,7 @@ class ExtendedTMRegion(PyRegion):
       ),
       outputs=dict(
 
-        feedForwardOutput=dict(
-          description="The default output of ExtendedTMRegion. By "
-                      " default this outputs the active cells. You can change"
-                      " this dynamically using defaultOutputType parameter.",
-          dataType="Real32",
-          count=0,
-          regionLevel=True,
-          isDefaultOutput=True),
-
-        predictedCells=dict(
+        previouslyPredictedCells=dict(
           description="A binary output containing a 1 for every"
                       " cell that was predicted for this timestep.",
           dataType="Real32",
@@ -131,18 +122,20 @@ class ExtendedTMRegion(PyRegion):
           regionLevel=True,
           isDefaultOutput=False),
 
+        winnerCells=dict(
+          description=("A binary output containing a 1 for every "
+                       "'winner' cell in the TM."),
+          dataType="Real32",
+          count=0,
+          regionLevel=True,
+          isDefaultOutput=False),
+
       ),
 
       parameters=dict(
-        learningMode=dict(
+        learn=dict(
           description="True if the node is learning (default true).",
           accessMode="ReadWrite",
-          dataType="Bool",
-          count=1,
-          defaultValue="true"),
-        inferenceMode=dict(
-          description='True if the node is inferring (default true).',
-          accessMode='ReadWrite',
           dataType="Bool",
           count=1,
           defaultValue="true"),
@@ -261,14 +254,6 @@ class ExtendedTMRegion(PyRegion):
           dataType="Bool",
           count=1,
           defaultValue="false"),
-        defaultOutputType=dict(
-          description="Controls what type of cell output is placed into"
-                      " the default output 'feedForwardOutput'",
-          accessMode="ReadWrite",
-          dataType="Byte",
-          count=0,
-          constraints="enum: active,predicted,predictedActiveCells",
-          defaultValue="active"),
         implementation=dict(
           description="ETM implementation",
           accessMode="Read",
@@ -311,13 +296,11 @@ class ExtendedTMRegion(PyRegion):
                checkInputs=True,
 
                # Region params
-               defaultOutputType = "active",
                implementation="etm_cpp",
-               learningMode=True,
-               inferenceMode=True,
+               learn=True,
                **kwargs):
 
-    # Modified TM params
+    # Input sizes (the network API doesn't provide these during initialize)
     self.columnCount = columnCount
     self.basalInputWidth = basalInputWidth
     self.apicalInputWidth = apicalInputWidth
@@ -340,10 +323,8 @@ class ExtendedTMRegion(PyRegion):
     self.checkInputs = checkInputs
 
     # Region params
-    self.defaultOutputType = defaultOutputType
     self.implementation = implementation
-    self.learningMode = learningMode
-    self.inferenceMode = inferenceMode
+    self.learn = learn
 
     PyRegion.__init__(self, **kwargs)
 
@@ -396,21 +377,21 @@ class ExtendedTMRegion(PyRegion):
       if inputs["resetIn"][0] != 0:
         # send empty output
         self.reset()
-        outputs["feedForwardOutput"][:] = 0
         outputs["activeCells"][:] = 0
-        outputs["predictedCells"][:] = 0
+        outputs["previouslyPredictedCells"][:] = 0
         outputs["predictedActiveCells"][:] = 0
+        outputs["winnerCells"][:] = 0
         return
 
-    activeColumns = inputs["feedForwardInput"].nonzero()[0]
+    activeColumns = inputs["activeColumns"].nonzero()[0]
 
-    if "externalBasalInput" in inputs:
-      activeCellsExternalBasal = inputs["externalBasalInput"].nonzero()[0]
+    if "basalInput" in inputs:
+      activeCellsExternalBasal = inputs["basalInput"].nonzero()[0]
     else:
       activeCellsExternalBasal = ()
 
-    if "externalApicalInput" in inputs:
-      activeCellsExternalApical = inputs["externalApicalInput"].nonzero()[0]
+    if "apicalInput" in inputs:
+      activeCellsExternalApical = inputs["apicalInput"].nonzero()[0]
     else:
       activeCellsExternalApical = ()
 
@@ -418,32 +399,24 @@ class ExtendedTMRegion(PyRegion):
     self._tm.depolarizeCells(
       activeCellsExternalBasal,
       activeCellsExternalApical,
-      learn=self.learningMode)
+      learn=self.learn)
     self._tm.activateCells(
       activeColumns,
       reinforceCandidatesExternalBasal=activeCellsExternalBasal,
       reinforceCandidatesExternalApical=activeCellsExternalApical,
       growthCandidatesExternalBasal=activeCellsExternalBasal,
       growthCandidatesExternalApical=activeCellsExternalApical,
-      learn=self.learningMode)
+      learn=self.learn)
 
     # Extract the active / predicted cells and put them into binary arrays.
     outputs["activeCells"][:] = 0
     outputs["activeCells"][self._tm.getActiveCells()] = 1
-    outputs["predictedCells"][:] = 0
-    outputs["predictedCells"][self._tm.getPredictiveCells()] = 1
+    outputs["previouslyPredictedCells"][:] = 0
+    outputs["previouslyPredictedCells"][self._tm.getPredictiveCells()] = 1
     outputs["predictedActiveCells"][:] = (outputs["activeCells"] *
-                                          outputs["predictedCells"])
-
-    # Send appropriate output to feedForwardOutput.
-    if self.defaultOutputType == "active":
-      outputs["feedForwardOutput"][:] = outputs["activeCells"]
-    elif self.defaultOutputType == "predicted":
-      outputs["feedForwardOutput"][:] = outputs["predictedCells"]
-    elif self.defaultOutputType == "predictedActiveCells":
-      outputs["feedForwardOutput"][:] = outputs["predictedActiveCells"]
-    else:
-      raise Exception("Unknown outputType: " + self.defaultOutputType)
+                                          outputs["previouslyPredictedCells"])
+    outputs["winnerCells"][:] = 0
+    outputs["winnerCells"][self._tm.getWinnerCells()] = 1
 
 
   def reset(self):
@@ -492,11 +465,11 @@ class ExtendedTMRegion(PyRegion):
     """
     Return the number of elements for the given output.
     """
-    if name in ["feedForwardOutput", "predictedActiveCells", "predictedCells",
-                "activeCells"]:
+    if name in ["predictedActiveCells", "previouslyPredictedCells",
+                "activeCells", "winnerCells"]:
       return self.cellsPerColumn * self.columnCount
     else:
-      raise Exception("Invalid output name specified")
+      raise Exception("Invalid output name specified: %s" % name)
 
 
   def prettyPrintTraces(self):
