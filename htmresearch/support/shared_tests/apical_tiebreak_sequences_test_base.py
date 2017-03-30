@@ -194,10 +194,9 @@ class ApicalTiebreakSequencesTestBase(object):
 
 
   def testSequenceMemory_IncorrectFeedbackLeadsToBursting(self):
-
     """
     Train on ABCDE with F1, XBCDY with F2.
-    Test with BCDE with F2. Y should burst.
+    Test with BCDE with F2. E should burst.
     """
 
     self.init()

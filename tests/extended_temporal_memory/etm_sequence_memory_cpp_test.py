@@ -19,6 +19,10 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+"""
+Run the sequence memory tests on the C++ ExtendedTemporalMemory.
+"""
+
 import unittest
 
 from nupic.bindings.experimental import ExtendedTemporalMemory
@@ -26,8 +30,11 @@ from htmresearch.support.shared_tests.sequence_memory_test_base import (
   SequenceMemoryTestBase)
 
 
-class ExtendedTemporalMemoryCPP_SequenceMemoryTests(SequenceMemoryTestBase,
-                                                    unittest.TestCase):
+class ExtendedTMCPP_SequenceMemoryTests(SequenceMemoryTestBase,
+                                        unittest.TestCase):
+  """
+  Run the sequence memory tests on the C++ ExtendedTemporalMemory.
+  """
 
   def constructTM(self, columnCount, cellsPerColumn, initialPermanence,
                   connectedPermanence, minThreshold, sampleSize,

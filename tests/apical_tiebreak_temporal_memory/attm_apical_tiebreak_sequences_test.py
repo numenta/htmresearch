@@ -19,6 +19,10 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+"""
+Run the 'apical tiebreak sequences' tests on the ApicalTiebreakTemporalMemory
+"""
+
 import unittest
 
 import numpy as np
@@ -29,8 +33,11 @@ from htmresearch.support.shared_tests.apical_tiebreak_sequences_test_base import
   ApicalTiebreakSequencesTestBase)
 
 
-class ApicalTiebreakTM_ApicalTiebreakSequenceMemoryTests(ApicalTiebreakSequencesTestBase,
-                                                         unittest.TestCase):
+class ApicalTiebreakTM_ApicalTiebreakSequencesTests(ApicalTiebreakSequencesTestBase,
+                                                    unittest.TestCase):
+  """
+  Runs the "apical tiebreak sequences" tests on the ApicalTiebreakTemporalMemory
+  """
 
   def constructTM(self, columnCount, apicalInputSize, cellsPerColumn,
                   initialPermanence, connectedPermanence, minThreshold,

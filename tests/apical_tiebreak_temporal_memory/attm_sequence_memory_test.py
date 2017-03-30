@@ -19,6 +19,10 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+"""
+Run the sequence memory tests on the ApicalTiebreakTemporalMemory
+"""
+
 import unittest
 
 import numpy as np
@@ -31,6 +35,9 @@ from htmresearch.support.shared_tests.sequence_memory_test_base import (
 
 class ApicalTiebreakTM_SequenceMemoryTests(SequenceMemoryTestBase,
                                            unittest.TestCase):
+  """
+  Run the sequence memory tests on the ApicalTiebreakTemporalMemory
+  """
 
   def constructTM(self, columnCount, cellsPerColumn, initialPermanence,
                   connectedPermanence, minThreshold, sampleSize,

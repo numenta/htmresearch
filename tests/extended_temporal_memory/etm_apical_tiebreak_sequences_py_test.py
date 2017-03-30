@@ -32,8 +32,11 @@ from htmresearch.support.shared_tests.apical_tiebreak_sequences_test_base import
 
 
 
-class ExtendedTemporalMemoryCPPTests(ApicalTiebreakSequencesTestBase,
+class ExtendedTMPY_ApicalTiebreakSequencesTests(ApicalTiebreakSequencesTestBase,
                                      unittest.TestCase):
+  """
+  Run the apical tiebreak sequence tests on the Python ExtendedTemporalMemory.
+  """
 
   def constructTM(self, columnCount, apicalInputSize, cellsPerColumn,
                   initialPermanence, connectedPermanence, minThreshold,

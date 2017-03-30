@@ -19,6 +19,10 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+"""
+Run the sequence memory tests on the ApicalDependentTemporalMemory
+"""
+
 import random
 import unittest
 
@@ -32,6 +36,10 @@ from htmresearch.support.shared_tests.sequence_memory_test_base import(
 
 class ApicalDependentTM_BasalSequenceMemoryTests(SequenceMemoryTestBase,
                                                  unittest.TestCase):
+  """
+  Run the sequence memory tests on the ApicalDependentTemporalMemory,
+  passing the sequences in through basal input.
+  """
 
   def constructTM(self, columnCount, cellsPerColumn, initialPermanence,
                   connectedPermanence, minThreshold, sampleSize,
@@ -95,6 +103,10 @@ class ApicalDependentTM_BasalSequenceMemoryTests(SequenceMemoryTestBase,
 
 class ApicalDependentTM_ApicalSequenceMemoryTests(SequenceMemoryTestBase,
                                                   unittest.TestCase):
+  """
+  Run the sequence memory tests on the ApicalDependentTemporalMemory,
+  passing the sequences in through apical input.
+  """
 
   def constructTM(self, columnCount, cellsPerColumn, initialPermanence,
                   connectedPermanence, minThreshold, sampleSize,
