@@ -27,7 +27,7 @@ import unittest
 
 import numpy as np
 
-from htmresearch.algorithms.sparsematrix_temporal_memory.basal_context_apical_disambiguation import (
+from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
   ApicalTiebreakTemporalMemory)
 from htmresearch.support.shared_tests.sequence_memory_test_base import (
   SequenceMemoryTestBase)
