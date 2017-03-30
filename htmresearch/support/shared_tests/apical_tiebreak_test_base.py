@@ -220,7 +220,7 @@ class ApicalTiebreakTestBase(object):
 
   def getBurstingColumns(self):
     predicted = set(cell / self.cellsPerColumn
-                    for cell in  self.getPreviouslyPredictedCells())
+                    for cell in  self.getPredictedCells())
     active = set(cell / self.cellsPerColumn
                  for cell in  self.getActiveCells())
 
@@ -271,7 +271,7 @@ class ApicalTiebreakTestBase(object):
 
 
   @abstractmethod
-  def getPreviouslyPredictedCells(self):
+  def getPredictedCells(self):
     """
     Get the cells that were predicted for the current timestep.
 

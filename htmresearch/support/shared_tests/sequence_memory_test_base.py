@@ -216,7 +216,7 @@ class SequenceMemoryTestBase(object):
       self.compute(pattern, learn=False)
 
       if i > 0:
-        self.assertEqual(set(self.getPreviouslyPredictedCells()),
+        self.assertEqual(set(self.getPredictedCells()),
                          set(self.getActiveCells()))
 
 
@@ -239,7 +239,7 @@ class SequenceMemoryTestBase(object):
       self.compute(pattern, learn=False)
 
       if i > 0:
-        self.assertEqual(set(self.getPreviouslyPredictedCells()),
+        self.assertEqual(set(self.getPredictedCells()),
                          set(self.getActiveCells()))
 
 
@@ -264,7 +264,7 @@ class SequenceMemoryTestBase(object):
         self.compute(pattern, learn=False)
 
         if i > 0:
-          self.assertEqual(set(self.getPreviouslyPredictedCells()),
+          self.assertEqual(set(self.getPredictedCells()),
                            set(self.getActiveCells()))
 
       self.reset()
@@ -290,7 +290,7 @@ class SequenceMemoryTestBase(object):
       self.compute(pattern, learn=False)
 
       if i > 0:
-        self.assertEqual(set(self.getPreviouslyPredictedCells()),
+        self.assertEqual(set(self.getPredictedCells()),
                          set(self.getActiveCells()))
 
 
@@ -317,7 +317,7 @@ class SequenceMemoryTestBase(object):
         self.compute(pattern, learn=False)
 
         if i > 0:
-          self.assertEqual(set(self.getPreviouslyPredictedCells()),
+          self.assertEqual(set(self.getPredictedCells()),
                            set(self.getActiveCells()))
 
       self.reset()
@@ -357,7 +357,7 @@ class SequenceMemoryTestBase(object):
       self.compute(pattern, learn=False)
 
       if i > 0:
-        self.assertEqual(set(self.getPreviouslyPredictedCells()),
+        self.assertEqual(set(self.getPredictedCells()),
                          set(self.getActiveCells()))
 
 
@@ -383,7 +383,7 @@ class SequenceMemoryTestBase(object):
       self.compute(pattern, learn=False)
 
       if i > 0:
-        self.assertEqual(set(self.getPreviouslyPredictedCells()),
+        self.assertEqual(set(self.getPredictedCells()),
                          set(self.getActiveCells()))
 
 
@@ -409,7 +409,7 @@ class SequenceMemoryTestBase(object):
       self.compute(pattern, learn=False)
 
       if i > 0:
-        self.assertEqual(set(), set(self.getPreviouslyPredictedCells()))
+        self.assertEqual(set(), set(self.getPredictedCells()))
         self.assertEqual(self.w * 32, len(self.getActiveCells()))
 
 
@@ -474,11 +474,11 @@ class SequenceMemoryTestBase(object):
             # At the end of both shared sequences, there should be
             # predicted but inactive columns
             self.assertTrue(set(self.getActiveCells()).issubset(
-              self.getPreviouslyPredictedCells()))
-            self.assertGreater(len(self.getPreviouslyPredictedCells()),
+              self.getPredictedCells()))
+            self.assertGreater(len(self.getPredictedCells()),
                                len(self.getActiveCells()))
           else:
-            self.assertEqual(set(self.getPreviouslyPredictedCells()),
+            self.assertEqual(set(self.getPredictedCells()),
                              set(self.getActiveCells()))
 
       self.reset()
@@ -513,7 +513,7 @@ class SequenceMemoryTestBase(object):
         self.compute(pattern, learn=False)
 
         if i > 0:
-          self.assertEqual(set(self.getPreviouslyPredictedCells()),
+          self.assertEqual(set(self.getPredictedCells()),
                            set(self.getActiveCells()))
 
       self.reset()
@@ -552,11 +552,11 @@ class SequenceMemoryTestBase(object):
             # At the end of each shared sequence, there should be
             # predicted but inactive columns
             self.assertTrue(set(self.getActiveCells()).issubset(
-              self.getPreviouslyPredictedCells()))
-            self.assertGreater(len(self.getPreviouslyPredictedCells()),
+              self.getPredictedCells()))
+            self.assertGreater(len(self.getPredictedCells()),
                                len(self.getActiveCells()))
           else:
-            self.assertEqual(set(self.getPreviouslyPredictedCells()),
+            self.assertEqual(set(self.getPredictedCells()),
                              set(self.getActiveCells()))
 
       self.reset()
@@ -599,13 +599,13 @@ class SequenceMemoryTestBase(object):
 
         if i > 0:
           if i > 5:
-            self.assertEqual(set(self.getPreviouslyPredictedCells()),
+            self.assertEqual(set(self.getPredictedCells()),
                              set(self.getActiveCells()))
           else:
             # Allow it a few timesteps to disambiguate, in case there are random
             # shared subsequences.
             self.assertTrue(set(self.getActiveCells()).issubset(
-              self.getPreviouslyPredictedCells()))
+              self.getPredictedCells()))
 
       self.reset()
 
@@ -644,13 +644,13 @@ class SequenceMemoryTestBase(object):
 
         if i > 0:
           if i > 5:
-            self.assertEqual(set(self.getPreviouslyPredictedCells()),
+            self.assertEqual(set(self.getPredictedCells()),
                              set(self.getActiveCells()))
           else:
             # Allow it a few timesteps to disambiguate, in case there are random
             # shared subsequences.
             self.assertTrue(set(self.getActiveCells()).issubset(
-              self.getPreviouslyPredictedCells()))
+              self.getPredictedCells()))
 
       self.reset()
 
@@ -817,16 +817,16 @@ class SequenceMemoryTestBase(object):
 
 
   def getPredictedActiveCells(self):
-    return set(self.getPreviouslyPredictedCells()) & set(self.getActiveCells())
+    return set(self.getPredictedCells()) & set(self.getActiveCells())
 
 
   def getPredictedInactiveCells(self):
-    return set(self.getPreviouslyPredictedCells()) - set(self.getActiveCells())
+    return set(self.getPredictedCells()) - set(self.getActiveCells())
 
 
   def getPredictedActiveColumns(self):
     predicted = set(cell / self.cellsPerColumn
-                    for cell in  self.getPreviouslyPredictedCells())
+                    for cell in  self.getPredictedCells())
     active = set(cell / self.cellsPerColumn
                  for cell in  self.getActiveCells())
 
@@ -835,7 +835,7 @@ class SequenceMemoryTestBase(object):
 
   def getBurstingColumns(self):
     predicted = set(cell / self.cellsPerColumn
-                    for cell in  self.getPreviouslyPredictedCells())
+                    for cell in  self.getPredictedCells())
     active = set(cell / self.cellsPerColumn
                  for cell in  self.getActiveCells())
 
@@ -844,7 +844,7 @@ class SequenceMemoryTestBase(object):
 
   def getPredictedInactiveColumns(self):
     predicted = set(cell / self.cellsPerColumn
-                    for cell in  self.getPreviouslyPredictedCells())
+                    for cell in  self.getPredictedCells())
     active = set(cell / self.cellsPerColumn
                  for cell in  self.getActiveCells())
 
@@ -895,7 +895,7 @@ class SequenceMemoryTestBase(object):
 
 
   @abstractmethod
-  def getPreviouslyPredictedCells(self):
+  def getPredictedCells(self):
     """
     Get the cells that were predicted for the current timestep.
 

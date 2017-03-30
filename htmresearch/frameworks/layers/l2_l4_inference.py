@@ -578,7 +578,7 @@ class L4L2Experiment(object):
     """
     Returns the predictive cells in L4.
     """
-    return [set(column.getOutputData("previouslyPredictedCells").nonzero()[0])
+    return [set(column.getOutputData("predictedCells").nonzero()[0])
             for column in self.L4Regions]
 
 

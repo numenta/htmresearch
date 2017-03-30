@@ -86,5 +86,5 @@ class ExtendedTMCPP_ApicalTiebreakTests(ApicalTiebreakTestBase,
     return self.tm.getActiveCells()
 
 
-  def getPreviouslyPredictedCells(self):
+  def getPredictedCells(self):
     return self.tm.getPredictiveCells()

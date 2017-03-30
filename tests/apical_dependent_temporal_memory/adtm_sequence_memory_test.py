@@ -96,8 +96,8 @@ class ApicalDependentTM_BasalSequenceMemoryTests(SequenceMemoryTestBase,
     return self.tm.getActiveCells()
 
 
-  def getPreviouslyPredictedCells(self):
-    return self.tm.getPreviouslyPredictedCells()
+  def getPredictedCells(self):
+    return self.tm.getPredictedCells()
 
 
 
@@ -164,5 +164,5 @@ class ApicalDependentTM_ApicalSequenceMemoryTests(SequenceMemoryTestBase,
     return self.tm.getActiveCells()
 
 
-  def getPreviouslyPredictedCells(self):
-    return self.tm.getPreviouslyPredictedCells()
+  def getPredictedCells(self):
+    return self.tm.getPredictedCells()

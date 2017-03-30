@@ -99,7 +99,7 @@ class ApicalTMRegion(PyRegion):
           "requireSplitterMap": False},
       },
       "outputs": {
-        "previouslyPredictedCells": {
+        "predictedCells": {
           "description": ("A binary output containing a 1 for every "
                           "cell that was predicted for this timestep."),
           "dataType": "Real32",
@@ -396,11 +396,11 @@ class ApicalTMRegion(PyRegion):
     # Extract the active / predicted cells and put them into binary arrays.
     outputs["activeCells"][:] = 0
     outputs["activeCells"][self._tm.getActiveCells()] = 1
-    outputs["previouslyPredictedCells"][:] = 0
-    outputs["previouslyPredictedCells"][
-      self._tm.getPreviouslyPredictedCells()] = 1
+    outputs["predictedCells"][:] = 0
+    outputs["predictedCells"][
+      self._tm.getPredictedCells()] = 1
     outputs["predictedActiveCells"][:] = (outputs["activeCells"] *
-                                          outputs["previouslyPredictedCells"])
+                                          outputs["predictedCells"])
     outputs["winnerCells"][:] = 0
     outputs["winnerCells"][self._tm.getWinnerCells()] = 1
 
@@ -430,8 +430,8 @@ class ApicalTMRegion(PyRegion):
     """
     Return the number of elements for the given output.
     """
-    if name in ["activeCells", "previouslyPredictedCells",
-                "predictedActiveCells", "winnerCells"]:
+    if name in ["activeCells", "predictedCells", "predictedActiveCells",
+                "winnerCells"]:
       return self.cellsPerColumn * self.columnCount
     else:
       raise Exception("Invalid output name specified: %s" % name)
