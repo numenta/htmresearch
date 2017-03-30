@@ -66,6 +66,18 @@ class ColumnPoolerRegion(PyRegion):
           isDefaultInput=True,
           requireSplitterMap=False),
 
+        feedforwardGrowthCandidates=dict(
+          description=("An array of 0's and 1's representing feedforward input " +
+                       "that can be learned on new proximal synapses. If this " +
+                       "input isn't provided, the whole feedforwardInput is "
+                       "used."),
+          dataType="Real32",
+          count=0,
+          required=False,
+          regionLevel=True,
+          isDefaultInput=False,
+          requireSplitterMap=False),
+
         lateralInput=dict(
           description="Lateral binary input into this column, presumably from"
                       " other neighboring columns.",
@@ -365,6 +377,12 @@ class ColumnPoolerRegion(PyRegion):
     feedforwardInput = numpy.asarray(inputs["feedforwardInput"].nonzero()[0],
                                      dtype="uint32")
 
+    if "feedforwardGrowthCandidates" in inputs:
+      feedforwardGrowthCandidates = numpy.asarray(
+        inputs["feedforwardGrowthCandidates"].nonzero()[0], dtype="uint32")
+    else:
+      feedforwardGrowthCandidates = feedforwardInput
+
     if "lateralInput" in inputs:
       lateralInputs = tuple(numpy.asarray(singleInput.nonzero()[0],
                                           dtype="uint32")
@@ -376,7 +394,7 @@ class ColumnPoolerRegion(PyRegion):
 
     # Send the inputs into the Column Pooler.
     self._pooler.compute(feedforwardInput, lateralInputs,
-                         learn=self.learningMode)
+                         feedforwardGrowthCandidates, learn=self.learningMode)
 
     # Extract the active / predicted cells and put them into binary arrays.
     outputs["activeCells"][:] = 0
