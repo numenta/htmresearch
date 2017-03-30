@@ -19,27 +19,34 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import operator
+"""
+Run the apical tiebreak tests on the ApicalTiebreakTemporalMemory.
+"""
+
 import unittest
 
 import numpy as np
 
-from htmresearch.algorithms.sparsematrix_temporal_memory.basal_context_apical_disambiguation import TemporalMemory
-from htmresearch.support.temporal_memory_tests.sequence_memory import SequenceMemoryTestBase
+from htmresearch.algorithms.sparsematrix_temporal_memory.basal_context_apical_disambiguation import (
+  ApicalTiebreakTemporalMemory)
+from htmresearch.support.shared_tests.apical_tiebreak_test_base import (
+  ApicalTiebreakTestBase)
 
 
-class ApicalTiebreakTM_SequenceMemoryTests(SequenceMemoryTestBase,
+class ApicalTiebreakTM_ApicalTiebreakTests(ApicalTiebreakTestBase,
                                            unittest.TestCase):
+  """
+  Run the "apical tiebreak" tests on the ApicalTiebreakTemporalMemory.
+  """
 
-  def constructTM(self, columnDimensions, cellsPerColumn, initialPermanence,
-                  connectedPermanence, minThreshold, sampleSize,
-                  permanenceIncrement, permanenceDecrement,
-                  predictedSegmentDecrement, activationThreshold, seed):
-
-    numColumns = reduce(operator.mul, columnDimensions, 1)
+  def constructTM(self, columnCount, basalInputSize, apicalInputSize,
+                  cellsPerColumn, initialPermanence, connectedPermanence,
+                  minThreshold, sampleSize, permanenceIncrement,
+                  permanenceDecrement, predictedSegmentDecrement,
+                  activationThreshold, seed):
 
     params = {
-      "columnDimensions": columnDimensions,
+      "columnCount": columnCount,
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
       "connectedPermanence": connectedPermanence,
@@ -47,32 +54,33 @@ class ApicalTiebreakTM_SequenceMemoryTests(SequenceMemoryTestBase,
       "sampleSize": sampleSize,
       "permanenceIncrement": permanenceIncrement,
       "permanenceDecrement": permanenceDecrement,
-      "predictedSegmentDecrement": predictedSegmentDecrement,
+      "basalPredictedSegmentDecrement": predictedSegmentDecrement,
+      "apicalPredictedSegmentDecrement": 0.0,
       "activationThreshold": activationThreshold,
       "seed": seed,
-      "basalInputDimensions": (numColumns*cellsPerColumn,),
-      "apicalInputDimensions": (),
+      "basalInputSize": basalInputSize,
+      "apicalInputSize": apicalInputSize,
     }
 
-    self.tm = TemporalMemory(**params)
+    self.tm = ApicalTiebreakTemporalMemory(**params)
 
 
-  def compute(self, activeColumns, learn):
+  def compute(self, activeColumns, basalInput, apicalInput, learn):
     activeColumns = np.array(sorted(activeColumns), dtype="uint32")
+    basalInput = np.array(sorted(basalInput), dtype="uint32")
+    apicalInput = np.array(sorted(apicalInput), dtype="uint32")
 
     self.tm.compute(activeColumns,
-                    basalInput=self.tm.getActiveCells(),
-                    basalGrowthCandidates=self.tm.getWinnerCells(),
+                    basalInput=basalInput,
+                    basalGrowthCandidates=basalInput,
+                    apicalInput=apicalInput,
+                    apicalGrowthCandidates=apicalInput,
                     learn=learn)
-
-
-  def reset(self):
-    self.tm.reset()
 
 
   def getActiveCells(self):
     return self.tm.getActiveCells()
 
 
-  def getPreviouslyPredictedCells(self):
-    return self.tm.getPreviouslyPredictedCells()
+  def getPredictedCells(self):
+    return self.tm.getPredictedCells()

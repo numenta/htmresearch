@@ -124,7 +124,7 @@ class ApicalDependentTemporalMemory(object):
     self.rng = Random(seed)
     self.activeCells = ()
     self.winnerCells = ()
-    self.prevPredictedCells = ()
+    self.predictedCells = ()
     self.activeBasalSegments = ()
     self.activeApicalSegments = ()
 
@@ -137,7 +137,7 @@ class ApicalDependentTemporalMemory(object):
 
     self.activeCells = ()
     self.winnerCells = ()
-    self.prevPredictedCells = ()
+    self.predictedCells = ()
     self.activeBasalSegments = ()
     self.activeApicalSegments = ()
 
@@ -270,7 +270,7 @@ class ApicalDependentTemporalMemory(object):
     learningCells.sort()
     self.activeCells = newActiveCells
     self.winnerCells = learningCells
-    self.prevPredictedCells = predictedCells
+    self.predictedCells = predictedCells
     self.activeBasalSegments = activeBasalSegments
     self.activeApicalSegments = activeApicalSegments
 
@@ -605,7 +605,7 @@ class ApicalDependentTemporalMemory(object):
     @return (numpy array)
     Active cells that were correctly predicted
     """
-    return np.intersect1d(self.activeCells, self.prevPredictedCells)
+    return np.intersect1d(self.activeCells, self.predictedCells)
 
 
   def getWinnerCells(self):
@@ -616,12 +616,12 @@ class ApicalDependentTemporalMemory(object):
     return self.winnerCells
 
 
-  def getPreviouslyPredictedCells(self):
+  def getPredictedCells(self):
     """
     @return (numpy array)
     Cells that were predicted for this timestep
     """
-    return self.prevPredictedCells
+    return self.predictedCells
 
 
   def getActiveBasalSegments(self):
