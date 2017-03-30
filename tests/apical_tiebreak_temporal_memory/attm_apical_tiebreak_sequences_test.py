@@ -19,14 +19,12 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import operator
 import unittest
 
 import numpy as np
 
 from htmresearch.algorithms.sparsematrix_temporal_memory.basal_context_apical_disambiguation import (
   ApicalTiebreakTemporalMemory)
-
 from htmresearch.support.shared_tests.apical_tiebreak_sequences_test_base import (
   ApicalTiebreakSequencesTestBase)
 
@@ -34,15 +32,13 @@ from htmresearch.support.shared_tests.apical_tiebreak_sequences_test_base import
 class ApicalTiebreakTM_ApicalTiebreakSequenceMemoryTests(ApicalTiebreakSequencesTestBase,
                                                          unittest.TestCase):
 
-  def constructTM(self, columnDimensions, apicalInputSize, cellsPerColumn,
+  def constructTM(self, columnCount, apicalInputSize, cellsPerColumn,
                   initialPermanence, connectedPermanence, minThreshold,
                   sampleSize, permanenceIncrement, permanenceDecrement,
                   predictedSegmentDecrement, activationThreshold, seed):
 
-    numColumns = reduce(operator.mul, columnDimensions, 1)
-
     params = {
-      "columnDimensions": columnDimensions,
+      "columnCount": columnCount,
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
       "connectedPermanence": connectedPermanence,
@@ -54,8 +50,8 @@ class ApicalTiebreakTM_ApicalTiebreakSequenceMemoryTests(ApicalTiebreakSequences
       "apicalPredictedSegmentDecrement": 0.0,
       "activationThreshold": activationThreshold,
       "seed": seed,
-      "basalInputDimensions": (numColumns*cellsPerColumn,),
-      "apicalInputDimensions": (apicalInputSize,),
+      "basalInputSize": columnCount*cellsPerColumn,
+      "apicalInputSize": apicalInputSize,
     }
 
     self.tm = ApicalTiebreakTemporalMemory(**params)

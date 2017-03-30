@@ -23,7 +23,6 @@
 Run the apical tiebreak tests on the C++ ExtendedTemporalMemory.
 """
 
-import operator
 import unittest
 
 from nupic.bindings.experimental import ExtendedTemporalMemory
@@ -34,16 +33,14 @@ from htmresearch.support.shared_tests.apical_tiebreak_test_base import (
 class ExtendedTemporalMemoryCPPTests(ApicalTiebreakTestBase,
                                      unittest.TestCase):
 
-  def constructTM(self, columnDimensions, basalInputSize, apicalInputSize,
+  def constructTM(self, columnCount, basalInputSize, apicalInputSize,
                   cellsPerColumn, initialPermanence, connectedPermanence,
                   minThreshold, sampleSize, permanenceIncrement,
                   permanenceDecrement, predictedSegmentDecrement,
                   activationThreshold, seed):
 
-    numColumns = reduce(operator.mul, columnDimensions, 1)
-
     params = {
-      "columnDimensions": columnDimensions,
+      "columnDimensions": (columnCount,),
       "basalInputDimensions": (basalInputSize,),
       "apicalInputDimensions": (apicalInputSize,),
       "cellsPerColumn": cellsPerColumn,

@@ -23,14 +23,12 @@
 Run the apical tiebreak tests on the ApicalTiebreakTemporalMemory.
 """
 
-import operator
 import unittest
 
 import numpy as np
 
 from htmresearch.algorithms.sparsematrix_temporal_memory.basal_context_apical_disambiguation import (
   ApicalTiebreakTemporalMemory)
-
 from htmresearch.support.shared_tests.apical_tiebreak_test_base import (
   ApicalTiebreakTestBase)
 
@@ -38,16 +36,14 @@ from htmresearch.support.shared_tests.apical_tiebreak_test_base import (
 class ApicalTiebreakTM_ApicalTiebreakTests(ApicalTiebreakTestBase,
                                            unittest.TestCase):
 
-  def constructTM(self, columnDimensions, basalInputSize, apicalInputSize,
+  def constructTM(self, columnCount, basalInputSize, apicalInputSize,
                   cellsPerColumn, initialPermanence, connectedPermanence,
                   minThreshold, sampleSize, permanenceIncrement,
                   permanenceDecrement, predictedSegmentDecrement,
                   activationThreshold, seed):
 
-    numColumns = reduce(operator.mul, columnDimensions, 1)
-
     params = {
-      "columnDimensions": columnDimensions,
+      "columnCount": columnCount,
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
       "connectedPermanence": connectedPermanence,
@@ -59,8 +55,8 @@ class ApicalTiebreakTM_ApicalTiebreakTests(ApicalTiebreakTestBase,
       "apicalPredictedSegmentDecrement": 0.0,
       "activationThreshold": activationThreshold,
       "seed": seed,
-      "basalInputDimensions": (basalInputSize,),
-      "apicalInputDimensions": (apicalInputSize,),
+      "basalInputSize": basalInputSize,
+      "apicalInputSize": apicalInputSize,
     }
 
     self.tm = ApicalTiebreakTemporalMemory(**params)

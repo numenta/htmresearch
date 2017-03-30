@@ -781,7 +781,7 @@ class SequenceMemoryTestBase(object):
     """
 
     params = {
-      "columnDimensions": (self.n,),
+      "columnCount": self.n,
       "cellsPerColumn": 32,
       "initialPermanence": 0.5,
       "connectedPermanence": 0.6,
@@ -860,7 +860,7 @@ class SequenceMemoryTestBase(object):
   # ==============================
 
   @abstractmethod
-  def constructTM(self, columnDimensions, cellsPerColumn, initialPermanence,
+  def constructTM(self, columnCount, cellsPerColumn, initialPermanence,
                   connectedPermanence, minThreshold, sampleSize,
                   permanenceIncrement, permanenceDecrement,
                   predictedSegmentDecrement, activationThreshold, seed):

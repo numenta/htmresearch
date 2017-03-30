@@ -48,7 +48,7 @@ class ApicalTiebreakTestBase(object):
   __metaclass__ = ABCMeta
   apicalInputSize = 1000
   basalInputSize = 1000
-  numColumns = 2048
+  columnCount = 2048
   w = 40
 
 
@@ -196,7 +196,7 @@ class ApicalTiebreakTestBase(object):
     """
 
     params = {
-      "columnDimensions": (self.numColumns,),
+      "columnCount": self.columnCount,
       "basalInputSize": self.basalInputSize,
       "apicalInputSize": self.apicalInputSize,
       "cellsPerColumn": 32,
@@ -228,7 +228,7 @@ class ApicalTiebreakTestBase(object):
 
 
   def randomColumnPattern(self):
-    return set(random.sample(xrange(self.numColumns), self.w))
+    return set(random.sample(xrange(self.columnCount), self.w))
 
 
   def randomApicalPattern(self):
@@ -243,7 +243,7 @@ class ApicalTiebreakTestBase(object):
   # ==============================
 
   @abstractmethod
-  def constructTM(self, columnDimensions, basalInputSize, apicalInputSize,
+  def constructTM(self, columnCount, basalInputSize, apicalInputSize,
                   cellsPerColumn, initialPermanence, connectedPermanence,
                   minThreshold, sampleSize, permanenceIncrement,
                   permanenceDecrement, predictedSegmentDecrement,

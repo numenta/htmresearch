@@ -35,14 +35,14 @@ from htmresearch.support.shared_tests.apical_tiebreak_sequences_test_base import
 class ExtendedTemporalMemoryCPPTests(ApicalTiebreakSequencesTestBase,
                                      unittest.TestCase):
 
-  def constructTM(self, columnDimensions, apicalInputSize, cellsPerColumn,
+  def constructTM(self, columnCount, apicalInputSize, cellsPerColumn,
                   initialPermanence, connectedPermanence, minThreshold,
                   sampleSize, permanenceIncrement, permanenceDecrement,
                   predictedSegmentDecrement, activationThreshold, seed):
 
     params = {
       "apicalInputDimensions": (apicalInputSize,),
-      "columnDimensions": columnDimensions,
+      "columnDimensions": (columnCount,),
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
       "connectedPermanence": connectedPermanence,

@@ -19,7 +19,6 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import operator
 import random
 import unittest
 
@@ -34,12 +33,10 @@ from htmresearch.support.shared_tests.sequence_memory_test_base import(
 class ApicalDependentTM_BasalSequenceMemoryTests(SequenceMemoryTestBase,
                                                  unittest.TestCase):
 
-  def constructTM(self, columnDimensions, cellsPerColumn, initialPermanence,
+  def constructTM(self, columnCount, cellsPerColumn, initialPermanence,
                   connectedPermanence, minThreshold, sampleSize,
                   permanenceIncrement, permanenceDecrement,
                   predictedSegmentDecrement, activationThreshold, seed):
-
-    numColumns = reduce(operator.mul, columnDimensions, 1)
 
     # Use the same apical input on every compute. This is like running the whole
     # experiment in one "world" or on one "object". It makes the
@@ -50,7 +47,7 @@ class ApicalDependentTM_BasalSequenceMemoryTests(SequenceMemoryTestBase,
       dtype="uint32")
 
     params = {
-      "columnDimensions": columnDimensions,
+      "columnCount": columnCount,
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
       "connectedPermanence": connectedPermanence,
@@ -65,8 +62,8 @@ class ApicalDependentTM_BasalSequenceMemoryTests(SequenceMemoryTestBase,
 
       "activationThreshold": activationThreshold,
       "seed": seed,
-      "basalInputDimensions": (numColumns*cellsPerColumn,),
-      "apicalInputDimensions": (apicalInputSize,),
+      "basalInputSize": columnCount*cellsPerColumn,
+      "apicalInputSize": apicalInputSize,
     }
 
     self.tm = ApicalDependentTemporalMemory(**params)
@@ -99,12 +96,10 @@ class ApicalDependentTM_BasalSequenceMemoryTests(SequenceMemoryTestBase,
 class ApicalDependentTM_ApicalSequenceMemoryTests(SequenceMemoryTestBase,
                                                   unittest.TestCase):
 
-  def constructTM(self, columnDimensions, cellsPerColumn, initialPermanence,
+  def constructTM(self, columnCount, cellsPerColumn, initialPermanence,
                   connectedPermanence, minThreshold, sampleSize,
                   permanenceIncrement, permanenceDecrement,
                   predictedSegmentDecrement, activationThreshold, seed):
-
-    numColumns = reduce(operator.mul, columnDimensions, 1)
 
     # Use the same basal input on every compute. With this algorithm, basal and
     # apical segments are treated equally, so you can do sequence memory on the
@@ -116,7 +111,7 @@ class ApicalDependentTM_ApicalSequenceMemoryTests(SequenceMemoryTestBase,
       dtype="uint32")
 
     params = {
-      "columnDimensions": columnDimensions,
+      "columnCount": columnCount,
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
       "connectedPermanence": connectedPermanence,
@@ -131,8 +126,8 @@ class ApicalDependentTM_ApicalSequenceMemoryTests(SequenceMemoryTestBase,
       "apicalPredictedSegmentDecrement": predictedSegmentDecrement,
       "activationThreshold": activationThreshold,
       "seed": seed,
-      "basalInputDimensions": (basalInputSize,),
-      "apicalInputDimensions": (numColumns*cellsPerColumn,),
+      "basalInputSize": basalInputSize,
+      "apicalInputSize": columnCount*cellsPerColumn,
     }
 
     self.tm = ApicalDependentTemporalMemory(**params)

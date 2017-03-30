@@ -19,7 +19,6 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import operator
 import unittest
 
 import numpy as np
@@ -33,15 +32,13 @@ from htmresearch.support.shared_tests.sequence_memory_test_base import (
 class ApicalTiebreakTM_SequenceMemoryTests(SequenceMemoryTestBase,
                                            unittest.TestCase):
 
-  def constructTM(self, columnDimensions, cellsPerColumn, initialPermanence,
+  def constructTM(self, columnCount, cellsPerColumn, initialPermanence,
                   connectedPermanence, minThreshold, sampleSize,
                   permanenceIncrement, permanenceDecrement,
                   predictedSegmentDecrement, activationThreshold, seed):
 
-    numColumns = reduce(operator.mul, columnDimensions, 1)
-
     params = {
-      "columnDimensions": columnDimensions,
+      "columnCount": columnCount,
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
       "connectedPermanence": connectedPermanence,
@@ -52,8 +49,8 @@ class ApicalTiebreakTM_SequenceMemoryTests(SequenceMemoryTestBase,
       "basalPredictedSegmentDecrement": predictedSegmentDecrement,
       "activationThreshold": activationThreshold,
       "seed": seed,
-      "basalInputDimensions": (numColumns*cellsPerColumn,),
-      "apicalInputDimensions": (),
+      "basalInputSize": columnCount*cellsPerColumn,
+      "apicalInputSize": 0,
     }
 
     self.tm = ApicalTiebreakTemporalMemory(**params)

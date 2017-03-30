@@ -29,13 +29,13 @@ from htmresearch.support.shared_tests.sequence_memory_test_base import (
 class ExtendedTemporalMemoryCPP_SequenceMemoryTests(SequenceMemoryTestBase,
                                                     unittest.TestCase):
 
-  def constructTM(self, columnDimensions, cellsPerColumn, initialPermanence,
+  def constructTM(self, columnCount, cellsPerColumn, initialPermanence,
                   connectedPermanence, minThreshold, sampleSize,
                   permanenceIncrement, permanenceDecrement,
                   predictedSegmentDecrement, activationThreshold, seed):
 
     params = {
-      "columnDimensions": columnDimensions,
+      "columnDimensions": (columnCount,),
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
       "connectedPermanence": connectedPermanence,
