@@ -148,7 +148,8 @@ class ColumnPooler(object):
                                    for n in lateralInputWidths)
 
 
-  def compute(self, feedforwardInput=(), lateralInputs=(), learn=True):
+  def compute(self, feedforwardInput=(), lateralInputs=(),
+              feedforwardGrowthCandidates=None, learn=True):
     """
     Runs one time step of the column pooler algorithm.
 
@@ -159,17 +160,26 @@ class ColumnPooler(object):
             For each lateral layer, a list of sorted indices of active lateral
             input bits
 
+    @param  feedforwardGrowthCandidates (sequence or None)
+            Sorted indices of feedforward input bits that active cells may grow
+            new synapses to. If None, the entire feedforwardInput is used.
+
     @param  learn (bool)
             If True, we are learning a new object
     """
 
+    if feedforwardGrowthCandidates is None:
+      feedforwardGrowthCandidates = feedforwardInput
+
     if learn:
-      self._computeLearningMode(feedforwardInput, lateralInputs)
+      self._computeLearningMode(feedforwardInput, lateralInputs,
+                                feedforwardGrowthCandidates)
     else:
       self._computeInferenceMode(feedforwardInput, lateralInputs)
 
 
-  def _computeLearningMode(self, feedforwardInput, lateralInputs):
+  def _computeLearningMode(self, feedforwardInput, lateralInputs,
+                           feedforwardGrowthCandidates):
     """
     Learning mode: we are learning a new object. If there is no prior
     activity, we randomly activate 'sdrSize' cells and create connections to
@@ -186,6 +196,10 @@ class ColumnPooler(object):
     @param  lateralInputs (list of sequences)
             For each lateral layer, a list of sorted indices of active lateral
             input bits
+
+    @param  feedforwardGrowthCandidates (sequence or None)
+            Sorted indices of feedforward input bits that the active cells may
+            grow new synapses to
     """
 
     prevActiveCells = self.activeCells
@@ -202,14 +216,14 @@ class ColumnPooler(object):
       # Proximal learning
       self._learn(self.proximalPermanences, self._random,
                   self.activeCells, feedforwardInput,
-                  self.sampleSizeProximal, self.initialProximalPermanence,
-                  self.synPermProximalInc, self.synPermProximalDec,
-                  self.connectedPermanenceProximal)
+                  feedforwardGrowthCandidates, self.sampleSizeProximal,
+                  self.initialProximalPermanence, self.synPermProximalInc,
+                  self.synPermProximalDec, self.connectedPermanenceProximal)
 
       # Internal distal learning
       if len(prevActiveCells) > 0:
         self._learn(self.internalDistalPermanences, self._random,
-                    self.activeCells, prevActiveCells,
+                    self.activeCells, prevActiveCells, prevActiveCells,
                     self.sampleSizeDistal, self.initialDistalPermanence,
                     self.synPermDistalInc, self.synPermDistalDec,
                     self.connectedPermanenceDistal)
@@ -217,7 +231,7 @@ class ColumnPooler(object):
       # External distal learning
       for i, lateralInput in enumerate(lateralInputs):
         self._learn(self.distalPermanences[i], self._random,
-                    self.activeCells, lateralInput,
+                    self.activeCells, lateralInput, lateralInput,
                     self.sampleSizeDistal, self.initialDistalPermanence,
                     self.synPermDistalInc, self.synPermDistalDec,
                     self.connectedPermanenceDistal)
@@ -483,7 +497,7 @@ class ColumnPooler(object):
              permanences, rng,
 
              # activity
-             activeCells, activeInput,
+             activeCells, activeInput, growthCandidateInput,
 
              # configuration
              sampleSize, initialPermanence, permanenceIncrement,
@@ -507,6 +521,10 @@ class ColumnPooler(object):
     @param  activeInput (sorted sequence)
             Sorted list of active bits in the input
 
+    @param  growthCandidateInput (sorted sequence)
+            Sorted list of active bits in the input that the activeCells may
+            grow new synapses to
+
     For remaining parameters, see the __init__ docstring.
     """
 
@@ -520,8 +538,12 @@ class ColumnPooler(object):
       permanences.setZerosOnOuter(
         activeCells, activeInput, initialPermanence)
     else:
-      permanences.increaseRowNonZeroCountsOnOuterTo(
-        activeCells, activeInput, sampleSize, initialPermanence, rng)
+      existingSynapseCounts = permanences.nNonZerosPerRowOnCols(
+        activeCells, activeInput)
+      maxNewByCell = sampleSize - existingSynapseCounts
+
+      permanences.setRandomZerosOnOuter(
+        activeCells, growthCandidateInput, maxNewByCell, initialPermanence, rng)
 
 
 #

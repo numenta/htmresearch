@@ -609,7 +609,6 @@ class L4L2Experiment(object):
       "predictedSegmentDecrement": 0.0,
       "activationThreshold": activationThreshold,
       "maxNewSynapseCount": maxNewSynapseCount,
-      "defaultOutputType": "predictedActiveCells",
       "implementation": "etm_cpp",
       "seed": self.seed
     }
@@ -689,7 +688,6 @@ class L4L2Experiment(object):
     """
     for column in self.L4Columns:
       column.setParameter("learningMode", 0, False)
-      column.setParameter("defaultOutputType", 0, "active")
     for column in self.L2Columns:
       column.setParameter("learningMode", 0, False)
 
@@ -700,7 +698,6 @@ class L4L2Experiment(object):
     """
     for column in self.L4Columns:
       column.setParameter("learningMode", 0, True)
-      column.setParameter("defaultOutputType", 0, "predictedActiveCells")
     for column in self.L2Columns:
       column.setParameter("learningMode", 0, True)
 

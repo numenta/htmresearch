@@ -237,9 +237,14 @@ def createL4L2Column(network, networkConfig, suffix=""):
     _linkLateralSPRegion(network, networkConfig, externalInputName, L4ColumnName)
   _linkFeedForwardSPRegion(network, networkConfig, sensorInputName, L4ColumnName)
 
-  # Link L4 to L2, and L2's feedback to L4
+  # Link L4 to L2
   network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="feedforwardInput")
+               srcOutput="activeCells", destInput="feedforwardInput")
+  network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
+               srcOutput="predictedActiveCells",
+               destInput="feedforwardGrowthCandidates")
+
+  # Link L2 feedback to L4
   network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
                srcOutput="feedForwardOutput", destInput="externalApicalInput")
 
