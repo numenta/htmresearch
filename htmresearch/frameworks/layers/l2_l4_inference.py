@@ -243,7 +243,7 @@ class L4L2Experiment(object):
     self.sensorInputs = []
     self.externalInputs = []
     self.L4Regions = []
-    self.L2Columns = []
+    self.L2Regions = []
 
     for i in xrange(self.numColumns):
       self.sensorInputs.append(
@@ -255,9 +255,12 @@ class L4L2Experiment(object):
       self.L4Regions.append(
         self.network.regions["L4Column_" + str(i)]
       )
-      self.L2Columns.append(
-        self.network.regions["L2Column_" + str(i)].getSelf()
+      self.L2Regions.append(
+        self.network.regions["L2Column_" + str(i)]
       )
+
+    self.L4Columns = [region.getSelf() for region in self.L4Regions]
+    self.L2Columns = [region.getSelf() for region in self.L2Regions]
 
     # will be populated during training
     self.objectL2Representations = {}
@@ -726,7 +729,7 @@ class L4L2Experiment(object):
     """
     for region in self.L4Regions:
       region.setParameter("learn", True)
-    for region in self.L2Columns:
+    for region in self.L2Regions:
       region.setParameter("learningMode", True)
 
 
@@ -758,7 +761,7 @@ class L4L2Experiment(object):
         len(L2Representation[i])
       )
       statistics["L4 Apical Segments C" + str(i)].append(
-        len(self.L4Regions[i].getSelf()._tm.getActiveApicalSegments())
+        len(self.L4Columns[i]._tm.getActiveApicalSegments())
       )
 
       # add true overlap if objectName was provided
