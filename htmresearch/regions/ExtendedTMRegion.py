@@ -351,7 +351,7 @@ class ExtendedTMRegion(PyRegion):
     self._tm = None
 
 
-  def initialize(self, dims, splitterMaps):
+  def initialize(self):
     """
     Initialize the self._tm if not already initialized. We need to figure out
     the constructor parameters for each class, and send it to that constructor.
