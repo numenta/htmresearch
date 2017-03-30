@@ -22,7 +22,7 @@
 """Tests for l2_l4_inference module."""
 
 import unittest
-import numpy
+import random
 
 from htmresearch.frameworks.layers import l2_l4_inference
 
@@ -34,7 +34,7 @@ def _randomSDR(numOfBits, size):
   :param size: Number of active bits desired in the SDR
   :return: list with active bits indexes in SDR
   """
-  return list(numpy.random.permutation(numOfBits)[0:size])
+  return random.sample(xrange(numOfBits), size)
 
 
 class L4L2ExperimentTest(unittest.TestCase):
@@ -209,7 +209,7 @@ class L4L2ExperimentTest(unittest.TestCase):
     Test that L2 and L4 representations are consistent across different
     instantiations with the same seed.
     """
-    numpy.random.seed(23)
+    random.seed(23)
     # Location and feature pool
     features = [_randomSDR(1024, 20) for _ in xrange(4)]
     locations = [_randomSDR(1024, 20) for _ in xrange(17)]
@@ -322,20 +322,20 @@ class L4L2ExperimentTest(unittest.TestCase):
           objectsToLearn["Mug"][0]
       ]
       exps[i].sendReset()
-      exps[i].infer(sensations, reset=False)
+      exps[i].infer(sensations*2, reset=False)
 
 
     # Ensure L2 and L4 representations are consistent across all experiment
-    # instantiations, across all columns, and across 10 different repeats
-    for i in range(10):
+    # instantiations, across all columns, and across 2 different repeats
+    for i in range(2):
       for c in range(5):
-        total = sum(exps[0].getL2Representations()[c])
-        for e in range(numExps):
-          self.assertEqual(total, sum(exps[e].getL2Representations()[c]))
+        L20 = set(exps[0].getL2Representations()[c])
+        for e in range(1, numExps):
+          self.assertSequenceEqual(L20, set(exps[e].getL2Representations()[c]))
 
-        total = sum(exps[0].getL4Representations()[c])
+        L40 = set(exps[0].getL4Representations()[c])
         for e in range(numExps):
-          self.assertEqual(total, sum(exps[e].getL4Representations()[c]))
+          self.assertSequenceEqual(L40, set(exps[e].getL4Representations()[c]))
 
 
 if __name__ == "__main__":
