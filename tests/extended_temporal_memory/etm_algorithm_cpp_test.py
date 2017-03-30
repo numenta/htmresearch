@@ -22,7 +22,7 @@
 
 import unittest
 
-import nupic.bindings.experimental
+import htmresearch_core.experimental
 from etm_algorithm_test_base import ExtendedTemporalMemoryAlgorithmTest
 
 
@@ -30,4 +30,4 @@ from etm_algorithm_test_base import ExtendedTemporalMemoryAlgorithmTest
 class ExtendedTemporalMemoryAlgorithmTestCPP(
         ExtendedTemporalMemoryAlgorithmTest, unittest.TestCase):
   def getTMClass(self):
-    return nupic.bindings.experimental.ExtendedTemporalMemory
+    return htmresearch_core.experimental.ExtendedTemporalMemory

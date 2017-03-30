@@ -21,7 +21,7 @@
 
 import unittest
 
-from nupic.bindings.experimental import ExtendedTemporalMemory
+from htmresearch_core.experimental import ExtendedTemporalMemory
 from htmresearch.support.temporal_memory_tests.sequence_memory import SequenceMemoryTestBase
 
 

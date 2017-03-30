@@ -22,11 +22,11 @@
 
 import unittest
 
-import nupic.bindings.experimental
+import htmresearch_core.experimental
 from tm_unit_test_base import TemporalMemoryUnitTest
 
 
 
 class TemporalMemoryUnitTestCPP(TemporalMemoryUnitTest, unittest.TestCase):
   def getTMClass(self):
-    return nupic.bindings.experimental.ExtendedTemporalMemory
+    return htmresearch_core.experimental.ExtendedTemporalMemory
