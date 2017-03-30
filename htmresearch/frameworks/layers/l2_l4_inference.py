@@ -716,21 +716,18 @@ class L4L2Experiment(object):
 
     for region in self.L4Regions:
       region.setParameter("learn", False)
-
-    for column in self.L2Columns:
-      column.setParameter("learningMode", 0, False)
+    for region in self.L2Regions:
+      region.setParameter("learningMode", False)
 
 
   def _setLearningMode(self):
     """
     Sets the learning mode.
     """
-
     for region in self.L4Regions:
       region.setParameter("learn", True)
-
-    for column in self.L2Columns:
-      column.setParameter("learningMode", 0, True)
+    for region in self.L2Columns:
+      region.setParameter("learningMode", True)
 
 
   def _updateInferenceStats(self, statistics, objectName=None):

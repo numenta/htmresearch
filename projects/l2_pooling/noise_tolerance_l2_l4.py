@@ -161,10 +161,6 @@ def doExperiment(numColumns, objects, l2Overrides, noiseLevels, numInitialTraver
            for location in xrange(len(features))])
          for objectName, features in objects.iteritems()))
 
-  # Now that the objects are learned, allow bursting L4 minicolumns to activate
-  # cells in L2.
-  exp.L4Columns[0].setParameter("defaultOutputType", 0, "active")
-
   results = defaultdict(list)
 
   for noiseLevel in noiseLevels:

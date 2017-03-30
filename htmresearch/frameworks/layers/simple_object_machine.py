@@ -255,15 +255,24 @@ class SimpleObjectMachine(ObjectMachineBase):
 
   def _addNoise(self, pattern, noiseLevel, inputSize):
     """
-    Adds noise the given list of patterns and returns a list of noisy copies.
+    Adds noise to the given pattern and returns the new one.
+
+    A noiseLevel of 0.1 means that 10% of the ON bits will be replaced by
+    other randomly chosen ON bits.  The returned SDR will still contain the
+    same number of bits.
+
     """
     if pattern is None:
       return None
 
+    # Bits that could be noise. These can't be from the original set.
+    candidateBits = list(set(range(inputSize)) - set(pattern))
+    random.shuffle(candidateBits)
+
     newBits = set()
     for bit in pattern:
       if random.random() < noiseLevel:
-        newBits.add(random.randint(0, inputSize))
+        newBits.add(candidateBits.pop())
       else:
         newBits.add(bit)
 

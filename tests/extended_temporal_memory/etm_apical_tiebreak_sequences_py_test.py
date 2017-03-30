@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2016-2017, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2017, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -19,22 +19,33 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+"""
+Run the apical tiebreak sequence tests on the Python ExtendedTemporalMemory.
+"""
+
 import unittest
 
-from nupic.bindings.experimental import ExtendedTemporalMemory
-from htmresearch.support.temporal_memory_tests.sequence_memory import SequenceMemoryTestBase
+from htmresearch.algorithms.extended_temporal_memory import (
+    ExtendedTemporalMemory)
+from htmresearch.support.shared_tests.apical_tiebreak_sequences_test_base import (
+    ApicalTiebreakSequencesTestBase)
 
 
-class ExtendedTemporalMemoryCPP_SequenceMemoryTests(SequenceMemoryTestBase,
-                                                    unittest.TestCase):
 
-  def constructTM(self, columnDimensions, cellsPerColumn, initialPermanence,
-                  connectedPermanence, minThreshold, sampleSize,
-                  permanenceIncrement, permanenceDecrement,
+class ExtendedTMPY_ApicalTiebreakSequencesTests(ApicalTiebreakSequencesTestBase,
+                                     unittest.TestCase):
+  """
+  Run the apical tiebreak sequence tests on the Python ExtendedTemporalMemory.
+  """
+
+  def constructTM(self, columnCount, apicalInputSize, cellsPerColumn,
+                  initialPermanence, connectedPermanence, minThreshold,
+                  sampleSize, permanenceIncrement, permanenceDecrement,
                   predictedSegmentDecrement, activationThreshold, seed):
 
     params = {
-      "columnDimensions": columnDimensions,
+      "apicalInputDimensions": (apicalInputSize,),
+      "columnDimensions": (columnCount,),
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
       "connectedPermanence": connectedPermanence,
@@ -46,16 +57,25 @@ class ExtendedTemporalMemoryCPP_SequenceMemoryTests(SequenceMemoryTestBase,
       "activationThreshold": activationThreshold,
       "seed": seed,
       "learnOnOneCell": False,
+      "formInternalBasalConnections": True,
     }
 
     self.tm = ExtendedTemporalMemory(**params)
 
 
-  def compute(self, activeColumns, learn):
+  def compute(self, activeColumns, apicalInput, learn):
+
+    activeColumns = sorted(activeColumns)
+    apicalInput = sorted(apicalInput)
+
     # Use depolarizeCells + activateCells rather than tm.compute so that
     # getPredictiveCells returns predictions for the current timestep.
-    self.tm.depolarizeCells(learn=learn)
-    self.tm.activateCells(sorted(activeColumns), learn=learn)
+    self.tm.depolarizeCells(activeCellsExternalApical=apicalInput,
+                            learn=learn)
+    self.tm.activateCells(activeColumns,
+                          reinforceCandidatesExternalApical=apicalInput,
+                          growthCandidatesExternalApical=apicalInput,
+                          learn=learn)
 
 
   def reset(self):
