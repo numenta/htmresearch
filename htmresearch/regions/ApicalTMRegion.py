@@ -354,11 +354,13 @@ class ApicalTMRegion(PyRegion):
       }
 
       if self.implementation == "ApicalTiebreak":
-        import htmresearch.algorithms.sparsematrix_temporal_memory.basal_context_apical_disambiguation
-        self._tm = htmresearch.algorithms.sparsematrix_temporal_memory.basal_context_apical_disambiguation.ApicalTiebreakTemporalMemory(**params)
+        from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
+          ApicalTiebreakTemporalMemory)
+        self._tm = ApicalTiebreakTemporalMemory(**params)
       elif self.implementation == "ApicalDependent":
-        import htmresearch.algorithms.sparsematrix_temporal_memory.basal_context_apical_context
-        self._tm = htmresearch.algorithms.sparsematrix_temporal_memory.basal_context_apical_context.ApicalDependentTemporalMemory(**params)
+        from htmresearch.algorithms.apical_dependent_temporal_memory import (
+          ApicalDependentTemporalMemory)
+        self._tm = ApicalDependentTemporalMemory(**params)
       else:
         raise ValueError("Unrecognized implementation %s" % self.implementation)
 
