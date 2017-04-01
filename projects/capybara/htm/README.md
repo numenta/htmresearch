@@ -6,7 +6,7 @@ notebook `convert_and_plot_sequences.ipynb`.
 
 ## Generate and analyze HTM traces
 The main notebook to generate and analyze the HTM traces is 
-`sequence_traces_analysis.py`. It contains the analysis results of the HTM 
+`sequence_traces_analysis.ipynb`. It contains the analysis results of the HTM 
 traces for multiple datasets.
 
 ## Additional standalone scripts (Optional, just FYI)

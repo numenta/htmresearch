@@ -241,7 +241,7 @@ def plot_cluster_assignments(output_dir, clusters, timestep):
     the_table.set_fontsize(9)
     the_table.scale(1, 2)
     ax.set_xticks([])
-    plt.tight_layout(pad=7)
+    plt.tight_layout(pad=10)
     fig_name = 'cluster_assignments_t=%s.png' % timestep
     plt.savefig('%s/%s' % (output_dir, fig_name))
     print('==> saved: %s/%s' % (output_dir, fig_name))

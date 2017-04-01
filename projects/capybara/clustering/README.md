@@ -1,9 +1,8 @@
 # Clustering
 
 How to run:
-* Change to `capybara/classification`
-* Generate data with `generate_acc_data.py` or `generate_artificial_data.py` 
-* Run the HTM network that will generate traces with `run_htm_network.py`
+* Go to `capybara/datasets/uc_har` and generate data with `convert_to_csv.py`. 
+* Run the HTM network that will generate traces with `capybara/htm/run_htm_network.py`
 * Change to `capybara/clustering`
 * Run the clustering with `run_clustering.py`
 

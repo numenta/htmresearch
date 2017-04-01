@@ -28,7 +28,7 @@ from utils import find_cluster_repetitions, find_cluster_assignments
 
 class UtilsTest(unittest.TestCase):
   """
-  Tests for utils.py
+  Tests for analysis.py
   """
 
 
