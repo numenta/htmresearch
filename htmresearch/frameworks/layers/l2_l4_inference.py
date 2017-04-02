@@ -132,6 +132,7 @@ class L4L2Experiment(object):
                numInputBits=20,
                externalInputSize=1024,
                L2Overrides=None,
+               L4RegionType="py.ExtendedTMRegion",
                L4Overrides=None,
                numLearningPoints=3,
                seed=42,
@@ -164,7 +165,10 @@ class L4L2Experiment(object):
     @param   L2Overrides (dict)
              Parameters to override in the L2 region
 
-    @param   L4Overrides
+    @param   L4RegionType (string)
+             The type of region to use for L4
+
+    @param   L4Overrides (dict)
              Parameters to override in the L4 region
 
     @param   numLearningPoints (int)
@@ -213,7 +217,9 @@ class L4L2Experiment(object):
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
-      "L4Params": self.getDefaultL4Params(inputSize, numInputBits),
+      "L4RegionType": L4RegionType,
+      "L4Params": self.getDefaultL4Params(L4RegionType, inputSize,
+                                          numInputBits),
       "L2Params": self.getDefaultL2Params(inputSize, numInputBits),
     }
 
@@ -238,8 +244,8 @@ class L4L2Experiment(object):
 
     self.sensorInputs = []
     self.externalInputs = []
-    self.L4Columns = []
-    self.L2Columns = []
+    self.L4Regions = []
+    self.L2Regions = []
 
     for i in xrange(self.numColumns):
       self.sensorInputs.append(
@@ -248,12 +254,15 @@ class L4L2Experiment(object):
       self.externalInputs.append(
         self.network.regions["externalInput_" + str(i)].getSelf()
       )
-      self.L4Columns.append(
-        self.network.regions["L4Column_" + str(i)].getSelf()
+      self.L4Regions.append(
+        self.network.regions["L4Column_" + str(i)]
       )
-      self.L2Columns.append(
-        self.network.regions["L2Column_" + str(i)].getSelf()
+      self.L2Regions.append(
+        self.network.regions["L2Column_" + str(i)]
       )
+
+    self.L4Columns = [region.getSelf() for region in self.L4Regions]
+    self.L2Columns = [region.getSelf() for region in self.L2Regions]
 
     # will be populated during training
     self.objectL2Representations = {}
@@ -563,14 +572,16 @@ class L4L2Experiment(object):
     """
     Returns the active representation in L4.
     """
-    return [set(column._tm.getActiveCells()) for column in self.L4Columns]
+    return [set(column.getOutputData("activeCells").nonzero()[0])
+            for column in self.L4Regions]
 
 
   def getL4PredictiveCells(self):
     """
     Returns the predictive cells in L4.
     """
-    return [set(column._tm.getPredictiveCells()) for column in self.L4Columns]
+    return [set(column.getOutputData("predictedCells").nonzero()[0])
+            for column in self.L4Regions]
 
 
   def getL2Representations(self):
@@ -616,11 +627,11 @@ class L4L2Experiment(object):
 
     return results
 
-  def getDefaultL4Params(self, inputSize, numInputBits):
+  def getDefaultL4Params(self, L4RegionType, inputSize, numInputBits):
     """
     Returns a good default set of parameters to use in the L4 region.
     """
-    maxNewSynapseCount = int(1.5 * numInputBits)
+    sampleSize = int(1.5 * numInputBits)
 
     if numInputBits == 20:
       activationThreshold = 13
@@ -632,25 +643,43 @@ class L4L2Experiment(object):
       activationThreshold = int(numInputBits * .6)
       minThreshold = activationThreshold
 
-    return {
-      "columnCount": inputSize,
-      "cellsPerColumn": 16,
-      "formInternalBasalConnections": False,
-      "learningMode": True,
-      "inferenceMode": True,
-      "learnOnOneCell": False,
-      "initialPermanence": 0.51,
-      "connectedPermanence": 0.6,
-      "permanenceIncrement": 0.1,
-      "permanenceDecrement": 0.02,
-      "minThreshold": minThreshold,
-      "predictedSegmentDecrement": 0.0,
-      "activationThreshold": activationThreshold,
-      "maxNewSynapseCount": maxNewSynapseCount,
-      "defaultOutputType": "predictedActiveCells",
-      "implementation": "etm_cpp",
-      "seed": self.seed
-    }
+    if L4RegionType == "py.ExtendedTMRegion":
+      return {
+        "columnCount": inputSize,
+        "cellsPerColumn": 16,
+        "formInternalBasalConnections": False,
+        "learn": True,
+        "learnOnOneCell": False,
+        "initialPermanence": 0.51,
+        "connectedPermanence": 0.6,
+        "permanenceIncrement": 0.1,
+        "permanenceDecrement": 0.02,
+        "minThreshold": minThreshold,
+        "predictedSegmentDecrement": 0.0,
+        "activationThreshold": activationThreshold,
+        "maxNewSynapseCount": sampleSize,
+        "implementation": "etm_cpp",
+        "seed": self.seed
+      }
+    elif L4RegionType == "py.ApicalTMRegion":
+      return {
+        "columnCount": inputSize,
+        "cellsPerColumn": 16,
+        "learn": True,
+        "initialPermanence": 0.51,
+        "connectedPermanence": 0.6,
+        "permanenceIncrement": 0.1,
+        "permanenceDecrement": 0.02,
+        "minThreshold": minThreshold,
+        "basalPredictedSegmentDecrement": 0.0,
+        "apicalPredictedSegmentDecrement": 0.0,
+        "activationThreshold": activationThreshold,
+        "sampleSize": sampleSize,
+        "implementation": "ApicalTiebreak",
+        "seed": self.seed
+      }
+    else:
+      raise ValueError("Unknown L4RegionType: %s" % L4RegionType)
 
 
   def getDefaultL2Params(self, inputSize, numInputBits):
@@ -725,22 +754,21 @@ class L4L2Experiment(object):
     """
     Unsets the learning mode, to start inference.
     """
-    for column in self.L4Columns:
-      column.setParameter("learningMode", 0, False)
-      column.setParameter("defaultOutputType", 0, "active")
-    for column in self.L2Columns:
-      column.setParameter("learningMode", 0, False)
+
+    for region in self.L4Regions:
+      region.setParameter("learn", False)
+    for region in self.L2Regions:
+      region.setParameter("learningMode", False)
 
 
   def _setLearningMode(self):
     """
     Sets the learning mode.
     """
-    for column in self.L4Columns:
-      column.setParameter("learningMode", 0, True)
-      column.setParameter("defaultOutputType", 0, "predictedActiveCells")
-    for column in self.L2Columns:
-      column.setParameter("learningMode", 0, True)
+    for region in self.L4Regions:
+      region.setParameter("learn", True)
+    for region in self.L2Regions:
+      region.setParameter("learningMode", True)
 
 
   def _updateInferenceStats(self, statistics, objectName=None):

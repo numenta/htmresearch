@@ -22,7 +22,7 @@
 """Tests for l2_l4_inference module."""
 
 import unittest
-import numpy
+import random
 
 from htmresearch.frameworks.layers import l2_l4_inference
 
@@ -34,7 +34,7 @@ def _randomSDR(numOfBits, size):
   :param size: Number of active bits desired in the SDR
   :return: list with active bits indexes in SDR
   """
-  return list(numpy.random.permutation(numOfBits)[0:size])
+  return random.sample(xrange(numOfBits), size)
 
 
 class L4L2ExperimentTest(unittest.TestCase):
@@ -44,13 +44,9 @@ class L4L2ExperimentTest(unittest.TestCase):
   and the real work is all done inside the network. The tests here make sure
   that the interface works and has some basic sanity checks for the experiment
   statistics. These are intended to make sure that the code works but do not go
-  far enought to validate that the experiments are set up correctly and getting
+  far enough to validate that the experiments are set up correctly and getting
   meaningful experimental results.
   """
-
-
-  def setUp(self):
-    numpy.random.seed(42)
 
 
   def testSimpleExperiment(self):
@@ -59,19 +55,20 @@ class L4L2ExperimentTest(unittest.TestCase):
     exp = l2_l4_inference.L4L2Experiment(
       name="sample",
       numCorticalColumns=2,
+      numInputBits=20
     )
 
     # Set up feature and location SDRs for two locations, A and B, for each
     # cortical column, 0 and 1.
-    locA0 = list(xrange(0, 5))
-    featA0 = list(xrange(0, 5))
-    locA1 = list(xrange(5, 10))
-    featA1 = list(xrange(5, 10))
+    locA0 = list(xrange(0, 20))
+    featA0 = list(xrange(0, 20))
+    locA1 = list(xrange(20, 40))
+    featA1 = list(xrange(20, 40))
 
-    locB0 = list(xrange(10, 15))
-    featB0 = list(xrange(10, 15))
-    locB1 = list(xrange(15, 20))
-    featB1 = list(xrange(15, 20))
+    locB0 = list(xrange(40, 60))
+    featB0 = list(xrange(40, 60))
+    locB1 = list(xrange(60, 80))
+    featB1 = list(xrange(60, 80))
 
     # Learn each location for each column with several repetitions
     objectsToLearn = {"obj1": [
@@ -98,16 +95,17 @@ class L4L2ExperimentTest(unittest.TestCase):
     self.assertEqual(len(stats), 1)
     self.assertEqual(stats[0]["numSteps"], 4)
     self.assertEqual(stats[0]["object"], "obj1")
+
     self.assertSequenceEqual(stats[0]["Overlap L2 with object C0"],
-                             [0, 0, 0, 0])
+                             [40, 40, 40, 40])
     self.assertSequenceEqual(stats[0]["Overlap L2 with object C1"],
-                             [0, 0, 0, 0])
+                             [40, 40, 40, 40])
 
-    self.assertSequenceEqual(exp.getL2Representations(),
-                             [set(), set()])
+    self.assertEqual(len(exp.getL2Representations()[0]),40)
+    self.assertEqual(len(exp.getL2Representations()[1]),40)
 
-    self.assertSequenceEqual(exp.getL4Representations(),
-                             [set(xrange(0, 40)), set(xrange(40, 80))])
+    self.assertEqual(len(exp.getL4Representations()[0]),20)
+    self.assertEqual(len(exp.getL4Representations()[1]),20)
 
 
   def testCapacity(self):
@@ -138,8 +136,7 @@ class L4L2ExperimentTest(unittest.TestCase):
         "columnCount": 50,
         "cellsPerColumn": 4,
         "formInternalBasalConnections": True,
-        "learningMode": True,
-        "inferenceMode": True,
+        "learn": True,
         "learnOnOneCell": False,
         "initialPermanence": 0.51,
         "connectedPermanence": 0.6,
@@ -204,6 +201,140 @@ class L4L2ExperimentTest(unittest.TestCase):
                              [10, 10, 10, 10])
     self.assertSequenceEqual(stats[0]["Overlap L2 with object C1"],
                              [10, 10, 10, 10])
+
+
+  def testConsistency(self):
+    """
+    Test that L2 and L4 representations are consistent across different
+    instantiations with the same seed.
+    """
+    random.seed(23)
+    # Location and feature pool
+    features = [_randomSDR(1024, 20) for _ in xrange(4)]
+    locations = [_randomSDR(1024, 20) for _ in xrange(17)]
+
+    # Learn 3 different objects (Can, Mug, Box)
+    objectsToLearn = dict()
+
+    # Soda can (cylinder) grasp from top.
+    # Same feature at different locations, not all columns have input
+    objectsToLearn["Can"] = [
+      {
+         0: (locations[0], features[0]),  # NW - round
+         1: (locations[1], features[0]),  # N  - round
+         2: (locations[2], features[0]),  # NE - round
+         3: (locations[3], features[0]),  # SE - round
+         4: ([], []),  # Little Finger has no input
+      },
+      {
+         0: (locations[1], features[0]),  # N  - round
+         1: (locations[2], features[0]),  # NE - round
+         2: (locations[3], features[0]),  # SE - round
+         3: (locations[4], features[0]),  # S  - round
+         4: ([], []),  # Little Finger has no input
+      },
+      {
+         0: (locations[2], features[0]),  # NE - round
+         1: (locations[3], features[0]),  # SE - round
+         2: (locations[4], features[0]),  # S  - round
+         3: (locations[0], features[0]),  # NW - round
+         4: ([], []),  # Little Finger has no input
+      },
+    ]
+
+    # Coffee mug grasp from top
+    # Same as cylinder with extra feature (handle)
+    objectsToLearn["Mug"] = [
+      {
+         0: (locations[0], features[0]),  # NW - round
+         1: (locations[1], features[1]),  # N  - handle
+         2: (locations[2], features[0]),  # NE - round
+         3: (locations[3], features[0]),  # SE - round
+         4: (locations[4], features[0]),  # S  - round
+      },
+      {
+        0: (locations[3], features[0]),  # SE - round
+        1: (locations[0], features[0]),  # NW - round
+        2: (locations[1], features[1]),  # N  - handle
+        3: (locations[2], features[0]),  # NE - round
+        4: (locations[4], features[0]),  # S  - round
+      },
+      {
+        0: (locations[4], features[0]),  # S  - round
+        1: (locations[3], features[0]),  # SE - round
+        2: (locations[0], features[0]),  # NW - round
+        3: (locations[1], features[1]),  # N  - handle
+        4: (locations[2], features[0]),  # NE - round
+      },
+    ]
+
+    # Box grasp from top
+    # Symetrical features at different locations.
+    objectsToLearn["Box"] = [
+      {
+         # Top/Front of the box
+         0: (locations[5], features[2]),  # W1 - flat
+         1: (locations[6], features[3]),  # N1 - corner
+         2: (locations[7], features[3]),  # N2 - corner
+         3: (locations[8], features[2]),  # E1 - flat
+         4: (locations[9], features[2]),  # E2 - flat
+      },
+      {
+         # Top/Side of the box
+         0: (locations[5], features[2]),   # W1 - flat
+         1: (locations[8], features[2]),   # E1 - flat
+         2: (locations[9], features[2]),   # E2 - flat
+         3: (locations[10], features[2]),  # E3 - flat
+         4: (locations[11], features[2]),  # E4 - flat
+      },
+      {
+         # Top/Back of the box
+         0: (locations[9], features[2]),   # E2 - flat
+         1: (locations[12], features[3]),  # S1 - corner
+         2: (locations[13], features[3]),  # S2 - corner
+         3: (locations[14], features[2]),  # W3 - flat
+         4: (locations[5], features[2]),   # W1 - flat
+      },
+    ]
+
+    # Create 10 experiment instances, train them on all objects and run
+    # inference on one object
+    numExps = 10
+    exps = []
+    for i in range(numExps):
+      exps.append(
+        l2_l4_inference.L4L2Experiment(
+        "testClassification",
+        numCorticalColumns=5,
+        inputSize=1024,
+        numInputBits=20,
+        externalInputSize=1024,
+        numLearningPoints=3,
+        seed=23,
+        )
+      )
+
+      exps[i].learnObjects(objectsToLearn)
+
+      # Try to infer "Mug" using first learned grasp
+      sensations = [
+          objectsToLearn["Mug"][0]
+      ]
+      exps[i].sendReset()
+      exps[i].infer(sensations*2, reset=False)
+
+
+    # Ensure L2 and L4 representations are consistent across all experiment
+    # instantiations, across all columns, and across 2 different repeats
+    for i in range(2):
+      for c in range(5):
+        L20 = set(exps[0].getL2Representations()[c])
+        for e in range(1, numExps):
+          self.assertSequenceEqual(L20, set(exps[e].getL2Representations()[c]))
+
+        L40 = set(exps[0].getL4Representations()[c])
+        for e in range(numExps):
+          self.assertSequenceEqual(L40, set(exps[e].getL4Representations()[c]))
 
 
   def testObjectClassification(self):

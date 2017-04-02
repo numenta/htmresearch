@@ -21,16 +21,11 @@
 
 """An implementation of ApicalDependentTemporalMemory"""
 
-
-import operator
-
 import numpy as np
 
 from htmresearch.support import numpy_helpers as np2
 from nupic.bindings.math import Random, SparseMatrixConnections
 
-
-EMPTY_UINT_ARRAY = np.array((), dtype="uint32")
 
 
 class ApicalDependentTemporalMemory(object):
@@ -38,20 +33,15 @@ class ApicalDependentTemporalMemory(object):
   An alternate approach to apical dendrites. Every cell SDR is specific to both
   the basal the apical input. Prediction requires both basal and apical support.
 
-  A normal TemporalMemory trained on the sequences "A B C D" and "A B C E" will
-  not assign "B" and "C" SDRs specific to their full sequence. These two
-  sequences will use the same B' and C' SDRs. When the sequence reaches D/E,
-  the SDRs finally diverge.
-
-  With this algorithm, the SDRs diverge immediately, because the SDRs are
-  specific to the apical input. But if there's never any apical input, there
-  will never be predictions.
+  For sequence memory, the result is that every sequence happens within a
+  "world" which is specified by the apical input. Sequences are not shared
+  between worlds.
   """
 
   def __init__(self,
-               columnDimensions=(2048,),
-               basalInputDimensions=(),
-               apicalInputDimensions=(),
+               columnCount=2048,
+               basalInputSize=0,
+               apicalInputSize=0,
                cellsPerColumn=32,
                activationThreshold=13,
                initialPermanence=0.21,
@@ -62,29 +52,64 @@ class ApicalDependentTemporalMemory(object):
                permanenceDecrement=0.1,
                basalPredictedSegmentDecrement=0.0,
                apicalPredictedSegmentDecrement=0.0,
-               maxNewSynapseCount=None,
                maxSynapsesPerSegment=-1,
-               maxSegmentsPerCell=None,
                seed=42):
+    """
+    @param columnCount (int)
+    The number of minicolumns
 
-    self.columnDimensions = columnDimensions
-    self.numColumns = self._numPoints(columnDimensions)
-    self.basalInputDimensions = basalInputDimensions
-    self.apicalInputDimensions = apicalInputDimensions
+    @param basalInputSize (sequence)
+    The number of bits in the basal input
 
+    @param apicalInputSize (int)
+    The number of bits in the apical input
+
+    @param cellsPerColumn (int)
+    Number of cells per column
+
+    @param activationThreshold (int)
+    If the number of active connected synapses on a segment is at least this
+    threshold, the segment is said to be active.
+
+    @param initialPermanence (float)
+    Initial permanence of a new synapse
+
+    @param connectedPermanence (float)
+    If the permanence value for a synapse is greater than this value, it is said
+    to be connected.
+
+    @param minThreshold (int)
+    If the number of potential synapses active on a segment is at least this
+    threshold, it is said to be "matching" and is eligible for learning.
+
+    @param sampleSize (int)
+    How much of the active SDR to sample with synapses.
+
+    @param permanenceIncrement (float)
+    Amount by which permanences of synapses are incremented during learning.
+
+    @param permanenceDecrement (float)
+    Amount by which permanences of synapses are decremented during learning.
+
+    @param basalPredictedSegmentDecrement (float)
+    Amount by which segments are punished for incorrect predictions.
+
+    @param apicalPredictedSegmentDecrement (float)
+    Amount by which segments are punished for incorrect predictions.
+
+    @param maxSynapsesPerSegment
+    The maximum number of synapses per segment.
+
+    @param seed (int)
+    Seed for the random number generator.
+    """
+
+    self.columnCount = columnCount
     self.cellsPerColumn = cellsPerColumn
     self.initialPermanence = initialPermanence
     self.connectedPermanence = connectedPermanence
     self.minThreshold = minThreshold
-
     self.sampleSize = sampleSize
-    if maxNewSynapseCount is not None:
-      print "Parameter 'maxNewSynapseCount' is deprecated. Use 'sampleSize'."
-      self.sampleSize = maxNewSynapseCount
-
-    if maxSegmentsPerCell is not None:
-      print "Warning: ignoring parameter 'maxSegmentsPerCell'"
-
     self.permanenceIncrement = permanenceIncrement
     self.permanenceDecrement = permanenceDecrement
     self.basalPredictedSegmentDecrement = basalPredictedSegmentDecrement
@@ -92,24 +117,29 @@ class ApicalDependentTemporalMemory(object):
     self.activationThreshold = activationThreshold
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
 
-    self.basalConnections = SparseMatrixConnections(
-      self.numColumns*cellsPerColumn, self._numPoints(basalInputDimensions))
-    self.apicalConnections = SparseMatrixConnections(
-      self.numColumns*cellsPerColumn, self._numPoints(apicalInputDimensions))
+    self.basalConnections = SparseMatrixConnections(columnCount*cellsPerColumn,
+                                                    basalInputSize)
+    self.apicalConnections = SparseMatrixConnections(columnCount*cellsPerColumn,
+                                                     apicalInputSize)
     self.rng = Random(seed)
-    self.activeCells = EMPTY_UINT_ARRAY
-    self.winnerCells = EMPTY_UINT_ARRAY
-    self.prevPredictedCells = EMPTY_UINT_ARRAY
-    self.activeBasalSegments = EMPTY_UINT_ARRAY
-    self.activeApicalSegments = EMPTY_UINT_ARRAY
+    self.activeCells = ()
+    self.winnerCells = ()
+    self.predictedCells = ()
+    self.activeBasalSegments = ()
+    self.activeApicalSegments = ()
 
 
   def reset(self):
-    self.activeCells = EMPTY_UINT_ARRAY
-    self.winnerCells = EMPTY_UINT_ARRAY
-    self.prevPredictedCells = EMPTY_UINT_ARRAY
-    self.activeBasalSegments = EMPTY_UINT_ARRAY
-    self.activeApicalSegments = EMPTY_UINT_ARRAY
+    """
+    Clear all cell and segment activity. This has no effect on the subsequent
+    predictions or activity.
+    """
+
+    self.activeCells = ()
+    self.winnerCells = ()
+    self.predictedCells = ()
+    self.activeBasalSegments = ()
+    self.activeApicalSegments = ()
 
 
   def compute(self,
@@ -120,13 +150,30 @@ class ApicalDependentTemporalMemory(object):
               apicalGrowthCandidates=None,
               learn=True):
     """
+    Perform one timestep. Use the basal and apical input to form a set of
+    predictions, then activate the specified columns.
+
     @param activeColumns (numpy array)
+    List of active columns
+
     @param basalInput (numpy array)
-    @param basalGrowthCandidates (numpy array)
+    List of active input bits for the basal dendrite segments
+
     @param apicalInput (numpy array)
-    @param apicalGrowthCandidates (numpy array)
+    List of active input bits for the apical dendrite segments
+
+    @param basalGrowthCandidates (numpy array or None)
+    List of bits that the active cells may grow new basal synapses to.
+    If None, the basalInput is assumed to be growth candidates.
+
+    @param apicalGrowthCandidates (numpy array or None)
+    List of bits that the active cells may grow new apical synapses to
+    If None, the apicalInput is assumed to be growth candidates.
+
     @param learn (bool)
+    Whether to grow / reinforce / punish synapses
     """
+
     if basalGrowthCandidates is None:
       basalGrowthCandidates = basalInput
 
@@ -223,7 +270,7 @@ class ApicalDependentTemporalMemory(object):
     learningCells.sort()
     self.activeCells = newActiveCells
     self.winnerCells = learningCells
-    self.prevPredictedCells = predictedCells
+    self.predictedCells = predictedCells
     self.activeBasalSegments = activeBasalSegments
     self.activeApicalSegments = activeApicalSegments
 
@@ -545,39 +592,219 @@ class ApicalDependentTemporalMemory(object):
     return candidateCells[onePerColumnFilter]
 
 
-  @staticmethod
-  def _numPoints(dimensions):
-    """
-    Get the number of discrete points in a set of dimensions.
-
-    @param dimensions (sequence of integers)
-    @return (int)
-    """
-    if len(dimensions) == 0:
-      return 0
-    else:
-      return reduce(operator.mul, dimensions, 1)
-
-
   def getActiveCells(self):
+    """
+    @return (numpy array)
+    Active cells
+    """
     return self.activeCells
 
 
   def getPredictedActiveCells(self):
-    return np.intersect1d(self.activeCells, self.prevPredictedCells)
+    """
+    @return (numpy array)
+    Active cells that were correctly predicted
+    """
+    return np.intersect1d(self.activeCells, self.predictedCells)
 
 
   def getWinnerCells(self):
+    """
+    @return (numpy array)
+    Cells that were selected for learning
+    """
     return self.winnerCells
 
 
-  def getPreviouslyPredictedCells(self):
-    return self.prevPredictedCells
+  def getPredictedCells(self):
+    """
+    @return (numpy array)
+    Cells that were predicted for this timestep
+    """
+    return self.predictedCells
 
 
   def getActiveBasalSegments(self):
+    """
+    @return (numpy array)
+    Active basal segments for this timestep
+    """
     return self.activeBasalSegments
 
 
   def getActiveApicalSegments(self):
+    """
+    @return (numpy array)
+    Matching basal segments for this timestep
+    """
     return self.activeApicalSegments
+
+
+  def numberOfColumns(self):
+    """ Returns the number of columns in this layer.
+
+    @return (int) Number of columns
+    """
+    return self.columnCount
+
+
+  def numberOfCells(self):
+    """
+    Returns the number of cells in this layer.
+
+    @return (int) Number of cells
+    """
+    return self.numberOfColumns() * self.cellsPerColumn
+
+
+  def getCellsPerColumn(self):
+    """
+    Returns the number of cells per column.
+
+    @return (int) The number of cells per column.
+    """
+    return self.cellsPerColumn
+
+
+  def getActivationThreshold(self):
+    """
+    Returns the activation threshold.
+    @return (int) The activation threshold.
+    """
+    return self.activationThreshold
+
+
+  def setActivationThreshold(self, activationThreshold):
+    """
+    Sets the activation threshold.
+    @param activationThreshold (int) activation threshold.
+    """
+    self.activationThreshold = activationThreshold
+
+
+  def getInitialPermanence(self):
+    """
+    Get the initial permanence.
+    @return (float) The initial permanence.
+    """
+    return self.initialPermanence
+
+
+  def setInitialPermanence(self, initialPermanence):
+    """
+    Sets the initial permanence.
+    @param initialPermanence (float) The initial permanence.
+    """
+    self.initialPermanence = initialPermanence
+
+
+  def getMinThreshold(self):
+    """
+    Returns the min threshold.
+    @return (int) The min threshold.
+    """
+    return self.minThreshold
+
+
+  def setMinThreshold(self, minThreshold):
+    """
+    Sets the min threshold.
+    @param minThreshold (int) min threshold.
+    """
+    self.minThreshold = minThreshold
+
+
+  def getSampleSize(self):
+    """
+    Gets the sampleSize.
+    @return (int)
+    """
+    return self.sampleSize
+
+
+  def setSampleSize(self, sampleSize):
+    """
+    Sets the sampleSize.
+    @param sampleSize (int)
+    """
+    self.sampleSize = sampleSize
+
+
+  def getPermanenceIncrement(self):
+    """
+    Get the permanence increment.
+    @return (float) The permanence increment.
+    """
+    return self.permanenceIncrement
+
+
+  def setPermanenceIncrement(self, permanenceIncrement):
+    """
+    Sets the permanence increment.
+    @param permanenceIncrement (float) The permanence increment.
+    """
+    self.permanenceIncrement = permanenceIncrement
+
+
+  def getPermanenceDecrement(self):
+    """
+    Get the permanence decrement.
+    @return (float) The permanence decrement.
+    """
+    return self.permanenceDecrement
+
+
+  def setPermanenceDecrement(self, permanenceDecrement):
+    """
+    Sets the permanence decrement.
+    @param permanenceDecrement (float) The permanence decrement.
+    """
+    self.permanenceDecrement = permanenceDecrement
+
+
+  def getBasalPredictedSegmentDecrement(self):
+    """
+    Get the predicted segment decrement.
+    @return (float) The predicted segment decrement.
+    """
+    return self.basalPredictedSegmentDecrement
+
+
+  def setBasalPredictedSegmentDecrement(self, predictedSegmentDecrement):
+    """
+    Sets the predicted segment decrement.
+    @param predictedSegmentDecrement (float) The predicted segment decrement.
+    """
+    self.basalPredictedSegmentDecrement = basalPredictedSegmentDecrement
+
+
+  def getApicalPredictedSegmentDecrement(self):
+    """
+    Get the predicted segment decrement.
+    @return (float) The predicted segment decrement.
+    """
+    return self.apicalPredictedSegmentDecrement
+
+
+  def setApicalPredictedSegmentDecrement(self, predictedSegmentDecrement):
+    """
+    Sets the predicted segment decrement.
+    @param predictedSegmentDecrement (float) The predicted segment decrement.
+    """
+    self.apicalPredictedSegmentDecrement = apicalPredictedSegmentDecrement
+
+
+  def getConnectedPermanence(self):
+    """
+    Get the connected permanence.
+    @return (float) The connected permanence.
+    """
+    return self.connectedPermanence
+
+
+  def setConnectedPermanence(self, connectedPermanence):
+    """
+    Sets the connected permanence.
+    @param connectedPermanence (float) The connected permanence.
+    """
+    self.connectedPermanence = connectedPermanence

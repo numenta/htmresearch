@@ -125,7 +125,7 @@ class LanguageSensor(PyRegion):
     return spec
 
 
-  def initialize(self, inputs, outputs):
+  def initialize(self):
     """Initialize the node after the network is fully linked."""
     if self.encoder is None:
       raise Exception("Unable to initialize LanguageSensor -- "
