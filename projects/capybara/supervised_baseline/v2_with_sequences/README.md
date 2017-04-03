@@ -1,8 +1,9 @@
-# Baseline V1
+# Baseline V2
 
 ## About
 This folder contains scripts to establish a supervised baseline for the 
-classification of UCI accelerometer data. The input data can be:
+classification of datasets formatted in the same fashion as the 
+[UCR sequences](http://www.cs.ucr.edu/~eamonn/time_series_data/). The input data can be:
 * SDRs coming out of the temporal memory
 * Union of SDRs coming out of the TM (average SDRs over fixed-size windows)
 
@@ -11,7 +12,4 @@ classification of UCI accelerometer data. The input data can be:
 2. To generate the HTM traces (what will be classified), go to `capybara/htm` and follow the README.
 
 ## Run the supervised baseline 
-Run `python run_baseline --config configs/uci.yml`
-
-## Plot the results
-* Run `plot_results.py`.
+Run `python classify_sequences.py`. This will analyze the HTM traces and plot results.
