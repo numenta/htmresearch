@@ -1,0 +1,19 @@
+2017-03-31 16:27:42 - Analysis tree
+2017-03-31 16:27:42 - |__. load: body_acc_x
+2017-03-31 16:27:52 - Analysis tree
+2017-03-31 16:27:52 - |__. load: body_acc_x
+2017-03-31 16:28:00 - |____. loaded: ../../htm/traces/trace_body_acc_x_train
+2017-03-31 16:28:09 - |____. loaded: ../../htm/traces/trace_body_acc_x_test
+2017-03-31 16:28:09 - |__. analyze: body_acc_x
+2017-03-31 16:28:09 - |____. aggregation: mean
+2017-03-31 16:28:09 - |______. nb_chunks: 1
+2017-03-31 16:28:12 - |________. TM test accuracy: 44.44 /100
+2017-03-31 16:28:12 - |________. TM train accuracy: 100.00 /100
+2017-03-31 16:28:12 - |________. SP test accuracy: 51.85 /100
+2017-03-31 16:28:12 - |________. SP train accuracy: 100.00 /100
+2017-03-31 16:28:12 - |______. nb_chunks: 2
+2017-03-31 16:28:16 - |________. TM test accuracy: 44.44 /100
+2017-03-31 16:28:16 - |________. TM train accuracy: 100.00 /100
+2017-03-31 16:28:16 - |________. SP test accuracy: 77.78 /100
+2017-03-31 16:28:16 - |________. SP train accuracy: 100.00 /100
+2017-03-31 16:28:16 - |______. nb_chunks: 5

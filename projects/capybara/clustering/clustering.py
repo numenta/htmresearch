@@ -45,13 +45,28 @@ class OnlineClusteringV2(ClusteringInterface):
     :param point: (Point) input point.
     :return confidence, closest: (Cluster) best cluster for the input point.
     """
-    (average_cluster_distance,
-     distance_to_closest,
-     closest) = self._find_closest_cluster(point)
-    if closest:
-      confidence = 1 - (distance_to_closest / average_cluster_distance)
+
+    if len(self.clusters) > 0:
+
+      (average_cluster_distance,
+       distance_to_closest,
+       closest) = self._find_closest_cluster(point)
+      print ('avg_dist: %s | dist_to_closest: %s' % (average_cluster_distance,
+                                                     distance_to_closest))
+      if self.merge_threshold is not None:
+        cutoff_distance = self.merge_threshold
+      else:
+        cutoff_distance = average_cluster_distance * 0.10
+
+      if distance_to_closest > cutoff_distance:
+        closest = None # The closest cluster is too far, so return None
+        confidence = 1
+      else:
+        confidence = 1 - (distance_to_closest / cutoff_distance)
+
     else:
       confidence = None
+      closest = None
     return confidence, closest
 
 
@@ -63,10 +78,10 @@ class OnlineClusteringV2(ClusteringInterface):
     :param new_cluster: (Cluster) cluster of points to learn.
     """
     if self.merge_threshold is None:
-      merge_threshold = self._average_cluster_distance() / 2.0
+      cutoff_distance = self._average_cluster_distance() * 0.10
     else:
-      merge_threshold = self.merge_threshold
-    self._add_or_merge_cluster(new_cluster, merge_threshold)
+      cutoff_distance = self.merge_threshold
+    self._add_or_merge_cluster(new_cluster, cutoff_distance)
 
 
   def _average_cluster_distance(self):

@@ -9,23 +9,24 @@ online and unsupervised classification using a HTM network. You can think
 of it as a form of temporal pooling for HTM networks.
 
 ## How to run
-Start a jupyter server by running `jupyter notebook` in 
-`nupic.research/projects/capybara`. There are two ipython notebooks to run in
- this order:
-1. `datasets/convert_and_plot_sequences.ipynb`
-2. `htm/sequence_traces_analysis.ipynb`
+Follow the `README` instruction for each sub-folder, in this order:
+1. Download and format the datasets: `capybara/datasets`.
+2. Run the HTM on the datasets: `capybara/htm`.
+3. Run the supervised baseline experiments (1st approach): `capybara/supervised_baseline/v1_no_sequences`
+4. Run the supervised baseline experiments(2nd approach): `capybara/supervised_baseline/v1_with_sequences`
+5. Run the clustering experiments: `capybara/clustering`
 
 ## Project file structure
-* `datasets`: contains scripts to download, format and analyze the input 
+* `datasets`: contains scripts to download, format and visualize the input 
 datasets. See README in folder.
 
-* `htm`: contains the code to the htm network and generate TM traces. See 
+* `htm`: contains the code to run the HTM network and generate TM traces. See 
 README in folder for more details.
 
 * `baseline`: contains scripts to establish a supervised baseline for the 
 classification of sensor data.
 
-* `clustering`: contains the bulk of the clustering code. See README in 
+* `clustering`: contains the clustering code. See README in 
 folder for more details.
 
 * `cla_vs_sdr_classifier`: Compares results between the SDRClassifier and 
