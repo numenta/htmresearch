@@ -115,8 +115,8 @@ class L4L2ExperimentTest(unittest.TestCase):
     self.assertEqual(len(exp.getL4Representations()[1]),20)
 
 
-  def testDelayedLateralInputs(self):
-    """Test whether lateral inputs are synchronized across columns"""
+  def testDelayedLateralandApicalInputs(self):
+    """Test whether lateral and apical inputs are synchronized across columns"""
     # Set up experiment
     exp = l2_l4_inference.L4L2Experiment(
       name="sample",
@@ -140,6 +140,7 @@ class L4L2ExperimentTest(unittest.TestCase):
     sensationC1 = [(3, 2), (3, 2), (3, 2)]
 
     lateralInputs = []
+    apicalInputs = []
     activeCells = []
     for step in range(3):
       inferConfig = {
@@ -163,10 +164,20 @@ class L4L2ExperimentTest(unittest.TestCase):
          1: copy.copy(
            exp.network.regions['L2Column_1'].getOutputData("feedForwardOutput"))}
       )
+      apicalInputs.append((
+        {0: copy.copy(
+          exp.network.regions['L4Column_0'].getInputData("apicalInput")),
+          1: copy.copy(
+            exp.network.regions['L4Column_1'].getInputData("apicalInput"))}
+      ))
 
     # no lateral inputs on first iteration
     self.assertEqual(numpy.sum(numpy.abs(lateralInputs[0][0])), 0)
     self.assertEqual(numpy.sum(numpy.abs(lateralInputs[0][1])), 0)
+
+    # no apical inputs to L4 on first iteration
+    self.assertEqual(numpy.sum(numpy.abs(apicalInputs[0][0])), 0)
+    self.assertEqual(numpy.sum(numpy.abs(apicalInputs[0][1])), 0)
 
     # lateral inputs of C0 at time t+1 = active cells of C1 at time t
     for step in range(2):
@@ -174,6 +185,15 @@ class L4L2ExperimentTest(unittest.TestCase):
         numpy.sum(numpy.abs(lateralInputs[step+1][0]-activeCells[step][1])), 0)
       self.assertEqual(
         numpy.sum(numpy.abs(lateralInputs[step+1][1]-activeCells[step][0])), 0)
+
+    # apical inputs of L4_0 at time t+1 = active cells of L2_0 at time t
+    for step in range(2):
+      self.assertEqual(
+        numpy.sum(numpy.abs(apicalInputs[step + 1][0] - activeCells[step][0])),
+        0)
+      self.assertEqual(
+        numpy.sum(numpy.abs(apicalInputs[step + 1][1] - activeCells[step][1])),
+        0)
 
 
   def testCapacity(self):
