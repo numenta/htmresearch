@@ -21,6 +21,7 @@
 
 """Tests for l2_l4_inference module."""
 
+import copy
 from mock import patch
 import unittest
 import random
