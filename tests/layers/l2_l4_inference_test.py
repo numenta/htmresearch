@@ -474,7 +474,6 @@ class L4L2ExperimentTest(unittest.TestCase):
       self.assertDictEqual(results, {"Box": 0, "Mug": 0.5, "Can": 0.5})
 
 
-  @unittest.skip("Skip until network delay links is implemented (NUP-2328)")
   def testObjectClassification(self):
     """
     Test multi column object classification
@@ -580,7 +579,8 @@ class L4L2ExperimentTest(unittest.TestCase):
 
     # Try to infer "Mug" using first learned grasp
     sensations = [
-        objectsToLearn["Mug"][0]
+        objectsToLearn["Mug"][0],
+        objectsToLearn["Mug"][1]
     ]
     exp.sendReset()
     exp.infer(sensations, reset=False)
@@ -591,7 +591,8 @@ class L4L2ExperimentTest(unittest.TestCase):
 
     # Try to infer "Cylinder" using first learned grasp
     sensations = [
-        objectsToLearn["Can"][0]
+        objectsToLearn["Can"][0],
+        objectsToLearn["Can"][1]
     ]
     exp.sendReset()
     exp.infer(sensations, reset=False)
@@ -602,7 +603,8 @@ class L4L2ExperimentTest(unittest.TestCase):
 
     # Try to infer "Box" using first learned grasp
     sensations = [
-        objectsToLearn["Box"][0]
+        objectsToLearn["Box"][0],
+        objectsToLearn["Box"][1]
     ]
     exp.sendReset()
     exp.infer(sensations, reset=False)
@@ -613,6 +615,13 @@ class L4L2ExperimentTest(unittest.TestCase):
 
     # Try to infer half "Box" half "Mug" to confuse
     sensations = [
+      {
+        0: objectsToLearn["Box"][0][0],
+        1: objectsToLearn["Box"][0][1],
+        2: objectsToLearn["Mug"][0][0],
+        3: objectsToLearn["Mug"][0][1],
+        4: ([], []),
+      },
       {
         0: objectsToLearn["Box"][0][0],
         1: objectsToLearn["Box"][0][1],
