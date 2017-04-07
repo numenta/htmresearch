@@ -20,9 +20,12 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import os
 import random
 import numpy as np
 import pandas as pd
+
+from scipy import misc
 
 uintType = "uint32"
 
@@ -368,6 +371,57 @@ class SDRDataSet(object):
         inputSDR = enc.encode(inputRecord["passenger_count"])
         inputVectors[i, :] = inputSDR
       self._inputVectors = inputVectors
+
+    elif params['dataType'] == 'mnist':
+      imagePath = 'data/mnist/training/'
+      imagePath = os.path.abspath(imagePath)
+      categoryList = [c for c in sorted(os.listdir(imagePath))
+                      if c[0] != "." and
+                      os.path.isdir(os.path.join(imagePath, c))]
+
+      fileList = {}
+      numImages = 0
+      for category in categoryList:
+        categoryFilenames = []
+
+        walkPath = os.path.join(imagePath, category)
+        w = os.walk(walkPath)
+        while True:
+          try:
+            dirpath, dirnames, filenames = w.next()
+          except StopIteration:
+            break
+          # Don't enter directories that begin with '.'
+          for d in dirnames[:]:
+            if d.startswith("."):
+              dirnames.remove(d)
+          dirnames.sort()
+          # Ignore files that begin with "."
+          filenames = [f for f in filenames if not f.startswith(".")]
+          filenames.sort()
+          imageFilenames = [os.path.join(dirpath, f) for f in filenames]
+
+          # Add our new images and masks to the list for this category
+          categoryFilenames.extend(imageFilenames)
+
+        numImages += len(categoryFilenames)
+        fileList[category] = categoryFilenames
+
+      inputVectors = np.zeros((numImages, 1024))
+      counter = 0
+      for category in categoryList:
+        categoryFilenames = fileList[category]
+        for filename in categoryFilenames:
+          image = misc.imread(filename).astype('float32')
+          image /= 255
+          image = image.round()
+          paddedImage = np.zeros((32, 32))
+          paddedImage[2:30, 2:30] = image
+          inputVectors[counter, :] = np.reshape(paddedImage, newshape=(1, 1024))
+          counter += 1
+
+      self._inputVectors = inputVectors
+
 
 
   def getInputVectors(self):

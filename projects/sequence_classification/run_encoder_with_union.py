@@ -135,6 +135,8 @@ def calculateEncoderModelAccuracy(nBuckets, numCols, w, trainData, trainLabel):
 
 
 def runDataSet(dataName, datasetName):
+  if not os.path.exists('results'):
+    os.makedirs('results')
   trainData, trainLabel, testData, testLabel = loadDataset(dataName,
                                                            datasetName)
   numTest = len(testLabel)
@@ -217,10 +219,13 @@ def runDataSet(dataName, datasetName):
                   'distMatColumnTest': distMatColumnTest,
                   'trainAccuracyColumnOnly': trainAccuracyColumnOnly,
                   'testAccuracyColumnOnly': testAccuracyColumnOnly}
+    if not os.path.exists('results/distanceMat'):
+      os.makedirs('results/distanceMat')
     outputFile = open('results/distanceMat/{}_columnOnly_union_{}'.format(
       dataName, unionLength), 'w')
     pickle.dump(expResults, outputFile)
     outputFile.close()
+    print '--> wrote results to "results/distanceMat"'
 
 
 

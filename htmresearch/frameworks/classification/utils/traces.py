@@ -65,7 +65,7 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
   :param numTmCells: (int) number of cells in the TM
   :return: 
   """
-  
+
   categoriesLabelled = []
   t = np.array(traces['recordNumber'])
   classLabels = np.array(traces['actualCategory'])
@@ -83,7 +83,7 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
   selectRange = np.where(np.logical_and(t > xlim[0], t < xlim[1]))[0]
   if clustering:
     numSubplots = 5
-  else: 
+  else:
     numSubplots = 3
   f, ax = plt.subplots(numSubplots, sharex=True)
   # plot sensor value and class labels
@@ -95,42 +95,47 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
   height = yl[1] - yl[0]
 
   # plot class labels as transparent colored rectangles
-  classColor = {0: 'grey', 1: 'blue', 2: 'red', 3: 'yellow', 4: 'pink', 
-                5: 'green', 6: 'purple', 8: 'brown', 9: 'white'}
+  classColor = {
+    0: 'grey', 1: 'blue', 2: 'red', 3: 'yellow', 4: 'pink',
+    5: 'green', 6: 'purple', 8: 'brown', 9: 'white'
+  }
   xStartLabel = xlim[0]
   while xStartLabel < xlim[1]:
-    currentClassLabel = classLabels[xStartLabel]
-    if len(np.where(classLabels[xStartLabel:] != currentClassLabel)[0]) == 0:
+    currClassLabel = classLabels[xStartLabel]
+    if len(np.where(classLabels[xStartLabel:] != currClassLabel)[0]) == 0:
       width = len(classLabels[xStartLabel:])
     else:
-      width = np.where(classLabels[xStartLabel:] != currentClassLabel)[0][0]
+      width = np.where(classLabels[xStartLabel:] != currClassLabel)[0][0]
 
-
-    if currentClassLabel not in categoriesLabelled:
-      labelLegend = 'Category %s' % int(currentClassLabel)
+    if currClassLabel not in categoriesLabelled:
+      labelLegend = 'Category %s' % int(currClassLabel)
     else:
       labelLegend = None
-    
-    categoriesLabelled.append(currentClassLabel)
+
+    categoriesLabelled.append(currClassLabel)
     ax[0].add_patch(
       patches.Rectangle((t[0] + xStartLabel, yl[0]), width, height,
-                        facecolor=classColor[currentClassLabel], alpha=0.6,
+                        facecolor=classColor[currClassLabel], alpha=0.6,
                         label=labelLegend)
     )
     xStartLabel += width
   ax[0].set_ylabel('Sensor Value')
   ax[0].legend(ncol=4)
 
-  # plot classification accuracy
-  ax[1].set_title('Classification accuracy rolling average')
-  ax[1].plot(traces['rollingClassificationAccuracy'])
+  # plot anomaly score
+  ax[1].set_title(anomalyScoreType)
+  ax[1].plot(traces[anomalyScoreType])
 
-  if clustering: 
+  # plot classification accuracy
+  ax[2].set_title('Classification accuracy rolling average')
+  ax[2].plot(traces['rollingClassificationAccuracy'])
+
+  if clustering:
     # plot clustering accuracy
     ax[3].set_title('Clustering accuracy rolling average')
     if 'rollingClusteringAccuracy' in traces:
       ax[3].plot(traces['rollingClusteringAccuracy'])
-    
+
     # plot clustering confidence
     ax[4].set_title('Clustering confidence')
     if 'clusteringConfidence' in traces:
@@ -142,10 +147,6 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
   #   stableIntervals = constructStableIntervals(confidence)
   #   for start, end in stableIntervals:
   #     ax[2].axvspan(start, end, facecolor='g', alpha=0.4)
-
-  # plot anomaly score
-  ax[2].set_title(anomalyScoreType)
-  ax[2].plot(traces[anomalyScoreType])
 
   np.random.seed(21)
   randomCellOrder = np.random.permutation(np.arange(numTmCells))
@@ -168,16 +169,16 @@ def plotTraces(xlim, traces, title, anomalyScoreType,
       classColor = {0: 'grey', 1: 'b', 2: 'r', 3: 'y'}
       xStartLabel = xlim[0]
       while xStartLabel < xlim[1]:
-        currentClassLabel = classLabels[xStartLabel]
+        currClassLabel = classLabels[xStartLabel]
         if len(
-          np.where(classLabels[xStartLabel:] != currentClassLabel)[0]) == 0:
+          np.where(classLabels[xStartLabel:] != currClassLabel)[0]) == 0:
           width = len(classLabels[xStartLabel:])
         else:
-          width = np.where(classLabels[xStartLabel:] != currentClassLabel)[0][0]
+          width = np.where(classLabels[xStartLabel:] != currClassLabel)[0][0]
 
         ax[0].add_patch(
           patches.Rectangle((t[0] + xStartLabel, yl[0]), width, height,
-                            facecolor=classColor[currentClassLabel], alpha=0.6)
+                            facecolor=classColor[currClassLabel], alpha=0.6)
         )
         xStartLabel += width
       ax[0].set_ylabel('Sensor Value')
@@ -235,7 +236,7 @@ def saveTraces(traces, fileName):
 
 def loadTraces(fileName):
   """
-  Load netwrok traces from CSV
+  Load network traces from CSV
   :param fileName: (str) name of the file
   :return traces: (dict) network traces. E.g: activeCells, sensorValues, etc.
   """
@@ -252,18 +253,10 @@ def loadTraces(fileName):
 
     for row in reader:
       for i in range(len(row)):
-        if len(row[i]) == 0:
-          data = []
+        if row[i] == '':
+          data = None
         else:
-          if headers[i] in ['tmPredictedActiveCells',
-                            'tpActiveCells',
-                            'tmActiveCells']:
-            if row[i] == '[]':
-              data = []
-            else:
-              data = map(int, row[i][1:-1].split(','))
-          else:
-            data = float(row[i])
+          data = json.loads(row[i])
         traces[headers[i]].append(data)
 
   return traces

@@ -1,0 +1,15 @@
+inputs:
+  inputDir: '../datasets/UCR_TS_Archive_2015/synthetic_control'
+  trainFileName: 'synthetic_control_TRAIN'
+  testFileName: 'synthetic_control_TEST'
+  timeIndexed: False
+  metricName: None
+  metricMin: -2.0
+  metricMax: 2.0
+
+outputs:
+  outputDir: 'traces'
+
+params:
+  chunkSize: 10
+  runSanity: False

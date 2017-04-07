@@ -80,7 +80,6 @@ class FeedbackExperiment(object):
     # seed
     self.seed = seed
     random.seed(seed)
-
     # update parameters with overrides
     self.config = {
       "networkType": "MultipleL4L2Columns",

@@ -44,6 +44,7 @@ class CLAModel_custom(CLAModel):
     sp.setParameter('learningMode', self._spLearningEnabled)
     sp.prepareInputs()
     sp.compute()
+    sp.purgeInputLinkBufferHeads()
 
   # overide _tpCompute
   def _tpCompute(self):
@@ -63,3 +64,4 @@ class CLAModel_custom(CLAModel):
     tp.setParameter('learningMode', self._tpLearningEnabled)
     tp.prepareInputs()
     tp.compute()
+    tp.purgeInputLinkBufferHeads()

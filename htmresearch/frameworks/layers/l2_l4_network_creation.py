@@ -106,14 +106,14 @@ def _linkLateralSPRegion(network, networkConfig, externalInputName, L4ColumnName
   if not spParams:
     # Link sensors to L4, ignoring SP
     network.link(externalInputName, L4ColumnName, "UniformLink", "",
-                 srcOutput="dataOut", destInput="externalBasalInput")
+                 srcOutput="dataOut", destInput="basalInput")
     return
 
   # Link lateral input to SP input, SP output to L4 lateral input
   network.link(externalInputName, "lateralSPRegion", "UniformLink", "",
                srcOutput="dataOut", destInput="bottomUpIn")
   network.link("lateralSPRegion", L4ColumnName, "UniformLink", "",
-               srcOutput="bottomUpOut", destInput="externalBasalInput")
+               srcOutput="bottomUpOut", destInput="basalInput")
 
 
 def _linkFeedForwardSPRegion(network, networkConfig, sensorInputName, L4ColumnName):
@@ -122,14 +122,14 @@ def _linkFeedForwardSPRegion(network, networkConfig, sensorInputName, L4ColumnNa
   if not spParams:
     # Link sensors to L4, ignoring SP
     network.link(sensorInputName, L4ColumnName, "UniformLink", "",
-                 srcOutput="dataOut", destInput="feedForwardInput")
+                 srcOutput="dataOut", destInput="activeColumns")
     return
 
   # Link lateral input to SP input, SP output to L4 lateral input
   network.link(sensorInputName, "feedForwardSPRegion", "UniformLink", "",
                srcOutput="dataOut", destInput="bottomUpIn")
   network.link("feedForwardSPRegion", L4ColumnName, "UniformLink", "",
-               srcOutput="bottomUpOut", destInput="feedForwardInput")
+               srcOutput="bottomUpOut", destInput="activeColumns")
 
 
 def _setLateralSPPhases(network, networkConfig):
@@ -162,8 +162,9 @@ def createL4L2Column(network, networkConfig, suffix=""):
     {
       "externalInputSize": 1024,
       "sensorInputSize": 1024,
+      "L4RegionType": "py.ExtendedTMRegion",
       "L4Params": {
-        <constructor parameters for ExtendedTMRegion
+        <constructor parameters for the L4 region>
       },
       "L2Params": {
         <constructor parameters for ColumnPoolerRegion>
@@ -212,7 +213,7 @@ def createL4L2Column(network, networkConfig, suffix=""):
   _addFeedForwardSPRegion(network, networkConfig, suffix)
 
   network.addRegion(
-    L4ColumnName, "py.ExtendedTMRegion",
+    L4ColumnName, networkConfig["L4RegionType"],
     json.dumps(L4Params))
   network.addRegion(
     L2ColumnName, "py.ColumnPoolerRegion",
@@ -237,15 +238,18 @@ def createL4L2Column(network, networkConfig, suffix=""):
     _linkLateralSPRegion(network, networkConfig, externalInputName, L4ColumnName)
   _linkFeedForwardSPRegion(network, networkConfig, sensorInputName, L4ColumnName)
 
-  # Link L4 to L2, and L2's feedback to L4
+  # Link L4 to L2
   network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="feedforwardInput")
-  network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="externalApicalInput")
+               srcOutput="activeCells", destInput="feedforwardInput")
+  network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
+               srcOutput="predictedActiveCells",
+               destInput="feedforwardGrowthCandidates")
 
-  # Link reset output to L4 and L2
-  network.link(sensorInputName, L4ColumnName, "UniformLink", "",
-               srcOutput="resetOut", destInput="resetIn")
+  # Link L2 feedback to L4
+  network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
+               srcOutput="feedForwardOutput", destInput="apicalInput")
+
+  # Link reset output to L2. For L4, an empty input is sufficient for a reset.
   network.link(sensorInputName, L2ColumnName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
 

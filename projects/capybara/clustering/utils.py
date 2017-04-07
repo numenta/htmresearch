@@ -68,21 +68,13 @@ def clustering_stats(record_number,
           % (record_number, len(clusters), cluster_id,
              cluster_size, cluster_category, actual_category))
   else:
-    # If no cluster is predicted, consider this a wrong prediction.
+    # If no cluster is predicted, consider use info a wrong prediction.
     accuracy = 0.0
 
   clustering_accuracy = moving_average(clustering_accuracy, accuracy,
                                        moving_average_window)
 
   return clustering_accuracy
-
-
-
-def get_file_name(exp_name, network_config):
-  trace_csv = os.path.join('traces', '%s_%s.csv' % (exp_name, network_config))
-  return os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                      os.pardir, 'classification', 'results',
-                      trace_csv)
 
 
 

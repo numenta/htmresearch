@@ -51,6 +51,7 @@ def plot_inter_sequence_distances(output_dir,
   plot_2D_projections(title, output_file, cluster_assignments, projections)
 
 
+
 def plot_2D_projections(title, output_file, cluster_assignments, projections):
   """
   Visualize SDR cluster projections
@@ -160,7 +161,6 @@ def plot_accuracy(output_dir,
   ax[2].set_xlabel('Time step')
   ax[2].set_ylabel('Clustering accuracy')
 
-
   plt.tight_layout(pad=0.5)
   fig_name = 'clustering_accuracy.png'
   plt.savefig('%s/%s' % (output_dir, fig_name))
@@ -174,7 +174,7 @@ def plot_cluster_assignments(output_dir, clusters, timestep):
   # cluster sizes
   num_clusters = len(clusters)
   if num_clusters > 0:
-  
+
     categories_to_num_points = {}
     for i in range(num_clusters):
       cluster = clusters[i]
@@ -186,12 +186,12 @@ def plot_cluster_assignments(output_dir, clusters, timestep):
         if category not in categories_to_num_points:
           categories_to_num_points[category] = {}
         categories_to_num_points[category][cluster_id] = num_points
-  
+
     cluster_ids = []
     for clusters_to_num_points in categories_to_num_points.values():
       cluster_ids.extend(clusters_to_num_points.keys())
     cluster_ids = list(set(cluster_ids))
-  
+
     # Get some pastel shades for the colors. Note: category index start at 0 
     num_bars = len(cluster_ids)
     num_categories = max(categories_to_num_points.keys()) + 1
@@ -208,7 +208,7 @@ def plot_cluster_assignments(output_dir, clusters, timestep):
           bars.append(clusters_to_num_points[cid])
         else:
           bars.append(0)
-  
+
       # draw the bars for this category
       x = np.array([i for i in range(num_bars)])
       ax.bar(x,
@@ -219,15 +219,15 @@ def plot_cluster_assignments(output_dir, clusters, timestep):
       bottom += np.array(bars)
       ax.set_xticks(x)
       cell_text.append([x for x in bars])
-  
+
     ax.set_title('Number of points per category by cluster ID (Timestep: %s)'
                  % timestep)
     ax.set_ylabel('Number of points')
-  
+
     # Reverse colors and text labels to display the last value at the top.
-    colors = colors[::-1]
-    cell_text.reverse()
-  
+    # colors = colors[::-1]
+    # cell_text.reverse()
+
     # Add a table at the bottom of the axes
     rowLabels = ['category %s' % c for c in categories]
     colLabels = ['c%s' % c for c in cluster_ids]
@@ -241,7 +241,7 @@ def plot_cluster_assignments(output_dir, clusters, timestep):
     the_table.set_fontsize(9)
     the_table.scale(1, 2)
     ax.set_xticks([])
-    plt.tight_layout(pad=7)
+    plt.tight_layout(pad=10)
     fig_name = 'cluster_assignments_t=%s.png' % timestep
     plt.savefig('%s/%s' % (output_dir, fig_name))
     print('==> saved: %s/%s' % (output_dir, fig_name))

@@ -32,13 +32,11 @@ def assignClusters(traces):
   repetition = []
   tmActiveCellsClusters = {i: [] for i in range(numCategories)}
   tmPredictedActiveCellsClusters = {i: [] for i in range(numCategories)}
-  tpActiveCellsClusters = {i: [] for i in range(numCategories)}
   for i in range(len(traces['actualCategory'])):
     category = int(traces['actualCategory'][i])
     tmPredictedActiveCells = traces['tmPredictedActiveCells'][i]
     tmActiveCells = traces['tmActiveCells'][i]
-    tpActiveCells = traces['tpActiveCells'][i]
-
+    
     if category != lastCategory:
       repetitionCounter[category] += 1
     lastCategory = category
@@ -46,15 +44,13 @@ def assignClusters(traces):
 
     tmActiveCellsClusters[category].append(tmActiveCells)
     tmPredictedActiveCellsClusters[category].append(tmPredictedActiveCells)
-    tpActiveCellsClusters[category].append(tpActiveCells)
 
-  assert len(traces['actualCategory']) == sum([len(tpActiveCellsClusters[i])
+  assert len(traces['actualCategory']) == sum([len(tmActiveCellsClusters[i])
                                                for i in range(numCategories)])
 
   return {
     'tmActiveCells': tmActiveCellsClusters,
     'tmPredictedActiveCells': tmPredictedActiveCellsClusters,
-    'tpActiveCells': tpActiveCellsClusters,
     'repetition': repetition,
   }
 

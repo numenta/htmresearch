@@ -65,31 +65,34 @@ def plotAccuracyVsNoise(noiseLevelList, predictionAccuracy):
 
 
 
-def plotSPstatsOverTime(numNewlyConnectedSynapsesTrace,
-                        numEliminatedSynapsesTrace,
-                        noiseRobustnessTrace,
-                        stabilityTrace,
-                        entropyTrace,
-                        fileName=None):
+def plotSPstatsOverTime(metrics, fileName=None):
   fig, axs = plt.subplots(nrows=5, ncols=1, sharex=True)
 
-  axs[0].plot([0] + stabilityTrace)
+  metrics['stability'][0] = float('nan')
+  metrics['numNewSyn'][0] = float('nan')
+  metrics['numRemoveSyn'][0] = float('nan')
+
+  axs[0].plot(metrics['stability'])
   axs[0].set_ylabel('Stability')
 
-  axs[1].plot(entropyTrace)
+  axs[1].plot(metrics['entropy'])
+
+  maxEntropy = metrics['maxEntropy']
+  maxEntropy = np.ones(len(maxEntropy)) * np.median(maxEntropy)
+
+  axs[1].plot(maxEntropy, 'k--')
   axs[1].set_ylabel('Entropy (bits)')
 
-
-  if len(noiseRobustnessTrace) > 0:
-    axs[2].plot(noiseRobustnessTrace)
+  if len(metrics['noiseRobustness']) > 0:
+    axs[2].plot(metrics['noiseRobustness'])
     axs[2].set_ylabel('Noise Robustness')
 
-  axs[3].plot([0] + numNewlyConnectedSynapsesTrace)
+  axs[3].plot(metrics['numNewSyn'])
   axs[3].set_ylabel('Synapses Formation')
 
-  axs[4].plot([0] + numEliminatedSynapsesTrace)
+  axs[4].plot(metrics['numRemoveSyn'])
   axs[4].set_ylabel('Synapse Removal')
-  axs[4].set_xlim([0, len(numEliminatedSynapsesTrace)])
+  axs[4].set_xlim([0, len(metrics['numRemoveSyn'])])
   axs[4].set_xlabel('epochs')
   if fileName is not None:
     plt.savefig(fileName)
@@ -276,15 +279,33 @@ def analyzeReceptiveFieldCorrelatedInputs(
 
 
 
-def runSPOnBatch(sp, inputVectors, learn, sdrOrders):
+def runSPOnBatch(sp, inputVectors, learn, sdrOrders=None, verbose=0):
   numInputVector, inputSize = inputVectors.shape
   numColumns = np.prod(sp.getColumnDimensions())
 
+  if sdrOrders is None:
+    sdrOrders = range(numInputVector)
+
   outputColumns = np.zeros((numInputVector, numColumns), dtype=uintType)
+  if learn:
+    avgBoostFactors = np.zeros((numColumns,), dtype=realDType)
+  else:
+    avgBoostFactors = np.ones((numColumns,), dtype=realDType)
+
   for i in range(numInputVector):
     sp.compute(inputVectors[sdrOrders[i]][:], learn, outputColumns[sdrOrders[i]][:])
+    if learn:
+      boostFactors = np.zeros((numColumns,), dtype=realDType)
+      sp.getBoostFactors(boostFactors)
+      avgBoostFactors += boostFactors
 
-  return outputColumns
+    if verbose > 0:
+      if i % 100 == 0:
+        print "{} % finished".format(100 * float(i) / float(numInputVector))
+
+  if learn:
+    avgBoostFactors = avgBoostFactors/numInputVector
+  return outputColumns, avgBoostFactors
 
 
 

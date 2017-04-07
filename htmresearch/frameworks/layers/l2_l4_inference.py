@@ -78,6 +78,8 @@ More examples are available in projects/layers/single_column.py and
 projects/layers/multi_column.py
 
 """
+# Disable variable/field name restrictions
+# pylint: disable=C0103
 
 import collections
 import os
@@ -130,6 +132,7 @@ class L4L2Experiment(object):
                numInputBits=20,
                externalInputSize=1024,
                L2Overrides=None,
+               L4RegionType="py.ExtendedTMRegion",
                L4Overrides=None,
                numLearningPoints=3,
                seed=42,
@@ -162,7 +165,10 @@ class L4L2Experiment(object):
     @param   L2Overrides (dict)
              Parameters to override in the L2 region
 
-    @param   L4Overrides
+    @param   L4RegionType (string)
+             The type of region to use for L4
+
+    @param   L4Overrides (dict)
              Parameters to override in the L4 region
 
     @param   numLearningPoints (int)
@@ -211,8 +217,10 @@ class L4L2Experiment(object):
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
-      "L4Params": self.getDefaultL4Params(inputSize),
-      "L2Params": self.getDefaultL2Params(inputSize),
+      "L4RegionType": L4RegionType,
+      "L4Params": self.getDefaultL4Params(L4RegionType, inputSize,
+                                          numInputBits),
+      "L2Params": self.getDefaultL2Params(inputSize, numInputBits),
     }
 
     if enableLateralSP:
@@ -236,8 +244,8 @@ class L4L2Experiment(object):
 
     self.sensorInputs = []
     self.externalInputs = []
-    self.L4Columns = []
-    self.L2Columns = []
+    self.L4Regions = []
+    self.L2Regions = []
 
     for i in xrange(self.numColumns):
       self.sensorInputs.append(
@@ -246,12 +254,15 @@ class L4L2Experiment(object):
       self.externalInputs.append(
         self.network.regions["externalInput_" + str(i)].getSelf()
       )
-      self.L4Columns.append(
-        self.network.regions["L4Column_" + str(i)].getSelf()
+      self.L4Regions.append(
+        self.network.regions["L4Column_" + str(i)]
       )
-      self.L2Columns.append(
-        self.network.regions["L2Column_" + str(i)].getSelf()
+      self.L2Regions.append(
+        self.network.regions["L2Column_" + str(i)]
       )
+
+    self.L4Columns = [region.getSelf() for region in self.L4Regions]
+    self.L2Columns = [region.getSelf() for region in self.L2Regions]
 
     # will be populated during training
     self.objectL2Representations = {}
@@ -401,7 +412,9 @@ class L4L2Experiment(object):
     # save statistics
     statistics["numSteps"] = len(sensationList)
     statistics["object"] = objectName if objectName is not None else "Unknown"
+
     self.statistics.append(statistics)
+
 
   def _sendReset(self, sequenceId=0):
     """
@@ -412,12 +425,14 @@ class L4L2Experiment(object):
       self.externalInputs[col].addResetToQueue(sequenceId)
     self.network.run(1)
 
+
   @LoggingDecorator()
   def sendReset(self, *args, **kwargs):
     """
     Public interface to sends a reset signal to the network.  This is logged.
     """
     self._sendReset(*args, **kwargs)
+
 
   def plotInferenceStats(self,
                          fields,
@@ -557,14 +572,16 @@ class L4L2Experiment(object):
     """
     Returns the active representation in L4.
     """
-    return [set(column._tm.getActiveCells()) for column in self.L4Columns]
+    return [set(column.getOutputData("activeCells").nonzero()[0])
+            for column in self.L4Regions]
 
 
   def getL4PredictiveCells(self):
     """
     Returns the predictive cells in L4.
     """
-    return [set(column._tm.getPredictiveCells()) for column in self.L4Columns]
+    return [set(column.getOutputData("predictedCells").nonzero()[0])
+            for column in self.L4Regions]
 
 
   def getL2Representations(self):
@@ -574,44 +591,120 @@ class L4L2Experiment(object):
     return [set(column._pooler.getActiveCells()) for column in self.L2Columns]
 
 
-  def getDefaultL4Params(self, inputSize):
+  def getCurrentClassification(self, minOverlap=None):
+    """
+    A dict with a score for each object. Score goes from 0 to 1. A 1 means
+    every col (that has received input since the last reset) currently has
+    overlap >= minOverlap with the representation for that object.
+
+    :param minOverlap: min overlap to consider the object as recognized.
+                       Defaults to half of the SDR size
+    :return: dict of object names and their score
+    """
+    results = {}
+    l2sdr = self.getL2Representations()
+    sdrSize = self.config["L2Params"]["sdrSize"]
+    if minOverlap is None:
+      minOverlap = sdrSize / 2
+
+    for objectName, objectSdr in self.objectL2Representations.iteritems():
+      count = 0
+      score = 0.0
+      for i in xrange(self.numColumns):
+        # Ignore inactive column
+        if len(l2sdr[i]) == 0:
+          continue
+
+        count += 1
+        overlap = len(l2sdr[i] & objectSdr[i])
+        if overlap >= minOverlap:
+          score += 1
+
+      if count == 0:
+        results[objectName] = 0
+      else:
+        results[objectName] = score / count
+
+    return results
+
+  def getDefaultL4Params(self, L4RegionType, inputSize, numInputBits):
     """
     Returns a good default set of parameters to use in the L4 region.
     """
-    return {
-      "columnCount": inputSize,
-      "cellsPerColumn": 8,
-      "formInternalBasalConnections": False,
-      "learningMode": True,
-      "inferenceMode": True,
-      "learnOnOneCell": False,
-      "initialPermanence": 0.51,
-      "connectedPermanence": 0.6,
-      "permanenceIncrement": 0.1,
-      "permanenceDecrement": 0.02,
-      "minThreshold": 10,
-      "predictedSegmentDecrement": 0.002,
-      "activationThreshold": 13,
-      "maxNewSynapseCount": 20,
-      "defaultOutputType": "predictedActiveCells",
-      "implementation": "etm_cpp",
-      "seed": self.seed
-    }
+    sampleSize = int(1.5 * numInputBits)
+
+    if numInputBits == 20:
+      activationThreshold = 13
+      minThreshold = 13
+    elif numInputBits == 10:
+      activationThreshold = 8
+      minThreshold = 8
+    else:
+      activationThreshold = int(numInputBits * .6)
+      minThreshold = activationThreshold
+
+    if L4RegionType == "py.ExtendedTMRegion":
+      return {
+        "columnCount": inputSize,
+        "cellsPerColumn": 16,
+        "formInternalBasalConnections": False,
+        "learn": True,
+        "learnOnOneCell": False,
+        "initialPermanence": 0.51,
+        "connectedPermanence": 0.6,
+        "permanenceIncrement": 0.1,
+        "permanenceDecrement": 0.02,
+        "minThreshold": minThreshold,
+        "predictedSegmentDecrement": 0.0,
+        "activationThreshold": activationThreshold,
+        "maxNewSynapseCount": sampleSize,
+        "implementation": "etm_cpp",
+        "seed": self.seed
+      }
+    elif L4RegionType == "py.ApicalTMRegion":
+      return {
+        "columnCount": inputSize,
+        "cellsPerColumn": 16,
+        "learn": True,
+        "initialPermanence": 0.51,
+        "connectedPermanence": 0.6,
+        "permanenceIncrement": 0.1,
+        "permanenceDecrement": 0.02,
+        "minThreshold": minThreshold,
+        "basalPredictedSegmentDecrement": 0.0,
+        "apicalPredictedSegmentDecrement": 0.0,
+        "activationThreshold": activationThreshold,
+        "sampleSize": sampleSize,
+        "implementation": "ApicalTiebreak",
+        "seed": self.seed
+      }
+    else:
+      raise ValueError("Unknown L4RegionType: %s" % L4RegionType)
 
 
-  def getDefaultL2Params(self, inputSize):
+  def getDefaultL2Params(self, inputSize, numInputBits):
     """
     Returns a good default set of parameters to use in the L2 region.
     """
+    if numInputBits == 20:
+      sampleSizeProximal = 10
+      minThresholdProximal = 6
+    elif numInputBits == 10:
+      sampleSizeProximal = 6
+      minThresholdProximal = 3
+    else:
+      sampleSizeProximal = int(numInputBits * .6)
+      minThresholdProximal = int(sampleSizeProximal * .6)
+
     return {
-      "inputWidth": inputSize * 8,
+      "inputWidth": inputSize * 16,
       "cellCount": 4096,
       "sdrSize": 40,
       "synPermProximalInc": 0.1,
       "synPermProximalDec": 0.001,
       "initialProximalPermanence": 0.6,
-      "minThresholdProximal": 10,
-      "sampleSizeProximal": 20,
+      "minThresholdProximal": minThresholdProximal,
+      "sampleSizeProximal": sampleSizeProximal,
       "connectedPermanenceProximal": 0.5,
       "synPermDistalInc": 0.1,
       "synPermDistalDec": 0.001,
@@ -623,6 +716,7 @@ class L4L2Experiment(object):
       "seed": self.seed,
       "learningMode": True,
     }
+
 
   def getDefaultLateralSPParams(self, inputSize):
     return {
@@ -638,6 +732,7 @@ class L4L2Experiment(object):
       "synPermInactiveDec": 0.0005,
       "boostStrength": 0.0,
     }
+
 
   def getDefaultFeedForwardSPParams(self, inputSize):
     return {
@@ -659,20 +754,21 @@ class L4L2Experiment(object):
     """
     Unsets the learning mode, to start inference.
     """
-    for column in self.L4Columns:
-      column.setParameter("learningMode", 0, False)
-    for column in self.L2Columns:
-      column.setParameter("learningMode", 0, False)
+
+    for region in self.L4Regions:
+      region.setParameter("learn", False)
+    for region in self.L2Regions:
+      region.setParameter("learningMode", False)
 
 
   def _setLearningMode(self):
     """
     Sets the learning mode.
     """
-    for column in self.L4Columns:
-      column.setParameter("learningMode", 0, True)
-    for column in self.L2Columns:
-      column.setParameter("learningMode", 0, True)
+    for region in self.L4Regions:
+      region.setParameter("learn", True)
+    for region in self.L2Regions:
+      region.setParameter("learningMode", True)
 
 
   def _updateInferenceStats(self, statistics, objectName=None):
@@ -701,6 +797,9 @@ class L4L2Experiment(object):
       )
       statistics["L2 Representation C" + str(i)].append(
         len(L2Representation[i])
+      )
+      statistics["L4 Apical Segments C" + str(i)].append(
+        len(self.L4Columns[i]._tm.getActiveApicalSegments())
       )
 
       # add true overlap if objectName was provided

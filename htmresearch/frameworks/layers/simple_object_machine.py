@@ -146,15 +146,8 @@ class SimpleObjectMachine(ObjectMachineBase):
              Inference spec for experiment (cf above for format)
 
     """
-    if "numSteps" in inferenceConfig:
-      numSteps = inferenceConfig["numSteps"]
-    else:
-      numSteps = len(inferenceConfig["pairs"][0])
-
-    if "noiseLevel" in inferenceConfig:
-      noise = inferenceConfig["noiseLevel"]
-    else:
-      noise = None
+    numSteps = inferenceConfig.get("numSteps",
+                                   len(inferenceConfig["pairs"][0]))
 
     # some checks
     if numSteps == 0:
@@ -168,7 +161,12 @@ class SimpleObjectMachine(ObjectMachineBase):
       pairs = [
         inferenceConfig["pairs"][col][step] for col in xrange(self.numColumns)
       ]
-      sensationSteps.append(self._getSDRPairs(pairs, noise=noise))
+      sdrPairs = self._getSDRPairs(
+        pairs,
+        noise=inferenceConfig.get("noiseLevel", None),
+        includeRandomLocation=inferenceConfig.get("includeRandomLocation",
+                                                  False))
+      sensationSteps.append(sdrPairs)
 
     self._checkObjectToInfer(sensationSteps)
     return sensationSteps
@@ -212,7 +210,7 @@ class SimpleObjectMachine(ObjectMachineBase):
       )
 
 
-  def _getSDRPairs(self, pairs, noise=None):
+  def _getSDRPairs(self, pairs, noise=None, includeRandomLocation=False):
     """
     This method takes a list of (location, feature) index pairs (one pair per
     cortical column), and returns a sensation dict in the correct format,
@@ -223,9 +221,10 @@ class SimpleObjectMachine(ObjectMachineBase):
       locationID, featureID = pairs[col]
 
       # generate random location if requested
-      if locationID == -1:
+      if includeRandomLocation:
         location = self._generatePattern(self.numInputBits,
-                                         self.sensorInputSize)
+                                         self.externalInputSize)
+
       # generate union of locations if requested
       elif isinstance(locationID, tuple):
         location = set()
@@ -256,15 +255,24 @@ class SimpleObjectMachine(ObjectMachineBase):
 
   def _addNoise(self, pattern, noiseLevel, inputSize):
     """
-    Adds noise the given list of patterns and returns a list of noisy copies.
+    Adds noise to the given pattern and returns the new one.
+
+    A noiseLevel of 0.1 means that 10% of the ON bits will be replaced by
+    other randomly chosen ON bits.  The returned SDR will still contain the
+    same number of bits.
+
     """
     if pattern is None:
       return None
 
+    # Bits that could be noise. These can't be from the original set.
+    candidateBits = list(set(range(inputSize)) - set(pattern))
+    random.shuffle(candidateBits)
+
     newBits = set()
     for bit in pattern:
       if random.random() < noiseLevel:
-        newBits.add(random.randint(0, inputSize))
+        newBits.add(candidateBits.pop())
       else:
         newBits.add(bit)
 

@@ -1,7 +1,7 @@
 # Program requirements
 matplotlib
 pandas
-plotly
+plotly>=1.12.10
 simplejson
 tabulate
 tqdm
