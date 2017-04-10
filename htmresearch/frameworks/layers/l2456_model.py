@@ -539,8 +539,7 @@ class L2456Model(object):
         "columnCount": self.sensorInputSize,
         "cellsPerColumn": 8,
         "formInternalBasalConnections": False,
-        "learningMode": True,
-        "inferenceMode": True,
+        "learn": True,
         "learnOnOneCell": False,
         "initialPermanence": 0.51,
         "connectedPermanence": 0.6,
@@ -550,7 +549,6 @@ class L2456Model(object):
         "predictedSegmentDecrement": 0.002,
         "activationThreshold": 13,
         "maxNewSynapseCount": 20,
-        "defaultOutputType": "predictedActiveCells",
         "implementation": "etm_cpp",
       },
 
@@ -578,8 +576,7 @@ class L2456Model(object):
         "columnCount": self.sensorInputSize,
         "cellsPerColumn": 8,
         "formInternalBasalConnections": False,
-        "learningMode": True,
-        "inferenceMode": True,
+        "learn": True,
         "learnOnOneCell": False,
         "initialPermanence": 0.51,
         "connectedPermanence": 0.6,
@@ -654,8 +651,15 @@ class L2456Model(object):
     """
     Unsets the learning mode, to start inference.
     """
-    for column in self.L4Columns + self.L2Columns + \
-                  self.L5Columns + self.L6Columns:
+
+    for column in self.L4Columns:
+      column.setParameter("learn", 0, False)
+    for column in self.L6Columns:
+      column.setParameter("learn", 0, False)
+
+    for column in self.L2Columns:
+      column.setParameter("learningMode", 0, False)
+    for column in self.L5Columns:
       column.setParameter("learningMode", 0, False)
 
 
@@ -663,8 +667,14 @@ class L2456Model(object):
     """
     Sets the learning mode.
     """
-    for column in self.L4Columns + self.L2Columns + \
-                  self.L5Columns + self.L6Columns:
+    for column in self.L4Columns:
+      column.setParameter("learn", 0, True)
+    for column in self.L6Columns:
+      column.setParameter("learn", 0, True)
+
+    for column in self.L2Columns:
+      column.setParameter("learningMode", 0, True)
+    for column in self.L5Columns:
       column.setParameter("learningMode", 0, True)
 
 
