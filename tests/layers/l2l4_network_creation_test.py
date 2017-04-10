@@ -30,12 +30,12 @@ networkConfig1 = {
   "networkType": "L4L2Column",
   "externalInputSize": 1024,
   "sensorInputSize": 1024,
+  "L4RegionType": "py.ExtendedTMRegion",
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
     "formInternalBasalConnections": False,
-    "learningMode": True,
-    "inferenceMode": True,
+    "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
@@ -72,12 +72,12 @@ networkConfig2 = {
   "numCorticalColumns": 3,
   "externalInputSize": 1024,
   "sensorInputSize": 1024,
+  "L4RegionType": "py.ExtendedTMRegion",
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
     "formInternalBasalConnections": False,
-    "learningMode": True,
-    "inferenceMode": True,
+    "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
@@ -87,7 +87,7 @@ networkConfig2 = {
     "predictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
     "maxNewSynapseCount": 20,
-    "seed": 42
+    "seed": 42,
   },
   "L2Params": {
     "inputWidth": 1024 * 8,
@@ -115,12 +115,12 @@ networkConfig3 = {
   "numCorticalColumns": 2,
   "externalInputSize": 1024,
   "sensorInputSize": 1024,
+  "L4RegionType": "py.ExtendedTMRegion",
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
     "formInternalBasalConnections": False,
-    "learningMode": True,
-    "inferenceMode": True,
+    "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
@@ -130,7 +130,6 @@ networkConfig3 = {
     "predictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
     "maxNewSynapseCount": 20,
-
   },
   "L2Params": {
     "inputWidth": 1024 * 8,
@@ -254,12 +253,12 @@ class LaminarNetworkTest(unittest.TestCase):
       "networkType": "L4L2Column",
       "externalInputSize": 256,
       "sensorInputSize": 512,
+      "L4RegionType": "py.ExtendedTMRegion",
       "L4Params": {
         "columnCount": 512,
         "cellsPerColumn": 16,
         "formInternalBasalConnections": True,
-        "learningMode": True,
-        "inferenceMode": True,
+        "learn": True,
         "learnOnOneCell": False,
         "initialPermanence": 0.23,
         "connectedPermanence": 0.75,
@@ -269,7 +268,6 @@ class LaminarNetworkTest(unittest.TestCase):
         "predictedSegmentDecrement": 0.21,
         "activationThreshold": 16,
         "maxNewSynapseCount": 24,
-
       },
       "L2Params": {
         "inputWidth": 512 * 8,
@@ -455,7 +453,7 @@ class LaminarNetworkTest(unittest.TestCase):
 
     # check inference with each (feature, location) pair
     L2Column.setParameter("learningMode", 0, False)
-    L4Column.setParameter("learningMode", 0, False)
+    L4Column.setParameter("learn", 0, False)
 
     # (F0, L0)
     sensorInput.addDataToQueue(features[0], 0, 0)
@@ -709,9 +707,9 @@ class LaminarNetworkTest(unittest.TestCase):
 
     # check inference with each (feature, location) pair
     L2Column0.setParameter("learningMode", 0, False)
-    L4Column0.setParameter("learningMode", 0, False)
+    L4Column0.setParameter("learn", 0, False)
     L2Column1.setParameter("learningMode", 0, False)
-    L4Column1.setParameter("learningMode", 0, False)
+    L4Column1.setParameter("learn", 0, False)
 
     # (F0, L0)
     sensorInput0.addDataToQueue(features0[0], 0, 0)
