@@ -8,6 +8,18 @@ The goal of the Capybara project is to create a canonical example for
 online and unsupervised classification using a HTM network. You can think 
 of it as a form of temporal pooling for HTM networks.
 
+## Pre-requisites
+Install `htmresearch`:
+```
+cd nupic.research/
+pip install -e . --user
+```
+Install `capybara` requirements:
+```
+cd nupic.research/projects/capybara
+pip install -r requirements.txt --user
+```
+
 ## How to run
 Follow the `README` instruction for each sub-folder, in this order:
 1. Download and format the datasets: `capybara/datasets`.
@@ -22,6 +34,9 @@ datasets. See README in folder.
 
 * `htm`: contains the code to run the HTM network and generate TM traces. See 
 README in folder for more details.
+
+* `dim_reduction`: demo scripts to project SDRs in 2D, in order to make it 
+possible to visualize clusters of SDRs. 
 
 * `baseline`: contains scripts to establish a supervised baseline for the 
 classification of sensor data.

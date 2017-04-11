@@ -19,15 +19,16 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
-
-from  htmresearch.frameworks.capybara.analysis import run_analysis
+import os
+from  htmresearch.frameworks.capybara.supervised.analysis import run_analysis
 
 def main():
   tsne = True
   chunks = [1,2,5]
   n_neighbors = 1
   aggregations = ['mean']
-  trace_dir = '../../htm/traces'
+  trace_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           os.pardir, os.pardir, 'htm', 'traces')
   assume_sequence_alignment = True
   if assume_sequence_alignment:
     plot_dir = 'plots_assume_sequences_aligned'
