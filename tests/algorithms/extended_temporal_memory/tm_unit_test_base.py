@@ -20,12 +20,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import unittest
-import tempfile
 from abc import ABCMeta, abstractmethod
-
-from nupic.data.generators.pattern_machine import PatternMachine
-from nupic.data.generators.sequence_machine import SequenceMachine
 
 
 

@@ -46,12 +46,13 @@ networkConfig = {
     "verbosity": 0,
   },
 
+  "L4RegionType": "py.ExtendedTMRegion",
+
   "L4Params": {
     "columnCount": 2048,
     "cellsPerColumn": 8,
     "formInternalBasalConnections": False,
-    "learningMode": True,
-    "inferenceMode": True,
+    "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
@@ -67,8 +68,7 @@ networkConfig = {
     "columnCount": 2048,
     "cellsPerColumn": 8,
     "formInternalBasalConnections": False,
-    "learningMode": True,
-    "inferenceMode": True,
+    "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
@@ -181,18 +181,18 @@ class L2456NetworkTest(unittest.TestCase):
         L4Column = net.regions["L4Column" + suffix]
 
         self.assertEqual(
-          L6Column.getInputData("feedForwardInput").nonzero()[0].sum(),
+          L6Column.getInputData("activeColumns").nonzero()[0].sum(),
           sum([12 + i + k * 10, 52 + i + k * 10, 110 + i + k * 10]),
           "Feedforward input to L6Column is incorrect"
         )
 
         self.assertGreaterEqual(
-          L6Column.getInputData("externalBasalInput").nonzero()[0].sum(),
+          L6Column.getInputData("basalInput").nonzero()[0].sum(),
           40, "External input to L6Column is incorrect"
         )
 
         self.assertEqual(
-          L4Column.getInputData("feedForwardInput").nonzero()[0].sum(),
+          L4Column.getInputData("activeColumns").nonzero()[0].sum(),
           sum([22 + i + k * 10, 62 + i + k * 10, 120 + i + k * 10]),
           "Feedforward input to L4Column is incorrect"
         )

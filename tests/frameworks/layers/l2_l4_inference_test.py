@@ -21,12 +21,18 @@
 
 """Tests for l2_l4_inference module."""
 
+import copy
 from mock import patch
 import unittest
 import random
 
 from htmresearch.frameworks.layers import l2_l4_inference
 
+from htmresearch.frameworks.layers.object_machine_factory import (
+  createObjectMachine
+)
+
+import numpy
 
 def _randomSDR(numOfBits, size):
   """
@@ -107,6 +113,87 @@ class L4L2ExperimentTest(unittest.TestCase):
 
     self.assertEqual(len(exp.getL4Representations()[0]),20)
     self.assertEqual(len(exp.getL4Representations()[1]),20)
+
+
+  def testDelayedLateralandApicalInputs(self):
+    """Test whether lateral and apical inputs are synchronized across columns"""
+    # Set up experiment
+    exp = l2_l4_inference.L4L2Experiment(
+      name="sample",
+      numCorticalColumns=2,
+    )
+
+    objects = createObjectMachine(
+      machineType="simple",
+      numInputBits=20,
+      sensorInputSize=1024,
+      externalInputSize=1024,
+      numCorticalColumns=2,
+    )
+    objects.addObject([(1, 1), (2, 2)])
+    objects.addObject([(1, 1), (3, 2)])
+
+    exp.learnObjects(objects.provideObjectsToLearn())
+    exp._sendReset()
+
+    sensationC0 = [(1, 1), (1, 1), (1, 1)]
+    sensationC1 = [(3, 2), (3, 2), (3, 2)]
+
+    lateralInputs = []
+    apicalInputs = []
+    activeCells = []
+    for step in range(3):
+      inferConfig = {
+        "noiseLevel": None,
+        "numSteps": 1,
+        "pairs": {0: [sensationC0[step]], 1: [sensationC1[step]]}
+      }
+
+      exp.infer(objects.provideObjectToInfer(inferConfig),
+                objectName=1, reset=False)
+
+      lateralInputs.append(
+        {0: copy.copy(
+          exp.network.regions['L2Column_0'].getInputData("lateralInput")),
+         1: copy.copy(
+           exp.network.regions['L2Column_1'].getInputData("lateralInput"))}
+      )
+      activeCells.append(
+        {0: copy.copy(
+          exp.network.regions['L2Column_0'].getOutputData("feedForwardOutput")),
+         1: copy.copy(
+           exp.network.regions['L2Column_1'].getOutputData("feedForwardOutput"))}
+      )
+      apicalInputs.append((
+        {0: copy.copy(
+          exp.network.regions['L4Column_0'].getInputData("apicalInput")),
+          1: copy.copy(
+            exp.network.regions['L4Column_1'].getInputData("apicalInput"))}
+      ))
+
+    # no lateral inputs on first iteration
+    self.assertEqual(numpy.sum(numpy.abs(lateralInputs[0][0])), 0)
+    self.assertEqual(numpy.sum(numpy.abs(lateralInputs[0][1])), 0)
+
+    # no apical inputs to L4 on first iteration
+    self.assertEqual(numpy.sum(numpy.abs(apicalInputs[0][0])), 0)
+    self.assertEqual(numpy.sum(numpy.abs(apicalInputs[0][1])), 0)
+
+    # lateral inputs of C0 at time t+1 = active cells of C1 at time t
+    for step in range(2):
+      self.assertEqual(
+        numpy.sum(numpy.abs(lateralInputs[step+1][0]-activeCells[step][1])), 0)
+      self.assertEqual(
+        numpy.sum(numpy.abs(lateralInputs[step+1][1]-activeCells[step][0])), 0)
+
+    # apical inputs of L4_0 at time t+1 = active cells of L2_0 at time t
+    for step in range(2):
+      self.assertEqual(
+        numpy.sum(numpy.abs(apicalInputs[step + 1][0] - activeCells[step][0])),
+        0)
+      self.assertEqual(
+        numpy.sum(numpy.abs(apicalInputs[step + 1][1] - activeCells[step][1])),
+        0)
 
 
   def testCapacity(self):
@@ -387,7 +474,6 @@ class L4L2ExperimentTest(unittest.TestCase):
       self.assertDictEqual(results, {"Box": 0, "Mug": 0.5, "Can": 0.5})
 
 
-  @unittest.skip("Skip until network delay links is implemented (NUP-2328)")
   def testObjectClassification(self):
     """
     Test multi column object classification
@@ -493,7 +579,8 @@ class L4L2ExperimentTest(unittest.TestCase):
 
     # Try to infer "Mug" using first learned grasp
     sensations = [
-        objectsToLearn["Mug"][0]
+        objectsToLearn["Mug"][0],
+        objectsToLearn["Mug"][1]
     ]
     exp.sendReset()
     exp.infer(sensations, reset=False)
@@ -504,7 +591,8 @@ class L4L2ExperimentTest(unittest.TestCase):
 
     # Try to infer "Cylinder" using first learned grasp
     sensations = [
-        objectsToLearn["Can"][0]
+        objectsToLearn["Can"][0],
+        objectsToLearn["Can"][1]
     ]
     exp.sendReset()
     exp.infer(sensations, reset=False)
@@ -515,7 +603,8 @@ class L4L2ExperimentTest(unittest.TestCase):
 
     # Try to infer "Box" using first learned grasp
     sensations = [
-        objectsToLearn["Box"][0]
+        objectsToLearn["Box"][0],
+        objectsToLearn["Box"][1]
     ]
     exp.sendReset()
     exp.infer(sensations, reset=False)
@@ -526,6 +615,13 @@ class L4L2ExperimentTest(unittest.TestCase):
 
     # Try to infer half "Box" half "Mug" to confuse
     sensations = [
+      {
+        0: objectsToLearn["Box"][0][0],
+        1: objectsToLearn["Box"][0][1],
+        2: objectsToLearn["Mug"][0][0],
+        3: objectsToLearn["Mug"][0][1],
+        4: ([], []),
+      },
       {
         0: objectsToLearn["Box"][0][0],
         1: objectsToLearn["Box"][0][1],

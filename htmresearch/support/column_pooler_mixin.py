@@ -122,11 +122,12 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
   def compute(self,
               feedforwardInput=(),
               lateralInputs=(),
+              feedforwardGrowthCandidates=None,
               learn=True,
               sequenceLabel=None,
               **kwargs):
     super(ColumnPoolerMonitorMixin, self).compute(
-      feedforwardInput, lateralInputs, learn)
+      feedforwardInput, lateralInputs, feedforwardGrowthCandidates, learn)
 
     self._mmTraces["activeCells"].data.append(set(self.getActiveCells()))
 
