@@ -24,7 +24,6 @@ Unit tests for Extended Temporal Memory.
 """
 
 from abc import ABCMeta, abstractmethod
-import unittest
 
 
 

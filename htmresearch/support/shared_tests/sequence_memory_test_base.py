@@ -449,6 +449,7 @@ class SequenceMemoryTestBase(object):
     """
     self.init({"cellsPerColumn": 1})
 
+    random.seed(37)
     sharedSubsequence = [self.randomPattern() for _ in xrange(5)]
 
     sequences = [[self.randomPattern() for _ in xrange(10)] +
@@ -492,6 +493,7 @@ class SequenceMemoryTestBase(object):
 
     self.init()
 
+    random.seed(38)
     sharedSubsequence = [self.randomPattern() for _ in xrange(5)]
 
     sequences = [[self.randomPattern() for _ in xrange(10)] +
@@ -528,6 +530,7 @@ class SequenceMemoryTestBase(object):
 
     self.init()
 
+    random.seed(39)
     sharedSubsequence = [self.randomPattern() for _ in xrange(5)]
 
     sequences = [sharedSubsequence +
@@ -571,6 +574,7 @@ class SequenceMemoryTestBase(object):
     """
     self.init()
 
+    random.seed(40)
     elements = [self.randomPattern() for _ in xrange(10)]
 
     while True:
@@ -618,6 +622,7 @@ class SequenceMemoryTestBase(object):
 
     self.init()
 
+    random.seed(41)
     elements = [self.randomPattern() for _ in xrange(20)]
     sharedSubsequence = [self.randomPattern() for _ in xrange(5)]
 
@@ -664,6 +669,7 @@ class SequenceMemoryTestBase(object):
 
     self.init()
 
+    random.seed(42)
     sharedSubsequence = [self.randomPattern() for _ in xrange(5)]
 
     sequences = [[self.randomPattern() for _ in xrange(10)] +
@@ -705,6 +711,7 @@ class SequenceMemoryTestBase(object):
     Parameters are the same as in B11, and sequences like in H9.
     """
 
+    random.seed(43)
     sharedSubsequence = [self.randomPattern() for _ in xrange(3)]
 
     sequences = [[self.randomPattern() for _ in xrange(5)] +
