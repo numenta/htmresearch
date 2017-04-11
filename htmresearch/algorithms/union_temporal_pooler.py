@@ -269,7 +269,7 @@ class UnionTemporalPooler(SpatialPooler):
     @return current pooling activation
     """
     self._poolingActivation[activeCells] = self._exciteFunction.excite(
-                                          self._poolingActivation[activeCells], overlaps[activeCells])
+      self._poolingActivation[activeCells], overlaps[activeCells])
 
     # increase pooling timers for all cells
     self._poolingTimer[self._poolingTimer >= 0] += 1

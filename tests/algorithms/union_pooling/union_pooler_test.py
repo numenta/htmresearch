@@ -24,7 +24,7 @@ import unittest
 
 import numpy
 
-from union_temporal_pooling.union_temporal_pooler import UnionTemporalPooler
+from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
 
 
 
@@ -36,8 +36,8 @@ class UnionTemporalPoolerTest(unittest.TestCase):
 
 
   def setUp(self):
-    self.unionTemporalPooler = UnionTemporalPooler(inputDimensions=5,
-                                   columnDimensions=5,
+    self.unionTemporalPooler = UnionTemporalPooler(inputDimensions=(5, ),
+                                   columnDimensions=(5, ),
                                    potentialRadius=16,
                                    potentialPct=0.9,
                                    globalInhibition=True,
@@ -68,7 +68,6 @@ class UnionTemporalPoolerTest(unittest.TestCase):
     expected = numpy.array([0, 1, 2, 3, 4], dtype=REAL_DTYPE)
 
     result = self.unionTemporalPooler._decayPoolingActivation()
-    print result
     self.assertTrue(numpy.array_equal(expected, result))
 
 
@@ -89,7 +88,6 @@ class UnionTemporalPoolerTest(unittest.TestCase):
     #                      [    0,   1,   0,     1,     1]
     overlaps = numpy.array([0.123, 0.0, 0.0, 0.456, 0.789])
     expected = [0.0, 11.0, 2.0, 13, 14]
-
     result = self.unionTemporalPooler._addToPoolingActivation(activeCells, overlaps)
     self.assertTrue(numpy.allclose(expected, result))
 
