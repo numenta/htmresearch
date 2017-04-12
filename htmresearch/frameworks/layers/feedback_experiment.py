@@ -86,6 +86,7 @@ class FeedbackExperiment(object):
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": 0,
       "sensorInputSize": inputSize,
+      "L4RegionType": "py.ExtendedTMRegion",
       "L4Params": self.getDefaultL4Params(inputSize),
       "L2Params": self.getDefaultL2Params(inputSize),
     }
@@ -318,8 +319,7 @@ class FeedbackExperiment(object):
       "columnCount": inputSize,
       "cellsPerColumn": 8,
       "formInternalBasalConnections": True,
-      "learningMode": True,
-      "inferenceMode": True,
+      "learn": True,
       "learnOnOneCell": False,
       "initialPermanence": 0.51,
       "connectedPermanence": 0.6,
@@ -329,7 +329,6 @@ class FeedbackExperiment(object):
       "predictedSegmentDecrement": 0.00,
       "activationThreshold": 15,
       "maxNewSynapseCount": 20,
-      "defaultOutputType": "predictedActiveCells",
       "implementation": "etm_cpp",
       "seed": self.seed
     }
@@ -366,7 +365,7 @@ class FeedbackExperiment(object):
     Sets the learning mode for L4 and L2.
     """
     for column in self.L4Columns:
-      column.setParameter("learningMode", 0, l4Learning)
+      column.setParameter("learn", 0, l4Learning)
     for column in self.L2Columns:
       column.setParameter("learningMode", 0, l2Learning)
 
