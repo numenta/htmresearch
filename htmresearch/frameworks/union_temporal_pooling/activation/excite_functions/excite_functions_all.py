@@ -101,7 +101,7 @@ class FixedExciteFunction(ExciteFunctionBase):
     @param inputs            (numpy array) inputs for each cell
     """
 
-    currentActivation = self._targetExcLevel
+    currentActivation += self._targetExcLevel
 
     return currentActivation
 
