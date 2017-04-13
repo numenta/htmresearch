@@ -540,7 +540,9 @@ class ColumnPooler(object):
     else:
       existingSynapseCounts = permanences.nNonZerosPerRowOnCols(
         activeCells, activeInput)
-      maxNewByCell = sampleSize - existingSynapseCounts
+
+      maxNewByCell = numpy.empty(len(activeCells), dtype="int32")
+      numpy.subtract(sampleSize, existingSynapseCounts, out=maxNewByCell)
 
       permanences.setRandomZerosOnOuter(
         activeCells, growthCandidateInput, maxNewByCell, initialPermanence, rng)
