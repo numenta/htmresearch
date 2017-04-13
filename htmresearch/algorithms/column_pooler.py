@@ -19,8 +19,6 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import abc
-
 import numpy
 
 from nupic.bindings.math import SparseMatrix, GetNTAReal, Random
@@ -149,37 +147,6 @@ class ColumnPooler(object):
     self.distalPermanences = tuple(SparseMatrix(cellCount, n)
                                    for n in lateralInputWidths)
 
-    self.monitors = {}
-    self.nextMonitorToken = 1
-
-
-  def addMonitor(self, monitor):
-    """
-    Subscribe to ColumnPooler events.
-
-    @param monitor (ColumnPoolerMonitor)
-    An object that implements a set of monitor methods
-
-    @return (object)
-    An opaque object that can be used to refer to this monitor.
-    """
-    token = self.nextMonitorToken
-    self.nextMonitorToken += 1
-
-    self.monitors[token] = monitor
-
-    return token
-
-
-  def removeMonitor(self, monitorToken):
-    """
-    Unsubscribe from ColumnPooler events.
-
-    @param monitorToken (object)
-    The return value of addMonitor() from when this monitor was added
-    """
-    del self.monitors[monitorToken]
-
 
   def compute(self, feedforwardInput=(), lateralInputs=(),
               feedforwardGrowthCandidates=None, learn=True):
@@ -209,9 +176,6 @@ class ColumnPooler(object):
                                 feedforwardGrowthCandidates)
     else:
       self._computeInferenceMode(feedforwardInput, lateralInputs)
-
-    for monitor in self.monitors.values():
-      monitor.afterCompute(feedforwardInput, lateralInputs, learn)
 
 
   def _computeLearningMode(self, feedforwardInput, lateralInputs,
@@ -527,9 +491,6 @@ class ColumnPooler(object):
     """
     self.activeCells = numpy.empty(0, dtype="uint32")
 
-    for monitor in self.monitors.values():
-      monitor.afterReset()
-
 
   @staticmethod
   def _learn(# mutated args
@@ -583,23 +544,6 @@ class ColumnPooler(object):
 
       permanences.setRandomZerosOnOuter(
         activeCells, growthCandidateInput, maxNewByCell, initialPermanence, rng)
-
-
-
-class ColumnPoolerMonitor(object):
-  """
-  Abstract base class for a ColumnPooler monitor.
-  """
-
-  __metaclass__ = abc.ABCMeta
-
-  @abc.abstractmethod
-  def afterCompute(self, feedforwardInput, lateralInputs, learn):
-    pass
-
-  @abc.abstractmethod
-  def afterReset(self):
-    pass
 
 
 #

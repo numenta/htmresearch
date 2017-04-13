@@ -128,37 +128,6 @@ class ApicalDependentTemporalMemory(object):
     self.activeBasalSegments = ()
     self.activeApicalSegments = ()
 
-    self.monitors = {}
-    self.nextMonitorToken = 1
-
-
-  def addMonitor(self, monitor):
-    """
-    Subscribe to ApicalDependentTemporalMemory events.
-
-    @param monitor (ApicalDependentTemporalMemoryMonitor)
-    An object that implements a set of monitor methods
-
-    @return (object)
-    An opaque object that can be used to refer to this monitor.
-    """
-    token = self.nextMonitorToken
-    self.nextMonitorToken += 1
-
-    self.monitors[token] = monitor
-
-    return token
-
-
-  def removeMonitor(self, monitorToken):
-    """
-    Unsubscribe from ColumnPooler events.
-
-    @param monitorToken (object)
-    The return value of addMonitor() from when this monitor was added
-    """
-    del self.monitors[monitorToken]
-
 
   def reset(self):
     """
@@ -171,9 +140,6 @@ class ApicalDependentTemporalMemory(object):
     self.predictedCells = ()
     self.activeBasalSegments = ()
     self.activeApicalSegments = ()
-
-    for monitor in self.monitors.values():
-      monitor.afterReset()
 
 
   def compute(self,
@@ -307,11 +273,6 @@ class ApicalDependentTemporalMemory(object):
     self.predictedCells = predictedCells
     self.activeBasalSegments = activeBasalSegments
     self.activeApicalSegments = activeApicalSegments
-
-    for monitor in self.monitors.values():
-      monitor.afterCompute(activeColumns, basalInput, apicalInput,
-                           basalGrowthCandidates, apicalGrowthCandidates,
-                           learn)
 
 
   def _calculateLearning(self,
@@ -847,21 +808,3 @@ class ApicalDependentTemporalMemory(object):
     @param connectedPermanence (float) The connected permanence.
     """
     self.connectedPermanence = connectedPermanence
-
-
-
-class ApicalDependentTemporalMemoryMonitor(object):
-  """
-  Abstract base class for a ApicalDependentTemporalMemory monitor.
-  """
-
-  __metaclass__ = abc.ABCMeta
-
-  @abc.abstractmethod
-  def afterCompute(self, activeColumns, basalInput, apicalInput,
-                   apicalGrowthCandidates, basalGrowthCandidates, learn):
-    pass
-
-  @abc.abstractmethod
-  def afterReset(self):
-    pass
