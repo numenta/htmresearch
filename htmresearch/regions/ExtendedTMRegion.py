@@ -262,6 +262,12 @@ class ExtendedTMRegion(PyRegion):
           constraints=("enum: etm_py, etm_cpp, monitored_etm_py, "
                        "monitored_etm_cpp"),
           defaultValue="py"),
+        checkInputs=dict(
+          description="Set to False to disable input checking (for speed-up)",
+          accessMode="ReadWrite",
+          dataType="Bool",
+          count=1,
+          defaultValue="true"),
       ),
       commands=dict(
         reset=dict(description="Explicitly reset TM states now."),
