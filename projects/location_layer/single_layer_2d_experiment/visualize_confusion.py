@@ -88,7 +88,7 @@ if __name__ == "__main__":
       exp.inferObject(newObjectPlacements, "Object 3", (2,0), [(0,1), (0,-1), (0,1)])
 
 
-  print ("Visualize these CSV files at "
-         "http://numenta.github.io/nupic.research/visualizations/location-layer/single-layer-2d.html "
-         "or in a Jupyter notebook with the htmresearchviz0 package and the "
+  print "Visualize these CSV files at:"
+  print "http://numenta.github.io/nupic.research/visualizations/location-layer/single-layer-2d.html"
+  print ("or in a Jupyter notebook with the htmresearchviz0 package and the "
          "printSingleLayer2DExperiment function.")
