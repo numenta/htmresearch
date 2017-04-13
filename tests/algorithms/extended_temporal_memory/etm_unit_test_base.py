@@ -25,6 +25,8 @@ Unit tests for Extended Temporal Memory.
 
 from abc import ABCMeta, abstractmethod
 
+import numpy as np
+
 
 
 class ExtendedTemporalMemoryUnitTest(object):
@@ -96,16 +98,16 @@ class ExtendedTemporalMemoryUnitTest(object):
 
     tm.depolarizeCells(activeCellsExternalApical = [0, 1, 2])
 
-    self.assertEqual(tm.getPredictiveCells(), [],
-                     "Apical input isn't enough to predict a cell.")
+    np.testing.assert_equal(tm.getPredictiveCells(), [],
+                            "Apical input isn't enough to predict a cell.")
 
     activeColumns = [1]
     tm.activateCells(activeColumns = [1],
                      reinforceCandidatesExternalApical = [0, 1, 2],
                      growthCandidatesExternalApical = [0, 1, 2])
 
-    self.assertEqual(tm.getActiveCells(), [4, 5, 6, 7],
-                     "The column should burst.")
+    np.testing.assert_equal(tm.getActiveCells(), [4, 5, 6, 7],
+                            "The column should burst.")
 
 
   def testApicalInputDisambiguatesPredictiveCells(self):
@@ -143,9 +145,9 @@ class ExtendedTemporalMemoryUnitTest(object):
     tm.depolarizeCells(activeCellsExternalBasal = [0, 1, 2],
                        activeCellsExternalApical = [0, 1, 2])
 
-    self.assertEqual(tm.getPredictiveCells(), [4],
-                     "Cells with active basal and apical should inhibit cells "
-                     "with just basal input.")
+    np.testing.assert_equal(tm.getPredictiveCells(), [4],
+                            "Cells with active basal and apical should inhibit "
+                            "cells with just basal input.")
 
     activeColumns = [1]
     tm.activateCells(activeColumns = [1],
@@ -154,9 +156,9 @@ class ExtendedTemporalMemoryUnitTest(object):
                      reinforceCandidatesExternalApical = [0, 1, 2],
                      growthCandidatesExternalApical = [0, 1, 2])
 
-    self.assertEqual(tm.getActiveCells(), [4],
-                     "Cells with active basal and apical should inhibit cells "
-                     "with just basal input.")
+    np.testing.assert_equal(tm.getActiveCells(), [4],
+                            "Cells with active basal and apical should inhibit "
+                            "cells with just basal input.")
 
 
   def testGrowBasalSynapses(self):
@@ -273,7 +275,7 @@ class ExtendedTemporalMemoryUnitTest(object):
                      reinforceCandidatesExternalBasal = [10, 11],
                      growthCandidatesExternalBasal = [10, 11])
 
-    self.assertEquals(tm.getActiveCells(), [4])
+    np.testing.assert_equal(tm.getActiveCells(), [4])
 
     segments = list(tm.basalConnections.segmentsForCell(4))
     self.assertEquals(len(segments), 1,
@@ -327,7 +329,7 @@ class ExtendedTemporalMemoryUnitTest(object):
                      reinforceCandidatesExternalApical = [10, 11],
                      growthCandidatesExternalApical = [10, 11])
 
-    self.assertEquals(tm.getActiveCells(), [4])
+    np.testing.assert_equal(tm.getActiveCells(), [4])
 
     segments = list(tm.apicalConnections.segmentsForCell(4))
     self.assertEquals(len(segments), 1,

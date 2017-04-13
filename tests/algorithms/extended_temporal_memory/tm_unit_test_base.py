@@ -22,6 +22,7 @@
 
 from abc import ABCMeta, abstractmethod
 
+import numpy as np
 
 
 class TemporalMemoryUnitTest(object):
@@ -81,9 +82,9 @@ class TemporalMemoryUnitTest(object):
     tm.basalConnections.createSynapse(activeSegment, previousActiveCells[3], .5)
 
     tm.compute(previousActiveColumns)
-    self.assertEqual(expectedActiveCells, tm.getPredictiveCells())
+    np.testing.assert_equal(expectedActiveCells, tm.getPredictiveCells())
     tm.compute(activeColumns)
-    self.assertEqual(expectedActiveCells, tm.getActiveCells())
+    np.testing.assert_equal(expectedActiveCells, tm.getActiveCells())
 
 
   def testBurstUnpredictedColumns(self):
@@ -105,7 +106,7 @@ class TemporalMemoryUnitTest(object):
 
     tm.compute(activeColumns)
 
-    self.assertEqual(burstingCells, tm.getActiveCells())
+    np.testing.assert_equal(burstingCells, tm.getActiveCells())
 
 
   def testZeroActiveColumns(self):
@@ -177,7 +178,7 @@ class TemporalMemoryUnitTest(object):
     tm.compute(previousActiveColumns, learn=False)
     tm.compute(activeColumns, learn=False)
 
-    self.assertEqual(expectedWinnerCells, tm.getWinnerCells())
+    np.testing.assert_equal(expectedWinnerCells, tm.getWinnerCells())
 
 
   def testReinforceCorrectlyActiveSegments(self):
@@ -343,7 +344,7 @@ class TemporalMemoryUnitTest(object):
 
 
     tm.compute(previousActiveColumns)
-    self.assertEqual(expectedActiveCells, tm.getPredictiveCells())
+    np.testing.assert_equal(expectedActiveCells, tm.getPredictiveCells())
     tm.compute(activeColumns)
 
     self.assertAlmostEqual(.3, tm.basalConnections.dataForSynapse(s1).permanence)
@@ -449,7 +450,7 @@ class TemporalMemoryUnitTest(object):
       presynapticCells.append(synapseData.presynapticCell)
 
     presynapticCells = sorted(presynapticCells)
-    self.assertEqual(prevWinnerCells, presynapticCells)
+    np.testing.assert_equal(prevWinnerCells, presynapticCells)
 
 
   def testMatchingSegmentAddSynapsesToSubsetOfWinnerCells(self):
@@ -474,7 +475,7 @@ class TemporalMemoryUnitTest(object):
     tm.basalConnections.createSynapse(matchingSegment, 0, .5)
 
     tm.compute(previousActiveColumns)
-    self.assertEqual(prevWinnerCells, tm.getWinnerCells())
+    np.testing.assert_equal(prevWinnerCells, tm.getWinnerCells())
     tm.compute(activeColumns)
 
     synapses = tm.basalConnections.synapsesForSegment(matchingSegment)
@@ -511,7 +512,7 @@ class TemporalMemoryUnitTest(object):
     tm.basalConnections.createSynapse(matchingSegment, 0, .5)
 
     tm.compute(previousActiveColumns)
-    self.assertEqual(prevWinnerCells, tm.getWinnerCells())
+    np.testing.assert_equal(prevWinnerCells, tm.getWinnerCells())
 
     tm.compute(activeColumns)
 
@@ -556,7 +557,7 @@ class TemporalMemoryUnitTest(object):
     tm.basalConnections.createSynapse(activeSegment, 2, .2)
 
     tm.compute(previousActiveColumns)
-    self.assertEqual(prevWinnerCells, tm.getWinnerCells())
+    np.testing.assert_equal(prevWinnerCells, tm.getWinnerCells())
     tm.compute(activeColumns)
 
     presynapticCells = set(
@@ -657,7 +658,7 @@ class TemporalMemoryUnitTest(object):
     weakestSynapse = tm.basalConnections.createSynapse(matchingSegment, 0, .11)
 
     tm.compute(prevActiveColumns)
-    self.assertEqual(prevWinnerCells, tm.getWinnerCells())
+    np.testing.assert_equal(prevWinnerCells, tm.getWinnerCells())
     tm.compute(activeColumns)
 
     synapses = tm.basalConnections.synapsesForSegment(matchingSegment)
@@ -829,7 +830,7 @@ class TemporalMemoryUnitTest(object):
       tm.compute(prevActiveColumns)
       tm.compute(activeColumns)
 
-      self.assertEqual(activeCells, tm.getActiveCells())
+      np.testing.assert_equal(activeCells, tm.getActiveCells())
 
       self.assertEqual(3, tm.basalConnections.numSegments())
       self.assertEqual(1, tm.basalConnections.numSegments(0))
