@@ -131,6 +131,7 @@ class L4L2Experiment(object):
                inputSize=1024,
                numInputBits=20,
                externalInputSize=1024,
+               numExternalInputBits=20,
                L2Overrides=None,
                L4RegionType="py.ExtendedTMRegion",
                L4Overrides=None,
@@ -161,6 +162,9 @@ class L4L2Experiment(object):
 
     @param   externalInputSize (int)
              Size of the lateral input to L4 regions
+
+    @param   numExternalInputBits (int)
+             Number of ON bits in the external input patterns
 
     @param   L2Overrides (dict)
              Parameters to override in the L2 region
@@ -219,7 +223,7 @@ class L4L2Experiment(object):
       "sensorInputSize": inputSize,
       "L4RegionType": L4RegionType,
       "L4Params": self.getDefaultL4Params(L4RegionType, inputSize,
-                                          numInputBits),
+                                          numExternalInputBits),
       "L2Params": self.getDefaultL2Params(inputSize, numInputBits),
     }
 

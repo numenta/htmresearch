@@ -62,7 +62,8 @@ class L4L2ExperimentTest(unittest.TestCase):
     exp = l2_l4_inference.L4L2Experiment(
       name="sample",
       numCorticalColumns=2,
-      numInputBits=20
+      numInputBits=20,
+      numExternalInputBits=20
     )
 
     # Set up feature and location SDRs for two locations, A and B, for each
@@ -397,6 +398,7 @@ class L4L2ExperimentTest(unittest.TestCase):
         inputSize=1024,
         numInputBits=20,
         externalInputSize=1024,
+        numExternalInputBits=20,
         numLearningPoints=3,
         seed=23,
         )
@@ -485,6 +487,7 @@ class L4L2ExperimentTest(unittest.TestCase):
         inputSize=1024,
         numInputBits=20,
         externalInputSize=1024,
+        numExternalInputBits=20,
         numLearningPoints=3,
         )
 
@@ -636,6 +639,70 @@ class L4L2ExperimentTest(unittest.TestCase):
     self.assertEquals(results["Mug"], 0.5)
     self.assertEquals(results["Box"], 0.5)
     self.assertEquals(results["Can"], 0)
+
+
+  def testDefaultParameters(self):
+    """
+    Test multi column object classification
+    """
+    random.seed(36)
+    exp = l2_l4_inference.L4L2Experiment(
+      "testClassification",
+      numCorticalColumns=1,
+      inputSize=1024,
+      numInputBits=20,
+      externalInputSize=512,
+      numExternalInputBits=10,
+      numLearningPoints=3,
+    )
+    net = exp.network
+
+    L4Params =  {
+      "columnCount": 1024,
+      "cellsPerColumn": 16,
+      "formInternalBasalConnections": False,
+      "learn": True,
+      "learnOnOneCell": False,
+      "initialPermanence": 0.51,
+      "connectedPermanence": 0.6,
+      "permanenceIncrement": 0.1,
+      "permanenceDecrement": 0.02,
+      "minThreshold": 8,
+      "predictedSegmentDecrement": 0.0,
+      "activationThreshold": 8,
+      "maxNewSynapseCount": 15,
+    }
+
+    L2Params =  {
+      "inputWidth": 1024 * 16,
+      "cellCount": 4096,
+      "sdrSize": 40,
+      "synPermProximalInc": 0.1,
+      "synPermProximalDec": 0.001,
+      "initialProximalPermanence": 0.6,
+      "minThresholdProximal": 6,
+      "sampleSizeProximal": 10,
+      "connectedPermanenceProximal": 0.5,
+      "synPermDistalInc": 0.1,
+      "synPermDistalDec": 0.001,
+      "initialDistalPermanence": 0.41,
+      "activationThresholdDistal": 13,
+      "sampleSizeDistal": 20,
+      "connectedPermanenceDistal": 0.5,
+      "distalSegmentInhibitionFactor": 1.5,
+      "learningMode": True,
+    }
+    L4Column = net.regions["L4Column_0"].getSelf()
+    L2Column = net.regions["L2Column_0"].getSelf()
+
+    # check the default parameters are correct in L4
+    for param, value in L4Params.iteritems():
+      self.assertEqual(L4Column.getParameter(param), value)
+
+    # check the default parameters are correct in L2
+    for param, value in L2Params.iteritems():
+      self.assertEqual(L2Column.getParameter(param), value)
+
 
 
 if __name__ == "__main__":
