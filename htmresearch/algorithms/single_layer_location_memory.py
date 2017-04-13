@@ -23,8 +23,6 @@
 A single-layer approach to computing a location
 """
 
-import abc
-
 import numpy as np
 
 from htmresearch.support import numpy_helpers as np2
@@ -99,38 +97,6 @@ class SingleLayerLocationMemory(object):
 
     self.rng = Random(seed)
 
-    self.monitors = {}
-    self.nextMonitorToken = 1
-
-
-  def addMonitor(self, monitor):
-    """
-    Subscribe to SingleLayerLocationMemory events.
-
-    @param monitor (SingleLayerLocationMemoryMonitor)
-
-    @return (object)
-    An opaque object that can be used to refer to this monitor.
-    """
-
-    token = self.nextMonitorToken
-    self.nextMonitorToken += 1
-
-    self.monitors[token] = monitor
-
-    return token
-
-
-  def removeMonitor(self, monitorToken):
-    """
-    Unsubscribe from SingleLayerLocationMemory events.
-
-    @param monitorToken (object)
-    The return value of addMonitor() from when this monitor was added
-    """
-
-    del self.monitors[monitorToken]
-
 
   def reset(self):
     """
@@ -140,9 +106,6 @@ class SingleLayerLocationMemory(object):
     self.activeCells = np.empty(0, dtype="uint32")
     self.activeDeltaSegments = np.empty(0, dtype="uint32")
     self.activeFeatureLocationSegments = np.empty(0, dtype="uint32")
-
-    for monitor in self.monitors.values():
-      monitor.afterReset()
 
 
   def compute(self, deltaLocation=(), newLocation=(),
@@ -222,11 +185,6 @@ class SingleLayerLocationMemory(object):
           self.activeFeatureLocationSegments))
 
       self.activeCells = np.unique(cellsForFeatureLocationSegments)
-
-    for monitor in self.monitors.values():
-      monitor.afterCompute(prevActiveCells, deltaLocation, newLocation,
-                           featureLocationInput,
-                           featureLocationGrowthCandidates, learn)
 
 
   def _learnTransition(self, prevActiveCells, deltaLocation, newLocation):
@@ -411,18 +369,3 @@ class SingleLayerLocationMemory(object):
 
   def getActiveCells(self):
     return self.activeCells
-
-
-
-class SingleLayerLocationMemoryMonitor(object):
-  __metaclass__ = abc.ABCMeta
-
-  @abc.abstractmethod
-  def afterCompute(self, prevActiveCells, deltaLocation, newLocation,
-                   featureLocationInput, featureLocationGrowthCandidates,
-                   learn):
-    pass
-
-  @abc.abstractmethod
-  def afterReset(self):
-    pass

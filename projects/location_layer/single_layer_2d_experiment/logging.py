@@ -23,26 +23,40 @@ import json
 
 import numpy as np
 
-from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
-  ApicalTiebreakTemporalMemoryMonitor)
-from htmresearch.algorithms.column_pooler import ColumnPoolerMonitor
-from htmresearch.algorithms.single_layer_location_memory import (
-  SingleLayerLocationMemoryMonitor)
-
 from runner import SingleLayer2DExperimentMonitor
 
 
-class LocationLayerMonitor(SingleLayerLocationMemoryMonitor):
+
+class SingleLayer2DExperimentVisualizer(SingleLayer2DExperimentMonitor):
   """
-  Outputs a recording of the LocationLayer to a CSV file. At each timestep, it
-  logs the active cells, and it logs each active synapse on each active cell.
+  Logs the state of the world and the state of each layer to a CSV.
   """
 
-  def __init__(self, locationLayer, csvOut, locationRepresentations):
-    self.locationLayer = locationLayer
+  def __init__(self, exp, csvOut):
+    self.exp = exp
     self.csvOut = csvOut
-    self.locationRepresentations = locationRepresentations
-    self.subscriberToken = locationLayer.addMonitor(self)
+
+    self.locationRepresentations = exp.locations
+    self.inputRepresentations = exp.inputRepresentations
+    self.objectRepresentations = exp.objectRepresentations
+
+    self.locationLayer = exp.locationLayer
+    self.inputLayer = exp.inputLayer
+    self.objectLayer = exp.objectLayer
+
+    self.subscriberToken = exp.addMonitor(self)
+
+    # Make it compatible with JSON -- can only use strings as dict keys.
+    objects = dict((objectName, featureLocationPairs.items())
+                   for objectName, featureLocationPairs in exp.objects.iteritems())
+
+    self.csvOut.writerow((exp.diameter,))
+    self.csvOut.writerow((json.dumps({"A": "red",
+                                      "B": "blue",
+                                      "C": "gray"}),))
+    self.csvOut.writerow((json.dumps(objects),))
+
+    self.prevActiveLocationCells = ()
 
 
   def __enter__(self, *args):
@@ -54,13 +68,53 @@ class LocationLayerMonitor(SingleLayerLocationMemoryMonitor):
 
 
   def unsubscribe(self):
-    self.locationLayer.removeMonitor(self.subscriberToken)
+
+    self.exp.removeMonitor(self.subscriberToken)
     self.subscriberToken = None
 
 
-  def afterCompute(self, prevActiveCells, deltaLocation, newLocation,
-                   featureLocationInput, featureLocationGrowthCandidates,
-                   learn):
+  def beforeTimestep(self, locationSDR, transitionSDR, featureSDR,
+                     egocentricLocation, learn):
+    self.csvOut.writerow(("t",))
+
+    self.csvOut.writerow(("input", "newLocation"))
+    self.csvOut.writerow([json.dumps(locationSDR.tolist())])
+    self.csvOut.writerow([json.dumps(
+      [decoding
+       for decoding, sdr in self.exp.locations.iteritems()
+       if np.intersect1d(locationSDR, sdr).size == sdr.size])])
+
+    self.csvOut.writerow(("input", "deltaLocation"))
+    self.csvOut.writerow([json.dumps(transitionSDR.tolist())])
+    self.csvOut.writerow([json.dumps(
+      [decoding
+       for decoding, sdr in self.exp.transitions.iteritems()
+       if np.intersect1d(transitionSDR, sdr).size == sdr.size])])
+
+    self.csvOut.writerow(("input", "feature"))
+    self.csvOut.writerow([json.dumps(featureSDR.tolist())])
+    self.csvOut.writerow([json.dumps(
+      [k
+       for k, sdr in self.exp.features.iteritems()
+       if np.intersect1d(featureSDR, sdr).size == sdr.size])])
+
+    self.csvOut.writerow(("egocentricLocation",))
+    self.csvOut.writerow([json.dumps(egocentricLocation)])
+
+
+  def afterReset(self):
+    self.csvOut.writerow(("reset",))
+    self.prevActiveLocationCells = ()
+
+
+  def afterPlaceObjects(self, objectPlacements):
+    self.csvOut.writerow(('objectPlacements',))
+    self.csvOut.writerow([json.dumps(objectPlacements)])
+
+
+  def afterLocationCompute(self, deltaLocation, newLocation,
+                           featureLocationInput, featureLocationGrowthCandidates,
+                           learn):
     activeCells = self.locationLayer.getActiveCells()
 
     cells = dict((cell, [])
@@ -91,7 +145,7 @@ class LocationLayerMonitor(SingleLayerLocationMemoryMonitor):
       activeDeltaSynapses = np.intersect1d(connectedDeltaSynapses,
                                            deltaLocation)
       activeInternalSynapses = np.intersect1d(connectedInternalSynapses,
-                                              prevActiveCells)
+                                              self.prevActiveLocationCells)
       segmentData = [
         ["deltaLocation", activeDeltaSynapses.tolist()],
         ["location", activeInternalSynapses.tolist()],
@@ -126,39 +180,12 @@ class LocationLayerMonitor(SingleLayerLocationMemoryMonitor):
                  if np.intersect1d(activeCells, sdr).size == sdr.size]
     self.csvOut.writerow([json.dumps(decodings)])
 
-
-  def afterReset(self):
-    pass
+    self.prevActiveLocationCells = activeCells
 
 
-class InputLayerMonitor(ApicalTiebreakTemporalMemoryMonitor):
-  """
-  Outputs a recording of the InputLayer to a CSV file. At each timestep, it
-  logs the active cells, and it logs each active synapse on each active cell.
-  """
-
-  def __init__(self, inputLayer, csvOut, inputRepresentations):
-    self.inputLayer = inputLayer
-    self.csvOut = csvOut
-    self.inputRepresentations = inputRepresentations
-    self.subscriberToken = inputLayer.addMonitor(self)
-
-
-  def __enter__(self, *args):
-    pass
-
-
-  def __exit__(self, *args):
-    self.unsubscribe()
-
-
-  def unsubscribe(self):
-    self.inputLayer.removeMonitor(self.subscriberToken)
-    self.subscriberToken = None
-
-
-  def afterCompute(self, activeColumns, basalInput, apicalInput,
-                   basalGrowthCandidates, apicalGrowthCandidates, learn):
+  def afterInputCompute(self, activeColumns, basalInput, apicalInput,
+                        basalGrowthCandidates=None, apicalGrowthCandidates=None,
+                        learn=True):
     activeCells = self.inputLayer.getActiveCells()
 
     cells = dict((cell, [])
@@ -216,39 +243,8 @@ class InputLayerMonitor(ApicalTiebreakTemporalMemoryMonitor):
     self.csvOut.writerow([json.dumps(decodings)])
 
 
-  def afterReset(self):
-    pass
-
-
-
-class ObjectLayerMonitor(ColumnPoolerMonitor):
-  """
-  Outputs a recording of the ObjectLayer to a CSV file. At each timestep, it
-  logs the active cells, and it logs each active feedforward synapse on each
-  active cell.
-  """
-
-  def __init__(self, objectLayer, csvOut, objectRepresentations):
-    self.objectLayer = objectLayer
-    self.csvOut = csvOut
-    self.objectRepresentations = objectRepresentations
-    self.subscriberToken = objectLayer.addMonitor(self)
-
-
-  def __enter__(self, *args):
-    pass
-
-
-  def __exit__(self, *args):
-    self.unsubscribe()
-
-
-  def unsubscribe(self):
-    self.objectLayer.removeMonitor(self.subscriberToken)
-    self.subscriberToken = None
-
-
-  def afterCompute(self, feedforwardInput, lateralInputs, learn):
+  def afterObjectCompute(self, feedforwardInput, lateralInputs=(),
+                         feedforwardGrowthCandidates=None, learn=True):
     activeCells = self.objectLayer.getActiveCells()
 
     cells = dict((cell, [])
@@ -273,93 +269,3 @@ class ObjectLayerMonitor(ColumnPoolerMonitor):
                  for k, sdr in self.objectRepresentations.iteritems()
                  if np.intersect1d(activeCells, sdr).size == sdr.size]
     self.csvOut.writerow([json.dumps(decodings)])
-
-
-  def afterReset(self):
-    pass
-
-
-
-class SingleLayer2DExperimentVisualizer(SingleLayer2DExperimentMonitor):
-  """
-  Attaches monitors to each layer in the experiment, and logs the state of the
-  world and the inputs to each layer to a CSV.
-  """
-
-  def __init__(self, exp, csvOut):
-    self.exp = exp
-    self.csvOut = csvOut
-
-    self.locationLayerMonitor = LocationLayerMonitor(exp.locationLayer, csvOut,
-                                                     exp.locations)
-    self.inputLayerMonitor = InputLayerMonitor(exp.inputLayer, csvOut,
-                                               exp.inputRepresentations)
-    self.objectLayerMonitor = ObjectLayerMonitor(exp.objectLayer, csvOut,
-                                                 exp.objectRepresentations)
-
-    self.subscriberToken = exp.addMonitor(self)
-
-    # Make it compatible with JSON -- can only use strings as dict keys.
-    objects = dict((objectName, featureLocationPairs.items())
-                   for objectName, featureLocationPairs in exp.objects.iteritems())
-
-    self.csvOut.writerow((exp.diameter,))
-    self.csvOut.writerow((json.dumps({"A": "red",
-                                      "B": "blue",
-                                      "C": "gray"}),))
-    self.csvOut.writerow((json.dumps(objects),))
-
-
-  def __enter__(self, *args):
-    pass
-
-
-  def __exit__(self, *args):
-    self.unsubscribe()
-
-
-  def unsubscribe(self):
-    self.locationLayerMonitor.unsubscribe()
-    self.inputLayerMonitor.unsubscribe()
-    self.objectLayerMonitor.unsubscribe()
-
-    self.exp.removeMonitor(self.subscriberToken)
-    self.subscriberToken = None
-
-
-  def beforeTimestep(self, locationSDR, transitionSDR, featureSDR,
-                     egocentricLocation, learn):
-    self.csvOut.writerow(("t",))
-
-    self.csvOut.writerow(("input", "newLocation"))
-    self.csvOut.writerow([json.dumps(locationSDR.tolist())])
-    self.csvOut.writerow([json.dumps(
-      [decoding
-       for decoding, sdr in self.exp.locations.iteritems()
-       if np.intersect1d(locationSDR, sdr).size == sdr.size])])
-
-    self.csvOut.writerow(("input", "deltaLocation"))
-    self.csvOut.writerow([json.dumps(transitionSDR.tolist())])
-    self.csvOut.writerow([json.dumps(
-      [decoding
-       for decoding, sdr in self.exp.transitions.iteritems()
-       if np.intersect1d(transitionSDR, sdr).size == sdr.size])])
-
-    self.csvOut.writerow(("input", "feature"))
-    self.csvOut.writerow([json.dumps(featureSDR.tolist())])
-    self.csvOut.writerow([json.dumps(
-      [k
-       for k, sdr in self.exp.features.iteritems()
-       if np.intersect1d(featureSDR, sdr).size == sdr.size])])
-
-    self.csvOut.writerow(("egocentricLocation",))
-    self.csvOut.writerow([json.dumps(egocentricLocation)])
-
-
-  def afterReset(self):
-    self.csvOut.writerow(("reset",))
-
-
-  def afterPlaceObjects(self, objectPlacements):
-    self.csvOut.writerow(('objectPlacements',))
-    self.csvOut.writerow([json.dumps(objectPlacements)])

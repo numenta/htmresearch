@@ -127,19 +127,34 @@ class SingleLayerLocation2DExperiment(object):
       monitor.beforeTimestep(locationSDR, transitionSDR, featureSDR,
                              egocentricLocation, learn)
 
-    self.locationLayer.compute(
-      newLocation=locationSDR,
-      deltaLocation=transitionSDR,
-      featureLocationInput=self.inputLayer.getActiveCells(),
-      featureLocationGrowthCandidates=self.inputLayer.getPredictedActiveCells(),
-      learn=learn)
-    self.inputLayer.compute(featureSDR, self.locationLayer.getActiveCells(),
-                            self.objectLayer.getActiveCells())
+    params = {
+      "newLocation": locationSDR,
+      "deltaLocation": transitionSDR,
+      "featureLocationInput": self.inputLayer.getActiveCells(),
+      "featureLocationGrowthCandidates": self.inputLayer.getPredictedActiveCells(),
+      "learn": learn,
+    }
+    self.locationLayer.compute(**params)
+    for monitor in self.monitors.values():
+      monitor.afterLocationCompute(**params)
 
-    self.objectLayer.compute(
-      feedforwardInput=self.inputLayer.getActiveCells(),
-      feedforwardGrowthCandidates=self.inputLayer.getPredictedActiveCells(),
-      learn=learn)
+    params = {
+      "activeColumns": featureSDR,
+      "basalInput": self.locationLayer.getActiveCells(),
+      "apicalInput": self.objectLayer.getActiveCells(),
+    }
+    self.inputLayer.compute(**params)
+    for monitor in self.monitors.values():
+      monitor.afterInputCompute(**params)
+
+    params = {
+      "feedforwardInput": self.inputLayer.getActiveCells(),
+      "feedforwardGrowthCandidates": self.inputLayer.getPredictedActiveCells(),
+      "learn": learn,
+    }
+    self.objectLayer.compute(**params)
+    for monitor in self.monitors.values():
+      monitor.afterObjectCompute(**params)
 
 
   def learnTransitions(self):
