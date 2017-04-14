@@ -19,14 +19,15 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
-import numpy as np
 from collections import OrderedDict
-from matplotlib import pyplot as plt
-from matplotlib import colors
 
-from htmresearch.frameworks.capybara.util import find_cluster_assignments
+import numpy as np
+from matplotlib import colors
+from matplotlib import pyplot as plt
+
 from htmresearch.frameworks.capybara.distance import cluster_distance_matrix
-from htmresearch.frameworks.capybara.proj import project_clusters_2D
+from htmresearch.frameworks.capybara.util import find_cluster_assignments
+from htmresearch.frameworks.dimensionality_reduction.proj import project_in_2D
 
 
 
@@ -45,7 +46,7 @@ def plot_inter_sequence_distances(output_dir,
   output_file = '%s/%s' % (output_dir, '%s.png' % title)
   plot_distance_mat(distance_mat, title, output_file)
 
-  projections = project_clusters_2D(distance_mat, method='mds')
+  projections = project_in_2D(distance_mat, method='mds')
   title = '2d_projections_%s' % plot_id
   output_file = '%s/%s' % (output_dir, '%s.png' % title)
   plot_2D_projections(title, output_file, cluster_assignments, projections)

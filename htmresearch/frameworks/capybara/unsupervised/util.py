@@ -1,10 +1,11 @@
-import numpy as np
 from collections import OrderedDict
-from matplotlib import pyplot as plt
+
+import numpy as np
 from matplotlib import colors
-from sklearn import manifold
-from htmresearch.frameworks.clustering.distances import (
-  percentOverlap, clusterDist)
+from matplotlib import pyplot as plt
+
+from htmresearch.frameworks.capybara.unsupervised.cluster_distance import \
+  percentOverlap, clusterDist
 
 
 
@@ -97,55 +98,6 @@ def assignClusters(sdrs, numClusters, numSDRsPerCluster):
     clusterAssignments[selectPts] = clusterID
 
   return clusterAssignments
-
-
-
-def project2D(sdrs, method='mds'):
-  distance_mat = computeDistanceMat(sdrs)
-
-  seed = np.random.RandomState(seed=3)
-
-  if method == 'mds':
-    mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9,
-                       random_state=seed,
-                       dissimilarity="precomputed", n_jobs=1)
-
-    pos = mds.fit(distance_mat).embedding_
-
-    nmds = manifold.MDS(n_components=2, metric=False, max_iter=3000, eps=1e-12,
-                        dissimilarity="precomputed", random_state=seed,
-                        n_jobs=1, n_init=1)
-
-    pos = nmds.fit_transform(distance_mat, init=pos)
-  elif method == 'tSNE':
-    tsne = manifold.TSNE(n_components=2, init='pca', random_state=0)
-    pos = tsne.fit_transform(distance_mat)
-  else:
-    raise NotImplementedError
-
-  return pos, distance_mat
-
-
-
-def projectClusters2D(sdrClusters, numCells):
-  distanceMat = computeClusterDistanceMat(sdrClusters, numCells)
-
-  seed = np.random.RandomState(seed=3)
-
-  mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9,
-                     random_state=seed,
-                     dissimilarity="precomputed", n_jobs=1)
-
-  pos = mds.fit(distanceMat).embedding_
-
-  nmds = manifold.MDS(n_components=2, metric=False, max_iter=3000, eps=1e-12,
-                      dissimilarity="precomputed", random_state=seed, n_jobs=1,
-                      n_init=1)
-
-  npos = nmds.fit_transform(distanceMat, init=pos)
-
-  return npos, distanceMat
-
 
 
 def plotDistanceMat(distanceMat, title, outputFile, showPlot=False):

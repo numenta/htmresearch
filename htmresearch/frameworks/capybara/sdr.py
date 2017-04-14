@@ -118,7 +118,6 @@ def generate_sdrs(num_sdr_classes, num_sdr_per_class, n, w, noise_level):
   return sdrs, class_ids
 
 
-
 def load_traces(file_name):
   """
   Load network traces from CSV

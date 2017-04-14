@@ -9,43 +9,13 @@ def convertNonZeroToSDR(patternNZ, numCells):
 
 
 
-def percentOverlap(x1, x2):
-  """
-  Computes the percentage of overlap between SDRs x1 and x2.
-
-  :param x1:   (array) binary vector or a set of active indices
-  :param x2:  (array) binary vector or a set of active indices
-  :param size: (int)   length of binary vectors
-
-  :return percentOverlap: (float) percentage overlap between x1 and x2
-  """
-  if type(x1) is np.ndarray:
-    nonZeroX1 = float(np.count_nonzero(x1))
-    nonZeroX2 = float(np.count_nonzero(x2))
-    minX1X2 = min(nonZeroX1, nonZeroX2)
-    percentOverlap = 0
-    if minX1X2 > 0:
-      percentOverlap = float(np.dot(x1.T, x2)) / np.sqrt(nonZeroX1 * nonZeroX2)
-  else:
-    nonZeroX1 = len(x1)
-    nonZeroX2 = len(x2)
-    minX1X2 = min(nonZeroX1, nonZeroX2)
-    percentOverlap = 0
-    if minX1X2 > 0:
-      overlap = float(len(set(x1) & set(x2)))
-      percentOverlap = overlap / np.sqrt(nonZeroX1 * nonZeroX2)
-
-  return percentOverlap
-
-
-
 def clusterDist2(c1, c2, numCells):
   if len(c1) == 0 or len(c2) == 0:
     return 0
-  
+
   c1Sum = np.sum([convertNonZeroToSDR(sdr, numCells) for sdr in c1],
                  axis=0)
- 
+
   c2Sum = np.sum([convertNonZeroToSDR(sdr, numCells) for sdr in c2],
                  axis=0)
 
@@ -54,7 +24,7 @@ def clusterDist2(c1, c2, numCells):
 
 
 def sumSDRDist(sumSDR1, sumSDR2):
-  return np.linalg.norm(sumSDR1 / float(len(sumSDR1)) 
+  return np.linalg.norm(sumSDR1 / float(len(sumSDR1))
                         - sumSDR2 / float(len(sumSDR2)))
 
 
@@ -94,7 +64,7 @@ def clusterDistDirected(c1, c2):
       # ignore SDRs with zero active bits
       if np.sum(sdr1) == 0:
         continue
-      
+
       d = []
       for sdr2 in c2:
         d.append(1 - percentOverlap(sdr1, sdr2))
@@ -153,3 +123,33 @@ def computeClusterDistances(cluster, clusters, numCells):
 
 
 clusterDist = clusterDist2
+
+
+
+def percentOverlap(x1, x2):
+  """
+  Computes the percentage of overlap between SDRs x1 and x2.
+
+  :param x1:   (array) binary vector or a set of active indices
+  :param x2:  (array) binary vector or a set of active indices
+  :param size: (int)   length of binary vectors
+
+  :return percentOverlap: (float) percentage overlap between x1 and x2
+  """
+  if type(x1) is np.ndarray:
+    nonZeroX1 = float(np.count_nonzero(x1))
+    nonZeroX2 = float(np.count_nonzero(x2))
+    minX1X2 = min(nonZeroX1, nonZeroX2)
+    percentOverlap = 0
+    if minX1X2 > 0:
+      percentOverlap = float(np.dot(x1.T, x2)) / np.sqrt(nonZeroX1 * nonZeroX2)
+  else:
+    nonZeroX1 = len(x1)
+    nonZeroX2 = len(x2)
+    minX1X2 = min(nonZeroX1, nonZeroX2)
+    percentOverlap = 0
+    if minX1X2 > 0:
+      overlap = float(len(set(x1) & set(x2)))
+      percentOverlap = overlap / np.sqrt(nonZeroX1 * nonZeroX2)
+
+  return percentOverlap

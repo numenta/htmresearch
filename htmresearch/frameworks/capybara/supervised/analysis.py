@@ -26,7 +26,6 @@ from htmresearch.frameworks.capybara.distance import \
   distance_matrix, sequence_distance, reshaped_sequence_distance
 from htmresearch.frameworks.capybara.embedding import \
   convert_to_embeddings, reshape_embeddings
-from htmresearch.frameworks.capybara.proj import project_vectors
 from htmresearch.frameworks.capybara.sdr import load_sdrs
 from htmresearch.frameworks.capybara.supervised.classification import \
   train_and_test
@@ -34,6 +33,7 @@ from htmresearch.frameworks.capybara.supervised.plot import \
   plot_matrix, plot_projections, make_plot_title, make_subplots
 from htmresearch.frameworks.capybara.util import \
   get_logger, check_shape, indent, hours_minutes_seconds
+from htmresearch.frameworks.dimensionality_reduction.proj import project_vectors
 
 PHASES = ['train', 'test']
 CELL_TYPES = ['sp', 'tm']

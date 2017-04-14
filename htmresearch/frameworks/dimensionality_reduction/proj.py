@@ -19,12 +19,13 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+"""Utility functions to project high-dimensional vectors (such as SDRs) in 2D"""
+
 import numpy as np
 from sklearn.manifold import TSNE, MDS
 
 
-
-def project_clusters_2D(distance_mat, method='mds'):
+def project_in_2D(distance_mat, method='mds'):
   """
   Project SDRs onto a 2D space using manifold learning algorithms
   :param distance_mat: A square matrix with pairwise distances

@@ -22,27 +22,27 @@
 
 
 import os
-import numpy as np
 import random as rd
-import colorlover as cl
 
+import colorlover as cl
+import numpy as np
+import plotly.graph_objs as go
+import plotly.offline as py
+from plotly.tools import make_subplots
 from pyclustering.cluster.optics import (optics, ordering_analyser,
                                          ordering_visualizer)
 from pyclustering.samples.definitions import FCPS_SAMPLES
 from pyclustering.utils import read_sample
 
-import plotly.offline as py
-from plotly.tools import make_subplots
-import plotly.graph_objs as go
-
-from htmresearch.frameworks.capybara.proj import project_clusters_2D
+from htmresearch.frameworks.capybara.distance import euclidian_distance
 from htmresearch.frameworks.capybara.sdr import \
   convert_to_sdrs, load_traces, generate_sdrs
-from htmresearch.frameworks.capybara.util import \
-  find_cluster_assignments
-from htmresearch.frameworks.capybara.distance import euclidian_distance
 from htmresearch.frameworks.capybara.unsupervised.plot import \
   plot_2D_projections
+from htmresearch.frameworks.capybara.util import \
+  find_cluster_assignments
+from htmresearch.frameworks.dimensionality_reduction.proj import \
+  project_in_2D
 
 
 
@@ -281,7 +281,7 @@ def main():
 
   # Project SDRs in 2D for visualization purposes 
   distance_mat = distance_matrix(sdr_cluster_centroids, euclidian_distance)
-  sdr_projections = project_clusters_2D(distance_mat, method='mds')
+  sdr_projections = project_in_2D(distance_mat, method='mds')
 
   # OPTICS SDR results  
   sample_sdr = sdr_projections  # or: sdr_cluster_centroids

@@ -22,11 +22,13 @@
 
 import os
 
-from htmresearch.frameworks.clustering.dim_reduction import (project2D,
-                                                             assignClusters,
-                                                             viz2DProjection,
-                                                             plotDistanceMat)
-from htmresearch.frameworks.clustering.utils import generateSDRs
+from htmresearch.frameworks.capybara.sdr import generate_sdrs
+from htmresearch.frameworks.capybara.unsupervised.util import (
+  computeDistanceMat,
+  assignClusters,
+  viz2DProjection,
+  plotDistanceMat)
+from htmresearch.frameworks.dimensionality_reduction.proj import project_in_2D
 
 
 
@@ -47,18 +49,19 @@ def main():
     vizTitle = '2D projection (%s) noise level: %s' % (method.upper(),
                                                        noiseLevel)
 
-    sdrs = generateSDRs(numClasses, numSDRsPerClass, n, w, noiseLevel)
+    sdrs, _ = generate_sdrs(numClasses, numSDRsPerClass, n, w, noiseLevel)
 
     clusterAssignments = assignClusters(sdrs, numClasses, numSDRsPerClass)
 
-    npos, distanceMat = project2D(sdrs, method=method)
+    mat = computeDistanceMat(sdrs)
+    npos = project_in_2D(mat, method=method)
 
     outputFile = os.path.join(outputDir, '2d_projections_%s.png' % method)
     viz2DProjection(vizTitle, outputFile, numClasses, clusterAssignments, npos)
     outputFile = os.path.join(outputDir, 'distance_matrix_%s.png' % method)
-    plotDistanceMat(distanceMat, 'Inter-cluster distances', outputFile,
+    plotDistanceMat(mat, 'Inter-cluster distances', outputFile,
                     showPlot=False)
-
+    print 'plots saved in:', outputDir
 
 
 

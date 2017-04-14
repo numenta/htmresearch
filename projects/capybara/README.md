@@ -28,7 +28,7 @@ Follow the `README` instruction for each sub-folder, in this order:
 4. Run the supervised baseline experiments(2nd approach): `capybara/supervised_baseline/v1_with_sequences`
 5. Run the clustering experiments: `capybara/clustering`
 
-## Project file structure
+## Project structure
 * `datasets`: contains scripts to download, format and visualize the input 
 datasets. See README in folder.
 
@@ -38,8 +38,8 @@ README in folder for more details.
 * `dim_reduction`: demo scripts to project SDRs in 2D, in order to make it 
 possible to visualize clusters of SDRs. 
 
-* `baseline`: contains scripts to establish a supervised baseline for the 
-classification of sensor data.
+* `supervised_baseline`: contains scripts to establish a supervised baseline 
+for the classification of sensor data.
 
 * `clustering`: contains the clustering code. See README in 
 folder for more details.
