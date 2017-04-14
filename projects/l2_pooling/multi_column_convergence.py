@@ -137,8 +137,6 @@ def runExperiment(args):
 
   @param noiseLevel  (float) Noise level to add to the locations and features
                              during inference. Default: None
-  @param profile     (bool)  If True, the network will be profiled after
-                             learning and inference. Default: False
   @param numObjects  (int)   The number of objects we will train.
                              Default: 10
   @param numPoints   (int)   The number of points on each object.
@@ -170,7 +168,6 @@ def runExperiment(args):
   numLocations = args.get("numLocations", 10)
   numFeatures = args.get("numFeatures", 10)
   numColumns = args.get("numColumns", 2)
-  profile = args.get("profile", False)
   noiseLevel = args.get("noiseLevel", None)  # TODO: implement this?
   numPoints = args.get("numPoints", 10)
   trialNum = args.get("trialNum", 42)
@@ -218,8 +215,6 @@ def runExperiment(args):
   )
 
   exp.learnObjects(objects.provideObjectsToLearn())
-  if profile:
-    exp.printProfile(reset=True)
 
   # For inference, we will check and plot convergence for each object. For each
   # object, we create a sequence of random sensations for each column.  We will
@@ -268,8 +263,6 @@ def runExperiment(args):
     inferenceSDRs = objects.provideObjectToInfer(inferConfig)
 
     exp.infer(inferenceSDRs, objectName=objectId)
-    if profile:
-      exp.printProfile(reset=True)
 
     if plotInferenceStats:
       exp.plotInferenceStats(
