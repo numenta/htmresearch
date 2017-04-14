@@ -20,31 +20,32 @@
 # ----------------------------------------------------------------------
 
 """
-Run the apical tiebreak sequence tests on the C++ ExtendedTemporalMemory.
+Run the apical tiebreak tests on the ExtendedTemporalMemory.
 """
 
 import unittest
 
 from nupic.bindings.experimental import ExtendedTemporalMemory
-from htmresearch.support.shared_tests.apical_tiebreak_sequences_test_base import (
-  ApicalTiebreakSequencesTestBase)
+from htmresearch.support.shared_tests.apical_tiebreak_test_base import (
+  ApicalTiebreakTestBase)
 
 
-
-class ExtendedTMCPP_ApicalTiebreakSequencesTests(ApicalTiebreakSequencesTestBase,
-                                                 unittest.TestCase):
+class ExtendedTM_ApicalTiebreakTests(ApicalTiebreakTestBase,
+                                     unittest.TestCase):
   """
-  Run the apical tiebreak sequence tests on the C++ ExtendedTemporalMemory.
+  Run the apical tiebreak tests on the C++ ExtendedTemporalMemory.
   """
 
-  def constructTM(self, columnCount, apicalInputSize, cellsPerColumn,
-                  initialPermanence, connectedPermanence, minThreshold,
-                  sampleSize, permanenceIncrement, permanenceDecrement,
-                  predictedSegmentDecrement, activationThreshold, seed):
+  def constructTM(self, columnCount, basalInputSize, apicalInputSize,
+                  cellsPerColumn, initialPermanence, connectedPermanence,
+                  minThreshold, sampleSize, permanenceIncrement,
+                  permanenceDecrement, predictedSegmentDecrement,
+                  activationThreshold, seed):
 
     params = {
-      "apicalInputDimensions": (apicalInputSize,),
       "columnDimensions": (columnCount,),
+      "basalInputDimensions": (basalInputSize,),
+      "apicalInputDimensions": (apicalInputSize,),
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
       "connectedPermanence": connectedPermanence,
@@ -56,29 +57,29 @@ class ExtendedTMCPP_ApicalTiebreakSequencesTests(ApicalTiebreakSequencesTestBase
       "activationThreshold": activationThreshold,
       "seed": seed,
       "learnOnOneCell": False,
-      "formInternalBasalConnections": True,
+      "formInternalBasalConnections": False,
     }
 
     self.tm = ExtendedTemporalMemory(**params)
 
 
-  def compute(self, activeColumns, apicalInput, learn):
+  def compute(self, activeColumns, basalInput, apicalInput, learn):
 
     activeColumns = sorted(activeColumns)
+    basalInput = sorted(basalInput)
     apicalInput = sorted(apicalInput)
 
     # Use depolarizeCells + activateCells rather than tm.compute so that
     # getPredictiveCells returns predictions for the current timestep.
-    self.tm.depolarizeCells(activeCellsExternalApical=apicalInput,
+    self.tm.depolarizeCells(activeCellsExternalBasal=basalInput,
+                            activeCellsExternalApical=apicalInput,
                             learn=learn)
     self.tm.activateCells(activeColumns,
+                          reinforceCandidatesExternalBasal=basalInput,
+                          growthCandidatesExternalBasal=basalInput,
                           reinforceCandidatesExternalApical=apicalInput,
                           growthCandidatesExternalApical=apicalInput,
                           learn=learn)
-
-
-  def reset(self):
-    self.tm.reset()
 
 
   def getActiveCells(self):

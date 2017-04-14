@@ -23,23 +23,15 @@
 Unit tests for Extended Temporal Memory.
 """
 
-from abc import ABCMeta, abstractmethod
+import unittest
+
+from nupic.bindings.experimental import ExtendedTemporalMemory
 
 
-
-class ExtendedTemporalMemoryUnitTest(object):
-  __metaclass__ = ABCMeta
-
-  @abstractmethod
-  def getTMClass(self):
-    """
-    Implement this method to specify the Temporal Memory class.
-    """
-
+class ExtendedTemporalMemoryUnitTest(unittest.TestCase):
 
   def constructTM(self, **params):
-    constructor = self.getTMClass()
-    return constructor(**params)
+    return ExtendedTemporalMemory(**params)
 
 
   def testDepolarizeWithExternalBasalInput(self):
