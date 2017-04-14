@@ -87,8 +87,6 @@ import numpy as np
 from nupic.bindings.algorithms import SpatialPooler
 from nupic.bindings.experimental import ExtendedTemporalMemory
 
-from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
-  ApicalTiebreakTemporalMemory)
 from htmresearch.algorithms.column_pooler import ColumnPooler
 from htmresearch.support.logging_decorator import LoggingDecorator
 
