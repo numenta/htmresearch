@@ -73,7 +73,7 @@ def load_y(y_path):
 
 
 def write_to_csv(X, y, output_file, debug_file, debug_file_size, headers,
-                 max_label_reps):
+                 seq_length, max_label_reps):
   """
   Save features and targets as CSV.
   
@@ -83,13 +83,16 @@ def write_to_csv(X, y, output_file, debug_file, debug_file_size, headers,
   :param debug_file: (str) path to the debug CSV (subset of full CSV)
   :param debug_file_size: (int) number of rows of the debug CSV file.
   :param headers: (list of str) CSV header names. 
+  :param seq_length: (int) length of segments of data with the same label.
   :param max_label_reps: (dict)  How many times labels are allowed to repeat. 
     E.g: {1: 20000, 2: 20000}
     Set it to 'None' to keep all data and labels.
   :return num_rows: (list) number of rows of the output CSV file.  
   """
   t = 0
+  repeat_counter = Counter()
   label_counter = Counter()
+  previous_label = int(y[0][0])
   with open(output_file, 'w') as f:
     with open(debug_file, 'w') as sf:
       writer = csv.writer(f)
@@ -102,6 +105,12 @@ def write_to_csv(X, y, output_file, debug_file, debug_file_size, headers,
           row = list(x)
           row.append(label)
           row.append(t)
+          if label == previous_label:
+            repeat_counter[label] += 1
+            if repeat_counter[label] > seq_length:
+              continue
+          else:
+            repeat_counter[label] = 0
           if max_label_reps:
             if label in max_label_reps:
               label_counter[label] += 1
@@ -115,6 +124,7 @@ def write_to_csv(X, y, output_file, debug_file, debug_file_size, headers,
             if t < debug_file_size:
               debug_writer.writerow(row)
             t += 1
+          previous_label = label
 
   return t
 
@@ -125,6 +135,7 @@ def generate_data(X_train_signals_paths,
                   y_train_path,
                   y_test_path,
                   output_dir,
+                  seq_length,
                   max_label_reps):
   """
   Generate data. Example for M metrics and N timesteps:
@@ -140,6 +151,7 @@ def generate_data(X_train_signals_paths,
   :param y_train_path: (str) path to train data (targets)
   :param y_test_path: (str) path to test data (targets)
   :param output_dir: (str) path to output directory
+  :param seq_length: (int) length of segments of data with the same label.
   :param max_label_reps: (dict) how many times a label is allowed to repeat.
   """
   debug_file_size = 10
@@ -163,10 +175,10 @@ def generate_data(X_train_signals_paths,
   debug_files = [debug_train_csv, debug_test_csv]
 
   t_train = write_to_csv(X_train, y_train, train_csv, debug_train_csv,
-                         debug_file_size, headers, max_label_reps)
+                         debug_file_size, headers, seq_length, max_label_reps)
 
   t_test = write_to_csv(X_test, y_test, test_csv, debug_test_csv,
-                        debug_file_size, headers, max_label_reps)
+                        debug_file_size, headers, seq_length, max_label_reps)
 
   print 'Train set size: %s' % t_train
   print 'Test set size: %s' % t_test
@@ -194,13 +206,18 @@ if __name__ == '__main__':
                     type=str)
   parser.add_argument('--nb_samples', '-n',
                     dest='nb_samples',
-                    default=5000,
+                    default=1000,
                     type=int)
+  parser.add_argument('--seq_length', '-s',
+                      dest='seq_length',
+                      default=500,
+                      type=int)
   
   options = parser.parse_args()
   input_dir = options.input_dir
   output_dir = options.output_dir
   labels = json.loads(options.labels)
+  seq_length = options.seq_length
   nb_samples = options.nb_samples # number of samples per label
   
   # Note about UCI labels:  
@@ -254,4 +271,5 @@ if __name__ == '__main__':
                 y_train_path,
                 y_test_path,
                 output_dir,
+                seq_length,
                 MAX_LABEL_REPS)

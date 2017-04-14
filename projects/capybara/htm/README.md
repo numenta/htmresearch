@@ -1,10 +1,20 @@
 # HTM traces analysis
  
+This folder contains scripts to run an HTM network on several datasets and 
+generate HTM traces [1]. The HTM traces will be classified, either by the 
+supervised baseline or by the online clustering algorithms.  
+
+> [1] HTM traces: non-zero indices of SP and TM cells over time. At each time 
+step, a scalar value is fed to the HTM (SP + TM) and the non-zero indices of 
+`activeColumns`, `predictedActiveCells`, `predictedCells`, `activeCells` are 
+saved to disk (in a trace file). 
+ 
+ 
 ## Prerequisite
 To download and prepare the data, go to `capybara/datasets` and follow the README.
 
 ## Usage
-To run the HTM network on all datasets, run: `./run_all.sh`. 
+To run the HTM network on all datasets, run: `./run.sh`. 
 
 ## Additional information
 This section focuses on the property `timeIndexed` in the `config.yml` files 
