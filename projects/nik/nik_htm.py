@@ -27,7 +27,7 @@ import random
 
 from nupic.encoders.scalar import ScalarEncoder
 
-from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory as TM
+from nupic.bindings.experimental import ExtendedTemporalMemory as TM
 
 
 def numSegments(tm):
