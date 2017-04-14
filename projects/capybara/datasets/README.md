@@ -6,7 +6,12 @@ datasets.
 The `UCI Human Activity data` is the most interesting dataset for 
 someone looking to evaluate the classification of time series with HTM. 
 This is a good temporal dataset to start with and it was the most challenging 
-to classify. The data lives under `nupic.research/projects/capybara/datasets/uci_har`.
+to classify. The data lives under `nupic.research/projects/capybara/datasets/uci_har`. 
+
+Other datasets that are good to use for classification tasks:
+1. `ucr`: a collection of time series. Particularly the collection of time series called `synthetic_data`. [Source](http://www.cs.ucr.edu/~eamonn/time_series_data) 
+2. `SyntheticData`: synthetic sequences using a pool of sequence motifs.
+
 
 ## Usage
 To download and format the data, run: `./run.sh`. The UCR data is password 
