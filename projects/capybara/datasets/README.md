@@ -2,6 +2,12 @@
 This folder contains scripts to download, format and analyze the input 
 datasets. 
 
+## Before you start
+The `UCI Human Activity data` is the most interesting dataset for 
+someone looking to evaluate the classification of time series with HTM. 
+This is a good temporal dataset to start with and it was the most challenging 
+to classify. The data lives under `nupic.research/projects/capybara/datasets/uci_har`.
+
 ## Usage
 To download and format the data, run: `./run.sh`. The UCR data is password 
 protected, so you'll have to download it manually:

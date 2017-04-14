@@ -54,3 +54,12 @@ details.
 
 * `sandbox`: contains a bunch of scripts used for quick prototyping. These 
 scripts are not used in any of the main experiments and are not maintained. 
+
+
+## Results
+The slides for the final presentation wrapping up this project can be found in 
+`nupic.research/capybara/slides/Capybara\ final\ update.pdf`.
+> Note: The `UCI Human Activity data` is the most interesting dataset for 
+someone looking to evaluate the classification of time series with HTM. 
+This is a good temporal dataset to start with and it was the most challenging 
+to classify. The data lives under `nupic.research/projects/capybara/datasets/uci_har`.
