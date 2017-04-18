@@ -21,18 +21,18 @@
 import copy
 import os
 import shutil
+
 import numpy as np
 from matplotlib import pyplot as plt
 
-from htmresearch.frameworks.classification.utils.traces import loadTraces
-
-from clustering import PerfectClustering, OnlineClusteringV2
-from clustering_interface import Point
-from distances import euclidian_distance
-from utils import (clustering_stats, moving_average, get_file_name,
-                   convert_to_sdrs)
-from plot import (plot_accuracy, plot_cluster_assignments,
-                  plot_inter_sequence_distances)
+from htmresearch.frameworks.capybara.util import clustering_stats
+from htmresearch.frameworks.capybara.sdr import convert_to_sdrs, load_traces
+from htmresearch.frameworks.capybara.util import moving_average
+from htmresearch.frameworks.capybara.unsupervised.clustering import \
+  PerfectClustering, OnlineClustering, Point
+from htmresearch.frameworks.capybara.distance import euclidian_distance
+from htmresearch.frameworks.capybara.unsupervised.plot import \
+  plot_accuracy, plot_cluster_assignments, plot_inter_sequence_distances
 
 
 
@@ -43,9 +43,10 @@ def run(sdrs,
         moving_average_window,
         max_num_clusters,
         ClusteringClass,
+        merge_treshold,
         cluster_snapshot_indices):
   num_sdrs = len(sdrs)
-  model = ClusteringClass(distance_func)
+  model = ClusteringClass(distance_func, merge_treshold)
 
   clusters_snapshots = []
   closest_cluster_history = []
@@ -53,7 +54,11 @@ def run(sdrs,
   num_correct = 0
   clustering_accuracy = 0
   last_category = int(categories[0])
-  # Create a new empty cluster at the begining
+
+  unique_categories = sorted(np.unique(categories))
+  print 'Unique categories:', unique_categories
+
+  # Create a new empty cluster at the beginning
   new_cluster = model.create_cluster()
   for i in range(num_sdrs):
     sdr = sdrs[i]
@@ -94,29 +99,23 @@ def run(sdrs,
 
 def main():
   distance_functions = [euclidian_distance]
-  clustering_classes = [PerfectClustering, OnlineClusteringV2]
-  network_config = 'sp=True_tm=True_tp=False_SDRClassifier'
-  exp_names = [
-    'body_acc_x',
-    'binary_ampl=10.0_mean=0.0_noise=0.0',
-    'binary_ampl=10.0_mean=0.0_noise=1.0',
-    'sensortag_z'
-  ]
+  clustering_classes = [PerfectClustering, OnlineClustering]
 
   # Exp params
   moving_average_window = 2  # for all moving averages of the experiment
   ClusteringClass = clustering_classes[1]
   distance_func = distance_functions[0]
-  exp_name = exp_names[0]
-  start_idx = 1000
-  end_idx = 12000
+  merge_threshold = 40  # Cutoff distance to merge clusters. 'None' to ignore.
+  start_idx = 0
+  end_idx = -1
   input_width = 2048 * 32
   active_cells_weight = 0
   predicted_active_cells_weight = 10
-  max_num_clusters = 3
+  max_num_clusters = 6
   num_cluster_snapshots = 1
   show_plots = True
-  distance_matrix_ignore_noise = True  # whether to ignore label 0 (noise)
+  distance_matrix_ignore_noise = False  # ignore label 0 if used to label noise.
+  exp_name = 'body_acc_x_inertial_signals_train'
 
   # Clean an create output directory for the graphs
   plots_output_dir = 'plots/%s' % exp_name
@@ -125,9 +124,12 @@ def main():
   os.makedirs(plots_output_dir)
 
   # load traces
-  file_name = get_file_name(exp_name, network_config)
-  traces = loadTraces(file_name)
-  num_records = len(traces['sensorValue'])
+
+  file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           os.pardir, 'htm', 'traces',
+                           'trace_%s.csv' % exp_name)
+  traces = load_traces(file_path)
+  num_records = len(traces['scalarValue'])
 
   # start and end for the x axis of the graphs
   if start_idx < 0:
@@ -141,8 +143,8 @@ def main():
   xlim = [0, end - start]
 
   # input data
-  sensor_values = traces['sensorValue'][start:end]
-  categories = traces['actualCategory'][start:end]
+  sensor_values = traces['scalarValue'][start:end]
+  categories = traces['label'][start:end]
   active_cells = traces['tmActiveCells'][start:end]
   predicted_active_cells = traces['tmPredictedActiveCells'][start:end]
   raw_anomaly_scores = traces['rawAnomalyScore'][start:end]
@@ -175,26 +177,14 @@ def main():
                                   moving_average_window,
                                   max_num_clusters,
                                   ClusteringClass,
+                                  merge_threshold,
                                   cluster_snapshot_indices)
-  # cluster_categories = []
-  # for c in closest_cluster_history:
-  #   if c is not None:
-  #     cluster_categories.append(c.label_distribution()[0]['label'])
 
   # plot cluster assignments over time
   for i in range(num_cluster_snapshots):
     clusters = cluster_snapshots[i]
     snapshot_index = cluster_snapshot_indices[i]
     plot_cluster_assignments(plots_output_dir, clusters, snapshot_index)
-
-    # plot inter-cluster distance matrix
-    # plot_id = 'inter-cluster_t=%s' % snapshot_index
-    # plot_inter_sequence_distances(plots_output_dir,
-    #                               plot_id,
-    #                               distance_func,
-    #                               sdrs[:snapshot_index],
-    #                               cluster_categories[:snapshot_index],
-    #                               distance_matrix_ignore_noise)
 
     # plot inter-category distance matrix
     plot_id = 'inter-category_t=%s ' % snapshot_index

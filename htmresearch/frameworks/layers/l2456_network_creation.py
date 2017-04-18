@@ -182,32 +182,39 @@ def _createL2456Column(network, networkConfig, suffix=""):
 
   # Link up the sensors
   network.link(locationInputName, L6ColumnName, "UniformLink", "",
-               srcOutput="dataOut", destInput="externalBasalInput")
+               srcOutput="dataOut", destInput="basalInput")
   network.link(coarseSensorInputName, L6ColumnName, "UniformLink", "",
-               srcOutput="dataOut", destInput="feedForwardInput")
+               srcOutput="dataOut", destInput="activeColumns")
   network.link(sensorInputName, L4ColumnName, "UniformLink", "",
-               srcOutput="dataOut", destInput="feedForwardInput")
+               srcOutput="dataOut", destInput="activeColumns")
 
-  # Link L6 to L5, and L5's feedback to L6
-  network.link(L6ColumnName, L5ColumnName, "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="feedforwardInput")
-  network.link(L5ColumnName, L6ColumnName, "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="externalApicalInput")
-
-  # Link L6 to L4, L4 to L2, and L2's feedback to L4
+  # Link L6 to L4
   network.link(L6ColumnName, L4ColumnName, "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="externalBasalInput")
-  network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="feedforwardInput")
-  network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="externalApicalInput")
+               srcOutput="activeCells", destInput="basalInput")
 
-  # Link reset outputs to L6, L5, L4 and L2
-  network.link(sensorInputName, L6ColumnName, "UniformLink", "",
-               srcOutput="resetOut", destInput="resetIn")
+  # Link L4 to L2, L6 to L5
+  network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
+               srcOutput="activeCells", destInput="feedforwardInput")
+  network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
+               srcOutput="predictedActiveCells",
+               destInput="feedforwardGrowthCandidates")
+  network.link(L6ColumnName, L5ColumnName, "UniformLink", "",
+               srcOutput="activeCells", destInput="feedforwardInput")
+  network.link(L6ColumnName, L5ColumnName, "UniformLink", "",
+               srcOutput="predictedActiveCells",
+               destInput="feedforwardGrowthCandidates")
+
+  # Link L2 feedback to L4, L5 to L6
+  network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
+               srcOutput="feedForwardOutput", destInput="apicalInput",
+               propagationDelay=1)
+  network.link(L5ColumnName, L6ColumnName, "UniformLink", "",
+               srcOutput="feedForwardOutput", destInput="apicalInput",
+               propagationDelay=1)
+
+  # Link reset outputs to L5 and L2. For L6 and L4, an empty input is sufficient
+  # for a reset.
   network.link(sensorInputName, L5ColumnName, "UniformLink", "",
-               srcOutput="resetOut", destInput="resetIn")
-  network.link(sensorInputName, L4ColumnName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
   network.link(sensorInputName, L2ColumnName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")

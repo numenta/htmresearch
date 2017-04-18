@@ -1,0 +1,4 @@
+node_modules
+build
+py/htmresearchviz0/package_data
+!*.html

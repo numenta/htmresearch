@@ -247,7 +247,8 @@ def createL4L2Column(network, networkConfig, suffix=""):
 
   # Link L2 feedback to L4
   network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="apicalInput")
+               srcOutput="feedForwardOutput", destInput="apicalInput",
+               propagationDelay=1)
 
   # Link reset output to L2. For L4, an empty input is sufficient for a reset.
   network.link(sensorInputName, L2ColumnName, "UniformLink", "",
@@ -310,9 +311,10 @@ def createMultipleL4L2Columns(network, networkConfig):
       if i != j:
         suffixDest = "_" + str(j)
         network.link(
-            "L2Column" + suffixSrc, "L2Column" + suffixDest,
-            "UniformLink", "",
-            srcOutput="feedForwardOutput", destInput="lateralInput")
+          "L2Column" + suffixSrc, "L2Column" + suffixDest,
+          "UniformLink", "",
+          srcOutput="feedForwardOutput", destInput="lateralInput",
+          propagationDelay=1)
 
   enableProfiling(network)
 

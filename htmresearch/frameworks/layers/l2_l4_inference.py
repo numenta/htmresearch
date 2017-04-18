@@ -78,6 +78,8 @@ More examples are available in projects/layers/single_column.py and
 projects/layers/multi_column.py
 
 """
+# Disable variable/field name restrictions
+# pylint: disable=C0103
 
 import collections
 import os
@@ -129,6 +131,7 @@ class L4L2Experiment(object):
                inputSize=1024,
                numInputBits=20,
                externalInputSize=1024,
+               numExternalInputBits=20,
                L2Overrides=None,
                L4RegionType="py.ExtendedTMRegion",
                L4Overrides=None,
@@ -159,6 +162,9 @@ class L4L2Experiment(object):
 
     @param   externalInputSize (int)
              Size of the lateral input to L4 regions
+
+    @param   numExternalInputBits (int)
+             Number of ON bits in the external input patterns
 
     @param   L2Overrides (dict)
              Parameters to override in the L2 region
@@ -217,7 +223,7 @@ class L4L2Experiment(object):
       "sensorInputSize": inputSize,
       "L4RegionType": L4RegionType,
       "L4Params": self.getDefaultL4Params(L4RegionType, inputSize,
-                                          numInputBits),
+                                          numExternalInputBits),
       "L2Params": self.getDefaultL2Params(inputSize, numInputBits),
     }
 
@@ -588,6 +594,42 @@ class L4L2Experiment(object):
     """
     return [set(column._pooler.getActiveCells()) for column in self.L2Columns]
 
+
+  def getCurrentClassification(self, minOverlap=None):
+    """
+    A dict with a score for each object. Score goes from 0 to 1. A 1 means
+    every col (that has received input since the last reset) currently has
+    overlap >= minOverlap with the representation for that object.
+
+    :param minOverlap: min overlap to consider the object as recognized.
+                       Defaults to half of the SDR size
+    :return: dict of object names and their score
+    """
+    results = {}
+    l2sdr = self.getL2Representations()
+    sdrSize = self.config["L2Params"]["sdrSize"]
+    if minOverlap is None:
+      minOverlap = sdrSize / 2
+
+    for objectName, objectSdr in self.objectL2Representations.iteritems():
+      count = 0
+      score = 0.0
+      for i in xrange(self.numColumns):
+        # Ignore inactive column
+        if len(l2sdr[i]) == 0:
+          continue
+
+        count += 1
+        overlap = len(l2sdr[i] & objectSdr[i])
+        if overlap >= minOverlap:
+          score += 1
+
+      if count == 0:
+        results[objectName] = 0
+      else:
+        results[objectName] = score / count
+
+    return results
 
   def getDefaultL4Params(self, L4RegionType, inputSize, numInputBits):
     """

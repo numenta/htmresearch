@@ -6,8 +6,8 @@
 ## Download the data
 * Export environment variables (your synapse.org credentials):
 ```
-export SYN_EMAIL='<you_synapse.org_email>'
-export SYN_PWD='<you_synapse.org_password>'
+export SYN_EMAIL='<your_synapse.org_email>'
+export SYN_PWD='<your_synapse.org_password>'
 ```
 * Run `download_synapse_data.py`
 
