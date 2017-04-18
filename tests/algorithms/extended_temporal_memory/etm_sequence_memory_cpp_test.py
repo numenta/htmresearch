@@ -26,7 +26,7 @@ Run the sequence memory tests on the C++ ExtendedTemporalMemory.
 import unittest
 
 from htmresearch_core.experimental import ExtendedTemporalMemory
-from htmresearch.support.temporal_memory_tests.sequence_memory import SequenceMemoryTestBase
+from htmresearch.support.shared_tests.sequence_memory_test_base import SequenceMemoryTestBase
 
 
 class ExtendedTMCPP_SequenceMemoryTests(SequenceMemoryTestBase,
