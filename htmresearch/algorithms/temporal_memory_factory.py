@@ -29,7 +29,7 @@ from nupic.research.temporal_memory import TemporalMemory as TemporalMemoryPY
 from nupic.bindings.algorithms import TemporalMemory as TemporalMemoryCPP
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
-from nupic.bindings.experimental import ExtendedTemporalMemory
+from htmresearch_core.experimental import ExtendedTemporalMemory
 
 
 

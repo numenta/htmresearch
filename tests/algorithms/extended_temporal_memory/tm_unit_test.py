@@ -22,7 +22,7 @@
 
 import unittest
 
-from nupic.bindings.experimental import ExtendedTemporalMemory
+from htmresearch_core.experimental import ExtendedTemporalMemory
 
 
 class TemporalMemoryUnitTest(unittest.TestCase):

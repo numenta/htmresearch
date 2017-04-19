@@ -29,7 +29,7 @@ from nupic.encoders.random_distributed_scalar import RandomDistributedScalarEnco
 from nab.detectors.base import AnomalyDetector
 
 from nupic.bindings.algorithms import SpatialPooler
-from nupic.bindings.experimental import ExtendedTemporalMemory
+from htmresearch_core.experimental import ExtendedTemporalMemory
 
 
 class DistalTimestamps1CellPerColumnDetector(AnomalyDetector):
