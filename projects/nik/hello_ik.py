@@ -27,7 +27,7 @@ This program shows how to do HTM mapping.
 # Can't live without numpy
 import numpy
 
-from nupic.bindings.experimental import ExtendedTemporalMemory as TM
+from htmresearch_core.experimental import ExtendedTemporalMemory as TM
 
 def numSegments(tm):
   return tm.basalConnections.numSegments()

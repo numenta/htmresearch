@@ -25,7 +25,7 @@ import time
 import numpy
 
 from nupic.algorithms.KNNClassifier import KNNClassifier
-from nupic.bindings.experimental import ExtendedTemporalMemory
+from htmresearch_core.experimental import ExtendedTemporalMemory
 from nupic.bindings.math import GetNTAReal
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 

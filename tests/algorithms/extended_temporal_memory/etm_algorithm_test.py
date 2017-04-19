@@ -22,7 +22,7 @@
 import unittest
 import random
 
-from nupic.bindings.experimental import ExtendedTemporalMemory
+from htmresearch_core.experimental import ExtendedTemporalMemory
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 

@@ -25,7 +25,7 @@ Unit tests for Extended Temporal Memory.
 
 import unittest
 
-from nupic.bindings.experimental import ExtendedTemporalMemory
+from htmresearch_core.experimental import ExtendedTemporalMemory
 
 
 class ExtendedTemporalMemoryUnitTest(unittest.TestCase):
