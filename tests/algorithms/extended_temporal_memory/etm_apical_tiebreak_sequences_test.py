@@ -25,12 +25,7 @@ Run the apical tiebreak sequence tests on the ExtendedTemporalMemory.
 
 import unittest
 
-<<<<<<< HEAD:tests/algorithms/extended_temporal_memory/etm_apical_tiebreak_sequences_cpp_test.py
 from htmresearch_core.experimental import ExtendedTemporalMemory
-=======
-from nupic.bindings.experimental import ExtendedTemporalMemory
-
->>>>>>> upstream/master:tests/algorithms/extended_temporal_memory/etm_apical_tiebreak_sequences_test.py
 from htmresearch.support.shared_tests.apical_tiebreak_sequences_test_base import (
   ApicalTiebreakSequencesTestBase)
 
