@@ -23,6 +23,7 @@ import time
 
 import numpy
 
+from nupic.bindings.experimental import ExtendedTemporalMemory
 from nupic.bindings.math import GetNTAReal
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from nupic.research.TP import TP
@@ -30,8 +31,6 @@ from nupic.research.TP import TP
 from htmresearch.support.etm_monitor_mixin import (
   ExtendedTemporalMemoryMonitorMixin)
 
-# Uncomment the line below to use ExtendedTemporalMemory
-from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
 from htmresearch.support.temporal_pooler_monitor_mixin import TemporalPoolerMonitorMixin
 
 

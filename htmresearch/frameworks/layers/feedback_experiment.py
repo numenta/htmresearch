@@ -329,7 +329,7 @@ class FeedbackExperiment(object):
       "predictedSegmentDecrement": 0.00,
       "activationThreshold": 15,
       "maxNewSynapseCount": 20,
-      "implementation": "etm_cpp",
+      "implementation": "etm",
       "seed": self.seed
     }
 

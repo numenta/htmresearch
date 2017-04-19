@@ -259,8 +259,7 @@ class ExtendedTMRegion(PyRegion):
           accessMode="Read",
           dataType="Byte",
           count=0,
-          constraints=("enum: etm_py, etm_cpp, monitored_etm_py, "
-                       "monitored_etm_cpp"),
+          constraints=("enum: etm, monitored_etm"),
           defaultValue="py"),
       ),
       commands=dict(
@@ -296,7 +295,7 @@ class ExtendedTMRegion(PyRegion):
                checkInputs=True,
 
                # Region params
-               implementation="etm_cpp",
+               implementation="etm",
                learn=True,
                **kwargs):
 

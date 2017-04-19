@@ -19,10 +19,10 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from abc import ABCMeta, abstractmethod
 import unittest
 import random
 
+from nupic.bindings.experimental import ExtendedTemporalMemory
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 
@@ -30,8 +30,12 @@ from htmresearch.support.etm_monitor_mixin import (
   ExtendedTemporalMemoryMonitorMixin)
 
 
+class MonitoredTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
+                              ExtendedTemporalMemory):
+  pass
 
-class ExtendedTemporalMemoryAlgorithmTest(object):
+
+class ExtendedTemporalMemoryAlgorithmTest(unittest.TestCase):
   """
   Tests specific aspects of extended temporal memory:
 
@@ -85,7 +89,6 @@ class ExtendedTemporalMemoryAlgorithmTest(object):
 
   O8-O10: Ambiguous feedback should lead to ambiguous predictions.
   """
-  __metaclass__ = ABCMeta
   VERBOSITY = 1
   n = 2048
   w = range(38, 43)
@@ -1346,12 +1349,6 @@ class ExtendedTemporalMemoryAlgorithmTest(object):
   # Overrides
   # ==============================
 
-  @abstractmethod
-  def getTMClass(self):
-    """
-    Implement this method to specify the Temporal Memory class.
-    """
-
 
   def init(self, overrides=None):
     """
@@ -1361,8 +1358,6 @@ class ExtendedTemporalMemoryAlgorithmTest(object):
     """
     params = self._computeTMParams(overrides)
 
-    class MonitoredTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
-                                  self.getTMClass()): pass
     self.tm = MonitoredTemporalMemory(**params)
 
 

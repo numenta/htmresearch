@@ -26,12 +26,13 @@ Run the sequence memory tests on the C++ ExtendedTemporalMemory.
 import unittest
 
 from nupic.bindings.experimental import ExtendedTemporalMemory
+
 from htmresearch.support.shared_tests.sequence_memory_test_base import (
   SequenceMemoryTestBase)
 
 
-class ExtendedTMCPP_SequenceMemoryTests(SequenceMemoryTestBase,
-                                        unittest.TestCase):
+class ExtendedTM_SequenceMemoryTests(SequenceMemoryTestBase,
+                                     unittest.TestCase):
   """
   Run the sequence memory tests on the C++ ExtendedTemporalMemory.
   """

@@ -68,12 +68,9 @@ often, we highly recommend installing as follows:
 After this you can test by importing from htmresearch:
 
     python
-    from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
+    from nupic.bindings.apical_tiebreak_temporal_memory import ApicalTiebreakTemporalMemory
 
 If this works installation probably worked fine. BTW, the above class is a
 modified version of TemporalMemory that we are currently researching. It
 includes support for feedback connections (through apical dendrites) and
-sensorimotor inference (includes efference motor copy as another option input
-to the layer).
-
-
+external distal basal connections.
