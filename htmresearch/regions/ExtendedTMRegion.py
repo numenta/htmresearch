@@ -259,7 +259,7 @@ class ExtendedTMRegion(PyRegion):
           accessMode="Read",
           dataType="Byte",
           count=0,
-          constraints=("enum: etm, monitored_etm, monitored_etm"),
+          constraints=("enum: etm, monitored_etm"),
           defaultValue="py"),
       ),
       commands=dict(
