@@ -20,7 +20,7 @@
 # ----------------------------------------------------------------------
 
 """
-Run the apical tiebreak tests on the C++ ExtendedTemporalMemory.
+Run the apical tiebreak tests on the ExtendedTemporalMemory.
 """
 
 import unittest
@@ -30,8 +30,8 @@ from htmresearch.support.shared_tests.apical_tiebreak_test_base import (
   ApicalTiebreakTestBase)
 
 
-class ExtendedTMCPP_ApicalTiebreakTests(ApicalTiebreakTestBase,
-                                        unittest.TestCase):
+class ExtendedTM_ApicalTiebreakTests(ApicalTiebreakTestBase,
+                                     unittest.TestCase):
   """
   Run the apical tiebreak tests on the C++ ExtendedTemporalMemory.
   """

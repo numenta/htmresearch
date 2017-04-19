@@ -235,7 +235,7 @@ class L4L2ExperimentTest(unittest.TestCase):
         "predictedSegmentDecrement": 0.002,
         "activationThreshold": 3,
         "maxNewSynapseCount": 20,
-        "implementation": "etm_cpp",
+        "implementation": "etm",
     }
     l4ColumnCount = 50
     numCorticalColumns=2

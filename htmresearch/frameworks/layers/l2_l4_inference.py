@@ -662,7 +662,7 @@ class L4L2Experiment(object):
         "predictedSegmentDecrement": 0.0,
         "activationThreshold": activationThreshold,
         "maxNewSynapseCount": sampleSize,
-        "implementation": "etm_cpp",
+        "implementation": "etm",
         "seed": self.seed
       }
     elif L4RegionType == "py.ApicalTMRegion":

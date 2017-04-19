@@ -20,39 +20,33 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from abc import ABCMeta, abstractmethod
+import unittest
+
+from nupic.bindings.experimental import ExtendedTemporalMemory
 
 
-
-class TemporalMemoryUnitTest(object):
+class TemporalMemoryUnitTest(unittest.TestCase):
   """
   The TemporalMemory unit tests, ported to work with the ExtendedTemporalMemory.
   """
-  __metaclass__ = ABCMeta
-
-
-  @abstractmethod
-  def getTMClass(self):
-    """
-    Implement this method to specify the Temporal Memory class.
-    """
-
 
   def constructTM(self, **params):
-    constructor = self.getTMClass()
-    return constructor(**params)
+    return ExtendedTemporalMemory(**params)
 
 
   def testInitInvalidParams(self):
     # Invalid columnDimensions
     kwargs = {"columnDimensions": [], "cellsPerColumn": 32}
-    self.assertRaises((ValueError, RuntimeError,), self.getTMClass(), **kwargs)
+    self.assertRaises((ValueError, RuntimeError,),
+                      ExtendedTemporalMemory, **kwargs)
 
     # Invalid cellsPerColumn
     kwargs = {"columnDimensions": [2048], "cellsPerColumn": 0}
-    self.assertRaises((ValueError, RuntimeError,), self.getTMClass(), **kwargs)
+    self.assertRaises((ValueError, RuntimeError,),
+                      ExtendedTemporalMemory, **kwargs)
     kwargs = {"columnDimensions": [2048], "cellsPerColumn": -10}
-    self.assertRaises((ValueError, RuntimeError,), self.getTMClass(), **kwargs)
+    self.assertRaises((ValueError, RuntimeError,),
+                      ExtendedTemporalMemory, **kwargs)
 
 
   def testActivateCorrectlyPredictiveCells(self):

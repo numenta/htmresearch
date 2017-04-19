@@ -63,7 +63,7 @@ def getL4Params():
     "activationThreshold": 13,
     "maxNewSynapseCount": 20,
     "defaultOutputType": "predictedActiveCells",
-    "implementation": "etm_cpp",
+    "implementation": "etm",
     "seed": 41
   }
 

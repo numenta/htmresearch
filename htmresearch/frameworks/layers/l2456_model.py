@@ -549,7 +549,7 @@ class L2456Model(object):
         "predictedSegmentDecrement": 0.002,
         "activationThreshold": 13,
         "maxNewSynapseCount": 20,
-        "implementation": "etm_cpp",
+        "implementation": "etm",
       },
 
       "L2Params": {

@@ -20,22 +20,26 @@
 # ----------------------------------------------------------------------
 
 """
-Run the apical tiebreak sequence tests on the Python ExtendedTemporalMemory.
+Run the apical tiebreak sequence tests on the ExtendedTemporalMemory.
 """
 
 import unittest
 
-from htmresearch.algorithms.extended_temporal_memory import (
-    ExtendedTemporalMemory)
+<<<<<<< HEAD:tests/algorithms/extended_temporal_memory/etm_apical_tiebreak_sequences_cpp_test.py
+from htmresearch_core.experimental import ExtendedTemporalMemory
+=======
+from nupic.bindings.experimental import ExtendedTemporalMemory
+
+>>>>>>> upstream/master:tests/algorithms/extended_temporal_memory/etm_apical_tiebreak_sequences_test.py
 from htmresearch.support.shared_tests.apical_tiebreak_sequences_test_base import (
-    ApicalTiebreakSequencesTestBase)
+  ApicalTiebreakSequencesTestBase)
 
 
 
-class ExtendedTMPY_ApicalTiebreakSequencesTests(ApicalTiebreakSequencesTestBase,
-                                     unittest.TestCase):
+class ExtendedTM_ApicalTiebreakSequencesTests(ApicalTiebreakSequencesTestBase,
+                                              unittest.TestCase):
   """
-  Run the apical tiebreak sequence tests on the Python ExtendedTemporalMemory.
+  Run the apical tiebreak sequence tests on the ExtendedTemporalMemory.
   """
 
   def constructTM(self, columnCount, apicalInputSize, cellsPerColumn,

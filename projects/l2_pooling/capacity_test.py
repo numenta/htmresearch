@@ -97,7 +97,7 @@ def getL4Params():
     "predictedSegmentDecrement": 0.002,
     "activationThreshold": 13,
     "maxNewSynapseCount": 25,
-    "implementation": "etm_cpp",
+    "implementation": "etm",
   }
 
 
