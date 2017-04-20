@@ -461,7 +461,7 @@ def logCellActivity_varyNumColumns(noiseSigma, noiseEverywhere):
     json.dump(d, fout)
 
   print "Wrote to", filename
-  print "Visualize this file at: http://numenta.github.io/nupic.research/visualizations/grid-of-scatterplots/L2-columns-with-noise.html"
+  print "Visualize this file at: http://numenta.github.io/htmresearch/visualizations/grid-of-scatterplots/L2-columns-with-noise.html"
 
 
 
