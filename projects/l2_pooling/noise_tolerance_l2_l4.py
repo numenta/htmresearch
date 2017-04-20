@@ -252,7 +252,7 @@ def logCellActivity_noisyFeature_varyNumColumns(name="cellActivity"):
     json.dump(d, fout)
 
   print "Wrote to", filename
-  print "Visualize this file at: http://numenta.github.io/nupic.research/visualizations/grid-of-scatterplots/L2-columns-with-noise.html"
+  print "Visualize this file at: http://numenta.github.io/htmresearch/visualizations/grid-of-scatterplots/L2-columns-with-noise.html"
 
 
 def logCellActivity_noisyLocation_varyNumColumns(name, objects):
@@ -291,7 +291,7 @@ def logCellActivity_noisyLocation_varyNumColumns(name, objects):
     json.dump(d, fout)
 
   print "Wrote to", filename
-  print "Visualize this file at: http://numenta.github.io/nupic.research/visualizations/grid-of-scatterplots/L2-columns-with-noise.html"
+  print "Visualize this file at: http://numenta.github.io/htmresearch/visualizations/grid-of-scatterplots/L2-columns-with-noise.html"
 
 
 
