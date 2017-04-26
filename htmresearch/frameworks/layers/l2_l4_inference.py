@@ -85,7 +85,8 @@ from tabulate import tabulate
 import numpy as np
 
 from nupic.bindings.algorithms import SpatialPooler
-from nupic.bindings.experimental import ExtendedTemporalMemory
+
+from htmresearch_core.experimental import ExtendedTemporalMemory
 
 from htmresearch.algorithms.column_pooler import ColumnPooler
 from htmresearch.support.logging_decorator import LoggingDecorator
@@ -130,6 +131,7 @@ class L4L2Experiment(object):
                inputSize=1024,
                numInputBits=20,
                externalInputSize=1024,
+               numExternalInputBits=20,
                L2Overrides=None,
                L4Overrides=None,
                numLearningPoints=3,
@@ -159,6 +161,9 @@ class L4L2Experiment(object):
 
     @param   externalInputSize (int)
              Size of the lateral input to L4 regions
+
+    @param   numExternalInputBits (int)
+             Number of ON bits in the external input patterns
 
     @param   L2Overrides (dict)
              Parameters to override in the L2 region
@@ -232,20 +237,20 @@ class L4L2Experiment(object):
 
 
     # L4
-    L4Params = self.getDefaultL4Params(inputSize, externalInputSize,
-                                       numInputBits)
+    self.L4Params = self.getDefaultL4Params(inputSize, externalInputSize,
+                                            numExternalInputBits)
     if L4Overrides is not None:
-      L4Params.update(L4Overrides)
-    self.L4Columns = [ExtendedTemporalMemory(**L4Params)
+      self.L4Params.update(L4Overrides)
+    self.L4Columns = [ExtendedTemporalMemory(**self.L4Params)
                       for _ in xrange(numCorticalColumns)]
 
 
     # L2
-    L2Params = self.getDefaultL2Params(numCorticalColumns, inputSize,
-                                       numInputBits)
+    self.L2Params = self.getDefaultL2Params(numCorticalColumns, inputSize,
+                                            numInputBits)
     if L2Overrides is not None:
-      L2Params.update(L2Overrides)
-    self.L2Columns = [ColumnPooler(**L2Params)
+      self.L2Params.update(L2Overrides)
+    self.L2Columns = [ColumnPooler(**self.L2Params)
                       for _ in xrange(numCorticalColumns)]
 
     # will be populated during training
@@ -579,7 +584,7 @@ class L4L2Experiment(object):
     """
     results = {}
     l2sdr = self.getL2Representations()
-    sdrSize = self.config["L2Params"]["sdrSize"]
+    sdrSize = self.L2Params["sdrSize"]
     if minOverlap is None:
       minOverlap = sdrSize / 2
 

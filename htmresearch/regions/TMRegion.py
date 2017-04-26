@@ -243,7 +243,7 @@ class TMRegion(PyRegion):
                 dataType="Byte",
                 count=0,
                 constraints=("enum: tm_py, tm_cpp, monitored_tm_py, monitored_tm_cpp, "
-                             "etm_py, etm_cpp, monitored_etm_py, monitored_etm_cpp")),
+                             "etm, monitored_etm")),
             formInternalBasalConnections=dict(
                 description="Flag to determine whether to form connections "
                             "with internal cells within this temporal memory",
@@ -304,7 +304,7 @@ class TMRegion(PyRegion):
 
                # Region params
                defaultOutputType = "active",
-               implementation="etm_cpp",
+               implementation="etm",
                learningMode=True,
                inferenceMode=True,
                **kwargs):

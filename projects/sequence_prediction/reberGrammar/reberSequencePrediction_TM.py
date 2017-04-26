@@ -28,10 +28,8 @@ from matplotlib import rcParams
 plt.ion()
 rcParams.update({'figure.autolayout': True})
 
+from htmresearch_core.experimental import ExtendedTemporalMemory
 from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-
-from htmresearch.algorithms.extended_temporal_memory import (
-     ExtendedTemporalMemory)
 
 from htmresearch.support.etm_monitor_mixin import (
      ExtendedTemporalMemoryMonitorMixin)

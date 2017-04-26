@@ -28,7 +28,7 @@ import time
 import yaml
 import numpy as np
 
-from htm_network import BaseNetwork
+from htmresearch.frameworks.capybara.htm.network import BaseNetwork
 
 logging.basicConfig()
 _LOGGER = logging.getLogger('NetworkRunner')
@@ -223,8 +223,11 @@ def run(network, inputDir, inputFileName, inputMetricName, outputDir,
     os.makedirs(outputDir)
 
   # Remove trace file if it already exists
-  traceFileName = 'trace_%s_%s' % (inputMetricName, inputFileName)
+  traceFileName = 'trace'
+  if inputMetricName: traceFileName = '%s_%s' % (traceFileName, inputMetricName)
+  traceFileName = '%s_%s' % (traceFileName, inputFileName)
   traceFilePath = os.path.join(outputDir, traceFileName)
+  print traceFilePath
   if os.path.exists(traceFilePath):
     os.remove(traceFilePath)
 
@@ -252,7 +255,7 @@ def main():
   parser.add_argument('--config', '-c',
                       dest='config',
                       type=str,
-                      default='configs/body_acc_x.yml',
+                      default='configs/body_acc_x.sequences.yml',
                       help='Name of YML config file.')
   options = parser.parse_args()
   configFile = options.config

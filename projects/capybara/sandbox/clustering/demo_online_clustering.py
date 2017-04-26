@@ -1,14 +1,14 @@
-import scipy
 import random
 import time
-import numpy as np
-from matplotlib import pyplot as plt
 
+import numpy as np
+import scipy
+from htmresearch.frameworks.clustering.distances import kernel_dist
 from htmresearch.frameworks.clustering.online_agglomerative_clustering \
   import OnlineAgglomerativeClustering
+from matplotlib import pyplot as plt
 
-from htmresearch.frameworks.clustering.distances import kernel_dist
-from htmresearch.frameworks.clustering.kernels \
+from htmresearch.frameworks.capybara.unsupervised.kernels \
   import normalized_gaussian_kernel
 
 

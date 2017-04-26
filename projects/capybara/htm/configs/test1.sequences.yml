@@ -3,7 +3,7 @@ inputs:
   trainFileName: 'Test1_TRAIN'
   testFileName: 'Test1_TEST'
   timeIndexed: False
-  metricName: None
+  metricName: null
   metricMin: 0.0
   metricMax: 1.0
 

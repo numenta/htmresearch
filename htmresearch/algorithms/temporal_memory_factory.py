@@ -23,16 +23,13 @@
 
 import inspect
 
-from htmresearch.algorithms.extended_temporal_memory import (
-  ExtendedTemporalMemory as ExtendedTemporalMemoryPY)
 from htmresearch.support.etm_monitor_mixin import (
   ExtendedTemporalMemoryMonitorMixin)
 from nupic.research.temporal_memory import TemporalMemory as TemporalMemoryPY
 from nupic.bindings.algorithms import TemporalMemory as TemporalMemoryCPP
 from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
-from nupic.bindings.experimental import (
-  ExtendedTemporalMemory as ExtendedTemporalMemoryCPP)
+from htmresearch_core.experimental import ExtendedTemporalMemory
 
 
 
@@ -44,13 +41,8 @@ class MonitoredTemporalMemoryCPP(TemporalMemoryMonitorMixin, TemporalMemoryCPP):
   pass
 
 
-class MonitoredExtendedTemporalMemoryPY(ExtendedTemporalMemoryMonitorMixin,
-                                        ExtendedTemporalMemoryPY):
-  pass
-
-
-class MonitoredExtendedTemporalMemoryCPP(ExtendedTemporalMemoryMonitorMixin,
-                                         ExtendedTemporalMemoryCPP):
+class MonitoredExtendedTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
+                                      ExtendedTemporalMemory):
   pass
 
 
@@ -60,10 +52,8 @@ class TemporalMemoryTypes(object):
   identifier to constructor.  See createModel() for actual factory method
   implementation.
   """
-  etm_py = ExtendedTemporalMemoryPY
-  etm_cpp = ExtendedTemporalMemoryCPP
-  monitored_etm_py = MonitoredExtendedTemporalMemoryPY
-  monitored_etm_cpp = MonitoredExtendedTemporalMemoryCPP
+  etm = ExtendedTemporalMemory
+  monitored_etm = MonitoredExtendedTemporalMemory
   tm_py = TemporalMemoryPY
   tm_cpp = TemporalMemoryCPP
   monitored_tm_py = MonitoredTemporalMemoryPY
