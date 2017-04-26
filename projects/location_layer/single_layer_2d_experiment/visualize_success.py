@@ -100,6 +100,6 @@ if __name__ == "__main__":
       })
 
   print "Visualize these CSV files at:"
-  print "http://numenta.github.io/nupic.research/visualizations/location-layer/single-layer-2d.html"
+  print "http://numenta.github.io/htmresearch/visualizations/location-layer/single-layer-2d.html"
   print ("or in a Jupyter notebook with the htmresearchviz0 package and the "
          "printSingleLayer2DExperiment function.")
