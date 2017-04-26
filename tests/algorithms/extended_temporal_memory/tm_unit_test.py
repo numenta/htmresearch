@@ -22,8 +22,6 @@
 
 import unittest
 
-import numpy as np
-
 from htmresearch_core.experimental import ExtendedTemporalMemory
 
 import numpy as np
