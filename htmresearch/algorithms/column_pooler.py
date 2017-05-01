@@ -263,6 +263,12 @@ class ColumnPooler(object):
     feedforwardSupportedCells = numpy.where(
       overlaps >= self.minThresholdProximal)[0]
 
+
+    #print len(feedforwardSupportedCells),
+
+
+    #feedforwardSupportedCells = numpy.concatenate((feedforwardSupportedCells, prevActiveCells))
+
     # Calculate the number of active segments on each cell
     numActiveSegmentsByCell = numpy.zeros(self.cellCount, dtype="int")
     overlaps = self.internalDistalPermanences.rightVecSumAtNZGteThresholdSparse(
@@ -287,6 +293,20 @@ class ColumnPooler(object):
         chosenCells, self._chooseCells(remaining,
                                        minNumActiveCells - len(chosenCells),
                                        numActiveSegmentsByCell))
+
+    #chosenCells = numpy.random.permutation(prevActiveCells)[:self.sdrSize*.8]
+    #nbmore = self.sdrSize - len(chosenCells)
+    #chosenCells = numpy.concatenate((chosenCells, numpy.random.permutation(numpy.setdiff1d(feedforwardSupportedCells, chosenCells))[:nbmore]))
+
+
+    if len(prevActiveCells) > 0:
+        prevActiveSegs = numActiveSegmentsByCell[prevActiveCells]
+        chosenCells = prevActiveCells[numpy.argsort(-prevActiveSegs)][:int(self.sdrSize/2)]
+        #raise("OK")
+        remainingCells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
+        remainingActiveSegs = numActiveSegmentsByCell[remainingCells]
+        chosenCells = numpy.concatenate(( chosenCells, remainingCells[numpy.argsort(-remainingActiveSegs)][:self.sdrSize-chosenCells.size] ))
+        #raise("OK")
 
     chosenCells.sort()
     self.activeCells = numpy.asarray(chosenCells, dtype="uint32")
