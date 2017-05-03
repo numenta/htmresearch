@@ -25,7 +25,7 @@ Faulty Spatial Pooler implementation in Python.
 import itertools
 import numpy
 from collections import defaultdict
-from nupic.research.spatial_pooler import SpatialPooler
+from nupic.algorithms.spatial_pooler import SpatialPooler
 import nupic.math.topology as topology
 from nupic.bindings.math import GetNTAReal
 

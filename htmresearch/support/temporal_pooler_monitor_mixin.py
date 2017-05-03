@@ -27,10 +27,10 @@ from collections import defaultdict
 
 import numpy
 
-from nupic.research.monitor_mixin.metric import Metric
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-from nupic.research.monitor_mixin.plot import Plot
-from nupic.research.monitor_mixin.trace import (
+from nupic.algorithms.monitor_mixin.metric import Metric
+from nupic.algorithms.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from nupic.algorithms.monitor_mixin.plot import Plot
+from nupic.algorithms.monitor_mixin.trace import (
   IndicesTrace, StringsTrace, BoolsTrace, MetricsTrace)
 
 

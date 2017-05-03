@@ -31,7 +31,7 @@ import pprint
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from nupic.research.spatial_pooler import SpatialPooler as PYSpatialPooler
+from nupic.algorithms.spatial_pooler import SpatialPooler as PYSpatialPooler
 
 from htmresearch.support.spatial_pooler_monitor_mixin import (
   SpatialPoolerMonitorMixin)
