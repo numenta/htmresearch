@@ -29,10 +29,10 @@ from nupic.bindings.math import GetNTAReal
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
+from nupic.algorithms.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from nupic.algorithms.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
-from nupic.research.temporal_memory import TemporalMemory
+from nupic.algorithms.temporal_memory import TemporalMemory
 from sensorimotor.spatial_temporal_pooler import (
   SpatialTemporalPooler as TemporalPooler)
 from sensorimotor.temporal_pooler_monitor_mixin import (
@@ -123,16 +123,16 @@ class SpatialTemporalPoolerTest(unittest.TestCase):
       [ 0,  1,  2,  3,  4,  5,  6,  7, 8,  9, 10, 11, 12, 13, 14, 15]
     ]
     labels = ["A", "B", "AB"]
-  
+
     sequences = [self.sequenceMachine.generateFromNumbers(s) for s in sequences]
-  
+
     for _ in xrange(10):
       self._feedSequences(sequences, sequenceLabels=labels)
 
     # TO DO: assert C columns contain some A and some B columns, and assert
     # the split is about equal between A and B
 
-  
+
   def tearDown(self):
     self._printInfo()
     self._showActivityPlots()

@@ -24,7 +24,7 @@ import numpy
 from nupic.bindings.math import (SM32 as SparseMatrix,
                                  SM_01_32_32 as SparseBinaryMatrix)
 
-from nupic.research.spatial_pooler import SpatialPooler
+from nupic.algorithms.spatial_pooler import SpatialPooler
 
 realDType = numpy.float32
 uintType = "uint32"
@@ -133,8 +133,8 @@ class TemporalPooler(SpatialPooler):
                     usePoolingRule,
                     poolingLife,
                     poolingThreshUnpredicted,
-                    seed,      
-                    initConnectedPct,              
+                    seed,
+                    initConnectedPct,
                     spVerbosity,
                     wrapAround)
 
@@ -172,7 +172,7 @@ class TemporalPooler(SpatialPooler):
 
     assert(numColumns > 0)
     assert(numInputs > 0)
-    assert (numActiveColumnsPerInhArea > 0 or 
+    assert (numActiveColumnsPerInhArea > 0 or
            (localAreaDensity > 0 and localAreaDensity <= 0.5))
 
     # save arguments
@@ -215,7 +215,7 @@ class TemporalPooler(SpatialPooler):
 
     # initialize the random number generators
     self._seed(seed)
-    
+
     # A cell will enter pooling state if it receives enough predicted inputs
     # pooling cells have priority during competition
     self._poolingActivation = numpy.zeros((self._numColumns), dtype="int32")
@@ -230,21 +230,21 @@ class TemporalPooler(SpatialPooler):
 
     self._overlapDutyCycles = numpy.zeros(numColumns, dtype=realDType)
     self._activeDutyCycles = numpy.zeros(numColumns, dtype=realDType)
-    self._minOverlapDutyCycles = numpy.zeros(numColumns, 
+    self._minOverlapDutyCycles = numpy.zeros(numColumns,
                                              dtype=realDType)
     self._minActiveDutyCycles = numpy.zeros(numColumns,
                                             dtype=realDType)
     self._boostFactors = numpy.ones(numColumns, dtype=realDType)
 
 
-    # The inhibition radius determines the size of a column's local 
+    # The inhibition radius determines the size of a column's local
     # neighborhood. A cortical column must overcome the overlap
     # score of columns in its neighborhood in order to become active. This
     # radius is updated every _updatePeriod iterations. It grows and shrinks
     # with the average number of connected synapses per column.
     self._inhibitionRadius = 0
     self._updateInhibitionRadius()
-    
+
     if self._spVerbosity > 0:
       self.printParameters()
 
@@ -264,7 +264,7 @@ class TemporalPooler(SpatialPooler):
 
     # The SP should be setup so that stimulusThreshold is reasonably high,
     # similar to a TP's activation threshold. The pct of connected cells may
-    # need to be low to avoid false positives given the monosynaptic rule 
+    # need to be low to avoid false positives given the monosynaptic rule
     initConnectedPct = self._initConnectedPct
 
     # Store the set of all inputs that are within each column's potential pool.
@@ -282,28 +282,28 @@ class TemporalPooler(SpatialPooler):
     self._potentialPools = SparseBinaryMatrix(numInputs)
     self._potentialPools.resize(numColumns, numInputs)
 
-    # Initialize the permanences for each column. Similar to the 
+    # Initialize the permanences for each column. Similar to the
     # 'self._potentialPools', the permanences are stored in a matrix whose rows
     # represent the cortical columns, and whose columns represent the input
-    # bits. if self._permanences[i][j] = 0.2, then the synapse connecting 
-    # cortical column 'i' to input bit 'j'  has a permanence of 0.2. Here we 
-    # also use the SparseMatrix class to reduce the memory footprint and 
-    # computation time of algorithms that require iterating over the data 
-    # structure. This permanence matrix is only allowed to have non-zero 
+    # bits. if self._permanences[i][j] = 0.2, then the synapse connecting
+    # cortical column 'i' to input bit 'j'  has a permanence of 0.2. Here we
+    # also use the SparseMatrix class to reduce the memory footprint and
+    # computation time of algorithms that require iterating over the data
+    # structure. This permanence matrix is only allowed to have non-zero
     # elements where the potential pool is non-zero.
     self._permanences = SparseMatrix(numColumns, numInputs)
 
-    # 'self._connectedSynapses' is a similar matrix to 'self._permanences' 
+    # 'self._connectedSynapses' is a similar matrix to 'self._permanences'
     # (rows represent cortical columns, columns represent input bits) whose
-    # entries represent whether the cortial column is connected to the input 
-    # bit, i.e. its permanence value is greater than 'synPermConnected'. While 
-    # this information is readily available from the 'self._permanence' matrix, 
+    # entries represent whether the cortial column is connected to the input
+    # bit, i.e. its permanence value is greater than 'synPermConnected'. While
+    # this information is readily available from the 'self._permanence' matrix,
     # it is stored separately for efficiency purposes.
     self._connectedSynapses = SparseBinaryMatrix(numInputs)
     self._connectedSynapses.resize(numColumns, numInputs)
 
     # Stores the number of connected synapses for each column. This is simply
-    # a sum of each row of 'self._connectedSynapses'. again, while this 
+    # a sum of each row of 'self._connectedSynapses'. again, while this
     # information is readily available from 'self._connectedSynapses', it is
     # stored separately for efficiency purposes.
     self._connectedCounts = numpy.zeros(numColumns, dtype=realDType)
@@ -370,7 +370,7 @@ class TemporalPooler(SpatialPooler):
     self._poolingColumns = []
     self._overlapDutyCycles = numpy.zeros(self._numColumns, dtype=realDType)
     self._activeDutyCycles = numpy.zeros(self._numColumns, dtype=realDType)
-    self._minOverlapDutyCycles = numpy.zeros(self._numColumns, 
+    self._minOverlapDutyCycles = numpy.zeros(self._numColumns,
                                              dtype=realDType)
     self._minActiveDutyCycles = numpy.zeros(self._numColumns,
                                             dtype=realDType)
@@ -468,24 +468,24 @@ class TemporalPooler(SpatialPooler):
       boostedOverlaps = self._boostFactors * overlaps
       if self._spVerbosity > 4:
         print "Overlaps after boosting:"
-        print "   ", boostedOverlaps      
+        print "   ", boostedOverlaps
 
     else:
       boostedOverlaps = overlaps
-    
+
 
     # Apply inhibition to determine the winning columns
-    activeColumns = self._inhibitColumns(boostedOverlaps)    
-      
+    activeColumns = self._inhibitColumns(boostedOverlaps)
+
     if learn:
       self._adaptSynapses(inputVector, activeColumns, predictedCells)
       self._updateDutyCycles(overlaps, activeColumns)
-      self._bumpUpWeakColumns() 
+      self._bumpUpWeakColumns()
       self._updateBoostFactors()
       if self._isUpdateRound():
         self._updateInhibitionRadius()
         self._updateMinDutyCycles()
-    
+
     activeArray.fill(0)
     if activeColumns.size > 0:
       activeArray[activeColumns] = 1
@@ -493,7 +493,7 @@ class TemporalPooler(SpatialPooler):
     # update pooling state of cells
     activeColumnIndices = numpy.where(overlapsPredicted[activeColumns] > 0)[0]
     activeColWithPredictedInput = activeColumns[activeColumnIndices]
-    
+
     numUnPredictedInput = float(len(burstingColumns.nonzero()[0]))
     numPredictedInput = float(len(predictedCells))
     fracUnPredicted = numUnPredictedInput / (numUnPredictedInput +
@@ -546,7 +546,7 @@ class TemporalPooler(SpatialPooler):
     The overlap of a TP cell that was previously active and has one or more
     active synapse due to predicted active input is set to (_numInputs + 1).
     This guarantees that such a cell wins the inhibition competition.
-    
+
     TODO: check with Jeff, what happens in biology if a cell was not previously
     active but receives metabotropic input?  Does it turn on, or does the met.
     input just extend the activity of already active cells? Does it matter
@@ -574,7 +574,7 @@ class TemporalPooler(SpatialPooler):
       return overlaps
 
     if learn:
-      # During learning, overlap is calculated based on potential synapses. 
+      # During learning, overlap is calculated based on potential synapses.
       self._potentialPools.rightVecSumAtNZ_fast(predictedActiveCells, overlaps)
     else:
       # At inference stage, overlap is calculated based on connected synapses.
@@ -584,7 +584,7 @@ class TemporalPooler(SpatialPooler):
 
     # Only consider columns that are in pooling state
     mask = numpy.zeros(self._numColumns).astype(realDType)
-    mask[poolingColumns] = 1    
+    mask[poolingColumns] = 1
     overlaps = overlaps * mask
     # Pooling TP cells that receive predicted input
     # will have their overlap boosted by a large factor so that they are likely
@@ -610,7 +610,7 @@ class TemporalPooler(SpatialPooler):
     Returns the contribution to overlap due to bursting columns. If any
     column is bursting, its overlap score is set to stimulusThreshold. This
     means it will be guaranteed to win as long as no other column is
-    metabotropic or has input > stimulusThreshold. 
+    metabotropic or has input > stimulusThreshold.
 
     Parameters:
     ----------------------------
@@ -637,7 +637,7 @@ class TemporalPooler(SpatialPooler):
     ----------------------------
     inputVector:    a numpy array whose ON bits represent the active cells from
                     temporal memory
-    activeColumns:  an array containing the indices of the columns that 
+    activeColumns:  an array containing the indices of the columns that
                     survived the inhibition step
     predictedActiveCells: a numpy array with numInputs elements. A 1 indicates
                           that this cell switched from predicted state in
@@ -671,7 +671,7 @@ class TemporalPooler(SpatialPooler):
       maskPotential = numpy.where(self._potentialPools.getRow(i) > 0)[0]
       perm[maskPotential] += permChanges[maskPotential]
       self._updatePermanencesForColumn(perm, i, raisePerm=False)
-   
+
 
 
   def printParameters(self):
@@ -697,7 +697,7 @@ class TemporalPooler(SpatialPooler):
     print "version                    = ", self._version
 
 
-  def extractInputForTP(self, tm):  
+  def extractInputForTP(self, tm):
     """
     Extract inputs for TP from the state of temporal memory
     three information are extracted
@@ -710,8 +710,8 @@ class TemporalPooler(SpatialPooler):
     burstingColumns = tm.activeState["t"].sum(axis=1)
     burstingColumns[ burstingColumns < tm.cellsPerColumn ] = 0
     burstingColumns[ burstingColumns == tm.cellsPerColumn ] = 1
-    # print "Bursting column indices=",burstingColumns.nonzero()[0]  
-    
+    # print "Bursting column indices=",burstingColumns.nonzero()[0]
+
     # correctly predicted cells in layer 4
     correctlyPredictedCells = numpy.zeros(self._inputDimensions).astype(realDType)
     idx = (tm.predictedState["t-1"] + tm.activeState["t"]) == 2
@@ -722,5 +722,5 @@ class TemporalPooler(SpatialPooler):
     # all currently active cells in layer 4
     spInputVector = tm.learnState["t"].reshape(self._inputDimensions)
     # spInputVector = tm.activeState["t"].reshape(self._inputDimensions)
-    
-    return (correctlyPredictedCells, spInputVector, burstingColumns)  
+
+    return (correctlyPredictedCells, spInputVector, burstingColumns)

@@ -25,9 +25,9 @@ import inspect
 
 from htmresearch.support.etm_monitor_mixin import (
   ExtendedTemporalMemoryMonitorMixin)
-from nupic.research.temporal_memory import TemporalMemory as TemporalMemoryPY
+from nupic.algorithms.temporal_memory import TemporalMemory as TemporalMemoryPY
 from nupic.bindings.algorithms import TemporalMemory as TemporalMemoryCPP
-from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
+from nupic.algorithms.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 from htmresearch_core.experimental import ExtendedTemporalMemory
 

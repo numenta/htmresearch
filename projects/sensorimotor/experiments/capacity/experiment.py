@@ -48,7 +48,7 @@ import yaml
 from optparse import OptionParser
 
 from pylab import rcParams
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from nupic.algorithms.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
 from sensorimotor.exhaustive_one_d_agent import ExhaustiveOneDAgent
 from sensorimotor.one_d_world import OneDWorld

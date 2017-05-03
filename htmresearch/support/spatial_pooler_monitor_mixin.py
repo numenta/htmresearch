@@ -25,9 +25,9 @@ Spatial Pooler mixin that enables detailed monitoring of history.
 import copy
 from collections import defaultdict
 import numpy
-from nupic.research.monitor_mixin.metric import Metric
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-from nupic.research.monitor_mixin.trace import (
+from nupic.algorithms.monitor_mixin.metric import Metric
+from nupic.algorithms.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from nupic.algorithms.monitor_mixin.trace import (
   IndicesTrace, CountsTrace, BoolsTrace, MetricsTrace)
 from nupic.bindings.math import GetNTAReal
 
@@ -103,7 +103,7 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
 
   def mmGetMetricEntropy(self):
     """
-    @return (Metric) entropy 
+    @return (Metric) entropy
     """
     dutyCycles = self.mmGetDataDutyCycles()
     MIN_ACTIVATION_PROB = 0.000001
@@ -113,7 +113,7 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
 
     entropy = -numpy.dot(dutyCycles, numpy.log2(dutyCycles))
     return Metric(self, "entropy", entropy)
-  
+
   # ==============================
   # Overrides
   # ==============================
@@ -129,12 +129,12 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
     connectedCounts = numpy.zeros(self._numColumns, dtype=uintType)
     self.getConnectedCounts(connectedCounts)
     numConnections = numpy.sum(connectedCounts)
-        
+
 
     self._mmTraces["activeInputs"].data.append(numpy.where(inputVector)[0])
     self._mmTraces["activeColumns"].data.append(activeColumns)
     self._mmTraces["numConnections"].data.append(numConnections)
-    self._mmTraces["learn"].data.append(learn)    
+    self._mmTraces["learn"].data.append(learn)
 
 
   def mmGetDefaultTraces(self, verbosity=1):
@@ -164,7 +164,7 @@ class SpatialPoolerMonitorMixin(MonitorMixinBase):
     self._mmTraces["activeColumns"] = IndicesTrace(self, "active columns")
     self._mmTraces["activeInputs"] = IndicesTrace(self, "active inputs")
     self._mmTraces["numConnections"] = CountsTrace(self, "connections")
-    self._mmTraces["learn"] = BoolsTrace(self, "learn")    
+    self._mmTraces["learn"] = BoolsTrace(self, "learn")
 
     initialPermanence = numpy.zeros((self._numColumns, self._numInputs),
                                     dtype=realDType)

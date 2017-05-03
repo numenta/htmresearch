@@ -25,8 +25,8 @@ import numpy
 
 from htmresearch_core.experimental import ExtendedTemporalMemory
 from nupic.bindings.math import GetNTAReal
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-from nupic.research.TP import TP
+from nupic.algorithms.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from nupic.algorithms.TP import TP
 
 from htmresearch.support.etm_monitor_mixin import (
   ExtendedTemporalMemoryMonitorMixin)

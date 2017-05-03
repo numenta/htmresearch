@@ -29,7 +29,7 @@ import numpy
 from unity_client.server import Server
 from nupic.encoders.coordinate import CoordinateEncoder
 from nupic.encoders.scalar import ScalarEncoder
-from nupic.research.monitor_mixin.trace import CountsTrace
+from nupic.algorithms.monitor_mixin.trace import CountsTrace
 from sensorimotor.extended_temporal_memory import ExtendedTemporalMemory
 from htmresearch.support.etm_monitor_mixin import (
   ExtendedTemporalMemoryMonitorMixin)
