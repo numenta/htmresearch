@@ -40,8 +40,8 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 #from htmresearch.frameworks.layers.feedback_experiment import FeedbackExperiment
-import feedback_experiment
-from feedback_experiment import FeedbackExperiment
+import feedback_experiment_modified
+from feedback_experiment_modified import FeedbackExperiment
 
 def convertSequenceMachineSequence(generatedSequences):
   """
@@ -441,19 +441,19 @@ if __name__ == "__main__":
   # The multi-element list is assumed to be the relevant indepdenent variable (i.e. what's to be plotted as x-axis)
 
   # # 8 cells
-  runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="skip", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors for perturbed sequences (omission)")
-  runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="repeat", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors for perturbed sequences (repetition)")
-  runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors for perturbed sequences (insertion)")
-  runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="crossover", sequenceLen=30, sharedRange=(5,21), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (with prefix inertia and simple ff sel)")
+  # runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="skip", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors for perturbed sequences (omission)")
+  # runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="repeat", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors for perturbed sequences (repetition)")
+  # runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors for perturbed sequences (insertion)")
+  # runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="crossover", sequenceLen=30, sharedRange=(5,21), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (with prefix inertia and simple ff sel)")
 
   # Increasing noise, over whole sequence
-  runExp(noiseProbas=( .1,  .2, .3, .4), nbSequences=(30,), nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors under continuous noise")
+  #runExp(noiseProbas=( .1,  .2, .3, .4), nbSequences=(30,), nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors under continuous noise")
   # Increasing noise, only at beginning of sequence
-  # runExp(noiseProbas=( .1,  .2, .3, .4), nbSequences=(30,), nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,6), whichPlot="errors", plotTitle="Prediction errors under ambiguous sequence identification")
+  #runExp(noiseProbas=( .1,  .2, .3, .4), nbSequences=(30,), nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,6), whichPlot="errors", plotTitle="Prediction errors under ambiguous sequence identification")
   # # runExp(noiseProbas=(.1, .4,), nbSequences=(30,), nbSeeds=7, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,6), whichPlot="errors", plotTitle="Prediction errors under ambiguous sequence identification (less inertia)")
 
   # Increasing model load (number of learned sequences)
-  runExp(noiseProbas=(.25,), nbSequences=(2, 5, 10, 20, 30), nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors as a function of model load")
+  #runExp(noiseProbas=(.25,), nbSequences=(2, 5, 10, 20, 30), nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors as a function of model load")
   # # Test # runExp(noiseProbas=(.25,), nbSequences=(2, 5, 10, 20), nbSeeds=7, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors as a function of model load")
 
-  # # Test runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=7, noiseType="replace", sequenceLen=30, sharedRange=(5,25), noiseRange=(0,30), whichPlot="overlaps", plotTitle="Random elements 10 seqs (with new method and less prefix inertia)")
+  runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=7, noiseType="replace", sequenceLen=30, sharedRange=(5,25), noiseRange=(0,30), whichPlot="overlaps", plotTitle="Random elements 10 seqs (with new method and less prefix inertia)")
