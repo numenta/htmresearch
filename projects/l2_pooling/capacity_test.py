@@ -1099,41 +1099,41 @@ def runExperiment6(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
 
 def runExperiments(resultDirName, plotDirName, cpuCount):
-  #
-  # # Varying number of pts per objects, two objects
-  # runExperiment1(numCorticalColumns=1,
-  #                resultDirName=resultDirName,
-  #                plotDirName=plotDirName,
-  #                cpuCount=cpuCount)
-  #
-  # # 10 pts per object, varying number of objects
-  # runExperiment2(numCorticalColumns=1,
-  #                resultDirName=resultDirName,
-  #                plotDirName=plotDirName,
-  #                cpuCount=cpuCount)
-  #
-  #
-  # # 10 pts per object, varying number of objects, varying L4 size
-  # runExperiment3(numCorticalColumns=1,
-  #                resultDirName=resultDirName,
-  #                plotDirName=plotDirName,
-  #                cpuCount=cpuCount)
-  #
+
+  # Varying number of pts per objects, two objects
+  runExperiment1(numCorticalColumns=1,
+                 resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
+
+  # 10 pts per object, varying number of objects
+  runExperiment2(numCorticalColumns=1,
+                 resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
+
+
+  # 10 pts per object, varying number of objects, varying L4 size
+  runExperiment3(numCorticalColumns=1,
+                 resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
+
 
   # 10 pts per object, varying number of objects and number of columns
   runExperiment4(resultDirName=resultDirName,
                  plotDirName=plotDirName,
                  cpuCount=cpuCount)
 
-  # # 10 pts per object, varying number of L2 cells
-  # runExperiment5(resultDirName=resultDirName,
-  #                plotDirName=plotDirName,
-  #                cpuCount=cpuCount)
+  # 10 pts per object, varying number of L2 cells
+  runExperiment5(resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
 
-  # # 10 pts per object, varying sparsity of L2
-  # runExperiment6(resultDirName=resultDirName,
-  #                plotDirName=plotDirName,
-  #                cpuCount=cpuCount)
+  # 10 pts per object, varying sparsity of L2
+  runExperiment6(resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
 
 
 
