@@ -486,20 +486,7 @@ def runCapacityTestVaryingObjectSize(
              0)
             for numPointsPerObject in np.arange(10, 160, 20)]
 
-  # for param in params:
-  #   print param
-  #   testResult = invokeRunCapacityTest(param)
-  #   print testResult
-  #   result = (
-  #     pd.concat([result, pd.DataFrame.from_dict([testResult])])
-  #     if result is not None else
-  #     pd.DataFrame.from_dict([testResult])
-  #   )
-  #
-  # print result
   for testResult in pool.map(invokeRunCapacityTest, params):
-    print testResult
-
     result = (
       pd.concat([result, pd.DataFrame.from_dict([testResult])])
       if result is not None else
@@ -557,8 +544,6 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
                  rpt))
 
   for testResult in pool.map(invokeRunCapacityTest, params):
-    print testResult
-
     result = (
       pd.concat([result, testResult])
       if result is not None else testResult
