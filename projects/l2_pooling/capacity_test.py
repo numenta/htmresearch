@@ -226,7 +226,7 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
 
 
 
-def testOnSingleRandomSDR(objects, exp, numRepeats=100):
+def testOnSingleRandomSDR(objects, exp, numRepeats=100, repeatID=0):
   """
   Test a trained L4-L2 network on (feature, location) pairs multiple times
   Compute object retrieval accuracy, overlap with the correct and incorrect
@@ -248,6 +248,12 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
   confusion = overlapTrueObj.copy()
   outcome = overlapTrueObj.copy()
 
+  columnPooler = exp.L2Columns[0]._pooler
+  numConnectedProximal = columnPooler.numberOfConnectedProximalSynapses()
+  numConnectedDistal = columnPooler.numberOfConnectedDistalSynapses()
+
+
+  result = None
   for i in xrange(numRepeats):
     targetObject = np.random.choice(np.arange(numObjects))
 
@@ -278,27 +284,37 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
     l4ActivationSize[i] = numL4ActiveCells[-1]
     # print "repeat {} target obj {} overlap {}".format(i, targetObject, overlapTrueObj[i])
 
-  columnPooler = exp.L2Columns[0]._pooler
-  numConnectedProximal = columnPooler.numberOfConnectedProximalSynapses()
-  numConnectedDistal = columnPooler.numberOfConnectedDistalSynapses()
+    testResult = {
+      "repeatID": repeatID,
+      "repeatI": i,
+      "numberOfConnectedProximalSynapses": numConnectedProximal,
+      "numberOfConnectedDistalSynapses": numConnectedDistal,
+      "numObjects": numObjects,
+      "numPointsPerObject": numPointsPerObject,
+      "l2ActivationSize": l2ActivationSize[i],
+      "l4ActivationSize": l4ActivationSize[i],
+      "confusion": confusion[i],
+      "accuracy":  outcome[i],
+      "overlapTrueObj": overlapTrueObj[i]}
+    result = (
+      pd.concat([result, pd.DataFrame.from_dict([testResult])])
+      if result is not None else
+      pd.DataFrame.from_dict([testResult])
+    )
 
-  return {"numberOfConnectedProximalSynapses": numConnectedProximal,
-          "numberOfConnectedDistalSynapses": numConnectedDistal,
-          "l2ActivationSize": np.mean(l2ActivationSize),
-          "l4ActivationSize": np.mean(l4ActivationSize),
-          "numObjects": numObjects,
-          "numPointsPerObject": numPointsPerObject,
-          "confusion": np.mean(confusion),
-          "accuracy": np.mean(outcome),
-          "overlapTrueObj": np.mean(overlapTrueObj)}
+  return result
 
 
 
-def plotResults(result, ax=None, xaxis="numPointsPerObject",
-                filename=None, marker='-bo'):
+
+def plotResults(result, ax=None, xaxis="numObjects",
+                filename=None, marker='-bo', confuseThresh=20):
+
+  if ax is None:
+    fig, ax = plt.subplots(2, 2)
 
   numRpts = max(result['repeatID']) + 1
-  resultsRpts = result.groupby('repeatID')
+  resultsRpts = result.groupby(['repeatID'])
 
   if xaxis == "numPointsPerObject":
     x = np.array(resultsRpts.get_group(0).numPointsPerObject)
@@ -306,29 +322,56 @@ def plotResults(result, ax=None, xaxis="numPointsPerObject",
   elif xaxis == "numObjects":
     x = np.array(resultsRpts.get_group(0).numObjects)
     xlabel = "Object #"
+  x = np.unique(x)
+  d = resultsRpts.get_group(0)
+  d = d.groupby(['numObjects'])
+  accuracy = np.zeros((len(x),))
+  numberOfConnectedProximalSynapses = np.zeros((len(x),))
+  l2ActivationSize = np.zeros((len(x),))
+  confusion = np.zeros((len(x),))
+  for j in range(len(x)):
+    accuracy[j] = np.sum(np.logical_and(d.get_group(x[j]).accuracy == 1,
+                                        d.get_group(x[j]).confusion < confuseThresh)) / \
+                  float(len(d.get_group(x[j]).accuracy))
+    l2ActivationSize[j] = np.mean(d.get_group(x[j]).l2ActivationSize)
+    confusion[j] = np.mean(d.get_group(x[j]).confusion)
+    numberOfConnectedProximalSynapses[j] = np.mean(
+      d.get_group(x[j]).numberOfConnectedProximalSynapses)
 
   if ax is None:
     fig, ax = plt.subplots(2, 2)
 
-  accuracy = np.reshape(np.array(resultsRpts.get_group(0).accuracy), (1, len(x)))
-  numberOfConnectedProximalSynapses = np.reshape(np.array(
-    resultsRpts.get_group(0).numberOfConnectedProximalSynapses), (1, len(x)))
-  l2ActivationSize = np.reshape(np.array(resultsRpts.get_group(0).l2ActivationSize), (1, len(x)))
-  confusion = np.reshape(np.array(resultsRpts.get_group(0).confusion), (1, len(x)))
   for rpt in range(1, numRpts):
-    accuracy = np.vstack((accuracy, np.array(resultsRpts.get_group(rpt).accuracy)))
-    confusion = np.vstack(
-      (confusion, np.array(resultsRpts.get_group(rpt).confusion)))
-    numberOfConnectedProximalSynapses = np.vstack(
-      (numberOfConnectedProximalSynapses,
-       np.array(resultsRpts.get_group(rpt).numberOfConnectedProximalSynapses)))
-    l2ActivationSize = np.vstack(
-      (l2ActivationSize, np.array(resultsRpts.get_group(rpt).l2ActivationSize)))
+    d = resultsRpts.get_group(rpt)
+    d = d.groupby(['numObjects'])
+    accuracyRpt = np.zeros((len(x),))
+    numberOfConnectedProximalSynapsesRpt = np.zeros((len(x),))
+    l2ActivationSizeRpt = np.zeros((len(x),))
+    confusionRpt = np.zeros((len(x),))
 
-  ax[0, 0].errorbar(x, np.mean(accuracy, 0), yerr=np.std(accuracy, 0), color=marker)
+    for j in range(len(x)):
+      accuracyRpt[j] = np.sum(np.logical_and(
+        d.get_group(x[j]).accuracy == 1,
+        d.get_group(x[j]).confusion < confuseThresh)) / \
+                       float(len(d.get_group(x[j]).accuracy))
+
+      l2ActivationSizeRpt[j] = np.mean(d.get_group(x[j]).l2ActivationSize)
+      confusionRpt[j] = np.mean(d.get_group(x[j]).confusion)
+      numberOfConnectedProximalSynapsesRpt[j] = np.mean(
+        d.get_group(x[j]).numberOfConnectedProximalSynapses)
+
+    accuracy = np.vstack((accuracy, accuracyRpt))
+    confusion = np.vstack((confusion, confusionRpt))
+    l2ActivationSize = np.vstack((l2ActivationSize, l2ActivationSizeRpt))
+    numberOfConnectedProximalSynapses = np.vstack((
+      numberOfConnectedProximalSynapses, numberOfConnectedProximalSynapsesRpt))
+
+  ax[0, 0].errorbar(x, np.mean(accuracy, 0), yerr=np.std(accuracy, 0),
+                    color=marker)
   ax[0, 0].set_ylabel("Accuracy")
   ax[0, 0].set_xlabel(xlabel)
   ax[0, 0].set_ylim([0.1, 1.05])
+
   ax[0, 1].errorbar(x, np.mean(numberOfConnectedProximalSynapses, 0),
                     yerr=np.std(numberOfConnectedProximalSynapses, 0), color=marker)
   ax[0, 1].set_ylabel("# connected proximal synapses")
@@ -344,11 +387,9 @@ def plotResults(result, ax=None, xaxis="numPointsPerObject",
   ax[1, 1].set_ylabel("OverlapFalseObject")
   ax[1, 1].set_ylim([0, 41])
   ax[1, 1].set_xlabel(xlabel)
-
   plt.tight_layout()
   if filename is not None:
     plt.savefig(filename)
-
 
 
 def runCapacityTest(numObjects,
@@ -409,8 +450,8 @@ def runCapacityTest(numObjects,
 
   exp.learnObjects(objects.provideObjectsToLearn())
 
-  testResult = testOnSingleRandomSDR(objects, exp)
-  testResult['repeatID'] = repeat
+  testResult = testOnSingleRandomSDR(objects, exp, 100, repeat)
+
   return testResult
 
 
@@ -519,9 +560,8 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
     print testResult
 
     result = (
-      pd.concat([result, pd.DataFrame.from_dict([testResult])])
-      if result is not None else
-      pd.DataFrame.from_dict([testResult])
+      pd.concat([result, testResult])
+      if result is not None else testResult
     )
 
   resultFileName = _prepareResultsDir("{}.csv".format(expName),
@@ -785,7 +825,7 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
   """
 
   numPointsPerObject = 10
-  numRpts = 5
+  numRpts = 1
 
   l4Params = getL4Params()
   l2Params = getL2Params()
@@ -849,7 +889,7 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
     result = pd.read_csv(resultFileName)
 
-    plotResults(result, ax, "numObjects", None, DEFAULT_COLORS[ploti])
+    plotResults(result, ax, "numObjects", None, DEFAULT_COLORS[ploti], confuseThresh=20)
     ploti += 1
     legendEntries.append("L4 mcs {} #cc {} ".format(
       expParam['l4Column'], expParam['l2Column']))
@@ -1074,41 +1114,41 @@ def runExperiment6(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
 
 def runExperiments(resultDirName, plotDirName, cpuCount):
-
-  # Varying number of pts per objects, two objects
-  runExperiment1(numCorticalColumns=1,
-                 resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
-
-  # 10 pts per object, varying number of objects
-  runExperiment2(numCorticalColumns=1,
-                 resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
-
-
-  # 10 pts per object, varying number of objects, varying L4 size
-  runExperiment3(numCorticalColumns=1,
-                 resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
-
+  #
+  # # Varying number of pts per objects, two objects
+  # runExperiment1(numCorticalColumns=1,
+  #                resultDirName=resultDirName,
+  #                plotDirName=plotDirName,
+  #                cpuCount=cpuCount)
+  #
+  # # 10 pts per object, varying number of objects
+  # runExperiment2(numCorticalColumns=1,
+  #                resultDirName=resultDirName,
+  #                plotDirName=plotDirName,
+  #                cpuCount=cpuCount)
+  #
+  #
+  # # 10 pts per object, varying number of objects, varying L4 size
+  # runExperiment3(numCorticalColumns=1,
+  #                resultDirName=resultDirName,
+  #                plotDirName=plotDirName,
+  #                cpuCount=cpuCount)
+  #
 
   # 10 pts per object, varying number of objects and number of columns
   runExperiment4(resultDirName=resultDirName,
                  plotDirName=plotDirName,
                  cpuCount=cpuCount)
 
-  # 10 pts per object, varying number of L2 cells
-  runExperiment5(resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
+  # # 10 pts per object, varying number of L2 cells
+  # runExperiment5(resultDirName=resultDirName,
+  #                plotDirName=plotDirName,
+  #                cpuCount=cpuCount)
 
-  # 10 pts per object, varying sparsity of L2
-  runExperiment6(resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
+  # # 10 pts per object, varying sparsity of L2
+  # runExperiment6(resultDirName=resultDirName,
+  #                plotDirName=plotDirName,
+  #                cpuCount=cpuCount)
 
 
 
