@@ -325,17 +325,17 @@ def plotResults(result, ax=None, xaxis="numObjects",
   x = np.unique(x)
   d = resultsRpts.get_group(0)
   d = d.groupby(['numObjects'])
-  accuracy = np.zeros((len(x),))
-  numberOfConnectedProximalSynapses = np.zeros((len(x),))
-  l2ActivationSize = np.zeros((len(x),))
-  confusion = np.zeros((len(x),))
+  accuracy = np.zeros((1, len(x),))
+  numberOfConnectedProximalSynapses = np.zeros((1, len(x),))
+  l2ActivationSize = np.zeros((1, len(x),))
+  confusion = np.zeros((1, len(x),))
   for j in range(len(x)):
-    accuracy[j] = np.sum(np.logical_and(d.get_group(x[j]).accuracy == 1,
+    accuracy[0,j] = np.sum(np.logical_and(d.get_group(x[j]).accuracy == 1,
                                         d.get_group(x[j]).confusion < confuseThresh)) / \
                   float(len(d.get_group(x[j]).accuracy))
-    l2ActivationSize[j] = np.mean(d.get_group(x[j]).l2ActivationSize)
-    confusion[j] = np.mean(d.get_group(x[j]).confusion)
-    numberOfConnectedProximalSynapses[j] = np.mean(
+    l2ActivationSize[0,j] = np.mean(d.get_group(x[j]).l2ActivationSize)
+    confusion[0,j] = np.mean(d.get_group(x[j]).confusion)
+    numberOfConnectedProximalSynapses[0,j] = np.mean(
       d.get_group(x[j]).numberOfConnectedProximalSynapses)
 
   if ax is None:
@@ -350,14 +350,14 @@ def plotResults(result, ax=None, xaxis="numObjects",
     confusionRpt = np.zeros((len(x),))
 
     for j in range(len(x)):
-      accuracyRpt[j] = np.sum(np.logical_and(
+      accuracyRpt[0,j] = np.sum(np.logical_and(
         d.get_group(x[j]).accuracy == 1,
         d.get_group(x[j]).confusion < confuseThresh)) / \
                        float(len(d.get_group(x[j]).accuracy))
 
-      l2ActivationSizeRpt[j] = np.mean(d.get_group(x[j]).l2ActivationSize)
-      confusionRpt[j] = np.mean(d.get_group(x[j]).confusion)
-      numberOfConnectedProximalSynapsesRpt[j] = np.mean(
+      l2ActivationSizeRpt[0,j] = np.mean(d.get_group(x[j]).l2ActivationSize)
+      confusionRpt[0,j] = np.mean(d.get_group(x[j]).confusion)
+      numberOfConnectedProximalSynapsesRpt[0,j] = np.mean(
         d.get_group(x[j]).numberOfConnectedProximalSynapses)
 
     accuracy = np.vstack((accuracy, accuracyRpt))
