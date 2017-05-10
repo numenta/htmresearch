@@ -308,7 +308,7 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100, repeatID=0):
 
 
 def plotResults(result, ax=None, xaxis="numObjects",
-                filename=None, marker='-bo', confuseThresh=20):
+                filename=None, marker='-bo', confuseThresh=20, showErrBar=1):
 
   if ax is None:
     fig, ax = plt.subplots(2, 2)
@@ -344,10 +344,10 @@ def plotResults(result, ax=None, xaxis="numObjects",
   for rpt in range(1, numRpts):
     d = resultsRpts.get_group(rpt)
     d = d.groupby(['numObjects'])
-    accuracyRpt = np.zeros((len(x),))
-    numberOfConnectedProximalSynapsesRpt = np.zeros((len(x),))
-    l2ActivationSizeRpt = np.zeros((len(x),))
-    confusionRpt = np.zeros((len(x),))
+    accuracyRpt = np.zeros((1, len(x)))
+    numberOfConnectedProximalSynapsesRpt = np.zeros((1, len(x)))
+    l2ActivationSizeRpt = np.zeros((1, len(x)))
+    confusionRpt = np.zeros((1, len(x)))
 
     for j in range(len(x)):
       accuracyRpt[0,j] = np.sum(np.logical_and(
@@ -366,24 +366,28 @@ def plotResults(result, ax=None, xaxis="numObjects",
     numberOfConnectedProximalSynapses = np.vstack((
       numberOfConnectedProximalSynapses, numberOfConnectedProximalSynapsesRpt))
 
-  ax[0, 0].errorbar(x, np.mean(accuracy, 0), yerr=np.std(accuracy, 0),
+  if showErrBar==0:
+    s = 0
+  else:
+    s = 1
+  ax[0, 0].errorbar(x, np.mean(accuracy, 0), yerr=np.std(accuracy, 0)*s,
                     color=marker)
   ax[0, 0].set_ylabel("Accuracy")
   ax[0, 0].set_xlabel(xlabel)
   ax[0, 0].set_ylim([0.1, 1.05])
 
   ax[0, 1].errorbar(x, np.mean(numberOfConnectedProximalSynapses, 0),
-                    yerr=np.std(numberOfConnectedProximalSynapses, 0), color=marker)
+                    yerr=np.std(numberOfConnectedProximalSynapses, 0)*s, color=marker)
   ax[0, 1].set_ylabel("# connected proximal synapses")
   ax[0, 1].set_xlabel("# Pts / Obj")
   ax[0, 1].set_xlabel(xlabel)
 
-  ax[1, 0].errorbar(x, np.mean(l2ActivationSize, 0), yerr=np.std(l2ActivationSize, 0), color=marker)
+  ax[1, 0].errorbar(x, np.mean(l2ActivationSize, 0), yerr=np.std(l2ActivationSize, 0)*s, color=marker)
   ax[1, 0].set_ylabel("l2ActivationSize")
   # ax[1, 0].set_ylim([0, 41])
   ax[1, 0].set_xlabel(xlabel)
 
-  ax[1, 1].errorbar(x, np.mean(confusion, 0), yerr=np.std(confusion, 0), color=marker)
+  ax[1, 1].errorbar(x, np.mean(confusion, 0), yerr=np.std(confusion, 0)*s, color=marker)
   ax[1, 1].set_ylabel("OverlapFalseObject")
   ax[1, 1].set_ylim([0, 41])
   ax[1, 1].set_xlabel(xlabel)
@@ -715,7 +719,7 @@ def runExperiment3(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
   """
 
   numPointsPerObject = 10
-  numRpts = 5
+  numRpts = 10
   l4Params = getL4Params()
   l2Params = getL2Params()
 
@@ -810,7 +814,7 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
   """
 
   numPointsPerObject = 10
-  numRpts = 1
+  numRpts = 3
 
   l4Params = getL4Params()
   l2Params = getL2Params()
@@ -903,7 +907,7 @@ def runExperiment5(resultDirName=DEFAULT_RESULT_DIR_NAME,
   """
 
   numPointsPerObject = 10
-  numRpts = 5
+  numRpts = 3
   numInputBits = 20
   externalInputSize = 2400
   numL4MiniColumns = 256
@@ -1100,24 +1104,24 @@ def runExperiment6(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
 def runExperiments(resultDirName, plotDirName, cpuCount):
 
-  # Varying number of pts per objects, two objects
-  runExperiment1(numCorticalColumns=1,
-                 resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
+  # # Varying number of pts per objects, two objects
+  # runExperiment1(numCorticalColumns=1,
+  #                resultDirName=resultDirName,
+  #                plotDirName=plotDirName,
+  #                cpuCount=cpuCount)
+  #
+  # # 10 pts per object, varying number of objects
+  # runExperiment2(numCorticalColumns=1,
+  #                resultDirName=resultDirName,
+  #                plotDirName=plotDirName,
+  #                cpuCount=cpuCount)
 
-  # 10 pts per object, varying number of objects
-  runExperiment2(numCorticalColumns=1,
-                 resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
 
-
-  # 10 pts per object, varying number of objects, varying L4 size
-  runExperiment3(numCorticalColumns=1,
-                 resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
+  # # 10 pts per object, varying number of objects, varying L4 size
+  # runExperiment3(numCorticalColumns=1,
+  #                resultDirName=resultDirName,
+  #                plotDirName=plotDirName,
+  #                cpuCount=cpuCount)
 
 
   # 10 pts per object, varying number of objects and number of columns
@@ -1130,10 +1134,10 @@ def runExperiments(resultDirName, plotDirName, cpuCount):
                  plotDirName=plotDirName,
                  cpuCount=cpuCount)
 
-  # 10 pts per object, varying sparsity of L2
-  runExperiment6(resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
+  # # 10 pts per object, varying sparsity of L2
+  # runExperiment6(resultDirName=resultDirName,
+  #                plotDirName=plotDirName,
+  #                cpuCount=cpuCount)
 
 
 
