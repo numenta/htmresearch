@@ -290,7 +290,7 @@ class ColumnPoolerRegion(PyRegion):
                sampleSizeDistal=20,
                activationThresholdDistal=13,
                connectedPermanenceDistal=0.50,
-               distalSegmentInhibitionFactor=1.5,
+               distalSegmentInhibitionFactor=1.001,
 
                seed=42,
                defaultOutputType = "active",

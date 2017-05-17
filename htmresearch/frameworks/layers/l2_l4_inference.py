@@ -595,7 +595,7 @@ class L4L2Experiment(object):
     return [set(column._pooler.getActiveCells()) for column in self.L2Columns]
 
 
-  def getCurrentClassification(self, minOverlap=None):
+  def getCurrentClassification(self, minOverlap=None, includeZeros=True):
     """
     A dict with a score for each object. Score goes from 0 to 1. A 1 means
     every col (that has received input since the last reset) currently has
@@ -603,6 +603,9 @@ class L4L2Experiment(object):
 
     :param minOverlap: min overlap to consider the object as recognized.
                        Defaults to half of the SDR size
+            
+    :param includeZeros: if True, include scores for all objects, even if 0
+
     :return: dict of object names and their score
     """
     results = {}
@@ -625,9 +628,11 @@ class L4L2Experiment(object):
           score += 1
 
       if count == 0:
-        results[objectName] = 0
+        if includeZeros:
+          results[objectName] = 0
       else:
-        results[objectName] = score / count
+        if includeZeros or score>0.0:
+          results[objectName] = score / count
 
     return results
 
@@ -716,7 +721,7 @@ class L4L2Experiment(object):
       "activationThresholdDistal": 13,
       "sampleSizeDistal": 20,
       "connectedPermanenceDistal": 0.5,
-      "distalSegmentInhibitionFactor": 1.5,
+      "distalSegmentInhibitionFactor": 1.001,
       "seed": self.seed,
       "learningMode": True,
     }
