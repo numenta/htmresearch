@@ -1,9 +1,4 @@
-# This code implements putting some random noise over extended periods (determined by parameters noiseStart and noiseEnd)
-
-# The difference brought by feedback is very large when noise is only on the start of the sequence, much smaller for noise on whole sequence !
-
-
-
+# ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
 # Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
@@ -25,435 +20,405 @@
 # ----------------------------------------------------------------------
 
 """
-This file runs a number of experiments testing the effectiveness of feedback
-when noisy inputs.
+This class supports using an L4-L2 network for experiments with feedback
+and pure temporal sequences.
 """
 
-import os
-from copy import deepcopy
+import random
 import numpy
-import cPickle
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.rcParams['pdf.fonttype'] = 42
 
-from nupic.data.generators.pattern_machine import PatternMachine
-from nupic.data.generators.sequence_machine import SequenceMachine
-#from htmresearch.frameworks.layers.feedback_experiment import FeedbackExperiment
-import feedback_experiment_modified
-from feedback_experiment_modified import FeedbackExperiment
+from htmresearch.support.register_regions import registerAllResearchRegions
+from htmresearch.frameworks.layers.laminar_network import createNetwork
 
-def convertSequenceMachineSequence(generatedSequences):
+
+class FeedbackExperiment(object):
   """
-  Convert a sequence from the SequenceMachine into a list of sequences, such
-  that each sequence is a list of set of SDRs.
+  Class for running simple feedback experiments.
+
+  These experiments use a laminar network to test out various properties of
+  inference and learning using a sensors and a network with feedback.
   """
-  sequenceList = []
-  currentSequence = []
-  for s in generatedSequences:
-    if s is None:
-      sequenceList.append(currentSequence)
-      currentSequence = []
+
+  def __init__(self,
+               numCorticalColumns=1,
+               inputSize=2048,
+               numInputBits=40,
+               L2Overrides=None,
+               L4Overrides=None,
+               numLearningPasses=4,
+               seed=42):
+    """
+    Creates the network and initialize the experiment.
+
+    Parameters:
+    ----------------------------
+    @param   numCorticalColumns (int)
+             Number of cortical columns in the network
+
+    @param   inputSize (int)
+             Size of the sensory input
+
+    @param   numInputBits (int)
+             Number of ON bits in the generated input patterns
+
+    @param   L2Overrides (dict)
+             Parameters to override in the L2 region
+
+    @param   L4Overrides
+             Parameters to override in the L4 region
+
+    @param   numLearningPasses (int)
+             Number of times each pair should be seen to be learnt
+    """
+    registerAllResearchRegions()
+
+    self.numLearningPoints = numLearningPasses
+    self.numColumns = numCorticalColumns
+    self.inputSize = inputSize
+    self.numInputBits = numInputBits
+
+    # seed
+    self.seed = seed
+    random.seed(seed)
+    # update parameters with overrides
+    self.config = {
+      "networkType": "MultipleL4L2Columns",
+      "numCorticalColumns": numCorticalColumns,
+      "externalInputSize": 0,
+      "sensorInputSize": inputSize,
+      "L4RegionType": "py.ExtendedTMRegion",
+      "L4Params": self.getDefaultL4Params(inputSize),
+      "L2Params": self.getDefaultL2Params(inputSize),
+    }
+
+    if L2Overrides is not None:
+      self.config["L2Params"].update(L2Overrides)
+
+    if L4Overrides is not None:
+      self.config["L4Params"].update(L4Overrides)
+
+    # create network
+    self.network = createNetwork(self.config)
+
+    # We have to explicitly initialize if we are going to change the phases
+    self.network.initialize()
+
+    self.sensorInputs = []
+    self.L4Columns = []
+    self.L2Columns = []
+
+    for i in xrange(self.numColumns):
+      self.sensorInputs.append(
+        self.network.regions["sensorInput_" + str(i)].getSelf()
+      )
+      self.L4Columns.append(
+        self.network.regions["L4Column_" + str(i)].getSelf()
+      )
+      self.L2Columns.append(
+        self.network.regions["L2Column_" + str(i)].getSelf()
+      )
+
+    # will be populated during training
+    self.objectL2Representations = {}
+    self.statistics = []
+
+
+  def learnSequences(self, sequences):
+    """
+    Learns all provided sequences. Always reset the network in between
+    sequences.
+
+    Sequences format:
+
+    sequences = [
+      [
+        set([16, 22, 32]),  # S0, position 0
+        set([13, 15, 33])   # S0, position 1
+      ],
+      [
+        set([6, 12, 52]),  # S1, position 0
+        set([6, 2, 15])    # S1, position 1
+      ],
+    ]
+
+    Note that the order of each sequence is important. It denotes the sequence
+    number and will be used during inference to plot accuracy.
+
+    Parameters:
+    ----------------------------
+    @param   sequences (list)
+             Sequences to learn, in the canonical format specified above
+    """
+    # This method goes through four phases:
+    #   1) We first train L4 on the sequences, over multiple passes
+    #   2) We then train L2 in one pass.
+    #   3) We then continue training on L4 so the apical segments learn
+    #   4) We run inference to store L2 representations for each sequence
+    # retrieve L2 representations
+
+    # print "1) Train L4 sequence memory"
+
+
+    self._disableL2()
+    self._setLearningMode(l4Learning=True, l2Learning=False)
+    for sequenceNum, sequence in enumerate(sequences):
+
+      # keep track of numbers of iterations to run for this sequence
+      iterations = 0
+
+      # Run multiple passes through each sequence
+      for _ in xrange(self.numLearningPoints):
+
+        for s in sequence:
+          self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
+          iterations += 1
+
+        # Reset signal
+        self.sensorInputs[0].addDataToQueue([], 1, 0)
+        iterations += 1
+
+      if iterations > 0:
+        self.network.run(iterations)
+
+
+
+    # This generates some bugs wrt the first sequence seen during learning...
+    # self._disableL2()
+    # self._setLearningMode(l4Learning=True, l2Learning=False)
+    # # Run multiple passes through each sequence
+    # for zzz in xrange(self.numLearningPoints):
+    #   myseqs = list(sequences)
+    #   if zzz == 0:
+    #     myseqs = list(sequences)[1:]
+    #     random.shuffle(myseqs)
+    #     myseqs = [sequences[0]] + myseqs
+    #   else:
+    #     random.shuffle(myseqs)
+    #   for sequenceNum, sequence in enumerate(myseqs): #sequences):
+    #
+    #     # keep track of numbers of iterations to run for this sequence
+    #     iterations = 0
+    #
+    #
+    #     for s in sequence:
+    #       self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
+    #       iterations += 1
+    #
+    #     # Reset signal
+    #     self.sensorInputs[0].addDataToQueue([], 1, 0)
+    #     iterations += 1
+    #
+    #     if iterations > 0:
+    #       self.network.run(iterations)
+    #
+    #     self.sendReset() # Reset after seeing each sequence, just in case
+
+
+    # print "2) Train L2"
+    self._enableL2()
+    self._setLearningMode(l4Learning=False, l2Learning=True)
+    for sequenceNum, sequence in enumerate(sequences):
+      for s in sequence:
+        self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
+        self.network.run(1)
+      self.sendReset()
+
+    # print "3) Train L4 apical segments"
+    self._setLearningMode(l4Learning=True, l2Learning=False)
+    for p in range(5):
+      for sequenceNum, sequence in enumerate(sequences):
+        for s in sequence:
+          self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
+          self.network.run(1)
+        self.sendReset()
+
+    # Re-run the sequences once each and store L2 representations for each
+    self._setLearningMode(l4Learning=False, l2Learning=False)
+    for sequenceNum, sequence in enumerate(sequences):
+      for s in sequence:
+        self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
+        self.network.run(1)
+      self.objectL2Representations[sequenceNum] = self.getL2Representations()
+      self.sendReset()
+
+
+  def infer(self, sequence, reset=True, sequenceNumber=None, burnIn=2,
+            enableFeedback=True):
+    """
+    Infer on a single given sequence. Sequence format:
+
+    sequence = [
+      set([16, 22, 32]),  # Position 0
+      set([13, 15, 33])   # Position 1
+    ]
+
+    Parameters:
+    ----------------------------
+    @param   sequence (list)
+             Sequence to infer, in the canonical format specified above
+
+    @param   reset (bool)
+             If set to True (which is the default value), the network will
+             be reset after inference.
+
+    @param   sequenceNumber (int)
+             Number of the sequence (must match the number given during
+             learning).
+
+    @param   burnIn (int)
+             Number of patterns to wait within a sequence before computing
+             accuracy figures
+
+    """
+    if enableFeedback is False:
+      self._disableL2()
     else:
-      currentSequence.append(s)
-
-  return sequenceList
-
-
-def generateSequences(n=2048, w=40, sequenceLength=5, sequenceCount=2,
-                      sharedRange=None, seed=42):
-  """
-  Generate high order sequences using SequenceMachine
-  """
-  # Lots of room for noise sdrs
-  patternAlphabetSize = 10*(sequenceLength * sequenceCount)
-  patternMachine = PatternMachine(n, w, patternAlphabetSize, seed)
-  sequenceMachine = SequenceMachine(patternMachine, seed)
-  numbers = sequenceMachine.generateNumbers(sequenceCount, sequenceLength,
-                                            sharedRange=sharedRange )
-  generatedSequences = sequenceMachine.generateFromNumbers(numbers)
-
-  return sequenceMachine, generatedSequences, numbers
-
-
-def sparsenRange(sequenceMachine, sequences, startRange, endRange, probaZero):
-  """
-  """
-  patternMachine = sequenceMachine.patternMachine
-  newSequences = []
-  for (numseq, s) in enumerate(sequences):
-    newSequence = []
-    for p,sdr in enumerate(s):
-        if p < endRange and p >= startRange:
-          newsdr = numpy.array(list(sdr))
-          keep = numpy.random.rand(len(newsdr)) > probaZero
-          newsdr = newsdr[keep==True]
-          newSequence.append(set(newsdr))
-        #elif p == howMany + 5:
-        #    newSequence.append(sdr)
-        #    newSequence.append(sdr)
-        #elif p == howMany + 6:
-        #    pass
-        else:
-          newSequence.append(sdr)
-    newSequences.append(newSequence)
-
-  return newSequences
-
-
-def crossSequences(sequenceMachine, sequences, pos):
-  """
-  """
-  patternMachine = sequenceMachine.patternMachine
-  newSequences = []
-  for (numseq, s) in enumerate(sequences):
-    newSequence = []
-    for p,sdr in enumerate(s):
-        if p >= pos:
-        #if p == pos: # or p == pos+1:
-          newSequence.append(sequences[(numseq +1) % len(sequences)][p])
-          #newSequence.append(set())
-        else:
-          newSequence.append(sdr)
-    newSequences.append(newSequence)
-
-  return newSequences
-
-
-
-def addTemporalNoise(sequenceMachine, sequences, noiseStart, noiseEnd, noiseProba):
-  """
-  """
-  patternMachine = sequenceMachine.patternMachine
-  newSequences = []
-  for (numseq, s) in enumerate(sequences):
-    newSequence = []
-    for p,sdr in enumerate(s):
-        if p >= noiseStart and p < noiseEnd:
-          newsdr = patternMachine.addNoise(sdr, noiseProba)
-          newSequence.append(newsdr)
-        else:
-          newSequence.append(sdr)
-    newSequences.append(newSequence)
-
-  return newSequences
-
-
-def addPerturbation(sequenceMachine, sequences, noiseType, pos, number=1):
-  """
-  """
-  patternMachine = sequenceMachine.patternMachine
-  newSequences = []
-  for (numseq, s) in enumerate(sequences):
-    newSequence = []
-    for p,sdr in enumerate(s):
-        if p >= pos and p < pos+number:
-          if noiseType == "skip":
-            pass
-          elif noiseType == "replace":
-            newsdr = patternMachine.addNoise(sdr, 1.0)
-            newSequence.append(newsdr)
-          elif noiseType == "repeat":
-            newSequence.append(s[p-1])
-          else:
-            raise("Unrecognized Noise Type!")
-        else:
-          newSequence.append(sdr)
-    newSequences.append(newSequence)
-
-  return newSequences
-
-def runInference(exp, sequences, enableFeedback=True):
-  """
-  Run inference on this set of sequences and compute error
-  """
-  if enableFeedback:
-    print "Feedback enabled: "
-  else:
-    print "Feedback disabled: "
-
-  error = 0
-  activityTraces = []
-  responses = []
-  for i,sequence in enumerate(sequences):
-    (avgActiveCells, avgPredictedActiveCells, activityTrace, responsesThisSeq) = exp.infer(
-      sequence, sequenceNumber=i, enableFeedback=enableFeedback)
-    error += avgActiveCells
-    activityTraces.append(activityTrace)
-    responses.append(responsesThisSeq)
-    print " "
-  error /= len(sequences)
-  print "Average error = ",error
-  return error, activityTraces, responses
-
-
-
-
-
-
-
-def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRange, noiseRange, whichPlot, plotTitle):
-
-  allowedNoises = ("skip", "replace", "repeat", "crossover", "pollute")
-  if noiseType not in allowedNoises:
-    raise("noiseType must be one of the following: ".join(allowedNoises))
-
-  meanErrsFB = []; meanErrsNoFB = []; meanErrsNoNoise = []
-  stdErrsFB = []; stdErrsNoFB = []; stdErrsNoNoise = []
-  perfsFB = []
-  perfsNoFB=[]
-  stdsFB = []
-  stdsNoFB=[]
-  activitiesFB=[]; activitiesNoFB=[]
-
-  diffsFB = []
-  diffsNoFB = []
-  overlapsFBL2=[]; overlapsNoFBL2=[]
-  overlapsFBL2Next=[]; overlapsNoFBL2Next=[]
-  diffsFBL2=[]; diffsNoFBL2=[]
-  diffsFBL2Next=[]; diffsNoFBL2Next=[]
-
-  #noiseProbas = (.1, .15, .2, .25, .3, .35, .4, .45, 1.0)
-
-  for noiseProba in noiseProbas:  # Varying noiseProba only produces a small range of difference if noise is during the whole period...
-    for numSequences in nbSequences:
-
-      errorsFB=[]; errorsNoFB=[]; errorsNoNoise=[]
-
-      #for probaZero in probaZeros:
-      seed = 42
-      for seed in range(nbSeeds): #numSequences in 10, 30, 50:
-          # Train a single network and show error for a single example noisy sequence
-          #noiseProba = .2
-          #probaZero = .2
-          profile = False,
-          L4Overrides = {"cellsPerColumn": 8}
-          #L4Overrides = {"cellsPerColumn": 4}
-          #seed = 42
-
-          numpy.random.seed(seed)
-
-          # Create the sequences and arrays
-          print "Generating sequences..."
-          sequenceMachine, generatedSequences, numbers = generateSequences(
-            sequenceLength=sequenceLen, sequenceCount=numSequences,
-            #sharedRange=(5,int(0.8*sequenceLen)),  # Need min of 3
-            #sharedRange=(5,sequenceLen),
-            #sharedRange=(0,0),
-            sharedRange=sharedRange,
-            seed=seed)
-
-          sequences = convertSequenceMachineSequence(generatedSequences)
-          noisySequences = deepcopy(sequences)
-
-          # Apply noise to sequences
-          noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
-                                #noiseStart=0, noiseEnd=sequenceLen,
-                                noiseStart=noiseRange[0], noiseEnd=noiseRange[1],
-                                noiseProba=noiseProba)
-
-          # *In addition* to this, add crossover or single-point noise
-          if noiseType == "crossover":
-            noisySequences = crossSequences(sequenceMachine, noisySequences,
-                                            pos=sequenceLen/2)
-          elif noiseType in ("repeat", "replace", "skip"):
-            #def addPerturbation(sequenceMachine, sequences, noiseType, pos, number=1):
-
-            noisySequences = addPerturbation(sequenceMachine, noisySequences,
-                                            #noiseStart=0, noiseEnd=sequenceLen,
-                                            noiseType=noiseType, pos=sequenceLen/2, number=1)
-
-
-
-
-          # inferenceErrors[0, ...] - average error with feedback
-          # inferenceErrors[1, ...] - average error without feedback
-          # inferenceErrors[i, j]   - average error with noiseLevel = j
-          inferenceErrors = numpy.zeros((2, 2))
-
-
-          #Setup experiment and train the network on sequences
-          print "Learning sequences..."
-          exp = FeedbackExperiment(
-            numLearningPasses= 2*sequenceLen,    # To handle high order sequences
-            seed=seed,
-            L4Overrides=L4Overrides,
-          )
-          exp.learnSequences(sequences)
-
-          print "Number of columns in exp: ", exp.numColumns
-          print "Sequences learned!"
-
-
-
-
-          # Run inference without any noise. This becomes our baseline error
-          standardError, activityNoNoise, responsesNoNoise = runInference(exp, sequences)
-          inferenceErrors[0,0] = standardError
-          inferenceErrors[1,0] = standardError
-
-          inferenceErrors[0,1], activityFB, responsesFB = runInference(
-              exp, noisySequences, enableFeedback=True)
-          inferenceErrors[1,1], activityNoFB, responsesNoFB = runInference(
-              exp, noisySequences, enableFeedback=False)
-
-
-
-          # responsesX dimensions:  NbSeqs x L2/L4 x NbTimeSteps
-          # We compute the overlap of L4 responses to noisy vs. original, non-noisy sequences,  at each time step in each sequence, both for with FB and w/o FB.
-          # NOTE: For this measure, noise must NOT change the length of the sequences!
-          seqlen = len(noisySequences[0])
-          for numseq in range(len(responsesNoNoise)):
-              #diffsFB.append( [len(responsesNoNoise[numseq]['L4Responses'][x].intersection(responsesFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
-              #diffsNoFB.append( [len(responsesNoNoise[numseq]['L4Responses'][x].intersection(responsesNoFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
-              diffsFB.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
-              diffsNoFB.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
-              overlapsFBL2.append( [len(responsesNoNoise[numseq]['L2Responses'][x].intersection(responsesFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
-              overlapsNoFBL2.append( [len(responsesNoNoise[numseq]['L2Responses'][x].intersection(responsesNoFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
-              overlapsFBL2Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L2Responses'][x].intersection(responsesFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
-              overlapsNoFBL2Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L2Responses'][x].intersection(responsesNoFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
-              diffsFBL2.append( [len(responsesNoNoise[numseq]['L2Responses'][x].symmetric_difference(responsesFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
-              diffsNoFBL2.append( [len(responsesNoNoise[numseq]['L2Responses'][x].symmetric_difference(responsesNoFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
-              diffsFBL2Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L2Responses'][x].symmetric_difference(responsesFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
-              diffsNoFBL2Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L2Responses'][x].symmetric_difference(responsesNoFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
-
-              print "Size of L2 responses (FB):", [len(responsesFB[numseq]['L2Responses'][x]) for x in range(seqlen)]
-              print "Size of L2 responses (NoNoise):", [len(responsesNoNoise[numseq]['L2Responses'][x]) for x in range(seqlen)]
-              print ""
-
-          #plt.plot(np.array(diffsNoFB).T, 'b')[
-          perfsFB.append(numpy.sum(numpy.array(diffsFB)[:,6:]))  # Exclude the early bit of the sequence (burn-in)
-          perfsNoFB.append(numpy.sum(numpy.array(diffsNoFB)[:,6:]))
-          errorsNoNoise.append(inferenceErrors[0,0])
-          errorsFB.append(inferenceErrors[0,1])
-          errorsNoFB.append(inferenceErrors[1,1])
-          # No, need to chose a dimension to compute std dev over...
-          #stdsFB.append(numpy.std(numpy.array(diffsFB)[:,5:]))  # Exclude the early bit of the sequence (burn-in)
-          #stdsNoFB.append(numpy.std(numpy.array(diffsNoFB)[:,5:]))
-
-          #plt.clf(); plt.plot(numpy.array(activityFB).T, 'r'); plt.plot(numpy.array(activityNoFB).T, 'b');
-          #plt.savefig("ActivityCrossoverNoSharedRange.pdf")
-
-          # Accumulating all the activity traces of all sequences (NOTE: Here '+' means list concatenation!)
-          activitiesFB += activityFB
-          activitiesNoFB += activityNoFB
-
-
-      # Mean error for this trial, across all sequences, both with and without FB
-      meanErrsFB.append(numpy.mean(errorsFB))
-      meanErrsNoFB.append(numpy.mean(errorsNoFB))
-      meanErrsNoNoise.append(numpy.mean(errorsNoNoise))
-      stdErrsFB.append(numpy.std(errorsFB))
-      stdErrsNoFB.append(numpy.std(errorsNoFB))
-      stdErrsNoNoise.append(numpy.std(errorsNoNoise))
-
-      #meanErrsFB.append(numpy.mean(perfsFB))
-      #meanErrsNoFB.append(numpy.mean(perfsNoFB))
-      #stdErrsFB.append(numpy.std(perfsFB))
-      #stdErrsNoFB.append(numpy.std(perfsNoFB))
-
-      # In the following, starting from column 1 to remove the initial response (which is always maximal surprise)
-      # So actual length of sequences is sequenceLen - 1 (except for omission noise, sequenceLen - 2)
-      aFB = numpy.array(activitiesFB)[:,1:]; aNoFB = numpy.array(activitiesNoFB)[:,1:]
-      oFB = numpy.array(overlapsFBL2)[:,1:]; oNoFB = numpy.array(overlapsNoFBL2)[:,1:];
-      oFBNext = numpy.array(overlapsFBL2Next)[:,1:]; oNoFBNext = numpy.array(overlapsNoFBL2Next)[:,1:];
-      xx = numpy.arange(aFB.shape[1])+1  # This +1 here
-      if whichPlot == "activities":
-        plt.figure()
-        plt.errorbar(xx, numpy.mean(aFB, axis=0), yerr=numpy.std(aFB, axis=0), color='r', label='Feedback enabled');
-        #plt.errorbar(xx, numpy.median(aFB, axis=0), yerr=(numpy.percentile(aFB, 75, axis=0)-numpy.percentile(aFB, 25, axis=0)), color='r', label='Feedback enabled');
-        plt.errorbar(xx, numpy.mean(aNoFB, axis=0), yerr=numpy.std(aNoFB, axis=0), color='b', label='Feedback disabled')
-        if noiseType == 'omission':
-          plt.axvspan(sharedRange[0], sharedRange[1] -2, alpha=0.25, color='pink', label="Shared Range") # -2 because omission removes one time step from the sequences
-
-        else:
-          plt.axvspan(sharedRange[0], sharedRange[1] -1, alpha=0.25, color='pink')
-        plt.axvline(sequenceLen/2, 0, 1, ls='--', label='Perturbation', color='black')
-        plt.legend(loc='best')
-        plt.title(plotTitle)
-        plt.savefig(plotTitle+".png")
-        plt.show()
-
-      if whichPlot == "overlaps":
-          # First, we plot the average prediction error in Layer 4, computed as the total activity
-        plt.figure()
-        #plt.plot(numpy.mean(numpy.array(activitiesFB), axis=0), 'r');  plt.plot(numpy.mean(numpy.array(activitiesNoFB), axis=0), 'b')
-        plt.errorbar(xx, numpy.mean(aFB, axis=0), yerr=numpy.std(aFB, axis=0), color='r', label='Feedback enabled')
-        plt.errorbar(xx, numpy.mean(aNoFB, axis=0), yerr=numpy.std(aNoFB, axis=0), color='b', label='Feedback disabled')
-        plt.axvspan(sharedRange[0], sharedRange[1] -1, alpha=0.25, color='pink')
-        plt.axvspan(sharedRange[1]-1, plt.xlim()[1], alpha=0.1, color='blue')
-        plt.title(plotTitle+": prediction errors")
-        plt.savefig(plotTitle+": prediction errors.png")
-        plt.show()
-
-        # Then, we show the mean similarities of Layer 2 representations to original L2 representations of both source sequences used in the crossover
-        plt.figure()
-        #plt.plot(numpy.mean(numpy.array(overlapsFBL2), axis=0), 'c');  plt.plot(numpy.mean(numpy.array(overlapsFBL2Next), axis=0), 'm')
-        plt.errorbar(xx, numpy.mean(oFBNext, axis=0), yerr=numpy.std(oFBNext, axis=0), color='m', label='Sequence 2'); plt.errorbar(xx, numpy.mean(oFB, axis=0), yerr=numpy.std(oFB, axis=0), color='c', label='Sequence 1')
-        plt.axvspan(sharedRange[0], sharedRange[1] -1, alpha=0.25, color='pink')
-        plt.axvspan(sharedRange[1]-1, plt.xlim()[1], alpha=0.1, color='blue')
-        plt.legend(loc='best')
-        plt.title(plotTitle+": top-layer representations")
-        plt.savefig(plotTitle+": top-layer representations.png")
-
-        plt.show()
-        #plt.figure(); plt.plot(numpy.mean(numpy.array(overlapsFBL2), axis=0), 'c');  plt.plot(numpy.mean(numpy.array(overlapsFBL2Next), axis=0), 'm')
-        #plt.show()
-      #plt.figure(); plt.plot(numpy.mean(numpy.array(diffsFBL2), axis=0), 'c');  plt.plot(numpy.mean(numpy.array(diffsFBL2Next), axis=0), 'm')
-
-  # Plot the total number of errors, as a function of noise probability OR number of sequences, both with and without feedback
-  if whichPlot == "errors":
-        plt.figure()
-        xisnbseq=0
-        xisnoisep=0
-        if len(noiseProbas)>1:
-          xisnoisep=1
-          xx = noiseProbas
-        if len(nbSequences)>1:
-          xisnbseq=1
-          xx = nbSequences
-        #xx = nbSequences
-        plt.errorbar(xx, meanErrsFB, yerr=stdErrsFB, color='r', label='Feedback enabled')
-        plt.errorbar(xx, meanErrsNoFB, yerr=stdErrsNoFB, color='b', label='Feedback disabled')
-        plt.xlim([numpy.min(xx)*.9, numpy.max(xx)*1.1])
-        plt.xticks(xx)
-        #plt.figure(); plt.plot(meanErrsFB, 'r'); plt.plot(meanErrsNoFB, 'b');
-        if xisnoisep:
-          plt.xlabel("Noise probability")
-        if xisnbseq:
-          plt.xlabel("Nb. of learned sequences")
-
-        plt.ylabel("Avg. Error"); #plt.xticks(noiseProbas)
-        plt.title(plotTitle)
-        plt.show()
-        plt.savefig(plotTitle+".png")
-  #plt.savefig("ActivityNoiseInitial.pdf")
-  #plt.clf(); plt.plot(errorsFB, 'r'); plt.plot(errorsNoFB, 'b'); plt.xlabel("Zeroing probability"); plt.ylabel("Avg. Error"); plt.xticks(range(len(probaZeros)), [str(x) for x in probaZeros])
-  #plt.savefig("ActivityPartialWholeSeq.pdf")
-
-
-if __name__ == "__main__":
-
-  plt.ion()
-
-  # If using whichPlot="overlaps" or whichPlot="activities", BOTH noiseProbas and nbSequences should be length-1 lists !
-  # If using whichPlot="errors", EITHER noiseProbas OR nbSequences should be a multi-item list, with the other being a length-1 list.
-  # The multi-element list is assumed to be the relevant indepdenent variable (i.e. what's to be plotted as x-axis)
-
-  # # 8 cells
-  # runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="skip", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors for perturbed sequences (omission)")
-  # runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="repeat", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors for perturbed sequences (repetition)")
-  # runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors for perturbed sequences (insertion)")
-  # runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="crossover", sequenceLen=30, sharedRange=(5,21), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (with prefix inertia and simple ff sel)")
-
-  # Increasing noise, over whole sequence
-  #runExp(noiseProbas=( .1,  .2, .3, .4), nbSequences=(30,), nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors under continuous noise")
-  # Increasing noise, only at beginning of sequence
-  #runExp(noiseProbas=( .1,  .2, .3, .4), nbSequences=(30,), nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,6), whichPlot="errors", plotTitle="Prediction errors under ambiguous sequence identification")
-  # # runExp(noiseProbas=(.1, .4,), nbSequences=(30,), nbSeeds=7, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,6), whichPlot="errors", plotTitle="Prediction errors under ambiguous sequence identification (less inertia)")
-
-  # Increasing model load (number of learned sequences)
-  #runExp(noiseProbas=(.25,), nbSequences=(2, 5, 10, 20, 30), nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors as a function of model load")
-  # # Test # runExp(noiseProbas=(.25,), nbSequences=(2, 5, 10, 20), nbSeeds=7, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors as a function of model load")
-
-  runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=7, noiseType="replace", sequenceLen=30, sharedRange=(5,25), noiseRange=(0,30), whichPlot="overlaps", plotTitle="Random elements 10 seqs (with new method and less prefix inertia)")
+      self._enableL2()
+
+    self._setLearningMode(l4Learning=False, l2Learning=False)
+
+    if sequenceNumber is not None:
+      if sequenceNumber not in self.objectL2Representations:
+        raise ValueError("The provided sequence was not given during"
+                         " learning")
+
+    L2Responses=[]
+    L4Responses=[]
+    L4Predictive=[]
+    activityTrace = numpy.zeros(len(sequence))
+
+    totalActiveCells = 0
+    totalPredictedActiveCells = 0
+    for i,s in enumerate(sequence):
+      self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
+      self.network.run(1)
+
+      activityTrace[i] = len(self.getL4Representations()[0])
+      L4Responses.append(self.getL4Representations()[0])
+      L4Predictive.append(self.getL4PredictiveCells()[0])
+      L2Responses.append(self.getL2Representations()[0])
+      if i >= burnIn:
+        totalActiveCells += len(self.getL4Representations()[0])
+        totalPredictedActiveCells += len(self.getL4PredictedActiveCells()[0])
+
+    if reset:
+      self.sendReset()
+
+    avgActiveCells = float(totalActiveCells) / len(sequence)
+    avgPredictedActiveCells = float(totalPredictedActiveCells) / len(sequence)
+
+    responses = {
+            "L2Responses": L2Responses,
+            "L4Responses": L4Responses,
+            "L4Predictive": L4Predictive
+            }
+    return avgActiveCells,avgPredictedActiveCells,activityTrace, responses
+
+
+  def sendReset(self, sequenceId=0):
+    """
+    Sends a reset signal to the network.
+    """
+    for col in xrange(self.numColumns):
+      self.sensorInputs[col].addResetToQueue(sequenceId)
+    self.network.run(1)
+
+
+  def getL4Representations(self):
+    """
+    Returns the active representation in L4.
+    """
+    return [set(column._tm.getActiveCells()) for column in self.L4Columns]
+
+
+  def getL4PredictiveCells(self):
+    """
+    Returns the predictive cells in L4.
+    """
+    return [set(column._tm.getPredictiveCells()) for column in self.L4Columns]
+
+
+  def getL4PredictedActiveCells(self):
+    """
+    Returns the predicted active cells in each column in L4.
+    """
+    predictedActive = []
+    for i in xrange(self.numColumns):
+      region = self.network.regions["L4Column_" + str(i)]
+      predictedActive.append(
+        region.getOutputData("predictedActiveCells").nonzero()[0])
+    return predictedActive
+
+
+  def getL2Representations(self):
+    """
+    Returns the active representation in L2.
+    """
+    return [set(column._pooler.getActiveCells()) for column in self.L2Columns]
+
+
+  def getDefaultL4Params(self, inputSize):
+    """
+    Returns a good default set of parameters to use in the L4 region.
+    """
+    return {
+      "columnCount": inputSize,
+      "cellsPerColumn": 8,
+      "formInternalBasalConnections": True,
+      "learn": True,
+      "learnOnOneCell": False,
+      "initialPermanence": 0.51,
+      "connectedPermanence": 0.6,
+      "permanenceIncrement": 0.1,
+      "permanenceDecrement": 0.02,
+      "minThreshold": 13,
+      "predictedSegmentDecrement": 0.00,
+      "activationThreshold": 15,
+      "maxNewSynapseCount": 20,
+      "implementation": "etm",
+      "seed": self.seed
+    }
+
+
+  def getDefaultL2Params(self, inputSize):
+    """
+    Returns a good default set of parameters to use in the L4 region.
+    """
+    return {
+      "cellCount": 2048,
+      "inputWidth": inputSize * 8,
+      "learningMode": True,
+      "sdrSize": 40,
+      "synPermProximalInc": 0.1,
+      "synPermProximalDec": 0.001,
+      "initialProximalPermanence": 0.6,
+      "minThresholdProximal": 10,
+      "sampleSizeProximal": 20,
+      "connectedPermanenceProximal": 0.5,
+      "synPermDistalInc": 0.1,
+      "synPermDistalDec": 0.02,
+      "initialDistalPermanence": 0.41,
+      "activationThresholdDistal": 13,
+      "sampleSizeDistal": 20,
+      "connectedPermanenceDistal": 0.5,
+      "distalSegmentInhibitionFactor": 1.5,
+      "seed": self.seed,
+    }
+
+
+  def _setLearningMode(self, l4Learning = False, l2Learning=False):
+    """
+    Sets the learning mode for L4 and L2.
+    """
+    for column in self.L4Columns:
+      column.setParameter("learn", 0, l4Learning)
+    for column in self.L2Columns:
+      column.setParameter("learningMode", 0, l2Learning)
+
+
+  def _disableL2(self):
+    self.network.setMaxEnabledPhase(2)
+
+
+  def _enableL2(self):
+    self.network.setMaxEnabledPhase(3)

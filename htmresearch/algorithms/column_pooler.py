@@ -282,70 +282,47 @@ class ColumnPooler(object):
 
 
     chosenCells = []
-    minNumActiveCells =  33 #self.sdrSize / 2
-
-    # This can be put either here, or after the 'INITIAL VERSION' bit
-    # Perf seems better if put at the end....? But seemingly more realistic at beginning?
-    # if len(prevActiveCells)>0:
-    #     prevActiveSegs = numActiveSegmentsByCell[prevActiveCells]
-    #     chosenCells = prevActiveCells[numpy.argsort(-prevActiveSegs)][:int(len(prevActiveCells)/2)] #/3 a bit bad, /2 very bad
-    #     #chosenCells = prevActiveCells[prevActiveSegs>0] #/3 a bit bad, /2 very bad
-
-    # if len(prevActiveCells)>0:
-    #     prevCellsRemaining = numpy.setdiff1d(prevActiveCells, chosenCells)
-    #     prevActiveSegs = numActiveSegmentsByCell[prevCellsRemaining]
-    #     chosenCells = numpy.append(chosenCells, prevCellsRemaining[numpy.argsort(-prevActiveSegs)][:int(1.0*len(prevCellsRemaining)/2.0)])
+    minNumActiveCells =  30 #self.sdrSize / 2
 
 
+    # # This is the old method. It relies heavily on the chooseCells function
+    # # A bit complex, works well, but fares badly in the face of random-SDR insertions in in put sequences!
+    # chosenCells = self._chooseCells(feedforwardSupportedCells,
+    #                                 minNumActiveCells, numActiveSegmentsByCell)
+    #
+    # # If necessary, activate some of the previously active cells
+    # if len(chosenCells) < minNumActiveCells:
+    #   remaining = numpy.setdiff1d(prevActiveCells, feedforwardSupportedCells)
+    #   remaining = remaining[numActiveSegmentsByCell[remaining] > 0]
+    #
+    #   chosenCells = numpy.append(
+    #     chosenCells, self._chooseCells(remaining,
+    #                                    minNumActiveCells - len(chosenCells),
+    #                                    numActiveSegmentsByCell))
 
-    # INITIAL VERSION
-    # # Activate some of the feedforward supported cells
-    # # This is the old method
-    # chosenCells = numpy.append(chosenCells, self._chooseCells(numpy.setdiff1d(feedforwardSupportedCells, chosenCells),
-    #                                  minNumActiveCells, numActiveSegmentsByCell))
 
-
-
-
+    # New method
+    # # First, select FF-supported cells. But if some have active segments, only chose these ones (they inhibit everyone else)
     remainingFFSupportedCells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
     activeSegs = numActiveSegmentsByCell[remainingFFSupportedCells]
-    if len(activeSegs) == 0:
+    if len(remainingFFSupportedCells) == 0:
         pass  # Nothing to add
-    # # # This is the simple method
-    # elif numpy.max(activeSegs) == 0:
-    #      chosenCells = numpy.append(chosenCells, remainingFFSupportedCells)
-    # else:
-    #      chosenCells = numpy.append(chosenCells, remainingFFSupportedCells[activeSegs > 0])
-    # # # This is a newer method
     elif numpy.max(activeSegs) == 0:
          chosenCells = numpy.append(chosenCells, remainingFFSupportedCells)
     else:
          chosenCells = numpy.append(chosenCells, remainingFFSupportedCells[activeSegs > 0])
-         # Possible addition:
-        #  z = remainingFFSupportedCells[activeSegs == 0]
-        #  if len(z)>0:
-        #      chosenCells = numpy.append(chosenCells, z[:int(len(z)/5.0)])
+        #  We want to allow *a few* FF-supported cells with 0 active segments, just in case...
+         z = numpy.random.permutation(remainingFFSupportedCells[activeSegs == 0])
+         #chosenCells = numpy.append(chosenCells, z[:int((minNumActiveCells - len(chosenCells))/2)]) # Very damaging under random-SDR insertion in input sequences!
+         if len(z)>0:
+           chosenCells = numpy.append(chosenCells, z[:3])
 
-    # # This is the approximation of the old method (chooseCells). It works well. Note the complexity.
-    # else:
-    #     t = numpy.max(activeSegs)
-    #     while t >= 0:
-    #         chosenCells = numpy.append(chosenCells, remainingFFSupportedCells[((activeSegs == t) | (activeSegs == t-1)) & (activeSegs > 0)])
-    #         if t == 0:
-    #             chosenCells = numpy.append(chosenCells, remainingFFSupportedCells[activeSegs == 0])
-    #         chosenCells = numpy.unique(chosenCells)
-    #         t -= 1
-    #         if len(chosenCells) > minNumActiveCells:
-    #             break
-    #
+    #chosenCells = feedforwardSupportedCells.copy()
 
-
-
-
-    # # Inertia: Keep a certain portion of previously active cells, sorted by number of active segments
-    # # We want to select the cells with highest active segments first. But simply using ArgSort could introduce artifacts
+    # # Inertia: if there aren't enough active cells to fill minNumActiveCells, pick some of the previously active cells,
+    # # starting with the ones with highest number of active segments.
+    # # This should be very simple, but simply using ArgSort could introduce artifacts
     # # for the ties! So we use a rather more complicated method to ensure randomization of tied cells
-    # #
     if len(prevActiveCells)>0:
         prevCellsRemaining = numpy.setdiff1d(prevActiveCells, chosenCells)
         if prevCellsRemaining.size > 0 and len(chosenCells) < minNumActiveCells:
@@ -355,74 +332,8 @@ class ColumnPooler(object):
             while t >= 0:
                 sortedCells = numpy.append(sortedCells, numpy.random.permutation(prevCellsRemaining[prevActiveSegs == t]))
                 t -= 1
-            #chosenCells = numpy.append(chosenCells, sortedCells[:int(1.0*len(prevCellsRemaining)/2.0)])
-            # numInertiaCells = 0 # int(1.0 * len(prevCellsRemaining)/ 3.0)
-            # if len(chosenCells) + numInertiaCells >= minNumActiveCells:
-            #     chosenCells = numpy.append(chosenCells, sortedCells[:numInertiaCells])
-            # else:
-            #     chosenCells = numpy.append(chosenCells, sortedCells[:(minNumActiveCells - len(chosenCells))])
             chosenCells = numpy.append(chosenCells, sortedCells[:(minNumActiveCells - len(chosenCells))])
 
-
-
-
-    # # # # If necessary, activate some of the remaining previously active cells
-    # if len(chosenCells) < minNumActiveCells:
-    #   #print "Filling"
-    #   remaining = numpy.setdiff1d(prevActiveCells, chosenCells)
-    #   #remaining = remaining[numActiveSegmentsByCell[remaining] > 0]
-    #
-    #   chosenCells = numpy.append(
-    #     chosenCells, self._chooseCells(remaining,
-    #                                    minNumActiveCells - len(chosenCells),
-    #                                    numActiveSegmentsByCell))
-    #
-
-
-
-
-
-
-
-
-        # if nbchosen < minNumActiveCells:
-        #     remainingCells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
-        #     remainingActiveSegs = numActiveSegmentsByCell[remainingCells]
-        #     #chosenCells = numpy.append( chosenCells, remainingCells[remainingActiveSegs > 0])
-        #     chosenCells = numpy.append(
-        #       chosenCells, self._chooseCells(remainingCells,
-        #                                      minNumActiveCells - len(chosenCells),
-        #                                      numActiveSegmentsByCell))
-
-            #raise("OK")
-
-    # # Activate some of the feedforward supported cells
-    # minNumActiveCells = self.sdrSize / 2
-    # chosenCellsNew = self._chooseCells(numpy.setdiff1d(feedforwardSupportedCells, chosenCellsPrev),
-    #                                 minNumActiveCells - nbchosen, numActiveSegmentsByCell)
-    #
-    # #raise("OK")
-    # chosenCells = numpy.append(chosenCellsPrev, chosenCellsNew)
-    #
-    # # If necessary, activate some of the previously active cells
-    # if len(chosenCells) < minNumActiveCells:
-    #   remaining = numpy.setdiff1d(prevActiveCells, chosenCells)
-    #   #remaining = remaining[numActiveSegmentsByCell[remaining] > 0]
-    #
-    #   chosenCells = numpy.append(
-    #     chosenCells, self._chooseCells(remaining,
-    #                                    minNumActiveCells - len(chosenCells),
-    #                                    numActiveSegmentsByCell))
-    #
-
-    # if len(prevActiveCells) > 0:
-    #     prevActiveSegs = numActiveSegmentsByCell[prevActiveCells]
-    #     chosenCells = prevActiveCells[numpy.argsort(-prevActiveSegs)][:int(self.sdrSize/2)]
-    #     #raise("OK")
-    #     remainingCells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
-    #     remainingActiveSegs = numActiveSegmentsByCell[remainingCells]
-    #     chosenCells = numpy.concatenate(( chosenCells, remainingCells[numpy.argsort(-remainingActiveSegs)][:self.sdrSize-chosenCells.size] ))
-    #     #raise("OK")
 
     chosenCells.sort()
     self.activeCells = numpy.asarray(chosenCells, dtype="uint32")
