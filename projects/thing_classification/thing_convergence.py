@@ -42,7 +42,7 @@ def loadThingObjects(numCorticalColumns=1):
                                        [list of active bits of feature]]
   The content before "=>" is the true 3D location / sensation
   The number of active bits in the location and feature is listed after "=>".
-  :return:
+  @return A simple object machine
   """
   # create empty simple object machine
   objects = createObjectMachine(
