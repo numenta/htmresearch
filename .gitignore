@@ -1,4 +1,4 @@
-*.py[cod]
+ls*.py[cod]
 .cache
 
 # C extensions
@@ -92,4 +92,3 @@ robotium-solo-5.0.1.jar.properties
 *_TEST
 *_TRAIN
 *_ALL
-*.log
