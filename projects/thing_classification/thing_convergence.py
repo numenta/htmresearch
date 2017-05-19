@@ -44,14 +44,15 @@ def loadThingObjects(numCorticalColumns=1):
   The number of active bits in the location and feature is listed after "=>".
   :return:
   """
+  # create empty simple object machine
   objects = createObjectMachine(
     machineType="simple",
     numInputBits=20,
     sensorInputSize=1024,
     externalInputSize=1024,
     numCorticalColumns=numCorticalColumns,
-    numFeatures=10,
-    numLocations=10,
+    numFeatures=0,
+    numLocations=0,
   )
 
   for _ in range(numCorticalColumns):
@@ -69,14 +70,18 @@ def loadThingObjects(numCorticalColumns=1):
 
     sensationList = []
     for line in objFile.readlines():
+      # parse thing data file and extract feature/location vectors
       sense = line.split('=>')[1].strip(' ').strip('\n')
       location = sense.split('],[')[0].strip('[')
       feature = sense.split('],[')[1].strip(']')
       location = np.fromstring(location, sep=',', dtype=np.uint8)
       feature = np.fromstring(feature, sep=',', dtype=np.uint8)
+
+      # add the current sensation to object Machine
       sensationList.append((idx, idx))
-      objects.locations[0].append(set(location.tolist()))
-      objects.features[0].append(set(feature.tolist()))
+      for c in range(numCorticalColumns):
+        objects.locations[c].append(set(location.tolist()))
+        objects.features[c].append(set(feature.tolist()))
       idx += 1
     objects.addObject(sensationList, objName)
   return objects
