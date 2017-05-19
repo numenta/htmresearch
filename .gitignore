@@ -1,4 +1,4 @@
-ls*.py[cod]
+*.py[cod]
 .cache
 
 # C extensions
