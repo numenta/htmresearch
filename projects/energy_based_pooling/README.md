@@ -15,7 +15,8 @@ The last 50 entries in each row are reapeted 2 times to form the full input vect
 
  - Right: 25 test input vectors.
  - Left: Reconstruction of the corresponding input on the right.
-<center>![...](/media/reconstruction_example.png?raw=true)</center>
+
+<center><img src="./media/reconstruction_example.png"/></center>
 
 ##### Scatter
 
@@ -24,13 +25,15 @@ Each point corresponds to a learned feature (i.e. a row in the weight matrix W e
 - x-coordinate: sum of the weights of connections to the first 50 input units
 - y-coordinate: sum of the weights of connections to the last 150 input units
 
-<center>![...](./media/scatter_example.png?raw=true)</center>
+<center><img src="./media/scatter_example.png"/></center>
+
 
 ##### Learned features
 
 Each column corresponds to a learned feature (i.e. a row in the weight matrix W encoding the visible-to-hidden connections).
 
-<center>![...](./media/features_example.png?raw=true)</center>
+ <center><img src="./media/features_example.png"/></center>
+
 
 
 ...
