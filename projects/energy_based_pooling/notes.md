@@ -1,4 +1,4 @@
-
+<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-MML-AM_CHTML'></script>
 
 # The HTM Spatial Pooler as a Hopfield network
 <!--An Energy-Based Spatial Pooler-->
