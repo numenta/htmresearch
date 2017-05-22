@@ -15,7 +15,7 @@ The last 50 entries in each row are reapeted 2 times to form the full input vect
 
  - Right: 25 test input vectors.
  - Left: Reconstruction of the corresponding input on the right.
-<center>![...](./media/reconstruction_example.png?raw=true)</center>
+<center>![...](/media/reconstruction_example.png?raw=true)</center>
 
 ##### Scatter
 
