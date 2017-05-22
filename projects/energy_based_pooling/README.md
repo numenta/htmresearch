@@ -25,7 +25,7 @@ Each point corresponds to a learned feature (i.e. a row in the weight matrix W e
 - x-coordinate: sum of the weights of connections to the first 50 input units
 - y-coordinate: sum of the weights of connections to the last 150 input units
 
-<img src="./media/scatter_example.png">
+<div style="text-align:center"><img src="./media/scatter_example.png"></div>
 
 
 ##### Learned features
