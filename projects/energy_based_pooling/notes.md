@@ -143,7 +143,7 @@ and we have to settle with the fact that we might only get to a local minimum.
 # References and Relevant sources
 <a name="references"></a>
 
-<a name="foldiak">\[Foldiak\]</a> P. Földiák, Forming sparse representations by local anti-Hebbian learning, Biological Cy- bernetics 64 (1990), 165–170.
+<a name="foldiak">\[Foldiak\]</a> P. Földiák, Forming sparse representations by local anti-Hebbian learning, Biological Cybernetics 64 (1990), 165–170.
 
 <a name="sp_paper">\[HTMsp\]</a> Yuwei Cui, Subutai Ahmad, and Jeff Hawkins, The HTM Spatial Pooler: a neocortical algorithm for online sparse distributed coding, bioRxiv:085035 (2017).
 
