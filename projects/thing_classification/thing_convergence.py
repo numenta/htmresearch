@@ -88,24 +88,12 @@ def loadThingObjects(numCorticalColumns=1):
 
 
 
-def trainNetwork(objects, numColumns, logFilename):
+def trainNetwork(objects, numColumns):
   exp = L4L2Experiment("shared_features",
-                       numCorticalColumns=numColumns,
-                       logCalls=True)
+                       numCorticalColumns=numColumns)
   exp.learnObjects(objects.provideObjectsToLearn())
 
-  LoggingDecorator.save(exp.callLog, logFilename)
-
-
-
-def runInference(objects, logFile):
-  """
-  Run the trained network on sequence of sensations from different objects
-  """
   settlingTime = 3
-  exp = rerunExperimentFromLogfile(logFile)
-  exp.logCalls = False
-  numColumns = len(exp.L2Columns)
   L2Representations = exp.objectL2Representations
   print "Learned object representations:"
   pprint.pprint(L2Representations, width=400)
@@ -171,8 +159,7 @@ if __name__ == "__main__":
   numColumns = 1
   objects = loadThingObjects(numColumns)
 
-  trainNetwork(objects, numColumns, "callLog.pkl")
+  trainNetwork(objects, numColumns)
 
-  runInference(objects, "callLog.pkl")
 
 
