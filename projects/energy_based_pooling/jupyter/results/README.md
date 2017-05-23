@@ -3,8 +3,8 @@
 
 ## Reconstruction
 
-Each row shows an excerpt of a binary vector. The first 50 bits encode the x-coordinate, and the last 50 bits encode the y-coordinate.
-The last 50 entries in each row are reapeted 2 times to form the full input vector (i.e. the actual length of the vectors is 100 + 2*50 = 200).
+Each row shows an excerpt of a binary vector. The first 50 entries in a row encode the x-coordinate, and the last 50 bits encode the y-coordinate of a point in [0,1]x[0,1].
+The last 50 entries in each row are reapeted 2 more times to form the full binary input vector (i.e. the actual length of the vectors is 100 + 2*50 = 200).
 
  - Right: 25 test input vectors.
  - Left: Reconstruction of the corresponding input on the right.
