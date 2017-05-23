@@ -1,5 +1,5 @@
 
-latex/
+latex/*
 !latex/notes.pdf
 !latex/notes.tex
 
