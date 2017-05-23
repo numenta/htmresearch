@@ -26,11 +26,20 @@ class EnergyBasedPooler(object):
     Example Usage
     -------------
     ```
+    # Instantiate
     coder = EnergyBasedPooler(...)
+
+    # Re-configure 
+    coder.energy         = MethodType(energy_functions.numenta_extended, coder)
+    coder.update_weights = MethodType(weight_updates.numenta_extended_bounded_by_zero, coder)
+
+    # Train
     for line in file:
-        inputVector = numpy.array(line)
-        coder.learn(inputVector)
+        input_vector = numpy.array(line)
+        coder.learn(input_vector)
+
     ```
+
     """
 
     def __init__(self, 
