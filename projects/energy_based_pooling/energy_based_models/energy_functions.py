@@ -37,7 +37,7 @@ def numenta(self, x, y):
     w      = pooler.code_weight
 
     size_penalty = 0 if dot(y,y) <= w else np.inf
-    energy       = - dot( y , exp( - b - dot(H, y) )  *  dot(W, x) ) 
+    energy       = - dot( y , exp( - b )  *  dot(W, x) ) 
 
     return energy + size_penalty 
 
