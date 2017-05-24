@@ -93,11 +93,10 @@ def getL4Params():
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
-    "minThreshold": 10,
+    "minThreshold": 8,
     "predictedSegmentDecrement": 0.0,
-    "activationThreshold": 13,
-    "maxNewSynapseCount": 25,
-    "implementation": "etm",
+    "activationThreshold": 8,
+    "maxNewSynapseCount": 15,
   }
 
 
@@ -107,7 +106,7 @@ def getL2Params():
   Returns a good default set of parameters to use in the L4 region.
   """
   return {
-    "inputWidth": 2048 * 8,
+    "inputWidth": 150 * 16,
     "cellCount": 4096,
     "sdrSize": 40,
     "synPermProximalInc": 0.1,
@@ -119,10 +118,10 @@ def getL2Params():
     "synPermDistalInc": 0.1,
     "synPermDistalDec": 0.001,
     "initialDistalPermanence": 0.41,
-    "activationThresholdDistal": 18,
+    "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 1.5,
+    "distalSegmentInhibitionFactor": 1.001,
     "learningMode": True,
   }
 
@@ -220,10 +219,6 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
   exp._unsetLearningMode()
   exp.sendReset()
 
-  overlap = np.zeros((numTestPoints, numObjects))
-  numL2ActiveCells = np.zeros((numTestPoints))
-  numL4ActiveCells = np.zeros((numTestPoints))
-
   for step, pair in enumerate(testPairs):
     (locationIdx, featureIdx) = pair
     for colIdx in xrange(exp.numColumns):
@@ -235,19 +230,23 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
 
     exp.network.run(1)
 
-    for colIdx in xrange(exp.numColumns):
-      numL2ActiveCells[step] += float(len(exp.getL2Representations()[colIdx]))
-      numL4ActiveCells[step] += float(len(exp.getL4Representations()[colIdx]))
+  overlap = np.zeros((numObjects))
+  numL2ActiveCells = 0
+  numL4ActiveCells = 0
 
-    numL2ActiveCells[step] /= exp.numColumns
-    numL4ActiveCells[step] /= exp.numColumns
+  for colIdx in xrange(exp.numColumns):
+    numL2ActiveCells += float(len(exp.getL2Representations()[colIdx]))
+    numL4ActiveCells += float(len(exp.getL4Representations()[colIdx]))
 
-    for obj in xrange(numObjects):
-      overlap[step, obj] = np.mean([
-        len(exp.objectL2Representations[obj][colIdx] &
-            exp.getL2Representations()[colIdx])
-        for colIdx in xrange(exp.numColumns)]
-      )
+  numL2ActiveCells /= exp.numColumns
+  numL4ActiveCells /= exp.numColumns
+
+  for obj in xrange(numObjects):
+    overlap[obj] = np.mean([
+      len(exp.objectL2Representations[obj][colIdx] &
+          exp.getL2Representations()[colIdx])
+      for colIdx in xrange(exp.numColumns)]
+    )
 
     # columnPooler = exp.L2Columns[0]._pooler
     # tm = exp.L4Columns[0]._tm
@@ -297,14 +296,12 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100, repeatID=0):
       [obj for obj in xrange(numObjects) if obj != targetObject]
     )
 
-    overlap, numActiveL2Cells, numL4ActiveCells = testNetworkWithOneObject(
+    lastOverlap, numActiveL2Cells, numL4ActiveCells = testNetworkWithOneObject(
       objects,
       exp,
       targetObject,
-      10
+      3
     )
-
-    lastOverlap = overlap[-1, :]
 
     maxOverlapIndices = (
       np.where(lastOverlap == lastOverlap[np.argmax(lastOverlap)])[0].tolist()
@@ -316,8 +313,8 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100, repeatID=0):
 
     confusion[i] = np.max(lastOverlap[nonTargetObjs])
     overlapTrueObj[i] = lastOverlap[targetObject]
-    l2ActivationSize[i] = numActiveL2Cells[-1]
-    l4ActivationSize[i] = numL4ActiveCells[-1]
+    l2ActivationSize[i] = numActiveL2Cells
+    l4ActivationSize[i] = numL4ActiveCells
     # print "repeat {} target obj {} overlap {}".format(i, targetObject, overlapTrueObj[i])
 
     testResult = {
@@ -344,7 +341,7 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100, repeatID=0):
 
 
 def plotResults(result, ax=None, xaxis="numObjects",
-                filename=None, marker='-bo', confuseThresh=20, showErrBar=1):
+                filename=None, marker='-bo', confuseThresh=30, showErrBar=1):
 
   if ax is None:
     fig, ax = plt.subplots(2, 2)
@@ -582,7 +579,7 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
   cpuCount = cpuCount or multiprocessing.cpu_count()
   pool = multiprocessing.Pool(cpuCount, maxtasksperchild=1)
 
-  numObjectsList = np.arange(50, 800, 50)
+  numObjectsList = np.arange(50, 800, 200)
   params = []
   for rpt in range(numRpts):
     for numObjects in numObjectsList:
@@ -774,7 +771,7 @@ def runExperiment3(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
   """
 
   numPointsPerObject = 10
-  numRpts = 10
+  numRpts = 1
   l4Params = getL4Params()
   l2Params = getL2Params()
 
@@ -783,8 +780,8 @@ def runExperiment3(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
 
   expParams = []
   expParams.append({'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6, 'thresh': 3})
-  expParams.append({'l4Column': 256, 'externalInputSize': 2400, 'w': 20, 'sample': 6, 'thresh': 3})
-  expParams.append({'l4Column': 512, 'externalInputSize': 2400, 'w': 20, 'sample': 6, 'thresh': 3})
+  expParams.append({'l4Column': 200, 'externalInputSize': 2400, 'w': 20, 'sample': 6, 'thresh': 3})
+  expParams.append({'l4Column': 250, 'externalInputSize': 2400, 'w': 20, 'sample': 6, 'thresh': 3})
   # expParams.append({'l4Column': 1024, 'externalInputSize': 2400, 'w': 20, 'sample': 6, 'thresh': 3})
 
   for expParam in expParams:
@@ -873,7 +870,7 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
   """
 
   numPointsPerObject = 10
-  numRpts = 3
+  numRpts = 1
 
   l4Params = getL4Params()
   l2Params = getL2Params()
@@ -940,7 +937,7 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
     result = pd.read_csv(resultFileName)
 
-    plotResults(result, ax, "numObjects", None, DEFAULT_COLORS[ploti], confuseThresh=20)
+    plotResults(result, ax, "numObjects", None, DEFAULT_COLORS[ploti])
     ploti += 1
     legendEntries.append("L4 mcs {} #cc {} ".format(
       expParam['l4Column'], expParam['l2Column']))
@@ -1397,39 +1394,39 @@ def runExperiments(resultDirName, plotDirName, cpuCount):
   #                cpuCount=cpuCount)
 
 
-  # # 10 pts per object, varying number of objects, varying L4 size
-  # runExperiment3(numCorticalColumns=1,
-  #                resultDirName=resultDirName,
+  # 10 pts per object, varying number of objects, varying L4 size
+  runExperiment3(numCorticalColumns=1,
+                 resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
+
+
+  # # 10 pts per object, varying number of objects and number of columns
+  # runExperiment4(resultDirName=resultDirName,
   #                plotDirName=plotDirName,
   #                cpuCount=cpuCount)
-
-
-  # 10 pts per object, varying number of objects and number of columns
-  runExperiment4(resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
-
-  # 10 pts per object, varying number of L2 cells
-  runExperiment5(resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
+  #
+  # # 10 pts per object, varying number of L2 cells
+  # runExperiment5(resultDirName=resultDirName,
+  #                plotDirName=plotDirName,
+  #                cpuCount=cpuCount)
 
   # # 10 pts per object, varying sparsity of L2
   # runExperiment6(resultDirName=resultDirName,
   #                plotDirName=plotDirName,
   #                cpuCount=cpuCount)
 
-  # 10 pts per object, varying number of location SDRs
-  runExperiment7(numCorticalColumns=1,
-                 resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
-
-  # 10 pts per object, varying number of feature SDRs
-  runExperiment8(numCorticalColumns=1,
-                 resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
+  # # 10 pts per object, varying number of location SDRs
+  # runExperiment7(numCorticalColumns=1,
+  #                resultDirName=resultDirName,
+  #                plotDirName=plotDirName,
+  #                cpuCount=cpuCount)
+  #
+  # # 10 pts per object, varying number of feature SDRs
+  # runExperiment8(numCorticalColumns=1,
+  #                resultDirName=resultDirName,
+  #                plotDirName=plotDirName,
+  #                cpuCount=cpuCount)
 
 
 
