@@ -86,7 +86,7 @@ def getL4Params():
   return {
     "columnCount": 150,
     "cellsPerColumn": 16,
-    "formInternalBasalConnections": True,
+    "formInternalBasalConnections": False,
     "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
