@@ -474,7 +474,8 @@ class FeedbackExperiment(object):
             "apicalPredictedSegmentDecrement": 0.0,
             "activationThreshold": 15, #15,
             "sampleSize": 20, #60,  # 1.5 * 40
-            "implementation": "ApicalModulation", #"ApicalTiebreak",
+            # "implementation": "ApicalModulation", #"ApicalTiebreak",
+            "implementation": "ApicalTiebreak",
             "seed": self.seed
             }
     elif self.L4RegionType == "py.ExtendedTMRegion":
