@@ -48,8 +48,8 @@ from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 import matplotlib as mpl
 mpl.rcParams['pdf.fonttype'] = 42
 
-NUM_LOCATIONS = 5000
-NUM_FEATURES = 5000
+DEFAULT_NUM_LOCATIONS = 5000
+DEFAULT_NUM_FEATURES = 5000
 DEFAULT_RESULT_DIR_NAME = "results"
 DEFAULT_PLOT_DIR_NAME = "plots"
 DEFAULT_NUM_CORTICAL_COLUMNS = 1
@@ -86,7 +86,7 @@ def getL4Params():
   return {
     "columnCount": 150,
     "cellsPerColumn": 16,
-    "formInternalBasalConnections": True,
+    "formInternalBasalConnections": False,
     "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
@@ -94,7 +94,7 @@ def getL4Params():
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
     "minThreshold": 10,
-    "predictedSegmentDecrement": 0.002,
+    "predictedSegmentDecrement": 0.0,
     "activationThreshold": 13,
     "maxNewSynapseCount": 25,
     "implementation": "etm",
@@ -157,6 +157,42 @@ def createRandomObjects(numObjects,
   # Return sequences of random feature-location pairs.  Each sequence will
   # contain a number of pairs defined by 'numPointsPerObject'
   return zip(*[iter(randomFeatureLocPairs)] * numPointsPerObject)
+
+
+
+def createRandomObjectsSharedPairs(numObjects,
+                                   numPointsPerObject,
+                                   numLocations,
+                                   numFeatures):
+  """
+  Create numObjects. (feature, location) pairs may be shared.
+  :param numObjects: number of objects
+  :param numPointsPerObject: number of (feature, location) pairs per object
+  :param numLocations: number of unique locations
+  :param numFeatures: number of unique features
+  :return:   (list(list(tuple))  List of lists of feature / location pairs.
+  """
+  locations = np.arange(numLocations)
+  features = np.arange(numFeatures)
+
+  objects = []
+  objectsSets = set()
+  for _ in xrange(numObjects):
+    objectLocations = np.random.choice(locations, numPointsPerObject,
+                                       replace=False)
+    objectFeatures = np.random.choice(features, numPointsPerObject,
+                                      replace=True)
+
+    o = zip(objectLocations, objectFeatures)
+
+    # Make sure this is a unique object.
+    objectAsSet = frozenset(o)
+    assert objectAsSet not in objectsSets
+    objectsSets.add(objectAsSet)
+
+    objects.append(o)
+
+  return objects
 
 
 
@@ -259,7 +295,7 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100):
       objects,
       exp,
       targetObject,
-      3
+      10
     )
 
     lastOverlap = overlap[-1, :]
@@ -326,6 +362,8 @@ def plotResults(result, ax=None, xaxis="numPointsPerObject",
       (l2ActivationSize, np.array(resultsRpts.get_group(rpt).l2ActivationSize)))
 
   ax[0, 0].errorbar(x, np.mean(accuracy, 0), yerr=np.std(accuracy, 0), color=marker)
+  for tick in ax[0, 0].xaxis.get_major_ticks():
+    tick.label.set_fontsize(8)
   ax[0, 0].set_ylabel("Accuracy")
   ax[0, 0].set_xlabel(xlabel)
   ax[0, 0].set_ylim([0.1, 1.05])
@@ -378,14 +416,17 @@ def runCapacityTest(numObjects,
   if numInputBits is None:
     numInputBits = int(l4ColumnCount * 0.02)
 
+  numLocations = objectParams["numLocations"]
+  numFeatures = objectParams["numFeatures"]
+
   objects = createObjectMachine(
     machineType="simple",
     numInputBits=numInputBits,
     sensorInputSize=l4ColumnCount,
     externalInputSize=externalInputSize,
     numCorticalColumns=numCorticalColumns,
-    numLocations=NUM_LOCATIONS,
-    numFeatures=NUM_FEATURES
+    numLocations=numLocations,
+    numFeatures=numFeatures
   )
 
   exp = L4L2Experiment("capacity_two_objects",
@@ -397,12 +438,20 @@ def runCapacityTest(numObjects,
                        numLearningPoints=3,
                        numCorticalColumns=numCorticalColumns)
 
-  pairs = createRandomObjects(
-    numObjects,
-    numPointsPerObject,
-    NUM_LOCATIONS,
-    NUM_FEATURES
-  )
+  if objectParams["uniquePairs"]:
+    pairs = createRandomObjects(
+      numObjects,
+      numPointsPerObject,
+      numLocations,
+      numFeatures
+    )
+  else:
+    pairs = createRandomObjectsSharedPairs(
+      numObjects,
+      numPointsPerObject,
+      numLocations,
+      numFeatures
+    )
 
   for object in pairs:
     objects.addObject(object)
@@ -541,7 +590,11 @@ def runExperiment1(numObjects=2,
   Varying number of pts per objects, two objects
   Try different sample sizes
   """
-  objectParams = {'numInputBits': 20, 'externalInputSize': 2400}
+  objectParams = {'numInputBits': 20,
+                  'externalInputSize': 2400,
+                  'numFeatures': DEFAULT_NUM_FEATURES,
+                  'numLocations': DEFAULT_NUM_LOCATIONS,
+                  'uniquePairs': True,}
   l4Params = getL4Params()
   l2Params = getL2Params()
 
@@ -614,7 +667,11 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
   numPointsPerObject = 10
   l4Params = getL4Params()
   l2Params = getL2Params()
-  objectParams = {'numInputBits': 20, 'externalInputSize': 2400}
+  objectParams = {'numInputBits': 20,
+                  'externalInputSize': 2400,
+                  'numFeatures': DEFAULT_NUM_FEATURES,
+                  'numLocations': DEFAULT_NUM_LOCATIONS,
+                  'uniquePairs': True,}
 
   for sampleSize in sampleSizeRange:
     print "sampleSize: {}".format(sampleSize)
@@ -713,7 +770,11 @@ def runExperiment3(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
     l4Params["minThreshold"] = int(numInputBits * .6)
     l4Params["maxNewSynapseCount"] = int(2*l4Params["activationThreshold"])
 
-    objectParams = {'numInputBits': numInputBits, 'externalInputSize': expParam['externalInputSize']}
+    objectParams = {'numInputBits': numInputBits,
+                    'externalInputSize': expParam['externalInputSize'],
+                    'numFeatures': DEFAULT_NUM_FEATURES,
+                    'numLocations': DEFAULT_NUM_LOCATIONS,
+                    'uniquePairs': True,}
 
     print "l4Params: "
     pprint(l4Params)
@@ -811,7 +872,10 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
     l4Params["maxNewSynapseCount"] = int(2*l4Params["activationThreshold"])
 
     objectParams = {'numInputBits': numInputBits,
-                    'externalInputSize': expParam['externalInputSize']}
+                    'externalInputSize': expParam['externalInputSize'],
+                    'numFeatures': DEFAULT_NUM_FEATURES,
+                    'numLocations': DEFAULT_NUM_LOCATIONS,
+                    'uniquePairs': True,}
 
     print "l4Params: "
     pprint(l4Params)
@@ -907,7 +971,10 @@ def runExperiment5(resultDirName=DEFAULT_RESULT_DIR_NAME,
     l4Params["maxNewSynapseCount"] = int(2*l4Params["activationThreshold"])
 
     objectParams = {'numInputBits': numInputBits,
-                    'externalInputSize': externalInputSize}
+                    'externalInputSize': externalInputSize,
+                    'numFeatures': DEFAULT_NUM_FEATURES,
+                    'numLocations': DEFAULT_NUM_LOCATIONS,
+                    'uniquePairs': True,}
 
     print "l4Params: "
     pprint(l4Params)
@@ -1013,7 +1080,10 @@ def runExperiment6(resultDirName=DEFAULT_RESULT_DIR_NAME,
     l4Params["maxNewSynapseCount"] = int(2 * l4Params["activationThreshold"])
 
     objectParams = {'numInputBits': numInputBits,
-                    'externalInputSize': externalInputSize}
+                    'externalInputSize': externalInputSize,
+                    'numFeatures': DEFAULT_NUM_FEATURES,
+                    'numLocations': DEFAULT_NUM_LOCATIONS,
+                    'uniquePairs': True,}
 
     print "l4Params: "
     pprint(l4Params)
@@ -1073,6 +1143,218 @@ def runExperiment6(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
 
 
+def runExperiment7(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
+                   resultDirName=DEFAULT_RESULT_DIR_NAME,
+                   plotDirName=DEFAULT_PLOT_DIR_NAME,
+                   cpuCount=None):
+  """
+  runCapacityTestVaryingObjectNum()
+  Try different numLocations
+  """
+
+  numPointsPerObject = 10
+  numRpts = 1
+  l4Params = getL4Params()
+  l2Params = getL2Params()
+
+  l2Params['cellCount'] = 4096
+  l2Params['sdrSize'] = 40
+
+  expParams = [
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'numFeatures': 500, 'numLocations': 16},
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'numFeatures': 500, 'numLocations': 128},
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'numFeatures': 500, 'numLocations': 1000},
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'numFeatures': 500, 'numLocations': 5000},
+  ]
+
+  for expParam in expParams:
+    l4Params["columnCount"] = expParam['l4Column']
+    numInputBits = expParam['w']
+    l2Params['sampleSizeProximal'] = expParam['sample']
+    l2Params['minThresholdProximal'] = expParam['thresh']
+
+    l4Params["activationThreshold"] = int(numInputBits * .6)
+    l4Params["minThreshold"] = int(numInputBits * .6)
+    l4Params["maxNewSynapseCount"] = int(2*l4Params["activationThreshold"])
+
+    objectParams = {
+      'numInputBits': numInputBits,
+      'externalInputSize': expParam['externalInputSize'],
+      'numFeatures': expParam['numFeatures'],
+      'numLocations': expParam['numLocations'],
+      'uniquePairs': False
+    }
+
+    print "l4Params: "
+    pprint(l4Params)
+    print "l2Params: "
+    pprint(l2Params)
+
+    expname = "multiple_column_capacity_varying_object_num_locations_{}_num_features_{}_l4column_{}".format(
+      expParam['numLocations'], expParam['numFeatures'], expParam["l4Column"])
+    runCapacityTestVaryingObjectNum(numPointsPerObject,
+                                    numCorticalColumns,
+                                    resultDirName,
+                                    expname,
+                                    cpuCount,
+                                    l2Params,
+                                    l4Params,
+                                    objectParams,
+                                    numRpts)
+
+  # plot result
+  ploti = 0
+  fig, ax = plt.subplots(2, 2)
+  st = fig.suptitle(
+    "Varying number of objects ({} cortical column{})"
+      .format(numCorticalColumns, "s" if numCorticalColumns > 1 else ""
+              ), fontsize="x-large"
+  )
+
+  for axi in (0, 1):
+    for axj in (0, 1):
+      ax[axi][axj].xaxis.set_major_locator(ticker.MultipleLocator(100))
+
+  legendEntries = []
+  for expParam in expParams:
+    expname = "multiple_column_capacity_varying_object_num_locations_{}_num_features_{}_l4column_{}".format(
+      expParam['numLocations'], expParam['numFeatures'], expParam["l4Column"])
+
+    resultFileName = _prepareResultsDir("{}.csv".format(expname),
+      resultDirName=resultDirName
+    )
+
+    result = pd.read_csv(resultFileName)
+
+    plotResults(result, ax, "numObjects", None, DEFAULT_COLORS[ploti])
+    ploti += 1
+    legendEntries.append("L4 mcs {} locs {} feats {}".format(
+      expParam["l4Column"], expParam['numLocations'], expParam['numFeatures']))
+  ax[0, 0].legend(legendEntries, loc=3, fontsize=8)
+  fig.tight_layout()
+
+  # shift subplots down:
+  st.set_y(0.95)
+  fig.subplots_adjust(top=0.85)
+
+  plt.savefig(
+    os.path.join(
+      plotDirName,
+      "capacity_varying_object_num_locations_num_summary.pdf"
+    )
+  )
+
+
+def runExperiment8(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
+                   resultDirName=DEFAULT_RESULT_DIR_NAME,
+                   plotDirName=DEFAULT_PLOT_DIR_NAME,
+                   cpuCount=None):
+  """
+  runCapacityTestVaryingObjectNum()
+  Try different numFeatures
+  """
+
+  numPointsPerObject = 10
+  numRpts = 1
+  l4Params = getL4Params()
+  l2Params = getL2Params()
+
+  l2Params['cellCount'] = 4096
+  l2Params['sdrSize'] = 40
+
+  expParams = [
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'numFeatures': 15, 'numLocations': 128},
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'numFeatures': 150, 'numLocations': 128},
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'numFeatures': 500, 'numLocations': 128},
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'numFeatures': 5000, 'numLocations': 128},
+  ]
+
+  for expParam in expParams:
+    l4Params["columnCount"] = expParam['l4Column']
+    numInputBits = expParam['w']
+    l2Params['sampleSizeProximal'] = expParam['sample']
+    l2Params['minThresholdProximal'] = expParam['thresh']
+
+    l4Params["activationThreshold"] = int(numInputBits * .6)
+    l4Params["minThreshold"] = int(numInputBits * .6)
+    l4Params["maxNewSynapseCount"] = int(2*l4Params["activationThreshold"])
+
+    objectParams = {
+      'numInputBits': numInputBits,
+      'externalInputSize': expParam['externalInputSize'],
+      'numFeatures': expParam['numFeatures'],
+      'numLocations': expParam['numLocations'],
+      'uniquePairs': False
+    }
+
+    print "l4Params: "
+    pprint(l4Params)
+    print "l2Params: "
+    pprint(l2Params)
+
+    expname = "multiple_column_capacity_varying_object_num_locations_{}_num_features_{}_l4column_{}".format(
+      expParam['numLocations'], expParam['numFeatures'], expParam["l4Column"])
+    runCapacityTestVaryingObjectNum(numPointsPerObject,
+                                    numCorticalColumns,
+                                    resultDirName,
+                                    expname,
+                                    cpuCount,
+                                    l2Params,
+                                    l4Params,
+                                    objectParams,
+                                    numRpts)
+
+  # plot result
+  ploti = 0
+  fig, ax = plt.subplots(2, 2)
+  st = fig.suptitle(
+    "Varying number of objects ({} cortical column{})"
+      .format(numCorticalColumns, "s" if numCorticalColumns > 1 else ""
+              ), fontsize="x-large"
+  )
+
+  for axi in (0, 1):
+    for axj in (0, 1):
+      ax[axi][axj].xaxis.set_major_locator(ticker.MultipleLocator(100))
+
+  legendEntries = []
+  for expParam in expParams:
+    expname = "multiple_column_capacity_varying_object_num_locations_{}_num_features_{}_l4column_{}".format(
+      expParam['numLocations'], expParam['numFeatures'], expParam["l4Column"])
+
+    resultFileName = _prepareResultsDir("{}.csv".format(expname),
+      resultDirName=resultDirName
+    )
+
+    result = pd.read_csv(resultFileName)
+
+    plotResults(result, ax, "numObjects", None, DEFAULT_COLORS[ploti])
+    ploti += 1
+    legendEntries.append("L4 mcs {} locs {} feats {}".format(
+      expParam["l4Column"], expParam['numLocations'], expParam['numFeatures']))
+  ax[0, 0].legend(legendEntries, loc=3, fontsize=8)
+  fig.tight_layout()
+
+  # shift subplots down:
+  st.set_y(0.95)
+  fig.subplots_adjust(top=0.85)
+
+  plt.savefig(
+    os.path.join(
+      plotDirName,
+      "capacity_varying_object_num_features_num_summary.pdf"
+    )
+  )
+
+
 def runExperiments(resultDirName, plotDirName, cpuCount):
 
   # Varying number of pts per objects, two objects
@@ -1107,6 +1389,18 @@ def runExperiments(resultDirName, plotDirName, cpuCount):
 
   # 10 pts per object, varying sparsity of L2
   runExperiment6(resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
+
+  # 10 pts per object, varying number of location SDRs
+  runExperiment7(numCorticalColumns=1,
+                 resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
+
+  # 10 pts per object, varying number of feature SDRs
+  runExperiment8(numCorticalColumns=1,
+                 resultDirName=resultDirName,
                  plotDirName=plotDirName,
                  cpuCount=cpuCount)
 
