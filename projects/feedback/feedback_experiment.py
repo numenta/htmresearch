@@ -153,8 +153,12 @@ class FeedbackExperiment(object):
     self.inputSize = inputSize
     self.numInputBits = numInputBits
 
+
+
     # self.L4RegionType = "py.ExtendedTMRegion"
     self.L4RegionType = "py.ApicalTMRegion"
+
+
 
     # seed
     self.seed = seed
@@ -469,7 +473,7 @@ class FeedbackExperiment(object):
             "basalPredictedSegmentDecrement": 0.0,
             "apicalPredictedSegmentDecrement": 0.0,
             "activationThreshold": 15, #15,
-            "sampleSize": 60,  # 1.5 * 40
+            "sampleSize": 20, #60,  # 1.5 * 40
             "implementation": "ApicalModulation", #"ApicalTiebreak",
             "seed": self.seed
             }

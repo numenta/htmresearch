@@ -407,8 +407,10 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
       xx = numpy.arange(aFB.shape[1])+1  # This +1 here
       if whichPlot == "activities":
         plt.figure()
-        plt.errorbar(xx, numpy.mean((aFB - 40.0) / 280.0, axis=0), yerr=numpy.std((aFB - 40.0) / 280.0, axis=0), color='r', label='Feedback enabled');
-        plt.errorbar(xx, numpy.mean((aNoFB - 40.0) / 280.0, axis=0), yerr=numpy.std((aNoFB - 40.0) / 280.0, axis=0), color='b', label='Feedback disabled')
+        plt.errorbar(xx, numpy.mean(aFB, axis=0), yerr=numpy.std(aFB, axis=0), color='r', label='Feedback enabled');
+        plt.errorbar(xx, numpy.mean(aNoFB , axis=0), yerr=numpy.std(aNoFB, axis=0), color='b', label='Feedback disabled')
+        # plt.errorbar(xx, numpy.mean((aFB - 40.0) / 280.0, axis=0), yerr=numpy.std((aFB - 40.0) / 280.0, axis=0), color='r', label='Feedback enabled');
+        # plt.errorbar(xx, numpy.mean((aNoFB - 40.0) / 280.0, axis=0), yerr=numpy.std((aNoFB - 40.0) / 280.0, axis=0), color='b', label='Feedback disabled')
         if noiseType == 'skip':
           plt.axvspan(sharedRange[0]+.5, sharedRange[1] -2 +.5, alpha=0.25, color='pink', label="Shared Range") # -2 because omission removes one time step from the sequences
 
@@ -500,6 +502,11 @@ if __name__ == "__main__":
 
   plt.ion()
 
+  runExp(noiseProbas=(.0,), nbSequences=(5,), nbSeeds=3, noiseType="repeat", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with repeated stimulus (no shared range)")
+  # runExp(noiseProbas=(.0,), nbSequences=(5,), nbSeeds=3, noiseType="repeat", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with repeated stimulus (shared range)")
+  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=3, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (shared range)")
+
+
   # If using whichPlot="overlaps" or whichPlot="activities", BOTH noiseProbas and nbSequences should be length-1 lists !
   # If using whichPlot="errors", EITHER noiseProbas OR nbSequences should be a multi-item list, with the other being a length-1 list.
   # The multi-element list is assumed to be the relevant indepdenent variable (i.e. what's to be plotted as x-axis)
@@ -529,7 +536,7 @@ if __name__ == "__main__":
   # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=3, noiseType="repeat", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with repeated stimulus (shared range)")
   # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=3, noiseType="skip", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with omitted stimulus (no shared range)")
   # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=3, noiseType="skip", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with omitted stimulus (shared range)")
-  runExp(noiseProbas=(.0,), nbSequences=(5,), nbSeeds=3, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (shared range)")
+  # runExp(noiseProbas=(.0,), nbSequences=(5,), nbSeeds=3, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (shared range)")
   # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=3, noiseType="crossover", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (no shared range)")
 
 
