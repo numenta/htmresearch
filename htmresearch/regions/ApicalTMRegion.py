@@ -265,7 +265,7 @@ class ApicalTMRegion(PyRegion):
           "accessMode": "Read",
           "dataType": "Byte",
           "count": 0,
-          "constraints": ("enum: ApicalTiebreak, ApicalDependent"),
+          "constraints": ("enum: ApicalTiebreak, ApicalDependent, ApicalModulation"),
           "defaultValue": "ApicalTiebreak"
         },
       },
@@ -357,6 +357,10 @@ class ApicalTMRegion(PyRegion):
         from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
           ApicalTiebreakTemporalMemory)
         self._tm = ApicalTiebreakTemporalMemory(**params)
+      elif self.implementation == "ApicalModulation":
+        from htmresearch.algorithms.apical_modulation_temporal_memory import (
+          ApicalModulationTemporalMemory)
+        self._tm = ApicalModulationTemporalMemory(**params)
       elif self.implementation == "ApicalDependent":
         from htmresearch.algorithms.apical_dependent_temporal_memory import (
           ApicalDependentTemporalMemory)

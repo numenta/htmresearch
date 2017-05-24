@@ -26,7 +26,10 @@ and pure temporal sequences.
 
 import random
 import numpy
+import copy
+import json
 
+from nupic.engine import Network
 from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.frameworks.layers.laminar_network import createNetwork
 
@@ -38,6 +41,79 @@ class FeedbackExperiment(object):
   These experiments use a laminar network to test out various properties of
   inference and learning using a sensors and a network with feedback.
   """
+
+
+
+  def myCreateNetwork(self, networkConfig):
+
+        suffix = '_0'
+        network = Network()
+
+        sensorInputName = "sensorInput" + suffix
+        L4ColumnName = "L4Column" + suffix
+        L2ColumnName = "L2Column" + suffix
+
+        L4Params = copy.deepcopy(networkConfig["L4Params"])
+
+        # The different assumptions for ApicalTMRegion and ExtendedTMRegion....
+        if networkConfig["L4RegionType"] == "py.ApicalTMRegion":
+            L4Params["basalInputWidth"] = networkConfig["L4Params"]["columnCount"] * networkConfig["L4Params"]["cellsPerColumn"]
+        elif networkConfig["L4RegionType"] == "py.ExtendedTMRegion":
+            L4Params["basalInputWidth"] = networkConfig["externalInputSize"]
+        else:
+            raise Exception("Invalid L4 Region Type!")
+
+        L4Params["apicalInputWidth"] = networkConfig["L2Params"]["cellCount"]
+
+        network.addRegion(
+          sensorInputName, "py.RawSensor",
+          json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
+
+        network.addRegion(
+          L4ColumnName, networkConfig["L4RegionType"],
+          json.dumps(L4Params))
+        network.addRegion(
+          L2ColumnName, "py.ColumnPoolerRegion",
+          json.dumps(networkConfig["L2Params"]))
+
+        network.setPhases(sensorInputName,[0])
+
+
+        # L4 and L2 regions always have phases 2 and 3, respectively
+        network.setPhases(L4ColumnName,[2])
+        network.setPhases(L2ColumnName,[3])
+
+        network.link(sensorInputName, L4ColumnName, "UniformLink", "",
+                         srcOutput="dataOut", destInput="activeColumns")
+
+        # Link L4 to L2
+        network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
+                     srcOutput="activeCells", destInput="feedforwardInput")
+        network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
+                     srcOutput="predictedActiveCells",
+                     destInput="feedforwardGrowthCandidates")
+
+        # Link L2 feedback to L4
+        network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
+                     srcOutput="feedForwardOutput", destInput="apicalInput",
+                     propagationDelay=1)
+
+        # # ONLY for ApicalTM: link the region to itself laterally (basally)
+        if networkConfig["L4RegionType"] == "py.ApicalTMRegion":
+            network.link(L4ColumnName, L4ColumnName, "UniformLink", "",
+                     srcOutput="activeCells", destInput="basalInput",
+                     propagationDelay=1)
+
+        # Link reset output to L2. For L4, an empty input is sufficient for a reset.
+        network.link(sensorInputName, L2ColumnName, "UniformLink", "",
+                     srcOutput="resetOut", destInput="resetIn")
+
+        #enableProfiling(network)
+        for region in network.regions.values():
+            region.enableProfiling()
+
+        return network
+
 
   def __init__(self,
                numCorticalColumns=1,
@@ -77,16 +153,26 @@ class FeedbackExperiment(object):
     self.inputSize = inputSize
     self.numInputBits = numInputBits
 
+    # self.L4RegionType = "py.ExtendedTMRegion"
+    self.L4RegionType = "py.ApicalTMRegion"
+
     # seed
     self.seed = seed
     random.seed(seed)
     # update parameters with overrides
     self.config = {
-      "networkType": "MultipleL4L2Columns",
+      #"networkType": "MultipleL4L2Columns",
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": 0,
       "sensorInputSize": inputSize,
-      "L4RegionType": "py.ExtendedTMRegion",
+      #   NOTE: To switch between ExtendedTMRegion and ApicalTMRegion:
+      # 1- change l4regiontype below
+      # 2- change the configuration set below
+      # 3- change the linking between current active cells and basal input,
+      # in l2_l4_network_creation.py,
+      # which only should be there for ApicalTMRegion
+      "L4RegionType": self.L4RegionType,#"py.ExtendedTMRegion",
+      #"L4RegionType": "py.ExtendedTMRegion",
       "L4Params": self.getDefaultL4Params(inputSize),
       "L2Params": self.getDefaultL2Params(inputSize),
     }
@@ -98,7 +184,7 @@ class FeedbackExperiment(object):
       self.config["L4Params"].update(L4Overrides)
 
     # create network
-    self.network = createNetwork(self.config)
+    self.network = self.myCreateNetwork(self.config)
 
     # We have to explicitly initialize if we are going to change the phases
     self.network.initialize()
@@ -121,6 +207,7 @@ class FeedbackExperiment(object):
     # will be populated during training
     self.objectL2Representations = {}
     self.statistics = []
+
 
 
   def learnSequences(self, sequences):
@@ -335,7 +422,14 @@ class FeedbackExperiment(object):
     """
     Returns the predictive cells in L4.
     """
-    return [set(column._tm.getPredictiveCells()) for column in self.L4Columns]
+    # ApicalTMRegion uses "getPredictedCells", while ExtendedTMRegion uses "getPredictiveCells".
+    #return [set(column._tm.getPredictiveCells()) for column in self.L4Columns]
+    if self.L4RegionType == "py.ApicalTMRegion":
+        return [set(column._tm.getPredictedCells()) for column in self.L4Columns]
+    elif self.L4RegionType == "py.ExtendedTMRegion":
+        return [set(column._tm.getPredictiveCells()) for column in self.L4Columns]
+    else:
+        raise (Exception("Invalid L4 Region Type!"))
 
 
   def getL4PredictedActiveCells(self):
@@ -361,23 +455,44 @@ class FeedbackExperiment(object):
     """
     Returns a good default set of parameters to use in the L4 region.
     """
-    return {
-      "columnCount": inputSize,
-      "cellsPerColumn": 8,
-      "formInternalBasalConnections": True,
-      "learn": True,
-      "learnOnOneCell": False,
-      "initialPermanence": 0.51,
-      "connectedPermanence": 0.6,
-      "permanenceIncrement": 0.1,
-      "permanenceDecrement": 0.02,
-      "minThreshold": 13,
-      "predictedSegmentDecrement": 0.00,
-      "activationThreshold": 15,
-      "maxNewSynapseCount": 20,
-      "implementation": "etm",
-      "seed": self.seed
-    }
+
+    if self.L4RegionType == "py.ApicalTMRegion":
+        return {
+            "columnCount": inputSize,
+            "cellsPerColumn": 8,
+            "learn": True,
+            "initialPermanence": 0.51,
+            "connectedPermanence": 0.6,
+            "permanenceIncrement": 0.1,
+            "permanenceDecrement": 0.02,
+            "minThreshold": 13, #13,
+            "basalPredictedSegmentDecrement": 0.0,
+            "apicalPredictedSegmentDecrement": 0.0,
+            "activationThreshold": 15, #15,
+            "sampleSize": 60,  # 1.5 * 40
+            "implementation": "ApicalModulation", #"ApicalTiebreak",
+            "seed": self.seed
+            }
+    elif self.L4RegionType == "py.ExtendedTMRegion":
+        return{
+              "columnCount": inputSize,
+              "cellsPerColumn": 8,
+              "formInternalBasalConnections": True,
+              "learn": True,
+              "learnOnOneCell": False,
+              "initialPermanence": 0.51,
+              "connectedPermanence": 0.6,
+              "permanenceIncrement": 0.1,
+              "permanenceDecrement": 0.02,
+              "minThreshold": 13,
+              "predictedSegmentDecrement": 0.00,
+              "activationThreshold": 15,
+              "maxNewSynapseCount": 20,
+              "implementation": "etm",
+              "seed": self.seed
+              }
+    else:
+        raise(Exception("Invalid L4 Region Type! (current value: "+self.L4RegionType+")"))
 
 
   def getDefaultL2Params(self, inputSize):

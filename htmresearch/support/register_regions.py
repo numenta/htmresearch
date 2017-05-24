@@ -38,7 +38,7 @@ def registerAllResearchRegions():
   for regionName in ["LanguageSensor", "TemporalPoolerRegion",
                      "TMRegion", "RawSensor", "ColumnPoolerRegion",
                      "ExtendedTMRegion", "CoordinateSensorRegion",
-                     "ApicalTMRegion"]:
+                     "ApicalTMRegion", "ApicalTMRegionMod"]:
     registerResearchRegion(regionName)
 
 
