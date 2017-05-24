@@ -174,7 +174,8 @@ class EnergyBasedPooler(object):
     def encode(self, x):
         """
         Given an input array `x` it returns its associated encoding `y(x)`, that is, 
-        a stable configuration of the hidden units while the visible units are clampled to `x`.
+        a stable configuration (local energy minimum) of the hidden units 
+        while the visible units are clampled to `x`.
         
         Note that NO learning takes place.
         """
