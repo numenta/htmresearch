@@ -392,7 +392,7 @@ class EnergyBasedPooler(object):
 
     def __str__(self):
         """
-        Returns an ample summary of the encoder and how it is configured,
+        Returns a brief summary of the encoder and how it is configured,
         including which energy and weight updates are used, and 
         how the energy minimum is found.
         """
@@ -418,11 +418,14 @@ class EnergyBasedPooler(object):
         **initialize connections**
         {init_weights}
 
-        **energy:**
-        {energy_doc}
+        **encode**
+        {encode_doc}
 
         **update weights:**
         {update_doc}
+        
+        **energy:**
+        {energy_doc}
 
         **find energy minimum:**
         {min_doc}
@@ -433,6 +436,7 @@ class EnergyBasedPooler(object):
         summary = trim_doc(summary)
         summary = summary.format(self=self, 
                                  init_weights = trim_doc(self.initialize_connections.__doc__),
+                                 encode_doc = trim_doc(self.encode.__doc__),
                                  energy_doc = trim_doc(self.energy.__doc__),
                                  update_doc = trim_doc(self.update_weights.__doc__),
                                  min_doc    = trim_doc(self.find_energy_minimum.__doc__))

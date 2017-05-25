@@ -14,6 +14,55 @@ import numpy as np
 # The raw string is used because I don't want to escape special characters,
 # so one can copy and paste the docstring into an environment which 
 # is able to display LaTex.
+def numenta(self, X, Y):
+    r"""
+    Method that updates the network's connections. 
+    Numenta's classic update:
+
+     - Visible to hidden: $ \Delta W_{ij} = y_i \cdot  ( \varepsilon_{\small{+}} \ x_j - \varepsilon_{\small{-}} \ \bar x_j ) $
+     - Bias:              $ b_{i}  = B_b \cdot \alpha_i $
+
+    """
+    batchSize    = len(X)
+    W            = self.connections.visible_to_hidden
+    n, m         = W.shape
+    bias         = self.connections.hidden_bias
+    incr         = self.weight_incr
+    decr         = self.weight_decr
+    boost_bias   = self.boost_strength_bias
+    alpha        = self.average_activity
+
+    #---------------------------
+    # visible-to-hidden updates
+    #---------------------------
+    for i in range(batchSize):
+        y     = Y[i]
+        x     = X[i]
+        x_bar = np.ones(m) - x   
+
+        # Hebbian-like update
+        W[ np.where(y == 1)[0] ] += incr*x - decr*x_bar 
+
+
+    # Clip the visible-to-hidden connections 
+    # to be between $0$ and $1$ 
+    tooSmall = np.where(W < 0.)
+    tooBig   = np.where(W > 1.)
+    W[ tooSmall ] = 0.
+    W[ tooBig   ] = 1.
+
+
+    #---------------
+    # (Hidden) Bias
+    #---------------
+    for i in range(n):
+        bias[i] = boost_bias * alpha[i,i]
+
+
+
+# The raw string is used because I don't want to escape special characters,
+# so one can copy and paste the docstring into an environment which 
+# is able to display LaTex.
 def numenta_extended(self, X, Y):
     r"""
     Method that updates the network's connections. The
@@ -129,13 +178,73 @@ def numenta_extended_bounded_by_zero(self, X, Y):
     for i in range(n):
         for j in range(n):
             H[i,j] =  boost_hidden * (alpha[i,j]  -  alpha[i,i]*alpha[j,j])
-            # 
+
             if H[i,j] < 0:
                 H[i,j] = 0.
 
     for i in range(n):
         H[i,i] = 0.
 
+
+# The raw string is used because I don't want to escape special characters,
+# so one can copy and paste the docstring into an environment which 
+# is able to display LaTex.
+def numenta_new_local_inhibition(self, X, Y):
+    r"""
+    Weight updates for the new local inhibition procedure (experimental and work in progress).
+
+    See ``Numenta’s local inhibition revisited'' (Section 6) in `latex/notes.pdf`.
+
+    Note that we directly encode the ``activation probability'' $a_{ij}$ as $h_{ij}$. 
+    This is just a temporary hack. In Consequence, the hidden-to-hidden connections 
+    are NOT symmetric anymore!
+    """
+    batchSize    = len(X)
+    W            = self.connections.visible_to_hidden
+    H            = self.connections.hidden_to_hidden
+    n, m         = W.shape
+    bias         = self.connections.hidden_bias
+    incr         = self.weight_incr
+    decr         = self.weight_decr
+    boost_bias   = self.boost_strength_bias
+    boost_hidden = self.boost_strength_hidden
+    alpha        = self.average_activity
+
+    #---------------------------
+    # visible-to-hidden updates
+    #---------------------------
+    for i in range(batchSize):
+        y     = Y[i]
+        x     = X[i]
+        x_bar = np.ones(m) - x   
+
+        # Hebbian-like update
+        W[ np.where(y == 1)[0] ] += incr*x - decr*x_bar 
+
+
+    # Clip the visible-to-hidden connections 
+    # to be between $0$ and $1$ 
+    tooSmall = np.where(W < 0.)
+    tooBig   = np.where(W > 1.)
+    W[ tooSmall ] = 0.
+    W[ tooBig   ] = 1.
+
+
+    #---------------
+    # (Hidden) Bias
+    #---------------
+    for i in range(n):
+        bias[i] = boost_bias * alpha[i,i]
+
+    #--------------------------
+    # Hidden-to-hidden updates
+    #--------------------------
+    for i in range(n):
+        for j in range(n):
+            H[i,j] =  alpha[i,j] /( np.sum( alpha[i,:] ) - alpha[i,i] )  
+
+    for i in range(n):
+        H[i,i] = 0.
 
 
 

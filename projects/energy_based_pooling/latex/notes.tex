@@ -170,7 +170,7 @@ Furthermore we add a single bias unit, and connect all the units as follows.
 \begin{figure}[h]
 \includegraphics[width=0.6\textwidth]{./media/network_architecture_ebp.pdf}
 \caption{Schematic picture of the network architeture.}
- \label{fig:network connections}
+ \label{fig:network architecture}
 \end{figure}
 % 
 % =====================================================================
@@ -182,30 +182,41 @@ Furthermore we add a single bias unit, and connect all the units as follows.
 After each mini-batch the weights are updated and computed as follows:
 The visible-to-hidden connections are updated according to a Hebbian-like update rule 
 as described in \cite{sp_paper}, that is
-$$
+% 
+\begin{equation}
+\label{eqn:numenta hebbian update}
 \Delta w_{ij} = y_i \cdot  ( \varepsilon_+ \ x_j - \varepsilon_- \ \bar x_j ) 
-$$
+\end{equation}
+% 
 After each update the visible-to-hidden connections
 are clipped to be between $0$ and $1$, i.e. we set
+% 
 \begin{eqnarray*}
    &w_{ij} := 0& \text{ if } w_{ij} < 0 , \text{ and} \\
    &w_{ij} := 1& \text{ if } w_{ij} > 1.
 \end{eqnarray*}
+% 
 The remaining connections - hidden-to-hidden and bias-to-hidden - 
 are determined by the average activity of the hidden units as follows:
 Let $\alpha_i$ denote the average activity of an individual unit $y_i$
 (estimated by using an exponentially decaying average of the mean probability 
 that a unit is active in each mini batch) then the weights of the bias 
 connections are given by
-$$
+% 
+\begin{equation}
+\label{eqn:bias update}
   b_{i}  = B_b \cdot \alpha_i.
-$$
+\end{equation}
+% 
 Similar to the \textit{individual} average activity defined above we define 
 the average \textit{pairwise} activity $\alpha_{ij}$ of two units $i$ and $j$.
 With this in hand we set the hidden-to-hidden connections are given by
-$$
+% 
+\begin{equation}
+\label{eqn:hidden updates}
   h_{ij} = B_H \cdot ( \alpha_{ij} - \alpha_i \ \alpha_j ) \ \text{ and } \  h_{ii} = 0.
-$$
+\end{equation}
+% 
 Opionally we can clip $H$ to be non-negative, i.e.
 $$
   h_{ij} := 0 \text{ if } h_{ij} < 0.
@@ -222,7 +233,8 @@ Here $B_b$ and $B_H$ are two non-negative factors referred to as \textbf{boostin
 % 
 A straight-forward candidate for an energy function resembling the behaviour of 
 the spatial pooler is
-$$
+\begin{equation}
+\label{eqn:numenta energy}
   E(x,y) = - \sum_{i=1}^n 
         y_i 
         \cdot
@@ -235,7 +247,7 @@ $$
         }_{\textit{"overlap"}}
         \ + \  
         S(y)
-$$
+\end{equation}
 Here $S(y)$ denotes a \textit{size-penalty} (or \textit{size-bound}) forcing 
 the weight of the vectors to be in a predefined desired range. 
 For instance we could use something along the lines of
@@ -366,8 +378,61 @@ $P(y_i = 1 \ | \ x) = \sigma\big( W_i x + H_i y - b \big)$. So one would could
 think of $y_i$ as the units activation probability.}
 
 
-
 % 
+% =====================================================================
+% =====================================================================
+% 
+\section{Numenta's local inhibition revisited}
+% 
+% =====================================================================
+% =====================================================================
+% 
+% 
+Let us assume $h_{ij} \geq 0$ for now, and interpret 
+the weight as a neighbourhood relationship. Informally a high weight
+means ``being close'' and a high ``competetiveness'' between the corresponding units.
+The situation described in \cite{sp_paper} would correspond to binary weights, 
+i.e.\ either $h_{ij} = 0$ or $h_{ij} = 1$
+
+We calculate a units activity $y_i$ as follows:
+Turn the outgoing weights $h_{ij}$ for $i \neq j$ into 
+an ``activation probability'' $a_{ij}$ by
+\[
+      a_{ij} = \frac{h_{ij}}{\mathop{\sum}\limits_{i \neq k} h_{ik} }
+\]
+Informally this is a best guess for the activity of the other units, assuming
+unit $i$ is active.
+
+With this in hand we calculate an estimate $A_i$ for the ``activation''
+in the neighbourhood of unit $i$, i.e.\ we set
+\[
+    A_i = \mathop{\sum}\limits_{o_j > o_i} a_{ij}.
+\]
+Here $o_i$ denotes the \textit{boosted overlap score} of unit $i$ (that is $o_i = e^{-b} W_i x$).
+Note that we only accumulate the activity of units with a bigger overlap.
+Then the \textbf{generalized local $w$-max procedure} can be generalized as
+% 
+\begin{equation}
+\label{eqn:numenta unit activity}
+      y_i = \begin{cases}
+                1 & \text{if } A_i < s, \\
+                0 & \text{otherwise}.
+            \end{cases}
+\end{equation}
+% 
+We can interpret this as follows: if the estimated activation is already bigger than desired,
+i.e.\ bigger than the sparsity threshold $s$, we turn unit $i$ off. If it is smaller than
+desired we turn unit $i$ on.
+% 
+\begin{rem*}
+Further note that for binary weights this does indeed resemble Numenta's local $w$-max procedure,
+because $A_i$ then is given by 
+\[
+  \mathop{\sum}\limits_{o_j > o_i} \tfrac{1}{n_i} = \tfrac{w_i}{n_i},
+\]
+where $n_i$ is the number of neighbours, and $w_i$ is the number of neighbours with a bigger overlap.
+The condition $A_i < s$ would imply that $w_i < w$ which means that $o_i$ is among the $w$-biggest overlaps.
+\end{rem*}
 % 
 %
 %------------------------------------------------------------------------------------------
