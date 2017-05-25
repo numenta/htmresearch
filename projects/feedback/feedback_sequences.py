@@ -338,6 +338,12 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
                   z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
                   z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
                   cpcnofb.append(numpy.corrcoef(z1, z2)[0,1])
+                #   z1 = numpy.zeros(sdrlen+1); z1[list(responsesFB[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
+                #   z2 = numpy.zeros(sdrlen+1); z2[list(responsesFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+                #   cpcfb.append(numpy.corrcoef(z1, z2)[0,1])
+                #   z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoFB[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
+                #   z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+                #   cpcnofb.append(numpy.corrcoef(z1, z2)[0,1])
 
               corrsPredCorrectNoFBL4.append(cpcnofb[1:])
               corrsPredCorrectFBL4.append(cpcfb[1:])
@@ -432,6 +438,7 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
         else:
           plt.axvspan(sharedRange[0]+.5, sharedRange[1] -1 +.5, alpha=0.25, color='pink')
         plt.axvline(sequenceLen/2, 0, 1, ls='--', label='Perturbation', color='black')
+        plt.ylabel("Prediction Performance"); #plt.xticks(noiseProbas)
         plt.legend(loc='best')
         plt.title(plotTitle)
         plt.savefig(plotTitle+".png")
@@ -465,8 +472,8 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
         #plt.show()
       #plt.figure(); plt.plot(numpy.mean(numpy.array(diffsFBL2), axis=0), 'c');  plt.plot(numpy.mean(numpy.array(diffsFBL2Next), axis=0), 'm')
 
-  # Plot the total number of errors, as a function of noise probability OR number of sequences, both with and without feedback
-  if whichPlot == "errors":
+  # Plot the average prediction performance, as a function of noise probability OR number of sequences, both with and without feedback
+  if whichPlot == "pers":
         plt.figure()
         xisnbseq=0
         xisnoisep=0
@@ -489,7 +496,7 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
         if xisnbseq:
           plt.xlabel("Nb. of learned sequences")
 
-        plt.ylabel("Avg. Error"); #plt.xticks(noiseProbas)
+        plt.ylabel("Avg. Prediction Performance"); #plt.xticks(noiseProbas)
         plt.title(plotTitle)
         plt.show()
         plt.savefig(plotTitle+".png")
@@ -502,7 +509,7 @@ if __name__ == "__main__":
 
   plt.ion()
 
-  runExp(noiseProbas=(.0,), nbSequences=(5,), nbSeeds=3, noiseType="repeat", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with repeated stimulus (no shared range)")
+  # runExp(noiseProbas=(.0,), nbSequences=(5,), nbSeeds=3, noiseType="repeat", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with repeated stimulus (no shared range)")
   # runExp(noiseProbas=(.0,), nbSequences=(5,), nbSeeds=3, noiseType="repeat", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with repeated stimulus (shared range)")
   # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=3, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (shared range)")
 
@@ -530,19 +537,16 @@ if __name__ == "__main__":
   # runExp(noiseProbas=(.25,), nbSequences=(2, 5, 10, 20, 30), nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors as a function of model load")
   # # Test # runExp(noiseProbas=(.25,), nbSequences=(2, 5, 10, 20), nbSeeds=7, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors as a function of model load")
 
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=3, noiseType="replace", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with randomized stimulus (no shared range)")
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=3, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with randomized stimulus (shared range)")
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=3, noiseType="repeat", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with repeated stimulus (no shared range)")
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=3, noiseType="repeat", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with repeated stimulus (shared range)")
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=3, noiseType="skip", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with omitted stimulus (no shared range)")
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=3, noiseType="skip", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with omitted stimulus (shared range)")
-  # runExp(noiseProbas=(.0,), nbSequences=(5,), nbSeeds=3, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (shared range)")
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=3, noiseType="crossover", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (no shared range)")
 
 
-  # Model load only dereases performance when there is a shared range.
-  # runExp(noiseProbas=(.2,), nbSequences=(5, 10, 20, 30), nbSeeds=4, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors as a function of model load (shared range)")
-  # runExp(noiseProbas=(.2,), nbSequences=(5, 10, 20, 30), nbSeeds=4, noiseType="pollute", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors as a function of model load (no shared range)")
+  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction errors with randomized stimulus (no shared range)")
+  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction errors with randomized stimulus (shared range)")
+  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="repeat", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction errors with repeated stimulus (no shared range)")
+  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="repeat", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction errors with repeated stimulus (shared range)")
+  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="skip", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction errors with omitted stimulus (no shared range)")
+  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="skip", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction errors with omitted stimulus (shared range)")
+  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (shared range)")
+  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (no shared range)")
 
-  # runExp(noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=4, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors under continuous noise (shared range)")
-  # runExp(noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=4, noiseType="pollute", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors under continuous noise (no shared range)")
+  runExp(noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction errors under continuous noise (shared range)")
+  runExp(noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction errors under continuous noise (no shared range)")

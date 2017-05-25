@@ -42,79 +42,6 @@ class FeedbackExperiment(object):
   inference and learning using a sensors and a network with feedback.
   """
 
-
-
-  def myCreateNetwork(self, networkConfig):
-
-        suffix = '_0'
-        network = Network()
-
-        sensorInputName = "sensorInput" + suffix
-        L4ColumnName = "L4Column" + suffix
-        L2ColumnName = "L2Column" + suffix
-
-        L4Params = copy.deepcopy(networkConfig["L4Params"])
-
-        # The different assumptions for ApicalTMRegion and ExtendedTMRegion....
-        if networkConfig["L4RegionType"] == "py.ApicalTMRegion":
-            L4Params["basalInputWidth"] = networkConfig["L4Params"]["columnCount"] * networkConfig["L4Params"]["cellsPerColumn"]
-        elif networkConfig["L4RegionType"] == "py.ExtendedTMRegion":
-            L4Params["basalInputWidth"] = networkConfig["externalInputSize"]
-        else:
-            raise Exception("Invalid L4 Region Type!")
-
-        L4Params["apicalInputWidth"] = networkConfig["L2Params"]["cellCount"]
-
-        network.addRegion(
-          sensorInputName, "py.RawSensor",
-          json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
-
-        network.addRegion(
-          L4ColumnName, networkConfig["L4RegionType"],
-          json.dumps(L4Params))
-        network.addRegion(
-          L2ColumnName, "py.ColumnPoolerRegion",
-          json.dumps(networkConfig["L2Params"]))
-
-        network.setPhases(sensorInputName,[0])
-
-
-        # L4 and L2 regions always have phases 2 and 3, respectively
-        network.setPhases(L4ColumnName,[2])
-        network.setPhases(L2ColumnName,[3])
-
-        network.link(sensorInputName, L4ColumnName, "UniformLink", "",
-                         srcOutput="dataOut", destInput="activeColumns")
-
-        # Link L4 to L2
-        network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
-                     srcOutput="activeCells", destInput="feedforwardInput")
-        network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
-                     srcOutput="predictedActiveCells",
-                     destInput="feedforwardGrowthCandidates")
-
-        # Link L2 feedback to L4
-        network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
-                     srcOutput="feedForwardOutput", destInput="apicalInput",
-                     propagationDelay=1)
-
-        # # ONLY for ApicalTM: link the region to itself laterally (basally)
-        if networkConfig["L4RegionType"] == "py.ApicalTMRegion":
-            network.link(L4ColumnName, L4ColumnName, "UniformLink", "",
-                     srcOutput="activeCells", destInput="basalInput",
-                     propagationDelay=1)
-
-        # Link reset output to L2. For L4, an empty input is sufficient for a reset.
-        network.link(sensorInputName, L2ColumnName, "UniformLink", "",
-                     srcOutput="resetOut", destInput="resetIn")
-
-        #enableProfiling(network)
-        for region in network.regions.values():
-            region.enableProfiling()
-
-        return network
-
-
   def __init__(self,
                numCorticalColumns=1,
                inputSize=2048,
@@ -211,6 +138,83 @@ class FeedbackExperiment(object):
     # will be populated during training
     self.objectL2Representations = {}
     self.statistics = []
+
+
+
+
+
+  def myCreateNetwork(self, networkConfig):
+
+        suffix = '_0'
+        network = Network()
+
+        sensorInputName = "sensorInput" + suffix
+        L4ColumnName = "L4Column" + suffix
+        L2ColumnName = "L2Column" + suffix
+
+        L4Params = copy.deepcopy(networkConfig["L4Params"])
+
+        # The different assumptions for ApicalTMRegion and ExtendedTMRegion....
+        if networkConfig["L4RegionType"] == "py.ApicalTMRegion":
+            L4Params["basalInputWidth"] = networkConfig["L4Params"]["columnCount"] * networkConfig["L4Params"]["cellsPerColumn"]
+        elif networkConfig["L4RegionType"] == "py.ExtendedTMRegion":
+            L4Params["basalInputWidth"] = networkConfig["externalInputSize"]
+        else:
+            raise Exception("Invalid L4 Region Type!")
+
+        L4Params["apicalInputWidth"] = networkConfig["L2Params"]["cellCount"]
+
+        network.addRegion(
+          sensorInputName, "py.RawSensor",
+          json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
+
+        network.addRegion(
+          L4ColumnName, networkConfig["L4RegionType"],
+          json.dumps(L4Params))
+        network.addRegion(
+          L2ColumnName, "py.ColumnPoolerRegion",
+          json.dumps(networkConfig["L2Params"]))
+
+        network.setPhases(sensorInputName,[0])
+
+
+        # L4 and L2 regions always have phases 2 and 3, respectively
+        network.setPhases(L4ColumnName,[2])
+        network.setPhases(L2ColumnName,[3])
+
+        network.link(sensorInputName, L4ColumnName, "UniformLink", "",
+                         srcOutput="dataOut", destInput="activeColumns")
+
+        # Link L4 to L2
+        network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
+                     srcOutput="activeCells", destInput="feedforwardInput")
+        network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
+                     srcOutput="predictedActiveCells",
+                     destInput="feedforwardGrowthCandidates")
+
+        # Link L2 feedback to L4
+        network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
+                     srcOutput="feedForwardOutput", destInput="apicalInput",
+                     propagationDelay=1)
+
+        # # ONLY for ApicalTM: link the region to itself laterally (basally)
+        if networkConfig["L4RegionType"] == "py.ApicalTMRegion":
+            network.link(L4ColumnName, L4ColumnName, "UniformLink", "",
+                     srcOutput="activeCells", destInput="basalInput",
+                     propagationDelay=1)
+            network.link(L4ColumnName, L4ColumnName, "UniformLink", "", srcOutput="winnerCells", destInput="basalGrowthCandidates",propagationDelay=1)
+
+
+        # Link reset output to L2. For L4, an empty input is sufficient for a reset.
+        network.link(sensorInputName, L2ColumnName, "UniformLink", "",
+                     srcOutput="resetOut", destInput="resetIn")
+
+        #enableProfiling(network)
+        for region in network.regions.values():
+            region.enableProfiling()
+
+        return network
+
 
 
 
@@ -474,8 +478,8 @@ class FeedbackExperiment(object):
             "apicalPredictedSegmentDecrement": 0.0,
             "activationThreshold": 15, #15,
             "sampleSize": 20, #60,  # 1.5 * 40
-            # "implementation": "ApicalModulation", #"ApicalTiebreak",
-            "implementation": "ApicalTiebreak",
+            "implementation": "ApicalModulation", #"ApicalTiebreak",
+            # "implementation": "ApicalTiebreak",
             "seed": self.seed
             }
     elif self.L4RegionType == "py.ExtendedTMRegion":
