@@ -1,3 +1,24 @@
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
 """
 This module constains methods to update connection weights, that
 can be used to re-configure an energy based pooler. 
@@ -9,6 +30,7 @@ Example:
     > pooler.update_weights = MethodType(weight_updates.numenta_extended, pooler)
 
 """
+
 import numpy as np
 
 # The raw string is used because I don't want to escape special characters,
@@ -193,9 +215,9 @@ def numenta_new_local_inhibition(self, X, Y):
     r"""
     Weight updates for the new local inhibition procedure (experimental and work in progress).
 
-    See ``Numenta’s local inhibition revisited'' (Section 6) in `latex/notes.pdf`.
+    See "Numenta’s local inhibition revisited" (Section 6) in `latex/notes.pdf`.
 
-    Note that we directly encode the ``activation probability'' $a_{ij}$ as $h_{ij}$. 
+    Note that we directly encode the "activation probability" $a_{ij}$ as $h_{ij}$. 
     This is just a temporary hack. In Consequence, the hidden-to-hidden connections 
     are NOT symmetric anymore!
     """

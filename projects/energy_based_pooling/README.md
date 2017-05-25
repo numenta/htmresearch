@@ -8,22 +8,12 @@ The aim is to express Numenta’s spatial pooler as a Hopfield network. In order
 
  - The **new pooler** is implemented as `EnergyBasedPooler` in `energy_based_models/energy_based_pooler.py`.
  - **Brief overview** (still unfinished) of the approach: `latex/notes.pdf`
+ - The energy-based pooler is configurable, and can, when configured right, be used as a light weight implementation of the ordinary spatial pooler as well.
+ - I present a **new perspective on local inhibition** (this is not related to Hopfield networks), and generalize the local w-max-overlap procedure.
+ See Section 6 in `latex/notes.pdf`.
  - First **experimental results** can be found in: `jupyter/results/`. Each folder contains experimental results for a particular setup, briefly described in the associated readme file.
  -  The module also contains an implementation of the approach described in Földiák's paper. A re-run of the "bars experiment" can be found in the notebook `jupyter/Foldiak\ --\ bars.ipynb`.
 
-## High-level structure of the Pooler
-
- The energy-based pooler is configurable, and can, when configured right, be used as a light weight implementation of the ordinary spatial pooler as well. The main methods work as follows:
-
-  - EnergyBasedPooler.**encode(x)**: Returns a (sparse) binary vector - of an internally specified weight $w$ if desired.
-      - When used as a energy-based model the method computes a local "energy" minimum, of the internally specified energy
-      - One can also implement it as Numenta's "w-max overlap procedure".
-
- - EnergyBasedPooler.**learn(x)**: Consumes and learns the given input, then returns an encoded representation. Learning is follows 4 steps.
-      1. Compute encoding y of x.
-      2. Update internal statistics about the units' activity.
-      3. Update the weights based on x and y.
-      4. Return encoding y.
 
 ## References and Relevant sources:
 
@@ -32,31 +22,40 @@ The aim is to express Numenta’s spatial pooler as a Hopfield network. In order
  - John J. Hopfield, <http://www.scholarpedia.org/article/Hopfield_network>
 
 
-# First observations
+## First observations and results
 
-#### 1. Ordinary Boosting *vs.* Extended Boosting
+##### Energy with *ordinary boosting* only:
 
-Compare *ordinary boosting*
-with *extended boosting* decorrelating activity:
+<p align="center">
+<img src="./jupyter/results/numenta__non_extended__FvuE/ordered_features.png" height="200">
+<img src="./jupyter/results/numenta__non_extended__FvuE/reconstruction.png" height="200">
+</p>
 
-```
-open jupyter/results/three-to-one__non_extended/reconstruction.mp4
-open jupyter/results/three-to-one__extended/reconstruction.mp4
-```
+##### Energy with *extended boosting* decorrelating activity:
 
-Additionally, compare to initialization with *normalized* random weights (i.e. each row in W is scaled to have unit norm when initialized):
+<p align="center">
+<img src="./jupyter/results/numenta__extended__zero_bounded__AsMS//ordered_features.png" height="200">
+<img src="./jupyter/results/numenta__extended__zero_bounded__AsMS/reconstruction.png" height="200">
+</p>
 
-```
-open jupyter/results/three-to-one__extended__normalized/reconstruction.mp4
-```
+##### Energy without size penalty and *extended inhibition* only (non-negative H):
 
-#### 2. Without size penalty
+<p align="center">
+<img src="./jupyter/results/numenta__extended__no_size_penalty__zero_bounded__8GRh/ordered_features.png" height="200">
+<img src="./jupyter/results/numenta__extended__no_size_penalty__zero_bounded__8GRh/reconstruction.png" height="200">
+</p>
 
-Remove the size penalty from the energy, then compare results for E with *extended boosting/inhibition*
-to E with *extended inhibition only* (i.e. ensure non-negative H)
+##### Energy without size penalty (unconstrained H):
 
-```
-open jupyter/results/three-to-one__no_size_peanlty__b5sj/reconstruction.mp4
-open jupyter/results/three-to-one__zero_bound__no_size_penalty__ibAj/reconstruction.mp4
+<p align="center">
+<img src="./jupyter/results/numenta__extended__no_size_penalty__pcPT/ordered_features.png" height="200">
+<img src="./jupyter/results/numenta__extended__no_size_penalty__pcPT/reconstruction.png" height="200">
+</p>
 
-```
+##### Local inhibition revisited:
+Compare Section 6 in `latex/notes.pdf`:
+
+<p align="center">
+<img src="./jupyter/results/local_inhibition_revisited__98mf/ordered_features.png" height="200">
+<img src="./jupyter/results/local_inhibition_revisited__98mf/reconstruction.png" height="200">
+</p>

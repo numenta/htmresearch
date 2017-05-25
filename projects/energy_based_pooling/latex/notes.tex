@@ -1,5 +1,3 @@
-
-
 \documentclass[titlepage]{amsart}
 
 \usepackage{amsmath,amssymb,amsthm,graphicx, paralist, appendix}
@@ -120,7 +118,7 @@ A – 3400 Klosterneuburg, Austria}
 %  
 \begin{abstract}
 These are \textbf{unfinished} notes!
-My aim is to express Numenta's spatial pooler as a Hopfield network.
+My aim is to express Numenta's spatial pooler as a (constrained) Hopfield network.
 In order to do so we have to express the \textit{w-max-overlap} procedure as
 an appropriate energy function. This enables us to extend 
 the energy by an additional term to decorrelate pairwise column activity
@@ -396,11 +394,11 @@ i.e.\ either $h_{ij} = 0$ or $h_{ij} = 1$
 
 We calculate a units activity $y_i$ as follows:
 Turn the outgoing weights $h_{ij}$ for $i \neq j$ into 
-an ``activation probability'' $a_{ij}$ by
+an ``activation probability'' $a_{ij}$ by setting
 \[
-      a_{ij} = \frac{h_{ij}}{\mathop{\sum}\limits_{i \neq k} h_{ik} }
+      a_{ij} := \frac{h_{ij}}{\mathop{\sum}\limits_{i \neq k} h_{ik} }.
 \]
-Informally this is a best guess for the activity of the other units, assuming
+Informally this is a best guess for the activity of the other unit, assuming
 unit $i$ is active.
 
 With this in hand we calculate an estimate $A_i$ for the ``activation''
@@ -409,8 +407,9 @@ in the neighbourhood of unit $i$, i.e.\ we set
     A_i = \mathop{\sum}\limits_{o_j > o_i} a_{ij}.
 \]
 Here $o_i$ denotes the \textit{boosted overlap score} of unit $i$ (that is $o_i = e^{-b} W_i x$).
+The unit's score $o_i$ acts as a filter threshold to decide whose unit's ``activation'' it accumulates.
 Note that we only accumulate the activity of units with a bigger overlap.
-Then the \textbf{generalized local $w$-max procedure} can be generalized as
+Then the \textbf{generalized local $w$-max procedure} can be expressed as
 % 
 \begin{equation}
 \label{eqn:numenta unit activity}
@@ -420,6 +419,7 @@ Then the \textbf{generalized local $w$-max procedure} can be generalized as
             \end{cases}
 \end{equation}
 % 
+Here $s$ denotes a predefined desired sparsity $s = \tfrac{w}{n}$ ($w$ is the desired code weight). 
 We can interpret this as follows: if the estimated activation is already bigger than desired,
 i.e.\ bigger than the sparsity threshold $s$, we turn unit $i$ off. If it is smaller than
 desired we turn unit $i$ on.
