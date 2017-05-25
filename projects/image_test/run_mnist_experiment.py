@@ -26,7 +26,7 @@ import numpy
 
 from nupic.bindings.math import GetNTAReal
 from nupic.engine import Network
-from nupic.research import fdrutilities
+from nupic.algorithms import fdrutilities
 
 """
 Setups a simple Network and runs it on the MNIST dataset. Assumes you have

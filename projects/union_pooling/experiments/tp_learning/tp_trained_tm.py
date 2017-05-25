@@ -36,7 +36,7 @@ plt.ion()
 
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from nupic.algorithms.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
 from htmresearch.frameworks.union_temporal_pooling.union_temporal_pooler_experiment import (
     UnionTemporalPoolerExperiment)

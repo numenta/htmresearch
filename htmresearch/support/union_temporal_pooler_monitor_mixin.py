@@ -27,11 +27,11 @@ from collections import defaultdict
 
 import numpy
 
-from nupic.research.monitor_mixin.metric import Metric
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from nupic.algorithms.monitor_mixin.metric import Metric
+from nupic.algorithms.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
-from nupic.research.monitor_mixin.plot import Plot
-from nupic.research.monitor_mixin.trace import (
+from nupic.algorithms.monitor_mixin.plot import Plot
+from nupic.algorithms.monitor_mixin.trace import (
   IndicesTrace, StringsTrace, BoolsTrace, MetricsTrace, CountsTrace)
 
 from nupic.bindings.math import GetNTAReal
@@ -476,13 +476,13 @@ class UnionTemporalPoolerMonitorMixin(MonitorMixinBase):
 
 
   def _mmComputeBitLifeStats(self):
-    """ 
+    """
     @return (list) Life duration of all active bits
     """
     bitLifeList = []
     traceData = self._mmTraces["unionSDR"].data
-    n = len(traceData)    
-    bitLifeCounter = numpy.zeros(self.getNumColumns()) 
+    n = len(traceData)
+    bitLifeCounter = numpy.zeros(self.getNumColumns())
     preActiveCells = set()
     for t in xrange(n-1):
       preActiveCells = set(numpy.where(bitLifeCounter>0)[0])
@@ -496,10 +496,10 @@ class UnionTemporalPoolerMonitorMixin(MonitorMixinBase):
       bitLifeCounter[continuousActiveCells] += 1
 
     return bitLifeList
-  
 
-    
-    
+
+
+
   # ==============================
   # Overrides
   # ==============================

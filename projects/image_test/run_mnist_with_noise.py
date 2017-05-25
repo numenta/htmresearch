@@ -28,7 +28,7 @@ import shutil
 
 from nupic.bindings.math import GetNTAReal
 from nupic.engine import Network
-from nupic.research import fdrutilities
+from nupic.algorithms import fdrutilities
 
 from PIL import Image
 
