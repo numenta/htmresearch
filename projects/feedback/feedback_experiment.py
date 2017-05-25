@@ -82,6 +82,11 @@ class FeedbackExperiment(object):
 
 
 
+    # Change this to select whether you're using ApicalTMRegion
+    # or ExtendedTMRegion for Layer 4.
+    # ExtendedTMRegion is faster, but cannot use the Apical Modulation
+    # implementation (See below)
+    
     # self.L4RegionType = "py.ExtendedTMRegion"
     self.L4RegionType = "py.ApicalTMRegion"
 
@@ -96,14 +101,7 @@ class FeedbackExperiment(object):
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": 0,
       "sensorInputSize": inputSize,
-      #   NOTE: To switch between ExtendedTMRegion and ApicalTMRegion:
-      # 1- change l4regiontype below
-      # 2- change the configuration set below
-      # 3- change the linking between current active cells and basal input,
-      # in l2_l4_network_creation.py,
-      # which only should be there for ApicalTMRegion
-      "L4RegionType": self.L4RegionType,#"py.ExtendedTMRegion",
-      #"L4RegionType": "py.ExtendedTMRegion",
+      "L4RegionType": self.L4RegionType
       "L4Params": self.getDefaultL4Params(inputSize),
       "L2Params": self.getDefaultL2Params(inputSize),
     }

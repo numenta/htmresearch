@@ -285,8 +285,9 @@ class ColumnPooler(object):
     minNumActiveCells =  30 #self.sdrSize / 2
 
 
-    # # This is the old method. It relies heavily on the chooseCells function
-    # # A bit complex, works well, but fares badly in the face of random-SDR insertions in in put sequences!
+    # # This is the old method. It relies heavily on the chooseCells function, which is
+    # # a bit complex. It works well, but fares badly in the face of random-SDR insertions
+    # # in input sequences!
     # chosenCells = self._chooseCells(feedforwardSupportedCells,
     #                                 minNumActiveCells, numActiveSegmentsByCell)
     #
@@ -301,7 +302,7 @@ class ColumnPooler(object):
     #                                    numActiveSegmentsByCell))
 
 
-    # New method
+    # New method. Doesn't use the chooseCells function.
     # # First, select FF-supported cells. But if some have active segments, only chose these ones (they inhibit everyone else)
     remainingFFSupportedCells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
     activeSegs = numActiveSegmentsByCell[remainingFFSupportedCells]
@@ -339,6 +340,8 @@ class ColumnPooler(object):
     self.activeCells = numpy.asarray(chosenCells, dtype="uint32")
 
 
+  # chooseCells is not used in the current version, but preserved here for
+  # comparison.
   def _chooseCells(self, candidates, n, numActiveSegmentsByCell):
     """
     Choose cells to activate, using their active segment counts to determine

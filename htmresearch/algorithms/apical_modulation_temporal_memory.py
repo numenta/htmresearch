@@ -35,8 +35,9 @@ class ApicalModulationTemporalMemory(object):
 
   Basal connections are used to implement traditional Temporal Memory.
 
-  If apical segments are active, the threshold for lateral/basal segment
-  activation is lowered.
+  In this implementation, apical active segments not only break ties within a minicolumn
+  (as with ApicalTiebreak), but they also lower the activation threshold for basal
+  (lateral) segments.
 
   This TemporalMemory is unaware of whether its basalInput or apicalInput are
   from internal or external cells. They are just cell numbers. The caller knows
@@ -473,29 +474,18 @@ class ApicalModulationTemporalMemory(object):
       Includes counts for active, matching, and nonmatching segments.
     """
 
-    # Without tie-breaker:
-    # You need to lower the threshold A LOT (.5 or less) to produce increases in the number of predictions...
-    # And when you do that, performance decreases to the level of NoFB
-    # .75: no visible effect, either on prediction size or performance !
-    # Another problem is that w/o tiebreaker, noise doesn't just reduce the number of predictions - sometimes
-    # it generates too many predictions ! Presumably from wrongly-bursting columns...?
-
-    # Active
+    # Active apical segments lower the activation threshold for basal (lateral) segments
     overlaps = connections.computeActivity(activeInput, connectedPermanence)
     outrightActiveSegments = np.flatnonzero(overlaps >= activationThreshold)
-    # We have apicallyActiveCells, but we want segments from the apicallyActiveCells... Or more precisely,
-    # conditionallyActiveSegments = np.intersect1d(np.flatnonzero(overlaps >= activationThreshold * 0.75), apicallyActiveCells)  # BUGG !!!
     conditionallyActiveSegments = np.flatnonzero((overlaps < activationThreshold) & (overlaps >= activationThreshold * 0.75))
     cellsOfCASegments = connections.mapSegmentsToCells(conditionallyActiveSegments)
-    apicallyActiveSegments = conditionallyActiveSegments[np.in1d(cellsOfCASegments, apicallyActiveCells)] # CA segments from apically active cells
+    apicallyActiveSegments = conditionallyActiveSegments[np.in1d(cellsOfCASegments, apicallyActiveCells)] # CondAct segments from apically active cells
 
     activeSegments = np.concatenate((outrightActiveSegments, apicallyActiveSegments))
 
     # To cancel all the apical influence (for debugging):
     # activeSegments = outrightActiveSegments
 
-    #if len(apicallyActiveSegments > 0):
-    #    raise("OK")
     # Matching
     potentialOverlaps = connections.computeActivity(activeInput)
     matchingSegments = np.flatnonzero(potentialOverlaps >= minThreshold)
@@ -520,6 +510,8 @@ class ApicalModulationTemporalMemory(object):
 
     @return (numpy array)
     """
+
+    # Computation of predicted cells, with apical tie-breaking
 
     cellsForBasalSegments = self.basalConnections.mapSegmentsToCells(
       activeBasalSegments)
@@ -570,11 +562,6 @@ class ApicalModulationTemporalMemory(object):
     else:
       maxNew = sampleSize - potentialOverlaps[learningSegments]
 
-    # NOTE: The following line undoes the previous four, and fixes some buggy behavior! It's a
-    # kludge until we figure out what's going on.
-    # NOTE 2: There is still some buggy behavior even when this line is on (e.g. no prediction
-    # error when swapping ends of sequences, weird oscillations in predictions/active cells, etc.)
-    # maxNew = 20
 
     if maxSynapsesPerSegment != -1:
       synapseCounts = connections.mapSegmentsToSynapseCounts(
