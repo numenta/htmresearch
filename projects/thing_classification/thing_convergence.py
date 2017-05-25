@@ -60,11 +60,14 @@ def loadThingObjects(numCorticalColumns=1):
     objects.features.append([])
 
   objDataPath = 'data/'
-  objFiles = [f for f in os.listdir(objDataPath)
-               if os.path.isfile(os.path.join(objDataPath, f))]
-
+  objFiles = []
+  for f in os.listdir(objDataPath):
+    if os.path.isfile(os.path.join(objDataPath, f)):
+      if '.log' in f:
+        objFiles.append(f)
   idx = 0
   for f in objFiles:
+    print "load object file: ", f
     objName = f.split('.')[0]
     objFile = open('{}/{}'.format(objDataPath, f))
 
@@ -103,7 +106,12 @@ def trainNetwork(objects, numColumns):
   # object, we create a sequence of random sensations for each column.  We will
   # present each sensation for settlingTime time steps to let it settle and
   # ensure it converges.
-  for objectId in objects:
+
+  objectNames = objects.objects.keys()
+  numObjects = len(objectNames)
+  overlapMat = np.zeros((numObjects, numObjects))
+  for objectIdx in range(numObjects):
+    objectId = objectNames[objectIdx]
     obj = objects[objectId]
 
     objectSensations = {}
@@ -146,12 +154,15 @@ def trainNetwork(objects, numColumns):
     inferenceSDRs = objects.provideObjectToInfer(inferConfig)
     exp.infer(inferenceSDRs, objectName=objectId, reset=False)
     print "Output for {}: {}".format(objectId, exp.getL2Representations())
-    for i in range(len(objects)):
+
+    for i in range(numObjects):
+      overlapMat[objectIdx, i] = len(exp.getL2Representations()[0] &
+            L2Representations[objects.objects.keys()[i]][0])
       print "Intersection with {}:{}".format(
-        objectId,
-        len(exp.getL2Representations()[0] &
-            L2Representations[objects.objects.keys()[i]][0]))
+        objectNames[i], overlapMat[objectIdx, i])
+
     exp.sendReset()
+  return overlapMat
 
 
 
@@ -159,7 +170,7 @@ if __name__ == "__main__":
   numColumns = 1
   objects = loadThingObjects(numColumns)
 
-  trainNetwork(objects, numColumns)
+  overlapMat = trainNetwork(objects, numColumns)
 
 
 
