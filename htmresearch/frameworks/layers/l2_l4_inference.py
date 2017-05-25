@@ -85,7 +85,10 @@ import collections
 import os
 import random
 import matplotlib.pyplot as plt
+import numpy as np
 from tabulate import tabulate
+
+from nupic.bindings.math import SparseMatrix
 
 from htmresearch.support.logging_decorator import LoggingDecorator
 from htmresearch.support.register_regions import registerAllResearchRegions
@@ -141,7 +144,8 @@ class L4L2Experiment(object):
                enableLateralSP=False,
                lateralSPOverrides=None,
                enableFeedForwardSP=False,
-               feedForwardSPOverrides=None
+               feedForwardSPOverrides=None,
+               objectNamesAreIndices=False
                ):
     """
     Creates the network.
@@ -198,6 +202,12 @@ class L4L2Experiment(object):
     @param   feedForwardSPOverrides
              Parameters to override in the feed-forward SP region
 
+    @param   objectNamesAreIndices (bool)
+             If True, object names are used as indices in the
+             getCurrentObjectOverlaps method. Object names must be positive
+             integers. If False, object names can be strings, and indices will
+             be assigned to each object name.
+
     """
     # Handle logging - this has to be done first
     self.logCalls = logCalls
@@ -210,6 +220,7 @@ class L4L2Experiment(object):
     self.inputSize = inputSize
     self.externalInputSize = externalInputSize
     self.numInputBits = numInputBits
+    self.objectNamesAreIndices = objectNamesAreIndices
 
     # seed
     self.seed = seed
@@ -270,6 +281,10 @@ class L4L2Experiment(object):
 
     # will be populated during training
     self.objectL2Representations = {}
+    self.objectL2RepresentationsMatrices = [
+      SparseMatrix(0, self.config["L2Params"]["cellCount"])
+      for _ in xrange(self.numColumns)]
+    self.objectNameToIndex = {}
     self.statistics = []
 
 
@@ -341,7 +356,7 @@ class L4L2Experiment(object):
         self.network.run(iterations)
 
       # update L2 representations
-      self.objectL2Representations[objectName] = self.getL2Representations()
+      self._saveL2Representation(objectName)
 
       if reset:
         # send reset signal
@@ -418,6 +433,34 @@ class L4L2Experiment(object):
     statistics["object"] = objectName if objectName is not None else "Unknown"
 
     self.statistics.append(statistics)
+
+
+  def _saveL2Representation(self, objectName):
+    """
+    Record the current active L2 cells as the representation for 'objectName'.
+    """
+    self.objectL2Representations[objectName] = self.getL2Representations()
+
+    try:
+      objectIndex = self.objectNameToIndex[objectName]
+    except KeyError:
+      # Grow the matrices as needed.
+      if self.objectNamesAreIndices:
+        objectIndex = objectName
+        if objectIndex >= self.objectL2RepresentationsMatrices[0].nRows():
+          for matrix in self.objectL2RepresentationsMatrices:
+            matrix.resize(objectIndex + 1, matrix.nCols())
+      else:
+        objectIndex = self.objectL2RepresentationsMatrices[0].nRows()
+        for matrix in self.objectL2RepresentationsMatrices:
+          matrix.resize(matrix.nRows() + 1, matrix.nCols())
+
+      self.objectNameToIndex[objectName] = objectIndex
+
+    for colIdx, matrix in enumerate(self.objectL2RepresentationsMatrices):
+      activeCells = self.L2Columns[colIdx]._pooler.getActiveCells()
+      matrix.setRowFromSparse(objectIndex, activeCells,
+                              np.ones(len(activeCells), dtype="float32"))
 
 
   def _sendReset(self, sequenceId=0):
@@ -593,6 +636,28 @@ class L4L2Experiment(object):
     Returns the active representation in L2.
     """
     return [set(column._pooler.getActiveCells()) for column in self.L2Columns]
+
+
+  def getCurrentObjectOverlaps(self):
+    """
+    Get every L2's current overlap with each L2 object representation that has
+    been learned.
+
+    :return: 2D numpy array.
+    Each row represents a cortical column. Each column represents an object.
+    Each value represents the cortical column's current L2 overlap with the
+    specified object.
+    """
+    overlaps = np.zeros((self.numColumns,
+                         len(self.objectL2Representations)),
+                        dtype="uint32")
+
+    for i, representations in enumerate(self.objectL2RepresentationsMatrices):
+      activeCells = self.L2Columns[i]._pooler.getActiveCells()
+      overlaps[i, :] = representations.rightVecSumAtNZSparse(activeCells)
+
+    return overlaps
+
 
 
   def getCurrentClassification(self, minOverlap=None, includeZeros=True):
