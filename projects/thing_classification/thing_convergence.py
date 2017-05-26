@@ -25,7 +25,7 @@ import random
 import os
 import numpy as np
 import pprint
-from htmresearch.support.logging_decorator import LoggingDecorator
+import matplotlib.pyplot as plt
 from htmresearch.frameworks.layers.l2_l4_inference import (
   L4L2Experiment, rerunExperimentFromLogfile)
 
@@ -91,25 +91,28 @@ def loadThingObjects(numCorticalColumns=1):
 
 
 
-def trainNetwork(objects, numColumns):
+def trainNetwork(objects, numColumns, verbose=False):
+  objectNames = objects.objects.keys()
+  numObjects = len(objectNames)
+
   exp = L4L2Experiment("shared_features",
                        numCorticalColumns=numColumns)
   exp.learnObjects(objects.provideObjectsToLearn())
 
   settlingTime = 3
   L2Representations = exp.objectL2Representations
-  print "Learned object representations:"
-  pprint.pprint(L2Representations, width=400)
-  print "=========================="
+  if verbose:
+    print "Learned object representations:"
+    pprint.pprint(L2Representations, width=400)
+    print "=========================="
 
   # For inference, we will check and plot convergence for each object. For each
   # object, we create a sequence of random sensations for each column.  We will
   # present each sensation for settlingTime time steps to let it settle and
   # ensure it converges.
 
-  objectNames = objects.objects.keys()
-  numObjects = len(objectNames)
   overlapMat = np.zeros((numObjects, numObjects))
+  numL2ActiveCells= np.zeros((numObjects, ))
   for objectIdx in range(numObjects):
     objectId = objectNames[objectIdx]
     obj = objects[objectId]
@@ -153,24 +156,68 @@ def trainNetwork(objects, numColumns):
 
     inferenceSDRs = objects.provideObjectToInfer(inferConfig)
     exp.infer(inferenceSDRs, objectName=objectId, reset=False)
-    print "Output for {}: {}".format(objectId, exp.getL2Representations())
+    if verbose:
+      print "Output for {}: {}".format(objectId, exp.getL2Representations())
+
+    numL2ActiveCells[objectIdx] = len(exp.getL2Representations())
 
     for i in range(numObjects):
       overlapMat[objectIdx, i] = len(exp.getL2Representations()[0] &
             L2Representations[objects.objects.keys()[i]][0])
-      print "Intersection with {}:{}".format(
-        objectNames[i], overlapMat[objectIdx, i])
+      if verbose:
+        print "Intersection with {}:{}".format(
+          objectNames[i], overlapMat[objectIdx, i])
 
     exp.sendReset()
-  return overlapMat
 
+  expResult = {'overlapMat': overlapMat,
+               'numL2ActiveCells': numL2ActiveCells}
+  return expResult
+
+
+
+def computeAccuracy(expResult):
+  overlapMat = expResult['overlapMat']
+  numCorrect = 0
+  numObjects = overlapMat.shape[0]
+
+  confuseThresh = 39
+  for i in range(numObjects):
+    # idx = np.where(overlapMat[i, :]>confuseThresh)[0]
+    idx = np.where(overlapMat[i, :] == np.max(overlapMat[i, :]))[0]
+    print "best match for {} is {}".format(i, idx)
+    if len(idx) > 1:
+      continue
+    if idx[0] == i:
+      numCorrect += 1
+  accuracy = float(numCorrect)/numObjects
+  print "accuracy: ", accuracy
+  return accuracy
+
+
+def experiment1():
+  accuracyVsNumColumns = []
+  for numColumns in range(1, 3):
+    objects = loadThingObjects(numColumns)
+
+    expResult = trainNetwork(objects, numColumns)
+
+    accuracy = computeAccuracy(expResult)
+
+    accuracyVsNumColumns.append(accuracy)
+
+  return accuracyVsNumColumns
 
 
 if __name__ == "__main__":
-  numColumns = 1
-  objects = loadThingObjects(numColumns)
+  accuracyVsNumColumns = []
+  for numColumns in range(1, 3):
+    objects = loadThingObjects(numColumns)
 
-  overlapMat = trainNetwork(objects, numColumns)
+    expResult = trainNetwork(objects, numColumns)
 
+    accuracy = computeAccuracy(expResult)
+
+    accuracyVsNumColumns.append(accuracy)
 
 
