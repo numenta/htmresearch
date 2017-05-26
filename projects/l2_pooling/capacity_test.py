@@ -579,7 +579,7 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
   cpuCount = cpuCount or multiprocessing.cpu_count()
   pool = multiprocessing.Pool(cpuCount, maxtasksperchild=1)
 
-  numObjectsList = np.arange(50, 800, 200)
+  numObjectsList = np.arange(50, 800, 50)
   params = []
   for rpt in range(numRpts):
     for numObjects in numObjectsList:
