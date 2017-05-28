@@ -242,12 +242,8 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
     numL2ActiveCells[step] /= exp.numColumns
     numL4ActiveCells[step] /= exp.numColumns
 
-    for obj in xrange(numObjects):
-      overlap[step, obj] = np.mean([
-        len(exp.objectL2Representations[obj][colIdx] &
-            exp.getL2Representations()[colIdx])
-        for colIdx in xrange(exp.numColumns)]
-      )
+    overlapByColumn = exp.getCurrentObjectOverlaps()
+    overlap[step] = np.mean(overlapByColumn, axis=0)
 
     # columnPooler = exp.L2Columns[0]._pooler
     # tm = exp.L4Columns[0]._tm
@@ -475,7 +471,8 @@ def runCapacityTest(numObjects,
                        inputSize=l4ColumnCount,
                        externalInputSize=externalInputSize,
                        numLearningPoints=3,
-                       numCorticalColumns=numCorticalColumns)
+                       numCorticalColumns=numCorticalColumns,
+                       objectNamesAreIndices=True)
 
   if objectParams["uniquePairs"]:
     pairs = createRandomObjects(
