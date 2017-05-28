@@ -50,7 +50,6 @@ def getL4Params():
   return {
     "columnCount": 2048,
     "cellsPerColumn": 8,
-    "formInternalBasalConnections": False,
     "learningMode": True,
     "inferenceMode": True,
     "learnOnOneCell": False,
@@ -61,7 +60,7 @@ def getL4Params():
     "minThreshold": 10,
     "predictedSegmentDecrement": 0.002,
     "activationThreshold": 13,
-    "maxNewSynapseCount": 20,
+    "sampleSize": 20,
     "defaultOutputType": "predictedActiveCells",
     "implementation": "etm",
     "seed": 41

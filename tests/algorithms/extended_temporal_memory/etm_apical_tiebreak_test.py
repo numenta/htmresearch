@@ -43,21 +43,20 @@ class ExtendedTM_ApicalTiebreakTests(ApicalTiebreakTestBase,
                   activationThreshold, seed):
 
     params = {
-      "columnDimensions": (columnCount,),
-      "basalInputDimensions": (basalInputSize,),
-      "apicalInputDimensions": (apicalInputSize,),
+      "columnCount": columnCount,
+      "basalInputSize": basalInputSize,
+      "apicalInputSize": apicalInputSize,
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
       "connectedPermanence": connectedPermanence,
       "minThreshold": minThreshold,
-      "maxNewSynapseCount": sampleSize,
+      "sampleSize": sampleSize,
       "permanenceIncrement": permanenceIncrement,
       "permanenceDecrement": permanenceDecrement,
       "predictedSegmentDecrement": predictedSegmentDecrement,
       "activationThreshold": activationThreshold,
       "seed": seed,
       "learnOnOneCell": False,
-      "formInternalBasalConnections": False,
     }
 
     self.tm = ExtendedTemporalMemory(**params)
@@ -69,17 +68,7 @@ class ExtendedTM_ApicalTiebreakTests(ApicalTiebreakTestBase,
     basalInput = sorted(basalInput)
     apicalInput = sorted(apicalInput)
 
-    # Use depolarizeCells + activateCells rather than tm.compute so that
-    # getPredictiveCells returns predictions for the current timestep.
-    self.tm.depolarizeCells(activeCellsExternalBasal=basalInput,
-                            activeCellsExternalApical=apicalInput,
-                            learn=learn)
-    self.tm.activateCells(activeColumns,
-                          reinforceCandidatesExternalBasal=basalInput,
-                          growthCandidatesExternalBasal=basalInput,
-                          reinforceCandidatesExternalApical=apicalInput,
-                          growthCandidatesExternalApical=apicalInput,
-                          learn=learn)
+    self.tm.compute(activeColumns, basalInput, apicalInput)
 
 
   def getActiveCells(self):
@@ -87,4 +76,4 @@ class ExtendedTM_ApicalTiebreakTests(ApicalTiebreakTestBase,
 
 
   def getPredictedCells(self):
-    return self.tm.getPredictiveCells()
+    return self.tm.getPredictedCells()

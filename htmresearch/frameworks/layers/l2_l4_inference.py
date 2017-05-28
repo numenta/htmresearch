@@ -721,7 +721,6 @@ class L4L2Experiment(object):
       return {
         "columnCount": inputSize,
         "cellsPerColumn": 16,
-        "formInternalBasalConnections": False,
         "learn": True,
         "learnOnOneCell": False,
         "initialPermanence": 0.51,
@@ -731,7 +730,7 @@ class L4L2Experiment(object):
         "minThreshold": minThreshold,
         "predictedSegmentDecrement": 0.0,
         "activationThreshold": activationThreshold,
-        "maxNewSynapseCount": sampleSize,
+        "sampleSize": sampleSize,
         "implementation": "etm",
         "seed": self.seed
       }

@@ -34,7 +34,6 @@ networkConfig1 = {
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
-    "formInternalBasalConnections": False,
     "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
@@ -44,7 +43,7 @@ networkConfig1 = {
     "minThreshold": 10,
     "predictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
-    "maxNewSynapseCount": 20,
+    "sampleSize": 20,
   },
   "L2Params": {
     "inputWidth": 1024 * 8,
@@ -76,7 +75,6 @@ networkConfig2 = {
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
-    "formInternalBasalConnections": False,
     "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
@@ -86,7 +84,7 @@ networkConfig2 = {
     "minThreshold": 10,
     "predictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
-    "maxNewSynapseCount": 20,
+    "sampleSize": 20,
     "seed": 42,
   },
   "L2Params": {
@@ -119,7 +117,6 @@ networkConfig3 = {
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
-    "formInternalBasalConnections": False,
     "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
@@ -129,7 +126,7 @@ networkConfig3 = {
     "minThreshold": 10,
     "predictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
-    "maxNewSynapseCount": 20,
+    "sampleSize": 20,
   },
   "L2Params": {
     "inputWidth": 1024 * 8,
@@ -257,7 +254,6 @@ class LaminarNetworkTest(unittest.TestCase):
       "L4Params": {
         "columnCount": 512,
         "cellsPerColumn": 16,
-        "formInternalBasalConnections": True,
         "learn": True,
         "learnOnOneCell": False,
         "initialPermanence": 0.23,
@@ -267,7 +263,7 @@ class LaminarNetworkTest(unittest.TestCase):
         "minThreshold": 15,
         "predictedSegmentDecrement": 0.21,
         "activationThreshold": 16,
-        "maxNewSynapseCount": 24,
+        "sampleSize": 24,
       },
       "L2Params": {
         "inputWidth": 512 * 8,
@@ -834,23 +830,23 @@ class LaminarNetworkTest(unittest.TestCase):
     return cellsIndices[:size]
 
 
-  def getL4PredictiveCells(self, column):
-    """Returns the predictive cells in L4."""
-    return set(column._tm.getPredictiveCells())
+  def getL4PredictedCells(self, column):
+    """Returns the predicted cells in L4."""
+    return set(column._tm.getPredictedCells())
 
 
   def getL4PredictedActiveCells(self, column):
     """Returns the predicted active cells in L4."""
     activeCells = set(column._tm.getActiveCells())
-    predictiveCells = set(column._tm.getPredictiveCells())
-    return activeCells & predictiveCells
+    predictedCells = set(column._tm.getPredictedCells())
+    return activeCells & predictedCells
 
 
   def getL4BurstingCells(self, column):
     """Returns the bursting cells in L4."""
     activeCells = set(column._tm.getActiveCells())
-    predictiveCells = set(column._tm.getPredictiveCells())
-    return activeCells - predictiveCells
+    predictedCells = set(column._tm.getPredictedCells())
+    return activeCells - predictedCells
 
 
   def getCurrentL2Representation(self, column):

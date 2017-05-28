@@ -95,6 +95,30 @@ class ExtendedTMRegion(PyRegion):
           isDefaultInput=False,
           requireSplitterMap=False),
 
+        basalGrowthCandidates=dict(
+          description=("An array of 0's and 1's representing basal input " +
+                       "that can be learned on new synapses on basal " +
+                       "segments. If this input is a length-0 array, the " +
+                       "whole basalInput is used."),
+          dataType="Real32",
+          count=0,
+          required=False,
+          regionLevel=True,
+          isDefaultInput=False,
+          requireSplitterMap=False),
+
+        apicalGrowthCandidates=dict(
+          description=("An array of 0's and 1's representing apical input " +
+                       "that can be learned on new synapses on apical " +
+                       "segments. If this input is a length-0 array, the " +
+                       "whole apicalInput is used."),
+          dataType="Real32",
+          count=0,
+          required=False,
+          regionLevel=True,
+          isDefaultInput=False,
+          requireSplitterMap=False),
+
       ),
       outputs=dict(
 
@@ -140,17 +164,10 @@ class ExtendedTMRegion(PyRegion):
           count=1,
           defaultValue="true"),
         columnCount=dict(
-          description="Number of columns in this temporal memory",
-          accessMode="Read",
+          description="Number of colums in this temporal memory",
           dataType="UInt32",
-          count=1,
-          constraints=""),
-        columnDimensions=dict(
-          description="Number of colums in this temporal memory (vector"
-                      " version).",
-          dataType="Real32",
           accessMode="Read",
-          count=0,
+          count=1,
           regionLevel=True,
           isDefaultOutput=True),
         basalInputWidth=dict(
@@ -200,7 +217,7 @@ class ExtendedTMRegion(PyRegion):
           dataType="UInt32",
           count=1,
           constraints=""),
-        maxNewSynapseCount=dict(
+        sampleSize=dict(
           description="The maximum number of synapses added to a segment "
                       "during learning.",
           accessMode="Read",
@@ -240,13 +257,6 @@ class ExtendedTMRegion(PyRegion):
           accessMode="Read",
           dataType="UInt32",
           count=1),
-        formInternalBasalConnections=dict(
-          description="Flag to determine whether to form basal connections "
-                      "with internal cells within this temporal memory",
-          accessMode="Read",
-          dataType="Bool",
-          count=1,
-          defaultValue="true"),
         learnOnOneCell=dict(
           description="If True, the winner cell for each column will be"
                       " fixed between resets.",
@@ -289,11 +299,10 @@ class ExtendedTMRegion(PyRegion):
                initialPermanence=0.21,
                connectedPermanence=0.50,
                minThreshold=10,
-               maxNewSynapseCount=20,
+               sampleSize=20,
                permanenceIncrement=0.10,
                permanenceDecrement=0.10,
                predictedSegmentDecrement=0.0,
-               formInternalBasalConnections=True,
                learnOnOneCell=False,
                maxSegmentsPerCell=255,
                maxSynapsesPerSegment=255,
@@ -316,11 +325,10 @@ class ExtendedTMRegion(PyRegion):
     self.initialPermanence = initialPermanence
     self.connectedPermanence = connectedPermanence
     self.minThreshold = minThreshold
-    self.maxNewSynapseCount = maxNewSynapseCount
+    self.sampleSize = sampleSize
     self.permanenceIncrement = permanenceIncrement
     self.permanenceDecrement = permanenceDecrement
     self.predictedSegmentDecrement = predictedSegmentDecrement
-    self.formInternalBasalConnections = formInternalBasalConnections
     self.learnOnOneCell = learnOnOneCell
     self.maxSegmentsPerCell = maxSegmentsPerCell
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
@@ -344,19 +352,18 @@ class ExtendedTMRegion(PyRegion):
     """
     if self._tm is None:
       params = {
-        "columnDimensions": (self.columnCount,),
-        "basalInputDimensions": (self.basalInputWidth,),
-        "apicalInputDimensions": (self.apicalInputWidth,),
+        "columnCount": self.columnCount,
+        "basalInputSize": self.basalInputWidth,
+        "apicalInputSize": self.apicalInputWidth,
         "cellsPerColumn": self.cellsPerColumn,
         "activationThreshold": self.activationThreshold,
         "initialPermanence": self.initialPermanence,
         "connectedPermanence": self.connectedPermanence,
         "minThreshold": self.minThreshold,
-        "maxNewSynapseCount": self.maxNewSynapseCount,
+        "sampleSize": self.sampleSize,
         "permanenceIncrement": self.permanenceIncrement,
         "permanenceDecrement": self.permanenceDecrement,
         "predictedSegmentDecrement": self.predictedSegmentDecrement,
-        "formInternalBasalConnections": self.formInternalBasalConnections,
         "learnOnOneCell": self.learnOnOneCell,
         "maxSegmentsPerCell": self.maxSegmentsPerCell,
         "maxSynapsesPerSegment": self.maxSynapsesPerSegment,
@@ -391,35 +398,37 @@ class ExtendedTMRegion(PyRegion):
     activeColumns = inputs["activeColumns"].nonzero()[0]
 
     if "basalInput" in inputs:
-      activeCellsExternalBasal = inputs["basalInput"].nonzero()[0]
+      basalInput = inputs["basalInput"].nonzero()[0]
     else:
-      activeCellsExternalBasal = ()
+      basalInput = ()
 
     if "apicalInput" in inputs:
-      activeCellsExternalApical = inputs["apicalInput"].nonzero()[0]
+      apicalInput = inputs["apicalInput"].nonzero()[0]
     else:
-      activeCellsExternalApical = ()
+      apicalInput = ()
+
+    if "basalGrowthCandidates" in inputs:
+      basalGrowthCandidates = inputs["basalGrowthCandidates"].nonzero()[0]
+    else:
+      basalGrowthCandidates = basalInput
+
+    if "apicalGrowthCandidates" in inputs:
+      apicalGrowthCandidates = inputs["apicalGrowthCandidates"].nonzero()[0]
+    else:
+      apicalGrowthCandidates = apicalInput
 
     # Run the TM for one time step.
-    self._tm.depolarizeCells(
-      activeCellsExternalBasal,
-      activeCellsExternalApical,
-      learn=self.learn)
-    self._tm.activateCells(
-      activeColumns,
-      reinforceCandidatesExternalBasal=activeCellsExternalBasal,
-      reinforceCandidatesExternalApical=activeCellsExternalApical,
-      growthCandidatesExternalBasal=activeCellsExternalBasal,
-      growthCandidatesExternalApical=activeCellsExternalApical,
-      learn=self.learn)
+    self._tm.compute(activeColumns, basalInput, apicalInput,
+                     basalGrowthCandidates, apicalGrowthCandidates,
+                     learn=self.learn)
 
     # Extract the active / predicted cells and put them into binary arrays.
     outputs["activeCells"][:] = 0
     outputs["activeCells"][self._tm.getActiveCells()] = 1
     outputs["predictedCells"][:] = 0
-    outputs["predictedCells"][self._tm.getPredictiveCells()] = 1
-    outputs["predictedActiveCells"][:] = (outputs["activeCells"] *
-                                          outputs["predictedCells"])
+    outputs["predictedCells"][self._tm.getPredictedCells()] = 1
+    outputs["predictedActiveCells"][:] = 0
+    outputs["predictedActiveCells"][self._tm.getPredictedActiveCells()] = 1
     outputs["winnerCells"][:] = 0
     outputs["winnerCells"][self._tm.getWinnerCells()] = 1
 

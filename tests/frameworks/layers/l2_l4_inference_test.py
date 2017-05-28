@@ -224,7 +224,6 @@ class L4L2ExperimentTest(unittest.TestCase):
     l4Params = {
         "columnCount": 50,
         "cellsPerColumn": 4,
-        "formInternalBasalConnections": True,
         "learn": True,
         "learnOnOneCell": False,
         "initialPermanence": 0.51,
@@ -234,7 +233,7 @@ class L4L2ExperimentTest(unittest.TestCase):
         "minThreshold": 3,
         "predictedSegmentDecrement": 0.002,
         "activationThreshold": 3,
-        "maxNewSynapseCount": 20,
+        "sampleSize": 20,
         "implementation": "etm",
     }
     l4ColumnCount = 50
@@ -660,7 +659,6 @@ class L4L2ExperimentTest(unittest.TestCase):
     L4Params =  {
       "columnCount": 1024,
       "cellsPerColumn": 16,
-      "formInternalBasalConnections": False,
       "learn": True,
       "learnOnOneCell": False,
       "initialPermanence": 0.51,
@@ -670,7 +668,7 @@ class L4L2ExperimentTest(unittest.TestCase):
       "minThreshold": 8,
       "predictedSegmentDecrement": 0.0,
       "activationThreshold": 8,
-      "maxNewSynapseCount": 15,
+      "sampleSize": 15,
     }
 
     L2Params =  {

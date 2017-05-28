@@ -107,6 +107,8 @@ def _linkLateralSPRegion(network, networkConfig, externalInputName, L4ColumnName
     # Link sensors to L4, ignoring SP
     network.link(externalInputName, L4ColumnName, "UniformLink", "",
                  srcOutput="dataOut", destInput="basalInput")
+    network.link(externalInputName, L4ColumnName, "UniformLink", "",
+                 srcOutput="dataOut", destInput="basalGrowthCandidates")
     return
 
   # Link lateral input to SP input, SP output to L4 lateral input
@@ -199,6 +201,12 @@ def createL4L2Column(network, networkConfig, suffix=""):
   L4Params["basalInputWidth"] = networkConfig["externalInputSize"]
   L4Params["apicalInputWidth"] = networkConfig["L2Params"]["cellCount"]
 
+  enableL4InternalConnections = False
+  if "formInternalBasalConnections" in L4Params:
+    if L4Params["formInternalBasalConnections"]:
+      enableL4InternalConnections = True
+    del L4Params["formInternalBasalConnections"]
+
   if networkConfig["externalInputSize"] > 0:
     network.addRegion(
       externalInputName, "py.RawSensor",
@@ -232,6 +240,12 @@ def createL4L2Column(network, networkConfig, suffix=""):
   # L4 and L2 regions always have phases 2 and 3, respectively
   network.setPhases(L4ColumnName,[2])
   network.setPhases(L2ColumnName,[3])
+
+  if enableL4InternalConnections:
+    network.link(L4ColumnName, L4ColumnName, "UniformLink", "",
+                 "activeCells", "basalInput", propagationDelay=1)
+    network.link(L4ColumnName, L4ColumnName, "UniformLink", "",
+                 "winnerCells", "basalGrowthCandidates", propagationDelay=1)
 
   # Link SP region(s), if applicable
   if networkConfig["externalInputSize"] > 0:
