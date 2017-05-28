@@ -26,6 +26,8 @@ import os
 import numpy as np
 import pprint
 import matplotlib.pyplot as plt
+from sklearn import manifold, random_projection
+
 from htmresearch.frameworks.layers.l2_l4_inference import (
   L4L2Experiment, rerunExperimentFromLogfile)
 
@@ -86,7 +88,7 @@ def loadThingObjects(numCorticalColumns=1):
         objects.locations[c].append(set(location.tolist()))
         objects.features[c].append(set(feature.tolist()))
       idx += 1
-    objects.addObject(sensationList, objName)
+    objects.addObject(sensationList, objName[4:])
   return objects
 
 
@@ -95,6 +97,7 @@ def trainNetwork(objects, numColumns, verbose=False):
   objectNames = objects.objects.keys()
   numObjects = len(objectNames)
 
+  print " Training sensorimotor network ..."
   exp = L4L2Experiment("shared_features",
                        numCorticalColumns=numColumns)
   exp.learnObjects(objects.provideObjectsToLearn())
@@ -156,10 +159,14 @@ def trainNetwork(objects, numColumns, verbose=False):
 
     inferenceSDRs = objects.provideObjectToInfer(inferConfig)
     exp.infer(inferenceSDRs, objectName=objectId, reset=False)
+
+    for c in range(numColumns):
+      numL2ActiveCells[objectIdx] += len(exp.getL2Representations()[c])
+
     if verbose:
       print "Output for {}: {}".format(objectId, exp.getL2Representations())
+      print "# L2 active cells {}: ".format(numL2ActiveCells[objectIdx])
 
-    numL2ActiveCells[objectIdx] = len(exp.getL2Representations())
 
     for i in range(numObjects):
       overlapMat[objectIdx, i] = len(exp.getL2Representations()[0] &
@@ -176,16 +183,24 @@ def trainNetwork(objects, numColumns, verbose=False):
 
 
 
-def computeAccuracy(expResult):
+def computeAccuracy(expResult, objects):
+  objectNames = objects.objects.keys()
   overlapMat = expResult['overlapMat']
+  numL2ActiveCells = expResult['numL2ActiveCells']
   numCorrect = 0
   numObjects = overlapMat.shape[0]
 
-  confuseThresh = 39
+  percentOverlap = np.zeros(overlapMat.shape)
+  for i in range(numObjects):
+    for j in range(i, numObjects):
+      percentOverlap[i, j] = overlapMat[i, j] / np.min([numL2ActiveCells[i], numL2ActiveCells[j]])
+
+  objectNames = np.array(objectNames)
   for i in range(numObjects):
     # idx = np.where(overlapMat[i, :]>confuseThresh)[0]
-    idx = np.where(overlapMat[i, :] == np.max(overlapMat[i, :]))[0]
-    print "best match for {} is {}".format(i, idx)
+    idx = np.where(percentOverlap[i, :] == np.max(percentOverlap[i, :]))[0]
+    print " {}, # sensations {}, best match is {}".format(
+      objectNames[i], len(objects[objectNames[i]]), objectNames[idx])
     if len(idx) > 1:
       continue
     if idx[0] == i:
@@ -211,13 +226,68 @@ def experiment1():
 
 if __name__ == "__main__":
   accuracyVsNumColumns = []
-  for numColumns in range(1, 3):
+  for numColumns in [1]:
     objects = loadThingObjects(numColumns)
 
-    expResult = trainNetwork(objects, numColumns)
+    expResult = trainNetwork(objects, numColumns, True)
 
-    accuracy = computeAccuracy(expResult)
+    accuracy = computeAccuracy(expResult, objects)
 
     accuracyVsNumColumns.append(accuracy)
 
+  objectNames = objects.objects.keys()
+  numObjects = len(objectNames)
 
+  distanceMat = expResult['overlapMat']
+  numL2ActiveCells = expResult['numL2ActiveCells']
+
+  # plot pairwise overlap
+  plt.figure()
+  plt.imshow(expResult['overlapMat'])
+  plt.xticks(range(numObjects), objectNames, rotation='vertical', fontsize=8)
+  plt.yticks(range(numObjects), objectNames, fontsize=8)
+  plt.title('pairwise overlap')
+  plt.tight_layout()
+  plt.savefig('overlap_matrix.pdf')
+
+  # plot number of active cells for each object
+  plt.figure()
+  idx = np.argsort(expResult['numL2ActiveCells'])
+  objectNamesSort = []
+  for i in idx:
+    objectNamesSort.append(objectNames[i])
+  plt.plot(numL2ActiveCells[idx])
+  plt.xticks(range(numObjects), objectNamesSort, rotation='vertical')
+  plt.tight_layout()
+  plt.ylabel('Number of active L2 cells')
+  plt.savefig('number_of_active_l2_cells.pdf')
+
+  # visualize SDR clusters with MDS
+  # percentOverlap = np.zeros(distanceMat.shape)
+  # for i in range(numObjects):
+  #   for j in range(i, numObjects):
+  #     percentOverlap[i, j] = 40 - distanceMat[i, j]
+  #     percentOverlap[j, i] = percentOverlap[i, j]
+  #
+  # print "Computing MDS embedding"
+  # mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9, random_state=1,
+  #                    dissimilarity="precomputed", n_jobs=1)
+  # pos = mds.fit(percentOverlap).embedding_
+  #
+  # nmds = manifold.MDS(n_components=2, metric=False, max_iter=3000, eps=1e-12,
+  #                     dissimilarity="precomputed", random_state=1, n_jobs=1,
+  #                     n_init=1)
+  # Xmds = nmds.fit_transform(percentOverlap, init=pos)
+  #
+  # X = Xmds
+  # x_min, x_max = np.min(X, 0), np.max(X, 0)
+  # X = (X - x_min) / (x_max - x_min)
+  #
+  # plt.figure()
+  # ax = plt.subplot(111)
+  # colorList = ['r', 'b', 'g', 'c', 'm', 'y', 'k']
+  # for i in range(numObjects):
+  #   plt.plot(X[i, 0], X[i, 1], 'bo')
+  # for i in range(numObjects):
+  #   plt.text(X[i, 0], X[i, 1], objectNames[i])
+  # plt.xticks([]), plt.yticks([])
