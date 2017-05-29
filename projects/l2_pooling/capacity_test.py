@@ -46,6 +46,7 @@ from htmresearch.frameworks.layers.object_machine_factory import (
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 
 import matplotlib as mpl
+
 mpl.rcParams['pdf.fonttype'] = 42
 
 DEFAULT_NUM_LOCATIONS = 5000
@@ -54,6 +55,7 @@ DEFAULT_RESULT_DIR_NAME = "results"
 DEFAULT_PLOT_DIR_NAME = "plots"
 DEFAULT_NUM_CORTICAL_COLUMNS = 1
 DEFAULT_COLORS = ("b", "r", "c", "g", 'm')
+
 
 
 def _prepareResultsDir(resultBaseName, resultDirName=DEFAULT_RESULT_DIR_NAME):
@@ -93,10 +95,11 @@ def getL4Params():
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
-    "minThreshold": 8,
+    "minThreshold": 10,
     "predictedSegmentDecrement": 0.0,
-    "activationThreshold": 8,
-    "maxNewSynapseCount": 15,
+    "activationThreshold": 13,
+    "maxNewSynapseCount": 25,
+    "implementation": "etm",
   }
 
 
@@ -106,7 +109,7 @@ def getL2Params():
   Returns a good default set of parameters to use in the L4 region.
   """
   return {
-    "inputWidth": 150 * 16,
+    "inputWidth": 2048 * 8,
     "cellCount": 4096,
     "sdrSize": 40,
     "synPermProximalInc": 0.1,
@@ -118,10 +121,10 @@ def getL2Params():
     "synPermDistalInc": 0.1,
     "synPermDistalDec": 0.001,
     "initialDistalPermanence": 0.41,
-    "activationThresholdDistal": 13,
+    "activationThresholdDistal": 18,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 1.001,
+    "distalSegmentInhibitionFactor": 1.5,
     "learningMode": True,
   }
 
@@ -219,6 +222,10 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
   exp._unsetLearningMode()
   exp.sendReset()
 
+  overlap = np.zeros((numTestPoints, numObjects))
+  numL2ActiveCells = np.zeros((numTestPoints))
+  numL4ActiveCells = np.zeros((numTestPoints))
+
   for step, pair in enumerate(testPairs):
     (locationIdx, featureIdx) = pair
     for colIdx in xrange(exp.numColumns):
@@ -230,23 +237,15 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
 
     exp.network.run(1)
 
-  overlap = np.zeros((numObjects))
-  numL2ActiveCells = 0
-  numL4ActiveCells = 0
+    for colIdx in xrange(exp.numColumns):
+      numL2ActiveCells[step] += float(len(exp.getL2Representations()[colIdx]))
+      numL4ActiveCells[step] += float(len(exp.getL4Representations()[colIdx]))
 
-  for colIdx in xrange(exp.numColumns):
-    numL2ActiveCells += float(len(exp.getL2Representations()[colIdx]))
-    numL4ActiveCells += float(len(exp.getL4Representations()[colIdx]))
+    numL2ActiveCells[step] /= exp.numColumns
+    numL4ActiveCells[step] /= exp.numColumns
 
-  numL2ActiveCells /= exp.numColumns
-  numL4ActiveCells /= exp.numColumns
-
-  for obj in xrange(numObjects):
-    overlap[obj] = np.mean([
-      len(exp.objectL2Representations[obj][colIdx] &
-          exp.getL2Representations()[colIdx])
-      for colIdx in xrange(exp.numColumns)]
-    )
+    overlapByColumn = exp.getCurrentObjectOverlaps()
+    overlap[step] = np.mean(overlapByColumn, axis=0)
 
     # columnPooler = exp.L2Columns[0]._pooler
     # tm = exp.L4Columns[0]._tm
@@ -277,8 +276,8 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100, repeatID=0):
 
   numObjects = len(innerObjs)
   numPointsPerObject = len(innerObjs[0])
-  overlapTrueObj = np.zeros((numRepeats, ))
-  l2ActivationSize = np.zeros((numRepeats, ))
+  overlapTrueObj = np.zeros((numRepeats,))
+  l2ActivationSize = np.zeros((numRepeats,))
   l4ActivationSize = np.zeros((numRepeats,))
   confusion = overlapTrueObj.copy()
   outcome = overlapTrueObj.copy()
@@ -286,7 +285,6 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100, repeatID=0):
   columnPooler = exp.L2Columns[0]._pooler
   numConnectedProximal = columnPooler.numberOfConnectedProximalSynapses()
   numConnectedDistal = columnPooler.numberOfConnectedDistalSynapses()
-
 
   result = None
   for i in xrange(numRepeats):
@@ -296,12 +294,14 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100, repeatID=0):
       [obj for obj in xrange(numObjects) if obj != targetObject]
     )
 
-    lastOverlap, numActiveL2Cells, numL4ActiveCells = testNetworkWithOneObject(
+    overlap, numActiveL2Cells, numL4ActiveCells = testNetworkWithOneObject(
       objects,
       exp,
       targetObject,
-      3
+      10
     )
+
+    lastOverlap = overlap[-1, :]
 
     maxOverlapIndices = (
       np.where(lastOverlap == lastOverlap[np.argmax(lastOverlap)])[0].tolist()
@@ -313,8 +313,8 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100, repeatID=0):
 
     confusion[i] = np.max(lastOverlap[nonTargetObjs])
     overlapTrueObj[i] = lastOverlap[targetObject]
-    l2ActivationSize[i] = numActiveL2Cells
-    l4ActivationSize[i] = numL4ActiveCells
+    l2ActivationSize[i] = numActiveL2Cells[-1]
+    l4ActivationSize[i] = numL4ActiveCells[-1]
     # print "repeat {} target obj {} overlap {}".format(i, targetObject, overlapTrueObj[i])
 
     testResult = {
@@ -429,6 +429,7 @@ def plotResults(result, ax=None, xaxis="numObjects",
     plt.savefig(filename)
 
 
+
 def runCapacityTest(numObjects,
                     numPointsPerObject,
                     numCorticalColumns,
@@ -476,7 +477,8 @@ def runCapacityTest(numObjects,
                        inputSize=l4ColumnCount,
                        externalInputSize=externalInputSize,
                        numLearningPoints=3,
-                       numCorticalColumns=numCorticalColumns)
+                       numCorticalColumns=numCorticalColumns,
+                       objectNamesAreIndices=True)
 
   if objectParams["uniquePairs"]:
     pairs = createRandomObjects(
@@ -499,8 +501,8 @@ def runCapacityTest(numObjects,
   exp.learnObjects(objects.provideObjectsToLearn())
 
   testResult = testOnSingleRandomSDR(objects, exp, 100, repeat)
-
   return testResult
+
 
 
 
@@ -570,27 +572,25 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
   """
   Run experiment with fixed number of pts per object, varying number of objects
   """
-  result = None
 
   l4Params = l4Params or getL4Params()
   l2Params = l2Params or getL2Params()
 
-
   cpuCount = cpuCount or multiprocessing.cpu_count()
   pool = multiprocessing.Pool(cpuCount, maxtasksperchild=1)
 
-  numObjectsList = np.arange(50, 800, 50)
+  numObjectsList = np.arange(100, 800, 50)
   params = []
   for rpt in range(numRpts):
     for numObjects in numObjectsList:
       params.append((numObjects,
-                 numPointsPerObject,
-                 numCorticalColumns,
-                 l2Params,
-                 l4Params,
-                 objectParams,
-                 rpt))
-
+                     numPointsPerObject,
+                     numCorticalColumns,
+                     l2Params,
+                     l4Params,
+                     objectParams,
+                     rpt))
+  result = None
   for testResult in pool.map(invokeRunCapacityTest, params):
     result = (
       pd.concat([result, testResult])
@@ -599,7 +599,6 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
 
   resultFileName = _prepareResultsDir("{}.csv".format(expName),
                                       resultDirName=resultDirName)
-
   pd.DataFrame.to_csv(result, resultFileName)
 
 
@@ -641,13 +640,12 @@ def runExperiment1(numObjects=2,
                                      l4Params,
                                      objectParams=objectParams)
 
-
   ploti = 0
   fig, ax = plt.subplots(2, 2)
   st = fig.suptitle(
     "Varying points per object x 2 objects ({} cortical column{})"
-    .format(numCorticalColumns, "s" if numCorticalColumns > 1 else ""
-  ), fontsize="x-large")
+      .format(numCorticalColumns, "s" if numCorticalColumns > 1 else ""
+              ), fontsize="x-large")
 
   legendEntries = []
 
@@ -655,8 +653,8 @@ def runExperiment1(numObjects=2,
     expName = "capacity_varying_object_size_synapses_{}".format(sampleSize)
 
     resultFileName = _prepareResultsDir("{}.csv".format(expName),
-      resultDirName=resultDirName
-    )
+                                        resultDirName=resultDirName
+                                        )
     result = pd.read_csv(resultFileName)
 
     plotResults(result, ax, "numPointsPerObject", None, DEFAULT_COLORS[ploti])
@@ -687,7 +685,7 @@ def runExperiment2(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
   runCapacityTestVaryingObjectNum()
   Try different sample sizes
   """
-  sampleSizeRange = (10, )
+  sampleSizeRange = (10,)
   numPointsPerObject = 10
   l4Params = getL4Params()
   l2Params = getL2Params()
@@ -779,10 +777,15 @@ def runExperiment3(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
   l2Params['sdrSize'] = 40
 
   expParams = []
-  expParams.append({'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6, 'thresh': 3})
-  expParams.append({'l4Column': 200, 'externalInputSize': 2400, 'w': 20, 'sample': 6, 'thresh': 3})
-  expParams.append({'l4Column': 250, 'externalInputSize': 2400, 'w': 20, 'sample': 6, 'thresh': 3})
-  # expParams.append({'l4Column': 1024, 'externalInputSize': 2400, 'w': 20, 'sample': 6, 'thresh': 3})
+  expParams.append(
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3})
+  expParams.append(
+    {'l4Column': 200, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3})
+  expParams.append(
+    {'l4Column': 250, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3})
 
   for expParam in expParams:
     l4Params["columnCount"] = expParam['l4Column']
@@ -792,7 +795,7 @@ def runExperiment3(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
 
     l4Params["activationThreshold"] = int(numInputBits * .6)
     l4Params["minThreshold"] = int(numInputBits * .6)
-    l4Params["maxNewSynapseCount"] = int(2*l4Params["activationThreshold"])
+    l4Params["maxNewSynapseCount"] = int(2 * l4Params["activationThreshold"])
 
     objectParams = {'numInputBits': numInputBits,
                     'externalInputSize': expParam['externalInputSize'],
@@ -836,15 +839,16 @@ def runExperiment3(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
       expParam['sample'], expParam['thresh'], expParam["l4Column"])
 
     resultFileName = _prepareResultsDir("{}.csv".format(expname),
-      resultDirName=resultDirName
-    )
+                                        resultDirName=resultDirName
+                                        )
 
     result = pd.read_csv(resultFileName)
 
     plotResults(result, ax, "numObjects", None, DEFAULT_COLORS[ploti])
     ploti += 1
     legendEntries.append("L4 mcs {} w {} s {} thresh {}".format(
-      expParam["l4Column"], expParam['w'], expParam['sample'], expParam['thresh']))
+      expParam["l4Column"], expParam['w'], expParam['sample'],
+      expParam['thresh']))
   ax[0, 0].legend(legendEntries, loc=4, fontsize=8)
   fig.tight_layout()
 
@@ -877,11 +881,14 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
   expParams = []
   expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 10, 'sample': 6, 'thresh': 3, 'l2Column': 1})
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'l2Column': 1})
   expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 10, 'sample': 6, 'thresh': 3, 'l2Column': 2})
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'l2Column': 2})
   expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 10, 'sample': 6, 'thresh': 3, 'l2Column': 3})
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'l2Column': 3})
 
   for expParam in expParams:
     l2Params['sampleSizeProximal'] = expParam['sample']
@@ -891,9 +898,9 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
     numInputBits = expParam['w']
     numCorticalColumns = expParam['l2Column']
 
-    l4Params["activationThreshold"] = int(numInputBits*.6)
-    l4Params["minThreshold"] = int(numInputBits*.6)
-    l4Params["maxNewSynapseCount"] = int(2*l4Params["activationThreshold"])
+    l4Params["activationThreshold"] = int(numInputBits * .6)
+    l4Params["minThreshold"] = int(numInputBits * .6)
+    l4Params["maxNewSynapseCount"] = int(2 * l4Params["activationThreshold"])
 
     objectParams = {'numInputBits': numInputBits,
                     'externalInputSize': expParam['externalInputSize'],
@@ -903,8 +910,12 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
     print "l4Params: "
     pprint(l4Params)
+    print "l2Params: "
+    pprint(l2Params)
+
     expName = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}_l2column_{}".format(
-      expParam['sample'], expParam['thresh'], expParam["l4Column"], expParam['l2Column'])
+      expParam['sample'], expParam['thresh'], expParam["l4Column"],
+      expParam['l2Column'])
 
     runCapacityTestVaryingObjectNum(numPointsPerObject,
                                     numCorticalColumns,
@@ -915,7 +926,6 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
                                     l4Params,
                                     objectParams,
                                     numRpts)
-
 
   # plot result
   ploti = 0
@@ -929,11 +939,12 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
   legendEntries = []
   for expParam in expParams:
     expName = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}_l2column_{}".format(
-      expParam['sample'], expParam['thresh'], expParam["l4Column"], expParam['l2Column'])
+      expParam['sample'], expParam['thresh'], expParam["l4Column"],
+      expParam['l2Column'])
 
     resultFileName = _prepareResultsDir("{}.csv".format(expName),
-      resultDirName=resultDirName
-    )
+                                        resultDirName=resultDirName
+                                        )
 
     result = pd.read_csv(resultFileName)
 
@@ -966,20 +977,23 @@ def runExperiment5(resultDirName=DEFAULT_RESULT_DIR_NAME,
   """
 
   numPointsPerObject = 10
-  numRpts = 3
+  numRpts = 1
   numInputBits = 20
   externalInputSize = 2400
-  numL4MiniColumns = 256
+  numL4MiniColumns = 150
   l4Params = getL4Params()
   l2Params = getL2Params()
 
   expParams = []
   expParams.append(
-    {'L2cellCount': 2048, 'L2activeBits': 40, 'w': 10, 'sample': 6, 'thresh': 3, 'l2Column': 1})
+    {'L2cellCount': 2048, 'L2activeBits': 40, 'w': 20, 'sample': 6, 'thresh': 3,
+     'l2Column': 1})
   expParams.append(
-    {'L2cellCount': 4096, 'L2activeBits': 40, 'w': 10, 'sample': 6, 'thresh': 3, 'l2Column': 1})
+    {'L2cellCount': 4096, 'L2activeBits': 40, 'w': 20, 'sample': 6, 'thresh': 3,
+     'l2Column': 1})
   expParams.append(
-    {'L2cellCount': 8192, 'L2activeBits': 40, 'w': 10, 'sample': 6, 'thresh': 3, 'l2Column': 1})
+    {'L2cellCount': 6144, 'L2activeBits': 40, 'w': 20, 'sample': 6, 'thresh': 3,
+     'l2Column': 1})
 
   for expParam in expParams:
     l2Params['sampleSizeProximal'] = expParam['sample']
@@ -990,9 +1004,9 @@ def runExperiment5(resultDirName=DEFAULT_RESULT_DIR_NAME,
     numCorticalColumns = expParam['l2Column']
 
     l4Params["columnCount"] = numL4MiniColumns
-    l4Params["activationThreshold"] = int(numInputBits*.6)
-    l4Params["minThreshold"] = int(numInputBits*.6)
-    l4Params["maxNewSynapseCount"] = int(2*l4Params["activationThreshold"])
+    l4Params["activationThreshold"] = int(numInputBits * .6)
+    l4Params["minThreshold"] = int(numInputBits * .6)
+    l4Params["maxNewSynapseCount"] = int(2 * l4Params["activationThreshold"])
 
     objectParams = {'numInputBits': numInputBits,
                     'externalInputSize': externalInputSize,
@@ -1006,7 +1020,8 @@ def runExperiment5(resultDirName=DEFAULT_RESULT_DIR_NAME,
     pprint(l2Params)
 
     expName = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l2Cells_{}_l2column_{}".format(
-      expParam['sample'], expParam['thresh'], expParam["L2cellCount"], expParam['l2Column'])
+      expParam['sample'], expParam['thresh'], expParam["L2cellCount"],
+      expParam['l2Column'])
 
     runCapacityTestVaryingObjectNum(numPointsPerObject,
                                     numCorticalColumns,
@@ -1030,11 +1045,12 @@ def runExperiment5(resultDirName=DEFAULT_RESULT_DIR_NAME,
   legendEntries = []
   for expParam in expParams:
     expName = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l2Cells_{}_l2column_{}".format(
-      expParam['sample'], expParam['thresh'], expParam["L2cellCount"], expParam['l2Column'])
+      expParam['sample'], expParam['thresh'], expParam["L2cellCount"],
+      expParam['l2Column'])
 
     resultFileName = _prepareResultsDir("{}.csv".format(expName),
-      resultDirName=resultDirName
-    )
+                                        resultDirName=resultDirName
+                                        )
 
     result = pd.read_csv(resultFileName)
 
@@ -1070,8 +1086,8 @@ def runExperiment6(resultDirName=DEFAULT_RESULT_DIR_NAME,
   numRpts = 5
   numInputBits = 10
   externalInputSize = 2400
-  numL4MiniColumns = 256
-  
+  numL4MiniColumns = 150
+
   l4Params = getL4Params()
   l2Params = getL2Params()
 
@@ -1094,8 +1110,8 @@ def runExperiment6(resultDirName=DEFAULT_RESULT_DIR_NAME,
     l2Params['minThresholdProximal'] = expParam['thresh']
     l2Params['cellCount'] = expParam['L2cellCount']
     l2Params['sdrSize'] = expParam['L2activeBits']
-    l2Params['sampleSizeDistal'] = int(l2Params['sdrSize']/2)
-    l2Params['activationThresholdDistal'] = int(l2Params['sdrSize'] / 2)-1
+    l2Params['sampleSizeDistal'] = int(l2Params['sdrSize'] / 2)
+    l2Params['activationThresholdDistal'] = int(l2Params['sdrSize'] / 2) - 1
     numCorticalColumns = expParam['l2Column']
 
     l4Params["columnCount"] = numL4MiniColumns
@@ -1203,7 +1219,7 @@ def runExperiment7(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
 
     l4Params["activationThreshold"] = int(numInputBits * .6)
     l4Params["minThreshold"] = int(numInputBits * .6)
-    l4Params["maxNewSynapseCount"] = int(2*l4Params["activationThreshold"])
+    l4Params["maxNewSynapseCount"] = int(2 * l4Params["activationThreshold"])
 
     objectParams = {
       'numInputBits': numInputBits,
@@ -1249,8 +1265,8 @@ def runExperiment7(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
       expParam['numLocations'], expParam['numFeatures'], expParam["l4Column"])
 
     resultFileName = _prepareResultsDir("{}.csv".format(expname),
-      resultDirName=resultDirName
-    )
+                                        resultDirName=resultDirName
+                                        )
 
     result = pd.read_csv(resultFileName)
 
@@ -1271,6 +1287,7 @@ def runExperiment7(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
       "capacity_varying_object_num_locations_num_summary.pdf"
     )
   )
+
 
 
 def runExperiment8(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
@@ -1309,7 +1326,7 @@ def runExperiment8(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
 
     l4Params["activationThreshold"] = int(numInputBits * .6)
     l4Params["minThreshold"] = int(numInputBits * .6)
-    l4Params["maxNewSynapseCount"] = int(2*l4Params["activationThreshold"])
+    l4Params["maxNewSynapseCount"] = int(2 * l4Params["activationThreshold"])
 
     objectParams = {
       'numInputBits': numInputBits,
@@ -1355,8 +1372,8 @@ def runExperiment8(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
       expParam['numLocations'], expParam['numFeatures'], expParam["l4Column"])
 
     resultFileName = _prepareResultsDir("{}.csv".format(expname),
-      resultDirName=resultDirName
-    )
+                                        resultDirName=resultDirName
+                                        )
 
     result = pd.read_csv(resultFileName)
 
@@ -1379,20 +1396,19 @@ def runExperiment8(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
   )
 
 
+
 def runExperiments(resultDirName, plotDirName, cpuCount):
+  # Varying number of pts per objects, two objects
+  runExperiment1(numCorticalColumns=1,
+                 resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
 
-  # # Varying number of pts per objects, two objects
-  # runExperiment1(numCorticalColumns=1,
-  #                resultDirName=resultDirName,
-  #                plotDirName=plotDirName,
-  #                cpuCount=cpuCount)
-  #
-  # # 10 pts per object, varying number of objects
-  # runExperiment2(numCorticalColumns=1,
-  #                resultDirName=resultDirName,
-  #                plotDirName=plotDirName,
-  #                cpuCount=cpuCount)
-
+  # 10 pts per object, varying number of objects
+  runExperiment2(numCorticalColumns=1,
+                 resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
 
   # 10 pts per object, varying number of objects, varying L4 size
   runExperiment3(numCorticalColumns=1,
@@ -1400,33 +1416,32 @@ def runExperiments(resultDirName, plotDirName, cpuCount):
                  plotDirName=plotDirName,
                  cpuCount=cpuCount)
 
+  # 10 pts per object, varying number of objects and number of columns
+  runExperiment4(resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
 
-  # # 10 pts per object, varying number of objects and number of columns
-  # runExperiment4(resultDirName=resultDirName,
-  #                plotDirName=plotDirName,
-  #                cpuCount=cpuCount)
-  #
-  # # 10 pts per object, varying number of L2 cells
-  # runExperiment5(resultDirName=resultDirName,
-  #                plotDirName=plotDirName,
-  #                cpuCount=cpuCount)
+  # 10 pts per object, varying number of L2 cells
+  runExperiment5(resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
 
-  # # 10 pts per object, varying sparsity of L2
-  # runExperiment6(resultDirName=resultDirName,
-  #                plotDirName=plotDirName,
-  #                cpuCount=cpuCount)
+  # 10 pts per object, varying sparsity of L2
+  runExperiment6(resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
 
-  # # 10 pts per object, varying number of location SDRs
-  # runExperiment7(numCorticalColumns=1,
-  #                resultDirName=resultDirName,
-  #                plotDirName=plotDirName,
-  #                cpuCount=cpuCount)
-  #
-  # # 10 pts per object, varying number of feature SDRs
-  # runExperiment8(numCorticalColumns=1,
-  #                resultDirName=resultDirName,
-  #                plotDirName=plotDirName,
-  #                cpuCount=cpuCount)
+  # 10 pts per object, varying number of location SDRs
+  runExperiment7(numCorticalColumns=1,
+                 resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
+
+  # 10 pts per object, varying number of feature SDRs
+  runExperiment8(numCorticalColumns=1,
+                 resultDirName=resultDirName,
+                 plotDirName=plotDirName,
+                 cpuCount=cpuCount)
 
 
 

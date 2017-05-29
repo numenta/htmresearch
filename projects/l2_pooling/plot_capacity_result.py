@@ -10,7 +10,7 @@ plt.ion()
 
 if __name__ == "__main__":
   numCorticalColumns = 1
-  confusionThreshold = 35
+  confusionThreshold = 30
 
   l4ColumnCountList = [256, 256, 512]
   numInputBitsList = [12, 5, 10]
@@ -28,10 +28,10 @@ if __name__ == "__main__":
     {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
      'thresh': 3})
   expParams.append(
-    {'l4Column': 256, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+    {'l4Column': 200, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
      'thresh': 3})
   expParams.append(
-    {'l4Column': 512, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+    {'l4Column': 250, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
      'thresh': 3})
 
   # plot result
@@ -87,7 +87,7 @@ if __name__ == "__main__":
     {'L2cellCount': 4096, 'L2activeBits': 40, 'w': 10, 'sample': 6, 'thresh': 3,
      'l2Column': 1})
   expParams.append(
-    {'L2cellCount': 8192, 'L2activeBits': 40, 'w': 10, 'sample': 6, 'thresh': 3,
+    {'L2cellCount': 6144, 'L2activeBits': 40, 'w': 10, 'sample': 6, 'thresh': 3,
      'l2Column': 1})
 
   # plot result
@@ -169,6 +169,7 @@ if __name__ == "__main__":
     legendEntries.append("L4 mcs {} #cc {} ".format(
       expParam['l4Column'], expParam['l2Column']))
 
+  ax[0, 0].legend(legendEntries, loc=3, fontsize=8)
   # shift subplots down:
   st.set_y(0.95)
   fig.subplots_adjust(top=0.85)
