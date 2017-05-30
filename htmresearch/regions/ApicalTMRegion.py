@@ -187,6 +187,14 @@ class ApicalTMRegion(PyRegion):
           "count": 1,
           "constraints": ""
         },
+        "reducedThresholdBasal": {
+          "description": ("Activation threshold of basal segments for cells "
+                          "with active apical segments (with apicalTiebreak). "),
+          "accessMode": "Read",
+          "dataType": "UInt32",
+          "count": 1,
+          "constraints": ""
+        },
         "initialPermanence": {
           "description": "Initial permanence of a new synapse.",
           "accessMode": "Read",
@@ -287,6 +295,7 @@ class ApicalTMRegion(PyRegion):
                initialPermanence=0.21,
                connectedPermanence=0.50,
                minThreshold=10,
+               reducedThresholdBasal=11, # Only used for apicalTiebreak implementation
                sampleSize=20,
                permanenceIncrement=0.10,
                permanenceDecrement=0.10,
@@ -308,6 +317,7 @@ class ApicalTMRegion(PyRegion):
     # TM params
     self.cellsPerColumn = cellsPerColumn
     self.activationThreshold = activationThreshold
+    self.reducedThresholdBasal = reducedThresholdBasal
     self.initialPermanence = initialPermanence
     self.connectedPermanence = connectedPermanence
     self.minThreshold = minThreshold
@@ -341,6 +351,7 @@ class ApicalTMRegion(PyRegion):
         "apicalInputSize": self.apicalInputWidth,
         "cellsPerColumn": self.cellsPerColumn,
         "activationThreshold": self.activationThreshold,
+        "reducedThresholdBasal": self.reducedThresholdBasal,
         "initialPermanence": self.initialPermanence,
         "connectedPermanence": self.connectedPermanence,
         "minThreshold": self.minThreshold,

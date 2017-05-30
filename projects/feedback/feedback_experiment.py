@@ -81,12 +81,8 @@ class FeedbackExperiment(object):
     self.numInputBits = numInputBits
 
 
-
-    # Change this to select whether you're using ApicalTMRegion
-    # or ExtendedTMRegion for Layer 4.
-    # ExtendedTMRegion is faster, but cannot use the Apical Modulation
-    # implementation (See below)
-    
+    # Select the type of region to use for layer 4.
+    # ExtendedTMRegion is faster, but cannot use the ApicalModulation implementation.
     # self.L4RegionType = "py.ExtendedTMRegion"
     self.L4RegionType = "py.ApicalTMRegion"
 
@@ -101,7 +97,7 @@ class FeedbackExperiment(object):
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": 0,
       "sensorInputSize": inputSize,
-      "L4RegionType": self.L4RegionType
+      "L4RegionType": self.L4RegionType,
       "L4Params": self.getDefaultL4Params(inputSize),
       "L2Params": self.getDefaultL2Params(inputSize),
     }
@@ -273,40 +269,6 @@ class FeedbackExperiment(object):
       if iterations > 0:
         self.network.run(iterations)
 
-
-
-    # This generates some bugs wrt the first sequence seen during learning...
-    # self._disableL2()
-    # self._setLearningMode(l4Learning=True, l2Learning=False)
-    # # Run multiple passes through each sequence
-    # for zzz in xrange(self.numLearningPoints):
-    #   myseqs = list(sequences)
-    #   if zzz == 0:
-    #     myseqs = list(sequences)[1:]
-    #     random.shuffle(myseqs)
-    #     myseqs = [sequences[0]] + myseqs
-    #   else:
-    #     random.shuffle(myseqs)
-    #   for sequenceNum, sequence in enumerate(myseqs): #sequences):
-    #
-    #     # keep track of numbers of iterations to run for this sequence
-    #     iterations = 0
-    #
-    #
-    #     for s in sequence:
-    #       self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
-    #       iterations += 1
-    #
-    #     # Reset signal
-    #     self.sensorInputs[0].addDataToQueue([], 1, 0)
-    #     iterations += 1
-    #
-    #     if iterations > 0:
-    #       self.network.run(iterations)
-    #
-    #     self.sendReset() # Reset after seeing each sequence, just in case
-
-
     # print "2) Train L2"
     self._enableL2()
     self._setLearningMode(l4Learning=False, l2Learning=True)
@@ -471,13 +433,13 @@ class FeedbackExperiment(object):
             "connectedPermanence": 0.6,
             "permanenceIncrement": 0.1,
             "permanenceDecrement": 0.02,
-            "minThreshold": 13, #13,
+            "reducedThresholdBasal": 10,
+            "minThreshold": 13,
             "basalPredictedSegmentDecrement": 0.0,
             "apicalPredictedSegmentDecrement": 0.0,
-            "activationThreshold": 15, #15,
-            "sampleSize": 20, #60,  # 1.5 * 40
-            "implementation": "ApicalModulation", #"ApicalTiebreak",
-            # "implementation": "ApicalTiebreak",
+            "activationThreshold": 15,
+            "sampleSize": 20,
+            "implementation": "ApicalTiebreak",
             "seed": self.seed
             }
     elif self.L4RegionType == "py.ExtendedTMRegion":

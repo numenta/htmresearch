@@ -1,8 +1,3 @@
-# This code implements putting some random noise over extended periods (determined by parameters noiseStart and noiseEnd)
-
-# The difference brought by feedback is very large when noise is only on the start of the sequence, much smaller for noise on whole sequence !
-
-
 
 # Numenta Platform for Intelligent Computing (NuPIC)
 # Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
@@ -26,7 +21,7 @@
 
 """
 This file runs a number of experiments testing the effectiveness of feedback
-when noisy inputs.
+with noisy inputs.
 """
 
 import os
@@ -39,7 +34,6 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
-#from htmresearch.frameworks.layers.feedback_experiment import FeedbackExperiment
 import feedback_experiment
 from feedback_experiment import FeedbackExperiment
 
@@ -89,11 +83,6 @@ def sparsenRange(sequenceMachine, sequences, startRange, endRange, probaZero):
           keep = numpy.random.rand(len(newsdr)) > probaZero
           newsdr = newsdr[keep==True]
           newSequence.append(set(newsdr))
-        #elif p == howMany + 5:
-        #    newSequence.append(sdr)
-        #    newSequence.append(sdr)
-        #elif p == howMany + 6:
-        #    pass
         else:
           newSequence.append(sdr)
     newSequences.append(newSequence)
@@ -110,9 +99,7 @@ def crossSequences(sequenceMachine, sequences, pos):
     newSequence = []
     for p,sdr in enumerate(s):
         if p >= pos:
-        #if p == pos: # or p == pos+1:
           newSequence.append(sequences[(numseq +1) % len(sequences)][p])
-          #newSequence.append(set())
         else:
           newSequence.append(sdr)
     newSequences.append(newSequence)
@@ -190,8 +177,6 @@ def runInference(exp, sequences, enableFeedback=True):
 
 
 
-
-
 def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRange, noiseRange, whichPlot, plotTitle):
 
   allowedNoises = ("skip", "replace", "repeat", "crossover", "pollute")
@@ -230,13 +215,9 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
       seed = 42
       for seedx in range(nbSeeds): #numSequences in 10, 30, 50:
           # Train a single network and show error for a single example noisy sequence
-          #noiseProba = .2
-          #probaZero = .2
           seed = seedx + 123
           profile = False,
           L4Overrides = {"cellsPerColumn": 8}
-          #L4Overrides = {"cellsPerColumn": 4}
-          #seed = 42
 
           numpy.random.seed(seed)
 
@@ -244,9 +225,6 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
           print "Generating sequences..."
           sequenceMachine, generatedSequences, numbers = generateSequences(
             sequenceLength=sequenceLen, sequenceCount=numSequences,
-            #sharedRange=(5,int(0.8*sequenceLen)),  # Need min of 3
-            #sharedRange=(5,sequenceLen),
-            #sharedRange=(0,0),
             sharedRange=sharedRange,
             seed=seed)
 
@@ -255,7 +233,6 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
 
           # Apply noise to sequences
           noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
-                                #noiseStart=0, noiseEnd=sequenceLen,
                                 noiseStart=noiseRange[0], noiseEnd=noiseRange[1],
                                 noiseProba=noiseProba)
 
@@ -264,14 +241,8 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
             noisySequences = crossSequences(sequenceMachine, noisySequences,
                                             pos=sequenceLen/2)
           elif noiseType in ("repeat", "replace", "skip"):
-            #def addPerturbation(sequenceMachine, sequences, noiseType, pos, number=1):
-
             noisySequences = addPerturbation(sequenceMachine, noisySequences,
-                                            #noiseStart=0, noiseEnd=sequenceLen,
                                             noiseType=noiseType, pos=sequenceLen/2, number=1)
-
-
-
 
           # inferenceErrors[0, ...] - average error with feedback
           # inferenceErrors[1, ...] - average error without feedback
@@ -294,8 +265,6 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
 
 
 
-
-
           # Run inference without any noise. This becomes our baseline error
           standardError, activityNoNoise, responsesNoNoise = runInference(exp, sequences)
           inferenceErrors[0,0] = standardError
@@ -306,18 +275,13 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
           inferenceErrors[1,1], activityNoFB, responsesNoFB = runInference(
               exp, noisySequences, enableFeedback=False)
 
+          # Now that actual processing is done, we compute various statistics and plot graphs.
 
-
-          # responsesX dimensions:  NbSeqs x L2/L4 x NbTimeSteps
           # We compute the overlap of L4 responses to noisy vs. original, non-noisy sequences,  at each time step in each sequence, both for with FB and w/o FB.
           seqlen = len(noisySequences[0])
           sdrlen = 2048 * 8  # Should be the total number of cells in L4. Need to make this more parametrized!
           for numseq in range(len(responsesNoNoise)):
 
-
-
-              #diffsFB.append( [len(responsesNoNoise[numseq]['L4Responses'][x].intersection(responsesFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
-              #diffsNoFB.append( [len(responsesNoNoise[numseq]['L4Responses'][x].intersection(responsesNoFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
               diffsFB.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
               diffsNoFB.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
               overlapsFBL2.append( [len(responsesNoNoise[numseq]['L2Responses'][x].intersection(responsesFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
@@ -338,12 +302,7 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
                   z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
                   z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
                   cpcnofb.append(numpy.corrcoef(z1, z2)[0,1])
-                #   z1 = numpy.zeros(sdrlen+1); z1[list(responsesFB[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
-                #   z2 = numpy.zeros(sdrlen+1); z2[list(responsesFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
-                #   cpcfb.append(numpy.corrcoef(z1, z2)[0,1])
-                #   z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoFB[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
-                #   z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
-                #   cpcnofb.append(numpy.corrcoef(z1, z2)[0,1])
+
 
               corrsPredCorrectNoFBL4.append(cpcnofb[1:])
               corrsPredCorrectFBL4.append(cpcfb[1:])
@@ -364,7 +323,6 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
               print "L2 overlap with current (FB): ", overlapsFBL2[-1]
               print "L4 overlap with current (FB): ", overlapsFBL4[-1]
               print "L4 overlap with current (NoFB): ", overlapsNoFBL4[-1]
-              #print "L2 overlap with next (FB): ", overlapsFBL2Next[-1]
               print "L4 correlation pred/correct (FB): ", corrsPredCorrectFBL4[-1]
               print "L4 correlation pred/correct (NoFB): ", corrsPredCorrectNoFBL4[-1]
               print "NoNoise sequence:", [list(x)[:2] for x in sequences[numseq]]
@@ -373,7 +331,7 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
               print "NoFB L4 responses:", [list(x)[:2] for x in responsesNoFB[numseq]['L4Responses']]
               print ""
 
-          #plt.plot(np.array(diffsNoFB).T, 'b')[
+          # Compute mean performance / error for this seed.
           #perfsFB.append(numpy.mean(numpy.array(diffsFB)[:,6:]))
           perfsFB.append(numpy.mean(corrsPredCorrectFBL4))
           perfsNoFB.append(numpy.mean(corrsPredCorrectNoFBL4))
@@ -385,8 +343,7 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
           activitiesFB += activityFB
           activitiesNoFB += activityNoFB
 
-
-      # Mean error for this trial, across all sequences, both with and without FB
+      # Mean performance / error for this set of parameters (across all seeds and sequences for each seed)
       meanPerfsFB.append(numpy.mean(perfsFB))
       meanPerfsNoFB.append(numpy.mean(perfsNoFB))
       stdPerfsFB.append(numpy.std(perfsFB))
@@ -398,11 +355,6 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
       stdErrsFB.append(numpy.std(errorsFB))
       stdErrsNoFB.append(numpy.std(errorsNoFB))
       stdErrsNoNoise.append(numpy.std(errorsNoNoise))
-
-      #meanErrsFB.append(numpy.mean(perfsFB))
-      #meanErrsNoFB.append(numpy.mean(perfsNoFB))
-      #stdErrsFB.append(numpy.std(perfsFB))
-      #stdErrsNoFB.append(numpy.std(perfsNoFB))
 
       # In the following, starting from column 1 to remove the initial response (which is always maximal surprise)
       # So actual length of sequences is sequenceLen - 1 (except for omission noise, sequenceLen - 2)
@@ -428,6 +380,7 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
         plt.savefig(plotTitle+".png")
         plt.show()
 
+      # Do NOT use this with "skip" noise (omitted item). It can't work, since the new sequence is permanently out of sync with the old one after the omission.
       if whichPlot == "corrspredcorrect":
         plt.figure()
         plt.errorbar(xx, numpy.mean(corrsPredCorrectFBL4 , axis=0), yerr=numpy.std(corrsPredCorrectFBL4, axis=0), color='r', label='Feedback enabled');
@@ -445,9 +398,9 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
         plt.show()
 
       if whichPlot == "overlaps":
-          # First, we plot the average prediction error in Layer 4, computed as the total activity
+        # We actually draw two plots.
+        # First, we plot the average prediction error in Layer 4, computed as the total activity
         plt.figure()
-        #plt.plot(numpy.mean(numpy.array(activitiesFB), axis=0), 'r');  plt.plot(numpy.mean(numpy.array(activitiesNoFB), axis=0), 'b')
         plt.errorbar(xx, numpy.mean((aFB - 40.0) / 280.0, axis=0), yerr=numpy.std((aFB - 40.0) / 280.0, axis=0), color='r', label='Feedback enabled')
         plt.errorbar(xx, numpy.mean((aNoFB - 40.0) / 280.0, axis=0), yerr=numpy.std((aNoFB - 40.0) / 280.0, axis=0), color='b', label='Feedback disabled')
         plt.axvspan(sharedRange[0]+.5, sharedRange[1] -1 + .5, alpha=0.25, color='pink')
@@ -458,8 +411,6 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
 
         # Then, we show the mean similarities of Layer 2 representations to original L2 representations of both source sequences used in the crossover
         plt.figure()
-        #plt.plot(numpy.mean(numpy.array(overlapsFBL2), axis=0), 'c');  plt.plot(numpy.mean(numpy.array(overlapsFBL2Next), axis=0), 'm')
-        #plt.plot(numpy.array(overlapsFBL4).transpose()[2:,:], 'c');  plt.plot(numpy.array(overlapsFBL4Next).transpose()[2:,:], 'm')
         plt.errorbar(xx, numpy.mean(oFBNext, axis=0), yerr=numpy.std(oFBNext, axis=0), color='m', label='Sequence 2'); plt.errorbar(xx, numpy.mean(oFB, axis=0), yerr=numpy.std(oFB, axis=0), color='c', label='Sequence 1')
         plt.axvspan(sharedRange[0] + .5, sharedRange[1] -1 + .5, alpha=0.25, color='pink')
         plt.axvspan(sharedRange[1]-1 + .5, plt.xlim()[1], alpha=0.1, color='blue')
@@ -468,12 +419,9 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
         plt.savefig(plotTitle+": top-layer representations.png")
 
         plt.show()
-        #plt.figure(); plt.plot(numpy.mean(numpy.array(overlapsFBL2), axis=0), 'c');  plt.plot(numpy.mean(numpy.array(overlapsFBL2Next), axis=0), 'm')
-        #plt.show()
-      #plt.figure(); plt.plot(numpy.mean(numpy.array(diffsFBL2), axis=0), 'c');  plt.plot(numpy.mean(numpy.array(diffsFBL2Next), axis=0), 'm')
 
   # Plot the average prediction performance, as a function of noise probability OR number of sequences, both with and without feedback
-  if whichPlot == "pers":
+  if whichPlot == "perfs":
         plt.figure()
         xisnbseq=0
         xisnoisep=0
@@ -483,70 +431,34 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
         if len(nbSequences)>1:
           xisnbseq=1
           xx = nbSequences
-        #xx = nbSequences
-        #plt.errorbar(xx, meanErrsFB, yerr=stdErrsFB, color='r', label='Feedback enabled')
-        #plt.errorbar(xx, meanErrsNoFB, yerr=stdErrsNoFB, color='b', label='Feedback disabled')
         plt.errorbar(xx, meanPerfsFB, yerr=stdPerfsFB, color='r', label='Feedback enabled')
         plt.errorbar(xx, meanPerfsNoFB, yerr=stdPerfsNoFB, color='b', label='Feedback disabled')
         plt.xlim([numpy.min(xx)*.9, numpy.max(xx)*1.1])
         plt.xticks(xx)
-        #plt.figure(); plt.plot(meanErrsFB, 'r'); plt.plot(meanErrsNoFB, 'b');
         if xisnoisep:
           plt.xlabel("Noise probability")
         if xisnbseq:
           plt.xlabel("Nb. of learned sequences")
 
-        plt.ylabel("Avg. Prediction Performance"); #plt.xticks(noiseProbas)
+        plt.ylabel("Avg. Prediction Performance");
         plt.title(plotTitle)
         plt.show()
         plt.savefig(plotTitle+".png")
-  #plt.savefig("ActivityNoiseInitial.pdf")
-  #plt.clf(); plt.plot(errorsFB, 'r'); plt.plot(errorsNoFB, 'b'); plt.xlabel("Zeroing probability"); plt.ylabel("Avg. Error"); plt.xticks(range(len(probaZeros)), [str(x) for x in probaZeros])
-  #plt.savefig("ActivityPartialWholeSeq.pdf")
 
 
 if __name__ == "__main__":
 
   plt.ion()
 
-  # runExp(noiseProbas=(.0,), nbSequences=(5,), nbSeeds=3, noiseType="repeat", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with repeated stimulus (no shared range)")
-  # runExp(noiseProbas=(.0,), nbSequences=(5,), nbSeeds=3, noiseType="repeat", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors with repeated stimulus (shared range)")
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=3, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (shared range)")
 
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with randomized stimulus (no shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with randomized stimulus (shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="repeat", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with repeated stimulus (no shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="repeat", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with repeated stimulus (shared range)")
+  # runExp(noiseProbas=(.1,), nbSequences=(3,), nbSeeds=5, noiseType="skip", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with omitted stimulus (no shared range)")
+  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="skip", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with omitted stimulus (shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (no shared range)")
 
-  # If using whichPlot="overlaps" or whichPlot="activities", BOTH noiseProbas and nbSequences should be length-1 lists !
-  # If using whichPlot="errors", EITHER noiseProbas OR nbSequences should be a multi-item list, with the other being a length-1 list.
-  # The multi-element list is assumed to be the relevant indepdenent variable (i.e. what's to be plotted as x-axis)
-
-  # # 8 cells
-  # runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="skip", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors for perturbed sequences (omission)")
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=4, noiseType="repeat", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors for perturbed sequences (repetition)")
-  #runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors: randomized element")
-  #runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="activities", plotTitle="Prediction errors: randomized element (no inertia)")
-  # runExp(noiseProbas=(.01,), nbSequences=(10,), nbSeeds=10, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (with prefix inertia and simple ff sel)")
-
-  # Increasing noise, over whole sequence
-  # runExp(noiseProbas=( .1,  .2, .3, .4), nbSequences=(30,), nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors under continuous noise")
-  # Increasing noise, only during middle section
-  # runExp(noiseProbas=( .1,  .2, .3, .4), nbSequences=(30,), nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(5,24), whichPlot="errors", plotTitle="Prediction errors under continuous noise in shared section")
-  # Increasing noise, only during initial unique section
-  # runExp(noiseProbas=( .1,  .2, .3, .4), nbSequences=(30,), nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,5), whichPlot="errors", plotTitle="Prediction errors under continuous noise (initial segment)")
-
-
-  # Increasing model load (number of learned sequences)
-  # runExp(noiseProbas=(.25,), nbSequences=(2, 5, 10, 20, 30), nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors as a function of model load")
-  # # Test # runExp(noiseProbas=(.25,), nbSequences=(2, 5, 10, 20), nbSeeds=7, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="errors", plotTitle="Prediction errors as a function of model load")
-
-
-
-  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction errors with randomized stimulus (no shared range)")
-  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction errors with randomized stimulus (shared range)")
-  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="repeat", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction errors with repeated stimulus (no shared range)")
-  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="repeat", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction errors with repeated stimulus (shared range)")
-  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="skip", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction errors with omitted stimulus (no shared range)")
-  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="skip", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction errors with omitted stimulus (shared range)")
-  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (shared range)")
-  runExp(noiseProbas=(.02,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="overlaps", plotTitle="End-swapped sequences (no shared range)")
-
-  runExp(noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction errors under continuous noise (shared range)")
-  runExp(noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction errors under continuous noise (no shared range)")
+  runExp(noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (shared range) (high RTB)")
+  runExp(noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (no shared range) (high RTB)")
