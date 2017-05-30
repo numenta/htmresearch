@@ -273,25 +273,67 @@ class ColumnPooler(object):
         lateralInput, self.connectedPermanenceDistal)
       numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
 
-    # Activate some of the feedforward supported cells
-    minNumActiveCells = self.sdrSize / 2
-    chosenCells = self._chooseCells(feedforwardSupportedCells,
-                                    minNumActiveCells, numActiveSegmentsByCell)
+    chosenCells = []
+    minNumActiveCells =  30 #self.sdrSize / 2
 
-    # If necessary, activate some of the previously active cells
-    if len(chosenCells) < minNumActiveCells:
-      remaining = numpy.setdiff1d(prevActiveCells, feedforwardSupportedCells)
-      remaining = remaining[numActiveSegmentsByCell[remaining] > 0]
+    # # # # Old method. Relies on the chooseCells function.
+    # chosenCells = self._chooseCells(feedforwardSupportedCells,
+    #                                 minNumActiveCells, numActiveSegmentsByCell)
+    # # If necessary, activate some of the previously active cells
+    # if len(chosenCells) < minNumActiveCells:
+    #   remaining = numpy.setdiff1d(prevActiveCells, feedforwardSupportedCells)
+    #   remaining = remaining[numActiveSegmentsByCell[remaining] > 0]
+    #
+    #   chosenCells = numpy.append(
+    #     chosenCells, self._chooseCells(remaining,
+    #                                    minNumActiveCells - len(chosenCells),
+    #                                    numActiveSegmentsByCell))
 
-      chosenCells = numpy.append(
-        chosenCells, self._chooseCells(remaining,
-                                       minNumActiveCells - len(chosenCells),
-                                       numActiveSegmentsByCell))
+
+    # # New method. Doesn't use the chooseCells function. More robust to random stimuli.
+    # # First, select FF-supported cells. But if some have active segments, only chose cells with
+    # # highest number of active segments (they inhibit everyone else).
+    remainingFFSupportedCells = feedforwardSupportedCells
+    numActiveSegsForFFSuppCells = numActiveSegmentsByCell[remainingFFSupportedCells]
+    if len(numActiveSegsForFFSuppCells) == 0:
+        pass
+    elif numpy.max(numActiveSegsForFFSuppCells) == 0:
+         chosenCells = numpy.append(chosenCells, remainingFFSupportedCells)
+    else:
+         chosenCells = numpy.append(chosenCells,
+            remainingFFSupportedCells[numActiveSegsForFFSuppCells == numpy.max(numActiveSegsForFFSuppCells)])
+        # # With the above, even a single FF-supported cell with active lateral segments can shut out all other
+        # # FF-supported cells if none of them has active segments. This can be a problem.
+        # # So, if there are few laterally-active FF-suported cells, we  want to allow *a few* FF-supported cells with
+        # # fewer active segments. This does help with changing environments (e.g. when abruptly switching between sequences)
+         if len(chosenCells) < minNumActiveCells:
+            z = numpy.random.permutation(
+                remainingFFSupportedCells[numActiveSegsForFFSuppCells < numpy.max(numActiveSegsForFFSuppCells)])
+            if len(z)>0:
+                chosenCells = numpy.append(chosenCells, z[:int((minNumActiveCells - len(chosenCells))/6)])
+    # # Inertia: if there aren't enough active cells to fill minNumActiveCells, pick some of the previously active cells,
+    # # starting with the ones with highest number of active segments.
+    # # This should be very simple, but simply using ArgSort could introduce artifacts
+    # # for the ties. So we use a rather more complicated method to ensure randomization of tied cells
+    if len(prevActiveCells)>0:
+        prevCellsRemaining = numpy.setdiff1d(prevActiveCells, chosenCells)
+        if prevCellsRemaining.size > 0 and len(chosenCells) < minNumActiveCells:
+            prevnumActiveSegsForFFSuppCells = numActiveSegmentsByCell[prevCellsRemaining]
+            t = numpy.max(prevnumActiveSegsForFFSuppCells)
+            sortedCells = numpy.array([])
+            while t >= 0:
+                sortedCells = numpy.append(sortedCells,
+                    numpy.random.permutation(prevCellsRemaining[prevnumActiveSegsForFFSuppCells == t]))
+                t -= 1
+            chosenCells = numpy.append(chosenCells, sortedCells[:(minNumActiveCells - len(chosenCells))])
+
+
 
     chosenCells.sort()
     self.activeCells = numpy.asarray(chosenCells, dtype="uint32")
 
 
+  # chooseCells is not used in the current version, but preserved here.
   def _chooseCells(self, candidates, n, numActiveSegmentsByCell):
     """
     Choose cells to activate, using their active segment counts to determine
