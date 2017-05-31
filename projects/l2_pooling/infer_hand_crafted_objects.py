@@ -106,12 +106,11 @@ def experiment(numColumns, sampleSize):
 
 def go():
   numColumnsOptions = range(1, len(LOCATIONS) + 1)
-  # TODO If this runs for too long, Python eventually segfaults.
-  # We might have C code overrunning a buffer somewhere.
-  configs = (("Placeholder 13", 13),
-             # ("Placeholder 20", 20),
-             # ("Placeholder 30", 30),
-             # ("Placeholder everything", -1),
+  configs = (
+    ("Placeholder 13", 13),
+    ("Placeholder 20", 20),
+    ("Placeholder 30", 30),
+    ("Placeholder everything", -1),
   )
 
   numTouchesLog = defaultdict(list)

@@ -903,7 +903,8 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     self.init(overrides={"lateralInputWidths": [self.inputWidth,
                                                 self.inputWidth,
-                                                self.inputWidth]})
+                                                self.inputWidth],
+                         "distalSegmentInhibitionFactor": 1.5})
 
     patterns = [self.generatePattern() for _ in xrange(3)]
 
