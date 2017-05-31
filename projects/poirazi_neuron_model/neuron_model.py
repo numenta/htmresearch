@@ -102,7 +102,9 @@ class Matrix_Neuron(object):
 
 		This works intelligently with an amount of data larger than the number of available dendrites.
 		In this case, data is clustered, and then similar datapoints are allotted to shared dendrites,
-		with as many overlapping bits as possible chosen.
+		with as many overlapping bits as possible chosen.  In practice, it is still better to simply
+		allocate enough dendrites to have one per datapoint, but this method at least allows initialization
+		to work on larger amounts of data.
 		"""
 		current_dendrite = 0
 		self.dendrites = SM32()
@@ -161,7 +163,6 @@ class Matrix_Neuron(object):
 
 		#activations will quite likely still be sparse if using a threshold nonlinearity, so want to keep it sparse
 		activation = numpy.sign(activations.sum())
-
 
 
 		if label >= 1 and activation >= 1:

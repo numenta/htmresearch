@@ -110,7 +110,7 @@ def run_HTM_classification_experiment(num_neurons = 50,
 
 		error, fp, fn = get_error(data, labels, pos_neurons, neg_neurons)
 		print "Error at iter {} is {}, with {} false positives and {} false negatives".format(iter, error, fp, fn)
-		with open("initialization_experiment.txt", "a") as f:
+		with open("classification_experiment.txt", "a") as f:
 			f.write(str(iter) + ", " + str(error) + "\n")
 
 
