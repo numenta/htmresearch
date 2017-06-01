@@ -8,13 +8,13 @@ import random
 
 def run_false_positive_experiment_synapses(num_neurons = 1,
                                            num_neg_neurons = 1,
-                                           a = 4000,
-                                           dim = 16000,
+                                           a = 32,
+                                           dim = 2000,
                                            num_samples = 1000,
                                            num_dendrites = 500,
-                                           test_dendrite_lengths = range(2, 16, 2),
+                                           test_dendrite_lengths = range(2, 32, 2),
                                            num_trials = 1000,
-                                           nonlinearity = power_nonlinearity(2)):
+                                           nonlinearity = power_nonlinearity(10)):
     """
     Run an experiment to test the false positive rate based on number of
     synapses per dendrite, dimension and sparsity.  Uses two competing neurons,
@@ -71,9 +71,8 @@ def get_error_matrix(data, labels, pos_neurons, neg_neurons = []):
             num_false_positives += 1
         else:
             num_false_negatives += 1
-    print data.nRows()
     return (1.*num_false_positives + num_false_negatives)/data.nRows(), num_false_positives, num_false_negatives
 
 
 if __name__ == "__main__":
-    run_false_positive_experiment()
+    run_false_positive_experiment_synapses()

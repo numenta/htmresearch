@@ -25,6 +25,9 @@ def run_classification_experiment(num_neurons = 1,
 	ability of the neuron to initalize itself using clustering, although
 	this will result in inferior performance.  In this case, it is
 	recommended to use a relatively low threshold, such as dendrite_length/2.
+	It may also help to initialize the neuron with a perm_dec to perm_inc ratio
+	the default, as this causes it to properly prioritize unlearning poor
+	connections (which, in clustering, are numerous).
 	"""
     neuron = Neuron(size = neuron_size, num_dendrites = num_dendrites, dendrite_length = dendrite_length, nonlinearity = nonlinearity, dim = dim*num_bins)
     pos, neg = generate_data(dim = dim, num_bins = num_bins, num_samples = num_samples)

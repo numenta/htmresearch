@@ -39,7 +39,7 @@ def run_noise_experiment(num_neurons = 1,
                          num_samples = 500,
                          num_dendrites = 500,
                          dendrite_length = 30,
-                         theta = 16,
+                         theta = 8,
                          num_trials = 100):
     """
     Tests the impact of noise on a neuron, using an HTM approach to a P&M
@@ -102,7 +102,7 @@ def run_pm_style_noise_experiment(num_neurons = 1,
                          training_iterations = 10000,
                          new_style_training = True,
                          num_trials = 200,
-                         nonlinearity = power_nonlinearity(2)):
+                         nonlinearity = power_nonlinearity(10)):
     """
     A version of the above test, but using two P&M style competing neurons with
     nonlinearity l(x) = x^2.  As the test is now symmetric, with a false
