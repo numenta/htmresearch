@@ -2,30 +2,10 @@ import random
 import numpy
 from neuron_model import power_nonlinearity, threshold_nonlinearity
 from neuron_model import Matrix_Neuron as Neuron
-from generate_data import generate_data, generate_evenly_distributed_data_sparse
+from data_tools import generate_data, generate_evenly_distributed_data_sparse, split_sparse_matrix
 from sklearn.cluster import AgglomerativeClustering
 from nupic.bindings.math import *
 
-
-def split_sparse_matrix(matrix, num_categories):
-    """
-    An analog of numpy.split for our sparse matrix.  If the number of 
-    categories does not divide the number of rows in the matrix, all overflow
-    is placed in the final bin.
-
-    In the event that there are more categories than rows, all later categories
-    are considered to be an empty sparse matrix.
-    """
-    if matrix.nRows() < num_categories:
-        return [matrix.getSlice(i, i+1, 0, matrix.nCols()) for i in range(matrix.nRows())] + [SM32() for i in range(num_categories - matrix.nRows())]
-    else:
-        inc = matrix.nRows()/num_categories
-        divisions = [matrix.getSlice(i*inc, (i+1)*inc, 0, matrix.nCols()) for i in range(num_categories - 1)]
-
-        # Handle the last bin separately.  All overflow goes into it.
-        divisions.append(matrix.getSlice((num_categories - 1)*inc, matrix.nRows(), 0, matrix.nCols()))
-
-        return divisions    
 
 def run_power_experiment(num_neurons = 10,
                                   dim = 40,

@@ -1,35 +1,11 @@
 from neuron_model import Matrix_Neuron as Neuron
 from neuron_model import threshold_nonlinearity, power_nonlinearity
-from generate_data import generate_evenly_distributed_data_sparse
+from data_tools import generate_evenly_distributed_data_sparse, apply_noise
 from nupic.bindings.math import *
 
 import numpy
 import random
 import copy
-
-def apply_noise(data, noise):
-    """
-    Applies noise to a sparse matrix.  Noise should be an integer between 0 and
-    100, indicating the percentage of ones in the original input to move.
-    The input matrix is modified in-place, and nothing is returned.
-    This operation does not affect the sparsity of the matrix, or of any
-    individual datapoint.
-    """
-
-    for i in range(data.nRows()):
-        ones = data.rowNonZeros(i)[0]
-        replace_indices = numpy.random.choice(ones, size=int(1.0*len(ones)*noise/100), replace = False)
-        for index in replace_indices:
-            data[i, index] = 0
-
-        new_indices = numpy.random.choice(data.nCols(), size = int(1.0*len(ones)*noise/100.), replace = False)
-
-        for index in new_indices:
-            while data[i, index] == 1:
-                index = numpy.random.randint(0, data.nCols())
-            data[i, index] = 1
-
-
 
 
 def run_noise_experiment(num_neurons = 1,

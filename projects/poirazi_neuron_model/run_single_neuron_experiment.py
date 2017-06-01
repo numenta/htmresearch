@@ -2,7 +2,7 @@ import random
 import numpy
 from neuron_model import Matrix_Neuron as Neuron
 from neuron_model import threshold_nonlinearity
-from generate_data import generate_data, generate_evenly_distributed_data
+from data_tools import generate_data, generate_evenly_distributed_data
 from nupic.bindings.math import SM32
 from collections import Counter
 

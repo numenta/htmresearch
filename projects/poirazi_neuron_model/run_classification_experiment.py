@@ -1,52 +1,17 @@
 import random
 import numpy
 from neuron_model import Matrix_Neuron, threshold_nonlinearity, power_nonlinearity
-from generate_data import generate_data, generate_evenly_distributed_data_sparse
+from data_tools import generate_data, generate_evenly_distributed_data_sparse, shuffle_sparse_matrix_and_labels, split_sparse_matrix
 from nupic.bindings.math import SM32
 from collections import Counter
-
-def shuffle_sparse_matrix_and_labels(matrix, labels):
-    """
-    Shuffles a sparse matrix and set of labels together.
-    Resorts to densifying and then re-sparsifying the matrix, for convenience.
-    """
-    print "Shuffling data"
-    new_matrix = matrix.toDense()
-    rng_state = numpy.random.get_state()
-    numpy.random.shuffle(new_matrix)
-    numpy.random.set_state(rng_state)
-    numpy.random.shuffle(labels)
-
-    print "Data shuffled"
-    return SM32(new_matrix), numpy.asarray(labels)
-
-def split_sparse_matrix(matrix, num_categories):
-    """
-    An analog of numpy.split for our sparse matrix.  If the number of 
-    categories does not divide the number of rows in the matrix, all overflow
-    is placed in the final bin.
-
-    In the event that there are more categories than rows, all later categories
-    are considered to be an empty sparse matrix.
-    """
-    if matrix.nRows() < num_categories:
-        return [matrix.getSlice(i, i+1, 0, matrix.nCols()) for i in range(matrix.nRows())] + [SM32() for i in range(num_categories - matrix.nRows())]
-    else:
-        inc = matrix.nRows()/num_categories
-        divisions = [matrix.getSlice(i*inc, (i+1)*inc, 0, matrix.nCols()) for i in range(num_categories - 1)]
-
-        # Handle the last bin separately.  All overflow goes into it.
-        divisions.append(matrix.getSlice((num_categories - 1)*inc, matrix.nRows(), 0, matrix.nCols()))
-
-        return divisions    
 
 def run_HTM_classification_experiment(num_neurons = 50,
                                       dim = 40,
                                       num_bins = 10,
                                       num_samples = 50*600,
-                                      neuron_size = 10200,
+                                      neuron_size = 9600,
                                       num_dendrites = 600,
-                                      dendrite_length = 17,
+                                      dendrite_length = 16,
                                       num_iters = 1000,
                                       nonlinearity = threshold_nonlinearity(9)
                                       ):

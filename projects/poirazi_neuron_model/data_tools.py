@@ -1,6 +1,65 @@
 import numpy
 from nupic.bindings.math import *
 
+
+def apply_noise(data, noise):
+    """
+    Applies noise to a sparse matrix.  Noise should be an integer between 0 and
+    100, indicating the percentage of ones in the original input to move.
+    The input matrix is modified in-place, and nothing is returned.
+    This operation does not affect the sparsity of the matrix, or of any
+    individual datapoint.
+    """
+
+    for i in range(data.nRows()):
+        ones = data.rowNonZeros(i)[0]
+        replace_indices = numpy.random.choice(ones, size=int(1.0*len(ones)*noise/100), replace = False)
+        for index in replace_indices:
+            data[i, index] = 0
+
+        new_indices = numpy.random.choice(data.nCols(), size = int(1.0*len(ones)*noise/100.), replace = False)
+
+        for index in new_indices:
+            while data[i, index] == 1:
+                index = numpy.random.randint(0, data.nCols())
+            data[i, index] = 1
+
+
+def shuffle_sparse_matrix_and_labels(matrix, labels):
+    """
+    Shuffles a sparse matrix and set of labels together.
+    Resorts to densifying and then re-sparsifying the matrix, for convenience.
+    """
+    print "Shuffling data"
+    new_matrix = matrix.toDense()
+    rng_state = numpy.random.get_state()
+    numpy.random.shuffle(new_matrix)
+    numpy.random.set_state(rng_state)
+    numpy.random.shuffle(labels)
+
+    print "Data shuffled"
+    return SM32(new_matrix), numpy.asarray(labels)
+
+def split_sparse_matrix(matrix, num_categories):
+    """
+    An analog of numpy.split for our sparse matrix.  If the number of 
+    categories does not divide the number of rows in the matrix, all overflow
+    is placed in the final bin.
+
+    In the event that there are more categories than rows, all later categories
+    are considered to be an empty sparse matrix.
+    """
+    if matrix.nRows() < num_categories:
+        return [matrix.getSlice(i, i+1, 0, matrix.nCols()) for i in range(matrix.nRows())] + [SM32() for i in range(num_categories - matrix.nRows())]
+    else:
+        inc = matrix.nRows()/num_categories
+        divisions = [matrix.getSlice(i*inc, (i+1)*inc, 0, matrix.nCols()) for i in range(num_categories - 1)]
+
+        # Handle the last bin separately.  All overflow goes into it.
+        divisions.append(matrix.getSlice((num_categories - 1)*inc, matrix.nRows(), 0, matrix.nCols()))
+
+        return divisions    
+
 def generate_evenly_distributed_data_sparse(dim = 2000, num_active = 40, num_samples = 1000):
 	"""
 	Generates a set of data drawn from a uniform distribution.  The binning structure from Poirazi & Mel is
