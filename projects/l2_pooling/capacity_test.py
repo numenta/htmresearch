@@ -251,7 +251,7 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
     # tm = exp.L4Columns[0]._tm
     # print "step : {}".format(step)
     # print "{} L4 cells predicted : ".format(
-    #   len(exp.getL4PredictiveCells()[0])), exp.getL4PredictiveCells()
+    #   len(exp.getL4PredictedCells()[0])), exp.getL4PredictedeCells()
     # print "{} L4 cells active : ".format(len(exp.getL4Representations()[0])), exp.getL4Representations()
     # print "L2 activation: ", columnPooler.getActiveCells()
     # print "overlap : ", (overlap[step, :])

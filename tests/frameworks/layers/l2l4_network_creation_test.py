@@ -831,7 +831,10 @@ class LaminarNetworkTest(unittest.TestCase):
 
 
   def getL4PredictedCells(self, column):
-    """Returns the predicted cells in L4."""
+    """
+    Returns the cells in L4 that were predicted at the beginning of the last
+    call to 'compute'.
+    """
     return set(column._tm.getPredictedCells())
 
 
