@@ -1438,7 +1438,8 @@ class ExtendedTemporalMemoryAlgorithmTest(unittest.TestCase):
     repeatedSequence = sequence * num
     if externalBasalSequence is not None:
       # Insert an empty input at the beginning. These tests expect basal/apical
-      # inputs to be applied on a 1 timestep time-delay.
+      # input to cause predictions on the subsequent compute, not the current
+      # compute.
       repeatedBasal = [()] + externalBasalSequence * num
     else:
       # no external basal input
@@ -1457,7 +1458,6 @@ class ExtendedTemporalMemoryAlgorithmTest(unittest.TestCase):
     for pattern, basal, apical in zip(repeatedSequence,
                                       repeatedBasal,
                                       repeatedApical):
-      print pattern
       if pattern is None:
         self.tm.reset()
       else:
