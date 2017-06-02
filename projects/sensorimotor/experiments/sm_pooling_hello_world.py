@@ -20,7 +20,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from nupic.algorithms.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
 from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse

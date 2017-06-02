@@ -81,10 +81,12 @@ import collections
 import os
 import random
 import matplotlib.pyplot as plt
+import numpy as np
 from tabulate import tabulate
 import numpy as np
 
 from nupic.bindings.algorithms import SpatialPooler
+from nupic.bindings.math import SparseMatrix
 
 from htmresearch_core.experimental import ExtendedTemporalMemory
 
@@ -140,7 +142,8 @@ class L4L2Experiment(object):
                enableLateralSP=False,
                lateralSPOverrides=None,
                enableFeedForwardSP=False,
-               feedForwardSPOverrides=None
+               feedForwardSPOverrides=None,
+               objectNamesAreIndices=False
                ):
     """
     Creates the network.
@@ -197,6 +200,12 @@ class L4L2Experiment(object):
     @param   feedForwardSPOverrides
              Parameters to override in the feed-forward SP region
 
+    @param   objectNamesAreIndices (bool)
+             If True, object names are used as indices in the
+             getCurrentObjectOverlaps method. Object names must be positive
+             integers. If False, object names can be strings, and indices will
+             be assigned to each object name.
+
     """
     # Handle logging - this has to be done first
     self.logCalls = logCalls
@@ -208,6 +217,7 @@ class L4L2Experiment(object):
     self.inputSize = inputSize
     self.externalInputSize = externalInputSize
     self.numInputBits = numInputBits
+    self.objectNamesAreIndices = objectNamesAreIndices
 
     # seed
     self.seed = seed
@@ -255,6 +265,10 @@ class L4L2Experiment(object):
 
     # will be populated during training
     self.objectL2Representations = {}
+    self.objectL2RepresentationsMatrices = [
+      SparseMatrix(0, self.L2Params["cellCount"])
+      for _ in xrange(self.numColumns)]
+    self.objectNameToIndex = {}
     self.statistics = []
 
 
@@ -313,13 +327,7 @@ class L4L2Experiment(object):
 
       # Compute L4's active cells
       apicalInput = L2.getActiveCells()
-      L4.depolarizeCells(basalInput, apicalInput, learn=learn)
-      L4.activateCells(activeColumns,
-                       reinforceCandidatesExternalBasal=basalInput,
-                       reinforceCandidatesExternalApical=apicalInput,
-                       growthCandidatesExternalBasal=basalInput,
-                       growthCandidatesExternalApical=apicalInput,
-                       learn=learn)
+      L4.compute(activeColumns, basalInput, apicalInput, learn=learn)
 
       # Compute L2's active cells
       lateralInputs = [prevActiveCells
@@ -386,7 +394,7 @@ class L4L2Experiment(object):
           self.doTimestep(sensations, learn=True)
 
       # update L2 representations
-      self.objectL2Representations[objectName] = self.getL2Representations()
+      self._saveL2Representation(objectName)
 
       if reset:
         # send reset signal
@@ -457,6 +465,34 @@ class L4L2Experiment(object):
     statistics["object"] = objectName if objectName is not None else "Unknown"
 
     self.statistics.append(statistics)
+
+
+  def _saveL2Representation(self, objectName):
+    """
+    Record the current active L2 cells as the representation for 'objectName'.
+    """
+    self.objectL2Representations[objectName] = self.getL2Representations()
+
+    try:
+      objectIndex = self.objectNameToIndex[objectName]
+    except KeyError:
+      # Grow the matrices as needed.
+      if self.objectNamesAreIndices:
+        objectIndex = objectName
+        if objectIndex >= self.objectL2RepresentationsMatrices[0].nRows():
+          for matrix in self.objectL2RepresentationsMatrices:
+            matrix.resize(objectIndex + 1, matrix.nCols())
+      else:
+        objectIndex = self.objectL2RepresentationsMatrices[0].nRows()
+        for matrix in self.objectL2RepresentationsMatrices:
+          matrix.resize(matrix.nRows() + 1, matrix.nCols())
+
+      self.objectNameToIndex[objectName] = objectIndex
+
+    for colIdx, matrix in enumerate(self.objectL2RepresentationsMatrices):
+      activeCells = self.L2Columns[colIdx].getActiveCells()
+      matrix.setRowFromSparse(objectIndex, activeCells,
+                              np.ones(len(activeCells), dtype="float32"))
 
 
   def _sendReset(self, sequenceId=0):
@@ -558,11 +594,12 @@ class L4L2Experiment(object):
     return [set(L4.getActiveCells()) for L4 in self.L4Columns]
 
 
-  def getL4PredictiveCells(self):
+  def getL4PredictedCells(self):
     """
-    Returns the predictive cells in L4.
+    Returns the cells in L4 that were predicted at the beginning of the last
+    call to 'compute'.
     """
-    return [set(L4.getPredictiveCells()) for L4 in self.L4Columns]
+    return [set(L4.getPredictedCells()) for L4 in self.L4Columns]
 
 
   def getL2Representations(self):
@@ -572,7 +609,29 @@ class L4L2Experiment(object):
     return [set(L2.getActiveCells()) for L2 in self.L2Columns]
 
 
-  def getCurrentClassification(self, minOverlap=None):
+  def getCurrentObjectOverlaps(self):
+    """
+    Get every L2's current overlap with each L2 object representation that has
+    been learned.
+
+    :return: 2D numpy array.
+    Each row represents a cortical column. Each column represents an object.
+    Each value represents the cortical column's current L2 overlap with the
+    specified object.
+    """
+    overlaps = np.zeros((self.numColumns,
+                         len(self.objectL2Representations)),
+                        dtype="uint32")
+
+    for i, representations in enumerate(self.objectL2RepresentationsMatrices):
+      activeCells = self.L2Columns[i]._pooler.getActiveCells()
+      overlaps[i, :] = representations.rightVecSumAtNZSparse(activeCells)
+
+    return overlaps
+
+
+
+  def getCurrentClassification(self, minOverlap=None, includeZeros=True):
     """
     A dict with a score for each object. Score goes from 0 to 1. A 1 means
     every col (that has received input since the last reset) currently has
@@ -580,6 +639,9 @@ class L4L2Experiment(object):
 
     :param minOverlap: min overlap to consider the object as recognized.
                        Defaults to half of the SDR size
+            
+    :param includeZeros: if True, include scores for all objects, even if 0
+
     :return: dict of object names and their score
     """
     results = {}
@@ -602,9 +664,11 @@ class L4L2Experiment(object):
           score += 1
 
       if count == 0:
-        results[objectName] = 0
+        if includeZeros:
+          results[objectName] = 0
       else:
-        results[objectName] = score / count
+        if includeZeros or score>0.0:
+          results[objectName] = score / count
 
     return results
 
@@ -626,11 +690,10 @@ class L4L2Experiment(object):
       minThreshold = activationThreshold
 
     return {
-      "columnDimensions": (inputSize,),
-      "basalInputDimensions": (externalInputSize,),
-      "apicalInputDimensions": (4096,), # Keep synced with L2 "cellCount"
+      "columnCount": inputSize,
+      "basalInputSize": externalInputSize,
+      "apicalInputSize": 4096, # Keep synced with L2 "cellCount"
       "cellsPerColumn": 16, # Keep synced with L2 "inputWidth"
-      "formInternalBasalConnections": False,
       "learnOnOneCell": False,
       "initialPermanence": 0.51,
       "connectedPermanence": 0.6,
@@ -639,7 +702,7 @@ class L4L2Experiment(object):
       "minThreshold": minThreshold,
       "predictedSegmentDecrement": 0.0,
       "activationThreshold": activationThreshold,
-      "maxNewSynapseCount": sampleSize,
+      "sampleSize": sampleSize,
       "seed": self.seed,
       "checkInputs": False,
     }
@@ -676,7 +739,8 @@ class L4L2Experiment(object):
       "activationThresholdDistal": 13,
       "sampleSizeDistal": 20,
       "connectedPermanenceDistal": 0.5,
-      "distalSegmentInhibitionFactor": 1.5,
+      "distalSegmentInhibitionFactor": 1.001,
+      "seed": self.seed,
     }
 
 
@@ -726,15 +790,15 @@ class L4L2Experiment(object):
 
     """
     L4Representations = self.getL4Representations()
-    L4PredictiveCells = self.getL4PredictiveCells()
+    L4PredictedCells = self.getL4PredictedCells()
     L2Representation = self.getL2Representations()
 
     for i in xrange(self.numColumns):
       statistics["L4 Representation C" + str(i)].append(
         len(L4Representations[i])
       )
-      statistics["L4 Predictive C" + str(i)].append(
-        len(L4PredictiveCells[i])
+      statistics["L4 Predicted C" + str(i)].append(
+        len(L4PredictedCells[i])
       )
       statistics["L2 Representation C" + str(i)].append(
         len(L2Representation[i])

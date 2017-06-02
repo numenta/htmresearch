@@ -28,7 +28,7 @@ import datetime
 from prettytable import PrettyTable
 
 from htmresearch.algorithms.faulty_temporal_memory import FaultyTemporalMemory
-from nupic.research.monitor_mixin.temporal_memory_monitor_mixin import (
+from nupic.algorithms.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
 
 class MonitoredTemporalMemory(TemporalMemoryMonitorMixin,

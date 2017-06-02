@@ -29,7 +29,7 @@
 import numpy
 
 from nupic.bindings.math import GetNTAReal
-from nupic.research.temporal_memory_inspect_mixin import  (
+from nupic.algorithms.temporal_memory_inspect_mixin import  (
   TemporalMemoryInspectMixin)
 
 from sensorimotor.one_d_world import OneDWorld

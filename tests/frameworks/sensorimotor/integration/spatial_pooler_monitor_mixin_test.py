@@ -22,7 +22,7 @@
 
 import unittest
 import numpy
-from nupic.research.spatial_pooler import SpatialPooler
+from nupic.algorithms.spatial_pooler import SpatialPooler
 from sensorimotor.spatial_pooler_monitor_mixin import (
   SpatialPoolerMonitorMixin)
 class MonitoredSpatialPooler(SpatialPoolerMonitorMixin, SpatialPooler): pass

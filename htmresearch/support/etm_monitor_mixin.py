@@ -29,9 +29,9 @@ import copy
 
 from prettytable import PrettyTable
 
-from nupic.research.monitor_mixin.metric import Metric
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-from nupic.research.monitor_mixin.trace import (IndicesTrace, CountsTrace,
+from nupic.algorithms.monitor_mixin.metric import Metric
+from nupic.algorithms.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from nupic.algorithms.monitor_mixin.trace import (IndicesTrace, CountsTrace,
                                                 BoolsTrace, StringsTrace)
 
 
@@ -338,24 +338,21 @@ class ExtendedTemporalMemoryMonitorMixin(MonitorMixinBase):
   # ==============================
   # Overrides
   # ==============================
-  def activateCells(self,
-                    activeColumns,
-                    reinforceCandidatesExternalBasal=(),
-                    reinforceCandidatesExternalApical=(),
-                    growthCandidatesExternalBasal=(),
-                    growthCandidatesExternalApical=(),
-                    learn=True,
-                    sequenceLabel=None):
+  def compute(self,
+              activeColumns,
+              basalInput=(),
+              apicalInput=(),
+              basalGrowthCandidates=None,
+              apicalGrowthCandidates=None,
+              learn=True,
+              sequenceLabel=None):
 
-    super(ExtendedTemporalMemoryMonitorMixin, self).activateCells(
-      activeColumns,
-      reinforceCandidatesExternalBasal,
-      reinforceCandidatesExternalApical,
-      growthCandidatesExternalBasal,
-      growthCandidatesExternalApical,
-      learn)
+    super(ExtendedTemporalMemoryMonitorMixin, self).compute(
+      activeColumns, basalInput, apicalInput, basalGrowthCandidates,
+      apicalGrowthCandidates, learn)
 
-    self._mmTraces["predictedCells"].data.append(set(self.getPredictiveCells()))
+    self._mmTraces["predictedCells"].data.append(
+      set(self.getPredictedCells()))
     self._mmTraces["activeCells"].data.append(set(self.getActiveCells()))
     self._mmTraces["activeColumns"].data.append(activeColumns)
     self._mmTraces["numBasalSegments"].data.append(

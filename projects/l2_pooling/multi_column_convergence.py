@@ -102,6 +102,7 @@ def objectConfusion(objects):
   sumCommonFeatures = 0
   sumCommonPairs = 0
   numObjects = 0
+  commonPairHistogram = numpy.zeros(len(objects[0]), dtype=numpy.int32)
   for o1,s1 in objects.iteritems():
     for o2,s2 in objects.iteritems():
       if o1 != o2:
@@ -121,11 +122,13 @@ def objectConfusion(objects):
         sumCommonPairs += len(set(s1)&set(s2))
         sumCommonLocations += commonLocations
         sumCommonFeatures += commonFeatures
+        commonPairHistogram[len(set(s1)&set(s2))] += 1
         numObjects += 1
 
   print "Average common pairs=", sumCommonPairs / float(numObjects),
   print ", locations=",sumCommonLocations / float(numObjects),
   print ", features=",sumCommonFeatures / float(numObjects)
+  print "Common pair histogram=",commonPairHistogram
 
 
 def runExperiment(args):
@@ -361,7 +364,7 @@ def runExperimentPool(numObjects,
   return result
 
 
-def plotConvergenceByColumn(results, columnRange, featureRange):
+def plotConvergenceByColumn(results, columnRange, featureRange, numTrials):
   """
   Plots the convergence graph: iterations vs number of columns.
   Each curve shows the convergence for a given number of unique features.
@@ -370,7 +373,7 @@ def plotConvergenceByColumn(results, columnRange, featureRange):
   #
   # Accumulate all the results per column in a convergence array.
   #
-  # Convergence[f,c] = how long it took it to converge with f unique features
+  # Convergence[f,c] = how long it took it to  converge with f unique features
   # and c columns.
 
   convergence = numpy.zeros((max(featureRange), max(columnRange) + 1))
@@ -391,7 +394,7 @@ def plotConvergenceByColumn(results, columnRange, featureRange):
   #
   # Create the plot. x-axis=
   plt.figure()
-  plotPath = os.path.join("plots", "convergence_by_column.jpg")
+  plotPath = os.path.join("plots", "convergence_by_column.pdf")
 
   # Plot each curve
   legendList = []
@@ -401,7 +404,7 @@ def plotConvergenceByColumn(results, columnRange, featureRange):
     f = featureRange[i]
     print columnRange
     print convergence[f-1,columnRange]
-    legendList.append('Feature pool={}'.format(f))
+    legendList.append('Unique features={}'.format(f))
     plt.plot(columnRange, convergence[f-1,columnRange],
              color=colorList[i])
 
@@ -410,8 +413,8 @@ def plotConvergenceByColumn(results, columnRange, featureRange):
   plt.xlabel("Number of columns")
   plt.xticks(columnRange)
   plt.yticks(range(0,int(convergence.max())+1))
-  plt.ylabel("Average number of sensations")
-  plt.title("Average convergence time vs number of columns")
+  plt.ylabel("Average number of touches")
+  plt.title("Number of touches to recognize one object (multiple columns)")
 
     # save
   plt.savefig(plotPath)
@@ -441,7 +444,7 @@ def plotConvergenceByObject(results, objectRange, featureRange):
   #
   # Create the plot. x-axis=
   plt.figure()
-  plotPath = os.path.join("plots", "convergence_by_object_random_location.jpg")
+  plotPath = os.path.join("plots", "convergence_by_object_random_location.pdf")
 
   # Plot each curve
   legendList = []
@@ -461,7 +464,7 @@ def plotConvergenceByObject(results, objectRange, featureRange):
   plt.xticks(range(0,max(objectRange)+1,10))
   plt.yticks(range(0,int(convergence.max())+2))
   plt.ylabel("Average number of touches")
-  plt.title("No. of touches to recognize one object (single column, unknown locations)")
+  plt.title("Number of touches to recognize one object (single column)")
 
     # save
   plt.savefig(plotPath)
@@ -547,28 +550,28 @@ if __name__ == "__main__":
   # Here we want to see how the number of columns affects convergence.
   # This experiment is run using a process pool
   if False:
-    # We run 10 trials for each column number and then analyze results
+    columnRange = [1, 2, 3, 4, 5, 6, 7, 8]
+    featureRange = [5, 10, 20, 30]
+    objectRange = [100]
     numTrials = 10
-    columnRange = [1,2,4,6,8]
-    featureRange = [5,10,15,30]
-    objectRange = [50]
 
     # Comment this out if you are re-running analysis on already saved results
     # Very useful for debugging the plots
-    results = runExperimentPool(
-                      numObjects=objectRange,
-                      numLocations=[10],
-                      numFeatures=featureRange,
-                      numColumns=columnRange,
-                      numPoints=10,
-                      nTrials=numTrials,
-                      resultsName="column_convergence_results.pkl")
+    runExperimentPool(
+      numObjects=objectRange,
+      numLocations=[10],
+      numFeatures=featureRange,
+      numColumns=columnRange,
+      numPoints=10,
+      nTrials=numTrials,
+      numWorkers=7,
+      resultsName="column_convergence_results.pkl")
 
-    # Analyze results
     with open("column_convergence_results.pkl","rb") as f:
       results = cPickle.load(f)
 
-    plotConvergenceByColumn(results, columnRange, featureRange)
+    plotConvergenceByColumn(results, columnRange, featureRange,
+                            numTrials=numTrials)
 
 
   # Here we want to see how the number of objects affects convergence for a
@@ -578,12 +581,12 @@ if __name__ == "__main__":
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1]
-    featureRange = [5,10,15,30]
-    objectRange = [2,5,10,20,30,40,50,60,80,100]
+    featureRange = [5,10,20,30]
+    objectRange = [2,10,20,30,40,50,60,80,100]
 
     # Comment this out if you are re-running analysis on already saved results.
     # Very useful for debugging the plots
-    results = runExperimentPool(
+    runExperimentPool(
                       numObjects=objectRange,
                       numLocations=[10],
                       numFeatures=featureRange,
@@ -602,7 +605,6 @@ if __name__ == "__main__":
 
   # Here we want to see how the number of objects affects convergence for
   # multiple columns.
-  # This experiment is run using a process pool
   if False:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
@@ -612,7 +614,7 @@ if __name__ == "__main__":
 
     # Comment this out if you are re-running analysis on already saved results.
     # Very useful for debugging the plots
-    results = runExperimentPool(
+    runExperimentPool(
                       numObjects=objectRange,
                       numLocations=[10],
                       numFeatures=featureRange,
