@@ -98,7 +98,7 @@ def getL4Params():
     "minThreshold": 10,
     "predictedSegmentDecrement": 0.0,
     "activationThreshold": 13,
-    "maxNewSynapseCount": 25,
+    "sampleSize": 25,
     "implementation": "etm",
   }
 
@@ -251,7 +251,7 @@ def testNetworkWithOneObject(objects, exp, testObject, numTestPoints):
     # tm = exp.L4Columns[0]._tm
     # print "step : {}".format(step)
     # print "{} L4 cells predicted : ".format(
-    #   len(exp.getL4PredictiveCells()[0])), exp.getL4PredictiveCells()
+    #   len(exp.getL4PredictedCells()[0])), exp.getL4PredictedeCells()
     # print "{} L4 cells active : ".format(len(exp.getL4Representations()[0])), exp.getL4Representations()
     # print "L2 activation: ", columnPooler.getActiveCells()
     # print "overlap : ", (overlap[step, :])
@@ -625,7 +625,7 @@ def runExperiment1(numObjects=2,
 
   l4Params["activationThreshold"] = int(numInputBits * .6)
   l4Params["minThreshold"] = int(numInputBits * .6)
-  l4Params["maxNewSynapseCount"] = int(2 * l4Params["activationThreshold"])
+  l4Params["sampleSize"] = int(2 * l4Params["activationThreshold"])
 
   for sampleSize in sampleSizeRange:
     print "sampleSize: {}".format(sampleSize)
@@ -795,7 +795,7 @@ def runExperiment3(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
 
     l4Params["activationThreshold"] = int(numInputBits * .6)
     l4Params["minThreshold"] = int(numInputBits * .6)
-    l4Params["maxNewSynapseCount"] = int(2 * l4Params["activationThreshold"])
+    l4Params["sampleSize"] = int(2 * l4Params["activationThreshold"])
 
     objectParams = {'numInputBits': numInputBits,
                     'externalInputSize': expParam['externalInputSize'],
@@ -900,7 +900,7 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
     l4Params["activationThreshold"] = int(numInputBits * .6)
     l4Params["minThreshold"] = int(numInputBits * .6)
-    l4Params["maxNewSynapseCount"] = int(2 * l4Params["activationThreshold"])
+    l4Params["sampleSize"] = int(2 * l4Params["activationThreshold"])
 
     objectParams = {'numInputBits': numInputBits,
                     'externalInputSize': expParam['externalInputSize'],
@@ -1006,7 +1006,7 @@ def runExperiment5(resultDirName=DEFAULT_RESULT_DIR_NAME,
     l4Params["columnCount"] = numL4MiniColumns
     l4Params["activationThreshold"] = int(numInputBits * .6)
     l4Params["minThreshold"] = int(numInputBits * .6)
-    l4Params["maxNewSynapseCount"] = int(2 * l4Params["activationThreshold"])
+    l4Params["sampleSize"] = int(2 * l4Params["activationThreshold"])
 
     objectParams = {'numInputBits': numInputBits,
                     'externalInputSize': externalInputSize,
@@ -1117,7 +1117,7 @@ def runExperiment6(resultDirName=DEFAULT_RESULT_DIR_NAME,
     l4Params["columnCount"] = numL4MiniColumns
     l4Params["activationThreshold"] = int(numInputBits * .6)
     l4Params["minThreshold"] = int(numInputBits * .6)
-    l4Params["maxNewSynapseCount"] = int(2 * l4Params["activationThreshold"])
+    l4Params["sampleSize"] = int(2 * l4Params["activationThreshold"])
 
     objectParams = {'numInputBits': numInputBits,
                     'externalInputSize': externalInputSize,
@@ -1219,7 +1219,7 @@ def runExperiment7(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
 
     l4Params["activationThreshold"] = int(numInputBits * .6)
     l4Params["minThreshold"] = int(numInputBits * .6)
-    l4Params["maxNewSynapseCount"] = int(2 * l4Params["activationThreshold"])
+    l4Params["sampleSize"] = int(2 * l4Params["activationThreshold"])
 
     objectParams = {
       'numInputBits': numInputBits,
@@ -1326,7 +1326,7 @@ def runExperiment8(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
 
     l4Params["activationThreshold"] = int(numInputBits * .6)
     l4Params["minThreshold"] = int(numInputBits * .6)
-    l4Params["maxNewSynapseCount"] = int(2 * l4Params["activationThreshold"])
+    l4Params["sampleSize"] = int(2 * l4Params["activationThreshold"])
 
     objectParams = {
       'numInputBits': numInputBits,

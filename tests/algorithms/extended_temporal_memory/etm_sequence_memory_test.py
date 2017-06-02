@@ -43,12 +43,13 @@ class ExtendedTM_SequenceMemoryTests(SequenceMemoryTestBase,
                   predictedSegmentDecrement, activationThreshold, seed):
 
     params = {
-      "columnDimensions": (columnCount,),
+      "columnCount": columnCount,
+      "basalInputSize": columnCount * cellsPerColumn,
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
       "connectedPermanence": connectedPermanence,
       "minThreshold": minThreshold,
-      "maxNewSynapseCount": sampleSize,
+      "sampleSize": sampleSize,
       "permanenceIncrement": permanenceIncrement,
       "permanenceDecrement": permanenceDecrement,
       "predictedSegmentDecrement": predictedSegmentDecrement,
@@ -61,10 +62,10 @@ class ExtendedTM_SequenceMemoryTests(SequenceMemoryTestBase,
 
 
   def compute(self, activeColumns, learn):
-    # Use depolarizeCells + activateCells rather than tm.compute so that
-    # getPredictiveCells returns predictions for the current timestep.
-    self.tm.depolarizeCells(learn=learn)
-    self.tm.activateCells(sorted(activeColumns), learn=learn)
+    self.tm.compute(sorted(activeColumns),
+                    basalInput=self.tm.getActiveCells(),
+                    basalGrowthCandidates=self.tm.getWinnerCells(),
+                    learn=learn)
 
 
   def reset(self):
@@ -76,4 +77,4 @@ class ExtendedTM_SequenceMemoryTests(SequenceMemoryTestBase,
 
 
   def getPredictedCells(self):
-    return self.tm.getPredictiveCells()
+    return self.tm.getPredictedCells()

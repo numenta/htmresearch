@@ -46,17 +46,18 @@ def printSegmentForCell(tm, cell):
 
 # Step 1: create Temporal Pooler instance with appropriate parameters
 
-tm = TM(columnDimensions = (50,),
-        basalInputDimensions = (30,),
+tm = TM(columnCount = 50,
+        basalInputSize = 30,
         cellsPerColumn=1,
         initialPermanence=0.4,
         connectedPermanence=0.5,
         minThreshold=10,
-        maxNewSynapseCount=20,
+        sampleSize=20,
         permanenceIncrement=0.1,
         permanenceDecrement=0.0,
         activationThreshold=15,
-        predictedSegmentDecrement=0.01
+        predictedSegmentDecrement=0.01,
+        basalInputPrepend=True
         )
 
 
@@ -98,15 +99,12 @@ ex[2, 20:30] = 1   # Input SDR representing external input "E2"
 
 def feedTM(tm, bottomUp, growthCandidates, learn=True):
   # print("previously active cells " + str(tm.getActiveCells()))
-  # print("previously predictive cells: " + str(tm.getPredictiveCells()))
-  tm.depolarizeCells(growthCandidates.nonzero()[0], learn=learn)
-  print("predictive cells after depolarize: " + str(tm.getPredictiveCells()))
-  tm.activateCells(bottomUp.nonzero()[0],
-    reinforceCandidatesExternalBasal=growthCandidates.nonzero()[0],
-    growthCandidatesExternalBasal=growthCandidates.nonzero()[0],
-    learn=learn)
+  # print("previously predicted cells: " + str(tm.getPredictedCells()))
+  tm.compute(bottomUp.nonzero()[0],
+             basalInput=growthCandidates.nonzero()[0],
+             learn=True)
   print("new active cells " + str(tm.getActiveCells()))
-  print("new predictive cells " + str(tm.getPredictiveCells()))
+  print("new predicted cells " + str(tm.getPredictedCells()))
   printSegmentForCell(tm,0)
   printSegmentForCell(tm,10)
   printSegmentForCell(tm,20)
@@ -114,10 +112,10 @@ def feedTM(tm, bottomUp, growthCandidates, learn=True):
 
 def inferTM(tm, bottomUp, externalInput):
   tm.compute(bottomUp.nonzero()[0],
-             activeCellsExternalBasal=externalInput.nonzero()[0],
+             basalInput=externalInput.nonzero()[0],
              learn=False)
   print("new active cells " + str(tm.getActiveCells()))
-  print("new predictive cells " + str(tm.getPredictiveCells()))
+  print("new predicted cells " + str(tm.getPredictedCells()))
   tm.reset()
 
 
