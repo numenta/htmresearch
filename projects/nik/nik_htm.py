@@ -80,25 +80,26 @@ class NIK(object):
     self.totalPredictionError = 0
     self.numMissedPredictions = 0
 
-    self.tm = TM(columnDimensions = (self.bottomUpInputSize,),
-            basalInputDimensions = (self.externalSize,),
+    self.tm = TM(columnCount = self.bottomUpInputSize,
+            basalInputSize = self.externalSize,
             cellsPerColumn=1,
             initialPermanence=0.4,
             connectedPermanence=0.5,
             minThreshold= self.externalOnBits,
-            maxNewSynapseCount=40,
+            sampleSize=40,
             permanenceIncrement=0.1,
             permanenceDecrement=0.00,
             activationThreshold=int(0.75*(self.externalOnBits+self.bottomUpOnBits)),
             predictedSegmentDecrement=0.00,
-            checkInputs=False
+            checkInputs=False,
+            basalInputPrepend=True
             )
 
     print >>sys.stderr, "TM parameters:"
-    print >>sys.stderr, "  num columns=",self.tm.getColumnDimensions()
+    print >>sys.stderr, "  num columns=",self.tm.numberOfColumns()
     print >>sys.stderr, "  activation threshold=",self.tm.getActivationThreshold()
     print >>sys.stderr, "  min threshold=",self.tm.getMinThreshold()
-    print >>sys.stderr, "  basal input dimensions=",self.tm.getBasalInputDimensions()
+    print >>sys.stderr, "  basal input size=",self.tm.getBasalInputSize()
     print >>sys.stderr
     print >>sys.stderr
 
@@ -249,11 +250,10 @@ class NIK(object):
   def trainTM(self, bottomUp, externalInput):
     # print >> sys.stderr, "Bottom up: ", bottomUp
     # print >> sys.stderr, "ExternalInput: ",externalInput
-    self.tm.depolarizeCells(externalInput, learn=True)
-    self.tm.activateCells(bottomUp,
-           reinforceCandidatesExternalBasal=externalInput,
-           growthCandidatesExternalBasal=externalInput,
-           learn=True)
+
+    self.tm.compute(bottomUp,
+                    basalInput=externalInput,
+                    learn=True)
     # print >> sys.stderr, ("new active cells " + str(self.tm.getActiveCells()))
     print >> sys.stderr, "Total number of segments=", numSegments(self.tm  )
 
@@ -266,8 +266,8 @@ class NIK(object):
     # print >> sys.stderr, "Bottom up: ", bottomUp
     # print >> sys.stderr, "ExternalInput: ",externalInput
     self.tm.compute(bottomUp,
-            activeCellsExternalBasal=externalInput,
-            learn=False)
+                    basalInput=externalInput,
+                    learn=False)
     # print >> sys.stderr, ("new active cells " + str(self.tm.getActiveCells()))
     # print >> sys.stderr, ("new predictive cells " + str(self.tm.getPredictiveCells()))
     return self.tm.getPredictiveCells()

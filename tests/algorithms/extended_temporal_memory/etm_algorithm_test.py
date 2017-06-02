@@ -1364,7 +1364,7 @@ class ExtendedTemporalMemoryAlgorithmTest(unittest.TestCase):
   def _computeTMParams(self, overrides):
     params = {
       "columnCount": self.n,
-      "basalInputSize": (self.n * 32) + self.n,
+      "basalInputSize": self.n,
       "apicalInputSize": self.n,
       "cellsPerColumn": 32,
       "initialPermanence": 0.5,
@@ -1377,6 +1377,7 @@ class ExtendedTemporalMemoryAlgorithmTest(unittest.TestCase):
       "activationThreshold": 25,
       "seed": 42,
       "learnOnOneCell": False,
+      "basalInputPrepend": True,
     }
     params.update(overrides or {})
     return params
@@ -1460,19 +1461,9 @@ class ExtendedTemporalMemoryAlgorithmTest(unittest.TestCase):
       if pattern is None:
         self.tm.reset()
       else:
-        pattern = sorted(pattern)
-        basalInput = (self.tm.getActiveCells().tolist() +
-                      [cell + self.tm.numberOfCells()
-                       for cell in sorted(basal)])
-        basalGrowthCandidates = (self.tm.getWinnerCells().tolist() +
-                                 [cell + self.tm.numberOfCells()
-                                  for cell in sorted(basal)])
-        apicalInput = sorted(apical)
-
-        self.tm.compute(activeColumns=pattern,
-                        basalInput=basalInput,
-                        apicalInput=apicalInput,
-                        basalGrowthCandidates=basalGrowthCandidates,
+        self.tm.compute(activeColumns=sorted(pattern),
+                        basalInput=sorted(basal),
+                        apicalInput=sorted(apical),
                         learn=learn)
 
     if self.VERBOSITY >= 2:
