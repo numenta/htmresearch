@@ -338,24 +338,21 @@ class ExtendedTemporalMemoryMonitorMixin(MonitorMixinBase):
   # ==============================
   # Overrides
   # ==============================
-  def activateCells(self,
-                    activeColumns,
-                    reinforceCandidatesExternalBasal=(),
-                    reinforceCandidatesExternalApical=(),
-                    growthCandidatesExternalBasal=(),
-                    growthCandidatesExternalApical=(),
-                    learn=True,
-                    sequenceLabel=None):
+  def compute(self,
+              activeColumns,
+              basalInput=(),
+              apicalInput=(),
+              basalGrowthCandidates=None,
+              apicalGrowthCandidates=None,
+              learn=True,
+              sequenceLabel=None):
 
-    super(ExtendedTemporalMemoryMonitorMixin, self).activateCells(
-      activeColumns,
-      reinforceCandidatesExternalBasal,
-      reinforceCandidatesExternalApical,
-      growthCandidatesExternalBasal,
-      growthCandidatesExternalApical,
-      learn)
+    super(ExtendedTemporalMemoryMonitorMixin, self).compute(
+      activeColumns, basalInput, apicalInput, basalGrowthCandidates,
+      apicalGrowthCandidates, learn)
 
-    self._mmTraces["predictedCells"].data.append(set(self.getPredictiveCells()))
+    self._mmTraces["predictedCells"].data.append(
+      set(self.getPredictedCells()))
     self._mmTraces["activeCells"].data.append(set(self.getActiveCells()))
     self._mmTraces["activeColumns"].data.append(activeColumns)
     self._mmTraces["numBasalSegments"].data.append(
