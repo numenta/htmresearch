@@ -12,13 +12,24 @@ def power_nonlinearity(power):
         original_activations = copy.deepcopy(activations)
         for i in range(power - 1):
             activations.elementNZMultiply(original_activations)
+        return activations
     return l
 
 def threshold_nonlinearity(threshold):
     def l(activations):
         activations.threshold(threshold)
+        return activations
     return l
 
+def sigmoid(center, scale):
+	return lambda x: 1./(1. + numpy.exp(scale*(center - x)))
+
+def sigmoid_nonlinearity(center, scale):
+	def l(activations):
+		dense = activations.toDense()
+		f = sigmoid(center, scale)
+		return SM32(f(dense))
+	return l
 
 class Matrix_Neuron(object):
     def __init__(self,
@@ -31,7 +42,7 @@ class Matrix_Neuron(object):
                  initial_permanence = 0.5,
                  permanence_threshold = 0.15,
                  perm_dec = 0.0125,
-                 perm_inc = 0.025):
+                 perm_inc = 0.02):
         self.size = size
         self.num_dendrites = num_dendrites
         self.dendrite_length = dendrite_length
@@ -69,7 +80,7 @@ class Matrix_Neuron(object):
         """
 
         activations = datapoint * self.dendrites
-        self.nonlinearity(activations)
+        activations = self.nonlinearity(activations)
         return activations.sum()
 
     def choose_substitute_pool(self):
@@ -78,7 +89,7 @@ class Matrix_Neuron(object):
 
     def calculate_on_entire_dataset(self, data):
         activations = data * self.dendrites
-        self.nonlinearity(activations)
+        activations = self.nonlinearity(activations)
         return activations.rowSums()
 
 
@@ -152,7 +163,7 @@ class Matrix_Neuron(object):
         activation = numpy.sign(activations.sum())
 
 
-        if label >= 1 and activation >= 1:
+        if label >= 1 and activation >= 0.5:
             strongest_branch = activations.rowMax(0)[0]
             datapoint.transpose()
             inc_vector = self.dendrites.getSlice(0, self.dim, strongest_branch, strongest_branch + 1) * self.perm_inc
@@ -175,7 +186,7 @@ class Matrix_Neuron(object):
                     self.permanences[new_connection, strongest_branch] = self.initial_permanence
 
 
-        elif label < 1 and activation >= 1:
+        elif label < 1 and activation >= 0.5:
             # Need to weaken some connections
             strongest_branch = activations.rowMax(0)[0]
 
@@ -185,7 +196,7 @@ class Matrix_Neuron(object):
             self.permanences.setSlice(0, strongest_branch, self.permanences.getSlice(0, self.dim, strongest_branch, strongest_branch + 1) - dec_vector)
 
 
-        elif label >= 1 and activation < 1:
+        elif label >= 1 and activation < 0.5:
             # Need to create some new connections
             weakest_branch = numpy.argmin(self.permanences.colSums())
             if numpy.median(self.permanences.getCol(weakest_branch)) < self.permanence_threshold:

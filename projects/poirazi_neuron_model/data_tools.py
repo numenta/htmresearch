@@ -1,7 +1,6 @@
 import numpy
 from nupic.bindings.math import *
 
-
 def apply_noise(data, noise):
     """
     Applies noise to a sparse matrix.  Noise should be an integer between 0 and
