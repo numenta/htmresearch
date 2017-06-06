@@ -20,8 +20,8 @@ def convert_cell_lists_to_dense(dim, cell_list, add_1 = False):
   return dense_cell_list
 
 
-def run_tm_dim_experiment(test_dims = range(100, 3100, 100),
-                          cellsPerColumn=1,
+def run_tm_dim_experiment(test_dims = range(100, 1100, 100),
+                          cellsPerColumn=10,
                           num_active = 10,
                           activationThreshold=5,
                           initialPermanence=0.8,
@@ -37,16 +37,17 @@ def run_tm_dim_experiment(test_dims = range(100, 3100, 100),
                           num_samples = 1000,
                           sequence_length = 20,
                           training_iters = 1,
-                          automatic_threshold = True):
-
+                          automatic_threshold = True,
+                          save_results = False):
   """
   Run an experiment tracking the performance of the temporal memory given
   different input dimensions.  The number of active cells is kept fixed, so we
   are in effect varying the sparsity of the input.   We track performance by
   comparing the cells predicted to be active with the cells actually active in
   the sequence without noise at every timestep, and averaging across timesteps.
-  Three metrics are used, correlation (Pearson's r, by numpy.corrcoef), set similarity (Jaccard index) and cosine
-  similarity (using scipy.spatial.distance.cosine).
+  Three metrics are used, correlation (Pearson's r, by numpy.corrcoef),
+  set similarity (Jaccard index) and cosine similarity
+  (using scipy.spatial.distance.cosine).
 
   Output is written to tm_dim_{num_active}.txt, including sample size.
   """
@@ -55,7 +56,6 @@ def run_tm_dim_experiment(test_dims = range(100, 3100, 100),
     minThreshold = min(num_active/2, maxNewSynapseCount/2)
 
   for dim in test_dims:
-    print dim
     tm = TM(columnDimensions=(dim,),
             cellsPerColumn=cellsPerColumn,
             activationThreshold=activationThreshold,
@@ -74,8 +74,8 @@ def run_tm_dim_experiment(test_dims = range(100, 3100, 100),
     canonical_active_cells = []
 
     for sample in range(num_samples):
-      if (sample + 1) % 10 == 0:
-        print sample + 1
+      #if (sample + 1) % 10 == 0:
+        #print sample + 1
       data = generate_evenly_distributed_data_sparse(dim = dim, num_active = num_active, num_samples = sequence_length)
       datapoints.append(data)
       for i in range(training_iters):
@@ -122,13 +122,13 @@ def run_tm_dim_experiment(test_dims = range(100, 3100, 100),
 
 
 
-    print correlations
     correlation = numpy.mean(correlations)
     similarity = numpy.mean(similarities)
     csim = numpy.mean(csims)
     print dim, correlation, similarity, csim
-    with open("tm_dim_{}.txt".format(num_active), "a") as f:
-      f.write(str(dim)+", " + str(correlation) + ", " + str(similarity) + ", " + str(csim) + ", " + str(num_samples) + "\n")
+    if save_results:
+        with open("tm_dim_{}.txt".format(num_active), "a") as f:
+          f.write(str(dim)+", " + str(correlation) + ", " + str(similarity) + ", " + str(csim) + ", " + str(num_samples) + "\n")
 
 if __name__ == "__main__":
   run_tm_dim_experiment()
