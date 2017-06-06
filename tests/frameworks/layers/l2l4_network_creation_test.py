@@ -190,6 +190,45 @@ class LaminarNetworkTest(unittest.TestCase):
     net.run(3)
 
 
+  def testL4L2ColumnLinks(self):
+    """
+    In this simplistic test we create a network and ensure that it has the
+    correct links between regions.
+    """
+
+    # Create a simple network to check its architecture
+    net = createNetwork(networkConfig1)
+
+    links = net.getLinks()
+
+    # Make sure that we have the right number before going on to specifics
+    self.assertEqual(len(list(net.getLinks())), 6, "Incorrect number of links")
+
+    # These are all the links we're hoping to find
+    desired_links=set([("sensorInput_0.dataOut-->L4Column_0.activeColumns"),
+      ("L2Column_0.feedForwardOutput-->L4Column_0.apicalInput"),
+      ("externalInput_0.dataOut-->L4Column_0.basalInput"),
+      ("L4Column_0.predictedActiveCells-->"+
+      "L2Column_0.feedforwardGrowthCandidates"),
+      ("L4Column_0.activeCells-->L2Column_0.feedforwardInput"),
+      ("sensorInput_0.resetOut-->L2Column_0.resetIn")])
+
+    # This gets textual representations of the links.
+    links = set([link.second.getMoniker() for link in links])
+
+    # Build a descriptive error message to pass to the user
+    error_message = "Error: Links incorrectly formed in simple L2L4 network: \n"
+    for link in desired_links:
+      if not link in links:
+        error_message += "Failed to find link: {}\n".format(link)
+
+    for link in links:
+      if not link in desired_links:
+        error_message += "Found unexpected link: {}\n".format(link)
+
+    self.assertSetEqual(desired_links, links, error_message)
+
+
   def testMultipleL4L2ColumnsCreate(self):
     """
     In this simplistic test we create a network with 3 L4L2Columns, ensure it
@@ -228,6 +267,66 @@ class LaminarNetworkTest(unittest.TestCase):
                      "Incorrect phase for L4Column_0")
     self.assertEqual(net.getPhases("L4Column_1"),(2,),
                      "Incorrect phase for L4Column_1")
+
+
+
+  def testMultipleL4L2ColumnLinks(self):
+    """
+    In this simplistic test we create a network with 3 L4L2 columns, and
+    ensure that it has the correct links between regions.
+    """
+
+    # Create a simple network to check its architecture
+    net = createNetwork(networkConfig2)
+
+    links = net.getLinks()
+
+    # Make sure that we have the right number before going on to specifics
+    self.assertEqual(len(list(net.getLinks())), 24 ,"Incorrect number of links")
+
+    # These are all the links we're hoping to find
+    desired_links=set([("sensorInput_0.dataOut-->L4Column_0.activeColumns"),
+      ("L2Column_0.feedForwardOutput-->L4Column_0.apicalInput"),
+      ("externalInput_0.dataOut-->L4Column_0.basalInput"),
+      ("L4Column_0.predictedActiveCells-->"+
+      "L2Column_0.feedforwardGrowthCandidates"),
+      ("L4Column_0.activeCells-->L2Column_0.feedforwardInput"),
+      ("sensorInput_0.resetOut-->L2Column_0.resetIn"),
+      ("sensorInput_1.dataOut-->L4Column_1.activeColumns"),
+      ("L2Column_1.feedForwardOutput-->L4Column_1.apicalInput"),
+      ("externalInput_1.dataOut-->L4Column_1.basalInput"),
+      ("L4Column_1.predictedActiveCells-->"+
+      "L2Column_1.feedforwardGrowthCandidates"),
+      ("L4Column_1.activeCells-->L2Column_1.feedforwardInput"),
+      ("sensorInput_1.resetOut-->L2Column_1.resetIn"),
+      ("sensorInput_2.dataOut-->L4Column_2.activeColumns"),
+      ("L2Column_2.feedForwardOutput-->L4Column_2.apicalInput"),
+      ("externalInput_2.dataOut-->L4Column_2.basalInput"),
+      ("L4Column_2.predictedActiveCells-->"+
+      "L2Column_2.feedforwardGrowthCandidates"),
+      ("L4Column_2.activeCells-->L2Column_2.feedforwardInput"),
+      ("sensorInput_2.resetOut-->L2Column_2.resetIn"),
+      ("L2Column_0.feedForwardOutput-->L2Column_1.lateralInput"),
+      ("L2Column_0.feedForwardOutput-->L2Column_2.lateralInput"),
+      ("L2Column_1.feedForwardOutput-->L2Column_0.lateralInput"),
+      ("L2Column_1.feedForwardOutput-->L2Column_2.lateralInput"),
+      ("L2Column_2.feedForwardOutput-->L2Column_0.lateralInput"),
+      ("L2Column_2.feedForwardOutput-->L2Column_1.lateralInput")])
+
+    # This gets textual representations of the links.
+    links = set([link.second.getMoniker() for link in links])
+
+    # Build a descriptive error message to pass to the user
+    error_message = "Links incorrectly formed in multicolumn L2L4 network: \n"
+    for link in desired_links:
+      if not link in links:
+        error_message += "Failed to find link: {}\n".format(link)
+
+    for link in links:
+      if not link in desired_links:
+        error_message += "Found unexpected link: {}\n".format(link)
+
+    self.assertSetEqual(desired_links, links, error_message)
 
 
   @unittest.skip("Need to implement")
