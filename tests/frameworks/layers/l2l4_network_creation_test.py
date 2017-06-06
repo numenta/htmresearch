@@ -153,6 +153,52 @@ networkConfig3 = {
 }
 
 
+networkConfig4 = {
+  "networkType": "MultipleL4L2ColumnsWithTopology",
+  "numCorticalColumns": 5,
+  "externalInputSize": 1024,
+  "sensorInputSize": 1024,
+  "columnPositions": [(0, 0), (1, 0), (2, 0), (2, 1), (2, -1)],
+  "maxConnectionDistance": 1,
+  "L4RegionType": "py.ExtendedTMRegion",
+  "L4Params": {
+    "columnCount": 1024,
+    "cellsPerColumn": 8,
+    "formInternalBasalConnections": False,
+    "learn": True,
+    "learnOnOneCell": False,
+    "initialPermanence": 0.51,
+    "connectedPermanence": 0.6,
+    "permanenceIncrement": 0.1,
+    "permanenceDecrement": 0.02,
+    "minThreshold": 10,
+    "predictedSegmentDecrement": 0.004,
+    "activationThreshold": 13,
+    "maxNewSynapseCount": 20,
+    "seed": 42,
+  },
+  "L2Params": {
+    "inputWidth": 1024 * 8,
+    "cellCount": 4096,
+    "sdrSize": 40,
+    "synPermProximalInc": 0.1,
+    "synPermProximalDec": 0.001,
+    "initialProximalPermanence": 0.6,
+    "minThresholdProximal": 10,
+    "sampleSizeProximal": 20,
+    "connectedPermanenceProximal": 0.5,
+    "synPermDistalInc": 0.1,
+    "synPermDistalDec": 0.001,
+    "initialDistalPermanence": 0.41,
+    "activationThresholdDistal": 13,
+    "sampleSizeDistal": 20,
+    "connectedPermanenceDistal": 0.5,
+    "distalSegmentInhibitionFactor": 1.5,
+    "learningMode": True,
+  }
+}
+
+
 class LaminarNetworkTest(unittest.TestCase):
   """ Super simple test of laminar network factory"""
 
@@ -231,6 +277,57 @@ class LaminarNetworkTest(unittest.TestCase):
                      "Incorrect phase for L4Column_0")
     self.assertEqual(net.getPhases("L4Column_1"),(2,),
                      "Incorrect phase for L4Column_1")
+
+
+  def testMultipleL4L2ColumnsWithTopologyCreate(self):
+    """
+    In this simplistic test we create a network with 5 L4L2Columns and
+    topological lateral connections, ensure it has the right number of regions,
+    and try to run some inputs through it without crashing.
+    """
+
+    net = createNetwork(networkConfig4)
+    self.assertEqual(len(net.regions.keys()), 20, "Incorrect number of regions")
+
+    # Add some input vectors to the queue
+    externalInput0 = net.regions["externalInput_0"].getSelf()
+    sensorInput0 = net.regions["sensorInput_0"].getSelf()
+    externalInput1 = net.regions["externalInput_1"].getSelf()
+    sensorInput1 = net.regions["sensorInput_1"].getSelf()
+    externalInput2 = net.regions["externalInput_2"].getSelf()
+    sensorInput2 = net.regions["sensorInput_2"].getSelf()
+    externalInput3 = net.regions["externalInput_3"].getSelf()
+    sensorInput3 = net.regions["sensorInput_3"].getSelf()
+    externalInput4 = net.regions["externalInput_4"].getSelf()
+    sensorInput4 = net.regions["sensorInput_4"].getSelf()
+
+    externalInput0.addDataToQueue([2, 42, 1023], 0, 9)
+    sensorInput0.addDataToQueue([2, 42, 1023], 0, 0)
+    externalInput1.addDataToQueue([2, 42, 1023], 0, 9)
+    sensorInput1.addDataToQueue([2, 42, 1023], 0, 0)
+    externalInput2.addDataToQueue([2, 42, 1023], 0, 9)
+    sensorInput2.addDataToQueue([2, 42, 1023], 0, 0)
+    externalInput3.addDataToQueue([2, 42, 1023], 0, 9)
+    sensorInput3.addDataToQueue([2, 42, 1023], 0, 0)
+    externalInput4.addDataToQueue([2, 42, 1023], 0, 9)
+    sensorInput4.addDataToQueue([2, 42, 1023], 0, 0)
+
+    # Run the network and check outputs are as expected
+
+    #import pdb; pdb.set_trace()
+    net.run(1)
+
+
+    # Spotcheck some of the phases
+    self.assertEqual(net.getPhases("externalInput_0"),(0,),
+                     "Incorrect phase externalInput_0")
+    self.assertEqual(net.getPhases("externalInput_1"),(0,),
+                     "Incorrect phase for externalInput_1")
+    self.assertEqual(net.getPhases("L4Column_0"),(2,),
+                     "Incorrect phase for L4Column_0")
+    self.assertEqual(net.getPhases("L4Column_1"),(2,),
+                     "Incorrect phase for L4Column_1")
+
 
 
   @unittest.skip("Need to implement")
