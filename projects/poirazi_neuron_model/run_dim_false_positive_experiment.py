@@ -7,8 +7,8 @@ import random
 
 def run_false_positive_experiment_dim(num_neurons = 1,
                                       num_neg_neurons = 1,
-                                      a = 64,
-                                      test_dims = range(900, 1100, 200),
+                                      a = 128,
+                                      test_dims = range(1100, 2100, 200),
                                       num_samples = 1000,
                                       num_dendrites = 500,
                                       dendrite_length = 24,
@@ -17,7 +17,7 @@ def run_false_positive_experiment_dim(num_neurons = 1,
     """
     Run an experiment to test the false positive rate based on number of
     synapses per dendrite, dimension and sparsity.  Uses two competing neurons,
-    along the P&M model. 
+    along the P&M model.
 
     Based on figure 5B in the original SDR paper.
     """
@@ -45,7 +45,7 @@ def run_false_positive_experiment_dim(num_neurons = 1,
 
         with open("pm_dim_FP_{}.txt".format(a), "a") as f:
             f.write(str(dim) + ", " + str(sum(fns + fps)) + ", " + str(num_trials*num_samples) + "\n")
-    
+
 def get_error_matrix(data, labels, pos_neurons, neg_neurons = [], add_noise = False):
     """
     Calculates error, including number of false positives and false negatives.

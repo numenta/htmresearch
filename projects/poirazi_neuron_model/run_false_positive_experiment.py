@@ -7,12 +7,12 @@ import random
 
 
 def run_HTM_false_positive_experiment_synapses(num_neurons = 1,
-                                               a = 4000,
+                                               a = 512,
                                                dim = 16000,
                                                num_samples = 1000,
                                                num_dendrites = 500,
                                                test_dendrite_lengths = range(2, 32, 2),
-                                               num_trials = 1):
+                                               num_trials = 1000):
     """
     Run an experiment to test the false positive rate based on number of
     synapses per dendrite, dimension and sparsity.  Uses a single neuron,
@@ -40,8 +40,8 @@ def run_HTM_false_positive_experiment_synapses(num_neurons = 1,
             fns.append(fn)
             print "Error at {} synapses per dendrite is {}, with {} false positives and {} false negatives".format(dendrite_length, fp/(num_samples/2.), fp, fn)
 
-        #with open("num_dendrites_FP_{}_{}.txt".format(a, dim), "a") as f:
-        #    f.write(str(dendrite_length) + ", " + str(sum(fps)) + ", " + str(num_trials*num_samples/2.) + "\n")
+        with open("num_dendrites_FP_{}_{}.txt".format(a, dim), "a") as f:
+            f.write(str(dendrite_length) + ", " + str(sum(fps)) + ", " + str(num_trials*num_samples/2.) + "\n")
 
 
 def run_false_positive_experiment_synapses(num_neurons = 1,
@@ -56,7 +56,7 @@ def run_false_positive_experiment_synapses(num_neurons = 1,
     """
     Run an experiment to test the false positive rate based on number of
     synapses per dendrite, dimension and sparsity.  Uses two competing neurons,
-    along the P&M model, with nonlinearity l(x) = x^2.  
+    along the P&M model, with nonlinearity l(x) = x^2.
 
     Based on figure 5B in the original SDR paper.
     """
@@ -84,7 +84,7 @@ def run_false_positive_experiment_synapses(num_neurons = 1,
 
         with open("pm_num_dendrites_FP_{}_{}.txt".format(a, dim), "a") as f:
             f.write(str(dendrite_length) + ", " + str(sum(fns + fps)) + ", " + str(num_trials*num_samples) + "\n")
-    
+
 def get_error_matrix(data, labels, pos_neurons, neg_neurons = []):
     """
     Calculates error, including number of false positives and false negatives.

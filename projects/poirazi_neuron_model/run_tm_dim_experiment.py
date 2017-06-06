@@ -20,7 +20,7 @@ def convert_cell_lists_to_dense(dim, cell_list, add_1 = False):
   return dense_cell_list
 
 
-def run_tm_dim_experiment(test_dims = range(2900, 3100, 200),
+def run_tm_dim_experiment(test_dims = range(100, 3100, 100),
                           cellsPerColumn=1,
                           num_active = 10,
                           activationThreshold=5,
@@ -56,9 +56,9 @@ def run_tm_dim_experiment(test_dims = range(2900, 3100, 200),
 
   for dim in test_dims:
     print dim
-    tm = TM(columnDimensions = (dim,),
-            cellsPerColumn= cellsPerColumn,
-            activationThreshold= activationThreshold,
+    tm = TM(columnDimensions=(dim,),
+            cellsPerColumn=cellsPerColumn,
+            activationThreshold=activationThreshold,
             initialPermanence=initialPermanence,
             connectedPermanence=connectedPermanence,
             minThreshold=minThreshold,
@@ -105,7 +105,7 @@ def run_tm_dim_experiment(test_dims = range(2900, 3100, 200),
         tm.compute(activeColumns, learn = False)
         predicted_cells.append(tm.getPredictiveCells())
       tm.reset()
-        
+
       similarity = [(0.+len(set(predicted) & set(active)))/len((set(predicted) | set(active))) for predicted, active in zip (predicted_cells[:-1], active_cells[1:])]
       dense_predicted_cells = convert_cell_lists_to_dense(dim*cellsPerColumn, predicted_cells[:-1])
       dense_active_cells = convert_cell_lists_to_dense(dim*cellsPerColumn, active_cells[1:])
@@ -127,8 +127,8 @@ def run_tm_dim_experiment(test_dims = range(2900, 3100, 200),
     similarity = numpy.mean(similarities)
     csim = numpy.mean(csims)
     print dim, correlation, similarity, csim
-    #with open("tm_dim_{}.txt".format(num_active), "a") as f:
-    #  f.write(str(dim)+", " + str(correlation) + ", " + str(similarity) + ", " + str(csim) + ", " + str(num_samples) + "\n")
+    with open("tm_dim_{}.txt".format(num_active), "a") as f:
+      f.write(str(dim)+", " + str(correlation) + ", " + str(similarity) + ", " + str(csim) + ", " + str(num_samples) + "\n")
 
 if __name__ == "__main__":
   run_tm_dim_experiment()
