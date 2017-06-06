@@ -51,7 +51,6 @@ networkConfig = {
   "L4Params": {
     "columnCount": 2048,
     "cellsPerColumn": 8,
-    "formInternalBasalConnections": False,
     "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
@@ -61,13 +60,12 @@ networkConfig = {
     "minThreshold": 10,
     "predictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
-    "maxNewSynapseCount": 20,
+    "sampleSize": 20,
   },
 
   "L6Params": {
     "columnCount": 2048,
     "cellsPerColumn": 8,
-    "formInternalBasalConnections": False,
     "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
@@ -77,7 +75,7 @@ networkConfig = {
     "minThreshold": 10,
     "predictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
-    "maxNewSynapseCount": 20,
+    "sampleSize": 20,
   },
 
   "L5Params": {

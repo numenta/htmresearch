@@ -43,20 +43,20 @@ class ExtendedTM_ApicalTiebreakSequencesTests(ApicalTiebreakSequencesTestBase,
                   predictedSegmentDecrement, activationThreshold, seed):
 
     params = {
-      "apicalInputDimensions": (apicalInputSize,),
-      "columnDimensions": (columnCount,),
+      "columnCount": columnCount,
+      "basalInputSize": columnCount * cellsPerColumn,
+      "apicalInputSize": apicalInputSize,
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
       "connectedPermanence": connectedPermanence,
       "minThreshold": minThreshold,
-      "maxNewSynapseCount": sampleSize,
+      "sampleSize": sampleSize,
       "permanenceIncrement": permanenceIncrement,
       "permanenceDecrement": permanenceDecrement,
       "predictedSegmentDecrement": predictedSegmentDecrement,
       "activationThreshold": activationThreshold,
       "seed": seed,
       "learnOnOneCell": False,
-      "formInternalBasalConnections": True,
     }
 
     self.tm = ExtendedTemporalMemory(**params)
@@ -67,14 +67,12 @@ class ExtendedTM_ApicalTiebreakSequencesTests(ApicalTiebreakSequencesTestBase,
     activeColumns = sorted(activeColumns)
     apicalInput = sorted(apicalInput)
 
-    # Use depolarizeCells + activateCells rather than tm.compute so that
-    # getPredictiveCells returns predictions for the current timestep.
-    self.tm.depolarizeCells(activeCellsExternalApical=apicalInput,
-                            learn=learn)
-    self.tm.activateCells(activeColumns,
-                          reinforceCandidatesExternalApical=apicalInput,
-                          growthCandidatesExternalApical=apicalInput,
-                          learn=learn)
+    self.tm.compute(activeColumns,
+                    basalInput=self.tm.getActiveCells(),
+                    basalGrowthCandidates=self.tm.getWinnerCells(),
+                    apicalInput=apicalInput,
+                    apicalGrowthCandidates=apicalInput,
+                    learn=learn)
 
 
   def reset(self):
@@ -86,4 +84,4 @@ class ExtendedTM_ApicalTiebreakSequencesTests(ApicalTiebreakSequencesTestBase,
 
 
   def getPredictedCells(self):
-    return self.tm.getPredictiveCells()
+    return self.tm.getPredictedCells()
