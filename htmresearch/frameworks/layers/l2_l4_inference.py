@@ -623,9 +623,10 @@ class L4L2Experiment(object):
             for column in self.L4Regions]
 
 
-  def getL4PredictiveCells(self):
+  def getL4PredictedCells(self):
     """
-    Returns the predictive cells in L4.
+    Returns the cells in L4 that were predicted at the beginning of the last
+    call to 'compute'.
     """
     return [set(column.getOutputData("predictedCells").nonzero()[0])
             for column in self.L4Regions]
@@ -721,7 +722,6 @@ class L4L2Experiment(object):
       return {
         "columnCount": inputSize,
         "cellsPerColumn": 16,
-        "formInternalBasalConnections": False,
         "learn": True,
         "learnOnOneCell": False,
         "initialPermanence": 0.51,
@@ -731,7 +731,7 @@ class L4L2Experiment(object):
         "minThreshold": minThreshold,
         "predictedSegmentDecrement": 0.0,
         "activationThreshold": activationThreshold,
-        "maxNewSynapseCount": sampleSize,
+        "sampleSize": sampleSize,
         "implementation": "etm",
         "seed": self.seed
       }
@@ -859,15 +859,15 @@ class L4L2Experiment(object):
 
     """
     L4Representations = self.getL4Representations()
-    L4PredictiveCells = self.getL4PredictiveCells()
+    L4PredictedCells = self.getL4PredictedCells()
     L2Representation = self.getL2Representations()
 
     for i in xrange(self.numColumns):
       statistics["L4 Representation C" + str(i)].append(
         len(L4Representations[i])
       )
-      statistics["L4 Predictive C" + str(i)].append(
-        len(L4PredictiveCells[i])
+      statistics["L4 Predicted C" + str(i)].append(
+        len(L4PredictedCells[i])
       )
       statistics["L2 Representation C" + str(i)].append(
         len(L2Representation[i])

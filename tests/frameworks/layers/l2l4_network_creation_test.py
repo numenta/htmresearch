@@ -34,7 +34,6 @@ networkConfig1 = {
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
-    "formInternalBasalConnections": False,
     "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
@@ -44,7 +43,7 @@ networkConfig1 = {
     "minThreshold": 10,
     "predictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
-    "maxNewSynapseCount": 20,
+    "sampleSize": 20,
   },
   "L2Params": {
     "inputWidth": 1024 * 8,
@@ -76,7 +75,6 @@ networkConfig2 = {
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
-    "formInternalBasalConnections": False,
     "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
@@ -86,7 +84,7 @@ networkConfig2 = {
     "minThreshold": 10,
     "predictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
-    "maxNewSynapseCount": 20,
+    "sampleSize": 20,
     "seed": 42,
   },
   "L2Params": {
@@ -119,7 +117,6 @@ networkConfig3 = {
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
-    "formInternalBasalConnections": False,
     "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
@@ -129,7 +126,7 @@ networkConfig3 = {
     "minThreshold": 10,
     "predictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
-    "maxNewSynapseCount": 20,
+    "sampleSize": 20,
   },
   "L2Params": {
     "inputWidth": 1024 * 8,
@@ -193,6 +190,45 @@ class LaminarNetworkTest(unittest.TestCase):
     net.run(3)
 
 
+  def testL4L2ColumnLinks(self):
+    """
+    In this simplistic test we create a network and ensure that it has the
+    correct links between regions.
+    """
+
+    # Create a simple network to check its architecture
+    net = createNetwork(networkConfig1)
+
+    links = net.getLinks()
+
+    # Make sure that we have the right number before going on to specifics
+    self.assertEqual(len(list(net.getLinks())), 6, "Incorrect number of links")
+
+    # These are all the links we're hoping to find
+    desired_links=set([("sensorInput_0.dataOut-->L4Column_0.activeColumns"),
+      ("L2Column_0.feedForwardOutput-->L4Column_0.apicalInput"),
+      ("externalInput_0.dataOut-->L4Column_0.basalInput"),
+      ("L4Column_0.predictedActiveCells-->"+
+      "L2Column_0.feedforwardGrowthCandidates"),
+      ("L4Column_0.activeCells-->L2Column_0.feedforwardInput"),
+      ("sensorInput_0.resetOut-->L2Column_0.resetIn")])
+
+    # This gets textual representations of the links.
+    links = set([link.second.getMoniker() for link in links])
+
+    # Build a descriptive error message to pass to the user
+    error_message = "Error: Links incorrectly formed in simple L2L4 network: \n"
+    for link in desired_links:
+      if not link in links:
+        error_message += "Failed to find link: {}\n".format(link)
+
+    for link in links:
+      if not link in desired_links:
+        error_message += "Found unexpected link: {}\n".format(link)
+
+    self.assertSetEqual(desired_links, links, error_message)
+
+
   def testMultipleL4L2ColumnsCreate(self):
     """
     In this simplistic test we create a network with 3 L4L2Columns, ensure it
@@ -233,6 +269,66 @@ class LaminarNetworkTest(unittest.TestCase):
                      "Incorrect phase for L4Column_1")
 
 
+
+  def testMultipleL4L2ColumnLinks(self):
+    """
+    In this simplistic test we create a network with 3 L4L2 columns, and
+    ensure that it has the correct links between regions.
+    """
+
+    # Create a simple network to check its architecture
+    net = createNetwork(networkConfig2)
+
+    links = net.getLinks()
+
+    # Make sure that we have the right number before going on to specifics
+    self.assertEqual(len(list(net.getLinks())), 24 ,"Incorrect number of links")
+
+    # These are all the links we're hoping to find
+    desired_links=set([("sensorInput_0.dataOut-->L4Column_0.activeColumns"),
+      ("L2Column_0.feedForwardOutput-->L4Column_0.apicalInput"),
+      ("externalInput_0.dataOut-->L4Column_0.basalInput"),
+      ("L4Column_0.predictedActiveCells-->"+
+      "L2Column_0.feedforwardGrowthCandidates"),
+      ("L4Column_0.activeCells-->L2Column_0.feedforwardInput"),
+      ("sensorInput_0.resetOut-->L2Column_0.resetIn"),
+      ("sensorInput_1.dataOut-->L4Column_1.activeColumns"),
+      ("L2Column_1.feedForwardOutput-->L4Column_1.apicalInput"),
+      ("externalInput_1.dataOut-->L4Column_1.basalInput"),
+      ("L4Column_1.predictedActiveCells-->"+
+      "L2Column_1.feedforwardGrowthCandidates"),
+      ("L4Column_1.activeCells-->L2Column_1.feedforwardInput"),
+      ("sensorInput_1.resetOut-->L2Column_1.resetIn"),
+      ("sensorInput_2.dataOut-->L4Column_2.activeColumns"),
+      ("L2Column_2.feedForwardOutput-->L4Column_2.apicalInput"),
+      ("externalInput_2.dataOut-->L4Column_2.basalInput"),
+      ("L4Column_2.predictedActiveCells-->"+
+      "L2Column_2.feedforwardGrowthCandidates"),
+      ("L4Column_2.activeCells-->L2Column_2.feedforwardInput"),
+      ("sensorInput_2.resetOut-->L2Column_2.resetIn"),
+      ("L2Column_0.feedForwardOutput-->L2Column_1.lateralInput"),
+      ("L2Column_0.feedForwardOutput-->L2Column_2.lateralInput"),
+      ("L2Column_1.feedForwardOutput-->L2Column_0.lateralInput"),
+      ("L2Column_1.feedForwardOutput-->L2Column_2.lateralInput"),
+      ("L2Column_2.feedForwardOutput-->L2Column_0.lateralInput"),
+      ("L2Column_2.feedForwardOutput-->L2Column_1.lateralInput")])
+
+    # This gets textual representations of the links.
+    links = set([link.second.getMoniker() for link in links])
+
+    # Build a descriptive error message to pass to the user
+    error_message = "Links incorrectly formed in multicolumn L2L4 network: \n"
+    for link in desired_links:
+      if not link in links:
+        error_message += "Failed to find link: {}\n".format(link)
+
+    for link in links:
+      if not link in desired_links:
+        error_message += "Found unexpected link: {}\n".format(link)
+
+    self.assertSetEqual(desired_links, links, error_message)
+
+
   @unittest.skip("Need to implement")
   def testMultipleL4L2ColumnsSPCreate(self):
     """
@@ -257,7 +353,6 @@ class LaminarNetworkTest(unittest.TestCase):
       "L4Params": {
         "columnCount": 512,
         "cellsPerColumn": 16,
-        "formInternalBasalConnections": True,
         "learn": True,
         "learnOnOneCell": False,
         "initialPermanence": 0.23,
@@ -267,7 +362,7 @@ class LaminarNetworkTest(unittest.TestCase):
         "minThreshold": 15,
         "predictedSegmentDecrement": 0.21,
         "activationThreshold": 16,
-        "maxNewSynapseCount": 24,
+        "sampleSize": 24,
       },
       "L2Params": {
         "inputWidth": 512 * 8,
@@ -834,23 +929,26 @@ class LaminarNetworkTest(unittest.TestCase):
     return cellsIndices[:size]
 
 
-  def getL4PredictiveCells(self, column):
-    """Returns the predictive cells in L4."""
-    return set(column._tm.getPredictiveCells())
+  def getL4PredictedCells(self, column):
+    """
+    Returns the cells in L4 that were predicted at the beginning of the last
+    call to 'compute'.
+    """
+    return set(column._tm.getPredictedCells())
 
 
   def getL4PredictedActiveCells(self, column):
     """Returns the predicted active cells in L4."""
     activeCells = set(column._tm.getActiveCells())
-    predictiveCells = set(column._tm.getPredictiveCells())
-    return activeCells & predictiveCells
+    predictedCells = set(column._tm.getPredictedCells())
+    return activeCells & predictedCells
 
 
   def getL4BurstingCells(self, column):
     """Returns the bursting cells in L4."""
     activeCells = set(column._tm.getActiveCells())
-    predictiveCells = set(column._tm.getPredictiveCells())
-    return activeCells - predictiveCells
+    predictedCells = set(column._tm.getPredictedCells())
+    return activeCells - predictedCells
 
 
   def getCurrentL2Representation(self, column):
