@@ -21,12 +21,12 @@ def convert_cell_lists_to_dense(dim, cell_list, add_1 = False):
 
 
 def run_tm_noise_experiment(dim = 2048,
-                          cellsPerColumn=1,
+                          cellsPerColumn=32,
                           num_active = 40,
-                          activationThreshold=16,
+                          activationThreshold=8,
                           initialPermanence=0.8,
                           connectedPermanence=0.50,
-                          minThreshold=16,
+                          minThreshold=8,
                           maxNewSynapseCount=20,
                           permanenceIncrement=0.05,
                           permanenceDecrement=0.00,
@@ -37,7 +37,8 @@ def run_tm_noise_experiment(dim = 2048,
                           num_samples = 1000,
                           sequence_length = 20,
                           training_iters = 1,
-                          automatic_threshold = False):
+                          automatic_threshold = False,
+                          noise_range = range(0, 100, 5)):
 
     """
     Run an experiment tracking the performance of the temporal memory given
@@ -101,7 +102,7 @@ def run_tm_noise_experiment(dim = 2048,
     similarities = []
     csims = []
 
-    for noise in range(15, 100, 5):
+    for noise in noise_range:
         print noise
         correlations = []
         similarities = []
