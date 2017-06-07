@@ -352,12 +352,15 @@ def plotResults(result, ax=None, xaxis="numObjects",
   if xaxis == "numPointsPerObject":
     x = np.array(resultsRpts.get_group(0).numPointsPerObject)
     xlabel = "# Pts / Obj"
+    x = np.unique(x)
+    d = resultsRpts.get_group(0)
+    d = d.groupby(['numPointsPerObject'])
   elif xaxis == "numObjects":
     x = np.array(resultsRpts.get_group(0).numObjects)
     xlabel = "Object #"
-  x = np.unique(x)
-  d = resultsRpts.get_group(0)
-  d = d.groupby(['numObjects'])
+    x = np.unique(x)
+    d = resultsRpts.get_group(0)
+    d = d.groupby(['numObjects'])
   accuracy = np.zeros((1, len(x),))
   numberOfConnectedProximalSynapses = np.zeros((1, len(x),))
   l2ActivationSize = np.zeros((1, len(x),))
@@ -538,9 +541,8 @@ def runCapacityTestVaryingObjectSize(
 
   for testResult in pool.map(invokeRunCapacityTest, params):
     result = (
-      pd.concat([result, pd.DataFrame.from_dict([testResult])])
-      if result is not None else
-      pd.DataFrame.from_dict([testResult])
+      pd.concat([result, testResult])
+      if result is not None else testResult
     )
 
   resultFileName = _prepareResultsDir(
