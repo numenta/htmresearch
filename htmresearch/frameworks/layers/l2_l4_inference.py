@@ -137,6 +137,7 @@ class L4L2Experiment(object):
                numExternalInputBits=20,
                L2Overrides=None,
                L4RegionType="py.ExtendedTMRegion",
+               networkType = "MultipleL4L2Columns",
                L4Overrides=None,
                numLearningPoints=3,
                seed=42,
@@ -175,6 +176,10 @@ class L4L2Experiment(object):
 
     @param   L4RegionType (string)
              The type of region to use for L4
+
+    @param   networkType (string)
+             Which type of L2L4 network to create.  If topology is being used,
+             it should be specified here.
 
     @param   L4Overrides (dict)
              Parameters to override in the L4 region
@@ -228,7 +233,7 @@ class L4L2Experiment(object):
 
     # update parameters with overrides
     self.config = {
-      "networkType": "MultipleL4L2Columns",
+      "networkType": networkType,
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
@@ -247,6 +252,10 @@ class L4L2Experiment(object):
       self.config["feedForwardSPParams"] = self.getDefaultFeedForwardSPParams(inputSize)
       if feedForwardSPOverrides:
         self.config["feedForwardSPParams"].update(feedForwardSPOverrides)
+
+    if self.config["networkType"] == "MultipleL4L2ColumnsWithTopology":
+      self.config["maxConnectionDistance"] = 1
+      self.config["columnPositions"] = [(0, i) for i in range(numCorticalColumns)]
 
     if L2Overrides is not None:
       self.config["L2Params"].update(L2Overrides)
@@ -669,7 +678,7 @@ class L4L2Experiment(object):
 
     :param minOverlap: min overlap to consider the object as recognized.
                        Defaults to half of the SDR size
-            
+
     :param includeZeros: if True, include scores for all objects, even if 0
 
     :return: dict of object names and their score

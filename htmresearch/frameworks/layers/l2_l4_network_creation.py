@@ -402,6 +402,20 @@ def createMultipleL4L2ColumnsWithTopology(network, networkConfig):
       }
     """
 
+    # Determine which columns will be mutually connected.
+    # This has to be done before the actual creation of the network, as each
+    # individual column need to know how many columns it is laterally connected
+    # to.  These results are then used to actually connect the columns, once
+    # the network is created. It's awkward, but unavoidable.
+    lateral_connections = [[] for i in
+        xrange(networkConfig["numCorticalColumns"])]
+    for i, src_pos in enumerate(networkConfig["columnPositions"]):
+      for j, dest_pos in enumerate(networkConfig["columnPositions"]):
+        if i != j and numpy.linalg.norm(numpy.asarray(src_pos) -
+             numpy.asarray(dest_pos)) <= networkConfig["maxConnectionDistance"]:
+          lateral_connections[i].append(j)
+
+
     # Create each column
     numCorticalColumns = networkConfig["numCorticalColumns"]
     for i in xrange(numCorticalColumns):
@@ -409,22 +423,20 @@ def createMultipleL4L2ColumnsWithTopology(network, networkConfig):
       layerConfig = networkConfigCopy["L2Params"]
       layerConfig["seed"] = layerConfig.get("seed", 42) + i
 
-      layerConfig["numOtherCorticalColumns"] = numCorticalColumns - 1
+      layerConfig["numOtherCorticalColumns"] = len(lateral_connections[i])
 
       suffix = "_" + str(i)
       network = createL4L2Column(network, networkConfigCopy, suffix)
 
     # Now connect the L2 columns laterally
-    for i, src_pos in enumerate(networkConfig["columnPositions"]):
+    for i, connections in enumerate(lateral_connections):
       suffixSrc = "_" + str(i)
-      for j, dest_pos in enumerate(networkConfig["columnPositions"]):
-        if i != j and numpy.linalg.norm(numpy.asarray(src_pos) -
-             numpy.asarray(dest_pos)) <= networkConfig["maxConnectionDistance"]:
-          suffixDest = "_" + str(j)
-          network.link(
-            "L2Column" + suffixSrc, "L2Column" + suffixDest, "UniformLink", "",
-            srcOutput="feedForwardOutput", destInput="lateralInput",
-            propagationDelay=1)
+      for j in connections:
+        suffixDest = "_" + str(j)
+        network.link(
+          "L2Column" + suffixSrc, "L2Column" + suffixDest, "UniformLink", "",
+          srcOutput="feedForwardOutput", destInput="lateralInput",
+          propagationDelay=1)
 
     enableProfiling(network)
 

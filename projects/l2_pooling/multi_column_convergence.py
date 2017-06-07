@@ -173,6 +173,7 @@ def runExperiment(args):
   numLocations = args.get("numLocations", 10)
   numFeatures = args.get("numFeatures", 10)
   numColumns = args.get("numColumns", 2)
+  networkType = args.get("networkType", "MultipleL4L2Columns")
   profile = args.get("profile", False)
   noiseLevel = args.get("noiseLevel", None)  # TODO: implement this?
   numPoints = args.get("numPoints", 10)
@@ -181,6 +182,7 @@ def runExperiment(args):
   plotInferenceStats = args.get("plotInferenceStats", True)
   settlingTime = args.get("settlingTime", 3)
   includeRandomLocation = args.get("includeRandomLocation", False)
+
 
   # Create the objects
   objects = createObjectMachine(
@@ -214,6 +216,7 @@ def runExperiment(args):
   exp = L4L2Experiment(
     name,
     numCorticalColumns=numColumns,
+    networkType = networkType,
     inputSize=150,
     externalInputSize=2400,
     numInputBits=20,
@@ -286,10 +289,11 @@ def runExperiment(args):
   convergencePoint = averageConvergencePoint(
     exp.getInferenceStats(),"L2 Representation", 30, 40, settlingTime)
 
-  print
+
   print "# objects {} # features {} # locations {} # columns {} trial # {}".format(
     numObjects, numFeatures, numLocations, numColumns, trialNum)
   print "Average convergence point=",convergencePoint
+  print
 
   # Return our convergence point as well as all the parameters and objects
   args.update({"objects": objects.getObjects()})
@@ -306,6 +310,7 @@ def runExperimentPool(numObjects,
                       numLocations,
                       numFeatures,
                       numColumns,
+                      networkType="MultipleL4L2Columns",
                       numWorkers=7,
                       nTrials=1,
                       pointRange=1,
@@ -345,6 +350,7 @@ def runExperimentPool(numObjects,
                "trialNum": t,
                "pointRange": pointRange,
                "numPoints": numPoints,
+               "networkType" : networkType,
                "plotInferenceStats": False,
                "includeRandomLocation": includeRandomLocation,
                "settlingTime": 3,
@@ -353,6 +359,7 @@ def runExperimentPool(numObjects,
 
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
   # Run the pool
+  args = numpy.asarray(args)
   if numWorkers > 1:
     pool = Pool(processes=numWorkers)
     result = pool.map(runExperiment, args)
@@ -537,14 +544,15 @@ if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
-  if True:
+  if False:
     results = runExperiment(
                   {
                     "numObjects": 30,
                     "numPoints": 10,
                     "numLocations": 10,
                     "numFeatures": 10,
-                    "numColumns": 1,
+                    "numColumns": 5,
+                    "networkType": "MultipleL4L2ColumnsWithTopology",
                     "trialNum": 4,
                     "pointRange": 1,
                     "plotInferenceStats": True,  # Outputs detailed graphs
@@ -556,9 +564,9 @@ if __name__ == "__main__":
 
   # Here we want to see how the number of columns affects convergence.
   # This experiment is run using a process pool
-  if False:
-    columnRange = [1, 2, 3, 4, 5, 6, 7, 8]
-    featureRange = [5, 10, 20, 30]
+  if True:
+    columnRange = [8]#[1, 2, 3, 4, 5, 6, 7, 8]
+    featureRange = [5]#[5, 10, 20, 30]
     objectRange = [100]
     numTrials = 10
 
@@ -569,9 +577,10 @@ if __name__ == "__main__":
       numLocations=[10],
       numFeatures=featureRange,
       numColumns=columnRange,
+      networkType = "MultipleL4L2ColumnsWithTopology",
       numPoints=10,
       nTrials=numTrials,
-      numWorkers=7,
+      numWorkers=1,
       resultsName="column_convergence_results.pkl")
 
     with open("column_convergence_results.pkl","rb") as f:
@@ -600,7 +609,7 @@ if __name__ == "__main__":
                       numColumns=columnRange,
                       numPoints=10,
                       nTrials=numTrials,
-                      numWorkers=7,
+                      numWorkers=8,
                       resultsName="object_convergence_results.pkl")
 
     # Analyze results
@@ -627,7 +636,7 @@ if __name__ == "__main__":
                       numFeatures=featureRange,
                       numColumns=columnRange,
                       numPoints=10,
-                      numWorkers=7,
+                      numWorkers=1,
                       nTrials=numTrials,
                       resultsName="object_convergence_multi_column_results.pkl")
 
@@ -636,4 +645,3 @@ if __name__ == "__main__":
       results = cPickle.load(f)
 
     plotConvergenceByObjectMultiColumn(results, objectRange, columnRange)
-
