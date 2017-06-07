@@ -381,12 +381,12 @@ def createMultipleL4L2ColumnsWithTopology(network, networkConfig):
         "externalInputSize": 1024,
         "sensorInputSize": 1024,
         "columnPositions": a list of 2D coordinates, one for each column.
-        Used to calculate the connections between columns. By convention,
-        coordinates should be integers.
+            Used to calculate the connections between columns. By convention,
+            coordinates should be integers.
         "maxConnectionDistance": should be a value >= 1.  Determines how distant
-        of columns will be connected to each other.  Useful specific values
-        are 1 and 1.5, which typically create grids without and with diagonal
-        connections, respectively.
+            of columns will be connected to each other.  Useful specific values
+            are 1 and 1.5, which typically create grids without and with
+            diagonal connections, respectively.
         "L4Params": {
           <constructor parameters for ExtendedTMRegion>
         },
@@ -419,11 +419,10 @@ def createMultipleL4L2ColumnsWithTopology(network, networkConfig):
       suffixSrc = "_" + str(i)
       for j, dest_pos in enumerate(networkConfig["columnPositions"]):
         if i != j and numpy.linalg.norm(numpy.asarray(src_pos) -
-        numpy.asarray(dest_pos)) <= networkConfig["maxConnectionDistance"]:
+             numpy.asarray(dest_pos)) <= networkConfig["maxConnectionDistance"]:
           suffixDest = "_" + str(j)
           network.link(
-            "L2Column" + suffixSrc, "L2Column" + suffixDest,
-            "UniformLink", "",
+            "L2Column" + suffixSrc, "L2Column" + suffixDest, "UniformLink", "",
             srcOutput="feedForwardOutput", destInput="lateralInput",
             propagationDelay=1)
 

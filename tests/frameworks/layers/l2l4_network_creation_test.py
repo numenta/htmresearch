@@ -301,13 +301,13 @@ class LaminarNetworkTest(unittest.TestCase):
     net.run(1)
 
     # Spotcheck some of the phases
-    self.assertEqual(net.getPhases("externalInput_0"),(0,),
+    self.assertEqual(net.getPhases("externalInput_0"), (0,),
                      "Incorrect phase externalInput_0")
-    self.assertEqual(net.getPhases("externalInput_1"),(0,),
+    self.assertEqual(net.getPhases("externalInput_1"), (0,),
                      "Incorrect phase for externalInput_1")
-    self.assertEqual(net.getPhases("L4Column_0"),(2,),
+    self.assertEqual(net.getPhases("L4Column_0"), (2,),
                      "Incorrect phase for L4Column_0")
-    self.assertEqual(net.getPhases("L4Column_1"),(2,),
+    self.assertEqual(net.getPhases("L4Column_1"), (2,),
                      "Incorrect phase for L4Column_1")
 
   def testMultipleL4L2ColumnLinks(self):
@@ -403,19 +403,17 @@ class LaminarNetworkTest(unittest.TestCase):
     sensorInput4.addDataToQueue([2, 42, 1023], 0, 0)
 
     # Run the network and check outputs are as expected
-
-    #import pdb; pdb.set_trace()
     net.run(1)
 
 
     # Spotcheck some of the phases
-    self.assertEqual(net.getPhases("externalInput_0"),(0,),
+    self.assertEqual(net.getPhases("externalInput_0"), (0,),
                      "Incorrect phase externalInput_0")
-    self.assertEqual(net.getPhases("externalInput_1"),(0,),
+    self.assertEqual(net.getPhases("externalInput_1"), (0,),
                      "Incorrect phase for externalInput_1")
-    self.assertEqual(net.getPhases("L4Column_0"),(2,),
+    self.assertEqual(net.getPhases("L4Column_0"), (2,),
                      "Incorrect phase for L4Column_0")
-    self.assertEqual(net.getPhases("L4Column_1"),(2,),
+    self.assertEqual(net.getPhases("L4Column_1"), (2,),
                      "Incorrect phase for L4Column_1")
 
   def testMultipleL4L2ColumnsWithTopologyLinks(self):
@@ -796,7 +794,7 @@ class LaminarNetworkTest(unittest.TestCase):
     self.assertEqual(
       len(net.regions.keys()), 4 * 2,
       "Incorrect number of regions, expected {} but had {}".format(8*2,
-      len(net.regions.keys()))
+          len(net.regions.keys()))
     )
 
     # Get various regions
