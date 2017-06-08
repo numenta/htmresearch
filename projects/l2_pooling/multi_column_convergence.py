@@ -30,7 +30,7 @@ from math import ceil
 import pprint
 import numpy
 import cPickle
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.rcParams['pdf.fonttype'] = 42
@@ -651,7 +651,7 @@ if __name__ == "__main__":
       networkType=networkType,
       numPoints=10,
       nTrials=numTrials,
-      numWorkers=8,
+      numWorkers=cpu_count(),
       resultsName="column_convergence_results.pkl")
 
     with open("column_convergence_results.pkl","rb") as f:
