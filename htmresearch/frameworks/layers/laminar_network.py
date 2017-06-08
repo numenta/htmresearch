@@ -34,7 +34,8 @@ descriptions.
 from nupic.engine import Network
 from htmresearch.frameworks.layers.l2_l4_network_creation import (
   createL4L2Column, createMultipleL4L2Columns,
-  createMultipleL4L2ColumnsWithTopology)
+  createMultipleL4L2ColumnsWithTopology,
+  createMultipleL4L2ColumnsWithRandomTopology)
 from htmresearch.frameworks.layers.l2456_network_creation import (
   createL2456Columns
 )
@@ -59,6 +60,8 @@ def createNetwork(networkConfig):
     return createMultipleL4L2Columns(network, networkConfig)
   elif networkConfig["networkType"] == "MultipleL4L2ColumnsWithTopology":
     return createMultipleL4L2ColumnsWithTopology(network, networkConfig)
+  elif networkConfig["networkType"] == "MultipleL4L2ColumnsWithRandomTopology":
+    return createMultipleL4L2ColumnsWithRandomTopology(network, networkConfig)
   elif networkConfig["networkType"] == "L2456Columns":
     return createL2456Columns(network, networkConfig)
 

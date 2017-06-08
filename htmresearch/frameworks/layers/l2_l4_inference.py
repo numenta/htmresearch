@@ -253,9 +253,21 @@ class L4L2Experiment(object):
       if feedForwardSPOverrides:
         self.config["feedForwardSPParams"].update(feedForwardSPOverrides)
 
-    if self.config["networkType"] == "MultipleL4L2ColumnsWithTopology":
+    if "Topology" in self.config["networkType"]:
       self.config["maxConnectionDistance"] = 1
-      self.config["columnPositions"] = [(0, i) for i in range(numCorticalColumns)]
+
+      # Generate a grid for cortical columns.  Will attempt to generate a full
+      # square grid, and cut out positions starting from the bottom-right if the
+      # number of cortical columns is not a perfect square.
+      columnPositions = []
+      side_length = int(np.ceil(np.sqrt(numCorticalColumns)))
+      for i in range(side_length):
+        for j in range(side_length):
+          columnPositions.append((i, j))
+      self.config["columnPositions"] = columnPositions[:numCorticalColumns]
+
+    if "Random" in self.config["networkType"]:
+      self.config["longDistanceConnectionProb"] = 0.2
 
     if L2Overrides is not None:
       self.config["L2Params"].update(L2Overrides)
@@ -265,7 +277,6 @@ class L4L2Experiment(object):
 
     # create network
     self.network = createNetwork(self.config)
-
     self.sensorInputs = []
     self.externalInputs = []
     self.L4Regions = []

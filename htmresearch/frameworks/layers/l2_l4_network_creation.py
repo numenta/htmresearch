@@ -63,8 +63,8 @@ externalInput  sensorInput -->|  externalInput  sensorInput -->|
 
 The third network type support, "MultipleL4L2ColumnsWithTopology", allows you to
 create N L4L2 columns, with internal structures exactly as above.  However, in
-this format, their lateral connections are topologically limited to form a 2D
-grid.  A top-down view, with nine columns:
+this format, their lateral connections are topologically determined, usually to
+form a 2D grid.  A top-down view, with nine columns:
 
             ------------      ------------      ------------
             | L2Column |======| L2Column |======| L2Column |
@@ -84,6 +84,8 @@ grid.  A top-down view, with nine columns:
 
 The exact form this network takes can be altered by parameters, and the
 topological layout of the columns should be specified in coordinate form.
+A maximum connection distance should also be specified; this allows you to
+create grids with longer connections.
 
 For all network types, regions will be named as shown above plus a suffix
 indicating column number, such as "externalInput_0", "L2Column_3", etc. The
@@ -414,6 +416,92 @@ def createMultipleL4L2ColumnsWithTopology(network, networkConfig):
         if i != j and numpy.linalg.norm(numpy.asarray(src_pos) -
              numpy.asarray(dest_pos)) <= networkConfig["maxConnectionDistance"]:
           lateral_connections[i].append(j)
+
+
+    # Create each column
+    numCorticalColumns = networkConfig["numCorticalColumns"]
+    for i in xrange(numCorticalColumns):
+      networkConfigCopy = copy.deepcopy(networkConfig)
+      layerConfig = networkConfigCopy["L2Params"]
+      layerConfig["seed"] = layerConfig.get("seed", 42) + i
+
+      layerConfig["numOtherCorticalColumns"] = len(lateral_connections[i])
+
+      suffix = "_" + str(i)
+      network = createL4L2Column(network, networkConfigCopy, suffix)
+
+    # Now connect the L2 columns laterally
+    for i, connections in enumerate(lateral_connections):
+      suffixSrc = "_" + str(i)
+      for j in connections:
+        suffixDest = "_" + str(j)
+        network.link(
+          "L2Column" + suffixSrc, "L2Column" + suffixDest, "UniformLink", "",
+          srcOutput="feedForwardOutput", destInput="lateralInput",
+          propagationDelay=1)
+
+    enableProfiling(network)
+
+    return network
+
+def createMultipleL4L2ColumnsWithRandomTopology(network, networkConfig):
+    """
+    Create a network consisting of multiple columns.  Each column contains one
+    L4 and one L2, is identical in structure to the network created by
+    createL4L2Column. In addition the L2 columns are connected to each
+    other through their lateral inputs, based on the topological information
+    provided.
+
+    Region names have a column number appended as in externalInput_0,
+    externalInput_1, etc.
+
+    networkConfig must be of the following format (see createL4L2Column for
+    further documentation):
+
+      {
+        "networkType": "MultipleL4L2Columns",
+        "numCorticalColumns": 3,
+        "externalInputSize": 1024,
+        "sensorInputSize": 1024,
+        "columnPositions": a list of 2D coordinates, one for each column.
+            Used to calculate the connections between columns. By convention,
+            coordinates are integers.
+        "maxConnectionDistance": should be a value >= 1.  Determines how distant
+            of columns will be connected to each other.  Useful specific values
+            are 1 and 1.5, which typically create grids without and with
+            diagonal connections, respectively.
+        "longDistanceConnectionProb": Should be a value in [0, 1].  Determines
+            how likely a column is to form a connection to a distant column
+            (i.e. beyond its normal connection distance).
+        "L4Params": {
+          <constructor parameters for ExtendedTMRegion>
+        },
+        "L2Params": {
+          <constructor parameters for ColumnPoolerRegion>
+        },
+        "lateralSPParams": {
+          <constructor parameters for optional SPRegion>
+        },
+        "feedForwardSPParams": {
+          <constructor parameters for optional SPRegion>
+        }
+      }
+    """
+
+    # Determine which columns will be mutually connected.
+    # This has to be done before the actual creation of the network, as each
+    # individual column need to know how many columns it is laterally connected
+    # to.  These results are then used to actually connect the columns, once
+    # the network is created. It's awkward, but unavoidable.
+    lateral_connections = [[] for i in
+        xrange(networkConfig["numCorticalColumns"])]
+    for i, src_pos in enumerate(networkConfig["columnPositions"]):
+      for j, dest_pos in enumerate(networkConfig["columnPositions"]):
+        if i != j:
+          if (numpy.linalg.norm(numpy.asarray(src_pos) -
+              numpy.asarray(dest_pos)) <= networkConfig["maxConnectionDistance"] or
+              numpy.random.rand() < networkConfig["longDistanceConnectionProb"]):
+            lateral_connections[i].append(j)
 
 
     # Create each column

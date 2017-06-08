@@ -157,6 +157,10 @@ def runExperiment(args):
                              from.  Default: 10
   @param numColumns  (int)   The total number of cortical columns in network.
                              Default: 2
+  @param networkType (string)The type of network to use.  Options are:
+                             "MultipleL4L2Columns" and
+                             "MultipleL4L2ColumnsWithTopology".
+                             Default: "MultipleL4L2Columns"
   @param settlingTime (int)  Number of iterations we wait to let columns
                              stabilize. Important for multicolumn experiments
                              with lateral connections.
@@ -290,8 +294,8 @@ def runExperiment(args):
     exp.getInferenceStats(),"L2 Representation", 30, 40, settlingTime)
 
 
-  print "# objects {} # features {} # locations {} # columns {} trial # {}".format(
-    numObjects, numFeatures, numLocations, numColumns, trialNum)
+  print "# objects {} # features {} # locations {} # columns {} trial # {} network type {}".format(
+    numObjects, numFeatures, numLocations, numColumns, trialNum, networkType)
   print "Average convergence point=",convergencePoint
   print
 
@@ -310,7 +314,7 @@ def runExperimentPool(numObjects,
                       numLocations,
                       numFeatures,
                       numColumns,
-                      networkType="MultipleL4L2Columns",
+                      networkType=["MultipleL4L2Columns"],
                       numWorkers=7,
                       nTrials=1,
                       pointRange=1,
@@ -342,21 +346,21 @@ def runExperimentPool(numObjects,
       for o in numObjects:
         for l in numLocations:
           for f in numFeatures:
-            args.append(
-              {"numObjects": o,
-               "numLocations": l,
-               "numFeatures": f,
-               "numColumns": c,
-               "trialNum": t,
-               "pointRange": pointRange,
-               "numPoints": numPoints,
-               "networkType" : networkType,
-               "plotInferenceStats": False,
-               "includeRandomLocation": includeRandomLocation,
-               "settlingTime": 3,
-               }
-            )
-
+              for n in networkType:
+                args.append(
+                  {"numObjects": o,
+                   "numLocations": l,
+                   "numFeatures": f,
+                   "numColumns": c,
+                   "trialNum": t,
+                   "pointRange": pointRange,
+                   "numPoints": numPoints,
+                   "networkType" : n,
+                   "plotInferenceStats": False,
+                   "includeRandomLocation": includeRandomLocation,
+                   "settlingTime": 3,
+                   }
+                )
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
   # Run the pool
   args = numpy.asarray(args)
@@ -378,7 +382,7 @@ def runExperimentPool(numObjects,
   return result
 
 
-def plotConvergenceByColumn(results, columnRange, featureRange, numTrials):
+def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrials):
   """
   Plots the convergence graph: iterations vs number of columns.
   Each curve shows the convergence for a given number of unique features.
@@ -387,19 +391,26 @@ def plotConvergenceByColumn(results, columnRange, featureRange, numTrials):
   #
   # Accumulate all the results per column in a convergence array.
   #
-  # Convergence[f,c] = how long it took it to  converge with f unique features
-  # and c columns.
+  # Convergence[f, c, t] = how long it took it to  converge with f unique
+  # features, c columns and topology t.
 
-  convergence = numpy.zeros((max(featureRange), max(columnRange) + 1))
+  convergence = numpy.zeros((max(featureRange), max(columnRange) + 1, 3))
+
+
   for r in results:
-    convergence[r["numFeatures"] - 1,
-                r["numColumns"]] += r["convergencePoint"]
+    if r["networkType"] == "MultipleL4L2Columns":
+      convergence[r["numFeatures"] - 1, r["numColumns"], 0] += r["convergencePoint"]
+    elif r["networkType"] == "MultipleL4L2ColumnsWithTopology":
+      convergence[r["numFeatures"] - 1, r["numColumns"], 1] += r["convergencePoint"]
+    elif r["networkType"] == "MultipleL4L2ColumnsWithRandomTopology":
+      convergence[r["numFeatures"] - 1, r["numColumns"], 2] += r["convergencePoint"]
 
   convergence /= numTrials
 
   # For each column, print convergence as fct of number of unique features
   for c in range(1, max(columnRange) + 1):
-    print c, convergence[:, c]
+    for t in range(3):
+      print c, convergence[:, c, t]
 
   # Print everything anyway for debugging
   print "Average convergence array=", convergence
@@ -408,19 +419,20 @@ def plotConvergenceByColumn(results, columnRange, featureRange, numTrials):
   #
   # Create the plot. x-axis=
   plt.figure()
-  plotPath = os.path.join("plots", "convergence_by_column.pdf")
+  plotPath = os.path.join("plots", "convergence_by_column_topology.pdf")
 
   # Plot each curve
   legendList = []
   colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
 
   for i in range(len(featureRange)):
-    f = featureRange[i]
-    print columnRange
-    print convergence[f-1,columnRange]
-    legendList.append('Unique features={}'.format(f))
-    plt.plot(columnRange, convergence[f-1,columnRange],
-             color=colorList[i])
+    for t in range(2):
+      f = featureRange[i]
+      print columnRange
+      print convergence[f-1,columnRange, t]
+      legendList.append('Unique features={}, topology = {}'.format(f, t))
+      plt.plot(columnRange, convergence[f-1,columnRange, t],
+               color=colorList[i*3 + t])
 
   # format
   plt.legend(legendList, loc="upper right")
@@ -433,6 +445,63 @@ def plotConvergenceByColumn(results, columnRange, featureRange, numTrials):
     # save
   plt.savefig(plotPath)
   plt.close()
+
+
+  def plotConvergenceByColumn(results, columnRange, featureRange, numTrials):
+    """
+    Plots the convergence graph: iterations vs number of columns.
+    Each curve shows the convergence for a given number of unique features.
+    """
+    ########################################################################
+    #
+    # Accumulate all the results per column in a convergence array.
+    #
+    # Convergence[f,c] = how long it took it to  converge with f unique features
+    # and c columns.
+
+    convergence = numpy.zeros((max(featureRange), max(columnRange) + 1))
+    for r in results:
+      convergence[r["numFeatures"] - 1,
+                  r["numColumns"]] += r["convergencePoint"]
+
+    convergence /= numTrials
+
+    # For each column, print convergence as fct of number of unique features
+    for c in range(1, max(columnRange) + 1):
+      print c, convergence[:, c]
+
+    # Print everything anyway for debugging
+    print "Average convergence array=", convergence
+
+    ########################################################################
+    #
+    # Create the plot. x-axis=
+    plt.figure()
+    plotPath = os.path.join("plots", "convergence_by_column.pdf")
+
+    # Plot each curve
+    legendList = []
+    colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
+
+    for i in range(len(featureRange)):
+      f = featureRange[i]
+      print columnRange
+      print convergence[f-1,columnRange]
+      legendList.append('Unique features={}'.format(f))
+      plt.plot(columnRange, convergence[f-1,columnRange],
+               color=colorList[i])
+
+    # format
+    plt.legend(legendList, loc="upper right")
+    plt.xlabel("Number of columns")
+    plt.xticks(columnRange)
+    plt.yticks(range(0,int(convergence.max())+1))
+    plt.ylabel("Average number of touches")
+    plt.title("Number of touches to recognize one object (multiple columns)")
+
+      # save
+    plt.savefig(plotPath)
+    plt.close()
 
 
 def plotConvergenceByObject(results, objectRange, featureRange):
@@ -565,10 +634,12 @@ if __name__ == "__main__":
   # Here we want to see how the number of columns affects convergence.
   # This experiment is run using a process pool
   if True:
-    columnRange = [8]#[1, 2, 3, 4, 5, 6, 7, 8]
-    featureRange = [5]#[5, 10, 20, 30]
+    columnRange = range(1, 10)#[1, 2, 3, 4, 5, 6, 7, 8]
+    featureRange = [5, 15]
     objectRange = [100]
-    numTrials = 10
+    networkType = ["MultipleL4L2ColumnsWithRandomTopology",
+        "MultipleL4L2ColumnsWithTopology", "MultipleL4L2Columns"]
+    numTrials = 1
 
     # Comment this out if you are re-running analysis on already saved results
     # Very useful for debugging the plots
@@ -577,16 +648,16 @@ if __name__ == "__main__":
       numLocations=[10],
       numFeatures=featureRange,
       numColumns=columnRange,
-      networkType = "MultipleL4L2ColumnsWithTopology",
+      networkType = networkType,
       numPoints=10,
       nTrials=numTrials,
-      numWorkers=1,
+      numWorkers=8,
       resultsName="column_convergence_results.pkl")
 
     with open("column_convergence_results.pkl","rb") as f:
       results = cPickle.load(f)
 
-    plotConvergenceByColumn(results, columnRange, featureRange,
+    plotConvergenceByColumnTopology(results, columnRange, featureRange,
                             numTrials=numTrials)
 
 
@@ -609,7 +680,7 @@ if __name__ == "__main__":
                       numColumns=columnRange,
                       numPoints=10,
                       nTrials=numTrials,
-                      numWorkers=8,
+                      numWorkers=1,
                       resultsName="object_convergence_results.pkl")
 
     # Analyze results
