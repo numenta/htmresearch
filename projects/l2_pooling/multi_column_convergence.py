@@ -426,7 +426,7 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrial
   colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
 
   for i in range(len(featureRange)):
-    for t in range(2):
+    for t in range(3):
       f = featureRange[i]
       print columnRange
       print convergence[f-1,columnRange, t]
@@ -648,7 +648,7 @@ if __name__ == "__main__":
       numLocations=[10],
       numFeatures=featureRange,
       numColumns=columnRange,
-      networkType = networkType,
+      networkType=networkType,
       numPoints=10,
       nTrials=numTrials,
       numWorkers=8,
