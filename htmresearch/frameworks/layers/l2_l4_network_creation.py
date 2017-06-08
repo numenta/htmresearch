@@ -493,7 +493,9 @@ def createMultipleL4L2ColumnsWithRandomTopology(network, networkConfig):
     # individual column need to know how many columns it is laterally connected
     # to.  These results are then used to actually connect the columns, once
     # the network is created. It's awkward, but unavoidable.
-    lateral_connections = [[] for i in
+    output_lateral_connections = [[] for i in
+        xrange(networkConfig["numCorticalColumns"])]
+    input_lateral_connections = [[] for i in
         xrange(networkConfig["numCorticalColumns"])]
     for i, src_pos in enumerate(networkConfig["columnPositions"]):
       for j, dest_pos in enumerate(networkConfig["columnPositions"]):
@@ -501,7 +503,8 @@ def createMultipleL4L2ColumnsWithRandomTopology(network, networkConfig):
           if (numpy.linalg.norm(numpy.asarray(src_pos) -
               numpy.asarray(dest_pos)) <= networkConfig["maxConnectionDistance"] or
               numpy.random.rand() < networkConfig["longDistanceConnectionProb"]):
-            lateral_connections[i].append(j)
+            output_lateral_connections[i].append(j)
+            input_lateral_connections[j].append(i)
 
 
     # Create each column
@@ -511,13 +514,13 @@ def createMultipleL4L2ColumnsWithRandomTopology(network, networkConfig):
       layerConfig = networkConfigCopy["L2Params"]
       layerConfig["seed"] = layerConfig.get("seed", 42) + i
 
-      layerConfig["numOtherCorticalColumns"] = len(lateral_connections[i])
+      layerConfig["numOtherCorticalColumns"] = len(input_lateral_connections[i])
 
       suffix = "_" + str(i)
       network = createL4L2Column(network, networkConfigCopy, suffix)
 
     # Now connect the L2 columns laterally
-    for i, connections in enumerate(lateral_connections):
+    for i, connections in enumerate(output_lateral_connections):
       suffixSrc = "_" + str(i)
       for j in connections:
         suffixDest = "_" + str(j)
