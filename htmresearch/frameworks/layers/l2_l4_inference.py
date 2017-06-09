@@ -138,6 +138,9 @@ class L4L2Experiment(object):
                L2Overrides=None,
                L4RegionType="py.ExtendedTMRegion",
                networkType = "MultipleL4L2Columns",
+               longDistanceConnections = 0,
+               maxConnectionDistance = 1,
+               columnPositions = None,
                L4Overrides=None,
                numLearningPoints=3,
                seed=42,
@@ -180,6 +183,11 @@ class L4L2Experiment(object):
     @param   networkType (string)
              Which type of L2L4 network to create.  If topology is being used,
              it should be specified here.
+
+    @param   randomConnectionProb (float)
+             The probability that a column will randomly connect to a distant
+             column.  Should be in [0, 1].  Only relevant when using random
+             topology networks.
 
     @param   L4Overrides (dict)
              Parameters to override in the L4 region
@@ -234,6 +242,7 @@ class L4L2Experiment(object):
     # update parameters with overrides
     self.config = {
       "networkType": networkType,
+      "longDistanceConnections" : longDistanceConnections,
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
@@ -254,20 +263,19 @@ class L4L2Experiment(object):
         self.config["feedForwardSPParams"].update(feedForwardSPOverrides)
 
     if "Topology" in self.config["networkType"]:
-      self.config["maxConnectionDistance"] = 1
+      self.config["maxConnectionDistance"] = maxConnectionDistance
 
       # Generate a grid for cortical columns.  Will attempt to generate a full
       # square grid, and cut out positions starting from the bottom-right if the
       # number of cortical columns is not a perfect square.
-      columnPositions = []
-      side_length = int(np.ceil(np.sqrt(numCorticalColumns)))
-      for i in range(side_length):
-        for j in range(side_length):
-          columnPositions.append((i, j))
+      if columnPositions is None:
+        columnPositions = []
+        side_length = int(np.ceil(np.sqrt(numCorticalColumns)))
+        for i in range(side_length):
+          for j in range(side_length):
+            columnPositions.append((i, j))
       self.config["columnPositions"] = columnPositions[:numCorticalColumns]
-
-    if "Random" in self.config["networkType"]:
-      self.config["longDistanceConnectionProb"] = 0.2
+      self.config["longDistanceConnections"] = longDistanceConnections
 
     if L2Overrides is not None:
       self.config["L2Params"].update(L2Overrides)

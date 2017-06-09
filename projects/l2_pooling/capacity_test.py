@@ -54,7 +54,7 @@ DEFAULT_NUM_FEATURES = 5000
 DEFAULT_RESULT_DIR_NAME = "results"
 DEFAULT_PLOT_DIR_NAME = "plots"
 DEFAULT_NUM_CORTICAL_COLUMNS = 1
-DEFAULT_COLORS = ("b", "r", "c", "g", 'm')
+DEFAULT_COLORS = ("b", "r", "c", "g", 'm', 'y', 'w', 'k')
 
 
 
@@ -608,6 +608,49 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
   pd.DataFrame.to_csv(result, resultFileName)
 
 
+def invokeRunCapacityTest(params):
+  """ Splits out params so that runCapacityTest may be invoked with
+  multiprocessing.Pool.map() to support parallelism
+  """
+  return runCapacityTest(*params)
+
+
+
+def runCapacityTestWrapperNonParallel(numPointsPerObject=10,
+                                      numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
+                                      resultDirName=DEFAULT_RESULT_DIR_NAME,
+                                      numObjects = 100,
+                                      expName=None,
+                                      l2Params=None,
+                                      l4Params=None,
+                                      objectParams=None,
+                                      networkType="MultipleL4L2Columns",
+                                      numRpts=1):
+  """
+  Run experiment with fixed number of pts per object, varying number of objects
+  """
+
+  l4Params = l4Params or getL4Params()
+  l2Params = l2Params or getL2Params()
+
+  testResult = runCapacityTest(numObjects,
+                               numPointsPerObject,
+                               numCorticalColumns,
+                               l2Params,
+                               l4Params,
+                               objectParams,
+                               networkType,
+                               numRpts)
+
+  resultFileName = _prepareResultsDir("{}.csv".format(expName),
+                                      resultDirName=resultDirName)
+  pd.DataFrame.to_csv(testResult, resultFileName, mode = "a", header = False)
+
+def invokeRunCapacityTestWrapper(params):
+  """ Splits out params so that runCapacityTest may be invoked with
+  multiprocessing.Pool.map() to support parallelism
+  """
+  return runCapacityTestWrapperNonParallel(*params)
 
 def runExperiment1(numObjects=2,
                    sampleSizeRange=(10,),
@@ -1413,14 +1456,12 @@ def runExperiment9(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
   numPointsPerObject = 10
   numRpts = 1
+  objectNumRange = range(100, 800, 50)
 
   l4Params = getL4Params()
   l2Params = getL2Params()
 
   expParams = []
-  expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
-     'thresh': 3, 'l2Column': 1, 'networkType': "MultipleL4L2Columns"})
   expParams.append(
     {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
      'thresh': 3, 'l2Column': 2, 'networkType': "MultipleL4L2Columns"})
@@ -1435,9 +1476,6 @@ def runExperiment9(resultDirName=DEFAULT_RESULT_DIR_NAME,
      'thresh': 3, 'l2Column': 5, 'networkType': "MultipleL4L2Columns"})
   expParams.append(
     {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
-     'thresh': 3, 'l2Column': 1, 'networkType': "MultipleL4L2ColumnsWithTopology"})
-  expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
      'thresh': 3, 'l2Column': 2, 'networkType': "MultipleL4L2ColumnsWithTopology"})
   expParams.append(
     {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
@@ -1449,47 +1487,47 @@ def runExperiment9(resultDirName=DEFAULT_RESULT_DIR_NAME,
     {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
      'thresh': 3, 'l2Column': 5, 'networkType': "MultipleL4L2ColumnsWithTopology"})
 
-  for expParam in expParams:
-    l2Params['sampleSizeProximal'] = expParam['sample']
-    l2Params['minThresholdProximal'] = expParam['thresh']
+  run_params = []
+  for object_num in objectNumRange:
+    for expParam in expParams:
+      l2Params['sampleSizeProximal'] = expParam['sample']
+      l2Params['minThresholdProximal'] = expParam['thresh']
 
-    l4Params["columnCount"] = expParam['l4Column']
-    numInputBits = expParam['w']
-    numCorticalColumns = expParam['l2Column']
-    networkType = expParam['networkType']
+      l4Params["columnCount"] = expParam['l4Column']
+      numInputBits = expParam['w']
+      numCorticalColumns = expParam['l2Column']
+      networkType = expParam['networkType']
 
-    l4Params["activationThreshold"] = int(numInputBits * .6)
-    l4Params["minThreshold"] = int(numInputBits * .6)
-    l4Params["sampleSize"] = int(2 * l4Params["activationThreshold"])
+      l4Params["activationThreshold"] = int(numInputBits * .6)
+      l4Params["minThreshold"] = int(numInputBits * .6)
+      l4Params["sampleSize"] = int(2 * l4Params["activationThreshold"])
 
-    objectParams = {'numInputBits': numInputBits,
-                    'externalInputSize': expParam['externalInputSize'],
-                    'numFeatures': DEFAULT_NUM_FEATURES,
-                    'numLocations': DEFAULT_NUM_LOCATIONS,
-                    'uniquePairs': True,}
+      objectParams = {'numInputBits': numInputBits,
+                      'externalInputSize': expParam['externalInputSize'],
+                      'numFeatures': DEFAULT_NUM_FEATURES,
+                      'numLocations': DEFAULT_NUM_LOCATIONS,
+                      'uniquePairs': True,}
 
-    #print "l4Params: "
-    #pprint(l4Params)
-    #print "l2Params: "
-    #pprint(l2Params)
-    print "Experiment Params: "
-    pprint(expParam)
+      print "Experiment Params: "
+      pprint(expParam)
 
-    expName = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}_l2column_{}_{}".format(
-      expParam['sample'], expParam['thresh'], expParam["l4Column"],
-      expParam['l2Column'], expParam["networkType"])
+      expName = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}_l2column_{}_{}".format(
+        expParam['sample'], expParam['thresh'], expParam["l4Column"],
+        expParam['l2Column'], expParam["networkType"])
 
-    runCapacityTestVaryingObjectNum(numPointsPerObject,
-                                    numCorticalColumns,
-                                    resultDirName,
-                                    expName,
-                                    cpuCount,
-                                    l2Params,
-                                    l4Params,
-                                    objectParams,
-                                    networkType,
-                                    numRpts)
+      run_params.append((numPointsPerObject,
+                         numCorticalColumns,
+                         resultDirName,
+                         object_num,
+                         expName,
+                         l2Params,
+                         l4Params,
+                         objectParams,
+                         networkType,
+                         numRpts))
 
+  pool = multiprocessing.Pool(multiprocessing.cpu_count(), maxtasksperchild=1)
+  pool.map(invokeRunCapacityTestWrapper, run_params)
   # plot result
   ploti = 0
   fig, ax = plt.subplots(2, 2)
@@ -1511,9 +1549,10 @@ def runExperiment9(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
     result = pd.read_csv(resultFileName)
 
+    #import pdb; pdb.set_trace()
     plotResults(result, ax, "numObjects", None, DEFAULT_COLORS[ploti])
     ploti += 1
-    if "topology" in expParam["networkType"]:
+    if "Topology" in expParam["networkType"]:
       legendEntries.append("L4 mcs {} #cc {} w/ topology".format(
         expParam['l4Column'], expParam['l2Column']))
     else:
