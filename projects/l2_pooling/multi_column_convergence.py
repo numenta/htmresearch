@@ -694,22 +694,22 @@ if __name__ == "__main__":
 
   # Here we want to see how the number of columns affects convergence.
   # This experiment is run using a process pool
-  if False:
+  if True:
     columnRange = range(1, 10)#[1, 2, 3, 4, 5, 6, 7, 8]
-    featureRange = [5, 15]
+    featureRange = [3, 5, 15]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithTopology", "MultipleL4L2Columns"]
-    numTrials = 1
+    numTrials = 10
 
     # Comment this out if you are re-running analysis on already saved results
     # Very useful for debugging the plots
     runExperimentPool(
       numObjects=objectRange,
-      numLocations=[10],
+      numLocations=[20],
       numFeatures=featureRange,
       numColumns=columnRange,
       networkType=networkType,
-      numPoints=10,
+      numPoints=20,
       nTrials=numTrials,
       numWorkers=cpu_count(),
       resultsName="column_convergence_results.pkl")
@@ -724,7 +724,7 @@ if __name__ == "__main__":
   # We vary the longDistanceConnectionProb parameter,
   if True:
     columnRange = [4, 9, 16]
-    featureRange = [5, 15]
+    featureRange = [3, 5, 15]
     longDistanceConnectionsRange = [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithTopology"]
@@ -741,7 +741,7 @@ if __name__ == "__main__":
       longDistanceConnectionsRange = longDistanceConnectionsRange,
       numPoints=20,
       nTrials=numTrials,
-      numWorkers=1,#cpu_count(),
+      numWorkers=cpu_count(),
       resultsName="column_convergence_results.pkl")
 
     with open("column_convergence_results.pkl","rb") as f:
