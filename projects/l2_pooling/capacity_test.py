@@ -1487,7 +1487,7 @@ def runExperiment9(resultDirName=DEFAULT_RESULT_DIR_NAME,
      'thresh': 3, 'l2Column': 16, 'networkType': "MultipleL4L2ColumnsWithTopology"})
 
   run_params = []
-  for object_num in objectNumRange:
+  for object_num in reversed(objectNumRange):
     for expParam in expParams:
       for rpt in range(numRpts):
         l2Params['sampleSizeProximal'] = expParam['sample']
