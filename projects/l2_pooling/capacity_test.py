@@ -625,7 +625,7 @@ def runCapacityTestWrapperNonParallel(numPointsPerObject=10,
                                       l4Params=None,
                                       objectParams=None,
                                       networkType="MultipleL4L2Columns",
-                                      numRpts=1):
+                                      rpt=0):
   """
   Run experiment with fixed number of pts per object, varying number of objects
   """
@@ -640,11 +640,16 @@ def runCapacityTestWrapperNonParallel(numPointsPerObject=10,
                                l4Params,
                                objectParams,
                                networkType,
-                               numRpts)
+                               rpt)
+
 
   resultFileName = _prepareResultsDir("{}.csv".format(expName),
                                       resultDirName=resultDirName)
-  pd.DataFrame.to_csv(testResult, resultFileName, mode = "a", header = False)
+
+  if os.path.isfile(resultFileName):
+    pd.DataFrame.to_csv(testResult, resultFileName, mode = "a", header = False)
+  else:
+    pd.DataFrame.to_csv(testResult, resultFileName, mode = "a", header = True)
 
 def invokeRunCapacityTestWrapper(params):
   """ Splits out params so that runCapacityTest may be invoked with
@@ -1456,7 +1461,7 @@ def runExperiment9(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
   numPointsPerObject = 10
   numRpts = 1
-  objectNumRange = range(100, 800, 50)
+  objectNumRange = range(100, 800, 100)
 
   l4Params = getL4Params()
   l2Params = getL2Params()
@@ -1464,70 +1469,71 @@ def runExperiment9(resultDirName=DEFAULT_RESULT_DIR_NAME,
   expParams = []
   expParams.append(
     {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
-     'thresh': 3, 'l2Column': 2, 'networkType': "MultipleL4L2Columns"})
-  expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
-     'thresh': 3, 'l2Column': 3, 'networkType': "MultipleL4L2Columns"})
-  expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
      'thresh': 3, 'l2Column': 4, 'networkType': "MultipleL4L2Columns"})
   expParams.append(
     {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
-     'thresh': 3, 'l2Column': 5, 'networkType': "MultipleL4L2Columns"})
+     'thresh': 3, 'l2Column': 9, 'networkType': "MultipleL4L2Columns"})
   expParams.append(
     {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
-     'thresh': 3, 'l2Column': 2, 'networkType': "MultipleL4L2ColumnsWithTopology"})
-  expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
-     'thresh': 3, 'l2Column': 3, 'networkType': "MultipleL4L2ColumnsWithTopology"})
+     'thresh': 3, 'l2Column': 16, 'networkType': "MultipleL4L2Columns"})
   expParams.append(
     {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
      'thresh': 3, 'l2Column': 4, 'networkType': "MultipleL4L2ColumnsWithTopology"})
   expParams.append(
     {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
-     'thresh': 3, 'l2Column': 5, 'networkType': "MultipleL4L2ColumnsWithTopology"})
+     'thresh': 3, 'l2Column': 9, 'networkType': "MultipleL4L2ColumnsWithTopology"})
+  expParams.append(
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'l2Column': 16, 'networkType': "MultipleL4L2ColumnsWithTopology"})
 
   run_params = []
   for object_num in objectNumRange:
     for expParam in expParams:
-      l2Params['sampleSizeProximal'] = expParam['sample']
-      l2Params['minThresholdProximal'] = expParam['thresh']
+      for rpt in range(numRpts):
+        l2Params['sampleSizeProximal'] = expParam['sample']
+        l2Params['minThresholdProximal'] = expParam['thresh']
 
-      l4Params["columnCount"] = expParam['l4Column']
-      numInputBits = expParam['w']
-      numCorticalColumns = expParam['l2Column']
-      networkType = expParam['networkType']
+        l4Params["columnCount"] = expParam['l4Column']
+        numInputBits = expParam['w']
+        numCorticalColumns = expParam['l2Column']
+        networkType = expParam['networkType']
 
-      l4Params["activationThreshold"] = int(numInputBits * .6)
-      l4Params["minThreshold"] = int(numInputBits * .6)
-      l4Params["sampleSize"] = int(2 * l4Params["activationThreshold"])
+        l4Params["activationThreshold"] = int(numInputBits * .6)
+        l4Params["minThreshold"] = int(numInputBits * .6)
+        l4Params["sampleSize"] = int(2 * l4Params["activationThreshold"])
 
-      objectParams = {'numInputBits': numInputBits,
-                      'externalInputSize': expParam['externalInputSize'],
-                      'numFeatures': DEFAULT_NUM_FEATURES,
-                      'numLocations': DEFAULT_NUM_LOCATIONS,
-                      'uniquePairs': True,}
+        objectParams = {'numInputBits': numInputBits,
+                        'externalInputSize': expParam['externalInputSize'],
+                        'numFeatures': DEFAULT_NUM_FEATURES,
+                        'numLocations': DEFAULT_NUM_LOCATIONS,
+                        'uniquePairs': True,}
 
-      print "Experiment Params: "
-      pprint(expParam)
+        print "Experiment Params: "
+        pprint(expParam)
 
-      expName = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}_l2column_{}_{}".format(
-        expParam['sample'], expParam['thresh'], expParam["l4Column"],
-        expParam['l2Column'], expParam["networkType"])
+        expName = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}_l2column_{}_{}".format(
+            expParam['sample'], expParam['thresh'], expParam["l4Column"],
+            expParam['l2Column'], expParam["networkType"])
 
-      run_params.append((numPointsPerObject,
-                         numCorticalColumns,
-                         resultDirName,
-                         object_num,
-                         expName,
-                         l2Params,
-                         l4Params,
-                         objectParams,
-                         networkType,
-                         numRpts))
+        try:
+          os.remove(_prepareResultsDir("{}.csv".format(expName),
+            resultDirName=resultDirName))
+        except OSError:
+          pass
 
-  pool = multiprocessing.Pool(multiprocessing.cpu_count(), maxtasksperchild=1)
-  pool.map(invokeRunCapacityTestWrapper, run_params)
+        run_params.append((numPointsPerObject,
+                           numCorticalColumns,
+                           resultDirName,
+                           object_num,
+                           expName,
+                           l2Params,
+                           l4Params,
+                           objectParams,
+                           networkType,
+                           rpt))
+
+  pool = multiprocessing.Pool(cpuCount or multiprocessing.cpu_count(), maxtasksperchild=1)
+  pool.map(invokeRunCapacityTestWrapper, run_params, chunksize = 1)
   # plot result
   ploti = 0
   fig, ax = plt.subplots(2, 2)
@@ -1537,11 +1543,14 @@ def runExperiment9(resultDirName=DEFAULT_RESULT_DIR_NAME,
     for axj in (0, 1):
       ax[axi][axj].xaxis.set_major_locator(ticker.MultipleLocator(100))
 
+  colormap = plt.get_cmap("jet")
+  colors = [colormap(x) for x in np.linspace(0., 1., len(expParam))]
+
   legendEntries = []
   for expParam in expParams:
     expName = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}_l2column_{}_{}".format(
-      expParam['sample'], expParam['thresh'], expParam["l4Column"],
-      expParam['l2Column'], expParam["networkType"])
+        expParam['sample'], expParam['thresh'], expParam["l4Column"],
+        expParam['l2Column'], expParam["networkType"])
 
     resultFileName = _prepareResultsDir("{}.csv".format(expName),
                                         resultDirName=resultDirName
@@ -1549,8 +1558,7 @@ def runExperiment9(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
     result = pd.read_csv(resultFileName)
 
-    #import pdb; pdb.set_trace()
-    plotResults(result, ax, "numObjects", None, DEFAULT_COLORS[ploti])
+    plotResults(result, ax, "numObjects", None, colors[ploti])
     ploti += 1
     if "Topology" in expParam["networkType"]:
       legendEntries.append("L4 mcs {} #cc {} w/ topology".format(
