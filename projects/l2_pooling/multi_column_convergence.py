@@ -403,7 +403,7 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrial
   # Convergence[f, c, t] = how long it took it to  converge with f unique
   # features, c columns and topology t.
 
-  convergence = numpy.zeros((max(featureRange), max(columnRange) + 1, 3))
+  convergence = numpy.zeros((max(featureRange), max(columnRange) + 1, 2))
 
 
   for r in results:
@@ -435,7 +435,7 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrial
       len(featureRange)*2)]
 
   for i in range(len(featureRange)):
-    for t in range(3):
+    for t in range(2):
       f = featureRange[i]
       print columnRange
       print convergence[f-1,columnRange, t]
