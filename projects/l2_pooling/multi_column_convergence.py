@@ -412,8 +412,6 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrial
       convergence[r["numFeatures"] - 1, r["numColumns"], 0] += r["convergencePoint"]
     elif r["networkType"] == "MultipleL4L2ColumnsWithTopology":
       convergence[r["numFeatures"] - 1, r["numColumns"], 1] += r["convergencePoint"]
-    elif r["networkType"] == "MultipleL4L2ColumnsWithRandomTopology":
-      convergence[r["numFeatures"] - 1, r["numColumns"], 2] += r["convergencePoint"]
 
   convergence /= numTrials
 
@@ -442,7 +440,7 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrial
       print convergence[f-1,columnRange, t]
       legendList.append('Unique features={}, topology = {}'.format(f, t))
       plt.plot(columnRange, convergence[f-1,columnRange, t],
-               color=colorList[i*3 + t])
+               color=colorList[i*2 + t])
 
   # format
   plt.legend(legendList, loc="upper right")
@@ -699,7 +697,7 @@ if __name__ == "__main__":
     featureRange = [3, 5, 15]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithTopology", "MultipleL4L2Columns"]
-    numTrials = 10
+    numTrials = 1
 
     # Comment this out if you are re-running analysis on already saved results
     # Very useful for debugging the plots
