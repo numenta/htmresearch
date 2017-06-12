@@ -391,7 +391,6 @@ def runExperimentPool(numObjects,
 
   return result
 
-
 def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrials):
   """
   Plots the convergence graph: iterations vs number of columns.
@@ -431,7 +430,9 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrial
 
   # Plot each curve
   legendList = []
-  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
+  colormap = plt.get_cmap("jet")
+  colorList = [colormap(x) for x in numpy.linspace(0., 1.,
+      len(featureRange)*2)]
 
   for i in range(len(featureRange)):
     for t in range(3):
@@ -619,11 +620,13 @@ def plotConvergenceByDistantConnectionChance(results, featureRange, columnRange,
   #
   # Convergence[f, c, t] = how long it took it to  converge with f unique
   # features, c columns and topology t.
-  print len(longDistanceConnectionsRange),
   convergence = numpy.zeros((len(featureRange), len(longDistanceConnectionsRange), len(columnRange)))
 
   for r in results:
-      convergence[longDistanceConnectionsRange.index(r["longDistanceConnections"]),
+      print longDistanceConnectionsRange.index(r["longDistanceConnections"])
+      print columnRange.index(r["numColumns"])
+      convergence[featureRange.index(r["numFeatures"]),
+          longDistanceConnectionsRange.index(r["longDistanceConnections"]),
           columnRange.index(r["numColumns"])] += r["convergencePoint"]
 
   convergence /= numTrials
@@ -644,16 +647,17 @@ def plotConvergenceByDistantConnectionChance(results, featureRange, columnRange,
 
   # Plot each curve
   legendList = []
-  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
-  lineList =  ['-', '--', '-.', ':']
+  colormap = plt.get_cmap("jet")
+  colorList = [colormap(x) for x in numpy.linspace(0., 1.,
+      len(featureRange)*len(longDistanceConnectionsRange))]
 
   for i, r in enumerate(longDistanceConnectionsRange):
     for j, f in enumerate(featureRange):
+      currentColor = i*len(featureRange) + j
       print columnRange
       print convergence[j, :, i]
       legendList.append('Connection_prob = {}, num features = {}'.format(r, f))
-      plt.plot(columnRange, convergence[j, :, i], color=colorList[i],
-               ls = lineList[j])
+      plt.plot(columnRange, convergence[j, :, i], color=colorList[currentColor])
 
   # format
   plt.legend(legendList, loc="upper right")
@@ -693,11 +697,11 @@ if __name__ == "__main__":
   # Here we want to see how the number of columns affects convergence.
   # This experiment is run using a process pool
   if True:
-    columnRange = range(1, 10)#[1, 2, 3, 4, 5, 6, 7, 8]
+    columnRange = range(1, 16)#[1, 2, 3, 4, 5, 6, 7, 8]
     featureRange = [3, 5, 15]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithTopology", "MultipleL4L2Columns"]
-    numTrials = 1
+    numTrials = 10
 
     # Comment this out if you are re-running analysis on already saved results
     # Very useful for debugging the plots
@@ -721,9 +725,9 @@ if __name__ == "__main__":
   # Here we measure the effect of random long-distance connections.
   # We vary the longDistanceConnectionProb parameter,
   if True:
-    columnRange = [4, 9, 16]
+    columnRange = range(1, 16)
     featureRange = [3, 5, 15]
-    longDistanceConnectionsRange = [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
+    longDistanceConnectionsRange = [0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithTopology"]
     numTrials = 10
