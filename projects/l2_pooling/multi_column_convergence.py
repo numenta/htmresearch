@@ -696,7 +696,7 @@ if __name__ == "__main__":
 
   # Here we want to see how the number of columns affects convergence.
   # This experiment is run using a process pool
-  if True:
+  if False:
     columnRange = range(1, 16)#[1, 2, 3, 4, 5, 6, 7, 8]
     featureRange = [3, 5, 15]
     objectRange = [100]
@@ -725,9 +725,9 @@ if __name__ == "__main__":
   # Here we measure the effect of random long-distance connections.
   # We vary the longDistanceConnectionProb parameter,
   if True:
-    columnRange = range(1, 16)
-    featureRange = [3, 5, 15]
-    longDistanceConnectionsRange = [0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
+    columnRange = range(5)#range(1, 16)
+    featureRange = [15]#[3, 5, 15]
+    longDistanceConnectionsRange = [0.0]#[0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithTopology"]
     numTrials = 10
