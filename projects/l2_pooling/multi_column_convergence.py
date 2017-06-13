@@ -416,7 +416,7 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrial
 
   # For each column, print convergence as fct of number of unique features
   for c in range(1, max(columnRange) + 1):
-    for t in range(3):
+    for t in range(2):
       print c, convergence[:, c, t]
 
   # Print everything anyway for debugging
@@ -634,7 +634,7 @@ def plotConvergenceByDistantConnectionChance(results, featureRange, columnRange,
   # For each column, print convergence as fct of number of unique features
   for i, c in enumerate(columnRange):
     for j, r in enumerate(longDistanceConnectionsRange):
-      print c, r, convergence[:, i, j]
+      print c, r, convergence[:, j, i]
 
   # Print everything anyway for debugging
   print "Average convergence array=", convergence
@@ -642,7 +642,7 @@ def plotConvergenceByDistantConnectionChance(results, featureRange, columnRange,
   ########################################################################
   #
   # Create the plot. x-axis=
-  plt.figure()
+  plt.figure(figsize=(8, 6), dpi=80)
   plotPath = os.path.join("plots", "convergence_by_random_connection_chance.pdf")
 
   # Plot each curve
@@ -655,9 +655,9 @@ def plotConvergenceByDistantConnectionChance(results, featureRange, columnRange,
     for j, f in enumerate(featureRange):
       currentColor = i*len(featureRange) + j
       print columnRange
-      print convergence[j, :, i]
+      print convergence[j, i, :]
       legendList.append('Connection_prob = {}, num features = {}'.format(r, f))
-      plt.plot(columnRange, convergence[j, :, i], color=colorList[currentColor])
+      plt.plot(columnRange, convergence[j, i, :], color=colorList[currentColor])
 
   # format
   plt.legend(legendList, loc="upper right")
@@ -696,8 +696,8 @@ if __name__ == "__main__":
 
   # Here we want to see how the number of columns affects convergence.
   # This experiment is run using a process pool
-  if True:
-    columnRange = range(1, 16)#[1, 2, 3, 4, 5, 6, 7, 8]
+  if False:
+    columnRange = range(1, 10)
     featureRange = [3, 5, 15]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithTopology", "MultipleL4L2Columns"]
@@ -725,9 +725,9 @@ if __name__ == "__main__":
   # Here we measure the effect of random long-distance connections.
   # We vary the longDistanceConnectionProb parameter,
   if True:
-    columnRange = range(1, 16)
-    featureRange = [3, 5, 15]
-    longDistanceConnectionsRange = [0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
+    columnRange = [4, 6, 9]
+    featureRange = [5]
+    longDistanceConnectionsRange = [0.0, 0.2, 0.5]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithTopology"]
     numTrials = 1
@@ -743,10 +743,10 @@ if __name__ == "__main__":
       longDistanceConnectionsRange = longDistanceConnectionsRange,
       numPoints=20,
       nTrials=numTrials,
-      numWorkers=cpu_count(),
-      resultsName="column_convergence_results.pkl")
+      numWorkers=2*cpu_count(),
+      resultsName="random_long_distance_connection_column_convergence_results.pkl")
 
-    with open("column_convergence_results.pkl","rb") as f:
+    with open("random_long_distance_connection_column_convergence_results.pkl","rb") as f:
       results = cPickle.load(f)
 
     plotConvergenceByDistantConnectionChance(results, featureRange, columnRange,
