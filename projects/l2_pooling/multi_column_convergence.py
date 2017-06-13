@@ -701,7 +701,7 @@ if __name__ == "__main__":
     featureRange = [3, 5, 15]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithTopology", "MultipleL4L2Columns"]
-    numTrials = 10
+    numTrials = 1
 
     # Comment this out if you are re-running analysis on already saved results
     # Very useful for debugging the plots
@@ -730,7 +730,7 @@ if __name__ == "__main__":
     longDistanceConnectionsRange = [0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithTopology"]
-    numTrials = 10
+    numTrials = 1
 
     # Comment this out if you are re-running analysis on already saved results
     # Very useful for debugging the plots
