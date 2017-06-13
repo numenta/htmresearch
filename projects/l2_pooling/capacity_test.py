@@ -1461,7 +1461,7 @@ def runExperiment9(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
   numPointsPerObject = 10
   numRpts = 1
-  objectNumRange = range(10, 100, 50)
+  objectNumRange = range(10, 1000, 50)
 
   l4Params = getL4Params()
   l2Params = getL2Params()
