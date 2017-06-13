@@ -1,0 +1,7 @@
+
+latex/*
+!latex/notes.pdf
+!latex/notes.tex
+
+jupyter/untracked_results/
+
