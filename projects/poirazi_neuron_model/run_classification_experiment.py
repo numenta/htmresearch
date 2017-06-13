@@ -1,6 +1,6 @@
 import random
 import numpy
-from neuron_model import Matrix_Neuron, threshold_nonlinearity, power_nonlinearity
+from neuron_model import Matrix_Neuron, threshold_nonlinearity, power_nonlinearity, sigmoid_nonlinearity
 from data_tools import generate_data, generate_evenly_distributed_data_sparse, shuffle_sparse_matrix_and_labels, split_sparse_matrix
 from nupic.bindings.math import SM32
 from collections import Counter
@@ -13,30 +13,28 @@ def run_HTM_classification_experiment(num_neurons = 50,
                                       num_dendrites = 600,
                                       dendrite_length = 16,
                                       num_iters = 1000,
-                                      nonlinearity = threshold_nonlinearity(9)
+                                      nonlinearity = sigmoid_nonlinearity(8.5, 4)
                                       ):
     """
     Runs an experiment testing classifying a binary dataset, based on Poirazi &
-    Mel's original experiment.  Learning is using our modified variant of their
-    rule, and positive and negative neurons compete to classify a datapoint.
+    Mel's original experiment.  Learning is using our HTM-style learning rule.
 
-    Performance has historically been poor, noticeably worse than what is
-    achieved with only a single neuron using an HTM-style learning rule on
-    datasets of similar size.  It is suspected that the simplifications made
-    to the P&M learning rule are having a negative effect.
+    Historically, attempts to use the P&M learning rule have produced extremely
+    poor results, leading us to consider alternatives.
 
     Furthermore, P&M report that they are willing to train for an exceptional
     amount of time, up to 96,000 iterations per neuron.  We have never even
     begun to approach this long a training time, so it is possible that our
-    performance would converge with theirs given more time.
+    performance would converge with theirs given more time.  That said, I'm not
+    interested in waiting that long.
     """
 
-    
+
     pos_neurons = [Matrix_Neuron(size = neuron_size, num_dendrites = num_dendrites, dendrite_length = dendrite_length, nonlinearity = nonlinearity, dim = dim*num_bins) for i in range(num_neurons/2)]
     neg_neurons = [Matrix_Neuron(size = neuron_size, num_dendrites = num_dendrites, dendrite_length = dendrite_length, nonlinearity = nonlinearity, dim = dim*num_bins) for i in range(num_neurons/2)]
     pos, neg = generate_evenly_distributed_data_sparse(dim = 400, num_active = 40, num_samples = num_samples/2), generate_evenly_distributed_data_sparse(dim = 400, num_active = 40, num_samples = num_samples/2)
     #pos, neg = generate_data(dim = dim, num_bins = num_bins, num_samples = num_samples, sparse = True)
-    
+
     if (pos.nRows() > num_dendrites*len(pos_neurons)):
         print "Too much data to have unique dendrites for positive neurons, clustering"
         pos = pos.toDense()
