@@ -350,8 +350,8 @@ def runExperimentPool(numObjects,
   # Create function arguments for every possibility
   args = []
   for t in range(nTrials):
-    for c in numColumns:
-      for o in numObjects:
+    for c in reversed(numColumns):
+      for o in reversed(numObjects):
         for l in numLocations:
           for f in numFeatures:
               for n in networkType:
@@ -660,7 +660,7 @@ def plotConvergenceByDistantConnectionChance(results, featureRange, columnRange,
       plt.plot(columnRange, convergence[j, i, :], color=colorList[currentColor])
 
   # format
-  plt.legend(legendList, loc="upper right")
+  plt.legend(legendList, loc = "lower left")
   plt.xlabel("Number of columns")
   plt.xticks(columnRange)
   plt.yticks(range(0,int(convergence.max())+1))
@@ -668,6 +668,7 @@ def plotConvergenceByDistantConnectionChance(results, featureRange, columnRange,
   plt.title("Number of touches to recognize one object (multiple columns)")
 
     # save
+  plt.show()
   plt.savefig(plotPath)
   plt.close()
 
@@ -696,22 +697,22 @@ if __name__ == "__main__":
 
   # Here we want to see how the number of columns affects convergence.
   # This experiment is run using a process pool
-  if False:
+  if True:
     columnRange = range(1, 10)
-    featureRange = [3, 5, 15]
+    featureRange = [5]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithTopology", "MultipleL4L2Columns"]
-    numTrials = 1
+    numTrials = 3
 
     # Comment this out if you are re-running analysis on already saved results
     # Very useful for debugging the plots
     runExperimentPool(
       numObjects=objectRange,
-      numLocations=[20],
+      numLocations=[10],
       numFeatures=featureRange,
       numColumns=columnRange,
       networkType=networkType,
-      numPoints=20,
+      numPoints=10,
       nTrials=numTrials,
       numWorkers=cpu_count(),
       resultsName="column_convergence_results.pkl")
@@ -724,26 +725,26 @@ if __name__ == "__main__":
 
   # Here we measure the effect of random long-distance connections.
   # We vary the longDistanceConnectionProb parameter,
-  if True:
-    columnRange = [4, 6, 9]
+  if False:
+    columnRange = [1,2,3,4,5,6,7,8,9]
     featureRange = [5]
-    longDistanceConnectionsRange = [0.0, 0.2, 0.5]
+    longDistanceConnectionsRange = [0.0, 0.25, 0.5, 0.9999999]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithTopology"]
-    numTrials = 1
+    numTrials = 3
 
     # Comment this out if you are re-running analysis on already saved results
     # Very useful for debugging the plots
     runExperimentPool(
       numObjects=objectRange,
-      numLocations=[20],
+      numLocations=[10],
       numFeatures=featureRange,
       numColumns=columnRange,
       networkType=networkType,
       longDistanceConnectionsRange = longDistanceConnectionsRange,
-      numPoints=20,
+      numPoints=10,
       nTrials=numTrials,
-      numWorkers=2*cpu_count(),
+      numWorkers=cpu_count(),
       resultsName="random_long_distance_connection_column_convergence_results.pkl")
 
     with open("random_long_distance_connection_column_convergence_results.pkl","rb") as f:
