@@ -1,3 +1,24 @@
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2017, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
 import random
 import numpy
 from neuron_model import Matrix_Neuron as Neuron
@@ -75,7 +96,7 @@ def get_error(data, labels, pos_neurons, neg_neurons = []):
         else:
             num_false_negatives += 1
     return (1.*num_false_positives + num_false_negatives)/data.nRows(), num_false_positives, num_false_negatives
-    
+
 
 if __name__ == "__main__":
     run_classification_experiment()

@@ -1,3 +1,24 @@
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2017, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
 import numpy
 from nupic.bindings.math import *
 
@@ -41,7 +62,7 @@ def shuffle_sparse_matrix_and_labels(matrix, labels):
 
 def split_sparse_matrix(matrix, num_categories):
     """
-    An analog of numpy.split for our sparse matrix.  If the number of 
+    An analog of numpy.split for our sparse matrix.  If the number of
     categories does not divide the number of rows in the matrix, all overflow
     is placed in the final bin.
 
@@ -57,7 +78,7 @@ def split_sparse_matrix(matrix, num_categories):
         # Handle the last bin separately.  All overflow goes into it.
         divisions.append(matrix.getSlice((num_categories - 1)*inc, matrix.nRows(), 0, matrix.nCols()))
 
-        return divisions    
+        return divisions
 
 def generate_evenly_distributed_data_sparse(dim = 2000, num_active = 40, num_samples = 1000):
 	"""
@@ -104,7 +125,7 @@ def generate_data(dim = 40, num_samples = 30000, num_bins = 10, sparse = False):
 
 	Initially samples of dimension dim are produced, with values in each
 	dimension being floats, but they are binned into discrete categories, with
-	num_bins bins per dimension.  This binning produces an SDR.  
+	num_bins bins per dimension.  This binning produces an SDR.
 
 	"""
 

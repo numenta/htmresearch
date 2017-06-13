@@ -1,3 +1,24 @@
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2017, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
 import random
 import numpy
 from neuron_model import power_nonlinearity, threshold_nonlinearity
@@ -39,7 +60,7 @@ def run_power_experiment(num_neurons = 10,
         neg_neurons = [Neuron(size = neuron_size, num_dendrites = num_dendrites, dendrite_length = dendrite_length, nonlinearity = nonlinearity, dim = dim*num_bins) for i in range(num_neurons/2)]
         #pos, neg = generate_evenly_distributed_data_sparse(dim = 400, num_active = 40, num_samples = num_samples/2), generate_evenly_distributed_data_sparse(dim = 400, num_active = 40, num_samples = num_samples/2)
         pos, neg = generate_data(dim = dim, num_bins = num_bins, num_samples = num_samples, sparse = True)
-        
+
         if (pos.nRows() > num_dendrites*len(pos_neurons)):
             print "Too much data to have unique dendrites for positive neurons, clustering"
             pos = pos.toDense()
@@ -115,7 +136,7 @@ def get_error(data, labels, pos_neurons, neg_neurons = []):
         else:
             num_false_negatives += 1
     return (1.*num_false_positives + num_false_negatives)/data.nRows(), num_false_positives, num_false_negatives
-    
-    
+
+
 if __name__ == "__main__":
     run_power_experiment()

@@ -1,3 +1,24 @@
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2017, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
 import numpy
 import copy
 from itertools import izip as zip, count
@@ -20,9 +41,9 @@ def convert_cell_lists_to_dense(dim, cell_list, add_1 = False):
   return dense_cell_list
 
 
-def run_tm_dim_experiment(test_dims = range(100, 1100, 100),
-                          cellsPerColumn=10,
-                          num_active = 10,
+def run_tm_dim_experiment(test_dims = range(1400, 3100, 100),
+                          cellsPerColumn=1,
+                          num_active = 40,
                           activationThreshold=5,
                           initialPermanence=0.8,
                           connectedPermanence=0.50,
@@ -38,7 +59,7 @@ def run_tm_dim_experiment(test_dims = range(100, 1100, 100),
                           sequence_length = 20,
                           training_iters = 1,
                           automatic_threshold = True,
-                          save_results = False):
+                          save_results = True):
   """
   Run an experiment tracking the performance of the temporal memory given
   different input dimensions.  The number of active cells is kept fixed, so we
@@ -74,9 +95,9 @@ def run_tm_dim_experiment(test_dims = range(100, 1100, 100),
     canonical_active_cells = []
 
     for sample in range(num_samples):
-      #if (sample + 1) % 10 == 0:
-        #print sample + 1
-      data = generate_evenly_distributed_data_sparse(dim = dim, num_active = num_active, num_samples = sequence_length)
+      if (sample + 1) % 10 == 0:
+        print sample + 1
+      data = generate_evenly_distributed_data_sparse(dim = dim, num_active = dim/4, num_samples = sequence_length)
       datapoints.append(data)
       for i in range(training_iters):
         for j in range(data.nRows()):
@@ -127,7 +148,7 @@ def run_tm_dim_experiment(test_dims = range(100, 1100, 100),
     csim = numpy.mean(csims)
     print dim, correlation, similarity, csim
     if save_results:
-        with open("tm_dim_{}.txt".format(num_active), "a") as f:
+        with open("tm_dim_quarter.txt", "a") as f:
           f.write(str(dim)+", " + str(correlation) + ", " + str(similarity) + ", " + str(csim) + ", " + str(num_samples) + "\n")
 
 if __name__ == "__main__":
