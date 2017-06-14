@@ -54,7 +54,7 @@ def run_HTM_false_positive_experiment_synapses(num_neurons = 1,
 
       neuron.HTM_style_initialize_on_data(pos, numpy.asarray([1 for i in range(num_samples/2)]))
 
-      error, fp, fn = get_error_matrix(neg, [-1 for i in range(num_samples/2)], [neuron])
+      error, fp, fn = get_error(neg, [-1 for i in range(num_samples/2)], [neuron])
 
       fps.append(fp)
       fns.append(fn)
@@ -96,7 +96,7 @@ def run_false_positive_experiment_synapses(num_neurons = 1,
       neuron.HTM_style_initialize_on_data(data, labels)
       neg_neuron.HTM_style_initialize_on_data(data, flipped_labels)
 
-      error, fp, fn = get_error_matrix(data, labels, [neuron], [neg_neuron])
+      error, fp, fn = get_error(data, labels, [neuron], [neg_neuron])
 
       fps.append(fp)
       fns.append(fn)
@@ -105,7 +105,7 @@ def run_false_positive_experiment_synapses(num_neurons = 1,
     with open("pm_num_dendrites_FP_{}_{}.txt".format(a, dim), "a") as f:
       f.write(str(dendrite_length) + ", " + str(sum(fns + fps)) + ", " + str(num_trials*num_samples) + "\n")
 
-def get_error_matrix(data, labels, pos_neurons, neg_neurons = []):
+def get_error(data, labels, pos_neurons, neg_neurons = []):
   """
   Calculates error, including number of false positives and false negatives.
 

@@ -59,7 +59,7 @@ def run_false_positive_experiment_dim(num_neurons = 1,
       neuron.HTM_style_initialize_on_data(data, labels)
       neg_neuron.HTM_style_initialize_on_data(data, flipped_labels)
 
-      error, fp, fn, uc = get_error_matrix(data, labels, [neuron], [neg_neuron], add_noise = True)
+      error, fp, fn, uc = get_error(data, labels, [neuron], [neg_neuron], add_noise = True)
 
       fps.append(fp)
       fns.append(fn)
@@ -68,7 +68,7 @@ def run_false_positive_experiment_dim(num_neurons = 1,
     with open("pm_dim_FP_{}.txt".format(a), "a") as f:
       f.write(str(dim) + ", " + str(sum(fns + fps)) + ", " + str(num_trials*num_samples) + "\n")
 
-def get_error_matrix(data, labels, pos_neurons, neg_neurons = [], add_noise = False):
+def get_error(data, labels, pos_neurons, neg_neurons = [], add_noise = False):
   """
   Calculates error, including number of false positives and false negatives.
 
