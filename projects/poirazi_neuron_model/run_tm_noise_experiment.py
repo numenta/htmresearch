@@ -63,12 +63,14 @@ def run_tm_noise_experiment(dim = 2048,
 
   """
   Run an experiment tracking the performance of the temporal memory given
-  noise.  The number of active cells and the dimensions of the TM are fixed.
-  We track performance by comparing the cells predicted to be active with the
-  cells actually active in the sequence without noise at every timestep, and
-  averaging across timesteps. Three metrics are used, correlation (Pearson's r,
-  by numpy.corrcoef), set similarity (Jaccard index) and cosine similarity
-  (using scipy.spatial.distance.cosine).
+  noise.  The number of active cells and the dimensions of the TM are
+  fixed. We track performance by comparing the cells predicted to be
+  active with the cells actually active in the sequence without noise at
+  every timestep, and averaging across timesteps. Three metrics are used,
+  correlation (Pearson's r, by numpy.corrcoef), set similarity (Jaccard
+  index) and cosine similarity (using scipy.spatial.distance.cosine). The
+  Jaccard set similarity is the canonical metric used in the paper, but
+  all three metrics tend to produce very similar results.
 
   Typically, this experiment is run to test the influence of activation
   threshold on noise tolerance, with multiple different thresholds tested.

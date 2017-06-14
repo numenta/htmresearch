@@ -67,8 +67,10 @@ def run_tm_dim_experiment(test_dims = range(1400, 3100, 100),
   comparing the cells predicted to be active with the cells actually active in
   the sequence without noise at every timestep, and averaging across timesteps.
   Three metrics are used, correlation (Pearson's r, by numpy.corrcoef),
-  set similarity (Jaccard index) and cosine similarity
-  (using scipy.spatial.distance.cosine).
+  set similarity (Jaccard index) and cosine similarity (using
+  scipy.spatial.distance.cosine).  The Jaccard set similarity is the
+  canonical metric used in the paper, but all three tend to produce very similar
+  results.
 
   Output is written to tm_dim_{num_active}.txt, including sample size.
   """
