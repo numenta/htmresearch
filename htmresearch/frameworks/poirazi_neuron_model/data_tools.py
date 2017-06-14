@@ -24,20 +24,25 @@ from nupic.bindings.math import *
 
 def apply_noise(data, noise):
   """
-  Applies noise to a sparse matrix.  Noise should be an integer between 0 and
-  100, indicating the percentage of ones in the original input to move.
+  Applies noise to a sparse matrix.  Noise can be an integer between 0 and
+  100, indicating the percentage of ones in the original input to move, or
+  a float in [0, 1), indicating the same thing.
   The input matrix is modified in-place, and nothing is returned.
   This operation does not affect the sparsity of the matrix, or of any
   individual datapoint.
   """
+  if noise >= 1:
+    noise = noise/100.
 
   for i in range(data.nRows()):
     ones = data.rowNonZeros(i)[0]
-    replace_indices = numpy.random.choice(ones, size=int(1.0*len(ones)*noise/100), replace = False)
+    replace_indices = numpy.random.choice(ones,
+        size = int((ones)*noise), replace = False)
     for index in replace_indices:
       data[i, index] = 0
 
-    new_indices = numpy.random.choice(data.nCols(), size = int(1.0*len(ones)*noise/100.), replace = False)
+    new_indices = numpy.random.choice(data.nCols(),
+        size = int(len(ones)*noise), replace = False)
 
     for index in new_indices:
       while data[i, index] == 1:
@@ -48,7 +53,8 @@ def apply_noise(data, noise):
 def shuffle_sparse_matrix_and_labels(matrix, labels):
   """
   Shuffles a sparse matrix and set of labels together.
-  Resorts to densifying and then re-sparsifying the matrix, for convenience.
+  Resorts to densifying and then re-sparsifying the matrix, for
+  convenience.  Still very fast.
   """
   print "Shuffling data"
   new_matrix = matrix.toDense()
@@ -63,11 +69,11 @@ def shuffle_sparse_matrix_and_labels(matrix, labels):
 def split_sparse_matrix(matrix, num_categories):
   """
   An analog of numpy.split for our sparse matrix.  If the number of
-  categories does not divide the number of rows in the matrix, all overflow
-  is placed in the final bin.
+  categories does not divide the number of rows in the matrix, all
+  overflow is placed in the final bin.
 
-  In the event that there are more categories than rows, all later categories
-  are considered to be an empty sparse matrix.
+  In the event that there are more categories than rows, all later
+  categories are considered to be an empty sparse matrix.
   """
   if matrix.nRows() < num_categories:
     return [matrix.getSlice(i, i+1, 0, matrix.nCols()) for i in range(matrix.nRows())] + [SM32() for i in range(num_categories - matrix.nRows())]
