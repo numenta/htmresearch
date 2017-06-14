@@ -27,6 +27,7 @@ from htmresearch.frameworks.poirazi_neuron_model.data_tools import (
   generate_data, generate_evenly_distributed_data)
 from nupic.bindings.math import SM32
 from collections import Counter
+numpy.random.seed(19)
 
 def run_classification_experiment(num_neurons = 1,
                   dim = 40,

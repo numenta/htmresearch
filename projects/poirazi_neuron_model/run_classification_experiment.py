@@ -19,7 +19,6 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-
 import random
 import numpy
 from htmresearch.frameworks.poirazi_neuron_model.neuron_model import (
@@ -30,6 +29,7 @@ from htmresearch.frameworks.poirazi_neuron_model.data_tools import (
    shuffle_sparse_matrix_and_labels, split_sparse_matrix)
 from nupic.bindings.math import SM32
 from collections import Counter
+numpy.random.seed(19)
 
 def run_HTM_classification_experiment(num_neurons = 50,
                     dim = 40,

@@ -19,15 +19,14 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import numpy
+import random
+import copy
 from htmresearch.frameworks.poirazi_neuron_model.neuron_model import Matrix_Neuron as Neuron
 from htmresearch.frameworks.poirazi_neuron_model.neuron_model import threshold_nonlinearity, power_nonlinearity
 from htmresearch.frameworks.poirazi_neuron_model.data_tools import generate_evenly_distributed_data_sparse, apply_noise
 from nupic.bindings.math import *
-
-import numpy
-import random
-import copy
-
+numpy.random.seed(19)
 
 def run_noise_experiment(num_neurons = 1,
              a = 128,

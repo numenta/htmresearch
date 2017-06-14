@@ -19,13 +19,12 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import numpy
+import random
 from htmresearch.frameworks.poirazi_neuron_model.neuron_model import power_nonlinearity, threshold_nonlinearity
 from htmresearch.frameworks.poirazi_neuron_model.neuron_model import Matrix_Neuron as Neuron
 from htmresearch.frameworks.poirazi_neuron_model.data_tools import generate_evenly_distributed_data_sparse
-
-import numpy
-import random
-
+numpy.random.seed(19)
 
 def run_HTM_false_positive_experiment_synapses(num_neurons = 1,
                          a = 512,

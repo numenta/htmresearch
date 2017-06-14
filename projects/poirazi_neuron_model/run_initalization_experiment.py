@@ -28,7 +28,7 @@ from htmresearch.frameworks.poirazi_neuron_model.data_tools import (
   generate_data, generate_evenly_distributed_data_sparse, split_sparse_matrix)
 from sklearn.cluster import AgglomerativeClustering
 from nupic.bindings.math import *
-
+numpy.random.seed(19)
 
 def run_power_experiment(num_neurons = 10,
                   dim = 40,
