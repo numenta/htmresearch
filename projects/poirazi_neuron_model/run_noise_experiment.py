@@ -19,9 +19,9 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from neuron_model import Matrix_Neuron as Neuron
-from neuron_model import threshold_nonlinearity, power_nonlinearity
-from data_tools import generate_evenly_distributed_data_sparse, apply_noise
+from htmresearch.frameworks.poirazi_neuron_model.neuron_model import Matrix_Neuron as Neuron
+from htmresearch.frameworks.poirazi_neuron_model.neuron_model import threshold_nonlinearity, power_nonlinearity
+from htmresearch.frameworks.poirazi_neuron_model.data_tools import generate_evenly_distributed_data_sparse, apply_noise
 from nupic.bindings.math import *
 
 import numpy

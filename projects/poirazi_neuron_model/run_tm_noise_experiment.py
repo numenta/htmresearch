@@ -24,7 +24,7 @@ import copy
 from itertools import izip as zip, count
 from nupic.bindings.algorithms import TemporalMemory as TM
 from scipy.spatial.distance import cosine
-from data_tools import generate_evenly_distributed_data_sparse, apply_noise
+from htmresearch.frameworks.poirazi_neuron_model.data_tools import generate_evenly_distributed_data_sparse, apply_noise
 
 
 def convert_cell_lists_to_dense(dim, cell_list, add_1 = False):

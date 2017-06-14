@@ -22,8 +22,12 @@
 
 import random
 import numpy
-from neuron_model import Matrix_Neuron, threshold_nonlinearity, power_nonlinearity, sigmoid_nonlinearity
-from data_tools import generate_data, generate_evenly_distributed_data_sparse, shuffle_sparse_matrix_and_labels, split_sparse_matrix
+from htmresearch.frameworks.poirazi_neuron_model.neuron_model import (
+    Matrix_Neuron, threshold_nonlinearity,
+    power_nonlinearity, sigmoid_nonlinearity)
+from htmresearch.frameworks.poirazi_neuron_model.data_tools import (
+    generate_data, generate_evenly_distributed_data_sparse,
+     shuffle_sparse_matrix_and_labels, split_sparse_matrix)
 from nupic.bindings.math import SM32
 from collections import Counter
 

@@ -21,9 +21,11 @@
 
 import random
 import numpy
-from neuron_model import power_nonlinearity, threshold_nonlinearity
-from neuron_model import Matrix_Neuron as Neuron
-from data_tools import generate_data, generate_evenly_distributed_data_sparse, split_sparse_matrix
+from htmresearch.frameworks.poirazi_neuron_model.neuron_model import (
+    power_nonlinearity, threshold_nonlinearity)
+from htmresearch.frameworks.poirazi_neuron_model.neuron_model import Matrix_Neuron as Neuron
+from htmresearch.frameworks.poirazi_neuron_model.data_tools import (
+    generate_data, generate_evenly_distributed_data_sparse, split_sparse_matrix)
 from sklearn.cluster import AgglomerativeClustering
 from nupic.bindings.math import *
 
