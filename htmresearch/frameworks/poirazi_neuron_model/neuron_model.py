@@ -25,7 +25,6 @@ import copy
 from sklearn.cluster import AgglomerativeClustering
 from collections import Counter
 from nupic.bindings.math import *
-
 numpy.set_printoptions(threshold=numpy.inf)
 
 def power_nonlinearity(power):
