@@ -185,7 +185,7 @@ class SubsamplingColumnPooler(object):
 
     if feedforwardGrowthCandidates is None:
       feedforwardGrowthCandidates = feedforwardInput
-    lateralInputs = [numpy.intersect1d(lateralInput, potentialPool) for
+    lateralInputs = [numpy.intersect1d(lateralInput, potentialPool, assume_unique = True) for
         lateralInput, potentialPool in zip(lateralInputs, self.potentialPools)]
     if learn:
       self._computeLearningMode(feedforwardInput, lateralInputs,
