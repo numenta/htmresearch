@@ -141,7 +141,7 @@ class L4L2Experiment(object):
                longDistanceConnections = 0,
                maxConnectionDistance = 1,
                columnPositions = None,
-               decayFunction = lambda x: np.exp(-1.*((x - 1)**2)/2),#lambda x: 1./(x**2),
+               decayFunction = lambda x: 1./(x**3),
                L4Overrides=None,
                numLearningPoints=3,
                seed=42,
