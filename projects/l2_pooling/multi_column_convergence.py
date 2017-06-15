@@ -699,7 +699,7 @@ if __name__ == "__main__":
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithSubsamplingTopology",
         "MultipleL4L2Columns","MultipleL4L2ColumnsWithTopology"]
-    numTrials = 1
+    numTrials = 5
 
     # Comment this out if you are re-running analysis on already saved results
     # Very useful for debugging the plots
