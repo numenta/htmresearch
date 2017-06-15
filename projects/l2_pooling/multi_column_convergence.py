@@ -702,8 +702,8 @@ if __name__ == "__main__":
     featureRange = [5]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithSubsamplingTopology",
-        "MultipleL4L2Columns", "MultipleL4L2ColumnsWithTopology"]
-    numTrials = 3
+        "MultipleL4L2Columns","MultipleL4L2ColumnsWithSubsamplingTopology"]
+    numTrials = 5
 
     # Comment this out if you are re-running analysis on already saved results
     # Very useful for debugging the plots
@@ -715,7 +715,7 @@ if __name__ == "__main__":
       networkType=networkType,
       numPoints=10,
       nTrials=numTrials,
-      numWorkers=1,#cpu_count(),
+      numWorkers=cpu_count(),
       resultsName="column_convergence_results.pkl")
 
     with open("column_convergence_results.pkl","rb") as f:
