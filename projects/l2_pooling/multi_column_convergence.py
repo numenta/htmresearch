@@ -403,7 +403,7 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrial
   # Convergence[f, c, t] = how long it took it to  converge with f unique
   # features, c columns and topology t.
 
-  convergence = numpy.zeros((max(featureRange), max(columnRange) + 1, 2))
+  convergence = numpy.zeros((max(featureRange), max(columnRange) + 1, 3))
 
 
   for r in results:
@@ -411,12 +411,14 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrial
       convergence[r["numFeatures"] - 1, r["numColumns"], 0] += r["convergencePoint"]
     elif r["networkType"] == "MultipleL4L2ColumnsWithTopology":
       convergence[r["numFeatures"] - 1, r["numColumns"], 1] += r["convergencePoint"]
+    elif r["networkType"] == "MultipleL4L2ColumnsWithSubsamplingTopology":
+      convergence[r["numFeatures"] - 1, r["numColumns"], 2] += r["convergencePoint"]
 
   convergence /= numTrials
 
   # For each column, print convergence as fct of number of unique features
   for c in range(1, max(columnRange) + 1):
-    for t in range(2):
+    for t in range(3):
       print c, convergence[:, c, t]
 
   # Print everything anyway for debugging
@@ -432,16 +434,16 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrial
   legendList = []
   colormap = plt.get_cmap("jet")
   colorList = [colormap(x) for x in numpy.linspace(0., 1.,
-      len(featureRange)*2)]
+      len(featureRange)*3)]
 
   for i in range(len(featureRange)):
-    for t in range(2):
+    for t in range(3):
       f = featureRange[i]
       print columnRange
       print convergence[f-1,columnRange, t]
       legendList.append('Unique features={}, topology = {}'.format(f, t))
       plt.plot(columnRange, convergence[f-1,columnRange, t],
-               color=colorList[i*2 + t])
+               color=colorList[i*3 + t])
 
   # format
   plt.legend(legendList, loc="upper right")
