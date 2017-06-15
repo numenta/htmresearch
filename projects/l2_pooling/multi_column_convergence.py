@@ -405,6 +405,14 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, networkT
 
   convergence = numpy.zeros((max(featureRange), max(columnRange) + 1, len(networkType)))
 
+  networkTypeNames = {}
+  for i, topologyType in enumerate(networkType):
+    if "Subsampling" in topologyType:
+      networkTypeNames[i] = "Subsampling"
+    elif "Topology" in topologyType:
+      networkTypeNames[i] = "Normal"
+    else:
+      networkTypeNames[i] = "Dense"
 
   for r in results:
     convergence[r["numFeatures"] - 1, r["numColumns"], networkType.index(r["networkType"])] += r["convergencePoint"]
@@ -435,7 +443,7 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, networkT
       f = featureRange[i]
       print columnRange
       print convergence[f-1,columnRange, t]
-      legendList.append('Unique features={}, topology = {}'.format(f, t))
+      legendList.append('Unique features={}, topology={}'.format(f, networkTypeNames[t]))
       plt.plot(columnRange, convergence[f-1,columnRange, t],
                color=colorList[i*len(networkType) + t])
 
@@ -698,8 +706,8 @@ if __name__ == "__main__":
     featureRange = [5]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithSubsamplingTopology",
-        "MultipleL4L2Columns","MultipleL4L2ColumnsWithTopology"]
-    numTrials = 5
+        "MultipleL4L2Columns", "MultipleL4L2ColumnsWithTopology"]
+    numTrials = 10
 
     # Comment this out if you are re-running analysis on already saved results
     # Very useful for debugging the plots

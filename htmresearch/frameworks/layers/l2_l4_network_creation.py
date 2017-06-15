@@ -410,7 +410,6 @@ def createMultipleL4L2ColumnsWithTopology(network, networkConfig):
     }
     }
   """
-
   numCorticalColumns = networkConfig["numCorticalColumns"]
   output_lateral_connections = [[] for i in
       xrange(numCorticalColumns)]
