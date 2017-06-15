@@ -41,7 +41,7 @@ def convert_cell_lists_to_dense(dim, cell_list, add_1 = False):
   return dense_cell_list
 
 
-def run_tm_dim_experiment(test_dims = range(1400, 3100, 100),
+def run_tm_dim_experiment(test_dims = range(400, 3100, 100),
                           cellsPerColumn=1,
                           num_active = 40,
                           activationThreshold=5,
