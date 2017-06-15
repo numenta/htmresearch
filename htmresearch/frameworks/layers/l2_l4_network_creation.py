@@ -554,12 +554,12 @@ def createMultipleL4L2ColumnsWithSubsamplingTopology(network, networkConfig):
         columnPositions.append((i, j))
     columnPositions = columnPositions[:numCorticalColumns]
 
-    distanceFactors = [[] for i in xrange(numCorticalColumns)]
-    for i, src_pos in enumerate(columnPositions):
-      for j, dest_pos in enumerate(columnPositions):
-        if i != j:
-          distanceFactors.append(decayFunction(numpy.linalg.norm(
-              numpy.asarray(src_pos) - numpy.asarray(dest_pos))))
+  distanceFactors = [[] for i in xrange(numCorticalColumns)]
+  for i, src_pos in enumerate(columnPositions):
+    for j, dest_pos in enumerate(columnPositions):
+      if i != j:
+        distanceFactors[i].append(decayFunction(numpy.linalg.norm(
+            numpy.asarray(src_pos) - numpy.asarray(dest_pos))))
 
   # Create each column
   for i in xrange(numCorticalColumns):

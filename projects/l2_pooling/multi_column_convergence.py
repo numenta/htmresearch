@@ -391,7 +391,7 @@ def runExperimentPool(numObjects,
 
   return result
 
-def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrials):
+def plotConvergenceByColumnTopology(results, columnRange, featureRange, networkType, numTrials):
   """
   Plots the convergence graph: iterations vs number of columns.
   Each curve shows the convergence for a given number of unique features.
@@ -403,22 +403,16 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrial
   # Convergence[f, c, t] = how long it took it to  converge with f unique
   # features, c columns and topology t.
 
-  convergence = numpy.zeros((max(featureRange), max(columnRange) + 1, 3))
+  convergence = numpy.zeros((max(featureRange), max(columnRange) + 1, len(networkType)))
 
 
   for r in results:
-    if r["networkType"] == "MultipleL4L2Columns":
-      convergence[r["numFeatures"] - 1, r["numColumns"], 0] += r["convergencePoint"]
-    elif r["networkType"] == "MultipleL4L2ColumnsWithTopology":
-      convergence[r["numFeatures"] - 1, r["numColumns"], 1] += r["convergencePoint"]
-    elif r["networkType"] == "MultipleL4L2ColumnsWithSubsamplingTopology":
-      convergence[r["numFeatures"] - 1, r["numColumns"], 2] += r["convergencePoint"]
-
+    convergence[r["numFeatures"] - 1, r["numColumns"], networkType.index(r["networkType"])] += r["convergencePoint"]
   convergence /= numTrials
 
   # For each column, print convergence as fct of number of unique features
   for c in range(1, max(columnRange) + 1):
-    for t in range(3):
+    for t in range(len(networkType)):
       print c, convergence[:, c, t]
 
   # Print everything anyway for debugging
@@ -434,16 +428,16 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, numTrial
   legendList = []
   colormap = plt.get_cmap("jet")
   colorList = [colormap(x) for x in numpy.linspace(0., 1.,
-      len(featureRange)*3)]
+      len(featureRange)*len(networkType))]
 
   for i in range(len(featureRange)):
-    for t in range(3):
+    for t in range(len(networkType)):
       f = featureRange[i]
       print columnRange
       print convergence[f-1,columnRange, t]
       legendList.append('Unique features={}, topology = {}'.format(f, t))
       plt.plot(columnRange, convergence[f-1,columnRange, t],
-               color=colorList[i*3 + t])
+               color=colorList[i*len(networkType) + t])
 
   # format
   plt.legend(legendList, loc="upper right")
@@ -704,8 +698,8 @@ if __name__ == "__main__":
     featureRange = [5]
     objectRange = [100]
     networkType = ["MultipleL4L2ColumnsWithSubsamplingTopology",
-        "MultipleL4L2Columns","MultipleL4L2ColumnsWithSubsamplingTopology"]
-    numTrials = 5
+        "MultipleL4L2Columns","MultipleL4L2ColumnsWithTopology"]
+    numTrials = 1
 
     # Comment this out if you are re-running analysis on already saved results
     # Very useful for debugging the plots
@@ -723,7 +717,7 @@ if __name__ == "__main__":
     with open("column_convergence_results.pkl","rb") as f:
       results = cPickle.load(f)
 
-    plotConvergenceByColumnTopology(results, columnRange, featureRange,
+    plotConvergenceByColumnTopology(results, columnRange, featureRange, networkType,
                             numTrials=numTrials)
 
   # Here we measure the effect of random long-distance connections.

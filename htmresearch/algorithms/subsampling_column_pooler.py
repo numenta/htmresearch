@@ -282,7 +282,7 @@ class SubsamplingColumnPooler(object):
       overlaps >= self.minThresholdProximal)[0]
 
     # Calculate the number of active segments on each cell
-    numActiveSegmentsByCell = numpy.zeros(self.cellCount, dtype="int")
+    numActiveSegmentsByCell = numpy.zeros(self.cellCount, dtype="float32")
     overlaps = self.internalDistalPermanences.rightVecSumAtNZGteThresholdSparse(
       prevActiveCells, self.connectedPermanenceDistal)
     numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1

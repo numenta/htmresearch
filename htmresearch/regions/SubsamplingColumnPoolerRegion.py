@@ -344,7 +344,6 @@ class SubsamplingColumnPoolerRegion(PyRegion):
     self.defaultOutputType = defaultOutputType
 
     self._pooler = None
-
     PyRegion.__init__(self, **kwargs)
 
 
