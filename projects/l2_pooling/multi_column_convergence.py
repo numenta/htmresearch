@@ -701,7 +701,8 @@ if __name__ == "__main__":
     columnRange = range(1, 10)
     featureRange = [5]
     objectRange = [100]
-    networkType = ["MultipleL4L2ColumnsWithTopology", "MultipleL4L2Columns"]
+    networkType = ["MultipleL4L2ColumnsWithSubsamplingTopology",
+        "MultipleL4L2Columns", "MultipleL4L2ColumnsWithTopology"]
     numTrials = 3
 
     # Comment this out if you are re-running analysis on already saved results
@@ -714,7 +715,7 @@ if __name__ == "__main__":
       networkType=networkType,
       numPoints=10,
       nTrials=numTrials,
-      numWorkers=cpu_count(),
+      numWorkers=1,#cpu_count(),
       resultsName="column_convergence_results.pkl")
 
     with open("column_convergence_results.pkl","rb") as f:
@@ -752,9 +753,6 @@ if __name__ == "__main__":
 
     plotConvergenceByDistantConnectionChance(results, featureRange, columnRange,
         longDistanceConnectionsRange, numTrials=numTrials)
-
-
-
 
   # Here we want to see how the number of objects affects convergence for a
   # single column.

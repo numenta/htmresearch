@@ -141,6 +141,7 @@ class L4L2Experiment(object):
                longDistanceConnections = 0,
                maxConnectionDistance = 1,
                columnPositions = None,
+               decayFunction = lambda x: 1./(x**2),
                L4Overrides=None,
                numLearningPoints=3,
                seed=42,
@@ -264,17 +265,8 @@ class L4L2Experiment(object):
 
     if "Topology" in self.config["networkType"]:
       self.config["maxConnectionDistance"] = maxConnectionDistance
-
-      # Generate a grid for cortical columns.  Will attempt to generate a full
-      # square grid, and cut out positions starting from the bottom-right if the
-      # number of cortical columns is not a perfect square.
-      if columnPositions is None:
-        columnPositions = []
-        side_length = int(np.ceil(np.sqrt(numCorticalColumns)))
-        for i in range(side_length):
-          for j in range(side_length):
-            columnPositions.append((i, j))
-      self.config["columnPositions"] = columnPositions[:numCorticalColumns]
+      self.config["decayFunction"] = decayFunction
+      self.config["columnPositions"] = columnPositions
       self.config["longDistanceConnections"] = longDistanceConnections
 
     if L2Overrides is not None:
