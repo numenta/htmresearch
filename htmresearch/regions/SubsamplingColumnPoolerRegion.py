@@ -332,8 +332,8 @@ class SubsamplingColumnPoolerRegion(PyRegion):
     self.seed = seed
 
     self.lateralInputWidths = lateralInputWidths
-    self.lateralVoteWeights = lateralVoteWeights
-    self.lateralSubsamplingFactors = lateralSubsamplingFactors
+    self.lateralVoteWeights = numpy.asarray(map(float,lateralVoteWeights))
+    self.lateralSubsamplingFactors = numpy.asarray(map(float,lateralSubsamplingFactors))
     if self.lateralInputWidths is None:
       self.lateralInputWidths = [self.cellCount] * self.numOtherCorticalColumns
     self.lateralSubsampleSizes = [int(width*factor) for width, factor in zip(
@@ -375,6 +375,7 @@ class SubsamplingColumnPoolerRegion(PyRegion):
         "distalSegmentInhibitionFactor": self.distalSegmentInhibitionFactor,
         "seed": self.seed,
       }
+
       self._pooler = SubsamplingColumnPooler(**params)
 
 
