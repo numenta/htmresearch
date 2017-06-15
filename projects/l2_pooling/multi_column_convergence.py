@@ -349,28 +349,29 @@ def runExperimentPool(numObjects,
   """
   # Create function arguments for every possibility
   args = []
-  for t in range(nTrials):
-    for c in reversed(numColumns):
-      for o in reversed(numObjects):
-        for l in numLocations:
-          for f in numFeatures:
-              for n in networkType:
-                  for p in longDistanceConnectionsRange:
-                    args.append(
-                      {"numObjects": o,
-                       "numLocations": l,
-                       "numFeatures": f,
-                       "numColumns": c,
-                       "trialNum": t,
-                       "pointRange": pointRange,
-                       "numPoints": numPoints,
-                       "networkType" : n,
-                       "longDistanceConnections" : p,
-                       "plotInferenceStats": False,
-                       "includeRandomLocation": includeRandomLocation,
-                       "settlingTime": 3,
-                       }
-                    )
+
+  for c in reversed(numColumns):
+    for o in reversed(numObjects):
+      for l in numLocations:
+        for f in numFeatures:
+          for n in networkType:
+            for p in longDistanceConnectionsRange:
+              for t in range(nTrials):
+                args.append(
+                  {"numObjects": o,
+                   "numLocations": l,
+                   "numFeatures": f,
+                   "numColumns": c,
+                   "trialNum": t,
+                   "pointRange": pointRange,
+                   "numPoints": numPoints,
+                   "networkType" : n,
+                   "longDistanceConnections" : p,
+                   "plotInferenceStats": False,
+                   "includeRandomLocation": includeRandomLocation,
+                   "settlingTime": 3,
+                   }
+                )
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
   # Run the pool
   args = numpy.asarray(args)
