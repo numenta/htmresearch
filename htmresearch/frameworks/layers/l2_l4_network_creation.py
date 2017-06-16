@@ -252,7 +252,7 @@ def createL4L2Column(network, networkConfig, suffix=""):
     L4ColumnName, networkConfig["L4RegionType"],
     json.dumps(L4Params))
   network.addRegion(
-    L2ColumnName, networkConfig.get("L2RegionType", "py.ColumnPoolerRegion"),
+    L2ColumnName, "py.ColumnPoolerRegion",
     json.dumps(networkConfig["L2Params"]))
 
   # Set phases appropriately so regions are executed in the proper sequence
@@ -487,101 +487,6 @@ def createMultipleL4L2ColumnsWithTopology(network, networkConfig):
       suffixDest = "_" + str(j)
       network.link(
         "L2Column" + suffixSrc, "L2Column" + suffixDest, "UniformLink", "",
-        srcOutput="feedForwardOutput", destInput="lateralInput",
-        propagationDelay=1)
-
-  enableProfiling(network)
-
-  return network
-
-def createMultipleL4L2ColumnsWithSubsamplingTopology(network, networkConfig):
-  """
-  Create a network consisting of multiple columns.  Each column contains one
-  L4 and one L2, is identical in structure to the network created by
-  createL4L2Column. In addition the L2 columns are connected to each
-  other through their lateral inputs, based on the topological information
-  provided.
-
-  Region names have a column number appended as in externalInput_0,
-  externalInput_1, etc.
-
-  networkConfig must be of the following format (see createL4L2Column for
-  further documentation):
-
-    {
-    "networkType": "MultipleL4L2Columns",
-    "numCorticalColumns": 3,
-    "externalInputSize": 1024,
-    "sensorInputSize": 1024,
-    "columnPositions": a list of 2D coordinates, one for each column.
-      Used to calculate the connections between columns. By convention,
-      coordinates are integers.
-    "decayFunction": should be a function which gives a weight to a
-      column based on its distance.  Can typically be w(x) = 1/x or w(x) =
-      1/x^2, although a gaussian is also a possible option.
-    "L4Params": {
-      <constructor parameters for ExtendedTMRegion>
-    },
-    "L2Params": {
-      <constructor parameters for ColumnPoolerRegion>
-    },
-    "lateralSPParams": {
-      <constructor parameters for optional SPRegion>
-    },
-    "feedForwardSPParams": {
-      <constructor parameters for optional SPRegion>
-    }
-    }
-  """
-  numCorticalColumns = networkConfig["numCorticalColumns"]
-  decayFunction = networkConfig["decayFunction"]
-  output_lateral_connections = [[] for i in
-    xrange(numCorticalColumns)]
-  input_lateral_connections = [[] for i in
-    xrange(numCorticalColumns)]
-
-
-  # If no column positions are provided, create a grid by default.
-  # This is typically what the user wants, so it makes sense to have it as
-  # a default.
-  columnPositions = networkConfig.get("columnPositions", None)
-  if columnPositions is None:
-    columnPositions = []
-    side_length = int(numpy.ceil(numpy.sqrt(numCorticalColumns)))
-    for i in range(side_length):
-      for j in range(side_length):
-        columnPositions.append((i, j))
-    columnPositions = columnPositions[:numCorticalColumns]
-
-  distanceFactors = [[] for i in xrange(numCorticalColumns)]
-  for i, src_pos in enumerate(columnPositions):
-    for j, dest_pos in enumerate(columnPositions):
-      if i != j:
-        distanceFactors[i].append(decayFunction(numpy.linalg.norm(
-            numpy.asarray(src_pos) - numpy.asarray(dest_pos))))
-
-  # Create each column
-  for i in xrange(numCorticalColumns):
-    networkConfigCopy = copy.deepcopy(networkConfig)
-    layerConfig = networkConfigCopy["L2Params"]
-    networkConfigCopy["L2RegionType"] = "py.SubsamplingColumnPoolerRegion"
-    layerConfig["seed"] = layerConfig.get("seed", 42) + i
-    layerConfig["numOtherCorticalColumns"] = numCorticalColumns - 1
-    layerConfig["lateralVoteWeights"] = distanceFactors[i]
-    layerConfig["lateralSubsamplingFactors"] = distanceFactors[i]
-
-    suffix = "_" + str(i)
-    network = createL4L2Column(network, networkConfigCopy, suffix)
-
-  # Now connect the L2 columns laterally
-  for i in range(numCorticalColumns):
-    suffixSrc = "_" + str(i)
-    for j in range(numCorticalColumns):
-      if i != j:
-        suffixDest = "_" + str(j)
-        network.link(
-        "L2Column" + suffixSrc, "L2Column" + suffixDest,
-        "UniformLink", "",
         srcOutput="feedForwardOutput", destInput="lateralInput",
         propagationDelay=1)
 

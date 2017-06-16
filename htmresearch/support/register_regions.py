@@ -38,7 +38,7 @@ def registerAllResearchRegions():
   for regionName in ["LanguageSensor", "TemporalPoolerRegion",
                      "TMRegion", "RawSensor", "ColumnPoolerRegion",
                      "ExtendedTMRegion", "CoordinateSensorRegion",
-                     "ApicalTMRegion", "SubsamplingColumnPoolerRegion"]:
+                     "ApicalTMRegion"]:
     registerResearchRegion(regionName)
 
 
@@ -51,7 +51,6 @@ def registerResearchRegion(regionTypeName, moduleName=None):
     registering a region that is outside the expected "regions/" dir.
   """
   global _PY_REGIONS
-
 
   if moduleName is None:
     # the region is located in the regions/ directory

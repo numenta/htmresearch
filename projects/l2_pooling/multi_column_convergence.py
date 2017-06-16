@@ -408,9 +408,7 @@ def plotConvergenceByColumnTopology(results, columnRange, featureRange, networkT
 
   networkTypeNames = {}
   for i, topologyType in enumerate(networkType):
-    if "Subsampling" in topologyType:
-      networkTypeNames[i] = "Subsampling"
-    elif "Topology" in topologyType:
+    if "Topology" in topologyType:
       networkTypeNames[i] = "Normal"
     else:
       networkTypeNames[i] = "Dense"
@@ -706,8 +704,7 @@ if __name__ == "__main__":
     columnRange = range(1, 10)
     featureRange = [5]
     objectRange = [100]
-    networkType = ["MultipleL4L2ColumnsWithSubsamplingTopology",
-        "MultipleL4L2Columns", "MultipleL4L2ColumnsWithTopology"]
+    networkType = ["MultipleL4L2Columns", "MultipleL4L2ColumnsWithTopology"]
     numTrials = 10
 
     # Comment this out if you are re-running analysis on already saved results
