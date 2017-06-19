@@ -64,7 +64,7 @@ class ApicalTiebreakTemporalMemory(object):
                apicalInputSize=0,
                cellsPerColumn=32,
                activationThreshold=13,
-               reducedThresholdBasal=13,
+               reducedBasalThreshold=13,
                initialPermanence=0.21,
                connectedPermanence=0.50,
                minThreshold=10,
@@ -92,9 +92,9 @@ class ApicalTiebreakTemporalMemory(object):
     If the number of active connected synapses on a segment is at least this
     threshold, the segment is said to be active.
 
-    @param reducedThresholdBasal (int)
+    @param reducedBasalThreshold (int)
     The activation threshold of basal (lateral) segments for cells that have
-    active basal (lateral) segments. If equal to activationThreshold (default),
+    active apical segments. If equal to activationThreshold (default),
     this parameter has no effect.
 
     @param initialPermanence (float)
@@ -134,7 +134,7 @@ class ApicalTiebreakTemporalMemory(object):
     self.cellsPerColumn = cellsPerColumn
     self.initialPermanence = initialPermanence
     self.connectedPermanence = connectedPermanence
-    self.reducedThresholdBasal = reducedThresholdBasal
+    self.reducedBasalThreshold = reducedBasalThreshold
     self.minThreshold = minThreshold
     self.sampleSize = sampleSize
     self.permanenceIncrement = permanenceIncrement
@@ -154,6 +154,10 @@ class ApicalTiebreakTemporalMemory(object):
     self.predictedCells = ()
     self.activeBasalSegments = ()
     self.activeApicalSegments = ()
+
+    # Do we actually want to use apical tie-break?
+    self.useApicalTiebreak=True
+    self.useApicalModulationBasalThreshold=True
 
 
   def reset(self):
@@ -215,17 +219,18 @@ class ApicalTiebreakTemporalMemory(object):
        self.apicalConnections, apicalInput, self.connectedPermanence,
        self.activationThreshold, self.minThreshold)
 
-    cellsWithActiveApicalSegments = self.apicalConnections.mapSegmentsToCells(
-      activeApicalSegments)
-    if learn:
-        cellsWithActiveApicalSegments = ()
+    if learn or self.useApicalModulationBasalThreshold==False:
+        reducedBasalThresholdCells = ()
+    else:
+        reducedBasalThresholdCells = self.apicalConnections.mapSegmentsToCells(
+            activeApicalSegments)
 
     (activeBasalSegments,
      matchingBasalSegments,
      basalPotentialOverlaps) = self._calculateBasalSegmentActivity(
-       self.basalConnections, basalInput, self.connectedPermanence,
-       self.activationThreshold, self.minThreshold, self.reducedThresholdBasal,
-       apicallyActiveCells=cellsWithActiveApicalSegments)
+       self.basalConnections, basalInput, reducedBasalThresholdCells,
+       self.connectedPermanence,
+       self.activationThreshold, self.minThreshold, self.reducedBasalThreshold)
 
     predictedCells = self._calculatePredictedCells(activeBasalSegments,
                                                    activeApicalSegments)
@@ -489,15 +494,17 @@ class ApicalTiebreakTemporalMemory(object):
             matchingSegments,
             potentialOverlaps)
 
+
   @staticmethod
-  def _calculateBasalSegmentActivity(connections, activeInput, connectedPermanence,
-                                activationThreshold, minThreshold, reducedThresholdBasal, apicallyActiveCells=()):
+  def _calculateBasalSegmentActivity(connections, activeInput,
+                                reducedBasalThresholdCells, connectedPermanence,
+                                activationThreshold, minThreshold, reducedBasalThreshold):
     """
     Calculate the active and matching basal segments for this timestep.
 
     The difference with _calculateApicalSegmentActivity is that cells
     with active apical segments have a lower activation threshold for
-    their basal segments (set by reducedThresholdBasal parameter).
+    their basal segments (set by reducedBasalThreshold parameter).
 
     @param connections (SparseMatrixConnections)
     @param activeInput (numpy array)
@@ -518,14 +525,14 @@ class ApicalTiebreakTemporalMemory(object):
     # Active apical segments lower the activation threshold for basal (lateral) segments
     overlaps = connections.computeActivity(activeInput, connectedPermanence)
     outrightActiveSegments = np.flatnonzero(overlaps >= activationThreshold)
-    if reducedThresholdBasal != activationThreshold:
-        conditionallyActiveSegments = np.flatnonzero((overlaps < activationThreshold)
-                                        & (overlaps >= reducedThresholdBasal))
-        cellsOfCASegments = connections.mapSegmentsToCells(conditionallyActiveSegments)
+    if reducedBasalThreshold != activationThreshold and len(reducedBasalThresholdCells) > 0:
+        potentiallyActiveSegments = np.flatnonzero((overlaps < activationThreshold)
+                                        & (overlaps >= reducedBasalThreshold))
+        cellsOfCASegments = connections.mapSegmentsToCells(potentiallyActiveSegments)
         # apically active segments are condit. active segments from apically active cells
-        apicallyActiveSegments = conditionallyActiveSegments[np.in1d(cellsOfCASegments,
-                                                apicallyActiveCells)]
-        activeSegments = np.concatenate((outrightActiveSegments, apicallyActiveSegments))
+        conditionallyActiveSegments = potentiallyActiveSegments[np.in1d(cellsOfCASegments,
+                                                reducedBasalThresholdCells)]
+        activeSegments = np.concatenate((outrightActiveSegments, conditionallyActiveSegments))
     else:
         activeSegments = outrightActiveSegments
 
@@ -570,6 +577,9 @@ class ApicalTiebreakTemporalMemory(object):
                             fullyDepolarizedCells / self.cellsPerColumn)
     predictedCells = np.append(fullyDepolarizedCells,
                                partlyDepolarizedCells[~inhibitedMask])
+
+    if self.useApicalTiebreak == False:
+        predictedCells = cellsForBasalSegments
 
     return predictedCells
 
@@ -824,20 +834,20 @@ class ApicalTiebreakTemporalMemory(object):
     self.activationThreshold = activationThreshold
 
 
-  def getReducedThresholdBasal(self):
+  def getreducedBasalThreshold(self):
     """
     Returns the activation threshold.
     @return (int) The activation threshold.
     """
-    return self.reducedThresholdBasal
+    return self.reducedBasalThreshold
 
 
-  def setReducedThresholdBasal(self, reducedThresholdBasal):
+  def setreducedBasalThreshold(self, reducedBasalThreshold):
     """
     Sets the activation threshold.
     @param activationThreshold (int) activation threshold.
     """
-    self.reducedThresholdBasal = reducedThresholdBasal
+    self.reducedBasalThreshold = reducedBasalThreshold
 
 
   def getInitialPermanence(self):
@@ -966,3 +976,32 @@ class ApicalTiebreakTemporalMemory(object):
     @param connectedPermanence (float) The connected permanence.
     """
     self.connectedPermanence = connectedPermanence
+
+  def getUseApicalTieBreak(self):
+    """
+    Get whether we actually use apical tie-break.
+    @return (Bool) Whether apical tie-break is used.
+    """
+    return self.useApicalTiebreak
+
+  def setUseApicalTiebreak(self, useApicalTiebreak):
+    """
+    Sets whether we actually use apical tie-break.
+    @param useApicalTiebreak (Bool) Whether apical tie-break is used.
+    """
+    self.useApicalTiebreak = useApicalTiebreak
+
+
+  def getUseApicalModulationBasalThreshold(self):
+    """
+    Get whether we actually use apical modulation of basal threshold.
+    @return (Bool) Whether apical modulation is used.
+    """
+    return self.useApicalModulationBasalThreshold
+
+  def setUseApicalModulationBasalThreshold(self, useApicalModulationBasalThreshold):
+    """
+    Sets whether we actually use apical modulation of basal threshold.
+    @param useApicalModulationBasalThreshold (Bool) Whether apical modulation is used.
+    """
+    self.useApicalModulationBasalThreshold = useApicalModulationBasalThreshold

@@ -147,6 +147,8 @@ class ColumnPooler(object):
     self.distalPermanences = tuple(SparseMatrix(cellCount, n)
                                    for n in lateralInputWidths)
 
+    self.useInertia=True
+
 
   def compute(self, feedforwardInput=(), lateralInputs=(),
               feedforwardGrowthCandidates=None, learn=True):
@@ -295,7 +297,7 @@ class ColumnPooler(object):
     # # highest number of active segments (they inhibit everyone else).
     remainingFFSupportedCells = feedforwardSupportedCells
     numActiveSegsForFFSuppCells = numActiveSegmentsByCell[remainingFFSupportedCells]
-    if len(numActiveSegsForFFSuppCells) == 0:
+    if len(remainingFFSupportedCells) == 0:
         pass
     elif numpy.max(numActiveSegsForFFSuppCells) == 0:
          chosenCells = numpy.append(chosenCells, remainingFFSupportedCells)
@@ -310,22 +312,25 @@ class ColumnPooler(object):
             z = numpy.random.permutation(
                 remainingFFSupportedCells[numActiveSegsForFFSuppCells < numpy.max(numActiveSegsForFFSuppCells)])
             if len(z)>0:
-                chosenCells = numpy.append(chosenCells, z[:int((minNumActiveCells - len(chosenCells))/6)])
-    # # Inertia: if there aren't enough active cells to fill minNumActiveCells, pick some of the previously active cells,
-    # # starting with the ones with highest number of active segments.
-    # # This should be very simple, but simply using ArgSort could introduce artifacts
-    # # for the ties. So we use a rather more complicated method to ensure randomization of tied cells
-    if len(prevActiveCells)>0:
-        prevCellsRemaining = numpy.setdiff1d(prevActiveCells, chosenCells)
-        if prevCellsRemaining.size > 0 and len(chosenCells) < minNumActiveCells:
-            prevnumActiveSegsForFFSuppCells = numActiveSegmentsByCell[prevCellsRemaining]
-            t = numpy.max(prevnumActiveSegsForFFSuppCells)
-            sortedCells = numpy.array([])
-            while t >= 0:
-                sortedCells = numpy.append(sortedCells,
-                    numpy.random.permutation(prevCellsRemaining[prevnumActiveSegsForFFSuppCells == t]))
-                t -= 1
-            chosenCells = numpy.append(chosenCells, sortedCells[:(minNumActiveCells - len(chosenCells))])
+                chosenCells = numpy.append(chosenCells, z[:int((minNumActiveCells - len(chosenCells))/6)]) # /6
+    # Inertia: if there aren't enough active cells to fill minNumActiveCells, pick some of the previously active cells,
+    # starting with the ones with highest number of active segments.
+    # This should be very simple, but simply using ArgSort could introduce artifacts
+    # for the ties. So we use a rather more complicated method to ensure randomization of tied cells
+    if self.useInertia:
+        if len(prevActiveCells)>0:
+            prevCellsRemaining = numpy.setdiff1d(prevActiveCells, chosenCells)
+            if prevCellsRemaining.size > 0 and len(chosenCells) < minNumActiveCells:
+                prevnumActiveSegsForFFSuppCells = numActiveSegmentsByCell[prevCellsRemaining]
+                t = numpy.max(prevnumActiveSegsForFFSuppCells)
+                sortedCells = numpy.array([])
+                while t >= 0:
+                    sortedCells = numpy.append(sortedCells,
+                        numpy.random.permutation(prevCellsRemaining[prevnumActiveSegsForFFSuppCells == t]))
+                    t -= 1
+                chosenCells = numpy.append(chosenCells, sortedCells[:(minNumActiveCells - len(chosenCells))])
+    else:
+        pass
 
 
 
@@ -533,6 +538,19 @@ class ColumnPooler(object):
     """
     self.activeCells = numpy.empty(0, dtype="uint32")
 
+  def getUseInertia(self):
+        """
+        Get whether we actually use apical modulation of basal threshold.
+        @return (Bool) Whether apical modulation is used.
+        """
+        return self.useInertia
+
+  def setUseInertia(self, useInertia):
+            """
+            Sets whether we actually use inertia.
+            @param useInertia (Bool) Whether inertia is used.
+            """
+            self.useInertia = useInertia
 
   @staticmethod
   def _learn(# mutated args

@@ -298,7 +298,8 @@ class FeedbackExperiment(object):
 
 
   def infer(self, sequence, reset=True, sequenceNumber=None, burnIn=2,
-            enableFeedback=True):
+            enableFeedback=True, apicalTiebreak=True,
+            apicalModulationBasalThreshold=True, inertia=True):
     """
     Infer on a single given sequence. Sequence format:
 
@@ -336,6 +337,11 @@ class FeedbackExperiment(object):
       if sequenceNumber not in self.objectL2Representations:
         raise ValueError("The provided sequence was not given during"
                          " learning")
+
+
+    self.network.regions["L4Column_0"].getSelf()._tm.setUseApicalModulationBasalThreshold(apicalModulationBasalThreshold)
+    self.network.regions["L4Column_0"].getSelf()._tm.setUseApicalTiebreak(apicalTiebreak)
+    self.network.regions["L2Column_0"].getSelf()._pooler.setUseInertia(inertia)
 
     L2Responses=[]
     L4Responses=[]
@@ -393,11 +399,11 @@ class FeedbackExperiment(object):
     # ApicalTMRegion uses "getPredictedCells", while ExtendedTMRegion uses "getPredictiveCells".
     #return [set(column._tm.getPredictiveCells()) for column in self.L4Columns]
     if self.L4RegionType == "py.ApicalTMRegion":
-        return [set(column._tm.getPredictedCells()) for column in self.L4Columns]
+      return [set(column._tm.getPredictedCells()) for column in self.L4Columns]
     elif self.L4RegionType == "py.ExtendedTMRegion":
-        return [set(column._tm.getPredictiveCells()) for column in self.L4Columns]
+      return [set(column._tm.getPredictiveCells()) for column in self.L4Columns]
     else:
-        raise (Exception("Invalid L4 Region Type!"))
+      raise (Exception("Invalid L4 Region Type!"))
 
 
   def getL4PredictedActiveCells(self):
@@ -433,7 +439,7 @@ class FeedbackExperiment(object):
             "connectedPermanence": 0.6,
             "permanenceIncrement": 0.1,
             "permanenceDecrement": 0.02,
-            "reducedThresholdBasal": 10,
+            "reducedBasalThreshold": 10,
             "minThreshold": 13,
             "basalPredictedSegmentDecrement": 0.0,
             "apicalPredictedSegmentDecrement": 0.0,

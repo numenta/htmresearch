@@ -187,9 +187,10 @@ class ApicalTMRegion(PyRegion):
           "count": 1,
           "constraints": ""
         },
-        "reducedThresholdBasal": {
+        "reducedBasalThreshold": {
           "description": ("Activation threshold of basal segments for cells "
-                          "with active apical segments (with apicalTiebreak). "),
+                          "with active apical segments (with apicalTiebreak "
+                          "implementation). "),
           "accessMode": "Read",
           "dataType": "UInt32",
           "count": 1,
@@ -273,7 +274,7 @@ class ApicalTMRegion(PyRegion):
           "accessMode": "Read",
           "dataType": "Byte",
           "count": 0,
-          "constraints": ("enum: ApicalTiebreak, ApicalDependent, ApicalModulation"),
+          "constraints": ("enum: ApicalTiebreak, ApicalDependent"),
           "defaultValue": "ApicalTiebreak"
         },
       },
@@ -295,7 +296,7 @@ class ApicalTMRegion(PyRegion):
                initialPermanence=0.21,
                connectedPermanence=0.50,
                minThreshold=10,
-               reducedThresholdBasal=11, # Only used for apicalTiebreak implementation
+               reducedBasalThreshold=13, # Only used for apicalTiebreak implementation
                sampleSize=20,
                permanenceIncrement=0.10,
                permanenceDecrement=0.10,
@@ -317,7 +318,7 @@ class ApicalTMRegion(PyRegion):
     # TM params
     self.cellsPerColumn = cellsPerColumn
     self.activationThreshold = activationThreshold
-    self.reducedThresholdBasal = reducedThresholdBasal
+    self.reducedBasalThreshold = reducedBasalThreshold
     self.initialPermanence = initialPermanence
     self.connectedPermanence = connectedPermanence
     self.minThreshold = minThreshold
@@ -351,7 +352,6 @@ class ApicalTMRegion(PyRegion):
         "apicalInputSize": self.apicalInputWidth,
         "cellsPerColumn": self.cellsPerColumn,
         "activationThreshold": self.activationThreshold,
-        "reducedThresholdBasal": self.reducedThresholdBasal,
         "initialPermanence": self.initialPermanence,
         "connectedPermanence": self.connectedPermanence,
         "minThreshold": self.minThreshold,
@@ -367,11 +367,8 @@ class ApicalTMRegion(PyRegion):
       if self.implementation == "ApicalTiebreak":
         from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
           ApicalTiebreakTemporalMemory)
+        params["reducedBasalThreshold"] = self.reducedBasalThreshold
         self._tm = ApicalTiebreakTemporalMemory(**params)
-      elif self.implementation == "ApicalModulation":
-        from htmresearch.algorithms.apical_modulation_temporal_memory import (
-          ApicalModulationTemporalMemory)
-        self._tm = ApicalModulationTemporalMemory(**params)
       elif self.implementation == "ApicalDependent":
         from htmresearch.algorithms.apical_dependent_temporal_memory import (
           ApicalDependentTemporalMemory)
