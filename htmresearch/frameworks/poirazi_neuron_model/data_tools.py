@@ -20,7 +20,74 @@
 # ----------------------------------------------------------------------
 
 import numpy
+import random
 from nupic.bindings.math import *
+from scipy.signal import convolve2d
+
+
+def covariance_generate_correlated_data(dim = 2000, num_active = 40, num_samples = 1000):
+  """
+  Generates a set of data drawn from a uniform distribution, but with bits
+  clustered to force correlation between neurons.  Clustered bits will always
+  be on or off together.  Note that cluster size must divide the number of
+  active bits, due to our generation approach.  If cluster_size*num_clusters is
+  greater than dim, the code will also fail.
+  """
+  covariance = numpy.random.uniform(-100, 100, size = (dim, dim))
+  kernel = numpy.ones((10, 10))
+  covariance = numpy.dot(covariance, covariance.T)
+  covariance = convolve2d(covariance, kernel, "same", "wrap")
+  L = numpy.linalg.cholesky(covariance)
+
+  data = numpy.zeros((num_samples, dim))
+
+  for sample in range(num_samples):
+    input = numpy.random.normal(0, 1, size = dim)
+    activation = numpy.dot(L, input)
+    indices = numpy.argsort(activation)[:40]
+    for index in indices:
+      data[sample, index] = 1.
+  return data
+
+def generate_correlated_data_sparse(dim = 2000, num_active = 40, num_samples = 1000, num_clusters = 100, cluster_size = 4):
+  """
+  Generates a set of data drawn from a uniform distribution, but with bits
+  clustered to force correlation between neurons.  Clustered bits will always
+  be on or off together.  Note that cluster size must divide the number of
+  active bits, due to our generation approach.  If cluster_size*num_clusters is
+  greater than dim, the code will also fail.
+  """
+  free_neurons = set(range(dim))
+  clusters = set()
+  for i in range(num_clusters):
+    cluster = tuple(numpy.random.choice(tuple(free_neurons), cluster_size, replace = False))
+    clusters.add(cluster)
+    free_neurons -= set(cluster)
+
+  indices = [[] for i in range(num_samples)]
+  for sample in range(num_samples):
+    current_clusters = set()
+    current_cells = set()
+    for i in range(num_active/cluster_size):
+      cluster_threshold = (1.*len(clusters - current_clusters)*cluster_size)/(dim - i*cluster_size)
+      if numpy.random.random() < cluster_threshold:
+        cluster = (random.sample(tuple(clusters - current_clusters), 1))[0]
+        current_clusters.add(cluster)
+        indices[sample] += list(cluster)
+        #print current_clusters
+      else:
+        cells = list(numpy.random.choice(tuple(free_neurons - current_cells), cluster_size, replace = False))
+        current_cells = current_cells | set(cells)
+
+        indices[sample] += cells
+
+  data = SM32()
+  data.reshape(num_samples, dim)
+  for sample, datapoint in enumerate(indices):
+    for i in datapoint:
+      data[sample, i] = 1.
+
+  return data
 
 def apply_noise(data, noise):
   """
@@ -48,7 +115,6 @@ def apply_noise(data, noise):
       while data[i, index] == 1:
         index = numpy.random.randint(0, data.nCols())
       data[i, index] = 1
-
 
 def shuffle_sparse_matrix_and_labels(matrix, labels):
   """
@@ -97,8 +163,8 @@ def generate_evenly_distributed_data_sparse(dim = 2000, num_active = 40, num_sam
   data = SM32()
   data.reshape(num_samples, dim)
   for sample, datapoint in enumerate(indices):
-    for i in datapoint:
-      data[sample, i] = 1.
+    for index in datapoint:
+      data[sample, index] = 1.
 
   return data
 
@@ -234,7 +300,6 @@ if __name__ == "__main__":
   Generates a set of test data and prints it to data.txt.
   This is only for inspection; normally, data is freshly generated for each
   experiment using the functions in this file.
-
   """
   pos, neg = generate_data(num_samples = 30000)
   posdata = [(i, 1) for i in pos]
