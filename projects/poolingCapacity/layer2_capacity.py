@@ -208,28 +208,49 @@ def simulateL2CellPairFalseMatch(theta, n=2048, w=40, m=10, c=10, k=100):
 
 
 def simulateL4L2Pooling(theta=4, n=150, w=10, m=16, c=5, k=100):
-  numRpts = 1000
-  numL2cell = 40
+  """
+  Simulate 40 output cells that learn the same object, each output cell
+     samples c active input cells at any time
 
-  calculateNumCellsVsK(k, n, c, m)
+  Given a random input SDR, compute the number of L2 cells that are fasely activated
+  """
+  numRpts = 10000
+  numL2cell = 40
   numMatch = np.zeros((numRpts, numL2cell))
   for i in range(numRpts):
-    print i
     (connectedCells, activeCells) = generateMultipleUnionSDRs(
       numL2cell, k, n, m, w, c)
     l4SDR = generateL4SDR(n, m, w)
 
     for j in range(numL2cell):
       if np.sum(connectedCells[j][l4SDR]) > theta:
-        numMatch[i, j] += 1
+        numMatch[i, j] = 1
 
-  plt.figure()
+    print "rpt: {}/{} match: {} ".format(i, numRpts, np.sum(numMatch[i, :]))
+
   falseCells = np.sum(numMatch, 1)
+  lrange = np.arange(1, 40)
+  prob = []
+  for l in lrange:
+    prob.append(np.sum(falseCells >= l) / float(numRpts))
+    print "P(match >= {})={}".format(l, prob[-1])
+  prob = np.array(prob)
+
+  fig, ax = plt.subplots(2, 2)
   binwidth = 1
-  plt.hist(falseCells, bins=np.arange(min(falseCells)-.5, max(falseCells) + .5, binwidth))
-  plt.xlabel('falsely activated output cells #')
-  plt.ylabel('Frequency ')
+  ax[0, 0].hist(falseCells,
+                bins=np.arange(min(falseCells) - .5, max(falseCells) + .5,
+                               binwidth))
+  ax[0, 0].set_xlabel('falsely activated output cells #')
+  ax[0, 0].set_ylabel('Frequency ')
+
+  ax[0, 1].plot(lrange, prob, '-o')
+  ax[0, 1].set_xlabel('L')
+  ax[0, 1].set_ylim([0, .25])
+  ax[0, 1].set_ylabel('P(falsely activated cells >= L)')
+  plt.tight_layout()
   plt.savefig('L4L2PoolingSimulation.pdf')
+
 
 
 def computeL2CellPairsFalseMatchChance(thetaVal, nVal, mVal, wVal, kVal, cVal):
@@ -486,29 +507,29 @@ if __name__ == "__main__":
   mVal = 16
   wVal = 10
   cVal = 5
-
-  # plot the number of L4 cells that are connected to L2, as a function of
-  # (feature locaiton) pairs per object
-  runExperimentUnionSize()
-
-  # plot the false match error for single L2 cell
-  plotFalseMatchErrorSingleCell(cValList=[7, 7, 7, 7], thetaValList=[4, 5, 6, 7])
-  plt.savefig('FalseMatchErrVsK_FixedCVaryingTheta.pdf')
-
-  plotFalseMatchErrorSingleCell(cValList=[5, 6, 7, 8], thetaValList=[5, 5, 5, 5])
-  plt.savefig('FalseMatchErrVsK_FixedThetaVaryingC.pdf')
-
-  plotFalseMatchErrorSingleCell(cValList=[5, 10, 20, 30, 40], thetaValList=[3, 6, 12, 18, 24])
-  plt.savefig('FalseMatchErrVsK_VaryingThetaandC.pdf')
-
-  # plot conditional false match error
-  # given that an L4 SDR with b1=10 bits overlap with L2 cell 1
-  # what is the chance that this SDR has b2=10 bits overlap with L2 cell 2?
-  runExperimentFalseMatchConditionalPairError()
-
-  # plot simultaneous false match error for a pair of L2 cells
-  # what is the chance that an L4 SDR falsely activate two L2 cells?
-  runExperimentSingleVsPairMatchError()
+  #
+  # # plot the number of L4 cells that are connected to L2, as a function of
+  # # (feature locaiton) pairs per object
+  # runExperimentUnionSize()
+  #
+  # # plot the false match error for single L2 cell
+  # plotFalseMatchErrorSingleCell(cValList=[7, 7, 7, 7], thetaValList=[4, 5, 6, 7])
+  # plt.savefig('FalseMatchErrVsK_FixedCVaryingTheta.pdf')
+  #
+  # plotFalseMatchErrorSingleCell(cValList=[5, 6, 7, 8], thetaValList=[5, 5, 5, 5])
+  # plt.savefig('FalseMatchErrVsK_FixedThetaVaryingC.pdf')
+  #
+  # plotFalseMatchErrorSingleCell(cValList=[5, 10, 20, 30, 40], thetaValList=[3, 6, 12, 18, 24])
+  # plt.savefig('FalseMatchErrVsK_VaryingThetaandC.pdf')
+  #
+  # # plot conditional false match error
+  # # given that an L4 SDR with b1=10 bits overlap with L2 cell 1
+  # # what is the chance that this SDR has b2=10 bits overlap with L2 cell 2?
+  # runExperimentFalseMatchConditionalPairError()
+  #
+  # # plot simultaneous false match error for a pair of L2 cells
+  # # what is the chance that an L4 SDR falsely activate two L2 cells?
+  # runExperimentSingleVsPairMatchError()
 
   # Run simulaiton to get the distribution of output cells that are falsely
   # activated simultaneously
