@@ -374,7 +374,6 @@ def runExperimentPool(numObjects,
                 )
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
   # Run the pool
-  args = numpy.asarray(args)
   if numWorkers > 1:
     pool = Pool(processes=numWorkers)
     result = pool.map(runExperiment, args)
@@ -680,7 +679,7 @@ if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
-  if False:
+  if True:
     results = runExperiment(
                   {
                     "numObjects": 30,
@@ -700,7 +699,7 @@ if __name__ == "__main__":
 
   # Here we want to see how the number of columns affects convergence.
   # This experiment is run using a process pool
-  if True:
+  if False:
     columnRange = range(1, 10)
     featureRange = [5]
     objectRange = [100]
@@ -717,7 +716,7 @@ if __name__ == "__main__":
       networkType=networkType,
       numPoints=10,
       nTrials=numTrials,
-      numWorkers=cpu_count(),
+      numWorkers=cpu_count() - 1,
       resultsName="column_convergence_results.pkl")
 
     with open("column_convergence_results.pkl","rb") as f:
@@ -747,7 +746,7 @@ if __name__ == "__main__":
       longDistanceConnectionsRange = longDistanceConnectionsRange,
       numPoints=10,
       nTrials=numTrials,
-      numWorkers=cpu_count(),
+      numWorkers=cpu_count() - 1,
       resultsName="random_long_distance_connection_column_convergence_results.pkl")
 
     with open("random_long_distance_connection_column_convergence_results.pkl","rb") as f:
@@ -775,7 +774,7 @@ if __name__ == "__main__":
                       numColumns=columnRange,
                       numPoints=10,
                       nTrials=numTrials,
-                      numWorkers=1,
+                      numWorkers=cpu_count() - 1,
                       resultsName="object_convergence_results.pkl")
 
     # Analyze results
@@ -802,7 +801,7 @@ if __name__ == "__main__":
                       numFeatures=featureRange,
                       numColumns=columnRange,
                       numPoints=10,
-                      numWorkers=1,
+                      numWorkers=cpu_count() - 1,
                       nTrials=numTrials,
                       resultsName="object_convergence_multi_column_results.pkl")
 

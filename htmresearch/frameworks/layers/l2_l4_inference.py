@@ -182,12 +182,14 @@ class L4L2Experiment(object):
 
     @param   networkType (string)
              Which type of L2L4 network to create.  If topology is being used,
-             it should be specified here.
+             it should be specified here.  Possible values for this parameter
+             are "MultipleL4L2Columns", "MultipleL4L2ColumnsWithTopology" and
+             "L4L2Column"
 
-    @param   randomConnectionProb (float)
+    @param  longDistanceConnections (float)
              The probability that a column will randomly connect to a distant
-             column.  Should be in [0, 1].  Only relevant when using random
-             topology networks.
+             column.  Should be in [0, 1).  Only relevant when using multiple
+             columns with topology.
 
     @param   L4Overrides (dict)
              Parameters to override in the L4 region

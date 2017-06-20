@@ -389,11 +389,9 @@ def createMultipleL4L2ColumnsWithTopology(network, networkConfig):
       of columns will be connected to each other.  Useful specific values
       are 1 and 1.5, which typically create grids without and with
       diagonal connections, respectively.
-    "longDistanceConnections": If this is a value in [0,1), it is taken
-      as the probability that a column forms a connection with a distant
-      column (i.e. beyond its normal connection distance).  If it is
-      >= 1, it is instead taken as the number of such long-distance
-      connections each column should have.
+    "longDistanceConnections": Should be a value in [0,1).  This is the
+      probability that a column forms a connection with a distant
+      column (i.e. beyond its normal connection distance).
       If this value is not provided, it defaults to 0, and all connections
       will be in the local vicinity.
     "L4Params": {
@@ -435,39 +433,15 @@ def createMultipleL4L2ColumnsWithTopology(network, networkConfig):
   # to.  These results are then used to actually connect the columns, once
   # the network is created. It's awkward, but unavoidable.
   longDistanceConnections = networkConfig.get("longDistanceConnections", 0.)
-  if longDistanceConnections < 1.:
-    for i, src_pos in enumerate(columnPositions):
-      for j, dest_pos in enumerate(columnPositions):
-        if i != j:
-          if (numpy.linalg.norm(numpy.asarray(src_pos) -
-              numpy.asarray(dest_pos)) <=
-              networkConfig["maxConnectionDistance"] or
-              numpy.random.rand() < longDistanceConnections):
-            output_lateral_connections[i].append(j)
-            input_lateral_connections[j].append(i)
-
-  else:
-    longDistanceConnections = int(longDistanceConnections)
-    for i, src_pos in enumerate(columnPositions):
-      for j, dest_pos in enumerate(columnPositions):
-        if i != j:
-          if (numpy.linalg.norm(numpy.asarray(src_pos) -
-              numpy.asarray(dest_pos)) <=
-              networkConfig["maxConnectionDistance"]):
-            output_lateral_connections[i].append(j)
-            input_lateral_connections[j].append(i)
-
-    # Now create the long-distance connections
-    for i in xrange(len(numCorticalColumns)):
-      possible_connections = set(xrange(numCorticalColumns)) - set(
-          output_lateral_connections[i])
-      num_to_choose = min(len(possible_connections), longDistanceConnections)
-      new_connections = numpy.random.choice(list(possible_connections),
-          num_to_choose, replace = False)
-      for conn in new_connections:
-        output_lateral_connections[i].append(conn)
-        input_lateral_connections[conn].append(i)
-
+  for i, src_pos in enumerate(columnPositions):
+    for j, dest_pos in enumerate(columnPositions):
+      if i != j:
+        if (numpy.linalg.norm(numpy.asarray(src_pos) -
+            numpy.asarray(dest_pos)) <=
+            networkConfig["maxConnectionDistance"] or
+            numpy.random.rand() < longDistanceConnections):
+          output_lateral_connections[i].append(j)
+          input_lateral_connections[j].append(i)
 
   # Create each column
   for i in xrange(numCorticalColumns):
@@ -485,11 +459,9 @@ def createMultipleL4L2ColumnsWithTopology(network, networkConfig):
     suffixSrc = "_" + str(i)
     for j in connections:
       suffixDest = "_" + str(j)
-      network.link(
-        "L2Column" + suffixSrc, "L2Column" + suffixDest, "UniformLink", "",
-        srcOutput="feedForwardOutput", destInput="lateralInput",
-        propagationDelay=1)
+      network.link("L2Column" + suffixSrc, "L2Column" + suffixDest,
+        "UniformLink", "", srcOutput="feedForwardOutput",
+        destInput="lateralInput", propagationDelay=1)
 
   enableProfiling(network)
-
   return network
