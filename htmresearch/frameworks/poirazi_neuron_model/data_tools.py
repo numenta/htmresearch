@@ -37,7 +37,7 @@ def apply_noise(data, noise):
   for i in range(data.nRows()):
     ones = data.rowNonZeros(i)[0]
     replace_indices = numpy.random.choice(ones,
-        size = int((ones)*noise), replace = False)
+        size = int(len(ones)*noise), replace = False)
     for index in replace_indices:
       data[i, index] = 0
 
