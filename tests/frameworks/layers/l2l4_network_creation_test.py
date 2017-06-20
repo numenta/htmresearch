@@ -149,6 +149,50 @@ networkConfig3 = {
   }
 }
 
+networkConfig4 = {
+  "networkType": "MultipleL4L2ColumnsWithTopology",
+  "numCorticalColumns": 5,
+  "externalInputSize": 1024,
+  "sensorInputSize": 1024,
+  "columnPositions": [(0, 0), (1, 0), (2, 0), (2, 1), (2, -1)],
+  "maxConnectionDistance": 1,
+  "L4RegionType": "py.ExtendedTMRegion",
+  "L4Params": {
+    "columnCount": 1024,
+    "cellsPerColumn": 8,
+    "learn": True,
+    "learnOnOneCell": False,
+    "initialPermanence": 0.51,
+    "connectedPermanence": 0.6,
+    "permanenceIncrement": 0.1,
+    "permanenceDecrement": 0.02,
+    "minThreshold": 10,
+    "predictedSegmentDecrement": 0.004,
+    "activationThreshold": 13,
+    "sampleSize": 20,
+    "seed": 42,
+  },
+  "L2Params": {
+    "inputWidth": 1024 * 8,
+    "cellCount": 4096,
+    "sdrSize": 40,
+    "synPermProximalInc": 0.1,
+    "synPermProximalDec": 0.001,
+    "initialProximalPermanence": 0.6,
+    "minThresholdProximal": 10,
+    "sampleSizeProximal": 20,
+    "connectedPermanenceProximal": 0.5,
+    "synPermDistalInc": 0.1,
+    "synPermDistalDec": 0.001,
+    "initialDistalPermanence": 0.41,
+    "activationThresholdDistal": 13,
+    "sampleSizeDistal": 20,
+    "connectedPermanenceDistal": 0.5,
+    "distalSegmentInhibitionFactor": 1.5,
+    "learningMode": True,
+  }
+}
+
 
 class LaminarNetworkTest(unittest.TestCase):
   """ Super simple test of laminar network factory"""
@@ -190,6 +234,43 @@ class LaminarNetworkTest(unittest.TestCase):
     net.run(3)
 
 
+  def testL4L2ColumnLinks(self):
+    """
+    In this simplistic test we create a network and ensure that it has the
+    correct links between regions.
+    """
+
+    # Create a simple network to check its architecture
+    net = createNetwork(networkConfig1)
+
+    links = net.getLinks()
+
+    # These are all the links we're hoping to find
+    desired_links=set(["sensorInput_0.dataOut-->L4Column_0.activeColumns",
+     "L2Column_0.feedForwardOutput-->L4Column_0.apicalInput",
+     "externalInput_0.dataOut-->L4Column_0.basalInput",
+     "L4Column_0.predictedActiveCells-->L2Column_0.feedforwardGrowthCandidates",
+     "L4Column_0.activeCells-->L2Column_0.feedforwardInput",
+     "sensorInput_0.resetOut-->L2Column_0.resetIn",
+     "externalInput_0.dataOut-->L4Column_0.basalGrowthCandidates"])
+
+    # This gets textual representations of the links.
+    links = set([link.second.getMoniker() for link in links])
+
+    # Build a descriptive error message to pass to the user
+    error_message = "Error: Links incorrectly formed in simple L2L4 network: \n"
+    for link in desired_links:
+      if not link in links:
+        error_message += "Failed to find link: {}\n".format(link)
+
+    for link in links:
+      if not link in desired_links:
+        error_message += "Found unexpected link: {}\n".format(link)
+
+    self.assertSetEqual(desired_links, links, error_message)
+
+
+
   def testMultipleL4L2ColumnsCreate(self):
     """
     In this simplistic test we create a network with 3 L4L2Columns, ensure it
@@ -220,14 +301,201 @@ class LaminarNetworkTest(unittest.TestCase):
     net.run(1)
 
     # Spotcheck some of the phases
-    self.assertEqual(net.getPhases("externalInput_0"),(0,),
+    self.assertEqual(net.getPhases("externalInput_0"), (0,),
                      "Incorrect phase externalInput_0")
-    self.assertEqual(net.getPhases("externalInput_1"),(0,),
+    self.assertEqual(net.getPhases("externalInput_1"), (0,),
                      "Incorrect phase for externalInput_1")
-    self.assertEqual(net.getPhases("L4Column_0"),(2,),
+    self.assertEqual(net.getPhases("L4Column_0"), (2,),
                      "Incorrect phase for L4Column_0")
-    self.assertEqual(net.getPhases("L4Column_1"),(2,),
+    self.assertEqual(net.getPhases("L4Column_1"), (2,),
                      "Incorrect phase for L4Column_1")
+
+  def testMultipleL4L2ColumnLinks(self):
+    """
+    In this simplistic test we create a network with 3 L4L2 columns, and
+    ensure that it has the correct links between regions.
+    """
+
+    # Create a simple network to check its architecture
+    net = createNetwork(networkConfig2)
+
+    links = net.getLinks()
+
+    # These are all the links we're hoping to find
+    desired_links=set(["sensorInput_0.dataOut-->L4Column_0.activeColumns",
+      "L2Column_0.feedForwardOutput-->L4Column_0.apicalInput",
+      "externalInput_0.dataOut-->L4Column_0.basalInput",
+      "L4Column_0.predictedActiveCells-->"+
+      "L2Column_0.feedforwardGrowthCandidates",
+      "L4Column_0.activeCells-->L2Column_0.feedforwardInput",
+      "sensorInput_0.resetOut-->L2Column_0.resetIn",
+      "sensorInput_1.dataOut-->L4Column_1.activeColumns",
+      "L2Column_1.feedForwardOutput-->L4Column_1.apicalInput",
+      "externalInput_1.dataOut-->L4Column_1.basalInput",
+      "L4Column_1.predictedActiveCells-->"+
+      "L2Column_1.feedforwardGrowthCandidates",
+      "L4Column_1.activeCells-->L2Column_1.feedforwardInput",
+      "sensorInput_1.resetOut-->L2Column_1.resetIn",
+      "sensorInput_2.dataOut-->L4Column_2.activeColumns",
+      "L2Column_2.feedForwardOutput-->L4Column_2.apicalInput",
+      "externalInput_2.dataOut-->L4Column_2.basalInput",
+      "L4Column_2.predictedActiveCells-->"+
+      "L2Column_2.feedforwardGrowthCandidates",
+      "L4Column_2.activeCells-->L2Column_2.feedforwardInput",
+      "sensorInput_2.resetOut-->L2Column_2.resetIn",
+      "L2Column_0.feedForwardOutput-->L2Column_1.lateralInput",
+      "L2Column_0.feedForwardOutput-->L2Column_2.lateralInput",
+      "L2Column_1.feedForwardOutput-->L2Column_0.lateralInput",
+      "L2Column_1.feedForwardOutput-->L2Column_2.lateralInput",
+      "L2Column_2.feedForwardOutput-->L2Column_0.lateralInput",
+      "L2Column_2.feedForwardOutput-->L2Column_1.lateralInput",
+      "externalInput_0.dataOut-->L4Column_0.basalGrowthCandidates",
+      "externalInput_1.dataOut-->L4Column_1.basalGrowthCandidates",
+      "externalInput_2.dataOut-->L4Column_2.basalGrowthCandidates"])
+
+    # This gets textual representations of the links.
+    links = set([link.second.getMoniker() for link in links])
+
+    # Build a descriptive error message to pass to the user
+    error_message = "Links incorrectly formed in multicolumn L2L4 network: \n"
+    for link in desired_links:
+      if not link in links:
+        error_message += "Failed to find link: {}\n".format(link)
+
+    for link in links:
+      if not link in desired_links:
+        error_message += "Found unexpected link: {}\n".format(link)
+
+    self.assertSetEqual(desired_links, links, error_message)
+
+
+  def testMultipleL4L2ColumnsWithTopologyCreate(self):
+    """
+    In this simplistic test we create a network with 5 L4L2Columns and
+    topological lateral connections, ensure it has the right number of regions,
+    and try to run some inputs through it without crashing.
+    """
+
+    net = createNetwork(networkConfig4)
+    self.assertEqual(len(net.regions.keys()), 20, "Incorrect number of regions")
+
+    # Add some input vectors to the queue
+    externalInput0 = net.regions["externalInput_0"].getSelf()
+    sensorInput0 = net.regions["sensorInput_0"].getSelf()
+    externalInput1 = net.regions["externalInput_1"].getSelf()
+    sensorInput1 = net.regions["sensorInput_1"].getSelf()
+    externalInput2 = net.regions["externalInput_2"].getSelf()
+    sensorInput2 = net.regions["sensorInput_2"].getSelf()
+    externalInput3 = net.regions["externalInput_3"].getSelf()
+    sensorInput3 = net.regions["sensorInput_3"].getSelf()
+    externalInput4 = net.regions["externalInput_4"].getSelf()
+    sensorInput4 = net.regions["sensorInput_4"].getSelf()
+
+    externalInput0.addDataToQueue([2, 42, 1023], 0, 9)
+    sensorInput0.addDataToQueue([2, 42, 1023], 0, 0)
+    externalInput1.addDataToQueue([2, 42, 1023], 0, 9)
+    sensorInput1.addDataToQueue([2, 42, 1023], 0, 0)
+    externalInput2.addDataToQueue([2, 42, 1023], 0, 9)
+    sensorInput2.addDataToQueue([2, 42, 1023], 0, 0)
+    externalInput3.addDataToQueue([2, 42, 1023], 0, 9)
+    sensorInput3.addDataToQueue([2, 42, 1023], 0, 0)
+    externalInput4.addDataToQueue([2, 42, 1023], 0, 9)
+    sensorInput4.addDataToQueue([2, 42, 1023], 0, 0)
+
+    # Run the network and check outputs are as expected
+    net.run(1)
+
+
+    # Spotcheck some of the phases
+    self.assertEqual(net.getPhases("externalInput_0"), (0,),
+                     "Incorrect phase externalInput_0")
+    self.assertEqual(net.getPhases("externalInput_1"), (0,),
+                     "Incorrect phase for externalInput_1")
+    self.assertEqual(net.getPhases("L4Column_0"), (2,),
+                     "Incorrect phase for L4Column_0")
+    self.assertEqual(net.getPhases("L4Column_1"), (2,),
+                     "Incorrect phase for L4Column_1")
+
+  def testMultipleL4L2ColumnsWithTopologyLinks(self):
+    """
+    In this simplistic test we create a network with 5 L4L2Columns and
+    topological lateral connections, and ensure that it has the correct links
+    between regions.  The network is laid out as follows:
+
+            3
+            |
+    0---1---2
+            |
+            4
+    """
+
+    net = createNetwork(networkConfig4)
+    links = net.getLinks()
+
+    # These are all the links we're hoping to find
+    desired_links=set(["sensorInput_0.dataOut-->L4Column_0.activeColumns",
+      "L2Column_0.feedForwardOutput-->L4Column_0.apicalInput",
+      "externalInput_0.dataOut-->L4Column_0.basalInput",
+      "L4Column_0.predictedActiveCells-->"+
+      "L2Column_0.feedforwardGrowthCandidates",
+      "L4Column_0.activeCells-->L2Column_0.feedforwardInput",
+      "sensorInput_0.resetOut-->L2Column_0.resetIn",
+      "sensorInput_1.dataOut-->L4Column_1.activeColumns",
+      "L2Column_1.feedForwardOutput-->L4Column_1.apicalInput",
+      "externalInput_1.dataOut-->L4Column_1.basalInput",
+      "L4Column_1.predictedActiveCells-->"+
+      "L2Column_1.feedforwardGrowthCandidates",
+      "L4Column_1.activeCells-->L2Column_1.feedforwardInput",
+      "sensorInput_1.resetOut-->L2Column_1.resetIn",
+      "sensorInput_2.dataOut-->L4Column_2.activeColumns",
+      "L2Column_2.feedForwardOutput-->L4Column_2.apicalInput",
+      "externalInput_2.dataOut-->L4Column_2.basalInput",
+      "L4Column_2.predictedActiveCells-->"+
+      "L2Column_2.feedforwardGrowthCandidates",
+      "L4Column_2.activeCells-->L2Column_2.feedforwardInput",
+      "sensorInput_2.resetOut-->L2Column_2.resetIn",
+      "sensorInput_3.dataOut-->L4Column_3.activeColumns",
+      "L2Column_3.feedForwardOutput-->L4Column_3.apicalInput",
+      "externalInput_3.dataOut-->L4Column_3.basalInput",
+      "L4Column_3.predictedActiveCells-->"+
+      "L2Column_3.feedforwardGrowthCandidates",
+      "L4Column_3.activeCells-->L2Column_3.feedforwardInput",
+      "sensorInput_3.resetOut-->L2Column_3.resetIn",
+      "sensorInput_4.dataOut-->L4Column_4.activeColumns",
+      "L2Column_4.feedForwardOutput-->L4Column_4.apicalInput",
+      "externalInput_4.dataOut-->L4Column_4.basalInput",
+      "L4Column_4.predictedActiveCells-->"+
+      "L2Column_4.feedforwardGrowthCandidates",
+      "L4Column_4.activeCells-->L2Column_4.feedforwardInput",
+      "sensorInput_4.resetOut-->L2Column_4.resetIn",
+      "L2Column_0.feedForwardOutput-->L2Column_1.lateralInput",
+      "L2Column_1.feedForwardOutput-->L2Column_0.lateralInput",
+      "L2Column_1.feedForwardOutput-->L2Column_2.lateralInput",
+      "L2Column_2.feedForwardOutput-->L2Column_1.lateralInput",
+      "L2Column_2.feedForwardOutput-->L2Column_3.lateralInput",
+      "L2Column_2.feedForwardOutput-->L2Column_4.lateralInput",
+      "L2Column_3.feedForwardOutput-->L2Column_2.lateralInput",
+      "L2Column_4.feedForwardOutput-->L2Column_2.lateralInput",
+      "externalInput_0.dataOut-->L4Column_0.basalGrowthCandidates",
+      "externalInput_1.dataOut-->L4Column_1.basalGrowthCandidates",
+      "externalInput_2.dataOut-->L4Column_2.basalGrowthCandidates",
+      "externalInput_3.dataOut-->L4Column_3.basalGrowthCandidates",
+      "externalInput_4.dataOut-->L4Column_4.basalGrowthCandidates"])
+
+    # This gets textual representations of the links.
+    links = set([link.second.getMoniker() for link in links])
+
+    # Build a descriptive error message to pass to the user
+    error_message = "Links incorrectly formed in multicolumn L2L4 network: \n"
+    for link in desired_links:
+      if not link in links:
+        error_message += "Failed to find link: {}\n".format(link)
+
+    for link in links:
+      if not link in desired_links:
+        error_message += "Found unexpected link: {}\n".format(link)
+
+    self.assertSetEqual(desired_links, links, error_message)
 
 
   @unittest.skip("Need to implement")
@@ -517,7 +785,6 @@ class LaminarNetworkTest(unittest.TestCase):
     This test trains a network with a few (feature, location) pairs and checks
     the data flows correctly, and that each intermediate representation is
     correct.
-
     Indices 0 and 1 in variable names refer to cortical column number.
     """
 
@@ -526,7 +793,8 @@ class LaminarNetworkTest(unittest.TestCase):
 
     self.assertEqual(
       len(net.regions.keys()), 4 * 2,
-      "Incorrect number of regions"
+      "Incorrect number of regions, expected {} but had {}".format(8*2,
+          len(net.regions.keys()))
     )
 
     # Get various regions

@@ -7,3 +7,4 @@ tabulate
 tqdm
 prettytable
 plyfile
+scikit-learn
