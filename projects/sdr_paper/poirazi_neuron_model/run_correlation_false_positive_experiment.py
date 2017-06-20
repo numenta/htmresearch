@@ -26,17 +26,19 @@ from htmresearch.frameworks.poirazi_neuron_model.neuron_model import (
 from htmresearch.frameworks.poirazi_neuron_model.neuron_model import Matrix_Neuron as Neuron
 from htmresearch.frameworks.poirazi_neuron_model.data_tools import generate_correlated_data_sparse, generate_evenly_distributed_data_sparse, covariance_generate_correlated_data
 from nupic.bindings.math import *
-numpy.random.seed(19)
+from multiprocessing import Pool, cpu_count
 
-def run_false_positive_experiment_correlation(num_neurons = 1,
-                    a = 32,
-                    possible_cluster_sizes = [1,2,4,8,16],
-                    dim = 2000,
-                    num_samples = 1000,
-                    num_dendrites = 500,
-                    dendrite_length = 10,
-                    num_trials = 1000,
-                    nonlinearity = threshold_nonlinearity(5)):
+
+def run_false_positive_experiment_correlation(seed,
+                                              num_neurons = 1,
+                                              a = 32,
+                                              possible_cluster_sizes = [1,2,4,8],
+                                              dim = 2000,
+                                              num_samples = 20000,
+                                              num_dendrites = 500,
+                                              dendrite_length = 20,
+                                              num_trials = 1000,
+                                              nonlinearity = threshold_nonlinearity(10)):
   """
   Run an experiment to test the false positive rate based on number of
   synapses per dendrite, dimension and sparsity.  Uses two competing neurons,
@@ -44,18 +46,13 @@ def run_false_positive_experiment_correlation(num_neurons = 1,
 
   Based on figure 5B in the original SDR paper.
   """
+  print seed
+  numpy.random.seed(seed)
+
   for trial in range(num_trials):
-
-    fps = []
-    fns = []
-
-    neuron = Neuron(size = dendrite_length*num_dendrites, num_dendrites = num_dendrites, dendrite_length = dendrite_length, dim = dim, nonlinearity = nonlinearity)
-
     cluster_size = numpy.random.choice(possible_cluster_sizes)
     num_clusters = numpy.random.randint(0, int(dim/cluster_size))
     data = generate_correlated_data_sparse(dim = dim, num_active = a, num_samples = num_samples, num_clusters = num_clusters, cluster_size = cluster_size)
-    labels = numpy.asarray([1 for i in range(num_samples/2)] + [-1 for i in range(num_samples/2)])
-
     patterns = [data.rowNonZeros(i)[0] for i in range(data.nRows())]
     pattern_correlations = []
     correlations = numpy.corrcoef(data.toDense(), rowvar = False)
@@ -64,14 +61,22 @@ def run_false_positive_experiment_correlation(num_neurons = 1,
       pattern_correlations.append(pattern_correlation)
     correlation = numpy.mean(pattern_correlations)
 
-    neuron.HTM_style_initialize_on_data(data, labels)
-    error, fp, fn = get_error(data, labels, [neuron])
-    fps.append(fp)
-    fns.append(fn)
-    print "Error at r = {}, with {} clusters of size {} is {}, with {} false positives and {} false negatives".format(correlation, num_clusters, cluster_size, error, fp, fn)
 
-    with open("correlation_results_{}.txt".format(a), "a") as f:
-      f.write(str(correlation) + ", " + str(sum(fps)) + ", " + str(num_trials*num_samples/2) + "\n")
+    fps = []
+    fns = []
+    for i in range((num_samples/2)/num_dendrites):
+      current_data = data.getSlice(i*(num_dendrites*2), (i+1)*(num_dendrites*2), 0, dim)
+      neuron = Neuron(size = dendrite_length*num_dendrites, num_dendrites = num_dendrites, dendrite_length = dendrite_length, dim = dim, nonlinearity = nonlinearity)
+      labels = numpy.asarray([1 for i in range(num_dendrites)] + [-1 for i in range(num_dendrites)])
+
+      neuron.HTM_style_initialize_on_data(current_data, labels)
+      error, fp, fn = get_error(data, labels, [neuron])
+      fps.append(fp)
+      fns.append(fn)
+
+    print "Error at r = {}, with {} clusters of size {} is {}, with {} false positives".format(correlation, num_clusters, cluster_size, error, sum(fps))
+    with open("correlation_results_a{}_n{}_s{}.txt".format(a, dim, num_dendrites), "a") as f:
+      f.write(str(correlation) + ", " + str(sum(fps)) + ", " + str(num_samples/2) + "\n")
 
 def get_error(data, labels, pos_neurons, neg_neurons = [], add_noise = False):
   """
@@ -103,4 +108,5 @@ def get_error(data, labels, pos_neurons, neg_neurons = [], add_noise = False):
 
 
 if __name__ == "__main__":
-  run_false_positive_experiment_correlation()
+  p = Pool(cpu_count())
+  p.map(run_false_positive_experiment_correlation, [19+i for i in range(cpu_count())])
