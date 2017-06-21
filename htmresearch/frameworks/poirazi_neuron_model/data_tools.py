@@ -124,11 +124,12 @@ def generate_correlated_data_clusters(dim = 2000, num_active = 40, num_samples =
   clusters = []
   cells = set(range(dim))
   for size, num_cells in zip(cluster_sizes, num_cells_per_cluster_size):
-    for i in range(num_cells/size):
+    for i in range(numpy.ceil(1.*num_cells/size)):
       cluster = tuple(numpy.random.choice(dim, size, replace = False))
       clusters.append(cluster)
 
   indices = []
+  print len(clusters)
   for sample in range(num_samples):
     if len(clusters) > num_active/2:
       chosen_clusters = numpy.random.choice(len(clusters), num_active/2, replace = False)

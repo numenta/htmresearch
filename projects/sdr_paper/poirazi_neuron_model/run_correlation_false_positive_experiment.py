@@ -55,7 +55,6 @@ def run_false_positive_experiment_correlation(seed,
     num_cluster_sizes = numpy.random.choice([1, 1, 2] + range(1, 8), 1)
     cluster_sizes = numpy.random.choice(possible_cluster_sizes, num_cluster_sizes, replace = False)
     num_cells_per_cluster_size = [numpy.random.randint(2*dim) for i in range(num_cluster_sizes)]
-    print cluster_sizes, num_cells_per_cluster_size
     data = generate_correlated_data_clusters(dim = dim,
                                              num_active = a,
                                              num_samples = num_samples,
@@ -69,7 +68,7 @@ def run_false_positive_experiment_correlation(seed,
       pattern_correlation = [correlations[i, j] for i in pattern for j in pattern if i != j]
       pattern_correlations.append(pattern_correlation)
     correlation = numpy.mean(pattern_correlations)
-    print "Generated {} samples with total average pattern correlation {}".format(num_samples, correlation)
+    print "Generated {} samples with total average pattern correlation {}, using cluster sizes {} with cells per cluster size of {}".format(num_samples, correlation, cluster_sizes, num_cells_per_cluster_size)
 
 
     fps = []
@@ -81,7 +80,7 @@ def run_false_positive_experiment_correlation(seed,
       labels = numpy.asarray([1 for i in range(num_dendrites)] + [-1 for i in range(num_dendrites)])
 
       neuron.HTM_style_initialize_on_data(current_data, labels)
-      error, fp, fn = get_error(data, labels, [neuron])
+      error, fp, fn = get_error(current_data, labels, [neuron])
       fps.append(fp)
       fns.append(fn)
       errors.append(error)
