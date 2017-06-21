@@ -25,8 +25,7 @@ from htmresearch.frameworks.poirazi_neuron_model.neuron_model import (
   power_nonlinearity, threshold_nonlinearity, sigmoid_nonlinearity)
 from htmresearch.frameworks.poirazi_neuron_model.neuron_model import Matrix_Neuron as Neuron
 from htmresearch.frameworks.poirazi_neuron_model.data_tools import (
-  generate_correlated_data_sparse, generate_evenly_distributed_data_sparse,
-  covariance_generate_correlated_data, generate_correlated_data_clusters)
+  generate_correlated_data_clusters, get_pattern_correlations)
 from nupic.bindings.math import *
 from multiprocessing import Pool, cpu_count
 
@@ -34,7 +33,7 @@ from multiprocessing import Pool, cpu_count
 def run_false_positive_experiment_correlation(seed,
                                               num_neurons = 1,
                                               a = 32,
-                                              dim = 2000,
+                                              dim = 4000,
                                               num_samples = 20000,
                                               num_dendrites = 500,
                                               dendrite_length = 20,
@@ -61,13 +60,7 @@ def run_false_positive_experiment_correlation(seed,
                                              num_cells_per_cluster_size =
                                                  num_cells_per_cluster_size,
                                              cluster_sizes = cluster_sizes)
-    patterns = [data.rowNonZeros(i)[0] for i in range(data.nRows())]
-    pattern_correlations = []
-    correlations = numpy.corrcoef(data.toDense(), rowvar = False)
-    for i, pattern in enumerate(patterns):
-      pattern_correlation = [correlations[i, j] for i in pattern for j in pattern if i != j]
-      pattern_correlations.append(pattern_correlation)
-    correlation = numpy.mean(pattern_correlations)
+    correlation = get_pattern_correlations(data)
     print "Generated {} samples with total average pattern correlation {}, using cluster sizes {} with cells per cluster size of {}".format(num_samples, correlation, cluster_sizes, num_cells_per_cluster_size)
 
 
@@ -86,7 +79,7 @@ def run_false_positive_experiment_correlation(seed,
       errors.append(error)
 
     print "Error at r = {} is {}, with {} false positives out of {} samples".format(correlation, numpy.mean(errors), sum(fps), num_samples/2)
-    with open("correlation_results_a{}_n{}_s{}.txt".format(a, dim, num_dendrites), "a") as f:
+    with open("correlation_results_a{}_n{}_s{}.txt".format(a, dim, dendrite_length), "a") as f:
       f.write(str(correlation) + ", " + str(sum(fps)) + ", " + str(num_samples/2) + "\n")
 
 def get_error(data, labels, pos_neurons, neg_neurons = [], add_noise = False):
@@ -115,7 +108,7 @@ def get_error(data, labels, pos_neurons, neg_neurons = [], add_noise = False):
       num_false_positives += 1
     elif classification < 0 and label >= 1:
       num_false_negatives += 1
-  return (1.*num_false_positives + num_false_negatives)/data.nRows(), num_false_positives, num_false_negatives
+  return (1.*num_false_positives)/(2*data.nRows()), num_false_positives, num_false_negatives
 
 
 if __name__ == "__main__":

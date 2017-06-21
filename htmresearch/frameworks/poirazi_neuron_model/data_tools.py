@@ -26,58 +26,21 @@ from scipy.signal import convolve2d
 import sympy
 from sympy.stats import Beta
 
-def generate_random_cholesky_covariance_matrix_sympy(dim = 2000, beta = 1):
+
+def get_biased_correlations(data, threshold= 10):
   """
-  Uses sympy to generate a cholesky decomposition of a random correlation
-  matrix, with arbitrary precision required for producing strong correlations
-  at high dimensions.  Warning: can be slow.
-
-  Note that the returned matrix itself is numerical, and will not be precisely
-  identical to the symbolic version.  However, it doesn't have to be.
+  Gets the highest few correlations for each bit, across the entirety of the
+  data.  Meant to provide a comparison point for the pairwise correlations
+  reported in the literature, which are typically between neighboring neurons
+  tuned to the same inputs.
   """
-  p = sympy.zeros(dim)
-  s = sympy.eye(dim)
+  data = data.toDense()
+  correlations = numpy.corrcoef(data, rowvar = False)
+  highest_correlations = []
+  for row in correlations:
+    highest_correlations += sorted(row, reverse = True)[:threshold]
+  return numpy.mean(highest_correlations)
 
-  for k in range(dim - 1):
-    for i in range(k+1, dim):
-      p[k, i] = 2*(Beta("x", beta, beta) - 0.5)
-      prob = p[k, i]
-      for l in range(k-1, -1, -1):
-        prob = prob*sympy.sqrt((1 - p[l,i]**2)*(1-p[l,k]**2)) + p[l,i]*p[l,k]
-      s[k, i] = prob
-      s[i, k] = prob
-
-  return numpy.asarray(s.cholesky().evalf())
-
-
-def generate_random_correlation_matrix_factor(dim = 2000, k = 10):
-  loading = numpy.random.rand(dim, k)
-  s = numpy.dot(loading, loading.T) + numpy.diag(numpy.random.rand(dim))
-  e = numpy.diag(1./numpy.sqrt(numpy.diag(s)))
-  s = numpy.dot(numpy.dot(e, s), e)
-  return s
-
-def generate_random_correlation_matrix_fast(dim = 2000):
-  m = numpy.random.uniform(-1, 1, (2000, 2000))
-  return numpy.dot(m, m.T)
-
-
-def generate_random_correlation_matrix(dim = 2000, beta = 1):
-  p = numpy.zeros((dim, dim))
-  s = numpy.identity(dim)
-
-  for k in range(dim - 1):
-    for i in range(k+1, dim):
-      p[k, i] = (numpy.random.beta(beta, beta) - 0.5)*2
-      prob = p[k, i]
-      for l in range(k-1, -1, -1):
-        prob = prob*numpy.sqrt((1 - p[l,i]**2)*(1-p[l,k]**2)) + p[l,i]*p[l,k]
-      s[k, i] = prob
-      s[i, k] = prob
-  print s
-  print numpy.linalg.eigvals(s)
-  print numpy.linalg.det(s)
-  return s
 
 def get_pattern_correlations(data):
   """
@@ -93,27 +56,6 @@ def get_pattern_correlations(data):
   for pattern in patterns:
     pattern_correlations.append([correlations[i, j] for i in pattern for j in pattern if i != j])
   return numpy.mean(pattern_correlations)
-
-def covariance_generate_correlated_data(dim = 100, num_active = 50, num_samples = 10000, factor = 1):
-  """
-  Uses a covariance-based method to generate correlated data.  We pretend that
-  we are generating correlated reals, and then simply take the num_active
-  highest reals as our 1s, and the rest of the bits are set to 0.
-
-  Currently, this method is not giving adequately high correlations between
-  bits in patterns.
-  """
-  correlations = generate_random_correlation_matrix_factor(dim, factor)
-  L = numpy.linalg.cholesky(correlations)
-  data = numpy.zeros((num_samples, dim))
-
-  for sample in range(num_samples):
-    base = numpy.random.normal(0, 1, size = dim)
-    activation = numpy.dot(L, base)
-    indices = numpy.argsort(activation)[:num_active]
-    for index in indices:
-      data[sample, index] = 1.
-  return data
 
 def generate_correlated_data_clusters(dim = 2000, num_active = 40, num_samples = 1000, num_cells_per_cluster_size = [1000]*8, cluster_sizes = range(2, 10)):
   """
@@ -153,46 +95,6 @@ def generate_correlated_data_clusters(dim = 2000, num_active = 40, num_samples =
   for sample, datapoint in enumerate(indices):
     for i in datapoint:
       data[sample, i] = 1.
-  return data
-
-def generate_correlated_data_sparse(dim = 2000, num_active = 40, num_samples = 1000, num_clusters = 100, cluster_size = 4):
-  """
-  Generates a set of data drawn from a uniform distribution, but with bits
-  clustered to force correlation between neurons.  Clustered bits will always
-  be on or off together.  Note that cluster size must divide the number of
-  active bits, due to our generation approach.  If cluster_size*num_clusters is
-  greater than dim, the code will also fail.
-  """
-  free_neurons = set(range(dim))
-  clusters = set()
-  for i in range(num_clusters):
-    cluster = tuple(numpy.random.choice(tuple(free_neurons), cluster_size, replace = False))
-    clusters.add(cluster)
-    free_neurons -= set(cluster)
-
-  indices = [[] for i in range(num_samples)]
-  for sample in range(num_samples):
-    current_clusters = set()
-    current_cells = set()
-    for i in range(num_active/cluster_size):
-      cluster_threshold = (1.*len(clusters - current_clusters)*cluster_size)/(dim - i*cluster_size)
-      if numpy.random.random() < cluster_threshold:
-        cluster = (random.sample(tuple(clusters - current_clusters), 1))[0]
-        current_clusters.add(cluster)
-        indices[sample] += list(cluster)
-        #print current_clusters
-      else:
-        cells = list(numpy.random.choice(tuple(free_neurons - current_cells), cluster_size, replace = False))
-        current_cells = current_cells | set(cells)
-
-        indices[sample] += cells
-
-  data = SM32()
-  data.reshape(num_samples, dim)
-  for sample, datapoint in enumerate(indices):
-    for i in datapoint:
-      data[sample, i] = 1.
-
   return data
 
 def apply_noise(data, noise):
@@ -407,20 +309,8 @@ if __name__ == "__main__":
   This is only for inspection; normally, data is freshly generated for each
   experiment using the functions in this file.
   """
-
-  for factor in range(100):
-    data = covariance_generate_correlated_data()
-    #pos, _ = generate_data(dim = 200, num_bins = 10, num_samples = 20000, sparse = True)
-    print get_pattern_correlations(SM32(data))
-
-
-
-  #pos, neg = generate_data(num_samples = 30000)
-  #posdata = [(i, 1) for i in pos]
-  #negdata = [(i, -1) for i in neg]
-  #data = posdata + negdata
-  #print pos, neg
-  #binned_data = bin_data(pos + neg, 40, 10)
-  #with open("data.txt", "wb") as f:
-    #for line in data:
-    #  f.write(str(line) + "\n")
+  data = generate_correlated_data_clusters(num_active = 32, num_samples = 100000)
+  print get_biased_correlations(data, threshold = 10)
+  print get_biased_correlations(data, threshold = 25)
+  print get_biased_correlations(data, threshold = 50)
+  print get_biased_correlations(data, threshold = 100)
