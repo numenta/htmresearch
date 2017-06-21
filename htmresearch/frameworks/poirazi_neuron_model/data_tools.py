@@ -41,6 +41,22 @@ def get_biased_correlations(data, threshold= 10):
     highest_correlations += sorted(row, reverse = True)[:threshold]
   return numpy.mean(highest_correlations)
 
+def get_pattern_correlations_even(data):
+  """
+  Gets the average correlation between all bits in patterns, across the entire
+  dataset.  Assumes input is a sparse matrix.
+  """
+
+  patterns = [data.rowNonZeros(i)[0] for i in range(data.nRows())]
+  dense_data = data.toDense()
+  correlations = numpy.corrcoef(dense_data, rowvar = False)
+  correlations = numpy.nan_to_num(correlations)
+  pattern_correlations = []
+  pairs = set()
+  for pattern in patterns:
+    pairs |= set([(i, j) for i in pattern for j in pattern if i != j])
+  pair_correlations = [correlations[i, j] for (i, j) in pairs]
+  return numpy.mean(pair_correlations)
 
 def get_pattern_correlations(data):
   """
@@ -309,7 +325,9 @@ if __name__ == "__main__":
   This is only for inspection; normally, data is freshly generated for each
   experiment using the functions in this file.
   """
-  data = generate_correlated_data_clusters(num_active = 32, num_samples = 100000)
+  data = generate_correlated_data_clusters(num_active = 32, num_samples = 10000000)
+  print get_pattern_correlations(data)
+  print get_pattern_correlations_even(data)
   print get_biased_correlations(data, threshold = 10)
   print get_biased_correlations(data, threshold = 25)
   print get_biased_correlations(data, threshold = 50)

@@ -40,11 +40,9 @@ def run_false_positive_experiment_correlation(seed,
                                               num_trials = 1000,
                                               nonlinearity = threshold_nonlinearity(20)):
   """
-  Run an experiment to test the false positive rate based on number of
-  synapses per dendrite, dimension and sparsity.  Uses two competing neurons,
-  along the P&M model.
-
-  Based on figure 5B in the original SDR paper.
+  Run an experiment to test the false positive rate based on the correlation
+  between bits.  Correlation is measured as the average correlation between all
+  bits in patterns with each other.
   """
   numpy.random.seed(seed)
   possible_cluster_sizes = range(2, 10)

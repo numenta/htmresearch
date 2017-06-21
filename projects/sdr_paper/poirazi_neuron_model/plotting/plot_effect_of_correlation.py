@@ -38,20 +38,35 @@ py.sign_in(plotlyUser, plotlyAPIKey)
 
 # Calculated error values
 
-correlations = []
-errors = []
+correlations2000 = []
+errors2000 = []
 with open("../correlation_results_a32_n2000_s20.txt", "rb") as f:
   for line in f:
     [correlation, fp, total] = map(float, line.split(","))
-    correlations.append(correlation)
-    errors.append(fp/total)
+    correlations2000.append(correlation)
+    errors2000.append(fp/total)
 
-mean_errors, bin_ends, binnumber = stats.binned_statistic(correlations, errors, bins = 10)
-bin_midpoints = [numpy.mean([bin_ends[i], bin_ends[i+1]]) for i in range(len(bin_ends) - 1)]
+correlations4000 = []
+errors4000 = []
+with open("../correlation_results_a32_n4000_s20.txt", "rb") as f:
+  for line in f:
+    [correlation, fp, total] = map(float, line.split(","))
+    correlations4000.append(correlation)
+    errors4000.append(fp/total)
+
+errors2000 = 1 - numpy.asarray(errors2000)
+errors4000 = 1 - numpy.asarray(errors4000)
+
+mean_errors2000, bin_ends2000, _ = stats.binned_statistic(correlations2000, errors2000, bins = 10)
+bin_midpoints2000 = [numpy.mean([bin_ends2000[i], bin_ends2000[i+1]]) for i in range(len(bin_ends2000) - 1)]
+
+mean_errors4000, bin_ends4000, _ = stats.binned_statistic(correlations4000, errors4000, bins = 10)
+bin_midpoints4000 = [numpy.mean([bin_ends4000[i], bin_ends4000[i+1]]) for i in range(len(bin_ends4000) - 1)]
+
 
 trace1 = Scatter(
-    y=errors,
-    x=correlations,
+    y=errors2000,
+    x=correlations2000,
     mode = "markers",
     marker=Marker(
       symbol="octagon",
@@ -62,9 +77,9 @@ trace1 = Scatter(
 )
 
 trace2 = Scatter(
-    y=mean_errors,
-    x=bin_midpoints,
-    mode = "markers+line",
+    y=mean_errors2000,
+    x=bin_midpoints2000,
+    mode = "markers+lines",
     marker=Marker(
       symbol="octagon",
       size=12,
@@ -73,7 +88,31 @@ trace2 = Scatter(
     name="a=32, n=2000"
 )
 
-data = Data([trace1, trace2])
+trace3 = Scatter(
+    y=errors4000,
+    x=correlations4000,
+    mode = "markers",
+    marker=Marker(
+      symbol="octagon",
+      size=12,
+      color="rgb(0, 0, 255)",
+    ),
+    name="a=32, n=2000"
+)
+
+trace4 = Scatter(
+    y=mean_errors4000,
+    x=bin_midpoints4000,
+    mode = "lines+markers",
+    marker=Marker(
+      symbol="octagon",
+      size=12,
+      color="rgb(0, 255, 0)",
+    ),
+    name="a=32, n=2000"
+)
+
+data = Data([trace1, trace2, trace3, trace4])
 
 layout = Layout(
     title='',
@@ -82,7 +121,7 @@ layout = Layout(
     width=855,
     height=700,
     xaxis=XAxis(
-        title='Cell population size (n)',
+        title='Pattern correlation (r)',
         titlefont=Font(
             family='',
             size=26,
@@ -96,12 +135,10 @@ layout = Layout(
         exponentformat="none",
         dtick=0.1,
         showline=True,
-        range=[0,0.7],
+        range=[0,0.15],
     ),
     yaxis=YAxis(
-        title='Probability of false positives',
-        type='log',
-        exponentformat='power',
+        title='Accuracy',
         autorange=True,
         titlefont=Font(
             family='',
