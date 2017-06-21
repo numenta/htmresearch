@@ -54,7 +54,7 @@ def run_false_positive_experiment_correlation(seed,
   for trial in range(num_trials):
     num_cluster_sizes = numpy.random.choice([1, 1, 2] + range(1, 8), 1)
     cluster_sizes = numpy.random.choice(possible_cluster_sizes, num_cluster_sizes, replace = False)
-    num_cells_per_cluster_size = [numpy.random.randint(2*dim) for i in range(num_cluster_sizes)]
+    num_cells_per_cluster_size = [numpy.random.randint(dim, 3*dim) for i in range(num_cluster_sizes)]
     data = generate_correlated_data_clusters(dim = dim,
                                              num_active = a,
                                              num_samples = num_samples,
