@@ -108,7 +108,7 @@ def get_error(data, labels, pos_neurons, neg_neurons = [], add_noise = False):
       num_false_positives += 1
     elif classification < 0 and label >= 1:
       num_false_negatives += 1
-  return (1.*num_false_positives)/(2*data.nRows()), num_false_positives, num_false_negatives
+  return (1.*num_false_positives)/(data.nRows()/2), num_false_positives, num_false_negatives
 
 
 if __name__ == "__main__":
