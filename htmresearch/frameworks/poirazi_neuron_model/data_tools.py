@@ -134,7 +134,7 @@ def generate_correlated_data_clusters(dim = 2000, num_active = 40, num_samples =
       chosen_clusters = numpy.random.choice(len(clusters), num_active/2, replace = False)
       current_clusters = [clusters[i] for i in chosen_clusters]
     else:
-      chosen_clusters = clusters
+      current_clusters = clusters
     current_cells = set()
     for cluster in current_clusters:
       if len(current_cells) + len(cluster) < num_active:
