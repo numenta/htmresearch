@@ -32,13 +32,13 @@ from multiprocessing import Pool, cpu_count
 
 def run_false_positive_experiment_correlation(seed,
                                               num_neurons = 1,
-                                              a = 32,
+                                              a = 64,
                                               dim = 4000,
                                               num_samples = 20000,
                                               num_dendrites = 500,
-                                              dendrite_length = 20,
+                                              dendrite_length = 40,
                                               num_trials = 1000,
-                                              nonlinearity = threshold_nonlinearity(10)):
+                                              nonlinearity = threshold_nonlinearity(20)):
   """
   Run an experiment to test the false positive rate based on number of
   synapses per dendrite, dimension and sparsity.  Uses two competing neurons,
