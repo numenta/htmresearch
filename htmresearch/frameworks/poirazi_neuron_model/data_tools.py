@@ -115,6 +115,46 @@ def covariance_generate_correlated_data(dim = 100, num_active = 50, num_samples 
       data[sample, index] = 1.
   return data
 
+def generate_correlated_data_clusters(dim = 2000, num_active = 40, num_samples = 1000, num_cells_per_cluster_size = [1000]*8, cluster_sizes = range(2, 10)):
+  """
+  Generates a set of data drawn from a uniform distribution, but with bits
+  clustered to force correlation between neurons.  Clusters are randomly chosen
+  to form an activation pattern, in such a way as to maintain sparsity.
+  """
+  clusters = []
+  cells = set(range(dim))
+  for size, num_cells in zip(cluster_sizes, num_cells_per_cluster_size):
+    for i in range(num_cells/size):
+      cluster = tuple(numpy.random.choice(dim, size, replace = False))
+      clusters.append(cluster)
+
+  indices = []
+  for sample in range(num_samples):
+    if len(clusters) > num_active/2:
+      chosen_clusters = numpy.random.choice(len(clusters), num_active/2, replace = False)
+      current_clusters = [clusters[i] for i in chosen_clusters]
+    else:
+      chosen_clusters = clusters
+    current_cells = set()
+    for cluster in current_clusters:
+      if len(current_cells) + len(cluster) < num_active:
+        current_cells |= set(cluster)
+      else:
+        break
+    if len(current_cells) < num_active:
+      possible_cells = cells - current_cells
+      new_cells = numpy.random.choice(tuple(possible_cells), num_active - len(current_cells), replace = False)
+      current_cells |= set(new_cells)
+    indices.append(list(current_cells))
+
+
+  data = SM32()
+  data.reshape(num_samples, dim)
+  for sample, datapoint in enumerate(indices):
+    for i in datapoint:
+      data[sample, i] = 1.
+  return data
+
 def generate_correlated_data_sparse(dim = 2000, num_active = 40, num_samples = 1000, num_clusters = 100, cluster_size = 4):
   """
   Generates a set of data drawn from a uniform distribution, but with bits

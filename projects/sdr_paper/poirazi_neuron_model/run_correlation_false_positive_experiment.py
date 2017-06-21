@@ -24,7 +24,9 @@ import random
 from htmresearch.frameworks.poirazi_neuron_model.neuron_model import (
   power_nonlinearity, threshold_nonlinearity, sigmoid_nonlinearity)
 from htmresearch.frameworks.poirazi_neuron_model.neuron_model import Matrix_Neuron as Neuron
-from htmresearch.frameworks.poirazi_neuron_model.data_tools import generate_correlated_data_sparse, generate_evenly_distributed_data_sparse, covariance_generate_correlated_data
+from htmresearch.frameworks.poirazi_neuron_model.data_tools import (
+  generate_correlated_data_sparse, generate_evenly_distributed_data_sparse,
+  covariance_generate_correlated_data, generate_correlated_data_clusters)
 from nupic.bindings.math import *
 from multiprocessing import Pool, cpu_count
 
@@ -32,7 +34,6 @@ from multiprocessing import Pool, cpu_count
 def run_false_positive_experiment_correlation(seed,
                                               num_neurons = 1,
                                               a = 32,
-                                              possible_cluster_sizes = [1,2,4,8],
                                               dim = 2000,
                                               num_samples = 20000,
                                               num_dendrites = 500,
@@ -46,13 +47,21 @@ def run_false_positive_experiment_correlation(seed,
 
   Based on figure 5B in the original SDR paper.
   """
-  print seed
   numpy.random.seed(seed)
+  possible_cluster_sizes = range(2, 10)
+
 
   for trial in range(num_trials):
-    cluster_size = numpy.random.choice(possible_cluster_sizes)
-    num_clusters = numpy.random.randint(0, int(dim/cluster_size))
-    data = generate_correlated_data_sparse(dim = dim, num_active = a, num_samples = num_samples, num_clusters = num_clusters, cluster_size = cluster_size)
+    num_cluster_sizes = numpy.random.choice([1, 1, 2] + range(1, 8), 1)
+    cluster_sizes = numpy.random.choice(possible_cluster_sizes, num_cluster_sizes, replace = False)
+    num_cells_per_cluster_size = [numpy.random.randint(2*dim) for i in range(num_cluster_sizes)]
+    print cluster_sizes, num_cells_per_cluster_size
+    data = generate_correlated_data_clusters(dim = dim,
+                                             num_active = a,
+                                             num_samples = num_samples,
+                                             num_cells_per_cluster_size =
+                                                 num_cells_per_cluster_size,
+                                             cluster_sizes = cluster_sizes)
     patterns = [data.rowNonZeros(i)[0] for i in range(data.nRows())]
     pattern_correlations = []
     correlations = numpy.corrcoef(data.toDense(), rowvar = False)
@@ -60,10 +69,12 @@ def run_false_positive_experiment_correlation(seed,
       pattern_correlation = [correlations[i, j] for i in pattern for j in pattern if i != j]
       pattern_correlations.append(pattern_correlation)
     correlation = numpy.mean(pattern_correlations)
+    print "Generated {} samples with total average pattern correlation {}".format(num_samples, correlation)
 
 
     fps = []
     fns = []
+    errors = []
     for i in range((num_samples/2)/num_dendrites):
       current_data = data.getSlice(i*(num_dendrites*2), (i+1)*(num_dendrites*2), 0, dim)
       neuron = Neuron(size = dendrite_length*num_dendrites, num_dendrites = num_dendrites, dendrite_length = dendrite_length, dim = dim, nonlinearity = nonlinearity)
@@ -73,8 +84,9 @@ def run_false_positive_experiment_correlation(seed,
       error, fp, fn = get_error(data, labels, [neuron])
       fps.append(fp)
       fns.append(fn)
+      errors.append(error)
 
-    print "Error at r = {}, with {} clusters of size {} is {}, with {} false positives".format(correlation, num_clusters, cluster_size, error, sum(fps))
+    print "Error at r = {} is {}, with {} false positives out of {} samples".format(correlation, numpy.mean(errors), sum(fps), num_samples/2)
     with open("correlation_results_a{}_n{}_s{}.txt".format(a, dim, num_dendrites), "a") as f:
       f.write(str(correlation) + ", " + str(sum(fps)) + ", " + str(num_samples/2) + "\n")
 
