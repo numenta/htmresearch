@@ -54,14 +54,24 @@ with open("../correlation_results_a32_n4000_s20.txt", "rb") as f:
     correlations4000.append(correlation)
     errors4000.append(fp/total)
 
-errors2000 = 1 - numpy.asarray(errors2000)
-errors4000 = 1 - numpy.asarray(errors4000)
+correlationsa64 = []
+errorsa64 = []
+with open("../correlation_results_a64_n4000_s40.txt", "rb") as f:
+  for line in f:
+    [correlation, fp, total] = map(float, line.split(","))
+    correlationsa64.append(correlation)
+    errorsa64.append(fp/total)
+
 
 mean_errors2000, bin_ends2000, _ = stats.binned_statistic(correlations2000, errors2000, bins = 10)
 bin_midpoints2000 = [numpy.mean([bin_ends2000[i], bin_ends2000[i+1]]) for i in range(len(bin_ends2000) - 1)]
 
 mean_errors4000, bin_ends4000, _ = stats.binned_statistic(correlations4000, errors4000, bins = 10)
 bin_midpoints4000 = [numpy.mean([bin_ends4000[i], bin_ends4000[i+1]]) for i in range(len(bin_ends4000) - 1)]
+
+
+mean_errorsa64, bin_endsa64, _ = stats.binned_statistic(correlationsa64, errorsa64, bins = 10)
+bin_midpointsa64 = [numpy.mean([bin_endsa64[i], bin_endsa64[i+1]]) for i in range(len(bin_endsa64) - 1)]
 
 
 trace1 = Scatter(
@@ -107,12 +117,36 @@ trace4 = Scatter(
     marker=Marker(
       symbol="octagon",
       size=12,
+      color="rgb(0, 0, 255)",
+    ),
+    name="a=32, n=2000"
+)
+
+trace5 = Scatter(
+    y=errorsa64,
+    x=correlationsa64,
+    mode = "markers",
+    marker=Marker(
+      symbol="octagon",
+      size=12,
+      color="rgb(0, 0, 255)",
+    ),
+    name="a=32, n=2000"
+)
+
+trace6 = Scatter(
+    y=mean_errorsa64,
+    x=bin_midpointsa64,
+    mode = "lines+markers",
+    marker=Marker(
+      symbol="octagon",
+      size=12,
       color="rgb(0, 255, 0)",
     ),
     name="a=32, n=2000"
 )
 
-data = Data([trace1, trace2, trace3, trace4])
+data = Data([trace2, trace4, trace6])
 
 layout = Layout(
     title='',
@@ -140,6 +174,8 @@ layout = Layout(
     yaxis=YAxis(
         title='Accuracy',
         autorange=True,
+        type='log',
+        exponentformat='power',
         titlefont=Font(
             family='',
             size=26,

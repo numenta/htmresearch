@@ -25,20 +25,20 @@ from htmresearch.frameworks.poirazi_neuron_model.neuron_model import (
   power_nonlinearity, threshold_nonlinearity, sigmoid_nonlinearity)
 from htmresearch.frameworks.poirazi_neuron_model.neuron_model import Matrix_Neuron as Neuron
 from htmresearch.frameworks.poirazi_neuron_model.data_tools import (
-  generate_correlated_data_clusters, get_pattern_correlations)
+  generate_correlated_data_clusters, get_pattern_correlations, get_biased_correlations)
 from nupic.bindings.math import *
 from multiprocessing import Pool, cpu_count
 
 
 def run_false_positive_experiment_correlation(seed,
                                               num_neurons = 1,
-                                              a = 64,
+                                              a = 32,
                                               dim = 4000,
                                               num_samples = 20000,
                                               num_dendrites = 500,
-                                              dendrite_length = 40,
+                                              dendrite_length = 20,
                                               num_trials = 1000,
-                                              nonlinearity = threshold_nonlinearity(20)):
+                                              nonlinearity = threshold_nonlinearity(10)):
   """
   Run an experiment to test the false positive rate based on the correlation
   between bits.  Correlation is measured as the average correlation between all
@@ -59,7 +59,8 @@ def run_false_positive_experiment_correlation(seed,
                                                  num_cells_per_cluster_size,
                                              cluster_sizes = cluster_sizes)
     correlation = get_pattern_correlations(data)
-    print "Generated {} samples with total average pattern correlation {}, using cluster sizes {} with cells per cluster size of {}".format(num_samples, correlation, cluster_sizes, num_cells_per_cluster_size)
+    closest_correlations = get_biased_correlations(data, threshold = 10)
+    print "Generated {} samples with total average pattern correlation {}, biased threshold-10 correlation {}, using cluster sizes {} with cells per cluster size of {}".format(num_samples, correlation, closest_correlations, cluster_sizes, num_cells_per_cluster_size)
 
 
     fps = []

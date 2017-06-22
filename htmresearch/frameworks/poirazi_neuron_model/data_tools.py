@@ -38,7 +38,7 @@ def get_biased_correlations(data, threshold= 10):
   correlations = numpy.corrcoef(data, rowvar = False)
   highest_correlations = []
   for row in correlations:
-    highest_correlations += sorted(row, reverse = True)[:threshold]
+    highest_correlations += sorted(row, reverse = True)[1:threshold+1]
   return numpy.mean(highest_correlations)
 
 def get_pattern_correlations_even(data):
@@ -73,7 +73,7 @@ def get_pattern_correlations(data):
     pattern_correlations.append([correlations[i, j] for i in pattern for j in pattern if i != j])
   return numpy.mean(pattern_correlations)
 
-def generate_correlated_data_clusters(dim = 2000, num_active = 40, num_samples = 1000, num_cells_per_cluster_size = [1000]*8, cluster_sizes = range(2, 10)):
+def generate_correlated_data_clusters(dim = 2000, num_active = 40, num_samples = 1000, num_cells_per_cluster_size = [2000]*8, cluster_sizes = range(2, 10)):
   """
   Generates a set of data drawn from a uniform distribution, but with bits
   clustered to force correlation between neurons.  Clusters are randomly chosen
@@ -325,7 +325,7 @@ if __name__ == "__main__":
   This is only for inspection; normally, data is freshly generated for each
   experiment using the functions in this file.
   """
-  data = generate_correlated_data_clusters(num_active = 32, num_samples = 10000000)
+  data = generate_correlated_data_clusters(num_active = 32, num_samples = 100000)
   print get_pattern_correlations(data)
   print get_pattern_correlations_even(data)
   print get_biased_correlations(data, threshold = 10)
