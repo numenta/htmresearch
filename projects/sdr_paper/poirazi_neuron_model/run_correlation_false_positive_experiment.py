@@ -41,8 +41,8 @@ def run_false_positive_experiment_correlation(seed,
                                               nonlinearity = threshold_nonlinearity(10)):
   """
   Run an experiment to test the false positive rate based on the correlation
-  between bits.  Correlation is measured as the average correlation between all
-  bits in patterns with each other.
+  between bits.  Correlation is measured as the average pairwise correlation
+  between bits for each pattern in the data (across all of the data).
   """
   numpy.random.seed(seed)
   possible_cluster_sizes = range(2, 10)
@@ -87,7 +87,6 @@ def get_error(data, labels, pos_neurons, neg_neurons = [], add_noise = False):
 
   Written to allow the use of multiple neurons, in case we attempt to use a
   population in the future.
-
   """
   num_correct = 0
   num_false_positives = 0
@@ -111,5 +110,8 @@ def get_error(data, labels, pos_neurons, neg_neurons = [], add_noise = False):
 
 
 if __name__ == "__main__":
+  # Run in parallel on as many CPUs as are available.  Built for Domino.
+  # Note that all processes append data to the same file, but appends are atomic
+  # at this size, so this is thread-safe.
   p = Pool(cpu_count())
   p.map(run_false_positive_experiment_correlation, [19+i for i in range(cpu_count())])

@@ -32,7 +32,9 @@ def get_biased_correlations(data, threshold= 10):
   Gets the highest few correlations for each bit, across the entirety of the
   data.  Meant to provide a comparison point for the pairwise correlations
   reported in the literature, which are typically between neighboring neurons
-  tuned to the same inputs.
+  tuned to the same inputs.  We would expect these neurons to be among the most
+  correlated in any region, so pairwise correlations between most likely do not
+  provide an unbiased estimator of correlations between arbitrary neurons.
   """
   data = data.toDense()
   correlations = numpy.corrcoef(data, rowvar = False)
@@ -41,27 +43,13 @@ def get_biased_correlations(data, threshold= 10):
     highest_correlations += sorted(row, reverse = True)[1:threshold+1]
   return numpy.mean(highest_correlations)
 
-def get_pattern_correlations_even(data):
-  """
-  Gets the average correlation between all bits in patterns, across the entire
-  dataset.  Assumes input is a sparse matrix.
-  """
-
-  patterns = [data.rowNonZeros(i)[0] for i in range(data.nRows())]
-  dense_data = data.toDense()
-  correlations = numpy.corrcoef(dense_data, rowvar = False)
-  correlations = numpy.nan_to_num(correlations)
-  pattern_correlations = []
-  pairs = set()
-  for pattern in patterns:
-    pairs |= set([(i, j) for i in pattern for j in pattern if i != j])
-  pair_correlations = [correlations[i, j] for (i, j) in pairs]
-  return numpy.mean(pair_correlations)
-
 def get_pattern_correlations(data):
   """
   Gets the average correlation between all bits in patterns, across the entire
-  dataset.  Assumes input is a sparse matrix.
+  dataset.  Assumes input is a sparse matrix.  Weighted by pattern rather than
+  by bit; this is the average pairwise correlation for every pattern in the
+  data, and is not the average pairwise correlation for all bits that ever
+  cooccur.  This is a subtle but important difference.
   """
 
   patterns = [data.rowNonZeros(i)[0] for i in range(data.nRows())]
@@ -321,13 +309,12 @@ def bin_data(data, dim = 40, num_bins = 10):
 
 if __name__ == "__main__":
   """
-  Generates a set of test data and prints it to data.txt.
-  This is only for inspection; normally, data is freshly generated for each
-  experiment using the functions in this file.
+  Generates a set of correlated test data and prints some correlation
+  statistics.  This is only meant for testing; ordinarily, experiments using
+  tools in this class will generate fresh data directly for each trial.
   """
   data = generate_correlated_data_clusters(num_active = 32, num_samples = 100000)
   print get_pattern_correlations(data)
-  print get_pattern_correlations_even(data)
   print get_biased_correlations(data, threshold = 10)
   print get_biased_correlations(data, threshold = 25)
   print get_biased_correlations(data, threshold = 50)
