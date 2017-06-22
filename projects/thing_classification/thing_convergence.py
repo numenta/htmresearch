@@ -35,7 +35,55 @@ from htmresearch.frameworks.layers.object_machine_factory import (
   createObjectMachine
 )
 
-def loadThingObjects(numCorticalColumns=1):
+
+def getL4Params():
+  """
+  Returns a good default set of parameters to use in the L4 region.
+  """
+  return {
+    "columnCount": 256,
+    "cellsPerColumn": 16,
+    "learn": True,
+    "learnOnOneCell": False,
+    "initialPermanence": 0.51,
+    "connectedPermanence": 0.6,
+    "permanenceIncrement": 0.1,
+    "permanenceDecrement": 0.02,
+    "minThreshold": 18,
+    "predictedSegmentDecrement": 0.0,
+    "activationThreshold": 18,
+    "sampleSize": 30,
+    "implementation": "etm",
+  }
+
+
+
+def getL2Params():
+  """
+  Returns a good default set of parameters to use in the L4 region.
+  """
+  return {
+    "inputWidth": 2048 * 16,
+    "cellCount": 4096,
+    "sdrSize": 40,
+    "synPermProximalInc": 0.5,
+    "synPermProximalDec": 0.0,
+    "initialProximalPermanence": 0.6,
+    "minThresholdProximal": 6,
+    "sampleSizeProximal": 10,
+    "connectedPermanenceProximal": 0.5,
+    "synPermDistalInc": 0.1,
+    "synPermDistalDec": 0.001,
+    "initialDistalPermanence": 0.41,
+    "activationThresholdDistal": 13,
+    "sampleSizeDistal": 30,
+    "connectedPermanenceDistal": 0.5,
+    "distalSegmentInhibitionFactor": 1.001,
+    "learningMode": True,
+  }
+
+
+def loadThingObjects(numCorticalColumns=1, objDataPath='./data/'):
   """
   Load simulated sensation data on a number of different objects
   There is one file per object, each row contains one feature, location pairs
@@ -61,16 +109,16 @@ def loadThingObjects(numCorticalColumns=1):
     objects.locations.append([])
     objects.features.append([])
 
-  objDataPath = 'data/'
   objFiles = []
   for f in os.listdir(objDataPath):
     if os.path.isfile(os.path.join(objDataPath, f)):
       if '.log' in f:
         objFiles.append(f)
+
   idx = 0
   for f in objFiles:
-    print "load object file: ", f
     objName = f.split('.')[0]
+    objName = objName[4:]
     objFile = open('{}/{}'.format(objDataPath, f))
 
     sensationList = []
@@ -88,7 +136,9 @@ def loadThingObjects(numCorticalColumns=1):
         objects.locations[c].append(set(location.tolist()))
         objects.features[c].append(set(feature.tolist()))
       idx += 1
-    objects.addObject(sensationList, objName[4:])
+    objects.addObject(sensationList, objName)
+    print "load object file: {} object name: {} sensation # {}".format(
+      f, objName, len(sensationList))
   return objects
 
 
@@ -97,8 +147,13 @@ def trainNetwork(objects, numColumns, verbose=False):
   objectNames = objects.objects.keys()
   numObjects = len(objectNames)
 
+  l2Params = getL2Params()
+  l4Params = getL4Params()
+
   print " Training sensorimotor network ..."
   exp = L4L2Experiment("shared_features",
+                       L2Overrides=l2Params,
+                       L4Overrides=l4Params,
                        numCorticalColumns=numColumns)
   exp.learnObjects(objects.provideObjectsToLearn())
 
@@ -189,11 +244,12 @@ def computeAccuracy(expResult, objects):
   numL2ActiveCells = expResult['numL2ActiveCells']
   numCorrect = 0
   numObjects = overlapMat.shape[0]
+  numFound = 0
 
   percentOverlap = np.zeros(overlapMat.shape)
   for i in range(numObjects):
     for j in range(i, numObjects):
-      percentOverlap[i, j] = overlapMat[i, j] / np.min([numL2ActiveCells[i], numL2ActiveCells[j]])
+      percentOverlap[i, j] = overlapMat[i, j] # / np.min([numL2ActiveCells[i], numL2ActiveCells[j]])
 
   objectNames = np.array(objectNames)
   for i in range(numObjects):
@@ -201,12 +257,23 @@ def computeAccuracy(expResult, objects):
     idx = np.where(percentOverlap[i, :] == np.max(percentOverlap[i, :]))[0]
     print " {}, # sensations {}, best match is {}".format(
       objectNames[i], len(objects[objectNames[i]]), objectNames[idx])
+
+    found = len(np.where(idx == i)[0]) > 0
+    numFound += found
+    if not found:
+      print "<=========== {} was not detected ! ===========>".format(objectNames[i])
     if len(idx) > 1:
       continue
+
     if idx[0] == i:
       numCorrect += 1
+
   accuracy = float(numCorrect)/numObjects
-  print "accuracy: ", accuracy
+  numPerfect = len(np.where(numL2ActiveCells<=40)[0])
+  print "accuracy: {} ({}/{}) ".format(accuracy, numCorrect, numObjects)
+  print "perfect retrival ratio: {} ({}/{}) ".format(
+    float(numPerfect)/numObjects, numPerfect, numObjects)
+  print "Object detection ratio {}/{} ".format(numFound, numObjects)
   return accuracy
 
 
@@ -225,15 +292,13 @@ def experiment1():
 
 
 if __name__ == "__main__":
-  accuracyVsNumColumns = []
-  for numColumns in [1]:
-    objects = loadThingObjects(numColumns)
 
-    expResult = trainNetwork(objects, numColumns, True)
+  numColumns = 1
+  objects = loadThingObjects(numColumns, './data')
 
-    accuracy = computeAccuracy(expResult, objects)
+  expResult = trainNetwork(objects, numColumns, True)
 
-    accuracyVsNumColumns.append(accuracy)
+  accuracy = computeAccuracy(expResult, objects)
 
   objectNames = objects.objects.keys()
   numObjects = len(objectNames)
@@ -244,50 +309,21 @@ if __name__ == "__main__":
   # plot pairwise overlap
   plt.figure()
   plt.imshow(expResult['overlapMat'])
-  plt.xticks(range(numObjects), objectNames, rotation='vertical', fontsize=8)
-  plt.yticks(range(numObjects), objectNames, fontsize=8)
+  plt.xticks(range(numObjects), objectNames, rotation='vertical', fontsize=5)
+  plt.yticks(range(numObjects), objectNames, fontsize=5)
   plt.title('pairwise overlap')
   plt.tight_layout()
   plt.savefig('overlap_matrix.pdf')
 
   # plot number of active cells for each object
   plt.figure()
-  idx = np.argsort(expResult['numL2ActiveCells'])
   objectNamesSort = []
+  idx = np.argsort(expResult['numL2ActiveCells'])
   for i in idx:
     objectNamesSort.append(objectNames[i])
   plt.plot(numL2ActiveCells[idx])
-  plt.xticks(range(numObjects), objectNamesSort, rotation='vertical')
+  plt.xticks(range(numObjects), objectNamesSort, rotation='vertical', fontsize=5)
   plt.tight_layout()
   plt.ylabel('Number of active L2 cells')
   plt.savefig('number_of_active_l2_cells.pdf')
 
-  # visualize SDR clusters with MDS
-  # percentOverlap = np.zeros(distanceMat.shape)
-  # for i in range(numObjects):
-  #   for j in range(i, numObjects):
-  #     percentOverlap[i, j] = 40 - distanceMat[i, j]
-  #     percentOverlap[j, i] = percentOverlap[i, j]
-  #
-  # print "Computing MDS embedding"
-  # mds = manifold.MDS(n_components=2, max_iter=3000, eps=1e-9, random_state=1,
-  #                    dissimilarity="precomputed", n_jobs=1)
-  # pos = mds.fit(percentOverlap).embedding_
-  #
-  # nmds = manifold.MDS(n_components=2, metric=False, max_iter=3000, eps=1e-12,
-  #                     dissimilarity="precomputed", random_state=1, n_jobs=1,
-  #                     n_init=1)
-  # Xmds = nmds.fit_transform(percentOverlap, init=pos)
-  #
-  # X = Xmds
-  # x_min, x_max = np.min(X, 0), np.max(X, 0)
-  # X = (X - x_min) / (x_max - x_min)
-  #
-  # plt.figure()
-  # ax = plt.subplot(111)
-  # colorList = ['r', 'b', 'g', 'c', 'm', 'y', 'k']
-  # for i in range(numObjects):
-  #   plt.plot(X[i, 0], X[i, 1], 'bo')
-  # for i in range(numObjects):
-  #   plt.text(X[i, 0], X[i, 1], objectNames[i])
-  # plt.xticks([]), plt.yticks([])
