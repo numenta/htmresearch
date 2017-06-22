@@ -20,7 +20,6 @@
 # ----------------------------------------------------------------------
 
 import numpy
-import random
 from nupic.bindings.math import *
 from scipy.signal import convolve2d
 import sympy
