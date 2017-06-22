@@ -172,10 +172,8 @@ layout = Layout(
         range=[0,0.15],
     ),
     yaxis=YAxis(
-        title='Accuracy',
+        title='Error frequency',
         autorange=True,
-        type='log',
-        exponentformat='power',
         titlefont=Font(
             family='',
             size=26,
