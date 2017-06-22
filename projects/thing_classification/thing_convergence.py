@@ -49,9 +49,9 @@ def getL4Params():
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
-    "minThreshold": 18,
+    "minThreshold": 19,
     "predictedSegmentDecrement": 0.0,
-    "activationThreshold": 18,
+    "activationThreshold": 19,
     "sampleSize": 30,
     "implementation": "etm",
   }
@@ -301,42 +301,43 @@ def runExperimentAccuracyVsL4Thresh():
 
 if __name__ == "__main__":
 
-  threshList, accuracyVsThresh = runExperimentAccuracyVsL4Thresh()
+  # uncomment to plot accuracy as a function of L4 threshold
+  # threshList, accuracyVsThresh = runExperimentAccuracyVsL4Thresh()
 
-  # numColumns = 1
-  # l2Params = getL2Params()
-  # l4Params = getL4Params()
-  #
-  # objects = loadThingObjects(numColumns, './data')
-  #
-  # expResult = trainNetwork(objects, numColumns, l4Params, l2Params, True)
-  #
-  # accuracy = computeAccuracy(expResult, objects)
-  #
-  # objectNames = objects.objects.keys()
-  # numObjects = len(objectNames)
-  #
-  # distanceMat = expResult['overlapMat']
-  # numL2ActiveCells = expResult['numL2ActiveCells']
-  #
-  # # plot pairwise overlap
-  # plt.figure()
-  # plt.imshow(expResult['overlapMat'])
-  # plt.xticks(range(numObjects), objectNames, rotation='vertical', fontsize=5)
-  # plt.yticks(range(numObjects), objectNames, fontsize=5)
-  # plt.title('pairwise overlap')
-  # plt.tight_layout()
-  # plt.savefig('overlap_matrix.pdf')
-  #
-  # # plot number of active cells for each object
-  # plt.figure()
-  # objectNamesSort = []
-  # idx = np.argsort(expResult['numL2ActiveCells'])
-  # for i in idx:
-  #   objectNamesSort.append(objectNames[i])
-  # plt.plot(numL2ActiveCells[idx])
-  # plt.xticks(range(numObjects), objectNamesSort, rotation='vertical', fontsize=5)
-  # plt.tight_layout()
-  # plt.ylabel('Number of active L2 cells')
-  # plt.savefig('number_of_active_l2_cells.pdf')
+  numColumns = 1
+  l2Params = getL2Params()
+  l4Params = getL4Params()
+
+  objects = loadThingObjects(numColumns, './data')
+
+  expResult = trainNetwork(objects, numColumns, l4Params, l2Params, True)
+
+  accuracy = computeAccuracy(expResult, objects)
+
+  objectNames = objects.objects.keys()
+  numObjects = len(objectNames)
+
+  distanceMat = expResult['overlapMat']
+  numL2ActiveCells = expResult['numL2ActiveCells']
+
+  # plot pairwise overlap
+  plt.figure()
+  plt.imshow(expResult['overlapMat'])
+  plt.xticks(range(numObjects), objectNames, rotation='vertical', fontsize=5)
+  plt.yticks(range(numObjects), objectNames, fontsize=5)
+  plt.title('pairwise overlap')
+  plt.tight_layout()
+  plt.savefig('overlap_matrix.pdf')
+
+  # plot number of active cells for each object
+  plt.figure()
+  objectNamesSort = []
+  idx = np.argsort(expResult['numL2ActiveCells'])
+  for i in idx:
+    objectNamesSort.append(objectNames[i])
+  plt.plot(numL2ActiveCells[idx])
+  plt.xticks(range(numObjects), objectNamesSort, rotation='vertical', fontsize=5)
+  plt.tight_layout()
+  plt.ylabel('Number of active L2 cells')
+  plt.savefig('number_of_active_l2_cells.pdf')
 
