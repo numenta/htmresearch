@@ -54,9 +54,9 @@ def run_tm_union_experiment(dim = 2000,
                             maxSegmentsPerCell=255,
                             maxSynapsesPerSegment=255,
                             seed=42,
-                            num_branches_range = range(1, 50, 1),
+                            num_branches_range = range(50, 51, 1),
                             onset_length = 5,
-                            training_iters = 1,
+                            training_iters = 10,
                             num_trials = 10000,
                             automatic_threshold = True,
                             save_results = True):
@@ -121,10 +121,10 @@ def run_tm_union_experiment(dim = 2000,
       datapoint = numpy.random.choice(dim, num_active, replace = False)
       overlap = (1. * len(set(predicted_cells) & set(datapoint)))/len(datapoint)
       surprise = len(datapoint) - len(set(predicted_cells) & set(datapoint))
-      dense_predicted_cells = numpy.zeros((dim,))
+      dense_predicted_cells = numpy.zeros((dim*cellsPerColumn,))
       for cell in predicted_cells:
         dense_predicted_cells[cell] = 1.
-      dense_active_cells = numpy.zeros((dim,))
+      dense_active_cells = numpy.zeros((dim*cellsPerColumn,))
       for cell in datapoint:
         dense_active_cells[cell] = 1.
       csim = 1 - cosine(dense_predicted_cells, dense_active_cells)
@@ -138,7 +138,7 @@ def run_tm_union_experiment(dim = 2000,
     csim = numpy.mean(csims)
     print dim, overlap, surprise, csim
     if save_results:
-      with open("tm_union_{}.txt".format(dim), "a") as f:
+      with open("tm_union_n{}_a{}_c{}.txt".format(dim, num_active, cellsPerColumn), "a") as f:
         f.write(str(num_branches)+", " + str(overlap) + ", " + str(surprise) + ", " + str(csim) + ", " + str(num_trials) + "\n")
 
 if __name__ == "__main__":
