@@ -143,12 +143,9 @@ def loadThingObjects(numCorticalColumns=1, objDataPath='./data/'):
 
 
 
-def trainNetwork(objects, numColumns, verbose=False):
+def trainNetwork(objects, numColumns, l4Params, l2Params, verbose=False):
   objectNames = objects.objects.keys()
   numObjects = len(objectNames)
-
-  l2Params = getL2Params()
-  l4Params = getL4Params()
 
   print " Training sensorimotor network ..."
   exp = L4L2Experiment("shared_features",
@@ -277,53 +274,69 @@ def computeAccuracy(expResult, objects):
   return accuracy
 
 
-def experiment1():
-  accuracyVsNumColumns = []
-  for numColumns in range(1, 3):
-    objects = loadThingObjects(numColumns)
+def runExperimentAccuracyVsL4Thresh():
+  accuracyVsThresh = []
+  threshList = np.arange(13, 20)
+  for thresh in threshList:
+    numColumns = 1
+    l2Params = getL2Params()
+    l4Params = getL4Params()
 
-    expResult = trainNetwork(objects, numColumns)
+    l4Params['minThreshold'] = thresh
+    l4Params['activationThreshold'] = thresh
 
-    accuracy = computeAccuracy(expResult)
+    objects = loadThingObjects(1, './data')
+    expResult = trainNetwork(objects, numColumns, l4Params, l2Params, True)
 
-    accuracyVsNumColumns.append(accuracy)
+    accuracy = computeAccuracy(expResult, objects)
+    accuracyVsThresh.append(accuracy)
 
-  return accuracyVsNumColumns
+  plt.figure()
+  plt.plot(threshList, accuracyVsThresh, '-o')
+  plt.xlabel('L4 distal Threshold')
+  plt.ylabel('Classification Accuracy')
+  plt.savefig('accuracyVsL4Thresh.pdf')
+  return threshList, accuracyVsThresh
 
 
 if __name__ == "__main__":
 
-  numColumns = 1
-  objects = loadThingObjects(numColumns, './data')
+  threshList, accuracyVsThresh = runExperimentAccuracyVsL4Thresh()
 
-  expResult = trainNetwork(objects, numColumns, True)
-
-  accuracy = computeAccuracy(expResult, objects)
-
-  objectNames = objects.objects.keys()
-  numObjects = len(objectNames)
-
-  distanceMat = expResult['overlapMat']
-  numL2ActiveCells = expResult['numL2ActiveCells']
-
-  # plot pairwise overlap
-  plt.figure()
-  plt.imshow(expResult['overlapMat'])
-  plt.xticks(range(numObjects), objectNames, rotation='vertical', fontsize=5)
-  plt.yticks(range(numObjects), objectNames, fontsize=5)
-  plt.title('pairwise overlap')
-  plt.tight_layout()
-  plt.savefig('overlap_matrix.pdf')
-
-  # plot number of active cells for each object
-  plt.figure()
-  objectNamesSort = []
-  idx = np.argsort(expResult['numL2ActiveCells'])
-  for i in idx:
-    objectNamesSort.append(objectNames[i])
-  plt.plot(numL2ActiveCells[idx])
-  plt.xticks(range(numObjects), objectNamesSort, rotation='vertical', fontsize=5)
-  plt.tight_layout()
-  plt.ylabel('Number of active L2 cells')
-  plt.savefig('number_of_active_l2_cells.pdf')
+  # numColumns = 1
+  # l2Params = getL2Params()
+  # l4Params = getL4Params()
+  #
+  # objects = loadThingObjects(numColumns, './data')
+  #
+  # expResult = trainNetwork(objects, numColumns, l4Params, l2Params, True)
+  #
+  # accuracy = computeAccuracy(expResult, objects)
+  #
+  # objectNames = objects.objects.keys()
+  # numObjects = len(objectNames)
+  #
+  # distanceMat = expResult['overlapMat']
+  # numL2ActiveCells = expResult['numL2ActiveCells']
+  #
+  # # plot pairwise overlap
+  # plt.figure()
+  # plt.imshow(expResult['overlapMat'])
+  # plt.xticks(range(numObjects), objectNames, rotation='vertical', fontsize=5)
+  # plt.yticks(range(numObjects), objectNames, fontsize=5)
+  # plt.title('pairwise overlap')
+  # plt.tight_layout()
+  # plt.savefig('overlap_matrix.pdf')
+  #
+  # # plot number of active cells for each object
+  # plt.figure()
+  # objectNamesSort = []
+  # idx = np.argsort(expResult['numL2ActiveCells'])
+  # for i in idx:
+  #   objectNamesSort.append(objectNames[i])
+  # plt.plot(numL2ActiveCells[idx])
+  # plt.xticks(range(numObjects), objectNamesSort, rotation='vertical', fontsize=5)
+  # plt.tight_layout()
+  # plt.ylabel('Number of active L2 cells')
+  # plt.savefig('number_of_active_l2_cells.pdf')
 
