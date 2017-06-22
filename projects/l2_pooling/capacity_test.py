@@ -54,7 +54,7 @@ DEFAULT_NUM_FEATURES = 5000
 DEFAULT_RESULT_DIR_NAME = "results"
 DEFAULT_PLOT_DIR_NAME = "plots"
 DEFAULT_NUM_CORTICAL_COLUMNS = 1
-DEFAULT_COLORS = ("b", "r", "c", "g", 'm')
+DEFAULT_COLORS = ("b", "r", "c", "g", 'm', 'y', 'w', 'k')
 
 
 
@@ -439,6 +439,7 @@ def runCapacityTest(numObjects,
                     l2Params,
                     l4Params,
                     objectParams,
+                    networkType = "MultipleL4L2Columns",
                     repeat=0):
   """
   Generate [numObjects] objects with [numPointsPerObject] points per object
@@ -478,6 +479,7 @@ def runCapacityTest(numObjects,
                        L2Overrides=l2Params,
                        L4Overrides=l4Params,
                        inputSize=l4ColumnCount,
+                       networkType = networkType,
                        externalInputSize=externalInputSize,
                        numLearningPoints=3,
                        numCorticalColumns=numCorticalColumns,
@@ -570,6 +572,7 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
                                     l2Params=None,
                                     l4Params=None,
                                     objectParams=None,
+                                    networkType="MultipleL4L2Columns",
                                     numRpts=1):
   """
   Run experiment with fixed number of pts per object, varying number of objects
@@ -591,6 +594,7 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
                      l2Params,
                      l4Params,
                      objectParams,
+                     networkType,
                      rpt))
   result = None
   for testResult in pool.map(invokeRunCapacityTest, params):
@@ -604,6 +608,54 @@ def runCapacityTestVaryingObjectNum(numPointsPerObject=10,
   pd.DataFrame.to_csv(result, resultFileName)
 
 
+def invokeRunCapacityTest(params):
+  """ Splits out params so that runCapacityTest may be invoked with
+  multiprocessing.Pool.map() to support parallelism
+  """
+  return runCapacityTest(*params)
+
+
+
+def runCapacityTestWrapperNonParallel(numPointsPerObject=10,
+                                      numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
+                                      resultDirName=DEFAULT_RESULT_DIR_NAME,
+                                      numObjects = 100,
+                                      expName=None,
+                                      l2Params=None,
+                                      l4Params=None,
+                                      objectParams=None,
+                                      networkType="MultipleL4L2Columns",
+                                      rpt=0):
+  """
+  Run experiment with fixed number of pts per object, varying number of objects
+  """
+
+  l4Params = l4Params or getL4Params()
+  l2Params = l2Params or getL2Params()
+
+  testResult = runCapacityTest(numObjects,
+                               numPointsPerObject,
+                               numCorticalColumns,
+                               l2Params,
+                               l4Params,
+                               objectParams,
+                               networkType,
+                               rpt)
+
+
+  resultFileName = _prepareResultsDir("{}.csv".format(expName),
+                                      resultDirName=resultDirName)
+
+  if os.path.isfile(resultFileName):
+    pd.DataFrame.to_csv(testResult, resultFileName, mode = "a", header = False)
+  else:
+    pd.DataFrame.to_csv(testResult, resultFileName, mode = "a", header = True)
+
+def invokeRunCapacityTestWrapper(params):
+  """ Splits out params so that runCapacityTest may be invoked with
+  multiprocessing.Pool.map() to support parallelism
+  """
+  return runCapacityTestWrapperNonParallel(*params)
 
 def runExperiment1(numObjects=2,
                    sampleSizeRange=(10,),
@@ -1399,51 +1451,185 @@ def runExperiment8(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
 
 
 
+def runExperiment9(resultDirName=DEFAULT_RESULT_DIR_NAME,
+                   plotDirName=DEFAULT_PLOT_DIR_NAME,
+                   cpuCount=None):
+  """
+  runCapacityTestVaryingObjectNum()
+  varying number of cortical columns, 2d topology.
+  """
+
+  numPointsPerObject = 10
+  numRpts = 3
+  objectNumRange = range(10, 1000, 50)
+
+  l4Params = getL4Params()
+  l2Params = getL2Params()
+
+  expParams = []
+  expParams.append(
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'l2Column': 4, 'networkType': "MultipleL4L2Columns"})
+  expParams.append(
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'l2Column': 9, 'networkType': "MultipleL4L2Columns"})
+  expParams.append(
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'l2Column': 16, 'networkType': "MultipleL4L2Columns"})
+  expParams.append(
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'l2Column': 4, 'networkType': "MultipleL4L2ColumnsWithTopology"})
+  expParams.append(
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'l2Column': 9, 'networkType': "MultipleL4L2ColumnsWithTopology"})
+  expParams.append(
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
+     'thresh': 3, 'l2Column': 16, 'networkType': "MultipleL4L2ColumnsWithTopology"})
+
+  run_params = []
+  for object_num in reversed(objectNumRange):
+    for expParam in expParams:
+      for rpt in range(numRpts):
+        l2Params['sampleSizeProximal'] = expParam['sample']
+        l2Params['minThresholdProximal'] = expParam['thresh']
+
+        l4Params["columnCount"] = expParam['l4Column']
+        numInputBits = expParam['w']
+        numCorticalColumns = expParam['l2Column']
+        networkType = expParam['networkType']
+
+        l4Params["activationThreshold"] = int(numInputBits * .6)
+        l4Params["minThreshold"] = int(numInputBits * .6)
+        l4Params["sampleSize"] = int(2 * l4Params["activationThreshold"])
+
+        objectParams = {'numInputBits': numInputBits,
+                        'externalInputSize': expParam['externalInputSize'],
+                        'numFeatures': DEFAULT_NUM_FEATURES,
+                        'numLocations': DEFAULT_NUM_LOCATIONS,
+                        'uniquePairs': True,}
+
+        print "Experiment Params: "
+        pprint(expParam)
+
+        expName = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}_l2column_{}_{}".format(
+            expParam['sample'], expParam['thresh'], expParam["l4Column"],
+            expParam['l2Column'], expParam["networkType"])
+
+        try:
+          os.remove(_prepareResultsDir("{}.csv".format(expName),
+            resultDirName=resultDirName))
+        except OSError:
+          pass
+
+        run_params.append((numPointsPerObject,
+                           numCorticalColumns,
+                           resultDirName,
+                           object_num,
+                           expName,
+                           l2Params,
+                           l4Params,
+                           objectParams,
+                           networkType,
+                           rpt))
+
+  pool = multiprocessing.Pool(cpuCount or multiprocessing.cpu_count(), maxtasksperchild=1)
+  pool.map(invokeRunCapacityTestWrapper, run_params, chunksize = 1)
+  # plot result
+  ploti = 0
+  fig, ax = plt.subplots(2, 2)
+  st = fig.suptitle("Varying number of objects", fontsize="x-large")
+
+  for axi in (0, 1):
+    for axj in (0, 1):
+      ax[axi][axj].xaxis.set_major_locator(ticker.MultipleLocator(100))
+
+  colormap = plt.get_cmap("jet")
+  colors = [colormap(x) for x in np.linspace(0., 1., len(expParam))]
+
+  legendEntries = []
+  for expParam in expParams:
+    expName = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}_l2column_{}_{}".format(
+        expParam['sample'], expParam['thresh'], expParam["l4Column"],
+        expParam['l2Column'], expParam["networkType"])
+
+    resultFileName = _prepareResultsDir("{}.csv".format(expName),
+                                        resultDirName=resultDirName
+                                        )
+
+    result = pd.read_csv(resultFileName)
+
+    plotResults(result, ax, "numObjects", None, colors[ploti])
+    ploti += 1
+    if "Topology" in expParam["networkType"]:
+      legendEntries.append("L4 mcs {} #cc {} w/ topology".format(
+        expParam['l4Column'], expParam['l2Column']))
+    else:
+      legendEntries.append("L4 mcs {} #cc {}".format(
+        expParam['l4Column'], expParam['l2Column']))
+  ax[0, 0].legend(legendEntries, loc=3, fontsize=8)
+  fig.tight_layout()
+
+  # shift subplots down:
+  st.set_y(0.95)
+  fig.subplots_adjust(top=0.85)
+
+  plt.savefig(
+    os.path.join(
+      plotDirName,
+      "multiple_column_capacity_varying_object_num_column_num_connection_type_summary.pdf"
+    )
+  )
+
 def runExperiments(resultDirName, plotDirName, cpuCount):
-  # Varying number of pts per objects, two objects
-  runExperiment1(numCorticalColumns=1,
-                 resultDirName=resultDirName,
+#  # Varying number of pts per objects, two objects
+#  runExperiment1(numCorticalColumns=1,
+#                 resultDirName=resultDirName,
+#                 plotDirName=plotDirName,
+#                 cpuCount=cpuCount)
+#
+#  # 10 pts per object, varying number of objects
+#  runExperiment2(numCorticalColumns=1,
+#                 resultDirName=resultDirName,
+#                 plotDirName=plotDirName,
+#                 cpuCount=cpuCount)
+#
+#  # 10 pts per object, varying number of objects, varying L4 size
+#  runExperiment3(numCorticalColumns=1,
+#                 resultDirName=resultDirName,
+#                 plotDirName=plotDirName,
+#                 cpuCount=cpuCount)
+#
+#  # 10 pts per object, varying number of objects and number of columns
+#  runExperiment4(resultDirName=resultDirName,
+#                 plotDirName=plotDirName,
+#                 cpuCount=cpuCount)
+#
+#  # 10 pts per object, varying number of L2 cells
+#  runExperiment5(resultDirName=resultDirName,
+#                 plotDirName=plotDirName,
+#                 cpuCount=cpuCount)
+#
+#  # 10 pts per object, varying sparsity of L2
+#  runExperiment6(resultDirName=resultDirName,
+#                 plotDirName=plotDirName,
+#                 cpuCount=cpuCount)
+#
+#  # 10 pts per object, varying number of location SDRs
+#  runExperiment7(numCorticalColumns=1,
+#                 resultDirName=resultDirName,
+#                 plotDirName=plotDirName,
+#                 cpuCount=cpuCount)
+#
+#  # 10 pts per object, varying number of feature SDRs
+#  runExperiment8(numCorticalColumns=1,
+#                 resultDirName=resultDirName,
+#                 plotDirName=plotDirName,
+#                 cpuCount=cpuCount)
+  #10 pts per object, varying number of objects and number of columns
+  runExperiment9(resultDirName=resultDirName,
                  plotDirName=plotDirName,
                  cpuCount=cpuCount)
 
-  # 10 pts per object, varying number of objects
-  runExperiment2(numCorticalColumns=1,
-                 resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
-
-  # 10 pts per object, varying number of objects, varying L4 size
-  runExperiment3(numCorticalColumns=1,
-                 resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
-
-  # 10 pts per object, varying number of objects and number of columns
-  runExperiment4(resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
-
-  # 10 pts per object, varying number of L2 cells
-  runExperiment5(resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
-
-  # 10 pts per object, varying sparsity of L2
-  runExperiment6(resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
-
-  # 10 pts per object, varying number of location SDRs
-  runExperiment7(numCorticalColumns=1,
-                 resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
-
-  # 10 pts per object, varying number of feature SDRs
-  runExperiment8(numCorticalColumns=1,
-                 resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
 
 
 

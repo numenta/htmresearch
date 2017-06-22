@@ -137,6 +137,10 @@ class L4L2Experiment(object):
                numExternalInputBits=20,
                L2Overrides=None,
                L4RegionType="py.ExtendedTMRegion",
+               networkType = "MultipleL4L2Columns",
+               longDistanceConnections = 0,
+               maxConnectionDistance = 1,
+               columnPositions = None,
                L4Overrides=None,
                numLearningPoints=3,
                seed=42,
@@ -175,6 +179,17 @@ class L4L2Experiment(object):
 
     @param   L4RegionType (string)
              The type of region to use for L4
+
+    @param   networkType (string)
+             Which type of L2L4 network to create.  If topology is being used,
+             it should be specified here.  Possible values for this parameter
+             are "MultipleL4L2Columns", "MultipleL4L2ColumnsWithTopology" and
+             "L4L2Column"
+
+    @param  longDistanceConnections (float)
+             The probability that a column will randomly connect to a distant
+             column.  Should be in [0, 1).  Only relevant when using multiple
+             columns with topology.
 
     @param   L4Overrides (dict)
              Parameters to override in the L4 region
@@ -228,7 +243,8 @@ class L4L2Experiment(object):
 
     # update parameters with overrides
     self.config = {
-      "networkType": "MultipleL4L2Columns",
+      "networkType": networkType,
+      "longDistanceConnections" : longDistanceConnections,
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
@@ -248,6 +264,21 @@ class L4L2Experiment(object):
       if feedForwardSPOverrides:
         self.config["feedForwardSPParams"].update(feedForwardSPOverrides)
 
+    if "Topology" in self.config["networkType"]:
+      self.config["maxConnectionDistance"] = maxConnectionDistance
+
+      # Generate a grid for cortical columns.  Will attempt to generate a full
+      # square grid, and cut out positions starting from the bottom-right if the
+      # number of cortical columns is not a perfect square.
+      if columnPositions is None:
+        columnPositions = []
+        side_length = int(np.ceil(np.sqrt(numCorticalColumns)))
+        for i in range(side_length):
+          for j in range(side_length):
+            columnPositions.append((i, j))
+      self.config["columnPositions"] = columnPositions[:numCorticalColumns]
+      self.config["longDistanceConnections"] = longDistanceConnections
+
     if L2Overrides is not None:
       self.config["L2Params"].update(L2Overrides)
 
@@ -256,7 +287,6 @@ class L4L2Experiment(object):
 
     # create network
     self.network = createNetwork(self.config)
-
     self.sensorInputs = []
     self.externalInputs = []
     self.L4Regions = []
@@ -669,7 +699,7 @@ class L4L2Experiment(object):
 
     :param minOverlap: min overlap to consider the object as recognized.
                        Defaults to half of the SDR size
-            
+
     :param includeZeros: if True, include scores for all objects, even if 0
 
     :return: dict of object names and their score
