@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" version="1.1" viewBox="1492 728 1317 575" width="1317pt" height="575pt" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata> Produced by OmniGraffle 7.3.1 
+    <dc:date>2017-06-22 02:08:53 +0000</dc:date>
+  </metadata>
+  <defs>
+    <font-face font-family="Helvetica Neue" font-size="36" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="500">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Helvetica Neue" font-size="18" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="500">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Helvetica Neue" font-size="24" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="500">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+  </defs>
+  <g stroke="none" stroke-opacity="1" stroke-dasharray="none" fill="none" fill-opacity="1">
+    <title>Canvas 1</title>
+    <rect fill="white" width="2010.3628" height="1593.6106"/>
+    <g>
+      <title>Layer 1</title>
+      <line x1="2323" y1="1130" x2="2808" y2="1130" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <rect x="2540" y="908" width="50" height="222" fill="white"/>
+      <rect x="2540" y="908" width="50" height="222" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(2423.5 733.488)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="36" font-weight="500" x="4.318" y="34" textLength="275.364">During Inference:</tspan>
+        <tspan font-family="Helvetica Neue" font-size="36" font-weight="500" x=".322" y="77.008" textLength="283.356">The cell response</tspan>
+        <tspan font-family="Helvetica Neue" font-size="36" font-weight="500" x="31.318" y="120.01599" textLength="221.364">to this feature</tspan>
+      </text>
+      <line x1="1671" y1="1131" x2="2156" y2="1131" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <rect x="1888" y="951.5" width="50" height="179.5" fill="white"/>
+      <rect x="1888" y="951.5" width="50" height="179.5" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(1561 993.248)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="18" font-weight="500" x=".168" y="17" textLength="47.664">active</tspan>
+      </text>
+      <text transform="translate(1497 877.164)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="24" font-weight="500" x=".116" y="23" textLength="105.768">Excitation</tspan>
+      </text>
+      <line x1="1628" y1="1132" x2="1628" y2="889.1304" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(1720.3235 733.488)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="36" font-weight="500" x="59.804" y="34" textLength="265.392">During Learning:</tspan>
+        <tspan font-family="Helvetica Neue" font-size="36" font-weight="500" x="5.174" y="77.008" textLength="384.66">The original cell activity </tspan>
+        <tspan font-family="Helvetica Neue" font-size="36" font-weight="500" x="64.502" y="120.01599" textLength="255.996">with this feature</tspan>
+      </text>
+      <rect x="1974" y="1038.5556" width="50" height="92.5122" fill="white"/>
+      <rect x="1974" y="1038.5556" width="50" height="92.5122" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(2023.5 1240.328)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="24" font-weight="500" fill="black" x="193.064" y="23" textLength="52.872">Cells</tspan>
+        <tspan font-family="Helvetica Neue" font-size="24" font-weight="500" fill="black" x=".368" y="51.672" textLength="438.264">(one row of the module, before and after)</tspan>
+      </text>
+      <line x1="1628" y1="1003.3712" x2="2808" y2="1003.3712" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1" stroke-dasharray="4,4"/>
+      <path d="M 1722.0128 1208 L 1741 1158 L 1759.9872 1208 Z" fill="black"/>
+      <path d="M 1722.0128 1208 L 1741 1158 L 1759.9872 1208 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 1896.7525 1208 L 1915.7397 1158 L 1934.727 1208 Z" fill="black"/>
+      <path d="M 1896.7525 1208 L 1915.7397 1158 L 1934.727 1208 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 1984.1224 1208 L 2003.1096 1158 L 2022.0968 1208 Z" fill="black"/>
+      <path d="M 1984.1224 1208 L 2003.1096 1158 L 2022.0968 1208 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 1809.3827 1208 L 1828.3699 1158 L 1847.357 1208 Z" fill="black"/>
+      <path d="M 1809.3827 1208 L 1828.3699 1158 L 1847.357 1208 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 2071.4923 1208 L 2090.4795 1158 L 2109.4666 1208 Z" fill="black"/>
+      <path d="M 2071.4923 1208 L 2090.4795 1158 L 2109.4666 1208 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 2371.773 1207.5 L 2390.7603 1157.5 L 2409.7475 1207.5 Z" fill="black"/>
+      <path d="M 2371.773 1207.5 L 2390.7603 1157.5 L 2409.7475 1207.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 2546.5128 1207.5 L 2565.5 1157.5 L 2584.4872 1207.5 Z" fill="black"/>
+      <path d="M 2546.5128 1207.5 L 2565.5 1157.5 L 2584.4872 1207.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 2633.8827 1207.5 L 2652.87 1157.5 L 2671.857 1207.5 Z" fill="black"/>
+      <path d="M 2633.8827 1207.5 L 2652.87 1157.5 L 2671.857 1207.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 2459.143 1207.5 L 2478.13 1157.5 L 2497.1173 1207.5 Z" fill="black"/>
+      <path d="M 2459.143 1207.5 L 2478.13 1157.5 L 2497.1173 1207.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 2721.2525 1207.5 L 2740.2397 1157.5 L 2759.227 1207.5 Z" fill="black"/>
+      <path d="M 2721.2525 1207.5 L 2740.2397 1157.5 L 2759.227 1207.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+    </g>
+  </g>
+</svg>

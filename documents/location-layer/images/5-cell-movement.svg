@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" version="1.1" viewBox="4475 4e3 1461 865" width="1461pt" height="865pt" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata> Produced by OmniGraffle 7.3.1 
+    <dc:date>2017-06-23 16:23:12 +0000</dc:date>
+  </metadata>
+  <defs>
+    <font-face font-family="Helvetica Neue" font-size="30" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="500">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Helvetica Neue" font-size="40" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="500">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Helvetica Neue" font-size="60" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="500">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+  </defs>
+  <g stroke="none" stroke-opacity="1" stroke-dasharray="none" fill="none" fill-opacity="1">
+    <title>Canvas 1</title>
+    <rect fill="white" width="5129.363" height="4402.6106"/>
+    <g>
+      <title>Layer 2</title>
+      <rect x="5738.825" y="4612.932" width="50" height="174.56775" fill="white"/>
+      <rect x="5738.825" y="4612.932" width="50" height="174.56775" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+      <rect x="5283.442" y="4608" width="50" height="179.5" fill="white"/>
+      <rect x="5283.442" y="4608" width="50" height="179.5" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+      <path d="M 4787.8867 4319.2183 L 4817.104 4266.509 L 4871.389 4296.6 L 4842.172 4349.309 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 4733.6014 4289.1274 L 4762.8185 4236.4183 L 4817.104 4266.509 L 4787.8867 4319.2183 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 4842.172 4349.309 L 4871.389 4296.6 L 4925.6745 4326.691 L 4896.4574 4379.4 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 4817.104 4266.509 L 4846.321 4213.8 L 4900.6063 4243.891 L 4871.389 4296.6 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4762.8185 4236.4183 L 4792.0357 4183.709 L 4846.321 4213.8 L 4817.104 4266.509 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4871.389 4296.6 L 4900.6063 4243.891 L 4954.8917 4273.9817 L 4925.6745 4326.691 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4846.321 4213.8 L 4875.538 4161.091 L 4929.8235 4191.1817 L 4900.6063 4243.891 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4792.0357 4183.709 L 4821.253 4131 L 4875.538 4161.091 L 4846.321 4213.8 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4900.6063 4243.891 L 4929.8235 4191.1817 L 4984.109 4221.2726 L 4954.8917 4273.9817 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4704.384 4341.8366 L 4733.6014 4289.1274 L 4787.8867 4319.2183 L 4758.6695 4371.9274 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4675.167 4394.546 L 4704.384 4341.8366 L 4758.6695 4371.9274 L 4729.4524 4424.6366 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4758.6695 4371.9274 L 4787.8867 4319.2183 L 4842.172 4349.309 L 4812.955 4402.0183 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4729.4524 4424.6366 L 4758.6695 4371.9274 L 4812.955 4402.0183 L 4783.7377 4454.7274 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4812.955 4402.0183 L 4842.172 4349.309 L 4896.4574 4379.4 L 4867.24 4432.109 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4783.7377 4454.7274 L 4812.955 4402.0183 L 4867.24 4432.109 L 4838.023 4484.8183 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4896.4574 4379.4 L 4925.6745 4326.691 L 4979.96 4356.7817 L 4950.7427 4409.491 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 4925.6745 4326.691 L 4954.8917 4273.9817 L 5009.177 4304.0726 L 4979.96 4356.7817 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4954.8917 4273.9817 L 4984.109 4221.2726 L 5038.394 4251.3634 L 5009.177 4304.0726 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4867.24 4432.109 L 4896.4574 4379.4 L 4950.7427 4409.491 L 4921.5255 4462.2 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4838.023 4484.8183 L 4867.24 4432.109 L 4921.5255 4462.2 L 4892.3084 4514.909 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4950.7427 4409.491 L 4979.96 4356.7817 L 5034.245 4386.8726 L 5005.028 4439.5817 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 4979.96 4356.7817 L 5009.177 4304.0726 L 5063.4623 4334.1634 L 5034.245 4386.8726 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5009.177 4304.0726 L 5038.394 4251.3634 L 5092.6795 4281.4543 L 5063.4623 4334.1634 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4921.5255 4462.2 L 4950.7427 4409.491 L 5005.028 4439.5817 L 4975.811 4492.291 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4892.3084 4514.909 L 4921.5255 4462.2 L 4975.811 4492.291 L 4946.594 4545 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <rect x="4840.192" y="4313.72" width="103.33356" height="107.59182" id="path"/>
+      <clipPath id="clip_path">
+        <use xl:href="#path"/>
+      </clipPath>
+      <g clip-path="url(#clip_path)">
+        <image xl:href="data:image/png;base64,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" width="364" height="379" transform="translate(4840.192 4313.72) scale(.28388342)"/>
+      </g>
+      <path d="M 5202.262 4331.2183 L 5231.4794 4278.509 L 5285.765 4308.6 L 5256.5476 4361.309 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 5147.977 4301.1274 L 5177.194 4248.4183 L 5231.4794 4278.509 L 5202.262 4331.2183 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 5256.5476 4361.309 L 5285.765 4308.6 L 5340.05 4338.691 L 5310.833 4391.4 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 5231.4794 4278.509 L 5260.6966 4225.8 L 5314.982 4255.891 L 5285.765 4308.6 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5177.194 4248.4183 L 5206.411 4195.709 L 5260.6966 4225.8 L 5231.4794 4278.509 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5285.765 4308.6 L 5314.982 4255.891 L 5369.267 4285.9817 L 5340.05 4338.691 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5260.6966 4225.8 L 5289.914 4173.091 L 5344.199 4203.1817 L 5314.982 4255.891 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5206.411 4195.709 L 5235.6284 4143 L 5289.914 4173.091 L 5260.6966 4225.8 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5314.982 4255.891 L 5344.199 4203.1817 L 5398.4844 4233.2726 L 5369.267 4285.9817 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5118.76 4353.8366 L 5147.977 4301.1274 L 5202.262 4331.2183 L 5173.045 4383.9274 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5089.5426 4406.546 L 5118.76 4353.8366 L 5173.045 4383.9274 L 5143.828 4436.6366 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5173.045 4383.9274 L 5202.262 4331.2183 L 5256.5476 4361.309 L 5227.3305 4414.0183 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5143.828 4436.6366 L 5173.045 4383.9274 L 5227.3305 4414.0183 L 5198.113 4466.7274 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5227.3305 4414.0183 L 5256.5476 4361.309 L 5310.833 4391.4 L 5281.616 4444.109 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5198.113 4466.7274 L 5227.3305 4414.0183 L 5281.616 4444.109 L 5252.3986 4496.8183 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5310.833 4391.4 L 5340.05 4338.691 L 5394.3354 4368.7817 L 5365.118 4421.491 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 5340.05 4338.691 L 5369.267 4285.9817 L 5423.5526 4316.0726 L 5394.3354 4368.7817 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5369.267 4285.9817 L 5398.4844 4233.2726 L 5452.77 4263.3634 L 5423.5526 4316.0726 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5281.616 4444.109 L 5310.833 4391.4 L 5365.118 4421.491 L 5335.901 4474.2 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5252.3986 4496.8183 L 5281.616 4444.109 L 5335.901 4474.2 L 5306.684 4526.909 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5365.118 4421.491 L 5394.3354 4368.7817 L 5448.621 4398.8726 L 5419.4036 4451.5817 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 5394.3354 4368.7817 L 5423.5526 4316.0726 L 5477.838 4346.1634 L 5448.621 4398.8726 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5423.5526 4316.0726 L 5452.77 4263.3634 L 5507.055 4293.4543 L 5477.838 4346.1634 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5335.901 4474.2 L 5365.118 4421.491 L 5419.4036 4451.5817 L 5390.1865 4504.291 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5306.684 4526.909 L 5335.901 4474.2 L 5390.1865 4504.291 L 5360.969 4557 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <rect x="5270.5586" y="4340.9864" width="103.33356" height="107.59182" id="path_2"/>
+      <clipPath id="clip_path_2">
+        <use xl:href="#path_2"/>
+      </clipPath>
+      <g clip-path="url(#clip_path_2)">
+        <image xl:href="data:image/png;base64,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" width="364" height="379" transform="translate(5270.5586 4340.9864) scale(.28388342)"/>
+      </g>
+      <path d="M 5629.811 4331.2183 L 5659.028 4278.509 L 5713.3134 4308.6 L 5684.096 4361.309 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 5575.5256 4301.1274 L 5604.743 4248.4183 L 5659.028 4278.509 L 5629.811 4331.2183 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 5684.096 4361.309 L 5713.3134 4308.6 L 5767.599 4338.691 L 5738.3816 4391.4 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 5659.028 4278.509 L 5688.245 4225.8 L 5742.5305 4255.891 L 5713.3134 4308.6 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5604.743 4248.4183 L 5633.96 4195.709 L 5688.245 4225.8 L 5659.028 4278.509 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5713.3134 4308.6 L 5742.5305 4255.891 L 5796.816 4285.9817 L 5767.599 4338.691 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5688.245 4225.8 L 5717.4624 4173.091 L 5771.748 4203.1817 L 5742.5305 4255.891 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5633.96 4195.709 L 5663.177 4143 L 5717.4624 4173.091 L 5688.245 4225.8 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5742.5305 4255.891 L 5771.748 4203.1817 L 5826.033 4233.2726 L 5796.816 4285.9817 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5546.3084 4353.8366 L 5575.5256 4301.1274 L 5629.811 4331.2183 L 5600.594 4383.9274 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5517.091 4406.546 L 5546.3084 4353.8366 L 5600.594 4383.9274 L 5571.3766 4436.6366 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5600.594 4383.9274 L 5629.811 4331.2183 L 5684.096 4361.309 L 5654.879 4414.0183 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5571.3766 4436.6366 L 5600.594 4383.9274 L 5654.879 4414.0183 L 5625.662 4466.7274 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5654.879 4414.0183 L 5684.096 4361.309 L 5738.3816 4391.4 L 5709.1644 4444.109 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5625.662 4466.7274 L 5654.879 4414.0183 L 5709.1644 4444.109 L 5679.947 4496.8183 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5738.3816 4391.4 L 5767.599 4338.691 L 5821.884 4368.7817 L 5792.667 4421.491 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 5767.599 4338.691 L 5796.816 4285.9817 L 5851.101 4316.0726 L 5821.884 4368.7817 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5796.816 4285.9817 L 5826.033 4233.2726 L 5880.3184 4263.3634 L 5851.101 4316.0726 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5709.1644 4444.109 L 5738.3816 4391.4 L 5792.667 4421.491 L 5763.45 4474.2 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5679.947 4496.8183 L 5709.1644 4444.109 L 5763.45 4474.2 L 5734.2326 4526.909 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5792.667 4421.491 L 5821.884 4368.7817 L 5876.1694 4398.8726 L 5846.952 4451.5817 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+      <path d="M 5821.884 4368.7817 L 5851.101 4316.0726 L 5905.3865 4346.1634 L 5876.1694 4398.8726 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5851.101 4316.0726 L 5880.3184 4263.3634 L 5934.604 4293.4543 L 5905.3865 4346.1634 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5763.45 4474.2 L 5792.667 4421.491 L 5846.952 4451.5817 L 5817.735 4504.291 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5734.2326 4526.909 L 5763.45 4474.2 L 5817.735 4504.291 L 5788.518 4557 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <rect x="5735.1806" y="4356.0027" width="103.33356" height="107.59182" id="path_3"/>
+      <clipPath id="clip_path_3">
+        <use xl:href="#path_3"/>
+      </clipPath>
+      <g clip-path="url(#clip_path_3)">
+        <image xl:href="data:image/png;base64,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" width="364" height="379" transform="translate(5735.1806 4356.0027) scale(.28388342)"/>
+      </g>
+      <path d="M 5279.288 4339.778 L 5281.8057 4335.2356 L 5292.074 4340.9274 L 5296.294 4333.314 L 5308.057 4352.756 L 5285.336 4353.083 L 5289.556 4345.47 Z" fill="red"/>
+      <path d="M 5279.288 4339.778 L 5281.8057 4335.2356 L 5292.074 4340.9274 L 5296.294 4333.314 L 5308.057 4352.756 L 5285.336 4353.083 L 5289.556 4345.47 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 5722.218 4351.567 L 5725.253 4346.092 L 5750.447 4360.057 L 5755.534 4350.8807 L 5766.1717 4372.352 L 5742.326 4374.7087 L 5747.412 4365.532 Z" fill="red"/>
+      <path d="M 5722.218 4351.567 L 5725.253 4346.092 L 5750.447 4360.057 L 5755.534 4350.8807 L 5766.1717 4372.352 L 5742.326 4374.7087 L 5747.412 4365.532 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="4713.301" y1="4787.5" x2="5054.5455" y2="4787.5" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+      <rect x="4858.042" y="4608" width="50" height="179.5" fill="white"/>
+      <rect x="4858.042" y="4608" width="50" height="179.5" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+      <text transform="translate(4577 4638.08)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="30" font-weight="500" x=".28" y="29" textLength="79.44">active</tspan>
+      </text>
+      <text transform="translate(4480 4532.44)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="40" font-weight="500" x=".36" y="38" textLength="176.28">Excitation</tspan>
+      </text>
+      <line x1="4674" y1="4788" x2="4674" y2="4545.1304" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+      <line x1="4674" y1="4659.371" x2="5857.692" y2="4659.371" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" stroke-dasharray="4,4"/>
+      <path d="M 4733.945 4864.5 L 4752.9324 4814.5 L 4771.9196 4864.5 Z" fill="black"/>
+      <path d="M 4733.945 4864.5 L 4752.9324 4814.5 L 4771.9196 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 4864.055 4864.5 L 4883.042 4814.5 L 4902.029 4864.5 Z" fill="black"/>
+      <path d="M 4864.055 4864.5 L 4883.042 4814.5 L 4902.029 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 4929.1096 4864.5 L 4948.097 4814.5 L 4967.084 4864.5 Z" fill="black"/>
+      <path d="M 4929.1096 4864.5 L 4948.097 4814.5 L 4967.084 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 4799 4864.5 L 4817.987 4814.5 L 4836.9744 4864.5 Z" fill="black"/>
+      <path d="M 4799 4864.5 L 4817.987 4814.5 L 4836.9744 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 4994.1644 4864.5 L 5013.1516 4814.5 L 5032.139 4864.5 Z" fill="black"/>
+      <path d="M 4994.1644 4864.5 L 5013.1516 4814.5 L 5032.139 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <line x1="5157" y1="4788.5" x2="5457.5385" y2="4788.5" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+      <rect x="5348.4965" y="4694.988" width="50" height="92.5122" fill="white"/>
+      <rect x="5348.4965" y="4694.988" width="50" height="92.5122" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+      <line x1="5549.674" y1="4787.5" x2="5847.867" y2="4787.5" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+      <rect x="5673.7705" y="4763" width="50" height="24.5" fill="white"/>
+      <rect x="5673.7705" y="4763" width="50" height="24.5" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+      <path d="M 5159.345 4864.5 L 5178.332 4814.5 L 5197.3193 4864.5 Z" fill="black"/>
+      <path d="M 5159.345 4864.5 L 5178.332 4814.5 L 5197.3193 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 5289.4546 4864.5 L 5308.442 4814.5 L 5327.429 4864.5 Z" fill="black"/>
+      <path d="M 5289.4546 4864.5 L 5308.442 4814.5 L 5327.429 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 5354.5094 4864.5 L 5373.4965 4814.5 L 5392.484 4864.5 Z" fill="black"/>
+      <path d="M 5354.5094 4864.5 L 5373.4965 4814.5 L 5392.484 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 5224.4 4864.5 L 5243.387 4814.5 L 5262.374 4864.5 Z" fill="black"/>
+      <path d="M 5224.4 4864.5 L 5243.387 4814.5 L 5262.374 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 5419.564 4864.5 L 5438.5513 4814.5 L 5457.5385 4864.5 Z" fill="black"/>
+      <path d="M 5419.564 4864.5 L 5438.5513 4814.5 L 5457.5385 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 5549.674 4864.5 L 5568.661 4814.5 L 5587.648 4864.5 Z" fill="black"/>
+      <path d="M 5549.674 4864.5 L 5568.661 4814.5 L 5587.648 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 5679.783 4864.5 L 5698.7705 4814.5 L 5717.758 4864.5 Z" fill="black"/>
+      <path d="M 5679.783 4864.5 L 5698.7705 4814.5 L 5717.758 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 5744.838 4864.5 L 5763.825 4814.5 L 5782.8125 4864.5 Z" fill="black"/>
+      <path d="M 5744.838 4864.5 L 5763.825 4814.5 L 5782.8125 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 5614.7285 4864.5 L 5633.716 4814.5 L 5652.703 4864.5 Z" fill="black"/>
+      <path d="M 5614.7285 4864.5 L 5633.716 4814.5 L 5652.703 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <path d="M 5809.893 4864.5 L 5828.88 4814.5 L 5847.867 4864.5 Z" fill="black"/>
+      <path d="M 5809.893 4864.5 L 5828.88 4814.5 L 5847.867 4864.5 Z" stroke="black" stroke-linecap="round" stroke-linejoin="miter" stroke-width="1"/>
+      <text transform="translate(4845.7757 4005.423)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="60" font-weight="500" x=".02" y="57" textLength="828.96">Activity of 5 cells at 3 locations</tspan>
+      </text>
+    </g>
+  </g>
+</svg>

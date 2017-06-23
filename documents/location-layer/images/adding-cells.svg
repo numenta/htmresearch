@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" version="1.1" viewBox="3658 1793 1033 699" width="1033pt" height="699pt" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata> Produced by OmniGraffle 7.3.1 
+    <dc:date>2017-06-22 20:51:45 +0000</dc:date>
+  </metadata>
+  <defs>
+    <font-face font-family="Helvetica Neue" font-size="48" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="500">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Courier" font-size="32" units-per-em="1000" underline-position="-144.04297" underline-thickness="91.79688" slope="0" x-height="462.40234" cap-height="594.72656" ascent="753.90625" descent="-246.09375" font-weight="bold">
+      <font-face-src>
+        <font-face-name name="Courier-Bold"/>
+      </font-face-src>
+    </font-face>
+  </defs>
+  <g stroke="none" stroke-opacity="1" stroke-dasharray="none" fill="none" fill-opacity="1">
+    <title>Canvas 1</title>
+    <rect fill="white" width="3884.363" height="3467.6106"/>
+    <g>
+      <title>Layer 1</title>
+      <text transform="translate(3835.5 1798.156)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="48" font-weight="500" x="159.384" y="46" textLength="359.232">Location module</tspan>
+        <tspan font-family="Helvetica Neue" font-size="48" font-weight="500" x="123.36" y="103.344" textLength="431.28">mapped onto space</tspan>
+      </text>
+    </g>
+    <g>
+      <title>Layer 2</title>
+      <rect x="3844.699" y="2116.788" width="60.60043" height="60.60043" fill="blue"/>
+      <text transform="translate(3849.699 2128.0882)" fill="white">
+        <tspan font-family="Courier" font-size="32" font-weight="bold" fill="white" x="15.698651" y="30" textLength="19.203125">B</tspan>
+      </text>
+      <rect x="3905.2993" y="2116.788" width="60.60043" height="60.60043" fill="red"/>
+      <text transform="translate(3910.2993 2128.0882)" fill="white">
+        <tspan font-family="Courier" font-size="32" font-weight="bold" fill="white" x="15.698651" y="30" textLength="19.203125">A</tspan>
+      </text>
+      <rect x="3905.2993" y="2177.3884" width="60.60043" height="60.60043" fill="red"/>
+      <text transform="translate(3910.2993 2188.6886)" fill="white">
+        <tspan font-family="Courier" font-size="32" font-weight="bold" fill="white" x="15.698651" y="30" textLength="19.203125">A</tspan>
+      </text>
+      <rect x="3784.0984" y="2116.788" width="60.60043" height="60.60043" fill="red"/>
+      <text transform="translate(3789.0984 2128.0882)" fill="white">
+        <tspan font-family="Courier" font-size="32" font-weight="bold" fill="white" x="15.698651" y="30" textLength="19.203125">A</tspan>
+      </text>
+      <rect x="3784.0984" y="2177.3884" width="60.60043" height="60.60043" fill="red"/>
+      <text transform="translate(3789.0984 2188.6886)" fill="white">
+        <tspan font-family="Courier" font-size="32" font-weight="bold" fill="white" x="15.698651" y="30" textLength="19.203125">A</tspan>
+      </text>
+      <rect x="4428.624" y="2116.788" width="60.60043" height="60.60043" fill="blue"/>
+      <text transform="translate(4433.624 2128.0882)" fill="white">
+        <tspan font-family="Courier" font-size="32" font-weight="bold" fill="white" x="15.698651" y="30" textLength="19.203125">B</tspan>
+      </text>
+      <rect x="4489.2243" y="2116.788" width="60.60043" height="60.60043" fill="red"/>
+      <text transform="translate(4494.2243 2128.0882)" fill="white">
+        <tspan font-family="Courier" font-size="32" font-weight="bold" fill="white" x="15.698651" y="30" textLength="19.203125">A</tspan>
+      </text>
+      <rect x="4489.2243" y="2177.3884" width="60.60043" height="60.60043" fill="red"/>
+      <text transform="translate(4494.2243 2188.6886)" fill="white">
+        <tspan font-family="Courier" font-size="32" font-weight="bold" fill="white" x="15.698651" y="30" textLength="19.203125">A</tspan>
+      </text>
+      <rect x="4368.0235" y="2116.788" width="60.60043" height="60.60043" fill="red"/>
+      <text transform="translate(4373.0235 2128.0882)" fill="white">
+        <tspan font-family="Courier" font-size="32" font-weight="bold" fill="white" x="15.698651" y="30" textLength="19.203125">A</tspan>
+      </text>
+      <rect x="4368.0235" y="2177.3884" width="60.60043" height="60.60043" fill="red"/>
+      <text transform="translate(4373.0235 2188.6886)" fill="white">
+        <tspan font-family="Courier" font-size="32" font-weight="bold" fill="white" x="15.698651" y="30" textLength="19.203125">A</tspan>
+      </text>
+      <text transform="translate(3806.499 2421.328)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="48" font-weight="500" x=".052" y="46" textLength="136.896">9 cells</tspan>
+      </text>
+      <text transform="translate(4384.256 2421.328)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="48" font-weight="500" x=".208" y="46" textLength="163.584">36 cells</tspan>
+      </text>
+      <path d="M 3763.4383 2294.136 L 3808.522 2192.8763 L 3912.81 2239.3082 L 3867.726 2340.568 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 3659.1505 2247.7042 L 3704.2343 2146.4444 L 3808.522 2192.8763 L 3763.4383 2294.136 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 3867.726 2340.568 L 3912.81 2239.3082 L 4017.098 2285.7402 L 3972.014 2387 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 3808.522 2192.8763 L 3853.606 2091.6165 L 3957.8937 2138.0484 L 3912.81 2239.3082 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 3704.2343 2146.4444 L 3749.318 2045.1845 L 3853.606 2091.6165 L 3808.522 2192.8763 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 3912.81 2239.3082 L 3957.8937 2138.0484 L 4062.1816 2184.4804 L 4017.098 2285.7402 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 3853.606 2091.6165 L 3898.6897 1990.3567 L 4002.9775 2036.7886 L 3957.8937 2138.0484 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 3749.318 2045.1845 L 3794.402 1943.9247 L 3898.6897 1990.3567 L 3853.606 2091.6165 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 3957.8937 2138.0484 L 4002.9775 2036.7886 L 4107.2654 2083.2205 L 4062.1816 2184.4804 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4355.372 1993.3805 L 4407.361 2016.5276 L 4384.8194 2067.1575 L 4332.83 2044.0104 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4377.914 1942.7506 L 4429.903 1965.8977 L 4407.361 2016.5276 L 4355.372 1993.3805 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4332.83 2044.0104 L 4384.8194 2067.1575 L 4362.2775 2117.7874 L 4310.288 2094.6403 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4407.361 2016.5276 L 4459.3505 2039.6747 L 4436.8086 2090.3046 L 4384.8194 2067.1575 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4429.903 1965.8977 L 4481.8924 1989.0448 L 4459.3505 2039.6747 L 4407.361 2016.5276 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4384.8194 2067.1575 L 4436.8086 2090.3046 L 4414.267 2140.9345 L 4362.2775 2117.7874 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4459.3505 2039.6747 L 4511.34 2062.8218 L 4488.798 2113.4517 L 4436.8086 2090.3046 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4481.8924 1989.0448 L 4533.8817 2012.192 L 4511.34 2062.8218 L 4459.3505 2039.6747 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4436.8086 2090.3046 L 4488.798 2113.4517 L 4466.256 2164.0816 L 4414.267 2140.9345 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4511.34 2062.8218 L 4563.329 2085.969 L 4540.787 2136.5988 L 4488.798 2113.4517 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4533.8817 2012.192 L 4585.871 2035.339 L 4563.329 2085.969 L 4511.34 2062.8218 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4488.798 2113.4517 L 4540.787 2136.5988 L 4518.2453 2187.2287 L 4466.256 2164.0816 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4563.329 2085.969 L 4615.3183 2109.116 L 4592.7764 2159.746 L 4540.787 2136.5988 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4585.871 2035.339 L 4637.86 2058.4861 L 4615.3183 2109.116 L 4563.329 2085.969 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4540.787 2136.5988 L 4592.7764 2159.746 L 4570.2346 2210.3759 L 4518.2453 2187.2287 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4615.3183 2109.116 L 4667.3076 2132.2632 L 4644.7657 2182.893 L 4592.7764 2159.746 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4637.86 2058.4861 L 4689.8495 2081.6332 L 4667.3076 2132.2632 L 4615.3183 2109.116 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4592.7764 2159.746 L 4644.7657 2182.893 L 4622.224 2233.523 L 4570.2346 2210.3759 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4287.7463 2145.2702 L 4339.7356 2168.4173 L 4317.1937 2219.0472 L 4265.2044 2195.9 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4310.288 2094.6403 L 4362.2775 2117.7874 L 4339.7356 2168.4173 L 4287.7463 2145.2702 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4265.2044 2195.9 L 4317.1937 2219.0472 L 4294.652 2269.677 L 4242.6625 2246.53 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4339.7356 2168.4173 L 4391.725 2191.5644 L 4369.183 2242.1943 L 4317.1937 2219.0472 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4362.2775 2117.7874 L 4414.267 2140.9345 L 4391.725 2191.5644 L 4339.7356 2168.4173 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4317.1937 2219.0472 L 4369.183 2242.1943 L 4346.641 2292.8242 L 4294.652 2269.677 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4391.725 2191.5644 L 4443.714 2214.7115 L 4421.172 2265.3414 L 4369.183 2242.1943 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4414.267 2140.9345 L 4466.256 2164.0816 L 4443.714 2214.7115 L 4391.725 2191.5644 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4369.183 2242.1943 L 4421.172 2265.3414 L 4398.6304 2315.9714 L 4346.641 2292.8242 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4443.714 2214.7115 L 4495.7034 2237.8586 L 4473.1615 2288.4886 L 4421.172 2265.3414 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4466.256 2164.0816 L 4518.2453 2187.2287 L 4495.7034 2237.8586 L 4443.714 2214.7115 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4421.172 2265.3414 L 4473.1615 2288.4886 L 4450.6196 2339.1185 L 4398.6304 2315.9714 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4495.7034 2237.8586 L 4547.6927 2261.0058 L 4525.151 2311.6357 L 4473.1615 2288.4886 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4518.2453 2187.2287 L 4570.2346 2210.3759 L 4547.6927 2261.0058 L 4495.7034 2237.8586 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4473.1615 2288.4886 L 4525.151 2311.6357 L 4502.609 2362.2656 L 4450.6196 2339.1185 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4547.6927 2261.0058 L 4599.682 2284.153 L 4577.14 2334.7828 L 4525.151 2311.6357 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4570.2346 2210.3759 L 4622.224 2233.523 L 4599.682 2284.153 L 4547.6927 2261.0058 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 4525.151 2311.6357 L 4577.14 2334.7828 L 4554.598 2385.4127 L 4502.609 2362.2656 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="4174" y1="1949.5" x2="4174" y2="2490.7494" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    </g>
+  </g>
+</svg>
