@@ -292,45 +292,157 @@ class ColumnPooler(object):
     #                                    numActiveSegmentsByCell))
 
 
-    # # New method. Doesn't use the chooseCells function. More robust to random stimuli.
-    # # First, select FF-supported cells. But if some have active segments, only chose cells with
-    # # highest number of active segments (they inhibit everyone else).
-    remainingFFSupportedCells = feedforwardSupportedCells
+
+    # Using inertia at the beginning has advantage of simplicity, but you need .6 inertia to get stabilizing effect w/ random stimulus!
+    # Now trying double inertia! inertia w/lateralactive segments first... Double inertia works but is implausible...
+
+
+    # # Inertia: if there aren't enough active cells to fill minNumActiveCells, pick some of the previously active cells,
+    # # starting with the ones with highest number of active segments.
+    # # This should be very simple, but simply using ArgSort could introduce artifacts
+    # # for the ties. So we use a rather more complicated method to ensure randomization of tied cells
+    # # NOTE: If you put inertia first, you need very high inertia to get nice graph with random-stimulus/shared range.
+    # if self.useInertia:
+    #     if len(prevActiveCells)>0:
+    #         prevCellsRemaining = numpy.setdiff1d(prevActiveCells, chosenCells)
+    #         if prevCellsRemaining.size > 0 and len(chosenCells) < minNumActiveCells:
+    #             prevnumActiveSegsForFFSuppCells = numActiveSegmentsByCell[prevCellsRemaining]
+    #             t = numpy.max(prevnumActiveSegsForFFSuppCells)
+    #             sortedCells = numpy.array([])
+    #             while t >= 0:
+    #                 sortedCells = numpy.append(sortedCells,
+    #                     numpy.random.permutation(prevCellsRemaining[prevnumActiveSegsForFFSuppCells == t]))
+    #                 t -= 1
+    #             # chosenCells = numpy.append(chosenCells, sortedCells[:(minNumActiveCells - len(chosenCells))])
+    #             # chosenCells = numpy.append(chosenCells, sortedCells[:20]) # 25: good; 22: not so good; 20:not very good to stabilize random-stim!
+    #             # chosenCells = numpy.append(chosenCells, sortedCells[:len(sortedCells)*.66]) # .75: good. .5: not good. .666: OK.
+    # else:
+    #     pass
+    #
+    # # # New method. Doesn't use the chooseCells function. More robust to random stimuli.
+    # # # First, select FF-supported cells. But if some have active segments, only chose cells with
+    # # # highest number of active segments (they inhibit everyone else).
+    # distalSegmentInhibitionFactor = .8
+    # remainingFFSupportedCells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
+    # numActiveSegsForFFSuppCells = numActiveSegmentsByCell[remainingFFSupportedCells]
+    # if len(remainingFFSupportedCells) == 0:
+    #     pass
+    # elif numpy.max(numActiveSegsForFFSuppCells) == 0:
+    #      chosenCells = numpy.append(chosenCells, remainingFFSupportedCells)
+    # else:
+    #      chosenCells = numpy.append(chosenCells,
+    #         remainingFFSupportedCells[numActiveSegsForFFSuppCells > distalSegmentInhibitionFactor * numpy.max(numActiveSegsForFFSuppCells)])
+    #     # # With the above, even a single FF-supported cell with active lateral segments can shut out all other
+    #     # # FF-supported cells if none of them has active segments. This can be a problem.
+    #     # # So, if there are few laterally-active FF-suported cells, we  want to allow *a few* FF-supported cells with
+    #     # # fewer active segments. This does help with changing environments (e.g. when abruptly switching between sequences)
+    #      if len(chosenCells) < minNumActiveCells:
+    #         z = numpy.random.permutation(
+    #             remainingFFSupportedCells[numActiveSegsForFFSuppCells < numpy.max(numActiveSegsForFFSuppCells)])
+    #         if len(z)>0:
+    #             # chosenCells = numpy.append(chosenCells, z[:int((minNumActiveCells - len(chosenCells))/5.0)]) # /6
+    #             chosenCells = numpy.append(chosenCells, z[:int((minNumActiveCells - len(chosenCells))/1.0)]) # /6
+    # # # #
+    # # if self.useInertia:
+    # #     if len(prevActiveCells)>0:
+    # #         prevCellsRemaining = numpy.setdiff1d(prevActiveCells, chosenCells)
+    # #         if prevCellsRemaining.size > 0 and len(chosenCells) < minNumActiveCells:
+    # #             prevnumActiveSegsForFFSuppCells = numActiveSegmentsByCell[prevCellsRemaining]
+    # #             t = numpy.max(prevnumActiveSegsForFFSuppCells)
+    # #             sortedCells = numpy.array([])
+    # #             while t >= 0:
+    # #                 sortedCells = numpy.append(sortedCells,
+    # #                     numpy.random.permutation(prevCellsRemaining[prevnumActiveSegsForFFSuppCells == t]))
+    # #                 t -= 1
+    # #             chosenCells = numpy.append(chosenCells, sortedCells[:(minNumActiveCells - len(chosenCells))])
+    # #             # chosenCells = numpy.append(chosenCells, sortedCells[:25]) # 25: good; 22: not so good; 20:fail to stabilize random-stim!
+    # #             # chosenCells = numpy.append(chosenCells, sortedCells[:len(sortedCells)*.66]) # .75: good. .5: not good. .666: OK.
+    # # else:
+    # #     pass
+
+
+
+
+
+    # # Newer method. First activate FF AND most-lateral-supported, then (if minimum number of active cells not reached)
+    # # inertia AND lateral-supp, then FF-supp only, then inertia only.
+
+    distalSegmentInhibitionFactor = .8
+    remainingFFSupportedCells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
     numActiveSegsForFFSuppCells = numActiveSegmentsByCell[remainingFFSupportedCells]
+    # First, activate the FF-supported cells that have the highest number of lateral active segments (this may be 0)
     if len(remainingFFSupportedCells) == 0:
         pass
     elif numpy.max(numActiveSegsForFFSuppCells) == 0:
          chosenCells = numpy.append(chosenCells, remainingFFSupportedCells)
     else:
          chosenCells = numpy.append(chosenCells,
-            remainingFFSupportedCells[numActiveSegsForFFSuppCells == numpy.max(numActiveSegsForFFSuppCells)])
-        # # With the above, even a single FF-supported cell with active lateral segments can shut out all other
-        # # FF-supported cells if none of them has active segments. This can be a problem.
-        # # So, if there are few laterally-active FF-suported cells, we  want to allow *a few* FF-supported cells with
-        # # fewer active segments. This does help with changing environments (e.g. when abruptly switching between sequences)
-         if len(chosenCells) < minNumActiveCells:
-            z = numpy.random.permutation(
-                remainingFFSupportedCells[numActiveSegsForFFSuppCells < numpy.max(numActiveSegsForFFSuppCells)])
-            if len(z)>0:
-                chosenCells = numpy.append(chosenCells, z[:int((minNumActiveCells - len(chosenCells))/6)]) # /6
-    # Inertia: if there aren't enough active cells to fill minNumActiveCells, pick some of the previously active cells,
-    # starting with the ones with highest number of active segments.
-    # This should be very simple, but simply using ArgSort could introduce artifacts
-    # for the ties. So we use a rather more complicated method to ensure randomization of tied cells
-    if self.useInertia:
-        if len(prevActiveCells)>0:
-            prevCellsRemaining = numpy.setdiff1d(prevActiveCells, chosenCells)
-            if prevCellsRemaining.size > 0 and len(chosenCells) < minNumActiveCells:
-                prevnumActiveSegsForFFSuppCells = numActiveSegmentsByCell[prevCellsRemaining]
-                t = numpy.max(prevnumActiveSegsForFFSuppCells)
-                sortedCells = numpy.array([])
-                while t >= 0:
-                    sortedCells = numpy.append(sortedCells,
-                        numpy.random.permutation(prevCellsRemaining[prevnumActiveSegsForFFSuppCells == t]))
-                    t -= 1
-                chosenCells = numpy.append(chosenCells, sortedCells[:(minNumActiveCells - len(chosenCells))])
-    else:
-        pass
+            remainingFFSupportedCells[numActiveSegsForFFSuppCells > distalSegmentInhibitionFactor * numpy.max(numActiveSegsForFFSuppCells)])
+    # Then, if that is not enough to reach minNumActiveCells, fill up with other
+    # cells in order: laterally-supported previously-active cells, FF-supported
+    # cells with no lateral support, and previously active cells with no lateral
+    # support
+    if len(chosenCells) < minNumActiveCells:
+         prevCells = numpy.setdiff1d(prevActiveCells, chosenCells)
+         prevnumActiveSegsPerCell = numActiveSegmentsByCell[prevCells]
+         remFFcells = numpy.setdiff1d(remainingFFSupportedCells, chosenCells)
+         newCells=[]
+         z = prevCells[prevnumActiveSegsPerCell > 0]; z = z[:int(len(z)*.66)] # Notice the "inertial" decay:cells don't strictly remain active, they just have longer relaxation timescales
+         if self.useInertia:
+             newCells = numpy.append(newCells, numpy.random.permutation(z))
+         newCells = numpy.append(newCells, numpy.random.permutation(remFFcells))
+         z = prevCells[prevnumActiveSegsPerCell == 0]; z = z[:int(len(z)*.66)]
+         if self.useInertia:
+            newCells = numpy.append(newCells, numpy.random.permutation(z))
+         if len(newCells)>0:
+          # pass
+        #   chosenCells = numpy.append(chosenCells, z[:int((minNumActiveCells - len(chosenCells))/6.0)]) # /6
+           chosenCells = numpy.append(chosenCells, newCells[:(minNumActiveCells - len(chosenCells))]) # /6
+          # chosenCells = numpy.append(chosenCells, z[:int(len(z)/3)]) # /6
+
+
+
+
+    # # # New method. Doesn't use the chooseCells function. More robust to random stimuli.
+    # # # First, select FF-supported cells. But if some have active segments, only chose cells with
+    # # # highest number of active segments (they inhibit everyone else).
+    # remainingFFSupportedCells = feedforwardSupportedCells
+    # numActiveSegsForFFSuppCells = numActiveSegmentsByCell[remainingFFSupportedCells]
+    # if len(remainingFFSupportedCells) == 0:
+    #     pass
+    # elif numpy.max(numActiveSegsForFFSuppCells) == 0:
+    #      chosenCells = numpy.append(chosenCells, remainingFFSupportedCells)
+    # else:
+    #      chosenCells = numpy.append(chosenCells,
+    #         remainingFFSupportedCells[numActiveSegsForFFSuppCells == numpy.max(numActiveSegsForFFSuppCells)])
+    #     # # With the above, even a single FF-supported cell with active lateral segments can shut out all other
+    #     # # FF-supported cells if none of them has active segments. This can be a problem.
+    #     # # So, if there are few laterally-active FF-suported cells, we  want to allow *a few* FF-supported cells with
+    #     # # fewer active segments. This does help with changing environments (e.g. when abruptly switching between sequences)
+    #      if len(chosenCells) < minNumActiveCells:
+    #         z = numpy.random.permutation(
+    #             remainingFFSupportedCells[numActiveSegsForFFSuppCells < numpy.max(numActiveSegsForFFSuppCells)])
+    #         if len(z)>0:
+    #             chosenCells = numpy.append(chosenCells, z[:int((minNumActiveCells - len(chosenCells))/6)]) # /6
+    # # Inertia: if there aren't enough active cells to fill minNumActiveCells, pick some of the previously active cells,
+    # # starting with the ones with highest number of active segments.
+    # # This should be very simple, but simply using ArgSort could introduce artifacts
+    # # for the ties. So we use a rather more complicated method to ensure randomization of tied cells
+    # if self.useInertia:
+    #     if len(prevActiveCells)>0:
+    #         prevCellsRemaining = numpy.setdiff1d(prevActiveCells, chosenCells)
+    #         if prevCellsRemaining.size > 0 and len(chosenCells) < minNumActiveCells:
+    #             prevnumActiveSegsForFFSuppCells = numActiveSegmentsByCell[prevCellsRemaining]
+    #             t = numpy.max(prevnumActiveSegsForFFSuppCells)
+    #             sortedCells = numpy.array([])
+    #             while t >= 0:
+    #                 sortedCells = numpy.append(sortedCells,
+    #                     numpy.random.permutation(prevCellsRemaining[prevnumActiveSegsForFFSuppCells == t]))
+    #                 t -= 1
+    #             chosenCells = numpy.append(chosenCells, sortedCells[:(minNumActiveCells - len(chosenCells))])
+    # else:
+    #     pass
+
 
 
 
