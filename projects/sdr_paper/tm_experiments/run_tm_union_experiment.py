@@ -40,7 +40,7 @@ def convert_cell_lists_to_dense(dim, cell_list, add_1 = False):
 
   return dense_cell_list
 
-def run_tm_union_experiment(dim = 2000,
+def run_tm_union_experiment(dim = 4000,
                             cellsPerColumn=1,
                             num_active = 40,
                             activationThreshold=5,

@@ -166,7 +166,29 @@ experimental_overlap_4000_40 = 1 - numpy.asarray([0.00989,
 0.2222525,
 0.2298725,
 0.2380625,
-0.24561])
+0.24561,
+0.25228,
+0.2592075,
+0.2676725,
+0.275025,
+0.2850925,
+0.2889875,
+0.2964475,
+0.3045125,
+0.3095575,
+0.3164275,
+0.3240025,
+0.3318925,
+0.337145,
+0.34453,
+0.351175,
+0.357335,
+0.3636425,
+0.3708825,
+0.3751825,
+0.3811675,
+0.3870225,
+0.3951375])
 
 
 predicted_overlap_4000_40 = 1 - numpy.asarray([0.01000000000,
@@ -296,7 +318,7 @@ trace2 = Scatter(
 )
 trace3 = Scatter(
     y=experimental_overlap_4000_40,
-    x=num_patterns_range[:28],
+    x=num_patterns_range,
     mode = "markers",
     marker=Marker(
       symbol="octagon",
@@ -338,8 +360,8 @@ layout = Layout(
             color=''
         ),
         exponentformat="none",
-        dtick=500,
-        showline=False,
+        dtick=5,
+        showline=True,
         range=[0, 60],
     ),
     yaxis=YAxis(
