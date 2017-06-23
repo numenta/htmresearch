@@ -39,7 +39,7 @@ py.sign_in(plotlyUser, plotlyAPIKey)
 # a=64 cells active, s=24 synapses on segment, dendritic threshold is theta=12
 experimentalErrorsA64 = [ 1.09318E-03, 5.74000E-06, 1.10000E-07]
 
-experimentalErrorsA64_new = [2736527./20000000, 621./10000000, 2./10000000, 0./10000000]
+experimentalErrorsA64_poirazi_mel = [2736527./20000000, 621./10000000, 2./10000000, 0./10000000]
 
 
 theoreticalErrorsA64 = [0.00109461662333690, 5.69571108769533e-6,
@@ -50,7 +50,7 @@ theoreticalErrorsA64 = [0.00109461662333690, 5.69571108769533e-6,
 experimentalErrorsA128 = [ 0.292048, 0.00737836, 0.00032014, 0.00002585,
 0.00000295, 0.00000059, 0.00000013, 0.00000001, 0.00000001 ]
 
-experimentalErrorsA128_new = [959346./2000000,
+experimentalErrorsA128_poirazi_mel = [959346./2000000,
 692581./2000000,
 36401./1000000,
 745./1000000,
@@ -77,7 +77,7 @@ experimentalErrorsA256 = [
 3.20000E-07, 2.70000E-07, 7.00000E-08, 4.00000E-08, 2.00000E-08
 ]
 
-experimentalErrorsA256_new = [1001193./2000000,
+experimentalErrorsA256_poirazi_mel = [1001193./2000000,
 979520./2000000,
 464716./1000000,
 406276./1000000,
@@ -119,8 +119,8 @@ trace1 = Scatter(
     name="a=64 (observed)"
 )
 
-trace1_new = Scatter(
-    y=experimentalErrorsA64_new,
+trace1_poirazi_mel = Scatter(
+    y=experimentalErrorsA64_poirazi_mel,
     x=listofNValues[0:3],
     mode="lines + markers",
     marker=Marker(
@@ -158,8 +158,8 @@ trace3 = Scatter(
     name="a=128 (observed)"
 )
 
-trace3_new = Scatter(
-    y=experimentalErrorsA128_new,
+trace3_poirazi_mel = Scatter(
+    y=experimentalErrorsA128_poirazi_mel,
     x=listofNValues[0:9],
     mode="lines + markers",
     marker=Marker(
@@ -195,8 +195,8 @@ trace5 = Scatter(
     name="a=256 (observed)"
 )
 
-trace5_new = Scatter(
-    y=experimentalErrorsA256_new,
+trace5_poirazi_mel = Scatter(
+    y=experimentalErrorsA256_poirazi_mel,
     x=listofNValues,
     mode="lines+markers",
     marker=Marker(
@@ -220,7 +220,7 @@ trace6 = Scatter(
     name="a=256 (predicted)"
 )
 
-data = Data([trace1, trace1_new, trace2, trace3, trace3_new, trace4, trace5, trace5_new, trace6])
+data = Data([trace1, trace1_poirazi_mel, trace2, trace3, trace3_poirazi_mel, trace4, trace5, trace5_poirazi_mel, trace6])
 
 layout = Layout(
     title='',

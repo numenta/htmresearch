@@ -69,7 +69,6 @@ bin_midpoints2000 = [numpy.mean([bin_ends2000[i], bin_ends2000[i+1]]) for i in r
 mean_errors4000, bin_ends4000, _ = stats.binned_statistic(correlations4000, errors4000, bins = 10)
 bin_midpoints4000 = [numpy.mean([bin_ends4000[i], bin_ends4000[i+1]]) for i in range(len(bin_ends4000) - 1)]
 
-
 mean_errorsa64, bin_endsa64, _ = stats.binned_statistic(correlationsa64, errorsa64, bins = 10)
 bin_midpointsa64 = [numpy.mean([bin_endsa64[i], bin_endsa64[i+1]]) for i in range(len(bin_endsa64) - 1)]
 
@@ -188,18 +187,21 @@ layout = Layout(
     ),
     annotations=Annotations([
       Annotation(
-            x=16988,
-            y=0.1143,
+        # arrow -21, 60
+            x=0.0826,
+            y=0.6,
             xref='x',
             yref='paper',
-            text='$a = 64$',
-            showarrow=False,
+            text='$a = 32, n=2000$',
+            showarrow=True,
+            ax=-65,
+            ay=-50,
             font=Font(
                 family='',
-                size=16,
-                color=''
+                size=24,
+                color='rgba(0, 0, 0, 0)',
             ),
-            align='center',
+            align='right',
             textangle=0,
             bordercolor='',
             borderwidth=1,
@@ -208,18 +210,21 @@ layout = Layout(
             opacity=1
         ),
       Annotation(
-            x=17103,
-            y=0.259,
+        # Arrow -89, 72
+            x=0.09633,
+            y=0.2404,
             xref='x',
             yref='paper',
-            text='$a = 128$',
-            showarrow=False,
+            text='$a = 32, n=4000$',
+            showarrow=True,
+            ax = 40,
+            ay = -83,
             font=Font(
                 family='',
-                size=16,
-                color=''
+                size=24,
+                color='rgba(0, 0, 0, 0)'
             ),
-            align='center',
+            align='right',
             textangle=0,
             bordercolor='',
             borderwidth=1,
@@ -228,18 +233,21 @@ layout = Layout(
             opacity=1
         ),
       Annotation(
-            x=17132,
-            y=0.411,
+        # Arrow 42, -46
+            x=0.0717,
+            y=.0876,
             xref='x',
             yref='paper',
-            text='$a = 256$',
-            showarrow=False,
+            text='$a = 64, n=4000$',
+            showarrow=True,
+            ax=187,
+            ay=-36,
             font=Font(
                 family='',
-                size=16,
-                color=''
+                size=24,
+                color='rgba(0, 0, 0, 0)',
             ),
-            align='center',
+            align='left',
             textangle=0,
             bordercolor='',
             borderwidth=1,
@@ -247,27 +255,8 @@ layout = Layout(
             bgcolor='rgba(0, 0, 0, 0)',
             opacity=1
         ),
-      Annotation(
-            x=16845,
-            y=0.933,
-            xref='x',
-            yref='paper',
-            text='$a = \\frac{n}{2}$',
-            showarrow=False,
-            font=Font(
-                family='',
-                size=16,
-                color=''
-            ),
-            align='center',
-            textangle=0,
-            bordercolor='',
-            borderwidth=1,
-            borderpad=1,
-            bgcolor='rgba(0, 0, 0, 0)',
-            opacity=1
-        ),
-    ]),)
+      ])
+)
 
 fig = Figure(data=data, layout=layout)
 plot_url = py.plot(fig)
