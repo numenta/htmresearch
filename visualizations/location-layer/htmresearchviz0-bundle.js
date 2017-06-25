@@ -51,30 +51,42 @@ var number = function(x) {
   return x === null ? NaN : +x;
 };
 
-var extent = function(array, f) {
-  var i = -1,
-      n = array.length,
-      a,
-      b,
-      c;
+var extent = function(values, valueof) {
+  var n = values.length,
+      i = -1,
+      value,
+      min,
+      max;
 
-  if (f == null) {
-    while (++i < n) if ((b = array[i]) != null && b >= b) { a = c = b; break; }
-    while (++i < n) if ((b = array[i]) != null) {
-      if (a > b) a = b;
-      if (c < b) c = b;
+  if (valueof == null) {
+    while (++i < n) { // Find the first comparable value.
+      if ((value = values[i]) != null && value >= value) {
+        min = max = value;
+        while (++i < n) { // Compare the remaining values.
+          if ((value = values[i]) != null) {
+            if (min > value) min = value;
+            if (max < value) max = value;
+          }
+        }
+      }
     }
   }
 
   else {
-    while (++i < n) if ((b = f(array[i], i, array)) != null && b >= b) { a = c = b; break; }
-    while (++i < n) if ((b = f(array[i], i, array)) != null) {
-      if (a > b) a = b;
-      if (c < b) c = b;
+    while (++i < n) { // Find the first comparable value.
+      if ((value = valueof(values[i], i, values)) != null && value >= value) {
+        min = max = value;
+        while (++i < n) { // Compare the remaining values.
+          if ((value = valueof(values[i], i, values)) != null) {
+            if (min > value) min = value;
+            if (max < value) max = value;
+          }
+        }
+      }
     }
   }
 
-  return [a, c];
+  return [min, max];
 };
 
 var identity = function(x) {
@@ -100,13 +112,41 @@ var e5 = Math.sqrt(10);
 var e2 = Math.sqrt(2);
 
 var ticks = function(start, stop, count) {
-  var step = tickStep(start, stop, count);
-  return sequence(
-    Math.ceil(start / step) * step,
-    Math.floor(stop / step) * step + step / 2, // inclusive
-    step
-  );
+  var reverse = stop < start,
+      i = -1,
+      n,
+      ticks,
+      step;
+
+  if (reverse) n = start, start = stop, stop = n;
+
+  if ((step = tickIncrement(start, stop, count)) === 0 || !isFinite(step)) return [];
+
+  if (step > 0) {
+    start = Math.ceil(start / step);
+    stop = Math.floor(stop / step);
+    ticks = new Array(n = Math.ceil(stop - start + 1));
+    while (++i < n) ticks[i] = (start + i) * step;
+  } else {
+    start = Math.floor(start * step);
+    stop = Math.ceil(stop * step);
+    ticks = new Array(n = Math.ceil(start - stop + 1));
+    while (++i < n) ticks[i] = (start - i) / step;
+  }
+
+  if (reverse) ticks.reverse();
+
+  return ticks;
 };
+
+function tickIncrement(start, stop, count) {
+  var step = (stop - start) / Math.max(0, count),
+      power = Math.floor(Math.log(step) / Math.LN10),
+      error = step / Math.pow(10, power);
+  return power >= 0
+      ? (error >= e10 ? 10 : error >= e5 ? 5 : error >= e2 ? 2 : 1) * Math.pow(10, power)
+      : -Math.pow(10, -power) / (error >= e10 ? 10 : error >= e5 ? 5 : error >= e2 ? 2 : 1);
+}
 
 function tickStep(start, stop, count) {
   var step0 = Math.abs(stop - start) / Math.max(0, count),
@@ -122,17 +162,17 @@ var sturges = function(values) {
   return Math.ceil(Math.log(values.length) / Math.LN2) + 1;
 };
 
-var threshold = function(array, p, f) {
-  if (f == null) f = number;
-  if (!(n = array.length)) return;
-  if ((p = +p) <= 0 || n < 2) return +f(array[0], 0, array);
-  if (p >= 1) return +f(array[n - 1], n - 1, array);
+var threshold = function(values, p, valueof) {
+  if (valueof == null) valueof = number;
+  if (!(n = values.length)) return;
+  if ((p = +p) <= 0 || n < 2) return +valueof(values[0], 0, values);
+  if (p >= 1) return +valueof(values[n - 1], n - 1, values);
   var n,
-      h = (n - 1) * p,
-      i = Math.floor(h),
-      a = +f(array[i], i, array),
-      b = +f(array[i + 1], i + 1, array);
-  return a + (b - a) * (h - i);
+      i = (n - 1) * p,
+      i0 = Math.floor(i),
+      value0 = +valueof(values[i0], i0, values),
+      value1 = +valueof(values[i0 + 1], i0 + 1, values);
+  return value0 + (value1 - value0) * (i - i0);
 };
 
 var merge = function(arrays) {
@@ -157,23 +197,39 @@ var merge = function(arrays) {
   return merged;
 };
 
-var min = function(array, f) {
-  var i = -1,
-      n = array.length,
-      a,
-      b;
+var min = function(values, valueof) {
+  var n = values.length,
+      i = -1,
+      value,
+      min;
 
-  if (f == null) {
-    while (++i < n) if ((b = array[i]) != null && b >= b) { a = b; break; }
-    while (++i < n) if ((b = array[i]) != null && a > b) a = b;
+  if (valueof == null) {
+    while (++i < n) { // Find the first comparable value.
+      if ((value = values[i]) != null && value >= value) {
+        min = value;
+        while (++i < n) { // Compare the remaining values.
+          if ((value = values[i]) != null && min > value) {
+            min = value;
+          }
+        }
+      }
+    }
   }
 
   else {
-    while (++i < n) if ((b = f(array[i], i, array)) != null && b >= b) { a = b; break; }
-    while (++i < n) if ((b = f(array[i], i, array)) != null && a > b) a = b;
+    while (++i < n) { // Find the first comparable value.
+      if ((value = valueof(values[i], i, values)) != null && value >= value) {
+        min = value;
+        while (++i < n) { // Compare the remaining values.
+          if ((value = valueof(values[i], i, values)) != null && min > value) {
+            min = value;
+          }
+        }
+      }
+    }
   }
 
-  return a;
+  return min;
 };
 
 function length(d) {
@@ -420,6 +476,32 @@ var selection_on = function(typename, value, capture) {
   if (capture == null) capture = false;
   for (i = 0; i < n; ++i) this.each(on(typenames[i], value, capture));
   return this;
+};
+
+var sourceEvent = function() {
+  var current = event, source;
+  while (source = current.sourceEvent) current = source;
+  return current;
+};
+
+var point = function(node, event) {
+  var svg = node.ownerSVGElement || node;
+
+  if (svg.createSVGPoint) {
+    var point = svg.createSVGPoint();
+    point.x = event.clientX, point.y = event.clientY;
+    point = point.matrixTransform(node.getScreenCTM().inverse());
+    return [point.x, point.y];
+  }
+
+  var rect = node.getBoundingClientRect();
+  return [event.clientX - rect.left - node.clientLeft, event.clientY - rect.top - node.clientTop];
+};
+
+var mouse = function(node) {
+  var event = sourceEvent();
+  if (event.changedTouches) event = event.changedTouches[0];
+  return point(node, event);
 };
 
 function none() {}
@@ -789,7 +871,7 @@ var selection_attr = function(name, value) {
       : (fullname.local ? attrConstantNS : attrConstant)))(fullname, value));
 };
 
-var window = function(node) {
+var defaultView = function(node) {
   return (node.ownerDocument && node.ownerDocument.defaultView) // node is a Node
       || (node.document && node) // node is a Window
       || node.defaultView; // node is a Document
@@ -816,16 +898,18 @@ function styleFunction(name, value, priority) {
 }
 
 var selection_style = function(name, value, priority) {
-  var node;
   return arguments.length > 1
       ? this.each((value == null
             ? styleRemove : typeof value === "function"
             ? styleFunction
             : styleConstant)(name, value, priority == null ? "" : priority))
-      : window(node = this.node())
-          .getComputedStyle(node, null)
-          .getPropertyValue(name);
+      : styleValue(this.node(), name);
 };
+
+function styleValue(node, name) {
+  return node.style.getPropertyValue(name)
+      || defaultView(node).getComputedStyle(node, null).getPropertyValue(name);
+}
 
 function propertyRemove(name) {
   return function() {
@@ -1035,13 +1119,13 @@ var selection_datum = function(value) {
 };
 
 function dispatchEvent(node, type, params) {
-  var window$$1 = window(node),
-      event = window$$1.CustomEvent;
+  var window = defaultView(node),
+      event = window.CustomEvent;
 
-  if (event) {
+  if (typeof event === "function") {
     event = new event(type, params);
   } else {
-    event = window$$1.document.createEvent("Event");
+    event = window.document.createEvent("Event");
     if (params) event.initEvent(type, params.bubbles, params.cancelable), event.detail = params.detail;
     else event.initEvent(type, false, false);
   }
@@ -1809,7 +1893,7 @@ var interpolateValue = function(a, b) {
       : b instanceof color ? interpolateRgb
       : b instanceof Date ? date
       : Array.isArray(b) ? array$1
-      : isNaN(b) ? object
+      : typeof b.valueOf !== "function" && typeof b.toString !== "function" || isNaN(b) ? object
       : reinterpolate)(a, b);
 };
 
@@ -2640,9 +2724,8 @@ function styleRemove$1(name, interpolate$$2) {
       value10,
       interpolate0;
   return function() {
-    var style = window(this).getComputedStyle(this, null),
-        value0 = style.getPropertyValue(name),
-        value1 = (this.style.removeProperty(name), style.getPropertyValue(name));
+    var value0 = styleValue(this, name),
+        value1 = (this.style.removeProperty(name), styleValue(this, name));
     return value0 === value1 ? null
         : value0 === value00 && value1 === value10 ? interpolate0
         : interpolate0 = interpolate$$2(value00 = value0, value10 = value1);
@@ -2659,7 +2742,7 @@ function styleConstant$1(name, interpolate$$2, value1) {
   var value00,
       interpolate0;
   return function() {
-    var value0 = window(this).getComputedStyle(this, null).getPropertyValue(name);
+    var value0 = styleValue(this, name);
     return value0 === value1 ? null
         : value0 === value00 ? interpolate0
         : interpolate0 = interpolate$$2(value00 = value0, value1);
@@ -2671,10 +2754,9 @@ function styleFunction$1(name, interpolate$$2, value) {
       value10,
       interpolate0;
   return function() {
-    var style = window(this).getComputedStyle(this, null),
-        value0 = style.getPropertyValue(name),
+    var value0 = styleValue(this, name),
         value1 = value(this);
-    if (value1 == null) value1 = (this.style.removeProperty(name), style.getPropertyValue(name));
+    if (value1 == null) value1 = (this.style.removeProperty(name), styleValue(this, name));
     return value0 === value1 ? null
         : value0 === value00 && value1 === value10 ? interpolate0
         : interpolate0 = interpolate$$2(value00 = value0, value10 = value1);
@@ -3967,7 +4049,8 @@ var formatLocale = function(locale) {
   var group = locale.grouping && locale.thousands ? formatGroup(locale.grouping, locale.thousands) : identity$3,
       currency = locale.currency,
       decimal = locale.decimal,
-      numerals = locale.numerals ? formatNumerals(locale.numerals) : identity$3;
+      numerals = locale.numerals ? formatNumerals(locale.numerals) : identity$3,
+      percent = locale.percent || "%";
 
   function newFormat(specifier) {
     specifier = formatSpecifier(specifier);
@@ -3985,7 +4068,7 @@ var formatLocale = function(locale) {
     // Compute the prefix and suffix.
     // For SI-prefix, the suffix is lazily computed.
     var prefix = symbol === "$" ? currency[0] : symbol === "#" && /[boxX]/.test(type) ? "0" + type.toLowerCase() : "",
-        suffix = symbol === "$" ? currency[1] : /[%p]/.test(type) ? "%" : "";
+        suffix = symbol === "$" ? currency[1] : /[%p]/.test(type) ? percent : "";
 
     // What format function should we use?
     // Is this an integer type?
@@ -4098,6 +4181,19 @@ function defaultLocale(definition) {
   formatPrefix = locale$1.formatPrefix;
   return locale$1;
 }
+
+var precisionFixed = function(step) {
+  return Math.max(0, -exponent$1(Math.abs(step)));
+};
+
+var precisionPrefix = function(step, value) {
+  return Math.max(0, Math.max(-8, Math.min(8, Math.floor(exponent$1(value) / 3))) * 3 - exponent$1(Math.abs(step)));
+};
+
+var precisionRound = function(step, max) {
+  step = Math.abs(step), max = Math.abs(max) - step;
+  return Math.max(0, exponent$1(max) - exponent$1(step)) + 1;
+};
 
 // Adds floating point numbers with twice the normal precision.
 // Reference: J. R. Shewchuk, Adaptive Precision Floating-Point Arithmetic and
@@ -5612,7 +5708,13 @@ function polymap(domain, range$$1, deinterpolate, reinterpolate) {
   };
 }
 
-
+function copy(source, target) {
+  return target
+      .domain(source.domain())
+      .range(source.range())
+      .interpolate(source.interpolate())
+      .clamp(source.clamp());
+}
 
 // deinterpolate(a, b)(x) takes a domain value x in [a,b] and returns the corresponding parameter t in [0,1].
 // reinterpolate(a, b)(t) takes a parameter t in [0,1] and returns the corresponding domain value x in [a,b].
@@ -5660,6 +5762,100 @@ function continuous(deinterpolate, reinterpolate) {
   };
 
   return rescale();
+}
+
+var tickFormat = function(domain, count, specifier) {
+  var start = domain[0],
+      stop = domain[domain.length - 1],
+      step = tickStep(start, stop, count == null ? 10 : count),
+      precision;
+  specifier = formatSpecifier(specifier == null ? ",f" : specifier);
+  switch (specifier.type) {
+    case "s": {
+      var value = Math.max(Math.abs(start), Math.abs(stop));
+      if (specifier.precision == null && !isNaN(precision = precisionPrefix(step, value))) specifier.precision = precision;
+      return formatPrefix(specifier, value);
+    }
+    case "":
+    case "e":
+    case "g":
+    case "p":
+    case "r": {
+      if (specifier.precision == null && !isNaN(precision = precisionRound(step, Math.max(Math.abs(start), Math.abs(stop))))) specifier.precision = precision - (specifier.type === "e");
+      break;
+    }
+    case "f":
+    case "%": {
+      if (specifier.precision == null && !isNaN(precision = precisionFixed(step))) specifier.precision = precision - (specifier.type === "%") * 2;
+      break;
+    }
+  }
+  return format(specifier);
+};
+
+function linearish(scale) {
+  var domain = scale.domain;
+
+  scale.ticks = function(count) {
+    var d = domain();
+    return ticks(d[0], d[d.length - 1], count == null ? 10 : count);
+  };
+
+  scale.tickFormat = function(count, specifier) {
+    return tickFormat(domain(), count, specifier);
+  };
+
+  scale.nice = function(count) {
+    if (count == null) count = 10;
+
+    var d = domain(),
+        i0 = 0,
+        i1 = d.length - 1,
+        start = d[i0],
+        stop = d[i1],
+        step;
+
+    if (stop < start) {
+      step = start, start = stop, stop = step;
+      step = i0, i0 = i1, i1 = step;
+    }
+
+    step = tickIncrement(start, stop, count);
+
+    if (step > 0) {
+      start = Math.floor(start / step) * step;
+      stop = Math.ceil(stop / step) * step;
+      step = tickIncrement(start, stop, count);
+    } else if (step < 0) {
+      start = Math.ceil(start * step) / step;
+      stop = Math.floor(stop * step) / step;
+      step = tickIncrement(start, stop, count);
+    }
+
+    if (step > 0) {
+      d[i0] = Math.floor(start / step) * step;
+      d[i1] = Math.ceil(stop / step) * step;
+      domain(d);
+    } else if (step < 0) {
+      d[i0] = Math.ceil(start * step) / step;
+      d[i1] = Math.floor(stop * step) / step;
+      domain(d);
+    }
+
+    return scale;
+  };
+
+  return scale;
+}
+
+function linear$2() {
+  var scale = continuous(deinterpolateLinear, reinterpolate);
+
+  scale.copy = function() {
+    return copy(scale, linear$2());
+  };
+
+  return linearish(scale);
 }
 
 function deinterpolate(a, b) {
@@ -6558,6 +6754,283 @@ var constant$10 = function(x) {
   };
 };
 
+var abs$1 = Math.abs;
+var atan2$1 = Math.atan2;
+var cos$2 = Math.cos;
+var max$2 = Math.max;
+var min$1 = Math.min;
+var sin$2 = Math.sin;
+var sqrt$2 = Math.sqrt;
+
+var epsilon$3 = 1e-12;
+var pi$4 = Math.PI;
+var halfPi$3 = pi$4 / 2;
+var tau$4 = 2 * pi$4;
+
+function acos$1(x) {
+  return x > 1 ? 0 : x < -1 ? pi$4 : Math.acos(x);
+}
+
+function asin$1(x) {
+  return x >= 1 ? halfPi$3 : x <= -1 ? -halfPi$3 : Math.asin(x);
+}
+
+function arcInnerRadius(d) {
+  return d.innerRadius;
+}
+
+function arcOuterRadius(d) {
+  return d.outerRadius;
+}
+
+function arcStartAngle(d) {
+  return d.startAngle;
+}
+
+function arcEndAngle(d) {
+  return d.endAngle;
+}
+
+function arcPadAngle(d) {
+  return d && d.padAngle; // Note: optional!
+}
+
+function intersect(x0, y0, x1, y1, x2, y2, x3, y3) {
+  var x10 = x1 - x0, y10 = y1 - y0,
+      x32 = x3 - x2, y32 = y3 - y2,
+      t = (x32 * (y0 - y2) - y32 * (x0 - x2)) / (y32 * x10 - x32 * y10);
+  return [x0 + t * x10, y0 + t * y10];
+}
+
+// Compute perpendicular offset line of length rc.
+// http://mathworld.wolfram.com/Circle-LineIntersection.html
+function cornerTangents(x0, y0, x1, y1, r1, rc, cw) {
+  var x01 = x0 - x1,
+      y01 = y0 - y1,
+      lo = (cw ? rc : -rc) / sqrt$2(x01 * x01 + y01 * y01),
+      ox = lo * y01,
+      oy = -lo * x01,
+      x11 = x0 + ox,
+      y11 = y0 + oy,
+      x10 = x1 + ox,
+      y10 = y1 + oy,
+      x00 = (x11 + x10) / 2,
+      y00 = (y11 + y10) / 2,
+      dx = x10 - x11,
+      dy = y10 - y11,
+      d2 = dx * dx + dy * dy,
+      r = r1 - rc,
+      D = x11 * y10 - x10 * y11,
+      d = (dy < 0 ? -1 : 1) * sqrt$2(max$2(0, r * r * d2 - D * D)),
+      cx0 = (D * dy - dx * d) / d2,
+      cy0 = (-D * dx - dy * d) / d2,
+      cx1 = (D * dy + dx * d) / d2,
+      cy1 = (-D * dx + dy * d) / d2,
+      dx0 = cx0 - x00,
+      dy0 = cy0 - y00,
+      dx1 = cx1 - x00,
+      dy1 = cy1 - y00;
+
+  // Pick the closer of the two intersection points.
+  // TODO Is there a faster way to determine which intersection to use?
+  if (dx0 * dx0 + dy0 * dy0 > dx1 * dx1 + dy1 * dy1) cx0 = cx1, cy0 = cy1;
+
+  return {
+    cx: cx0,
+    cy: cy0,
+    x01: -ox,
+    y01: -oy,
+    x11: cx0 * (r1 / r - 1),
+    y11: cy0 * (r1 / r - 1)
+  };
+}
+
+var arc = function() {
+  var innerRadius = arcInnerRadius,
+      outerRadius = arcOuterRadius,
+      cornerRadius = constant$10(0),
+      padRadius = null,
+      startAngle = arcStartAngle,
+      endAngle = arcEndAngle,
+      padAngle = arcPadAngle,
+      context = null;
+
+  function arc() {
+    var buffer,
+        r,
+        r0 = +innerRadius.apply(this, arguments),
+        r1 = +outerRadius.apply(this, arguments),
+        a0 = startAngle.apply(this, arguments) - halfPi$3,
+        a1 = endAngle.apply(this, arguments) - halfPi$3,
+        da = abs$1(a1 - a0),
+        cw = a1 > a0;
+
+    if (!context) context = buffer = path();
+
+    // Ensure that the outer radius is always larger than the inner radius.
+    if (r1 < r0) r = r1, r1 = r0, r0 = r;
+
+    // Is it a point?
+    if (!(r1 > epsilon$3)) context.moveTo(0, 0);
+
+    // Or is it a circle or annulus?
+    else if (da > tau$4 - epsilon$3) {
+      context.moveTo(r1 * cos$2(a0), r1 * sin$2(a0));
+      context.arc(0, 0, r1, a0, a1, !cw);
+      if (r0 > epsilon$3) {
+        context.moveTo(r0 * cos$2(a1), r0 * sin$2(a1));
+        context.arc(0, 0, r0, a1, a0, cw);
+      }
+    }
+
+    // Or is it a circular or annular sector?
+    else {
+      var a01 = a0,
+          a11 = a1,
+          a00 = a0,
+          a10 = a1,
+          da0 = da,
+          da1 = da,
+          ap = padAngle.apply(this, arguments) / 2,
+          rp = (ap > epsilon$3) && (padRadius ? +padRadius.apply(this, arguments) : sqrt$2(r0 * r0 + r1 * r1)),
+          rc = min$1(abs$1(r1 - r0) / 2, +cornerRadius.apply(this, arguments)),
+          rc0 = rc,
+          rc1 = rc,
+          t0,
+          t1;
+
+      // Apply padding? Note that since r1 ≥ r0, da1 ≥ da0.
+      if (rp > epsilon$3) {
+        var p0 = asin$1(rp / r0 * sin$2(ap)),
+            p1 = asin$1(rp / r1 * sin$2(ap));
+        if ((da0 -= p0 * 2) > epsilon$3) p0 *= (cw ? 1 : -1), a00 += p0, a10 -= p0;
+        else da0 = 0, a00 = a10 = (a0 + a1) / 2;
+        if ((da1 -= p1 * 2) > epsilon$3) p1 *= (cw ? 1 : -1), a01 += p1, a11 -= p1;
+        else da1 = 0, a01 = a11 = (a0 + a1) / 2;
+      }
+
+      var x01 = r1 * cos$2(a01),
+          y01 = r1 * sin$2(a01),
+          x10 = r0 * cos$2(a10),
+          y10 = r0 * sin$2(a10);
+
+      // Apply rounded corners?
+      if (rc > epsilon$3) {
+        var x11 = r1 * cos$2(a11),
+            y11 = r1 * sin$2(a11),
+            x00 = r0 * cos$2(a00),
+            y00 = r0 * sin$2(a00);
+
+        // Restrict the corner radius according to the sector angle.
+        if (da < pi$4) {
+          var oc = da0 > epsilon$3 ? intersect(x01, y01, x00, y00, x11, y11, x10, y10) : [x10, y10],
+              ax = x01 - oc[0],
+              ay = y01 - oc[1],
+              bx = x11 - oc[0],
+              by = y11 - oc[1],
+              kc = 1 / sin$2(acos$1((ax * bx + ay * by) / (sqrt$2(ax * ax + ay * ay) * sqrt$2(bx * bx + by * by))) / 2),
+              lc = sqrt$2(oc[0] * oc[0] + oc[1] * oc[1]);
+          rc0 = min$1(rc, (r0 - lc) / (kc - 1));
+          rc1 = min$1(rc, (r1 - lc) / (kc + 1));
+        }
+      }
+
+      // Is the sector collapsed to a line?
+      if (!(da1 > epsilon$3)) context.moveTo(x01, y01);
+
+      // Does the sector’s outer ring have rounded corners?
+      else if (rc1 > epsilon$3) {
+        t0 = cornerTangents(x00, y00, x01, y01, r1, rc1, cw);
+        t1 = cornerTangents(x11, y11, x10, y10, r1, rc1, cw);
+
+        context.moveTo(t0.cx + t0.x01, t0.cy + t0.y01);
+
+        // Have the corners merged?
+        if (rc1 < rc) context.arc(t0.cx, t0.cy, rc1, atan2$1(t0.y01, t0.x01), atan2$1(t1.y01, t1.x01), !cw);
+
+        // Otherwise, draw the two corners and the ring.
+        else {
+          context.arc(t0.cx, t0.cy, rc1, atan2$1(t0.y01, t0.x01), atan2$1(t0.y11, t0.x11), !cw);
+          context.arc(0, 0, r1, atan2$1(t0.cy + t0.y11, t0.cx + t0.x11), atan2$1(t1.cy + t1.y11, t1.cx + t1.x11), !cw);
+          context.arc(t1.cx, t1.cy, rc1, atan2$1(t1.y11, t1.x11), atan2$1(t1.y01, t1.x01), !cw);
+        }
+      }
+
+      // Or is the outer ring just a circular arc?
+      else context.moveTo(x01, y01), context.arc(0, 0, r1, a01, a11, !cw);
+
+      // Is there no inner ring, and it’s a circular sector?
+      // Or perhaps it’s an annular sector collapsed due to padding?
+      if (!(r0 > epsilon$3) || !(da0 > epsilon$3)) context.lineTo(x10, y10);
+
+      // Does the sector’s inner ring (or point) have rounded corners?
+      else if (rc0 > epsilon$3) {
+        t0 = cornerTangents(x10, y10, x11, y11, r0, -rc0, cw);
+        t1 = cornerTangents(x01, y01, x00, y00, r0, -rc0, cw);
+
+        context.lineTo(t0.cx + t0.x01, t0.cy + t0.y01);
+
+        // Have the corners merged?
+        if (rc0 < rc) context.arc(t0.cx, t0.cy, rc0, atan2$1(t0.y01, t0.x01), atan2$1(t1.y01, t1.x01), !cw);
+
+        // Otherwise, draw the two corners and the ring.
+        else {
+          context.arc(t0.cx, t0.cy, rc0, atan2$1(t0.y01, t0.x01), atan2$1(t0.y11, t0.x11), !cw);
+          context.arc(0, 0, r0, atan2$1(t0.cy + t0.y11, t0.cx + t0.x11), atan2$1(t1.cy + t1.y11, t1.cx + t1.x11), cw);
+          context.arc(t1.cx, t1.cy, rc0, atan2$1(t1.y11, t1.x11), atan2$1(t1.y01, t1.x01), !cw);
+        }
+      }
+
+      // Or is the inner ring just a circular arc?
+      else context.arc(0, 0, r0, a10, a00, cw);
+    }
+
+    context.closePath();
+
+    if (buffer) return context = null, buffer + "" || null;
+  }
+
+  arc.centroid = function() {
+    var r = (+innerRadius.apply(this, arguments) + +outerRadius.apply(this, arguments)) / 2,
+        a = (+startAngle.apply(this, arguments) + +endAngle.apply(this, arguments)) / 2 - pi$4 / 2;
+    return [cos$2(a) * r, sin$2(a) * r];
+  };
+
+  arc.innerRadius = function(_) {
+    return arguments.length ? (innerRadius = typeof _ === "function" ? _ : constant$10(+_), arc) : innerRadius;
+  };
+
+  arc.outerRadius = function(_) {
+    return arguments.length ? (outerRadius = typeof _ === "function" ? _ : constant$10(+_), arc) : outerRadius;
+  };
+
+  arc.cornerRadius = function(_) {
+    return arguments.length ? (cornerRadius = typeof _ === "function" ? _ : constant$10(+_), arc) : cornerRadius;
+  };
+
+  arc.padRadius = function(_) {
+    return arguments.length ? (padRadius = _ == null ? null : typeof _ === "function" ? _ : constant$10(+_), arc) : padRadius;
+  };
+
+  arc.startAngle = function(_) {
+    return arguments.length ? (startAngle = typeof _ === "function" ? _ : constant$10(+_), arc) : startAngle;
+  };
+
+  arc.endAngle = function(_) {
+    return arguments.length ? (endAngle = typeof _ === "function" ? _ : constant$10(+_), arc) : endAngle;
+  };
+
+  arc.padAngle = function(_) {
+    return arguments.length ? (padAngle = typeof _ === "function" ? _ : constant$10(+_), arc) : padAngle;
+  };
+
+  arc.context = function(_) {
+    return arguments.length ? ((context = _ == null ? null : _), arc) : context;
+  };
+
+  return arc;
+};
+
 function Linear(context) {
   this._context = context;
 }
@@ -6844,6 +7317,2568 @@ var edges;
 function triangleArea(a, b, c) {
   return (a[0] - c[0]) * (b[1] - a[1]) - (a[0] - b[0]) * (c[1] - a[1]);
 }
+
+/**
+ * Example params:
+ * {
+ *   inputSize: 100,
+ *   activeBits: [42, 45]
+ * }
+ */
+function arrayOfAxonsChart() {
+  let width,
+      height;
+
+  let chart = function(selection$$1) {
+    selection$$1.each(function(axonsData) {
+      let x = linear$2()
+          .domain([0, axonsData.inputSize])
+          .range([4, width - 4]);
+
+      select(this)
+        .selectAll('.border')
+        .data([null])
+        .enter().append('rect')
+        .attr('class', 'border')
+        .attr('fill', 'none')
+        .attr('stroke', 'black')
+        .attr('width', width)
+        .attr('height', height);
+
+      let activeAxon = select(this).selectAll('.activeAxon')
+          .data(d => d.activeBits);
+
+      activeAxon.enter().append('g')
+        .attr('class', 'activeAxon')
+        .call(enter => {
+          enter.append('circle')
+            .attr('r', 1.5)
+            .attr('stroke', 'none')
+            .attr('fill', 'black');
+        })
+        .merge(activeAxon)
+        .attr('transform', cell => `translate(${x(cell)}, 2.5)`);
+
+      activeAxon.exit().remove();
+    });
+  };
+
+  chart.width = function(_) {
+    if (!arguments.length) return width;
+    width = _;
+    return chart;
+  };
+
+  chart.height = function(_) {
+    if (!arguments.length) return height;
+    height = _;
+    return chart;
+  };
+
+  return chart;
+}
+
+/**
+ * Example data:
+ *    {name: 'A'}
+ */
+function featureChart() {
+  let width,
+      height,
+      color$$1;
+
+  let chart = function(selection$$1) {
+    let featureColor = selection$$1.selectAll('.featureColor')
+        .data(d => d.name != null ? [d.name] : []);
+
+    featureColor.exit().remove();
+
+    featureColor.enter()
+      .append('rect')
+      .attr('class', 'featureColor')
+      .attr('width', width)
+      .attr('height', height)
+      .attr('stroke', 'none')
+      .merge(featureColor)
+      .attr('fill', d => color$$1(d));
+
+    let featureText = selection$$1.selectAll('.featureText')
+        .data(d => d.name != null ? [d.name] : []);
+
+    featureText.exit().remove();
+
+    featureText.enter()
+      .append('text')
+      .attr('class', 'featureText')
+      .attr('text-anchor', 'middle')
+      .attr('dy', height * 0.25)
+      .attr('x', width / 2)
+      .attr('y', height / 2)
+      .attr('fill', 'white')
+      .style('font', `bold ${height * 0.8}px monospace`)
+      .merge(featureText)
+      .text(d => d);
+  };
+
+  chart.width = function(_) {
+    if (!arguments.length) return width;
+    width = _;
+    return chart;
+  };
+
+  chart.height = function(_) {
+    if (!arguments.length) return height;
+    height = _;
+    return chart;
+  };
+
+  chart.color = function(_) {
+    if (!arguments.length) return color$$1;
+    color$$1 = _;
+    return chart;
+  };
+
+  return chart;
+}
+
+function partition$1(arr, n) {
+  let result = [];
+
+  for (let i = 0; i < arr.length; i += n) {
+    result.push(arr.slice(i, i+n));
+  }
+
+  return result;
+}
+
+/**
+ * Example data:
+ *    {decodings: [{objectName: 'Object 1', top: 42.0, left: 17.2, amountContained: 0.95}],
+ *     objects: {'Object 1': [{name: 'A', left: 11.2, top:12.0, width: 12.2, height: 7.2}],
+ *               'Object 2': []}}
+ */
+function decodedLocationsChart() {
+  let width,
+      height,
+      color$$1,
+      minimumMatch = 0.25;
+
+  let chart = function(selection$$1) {
+
+    selection$$1.each(function(decodedLocationsData) {
+      let decodingsByObject = {};
+      decodedLocationsData.decodings.forEach(d => {
+        if (d.amountContained >= minimumMatch) {
+          if (!decodingsByObject.hasOwnProperty(d.objectName)) {
+            decodingsByObject[d.objectName] = [];
+          }
+
+          decodingsByObject[d.objectName].push(d);
+        }
+      });
+
+      let decodings = [],
+          maxWidth = 0,
+          maxHeight = 0;
+      for (let objectName in decodingsByObject) {
+        decodings.push([objectName, decodingsByObject[objectName]]);
+
+        decodedLocationsData.objects[objectName].forEach(d => {
+          maxWidth = Math.max(maxWidth, d.left + d.width);
+          maxHeight = Math.max(maxHeight, d.top + d.height);
+        });
+      }
+
+      // Sort by object name.
+      decodings.sort((a,b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+
+      let rows = partition$1(decodings, 3);
+
+      let decodedObjectRow = select(this).selectAll('.decodedObjectRow')
+          .data(rows);
+
+      decodedObjectRow.exit().remove();
+
+      decodedObjectRow = decodedObjectRow.enter().append('g')
+        .attr('class', 'decodedObjectRow')
+        .attr('transform', (d,i) => `translate(0,${i == 0 ? 0 : i*height/3 + 10})`)
+        .merge(decodedObjectRow);
+
+      let decodedObject = decodedObjectRow.selectAll('.decodedObject')
+          .data(d => d);
+
+      decodedObject.exit().remove();
+
+      decodedObject = decodedObject.enter().append('g')
+        .attr('class', 'decodedObject')
+        .attr('transform', (d, i) => `translate(${i*width/3},0)`)
+        .call(enter => {
+          enter.append('g')
+            .attr('class', 'features');
+          enter.append('g')
+              .attr('class', 'points')
+            .append('rect')
+              .attr('width', width/3)
+              .attr('height', height/3)
+              .attr('fill', 'white')
+              .attr('fill-opacity', 0.7);
+        })
+        .merge(decodedObject);
+
+      decodedObject.each(function([objectName, decodedLocations]) {
+
+        let cmMax = Math.max(maxWidth, maxHeight);
+        let pxMax = Math.min(width/3, height/3);
+        let x = linear$2()
+            .domain([0, cmMax])
+            .range([0, pxMax]);
+        let y = linear$2()
+            .domain([0, cmMax])
+            .range([0, pxMax]);
+
+        let feature = select(this).select('.features').selectAll('.feature')
+            .data(decodedLocationsData.objects[objectName]);
+
+        feature.exit().remove();
+
+        feature = feature.enter()
+          .append('g')
+          .attr('class', 'feature')
+          .merge(feature)
+          .attr('transform', d => `translate(${x(d.left)},${y(d.top)})`)
+          .each(function(featureData) {
+            select(this)
+              .call(featureChart()
+                    .width(x(featureData.width))
+                    .height(y(featureData.height))
+                    .color(color$$1));
+          });
+
+        let point = select(this).select('.points').selectAll('.point')
+            .data(decodedLocations);
+
+        point.exit().remove();
+
+        point = point.enter().append('g')
+            .attr('class', 'point')
+          .call(enter => {
+            enter.append('circle')
+              .attr('r', 3)
+              .attr('fill', 'white')
+              .attr('stroke', 'black');
+
+            enter.append('path')
+              .attr('fill', 'black')
+              .attr('stroke', 'none');
+          }).merge(point)
+            .attr('transform', d => `translate(${x(d.left)},${y(d.top)})`);
+
+        point.select('path')
+          .attr('d', arc()
+                .innerRadius(0)
+                .outerRadius(3)
+                .startAngle(0)
+                .endAngle(d => d.amountContained / 1.0 * 2 * Math.PI));
+      });
+    });
+  };
+
+  chart.width = function(_) {
+    if (!arguments.length) return width;
+    width = _;
+    return chart;
+  };
+
+  chart.height = function(_) {
+    if (!arguments.length) return height;
+    height = _;
+    return chart;
+  };
+
+  chart.color = function(_) {
+    if (!arguments.length) return color$$1;
+    color$$1 = _;
+    return chart;
+  };
+
+  chart.minimumMatch = function(_) {
+    if (!arguments.length) return minimumMatch;
+    minimumMatch = _;
+    return chart;
+  };
+
+  return chart;
+}
+
+function partition$2(arr, n) {
+  let result = [];
+
+  for (let i = 0; i < arr.length; i += n) {
+    result.push(arr.slice(i, i+n));
+  }
+
+  return result;
+}
+
+/**
+ * Example data:
+ *    {decodings: ['Object 1', 'Object 2'],
+ *     objects: {'Object 1': [{name: 'A', top: 42.0, left: 17.2, width: 12.2, height: 7.2}],
+ *               'Object 2': []}}
+ */
+function decodedObjectsChart() {
+  let width,
+      height,
+      color$$1;
+
+  let chart = function(selection$$1) {
+
+    selection$$1.each(function(decodedObjectsData) {
+
+      let maxWidth = 0,
+          maxHeight = 0;
+      decodedObjectsData.decodings.forEach(objectName => {
+        decodedObjectsData.objects[objectName].forEach(d => {
+          maxWidth = Math.max(maxWidth, d.left + d.width);
+          maxHeight = Math.max(maxHeight, d.top + d.height);
+        });
+      });
+
+      let decodings = decodedObjectsData.decodings.slice();
+
+      // Sort by object name.
+      decodings.sort();
+
+      let rows = partition$2(decodings, 3);
+
+      let decodedObjectRow = select(this).selectAll('.decodedObjectRow')
+          .data(rows);
+
+      decodedObjectRow.exit().remove();
+
+      decodedObjectRow = decodedObjectRow.enter().append('g')
+        .attr('class', 'decodedObjectRow')
+        .attr('transform', (d,i) => `translate(0,${i == 0 ? 0 : i*height/3 + 10})`)
+        .merge(decodedObjectRow);
+
+      let decodedObject = decodedObjectRow.selectAll('.decodedObject')
+          .data(d => d);
+
+      decodedObject.exit().remove();
+
+      decodedObject = decodedObject.enter().append('g')
+        .attr('class', 'decodedObject')
+        .attr('transform', (d, i) => `translate(${i*width/3},0)`)
+        .merge(decodedObject);
+
+      decodedObject.each(function(objectName) {
+        let cmMax = Math.max(maxWidth, maxHeight);
+        let pxMax = Math.min(width/3, height/3);
+        let x = linear$2()
+            .domain([0, cmMax])
+            .range([0, pxMax]);
+        let y = linear$2()
+            .domain([0, cmMax])
+            .range([0, pxMax]);
+
+        let feature = select(this).selectAll('.feature')
+            .data(decodedObjectsData.objects[objectName]);
+
+        feature.exit().remove();
+
+        feature.enter()
+          .append('g')
+          .attr('class', 'feature')
+          .merge(feature)
+          .attr('transform', d => `translate(${x(d.left)},${y(d.top)})`)
+          .each(function(featureData) {
+            select(this)
+              .call(featureChart()
+                    .width(x(featureData.width))
+                    .height(y(featureData.height))
+                    .color(color$$1));
+          });
+      });
+    });
+  };
+
+  chart.width = function(_) {
+    if (!arguments.length) return width;
+    width = _;
+    return chart;
+  };
+
+  chart.height = function(_) {
+    if (!arguments.length) return height;
+    height = _;
+    return chart;
+  };
+
+  chart.color = function(_) {
+    if (!arguments.length) return color$$1;
+    color$$1 = _;
+    return chart;
+  };
+
+  return chart;
+}
+
+/**
+ * Example params:
+ * {
+ *   dimensions: {rows: 5, cols: 5},
+ *   cells: [{cell: 42, state: 'active'},
+ *           {cell: 43, state: 'predicted'},
+ *           {cell: 44, state: 'predicted-active'}]
+ *   highlightedCells: [42]
+ * }
+ */
+function layerOfCellsChart() {
+  let width,
+      height,
+      color$$1 = ordinal()
+        .domain(['active', 'predicted', 'predicted-active'])
+        .range(['crimson', 'rgba(0, 127, 255, 0.498)', 'black']),
+      stroke = "black",
+      onCellSelected = selectedCell => {},
+      columnMajorIndexing = false;
+
+  let drawHighlightedCells = function(selection$$1) {
+    selection$$1.each(function(layerData) {
+      select(this).selectAll('.cell')
+        .attr('stroke-width', d =>
+              layerData.highlightedCells.indexOf(d.cell) != -1
+              ? 2
+              : 0);
+    });
+  };
+
+  let chart = function(selection$$1) {
+    selection$$1.each(function(layerData) {
+      let layerNode = this,
+          layer = select(layerNode),
+          xScale = linear$2()
+            .domain([0, layerData.dimensions.cols - 1])
+            .range([5, width - 5]),
+          yScale = linear$2()
+            .domain([0, layerData.dimensions.rows - 1])
+            .range([5, height - 5]);
+
+      let x, y;
+      if (columnMajorIndexing) {
+        x = d => xScale(Math.floor(d.cell / layerData.dimensions.rows));
+        y = d => yScale(d.cell % layerData.dimensions.rows);
+      } else {
+        x = d => xScale(d.cell % layerData.dimensions.cols);
+        y = d => yScale(Math.floor(d.cell / layerData.dimensions.cols));
+      }
+
+      // For each layer, keep:
+      // - the selected cell, so that we fire events only when the selection
+      //   changes.
+      // - the mouse position from the most recent mousemove, so that we can
+      //   reevaluate the selected cell when the data changes.
+      if (layerNode._selectedCell === undefined) {
+        layerNode._selectedCell = null;
+      }
+      if (layerNode._mousePosition === undefined) {
+        layerNode._mousePosition = null;
+      }
+
+      layer.selectAll('.border')
+        .data([null])
+        .enter().append('rect')
+          .attr('class', 'border')
+          .attr('stroke', stroke)
+          .attr('stroke-width', 1)
+          .attr('fill', 'none')
+          .attr('width', width)
+          .attr('height', height);
+
+      let cells = layer.selectAll('.cells')
+          .data([layerData.cells]);
+
+      cells = cells.enter()
+        .append('g')
+          .attr('class', 'cells')
+        .merge(cells);
+
+      let cell = cells.selectAll('.cell')
+          .data(d => d);
+
+      cell.exit().remove();
+
+      cell = cell.enter()
+        .append('polygon')
+          .attr('class', 'cell')
+          .attr('stroke', 'goldenrod')
+        .merge(cell)
+          .attr('fill', d => color$$1(d.state))
+          .attr('stroke-width', d =>
+                layerData.highlightedCells.indexOf(d.cell) != -1
+                ? 2
+                : 0);
+
+      // Enable fast lookup of the cell nearest to the cursor.
+      let quadtree$$1 = quadtree()
+          .extent([[0, 0], [width, height]])
+          .x(x)
+          .y(y)
+          .addAll(layerData.cells);
+
+      let mouseEvents = layer.selectAll('.mouseEvents')
+          .data([null]);
+
+      mouseEvents.enter()
+        .append('rect')
+          .attr('class', 'mouseEvents')
+          .attr('stroke', 'transparent')
+          .attr('fill', 'transparent')
+          .attr('width', width)
+          .attr('height', height)
+        .merge(mouseEvents)
+        .on('mousemove', function() {
+          layerNode._mousePosition = mouse(this);
+
+          let p = quadtree$$1.find(layerNode._mousePosition[0],
+                                layerNode._mousePosition[1]);
+
+          if (p !== layerNode._selectedCell) {
+            layerNode._selectedCell = p;
+            draw();
+            onCellSelected(p.cell);
+          }
+        })
+        .on('mouseleave', () => {
+          layerNode._mousePosition = null;
+
+          if (layerNode._selectedCell !== null) {
+            layerNode._selectedCell = null;
+            draw();
+            onCellSelected(null);
+          }
+        });
+
+      // If we're rerendering, check if it has caused the nearest cell to
+      // change.
+      if (layerNode._mousePosition !== null) {
+        let p = quadtree$$1.find(layerNode._mousePosition[0],
+                              layerNode._mousePosition[1]);
+        if (p !== layerNode._selectedCell) {
+          layerNode._selectedCell = p;
+          onCellSelected(p.cell);
+        }
+      }
+
+      draw();
+
+
+      function draw() {
+        cell
+          .attr('transform', d => `translate(${x(d)},${y(d)})`)
+          .attr('points', cell =>
+                cell == layerNode._selectedCell
+                ? '0,-6 5,6 -5,6'
+                : (cell.state == 'predicted')
+                ? '0,-3 1.5,1.5 -1.5,1.5'
+                : '0,-4 2,2 -2,2');
+      }
+    });
+  };
+
+  chart.drawHighlightedCells = drawHighlightedCells;
+
+  chart.width = function(_) {
+    if (!arguments.length) return width;
+    width = _;
+    return chart;
+  };
+
+  chart.height = function(_) {
+    if (!arguments.length) return height;
+    height = _;
+    return chart;
+  };
+
+  chart.stroke = function(_) {
+    if (!arguments.length) return stroke;
+    stroke = _;
+    return chart;
+  };
+
+  chart.onCellSelected = function(_) {
+    if (!arguments.length) return onCellSelected;
+    onCellSelected = _;
+    return chart;
+  };
+
+  chart.columnMajorIndexing = function(_) {
+    if (!arguments.length) return columnMajorIndexing;
+    columnMajorIndexing = _;
+    return chart;
+  };
+
+  return chart;
+}
+
+/**
+ * Data:
+ * {modules: [{dimensions: {rows: 5, cols: 5},
+ *             scale: 3.2,
+ *             orientation: 0.834,
+ *             cells: [{cell: 2, state: 'active'}],
+ *            ...],
+ *  highlightedCells: [10, 46]}
+ */
+function locationModulesChart() {
+  var width,
+      height,
+      onCellSelected = (iModule, selectedCell) => {};
+
+  let drawHighlightedCells = function(selection$$1) {
+    selection$$1.each(function(moduleArrayData) {
+      let moduleWidth = width / 6,
+          moduleHeight = height / 3,
+          highlightedCellsByModule = [];
+
+      let base = 0;
+      moduleArrayData.modules.forEach(module => {
+        let end = base + module.dimensions.rows*module.dimensions.cols;
+
+        let highlightedInModule = [];
+        moduleArrayData.highlightedCells.forEach(cell => {
+          if (cell >= base && cell < end) {
+            highlightedInModule.push(cell - base);
+          }
+        });
+
+        highlightedCellsByModule.push(highlightedInModule);
+
+        base = end;
+      });
+
+      let module = select(this)
+          .selectAll('.module')
+          .datum((d, i) => {
+            d.highlightedCells = highlightedCellsByModule[i];
+            return d;
+          })
+          .each(function(d, i) {
+            select(this).call(
+              layerOfCellsChart()
+                .width(moduleWidth)
+                .height(moduleHeight)
+                .stroke('lightgray')
+                .onCellSelected(
+                  cell => onCellSelected(cell !== null ? i : null,
+                                         cell))
+                .drawHighlightedCells);
+          });
+    });
+  };
+
+  var chart = function(selection$$1) {
+    let modules = selection$$1.selectAll('.modules')
+        .data(d => [d]);
+
+    modules = modules.enter()
+      .append('g')
+      .attr('class', 'modules')
+      .merge(modules);
+
+    selection$$1.selectAll('.boundary')
+      .data([null])
+      .enter().append('rect')
+      .attr('class', 'boundary')
+      .attr('fill', 'none')
+      .attr('stroke', 'black')
+      .attr('width', width)
+      .attr('height', height);
+
+    modules.each(function(moduleArrayData) {
+      // TODO: stop hardcoding 18 modules
+      let moduleWidth = width / 6,
+          moduleHeight = height / 3;
+
+      let module = select(this)
+          .selectAll('.module')
+          .data(moduleArrayData.modules.map(m => {
+            return Object.assign({highlightedCells: []}, m);
+          }));
+
+      module.exit().remove();
+
+      module = module.enter().append('g')
+        .attr('class', 'module')
+        .merge(module)
+        .attr('transform',
+              (d, i) => `translate(${Math.floor(i/3) * moduleWidth},${(i%3)*moduleHeight})`)
+        .each(function(d, i) {
+          select(this)
+            .call(layerOfCellsChart()
+                  .width(moduleWidth)
+                  .height(moduleHeight)
+                  .stroke('lightgray')
+                  .onCellSelected(
+                    cell => onCellSelected(cell !== null ? i : null,
+                                           cell)));
+        });
+    });
+  };
+
+  chart.drawHighlightedCells = drawHighlightedCells;
+
+  chart.width = function(_) {
+    if (!arguments.length) return width;
+    width = _;
+    return chart;
+  };
+
+  chart.height = function(_) {
+    if (!arguments.length) return height;
+    height = _;
+    return chart;
+  };
+
+  chart.onCellSelected = function(_) {
+    if (!arguments.length) return onCellSelected;
+    onCellSelected = _;
+    return chart;
+  };
+
+  return chart;
+}
+
+function arrowShape() {
+  var length,
+      width,
+      markerLength,
+      markerWidth;
+
+  let shape = function(_) {
+    let start = `M ${-length/2} ${-width/2}`;
+
+    let markerStart = length/2 - markerLength;
+
+    let n1 = `L ${markerStart} ${-width/2}`;
+    let n2 = `L ${markerStart} ${-markerWidth/2}`;
+    let n3 = `L ${length/2} 0`;
+    let n4 = `L ${markerStart} ${markerWidth/2}`;
+    let n5 = `L ${markerStart} ${width/2}`;
+    let n6 = `L ${-length/2} ${width/2}`;
+
+    let end = 'Z';
+
+    return [start, n1, n2, n3, n4, n5, n6, end].join(' ');
+  };
+
+  shape.arrowLength = function(_) {
+    if (!arguments.length) return length;
+    length = _;
+    return shape;
+  };
+
+  shape.arrowWidth = function(_) {
+    if (!arguments.length) return width;
+    width = _;
+    return shape;
+  };
+
+  shape.markerLength = function(_) {
+    if (!arguments.length) return markerLength;
+    markerLength = _;
+    return shape;
+  };
+
+  shape.markerWidth = function(_) {
+    if (!arguments.length) return markerWidth;
+    markerWidth = _;
+    return shape;
+  };
+
+  return shape;
+}
+
+function motionChart() {
+  let chart = function(selection$$1) {
+    selection$$1.each(function(deltaLocation) {
+      let data = deltaLocation != null ? [deltaLocation] : [];
+
+      let arrow = select(this).selectAll('.arrow')
+          .data(data);
+
+      arrow.exit().remove();
+
+      let arrowLength,
+          correctedArrowLength,
+          correctionFactor;
+      if (deltaLocation != null) {
+        arrowLength = Math.sqrt(Math.pow(deltaLocation.top, 2) +
+                                Math.pow(deltaLocation.left, 2));
+        correctedArrowLength = Math.min(900, Math.max(15, arrowLength));
+        correctionFactor = correctedArrowLength / arrowLength;
+      }
+
+      arrow.enter().append('g')
+          .attr('class', 'arrow')
+          .call(enter => {
+            enter.append('path');
+          })
+        .merge(arrow)
+          .attr('transform', d => {
+            let radians = Math.atan(d.top / d.left),
+                degrees = radians * 180 / Math.PI;
+            if (d.left < 0) {
+              degrees += 180;
+            }
+            return `rotate(${degrees})`;
+          })
+        .select('path')
+        .attr('d', d => arrowShape()
+            .arrowLength(correctedArrowLength)
+            .arrowWidth(3)
+            .markerLength(10)
+            .markerWidth(8)());
+
+      let leftLabel = select(this).selectAll('.leftLabel')
+          .data(deltaLocation == null || deltaLocation.left == 0
+                ? []
+                : [deltaLocation]);
+
+      leftLabel.exit().remove();
+
+      leftLabel = leftLabel.enter().append('g')
+          .attr('class', 'leftLabel')
+          .call(enter => {
+            enter.append('line')
+              .attr('class', 'line')
+              .attr('stroke', 'gray')
+              .attr('stroke-width', 1);
+
+            let r = 2;
+
+            enter.append('line')
+              .attr('class', 'beginCap')
+              .attr('stroke', 'gray')
+              .attr('stroke-width', 1)
+              .attr('y1', -r)
+              .attr('y2', r);
+
+            enter.append('line')
+              .attr('class', 'endCap')
+              .attr('stroke', 'gray')
+              .attr('stroke-width', 1)
+              .attr('y1', -r)
+              .attr('y2', r);
+
+            enter.append('text')
+              .attr('text-anchor', 'middle')
+              .attr('dy', 12)
+              .style('font', '10px Verdana');
+          })
+        .merge(leftLabel)
+        .attr('transform', d => {
+          return `translate(0,${Math.abs(d.top/2) + 10})`;
+        });
+
+      leftLabel.select('text')
+        .text(d => format('.0f')(Math.abs(d.left)));
+
+      leftLabel.select('.beginCap')
+        .attr('x1', d => -correctionFactor*d.left/2)
+        .attr('x2', d => -correctionFactor*d.left/2);
+
+      leftLabel.select('.endCap')
+        .attr('x1', d => correctionFactor*d.left/2)
+        .attr('x2', d => correctionFactor*d.left/2);
+
+      leftLabel.select('.line')
+        .attr('x1', d => -correctionFactor*d.left/2)
+        .attr('x2', d => correctionFactor*d.left/2);
+
+      let topLabel = select(this).selectAll('.topLabel')
+          .data(deltaLocation == null || deltaLocation.top == 0
+                ? []
+                : [deltaLocation]);
+
+      topLabel.exit().remove();
+
+      topLabel = topLabel.enter().append('g')
+          .attr('class', 'topLabel')
+          .call(enter => {
+            enter.append('line')
+              .attr('class', 'line')
+              .attr('stroke', 'gray')
+              .attr('stroke-width', 1);
+
+            let r = 2;
+
+            enter.append('line')
+              .attr('class', 'beginCap')
+              .attr('stroke', 'gray')
+              .attr('stroke-width', 1)
+              .attr('x1', -r)
+              .attr('x2', r);
+
+            enter.append('line')
+              .attr('class', 'endCap')
+              .attr('stroke', 'gray')
+              .attr('stroke-width', 1)
+              .attr('x1', -r)
+              .attr('x2', r);
+
+            enter.append('text')
+              .attr('dx', 4)
+              .attr('dy', 4)
+              .style('font', '10px Verdana');
+          })
+        .merge(topLabel)
+        .attr('transform', d => {
+          return `translate(${Math.abs(d.left/2) + 12},0)`;
+        });
+
+      topLabel.select('text')
+        .text(d => format('.0f')(Math.abs(d.top)));
+
+      topLabel.select('.beginCap')
+        .attr('y1', d => -correctionFactor*d.top/2)
+        .attr('y2', d => -correctionFactor*d.top/2);
+
+      topLabel.select('.endCap')
+        .attr('y1', d => correctionFactor*d.top/2)
+        .attr('y2', d => correctionFactor*d.top/2);
+
+      topLabel.select('.line')
+        .attr('y1', d => -correctionFactor*d.top/2)
+        .attr('y2', d => correctionFactor*d.top/2);
+    });
+  };
+
+  return chart;
+}
+
+/**
+ * Data example:
+ * [{timesteps: [{}, {}, {reset: true}, {}, {}]
+ *   selectedIndex: 2},
+ *  ...]
+ *
+ * "reset: true" implies that a reset happened before that timestep.
+ */
+function timelineChart() {
+  var onchange,
+      senseWidth = 16,
+      moveWidth = 16,
+      resetWidth = 6,
+      repeatOffset = 10,
+      betweenRepeatOffset = 6;
+
+  let drawSelectedStep = function(selection$$1) {
+    selection$$1.each(function(timelineData) {
+      select(this).selectAll('.colorWithSelection')
+        .attr('fill', d => d.iTimestep == timelineData.selectedIndex
+              ? 'black'
+              : 'lightgray');
+
+      select(this).selectAll('.move.colorWithSelection')
+        .attr('stroke', d => d.iTimestep == timelineData.selectedIndex
+              ? 'black'
+              : 'lightgray');
+
+      select(this).selectAll('.selectedText')
+        .style('visibility', d => d.iTimestep == timelineData.selectedIndex
+               ? 'visible'
+               : 'hidden');
+    });
+  };
+
+  var chart = function(selection$$1) {
+    let timeline = selection$$1.selectAll('.timeline')
+        .data(d => [d]);
+
+    timeline = timeline.enter()
+      .append('g')
+      .attr('class', 'timeline')
+      .merge(timeline);
+
+    timeline.each(function(timelineData) {
+      let timelineNode = select(this);
+
+      let shapes = [];
+
+      let touchNumber = 0;
+
+
+      timelineData.timesteps.forEach((timestep, iTimestep) => {
+
+        if (timestep.reset && iTimestep !== 0) {
+          shapes.push({type: 'reset'});
+          touchNumber = 0;
+        }
+
+        let o = Object.assign({iTimestep}, timestep);
+
+        switch (o.type) {
+        case 'sense':
+          touchNumber++;
+
+          o.text = `Touch ${touchNumber}`;
+
+          shapes.push({
+            type: 'sense',
+            timesteps: [o]
+          });
+
+          break;
+        case 'move':
+          o.text = 'Move';
+          shapes.push(o);
+          break;
+        case 'repeat': {
+          let touchData = shapes[shapes.length-1];
+
+          if (touchData.type != 'sense') {
+            throw `Invalid data ${touchData.type}`;
+          }
+
+          o.text = 'Settle';
+          touchData.timesteps.push(o);
+          break;
+        }
+        default:
+          throw `Unrecognized ${o.type}`;
+        }
+      });
+
+      let onchangeFn = onchange
+          ? d => onchange(d.iTimestep)
+          : null;
+
+      let verticalElement = timelineNode.selectAll('.verticalElement')
+          .data(shapes);
+
+      verticalElement.exit().remove();
+
+      // Clean up updating nodes.
+      // shape.filter(d => d.type == 'reset')
+      //   .selectAll(':scope > :not(.reset)')
+      //   .remove();
+      // shape.filter(d => d.type == 'move')
+      //   .selectAll(':scope > :not(.move)')
+      //   .remove();
+      // shape.filter(d => d.type == 'sense')
+      //   .selectAll(':scope > :not(.sense)')
+      //   .remove();
+
+      verticalElement = verticalElement.enter()
+        .append('div')
+        .attr('class', 'shape')
+        .style('position', 'relative')
+        .style('display', 'inline-block')
+        .style('margin-top', '15px')
+        .call(enter => {
+          enter.append('svg')
+            .attr('height', 30);
+        })
+        .merge(verticalElement);
+
+      verticalElement.filter(d => d.type == 'reset')
+          .style('width', `${resetWidth}px`)
+          .style('top', '-2px')
+          .select('svg')
+        .attr('width', resetWidth)
+        .selectAll('.reset')
+        .data([null])
+        .enter().append('rect')
+          .attr('class', 'reset')
+          .attr('height', 15)
+          .attr('width', 2)
+        .attr('fill', 'gray');
+
+
+      let move = verticalElement.filter(d => d.type == 'move')
+          .style('width', `${moveWidth}px`)
+          .call(m => {
+            let selectedText = m.selectAll('.selectedText')
+                .data(d => [d]);
+
+            selectedText.enter().append('div')
+              .attr('class', 'selectedText')
+              .style('position', 'absolute')
+              .style('width', '50px')
+              .style('left', '-18px')
+              .style('top', '-16px')
+              .style('font', '10px Verdana')
+              .merge(selectedText)
+              .text(d => d.text);
+          })
+          .select('svg')
+          .attr('width', moveWidth)
+          .selectAll('.move')
+          .data(d => [d]);
+
+      move.enter()
+        .append('g')
+          .attr('class', 'move colorWithSelection')
+          .attr('cursor', onchange ? 'pointer' : null)
+          .call(enter => {
+            enter.append('path')
+              .attr('d', arrowShape()
+                    .arrowLength(12)
+                    .arrowWidth(3)
+                    .markerLength(5)
+                    .markerWidth(8));
+          })
+        .merge(move)
+        .attr('transform', d => {
+          let radians = Math.atan(d.deltaLocation.top / d.deltaLocation.left),
+              degrees = radians * 180 / Math.PI;
+          if (d.deltaLocation.left < 0) {
+            degrees += 180;
+          }
+          return `translate(6, 6) rotate(${degrees})`;
+        })
+        .on('click', onchangeFn);
+
+      let sense = verticalElement.filter(d => d.type == 'sense')
+            .style('width', `${senseWidth}px`)
+          .call(s => {
+
+            let selectedText = s.selectAll('.selectedText')
+                .data(d => d.timesteps);
+
+            selectedText.exit().remove();
+
+            selectedText.enter().append('div')
+              .attr('class', 'selectedText')
+              .style('position', 'absolute')
+              .style('width', '50px')
+              .style('left', '-18px')
+              .style('top', '-16px')
+              .style('font', '10px Verdana')
+              .merge(selectedText)
+              .text(d => d.text);
+          })
+          .select('svg')
+          .attr('width', senseWidth)
+          .selectAll('.sense')
+          .data(d => [d]);
+
+      sense = sense.enter()
+        .append('g')
+          .attr('class', 'sense')
+        .merge(sense);
+
+      let repeat = sense.selectAll('.repeat')
+          .data(d => d.timesteps);
+
+      repeat.exit().remove();
+
+      repeat.enter().append('circle')
+          .attr('class', 'repeat colorWithSelection')
+          .attr('stroke', 'none')
+          .attr('r', (d, i) => i == 0 ? 6 : 2)
+          .attr('cx', 6)
+          .attr('cy', (d, i) => 6 + (i == 0
+                                     ? 0
+                                     : repeatOffset + (i-1)*betweenRepeatOffset))
+          .attr('cursor', onchange ? 'pointer' : null)
+        .merge(repeat)
+          .on('click', onchangeFn);
+    });
+
+    drawSelectedStep(selection$$1);
+  };
+
+  chart.drawSelectedStep = drawSelectedStep;
+
+  chart.onchange = function(_) {
+    if (!arguments.length) return onchange;
+    onchange = _;
+    return chart;
+  };
+
+  return chart;
+}
+
+const CURSOR_URL = 'data:image/png;base64,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';
+
+/**
+ * Data:
+ * {location: [12.0, 16.0],
+ *  features: [{name: 'A', location: {}, width: 12.2, height: 7.2}],
+ *  selectedLocationCell: 42,
+ *  selectedLocationModule: {
+ *    cellDimensions: [5, 5],
+ *    moduleMapDimensions: [20.0, 20.0],
+ *    orientation: 0.834
+ *    activeCells: [42],
+ *    activePoints: [[11.0, 12.0]]
+ *  }}
+ */
+function worldChart() {
+  var width,
+      height,
+      color$$1,
+      t = 0;
+
+  let drawFiringFields = function(selection$$1) {
+    selection$$1.each(function(worldData) {
+      let worldBackground = select(this).select('.worldBackground'),
+          firingFields = worldBackground.select('.firingFields');
+
+      let xScale = linear$2()
+            .domain([0, worldData.dims.width])
+            .range([0, width]),
+          x = location => xScale(location.left),
+          yScale =  linear$2()
+            .domain([0, worldData.dims.height])
+            .range([0, height]),
+          y = location => yScale(location.top);
+
+      let pattern = worldBackground.select('.myDefs')
+          .selectAll('pattern')
+          .data(worldData.selectedLocationModule
+                ? [worldData.selectedLocationModule.activePoints]
+                : []);
+
+      pattern.exit().remove();
+
+      if (worldData.selectedLocationModule) {
+        let config = worldData.selectedLocationModule,
+            distancePerCell = [config.moduleMapDimensions[0] / config.cellDimensions[0],
+                               config.moduleMapDimensions[1] / config.cellDimensions[1]],
+            pixelsPerCell = [height * (distancePerCell[0] / worldData.dims.height),
+                             width * (distancePerCell[1] / worldData.dims.width)];
+
+        pattern.enter().append('pattern')
+          .attr('id', 'FiringField')
+          .attr('patternUnits', 'userSpaceOnUse')
+          .call(enter => {
+            enter.append('path')
+              .attr('fill', 'black')
+              .attr('fill-opacity', 0.6)
+              .attr('stroke', 'none');
+          })
+          .merge(pattern)
+          .attr('width', config.cellDimensions[1])
+          .attr('height', config.cellDimensions[0])
+          .call(p => {
+            p.select('path')
+              .attr('d', points => {
+
+                let squares = [];
+
+                for (let i = -1; i < 2; i++) {
+                  for (let j = -1; j < 2; j++) {
+                    points.forEach(point => {
+
+                      let cellFieldOrigin = [
+                        Math.floor(worldData.selectedLocationCell / config.cellDimensions[1]),
+                        worldData.selectedLocationCell % config.cellDimensions[1]];
+
+                      let top = i*config.cellDimensions[1] + (cellFieldOrigin[0] - point[0]),
+                          left = j*config.cellDimensions[0] + (cellFieldOrigin[1] - point[1]);
+
+                      squares.push(`M ${left} ${top} l 1 0 l 0 1 l -1 0 Z`);
+
+                    });
+                  }
+                }
+
+                return squares.join(' ');
+              });
+          })
+          .attr('patternTransform', point => {
+            let translateLocation = {
+              top: worldData.location.top,
+              left: worldData.location.left
+            };
+
+            return `translate(${x(translateLocation)},${y(translateLocation)}) `
+              + `rotate(${180 * config.orientation / Math.PI}, 0, 0) `
+              + `scale(${pixelsPerCell[1]},${pixelsPerCell[0]})`;
+          });
+      }
+
+      let firingField = firingFields.selectAll('.firingField')
+          .data(worldData.selectedLocationModule
+                ? [worldData.selectedLocationModule.activePoints]
+                : []);
+
+      firingField.enter().append('rect')
+        .attr('class', 'firingField')
+        .attr('fill', (d,i) => `url(#FiringField)`)
+        .attr('stroke', 'none')
+        .attr('width', width)
+        .attr('height', height);
+
+      firingField.exit().remove();
+    });
+  };
+
+  var chart = function(selection$$1) {
+    selection$$1.each(function(worldData) {
+      let worldNode = select(this);
+
+      let xScale = linear$2()
+            .domain([0, worldData.dims.width])
+            .range([0, width]),
+          x = location => xScale(location.left),
+          yScale =  linear$2()
+            .domain([0, worldData.dims.height])
+            .range([0, height]),
+          y = location => yScale(location.top);
+
+
+      let features = worldNode.selectAll('.features')
+        .data(d => [d]);
+
+      features = features.enter().append('g')
+        .attr('class', 'features')
+        .merge(features);
+
+      let feature = features.selectAll('feature')
+          .data(d => d.features ? d.features : []);
+
+      feature.exit().remove();
+
+      feature.enter()
+        .append('g')
+        .attr('class', 'feature')
+        .merge(feature)
+        .attr('transform', d => `translate(${x(d)},${y(d)})`)
+        .each(function(featureData) {
+          select(this)
+            .call(featureChart()
+                  .width(xScale(featureData.width))
+                  .height(yScale(featureData.height))
+                  .color(color$$1));
+        });
+
+      let worldBackground = worldNode.selectAll('.worldBackground')
+        .data(d => [d]);
+
+      worldBackground = worldBackground
+        .enter().append('g')
+          .attr('class', 'worldBackground')
+        .call(enter => {
+          enter.append('defs')
+              .attr('class', 'myDefs');
+
+          enter.append('rect').attr('fill', 'none')
+            .attr('width', width)
+            .attr('height', height)
+            .attr('stroke', 'lightgray')
+            .attr('stroke-width', 1);
+
+          enter.append('g').attr('class', 'firingFields');
+
+        })
+        .merge(worldBackground);
+
+      let currentLocation = select(this).selectAll('.currentLocation')
+          .data([null]);
+
+      currentLocation.enter().append('g')
+        .attr('class', 'currentLocation')
+        .call(enter => {
+          enter.append('image')
+            .attr('x', -21)
+            .attr('y', -10)
+            .attr('width', 50)
+            .attr('height', 53)
+            .attr('xlink:href', CURSOR_URL);
+        })
+        .merge(currentLocation)
+        .attr('transform', `translate(${x(worldData.location)},${y(worldData.location)})`);
+    });
+
+    drawFiringFields(selection$$1);
+  };
+
+  chart.drawFiringFields = drawFiringFields;
+
+  chart.width = function(_) {
+    if (!arguments.length) return width;
+    width = _;
+    return chart;
+  };
+
+  chart.height = function(_) {
+    if (!arguments.length) return height;
+    height = _;
+    return chart;
+  };
+
+  chart.color = function(_) {
+    if (!arguments.length) return color$$1;
+    color$$1 = _;
+    return chart;
+  };
+
+
+  return chart;
+}
+
+/**
+ *
+ * Example timestep:
+ * {
+ *   worldLocation: {left: 42.0, top: 12.0},
+ *   reset: null,
+ *   locationLayer: {
+ *     modules: [
+ *       {activeCells: [],
+ *        activePoints: [],
+ *        activeSynapsesByCell: {}},
+ *     ]
+ *   },
+ *   inputLayer: {
+ *     activeCells: [],
+ *     decodings: [],
+ *     activeSynapsesByCell: {
+ *       42: {
+ *         locationLayer: [12, 17, 29],
+ *         objectLayer: [42, 45]
+ *       }
+ *     }
+ *   },
+ *   objectLayer: {
+ *     activeCells: [],
+ *     decodings: [],
+ *     activeSynapsesByCell: {}
+ *   },
+ *   deltaLocationInput: {
+ *   },
+ *   featureInput: {
+ *     inputSize: 150,
+ *     activeBits: [],
+ *     decodings: []
+ *   }
+ * };
+ */
+function parseData(text$$1) {
+  let featureColor = ordinal(),
+      timesteps = [],
+      rows = text$$1.split('\n');
+
+  // Row: world dimensions
+  let worldDims = JSON.parse(rows[0]);
+
+  // Row: Features and colors
+  //   {'A': 'red',
+  //    'B': 'blue',
+  //    'C': 'gray'}
+  let featureColorMapping = JSON.parse(rows[1]);
+
+  var features = [],
+      colors = [];
+
+  for (var feature in featureColorMapping) {
+    features.push(feature);
+    colors.push(featureColorMapping[feature]);
+  }
+
+  featureColor
+    .domain(features)
+    .range(colors);
+
+  // Third row: Objects
+  // {
+  //   'Object 1': [
+  //     {top: 12.0, left: 11.2, width: 5.2, height: 19, name: 'A'},
+  //     ...
+  //   ],
+  //   'Object 2': []
+  // };
+  let objects = JSON.parse(rows[2]);
+
+  let currentTimestep = null,
+      didReset = false,
+      objectPlacements = null,
+      worldFeatures = null,
+      locationInWorld = null;
+
+  // [{cellDimensions: [5,5], moduleMapDimensions: [20.0, 20.0], orientation: 0.2},
+  //  ...]
+  let configByModule = JSON.parse(rows[3]).map(d => {
+    d.dimensions = {rows: d.cellDimensions[0], cols: d.cellDimensions[1]};
+    return d;
+  });
+
+  function endTimestep() {
+    if (currentTimestep !== null) {
+      currentTimestep.objectPlacements = objectPlacements;
+      currentTimestep.worldFeatures = worldFeatures;
+
+      if (currentTimestep.type == 'move') {
+        currentTimestep.worldLocation = locationInWorld;
+        currentTimestep.featureInput = {
+          inputSize: 150,
+          activeBits: [],
+          decodings: []
+        };
+
+        // Continue showing the previous object layer.
+        for (let i = timesteps.length - 1; i >= 0; i--) {
+          if (timesteps[i].type !== 'move') {
+            currentTimestep.objectLayer =
+              Object.assign({}, timesteps[i].objectLayer);
+            currentTimestep.objectLayer.activeSynapsesByCell = {};
+            break;
+          }
+        }
+      }
+
+      timesteps.push(currentTimestep);
+    }
+
+    currentTimestep = null;
+  }
+
+  function beginNewTimestep(type) {
+    endTimestep();
+
+    currentTimestep = {
+      worldLocation: locationInWorld,
+      type
+    };
+
+    if (didReset) {
+      currentTimestep.reset = true;
+      didReset = false;
+    }
+  }
+
+  let i = 4;
+  while (i < rows.length) {
+    switch (rows[i]) {
+    case 'reset':
+      didReset = true;
+      i++;
+      break;
+    case 'sense':
+      beginNewTimestep('sense');
+
+      currentTimestep.featureInput = {
+        inputSize: 150,
+        activeBits: JSON.parse(rows[i+1]),
+        decodings: JSON.parse(rows[i+2])
+      };
+
+      i += 3;
+      break;
+    case 'sensoryRepetition':
+      beginNewTimestep('repeat');
+      currentTimestep.featureInput = timesteps[timesteps.length - 1].featureInput;
+      i++;
+      break;
+    case 'move': {
+      beginNewTimestep('move');
+      let deltaLocation = JSON.parse(rows[i+1]);
+
+      currentTimestep.deltaLocation = {
+        top: deltaLocation[0],
+        left: deltaLocation[1]
+      };
+
+      i += 2;
+      break;
+    }
+    case 'locationInWorld': {
+      let location = JSON.parse(rows[i+1]);
+
+      locationInWorld = {top: location[0], left: location[1]};
+
+      i += 2;
+      break;
+    }
+    case 'shift': {
+      let modules = [];
+      JSON.parse(rows[i+1]).forEach((activeCells, i) => {
+        let cells = activeCells.map(cell => {
+          return {
+            cell,
+            state: 'predicted-active'
+          };
+        });
+
+        modules.push(Object.assign({cells,
+                                    activeSynapsesByCell: {}},
+                                   configByModule[i]));
+      });
+
+      JSON.parse(rows[i+2]).forEach((activePoints, i) => {
+        modules[i].activePoints = activePoints;
+      });
+
+      let decodings = JSON.parse(rows[i+3]).map(
+        ([objectName, top, left, amountContained]) => {
+          return { objectName, top, left, amountContained };
+        });
+      currentTimestep.locationLayer = { modules, decodings };
+
+      i += 4;
+      break;
+    }
+    case 'locationLayer': {
+      let modules = [];
+
+      JSON.parse(rows[i+1]).forEach((module, i) => {
+        let [activeCells, segmentsForActiveCells] = module;
+
+        let prevActiveCells = (currentTimestep.reset || timesteps.length == 0)
+            ? []
+            : timesteps[timesteps.length-1].locationLayer.modules[i].cells.map(
+              d => d.cell);
+
+        let cells = activeCells.map(cell => {
+          return {
+            cell,
+            state: prevActiveCells.indexOf(cell) != -1
+              ? 'predicted-active'
+              : 'active'
+          };
+        });
+
+        let activeSynapsesByCell = {};
+
+        if (segmentsForActiveCells) {
+
+          activeCells.forEach(cell => {
+            activeSynapsesByCell[cell] = {};
+          });
+
+          for (let presynapticLayer in segmentsForActiveCells) {
+            segmentsForActiveCells[presynapticLayer].forEach((segments, ci) => {
+              let synapses = [];
+              segments.forEach(presynapticCells => {
+                synapses = synapses.concat(presynapticCells);
+              });
+
+              activeSynapsesByCell[activeCells[ci]][presynapticLayer] = synapses;
+            });
+          }
+        }
+
+        modules.push(Object.assign({cells, activeSynapsesByCell},
+                                   configByModule[i]));
+      });
+
+      JSON.parse(rows[i+2]).forEach((activePoints, i) => {
+        modules[i].activePoints = activePoints;
+      });
+
+      let decodings = JSON.parse(rows[i+3]).map(
+        ([objectName, top, left, amountContained]) => {
+          return { objectName, top, left, amountContained };
+        });
+      currentTimestep.locationLayer = { modules, decodings };
+
+      i += 4;
+      break;
+    }
+    case 'inputLayer': {
+      let activeSynapsesByCell = {};
+
+      let [activeCells, predictedCells, segmentsForActiveCells,
+           segmentsForPredictedCells] = JSON.parse(rows[i+1]);
+
+      let cells = activeCells.map(cell => {
+        return {
+          cell,
+          state: predictedCells.indexOf(cell) != -1
+            ? 'predicted-active'
+            : 'active'
+        };
+      });
+
+      if (segmentsForActiveCells) {
+        activeCells.forEach(cell => {
+          activeSynapsesByCell[cell] = {};
+        });
+
+        for (let presynapticLayer in segmentsForActiveCells) {
+          segmentsForActiveCells[presynapticLayer].forEach((segments, ci) => {
+            let synapses = [];
+            segments.forEach(presynapticCells => {
+              synapses = synapses.concat(presynapticCells);
+            });
+
+            activeSynapsesByCell[activeCells[ci]][presynapticLayer] = synapses;
+          });
+        }
+      }
+
+      let {activeCellDecodings, predictedCellDecodings} = JSON.parse(rows[i+2]);
+
+      let activeCellDecodings2 = activeCellDecodings.map(
+        ([objectName, top, left, amountContained]) => {
+          return { objectName, top, left, amountContained };
+        });
+      let predictedCellDecodings2 = predictedCellDecodings.map(
+        ([objectName, top, left, amountContained]) => {
+          return { objectName, top, left, amountContained };
+        });
+
+      currentTimestep.inputLayer = {
+        cells, activeSynapsesByCell,
+        decodings: activeCellDecodings2,
+        dimensions: {rows: 32, cols: 150},
+        predictedCells: []
+      };
+
+      if (timesteps.length > 0 &&
+          timesteps[timesteps.length - 1].type == 'move') {
+        let prevTimestep = timesteps[timesteps.length - 1];
+
+        let synapsesByPredictedCell = {};
+
+        let cells2 = predictedCells.map(cell => {
+          return {
+            cell,
+            state: 'predicted'
+          };
+        });
+
+        predictedCells.forEach(cell => {
+          synapsesByPredictedCell[cell] = {};
+        });
+
+        for (let presynapticLayer in segmentsForPredictedCells) {
+          segmentsForPredictedCells[presynapticLayer].forEach((segments, ci) => {
+            let synapses = [];
+            segments.forEach(presynapticCells => {
+              synapses = synapses.concat(presynapticCells);
+            });
+
+            synapsesByPredictedCell[predictedCells[ci]][presynapticLayer] = synapses;
+          });
+        }
+
+        prevTimestep.inputLayer = {
+          predictedCells,
+          activeSynapsesByCell: synapsesByPredictedCell,
+          decodings: predictedCellDecodings2,
+          cells: cells2,
+          dimensions: {rows: 32, cols: 150}
+        };
+      }
+
+      i += 3;
+      break;
+    }
+    case 'objectLayer': {
+      let [activeCells, segmentsForActiveCells] = JSON.parse(rows[i+1]);
+
+      let prevActiveCells = (currentTimestep.reset || timesteps.length == 0)
+          ? []
+          : timesteps[timesteps.length-1].objectLayer.cells.map(d => d.cell);
+
+      let cells = activeCells.map(cell => {
+        return {
+          cell,
+          state: prevActiveCells.indexOf(cell) != -1
+            ? 'predicted-active'
+            : 'active'
+        };
+      });
+
+      let activeSynapsesByCell = {};
+      if (segmentsForActiveCells) {
+
+        activeCells.forEach(cell => {
+          activeSynapsesByCell[cell] = {};
+        });
+
+        for (let presynapticLayer in segmentsForActiveCells) {
+          segmentsForActiveCells[presynapticLayer].forEach((segments, ci) => {
+            let synapses = [];
+            segments.forEach(presynapticCells => {
+              synapses = synapses.concat(presynapticCells);
+            });
+
+            activeSynapsesByCell[activeCells[ci]][presynapticLayer] = synapses;
+          });
+        }
+      }
+
+      let decodings = JSON.parse(rows[i+2]);
+      currentTimestep.objectLayer = Object.assign(
+        {cells, activeSynapsesByCell, decodings},
+        {dimensions: {rows: 16, cols: 256}});
+      i += 3;
+      break;
+    }
+    case 'objectPlacements': {
+      objectPlacements = JSON.parse(rows[i+1]);
+
+      worldFeatures = [];
+      for (let objectName in objects) {
+        let objectPlacement = objectPlacements[objectName];
+        objects[objectName].forEach(({name, top, left, width, height}) => {
+          worldFeatures.push({
+            name, width, height,
+            top: top + objectPlacement[0],
+            left: left + objectPlacement[1]
+          });
+        });
+      }
+
+      i += 2;
+      break;
+    }
+    default:
+      if (rows[i] == null || rows[i] == '') {
+        i++;
+      } else {
+        throw `Unrecognized: ${rows[i]}`;
+      }
+    }
+  }
+
+  endTimestep();
+
+  return {
+    timesteps, worldDims, configByModule, featureColor, objects
+  };
+}
+
+let secondColumnLeft = 180;
+let secondRowTop = 220;
+let thirdRowTop = 428;
+let columnWidth = 170;
+
+let boxes = {
+  location: {
+    left: 0, top: secondRowTop, width: columnWidth, height: 180, text: 'location layer',
+    bitsLeft: 10, bitsTop: 10, bitsWidth: 150, bitsHeight: 60,
+    decodingsLeft: 20, decodingsTop: 90, decodingsWidth: 148, decodingsHeight: 90
+  },
+  input: {
+    left: secondColumnLeft, top: secondRowTop, width: columnWidth, height: 180, text: 'feature-location pair layer',
+    bitsLeft: 10, bitsTop: 10, bitsWidth: 150, bitsHeight: 60,
+    decodingsLeft: 20, decodingsTop: 90, decodingsWidth: 148, decodingsHeight: 90
+  },
+  object: {
+    left: secondColumnLeft, top: 12, width: columnWidth, height: 180, text: 'object layer',
+    bitsLeft: 10, bitsTop: 10, bitsWidth: 150, bitsHeight: 60,
+    decodingsLeft: 20, decodingsTop: 90, decodingsWidth: 148, decodingsHeight: 90
+  },
+  motion: {
+    left: 0, top: thirdRowTop, width: columnWidth, height: 81, text: 'motion input',
+    bitsLeft: 0, bitsTop: 0,
+    decodingsLeft: 85, decodingsTop: 36,
+    secondary: true
+  },
+  feature: {
+    left: secondColumnLeft, top: thirdRowTop, width: columnWidth, height: 81, text: 'feature input',
+    bitsLeft: 10, bitsTop: 10, bitsWidth: 150, bitsHeight: 5,
+    decodingsLeft: 65, decodingsTop: 30,
+    secondary: true
+  },
+  world: {
+    left: 370, top: 120, width: 230, height: 230, text: 'the world'
+  }
+};
+
+function printRecording(node, text$$1) {
+  // Constants
+  let margin = {top: 5, right: 5, bottom: 15, left: 5},
+      width = 600,
+      height = 495,
+      parsed = parseData(text$$1);
+
+  // Mutable state
+  let iTimestep = 0,
+      iLocationModule = null,
+      selectedLocationCell = null,
+      selectedInputCell = null,
+      selectedObjectCell = null,
+      highlightedCellsByLayer = {};
+
+  // Allow a mix of SVG and HTML
+  let html$$1 = select(node)
+        .append('div')
+          .style('margin-left', 'auto')
+          .style('margin-right', 'auto')
+          .style('position', 'relative')
+          .style('width', `${width + margin.left + margin.right}px`),
+      svg = html$$1.append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom);
+
+  // Add keyboard navigation
+  html$$1
+    .attr('tabindex', 0)
+    .on('keydown', function() {
+      switch (event.keyCode) {
+      case 37: // Left
+        iTimestep--;
+        if (iTimestep < 0) {iTimestep = parsed.timesteps.length - 1;}
+        onSelectedTimestepChanged();
+        event.preventDefault();
+        break;
+      case 39: // Right
+        iTimestep = (iTimestep+1)%parsed.timesteps.length;
+        onSelectedTimestepChanged();
+        event.preventDefault();
+        break;
+      }
+    });
+
+  // Make the SVG a clickable slideshow
+  let slideshow = svg.append('g')
+      .on('click', () => {
+        iTimestep = (iTimestep + 1) % parsed.timesteps.length;
+        onSelectedTimestepChanged();
+      });
+
+  slideshow.append('rect')
+      .attr('fill', 'transparent')
+      .attr('stroke', 'none')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.bottom + margin.top + 10);
+
+  let container = slideshow
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+  // Arrange the boxes
+  let box = container.selectAll('.box')
+      .data([boxes.location,
+             boxes.input,
+             boxes.object,
+             boxes.feature,
+             boxes.motion]);
+
+  box = box.enter().append('g')
+    .attr('class', 'layerBox')
+    .call(g => {
+      g.append('rect')
+        .attr('class', 'border')
+        .attr('fill', 'none');
+
+      g.append('g')
+        .attr('class', 'bits');
+
+      g.append('g')
+        .attr('class', 'decodings');
+    })
+    .merge(box)
+    .attr('transform', d => `translate(${d.left}, ${d.top})`);
+
+  box.select('.border')
+    .attr('width', d => d.width)
+    .attr('height', d => d.height)
+    .attr('stroke', d => d.secondary ? 'gray' : 'lightgray')
+    .attr('stroke-width', d => d.secondary ? 1 : 3)
+    .attr('stroke-dasharray', d => d.secondary ? "5,5" : null);
+
+  let [locationNode,
+       inputNode,
+       objectNode,
+       featureNode,
+       _] = box.select('.bits')
+        .attr('transform', d => `translate(${d.bitsLeft},${d.bitsTop})`)
+        .nodes()
+        .map(select);
+  let [decodedLocationNode,
+       decodedInputNode,
+       decodedObjectNode,
+       decodedFeatureNode,
+       motionNode] = box.select('.decodings')
+        .attr('transform', d => `translate(${d.decodingsLeft},${d.decodingsTop})`)
+        .nodes()
+        .map(select);
+
+  let worldNode = container.append('g')
+      .attr('transform', `translate(${boxes.world.left}, ${boxes.world.top})`);
+  svg.append('line')
+    .attr('stroke', 'gray')
+    .attr('stroke-width', 1)
+    .attr('x1', boxes.world.left - 5)
+    .attr('y1', 10)
+    .attr('x2', boxes.world.left - 5)
+    .attr('y2', 522);
+
+  let timelineNode = html$$1
+      .append('div')
+      .style('padding-top', '5px')
+      .style('padding-left', '17px') // Because it hangs some text off the side.
+      .style('padding-right', '17px')
+      .style('text-align', 'center');
+
+  // Label the boxes
+  let boxLabel = html$$1.selectAll('.boxLabel')
+      .data([boxes.location, boxes.input, boxes.object, boxes.motion,
+             boxes.feature, boxes.world]);
+
+  boxLabel.enter()
+    .append('div')
+      .attr('class', 'boxLabel')
+      .style('position', 'absolute')
+      .style('text-align', 'left')
+      .style('font', '10px Verdana')
+      .style('pointer-events', 'none')
+    .merge(boxLabel)
+      .style('left', d => `${d.left + 7}px`)
+      .style('top', d => `${d.top - 9}px`)
+      .text(d => d.text);
+
+  // Configure the charts
+  let locationModules = locationModulesChart()
+        .width(boxes.location.bitsWidth)
+        .height(boxes.location.bitsHeight)
+        .onCellSelected((iModule, cell) => {
+          iLocationModule = iModule;
+          selectedLocationCell = cell;
+          onLocationCellSelected();
+        }),
+      decodedLocation = decodedLocationsChart()
+        .width(boxes.location.decodingsWidth)
+        .height(boxes.location.decodingsHeight)
+        .color(parsed.featureColor),
+      inputLayer = layerOfCellsChart()
+        .width(boxes.input.bitsWidth)
+        .height(boxes.input.bitsHeight)
+        .columnMajorIndexing(true)
+        .onCellSelected(cell => {
+          selectedInputCell = cell;
+          onInputCellSelected();
+        }),
+      decodedInput = decodedLocationsChart()
+        .width(boxes.input.decodingsWidth)
+        .height(boxes.input.decodingsHeight)
+        .color(parsed.featureColor),
+      objectLayer = layerOfCellsChart()
+        .width(boxes.object.bitsWidth)
+        .height(boxes.object.bitsHeight)
+        .onCellSelected(cell => {
+          selectedObjectCell = cell;
+          onObjectCellSelected();
+        }),
+      decodedObject = decodedObjectsChart()
+        .width(boxes.object.decodingsWidth)
+        .height(boxes.object.decodingsHeight)
+        .color(parsed.featureColor),
+      featureInput = arrayOfAxonsChart()
+        .width(boxes.feature.bitsWidth)
+        .height(boxes.feature.bitsHeight),
+      decodedFeature = featureChart()
+        .color(parsed.featureColor)
+        .width(40)
+        .height(40),
+      motionInput = motionChart(),
+      world = worldChart()
+        .width(boxes.world.width)
+        .height(boxes.world.height)
+        .color(parsed.featureColor),
+      timeline = timelineChart().onchange(iTimestepNew => {
+        iTimestep = iTimestepNew;
+        onSelectedTimestepChanged();
+      });
+
+  calculateHighlightedCells();
+  draw();
+
+  //
+  // Lifecycle functions
+  //
+  function draw(incremental) {
+    locationNode.datum({
+      modules: parsed.timesteps[iTimestep].locationLayer.modules,
+      highlightedCells: highlightedCellsByLayer['locationLayer'] || []
+    }).call(locationModules);
+    decodedLocationNode.datum({
+      decodings: parsed.timesteps[iTimestep].locationLayer.decodings,
+      objects: parsed.objects
+    }).call(decodedLocation);
+
+    inputNode.datum(
+      Object.assign(
+        {highlightedCells: highlightedCellsByLayer['inputLayer'] || []},
+        parsed.timesteps[iTimestep].inputLayer))
+      .call(inputLayer);
+    decodedInputNode.datum({
+      decodings: parsed.timesteps[iTimestep].inputLayer.decodings,
+      objects: parsed.objects
+    }).call(decodedInput);
+
+    objectNode.datum(
+      Object.assign(
+        {highlightedCells: highlightedCellsByLayer['objectLayer'] || []},
+        parsed.timesteps[iTimestep].objectLayer))
+      .call(objectLayer);
+    decodedObjectNode.datum({
+      decodings: parsed.timesteps[iTimestep].objectLayer.decodings,
+      objects: parsed.objects
+    }).call(decodedObject);
+
+    featureNode.datum(parsed.timesteps[iTimestep].featureInput)
+      .call(featureInput);
+    decodedFeatureNode.datum(
+      {name: parsed.timesteps[iTimestep].featureInput.decodings[0]})
+      .call(decodedFeature);
+
+    motionNode.datum(parsed.timesteps[iTimestep].deltaLocation)
+      .call(motionInput);
+
+    worldNode.datum({
+      dims: parsed.worldDims,
+      location: parsed.timesteps[iTimestep].worldLocation,
+      selectedLocationModule: iLocationModule !== null
+        ? parsed.timesteps[iTimestep].locationLayer.modules[iLocationModule]
+        : null,
+      features: parsed.timesteps[iTimestep].worldFeatures,
+      selectedLocationCell
+    }).call(world);
+
+    timelineNode.datum({
+      timesteps: parsed.timesteps,
+      selectedIndex: iTimestep
+    }).call(incremental ? timeline.drawSelectedStep : timeline);
+  }
+
+  function onSelectedTimestepChanged() {
+    calculateHighlightedCells();
+    drawHighlightedCells();
+    draw(true);
+  }
+
+  function onLocationCellSelected() {
+    if (iLocationModule != null) {
+      let config = parsed.configByModule[iLocationModule],
+          module = parsed.timesteps[iTimestep].locationLayer.modules[iLocationModule];
+
+      worldNode.datum(d => {
+        d.selectedLocationModule = Object.assign({}, config, module);
+        d.selectedLocationCell = selectedLocationCell;
+        return d;
+      });
+
+      let synapsesByPresynapticLayer =
+          module.activeSynapsesByCell[selectedLocationCell];
+      if (synapsesByPresynapticLayer) {
+        highlightedCellsByLayer = synapsesByPresynapticLayer;
+      }
+    } else {
+      worldNode.datum(d => {
+        d.selectedLocationModule = null;
+        d.selectedLocationCell = null;
+        return d;
+      });
+    }
+
+    worldNode.call(world.drawFiringFields);
+
+    calculateHighlightedCells();
+    drawHighlightedCells();
+  }
+
+  function onInputCellSelected() {
+    calculateHighlightedCells();
+    drawHighlightedCells();
+  }
+
+  function onObjectCellSelected() {
+    calculateHighlightedCells();
+    drawHighlightedCells();
+  }
+
+  function calculateHighlightedCells() {
+    highlightedCellsByLayer = {};
+
+    // Selected location cell
+    if (iLocationModule != null) {
+      let module = parsed.timesteps[iTimestep].locationLayer.modules[iLocationModule];
+
+      let synapsesByPresynapticLayer =
+          module.activeSynapsesByCell[selectedLocationCell];
+      if (synapsesByPresynapticLayer) {
+        highlightedCellsByLayer = synapsesByPresynapticLayer;
+      }
+    }
+
+    // Selected input cell
+    if (selectedInputCell != null) {
+      let layer = parsed.timesteps[iTimestep].inputLayer,
+          synapsesByPresynapticLayer =
+            layer.activeSynapsesByCell[selectedInputCell];
+
+      if (synapsesByPresynapticLayer) {
+        highlightedCellsByLayer = synapsesByPresynapticLayer;
+      }
+    }
+
+    // Selected object cell
+    if (selectedObjectCell != null) {
+      let layer = parsed.timesteps[iTimestep].objectLayer,
+          synapsesByPresynapticLayer =
+            layer.activeSynapsesByCell[selectedObjectCell];
+
+      if (synapsesByPresynapticLayer) {
+        highlightedCellsByLayer = synapsesByPresynapticLayer;
+      }
+    }
+  }
+
+  function drawHighlightedCells() {
+    locationNode.datum(d => {
+      d.highlightedCells = highlightedCellsByLayer['locationLayer'] || [];
+      return d;
+    }).call(locationModules.drawHighlightedCells);
+
+    inputNode.datum(d => {
+      d.highlightedCells = highlightedCellsByLayer['inputLayer'] || [];
+      return d;
+    }).call(inputLayer.drawHighlightedCells);
+
+    objectNode.datum(d => {
+      d.highlightedCells = highlightedCellsByLayer['objectLayer'] || [];
+      return d;
+    }).call(objectLayer.drawHighlightedCells);
+  }
+}
+
+function printRecordingFromUrl(node, logUrl) {
+  text(logUrl,
+          (error, contents) =>
+          printRecording(node, contents));
+}
+
+
+
+
+var locationModuleInference = Object.freeze({
+	printRecording: printRecording,
+	printRecordingFromUrl: printRecordingFromUrl
+});
+
+/**
+ *
+ * Example timestep:
+ * {
+ *   worldLocation: {left: 42.0, top: 12.0},
+ *   reset: null,
+ *   locationLayer: {
+ *     modules: [
+ *       {activeCells: [],
+ *        activePoints: [],
+ *        activeSynapsesByCell: {}},
+ *     ]
+ *   },
+ *   deltaLocationInput: {
+ *   },
+ * };
+ */
+function parseData$1(text$$1) {
+  let timesteps = [],
+      rows = text$$1.split('\n');
+
+  // Row: world dimensions
+  let worldDims = JSON.parse(rows[0]);
+
+  let currentTimestep = null,
+      didReset = false,
+      locationInWorld = null;
+
+  // [{cellDimensions: [5,5], moduleMapDimensions: [20.0, 20.0], orientation: 0.2},
+  //  ...]
+  let configByModule = JSON.parse(rows[1]).map(d => {
+    d.dimensions = {rows: d.cellDimensions[0], cols: d.cellDimensions[1]};
+    return d;
+  });
+
+  function endTimestep() {
+    if (currentTimestep !== null) {
+      currentTimestep.worldLocation = locationInWorld;
+      timesteps.push(currentTimestep);
+    }
+
+    currentTimestep = null;
+  }
+
+  function beginNewTimestep(type) {
+    endTimestep();
+
+    currentTimestep = {
+      worldLocation: locationInWorld,
+      type
+    };
+
+    if (didReset) {
+      currentTimestep.reset = true;
+      didReset = false;
+    }
+  }
+
+  let i = 2;
+  while (i < rows.length) {
+    switch (rows[i]) {
+    case 'reset':
+      didReset = true;
+      i++;
+      break;
+    case 'move': {
+      beginNewTimestep('move');
+      let deltaLocation = JSON.parse(rows[i+1]);
+
+      currentTimestep.deltaLocation = {
+        top: deltaLocation[0],
+        left: deltaLocation[1]
+      };
+
+      i += 2;
+      break;
+    }
+    case 'locationInWorld': {
+      let location = JSON.parse(rows[i+1]);
+
+      locationInWorld = {top: location[0], left: location[1]};
+
+      i += 2;
+      break;
+    }
+    case 'shift': {
+      let modules = [];
+      JSON.parse(rows[i+1]).forEach((activeCells, i) => {
+        let cells = activeCells.map(cell => {
+          return {
+            cell,
+            state: 'predicted-active'
+          };
+        });
+
+        modules.push(Object.assign({cells}, configByModule[i]));
+      });
+
+      JSON.parse(rows[i+2]).forEach((activePoints, i) => {
+        modules[i].activePoints = activePoints;
+      });
+
+      currentTimestep.locationLayer = { modules };
+
+      i += 3;
+      break;
+    }
+    default:
+      if (rows[i] == null || rows[i] == '') {
+        i++;
+      } else {
+        throw `Unrecognized: ${rows[i]}`;
+      }
+    }
+  }
+
+  endTimestep();
+
+  return {
+    timesteps, worldDims, configByModule
+  };
+}
+
+let boxes$1 = {
+  location: {
+    left: 0, top: 20, width: 260, height: 140, text: 'location layer',
+    bitsLeft: 0, bitsTop: 0, bitsWidth: 260, bitsHeight: 140,
+    decodingsLeft: 0, decodingsTop: 0, decodingsWidth: 0, decodingsHeight: 0
+  },
+  motion: {
+    left: 0, top: 190, width: 260, height: 81, text: 'motion input',
+    bitsLeft: 0, bitsTop: 0,
+    decodingsLeft: 130, decodingsTop: 36,
+    secondary: true
+  },
+  world: {
+    left: 280, top: 34, width: 230, height: 230, text: 'the world'
+  }
+};
+
+function printRecording$1(node, text$$1) {
+  // Constants
+  let margin = {top: 5, right: 15, bottom: 15, left: 15},
+      width = 510,
+      height = 270,
+      parsed = parseData$1(text$$1);
+
+  // Mutable state
+  let iTimestep = 0,
+      iLocationModule = null,
+      selectedLocationCell = null;
+
+  // Allow a mix of SVG and HTML
+  let html$$1 = select(node)
+        .append('div')
+          .style('margin-left', 'auto')
+          .style('margin-right', 'auto')
+          .style('position', 'relative')
+          .style('width', `${width + margin.left + margin.right}px`),
+      svg = html$$1.append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom);
+
+  // Add keyboard navigation
+  html$$1
+    .attr('tabindex', 0)
+    .on('keydown', function() {
+      switch (event.keyCode) {
+      case 37: // Left
+        iTimestep--;
+          if (iTimestep < 0) {iTimestep = parsed.timesteps.length - 1;}
+        draw(true);
+        event.preventDefault();
+        break;
+      case 39: // Right
+        iTimestep = (iTimestep+1)%parsed.timesteps.length;
+        draw(true);
+        event.preventDefault();
+        break;
+      }
+    });
+
+  // Make the SVG a clickable slideshow
+  let slideshow = svg.append('g')
+      .on('click', () => {
+        iTimestep = (iTimestep + 1) % parsed.timesteps.length;
+        draw(true);
+      });
+
+  slideshow.append('rect')
+      .attr('fill', 'transparent')
+      .attr('stroke', 'none')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.bottom + margin.top + 10);
+
+  let container = slideshow
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+  // Arrange the boxes
+  let box = container.selectAll('.box')
+      .data([boxes$1.location,
+             boxes$1.motion]);
+
+  box = box.enter().append('g')
+    .attr('class', 'layerBox')
+    .call(g => {
+      g.append('rect')
+        .attr('class', 'border')
+        .attr('fill', 'none');
+
+      g.append('g')
+        .attr('class', 'bits');
+
+      g.append('g')
+        .attr('class', 'decodings');
+    })
+    .merge(box)
+    .attr('transform', d => `translate(${d.left}, ${d.top})`);
+
+  box.select('.border')
+    .attr('width', d => d.width)
+    .attr('height', d => d.height)
+    .attr('stroke', d => d.secondary ? 'gray' : 'lightgray')
+    .attr('stroke-width', d => d.secondary ? 1 : 3)
+    .attr('stroke-dasharray', d => d.secondary ? "5,5" : null);
+
+  let [locationNode,
+       _] = box.select('.bits')
+        .attr('transform', d => `translate(${d.bitsLeft},${d.bitsTop})`)
+        .nodes()
+        .map(select);
+  let [decodedLocationNode,
+       motionNode] = box.select('.decodings')
+        .attr('transform', d => `translate(${d.decodingsLeft},${d.decodingsTop})`)
+        .nodes()
+        .map(select);
+
+  let worldNode = container.append('g')
+      .attr('transform', `translate(${boxes$1.world.left}, ${boxes$1.world.top})`);
+
+  // Label the boxes
+  let boxLabel = html$$1.selectAll('.boxLabel')
+      .data([boxes$1.location, boxes$1.motion, boxes$1.world]);
+
+  boxLabel.enter()
+    .append('div')
+      .attr('class', 'boxLabel')
+      .style('position', 'absolute')
+      .style('text-align', 'left')
+      .style('font', '10px Verdana')
+      .style('pointer-events', 'none')
+    .merge(boxLabel)
+      .style('left', d => `${d.left + 17}px`)
+      .style('top', d => `${d.top - 9}px`)
+      .text(d => d.text);
+
+  // Configure the charts
+  let locationModules = locationModulesChart()
+        .width(boxes$1.location.bitsWidth)
+        .height(boxes$1.location.bitsHeight)
+        .onCellSelected((iModule, cell) => {
+          iLocationModule = iModule;
+          selectedLocationCell = cell;
+          onLocationCellSelected();
+        }),
+      motionInput = motionChart(),
+      world = worldChart()
+        .width(boxes$1.world.width)
+        .height(boxes$1.world.height)
+        .color(parsed.featureColor);
+
+  draw();
+
+  //
+  // Lifecycle functions
+  //
+  function draw(incremental) {
+    locationNode.datum({
+      modules: parsed.timesteps[iTimestep].locationLayer.modules
+    }).call(locationModules);
+
+    motionNode.datum(parsed.timesteps[iTimestep].deltaLocation)
+      .call(motionInput);
+
+    worldNode.datum({
+      dims: parsed.worldDims,
+      location: parsed.timesteps[iTimestep].worldLocation,
+      selectedLocationModule: iLocationModule !== null
+        ? parsed.timesteps[iTimestep].locationLayer.modules[iLocationModule]
+        : null,
+      features: [],
+      selectedLocationCell
+    }).call(world);
+  }
+
+  function onLocationCellSelected() {
+    worldNode.datum(d => {
+      d.selectedLocationModule = iLocationModule !== null
+        ? Object.assign(
+          {},
+          parsed.configByModule[iLocationModule],
+          parsed.timesteps[iTimestep].locationLayer.modules[iLocationModule])
+        : null;
+      d.selectedLocationCell = selectedLocationCell;
+      return d;
+    }).call(world.drawFiringFields);
+  }
+}
+
+function printRecordingFromUrl$1(node, csvUrl) {
+  text(csvUrl,
+          (error, contents) =>
+          printRecording$1(node, contents));
+}
+
+
+
+
+var locationModules = Object.freeze({
+	printRecording: printRecording$1,
+	printRecordingFromUrl: printRecordingFromUrl$1
+});
 
 function Grid2dLayout(nColumns, nRows, left, top, width, height, padding) {
   this.nColumns = nColumns;
@@ -7165,14 +10200,14 @@ function layerOfCellsPlot() {
   return chart;
 }
 
-function printRecordingFromUrl(node, csvUrl) {
+function printRecordingFromUrl$2(node, csvUrl) {
   text(csvUrl,
           function (error, contents) {
-            return printRecording(node, contents);
+            return printRecording$2(node, contents);
           });
 }
 
-function printRecording(node, csv$$1) {
+function printRecording$2(node, csv$$1) {
 
   // Data from the CSV
   var worldDiameter,
@@ -8158,8 +11193,10 @@ function printRecording(node, csv$$1) {
   })();
 }
 
-exports.printRecording = printRecording;
-exports.printRecordingFromUrl = printRecordingFromUrl;
+exports.locationModuleInference = locationModuleInference;
+exports.locationModules = locationModules;
+exports.printRecording = printRecording$2;
+exports.printRecordingFromUrl = printRecordingFromUrl$2;
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
