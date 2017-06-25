@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>2D space, 1-layer location</title>
+    <title>Location module inference</title>
     <script src="build/htmresearchviz0-bundle.js"></script>
     <style>
       body {
@@ -55,10 +55,10 @@
       }
 
       .singleVisualization {
-          width: 985px;
+          max-width: 830px;
           margin-left: auto;
           margin-right: auto;
-          margin-bottom: 100px;'
+          margin-bottom: 200px;
       }
     </style>
   </head>
@@ -72,7 +72,7 @@
         div.setAttribute('class', 'singleVisualization noselect');
 
         document.getElementById('graphics').appendChild(div);
-        htmresearchviz0.printRecording(div, text);
+        htmresearchviz0.locationModuleInference.printRecording(div, text);
       }
 
       function handleFile(file) {
@@ -82,7 +82,7 @@
           handleFileContents(fileReader.result);
         };
         fileReader.onerror = function (e) {
-          throw 'Error reading CSV file';
+          throw 'Error reading log file';
         };
 
         fileReader.readAsText(file);
@@ -107,14 +107,14 @@
     <input id="fileInput"
            type="file"
            onchange="handleFiles(this.files)"
-           accept="application/csv"
+           accept="application/log"
            style="display:none;"
            multiple="true"></input>
 
     <label for="fileInput">
       <div class="fileDrop clickable">
         <div class="fileDropText noselect">
-          <span>Drop a CSV file here</span>
+          <span>Drop a log file here</span>
           <br />
           <div class="bigPlus">+</div>
           <span>(or just click)</span>
