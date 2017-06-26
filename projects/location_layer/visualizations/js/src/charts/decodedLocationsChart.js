@@ -61,7 +61,7 @@ function decodedLocationsChart() {
 
       decodedObjectRow = decodedObjectRow.enter().append('g')
         .attr('class', 'decodedObjectRow')
-        .attr('transform', (d,i) => `translate(0,${i == 0 ? 0 : i*height/3 + 10})`)
+        .attr('transform', (d,i) => `translate(0,${i == 0 ? 0 : i*height/2.5 + 10})`)
         .merge(decodedObjectRow);
 
       let decodedObject = decodedObjectRow.selectAll('.decodedObject')
@@ -79,7 +79,7 @@ function decodedLocationsChart() {
               .attr('class', 'points')
             .append('rect')
               .attr('width', width/3)
-              .attr('height', height/3)
+              .attr('height', height/2.5)
               .attr('fill', 'white')
               .attr('fill-opacity', 0.7);
         })
@@ -88,7 +88,7 @@ function decodedLocationsChart() {
       decodedObject.each(function([objectName, decodedLocations]) {
 
         let cmMax = Math.max(maxWidth, maxHeight);
-        let pxMax = Math.min(width/3, height/3);
+        let pxMax = Math.min(width/3, height/2.5);
         let x = d3.scaleLinear()
             .domain([0, cmMax])
             .range([0, pxMax]);
@@ -123,9 +123,9 @@ function decodedLocationsChart() {
             .attr('class', 'point')
           .call(enter => {
             enter.append('circle')
-              .attr('r', 3)
+              .attr('r', 4)
               .attr('fill', 'white')
-              .attr('stroke', 'black');
+              .attr('stroke', 'none');
 
             enter.append('path')
               .attr('fill', 'black')
@@ -136,7 +136,7 @@ function decodedLocationsChart() {
         point.select('path')
           .attr('d', d3.arc()
                 .innerRadius(0)
-                .outerRadius(3)
+                .outerRadius(4)
                 .startAngle(0)
                 .endAngle(d => d.amountContained / 1.0 * 2 * Math.PI));
       });
