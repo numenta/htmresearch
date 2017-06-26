@@ -7501,7 +7501,7 @@ function decodedLocationsChart() {
 
       decodedObjectRow = decodedObjectRow.enter().append('g')
         .attr('class', 'decodedObjectRow')
-        .attr('transform', (d,i) => `translate(0,${i == 0 ? 0 : i*height/3 + 10})`)
+        .attr('transform', (d,i) => `translate(0,${i == 0 ? 0 : i*height/2.5 + 10})`)
         .merge(decodedObjectRow);
 
       let decodedObject = decodedObjectRow.selectAll('.decodedObject')
@@ -7519,7 +7519,7 @@ function decodedLocationsChart() {
               .attr('class', 'points')
             .append('rect')
               .attr('width', width/3)
-              .attr('height', height/3)
+              .attr('height', height/2.5)
               .attr('fill', 'white')
               .attr('fill-opacity', 0.7);
         })
@@ -7528,7 +7528,7 @@ function decodedLocationsChart() {
       decodedObject.each(function([objectName, decodedLocations]) {
 
         let cmMax = Math.max(maxWidth, maxHeight);
-        let pxMax = Math.min(width/3, height/3);
+        let pxMax = Math.min(width/3, height/2.5);
         let x = linear$2()
             .domain([0, cmMax])
             .range([0, pxMax]);
@@ -7563,9 +7563,9 @@ function decodedLocationsChart() {
             .attr('class', 'point')
           .call(enter => {
             enter.append('circle')
-              .attr('r', 3)
+              .attr('r', 4)
               .attr('fill', 'white')
-              .attr('stroke', 'black');
+              .attr('stroke', 'none');
 
             enter.append('path')
               .attr('fill', 'black')
@@ -7576,7 +7576,7 @@ function decodedLocationsChart() {
         point.select('path')
           .attr('d', arc()
                 .innerRadius(0)
-                .outerRadius(3)
+                .outerRadius(4)
                 .startAngle(0)
                 .endAngle(d => d.amountContained / 1.0 * 2 * Math.PI));
       });
@@ -7738,7 +7738,7 @@ function layerOfCellsChart() {
       height,
       color$$1 = ordinal()
         .domain(['active', 'predicted', 'predicted-active'])
-        .range(['crimson', 'rgba(0, 127, 255, 0.498)', 'black']),
+        .range(['orangered', 'rgba(0, 127, 255, 0.498)', 'black']),
       stroke = "black",
       onCellSelected = selectedCell => {},
       columnMajorIndexing = false;
@@ -9154,17 +9154,17 @@ let boxes = {
   location: {
     left: 0, top: secondRowTop, width: columnWidth, height: 180, text: 'location layer',
     bitsLeft: 10, bitsTop: 10, bitsWidth: 150, bitsHeight: 60,
-    decodingsLeft: 20, decodingsTop: 90, decodingsWidth: 148, decodingsHeight: 90
+    decodingsLeft: 20, decodingsTop: 85, decodingsWidth: 148, decodingsHeight: 90
   },
   input: {
     left: secondColumnLeft, top: secondRowTop, width: columnWidth, height: 180, text: 'feature-location pair layer',
     bitsLeft: 10, bitsTop: 10, bitsWidth: 150, bitsHeight: 60,
-    decodingsLeft: 20, decodingsTop: 90, decodingsWidth: 148, decodingsHeight: 90
+    decodingsLeft: 20, decodingsTop: 85, decodingsWidth: 148, decodingsHeight: 90
   },
   object: {
     left: secondColumnLeft, top: 12, width: columnWidth, height: 180, text: 'object layer',
     bitsLeft: 10, bitsTop: 10, bitsWidth: 150, bitsHeight: 60,
-    decodingsLeft: 20, decodingsTop: 90, decodingsWidth: 148, decodingsHeight: 90
+    decodingsLeft: 20, decodingsTop: 85, decodingsWidth: 148, decodingsHeight: 90
   },
   motion: {
     left: 0, top: thirdRowTop, width: columnWidth, height: 81, text: 'motion input',
