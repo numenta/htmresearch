@@ -113,11 +113,17 @@ def doExperiment(cellDimensions, pointOffsets):
 
   exp.learnObjects()
 
-  filename = "logs/{}-points-{}-cells.log".format(len(pointOffsets)**2,
-                                                  np.prod(cellDimensions))
-  with open(filename, "w") as fileOut:
-    print "Logging to", filename
-    with trace(exp, fileOut, includeSynapses=False):
+  filename = "logs/{}-points-{}-cells.log".format(
+    len(pointOffsets)**2, np.prod(cellDimensions))
+  synapseFilename = "logs/{}-points-{}-cells-synapses.log".format(
+    len(pointOffsets)**2, np.prod(cellDimensions))
+
+  with open(filename, "w") as fileOut, \
+       open(synapseFilename, "w") as synapseFileOut:
+    with trace(exp, fileOut, includeSynapses=False), \
+         trace(exp, synapseFileOut, includeSynapses=True):
+      print "Logging to", filename
+      print "Logging to", synapseFilename
       exp.inferObjectsWithRandomMovements()
 
 
