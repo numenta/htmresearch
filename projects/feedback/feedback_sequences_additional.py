@@ -420,7 +420,7 @@ if __name__ == "__main__":
 
   plt.ion()
 
-
+  
   (corrsPredCorrectNoFBL4, corrsPredCorrectFBL4, corrsPredCorrectNoATL4,
         corrsPredCorrectNoAML4, corrsPredCorrectNoINL4) = runExp(noiseProba=.3,
         numSequences=5, nbSeeds=10, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Individual effects: Continuous noise, shared range")
@@ -437,10 +437,10 @@ if __name__ == "__main__":
         corrsPredCorrectNoAML4, corrsPredCorrectNoINL4) = runExp(noiseProba=.02,
         numSequences=5, nbSeeds=10, noiseType="replace", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Individual effects: Insert random stimulus, no shared range")
 
-  (corrsPredCorrectNoFBL4, corrsPredCorrectFBL4, corrsPredCorrectNoATL4,
-       corrsPredCorrectNoAML4, corrsPredCorrectNoINL4) = runExp(noiseProba=.25,
-       numSequences=5, nbSeeds=10, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Individual effects: Random insert + continuous noise, shared range")
-
-  (corrsPredCorrectNoFBL4, corrsPredCorrectFBL4, corrsPredCorrectNoATL4,
-       corrsPredCorrectNoAML4, corrsPredCorrectNoINL4) = runExp(noiseProba=.25,
-       numSequences=5, nbSeeds=10, noiseType="replace", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Individual effects: Random insert + continuous noise, no shared range")
+  # (corrsPredCorrectNoFBL4, corrsPredCorrectFBL4, corrsPredCorrectNoATL4,
+  #      corrsPredCorrectNoAML4, corrsPredCorrectNoINL4) = runExp(noiseProba=.25,
+  #      numSequences=5, nbSeeds=10, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Individual effects: Random insert + continuous noise, shared range")
+  #
+  # (corrsPredCorrectNoFBL4, corrsPredCorrectFBL4, corrsPredCorrectNoATL4,
+  #      corrsPredCorrectNoAML4, corrsPredCorrectNoINL4) = runExp(noiseProba=.25,
+  #      numSequences=5, nbSeeds=10, noiseType="replace", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Individual effects: Random insert + continuous noise, no shared range")

@@ -435,9 +435,8 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
         if noiseType == "crossover":
             # Then, we show the mean similarities of Layer 2 representations to original L2 representations of both source sequences used in the crossover
             plt.figure()
-            plt.errorbar(xx[1:], numpy.mean(oFBNext, axis=0)[1:], yerr=numpy.std(oFBNext, axis=0)[1:], color='m', label='Sequence 2');
-            plt.errorbar(xx[1:], numpy.mean(oFB, axis=0)[1:], yerr=numpy.std(oFB, axis=0)[1:], color='c', label='Sequence 1')
-            plt.axvline(sequenceLen/2, 0, 1, ls='--', label='Perturbation', color='black')
+            plt.errorbar(xx[2:], numpy.mean(oFBNext, axis=0)[2:], yerr=numpy.std(oFBNext, axis=0)[2:], color='m', label='Sequence 2');
+            plt.errorbar(xx[2:], numpy.mean(oFB, axis=0)[2:], yerr=numpy.std(oFB, axis=0)[2:], color='c', label='Sequence 1')
             plt.axvspan(sharedRange[0] + .5, sharedRange[1] -1 + .5, alpha=0.25, color='pink')
             plt.axvspan(sharedRange[1]-1 + .5, plt.xlim()[1], alpha=0.1, color='blue')
             plt.legend(loc='best')
@@ -445,7 +444,6 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
             plt.savefig(plotTitle+": top-layer representations.png")
 
 
-  # THIS PROBABLY NEEDS UPDATING !
   # Plot the average prediction performance, as a function of noise probability OR number of sequences, both with and without feedback
   if whichPlot == "perfs":
         plt.figure()
@@ -480,10 +478,12 @@ if __name__ == "__main__":
   # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="swap", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with swapped stimuli (no shared range)")
   # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="swap", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with swapped stimuli (shared range)")
   # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with randomized stimulus (no shared range)")
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with randomized stimulus (shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with randomized stimulus (shared range)")
 
-  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="End-swapped sequences (shared range)")
-  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="End-swapped sequences (no shared range)")
+
+
+  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="End-swapped sequences (shared range)")
+  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="End-swapped sequences (no shared range)")
 
 
 
@@ -498,7 +498,7 @@ if __name__ == "__main__":
 
 
   #
-  # runExp(noiseProbas=( .1, .3, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (shared range) (no inertia)")
+  # runExp(noiseProbas=( .1, .3, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="TEST - Prediction performance vs noise level (shared range)")
   # runExp(noiseProbas=( .1, .3, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (shared range) (no inertia)")
 
   # When using the correlation b/w predicted and correct as a measure, increasing model load has little effect, with or without feedback.
