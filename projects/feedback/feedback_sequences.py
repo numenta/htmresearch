@@ -296,7 +296,7 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
             # 2- All other sequences make 2 predictions in each item of the end of the sequence (the correct one, and another in the same
             # minicolumn), instead of 1 - except the 1st sequence (which makes a single incorrect prediction, as stated above), and the last
             # (which has its end swapped with the first).
-            # I "solve" the problem by throwing away the first sequence at test time:
+            # I "solve" the problem by throwing away the first sequence at test time (note the '1'):
           for numseq in range(1, len(responsesNoNoise)):
 
               diffsFB.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
@@ -475,15 +475,15 @@ if __name__ == "__main__":
   plt.ion()
 
 
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="swap", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with swapped stimuli (no shared range)")
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="swap", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with swapped stimuli (shared range)")
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with randomized stimulus (no shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="swap", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with swapped stimuli (no shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="swap", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with swapped stimuli (shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with randomized stimulus (no shared range)")
   runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with randomized stimulus (shared range)")
 
 
 
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="End-swapped sequences (shared range)")
-  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="End-swapped sequences (no shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="End-swapped sequences (shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="End-swapped sequences (no shared range)")
 
 
 
@@ -493,13 +493,9 @@ if __name__ == "__main__":
   # # runExp(noiseProbas=(.1,), nbSequences=(3,), nbSeeds=5, noiseType="skip", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with omitted stimulus (no shared range)")
   # # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="skip", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with omitted stimulus (shared range)")
 
-  # runExp(noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (no shared range)")
-  # runExp(noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (shared range)")
+  runExp(noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (no shared range)")
+  runExp(noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (shared range)")
 
-
-  #
-  # runExp(noiseProbas=( .1, .3, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="TEST - Prediction performance vs noise level (shared range)")
-  # runExp(noiseProbas=( .1, .3, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (shared range) (no inertia)")
 
   # When using the correlation b/w predicted and correct as a measure, increasing model load has little effect, with or without feedback.
   # runExp(noiseProbas=( .25,), nbSequences=(3,30), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="Test")
