@@ -109,10 +109,8 @@ class ColumnPooler(object):
             Permanence required for a distal synapse to be connected
 
     @param  distalSegmentInhibitionFactor (float)
-            The minimum ratio of active dendrite segment counts that will lead
-            to inhibition. For example, with value 1.5, cells with 2 active
-            segments will be inhibited by cells with 3 active segments, but
-            cells with 3 active segments will not be inhibited by cells with 4.
+            Cells with N active lateral segements inhibit all cells with less
+            than distalSegmentInhibitionFactor * N active segments (must be <1).
 
     @param  inertiaFactor (float)
             The proportion of previously active cells that remain
@@ -124,6 +122,7 @@ class ColumnPooler(object):
     """
 
     assert distalSegmentInhibitionFactor > 0.0
+    assert distalSegmentInhibitionFactor < 1.0
 
     self.inputWidth = inputWidth
     self.cellCount = cellCount
@@ -283,44 +282,39 @@ class ColumnPooler(object):
       numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
 
     chosenCells = []
-    minNumActiveCells =  30 #self.sdrSize / 2
+    minNumActiveCells =  int(self.sdrSize * .75)
 
-    remainingFFSupportedCells = numpy.setdiff1d(feedforwardSupportedCells,
-                                                    chosenCells)
-    numActiveSegsForFFSuppCells=numActiveSegmentsByCell[remainingFFSupportedCells]
+    numActiveSegsForFFSuppCells = numActiveSegmentsByCell[feedforwardSupportedCells]
 
     # First, activate the FF-supported cells that have the highest number of
-    # lateral active segments (this may be 0)
-    if len(remainingFFSupportedCells) == 0:
-        pass
+    # lateral active segments (as long as it's not 0)
+    if len(feedforwardSupportedCells) == 0:
+      pass
     else:
       # This loop will select the FF-supported AND laterally-active cells, in
       # order of descending lateral activation, until we exceed the
       # minNumActiveCells quorum - but will exclude cells with 0 lateral
-      # active segments!
+      # active segments.
       ttop = numpy.max(numActiveSegsForFFSuppCells)
-      if ttop > 0:
-        while True:
-          chosenCells = numpy.unique(numpy.append(chosenCells,
-                    remainingFFSupportedCells[numActiveSegsForFFSuppCells >
-                    self.distalSegmentInhibitionFactor * ttop]))
-          ttop -= 1
-          if ttop <= 0 or len(chosenCells) > minNumActiveCells:
-              break
+      while ttop > 0 and len(chosenCells) <= minNumActiveCells:
+        chosenCells = numpy.union1d(chosenCells,
+                    feedforwardSupportedCells[numActiveSegsForFFSuppCells >
+                    self.distalSegmentInhibitionFactor * ttop])
+        ttop -= 1
 
     # If we still haven't filled the minNumActiveCells quorum, add in the
     # FF-supported cells with 0 lateral support AND the inertia cells.
     if len(chosenCells) < minNumActiveCells:
-      prevCells = numpy.setdiff1d(prevActiveCells, chosenCells)
-      numActiveSegsForPrevCells = numActiveSegmentsByCell[prevCells]
-      # We sort the previously-active cells by nuber of active lateral
-      # segments (this really helps)
-      prevCells = prevCells[numpy.argsort(numActiveSegsForPrevCells)[::-1]]
-      remFFcells = numpy.setdiff1d(remainingFFSupportedCells, chosenCells)
+      remFFcells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
       # Note that this is all the remaining FF-supported cells!
-      chosenCells=numpy.append(chosenCells,remFFcells) 
+      chosenCells = numpy.append(chosenCells,remFFcells)
       if self.useInertia:
-          chosenCells = numpy.append(chosenCells,
+        prevCells = numpy.setdiff1d(prevActiveCells, chosenCells)
+        numActiveSegsForPrevCells = numActiveSegmentsByCell[prevCells]
+        # We sort the previously-active cells by number of active lateral
+        # segments (this really helps)
+        prevCells = prevCells[numpy.argsort(numActiveSegsForPrevCells)[::-1]]
+        chosenCells = numpy.append(chosenCells,
                 prevCells[:int(len(prevCells) * self.inertiaFactor)] )
 
     chosenCells.sort()
@@ -528,18 +522,22 @@ class ColumnPooler(object):
     self.activeCells = numpy.empty(0, dtype="uint32")
 
   def getUseInertia(self):
-        """
-        Get whether we actually use apical modulation of basal threshold.
-        @return (Bool) Whether apical modulation is used.
-        """
-        return self.useInertia
+    """
+    Get whether we actually use inertia  (i.e. a fraction of the
+    previously active cells remain active at the next time step unless
+    inhibited by cells with both feedforward and lateral support).
+    @return (Bool) Whether inertia is used.
+    """
+    return self.useInertia
 
   def setUseInertia(self, useInertia):
-            """
-            Sets whether we actually use inertia.
-            @param useInertia (Bool) Whether inertia is used.
-            """
-            self.useInertia = useInertia
+    """
+    Sets whether we actually use inertia (i.e. a fraction of the
+    previously active cells remain active at the next time step unless
+    inhibited by cells with both feedforward and lateral support).
+    @param useInertia (Bool) Whether inertia is used.
+    """
+    self.useInertia = useInertia
 
   @staticmethod
   def _learn(# mutated args

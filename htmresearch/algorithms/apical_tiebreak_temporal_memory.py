@@ -220,9 +220,9 @@ class ApicalTiebreakTemporalMemory(object):
        self.activationThreshold, self.minThreshold)
 
     if learn or self.useApicalModulationBasalThreshold==False:
-        reducedBasalThresholdCells = ()
+      reducedBasalThresholdCells = ()
     else:
-        reducedBasalThresholdCells = self.apicalConnections.mapSegmentsToCells(
+      reducedBasalThresholdCells = self.apicalConnections.mapSegmentsToCells(
             activeApicalSegments)
 
     (activeBasalSegments,
@@ -503,8 +503,9 @@ class ApicalTiebreakTemporalMemory(object):
     Calculate the active and matching basal segments for this timestep.
 
     The difference with _calculateApicalSegmentActivity is that cells
-    with active apical segments have a lower activation threshold for
-    their basal segments (set by reducedBasalThreshold parameter).
+    with active apical segments (collected in reducedBasalThresholdCells) have
+    a lower activation threshold for their basal segments (set by
+    reducedBasalThreshold parameter).
 
     @param connections (SparseMatrixConnections)
     @param activeInput (numpy array)
@@ -834,18 +835,18 @@ class ApicalTiebreakTemporalMemory(object):
     self.activationThreshold = activationThreshold
 
 
-  def getreducedBasalThreshold(self):
+  def getReducedBasalThreshold(self):
     """
-    Returns the activation threshold.
+    Returns the reduced basal activation threshold for apically active cells.
     @return (int) The activation threshold.
     """
     return self.reducedBasalThreshold
 
 
-  def setreducedBasalThreshold(self, reducedBasalThreshold):
+  def setReducedBasalThreshold(self, reducedBasalThreshold):
     """
-    Sets the activation threshold.
-    @param activationThreshold (int) activation threshold.
+    Sets the reduced basal activation threshold for apically active cells.
+    @param reducedBasalThreshold (int) activation threshold.
     """
     self.reducedBasalThreshold = reducedBasalThreshold
 
@@ -976,6 +977,7 @@ class ApicalTiebreakTemporalMemory(object):
     @param connectedPermanence (float) The connected permanence.
     """
     self.connectedPermanence = connectedPermanence
+
 
   def getUseApicalTieBreak(self):
     """

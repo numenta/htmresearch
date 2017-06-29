@@ -212,9 +212,8 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
   diffsFBL2=[]; diffsNoFBL2=[]
   diffsFBL2Next=[]; diffsNoFBL2Next=[]
 
-  #noiseProbas = (.1, .15, .2, .25, .3, .35, .4, .45, 1.0)
 
-  for noiseProba in noiseProbas:  # Varying noiseProba only produces a small range of difference if noise is during the whole period...
+  for noiseProba in noiseProbas:
     for numSequences in nbSequences:
 
       errorsFB=[]; errorsNoFB=[]; errorsNoNoise=[]
@@ -283,6 +282,7 @@ def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRang
               exp, noisySequences, enableFeedback=True)
           inferenceErrors[1,1], activityNoFB, responsesNoFB = runInference(
               exp, noisySequences, enableFeedback=False)
+
 
           # Now that actual processing is done, we compute various statistics and plot graphs.
 
