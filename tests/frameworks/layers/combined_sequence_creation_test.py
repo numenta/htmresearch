@@ -103,8 +103,8 @@ class CombinedSequenceNetworkTest(unittest.TestCase):
                      "Incorrect number of regions")
 
     # Add some input vectors to the queue
-    externalInput = net.regions["externalInput"].getSelf()
-    sensorInput = net.regions["sensorInput"].getSelf()
+    externalInput = net.regions["externalInput_0"].getSelf()
+    sensorInput = net.regions["sensorInput_0"].getSelf()
 
     # Add 3 input vectors
     externalInput.addDataToQueue([2, 42, 1023], 0, 9)
@@ -131,17 +131,17 @@ class CombinedSequenceNetworkTest(unittest.TestCase):
 
     # These are exactly all the links we expect
     desired_links = {
-      "sensorInput.dataOut-->L4Column.activeColumns",
-      "sensorInput.dataOut-->TMColumn.activeColumns",
-      "L2Column.feedForwardOutput-->L4Column.apicalInput",
-      "externalInput.dataOut-->L4Column.basalInput",
-      "L4Column.predictedActiveCells-->L2Column.feedforwardGrowthCandidates",
-      "L4Column.activeCells-->L2Column.feedforwardInput",
-      "sensorInput.resetOut-->L2Column.resetIn",
-      "sensorInput.resetOut-->TMColumn.resetIn",
-      "externalInput.dataOut-->L4Column.basalGrowthCandidates",
-      "TMColumn.winnerCells-->TMColumn.basalGrowthCandidates",
-      "TMColumn.activeCells-->TMColumn.basalInput",
+      "sensorInput_0.dataOut-->L4Column_0.activeColumns",
+      "sensorInput_0.dataOut-->TMColumn_0.activeColumns",
+      "L2Column_0.feedForwardOutput-->L4Column_0.apicalInput",
+      "externalInput_0.dataOut-->L4Column_0.basalInput",
+      "L4Column_0.predictedActiveCells-->L2Column_0.feedforwardGrowthCandidates",
+      "L4Column_0.activeCells-->L2Column_0.feedforwardInput",
+      "sensorInput_0.resetOut-->L2Column_0.resetIn",
+      "sensorInput_0.resetOut-->TMColumn_0.resetIn",
+      "externalInput_0.dataOut-->L4Column_0.basalGrowthCandidates",
+      "TMColumn_0.winnerCells-->TMColumn_0.basalGrowthCandidates",
+      "TMColumn_0.activeCells-->TMColumn_0.basalInput",
     }
 
     links = net.getLinks()
@@ -173,10 +173,10 @@ class CombinedSequenceNetworkTest(unittest.TestCase):
     net = createNetwork(networkConfig1)
 
     # Get various regions
-    externalInput = net.regions["externalInput"].getSelf()
-    sensorInput = net.regions["sensorInput"].getSelf()
-    L4Column = net.regions["L4Column"].getSelf()
-    L2Column = net.regions["L2Column"].getSelf()
+    externalInput = net.regions["externalInput_0"].getSelf()
+    sensorInput = net.regions["sensorInput_0"].getSelf()
+    L4Column = net.regions["L4Column_0"].getSelf()
+    L2Column = net.regions["L2Column_0"].getSelf()
 
     # create a feature and location pool
     features = [self.generatePattern(1024, 20) for _ in xrange(2)]
@@ -359,11 +359,11 @@ class CombinedSequenceNetworkTest(unittest.TestCase):
     net = createNetwork(networkConfig1)
 
     # Get various regions
-    externalInput = net.regions["externalInput"].getSelf()
-    sensorInput = net.regions["sensorInput"].getSelf()
-    L4Column = net.regions["L4Column"].getSelf()
-    L2Column = net.regions["L2Column"].getSelf()
-    TMColumn = net.regions["TMColumn"].getSelf()
+    externalInput = net.regions["externalInput_0"].getSelf()
+    sensorInput = net.regions["sensorInput_0"].getSelf()
+    L4Column = net.regions["L4Column_0"].getSelf()
+    L2Column = net.regions["L2Column_0"].getSelf()
+    TMColumn = net.regions["TMColumn_0"].getSelf()
 
     # create a feature and location pool
     features = [self.generatePattern(1024, 20) for _ in xrange(5)]

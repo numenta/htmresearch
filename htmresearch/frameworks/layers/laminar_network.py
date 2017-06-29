@@ -65,7 +65,7 @@ def createNetwork(networkConfig):
   elif networkConfig["networkType"] == "L2456Columns":
     return createL2456Columns(network, networkConfig)
   elif networkConfig["networkType"] == "L4L2TMColumn":
-    return createL4L2TMColumn(network, networkConfig)
+    return createL4L2TMColumn(network, networkConfig, "_0")
 
 
 
