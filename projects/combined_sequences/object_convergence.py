@@ -21,7 +21,6 @@
 """
 This file plots the convergence of L4-L2 as you increase the number of columns,
 or adjust the confusion between objects.
-
 """
 
 import random
@@ -40,6 +39,7 @@ from htmresearch.frameworks.layers.combined_sequence_experiment import (
 from htmresearch.frameworks.layers.object_machine_factory import (
   createObjectMachine
 )
+
 
 def locateConvergencePoint(stats, minOverlap, maxOverlap):
   """
@@ -93,43 +93,6 @@ def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
     convergenceSum += ceil(float(convergencePoint)/settlingTime)
 
   return convergenceSum/len(inferenceStats)
-
-
-def objectConfusion(objects):
-  """
-  For debugging, print overlap between each pair of objects.
-  """
-  sumCommonLocations = 0
-  sumCommonFeatures = 0
-  sumCommonPairs = 0
-  numObjects = 0
-  commonPairHistogram = numpy.zeros(len(objects[0]), dtype=numpy.int32)
-  for o1,s1 in objects.iteritems():
-    for o2,s2 in objects.iteritems():
-      if o1 != o2:
-        # Count number of common locations id's and common feature id's
-        commonLocations = 0
-        commonFeatures = 0
-        for pair1 in s1:
-          for pair2 in s2:
-            if pair1[0] == pair2[0]: commonLocations += 1
-            if pair1[1] == pair2[1]: commonFeatures += 1
-
-        # print "Confusion",o1,o2,", common pairs=",len(set(s1)&set(s2)),
-        # print ", common locations=",commonLocations,"common features=",commonFeatures
-
-        assert(len(set(s1)&set(s2)) != len(s1) ), "Two objects are identical!"
-
-        sumCommonPairs += len(set(s1)&set(s2))
-        sumCommonLocations += commonLocations
-        sumCommonFeatures += commonFeatures
-        commonPairHistogram[len(set(s1)&set(s2))] += 1
-        numObjects += 1
-
-  print "Average common pairs=", sumCommonPairs / float(numObjects),
-  print ", locations=",sumCommonLocations / float(numObjects),
-  print ", features=",sumCommonFeatures / float(numObjects)
-  print "Common pair histogram=",commonPairHistogram
 
 
 def runExperiment(args):
@@ -205,7 +168,10 @@ def runExperiment(args):
                                       numLocations=numLocations,
                                       numFeatures=numFeatures)
 
-  objectConfusion(objects.getObjects())
+  r = objects.objectConfusion()
+  print "Average common pairs=", r[0],
+  print ", locations=",r[1],
+  print ", features=",r[2]
 
   # print "Total number of objects created:",len(objects.getObjects())
   # print "Objects are:"
@@ -396,9 +362,6 @@ def runExperimentPool(numObjects,
     result = []
     for arg in args:
       result.append(runExperiment(arg))
-
-  # print "Full results:"
-  # pprint.pprint(result, width=150)
 
   # Pickle results for later use
   with open(resultsName,"wb") as f:
