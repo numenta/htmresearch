@@ -20,7 +20,8 @@
 # ----------------------------------------------------------------------
 
 from abc import ABCMeta, abstractmethod
-
+import copy
+import random
 
 
 class ObjectMachineBase(object):
@@ -124,6 +125,23 @@ class ObjectMachineBase(object):
     Adds an object to the Machine. The arguments are specific to each
     implementation.
     """
+
+
+  @staticmethod
+  def randomTraversal(sensations, numTraversals):
+    """
+    Given a list of sensations, return the SDRs that would be obtained by
+    numTraversals random traversals of that set of sensations.
+
+    Each sensation is a dict mapping cortical column index to a pair of SDR's
+    (one location and one feature).
+    """
+    newSensations = []
+    for _ in range(numTraversals):
+      s = copy.deepcopy(sensations)
+      random.shuffle(s)
+      newSensations += s
+    return newSensations
 
 
   def getObjects(self):

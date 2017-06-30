@@ -26,9 +26,7 @@ or adjust the confusion between objects.
 
 import random
 import os
-import copy
 from math import ceil
-import pprint
 import numpy
 import cPickle
 from multiprocessing import Pool, cpu_count
@@ -95,19 +93,6 @@ def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
     convergenceSum += ceil(float(convergencePoint)/settlingTime)
 
   return convergenceSum/len(inferenceStats)
-
-
-def randomObjectTraversal(objectSDRs, numTraversals):
-  """
-  Given all the (location,feature) SDRs for an object, return the SDRs that
-  would be obtained by numTraversals random traversals of that object.
-  """
-  sdrs = []
-  for _ in range(numTraversals):
-    s = copy.deepcopy(objectSDRs)
-    random.shuffle(s)
-    sdrs += s
-  return sdrs
 
 
 def objectConfusion(objects):
@@ -250,8 +235,8 @@ def runExperiment(args):
   objectsToLearn = objects.provideObjectsToLearn()
   objectTraversals = {}
   for objectId in objectsToLearn:
-    objectTraversals[objectId] = randomObjectTraversal(objectsToLearn[objectId],
-                                                       settlingTime)
+    objectTraversals[objectId] = objects.randomTraversal(
+      objectsToLearn[objectId], settlingTime)
 
   # Train the network on all the SDRs for all the objects
   exp.learnObjects(objectTraversals)
@@ -510,7 +495,7 @@ def plotPredictionsByObject(results, objectRange, featureRange, numTrials):
              color=colorList[i])
 
   # format
-  plt.legend(legendList, loc="lower right", prop={'size':10})
+  plt.legend(legendList, loc="center right", prop={'size':10})
   plt.xlabel("Number of objects in training set")
   plt.xticks(range(0,max(objectRange)+1,10))
   plt.yticks(range(0,int(predictions.max())+2,10))
@@ -525,7 +510,7 @@ if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
-  if False:
+  if True:
     results = runExperiment(
                   {
                     "numObjects": 10,
@@ -546,7 +531,7 @@ if __name__ == "__main__":
   # Here we want to see how the number of objects affects convergence for a
   # single column.
   # This experiment is run using a process pool
-  if True:
+  if False:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1]
