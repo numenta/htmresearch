@@ -25,7 +25,9 @@ import random
 import os
 import numpy as np
 import pprint
-from htmresearch.support.logging_decorator import LoggingDecorator
+import matplotlib.pyplot as plt
+from sklearn import manifold, random_projection
+
 from htmresearch.frameworks.layers.l2_l4_inference import (
   L4L2Experiment, rerunExperimentFromLogfile)
 
@@ -33,7 +35,55 @@ from htmresearch.frameworks.layers.object_machine_factory import (
   createObjectMachine
 )
 
-def loadThingObjects(numCorticalColumns=1):
+
+def getL4Params():
+  """
+  Returns a good default set of parameters to use in the L4 region.
+  """
+  return {
+    "columnCount": 256,
+    "cellsPerColumn": 16,
+    "learn": True,
+    "learnOnOneCell": False,
+    "initialPermanence": 0.51,
+    "connectedPermanence": 0.6,
+    "permanenceIncrement": 0.1,
+    "permanenceDecrement": 0.02,
+    "minThreshold": 19,
+    "predictedSegmentDecrement": 0.0,
+    "activationThreshold": 19,
+    "sampleSize": 30,
+    "implementation": "etm",
+  }
+
+
+
+def getL2Params():
+  """
+  Returns a good default set of parameters to use in the L4 region.
+  """
+  return {
+    "inputWidth": 2048 * 16,
+    "cellCount": 4096,
+    "sdrSize": 40,
+    "synPermProximalInc": 0.5,
+    "synPermProximalDec": 0.0,
+    "initialProximalPermanence": 0.6,
+    "minThresholdProximal": 6,
+    "sampleSizeProximal": 10,
+    "connectedPermanenceProximal": 0.5,
+    "synPermDistalInc": 0.1,
+    "synPermDistalDec": 0.001,
+    "initialDistalPermanence": 0.41,
+    "activationThresholdDistal": 13,
+    "sampleSizeDistal": 30,
+    "connectedPermanenceDistal": 0.5,
+    "distalSegmentInhibitionFactor": 1.001,
+    "learningMode": True,
+  }
+
+
+def loadThingObjects(numCorticalColumns=1, objDataPath='./data/'):
   """
   Load simulated sensation data on a number of different objects
   There is one file per object, each row contains one feature, location pairs
@@ -59,13 +109,16 @@ def loadThingObjects(numCorticalColumns=1):
     objects.locations.append([])
     objects.features.append([])
 
-  objDataPath = 'data/'
-  objFiles = [f for f in os.listdir(objDataPath)
-               if os.path.isfile(os.path.join(objDataPath, f))]
+  objFiles = []
+  for f in os.listdir(objDataPath):
+    if os.path.isfile(os.path.join(objDataPath, f)):
+      if '.log' in f:
+        objFiles.append(f)
 
   idx = 0
   for f in objFiles:
     objName = f.split('.')[0]
+    objName = objName[4:]
     objFile = open('{}/{}'.format(objDataPath, f))
 
     sensationList = []
@@ -84,26 +137,39 @@ def loadThingObjects(numCorticalColumns=1):
         objects.features[c].append(set(feature.tolist()))
       idx += 1
     objects.addObject(sensationList, objName)
+    print "load object file: {} object name: {} sensation # {}".format(
+      f, objName, len(sensationList))
   return objects
 
 
 
-def trainNetwork(objects, numColumns):
+def trainNetwork(objects, numColumns, l4Params, l2Params, verbose=False):
+  objectNames = objects.objects.keys()
+  numObjects = len(objectNames)
+
+  print " Training sensorimotor network ..."
   exp = L4L2Experiment("shared_features",
+                       L2Overrides=l2Params,
+                       L4Overrides=l4Params,
                        numCorticalColumns=numColumns)
   exp.learnObjects(objects.provideObjectsToLearn())
 
   settlingTime = 3
   L2Representations = exp.objectL2Representations
-  print "Learned object representations:"
-  pprint.pprint(L2Representations, width=400)
-  print "=========================="
+  if verbose:
+    print "Learned object representations:"
+    pprint.pprint(L2Representations, width=400)
+    print "=========================="
 
   # For inference, we will check and plot convergence for each object. For each
   # object, we create a sequence of random sensations for each column.  We will
   # present each sensation for settlingTime time steps to let it settle and
   # ensure it converges.
-  for objectId in objects:
+
+  overlapMat = np.zeros((numObjects, numObjects))
+  numL2ActiveCells= np.zeros((numObjects, ))
+  for objectIdx in range(numObjects):
+    objectId = objectNames[objectIdx]
     obj = objects[objectId]
 
     objectSensations = {}
@@ -145,21 +211,133 @@ def trainNetwork(objects, numColumns):
 
     inferenceSDRs = objects.provideObjectToInfer(inferConfig)
     exp.infer(inferenceSDRs, objectName=objectId, reset=False)
-    print "Output for {}: {}".format(objectId, exp.getL2Representations())
-    for i in range(len(objects)):
-      print "Intersection with {}:{}".format(
-        objectId,
-        len(exp.getL2Representations()[0] &
-            L2Representations[objects.objects.keys()[i]][0]))
+
+    for c in range(numColumns):
+      numL2ActiveCells[objectIdx] += len(exp.getL2Representations()[c])
+
+    if verbose:
+      print "Output for {}: {}".format(objectId, exp.getL2Representations())
+      print "# L2 active cells {}: ".format(numL2ActiveCells[objectIdx])
+
+
+    for i in range(numObjects):
+      overlapMat[objectIdx, i] = len(exp.getL2Representations()[0] &
+            L2Representations[objects.objects.keys()[i]][0])
+      if verbose:
+        print "Intersection with {}:{}".format(
+          objectNames[i], overlapMat[objectIdx, i])
+
     exp.sendReset()
 
+  expResult = {'overlapMat': overlapMat,
+               'numL2ActiveCells': numL2ActiveCells}
+  return expResult
+
+
+
+def computeAccuracy(expResult, objects):
+  objectNames = objects.objects.keys()
+  overlapMat = expResult['overlapMat']
+  numL2ActiveCells = expResult['numL2ActiveCells']
+  numCorrect = 0
+  numObjects = overlapMat.shape[0]
+  numFound = 0
+
+  percentOverlap = np.zeros(overlapMat.shape)
+  for i in range(numObjects):
+    for j in range(i, numObjects):
+      percentOverlap[i, j] = overlapMat[i, j] # / np.min([numL2ActiveCells[i], numL2ActiveCells[j]])
+
+  objectNames = np.array(objectNames)
+  for i in range(numObjects):
+    # idx = np.where(overlapMat[i, :]>confuseThresh)[0]
+    idx = np.where(percentOverlap[i, :] == np.max(percentOverlap[i, :]))[0]
+    print " {}, # sensations {}, best match is {}".format(
+      objectNames[i], len(objects[objectNames[i]]), objectNames[idx])
+
+    found = len(np.where(idx == i)[0]) > 0
+    numFound += found
+    if not found:
+      print "<=========== {} was not detected ! ===========>".format(objectNames[i])
+    if len(idx) > 1:
+      continue
+
+    if idx[0] == i:
+      numCorrect += 1
+
+  accuracy = float(numCorrect)/numObjects
+  numPerfect = len(np.where(numL2ActiveCells<=40)[0])
+  print "accuracy: {} ({}/{}) ".format(accuracy, numCorrect, numObjects)
+  print "perfect retrival ratio: {} ({}/{}) ".format(
+    float(numPerfect)/numObjects, numPerfect, numObjects)
+  print "Object detection ratio {}/{} ".format(numFound, numObjects)
+  return accuracy
+
+
+def runExperimentAccuracyVsL4Thresh():
+  accuracyVsThresh = []
+  threshList = np.arange(13, 20)
+  for thresh in threshList:
+    numColumns = 1
+    l2Params = getL2Params()
+    l4Params = getL4Params()
+
+    l4Params['minThreshold'] = thresh
+    l4Params['activationThreshold'] = thresh
+
+    objects = loadThingObjects(1, './data')
+    expResult = trainNetwork(objects, numColumns, l4Params, l2Params, True)
+
+    accuracy = computeAccuracy(expResult, objects)
+    accuracyVsThresh.append(accuracy)
+
+  plt.figure()
+  plt.plot(threshList, accuracyVsThresh, '-o')
+  plt.xlabel('L4 distal Threshold')
+  plt.ylabel('Classification Accuracy')
+  plt.savefig('accuracyVsL4Thresh.pdf')
+  return threshList, accuracyVsThresh
 
 
 if __name__ == "__main__":
+
+  # uncomment to plot accuracy as a function of L4 threshold
+  # threshList, accuracyVsThresh = runExperimentAccuracyVsL4Thresh()
+
   numColumns = 1
-  objects = loadThingObjects(numColumns)
+  l2Params = getL2Params()
+  l4Params = getL4Params()
 
-  trainNetwork(objects, numColumns)
+  objects = loadThingObjects(numColumns, './data')
 
+  expResult = trainNetwork(objects, numColumns, l4Params, l2Params, True)
 
+  accuracy = computeAccuracy(expResult, objects)
+
+  objectNames = objects.objects.keys()
+  numObjects = len(objectNames)
+
+  distanceMat = expResult['overlapMat']
+  numL2ActiveCells = expResult['numL2ActiveCells']
+
+  # plot pairwise overlap
+  plt.figure()
+  plt.imshow(expResult['overlapMat'])
+  plt.xticks(range(numObjects), objectNames, rotation='vertical', fontsize=5)
+  plt.yticks(range(numObjects), objectNames, fontsize=5)
+  plt.title('pairwise overlap')
+  plt.tight_layout()
+  plt.savefig('overlap_matrix.pdf')
+
+  # plot number of active cells for each object
+  plt.figure()
+  objectNamesSort = []
+  idx = np.argsort(expResult['numL2ActiveCells'])
+  for i in idx:
+    objectNamesSort.append(objectNames[i])
+  plt.plot(numL2ActiveCells[idx])
+  plt.xticks(range(numObjects), objectNamesSort, rotation='vertical', fontsize=5)
+  plt.tight_layout()
+  plt.ylabel('Number of active L2 cells')
+  plt.savefig('number_of_active_l2_cells.pdf')
 
