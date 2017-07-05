@@ -57,45 +57,75 @@ def get_pattern_correlations(data):
   correlations = numpy.nan_to_num(correlations)
   pattern_correlations = []
   for pattern in patterns:
-    pattern_correlations.append([correlations[i, j] for i in pattern for j in pattern if i != j])
+    pattern_correlations.append([correlations[i, j]
+        for i in pattern for j in pattern if i != j])
   return numpy.mean(pattern_correlations)
 
-def generate_correlated_data_clusters(dim = 2000, num_active = 40, num_samples = 1000, num_cells_per_cluster_size = [2000]*8, cluster_sizes = range(2, 10)):
+def generate_correlated_data(dim = 2000,
+                             num_active = 40,
+                             num_samples = 1000,
+                             num_cells_per_cluster_size = [2000]*8,
+                             cluster_sizes = range(2, 10)):
   """
   Generates a set of data drawn from a uniform distribution, but with bits
   clustered to force correlation between neurons.  Clusters are randomly chosen
   to form an activation pattern, in such a way as to maintain sparsity.
+
+  The number of clusters of each size is defined by num_cells_per_cluster_size,
+  as cluster_size*num_clusters = num_cells. This parameter can be thought of as
+  indicating how thoroughly the clusters "cover" the space. Typical values are
+  1-3 times the total dimension.  These are specificied independently for each
+  cluster size, to allow for more variation.
   """
+
+  # Chooses clusters to
   clusters = []
   cells = set(range(dim))
+
+  # Associate cluster sizes with how many cells they should have, then generate
+  # clusters.
   for size, num_cells in zip(cluster_sizes, num_cells_per_cluster_size):
+
+    # Must have (num_cells/size) clusters in order to have num_cells cells
+    # across all clusters with this size.
     for i in range(int(1.*num_cells/size)):
       cluster = tuple(numpy.random.choice(dim, size, replace = False))
       clusters.append(cluster)
 
-  indices = []
+  # Now generate a list of num_samples SDRs
+  datapoints = []
   for sample in range(num_samples):
+
+    # This conditional is necessary in the case that very, very few clusters are
+    # created, as otherwise numpy.random.choice can attempt to choose more
+    # clusters than is possible.  Typically this case will not occur, but it is
+    # possible if we are attempting to generate extremely correlated data.
     if len(clusters) > num_active/2:
-      chosen_clusters = numpy.random.choice(len(clusters), num_active/2, replace = False)
+      chosen_clusters = numpy.random.choice(len(clusters),
+          num_active/2, replace = False)
       current_clusters = [clusters[i] for i in chosen_clusters]
     else:
       current_clusters = clusters
+
+    # Pick clusters until doing so would exceed our target num_active.
     current_cells = set()
     for cluster in current_clusters:
       if len(current_cells) + len(cluster) < num_active:
         current_cells |= set(cluster)
       else:
         break
+
+    # Add random cells to the SDR if we still don't have enough active.
     if len(current_cells) < num_active:
       possible_cells = cells - current_cells
-      new_cells = numpy.random.choice(tuple(possible_cells), num_active - len(current_cells), replace = False)
+      new_cells = numpy.random.choice(tuple(possible_cells),
+          num_active - len(current_cells), replace = False)
       current_cells |= set(new_cells)
-    indices.append(list(current_cells))
-
+    datapoints.append(list(current_cells))
 
   data = SM32()
   data.reshape(num_samples, dim)
-  for sample, datapoint in enumerate(indices):
+  for sample, datapoint in enumerate(datapoints):
     for i in datapoint:
       data[sample, i] = 1.
   return data
@@ -153,24 +183,30 @@ def split_sparse_matrix(matrix, num_categories):
   categories are considered to be an empty sparse matrix.
   """
   if matrix.nRows() < num_categories:
-    return [matrix.getSlice(i, i+1, 0, matrix.nCols()) for i in range(matrix.nRows())] + [SM32() for i in range(num_categories - matrix.nRows())]
+    return [matrix.getSlice(i, i+1, 0, matrix.nCols())
+        for i in range(matrix.nRows())] + [SM32()
+        for i in range(num_categories - matrix.nRows())]
   else:
     inc = matrix.nRows()/num_categories
-    divisions = [matrix.getSlice(i*inc, (i+1)*inc, 0, matrix.nCols()) for i in range(num_categories - 1)]
+    divisions = [matrix.getSlice(i*inc, (i+1)*inc, 0, matrix.nCols())
+        for i in range(num_categories - 1)]
 
     # Handle the last bin separately.  All overflow goes into it.
-    divisions.append(matrix.getSlice((num_categories - 1)*inc, matrix.nRows(), 0, matrix.nCols()))
+    divisions.append(matrix.getSlice((num_categories - 1)*inc, matrix.nRows(),
+        0, matrix.nCols()))
 
     return divisions
 
-def generate_evenly_distributed_data_sparse(dim = 2000, num_active = 40, num_samples = 1000):
+def generate_evenly_distributed_data_sparse(dim = 2000,
+                                            num_active = 40,
+                                            num_samples = 1000):
   """
-  Generates a set of data drawn from a uniform distribution.  The binning structure from Poirazi & Mel is
-  ignored, and all (dim choose num_active) arrangements are possible.  num_negatives samples are put into
-  a separate negatives category for output compatibility with generate_data, but are otherwise identical.
-
+  Generates a set of data drawn from a uniform distribution.  The binning
+  structure from Poirazi & Mel is ignored, and all (dim choose num_active)
+  arrangements are possible.
   """
-  indices = [numpy.random.choice(dim, size = num_active, replace = False) for i in range(num_samples)]
+  indices = [numpy.random.choice(dim, size = num_active, replace = False)
+      for i in range(num_samples)]
   data = SM32()
   data.reshape(num_samples, dim)
   for sample, datapoint in enumerate(indices):
@@ -180,15 +216,20 @@ def generate_evenly_distributed_data_sparse(dim = 2000, num_active = 40, num_sam
   return data
 
 
-def generate_evenly_distributed_data(dim = 2000, num_active = 40, num_samples = 1000, num_negatives = 500):
+def generate_evenly_distributed_data(dim = 2000,
+                                     num_active = 40,
+                                     num_samples = 1000,
+                                     num_negatives = 500):
   """
-  Generates a set of data drawn from a uniform distribution.  The binning structure from Poirazi & Mel is
-  ignored, and all (dim choose num_active) arrangements are possible.  num_negatives samples are put into
-  a separate negatives category for output compatibility with generate_data, but are otherwise identical.
-
+  Generates a set of data drawn from a uniform distribution.  The binning
+  structure from Poirazi & Mel is ignored, and all (dim choose num_active)
+  arrangements are possible. num_negatives samples are put into a separate
+  negatives category for output compatibility with generate_data, but are
+  otherwise identical.
   """
 
-  sparse_data = [numpy.random.choice(dim, size = num_active, replace = False) for i in range(num_samples)]
+  sparse_data = [numpy.random.choice(dim, size = num_active, replace = False)
+      for i in range(num_samples)]
   data = [[0 for i in range(dim)] for i in range(num_samples)]
   for datapoint, sparse_datapoint in zip(data, sparse_data):
     for i in sparse_datapoint:
@@ -202,14 +243,13 @@ def generate_data(dim = 40, num_samples = 30000, num_bins = 10, sparse = False):
   """
   Generates data following appendix V of (Poirazi & Mel, 2001).
   Positive and negative examples are drawn from the same distribution, but
-  are multiplied by different square matrices, one of them uniform on [-1, 1] and one
-  the sum of a uniform matrix and a normal one.  It is assumed that half
+  are multiplied by different square matrices, one of them uniform on [-1, 1
+  and one the sum of a uniform matrix and a normal one.  It is assumed that half
   the samples are negative in this case.
 
   Initially samples of dimension dim are produced, with values in each
   dimension being floats, but they are binned into discrete categories, with
   num_bins bins per dimension.  This binning produces an SDR.
-
   """
 
   positives, negatives = [], []
@@ -240,7 +280,6 @@ def generate_phase_1(dim = 40):
   The first step in creating datapoints in the Poirazi & Mel model.
   This returns a vector of dimension dim, with the last four values set to
   1 and the rest drawn from a normal distribution.
-
   """
   phase_1 = numpy.random.normal(0, 1, dim)
   for i in range(dim - 4, dim):
@@ -267,7 +306,6 @@ def generate_matrices(dim = 40):
   distribution, with elements in [-1, 1].  The matrix for negative examples
   is the sum of the positive matrix with a matrix drawn from a normal
   distribution with mean 0 variance 1.
-
   """
   positive = numpy.random.uniform(-1, 1, (dim, dim))
   negative = positive + numpy.random.normal(0, 1, (dim, dim))
@@ -283,7 +321,8 @@ def generate_RF_bins(data, dim = 40, num_bins = 10):
   for i in range(dim):
     current_dim_data = [data[x][i] for x in range(len(data))]
     current_dim_data = numpy.sort(current_dim_data)
-    intervals.append([current_dim_data[int(len(current_dim_data)*x/num_bins)] for x in range(1, num_bins)])
+    intervals.append([current_dim_data[int(len(current_dim_data)*x/num_bins)]
+        for x in range(1, num_bins)])
   return intervals
 
 def bin_number(datapoint, intervals):
@@ -300,10 +339,10 @@ def bin_data(data, dim = 40, num_bins = 10):
   """
   Fully bins the data generated by generate_data, using generate_RF_bins and
   bin_number.
-
   """
   intervals = generate_RF_bins(data, dim, num_bins)
-  binned_data = [numpy.concatenate([bin_number(data[x][i], intervals[i]) for i in range(len(data[x]))]) for x in range(len(data))]
+  binned_data = [numpy.concatenate([bin_number(data[x][i], intervals[i])
+      for i in range(len(data[x]))]) for x in range(len(data))]
   return binned_data
 
 if __name__ == "__main__":
@@ -312,7 +351,16 @@ if __name__ == "__main__":
   statistics.  This is only meant for testing; ordinarily, experiments using
   tools in this class will generate fresh data directly for each trial.
   """
-  data = generate_correlated_data_clusters(num_active = 32, num_samples = 100000)
+  data = generate_evenly_distributed_data_sparse(dim = 2000,
+                                                 num_active = 32,
+                                                 num_samples = 100000)
+  data2 = data.toDense()
+  correlations = numpy.corrcoef(data2, rowvar = False)
+  corrs = []
+  for i in xrange(2000):
+    for j in xrange(i - 1):
+      corrs.append(correlations[i, j])
+  print numpy.mean(corrs)
   print get_pattern_correlations(data)
   print get_biased_correlations(data, threshold = 10)
   print get_biased_correlations(data, threshold = 25)

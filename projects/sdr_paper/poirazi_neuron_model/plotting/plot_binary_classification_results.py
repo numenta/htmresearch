@@ -63,7 +63,21 @@ experimentalErrorsA128_poirazi_mel = [959346./2000000,
 0./1000000,
 0./1000000]
 
-
+theoreticalErrorsA128_poirazi_mel = [
+0.494226497771251,
+0.336545078358176,
+0.0315172776289802,
+0.000859480824533425,
+5.91397325008749e-5,
+6.28687094584633e-6,
+9.04180821116889e-7,
+1.63365078351691e-7,
+3.53297912640814e-8,
+8.83820357552451e-9,
+2.49387153179035e-9,
+7.78644583624855e-10,
+2.65012553737229e-10,
+9.71628116464715e-11]
 
 theoreticalErrorsA128 = [0.292078213737764, 0.00736788303358289,
 0.000320106080889471, 2.50255519815378e-5, 2.99642102590114e-6,
@@ -94,7 +108,21 @@ experimentalErrorsA256_poirazi_mel = [1001193./2000000,
 0./1000000]
 
 
-
+theoreticalErrorsA256_poirazi_mel = [
+0.5,
+0.4903216662115622223336346073497079738271785250717125504215169949497802961343463923702215397563900091,
+0.4660429024933562534895097402598522846282126783595503338575726881695410521741996601935625958422687864,
+0.375845600482030,
+0.215470686208248,
+0.0442820703447854,
+0.00511885431084768,
+0.000664466647232933,
+0.000117038891696029,
+2.69196723399564e-5,
+7.48278777837437e-6,
+2.37417598572450e-6,
+8.30763693093642e-7,
+3.14063787448385e-7]
 
 theoreticalErrorsA256 = [ 0.999997973443107, 0.629372754740777,
 0.121087724790945, 0.0193597645959856, 0.00350549721741729,
@@ -182,6 +210,19 @@ trace4 = Scatter(
     ),
     name="a=128 (predicted)"
 )
+trace4_poirazi_mel = Scatter(
+    y=theoreticalErrorsA128_poirazi_mel,
+    x=listofNValues[0:9],
+    mode="lines",
+    line=Line(
+        color='rgb(0, 0, 0)',
+        width=2,
+        dash='dot',
+        shape='spline',
+    ),
+    name="a=128 (predicted)"
+)
+
 
 trace5 = Scatter(
     y=experimentalErrorsA256,
@@ -220,7 +261,20 @@ trace6 = Scatter(
     name="a=256 (predicted)"
 )
 
-data = Data([trace1, trace1_poirazi_mel, trace2, trace3, trace3_poirazi_mel, trace4, trace5, trace5_poirazi_mel, trace6])
+trace6_poirazi_mel = Scatter(
+    y=theoreticalErrorsA256_poirazi_mel,
+    x=listofNValues,
+    mode="lines",
+    line=Line(
+        color='rgb(0, 0, 0)',
+        width=2,
+        dash='dot',
+        shape='spline',
+    ),
+    name="a=256 (predicted)"
+)
+
+data = Data([trace1, trace1_poirazi_mel, trace2, trace3, trace3_poirazi_mel, trace4, trace4_poirazi_mel, trace5, trace5_poirazi_mel, trace6, trace6_poirazi_mel])
 
 layout = Layout(
     title='',
