@@ -53,7 +53,7 @@ class ColumnPooler(object):
                sampleSizeDistal=20,
                activationThresholdDistal=13,
                connectedPermanenceDistal=0.50,
-               distalSegmentInhibitionFactor=0.999,  #Should be <1
+               distalSegmentInhibitionFactor=0.999,
                inertiaFactor=.5,
 
                seed=42):
@@ -109,8 +109,8 @@ class ColumnPooler(object):
             Permanence required for a distal synapse to be connected
 
     @param  distalSegmentInhibitionFactor (float)
-            Cells with N active lateral segements inhibit all cells with less
-            than distalSegmentInhibitionFactor * N active segments (must be <1).
+            The proportion of the highest number of active lateral segments
+            necessary for a cell not to be inhibited (must be <1).
 
     @param  inertiaFactor (float)
             The proportion of previously active cells that remain
@@ -319,73 +319,6 @@ class ColumnPooler(object):
 
     chosenCells.sort()
     self.activeCells = numpy.asarray(chosenCells, dtype="uint32")
-
-
-  # chooseCells is not used in the current version, but preserved here.
-  def _chooseCells(self, candidates, n, numActiveSegmentsByCell):
-    """
-    Choose cells to activate, using their active segment counts to determine
-    inhibition.
-
-    Count backwards through the active segment counts. For each count, find all
-    of the cells that this count is unable to inhibit. Activate these cells.
-    If there aren't at least n active cells, repeat with the next lowest
-    segment count.
-
-    Parameters:
-    ----------------------------
-    @param  candidates (sequence)
-            List of cells to consider activating
-
-    @param  n (int)
-            Minimum number of cells to activate, if possible
-
-    @param  numActiveSegmentsByCell (associative)
-            A mapping from cells to number of active segments.
-            This can be any data structure that associates an index with a
-            value. (list, dict, numpy array)
-
-    @return (list) Cells to activate
-    """
-
-    if n <= 0:
-      return numpy.empty(0)
-
-    # Keep a list of numpy arrays.
-    allChosenCells = []
-    numChosen = 0
-
-    # Walk the active segment counts in decreasing order.
-    activeSegmentCounts = numpy.unique(
-      numActiveSegmentsByCell[candidates])[::-1]
-
-    for activeSegmentCount in activeSegmentCounts:
-
-      if activeSegmentCount == 0:
-        allChosenCells.append(candidates)
-        numChosen += candidates.size
-        break
-      else:
-        # Activate all cells that are not inhibited by this segment count.
-        # A cell is inhibited if another cell has at least
-        # 'distalSegmentInhibitionFactor' times as many active segments.
-        boundary = float(activeSegmentCount) / self.distalSegmentInhibitionFactor
-
-        includeMask = numActiveSegmentsByCell[candidates] > boundary
-        chosenCells = candidates[includeMask]
-
-        numChosen += chosenCells.size
-        allChosenCells.append(chosenCells)
-
-        if numChosen >= n:
-          break
-        else:
-          candidates = candidates[~includeMask]
-
-    if len(allChosenCells) > 0:
-      return numpy.concatenate(allChosenCells)
-    else:
-      return numpy.empty(0)
 
 
   def numberOfInputs(self):

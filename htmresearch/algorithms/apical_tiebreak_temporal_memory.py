@@ -986,6 +986,7 @@ class ApicalTiebreakTemporalMemory(object):
     """
     return self.useApicalTiebreak
 
+
   def setUseApicalTiebreak(self, useApicalTiebreak):
     """
     Sets whether we actually use apical tie-break.
@@ -1000,6 +1001,7 @@ class ApicalTiebreakTemporalMemory(object):
     @return (Bool) Whether apical modulation is used.
     """
     return self.useApicalModulationBasalThreshold
+
 
   def setUseApicalModulationBasalThreshold(self, useApicalModulationBasalThreshold):
     """
