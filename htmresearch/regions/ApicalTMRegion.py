@@ -187,6 +187,15 @@ class ApicalTMRegion(PyRegion):
           "count": 1,
           "constraints": ""
         },
+        "reducedBasalThreshold": {
+          "description": ("Activation threshold of basal segments for cells "
+                          "with active apical segments (with apicalTiebreak "
+                          "implementation). "),
+          "accessMode": "Read",
+          "dataType": "UInt32",
+          "count": 1,
+          "constraints": ""
+        },
         "initialPermanence": {
           "description": "Initial permanence of a new synapse.",
           "accessMode": "Read",
@@ -287,6 +296,7 @@ class ApicalTMRegion(PyRegion):
                initialPermanence=0.21,
                connectedPermanence=0.50,
                minThreshold=10,
+               reducedBasalThreshold=13, # Only used for apicalTiebreak implementation
                sampleSize=20,
                permanenceIncrement=0.10,
                permanenceDecrement=0.10,
@@ -308,6 +318,7 @@ class ApicalTMRegion(PyRegion):
     # TM params
     self.cellsPerColumn = cellsPerColumn
     self.activationThreshold = activationThreshold
+    self.reducedBasalThreshold = reducedBasalThreshold
     self.initialPermanence = initialPermanence
     self.connectedPermanence = connectedPermanence
     self.minThreshold = minThreshold
@@ -356,6 +367,7 @@ class ApicalTMRegion(PyRegion):
       if self.implementation == "ApicalTiebreak":
         from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
           ApicalTiebreakTemporalMemory)
+        params["reducedBasalThreshold"] = self.reducedBasalThreshold
         self._tm = ApicalTiebreakTemporalMemory(**params)
       elif self.implementation == "ApicalDependent":
         from htmresearch.algorithms.apical_dependent_temporal_memory import (
