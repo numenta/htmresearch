@@ -282,9 +282,10 @@ class ColumnPooler(object):
       numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
 
     chosenCells = []
-    minNumActiveCells =  int(self.sdrSize * .75)
+    minNumActiveCells = int(self.sdrSize * .75)
 
-    numActiveSegsForFFSuppCells = numActiveSegmentsByCell[feedforwardSupportedCells]
+    numActiveSegsForFFSuppCells = numActiveSegmentsByCell[
+        feedforwardSupportedCells]
 
     # First, activate the FF-supported cells that have the highest number of
     # lateral active segments (as long as it's not 0)
@@ -307,16 +308,34 @@ class ColumnPooler(object):
     if len(chosenCells) < minNumActiveCells:
       remFFcells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
       # Note that this is all the remaining FF-supported cells!
-      chosenCells = numpy.append(chosenCells,remFFcells)
+      chosenCells = numpy.append(chosenCells, remFFcells)
       if self.useInertia:
         prevCells = numpy.setdiff1d(prevActiveCells, chosenCells)
-        numActiveSegsForPrevCells = numActiveSegmentsByCell[prevCells]
-        # We sort the previously-active cells by number of active lateral
-        # segments (this really helps)
-        prevCells = prevCells[numpy.argsort(numActiveSegsForPrevCells)[::-1]]
-        chosenCells = numpy.append(chosenCells,
-                prevCells[:int(len(prevCells) * self.inertiaFactor)] )
+        inertial_cap = int(len(prevCells) * self.inertiaFactor)
+        if inertial_cap > 0:
+          numActiveSegsForPrevCells = numActiveSegmentsByCell[prevCells]
+          # We sort the previously-active cells by number of active lateral
+          # segments (this really helps).  We then activate them in order of
+          # descending lateral activation.
+          sort_indices = numpy.argsort(numActiveSegsForPrevCells)[::-1]
+          prevCells = prevCells[sort_indices]
+          numActiveSegsForPrevCells = numActiveSegsForPrevCells[sort_indices]
 
+          # We use inertiaFactor to limit the number of previously-active cells
+          # which can become active, forcing decay even if we are below quota.
+          prevCells = prevCells[:inertial_cap]
+          numActiveSegsForPrevCells = numActiveSegsForPrevCells[:inertial_cap]
+
+          # Activate groups of previously active cells by their lateral support
+          # until we either meet quota or run out of cells.
+          print numActiveSegsForPrevCells
+          print prevCells
+          ttop = numpy.max(numActiveSegsForPrevCells)
+          while ttop > 0 and len(chosenCells) <= minNumActiveCells:
+            chosenCells = numpy.union1d(chosenCells,
+                        prevCells[numActiveSegsForPrevCells >
+                        self.distalSegmentInhibitionFactor * ttop])
+            ttop -= 1
     chosenCells.sort()
     self.activeCells = numpy.asarray(chosenCells, dtype="uint32")
 
