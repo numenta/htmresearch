@@ -306,9 +306,6 @@ class ColumnPooler(object):
     # If we still haven't filled the minNumActiveCells quorum, add in the
     # FF-supported cells with 0 lateral support AND the inertia cells.
     if len(chosenCells) < minNumActiveCells:
-      remFFcells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
-      # Note that this is all the remaining FF-supported cells!
-      chosenCells = numpy.append(chosenCells, remFFcells)
       if self.useInertia:
         prevCells = numpy.setdiff1d(prevActiveCells, chosenCells)
         inertial_cap = int(len(prevCells) * self.inertiaFactor)
@@ -328,14 +325,20 @@ class ColumnPooler(object):
 
           # Activate groups of previously active cells by their lateral support
           # until we either meet quota or run out of cells.
-          print numActiveSegsForPrevCells
-          print prevCells
+          #chosenCells = numpy.append(chosenCells, prevCells[:inertial_cap])
           ttop = numpy.max(numActiveSegsForPrevCells)
-          while ttop > 0 and len(chosenCells) <= minNumActiveCells:
+          while ttop >= 0 and len(chosenCells) <= minNumActiveCells:
             chosenCells = numpy.union1d(chosenCells,
                         prevCells[numActiveSegsForPrevCells >
                         self.distalSegmentInhibitionFactor * ttop])
             ttop -= 1
+
+      # Finally, add remaining cells with feedforward support
+      remFFcells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
+      # Note that this is 100% of the remaining FF-supported cells, there is no
+      # attempt to select only certain ones or limit how many come active.
+      chosenCells = numpy.append(chosenCells, remFFcells)
+
     chosenCells.sort()
     self.activeCells = numpy.asarray(chosenCells, dtype="uint32")
 
