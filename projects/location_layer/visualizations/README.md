@@ -13,9 +13,15 @@ npm install
 
 cd py/
 python setup.py develop --user
+
+cd ..
+npm run dev
 ~~~
 
-Now, in a Jupyter notebook, include:
+This final command watches for changes to .js files, and it also launches a
+webserver where you can use the various log viewers.
+
+If you want to use Jupyter notebook, include:
 
 ~~~python
 import htmresearchviz0.IPython_support as viz
