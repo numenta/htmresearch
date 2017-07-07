@@ -49,7 +49,7 @@ def getL4Params():
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
-    "permanenceDecrement": 0.02,
+    "permanenceDecrement": 0.01,
     "minThreshold": 19,
     "predictedSegmentDecrement": 0.0,
     "activationThreshold": 19,
@@ -70,8 +70,8 @@ def getL2Params():
     "synPermProximalInc": 0.5,
     "synPermProximalDec": 0.0,
     "initialProximalPermanence": 0.6,
-    "minThresholdProximal": 25,
-    "sampleSizeProximal": 30,
+    "minThresholdProximal": 9,
+    "sampleSizeProximal": 10,
     "connectedPermanenceProximal": 0.5,
     "synPermDistalInc": 0.1,
     "synPermDistalDec": 0.001,
@@ -387,8 +387,8 @@ if __name__ == "__main__":
   plt.figure()
   for sensationNumber in range(20):
     plt.imshow(overlapMat[:, :, sensationNumber])
-    plt.xticks(range(numObjects), objectNames, rotation='vertical', fontsize=5)
-    plt.yticks(range(numObjects), objectNames, fontsize=5)
+    plt.xticks(range(numObjects), objectNames, rotation='vertical', fontsize=4)
+    plt.yticks(range(numObjects), objectNames, fontsize=4)
     plt.title('pairwise overlap at step {}'.format(sensationNumber))
     plt.xlabel('target representation')
     plt.ylabel('inferred representation')
