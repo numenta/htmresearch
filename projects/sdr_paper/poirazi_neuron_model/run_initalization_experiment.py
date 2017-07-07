@@ -26,19 +26,21 @@ from htmresearch.frameworks.poirazi_neuron_model.neuron_model import (
 from htmresearch.frameworks.poirazi_neuron_model.neuron_model import Matrix_Neuron as Neuron
 from htmresearch.frameworks.poirazi_neuron_model.data_tools import (
   generate_data, generate_evenly_distributed_data_sparse, split_sparse_matrix)
-from sklearn.cluster import AgglomerativeClustering
+from sklearn.cluster import KMeans
+from multiprocessing import Pool, cpu_count
 from nupic.bindings.math import *
-numpy.random.seed(19)
+from collections import Counter
 
-def run_power_experiment(num_neurons = 10,
-                  dim = 40,
-                  num_bins = 10,
-                  num_samples = 10*600,
-                  neuron_size = 9600,
-                  num_dendrites = 600,
-                  dendrite_length = 16,
-                  test_powers = range(1, 11)
-                  ):
+def run_initialization_experiment(seed,
+                                  num_neurons = 50,
+                                  dim = 40,
+                                  num_bins = 10,
+                                  num_samples = 50*600,
+                                  neuron_size = 10000,
+                                  num_dendrites = 400,
+                                  dendrite_length = 25,
+                                  test_powers = range(10, 11)
+                                  ):
   """
   Runs an experiment testing classifying a binary dataset, based on Poirazi &
   Mel's original experiment.  Learning is using our modified variant of their
@@ -55,6 +57,7 @@ def run_power_experiment(num_neurons = 10,
   performance would converge with theirs given more time.
   """
 
+  numpy.random.seed(seed)
   for power in test_powers:
     print "Testing power:", power
     nonlinearity = power_nonlinearity(power)
@@ -66,7 +69,7 @@ def run_power_experiment(num_neurons = 10,
     if (pos.nRows() > num_dendrites*len(pos_neurons)):
       print "Too much data to have unique dendrites for positive neurons, clustering"
       pos = pos.toDense()
-      model = AgglomerativeClustering(n_clusters = len(pos_neurons), affinity = "manhattan", linkage = "average")
+      model = KMeans(n_clusters = len(pos_neurons), n_jobs=1)
       clusters = model.fit_predict(pos)
       neuron_data = [SM32() for i in range(len(pos_neurons))]
       for datapoint, cluster in zip(pos, clusters):
@@ -84,7 +87,7 @@ def run_power_experiment(num_neurons = 10,
     if (neg.nRows() > num_dendrites*len(neg_neurons)):
       print "Too much data to have unique dendrites for negative neurons, clustering"
       neg = neg.toDense()
-      model = AgglomerativeClustering(n_clusters = len(neg_neurons), affinity = "manhattan", linkage = "average")
+      model = KMeans(n_clusters = len(neg_neurons), n_jobs=1)
       clusters = model.fit_predict(neg)
       neuron_data = [SM32() for i in range(len(neg_neurons))]
       for datapoint, cluster in zip(neg, clusters):
@@ -107,11 +110,12 @@ def run_power_experiment(num_neurons = 10,
 
     error, fp, fn = get_error(data, labels, pos_neurons, neg_neurons)
     print "Error at initialization is {}, with {} false positives and {} false negatives".format(error, fp, fn)
-    with open("initialization_experiment.txt", "a") as f:
-      f.write(str(power) + ", " + str(error) + "\n")
+    #with open("initialization_experiment.txt", "a") as f:
+    #  f.write(str(power) + ", " + str(error) + "\n")
+    return error
 
 
-def get_error(data, labels, pos_neurons, neg_neurons = []):
+def get_error(data, labels, pos_neurons, neg_neurons = [], add_noise = True):
   """
   Calculates error, including number of false positives and false negatives.
 
@@ -127,13 +131,15 @@ def get_error(data, labels, pos_neurons, neg_neurons = []):
     classifications += neuron.calculate_on_entire_dataset(data)
   for neuron in neg_neurons:
     classifications -= neuron.calculate_on_entire_dataset(data)
+  if add_noise:
+    classifications += (numpy.random.rand() - 0.5)/1000
   classifications = numpy.sign(classifications)
   for classification, label in zip(classifications, labels):
     if classification > 0 and label > 0:
       num_correct += 1.0
     elif classification <= 0 and label <= 0:
       num_correct += 1.0
-    elif classification == 1. and label < 0:
+    elif classification > 0 and label <= 0:
       num_false_positives += 1
     else:
       num_false_negatives += 1
@@ -141,4 +147,6 @@ def get_error(data, labels, pos_neurons, neg_neurons = []):
 
 
 if __name__ == "__main__":
-  run_power_experiment()
+  p = Pool(cpu_count())
+  errors = p.map(run_initialization_experiment, [100+i for i in range(50)])
+  print numpy.mean(errors)
