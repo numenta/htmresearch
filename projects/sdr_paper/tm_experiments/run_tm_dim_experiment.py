@@ -96,6 +96,8 @@ def run_tm_dim_experiment(test_dims = range(300, 3100, 100),
             maxSynapsesPerSegment=maxSynapsesPerSegment,
             seed=seed)
 
+    tm.setMinThreshold(1000)
+
     datapoints = []
     canonical_active_cells = []
 
@@ -162,8 +164,8 @@ def exp_wrapper(params):
 if __name__ == "__main__":
   p = Pool(cpu_count())
   exp_params = []
-  for dim in range(300, 3100, 100):
-    for num_active in [64, 128, 256]:
+  for dim in reversed(range(300, 4100, 100)):
+    for num_active in [256, 128, 64]:
       exp_params.append({
         "test_dims": [dim],
         "num_active" : num_active,
