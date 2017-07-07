@@ -64,3 +64,33 @@ def printSingleLayer2DExperiment(csvText):
            csvText.replace("\r", "\\r").replace("\n", "\\n"))
 
     display(HTML(addChart))
+
+
+def printLocationModuleInference(logText):
+    elementId = str(uuid.uuid1())
+    addChart = """
+    <div class="htmresearchviz-output" id="%s"></div>
+    <script>
+    require(['htmresearchviz0'], function(htmresearchviz0) {
+      htmresearchviz0.locationModuleInference.printRecording(document.getElementById('%s'), '%s');
+    });
+    </script>
+    """ % (elementId, elementId,
+           logText.replace("\r", "\\r").replace("\n", "\\n"))
+
+    display(HTML(addChart))
+
+
+def printLocationModulesRecording(logText):
+    elementId = str(uuid.uuid1())
+    addChart = """
+    <div class="htmresearchviz-output" id="%s"></div>
+    <script>
+    require(['htmresearchviz0'], function(htmresearchviz0) {
+      htmresearchviz0.locationModules.printRecording(document.getElementById('%s'), '%s');
+    });
+    </script>
+    """ % (elementId, elementId,
+           logText.replace("\r", "\\r").replace("\n", "\\n"))
+
+    display(HTML(addChart))
