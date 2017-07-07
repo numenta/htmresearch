@@ -1456,135 +1456,13 @@ def runExperiment8(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
 
 
 
-<<<<<<< HEAD
-def runExperiment10(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
-                   resultDirName=DEFAULT_RESULT_DIR_NAME,
-=======
 def runExperiment9(resultDirName=DEFAULT_RESULT_DIR_NAME,
->>>>>>> upstream/master
                    plotDirName=DEFAULT_PLOT_DIR_NAME,
                    cpuCount=None):
   """
   runCapacityTestVaryingObjectNum()
-<<<<<<< HEAD
-  Try different L4 network size
-  """
-
-  numPointsPerObject = 10
-  numRpts = 1
-  l4Params = getL4Params()
-  l2Params = getL2Params()
-
-  l2Params['cellCount'] = 4096
-  l2Params['sdrSize'] = 40
-
-  expParams = []
-  expParams.append(
-    {'l4Column': 100, 'externalInputSize': 2400, 'w': 10, 'sample': 5,
-     'L2cellCount': 2000, 'L2activeBits': 20, 'thresh': 4})
-  expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 15, 'sample': 8,
-     'L2cellCount': 3000, 'L2activeBits': 30, 'thresh': 6})
-  expParams.append(
-    {'l4Column': 200, 'externalInputSize': 2400, 'w': 20, 'sample': 10,
-     'L2cellCount': 4000, 'L2activeBits': 40, 'thresh': 8})
-  expParams.append(
-    {'l4Column': 250, 'externalInputSize': 2400, 'w': 25, 'sample': 13,
-     'L2cellCount': 5000, 'L2activeBits': 50, 'thresh': 10})
-
-  for expParam in expParams:
-    l4Params["columnCount"] = expParam['l4Column']
-    numInputBits = expParam['w']
-
-    l4Params["activationThreshold"] = int(numInputBits * .6)
-    l4Params["minThreshold"] = int(numInputBits * .6)
-    l4Params["sampleSize"] = int(2 * l4Params["activationThreshold"])
-
-    l2Params['sampleSizeProximal'] = expParam['sample']
-    l2Params['minThresholdProximal'] = expParam['thresh']
-    l2Params['cellCount'] = expParam['L2cellCount']
-    l2Params['sdrSize'] = expParam['L2activeBits']
-    l2Params['sampleSizeDistal'] = int(expParam['L2cellCount']*.5)
-    l2Params['activationThresholdDistal'] = int(expParam['L2cellCount'] * .5)-1
-
-    objectParams = {'numInputBits': numInputBits,
-                    'externalInputSize': expParam['externalInputSize'],
-                    'numFeatures': DEFAULT_NUM_FEATURES,
-                    'numLocations': DEFAULT_NUM_LOCATIONS,
-                    'uniquePairs': True,}
-
-    print "l4Params: "
-    pprint(l4Params)
-    print "l2Params: "
-    pprint(l2Params)
-
-    expname = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}_l2cell_{}".format(
-      expParam['sample'], expParam['thresh'], expParam["l4Column"], expParam['L2cellCount'])
-    runCapacityTestVaryingObjectNum(numPointsPerObject,
-                                    numCorticalColumns,
-                                    resultDirName,
-                                    expname,
-                                    cpuCount,
-                                    l2Params,
-                                    l4Params,
-                                    objectParams,
-                                    numRpts)
-
-  # plot result
-  ploti = 0
-  fig, ax = plt.subplots(2, 2)
-  st = fig.suptitle(
-    "Varying number of objects ({} cortical column{})"
-      .format(numCorticalColumns, "s" if numCorticalColumns > 1 else ""
-              ), fontsize="x-large"
-  )
-
-  for axi in (0, 1):
-    for axj in (0, 1):
-      ax[axi][axj].xaxis.set_major_locator(ticker.MultipleLocator(100))
-
-  legendEntries = []
-  for expParam in expParams:
-    expname = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}_l2cell_{}".format(
-      expParam['sample'], expParam['thresh'], expParam["l4Column"], expParam['L2cellCount'])
-
-    resultFileName = _prepareResultsDir("{}.csv".format(expname),
-                                        resultDirName=resultDirName
-                                        )
-
-    result = pd.read_csv(resultFileName)
-
-    plotResults(result, ax, "numObjects", None, DEFAULT_COLORS[ploti])
-    ploti += 1
-    legendEntries.append("L4 mcs {} w {} s {} thresh {}".format(
-      expParam["l4Column"], expParam['w'], expParam['sample'],
-      expParam['thresh']))
-  ax[0, 0].legend(legendEntries, loc=4, fontsize=8)
-  fig.tight_layout()
-
-  # shift subplots down:
-  st.set_y(0.95)
-  fig.subplots_adjust(top=0.85)
-
-  plt.savefig(
-    os.path.join(
-      plotDirName,
-      "capacity_varying_object_num_l4l2size_summary.pdf"
-    )
-  )
-
-
-
-def runExperiments(resultDirName, plotDirName, cpuCount):
-  # Varying number of pts per objects, two objects
-  runExperiment1(numCorticalColumns=1,
-                 resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
-=======
   varying number of cortical columns, 2d topology.
   """
->>>>>>> upstream/master
 
   numPointsPerObject = 10
   numRpts = 3
@@ -1707,6 +1585,120 @@ def runExperiments(resultDirName, plotDirName, cpuCount):
     )
   )
 
+
+
+def runExperiment10(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
+                   resultDirName=DEFAULT_RESULT_DIR_NAME,
+                   plotDirName=DEFAULT_PLOT_DIR_NAME,
+                   cpuCount=1):
+  """
+  Try different L4 network size
+  """
+
+  numPointsPerObject = 10
+  numRpts = 1
+  l4Params = getL4Params()
+  l2Params = getL2Params()
+
+  l2Params['cellCount'] = 4096
+  l2Params['sdrSize'] = 40
+
+  expParams = []
+  expParams.append(
+    {'l4Column': 100, 'externalInputSize': 2400, 'w': 10, 'sample': 5,
+     'L2cellCount': 2000, 'L2activeBits': 20, 'thresh': 4})
+  expParams.append(
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 15, 'sample': 8,
+     'L2cellCount': 3000, 'L2activeBits': 30, 'thresh': 6})
+  expParams.append(
+    {'l4Column': 200, 'externalInputSize': 2400, 'w': 20, 'sample': 10,
+     'L2cellCount': 4000, 'L2activeBits': 40, 'thresh': 8})
+  expParams.append(
+    {'l4Column': 250, 'externalInputSize': 2400, 'w': 25, 'sample': 13,
+     'L2cellCount': 5000, 'L2activeBits': 50, 'thresh': 10})
+
+  for expParam in expParams:
+    l4Params["columnCount"] = expParam['l4Column']
+    numInputBits = expParam['w']
+
+    l4Params["activationThreshold"] = int(numInputBits * .6)
+    l4Params["minThreshold"] = int(numInputBits * .6)
+    l4Params["sampleSize"] = int(2 * l4Params["activationThreshold"])
+
+    l2Params['sampleSizeProximal'] = expParam['sample']
+    l2Params['minThresholdProximal'] = expParam['thresh']
+    l2Params['cellCount'] = expParam['L2cellCount']
+    l2Params['sdrSize'] = expParam['L2activeBits']
+    l2Params['sampleSizeDistal'] = int(expParam['L2cellCount']*.5)
+    l2Params['activationThresholdDistal'] = int(expParam['L2cellCount'] * .5)-1
+
+    objectParams = {'numInputBits': numInputBits,
+                    'externalInputSize': expParam['externalInputSize'],
+                    'numFeatures': DEFAULT_NUM_FEATURES,
+                    'numLocations': DEFAULT_NUM_LOCATIONS,
+                    'uniquePairs': True,}
+
+    print "l4Params: "
+    pprint(l4Params)
+    print "l2Params: "
+    pprint(l2Params)
+
+    expname = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}_l2cell_{}".format(
+      expParam['sample'], expParam['thresh'], expParam["l4Column"], expParam['L2cellCount'])
+    runCapacityTestVaryingObjectNum(numPointsPerObject,
+                                    numCorticalColumns,
+                                    resultDirName,
+                                    expname,
+                                    cpuCount,
+                                    l2Params,
+                                    l4Params,
+                                    objectParams,
+                                    numRpts)
+
+  # plot result
+  ploti = 0
+  fig, ax = plt.subplots(2, 2)
+  st = fig.suptitle(
+    "Varying number of objects ({} cortical column{})"
+      .format(numCorticalColumns, "s" if numCorticalColumns > 1 else ""
+              ), fontsize="x-large"
+  )
+
+  for axi in (0, 1):
+    for axj in (0, 1):
+      ax[axi][axj].xaxis.set_major_locator(ticker.MultipleLocator(100))
+
+  legendEntries = []
+  for expParam in expParams:
+    expname = "multiple_column_capacity_varying_object_num_synapses_{}_thresh_{}_l4column_{}_l2cell_{}".format(
+      expParam['sample'], expParam['thresh'], expParam["l4Column"], expParam['L2cellCount'])
+
+    resultFileName = _prepareResultsDir("{}.csv".format(expname),
+                                        resultDirName=resultDirName
+                                        )
+
+    result = pd.read_csv(resultFileName)
+
+    plotResults(result, ax, "numObjects", None, DEFAULT_COLORS[ploti])
+    ploti += 1
+    legendEntries.append("L4 mcs {} w {} s {} thresh {}".format(
+      expParam["l4Column"], expParam['w'], expParam['sample'],
+      expParam['thresh']))
+  ax[0, 0].legend(legendEntries, loc=4, fontsize=8)
+  fig.tight_layout()
+
+  # shift subplots down:
+  st.set_y(0.95)
+  fig.subplots_adjust(top=0.85)
+
+  plt.savefig(
+    os.path.join(
+      plotDirName,
+      "capacity_varying_object_num_l4l2size_summary.pdf"
+    )
+  )
+
+
 def runExperiments(resultDirName, plotDirName, cpuCount):
 #  # Varying number of pts per objects, two objects
 #  runExperiment1(numCorticalColumns=1,
@@ -1752,17 +1744,17 @@ def runExperiments(resultDirName, plotDirName, cpuCount):
 #                 resultDirName=resultDirName,
 #                 plotDirName=plotDirName,
 #                 cpuCount=cpuCount)
-  #10 pts per object, varying number of objects and number of columns
+  # #10 pts per object, varying number of objects and number of columns
   runExperiment9(resultDirName=resultDirName,
                  plotDirName=plotDirName,
                  cpuCount=cpuCount)
 
 
   # 10 pts per object, varying number of objects, varying L4/L2 size
-  runExperiment10(numCorticalColumns=1,
-                 resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
+  # runExperiment10(numCorticalColumns=1,
+  #                resultDirName=resultDirName,
+  #                plotDirName=plotDirName,
+  #                cpuCount=cpuCount)
 
 
 
