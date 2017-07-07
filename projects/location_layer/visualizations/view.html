@@ -66,16 +66,20 @@
     <div id="graphics"></div>
 
     <script>
+      function handleFileContents(text) {
+        var div = document.createElement('div');
+
+        div.setAttribute('class', 'singleVisualization noselect');
+
+        document.getElementById('graphics').appendChild(div);
+        htmresearchviz0.printRecording(div, text);
+      }
+
       function handleFile(file) {
         var fileReader = new FileReader();
 
         fileReader.onload = function (e) {
-          var div = document.createElement('div');
-
-          div.setAttribute('class', 'singleVisualization noselect');
-
-          document.getElementById('graphics').appendChild(div);
-          htmresearchviz0.printRecording(div, fileReader.result);
+          handleFileContents(fileReader.result);
         };
         fileReader.onerror = function (e) {
           throw 'Error reading CSV file';
@@ -117,5 +121,27 @@
         </div>
       </div>
     </label>
+
+    <script>
+      function getParameterByName(name, url) {
+        url = url || window.location.href;
+        name = name.replace(/[\[\]]/g, "\\$&");
+        var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+            results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, " "));
+      }
+
+      var dataPath = getParameterByName("data");
+      if (dataPath) {
+        let xhr = new XMLHttpRequest();
+        xhr.addEventListener("load", e => {
+          handleFileContents(xhr.responseText);
+        });
+        xhr.open("GET", dataPath);
+        xhr.send();
+      }
+    </script>
   </body>
 </html>
