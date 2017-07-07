@@ -735,6 +735,11 @@ class LaminarNetworkTest(unittest.TestCase):
     )
     self.assertEqual(len(self.getL4BurstingCells(L4Column)), 0)
 
+    # send reset signal
+    sensorInput.addResetToQueue(0)
+    externalInput.addResetToQueue(0)
+    net.run(1)
+
     # (F0, L2)
     sensorInput.addDataToQueue(features[0], 0, 0)
     externalInput.addDataToQueue(locations[2], 0, 0)
