@@ -149,11 +149,11 @@ class ApicalTiebreakTemporalMemory(object):
     self.apicalConnections = SparseMatrixConnections(columnCount*cellsPerColumn,
                                                      apicalInputSize)
     self.rng = Random(seed)
-    self.activeCells = ()
-    self.winnerCells = ()
-    self.predictedCells = ()
-    self.activeBasalSegments = ()
-    self.activeApicalSegments = ()
+    self.activeCells = np.empty(0, dtype="uint32")
+    self.winnerCells = np.empty(0, dtype="uint32")
+    self.predictedCells = np.empty(0, dtype="uint32")
+    self.activeBasalSegments = np.empty(0, dtype="uint32")
+    self.activeApicalSegments = np.empty(0, dtype="uint32")
 
     # Do we actually want to use apical tie-break?
     self.useApicalTiebreak=True
@@ -166,11 +166,11 @@ class ApicalTiebreakTemporalMemory(object):
     predictions or activity.
     """
 
-    self.activeCells = ()
-    self.winnerCells = ()
-    self.predictedCells = ()
-    self.activeBasalSegments = ()
-    self.activeApicalSegments = ()
+    self.activeCells = np.empty(0, dtype="uint32")
+    self.winnerCells = np.empty(0, dtype="uint32")
+    self.predictedCells = np.empty(0, dtype="uint32")
+    self.activeBasalSegments = np.empty(0, dtype="uint32")
+    self.activeApicalSegments = np.empty(0, dtype="uint32")
 
 
   def compute(self,
