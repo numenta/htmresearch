@@ -567,7 +567,7 @@ class L2456Model(object):
         "activationThresholdDistal": 13,
         "sampleSizeDistal": 20,
         "connectedPermanenceDistal": 0.5,
-        "distalSegmentInhibitionFactor": 1.5,
+        "distalSegmentInhibitionFactor": 0.6667,
         "learningMode": True,
       },
 
@@ -602,7 +602,7 @@ class L2456Model(object):
         "activationThresholdDistal": 13,
         "sampleSizeDistal": 20,
         "connectedPermanenceDistal": 0.5,
-        "distalSegmentInhibitionFactor": 1.5,
+        "distalSegmentInhibitionFactor": 0.6667,
         "learningMode": True,
       },
 
@@ -728,4 +728,3 @@ class L2456Model(object):
         statistics["Overlap L5 with object C" + str(i)].append(
           len(objectRepresentationL5[i] & L5Representations[i])
         )
-
