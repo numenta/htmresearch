@@ -379,7 +379,49 @@ layout = Layout(
             color=''
         ),
         showline=True,
-    ))
+    ),
+    annotations=Annotations([
+          Annotation(
+                x=23,
+                y=0.53,
+                xref='x',
+                yref='paper',
+                text='$n = 2000$',
+                showarrow=False,
+                font=Font(
+                    family='',
+                    size=16,
+                    color=''
+                ),
+                align='center',
+                textangle=0,
+                bordercolor='',
+                borderwidth=1,
+                borderpad=1,
+                bgcolor='rgba(0, 0, 0, 0)',
+                opacity=1
+            ),
+          Annotation(
+                x=32.76,
+                y=0.667,
+                xref='x',
+                yref='paper',
+                text='$n = 4000$',
+                showarrow=False,
+                font=Font(
+                    family='',
+                    size=16,
+                    color=''
+                ),
+                align='center',
+                textangle=0,
+                bordercolor='',
+                borderwidth=1,
+                borderpad=1,
+                bgcolor='rgba(0, 0, 0, 0)',
+                opacity=1
+            )
+        ]),)
 
 fig = Figure(data=data, layout=layout)
 plot_url = py.plot(fig)
