@@ -22,7 +22,7 @@
 import random
 import numpy
 import copy
-from sklearn.cluster import AgglomerativeClustering
+from sklearn.cluster import KMeans
 from collections import Counter
 from nupic.bindings.math import *
 numpy.set_printoptions(threshold=numpy.inf)
@@ -127,8 +127,8 @@ class Matrix_Neuron(object):
 
     if data.nRows() > self.num_dendrites:
       print "Neuron using clustering to initialize dendrites"
-      data = data.toDense()
-      model = AgglomerativeClustering(n_clusters = self.num_dendrites, affinity = "manhattan", linkage = "average")
+      data = (data.toDense())
+      model = KMeans(n_clusters = self.num_dendrites, n_jobs=1)
       clusters = model.fit_predict(data)
       multisets = [[Counter(), []] for i in range(self.num_dendrites)]
       sparse_data = [[i for i, d in enumerate(datapoint) if d == 1] for datapoint in data]

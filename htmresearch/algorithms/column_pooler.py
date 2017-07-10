@@ -53,7 +53,8 @@ class ColumnPooler(object):
                sampleSizeDistal=20,
                activationThresholdDistal=13,
                connectedPermanenceDistal=0.50,
-               distalSegmentInhibitionFactor=1.001,
+               distalSegmentInhibitionFactor=0.999,
+               inertiaFactor=1.,
 
                seed=42):
     """
@@ -108,16 +109,20 @@ class ColumnPooler(object):
             Permanence required for a distal synapse to be connected
 
     @param  distalSegmentInhibitionFactor (float)
-            The minimum ratio of active dendrite segment counts that will lead
-            to inhibition. For example, with value 1.5, cells with 2 active
-            segments will be inhibited by cells with 3 active segments, but
-            cells with 3 active segments will not be inhibited by cells with 4.
+            The proportion of the highest number of active lateral segments
+            necessary for a cell not to be inhibited (must be <1).
+
+    @param  inertiaFactor (float)
+            The proportion of previously active cells that remain
+            active in the next timestep due to inertia (in the absence of
+            inhibition).
 
     @param  seed (int)
             Random number generator seed
     """
 
     assert distalSegmentInhibitionFactor > 0.0
+    assert distalSegmentInhibitionFactor < 1.0
 
     self.inputWidth = inputWidth
     self.cellCount = cellCount
@@ -135,6 +140,7 @@ class ColumnPooler(object):
     self.sampleSizeDistal = sampleSizeDistal
     self.activationThresholdDistal = activationThresholdDistal
     self.distalSegmentInhibitionFactor = distalSegmentInhibitionFactor
+    self.inertiaFactor = inertiaFactor
 
     self.activeCells = numpy.empty(0, dtype="uint32")
     self._random = Random(seed)
@@ -146,6 +152,8 @@ class ColumnPooler(object):
     self.internalDistalPermanences = SparseMatrix(cellCount, cellCount)
     self.distalPermanences = tuple(SparseMatrix(cellCount, n)
                                    for n in lateralInputWidths)
+
+    self.useInertia=True
 
 
   def compute(self, feedforwardInput=(), lateralInputs=(),
@@ -273,89 +281,65 @@ class ColumnPooler(object):
         lateralInput, self.connectedPermanenceDistal)
       numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
 
-    # Activate some of the feedforward supported cells
-    minNumActiveCells = self.sdrSize / 2
-    chosenCells = self._chooseCells(feedforwardSupportedCells,
-                                    minNumActiveCells, numActiveSegmentsByCell)
+    chosenCells = []
+    minNumActiveCells = int(self.sdrSize * .75)
 
-    # If necessary, activate some of the previously active cells
+    numActiveSegsForFFSuppCells = numActiveSegmentsByCell[
+        feedforwardSupportedCells]
+
+    # First, activate the FF-supported cells that have the highest number of
+    # lateral active segments (as long as it's not 0)
+    if len(feedforwardSupportedCells) == 0:
+      pass
+    else:
+      # This loop will select the FF-supported AND laterally-active cells, in
+      # order of descending lateral activation, until we exceed the
+      # minNumActiveCells quorum - but will exclude cells with 0 lateral
+      # active segments.
+      ttop = numpy.max(numActiveSegsForFFSuppCells)
+      while ttop > 0 and len(chosenCells) <= minNumActiveCells:
+        chosenCells = numpy.union1d(chosenCells,
+                    feedforwardSupportedCells[numActiveSegsForFFSuppCells >
+                    self.distalSegmentInhibitionFactor * ttop])
+        ttop -= 1
+
+    # If we still haven't filled the minNumActiveCells quorum, add in the
+    # FF-supported cells with 0 lateral support AND the inertia cells.
     if len(chosenCells) < minNumActiveCells:
-      remaining = numpy.setdiff1d(prevActiveCells, feedforwardSupportedCells)
-      remaining = remaining[numActiveSegmentsByCell[remaining] > 0]
+      if self.useInertia:
+        prevCells = numpy.setdiff1d(prevActiveCells, chosenCells)
+        inertialCap = int(len(prevCells) * self.inertiaFactor)
+        if inertialCap > 0:
+          numActiveSegsForPrevCells = numActiveSegmentsByCell[prevCells]
+          # We sort the previously-active cells by number of active lateral
+          # segments (this really helps).  We then activate them in order of
+          # descending lateral activation.
+          sortIndices = numpy.argsort(numActiveSegsForPrevCells)[::-1]
+          prevCells = prevCells[sortIndices]
+          numActiveSegsForPrevCells = numActiveSegsForPrevCells[sortIndices]
 
-      chosenCells = numpy.append(
-        chosenCells, self._chooseCells(remaining,
-                                       minNumActiveCells - len(chosenCells),
-                                       numActiveSegmentsByCell))
+          # We use inertiaFactor to limit the number of previously-active cells
+          # which can become active, forcing decay even if we are below quota.
+          prevCells = prevCells[:inertialCap]
+          numActiveSegsForPrevCells = numActiveSegsForPrevCells[:inertialCap]
+
+          # Activate groups of previously active cells by their lateral support
+          # until we either meet quota or run out of cells.
+          ttop = numpy.max(numActiveSegsForPrevCells)
+          while ttop >= 0 and len(chosenCells) <= minNumActiveCells:
+            chosenCells = numpy.union1d(chosenCells,
+                        prevCells[numActiveSegsForPrevCells >
+                        self.distalSegmentInhibitionFactor * ttop])
+            ttop -= 1
+
+      # Finally, add remaining cells with feedforward support
+      remFFcells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
+      # Note that this is 100% of the remaining FF-supported cells, there is no
+      # attempt to select only certain ones or limit how many come active.
+      chosenCells = numpy.append(chosenCells, remFFcells)
 
     chosenCells.sort()
     self.activeCells = numpy.asarray(chosenCells, dtype="uint32")
-
-
-  def _chooseCells(self, candidates, n, numActiveSegmentsByCell):
-    """
-    Choose cells to activate, using their active segment counts to determine
-    inhibition.
-
-    Count backwards through the active segment counts. For each count, find all
-    of the cells that this count is unable to inhibit. Activate these cells.
-    If there aren't at least n active cells, repeat with the next lowest
-    segment count.
-
-    Parameters:
-    ----------------------------
-    @param  candidates (sequence)
-            List of cells to consider activating
-
-    @param  n (int)
-            Minimum number of cells to activate, if possible
-
-    @param  numActiveSegmentsByCell (associative)
-            A mapping from cells to number of active segments.
-            This can be any data structure that associates an index with a
-            value. (list, dict, numpy array)
-
-    @return (list) Cells to activate
-    """
-
-    if n <= 0:
-      return numpy.empty(0)
-
-    # Keep a list of numpy arrays.
-    allChosenCells = []
-    numChosen = 0
-
-    # Walk the active segment counts in decreasing order.
-    activeSegmentCounts = numpy.unique(
-      numActiveSegmentsByCell[candidates])[::-1]
-
-    for activeSegmentCount in activeSegmentCounts:
-
-      if activeSegmentCount == 0:
-        allChosenCells.append(candidates)
-        numChosen += candidates.size
-        break
-      else:
-        # Activate all cells that are not inhibited by this segment count.
-        # A cell is inhibited if another cell has at least
-        # 'distalSegmentInhibitionFactor' times as many active segments.
-        boundary = float(activeSegmentCount) / self.distalSegmentInhibitionFactor
-
-        includeMask = numActiveSegmentsByCell[candidates] > boundary
-        chosenCells = candidates[includeMask]
-
-        numChosen += chosenCells.size
-        allChosenCells.append(chosenCells)
-
-        if numChosen >= n:
-          break
-        else:
-          candidates = candidates[~includeMask]
-
-    if len(allChosenCells) > 0:
-      return numpy.concatenate(allChosenCells)
-    else:
-      return numpy.empty(0)
 
 
   def numberOfInputs(self):
@@ -491,6 +475,23 @@ class ColumnPooler(object):
     """
     self.activeCells = numpy.empty(0, dtype="uint32")
 
+  def getUseInertia(self):
+    """
+    Get whether we actually use inertia  (i.e. a fraction of the
+    previously active cells remain active at the next time step unless
+    inhibited by cells with both feedforward and lateral support).
+    @return (Bool) Whether inertia is used.
+    """
+    return self.useInertia
+
+  def setUseInertia(self, useInertia):
+    """
+    Sets whether we actually use inertia (i.e. a fraction of the
+    previously active cells remain active at the next time step unless
+    inhibited by cells with both feedforward and lateral support).
+    @param useInertia (Bool) Whether inertia is used.
+    """
+    self.useInertia = useInertia
 
   @staticmethod
   def _learn(# mutated args

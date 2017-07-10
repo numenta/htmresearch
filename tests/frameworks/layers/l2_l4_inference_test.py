@@ -218,7 +218,7 @@ class L4L2ExperimentTest(unittest.TestCase):
         "activationThresholdDistal": 3,
         "sampleSizeDistal": 5,
         "connectedPermanenceDistal": 0.5,
-        "distalSegmentInhibitionFactor": 1.5,
+        "distalSegmentInhibitionFactor": 0.6667,
         "learningMode": True,
     }
     l4Params = {
@@ -687,7 +687,7 @@ class L4L2ExperimentTest(unittest.TestCase):
       "activationThresholdDistal": 13,
       "sampleSizeDistal": 20,
       "connectedPermanenceDistal": 0.5,
-      "distalSegmentInhibitionFactor": 1.001,
+      "distalSegmentInhibitionFactor": 0.999,
       "learningMode": True,
     }
     L4Column = net.regions["L4Column_0"].getSelf()
