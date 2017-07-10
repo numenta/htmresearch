@@ -1,3 +1,4 @@
+
 # Numenta Platform for Intelligent Computing (NuPIC)
 # Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
@@ -20,7 +21,7 @@
 
 """
 This file runs a number of experiments testing the effectiveness of feedback
-when noisy inputs.
+with noisy inputs.
 """
 
 import os
@@ -33,8 +34,8 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
-from htmresearch.frameworks.layers.feedback_experiment import FeedbackExperiment
-
+import feedback_experiment
+from feedback_experiment import FeedbackExperiment
 
 def convertSequenceMachineSequence(generatedSequences):
   """
@@ -69,376 +70,433 @@ def generateSequences(n=2048, w=40, sequenceLength=5, sequenceCount=2,
   return sequenceMachine, generatedSequences, numbers
 
 
-def addSpatialNoise(sequenceMachine, generatedSequences, amount):
+def sparsenRange(sequenceMachine, sequences, startRange, endRange, probaZero):
   """
-  Add spatial noise to sequences.
-  """
-  noisySequences = sequenceMachine.addSpatialNoise(generatedSequences, amount)
-  return noisySequences
-
-
-def addTemporalNoise(sequenceMachine, sequences, pos,
-                     spatialNoise = 0.5,
-                     noiseType='skip'):
-  """
-  For each sequence, add temporal noise at position 'pos'. Possible types of
-  noise:
-    'skip'   : skip element pos
-    'swap'   : swap sdr at position pos with sdr at position pos+1
-    'insert' : insert a new random sdr at position pos
-    'repeat' : duplicate the same sdr n times
-    'stutter': duplicate n successive sdr twice each
-    'cross'  : replace rest of sequence with other sequence (note: independent of noise level)
-    'pollute': add a lot of noise to sdr at position pos
   """
   patternMachine = sequenceMachine.patternMachine
   newSequences = []
   for (numseq, s) in enumerate(sequences):
     newSequence = []
     for p,sdr in enumerate(s):
-      if noiseType == 'skip':
-        if p == pos:
-          pass
+        if p < endRange and p >= startRange:
+          newsdr = numpy.array(list(sdr))
+          keep = numpy.random.rand(len(newsdr)) > probaZero
+          newsdr = newsdr[keep==True]
+          newSequence.append(set(newsdr))
         else:
           newSequence.append(sdr)
-      elif noiseType == 'pollute':
-        if p == pos:
-          newsdr = patternMachine.addNoise(sdr, spatialNoise)
-          newSequence.append(newsdr)
-        else:
-          newSequence.append(sdr)
-      elif noiseType == 'cross':
-        if p >= pos:
-          newSequence.append(sequences[(numseq + 1) % len(sequences)][p])
-        else:
-          newSequence.append(sdr)
-      elif noiseType == 'swap':
-        if p == pos:
-          newSequence.append(s[pos+1])
-        if p == pos+1:
-          newSequence.append(s[pos-1])
-        else:
-          newSequence.append(sdr)
-      elif noiseType == 'insert':
-        if p == pos:
-          # Insert new SDR which swaps out all the bits
-          newsdr = patternMachine.addNoise(sdr, 1.0)
-          newSequence.append(newsdr)
-        newSequence.append(sdr)
-      elif noiseType == 'stutter' or noiseType == 'repeat':
-        # Insert the current sdr twice at position pos. 
-        # NB: 'stutter' and 'repeat' only differ when considering
-        # multiple noise steps, which is dealt with later
-        if p == pos:
-            newSequence.append(sdr)
-        newSequence.append(sdr)
-      else:
-        raise Exception("Unknown noise type: "+noiseType)
     newSequences.append(newSequence)
 
   return newSequences
 
 
-def printSequences(sequences):
-  for i,s in enumerate(sequences):
-    print i,":",s
-    print
+def crossSequences(sequenceMachine, sequences, pos):
+  """
+  """
+  patternMachine = sequenceMachine.patternMachine
+  newSequences = []
+  for (numseq, s) in enumerate(sequences):
+    newSequence = []
+    for p,sdr in enumerate(s):
+        if p >= pos:
+          newSequence.append(sequences[(numseq +1) % len(sequences)][p])
+        else:
+          newSequence.append(sdr)
+    newSequences.append(newSequence)
 
+  return newSequences
+
+
+
+def addTemporalNoise(sequenceMachine, sequences, noiseStart, noiseEnd, noiseProba):
+  """
+  """
+  patternMachine = sequenceMachine.patternMachine
+  newSequences = []
+  for (numseq, s) in enumerate(sequences):
+    newSequence = []
+    for p,sdr in enumerate(s):
+        if p >= noiseStart and p < noiseEnd:
+          newsdr = patternMachine.addNoise(sdr, noiseProba)
+          newSequence.append(newsdr)
+        else:
+          newSequence.append(sdr)
+    newSequences.append(newSequence)
+
+  return newSequences
+
+
+def addPerturbation(sequenceMachine, sequences, noiseType, pos, number=1):
+  """
+  """
+  patternMachine = sequenceMachine.patternMachine
+  newSequences = []
+  for (numseq, s) in enumerate(sequences):
+    newSequence = []
+    for p,sdr in enumerate(s):
+        if noiseType == "swap":
+            if p==pos:
+                newSequence.append(s[p+1])
+            elif p==pos+1:
+                newSequence.append(s[p-1])
+            else:
+                newSequence.append(sdr)
+        elif p >= pos and p < pos+number:
+          if noiseType == "skip":
+            pass
+          elif noiseType == "replace":
+            newsdr = patternMachine.addNoise(sdr, 1.0)
+            newSequence.append(newsdr)
+          elif noiseType == "repeat":
+            newSequence.append(s[p-1])
+          else:
+            raise("Unrecognized Noise Type!")
+        else:
+          newSequence.append(sdr)
+    newSequences.append(newSequence)
+
+  return newSequences
 
 def runInference(exp, sequences, enableFeedback=True):
   """
   Run inference on this set of sequences and compute error
   """
   if enableFeedback:
-    print "Feedback enabled: ",
+    print "Feedback enabled: "
   else:
-    print "Feedback disabled: ",
+    print "Feedback disabled: "
 
   error = 0
   activityTraces = []
+  responses = []
   for i,sequence in enumerate(sequences):
-    (avgActiveCells, avgPredictedActiveCells, activityTrace) = exp.infer(
+    (avgActiveCells, avgPredictedActiveCells, activityTrace, responsesThisSeq) = exp.infer(
       sequence, sequenceNumber=i, enableFeedback=enableFeedback)
     error += avgActiveCells
     activityTraces.append(activityTrace)
+    responses.append(responsesThisSeq)
+    print " "
   error /= len(sequences)
   print "Average error = ",error
-  return error, activityTraces
+  return error, activityTraces, responses
 
 
-def runExperiment(args):
-  """
-  Run experiment.  args is a dict representing the parameters. We do it this way
-  to support multiprocessing. args contains one or more of the following keys:
-
-  @param noiseLevel  (int)   Noise level to add during inference. This an
-                             integer corresponding to how many times temporal
-                             noise is added to the sequence.
-                             Default: 1
-  @param noiseStart  (int)   The position in the sequence at which noise starts
-                             Default: 4
-  @param numSequences (int)  The number of sequences.
-                             Default: 10
-  @param sequenceLen  (int)  The length of each sequence
-                             Default: 30
-  @param noiseType    (str)  One of the noise types for addTemporalNoise()
-                             Default: 'swap'
-  @param seed         (int)  Random seed for network and for sequences
-                             Default: 42
-  @param L4Overrides  (dict) Parameters to override default L4 settings.
-                             Default: {}
-
-  The method returns the args dict updated with additional keys:
-    experiment      (object) The instance of FeedbackExperiment we used.
-  """
-  numSequences = args.get("numSequences", 10)
-  sequenceLen = args.get("sequenceLen", 30)
-  noiseLevel = args.get("noiseLevel", 1)
-  noiseType = args.get("noiseType", "swap")
-  noiseStart = args.get("noiseStart", 4)
-  L4Overrides = args.get("L4Overrides", {})
-  seed = args.get("seed", 42)
-
-  # Create the sequences and arrays
-  sequenceMachine, generatedSequences, numbers = generateSequences(
-    sequenceLength=sequenceLen, sequenceCount=numSequences,
-    sharedRange=(3,int(0.8*sequenceLen)),  # Need min of 3
-    seed=seed)
-  sequences = convertSequenceMachineSequence(generatedSequences)
-  noisySequences = deepcopy(sequences)
-
-  # inferenceErrors[0, ...] - average error with feedback
-  # inferenceErrors[1, ...] - average error without feedback
-  # inferenceErrors[i, j]   - average error with noiseLevel = j
-  inferenceErrors = numpy.zeros((2,noiseLevel+1))
-
-  # Setup experiment and train the network on sequences
-  exp = FeedbackExperiment(
-    numLearningPasses=2*sequenceLen,    # To handle high order sequences
-    seed=seed,
-    L4Overrides=L4Overrides,
-  )
-  exp.learnSequences(sequences)
-
-  print "Number of columns in exp: ", exp.numColumns
-
-  # Run inference without any noise. This becomes our baseline error
-  standardError, _ = runInference(exp, sequences)
-  inferenceErrors[0,0] = standardError
-  inferenceErrors[1,0] = standardError
-
-  # Apply noise to sequences and run inference with and without feedback
-  for t in range(noiseLevel):
-    print "\n\nnoiseType=",noiseType, "level=",t+1
-    if noiseType == 'skip':
-        noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
-                                          noiseStart+t, noiseType=noiseType)
-    elif noiseType == 'swap':
-      noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
-                                        noiseStart+2*t, noiseType=noiseType)
-    elif noiseType == 'cross':
-      noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
-                                        noiseStart+t, noiseType=noiseType)
-    elif noiseType == 'repeat':
-      noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
-                                        #noiseStart+t*2, noiseType=noiseType)  # duplicates two neighboring items
-                                        noiseStart+t, noiseType=noiseType)   # duplicates the same item twice
-    elif noiseType == 'stutter':
-      noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
-                                        noiseStart+t*2, noiseType=noiseType)  # duplicates two neighboring items
-                                        #noiseStart+t, noiseType=noiseType)   # duplicates the same item twice
-    elif noiseType == 'insert':
-      noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
-                                        noiseStart+t*2, noiseType=noiseType)
-    elif noiseType == 'pollute':
-      inferenceErrors = numpy.zeros((2,11))
-      noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
-                                        noiseStart+t,
-                                        spatialNoise=0.3, noiseType=noiseType)
-    inferenceErrors[0,t+1], activityFeedback = runInference(
-      exp, noisySequences, enableFeedback=True)
-    inferenceErrors[1,t+1], activityNoFeedback = runInference(
-      exp, noisySequences, enableFeedback=False)
 
 
-  # Return our various structures
-  args.update({"experiment": exp})
-  args.update({"inferenceErrors": inferenceErrors,
-               "activityFeedback": activityFeedback,
-               "activityNoFeedback": activityNoFeedback,
-               "noisySequences": noisySequences,
-               "sequences": sequences,
-               })
-  return args
+
+def runExp(noiseProbas, nbSequences, nbSeeds, noiseType, sequenceLen, sharedRange, noiseRange, whichPlot, plotTitle):
+
+  allowedNoises = ("skip", "swap", "replace", "repeat", "crossover", "pollute")
+  if noiseType not in allowedNoises:
+    mystr = "noiseType must be one of the following: ".join(allowedNoises)
+    raise(RuntimeError(mystr))
+
+  meanErrsFB = []; meanErrsNoFB = []; meanErrsNoNoise = []
+  stdErrsFB = []; stdErrsNoFB = []; stdErrsNoNoise = []
+  meanPerfsFB = []; stdPerfsFB = []
+  meanPerfsNoFB = []; stdPerfsNoFB = []
+  stdsFB = []
+  stdsNoFB=[]
+  activitiesFB=[]; activitiesNoFB=[]
+
+  diffsFB = []
+  diffsNoFB = []
+  overlapsFBL2=[]; overlapsNoFBL2=[]
+  overlapsFBL2Next=[]; overlapsNoFBL2Next=[]
+  overlapsFBL4=[]; overlapsNoFBL4=[]
+  overlapsFBL4Next=[]; overlapsNoFBL4Next=[]
+  corrsPredCorrectFBL4=[]; corrsPredCorrectNoFBL4=[]
+  corrsPredCorrectFBL4Next=[]; corrsPredCorrectNoFBL4Next=[]
+  diffsFBL4Pred=[]; diffsNoFBL4Pred=[]
+  diffsFBL4PredNext=[]; diffsNoFBL4PredNext=[]
+  diffsFBL2=[]; diffsNoFBL2=[]
+  diffsFBL2Next=[]; diffsNoFBL2Next=[]
 
 
-def plotErrorsvsNoise(errors):
-  """
-  Plots errors vs noise
+  for noiseProba in noiseProbas:
+    for numSequences in nbSequences:
 
-  errors[0] = error with feedback enabled
-  errors[1] = error with feedback disabled
+      errorsFB=[]; errorsNoFB=[]; errorsNoNoise=[]
+      perfsFB = []; perfsNoFB = []
 
-  """
-  plt.figure()
-  plotPath = os.path.join("error_vs_noise.pdf")
+      #for probaZero in probaZeros:
+      seed = 42
+      for seedx in range(nbSeeds): #numSequences in 10, 30, 50:
+          # Train a single network and show error for a single example noisy sequence
+          seed = seedx + 123
+          profile = False,
+          L4Overrides = {"cellsPerColumn": 8}
 
-  # Plot each curve
-  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
-  noiseRange = range(0,len(errors[0]))
-  for f in [0,1]:
-    print errors[f]
-    plt.plot(noiseRange, errors[f,noiseRange], color=colorList[f])
+          numpy.random.seed(seed)
 
-  # format
-  plt.legend(['Feedback enabled', 'Feedback disabled'], loc="lower right")
-  plt.xlabel("Noise")
-  plt.ylabel("Prediction error")
-  plt.title("Prediction error vs noise")
+          # Create the sequences and arrays
+          print "Generating sequences..."
+          sequenceMachine, generatedSequences, numbers = generateSequences(
+            sequenceLength=sequenceLen, sequenceCount=numSequences,
+            sharedRange=sharedRange,
+            seed=seed)
 
-    # save
-  plt.savefig(plotPath)
-  plt.close()
+          sequences = convertSequenceMachineSequence(generatedSequences)
+          noisySequences = deepcopy(sequences)
 
+          # Apply noise to sequences
+          noisySequences = addTemporalNoise(sequenceMachine, noisySequences,
+                                noiseStart=noiseRange[0], noiseEnd=noiseRange[1],
+                                noiseProba=noiseProba)
 
-def plotActivity(activityFeedback, activityNoFeedback):
-  """
-  Plots activity trace
-  """
-  a = numpy.zeros(len(activityFeedback[0]))
-  an = numpy.zeros(len(activityFeedback[0]))
-  for i in range(len(activityFeedback)):
-    a = a + activityFeedback[i]
-    an = an + activityNoFeedback[i]
-  a = (a - min(a)) / (max(a) - min(a))
-  an = (an - min(an)) / (max(an) - min(an))
+          # *In addition* to this, add crossover or single-point noise
+          if noiseType == "crossover":
+            noisySequences = crossSequences(sequenceMachine, noisySequences,
+                                            pos=sequenceLen/2)
+          elif noiseType in ("repeat", "replace", "skip", "swap"):
+            noisySequences = addPerturbation(sequenceMachine, noisySequences,
+                                            noiseType=noiseType, pos=sequenceLen/2, number=1)
 
-  plt.figure()
-  plotPath = os.path.join("activityTrace.pdf")
-
-  # Plot each curve
-  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
-  position = range(0,len(a))
-  plt.plot(position[1:], a[1:], color=colorList[0])
-  plt.plot(position[1:], an[1:], color=colorList[1])
-
-  # format
-  plt.legend(['Feedback enabled', 'Feedback disabled'], loc="upper right")
-  plt.xlabel("Time step")
-  plt.yticks([-0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
-  plt.ylabel("Prediction error")
-  plt.title("Error with noise injected during a sequence")
-
-  plt.savefig(plotPath)
-  plt.close()
+          # inferenceErrors[0, ...] - average error with feedback
+          # inferenceErrors[1, ...] - average error without feedback
+          # inferenceErrors[i, j]   - average error with noiseLevel = j
+          inferenceErrors = numpy.zeros((2, 2))
 
 
-def computeErrorvsComplexity():
-  """
-  Train networks using a varying number of sequences. For each network inject
-  noise into the sequence and compute inference error with and without feedback.
-  """
-  results = numpy.zeros((2,15))
-  errors = []
-  for numSequences in range(2,32,2):
-    print "numSequences=",numSequences
-    for seed in range(5):
-      result = runExperiment(
-                    {
-                      "numSequences": numSequences,
-                      "sequenceLen": 30,
-                      "noiseLevel": 10,
-                      "profile": False,
-                      "seed": seed
-                    }
-      )
-      err = result['inferenceErrors']
-      results[0,(numSequences-2)/2] += err[0,1] - err[0,0]  # w feedback
-      results[1,(numSequences-2)/2] += err[1,1] - err[1,0]  # w/o feedback
-      errors.append(err)
+          #Setup experiment and train the network on sequences
+          print "Learning sequences..."
+          exp = FeedbackExperiment(
+            numLearningPasses= 2*sequenceLen,    # To handle high order sequences
+            seed=seed,
+            L4Overrides=L4Overrides,
+          )
+          exp.learnSequences(sequences)
 
-  results = results / results.max()
-  print "Results after normalization: ",results
-
-  return results,errors
+          print "Number of columns in exp: ", exp.numColumns
+          print "Sequences learned!"
 
 
-def plotErrorvsComplexity(errors):
-  plt.figure()
-  plotPath = os.path.join("error_vs_complexity.pdf")
 
-  # Plot each curve
-  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
-  numSequenceRange = range(2,32,2)
-  print "range=",numSequenceRange
-  for f in [0,1]:
-    print errors[f]
-    plt.plot(numSequenceRange, errors[f,:], color=colorList[f])
 
-  # format
-  plt.legend(['Feedback enabled', 'Feedback disabled'], loc="center right")
-  plt.xlabel("Number of sequences learned by model")
-  plt.xticks(numSequenceRange)
-  plt.ylabel("Prediction error")
-  plt.title("Error inferring noisy sequences with varying model complexity")
+          # Run inference without any noise. This becomes our baseline error
+          standardError, activityNoNoise, responsesNoNoise = runInference(exp, sequences)
+          inferenceErrors[0,0] = standardError
+          inferenceErrors[1,0] = standardError
 
-    # save
-  plt.savefig(plotPath)
-  plt.close()
+          inferenceErrors[0,1], activityFB, responsesFB = runInference(
+              exp, noisySequences, enableFeedback=True)
+          inferenceErrors[1,1], activityNoFB, responsesNoFB = runInference(
+              exp, noisySequences, enableFeedback=False)
 
+
+          # Now that actual processing is done, we compute various statistics and plot graphs.
+
+          # We compute the overlap of L4 responses to noisy vs. original, non-noisy sequences,  at each time step in each sequence, both for with FB and w/o FB.
+          seqlen = len(noisySequences[0])
+          sdrlen = 2048 * 8  # Should be the total number of cells in L4. Need to make this more parametrized!
+
+
+            # When using end-swapped sequences, with a shared range, there are weird bugs related to the first sequence in each batch.
+            # 1- The 1st sequence never recovers correct predictions after the shared section ends. All others do.
+            # 2- All other sequences make 2 predictions in each item of the end of the sequence (the correct one, and another in the same
+            # minicolumn), instead of 1 - except the 1st sequence (which makes a single incorrect prediction, as stated above), and the last
+            # (which has its end swapped with the first).
+            # I "solve" the problem by throwing away the first sequence at test time (note the '1'):
+          for numseq in range(1, len(responsesNoNoise)):
+
+              diffsFB.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
+              diffsNoFB.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
+              overlapsFBL2.append( [len(responsesNoNoise[numseq]['L2Responses'][x].intersection(responsesFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
+              overlapsNoFBL2.append( [len(responsesNoNoise[numseq]['L2Responses'][x].intersection(responsesNoFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
+              overlapsFBL2Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L2Responses'][x].intersection(responsesFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
+              overlapsNoFBL2Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L2Responses'][x].intersection(responsesNoFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
+              overlapsFBL4.append( [len(responsesNoNoise[numseq]['L4Responses'][x].intersection(responsesFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
+              overlapsNoFBL4.append( [len(responsesNoNoise[numseq]['L4Responses'][x].intersection(responsesNoFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
+              overlapsFBL4Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L4Responses'][x].intersection(responsesFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
+              overlapsNoFBL4Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L4Responses'][x].intersection(responsesNoFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
+              diffsFBL4Pred.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesFB[numseq]['L4Predictive'][x])) for x in range(seqlen)] )
+              diffsNoFBL4Pred.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoFB[numseq]['L4Predictive'][x])) for x in range(seqlen)] )
+              cpcfb = []; cpcnofb=[]; cpcfbnext = []; cpcnofbnext=[];
+              for x in range(seqlen):
+                  z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
+                  z2 = numpy.zeros(sdrlen+1); z2[list(responsesFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+                  cpcfb.append(numpy.corrcoef(z1, z2)[0,1])
+                  z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
+                  z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+                  cpcnofb.append(numpy.corrcoef(z1, z2)[0,1])
+
+                  z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[(numseq+1) % numSequences]['L4Responses'][x])] = 1; z1[-1] = 1
+                  z2 = numpy.zeros(sdrlen+1); z2[list(responsesFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+                  cpcfbnext.append(numpy.corrcoef(z1, z2)[0,1])
+                  z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[(numseq+1) % numSequences]['L4Responses'][x])] = 1; z1[-1] = 1
+                  z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+                  cpcnofbnext.append(numpy.corrcoef(z1, z2)[0,1])
+
+
+              corrsPredCorrectNoFBL4.append(cpcnofb)
+              corrsPredCorrectFBL4.append(cpcfb)
+              corrsPredCorrectNoFBL4Next.append(cpcnofbnext)
+              corrsPredCorrectFBL4Next.append(cpcfbnext)
+
+              diffsFBL2.append( [len(responsesNoNoise[numseq]['L2Responses'][x].symmetric_difference(responsesFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
+              diffsNoFBL2.append( [len(responsesNoNoise[numseq]['L2Responses'][x].symmetric_difference(responsesNoFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
+              diffsFBL2Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L2Responses'][x].symmetric_difference(responsesFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
+              diffsNoFBL2Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L2Responses'][x].symmetric_difference(responsesNoFB[numseq]['L2Responses'][x])) for x in range(seqlen)] )
+
+              print "Size of L2 responses (FB):", [len(responsesFB[numseq]['L2Responses'][x]) for x in range(seqlen)]
+              print "Size of L2 responses (NoNoise):", [len(responsesNoNoise[numseq]['L2Responses'][x]) for x in range(seqlen)]
+              print "Size of L4 responses (FB):", [len(responsesFB[numseq]['L4Responses'][x]) for x in range(seqlen)]
+              print "Size of L4 responses (NoFB):", [len(responsesNoFB[numseq]['L4Responses'][x]) for x in range(seqlen)]
+              print "Size of L4 responses (NoNoise):", [len(responsesNoNoise[numseq]['L4Responses'][x]) for x in range(seqlen)]
+              print "Size of L4 predictions (FB):", [len(responsesFB[numseq]['L4Predictive'][x]) for x in range(seqlen)]
+              print "Size of L4 predictions (NoFB):", [len(responsesNoFB[numseq]['L4Predictive'][x]) for x in range(seqlen)]
+              print "Size of L4 predictions (NoNoise):", [len(responsesNoNoise[numseq]['L4Predictive'][x]) for x in range(seqlen)]
+              print "L2 overlap with current (FB): ", overlapsFBL2[-1]
+              print "L4 overlap with current (FB): ", overlapsFBL4[-1]
+              print "L4 overlap with current (NoFB): ", overlapsNoFBL4[-1]
+              print "L4 correlation pred/correct (FB): ", corrsPredCorrectFBL4[-1]
+              print "L4 correlation pred/correct (FBNext): ", corrsPredCorrectFBL4Next[-1]
+              print "L4 correlation pred/correct (NoFB): ", corrsPredCorrectNoFBL4[-1]
+            #   print "NoNoise sequence:", [list(x)[:2] for x in sequences[numseq]]
+            #   print "Noise sequence:", [list(x)[:2] for x in noisySequences[numseq]]
+              print "NoNoise L4 responses:", [sorted(list(x))[:2] for x in responsesNoNoise[numseq]['L4Responses']]
+              print "NoNoise L4 responses (next):", [sorted(list(x))[:2] for x in responsesNoNoise[(numseq + 1) % numSequences]['L4Responses']]
+              print "NoFB L4 responses:", [sorted(list(x))[:2] for x in responsesNoFB[numseq]['L4Responses']]
+              print "NoNoise L4 predictions:", [sorted(list(x))[:2] for x in responsesNoNoise[numseq]['L4Predictive']]
+              print "NoFB L4 predictions:", [sorted(list(x))[:2] for x in responsesNoFB[numseq]['L4Predictive']]
+              print ""
+
+          # Compute mean performance / error for this seed.
+          #perfsFB.append(numpy.mean(numpy.array(diffsFB)[:,6:]))
+          perfsFB.append(numpy.mean(corrsPredCorrectFBL4))
+          perfsNoFB.append(numpy.mean(corrsPredCorrectNoFBL4))
+          errorsNoNoise.append(inferenceErrors[0,0])
+          errorsFB.append(inferenceErrors[0,1])
+          errorsNoFB.append(inferenceErrors[1,1])
+
+          # Accumulating all the activity traces of all sequences (NOTE: Here '+' means list concatenation!)
+          activitiesFB += activityFB
+          activitiesNoFB += activityNoFB
+
+      # Mean performance / error for this set of parameters (across all seeds and sequences for each seed)
+      meanPerfsFB.append(numpy.mean(perfsFB))
+      meanPerfsNoFB.append(numpy.mean(perfsNoFB))
+      stdPerfsFB.append(numpy.std(perfsFB))
+      stdPerfsNoFB.append(numpy.std(perfsNoFB))
+
+      meanErrsFB.append(numpy.mean(errorsFB))
+      meanErrsNoFB.append(numpy.mean(errorsNoFB))
+      meanErrsNoNoise.append(numpy.mean(errorsNoNoise))
+      stdErrsFB.append(numpy.std(errorsFB))
+      stdErrsNoFB.append(numpy.std(errorsNoFB))
+      stdErrsNoNoise.append(numpy.std(errorsNoNoise))
+
+      aFB = numpy.array(activitiesFB)[:,:]; aNoFB = numpy.array(activitiesNoFB)[:,:]
+      oFB = numpy.array(overlapsFBL2)[:,:]; oNoFB = numpy.array(overlapsNoFBL2)[:,:];
+      dpredFB = numpy.array(diffsFBL4Pred)[:,:]; dpredNoFB = numpy.array(diffsNoFBL4Pred)[:,:];
+      oFBNext = numpy.array(overlapsFBL2Next)[:,:]; oNoFBNext = numpy.array(overlapsNoFBL2Next)[:,:];
+      xx = numpy.arange(aFB.shape[1])
+
+      if whichPlot == "activities":
+        plt.figure()
+        plt.errorbar(xx, numpy.mean(aFB, axis=0), yerr=numpy.std(aFB, axis=0), color='r', label='Feedback enabled');
+        plt.errorbar(xx, numpy.mean(aNoFB , axis=0), yerr=numpy.std(aNoFB, axis=0), color='b', label='Feedback disabled')
+        # plt.errorbar(xx, numpy.mean((aFB - 40.0) / 280.0, axis=0), yerr=numpy.std((aFB - 40.0) / 280.0, axis=0), color='r', label='Feedback enabled');
+        # plt.errorbar(xx, numpy.mean((aNoFB - 40.0) / 280.0, axis=0), yerr=numpy.std((aNoFB - 40.0) / 280.0, axis=0), color='b', label='Feedback disabled')
+        if noiseType == 'skip':
+          plt.axvspan(sharedRange[0]+.5, sharedRange[1] -2 +.5, alpha=0.25, color='pink', label="Shared Range") # -2 because omission removes one time step from the sequences
+        else:
+          plt.axvspan(sharedRange[0]+.5, sharedRange[1] -1 +.5, alpha=0.25, color='pink')
+        plt.axvline(sequenceLen/2, 0, 1, ls='--', label='Perturbation', color='black')
+        plt.legend(loc='best')
+        plt.title(plotTitle)
+        plt.savefig(plotTitle+".png")
+        plt.show()
+
+      # Do NOT use this with "skip" noise (omitted item). It can't work, since the new sequence is permanently out of sync with the old one after the omission.
+      if whichPlot == "corrspredcorrect":
+        plt.figure()
+        z1 = numpy.array(corrsPredCorrectFBL4)
+        if noiseType == 'crossover':
+            z2 = numpy.array(corrsPredCorrectFBL4Next)
+            z1[:,24:] = z2[:,24:]
+            # If needed, one can simply eliminate the first sequence in each batch, as follows:
+            # z1 = numpy.delete(z1, range(0, z1.shape[0], numSequences), axis=0)  # Eliminate the first sequence in each batch
+        plt.errorbar(xx[1:], numpy.mean(z1 , axis=0)[1:], yerr=numpy.std(z1[1:], axis=0)[1:], color='r', label='Feedback enabled');
+        z1 = numpy.array(corrsPredCorrectNoFBL4)
+        if noiseType == 'crossover':
+            z2 = numpy.array(corrsPredCorrectNoFBL4Next)
+            z1[:, 24:] = z2[:, 24:]
+            # z1 = numpy.delete(z1, range(0, z1.shape[0], numSequences), axis=0)  # Eliminate the first sequence in each batch
+        plt.errorbar(xx[1:], numpy.mean(z1 , axis=0)[1:], yerr=numpy.std(z1[1:], axis=0)[1:], color='b', label='Feedback disabled')
+        if sharedRange[0] != sharedRange[1]:
+            plt.axvspan(sharedRange[0]+.5, sharedRange[1] -1 +.5, alpha=0.25, color='pink')
+        plt.axvline(sequenceLen/2+1, 0, 1, ls='--', label='Perturbation', color='black')
+        plt.ylabel("Prediction Performance"); #plt.xticks(noiseProbas)
+        plt.legend(loc='best')
+        plt.title(plotTitle)
+        plt.savefig(plotTitle+".png")
+        plt.show()
+        if noiseType == "crossover":
+            # Then, we show the mean similarities of Layer 2 representations to original L2 representations of both source sequences used in the crossover
+            plt.figure()
+            plt.errorbar(xx[2:], numpy.mean(oFBNext, axis=0)[2:], yerr=numpy.std(oFBNext, axis=0)[2:], color='m', label='Sequence 2');
+            plt.errorbar(xx[2:], numpy.mean(oFB, axis=0)[2:], yerr=numpy.std(oFB, axis=0)[2:], color='c', label='Sequence 1')
+            plt.axvspan(sharedRange[0] + .5, sharedRange[1] -1 + .5, alpha=0.25, color='pink')
+            plt.axvspan(sharedRange[1]-1 + .5, plt.xlim()[1], alpha=0.1, color='blue')
+            plt.legend(loc='best')
+            plt.title(plotTitle+": top-layer representations")
+            plt.savefig(plotTitle+": top-layer representations.png")
+
+
+  # Plot the average prediction performance, as a function of noise probability OR number of sequences, both with and without feedback
+  if whichPlot == "perfs":
+        plt.figure()
+        xisnbseq=0
+        xisnoisep=0
+        if len(noiseProbas)>1:
+          xisnoisep=1
+          xx = noiseProbas
+        if len(nbSequences)>1:
+          xisnbseq=1
+          xx = nbSequences
+        plt.errorbar(xx, meanPerfsFB, yerr=stdPerfsFB, color='r', label='Feedback enabled')
+        plt.errorbar(xx, meanPerfsNoFB, yerr=stdPerfsNoFB, color='b', label='Feedback disabled')
+        plt.xlim([numpy.min(xx)*.9, numpy.max(xx)*1.1])
+        plt.xticks(xx)
+        if xisnoisep:
+          plt.xlabel("Noise probability")
+        if xisnbseq:
+          plt.xlabel("Nb. of learned sequences")
+
+        plt.ylabel("Avg. Prediction Performance");
+        plt.title(plotTitle)
+        plt.show()
+        plt.savefig(plotTitle+".png")
 
 
 if __name__ == "__main__":
 
-  # This script produces three charts. Set the appropriate if-statements
-  # to True to generate them.
+  plt.ion()
 
-  # Train a single network and show error for a single example noisy sequence
-  if True:
-    results = runExperiment(
-                  {
-                    "numSequences": 2,
-                    "sequenceLen": 30,
-                    "noiseLevel": 2,
-                    "noiseType": 'skip',
-                    "noiseStart": 10,
-                    "profile": False,
-                    "L4Overrides": {"cellsPerColumn": 4}
-                  }
-    )
-    exp = results['experiment']
-    activityFeedback = results["activityFeedback"]
-    activityNoFeedback = results["activityNoFeedback"]
-    plotActivity(activityFeedback, activityNoFeedback)
 
-  # Train a single network and plot error vs amount of noise
-  if False:
-    results = runExperiment(
-                  {
-                    "numSequences": 10,
-                    "sequenceLen": 30,
-                    "noiseLevel": 10,
-                    "noiseType": 'swap',
-                    "profile": False,
-                  }
-    )
-    exp = results['experiment']
-    for v in results['inferenceErrors'][0]:
-      print v
-    print results['inferenceErrors'][1]
-    err = results['inferenceErrors']
-    errScaled = (err - err[0,0]) / 457
-    plotErrorsvsNoise(errScaled)
-    activityFeedback = results["activityFeedback"]
-    activityNoFeedback = results["activityNoFeedback"]
-    plotActivity(activityFeedback, activityNoFeedback)
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="swap", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with swapped stimuli (no shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="swap", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with swapped stimuli (shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with randomized stimulus (no shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with randomized stimulus (shared range)")
 
-  # Train a bunch of models, each with a different number of sequences.
-  # Plot the prediction error vs model complexity with noisy sequences.
-  # Note that this plot takes about 70-80 minutes to generate.
-  if False:
-    results,errors = computeErrorvsComplexity()
-    with open("results.pkl","wb") as f:
-      cPickle.dump(results,f)
 
-    plotErrorvsComplexity(results)
+
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="End-swapped sequences (shared range)")
+  runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="crossover", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="End-swapped sequences (no shared range)")
+
+
+
+  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="repeat", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with repeated stimulus (no shared range)")
+  # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="repeat", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with repeated stimulus (shared range)")
+  # # # Don't use corrspredcorrect with "skip" noise - activities would be fine though.
+  # # runExp(noiseProbas=(.1,), nbSequences=(3,), nbSeeds=5, noiseType="skip", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with omitted stimulus (no shared range)")
+  # # runExp(noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="skip", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with omitted stimulus (shared range)")
+
+  runExp(noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (no shared range)")
+  runExp(noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (shared range)")
+
+
+  # When using the correlation b/w predicted and correct as a measure, increasing model load has little effect, with or without feedback.
+  # runExp(noiseProbas=( .25,), nbSequences=(3,30), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="Test")
+  # runExp(noiseProbas=( .1, .25), nbSequences=(5,), nbSeeds=3, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="Test")

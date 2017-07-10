@@ -61,7 +61,7 @@ networkConfig1 = {
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 1.5,
+    "distalSegmentInhibitionFactor": 0.6667,
     "learningMode": True,
   },
 }
@@ -103,7 +103,7 @@ networkConfig2 = {
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 1.5,
+    "distalSegmentInhibitionFactor": 0.6667,
     "learningMode": True,
   }
 }
@@ -144,7 +144,7 @@ networkConfig3 = {
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 1.5,
+    "distalSegmentInhibitionFactor": 0.6667,
     "learningMode": True,
   }
 }
@@ -188,7 +188,7 @@ networkConfig4 = {
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 1.5,
+    "distalSegmentInhibitionFactor": 0.6667,
     "learningMode": True,
   }
 }
@@ -549,7 +549,7 @@ class LaminarNetworkTest(unittest.TestCase):
         "activationThresholdDistal": 15,
         "sampleSizeDistal": 25,
         "connectedPermanenceDistal": 0.6,
-        "distalSegmentInhibitionFactor": 1.2,
+        "distalSegmentInhibitionFactor": 0.8333,
         "learningMode": True,
       },
     }
@@ -734,6 +734,11 @@ class LaminarNetworkTest(unittest.TestCase):
       L4Representation00
     )
     self.assertEqual(len(self.getL4BurstingCells(L4Column)), 0)
+
+    # send reset signal
+    sensorInput.addResetToQueue(0)
+    externalInput.addResetToQueue(0)
+    net.run(1)
 
     # (F0, L2)
     sensorInput.addDataToQueue(features[0], 0, 0)
