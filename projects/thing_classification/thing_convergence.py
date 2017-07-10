@@ -385,7 +385,7 @@ if __name__ == "__main__":
   numObjects = len(objectNames)
 
   plt.figure()
-  for sensationNumber in range(20):
+  for sensationNumber in range(10):
     plt.imshow(overlapMat[:, :, sensationNumber])
     plt.xticks(range(numObjects), objectNames, rotation='vertical', fontsize=4)
     plt.yticks(range(numObjects), objectNames, fontsize=4)
@@ -395,27 +395,16 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.savefig('plots/overlap_matrix_step_{}.png'.format(sensationNumber))
 
-  #
-  # # plot pairwise overlap
-  # plt.figure()
-  # plt.imshow(expResult['overlapMat'])
-  # plt.xticks(range(numObjects), objectNames, rotation='vertical', fontsize=5)
-  # plt.yticks(range(numObjects), objectNames, fontsize=5)
-  # plt.title('pairwise overlap')
-  # plt.xlabel('target representation')
-  # plt.ylabel('inferred representation')
-  # plt.tight_layout()
-  # plt.savefig('overlap_matrix.pdf')
-  #
-  # # plot number of active cells for each object
-  # plt.figure()
-  # objectNamesSort = []
-  # idx = np.argsort(expResult['numL2ActiveCells'])
-  # for i in idx:
-  #   objectNamesSort.append(objectNames[i])
-  # plt.plot(numL2ActiveCells[idx])
-  # plt.xticks(range(numObjects), objectNamesSort, rotation='vertical', fontsize=5)
-  # plt.tight_layout()
-  # plt.ylabel('Number of active L2 cells')
-  # plt.savefig('number_of_active_l2_cells.pdf')
+
+  # plot number of active cells for each object
+  plt.figure()
+  objectNamesSort = []
+  idx = np.argsort(expResult['numL2ActiveCells'][:, -1])
+  for i in idx:
+    objectNamesSort.append(objectNames[i])
+  plt.plot(numL2ActiveCells[idx, -1])
+  plt.xticks(range(numObjects), objectNamesSort, rotation='vertical', fontsize=5)
+  plt.tight_layout()
+  plt.ylabel('Number of active L2 cells')
+  plt.savefig('plots/number_of_active_l2_cells.pdf')
   #
