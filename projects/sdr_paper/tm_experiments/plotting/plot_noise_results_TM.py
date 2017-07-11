@@ -223,7 +223,7 @@ layout = Layout(
             y=0.5,
             xref='x',
             yref='paper',
-            text='$\\theta = 16$',
+            text='$\\theta = 8$',
             showarrow=False,
             font=Font(
                 family='',
@@ -263,7 +263,7 @@ layout = Layout(
             y=0.5,
             xref='x',
             yref='paper',
-            text='$\\theta = 8$',
+            text='$\\theta = 16$',
             showarrow=False,
             font=Font(
                 family='',
