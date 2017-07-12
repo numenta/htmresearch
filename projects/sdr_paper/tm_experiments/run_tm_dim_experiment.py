@@ -24,7 +24,9 @@ import copy
 from itertools import izip as zip, count
 from nupic.bindings.algorithms import TemporalMemory as TM
 from scipy.spatial.distance import cosine
-from htmresearch.frameworks.poirazi_neuron_model.data_tools import generate_evenly_distributed_data_sparse
+from htmresearch.frameworks.poirazi_neuron_model.data_tools import (
+    generate_evenly_distributed_data_sparse)
+from multiprocessing import Pool, cpu_count
 numpy.random.seed(19)
 
 def convert_cell_lists_to_dense(dim, cell_list, add_1 = False):
@@ -41,24 +43,24 @@ def convert_cell_lists_to_dense(dim, cell_list, add_1 = False):
   return dense_cell_list
 
 
-def run_tm_dim_experiment(test_dims = range(400, 3100, 100),
+def run_tm_dim_experiment(test_dims = range(300, 3100, 100),
                           cellsPerColumn=1,
-                          num_active = 40,
-                          activationThreshold=5,
+                          num_active = 256,
+                          activationThreshold=10,
                           initialPermanence=0.8,
                           connectedPermanence=0.50,
-                          minThreshold=5,
+                          minThreshold=10,
                           maxNewSynapseCount=20,
                           permanenceIncrement=0.05,
                           permanenceDecrement=0.00,
                           predictedSegmentDecrement=0.000,
-                          maxSegmentsPerCell=255,
+                          maxSegmentsPerCell=4000,
                           maxSynapsesPerSegment=255,
                           seed=42,
                           num_samples = 1000,
                           sequence_length = 20,
                           training_iters = 1,
-                          automatic_threshold = True,
+                          automatic_threshold = False,
                           save_results = True):
   """
   Run an experiment tracking the performance of the temporal memory given
@@ -77,6 +79,7 @@ def run_tm_dim_experiment(test_dims = range(400, 3100, 100),
   if automatic_threshold:
     activationThreshold = min(num_active/2, maxNewSynapseCount/2)
     minThreshold = min(num_active/2, maxNewSynapseCount/2)
+    print "Using activation threshold {}".format(activationThreshold)
 
   for dim in test_dims:
     tm = TM(columnDimensions=(dim,),
@@ -93,13 +96,15 @@ def run_tm_dim_experiment(test_dims = range(400, 3100, 100),
             maxSynapsesPerSegment=maxSynapsesPerSegment,
             seed=seed)
 
+    tm.setMinThreshold(1000)
+
     datapoints = []
     canonical_active_cells = []
 
     for sample in range(num_samples):
       if (sample + 1) % 10 == 0:
         print sample + 1
-      data = generate_evenly_distributed_data_sparse(dim = dim, num_active = dim/4, num_samples = sequence_length)
+      data = generate_evenly_distributed_data_sparse(dim = dim, num_active = num_active, num_samples = sequence_length)
       datapoints.append(data)
       for i in range(training_iters):
         for j in range(data.nRows()):
@@ -150,8 +155,21 @@ def run_tm_dim_experiment(test_dims = range(400, 3100, 100),
     csim = numpy.mean(csims)
     print dim, correlation, similarity, csim
     if save_results:
-        with open("tm_dim_quarter.txt", "a") as f:
+        with open("tm_dim_{}.txt".format(num_active), "a") as f:
           f.write(str(dim)+", " + str(correlation) + ", " + str(similarity) + ", " + str(csim) + ", " + str(num_samples) + "\n")
 
+def exp_wrapper(params):
+  return run_tm_dim_experiment(**params)
+
 if __name__ == "__main__":
-  run_tm_dim_experiment()
+  p = Pool(cpu_count())
+  exp_params = []
+  for dim in reversed(range(300, 4100, 100)):
+    for num_active in [256, 128, 64]:
+      exp_params.append({
+        "test_dims": [dim],
+        "num_active" : num_active,
+        "seed": dim*num_active
+      })
+
+  p.map(exp_wrapper, exp_params)

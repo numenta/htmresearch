@@ -42,12 +42,12 @@ def convert_cell_lists_to_dense(dim, cell_list, add_1 = False):
 
 
 def run_tm_noise_experiment(dim = 2048,
-              cellsPerColumn=32,
+              cellsPerColumn=1,
               num_active = 40,
-              activationThreshold=8,
+              activationThreshold=16,
               initialPermanence=0.8,
               connectedPermanence=0.50,
-              minThreshold=8,
+              minThreshold=16,
               maxNewSynapseCount=20,
               permanenceIncrement=0.05,
               permanenceDecrement=0.00,
@@ -55,7 +55,8 @@ def run_tm_noise_experiment(dim = 2048,
               maxSegmentsPerCell=255,
               maxSynapsesPerSegment=255,
               seed=42,
-              num_samples = 1000,
+              num_samples = 1,
+              num_trials = 1000,
               sequence_length = 20,
               training_iters = 1,
               automatic_threshold = False,
@@ -79,85 +80,79 @@ def run_tm_noise_experiment(dim = 2048,
 
   Output is written to tm_noise_{threshold}}.txt, including sample size.
   """
-
   if automatic_threshold:
     activationThreshold = min(num_active/2, maxNewSynapseCount/2)
     minThreshold = min(num_active/2, maxNewSynapseCount/2)
 
-  tm = TM(columnDimensions=(dim,),
-      cellsPerColumn=cellsPerColumn,
-      activationThreshold=activationThreshold,
-      initialPermanence=initialPermanence,
-      connectedPermanence=connectedPermanence,
-      minThreshold=minThreshold,
-      maxNewSynapseCount=maxNewSynapseCount,
-      permanenceIncrement=permanenceIncrement,
-      permanenceDecrement=permanenceDecrement,
-      predictedSegmentDecrement=predictedSegmentDecrement,
-      maxSegmentsPerCell=maxSegmentsPerCell,
-      maxSynapsesPerSegment=maxSynapsesPerSegment,
-      )#seed=seed)
-
-  datapoints = []
-  canonical_active_cells = []
-
-  for sample in range(num_samples):
-    if (sample + 1) % 10 == 0:
-      print sample + 1
-    data = generate_evenly_distributed_data_sparse(dim = dim, num_active = num_active, num_samples = sequence_length)
-    datapoints.append(data)
-    for i in range(training_iters):
-      for j in range(data.nRows()):
-        activeColumns = set(data.rowNonZeros(j)[0])
-        tm.compute(activeColumns, learn = True)
-      tm.reset()
-
-    current_active_cells = []
-    for j in range(data.nRows()):
-      activeColumns = set(data.rowNonZeros(j)[0])
-      tm.compute(activeColumns, learn = True)
-      current_active_cells.append(tm.getActiveCells())
-    canonical_active_cells.append(current_active_cells)
-    tm.reset()
-
-  # Now that the TM has been trained, check its performance on each sequence with noise added.
-  correlations = []
-  similarities = []
-  csims = []
-
   for noise in noise_range:
     print noise
-    correlations = []
-    similarities = []
-    csims = []
-    for datapoint, active_cells in zip(datapoints, canonical_active_cells):
-      data = copy.deepcopy(datapoint)
-      apply_noise(data, noise)
+    for trial in range(num_trials):
+      tm = TM(columnDimensions=(dim,),
+          cellsPerColumn=cellsPerColumn,
+          activationThreshold=activationThreshold,
+          initialPermanence=initialPermanence,
+          connectedPermanence=connectedPermanence,
+          minThreshold=minThreshold,
+          maxNewSynapseCount=maxNewSynapseCount,
+          permanenceIncrement=permanenceIncrement,
+          permanenceDecrement=permanenceDecrement,
+          predictedSegmentDecrement=predictedSegmentDecrement,
+          maxSegmentsPerCell=maxSegmentsPerCell,
+          maxSynapsesPerSegment=maxSynapsesPerSegment,
+          )#seed=seed)
 
-      predicted_cells = []
+      datapoints = []
+      canonical_active_cells = []
 
-      for j in range(data.nRows()):
-        activeColumns = set(data.rowNonZeros(j)[0])
-        tm.compute(activeColumns, learn = False)
-        predicted_cells.append(tm.getPredictiveCells())
+      for sample in range(num_samples):
+        data = generate_evenly_distributed_data_sparse(dim = dim, num_active = num_active, num_samples = sequence_length)
+        datapoints.append(data)
+        for i in range(training_iters):
+          for j in range(data.nRows()):
+            activeColumns = set(data.rowNonZeros(j)[0])
+            tm.compute(activeColumns, learn = True)
+          tm.reset()
 
-      similarity = [(0.+len(set(predicted) & set(active)))/len((set(predicted) | set(active))) for predicted, active in zip (predicted_cells[:-1], active_cells[1:])]
-      dense_predicted_cells = convert_cell_lists_to_dense(2048*32, predicted_cells[:-1])
-      dense_active_cells = convert_cell_lists_to_dense(2048*32, active_cells[1:])
-      correlation = [numpy.corrcoef(numpy.asarray([predicted, active]))[0, 1] for predicted, active in zip(dense_predicted_cells, dense_active_cells)]
-      csim = [1 - cosine(predicted, active) for predicted, active in zip(dense_predicted_cells, dense_active_cells)]
+        current_active_cells = []
+        for j in range(data.nRows()):
+          activeColumns = set(data.rowNonZeros(j)[0])
+          tm.compute(activeColumns, learn = True)
+          current_active_cells.append(tm.getActiveCells())
+        canonical_active_cells.append(current_active_cells)
+        tm.reset()
 
-      correlation = numpy.nan_to_num(correlation)
-      csim = numpy.nan_to_num(csim)
-      correlations.append(numpy.mean(correlation))
-      similarities.append(numpy.mean(similarity))
-      csims.append(numpy.mean(csim))
+      # Now that the TM has been trained, check its performance on each sequence with noise added.
+      correlations = []
+      similarities = []
+      csims = []
+      for datapoint, active_cells in zip(datapoints, canonical_active_cells):
+        data = copy.deepcopy(datapoint)
+        apply_noise(data, noise)
+
+        predicted_cells = []
+
+        for j in range(data.nRows()):
+          activeColumns = set(data.rowNonZeros(j)[0])
+          tm.compute(activeColumns, learn = False)
+          predicted_cells.append(tm.getPredictiveCells())
+
+        similarity = [(0.+len(set(predicted) & set(active)))/len((set(predicted) | set(active))) for predicted, active in zip (predicted_cells[:-1], active_cells[1:])]
+        dense_predicted_cells = convert_cell_lists_to_dense(2048*32, predicted_cells[:-1])
+        dense_active_cells = convert_cell_lists_to_dense(2048*32, active_cells[1:])
+        correlation = [numpy.corrcoef(numpy.asarray([predicted, active]))[0, 1] for predicted, active in zip(dense_predicted_cells, dense_active_cells)]
+        csim = [1 - cosine(predicted, active) for predicted, active in zip(dense_predicted_cells, dense_active_cells)]
+
+        correlation = numpy.nan_to_num(correlation)
+        csim = numpy.nan_to_num(csim)
+        correlations.append(numpy.mean(correlation))
+        similarities.append(numpy.mean(similarity))
+        csims.append(numpy.mean(csim))
 
     correlation = numpy.mean(correlations)
     similarity = numpy.mean(similarities)
     csim = numpy.mean(csims)
     with open("tm_noise_{}.txt".format(activationThreshold), "a") as f:
-      f.write(str(noise)+", " + str(correlation) + ", " + str(similarity) + ", " + str(csim) + ", " + str(num_samples) + "\n")
+      f.write(str(noise)+", " + str(correlation) + ", " + str(similarity) + ", " + str(csim) + ", " + str(num_trials) + "\n")
 
 if __name__ == "__main__":
   run_tm_noise_experiment()
