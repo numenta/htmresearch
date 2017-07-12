@@ -60,7 +60,7 @@ networkConfig1 = {
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 1.5,
+    "distalSegmentInhibitionFactor": 0.6667,
     "learningMode": True,
   },
   "TMParams": {
@@ -303,6 +303,11 @@ class CombinedSequenceNetworkTest(unittest.TestCase):
       L4Representation00
     )
     self.assertEqual(len(self.getBurstingCells(L4Column)), 0)
+
+    # send reset signal
+    sensorInput.addResetToQueue(0)
+    externalInput.addResetToQueue(0)
+    net.run(1)
 
     # (F0, L2)
     sensorInput.addDataToQueue(features[0], 0, 0)
