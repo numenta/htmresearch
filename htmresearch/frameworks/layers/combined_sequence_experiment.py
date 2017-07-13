@@ -51,7 +51,6 @@ class L4TMExperiment(L4L2Experiment):
                L4RegionType="py.ExtendedTMRegion",
                networkType = "L4L2TMColumn",
                L4Overrides=None,
-               numLearningPoints=3,
                seed=42,
                logCalls=False,
                objectNamesAreIndices=False,
@@ -72,7 +71,7 @@ class L4TMExperiment(L4L2Experiment):
     registerAllResearchRegions()
     self.name = name
 
-    self.numLearningPoints = numLearningPoints
+    self.numLearningPoints = 1
     self.numColumns = numCorticalColumns
     self.inputSize = inputSize
     self.externalInputSize = externalInputSize

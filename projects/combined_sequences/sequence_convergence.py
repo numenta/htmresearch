@@ -19,7 +19,7 @@
 # ----------------------------------------------------------------------
 
 """
-This file plots the behavior of L4-L2-TM network as you train it on objects.
+This file plots the behavior of L4-L2-TM network as you train it on sequences.
 """
 
 import random
@@ -96,7 +96,7 @@ def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
 
 def runExperiment(args):
   """
-  Run experiment.  What did you think this does?
+  Runs the experiment.  What did you think this does?
 
   args is a dict representing the parameters. We do it this way to support
   multiprocessing. args contains one or more of the following keys:
@@ -105,55 +105,35 @@ def runExperiment(args):
                              during inference. Default: None
   @param profile     (bool)  If True, the network will be profiled after
                              learning and inference. Default: False
-  @param numObjects  (int)   The number of objects we will train.
+  @param numSequences (int)  The number of objects (sequences) we will train.
                              Default: 10
-  @param numPoints   (int)   The number of points on each object.
+  @param seqLength   (int)   The number of points on each object (length of
+                             each sequence).
                              Default: 10
-  @param pointRange  (int)   Creates objects each with points ranging from
-                             [numPoints,...,numPoints+pointRange-1]
-                             A total of numObjects * pointRange objects will be
-                             created.
-                             Default: 1
-  @param numLocations (int)  For each point, the number of locations to choose
-                             from.  Default: 10
   @param numFeatures (int)   For each point, the number of features to choose
                              from.  Default: 10
   @param numColumns  (int)   The total number of cortical columns in network.
                              Default: 2
-  @param networkType (string)The type of network to use.  Options are:
-                             "MultipleL4L2Columns",
-                             "MultipleL4L2ColumnsWithTopology" and
-                             "MultipleL4L2ColumnsWithRandomTopology".
-                             Default: "MultipleL4L2Columns"
-  @param settlingTime (int)  Number of iterations we wait to let columns
-                             stabilize. Important for multicolumn experiments
-                             with lateral connections.
-  @param includeRandomLocation (bool) If True, a random location SDR will be
-                             generated during inference for each feature.
 
   The method returns the args dict updated with two additional keys:
     convergencePoint (int)   The average number of iterations it took
                              to converge across all objects
     objects          (pairs) The list of objects we trained on
   """
-  numObjects = args.get("numObjects", 10)
-  numLocations = args.get("numLocations", 10)
+  numSequences = args.get("numSequences", 10)
   numFeatures = args.get("numFeatures", 10)
   numColumns = args.get("numColumns", 2)
   networkType = args.get("networkType", "L4L2TMColumn")
   profile = args.get("profile", False)
   noiseLevel = args.get("noiseLevel", None)  # TODO: implement this?
-  numPoints = args.get("numPoints", 10)
+  seqLength = args.get("seqLength", 10)
   trialNum = args.get("trialNum", 42)
-  pointRange = args.get("pointRange", 1)
   plotInferenceStats = args.get("plotInferenceStats", True)
-  settlingTime = args.get("settlingTime", 3)
-  includeRandomLocation = args.get("includeRandomLocation", False)
 
 
   # Create the objects
   objects = createObjectMachine(
-    machineType="simple",
+    machineType="sequence",
     numInputBits=20,
     sensorInputSize=150,
     externalInputSize=2400,
@@ -161,27 +141,18 @@ def runExperiment(args):
     numFeatures=numFeatures,
     seed=trialNum
   )
+  objects.createRandomSequences(numSequences, seqLength)
 
-  for p in range(pointRange):
-    objects.createRandomObjects(numObjects, numPoints=numPoints+p,
-                                      numLocations=numLocations,
-                                      numFeatures=numFeatures)
+  print "Sequences:"
+  print objects.getObjects()
 
   r = objects.objectConfusion()
   print "Average common pairs=", r[0],
-  print ", locations=",r[1],
   print ", features=",r[2]
 
-  # print "Total number of objects created:",len(objects.getObjects())
-  # print "Objects are:"
-  # for o in objects:
-  #   pairs = objects[o]
-  #   pairs.sort()
-  #   print str(o) + ": " + str(pairs)
-
   # Setup experiment and train the network
-  name = "convergence_O%03d_L%03d_F%03d_C%03d_T%03d" % (
-    numObjects, numLocations, numFeatures, numColumns, trialNum
+  name = "sequence_convergence_S%03d_F%03d_C%03d_T%03d" % (
+    numSequences, numFeatures, numColumns, trialNum
   )
   exp = L4TMExperiment(
     name=name,
@@ -191,27 +162,19 @@ def runExperiment(args):
     externalInputSize=2400,
     numInputBits=20,
     seed=trialNum,
-    numLearningPoints=1,
     logCalls=False
   )
 
-  # We want to traverse the features of each object randomly a few times before
-  # moving on to the next time. Create the SDRs that we need for this.
-  objectsToLearn = objects.provideObjectsToLearn()
-  objectTraversals = {}
-  for objectId in objectsToLearn:
-    objectTraversals[objectId] = objects.randomTraversal(
-      objectsToLearn[objectId], settlingTime)
-
   # Train the network on all the SDRs for all the objects
-  exp.learnObjects(objectTraversals)
+  objectSDRs = objects.provideObjectsToLearn()
+  exp.learnObjects(objectSDRs)
+  exp.learnObjects(objectSDRs)
+  exp.learnObjects(objectSDRs)
   if profile:
     exp.printProfile(reset=True)
 
-  # For inference, we will check and plot convergence for each object. For each
-  # object, we create a sequence of random sensations for each column.  We will
-  # present each sensation for settlingTime time steps to let it settle and
-  # ensure it converges.
+  # For inference, we will check and plot convergence for each sequence. We
+  # don't want to shuffle them!
   for objectId in objects:
     obj = objects[objectId]
 
@@ -219,44 +182,23 @@ def runExperiment(args):
     for c in range(numColumns):
       objectSensations[c] = []
 
-    if numColumns > 1:
-      # Create sequence of random sensations for this object for all columns At
-      # any point in time, ensure each column touches a unique loc,feature pair
-      # on the object.  It is ok for a given column to sense a loc,feature pair
-      # more than once. The total number of sensations is equal to the number of
-      # points on the object.
-      for sensationNumber in range(len(obj)):
-        # Randomly shuffle points for each sensation
-        objectCopy = [pair for pair in obj]
-        random.shuffle(objectCopy)
-        for c in range(numColumns):
-          # stay multiple steps on each sensation
-          for _ in xrange(settlingTime):
-            objectSensations[c].append(objectCopy[c])
-
-    else:
-      # Create sequence of sensations for this object for one column. The total
-      # number of sensations is equal to the number of points on the object. No
-      # point should be visited more than once.
-      objectCopy = [pair for pair in obj]
-      random.shuffle(objectCopy)
-      for pair in objectCopy:
-        # stay multiple steps on each sensation
-        for _ in xrange(settlingTime):
-          objectSensations[0].append(pair)
+    # Create sequence of sensations for this object for one column. The total
+    # number of sensations is equal to the number of points on the object. No
+    # point should be visited more than once.
+    objectCopy = [pair for pair in obj]
+    for pair in objectCopy:
+      objectSensations[0].append(pair)
 
     inferConfig = {
       "object": objectId,
       "numSteps": len(objectSensations[0]),
       "pairs": objectSensations,
-      "includeRandomLocation": includeRandomLocation,
     }
 
     inferenceSDRs = objects.provideObjectToInfer(inferConfig)
+    print "Inference SDRs", inferenceSDRs
 
     exp.infer(inferenceSDRs, objectName=objectId)
-    if profile:
-      exp.printProfile(reset=True)
 
     if plotInferenceStats:
       exp.plotInferenceStats(
@@ -272,7 +214,7 @@ def runExperiment(args):
   # Compute overall inference statistics
   infStats = exp.getInferenceStats()
   convergencePoint = averageConvergencePoint(
-    infStats,"L2 Representation", 30, 40, settlingTime)
+    infStats,"L2 Representation", 30, 40, 1)
 
   numPredictions = 0.0
   sumPredictions = 0.0
@@ -283,8 +225,8 @@ def runExperiment(args):
     sumPredictions += sum(predictedActiveTrace)
   averagePredictions = sumPredictions / numPredictions
 
-  print "# objects {} # features {} # locations {} # columns {} trial # {} network type {}".format(
-    numObjects, numFeatures, numLocations, numColumns, trialNum, networkType)
+  print "# Sequences {} # features {} # columns {} trial # {} network type {}".format(
+    numSequences, numFeatures, numColumns, trialNum, networkType)
   print "Average convergence point=",convergencePoint
   print
 
@@ -300,16 +242,13 @@ def runExperiment(args):
   return args
 
 
-def runExperimentPool(numObjects,
-                      numLocations,
+def runExperimentPool(numSequences,
                       numFeatures,
                       numColumns,
                       networkType=["L4L2TMColumn"],
                       numWorkers=7,
                       nTrials=1,
-                      pointRange=1,
-                      numPoints=10,
-                      includeRandomLocation=False,
+                      seqLength=10,
                       resultsName="convergence_results.pkl"):
   """
   Allows you to run a number of experiments using multiple processes.
@@ -322,8 +261,7 @@ def runExperimentPool(numObjects,
 
   Example:
     results = runExperimentPool(
-                          numObjects=[10],
-                          numLocations=[5],
+                          numSequences=[10],
                           numFeatures=[5],
                           numColumns=[2,3,4,5,6],
                           numWorkers=8,
@@ -333,23 +271,18 @@ def runExperimentPool(numObjects,
   args = []
 
   for c in reversed(numColumns):
-    for o in reversed(numObjects):
-      for l in numLocations:
+    for o in reversed(numSequences):
         for f in numFeatures:
           for n in networkType:
             for t in range(nTrials):
               args.append(
-                {"numObjects": o,
-                 "numLocations": l,
+                {"numSequences": o,
                  "numFeatures": f,
                  "numColumns": c,
                  "trialNum": t,
-                 "pointRange": pointRange,
-                 "numPoints": numPoints,
+                 "seqLength": seqLength,
                  "networkType" : n,
                  "plotInferenceStats": False,
-                 "includeRandomLocation": includeRandomLocation,
-                 "settlingTime": 3,
                  }
               )
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
@@ -384,7 +317,7 @@ def plotConvergenceByObject(results, objectRange, featureRange, numTrials):
   convergence = numpy.zeros((max(featureRange), max(objectRange) + 1))
   for r in results:
     if r["numFeatures"] in featureRange:
-      convergence[r["numFeatures"] - 1, r["numObjects"]] += r["convergencePoint"]
+      convergence[r["numFeatures"] - 1, r["numSequences"]] += r["convergencePoint"]
 
   convergence /= numTrials
 
@@ -434,7 +367,7 @@ def plotPredictionsByObject(results, objectRange, featureRange, numTrials):
   predictions = numpy.zeros((max(featureRange), max(objectRange) + 1))
   for r in results:
     if r["numFeatures"] in featureRange:
-      predictions[r["numFeatures"] - 1, r["numObjects"]] += r["averagePredictions"]
+      predictions[r["numFeatures"] - 1, r["numSequences"]] += r["averagePredictions"]
 
   predictions /= numTrials
 
@@ -475,17 +408,12 @@ if __name__ == "__main__":
   if True:
     results = runExperiment(
                   {
-                    "numObjects": 10,
-                    "numPoints": 10,
-                    "numLocations": 10,
-                    "numFeatures": 10,
+                    "numSequences": 20,
+                    "seqLength": 10,
+                    "numFeatures": 10000,
                     "numColumns": 1,
-                    "networkType": "L4L2TMColumn",
                     "trialNum": 4,
-                    "pointRange": 1,
                     "plotInferenceStats": True,  # Outputs detailed graphs
-                    "settlingTime": 3,
-                    "includeRandomLocation": False,
                   }
               )
 
@@ -498,16 +426,15 @@ if __name__ == "__main__":
     numTrials = 10
     columnRange = [1]
     featureRange = [5,8,10,20]
-    objectRange = [2,10,20,30,40,50,60,80,100]
+    seqRange = [2,10,20,30,40,50,60,80,100]
 
     # Comment this out if you are re-running analysis on already saved results.
     # Very useful for debugging the plots
     runExperimentPool(
-                      numObjects=objectRange,
-                      numLocations=[10],
+                      numSequences=seqRange,
                       numFeatures=featureRange,
                       numColumns=columnRange,
-                      numPoints=10,
+                      seqLength=10,
                       nTrials=numTrials,
                       numWorkers=cpu_count() - 1,
                       resultsName="object_convergence_results.pkl")

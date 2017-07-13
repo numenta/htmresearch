@@ -241,6 +241,15 @@ class ObjectMachineBase(object):
           raise ValueError("Invalid SDR's sent to experiment")
 
 
+  @staticmethod
+  def _generatePattern(numBits, totalSize):
+    """
+    Generates a random SDR with specified number of bits and total size.
+    """
+    indices = random.sample(xrange(totalSize), numBits)
+    return set(indices)
+
+
   def __len__(self):
     """
     Custom length method.
