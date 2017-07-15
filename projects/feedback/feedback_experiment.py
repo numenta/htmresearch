@@ -135,8 +135,6 @@ class FeedbackExperiment(object):
 
 
 
-
-
   def myCreateNetwork(self, networkConfig):
 
         suffix = '_0'
@@ -183,7 +181,7 @@ class FeedbackExperiment(object):
         network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
                      srcOutput="activeCells", destInput="feedforwardInput")
         network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
-                     srcOutput="predictedActiveCells",
+                     srcOutput="winnerCells",
                      destInput="feedforwardGrowthCandidates")
 
         # Link L2 feedback to L4
@@ -247,55 +245,43 @@ class FeedbackExperiment(object):
 
     # print "1) Train L4 sequence memory"
 
-
-    self._disableL2()
-    self._setLearningMode(l4Learning=True, l2Learning=False)
-    for sequenceNum, sequence in enumerate(sequences):
-
-      # keep track of numbers of iterations to run for this sequence
-      iterations = 0
-
-      # Run multiple passes through each sequence
-      for _ in xrange(self.numLearningPoints):
+    # We're now using online learning, so both layers should be trying to learn
+    # at all times.
+    self._setLearningMode(l4Learning=True, l2Learning=True)
+    sequence_order = range(len(sequences))
+    for _ in xrange(1):
+      #random.shuffle(sequence_order)
+      for i in sequence_order:
+        sequence = sequences[i]
+        # keep track of numbers of iterations to run for this sequence
+        iterations = 0
 
         for s in sequence:
           self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
           iterations += 1
 
-        # Reset signal
-        self.sensorInputs[0].addDataToQueue([], 1, 0)
-        iterations += 1
+        if iterations > 0:
+          self.network.run(iterations)
 
-      if iterations > 0:
-        self.network.run(iterations)
-
-    # print "2) Train L2"
-    self._enableL2()
-    self._setLearningMode(l4Learning=False, l2Learning=True)
-    for sequenceNum, sequence in enumerate(sequences):
-      for s in sequence:
-        self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
-        self.network.run(1)
-      self.sendReset()
-
-    # print "3) Train L4 apical segments"
-    self._setLearningMode(l4Learning=True, l2Learning=False)
-    for p in range(5):
-      for sequenceNum, sequence in enumerate(sequences):
-        for s in sequence:
-          self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
-          self.network.run(1)
         self.sendReset()
+        # This fills the role of self.sendReset(), in allowing the network to
+        # "cool down" between sequences.  We can send in empty SDRs, or noise --
+        # either way works.
+        #iterations = 0
+        #for _ in xrange(10):
+        #  self.sensorInputs[0].addDataToQueue([], 0, 0)
+        #  iterations += 1
+        #self.network.run(iterations)
 
-    # Re-run the sequences once each and store L2 representations for each
     self._setLearningMode(l4Learning=False, l2Learning=False)
+    self.sendReset()
     for sequenceNum, sequence in enumerate(sequences):
       for s in sequence:
         self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
         self.network.run(1)
       self.objectL2Representations[sequenceNum] = self.getL2Representations()
       self.sendReset()
-
+    return
 
   def infer(self, sequence, reset=True, sequenceNumber=None, burnIn=2,
             enableFeedback=True, apicalTiebreak=True,
@@ -335,12 +321,11 @@ class FeedbackExperiment(object):
 
     if sequenceNumber is not None:
       if sequenceNumber not in self.objectL2Representations:
-        raise ValueError("The provided sequence was not given during"
-                         " learning")
+        raise ValueError("The provided sequence was not given during learning")
 
 
-    self.network.regions["L4Column_0"].getSelf()._tm.setUseApicalModulationBasalThreshold(apicalModulationBasalThreshold)
-    self.network.regions["L4Column_0"].getSelf()._tm.setUseApicalTiebreak(apicalTiebreak)
+    #self.network.regions["L4Column_0"].getSelf()._tm.setUseApicalModulationBasalThreshold(apicalModulationBasalThreshold)
+    #self.network.regions["L4Column_0"].getSelf()._tm.setUseApicalTiebreak(apicalTiebreak)
     self.network.regions["L2Column_0"].getSelf()._pooler.setUseInertia(inertia)
 
     L2Responses=[]
@@ -435,7 +420,7 @@ class FeedbackExperiment(object):
             "columnCount": inputSize,
             "cellsPerColumn": 8,
             "learn": True,
-            "initialPermanence": 0.51,
+            "initialPermanence": 0.61,
             "connectedPermanence": 0.6,
             "permanenceIncrement": 0.1,
             "permanenceDecrement": 0.02,
@@ -445,7 +430,7 @@ class FeedbackExperiment(object):
             "apicalPredictedSegmentDecrement": 0.0,
             "activationThreshold": 15,
             "sampleSize": 20,
-            "implementation": "ApicalTiebreak",
+            "implementation": "ApicalDependent",
             "seed": self.seed
             }
     elif self.L4RegionType == "py.ExtendedTMRegion":
@@ -480,8 +465,8 @@ class FeedbackExperiment(object):
       "learningMode": True,
       "sdrSize": 40,
       "synPermProximalInc": 0.1,
-      "synPermProximalDec": 0.001,
-      "initialProximalPermanence": 0.6,
+      "synPermProximalDec": 0.0025,
+      "initialProximalPermanence": 0.61,
       "minThresholdProximal": 10,
       "sampleSizeProximal": 20,
       "connectedPermanenceProximal": 0.5,
@@ -492,7 +477,7 @@ class FeedbackExperiment(object):
       "sampleSizeDistal": 20,
       "connectedPermanenceDistal": 0.5,
       "distalSegmentInhibitionFactor": .8,
-      "inertiaFactor": .6667,
+      "inertiaFactor": 1.,
       "seed": self.seed,
     }
 

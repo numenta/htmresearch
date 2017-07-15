@@ -142,6 +142,8 @@ class ColumnPooler(object):
     self.distalSegmentInhibitionFactor = distalSegmentInhibitionFactor
     self.inertiaFactor = inertiaFactor
 
+    self.stepNum = 0
+
     self.activeCells = numpy.empty(0, dtype="uint32")
     self._random = Random(seed)
 
@@ -182,8 +184,9 @@ class ColumnPooler(object):
     if learn:
       self._computeLearningMode(feedforwardInput, lateralInputs,
                                 feedforwardGrowthCandidates)
-    else:
-      self._computeInferenceMode(feedforwardInput, lateralInputs)
+    # Only infer if we are in a place we are familiar with.
+    #if len(feedforwardInput) < len(feedforwardGrowthCandidates)*2:
+    self._computeInferenceMode(feedforwardInput, lateralInputs)
 
 
   def _computeLearningMode(self, feedforwardInput, lateralInputs,
@@ -207,43 +210,104 @@ class ColumnPooler(object):
 
     @param  feedforwardGrowthCandidates (sequence or None)
             Sorted indices of feedforward input bits that the active cells may
-            grow new synapses to
+            grow new synapses to.  This is assumed to be the predicted active
+            cells of the input layer.
     """
+    # If we have a large amount of unpredicted input, we should avoid learning.
+    # In this case, it is possible that we are on a sequence which has not
+    # fully been mastered by the TM, and it may take it some time to learn a
+    # stable representation.
+    #if len(feedforwardGrowthCandidates) < self.minThresholdProximal:
+    #  self.activeCells = numpy.asarray([], dtype = "int")
+    #  return
+
+    self.stepNum += 1
+    #import ipdb; ipdb.set_trace()
 
     prevActiveCells = self.activeCells
+    cellsToLearn = set(self.activeCells)
 
-    # If there are no previously active cells, select random subset of cells.
-    # Else we maintain previous activity.
-    if len(self.activeCells) == 0:
-      self.activeCells = _sampleRange(self._random,
-                                      0, self.numberOfCells(),
-                                      step=1, k=self.sdrSize)
-      self.activeCells.sort()
+    # If there is some current activity, pick cells that have lateral input and
+    # activate them, reaching quota if possible.  This also allows for one
+    # column to infer what object it is currently learning from another, more
+    # confident column.
+    if len(cellsToLearn) < self.sdrSize:
+      numActiveSegmentsByCell = numpy.zeros(self.cellCount, dtype="int")
+      for i, lateralInput in enumerate(lateralInputs):
+        overlaps = self.distalPermanences[i].rightVecSumAtNZGteThresholdSparse(
+          lateralInput, self.connectedPermanenceDistal)
+        numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
 
-    if len(feedforwardInput) > 0:
+      cellsToAdd = numpy.argsort(numActiveSegmentsByCell)[::-1]
+      for cell in cellsToAdd:
+        if (len(cellsToLearn) > self.sdrSize or
+            numActiveSegmentsByCell[cell] < 1):
+          break
+        elif cell in cellsToLearn:
+          continue
+        else:
+          cellsToLearn.add(cell)
+
+    # If there are not enough previously active cells, select random subset of
+    # cells to learn on.  If there were only some active cells, we assume that
+    # we are learning an object related to what is represented by those cells;
+    # if there were none, we are learning a new object.
+    # This case is the only way different object representations are created.
+    if len(cellsToLearn) < self.sdrSize:
+      numToAdd = self.sdrSize - len(cellsToLearn)
+      newCells = _sampleRange(self._random,
+                              0, self.numberOfCells(),
+                              step=1, k=numToAdd)
+      cellsToLearn |= set(newCells)
+
+    cellsToLearn = numpy.asarray(list(cellsToLearn))
+    cellsToLearn.sort()
+
+    if len(cellsToLearn) > self.sdrSize:
+      numActiveSegmentsByCell = numpy.zeros(self.cellCount, dtype="int")
+      for i, lateralInput in enumerate(lateralInputs):
+        overlaps = self.distalPermanences[i].rightVecSumAtNZGteThresholdSparse(
+          lateralInput, self.connectedPermanenceDistal)
+        numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
+      numActiveSegmentsByCell = numActiveSegmentsByCell[cellsToLearn]
+      indices = numpy.argsort(numActiveSegmentsByCell)[:self.sdrSize]
+      cellsToLearn = cellsToLearn[indices]
+
+    self.activeCells = numpy.union1d(self.activeCells, cellsToLearn)
+    self.activeCells.sort()
+    cellsToLearn.sort()
+
+    # Finally, now that we have decided which cells we should be learning on, do
+    # the actual learning.
+    if (len(feedforwardInput) > 0):# and
+          #len(feedforwardGrowthCandidates) > self.minThresholdProximal):
       # Proximal learning
       self._learn(self.proximalPermanences, self._random,
-                  self.activeCells, feedforwardInput,
+                  cellsToLearn, feedforwardInput,
                   feedforwardGrowthCandidates, self.sampleSizeProximal,
                   self.initialProximalPermanence, self.synPermProximalInc,
                   self.synPermProximalDec, self.connectedPermanenceProximal)
 
       # Internal distal learning
-      if len(prevActiveCells) > 0:
+      # Don't do any if we haven't gotten predicted input, i.e. if we aren't
+      # learning anything proximally.
+      if (len(prevActiveCells) > 0): #and
+            #len(feedforwardGrowthCandidates) > self.minThresholdProximal):
         self._learn(self.internalDistalPermanences, self._random,
-                    self.activeCells, prevActiveCells, prevActiveCells,
+                    cellsToLearn, prevActiveCells, prevActiveCells,
                     self.sampleSizeDistal, self.initialDistalPermanence,
                     self.synPermDistalInc, self.synPermDistalDec,
                     self.connectedPermanenceDistal)
 
       # External distal learning
+      # We should do this no matter what, since other columns might still be
+      # learning useful things even if we're not.
       for i, lateralInput in enumerate(lateralInputs):
         self._learn(self.distalPermanences[i], self._random,
-                    self.activeCells, lateralInput, lateralInput,
+                    cellsToLearn, lateralInput, lateralInput,
                     self.sampleSizeDistal, self.initialDistalPermanence,
                     self.synPermDistalInc, self.synPermDistalDec,
                     self.connectedPermanenceDistal)
-
 
   def _computeInferenceMode(self, feedforwardInput, lateralInputs):
     """
@@ -282,7 +346,7 @@ class ColumnPooler(object):
       numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
 
     chosenCells = []
-    minNumActiveCells = int(self.sdrSize * .75)
+    minNumActiveCells = int(self.sdrSize * 0.75)
 
     numActiveSegsForFFSuppCells = numActiveSegmentsByCell[
         feedforwardSupportedCells]
@@ -323,8 +387,8 @@ class ColumnPooler(object):
           prevCells = prevCells[:inertialCap]
           numActiveSegsForPrevCells = numActiveSegsForPrevCells[:inertialCap]
 
-          # Activate groups of previously active cells by their lateral support
-          # until we either meet quota or run out of cells.
+          # Activate groups of previously active cells by order of their lateral
+          # support until we either meet quota or run out of cells.
           ttop = numpy.max(numActiveSegsForPrevCells)
           while ttop >= 0 and len(chosenCells) <= minNumActiveCells:
             chosenCells = numpy.union1d(chosenCells,

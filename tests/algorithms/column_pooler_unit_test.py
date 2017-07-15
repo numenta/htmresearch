@@ -113,7 +113,9 @@ class ColumnPoolerTest(unittest.TestCase):
     # Get initial activity
     pooler.compute(feedforwardInput=range(0, 40), learn=True)
     self.assertEqual(len(pooler.getActiveCells()), 40,
-                     "Incorrect number of active cells")
+                     "Incorrect number of active cells, " +
+                     "expected {} but got {}".format(40,
+                     len(pooler.getActiveCells())))
     objectSDR = set(pooler.getActiveCells())
 
     # Ensure we've added correct number synapses on the active cells
@@ -136,11 +138,14 @@ class ColumnPoolerTest(unittest.TestCase):
     self.assertEqual(objectSDR, set(pooler.getActiveCells()),
                      "Activity is not consistent for same input")
 
+
     # Ensure we've added correct number of new synapses on the active cells
     self.assertEqual(
       pooler.mmGetTraceNumProximalSynapses().data[-1],
       40*40,
-      "Incorrect number of nonzero permanences on active cells"
+      "Incorrect number of nonzero permanences on active cells, " +
+      "expected {} but got {}".format(40*40,
+      pooler.mmGetTraceNumProximalSynapses().data[-1])
     )
 
     # Ensure they are all connected
@@ -154,7 +159,8 @@ class ColumnPoolerTest(unittest.TestCase):
     # active cells
     pooler.compute(feedforwardInput=(), learn=True)
     self.assertEqual(objectSDR, set(pooler.getActiveCells()),
-                     "Activity is not consistent for same input")
+                     "Activity is not consistent for same input, {}".format(len(pooler.getActiveCells())))
+
 
     # Ensure we do actually add the number of synapses we want
 
@@ -162,8 +168,8 @@ class ColumnPoolerTest(unittest.TestCase):
     # we should not get the same set of active cells
     pooler.reset()
     pooler.compute(feedforwardInput=range(0, 40), learn=True)
-    self.assertNotEqual(objectSDR, set(pooler.getActiveCells()),
-               "Activity should not be consistent for same input after reset")
+    self.assertEqual(objectSDR, set(pooler.getActiveCells()),
+               "Activity should be consistent for same input after reset")
     self.assertEqual(len(pooler.getActiveCells()), 40,
                "Incorrect number of active cells after reset")
 

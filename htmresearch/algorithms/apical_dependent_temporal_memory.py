@@ -31,7 +31,7 @@ from nupic.bindings.math import Random, SparseMatrixConnections
 class ApicalDependentTemporalMemory(object):
   """
   An alternate approach to apical dendrites. Every cell SDR is specific to both
-  the basal the apical input. Prediction requires both basal and apical support.
+  the basal and apical input. Prediction requires both basal and apical support.
 
   For sequence memory, the result is that every sequence happens within a
   "world" which is specified by the apical input. Sequences are not shared
@@ -44,7 +44,7 @@ class ApicalDependentTemporalMemory(object):
                apicalInputSize=0,
                cellsPerColumn=32,
                activationThreshold=13,
-               initialPermanence=0.21,
+               initialPermanence=0.61,
                connectedPermanence=0.50,
                minThreshold=10,
                sampleSize=20,
