@@ -29,16 +29,19 @@ from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
 
 from nupic.frameworks.opf.metrics import MetricSpec
-from nupic.frameworks.opf.modelfactory import ModelFactory
+from nupic.frameworks.opf.model_factory import ModelFactory
+
 from nupic.frameworks.opf.predictionmetricsmanager import MetricsManager
 from nupic.frameworks.opf import metrics
-from htmresearch.frameworks.opf.clamodel_custom import CLAModel_custom
+# from htmresearch.frameworks.opf.clamodel_custom import CLAModel_custom
 import nupic_output
 
 
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import yaml
+
 from htmresearch.support.sequence_learning_utils import *
 from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
@@ -72,15 +75,13 @@ def createModel(modelParams):
 
 
 def getModelParamsFromName(dataSet):
-  importName = "model_params.%s_model_params" % (
-    dataSet.replace(" ", "_").replace("-", "_")
-  )
-  print "Importing model params from %s" % importName
-  try:
-    importedModelParams = importlib.import_module(importName).MODEL_PARAMS
-  except ImportError:
-    raise Exception("No model params exist for '%s'. Run swarm first!"
-                    % dataSet)
+  if (dataSet == "nyc_taxi" or
+          dataSet == "nyc_taxi_perturb" or
+          dataSet == "nyc_taxi_perturb_baseline"):
+    importedModelParams = yaml.safe_load(open('model_params/nyc_taxi_model_params.yaml'))
+  else:
+    raise Exception("No model params exist for {}".format(dataSet))
+
   return importedModelParams
 
 
@@ -214,17 +215,15 @@ if __name__ == "__main__":
   else:
     raise RuntimeError("un recognized dataset")
 
-  if dataSet == "nyc_taxi" or dataSet == "nyc_taxi_perturb" or dataSet =="nyc_taxi_perturb_baseline":
-    modelParams = getModelParamsFromName("nyc_taxi")
-  else:
-    modelParams = getModelParamsFromName(dataSet)
+  modelParams = getModelParamsFromName(dataSet)
+  
   modelParams['modelParams']['clParams']['steps'] = str(_options.stepsAhead)
   modelParams['modelParams']['clParams']['regionName'] = classifierType
 
   print "Creating model from %s..." % dataSet
 
   # use customized CLA model
-  model = CLAModel_custom(**modelParams['modelParams'])
+  model = ModelFactory.create(modelParams)
   model.enableInference({"predictedField": predictedField})
   model.enableLearning()
   model._spLearningEnabled = True
