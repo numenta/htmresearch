@@ -23,6 +23,7 @@ This file is used to run Thing experiments using simulated sensations.
 """
 import random
 import os
+from math import ceil
 import numpy as np
 import pprint
 import matplotlib.pyplot as plt
@@ -48,11 +49,11 @@ def getL4Params():
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
-    "permanenceDecrement": 0.02,
+    "permanenceDecrement": 0.01,
     "minThreshold": 19,
     "predictedSegmentDecrement": 0.0,
     "activationThreshold": 19,
-    "sampleSize": 30,
+    "sampleSize": 20,
     "implementation": "etm",
   }
 
@@ -63,13 +64,13 @@ def getL2Params():
   Returns a good default set of parameters to use in the L4 region.
   """
   return {
-    "inputWidth": 2048 * 16,
+    "inputWidth": 256 * 16,
     "cellCount": 4096,
     "sdrSize": 40,
     "synPermProximalInc": 0.5,
     "synPermProximalDec": 0.0,
     "initialProximalPermanence": 0.6,
-    "minThresholdProximal": 6,
+    "minThresholdProximal": 9,
     "sampleSizeProximal": 10,
     "connectedPermanenceProximal": 0.5,
     "synPermDistalInc": 0.1,
@@ -81,6 +82,60 @@ def getL2Params():
     "distalSegmentInhibitionFactor": 1.001,
     "learningMode": True,
   }
+
+
+def locateConvergencePoint(stats, minOverlap, maxOverlap):
+  """
+  Walk backwards through stats until you locate the first point that diverges
+  from target overlap values.  We need this to handle cases where it might get
+  to target values, diverge, and then get back again.  We want the last
+  convergence point.
+  """
+  for i,v in enumerate(stats[::-1]):
+    if not (v >= minOverlap and v <= maxOverlap):
+      return len(stats)-i + 1
+
+  # Never differs - converged in one iteration
+  return 1
+
+
+def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
+                            settlingTime):
+  """
+  inferenceStats contains activity traces while the system visits each object.
+
+  Given the i'th object, inferenceStats[i] contains activity statistics for
+  each column for each region for the entire sequence of sensations.
+
+  For each object, compute the convergence time - the first point when all
+  L2 columns have converged.
+
+  Return the average convergence time across all objects.
+
+  Given inference statistics for a bunch of runs, locate all traces with the
+  given prefix. For each trace locate the iteration where it finally settles
+  on targetValue. Return the average settling iteration across all runs.
+  """
+  convergenceSum = 0.0
+
+  # For each object
+  for stats in inferenceStats:
+
+    # For each L2 column locate convergence time
+    convergencePoint = 0.0
+    for key in stats.iterkeys():
+      if prefix in key:
+        columnConvergence = locateConvergencePoint(
+          stats[key], minOverlap, maxOverlap)
+
+        # Ensure this column has converged by the last iteration
+        # assert(columnConvergence <= len(stats[key]))
+
+        convergencePoint = max(convergencePoint, columnConvergence)
+
+    convergenceSum += ceil(float(convergencePoint)/settlingTime)
+
+  return convergenceSum/len(inferenceStats)
 
 
 def loadThingObjects(numCorticalColumns=1, objDataPath='./data/'):
@@ -116,6 +171,7 @@ def loadThingObjects(numCorticalColumns=1, objDataPath='./data/'):
         objFiles.append(f)
 
   idx = 0
+  OnBitsList = []
   for f in objFiles:
     objName = f.split('.')[0]
     objName = objName[4:]
@@ -125,6 +181,7 @@ def loadThingObjects(numCorticalColumns=1, objDataPath='./data/'):
     for line in objFile.readlines():
       # parse thing data file and extract feature/location vectors
       sense = line.split('=>')[1].strip(' ').strip('\n')
+      OnBitsList.append(float(line.split('] =>')[0].split('/')[1]))
       location = sense.split('],[')[0].strip('[')
       feature = sense.split('],[')[1].strip(']')
       location = np.fromstring(location, sep=',', dtype=np.uint8)
@@ -139,94 +196,97 @@ def loadThingObjects(numCorticalColumns=1, objDataPath='./data/'):
     objects.addObject(sensationList, objName)
     print "load object file: {} object name: {} sensation # {}".format(
       f, objName, len(sensationList))
-  return objects
+  OnBitsList
+  OnBitsList = np.array(OnBitsList)
+
+  plt.figure()
+  plt.hist(OnBitsList)
+  return objects, OnBitsList
 
 
 
 def trainNetwork(objects, numColumns, l4Params, l2Params, verbose=False):
+  print " Training sensorimotor network ..."
   objectNames = objects.objects.keys()
   numObjects = len(objectNames)
 
-  print " Training sensorimotor network ..."
   exp = L4L2Experiment("shared_features",
                        L2Overrides=l2Params,
                        L4Overrides=l4Params,
                        numCorticalColumns=numColumns)
   exp.learnObjects(objects.provideObjectsToLearn())
 
-  settlingTime = 3
+  settlingTime = 1
   L2Representations = exp.objectL2Representations
-  if verbose:
-    print "Learned object representations:"
-    pprint.pprint(L2Representations, width=400)
-    print "=========================="
+  # if verbose:
+  #   print "Learned object representations:"
+  #   pprint.pprint(L2Representations, width=400)
+  #   print "=========================="
 
   # For inference, we will check and plot convergence for each object. For each
   # object, we create a sequence of random sensations for each column.  We will
   # present each sensation for settlingTime time steps to let it settle and
   # ensure it converges.
 
-  overlapMat = np.zeros((numObjects, numObjects))
-  numL2ActiveCells= np.zeros((numObjects, ))
+  maxSensationNumber = 30
+  overlapMat = np.zeros((numObjects, numObjects, maxSensationNumber))
+  numL2ActiveCells = np.zeros((numObjects, maxSensationNumber))
   for objectIdx in range(numObjects):
     objectId = objectNames[objectIdx]
     obj = objects[objectId]
 
-    objectSensations = {}
-    for c in range(numColumns):
-      objectSensations[c] = []
+    # Create sequence of sensations for this object for one column. The total
+    # number of sensations is equal to the number of points on the object. No
+    # point should be visited more than once.
+    objectCopy = [pair for pair in obj]
+    random.shuffle(objectCopy)
+    exp.sendReset()
+    for sensationNumber in range(maxSensationNumber):
+      objectSensations = {}
+      for c in range(numColumns):
+        objectSensations[c] = []
 
-    if numColumns > 1:
-      # Create sequence of random sensations for this object for all columns At
-      # any point in time, ensure each column touches a unique loc,feature pair
-      # on the object.  It is ok for a given column to sense a loc,feature pair
-      # more than once. The total number of sensations is equal to the number of
-      # points on the object.
-      for sensationNumber in range(len(obj)):
-        # Randomly shuffle points for each sensation
-        objectCopy = [pair for pair in obj]
-        random.shuffle(objectCopy)
-        for c in range(numColumns):
-          # stay multiple steps on each sensation
-          for _ in xrange(settlingTime):
-            objectSensations[c].append(objectCopy[c])
-
-    else:
-      # Create sequence of sensations for this object for one column. The total
-      # number of sensations is equal to the number of points on the object. No
-      # point should be visited more than once.
-      objectCopy = [pair for pair in obj]
-      # random.shuffle(objectCopy)
-      for pair in objectCopy:
+      if sensationNumber >= len(objectCopy):
+        pair = objectCopy[-1]
+      else:
+        pair = objectCopy[sensationNumber]
+      if numColumns > 1:
+        raise NotImplementedError
+      else:
         # stay multiple steps on each sensation
         for _ in xrange(settlingTime):
           objectSensations[0].append(pair)
 
-    inferConfig = {
-      "object": objectId,
-      "numSteps": len(objectSensations[0]),
-      "pairs": objectSensations,
-      "includeRandomLocation": False,
-    }
+      inferConfig = {
+        "object": objectId,
+        "numSteps": len(objectSensations[0]),
+        "pairs": objectSensations,
+        "includeRandomLocation": False,
+      }
 
-    inferenceSDRs = objects.provideObjectToInfer(inferConfig)
-    exp.infer(inferenceSDRs, objectName=objectId, reset=False)
+      inferenceSDRs = objects.provideObjectToInfer(inferConfig)
+      exp.infer(inferenceSDRs, objectName=objectId, reset=False)
 
-    for c in range(numColumns):
-      numL2ActiveCells[objectIdx] += len(exp.getL2Representations()[c])
+      for i in range(numObjects):
+        overlapMat[objectIdx, i, sensationNumber] = len(
+          exp.getL2Representations()[0] &
+          L2Representations[objects.objects.keys()[i]][0])
+        # if verbose:
+        #   print "Intersection with {}:{}".format(
+        #     objectNames[i], overlapMat[objectIdx, i])
 
+      for c in range(numColumns):
+        numL2ActiveCells[objectIdx, sensationNumber] += len(
+          exp.getL2Representations()[c])
+
+      print "{} # L2 active cells {}: ".format(sensationNumber,
+                                               numL2ActiveCells[
+                                                 objectIdx, sensationNumber])
     if verbose:
       print "Output for {}: {}".format(objectId, exp.getL2Representations())
-      print "# L2 active cells {}: ".format(numL2ActiveCells[objectIdx])
-
-
-    for i in range(numObjects):
-      overlapMat[objectIdx, i] = len(exp.getL2Representations()[0] &
-            L2Representations[objects.objects.keys()[i]][0])
-      if verbose:
-        print "Intersection with {}:{}".format(
-          objectNames[i], overlapMat[objectIdx, i])
-
+      print "Final L2 active cells {}: ".format(
+        numL2ActiveCells[objectIdx, sensationNumber])
+      print
     exp.sendReset()
 
   expResult = {'overlapMat': overlapMat,
@@ -237,8 +297,8 @@ def trainNetwork(objects, numColumns, l4Params, l2Params, verbose=False):
 
 def computeAccuracy(expResult, objects):
   objectNames = objects.objects.keys()
-  overlapMat = expResult['overlapMat']
-  numL2ActiveCells = expResult['numL2ActiveCells']
+  overlapMat = expResult['overlapMat'][:, :, -1]
+  numL2ActiveCells = expResult['numL2ActiveCells'][:, -1]
   numCorrect = 0
   numObjects = overlapMat.shape[0]
   numFound = 0
@@ -307,8 +367,8 @@ if __name__ == "__main__":
   numColumns = 1
   l2Params = getL2Params()
   l4Params = getL4Params()
-
-  objects = loadThingObjects(numColumns, './data')
+  verbose = 1
+  objects, OnBitsList = loadThingObjects(numColumns, './data')
 
   expResult = trainNetwork(objects, numColumns, l4Params, l2Params, True)
 
@@ -317,27 +377,34 @@ if __name__ == "__main__":
   objectNames = objects.objects.keys()
   numObjects = len(objectNames)
 
-  distanceMat = expResult['overlapMat']
+  overlapMat = expResult['overlapMat']
   numL2ActiveCells = expResult['numL2ActiveCells']
 
-  # plot pairwise overlap
+
+  objectNames = objects.objects.keys()
+  numObjects = len(objectNames)
+
   plt.figure()
-  plt.imshow(expResult['overlapMat'])
-  plt.xticks(range(numObjects), objectNames, rotation='vertical', fontsize=5)
-  plt.yticks(range(numObjects), objectNames, fontsize=5)
-  plt.title('pairwise overlap')
-  plt.tight_layout()
-  plt.savefig('overlap_matrix.pdf')
+  for sensationNumber in range(10):
+    plt.imshow(overlapMat[:, :, sensationNumber])
+    plt.xticks(range(numObjects), objectNames, rotation='vertical', fontsize=4)
+    plt.yticks(range(numObjects), objectNames, fontsize=4)
+    plt.title('pairwise overlap at step {}'.format(sensationNumber))
+    plt.xlabel('target representation')
+    plt.ylabel('inferred representation')
+    plt.tight_layout()
+    plt.savefig('plots/overlap_matrix_step_{}.png'.format(sensationNumber))
+
 
   # plot number of active cells for each object
   plt.figure()
   objectNamesSort = []
-  idx = np.argsort(expResult['numL2ActiveCells'])
+  idx = np.argsort(expResult['numL2ActiveCells'][:, -1])
   for i in idx:
     objectNamesSort.append(objectNames[i])
-  plt.plot(numL2ActiveCells[idx])
+  plt.plot(numL2ActiveCells[idx, -1])
   plt.xticks(range(numObjects), objectNamesSort, rotation='vertical', fontsize=5)
   plt.tight_layout()
   plt.ylabel('Number of active L2 cells')
-  plt.savefig('number_of_active_l2_cells.pdf')
-
+  plt.savefig('plots/number_of_active_l2_cells.pdf')
+  #
