@@ -22,13 +22,10 @@
 This file is used to run Thing experiments using simulated sensations.
 """
 
+from optparse import OptionParser
 import numpy as np
-
 from nupic.bindings.algorithms import SpatialPooler as CPPSpatialPooler
-
-
 import tensorflow as tf
-
 from thing_convergence import loadThingObjects
 
 
@@ -55,15 +52,40 @@ def createSpatialPooler(inputWidth):
   sp = CPPSpatialPooler(**spParam)
   return sp
 
+
+
+def _getArgs():
+  parser = OptionParser(usage="Train HTM Spatial Pooler")
+
+  parser.add_option("-l",
+                    "--location",
+                    type=int,
+                    default=1,
+                    dest="useLocation",
+                    help="Whether to use location signal")
+
+  parser.add_option("--spatial_pooler",
+                    type=int,
+                    default=1,
+                    dest="useSP",
+                    help="Whether to use spatial pooler")
+
+  (options, remainder) = parser.parse_args()
+  print options
+  return options, remainder
+
+
 if __name__ == "__main__":
+  (expConfig, _args) = _getArgs()
+
   objects, OnBitsList = loadThingObjects(1, './data')
   objects = objects.provideObjectsToLearn()
   objectNames = objects.keys()
   numObjs = len(objectNames)
   featureWidth = 256
   locationWidth = 1024
-  useLocation = 0
-  useSpatialPooler = 0
+  useLocation = expConfig.useLocation
+  useSpatialPooler = expConfig.useSP
 
   numInputVectors = 0
   for i in range(numObjs):
