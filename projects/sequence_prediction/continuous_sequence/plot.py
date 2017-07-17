@@ -25,7 +25,8 @@ import argparse
 from matplotlib import pyplot as plt
 plt.ion()
 
-from suite import Suite
+# from suite import Suite
+from run_lstm_suite import Suite
 from htmresearch.support.sequence_learning_utils import *
 import pandas as pd
 import numpy as np
@@ -52,25 +53,32 @@ class ExperimentResult(object):
     experiment_dir = experiment.split('/')[1]
     params = suite.items_to_params(suite.cfgparser.items(experiment_dir))
     self.params = params
-
     predictions = suite.get_history(experiment, 0, 'predictions')
     truth = suite.get_history(experiment, 0, 'truth')
+
+    computeAfter = params['iterations']-len(predictions)
+    temp = np.zeros((computeAfter, ))
+    temp[:] = np.nan
 
     self.iteration = suite.get_history(experiment, 0, 'iteration')
     self.train = suite.get_history(experiment, 0, 'train')
 
     self.truth = np.array(truth, dtype=np.float)
 
+    self.truth = np.concatenate((temp, self.truth))
+
     if params['output_encoding'] == 'likelihood':
       from nupic.encoders.scalar import ScalarEncoder as NupicScalarEncoder
       self.outputEncoder = NupicScalarEncoder(w=1, minval=0, maxval=40000, n=22, forced=True)
-      predictions_np = np.zeros((len(predictions), self.outputEncoder.n))
+      # predictions_np = np.zeros((len(predictions), self.outputEncoder.n))
+      predictions_np = np.zeros((len(predictions)+computeAfter, self.outputEncoder.n))
       for i in xrange(len(predictions)):
         if predictions[i] is not None:
-          predictions_np[i, :] = np.array(predictions[i])
+          predictions_np[i+computeAfter, :] = np.array(predictions[i])
       self.predictions = predictions_np
     else:
       self.predictions = np.array(predictions, dtype=np.float)
+      self.predictions = np.concatenate((temp, self.predictions))
 
   def computeError(self):
     if self.params['output_encoding'] == 'likelihood':
@@ -94,7 +102,7 @@ def plotLSTMresult(experiment, window, xaxis=None, label=None):
 
   error = plotAccuracy((expResult.error, x),
                            expResult.truth,
-                           train=expResult.train,
+                           # train=expResult.train,
                            window=window,
                            label=label,
                            params=expResult.params,

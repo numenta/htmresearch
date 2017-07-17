@@ -56,7 +56,9 @@ def getDatetimeAxis():
 
 
 def computeAltMAPE(truth, prediction, startFrom=0):
-  return np.nanmean(np.abs(truth[startFrom:] - prediction[startFrom:]))/np.nanmean(np.abs(truth[startFrom:]))
+  return np.nanmean(
+    np.abs(truth[startFrom:] - prediction[startFrom:])) / np.nanmean(
+    np.abs(truth[startFrom:]))
 
 
 def computeNRMSE(truth, prediction, startFrom=0):
@@ -76,7 +78,8 @@ def loadExperimentResult(filePath):
 
 if __name__ == "__main__":
   xaxisDate = getDatetimeAxis()
-  expResult = ExperimentResult('results/nyc_taxi_experiment_continuous/learning_window6001.0/')
+  expResult = ExperimentResult(
+    'results/nyc_taxi_experiment_continuous/learning_window6001.0/')
 
   # ### Figure 1: Continuous vs Batch LSTM
   # fig = plt.figure()
@@ -330,6 +333,7 @@ if __name__ == "__main__":
   ax3.set_ylabel('MAPE')
   ax3.set_xticklabels( ('ARIMA', 'ELM', 'TDNN', 'ESN', 'LSTM-online',
                         'LSTM1000', 'LSTM3000', 'LSTM6000', 'HTM') )
+  ax3.set_title('Fig. 10B')
   for tick in ax3.xaxis.get_major_ticks():
     tick.label.set_rotation('vertical')
 
@@ -345,6 +349,7 @@ if __name__ == "__main__":
   ax2.set_ylim([0, 2.0])
   ax2.set_xticklabels(('LSTM-online', 'LSTM1000', 'LSTM3000', 'LSTM6000',
                        'HTM', '', '', ''))
+  ax2.set_title('Fig. 10C')
   for tick in ax2.xaxis.get_major_ticks():
     tick.label.set_rotation('vertical')
 
@@ -413,4 +418,5 @@ if __name__ == "__main__":
   ax.set_yticklabels(new_yticklabel)
   ax.set_ylim([0, 30000])
   ax.set_ylabel('Passenger Count in 30 min window')
+  ax.set_title('Fig. 10A')
   plt.savefig(figPath + 'example_data.pdf')
