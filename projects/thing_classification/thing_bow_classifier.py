@@ -36,7 +36,7 @@ python thing_feedforward_network.py --spatial_pooler 0 --location 0
 from optparse import OptionParser
 import numpy as np
 from nupic.bindings.algorithms import SpatialPooler as CPPSpatialPooler
-import tensorflow as tf
+import  matplotlib.pyplot as plt
 from thing_convergence import loadThingObjects
 
 
@@ -66,24 +66,53 @@ def createSpatialPooler(inputWidth):
 
 
 def _getArgs():
-  parser = OptionParser(usage="Train logistic regression classifier on Thing")
+  parser = OptionParser(usage="Train BoW classifier on Thing data")
 
   parser.add_option("-l",
                     "--location",
                     type=int,
-                    default=1,
+                    default=0,
                     dest="useLocation",
                     help="Whether to use location signal")
 
   parser.add_option("--spatial_pooler",
                     type=int,
-                    default=1,
+                    default=0,
                     dest="useSP",
                     help="Whether to use spatial pooler")
 
   (options, remainder) = parser.parse_args()
   print options
   return options, remainder
+
+
+def findWordInVocabulary(input, wordList):
+  findWord = None
+  for j in range(wordList.shape[0]):
+    numBitDiff = np.sum(np.abs(input - wordList[j, :]))
+    if numBitDiff == 0:
+      findWord = j
+  return findWord
+
+
+
+def bowClassifierPredict(input, bowVectors, distance="L1"):
+  numClasses = bowVectors.shape[0]
+  output = np.zeros((numClasses,))
+
+  # normalize input
+  if distance == "L1":
+    for i in range(numClasses):
+      output[i] = np.sum(np.abs(input - bowVectors[i, :]))
+
+  elif distance == "dotProduct":
+    # normalize input
+    input = input / np.linalg.norm(input)
+    for i in range(numClasses):
+      bowVectors[i, :] = bowVectors[i, :]/np.linalg.norm(bowVectors[i, :])
+      output[i] = np.dot(input, bowVectors[i, :])
+    output = 1 - output
+  return output
 
 
 if __name__ == "__main__":
@@ -133,50 +162,78 @@ if __name__ == "__main__":
         sp.compute(inputVector, False, outputColumns)
         activeBits = np.where(outputColumns)[0]
         data[k, activeBits] = 1
-
       k += 1
 
-  print "run logistic regression ... "
-  x = tf.placeholder(tf.float32, [None, inputWidth])
-  W = tf.Variable(tf.zeros([inputWidth, numObjs]))
-  b = tf.Variable(tf.zeros([numObjs]))
-  y = tf.nn.softmax(tf.matmul(x, W) + b)
+  # enumerate number of distinct "words"
+  wordList = np.zeros((0, inputWidth), dtype='int32')
+  featureList = np.zeros((data.shape[0], ))
+  for i in range(data.shape[0]):
+    findWord = False
+    for j in range(wordList.shape[0]):
+      index = findWordInVocabulary(data[i, :], wordList)
+      if index is not None:
+        featureList[i] = index
+        findWord = True
+        break
 
-  y_ = tf.placeholder(tf.float32, [None, numObjs])
-  cross_entropy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y), reduction_indices=[1]))
-  train_step = tf.train.AdamOptimizer(0.01).minimize(cross_entropy)
+    if findWord is False:
+      newWord = np.zeros((1, inputWidth), dtype='int32')
+      newWord[0, :] = data[i, :]
+      wordList = np.concatenate((wordList, newWord))
+      featureList[i] = wordList.shape[0]-1
 
-  correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
-  accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+  numWords = wordList.shape[0]
+  print "number of distinct words {}".format(numWords)
 
-  sess = tf.InteractiveSession()
-  tf.global_variables_initializer().run()
-
-  for i in range(100):
-    sess.run(train_step, feed_dict={x: data, y_: label})
-    if i%10 == 0:
-      print("iteration {} accuracy = {}".format(i,
-      sess.run(accuracy, feed_dict={x: data, y_: label})))
-
-  print "final recognition accuracy: ", sess.run(accuracy, feed_dict={x: data, y_: label})
-
-  predicted_label = tf.argmax(y, 1)
-  ypred = sess.run(predicted_label, feed_dict={x: data})
-
-  correct = 0
+  # convert objects to BOW representations
+  bowVectors = np.zeros((numObjs, numWords))
   k = 0
   for i in range(numObjs):
     numSenses = len(objects[objectNames[i]])
-    label = np.zeros((numSenses, ))
     for j in range(numSenses):
-      label[j] = ypred[k]
+      index = findWordInVocabulary(data[k, :], wordList)
+      bowVectors[i, index] += 1
       k += 1
 
-    label = label.astype('int32')
-    counts = np.bincount(label)
-    correct += (np.argmax(counts)==i)
-  print " accuracy after majority voting {}".format(float(correct)/numObjs)
+  plt.figure()
+  plt.imshow(np.transpose(bowVectors))
+  plt.xlabel('Object #')
+  plt.ylabel('Word #')
+  plt.title("BoW representations")
 
 
+  numCorrect = 0
+  for i in range(numObjs):
+    output = bowClassifierPredict(bowVectors[i, :], bowVectors)
+    predictLabel = np.argmin(output)
+    numCorrect += predictLabel == i
+    print " true label {} predicted label {}".format(i, predictLabel)
+  print "BOW classifier accuracy {}".format(float(numCorrect)/numObjs)
+
+  # plot accuracy as a function of number of sensations
+  accuracyList = []
+  for maxSenses in range(30):
+    bowVectorsTest = np.zeros((numObjs, numWords))
+    offset = 0
+    for i in range(numObjs):
+      numSenses = len(objects[objectNames[i]])
+      numSenses = min(numSenses, maxSenses)
+      for j in range(numSenses):
+        index = findWordInVocabulary(data[offset+j, :], wordList)
+        bowVectorsTest[i, index] += 1
+      offset += len(objects[objectNames[i]])
+
+    numCorrect = 0
+    for i in range(numObjs):
+      output = bowClassifierPredict(bowVectorsTest[i, :], bowVectors)
+      predictLabel = np.argmin(output)
+      numCorrect += predictLabel == i
+    accuracy = float(numCorrect)/numObjs
+    accuracyList.append(accuracy)
+    print "maxSenses {} accuracy {}".format(maxSenses, accuracy)
+  plt.figure()
+  plt.plot(range(30), accuracyList)
+  plt.xlabel('number of sensations')
+  plt.ylabel('accuracy ')
 
 
