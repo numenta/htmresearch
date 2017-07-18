@@ -19,7 +19,18 @@
 # ----------------------------------------------------------------------
 
 """
-This file is used to run Thing experiments using simulated sensations.
+This file is used to run Thing experiments using simulated sensations with
+a simple logistic encoder, with/without location signal
+
+
+Example usage
+
+Train network with (feature, location) as input and a spatial pooler
+The spatial pooler speeds up convergence
+python thing_feedforward_network.py --spatial_pooler 1 --location 1
+
+Train network with only feature input
+python thing_feedforward_network.py --spatial_pooler 0 --location 0
 """
 
 from optparse import OptionParser
