@@ -141,7 +141,7 @@ if __name__ == "__main__":
   sess = tf.InteractiveSession()
   tf.global_variables_initializer().run()
 
-  for i in range(150):
+  for i in range(100):
     sess.run(train_step, feed_dict={x: data, y_: label})
     if i%10 == 0:
       print("iteration {} accuracy = {}".format(i,
@@ -149,7 +149,22 @@ if __name__ == "__main__":
 
   print "final recognition accuracy: ", sess.run(accuracy, feed_dict={x: data, y_: label})
 
+  predicted_label = tf.argmax(y, 1)
+  ypred = sess.run(predicted_label, feed_dict={x: data})
 
+  correct = 0
+  k = 0
+  for i in range(numObjs):
+    numSenses = len(objects[objectNames[i]])
+    label = np.zeros((numSenses, ))
+    for j in range(numSenses):
+      label[j] = ypred[k]
+      k += 1
+
+    label = label.astype('int32')
+    counts = np.bincount(label)
+    correct += (np.argmax(counts)==i)
+  print " accuracy after majority voting {}".format(float(correct)/numObjs)
 
 
 
