@@ -61,6 +61,10 @@ if __name__ == "__main__":
   results = pool.map(sequence_simulations.runExperiment1,
                      figure(options.passthru, noises))
 
+  # opts = figure(options.passthru, noises)[0]
+  # opts.switchover = 100
+  # sequence_simulations.runExperiment1(opts)
+
   fig = plt.figure()
 
   ax = fig.add_subplot(111)
@@ -85,6 +89,8 @@ if __name__ == "__main__":
   plt.yticks((0.1, 0.2, 0.3, 0.4, 0.5, 0.6),
              ("10%", "20%", "30%", "40%", "50%", "60%"))
   plt.xticks((2000, 4000, 6000, 8000))
+
+  plt.savefig('results/Fig6{}.pdf'.format(options.figure))
 
   # Show plot
   plt.show()
