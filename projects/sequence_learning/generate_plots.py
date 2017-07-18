@@ -61,10 +61,6 @@ if __name__ == "__main__":
   results = pool.map(sequence_simulations.runExperiment1,
                      figure(options.passthru, noises))
 
-  # opts = figure(options.passthru, noises)[0]
-  # opts.switchover = 100
-  # sequence_simulations.runExperiment1(opts)
-
   fig = plt.figure()
 
   ax = fig.add_subplot(111)
