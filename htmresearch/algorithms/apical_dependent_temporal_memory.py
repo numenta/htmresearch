@@ -116,9 +116,10 @@ class ApicalDependentTemporalMemory(object):
     self.apicalPredictedSegmentDecrement = apicalPredictedSegmentDecrement
     self.activationThreshold = activationThreshold
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
-
     self.basalConnections = SparseMatrixConnections(columnCount*cellsPerColumn,
                                                     basalInputSize)
+    self.requireApicalInput = True
+
     self.apicalConnections = SparseMatrixConnections(columnCount*cellsPerColumn,
                                                      apicalInputSize)
     self.rng = Random(seed)
@@ -174,6 +175,7 @@ class ApicalDependentTemporalMemory(object):
     Whether to grow / reinforce / punish synapses
     """
 
+    self.burstingColumns = []
     if basalGrowthCandidates is None:
       basalGrowthCandidates = basalInput
 
@@ -193,15 +195,20 @@ class ApicalDependentTemporalMemory(object):
        self.apicalConnections, apicalInput, self.connectedPermanence,
        self.activationThreshold, self.minThreshold)
 
-    predictedCells = np.intersect1d(
-      self.basalConnections.mapSegmentsToCells(activeBasalSegments),
-      self.apicalConnections.mapSegmentsToCells(activeApicalSegments))
+    if self.requireApicalInput:
+      predictedCells = np.intersect1d(
+        self.basalConnections.mapSegmentsToCells(activeBasalSegments),
+        self.apicalConnections.mapSegmentsToCells(activeApicalSegments))
+    else:
+      predictedCells = self.basalConnections.mapSegmentsToCells(activeBasalSegments)
 
     # Calculate active cells
     (correctPredictedCells,
      burstingColumns) = np2.setCompare(predictedCells, activeColumns,
                                        predictedCells / self.cellsPerColumn,
                                        rightMinusLeft=True)
+
+    self.megabursting = (len(predictedCells) > self.activationThreshold) and len(burstingColumns) > self.activationThreshold
     newActiveCells = np.concatenate((correctPredictedCells,
                                      np2.getAllCellsInColumns(
                                        burstingColumns, self.cellsPerColumn)))

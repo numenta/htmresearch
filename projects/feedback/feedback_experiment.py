@@ -204,7 +204,6 @@ class FeedbackExperiment(object):
         #enableProfiling(network)
         for region in network.regions.values():
             region.enableProfiling()
-
         return network
 
 
@@ -247,9 +246,10 @@ class FeedbackExperiment(object):
 
     # We're now using online learning, so both layers should be trying to learn
     # at all times.
+
     self._setLearningMode(l4Learning=True, l2Learning=True)
     sequence_order = range(len(sequences))
-    for _ in xrange(1):
+    for _ in xrange(2):
       #random.shuffle(sequence_order)
       for i in sequence_order:
         sequence = sequences[i]
@@ -258,10 +258,11 @@ class FeedbackExperiment(object):
 
         for s in sequence:
           self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
-          iterations += 1
+          #iterations += 1
+          self.network.run(1)
 
-        if iterations > 0:
-          self.network.run(iterations)
+        #if iterations > 0:
+        #  self.network.run(iterations)
 
         self.sendReset()
         # This fills the role of self.sendReset(), in allowing the network to
@@ -314,6 +315,7 @@ class FeedbackExperiment(object):
     """
     if enableFeedback is False:
       self._disableL2()
+      self.network.regions["L4Column_0"].getSelf()._tm.requireApicalInput = False
     else:
       self._enableL2()
 
@@ -465,14 +467,14 @@ class FeedbackExperiment(object):
       "learningMode": True,
       "sdrSize": 40,
       "synPermProximalInc": 0.1,
-      "synPermProximalDec": 0.0025,
-      "initialProximalPermanence": 0.61,
-      "minThresholdProximal": 10,
-      "sampleSizeProximal": 20,
+      "synPermProximalDec": 0.001,
+      "initialProximalPermanence": 0.81,
+      "minThresholdProximal": 30,
+      "sampleSizeProximal": 40,
       "connectedPermanenceProximal": 0.5,
       "synPermDistalInc": 0.1,
       "synPermDistalDec": 0.02,
-      "initialDistalPermanence": 0.41,
+      "initialDistalPermanence": 0.61,
       "activationThresholdDistal": 13,
       "sampleSizeDistal": 20,
       "connectedPermanenceDistal": 0.5,
