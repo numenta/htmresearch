@@ -217,13 +217,6 @@ class ColumnPooler(object):
             grow new synapses to.  This is assumed to be the predicted active
             cells of the input layer.
     """
-    # If we have a large amount of unpredicted input, we should avoid learning.
-    # In this case, it is possible that we are on a sequence which has not
-    # fully been mastered by the TM, and it may take it some time to learn a
-    # stable representation.
-
-    #import ipdb; ipdb.set_trace()
-
     prevActiveCells = self.activeCells
     cellsToLearn = set(self.activeCells)
 
@@ -262,7 +255,6 @@ class ColumnPooler(object):
 
       cellsToLearn = numpy.asarray(list(cellsToLearn))
       cellsToLearn.sort()
-      #print len(self.activeCells), len(numpy.intersect1d(cellsToLearn, self.activeCells))
       self.activeCells = numpy.union1d(self.activeCells, cellsToLearn)
       self.activeCells.sort()
 
@@ -294,9 +286,7 @@ class ColumnPooler(object):
 
     # Finally, now that we have decided which cells we should be learning on, do
     # the actual learning.
-    if (len(feedforwardInput) > 0):# and
-          #len(feedforwardGrowthCandidates) > self.minThresholdProximal):
-      # Proximal learning
+    if (len(feedforwardInput) > 0):
       self._learn(self.proximalPermanences, self._random,
                   cellsToLearn, feedforwardInput,
                   feedforwardGrowthCandidates, self.sampleSizeProximal,
@@ -304,10 +294,7 @@ class ColumnPooler(object):
                   self.synPermProximalDec, self.connectedPermanenceProximal)
 
       # Internal distal learning
-      # Don't do any if we haven't gotten predicted input, i.e. if we aren't
-      # learning anything proximally.
-      if False: #(len(prevActiveCells) > 0): #and
-            #len(feedforwardGrowthCandidates) > self.minThresholdProximal):
+      if (len(feedforwardInput) > 0):
         self._learn(self.internalDistalPermanences, self._random,
                     cellsToLearn, prevActiveCells, prevActiveCells,
                     self.sampleSizeDistal, self.initialDistalPermanence,

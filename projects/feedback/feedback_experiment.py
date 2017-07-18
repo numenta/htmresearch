@@ -249,7 +249,7 @@ class FeedbackExperiment(object):
 
     self._setLearningMode(l4Learning=True, l2Learning=True)
     sequence_order = range(len(sequences))
-    for _ in xrange(2):
+    for _ in xrange(3):
       #random.shuffle(sequence_order)
       for i in sequence_order:
         sequence = sequences[i]
@@ -315,7 +315,7 @@ class FeedbackExperiment(object):
     """
     if enableFeedback is False:
       self._disableL2()
-      self.network.regions["L4Column_0"].getSelf()._tm.requireApicalInput = False
+      self.network.regions["L4Column_0"].getSelf()._tm.useFeedback = False
     else:
       self._enableL2()
 
@@ -469,8 +469,8 @@ class FeedbackExperiment(object):
       "synPermProximalInc": 0.1,
       "synPermProximalDec": 0.001,
       "initialProximalPermanence": 0.81,
-      "minThresholdProximal": 30,
-      "sampleSizeProximal": 40,
+      "minThresholdProximal": 13,
+      "sampleSizeProximal": 20,
       "connectedPermanenceProximal": 0.5,
       "synPermDistalInc": 0.1,
       "synPermDistalDec": 0.02,
@@ -479,7 +479,7 @@ class FeedbackExperiment(object):
       "sampleSizeDistal": 20,
       "connectedPermanenceDistal": 0.5,
       "distalSegmentInhibitionFactor": .8,
-      "inertiaFactor": 1.,
+      "inertiaFactor": 6667.,
       "seed": self.seed,
     }
 

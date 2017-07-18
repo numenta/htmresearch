@@ -37,21 +37,20 @@ def getDefaultL2Params(inputSize, seed):
     "sdrSize": 40,
     "synPermProximalInc": 0.1,
     "synPermProximalDec": 0.001,
-    "initialProximalPermanence": 0.61,
-    "minThresholdProximal": 10,
-    "sampleSizeProximal": 20,
+    "initialProximalPermanence": 0.81,
+    "minThresholdProximal": 30,
+    "sampleSizeProximal": 40,
     "connectedPermanenceProximal": 0.5,
     "synPermDistalInc": 0.1,
     "synPermDistalDec": 0.02,
     "initialDistalPermanence": 0.61,
-    "activationThresholdDistal": 18,
-    "sampleSizeDistal": 30,
+    "activationThresholdDistal": 13,
+    "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": .9999,
-    "inertiaFactor": .8,
+    "distalSegmentInhibitionFactor": .8,
+    "inertiaFactor": 6667.,
     "seed": seed,
   }
-
 
 def test_apical_dependent_TM_learning(sequenceLen, numSequences, sharedRange, seed):
   TM = ApicalDependentTemporalMemory(**getDefaultL4Params(2048))
@@ -75,47 +74,47 @@ def test_apical_dependent_TM_learning(sequenceLen, numSequences, sharedRange, se
     pooler_representation = numpy.asarray([], dtype = "int")
     TM_representation = numpy.asarray([], dtype = "int")
     char_sequences.append([])
-    for i in xrange(4):
-      t = 0
-      for timestep in sequence:
-        #if len(pooler_representation) == 0:
-        #  print t
-        t += 1
+  #  for i in xrange(1):
+    t = 0
+    for timestep in sequence:
+      #if len(pooler_representation) == 0:
+      #  print t
+      t += 1
 
-        #if tuple(timestep) in characters:
-        #  char_sequences[s].append(characters[tuple(timestep)])
-        #else:
-        #  characters[tuple(timestep)] = len(characters)
-        #  char_sequences[s].append(characters[tuple(timestep)])
+      #if tuple(timestep) in characters:
+      #  char_sequences[s].append(characters[tuple(timestep)])
+      #else:
+      #  characters[tuple(timestep)] = len(characters)
+      #  char_sequences[s].append(characters[tuple(timestep)])
 
 
-        datapoint = numpy.asarray(list(timestep), dtype = "int")
-        datapoint.sort()
-        TM.compute(activeColumns = datapoint,
-                   apicalInput = pooler_representation,
-                   basalInput = TM_representation,
-                   learn = True)
-        TM_representation = TM.activeCells
-        winners = TM.winnerCells
-        megabursting = TM.megabursting
-        pooler.compute(feedforwardInput = TM_representation,
-                       feedforwardGrowthCandidates = winners,
-                       lateralInputs = (pooler_representation,),
-                       bursting = megabursting,
-                       learn = True)
-        pooler_representation = pooler.activeCells
-        if t > 4:
-          pooler_representations.append(pooler_representation)
-        #print pooler_representation, len(pooler_representation), (s, t)
+      datapoint = numpy.asarray(list(timestep), dtype = "int")
+      datapoint.sort()
+      TM.compute(activeColumns = datapoint,
+                 apicalInput = pooler_representation,
+                 basalInput = TM_representation,
+                 learn = True)
+      TM_representation = TM.activeCells
+      winners = TM.winnerCells
+      megabursting = TM.megabursting
+      pooler.compute(feedforwardInput = TM_representation,
+                     feedforwardGrowthCandidates = winners,
+                     lateralInputs = (pooler_representation,),
+                     bursting = megabursting,
+                     learn = True)
+      pooler_representation = pooler.activeCells
+      if t > 0:
+        pooler_representations.append(pooler_representation)
+      #print pooler_representation, len(pooler_representation), (s, t)
 
-      pooler.reset()
-      s += 1
+    pooler.reset()
+    s += 1
 
   representations = set(map(tuple, pooler_representations))
   print len(representations)
-  for representation in representations:
-    print sorted(list(representation)), len(representation)
+  #for representation in representations:
+  #  print sorted(list(representation)), len(representation)
 
   print char_sequences
 if __name__ == '__main__':
-  test_apical_dependent_TM_learning(5, 10, (2, 4), 16)
+  test_apical_dependent_TM_learning(30, 40, (5, 24), 16)
