@@ -189,6 +189,7 @@ class ColumnPooler(object):
           self.activeCells = numpy.asarray([], dtype = "int")
           self._computeLearningMode(feedforwardInput, lateralInputs,
                                     feedforwardGrowthCandidates)
+          self._computeInferenceMode(feedforwardInput, lateralInputs)
       else:
         self._computeLearningMode(feedforwardInput, lateralInputs,
                                   feedforwardGrowthCandidates)

@@ -249,7 +249,7 @@ class FeedbackExperiment(object):
 
     self._setLearningMode(l4Learning=True, l2Learning=True)
     sequence_order = range(len(sequences))
-    for _ in xrange(3):
+    for _ in xrange(5):
       #random.shuffle(sequence_order)
       for i in sequence_order:
         sequence = sequences[i]
@@ -469,8 +469,8 @@ class FeedbackExperiment(object):
       "synPermProximalInc": 0.1,
       "synPermProximalDec": 0.001,
       "initialProximalPermanence": 0.81,
-      "minThresholdProximal": 13,
-      "sampleSizeProximal": 20,
+      "minThresholdProximal": 27,
+      "sampleSizeProximal": 40,
       "connectedPermanenceProximal": 0.5,
       "synPermDistalInc": 0.1,
       "synPermDistalDec": 0.02,

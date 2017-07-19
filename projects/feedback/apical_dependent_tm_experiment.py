@@ -1,4 +1,5 @@
 import numpy
+import random
 
 from htmresearch.algorithms.column_pooler import ColumnPooler
 from htmresearch.algorithms.apical_dependent_temporal_memory import ApicalDependentTemporalMemory
@@ -38,7 +39,7 @@ def getDefaultL2Params(inputSize, seed):
     "synPermProximalInc": 0.1,
     "synPermProximalDec": 0.001,
     "initialProximalPermanence": 0.81,
-    "minThresholdProximal": 30,
+    "minThresholdProximal": 27,
     "sampleSizeProximal": 40,
     "connectedPermanenceProximal": 0.5,
     "synPermDistalInc": 0.1,
@@ -52,7 +53,7 @@ def getDefaultL2Params(inputSize, seed):
     "seed": seed,
   }
 
-def test_apical_dependent_TM_learning(sequenceLen, numSequences, sharedRange, seed):
+def test_apical_dependent_TM_learning(sequenceLen, numSequences, sharedRange, seed, training_iters):
   TM = ApicalDependentTemporalMemory(**getDefaultL4Params(2048))
   pooler = ColumnPooler(**getDefaultL2Params(2048, seed))
 
@@ -60,7 +61,7 @@ def test_apical_dependent_TM_learning(sequenceLen, numSequences, sharedRange, se
   print "Generating sequences..."
   sequenceMachine, generatedSequences, numbers = generateSequences(
     sequenceLength=sequenceLen, sequenceCount=numSequences,
-    sharedRange=sharedRange, n = 2000, w = 40, seed=seed)
+    sharedRange=sharedRange, n = 2048, w = 40, seed=seed)
 
   sequences = convertSequenceMachineSequence(generatedSequences)
 
@@ -70,51 +71,47 @@ def test_apical_dependent_TM_learning(sequenceLen, numSequences, sharedRange, se
   characters = {}
   char_sequences = []
 
-  for sequence in sequences:
-    pooler_representation = numpy.asarray([], dtype = "int")
-    TM_representation = numpy.asarray([], dtype = "int")
-    char_sequences.append([])
-  #  for i in xrange(1):
-    t = 0
-    for timestep in sequence:
-      #if len(pooler_representation) == 0:
-      #  print t
-      t += 1
+  sequence_order = range(numSequences)
+  for i in xrange(training_iters):
+    random.shuffle(sequence_order)
+    for s in sequence_order:
+      sequence = sequences[s]
+      pooler_representation = numpy.asarray([], dtype = "int")
+      TM_representation = numpy.asarray([], dtype = "int")
+      char_sequences.append([])
+      total_pooler_representation = set()
+      t = 0
+      for timestep in sequence:
+        datapoint = numpy.asarray(list(timestep), dtype = "int")
+        datapoint.sort()
+        TM.compute(activeColumns = datapoint,
+                   apicalInput = pooler_representation,
+                   basalInput = TM_representation,
+                   learn = True)
+        TM_representation = TM.activeCells
+        winners = TM.winnerCells
+        #megabursting = TM.megabursting
+        pooler.compute(feedforwardInput = TM_representation,
+                       feedforwardGrowthCandidates = winners,
+                       lateralInputs = (pooler_representation,),
+        #               bursting = megabursting,
+                       learn = True)
+        pooler_representation = pooler.activeCells
+        if i == training_iters - 1 and t > 0:
+          total_pooler_representation |= set(pooler_representation)
+        #print pooler_representation, len(pooler_representation), (s, t)
+        t += 1
 
-      #if tuple(timestep) in characters:
-      #  char_sequences[s].append(characters[tuple(timestep)])
-      #else:
-      #  characters[tuple(timestep)] = len(characters)
-      #  char_sequences[s].append(characters[tuple(timestep)])
+      pooler.reset()
+      if i == training_iters - 1:
+        pooler_representations.append(total_pooler_representation)
+      s += 1
 
+  representations = pooler_representations
+  print representations
+  for i in range(len(representations)):
+    for j in range(i):
+      print (i, j), "overlap:", len(representations[i] & representations[j]), "Length of i:", len(representations[i])
 
-      datapoint = numpy.asarray(list(timestep), dtype = "int")
-      datapoint.sort()
-      TM.compute(activeColumns = datapoint,
-                 apicalInput = pooler_representation,
-                 basalInput = TM_representation,
-                 learn = True)
-      TM_representation = TM.activeCells
-      winners = TM.winnerCells
-      megabursting = TM.megabursting
-      pooler.compute(feedforwardInput = TM_representation,
-                     feedforwardGrowthCandidates = winners,
-                     lateralInputs = (pooler_representation,),
-                     bursting = megabursting,
-                     learn = True)
-      pooler_representation = pooler.activeCells
-      if t > 0:
-        pooler_representations.append(pooler_representation)
-      #print pooler_representation, len(pooler_representation), (s, t)
-
-    pooler.reset()
-    s += 1
-
-  representations = set(map(tuple, pooler_representations))
-  print len(representations)
-  #for representation in representations:
-  #  print sorted(list(representation)), len(representation)
-
-  print char_sequences
 if __name__ == '__main__':
-  test_apical_dependent_TM_learning(30, 40, (5, 24), 16)
+  test_apical_dependent_TM_learning(30, 5, (5, 24), 123, 50)

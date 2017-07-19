@@ -527,8 +527,8 @@ if __name__ == "__main__":
 
   experimentWrapper(pool, noiseProbas=(.1,), nbSequences=(5,), nbSeeds=8, noiseType="swap", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with swapped stimuli (no shared range)")
   experimentWrapper(pool, noiseProbas=(.1,), nbSequences=(5,), nbSeeds=8, noiseType="swap", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with swapped stimuli (shared range)")
-  #experimentWrapper(pool, noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with randomized stimulus (no shared range)")
-  #experimentWrapper(pool, noiseProbas=(.1,), nbSequences=(5,), nbSeeds=5, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with randomized stimulus (shared range)")
+  experimentWrapper(pool, noiseProbas=(.1,), nbSequences=(5,), nbSeeds=8, noiseType="replace", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with randomized stimulus (no shared range)")
+  experimentWrapper(pool, noiseProbas=(.1,), nbSequences=(5,), nbSeeds=8, noiseType="replace", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with randomized stimulus (shared range)")
 
 
 
@@ -543,8 +543,8 @@ if __name__ == "__main__":
   # experimentWrapper(pool, noiseProbas=(.1,), nbSequences=(3,), nbSeeds=8, noiseType="skip", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with omitted stimulus (no shared range)")
   # experimentWrapper(pool, noiseProbas=(.1,), nbSequences=(5,), nbSeeds=8, noiseType="skip", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="corrspredcorrect", plotTitle="Prediction performance with omitted stimulus (shared range)")
 
-  experimentWrapper(pool, noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=80, noiseType="pollute", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (no shared range)")
-  experimentWrapper(pool, noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=80, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (shared range)")
+  #experimentWrapper(pool, noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=80, noiseType="pollute", sequenceLen=30, sharedRange=(0,0), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (no shared range)")
+  #experimentWrapper(pool, noiseProbas=( .1, .2, .3, .4, .5), nbSequences=(5,), nbSeeds=80, noiseType="pollute", sequenceLen=30, sharedRange=(5,24), noiseRange=(0,30), whichPlot="perfs", plotTitle="Prediction performance vs noise level (shared range)")
 
 
   # When using the correlation b/w predicted and correct as a measure, increasing model load has little effect, with or without feedback.
