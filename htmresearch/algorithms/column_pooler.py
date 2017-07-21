@@ -127,12 +127,14 @@ class ColumnPooler(object):
     self.inputWidth = inputWidth
     self.cellCount = cellCount
     self.sdrSize = sdrSize
+    self.learningTolerance = 0.1
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
     self.connectedPermanenceProximal = connectedPermanenceProximal
     self.sampleSizeProximal = sampleSizeProximal
     self.minThresholdProximal = minThresholdProximal
+    self.proximalInhibitionThreshold = 20
     self.synPermDistalInc = synPermDistalInc
     self.synPermDistalDec = synPermDistalDec
     self.initialDistalPermanence = initialDistalPermanence
@@ -141,7 +143,6 @@ class ColumnPooler(object):
     self.activationThresholdDistal = activationThresholdDistal
     self.distalSegmentInhibitionFactor = distalSegmentInhibitionFactor
     self.inertiaFactor = inertiaFactor
-    self.counter = 0
 
     self.activeCells = numpy.empty(0, dtype="uint32")
     self._random = Random(seed)
@@ -158,7 +159,8 @@ class ColumnPooler(object):
 
 
   def compute(self, feedforwardInput=(), lateralInputs=(),
-              feedforwardGrowthCandidates=None, learn=True, bursting = False):
+              feedforwardGrowthCandidates=None, learn=True,
+              predictedInput = None,):
     """
     Runs one time step of the column pooler algorithm.
 
@@ -175,24 +177,33 @@ class ColumnPooler(object):
 
     @param  learn (bool)
             If True, we are learning a new object
+
+    @param predictedInput (sequence)
+           Sorted indices of active feedforward input bits
     """
-    if not learn:
+    if not learn and False:
       self._computeInferenceMode(feedforwardInput, lateralInputs)
     else:
-      if bursting:
-        self.activeCells = numpy.asarray([], dtype = "int")
-        self._computeLearningMode(feedforwardInput, lateralInputs,
+      if (predictedInput is not None and
+          len(predictedInput) > self.proximalInhibitionThreshold):
+        predictedActiveInput = numpy.intersect1d(feedforwardInput, predictedInput)
+        predictedGrowthCandidates = numpy.intersect1d(feedforwardGrowthCandidates, predictedInput)
+        self._computeInferenceMode(predictedActiveInput, lateralInputs)
+        self._computeLearningMode(predictedActiveInput, lateralInputs,
                                   feedforwardGrowthCandidates)
-      elif numpy.abs(len(self.activeCells) - self.sdrSize) > (0.25*self.sdrSize):
+      elif (numpy.abs(len(self.activeCells) - self.sdrSize)
+          > (self.learningTolerance*self.sdrSize)):
+        # If the pooler doesn't have a single representation, try to infer one,
+        # before actually attempting to learn.
         self._computeInferenceMode(feedforwardInput, lateralInputs)
-        if len(self.activeCells) < (0.75*self.sdrSize):
-          self.activeCells = numpy.asarray([], dtype = "int")
-          self._computeLearningMode(feedforwardInput, lateralInputs,
-                                    feedforwardGrowthCandidates)
-          self._computeInferenceMode(feedforwardInput, lateralInputs)
-      else:
         self._computeLearningMode(feedforwardInput, lateralInputs,
                                   feedforwardGrowthCandidates)
+      else:
+        # If there isn't predicted input and we have a single SDR,
+        # we are extending that representation and should just learn.
+        self._computeLearningMode(feedforwardInput, lateralInputs,
+                                  feedforwardGrowthCandidates)
+        self._computeInferenceMode(feedforwardInput, lateralInputs)
 
   def _computeLearningMode(self, feedforwardInput, lateralInputs,
                            feedforwardGrowthCandidates):
@@ -221,33 +232,14 @@ class ColumnPooler(object):
     prevActiveCells = self.activeCells
     cellsToLearn = set(self.activeCells)
 
-    # If there is some current activity, pick cells that have lateral input and
-    # activate them, reaching quota if possible.  This also allows for one
-    # column to infer what object it is currently learning from another, more
-    # confident column.
-    if len(cellsToLearn) < self.sdrSize:
-      numActiveSegmentsByCell = numpy.zeros(self.cellCount, dtype="int")
-      for i, lateralInput in enumerate(lateralInputs):
-        overlaps = self.distalPermanences[i].rightVecSumAtNZGteThresholdSparse(
-          lateralInput, self.connectedPermanenceDistal)
-        numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
-
-      cellsToAdd = numpy.argsort(numActiveSegmentsByCell)[::-1]
-      for cell in cellsToAdd:
-        if (len(cellsToLearn) > self.sdrSize or
-            numActiveSegmentsByCell[cell] < 1):
-          break
-        elif cell in cellsToLearn:
-          continue
-        else:
-          cellsToLearn.add(cell)
-
     # If there are not enough previously active cells, select random subset of
     # cells to learn on.  If there were only some active cells, we assume that
     # we are learning an object related to what is represented by those cells;
     # if there were none, we are learning a new object.
     # This case is the only way different object representations are created.
     if len(cellsToLearn) < self.sdrSize:
+      if len(cellsToLearn) < self.sdrSize*(1 - self.learningTolerance):
+        cellsToLearn = set()
       numToAdd = self.sdrSize - len(cellsToLearn)
       newCells = _sampleRange(self._random,
                               0, self.numberOfCells(),
@@ -270,18 +262,11 @@ class ColumnPooler(object):
       cellsToLearn = numpy.asarray(list(cellsToLearn))
       cellsToLearn.sort()
 
-    if len(cellsToLearn) > self.sdrSize:
-      numActiveSegmentsByCell = numpy.zeros(self.cellCount, dtype="int")
-      for i, lateralInput in enumerate(lateralInputs):
-        overlaps = self.distalPermanences[i].rightVecSumAtNZGteThresholdSparse(
-          lateralInput, self.connectedPermanenceDistal)
-        numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
-      numActiveSegmentsByCell = numActiveSegmentsByCell[cellsToLearn]
-      indices = numpy.argsort(numActiveSegmentsByCell)[:self.sdrSize]
-      cellsToLearn = cellsToLearn[indices]
+    # If we have a union of cells active, don't learn.
+    if len(cellsToLearn) > self.sdrSize*(1+self.learningTolerance):
+      return
 
     cellsToLearn.sort()
-    #print len(self.activeCells), len(numpy.intersect1d(cellsToLearn, self.activeCells))
     self.activeCells = numpy.union1d(self.activeCells, cellsToLearn)
     self.activeCells.sort()
 
@@ -295,7 +280,7 @@ class ColumnPooler(object):
                   self.synPermProximalDec, self.connectedPermanenceProximal)
 
       # Internal distal learning
-      if (len(feedforwardInput) > 0):
+      if False and (len(feedforwardInput) > 0):
         self._learn(self.internalDistalPermanences, self._random,
                     cellsToLearn, prevActiveCells, prevActiveCells,
                     self.sampleSizeDistal, self.initialDistalPermanence,

@@ -211,14 +211,14 @@ class ApicalDependentTemporalMemory(object):
         self.activationThreshold, self.minThreshold)
 
       predictedCells = self.basalConnections.mapSegmentsToCells(activeBasalSegments)
-
+    self.predictedCells = predictedCells
     # Calculate active cells
     (correctPredictedCells,
      burstingColumns) = np2.setCompare(predictedCells, activeColumns,
                                        predictedCells / self.cellsPerColumn,
                                        rightMinusLeft=True)
 
-    self.megabursting = (len(predictedCells) > self.activationThreshold) and len(burstingColumns) > self.activationThreshold
+    self.inhibitionSignal = len(predictedCells) > self.activationThreshold
     newActiveCells = np.concatenate((correctPredictedCells,
                                      np2.getAllCellsInColumns(
                                        burstingColumns, self.cellsPerColumn)))

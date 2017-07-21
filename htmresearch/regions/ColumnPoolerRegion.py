@@ -78,6 +78,18 @@ class ColumnPoolerRegion(PyRegion):
           isDefaultInput=False,
           requireSplitterMap=False),
 
+        predictedInput=dict(
+          description=("An array of 0s and 1s representing input cells that " +
+                       "are predicted to become active in the next time step. " +
+                       "If this input is not provided, some features related " +
+                       "to online learning may not function properly."),
+          dataType="Real32",
+          count=0,
+          required=False,
+          regionLevel=True,
+          isDefaultInput=False,
+          requireSplitterMap=False),
+
         lateralInput=dict(
           description="Lateral binary input into this column, presumably from"
                       " other neighboring columns.",
@@ -404,9 +416,16 @@ class ColumnPoolerRegion(PyRegion):
     else:
       lateralInputs = ()
 
+    if "predictedInput" in inputs:
+      predictedInput = numpy.asarray(
+        inputs["predictedInput"].nonzero()[0], dtype="uint32")
+    else:
+      predictedInput = None
+
     # Send the inputs into the Column Pooler.
     self._pooler.compute(feedforwardInput, lateralInputs,
-                         feedforwardGrowthCandidates, learn=self.learningMode)
+                         feedforwardGrowthCandidates, learn=self.learningMode,
+                         predictedInput = predictedInput)
 
     # Extract the active / predicted cells and put them into binary arrays.
     outputs["activeCells"][:] = 0

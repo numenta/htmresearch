@@ -37,19 +37,19 @@ def getDefaultL2Params(inputSize, seed):
     "lateralInputWidths": (2048,),
     "sdrSize": 40,
     "synPermProximalInc": 0.1,
-    "synPermProximalDec": 0.001,
+    "synPermProximalDec": 0.0033,
     "initialProximalPermanence": 0.81,
     "minThresholdProximal": 27,
     "sampleSizeProximal": 40,
     "connectedPermanenceProximal": 0.5,
     "synPermDistalInc": 0.1,
-    "synPermDistalDec": 0.02,
+    "synPermDistalDec": 0.05,
     "initialDistalPermanence": 0.61,
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
     "distalSegmentInhibitionFactor": .8,
-    "inertiaFactor": 6667.,
+    "inertiaFactor": .9,
     "seed": seed,
   }
 
@@ -90,15 +90,19 @@ def test_apical_dependent_TM_learning(sequenceLen, numSequences, sharedRange, se
                    learn = True)
         TM_representation = TM.activeCells
         winners = TM.winnerCells
+        predicted_cells = TM.predictedCells
         #megabursting = TM.megabursting
+        #if i > 0:
+        #  import ipdb; ipdb.set_trace()
         pooler.compute(feedforwardInput = TM_representation,
                        feedforwardGrowthCandidates = winners,
                        lateralInputs = (pooler_representation,),
-        #               bursting = megabursting,
+                       predictedInput = predicted_cells,
                        learn = True)
         pooler_representation = pooler.activeCells
         if i == training_iters - 1 and t > 0:
           total_pooler_representation |= set(pooler_representation)
+          print len(pooler_representation)
         #print pooler_representation, len(pooler_representation), (s, t)
         t += 1
 
@@ -108,10 +112,11 @@ def test_apical_dependent_TM_learning(sequenceLen, numSequences, sharedRange, se
       s += 1
 
   representations = pooler_representations
-  print representations
+  #print representations
   for i in range(len(representations)):
     for j in range(i):
       print (i, j), "overlap:", len(representations[i] & representations[j]), "Length of i:", len(representations[i])
 
 if __name__ == '__main__':
-  test_apical_dependent_TM_learning(30, 5, (5, 24), 123, 50)
+  seed = int(numpy.random.rand()*100000)
+  test_apical_dependent_TM_learning(30, 5, (5, 24), seed, 15)
