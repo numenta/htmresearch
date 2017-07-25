@@ -82,7 +82,7 @@ if __name__ == '__main__':
     plt.xlabel('# of sequences seen')
 
   plt.axvline(x=10000, color='k')
-  plt.legend(['HTM', 'LSTM-3000', 'TDNN'], loc=4)
+  plt.legend(['TDNN', 'HTM', 'LSTM-3000'], loc=4)
   plt.savefig('./result/model_performance_high_order_prediction.pdf')
 
 
