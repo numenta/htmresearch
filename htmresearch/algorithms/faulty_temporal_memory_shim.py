@@ -83,7 +83,7 @@ class MonitoredFaultyTPShim(MonitoredFaultyTemporalMemory):
 
   def compute(self, bottomUpInput, enableLearn, computeInfOutput=None):
     """
-    (From `TP.py`)
+    (From `backtracking_tm_shim.py`)
     Handle one compute, possibly learning.
 
     @param bottomUpInput     The bottom-up input, typically from a spatial pooler
@@ -98,11 +98,11 @@ class MonitoredFaultyTPShim(MonitoredFaultyTemporalMemory):
     numberOfCells = self.numberOfCells()
 
     activeState = numpy.zeros(numberOfCells)
-    activeState[self.getCellIndices(self.activeCells)] = 1
+    activeState[self.getActiveCells()] = 1
     self.infActiveState["t"] = activeState
 
     output = numpy.zeros(numberOfCells)
-    output[self.getCellIndices(self.predictiveCells | self.activeCells)] = 1
+    output[self.getPredictiveCells() + self.getActiveCells()] = 1
     return output
 
 
@@ -116,7 +116,7 @@ class MonitoredFaultyTPShim(MonitoredFaultyTemporalMemory):
     @returns best estimate of the TP input that would have generated bottomUpOut.
     """
     output = numpy.zeros(self.numberOfColumns())
-    columns = [self.columnForCell(idx) for idx in self.predictiveCells]
+    columns = [self.columnForCell(idx) for idx in self.getPredictiveCells()]
     output[columns] = 1
     return output
 
@@ -129,7 +129,7 @@ class MonitoredFaultyTPShim(MonitoredFaultyTemporalMemory):
 
   def getPredictedState(self):
     predictedState = numpy.zeros(self.numberOfCells())
-    predictedState[self.getCellIndices(self.predictiveCells)] = 1
+    predictedState[self.getPredictiveCells()] = 1
     return predictedState
 
 
