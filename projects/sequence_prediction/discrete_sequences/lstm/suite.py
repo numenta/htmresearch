@@ -227,6 +227,7 @@ class Suite(PyExperimentSuite):
       if resets[i]:
         ds.newSequence()
 
+    print "Train LSTM network on buffered dataset of length ", len(history)
     if params['num_epochs'] > 1:
       trainer = RPropMinusTrainer(self.net,
                                   dataset=ds,

@@ -171,23 +171,23 @@ class Suite(PyExperimentSuite):
     # self.classifier = SDRClassifier(steps=[1], alpha=0.001)
     print "finish initializing HTM model "
 
-    # if params['kill_cell_percent'] > 0:
-    # a hack to use faulty temporal memory instead
-    self.model._getTPRegion().getSelf()._tfdr = MonitoredFaultyTPShim(
-      numberOfCols=2048,
-      cellsPerColumn=32,
-      newSynapseCount=32,
-      maxSynapsesPerSegment=128,
-      maxSegmentsPerCell=128,
-      initialPerm=0.21,
-      connectedPerm=0.50,
-      permanenceInc=0.10,
-      permanenceDec=0.10,
-      predictedSegmentDecrement=0.01,
-      minThreshold=15,
-      activationThreshold=15,
-      seed=1960,
-    )
+    if params['kill_cell_percent'] > 0:
+      # a hack to use faulty temporal memory instead
+      self.model._getTPRegion().getSelf()._tfdr = MonitoredFaultyTPShim(
+        numberOfCols=2048,
+        cellsPerColumn=32,
+        newSynapseCount=32,
+        maxSynapsesPerSegment=128,
+        maxSegmentsPerCell=128,
+        initialPerm=0.21,
+        connectedPerm=0.50,
+        permanenceInc=0.10,
+        permanenceDec=0.10,
+        predictedSegmentDecrement=0.01,
+        minThreshold=15,
+        activationThreshold=15,
+        seed=1960,
+      )
 
     self.mapping = getEncoderMapping(self.model, self.dataset.numSymbols)
 
