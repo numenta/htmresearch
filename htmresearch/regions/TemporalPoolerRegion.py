@@ -199,27 +199,6 @@ def _getAdditionalSpecs(poolerClass=_getDefaultPoolerClass(), poolerType="union"
       count=1,
       constraints=""),
 
-    lateralInputWidths=dict(
-      description="Size of lateral input to the UP.",
-      accessMode="ReadWrite",
-      dataType="UInt32",
-      count=0,
-      constraints=""),
-
-    useInternalLateralConnections=dict(
-      description="1 if the pooler is forming internal lateral connections",
-      accessMode="ReadWrite",
-      dataType="UInt32",
-      count=1,
-      constraints="bool"),
-
-    numActive=dict(
-      description="Number of active cells per time step",
-      accessMode="ReadWrite",
-      dataType="UInt32",
-      count=1,
-      constraints=""),
-
     historyLength=dict(
       description="The union window length",
       accessMode="ReadWrite",
@@ -367,16 +346,6 @@ class TemporalPoolerRegion(PyRegion):
     outputs["mostActiveCells"][:] = numpy.zeros(
                                       self._columnCount, dtype=GetNTAReal())
 
-    if "predictedCells" in inputs:
-      predictedCells = inputs["predictedCells"]
-    else:
-      predictedCells = None
-
-    if "winnerCells" in inputs:
-      winnerCells = inputs["winnerCells"]
-    else:
-      winnerCells = None
-
     if self._poolerType == "simpleUnion":
       self._pooler.unionIntoArray(inputs["activeCells"],
                                   outputs["mostActiveCells"],
@@ -388,14 +357,9 @@ class TemporalPoolerRegion(PyRegion):
 
       mostActiveCellsIndices = self._pooler.compute(inputs["activeCells"],
                                                     predictedActiveCells,
-                                                    self.learningMode,
-                                                    predictedCells,
-                                                    winnerCells)
+                                                    self.learningMode)
 
       outputs["mostActiveCells"][mostActiveCellsIndices] = 1
-
-    outputs["currentlyActiveCells"][:] = 0
-    outputs["currentlyActiveCells"][self._pooler._getActiveCells()] = 1
 
     if resetSignal:
         self.reset()
@@ -435,24 +399,6 @@ class TemporalPoolerRegion(PyRegion):
           isDefaultInput=False,
           requireSplitterMap=False),
 
-        predictedCells=dict(
-          description="Predicted Cells",
-          dataType="Real32",
-          count=0,
-          required=False,
-          regionLevel=True,
-          isDefaultInput=False,
-          requireSplitterMap=False),
-
-        winnerCells=dict(
-          description="Winner Cells",
-          dataType="Real32",
-          count=0,
-          required=False,
-          regionLevel=True,
-          isDefaultInput=False,
-          requireSplitterMap=False),
-
         resetIn=dict(
           description="""A boolean flag that indicates whether
                          or not the input vector received in this compute cycle
@@ -481,12 +427,6 @@ class TemporalPoolerRegion(PyRegion):
           count=0,
           regionLevel=True,
           isDefaultOutput=True),
-        currentlyActiveCells=dict(
-          description="Cells in the pooler SDR which became active in the most recent time step",
-          dataType="Real32",
-          count=0,
-          regionLevel=True,
-          isDefaultOutput=False),
       ),
 
       parameters=dict(),
