@@ -49,6 +49,8 @@ class FeedbackExperiment(object):
                L2Overrides=None,
                L4Overrides=None,
                numLearningPasses=4,
+               patternMachine=None,
+               trainingNoiseProb = 0.,
                seed=42):
     """
     Creates the network and initialize the experiment.
@@ -79,6 +81,8 @@ class FeedbackExperiment(object):
     self.numColumns = numCorticalColumns
     self.inputSize = inputSize
     self.numInputBits = numInputBits
+    self.patternMachine = patternMachine
+    self.trainingNoiseProb = trainingNoiseProb
 
 
     # Select the type of region to use for layer 4.
@@ -154,7 +158,7 @@ class FeedbackExperiment(object):
         else:
             raise Exception("Invalid L4 Region Type!")
 
-        L4Params["apicalInputWidth"] = networkConfig["L2Params"]["cellCount"]
+        L4Params["apicalInputWidth"] = networkConfig["L2Params"]["columnCount"]
 
         network.addRegion(
           sensorInputName, "py.RawSensor",
@@ -163,8 +167,9 @@ class FeedbackExperiment(object):
         network.addRegion(
           L4ColumnName, networkConfig["L4RegionType"],
           json.dumps(L4Params))
+
         network.addRegion(
-          L2ColumnName, "py.ColumnPoolerRegion",
+          L2ColumnName, "py.TemporalPoolerRegion",
           json.dumps(networkConfig["L2Params"]))
 
         network.setPhases(sensorInputName,[0])
@@ -179,15 +184,21 @@ class FeedbackExperiment(object):
 
         # Link L4 to L2
         network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
-                     srcOutput="activeCells", destInput="feedforwardInput")
+                     srcOutput="activeCells", destInput="activeCells")
         network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
-                     srcOutput="winnerCells",
-                     destInput="feedforwardGrowthCandidates")
+                     srcOutput="predictedActiveCells",
+                     destInput="predictedActiveCells")
+        network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
+                     srcOutput="predictedCells",
+                     destInput="predictedCells")
 
         # Link L2 feedback to L4
         network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
-                     srcOutput="feedForwardOutput", destInput="apicalInput",
+                     srcOutput="mostActiveCells", destInput="apicalInput",
                      propagationDelay=1)
+        #network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
+        #             srcOutput="currentlyActiveCells", destInput="apicalGrowthCandidates",
+        #             propagationDelay=1)
 
         # # ONLY for ApicalTM: link the region to itself laterally (basally)
         if networkConfig["L4RegionType"] == "py.ApicalTMRegion":
@@ -249,30 +260,21 @@ class FeedbackExperiment(object):
 
     self._setLearningMode(l4Learning=True, l2Learning=True)
     sequence_order = range(len(sequences))
-    for _ in xrange(5):
-      #random.shuffle(sequence_order)
+    for _ in xrange(10):
+      random.shuffle(sequence_order)
       for i in sequence_order:
         sequence = sequences[i]
         # keep track of numbers of iterations to run for this sequence
         iterations = 0
 
+
         for s in sequence:
+          if self.patternMachine is not None:
+            s = self.patternMachine.addNoise(s, self.trainingNoiseProb)
           self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
-          #iterations += 1
           self.network.run(1)
 
-        #if iterations > 0:
-        #  self.network.run(iterations)
-
         self.sendReset()
-        # This fills the role of self.sendReset(), in allowing the network to
-        # "cool down" between sequences.  We can send in empty SDRs, or noise --
-        # either way works.
-        #iterations = 0
-        #for _ in xrange(10):
-        #  self.sensorInputs[0].addDataToQueue([], 0, 0)
-        #  iterations += 1
-        #self.network.run(iterations)
 
     self._setLearningMode(l4Learning=False, l2Learning=False)
     self.sendReset()
@@ -328,7 +330,7 @@ class FeedbackExperiment(object):
 
     #self.network.regions["L4Column_0"].getSelf()._tm.setUseApicalModulationBasalThreshold(apicalModulationBasalThreshold)
     #self.network.regions["L4Column_0"].getSelf()._tm.setUseApicalTiebreak(apicalTiebreak)
-    self.network.regions["L2Column_0"].getSelf()._pooler.setUseInertia(inertia)
+    #self.network.regions["L2Column_0"].getSelf()._pooler.setUseInertia(inertia)
 
     L2Responses=[]
     L4Responses=[]
@@ -409,7 +411,7 @@ class FeedbackExperiment(object):
     """
     Returns the active representation in L2.
     """
-    return [set(column._pooler.getActiveCells()) for column in self.L2Columns]
+    return [set(column._pooler._getMostActiveCells()) for column in self.L2Columns]
 
 
   def getDefaultL4Params(self, inputSize):
@@ -422,16 +424,16 @@ class FeedbackExperiment(object):
             "columnCount": inputSize,
             "cellsPerColumn": 8,
             "learn": True,
-            "initialPermanence": 0.61,
+            "initialPermanence": 0.71,
             "connectedPermanence": 0.6,
             "permanenceIncrement": 0.1,
             "permanenceDecrement": 0.02,
             "reducedBasalThreshold": 10,
             "minThreshold": 13,
-            "basalPredictedSegmentDecrement": 0.0,
-            "apicalPredictedSegmentDecrement": 0.0,
+            "basalPredictedSegmentDecrement": 0.00,
+            "apicalPredictedSegmentDecrement": 0.00,
             "activationThreshold": 15,
-            "sampleSize": 20,
+            "sampleSize": 60,
             "implementation": "ApicalDependent",
             "seed": self.seed
             }
@@ -448,7 +450,7 @@ class FeedbackExperiment(object):
               "permanenceDecrement": 0.02,
               "minThreshold": 13,
               "predictedSegmentDecrement": 0.00,
-              "activationThreshold": 15,
+              "activationThreshold": 10,
               "maxNewSynapseCount": 20,
               "implementation": "etm",
               "seed": self.seed
@@ -461,28 +463,76 @@ class FeedbackExperiment(object):
     """
     Returns a good default set of parameters to use in the L4 region.
     """
-    return {
-      "cellCount": 2048,
-      "inputWidth": inputSize * 8,
-      "learningMode": True,
-      "sdrSize": 40,
-      "synPermProximalInc": 0.1,
-      "synPermProximalDec": 0.001,
-      "initialProximalPermanence": 0.81,
-      "minThresholdProximal": 27,
-      "sampleSizeProximal": 40,
-      "connectedPermanenceProximal": 0.5,
-      "synPermDistalInc": 0.1,
-      "synPermDistalDec": 0.02,
-      "initialDistalPermanence": 0.61,
-      "activationThresholdDistal": 13,
-      "sampleSizeDistal": 20,
-      "connectedPermanenceDistal": 0.5,
-      "distalSegmentInhibitionFactor": .8,
-      "inertiaFactor": 6667.,
-      "seed": self.seed,
-    }
 
+    if False:
+      return {
+        "cellCount": 2048,
+        "inputWidth": inputSize * 8,
+        "learningMode": True,
+        "sdrSize": 40,
+        "synPermProximalInc": 0.1,
+        "synPermProximalDec": 0.001,
+        "initialProximalPermanence": 0.81,
+        "minThresholdProximal": 27,
+        "sampleSizeProximal": 40,
+        "connectedPermanenceProximal": 0.5,
+        "synPermDistalInc": 0.1,
+        "synPermDistalDec": 0.02,
+        "initialDistalPermanence": 0.61,
+        "activationThresholdDistal": 15,
+        "sampleSizeDistal": 20,
+        "connectedPermanenceDistal": 0.5,
+        "distalSegmentInhibitionFactor": .8,
+        "inertiaFactor": .90,
+        "seed": self.seed,
+      }
+
+    else:
+      # Config field for TPRegion
+      UP_PARAMS = {
+          #"spVerbosity": _VERBOSITY,
+          #"columnCount": 128,
+          "columnCount": 2048,
+          # This must be set before creating the TPRegion
+          "inputWidth": 2048*8,
+          "learningMode": 1,
+          #"numActiveColumnsPerInhArea": 20,
+          "numActiveColumnsPerInhArea": 40,
+          "numActive" : 40,
+          "seed": 1956,
+          #"stimulusThreshold": 0,
+          "synPermInactiveDec": 0.002,
+          "synPermActiveInc": 0.01,
+          "synPermPreviousPredActiveInc": 0.005,
+          "synPermPredActiveInc": 0.005,
+          "synPermConnected": 0.5,
+          "potentialPct": 0.1,
+
+          "synPermDistalInc": 0.1,
+          "synPermDistalDec": 0.02,
+          "initialDistalPermanence": 0.51,
+          "activationThresholdDistal": 15,
+          "sampleSizeDistal": 20,
+          "connectedPermanenceDistal": 0.5,
+
+          "globalInhibition": 1,
+          "useInternalLateralConnections": 1,
+          "minPctOverlapDutyCycle": 0.001,
+          "exciteFunctionType": "Fixed",
+          "decayFunctionType": "Exponential",
+          "historyLength": 10,
+          "minHistory": 0,
+          "dutyCyclePeriod": 1000,
+          "boostStrength": 0.0,
+          "spVerbosity": 0,
+          "wrapAround": 1,
+          "activeOverlapWeight": 1.0,
+          "predictedActiveOverlapWeight": 1.0,
+          #"fixedPoolingActivationBurst": 0,
+          "maxUnionActivity": 0.05,
+          "poolerType": "union",
+      }
+      return UP_PARAMS
 
   def _setLearningMode(self, l4Learning = False, l2Learning=False):
     """

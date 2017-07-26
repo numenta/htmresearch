@@ -120,6 +120,7 @@ class ApicalDependentTemporalMemory(object):
     self.basalConnections = SparseMatrixConnections(columnCount*cellsPerColumn,
                                                     basalInputSize)
     self.useFeedback = True
+    self.count = 0
 
     self.apicalConnections = SparseMatrixConnections(columnCount*cellsPerColumn,
                                                      apicalInputSize)
@@ -176,6 +177,7 @@ class ApicalDependentTemporalMemory(object):
     Whether to grow / reinforce / punish synapses
     """
 
+    self.count += 1
     self.burstingColumns = []
     if basalGrowthCandidates is None:
       basalGrowthCandidates = basalInput
@@ -184,6 +186,8 @@ class ApicalDependentTemporalMemory(object):
       apicalGrowthCandidates = apicalInput
 
     # Calculate predictions for this timestep
+    #if self.count % 30 == 6:
+    #  import ipdb; ipdb.set_trace()
     (activeApicalSegments,
       matchingApicalSegments,
       apicalPotentialOverlaps) = self._calculateSegmentActivity(
@@ -203,14 +207,15 @@ class ApicalDependentTemporalMemory(object):
       predictedCells = np.intersect1d(
         self.basalConnections.mapSegmentsToCells(activeBasalSegments),
         apicallySupportedCells)
+
     else:
       (activeBasalSegments,
       matchingBasalSegments,
       basalPotentialOverlaps) = self._calculateSegmentActivity(
         self.basalConnections, basalInput, self.connectedPermanence,
         self.activationThreshold, self.minThreshold)
-
       predictedCells = self.basalConnections.mapSegmentsToCells(activeBasalSegments)
+
     self.predictedCells = predictedCells
     # Calculate active cells
     (correctPredictedCells,

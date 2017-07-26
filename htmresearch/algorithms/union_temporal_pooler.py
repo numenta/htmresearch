@@ -22,10 +22,10 @@
 import random
 import copy
 import numpy
-from nupic.bindings.algorithms import SpatialPooler
+#from nupic.bindings.algorithms import SpatialPooler
 # Uncomment below line to use python SP
-# from nupic.algorithms.spatial_pooler import SpatialPooler
-from nupic.bindings.math import GetNTAReal
+from nupic.algorithms.spatial_pooler import SpatialPooler
+from nupic.bindings.math import GetNTAReal, SparseMatrix, Random
 from htmresearch.frameworks.union_temporal_pooling.activation.excite_functions.excite_functions_all import (
   LogisticExciteFunction, FixedExciteFunction)
 
@@ -53,14 +53,29 @@ class UnionTemporalPooler(SpatialPooler):
                # union_temporal_pooler.py parameters
                activeOverlapWeight=1.0,
                predictedActiveOverlapWeight=0.0,
-               maxUnionActivity=0.20,
+               numActive = 40,
+
+               # Distal
+               segmentBoost = 1.2,
+               lateralInputWidths = [],
+               useInternalLateralConnections = False,
+               synPermDistalInc=0.1,
+               synPermDistalDec=0.001,
+               initialDistalPermanence=0.6,
+               sampleSizeDistal=20,
+               activationThresholdDistal=13,
+               connectedPermanenceDistal=0.50,
+
                exciteFunctionType='Fixed',
                decayFunctionType='NoDecay',
+               maxUnionActivity=0.20,
                decayTimeConst=20.0,
                synPermPredActiveInc=0.0,
                synPermPreviousPredActiveInc=0.0,
                historyLength=0,
                minHistory=0,
+
+               seed = 42,
                **kwargs):
     """
     Please see spatial_pooler.py in NuPIC for super class parameter
@@ -69,42 +84,84 @@ class UnionTemporalPooler(SpatialPooler):
     Class-specific parameters:
     -------------------------------------
 
-    @param activeOverlapWeight: A multiplicative weight applied to
-        the overlap between connected synapses and active-cell input
+    @param  activeOverlapWeight: A multiplicative weight applied to
+            the overlap between connected synapses and active-cell input
 
-    @param predictedActiveOverlapWeight: A multiplicative weight applied to
-        the overlap between connected synapses and predicted-active-cell input
+    @param  predictedActiveOverlapWeight: A multiplicative weight applied to
+            the overlap between connected synapses and predicted-active-cell input
 
-    @param fixedPoolingActivationBurst: A Boolean, which, if True, has the
-        Union Temporal Pooler grant a fixed amount of pooling activation to
-        columns whenever they win the inhibition step. If False, columns'
-        pooling activation is calculated based on their current overlap.
+    @param  numActive: An int, which indicates roughly how many cells should
+            become active at each time step.  Serves the same purpose as
+            numActiveColumnsPerInhArea in the spatial pooler.
 
-    @param exciteFunction: If fixedPoolingActivationBurst is False,
-        this specifies the ExciteFunctionBase used to excite pooling
-        activation.
+    @param  segmentBoost: A multiplicative weight applied to the activation of
+            each cell, based on how many active distal segments it has.  Should be
+            >=1.  Setting this to 1 makes distal segments have no effect.
 
-    @param decayFunction: Specifies the DecayFunctionBase used to decay pooling
-        activation.
+    @param  lateralInputWidths: A tuple of ints, which indicate the width of all
+            lateral input into the pooler (such as from other columns.)
 
-    @param maxUnionActivity: Maximum sparsity of the union SDR
+    @param  useInternalLateralConnections: A Boolean, which, if True, causes the
+            pooler to form internal lateral connections, which reinforce specific
+            activation patterns.
 
-    @param decayTimeConst Time constant for the decay function
+    @param  synPermDistalInc (float)
+            Permanence increment for distal synapses
 
-    @param minHistory don't perform union (output all zeros) until buffer
-    length >= minHistory
+    @param  synPermDistalDec (float)
+            Permanence decrement for distal synapses
+
+    @param  sampleSizeDistal (int)
+            Number of distal synapses a cell should grow to each lateral
+            pattern, or -1 to connect to every active bit
+
+    @param  initialDistalPermanence (float)
+            Initial permanence value for distal synapses
+
+    @param  activationThresholdDistal (int)
+            Number of active synapses required to activate a distal segment
+
+    @param  connectedPermanenceDistal (float)
+            Permanence required for a distal synapse to be connected
+
+    @param  exciteFunction: If fixedPoolingActivationBurst is False,
+            this specifies the ExciteFunctionBase used to excite pooling
+            activation.
+
+    @param  decayFunction: Specifies the DecayFunctionBase used to decay pooling
+            activation.
+
+    @param  maxUnionActivity: Maximum sparsity of the union SDR
+
+    @param  decayTimeConst Time constant for the decay function
+
+    @param  minHistory don't perform union (output all zeros) until buffer
+            length >= minHistory
     """
 
+    self.count = 0
+    self.representations = {}
+    self.overlaps = []
     super(UnionTemporalPooler, self).__init__(**kwargs)
+    self._random = Random()
 
     self._activeOverlapWeight = activeOverlapWeight
     self._predictedActiveOverlapWeight = predictedActiveOverlapWeight
     self._maxUnionActivity = maxUnionActivity
-
+    self._numActive = numActive
     self._exciteFunctionType = exciteFunctionType
     self._decayFunctionType = decayFunctionType
     self._synPermPredActiveInc = synPermPredActiveInc
     self._synPermPreviousPredActiveInc = synPermPreviousPredActiveInc
+
+    self.useInternalLateralConnections = useInternalLateralConnections
+    self.segmentBoost = segmentBoost
+    self.synPermDistalInc = synPermDistalInc
+    self.synPermDistalDec = synPermDistalDec
+    self.initialDistalPermanence = initialDistalPermanence
+    self.connectedPermanenceDistal = connectedPermanenceDistal
+    self.sampleSizeDistal = sampleSizeDistal
+    self.activationThresholdDistal = activationThresholdDistal
 
     self._historyLength = historyLength
     self._minHistory = minHistory
@@ -154,7 +211,13 @@ class UnionTemporalPooler(SpatialPooler):
 
     self._preActiveInput = numpy.zeros(self.getNumInputs(), dtype=REAL_DTYPE)
     # predicted inputs from the last n steps
-    self._prePredictedActiveInput = numpy.zeros((self.getNumInputs(), self._historyLength), dtype=REAL_DTYPE)
+    self._preLearningCandidates = numpy.zeros((self.getNumInputs(), self._historyLength), dtype=REAL_DTYPE)
+
+    if useInternalLateralConnections:
+      self.internalDistalPermanences = SparseMatrix(self._numColumns, self._numColumns)
+    self.distalPermanences = tuple(SparseMatrix(self._numColumns, n)
+                                   for n in lateralInputWidths)
+
 
 
   def reset(self):
@@ -168,26 +231,30 @@ class UnionTemporalPooler(SpatialPooler):
     self._poolingTimer = numpy.ones(self.getNumColumns(), dtype=REAL_DTYPE) * 1000
     self._poolingActivationInitLevel = numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
     self._preActiveInput = numpy.zeros(self.getNumInputs(), dtype=REAL_DTYPE)
-    self._prePredictedActiveInput = numpy.zeros((self.getNumInputs(), self._historyLength), dtype=REAL_DTYPE)
+    self._preLearningCandidates = numpy.zeros((self.getNumInputs(), self._historyLength), dtype=REAL_DTYPE)
 
     # Reset Spatial Pooler fields
     self.setOverlapDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
     self.setActiveDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
     self.setMinOverlapDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
-    self.setMinActiveDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
+    #self.setMinActiveDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
     self.setBoostFactors(numpy.ones(self.getNumColumns(), dtype=REAL_DTYPE))
 
 
-  def compute(self, activeInput, predictedActiveInput, learn):
+  def compute(self, activeInput, predictedActiveInput, learn,
+              predictedCells = None, winnerCells = None, lateralInputs = (),):
     """
     Computes one cycle of the Union Temporal Pooler algorithm.
     @param activeInput            (numpy array) A numpy array of 0's and 1's that comprises the input to the union pooler
     @param predictedActiveInput   (numpy array) A numpy array of 0's and 1's that comprises the correctly predicted input to the union pooler
-    @param learn                  (boolen)      A boolen value indicating whether learning should be performed
+    @param learn                  (boolean)      A boolean value indicating whether learning should be performed
     """
     assert numpy.size(activeInput) == self.getNumInputs()
     assert numpy.size(predictedActiveInput) == self.getNumInputs()
     self._updateBookeepingVars(learn)
+    self.count += 1
+
+    prevActiveCells = copy.deepcopy(self._unionSDR)
 
     # Compute proximal dendrite overlaps with active and active-predicted inputs
     overlapsActive = self._calculateOverlap(activeInput)
@@ -203,7 +270,13 @@ class UnionTemporalPooler(SpatialPooler):
     else:
       boostedOverlaps = totalOverlap
 
-    activeCells = self._inhibitColumns(boostedOverlaps)
+    segmentMultipliers = self._computeDistal(lateralInputs, self._unionSDR)
+    multipliedOverlaps = segmentMultipliers * boostedOverlaps
+
+    #activeCells = self._inhibitColumns(boostedOverlaps)
+    activeCells = self._fuzzyInhibitColumnsGlobal(multipliedOverlaps,
+                                                  self._numActive,
+                                                  0.9)
     self._activeCells = activeCells
 
     # Decrement pooling activation of all cells
@@ -215,20 +288,68 @@ class UnionTemporalPooler(SpatialPooler):
     # update union SDR
     self._getMostActiveCells()
 
+    #print len(self._activeCells)
+    if learn:
+      activeColumns = tuple(set([i/8 for i, x in enumerate(activeInput) if x != 0]))
+      if activeColumns in self.representations:
+        self.representations[activeColumns].append(self._activeCells)
+      else:
+        self.representations[activeColumns] = [self._activeCells]
+
+    else:
+      for representations in self.representations.itervalues():
+        similarities = []
+        for i in range(len(representations) - 2, len(representations)):
+          for j in range(len(representations) - 2, i):
+            similarities.append(len(numpy.intersect1d(representations[i], representations[j])))
+        self.overlaps.append(numpy.mean(similarities))
+
+      print numpy.mean(self.overlaps)
+
+    #  print activeColumns
+    #  print self.count
+    #  self.representations.append(self._activeCells)
+    #  self.overlaps.append([len(numpy.intersect1d(self._activeCells, x)) for x in self.representations])
+    #  print self.overlaps
+
+
+    #if self.count % 30 == 5:
+    #  import ipdb; ipdb.set_trace()
+    if winnerCells is not None:
+      learningCandidates = winnerCells
+    else:
+      learningCandidates = predictedActiveInput
+
     if learn:
       # adapt permanence of connections from predicted active inputs to newly active cell
       # This step is the spatial pooler learning rule, applied only to the predictedActiveInput
       # Todo: should we also include unpredicted active input in this step?
-      self._adaptSynapses(predictedActiveInput, activeCells, self.getSynPermActiveInc(), self.getSynPermInactiveDec())
+      self._adaptSynapses(learningCandidates, activeCells, self.getSynPermActiveInc(), self.getSynPermInactiveDec())
+
+      if self.useInternalLateralConnections:
+        self._learn(self.internalDistalPermanences, self._random,
+                    activeCells, prevActiveCells, prevActiveCells,
+                    self.sampleSizeDistal, self.initialDistalPermanence,
+                    self.synPermDistalInc, self.synPermDistalDec,
+                    self.connectedPermanenceDistal)
+
+      for i, lateralInput in enumerate(lateralInputs):
+        self._learn(self.distalPermanences[i], self._random,
+                    activeCells, lateralInput, lateralInput,
+                    self.sampleSizeDistal, self.initialDistalPermanence,
+                    self.synPermDistalInc, self.synPermDistalDec,
+                    self.connectedPermanenceDistal)
 
       # Increase permanence of connections from predicted active inputs to cells in the union SDR
       # This is Hebbian learning applied to the current time step
-      self._adaptSynapses(predictedActiveInput, self._unionSDR, self._synPermPredActiveInc, 0.0)
+      if self._synPermPredActiveInc > 0:
+        self._adaptSynapses(learningCandidates, self._unionSDR, self._synPermPredActiveInc, 0.0)
 
       # adapt permenence of connections from previously predicted inputs to newly active cells
       # This is a reinforcement learning rule that considers previous input to the current cell
-      for i in xrange(self._historyLength):
-        self._adaptSynapses(self._prePredictedActiveInput[:,i], activeCells, self._synPermPreviousPredActiveInc, 0.0)
+      if self._synPermPreviousPredActiveInc > 0:
+        for i in xrange(self._historyLength):
+          self._adaptSynapses(self._preLearningCandidates[:,i], activeCells, self._synPermPreviousPredActiveInc, 0.0)
 
       # Homeostasis learning inherited from the spatial pooler
       self._updateDutyCycles(totalOverlap.astype(UINT_DTYPE), activeCells)
@@ -240,11 +361,132 @@ class UnionTemporalPooler(SpatialPooler):
 
     # save inputs from the previous time step
     self._preActiveInput = copy.copy(activeInput)
-    self._prePredictedActiveInput = numpy.roll(self._prePredictedActiveInput,1,1)
+    self._preLearningCandidates = numpy.roll(self._preLearningCandidates,1,1)
     if self._historyLength > 0:
-      self._prePredictedActiveInput[:, 0] = predictedActiveInput
+      self._preLearningCandidates[:, 0] = learningCandidates
 
     return self._unionSDR
+
+
+  def _computeDistal(self, lateralInputs, prevActiveCells):
+    """
+    Computes overall impact of distal segments for each cell.  Returns a vector
+    of distal multipliers, which can be directly multiplied with overlap scores
+    """
+    # Calculate the number of active segments on each cell
+    numActiveSegmentsByCell = numpy.zeros(self._numColumns, dtype="int")
+    if self.useInternalLateralConnections:
+      overlaps = self.internalDistalPermanences.rightVecSumAtNZGteThresholdSparse(
+        prevActiveCells, self.connectedPermanenceDistal)
+      numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
+    for i, lateralInput in enumerate(lateralInputs):
+      overlaps = self.distalPermanences[i].rightVecSumAtNZGteThresholdSparse(
+        lateralInput, self.connectedPermanenceDistal)
+      numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
+
+    distalMultipliers = numpy.full(self._numColumns, self.segmentBoost)
+    return distalMultipliers ** numActiveSegmentsByCell
+
+
+  @staticmethod
+  def _learn(# mutated args
+             permanences, rng,
+
+             # activity
+             activeCells, activeInput, growthCandidateInput,
+
+             # configuration
+             sampleSize, initialPermanence, permanenceIncrement,
+             permanenceDecrement, connectedPermanence):
+    """
+    For each active cell, reinforce active synapses, punish inactive synapses,
+    and grow new synapses to a subset of the active input bits that the cell
+    isn't already connected to.  This only covers distal and apical learning
+    for the Union Temporal Pooler, as proximal learning is handled via the
+    Spatial Pooler mechanics and does not include segments.
+
+    Parameters:
+    ----------------------------
+    @param  permanences (SparseMatrix)
+            Matrix of permanences, with cells as rows and inputs as columns
+
+    @param  rng (Random)
+            Random number generator
+
+    @param  activeCells (sorted sequence)
+            Sorted list of the cells that are learning
+
+    @param  activeInput (sorted sequence)
+            Sorted list of active bits in the input
+
+    @param  growthCandidateInput (sorted sequence)
+            Sorted list of active bits in the input that the activeCells may
+            grow new synapses to
+
+    For remaining parameters, see the __init__ docstring.
+    """
+
+    permanences.incrementNonZerosOnOuter(
+      activeCells, activeInput, permanenceIncrement)
+    permanences.incrementNonZerosOnRowsExcludingCols(
+      activeCells, activeInput, -permanenceDecrement)
+    permanences.clipRowsBelowAndAbove(
+      activeCells, 0.0, 1.0)
+    if sampleSize == -1:
+      permanences.setZerosOnOuter(
+        activeCells, activeInput, initialPermanence)
+    else:
+      existingSynapseCounts = permanences.nNonZerosPerRowOnCols(
+        activeCells, activeInput)
+
+      maxNewByCell = numpy.empty(len(activeCells), dtype="int32")
+      numpy.subtract(sampleSize, existingSynapseCounts, out=maxNewByCell)
+
+      permanences.setRandomZerosOnOuter(
+        activeCells, growthCandidateInput, maxNewByCell, initialPermanence, rng)
+
+
+
+  def _fuzzyInhibitColumnsGlobal(self, overlaps, numActive, inhibitionFactor = 1.):
+    """
+    Perform global inhibition. Performing global inhibition entails picking the
+    top 'numActive' columns with the highest overlap score in the entire
+    region, and all cells whose overlaps are within InhibitionFactor of the
+    average overlap score of the top numActive cells.
+
+    :param overlaps: an array containing the overlap score for each  column.
+                    The overlap score for a column is defined as the number
+                    of synapses in a "connected state" (connected synapses)
+                    that are connected to input bits which are turned on.
+    :param inhibitionFactor: a float in [0, 1], which specifies how strongly
+                    columns inhibit each other.  At 0 all columns will become
+                    active at all time steps, while at 1 behavior will be
+                    almost identical to that of the normal inibition function.
+    :param numActive: The desired minimum number of active bits.
+    @return list with indices of the winning columns
+    """
+    # Calculate winners using stable sort algorithm (mergesort)
+    # for compatibility with C++
+    sortedWinnerIndices = numpy.argsort(overlaps, kind='mergesort')
+
+    # Calculate the inhibition threshold
+    start = int(len(sortedWinnerIndices) - numActive)
+    winners = sortedWinnerIndices[start:]
+    threshold = numpy.mean(overlaps[winners])*inhibitionFactor
+    #print "Threshold for activation is:",threshold
+    #print overlaps
+
+    # Determine which other cells will become active
+    while start > 0:
+      i = sortedWinnerIndices[start]
+      if overlaps[i] <= threshold:
+        break
+      else:
+        start -= 1
+
+    #print "# of cells becoming active:", len(overlaps) - start
+    return sortedWinnerIndices[start:][::-1]
+
 
 
   def _decayPoolingActivation(self):
@@ -279,6 +521,10 @@ class UnionTemporalPooler(SpatialPooler):
     self._poolingActivationInitLevel[activeCells] = self._poolingActivation[activeCells]
 
     return self._poolingActivation
+
+
+  def _getActiveCells(self):
+    return self._activeCells
 
 
   def _getMostActiveCells(self):
@@ -345,4 +591,3 @@ class UnionTemporalPooler(SpatialPooler):
 
   def getUnionSDR(self):
     return self._unionSDR
-
