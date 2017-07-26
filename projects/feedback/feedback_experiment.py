@@ -427,10 +427,10 @@ class FeedbackExperiment(object):
             "permanenceIncrement": 0.1,
             "permanenceDecrement": 0.02,
             "reducedBasalThreshold": 10,
-            "minThreshold": 13,
+            "minThreshold": 10,
             "basalPredictedSegmentDecrement": 0.0,
             "apicalPredictedSegmentDecrement": 0.0,
-            "activationThreshold": 15,
+            "activationThreshold": 13,
             "sampleSize": 20,
             "implementation": "ApicalDependent",
             "seed": self.seed
@@ -475,11 +475,11 @@ class FeedbackExperiment(object):
       "synPermDistalInc": 0.1,
       "synPermDistalDec": 0.02,
       "initialDistalPermanence": 0.61,
-      "activationThresholdDistal": 13,
+      "activationThresholdDistal": 15,
       "sampleSizeDistal": 20,
       "connectedPermanenceDistal": 0.5,
       "distalSegmentInhibitionFactor": .8,
-      "inertiaFactor": 6667.,
+      "inertiaFactor": .6667,
       "seed": self.seed,
     }
 
