@@ -503,12 +503,9 @@ class ColumnPoolerTest(unittest.TestCase):
 
     # Cells corresponding to that initial SDR should have started learning on
     # their distal segments.
-    print pooler.numberOfDistalSegments(activeCells)
     self.assertEqual(pooler.numberOfDistalSegments(activeCells),
                      40,
-                     "Incorrect number of segments after learning, " +
-                     "got {} but expected {}".format(
-                       pooler.numberOfDistalSegments(activeCells), 40))
+                     "Incorrect number of segments after learning")
     self.assertEqual(pooler.numberOfDistalSynapses(activeCells),
                      40*20,
                      "Incorrect number of synapses after learning")
