@@ -620,19 +620,15 @@ class LaminarNetworkTest(unittest.TestCase):
     # Object A
 
     # start with an object 1 input to get L2 representation for object 1
-    for i in xrange(5):
-      sensorInput.addDataToQueue(features[0], 0, 0)
-      externalInput.addDataToQueue(locations[0], 0, 0)
-      net.run(1)
-
-      sensorInput.addDataToQueue(features[1], 0, 0)
-      externalInput.addDataToQueue(locations[1], 0, 0)
-      net.run(1)
+    sensorInput.addDataToQueue(features[0], 0, 0)
+    externalInput.addDataToQueue(locations[0], 0, 0)
+    net.run(1)
 
     # get L2 representation for object A
     L2RepresentationA = self.getCurrentL2Representation(L2Column)
     self.assertEqual(len(L2RepresentationA), 40)
-    for i in xrange(4):
+
+    for _ in xrange(4):
       sensorInput.addDataToQueue(features[0], 0, 0)
       externalInput.addDataToQueue(locations[0], 0, 0)
       net.run(1)
@@ -642,7 +638,6 @@ class LaminarNetworkTest(unittest.TestCase):
         self.getCurrentL2Representation(L2Column),
         L2RepresentationA
       )
-
       sensorInput.addDataToQueue(features[1], 0, 0)
       externalInput.addDataToQueue(locations[1], 0, 0)
       net.run(1)
@@ -788,6 +783,7 @@ class LaminarNetworkTest(unittest.TestCase):
     # check bursting (representation in L2 should be like in a random SP)
     self.assertEqual(len(self.getL4PredictedActiveCells(L4Column)), 0)
     self.assertEqual(len(self.getL4BurstingCells(L4Column)), 20 * 8)
+
 
   def testTwoColumnsL4L2DataFlow(self):
     """

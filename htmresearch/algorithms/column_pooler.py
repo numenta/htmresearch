@@ -276,8 +276,7 @@ class ColumnPooler(object):
       self.activeCells.sort()
 
       # Form initial internal distal links for the new SDR.  This is crucial in
-      # online learning.  Without it, the SDR will fail to persist.
-      # It is, however, unnecessary in batch learning.
+      # online learning.  Without it, the SDR may fail to persist.
       self._learn(self.internalDistalPermanences, self._random,
                   self.activeCells, self.activeCells, self.activeCells,
                   self.sampleSizeDistal, self.initialDistalPermanence,
