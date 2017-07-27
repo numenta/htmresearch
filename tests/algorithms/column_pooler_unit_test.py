@@ -113,9 +113,7 @@ class ColumnPoolerTest(unittest.TestCase):
     # Get initial activity
     pooler.compute(feedforwardInput=range(0, 40), learn=True)
     self.assertEqual(len(pooler.getActiveCells()), 40,
-                     "Incorrect number of active cells, " +
-                     "expected {} but got {}".format(40,
-                     len(pooler.getActiveCells())))
+                     "Incorrect number of active cells")
     objectSDR = set(pooler.getActiveCells())
 
     # Ensure we've added correct number synapses on the active cells
@@ -138,14 +136,11 @@ class ColumnPoolerTest(unittest.TestCase):
     self.assertEqual(objectSDR, set(pooler.getActiveCells()),
                      "Activity is not consistent for same input")
 
-
     # Ensure we've added correct number of new synapses on the active cells
     self.assertEqual(
       pooler.mmGetTraceNumProximalSynapses().data[-1],
       40*40,
-      "Incorrect number of nonzero permanences on active cells, " +
-      "expected {} but got {}".format(40*40,
-      pooler.mmGetTraceNumProximalSynapses().data[-1])
+      "Incorrect number of nonzero permanences on active cells"
     )
 
     # Ensure they are all connected
@@ -159,8 +154,7 @@ class ColumnPoolerTest(unittest.TestCase):
     # active cells
     pooler.compute(feedforwardInput=(), learn=True)
     self.assertEqual(objectSDR, set(pooler.getActiveCells()),
-                     "Activity is not consistent for same input, {}".format(len(pooler.getActiveCells())))
-
+                     "Activity is not consistent for same input")
 
     # Ensure we do actually add the number of synapses we want
 
@@ -168,8 +162,8 @@ class ColumnPoolerTest(unittest.TestCase):
     # we should not get the same set of active cells
     pooler.reset()
     pooler.compute(feedforwardInput=range(0, 40), learn=True)
-    self.assertEqual(objectSDR, set(pooler.getActiveCells()),
-               "Activity should be consistent for same input after reset")
+    self.assertNotEqual(objectSDR, set(pooler.getActiveCells()),
+               "Activity should not be consistent for same input after reset")
     self.assertEqual(len(pooler.getActiveCells()), 40,
                "Incorrect number of active cells after reset")
 
@@ -509,9 +503,12 @@ class ColumnPoolerTest(unittest.TestCase):
 
     # Cells corresponding to that initial SDR should have started learning on
     # their distal segments.
+    print pooler.numberOfDistalSegments(activeCells)
     self.assertEqual(pooler.numberOfDistalSegments(activeCells),
                      40,
-                     "Incorrect number of segments after learning")
+                     "Incorrect number of segments after learning, " +
+                     "got {} but expected {}".format(
+                       pooler.numberOfDistalSegments(activeCells), 40))
     self.assertEqual(pooler.numberOfDistalSynapses(activeCells),
                      40*20,
                      "Incorrect number of synapses after learning")

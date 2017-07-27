@@ -249,30 +249,30 @@ class FeedbackExperiment(object):
 
     self._setLearningMode(l4Learning=True, l2Learning=True)
     sequence_order = range(len(sequences))
-    for _ in xrange(5):
-      #random.shuffle(sequence_order)
+    training_length = 5
+    if self.config["L2Params"]["onlineLearning"]:
+      for _ in xrange(training_length):
+        random.shuffle(sequence_order)
+        for i in sequence_order:
+          sequence = sequences[i]
+          for s in sequence:
+            self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
+            self.network.run(1)
+
+          # This is equivalent to, and faster than, giving the network no input
+          # for a period of time.
+          self.sendReset()
+    else:
       for i in sequence_order:
-        sequence = sequences[i]
-        # keep track of numbers of iterations to run for this sequence
-        iterations = 0
+        for _ in xrange(training_length):
+          sequence = sequences[i]
+          for s in sequence:
+            self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
+            self.network.run(1)
 
-        for s in sequence:
-          self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
-          #iterations += 1
-          self.network.run(1)
-
-        #if iterations > 0:
-        #  self.network.run(iterations)
-
+          # This is equivalent to, and faster than, giving the network no input
+          # for a period of time.
         self.sendReset()
-        # This fills the role of self.sendReset(), in allowing the network to
-        # "cool down" between sequences.  We can send in empty SDRs, or noise --
-        # either way works.
-        #iterations = 0
-        #for _ in xrange(10):
-        #  self.sensorInputs[0].addDataToQueue([], 0, 0)
-        #  iterations += 1
-        #self.network.run(iterations)
 
     self._setLearningMode(l4Learning=False, l2Learning=False)
     self.sendReset()
@@ -469,14 +469,17 @@ class FeedbackExperiment(object):
       "synPermProximalInc": 0.1,
       "synPermProximalDec": 0.001,
       "initialProximalPermanence": 0.81,
+      "onlineLearning": True,
       "minThresholdProximal": 27,
       "sampleSizeProximal": 40,
       "connectedPermanenceProximal": 0.5,
+      "predictedInhibitionThreshold": 20,
+      "learningTolerance": 0.1,
       "synPermDistalInc": 0.1,
       "synPermDistalDec": 0.02,
       "initialDistalPermanence": 0.61,
-      "activationThresholdDistal": 15,
-      "sampleSizeDistal": 20,
+      "activationThresholdDistal": 27,
+      "sampleSizeDistal": 40,
       "connectedPermanenceDistal": 0.5,
       "distalSegmentInhibitionFactor": .8,
       "inertiaFactor": .6667,

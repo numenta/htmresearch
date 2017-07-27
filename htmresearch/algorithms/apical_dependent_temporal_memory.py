@@ -44,6 +44,7 @@ class ApicalDependentTemporalMemory(object):
                apicalInputSize=0,
                cellsPerColumn=32,
                activationThreshold=13,
+               reducedBasalThreshold=10,
                initialPermanence=0.61,
                connectedPermanence=0.50,
                minThreshold=10,
@@ -70,6 +71,11 @@ class ApicalDependentTemporalMemory(object):
     @param activationThreshold (int)
     If the number of active connected synapses on a segment is at least this
     threshold, the segment is said to be active.
+
+    @param reducedBasalThreshold (int)
+    The activation threshold of basal (lateral) segments for cells that have
+    active apical segments. If equal to activationThreshold (default),
+    this parameter has no effect.
 
     @param initialPermanence (float)
     Initial permanence of a new synapse

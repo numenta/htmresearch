@@ -139,6 +139,19 @@ class ColumnPoolerRegion(PyRegion):
           dataType="Bool",
           count=1,
           defaultValue="true"),
+        onlineLearning=dict(
+          description="Whether to use onlineLearning or not (default False).",
+          accessMode="ReadWrite",
+          dataType="Bool",
+          count=1,
+          defaultValue="false"),
+        learningTolerance=dict(
+          description="How much variation in SDR size to accept when learning. "
+                      "Only has an effect if online learning is enabled.",
+          accessMode="ReadWrite",
+          dataType="Real32",
+          count=1,
+          defaultValue="false"),
         cellCount=dict(
           description="Number of cells in this layer",
           accessMode="Read",
@@ -203,6 +216,14 @@ class ColumnPoolerRegion(PyRegion):
         connectedPermanenceProximal=dict(
           description="If the permanence value for a synapse is greater "
                       "than this value, it is said to be connected.",
+          accessMode="Read",
+          dataType="Real32",
+          count=1,
+          constraints=""),
+        predictedInhibitionThreshold=dict(
+          description="How many predicted cells are required to cause "
+                      "inhibition in the pooler.  Only has an effect if online "
+                      "learning is enabled.",
           accessMode="Read",
           dataType="Real32",
           count=1,
@@ -295,6 +316,8 @@ class ColumnPoolerRegion(PyRegion):
                inputWidth=16384,
                numOtherCorticalColumns=0,
                sdrSize=40,
+               onlineLearning = False,
+               learningTolerance = 0.2,
 
                # Proximal
                synPermProximalInc=0.1,
@@ -303,6 +326,7 @@ class ColumnPoolerRegion(PyRegion):
                sampleSizeProximal=20,
                minThresholdProximal=1,
                connectedPermanenceProximal=0.50,
+               predictedInhibitionThreshold=20,
 
                # Distal
                synPermDistalInc=0.10,
@@ -325,12 +349,15 @@ class ColumnPoolerRegion(PyRegion):
     self.inputWidth = inputWidth
     self.cellCount = cellCount
     self.sdrSize = sdrSize
+    self.onlineLearning = onlineLearning
+    self.learningTolerance = learningTolerance
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
     self.sampleSizeProximal = sampleSizeProximal
     self.minThresholdProximal = minThresholdProximal
     self.connectedPermanenceProximal = connectedPermanenceProximal
+    self.predictedInhibitionThreshold = predictedInhibitionThreshold
     self.synPermDistalInc = synPermDistalInc
     self.synPermDistalDec = synPermDistalDec
     self.initialDistalPermanence = initialDistalPermanence
@@ -360,12 +387,15 @@ class ColumnPoolerRegion(PyRegion):
         "lateralInputWidths": [self.cellCount] * self.numOtherCorticalColumns,
         "cellCount": self.cellCount,
         "sdrSize": self.sdrSize,
+        "onlineLearning": self.onlineLearning,
+        "learningTolerance": self.learningTolerance,
         "synPermProximalInc": self.synPermProximalInc,
         "synPermProximalDec": self.synPermProximalDec,
         "initialProximalPermanence": self.initialProximalPermanence,
         "minThresholdProximal": self.minThresholdProximal,
         "sampleSizeProximal": self.sampleSizeProximal,
         "connectedPermanenceProximal": self.connectedPermanenceProximal,
+        "predictedInhibitionThreshold": self.predictedInhibitionThreshold,
         "synPermDistalInc": self.synPermDistalInc,
         "synPermDistalDec": self.synPermDistalDec,
         "initialDistalPermanence": self.initialDistalPermanence,
