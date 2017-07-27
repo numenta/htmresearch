@@ -32,7 +32,7 @@ import pandas as pd
 from htmresearch.support.sequence_learning_utils import *
 from nupic.encoders.scalar import ScalarEncoder as NupicScalarEncoder
 from nupic.frameworks.opf.metrics import MetricSpec
-from nupic.frameworks.opf.modelfactory import ModelFactory
+from nupic.frameworks.opf.model_factory import ModelFactory
 from nupic.frameworks.opf.predictionmetricsmanager import MetricsManager
 from nupic.frameworks.opf import metrics
 from htmresearch.frameworks.opf.clamodel_custom import CLAModel_custom
