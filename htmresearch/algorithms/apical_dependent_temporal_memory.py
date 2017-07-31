@@ -45,7 +45,7 @@ class ApicalDependentTemporalMemory(object):
                cellsPerColumn=32,
                activationThreshold=13,
                reducedBasalThreshold=10,
-               initialPermanence=0.61,
+               initialPermanence=0.21,
                connectedPermanence=0.50,
                minThreshold=10,
                sampleSize=20,
