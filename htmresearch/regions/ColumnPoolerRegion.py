@@ -147,7 +147,8 @@ class ColumnPoolerRegion(PyRegion):
           defaultValue="false"),
         learningTolerance=dict(
           description="How much variation in SDR size to accept when learning. "
-                      "Only has an effect if online learning is enabled.",
+                      "Only has an effect if online learning is enabled. "
+                      "Should be at most 1 - inertiaFactor.",
           accessMode="ReadWrite",
           dataType="Real32",
           count=1,

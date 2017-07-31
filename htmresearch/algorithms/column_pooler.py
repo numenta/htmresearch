@@ -77,7 +77,9 @@ class ColumnPooler(object):
 
     @param  learningTolerance (float)
             How tolerant the pooler is of non-standard SDR sizes during
-            learning.  Only has effects if onlineLearning is true.
+            learning.  Only has effects if onlineLearning is true.  Should be
+            less than 1 - inertiaFactor, or representations may become mixed
+            between different object.
 
     @param  synPermProximalInc (float)
             Permanence increment for proximal synapses
@@ -129,7 +131,9 @@ class ColumnPooler(object):
     @param  inertiaFactor (float)
             The proportion of previously active cells that remain
             active in the next timestep due to inertia (in the absence of
-            inhibition).
+            inhibition).  If onlineLearning is enabled, should be at most
+            1 - learningTolerance, or representations may incorrectly become
+            mixed.
 
     @param  seed (int)
             Random number generator seed
@@ -253,48 +257,27 @@ class ColumnPooler(object):
             grow new synapses to.  This is assumed to be the predicted active
             cells of the input layer.
     """
-    prevActiveCells = self.activeCells
-    cellsToLearn = set(self.activeCells)
-
-    # If there are not enough previously active cells, select random set of
-    # cells to learn on.  If there are only some cells active, we may not be
-    # sufficiently certain about what object we are experiencing, and we should
-    #
-    # If there were none, we are learning a new object.
+    # If there are not enough previously active cells, then we are no longer on
+    # a familiar object.  Either our representation decayed due to the passage
+    # of time (i.e. we moved somewhere else) or we were mistaken.  Either way,
+    # create a new SDR and learn on it.
     # This case is the only way different object representations are created.
+    if len(self.activeCells) < self.sdrSize*(1 - self.learningTolerance):
+      self.activeCells = _sampleRange(self._random,
+                                      0, self.numberOfCells(),
+                                      step=1, k=self.sdrSize)
 
-    if len(cellsToLearn) < self.sdrSize*(1 - self.learningTolerance):
-      cellsToLearn = set()
-      numToAdd = self.sdrSize - len(cellsToLearn)
-      newCells = _sampleRange(self._random,
-                              0, self.numberOfCells(),
-                              step=1, k=numToAdd)
-      cellsToLearn |= set(newCells)
-
-      cellsToLearn = numpy.asarray(list(cellsToLearn))
-      cellsToLearn.sort()
-      self.activeCells = numpy.union1d(self.activeCells, cellsToLearn)
-      self.activeCells.sort()
-
-
-
-    else:
-      cellsToLearn = numpy.asarray(list(cellsToLearn))
-      cellsToLearn.sort()
 
     # If we have a union of cells active, don't learn.
-    if len(cellsToLearn) > self.sdrSize*(1+self.learningTolerance):
+    if len(self.activeCells) > self.sdrSize*(1+self.learningTolerance):
       return
 
-    cellsToLearn.sort()
-    self.activeCells = numpy.union1d(self.activeCells, cellsToLearn)
-    self.activeCells.sort()
 
     # Finally, now that we have decided which cells we should be learning on, do
     # the actual learning.
     if len(feedforwardInput) > 0:
       self._learn(self.proximalPermanences, self._random,
-                  cellsToLearn, feedforwardInput,
+                  self.activeCells, feedforwardInput,
                   feedforwardGrowthCandidates, self.sampleSizeProximal,
                   self.initialProximalPermanence, self.synPermProximalInc,
                   self.synPermProximalDec, self.connectedPermanenceProximal)
@@ -304,14 +287,14 @@ class ColumnPooler(object):
     # learning useful things even if we're not.
     for i, lateralInput in enumerate(lateralInputs):
       self._learn(self.distalPermanences[i], self._random,
-                  cellsToLearn, lateralInput, lateralInput,
+                  self.activeCells, lateralInput, lateralInput,
                   self.sampleSizeDistal, self.initialDistalPermanence,
                   self.synPermDistalInc, self.synPermDistalDec,
                   self.connectedPermanenceDistal)
 
     # Internal distal learning
     self._learn(self.internalDistalPermanences, self._random,
-                self.activeCells, prevActiveCells, prevActiveCells,
+                self.activeCells, self.activeCells, self.activeCells,
                 self.sampleSizeDistal, self.initialDistalPermanence,
                 self.synPermDistalInc, self.synPermDistalDec,
                 self.connectedPermanenceDistal)
