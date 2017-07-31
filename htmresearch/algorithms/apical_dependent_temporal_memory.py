@@ -121,11 +121,11 @@ class ApicalDependentTemporalMemory(object):
     self.basalPredictedSegmentDecrement = basalPredictedSegmentDecrement
     self.apicalPredictedSegmentDecrement = apicalPredictedSegmentDecrement
     self.activationThreshold = activationThreshold
-    self.reducedBasalThreshold = 10
+    self.reducedBasalThreshold = reducedBasalThreshold
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
     self.basalConnections = SparseMatrixConnections(columnCount*cellsPerColumn,
                                                     basalInputSize)
-    self.useFeedback = True
+    self.disableApicalDependence = False
 
     self.apicalConnections = SparseMatrixConnections(columnCount*cellsPerColumn,
                                                      apicalInputSize)
@@ -182,7 +182,6 @@ class ApicalDependentTemporalMemory(object):
     Whether to grow / reinforce / punish synapses
     """
 
-    self.burstingColumns = []
     if basalGrowthCandidates is None:
       basalGrowthCandidates = basalInput
 
@@ -194,17 +193,18 @@ class ApicalDependentTemporalMemory(object):
       matchingApicalSegments,
       apicalPotentialOverlaps) = self._calculateSegmentActivity(
         self.apicalConnections, apicalInput, self.connectedPermanence,
-        self.activationThreshold, self.minThreshold)
+        self.activationThreshold, self.minThreshold, self.reducedBasalThreshold)
 
     apicallySupportedCells = self.apicalConnections.mapSegmentsToCells(
         activeApicalSegments)
-    if self.useFeedback:
+    if not self.disableApicalDependence:
       (activeBasalSegments,
         matchingBasalSegments,
-        basalPotentialOverlaps) = self._calculateBasalSegmentActivity(
-          self.basalConnections, basalInput, apicallySupportedCells,
-          self.connectedPermanence,
-          self.activationThreshold, self.minThreshold, self.reducedBasalThreshold)
+        basalPotentialOverlaps) = self._calculateSegmentActivity(
+          self.basalConnections, basalInput,
+          self.connectedPermanence, self.activationThreshold,
+          self.minThreshold, self.reducedBasalThreshold,
+          reducedBasalThresholdCells = apicallySupportedCells,)
 
       predictedCells = np.intersect1d(
         self.basalConnections.mapSegmentsToCells(activeBasalSegments),
@@ -214,7 +214,7 @@ class ApicalDependentTemporalMemory(object):
       matchingBasalSegments,
       basalPotentialOverlaps) = self._calculateSegmentActivity(
         self.basalConnections, basalInput, self.connectedPermanence,
-        self.activationThreshold, self.minThreshold)
+        self.activationThreshold, self.minThreshold, self.reducedBasalThreshold)
 
       predictedCells = self.basalConnections.mapSegmentsToCells(activeBasalSegments)
     self.predictedCells = predictedCells
@@ -224,7 +224,6 @@ class ApicalDependentTemporalMemory(object):
                                        predictedCells / self.cellsPerColumn,
                                        rightMinusLeft=True)
 
-    self.inhibitionSignal = len(predictedCells) > self.activationThreshold
     newActiveCells = np.concatenate((correctPredictedCells,
                                      np2.getAllCellsInColumns(
                                        burstingColumns, self.cellsPerColumn)))
@@ -409,43 +408,9 @@ class ApicalDependentTemporalMemory(object):
 
   @staticmethod
   def _calculateSegmentActivity(connections, activeInput, connectedPermanence,
-                                activationThreshold, minThreshold):
-    """
-    Calculate the active and matching segments for this timestep.
-
-    @param connections (SparseMatrixConnections)
-    @param activeInput (numpy array)
-
-    @return (tuple)
-    - activeSegments (numpy array)
-      Dendrite segments with enough active connected synapses to cause a
-      dendritic spike
-
-    - matchingSegments (numpy array)
-      Dendrite segments with enough active potential synapses to be selected for
-      learning in a bursting column
-
-    - potentialOverlaps (numpy array)
-      The number of active potential synapses for each segment.
-      Includes counts for active, matching, and nonmatching segments.
-    """
-
-    # Active
-    overlaps = connections.computeActivity(activeInput, connectedPermanence)
-    activeSegments = np.flatnonzero(overlaps >= activationThreshold)
-
-    # Matching
-    potentialOverlaps = connections.computeActivity(activeInput)
-    matchingSegments = np.flatnonzero(potentialOverlaps >= minThreshold)
-
-    return (activeSegments,
-            matchingSegments,
-            potentialOverlaps)
-
-  @staticmethod
-  def _calculateBasalSegmentActivity(connections, activeInput,
-                                reducedBasalThresholdCells, connectedPermanence,
-                                activationThreshold, minThreshold, reducedBasalThreshold):
+                                activationThreshold, minThreshold,
+                                reducedBasalThreshold,
+                                reducedBasalThresholdCells = ()):
     """
     Calculate the active and matching basal segments for this timestep.
 

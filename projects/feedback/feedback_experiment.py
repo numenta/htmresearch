@@ -315,7 +315,7 @@ class FeedbackExperiment(object):
     """
     if enableFeedback is False:
       self._disableL2()
-      self.network.regions["L4Column_0"].getSelf()._tm.useFeedback = False
+      self.network.regions["L4Column_0"].getSelf()._tm.disableApicalDependence = True
     else:
       self._enableL2()
 
