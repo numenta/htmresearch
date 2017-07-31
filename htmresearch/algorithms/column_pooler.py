@@ -194,7 +194,7 @@ class ColumnPooler(object):
             If True, we are learning a new object
 
     @param predictedInput (sequence)
-           Sorted indices of active feedforward input bits
+           Sorted indices of predicted cells in the TM layer.
     """
     if feedforwardGrowthCandidates is None:
       feedforwardGrowthCandidates = feedforwardInput
@@ -225,7 +225,7 @@ class ColumnPooler(object):
         # we are extending that representation and should just learn.
         self._computeOnlineLearningMode(feedforwardInput, lateralInputs,
                                   feedforwardGrowthCandidates)
-        self._computeInferenceMode(feedforwardInput, lateralInputs)
+        #self._computeInferenceMode(feedforwardInput, lateralInputs)
 
 
   def _computeOnlineLearningMode(self, feedforwardInput, lateralInputs,
@@ -256,14 +256,15 @@ class ColumnPooler(object):
     prevActiveCells = self.activeCells
     cellsToLearn = set(self.activeCells)
 
-    # If there are not enough previously active cells, select random subset of
-    # cells to learn on.  If there were only some active cells, we assume that
-    # we are learning an object related to what is represented by those cells;
-    # if there were none, we are learning a new object.
+    # If there are not enough previously active cells, select random set of
+    # cells to learn on.  If there are only some cells active, we may not be
+    # sufficiently certain about what object we are experiencing, and we should
+    #
+    # If there were none, we are learning a new object.
     # This case is the only way different object representations are created.
-    if len(cellsToLearn) < self.sdrSize:
-      if len(cellsToLearn) < self.sdrSize*(1 - self.learningTolerance):
-        cellsToLearn = set()
+
+    if len(cellsToLearn) < self.sdrSize*(1 - self.learningTolerance):
+      cellsToLearn = set()
       numToAdd = self.sdrSize - len(cellsToLearn)
       newCells = _sampleRange(self._random,
                               0, self.numberOfCells(),
@@ -275,13 +276,7 @@ class ColumnPooler(object):
       self.activeCells = numpy.union1d(self.activeCells, cellsToLearn)
       self.activeCells.sort()
 
-      # Form initial internal distal links for the new SDR.  This is crucial in
-      # online learning.  Without it, the SDR may fail to persist.
-      self._learn(self.internalDistalPermanences, self._random,
-                  self.activeCells, self.activeCells, self.activeCells,
-                  self.sampleSizeDistal, self.initialDistalPermanence,
-                  self.synPermDistalInc, self.synPermDistalDec,
-                  self.connectedPermanenceDistal)
+
 
     else:
       cellsToLearn = numpy.asarray(list(cellsToLearn))
@@ -304,15 +299,22 @@ class ColumnPooler(object):
                   self.initialProximalPermanence, self.synPermProximalInc,
                   self.synPermProximalDec, self.connectedPermanenceProximal)
 
-      # External distal learning
-      # We should do this no matter what, since other columns might still be
-      # learning useful things even if we're not.
-      for i, lateralInput in enumerate(lateralInputs):
-        self._learn(self.distalPermanences[i], self._random,
-                    cellsToLearn, lateralInput, lateralInput,
-                    self.sampleSizeDistal, self.initialDistalPermanence,
-                    self.synPermDistalInc, self.synPermDistalDec,
-                    self.connectedPermanenceDistal)
+    # External distal learning
+    # We should do this no matter what, since other columns might still be
+    # learning useful things even if we're not.
+    for i, lateralInput in enumerate(lateralInputs):
+      self._learn(self.distalPermanences[i], self._random,
+                  cellsToLearn, lateralInput, lateralInput,
+                  self.sampleSizeDistal, self.initialDistalPermanence,
+                  self.synPermDistalInc, self.synPermDistalDec,
+                  self.connectedPermanenceDistal)
+
+    # Internal distal learning
+    self._learn(self.internalDistalPermanences, self._random,
+                self.activeCells, prevActiveCells, prevActiveCells,
+                self.sampleSizeDistal, self.initialDistalPermanence,
+                self.synPermDistalInc, self.synPermDistalDec,
+                self.connectedPermanenceDistal)
 
 
   def _computeLearningMode(self, feedforwardInput, lateralInputs,
