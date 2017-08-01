@@ -280,9 +280,6 @@ theoreticalErrorsA256 = [
 0.9976026541,
 0.9981065378]
 
-#errorsA10 = 1 - numpy.asarray(errorsA10)
-#errorsA20 = 1 - numpy.asarray(errorsA20)
-#errorsA40 = 1 - numpy.asarray(errorsA40)
 listofNValues = range(300, 4100, 100)
 
 trace1 = Scatter(

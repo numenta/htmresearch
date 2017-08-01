@@ -80,7 +80,7 @@ e2_predicted = [0.99967548539491804549604445080339348274243435001951,
 
 # a=512 cells active out of n=16000 cells, theta=s/2
 # Experimental errors
-e4 = [550000./550000.0,
+e3 = [550000./550000.0,
 521054./550000.0,
 143674./550000.0,
 17612./550000.0,
@@ -97,7 +97,7 @@ e4 = [550000./550000.0,
 0./100000.0]
 
 # Calculated errors
-e4_predicted = [0.999999999999992,
+e3_predicted = [0.999999999999992,
 0.947454701131967,
 0.261531393413475,
 0.0322120516830234,
@@ -115,10 +115,10 @@ e4_predicted = [0.999999999999992,
 
 # a=4000 cells active out of n=16000 cells, theta=s/2
 # Experimental errors
-e5 = [1., 1., 1., 1., 1., 1., 1., 1., 1., 0.998, 0.99, 0.988, 0.914, 0.812, 0.736]
+e4 = [1., 1., 1., 1., 1., 1., 1., 1., 1., 0.998, 0.99, 0.988, 0.914, 0.812, 0.736]
 
 # Calculated errors
-e5_predicted = [1.00000000000000,
+e4_predicted = [1.00000000000000,
 1.00000000000000,
 1.00000000000000,
 1.00000000000000,
@@ -185,8 +185,8 @@ trace2_predicted = Scatter(
     name="a=32 n=4000"
 )
 
-trace4 = Scatter(
-    y=e4,
+trace3 = Scatter(
+    y=e3,
     x=synapses,
     mode="markers",
     marker=Marker(
@@ -195,6 +195,30 @@ trace4 = Scatter(
       color="rgb(0, 0, 0)",
     ),
     name="a=512 n=16000"
+)
+
+trace3_predicted = Scatter(
+    y=e3_predicted,
+    x=synapses,
+    mode="lines",
+    line=Line(
+        color='rgb(0, 0, 0)',
+        width=3,
+        shape='spline'
+    ),
+    name="a=512 n=16000"
+)
+
+trace4 = Scatter(
+    y=e4,
+    x=synapses,
+    marker=Marker(
+      symbol="octagon",
+      size=10,
+      color="rgb(0, 0,0 )",
+    ),
+    mode="markers",
+    name="a=4000 n=16000"
 )
 
 trace4_predicted = Scatter(
@@ -206,34 +230,10 @@ trace4_predicted = Scatter(
         width=3,
         shape='spline'
     ),
-    name="a=512 n=16000"
-)
-
-trace5 = Scatter(
-    y=e5,
-    x=synapses,
-    marker=Marker(
-      symbol="octagon",
-      size=10,
-      color="rgb(0, 0,0 )",
-    ),
-    mode="markers",
     name="a=4000 n=16000"
 )
 
-trace5_predicted = Scatter(
-    y=e5_predicted,
-    x=synapses,
-    mode="lines",
-    line=Line(
-        color='rgb(0, 0, 0)',
-        width=3,
-        shape='spline'
-    ),
-    name="a=4000 n=16000"
-)
-
-data = Data([trace1, trace1_predicted,trace2, trace2_predicted, trace4, trace4_predicted, trace5, trace5_predicted])
+data = Data([trace1, trace1_predicted,trace2, trace2_predicted, trace3, trace3_predicted, trace4, trace4_predicted])
 
 layout = Layout(
     title='',

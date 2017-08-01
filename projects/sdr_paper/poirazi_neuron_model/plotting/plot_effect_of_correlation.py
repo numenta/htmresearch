@@ -145,6 +145,7 @@ trace6 = Scatter(
     name="a=32, n=2000"
 )
 
+# to see the raw datapoints, re-enable traces 1, 3 and 5.
 data = Data([trace2, trace4, trace6])
 
 layout = Layout(

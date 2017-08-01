@@ -50,6 +50,12 @@ def run_noise_experiment(num_neurons = 1,
   occurs), we simple reinitialize.
 
   Results are saved to the file noise_FN_{theta}.txt.
+
+  This corresponds to the false negative vs. noise level figure in the paper.
+  To generate the results shown, we used theta = 8, theta = 12 and theta = 16,
+  with noise levels in range(15, 85, 5), 500 dendrites and 30 synapses per
+  dendrite.  We generated 500 sample SDRs, one per dendrite, and ran 100 trials
+  at each noise level.  Each SDR had a = 128, dim = 6000.
   """
 
   nonlinearity = threshold_nonlinearity(theta)
