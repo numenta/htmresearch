@@ -22,8 +22,6 @@
 import numpy
 from nupic.bindings.math import *
 from scipy.signal import convolve2d
-import sympy
-from sympy.stats import Beta
 
 
 def get_biased_correlations(data, threshold= 10):
