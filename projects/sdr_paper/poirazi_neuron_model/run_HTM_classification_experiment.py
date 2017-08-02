@@ -39,7 +39,7 @@ def run_initialization_experiment(seed,
                                   neuron_size = 10000,
                                   num_dendrites = 400,
                                   dendrite_length = 25,
-                                  test_powers = range(10, 11)
+                                  power = 10,
                                   ):
   """
   Runs an experiment testing classifying a binary dataset, based on Poirazi &
@@ -55,64 +55,64 @@ def run_initialization_experiment(seed,
   amount of time, up to 96,000 iterations per neuron.  We have never even
   begun to approach this long a training time, so it is possible that our
   performance would converge with theirs given more time.
+
+  This experiment does not correspond to a figure in the paper, but we report
+  our results across an average of 50 trials, using the settings above.
   """
 
   numpy.random.seed(seed)
-  for power in test_powers:
-    print "Testing power:", power
-    nonlinearity = power_nonlinearity(power)
-    pos_neurons = [Neuron(size = neuron_size, num_dendrites = num_dendrites, dendrite_length = dendrite_length, nonlinearity = nonlinearity, dim = dim*num_bins) for i in range(num_neurons/2)]
-    neg_neurons = [Neuron(size = neuron_size, num_dendrites = num_dendrites, dendrite_length = dendrite_length, nonlinearity = nonlinearity, dim = dim*num_bins) for i in range(num_neurons/2)]
-    #pos, neg = generate_evenly_distributed_data_sparse(dim = 400, num_active = 40, num_samples = num_samples/2), generate_evenly_distributed_data_sparse(dim = 400, num_active = 40, num_samples = num_samples/2)
-    pos, neg = generate_data(dim = dim, num_bins = num_bins, num_samples = num_samples, sparse = True)
 
-    if (pos.nRows() > num_dendrites*len(pos_neurons)):
-      print "Too much data to have unique dendrites for positive neurons, clustering"
-      pos = pos.toDense()
-      model = KMeans(n_clusters = len(pos_neurons), n_jobs=1)
-      clusters = model.fit_predict(pos)
-      neuron_data = [SM32() for i in range(len(pos_neurons))]
-      for datapoint, cluster in zip(pos, clusters):
-        neuron_data[cluster].append(SM32([datapoint]))
-      for i, neuron in enumerate(pos_neurons):
-        neuron.HTM_style_initialize_on_data(neuron_data[i], [1 for i in range(neuron_data[i].nRows())])
-      pos = SM32(pos)
-    else:
-      print "Directly initializing positive neurons with unique dendrites"
-      neuron_data = split_sparse_matrix(pos, len(pos_neurons))
-      for neuron, data in zip(pos_neurons, neuron_data):
-        neuron.HTM_style_initialize_on_data(data, [1 for i in range(data.nRows())])
+  nonlinearity = power_nonlinearity(power)
+  pos_neurons = [Neuron(size = neuron_size, num_dendrites = num_dendrites, dendrite_length = dendrite_length, nonlinearity = nonlinearity, dim = dim*num_bins) for i in range(num_neurons/2)]
+  neg_neurons = [Neuron(size = neuron_size, num_dendrites = num_dendrites, dendrite_length = dendrite_length, nonlinearity = nonlinearity, dim = dim*num_bins) for i in range(num_neurons/2)]
+  #pos, neg = generate_evenly_distributed_data_sparse(dim = 400, num_active = 40, num_samples = num_samples/2), generate_evenly_distributed_data_sparse(dim = 400, num_active = 40, num_samples = num_samples/2)
+  pos, neg = generate_data(dim = dim, num_bins = num_bins, num_samples = num_samples, sparse = True)
 
-
-    if (neg.nRows() > num_dendrites*len(neg_neurons)):
-      print "Too much data to have unique dendrites for negative neurons, clustering"
-      neg = neg.toDense()
-      model = KMeans(n_clusters = len(neg_neurons), n_jobs=1)
-      clusters = model.fit_predict(neg)
-      neuron_data = [SM32() for i in range(len(neg_neurons))]
-      for datapoint, cluster in zip(neg, clusters):
-        neuron_data[cluster].append(SM32([datapoint]))
-      for i, neuron in enumerate(neg_neurons):
-        neuron.HTM_style_initialize_on_data(neuron_data[i], [1 for i in range(neuron_data[i].nRows())])
-      neg = SM32(neg)
-
-    else:
-      print "Directly initializing negative neurons with unique dendrites"
-      neuron_data = split_sparse_matrix(neg, len(neg_neurons))
-      for neuron, data in zip(neg_neurons, neuron_data):
-        neuron.HTM_style_initialize_on_data(data, [1 for i in range(data.nRows())])
+  if (pos.nRows() > num_dendrites*len(pos_neurons)):
+    print "Too much data to have unique dendrites for positive neurons, clustering"
+    pos = pos.toDense()
+    model = KMeans(n_clusters = len(pos_neurons), n_jobs=1)
+    clusters = model.fit_predict(pos)
+    neuron_data = [SM32() for i in range(len(pos_neurons))]
+    for datapoint, cluster in zip(pos, clusters):
+      neuron_data[cluster].append(SM32([datapoint]))
+    for i, neuron in enumerate(pos_neurons):
+      neuron.HTM_style_initialize_on_data(neuron_data[i], [1 for i in range(neuron_data[i].nRows())])
+    pos = SM32(pos)
+  else:
+    print "Directly initializing positive neurons with unique dendrites"
+    neuron_data = split_sparse_matrix(pos, len(pos_neurons))
+    for neuron, data in zip(pos_neurons, neuron_data):
+      neuron.HTM_style_initialize_on_data(data, [1 for i in range(data.nRows())])
 
 
-    print "Calculating error"
-    labels = [1 for i in range(pos.nRows())] + [-1 for i in range(neg.nRows())]
-    data = pos
-    data.append(neg)
+  if (neg.nRows() > num_dendrites*len(neg_neurons)):
+    print "Too much data to have unique dendrites for negative neurons, clustering"
+    neg = neg.toDense()
+    model = KMeans(n_clusters = len(neg_neurons), n_jobs=1)
+    clusters = model.fit_predict(neg)
+    neuron_data = [SM32() for i in range(len(neg_neurons))]
+    for datapoint, cluster in zip(neg, clusters):
+      neuron_data[cluster].append(SM32([datapoint]))
+    for i, neuron in enumerate(neg_neurons):
+      neuron.HTM_style_initialize_on_data(neuron_data[i], [1 for i in range(neuron_data[i].nRows())])
+    neg = SM32(neg)
 
-    error, fp, fn = get_error(data, labels, pos_neurons, neg_neurons)
-    print "Error at initialization is {}, with {} false positives and {} false negatives".format(error, fp, fn)
-    #with open("initialization_experiment.txt", "a") as f:
-    #  f.write(str(power) + ", " + str(error) + "\n")
-    return error
+  else:
+    print "Directly initializing negative neurons with unique dendrites"
+    neuron_data = split_sparse_matrix(neg, len(neg_neurons))
+    for neuron, data in zip(neg_neurons, neuron_data):
+      neuron.HTM_style_initialize_on_data(data, [1 for i in range(data.nRows())])
+
+
+  print "Calculating error"
+  labels = [1 for i in range(pos.nRows())] + [-1 for i in range(neg.nRows())]
+  data = pos
+  data.append(neg)
+
+  error, fp, fn = get_error(data, labels, pos_neurons, neg_neurons)
+  print "Error at initialization is {}, with {} false positives and {} false negatives".format(error, fp, fn)
+  return error
 
 
 def get_error(data, labels, pos_neurons, neg_neurons = [], add_noise = True):
