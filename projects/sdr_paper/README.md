@@ -125,6 +125,11 @@ Data must be manually imported into the plotting script, but
 the plotting scripts already contain the data used to generate the versions of
 the plots seen in the paper.
 
+Note that these scripts write the result of every trial to file separately if
+multiple cores are being used.  The data must then be merged before it can be
+plotted.  In general, this is done by summing together the second and third
+columns of all rows with the same first column.
+
 Experiments
 ===========
 
