@@ -38,9 +38,7 @@ CXX_FLAGS = -DNTA_ARCH_64 -DNTA_OS_DARWIN -DBOOST_NO_WREGEX -DHAVE_CONFIG_H -DNT
 	-Wno-unused-parameter -O3 -mpopcnt
 
 
-LINK_FLAGS = $(NUPIC_CORE_LIB)/libnupic_core.a $(NUPIC_CORE_LIB)/libyaml.a \
-		$(NUPIC_CORE_LIB)/libapr-1.a $(NUPIC_CORE_LIB)/libaprutil-1.a $(NUPIC_CORE_LIB)/libz.a \
-		$(NUPIC_CORE_LIB)/libcapnpc.a $(NUPIC_CORE_LIB)/libcapnp.a $(NUPIC_CORE_LIB)/libkj.a $(NUPIC_CORE_LIB)/libnpymath.a
+LINK_FLAGS = $(NUPIC_CORE_LIB)/libnupic_core.a  $(NUPIC_CORE_LIB)/libnpymath.a
 
 
 ##########################################
