@@ -318,7 +318,7 @@ class ColumnPoolerRegion(PyRegion):
                numOtherCorticalColumns=0,
                sdrSize=40,
                onlineLearning = False,
-               learningTolerance = 0.2,
+               learningTolerance = 1.,
 
                # Proximal
                synPermProximalInc=0.1,
