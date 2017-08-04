@@ -73,6 +73,8 @@ def run_tm_union_experiment(dim = 4000,
   results.
 
   Output is written to tm_dim_{num_active}.txt, including sample size.
+
+  We tested two different dimension settings, 2000 and 4000.
   """
   if automatic_threshold:
     activationThreshold = min(num_active/2, maxNewSynapseCount/2)

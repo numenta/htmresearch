@@ -29,7 +29,7 @@ from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
 
 from nupic.frameworks.opf.metrics import MetricSpec
-from nupic.frameworks.opf.modelfactory import ModelFactory
+from nupic.frameworks.opf.model_factory import ModelFactory
 from nupic.frameworks.opf.predictionmetricsmanager import MetricsManager
 from nupic.frameworks.opf import metrics
 from htmresearch.frameworks.opf.clamodel_custom import CLAModel_custom

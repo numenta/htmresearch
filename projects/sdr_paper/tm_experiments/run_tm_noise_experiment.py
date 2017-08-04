@@ -42,25 +42,25 @@ def convert_cell_lists_to_dense(dim, cell_list, add_1 = False):
 
 
 def run_tm_noise_experiment(dim = 2048,
-              cellsPerColumn=1,
-              num_active = 40,
-              activationThreshold=16,
-              initialPermanence=0.8,
-              connectedPermanence=0.50,
-              minThreshold=16,
-              maxNewSynapseCount=20,
-              permanenceIncrement=0.05,
-              permanenceDecrement=0.00,
-              predictedSegmentDecrement=0.000,
-              maxSegmentsPerCell=255,
-              maxSynapsesPerSegment=255,
-              seed=42,
-              num_samples = 1,
-              num_trials = 1000,
-              sequence_length = 20,
-              training_iters = 1,
-              automatic_threshold = False,
-              noise_range = range(0, 100, 5)):
+                            cellsPerColumn=1,
+                            num_active = 40,
+                            activationThreshold=16,
+                            initialPermanence=0.8,
+                            connectedPermanence=0.50,
+                            minThreshold=16,
+                            maxNewSynapseCount=20,
+                            permanenceIncrement=0.05,
+                            permanenceDecrement=0.00,
+                            predictedSegmentDecrement=0.000,
+                            maxSegmentsPerCell=255,
+                            maxSynapsesPerSegment=255,
+                            seed=42,
+                            num_samples = 1,
+                            num_trials = 1000,
+                            sequence_length = 20,
+                            training_iters = 1,
+                            automatic_threshold = False,
+                            noise_range = range(0, 100, 5)):
 
   """
   Run an experiment tracking the performance of the temporal memory given
@@ -79,6 +79,9 @@ def run_tm_noise_experiment(dim = 2048,
   factors such as sparsity and sequence length.
 
   Output is written to tm_noise_{threshold}}.txt, including sample size.
+
+  We used three different activation threshold settings, 8, 12 and 16, mirroring
+  the parameters used in the Poirazi neuron model experiment.
   """
   if automatic_threshold:
     activationThreshold = min(num_active/2, maxNewSynapseCount/2)

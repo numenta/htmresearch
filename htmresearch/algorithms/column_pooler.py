@@ -37,6 +37,9 @@ class ColumnPooler(object):
                lateralInputWidths=(),
                cellCount=4096,
                sdrSize=40,
+               onlineLearning = False,
+               maxSdrSize = None,
+               minSdrSize = None,
 
                # Proximal
                synPermProximalInc=0.1,
@@ -45,6 +48,7 @@ class ColumnPooler(object):
                sampleSizeProximal=20,
                minThresholdProximal=10,
                connectedPermanenceProximal=0.50,
+               predictedInhibitionThreshold=20,
 
                # Distal
                synPermDistalInc=0.1,
@@ -69,6 +73,26 @@ class ColumnPooler(object):
     @param  sdrSize (int)
             The number of active cells in an object SDR
 
+    @param  onlineLearning (Bool)
+            Whether or not the column pooler should learn in online mode.
+
+    @param  maxSdrSize (int)
+            The maximum SDR size for learning.  If the column pooler has more
+            than this many cells active, it will refuse to learn.  This serves
+            to stop the pooler from learning when it is uncertain of what object
+            it is sensing.
+
+    @param  minSdrSize (int)
+            The minimum SDR size for learning.  If the column pooler has fewer
+            than this many active cells, it will create a new representation
+            and learn that instead.  This serves to create separate
+            representations for different objects and sequences.
+
+            If online learning is enabled, this parameter should be at least
+            inertiaFactor*sdrSize.  Otherwise, two different objects may be
+            incorrectly inferred to be the same, as SDRs may still be active
+            enough to learn even after inertial decay.
+
     @param  synPermProximalInc (float)
             Permanence increment for proximal synapses
 
@@ -88,6 +112,10 @@ class ColumnPooler(object):
 
     @param  connectedPermanenceProximal (float)
             Permanence required for a proximal synapse to be connected
+
+    @param  predictedInhibitionThreshold (int)
+            How much predicted input must be present for inhibitory behavior
+            to be triggered.  Only has effects if onlineLearning is true.
 
     @param  synPermDistalInc (float)
             Permanence increment for distal synapses
@@ -115,7 +143,9 @@ class ColumnPooler(object):
     @param  inertiaFactor (float)
             The proportion of previously active cells that remain
             active in the next timestep due to inertia (in the absence of
-            inhibition).
+            inhibition).  If onlineLearning is enabled, should be at most
+            1 - learningTolerance, or representations may incorrectly become
+            mixed.
 
     @param  seed (int)
             Random number generator seed
@@ -123,16 +153,28 @@ class ColumnPooler(object):
 
     assert distalSegmentInhibitionFactor > 0.0
     assert distalSegmentInhibitionFactor < 1.0
+    assert maxSdrSize is None or maxSdrSize >= sdrSize
+    assert minSdrSize is None or minSdrSize <= sdrSize
 
     self.inputWidth = inputWidth
     self.cellCount = cellCount
     self.sdrSize = sdrSize
+    self.onlineLearning = onlineLearning
+    if maxSdrSize is None:
+      self.maxSdrSize = sdrSize
+    else:
+      self.maxSdrSize = maxSdrSize
+    if minSdrSize is None:
+      self.minSdrSize = sdrSize
+    else:
+      self.minSdrSize = minSdrSize
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
     self.connectedPermanenceProximal = connectedPermanenceProximal
     self.sampleSizeProximal = sampleSizeProximal
     self.minThresholdProximal = minThresholdProximal
+    self.predictedInhibitionThreshold = predictedInhibitionThreshold
     self.synPermDistalInc = synPermDistalInc
     self.synPermDistalDec = synPermDistalDec
     self.initialDistalPermanence = initialDistalPermanence
@@ -157,7 +199,8 @@ class ColumnPooler(object):
 
 
   def compute(self, feedforwardInput=(), lateralInputs=(),
-              feedforwardGrowthCandidates=None, learn=True):
+              feedforwardGrowthCandidates=None, learn=True,
+              predictedInput = None,):
     """
     Runs one time step of the column pooler algorithm.
 
@@ -174,24 +217,49 @@ class ColumnPooler(object):
 
     @param  learn (bool)
             If True, we are learning a new object
-    """
 
+    @param predictedInput (sequence)
+           Sorted indices of predicted cells in the TM layer.
+    """
     if feedforwardGrowthCandidates is None:
       feedforwardGrowthCandidates = feedforwardInput
 
-    if learn:
+    if not learn:
+      self._computeInferenceMode(feedforwardInput, lateralInputs)
+
+    elif not self.onlineLearning:
       self._computeLearningMode(feedforwardInput, lateralInputs,
                                 feedforwardGrowthCandidates)
     else:
-      self._computeInferenceMode(feedforwardInput, lateralInputs)
+      if (predictedInput is not None and
+          len(predictedInput) > self.predictedInhibitionThreshold):
+        predictedActiveInput = numpy.intersect1d(feedforwardInput,
+                                                 predictedInput)
+        predictedGrowthCandidates = numpy.intersect1d(
+            feedforwardGrowthCandidates, predictedInput)
+        self._computeInferenceMode(predictedActiveInput, lateralInputs)
+        self._computeLearningMode(predictedActiveInput, lateralInputs,
+                                  feedforwardGrowthCandidates)
+      elif not self.minSdrSize <= len(self.activeCells) <= self.maxSdrSize:
+        # If the pooler doesn't have a single representation, try to infer one,
+        # before actually attempting to learn.
+        self._computeInferenceMode(feedforwardInput, lateralInputs)
+        self._computeLearningMode(feedforwardInput, lateralInputs,
+                                  feedforwardGrowthCandidates)
+      else:
+        # If there isn't predicted input and we have a single SDR,
+        # we are extending that representation and should just learn.
+        self._computeLearningMode(feedforwardInput, lateralInputs,
+                                  feedforwardGrowthCandidates)
 
 
   def _computeLearningMode(self, feedforwardInput, lateralInputs,
-                           feedforwardGrowthCandidates):
+                                 feedforwardGrowthCandidates):
     """
-    Learning mode: we are learning a new object. If there is no prior
-    activity, we randomly activate 'sdrSize' cells and create connections to
-    incoming input. If there was prior activity, we maintain it.
+    Learning mode: we are learning a new object in an online fashion. If there
+    is no prior activity, we randomly activate 'sdrSize' cells and create
+    connections to incoming input. If there was prior activity, we maintain it.
+    If we have a union, we simply do not learn at all.
 
     These cells will represent the object and learn distal connections to each
     other and to lateral cortical columns.
@@ -207,34 +275,35 @@ class ColumnPooler(object):
 
     @param  feedforwardGrowthCandidates (sequence or None)
             Sorted indices of feedforward input bits that the active cells may
-            grow new synapses to
+            grow new synapses to.  This is assumed to be the predicted active
+            cells of the input layer.
     """
-
     prevActiveCells = self.activeCells
 
-    # If there are no previously active cells, select random subset of cells.
-    # Else we maintain previous activity.
-    if len(self.activeCells) == 0:
+    # If there are not enough previously active cells, then we are no longer on
+    # a familiar object.  Either our representation decayed due to the passage
+    # of time (i.e. we moved somewhere else) or we were mistaken.  Either way,
+    # create a new SDR and learn on it.
+    # This case is the only way different object representations are created.
+    if len(self.activeCells) < self.minSdrSize:
       self.activeCells = _sampleRange(self._random,
                                       0, self.numberOfCells(),
                                       step=1, k=self.sdrSize)
       self.activeCells.sort()
 
+    # If we have a union of cells active, don't learn.  This primarily affects
+    # online learning.
+    if len(self.activeCells) > self.maxSdrSize:
+      return
+
+    # Finally, now that we have decided which cells we should be learning on, do
+    # the actual learning.
     if len(feedforwardInput) > 0:
-      # Proximal learning
       self._learn(self.proximalPermanences, self._random,
                   self.activeCells, feedforwardInput,
                   feedforwardGrowthCandidates, self.sampleSizeProximal,
                   self.initialProximalPermanence, self.synPermProximalInc,
                   self.synPermProximalDec, self.connectedPermanenceProximal)
-
-      # Internal distal learning
-      if len(prevActiveCells) > 0:
-        self._learn(self.internalDistalPermanences, self._random,
-                    self.activeCells, prevActiveCells, prevActiveCells,
-                    self.sampleSizeDistal, self.initialDistalPermanence,
-                    self.synPermDistalInc, self.synPermDistalDec,
-                    self.connectedPermanenceDistal)
 
       # External distal learning
       for i, lateralInput in enumerate(lateralInputs):
@@ -243,6 +312,13 @@ class ColumnPooler(object):
                     self.sampleSizeDistal, self.initialDistalPermanence,
                     self.synPermDistalInc, self.synPermDistalDec,
                     self.connectedPermanenceDistal)
+
+      # Internal distal learning
+      self._learn(self.internalDistalPermanences, self._random,
+                  self.activeCells, prevActiveCells, prevActiveCells,
+                  self.sampleSizeDistal, self.initialDistalPermanence,
+                  self.synPermDistalInc, self.synPermDistalDec,
+                  self.connectedPermanenceDistal)
 
 
   def _computeInferenceMode(self, feedforwardInput, lateralInputs):
@@ -282,7 +358,7 @@ class ColumnPooler(object):
       numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
 
     chosenCells = []
-    minNumActiveCells = int(self.sdrSize * .75)
+    minNumActiveCells = int(self.sdrSize * 0.75)
 
     numActiveSegsForFFSuppCells = numActiveSegmentsByCell[
         feedforwardSupportedCells]
@@ -323,8 +399,8 @@ class ColumnPooler(object):
           prevCells = prevCells[:inertialCap]
           numActiveSegsForPrevCells = numActiveSegsForPrevCells[:inertialCap]
 
-          # Activate groups of previously active cells by their lateral support
-          # until we either meet quota or run out of cells.
+          # Activate groups of previously active cells by order of their lateral
+          # support until we either meet quota or run out of cells.
           ttop = numpy.max(numActiveSegsForPrevCells)
           while ttop >= 0 and len(chosenCells) <= minNumActiveCells:
             chosenCells = numpy.union1d(chosenCells,

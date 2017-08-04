@@ -27,6 +27,8 @@ pip-log.txt
 .coverage
 .tox
 nosetests.xml
+htmlcov
+junit-test-results.xml
 
 # Translations
 *.mo

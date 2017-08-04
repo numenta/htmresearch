@@ -43,6 +43,19 @@ def run_false_positive_experiment_correlation(seed,
   Run an experiment to test the false positive rate based on the correlation
   between bits.  Correlation is measured as the average pairwise correlation
   between bits for each pattern in the data (across all of the data).
+
+  To generate the results shown in the false positive vs. correlation figure,
+  we used the parameter settings:
+  1.  a = 32, dim = 2000
+  2.  a = 32, dim = 4000
+  3.  a = 64, dim = 4000
+
+  In each case, we ran approximately 4000 trials in parallel, and then binned
+  the results based on correlation.  The code for binning can be found in
+  plot_effect_of_correlation.py.  Note that your results may not match ours
+  exactly, as the number of different seeds used depends on how many processes
+  are created, but the general trend of the results should be very stable due
+  to the large number of data points.
   """
   numpy.random.seed(seed)
   possible_cluster_sizes = range(2, 10)

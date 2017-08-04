@@ -53,7 +53,7 @@ class FaultyTemporalMemory(TemporalMemory):
     if self.zombiePermutation is None:
       self.zombiePermutation = numpy.random.permutation(self.numberOfCells())
 
-    self.numDead = round(percent * self.numberOfCells())
+    self.numDead = int(round(percent * self.numberOfCells()))
     if self.numDead > 0:
       self.deadCells = set(self.zombiePermutation[0:self.numDead])
     else:
@@ -116,11 +116,12 @@ class FaultyTemporalMemory(TemporalMemory):
                       if cellIdx not in self.deadCells]
 
     return self._burstColumn(
-      self.connections, self._random, column, columnMatchingSegments,
-      prevActiveCells, prevWinnerCells, cellsForColumn,
-      self.numActivePotentialSynapsesForSegment, self.maxNewSynapseCount,
-      self.initialPermanence, self.permanenceIncrement,
-      self.permanenceDecrement, learn)
+      self.connections, self._random, self.lastUsedIterationForSegment, column,
+      columnMatchingSegments, prevActiveCells, prevWinnerCells, cellsForColumn,
+      self.numActivePotentialSynapsesForSegment, self.iteration,
+      self.maxNewSynapseCount, self.initialPermanence, self.permanenceIncrement,
+      self.permanenceDecrement, self.maxSegmentsPerCell,
+      self.maxSynapsesPerSegment, learn)
 
 
   def printDeadCells(self):

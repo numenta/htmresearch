@@ -39,6 +39,15 @@ def run_HTM_false_positive_experiment_synapses(num_neurons = 1,
   with a threshold nonlinearity of theta = s/2.
 
   Based on figure 5B in the original SDR paper.
+
+  The parameters used in generating the figure for this experiment are:
+  1.  a = 512, dim = 16000
+  2.  a = 4000, dim = 16000
+  3.  a = 32, dim = 2000
+  4.  a = 32, dim = 4000
+  In each case, we used 1000 samples per trial, 1000 trials, 500 dendrite
+  segments, and tested dendrite lengths in (2, 4, ..., 30), with the threshold
+  for each segment being half its length.
   """
   for dendrite_length in test_dendrite_lengths:
     nonlinearity = threshold_nonlinearity(dendrite_length / 2)
@@ -63,47 +72,6 @@ def run_HTM_false_positive_experiment_synapses(num_neurons = 1,
     with open("num_dendrites_FP_{}_{}.txt".format(a, dim), "a") as f:
       f.write(str(dendrite_length) + ", " + str(sum(fps)) + ", " + str(num_trials*num_samples/2.) + "\n")
 
-
-def run_false_positive_experiment_synapses(num_neurons = 1,
-                       num_neg_neurons = 1,
-                       a = 32,
-                       dim = 2000,
-                       num_samples = 1000,
-                       num_dendrites = 500,
-                       test_dendrite_lengths = range(2, 32, 2),
-                       num_trials = 1,
-                       nonlinearity = power_nonlinearity(10)):
-  """
-  Run an experiment to test the false positive rate based on number of
-  synapses per dendrite, dimension and sparsity.  Uses two competing neurons,
-  along the P&M model, with nonlinearity l(x) = x^2.
-
-  Based on figure 5B in the original SDR paper.
-  """
-  for dendrite_length in test_dendrite_lengths:
-
-    fps = []
-    fns = []
-
-    for trial in range(num_trials):
-
-      neuron = Neuron(size = dendrite_length*num_dendrites, num_dendrites = num_dendrites, dendrite_length = dendrite_length, dim = dim, nonlinearity = nonlinearity)
-      neg_neuron = Neuron(size = dendrite_length*num_dendrites, num_dendrites = num_dendrites, dendrite_length = dendrite_length, dim = dim, nonlinearity = nonlinearity)
-      data = generate_evenly_distributed_data_sparse(dim = dim, num_active = a, num_samples = num_samples)
-      labels = numpy.asarray([1 for i in range(num_samples/2)] + [-1 for i in range(num_samples/2)])
-      flipped_labels = labels * -1
-
-      neuron.HTM_style_initialize_on_data(data, labels)
-      neg_neuron.HTM_style_initialize_on_data(data, flipped_labels)
-
-      error, fp, fn = get_error(data, labels, [neuron], [neg_neuron])
-
-      fps.append(fp)
-      fns.append(fn)
-      print "Error at {} synapses per dendrite is {}, with {} false positives and {} false negatives".format(dendrite_length, error, fp, fn)
-
-    with open("pm_num_dendrites_FP_{}_{}.txt".format(a, dim), "a") as f:
-      f.write(str(dendrite_length) + ", " + str(sum(fns + fps)) + ", " + str(num_trials*num_samples) + "\n")
 
 def get_error(data, labels, pos_neurons, neg_neurons = []):
   """

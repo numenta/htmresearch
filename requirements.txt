@@ -8,3 +8,4 @@ tqdm
 prettytable
 plyfile
 scikit-learn
+scipy
