@@ -148,9 +148,6 @@ class ColumnPooler(object):
 
     assert distalSegmentInhibitionFactor > 0.0
     assert distalSegmentInhibitionFactor < 1.0
-    # If online learning is disabled, learning tolerance < 1 may cause SDR
-    # mixing errors
-    assert onlineLearning or learningTolerance == 1.
 
     self.inputWidth = inputWidth
     self.cellCount = cellCount
@@ -222,11 +219,13 @@ class ColumnPooler(object):
     else:
       if (predictedInput is not None and
           len(predictedInput) > self.predictedInhibitionThreshold):
-        predictedActiveInput = numpy.intersect1d(feedforwardInput, predictedInput)
-        predictedGrowthCandidates = numpy.intersect1d(feedforwardGrowthCandidates, predictedInput)
+        predictedActiveInput = numpy.intersect1d(feedforwardInput,
+                                                 predictedInput)
+        predictedGrowthCandidates = numpy.intersect1d(
+            feedforwardGrowthCandidates, predictedInput)
         self._computeInferenceMode(predictedActiveInput, lateralInputs)
         self._computeLearningMode(predictedActiveInput, lateralInputs,
-                                        feedforwardGrowthCandidates)
+                                  feedforwardGrowthCandidates)
       elif (numpy.abs(len(self.activeCells) - self.sdrSize)
           > (self.learningTolerance*self.sdrSize)):
         # If the pooler doesn't have a single representation, try to infer one,
@@ -239,7 +238,6 @@ class ColumnPooler(object):
         # we are extending that representation and should just learn.
         self._computeLearningMode(feedforwardInput, lateralInputs,
                                   feedforwardGrowthCandidates)
-        #self._computeInferenceMode(feedforwardInput, lateralInputs)
 
 
   def _computeLearningMode(self, feedforwardInput, lateralInputs,
@@ -295,8 +293,6 @@ class ColumnPooler(object):
                   self.synPermProximalDec, self.connectedPermanenceProximal)
 
       # External distal learning
-      # We should do this no matter what, since other columns might still be
-      # learning useful things even if we're not.
       for i, lateralInput in enumerate(lateralInputs):
         self._learn(self.distalPermanences[i], self._random,
                     self.activeCells, lateralInput, lateralInput,

@@ -409,15 +409,10 @@ class ApicalDependentTemporalMemory(object):
   @staticmethod
   def _calculateSegmentActivity(connections, activeInput, connectedPermanence,
                                 activationThreshold, minThreshold,
-                                reducedBasalThreshold,
-                                reducedBasalThresholdCells = ()):
+                                reducedThreshold,
+                                reducedThresholdCells = ()):
     """
     Calculate the active and matching basal segments for this timestep.
-
-    The difference with _calculateApicalSegmentActivity is that cells
-    with active apical segments (collected in reducedBasalThresholdCells) have
-    a lower activation threshold for their basal segments (set by
-    reducedBasalThreshold parameter).
 
     @param connections (SparseMatrixConnections)
     @param activeInput (numpy array)
@@ -435,17 +430,21 @@ class ApicalDependentTemporalMemory(object):
       The number of active potential synapses for each segment.
       Includes counts for active, matching, and nonmatching segments.
     """
-    # Active apical segments lower the activation threshold for basal (lateral) segments
+    # Active apical segments lower the activation threshold for basal segments
     overlaps = connections.computeActivity(activeInput, connectedPermanence)
     outrightActiveSegments = np.flatnonzero(overlaps >= activationThreshold)
-    if reducedBasalThreshold != activationThreshold and len(reducedBasalThresholdCells) > 0:
-        potentiallyActiveSegments = np.flatnonzero((overlaps < activationThreshold)
-                                        & (overlaps >= reducedBasalThreshold))
-        cellsOfCASegments = connections.mapSegmentsToCells(potentiallyActiveSegments)
-        # apically active segments are condit. active segments from apically active cells
-        conditionallyActiveSegments = potentiallyActiveSegments[np.in1d(cellsOfCASegments,
-                                                reducedBasalThresholdCells)]
-        activeSegments = np.concatenate((outrightActiveSegments, conditionallyActiveSegments))
+    if (reducedThreshold != activationThreshold and
+            len(reducedThresholdCells) > 0):
+        potentiallyActiveSegments = np.flatnonzero(
+            (overlaps < activationThreshold) & (overlaps >= reducedThreshold))
+        cellsOfCASegments = connections.mapSegmentsToCells(
+            potentiallyActiveSegments)
+        # apically active segments are condit. active segments from apically
+        # active cells
+        conditionallyActiveSegments = potentiallyActiveSegments[
+            np.in1d(cellsOfCASegments, reducedThresholdCells)]
+        activeSegments = np.concatenate((outrightActiveSegments,
+                                         conditionallyActiveSegments))
     else:
         activeSegments = outrightActiveSegments
 
