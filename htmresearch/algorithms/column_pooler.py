@@ -245,7 +245,7 @@ class ColumnPooler(object):
         # before actually attempting to learn.
         self._computeInferenceMode(feedforwardInput, lateralInputs)
         self._computeLearningMode(feedforwardInput, lateralInputs,
-                                        feedforwardGrowthCandidates)
+                                  feedforwardGrowthCandidates)
       else:
         # If there isn't predicted input and we have a single SDR,
         # we are extending that representation and should just learn.
