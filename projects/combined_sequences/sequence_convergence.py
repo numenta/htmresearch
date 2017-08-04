@@ -143,8 +143,8 @@ def runExperiment(args):
   )
   objects.createRandomSequences(numSequences, seqLength)
 
-  print "Sequences:"
-  print objects.getObjects()
+  # print "Sequences:"
+  # print objects.getObjects()
 
   r = objects.objectConfusion()
   print "Average common pairs=", r[0],
@@ -167,9 +167,11 @@ def runExperiment(args):
 
   # Train the network on all the SDRs for all the objects
   objectSDRs = objects.provideObjectsToLearn()
-  exp.learnObjects(objectSDRs)
-  exp.learnObjects(objectSDRs)
-  exp.learnObjects(objectSDRs)
+
+  # Make sure we learn enough times to deal with high order sequences and
+  # remove extra predictions
+  for _ in range(3*seqLength):
+    exp.learnObjects(objectSDRs)
   if profile:
     exp.printProfile(reset=True)
 
@@ -196,15 +198,17 @@ def runExperiment(args):
     }
 
     inferenceSDRs = objects.provideObjectToInfer(inferConfig)
-    print "Inference SDRs", inferenceSDRs
+    # print "Inference SDRs", inferenceSDRs
 
     exp.infer(inferenceSDRs, objectName=objectId)
 
     if plotInferenceStats:
       exp.plotInferenceStats(
-        fields=["L2 Representation",
+        fields=[
+                # "L2 Representation",
                 "Overlap L2 with object",
-                "L4 Representation",
+                "TM Basal Segments",
+                # "L4 Representation",
                 "TM PredictedActive",
                 ],
         experimentID=objectId,
@@ -237,8 +241,8 @@ def runExperiment(args):
 
   # Can't pickle experiment so can't return it for batch multiprocessing runs.
   # However this is very useful for debugging when running in a single thread.
-  if plotInferenceStats:
-    args.update({"experiment": exp})
+  # if plotInferenceStats:
+  #   args.update({"experiment": exp})
   return args
 
 
@@ -302,7 +306,7 @@ def runExperimentPool(numSequences,
   return result
 
 
-def plotConvergenceByObject(results, objectRange, featureRange, numTrials):
+def plotConvergenceBySequence(results, objectRange, featureRange, numTrials):
   """
   Plots the convergence graph: iterations vs number of objects.
   Each curve shows the convergence for a given number of unique features.
@@ -325,7 +329,7 @@ def plotConvergenceByObject(results, objectRange, featureRange, numTrials):
   #
   # Create the plot. x-axis=
   plt.figure()
-  plotPath = os.path.join("plots", "convergence_by_object.pdf")
+  plotPath = os.path.join("plots", "convergence_by_sequence.pdf")
 
   # Plot each curve
   legendList = []
@@ -341,18 +345,18 @@ def plotConvergenceByObject(results, objectRange, featureRange, numTrials):
 
   # format
   plt.legend(legendList, loc="lower right", prop={'size':10})
-  plt.xlabel("Number of objects in training set")
+  plt.xlabel("Number of sequences in training set")
   plt.xticks(range(0,max(objectRange)+1,10))
   plt.yticks(range(0,int(convergence.max())+2))
   plt.ylabel("Average number of touches")
-  plt.title("Number of touches to recognize one object (single column)")
+  plt.title("Number of touches to recognize a sequence")
 
     # save
   plt.savefig(plotPath)
   plt.close()
 
 
-def plotPredictionsByObject(results, objectRange, featureRange, numTrials):
+def plotPredictionsBySequence(results, objectRange, featureRange, numTrials):
   """
   Plots the convergence graph: iterations vs number of objects.
   Each curve shows the convergence for a given number of unique features.
@@ -375,7 +379,7 @@ def plotPredictionsByObject(results, objectRange, featureRange, numTrials):
   #
   # Create the plot. x-axis=
   plt.figure()
-  plotPath = os.path.join("plots", "predictions_by_object.pdf")
+  plotPath = os.path.join("plots", "predictions_by_sequence.pdf")
 
   # Plot each curve
   legendList = []
@@ -391,11 +395,11 @@ def plotPredictionsByObject(results, objectRange, featureRange, numTrials):
 
   # format
   plt.legend(legendList, loc="center right", prop={'size':10})
-  plt.xlabel("Number of objects in training set")
+  plt.xlabel("Number of sequences in training set")
   plt.xticks(range(0,max(objectRange)+1,10))
   plt.yticks(range(0,int(predictions.max())+2,10))
   plt.ylabel("Average number of predicted cells")
-  plt.title("Predictions in TM while exploring objects")
+  plt.title("Predictions in TM while inferring sequences")
 
     # save
   plt.savefig(plotPath)
@@ -408,14 +412,17 @@ if __name__ == "__main__":
   if True:
     results = runExperiment(
                   {
-                    "numSequences": 20,
+                    "numSequences": 10,
                     "seqLength": 10,
-                    "numFeatures": 10000,
+                    "numFeatures": 100,
                     "numColumns": 1,
                     "trialNum": 4,
                     "plotInferenceStats": True,  # Outputs detailed graphs
                   }
               )
+  # Pickle results for later use
+  with open("one_sequence_convergence_results.pkl","wb") as f:
+    cPickle.dump(results,f)
 
 
   # Here we want to see how the number of objects affects convergence for a
@@ -425,8 +432,8 @@ if __name__ == "__main__":
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1]
-    featureRange = [5,8,10,20]
-    seqRange = [2,10,20,30,40,50,60,80,100]
+    featureRange = [10, 100, 1000, 10000]
+    seqRange = [2,5,10,20,30]
 
     # Comment this out if you are re-running analysis on already saved results.
     # Very useful for debugging the plots
@@ -437,13 +444,13 @@ if __name__ == "__main__":
                       seqLength=10,
                       nTrials=numTrials,
                       numWorkers=cpu_count() - 1,
-                      resultsName="object_convergence_results.pkl")
+                      resultsName="sequence_convergence_results.pkl")
 
     # Analyze results
-    with open("object_convergence_results.pkl","rb") as f:
+    with open("sequence_convergence_results.pkl","rb") as f:
       results = cPickle.load(f)
 
-    plotConvergenceByObject(results, objectRange, featureRange, numTrials)
+    plotConvergenceBySequence(results, seqRange, featureRange, numTrials)
 
-    plotPredictionsByObject(results, objectRange, featureRange, numTrials)
+    plotPredictionsBySequence(results, seqRange, featureRange, numTrials)
 

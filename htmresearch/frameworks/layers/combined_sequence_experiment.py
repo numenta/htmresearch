@@ -253,6 +253,12 @@ class L4TMExperiment(L4L2Experiment):
       statistics["L4 Apical Segments C" + str(i)].append(
         len(self.L4Columns[i]._tm.getActiveApicalSegments())
       )
+      statistics["L4 Basal Segments C" + str(i)].append(
+        len(self.L4Columns[i]._tm.getActiveBasalSegments())
+      )
+      statistics["TM Basal Segments C" + str(i)].append(
+        len(self.TMColumns[i]._tm.getActiveBasalSegments())
+      )
       statistics["TM PredictedActive C" + str(i)].append(
         len(TMPredictedActive[i])
       )
