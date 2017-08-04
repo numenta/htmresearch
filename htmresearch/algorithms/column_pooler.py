@@ -38,7 +38,8 @@ class ColumnPooler(object):
                cellCount=4096,
                sdrSize=40,
                onlineLearning = False,
-               learningTolerance = 1.,
+               maxSdrSize = None,
+               minSdrSize = None,
 
                # Proximal
                synPermProximalInc=0.1,
@@ -75,18 +76,22 @@ class ColumnPooler(object):
     @param  onlineLearning (Bool)
             Whether or not the column pooler should learn in online mode.
 
-    @param  learningTolerance (float)
-            How tolerant the pooler is of non-standard SDR sizes during
-            learning.  Only has effects if onlineLearning is true.  Should be
-            less than 1 - inertiaFactor, or representations may become mixed
-            between different objects.
+    @param  maxSdrSize (int)
+            The maximum SDR size for learning.  If the column pooler has more
+            than this many cells active, it will refuse to learn.  This serves
+            to stop the pooler from learning when it is uncertain of what object
+            it is sensing.
 
-            For example, consider the two sequences ABCDEFG and ABCDXYZ, where
-            the first sequence has been learned and the second has not.  If we
-            see ABCDXYZ for the first time, with learning tolerance too high,
-            the representation for ABCDEFG will still be sufficiently active
-            after seeing X to learn Y and Z, which will cause the SDRs for the
-            two sequences to incorrectly merge.
+    @param  minSdrSize (int)
+            The minimum SDR size for learning.  If the column pooler has fewer
+            than this many active cells, it will create a new representation
+            and learn that instead.  This serves to create separate
+            representations for different objects and sequences.
+
+            If online learning is enabled, this parameter should be at least
+            inertiaFactor*sdrSize.  Otherwise, two different objects may be
+            incorrectly inferred to be the same, as SDRs may still be active
+            enough to learn even after inertial decay.
 
     @param  synPermProximalInc (float)
             Permanence increment for proximal synapses
@@ -148,12 +153,21 @@ class ColumnPooler(object):
 
     assert distalSegmentInhibitionFactor > 0.0
     assert distalSegmentInhibitionFactor < 1.0
+    assert maxSdrSize is None or maxSdrSize >= sdrSize
+    assert minSdrSize is None or minSdrSize <= sdrSize
 
     self.inputWidth = inputWidth
     self.cellCount = cellCount
     self.sdrSize = sdrSize
     self.onlineLearning = onlineLearning
-    self.learningTolerance = learningTolerance
+    if maxSdrSize is None:
+      self.maxSdrSize = sdrSize
+    else:
+      self.maxSdrSize = maxSdrSize
+    if minSdrSize is None:
+      self.minSdrSize = sdrSize
+    else:
+      self.minSdrSize = minSdrSize
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
@@ -226,8 +240,7 @@ class ColumnPooler(object):
         self._computeInferenceMode(predictedActiveInput, lateralInputs)
         self._computeLearningMode(predictedActiveInput, lateralInputs,
                                   feedforwardGrowthCandidates)
-      elif (numpy.abs(len(self.activeCells) - self.sdrSize)
-          > (self.learningTolerance*self.sdrSize)):
+      elif not self.minSdrSize <= len(self.activeCells) <= self.maxSdrSize:
         # If the pooler doesn't have a single representation, try to infer one,
         # before actually attempting to learn.
         self._computeInferenceMode(feedforwardInput, lateralInputs)
@@ -272,7 +285,7 @@ class ColumnPooler(object):
     # of time (i.e. we moved somewhere else) or we were mistaken.  Either way,
     # create a new SDR and learn on it.
     # This case is the only way different object representations are created.
-    if len(self.activeCells) <= self.sdrSize*(1 - self.learningTolerance):
+    if len(self.activeCells) < self.minSdrSize:
       self.activeCells = _sampleRange(self._random,
                                       0, self.numberOfCells(),
                                       step=1, k=self.sdrSize)
@@ -280,7 +293,7 @@ class ColumnPooler(object):
 
     # If we have a union of cells active, don't learn.  This primarily affects
     # online learning.
-    if len(self.activeCells) >= self.sdrSize*(1+self.learningTolerance):
+    if len(self.activeCells) > self.maxSdrSize:
       return
 
     # Finally, now that we have decided which cells we should be learning on, do

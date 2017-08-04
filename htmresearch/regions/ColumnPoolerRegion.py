@@ -179,6 +179,21 @@ class ColumnPoolerRegion(PyRegion):
           dataType="UInt32",
           count=1,
           constraints=""),
+        maxSdrSize=dict(
+          description="The largest number of active cells in an SDR tolerated "
+                      "during learning. Stops learning when unions are active.",
+          accessMode="Read",
+          dataType="UInt32",
+          count=1,
+          constraints=""),
+        minSdrSize=dict(
+          description="The smallest number of active cells in an SDR tolerated "
+                      "during learning.  Stops learning when possibly on a "
+                      "different object or sequence",
+          accessMode="Read",
+          dataType="UInt32",
+          count=1,
+          constraints=""),
 
         #
         # Proximal
@@ -318,7 +333,8 @@ class ColumnPoolerRegion(PyRegion):
                numOtherCorticalColumns=0,
                sdrSize=40,
                onlineLearning = False,
-               learningTolerance = 1.,
+               maxSdrSize = None,
+               minSdrSize = None,
 
                # Proximal
                synPermProximalInc=0.1,
@@ -351,7 +367,8 @@ class ColumnPoolerRegion(PyRegion):
     self.cellCount = cellCount
     self.sdrSize = sdrSize
     self.onlineLearning = onlineLearning
-    self.learningTolerance = learningTolerance
+    self.maxSdrSize = maxSdrSize
+    self.minSdrSize = minSdrSize
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
@@ -389,7 +406,8 @@ class ColumnPoolerRegion(PyRegion):
         "cellCount": self.cellCount,
         "sdrSize": self.sdrSize,
         "onlineLearning": self.onlineLearning,
-        "learningTolerance": self.learningTolerance,
+        "maxSdrSize": self.maxSdrSize,
+        "minSdrSize": self.minSdrSize,
         "synPermProximalInc": self.synPermProximalInc,
         "synPermProximalDec": self.synPermProximalDec,
         "initialProximalPermanence": self.initialProximalPermanence,

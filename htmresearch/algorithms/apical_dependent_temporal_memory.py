@@ -204,7 +204,7 @@ class ApicalDependentTemporalMemory(object):
           self.basalConnections, basalInput,
           self.connectedPermanence, self.activationThreshold,
           self.minThreshold, self.reducedBasalThreshold,
-          reducedBasalThresholdCells = apicallySupportedCells,)
+          reducedThresholdCells = apicallySupportedCells,)
 
       predictedCells = np.intersect1d(
         self.basalConnections.mapSegmentsToCells(activeBasalSegments),
