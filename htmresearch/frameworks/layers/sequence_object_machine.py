@@ -42,6 +42,7 @@ class SequenceObjectMachine(ObjectMachineBase):
                externalInputSize=2048,
                numCorticalColumns=1,
                numFeatures=400,
+               numLocations=100000,
                seed=42):
     """
     At creation, the SequenceObjectMachine creates a pool of
@@ -77,9 +78,10 @@ class SequenceObjectMachine(ObjectMachineBase):
                                               seed)
 
     # features pool
-    self.numLocations = 1
+    self.numLocations = numLocations
     self.numFeatures = numFeatures
     self._generateFeatures()
+    self._generateLocations()
     numpy.random.seed(seed)
 
 
@@ -102,7 +104,8 @@ class SequenceObjectMachine(ObjectMachineBase):
 
     objects = {}
     for name in objectNames:
-      objects[name] = [self._getSDRPairs([pair] * self.numColumns) \
+      objects[name] = [self._getSDRPairs([pair] * self.numColumns,
+                                         includeRandomLocation=True) \
                        for pair in self.objects[name]]
 
     self._checkObjectsToLearn(objects)
@@ -192,7 +195,7 @@ class SequenceObjectMachine(ObjectMachineBase):
       )
 
 
-  def _getSDRPairs(self, pairs, noise=None):
+  def _getSDRPairs(self, pairs, noise=None, includeRandomLocation=False):
     """
     This method takes a list of (location, feature) index pairs (one pair per
     cortical column), and returns a sensation dict in the correct format,
@@ -202,9 +205,20 @@ class SequenceObjectMachine(ObjectMachineBase):
     for col in xrange(self.numColumns):
       locationID, featureID = pairs[col]
 
-      # generate random location
-      location = self._generatePattern(self.numInputBits,
-                                       self.externalInputSize)
+      # generate random location if requested
+      if includeRandomLocation:
+        locationID = random.randint(0, self.numLocations-1)
+        location = self.locations[col][locationID]
+        # location = self._generatePattern(self.numInputBits,
+        #                                  self.externalInputSize)
+
+      # generate union of locations if requested
+      elif isinstance(locationID, tuple):
+        location = set()
+        for idx in list(locationID):
+          location = location | self.locations[col][idx]
+      else:
+        location = self.locations[col][locationID]
 
       # generate empty feature if requested
       if featureID == -1:
@@ -267,3 +281,20 @@ class SequenceObjectMachine(ObjectMachineBase):
       self.features.append(
         [self._generatePattern(bits, size) for _ in xrange(self.numFeatures)]
     )
+
+
+  def _generateLocations(self):
+    """
+    Generates a pool of locations to be used for the experiments.
+
+    For each index, numColumns SDR's are created, as locations for the same
+    feature should be different for each column.
+    """
+    size = self.externalInputSize
+    bits = self.numInputBits
+
+    self.locations = []
+    for _ in xrange(self.numColumns):
+      self.locations.append(
+        [self._generatePattern(bits, size) for _ in xrange(self.numLocations)]
+      )
