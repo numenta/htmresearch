@@ -23,6 +23,7 @@ This file plots the behavior of L4-L2-TM network as you train it on objects.
 """
 
 import random
+import time
 import os
 from math import ceil
 import numpy
@@ -149,14 +150,16 @@ def runExperiment(args):
   plotInferenceStats = args.get("plotInferenceStats", True)
   settlingTime = args.get("settlingTime", 3)
   includeRandomLocation = args.get("includeRandomLocation", False)
+  inputSize = args.get("inputSize", 512)
+  numInputBits = args.get("inputBits", 20)
 
 
   # Create the objects
   objects = createObjectMachine(
     machineType="simple",
-    numInputBits=20,
-    sensorInputSize=150,
-    externalInputSize=2400,
+    numInputBits=numInputBits,
+    sensorInputSize=inputSize,
+    externalInputSize=1024,
     numCorticalColumns=numColumns,
     numFeatures=numFeatures,
     seed=trialNum
@@ -180,18 +183,18 @@ def runExperiment(args):
   #   print str(o) + ": " + str(pairs)
 
   # Setup experiment and train the network
-  name = "convergence_O%03d_L%03d_F%03d_C%03d_T%03d" % (
-    numObjects, numLocations, numFeatures, numColumns, trialNum
+  name = "convergence_O%03d_L%03d_F%03d_T%03d" % (
+    numObjects, numLocations, numFeatures, trialNum
   )
   exp = L4TMExperiment(
     name=name,
     numCorticalColumns=numColumns,
     networkType = networkType,
-    inputSize=150,
-    externalInputSize=2400,
-    numInputBits=20,
+    inputSize=inputSize,
+    numInputBits=numInputBits,
+    externalInputSize=1024,
+    numExternalInputBits=numInputBits,
     seed=trialNum,
-    numLearningPoints=1,
     logCalls=False
   )
 
@@ -260,13 +263,14 @@ def runExperiment(args):
 
     if plotInferenceStats:
       exp.plotInferenceStats(
-        fields=["L2 Representation",
-                "Overlap L2 with object",
-                "L4 Representation",
+        fields=[
+                "L4 PredictedActive",
                 "TM PredictedActive",
+                "TM Predicted",
                 ],
         experimentID=objectId,
         onePlot=False,
+        plotDir=os.path.join(os.path.dirname(os.path.realpath(__file__)), "plots")
       )
 
   # Compute overall inference statistics
@@ -274,14 +278,16 @@ def runExperiment(args):
   convergencePoint = averageConvergencePoint(
     infStats,"L2 Representation", 30, 40, settlingTime)
 
-  numPredictions = 0.0
-  sumPredictions = 0.0
-  for stat in infStats:
-    predictedActiveTrace = stat["TM PredictedActive C0"]
-    # print predictedActiveTrace
-    numPredictions += len(predictedActiveTrace)
-    sumPredictions += sum(predictedActiveTrace)
-  averagePredictions = sumPredictions / numPredictions
+  predictedActive = numpy.zeros(len(infStats))
+  predicted = numpy.zeros(len(infStats))
+  predictedActiveL4 = numpy.zeros(len(infStats))
+  predictedL4 = numpy.zeros(len(infStats))
+  for i,stat in enumerate(infStats):
+    predictedActive[i] = float(sum(stat["TM PredictedActive C0"][2:])) / len(stat["TM PredictedActive C0"][2:])
+    predicted[i] = float(sum(stat["TM Predicted C0"][2:])) / len(stat["TM Predicted C0"][2:])
+
+    predictedActiveL4[i] = float(sum(stat["L4 PredictedActive C0"])) / len(stat["L4 PredictedActive C0"])
+    predictedL4[i] = float(sum(stat["L4 Predicted C0"])) / len(stat["L4 Predicted C0"])
 
   print "# objects {} # features {} # locations {} # columns {} trial # {} network type {}".format(
     numObjects, numFeatures, numLocations, numColumns, trialNum, networkType)
@@ -291,7 +297,10 @@ def runExperiment(args):
   # Return our convergence point as well as all the parameters and objects
   args.update({"objects": objects.getObjects()})
   args.update({"convergencePoint":convergencePoint})
-  args.update({"averagePredictions": averagePredictions})
+  args.update({"averagePredictions": predicted.mean()})
+  args.update({"averagePredictedActive": predictedActive.mean()})
+  args.update({"averagePredictionsL4": predictedL4.mean()})
+  args.update({"averagePredictedActiveL4": predictedActiveL4.mean()})
 
   # Can't pickle experiment so can't return it for batch multiprocessing runs.
   # However this is very useful for debugging when running in a single thread.
@@ -392,7 +401,8 @@ def plotConvergenceByObject(results, objectRange, featureRange, numTrials):
   #
   # Create the plot. x-axis=
   plt.figure()
-  plotPath = os.path.join("plots", "convergence_by_object.pdf")
+  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                          "plots", "convergence_by_object.pdf")
 
   # Plot each curve
   legendList = []
@@ -419,7 +429,8 @@ def plotConvergenceByObject(results, objectRange, featureRange, numTrials):
   plt.close()
 
 
-def plotPredictionsByObject(results, objectRange, featureRange, numTrials):
+def plotPredictionsByObject(results, objectRange, featureRange, numTrials,
+                            key="", title="", yaxis=""):
   """
   Plots the convergence graph: iterations vs number of objects.
   Each curve shows the convergence for a given number of unique features.
@@ -434,7 +445,7 @@ def plotPredictionsByObject(results, objectRange, featureRange, numTrials):
   predictions = numpy.zeros((max(featureRange), max(objectRange) + 1))
   for r in results:
     if r["numFeatures"] in featureRange:
-      predictions[r["numFeatures"] - 1, r["numObjects"]] += r["averagePredictions"]
+      predictions[r["numFeatures"] - 1, r["numObjects"]] += r[key]
 
   predictions /= numTrials
 
@@ -442,7 +453,8 @@ def plotPredictionsByObject(results, objectRange, featureRange, numTrials):
   #
   # Create the plot. x-axis=
   plt.figure()
-  plotPath = os.path.join("plots", "predictions_by_object.pdf")
+  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                          "plots", key+"_by_object.pdf")
 
   # Plot each curve
   legendList = []
@@ -461,8 +473,8 @@ def plotPredictionsByObject(results, objectRange, featureRange, numTrials):
   plt.xlabel("Number of objects in training set")
   plt.xticks(range(0,max(objectRange)+1,10))
   plt.yticks(range(0,int(predictions.max())+2,10))
-  plt.ylabel("Average number of predicted cells")
-  plt.title("Predictions in TM while exploring objects")
+  plt.ylabel(yaxis)
+  plt.title(title)
 
     # save
   plt.savefig(plotPath)
@@ -470,15 +482,18 @@ def plotPredictionsByObject(results, objectRange, featureRange, numTrials):
 
 if __name__ == "__main__":
 
+  startTime = time.time()
+  dirName = os.path.dirname(os.path.realpath(__file__))
+
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
-  if True:
+  if False:
     results = runExperiment(
                   {
-                    "numObjects": 10,
+                    "numObjects": 50,
                     "numPoints": 10,
                     "numLocations": 10,
-                    "numFeatures": 10,
+                    "numFeatures": 30,
                     "numColumns": 1,
                     "networkType": "L4L2TMColumn",
                     "trialNum": 4,
@@ -493,12 +508,13 @@ if __name__ == "__main__":
   # Here we want to see how the number of objects affects convergence for a
   # single column.
   # This experiment is run using a process pool
-  if False:
+  if True:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1]
-    featureRange = [5,8,10,20]
-    objectRange = [2,10,20,30,40,50,60,80,100]
+    featureRange = [10,100,1000]
+    objectRange = [2,10,20,30,40,50]
+    resultsName = os.path.join(dirName, "object_convergence_results.pkl")
 
     # Comment this out if you are re-running analysis on already saved results.
     # Very useful for debugging the plots
@@ -510,13 +526,34 @@ if __name__ == "__main__":
                       numPoints=10,
                       nTrials=numTrials,
                       numWorkers=cpu_count() - 1,
-                      resultsName="object_convergence_results.pkl")
+                      resultsName=resultsName)
 
     # Analyze results
-    with open("object_convergence_results.pkl","rb") as f:
+    with open(resultsName,"rb") as f:
       results = cPickle.load(f)
 
     plotConvergenceByObject(results, objectRange, featureRange, numTrials)
 
-    plotPredictionsByObject(results, objectRange, featureRange, numTrials)
+    plotPredictionsByObject(results, objectRange, featureRange, numTrials,
+                            key="averagePredictions",
+                            title="Predictions in temporal sequence layer",
+                            yaxis="Average number of predicted cells")
 
+    plotPredictionsByObject(results, objectRange, featureRange, numTrials,
+                            key="averagePredictedActive",
+                            title="Correct predictions in temporal sequence layer",
+                            yaxis="Average number of correctly predicted cells"
+                            )
+
+
+    plotPredictionsByObject(results, objectRange, featureRange, numTrials,
+                            key="averagePredictedActiveL4",
+                            title="Correct predictions in sensorimotor layer",
+                            yaxis="Average number of correctly predicted cells"
+                            )
+    plotPredictionsByObject(results, objectRange, featureRange, numTrials,
+                            key="averagePredictionsL4",
+                            title="Predictions in sensorimotor layer",
+                            yaxis="Average number of predicted cells")
+
+  print "Actual runtime=",time.time() - startTime

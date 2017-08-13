@@ -22,10 +22,10 @@
 This file plots the behavior of L4-L2-TM network as you train it on sequences.
 """
 
-import random
 import os
 from math import ceil
 import numpy
+import time
 import cPickle
 from multiprocessing import Pool, cpu_count
 import matplotlib.pyplot as plt
@@ -103,8 +103,6 @@ def runExperiment(args):
 
   @param noiseLevel  (float) Noise level to add to the locations and features
                              during inference. Default: None
-  @param profile     (bool)  If True, the network will be profiled after
-                             learning and inference. Default: False
   @param numSequences (int)  The number of objects (sequences) we will train.
                              Default: 10
   @param seqLength   (int)   The number of points on each object (length of
@@ -124,56 +122,74 @@ def runExperiment(args):
   numFeatures = args.get("numFeatures", 10)
   numColumns = args.get("numColumns", 2)
   networkType = args.get("networkType", "L4L2TMColumn")
-  profile = args.get("profile", False)
   noiseLevel = args.get("noiseLevel", None)  # TODO: implement this?
   seqLength = args.get("seqLength", 10)
   trialNum = args.get("trialNum", 42)
   plotInferenceStats = args.get("plotInferenceStats", True)
+  inputSize = args.get("inputSize", 512)
+  numLocations = args.get("numLocations", 100000)
 
 
   # Create the objects
   objects = createObjectMachine(
     machineType="sequence",
     numInputBits=20,
-    sensorInputSize=150,
-    externalInputSize=2400,
+    sensorInputSize=inputSize,
+    externalInputSize=1024,
     numCorticalColumns=numColumns,
     numFeatures=numFeatures,
+    numLocations=numLocations,
     seed=trialNum
   )
   objects.createRandomSequences(numSequences, seqLength)
 
   # print "Sequences:"
-  # print objects.getObjects()
+  # for i in objects:
+  #   print i,objects[i]
 
   r = objects.objectConfusion()
   print "Average common pairs=", r[0],
   print ", features=",r[2]
 
   # Setup experiment and train the network
-  name = "sequence_convergence_S%03d_F%03d_C%03d_T%03d" % (
-    numSequences, numFeatures, numColumns, trialNum
+  name = "sequences_S%03d_F%03d_L%03d_T%03d" % (
+    numSequences, numFeatures, numLocations, trialNum
   )
   exp = L4TMExperiment(
     name=name,
     numCorticalColumns=numColumns,
     networkType = networkType,
-    inputSize=150,
-    externalInputSize=2400,
+    inputSize=inputSize,
+    externalInputSize=1024,
     numInputBits=20,
     seed=trialNum,
     logCalls=False
   )
 
-  # Train the network on all the SDRs for all the objects
-  objectSDRs = objects.provideObjectsToLearn()
+  # Train the network on all the sequences
+  for seqName in objects:
 
-  # Make sure we learn enough times to deal with high order sequences and
-  # remove extra predictions
-  for _ in range(3*seqLength):
-    exp.learnObjects(objectSDRs)
-  if profile:
-    exp.printProfile(reset=True)
+    # Make sure we learn enough times to deal with high order sequences and
+    # remove extra predictions.
+    for p in range(3*seqLength):
+
+      # print "- - - - - - - - - - - - - - - - - - - - - - - - - - "
+      # print "Start of pass",p,"through sequence",seqName
+
+      # Ensure we generate new random location for each sequence presentation
+      objectSDRs = objects.provideObjectsToLearn([seqName])
+      exp.learnObjects(objectSDRs, reset=False)
+
+      # TM needs reset between sequences, but not other regions
+      exp.TMColumns[0].reset()
+
+    # L2 needs resets when we switch to new object
+    exp.sendReset()
+
+    # print "End of sequence"
+    # print "================================================\n"
+
+  print "End of Learning\n\n"
 
   # For inference, we will check and plot convergence for each sequence. We
   # don't want to shuffle them!
@@ -203,16 +219,18 @@ def runExperiment(args):
     exp.infer(inferenceSDRs, objectName=objectId)
 
     if plotInferenceStats:
-      exp.plotInferenceStats(
+      plotOneInferenceRun(
+        exp.statistics[objectId],
         fields=[
-                # "L2 Representation",
-                "Overlap L2 with object",
-                "TM Basal Segments",
-                # "L4 Representation",
-                "TM PredictedActive",
-                ],
+          ("L4 Predicted", "Predicted sensorimotor cells"),
+          ("L4 PredictedActive", "Predicted active sensorimotor cells"),
+          ("TM Predicted", "Predicted sequence cells"),
+          ("TM PredictedActive", "Predicted active sequence cells"),
+        ],
+        basename=exp.name,
         experimentID=objectId,
-        onePlot=False,
+        plotDir=os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             "plots")
       )
 
   # Compute overall inference statistics
@@ -220,14 +238,16 @@ def runExperiment(args):
   convergencePoint = averageConvergencePoint(
     infStats,"L2 Representation", 30, 40, 1)
 
-  numPredictions = 0.0
-  sumPredictions = 0.0
-  for stat in infStats:
-    predictedActiveTrace = stat["TM PredictedActive C0"]
-    # print predictedActiveTrace
-    numPredictions += len(predictedActiveTrace)
-    sumPredictions += sum(predictedActiveTrace)
-  averagePredictions = sumPredictions / numPredictions
+  predictedActive = numpy.zeros(len(infStats))
+  predicted = numpy.zeros(len(infStats))
+  predictedActiveL4 = numpy.zeros(len(infStats))
+  predictedL4 = numpy.zeros(len(infStats))
+  for i,stat in enumerate(infStats):
+    predictedActive[i] = float(sum(stat["TM PredictedActive C0"][2:])) / len(stat["TM PredictedActive C0"][2:])
+    predicted[i] = float(sum(stat["TM Predicted C0"][2:])) / len(stat["TM Predicted C0"][2:])
+
+    predictedActiveL4[i] = float(sum(stat["L4 PredictedActive C0"])) / len(stat["L4 PredictedActive C0"])
+    predictedL4[i] = float(sum(stat["L4 Predicted C0"])) / len(stat["L4 Predicted C0"])
 
   print "# Sequences {} # features {} # columns {} trial # {} network type {}".format(
     numSequences, numFeatures, numColumns, trialNum, networkType)
@@ -237,7 +257,10 @@ def runExperiment(args):
   # Return our convergence point as well as all the parameters and objects
   args.update({"objects": objects.getObjects()})
   args.update({"convergencePoint":convergencePoint})
-  args.update({"averagePredictions": averagePredictions})
+  args.update({"averagePredictions": predicted.mean()})
+  args.update({"averagePredictedActive": predictedActive.mean()})
+  args.update({"averagePredictionsL4": predictedL4.mean()})
+  args.update({"averagePredictedActiveL4": predictedActiveL4.mean()})
 
   # Can't pickle experiment so can't return it for batch multiprocessing runs.
   # However this is very useful for debugging when running in a single thread.
@@ -329,7 +352,8 @@ def plotConvergenceBySequence(results, objectRange, featureRange, numTrials):
   #
   # Create the plot. x-axis=
   plt.figure()
-  plotPath = os.path.join("plots", "convergence_by_sequence.pdf")
+  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                          "plots", "convergence_by_sequence.pdf")
 
   # Plot each curve
   legendList = []
@@ -356,30 +380,32 @@ def plotConvergenceBySequence(results, objectRange, featureRange, numTrials):
   plt.close()
 
 
-def plotPredictionsBySequence(results, objectRange, featureRange, numTrials):
+def plotPredictionsBySequence(results, objectRange, featureRange, numTrials,
+                            key="", title="", yaxis=""):
   """
   Plots the convergence graph: iterations vs number of objects.
   Each curve shows the convergence for a given number of unique features.
   """
+
   ########################################################################
   #
   # Accumulate all the results per column in a convergence array.
   #
-  # predictions[f,o] = how long it took it to converge with f unique features
-  # and o objects.
-
+  # predictions[f,s] = how long it took it to converge with f unique features
+  # and s sequences on average.
   predictions = numpy.zeros((max(featureRange), max(objectRange) + 1))
   for r in results:
     if r["numFeatures"] in featureRange:
-      predictions[r["numFeatures"] - 1, r["numSequences"]] += r["averagePredictions"]
+      predictions[r["numFeatures"] - 1, r["numSequences"]] += r[key]
 
   predictions /= numTrials
 
   ########################################################################
   #
-  # Create the plot. x-axis=
+  # Create the plot.
   plt.figure()
-  plotPath = os.path.join("plots", "predictions_by_sequence.pdf")
+  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                          "plots", key+"by_sequence.pdf")
 
   # Plot each curve
   legendList = []
@@ -395,34 +421,71 @@ def plotPredictionsBySequence(results, objectRange, featureRange, numTrials):
 
   # format
   plt.legend(legendList, loc="center right", prop={'size':10})
-  plt.xlabel("Number of sequences in training set")
+  plt.xlabel("Number of sequences learned")
   plt.xticks(range(0,max(objectRange)+1,10))
   plt.yticks(range(0,int(predictions.max())+2,10))
-  plt.ylabel("Average number of predicted cells")
-  plt.title("Predictions in TM while inferring sequences")
+  plt.ylabel(yaxis)
+  plt.title(title)
 
     # save
   plt.savefig(plotPath)
   plt.close()
 
+def plotOneInferenceRun(stats,
+                       fields,
+                       basename,
+                       plotDir="plots",
+                       experimentID=0):
+  """
+  Plots individual inference runs.
+  """
+  if not os.path.exists(plotDir):
+    os.makedirs(plotDir)
+
+  plt.figure()
+  objectName = stats["object"]
+
+  # plot request stats
+  for field in fields:
+    fieldKey = field[0] + " C0"
+    plt.plot(stats[fieldKey], marker='+', label=field[1])
+
+  # format
+  plt.legend(loc="upper right")
+  plt.xlabel("Input number")
+  plt.xticks(range(stats["numSteps"]))
+  plt.ylabel("Number of cells")
+  plt.ylim(plt.ylim()[0] - 5, plt.ylim()[1] + 5)
+  plt.title("Activity for sequence {}".format(objectName))
+
+  # save
+  relPath = "{}_exp_{}.pdf".format(basename, experimentID)
+  path = os.path.join(plotDir, relPath)
+  plt.savefig(path)
+  plt.close()
+
+
+
+
 if __name__ == "__main__":
+
+  startTime = time.time()
+  dirName = os.path.dirname(os.path.realpath(__file__))
 
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
   if True:
     results = runExperiment(
                   {
-                    "numSequences": 10,
+                    "numSequences": 50,
                     "seqLength": 10,
-                    "numFeatures": 100,
+                    "numFeatures": 10,
                     "numColumns": 1,
                     "trialNum": 4,
+                    "numLocations": 100,
                     "plotInferenceStats": True,  # Outputs detailed graphs
                   }
               )
-  # Pickle results for later use
-  with open("one_sequence_convergence_results.pkl","wb") as f:
-    cPickle.dump(results,f)
 
 
   # Here we want to see how the number of objects affects convergence for a
@@ -432,10 +495,12 @@ if __name__ == "__main__":
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1]
-    featureRange = [10, 100, 1000, 10000]
-    seqRange = [2,5,10,20,30]
+    featureRange = [5, 10, 100, 1000]
+    seqRange = [2,5,10,20,30,50]
+    locationRange = [10, 100, 1000]
+    resultsName = os.path.join(dirName, "sequence_convergence_results.pkl")
 
-    # Comment this out if you are re-running analysis on already saved results.
+    # Comment this out if you  are re-running analysis on already saved results.
     # Very useful for debugging the plots
     runExperimentPool(
                       numSequences=seqRange,
@@ -444,13 +509,36 @@ if __name__ == "__main__":
                       seqLength=10,
                       nTrials=numTrials,
                       numWorkers=cpu_count() - 1,
-                      resultsName="sequence_convergence_results.pkl")
+                      resultsName=resultsName)
 
     # Analyze results
-    with open("sequence_convergence_results.pkl","rb") as f:
+    with open(resultsName,"rb") as f:
       results = cPickle.load(f)
 
     plotConvergenceBySequence(results, seqRange, featureRange, numTrials)
 
-    plotPredictionsBySequence(results, seqRange, featureRange, numTrials)
+    plotPredictionsBySequence(results, seqRange, featureRange, numTrials,
+                              key="averagePredictions",
+                              title="Predictions in temporal sequence layer",
+                              yaxis="Average number of predicted cells")
+
+    plotPredictionsBySequence(results, seqRange, featureRange, numTrials,
+                            key="averagePredictedActive",
+                            title="Correct predictions in temporal sequence layer",
+                            yaxis="Average number of correctly predicted cells"
+                            )
+
+    plotPredictionsBySequence(results, seqRange, featureRange, numTrials,
+                              key="averagePredictedActiveL4",
+                              title="Correct predictions in sensorimotor layer",
+                              yaxis="Average number of correctly predicted cells"
+                              )
+
+    plotPredictionsBySequence(results, seqRange, featureRange, numTrials,
+                              key="averagePredictionsL4",
+                              title="Predictions in sensorimotor layer",
+                              yaxis="Average number of predicted cells")
+
+
+  print "Actual runtime=",time.time() - startTime
 
