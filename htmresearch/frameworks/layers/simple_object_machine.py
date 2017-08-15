@@ -40,7 +40,7 @@ class SimpleObjectMachine(ObjectMachineBase):
                sensorInputSize=2048,
                externalInputSize=2048,
                numCorticalColumns=1,
-               numLocations=400,
+               numLocations=10000,
                numFeatures=400,
                seed=42):
     """
