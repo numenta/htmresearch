@@ -29,8 +29,11 @@ import time
 import cPickle
 from multiprocessing import Pool, cpu_count
 import matplotlib.pyplot as plt
+
 import matplotlib as mpl
 mpl.rcParams['pdf.fonttype'] = 42
+from matplotlib import rc
+rc('font',**{'family':'sans-serif','sans-serif':['Arial']})
 
 from htmresearch.frameworks.layers.combined_sequence_experiment import (
   L4TMExperiment
@@ -73,6 +76,8 @@ def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
   on targetValue. Return the average settling iteration across all runs.
   """
   convergenceSum = 0.0
+  numCorrect = 0.0
+  inferenceLength = 1000000
 
   # For each object
   for stats in inferenceStats:
@@ -81,6 +86,7 @@ def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
     convergencePoint = 0.0
     for key in stats.iterkeys():
       if prefix in key:
+        inferenceLength = len(stats[key])
         columnConvergence = locateConvergencePoint(
           stats[key], minOverlap, maxOverlap)
 
@@ -91,7 +97,10 @@ def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
 
     convergenceSum += ceil(float(convergencePoint)/settlingTime)
 
-  return convergenceSum/len(inferenceStats)
+    if ceil(float(convergencePoint)/settlingTime) <= inferenceLength:
+      numCorrect += 1
+
+  return convergenceSum/len(inferenceStats), numCorrect/len(inferenceStats)
 
 
 def runExperiment(args):
@@ -120,7 +129,7 @@ def runExperiment(args):
   """
   numSequences = args.get("numSequences", 10)
   numFeatures = args.get("numFeatures", 10)
-  numColumns = args.get("numColumns", 2)
+  numColumns = args.get("numColumns", 1)
   networkType = args.get("networkType", "L4L2TMColumn")
   noiseLevel = args.get("noiseLevel", None)  # TODO: implement this?
   seqLength = args.get("seqLength", 10)
@@ -163,6 +172,7 @@ def runExperiment(args):
     externalInputSize=1024,
     numInputBits=20,
     seed=trialNum,
+    L4Overrides={"initialPermanence": 0.41},
     logCalls=False
   )
 
@@ -173,9 +183,6 @@ def runExperiment(args):
     # remove extra predictions.
     for p in range(3*seqLength):
 
-      # print "- - - - - - - - - - - - - - - - - - - - - - - - - - "
-      # print "Start of pass",p,"through sequence",seqName
-
       # Ensure we generate new random location for each sequence presentation
       objectSDRs = objects.provideObjectsToLearn([seqName])
       exp.learnObjects(objectSDRs, reset=False)
@@ -185,11 +192,6 @@ def runExperiment(args):
 
     # L2 needs resets when we switch to new object
     exp.sendReset()
-
-    # print "End of sequence"
-    # print "================================================\n"
-
-  print "End of Learning\n\n"
 
   # For inference, we will check and plot convergence for each sequence. We
   # don't want to shuffle them!
@@ -214,7 +216,6 @@ def runExperiment(args):
     }
 
     inferenceSDRs = objects.provideObjectToInfer(inferConfig)
-    # print "Inference SDRs", inferenceSDRs
 
     exp.infer(inferenceSDRs, objectName=objectId)
 
@@ -222,20 +223,22 @@ def runExperiment(args):
       plotOneInferenceRun(
         exp.statistics[objectId],
         fields=[
-          ("L4 Predicted", "Predicted sensorimotor cells"),
-          ("L4 PredictedActive", "Predicted active sensorimotor cells"),
-          ("TM Predicted", "Predicted sequence cells"),
-          ("TM PredictedActive", "Predicted active sequence cells"),
+          # ("L4 Predicted", "Predicted sensorimotor cells"),
+          # ("L2 Representation", "L2 Representation"),
+          # ("L4 Representation", "Active sensorimotor cells"),
+          ("L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
+          ("TM Predicted", "Predicted cells in temporal sequence layer"),
+          ("TM PredictedActive", "Predicted active cells in temporal sequence layer"),
         ],
         basename=exp.name,
         experimentID=objectId,
         plotDir=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                             "plots")
+                             "detailed_plots")
       )
 
   # Compute overall inference statistics
   infStats = exp.getInferenceStats()
-  convergencePoint = averageConvergencePoint(
+  convergencePoint, accuracy = averageConvergencePoint(
     infStats,"L2 Representation", 30, 40, 1)
 
   predictedActive = numpy.zeros(len(infStats))
@@ -251,12 +254,14 @@ def runExperiment(args):
 
   print "# Sequences {} # features {} # columns {} trial # {} network type {}".format(
     numSequences, numFeatures, numColumns, trialNum, networkType)
-  print "Average convergence point=",convergencePoint
+  print "Average convergence point=",convergencePoint,
+  print "Accuracy:", accuracy
   print
 
   # Return our convergence point as well as all the parameters and objects
   args.update({"objects": objects.getObjects()})
   args.update({"convergencePoint":convergencePoint})
+  args.update({"sensorimotorAccuracyPct": accuracy})
   args.update({"averagePredictions": predicted.mean()})
   args.update({"averagePredictedActive": predictedActive.mean()})
   args.update({"averagePredictionsL4": predictedL4.mean()})
@@ -271,7 +276,7 @@ def runExperiment(args):
 
 def runExperimentPool(numSequences,
                       numFeatures,
-                      numColumns,
+                      numLocations,
                       networkType=["L4L2TMColumn"],
                       numWorkers=7,
                       nTrials=1,
@@ -297,21 +302,21 @@ def runExperimentPool(numSequences,
   # Create function arguments for every possibility
   args = []
 
-  for c in reversed(numColumns):
-    for o in reversed(numSequences):
-        for f in numFeatures:
-          for n in networkType:
-            for t in range(nTrials):
-              args.append(
-                {"numSequences": o,
-                 "numFeatures": f,
-                 "numColumns": c,
-                 "trialNum": t,
-                 "seqLength": seqLength,
-                 "networkType" : n,
-                 "plotInferenceStats": False,
-                 }
-              )
+  for o in reversed(numSequences):
+    for l in numLocations:
+      for f in numFeatures:
+        for n in networkType:
+          for t in range(nTrials):
+            args.append(
+              {"numSequences": o,
+               "numFeatures": f,
+               "trialNum": t,
+               "seqLength": seqLength,
+               "networkType" : n,
+               "numLocations": l,
+               "plotInferenceStats": False,
+               }
+            )
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
   # Run the pool
   if numWorkers > 1:
@@ -380,6 +385,63 @@ def plotConvergenceBySequence(results, objectRange, featureRange, numTrials):
   plt.close()
 
 
+def plotSensorimotorAccuracy(results, locationRange, featureRange,
+                             seqRange, title="", yaxis=""):
+  """
+  Plot accuracy vs number of locations
+  """
+
+  ########################################################################
+  #
+  # Accumulate all the results per column in a convergence array.
+  #
+  # accuracy[f,l] = how long it took it to converge with f unique features
+  # and l locations on average.
+  accuracy = numpy.zeros((max(featureRange)+1, max(locationRange) + 1))
+  totals = numpy.zeros((max(featureRange)+1, max(locationRange) + 1))
+  for r in results:
+    if r["numFeatures"] in featureRange and r["numSequences"] in seqRange:
+      accuracy[r["numFeatures"], r["numLocations"]] += r["sensorimotorAccuracyPct"]
+      totals[r["numFeatures"], r["numLocations"]] += 1
+
+  for f in featureRange:
+    for l in locationRange:
+      accuracy[f, l] = 100.0*accuracy[f, l] / totals[f, l]
+
+  ########################################################################
+  #
+  # Create the plot.
+  plt.figure()
+  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                          "plots", "sensorimotorAccuracy_by_sequence.pdf")
+
+  # Plot each curve
+  legendList = []
+  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
+
+  for i in range(len(featureRange)):
+    f = featureRange[i]
+    print "features={} locationRange={} accuracy={}".format(
+      f,locationRange, accuracy[f,locationRange]),
+    print totals[f,locationRange]
+    legendList.append('Feature pool size: {}'.format(f))
+    plt.plot(locationRange, accuracy[f,locationRange],
+             color=colorList[i])
+
+  # format
+  plt.legend(legendList, loc="best", prop={'size':10})
+  plt.xlabel("Number of possible locations")
+  # plt.xticks(range(0,max(locationRange)+1,10))
+  # plt.yticks(range(0,int(accuracy.max())+2,10))
+  plt.ylim(-10.0, 100.0)
+  plt.ylabel(yaxis)
+  plt.title(title)
+
+    # save
+  plt.savefig(plotPath)
+  plt.close()
+
+
 def plotPredictionsBySequence(results, objectRange, featureRange, numTrials,
                             key="", title="", yaxis=""):
   """
@@ -431,6 +493,7 @@ def plotPredictionsBySequence(results, objectRange, featureRange, numTrials,
   plt.savefig(plotPath)
   plt.close()
 
+
 def plotOneInferenceRun(stats,
                        fields,
                        basename,
@@ -455,8 +518,9 @@ def plotOneInferenceRun(stats,
   plt.xlabel("Input number")
   plt.xticks(range(stats["numSteps"]))
   plt.ylabel("Number of cells")
-  plt.ylim(plt.ylim()[0] - 5, plt.ylim()[1] + 5)
-  plt.title("Activity for sequence {}".format(objectName))
+  plt.ylim(-5, 100)
+  # plt.ylim(plt.ylim()[0] - 5, plt.ylim()[1] + 5)
+  plt.title("Activity while inferring a single sequence".format(objectName))
 
   # save
   relPath = "{}_exp_{}.pdf".format(basename, experimentID)
@@ -474,10 +538,10 @@ if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
-  if True:
+  if False:
     results = runExperiment(
                   {
-                    "numSequences": 50,
+                    "numSequences": 5,
                     "seqLength": 10,
                     "numFeatures": 10,
                     "numColumns": 1,
@@ -488,16 +552,49 @@ if __name__ == "__main__":
               )
 
 
+  # Here we want to check accuracy of the L2/L4 networks in classifying the
+  # sequences. This experiment is run using a process pool
+  if True:
+    # We run 10 trials for each column number and then analyze results
+    numTrials = 10
+    featureRange = [1000, 2000, 5000]
+    seqRange = [50]
+    locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
+                     1000, 1100, 1200, 1300, 1400, 1500, 1600]
+    # locationRange = [10, 100, 200, 300, 500, 600, 800, 900,
+    #                  1000, 1200, 1300, 1500, 1600]
+    resultsName = os.path.join(dirName, "sensorimotor_accuracy_results_5_10_100.pkl")
+
+    # Comment this out if you  are re-running analysis on already saved results.
+    # Very useful for debugging the plots
+    # runExperimentPool(
+    #                   numSequences=seqRange,
+    #                   numFeatures=featureRange,
+    #                   numLocations=locationRange,
+    #                   seqLength=10,
+    #                   nTrials=numTrials,
+    #                   numWorkers=cpu_count() - 1,
+    #                   resultsName=resultsName)
+
+    # Analyze results
+    with open(resultsName,"rb") as f:
+      results = cPickle.load(f)
+
+    featureRange = [5, 10, 100]
+    plotSensorimotorAccuracy(results, locationRange, featureRange, seqRange,
+      title="Accuracy of sensorimotor layer while inferring sequences",
+      yaxis="Percent accuracy")
+
+
   # Here we want to see how the number of objects affects convergence for a
   # single column.
   # This experiment is run using a process pool
   if False:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
-    columnRange = [1]
     featureRange = [5, 10, 100, 1000]
     seqRange = [2,5,10,20,30,50]
-    locationRange = [10, 100, 1000]
+    locationRange = [10, 100, 500, 1000]
     resultsName = os.path.join(dirName, "sequence_convergence_results.pkl")
 
     # Comment this out if you  are re-running analysis on already saved results.
@@ -505,7 +602,7 @@ if __name__ == "__main__":
     runExperimentPool(
                       numSequences=seqRange,
                       numFeatures=featureRange,
-                      numColumns=columnRange,
+                      numLocations=locationRange,
                       seqLength=10,
                       nTrials=numTrials,
                       numWorkers=cpu_count() - 1,
