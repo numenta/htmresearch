@@ -437,7 +437,7 @@ def runExperiment(args):
   # Return our convergence point as well as all the parameters and objects
   args.update({"objects": objects.getObjects()})
   args.update({"convergencePoint": convergencePoint})
-  args.update({"overlapMat": overlapMat})
+  # args.update({"overlapMat": overlapMat})
   args.update({"accuracy": accuracy["accuracy"]})
   args.update({"sensitivity": accuracy["sensitivity"]})
   args.update({"specificity": accuracy["specificity"]})
@@ -715,6 +715,8 @@ def plotConvergenceNoiseRobustness(results, noiseRange, columnRange):
   # Create the plot. x-axis=
   plt.figure()
   plotPath = os.path.join("plots", "noise_robustness_accuracy.pdf")
+  if not os.path.exists("plots/"):
+    os.makedirs("plots/")
   for i in range(len(noiseRange)):
     plt.plot(accuracy[i, :, 1].transpose(),
              label="noiseLevel {}".format(noiseRange[i]))
@@ -1019,7 +1021,7 @@ if __name__ == "__main__":
     featureRange = [10]
     objectRange = [50]
 
-    noiseRange = numpy.arange(0, 0.5, 0.1)
+    noiseRange = numpy.arange(0, 0.5, 0.05)
 
     # Comment this out if you are re-running analysis on already saved results.
     # Very useful for debugging the plots
@@ -1030,7 +1032,7 @@ if __name__ == "__main__":
       numColumns=columnRange,
       numPoints=10,
       nTrials=numTrials,
-      numWorkers=cpu_count() - 1,
+      numWorkers=cpu_count(),
       noiseRange=noiseRange,
       resultsName="noise_robustness_results.pkl")
 
