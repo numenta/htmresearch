@@ -94,6 +94,42 @@ def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
   return convergenceSum/len(inferenceStats)
 
 
+
+def averageConvergencePointNew(numActiveL2cells, minOverlap, maxOverlap):
+  """
+  inferenceStats contains activity traces while the system visits each object.
+
+  Given the i'th object, inferenceStats[i] contains activity statistics for
+  each column for each region for the entire sequence of sensations.
+
+  For each object, compute the convergence time - the first point when all
+  L2 columns have converged.
+
+  Return the average convergence time across all objects.
+
+  Given inference statistics for a bunch of runs, locate all traces with the
+  given prefix. For each trace locate the iteration where it finally settles
+  on targetValue. Return the average settling iteration across all runs.
+  """
+  convergenceSum = 0.0
+
+  numObjects, numSensations, numColumns = numActiveL2cells.shape
+  # For each object
+  for i in range(numObjects):
+    # For each L2 column locate convergence time
+    convergencePoint = 0.0
+
+    for c in range(numColumns):
+      columnConvergence = locateConvergencePoint(
+        numActiveL2cells[i, :, c], minOverlap, maxOverlap)
+
+      convergencePoint = max(convergencePoint, columnConvergence)
+
+    convergenceSum += ceil(float(convergencePoint))
+
+  return convergenceSum/numObjects
+
+
 def objectConfusion(objects):
   """
   For debugging, print overlap between each pair of objects.
@@ -129,6 +165,72 @@ def objectConfusion(objects):
   print ", locations=",sumCommonLocations / float(numObjects),
   print ", features=",sumCommonFeatures / float(numObjects)
   print "Common pair histogram=",commonPairHistogram
+
+
+def addNoise(pattern, noiseLevel, totalNumCells):
+  """
+  Generate a noisy copy of a pattern.
+
+  Given number of active bits w = len(pattern),
+  replace each active bit with an inactive bit with probability=noiseLevel
+
+  @param pattern (set)
+  A set of active indices
+
+  @param noiseLevel (float)
+  The percentage of the bits to shuffle
+
+  @param totalNumCells (int)
+  The number of cells in the SDR, active and inactive
+
+  @return (set)
+  A noisy set of active indices
+  """
+  noised = set()
+  for bit in pattern:
+    if random.random() < noiseLevel:
+      # flip bit
+      while True:
+        v = random.randint(0, totalNumCells - 1)
+        if v not in pattern and v not in noised:
+          noised.add(v)
+          break
+    else:
+      noised.add(bit)
+
+  return noised
+
+
+def computeAccuracy(overlapMat, confuseThresh=30):
+
+  numObjects = overlapMat.shape[0]
+  numSensations = overlapMat.shape[2]
+
+  sensitivity = numpy.zeros((numSensations, ))
+  specificity = numpy.zeros((numSensations, ))
+  accuracy = numpy.zeros((numSensations,))
+  for t in range(numSensations):
+    numTP = 0
+    numTN = 0
+    numCorrect = 0
+    for i in range(numObjects):
+      idx = numpy.where(overlapMat[i, :, t]>confuseThresh)[0]
+      # idx = numpy.where(overlapMat[i, :, t] == numpy.max(overlapMat[i, :, t]))[0]
+
+      found = len(numpy.where(idx == i)[0]) > 0
+      numTP += found
+      numTN += numObjects - len(idx)
+      if found and len(idx) == 1:
+        numCorrect += 1
+
+    sensitivity[t] = float(numTP)/numObjects
+    specificity[t] = float(numTN)/(numObjects-1)/numObjects
+    accuracy[t] = float(numCorrect)/numObjects
+
+  result = {"sensitivity": sensitivity,
+            "specificity": specificity,
+            "accuracy": accuracy}
+  return result
 
 
 def runExperiment(args):
@@ -185,14 +287,13 @@ def runExperiment(args):
   networkType = args.get("networkType", "MultipleL4L2Columns")
   longDistanceConnections = args.get("longDistanceConnections", 0)
   profile = args.get("profile", False)
-  noiseLevel = args.get("noiseLevel", None)  # TODO: implement this?
+  noiseLevel = args.get("noiseLevel", 0)  # TODO: implement this?
   numPoints = args.get("numPoints", 10)
   trialNum = args.get("trialNum", 42)
   pointRange = args.get("pointRange", 1)
   plotInferenceStats = args.get("plotInferenceStats", True)
   settlingTime = args.get("settlingTime", 3)
   includeRandomLocation = args.get("includeRandomLocation", False)
-
 
   # Create the objects
   objects = createObjectMachine(
@@ -242,7 +343,11 @@ def runExperiment(args):
   # object, we create a sequence of random sensations for each column.  We will
   # present each sensation for settlingTime time steps to let it settle and
   # ensure it converges.
+  L2Representations = exp.objectL2Representations
+  overlapMat = numpy.zeros((numObjects, numObjects, numFeatures))
+  numActiveL2cells = numpy.zeros((numObjects, numFeatures, numColumns))
   for objectId in objects:
+    exp._sendReset()
     obj = objects[objectId]
 
     objectSensations = {}
@@ -260,9 +365,7 @@ def runExperiment(args):
         objectCopy = [pair for pair in obj]
         random.shuffle(objectCopy)
         for c in range(numColumns):
-          # stay multiple steps on each sensation
-          for _ in xrange(settlingTime):
-            objectSensations[c].append(objectCopy[c])
+          objectSensations[c].append(objectCopy[c])
 
     else:
       # Create sequence of sensations for this object for one column. The total
@@ -271,9 +374,7 @@ def runExperiment(args):
       objectCopy = [pair for pair in obj]
       random.shuffle(objectCopy)
       for pair in objectCopy:
-        # stay multiple steps on each sensation
-        for _ in xrange(settlingTime):
-          objectSensations[0].append(pair)
+        objectSensations[0].append(pair)
 
     inferConfig = {
       "object": objectId,
@@ -284,7 +385,31 @@ def runExperiment(args):
 
     inferenceSDRs = objects.provideObjectToInfer(inferConfig)
 
-    exp.infer(inferenceSDRs, objectName=objectId)
+    sensationNumber = 0
+    for sdrPair in inferenceSDRs:
+      if noiseLevel > 0:
+        for col in sdrPair.keys():
+          # print locationSDR
+          locationSDR = addNoise(sdrPair[col][0], noiseLevel,
+                                exp.config["externalInputSize"])
+          featureSDR = addNoise(sdrPair[col][1], noiseLevel,
+                                 exp.config["sensorInputSize"])
+          sdrPair[col] = (locationSDR, featureSDR)
+
+      for _ in xrange(settlingTime):
+        exp.infer([sdrPair], objectName=objectId, reset=False)
+
+      for c in range(numColumns):
+        numActiveL2cells[objectId, sensationNumber, c] = len(
+          exp.getL2Representations()[c])
+
+      for k in range(numObjects):
+        for c in range(numColumns):
+          overlapMat[objectId, k, sensationNumber] = len(
+            exp.getL2Representations()[c] & L2Representations[k][c])
+
+      sensationNumber += 1
+
     if profile:
       exp.printProfile(reset=True)
 
@@ -297,18 +422,25 @@ def runExperiment(args):
         onePlot=False,
       )
 
-  convergencePoint = averageConvergencePoint(
-    exp.getInferenceStats(),"L2 Representation", 30, 40, settlingTime)
+  convergencePoint = averageConvergencePointNew(numActiveL2cells,  30, 40)
 
 
-  print "# objects {} # features {} # locations {} # columns {} trial # {} network type {}".format(
-    numObjects, numFeatures, numLocations, numColumns, trialNum, networkType)
-  print "Average convergence point=",convergencePoint
+  print "# objects {} # features {} # locations {} # columns {} trial # {} " \
+        "noiselevel {} network type {}".format(
+    numObjects, numFeatures, numLocations, numColumns, trialNum, noiseLevel,
+    networkType)
+  print "Average convergence point=", convergencePoint
   print
+
+  accuracy = computeAccuracy(overlapMat)
 
   # Return our convergence point as well as all the parameters and objects
   args.update({"objects": objects.getObjects()})
-  args.update({"convergencePoint":convergencePoint})
+  args.update({"convergencePoint": convergencePoint})
+  args.update({"overlapMat": overlapMat})
+  args.update({"accuracy": accuracy["accuracy"]})
+  args.update({"sensitivity": accuracy["sensitivity"]})
+  args.update({"specificity": accuracy["specificity"]})
 
   # Can't pickle experiment so can't return it for batch multiprocessing runs.
   # However this is very useful for debugging when running in a single thread.
@@ -328,6 +460,7 @@ def runExperimentPool(numObjects,
                       pointRange=1,
                       numPoints=10,
                       includeRandomLocation=False,
+                      noiseRange=[0],
                       resultsName="convergence_results.pkl"):
   """
   Allows you to run a number of experiments using multiple processes.
@@ -357,20 +490,22 @@ def runExperimentPool(numObjects,
           for n in networkType:
             for p in longDistanceConnectionsRange:
               for t in range(nTrials):
-                args.append(
-                  {"numObjects": o,
-                   "numLocations": l,
-                   "numFeatures": f,
-                   "numColumns": c,
-                   "trialNum": t,
-                   "pointRange": pointRange,
-                   "numPoints": numPoints,
-                   "networkType" : n,
-                   "longDistanceConnections" : p,
-                   "plotInferenceStats": False,
-                   "includeRandomLocation": includeRandomLocation,
-                   "settlingTime": 3,
-                   }
+                for noise in noiseRange:
+                  args.append(
+                    {"numObjects": o,
+                     "numLocations": l,
+                     "numFeatures": f,
+                     "numColumns": c,
+                     "trialNum": t,
+                     "pointRange": pointRange,
+                     "numPoints": numPoints,
+                     "networkType" : n,
+                     "longDistanceConnections" : p,
+                     "plotInferenceStats": False,
+                     "includeRandomLocation": includeRandomLocation,
+                     "settlingTime": 3,
+                     "noiseLevel": noise,
+                     }
                 )
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
   # Run the pool
@@ -556,6 +691,69 @@ def plotConvergenceByObject(results, objectRange, featureRange):
   plt.close()
 
 
+def plotConvergenceNoiseRobustness(results, noiseRange, columnRange):
+  noiseRange = numpy.array(noiseRange)
+  convergence = numpy.zeros((len(noiseRange), max(columnRange) + 1))
+  specificity = numpy.zeros((len(noiseRange), 10, max(columnRange) + 1))
+  sensitivity = numpy.zeros((len(noiseRange), 10, max(columnRange) + 1))
+  accuracy = numpy.zeros((len(noiseRange), 10, max(columnRange) + 1))
+  for r in results:
+    idx = numpy.where(noiseRange == r["noiseLevel"])[0]
+    convergence[idx, r["numColumns"]] += r["convergencePoint"]
+    specificity[idx, :, r["numColumns"]] += r['specificity']
+    sensitivity[idx, :, r["numColumns"]] += r['sensitivity']
+    accuracy[idx, :, r["numColumns"]] += r['accuracy']
+
+  convergence /= numTrials
+  specificity /= numTrials
+  sensitivity /= numTrials
+  accuracy /= numTrials
+
+  # convergence[convergence > 10] = numpy.nan
+  ########################################################################
+  #
+  # Create the plot. x-axis=
+  plt.figure()
+  plotPath = os.path.join("plots", "noise_robustness_accuracy.pdf")
+  for i in range(len(noiseRange)):
+    plt.plot(accuracy[i, :, 1].transpose(),
+             label="noiseLevel {}".format(noiseRange[i]))
+  plt.legend()
+  plt.ylabel('Accuracy')
+  plt.xlabel('Number of touches')
+  plt.title('Single Column')
+  plt.savefig(plotPath)
+  plt.close()
+
+  plt.figure()
+  plotPath = os.path.join("plots", "noise_robustness.pdf")
+
+  # Plot each curve
+  legendList = []
+  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
+
+  for i in range(len(columnRange)):
+    c = columnRange[i]
+    # print "noise={} objectRange={} convergence={}".format(
+    #   f, objectRange, convergence[f - 1, objectRange])
+    legendList.append('Number of Column={}'.format(c))
+    plt.plot(noiseRange, convergence[:, c],
+             color=colorList[i])
+
+  # format
+  plt.legend(legendList, loc="lower right", prop={'size': 10})
+  plt.xlabel("Amount of noise")
+  # plt.xticks(range(0, max(objectRange) + 1, 10))
+  # plt.yticks(range(0, int(convergence.max()) + 2))
+  plt.ylabel("Average number of touches")
+
+  plt.title("Number of touches to recognize one object ")
+
+  # save
+  plt.savefig(plotPath)
+  plt.close()
+
+
 def plotConvergenceByObjectMultiColumn(results, objectRange, columnRange):
   """
   Plots the convergence graph: iterations vs number of objects.
@@ -679,7 +877,7 @@ if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
-  if True:
+  if False:
     results = runExperiment(
                   {
                     "numObjects": 30,
@@ -810,3 +1008,35 @@ if __name__ == "__main__":
       results = cPickle.load(f)
 
     plotConvergenceByObjectMultiColumn(results, objectRange, columnRange)
+
+  # Here we want to see how the number of objects affects convergence for a
+  # single column.
+  # This experiment is run using a process pool
+  if True:
+    # We run 10 trials for each column number and then analyze results
+    numTrials = 10
+    columnRange = [1, 2, 5, 8]
+    featureRange = [10]
+    objectRange = [50]
+
+    noiseRange = numpy.arange(0, 0.5, 0.1)
+
+    # Comment this out if you are re-running analysis on already saved results.
+    # Very useful for debugging the plots
+    runExperimentPool(
+      numObjects=objectRange,
+      numLocations=[10],
+      numFeatures=featureRange,
+      numColumns=columnRange,
+      numPoints=10,
+      nTrials=numTrials,
+      numWorkers=cpu_count() - 1,
+      noiseRange=noiseRange,
+      resultsName="noise_robustness_results.pkl")
+
+    # Analyze results
+    with open("noise_robustness_results.pkl", "rb") as f:
+      results = cPickle.load(f)
+
+    plotConvergenceNoiseRobustness(results, noiseRange, columnRange)
+
