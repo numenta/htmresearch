@@ -172,7 +172,9 @@ def runExperiment(args):
     externalInputSize=1024,
     numInputBits=20,
     seed=trialNum,
-    L4Overrides={"initialPermanence": 0.41},
+    L4Overrides={"initialPermanence": 0.41,
+                 "activationThreshold": 18,
+                 "minThreshold": 18},
     logCalls=False
   )
 
@@ -430,7 +432,7 @@ def plotSensorimotorAccuracy(results, locationRange, featureRange,
 
   # format
   plt.legend(legendList, loc="best", prop={'size':10})
-  plt.xlabel("Number of possible locations")
+  plt.xlabel("Size of location pool")
   # plt.xticks(range(0,max(locationRange)+1,10))
   # plt.yticks(range(0,int(accuracy.max())+2,10))
   plt.ylim(-10.0, 100.0)
@@ -557,12 +559,10 @@ if __name__ == "__main__":
   if True:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
-    featureRange = [1000, 2000, 5000]
+    featureRange = [5, 10, 100]
     seqRange = [50]
     locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
                      1000, 1100, 1200, 1300, 1400, 1500, 1600]
-    # locationRange = [10, 100, 200, 300, 500, 600, 800, 900,
-    #                  1000, 1200, 1300, 1500, 1600]
     resultsName = os.path.join(dirName, "sensorimotor_accuracy_results_5_10_100.pkl")
 
     # Comment this out if you  are re-running analysis on already saved results.
@@ -580,9 +580,8 @@ if __name__ == "__main__":
     with open(resultsName,"rb") as f:
       results = cPickle.load(f)
 
-    featureRange = [5, 10, 100]
     plotSensorimotorAccuracy(results, locationRange, featureRange, seqRange,
-      title="Accuracy of sensorimotor layer while inferring sequences",
+      title="Performance of sensorimotor layer while inferring temporal sequences",
       yaxis="Percent accuracy")
 
 

@@ -124,7 +124,6 @@ def averageSequenceAccuracy(inferenceStats, minOverlap, maxOverlap):
     # in the range.
     for key in stats.iterkeys():
       if prefix in key:
-        print stats[key]
         for numCells in stats[key]:
           numStats += 1.0
           if numCells in range(minOverlap, maxOverlap+1):
@@ -220,7 +219,8 @@ def runExperiment(args):
   #   pairs.sort()
   #   print str(o) + ": " + str(pairs)
 
-  # Setup experiment and train the network
+  # Setup experiment and train the network. Ensure both TM layers have identical
+  # parameters.
   name = "convergence_O%03d_L%03d_F%03d_T%03d" % (
     numObjects, numLocations, numFeatures, trialNum
   )
@@ -233,7 +233,9 @@ def runExperiment(args):
     externalInputSize=1024,
     numExternalInputBits=numInputBits,
     seed=trialNum,
-    L4Overrides={"initialPermanence": 0.41},
+    L4Overrides={"initialPermanence": 0.41,
+                 "activationThreshold": 18,
+                 "minThreshold": 18},
     logCalls=False
   )
 
@@ -288,9 +290,9 @@ def runExperiment(args):
       plotOneInferenceRun(
         exp.statistics[objectId],
         fields=[
-          ("L4 PredictedActive", "Predicted active sensorimotor cells"),
-          ("TM Predicted", "Predicted sequence cells"),
-          ("TM PredictedActive", "Predicted active sequence cells"),
+          ("L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
+          ("TM Predicted", "Predicted cells in temporal sequence layer"),
+          ("TM PredictedActive", "Predicted active cells in temporal sequence layer"),
         ],
         basename=exp.name,
         experimentID=objectId,
@@ -303,8 +305,7 @@ def runExperiment(args):
   convergencePoint, sensorimotorAccuracy = averageConvergencePoint(
     infStats,"L2 Representation", 30, 40, settlingTime)
 
-  sequenceAccuracy = averageSequenceAccuracy(
-    infStats, 15, 25)
+  sequenceAccuracy = averageSequenceAccuracy(infStats, 15, 25)
 
   predictedActive = numpy.zeros(len(infStats))
   predicted = numpy.zeros(len(infStats))
@@ -508,8 +509,8 @@ def plotPredictionsByObject(results, objectRange, featureRange, numTrials,
   plt.close()
 
 
-def plotSensorimotorAccuracy(results, locationRange, featureRange,
-                             seqRange, title="", yaxis=""):
+def plotSequenceAccuracy(results, featureRange, objectRange,
+                         title="", yaxis=""):
   """
   Plot accuracy vs number of features
   """
@@ -523,19 +524,20 @@ def plotSensorimotorAccuracy(results, locationRange, featureRange,
   accuracy = numpy.zeros((max(objectRange)+1, max(featureRange) + 1))
   totals = numpy.zeros((max(objectRange)+1, max(featureRange) + 1))
   for r in results:
-    accuracy[r["numObjects"], r["numFeatures"]] += r["sequenceAccuracyPct"]
-    totals[r["numObjects"], r["numFeatures"]] += 1
+    if r["numFeatures"] in featureRange and r["numObjects"] in objectRange:
+      accuracy[r["numObjects"], r["numFeatures"]] += r["sequenceAccuracyPct"]
+      totals[r["numObjects"], r["numFeatures"]] += 1
 
   for o in objectRange:
     for f in featureRange:
-      accuracy[o, f] = accuracy[o, f] / totals[o, f]
+      accuracy[o, f] = 100.0 * accuracy[o, f] / totals[o, f]
 
   ########################################################################
   #
   # Create the plot.
   plt.figure()
   plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                          "plots", "sensorimotorAccuracy_by_sequence.pdf")
+                          "plots", "sequenceAccuracy_by_object.pdf")
 
   # Plot each curve
   legendList = []
@@ -543,19 +545,18 @@ def plotSensorimotorAccuracy(results, locationRange, featureRange,
 
   for i in range(len(featureRange)):
     f = featureRange[i]
-    print "features={} locationRange={} accuracy={}".format(
-      f,locationRange, accuracy[f,locationRange]),
-    print totals[f,locationRange]
-    legendList.append('Unique features={}'.format(f))
-    plt.plot(locationRange, accuracy[f,locationRange],
-             color=colorList[i])
+    print "features={} objectRange={} accuracy={}".format(
+      f,objectRange, accuracy[objectRange, f])
+    print "Totals=",totals[objectRange, f]
+    legendList.append('Feature pool size: {}'.format(f))
+    plt.plot(objectRange, accuracy[objectRange, f], color=colorList[i])
 
   # format
-  plt.legend(legendList, loc="center right", prop={'size':10})
-  plt.xlabel("Number of possible locations")
+  plt.legend(legendList, loc="best", prop={'size':10})
+  plt.xlabel("Number of objects")
   # plt.xticks(range(0,max(locationRange)+1,10))
   # plt.yticks(range(0,int(accuracy.max())+2,10))
-  plt.ylim(-0.1, 1.0)
+  plt.ylim(-10.0, 100.0)
   plt.ylabel(yaxis)
   plt.title(title)
 
@@ -606,13 +607,13 @@ if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
-  if True:
+  if False:
     results = runExperiment(
                   {
-                    "numObjects": 2,
+                    "numObjects": 50,
                     "numPoints": 10,
                     "numLocations": 100,
-                    "numFeatures": 10,
+                    "numFeatures": 25,
                     "trialNum": 4,
                     "pointRange": 1,
                     "plotInferenceStats": True,  # Outputs detailed graphs
@@ -623,24 +624,21 @@ if __name__ == "__main__":
 
   # Here we want to check accuracy of the TM network in classifying the
   # objects.
-  if False:
+  if True:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
-    featureRange = [1000, 2000, 5000]
-    seqRange = [50]
-    locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
-                     1000, 1100, 1200, 1300, 1400, 1500, 1600]
-    # locationRange = [10, 100, 200, 300, 500, 600, 800, 900,
-    #                  1000, 1200, 1300, 1500, 1600]
-    resultsName = os.path.join(dirName, "sensorimotor_accuracy_results_5_10_100.pkl")
+    featureRange = [5, 10, 50]
+    objectRange = [2, 5, 10, 20, 30, 40, 50, 70]
+    locationRange = [100]
+    resultsName = os.path.join(dirName, "sequence_accuracy_results.pkl")
 
     # Comment this out if you  are re-running analysis on already saved results.
     # Very useful for debugging the plots
     # runExperimentPool(
-    #                   numSequences=seqRange,
+    #                   numObjects=objectRange,
     #                   numFeatures=featureRange,
     #                   numLocations=locationRange,
-    #                   seqLength=10,
+    #                   numPoints=10,
     #                   nTrials=numTrials,
     #                   numWorkers=cpu_count() - 1,
     #                   resultsName=resultsName)
@@ -649,9 +647,8 @@ if __name__ == "__main__":
     with open(resultsName,"rb") as f:
       results = cPickle.load(f)
 
-    featureRange = [5, 10, 100]
-    plotSensorimotorAccuracy(results, locationRange, featureRange, seqRange,
-      title="Accuracy of sensorimotor layer while inferring sequences",
+    plotSequenceAccuracy(results, featureRange, objectRange,
+      title="Performance of sequence layer while inferring objects",
       yaxis="Percent accuracy")
 
 
