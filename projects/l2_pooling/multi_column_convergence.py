@@ -437,7 +437,7 @@ def runExperiment(args):
   # Return our convergence point as well as all the parameters and objects
   args.update({"objects": objects.getObjects()})
   args.update({"convergencePoint": convergencePoint})
-  # args.update({"overlapMat": overlapMat})
+  args.update({"overlapMat": overlapMat})
   args.update({"accuracy": accuracy["accuracy"]})
   args.update({"sensitivity": accuracy["sensitivity"]})
   args.update({"specificity": accuracy["specificity"]})
@@ -691,7 +691,7 @@ def plotConvergenceByObject(results, objectRange, featureRange):
   plt.close()
 
 
-def plotConvergenceNoiseRobustness(results, noiseRange, columnRange):
+def plotConvergenceNoiseRobustness(results, noiseRange, columnRange, numTrials):
   noiseRange = numpy.array(noiseRange)
   convergence = numpy.zeros((len(noiseRange), max(columnRange) + 1))
   specificity = numpy.zeros((len(noiseRange), 10, max(columnRange) + 1))
@@ -722,7 +722,7 @@ def plotConvergenceNoiseRobustness(results, noiseRange, columnRange):
              label="noiseLevel {}".format(noiseRange[i]))
   plt.legend()
   plt.ylabel('Accuracy')
-  plt.xlabel('Number of touches')
+  plt.xlabel('Number of sensations')
   plt.title('Single Column')
   plt.savefig(plotPath)
   plt.close()
@@ -747,11 +747,63 @@ def plotConvergenceNoiseRobustness(results, noiseRange, columnRange):
   plt.xlabel("Amount of noise")
   # plt.xticks(range(0, max(objectRange) + 1, 10))
   # plt.yticks(range(0, int(convergence.max()) + 2))
-  plt.ylabel("Average number of touches")
+  plt.ylabel("Average number of sensations")
 
   plt.title("Number of touches to recognize one object ")
 
   # save
+  plt.savefig(plotPath)
+  plt.close()
+
+
+def plotConvergenceBySensations(results, columnRange, numTrials):
+  convergence = numpy.zeros((len(columnRange), ))
+  specificity = numpy.zeros((len(columnRange), 10))
+  sensitivity = numpy.zeros((len(columnRange), 10))
+  accuracy = numpy.zeros((len(columnRange), 10))
+  for r in results:
+    idx = numpy.where(numpy.array(columnRange) == r["numColumns"])[0]
+    convergence[idx] += r["convergencePoint"]
+    specificity[idx, :] += r['specificity']
+    sensitivity[idx, :] += r['sensitivity']
+    accuracy[idx, :] += r['accuracy']
+
+  convergence /= numTrials
+  specificity /= numTrials
+  sensitivity /= numTrials
+  accuracy /= numTrials
+
+  ########################################################################
+  #
+  # Create the plot.
+  plt.figure()
+  plotPath = os.path.join("plots", "accuracy_vs_number_of_sensations.pdf")
+  if not os.path.exists("plots/"):
+    os.makedirs("plots/")
+  for i in range(len(columnRange)):
+    plt.plot(accuracy[i, :],
+             label="Number of columns {}".format(columnRange[i]))
+
+  try:
+    resultsName = "bag_of_words_useLocation_{}.pkl".format(1)
+    with open(resultsName, "rb") as f:
+      bow_with_location = cPickle.load(f)
+    plt.plot(bow_with_location['numTouches'],
+             numpy.mean(bow_with_location['accuracy'], 0),
+             label="BOW with location")
+
+    resultsName = "bag_of_words_useLocation_{}.pkl".format(0)
+    with open(resultsName, "rb") as f:
+      bow_without_location = cPickle.load(f)
+    plt.plot(bow_without_location['numTouches'],
+             numpy.mean(bow_without_location['accuracy'], 0),
+             label="BOW without location")
+  except:
+    print "run bag_of_words_classifier.py first to compare with BOW classifier"
+
+  plt.legend()
+  plt.ylabel('Accuracy')
+  plt.xlabel('Number of sensations')
   plt.savefig(plotPath)
   plt.close()
 
@@ -1011,10 +1063,10 @@ if __name__ == "__main__":
 
     plotConvergenceByObjectMultiColumn(results, objectRange, columnRange)
 
-  # Here we want to see how the number of objects affects convergence for a
+  # Here we want to see how random noise affects convergence for a
   # single column.
   # This experiment is run using a process pool
-  if True:
+  if False:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1, 2, 5, 8]
@@ -1040,5 +1092,31 @@ if __name__ == "__main__":
     with open("noise_robustness_results.pkl", "rb") as f:
       results = cPickle.load(f)
 
-    plotConvergenceNoiseRobustness(results, noiseRange, columnRange)
+    plotConvergenceNoiseRobustness(results, noiseRange, columnRange, numTrials)
+
+
+  if True:
+    # We run 10 trials for each column number and then analyze results
+    numTrials = 1
+    columnRange = [1, 2, 3]
+    featureRange = [10]
+    objectRange = [50]
+
+    # Comment this out if you are re-running analysis on already saved results.
+    # Very useful for debugging the plots
+    runExperimentPool(
+      numObjects=objectRange,
+      numLocations=[10],
+      numFeatures=featureRange,
+      numColumns=columnRange,
+      numPoints=10,
+      nTrials=numTrials,
+      numWorkers=cpu_count(),
+      noiseRange=[0],
+      resultsName="multi_column_convergence_results.pkl")
+
+    # Analyze results
+    with open("multi_column_convergence_results.pkl", "rb") as f:
+      results = cPickle.load(f)
+    plotConvergenceBySensations(results, columnRange, numTrials)
 

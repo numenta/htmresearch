@@ -79,7 +79,7 @@ def getL2Params():
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 30,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 1.001,
+    "distalSegmentInhibitionFactor": 0.9999,
     "learningMode": True,
   }
 
