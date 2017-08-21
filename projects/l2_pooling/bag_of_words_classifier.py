@@ -69,7 +69,7 @@ def findWordInVocabulary(input, wordList):
 
 
 
-def bowClassifierPredict(input, bowVectors, distance="dotProduct"):
+def bowClassifierPredict(input, bowVectors, distance="overlap"):
   numClasses = bowVectors.shape[0]
   output = np.zeros((numClasses,))
 
@@ -85,6 +85,9 @@ def bowClassifierPredict(input, bowVectors, distance="dotProduct"):
       bowVectors[i, :] = bowVectors[i, :]/np.linalg.norm(bowVectors[i, :])
       output[i] = np.dot(input, bowVectors[i, :])
     output = 1 - output
+  elif distance == "overlap":
+    for i in range(numClasses):
+      output[i] = -np.dot(input, bowVectors[i, :])
   return output
 
 
@@ -171,6 +174,7 @@ if __name__ == "__main__":
         featureList[i] = wordList.shape[0]-1
 
     numWords = wordList.shape[0]
+    wordList = wordList[np.random.permutation(np.arange(numWords)), :]
     print "number of distinct words {}".format(numWords)
 
     # convert objects to BOW representations
@@ -199,7 +203,7 @@ if __name__ == "__main__":
     print "BOW classifier accuracy {}".format(float(numCorrect)/numObjs)
 
     # plot accuracy as a function of number of sensations
-    for maxSenses in range(10):
+    for maxSenses in range(1, 11):
       bowVectorsTest = np.zeros((numObjs, numWords))
       offset = 0
       for i in range(numObjs):
@@ -216,10 +220,10 @@ if __name__ == "__main__":
         predictLabel = np.argmin(output)
         numCorrect += predictLabel == i
       accuracy = float(numCorrect)/numObjs
-      accuracyList[trial, maxSenses] = accuracy
+      accuracyList[trial, maxSenses-1] = accuracy
       print "maxSenses {} accuracy {}".format(maxSenses, accuracy)
 
-  result = {"numTouches": range(10),
+  result = {"numTouches": range(1, 11),
             "accuracy": accuracyList}
 
   # Pickle results for later use

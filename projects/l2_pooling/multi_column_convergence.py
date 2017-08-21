@@ -781,7 +781,7 @@ def plotConvergenceBySensations(results, columnRange, numTrials):
   if not os.path.exists("plots/"):
     os.makedirs("plots/")
   for i in range(len(columnRange)):
-    plt.plot(accuracy[i, :],
+    plt.plot(numpy.arange(10)+1, accuracy[i, :],
              label="Number of columns {}".format(columnRange[i]))
 
   try:
@@ -1102,18 +1102,18 @@ if __name__ == "__main__":
     featureRange = [10]
     objectRange = [50]
 
-    # Comment this out if you are re-running analysis on already saved results.
-    # Very useful for debugging the plots
-    runExperimentPool(
-      numObjects=objectRange,
-      numLocations=[10],
-      numFeatures=featureRange,
-      numColumns=columnRange,
-      numPoints=10,
-      nTrials=numTrials,
-      numWorkers=cpu_count(),
-      noiseRange=[0],
-      resultsName="multi_column_convergence_results.pkl")
+    # # Comment this out if you are re-running analysis on already saved results.
+    # # Very useful for debugging the plots
+    # runExperimentPool(
+    #   numObjects=objectRange,
+    #   numLocations=[10],
+    #   numFeatures=featureRange,
+    #   numColumns=columnRange,
+    #   numPoints=10,
+    #   nTrials=numTrials,
+    #   numWorkers=cpu_count(),
+    #   noiseRange=[0],
+    #   resultsName="multi_column_convergence_results.pkl")
 
     # Analyze results
     with open("multi_column_convergence_results.pkl", "rb") as f:
