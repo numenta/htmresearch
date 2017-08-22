@@ -548,19 +548,81 @@ def plotSequenceAccuracy(results, featureRange, objectRange,
     print "features={} objectRange={} accuracy={}".format(
       f,objectRange, accuracy[objectRange, f])
     print "Totals=",totals[objectRange, f]
-    legendList.append('Feature pool size: {}'.format(f))
+    legendList.append('Sequence layer, feature pool size: {}'.format(f))
     plt.plot(objectRange, accuracy[objectRange, f], color=colorList[i])
 
+  plt.plot(objectRange, [100] * len(objectRange),
+           color=colorList[len(featureRange)])
+  legendList.append('Sensorimotor layer')
+
   # format
-  plt.legend(legendList, loc="best", prop={'size':10})
+  plt.legend(legendList, bbox_to_anchor=(0., 0.6, 1., .102), loc="right", prop={'size':10})
   plt.xlabel("Number of objects")
   # plt.xticks(range(0,max(locationRange)+1,10))
   # plt.yticks(range(0,int(accuracy.max())+2,10))
-  plt.ylim(-10.0, 100.0)
+  plt.ylim(-10.0, 110.0)
   plt.ylabel(yaxis)
   plt.title(title)
 
     # save
+  plt.savefig(plotPath)
+  plt.close()
+
+
+def plotSequenceAccuracyBargraph(results, featureRange, objectRange,
+                         title="", yaxis=""):
+  """
+  Plot accuracy vs number of features
+  """
+
+  ########################################################################
+  #
+  # Accumulate all the results per column in a convergence array.
+  #
+  # accuracy[o,f] = accuracy with o objects in training
+  # and f unique features.
+  accuracy = numpy.zeros(max(featureRange) + 1)
+  totals = numpy.zeros(max(featureRange) + 1)
+  for r in results:
+    if r["numFeatures"] in featureRange and r["numObjects"] in objectRange:
+      accuracy[r["numFeatures"]] += r["sequenceAccuracyPct"]
+      totals[r["numFeatures"]] += 1
+
+  for f in featureRange:
+    accuracy[f] = 100.0 * accuracy[f] / totals[f]
+
+  ########################################################################
+  #
+  # Create the plot.
+  plt.figure()
+  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                          "plots", "sequenceAccuracy_by_object_bar.pdf")
+
+  # Plot each curve
+  legendList = []
+  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
+
+  ind = numpy.arange(len(featureRange))
+  width = 0.35
+
+  for i in range(len(featureRange)):
+    f = featureRange[i]
+    print "features={} objectRange={} accuracy={}".format(
+      f,objectRange, accuracy[f])
+    print "Totals=",totals[f]
+    plt.bar(i, 100.0, width, color='black')
+    plt.bar(i+width, accuracy[f], width, color='white', edgecolor='black')
+
+  legendList.append("Sensorimotor layer")
+  legendList.append("Sequence layer")
+  plt.legend(legendList, bbox_to_anchor=(0., 0.87, 1.0, .102), loc="right", prop={'size':10})
+  plt.xlabel("Number of objects")
+  plt.xticks(ind + width / 2, featureRange)
+  plt.ylim(0.0, 119.0)
+  plt.ylabel(yaxis)
+  plt.title(title)
+  #
+  #   # save
   plt.savefig(plotPath)
   plt.close()
 
@@ -648,9 +710,12 @@ if __name__ == "__main__":
       results = cPickle.load(f)
 
     plotSequenceAccuracy(results, featureRange, objectRange,
-      title="Performance of sequence layer while inferring objects",
-      yaxis="Percent accuracy")
+      title="Relative performance of layers during sensorimotor inference",
+      yaxis="Accuracy (%)")
 
+    # plotSequenceAccuracyBargraph(results, featureRange, objectRange,
+    #                      title="Performance while inferring objects",
+    #                      yaxis="Accuracy (%)")
 
   # Here we want to see how the number of objects affects convergence for a
   # single column.

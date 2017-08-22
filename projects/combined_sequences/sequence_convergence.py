@@ -426,16 +426,20 @@ def plotSensorimotorAccuracy(results, locationRange, featureRange,
     print "features={} locationRange={} accuracy={}".format(
       f,locationRange, accuracy[f,locationRange]),
     print totals[f,locationRange]
-    legendList.append('Feature pool size: {}'.format(f))
+    legendList.append('Sensorimotor layer, feature pool size: {}'.format(f))
     plt.plot(locationRange, accuracy[f,locationRange],
              color=colorList[i])
 
+  plt.plot(locationRange, [100] * len(locationRange),
+           color=colorList[len(featureRange)])
+  legendList.append('Temporal sequence layer')
+
   # format
-  plt.legend(legendList, loc="best", prop={'size':10})
+  plt.legend(legendList, bbox_to_anchor=(0., 0.65, 1., .102), loc="right", prop={'size':10})
   plt.xlabel("Size of location pool")
   # plt.xticks(range(0,max(locationRange)+1,10))
   # plt.yticks(range(0,int(accuracy.max())+2,10))
-  plt.ylim(-10.0, 100.0)
+  plt.ylim(-10.0, 110.0)
   plt.ylabel(yaxis)
   plt.title(title)
 
@@ -581,8 +585,8 @@ if __name__ == "__main__":
       results = cPickle.load(f)
 
     plotSensorimotorAccuracy(results, locationRange, featureRange, seqRange,
-      title="Performance of sensorimotor layer while inferring temporal sequences",
-      yaxis="Percent accuracy")
+      title="Relative performance of layers while inferring temporal sequences",
+      yaxis="Accuracy (%)")
 
 
   # Here we want to see how the number of objects affects convergence for a
