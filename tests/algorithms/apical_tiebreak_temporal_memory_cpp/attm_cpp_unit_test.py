@@ -25,7 +25,7 @@ Unit tests for Extended Temporal Memory.
 
 import unittest
 
-from htmresearch_core.experimental import ExtendedTemporalMemory
+from htmresearch_core.experimental import ApicalTiebreakPairMemory
 
 import numpy as np
 
@@ -34,7 +34,7 @@ import numpy as np
 class ExtendedTemporalMemoryUnitTest(unittest.TestCase):
 
   def constructTM(self, **params):
-    return ExtendedTemporalMemory(**params)
+    return ApicalTiebreakPairMemory(**params)
 
 
   def testDepolarizeWithExternalBasalInput(self):

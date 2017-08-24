@@ -25,7 +25,7 @@ Run the apical tiebreak sequence tests on the ExtendedTemporalMemory.
 
 import unittest
 
-from htmresearch_core.experimental import ExtendedTemporalMemory
+from htmresearch_core.experimental import ApicalTiebreakSequenceMemory
 from htmresearch.support.shared_tests.apical_tiebreak_sequences_test_base import (
   ApicalTiebreakSequencesTestBase)
 
@@ -44,7 +44,6 @@ class ExtendedTM_ApicalTiebreakSequencesTests(ApicalTiebreakSequencesTestBase,
 
     params = {
       "columnCount": columnCount,
-      "basalInputSize": columnCount * cellsPerColumn,
       "apicalInputSize": apicalInputSize,
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
@@ -53,13 +52,13 @@ class ExtendedTM_ApicalTiebreakSequencesTests(ApicalTiebreakSequencesTestBase,
       "sampleSize": sampleSize,
       "permanenceIncrement": permanenceIncrement,
       "permanenceDecrement": permanenceDecrement,
-      "predictedSegmentDecrement": predictedSegmentDecrement,
+      "basalPredictedSegmentDecrement": predictedSegmentDecrement,
       "activationThreshold": activationThreshold,
       "seed": seed,
       "learnOnOneCell": False,
     }
 
-    self.tm = ExtendedTemporalMemory(**params)
+    self.tm = ApicalTiebreakSequenceMemory(**params)
 
 
   def compute(self, activeColumns, apicalInput, learn):
@@ -68,8 +67,6 @@ class ExtendedTM_ApicalTiebreakSequencesTests(ApicalTiebreakSequencesTestBase,
     apicalInput = sorted(apicalInput)
 
     self.tm.compute(activeColumns,
-                    basalInput=self.tm.getActiveCells(),
-                    basalGrowthCandidates=self.tm.getWinnerCells(),
                     apicalInput=apicalInput,
                     apicalGrowthCandidates=apicalInput,
                     learn=learn)

@@ -451,22 +451,22 @@ def runExp(noiseProba, numSequences, seed, noiseType, sequenceLen, sharedRange, 
     metrics["overlapsNoFBL4"].append( [len(responsesNoNoise[numseq]['L4Responses'][x].intersection(responsesNoFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
     metrics["overlapsFBL4Next"].append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L4Responses'][x].intersection(responsesFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
     metrics["overlapsNoFBL4Next"].append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L4Responses'][x].intersection(responsesNoFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
-    metrics["diffsFBL4Pred"].append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesFB[numseq]['L4Predictive'][x])) for x in range(seqlen)] )
-    metrics["diffsNoFBL4Pred"].append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoFB[numseq]['L4Predictive'][x])) for x in range(seqlen)] )
+    metrics["diffsFBL4Pred"].append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesFB[numseq]['L4Predicted'][x])) for x in range(seqlen)] )
+    metrics["diffsNoFBL4Pred"].append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoFB[numseq]['L4Predicted'][x])) for x in range(seqlen)] )
     cpcfb = []; cpcnofb=[]; cpcfbnext = []; cpcnofbnext=[];
     for x in range(seqlen):
         z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
-        z2 = numpy.zeros(sdrlen+1); z2[list(responsesFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+        z2 = numpy.zeros(sdrlen+1); z2[list(responsesFB[numseq]['L4Predicted'][x])] = 1; z2[-1] = 1
         cpcfb.append(numpy.corrcoef(z1, z2)[0,1])
         z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
-        z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+        z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoFB[numseq]['L4Predicted'][x])] = 1; z2[-1] = 1
         cpcnofb.append(numpy.corrcoef(z1, z2)[0,1])
 
         z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[(numseq+1) % numSequences]['L4Responses'][x])] = 1; z1[-1] = 1
-        z2 = numpy.zeros(sdrlen+1); z2[list(responsesFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+        z2 = numpy.zeros(sdrlen+1); z2[list(responsesFB[numseq]['L4Predicted'][x])] = 1; z2[-1] = 1
         cpcfbnext.append(numpy.corrcoef(z1, z2)[0,1])
         z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[(numseq+1) % numSequences]['L4Responses'][x])] = 1; z1[-1] = 1
-        z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+        z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoFB[numseq]['L4Predicted'][x])] = 1; z2[-1] = 1
         cpcnofbnext.append(numpy.corrcoef(z1, z2)[0,1])
 
 
@@ -485,9 +485,9 @@ def runExp(noiseProba, numSequences, seed, noiseType, sequenceLen, sharedRange, 
     print "Size of L4 responses (FB):", [len(responsesFB[numseq]['L4Responses'][x]) for x in range(seqlen)]
     print "Size of L4 responses (NoFB):", [len(responsesNoFB[numseq]['L4Responses'][x]) for x in range(seqlen)]
     print "Size of L4 responses (NoNoise):", [len(responsesNoNoise[numseq]['L4Responses'][x]) for x in range(seqlen)]
-    print "Size of L4 predictions (FB):", [len(responsesFB[numseq]['L4Predictive'][x]) for x in range(seqlen)]
-    print "Size of L4 predictions (NoFB):", [len(responsesNoFB[numseq]['L4Predictive'][x]) for x in range(seqlen)]
-    print "Size of L4 predictions (NoNoise):", [len(responsesNoNoise[numseq]['L4Predictive'][x]) for x in range(seqlen)]
+    print "Size of L4 predictions (FB):", [len(responsesFB[numseq]['L4Predicted'][x]) for x in range(seqlen)]
+    print "Size of L4 predictions (NoFB):", [len(responsesNoFB[numseq]['L4Predicted'][x]) for x in range(seqlen)]
+    print "Size of L4 predictions (NoNoise):", [len(responsesNoNoise[numseq]['L4Predicted'][x]) for x in range(seqlen)]
     print "L2 overlap with current (FB): ", metrics["overlapsFBL2"][-1]
     print "L4 overlap with current (FB): ", metrics["overlapsFBL4"][-1]
     print "L4 overlap with current (NoFB): ", metrics["overlapsNoFBL4"][-1]
@@ -499,8 +499,8 @@ def runExp(noiseProba, numSequences, seed, noiseType, sequenceLen, sharedRange, 
     print "NoNoise L4 responses:", [sorted(list(x))[:2] for x in responsesNoNoise[numseq]['L4Responses']]
     print "NoNoise L4 responses (next):", [sorted(list(x))[:2] for x in responsesNoNoise[(numseq + 1) % numSequences]['L4Responses']]
     print "NoFB L4 responses:", [sorted(list(x))[:2] for x in responsesNoFB[numseq]['L4Responses']]
-    print "NoNoise L4 predictions:", [sorted(list(x))[:2] for x in responsesNoNoise[numseq]['L4Predictive']]
-    print "NoFB L4 predictions:", [sorted(list(x))[:2] for x in responsesNoFB[numseq]['L4Predictive']]
+    print "NoNoise L4 predictions:", [sorted(list(x))[:2] for x in responsesNoNoise[numseq]['L4Predicted']]
+    print "NoFB L4 predictions:", [sorted(list(x))[:2] for x in responsesNoFB[numseq]['L4Predicted']]
     print ""
 
   # Compute mean performance / error for this seed.

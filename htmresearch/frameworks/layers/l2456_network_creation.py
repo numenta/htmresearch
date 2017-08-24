@@ -94,13 +94,13 @@ networkConfig must be a dict with the following format:
       <constructor parameters for ColumnPoolerRegion>
     },
     "L4Params": {
-      <constructor parameters for ExtendedTMRegion
+      <constructor parameters for ApicalTMPairRegion
     },
     "L5Params": {
       <constructor parameters for ColumnPoolerRegion>
     },
     "L6Params": {
-      <constructor parameters for ExtendedTMRegion
+      <constructor parameters for ApicalTMPairRegion
     }
   }
 
@@ -160,7 +160,7 @@ def _createL2456Column(network, networkConfig, suffix=""):
   L6Params["basalInputWidth"] = networkConfig["locationParams"]["outputWidth"]
   L6Params["apicalInputWidth"] = networkConfig["L5Params"]["cellCount"]
   network.addRegion(
-    L6ColumnName, "py.ExtendedTMRegion",
+    L6ColumnName, "py.ApicalTMPairRegion",
     json.dumps(L6Params))
 
   L4Params = copy.deepcopy(networkConfig["L4Params"])
@@ -168,7 +168,7 @@ def _createL2456Column(network, networkConfig, suffix=""):
     L6Params["columnCount"] * L6Params["cellsPerColumn"] )
   L4Params["apicalInputWidth"] = networkConfig["L2Params"]["cellCount"]
   network.addRegion(
-    L4ColumnName, "py.ExtendedTMRegion",
+    L4ColumnName, "py.ApicalTMPairRegion",
     json.dumps(L4Params))
 
   # Once regions are created, ensure inputs match column counts

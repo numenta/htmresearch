@@ -29,20 +29,20 @@ from nupic.bindings.regions.PyRegion import PyRegion
 
 
 
-class ApicalTMRegion(PyRegion):
+class ApicalTMPairRegion(PyRegion):
   """
-  Implements temporal memory for the HTM network API. The temporal memory uses
-  basal and apical dendrites.
+  Implements pair memory with the TM for the HTM network API. The temporal
+  memory uses basal and apical dendrites.
   """
 
   @classmethod
   def getSpec(cls):
     """
-    Return the Spec for ApicalTMRegion.
+    Return the Spec for ApicalTMPairRegion
     """
 
     spec = {
-      "description": ApicalTMRegion.__doc__,
+      "description": ApicalTMPairRegion.__doc__,
       "singleNodeOnly": True,
       "inputs": {
         "activeColumns": {
@@ -140,7 +140,7 @@ class ApicalTMRegion(PyRegion):
 
         # Input sizes (the network API doesn't provide these during initialize)
         "columnCount": {
-          "description": ("The size of the 'activeColumns' input " +
+          "description": ("The size of the 'activeColumns' input "
                           "(i.e. the number of columns)"),
           "accessMode": "Read",
           "dataType": "UInt32",
@@ -221,14 +221,28 @@ class ApicalTMRegion(PyRegion):
           "constraints": ""
         },
         "sampleSize": {
-          "description": ("The desired number of active synapses for an " +
+          "description": ("The desired number of active synapses for an "
                           "active cell"),
           "accessMode": "Read",
           "dataType": "UInt32",
           "count": 1
         },
+        "learnOnOneCell": {
+          "description": ("If True, the winner cell for each column will be"
+                          " fixed between resets."),
+          "accessMode": "Read",
+          "dataType": "Bool",
+          "count": 1,
+          "defaultValue": "false"
+        },
         "maxSynapsesPerSegment": {
           "description": "The maximum number of synapses per segment",
+          "accessMode": "Read",
+          "dataType": "UInt32",
+          "count": 1
+        },
+        "maxSegmentsPerCell": {
+          "description": "The maximum number of segments per cell",
           "accessMode": "Read",
           "dataType": "UInt32",
           "count": 1
@@ -274,8 +288,8 @@ class ApicalTMRegion(PyRegion):
           "accessMode": "Read",
           "dataType": "Byte",
           "count": 0,
-          "constraints": ("enum: ApicalTiebreak, ApicalDependent"),
-          "defaultValue": "ApicalTiebreak"
+          "constraints": ("enum: ApicalTiebreak, ApicalTiebreakCPP, ApicalDependent"),
+          "defaultValue": "ApicalTiebreakCPP"
         },
       },
     }
@@ -296,13 +310,15 @@ class ApicalTMRegion(PyRegion):
                initialPermanence=0.21,
                connectedPermanence=0.50,
                minThreshold=10,
-               reducedBasalThreshold=13, # Only used for apicalTiebreak implementation
+               reducedBasalThreshold=13, # ApicalTiebreak and ApicalDependent only
                sampleSize=20,
                permanenceIncrement=0.10,
                permanenceDecrement=0.10,
                basalPredictedSegmentDecrement=0.0,
                apicalPredictedSegmentDecrement=0.0,
-               maxSynapsesPerSegment=255,
+               learnOnOneCell=False, # ApicalTiebreakCPP only
+               maxSegmentsPerCell=255,
+               maxSynapsesPerSegment=255, # ApicalTiebreakCPP only
                seed=42,
 
                # Region params
@@ -328,6 +344,8 @@ class ApicalTMRegion(PyRegion):
     self.basalPredictedSegmentDecrement = basalPredictedSegmentDecrement
     self.apicalPredictedSegmentDecrement = apicalPredictedSegmentDecrement
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
+    self.maxSegmentsPerCell = maxSegmentsPerCell
+    self.learnOnOneCell = learnOnOneCell
     self.seed = seed
 
     # Region params
@@ -364,18 +382,29 @@ class ApicalTMRegion(PyRegion):
         "seed": self.seed,
       }
 
-      if self.implementation == "ApicalTiebreak":
-        from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
-          ApicalTiebreakTemporalMemory)
+      if self.implementation == "ApicalTiebreakCPP":
+        params["learnOnOneCell"] = self.learnOnOneCell
+        params["maxSegmentsPerCell"] = self.maxSegmentsPerCell
+
+        import htmresearch_core.experimental
+        cls = htmresearch_core.experimental.ApicalTiebreakPairMemory
+
+      elif self.implementation == "ApicalTiebreak":
         params["reducedBasalThreshold"] = self.reducedBasalThreshold
-        self._tm = ApicalTiebreakTemporalMemory(**params)
+
+        import htmresearch.algorithms.apical_tiebreak_temporal_memory
+        cls = htmresearch.algorithms.apical_tiebreak_temporal_memory.ApicalTiebreakPairMemory
+
       elif self.implementation == "ApicalDependent":
-        from htmresearch.algorithms.apical_dependent_temporal_memory import (
-          ApicalDependentTemporalMemory)
-        self._tm = ApicalDependentTemporalMemory(**params)
+        params["reducedBasalThreshold"] = self.reducedBasalThreshold
+
+        import htmresearch.algorithms.apical_dependent_temporal_memory
+        cls = htmresearch.algorithms.apical_dependent_temporal_memory.TripleMemory
+
       else:
         raise ValueError("Unrecognized implementation %s" % self.implementation)
 
+      self._tm = cls(**params)
 
   def compute(self, inputs, outputs):
     """

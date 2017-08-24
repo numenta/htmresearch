@@ -20,7 +20,7 @@
 # ----------------------------------------------------------------------
 
 """
-Extended Temporal Memory mixin that enables detailed monitoring of history.
+Apical Temporal Memory pair mixin that enables detailed monitoring of history.
 """
 
 from collections import defaultdict
@@ -36,14 +36,14 @@ from nupic.algorithms.monitor_mixin.trace import (IndicesTrace, CountsTrace,
 
 
 
-class ExtendedTemporalMemoryMonitorMixin(MonitorMixinBase):
+class ApicalTMPairMonitorMixin(MonitorMixinBase):
   """
-  Mixin for ExtendedTemporalMemory that stores a detailed history, for
+  Mixin for Apical TemporalMemory + pairs that stores a detailed history, for
   inspection and debugging.
   """
 
   def __init__(self, *args, **kwargs):
-    super(ExtendedTemporalMemoryMonitorMixin, self).__init__(*args, **kwargs)
+    super(ApicalTMPairMonitorMixin, self).__init__(*args, **kwargs)
 
     self._mmResetActive = True  # First iteration is always a reset
 
@@ -347,7 +347,7 @@ class ExtendedTemporalMemoryMonitorMixin(MonitorMixinBase):
               learn=True,
               sequenceLabel=None):
 
-    super(ExtendedTemporalMemoryMonitorMixin, self).compute(
+    super(ApicalTMPairMonitorMixin, self).compute(
       activeColumns, basalInput, apicalInput, basalGrowthCandidates,
       apicalGrowthCandidates, learn)
 
@@ -371,7 +371,7 @@ class ExtendedTemporalMemoryMonitorMixin(MonitorMixinBase):
 
 
   def reset(self):
-    super(ExtendedTemporalMemoryMonitorMixin, self).reset()
+    super(ApicalTMPairMonitorMixin, self).reset()
 
     self._mmResetActive = True
 
@@ -410,7 +410,7 @@ class ExtendedTemporalMemoryMonitorMixin(MonitorMixinBase):
 
 
   def mmClearHistory(self):
-    super(ExtendedTemporalMemoryMonitorMixin, self).mmClearHistory()
+    super(ApicalTMPairMonitorMixin, self).mmClearHistory()
 
     self._mmTraces["activeColumns"] = IndicesTrace(self, "active columns")
     self._mmTraces["activeCells"] = IndicesTrace(self, "active cells")

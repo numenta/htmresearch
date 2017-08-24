@@ -28,7 +28,7 @@ import unittest
 import numpy as np
 
 from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
-  ApicalTiebreakTemporalMemory)
+  ApicalTiebreakPairMemory)
 from htmresearch.support.shared_tests.apical_tiebreak_test_base import (
   ApicalTiebreakTestBase)
 
@@ -62,7 +62,7 @@ class ApicalTiebreakTM_ApicalTiebreakTests(ApicalTiebreakTestBase,
       "apicalInputSize": apicalInputSize,
     }
 
-    self.tm = ApicalTiebreakTemporalMemory(**params)
+    self.tm = ApicalTiebreakPairMemory(**params)
 
 
   def compute(self, activeColumns, basalInput, apicalInput, learn):

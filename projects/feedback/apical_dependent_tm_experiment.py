@@ -2,7 +2,7 @@ import numpy
 import random
 
 from htmresearch.algorithms.column_pooler import ColumnPooler
-from htmresearch.algorithms.apical_dependent_temporal_memory import ApicalDependentTemporalMemory
+from htmresearch.algorithms.apical_dependent_temporal_memory import ApicalDependentSequenceMemory
 from feedback_sequences import generateSequences, convertSequenceMachineSequence
 
 
@@ -14,7 +14,6 @@ def getDefaultL4Params(inputSize):
   return {
       "columnCount": inputSize,
       "cellsPerColumn": 8,
-      "basalInputSize": inputSize * 8,
       "apicalInputSize": 2048,
       "initialPermanence": 0.61,
       "connectedPermanence": 0.6,
@@ -54,7 +53,7 @@ def getDefaultL2Params(inputSize, seed):
   }
 
 def test_apical_dependent_TM_learning(sequenceLen, numSequences, sharedRange, seed, training_iters):
-  TM = ApicalDependentTemporalMemory(**getDefaultL4Params(2048))
+  TM = ApicalDependentSequenceMemory(**getDefaultL4Params(2048))
   pooler = ColumnPooler(**getDefaultL2Params(2048, seed))
 
 
@@ -86,7 +85,6 @@ def test_apical_dependent_TM_learning(sequenceLen, numSequences, sharedRange, se
         datapoint.sort()
         TM.compute(activeColumns = datapoint,
                    apicalInput = pooler_representation,
-                   basalInput = TM_representation,
                    learn = True)
         TM_representation = TM.activeCells
         winners = TM.winnerCells

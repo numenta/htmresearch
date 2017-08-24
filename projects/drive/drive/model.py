@@ -1,12 +1,12 @@
 import numpy
 
-from sensorimotor.extended_temporal_memory import ExtendedTemporalMemory
+from sensorimotor.extended_temporal_memory import ApicalTiebreakPairMemory
 
-from htmresearch.support.etm_monitor_mixin import (
-  ExtendedTemporalMemoryMonitorMixin)
+from htmresearch.support.apical_tm_pair_monitor_mixin import (
+  ApicalTMPairMonitorMixin)
 
-class MonitoredExtendedTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
-                                      ExtendedTemporalMemory):
+class MonitoredApicalTiebreakPairMemory(
+  ApicalTMPairMonitorMixin, ApicalTiebreakPairMemory):
   pass
 from sensorimotor.behavior_memory import BehaviorMemory
 
@@ -44,7 +44,7 @@ class PositionPredictionModel(Model):
 
     tmParams = dict(DEFAULT_TM_PARAMS)
     tmParams.update(tmParams or {})
-    self.tm = MonitoredExtendedTemporalMemory(mmName="TM", **tmParams)
+    self.tm = MonitoredApicalTiebreakPairMemory(mmName="TM", **tmParams)
     self.n = self.tm.numberOfColumns()
     self.w = int(self.n * sparsity) + 1
     self.encoderResolution = encoderResolution
