@@ -204,6 +204,7 @@ class ApicalTiebreakTemporalMemory(object):
     @param learn (bool)
     Whether to grow / reinforce / punish synapses
     """
+    activeColumns = np.asarray(activeColumns)
 
     if basalGrowthCandidates is None:
       basalGrowthCandidates = basalInput
@@ -212,7 +213,6 @@ class ApicalTiebreakTemporalMemory(object):
       apicalGrowthCandidates = apicalInput
 
     # Calculate predictions for this timestep
-
     (activeApicalSegments,
      matchingApicalSegments,
      apicalPotentialOverlaps) = self._calculateApicalSegmentActivity(

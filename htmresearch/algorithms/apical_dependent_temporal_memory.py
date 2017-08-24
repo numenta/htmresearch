@@ -181,6 +181,7 @@ class ApicalDependentTemporalMemory(object):
     @param learn (bool)
     Whether to grow / reinforce / punish synapses
     """
+    activeColumns = np.asarray(activeColumns)
 
     if basalGrowthCandidates is None:
       basalGrowthCandidates = basalInput
