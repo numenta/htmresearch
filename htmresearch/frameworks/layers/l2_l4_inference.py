@@ -792,7 +792,7 @@ class L4L2Experiment(object):
     """
     if numInputBits == 20:
       sampleSizeProximal = 10
-      minThresholdProximal = 6
+      minThresholdProximal = 5
     elif numInputBits == 10:
       sampleSizeProximal = 6
       minThresholdProximal = 3
