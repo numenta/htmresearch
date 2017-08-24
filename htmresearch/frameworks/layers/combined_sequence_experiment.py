@@ -156,8 +156,8 @@ class L4TMExperiment(L4L2Experiment):
     Returns the cells in TM that were predicted at the beginning of the last
     call to 'compute'.
     """
-    return [set(column.getOutputData("predictedCells").nonzero()[0])
-            for column in self.TMRegions]
+    return [set(column._tm.getSequenceMemoryPredictions()["predictedCells"])
+            for column in self.TMColumns]
 
 
   def getTMPredictedActiveCells(self):
@@ -176,8 +176,8 @@ class L4TMExperiment(L4L2Experiment):
     sampleSize = int(1.5 * numInputBits)
 
     if numInputBits == 20:
-      activationThreshold = 13
-      minThreshold = 13
+      activationThreshold = 18
+      minThreshold = 18
     elif numInputBits == 10:
       activationThreshold = 8
       minThreshold = 8
@@ -190,12 +190,12 @@ class L4TMExperiment(L4L2Experiment):
       "cellsPerColumn": 16,
       "learn": True,
       "learnOnOneCell": False,
-      "initialPermanence": 0.51,
+      "initialPermanence": 0.41,
       "connectedPermanence": 0.6,
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.02,
       "minThreshold": minThreshold,
-      "predictedSegmentDecrement": 0.02,
+      "predictedSegmentDecrement": 0.001,
       "activationThreshold": activationThreshold,
       "sampleSize": sampleSize,
       "implementation": "etm",
@@ -236,8 +236,10 @@ class L4TMExperiment(L4L2Experiment):
     """
     L4Representations = self.getL4Representations()
     L4PredictedCells = self.getL4PredictedCells()
+    L4PredictedActiveCells = self.getL4PredictedActiveCells()
     L2Representation = self.getL2Representations()
     TMPredictedActive = self.getTMPredictedActiveCells()
+    TMPredicted = self.getTMPredictedCells()
     TMRepresentation = self.getTMRepresentations()
 
     for i in xrange(self.numColumns):
@@ -246,6 +248,9 @@ class L4TMExperiment(L4L2Experiment):
       )
       statistics["L4 Predicted C" + str(i)].append(
         len(L4PredictedCells[i])
+      )
+      statistics["L4 PredictedActive C" + str(i)].append(
+        len(L4PredictedActiveCells[i])
       )
       statistics["L2 Representation C" + str(i)].append(
         len(L2Representation[i])
@@ -261,6 +266,9 @@ class L4TMExperiment(L4L2Experiment):
       )
       statistics["TM PredictedActive C" + str(i)].append(
         len(TMPredictedActive[i])
+      )
+      statistics["TM Predicted C" + str(i)].append(
+        len(TMPredicted[i])
       )
       statistics["TM Representation C" + str(i)].append(
         len(TMRepresentation[i])
