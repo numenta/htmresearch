@@ -174,7 +174,8 @@ def runExperiment(args):
     seed=trialNum,
     L4Overrides={"initialPermanence": 0.41,
                  "activationThreshold": 18,
-                 "minThreshold": 18},
+                 "minThreshold": 18,
+                 "predictedSegmentDecrement": 0.0001},
     logCalls=False
   )
 

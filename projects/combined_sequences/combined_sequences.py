@@ -219,7 +219,8 @@ def runExperiment(args):
     seed=trialNum,
     L4Overrides={"initialPermanence": 0.41,
                  "activationThreshold": 18,
-                 "minThreshold": 18},
+                 "minThreshold": 18,
+                 "predictedSegmentDecrement": 0.0001},
   )
 
   # Train the network on all the sequences
@@ -705,24 +706,24 @@ if __name__ == "__main__":
   # for debugging, profiling, etc.
   if True:
     resultsName = os.path.join(dirName, "combined_results.pkl")
-    # results = runExperiment(
-    #               {
-    #                 "numSequences": 50,
-    #                 "seqLength": 10,
-    #                 "numObjects": 50,
-    #                 "numPoints": 10,
-    #                 "numFeatures": 50,
-    #                 "numColumns": 1,
-    #                 "trialNum": 8,
-    #                 "numLocations": 50,
-    #                 "plotInferenceStats": True,  # Outputs detailed graphs
-    #                 "settlingTime": 3,
-    #               }
-    #           )
-    #
-    # # Pickle results for later use
-    # with open(resultsName,"wb") as f:
-    #   cPickle.dump(results,f)
+    results = runExperiment(
+                  {
+                    "numSequences": 50,
+                    "seqLength": 10,
+                    "numObjects": 50,
+                    "numPoints": 10,
+                    "numFeatures": 50,
+                    "numColumns": 1,
+                    "trialNum": 8,
+                    "numLocations": 50,
+                    "plotInferenceStats": True,  # Outputs detailed graphs
+                    "settlingTime": 3,
+                  }
+              )
+
+    # Pickle results for later use
+    with open(resultsName,"wb") as f:
+      cPickle.dump(results,f)
 
     # Analyze results
     with open(resultsName,"rb") as f:
