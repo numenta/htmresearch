@@ -46,7 +46,7 @@ networkConfig = {
     "verbosity": 0,
   },
 
-  "L4RegionType": "py.TMPairRegion",
+  "L4RegionType": "py.ApicalTMPairRegion",
 
   "L4Params": {
     "columnCount": 2048,

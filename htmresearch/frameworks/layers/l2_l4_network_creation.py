@@ -192,7 +192,7 @@ def createL4L2Column(network, networkConfig, suffix=""):
     {
       "externalInputSize": 1024,
       "sensorInputSize": 1024,
-      "L4RegionType": "py.TMPairRegion",
+      "L4RegionType": "py.ApicalTMPairRegion",
       "L4Params": {
         <constructor parameters for the L4 region>
       },
@@ -217,7 +217,7 @@ def createL4L2Column(network, networkConfig, suffix=""):
 
     If externalInputSize is 0, the externalInput sensor (and SP if appropriate)
     will NOT be created. In this case it is expected that L4 is a sequence
-    memory region (e.g. TMSequenceRegion)
+    memory region (e.g. ApicalTMSequenceRegion)
   """
 
   externalInputName = "externalInput" + suffix
@@ -311,7 +311,7 @@ def createMultipleL4L2Columns(network, networkConfig):
       "externalInputSize": 1024,
       "sensorInputSize": 1024,
       "L4Params": {
-        <constructor parameters for TMPairRegion
+        <constructor parameters for ApicalTMPairRegion
       },
       "L2Params": {
         <constructor parameters for ColumnPoolerRegion>
@@ -386,7 +386,7 @@ def createMultipleL4L2ColumnsWithTopology(network, networkConfig):
       If this value is not provided, it defaults to 0, and all connections
       will be in the local vicinity.
     "L4Params": {
-      <constructor parameters for TMPairRegion>
+      <constructor parameters for ApicalTMPairRegion>
     },
     "L2Params": {
       <constructor parameters for ColumnPoolerRegion>
