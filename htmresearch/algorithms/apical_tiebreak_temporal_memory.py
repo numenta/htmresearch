@@ -1065,6 +1065,27 @@ class ApicalTiebreakPairMemory(ApicalTiebreakTemporalMemory):
     return self.predictedCells
 
 
+  def getBasalPredictedCells(self):
+    """
+    @return (numpy array)
+    Cells with active basal segments
+    """
+    return np.unique(
+      self.basalConnections.mapSegmentsToCells(
+        self.activeBasalSegments))
+
+
+  def getApicalPredictedCells(self):
+    """
+    @return (numpy array)
+    Cells with active apical segments
+    """
+    return np.unique(
+      self.apicalConnections.mapSegmentsToCells(
+        self.activeApicalSegments))
+
+
+
 
 class ApicalTiebreakSequenceMemory(ApicalTiebreakTemporalMemory):
   """
@@ -1188,3 +1209,23 @@ class ApicalTiebreakSequenceMemory(ApicalTiebreakTemporalMemory):
     The prediction for the next timestep
     """
     return self.predictedCells
+
+
+  def getNextBasalPredictedCells(self):
+    """
+    @return (numpy array)
+    Cells with active basal segments
+    """
+    return np.unique(
+      self.basalConnections.mapSegmentsToCells(
+        self.activeBasalSegments))
+
+
+  def getNextApicalPredictedCells(self):
+    """
+    @return (numpy array)
+    Cells with active apical segments
+    """
+    return np.unique(
+      self.apicalConnections.mapSegmentsToCells(
+        self.activeApicalSegments))
