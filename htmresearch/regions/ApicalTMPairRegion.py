@@ -55,6 +55,18 @@ class ApicalTMPairRegion(PyRegion):
           "isDefaultInput": True,
           "requireSplitterMap": False
         },
+        "resetIn": {
+          "description": ("A boolean flag that indicates whether"
+                          " or not the input vector received in this compute cycle"
+                          " represents the first presentation in a"
+                          " new temporal sequence."),
+          "dataType": "Real32",
+          "count": 1,
+          "required": False,
+          "regionLevel": True,
+          "isDefaultInput": False,
+          "requireSplitterMap": False
+        },
         "basalInput": {
           "description": "An array of 0's and 1's representing basal input",
           "dataType": "Real32",
@@ -410,6 +422,18 @@ class ApicalTMPairRegion(PyRegion):
     """
     Run one iteration of TM's compute.
     """
+
+    # If there's a reset, don't call compute. In some implementations, an empty
+    # input might cause unwanted effects.
+    if "resetIn" in inputs:
+      assert len(inputs["resetIn"]) == 1
+      if inputs["resetIn"][0] != 0:
+        # send empty output
+        self._tm.reset()
+        outputs["activeCells"][:] = 0
+        outputs["predictedActiveCells"][:] = 0
+        outputs["winnerCells"][:] = 0
+        return
 
     activeColumns = inputs["activeColumns"].nonzero()[0]
 

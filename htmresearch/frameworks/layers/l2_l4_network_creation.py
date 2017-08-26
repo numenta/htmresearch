@@ -280,12 +280,11 @@ def createL4L2Column(network, networkConfig, suffix=""):
                srcOutput="feedForwardOutput", destInput="apicalInput",
                propagationDelay=1)
 
-  # Link reset output to L2. For L4, an empty input is sufficient for a reset.
+  # Link reset output to L2 and L4
   network.link(sensorInputName, L2ColumnName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
-  if networkConfig["L4RegionType"] == "py.ApicalTMSequenceRegion":
-    network.link(sensorInputName, L4RegionName, "UniformLink", "",
-                 srcOutput="resetOut", destInput="resetIn")
+  network.link(sensorInputName, L4RegionName, "UniformLink", "",
+               srcOutput="resetOut", destInput="resetIn")
 
   enableProfiling(network)
 
