@@ -305,6 +305,10 @@ class LaminarNetworkTest(unittest.TestCase):
                      "Incorrect phase externalInput_0")
     self.assertEqual(net.getPhases("externalInput_1"), (0,),
                      "Incorrect phase for externalInput_1")
+    self.assertEqual(net.getPhases("sensorInput_0"), (0,),
+                     "Incorrect phase for sensorInput_0")
+    self.assertEqual(net.getPhases("sensorInput_1"), (0,),
+                     "Incorrect phase for sensorInput_1")
     self.assertEqual(net.getPhases("L4Column_0"), (2,),
                      "Incorrect phase for L4Column_0")
     self.assertEqual(net.getPhases("L4Column_1"), (2,),

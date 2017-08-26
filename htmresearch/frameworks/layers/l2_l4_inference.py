@@ -655,10 +655,18 @@ class L4L2Experiment(object):
 
   def getL4PredictedCells(self):
     """
-    Returns the cells in L4 that were predicted at the beginning of the last
-    call to 'compute'.
+    Returns the cells in L4 that were predicted by the location input.
     """
     return [set(column.getOutputData("predictedCells").nonzero()[0])
+            for column in self.L4Regions]
+
+
+  def getL4PredictedActiveCells(self):
+    """
+    Returns the cells in L4 that were predicted by the location signal
+    and are currently active.  Does not consider apical input.
+    """
+    return [set(column.getOutputData("predictedActiveCells").nonzero()[0])
             for column in self.L4Regions]
 
 

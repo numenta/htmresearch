@@ -339,6 +339,8 @@ class ExtendedTMRegion(PyRegion):
     self.implementation = implementation
     self.learn = learn
 
+    self.resetCalled = False
+
     PyRegion.__init__(self, **kwargs)
 
     # TM instance
@@ -397,22 +399,22 @@ class ExtendedTMRegion(PyRegion):
 
     activeColumns = inputs["activeColumns"].nonzero()[0]
 
-    if "basalInput" in inputs:
+    if "basalInput" in inputs and not self.resetCalled:
       basalInput = inputs["basalInput"].nonzero()[0]
     else:
       basalInput = ()
 
-    if "apicalInput" in inputs:
+    if "apicalInput" in inputs and not self.resetCalled:
       apicalInput = inputs["apicalInput"].nonzero()[0]
     else:
       apicalInput = ()
 
-    if "basalGrowthCandidates" in inputs:
+    if "basalGrowthCandidates" in inputs and not self.resetCalled:
       basalGrowthCandidates = inputs["basalGrowthCandidates"].nonzero()[0]
     else:
       basalGrowthCandidates = basalInput
 
-    if "apicalGrowthCandidates" in inputs:
+    if "apicalGrowthCandidates" in inputs and not self.resetCalled:
       apicalGrowthCandidates = inputs["apicalGrowthCandidates"].nonzero()[0]
     else:
       apicalGrowthCandidates = apicalInput
@@ -432,26 +434,18 @@ class ExtendedTMRegion(PyRegion):
     outputs["winnerCells"][:] = 0
     outputs["winnerCells"][self._tm.getWinnerCells()] = 1
 
+    self.resetCalled = False
+
 
   def reset(self):
-    """ Reset the state of the TM """
+    """
+    Explicitly reset the state of the TM. The next call to compute will use
+    empty values for basalInput, apicalInput, basalGrowthCandidates, and
+    apicalGrowthCandidates.
+    """
     if self._tm is not None:
       self._tm.reset()
-
-
-  def debugPlot(self, name):
-    self._tm.mmGetCellActivityPlot(activityType="activeCells",
-                                   showReset=True,
-                                   resetShading=0.75,
-                                   title="ac-{name}".format(name=name))
-    self._tm.mmGetCellActivityPlot(activityType="predictedCells",
-                                   showReset=True,
-                                   resetShading=0.75,
-                                   title="p1-{name}".format(name=name))
-    self._tm.mmGetCellActivityPlot(activityType="predictedActiveCells",
-                                   showReset=True,
-                                   resetShading=0.75,
-                                   title="pa-{name}".format(name=name))
+      self.resetCalled = True
 
 
   def getParameter(self, parameterName, index=-1):
@@ -486,9 +480,3 @@ class ExtendedTMRegion(PyRegion):
       raise Exception("Invalid output name specified: %s" % name)
 
 
-  def prettyPrintTraces(self):
-    if "mixin" in self.temporalImp.lower():
-      print self._tm.mmPrettyPrintTraces([
-        self._tm.mmGetTraceNumSegments(),
-        self._tm.mmGetTraceNumSynapses(),
-      ])
