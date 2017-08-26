@@ -153,10 +153,8 @@ class ApicalDependentTemporalMemory(object):
 
   def reset(self):
     """
-    Clear all cell and segment activity. This has no effect on the subsequent
-    predictions or activity.
+    Clear all cell and segment activity.
     """
-
     self.activeCells = np.empty(0, dtype="uint32")
     self.winnerCells = np.empty(0, dtype="uint32")
     self.predictedCells = np.empty(0, dtype="uint32")
@@ -1015,17 +1013,7 @@ class ApicalDependentSequenceMemory(ApicalDependentTemporalMemory):
     """
     Clear all cell and segment activity.
     """
-
-    self.activeCells = np.empty(0, dtype="uint32")
-    self.winnerCells = np.empty(0, dtype="uint32")
-    self.predictedCells = np.empty(0, dtype="uint32")
-    self.predictedActiveCells = np.empty(0, dtype="uint32")
-    self.activeBasalSegments = np.empty(0, dtype="uint32")
-    self.activeApicalSegments = np.empty(0, dtype="uint32")
-    self.matchingBasalSegments = np.empty(0, dtype="uint32")
-    self.matchingApicalSegments = np.empty(0, dtype="uint32")
-    self.basalPotentialOverlaps = np.empty(0, dtype="int32")
-    self.apicalPotentialOverlaps = np.empty(0, dtype="int32")
+    super(ApicalTiebreakSequenceMemory, self).reset()
 
     self.prevApicalInput = np.empty(0, dtype="uint32")
     self.prevApicalGrowthCandidates = np.empty(0, dtype="uint32")

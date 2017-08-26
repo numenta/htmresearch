@@ -283,7 +283,7 @@ def createL4L2Column(network, networkConfig, suffix=""):
   # Link reset output to L2 and L4
   network.link(sensorInputName, L2ColumnName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
-  network.link(sensorInputName, L4RegionName, "UniformLink", "",
+  network.link(sensorInputName, L4ColumnName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
 
   enableProfiling(network)

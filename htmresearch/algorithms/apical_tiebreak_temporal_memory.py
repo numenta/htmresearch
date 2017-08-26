@@ -158,6 +158,22 @@ class ApicalTiebreakTemporalMemory(object):
     self.useApicalModulationBasalThreshold=True
 
 
+  def reset(self):
+    """
+    Clear all cell and segment activity.
+    """
+    self.activeCells = np.empty(0, dtype="uint32")
+    self.winnerCells = np.empty(0, dtype="uint32")
+    self.predictedCells = np.empty(0, dtype="uint32")
+    self.predictedActiveCells = np.empty(0, dtype="uint32")
+    self.activeBasalSegments = np.empty(0, dtype="uint32")
+    self.activeApicalSegments = np.empty(0, dtype="uint32")
+    self.matchingBasalSegments = np.empty(0, dtype="uint32")
+    self.matchingApicalSegments = np.empty(0, dtype="uint32")
+    self.basalPotentialOverlaps = np.empty(0, dtype="int32")
+    self.apicalPotentialOverlaps = np.empty(0, dtype="int32")
+
+
   def depolarizeCells(self, basalInput, apicalInput, learn):
     """
     Calculate predictions.
@@ -1138,17 +1154,7 @@ class ApicalTiebreakSequenceMemory(ApicalTiebreakTemporalMemory):
     """
     Clear all cell and segment activity.
     """
-
-    self.activeCells = np.empty(0, dtype="uint32")
-    self.winnerCells = np.empty(0, dtype="uint32")
-    self.predictedCells = np.empty(0, dtype="uint32")
-    self.predictedActiveCells = np.empty(0, dtype="uint32")
-    self.activeBasalSegments = np.empty(0, dtype="uint32")
-    self.activeApicalSegments = np.empty(0, dtype="uint32")
-    self.matchingBasalSegments = np.empty(0, dtype="uint32")
-    self.matchingApicalSegments = np.empty(0, dtype="uint32")
-    self.basalPotentialOverlaps = np.empty(0, dtype="int32")
-    self.apicalPotentialOverlaps = np.empty(0, dtype="int32")
+    super(ApicalTiebreakSequenceMemory, self).reset()
 
     self.prevApicalInput = np.empty(0, dtype="uint32")
     self.prevApicalGrowthCandidates = np.empty(0, dtype="uint32")
