@@ -331,7 +331,7 @@ def runExperiment(args):
           # ("L2 Representation", "L2 Representation"),
           # ("L4 Representation", "Active sensorimotor cells"),
           ("L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
-          ("TM Predicted", "Predicted cells in temporal sequence layer"),
+          ("TM NextPredicted", "Predicted cells in temporal sequence layer"),
           ("TM PredictedActive", "Predicted active cells in temporal sequence layer"),
         ],
         basename=exp.name,
@@ -349,7 +349,7 @@ def runExperiment(args):
   #       # ("L2 Representation", "L2 Representation"),
   #       # ("L4 Representation", "Active sensorimotor cells"),
   #       ("L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
-  #       # ("TM Predicted", "Predicted cells in temporal sequence layer"),
+  #       # ("TM NextPredicted", "Predicted cells in temporal sequence layer"),
   #       ("TM PredictedActive",
   #        "Predicted active cells in temporal sequence layer"),
   #     ],
@@ -369,7 +369,7 @@ def runExperiment(args):
   predictedL4 = numpy.zeros(len(infStats))
   for i,stat in enumerate(infStats):
     predictedActive[i] = float(sum(stat["TM PredictedActive C0"][2:])) / len(stat["TM PredictedActive C0"][2:])
-    predicted[i] = float(sum(stat["TM Predicted C0"][2:])) / len(stat["TM Predicted C0"][2:])
+    predicted[i] = float(sum(stat["TM NextPredicted C0"][2:])) / len(stat["TM NextPredicted C0"][2:])
 
     predictedActiveL4[i] = float(sum(stat["L4 PredictedActive C0"])) / len(stat["L4 PredictedActive C0"])
     predictedL4[i] = float(sum(stat["L4 Predicted C0"])) / len(stat["L4 Predicted C0"])
@@ -737,7 +737,7 @@ if __name__ == "__main__":
         # ("L4 Representation", "Active sensorimotor cells"),
         (
         "L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
-        # ("TM Predicted", "Predicted cells in temporal sequence layer"),
+        # ("TM NextPredicted", "Predicted cells in temporal sequence layer"),
         ("TM PredictedActive",
          "Predicted active cells in temporal sequence layer"),
       ],

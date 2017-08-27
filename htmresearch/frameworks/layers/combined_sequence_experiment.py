@@ -148,9 +148,9 @@ class L4TMExperiment(L4L2Experiment):
             for column in self.TMRegions]
 
 
-  def getTMPredictedCells(self):
+  def getTMNextPredictedCells(self):
     """
-    Returns the cells in TM that were predicted at the beginning of the last
+    Returns the cells in TM that were predicted at the end of the most recent
     call to 'compute'.
     """
     return [set(column.getOutputData("nextPredictedCells").nonzero()[0])
@@ -159,8 +159,8 @@ class L4TMExperiment(L4L2Experiment):
 
   def getTMPredictedActiveCells(self):
     """
-    Returns the cells in TM that were predicted at the beginning of the last
-    call to 'compute' and are currently active.
+    Returns the cells in TM that were predicted at the beginning of the most
+    recent call to 'compute' and are currently active.
     """
     return [set(column.getOutputData("predictedActiveCells").nonzero()[0])
             for column in self.TMRegions]
@@ -236,7 +236,7 @@ class L4TMExperiment(L4L2Experiment):
     L4PredictedActiveCells = self.getL4PredictedActiveCells()
     L2Representation = self.getL2Representations()
     TMPredictedActive = self.getTMPredictedActiveCells()
-    TMPredicted = self.getTMPredictedCells()
+    TMNextPredicted = self.getTMNextPredictedCells()
     TMRepresentation = self.getTMRepresentations()
 
     for i in xrange(self.numColumns):
@@ -264,8 +264,8 @@ class L4TMExperiment(L4L2Experiment):
       statistics["TM PredictedActive C" + str(i)].append(
         len(TMPredictedActive[i])
       )
-      statistics["TM Predicted C" + str(i)].append(
-        len(TMPredicted[i])
+      statistics["TM NextPredicted C" + str(i)].append(
+        len(TMNextPredicted[i])
       )
       statistics["TM Representation C" + str(i)].append(
         len(TMRepresentation[i])
