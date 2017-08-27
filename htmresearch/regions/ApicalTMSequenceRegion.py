@@ -283,7 +283,7 @@ class ApicalTMSequenceRegion(PyRegion):
 
                # Input sizes
                columnCount,
-               apicalInputWidth,
+               apicalInputWidth=0,
 
                # TM params
                cellsPerColumn=32,
@@ -429,6 +429,13 @@ class ApicalTMSequenceRegion(PyRegion):
       self._tm.getPredictedActiveCells()] = 1
     outputs["winnerCells"][:] = 0
     outputs["winnerCells"][self._tm.getWinnerCells()] = 1
+
+
+  def reset(self):
+    """
+    Reset the TM.
+    """
+    self._tm.reset()
 
 
   def getParameter(self, parameterName, index=-1):

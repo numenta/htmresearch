@@ -236,7 +236,7 @@ def runExperiment(args):
     L4Overrides={"initialPermanence": 0.41,
                  "activationThreshold": 18,
                  "minThreshold": 18,
-                 "predictedSegmentDecrement": 0.0001},
+                 "basalPredictedSegmentDecrement": 0.0001},
   )
 
   # We want to traverse the features of each object randomly a few times before

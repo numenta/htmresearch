@@ -314,7 +314,7 @@ class ApicalTMPairRegion(PyRegion):
                # Input sizes
                columnCount,
                basalInputWidth,
-               apicalInputWidth,
+               apicalInputWidth=0,
 
                # TM params
                cellsPerColumn=32,
