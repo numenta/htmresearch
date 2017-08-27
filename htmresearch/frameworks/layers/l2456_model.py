@@ -545,10 +545,10 @@ class L2456Model(object):
         "permanenceIncrement": 0.1,
         "permanenceDecrement": 0.02,
         "minThreshold": 10,
-        "predictedSegmentDecrement": 0.002,
+        "basalPredictedSegmentDecrement": 0.002,
         "activationThreshold": 13,
         "sampleSize": 20,
-        "implementation": "etm",
+        "implementation": "ApicalTiebreakCPP",
       },
 
       "L2Params": {
@@ -581,7 +581,7 @@ class L2456Model(object):
         "permanenceIncrement": 0.1,
         "permanenceDecrement": 0.02,
         "minThreshold": 10,
-        "predictedSegmentDecrement": 0.004,
+        "basalPredictedSegmentDecrement": 0.004,
         "activationThreshold": 13,
         "sampleSize": 20,
       },

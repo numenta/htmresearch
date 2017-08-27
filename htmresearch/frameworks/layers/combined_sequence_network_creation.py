@@ -55,8 +55,7 @@ from htmresearch.frameworks.layers.l2_l4_network_creation import enableProfiling
 
 def createL4L2TMColumn(network, networkConfig, suffix=""):
   """
-  Create a a single column containing one L4, one L2, and one TM. Here we
-  enforce both L4 and TM to have the same region type, i.e. py.ExtendedTMRegion
+  Create a a single column containing one L4, one L2, and one TM.
 
   networkConfig is a dict that must contain the following keys (additional keys
   ok):
@@ -65,13 +64,13 @@ def createL4L2TMColumn(network, networkConfig, suffix=""):
       "externalInputSize": 1024,
       "sensorInputSize": 1024,
       "L4Params": {
-        <constructor parameters for ExtendedTMRegion>
+        <constructor parameters for ApicalTMPairRegion>
       },
       "L2Params": {
         <constructor parameters for ColumnPoolerRegion>
       },
       "TMParams": {
-        <constructor parameters for ExtendedTMRegion>
+        <constructor parameters for ApicalTMSequenceRegion>
       },
     }
 
@@ -89,9 +88,6 @@ def createL4L2TMColumn(network, networkConfig, suffix=""):
   L4Params["basalInputWidth"] = networkConfig["externalInputSize"]
   L4Params["apicalInputWidth"] = networkConfig["L2Params"]["cellCount"]
 
-  TMParams = copy.deepcopy(networkConfig["TMParams"])
-  TMParams["basalInputWidth"] = networkConfig["sensorInputSize"]*TMParams["cellsPerColumn"]
-
   if networkConfig["externalInputSize"] > 0:
       network.addRegion(
         externalInputName, "py.RawSensor",
@@ -100,8 +96,10 @@ def createL4L2TMColumn(network, networkConfig, suffix=""):
     sensorInputName, "py.RawSensor",
     json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
 
-  network.addRegion(L4ColumnName, "py.ExtendedTMRegion", json.dumps(L4Params))
-  network.addRegion(TMColumnName, "py.ExtendedTMRegion", json.dumps(TMParams))
+  network.addRegion(L4ColumnName, "py.ApicalTMPairRegion", json.dumps(L4Params))
+  network.addRegion(TMColumnName,
+                    "py.ApicalTMSequenceRegion",
+                    json.dumps(networkConfig["TMParams"]))
   network.addRegion(L2ColumnName,
                     "py.ColumnPoolerRegion",
                     json.dumps(networkConfig["L2Params"]))
@@ -127,14 +125,9 @@ def createL4L2TMColumn(network, networkConfig, suffix=""):
   network.link(sensorInputName, L4ColumnName, "UniformLink", "",
                srcOutput="dataOut", destInput="activeColumns")
 
-  # Link main inputs to TM. We ensure TM acts as a temporal memory
-  # by connecting basal and growth candidates inputs to itself.
+  # Link main inputs to TM
   network.link(sensorInputName, TMColumnName, "UniformLink", "",
                srcOutput="dataOut", destInput="activeColumns")
-  network.link(TMColumnName, TMColumnName, "UniformLink", "",
-               "activeCells", "basalInput", propagationDelay=1)
-  network.link(TMColumnName, TMColumnName, "UniformLink", "",
-               "winnerCells", "basalGrowthCandidates", propagationDelay=1)
 
   # Link L4 to L2
   network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
@@ -148,11 +141,12 @@ def createL4L2TMColumn(network, networkConfig, suffix=""):
                srcOutput="feedForwardOutput", destInput="apicalInput",
                propagationDelay=1)
 
-  # Link reset output to L2 and TM.
-  # For L4, an empty input is sufficient for a reset - ??
+  # Link reset output to L2, TM, and L4
   network.link(sensorInputName, L2ColumnName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
   network.link(sensorInputName, TMColumnName, "UniformLink", "",
+               srcOutput="resetOut", destInput="resetIn")
+  network.link(sensorInputName, L4ColumnName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
 
   enableProfiling(network)

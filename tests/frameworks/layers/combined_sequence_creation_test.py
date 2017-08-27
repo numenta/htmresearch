@@ -40,7 +40,7 @@ networkConfig1 = {
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
     "minThreshold": 10,
-    "predictedSegmentDecrement": 0.004,
+    "basalPredictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
     "sampleSize": 20,
   },
@@ -73,7 +73,7 @@ networkConfig1 = {
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
     "minThreshold": 10,
-    "predictedSegmentDecrement": 0.004,
+    "basalPredictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
     "sampleSize": 20,
   },
@@ -138,10 +138,9 @@ class CombinedSequenceNetworkTest(unittest.TestCase):
       "L4Column_0.predictedActiveCells-->L2Column_0.feedforwardGrowthCandidates",
       "L4Column_0.activeCells-->L2Column_0.feedforwardInput",
       "sensorInput_0.resetOut-->L2Column_0.resetIn",
+      "sensorInput_0.resetOut-->L4Column_0.resetIn",
       "sensorInput_0.resetOut-->TMColumn_0.resetIn",
       "externalInput_0.dataOut-->L4Column_0.basalGrowthCandidates",
-      "TMColumn_0.winnerCells-->TMColumn_0.basalGrowthCandidates",
-      "TMColumn_0.activeCells-->TMColumn_0.basalInput",
     }
 
     links = net.getLinks()

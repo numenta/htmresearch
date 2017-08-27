@@ -25,7 +25,7 @@ Run the apical tiebreak tests on the ExtendedTemporalMemory.
 
 import unittest
 
-from htmresearch_core.experimental import ExtendedTemporalMemory
+from htmresearch_core.experimental import ApicalTiebreakPairMemory
 from htmresearch.support.shared_tests.apical_tiebreak_test_base import (
   ApicalTiebreakTestBase)
 
@@ -53,13 +53,13 @@ class ExtendedTM_ApicalTiebreakTests(ApicalTiebreakTestBase,
       "sampleSize": sampleSize,
       "permanenceIncrement": permanenceIncrement,
       "permanenceDecrement": permanenceDecrement,
-      "predictedSegmentDecrement": predictedSegmentDecrement,
+      "basalPredictedSegmentDecrement": predictedSegmentDecrement,
       "activationThreshold": activationThreshold,
       "seed": seed,
       "learnOnOneCell": False,
     }
 
-    self.tm = ExtendedTemporalMemory(**params)
+    self.tm = ApicalTiebreakPairMemory(**params)
 
 
   def compute(self, activeColumns, basalInput, apicalInput, learn):

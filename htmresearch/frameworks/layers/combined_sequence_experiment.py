@@ -48,7 +48,6 @@ class L4TMExperiment(L4L2Experiment):
                externalInputSize=1024,
                numExternalInputBits=20,
                L2Overrides=None,
-               L4RegionType="py.ExtendedTMRegion",
                networkType = "L4L2TMColumn",
                L4Overrides=None,
                seed=42,
@@ -88,9 +87,7 @@ class L4TMExperiment(L4L2Experiment):
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
-      "L4RegionType": L4RegionType,
-      "L4Params": self.getDefaultL4Params(L4RegionType, inputSize,
-                                          numExternalInputBits),
+      "L4Params": self.getDefaultL4Params(inputSize, numExternalInputBits),
       "L2Params": self.getDefaultL2Params(inputSize, numInputBits),
       "TMParams": self.getDefaultTMParams(self.inputSize, self.numInputBits),
     }
@@ -151,19 +148,19 @@ class L4TMExperiment(L4L2Experiment):
             for column in self.TMRegions]
 
 
-  def getTMPredictedCells(self):
+  def getTMNextPredictedCells(self):
     """
-    Returns the cells in TM that were predicted at the beginning of the last
+    Returns the cells in TM that were predicted at the end of the most recent
     call to 'compute'.
     """
-    return [set(column._tm.getSequenceMemoryPredictions()["predictedCells"])
-            for column in self.TMColumns]
+    return [set(column.getOutputData("nextPredictedCells").nonzero()[0])
+            for column in self.TMRegions]
 
 
   def getTMPredictedActiveCells(self):
     """
-    Returns the cells in TM that were predicted at the beginning of the last
-    call to 'compute' and are currently active.
+    Returns the cells in TM that were predicted at the beginning of the most
+    recent call to 'compute' and are currently active.
     """
     return [set(column.getOutputData("predictedActiveCells").nonzero()[0])
             for column in self.TMRegions]
@@ -195,10 +192,10 @@ class L4TMExperiment(L4L2Experiment):
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.02,
       "minThreshold": minThreshold,
-      "predictedSegmentDecrement": 0.001,
+      "basalPredictedSegmentDecrement": 0.001,
       "activationThreshold": activationThreshold,
       "sampleSize": sampleSize,
-      "implementation": "etm",
+      "implementation": "ApicalTiebreakCPP",
       "seed": self.seed
     }
 
@@ -239,7 +236,7 @@ class L4TMExperiment(L4L2Experiment):
     L4PredictedActiveCells = self.getL4PredictedActiveCells()
     L2Representation = self.getL2Representations()
     TMPredictedActive = self.getTMPredictedActiveCells()
-    TMPredicted = self.getTMPredictedCells()
+    TMNextPredicted = self.getTMNextPredictedCells()
     TMRepresentation = self.getTMRepresentations()
 
     for i in xrange(self.numColumns):
@@ -267,8 +264,8 @@ class L4TMExperiment(L4L2Experiment):
       statistics["TM PredictedActive C" + str(i)].append(
         len(TMPredictedActive[i])
       )
-      statistics["TM Predicted C" + str(i)].append(
-        len(TMPredicted[i])
+      statistics["TM NextPredicted C" + str(i)].append(
+        len(TMNextPredicted[i])
       )
       statistics["TM Representation C" + str(i)].append(
         len(TMRepresentation[i])

@@ -88,7 +88,6 @@ def getL4Params():
   return {
     "columnCount": 150,
     "cellsPerColumn": 16,
-    "formInternalBasalConnections": False,
     "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
@@ -96,10 +95,10 @@ def getL4Params():
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
     "minThreshold": 10,
-    "predictedSegmentDecrement": 0.0,
+    "basalPredictedSegmentDecrement": 0.0,
     "activationThreshold": 13,
     "sampleSize": 25,
-    "implementation": "etm",
+    "implementation": "ApicalTiebreakCPP",
   }
 
 

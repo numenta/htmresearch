@@ -36,7 +36,7 @@ from sensorimotor.one_d_world import OneDWorld
 from sensorimotor.one_d_universe import OneDUniverse
 from sensorimotor.random_one_d_agent import RandomOneDAgent
 from sensorimotor.extended_temporal_memory import (
-            ExtendedTemporalMemory
+            ApicalTiebreakPairMemory
 )
 
 
@@ -52,7 +52,7 @@ first order representation of this sequence.
 realDType = GetNTAReal()
 
 # Mixin class for TM statistics
-class TMI(TemporalMemoryInspectMixin, ExtendedTemporalMemory): pass
+class TMI(TemporalMemoryInspectMixin, ApicalTiebreakPairMemory): pass
 
 
 def feedTM(tm, length, agents,

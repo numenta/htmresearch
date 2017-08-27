@@ -48,7 +48,7 @@ import numpy as np
 
 from nupic.bindings.math import SparseMatrixConnections, SparseMatrix
 from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
-  ApicalTiebreakTemporalMemory)
+  ApicalTiebreakPairMemory)
 
 from generate_sdrs import (generateMinicolumnSDRs, createEvenlySpreadSDRs,
                            carefullyCollideContexts)
@@ -180,7 +180,7 @@ class PoolOfPairsLocation1DExperiment(object):
       "activationThreshold": self.numActiveOperandCells,
       "minThreshold": self.numActiveOperandCells,
     }
-    self.pairLayer = ApicalTiebreakTemporalMemory(**self.pairParams)
+    self.pairLayer = ApicalTiebreakPairMemory(**self.pairParams)
 
     self.poolingParams = {
       "cellCount": self.numResultCells,

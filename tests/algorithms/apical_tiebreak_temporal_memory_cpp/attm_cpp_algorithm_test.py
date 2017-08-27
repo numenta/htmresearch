@@ -22,16 +22,16 @@
 import unittest
 import random
 
-from htmresearch_core.experimental import ExtendedTemporalMemory
+from htmresearch_core.experimental import ApicalTiebreakPairMemory
 from nupic.data.generators.pattern_machine import PatternMachine
 from nupic.data.generators.sequence_machine import SequenceMachine
 
-from htmresearch.support.etm_monitor_mixin import (
-  ExtendedTemporalMemoryMonitorMixin)
+from htmresearch.support.apical_tm_pair_monitor_mixin import (
+  ApicalTMPairMonitorMixin)
 
 
-class MonitoredTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
-                              ExtendedTemporalMemory):
+class MonitoredTemporalMemory(ApicalTMPairMonitorMixin,
+                              ApicalTiebreakPairMemory):
   pass
 
 
@@ -1373,7 +1373,7 @@ class ExtendedTemporalMemoryAlgorithmTest(unittest.TestCase):
       "sampleSize": 30,
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.02,
-      "predictedSegmentDecrement": 0.08,
+      "basalPredictedSegmentDecrement": 0.08,
       "activationThreshold": 25,
       "seed": 42,
       "learnOnOneCell": False,

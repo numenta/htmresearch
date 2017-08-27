@@ -136,7 +136,7 @@ class L4L2Experiment(object):
                externalInputSize=1024,
                numExternalInputBits=20,
                L2Overrides=None,
-               L4RegionType="py.ExtendedTMRegion",
+               L4RegionType="py.ApicalTMPairRegion",
                networkType = "MultipleL4L2Columns",
                longDistanceConnections = 0,
                maxConnectionDistance = 1,
@@ -249,8 +249,7 @@ class L4L2Experiment(object):
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
       "L4RegionType": L4RegionType,
-      "L4Params": self.getDefaultL4Params(L4RegionType, inputSize,
-                                          numExternalInputBits),
+      "L4Params": self.getDefaultL4Params(inputSize, numExternalInputBits),
       "L2Params": self.getDefaultL2Params(inputSize, numInputBits),
     }
 
@@ -740,7 +739,7 @@ class L4L2Experiment(object):
 
     return results
 
-  def getDefaultL4Params(self, L4RegionType, inputSize, numInputBits):
+  def getDefaultL4Params(self, inputSize, numInputBits):
     """
     Returns a good default set of parameters to use in the L4 region.
     """
@@ -756,42 +755,22 @@ class L4L2Experiment(object):
       activationThreshold = int(numInputBits * .6)
       minThreshold = activationThreshold
 
-    if L4RegionType == "py.ExtendedTMRegion":
-      return {
-        "columnCount": inputSize,
-        "cellsPerColumn": 16,
-        "learn": True,
-        "learnOnOneCell": False,
-        "initialPermanence": 0.51,
-        "connectedPermanence": 0.6,
-        "permanenceIncrement": 0.1,
-        "permanenceDecrement": 0.02,
-        "minThreshold": minThreshold,
-        "predictedSegmentDecrement": 0.0,
-        "activationThreshold": activationThreshold,
-        "sampleSize": sampleSize,
-        "implementation": "etm",
-        "seed": self.seed
-      }
-    elif L4RegionType == "py.ApicalTMRegion":
-      return {
-        "columnCount": inputSize,
-        "cellsPerColumn": 16,
-        "learn": True,
-        "initialPermanence": 0.51,
-        "connectedPermanence": 0.6,
-        "permanenceIncrement": 0.1,
-        "permanenceDecrement": 0.02,
-        "minThreshold": minThreshold,
-        "basalPredictedSegmentDecrement": 0.0,
-        "apicalPredictedSegmentDecrement": 0.0,
-        "activationThreshold": activationThreshold,
-        "sampleSize": sampleSize,
-        "implementation": "ApicalTiebreak",
-        "seed": self.seed
-      }
-    else:
-      raise ValueError("Unknown L4RegionType: %s" % L4RegionType)
+    return {
+      "columnCount": inputSize,
+      "cellsPerColumn": 16,
+      "learn": True,
+      "initialPermanence": 0.51,
+      "connectedPermanence": 0.6,
+      "permanenceIncrement": 0.1,
+      "permanenceDecrement": 0.02,
+      "minThreshold": minThreshold,
+      "basalPredictedSegmentDecrement": 0.0,
+      "apicalPredictedSegmentDecrement": 0.0,
+      "activationThreshold": activationThreshold,
+      "sampleSize": sampleSize,
+      "implementation": "ApicalTiebreakCPP",
+      "seed": self.seed
+    }
 
 
   def getDefaultL2Params(self, inputSize, numInputBits):

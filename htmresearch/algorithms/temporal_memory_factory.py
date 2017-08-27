@@ -23,13 +23,13 @@
 
 import inspect
 
-from htmresearch.support.etm_monitor_mixin import (
-  ExtendedTemporalMemoryMonitorMixin)
+from htmresearch.support.apical_tm_pair_monitor_mixin import (
+  ApicalTMPairMonitorMixin)
 from nupic.algorithms.temporal_memory import TemporalMemory as TemporalMemoryPY
 from nupic.bindings.algorithms import TemporalMemory as TemporalMemoryCPP
 from nupic.algorithms.monitor_mixin.temporal_memory_monitor_mixin import (
   TemporalMemoryMonitorMixin)
-from htmresearch_core.experimental import ExtendedTemporalMemory
+from htmresearch_core.experimental import ApicalTiebreakPairMemory
 
 
 
@@ -41,8 +41,8 @@ class MonitoredTemporalMemoryCPP(TemporalMemoryMonitorMixin, TemporalMemoryCPP):
   pass
 
 
-class MonitoredExtendedTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
-                                      ExtendedTemporalMemory):
+class MonitoredApicalTiebreakPairMemoryCPP(ApicalTMPairMonitorMixin,
+                                           ApicalTiebreakPairMemory):
   pass
 
 
@@ -52,8 +52,8 @@ class TemporalMemoryTypes(object):
   identifier to constructor.  See createModel() for actual factory method
   implementation.
   """
-  etm = ExtendedTemporalMemory
-  monitored_etm = MonitoredExtendedTemporalMemory
+  etm = ApicalTiebreakPairMemory
+  monitored_etm = MonitoredApicalTiebreakPairMemoryCPP
   tm_py = TemporalMemoryPY
   tm_cpp = TemporalMemoryCPP
   monitored_tm_py = MonitoredTemporalMemoryPY
