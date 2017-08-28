@@ -186,6 +186,9 @@ def addNoise(pattern, noiseLevel, totalNumCells):
   @return (set)
   A noisy set of active indices
   """
+  if noiseLevel == 0:
+    return pattern
+
   noised = set()
   for bit in pattern:
     if random.random() < noiseLevel:
@@ -287,14 +290,16 @@ def runExperiment(args):
   networkType = args.get("networkType", "MultipleL4L2Columns")
   longDistanceConnections = args.get("longDistanceConnections", 0)
   profile = args.get("profile", False)
-  noiseLevel = args.get("noiseLevel", 0)  # TODO: implement this?
+  locationNoise = args.get("locationNoise", 0)
+  featureNoise = args.get("featureNoise", 0)
   numPoints = args.get("numPoints", 10)
   trialNum = args.get("trialNum", 42)
   pointRange = args.get("pointRange", 1)
   plotInferenceStats = args.get("plotInferenceStats", True)
   settlingTime = args.get("settlingTime", 3)
   includeRandomLocation = args.get("includeRandomLocation", False)
-
+  enableFeedback = args.get("enableFeedback", True)
+  numAmbiguousLocations = args.get("numAmbiguousLocations", 0)
   # Create the objects
   objects = createObjectMachine(
     machineType="simple",
@@ -303,6 +308,7 @@ def runExperiment(args):
     externalInputSize=2400,
     numCorticalColumns=numColumns,
     numFeatures=numFeatures,
+    numLocations=numLocations,
     seed=trialNum
   )
 
@@ -328,11 +334,12 @@ def runExperiment(args):
     name,
     numCorticalColumns=numColumns,
     networkType = networkType,
-    longDistanceConnections = longDistanceConnections,
+    longDistanceConnections=longDistanceConnections,
     inputSize=150,
     externalInputSize=2400,
     numInputBits=20,
-    seed=trialNum
+    seed=trialNum,
+    enableFeedback=enableFeedback,
   )
 
   exp.learnObjects(objects.provideObjectsToLearn())
@@ -343,9 +350,13 @@ def runExperiment(args):
   # object, we create a sequence of random sensations for each column.  We will
   # present each sensation for settlingTime time steps to let it settle and
   # ensure it converges.
+  numInferenceRpts = 2
   L2Representations = exp.objectL2Representations
-  overlapMat = numpy.zeros((numObjects, numObjects, numFeatures))
-  numActiveL2cells = numpy.zeros((numObjects, numFeatures, numColumns))
+  overlapMat = numpy.zeros((numObjects, numObjects, numPoints*numInferenceRpts))
+  numActiveL2cells = numpy.zeros((numObjects, numPoints*numInferenceRpts, numColumns))
+  numActiveL4cells = numpy.zeros((numObjects, numPoints*numInferenceRpts, numColumns))
+
+
   for objectId in objects:
     exp._sendReset()
     obj = objects[objectId]
@@ -354,47 +365,49 @@ def runExperiment(args):
     for c in range(numColumns):
       objectSensations[c] = []
 
-    if numColumns > 1:
-      # Create sequence of random sensations for this object for all columns At
-      # any point in time, ensure each column touches a unique loc,feature pair
-      # on the object.  It is ok for a given column to sense a loc,feature pair
-      # more than once. The total number of sensations is equal to the number of
-      # points on the object.
-      for sensationNumber in range(len(obj)):
-        # Randomly shuffle points for each sensation
+    for _ in range(numInferenceRpts):
+      random.seed(trialNum)
+      if numColumns > 1:
+        # Create sequence of random sensations for this object for all columns At
+        # any point in time, ensure each column touches a unique loc,feature pair
+        # on the object.  It is ok for a given column to sense a loc,feature pair
+        # more than once. The total number of sensations is equal to the number of
+        # points on the object.
+        for sensationNumber in range(len(obj)):
+          # Randomly shuffle points for each sensation
+          objectCopy = [pair for pair in obj]
+          random.shuffle(objectCopy)
+          for c in range(numColumns):
+            objectSensations[c].append(objectCopy[c])
+
+      else:
+        # Create sequence of sensations for this object for one column. The total
+        # number of sensations is equal to the number of points on the object. No
+        # point should be visited more than once.
         objectCopy = [pair for pair in obj]
         random.shuffle(objectCopy)
-        for c in range(numColumns):
-          objectSensations[c].append(objectCopy[c])
-
-    else:
-      # Create sequence of sensations for this object for one column. The total
-      # number of sensations is equal to the number of points on the object. No
-      # point should be visited more than once.
-      objectCopy = [pair for pair in obj]
-      random.shuffle(objectCopy)
-      for pair in objectCopy:
-        objectSensations[0].append(pair)
+        for pair in objectCopy:
+          objectSensations[0].append(pair)
 
     inferConfig = {
       "object": objectId,
       "numSteps": len(objectSensations[0]),
       "pairs": objectSensations,
       "includeRandomLocation": includeRandomLocation,
+      "numAmbiguousLocations": numAmbiguousLocations,
     }
 
     inferenceSDRs = objects.provideObjectToInfer(inferConfig)
 
     sensationNumber = 0
     for sdrPair in inferenceSDRs:
-      if noiseLevel > 0:
-        for col in sdrPair.keys():
-          # print locationSDR
-          locationSDR = addNoise(sdrPair[col][0], noiseLevel,
-                                exp.config["externalInputSize"])
-          featureSDR = addNoise(sdrPair[col][1], noiseLevel,
-                                 exp.config["sensorInputSize"])
-          sdrPair[col] = (locationSDR, featureSDR)
+      for col in sdrPair.keys():
+
+        locationSDR = addNoise(sdrPair[col][0], locationNoise,
+                              exp.config["externalInputSize"])
+        featureSDR = addNoise(sdrPair[col][1], featureNoise,
+                               exp.config["sensorInputSize"])
+        sdrPair[col] = (locationSDR, featureSDR)
 
       for _ in xrange(settlingTime):
         exp.infer([sdrPair], objectName=objectId, reset=False)
@@ -402,7 +415,8 @@ def runExperiment(args):
       for c in range(numColumns):
         numActiveL2cells[objectId, sensationNumber, c] = len(
           exp.getL2Representations()[c])
-
+        numActiveL4cells[objectId, sensationNumber, c] = len(
+          exp.getL4Representations()[c])
       for k in range(numObjects):
         for c in range(numColumns):
           overlapMat[objectId, k, sensationNumber] = len(
@@ -426,9 +440,9 @@ def runExperiment(args):
 
 
   print "# objects {} # features {} # locations {} # columns {} trial # {} " \
-        "noiselevel {} network type {}".format(
-    numObjects, numFeatures, numLocations, numColumns, trialNum, noiseLevel,
-    networkType)
+        "locationNoise {} featureNoise {} network type {} fb {}".format(
+    numObjects, numFeatures, numLocations, numColumns, trialNum, locationNoise,
+    featureNoise, networkType, enableFeedback)
   print "Average convergence point=", convergencePoint
   print
 
@@ -437,7 +451,9 @@ def runExperiment(args):
   # Return our convergence point as well as all the parameters and objects
   args.update({"objects": objects.getObjects()})
   args.update({"convergencePoint": convergencePoint})
-  args.update({"overlapMat": overlapMat})
+  # args.update({"overlapMat": overlapMat})
+  args.update({"numActiveL2cells": numActiveL2cells})
+  args.update({"numActiveL4cells": numActiveL4cells})
   args.update({"accuracy": accuracy["accuracy"]})
   args.update({"sensitivity": accuracy["sensitivity"]})
   args.update({"specificity": accuracy["specificity"]})
@@ -460,7 +476,10 @@ def runExperimentPool(numObjects,
                       pointRange=1,
                       numPoints=10,
                       includeRandomLocation=False,
-                      noiseRange=[0],
+                      locationNoiseRange=[0.0],
+                      featureNoiseRange=[0.0],
+                      enableFeedback=[True],
+                      ambiguousLocationsRange=[0],
                       resultsName="convergence_results.pkl"):
   """
   Allows you to run a number of experiments using multiple processes.
@@ -490,24 +509,34 @@ def runExperimentPool(numObjects,
           for n in networkType:
             for p in longDistanceConnectionsRange:
               for t in range(nTrials):
-                for noise in noiseRange:
-                  args.append(
-                    {"numObjects": o,
-                     "numLocations": l,
-                     "numFeatures": f,
-                     "numColumns": c,
-                     "trialNum": t,
-                     "pointRange": pointRange,
-                     "numPoints": numPoints,
-                     "networkType" : n,
-                     "longDistanceConnections" : p,
-                     "plotInferenceStats": False,
-                     "includeRandomLocation": includeRandomLocation,
-                     "settlingTime": 3,
-                     "noiseLevel": noise,
-                     }
+                for locationNoise in locationNoiseRange:
+                  for featureNoise in featureNoiseRange:
+                    for ambiguousLocations in ambiguousLocationsRange:
+                      for feedback in enableFeedback:
+                        args.append(
+                          {"numObjects": o,
+                           "numLocations": l,
+                           "numFeatures": f,
+                           "numColumns": c,
+                           "trialNum": t,
+                           "pointRange": pointRange,
+                           "numPoints": numPoints,
+                           "networkType" : n,
+                           "longDistanceConnections" : p,
+                           "plotInferenceStats": False,
+                           "includeRandomLocation": includeRandomLocation,
+                           "settlingTime": 3,
+                           "locationNoise": locationNoise,
+                           "featureNoise": featureNoise,
+                           "enableFeedback": feedback,
+                           "numAmbiguousLocations": ambiguousLocations
+                           }
                 )
+  if numWorkers > len(args):
+    numWorkers = len(args)
+
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
+
   # Run the pool
   if numWorkers > 1:
     pool = Pool(processes=numWorkers)
@@ -525,6 +554,7 @@ def runExperimentPool(numObjects,
     cPickle.dump(result,f)
 
   return result
+
 
 def plotConvergenceByColumnTopology(results, columnRange, featureRange, networkType, numTrials):
   """
@@ -691,17 +721,25 @@ def plotConvergenceByObject(results, objectRange, featureRange):
   plt.close()
 
 
-def plotConvergenceNoiseRobustness(results, noiseRange, columnRange, numTrials):
+def plotConvergenceNoiseRobustness(results, noiseRange, columnRange, numTrials,
+                                   noiseType="locationNoise"):
+  numSensations = len(results[0]['accuracy'])
   noiseRange = numpy.array(noiseRange)
   convergence = numpy.zeros((len(noiseRange), max(columnRange) + 1))
-  specificity = numpy.zeros((len(noiseRange), 10, max(columnRange) + 1))
-  sensitivity = numpy.zeros((len(noiseRange), 10, max(columnRange) + 1))
-  accuracy = numpy.zeros((len(noiseRange), 10, max(columnRange) + 1))
+  specificity = numpy.zeros((len(noiseRange), numSensations, max(columnRange) + 1))
+  sensitivity = numpy.zeros((len(noiseRange), numSensations, max(columnRange) + 1))
+  accuracy = numpy.zeros((len(noiseRange), numSensations, max(columnRange) + 1))
   for r in results:
-    idx = numpy.where(noiseRange == r["noiseLevel"])[0]
+    if noiseType == "locationNoise":
+      idx = numpy.where(noiseRange == r["locationNoise"])[0]
+    elif noiseType == "featureNoise":
+      idx = numpy.where(noiseRange == r["featureNoise"])[0]
+    else:
+      raise ValueError("noise type has to be locationNoise or featureNoise")
+
     convergence[idx, r["numColumns"]] += r["convergencePoint"]
-    specificity[idx, :, r["numColumns"]] += r['specificity']
-    sensitivity[idx, :, r["numColumns"]] += r['sensitivity']
+    # specificity[idx, :, r["numColumns"]] += r['specificity']
+    # sensitivity[idx, :, r["numColumns"]] += r['sensitivity']
     accuracy[idx, :, r["numColumns"]] += r['accuracy']
 
   convergence /= numTrials
@@ -714,7 +752,7 @@ def plotConvergenceNoiseRobustness(results, noiseRange, columnRange, numTrials):
   #
   # Create the plot. x-axis=
   plt.figure()
-  plotPath = os.path.join("plots", "noise_robustness_accuracy.pdf")
+  plotPath = os.path.join("plots", "{}_robustness_accuracy.pdf".format(noiseType))
   if not os.path.exists("plots/"):
     os.makedirs("plots/")
   for i in range(len(noiseRange)):
@@ -728,7 +766,7 @@ def plotConvergenceNoiseRobustness(results, noiseRange, columnRange, numTrials):
   plt.close()
 
   plt.figure()
-  plotPath = os.path.join("plots", "noise_robustness.pdf")
+  plotPath = os.path.join("plots", "{}_robustness.pdf".format(noiseType))
 
   # Plot each curve
   legendList = []
@@ -758,25 +796,25 @@ def plotConvergenceNoiseRobustness(results, noiseRange, columnRange, numTrials):
 
 def plotConvergenceBySensations(results, columnRange, numTrials):
   convergence = numpy.zeros((len(columnRange), ))
-  specificity = numpy.zeros((len(columnRange), 10))
-  sensitivity = numpy.zeros((len(columnRange), 10))
+  # specificity = numpy.zeros((len(columnRange), 10))
+  # sensitivity = numpy.zeros((len(columnRange), 10))
   accuracy = numpy.zeros((len(columnRange), 10))
   for r in results:
     idx = numpy.where(numpy.array(columnRange) == r["numColumns"])[0]
     convergence[idx] += r["convergencePoint"]
-    specificity[idx, :] += r['specificity']
-    sensitivity[idx, :] += r['sensitivity']
+    # specificity[idx, :] += r['specificity']
+    # sensitivity[idx, :] += r['sensitivity']
     accuracy[idx, :] += r['accuracy']
 
   convergence /= numTrials
-  specificity /= numTrials
-  sensitivity /= numTrials
+  # specificity /= numTrials
+  # sensitivity /= numTrials
   accuracy /= numTrials
 
   ########################################################################
   #
   # Create the plot.
-  plt.figure()
+  # plt.figure()
   plotPath = os.path.join("plots", "accuracy_vs_number_of_sensations.pdf")
   if not os.path.exists("plots/"):
     os.makedirs("plots/")
@@ -804,8 +842,8 @@ def plotConvergenceBySensations(results, columnRange, numTrials):
   plt.legend()
   plt.ylabel('Accuracy')
   plt.xlabel('Number of sensations')
-  plt.savefig(plotPath)
-  plt.close()
+  # plt.savefig(plotPath)
+  # plt.close()
 
 
 def plotConvergenceByObjectMultiColumn(results, objectRange, columnRange):
@@ -927,6 +965,86 @@ def plotConvergenceByDistantConnectionChance(results, featureRange, columnRange,
   plt.close()
 
 
+def plotFeedbackExperiment(results, columnRange, numTrials):
+  convergence = numpy.zeros((len(columnRange), ))
+  numSensations = len(results[0]['accuracy'])
+  accuracyFB = numpy.zeros((len(columnRange), numSensations))
+  accuracyNoFB = numpy.zeros((len(columnRange), numSensations))
+
+  numActiveL4CellsFB = numpy.zeros((numSensations, 1))
+  numActiveL4CellsNoFB = numpy.zeros((numSensations, 1))
+
+  numActiveL2CellsFB = numpy.zeros((numSensations, 1))
+  numActiveL2CellsNoFB = numpy.zeros((numSensations, 1))
+  for r in results:
+    idx = numpy.where(numpy.array(columnRange) == r["numColumns"])[0]
+    convergence[idx] += r["convergencePoint"]
+
+    if r['enableFeedback']:
+      accuracyFB[idx, :] += r['accuracy']
+      numActiveL4CellsFB += numpy.mean(r['numActiveL4cells'], 0)
+      numActiveL2CellsFB += numpy.mean(r['numActiveL2cells'], 0)
+    else:
+      accuracyNoFB[idx, :] += r['accuracy']
+      numActiveL4CellsNoFB += numpy.mean(r['numActiveL4cells'], 0)
+      numActiveL2CellsNoFB += numpy.mean(r['numActiveL2cells'], 0)
+
+  convergence /= numTrials
+
+  accuracyFB /= numTrials
+  accuracyNoFB /= numTrials
+
+  numActiveL4CellsFB /= numTrials
+  numActiveL4CellsNoFB /= numTrials
+
+  ########################################################################
+  #
+  # Create the plot.
+  plt.figure()
+  plotPath = os.path.join("plots", "accuracy_vs_number_of_sensations_feedback.pdf")
+  if not os.path.exists("plots/"):
+    os.makedirs("plots/")
+
+  plt.plot(numpy.arange(numSensations)+1, accuracyFB[0, :], label="with FB")
+  plt.plot(numpy.arange(numSensations) + 1, accuracyNoFB[0, :], label="No FB")
+
+  plt.legend()
+  plt.ylabel('Accuracy')
+  plt.xlabel('Number of sensations')
+  plt.savefig(plotPath)
+
+  plt.figure()
+  plotPath = os.path.join("plots",
+                          "number_of_active_l4cells_feedback.pdf")
+  if not os.path.exists("plots/"):
+    os.makedirs("plots/")
+
+  plt.plot(numpy.arange(numSensations) + 1, numActiveL4CellsFB, label="with FB")
+  plt.plot(numpy.arange(numSensations) + 1, numActiveL4CellsNoFB, label="No FB")
+  yl = plt.ylim()
+  plt.ylim([0, yl[1]])
+  plt.legend()
+  plt.ylabel('Number of Active L4 Cells')
+  plt.xlabel('Number of sensations')
+  plt.savefig(plotPath)
+
+  plt.figure()
+  plotPath = os.path.join("plots",
+                          "number_of_active_l2cells_feedback.pdf")
+  if not os.path.exists("plots/"):
+    os.makedirs("plots/")
+
+  plt.plot(numpy.arange(numSensations) + 1, numActiveL2CellsFB, label="with FB")
+  plt.plot(numpy.arange(numSensations) + 1, numActiveL2CellsNoFB, label="No FB")
+  yl = plt.ylim()
+  plt.ylim([0, yl[1]])
+  plt.legend()
+  plt.ylabel('Number of Active L2 Cells')
+  plt.xlabel('Number of sensations')
+  plt.savefig(plotPath)
+  # plt.close()
+
+
 if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
@@ -953,9 +1071,9 @@ if __name__ == "__main__":
   # This experiment is run using a process pool
   if False:
     columnRange = range(1, 10)
-    featureRange = [5]
+    featureRange = [5, 10, 20, 30]
     objectRange = [100]
-    networkType = ["MultipleL4L2Columns", "MultipleL4L2ColumnsWithTopology"]
+    networkType = ["MultipleL4L2Columns"]
     numTrials = 10
 
     # Comment this out if you are re-running analysis on already saved results
@@ -968,14 +1086,43 @@ if __name__ == "__main__":
       networkType=networkType,
       numPoints=10,
       nTrials=numTrials,
-      numWorkers=cpu_count() - 1,
+      numWorkers=cpu_count(),
       resultsName="column_convergence_results.pkl")
 
-    with open("column_convergence_results.pkl","rb") as f:
+    with open("column_convergence_results.pkl", "rb") as f:
       results = cPickle.load(f)
 
-    plotConvergenceByColumnTopology(results, columnRange, featureRange, networkType,
+      plotConvergenceByColumn(results, columnRange, featureRange,
                             numTrials=numTrials)
+
+  # # Here we want to see how the number of columns affects convergence.
+  # # This experiment is run using a process pool
+  # if True:
+  #   columnRange = range(1, 10)
+  #   featureRange = [5, 10, 20, 30]
+  #   objectRange = [100]
+  #   networkType = ["MultipleL4L2Columns"]
+  #   # networkType = ["MultipleL4L2Columns", "MultipleL4L2ColumnsWithTopology"]
+  #   numTrials = 10
+  #
+  #   # Comment this out if you are re-running analysis on already saved results
+  #   # Very useful for debugging the plots
+  #   runExperimentPool(
+  #     numObjects=objectRange,
+  #     numLocations=[10],
+  #     numFeatures=featureRange,
+  #     numColumns=columnRange,
+  #     networkType=networkType,
+  #     numPoints=10,
+  #     nTrials=numTrials,
+  #     numWorkers=cpu_count() - 1,
+  #     resultsName="column_convergence_results.pkl")
+  #
+  #   with open("column_convergence_results.pkl","rb") as f:
+  #     results = cPickle.load(f)
+  #
+  #   plotConvergenceByColumnTopology(results, columnRange, featureRange, networkType,
+  #                           numTrials=numTrials)
 
   # Here we measure the effect of random long-distance connections.
   # We vary the longDistanceConnectionProb parameter,
@@ -1014,9 +1161,8 @@ if __name__ == "__main__":
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1]
-    featureRange = [5,10,20,30]
-    objectRange = [2,10,20,30,40,50,60,80,100]
-
+    featureRange = [5, 10, 20, 30]
+    objectRange = [2, 10, 20, 30, 40, 50, 60, 80, 100]
     # Comment this out if you are re-running analysis on already saved results.
     # Very useful for debugging the plots
     runExperimentPool(
@@ -1026,7 +1172,7 @@ if __name__ == "__main__":
                       numColumns=columnRange,
                       numPoints=10,
                       nTrials=numTrials,
-                      numWorkers=cpu_count() - 1,
+                      numWorkers=cpu_count(),
                       resultsName="object_convergence_results.pkl")
 
     # Analyze results
@@ -1066,15 +1212,63 @@ if __name__ == "__main__":
   # Here we want to see how random noise affects convergence for a
   # single column.
   # This experiment is run using a process pool
-  if False:
+  if True:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
-    columnRange = [1, 2, 5, 8]
+    columnRange = [1]
     featureRange = [10]
     objectRange = [50]
+    numAmbiguousLocationsRange = [0]
+    # noiseRange = [0, 0.1, 0.2]
+    noiseRange = numpy.arange(0, 0.4, 0.05).tolist()
+    runExperimentPool(
+      numObjects=objectRange,
+      numLocations=[50],
+      numFeatures=featureRange,
+      numColumns=columnRange,
+      numPoints=10,
+      nTrials=numTrials,
+      numWorkers=cpu_count(),
+      featureNoiseRange=noiseRange,
+      ambiguousLocationsRange=numAmbiguousLocationsRange,
+      resultsName="feature_noise_robustness_results.pkl")
 
-    noiseRange = numpy.arange(0, 0.5, 0.05)
+    # Analyze results
+    with open("feature_noise_robustness_results.pkl", "rb") as f:
+      results = cPickle.load(f)
 
+      plotConvergenceNoiseRobustness(results, noiseRange, columnRange,
+                                     numTrials, "featureNoise")
+
+
+    noiseRange = numpy.arange(0, 0.5, 0.05)*2
+    runExperimentPool(
+      numObjects=objectRange,
+      numLocations=[50],
+      numFeatures=featureRange,
+      numColumns=columnRange,
+      numPoints=10,
+      nTrials=numTrials,
+      numWorkers=cpu_count(),
+      locationNoiseRange=noiseRange,
+      ambiguousLocationsRange=numAmbiguousLocationsRange,
+      resultsName="location_noise_robustness_results.pkl")
+
+    # Analyze results
+    with open("location_noise_robustness_results.pkl", "rb") as f:
+      results = cPickle.load(f)
+
+      plotConvergenceNoiseRobustness(results, noiseRange, columnRange,
+                                     numTrials, "locationNoise")
+
+
+  if False:
+    # plot convergence by sensations
+    numTrials = 1
+    columnRange = [1]
+    featureRange = [10]
+    objectRange = [50]
+    numAmbiguousLocationsRange = [1]
     # Comment this out if you are re-running analysis on already saved results.
     # Very useful for debugging the plots
     runExperimentPool(
@@ -1085,38 +1279,41 @@ if __name__ == "__main__":
       numPoints=10,
       nTrials=numTrials,
       numWorkers=cpu_count(),
-      noiseRange=noiseRange,
-      resultsName="noise_robustness_results.pkl")
-
-    # Analyze results
-    with open("noise_robustness_results.pkl", "rb") as f:
-      results = cPickle.load(f)
-
-    plotConvergenceNoiseRobustness(results, noiseRange, columnRange, numTrials)
-
-
-  if True:
-    # We run 10 trials for each column number and then analyze results
-    numTrials = 1
-    columnRange = [1, 2, 3]
-    featureRange = [10]
-    objectRange = [50]
-
-    # # Comment this out if you are re-running analysis on already saved results.
-    # # Very useful for debugging the plots
-    # runExperimentPool(
-    #   numObjects=objectRange,
-    #   numLocations=[10],
-    #   numFeatures=featureRange,
-    #   numColumns=columnRange,
-    #   numPoints=10,
-    #   nTrials=numTrials,
-    #   numWorkers=cpu_count(),
-    #   noiseRange=[0],
-    #   resultsName="multi_column_convergence_results.pkl")
+      enableFeedback=False,
+      ambiguousLocationsRange=numAmbiguousLocationsRange,
+      resultsName="multi_column_convergence_results.pkl")
 
     # Analyze results
     with open("multi_column_convergence_results.pkl", "rb") as f:
       results = cPickle.load(f)
     plotConvergenceBySensations(results, columnRange, numTrials)
 
+
+  if False:
+    # feedback with ambiguous location
+    numTrials = 1
+    columnRange = [1]
+    featureRange = [20]
+    objectRange = [200]
+    numAmbiguousLocationsRange = [2]
+    # Comment this out if you are re-running analysis on already saved results.
+    # Very useful for debugging the plots
+
+    filename = "multi_column_convergence_results_fb.pkl"
+    runExperimentPool(
+      numObjects=objectRange,
+      numLocations=[20],
+      numFeatures=featureRange,
+      numColumns=columnRange,
+      numPoints=10,
+      nTrials=numTrials,
+      numWorkers=cpu_count(),
+      featureNoiseRange=[0.0],
+      enableFeedback=[True, False],
+      ambiguousLocationsRange=numAmbiguousLocationsRange,
+      resultsName=filename)
+
+    with open(filename, "rb") as f:
+      results = cPickle.load(f)
+    plt.figure()
+    plotFeedbackExperiment(results, columnRange, numTrials)
