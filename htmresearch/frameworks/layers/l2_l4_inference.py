@@ -136,7 +136,7 @@ class L4L2Experiment(object):
                externalInputSize=1024,
                numExternalInputBits=20,
                L2Overrides=None,
-               L4RegionType="py.ExtendedTMRegion",
+               L4RegionType="py.ApicalTMRegion",
                networkType = "MultipleL4L2Columns",
                longDistanceConnections = 0,
                maxConnectionDistance = 1,
@@ -149,7 +149,8 @@ class L4L2Experiment(object):
                lateralSPOverrides=None,
                enableFeedForwardSP=False,
                feedForwardSPOverrides=None,
-               objectNamesAreIndices=False
+               objectNamesAreIndices=False,
+               enableFeedback=True
                ):
     """
     Creates the network.
@@ -223,6 +224,9 @@ class L4L2Experiment(object):
              integers. If False, object names can be strings, and indices will
              be assigned to each object name.
 
+    @param   enableFeedback (bool)
+             If True, enable feedback between L2 and L4
+
     """
     # Handle logging - this has to be done first
     self.logCalls = logCalls
@@ -244,7 +248,8 @@ class L4L2Experiment(object):
     # update parameters with overrides
     self.config = {
       "networkType": networkType,
-      "longDistanceConnections" : longDistanceConnections,
+      "longDistanceConnections": longDistanceConnections,
+      "enableFeedback": enableFeedback,
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
@@ -778,6 +783,9 @@ class L4L2Experiment(object):
         "basalPredictedSegmentDecrement": 0.0,
         "apicalPredictedSegmentDecrement": 0.0,
         "activationThreshold": activationThreshold,
+        "reducedBasalThreshold": int(activationThreshold*0.8),
+      # int(activationThreshold*0.8),
+      #   "reducedBasalThreshold": activationThreshold-1,# int(activationThreshold*0.8),
         "sampleSize": sampleSize,
         "implementation": "ApicalTiebreak",
         "seed": self.seed
