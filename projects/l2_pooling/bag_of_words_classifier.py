@@ -103,7 +103,7 @@ def run_bag_of_words_classifier(args):
   trialNum = args.get("trialNum", 42)
   pointRange = args.get("pointRange", 1)
   useLocation = args.get("useLocation", 1)
-  numColumns = args.get("numColumns", 2)
+  numColumns = args.get("numColumns", 1)
   objects = createObjectMachine(
     machineType="simple",
     numInputBits=20,
@@ -358,14 +358,14 @@ def run_bow_experiment_single_column():
 
           )
 
-  # numWorkers = cpu_count()
-  # pool = Pool(processes=numWorkers)
-  # result = pool.map(run_bag_of_words_classifier, args)
+  numWorkers = cpu_count()
+  pool = Pool(processes=numWorkers)
+  result = pool.map(run_bag_of_words_classifier, args)
 
   resultsName = "bag_of_words_useLocation_{}.pkl".format(useLocation)
-  # # Pickle results for later use
-  # with open(resultsName, "wb") as f:
-  #   cPickle.dump(result, f)
+  # Pickle results for later use
+  with open(resultsName, "wb") as f:
+    cPickle.dump(result, f)
 
 
   plt.figure()
@@ -411,13 +411,13 @@ def run_bow_experiment_multiple_columns():
             )
 
   numWorkers = cpu_count()
-  # pool = Pool(processes=numWorkers)
-  # result = pool.map(run_bag_of_words_classifier, args)
+  pool = Pool(processes=numWorkers)
+  result = pool.map(run_bag_of_words_classifier, args)
 
   resultsName = "bag_of_words_multi_column_useLocation_{}.pkl".format(useLocation)
-  # # Pickle results for later use
-  # with open(resultsName, "wb") as f:
-  #   cPickle.dump(result, f)
+  # Pickle results for later use
+  with open(resultsName, "wb") as f:
+    cPickle.dump(result, f)
 
   with open(resultsName, "rb") as f:
     resultsBOW = cPickle.load(f)
@@ -428,7 +428,7 @@ def run_bow_experiment_multiple_columns():
 
 if __name__ == "__main__":
   (expConfig, _args) = _getArgs()
-  # run_bow_experiment_single_column()
+  run_bow_experiment_single_column()
 
-  run_bow_experiment_multiple_columns()
+  # run_bow_experiment_multiple_columns()
 
