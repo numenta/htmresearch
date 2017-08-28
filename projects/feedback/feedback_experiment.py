@@ -82,9 +82,7 @@ class FeedbackExperiment(object):
 
 
     # Select the type of region to use for layer 4.
-    # ExtendedTMRegion is faster, but cannot use the ApicalModulation implementation.
-    # self.L4RegionType = "py.ExtendedTMRegion"
-    self.L4RegionType = "py.ApicalTMRegion"
+    self.L4RegionType = "py.ApicalTMSequenceRegion"
 
 
 
@@ -145,15 +143,6 @@ class FeedbackExperiment(object):
         L2ColumnName = "L2Column" + suffix
 
         L4Params = copy.deepcopy(networkConfig["L4Params"])
-
-        # The different assumptions for ApicalTMRegion and ExtendedTMRegion....
-        if networkConfig["L4RegionType"] == "py.ApicalTMRegion":
-            L4Params["basalInputWidth"] = networkConfig["L4Params"]["columnCount"] * networkConfig["L4Params"]["cellsPerColumn"]
-        elif networkConfig["L4RegionType"] == "py.ExtendedTMRegion":
-            L4Params["basalInputWidth"] = networkConfig["externalInputSize"]
-        else:
-            raise Exception("Invalid L4 Region Type!")
-
         L4Params["apicalInputWidth"] = networkConfig["L2Params"]["cellCount"]
 
         network.addRegion(
@@ -189,16 +178,10 @@ class FeedbackExperiment(object):
                      srcOutput="feedForwardOutput", destInput="apicalInput",
                      propagationDelay=1)
 
-        # # ONLY for ApicalTM: link the region to itself laterally (basally)
-        if networkConfig["L4RegionType"] == "py.ApicalTMRegion":
-            network.link(L4ColumnName, L4ColumnName, "UniformLink", "",
-                     srcOutput="activeCells", destInput="basalInput",
-                     propagationDelay=1)
-            network.link(L4ColumnName, L4ColumnName, "UniformLink", "", srcOutput="winnerCells", destInput="basalGrowthCandidates",propagationDelay=1)
-
-
-        # Link reset output to L2. For L4, an empty input is sufficient for a reset.
+        # Link reset output to L2 and L4.
         network.link(sensorInputName, L2ColumnName, "UniformLink", "",
+                     srcOutput="resetOut", destInput="resetIn")
+        network.link(sensorInputName, L4ColumnName, "UniformLink", "",
                      srcOutput="resetOut", destInput="resetIn")
 
         #enableProfiling(network)
@@ -332,7 +315,7 @@ class FeedbackExperiment(object):
 
     L2Responses=[]
     L4Responses=[]
-    L4Predictive=[]
+    L4Predicted=[]
     activityTrace = numpy.zeros(len(sequence))
 
     totalActiveCells = 0
@@ -343,7 +326,7 @@ class FeedbackExperiment(object):
 
       activityTrace[i] = len(self.getL4Representations()[0])
       L4Responses.append(self.getL4Representations()[0])
-      L4Predictive.append(self.getL4PredictiveCells()[0])
+      L4Predicted.append(self.getL4PredictedCells()[0])
       L2Responses.append(self.getL2Representations()[0])
       if i >= burnIn:
         totalActiveCells += len(self.getL4Representations()[0])
@@ -358,7 +341,7 @@ class FeedbackExperiment(object):
     responses = {
             "L2Responses": L2Responses,
             "L4Responses": L4Responses,
-            "L4Predictive": L4Predictive
+            "L4Predicted": L4Predicted
             }
     return avgActiveCells,avgPredictedActiveCells,activityTrace, responses
 
@@ -379,18 +362,12 @@ class FeedbackExperiment(object):
     return [set(column._tm.getActiveCells()) for column in self.L4Columns]
 
 
-  def getL4PredictiveCells(self):
+  def getL4PredictedCells(self):
     """
-    Returns the predictive cells in L4.
+    Returns the predicted cells in L4.
     """
-    # ApicalTMRegion uses "getPredictedCells", while ExtendedTMRegion uses "getPredictiveCells".
-    #return [set(column._tm.getPredictiveCells()) for column in self.L4Columns]
-    if self.L4RegionType == "py.ApicalTMRegion":
-      return [set(column._tm.getPredictedCells()) for column in self.L4Columns]
-    elif self.L4RegionType == "py.ExtendedTMRegion":
-      return [set(column._tm.getPredictiveCells()) for column in self.L4Columns]
-    else:
-      raise (Exception("Invalid L4 Region Type!"))
+    return [set(column._tm.getPredictedCells()) for column in self.L4Columns]
+
 
 
   def getL4PredictedActiveCells(self):
@@ -417,44 +394,24 @@ class FeedbackExperiment(object):
     Returns a good default set of parameters to use in the L4 region.
     """
 
-    if self.L4RegionType == "py.ApicalTMRegion":
-        return {
-            "columnCount": inputSize,
-            "cellsPerColumn": 8,
-            "learn": True,
-            "initialPermanence": 0.61,
-            "connectedPermanence": 0.6,
-            "permanenceIncrement": 0.1,
-            "permanenceDecrement": 0.02,
-            "reducedBasalThreshold": 10,
-            "minThreshold": 10,
-            "basalPredictedSegmentDecrement": 0.0,
-            "apicalPredictedSegmentDecrement": 0.0,
-            "activationThreshold": 13,
-            "sampleSize": 20,
-            "implementation": "ApicalDependent",
-            "seed": self.seed
-            }
-    elif self.L4RegionType == "py.ExtendedTMRegion":
-        return{
-              "columnCount": inputSize,
-              "cellsPerColumn": 8,
-              "formInternalBasalConnections": True,
-              "learn": True,
-              "learnOnOneCell": False,
-              "initialPermanence": 0.51,
-              "connectedPermanence": 0.6,
-              "permanenceIncrement": 0.1,
-              "permanenceDecrement": 0.02,
-              "minThreshold": 13,
-              "predictedSegmentDecrement": 0.00,
-              "activationThreshold": 15,
-              "maxNewSynapseCount": 20,
-              "implementation": "etm",
-              "seed": self.seed
-              }
-    else:
-        raise(Exception("Invalid L4 Region Type! (current value: "+self.L4RegionType+")"))
+    return {
+      "columnCount": inputSize,
+      "cellsPerColumn": 8,
+      "learn": True,
+      "initialPermanence": 0.61,
+      "connectedPermanence": 0.6,
+      "permanenceIncrement": 0.1,
+      "permanenceDecrement": 0.02,
+      "reducedBasalThreshold": 10,
+      "minThreshold": 10,
+      "basalPredictedSegmentDecrement": 0.0,
+      "apicalPredictedSegmentDecrement": 0.0,
+      "activationThreshold": 13,
+      "sampleSize": 20,
+      # Use an implementation that supports apicalModulationBasalThreshold
+      "implementation": "ApicalDependent",
+      "seed": self.seed
+    }
 
 
   def getDefaultL2Params(self, inputSize):

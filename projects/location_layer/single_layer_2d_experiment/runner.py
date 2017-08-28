@@ -26,7 +26,7 @@ import random
 import numpy as np
 
 from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
-  ApicalTiebreakTemporalMemory)
+  ApicalTiebreakPairMemory)
 from htmresearch.algorithms.column_pooler import ColumnPooler
 from htmresearch.algorithms.single_layer_location_memory import (
   SingleLayerLocationMemory)
@@ -68,7 +68,7 @@ class SingleLayerLocation2DExperiment(object):
       "learningThreshold": 8,
     })
 
-    self.inputLayer = ApicalTiebreakTemporalMemory(**{
+    self.inputLayer = ApicalTiebreakPairMemory(**{
       "columnCount": 150,
       "cellsPerColumn": 32,
       "basalInputSize": 1000,

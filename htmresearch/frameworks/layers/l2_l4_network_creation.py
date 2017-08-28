@@ -193,7 +193,7 @@ def createL4L2Column(network, networkConfig, suffix=""):
       "enableFeedback": True,
       "externalInputSize": 1024,
       "sensorInputSize": 1024,
-      "L4RegionType": "py.ExtendedTMRegion",
+      "L4RegionType": "py.ApicalTMPairRegion",
       "L4Params": {
         <constructor parameters for the L4 region>
       },
@@ -217,8 +217,8 @@ def createL4L2Column(network, networkConfig, suffix=""):
     appropriate spatial pooler regions will be added to the network.
 
     If externalInputSize is 0, the externalInput sensor (and SP if appropriate)
-    will NOT be created. In this case it is expected that L4 will have
-    formInternalBasalConnections set to True.
+    will NOT be created. In this case it is expected that L4 is a sequence
+    memory region (e.g. ApicalTMSequenceRegion)
   """
 
   externalInputName = "externalInput" + suffix
@@ -229,12 +229,6 @@ def createL4L2Column(network, networkConfig, suffix=""):
   L4Params = copy.deepcopy(networkConfig["L4Params"])
   L4Params["basalInputWidth"] = networkConfig["externalInputSize"]
   L4Params["apicalInputWidth"] = networkConfig["L2Params"]["cellCount"]
-
-  enableL4InternalConnections = False
-  if "formInternalBasalConnections" in L4Params:
-    if L4Params["formInternalBasalConnections"]:
-      enableL4InternalConnections = True
-    del L4Params["formInternalBasalConnections"]
 
   if networkConfig["externalInputSize"] > 0:
     network.addRegion(
@@ -270,12 +264,6 @@ def createL4L2Column(network, networkConfig, suffix=""):
   network.setPhases(L4ColumnName,[2])
   network.setPhases(L2ColumnName,[3])
 
-  if enableL4InternalConnections:
-    network.link(L4ColumnName, L4ColumnName, "UniformLink", "",
-                 "activeCells", "basalInput", propagationDelay=1)
-    network.link(L4ColumnName, L4ColumnName, "UniformLink", "",
-                 "winnerCells", "basalGrowthCandidates", propagationDelay=1)
-
   # Link SP region(s), if applicable
   if networkConfig["externalInputSize"] > 0:
     _linkLateralSPRegion(network, networkConfig, externalInputName, L4ColumnName)
@@ -294,8 +282,10 @@ def createL4L2Column(network, networkConfig, suffix=""):
                  srcOutput="feedForwardOutput", destInput="apicalInput",
                  propagationDelay=1)
 
-  # Link reset output to L2. For L4, an empty input is sufficient for a reset.
+  # Link reset output to L2 and L4
   network.link(sensorInputName, L2ColumnName, "UniformLink", "",
+               srcOutput="resetOut", destInput="resetIn")
+  network.link(sensorInputName, L4ColumnName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
 
   enableProfiling(network)
@@ -322,7 +312,7 @@ def createMultipleL4L2Columns(network, networkConfig):
       "externalInputSize": 1024,
       "sensorInputSize": 1024,
       "L4Params": {
-        <constructor parameters for ExtendedTMRegion
+        <constructor parameters for ApicalTMPairRegion
       },
       "L2Params": {
         <constructor parameters for ColumnPoolerRegion>
@@ -397,7 +387,7 @@ def createMultipleL4L2ColumnsWithTopology(network, networkConfig):
       If this value is not provided, it defaults to 0, and all connections
       will be in the local vicinity.
     "L4Params": {
-      <constructor parameters for ExtendedTMRegion>
+      <constructor parameters for ApicalTMPairRegion>
     },
     "L2Params": {
       <constructor parameters for ColumnPoolerRegion>

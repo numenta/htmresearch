@@ -136,7 +136,7 @@ class L4L2Experiment(object):
                externalInputSize=1024,
                numExternalInputBits=20,
                L2Overrides=None,
-               L4RegionType="py.ApicalTMRegion",
+               L4RegionType="py.ApicalTMPairRegion",
                networkType = "MultipleL4L2Columns",
                longDistanceConnections = 0,
                maxConnectionDistance = 1,
@@ -254,8 +254,7 @@ class L4L2Experiment(object):
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
       "L4RegionType": L4RegionType,
-      "L4Params": self.getDefaultL4Params(L4RegionType, inputSize,
-                                          numExternalInputBits),
+      "L4Params": self.getDefaultL4Params(inputSize, numExternalInputBits),
       "L2Params": self.getDefaultL2Params(inputSize, numInputBits),
     }
 
@@ -660,10 +659,18 @@ class L4L2Experiment(object):
 
   def getL4PredictedCells(self):
     """
-    Returns the cells in L4 that were predicted at the beginning of the last
-    call to 'compute'.
+    Returns the cells in L4 that were predicted by the location input.
     """
     return [set(column.getOutputData("predictedCells").nonzero()[0])
+            for column in self.L4Regions]
+
+
+  def getL4PredictedActiveCells(self):
+    """
+    Returns the cells in L4 that were predicted by the location signal
+    and are currently active.  Does not consider apical input.
+    """
+    return [set(column.getOutputData("predictedActiveCells").nonzero()[0])
             for column in self.L4Regions]
 
 
@@ -737,7 +744,7 @@ class L4L2Experiment(object):
 
     return results
 
-  def getDefaultL4Params(self, L4RegionType, inputSize, numInputBits):
+  def getDefaultL4Params(self, inputSize, numInputBits):
     """
     Returns a good default set of parameters to use in the L4 region.
     """
@@ -753,7 +760,7 @@ class L4L2Experiment(object):
       activationThreshold = int(numInputBits * .6)
       minThreshold = activationThreshold
 
-    if L4RegionType == "py.ExtendedTMRegion":
+    if self.config["L4RegionType"] == "py.ExtendedTMRegion":
       return {
         "columnCount": inputSize,
         "cellsPerColumn": 16,
@@ -770,7 +777,7 @@ class L4L2Experiment(object):
         "implementation": "etm",
         "seed": self.seed
       }
-    elif L4RegionType == "py.ApicalTMRegion":
+    elif self.config["L4RegionType"] == "py.ApicalTMRegion":
       return {
         "columnCount": inputSize,
         "cellsPerColumn": 16,
@@ -792,6 +799,7 @@ class L4L2Experiment(object):
       }
     else:
       raise ValueError("Unknown L4RegionType: %s" % L4RegionType)
+
 
 
   def getDefaultL2Params(self, inputSize, numInputBits):

@@ -25,7 +25,7 @@ Run the sequence memory tests on the C++ ExtendedTemporalMemory.
 
 import unittest
 
-from htmresearch_core.experimental import ExtendedTemporalMemory
+from htmresearch_core.experimental import ApicalTiebreakSequenceMemory
 
 from htmresearch.support.shared_tests.sequence_memory_test_base import (
   SequenceMemoryTestBase)
@@ -44,7 +44,6 @@ class ExtendedTM_SequenceMemoryTests(SequenceMemoryTestBase,
 
     params = {
       "columnCount": columnCount,
-      "basalInputSize": columnCount * cellsPerColumn,
       "cellsPerColumn": cellsPerColumn,
       "initialPermanence": initialPermanence,
       "connectedPermanence": connectedPermanence,
@@ -52,20 +51,17 @@ class ExtendedTM_SequenceMemoryTests(SequenceMemoryTestBase,
       "sampleSize": sampleSize,
       "permanenceIncrement": permanenceIncrement,
       "permanenceDecrement": permanenceDecrement,
-      "predictedSegmentDecrement": predictedSegmentDecrement,
+      "basalPredictedSegmentDecrement": predictedSegmentDecrement,
       "activationThreshold": activationThreshold,
       "seed": seed,
       "learnOnOneCell": False,
     }
 
-    self.tm = ExtendedTemporalMemory(**params)
+    self.tm = ApicalTiebreakSequenceMemory(**params)
 
 
   def compute(self, activeColumns, learn):
-    self.tm.compute(sorted(activeColumns),
-                    basalInput=self.tm.getActiveCells(),
-                    basalGrowthCandidates=self.tm.getWinnerCells(),
-                    learn=learn)
+    self.tm.compute(sorted(activeColumns), learn=learn)
 
 
   def reset(self):

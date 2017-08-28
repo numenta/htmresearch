@@ -29,7 +29,7 @@ import unittest
 import numpy as np
 
 from htmresearch.algorithms.apical_dependent_temporal_memory import (
-  ApicalDependentTemporalMemory)
+  TripleMemory)
 from htmresearch.support.shared_tests.sequence_memory_test_base import(
   SequenceMemoryTestBase)
 
@@ -74,7 +74,7 @@ class ApicalDependentTM_BasalSequenceMemoryTests(SequenceMemoryTestBase,
       "apicalInputSize": apicalInputSize,
     }
 
-    self.tm = ApicalDependentTemporalMemory(**params)
+    self.tm = TripleMemory(**params)
 
 
   def compute(self, activeColumns, learn):
@@ -142,7 +142,7 @@ class ApicalDependentTM_ApicalSequenceMemoryTests(SequenceMemoryTestBase,
       "apicalInputSize": columnCount*cellsPerColumn,
     }
 
-    self.tm = ApicalDependentTemporalMemory(**params)
+    self.tm = TripleMemory(**params)
 
 
   def compute(self, activeColumns, learn):

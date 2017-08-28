@@ -1055,9 +1055,8 @@ if __name__ == "__main__":
                     "numObjects": 30,
                     "numPoints": 10,
                     "numLocations": 10,
-                    "numFeatures": 10,
-                    "numColumns": 5,
-                    "networkType": "MultipleL4L2ColumnsWithTopology",
+                    "numFeatures": 4,
+                    "numColumns": 2,
                     "trialNum": 4,
                     "pointRange": 1,
                     "plotInferenceStats": True,  # Outputs detailed graphs

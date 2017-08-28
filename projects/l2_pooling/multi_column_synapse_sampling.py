@@ -50,19 +50,17 @@ def getL4Params():
   return {
     "columnCount": 2048,
     "cellsPerColumn": 8,
-    "learningMode": True,
-    "inferenceMode": True,
+    "learn": True,
     "learnOnOneCell": False,
     "initialPermanence": 0.51,
     "connectedPermanence": 0.6,
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
     "minThreshold": 10,
-    "predictedSegmentDecrement": 0.002,
+    "basalPredictedSegmentDecrement": 0.002,
     "activationThreshold": 13,
     "sampleSize": 20,
-    "defaultOutputType": "predictedActiveCells",
-    "implementation": "etm",
+    "implementation": "ApicalTiebreakCPP",
     "seed": 41
   }
 

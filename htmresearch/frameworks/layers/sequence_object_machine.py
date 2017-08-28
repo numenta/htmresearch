@@ -25,13 +25,14 @@ import numpy
 from htmresearch.frameworks.layers.object_machine_base import ObjectMachineBase
 
 
-
-class SimpleObjectMachine(ObjectMachineBase):
+class SequenceObjectMachine(ObjectMachineBase):
   """
-  Most basic implementation of ObjectMachine, where objects are defined by set
-  of pairs of indices, corresponding to (location, feature) pairs.
-  Each feature (resp. location) index corresponds to a randomly-generated SDR
-  in the machine.
+  An implementation of ObjectMachine, where "objects" are pure temporal
+  sequences. There are a fixed number of elements or "features" corresponding
+  to a randomly-generated SDR. Sequences are composed of a list of feature
+  indices corresponding to these features, e.g. [23, 3, 4, 45]
+
+  Locations are generated as random vectors.
   """
 
 
@@ -40,12 +41,12 @@ class SimpleObjectMachine(ObjectMachineBase):
                sensorInputSize=2048,
                externalInputSize=2048,
                numCorticalColumns=1,
-               numLocations=10000,
                numFeatures=400,
+               numLocations=100000,
                seed=42):
     """
-    At creation, the SimpleObjectMachine creates a pool of locations and
-    features SDR's.
+    At creation, the SequenceObjectMachine creates a pool of
+    feature SDR's.
 
     Parameters:
     ----------------------------
@@ -61,31 +62,26 @@ class SimpleObjectMachine(ObjectMachineBase):
     @param   numCorticalColumns (int)
              Number of cortical columns used in the experiment
 
-    @param   numLocations (int)
-             Number of location SDRs to generate per cortical column. There is
-             typically no need to not use the default value, unless the user
-             knows he will use more than 400 patterns.
-
     @param   numFeatures (int)
              Number of feature SDRs to generate per cortical column. There is
              typically no need to not use the default value, unless the user
-             knows he will use more than 400 patterns.
+             knows she will use more than 400 patterns.
 
     @param   seed (int)
              Seed to be used in the machine
 
     """
-    super(SimpleObjectMachine, self).__init__(numInputBits,
+    super(SequenceObjectMachine, self).__init__(numInputBits,
                                               sensorInputSize,
                                               externalInputSize,
                                               numCorticalColumns,
                                               seed)
 
-    # location and features pool
+    # features pool
     self.numLocations = numLocations
     self.numFeatures = numFeatures
-    self._generateLocations()
     self._generateFeatures()
+    self._generateLocations()
     numpy.random.seed(seed)
 
 
@@ -108,7 +104,8 @@ class SimpleObjectMachine(ObjectMachineBase):
 
     objects = {}
     for name in objectNames:
-      objects[name] = [self._getSDRPairs([pair] * self.numColumns) \
+      objects[name] = [self._getSDRPairs([pair] * self.numColumns,
+                                         includeRandomLocation=True) \
                        for pair in self.objects[name]]
 
     self._checkObjectsToLearn(objects)
@@ -163,61 +160,42 @@ class SimpleObjectMachine(ObjectMachineBase):
       ]
       sdrPairs = self._getSDRPairs(
         pairs,
-        noise=inferenceConfig.get("noiseLevel", None),
-        includeRandomLocation=inferenceConfig.get("includeRandomLocation",
-                                                  False),
-        numAmbiguousLocations=inferenceConfig.get("numAmbiguousLocations",
-                                                  0))
+        noise=inferenceConfig.get("noiseLevel", None)
+      )
       sensationSteps.append(sdrPairs)
 
     self._checkObjectToInfer(sensationSteps)
     return sensationSteps
 
 
-  def addObject(self, pairs, name=None):
+  def addObject(self, featureIndices, name=None):
     """
-    Adds an object to the Machine.
+    Adds a sequence (list of feature indices) to the Machine.
     """
     if name is None:
       name = len(self.objects)
 
-    self.objects[name] = pairs
+    sequence = []
+    for f in featureIndices: sequence += [(0, f,)]
+
+    self.objects[name] = sequence
 
 
-  def createRandomObjects(self,
-                          numObjects,
-                          numPoints,
-                          numLocations=None,
-                          numFeatures=None):
+  def createRandomSequences(self,
+                          numSequences,
+                          sequenceLength):
     """
-    Creates a set of random objects and adds them to the machine.
-    If numLocations and numFeatures and not specified, they will be set to the
-    desired number of points.
+    Creates a set of random sequences, each with sequenceLength elements,
+    and adds them to the machine.
     """
-    if numLocations is None:
-      numLocations = numPoints
-    if numFeatures is None:
-      numFeatures = numPoints
-
-    assert(numPoints <= numLocations), ("Number of points in object cannot be "
-          "greater than number of locations")
-
-    locationArray = numpy.array(range(numLocations))
-    numpy.random.seed(self.seed)
-    for _ in xrange(numObjects):
-      # Permute the number of locations and select points from it
-      locationArray = numpy.random.permutation(locationArray)
+    for _ in xrange(numSequences):
       self.addObject(
-        [(locationArray[p],
-          numpy.random.randint(0, numFeatures)) for p in xrange(numPoints)],
+        [numpy.random.randint(0, self.numFeatures)
+                                            for _ in xrange(sequenceLength)]
       )
 
 
-  def _getSDRPairs(self,
-                   pairs,
-                   noise=None,
-                   includeRandomLocation=False,
-                   numAmbiguousLocations=0):
+  def _getSDRPairs(self, pairs, noise=None, includeRandomLocation=False):
     """
     This method takes a list of (location, feature) index pairs (one pair per
     cortical column), and returns a sensation dict in the correct format,
@@ -229,14 +207,10 @@ class SimpleObjectMachine(ObjectMachineBase):
 
       # generate random location if requested
       if includeRandomLocation:
-        location = self._generatePattern(self.numInputBits,
-                                         self.externalInputSize)
-      elif numAmbiguousLocations > 0:
+        locationID = random.randint(0, self.numLocations-1)
         location = self.locations[col][locationID]
-        numpy.random.seed(self.seed)
-        for _ in range(numAmbiguousLocations):
-          idx = numpy.random.randint(len(self.locations[col]))
-          location = location | self.locations[col][idx]
+        # location = self._generatePattern(self.numInputBits,
+        #                                  self.externalInputSize)
 
       # generate union of locations if requested
       elif isinstance(locationID, tuple):
@@ -292,23 +266,6 @@ class SimpleObjectMachine(ObjectMachineBase):
     return newBits
 
 
-  def _generateLocations(self):
-    """
-    Generates a pool of locations to be used for the experiments.
-
-    For each index, numColumns SDR's are created, as locations for the same
-    feature should be different for each column.
-    """
-    size = self.externalInputSize
-    bits = self.numInputBits
-
-    self.locations = []
-    for _ in xrange(self.numColumns):
-      self.locations.append(
-        [self._generatePattern(bits, size) for _ in xrange(self.numLocations)]
-      )
-
-
   def _generateFeatures(self):
     """
     Generates a pool of features to be used for the experiments.
@@ -324,3 +281,20 @@ class SimpleObjectMachine(ObjectMachineBase):
       self.features.append(
         [self._generatePattern(bits, size) for _ in xrange(self.numFeatures)]
     )
+
+
+  def _generateLocations(self):
+    """
+    Generates a pool of locations to be used for the experiments.
+
+    For each index, numColumns SDR's are created, as locations for the same
+    feature should be different for each column.
+    """
+    size = self.externalInputSize
+    bits = self.numInputBits
+
+    self.locations = []
+    for _ in xrange(self.numColumns):
+      self.locations.append(
+        [self._generatePattern(bits, size) for _ in xrange(self.numLocations)]
+      )

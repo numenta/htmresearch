@@ -231,10 +231,10 @@ class L4L2ExperimentTest(unittest.TestCase):
         "permanenceIncrement": 0.1,
         "permanenceDecrement": 0.02,
         "minThreshold": 3,
-        "predictedSegmentDecrement": 0.002,
+        "basalPredictedSegmentDecrement": 0.002,
         "activationThreshold": 3,
         "sampleSize": 20,
-        "implementation": "etm",
+        "implementation": "ApicalTiebreakCPP",
     }
     l4ColumnCount = 50
     numCorticalColumns=2
@@ -666,7 +666,7 @@ class L4L2ExperimentTest(unittest.TestCase):
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.02,
       "minThreshold": 8,
-      "predictedSegmentDecrement": 0.0,
+      "basalPredictedSegmentDecrement": 0.0,
       "activationThreshold": 8,
       "sampleSize": 15,
     }
