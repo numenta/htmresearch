@@ -760,45 +760,45 @@ class L4L2Experiment(object):
       activationThreshold = int(numInputBits * .6)
       minThreshold = activationThreshold
 
-    if self.config["L4RegionType"] == "py.ExtendedTMRegion":
-      return {
-        "columnCount": inputSize,
-        "cellsPerColumn": 16,
-        "learn": True,
-        "learnOnOneCell": False,
-        "initialPermanence": 0.51,
-        "connectedPermanence": 0.6,
-        "permanenceIncrement": 0.1,
-        "permanenceDecrement": 0.02,
-        "minThreshold": minThreshold,
-        "predictedSegmentDecrement": 0.0,
-        "activationThreshold": activationThreshold,
-        "sampleSize": sampleSize,
-        "implementation": "etm",
-        "seed": self.seed
-      }
-    elif self.config["L4RegionType"] == "py.ApicalTMRegion":
-      return {
-        "columnCount": inputSize,
-        "cellsPerColumn": 16,
-        "learn": True,
-        "initialPermanence": 0.51,
-        "connectedPermanence": 0.6,
-        "permanenceIncrement": 0.1,
-        "permanenceDecrement": 0.02,
-        "minThreshold": minThreshold,
-        "basalPredictedSegmentDecrement": 0.0,
-        "apicalPredictedSegmentDecrement": 0.0,
-        "activationThreshold": activationThreshold,
-        "reducedBasalThreshold": int(activationThreshold*0.8),
-      # int(activationThreshold*0.8),
-      #   "reducedBasalThreshold": activationThreshold-1,# int(activationThreshold*0.8),
-        "sampleSize": sampleSize,
-        "implementation": "ApicalTiebreak",
-        "seed": self.seed
-      }
-    else:
-      raise ValueError("Unknown L4RegionType: %s" % L4RegionType)
+    # if self.config["L4RegionType"] == "py.ExtendedTMRegion":
+    #   return {
+    #     "columnCount": inputSize,
+    #     "cellsPerColumn": 16,
+    #     "learn": True,
+    #     "learnOnOneCell": False,
+    #     "initialPermanence": 0.51,
+    #     "connectedPermanence": 0.6,
+    #     "permanenceIncrement": 0.1,
+    #     "permanenceDecrement": 0.02,
+    #     "minThreshold": minThreshold,
+    #     "predictedSegmentDecrement": 0.0,
+    #     "activationThreshold": activationThreshold,
+    #     "sampleSize": sampleSize,
+    #     "implementation": "etm",
+    #     "seed": self.seed
+    #   }
+    # elif self.config["L4RegionType"] == "py.ApicalTMRegion":
+    return {
+      "columnCount": inputSize,
+      "cellsPerColumn": 16,
+      "learn": True,
+      "initialPermanence": 0.51,
+      "connectedPermanence": 0.6,
+      "permanenceIncrement": 0.1,
+      "permanenceDecrement": 0.02,
+      "minThreshold": minThreshold,
+      "basalPredictedSegmentDecrement": 0.0,
+      "apicalPredictedSegmentDecrement": 0.0,
+      "activationThreshold": activationThreshold,
+      # "reducedBasalThreshold": int(activationThreshold*0.8),
+    # int(activationThreshold*0.8),
+    #   "reducedBasalThreshold": activationThreshold-1,# int(activationThreshold*0.8),
+      "sampleSize": sampleSize,
+      "implementation": "ApicalTiebreakCPP",
+      "seed": self.seed
+    }
+    # else:
+    #   raise ValueError("Unknown L4RegionType: %s" % L4RegionType)
 
 
 

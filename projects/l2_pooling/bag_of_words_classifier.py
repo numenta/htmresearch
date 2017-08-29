@@ -427,8 +427,7 @@ def run_bow_experiment_multiple_columns():
 
 
 if __name__ == "__main__":
-  (expConfig, _args) = _getArgs()
-  run_bow_experiment_single_column()
+  # run_bow_experiment_single_column()
 
-  # run_bow_experiment_multiple_columns()
+  run_bow_experiment_multiple_columns()
 

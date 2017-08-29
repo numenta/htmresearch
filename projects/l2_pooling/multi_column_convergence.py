@@ -277,6 +277,10 @@ def runExperiment(args):
                              with lateral connections.
   @param includeRandomLocation (bool) If True, a random location SDR will be
                              generated during inference for each feature.
+  @param enableFeedback (bool) If True, enable feedback, default is True
+  @param numAmbiguousLocations (int) number of ambiguous locations. Ambiguous
+                             locations will present during inference if this
+                             parameter is set to be a positive number
 
   The method returns the args dict updated with two additional keys:
     convergencePoint (int)   The average number of iterations it took
@@ -300,6 +304,7 @@ def runExperiment(args):
   includeRandomLocation = args.get("includeRandomLocation", False)
   enableFeedback = args.get("enableFeedback", True)
   numAmbiguousLocations = args.get("numAmbiguousLocations", 0)
+  numInferenceRpts = args.get("numInferenceRpts", 1)
   # Create the objects
   objects = createObjectMachine(
     machineType="simple",
@@ -350,23 +355,20 @@ def runExperiment(args):
   # object, we create a sequence of random sensations for each column.  We will
   # present each sensation for settlingTime time steps to let it settle and
   # ensure it converges.
-  numInferenceRpts = 2
   L2Representations = exp.objectL2Representations
   overlapMat = numpy.zeros((numObjects, numObjects, numPoints*numInferenceRpts))
   numActiveL2cells = numpy.zeros((numObjects, numPoints*numInferenceRpts, numColumns))
   numActiveL4cells = numpy.zeros((numObjects, numPoints*numInferenceRpts, numColumns))
 
-
+  random.seed(trialNum)
   for objectId in objects:
     exp._sendReset()
     obj = objects[objectId]
-
     objectSensations = {}
     for c in range(numColumns):
       objectSensations[c] = []
 
     for _ in range(numInferenceRpts):
-      random.seed(trialNum)
       if numColumns > 1:
         # Create sequence of random sensations for this object for all columns At
         # any point in time, ensure each column touches a unique loc,feature pair
@@ -396,9 +398,8 @@ def runExperiment(args):
       "includeRandomLocation": includeRandomLocation,
       "numAmbiguousLocations": numAmbiguousLocations,
     }
-
     inferenceSDRs = objects.provideObjectToInfer(inferConfig)
-
+    # print inferenceSDRs
     sensationNumber = 0
     for sdrPair in inferenceSDRs:
       for col in sdrPair.keys():
@@ -408,7 +409,7 @@ def runExperiment(args):
         featureSDR = addNoise(sdrPair[col][1], featureNoise,
                                exp.config["sensorInputSize"])
         sdrPair[col] = (locationSDR, featureSDR)
-
+        # print sdrPair
       for _ in xrange(settlingTime):
         exp.infer([sdrPair], objectName=objectId, reset=False)
 
@@ -480,6 +481,7 @@ def runExperimentPool(numObjects,
                       featureNoiseRange=[0.0],
                       enableFeedback=[True],
                       ambiguousLocationsRange=[0],
+                      numInferenceRpts=1,
                       resultsName="convergence_results.pkl"):
   """
   Allows you to run a number of experiments using multiple processes.
@@ -529,7 +531,8 @@ def runExperimentPool(numObjects,
                            "locationNoise": locationNoise,
                            "featureNoise": featureNoise,
                            "enableFeedback": feedback,
-                           "numAmbiguousLocations": ambiguousLocations
+                           "numAmbiguousLocations": ambiguousLocations,
+                           "numInferenceRpts": numInferenceRpts
                            }
                 )
   if numWorkers > len(args):
@@ -1069,7 +1072,7 @@ if __name__ == "__main__":
   # Here we want to see how the number of columns affects convergence.
   # This experiment is run using a process pool
   if False:
-    columnRange = range(1, 10)
+    columnRange = range(1, 9)
     featureRange = [5, 10, 20, 30]
     objectRange = [100]
     networkType = ["MultipleL4L2Columns"]
@@ -1211,25 +1214,24 @@ if __name__ == "__main__":
   # Here we want to see how random noise affects convergence for a
   # single column.
   # This experiment is run using a process pool
-  if True:
+  if False:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1]
     featureRange = [10]
     objectRange = [50]
-    numAmbiguousLocationsRange = [0]
-    # noiseRange = [0, 0.1, 0.2]
-    noiseRange = numpy.arange(0, 0.4, 0.05).tolist()
+    numLocations = 10
+    noiseRange = numpy.arange(0, 0.4, 0.05) * 2
     runExperimentPool(
       numObjects=objectRange,
-      numLocations=[50],
+      numLocations=numLocations,
       numFeatures=featureRange,
       numColumns=columnRange,
       numPoints=10,
       nTrials=numTrials,
       numWorkers=cpu_count(),
       featureNoiseRange=noiseRange,
-      ambiguousLocationsRange=numAmbiguousLocationsRange,
+      numInferenceRpts=4,
       resultsName="feature_noise_robustness_results.pkl")
 
     # Analyze results
@@ -1239,18 +1241,16 @@ if __name__ == "__main__":
       plotConvergenceNoiseRobustness(results, noiseRange, columnRange,
                                      numTrials, "featureNoise")
 
-
-    noiseRange = numpy.arange(0, 0.5, 0.05)*2
     runExperimentPool(
       numObjects=objectRange,
-      numLocations=[50],
+      numLocations=numLocations,
       numFeatures=featureRange,
       numColumns=columnRange,
       numPoints=10,
       nTrials=numTrials,
       numWorkers=cpu_count(),
       locationNoiseRange=noiseRange,
-      ambiguousLocationsRange=numAmbiguousLocationsRange,
+      numInferenceRpts=3,
       resultsName="location_noise_robustness_results.pkl")
 
     # Analyze results
@@ -1287,21 +1287,18 @@ if __name__ == "__main__":
       results = cPickle.load(f)
     plotConvergenceBySensations(results, columnRange, numTrials)
 
-
   if False:
     # feedback with ambiguous location
-    numTrials = 1
+    numTrials = 18
     columnRange = [1]
-    featureRange = [20]
-    objectRange = [200]
+    featureRange = [10]
+    objectRange = [50]
     numAmbiguousLocationsRange = [2]
-    # Comment this out if you are re-running analysis on already saved results.
-    # Very useful for debugging the plots
 
     filename = "multi_column_convergence_results_fb.pkl"
     runExperimentPool(
       numObjects=objectRange,
-      numLocations=[20],
+      numLocations=[10],
       numFeatures=featureRange,
       numColumns=columnRange,
       numPoints=10,
@@ -1309,6 +1306,36 @@ if __name__ == "__main__":
       numWorkers=cpu_count(),
       featureNoiseRange=[0.0],
       enableFeedback=[True, False],
+      numInferenceRpts=2,
+      ambiguousLocationsRange=numAmbiguousLocationsRange,
+      resultsName=filename)
+
+    with open(filename, "rb") as f:
+      results = cPickle.load(f)
+    plt.figure()
+    plotFeedbackExperiment(results, columnRange, numTrials)
+
+  if True:
+    # feedback with ambiguous location and noise
+    numTrials = 4
+    columnRange = [1]
+    featureRange = [10]
+    objectRange = [80]
+    numAmbiguousLocationsRange = [2]
+
+    filename = "multi_column_convergence_results_fb_with_noise.pkl"
+    runExperimentPool(
+      numObjects=objectRange,
+      numLocations=[10],
+      numFeatures=featureRange,
+      numColumns=columnRange,
+      numPoints=10,
+      nTrials=numTrials,
+      numWorkers=cpu_count(),
+      featureNoiseRange=[0.1],
+      locationNoiseRange=[0.1],
+      enableFeedback=[True, False],
+      numInferenceRpts=3,
       ambiguousLocationsRange=numAmbiguousLocationsRange,
       resultsName=filename)
 

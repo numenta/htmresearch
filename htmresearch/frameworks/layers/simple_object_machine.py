@@ -82,6 +82,7 @@ class SimpleObjectMachine(ObjectMachineBase):
                                               seed)
 
     # location and features pool
+    self.seed = seed
     self.numLocations = numLocations
     self.numFeatures = numFeatures
     self._generateLocations()
@@ -224,6 +225,7 @@ class SimpleObjectMachine(ObjectMachineBase):
     adding noise if necessary.
     """
     sensations = {}
+    numpy.random.seed(self.seed)
     for col in xrange(self.numColumns):
       locationID, featureID = pairs[col]
 
@@ -233,7 +235,6 @@ class SimpleObjectMachine(ObjectMachineBase):
                                          self.externalInputSize)
       elif numAmbiguousLocations > 0:
         location = self.locations[col][locationID]
-        numpy.random.seed(self.seed)
         for _ in range(numAmbiguousLocations):
           idx = numpy.random.randint(len(self.locations[col]))
           location = location | self.locations[col][idx]
@@ -260,7 +261,6 @@ class SimpleObjectMachine(ObjectMachineBase):
       if noise is not None:
         location = self._addNoise(location, noise, self.externalInputSize)
         feature = self._addNoise(feature, noise, self.sensorInputSize)
-
       sensations[col] = (location, feature)
 
     return sensations
@@ -301,7 +301,7 @@ class SimpleObjectMachine(ObjectMachineBase):
     """
     size = self.externalInputSize
     bits = self.numInputBits
-
+    random.seed(self.seed)
     self.locations = []
     for _ in xrange(self.numColumns):
       self.locations.append(
@@ -318,7 +318,7 @@ class SimpleObjectMachine(ObjectMachineBase):
     """
     size = self.sensorInputSize
     bits = self.numInputBits
-
+    random.seed(self.seed)
     self.features = []
     for _ in xrange(self.numColumns):
       self.features.append(
