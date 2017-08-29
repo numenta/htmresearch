@@ -1013,7 +1013,7 @@ class ApicalDependentSequenceMemory(ApicalDependentTemporalMemory):
     """
     Clear all cell and segment activity.
     """
-    super(ApicalTiebreakSequenceMemory, self).reset()
+    super(ApicalDependentSequenceMemory, self).reset()
 
     self.prevApicalInput = np.empty(0, dtype="uint32")
     self.prevApicalGrowthCandidates = np.empty(0, dtype="uint32")
