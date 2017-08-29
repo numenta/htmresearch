@@ -82,6 +82,7 @@ class SimpleObjectMachine(ObjectMachineBase):
                                               seed)
 
     # location and features pool
+    self.seed = seed
     self.numLocations = numLocations
     self.numFeatures = numFeatures
     self._generateLocations()
@@ -165,7 +166,9 @@ class SimpleObjectMachine(ObjectMachineBase):
         pairs,
         noise=inferenceConfig.get("noiseLevel", None),
         includeRandomLocation=inferenceConfig.get("includeRandomLocation",
-                                                  False))
+                                                  False),
+        numAmbiguousLocations=inferenceConfig.get("numAmbiguousLocations",
+                                                  0))
       sensationSteps.append(sdrPairs)
 
     self._checkObjectToInfer(sensationSteps)
@@ -201,6 +204,7 @@ class SimpleObjectMachine(ObjectMachineBase):
           "greater than number of locations")
 
     locationArray = numpy.array(range(numLocations))
+    numpy.random.seed(self.seed)
     for _ in xrange(numObjects):
       # Permute the number of locations and select points from it
       locationArray = numpy.random.permutation(locationArray)
@@ -210,13 +214,18 @@ class SimpleObjectMachine(ObjectMachineBase):
       )
 
 
-  def _getSDRPairs(self, pairs, noise=None, includeRandomLocation=False):
+  def _getSDRPairs(self,
+                   pairs,
+                   noise=None,
+                   includeRandomLocation=False,
+                   numAmbiguousLocations=0):
     """
     This method takes a list of (location, feature) index pairs (one pair per
     cortical column), and returns a sensation dict in the correct format,
     adding noise if necessary.
     """
     sensations = {}
+    numpy.random.seed(self.seed)
     for col in xrange(self.numColumns):
       locationID, featureID = pairs[col]
 
@@ -224,6 +233,11 @@ class SimpleObjectMachine(ObjectMachineBase):
       if includeRandomLocation:
         location = self._generatePattern(self.numInputBits,
                                          self.externalInputSize)
+      elif numAmbiguousLocations > 0:
+        location = self.locations[col][locationID]
+        for _ in range(numAmbiguousLocations):
+          idx = numpy.random.randint(len(self.locations[col]))
+          location = location | self.locations[col][idx]
 
       # generate union of locations if requested
       elif isinstance(locationID, tuple):
@@ -247,7 +261,6 @@ class SimpleObjectMachine(ObjectMachineBase):
       if noise is not None:
         location = self._addNoise(location, noise, self.externalInputSize)
         feature = self._addNoise(feature, noise, self.sensorInputSize)
-
       sensations[col] = (location, feature)
 
     return sensations
@@ -288,7 +301,7 @@ class SimpleObjectMachine(ObjectMachineBase):
     """
     size = self.externalInputSize
     bits = self.numInputBits
-
+    random.seed(self.seed)
     self.locations = []
     for _ in xrange(self.numColumns):
       self.locations.append(
@@ -305,7 +318,7 @@ class SimpleObjectMachine(ObjectMachineBase):
     """
     size = self.sensorInputSize
     bits = self.numInputBits
-
+    random.seed(self.seed)
     self.features = []
     for _ in xrange(self.numColumns):
       self.features.append(
