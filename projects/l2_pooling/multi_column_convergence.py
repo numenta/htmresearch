@@ -23,10 +23,10 @@ This file plots the convergence of L4-L2 as you increase the number of columns,
 or adjust the confusion between objects.
 
 """
+import argparse
 
 import random
 import os
-import pprint
 import numpy
 import cPickle
 from multiprocessing import Pool, cpu_count
@@ -38,43 +38,6 @@ from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 from htmresearch.frameworks.layers.object_machine_factory import (
   createObjectMachine
 )
-
-
-def objectConfusion(objects):
-  """
-  For debugging, print overlap between each pair of objects.
-  """
-  sumCommonLocations = 0
-  sumCommonFeatures = 0
-  sumCommonPairs = 0
-  numObjects = 0
-  commonPairHistogram = numpy.zeros(len(objects[0]), dtype=numpy.int32)
-  for o1,s1 in objects.iteritems():
-    for o2,s2 in objects.iteritems():
-      if o1 != o2:
-        # Count number of common locations id's and common feature id's
-        commonLocations = 0
-        commonFeatures = 0
-        for pair1 in s1:
-          for pair2 in s2:
-            if pair1[0] == pair2[0]: commonLocations += 1
-            if pair1[1] == pair2[1]: commonFeatures += 1
-
-        # print "Confusion",o1,o2,", common pairs=",len(set(s1)&set(s2)),
-        # print ", common locations=",commonLocations,"common features=",commonFeatures
-
-        assert(len(set(s1)&set(s2)) != len(s1) ), "Two objects are identical!"
-
-        sumCommonPairs += len(set(s1)&set(s2))
-        sumCommonLocations += commonLocations
-        sumCommonFeatures += commonFeatures
-        commonPairHistogram[len(set(s1)&set(s2))] += 1
-        numObjects += 1
-
-  print "Average common pairs=", sumCommonPairs / float(numObjects),
-  print ", locations=",sumCommonLocations / float(numObjects),
-  print ", features=",sumCommonFeatures / float(numObjects)
-  print "Common pair histogram=",commonPairHistogram
 
 
 def runExperiment(args):
@@ -156,7 +119,12 @@ def runExperiment(args):
                                       numLocations=numLocations,
                                       numFeatures=numFeatures)
 
-  objectConfusion(objects.getObjects())
+  average, locations, features, histogram = objects.objectConfusion()
+
+  print "Average common pairs=", average,
+  print ", locations=", locations,
+  print ", features=", features
+  print "Common pair histogram=", histogram
 
   # print "Total number of objects created:",len(objects.getObjects())
   # print "Objects are:"
