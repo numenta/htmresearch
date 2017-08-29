@@ -332,8 +332,8 @@ class FeedbackExperiment(object):
         raise ValueError("The provided sequence was not given during learning")
 
 
-    #self.network.regions["L4Column_0"].getSelf()._tm.setUseApicalModulationBasalThreshold(apicalModulationBasalThreshold)
-    #self.network.regions["L4Column_0"].getSelf()._tm.setUseApicalTiebreak(apicalTiebreak)
+    self.network.regions["L4Column_0"].getSelf()._tm.setUseApicalModulationBasalThreshold(apicalModulationBasalThreshold)
+    self.network.regions["L4Column_0"].getSelf()._tm.setUseApicalTiebreak(apicalTiebreak)
     self.network.regions["L2Column_0"].getSelf()._pooler.setUseInertia(inertia)
 
     L2Responses=[]
