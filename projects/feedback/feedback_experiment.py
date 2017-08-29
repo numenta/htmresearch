@@ -272,8 +272,8 @@ class FeedbackExperiment(object):
 
       # Train L4 apical segments
       self._setLearningMode(l4Learning=True, l2Learning=False)
-      for i in sequence_order:
-        for _ in xrange(5):
+      for _ in xrange(5):
+        for i in sequence_order:
           sequence = sequences[i]
           for s in sequence:
             self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
@@ -421,15 +421,15 @@ class FeedbackExperiment(object):
       "columnCount": inputSize,
       "cellsPerColumn": 8,
       "learn": True,
-      "initialPermanence": 0.61,
+      "initialPermanence": 0.51,
       "connectedPermanence": 0.6,
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.02,
       "reducedBasalThreshold": 10,
-      "minThreshold": 10,
+      "minThreshold": 13,
       "basalPredictedSegmentDecrement": 0.0,
       "apicalPredictedSegmentDecrement": 0.0,
-      "activationThreshold": 13,
+      "activationThreshold": 15,
       "sampleSize": 20,
       # Use an implementation that supports apicalModulationBasalThreshold
       "implementation": ("ApicalDependent" if self.onlineLearning
@@ -449,19 +449,19 @@ class FeedbackExperiment(object):
       "sdrSize": 40,
       "synPermProximalInc": 0.1,
       "synPermProximalDec": 0.001,
-      "initialProximalPermanence": 0.81,
+      "initialProximalPermanence": 0.6,
       "onlineLearning": self.onlineLearning,
-      "minThresholdProximal": 27,
-      "sampleSizeProximal": 40,
+      "minThresholdProximal": 10,
+      "sampleSizeProximal": 20,
       "connectedPermanenceProximal": 0.5,
       "predictedInhibitionThreshold": 20,
-      "maxSdrSize": 50,
-      "minSdrSize" : 30,
+      "maxSdrSize": 40,
+      "minSdrSize": 40,
       "synPermDistalInc": 0.1,
       "synPermDistalDec": 0.02,
-      "initialDistalPermanence": 0.61,
-      "activationThresholdDistal": 27,
-      "sampleSizeDistal": 40,
+      "initialDistalPermanence": 0.41,
+      "activationThresholdDistal": 13,
+      "sampleSizeDistal": 20,
       "connectedPermanenceDistal": 0.5,
       "distalSegmentInhibitionFactor": .8,
       "inertiaFactor": .6667,
