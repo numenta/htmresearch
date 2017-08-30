@@ -480,11 +480,11 @@ class L2456Model(object):
     return [set(column._tm.getActiveCells()) for column in self.L4Columns]
 
 
-  def getL4PredictiveCells(self):
+  def getL4PredictedCells(self):
     """
-    Returns the predictive cells in L4.
+    Returns the predicted cells in L4.
     """
-    return [set(column._tm.getPredictiveCells()) for column in self.L4Columns]
+    return [set(column._tm.getPredictedCells()) for column in self.L4Columns]
 
 
   def getL2Representations(self):
@@ -508,11 +508,11 @@ class L2456Model(object):
     return [set(column._tm.getActiveCells()) for column in self.L6Columns]
 
 
-  def getL6PredictiveCells(self):
+  def getL6PredictedCells(self):
     """
-    Returns the predictive cells in L4.
+    Returns the predicted cells in L4.
     """
-    return [set(column._tm.getPredictiveCells()) for column in self.L6Columns]
+    return [set(column._tm.getPredictedCells()) for column in self.L6Columns]
 
 
   def getDefaultParams(self):
@@ -538,20 +538,17 @@ class L2456Model(object):
       "L4Params": {
         "columnCount": self.sensorInputSize,
         "cellsPerColumn": 8,
-        "formInternalBasalConnections": False,
-        "learningMode": True,
-        "inferenceMode": True,
+        "learn": True,
         "learnOnOneCell": False,
         "initialPermanence": 0.51,
         "connectedPermanence": 0.6,
         "permanenceIncrement": 0.1,
         "permanenceDecrement": 0.02,
         "minThreshold": 10,
-        "predictedSegmentDecrement": 0.002,
+        "basalPredictedSegmentDecrement": 0.002,
         "activationThreshold": 13,
-        "maxNewSynapseCount": 20,
-        "defaultOutputType": "predictedActiveCells",
-        "implementation": "etm_cpp",
+        "sampleSize": 20,
+        "implementation": "ApicalTiebreakCPP",
       },
 
       "L2Params": {
@@ -570,25 +567,23 @@ class L2456Model(object):
         "activationThresholdDistal": 13,
         "sampleSizeDistal": 20,
         "connectedPermanenceDistal": 0.5,
-        "distalSegmentInhibitionFactor": 1.5,
+        "distalSegmentInhibitionFactor": 0.6667,
         "learningMode": True,
       },
 
       "L6Params": {
         "columnCount": self.sensorInputSize,
         "cellsPerColumn": 8,
-        "formInternalBasalConnections": False,
-        "learningMode": True,
-        "inferenceMode": True,
+        "learn": True,
         "learnOnOneCell": False,
         "initialPermanence": 0.51,
         "connectedPermanence": 0.6,
         "permanenceIncrement": 0.1,
         "permanenceDecrement": 0.02,
         "minThreshold": 10,
-        "predictedSegmentDecrement": 0.004,
+        "basalPredictedSegmentDecrement": 0.004,
         "activationThreshold": 13,
-        "maxNewSynapseCount": 20,
+        "sampleSize": 20,
       },
 
       "L5Params": {
@@ -607,7 +602,7 @@ class L2456Model(object):
         "activationThresholdDistal": 13,
         "sampleSizeDistal": 20,
         "connectedPermanenceDistal": 0.5,
-        "distalSegmentInhibitionFactor": 1.5,
+        "distalSegmentInhibitionFactor": 0.6667,
         "learningMode": True,
       },
 
@@ -654,8 +649,15 @@ class L2456Model(object):
     """
     Unsets the learning mode, to start inference.
     """
-    for column in self.L4Columns + self.L2Columns + \
-                  self.L5Columns + self.L6Columns:
+
+    for column in self.L4Columns:
+      column.setParameter("learn", 0, False)
+    for column in self.L6Columns:
+      column.setParameter("learn", 0, False)
+
+    for column in self.L2Columns:
+      column.setParameter("learningMode", 0, False)
+    for column in self.L5Columns:
       column.setParameter("learningMode", 0, False)
 
 
@@ -663,8 +665,14 @@ class L2456Model(object):
     """
     Sets the learning mode.
     """
-    for column in self.L4Columns + self.L2Columns + \
-                  self.L5Columns + self.L6Columns:
+    for column in self.L4Columns:
+      column.setParameter("learn", 0, True)
+    for column in self.L6Columns:
+      column.setParameter("learn", 0, True)
+
+    for column in self.L2Columns:
+      column.setParameter("learningMode", 0, True)
+    for column in self.L5Columns:
       column.setParameter("learningMode", 0, True)
 
 
@@ -682,18 +690,18 @@ class L2456Model(object):
 
     """
     L4Representations = self.getL4Representations()
-    L4PredictiveCells = self.getL4PredictiveCells()
+    L4PredictedCells = self.getL4PredictedCells()
     L2Representations = self.getL2Representations()
     L5Representations = self.getL5Representations()
     L6Representations = self.getL6Representations()
-    L6PredictiveCells = self.getL6PredictiveCells()
+    L6PredictedCells = self.getL6PredictedCells()
 
     for i in xrange(self.numColumns):
       statistics["L4 Representation C" + str(i)].append(
         len(L4Representations[i])
       )
-      statistics["L4 Predictive C" + str(i)].append(
-        len(L4PredictiveCells[i])
+      statistics["L4 Predicted C" + str(i)].append(
+        len(L4PredictedCells[i])
       )
       statistics["L2 Representation C" + str(i)].append(
         len(L2Representations[i])
@@ -702,8 +710,8 @@ class L2456Model(object):
       statistics["L6 Representation C" + str(i)].append(
         len(L6Representations[i])
       )
-      statistics["L6 Predictive C" + str(i)].append(
-        len(L6PredictiveCells[i])
+      statistics["L6 Predicted C" + str(i)].append(
+        len(L6PredictedCells[i])
       )
       statistics["L5 Representation C" + str(i)].append(
         len(L5Representations[i])
@@ -720,4 +728,3 @@ class L2456Model(object):
         statistics["Overlap L5 with object C" + str(i)].append(
           len(objectRepresentationL5[i] & L5Representations[i])
         )
-

@@ -24,7 +24,7 @@ import copy
 import numpy
 from nupic.bindings.algorithms import SpatialPooler
 # Uncomment below line to use python SP
-# from nupic.research.spatial_pooler import SpatialPooler
+# from nupic.algorithms.spatial_pooler import SpatialPooler
 from nupic.bindings.math import GetNTAReal
 from htmresearch.frameworks.union_temporal_pooling.activation.excite_functions.excite_functions_all import (
   LogisticExciteFunction, FixedExciteFunction)
@@ -269,7 +269,7 @@ class UnionTemporalPooler(SpatialPooler):
     @return current pooling activation
     """
     self._poolingActivation[activeCells] = self._exciteFunction.excite(
-                                          self._poolingActivation[activeCells], overlaps[activeCells])
+      self._poolingActivation[activeCells], overlaps[activeCells])
 
     # increase pooling timers for all cells
     self._poolingTimer[self._poolingTimer >= 0] += 1

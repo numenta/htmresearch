@@ -885,6 +885,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # This column will say A | B
     # One lateral column says A | B
     # Another lateral column says A
+    self.infer(patterns[1], lateralInputs=[(), ()])
     self.infer(patterns[1], lateralInputs=[lateralInput1A | lateralInput1B,
                                            lateralInput2A])
 
@@ -902,7 +903,8 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     self.init(overrides={"lateralInputWidths": [self.inputWidth,
                                                 self.inputWidth,
-                                                self.inputWidth]})
+                                                self.inputWidth],
+                         "distalSegmentInhibitionFactor": 0.6667})
 
     patterns = [self.generatePattern() for _ in xrange(3)]
 
@@ -933,6 +935,7 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
     # One lateral column says A | B
     # Another lateral column says A | B
     # Another lateral column says A
+    self.infer(patterns[1], lateralInputs=[(), (), ()])
     self.infer(patterns[1], lateralInputs=[lateralInput1A | lateralInput1B,
                                            lateralInput2A | lateralInput2B,
                                            lateralInput3A])
@@ -1204,7 +1207,9 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
         np.random.shuffle(indices)
 
       for idx in indices:
-        self.pooler.compute(feedforwardPatterns[idx], lateralPatterns[idx],
+        self.pooler.compute(sorted(feedforwardPatterns[idx]),
+                            [sorted(lateralPattern)
+                             for lateralPattern in lateralPatterns[idx]],
                             learn=True)
 
 
@@ -1229,7 +1234,10 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
            If true, will print cell metrics
 
     """
-    self.pooler.compute(feedforwardPattern, lateralInputs, learn=False)
+    self.pooler.compute(sorted(feedforwardPattern),
+                        [sorted(lateralInput)
+                         for lateralInput in lateralInputs],
+                        learn=False)
 
     if printMetrics:
       print self.pooler.mmPrettyPrintMetrics(
@@ -1366,12 +1374,12 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
         # Train each column
         for col, pooler in enumerate(self.poolers):
           # get union of relevant lateral representations
-          lateralInputs =  [activeCells
+          lateralInputs =  [sorted(activeCells)
                             for presynapticCol, activeCells
                             in enumerate(prevActiveCells)
                             if col != presynapticCol]
 
-          pooler.compute(feedforwardPatterns[indices[col][i]][col],
+          pooler.compute(sorted(feedforwardPatterns[indices[col][i]][col]),
                          lateralInputs, learn=True)
 
         prevActiveCells = self._getActiveRepresentations()
@@ -1415,12 +1423,13 @@ class ExtensiveColumnPoolerTest(unittest.TestCase):
 
     for col, pooler in enumerate(self.poolers):
       # get union of relevant lateral representations
-      lateralInputs = [activeCells
+      lateralInputs = [sorted(activeCells)
                        for presynapticCol, activeCells
                        in enumerate(activeRepresentations)
                        if col != presynapticCol]
 
-      pooler.compute(feedforwardPatterns[col], lateralInputs, learn=False)
+      pooler.compute(sorted(feedforwardPatterns[col]),
+                     lateralInputs, learn=False)
 
     if printMetrics:
       for pooler in self.poolers:

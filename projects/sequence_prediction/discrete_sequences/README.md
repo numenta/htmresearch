@@ -31,7 +31,8 @@ The experiment names are the same for LSTM, ELM and TDNN models.
 	cd ./tdnn/ 
 	python suite.py -e EXPERIMENT_NAME
 
+# Plot model performance
 Experiment results can be visualized with the set of "plot" scripts
 
-For example, plotRepeatedPerturbExperiment.py reproduces the online learning example
-in the paper (Fig. 4, Fig. 5)
+plotRepeatedPerturbExperiment.py reproduces the online learning example in the paper (Fig. 4, Fig. 5)
+

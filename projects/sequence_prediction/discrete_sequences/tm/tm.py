@@ -29,8 +29,8 @@ import time
 import numpy
 
 from nupic.data.inference_shifter import InferenceShifter
-from nupic.frameworks.opf.modelfactory import ModelFactory
-from nupic.research.monitor_mixin.trace import CountsTrace
+from nupic.frameworks.opf.model_factory import ModelFactory
+from nupic.algorithms.monitor_mixin.trace import CountsTrace
 
 from htmresearch.data.sequence_generator import SequenceGenerator
 from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
@@ -57,7 +57,7 @@ RANDOM_START = NUM_SYMBOLS
 RANDOM_END = NUM_SYMBOLS + 5000
 
 MODEL_PARAMS = {
-  "model": "CLA",
+  "model": "HTMPrediction",
   "version": 1,
   "predictAheadTime": None,
   "modelParams": {

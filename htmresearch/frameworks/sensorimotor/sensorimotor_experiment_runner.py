@@ -23,15 +23,14 @@ import time
 
 import numpy
 
+from htmresearch_core.experimental import ExtendedTemporalMemory
 from nupic.bindings.math import GetNTAReal
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-from nupic.research.TP import TP
+from nupic.algorithms.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from nupic.algorithms.TP import TP
 
 from htmresearch.support.etm_monitor_mixin import (
   ExtendedTemporalMemoryMonitorMixin)
 
-# Uncomment the line below to use ExtendedTemporalMemory
-from htmresearch.algorithms.extended_temporal_memory import ExtendedTemporalMemory
 from htmresearch.support.temporal_pooler_monitor_mixin import TemporalPoolerMonitorMixin
 
 
@@ -65,7 +64,7 @@ class SensorimotorExperimentRunner(object):
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
     "formInternalBasalConnections": True,
-    "basalInputDimensions": (999999,) # Dodge input checking.
+    "basalInputDimensions": (999999,), # Dodge input checking.
 
     # We will force client to override these
     "columnDimensions": "Sorry",

@@ -28,7 +28,7 @@ from tabulate import tabulate
 
 import nupic.math.topology as topology
 
-from nupic.research.spatial_pooler import SpatialPooler as PYSpatialPooler
+from nupic.algorithms.spatial_pooler import SpatialPooler as PYSpatialPooler
 from htmresearch.algorithms.faulty_spatial_pooler import FaultySpatialPooler
 from htmresearch.frameworks.sp_paper.sp_metrics import (
   calculateEntropy, inspectSpatialPoolerStats,
@@ -412,7 +412,7 @@ def runSPexperiments(expConfig):
 
   spParams = getSpatialPoolerParams(params, expConfig)
   sp = createSpatialPooler(expConfig.spatialImp, spParams)
-  
+
   if expConfig.topology == 1 and  expConfig.spatialImp in ['faulty_sp', 'py']:
     initializeSPConnections(sp, potentialRaidus=10, initConnectionRadius=5)
 
@@ -621,7 +621,7 @@ def runSPexperiments(expConfig):
 if __name__ == "__main__":
   plt.close('all')
 
-  (expConfig, _args) = _getArgs()  
+  (expConfig, _args) = _getArgs()
 
   metrics, expName = runSPexperiments(expConfig)
 

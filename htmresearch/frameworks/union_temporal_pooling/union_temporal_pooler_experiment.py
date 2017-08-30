@@ -25,11 +25,10 @@ import time
 import numpy
 
 from nupic.algorithms.KNNClassifier import KNNClassifier
+from htmresearch_core.experimental import ExtendedTemporalMemory
 from nupic.bindings.math import GetNTAReal
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from nupic.algorithms.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
-from htmresearch.algorithms.extended_temporal_memory import (
-     ExtendedTemporalMemory)
 from htmresearch.support.etm_monitor_mixin import (
      ExtendedTemporalMemoryMonitorMixin)
 from htmresearch.support.union_temporal_pooler_monitor_mixin import (
@@ -60,13 +59,13 @@ class UnionTemporalPoolerExperiment(object):
   """
 
 
-  DEFAULT_TEMPORAL_MEMORY_PARAMS = {"columnDimensions": (1024,),
+  DEFAULT_TEMPORAL_MEMORY_PARAMS = {"columnCount": 1024,
                                     "cellsPerColumn": 8,
                                     "activationThreshold": 20,
                                     "initialPermanence": 0.5,
                                     "connectedPermanence": 0.6,
                                     "minThreshold": 20,
-                                    "maxNewSynapseCount": 30,
+                                    "sampleSize": 30,
                                     "permanenceIncrement": 0.10,
                                     "permanenceDecrement": 0.02,
                                     "seed": 42,
@@ -111,6 +110,8 @@ class UnionTemporalPoolerExperiment(object):
     params = dict(self.DEFAULT_TEMPORAL_MEMORY_PARAMS)
     params.update(tmOverrides or {})
     params["seed"] = seed
+    print "params: "
+    print params
     self.tm = MonitoredFastExtendedTemporalMemory(mmName="TM", **params)
 
     print "Initializing Union Temporal Pooler..."

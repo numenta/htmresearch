@@ -1,0 +1,26 @@
+{
+  "name": "htmresearchviz0",
+  "version": "0.0.1",
+  "description": "",
+  "keywords": [],
+  "license": "AGPL-3.0",
+  "main": "build/htmresearchviz0-bundle.js",
+  "repository": "https://github.com/numenta/nupic.research",
+  "jsnext:main": "js/index",
+  "scripts": {
+    "build": "rm -rf build && mkdir build && rollup -c -f umd -n htmresearchviz0 -o build/htmresearchviz0-bundle.js -- js/index.js && mkdir -p py/htmresearchviz0/package_data && cp build/htmresearchviz0-bundle.js py/htmresearchviz0/package_data/htmresearchviz0-bundle.js",
+    "postpublish": "zip -j build/htmresearchviz0.zip -- README.md build/htmresearchviz0-bundle.js && cp build/htmresearchviz0-bundle.js py/htmresearchviz0/package_data/htmresearchviz0-bundle.js",
+    "dev": "http-server && onchange 'js/**/*.js' -- npm run build"
+  },
+  "devDependencies": {
+    "rollup": "0.41.6",
+    "rollup-plugin-node-resolve": "^2.0.0",
+    "tape": "4",
+    "uglify-js": "2",
+    "onchange": "3.2.1",
+    "http-server": "0.10.0"
+  },
+  "dependencies": {
+    "d3": "^4.9.1"
+  }
+}

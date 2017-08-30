@@ -36,8 +36,9 @@ def registerAllResearchRegions():
   # TODO: add self discovery of all regions in nupic.research.regions
 
   for regionName in ["LanguageSensor", "TemporalPoolerRegion",
-                     "TMRegion", "RawSensor", "ColumnPoolerRegion",
-                     "ExtendedTMRegion", "CoordinateSensorRegion"]:
+                     "ApicalTMPairRegion", "ApicalTMSequenceRegion",
+                     "RawSensor", "ColumnPoolerRegion",
+                     "CoordinateSensorRegion"]:
     registerResearchRegion(regionName)
 
 
@@ -61,5 +62,3 @@ def registerResearchRegion(regionTypeName, moduleName=None):
     Network.registerRegion(unregisteredClass)
     # Add region to list of registered PyRegions
     _PY_REGIONS.append(regionTypeName)
-
-

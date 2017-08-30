@@ -28,17 +28,15 @@ from matplotlib import rcParams
 plt.ion()
 rcParams.update({'figure.autolayout': True})
 
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from htmresearch_core.experimental import ApicalTiebreakPairMemory
+from nupic.algorithms.monitor_mixin.monitor_mixin_base import MonitorMixinBase
 
-from htmresearch.algorithms.extended_temporal_memory import (
-     ExtendedTemporalMemory)
-
-from htmresearch.support.etm_monitor_mixin import (
-     ExtendedTemporalMemoryMonitorMixin)
+from htmresearch.support.apical_tm_pair_monitor_mixin import (
+     ApicalTMPairMonitorMixin)
 
 
-class MonitoredFastExtendedTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
-                                         ExtendedTemporalMemory):
+class MonitoredApicalTiebreakPairMemory(
+  ApicalTMPairMonitorMixin, ApicalTiebreakPairMemory):
   pass
 
 
@@ -73,7 +71,7 @@ def initializeTM():
   params = dict(DEFAULT_TEMPORAL_MEMORY_PARAMS)
   # params.update(tmOverrides or {})
   # params["seed"] = seed
-  tm = MonitoredFastExtendedTemporalMemory(mmName="TM", **params)
+  tm = MonitoredApicalTiebreakPairMemory(mmName="TM", **params)
   return tm
 
 

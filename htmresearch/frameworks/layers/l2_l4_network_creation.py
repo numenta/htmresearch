@@ -60,7 +60,34 @@ columns.)
         |          |          |          |          |          |
 externalInput  sensorInput -->|  externalInput  sensorInput -->|
 
-For both network types, regions will be named as shown above plus a suffix
+
+The third network type support, "MultipleL4L2ColumnsWithTopology", allows you to
+create N L4L2 columns, with internal structures exactly as above.  However, in
+this format, their lateral connections are topologically determined, usually to
+form a 2D grid.  A top-down view, with nine columns:
+
+            ------------      ------------      ------------
+            | L2Column |======| L2Column |======| L2Column |
+            ------------      ------------      ------------
+                 ||                ||                ||
+                 ||                ||                ||
+                 ||                ||                ||
+            ------------      ------------      ------------
+            | L2Column |======| L2Column |======| L2Column |
+            ------------      ------------      ------------
+                 ||                ||                ||
+                 ||                ||                ||
+                 ||                ||                ||
+            ------------      ------------      ------------
+            | L2Column |======| L2Column |======| L2Column |
+            ------------      ------------      ------------
+
+The exact form this network takes can be altered by parameters, and the
+topological layout of the columns should be specified in coordinate form.
+A maximum connection distance should also be specified; this allows you to
+create grids with longer connections.
+
+For all network types, regions will be named as shown above plus a suffix
 indicating column number, such as "externalInput_0", "L2Column_3", etc. The
 reset signal from sensorInput is sent to the other regions.
 
@@ -69,6 +96,7 @@ Also, how do you like my ascii art?
 """
 import copy
 import json
+import numpy
 
 def enableProfiling(network):
   """Enable profiling for all regions in the network."""
@@ -106,14 +134,16 @@ def _linkLateralSPRegion(network, networkConfig, externalInputName, L4ColumnName
   if not spParams:
     # Link sensors to L4, ignoring SP
     network.link(externalInputName, L4ColumnName, "UniformLink", "",
-                 srcOutput="dataOut", destInput="externalBasalInput")
+                 srcOutput="dataOut", destInput="basalInput")
+    network.link(externalInputName, L4ColumnName, "UniformLink", "",
+                 srcOutput="dataOut", destInput="basalGrowthCandidates")
     return
 
   # Link lateral input to SP input, SP output to L4 lateral input
   network.link(externalInputName, "lateralSPRegion", "UniformLink", "",
                srcOutput="dataOut", destInput="bottomUpIn")
   network.link("lateralSPRegion", L4ColumnName, "UniformLink", "",
-               srcOutput="bottomUpOut", destInput="externalBasalInput")
+               srcOutput="bottomUpOut", destInput="basalInput")
 
 
 def _linkFeedForwardSPRegion(network, networkConfig, sensorInputName, L4ColumnName):
@@ -122,14 +152,14 @@ def _linkFeedForwardSPRegion(network, networkConfig, sensorInputName, L4ColumnNa
   if not spParams:
     # Link sensors to L4, ignoring SP
     network.link(sensorInputName, L4ColumnName, "UniformLink", "",
-                 srcOutput="dataOut", destInput="feedForwardInput")
+                 srcOutput="dataOut", destInput="activeColumns")
     return
 
   # Link lateral input to SP input, SP output to L4 lateral input
   network.link(sensorInputName, "feedForwardSPRegion", "UniformLink", "",
                srcOutput="dataOut", destInput="bottomUpIn")
   network.link("feedForwardSPRegion", L4ColumnName, "UniformLink", "",
-               srcOutput="bottomUpOut", destInput="feedForwardInput")
+               srcOutput="bottomUpOut", destInput="activeColumns")
 
 
 def _setLateralSPPhases(network, networkConfig):
@@ -162,8 +192,9 @@ def createL4L2Column(network, networkConfig, suffix=""):
     {
       "externalInputSize": 1024,
       "sensorInputSize": 1024,
+      "L4RegionType": "py.ApicalTMPairRegion",
       "L4Params": {
-        <constructor parameters for ExtendedTMRegion
+        <constructor parameters for the L4 region>
       },
       "L2Params": {
         <constructor parameters for ColumnPoolerRegion>
@@ -185,8 +216,8 @@ def createL4L2Column(network, networkConfig, suffix=""):
     appropriate spatial pooler regions will be added to the network.
 
     If externalInputSize is 0, the externalInput sensor (and SP if appropriate)
-    will NOT be created. In this case it is expected that L4 will have
-    formInternalBasalConnections set to True.
+    will NOT be created. In this case it is expected that L4 is a sequence
+    memory region (e.g. ApicalTMSequenceRegion)
   """
 
   externalInputName = "externalInput" + suffix
@@ -212,7 +243,7 @@ def createL4L2Column(network, networkConfig, suffix=""):
   _addFeedForwardSPRegion(network, networkConfig, suffix)
 
   network.addRegion(
-    L4ColumnName, "py.ExtendedTMRegion",
+    L4ColumnName, networkConfig["L4RegionType"],
     json.dumps(L4Params))
   network.addRegion(
     L2ColumnName, "py.ColumnPoolerRegion",
@@ -237,16 +268,22 @@ def createL4L2Column(network, networkConfig, suffix=""):
     _linkLateralSPRegion(network, networkConfig, externalInputName, L4ColumnName)
   _linkFeedForwardSPRegion(network, networkConfig, sensorInputName, L4ColumnName)
 
-  # Link L4 to L2, and L2's feedback to L4
+  # Link L4 to L2
   network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="feedforwardInput")
-  network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="externalApicalInput")
+               srcOutput="activeCells", destInput="feedforwardInput")
+  network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
+               srcOutput="predictedActiveCells",
+               destInput="feedforwardGrowthCandidates")
 
-  # Link reset output to L4 and L2
-  network.link(sensorInputName, L4ColumnName, "UniformLink", "",
-               srcOutput="resetOut", destInput="resetIn")
+  # Link L2 feedback to L4
+  network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
+               srcOutput="feedForwardOutput", destInput="apicalInput",
+               propagationDelay=1)
+
+  # Link reset output to L2 and L4
   network.link(sensorInputName, L2ColumnName, "UniformLink", "",
+               srcOutput="resetOut", destInput="resetIn")
+  network.link(sensorInputName, L4ColumnName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
 
   enableProfiling(network)
@@ -273,7 +310,7 @@ def createMultipleL4L2Columns(network, networkConfig):
       "externalInputSize": 1024,
       "sensorInputSize": 1024,
       "L4Params": {
-        <constructor parameters for ExtendedTMRegion
+        <constructor parameters for ApicalTMPairRegion
       },
       "L2Params": {
         <constructor parameters for ColumnPoolerRegion>
@@ -306,10 +343,115 @@ def createMultipleL4L2Columns(network, networkConfig):
       if i != j:
         suffixDest = "_" + str(j)
         network.link(
-            "L2Column" + suffixSrc, "L2Column" + suffixDest,
-            "UniformLink", "",
-            srcOutput="feedForwardOutput", destInput="lateralInput")
+          "L2Column" + suffixSrc, "L2Column" + suffixDest,
+          "UniformLink", "",
+          srcOutput="feedForwardOutput", destInput="lateralInput",
+          propagationDelay=1)
 
   enableProfiling(network)
 
+  return network
+
+
+def createMultipleL4L2ColumnsWithTopology(network, networkConfig):
+  """
+  Create a network consisting of multiple columns.  Each column contains one
+  L4 and one L2, is identical in structure to the network created by
+  createL4L2Column. In addition the L2 columns are connected to each
+  other through their lateral inputs, based on the topological information
+  provided.
+
+  Region names have a column number appended as in externalInput_0,
+  externalInput_1, etc.
+
+  networkConfig must be of the following format (see createL4L2Column for
+  further documentation):
+
+    {
+    "networkType": "MultipleL4L2Columns",
+    "numCorticalColumns": 3,
+    "externalInputSize": 1024,
+    "sensorInputSize": 1024,
+    "columnPositions": a list of 2D coordinates, one for each column.
+      Used to calculate the connections between columns. By convention,
+      coordinates are integers.
+    "maxConnectionDistance": should be a value >= 1.  Determines how distant
+      of columns will be connected to each other.  Useful specific values
+      are 1 and 1.5, which typically create grids without and with
+      diagonal connections, respectively.
+    "longDistanceConnections": Should be a value in [0,1).  This is the
+      probability that a column forms a connection with a distant
+      column (i.e. beyond its normal connection distance).
+      If this value is not provided, it defaults to 0, and all connections
+      will be in the local vicinity.
+    "L4Params": {
+      <constructor parameters for ApicalTMPairRegion>
+    },
+    "L2Params": {
+      <constructor parameters for ColumnPoolerRegion>
+    },
+    "lateralSPParams": {
+      <constructor parameters for optional SPRegion>
+    },
+    "feedForwardSPParams": {
+      <constructor parameters for optional SPRegion>
+    }
+    }
+  """
+  numCorticalColumns = networkConfig["numCorticalColumns"]
+  output_lateral_connections = [[] for i in
+      xrange(numCorticalColumns)]
+  input_lateral_connections = [[] for i in
+      xrange(numCorticalColumns)]
+
+
+  # If no column positions are provided, create a grid by default.
+  # This is typically what the user wants, so it makes sense to have it as
+  # a default.
+  columnPositions = networkConfig.get("columnPositions", None)
+  if columnPositions is None:
+    columnPositions = []
+    side_length = int(numpy.ceil(numpy.sqrt(numCorticalColumns)))
+    for i in range(side_length):
+      for j in range(side_length):
+        columnPositions.append((i, j))
+    columnPositions = columnPositions[:numCorticalColumns]
+
+  # Determine which columns will be mutually connected.
+  # This has to be done before the actual creation of the network, as each
+  # individual column need to know how many columns it is laterally connected
+  # to.  These results are then used to actually connect the columns, once
+  # the network is created. It's awkward, but unavoidable.
+  longDistanceConnections = networkConfig.get("longDistanceConnections", 0.)
+  for i, src_pos in enumerate(columnPositions):
+    for j, dest_pos in enumerate(columnPositions):
+      if i != j:
+        if (numpy.linalg.norm(numpy.asarray(src_pos) -
+            numpy.asarray(dest_pos)) <=
+            networkConfig["maxConnectionDistance"] or
+            numpy.random.rand() < longDistanceConnections):
+          output_lateral_connections[i].append(j)
+          input_lateral_connections[j].append(i)
+
+  # Create each column
+  for i in xrange(numCorticalColumns):
+    networkConfigCopy = copy.deepcopy(networkConfig)
+    layerConfig = networkConfigCopy["L2Params"]
+    layerConfig["seed"] = layerConfig.get("seed", 42) + i
+
+    layerConfig["numOtherCorticalColumns"] = len(input_lateral_connections[i])
+
+    suffix = "_" + str(i)
+    network = createL4L2Column(network, networkConfigCopy, suffix)
+
+  # Now connect the L2 columns laterally
+  for i, connections in enumerate(output_lateral_connections):
+    suffixSrc = "_" + str(i)
+    for j in connections:
+      suffixDest = "_" + str(j)
+      network.link("L2Column" + suffixSrc, "L2Column" + suffixDest,
+        "UniformLink", "", srcOutput="feedForwardOutput",
+        destInput="lateralInput", propagationDelay=1)
+
+  enableProfiling(network)
   return network

@@ -308,7 +308,7 @@ class TemporalPoolerRegion(PyRegion):
     self._pooler = None
 
 
-  def initialize(self, inputs, outputs):
+  def initialize(self):
     """
     Initialize the self._poolerClass
     """

@@ -27,6 +27,8 @@ pip-log.txt
 .coverage
 .tox
 nosetests.xml
+htmlcov
+junit-test-results.xml
 
 # Translations
 *.mo
@@ -41,6 +43,7 @@ datacollection/get_data.sh
 
 # OSX Garbage
 .DS_Store
+__MACOSX
 
 #Grokcli side effects
 grokcli_summary.csv
@@ -80,4 +83,16 @@ robotium-solo-5.0.1.jar.properties
 .domino*
 *.html
 
+# Jupyter notebooks
 *checkpoint.ipynb
+*.ipynb_checkpoints
+
+# Keras
+*.h5
+
+# Datasets extensions
+*_TEST
+*_TRAIN
+*_ALL
+/projects/l2_pooling/plots
+/projects/combined_sequences/plots

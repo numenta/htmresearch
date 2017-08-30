@@ -29,9 +29,9 @@ import copy
 
 from prettytable import PrettyTable
 
-from nupic.research.monitor_mixin.metric import Metric
-from nupic.research.monitor_mixin.monitor_mixin_base import MonitorMixinBase
-from nupic.research.monitor_mixin.trace import (IndicesTrace, CountsTrace,
+from nupic.algorithms.monitor_mixin.metric import Metric
+from nupic.algorithms.monitor_mixin.monitor_mixin_base import MonitorMixinBase
+from nupic.algorithms.monitor_mixin.trace import (IndicesTrace, CountsTrace,
                                                 BoolsTrace, StringsTrace)
 
 
@@ -122,11 +122,12 @@ class ColumnPoolerMonitorMixin(MonitorMixinBase):
   def compute(self,
               feedforwardInput=(),
               lateralInputs=(),
+              feedforwardGrowthCandidates=None,
               learn=True,
               sequenceLabel=None,
               **kwargs):
     super(ColumnPoolerMonitorMixin, self).compute(
-      feedforwardInput, lateralInputs, learn)
+      feedforwardInput, lateralInputs, feedforwardGrowthCandidates, learn)
 
     self._mmTraces["activeCells"].data.append(set(self.getActiveCells()))
 

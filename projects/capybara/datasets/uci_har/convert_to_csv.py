@@ -20,15 +20,18 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import argparse
 import csv
 import os
 import numpy as np
-
+from collections import Counter
+import json
 
 """
 Data pre-processing from: 
 https://github.com/guillaume-chevalier/LSTM-Human-Activity-Recognition
 """
+
 
 
 def load_X(X_signals_paths):
@@ -69,49 +72,163 @@ def load_y(y_path):
 
 
 
+def write_to_csv(X, y, output_file, debug_file, debug_file_size, headers,
+                 seq_length, max_label_reps):
+  """
+  Save features and targets as CSV.
+  
+  :param X: (list of lists) input features. 
+  :param y: (list) targets / labels.
+  :param output_file: (str) path to the full output CSV. 
+  :param debug_file: (str) path to the debug CSV (subset of full CSV)
+  :param debug_file_size: (int) number of rows of the debug CSV file.
+  :param headers: (list of str) CSV header names. 
+  :param seq_length: (int) length of segments of data with the same label.
+  :param max_label_reps: (dict)  How many times labels are allowed to repeat. 
+    E.g: {1: 20000, 2: 20000}
+    Set it to 'None' to keep all data and labels.
+  :return num_rows: (list) number of rows of the output CSV file.  
+  """
+  t = 0
+  repeat_counter = Counter()
+  label_counter = Counter()
+  previous_label = int(y[0][0])
+  with open(output_file, 'w') as f:
+    with open(debug_file, 'w') as sf:
+      writer = csv.writer(f)
+      writer.writerow(headers)
+      debug_writer = csv.writer(sf)
+      debug_writer.writerow(headers)
+      for i in range(len(X)):
+        for x in X[i]:
+          label = int(y[i][0])
+          row = list(x)
+          row.append(label)
+          row.append(t)
+          if label == previous_label:
+            repeat_counter[label] += 1
+            if repeat_counter[label] > seq_length:
+              continue
+          else:
+            repeat_counter[label] = 0
+          if max_label_reps:
+            if label in max_label_reps:
+              label_counter[label] += 1
+              if label_counter[label] < max_label_reps[label]:
+                writer.writerow(row)
+                if t < debug_file_size:
+                  debug_writer.writerow(row)
+                t += 1
+          else:
+            writer.writerow(row)
+            if t < debug_file_size:
+              debug_writer.writerow(row)
+            t += 1
+          previous_label = label
+
+  return t
+
+
+
 def generate_data(X_train_signals_paths,
                   X_test_signals_paths,
                   y_train_path,
-                  y_test_path):
+                  y_test_path,
+                  output_dir,
+                  seq_length,
+                  max_label_reps):
   """
-  Generate train and test data.
+  Generate data. Example for M metrics and N timesteps:
+  
+  [
+    [t0, metric1, ..., metricM, label]
+      ...    
+    [tN, metric1, ..., metricM, label]
+  ]
   
   :param X_train_signals_paths: (list of str) paths to train data (inputs)
   :param X_test_signals_paths: (list of str) paths to test data (inputs) 
   :param y_train_path: (str) path to train data (targets)
   :param y_test_path: (str) path to test data (targets)
+  :param output_dir: (str) path to output directory
+  :param seq_length: (int) length of segments of data with the same label.
+  :param max_label_reps: (dict) how many times a label is allowed to repeat.
   """
+  debug_file_size = 10
+
   headers_train, X_train = load_X(X_train_signals_paths)
   headers_test, X_test = load_X(X_test_signals_paths)
   y_train = load_y(y_train_path)
   y_test = load_y(y_test_path)
 
   assert headers_test == headers_train
-  headers_train.append('label')
-  train_csv = 'inertial_signals_train.csv'
+  headers = headers_train
+  headers.append('label')
+  headers.append('t')
 
-  with open(train_csv, 'w') as f:
-    writer = csv.writer(f)
-    writer.writerow(headers_train)
-    for i in range(len(X_train)):
-      for x in X_train[i]:
-        row = list(x)
-        row.append(y_train[i][0])
-        writer.writerow(row)
+  train_csv = os.path.join(output_dir, 'inertial_signals_train.csv')
+  test_csv = os.path.join(output_dir, 'inertial_signals_test.csv')
+  files = [train_csv, test_csv]
 
-  test_csv = 'inertial_signals_test.csv'
-  with open(test_csv, 'w') as f:
-    writer = csv.writer(f)
-    writer.writerow(headers_test)
-    for i in range(len(X_test)):
-      for x in X_test[i]:
-        row = list(x)
-        row.append(y_test[i][0])
-        writer.writerow(row)
+  debug_train_csv = os.path.join(output_dir, 'debug_train.csv')
+  debug_test_csv = os.path.join(output_dir, 'debug_test.csv')
+  debug_files = [debug_train_csv, debug_test_csv]
+
+  t_train = write_to_csv(X_train, y_train, train_csv, debug_train_csv,
+                         debug_file_size, headers, seq_length, max_label_reps)
+
+  t_test = write_to_csv(X_test, y_test, test_csv, debug_test_csv,
+                        debug_file_size, headers, seq_length, max_label_reps)
+
+  print 'Train set size: %s' % t_train
+  print 'Test set size: %s' % t_test
+
+  print 'Files saved:', files
+  print 'Debug files saved:', debug_files
 
 
 
 if __name__ == '__main__':
+  
+  # Parse input options.
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--input_dir', '-i',
+                    dest='input_dir',
+                    default=os.path.join(os.getcwd()),
+                    type=str)
+  parser.add_argument('--output_dir', '-o',
+                    dest='output_dir',
+                    default=os.path.join(os.getcwd()),
+                    type=str)
+  parser.add_argument('--labels', '-l',
+                    dest='labels',
+                    default='[0,1,2,3,4,5]',
+                    type=str)
+  parser.add_argument('--nb_samples', '-n',
+                    dest='nb_samples',
+                    default=1000,
+                    type=int)
+  parser.add_argument('--seq_length', '-s',
+                      dest='seq_length',
+                      default=500,
+                      type=int)
+  
+  options = parser.parse_args()
+  input_dir = options.input_dir
+  output_dir = options.output_dir
+  labels = json.loads(options.labels)
+  seq_length = options.seq_length
+  nb_samples = options.nb_samples # number of samples per label
+  
+  # Note about UCI labels:  
+  # LABELS = ['WALKING',
+  #           'WALKING_UPSTAIRS',
+  #           'WALKING_DOWNSTAIRS',
+  #           'SITTING',
+  #           'STANDING',
+  #           'LAYING']
+
+  
   INPUT_SIGNAL_TYPES = [
     'body_acc_x_',
     'body_acc_y_',
@@ -124,18 +241,15 @@ if __name__ == '__main__':
     'total_acc_z_'
   ]
 
-  LABELS = [
-    'WALKING',
-    'WALKING_UPSTAIRS',
-    'WALKING_DOWNSTAIRS',
-    'SITTING',
-    'STANDING',
-    'LAYING'
-  ]
-
-  DATASET_PATH = 'UCI HAR Dataset'
+  DATASET_PATH = os.path.join(input_dir, 'UCI HAR Dataset')
   TRAIN = 'train'
   TEST = 'test'
+
+  # How many times labels are allowed to repeat. E.g: {1: 20000, 2: 20000}
+  # Set MAX_LABEL_REPS to 'None' to keep all data and labels.
+
+  # With WALKING and STANDING
+  MAX_LABEL_REPS = {label: nb_samples for label in labels}
 
   X_train_signals_paths = [os.path.join(DATASET_PATH,
                                         TRAIN,
@@ -155,4 +269,7 @@ if __name__ == '__main__':
   generate_data(X_train_signals_paths,
                 X_test_signals_paths,
                 y_train_path,
-                y_test_path)
+                y_test_path,
+                output_dir,
+                seq_length,
+                MAX_LABEL_REPS)

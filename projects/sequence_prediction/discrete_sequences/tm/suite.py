@@ -25,7 +25,7 @@ import random
 import numpy
 from expsuite import PyExperimentSuite
 
-from nupic.frameworks.opf.modelfactory import ModelFactory
+from nupic.frameworks.opf.model_factory import ModelFactory
 # from nupic.algorithms.sdr_classifier import SDRClassifier
 
 from htmresearch.algorithms.faulty_temporal_memory_shim import MonitoredFaultyTPShim
@@ -39,7 +39,7 @@ NUM_SYMBOLS = 16
 RANDOM_END = 50000
 
 MODEL_PARAMS = {
-  "model": "CLA",
+  "model": "HTMPrediction",
   "version": 1,
   "predictAheadTime": None,
   "modelParams": {
@@ -72,9 +72,9 @@ MODEL_PARAMS = {
         "synPermInactiveDec": 0.01,
         "boostStrength": 0.0
     },
-    "tpEnable" : True,
-    "tpParams": {
-      "verbosity": 0,
+    "tmEnable" : True,
+    "tmParams": {
+        "verbosity": 0,
         "columnCount": 2048,
         "cellsPerColumn": 32,
         "inputWidth": 2048,
@@ -97,9 +97,9 @@ MODEL_PARAMS = {
       },
       "clParams": {
         "implementation": "cpp",
-        "regionName" : "CLAClassifierRegion",
-        "clVerbosity" : 0,
-        "alpha": 0.0001,
+        "regionName" : "SDRClassifierRegion",
+        "verbosity" : 0,
+        "alpha": 0.01,
         "steps": "1",
       },
       "trainSPNetOnlyIfRequested": False,
@@ -165,9 +165,11 @@ class Suite(PyExperimentSuite):
     # self.resultsFile = open(os.path.join(resultsDir, "0.log"), 'w')
     if params['verbosity'] > 0:
       print " initializing HTM model..."
+      # print MODEL_PARAMS
     self.model = ModelFactory.create(MODEL_PARAMS)
     self.model.enableInference({"predictedField": "element"})
     # self.classifier = SDRClassifier(steps=[1], alpha=0.001)
+    print "finish initializing HTM model "
 
     if params['kill_cell_percent'] > 0:
       # a hack to use faulty temporal memory instead
@@ -296,7 +298,7 @@ class Suite(PyExperimentSuite):
     # print "sdr mapping next: "
     # print self.mapping[target]
     # Use custom classifier (uses predicted cells to make predictions)
-    predictiveColumns = set([tm.columnForCell(cell) for cell in tm.predictiveCells])
+    predictiveColumns = set([tm.columnForCell(cell) for cell in tm.getPredictiveCells()])
     topPredictions = classify(
       self.mapping, predictiveColumns, params['num_predictions'])
 

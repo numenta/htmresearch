@@ -29,12 +29,12 @@ import numpy
 from unity_client.server import Server
 from nupic.encoders.coordinate import CoordinateEncoder
 from nupic.encoders.scalar import ScalarEncoder
-from nupic.research.monitor_mixin.trace import CountsTrace
-from sensorimotor.extended_temporal_memory import ExtendedTemporalMemory
-from htmresearch.support.etm_monitor_mixin import (
-  ExtendedTemporalMemoryMonitorMixin)
-class MonitoredExtendedTemporalMemory(ExtendedTemporalMemoryMonitorMixin,
-                                     ExtendedTemporalMemory): pass
+from nupic.algorithms.monitor_mixin.trace import CountsTrace
+from sensorimotor.extended_temporal_memory import ApicalTiebreakPairMemory
+from htmresearch.support.apical_tm_pair_monitor_mixin import (
+  ApicalTMPairMonitorMixin)
+class MonitoredApicalTiebreakPairMemory(
+  ApicalTMPairMonitorMixin, ApicalTiebreakPairMemory): pass
 
 
 
@@ -50,7 +50,7 @@ class Agent(object):
                                 w=21)
     self.motorEncoder = ScalarEncoder(21, -1, 1,
                                  n=1024)
-    self.tm = MonitoredExtendedTemporalMemory(
+    self.tm = MonitoredApicalTiebreakPairMemory(
       columnDimensions=[2048],
       basalInputDimensions: (999999,) # Dodge input checking.
       cellsPerColumn=1,

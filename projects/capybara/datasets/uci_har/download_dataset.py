@@ -19,22 +19,36 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import argparse
 import os
 from subprocess import call
 
+# Parse input options.
+parser = argparse.ArgumentParser()
+parser.add_argument('--output_dir', '-o',
+                  dest='output_dir',
+                  default=os.path.join(os.getcwd()),
+                  type=str)
+
+options = parser.parse_args()
+output_dir = options.output_dir
+
 print("Downloading...")
-if not os.path.exists("UCI HAR Dataset.zip"):
+if not os.path.exists("%s/UCI HAR Dataset.zip" % output_dir):
     call('wget "https://archive.ics.uci.edu/ml/machine-learning-databases/'
-         '00240/UCI%20HAR%20Dataset.zip"', shell=True)
+         '00240/UCI%20HAR%20Dataset.zip" -P ' + output_dir, shell=True)
     print("Downloading done.\n")
 else:
     print("Dataset already downloaded. Did not download twice.\n")
 
 
 print("Extracting...")
-extract_directory = os.path.abspath("UCI HAR Dataset")
+extract_directory = os.path.abspath(os.path.join(output_dir, 
+                                                 "UCI HAR Dataset"))
 if not os.path.exists(extract_directory):
-    call('unzip -nq "UCI HAR Dataset.zip"', shell=True)
+    call('unzip -nq "%s/UCI HAR Dataset.zip" -d %s' % (output_dir,
+                                                       output_dir), 
+                                                       shell=True)
     print("Extracting successfully done to {}.".format(extract_directory))
 else:
     print("Dataset already extracted. Did not extract twice.\n")

@@ -63,6 +63,7 @@ class PhysicalObject(object):
   CYLINDER_SURFACE = 3
   CYLINDER_EDGE = 4
   POINTY = 5
+  SURFACE = 6
 
   # default resolution to use for matching locations
   DEFAULT_EPSILON = 2
