@@ -409,7 +409,8 @@ def runExperiment(args):
         featureSDR = addNoise(sdrPair[col][1], featureNoise,
                                exp.config["sensorInputSize"])
         sdrPair[col] = (locationSDR, featureSDR)
-        # print sdrPair
+        # if objectId==0:
+        #   print sdrPair
       for _ in xrange(settlingTime):
         exp.infer([sdrPair], objectName=objectId, reset=False)
 
@@ -438,16 +439,16 @@ def runExperiment(args):
       )
 
   convergencePoint = averageConvergencePointNew(numActiveL2cells,  30, 40)
-
+  accuracy = computeAccuracy(overlapMat)
 
   print "# objects {} # features {} # locations {} # columns {} trial # {} " \
         "locationNoise {} featureNoise {} network type {} fb {}".format(
     numObjects, numFeatures, numLocations, numColumns, trialNum, locationNoise,
     featureNoise, networkType, enableFeedback)
   print "Average convergence point=", convergencePoint
+  print "final accuracy=", accuracy["accuracy"][-1]
   print
 
-  accuracy = computeAccuracy(overlapMat)
 
   # Return our convergence point as well as all the parameters and objects
   args.update({"objects": objects.getObjects()})
@@ -817,7 +818,7 @@ def plotConvergenceBySensations(results, columnRange, numTrials):
   ########################################################################
   #
   # Create the plot.
-  # plt.figure()
+  plt.figure()
   plotPath = os.path.join("plots", "accuracy_vs_number_of_sensations.pdf")
   if not os.path.exists("plots/"):
     os.makedirs("plots/")
@@ -845,7 +846,7 @@ def plotConvergenceBySensations(results, columnRange, numTrials):
   plt.legend()
   plt.ylabel('Accuracy')
   plt.xlabel('Number of sensations')
-  # plt.savefig(plotPath)
+  plt.savefig(plotPath)
   # plt.close()
 
 
@@ -1231,7 +1232,7 @@ if __name__ == "__main__":
       nTrials=numTrials,
       numWorkers=cpu_count(),
       featureNoiseRange=noiseRange,
-      numInferenceRpts=4,
+      numInferenceRpts=3,
       resultsName="feature_noise_robustness_results.pkl")
 
     # Analyze results
@@ -1263,27 +1264,25 @@ if __name__ == "__main__":
 
   if False:
     # plot convergence by sensations
-    numTrials = 1
+    numTrials = 10
     columnRange = [1]
-    featureRange = [10]
-    objectRange = [50]
-    numAmbiguousLocationsRange = [1]
+    objectRange = [100]
+    numAmbiguousLocationsRange = [0]
     # Comment this out if you are re-running analysis on already saved results.
     # Very useful for debugging the plots
     runExperimentPool(
       numObjects=objectRange,
       numLocations=[10],
-      numFeatures=featureRange,
+      numFeatures=[10],
       numColumns=columnRange,
       numPoints=10,
       nTrials=numTrials,
       numWorkers=cpu_count(),
-      enableFeedback=False,
       ambiguousLocationsRange=numAmbiguousLocationsRange,
-      resultsName="multi_column_convergence_results.pkl")
+      resultsName="single_column_convergence_results.pkl")
 
     # Analyze results
-    with open("multi_column_convergence_results.pkl", "rb") as f:
+    with open("single_column_convergence_results.pkl", "rb") as f:
       results = cPickle.load(f)
     plotConvergenceBySensations(results, columnRange, numTrials)
 
@@ -1317,10 +1316,10 @@ if __name__ == "__main__":
 
   if True:
     # feedback with ambiguous location and noise
-    numTrials = 4
+    numTrials = 18
     columnRange = [1]
     featureRange = [10]
-    objectRange = [80]
+    objectRange = [40]
     numAmbiguousLocationsRange = [2]
 
     filename = "multi_column_convergence_results_fb_with_noise.pkl"
@@ -1332,8 +1331,8 @@ if __name__ == "__main__":
       numPoints=10,
       nTrials=numTrials,
       numWorkers=cpu_count(),
-      featureNoiseRange=[0.1],
-      locationNoiseRange=[0.1],
+      featureNoiseRange=[0.0],
+      locationNoiseRange=[0.3],
       enableFeedback=[True, False],
       numInferenceRpts=3,
       ambiguousLocationsRange=numAmbiguousLocationsRange,

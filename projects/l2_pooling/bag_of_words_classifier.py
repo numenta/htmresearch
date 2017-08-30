@@ -34,6 +34,7 @@ python bag_of_words_classifier.py  --location 0
 import cPickle
 from optparse import OptionParser
 import os
+import random
 import numpy
 import numpy as np
 import  matplotlib.pyplot as plt
@@ -42,7 +43,7 @@ from multiprocessing import Pool, cpu_count
 from htmresearch.frameworks.layers.object_machine_factory import (
   createObjectMachine
 )
-
+from multi_column_convergence import runExperimentPool
 
 plt.ion()
 plt.close('all')
@@ -52,13 +53,12 @@ def _getArgs():
   parser.add_option("-l",
                     "--location",
                     type=int,
-                    default=0,
+                    default=1,
                     dest="useLocation",
                     help="Whether to use location signal")
 
 
   (options, remainder) = parser.parse_args()
-  print options
   return options, remainder
 
 
@@ -90,8 +90,25 @@ def bowClassifierPredict(input, bowVectors, distance="overlap"):
     output = 1 - output
   elif distance == "overlap":
     for i in range(numClasses):
-      output[i] = -np.dot(input, bowVectors[i, :])
+      output[i] = -np.sum(np.minimum(input, bowVectors[i, :]))
   return output
+
+
+
+def locateConvergencePoint(stats):
+  """
+  Walk backwards through stats until you locate the first point that diverges
+  from target overlap values.  We need this to handle cases where it might get
+  to target values, diverge, and then get back again.  We want the last
+  convergence point.
+  """
+  n = len(stats)
+  for i in range(n):
+    if stats[n-i-1] < 1:
+      return n-i
+
+  # Never differs - converged in one iteration
+  return 1
 
 
 
@@ -111,8 +128,10 @@ def run_bag_of_words_classifier(args):
     externalInputSize=2400,
     numCorticalColumns=numColumns,
     numFeatures=numFeatures,
+    numLocations=numLocations,
     seed=trialNum
   )
+  random.seed(trialNum)
 
   for p in range(pointRange):
     objects.createRandomObjects(numObjects, numPoints=numPoints + p,
@@ -175,7 +194,7 @@ def run_bag_of_words_classifier(args):
     numObjects, numFeatures, numLocations, numWords, numColumns)
 
   # convert objects to BOW representations
-  bowVectors = np.zeros((numObjs, numWords))
+  bowVectors = np.zeros((numObjs, numWords), dtype=np.int32)
   k = 0
   for i in range(numObjs):
     numSenses = len(objects[objectNames[i]])
@@ -190,22 +209,35 @@ def run_bag_of_words_classifier(args):
   # plt.ylabel('Word #')
   # plt.title("BoW representations")
 
+  objects = []
+  for i in range(numObjs):
+    senseList = []
+    senses = np.where(bowVectors[i, :])[0]
+    for sense in senses.tolist():
+      # print bowVectors[i, sense]
+      for _ in range(bowVectors[i, sense]):
+        senseList.append(sense)
+    random.shuffle(senseList)
+    objects.append(senseList)
 
   # plot accuracy as a function of number of sensations
   accuracyList = []
   classificationOutcome = np.zeros((numObjs, 11))
   for maxSenses in range(1, 11):
-    bowVectorsTest = np.zeros((numObjs, numWords))
+    bowVectorsTest = np.zeros((numObjs, numWords), dtype=np.int32)
     offset = 0
     for i in range(numObjs):
       numSenses = min(len(objects[objectNames[i]]), maxSenses)
-
-      # sensations for object i
-      senses = np.where(bowVectors[i, :])[0]
-
+      #
+      # # sensations for object i
+      # senses = np.where(bowVectors[i, :])[0]
+      senses = objects[i]
+      # if i==42:
+      #   print senses
       for c in range(numColumns):
         for j in range(numSenses):
-          index = np.random.choice(senses)
+          # index = np.random.choice(senses)
+          index = senses[j]
           # index = findWordInVocabulary(data[offset + j, :], wordList)
           bowVectorsTest[i, index] += 1
         offset += len(objects[objectNames[i]])
@@ -213,6 +245,13 @@ def run_bag_of_words_classifier(args):
     numCorrect = 0
     for i in range(numObjs):
       output = bowClassifierPredict(bowVectorsTest[i, :], bowVectors)
+      # if i==42:
+      #   print
+      #   print bowVectorsTest[i, :]
+      #   print bowVectors[i, :]
+      #   print "maxSenses=", maxSenses
+      #   print -output
+      #   print -output[42]
       predictLabel = np.argmin(output)
       outcome = predictLabel == i
       numCorrect += outcome
@@ -221,9 +260,16 @@ def run_bag_of_words_classifier(args):
     accuracyList.append(accuracy)
     # print "maxSenses {} accuracy {}".format(maxSenses, accuracy)
 
-  convergencePoint = np.zeros((numObjects, ))
-  for i in range(numObjects):
-    convergencePoint[i] = np.where(classificationOutcome[i, :] == 1)[0][0]
+  convergencePoint = np.zeros((numObjs, ))
+  for i in range(numObjs):
+    # if i==42:
+    # print "obj ", i, "result: ", classificationOutcome[i, :]
+    # print locateConvergencePoint(classificationOutcome[i, :])
+    if np.max(classificationOutcome[i, :])>0:
+      convergencePoint[i] = locateConvergencePoint(classificationOutcome[i, :])
+      # convergencePoint[i] = np.where(classificationOutcome[i, :] == 1)[0][0]
+    else:
+      convergencePoint[i] = 11
 
   args.update({"accuracy": accuracyList})
   args.update({"numTouches": range(1, 11)})
@@ -280,7 +326,7 @@ def plotConvergenceByObject(results, objectRange, featureRange, numTrials,
 
 
 
-def plotConvergenceByColumn(results, columnRange, featureRange, numTrials):
+def plotConvergenceByColumn(results, columnRange, featureRange, numTrials, lineStype='-'):
   """
   Plots the convergence graph: iterations vs number of columns.
   Each curve shows the convergence for a given number of unique features.
@@ -293,6 +339,8 @@ def plotConvergenceByColumn(results, columnRange, featureRange, numTrials):
   # and c columns.
   convergence = numpy.zeros((max(featureRange), max(columnRange) + 1))
   for r in results:
+    if r["numColumns"] > max(columnRange):
+      continue
     convergence[r["numFeatures"] - 1,
                 r["numColumns"]] += r["convergencePoint"]
   convergence /= numTrials
@@ -304,7 +352,6 @@ def plotConvergenceByColumn(results, columnRange, featureRange, numTrials):
   ########################################################################
   #
   # Create the plot. x-axis=
-  plt.figure()
   plotPath = os.path.join("plots", "bow_convergence_by_column.pdf")
   # Plot each curve
   legendList = []
@@ -315,7 +362,7 @@ def plotConvergenceByColumn(results, columnRange, featureRange, numTrials):
     print convergence[f-1,columnRange]
     legendList.append('Unique features={}'.format(f))
     plt.plot(columnRange, convergence[f-1,columnRange],
-             color=colorList[i])
+             color=colorList[i], linestyle=lineStype)
   # format
   plt.legend(legendList, loc="upper right")
   plt.xlabel("Number of columns")
@@ -325,11 +372,12 @@ def plotConvergenceByColumn(results, columnRange, featureRange, numTrials):
   plt.ylabel("Average number of touches")
   plt.title("Number of touches to recognize one object (multiple columns)")
     # save
-  plt.savefig(plotPath)
+  # plt.savefig(plotPath)
   # plt.close()
 
 
-def run_bow_experiment_single_column():
+
+def run_bow_experiment_single_column(options):
   # Create the objects
   featureRange = [5, 10, 20, 30]
   pointRange = 1
@@ -338,7 +386,7 @@ def run_bow_experiment_single_column():
   numPoints = 10
   numTrials = 10
   numColumns = [1]
-  useLocation = 1
+  useLocation = options.useLocation
   args = []
   for c in reversed(numColumns):
     for o in reversed(objectRange):
@@ -359,6 +407,9 @@ def run_bow_experiment_single_column():
           )
 
   numWorkers = cpu_count()
+  print "{} experiments to run, {} workers".format(len(args), numWorkers)
+  print "useLocation: ", useLocation
+
   pool = Pool(processes=numWorkers)
   result = pool.map(run_bag_of_words_classifier, args)
 
@@ -369,9 +420,9 @@ def run_bow_experiment_single_column():
 
 
   plt.figure()
-  # with open("object_convergence_results.pkl", "rb") as f:
-  #   results = cPickle.load(f)
-  # plotConvergenceByObject(results, objectRange, featureRange, linestyle='-')
+  with open("object_convergence_results.pkl", "rb") as f:
+    results = cPickle.load(f)
+  plotConvergenceByObject(results, objectRange, featureRange, linestyle='-')
 
   with open(resultsName, "rb") as f:
     resultsBOW = cPickle.load(f)
@@ -384,7 +435,7 @@ def run_bow_experiment_single_column():
 
 def run_bow_experiment_multiple_columns():
   # Create the objects
-  featureRange = [5, 10, 20, 30]
+  featureRange = [5, 10, 30]
   pointRange = 1
   objectRange = [100]
   numLocations = [10]
@@ -419,15 +470,123 @@ def run_bow_experiment_multiple_columns():
   with open(resultsName, "wb") as f:
     cPickle.dump(result, f)
 
+  columnRange = range(1, 9)
+  featureRange = [5, 10, 30]
+  objectRange = [100]
+  networkType = ["MultipleL4L2Columns"]
+  numTrials = 10
+
+  runExperimentPool(
+    numObjects=objectRange,
+    numLocations=[10],
+    numFeatures=featureRange,
+    numColumns=columnRange,
+    networkType=networkType,
+    numPoints=10,
+    nTrials=numTrials,
+    numWorkers=cpu_count(),
+    resultsName="column_convergence_results.pkl")
+
+  with open("column_convergence_results.pkl", "rb") as f:
+    results = cPickle.load(f)
+
+  resultsName = "bag_of_words_multi_column_useLocation_{}.pkl".format(
+    useLocation)
   with open(resultsName, "rb") as f:
     resultsBOW = cPickle.load(f)
 
   plt.figure()
-  plotConvergenceByColumn(resultsBOW, columnRange, featureRange, numTrials)
+  plotConvergenceByColumn(results, columnRange, featureRange, numTrials)
+  plotConvergenceByColumn(resultsBOW, columnRange, featureRange, numTrials,
+                          "--")
+  plt.savefig('plots/ideal_observer_multiple_column.pdf')
+
+
+def run_ideal_model_comparison():
+  pointRange = 1
+  numTrials = 4
+  useLocation = options.useLocation
+  args = []
+
+  for t in range(numTrials):
+    for useLocation in [0, 1]:
+      args.append(
+        {"numObjects": 100,
+         "numLocations": 10,
+         "numFeatures": 10,
+         "numColumns": 1,
+         "trialNum": t,
+         "pointRange": pointRange,
+         "numPoints": 10,
+         "useLocation": useLocation
+         }
+      )
+
+  numWorkers = cpu_count()
+
+  print "{} experiments to run, {} workers".format(len(args), numWorkers)
+  print "useLocation: ", useLocation
+
+  # run_bag_of_words_classifier(args[0])
+  pool = Pool(processes=numWorkers)
+  result = pool.map(run_bag_of_words_classifier, args)
+  resultsName = "ideal_mode_result.pkl"
+  # Pickle results for later use
+  with open(resultsName, "wb") as f:
+    cPickle.dump(result, f)
+
+  # run sensorimotor network
+  numTrials = 10
+  columnRange = [1]
+  objectRange = [100]
+  numAmbiguousLocationsRange = [0]
+  runExperimentPool(
+    numObjects=objectRange,
+    numLocations=[10],
+    numFeatures=[10],
+    numColumns=columnRange,
+    numPoints=10,
+    nTrials=numTrials,
+    numWorkers=cpu_count(),
+    ambiguousLocationsRange=numAmbiguousLocationsRange,
+    resultsName="single_column_convergence_results.pkl")
+
+  # plot accuracy across sensations
+  accuracyIdeal = 0
+  accuracyBOF = 0
+  for r in result:
+    if r["useLocation"]:
+      accuracyIdeal += np.array(r['accuracy'])
+    else:
+      accuracyBOF += np.array(r['accuracy'])
+
+  accuracyIdeal /= len(result) / 2
+  accuracyBOF /= len(result) / 2
+
+  numTouches = len(accuracyIdeal)
+  with open("single_column_convergence_results.pkl", "rb") as f:
+    resultsModel = cPickle.load(f)
+  accuracyModel = 0
+  for r in resultsModel:
+    accuracyModel += np.array(r['accuracy'])
+  accuracyModel /= len(resultsModel)
+
+  plt.figure()
+  plt.plot(np.arange(numTouches)+1, accuracyIdeal, '-o', label='Ideal Observer')
+  plt.plot(np.arange(numTouches) + 1, accuracyBOF, '-s', label='Bag Of Features')
+  plt.plot(np.arange(numTouches)+1, accuracyModel, '-^', label='Model')
+  plt.xlabel("Number of sensations")
+  plt.ylabel("Accuracy")
+  plt.legend()
+  plt.savefig('plots/compare_model_with_ideal_observer.pdf')
 
 
 if __name__ == "__main__":
-  # run_bow_experiment_single_column()
+  (options, args) = _getArgs()
+
+  # run_bow_experiment_single_column(options)
 
   run_bow_experiment_multiple_columns()
+
+  # run_ideal_model_comparison()
 

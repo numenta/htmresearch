@@ -790,11 +790,11 @@ class L4L2Experiment(object):
       "basalPredictedSegmentDecrement": 0.0,
       "apicalPredictedSegmentDecrement": 0.0,
       "activationThreshold": activationThreshold,
-      # "reducedBasalThreshold": int(activationThreshold*0.8),
+      "reducedBasalThreshold": int(activationThreshold*0.6),
     # int(activationThreshold*0.8),
     #   "reducedBasalThreshold": activationThreshold-1,# int(activationThreshold*0.8),
       "sampleSize": sampleSize,
-      "implementation": "ApicalTiebreakCPP",
+      "implementation": "ApicalTiebreak",
       "seed": self.seed
     }
     # else:
