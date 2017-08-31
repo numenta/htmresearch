@@ -62,7 +62,7 @@ if __name__ == "__main__":
   filePath = './prediction/' + dataSet + '_TM_pred.csv'
 
   trainSPList = [False, True, True]
-  boost = [1, 1, 10]
+  boost = [1, 0, 20]
   mapeTMList1 = []
   mapeTMList2 = []
   for i in range(len(boost)):

@@ -95,14 +95,14 @@ Train faulty_SP on random bar set dataset
 # NYC Taxi experiment
 * Run with random SP (no learning, no boosting)
 
-	`python python_sp_tm_model.py --trainSP 0`
+	`python run_sp_tm_model.py --trainSP 0`
 * Run with learning SP, but without boosting
  
-	`python python_sp_tm_model.py --trainSP 1 --boostStrength 0`
+	`python run_sp_tm_model.py --trainSP 1 --boostStrength 0`
 * Run with learning SP, and boosting
  
-	`python python_sp_tm_model.py --trainSP 1 --boostStrength 20`
+	`python run_sp_tm_model.py --trainSP 1 --boostStrength 20`
 	
 * plot results (Fig. 6)
-	`python plot_nyc_taxi_experiment.py`
+	`python plot_nyc_taxi_performance.py`
 	

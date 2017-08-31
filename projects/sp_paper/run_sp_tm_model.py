@@ -21,8 +21,10 @@
 
 
 import importlib
-
+import os
 from optparse import OptionParser
+import yaml
+
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib import rcParams
@@ -30,9 +32,10 @@ rcParams.update({'figure.autolayout': True})
 
 from nupic.frameworks.opf.metrics import MetricSpec
 from nupic.frameworks.opf.model_factory import ModelFactory
-from nupic.frameworks.opf.predictionmetricsmanager import MetricsManager
+from nupic.frameworks.opf.prediction_metrics_manager import MetricsManager
+
 from nupic.frameworks.opf import metrics
-from htmresearch.frameworks.opf.clamodel_custom import CLAModel_custom
+from nupic.frameworks.opf.htm_prediction_model import HTMPredictionModel
 
 import pandas as pd
 from htmresearch.support.sequence_learning_utils import *
@@ -66,12 +69,14 @@ def createModel(modelParams):
 
 
 def getModelParamsFromName(dataSet):
-  importName = "model_params.%s_model_params" % (
-    dataSet.replace(" ", "_").replace("-", "_")
-  )
-  print "Importing model params from %s" % importName
+  # importName = "model_params.%s_model_params" % (
+  #   dataSet.replace(" ", "_").replace("-", "_")
+  # )
+  # print "Importing model params from %s" % importName
   try:
-    importedModelParams = importlib.import_module(importName).MODEL_PARAMS
+    importedModelParams = yaml.safe_load(
+      open('model_params/nyc_taxi_model_params.yaml'))
+    # importedModelParams = importlib.import_module(importName).MODEL_PARAMS
   except ImportError:
     raise Exception("No model params exist for '%s'. Run swarm first!"
                     % dataSet)
@@ -212,7 +217,7 @@ if __name__ == "__main__":
   print "Creating model from %s..." % dataSet
 
   # use customized CLA model
-  model = CLAModel_custom(**modelParams['modelParams'])
+  model = HTMPredictionModel(**modelParams['modelParams'])
   model.enableInference({"predictedField": predictedField})
   model.enableLearning()
   model._spLearningEnabled = bool(trainSP)
@@ -355,6 +360,8 @@ if __name__ == "__main__":
   negLL[:5000] = np.nan
   x = range(len(negLL))
 
+  if not os.path.exists("./results/nyc_taxi/"):
+    os.makedirs("./results/nyc_taxi/")
   np.savez('./results/nyc_taxi/{}{}TMprediction_SPLearning_{}_boost_{}'.format(
     dataSet, classifierType, trainSP, boostStrength),
     predictions, predict_data_ML, truth)
@@ -364,6 +371,8 @@ if __name__ == "__main__":
   overlapDutyCycle = np.zeros(sp.getColumnDimensions(), dtype=np.float32)
   sp.getOverlapDutyCycles(overlapDutyCycle)
 
+  if not os.path.exists("./figures/nyc_taxi/"):
+    os.makedirs("./figures/nyc_taxi/")
   plt.figure()
   plt.clf()
   plt.subplot(2, 2, 1)
