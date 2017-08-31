@@ -62,8 +62,15 @@ Fig. 4A, 4B
 
 # MNIST experiment
 Fig. 4C
-
 `python train_sp.py -t 1 -d mnist --spatialImp py -e 2 -b 1`
+
+To download the MNIST data, please follow the instructions in the nupic.vision repo: https://github.com/numenta/nupic.vision/tree/master/src/nupic/vision/mnist/data
+
+* install nupic.vision
+* run ./build.sh in `nupic.vision/src/nupic/vision/mnist/data/`
+* run `python extract.py`
+* Move  data/training/ and data/testing/ should be moved to sp_paper/data/mnist/ 
+
 
 # Fault tolerance experiment (with topology)
 
