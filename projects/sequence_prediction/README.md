@@ -11,10 +11,9 @@ Cui Y, Ahmad S, Hawkins J. Continuous online sequence learning with an unsupervi
 * NuPIC (required for all experiments)
 * SciPy
 * [PyBrain](https://github.com/pybrain/pybrain) required for LSTM and TDNN
-* R (required for ARIMA algorithm)
+* R (required for ARIMA algorithm) (Fig. 10, 11)
 * [hpelm](https://pypi.python.org/pypi/hpelm/1.0.4) required for experiments with Extreme Learning Machine
-* [ESNToolbox](http://reservoir-computing.org/node/129) required for Echo State Networks
-* [expsuite](https://github.com/ywcui1990/expsuite) required to run a large number of experiments with different parameters automatically
+* [ESNToolbox](http://reservoir-computing.org/node/129) required for Echo State Networks (Fig 10, 11)
 
 # Sequence prediction of HTM
 HTM can be used for online sequence prediction tasks. The figure below shows the general setup. A data stream is first encoded into sparse distributed representations (SDRs) with an encoder. The HTM sequence memory is able to learn temporal transitions of SDRs. Predictions or classifications can then be decoded from the active cells using a SDRClassifier.
