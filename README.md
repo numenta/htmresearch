@@ -76,4 +76,6 @@ includes support for feedback connections (through apical dendrites) and
 external distal basal connections.
 
 You can perform a more thorough test by running the test script from the repository root:
-%> ./run_tests.sh
+
+    %> ./run_tests.sh 
+
