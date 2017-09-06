@@ -305,6 +305,9 @@ def runExperiment(args):
   enableFeedback = args.get("enableFeedback", True)
   numAmbiguousLocations = args.get("numAmbiguousLocations", 0)
   numInferenceRpts = args.get("numInferenceRpts", 1)
+  l2Params = args.get("l2Params", None)
+  l4Params = args.get("l4Params", None)
+
   # Create the objects
   objects = createObjectMachine(
     machineType="simple",
@@ -338,6 +341,8 @@ def runExperiment(args):
   exp = L4L2Experiment(
     name,
     numCorticalColumns=numColumns,
+    L2Overrides=l2Params,
+    L4Overrides=l4Params,
     networkType = networkType,
     longDistanceConnections=longDistanceConnections,
     inputSize=150,
@@ -483,6 +488,8 @@ def runExperimentPool(numObjects,
                       enableFeedback=[True],
                       ambiguousLocationsRange=[0],
                       numInferenceRpts=1,
+                      l2Params=None,
+                      l4Params=None,
                       resultsName="convergence_results.pkl"):
   """
   Allows you to run a number of experiments using multiple processes.
@@ -533,7 +540,9 @@ def runExperimentPool(numObjects,
                            "featureNoise": featureNoise,
                            "enableFeedback": feedback,
                            "numAmbiguousLocations": ambiguousLocations,
-                           "numInferenceRpts": numInferenceRpts
+                           "numInferenceRpts": numInferenceRpts,
+                           "l2Params": l2Params,
+                           "l4Params": l4Params
                            }
                 )
   if numWorkers > len(args):
@@ -1314,7 +1323,7 @@ if __name__ == "__main__":
     plt.figure()
     plotFeedbackExperiment(results, columnRange, numTrials)
 
-  if True:
+  if False:
     # feedback with ambiguous location and noise
     numTrials = 18
     columnRange = [1]
@@ -1342,3 +1351,50 @@ if __name__ == "__main__":
       results = cPickle.load(f)
     plt.figure()
     plotFeedbackExperiment(results, columnRange, numTrials)
+
+  # plot convergence speed as a function of L4 size
+  if False:
+    columnRange = [1]
+    featureRange = [10]
+    objectRange = [100]
+    networkType = ["MultipleL4L2Columns"]
+    numTrials = 1
+    from capacity_test import getL4Params, getL2Params
+    l4Params = getL4Params()
+    l2Params = getL2Params()
+    l4ColumnCountList = range(150, 500, 100)
+    for l4ColumnCount in l4ColumnCountList:
+      l4Params["columnCount"] = l4ColumnCount
+      filename = "column_convergence_results_cell_{}.pkl".format(
+        l4Params["columnCount"])
+      runExperimentPool(
+        numObjects=objectRange,
+        numLocations=[10],
+        numFeatures=featureRange,
+        numColumns=columnRange,
+        networkType=networkType,
+        numPoints=10,
+        nTrials=numTrials,
+        numWorkers=cpu_count(),
+        l4Params=l4Params,
+        l2Params=l2Params,
+        resultsName=filename)
+
+    convergenceSpeed = []
+    for l4ColumnCount in l4ColumnCountList:
+      l4Params["columnCount"] = l4ColumnCount
+      filename = "column_convergence_results_cell_{}.pkl".format(
+        l4Params["columnCount"])
+      with open(filename, "rb") as f:
+        results = cPickle.load(f)
+        convergence = 0
+        for r in results:
+          convergence += r["convergencePoint"]
+        convergence /= len(results)
+        convergenceSpeed.append(convergence)
+    plt.figure()
+    plt.plot(l4ColumnCountList, convergenceSpeed, '-o')
+    plt.xlabel("Number of MCs in Input Layer")
+    plt.ylabel("Average number of sensations")
+    plt.ylim([0, 4])
+    plt.savefig('plots/ConvergenceVsL4Size.pdf')
