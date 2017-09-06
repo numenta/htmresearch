@@ -23,11 +23,10 @@ This file plots the convergence of L4-L2 as you increase the number of columns,
 or adjust the confusion between objects.
 
 """
+import argparse
 
 import random
 import os
-from math import ceil
-import pprint
 import numpy
 import cPickle
 from multiprocessing import Pool, cpu_count
@@ -39,96 +38,6 @@ from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 from htmresearch.frameworks.layers.object_machine_factory import (
   createObjectMachine
 )
-
-def locateConvergencePoint(stats, minOverlap, maxOverlap):
-  """
-  Walk backwards through stats until you locate the first point that diverges
-  from target overlap values.  We need this to handle cases where it might get
-  to target values, diverge, and then get back again.  We want the last
-  convergence point.
-  """
-  for i,v in enumerate(stats[::-1]):
-    if not (v >= minOverlap and v <= maxOverlap):
-      return len(stats)-i + 1
-
-  # Never differs - converged in one iteration
-  return 1
-
-
-def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
-                            settlingTime):
-  """
-  inferenceStats contains activity traces while the system visits each object.
-
-  Given the i'th object, inferenceStats[i] contains activity statistics for
-  each column for each region for the entire sequence of sensations.
-
-  For each object, compute the convergence time - the first point when all
-  L2 columns have converged.
-
-  Return the average convergence time across all objects.
-
-  Given inference statistics for a bunch of runs, locate all traces with the
-  given prefix. For each trace locate the iteration where it finally settles
-  on targetValue. Return the average settling iteration across all runs.
-  """
-  convergenceSum = 0.0
-
-  # For each object
-  for stats in inferenceStats:
-
-    # For each L2 column locate convergence time
-    convergencePoint = 0.0
-    for key in stats.iterkeys():
-      if prefix in key:
-        columnConvergence = locateConvergencePoint(
-          stats[key], minOverlap, maxOverlap)
-
-        # Ensure this column has converged by the last iteration
-        # assert(columnConvergence <= len(stats[key]))
-
-        convergencePoint = max(convergencePoint, columnConvergence)
-
-    convergenceSum += ceil(float(convergencePoint)/settlingTime)
-
-  return convergenceSum/len(inferenceStats)
-
-
-def objectConfusion(objects):
-  """
-  For debugging, print overlap between each pair of objects.
-  """
-  sumCommonLocations = 0
-  sumCommonFeatures = 0
-  sumCommonPairs = 0
-  numObjects = 0
-  commonPairHistogram = numpy.zeros(len(objects[0]), dtype=numpy.int32)
-  for o1,s1 in objects.iteritems():
-    for o2,s2 in objects.iteritems():
-      if o1 != o2:
-        # Count number of common locations id's and common feature id's
-        commonLocations = 0
-        commonFeatures = 0
-        for pair1 in s1:
-          for pair2 in s2:
-            if pair1[0] == pair2[0]: commonLocations += 1
-            if pair1[1] == pair2[1]: commonFeatures += 1
-
-        # print "Confusion",o1,o2,", common pairs=",len(set(s1)&set(s2)),
-        # print ", common locations=",commonLocations,"common features=",commonFeatures
-
-        assert(len(set(s1)&set(s2)) != len(s1) ), "Two objects are identical!"
-
-        sumCommonPairs += len(set(s1)&set(s2))
-        sumCommonLocations += commonLocations
-        sumCommonFeatures += commonFeatures
-        commonPairHistogram[len(set(s1)&set(s2))] += 1
-        numObjects += 1
-
-  print "Average common pairs=", sumCommonPairs / float(numObjects),
-  print ", locations=",sumCommonLocations / float(numObjects),
-  print ", features=",sumCommonFeatures / float(numObjects)
-  print "Common pair histogram=",commonPairHistogram
 
 
 def runExperiment(args):
@@ -210,7 +119,12 @@ def runExperiment(args):
                                       numLocations=numLocations,
                                       numFeatures=numFeatures)
 
-  objectConfusion(objects.getObjects())
+  average, locations, features, histogram = objects.objectConfusion()
+
+  print "Average common pairs=", average,
+  print ", locations=", locations,
+  print ", features=", features
+  print "Common pair histogram=", histogram
 
   # print "Total number of objects created:",len(objects.getObjects())
   # print "Objects are:"
@@ -297,8 +211,8 @@ def runExperiment(args):
         onePlot=False,
       )
 
-  convergencePoint = averageConvergencePoint(
-    exp.getInferenceStats(),"L2 Representation", 30, 40, settlingTime)
+  convergencePoint, _ = exp.averageConvergencePoint("L2 Representation", 30, 40,
+                                                 settlingTime)
 
 
   print "# objects {} # features {} # locations {} # columns {} trial # {} network type {}".format(

@@ -43,66 +43,6 @@ from htmresearch.frameworks.layers.object_machine_factory import (
 )
 
 
-def locateConvergencePoint(stats, minOverlap, maxOverlap):
-  """
-  Walk backwards through stats until you locate the first point that diverges
-  from target overlap values.  We need this to handle cases where it might get
-  to target values, diverge, and then get back again.  We want the last
-  convergence point.
-  """
-  for i,v in enumerate(stats[::-1]):
-    if not (v >= minOverlap and v <= maxOverlap):
-      return len(stats)-i + 1
-
-  # Never differs - converged in one iteration
-  return 1
-
-
-def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
-                            settlingTime):
-  """
-  inferenceStats contains activity traces while the system visits each object.
-
-  Given the i'th object, inferenceStats[i] contains activity statistics for
-  each column for each region for the entire sequence of sensations.
-
-  For each object, compute the convergence time - the first point when all
-  L2 columns have converged.
-
-  Return the average convergence time across all objects.
-
-  Given inference statistics for a bunch of runs, locate all traces with the
-  given prefix. For each trace locate the iteration where it finally settles
-  on targetValue. Return the average settling iteration across all runs.
-  """
-  convergenceSum = 0.0
-  numCorrect = 0.0
-  inferenceLength = 1000000
-
-  # For each object
-  for stats in inferenceStats:
-
-    # For each L2 column locate convergence time
-    convergencePoint = 0.0
-    for key in stats.iterkeys():
-      if prefix in key:
-        inferenceLength = len(stats[key])
-        columnConvergence = locateConvergencePoint(
-          stats[key], minOverlap, maxOverlap)
-
-        # Ensure this column has converged by the last iteration
-        # assert(columnConvergence <= len(stats[key]))
-
-        convergencePoint = max(convergencePoint, columnConvergence)
-
-    convergenceSum += ceil(float(convergencePoint)/settlingTime)
-
-    if ceil(float(convergencePoint)/settlingTime) <= inferenceLength:
-      numCorrect += 1
-
-  return convergenceSum/len(inferenceStats), numCorrect/len(inferenceStats)
-
-
 def runExperiment(args):
   """
   Runs the experiment.  What did you think this does?
@@ -241,8 +181,8 @@ def runExperiment(args):
 
   # Compute overall inference statistics
   infStats = exp.getInferenceStats()
-  convergencePoint, accuracy = averageConvergencePoint(
-    infStats,"L2 Representation", 30, 40, 1)
+  convergencePoint, accuracy = exp.averageConvergencePoint(
+    "L2 Representation", 30, 40, 1)
 
   predictedActive = numpy.zeros(len(infStats))
   predicted = numpy.zeros(len(infStats))
