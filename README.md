@@ -74,3 +74,6 @@ If this works installation probably worked fine. BTW, the above class is a
 modified version of TemporalMemory that we are currently researching. It
 includes support for feedback connections (through apical dendrites) and
 external distal basal connections.
+
+You can perform a more thorough test by running the test script from the repository root:
+%> ./run_tests.sh
