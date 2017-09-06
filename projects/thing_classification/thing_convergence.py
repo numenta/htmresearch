@@ -79,7 +79,7 @@ def getL2Params():
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 30,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 1.001,
+    "distalSegmentInhibitionFactor": 0.999,
     "learningMode": True,
   }
 
@@ -231,6 +231,7 @@ def trainNetwork(objects, numColumns, l4Params, l2Params, verbose=False):
   maxSensationNumber = 30
   overlapMat = np.zeros((numObjects, numObjects, maxSensationNumber))
   numL2ActiveCells = np.zeros((numObjects, maxSensationNumber))
+  predictedLabelLog = {}
   for objectIdx in range(numObjects):
     objectId = objectNames[objectIdx]
     obj = objects[objectId]
@@ -241,6 +242,8 @@ def trainNetwork(objects, numColumns, l4Params, l2Params, verbose=False):
     objectCopy = [pair for pair in obj]
     random.shuffle(objectCopy)
     exp.sendReset()
+
+    predictedLabels = []
     for sensationNumber in range(maxSensationNumber):
       objectSensations = {}
       for c in range(numColumns):
@@ -266,7 +269,8 @@ def trainNetwork(objects, numColumns, l4Params, l2Params, verbose=False):
 
       inferenceSDRs = objects.provideObjectToInfer(inferConfig)
       exp.infer(inferenceSDRs, objectName=objectId, reset=False)
-
+      predictedLabel = exp.getCurrentClassification()
+      predictedLabels.append(predictedLabel)
       for i in range(numObjects):
         overlapMat[objectIdx, i, sensationNumber] = len(
           exp.getL2Representations()[0] &
@@ -282,6 +286,7 @@ def trainNetwork(objects, numColumns, l4Params, l2Params, verbose=False):
       print "{} # L2 active cells {}: ".format(sensationNumber,
                                                numL2ActiveCells[
                                                  objectIdx, sensationNumber])
+    predictedLabelLog[objectId] = predictedLabels
     if verbose:
       print "Output for {}: {}".format(objectId, exp.getL2Representations())
       print "Final L2 active cells {}: ".format(
@@ -290,14 +295,19 @@ def trainNetwork(objects, numColumns, l4Params, l2Params, verbose=False):
     exp.sendReset()
 
   expResult = {'overlapMat': overlapMat,
-               'numL2ActiveCells': numL2ActiveCells}
+               'numL2ActiveCells': numL2ActiveCells,
+               'predictedLabelLog': predictedLabelLog,
+               'exp': exp}
   return expResult
 
 
 
-def computeAccuracy(expResult, objects):
+def computeAccuracyNNclassifier(expResult, objects, step=None):
   objectNames = objects.objects.keys()
-  overlapMat = expResult['overlapMat'][:, :, -1]
+  if step is None:
+    step = expResult['overlapMat'].shape[2]
+
+  overlapMat = expResult['overlapMat'][:, :, step]
   numL2ActiveCells = expResult['numL2ActiveCells'][:, -1]
   numCorrect = 0
   numObjects = overlapMat.shape[0]
@@ -348,7 +358,7 @@ def runExperimentAccuracyVsL4Thresh():
     objects = loadThingObjects(1, './data')
     expResult = trainNetwork(objects, numColumns, l4Params, l2Params, True)
 
-    accuracy = computeAccuracy(expResult, objects)
+    accuracy = computeAccuracyNNclassifier(expResult, objects)
     accuracyVsThresh.append(accuracy)
 
   plt.figure()
@@ -357,6 +367,23 @@ def runExperimentAccuracyVsL4Thresh():
   plt.ylabel('Classification Accuracy')
   plt.savefig('accuracyVsL4Thresh.pdf')
   return threshList, accuracyVsThresh
+
+
+
+def computeAccuracyFromGetCurrentClassification(expResult):
+  predictedLabelLog = expResult['predictedLabelLog']
+  numSensations = overlapMat.shape[2]
+  numObjects = overlapMat.shape[1]
+  classificationOutcome = np.zeros((numObjects, numSensations))
+  for objectI in range(len(objectNames)):
+    predictedLabels = predictedLabelLog[objectNames[objectI]]
+    for i in range(len(predictedLabels)):
+      inverse = [(value, key) for key, value in predictedLabels[i].items()]
+      predictedObjName = max(inverse)[1]
+      classificationOutcome[objectI, i] = predictedObjName == objectNames[objectI]
+  accuracy = np.mean(classificationOutcome, 0)
+  return accuracy
+
 
 
 if __name__ == "__main__":
@@ -372,18 +399,29 @@ if __name__ == "__main__":
 
   expResult = trainNetwork(objects, numColumns, l4Params, l2Params, True)
 
-  accuracy = computeAccuracy(expResult, objects)
+  # plot recognition accuracy across sensations
+  accuracyNNclassifier = []
+  for step in range(30):
+    accuracy = computeAccuracyNNclassifier(expResult, objects, step)
+    accuracyNNclassifier.append(accuracy)
 
+  accuracy = computeAccuracyFromGetCurrentClassification(expResult)
+  plt.figure()
+  plt.plot(accuracy)
+  plt.plot(accuracyNNclassifier)
+  plt.legend(['threshold=20', 'NN classifier'])
+  plt.xlabel('number of sensations')
+  plt.ylabel('accuracy')
+
+  # save overlap matrix across sensations
   objectNames = objects.objects.keys()
   numObjects = len(objectNames)
 
   overlapMat = expResult['overlapMat']
   numL2ActiveCells = expResult['numL2ActiveCells']
 
-
-  objectNames = objects.objects.keys()
-  numObjects = len(objectNames)
-
+  if not os.path.exists("plots/"):
+    os.makedirs("plots/")
   plt.figure()
   for sensationNumber in range(10):
     plt.imshow(overlapMat[:, :, sensationNumber])
