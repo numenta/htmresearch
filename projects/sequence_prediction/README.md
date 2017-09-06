@@ -32,10 +32,17 @@ The prediction accuracy as a function of training is shown in the figure below. 
 
 The results can be reproduced using scripts in `./discrete_sequences/` For example, to reproduce the result of HTM, run
 
-	cd discrete_sequences/tm/
+	cd discrete_sequences/{tm|lstm|elm|tdnn}/
 	python suite.py -e high-order-distributed-random-perturbed
 
-The results can be visualized with the script `plotPerturbExperiment.py`
+The required experiment name for tm, elm and lstm is `high-order-distributed-random-perturbed`
+
+The required experiment names for tdnn are `high-order-distributed-random-perturbed`, `high-order-distributed-random-perturbed` and `high-order-distributed-random-perturbed-short-window`
+
+The results will be saved to `results/high-order-distributed-random-perturbed` and can be visualized with the script `plotPerturbExperiment.py` (single trial) or `plotRepeatedPerturbExperiment.py` (multiple repeats with error bars)
+
+If you need to use domino, you can run the TM experiments from htmresearch/ with
+`python projects/sequence_prediction/discrete_sequences/tm/suite.py -e high-order-distributed-random-perturbed -c projects/sequence_prediction/discrete_sequences/tm/experiments.cfg`
 
 # Properties of HTM sequence memory
 We have designed a set of experiments to illustrate properties of HTM. These experiments are variations of the discrete sequence learning task.
@@ -43,7 +50,7 @@ We have designed a set of experiments to illustrate properties of HTM. These exp
 ## Multiple predictions
 In this experiment, each high-order sequence has two or four possible endings. Due to the use of SDRs, HTM is capable to represent multiple predictions internally, as a union of multiple SDRs. However, it is much harder to do that with dense representations. The figure below shows the prediction accuracy over training for HTM and LSTM and ELM. To reproduce the results for HTM, run
 
-	cd discrete_sequences/tm/
+	cd discrete_sequences/{tm|lstm|elm}/
 	python suite.py -e high-order-distributed-random-multiple-predictions
 
 The results can be visualized with the script `plotMultiplePredictionWithErrBar.py`
@@ -55,9 +62,9 @@ Because of the use of sparse distributed representations, HTM sequence memory is
 
 ![alt text](figures/Figure9_FaultTolerance.png)
 
-To reproduce this experiment for HTM, run
+To reproduce this experiment, run
 
-	cd discrete_sequences/tm/
+	cd discrete_sequences/{tm|lstm|elm}/
 	python suite.py -e high-order-distributed-random-kill-cell
 The results can be visualized with the script `plotFaultyTMPerformance.py`
 
@@ -68,7 +75,7 @@ We evaluated the sensitivity to temporal noise that is inserted in the middle of
 
 To reproduce this experiment for HTM, run
 
-	cd discrete_sequences/tm/
+	cd discrete_sequences/{tm|lstm}/
 	python suite.py -e high-order-noise
 The results can be visualized with the script `plotNoiseExperiment.py`
 
