@@ -150,7 +150,7 @@ modelParams:
     potentialPct: 0.8
     seed: 1956
     spVerbosity: 1
-    spatialImp: cpp
+    spatialImp: py
     synPermConnected: 0.5
     synPermActiveInc: 0.005
     synPermInactiveDec: 0.002
