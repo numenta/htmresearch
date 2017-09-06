@@ -62,8 +62,9 @@ Fig. 4A, 4B
 
 # MNIST experiment
 Fig. 4C
-`python train_sp.py -t 1 -d mnist --spatialImp py -e 2 -b 1`
+`python train_sp.py -t 1 -d mnist --spatialImp py -e 2 -b 1 --showExampleRFs 1`
 
+Example receptive fields will be saved in `figures/exampleRFs/dataType_mnist_boosting_1_seed_XX`
 To download the MNIST data, please follow the instructions in the nupic.vision repo: https://github.com/numenta/nupic.vision/tree/master/src/nupic/vision/mnist/data
 
 * install nupic.vision

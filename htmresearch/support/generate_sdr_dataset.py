@@ -407,10 +407,12 @@ class SDRDataSet(object):
         numImages += len(categoryFilenames)
         fileList[category] = categoryFilenames
 
-      inputVectors = np.zeros((numImages, 1024))
+      inputVectors = np.zeros((params['numInputVectors'], 1024))
+      numImagePerCategory = int(params['numInputVectors']/len(categoryList))
       counter = 0
       for category in categoryList:
-        categoryFilenames = fileList[category]
+        categoryFilenames = fileList[category][:numImagePerCategory]
+
         for filename in categoryFilenames:
           image = misc.imread(filename).astype('float32')
           image /= 255

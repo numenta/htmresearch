@@ -300,7 +300,7 @@ def runSPOnBatch(sp, inputVectors, learn, sdrOrders=None, verbose=0):
       avgBoostFactors += boostFactors
 
     if verbose > 0:
-      if i % 100 == 0:
+      if i % 200 == 0:
         print "{} % finished".format(100 * float(i) / float(numInputVector))
 
   if learn:

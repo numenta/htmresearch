@@ -103,7 +103,7 @@ def getSpatialPoolerParams(params, expConfig):
         spParamWithBoosting as spatialPoolerParameters
 
     if expConfig.dataSet in ['mnist']:
-      spatialPoolerParameters['inputDimensions'] = (784, 1)
+      spatialPoolerParameters['inputDimensions'] = (1024, 1)
   print
   print "Spatial Pooler Parameters: "
   pprint.pprint(spatialPoolerParameters)
@@ -111,12 +111,10 @@ def getSpatialPoolerParams(params, expConfig):
 
 
 
-def plotReceptiveFields2D(sp, Nx, Ny, seed=42):
+def plotReceptiveFields2D(sp, Nx, Ny, seed=42, nrows=4, ncols=4):
   inputSize = Nx * Ny
   numColumns = np.product(sp.getColumnDimensions())
 
-  nrows = 4
-  ncols = 4
   fig, ax = plt.subplots(nrows, ncols)
   np.random.seed(seed)
   for r in range(nrows):
@@ -343,7 +341,7 @@ def getSDRDataSetParams(inputVectorType, seed):
               'seed': seed}
   elif inputVectorType == 'mnist':
     params = {'dataType': 'mnist',
-              'numInputVectors': 1000,
+              'numInputVectors': 10000,
               'inputSize': 1024,
               'nX': 32,
               'nY': 32,
@@ -418,7 +416,7 @@ def runSPexperiments(expConfig):
 
   numColumns = np.prod(sp.getColumnDimensions())
 
-  numTestInputs = int(numInputVector * 0.5)
+  numTestInputs = min(int(numInputVector * 0.5), 1000)
   testInputs = inputVectors[:numTestInputs, :]
 
   connectedCounts = np.zeros((numColumns,), dtype=uintType)
@@ -501,7 +499,11 @@ def runSPexperiments(expConfig):
 
     # randomize the presentation order of input vectors
     sdrOrders = np.random.permutation(np.arange(numInputVector))
-    activeColumnsTrain, meanBoostFactors = runSPOnBatch(sp, inputVectors, learn, sdrOrders)
+    if expConfig.dataSet == 'mnist':
+      verbose = True
+    else:
+      verbose = False
+    activeColumnsTrain, meanBoostFactors = runSPOnBatch(sp, inputVectors, learn, sdrOrders, verbose)
     # run SP on test dataset and compute metrics
     activeColumnsPreviousEpoch = copy.copy(activeColumnsCurrentEpoch)
     activeColumnsCurrentEpoch, dum = runSPOnBatch(sp, testInputs, learn=False)
@@ -610,7 +612,10 @@ def runSPexperiments(expConfig):
   metrics['expName'] = expName
   pickle.dump(metrics, open('results/traces/{}/trace'.format(expName), 'wb'))
 
-  plotReceptiveFields2D(sp, params['nX'], params['nY'])
+  if expConfig.dataSet == 'mnist':
+    plotReceptiveFields2D(sp, params['nX'], params['nY'], 41, 6, 6)
+  else:
+    plotReceptiveFields2D(sp, params['nX'], params['nY'])
   inspectSpatialPoolerStats(sp, inputVectors, inputVectorType + "afterTraining")
 
   plotExampleInputOutput(sp, inputVectors, expName + "final")
