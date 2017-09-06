@@ -257,10 +257,6 @@ if __name__ == "__main__":
 
   nTrain = 5000
 
-  # nMultiplePass = 5
-  # print " run SP through the first %i samples %i passes " %(nMultiplePass, nTrain)
-  # model = runMultiplePassSPonly(df, model, nMultiplePass, nTrain)
-
   maxBucket = classifier_encoder.n - classifier_encoder.w + 1
   likelihoodsVecAll = np.zeros((maxBucket, len(df)))
 
@@ -381,6 +377,7 @@ if __name__ == "__main__":
 
   plt.subplot(2, 2, 2)
   plt.hist(activeDutyCycle)
+  plt.xlim([0, .1])
   plt.xlabel('activeDutyCycle-1000')
 
   plt.subplot(2, 2, 3)
@@ -388,8 +385,10 @@ if __name__ == "__main__":
   dutyCycleDist, binEdge = np.histogram(totalActiveDutyCycle,
                                         bins=20, range=[-0.0025, 0.0975])
   dutyCycleDist = dutyCycleDist.astype('float32')/np.sum(dutyCycleDist)
-  plt.bar(binEdge[:-1], dutyCycleDist, width=0.005)
-  plt.xlim([0, .1])
+  binWidth = np.mean(binEdge[1:]-binEdge[:-1])
+  binCenter = binEdge[:-1] + binWidth/2
+  plt.bar(binCenter, dutyCycleDist, width=0.005)
+  plt.xlim([-0.0025, .1])
   plt.ylim([0, .7])
   plt.xlabel('activeDutyCycle-Total')
   plt.savefig('figures/nyc_taxi/DutyCycle_SPLearning_{}_boost_{}.pdf'.format(
