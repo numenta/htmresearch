@@ -309,12 +309,10 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100, repeatID=0):
     # Only set to 1 iff target object is the lone max overlap index.  Otherwise
     # the network failed to conclusively identify the target object.
     outcome[i] = 1 if maxOverlapIndices == [targetObject] else 0
-
     confusion[i] = np.max(lastOverlap[nonTargetObjs])
     overlapTrueObj[i] = lastOverlap[targetObject]
     l2ActivationSize[i] = numActiveL2Cells[-1]
     l4ActivationSize[i] = numL4ActiveCells[-1]
-    # print "repeat {} target obj {} overlap {}".format(i, targetObject, overlapTrueObj[i])
 
     testResult = {
       "repeatID": repeatID,
@@ -836,14 +834,14 @@ def runExperiment3(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
 
   expParams = []
   expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
-     'thresh': 3})
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 10,
+     'thresh': 5})
   expParams.append(
-    {'l4Column': 200, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
-     'thresh': 3})
+    {'l4Column': 200, 'externalInputSize': 2400, 'w': 20, 'sample': 10,
+     'thresh': 5})
   expParams.append(
-    {'l4Column': 250, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
-     'thresh': 3})
+    {'l4Column': 250, 'externalInputSize': 2400, 'w': 20, 'sample': 10,
+     'thresh': 5})
 
   for expParam in expParams:
     l4Params["columnCount"] = expParam['l4Column']
@@ -876,6 +874,7 @@ def runExperiment3(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
                                     l2Params,
                                     l4Params,
                                     objectParams,
+                                    "MultipleL4L2Columns",
                                     numRpts)
 
   # plot result
@@ -939,14 +938,14 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
   expParams = []
   expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
-     'thresh': 3, 'l2Column': 1})
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 10,
+     'thresh': 5, 'l2Column': 1})
   expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
-     'thresh': 3, 'l2Column': 2})
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 10,
+     'thresh': 5, 'l2Column': 2})
   expParams.append(
-    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 6,
-     'thresh': 3, 'l2Column': 3})
+    {'l4Column': 150, 'externalInputSize': 2400, 'w': 20, 'sample': 10,
+     'thresh': 5, 'l2Column': 3})
 
   for expParam in expParams:
     l2Params['sampleSizeProximal'] = expParam['sample']
@@ -983,6 +982,7 @@ def runExperiment4(resultDirName=DEFAULT_RESULT_DIR_NAME,
                                     l2Params,
                                     l4Params,
                                     objectParams,
+                                    "MultipleL4L2Columns",
                                     numRpts)
 
   # plot result
@@ -1044,13 +1044,13 @@ def runExperiment5(resultDirName=DEFAULT_RESULT_DIR_NAME,
 
   expParams = []
   expParams.append(
-    {'L2cellCount': 2048, 'L2activeBits': 40, 'w': 20, 'sample': 6, 'thresh': 3,
+    {'L2cellCount': 2048, 'L2activeBits': 40, 'w': 20, 'sample': 10, 'thresh': 5,
      'l2Column': 1})
   expParams.append(
-    {'L2cellCount': 4096, 'L2activeBits': 40, 'w': 20, 'sample': 6, 'thresh': 3,
+    {'L2cellCount': 4096, 'L2activeBits': 40, 'w': 20, 'sample': 10, 'thresh': 5,
      'l2Column': 1})
   expParams.append(
-    {'L2cellCount': 6144, 'L2activeBits': 40, 'w': 20, 'sample': 6, 'thresh': 3,
+    {'L2cellCount': 6144, 'L2activeBits': 40, 'w': 20, 'sample': 10, 'thresh': 5,
      'l2Column': 1})
 
   for expParam in expParams:
@@ -1089,6 +1089,7 @@ def runExperiment5(resultDirName=DEFAULT_RESULT_DIR_NAME,
                                     l2Params,
                                     l4Params,
                                     objectParams,
+                                    "MultipleL4L2Columns",
                                     numRpts)
 
   # plot result
@@ -1199,6 +1200,7 @@ def runExperiment6(resultDirName=DEFAULT_RESULT_DIR_NAME,
                                     l2Params,
                                     l4Params,
                                     objectParams,
+                                    "MultipleL4L2Columns",
                                     numRpts)
 
   # plot result
@@ -1302,6 +1304,7 @@ def runExperiment7(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
                                     l2Params,
                                     l4Params,
                                     objectParams,
+                                    "MultipleL4L2Columns",
                                     numRpts)
 
   # plot result
@@ -1409,6 +1412,7 @@ def runExperiment8(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
                                     l2Params,
                                     l4Params,
                                     objectParams,
+                                    "MultipleL4L2Columns",
                                     numRpts)
 
   # plot result
@@ -1652,6 +1656,7 @@ def runExperiment10(numCorticalColumns=DEFAULT_NUM_CORTICAL_COLUMNS,
                                     l2Params,
                                     l4Params,
                                     objectParams,
+                                    "MultipleL4L2Columns",
                                     numRpts)
 
   # plot result
@@ -1711,17 +1716,17 @@ def runExperiments(resultDirName, plotDirName, cpuCount):
 #                 plotDirName=plotDirName,
 #                 cpuCount=cpuCount)
 #
-#  # 10 pts per object, varying number of objects, varying L4 size
-#  runExperiment3(numCorticalColumns=1,
-#                 resultDirName=resultDirName,
-#                 plotDirName=plotDirName,
-#                 cpuCount=cpuCount)
+ # 10 pts per object, varying number of objects, varying L4 size
+ # runExperiment3(numCorticalColumns=1,
+ #                resultDirName=resultDirName,
+ #                plotDirName=plotDirName,
+ #                cpuCount=cpuCount)
 #
-#  # 10 pts per object, varying number of objects and number of columns
-#  runExperiment4(resultDirName=resultDirName,
-#                 plotDirName=plotDirName,
-#                 cpuCount=cpuCount)
-#
+ # 10 pts per object, varying number of objects and number of columns
+ runExperiment4(resultDirName=resultDirName,
+                plotDirName=plotDirName,
+                cpuCount=cpuCount)
+
 #  # 10 pts per object, varying number of L2 cells
 #  runExperiment5(resultDirName=resultDirName,
 #                 plotDirName=plotDirName,
@@ -1743,10 +1748,10 @@ def runExperiments(resultDirName, plotDirName, cpuCount):
 #                 resultDirName=resultDirName,
 #                 plotDirName=plotDirName,
 #                 cpuCount=cpuCount)
-  # #10 pts per object, varying number of objects and number of columns
-  runExperiment9(resultDirName=resultDirName,
-                 plotDirName=plotDirName,
-                 cpuCount=cpuCount)
+#   # #10 pts per object, varying number of objects and number of columns
+#   runExperiment9(resultDirName=resultDirName,
+#                  plotDirName=plotDirName,
+#                  cpuCount=cpuCount)
 
 
   # 10 pts per object, varying number of objects, varying L4/L2 size
@@ -1781,6 +1786,27 @@ if __name__ == "__main__":
 
   opts = parser.parse_args()
 
-  runExperiments(resultDirName=opts.resultDirName,
-                 plotDirName=opts.plotDirName,
-                 cpuCount=opts.cpuCount)
+  # runExperiments(resultDirName=opts.resultDirName,
+  #                plotDirName=opts.plotDirName,
+  #                cpuCount=opts.cpuCount)
+
+
+
+  numObjects = 50
+  numPointsPerObject=10
+  numCorticalColumns=1
+  l4Params = getL4Params()
+  l2Params = getL2Params()
+  objectParams = {'numInputBits': 20,
+                  'externalInputSize': 2400,
+                  'numFeatures': DEFAULT_NUM_FEATURES,
+                  'numLocations': DEFAULT_NUM_LOCATIONS,
+                  'uniquePairs': True}
+  runCapacityTest(numObjects,
+                      numPointsPerObject,
+                      numCorticalColumns,
+                      l2Params,
+                      l4Params,
+                      objectParams,
+                      networkType = "MultipleL4L2Columns",
+                      repeat=0)

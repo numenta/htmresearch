@@ -149,7 +149,8 @@ class L4L2Experiment(object):
                lateralSPOverrides=None,
                enableFeedForwardSP=False,
                feedForwardSPOverrides=None,
-               objectNamesAreIndices=False
+               objectNamesAreIndices=False,
+               enableFeedback=True
                ):
     """
     Creates the network.
@@ -223,6 +224,9 @@ class L4L2Experiment(object):
              integers. If False, object names can be strings, and indices will
              be assigned to each object name.
 
+    @param   enableFeedback (bool)
+             If True, enable feedback between L2 and L4
+
     """
     # Handle logging - this has to be done first
     self.logCalls = logCalls
@@ -244,7 +248,8 @@ class L4L2Experiment(object):
     # update parameters with overrides
     self.config = {
       "networkType": networkType,
-      "longDistanceConnections" : longDistanceConnections,
+      "longDistanceConnections": longDistanceConnections,
+      "enableFeedback": enableFeedback,
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
@@ -767,8 +772,9 @@ class L4L2Experiment(object):
       "basalPredictedSegmentDecrement": 0.0,
       "apicalPredictedSegmentDecrement": 0.0,
       "activationThreshold": activationThreshold,
+      "reducedBasalThreshold": int(activationThreshold*0.6),
       "sampleSize": sampleSize,
-      "implementation": "ApicalTiebreakCPP",
+      "implementation": "ApicalTiebreak",
       "seed": self.seed
     }
 
@@ -779,7 +785,7 @@ class L4L2Experiment(object):
     """
     if numInputBits == 20:
       sampleSizeProximal = 10
-      minThresholdProximal = 6
+      minThresholdProximal = 5
     elif numInputBits == 10:
       sampleSizeProximal = 6
       minThresholdProximal = 3
