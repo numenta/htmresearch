@@ -309,12 +309,10 @@ def testOnSingleRandomSDR(objects, exp, numRepeats=100, repeatID=0):
     # Only set to 1 iff target object is the lone max overlap index.  Otherwise
     # the network failed to conclusively identify the target object.
     outcome[i] = 1 if maxOverlapIndices == [targetObject] else 0
-    print numActiveL2Cells
     confusion[i] = np.max(lastOverlap[nonTargetObjs])
     overlapTrueObj[i] = lastOverlap[targetObject]
     l2ActivationSize[i] = numActiveL2Cells[-1]
     l4ActivationSize[i] = numL4ActiveCells[-1]
-    # print "repeat {} target obj {} overlap {}".format(i, targetObject, overlapTrueObj[i])
 
     testResult = {
       "repeatID": repeatID,
@@ -477,7 +475,7 @@ def runCapacityTest(numObjects,
     numLocations=numLocations,
     numFeatures=numFeatures
   )
-  print "networkType: ", networkType
+
   exp = L4L2Experiment("capacity_two_objects",
                        numInputBits=numInputBits,
                        L2Overrides=l2Params,

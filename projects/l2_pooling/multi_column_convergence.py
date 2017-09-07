@@ -545,9 +545,6 @@ def runExperimentPool(numObjects,
                            "l4Params": l4Params
                            }
                 )
-  if numWorkers > len(args):
-    numWorkers = len(args)
-
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
 
   # Run the pool
