@@ -12,4 +12,4 @@ scipy
 hpelm
 
 # github requirements
-git://github.com/pybrain/pybrain.git#egg=pybrain
+# git://github.com/pybrain/pybrain.git#egg=pybrain

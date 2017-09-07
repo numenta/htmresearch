@@ -26,7 +26,7 @@ import json
 from matplotlib import pyplot
 import numpy
 
-from expsuite import PyExperimentSuite
+from htmresearch.support.expsuite import PyExperimentSuite
 
 
 def readExperiment(experiment):

@@ -22,7 +22,7 @@
 
 
 
-from expsuite import PyExperimentSuite
+from htmresearch.support.expsuite import PyExperimentSuite
 
 from pybrain.datasets import SequentialDataSet
 from pybrain.tools.shortcuts import buildNetwork
