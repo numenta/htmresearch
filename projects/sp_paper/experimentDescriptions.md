@@ -92,13 +92,12 @@ Train faulty_SP on random bar set dataset
 
 * Analyze fault tolerance experiment results (Fig. 5)
 
-`python analyze_trauma_experiment.py`
+`mkdir figures/traumaMovie/`
+`python analyze_trauma_experiment.py -e [expname]`
+`cd figures/traumaMovie/`
+`ffmpeg -start_number 100 -i [expname]_frame_%03d.png traumaMovie_[expname].mp4`
 
-* Make trauma movie (requires ffmpeg)
-
- In figures/traumaMovie/ run:
-
-`ffmpeg -start_number 100 -i trauma_inputs_with_topology_frame_%03d.png traumaMovie1.mp4`
+expname should be `trauma_inputs_with_topology_seed_41` or `trauma_boosting_with_topology_seed_41`
 
 # NYC Taxi experiment
 * Run with random SP (no learning, no boosting)
