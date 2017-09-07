@@ -41,7 +41,7 @@ The required experiment names for tdnn are `high-order-distributed-random-pertur
 The results will be saved to `results/high-order-distributed-random-perturbed` and can be visualized with the script `plotPerturbExperiment.py` (single trial) or `plotRepeatedPerturbExperiment.py` (multiple repeats with error bars)
 
 If you need to use domino, you can run the TM experiments from htmresearch/ with
-`python projects/sequence_prediction/discrete_sequences/tm/suite.py -e high-order-distributed-random-perturbed -c projects/sequence_prediction/discrete_sequences/tm/experiments.cfg`
+`domino run projects/sequence_prediction/discrete_sequences/tm/suite.py -e high-order-distributed-random-perturbed -c projects/sequence_prediction/discrete_sequences/tm/experiments.cfg`
 
 # Properties of HTM sequence memory
 We have designed a set of experiments to illustrate properties of HTM. These experiments are variations of the discrete sequence learning task.
