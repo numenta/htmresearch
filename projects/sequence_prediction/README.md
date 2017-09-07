@@ -36,7 +36,7 @@ The results can be reproduced using scripts in `./discrete_sequences/` For examp
 
 The required experiment name for tm, elm and lstm is `high-order-distributed-random-perturbed`
 
-The required experiment names for tdnn are `high-order-distributed-random-perturbed`, `high-order-distributed-random-perturbed` and `high-order-distributed-random-perturbed-short-window`
+The required experiment names for tdnn are `high-order-distributed-random-perturbed`, `high-order-distributed-random-perturbed-long-window` and `high-order-distributed-random-perturbed-short-window`
 
 The results will be saved to `results/high-order-distributed-random-perturbed` and can be visualized with the script `plotPerturbExperiment.py` (single trial) or `plotRepeatedPerturbExperiment.py` (multiple repeats with error bars)
 
