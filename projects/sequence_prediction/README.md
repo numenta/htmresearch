@@ -41,7 +41,7 @@ The required experiment names for tdnn are `high-order-distributed-random-pertur
 The results will be saved to `results/high-order-distributed-random-perturbed` and can be visualized with the script `plotPerturbExperiment.py` (single trial) or `plotRepeatedPerturbExperiment.py` (multiple repeats with error bars)
 
 If you need to use domino, you can run the TM experiments from htmresearch/ with
-`domino run projects/sequence_prediction/discrete_sequences/tm/suite.py -e high-order-distributed-random-perturbed -c projects/sequence_prediction/discrete_sequences/tm/experiments.cfg`
+`domino run projects/sequence_prediction/discrete_sequences/tm/suite.py -c projects/sequence_prediction/discrete_sequences/tm/experiments.cfg -e high-order-distributed-random-perturbed`
 
 # Properties of HTM sequence memory
 We have designed a set of experiments to illustrate properties of HTM. These experiments are variations of the discrete sequence learning task.
@@ -55,6 +55,16 @@ In this experiment, each high-order sequence has two or four possible endings. D
 The results can be visualized with the script `plotMultiplePredictionWithErrBar.py`
 
 ![alt text](figures/Figure6_DiscreteMultiplePrediction.png)
+## Learning sequences of different orders
+Here we tested whether HTM sequence memory can learn long-term dependencies by varying the Markov order of the sequences, which is determined by the length of shared sub-sequences.
+
+![alt text](figures/Figure7_SequenceLengthExpt.png)
+
+To reproduce this experiment, run
+	cd discrete_sequences/tm/
+	python suite.py -e high-order-variable-length
+
+The results can be visualized with the script `plotSequenceLengthExperiment.py`
 
 ## Fault Tolerance
 Because of the use of sparse distributed representations, HTM sequence memory is tolerant to system faults such as cell death or synapse loss. In this experiment, we killed a fraction of the cells after the model achieves perfect performance on a sequence prediction task, and monitored how prediction accuracy is affected by the system faults. The results are shown below.
