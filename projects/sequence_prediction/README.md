@@ -66,16 +66,6 @@ To reproduce this experiment, run
 
 The results can be visualized with the script `plotSequenceLengthExperiment.py`
 
-## Fault Tolerance
-Because of the use of sparse distributed representations, HTM sequence memory is tolerant to system faults such as cell death or synapse loss. In this experiment, we killed a fraction of the cells after the model achieves perfect performance on a sequence prediction task, and monitored how prediction accuracy is affected by the system faults. The results are shown below.
-
-![alt text](figures/Figure9_FaultTolerance.png)
-
-To reproduce this experiment, run
-
-	cd discrete_sequences/{tm|lstm|elm}/
-	python suite.py -e high-order-distributed-random-kill-cell
-The results can be visualized with the script `plotFaultyTMPerformance.py`
 
 ## Sensitivity to temporal noise
 We evaluated the sensitivity to temporal noise that is inserted in the middle of high-order sequences in this experiment. Such temporal noise can disrupt contextual information in both HTM and LSTM networks. The figure below shows that the networks are unable to learn high-order sequences if temporal noise present during learning (left), and will have worse performance if temporal noise is inserted after learning (right)
@@ -88,6 +78,16 @@ To reproduce this experiment for HTM, run
 	python suite.py -e high-order-noise
 The results can be visualized with the script `plotNoiseExperiment.py`
 
+## Fault Tolerance
+Because of the use of sparse distributed representations, HTM sequence memory is tolerant to system faults such as cell death or synapse loss. In this experiment, we killed a fraction of the cells after the model achieves perfect performance on a sequence prediction task, and monitored how prediction accuracy is affected by the system faults. The results are shown below.
+
+![alt text](figures/Figure9_FaultTolerance.png)
+
+To reproduce this experiment, run
+
+	cd discrete_sequences/{tm|lstm|elm}/
+	python suite.py -e high-order-distributed-random-kill-cell
+The results can be visualized with the script `plotFaultyTMPerformance.py`
 
 # Continuous time series prediction
 
