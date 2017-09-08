@@ -99,7 +99,26 @@ We considered the task of predicting taxi demand in the New York City as an exam
 The detailed instructions to run experiments with the continuous time series prediction task can be found in `./continuous_sequence/`. For example, to run HTM on this task, 
 
 	cd continuous_sequence/
-	python run_tm_model.py -d nyc_taxi
+	
+	
+TM:	
+`python run_tm_model.py -d nyc_taxi`
+
+LSTM: 
+Run the following experiments:
+`python run_lstm_suite.py -e  nyc_taxi_experiment_continuous`
+`python run_lstm_suite.py -e nyc_taxi_experiment_continuous_likelihood`
+`python run_lstm_suite.py -e nyc_taxi_experiment_continuous_likelihood_online`
+
+
+ELM: `python run_elm.py -d nyc_taxi`
+
+ESN: in Matlab, run `run_esn_model.m`, set `injectPerturbation` to 0 on line 28
+
+ARIMA: in R, run `run_arima.R`
+
+Adaptive Filter, run `run_adaptive_filter.py`
+
 
 The results can be visualized with the script `plotPerformance.py`
 
@@ -110,5 +129,16 @@ We are able to show that HTM can adapt changes quickly due to its ability to lea
 This result can be reproduced with
 
 	cd continuous_sequence/
-	python run_tm_model.py -d nyc_taxi_perturb
+	
+TM: `python run_tm_model.py -d nyc_taxi_perturb`
+
+LSTM: 
+Run the following experiments:
+`python run_lstm_suite.py -e  nyc_taxi_experiment_continuous_likelihood_perturb`
+`python run_lstm_suite.py -e nyc_taxi_experiment_continuous_likelihood_perturb_online`
+`python run_lstm_suite.py -e  nyc_taxi_experiment_continuous_perturb`
+`python run_lstm_suite.py -e nyc_taxi_experiment_continuous_perturb_online`
+
+ESN: in Matlab, run `run_esn_model.m`, set `injectPerturbation` to 1 on line 28
+
 and visualized with the plotting script `plotPerturbResult.py`
