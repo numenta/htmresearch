@@ -87,6 +87,7 @@ To reproduce this experiment, run
 
 	cd discrete_sequences/{tm|lstm|elm}/
 	python suite.py -e high-order-distributed-random-kill-cell
+	
 The results can be visualized with the script `plotFaultyTMPerformance.py`
 
 # Continuous time series prediction
@@ -99,6 +100,8 @@ The detailed instructions to run experiments with the continuous time series pre
 
 	cd continuous_sequence/
 	python run_tm_model.py -d nyc_taxi
+
+The results can be visualized with the script `plotPerformance.py`
 
 We are able to show that HTM can adapt changes quickly due to its ability to learn continuously. In the figure below, we plotted prediction error after an artificial manipulation of data, which involves increasing night taxi demand and decreasing morning taxi demand. The HTM sequence memory is able to pick up the new pattern quickly.
 
