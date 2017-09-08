@@ -62,8 +62,8 @@ for exp = 1%:length(DataFolderList)
     xlabel('trial #');
     ylabel('sparseness');
     title(['area ' area ' stim ' num2str(stimType)]);
-    print(h,'-dpdf', ['figures/sparseness_over_time_stim_' num2str(stimType) ...
-        '_area_' area expID '.pdf']);
+    print(h,'-dpng', ['figures/sparseness_over_time_stim_' num2str(stimType) ...
+        '_area_' area expID '.png']);
     
     
     %% perform subset analysis
@@ -88,8 +88,8 @@ for exp = 1%:length(DataFolderList)
     ylabel('Subset index');
     set(gca,'Xtick', 1:3, 'XtickLabel', {'Data', 'Shuffled', 'Poisson'});
     title([area]);
-    print(h,'-dpdf', ['figures/subset_index_stim_' num2str(stimType) ...
-        '_area_' area expID '.pdf']);
+    print(h,'-dpng', ['figures/subset_index_stim_' num2str(stimType) ...
+        '_area_' area expID '.png']);
     
     %%
     numCoactive = 1;
@@ -209,7 +209,7 @@ for exp = 1%:length(DataFolderList)
     plot((1:numFramesPerStim)*imgPara.dt, psthAssembly, 'k');
     xlim(xl);  ylabel('Probability'); xlabel('Time (s)');
     ylim(yl);
-    print(gcf, '-dpdf', ['figures/exampleRaster_Stim_' num2str(stimType) '_area_' area '_' expID '.pdf']);
+    print(gcf, '-dpng', ['figures/exampleRaster_Stim_' num2str(stimType) '_area_' area '_' expID '.png']);
     %%
     figure(5); clf;
     % subplot(221);
@@ -221,7 +221,7 @@ for exp = 1%:length(DataFolderList)
     xlabel('Time jitter (sec)');
     ylabel('Prob. of observing repeated cell assembly');
     axis square;
-    print(gcf,'-dpdf', ['figures/cellAssembly_jitter_' area '_' expID '.pdf'])
+    print(gcf,'-dpng', ['figures/cellAssembly_jitter_' area '_' expID '.png'])
     
     
     %%
@@ -293,5 +293,5 @@ for exp = 1%:length(DataFolderList)
     xlabel('Cell Assembly Order');
     ylabel('# unique cell assembly');
     legend('Data', 'Shuffled', 'Poisson', 'location', 'northwestoutside')
-    print(h,'-dpdf',['figures/cellAssembly_Stim_' num2str(stimType) '_area_' area '_' expID '.pdf']);
+    print(h,'-dpng',['figures/cellAssembly_Stim_' num2str(stimType) '_area_' area '_' expID '.png']);
 end
