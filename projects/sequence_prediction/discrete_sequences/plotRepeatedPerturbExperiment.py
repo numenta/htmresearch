@@ -121,6 +121,26 @@ if __name__ == '__main__':
     expResults = {}
     expResultsAnaly = {}
 
+    # HTM
+    tmResults = os.path.join("tm/results",
+                             "high-order-distributed-random-perturbed")
+    accuracyAll = []
+    exptLabel = 'HTM'
+    expResultsAnaly[exptLabel] = []
+    for seed in range(10):
+      experiment = os.path.join(tmResults,
+                                "seed" + "{:.1f}".format(seed), "0.log")
+      (accuracy, x) = loadExperiment(experiment)
+      expResultsAnaly[exptLabel].append(analyzeResult(x, accuracy))
+      accuracy = movingAverage(accuracy, min(len(accuracy), 100))
+      accuracyAll.append(np.array(accuracy))
+
+    (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyAll)
+    x = x[:len(meanAccuracy)]
+    expResults[exptLabel] = {
+      'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
+
+
     # TDNN
     tdnnResults = os.path.join("tdnn/results",
                                "high-order-distributed-random-perturbed")
@@ -169,25 +189,6 @@ if __name__ == '__main__':
       experiment = os.path.join(tdnnResults,
                                 "seed" + "{:.1f}".format(
                                   seed) + "learning_window3000.0", "0.log")
-      (accuracy, x) = loadExperiment(experiment)
-      expResultsAnaly[exptLabel].append(analyzeResult(x, accuracy))
-      accuracy = movingAverage(accuracy, min(len(accuracy), 100))
-      accuracyAll.append(np.array(accuracy))
-
-    (meanAccuracy, stdAccuracy) = calculateMeanStd(accuracyAll)
-    x = x[:len(meanAccuracy)]
-    expResults[exptLabel] = {
-      'x': x, 'meanAccuracy': meanAccuracy, 'stdAccuracy': stdAccuracy}
-
-    # HTM
-    tmResults = os.path.join("tm/results",
-                             "high-order-distributed-random-perturbed-small-alphabet")
-    accuracyAll = []
-    exptLabel = 'HTM'
-    expResultsAnaly[exptLabel] = []
-    for seed in range(10):
-      experiment = os.path.join(tmResults,
-                                "seed" + "{:.1f}".format(seed), "0.log")
       (accuracy, x) = loadExperiment(experiment)
       expResultsAnaly[exptLabel].append(analyzeResult(x, accuracy))
       accuracy = movingAverage(accuracy, min(len(accuracy), 100))

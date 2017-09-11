@@ -31,7 +31,7 @@ rcParams.update({'figure.autolayout': True})
 from nupic.frameworks.opf.metrics import MetricSpec
 from nupic.frameworks.opf.model_factory import ModelFactory
 
-from nupic.frameworks.opf.predictionmetricsmanager import MetricsManager
+from nupic.frameworks.opf.prediction_metrics_manager import MetricsManager
 from nupic.frameworks.opf import metrics
 # from htmresearch.frameworks.opf.clamodel_custom import CLAModel_custom
 import nupic_output

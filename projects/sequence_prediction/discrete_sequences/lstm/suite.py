@@ -26,7 +26,7 @@ import numpy
 
 from scipy import reshape, dot, outer
 
-from expsuite import PyExperimentSuite
+from htmresearch.support.expsuite import PyExperimentSuite
 from htmresearch.support.sequence_prediction_dataset import ReberDataset
 from htmresearch.support.sequence_prediction_dataset import SimpleDataset
 from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
