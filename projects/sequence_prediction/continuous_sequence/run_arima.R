@@ -4,7 +4,7 @@ library(forecast)
 library(TSPred)
 
 # set working directory here
-setwd('/Users/ycui/nta/htmresearch/projects/sequence_prediction/continuous_sequence')
+setwd(normalizePath(dirname(sys.frame(1)$ofile)))
 
 # available data: "sine", "rec-center-hourly"
 dataSet <- 'nyc_taxi'
