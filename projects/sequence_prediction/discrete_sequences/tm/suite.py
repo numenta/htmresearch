@@ -23,7 +23,7 @@ import numbers
 import random
 
 import numpy
-from expsuite import PyExperimentSuite
+from htmresearch.support.expsuite import PyExperimentSuite
 
 from nupic.frameworks.opf.model_factory import ModelFactory
 # from nupic.algorithms.sdr_classifier import SDRClassifier

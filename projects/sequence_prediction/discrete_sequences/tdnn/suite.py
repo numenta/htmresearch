@@ -24,7 +24,7 @@ import random
 import numbers
 import numpy
 
-from expsuite import PyExperimentSuite
+from htmresearch.support.expsuite import PyExperimentSuite
 from htmresearch.support.sequence_prediction_dataset import ReberDataset
 from htmresearch.support.sequence_prediction_dataset import SimpleDataset
 from htmresearch.support.sequence_prediction_dataset import HighOrderDataset

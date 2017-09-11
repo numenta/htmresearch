@@ -4,11 +4,11 @@ library(forecast)
 library(TSPred)
 
 # set working directory here
-setwd('/Users/ycui/nta/nupic.research/projects/sequence_prediction/continuous_sequence')
+setwd('/Users/ycui/nta/htmresearch/projects/sequence_prediction/continuous_sequence')
 
 # available data: "sine", "rec-center-hourly"
 dataSet <- 'nyc_taxi'
-dataSet <- 'nyc_taxi_perturb'
+# dataSet <- 'nyc_taxi_perturb'
 # dataSet <- 'rec-center-hourly'
 # dataSet <- "sine"
 dataSetPath <- paste0("data/", dataSet, '.csv')

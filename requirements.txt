@@ -9,3 +9,7 @@ prettytable
 plyfile
 scikit-learn
 scipy
+hpelm
+
+# github requirements
+# git://github.com/pybrain/pybrain.git#egg=pybrain
