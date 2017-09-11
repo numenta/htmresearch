@@ -18,6 +18,8 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+
+from optparse import OptionParser
 from htmresearch.support.sp_paper_utils import *
 import matplotlib as mpl
 from nupic.math.topology import indexFromCoordinates
@@ -64,16 +66,17 @@ def getInputConverage(expName, numEpochs, killAt):
 
 def plotInputCoverage(expName, epochList, killAt,
                       inputCoverageControlRegion,
-                      inputCoverageTraumaRegion):
+                      inputCoverageTraumaRegion, ylim):
   # Plot coverage factor for trauma region and a control region
   fig, axs = plt.subplots(2, 2)
   axs[0, 0].plot(epochList, inputCoverageControlRegion, label='control')
   axs[0, 0].plot(epochList, inputCoverageTraumaRegion, label='trauma')
-  axs[0, 0].plot([killAt, killAt], [19, 50], 'k--')
+  axs[0, 0].plot([killAt, killAt], ylim, 'k--')
   # axs[0, 0].set_xlim([killAt-50, numEpochs])
   axs[0, 0].set_xlim([100, 500])
-  axs[0, 0].set_ylim([19, 50])
+  # axs[0, 0].set_ylim([19, 50])
   # axs[0, 0].set_ylim([-1, 50])
+  axs[0, 0].set_ylim(ylim)
   axs[0, 0].set_xlabel('Time')
   # axs[0, 0].set_aspect('equal')
   plt.axis('equal')
@@ -102,16 +105,18 @@ def plotSynapseGrowth(expName,
 
 
 def plotMovie(expName, numEpochs, killAt):
+  print " create frames for the movie"
   # plot RFcenters and inputCoverage over training
   centerColumn = indexFromCoordinates((15, 15), (32, 32))
   deadCols = topology.wrappingNeighborhood(centerColumn, 5, (32, 32))
 
-  for epoch in range(killAt, numEpochs):
+  for epoch in range(1, numEpochs):
+    print "processing epoch {}/{} ".format(epoch, numEpochs)
     fig, axs = plt.subplots(2, 2)
     RFcenterInfo = np.load('results/RFcenters/{}/epoch_{}.npz'.format(expName, epoch))
     RFcenters = RFcenterInfo['arr_0']
     avgDistToCenter = RFcenterInfo['arr_1']
-    axs[0, 1].scatter(RFcenters[:, 0], RFcenters[:, 1], s=4, c=[1,1,1])
+    axs[0, 1].scatter(RFcenters[:, 0], RFcenters[:, 1], s=4, c='black')
     axs[0, 1].set_title('RF centers')
     axs[0, 1].set_xlim([-1, 33])
     axs[0, 1].set_ylim([-1, 33])
@@ -152,16 +157,39 @@ def plotMovie(expName, numEpochs, killAt):
 
     fig.delaxes(axs[1, 1])
 
-    plt.savefig('figures/traumaMovie/{}_frame_{}.pdf'.format(expName, epoch))
+    plt.savefig('figures/traumaMovie/{}_frame_{}.png'.format(expName, epoch))
     plt.close(fig)
 
 
+def _getArgs():
+  parser = OptionParser(usage="%prog -e experiment_name"
+                        )
+  parser.add_option("-e",
+                    "--expName",
+                    type=str,
+                    default='trauma_inputs_with_topology_seed_41',
+                    dest="expName",
+                    help="experiment Name")
+
+  (options, remainder) = parser.parse_args()
+  print options
+
+  return options, remainder
+
+
 if __name__ == "__main__":
+  (_options, _args) = _getArgs()
+  expName = _options.expName
   plt.ion()
   # expName = 'trauma_boosting_with_topology_seed_41'
-  expName = 'trauma_inputs_with_topology_seed_41'
+  # expName = 'trauma_inputs_with_topology_seed_41'
   numEpochs = 500
   killAt = 180
+
+  if "inputs" in expName:
+    ylim = [-1, 50]
+  else:
+    ylim = [19, 50]
 
   (epochList,
    inputCoverageTraumaRegion,
@@ -172,7 +200,7 @@ if __name__ == "__main__":
 
   plotInputCoverage(expName, epochList, killAt,
                     inputCoverageControlRegion,
-                    inputCoverageTraumaRegion)
+                    inputCoverageTraumaRegion, ylim)
 
   plotSynapseGrowth(expName,
                     inputCoverageAfterRecovery,

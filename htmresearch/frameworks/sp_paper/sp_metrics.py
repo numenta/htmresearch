@@ -702,7 +702,6 @@ def getRFCenters(sp, params, type='connected'):
     angularCoordinates[:, 0] = coordinates[:, 0] / params['nX'] * 2 * np.pi
     angularCoordinates[:, 1] = coordinates[:, 1] / params['nY'] * 2 * np.pi
 
-
     for i in range(2):
       meanCoordinate = np.arctan2(
         np.sum(np.sin(angularCoordinates[:, i])),
