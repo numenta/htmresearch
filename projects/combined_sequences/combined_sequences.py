@@ -97,7 +97,6 @@ def runExperiment(args):
     externalInputSize=1024,
     numCorticalColumns=numColumns,
     numFeatures=numFeatures,
-    # numLocations=numLocations,
     seed=trialNum
   )
 
@@ -108,7 +107,6 @@ def runExperiment(args):
     externalInputSize=1024,
     numCorticalColumns=numColumns,
     numFeatures=numFeatures,
-    # numLocations=numLocations,
     seed=trialNum
   )
 
@@ -131,15 +129,18 @@ def runExperiment(args):
   print ", features=",r[2]
 
   print "Total number of objects created:",len(objects.getObjects())
-  print "Objects are:"
-  for o in objects:
-    pairs = objects[o]
-    pairs.sort()
-    print str(o) + ": " + str(pairs)
   print "Total number of sequences created:",len(sequences.getObjects())
-  print "Sequences:"
-  for i in sequences:
-    print i,sequences[i]
+
+  # For detailed debugging
+  # print "Objects are:"
+  # for o in objects:
+  #   pairs = objects[o]
+  #   pairs.sort()
+  #   print str(o) + ": " + str(pairs)
+  # print "Sequences:"
+  # for i in sequences:
+  #   print i,sequences[i]
+
 
   #####################################################
   #
@@ -380,170 +381,6 @@ def runExperimentPool(numSequences,
   return result
 
 
-def plotConvergenceBySequence(results, objectRange, featureRange, numTrials):
-  """
-  Plots the convergence graph: iterations vs number of objects.
-  Each curve shows the convergence for a given number of unique features.
-  """
-  ########################################################################
-  #
-  # Accumulate all the results per column in a convergence array.
-  #
-  # Convergence[f,o] = how long it took it to converge with f unique features
-  # and o objects.
-
-  convergence = numpy.zeros((max(featureRange), max(objectRange) + 1))
-  for r in results:
-    if r["numFeatures"] in featureRange:
-      convergence[r["numFeatures"] - 1, r["numSequences"]] += r["convergencePoint"]
-
-  convergence /= numTrials
-
-  ########################################################################
-  #
-  # Create the plot. x-axis=
-  plt.figure()
-  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                          "plots", "convergence_by_sequence.pdf")
-
-  # Plot each curve
-  legendList = []
-  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
-
-  for i in range(len(featureRange)):
-    f = featureRange[i]
-    print "features={} objectRange={} convergence={}".format(
-      f,objectRange, convergence[f-1,objectRange])
-    legendList.append('Unique features={}'.format(f))
-    plt.plot(objectRange, convergence[f-1,objectRange],
-             color=colorList[i])
-
-  # format
-  plt.legend(legendList, loc="lower right", prop={'size':10})
-  plt.xlabel("Number of sequences in training set")
-  plt.xticks(range(0,max(objectRange)+1,10))
-  plt.yticks(range(0,int(convergence.max())+2))
-  plt.ylabel("Average number of touches")
-  plt.title("Number of touches to recognize a sequence")
-
-    # save
-  plt.savefig(plotPath)
-  plt.close()
-
-
-def plotSensorimotorAccuracy(results, locationRange, featureRange,
-                             seqRange, title="", yaxis=""):
-  """
-  Plot accuracy vs number of locations
-  """
-
-  ########################################################################
-  #
-  # Accumulate all the results per column in a convergence array.
-  #
-  # accuracy[f,l] = how long it took it to converge with f unique features
-  # and l locations on average.
-  accuracy = numpy.zeros((max(featureRange)+1, max(locationRange) + 1))
-  totals = numpy.zeros((max(featureRange)+1, max(locationRange) + 1))
-  for r in results:
-    if r["numFeatures"] in featureRange and r["numSequences"] in seqRange:
-      accuracy[r["numFeatures"], r["numLocations"]] += r["sensorimotorAccuracyPct"]
-      totals[r["numFeatures"], r["numLocations"]] += 1
-
-  for f in featureRange:
-    for l in locationRange:
-      accuracy[f, l] = 100.0*accuracy[f, l] / totals[f, l]
-
-  ########################################################################
-  #
-  # Create the plot.
-  plt.figure()
-  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                          "plots", "sensorimotorAccuracy_by_sequence.pdf")
-
-  # Plot each curve
-  legendList = []
-  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
-
-  for i in range(len(featureRange)):
-    f = featureRange[i]
-    print "features={} locationRange={} accuracy={}".format(
-      f,locationRange, accuracy[f,locationRange]),
-    print totals[f,locationRange]
-    legendList.append('Sensorimotor layer, feature pool size: {}'.format(f))
-    plt.plot(locationRange, accuracy[f,locationRange],
-             color=colorList[i])
-
-  plt.plot(locationRange, [100] * len(locationRange),
-           color=colorList[len(featureRange)])
-  legendList.append('Temporal sequence layer')
-
-  # format
-  plt.legend(legendList, bbox_to_anchor=(0., 0.65, 1., .102), loc="right", prop={'size':10})
-  plt.xlabel("Size of location pool")
-  # plt.xticks(range(0,max(locationRange)+1,10))
-  # plt.yticks(range(0,int(accuracy.max())+2,10))
-  plt.ylim(-10.0, 110.0)
-  plt.ylabel(yaxis)
-  plt.title(title)
-
-    # save
-  plt.savefig(plotPath)
-  plt.close()
-
-
-def plotPredictionsBySequence(results, objectRange, featureRange, numTrials,
-                            key="", title="", yaxis=""):
-  """
-  Plots the convergence graph: iterations vs number of objects.
-  Each curve shows the convergence for a given number of unique features.
-  """
-
-  ########################################################################
-  #
-  # Accumulate all the results per column in a convergence array.
-  #
-  # predictions[f,s] = how long it took it to converge with f unique features
-  # and s sequences on average.
-  predictions = numpy.zeros((max(featureRange), max(objectRange) + 1))
-  for r in results:
-    if r["numFeatures"] in featureRange:
-      predictions[r["numFeatures"] - 1, r["numSequences"]] += r[key]
-
-  predictions /= numTrials
-
-  ########################################################################
-  #
-  # Create the plot.
-  plt.figure()
-  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                          "plots", key+"by_sequence.pdf")
-
-  # Plot each curve
-  legendList = []
-  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
-
-  for i in range(len(featureRange)):
-    f = featureRange[i]
-    print "features={} objectRange={} convergence={}".format(
-      f,objectRange, predictions[f-1,objectRange])
-    legendList.append('Unique features={}'.format(f))
-    plt.plot(objectRange, predictions[f-1,objectRange],
-             color=colorList[i])
-
-  # format
-  plt.legend(legendList, loc="center right", prop={'size':10})
-  plt.xlabel("Number of sequences learned")
-  plt.xticks(range(0,max(objectRange)+1,10))
-  plt.yticks(range(0,int(predictions.max())+2,10))
-  plt.ylabel(yaxis)
-  plt.title(title)
-
-    # save
-  plt.savefig(plotPath)
-  plt.close()
-
-
 def plotOneInferenceRun(stats,
                        fields,
                        basename,
@@ -607,88 +444,3 @@ if __name__ == "__main__":
     # Pickle results for plotting and possible later debugging
     with open(resultsName,"wb") as f:
       cPickle.dump(results,f)
-
-  # Here we want to check accuracy of the L2/L4 networks in classifying the
-  # sequences. This experiment is run using a process pool
-  if False:
-    # We run 10 trials for each column number and then analyze results
-    numTrials = 10
-    featureRange = [5, 10, 100]
-    seqRange = [50]
-    locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
-                     1000, 1100, 1200, 1300, 1400, 1500, 1600]
-    resultsName = os.path.join(dirName, "sensorimotor_accuracy_results_5_10_100.pkl")
-
-    # Comment this out if you  are re-running analysis on already saved results.
-    # Very useful for debugging the plots
-    # runExperimentPool(
-    #                   numSequences=seqRange,
-    #                   numFeatures=featureRange,
-    #                   numLocations=locationRange,
-    #                   seqLength=10,
-    #                   nTrials=numTrials,
-    #                   numWorkers=cpu_count() - 1,
-    #                   resultsName=resultsName)
-
-    # Analyze results
-    with open(resultsName,"rb") as f:
-      results = cPickle.load(f)
-
-    plotSensorimotorAccuracy(results, locationRange, featureRange, seqRange,
-      title="Relative performance of layers while inferring temporal sequences",
-      yaxis="Accuracy (%)")
-
-
-  # Here we want to see how the number of objects affects convergence for a
-  # single column.
-  # This experiment is run using a process pool
-  if False:
-    # We run 10 trials for each column number and then analyze results
-    numTrials = 10
-    featureRange = [5, 10, 100, 1000]
-    seqRange = [2,5,10,20,30,50]
-    locationRange = [10, 100, 500, 1000]
-    resultsName = os.path.join(dirName, "sequence_convergence_results.pkl")
-
-    # Comment this out if you  are re-running analysis on already saved results.
-    # Very useful for debugging the plots
-    runExperimentPool(
-                      numSequences=seqRange,
-                      numFeatures=featureRange,
-                      numLocations=locationRange,
-                      seqLength=10,
-                      nTrials=numTrials,
-                      numWorkers=cpu_count() - 1,
-                      resultsName=resultsName)
-
-    # Analyze results
-    with open(resultsName,"rb") as f:
-      results = cPickle.load(f)
-
-    plotConvergenceBySequence(results, seqRange, featureRange, numTrials)
-
-    plotPredictionsBySequence(results, seqRange, featureRange, numTrials,
-                              key="averagePredictions",
-                              title="Predictions in temporal sequence layer",
-                              yaxis="Average number of predicted cells")
-
-    plotPredictionsBySequence(results, seqRange, featureRange, numTrials,
-                            key="averagePredictedActive",
-                            title="Correct predictions in temporal sequence layer",
-                            yaxis="Average number of correctly predicted cells"
-                            )
-
-    plotPredictionsBySequence(results, seqRange, featureRange, numTrials,
-                              key="averagePredictedActiveL4",
-                              title="Correct predictions in sensorimotor layer",
-                              yaxis="Average number of correctly predicted cells"
-                              )
-
-    plotPredictionsBySequence(results, seqRange, featureRange, numTrials,
-                              key="averagePredictionsL4",
-                              title="Predictions in sensorimotor layer",
-                              yaxis="Average number of predicted cells")
-
-
-  print "Actual runtime=",time.time() - startTime
-
