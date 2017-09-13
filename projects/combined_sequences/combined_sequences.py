@@ -28,7 +28,6 @@ import numpy
 import time
 import cPickle
 from multiprocessing import Pool, cpu_count
-import matplotlib.pyplot as plt
 import random
 
 import matplotlib as mpl
@@ -318,18 +317,21 @@ def runExperimentPool(numSequences,
                       seqLength=10,
                       resultsName="convergence_results.pkl"):
   """
-  Allows you to run a number of experiments using multiple processes.
-  For each parameter except numWorkers, pass in a list containing valid values
-  for that parameter. The cross product of everything is run, and each
+  Run a bunch of experiments using a pool of numWorkers multiple processes. For
+  numSequences, numFeatures, and numLocations pass in a list containing valid
+  values for that parameter. The cross product of everything is run, and each
   combination is run nTrials times.
 
-  Returns a list of dict containing detailed results from each experiment.
-  Also pickles and saves the results in resultsName for later analysis.
+  Returns a list of dict containing detailed results from each experiment. Also
+  pickles and saves all the results in resultsName for later analysis.
+
+  If numWorkers == 1, the experiments will be run in a single thread. This makes
+  it easier to debug.
 
   Example:
     results = runExperimentPool(
-                          numSequences=[10],
-                          numFeatures=[5],
+                          numSequences=[10, 20],
+                          numFeatures=[5, 13],
                           numWorkers=8,
                           nTrials=5)
   """
@@ -349,6 +351,7 @@ def runExperimentPool(numSequences,
              }
           )
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
+
   # Run the pool
   if numWorkers > 1:
     pool = Pool(processes=numWorkers)
