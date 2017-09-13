@@ -23,7 +23,6 @@ This file plots the behavior of L4-L2-TM network as you train it on sequences.
 """
 
 import os
-from math import ceil
 import numpy
 import time
 import cPickle
@@ -42,66 +41,6 @@ from htmresearch.frameworks.layers.combined_sequence_experiment import (
 from htmresearch.frameworks.layers.object_machine_factory import (
   createObjectMachine
 )
-
-
-def locateConvergencePoint(stats, minOverlap, maxOverlap):
-  """
-  Walk backwards through stats until you locate the first point that diverges
-  from target overlap values.  We need this to handle cases where it might get
-  to target values, diverge, and then get back again.  We want the last
-  convergence point.
-  """
-  for i,v in enumerate(stats[::-1]):
-    if not (v >= minOverlap and v <= maxOverlap):
-      return len(stats)-i + 1
-
-  # Never differs - converged in one iteration
-  return 1
-
-
-def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
-                            settlingTime):
-  """
-  inferenceStats contains activity traces while the system visits each object.
-
-  Given the i'th object, inferenceStats[i] contains activity statistics for
-  each column for each region for the entire sequence of sensations.
-
-  For each object, compute the convergence time - the first point when all
-  L2 columns have converged.
-
-  Return the average convergence time across all objects.
-
-  Given inference statistics for a bunch of runs, locate all traces with the
-  given prefix. For each trace locate the iteration where it finally settles
-  on targetValue. Return the average settling iteration across all runs.
-  """
-  convergenceSum = 0.0
-  numCorrect = 0.0
-  inferenceLength = 1000000
-
-  # For each object
-  for stats in inferenceStats:
-
-    # For each L2 column locate convergence time
-    convergencePoint = 0.0
-    for key in stats.iterkeys():
-      if prefix in key:
-        inferenceLength = len(stats[key])
-        columnConvergence = locateConvergencePoint(
-          stats[key], minOverlap, maxOverlap)
-
-        # Ensure this column has converged by the last iteration
-        # assert(columnConvergence <= len(stats[key]))
-
-        convergencePoint = max(convergencePoint, columnConvergence)
-
-    convergenceSum += ceil(float(convergencePoint)/settlingTime)
-
-    if ceil(float(convergencePoint)/settlingTime) <= inferenceLength:
-      numCorrect += 1
-
-  return convergenceSum/len(inferenceStats), numCorrect/len(inferenceStats)
 
 
 def runExperiment(args):
@@ -341,27 +280,10 @@ def runExperiment(args):
                              "detailed_plots")
       )
 
-  # if plotInferenceStats:
-  #   plotMultipleInferenceRun(
-  #     exp.statistics[0:10],
-  #     fields=[
-  #       # ("L4 Predicted", "Predicted sensorimotor cells"),
-  #       # ("L2 Representation", "L2 Representation"),
-  #       # ("L4 Representation", "Active sensorimotor cells"),
-  #       ("L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
-  #       # ("TM NextPredicted", "Predicted cells in temporal sequence layer"),
-  #       ("TM PredictedActive",
-  #        "Predicted active cells in temporal sequence layer"),
-  #     ],
-  #     basename=exp.name,
-  #     plotDir=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-  #                          "detailed_plots")
-  #   )
-
   # Compute overall inference statistics
   infStats = exp.getInferenceStats()
-  convergencePoint, accuracy = averageConvergencePoint(
-    infStats,"L2 Representation", 30, 40, 1)
+  convergencePoint, accuracy = exp.averageConvergencePoint(
+    "L2 Representation", 30, 40, 1)
 
   predictedActive = numpy.zeros(len(infStats))
   predicted = numpy.zeros(len(infStats))
@@ -658,45 +580,6 @@ def plotOneInferenceRun(stats,
   plt.close()
 
 
-def plotMultipleInferenceRun(stats,
-                       fields,
-                       basename,
-                       plotDir="plots"):
-  """
-  Plots individual inference runs.
-  """
-  if not os.path.exists(plotDir):
-    os.makedirs(plotDir)
-
-  plt.figure()
-
-  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
-
-  # plot request stats
-  for i, field in enumerate(fields):
-    fieldKey = field[0] + " C0"
-    trace = []
-    for s in stats:
-      trace += s[fieldKey]
-    plt.plot(trace, label=field[1], color=colorList[i])
-
-  # format
-  plt.legend(loc="upper right")
-  plt.xlabel("Input number")
-  plt.xticks(range(0, len(stats)*stats[0]["numSteps"]+1,5))
-  plt.ylabel("Number of cells")
-  plt.ylim(-5, 55)
-  # plt.ylim(plt.ylim()[0] - 5, plt.ylim()[1] + 5)
-  plt.title("Inferring combined sensorimotor and temporal sequence stream")
-
-  # save
-  relPath = "{}_exp_combined.pdf".format(basename)
-  path = os.path.join(plotDir, relPath)
-  plt.savefig(path)
-  plt.close()
-
-
-
 if __name__ == "__main__":
 
   startTime = time.time()
@@ -721,29 +604,9 @@ if __name__ == "__main__":
                   }
               )
 
-    # Pickle results for later use
+    # Pickle results for plotting and possible later debugging
     with open(resultsName,"wb") as f:
       cPickle.dump(results,f)
-
-    # Analyze results
-    with open(resultsName,"rb") as f:
-      results = cPickle.load(f)
-
-    plotMultipleInferenceRun(
-      results["statistics"][0:10],
-      fields=[
-        # ("L4 Predicted", "Predicted sensorimotor cells"),
-        # ("L2 Representation", "L2 Representation"),
-        # ("L4 Representation", "Active sensorimotor cells"),
-        (
-        "L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
-        # ("TM NextPredicted", "Predicted cells in temporal sequence layer"),
-        ("TM PredictedActive",
-         "Predicted active cells in temporal sequence layer"),
-      ],
-      basename=results["name"],
-      plotDir=os.path.join(dirName, "plots")
-    )
 
   # Here we want to check accuracy of the L2/L4 networks in classifying the
   # sequences. This experiment is run using a process pool
