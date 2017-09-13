@@ -358,30 +358,27 @@ class ColumnPooler(object):
       numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
 
     chosenCells = []
-    minNumActiveCells = int(self.sdrSize * 0.75)
-
-    numActiveSegsForFFSuppCells = numActiveSegmentsByCell[
-        feedforwardSupportedCells]
 
     # First, activate the FF-supported cells that have the highest number of
     # lateral active segments (as long as it's not 0)
     if len(feedforwardSupportedCells) == 0:
       pass
     else:
+      numActiveSegsForFFSuppCells = numActiveSegmentsByCell[
+        feedforwardSupportedCells]
+
       # This loop will select the FF-supported AND laterally-active cells, in
-      # order of descending lateral activation, until we exceed the
-      # minNumActiveCells quorum - but will exclude cells with 0 lateral
-      # active segments.
+      # order of descending lateral activation, until we exceed the sdrSize
+      # quorum - but will exclude cells with 0 lateral active segments.
       ttop = numpy.max(numActiveSegsForFFSuppCells)
-      while ttop > 0 and len(chosenCells) <= minNumActiveCells:
+      while ttop > 0 and len(chosenCells) < self.sdrSize:
         chosenCells = numpy.union1d(chosenCells,
                     feedforwardSupportedCells[numActiveSegsForFFSuppCells >
                     self.distalSegmentInhibitionFactor * ttop])
         ttop -= 1
 
-    # If we still haven't filled the minNumActiveCells quorum, add in the
-    # FF-supported cells with 0 lateral support AND the inertia cells.
-    if len(chosenCells) < minNumActiveCells:
+    # If we haven't filled the sdrSize quorum, add in inertial cells.
+    if len(chosenCells) < self.sdrSize:
       if self.useInertia:
         prevCells = numpy.setdiff1d(prevActiveCells, chosenCells)
         inertialCap = int(len(prevCells) * self.inertiaFactor)
@@ -402,17 +399,30 @@ class ColumnPooler(object):
           # Activate groups of previously active cells by order of their lateral
           # support until we either meet quota or run out of cells.
           ttop = numpy.max(numActiveSegsForPrevCells)
-          while ttop >= 0 and len(chosenCells) <= minNumActiveCells:
+          while ttop >= 0 and len(chosenCells) < self.sdrSize:
             chosenCells = numpy.union1d(chosenCells,
                         prevCells[numActiveSegsForPrevCells >
                         self.distalSegmentInhibitionFactor * ttop])
             ttop -= 1
 
-      # Finally, add remaining cells with feedforward support
+    # If we haven't filled the sdrSize quorum, add cells that have feedforward
+    # support and no lateral support.
+    discrepancy = self.sdrSize - len(chosenCells)
+    if discrepancy > 0:
       remFFcells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
-      # Note that this is 100% of the remaining FF-supported cells, there is no
-      # attempt to select only certain ones or limit how many come active.
-      chosenCells = numpy.append(chosenCells, remFFcells)
+      if len(remFFcells > discrepancy):
+        # Inhibit cells proportionally to the number of cells that have already
+        # been chosen. If ~0 have been chosen activate ~all of the feedforward
+        # supported cells. If ~sdrSize have been chosen, activate very few of
+        # the feedforward supported cells.
+        n = max(discrepancy,
+                len(remFFcells) * discrepancy / self.sdrSize)
+        selected = numpy.empty(n, dtype="uint32")
+        self._random.sample(numpy.asarray(remFFcells, dtype="uint32"),
+                            selected)
+        chosenCells = numpy.append(chosenCells, selected)
+      else:
+        chosenCells = numpy.append(chosenCells, remFFcells)
 
     chosenCells.sort()
     self.activeCells = numpy.asarray(chosenCells, dtype="uint32")
