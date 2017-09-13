@@ -30,11 +30,6 @@ import cPickle
 from multiprocessing import Pool, cpu_count
 import random
 
-import matplotlib as mpl
-mpl.rcParams['pdf.fonttype'] = 42
-from matplotlib import rc
-rc('font',**{'family':'sans-serif','sans-serif':['Arial']})
-
 from htmresearch.frameworks.layers.combined_sequence_experiment import (
   L4TMExperiment
 )
