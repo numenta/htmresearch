@@ -91,38 +91,6 @@ def getL2Params():
   }
 
 
-def locateConvergencePoint(stats, targetValue):
-  """
-  Walk backwards through stats until you locate the first point that diverges
-  from targetValue.  We need this to handle cases where it might get to
-  targetValue, diverge, and then get back again.  We want the last convergence
-  point.
-  """
-  for i,v in enumerate(stats[::-1]):
-    if v != targetValue:
-      return len(stats)-i
-
-  # Never differs - converged right away
-  return 0
-
-
-def averageConvergencePoint(inferenceStats, prefix, targetValue):
-  """
-  Given inference statistics for a bunch of runs, locate all traces with the
-  given prefix. For each trace locate the iteration where it finally settles
-  on targetValue. Return the average settling iteration across all runs.
-  """
-  itSum = 0
-  itNum = 0
-  for stats in inferenceStats:
-    for key in stats.iterkeys():
-      if prefix in key:
-        itSum += locateConvergencePoint(stats[key], targetValue)
-        itNum += 1
-
-  return float(itSum)/itNum
-
-
 def runExperiment(args):
   """
   Run experiment.  What did you think this does?
@@ -239,8 +207,7 @@ def runExperiment(args):
     L2TimeInfer /= len(objects)
     args.update({"L2TimeInfer": L2TimeInfer})
 
-  convergencePoint = averageConvergencePoint(
-    exp.getInferenceStats(),"L2 Representation", 40)
+  convergencePoint, _ = exp.averageConvergencePoint("L2 Representation", 40, 40)
   print "objectSeed {} # distal syn {} # proximal syn {}, " \
         "# convergence point={:4.2f} train time {:4.3f} infer time {:4.3f}".format(
     objectSeed,
