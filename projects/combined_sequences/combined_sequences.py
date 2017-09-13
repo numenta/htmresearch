@@ -19,7 +19,8 @@
 # ----------------------------------------------------------------------
 
 """
-This file plots the behavior of L4-L2-TM network as you train it on sequences.
+This file runs a combined HTM network that includes the sensorimotor layers from
+the Layers and Columns paper as well as a pure sequence layer.
 """
 
 import os
@@ -43,36 +44,138 @@ from htmresearch.frameworks.layers.object_machine_factory import (
 )
 
 
+def printDiagnostics(sequences, objects, verbosity=0):
+  """Useful diagnostics for debugging."""
+  r = sequences.objectConfusion()
+  print "Average common pairs in sequences=", r[0],
+  print ", features=",r[2]
+
+  r = objects.objectConfusion()
+  print "Average common pairs in objects=", r[0],
+  print ", locations=",r[1],
+  print ", features=",r[2]
+
+  print "Total number of objects created:",len(objects.getObjects())
+  print "Total number of sequences created:",len(sequences.getObjects())
+
+  # For detailed debugging
+  if verbosity > 0:
+    print "Objects are:"
+    for o in objects:
+      pairs = objects[o]
+      pairs.sort()
+      print str(o) + ": " + str(pairs)
+    print "Sequences:"
+    for i in sequences:
+      print i,sequences[i]
+
+
+def trainSequences(sequences, exp):
+  """Train the network on all the sequences"""
+  print "Training sequences"
+  for seqName in sequences:
+
+    # Make sure we learn enough times to deal with high order sequences and
+    # remove extra predictions.
+    iterations = 3*len(sequences[seqName])
+    for p in range(iterations):
+
+      # Ensure we generate new random location for each sequence presentation
+      objectSDRs = sequences.provideObjectsToLearn([seqName])
+      exp.learnObjects(objectSDRs, reset=False)
+
+      # TM needs reset between sequences, but not other regions
+      exp.TMColumns[0].reset()
+
+    # L2 needs resets when we switch to new object
+    exp.sendReset()
+
+
+def trainObjects(objects, exp, numRepeatsPerObject, experimentIdOffset):
+  """
+  Train the network on all the objects by randomly traversing points on
+  each object.  We offset the id of each object to avoid confusion with
+  any sequences that might have been learned.
+  """
+  print "Training objects"
+
+  # We want to traverse the features of each object randomly a few times before
+  # moving on to the next object. Create the SDRs that we need for this.
+  objectsToLearn = objects.provideObjectsToLearn()
+  objectTraversals = {}
+  for objectId in objectsToLearn:
+    objectTraversals[objectId + experimentIdOffset] = objects.randomTraversal(
+      objectsToLearn[objectId], numRepeatsPerObject)
+
+  # Train the network on all the SDRs for all the objects
+  exp.learnObjects(objectTraversals)
+
+
+def inferSequence(exp, sequenceId, sequences):
+  """Run inference on the given sequence."""
+  assert exp.numColumns == 1
+
+  sequence = sequences[sequenceId]
+
+  # Create sequence of sensations for this sequence for one column.
+  objectSensations = {}
+  objectSensations[0] = []
+  objectCopy = [pair for pair in sequence]
+  for pair in objectCopy:
+    objectSensations[0].append(pair)
+
+  inferConfig = {
+    "numSteps": len(objectSensations[0]),
+    "pairs": objectSensations,
+  }
+
+  inferenceSDRs = sequences.provideObjectToInfer(inferConfig)
+
+  exp.infer(inferenceSDRs, objectName=sequenceId)
+
+
+def inferObject(exp, objectId, objects, objectName):
+  """
+  Run inference on the given object.
+  objectName is the name of this object in the experiment.
+  """
+  assert exp.numColumns == 1
+
+  # Create sequence of random sensations for this object for one column. The
+  # total number of sensations is equal to the number of points on the object.
+  # No point should be visited more than once.
+  objectSensations = {}
+  objectSensations[0] = []
+  obj = objects[objectId]
+  objectCopy = [pair for pair in obj]
+  random.shuffle(objectCopy)
+  for pair in objectCopy:
+    objectSensations[0].append(pair)
+
+  inferConfig = {
+    "numSteps": len(objectSensations[0]),
+    "pairs": objectSensations,
+    "includeRandomLocation": False,
+  }
+
+  inferenceSDRs = objects.provideObjectToInfer(inferConfig)
+
+  exp.infer(inferenceSDRs, objectName=objectName)
+
+
 def runExperiment(args):
   """
   Runs the experiment.  What did you think this does?
 
-  args is a dict representing the parameters. We do it this way to support
-  multiprocessing. args contains one or more of the following keys:
+  args is a dict representing the various parameters. We do it this way to
+  support multiprocessing. args contains one or more of the following keys:
 
-  @param noiseLevel  (float) Noise level to add to the locations and features
-                             during inference. Default: None
-  @param numSequences (int)  The number of objects (sequences) we will train.
-                             Default: 10
-  @param seqLength   (int)   The number of points on each object (length of
-                             each sequence).
-                             Default: 10
-  @param numFeatures (int)   For each point, the number of features to choose
-                             from.  Default: 10
-  @param numColumns  (int)   The total number of cortical columns in network.
-                             Default: 2
-
-  The method returns the args dict updated with two additional keys:
-    convergencePoint (int)   The average number of iterations it took
-                             to converge across all objects
-    objects          (pairs) The list of objects we trained on
+  The function returns the args dict updated with a number of additional keys
+  containing performance metrics.
   """
   numObjects = args.get("numObjects", 10)
   numSequences = args.get("numSequences", 10)
   numFeatures = args.get("numFeatures", 10)
-  numColumns = args.get("numColumns", 1)
-  networkType = args.get("networkType", "L4L2TMColumn")
-  noiseLevel = args.get("noiseLevel", None)  # TODO: implement this?
   seqLength = args.get("seqLength", 10)
   numPoints = args.get("numPoints", 10)
   trialNum = args.get("trialNum", 42)
@@ -81,9 +184,9 @@ def runExperiment(args):
   numLocations = args.get("numLocations", 100000)
   numInputBits = args.get("inputBits", 20)
   settlingTime = args.get("settlingTime", 3)
+  numColumns = 1
 
   random.seed(trialNum)
-
 
   #####################################################
   #
@@ -119,39 +222,17 @@ def runExperiment(args):
                                     numLocations=numLocations,
                                     numFeatures=numFeatures)
 
-  r = sequences.objectConfusion()
-  print "Average common pairs in sequences=", r[0],
-  print ", features=",r[2]
-
-  r = objects.objectConfusion()
-  print "Average common pairs in objects=", r[0],
-  print ", locations=",r[1],
-  print ", features=",r[2]
-
-  print "Total number of objects created:",len(objects.getObjects())
-  print "Total number of sequences created:",len(sequences.getObjects())
-
-  # For detailed debugging
-  # print "Objects are:"
-  # for o in objects:
-  #   pairs = objects[o]
-  #   pairs.sort()
-  #   print str(o) + ": " + str(pairs)
-  # print "Sequences:"
-  # for i in sequences:
-  #   print i,sequences[i]
-
+  printDiagnostics(sequences, objects)
 
   #####################################################
   #
   # Setup experiment and train the network
-  name = "combined_sequences_S%03d_F%03d_L%03d_T%03d" % (
-    numSequences, numFeatures, numLocations, trialNum
+  name = "combined_sequences_S%03d_O%03d_F%03d_L%03d_T%03d" % (
+    numSequences, numObjects, numFeatures, numLocations, trialNum
   )
   exp = L4TMExperiment(
     name=name,
     numCorticalColumns=numColumns,
-    networkType = networkType,
     inputSize=inputSize,
     numExternalInputBits=numInputBits,
     externalInputSize=1024,
@@ -163,40 +244,9 @@ def runExperiment(args):
                  "basalPredictedSegmentDecrement": 0.0001},
   )
 
-  # Train the network on all the sequences
-  print "Training sequences"
-  for seqName in sequences:
-
-    # Make sure we learn enough times to deal with high order sequences and
-    # remove extra predictions.
-    for p in range(3*seqLength):
-
-      # Ensure we generate new random location for each sequence presentation
-      objectSDRs = sequences.provideObjectsToLearn([seqName])
-      exp.learnObjects(objectSDRs, reset=False)
-
-      # TM needs reset between sequences, but not other regions
-      exp.TMColumns[0].reset()
-
-    # L2 needs resets when we switch to new object
-    exp.sendReset()
-
-
-  # Train the network on all the objects
-  # We want to traverse the features of each object randomly a few times before
-  # moving on to the next object. Create the SDRs that we need for this.
-  print "Training objects"
-  objectsToLearn = objects.provideObjectsToLearn()
-  objectTraversals = {}
-  for objectId in objectsToLearn:
-    objectTraversals[objectId+numSequences] = objects.randomTraversal(
-      objectsToLearn[objectId], settlingTime)
-
-  # Train the network on all the SDRs for all the objects
-  exp.learnObjects(objectTraversals)
-
-
-
+  # Train the network on all the sequences and then all the objects.
+  trainSequences(sequences, exp)
+  trainObjects(objects, exp, settlingTime, numSequences)
 
   #####################################################
   #
@@ -206,62 +256,15 @@ def runExperiment(args):
   for trial,itemType in enumerate(["sequence", "object", "sequence", "object",
                                    "sequence", "sequence", "object", "sequence", ]):
     # itemType = ["sequence", "object"][random.randint(0, 1)]
+    # itemType = "sequence"
 
     if itemType == "sequence":
       objectId = random.randint(0, numSequences-1)
-      obj = sequences[objectId]
-
-      objectSensations = {}
-      for c in range(numColumns):
-        objectSensations[c] = []
-
-      # Create sequence of sensations for this object for one column. The total
-      # number of sensations is equal to the number of points on the object. No
-      # point should be visited more than once.
-      objectCopy = [pair for pair in obj]
-      for pair in objectCopy:
-        objectSensations[0].append(pair)
-
-      inferConfig = {
-        "object": objectId + numSequences,
-        "numSteps": len(objectSensations[0]),
-        "pairs": objectSensations,
-      }
-
-      inferenceSDRs = sequences.provideObjectToInfer(inferConfig)
-
-      exp.infer(inferenceSDRs, objectName=objectId)
+      inferSequence(exp, objectId, sequences)
 
     else:
       objectId = random.randint(0, numObjects-1)
-      # For each object, we create a sequence of random sensations.  We will
-      # present each sensation for one time step.
-      obj = objects[objectId]
-
-      objectSensations = {}
-      objectSensations[0] = []
-
-      # Create sequence of sensations for this object for one column. The total
-      # number of sensations is equal to the number of points on the object. No
-      # point should be visited more than once.
-      objectCopy = [pair for pair in obj]
-      random.shuffle(objectCopy)
-      for pair in objectCopy:
-        objectSensations[0].append(pair)
-
-      inferConfig = {
-        "object": objectId,
-        "numSteps": len(objectSensations[0]),
-        "pairs": objectSensations,
-        "includeRandomLocation": False,
-      }
-
-      inferenceSDRs = objects.provideObjectToInfer(inferConfig)
-
-      objectId += numSequences
-
-      exp.infer(inferenceSDRs, objectName=objectId)
-
+      inferObject(exp, objectId, objects, objectId+numSequences)
 
     if plotInferenceStats:
       plotOneInferenceRun(
@@ -297,8 +300,8 @@ def runExperiment(args):
     predictedActiveL4[i] = float(sum(stat["L4 PredictedActive C0"])) / len(stat["L4 PredictedActive C0"])
     predictedL4[i] = float(sum(stat["L4 Predicted C0"])) / len(stat["L4 Predicted C0"])
 
-  print "# Sequences {} # features {} # columns {} trial # {} network type {}".format(
-    numSequences, numFeatures, numColumns, trialNum, networkType)
+  print "# Sequences {} # features {} trial # {}".format(
+    numSequences, numFeatures, trialNum)
   print "Average convergence point=",convergencePoint,
   print "Accuracy:", accuracy
   print
@@ -324,7 +327,6 @@ def runExperiment(args):
 def runExperimentPool(numSequences,
                       numFeatures,
                       numLocations,
-                      networkType=["L4L2TMColumn"],
                       numWorkers=7,
                       nTrials=1,
                       seqLength=10,
@@ -342,7 +344,6 @@ def runExperimentPool(numSequences,
     results = runExperimentPool(
                           numSequences=[10],
                           numFeatures=[5],
-                          numColumns=[2,3,4,5,6],
                           numWorkers=8,
                           nTrials=5)
   """
@@ -352,18 +353,16 @@ def runExperimentPool(numSequences,
   for o in reversed(numSequences):
     for l in numLocations:
       for f in numFeatures:
-        for n in networkType:
-          for t in range(nTrials):
-            args.append(
-              {"numSequences": o,
-               "numFeatures": f,
-               "trialNum": t,
-               "seqLength": seqLength,
-               "networkType" : n,
-               "numLocations": l,
-               "plotInferenceStats": False,
-               }
-            )
+        for t in range(nTrials):
+          args.append(
+            {"numSequences": o,
+             "numFeatures": f,
+             "trialNum": t,
+             "seqLength": seqLength,
+             "numLocations": l,
+             "plotInferenceStats": False,
+             }
+          )
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
   # Run the pool
   if numWorkers > 1:
@@ -422,18 +421,36 @@ if __name__ == "__main__":
   startTime = time.time()
   dirName = os.path.dirname(os.path.realpath(__file__))
 
-  # This is how you run a specific experiment in single process mode. Useful
-  # for debugging, profiling, etc.
+  # This runs the first experiment in the section "Simulations with Pure
+  # Temporal Sequences"
+  if False:
+    resultsFilename = os.path.join(dirName, "pure_sequences_example.pkl")
+    results = runExperiment(
+                  {
+                    "numSequences": 5,
+                    "seqLength": 10,
+                    "numFeatures": 10,
+                    "trialNum": 4,
+                    "numObjects": 0,
+                    "numLocations": 100,
+                    "plotInferenceStats": True,  # Outputs detailed graphs
+                  }
+              )
+
+    # Pickle results for plotting and possible later debugging
+    with open(resultsFilename, "wb") as f:
+      cPickle.dump(results, f)
+
+
+  # This runs the experiment the section "Simulations with Combined Sequences"
   if True:
-    resultsName = os.path.join(dirName, "combined_results.pkl")
+    resultsFilename = os.path.join(dirName, "combined_results.pkl")
     results = runExperiment(
                   {
                     "numSequences": 50,
                     "seqLength": 10,
                     "numObjects": 50,
-                    "numPoints": 10,
                     "numFeatures": 50,
-                    "numColumns": 1,
                     "trialNum": 8,
                     "numLocations": 50,
                     "plotInferenceStats": True,  # Outputs detailed graphs
@@ -442,5 +459,7 @@ if __name__ == "__main__":
               )
 
     # Pickle results for plotting and possible later debugging
-    with open(resultsName,"wb") as f:
+    with open(resultsFilename, "wb") as f:
       cPickle.dump(results,f)
+
+  print "Actual runtime=",time.time() - startTime

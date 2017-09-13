@@ -19,7 +19,7 @@
 # ----------------------------------------------------------------------
 
 """
-This file plots the behavior of L4-L2-TM network as you train it on sequences.
+This file plots the results obtained from combined_sequences.py.
 """
 
 import os
@@ -30,6 +30,41 @@ import matplotlib as mpl
 mpl.rcParams['pdf.fonttype'] = 42
 from matplotlib import rc
 rc('font',**{'family':'sans-serif','sans-serif':['Arial']})
+
+
+def plotOneInferenceRun(stats,
+                       fields,
+                       basename,
+                       itemType="",
+                       plotDir="plots",
+                       experimentID=0):
+  """
+  Plots individual inference runs.
+  """
+  if not os.path.exists(plotDir):
+    os.makedirs(plotDir)
+
+  plt.figure()
+
+  # plot request stats
+  for field in fields:
+    fieldKey = field[0] + " C0"
+    plt.plot(stats[fieldKey], marker='+', label=field[1])
+
+  # format
+  plt.legend(loc="upper right")
+  plt.xlabel("Input number")
+  plt.xticks(range(stats["numSteps"]))
+  plt.ylabel("Number of cells")
+  plt.ylim(-5, 100)
+  # plt.ylim(plt.ylim()[0] - 5, plt.ylim()[1] + 5)
+  plt.title("Activity while inferring {}".format(itemType))
+
+  # save
+  relPath = "{}_exp_{}.pdf".format(basename, experimentID)
+  path = os.path.join(plotDir, relPath)
+  plt.savefig(path)
+  plt.close()
 
 
 def plotMultipleInferenceRun(stats,
@@ -73,6 +108,33 @@ def plotMultipleInferenceRun(stats,
 if __name__ == "__main__":
 
   dirName = os.path.dirname(os.path.realpath(__file__))
+
+  # Generate the first plot for the section "Simulations with Pure
+  # Temporal Sequences"
+  if False:
+    resultsFilename = os.path.join(dirName, "pure_sequences_example.pkl")
+    with open(resultsFilename, "rb") as f:
+      results = cPickle.load(f)
+
+    for objectId,stat in results["statistics"].itervalues():
+      plotOneInferenceRun(
+        stat,
+        itemType="a single sequence",
+        fields=[
+          # ("L4 Predicted", "Predicted sensorimotor cells"),
+          # ("L2 Representation", "L2 Representation"),
+          # ("L4 Representation", "Active sensorimotor cells"),
+          ("L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
+          ("TM NextPredicted", "Predicted cells in temporal sequence layer"),
+          ("TM PredictedActive",
+           "Predicted active cells in temporal sequence layer"),
+        ],
+        basename=exp.name,
+        experimentID=objectId,
+        plotDir=os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             "detailed_plots")
+      )
+
 
   # Generate plots for the section "Simulations with Combined Sequences"
   if True:
