@@ -33,11 +33,11 @@ rc('font',**{'family':'sans-serif','sans-serif':['Arial']})
 
 
 def plotOneInferenceRun(stats,
-                       fields,
-                       basename,
-                       itemType="",
-                       plotDir="plots",
-                       experimentID=0):
+                        fields,
+                        basename,
+                        itemType="",
+                        plotDir="plots",
+                        trialNumber=0):
   """
   Plots individual inference runs.
   """
@@ -61,7 +61,7 @@ def plotOneInferenceRun(stats,
   plt.title("Activity while inferring {}".format(itemType))
 
   # save
-  relPath = "{}_exp_{}.pdf".format(basename, experimentID)
+  relPath = "{}_exp_{}.pdf".format(basename, trialNumber)
   path = os.path.join(plotDir, relPath)
   plt.savefig(path)
   plt.close()
@@ -111,26 +111,23 @@ if __name__ == "__main__":
 
   # Generate the first plot for the section "Simulations with Pure
   # Temporal Sequences"
-  if False:
+  if True:
     resultsFilename = os.path.join(dirName, "pure_sequences_example.pkl")
     with open(resultsFilename, "rb") as f:
       results = cPickle.load(f)
 
-    for objectId,stat in results["statistics"].itervalues():
+    for trialNum, stat in enumerate(results["statistics"]):
       plotOneInferenceRun(
         stat,
         itemType="a single sequence",
         fields=[
-          # ("L4 Predicted", "Predicted sensorimotor cells"),
-          # ("L2 Representation", "L2 Representation"),
-          # ("L4 Representation", "Active sensorimotor cells"),
           ("L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
           ("TM NextPredicted", "Predicted cells in temporal sequence layer"),
           ("TM PredictedActive",
            "Predicted active cells in temporal sequence layer"),
         ],
-        basename=exp.name,
-        experimentID=objectId,
+        basename="pure_sequences",
+        trialNumber=trialNum,
         plotDir=os.path.join(os.path.dirname(os.path.realpath(__file__)),
                              "detailed_plots")
       )

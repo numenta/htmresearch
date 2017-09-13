@@ -168,10 +168,8 @@ def runExperiment(args):
   Runs the experiment.  What did you think this does?
 
   args is a dict representing the various parameters. We do it this way to
-  support multiprocessing. args contains one or more of the following keys:
-
-  The function returns the args dict updated with a number of additional keys
-  containing performance metrics.
+  support multiprocessing. The function returns the args dict updated with a
+  number of additional keys containing performance metrics.
   """
   numObjects = args.get("numObjects", 10)
   numSequences = args.get("numSequences", 10)
@@ -179,11 +177,11 @@ def runExperiment(args):
   seqLength = args.get("seqLength", 10)
   numPoints = args.get("numPoints", 10)
   trialNum = args.get("trialNum", 42)
-  plotInferenceStats = args.get("plotInferenceStats", True)
   inputSize = args.get("inputSize", 512)
   numLocations = args.get("numLocations", 100000)
   numInputBits = args.get("inputBits", 20)
   settlingTime = args.get("settlingTime", 3)
+  figure6 = args.get("figure6", False)
   numColumns = 1
 
   random.seed(trialNum)
@@ -248,43 +246,34 @@ def runExperiment(args):
   trainSequences(sequences, exp)
   trainObjects(objects, exp, settlingTime, numSequences)
 
-  #####################################################
+  ##########################################################################
   #
-  # For inference, we will randomly pick an object or a sequence and
-  # check and plot convergence for each item.
+  # Run inference
 
-  for trial,itemType in enumerate(["sequence", "object", "sequence", "object",
-                                   "sequence", "sequence", "object", "sequence", ]):
-    # itemType = ["sequence", "object"][random.randint(0, 1)]
-    # itemType = "sequence"
+  if not figure6:
+    # By default run inference on every sequence and object.
+    for seqId in sequences:
+      inferSequence(exp, seqId, sequences)
+    for objectId in objects:
+      inferObject(exp, objectId, objects, objectId + numSequences)
 
-    if itemType == "sequence":
-      objectId = random.randint(0, numSequences-1)
-      inferSequence(exp, objectId, sequences)
+  else:
+    # For figure 6 we want to run sequences and objects in a specific order
+    for trial,itemType in enumerate(["sequence", "object", "sequence", "object",
+                                     "sequence", "sequence", "object",
+                                     "sequence", ]):
+      if itemType == "sequence":
+        objectId = random.randint(0, numSequences-1)
+        inferSequence(exp, objectId, sequences)
 
-    else:
-      objectId = random.randint(0, numObjects-1)
-      inferObject(exp, objectId, objects, objectId+numSequences)
+      else:
+        objectId = random.randint(0, numObjects-1)
+        inferObject(exp, objectId, objects, objectId+numSequences)
 
-    if plotInferenceStats:
-      plotOneInferenceRun(
-        exp.statistics[trial],
-        fields=[
-          # ("L4 Predicted", "Predicted sensorimotor cells"),
-          # ("L2 Representation", "L2 Representation"),
-          # ("L4 Representation", "Active sensorimotor cells"),
-          ("L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
-          ("TM NextPredicted", "Predicted cells in temporal sequence layer"),
-          ("TM PredictedActive", "Predicted active cells in temporal sequence layer"),
-        ],
-        basename=exp.name,
-        itemType=itemType,
-        experimentID=trial,
-        plotDir=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                             "detailed_plots")
-      )
 
-  # Compute overall inference statistics
+  ##########################################################################
+  #
+  # Compute a number of overall inference statistics
   infStats = exp.getInferenceStats()
   convergencePoint, accuracy = exp.averageConvergencePoint(
     "L2 Representation", 30, 40, 1)
@@ -294,19 +283,21 @@ def runExperiment(args):
   predictedActiveL4 = numpy.zeros(len(infStats))
   predictedL4 = numpy.zeros(len(infStats))
   for i,stat in enumerate(infStats):
-    predictedActive[i] = float(sum(stat["TM PredictedActive C0"][2:])) / len(stat["TM PredictedActive C0"][2:])
-    predicted[i] = float(sum(stat["TM NextPredicted C0"][2:])) / len(stat["TM NextPredicted C0"][2:])
+    predictedActive[i] = float(sum(stat["TM PredictedActive C0"][2:])) / len(
+      stat["TM PredictedActive C0"][2:])
+    predicted[i] = float(sum(stat["TM NextPredicted C0"][2:])) / len(
+      stat["TM NextPredicted C0"][2:])
 
-    predictedActiveL4[i] = float(sum(stat["L4 PredictedActive C0"])) / len(stat["L4 PredictedActive C0"])
-    predictedL4[i] = float(sum(stat["L4 Predicted C0"])) / len(stat["L4 Predicted C0"])
+    predictedActiveL4[i] = float(sum(stat["L4 PredictedActive C0"])) / len(
+      stat["L4 PredictedActive C0"])
+    predictedL4[i] = float(sum(stat["L4 Predicted C0"])) / len(
+      stat["L4 Predicted C0"])
 
-  print "# Sequences {} # features {} trial # {}".format(
+  print "# Sequences {} # features {} trial # {}\n".format(
     numSequences, numFeatures, trialNum)
-  print "Average convergence point=",convergencePoint,
-  print "Accuracy:", accuracy
-  print
 
-  # Return our convergence point as well as all the parameters and objects
+  # Return a bunch of metrics we will use in plots
+  args.update({"name": exp.name})
   args.update({"objects": sequences.getObjects()})
   args.update({"convergencePoint":convergencePoint})
   args.update({"sensorimotorAccuracyPct": accuracy})
@@ -314,13 +305,8 @@ def runExperiment(args):
   args.update({"averagePredictedActive": predictedActive.mean()})
   args.update({"averagePredictionsL4": predictedL4.mean()})
   args.update({"averagePredictedActiveL4": predictedActiveL4.mean()})
-  args.update({"name": exp.name})
   args.update({"statistics": exp.statistics})
 
-  # Can't pickle experiment so can't return it for batch multiprocessing runs.
-  # However this is very useful for debugging when running in a single thread.
-  # if plotInferenceStats:
-  #   args.update({"experiment": exp})
   return args
 
 
@@ -360,7 +346,6 @@ def runExperimentPool(numSequences,
              "trialNum": t,
              "seqLength": seqLength,
              "numLocations": l,
-             "plotInferenceStats": False,
              }
           )
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
@@ -380,42 +365,6 @@ def runExperimentPool(numSequences,
   return result
 
 
-def plotOneInferenceRun(stats,
-                       fields,
-                       basename,
-                       itemType="",
-                       plotDir="plots",
-                       experimentID=0):
-  """
-  Plots individual inference runs.
-  """
-  if not os.path.exists(plotDir):
-    os.makedirs(plotDir)
-
-  plt.figure()
-  objectName = stats["object"]
-
-  # plot request stats
-  for field in fields:
-    fieldKey = field[0] + " C0"
-    plt.plot(stats[fieldKey], marker='+', label=field[1])
-
-  # format
-  plt.legend(loc="upper right")
-  plt.xlabel("Input number")
-  plt.xticks(range(stats["numSteps"]))
-  plt.ylabel("Number of cells")
-  plt.ylim(-5, 100)
-  # plt.ylim(plt.ylim()[0] - 5, plt.ylim()[1] + 5)
-  plt.title("Activity while inferring {}".format(itemType))
-
-  # save
-  relPath = "{}_exp_{}.pdf".format(basename, experimentID)
-  path = os.path.join(plotDir, relPath)
-  plt.savefig(path)
-  plt.close()
-
-
 if __name__ == "__main__":
 
   startTime = time.time()
@@ -423,7 +372,7 @@ if __name__ == "__main__":
 
   # This runs the first experiment in the section "Simulations with Pure
   # Temporal Sequences"
-  if False:
+  if True:
     resultsFilename = os.path.join(dirName, "pure_sequences_example.pkl")
     results = runExperiment(
                   {
@@ -433,7 +382,6 @@ if __name__ == "__main__":
                     "trialNum": 4,
                     "numObjects": 0,
                     "numLocations": 100,
-                    "plotInferenceStats": True,  # Outputs detailed graphs
                   }
               )
 
@@ -453,8 +401,8 @@ if __name__ == "__main__":
                     "numFeatures": 50,
                     "trialNum": 8,
                     "numLocations": 50,
-                    "plotInferenceStats": True,  # Outputs detailed graphs
                     "settlingTime": 3,
+                    "figure6": True,
                   }
               )
 
