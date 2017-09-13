@@ -37,6 +37,7 @@ def plotOneInferenceRun(stats,
                         basename,
                         itemType="",
                         plotDir="plots",
+                        ymax=100,
                         trialNumber=0):
   """
   Plots individual inference runs.
@@ -56,8 +57,7 @@ def plotOneInferenceRun(stats,
   plt.xlabel("Input number")
   plt.xticks(range(stats["numSteps"]))
   plt.ylabel("Number of cells")
-  plt.ylim(-5, 100)
-  # plt.ylim(plt.ylim()[0] - 5, plt.ylim()[1] + 5)
+  plt.ylim(-5, ymax)
   plt.title("Activity while inferring {}".format(itemType))
 
   # save
@@ -111,7 +111,7 @@ if __name__ == "__main__":
 
   # Generate the first plot for the section "Simulations with Pure
   # Temporal Sequences"
-  if True:
+  if False:
     resultsFilename = os.path.join(dirName, "pure_sequences_example.pkl")
     with open(resultsFilename, "rb") as f:
       results = cPickle.load(f)
@@ -133,8 +133,33 @@ if __name__ == "__main__":
       )
 
 
-  # Generate plots for the section "Simulations with Combined Sequences"
+  # Generate the first plot for the section "Simulations with Sensorimotor
+  # Sequences"
   if True:
+    resultsFilename = os.path.join(dirName, "sensorimotor_sequence_example.pkl")
+    with open(resultsFilename, "rb") as f:
+      results = cPickle.load(f)
+
+    for trialNum, stat in enumerate(results["statistics"]):
+      plotOneInferenceRun(
+        stat,
+        itemType="a single object",
+        fields=[
+          ("L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
+          ("TM NextPredicted", "Predicted cells in temporal sequence layer"),
+          ("TM PredictedActive",
+           "Predicted active cells in temporal sequence layer"),
+        ],
+        basename="sensorimotor_sequences",
+        trialNumber=trialNum,
+        ymax=50,
+        plotDir=os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             "detailed_plots")
+      )
+
+
+  # Generate plots for the section "Simulations with Combined Sequences"
+  if False:
     resultsFilename = os.path.join(dirName, "combined_results.pkl")
     with open(resultsFilename, "rb") as f:
       results = cPickle.load(f)

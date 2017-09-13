@@ -370,7 +370,7 @@ if __name__ == "__main__":
 
   # This runs the first experiment in the section "Simulations with Pure
   # Temporal Sequences"
-  if True:
+  if False:
     resultsFilename = os.path.join(dirName, "pure_sequences_example.pkl")
     results = runExperiment(
                   {
@@ -388,8 +388,28 @@ if __name__ == "__main__":
       cPickle.dump(results, f)
 
 
-  # This runs the experiment the section "Simulations with Combined Sequences"
+  # This runs the first experiment in the section "Simulations with Sensorimotor
+  # Sequences"
   if True:
+    resultsFilename = os.path.join(dirName, "sensorimotor_sequence_example.pkl")
+    results = runExperiment(
+                  {
+                    "numSequences": 0,
+                    "seqLength": 10,
+                    "numFeatures": 100,
+                    "trialNum": 4,
+                    "numObjects": 50,
+                    "numLocations": 100,
+                  }
+              )
+
+    # Pickle results for plotting and possible later debugging
+    with open(resultsFilename, "wb") as f:
+      cPickle.dump(results, f)
+
+
+  # This runs the experiment the section "Simulations with Combined Sequences"
+  if False:
     resultsFilename = os.path.join(dirName, "combined_results.pkl")
     results = runExperiment(
                   {
