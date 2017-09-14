@@ -157,6 +157,35 @@ def inferObject(exp, objectId, objects, objectName):
   exp.infer(inferenceSDRs, objectName=objectName)
 
 
+def averageSequenceAccuracy(inferenceStats, minOverlap, maxOverlap):
+  """
+  inferenceStats contains activity traces while the system visits each object.
+
+  Given the i'th object, inferenceStats[i] contains activity statistics for
+  each column for each region for the entire sequence of sensations.
+
+  For each object, decide whether the TM uniquely classified it by checking that
+  the number of predictedActive cells are in an acceptable range.
+  """
+  numCorrect = 0.0
+  numStats = 0.0
+  prefix = "TM PredictedActive"
+
+  # For each object
+  for stats in inferenceStats:
+
+    # Keep running total of how often the number of predictedActive cells are
+    # in the range.
+    for key in stats.iterkeys():
+      if prefix in key:
+        for numCells in stats[key]:
+          numStats += 1.0
+          if numCells in range(minOverlap, maxOverlap+1):
+            numCorrect += 1.0
+
+  return numCorrect / numStats
+
+
 def runExperiment(args):
   """
   Runs the experiment.  What did you think this does?
@@ -269,8 +298,10 @@ def runExperiment(args):
   #
   # Compute a number of overall inference statistics
   infStats = exp.getInferenceStats()
-  convergencePoint, accuracy = exp.averageConvergencePoint(
+  convergencePoint, sensorimotorAccuracy = exp.averageConvergencePoint(
     "L2 Representation", 30, 40, 1)
+
+  sequenceAccuracy = averageSequenceAccuracy(infStats, 15, 25)
 
   predictedActive = numpy.zeros(len(infStats))
   predicted = numpy.zeros(len(infStats))
@@ -289,12 +320,16 @@ def runExperiment(args):
 
   print "# Sequences {} # features {} trial # {}\n".format(
     numSequences, numFeatures, trialNum)
+  print "Sensorimotor accuracy:", sensorimotorAccuracy
+  print "Sequence accuracy:", sequenceAccuracy
+
 
   # Return a bunch of metrics we will use in plots
   args.update({"name": exp.name})
   args.update({"objects": sequences.getObjects()})
   args.update({"convergencePoint":convergencePoint})
-  args.update({"sensorimotorAccuracyPct": accuracy})
+  args.update({"sensorimotorAccuracyPct": sensorimotorAccuracy})
+  args.update({"sequenceAccuracyPct": sequenceAccuracy})
   args.update({"averagePredictions": predicted.mean()})
   args.update({"averagePredictedActive": predictedActive.mean()})
   args.update({"averagePredictionsL4": predictedL4.mean()})
@@ -307,6 +342,7 @@ def runExperiment(args):
 def runExperimentPool(numSequences,
                       numFeatures,
                       numLocations,
+                      numObjects,
                       numWorkers=7,
                       nTrials=1,
                       seqLength=10,
@@ -336,15 +372,17 @@ def runExperimentPool(numSequences,
   for o in reversed(numSequences):
     for l in numLocations:
       for f in numFeatures:
-        for t in range(nTrials):
-          args.append(
-            {"numSequences": o,
-             "numFeatures": f,
-             "trialNum": t,
-             "seqLength": seqLength,
-             "numLocations": l,
-             }
-          )
+        for no in numObjects:
+          for t in range(nTrials):
+            args.append(
+              {"numSequences": o,
+               "numFeatures": f,
+               "numObjects": no,
+               "trialNum": t,
+               "seqLength": seqLength,
+               "numLocations": l,
+               }
+            )
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
 
   # Run the pool
@@ -390,7 +428,7 @@ if __name__ == "__main__":
 
   # This runs the first experiment in the section "Simulations with Sensorimotor
   # Sequences"
-  if True:
+  if False:
     resultsFilename = os.path.join(dirName, "sensorimotor_sequence_example.pkl")
     results = runExperiment(
                   {
@@ -407,6 +445,27 @@ if __name__ == "__main__":
     with open(resultsFilename, "wb") as f:
       cPickle.dump(results, f)
 
+
+  # This runs the second experiment in the section "Simulations with
+  # Sensorimotor Sequences"
+  if True:
+    # We run 10 trials for each column number and then analyze results
+    numTrials = 10
+    featureRange = [5, 10, 50]
+    objectRange = [2, 5, 10, 20, 30, 40, 50, 70]
+    locationRange = [100]
+    resultsName = os.path.join(dirName, "sensorimotor_batch_results.pkl")
+
+    # Comment this out if you  are re-running analysis on already saved results.
+    # Very useful for debugging the plots
+    runExperimentPool(
+                      numSequences=[0],
+                      numObjects=objectRange,
+                      numFeatures=featureRange,
+                      numLocations=locationRange,
+                      nTrials=numTrials,
+                      numWorkers=cpu_count() - 1,
+                      resultsName=resultsName)
 
   # This runs the experiment the section "Simulations with Combined Sequences"
   if False:

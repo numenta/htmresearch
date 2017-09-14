@@ -25,6 +25,7 @@ This file plots the results obtained from combined_sequences.py.
 import os
 import cPickle
 import matplotlib.pyplot as plt
+import numpy
 
 import matplotlib as mpl
 mpl.rcParams['pdf.fonttype'] = 42
@@ -104,6 +105,66 @@ def plotMultipleInferenceRun(stats,
   plt.close()
 
 
+def plotAccuracyDuringSensorimotorInference(results, featureRange, objectRange,
+                         title="", yaxis=""):
+  """
+  Plot accuracy vs number of features
+  """
+
+  ########################################################################
+  #
+  # Accumulate all the results per column in a convergence array.
+  #
+  # accuracy[o,f] = accuracy with o objects in training
+  # and f unique features.
+  accuracy = numpy.zeros((max(objectRange)+1, max(featureRange) + 1))
+  totals = numpy.zeros((max(objectRange)+1, max(featureRange) + 1))
+  for r in results:
+    if r["numFeatures"] in featureRange and r["numObjects"] in objectRange:
+      accuracy[r["numObjects"], r["numFeatures"]] += r["sequenceAccuracyPct"]
+      totals[r["numObjects"], r["numFeatures"]] += 1
+
+  for o in objectRange:
+    for f in featureRange:
+      accuracy[o, f] = 100.0 * accuracy[o, f] / totals[o, f]
+
+  ########################################################################
+  #
+  # Create the plot.
+  plt.figure()
+  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                          "plots", "accuracy_during_sensorimotor_inference.pdf")
+
+  # Plot each curve
+  legendList = []
+  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
+
+  for i in range(len(featureRange)):
+    f = featureRange[i]
+    print "features={} objectRange={} accuracy={}".format(
+      f,objectRange, accuracy[objectRange, f])
+    print "Totals=",totals[objectRange, f]
+    legendList.append('Sequence layer, feature pool size: {}'.format(f))
+    plt.plot(objectRange, accuracy[objectRange, f], color=colorList[i])
+
+  plt.plot(objectRange, [100] * len(objectRange),
+           color=colorList[len(featureRange)])
+  legendList.append('Sensorimotor layer')
+
+  # format
+  plt.legend(legendList, bbox_to_anchor=(0., 0.6, 1., .102), loc="right", prop={'size':10})
+  plt.xlabel("Number of objects")
+  # plt.xticks(range(0,max(locationRange)+1,10))
+  # plt.yticks(range(0,int(accuracy.max())+2,10))
+  plt.ylim(-10.0, 110.0)
+  plt.ylabel(yaxis)
+  plt.title(title)
+
+    # save
+  plt.savefig(plotPath)
+  plt.close()
+
+
 
 if __name__ == "__main__":
 
@@ -135,7 +196,7 @@ if __name__ == "__main__":
 
   # Generate the first plot for the section "Simulations with Sensorimotor
   # Sequences"
-  if True:
+  if False:
     resultsFilename = os.path.join(dirName, "sensorimotor_sequence_example.pkl")
     with open(resultsFilename, "rb") as f:
       results = cPickle.load(f)
@@ -156,6 +217,24 @@ if __name__ == "__main__":
         plotDir=os.path.join(os.path.dirname(os.path.realpath(__file__)),
                              "detailed_plots")
       )
+
+
+  # This runs the second experiment in the section "Simulations with
+  # Sensorimotor Sequences"
+  if True:
+    # These ranges must equal or be a subset of the actual ranges that were run
+    featureRange = [5, 10, 50]
+    objectRange = [2, 5, 10, 20, 30, 40, 50, 70]
+    resultsName = os.path.join(dirName, "sensorimotor_batch_results.pkl")
+
+    # Analyze results
+    with open(resultsName, "rb") as f:
+      results = cPickle.load(f)
+
+      plotAccuracyDuringSensorimotorInference(
+        results, featureRange, objectRange,
+        title="Relative performance of layers during sensorimotor inference",
+        yaxis="Accuracy (%)")
 
 
   # Generate plots for the section "Simulations with Combined Sequences"
