@@ -23,12 +23,15 @@ This file runs a combined HTM network that includes the sensorimotor layers from
 the Layers and Columns paper as well as a pure sequence layer.
 """
 
-import os
-import numpy
-import time
 import cPickle
 from multiprocessing import Pool, cpu_count
+from optparse import OptionParser
+import os
 import random
+import sys
+import time
+
+import numpy
 
 from htmresearch.frameworks.layers.combined_sequence_experiment import (
   L4TMExperiment
@@ -157,35 +160,6 @@ def inferObject(exp, objectId, objects, objectName):
   exp.infer(inferenceSDRs, objectName=objectName)
 
 
-def averageSequenceAccuracy(inferenceStats, minOverlap, maxOverlap):
-  """
-  inferenceStats contains activity traces while the system visits each object.
-
-  Given the i'th object, inferenceStats[i] contains activity statistics for
-  each column for each region for the entire sequence of sensations.
-
-  For each object, decide whether the TM uniquely classified it by checking that
-  the number of predictedActive cells are in an acceptable range.
-  """
-  numCorrect = 0.0
-  numStats = 0.0
-  prefix = "TM PredictedActive"
-
-  # For each object
-  for stats in inferenceStats:
-
-    # Keep running total of how often the number of predictedActive cells are
-    # in the range.
-    for key in stats.iterkeys():
-      if prefix in key:
-        for numCells in stats[key]:
-          numStats += 1.0
-          if numCells in range(minOverlap, maxOverlap+1):
-            numCorrect += 1.0
-
-  return numCorrect / numStats
-
-
 def runExperiment(args):
   """
   Runs the experiment.  What did you think this does?
@@ -301,7 +275,7 @@ def runExperiment(args):
   convergencePoint, sensorimotorAccuracy = exp.averageConvergencePoint(
     "L2 Representation", 30, 40, 1)
 
-  sequenceAccuracy = averageSequenceAccuracy(infStats, 15, 25)
+  sequenceAccuracy = exp.averageSequenceAccuracy(15, 25)
 
   predictedActive = numpy.zeros(len(infStats))
   predicted = numpy.zeros(len(infStats))
@@ -401,14 +375,51 @@ def runExperimentPool(numSequences,
   return result
 
 
+def runSpecificExperiments(options):
+  pass
+
+
 if __name__ == "__main__":
 
   startTime = time.time()
   dirName = os.path.dirname(os.path.realpath(__file__))
 
+  parser = OptionParser("python %prog [option ...]")
+  parser.add_option("--fig4A",
+                    default=False,
+                    action="store_true",
+                    help=("Run the experiment for Fig 4A, an example "
+                          "temporal sequence."))
+  parser.add_option("--fig4B",
+                    default=False,
+                    action="store_true",
+                    help=("Run the experiment for Fig 4B, averaging over many "
+                          "parameter combinations. This experiment could "
+                          "take several minutes."))
+  parser.add_option("--fig5A",
+                    default=False,
+                    action="store_true",
+                    help=("Run the experiment for Fig 4A, an example "
+                          "sensorimotor sequence."))
+  parser.add_option("--fig5B",
+                    default=False,
+                    action="store_true",
+                    help=("Run the experiment for Fig 5B, averaging over many "
+                          "parameter combinations. This experiment could "
+                          "take several hours."))
+  parser.add_option("--fig6",
+                    default=False,
+                    action="store_true",
+                    help=("Run the experiment for Fig 6, an example stream "
+                          "containing a mixture of temporal and sensorimotor "
+                          "sequences."))
+
+  # Parse CLI arguments
+  options, args = parser.parse_args(sys.argv[1:])
+
   # This runs the first experiment in the section "Simulations with Pure
   # Temporal Sequences"
-  if False:
+  if options.fig4A:
     resultsFilename = os.path.join(dirName, "pure_sequences_example.pkl")
     results = runExperiment(
                   {
@@ -426,9 +437,33 @@ if __name__ == "__main__":
       cPickle.dump(results, f)
 
 
+  # This runs the second experiment in the section "Simulations with Pure
+  # Temporal Sequences". Here we check accuracy of the L2/L4 networks in
+  # classifying the sequences.
+  if options.fig4B:
+    numTrials = 10
+    featureRange = [5, 10, 100]
+    seqRange = [50]
+    locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
+                     1000, 1100, 1200, 1300, 1400, 1500, 1600]
+    resultsName = os.path.join(dirName, "sequence_batch_results.pkl")
+
+    # Comment this out if you  are re-running analysis on already saved results.
+    # Very useful for debugging the plots
+    runExperimentPool(
+                      numSequences=seqRange,
+                      numFeatures=featureRange,
+                      numLocations=locationRange,
+                      numObjects=[0],
+                      seqLength=10,
+                      nTrials=numTrials,
+                      numWorkers=cpu_count(),
+                      resultsName=resultsName)
+
+
   # This runs the first experiment in the section "Simulations with Sensorimotor
   # Sequences"
-  if False:
+  if options.fig5A:
     resultsFilename = os.path.join(dirName, "sensorimotor_sequence_example.pkl")
     results = runExperiment(
                   {
@@ -448,7 +483,7 @@ if __name__ == "__main__":
 
   # This runs the second experiment in the section "Simulations with
   # Sensorimotor Sequences"
-  if True:
+  if options.fig5B:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     featureRange = [5, 10, 50]
@@ -468,7 +503,7 @@ if __name__ == "__main__":
                       resultsName=resultsName)
 
   # This runs the experiment the section "Simulations with Combined Sequences"
-  if False:
+  if options.fig6:
     resultsFilename = os.path.join(dirName, "combined_results.pkl")
     results = runExperiment(
                   {

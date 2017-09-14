@@ -165,6 +165,68 @@ def plotAccuracyDuringSensorimotorInference(results, featureRange, objectRange,
   plt.close()
 
 
+def plotAccuracyDuringSequenceInference(results, locationRange, featureRange,
+                             seqRange, title="", yaxis=""):
+  """
+  Plot accuracy vs number of locations
+  """
+
+  ########################################################################
+  #
+  # Accumulate all the results per column in a convergence array.
+  #
+  # accuracy[f,l] = how long it took it to converge with f unique features
+  # and l locations on average.
+  accuracy = numpy.zeros((max(featureRange)+1, max(locationRange) + 1))
+  totals = numpy.zeros((max(featureRange)+1, max(locationRange) + 1))
+  for r in results:
+    if r["numFeatures"] in featureRange and r["numSequences"] in seqRange:
+      accuracy[r["numFeatures"], r["numLocations"]] += r["sensorimotorAccuracyPct"]
+      totals[r["numFeatures"], r["numLocations"]] += 1
+
+  for f in featureRange:
+    for l in locationRange:
+      accuracy[f, l] = 100.0*accuracy[f, l] / totals[f, l]
+
+  ########################################################################
+  #
+  # Create the plot.
+  plt.figure()
+  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                          "plots", "sensorimotorAccuracy_by_sequence.pdf")
+
+  # Plot each curve
+  legendList = []
+  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
+
+  for i in range(len(featureRange)):
+    f = featureRange[i]
+    print "features={} locationRange={} accuracy={}".format(
+      f,locationRange, accuracy[f,locationRange]),
+    print totals[f,locationRange]
+    legendList.append('Sensorimotor layer, feature pool size: {}'.format(f))
+    plt.plot(locationRange, accuracy[f,locationRange],
+             color=colorList[i])
+
+  plt.plot(locationRange, [100] * len(locationRange),
+           color=colorList[len(featureRange)])
+  legendList.append('Temporal sequence layer')
+
+  # format
+  plt.legend(legendList, bbox_to_anchor=(0., 0.65, 1., .102), loc="right", prop={'size':10})
+  plt.xlabel("Size of location pool")
+  # plt.xticks(range(0,max(locationRange)+1,10))
+  # plt.yticks(range(0,int(accuracy.max())+2,10))
+  plt.ylim(-10.0, 110.0)
+  plt.ylabel(yaxis)
+  plt.title(title)
+
+    # save
+  plt.savefig(plotPath)
+  plt.close()
+
+
+
 
 if __name__ == "__main__":
 
@@ -192,6 +254,27 @@ if __name__ == "__main__":
         plotDir=os.path.join(os.path.dirname(os.path.realpath(__file__)),
                              "detailed_plots")
       )
+
+  # Generate the second plot for the section "Simulations with Pure
+  # Temporal Sequences"
+  if True:
+    numTrials = 2
+    featureRange = [5, 10, 100]
+    # seqRange = [50]
+    # locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
+    #                  1000, 1100, 1200, 1300, 1400, 1500, 1600]
+    seqRange = [5]
+    locationRange = [10, 100, 300, 400, 500, 700, 800, 900,
+                     1000, 1100, 1300, 1600]
+    resultsName = os.path.join(dirName, "sequence_batch_results.pkl")
+    # Analyze results
+    with open(resultsName, "rb") as f:
+      results = cPickle.load(f)
+
+    plotAccuracyDuringSequenceInference(
+      results, locationRange, featureRange, seqRange,
+      title="Relative performance of layers while inferring temporal sequences",
+      yaxis="Accuracy (%)")
 
 
   # Generate the first plot for the section "Simulations with Sensorimotor
@@ -221,7 +304,7 @@ if __name__ == "__main__":
 
   # This runs the second experiment in the section "Simulations with
   # Sensorimotor Sequences"
-  if True:
+  if False:
     # These ranges must equal or be a subset of the actual ranges that were run
     featureRange = [5, 10, 50]
     objectRange = [2, 5, 10, 20, 30, 40, 50, 70]
