@@ -22,9 +22,12 @@
 This file plots the results obtained from combined_sequences.py.
 """
 
-import os
 import cPickle
 import matplotlib.pyplot as plt
+from optparse import OptionParser
+import os
+import sys
+
 import numpy
 
 import matplotlib as mpl
@@ -232,9 +235,25 @@ if __name__ == "__main__":
 
   dirName = os.path.dirname(os.path.realpath(__file__))
 
-  # Generate the first plot for the section "Simulations with Pure
-  # Temporal Sequences"
-  if False:
+  parser = OptionParser("python %prog [option ...]")
+  parser.add_option("--fig4A",
+                    default=False, action="store_true", help="Plot Fig 4A.")
+  parser.add_option("--fig4B",
+                    default=False, action="store_true", help="Plot Fig 4B.")
+  parser.add_option("--fig5A",
+                    default=False, action="store_true", help="Plot Fig 5A.")
+  parser.add_option("--fig5B",
+                    default=False, action="store_true", help="Plot Fig 5B.")
+  parser.add_option("--fig6",
+                    default=False, action="store_true", help="Plot Fig 6.")
+
+  # Parse CLI arguments
+  options, args = parser.parse_args(sys.argv[1:])
+
+
+  # Generate images similar to those used in the first plot for the section
+  # "Simulations with Pure Temporal Sequences"
+  if options.fig4A:
     resultsFilename = os.path.join(dirName, "pure_sequences_example.pkl")
     with open(resultsFilename, "rb") as f:
       results = cPickle.load(f)
@@ -254,10 +273,11 @@ if __name__ == "__main__":
         plotDir=os.path.join(os.path.dirname(os.path.realpath(__file__)),
                              "detailed_plots")
       )
+    print "Plots generated in 'detailed_plots'"
 
   # Generate the second plot for the section "Simulations with Pure
   # Temporal Sequences"
-  if True:
+  if options.fig4B:
     numTrials = 2
     featureRange = [5, 10, 100]
     # seqRange = [50]
@@ -276,10 +296,11 @@ if __name__ == "__main__":
       title="Relative performance of layers while inferring temporal sequences",
       yaxis="Accuracy (%)")
 
+    print "Plots generated in 'plots'"
 
-  # Generate the first plot for the section "Simulations with Sensorimotor
-  # Sequences"
-  if False:
+  # Generate images similar to the first plot for the section "Simulations with
+  # Sensorimotor Sequences"
+  if options.fig5A:
     resultsFilename = os.path.join(dirName, "sensorimotor_sequence_example.pkl")
     with open(resultsFilename, "rb") as f:
       results = cPickle.load(f)
@@ -301,10 +322,12 @@ if __name__ == "__main__":
                              "detailed_plots")
       )
 
+    print "Plots generated in 'detailed_plots'"
 
-  # This runs the second experiment in the section "Simulations with
-  # Sensorimotor Sequences"
-  if False:
+
+  # Generate the second plot for the section "Simulations with Sensorimotor
+  # Sequences"
+  if options.fig5B:
     # These ranges must equal or be a subset of the actual ranges that were run
     featureRange = [5, 10, 50]
     objectRange = [2, 5, 10, 20, 30, 40, 50, 70]
@@ -314,14 +337,18 @@ if __name__ == "__main__":
     with open(resultsName, "rb") as f:
       results = cPickle.load(f)
 
-      plotAccuracyDuringSensorimotorInference(
-        results, featureRange, objectRange,
-        title="Relative performance of layers during sensorimotor inference",
-        yaxis="Accuracy (%)")
+    plotAccuracyDuringSensorimotorInference(
+      results, featureRange, objectRange,
+      title="Relative performance of layers during sensorimotor inference",
+      yaxis="Accuracy (%)")
+
+    print "Plots generated in 'plots'"
 
 
-  # Generate plots for the section "Simulations with Combined Sequences"
-  if False:
+  # Generate a plot similar to one in the section "Simulations with Combined
+  # Sequences".  Note that the dashed vertical lines and labels were added in
+  # manually.
+  if options.fig6:
     resultsFilename = os.path.join(dirName, "combined_results.pkl")
     with open(resultsFilename, "rb") as f:
       results = cPickle.load(f)
@@ -337,3 +364,4 @@ if __name__ == "__main__":
       plotDir=os.path.join(dirName, "plots")
     )
 
+    print "Plots generated in 'plots'"
