@@ -1,5 +1,5 @@
 
-## Untangling Internally Generated Sequences From External Sequences
+## Untangling Sequences: Behavior vs. External Causes
 
 This directory contains Python scripts that run sensorimotor sequences
 in combination with pure temporal sequences.
@@ -36,7 +36,7 @@ mechanism.
 To run one of the experiments, say the one for Figure 4A, and generate
 the appropriate plot:
 
-    python combined_sequences.py --fig4A
+    python combined_sequences.py 4A
     python generate_plots.py --fig4A
 
 To see the various options:

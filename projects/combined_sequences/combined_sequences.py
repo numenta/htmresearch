@@ -25,7 +25,7 @@ the Layers and Columns paper as well as a pure sequence layer.
 
 import cPickle
 from multiprocessing import Pool, cpu_count
-from optparse import OptionParser
+import argparse
 import os
 import random
 import sys
@@ -375,151 +375,185 @@ def runExperimentPool(numSequences,
   return result
 
 
-def runSpecificExperiments(options):
-  pass
+def runExperiment4A(dirName):
+  """
+  This runs the first experiment in the section "Simulations with Pure
+  Temporal Sequences".
+  """
+  # Results are put into a pkl file which can be used to generate the plots.
+  # dirName is the absolute path where the pkl file will be placed.
+  resultsFilename = os.path.join(dirName, "pure_sequences_example.pkl")
+
+  results = runExperiment(
+    {
+      "numSequences": 5,
+      "seqLength": 10,
+      "numFeatures": 10,
+      "trialNum": 4,
+      "numObjects": 0,
+      "numLocations": 100,
+    }
+  )
+
+  # Pickle results for plotting and possible later debugging
+  with open(resultsFilename, "wb") as f:
+    cPickle.dump(results, f)
+
+
+def runExperiment4B(dirName):
+  """
+  This runs the second experiment in the section "Simulations with Pure Temporal
+  Sequences". Here we check accuracy of the L2/L4 networks in classifying the
+  sequences. This experiment averages over many parameter combinations and could
+  take several minutes.
+  """
+  # Results are put into a pkl file which can be used to generate the plots.
+  # dirName is the absolute path where the pkl file will be placed.
+  resultsName = os.path.join(dirName, "sequence_batch_results.pkl")
+
+  numTrials = 10
+  featureRange = [5, 10, 100]
+  seqRange = [50]
+  locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
+                   1000, 1100, 1200, 1300, 1400, 1500, 1600]
+
+  # Comment this out if you  are re-running analysis on already saved results.
+  # Very useful for debugging the plots
+  runExperimentPool(
+    numSequences=seqRange,
+    numFeatures=featureRange,
+    numLocations=locationRange,
+    numObjects=[0],
+    seqLength=10,
+    nTrials=numTrials,
+    numWorkers=cpu_count(),
+    resultsName=resultsName)
+
+
+def runExperiment5A(dirName):
+  """
+  This runs the first experiment in the section "Simulations with Sensorimotor
+  Sequences", an example sensorimotor sequence.
+  """
+  # Results are put into a pkl file which can be used to generate the plots.
+  # dirName is the absolute path where the pkl file will be placed.
+  resultsFilename = os.path.join(dirName, "sensorimotor_sequence_example.pkl")
+  results = runExperiment(
+    {
+      "numSequences": 0,
+      "seqLength": 10,
+      "numFeatures": 100,
+      "trialNum": 4,
+      "numObjects": 50,
+      "numLocations": 100,
+    }
+  )
+
+  # Pickle results for plotting and possible later debugging
+  with open(resultsFilename, "wb") as f:
+    cPickle.dump(results, f)
+
+
+def runExperiment5B(dirName):
+  """
+  This runs the second experiment in the section "Simulations with Sensorimotor
+  Sequences". It averages over many parameter combinations. This experiment
+  could take several hours.  You can run faster versions by reducing the number
+  of trials.
+  """
+  # Results are put into a pkl file which can be used to generate the plots.
+  # dirName is the absolute path where the pkl file will be placed.
+  resultsName = os.path.join(dirName, "sensorimotor_batch_results.pkl")
+
+  # We run 10 trials for each column number and then analyze results
+  numTrials = 10
+  featureRange = [5, 10, 50]
+  objectRange = [2, 5, 10, 20, 30, 40, 50, 70]
+  locationRange = [100]
+
+  # Comment this out if you  are re-running analysis on already saved results.
+  # Very useful for debugging the plots
+  runExperimentPool(
+    numSequences=[0],
+    numObjects=objectRange,
+    numFeatures=featureRange,
+    numLocations=locationRange,
+    nTrials=numTrials,
+    numWorkers=cpu_count() - 1,
+    resultsName=resultsName)
+
+
+def runExperiment6(dirName):
+  """
+  This runs the experiment the section "Simulations with Combined Sequences",
+  an example stream containing a mixture of temporal and sensorimotor sequences.
+  """
+  # Results are put into a pkl file which can be used to generate the plots.
+  # dirName is the absolute path where the pkl file will be placed.
+  resultsFilename = os.path.join(dirName, "combined_results.pkl")
+  results = runExperiment(
+    {
+      "numSequences": 50,
+      "seqLength": 10,
+      "numObjects": 50,
+      "numFeatures": 50,
+      "trialNum": 8,
+      "numLocations": 50,
+      "settlingTime": 3,
+      "figure6": True,
+    }
+  )
+
+  # Pickle results for plotting and possible later debugging
+  with open(resultsFilename, "wb") as f:
+    cPickle.dump(results, f)
 
 
 if __name__ == "__main__":
 
-  startTime = time.time()
-  dirName = os.path.dirname(os.path.realpath(__file__))
+  # Map paper figures to experiment
+  generateFigureFunc = {
+    "4A": runExperiment4A,
+    "4B": runExperiment4B,
+    "5A": runExperiment5A,
+    "5B": runExperiment5B,
+    "6": runExperiment6,
+  }
+  figures = generateFigureFunc.keys()
+  figures.sort()
 
-  parser = OptionParser("python %prog [option ...]")
-  parser.add_option("--fig4A",
-                    default=False,
-                    action="store_true",
-                    help=("Run the experiment for Fig 4A, an example "
-                          "temporal sequence."))
-  parser.add_option("--fig4B",
-                    default=False,
-                    action="store_true",
-                    help=("Run the experiment for Fig 4B, averaging over many "
-                          "parameter combinations. This experiment could "
-                          "take several minutes."))
-  parser.add_option("--fig5A",
-                    default=False,
-                    action="store_true",
-                    help=("Run the experiment for Fig 4A, an example "
-                          "sensorimotor sequence."))
-  parser.add_option("--fig5B",
-                    default=False,
-                    action="store_true",
-                    help=("Run the experiment for Fig 5B, averaging over many "
-                          "parameter combinations. This experiment could "
-                          "take several hours."))
-  parser.add_option("--fig6",
-                    default=False,
-                    action="store_true",
-                    help=("Run the experiment for Fig 6, an example stream "
-                          "containing a mixture of temporal and sensorimotor "
-                          "sequences."))
+  parser = argparse.ArgumentParser(
+    description="Use this script to generate the figures and results presented "
+                "in (Ahmad & Hawkins, 2017)",
+    epilog="--------------------------------------------------------------\n"
+           "  Subutai Ahmad & Jeff Hawkins (2017) \n"
+           "  Untangling Sequences: Behavior vs. External Causes \n"
+           "--------------------------------------------------------------\n")
 
-  # Parse CLI arguments
-  options, args = parser.parse_args(sys.argv[1:])
+  parser.add_argument(
+    "figure",
+    metavar="FIGURE",
+    nargs='?',
+    type=str,
+    default=None,
+    choices=figures,
+    help=(
+    "Specify the figure name to generate. Possible values are: %s " % figures)
+  )
+  parser.add_argument(
+    "-l", "--list",
+    action='store_true',
+    help='List all figures'
+  )
+  opts = parser.parse_args()
 
-  # This runs the first experiment in the section "Simulations with Pure
-  # Temporal Sequences"
-  if options.fig4A:
-    resultsFilename = os.path.join(dirName, "pure_sequences_example.pkl")
-    results = runExperiment(
-                  {
-                    "numSequences": 5,
-                    "seqLength": 10,
-                    "numFeatures": 10,
-                    "trialNum": 4,
-                    "numObjects": 0,
-                    "numLocations": 100,
-                  }
-              )
+  if opts.list:
+    for fig, func in sorted(generateFigureFunc.iteritems()):
+      print fig, func.__doc__
+  elif opts.figure is not None:
+    startTime = time.time()
+    generateFigureFunc[opts.figure](os.path.dirname(os.path.realpath(__file__)))
+    print "Actual runtime=", time.time() - startTime
+  else:
+    parser.print_help()
 
-    # Pickle results for plotting and possible later debugging
-    with open(resultsFilename, "wb") as f:
-      cPickle.dump(results, f)
-
-
-  # This runs the second experiment in the section "Simulations with Pure
-  # Temporal Sequences". Here we check accuracy of the L2/L4 networks in
-  # classifying the sequences.
-  if options.fig4B:
-    numTrials = 10
-    featureRange = [5, 10, 100]
-    seqRange = [50]
-    locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
-                     1000, 1100, 1200, 1300, 1400, 1500, 1600]
-    resultsName = os.path.join(dirName, "sequence_batch_results.pkl")
-
-    # Comment this out if you  are re-running analysis on already saved results.
-    # Very useful for debugging the plots
-    runExperimentPool(
-                      numSequences=seqRange,
-                      numFeatures=featureRange,
-                      numLocations=locationRange,
-                      numObjects=[0],
-                      seqLength=10,
-                      nTrials=numTrials,
-                      numWorkers=cpu_count(),
-                      resultsName=resultsName)
-
-
-  # This runs the first experiment in the section "Simulations with Sensorimotor
-  # Sequences"
-  if options.fig5A:
-    resultsFilename = os.path.join(dirName, "sensorimotor_sequence_example.pkl")
-    results = runExperiment(
-                  {
-                    "numSequences": 0,
-                    "seqLength": 10,
-                    "numFeatures": 100,
-                    "trialNum": 4,
-                    "numObjects": 50,
-                    "numLocations": 100,
-                  }
-              )
-
-    # Pickle results for plotting and possible later debugging
-    with open(resultsFilename, "wb") as f:
-      cPickle.dump(results, f)
-
-
-  # This runs the second experiment in the section "Simulations with
-  # Sensorimotor Sequences"
-  if options.fig5B:
-    # We run 10 trials for each column number and then analyze results
-    numTrials = 10
-    featureRange = [5, 10, 50]
-    objectRange = [2, 5, 10, 20, 30, 40, 50, 70]
-    locationRange = [100]
-    resultsName = os.path.join(dirName, "sensorimotor_batch_results.pkl")
-
-    # Comment this out if you  are re-running analysis on already saved results.
-    # Very useful for debugging the plots
-    runExperimentPool(
-                      numSequences=[0],
-                      numObjects=objectRange,
-                      numFeatures=featureRange,
-                      numLocations=locationRange,
-                      nTrials=numTrials,
-                      numWorkers=cpu_count() - 1,
-                      resultsName=resultsName)
-
-  # This runs the experiment the section "Simulations with Combined Sequences"
-  if options.fig6:
-    resultsFilename = os.path.join(dirName, "combined_results.pkl")
-    results = runExperiment(
-                  {
-                    "numSequences": 50,
-                    "seqLength": 10,
-                    "numObjects": 50,
-                    "numFeatures": 50,
-                    "trialNum": 8,
-                    "numLocations": 50,
-                    "settlingTime": 3,
-                    "figure6": True,
-                  }
-              )
-
-    # Pickle results for plotting and possible later debugging
-    with open(resultsFilename, "wb") as f:
-      cPickle.dump(results,f)
-
-  print "Actual runtime=",time.time() - startTime
