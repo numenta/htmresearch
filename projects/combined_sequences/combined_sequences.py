@@ -26,9 +26,9 @@ the Layers and Columns paper as well as a pure sequence layer.
 import cPickle
 from multiprocessing import Pool, cpu_count
 import argparse
+from argparse import RawDescriptionHelpFormatter
 import os
 import random
-import sys
 import time
 
 import numpy
@@ -110,7 +110,6 @@ def trainObjects(objects, exp, numRepeatsPerObject, experimentIdOffset):
 
 def inferSequence(exp, sequenceId, sequences):
   """Run inference on the given sequence."""
-  assert exp.numColumns == 1
 
   sequence = sequences[sequenceId]
 
@@ -136,7 +135,6 @@ def inferObject(exp, objectId, objects, objectName):
   Run inference on the given object.
   objectName is the name of this object in the experiment.
   """
-  assert exp.numColumns == 1
 
   # Create sequence of random sensations for this object for one column. The
   # total number of sensations is equal to the number of points on the object.
@@ -179,7 +177,6 @@ def runExperiment(args):
   numInputBits = args.get("inputBits", 20)
   settlingTime = args.get("settlingTime", 3)
   figure6 = args.get("figure6", False)
-  numColumns = 1
 
   random.seed(trialNum)
 
@@ -193,7 +190,7 @@ def runExperiment(args):
     numInputBits=numInputBits,
     sensorInputSize=inputSize,
     externalInputSize=1024,
-    numCorticalColumns=numColumns,
+    numCorticalColumns=1,
     numFeatures=numFeatures,
     seed=trialNum
   )
@@ -203,7 +200,7 @@ def runExperiment(args):
     numInputBits=numInputBits,
     sensorInputSize=inputSize,
     externalInputSize=1024,
-    numCorticalColumns=numColumns,
+    numCorticalColumns=1,
     numFeatures=numFeatures,
     seed=trialNum
   )
@@ -227,7 +224,7 @@ def runExperiment(args):
   )
   exp = L4TMExperiment(
     name=name,
-    numCorticalColumns=numColumns,
+    numCorticalColumns=1,
     inputSize=inputSize,
     numExternalInputBits=numInputBits,
     externalInputSize=1024,
@@ -517,7 +514,7 @@ if __name__ == "__main__":
     "4B": runExperiment4B,
     "5A": runExperiment5A,
     "5B": runExperiment5B,
-    "6": runExperiment6,
+    "6":  runExperiment6,
   }
   figures = generateFigureFunc.keys()
   figures.sort()
@@ -525,6 +522,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser(
     description="Use this script to generate the figures and results presented "
                 "in (Ahmad & Hawkins, 2017)",
+    formatter_class=RawDescriptionHelpFormatter,
     epilog="--------------------------------------------------------------\n"
            "  Subutai Ahmad & Jeff Hawkins (2017) \n"
            "  Untangling Sequences: Behavior vs. External Causes \n"
@@ -548,6 +546,7 @@ if __name__ == "__main__":
   opts = parser.parse_args()
 
   if opts.list:
+    # Generate help by extracting the docstring from each function.
     for fig, func in sorted(generateFigureFunc.iteritems()):
       print fig, func.__doc__
   elif opts.figure is not None:
