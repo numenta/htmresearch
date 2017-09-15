@@ -278,14 +278,10 @@ if __name__ == "__main__":
   # Generate the second plot for the section "Simulations with Pure
   # Temporal Sequences"
   if options.fig4B:
-    numTrials = 2
     featureRange = [5, 10, 100]
-    # seqRange = [50]
-    # locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
-    #                  1000, 1100, 1200, 1300, 1400, 1500, 1600]
-    seqRange = [5]
-    locationRange = [10, 100, 300, 400, 500, 700, 800, 900,
-                     1000, 1100, 1300, 1600]
+    seqRange = [50]
+    locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
+                     1000, 1100, 1200, 1300, 1400, 1500, 1600]
     resultsName = os.path.join(dirName, "sequence_batch_results.pkl")
     # Analyze results
     with open(resultsName, "rb") as f:
