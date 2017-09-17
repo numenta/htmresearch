@@ -415,8 +415,9 @@ class ColumnPooler(object):
         # been chosen. If ~0 have been chosen activate ~all of the feedforward
         # supported cells. If ~sdrSize have been chosen, activate very few of
         # the feedforward supported cells.
-        n = max(discrepancy,
-                len(remFFcells) * discrepancy / self.sdrSize)
+        n = min(max(discrepancy,
+                    len(remFFcells) * discrepancy / self.sdrSize),
+                len(remFFcells))
         selected = numpy.empty(n, dtype="uint32")
         self._random.sample(numpy.asarray(remFFcells, dtype="uint32"),
                             selected)
