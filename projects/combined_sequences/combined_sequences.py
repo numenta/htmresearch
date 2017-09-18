@@ -28,6 +28,7 @@ from multiprocessing import Pool, cpu_count
 import argparse
 from argparse import RawDescriptionHelpFormatter
 import os
+import pprint
 import random
 import time
 
@@ -41,7 +42,7 @@ from htmresearch.frameworks.layers.object_machine_factory import (
 )
 
 
-def printDiagnostics(sequences, objects, verbosity=0):
+def printDiagnostics(exp, sequences, objects, verbosity=0):
   """Useful diagnostics for debugging."""
   r = sequences.objectConfusion()
   print "Average common pairs in sequences=", r[0],
@@ -57,21 +58,22 @@ def printDiagnostics(sequences, objects, verbosity=0):
 
   # For detailed debugging
   if verbosity > 0:
-    print "Objects are:"
+    print "\nObjects are:"
     for o in objects:
       pairs = objects[o]
       pairs.sort()
       print str(o) + ": " + str(pairs)
-    print "Sequences:"
+    print "\nSequences:"
     for i in sequences:
       print i,sequences[i]
+
+    print "\nNetwork parameters:"
+    pprint.pprint(exp.config)
 
 
 def trainSequences(sequences, exp):
   """Train the network on all the sequences"""
-  print "Training sequences"
   for seqName in sequences:
-
     # Make sure we learn enough times to deal with high order sequences and
     # remove extra predictions.
     iterations = 3*len(sequences[seqName])
@@ -94,8 +96,6 @@ def trainObjects(objects, exp, numRepeatsPerObject, experimentIdOffset):
   each object.  We offset the id of each object to avoid confusion with
   any sequences that might have been learned.
   """
-  print "Training objects"
-
   # We want to traverse the features of each object randomly a few times before
   # moving on to the next object. Create the SDRs that we need for this.
   objectsToLearn = objects.provideObjectsToLearn()
@@ -110,23 +110,18 @@ def trainObjects(objects, exp, numRepeatsPerObject, experimentIdOffset):
 
 def inferSequence(exp, sequenceId, sequences):
   """Run inference on the given sequence."""
-
-  sequence = sequences[sequenceId]
-
-  # Create sequence of sensations for this sequence for one column.
-  objectSensations = {}
-  objectSensations[0] = []
-  objectCopy = [pair for pair in sequence]
-  for pair in objectCopy:
-    objectSensations[0].append(pair)
+  # Create the (loc, feat) pairs for this sequence for column 0.
+  objectSensations = {
+    0: [pair for pair in sequences[sequenceId]]
+  }
 
   inferConfig = {
+    "object": sequenceId,
     "numSteps": len(objectSensations[0]),
     "pairs": objectSensations,
   }
 
   inferenceSDRs = sequences.provideObjectToInfer(inferConfig)
-
   exp.infer(inferenceSDRs, objectName=sequenceId)
 
 
@@ -192,8 +187,10 @@ def runExperiment(args):
     externalInputSize=1024,
     numCorticalColumns=1,
     numFeatures=numFeatures,
+    numLocations=numLocations,
     seed=trialNum
   )
+  sequences.createRandomSequences(numSequences, seqLength)
 
   objects = createObjectMachine(
     machineType="simple",
@@ -202,6 +199,7 @@ def runExperiment(args):
     externalInputSize=1024,
     numCorticalColumns=1,
     numFeatures=numFeatures,
+    numLocations=numLocations,
     seed=trialNum
   )
 
@@ -209,12 +207,9 @@ def runExperiment(args):
   objects.locations = sequences.locations
   objects.features = sequences.features
 
-  sequences.createRandomSequences(numSequences, seqLength)
   objects.createRandomObjects(numObjects, numPoints=numPoints,
                                     numLocations=numLocations,
                                     numFeatures=numFeatures)
-
-  printDiagnostics(sequences, objects)
 
   #####################################################
   #
@@ -236,6 +231,8 @@ def runExperiment(args):
                  "basalPredictedSegmentDecrement": 0.0001},
   )
 
+  printDiagnostics(exp, sequences, objects, verbosity=0)
+
   # Train the network on all the sequences and then all the objects.
   trainSequences(sequences, exp)
   trainObjects(objects, exp, settlingTime, numSequences)
@@ -244,6 +241,7 @@ def runExperiment(args):
   #
   # Run inference
 
+  print "Running inference"
   if not figure6:
     # By default run inference on every sequence and object.
     for seqId in sequences:
@@ -268,12 +266,12 @@ def runExperiment(args):
   ##########################################################################
   #
   # Compute a number of overall inference statistics
-  infStats = exp.getInferenceStats()
   convergencePoint, sensorimotorAccuracy = exp.averageConvergencePoint(
     "L2 Representation", 30, 40, 1)
 
   sequenceAccuracy = exp.averageSequenceAccuracy(15, 25)
 
+  infStats = exp.getInferenceStats()
   predictedActive = numpy.zeros(len(infStats))
   predicted = numpy.zeros(len(infStats))
   predictedActiveL4 = numpy.zeros(len(infStats))
@@ -386,7 +384,7 @@ def runExperiment4A(dirName):
       "numSequences": 5,
       "seqLength": 10,
       "numFeatures": 10,
-      "trialNum": 4,
+      "trialNum": 0,
       "numObjects": 0,
       "numLocations": 100,
     }
@@ -423,7 +421,7 @@ def runExperiment4B(dirName):
     numObjects=[0],
     seqLength=10,
     nTrials=numTrials,
-    numWorkers=cpu_count(),
+    numWorkers=cpu_count()-1,
     resultsName=resultsName)
 
 
