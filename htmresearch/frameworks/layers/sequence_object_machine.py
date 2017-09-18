@@ -160,7 +160,8 @@ class SequenceObjectMachine(ObjectMachineBase):
       ]
       sdrPairs = self._getSDRPairs(
         pairs,
-        noise=inferenceConfig.get("noiseLevel", None)
+        noise=inferenceConfig.get("noiseLevel", None),
+        includeRandomLocation=True,
       )
       sensationSteps.append(sdrPairs)
 
@@ -209,8 +210,6 @@ class SequenceObjectMachine(ObjectMachineBase):
       if includeRandomLocation:
         locationID = random.randint(0, self.numLocations-1)
         location = self.locations[col][locationID]
-        # location = self._generatePattern(self.numInputBits,
-        #                                  self.externalInputSize)
 
       # generate union of locations if requested
       elif isinstance(locationID, tuple):

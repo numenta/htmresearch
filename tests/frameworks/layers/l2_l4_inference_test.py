@@ -678,7 +678,7 @@ class L4L2ExperimentTest(unittest.TestCase):
       "synPermProximalInc": 0.1,
       "synPermProximalDec": 0.001,
       "initialProximalPermanence": 0.6,
-      "minThresholdProximal": 6,
+      "minThresholdProximal": 5,
       "sampleSizeProximal": 10,
       "connectedPermanenceProximal": 0.5,
       "synPermDistalInc": 0.1,

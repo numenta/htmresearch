@@ -1,8 +1,5 @@
 
-# Code under development
-
-
-## Untangling Internally Generated Sequences From External Sequences
+## Untangling Sequences: Behavior vs. External Causes
 
 This directory contains Python scripts that run sensorimotor sequences
 in combination with pure temporal sequences.
@@ -34,3 +31,26 @@ input automatically separates and learns both types of input patterns.
 We review experimental data that suggests the upper layers of cortical
 regions contain the anatomical structure required to support this
 mechanism.
+
+## USAGE
+To run one of the experiments, say the one for Figure 4A, and generate
+the appropriate plot:
+
+    python combined_sequences.py 4A
+    python generate_plots.py
+
+To see the various options:
+
+    python combined_sequences.py -h
+    python generate_plots.py -h
+
+Note: the results may not be identical to the charts in the paper, due
+to possible changes in the order the random number generator is called
+and perhaps also algorithm changes.  They should be similar though, and
+conclusions and takeaways should be the same.
+
+Another note: a couple of the experiments, 5B in particular, take a long
+time to run (5B takes several hours).  The script will use all available
+cores on your machine, so beware.
+
+

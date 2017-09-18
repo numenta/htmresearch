@@ -200,6 +200,30 @@ class L4TMExperiment(L4L2Experiment):
     }
 
 
+  def averageSequenceAccuracy(self, minOverlap, maxOverlap):
+    """
+    For each object, decide whether the TM uniquely classified it by checking
+    that the number of predictedActive cells are in an acceptable range.
+    """
+    numCorrect = 0.0
+    numStats = 0.0
+    prefix = "TM PredictedActive"
+
+    # For each object
+    for stats in self.statistics:
+
+      # Keep running total of how often the number of predictedActive cells are
+      # in the range.
+      for key in stats.iterkeys():
+        if prefix in key:
+          for numCells in stats[key]:
+            numStats += 1.0
+            if numCells in range(minOverlap, maxOverlap + 1):
+              numCorrect += 1.0
+
+    return numCorrect / numStats
+
+
   def _unsetLearningMode(self):
     """
     Unsets the learning mode, to start inference.

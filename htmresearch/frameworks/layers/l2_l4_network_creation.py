@@ -277,7 +277,7 @@ def createL4L2Column(network, networkConfig, suffix=""):
                destInput="feedforwardGrowthCandidates")
 
   # Link L2 feedback to L4
-  if networkConfig["enableFeedback"]:
+  if networkConfig.get("enableFeedback", True):
     network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
                  srcOutput="feedForwardOutput", destInput="apicalInput",
                  propagationDelay=1)

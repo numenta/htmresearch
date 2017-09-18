@@ -64,7 +64,7 @@ class SimpleObjectMachine(ObjectMachineBase):
     @param   numLocations (int)
              Number of location SDRs to generate per cortical column. There is
              typically no need to not use the default value, unless the user
-             knows he will use more than 400 patterns.
+             knows he will use more than 10000 patterns.
 
     @param   numFeatures (int)
              Number of feature SDRs to generate per cortical column. There is
@@ -195,23 +195,24 @@ class SimpleObjectMachine(ObjectMachineBase):
     If numLocations and numFeatures and not specified, they will be set to the
     desired number of points.
     """
-    if numLocations is None:
-      numLocations = numPoints
-    if numFeatures is None:
-      numFeatures = numPoints
+    if numObjects > 0:
+      if numLocations is None:
+        numLocations = numPoints
+      if numFeatures is None:
+        numFeatures = numPoints
 
-    assert(numPoints <= numLocations), ("Number of points in object cannot be "
-          "greater than number of locations")
+      assert(numPoints <= numLocations), ("Number of points in object cannot be "
+            "greater than number of locations")
 
-    locationArray = numpy.array(range(numLocations))
-    numpy.random.seed(self.seed)
-    for _ in xrange(numObjects):
-      # Permute the number of locations and select points from it
-      locationArray = numpy.random.permutation(locationArray)
-      self.addObject(
-        [(locationArray[p],
-          numpy.random.randint(0, numFeatures)) for p in xrange(numPoints)],
-      )
+      locationArray = numpy.array(range(numLocations))
+      numpy.random.seed(self.seed)
+      for _ in xrange(numObjects):
+        # Permute the number of locations and select points from it
+        locationArray = numpy.random.permutation(locationArray)
+        self.addObject(
+          [(locationArray[p],
+            numpy.random.randint(0, numFeatures)) for p in xrange(numPoints)],
+        )
 
 
   def _getSDRPairs(self,
