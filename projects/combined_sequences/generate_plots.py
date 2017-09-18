@@ -144,9 +144,6 @@ def plotAccuracyDuringSensorimotorInference(results, featureRange, objectRange,
 
   for i in range(len(featureRange)):
     f = featureRange[i]
-    print "features={} objectRange={} accuracy={}".format(
-      f,objectRange, accuracy[objectRange, f])
-    print "Totals=",totals[objectRange, f]
     legendList.append('Sequence layer, feature pool size: {}'.format(f))
     plt.plot(objectRange, accuracy[objectRange, f], color=colorList[i])
 
@@ -157,8 +154,6 @@ def plotAccuracyDuringSensorimotorInference(results, featureRange, objectRange,
   # format
   plt.legend(legendList, bbox_to_anchor=(0., 0.6, 1., .102), loc="right", prop={'size':10})
   plt.xlabel("Number of objects")
-  # plt.xticks(range(0,max(locationRange)+1,10))
-  # plt.yticks(range(0,int(accuracy.max())+2,10))
   plt.ylim(-10.0, 110.0)
   plt.ylabel(yaxis)
   plt.title(title)
@@ -196,7 +191,7 @@ def plotAccuracyDuringSequenceInference(results, locationRange, featureRange,
   # Create the plot.
   plt.figure()
   plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                          "plots", "sensorimotorAccuracy_by_sequence.pdf")
+                          "plots", "accuracy_during_sequence_inference.pdf")
 
   # Plot each curve
   legendList = []
@@ -204,9 +199,6 @@ def plotAccuracyDuringSequenceInference(results, locationRange, featureRange,
 
   for i in range(len(featureRange)):
     f = featureRange[i]
-    print "features={} locationRange={} accuracy={}".format(
-      f,locationRange, accuracy[f,locationRange]),
-    print totals[f,locationRange]
     legendList.append('Sensorimotor layer, feature pool size: {}'.format(f))
     plt.plot(locationRange, accuracy[f,locationRange],
              color=colorList[i])
@@ -235,27 +227,16 @@ if __name__ == "__main__":
 
   dirName = os.path.dirname(os.path.realpath(__file__))
 
-  parser = OptionParser("python %prog [option ...]")
-  parser.add_option("--fig4A",
-                    default=False, action="store_true", help="Plot Fig 4A.")
-  parser.add_option("--fig4B",
-                    default=False, action="store_true", help="Plot Fig 4B.")
-  parser.add_option("--fig5A",
-                    default=False, action="store_true", help="Plot Fig 5A.")
-  parser.add_option("--fig5B",
-                    default=False, action="store_true", help="Plot Fig 5B.")
-  parser.add_option("--fig6",
-                    default=False, action="store_true", help="Plot Fig 6.")
-
-  # Parse CLI arguments
+  parser = OptionParser("python %prog [-h]\n\n"
+          "Regenerate the plots for every figure, if the "
+          "appropriate pkl file exists.")
   options, args = parser.parse_args(sys.argv[1:])
-
 
   # Generate images similar to those used in the first plot for the section
   # "Simulations with Pure Temporal Sequences"
-  if options.fig4A:
-    resultsFilename = os.path.join(dirName, "pure_sequences_example.pkl")
-    with open(resultsFilename, "rb") as f:
+  resultsFig4A = os.path.join(dirName, "pure_sequences_example.pkl")
+  if os.path.exists(resultsFig4A):
+    with open(resultsFig4A, "rb") as f:
       results = cPickle.load(f)
 
     for trialNum, stat in enumerate(results["statistics"]):
@@ -273,18 +254,18 @@ if __name__ == "__main__":
         plotDir=os.path.join(os.path.dirname(os.path.realpath(__file__)),
                              "detailed_plots")
       )
-    print "Plots generated in 'detailed_plots'"
+    print "Plots for Fig 4A generated in 'detailed_plots'"
 
   # Generate the second plot for the section "Simulations with Pure
   # Temporal Sequences"
-  if options.fig4B:
+  resultsFig4B = os.path.join(dirName, "sequence_batch_results.pkl")
+  if os.path.exists(resultsFig4B):
     featureRange = [5, 10, 100]
     seqRange = [50]
     locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
                      1000, 1100, 1200, 1300, 1400, 1500, 1600]
-    resultsName = os.path.join(dirName, "sequence_batch_results.pkl")
     # Analyze results
-    with open(resultsName, "rb") as f:
+    with open(resultsFig4B, "rb") as f:
       results = cPickle.load(f)
 
     plotAccuracyDuringSequenceInference(
@@ -292,13 +273,13 @@ if __name__ == "__main__":
       title="Relative performance of layers while inferring temporal sequences",
       yaxis="Accuracy (%)")
 
-    print "Plots generated in 'plots'"
+    print "Plots for Fig 4B generated in 'plots'"
 
   # Generate images similar to the first plot for the section "Simulations with
   # Sensorimotor Sequences"
-  if options.fig5A:
-    resultsFilename = os.path.join(dirName, "sensorimotor_sequence_example.pkl")
-    with open(resultsFilename, "rb") as f:
+  resultsFig5A = os.path.join(dirName, "sensorimotor_sequence_example.pkl")
+  if os.path.exists(resultsFig5A):
+    with open(resultsFig5A, "rb") as f:
       results = cPickle.load(f)
 
     for trialNum, stat in enumerate(results["statistics"]):
@@ -318,19 +299,19 @@ if __name__ == "__main__":
                              "detailed_plots")
       )
 
-    print "Plots generated in 'detailed_plots'"
+    print "Plots for Fig 5A generated in 'detailed_plots'"
 
 
   # Generate the second plot for the section "Simulations with Sensorimotor
   # Sequences"
-  if options.fig5B:
+  resultsFig5B = os.path.join(dirName, "sensorimotor_batch_results.pkl")
+  if os.path.exists(resultsFig5B):
     # These ranges must equal or be a subset of the actual ranges that were run
     featureRange = [5, 10, 50]
     objectRange = [2, 5, 10, 20, 30, 40, 50, 70]
-    resultsName = os.path.join(dirName, "sensorimotor_batch_results.pkl")
 
     # Analyze results
-    with open(resultsName, "rb") as f:
+    with open(resultsFig5B, "rb") as f:
       results = cPickle.load(f)
 
     plotAccuracyDuringSensorimotorInference(
@@ -338,15 +319,15 @@ if __name__ == "__main__":
       title="Relative performance of layers during sensorimotor inference",
       yaxis="Accuracy (%)")
 
-    print "Plots generated in 'plots'"
+    print "Plots for Fig 5B generated in 'plots'"
 
 
   # Generate a plot similar to one in the section "Simulations with Combined
   # Sequences".  Note that the dashed vertical lines and labels were added in
   # manually.
-  if options.fig6:
-    resultsFilename = os.path.join(dirName, "combined_results.pkl")
-    with open(resultsFilename, "rb") as f:
+  resultsFig6 = os.path.join(dirName, "combined_results.pkl")
+  if os.path.exists(resultsFig6):
+    with open(resultsFig6, "rb") as f:
       results = cPickle.load(f)
 
     plotMultipleInferenceRun(
@@ -360,4 +341,4 @@ if __name__ == "__main__":
       plotDir=os.path.join(dirName, "plots")
     )
 
-    print "Plots generated in 'plots'"
+    print "Plots for Fig 6 generated in 'plots'"

@@ -37,7 +37,7 @@ To run one of the experiments, say the one for Figure 4A, and generate
 the appropriate plot:
 
     python combined_sequences.py 4A
-    python generate_plots.py --fig4A
+    python generate_plots.py
 
 To see the various options:
 
