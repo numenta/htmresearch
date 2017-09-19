@@ -305,47 +305,47 @@ def runExp(noiseProba, numSequences, nbSeeds, noiseType, sequenceLen, sharedRang
           overlapsNoFBL4.append( [len(responsesNoNoise[numseq]['L4Responses'][x].intersection(responsesNoFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
           overlapsFBL4Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L4Responses'][x].intersection(responsesFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
           overlapsNoFBL4Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L4Responses'][x].intersection(responsesNoFB[numseq]['L4Responses'][x])) for x in range(seqlen)] )
-          diffsFBL4Pred.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesFB[numseq]['L4Predictive'][x])) for x in range(seqlen)] )
-          diffsNoFBL4Pred.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoFB[numseq]['L4Predictive'][x])) for x in range(seqlen)] )
+          diffsFBL4Pred.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesFB[numseq]['L4Predicted'][x])) for x in range(seqlen)] )
+          diffsNoFBL4Pred.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoFB[numseq]['L4Predicted'][x])) for x in range(seqlen)] )
 
           diffsNoAT.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoAT[numseq]['L4Responses'][x])) for x in range(seqlen)] )
           overlapsNoATL2.append( [len(responsesNoNoise[numseq]['L2Responses'][x].intersection(responsesNoAT[numseq]['L2Responses'][x])) for x in range(seqlen)] )
           overlapsNoATL2Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L2Responses'][x].intersection(responsesNoAT[numseq]['L2Responses'][x])) for x in range(seqlen)] )
           overlapsNoATL4.append( [len(responsesNoNoise[numseq]['L4Responses'][x].intersection(responsesNoAT[numseq]['L4Responses'][x])) for x in range(seqlen)] )
           overlapsNoATL4Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L4Responses'][x].intersection(responsesNoAT[numseq]['L4Responses'][x])) for x in range(seqlen)] )
-          diffsNoATL4Pred.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoAT[numseq]['L4Predictive'][x])) for x in range(seqlen)] )
+          diffsNoATL4Pred.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoAT[numseq]['L4Predicted'][x])) for x in range(seqlen)] )
 
           diffsNoAM.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoAM[numseq]['L4Responses'][x])) for x in range(seqlen)] )
           overlapsNoAML2.append( [len(responsesNoNoise[numseq]['L2Responses'][x].intersection(responsesNoAM[numseq]['L2Responses'][x])) for x in range(seqlen)] )
           overlapsNoAML2Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L2Responses'][x].intersection(responsesNoAM[numseq]['L2Responses'][x])) for x in range(seqlen)] )
           overlapsNoAML4.append( [len(responsesNoNoise[numseq]['L4Responses'][x].intersection(responsesNoAM[numseq]['L4Responses'][x])) for x in range(seqlen)] )
           overlapsNoAML4Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L4Responses'][x].intersection(responsesNoAM[numseq]['L4Responses'][x])) for x in range(seqlen)] )
-          diffsNoAML4Pred.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoAM[numseq]['L4Predictive'][x])) for x in range(seqlen)] )
+          diffsNoAML4Pred.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoAM[numseq]['L4Predicted'][x])) for x in range(seqlen)] )
 
           diffsNoIN.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoIN[numseq]['L4Responses'][x])) for x in range(seqlen)] )
           overlapsNoINL2.append( [len(responsesNoNoise[numseq]['L2Responses'][x].intersection(responsesNoIN[numseq]['L2Responses'][x])) for x in range(seqlen)] )
           overlapsNoINL2Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L2Responses'][x].intersection(responsesNoIN[numseq]['L2Responses'][x])) for x in range(seqlen)] )
           overlapsNoINL4.append( [len(responsesNoNoise[numseq]['L4Responses'][x].intersection(responsesNoIN[numseq]['L4Responses'][x])) for x in range(seqlen)] )
           overlapsNoINL4Next.append( [len(responsesNoNoise[(numseq + 1) % numSequences]['L4Responses'][x].intersection(responsesNoIN[numseq]['L4Responses'][x])) for x in range(seqlen)] )
-          diffsNoINL4Pred.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoIN[numseq]['L4Predictive'][x])) for x in range(seqlen)] )
+          diffsNoINL4Pred.append( [len(responsesNoNoise[numseq]['L4Responses'][x].symmetric_difference(responsesNoIN[numseq]['L4Predicted'][x])) for x in range(seqlen)] )
 
 
           cpcfb = []; cpcnofb=[]; cpcnoat=[]; cpcnoam=[]; cpcnoin=[];
           for x in range(seqlen):
               z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
-              z2 = numpy.zeros(sdrlen+1); z2[list(responsesFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+              z2 = numpy.zeros(sdrlen+1); z2[list(responsesFB[numseq]['L4Predicted'][x])] = 1; z2[-1] = 1
               cpcfb.append(numpy.corrcoef(z1, z2)[0,1])
               z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
-              z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoFB[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+              z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoFB[numseq]['L4Predicted'][x])] = 1; z2[-1] = 1
               cpcnofb.append(numpy.corrcoef(z1, z2)[0,1])
               z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
-              z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoAT[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+              z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoAT[numseq]['L4Predicted'][x])] = 1; z2[-1] = 1
               cpcnoat.append(numpy.corrcoef(z1, z2)[0,1])
               z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
-              z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoAM[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+              z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoAM[numseq]['L4Predicted'][x])] = 1; z2[-1] = 1
               cpcnoam.append(numpy.corrcoef(z1, z2)[0,1])
               z1 = numpy.zeros(sdrlen+1); z1[list(responsesNoNoise[numseq]['L4Responses'][x])] = 1; z1[-1] = 1
-              z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoIN[numseq]['L4Predictive'][x])] = 1; z2[-1] = 1
+              z2 = numpy.zeros(sdrlen+1); z2[list(responsesNoIN[numseq]['L4Predicted'][x])] = 1; z2[-1] = 1
               cpcnoin.append(numpy.corrcoef(z1, z2)[0,1])
 
           # Note that the correlations are appended across all seeds and sequences
@@ -368,12 +368,12 @@ def runExp(noiseProba, numSequences, nbSeeds, noiseType, sequenceLen, sharedRang
           print "Size of L4 responses (NoAM):", [len(responsesNoAM[numseq]['L4Responses'][x]) for x in range(seqlen)]
           print "Size of L4 responses (NoIN):", [len(responsesNoIN[numseq]['L4Responses'][x]) for x in range(seqlen)]
           print "Size of L4 responses (NoNoise):", [len(responsesNoNoise[numseq]['L4Responses'][x]) for x in range(seqlen)]
-          print "Size of L4 predictions (FB):", [len(responsesFB[numseq]['L4Predictive'][x]) for x in range(seqlen)]
-          print "Size of L4 predictions (NoFB):", [len(responsesNoFB[numseq]['L4Predictive'][x]) for x in range(seqlen)]
-          print "Size of L4 predictions (NoAT):", [len(responsesNoAT[numseq]['L4Predictive'][x]) for x in range(seqlen)]
-          print "Size of L4 predictions (NoAM):", [len(responsesNoAM[numseq]['L4Predictive'][x]) for x in range(seqlen)]
-          print "Size of L4 predictions (NoIN):", [len(responsesNoIN[numseq]['L4Predictive'][x]) for x in range(seqlen)]
-          print "Size of L4 predictions (NoNoise):", [len(responsesNoNoise[numseq]['L4Predictive'][x]) for x in range(seqlen)]
+          print "Size of L4 predictions (FB):", [len(responsesFB[numseq]['L4Predicted'][x]) for x in range(seqlen)]
+          print "Size of L4 predictions (NoFB):", [len(responsesNoFB[numseq]['L4Predicted'][x]) for x in range(seqlen)]
+          print "Size of L4 predictions (NoAT):", [len(responsesNoAT[numseq]['L4Predicted'][x]) for x in range(seqlen)]
+          print "Size of L4 predictions (NoAM):", [len(responsesNoAM[numseq]['L4Predicted'][x]) for x in range(seqlen)]
+          print "Size of L4 predictions (NoIN):", [len(responsesNoIN[numseq]['L4Predicted'][x]) for x in range(seqlen)]
+          print "Size of L4 predictions (NoNoise):", [len(responsesNoNoise[numseq]['L4Predicted'][x]) for x in range(seqlen)]
           print "L2 overlap with current (FB): ", overlapsFBL2[-1]
           print "L4 overlap with current (FB): ", overlapsFBL4[-1]
           print "L4 overlap with current (NoFB): ", overlapsNoFBL4[-1]

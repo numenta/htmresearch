@@ -28,7 +28,7 @@ import unittest
 import numpy as np
 
 from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
-  ApicalTiebreakTemporalMemory)
+  ApicalTiebreakSequenceMemory)
 from htmresearch.support.shared_tests.sequence_memory_test_base import (
   SequenceMemoryTestBase)
 
@@ -56,20 +56,16 @@ class ApicalTiebreakTM_SequenceMemoryTests(SequenceMemoryTestBase,
       "basalPredictedSegmentDecrement": predictedSegmentDecrement,
       "activationThreshold": activationThreshold,
       "seed": seed,
-      "basalInputSize": columnCount*cellsPerColumn,
       "apicalInputSize": 0,
     }
 
-    self.tm = ApicalTiebreakTemporalMemory(**params)
+    self.tm = ApicalTiebreakSequenceMemory(**params)
 
 
   def compute(self, activeColumns, learn):
     activeColumns = np.array(sorted(activeColumns), dtype="uint32")
 
-    self.tm.compute(activeColumns,
-                    basalInput=self.tm.getActiveCells(),
-                    basalGrowthCandidates=self.tm.getWinnerCells(),
-                    learn=learn)
+    self.tm.compute(activeColumns, learn=learn)
 
 
   def reset(self):

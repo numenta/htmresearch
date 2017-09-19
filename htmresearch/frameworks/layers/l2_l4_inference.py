@@ -86,6 +86,7 @@ import os
 import random
 import matplotlib.pyplot as plt
 import numpy as np
+from math import ceil
 from tabulate import tabulate
 
 from nupic.bindings.math import SparseMatrix
@@ -136,7 +137,7 @@ class L4L2Experiment(object):
                externalInputSize=1024,
                numExternalInputBits=20,
                L2Overrides=None,
-               L4RegionType="py.ExtendedTMRegion",
+               L4RegionType="py.ApicalTMPairRegion",
                networkType = "MultipleL4L2Columns",
                longDistanceConnections = 0,
                maxConnectionDistance = 1,
@@ -149,7 +150,8 @@ class L4L2Experiment(object):
                lateralSPOverrides=None,
                enableFeedForwardSP=False,
                feedForwardSPOverrides=None,
-               objectNamesAreIndices=False
+               objectNamesAreIndices=False,
+               enableFeedback=True
                ):
     """
     Creates the network.
@@ -223,6 +225,9 @@ class L4L2Experiment(object):
              integers. If False, object names can be strings, and indices will
              be assigned to each object name.
 
+    @param   enableFeedback (bool)
+             If True, enable feedback between L2 and L4
+
     """
     # Handle logging - this has to be done first
     self.logCalls = logCalls
@@ -244,13 +249,13 @@ class L4L2Experiment(object):
     # update parameters with overrides
     self.config = {
       "networkType": networkType,
-      "longDistanceConnections" : longDistanceConnections,
+      "longDistanceConnections": longDistanceConnections,
+      "enableFeedback": enableFeedback,
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
       "L4RegionType": L4RegionType,
-      "L4Params": self.getDefaultL4Params(L4RegionType, inputSize,
-                                          numExternalInputBits),
+      "L4Params": self.getDefaultL4Params(inputSize, numExternalInputBits),
       "L2Params": self.getDefaultL2Params(inputSize, numInputBits),
     }
 
@@ -586,6 +591,54 @@ class L4L2Experiment(object):
       return self.statistics[experimentID]
 
 
+  def averageConvergencePoint(self, prefix, minOverlap, maxOverlap,
+                              settlingTime=1):
+
+    """
+    For each object, compute the convergence time - the first point when all
+    L2 columns have converged.
+
+    Return the average convergence time and accuracy across all objects.
+
+    Using inference statistics for a bunch of runs, locate all traces with the
+    given prefix. For each trace locate the iteration where it finally settles
+    on targetValue. Return the average settling iteration and accuracy across
+    all runs.
+
+    :param prefix: Use this prefix to filter relevant stats.
+    :param minOverlap: Min target overlap
+    :param maxOverlap: Max target overlap
+    :param settlingTime: Setting time between iteration. Default 1
+    :return: Average settling iteration and accuracy across all runs
+    """
+    convergenceSum = 0.0
+    numCorrect = 0.0
+    inferenceLength = 1000000
+
+    # For each object
+    for stats in self.statistics:
+
+      # For each L2 column locate convergence time
+      convergencePoint = 0.0
+      for key in stats.iterkeys():
+        if prefix in key:
+          inferenceLength = len(stats[key])
+          columnConvergence = L4L2Experiment._locateConvergencePoint(
+            stats[key], minOverlap, maxOverlap)
+
+          # Ensure this column has converged by the last iteration
+          # assert(columnConvergence <= len(stats[key]))
+
+          convergencePoint = max(convergencePoint, columnConvergence)
+
+      convergenceSum += ceil(float(convergencePoint) / settlingTime)
+
+      if ceil(float(convergencePoint) / settlingTime) <= inferenceLength:
+        numCorrect += 1
+
+    return convergenceSum / len(self.statistics), numCorrect / len(self.statistics)
+
+
   def printProfile(self, reset=False):
     """
     Prints profiling information.
@@ -655,10 +708,18 @@ class L4L2Experiment(object):
 
   def getL4PredictedCells(self):
     """
-    Returns the cells in L4 that were predicted at the beginning of the last
-    call to 'compute'.
+    Returns the cells in L4 that were predicted by the location input.
     """
     return [set(column.getOutputData("predictedCells").nonzero()[0])
+            for column in self.L4Regions]
+
+
+  def getL4PredictedActiveCells(self):
+    """
+    Returns the cells in L4 that were predicted by the location signal
+    and are currently active.  Does not consider apical input.
+    """
+    return [set(column.getOutputData("predictedActiveCells").nonzero()[0])
             for column in self.L4Regions]
 
 
@@ -732,7 +793,7 @@ class L4L2Experiment(object):
 
     return results
 
-  def getDefaultL4Params(self, L4RegionType, inputSize, numInputBits):
+  def getDefaultL4Params(self, inputSize, numInputBits):
     """
     Returns a good default set of parameters to use in the L4 region.
     """
@@ -748,42 +809,23 @@ class L4L2Experiment(object):
       activationThreshold = int(numInputBits * .6)
       minThreshold = activationThreshold
 
-    if L4RegionType == "py.ExtendedTMRegion":
-      return {
-        "columnCount": inputSize,
-        "cellsPerColumn": 16,
-        "learn": True,
-        "learnOnOneCell": False,
-        "initialPermanence": 0.51,
-        "connectedPermanence": 0.6,
-        "permanenceIncrement": 0.1,
-        "permanenceDecrement": 0.02,
-        "minThreshold": minThreshold,
-        "predictedSegmentDecrement": 0.0,
-        "activationThreshold": activationThreshold,
-        "sampleSize": sampleSize,
-        "implementation": "etm",
-        "seed": self.seed
-      }
-    elif L4RegionType == "py.ApicalTMRegion":
-      return {
-        "columnCount": inputSize,
-        "cellsPerColumn": 16,
-        "learn": True,
-        "initialPermanence": 0.51,
-        "connectedPermanence": 0.6,
-        "permanenceIncrement": 0.1,
-        "permanenceDecrement": 0.02,
-        "minThreshold": minThreshold,
-        "basalPredictedSegmentDecrement": 0.0,
-        "apicalPredictedSegmentDecrement": 0.0,
-        "activationThreshold": activationThreshold,
-        "sampleSize": sampleSize,
-        "implementation": "ApicalTiebreak",
-        "seed": self.seed
-      }
-    else:
-      raise ValueError("Unknown L4RegionType: %s" % L4RegionType)
+    return {
+      "columnCount": inputSize,
+      "cellsPerColumn": 16,
+      "learn": True,
+      "initialPermanence": 0.51,
+      "connectedPermanence": 0.6,
+      "permanenceIncrement": 0.1,
+      "permanenceDecrement": 0.02,
+      "minThreshold": minThreshold,
+      "basalPredictedSegmentDecrement": 0.0,
+      "apicalPredictedSegmentDecrement": 0.0,
+      "activationThreshold": activationThreshold,
+      "reducedBasalThreshold": int(activationThreshold*0.6),
+      "sampleSize": sampleSize,
+      "implementation": "ApicalTiebreak",
+      "seed": self.seed
+    }
 
 
   def getDefaultL2Params(self, inputSize, numInputBits):
@@ -792,7 +834,7 @@ class L4L2Experiment(object):
     """
     if numInputBits == 20:
       sampleSizeProximal = 10
-      minThresholdProximal = 6
+      minThresholdProximal = 5
     elif numInputBits == 10:
       sampleSizeProximal = 6
       minThresholdProximal = 3
@@ -852,6 +894,23 @@ class L4L2Experiment(object):
       "synPermInactiveDec": 0.0005,
       "boostStrength": 0.0,
     }
+
+  @staticmethod
+  def _locateConvergencePoint(stats, minOverlap, maxOverlap):
+    """
+    Walk backwards through stats until you locate the first point that diverges
+    from target overlap values.  We need this to handle cases where it might get
+    to target values, diverge, and then get back again.  We want the last
+    convergence point.
+    """
+    for i, v in enumerate(stats[::-1]):
+      if not (v >= minOverlap and v <= maxOverlap):
+        return len(stats) - i + 1
+
+    # Never differs - converged in one iteration
+    return 1
+
+
 
 
   def _unsetLearningMode(self):

@@ -67,7 +67,7 @@ negLLLSTM6000Perturb = expResultPerturb.error
 truthLSTM6000Perturb = expResultPerturb.truth
 
 expResultPerturb = ExperimentResult(
-  'results/nyc_taxi_experiment_continuous_likelihood_perturb_online/learning_window'+str(100.0)+'/')
+  'results/nyc_taxi_experiment_continuous_likelihood_perturb_online/learning_window'+str(200.0)+'/')
 negLLLSTMonlinePerturb = expResultPerturb.error
 truth_LSTMonline_perturb = expResultPerturb.truth
 

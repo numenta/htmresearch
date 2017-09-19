@@ -24,7 +24,7 @@ http://journal.frontiersin.org/article/10.3389/fncir.2016.00023/full
 SDR Properties Calculations.xlsx
 ================================
 
-This excel file contains the formulas in the SDR papers. You can plug in 
+This excel file contains the formulas in the SDR papers. You can plug in
 different numbers and it tells you the result of various formulas.  Excel  uses
 very high precision math, so you can compute the numbers for any  reasonable set
 of parameters. (A much wider range than you can by simulations.) This
@@ -114,17 +114,96 @@ tolerance.
 ![Effect of n](https://github.com/numenta/nupic.research/blob/31f45e19903bacff308b36e07609d25059c63de0/projects/sdr_paper/images/effect_of_n.png)
 
 
+Poirazi Neuron Model
+====================
+
+The poirazi_neuron_model directory contains experiment and plotting code for a
+number of the figures in the paper.  Each experiment script has a corresponding
+plotting script.  Experiment scripts contain information about what parameter
+settings should be used to replicate the results in the paper.
+Data must be manually imported into the plotting script, but
+the plotting scripts already contain the data used to generate the versions of
+the plots seen in the paper.
+
+Note that these scripts write the result of every trial to file separately if
+multiple cores are being used.  The data must then be merged before it can be
+plotted.  In general, this is done by summing together the second and third
+columns of all rows with the same first column.
+
+Experiments
+===========
+
+run_correlation_false_positive_experiment: corresponds to false positive rate
+vs data correlation figure.
+Uses the data generation code in
+htmresearch/frameworks/poirazi_neuron_model/data_tools.py to generate correlated
+data, and then measures the ability of a Poirazi-style neuron to correctly
+distinguish learned and unlearned patterns as a function of correlation.
+
+run_dim_classification_experiment: corresponds to binary classification accuracy
+vs number of cells figure.
+Uses two Poirazi-style neurons to categorize data.  Computes accuracy as a
+function of dimension, given a certain number of bits active.
+
+run_HTM_classification_experiment: replicates the original experiment run by
+Poirazi & Mel, with 50 cells competing to classify SDRs drawn from a
+non-Gaussian distribution.  This experiment has no corresponding plot; we
+directly report performance in the text.  Note that this employs an HTM-style
+learning rule which is entirely separate from that used by Poirazi & Mel.
+
+run_false_positive_experiment: corresponds to the false positive probability vs
+segment size figure.
+Uses a single Poirazi-style neuron to recognize data, and computes accuracy as
+a function of segment length, given a certain SDR size and number of active bits
+in the SDR.  Note that we only use a single neuron, and use a hard threshold on
+each dendrite.  A false positive occurs if a dendrite has more active bits than
+the threshold.
+
+run_noise_experiment: corresponds to the frequence of false negative errors vs.
+noise figure.  Uses a single Poirazi-style neuron to recognize noisy data.
+Computes the probability of a pattern not being correctly recognized as a
+function of noise level, given a certain dendrite activation threshold.
+
+TM Experiments
+==============
+
+A set of experiments using the HTM temporal memory to illustrate the properties
+of SDRs.  As before, each experiment script has a corresponding plotting script.
+Experiment scripts contain information about what parameters settings should be
+used to replicate the results in the paper.
+Data must be manually copied into the plotting script, but the scripts currently
+contain the data used to generate the figures in the paper.
+
+Experiments
+===========
+
+run_tm_dim_experiment: corresponds to the TM accuracy vs. sparsity figure.  Uses
+the TM to illustrate the importance of sparsity, by plotting the performance
+ability of the TM to correctly recall a sequence even when trained to recognize
+a very large number of sequences as a function of number of dimensions, with a
+given number of active input bits.
+
+run_tm_noise_experiment: corresponds to the sequence accuracy vs. noise figure.
+Uses the TM to illustrate the effect of noise on the TM, and demonstrates that
+even equations governing single SDRs can predict the performance of entire
+populations of neurons.
+
+run_tm_union_experiment: corresponds to the surprise vs. number of patterns in
+union figure.  Uses the TM to demonstrate that the union property of SDRs allows
+an unexpected transition to be recognized, even when a large number of possible
+transitions are all simultaneously expected.
+
+
 Note on using NuPIC Core
 ========================
 
-The executable `sdr_calculations` is a C++ program that is a client of 
+The executable `sdr_calculations` is a C++ program that is a client of
 `nupic.core`. As such it is an example of how to write C++ programs that use
 that repository as an external library. I have tried to make it as simple as
-possible. 
+possible.
 
 There is a single, very simplistic, Makefile that shows how to compile and link
 such code.  The Makefile assumes the environment variable `NUPIC_CORE` is
-already setup to point to the root of your `nupic.core` repository.  It 
-assumes you have followed the `nupic.core` build instructions and have a 
-proper build in place. 
-
+already setup to point to the root of your `nupic.core` repository.  It
+assumes you have followed the `nupic.core` build instructions and have a
+proper build in place.

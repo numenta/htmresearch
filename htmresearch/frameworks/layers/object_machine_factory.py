@@ -29,6 +29,9 @@ from htmresearch.frameworks.layers.simple_object_machine import (
 from htmresearch.frameworks.layers.continuous_location_object_machine import (
   ContinuousLocationObjectMachine
 )
+from htmresearch.frameworks.layers.sequence_object_machine import (
+  SequenceObjectMachine
+)
 
 
 
@@ -39,7 +42,7 @@ class ObjectMachineTypes(object):
 
   simple = SimpleObjectMachine
   continuous = ContinuousLocationObjectMachine
-
+  sequence = SequenceObjectMachine
 
   @classmethod
   def getTypes(cls):

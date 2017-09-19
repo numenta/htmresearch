@@ -64,7 +64,7 @@ class FaultySpatialPooler(SpatialPooler):
     if self.zombiePermutation is None:
       self.zombiePermutation = numpy.random.permutation(numColumns)
 
-    self.numDead = round(percent * numColumns)
+    self.numDead = int(round(percent * numColumns))
 
     if self.numDead > 0:
       self.deadCols = self.zombiePermutation[0:self.numDead]

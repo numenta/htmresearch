@@ -49,6 +49,7 @@ class FeedbackExperiment(object):
                L2Overrides=None,
                L4Overrides=None,
                numLearningPasses=4,
+               onlineLearning=False,
                seed=42):
     """
     Creates the network and initialize the experiment.
@@ -79,12 +80,11 @@ class FeedbackExperiment(object):
     self.numColumns = numCorticalColumns
     self.inputSize = inputSize
     self.numInputBits = numInputBits
+    self.onlineLearning = onlineLearning
 
 
     # Select the type of region to use for layer 4.
-    # ExtendedTMRegion is faster, but cannot use the ApicalModulation implementation.
-    # self.L4RegionType = "py.ExtendedTMRegion"
-    self.L4RegionType = "py.ApicalTMRegion"
+    self.L4RegionType = "py.ApicalTMSequenceRegion"
 
 
 
@@ -135,8 +135,6 @@ class FeedbackExperiment(object):
 
 
 
-
-
   def myCreateNetwork(self, networkConfig):
 
         suffix = '_0'
@@ -147,15 +145,6 @@ class FeedbackExperiment(object):
         L2ColumnName = "L2Column" + suffix
 
         L4Params = copy.deepcopy(networkConfig["L4Params"])
-
-        # The different assumptions for ApicalTMRegion and ExtendedTMRegion....
-        if networkConfig["L4RegionType"] == "py.ApicalTMRegion":
-            L4Params["basalInputWidth"] = networkConfig["L4Params"]["columnCount"] * networkConfig["L4Params"]["cellsPerColumn"]
-        elif networkConfig["L4RegionType"] == "py.ExtendedTMRegion":
-            L4Params["basalInputWidth"] = networkConfig["externalInputSize"]
-        else:
-            raise Exception("Invalid L4 Region Type!")
-
         L4Params["apicalInputWidth"] = networkConfig["L2Params"]["cellCount"]
 
         network.addRegion(
@@ -183,7 +172,7 @@ class FeedbackExperiment(object):
         network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
                      srcOutput="activeCells", destInput="feedforwardInput")
         network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
-                     srcOutput="predictedActiveCells",
+                     srcOutput="winnerCells",
                      destInput="feedforwardGrowthCandidates")
 
         # Link L2 feedback to L4
@@ -191,22 +180,15 @@ class FeedbackExperiment(object):
                      srcOutput="feedForwardOutput", destInput="apicalInput",
                      propagationDelay=1)
 
-        # # ONLY for ApicalTM: link the region to itself laterally (basally)
-        if networkConfig["L4RegionType"] == "py.ApicalTMRegion":
-            network.link(L4ColumnName, L4ColumnName, "UniformLink", "",
-                     srcOutput="activeCells", destInput="basalInput",
-                     propagationDelay=1)
-            network.link(L4ColumnName, L4ColumnName, "UniformLink", "", srcOutput="winnerCells", destInput="basalGrowthCandidates",propagationDelay=1)
-
-
-        # Link reset output to L2. For L4, an empty input is sufficient for a reset.
+        # Link reset output to L2 and L4.
         network.link(sensorInputName, L2ColumnName, "UniformLink", "",
+                     srcOutput="resetOut", destInput="resetIn")
+        network.link(sensorInputName, L4ColumnName, "UniformLink", "",
                      srcOutput="resetOut", destInput="resetIn")
 
         #enableProfiling(network)
         for region in network.regions.values():
             region.enableProfiling()
-
         return network
 
 
@@ -247,55 +229,66 @@ class FeedbackExperiment(object):
 
     # print "1) Train L4 sequence memory"
 
+    # We're now using online learning, so both layers should be trying to learn
+    # at all times.
 
-    self._disableL2()
-    self._setLearningMode(l4Learning=True, l2Learning=False)
-    for sequenceNum, sequence in enumerate(sequences):
-
-      # keep track of numbers of iterations to run for this sequence
-      iterations = 0
-
-      # Run multiple passes through each sequence
+    sequence_order = range(len(sequences))
+    if self.config["L2Params"]["onlineLearning"]:
+      # Train L2 and L4
+      self._setLearningMode(l4Learning=True, l2Learning=True)
       for _ in xrange(self.numLearningPoints):
+        random.shuffle(sequence_order)
+        for i in sequence_order:
+          sequence = sequences[i]
+          for s in sequence:
+            self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
+            self.network.run(1)
 
-        for s in sequence:
-          self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
-          iterations += 1
+          # This is equivalent to, and faster than, giving the network no input
+          # for a period of time.
+          self.sendReset()
+    else:
+      # Train L4
+      self._setLearningMode(l4Learning=True, l2Learning=False)
+      for i in sequence_order:
+        for _ in xrange(self.numLearningPoints):
+          sequence = sequences[i]
+          for s in sequence:
+            self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
+            self.network.run(1)
 
-        # Reset signal
-        self.sensorInputs[0].addDataToQueue([], 1, 0)
-        iterations += 1
+          # This is equivalent to, and faster than, giving the network no input
+          # for a period of time.
+          self.sendReset()
 
-      if iterations > 0:
-        self.network.run(iterations)
-
-    # print "2) Train L2"
-    self._enableL2()
-    self._setLearningMode(l4Learning=False, l2Learning=True)
-    for sequenceNum, sequence in enumerate(sequences):
-      for s in sequence:
-        self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
-        self.network.run(1)
-      self.sendReset()
-
-    # print "3) Train L4 apical segments"
-    self._setLearningMode(l4Learning=True, l2Learning=False)
-    for p in range(5):
-      for sequenceNum, sequence in enumerate(sequences):
+      # Train L2
+      self._setLearningMode(l4Learning=False, l2Learning=True)
+      for i in sequence_order:
+        sequence = sequences[i]
         for s in sequence:
           self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
           self.network.run(1)
         self.sendReset()
 
-    # Re-run the sequences once each and store L2 representations for each
+      # Train L4 apical segments
+      self._setLearningMode(l4Learning=True, l2Learning=False)
+      for _ in xrange(5):
+        for i in sequence_order:
+          sequence = sequences[i]
+          for s in sequence:
+            self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
+            self.network.run(1)
+          self.sendReset()
+
     self._setLearningMode(l4Learning=False, l2Learning=False)
+    self.sendReset()
     for sequenceNum, sequence in enumerate(sequences):
       for s in sequence:
         self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
         self.network.run(1)
       self.objectL2Representations[sequenceNum] = self.getL2Representations()
       self.sendReset()
-
+    return
 
   def infer(self, sequence, reset=True, sequenceNumber=None, burnIn=2,
             enableFeedback=True, apicalTiebreak=True,
@@ -328,6 +321,7 @@ class FeedbackExperiment(object):
     """
     if enableFeedback is False:
       self._disableL2()
+      self.network.regions["L4Column_0"].getSelf()._tm.disableApicalDependence = True
     else:
       self._enableL2()
 
@@ -335,8 +329,7 @@ class FeedbackExperiment(object):
 
     if sequenceNumber is not None:
       if sequenceNumber not in self.objectL2Representations:
-        raise ValueError("The provided sequence was not given during"
-                         " learning")
+        raise ValueError("The provided sequence was not given during learning")
 
 
     self.network.regions["L4Column_0"].getSelf()._tm.setUseApicalModulationBasalThreshold(apicalModulationBasalThreshold)
@@ -345,7 +338,7 @@ class FeedbackExperiment(object):
 
     L2Responses=[]
     L4Responses=[]
-    L4Predictive=[]
+    L4Predicted=[]
     activityTrace = numpy.zeros(len(sequence))
 
     totalActiveCells = 0
@@ -356,7 +349,7 @@ class FeedbackExperiment(object):
 
       activityTrace[i] = len(self.getL4Representations()[0])
       L4Responses.append(self.getL4Representations()[0])
-      L4Predictive.append(self.getL4PredictiveCells()[0])
+      L4Predicted.append(self.getL4PredictedCells()[0])
       L2Responses.append(self.getL2Representations()[0])
       if i >= burnIn:
         totalActiveCells += len(self.getL4Representations()[0])
@@ -371,7 +364,7 @@ class FeedbackExperiment(object):
     responses = {
             "L2Responses": L2Responses,
             "L4Responses": L4Responses,
-            "L4Predictive": L4Predictive
+            "L4Predicted": L4Predicted
             }
     return avgActiveCells,avgPredictedActiveCells,activityTrace, responses
 
@@ -392,18 +385,12 @@ class FeedbackExperiment(object):
     return [set(column._tm.getActiveCells()) for column in self.L4Columns]
 
 
-  def getL4PredictiveCells(self):
+  def getL4PredictedCells(self):
     """
-    Returns the predictive cells in L4.
+    Returns the predicted cells in L4.
     """
-    # ApicalTMRegion uses "getPredictedCells", while ExtendedTMRegion uses "getPredictiveCells".
-    #return [set(column._tm.getPredictiveCells()) for column in self.L4Columns]
-    if self.L4RegionType == "py.ApicalTMRegion":
-      return [set(column._tm.getPredictedCells()) for column in self.L4Columns]
-    elif self.L4RegionType == "py.ExtendedTMRegion":
-      return [set(column._tm.getPredictiveCells()) for column in self.L4Columns]
-    else:
-      raise (Exception("Invalid L4 Region Type!"))
+    return [set(column._tm.getPredictedCells()) for column in self.L4Columns]
+
 
 
   def getL4PredictedActiveCells(self):
@@ -430,44 +417,25 @@ class FeedbackExperiment(object):
     Returns a good default set of parameters to use in the L4 region.
     """
 
-    if self.L4RegionType == "py.ApicalTMRegion":
-        return {
-            "columnCount": inputSize,
-            "cellsPerColumn": 8,
-            "learn": True,
-            "initialPermanence": 0.51,
-            "connectedPermanence": 0.6,
-            "permanenceIncrement": 0.1,
-            "permanenceDecrement": 0.02,
-            "reducedBasalThreshold": 10,
-            "minThreshold": 13,
-            "basalPredictedSegmentDecrement": 0.0,
-            "apicalPredictedSegmentDecrement": 0.0,
-            "activationThreshold": 15,
-            "sampleSize": 20,
-            "implementation": "ApicalTiebreak",
-            "seed": self.seed
-            }
-    elif self.L4RegionType == "py.ExtendedTMRegion":
-        return{
-              "columnCount": inputSize,
-              "cellsPerColumn": 8,
-              "formInternalBasalConnections": True,
-              "learn": True,
-              "learnOnOneCell": False,
-              "initialPermanence": 0.51,
-              "connectedPermanence": 0.6,
-              "permanenceIncrement": 0.1,
-              "permanenceDecrement": 0.02,
-              "minThreshold": 13,
-              "predictedSegmentDecrement": 0.00,
-              "activationThreshold": 15,
-              "maxNewSynapseCount": 20,
-              "implementation": "etm",
-              "seed": self.seed
-              }
-    else:
-        raise(Exception("Invalid L4 Region Type! (current value: "+self.L4RegionType+")"))
+    return {
+      "columnCount": inputSize,
+      "cellsPerColumn": 8,
+      "learn": True,
+      "initialPermanence": 0.51,
+      "connectedPermanence": 0.6,
+      "permanenceIncrement": 0.1,
+      "permanenceDecrement": 0.02,
+      "reducedBasalThreshold": 10,
+      "minThreshold": 13,
+      "basalPredictedSegmentDecrement": 0.0,
+      "apicalPredictedSegmentDecrement": 0.0,
+      "activationThreshold": 15,
+      "sampleSize": 20,
+      # Use an implementation that supports apicalModulationBasalThreshold
+      "implementation": ("ApicalDependent" if self.onlineLearning
+                         else "ApicalTiebreak"),
+      "seed": self.seed
+    }
 
 
   def getDefaultL2Params(self, inputSize):
@@ -482,9 +450,13 @@ class FeedbackExperiment(object):
       "synPermProximalInc": 0.1,
       "synPermProximalDec": 0.001,
       "initialProximalPermanence": 0.6,
+      "onlineLearning": self.onlineLearning,
       "minThresholdProximal": 10,
       "sampleSizeProximal": 20,
       "connectedPermanenceProximal": 0.5,
+      "predictedInhibitionThreshold": 20,
+      "maxSdrSize": 40,
+      "minSdrSize": 40,
       "synPermDistalInc": 0.1,
       "synPermDistalDec": 0.02,
       "initialDistalPermanence": 0.41,

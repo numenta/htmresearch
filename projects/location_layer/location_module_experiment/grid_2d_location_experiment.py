@@ -29,7 +29,7 @@ import random
 import numpy as np
 
 from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
-  ApicalTiebreakTemporalMemory)
+  ApicalTiebreakPairMemory)
 from htmresearch.algorithms.column_pooler import ColumnPooler
 from htmresearch.algorithms.superficial_location_module import (
   SuperficialLocationModule2D)
@@ -55,7 +55,7 @@ class Grid2DLocationExperiment(object):
                                                         **config)
                             for config in locationConfigs]
 
-    self.inputLayer = ApicalTiebreakTemporalMemory(**{
+    self.inputLayer = ApicalTiebreakPairMemory(**{
       "columnCount": 150,
       "cellsPerColumn": 32,
       "basalInputSize": 18 * sum(np.prod(config["cellDimensions"])

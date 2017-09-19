@@ -46,7 +46,7 @@ networkConfig = {
     "verbosity": 0,
   },
 
-  "L4RegionType": "py.ExtendedTMRegion",
+  "L4RegionType": "py.ApicalTMPairRegion",
 
   "L4Params": {
     "columnCount": 2048,
@@ -58,7 +58,7 @@ networkConfig = {
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
     "minThreshold": 10,
-    "predictedSegmentDecrement": 0.004,
+    "basalPredictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
     "sampleSize": 20,
   },
@@ -73,7 +73,7 @@ networkConfig = {
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.02,
     "minThreshold": 10,
-    "predictedSegmentDecrement": 0.004,
+    "basalPredictedSegmentDecrement": 0.004,
     "activationThreshold": 13,
     "sampleSize": 20,
   },

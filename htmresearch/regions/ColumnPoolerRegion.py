@@ -78,6 +78,18 @@ class ColumnPoolerRegion(PyRegion):
           isDefaultInput=False,
           requireSplitterMap=False),
 
+        predictedInput=dict(
+          description=("An array of 0s and 1s representing input cells that " +
+                       "are predicted to become active in the next time step. " +
+                       "If this input is not provided, some features related " +
+                       "to online learning may not function properly."),
+          dataType="Real32",
+          count=0,
+          required=False,
+          regionLevel=True,
+          isDefaultInput=False,
+          requireSplitterMap=False),
+
         lateralInput=dict(
           description="Lateral binary input into this column, presumably from"
                       " other neighboring columns.",
@@ -127,6 +139,20 @@ class ColumnPoolerRegion(PyRegion):
           dataType="Bool",
           count=1,
           defaultValue="true"),
+        onlineLearning=dict(
+          description="Whether to use onlineLearning or not (default False).",
+          accessMode="ReadWrite",
+          dataType="Bool",
+          count=1,
+          defaultValue="false"),
+        learningTolerance=dict(
+          description="How much variation in SDR size to accept when learning. "
+                      "Only has an effect if online learning is enabled. "
+                      "Should be at most 1 - inertiaFactor.",
+          accessMode="ReadWrite",
+          dataType="Real32",
+          count=1,
+          defaultValue="false"),
         cellCount=dict(
           description="Number of cells in this layer",
           accessMode="Read",
@@ -149,6 +175,21 @@ class ColumnPoolerRegion(PyRegion):
           constraints=""),
         sdrSize=dict(
           description="The number of active cells invoked per object",
+          accessMode="Read",
+          dataType="UInt32",
+          count=1,
+          constraints=""),
+        maxSdrSize=dict(
+          description="The largest number of active cells in an SDR tolerated "
+                      "during learning. Stops learning when unions are active.",
+          accessMode="Read",
+          dataType="UInt32",
+          count=1,
+          constraints=""),
+        minSdrSize=dict(
+          description="The smallest number of active cells in an SDR tolerated "
+                      "during learning.  Stops learning when possibly on a "
+                      "different object or sequence",
           accessMode="Read",
           dataType="UInt32",
           count=1,
@@ -191,6 +232,14 @@ class ColumnPoolerRegion(PyRegion):
         connectedPermanenceProximal=dict(
           description="If the permanence value for a synapse is greater "
                       "than this value, it is said to be connected.",
+          accessMode="Read",
+          dataType="Real32",
+          count=1,
+          constraints=""),
+        predictedInhibitionThreshold=dict(
+          description="How many predicted cells are required to cause "
+                      "inhibition in the pooler.  Only has an effect if online "
+                      "learning is enabled.",
           accessMode="Read",
           dataType="Real32",
           count=1,
@@ -283,6 +332,9 @@ class ColumnPoolerRegion(PyRegion):
                inputWidth=16384,
                numOtherCorticalColumns=0,
                sdrSize=40,
+               onlineLearning = False,
+               maxSdrSize = None,
+               minSdrSize = None,
 
                # Proximal
                synPermProximalInc=0.1,
@@ -291,6 +343,7 @@ class ColumnPoolerRegion(PyRegion):
                sampleSizeProximal=20,
                minThresholdProximal=1,
                connectedPermanenceProximal=0.50,
+               predictedInhibitionThreshold=20,
 
                # Distal
                synPermDistalInc=0.10,
@@ -313,12 +366,16 @@ class ColumnPoolerRegion(PyRegion):
     self.inputWidth = inputWidth
     self.cellCount = cellCount
     self.sdrSize = sdrSize
+    self.onlineLearning = onlineLearning
+    self.maxSdrSize = maxSdrSize
+    self.minSdrSize = minSdrSize
     self.synPermProximalInc = synPermProximalInc
     self.synPermProximalDec = synPermProximalDec
     self.initialProximalPermanence = initialProximalPermanence
     self.sampleSizeProximal = sampleSizeProximal
     self.minThresholdProximal = minThresholdProximal
     self.connectedPermanenceProximal = connectedPermanenceProximal
+    self.predictedInhibitionThreshold = predictedInhibitionThreshold
     self.synPermDistalInc = synPermDistalInc
     self.synPermDistalDec = synPermDistalDec
     self.initialDistalPermanence = initialDistalPermanence
@@ -348,12 +405,16 @@ class ColumnPoolerRegion(PyRegion):
         "lateralInputWidths": [self.cellCount] * self.numOtherCorticalColumns,
         "cellCount": self.cellCount,
         "sdrSize": self.sdrSize,
+        "onlineLearning": self.onlineLearning,
+        "maxSdrSize": self.maxSdrSize,
+        "minSdrSize": self.minSdrSize,
         "synPermProximalInc": self.synPermProximalInc,
         "synPermProximalDec": self.synPermProximalDec,
         "initialProximalPermanence": self.initialProximalPermanence,
         "minThresholdProximal": self.minThresholdProximal,
         "sampleSizeProximal": self.sampleSizeProximal,
         "connectedPermanenceProximal": self.connectedPermanenceProximal,
+        "predictedInhibitionThreshold": self.predictedInhibitionThreshold,
         "synPermDistalInc": self.synPermDistalInc,
         "synPermDistalDec": self.synPermDistalDec,
         "initialDistalPermanence": self.initialDistalPermanence,
@@ -404,9 +465,16 @@ class ColumnPoolerRegion(PyRegion):
     else:
       lateralInputs = ()
 
+    if "predictedInput" in inputs:
+      predictedInput = numpy.asarray(
+        inputs["predictedInput"].nonzero()[0], dtype="uint32")
+    else:
+      predictedInput = None
+
     # Send the inputs into the Column Pooler.
     self._pooler.compute(feedforwardInput, lateralInputs,
-                         feedforwardGrowthCandidates, learn=self.learningMode)
+                         feedforwardGrowthCandidates, learn=self.learningMode,
+                         predictedInput = predictedInput)
 
     # Extract the active / predicted cells and put them into binary arrays.
     outputs["activeCells"][:] = 0

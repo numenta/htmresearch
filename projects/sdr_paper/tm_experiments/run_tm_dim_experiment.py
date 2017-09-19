@@ -75,6 +75,11 @@ def run_tm_dim_experiment(test_dims = range(300, 3100, 100),
   results.
 
   Output is written to tm_dim_{num_active}.txt, including sample size.
+
+  In our experiments, we used the set similarity metric (third column in output)
+  along with three different values for num_active, 64, 128 and 256.  We used
+  dimensions from 300 to 2900 in each case, testing every 100.  1000 sequences
+  of length 20 were passed to the TM in each trial.
   """
   if automatic_threshold:
     activationThreshold = min(num_active/2, maxNewSynapseCount/2)

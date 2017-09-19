@@ -59,13 +59,13 @@ class UnionTemporalPoolerExperiment(object):
   """
 
 
-  DEFAULT_TEMPORAL_MEMORY_PARAMS = {"columnDimensions": (1024,),
+  DEFAULT_TEMPORAL_MEMORY_PARAMS = {"columnCount": 1024,
                                     "cellsPerColumn": 8,
                                     "activationThreshold": 20,
                                     "initialPermanence": 0.5,
                                     "connectedPermanence": 0.6,
                                     "minThreshold": 20,
-                                    "maxNewSynapseCount": 30,
+                                    "sampleSize": 30,
                                     "permanenceIncrement": 0.10,
                                     "permanenceDecrement": 0.02,
                                     "seed": 42,
@@ -110,6 +110,8 @@ class UnionTemporalPoolerExperiment(object):
     params = dict(self.DEFAULT_TEMPORAL_MEMORY_PARAMS)
     params.update(tmOverrides or {})
     params["seed"] = seed
+    print "params: "
+    print params
     self.tm = MonitoredFastExtendedTemporalMemory(mmName="TM", **params)
 
     print "Initializing Union Temporal Pooler..."

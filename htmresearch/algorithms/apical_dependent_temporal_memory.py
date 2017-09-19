@@ -30,12 +30,21 @@ from nupic.bindings.math import Random, SparseMatrixConnections
 
 class ApicalDependentTemporalMemory(object):
   """
-  An alternate approach to apical dendrites. Every cell SDR is specific to both
-  the basal the apical input. Prediction requires both basal and apical support.
+  A generalized Temporal Memory that creates cell SDRs that are specific to both
+  the basal and apical input.
 
-  For sequence memory, the result is that every sequence happens within a
-  "world" which is specified by the apical input. Sequences are not shared
-  between worlds.
+  Prediction requires both basal and apical support. For sequence memory, the
+  result is that every sequence happens within a "world" which is specified by
+  the apical input. Sequences are not shared between worlds.
+
+  This class is generalized in two ways:
+
+  - This class does not specify when a 'timestep' begins and ends. It exposes
+    two main methods: 'depolarizeCells' and 'activateCells', and callers or
+    subclasses can introduce the notion of a timestep.
+  - This class is unaware of whether its 'basalInput' or 'apicalInput' are from
+    internal or external cells. They are just cell numbers. The caller knows
+    what these cell numbers mean, but the TemporalMemory doesn't.
   """
 
   def __init__(self,
@@ -44,6 +53,7 @@ class ApicalDependentTemporalMemory(object):
                apicalInputSize=0,
                cellsPerColumn=32,
                activationThreshold=13,
+               reducedBasalThreshold=10,
                initialPermanence=0.21,
                connectedPermanence=0.50,
                minThreshold=10,
@@ -70,6 +80,11 @@ class ApicalDependentTemporalMemory(object):
     @param activationThreshold (int)
     If the number of active connected synapses on a segment is at least this
     threshold, the segment is said to be active.
+
+    @param reducedBasalThreshold (int)
+    The activation threshold of basal (lateral) segments for cells that have
+    active apical segments. If equal to activationThreshold (default),
+    this parameter has no effect.
 
     @param initialPermanence (float)
     Initial permanence of a new synapse
@@ -115,46 +130,46 @@ class ApicalDependentTemporalMemory(object):
     self.basalPredictedSegmentDecrement = basalPredictedSegmentDecrement
     self.apicalPredictedSegmentDecrement = apicalPredictedSegmentDecrement
     self.activationThreshold = activationThreshold
+    self.reducedBasalThreshold = reducedBasalThreshold
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
-
     self.basalConnections = SparseMatrixConnections(columnCount*cellsPerColumn,
                                                     basalInputSize)
+    self.disableApicalDependence = False
+
     self.apicalConnections = SparseMatrixConnections(columnCount*cellsPerColumn,
                                                      apicalInputSize)
     self.rng = Random(seed)
     self.activeCells = np.empty(0, dtype="uint32")
     self.winnerCells = np.empty(0, dtype="uint32")
     self.predictedCells = np.empty(0, dtype="uint32")
+    self.predictedActiveCells = np.empty(0, dtype="uint32")
     self.activeBasalSegments = np.empty(0, dtype="uint32")
     self.activeApicalSegments = np.empty(0, dtype="uint32")
+    self.matchingBasalSegments = np.empty(0, dtype="uint32")
+    self.matchingApicalSegments = np.empty(0, dtype="uint32")
+    self.basalPotentialOverlaps = np.empty(0, dtype="int32")
+    self.apicalPotentialOverlaps = np.empty(0, dtype="int32")
 
 
   def reset(self):
     """
-    Clear all cell and segment activity. This has no effect on the subsequent
-    predictions or activity.
+    Clear all cell and segment activity.
     """
-
     self.activeCells = np.empty(0, dtype="uint32")
     self.winnerCells = np.empty(0, dtype="uint32")
     self.predictedCells = np.empty(0, dtype="uint32")
+    self.predictedActiveCells = np.empty(0, dtype="uint32")
     self.activeBasalSegments = np.empty(0, dtype="uint32")
     self.activeApicalSegments = np.empty(0, dtype="uint32")
+    self.matchingBasalSegments = np.empty(0, dtype="uint32")
+    self.matchingApicalSegments = np.empty(0, dtype="uint32")
+    self.basalPotentialOverlaps = np.empty(0, dtype="int32")
+    self.apicalPotentialOverlaps = np.empty(0, dtype="int32")
 
 
-  def compute(self,
-              activeColumns,
-              basalInput,
-              apicalInput,
-              basalGrowthCandidates=None,
-              apicalGrowthCandidates=None,
-              learn=True):
+  def depolarizeCells(self, basalInput, apicalInput, learn):
     """
-    Perform one timestep. Use the basal and apical input to form a set of
-    predictions, then activate the specified columns.
-
-    @param activeColumns (numpy array)
-    List of active columns
+    Calculate predictions.
 
     @param basalInput (numpy array)
     List of active input bits for the basal dendrite segments
@@ -162,46 +177,85 @@ class ApicalDependentTemporalMemory(object):
     @param apicalInput (numpy array)
     List of active input bits for the apical dendrite segments
 
+    @param learn (bool)
+    Whether learning is enabled. Some TM implementations may depolarize cells
+    differently or do segment activity bookkeeping when learning is enabled.
+    """
+    # Calculate predictions for this timestep
+    (activeApicalSegments,
+     matchingApicalSegments,
+     apicalPotentialOverlaps) = self._calculateSegmentActivity(
+       self.apicalConnections, apicalInput, self.connectedPermanence,
+       self.activationThreshold, self.minThreshold, self.reducedBasalThreshold)
+
+    apicallySupportedCells = self.apicalConnections.mapSegmentsToCells(
+      activeApicalSegments)
+    if not self.disableApicalDependence:
+      (activeBasalSegments,
+       matchingBasalSegments,
+       basalPotentialOverlaps) = self._calculateSegmentActivity(
+         self.basalConnections, basalInput,
+         self.connectedPermanence, self.activationThreshold,
+         self.minThreshold, self.reducedBasalThreshold,
+         reducedThresholdCells = apicallySupportedCells,)
+
+      predictedCells = np.intersect1d(
+        self.basalConnections.mapSegmentsToCells(activeBasalSegments),
+        apicallySupportedCells)
+    else:
+      (activeBasalSegments,
+      matchingBasalSegments,
+      basalPotentialOverlaps) = self._calculateSegmentActivity(
+        self.basalConnections, basalInput, self.connectedPermanence,
+        self.activationThreshold, self.minThreshold, self.reducedBasalThreshold)
+
+      predictedCells = self.basalConnections.mapSegmentsToCells(activeBasalSegments)
+
+    self.predictedCells = predictedCells
+    self.activeBasalSegments = activeBasalSegments
+    self.activeApicalSegments = activeApicalSegments
+    self.matchingBasalSegments = matchingBasalSegments
+    self.matchingApicalSegments = matchingApicalSegments
+    self.basalPotentialOverlaps = basalPotentialOverlaps
+    self.apicalPotentialOverlaps = apicalPotentialOverlaps
+
+
+  def activateCells(self,
+                    activeColumns,
+                    basalReinforceCandidates,
+                    apicalReinforceCandidates,
+                    basalGrowthCandidates,
+                    apicalGrowthCandidates,
+                    learn=True):
+    """
+    Activate cells in the specified columns, using the result of the previous
+    'depolarizeCells' as predictions. Then learn.
+
+    @param activeColumns (numpy array)
+    List of active columns
+
+    @param basalReinforceCandidates (numpy array)
+    List of bits that the active cells may reinforce basal synapses to.
+
+    @param apicalReinforceCandidates (numpy array)
+    List of bits that the active cells may reinforce apical synapses to.
+
     @param basalGrowthCandidates (numpy array or None)
     List of bits that the active cells may grow new basal synapses to.
-    If None, the basalInput is assumed to be growth candidates.
 
     @param apicalGrowthCandidates (numpy array or None)
     List of bits that the active cells may grow new apical synapses to
-    If None, the apicalInput is assumed to be growth candidates.
 
     @param learn (bool)
     Whether to grow / reinforce / punish synapses
     """
 
-    if basalGrowthCandidates is None:
-      basalGrowthCandidates = basalInput
-
-    if apicalGrowthCandidates is None:
-      apicalGrowthCandidates = apicalInput
-
-    # Calculate predictions for this timestep
-    (activeBasalSegments,
-     matchingBasalSegments,
-     basalPotentialOverlaps) = self._calculateSegmentActivity(
-       self.basalConnections, basalInput, self.connectedPermanence,
-       self.activationThreshold, self.minThreshold)
-
-    (activeApicalSegments,
-     matchingApicalSegments,
-     apicalPotentialOverlaps) = self._calculateSegmentActivity(
-       self.apicalConnections, apicalInput, self.connectedPermanence,
-       self.activationThreshold, self.minThreshold)
-
-    predictedCells = np.intersect1d(
-      self.basalConnections.mapSegmentsToCells(activeBasalSegments),
-      self.apicalConnections.mapSegmentsToCells(activeApicalSegments))
-
     # Calculate active cells
     (correctPredictedCells,
-     burstingColumns) = np2.setCompare(predictedCells, activeColumns,
-                                       predictedCells / self.cellsPerColumn,
+     burstingColumns) = np2.setCompare(self.predictedCells, activeColumns,
+                                       self.predictedCells / self.cellsPerColumn,
                                        rightMinusLeft=True)
+
     newActiveCells = np.concatenate((correctPredictedCells,
                                      np2.getAllCellsInColumns(
                                        burstingColumns, self.cellsPerColumn)))
@@ -217,19 +271,20 @@ class ApicalDependentTemporalMemory(object):
      learningCells) = self._calculateLearning(activeColumns,
                                               burstingColumns,
                                               correctPredictedCells,
-                                              activeBasalSegments,
-                                              activeApicalSegments,
-                                              matchingBasalSegments,
-                                              matchingApicalSegments,
-                                              basalPotentialOverlaps,
-                                              apicalPotentialOverlaps)
+                                              self.activeBasalSegments,
+                                              self.activeApicalSegments,
+                                              self.matchingBasalSegments,
+                                              self.matchingApicalSegments,
+                                              self.basalPotentialOverlaps,
+                                              self.apicalPotentialOverlaps)
 
     if learn:
       # Learn on existing segments
       for learningSegments in (learningActiveBasalSegments,
                                learningMatchingBasalSegments):
         self._learn(self.basalConnections, self.rng, learningSegments,
-                    basalInput, basalGrowthCandidates, basalPotentialOverlaps,
+                    basalReinforceCandidates, basalGrowthCandidates,
+                    self.basalPotentialOverlaps,
                     self.initialPermanence, self.sampleSize,
                     self.permanenceIncrement, self.permanenceDecrement,
                     self.maxSynapsesPerSegment)
@@ -237,20 +292,20 @@ class ApicalDependentTemporalMemory(object):
       for learningSegments in (learningActiveApicalSegments,
                                learningMatchingApicalSegments):
         self._learn(self.apicalConnections, self.rng, learningSegments,
-                    apicalInput, apicalGrowthCandidates,
-                    apicalPotentialOverlaps, self.initialPermanence,
+                    apicalReinforceCandidates, apicalGrowthCandidates,
+                    self.apicalPotentialOverlaps, self.initialPermanence,
                     self.sampleSize, self.permanenceIncrement,
                     self.permanenceDecrement, self.maxSynapsesPerSegment)
 
       # Punish incorrect predictions
       if self.basalPredictedSegmentDecrement != 0.0:
         self.basalConnections.adjustActiveSynapses(
-          basalSegmentsToPunish, basalInput,
+          basalSegmentsToPunish, basalReinforceCandidates,
           -self.basalPredictedSegmentDecrement)
 
       if self.apicalPredictedSegmentDecrement != 0.0:
         self.apicalConnections.adjustActiveSynapses(
-          apicalSegmentsToPunish, apicalInput,
+          apicalSegmentsToPunish, apicalReinforceCandidates,
           -self.apicalPredictedSegmentDecrement)
 
       # Only grow segments if there is basal *and* apical input.
@@ -270,9 +325,7 @@ class ApicalDependentTemporalMemory(object):
     learningCells.sort()
     self.activeCells = newActiveCells
     self.winnerCells = learningCells
-    self.predictedCells = predictedCells
-    self.activeBasalSegments = activeBasalSegments
-    self.activeApicalSegments = activeApicalSegments
+    self.predictedActiveCells = correctPredictedCells
 
 
   def _calculateLearning(self,
@@ -386,9 +439,11 @@ class ApicalDependentTemporalMemory(object):
 
   @staticmethod
   def _calculateSegmentActivity(connections, activeInput, connectedPermanence,
-                                activationThreshold, minThreshold):
+                                activationThreshold, minThreshold,
+                                reducedThreshold,
+                                reducedThresholdCells = ()):
     """
-    Calculate the active and matching segments for this timestep.
+    Calculate the active and matching basal segments for this timestep.
 
     @param connections (SparseMatrixConnections)
     @param activeInput (numpy array)
@@ -406,10 +461,25 @@ class ApicalDependentTemporalMemory(object):
       The number of active potential synapses for each segment.
       Includes counts for active, matching, and nonmatching segments.
     """
-
-    # Active
+    # Active apical segments lower the activation threshold for basal segments
     overlaps = connections.computeActivity(activeInput, connectedPermanence)
-    activeSegments = np.flatnonzero(overlaps >= activationThreshold)
+    outrightActiveSegments = np.flatnonzero(overlaps >= activationThreshold)
+    if (reducedThreshold != activationThreshold and
+            len(reducedThresholdCells) > 0):
+        potentiallyActiveSegments = np.flatnonzero(
+            (overlaps < activationThreshold) & (overlaps >= reducedThreshold))
+        cellsOfCASegments = connections.mapSegmentsToCells(
+            potentiallyActiveSegments)
+        # apically active segments are condit. active segments from apically
+        # active cells
+        conditionallyActiveSegments = potentiallyActiveSegments[
+            np.in1d(cellsOfCASegments, reducedThresholdCells)]
+        activeSegments = np.concatenate((outrightActiveSegments,
+                                         conditionallyActiveSegments))
+    else:
+        activeSegments = outrightActiveSegments
+
+
 
     # Matching
     potentialOverlaps = connections.computeActivity(activeInput)
@@ -418,7 +488,6 @@ class ApicalDependentTemporalMemory(object):
     return (activeSegments,
             matchingSegments,
             potentialOverlaps)
-
 
   @staticmethod
   def _learn(connections, rng, learningSegments, activeInput, growthCandidates,
@@ -808,3 +877,220 @@ class ApicalDependentTemporalMemory(object):
     @param connectedPermanence (float) The connected permanence.
     """
     self.connectedPermanence = connectedPermanence
+
+
+
+class TripleMemory(ApicalDependentTemporalMemory):
+  """
+  Pair memory with apical dependence, i.e. "triple memory".
+  """
+
+  def compute(self,
+              activeColumns,
+              basalInput,
+              apicalInput=(),
+              basalGrowthCandidates=None,
+              apicalGrowthCandidates=None,
+              learn=True):
+    """
+    Perform one timestep. Use the basal and apical input to form a set of
+    predictions, then activate the specified columns, then learn.
+
+    @param activeColumns (numpy array)
+    List of active columns
+
+    @param basalInput (numpy array)
+    List of active input bits for the basal dendrite segments
+
+    @param apicalInput (numpy array)
+    List of active input bits for the apical dendrite segments
+
+    @param basalGrowthCandidates (numpy array or None)
+    List of bits that the active cells may grow new basal synapses to.
+    If None, the basalInput is assumed to be growth candidates.
+
+    @param apicalGrowthCandidates (numpy array or None)
+    List of bits that the active cells may grow new apical synapses to
+    If None, the apicalInput is assumed to be growth candidates.
+
+    @param learn (bool)
+    Whether to grow / reinforce / punish synapses
+    """
+    activeColumns = np.asarray(activeColumns)
+    basalInput = np.asarray(basalInput)
+    apicalInput = np.asarray(apicalInput)
+
+    if basalGrowthCandidates is None:
+      basalGrowthCandidates = basalInput
+    basalGrowthCandidates = np.asarray(basalGrowthCandidates)
+
+    if apicalGrowthCandidates is None:
+      apicalGrowthCandidates = apicalInput
+    apicalGrowthCandidates = np.asarray(apicalGrowthCandidates)
+
+    self.depolarizeCells(basalInput, apicalInput, learn)
+    self.activateCells(activeColumns, basalInput, apicalInput,
+                       basalGrowthCandidates, apicalGrowthCandidates, learn)
+
+
+  def getPredictedCells(self):
+    """
+    @return (numpy array)
+    Cells that were predicted for this timestep
+    """
+    return self.predictedCells
+
+
+  def getBasalPredictedCells(self):
+    """
+    @return (numpy array)
+    Cells with active basal segments
+    """
+    return np.unique(
+      self.basalConnections.mapSegmentsToCells(
+        self.activeBasalSegments))
+
+
+  def getApicalPredictedCells(self):
+    """
+    @return (numpy array)
+    Cells with active apical segments
+    """
+    return np.unique(
+      self.apicalConnections.mapSegmentsToCells(
+        self.activeApicalSegments))
+
+
+
+class ApicalDependentSequenceMemory(ApicalDependentTemporalMemory):
+  """
+  Sequence memory with apical dependence.
+  """
+
+  def __init__(self,
+               columnCount=2048,
+               apicalInputSize=0,
+               cellsPerColumn=32,
+               activationThreshold=13,
+               reducedBasalThreshold=13,
+               initialPermanence=0.21,
+               connectedPermanence=0.50,
+               minThreshold=10,
+               sampleSize=20,
+               permanenceIncrement=0.1,
+               permanenceDecrement=0.1,
+               basalPredictedSegmentDecrement=0.0,
+               apicalPredictedSegmentDecrement=0.0,
+               maxSynapsesPerSegment=-1,
+               seed=42):
+    params = {
+      "columnCount": columnCount,
+      "basalInputSize": columnCount * cellsPerColumn,
+      "apicalInputSize": apicalInputSize,
+      "cellsPerColumn": cellsPerColumn,
+      "activationThreshold": activationThreshold,
+      "reducedBasalThreshold": reducedBasalThreshold,
+      "initialPermanence": initialPermanence,
+      "connectedPermanence": connectedPermanence,
+      "minThreshold": minThreshold,
+      "sampleSize": sampleSize,
+      "permanenceIncrement": permanenceIncrement,
+      "permanenceDecrement": permanenceDecrement,
+      "basalPredictedSegmentDecrement": basalPredictedSegmentDecrement,
+      "apicalPredictedSegmentDecrement": apicalPredictedSegmentDecrement,
+      "maxSynapsesPerSegment": maxSynapsesPerSegment,
+      "seed": seed,
+    }
+
+    super(ApicalDependentSequenceMemory, self).__init__(**params)
+
+    self.prevApicalInput = np.empty(0, dtype="uint32")
+    self.prevApicalGrowthCandidates = np.empty(0, dtype="uint32")
+    self.prevPredictedCells = np.empty(0, dtype="uint32")
+
+
+  def reset(self):
+    """
+    Clear all cell and segment activity.
+    """
+    super(ApicalDependentSequenceMemory, self).reset()
+
+    self.prevApicalInput = np.empty(0, dtype="uint32")
+    self.prevApicalGrowthCandidates = np.empty(0, dtype="uint32")
+    self.prevPredictedCells = np.empty(0, dtype="uint32")
+
+
+  def compute(self,
+              activeColumns,
+              apicalInput=(),
+              apicalGrowthCandidates=None,
+              learn=True):
+    """
+    Perform one timestep. Activate the specified columns, using the predictions
+    from the previous timestep, then learn. Then form a new set of predictions
+    using the new active cells and the apicalInput.
+
+    @param activeColumns (numpy array)
+    List of active columns
+
+    @param apicalInput (numpy array)
+    List of active input bits for the apical dendrite segments
+
+    @param apicalGrowthCandidates (numpy array or None)
+    List of bits that the active cells may grow new apical synapses to
+    If None, the apicalInput is assumed to be growth candidates.
+
+    @param learn (bool)
+    Whether to grow / reinforce / punish synapses
+    """
+    activeColumns = np.asarray(activeColumns)
+    apicalInput = np.asarray(apicalInput)
+
+    if apicalGrowthCandidates is None:
+      apicalGrowthCandidates = apicalInput
+    apicalGrowthCandidates = np.asarray(apicalGrowthCandidates)
+
+    self.prevPredictedCells = self.predictedCells
+
+    self.activateCells(activeColumns, self.activeCells, self.prevApicalInput,
+                       self.winnerCells, self.prevApicalGrowthCandidates, learn)
+    self.depolarizeCells(self.activeCells, apicalInput, learn)
+
+    self.prevApicalInput = apicalInput.copy()
+    self.prevApicalGrowthCandidates = apicalGrowthCandidates.copy()
+
+
+  def getPredictedCells(self):
+    """
+    @return (numpy array)
+    The prediction from the previous timestep
+    """
+    return self.prevPredictedCells
+
+
+  def getNextPredictedCells(self):
+    """
+    @return (numpy array)
+    The prediction for the next timestep
+    """
+    return self.predictedCells
+
+
+  def getNextBasalPredictedCells(self):
+    """
+    @return (numpy array)
+    Cells with active basal segments
+    """
+    return np.unique(
+      self.basalConnections.mapSegmentsToCells(
+        self.activeBasalSegments))
+
+
+  def getNextApicalPredictedCells(self):
+    """
+    @return (numpy array)
+    Cells with active apical segments
+    """
+    return np.unique(
+      self.apicalConnections.mapSegmentsToCells(
+        self.activeApicalSegments))

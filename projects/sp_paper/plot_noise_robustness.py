@@ -32,7 +32,7 @@ def nakaRushton(x, c50):
   y = 1/(1 + 1/(c/c50)**n)
   return y
 
-expName = 'randomSDRVaryingSparsityContinuousLearning'
+expName = 'randomSDRVaryingSparsityContinuousLearning_seed_41'
 plt.figure()
 legendList = []
 epochCheck = [0, 5, 10, 20, 40]
@@ -47,7 +47,7 @@ for epoch in epochCheck:
   popt, pcov = curve_fit(nakaRushton, noiseLevelList, outputOverlapScore,
                          p0=[0.5])
   yfit = nakaRushton(noiseLevelList, popt)
-  plt.plot(noiseLevelList, yfit, 'k--')
+  # plt.plot(noiseLevelList, yfit, 'k--')
 
   legendList.append('epoch {}'.format(epoch))
 plt.legend(legendList)
@@ -56,7 +56,7 @@ plt.ylabel('Change of SP output')
 plt.savefig('./figures/noise_robustness_{}_beforeChange.pdf'.format(expName))
 
 
-expName = 'randomSDRVaryingSparsityContinuousLearning'
+expName = 'randomSDRVaryingSparsityContinuousLearning_seed_41'
 changeDataAt = 50
 plt.figure()
 legendList = []
