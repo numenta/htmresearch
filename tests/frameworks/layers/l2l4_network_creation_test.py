@@ -1030,6 +1030,12 @@ class LaminarNetworkTest(unittest.TestCase):
     )
     self.assertEqual(len(self.getL4BurstingCells(L4Column1)), 0)
 
+    sensorInput0.addResetToQueue(0)
+    externalInput0.addResetToQueue(0)
+    sensorInput1.addResetToQueue(0)
+    externalInput1.addResetToQueue(0)
+    net.run(1)
+
     # (F0, L2)
     # It is fed twice, for the ambiguous prediction test, because of the
     # one-off error in distal predictions
