@@ -19,22 +19,20 @@
 # ----------------------------------------------------------------------
 
 """
-This file plots the behavior of L4-L2-TM network as you train it on sequences.
+This file runs a combined HTM network that includes the sensorimotor layers from
+the Layers and Columns paper as well as a pure sequence layer.
 """
 
-import os
-from math import ceil
-import numpy
-import time
 import cPickle
 from multiprocessing import Pool, cpu_count
-import matplotlib.pyplot as plt
+import argparse
+from argparse import RawDescriptionHelpFormatter
+import os
+import pprint
 import random
+import time
 
-import matplotlib as mpl
-mpl.rcParams['pdf.fonttype'] = 42
-from matplotlib import rc
-rc('font',**{'family':'sans-serif','sans-serif':['Arial']})
+import numpy
 
 from htmresearch.frameworks.layers.combined_sequence_experiment import (
   L4TMExperiment
@@ -44,144 +42,8 @@ from htmresearch.frameworks.layers.object_machine_factory import (
 )
 
 
-def locateConvergencePoint(stats, minOverlap, maxOverlap):
-  """
-  Walk backwards through stats until you locate the first point that diverges
-  from target overlap values.  We need this to handle cases where it might get
-  to target values, diverge, and then get back again.  We want the last
-  convergence point.
-  """
-  for i,v in enumerate(stats[::-1]):
-    if not (v >= minOverlap and v <= maxOverlap):
-      return len(stats)-i + 1
-
-  # Never differs - converged in one iteration
-  return 1
-
-
-def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
-                            settlingTime):
-  """
-  inferenceStats contains activity traces while the system visits each object.
-
-  Given the i'th object, inferenceStats[i] contains activity statistics for
-  each column for each region for the entire sequence of sensations.
-
-  For each object, compute the convergence time - the first point when all
-  L2 columns have converged.
-
-  Return the average convergence time across all objects.
-
-  Given inference statistics for a bunch of runs, locate all traces with the
-  given prefix. For each trace locate the iteration where it finally settles
-  on targetValue. Return the average settling iteration across all runs.
-  """
-  convergenceSum = 0.0
-  numCorrect = 0.0
-  inferenceLength = 1000000
-
-  # For each object
-  for stats in inferenceStats:
-
-    # For each L2 column locate convergence time
-    convergencePoint = 0.0
-    for key in stats.iterkeys():
-      if prefix in key:
-        inferenceLength = len(stats[key])
-        columnConvergence = locateConvergencePoint(
-          stats[key], minOverlap, maxOverlap)
-
-        # Ensure this column has converged by the last iteration
-        # assert(columnConvergence <= len(stats[key]))
-
-        convergencePoint = max(convergencePoint, columnConvergence)
-
-    convergenceSum += ceil(float(convergencePoint)/settlingTime)
-
-    if ceil(float(convergencePoint)/settlingTime) <= inferenceLength:
-      numCorrect += 1
-
-  return convergenceSum/len(inferenceStats), numCorrect/len(inferenceStats)
-
-
-def runExperiment(args):
-  """
-  Runs the experiment.  What did you think this does?
-
-  args is a dict representing the parameters. We do it this way to support
-  multiprocessing. args contains one or more of the following keys:
-
-  @param noiseLevel  (float) Noise level to add to the locations and features
-                             during inference. Default: None
-  @param numSequences (int)  The number of objects (sequences) we will train.
-                             Default: 10
-  @param seqLength   (int)   The number of points on each object (length of
-                             each sequence).
-                             Default: 10
-  @param numFeatures (int)   For each point, the number of features to choose
-                             from.  Default: 10
-  @param numColumns  (int)   The total number of cortical columns in network.
-                             Default: 2
-
-  The method returns the args dict updated with two additional keys:
-    convergencePoint (int)   The average number of iterations it took
-                             to converge across all objects
-    objects          (pairs) The list of objects we trained on
-  """
-  numObjects = args.get("numObjects", 10)
-  numSequences = args.get("numSequences", 10)
-  numFeatures = args.get("numFeatures", 10)
-  numColumns = args.get("numColumns", 1)
-  networkType = args.get("networkType", "L4L2TMColumn")
-  noiseLevel = args.get("noiseLevel", None)  # TODO: implement this?
-  seqLength = args.get("seqLength", 10)
-  numPoints = args.get("numPoints", 10)
-  trialNum = args.get("trialNum", 42)
-  plotInferenceStats = args.get("plotInferenceStats", True)
-  inputSize = args.get("inputSize", 512)
-  numLocations = args.get("numLocations", 100000)
-  numInputBits = args.get("inputBits", 20)
-  settlingTime = args.get("settlingTime", 3)
-
-  random.seed(trialNum)
-
-
-  #####################################################
-  #
-  # Create the sequences and objects, and make sure they share the
-  # same features and locations.
-
-  sequences = createObjectMachine(
-    machineType="sequence",
-    numInputBits=numInputBits,
-    sensorInputSize=inputSize,
-    externalInputSize=1024,
-    numCorticalColumns=numColumns,
-    numFeatures=numFeatures,
-    # numLocations=numLocations,
-    seed=trialNum
-  )
-
-  objects = createObjectMachine(
-    machineType="simple",
-    numInputBits=numInputBits,
-    sensorInputSize=inputSize,
-    externalInputSize=1024,
-    numCorticalColumns=numColumns,
-    numFeatures=numFeatures,
-    # numLocations=numLocations,
-    seed=trialNum
-  )
-
-  # Make sure they share the same features and locations
-  objects.locations = sequences.locations
-  objects.features = sequences.features
-
-  sequences.createRandomSequences(numSequences, seqLength)
-  objects.createRandomObjects(numObjects, numPoints=numPoints,
-                                    numLocations=numLocations,
-                                    numFeatures=numFeatures)
-
+def printDiagnostics(exp, sequences, objects, verbosity=0):
+  """Useful diagnostics for debugging."""
   r = sequences.objectConfusion()
   print "Average common pairs in sequences=", r[0],
   print ", features=",r[2]
@@ -192,44 +54,30 @@ def runExperiment(args):
   print ", features=",r[2]
 
   print "Total number of objects created:",len(objects.getObjects())
-  print "Objects are:"
-  for o in objects:
-    pairs = objects[o]
-    pairs.sort()
-    print str(o) + ": " + str(pairs)
   print "Total number of sequences created:",len(sequences.getObjects())
-  print "Sequences:"
-  for i in sequences:
-    print i,sequences[i]
 
-  #####################################################
-  #
-  # Setup experiment and train the network
-  name = "combined_sequences_S%03d_F%03d_L%03d_T%03d" % (
-    numSequences, numFeatures, numLocations, trialNum
-  )
-  exp = L4TMExperiment(
-    name=name,
-    numCorticalColumns=numColumns,
-    networkType = networkType,
-    inputSize=inputSize,
-    numExternalInputBits=numInputBits,
-    externalInputSize=1024,
-    numInputBits=numInputBits,
-    seed=trialNum,
-    L4Overrides={"initialPermanence": 0.41,
-                 "activationThreshold": 18,
-                 "minThreshold": 18,
-                 "basalPredictedSegmentDecrement": 0.0001},
-  )
+  # For detailed debugging
+  if verbosity > 0:
+    print "\nObjects are:"
+    for o in objects:
+      pairs = objects[o]
+      pairs.sort()
+      print str(o) + ": " + str(pairs)
+    print "\nSequences:"
+    for i in sequences:
+      print i,sequences[i]
 
-  # Train the network on all the sequences
-  print "Training sequences"
+    print "\nNetwork parameters:"
+    pprint.pprint(exp.config)
+
+
+def trainSequences(sequences, exp):
+  """Train the network on all the sequences"""
   for seqName in sequences:
-
     # Make sure we learn enough times to deal with high order sequences and
     # remove extra predictions.
-    for p in range(3*seqLength):
+    iterations = 3*len(sequences[seqName])
+    for p in range(iterations):
 
       # Ensure we generate new random location for each sequence presentation
       objectSDRs = sequences.provideObjectsToLearn([seqName])
@@ -242,184 +90,248 @@ def runExperiment(args):
     exp.sendReset()
 
 
-  # Train the network on all the objects
+def trainObjects(objects, exp, numRepeatsPerObject, experimentIdOffset):
+  """
+  Train the network on all the objects by randomly traversing points on
+  each object.  We offset the id of each object to avoid confusion with
+  any sequences that might have been learned.
+  """
   # We want to traverse the features of each object randomly a few times before
   # moving on to the next object. Create the SDRs that we need for this.
-  print "Training objects"
   objectsToLearn = objects.provideObjectsToLearn()
   objectTraversals = {}
   for objectId in objectsToLearn:
-    objectTraversals[objectId+numSequences] = objects.randomTraversal(
-      objectsToLearn[objectId], settlingTime)
+    objectTraversals[objectId + experimentIdOffset] = objects.randomTraversal(
+      objectsToLearn[objectId], numRepeatsPerObject)
 
   # Train the network on all the SDRs for all the objects
   exp.learnObjects(objectTraversals)
 
 
+def inferSequence(exp, sequenceId, sequences):
+  """Run inference on the given sequence."""
+  # Create the (loc, feat) pairs for this sequence for column 0.
+  objectSensations = {
+    0: [pair for pair in sequences[sequenceId]]
+  }
 
+  inferConfig = {
+    "object": sequenceId,
+    "numSteps": len(objectSensations[0]),
+    "pairs": objectSensations,
+  }
+
+  inferenceSDRs = sequences.provideObjectToInfer(inferConfig)
+  exp.infer(inferenceSDRs, objectName=sequenceId)
+
+
+def inferObject(exp, objectId, objects, objectName):
+  """
+  Run inference on the given object.
+  objectName is the name of this object in the experiment.
+  """
+
+  # Create sequence of random sensations for this object for one column. The
+  # total number of sensations is equal to the number of points on the object.
+  # No point should be visited more than once.
+  objectSensations = {}
+  objectSensations[0] = []
+  obj = objects[objectId]
+  objectCopy = [pair for pair in obj]
+  random.shuffle(objectCopy)
+  for pair in objectCopy:
+    objectSensations[0].append(pair)
+
+  inferConfig = {
+    "numSteps": len(objectSensations[0]),
+    "pairs": objectSensations,
+    "includeRandomLocation": False,
+  }
+
+  inferenceSDRs = objects.provideObjectToInfer(inferConfig)
+
+  exp.infer(inferenceSDRs, objectName=objectName)
+
+
+def runExperiment(args):
+  """
+  Runs the experiment.  What did you think this does?
+
+  args is a dict representing the various parameters. We do it this way to
+  support multiprocessing. The function returns the args dict updated with a
+  number of additional keys containing performance metrics.
+  """
+  numObjects = args.get("numObjects", 10)
+  numSequences = args.get("numSequences", 10)
+  numFeatures = args.get("numFeatures", 10)
+  seqLength = args.get("seqLength", 10)
+  numPoints = args.get("numPoints", 10)
+  trialNum = args.get("trialNum", 42)
+  inputSize = args.get("inputSize", 512)
+  numLocations = args.get("numLocations", 100000)
+  numInputBits = args.get("inputBits", 20)
+  settlingTime = args.get("settlingTime", 3)
+  figure6 = args.get("figure6", False)
+
+  random.seed(trialNum)
 
   #####################################################
   #
-  # For inference, we will randomly pick an object or a sequence and
-  # check and plot convergence for each item.
+  # Create the sequences and objects, and make sure they share the
+  # same features and locations.
 
-  for trial,itemType in enumerate(["sequence", "object", "sequence", "object",
-                                   "sequence", "sequence", "object", "sequence", ]):
-    # itemType = ["sequence", "object"][random.randint(0, 1)]
+  sequences = createObjectMachine(
+    machineType="sequence",
+    numInputBits=numInputBits,
+    sensorInputSize=inputSize,
+    externalInputSize=1024,
+    numCorticalColumns=1,
+    numFeatures=numFeatures,
+    numLocations=numLocations,
+    seed=trialNum
+  )
+  sequences.createRandomSequences(numSequences, seqLength)
 
-    if itemType == "sequence":
-      objectId = random.randint(0, numSequences-1)
-      obj = sequences[objectId]
+  objects = createObjectMachine(
+    machineType="simple",
+    numInputBits=numInputBits,
+    sensorInputSize=inputSize,
+    externalInputSize=1024,
+    numCorticalColumns=1,
+    numFeatures=numFeatures,
+    numLocations=numLocations,
+    seed=trialNum
+  )
 
-      objectSensations = {}
-      for c in range(numColumns):
-        objectSensations[c] = []
+  # Make sure they share the same features and locations
+  objects.locations = sequences.locations
+  objects.features = sequences.features
 
-      # Create sequence of sensations for this object for one column. The total
-      # number of sensations is equal to the number of points on the object. No
-      # point should be visited more than once.
-      objectCopy = [pair for pair in obj]
-      for pair in objectCopy:
-        objectSensations[0].append(pair)
+  objects.createRandomObjects(numObjects, numPoints=numPoints,
+                                    numLocations=numLocations,
+                                    numFeatures=numFeatures)
 
-      inferConfig = {
-        "object": objectId + numSequences,
-        "numSteps": len(objectSensations[0]),
-        "pairs": objectSensations,
-      }
+  #####################################################
+  #
+  # Setup experiment and train the network
+  name = "combined_sequences_S%03d_O%03d_F%03d_L%03d_T%03d" % (
+    numSequences, numObjects, numFeatures, numLocations, trialNum
+  )
+  exp = L4TMExperiment(
+    name=name,
+    numCorticalColumns=1,
+    inputSize=inputSize,
+    numExternalInputBits=numInputBits,
+    externalInputSize=1024,
+    numInputBits=numInputBits,
+    seed=trialNum,
+    L4Overrides={"initialPermanence": 0.41,
+                 "activationThreshold": 18,
+                 "minThreshold": 18,
+                 "basalPredictedSegmentDecrement": 0.0001},
+  )
 
-      inferenceSDRs = sequences.provideObjectToInfer(inferConfig)
+  printDiagnostics(exp, sequences, objects, verbosity=0)
 
-      exp.infer(inferenceSDRs, objectName=objectId)
+  # Train the network on all the sequences and then all the objects.
+  trainSequences(sequences, exp)
+  trainObjects(objects, exp, settlingTime, numSequences)
 
-    else:
-      objectId = random.randint(0, numObjects-1)
-      # For each object, we create a sequence of random sensations.  We will
-      # present each sensation for one time step.
-      obj = objects[objectId]
+  ##########################################################################
+  #
+  # Run inference
 
-      objectSensations = {}
-      objectSensations[0] = []
+  print "Running inference"
+  if not figure6:
+    # By default run inference on every sequence and object.
+    for seqId in sequences:
+      inferSequence(exp, seqId, sequences)
+    for objectId in objects:
+      inferObject(exp, objectId, objects, objectId + numSequences)
 
-      # Create sequence of sensations for this object for one column. The total
-      # number of sensations is equal to the number of points on the object. No
-      # point should be visited more than once.
-      objectCopy = [pair for pair in obj]
-      random.shuffle(objectCopy)
-      for pair in objectCopy:
-        objectSensations[0].append(pair)
+  else:
+    # For figure 6 we want to run sequences and objects in a specific order
+    for trial,itemType in enumerate(["sequence", "object", "sequence", "object",
+                                     "sequence", "sequence", "object",
+                                     "sequence", ]):
+      if itemType == "sequence":
+        objectId = random.randint(0, numSequences-1)
+        inferSequence(exp, objectId, sequences)
 
-      inferConfig = {
-        "object": objectId,
-        "numSteps": len(objectSensations[0]),
-        "pairs": objectSensations,
-        "includeRandomLocation": False,
-      }
-
-      inferenceSDRs = objects.provideObjectToInfer(inferConfig)
-
-      objectId += numSequences
-
-      exp.infer(inferenceSDRs, objectName=objectId)
+      else:
+        objectId = random.randint(0, numObjects-1)
+        inferObject(exp, objectId, objects, objectId+numSequences)
 
 
-    if plotInferenceStats:
-      plotOneInferenceRun(
-        exp.statistics[trial],
-        fields=[
-          # ("L4 Predicted", "Predicted sensorimotor cells"),
-          # ("L2 Representation", "L2 Representation"),
-          # ("L4 Representation", "Active sensorimotor cells"),
-          ("L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
-          ("TM NextPredicted", "Predicted cells in temporal sequence layer"),
-          ("TM PredictedActive", "Predicted active cells in temporal sequence layer"),
-        ],
-        basename=exp.name,
-        itemType=itemType,
-        experimentID=trial,
-        plotDir=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                             "detailed_plots")
-      )
+  ##########################################################################
+  #
+  # Compute a number of overall inference statistics
+  convergencePoint, sensorimotorAccuracy = exp.averageConvergencePoint(
+    "L2 Representation", 30, 40, 1)
 
-  # if plotInferenceStats:
-  #   plotMultipleInferenceRun(
-  #     exp.statistics[0:10],
-  #     fields=[
-  #       # ("L4 Predicted", "Predicted sensorimotor cells"),
-  #       # ("L2 Representation", "L2 Representation"),
-  #       # ("L4 Representation", "Active sensorimotor cells"),
-  #       ("L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
-  #       # ("TM NextPredicted", "Predicted cells in temporal sequence layer"),
-  #       ("TM PredictedActive",
-  #        "Predicted active cells in temporal sequence layer"),
-  #     ],
-  #     basename=exp.name,
-  #     plotDir=os.path.join(os.path.dirname(os.path.realpath(__file__)),
-  #                          "detailed_plots")
-  #   )
+  sequenceAccuracy = exp.averageSequenceAccuracy(15, 25)
 
-  # Compute overall inference statistics
   infStats = exp.getInferenceStats()
-  convergencePoint, accuracy = averageConvergencePoint(
-    infStats,"L2 Representation", 30, 40, 1)
-
   predictedActive = numpy.zeros(len(infStats))
   predicted = numpy.zeros(len(infStats))
   predictedActiveL4 = numpy.zeros(len(infStats))
   predictedL4 = numpy.zeros(len(infStats))
   for i,stat in enumerate(infStats):
-    predictedActive[i] = float(sum(stat["TM PredictedActive C0"][2:])) / len(stat["TM PredictedActive C0"][2:])
-    predicted[i] = float(sum(stat["TM NextPredicted C0"][2:])) / len(stat["TM NextPredicted C0"][2:])
+    predictedActive[i] = float(sum(stat["TM PredictedActive C0"][2:])) / len(
+      stat["TM PredictedActive C0"][2:])
+    predicted[i] = float(sum(stat["TM NextPredicted C0"][2:])) / len(
+      stat["TM NextPredicted C0"][2:])
 
-    predictedActiveL4[i] = float(sum(stat["L4 PredictedActive C0"])) / len(stat["L4 PredictedActive C0"])
-    predictedL4[i] = float(sum(stat["L4 Predicted C0"])) / len(stat["L4 Predicted C0"])
+    predictedActiveL4[i] = float(sum(stat["L4 PredictedActive C0"])) / len(
+      stat["L4 PredictedActive C0"])
+    predictedL4[i] = float(sum(stat["L4 Predicted C0"])) / len(
+      stat["L4 Predicted C0"])
 
-  print "# Sequences {} # features {} # columns {} trial # {} network type {}".format(
-    numSequences, numFeatures, numColumns, trialNum, networkType)
-  print "Average convergence point=",convergencePoint,
-  print "Accuracy:", accuracy
-  print
+  print "# Sequences {} # features {} trial # {}\n".format(
+    numSequences, numFeatures, trialNum)
+  print "Sensorimotor accuracy:", sensorimotorAccuracy
+  print "Sequence accuracy:", sequenceAccuracy
 
-  # Return our convergence point as well as all the parameters and objects
+
+  # Return a bunch of metrics we will use in plots
+  args.update({"name": exp.name})
   args.update({"objects": sequences.getObjects()})
   args.update({"convergencePoint":convergencePoint})
-  args.update({"sensorimotorAccuracyPct": accuracy})
+  args.update({"sensorimotorAccuracyPct": sensorimotorAccuracy})
+  args.update({"sequenceAccuracyPct": sequenceAccuracy})
   args.update({"averagePredictions": predicted.mean()})
   args.update({"averagePredictedActive": predictedActive.mean()})
   args.update({"averagePredictionsL4": predictedL4.mean()})
   args.update({"averagePredictedActiveL4": predictedActiveL4.mean()})
-  args.update({"name": exp.name})
   args.update({"statistics": exp.statistics})
 
-  # Can't pickle experiment so can't return it for batch multiprocessing runs.
-  # However this is very useful for debugging when running in a single thread.
-  # if plotInferenceStats:
-  #   args.update({"experiment": exp})
   return args
 
 
 def runExperimentPool(numSequences,
                       numFeatures,
                       numLocations,
-                      networkType=["L4L2TMColumn"],
+                      numObjects,
                       numWorkers=7,
                       nTrials=1,
                       seqLength=10,
                       resultsName="convergence_results.pkl"):
   """
-  Allows you to run a number of experiments using multiple processes.
-  For each parameter except numWorkers, pass in a list containing valid values
-  for that parameter. The cross product of everything is run, and each
+  Run a bunch of experiments using a pool of numWorkers multiple processes. For
+  numSequences, numFeatures, and numLocations pass in a list containing valid
+  values for that parameter. The cross product of everything is run, and each
   combination is run nTrials times.
 
-  Returns a list of dict containing detailed results from each experiment.
-  Also pickles and saves the results in resultsName for later analysis.
+  Returns a list of dict containing detailed results from each experiment. Also
+  pickles and saves all the results in resultsName for later analysis.
+
+  If numWorkers == 1, the experiments will be run in a single thread. This makes
+  it easier to debug.
 
   Example:
     results = runExperimentPool(
-                          numSequences=[10],
-                          numFeatures=[5],
-                          numColumns=[2,3,4,5,6],
+                          numSequences=[10, 20],
+                          numFeatures=[5, 13],
                           numWorkers=8,
                           nTrials=5)
   """
@@ -429,19 +341,19 @@ def runExperimentPool(numSequences,
   for o in reversed(numSequences):
     for l in numLocations:
       for f in numFeatures:
-        for n in networkType:
+        for no in numObjects:
           for t in range(nTrials):
             args.append(
               {"numSequences": o,
                "numFeatures": f,
+               "numObjects": no,
                "trialNum": t,
                "seqLength": seqLength,
-               "networkType" : n,
                "numLocations": l,
-               "plotInferenceStats": False,
                }
             )
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
+
   # Run the pool
   if numWorkers > 1:
     pool = Pool(processes=numWorkers)
@@ -458,374 +370,187 @@ def runExperimentPool(numSequences,
   return result
 
 
-def plotConvergenceBySequence(results, objectRange, featureRange, numTrials):
+def runExperiment4A(dirName):
   """
-  Plots the convergence graph: iterations vs number of objects.
-  Each curve shows the convergence for a given number of unique features.
+  This runs the first experiment in the section "Simulations with Pure
+  Temporal Sequences".
   """
-  ########################################################################
-  #
-  # Accumulate all the results per column in a convergence array.
-  #
-  # Convergence[f,o] = how long it took it to converge with f unique features
-  # and o objects.
+  # Results are put into a pkl file which can be used to generate the plots.
+  # dirName is the absolute path where the pkl file will be placed.
+  resultsFilename = os.path.join(dirName, "pure_sequences_example.pkl")
 
-  convergence = numpy.zeros((max(featureRange), max(objectRange) + 1))
-  for r in results:
-    if r["numFeatures"] in featureRange:
-      convergence[r["numFeatures"] - 1, r["numSequences"]] += r["convergencePoint"]
+  results = runExperiment(
+    {
+      "numSequences": 5,
+      "seqLength": 10,
+      "numFeatures": 10,
+      "trialNum": 0,
+      "numObjects": 0,
+      "numLocations": 100,
+    }
+  )
 
-  convergence /= numTrials
-
-  ########################################################################
-  #
-  # Create the plot. x-axis=
-  plt.figure()
-  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                          "plots", "convergence_by_sequence.pdf")
-
-  # Plot each curve
-  legendList = []
-  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
-
-  for i in range(len(featureRange)):
-    f = featureRange[i]
-    print "features={} objectRange={} convergence={}".format(
-      f,objectRange, convergence[f-1,objectRange])
-    legendList.append('Unique features={}'.format(f))
-    plt.plot(objectRange, convergence[f-1,objectRange],
-             color=colorList[i])
-
-  # format
-  plt.legend(legendList, loc="lower right", prop={'size':10})
-  plt.xlabel("Number of sequences in training set")
-  plt.xticks(range(0,max(objectRange)+1,10))
-  plt.yticks(range(0,int(convergence.max())+2))
-  plt.ylabel("Average number of touches")
-  plt.title("Number of touches to recognize a sequence")
-
-    # save
-  plt.savefig(plotPath)
-  plt.close()
+  # Pickle results for plotting and possible later debugging
+  with open(resultsFilename, "wb") as f:
+    cPickle.dump(results, f)
 
 
-def plotSensorimotorAccuracy(results, locationRange, featureRange,
-                             seqRange, title="", yaxis=""):
+def runExperiment4B(dirName):
   """
-  Plot accuracy vs number of locations
+  This runs the second experiment in the section "Simulations with Pure Temporal
+  Sequences". Here we check accuracy of the L2/L4 networks in classifying the
+  sequences. This experiment averages over many parameter combinations and could
+  take several minutes.
   """
+  # Results are put into a pkl file which can be used to generate the plots.
+  # dirName is the absolute path where the pkl file will be placed.
+  resultsName = os.path.join(dirName, "sequence_batch_results.pkl")
 
-  ########################################################################
-  #
-  # Accumulate all the results per column in a convergence array.
-  #
-  # accuracy[f,l] = how long it took it to converge with f unique features
-  # and l locations on average.
-  accuracy = numpy.zeros((max(featureRange)+1, max(locationRange) + 1))
-  totals = numpy.zeros((max(featureRange)+1, max(locationRange) + 1))
-  for r in results:
-    if r["numFeatures"] in featureRange and r["numSequences"] in seqRange:
-      accuracy[r["numFeatures"], r["numLocations"]] += r["sensorimotorAccuracyPct"]
-      totals[r["numFeatures"], r["numLocations"]] += 1
+  numTrials = 10
+  featureRange = [5, 10, 100]
+  seqRange = [50]
+  locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
+                   1000, 1100, 1200, 1300, 1400, 1500, 1600]
 
-  for f in featureRange:
-    for l in locationRange:
-      accuracy[f, l] = 100.0*accuracy[f, l] / totals[f, l]
-
-  ########################################################################
-  #
-  # Create the plot.
-  plt.figure()
-  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                          "plots", "sensorimotorAccuracy_by_sequence.pdf")
-
-  # Plot each curve
-  legendList = []
-  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
-
-  for i in range(len(featureRange)):
-    f = featureRange[i]
-    print "features={} locationRange={} accuracy={}".format(
-      f,locationRange, accuracy[f,locationRange]),
-    print totals[f,locationRange]
-    legendList.append('Sensorimotor layer, feature pool size: {}'.format(f))
-    plt.plot(locationRange, accuracy[f,locationRange],
-             color=colorList[i])
-
-  plt.plot(locationRange, [100] * len(locationRange),
-           color=colorList[len(featureRange)])
-  legendList.append('Temporal sequence layer')
-
-  # format
-  plt.legend(legendList, bbox_to_anchor=(0., 0.65, 1., .102), loc="right", prop={'size':10})
-  plt.xlabel("Size of location pool")
-  # plt.xticks(range(0,max(locationRange)+1,10))
-  # plt.yticks(range(0,int(accuracy.max())+2,10))
-  plt.ylim(-10.0, 110.0)
-  plt.ylabel(yaxis)
-  plt.title(title)
-
-    # save
-  plt.savefig(plotPath)
-  plt.close()
+  # Comment this out if you  are re-running analysis on already saved results.
+  # Very useful for debugging the plots
+  runExperimentPool(
+    numSequences=seqRange,
+    numFeatures=featureRange,
+    numLocations=locationRange,
+    numObjects=[0],
+    seqLength=10,
+    nTrials=numTrials,
+    numWorkers=cpu_count()-1,
+    resultsName=resultsName)
 
 
-def plotPredictionsBySequence(results, objectRange, featureRange, numTrials,
-                            key="", title="", yaxis=""):
+def runExperiment5A(dirName):
   """
-  Plots the convergence graph: iterations vs number of objects.
-  Each curve shows the convergence for a given number of unique features.
+  This runs the first experiment in the section "Simulations with Sensorimotor
+  Sequences", an example sensorimotor sequence.
   """
+  # Results are put into a pkl file which can be used to generate the plots.
+  # dirName is the absolute path where the pkl file will be placed.
+  resultsFilename = os.path.join(dirName, "sensorimotor_sequence_example.pkl")
+  results = runExperiment(
+    {
+      "numSequences": 0,
+      "seqLength": 10,
+      "numFeatures": 100,
+      "trialNum": 4,
+      "numObjects": 50,
+      "numLocations": 100,
+    }
+  )
 
-  ########################################################################
-  #
-  # Accumulate all the results per column in a convergence array.
-  #
-  # predictions[f,s] = how long it took it to converge with f unique features
-  # and s sequences on average.
-  predictions = numpy.zeros((max(featureRange), max(objectRange) + 1))
-  for r in results:
-    if r["numFeatures"] in featureRange:
-      predictions[r["numFeatures"] - 1, r["numSequences"]] += r[key]
-
-  predictions /= numTrials
-
-  ########################################################################
-  #
-  # Create the plot.
-  plt.figure()
-  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                          "plots", key+"by_sequence.pdf")
-
-  # Plot each curve
-  legendList = []
-  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
-
-  for i in range(len(featureRange)):
-    f = featureRange[i]
-    print "features={} objectRange={} convergence={}".format(
-      f,objectRange, predictions[f-1,objectRange])
-    legendList.append('Unique features={}'.format(f))
-    plt.plot(objectRange, predictions[f-1,objectRange],
-             color=colorList[i])
-
-  # format
-  plt.legend(legendList, loc="center right", prop={'size':10})
-  plt.xlabel("Number of sequences learned")
-  plt.xticks(range(0,max(objectRange)+1,10))
-  plt.yticks(range(0,int(predictions.max())+2,10))
-  plt.ylabel(yaxis)
-  plt.title(title)
-
-    # save
-  plt.savefig(plotPath)
-  plt.close()
+  # Pickle results for plotting and possible later debugging
+  with open(resultsFilename, "wb") as f:
+    cPickle.dump(results, f)
 
 
-def plotOneInferenceRun(stats,
-                       fields,
-                       basename,
-                       itemType="",
-                       plotDir="plots",
-                       experimentID=0):
+def runExperiment5B(dirName):
   """
-  Plots individual inference runs.
+  This runs the second experiment in the section "Simulations with Sensorimotor
+  Sequences". It averages over many parameter combinations. This experiment
+  could take several hours.  You can run faster versions by reducing the number
+  of trials.
   """
-  if not os.path.exists(plotDir):
-    os.makedirs(plotDir)
+  # Results are put into a pkl file which can be used to generate the plots.
+  # dirName is the absolute path where the pkl file will be placed.
+  resultsName = os.path.join(dirName, "sensorimotor_batch_results.pkl")
 
-  plt.figure()
-  objectName = stats["object"]
+  # We run 10 trials for each column number and then analyze results
+  numTrials = 10
+  featureRange = [5, 10, 50]
+  objectRange = [2, 5, 10, 20, 30, 40, 50, 70]
+  locationRange = [100]
 
-  # plot request stats
-  for field in fields:
-    fieldKey = field[0] + " C0"
-    plt.plot(stats[fieldKey], marker='+', label=field[1])
-
-  # format
-  plt.legend(loc="upper right")
-  plt.xlabel("Input number")
-  plt.xticks(range(stats["numSteps"]))
-  plt.ylabel("Number of cells")
-  plt.ylim(-5, 100)
-  # plt.ylim(plt.ylim()[0] - 5, plt.ylim()[1] + 5)
-  plt.title("Activity while inferring {}".format(itemType))
-
-  # save
-  relPath = "{}_exp_{}.pdf".format(basename, experimentID)
-  path = os.path.join(plotDir, relPath)
-  plt.savefig(path)
-  plt.close()
+  # Comment this out if you  are re-running analysis on already saved results.
+  # Very useful for debugging the plots
+  runExperimentPool(
+    numSequences=[0],
+    numObjects=objectRange,
+    numFeatures=featureRange,
+    numLocations=locationRange,
+    nTrials=numTrials,
+    numWorkers=cpu_count() - 1,
+    resultsName=resultsName)
 
 
-def plotMultipleInferenceRun(stats,
-                       fields,
-                       basename,
-                       plotDir="plots"):
+def runExperiment6(dirName):
   """
-  Plots individual inference runs.
+  This runs the experiment the section "Simulations with Combined Sequences",
+  an example stream containing a mixture of temporal and sensorimotor sequences.
   """
-  if not os.path.exists(plotDir):
-    os.makedirs(plotDir)
+  # Results are put into a pkl file which can be used to generate the plots.
+  # dirName is the absolute path where the pkl file will be placed.
+  resultsFilename = os.path.join(dirName, "combined_results.pkl")
+  results = runExperiment(
+    {
+      "numSequences": 50,
+      "seqLength": 10,
+      "numObjects": 50,
+      "numFeatures": 50,
+      "trialNum": 8,
+      "numLocations": 50,
+      "settlingTime": 3,
+      "figure6": True,
+    }
+  )
 
-  plt.figure()
-
-  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
-
-  # plot request stats
-  for i, field in enumerate(fields):
-    fieldKey = field[0] + " C0"
-    trace = []
-    for s in stats:
-      trace += s[fieldKey]
-    plt.plot(trace, label=field[1], color=colorList[i])
-
-  # format
-  plt.legend(loc="upper right")
-  plt.xlabel("Input number")
-  plt.xticks(range(0, len(stats)*stats[0]["numSteps"]+1,5))
-  plt.ylabel("Number of cells")
-  plt.ylim(-5, 55)
-  # plt.ylim(plt.ylim()[0] - 5, plt.ylim()[1] + 5)
-  plt.title("Inferring combined sensorimotor and temporal sequence stream")
-
-  # save
-  relPath = "{}_exp_combined.pdf".format(basename)
-  path = os.path.join(plotDir, relPath)
-  plt.savefig(path)
-  plt.close()
-
+  # Pickle results for plotting and possible later debugging
+  with open(resultsFilename, "wb") as f:
+    cPickle.dump(results, f)
 
 
 if __name__ == "__main__":
 
-  startTime = time.time()
-  dirName = os.path.dirname(os.path.realpath(__file__))
+  # Map paper figures to experiment
+  generateFigureFunc = {
+    "4A": runExperiment4A,
+    "4B": runExperiment4B,
+    "5A": runExperiment5A,
+    "5B": runExperiment5B,
+    "6":  runExperiment6,
+  }
+  figures = generateFigureFunc.keys()
+  figures.sort()
 
-  # This is how you run a specific experiment in single process mode. Useful
-  # for debugging, profiling, etc.
-  if True:
-    resultsName = os.path.join(dirName, "combined_results.pkl")
-    results = runExperiment(
-                  {
-                    "numSequences": 50,
-                    "seqLength": 10,
-                    "numObjects": 50,
-                    "numPoints": 10,
-                    "numFeatures": 50,
-                    "numColumns": 1,
-                    "trialNum": 8,
-                    "numLocations": 50,
-                    "plotInferenceStats": True,  # Outputs detailed graphs
-                    "settlingTime": 3,
-                  }
-              )
+  parser = argparse.ArgumentParser(
+    description="Use this script to generate the figures and results presented "
+                "in (Ahmad & Hawkins, 2017)",
+    formatter_class=RawDescriptionHelpFormatter,
+    epilog="--------------------------------------------------------------\n"
+           "  Subutai Ahmad & Jeff Hawkins (2017) \n"
+           "  Untangling Sequences: Behavior vs. External Causes \n"
+           "--------------------------------------------------------------\n")
 
-    # Pickle results for later use
-    with open(resultsName,"wb") as f:
-      cPickle.dump(results,f)
+  parser.add_argument(
+    "figure",
+    metavar="FIGURE",
+    nargs='?',
+    type=str,
+    default=None,
+    choices=figures,
+    help=(
+    "Specify the figure name to generate. Possible values are: %s " % figures)
+  )
+  parser.add_argument(
+    "-l", "--list",
+    action='store_true',
+    help='List all figures'
+  )
+  opts = parser.parse_args()
 
-    # Analyze results
-    with open(resultsName,"rb") as f:
-      results = cPickle.load(f)
-
-    plotMultipleInferenceRun(
-      results["statistics"][0:10],
-      fields=[
-        # ("L4 Predicted", "Predicted sensorimotor cells"),
-        # ("L2 Representation", "L2 Representation"),
-        # ("L4 Representation", "Active sensorimotor cells"),
-        (
-        "L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
-        # ("TM NextPredicted", "Predicted cells in temporal sequence layer"),
-        ("TM PredictedActive",
-         "Predicted active cells in temporal sequence layer"),
-      ],
-      basename=results["name"],
-      plotDir=os.path.join(dirName, "plots")
-    )
-
-  # Here we want to check accuracy of the L2/L4 networks in classifying the
-  # sequences. This experiment is run using a process pool
-  if False:
-    # We run 10 trials for each column number and then analyze results
-    numTrials = 10
-    featureRange = [5, 10, 100]
-    seqRange = [50]
-    locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
-                     1000, 1100, 1200, 1300, 1400, 1500, 1600]
-    resultsName = os.path.join(dirName, "sensorimotor_accuracy_results_5_10_100.pkl")
-
-    # Comment this out if you  are re-running analysis on already saved results.
-    # Very useful for debugging the plots
-    # runExperimentPool(
-    #                   numSequences=seqRange,
-    #                   numFeatures=featureRange,
-    #                   numLocations=locationRange,
-    #                   seqLength=10,
-    #                   nTrials=numTrials,
-    #                   numWorkers=cpu_count() - 1,
-    #                   resultsName=resultsName)
-
-    # Analyze results
-    with open(resultsName,"rb") as f:
-      results = cPickle.load(f)
-
-    plotSensorimotorAccuracy(results, locationRange, featureRange, seqRange,
-      title="Relative performance of layers while inferring temporal sequences",
-      yaxis="Accuracy (%)")
-
-
-  # Here we want to see how the number of objects affects convergence for a
-  # single column.
-  # This experiment is run using a process pool
-  if False:
-    # We run 10 trials for each column number and then analyze results
-    numTrials = 10
-    featureRange = [5, 10, 100, 1000]
-    seqRange = [2,5,10,20,30,50]
-    locationRange = [10, 100, 500, 1000]
-    resultsName = os.path.join(dirName, "sequence_convergence_results.pkl")
-
-    # Comment this out if you  are re-running analysis on already saved results.
-    # Very useful for debugging the plots
-    runExperimentPool(
-                      numSequences=seqRange,
-                      numFeatures=featureRange,
-                      numLocations=locationRange,
-                      seqLength=10,
-                      nTrials=numTrials,
-                      numWorkers=cpu_count() - 1,
-                      resultsName=resultsName)
-
-    # Analyze results
-    with open(resultsName,"rb") as f:
-      results = cPickle.load(f)
-
-    plotConvergenceBySequence(results, seqRange, featureRange, numTrials)
-
-    plotPredictionsBySequence(results, seqRange, featureRange, numTrials,
-                              key="averagePredictions",
-                              title="Predictions in temporal sequence layer",
-                              yaxis="Average number of predicted cells")
-
-    plotPredictionsBySequence(results, seqRange, featureRange, numTrials,
-                            key="averagePredictedActive",
-                            title="Correct predictions in temporal sequence layer",
-                            yaxis="Average number of correctly predicted cells"
-                            )
-
-    plotPredictionsBySequence(results, seqRange, featureRange, numTrials,
-                              key="averagePredictedActiveL4",
-                              title="Correct predictions in sensorimotor layer",
-                              yaxis="Average number of correctly predicted cells"
-                              )
-
-    plotPredictionsBySequence(results, seqRange, featureRange, numTrials,
-                              key="averagePredictionsL4",
-                              title="Predictions in sensorimotor layer",
-                              yaxis="Average number of predicted cells")
-
-
-  print "Actual runtime=",time.time() - startTime
+  if opts.list:
+    # Generate help by extracting the docstring from each function.
+    for fig, func in sorted(generateFigureFunc.iteritems()):
+      print fig, func.__doc__
+  elif opts.figure is not None:
+    startTime = time.time()
+    generateFigureFunc[opts.figure](os.path.dirname(os.path.realpath(__file__)))
+    print "Actual runtime=", time.time() - startTime
+  else:
+    parser.print_help()
 

@@ -165,6 +165,9 @@ class ObjectMachineBase(object):
     """
     objects = self.getObjects()
 
+    if len(objects) == 0:
+      return 0.0, 0.0, 0.0
+
     sumCommonLocations = 0
     sumCommonFeatures = 0
     sumCommonPairs = 0
