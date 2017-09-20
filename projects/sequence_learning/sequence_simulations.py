@@ -200,6 +200,9 @@ def killCells(i, options, tm):
 
 
 def runExperiment1(options):
+  if not os.path.exists("results/"):
+    os.makedirs("results/")
+
   outFilename = os.path.join("results", options.name+".out")
 
   with open(outFilename,"wb") as outputFile:
@@ -227,6 +230,7 @@ def runExperiment1(options):
     numSegments = []
     numSynapses = []
     i=0
+    print "total number of iterations: ", options.iterations
     while i < options.iterations:
       if i%100==0:
         print "i=",i,"segments=",tm.connections.numSegments(),
