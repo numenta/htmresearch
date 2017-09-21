@@ -56,9 +56,15 @@ Installation
 OK, enough caveats. Here are some installation instructions though mostly you
 are on your own. (Wait, was that another caveat?)
 
-Requirements: the main requirement is nupic. Various individual projects may
-have other requirements. We don't formally spell these out but two common ones
-are pandas and plotly.
+Requirements:
+
+- `nupic` and `nupic.core`
+  - `pip install nupic --user` should be sufficient
+- `htmresearch-core`
+  - To install, follow the instructions in the
+    [htmresearch-core README](https://github.com/numenta/htmresearch-core).
+- Various individual projects may have other requirements. We don't formally
+  spell these out but two common ones are pandas and plotly.
 
 Install using setup.py like any python project. Since the contents here change
 often, we highly recommend installing as follows:
@@ -68,7 +74,7 @@ often, we highly recommend installing as follows:
 After this you can test by importing from htmresearch:
 
     python
-    from nupic.bindings.apical_tiebreak_temporal_memory import ApicalTiebreakTemporalMemory
+    from htmresearch.algorithms.apical_tiebreak_temporal_memory import ApicalTiebreakPairMemory
 
 If this works installation probably worked fine. BTW, the above class is a
 modified version of TemporalMemory that we are currently researching. It
