@@ -73,10 +73,8 @@ def runExperiment(args):
                              locations will present during inference if this
                              parameter is set to be a positive number
 
-  The method returns the args dict updated with two additional keys:
-    convergencePoint (int)   The average number of iterations it took
-                             to converge across all objects
-    objects          (pairs) The list of objects we trained on
+  The method returns the args dict updated with multiple additional keys
+  representing accuracy metrics.
   """
   numObjects = args.get("numObjects", 10)
   numLocations = args.get("numLocations", 10)
@@ -84,7 +82,6 @@ def runExperiment(args):
   numColumns = args.get("numColumns", 2)
   networkType = args.get("networkType", "MultipleL4L2Columns")
   longDistanceConnections = args.get("longDistanceConnections", 0)
-  profile = args.get("profile", False)
   locationNoise = args.get("locationNoise", 0.0)
   featureNoise = args.get("featureNoise", 0.0)
   numPoints = args.get("numPoints", 10)
@@ -144,8 +141,6 @@ def runExperiment(args):
   )
 
   exp.learnObjects(objects.provideObjectsToLearn())
-  if profile:
-    exp.printProfile(reset=True)
 
   # For inference, we will check and plot convergence for each object. For each
   # object, we create a sequence of random sensations for each column.  We will
