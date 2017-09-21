@@ -122,12 +122,18 @@ class SimpleObjectMachine(ObjectMachineBase):
 
     The input inferenceConfig should be a dict with the following form:
     {
-      "numSteps": 2  # number of sensations
-      "noiseLevel": 0.05  # noise to add to sensations (optional)
+      "numSteps": 2  # number of sensations for each column
       "pairs": {
         0: [(1, 2), (2, 2)]  # sensations for cortical column 0
         1: [(2, 2), (1, 1)]  # sensations for cortical column 1
       }
+
+      # The following are optional
+      "noiseLevel": 0.05            # noise to add to feature sensations
+      "locationNoise": 0.23         # noise to add to location signal
+      "includeRandomLocation": True # Swap in a random location SDR
+      "numAmbiguousLocations": 2    # Number of additional random locations to
+                                    # union together in location input
     }
 
     The pairs of indices can be modified for custom inference:
@@ -165,10 +171,10 @@ class SimpleObjectMachine(ObjectMachineBase):
       sdrPairs = self._getSDRPairs(
         pairs,
         noise=inferenceConfig.get("noiseLevel", None),
+        locationNoise=inferenceConfig.get("locationNoise", None),
         includeRandomLocation=inferenceConfig.get("includeRandomLocation",
                                                   False),
-        numAmbiguousLocations=inferenceConfig.get("numAmbiguousLocations",
-                                                  0))
+        numAmbiguousLocations=inferenceConfig.get("numAmbiguousLocations", 0))
       sensationSteps.append(sdrPairs)
 
     self._checkObjectToInfer(sensationSteps)
@@ -218,6 +224,7 @@ class SimpleObjectMachine(ObjectMachineBase):
   def _getSDRPairs(self,
                    pairs,
                    noise=None,
+                   locationNoise=None,
                    includeRandomLocation=False,
                    numAmbiguousLocations=0):
     """
@@ -234,6 +241,7 @@ class SimpleObjectMachine(ObjectMachineBase):
       if includeRandomLocation:
         location = self._generatePattern(self.numInputBits,
                                          self.externalInputSize)
+
       elif numAmbiguousLocations > 0:
         location = self.locations[col][locationID]
         for _ in range(numAmbiguousLocations):
@@ -259,9 +267,14 @@ class SimpleObjectMachine(ObjectMachineBase):
       else:
         feature = self.features[col][featureID]
 
+      # Add random noise if requested
       if noise is not None:
-        location = self._addNoise(location, noise, self.externalInputSize)
-        feature = self._addNoise(feature, noise, self.sensorInputSize)
+        feature = self._addNoise(
+          feature, noise, self.sensorInputSize)
+      if locationNoise is not None:
+        location = self._addNoise(
+          location, locationNoise, self.externalInputSize)
+
       sensations[col] = (location, feature)
 
     return sensations
