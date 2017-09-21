@@ -141,7 +141,7 @@ def createReport(tm, options, sequenceString, numSegments, numSynapses):
   pic = tm.mmGetTracePredictedInactiveColumns()
   upac = tm.mmGetTraceUnpredictedActiveColumns()
 
-  resultsFilename = os.path.join("results", options.name+".csv")
+  resultsFilename = os.path.join("results", options.name+"_"+str(int(100*options.noise))+".csv")
 
   with open(resultsFilename,"wb") as resultsFile:
     csvWriter = csv.writer(resultsFile)
@@ -156,8 +156,7 @@ def createReport(tm, options, sequenceString, numSegments, numSynapses):
         # Compute instantaneous and average accuracy.
         a = computePredictionAccuracy(len(j), len(pic.data[i]))
 
-        #  We compute an exponential plus a windowed average to get curve
-        #  looking nice and smooth for the paper.
+        #  Smooth the curve to get averaged results for the paper.
         am = 0.99*am + 0.01*a
         accuracies[i] = am
         i0 = max(0, i-60+1)
@@ -359,8 +358,8 @@ parser.add_option("--seed",
                   default=42,
                   type=int)
 parser.add_option("--noise",
-                  help="Percent noise for noisy simulations. [default: "
-                       "%default]",
+                  help="Percent noise (for noisy simulations) or percentage"
+                       "of cells killed. [default: %default]",
                   default=0.1,
                   type=float)
 parser.add_option("--secondNoise",
@@ -370,7 +369,7 @@ parser.add_option("--secondNoise",
                   type=float)
 parser.add_option("--switchover",
                   help="Number of iterations after which to change "
-                       "statistics. [default: %default]",
+                       "statistics or kill cells. [default: %default]",
                   default=3500,
                   type=int)
 parser.add_option("--secondKill",
@@ -379,7 +378,7 @@ parser.add_option("--secondKill",
                   default=50000,
                   type=int)
 parser.add_option("--cells",
-                  help="Number of per column. [default: %default]",
+                  help="Number of cells per column. [default: %default]",
                   default=32,
                   type=int)
 parser.add_option("--simulation",
