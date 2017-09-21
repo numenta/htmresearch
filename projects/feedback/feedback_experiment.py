@@ -250,8 +250,9 @@ class FeedbackExperiment(object):
     else:
       # Train L4
       self._setLearningMode(l4Learning=True, l2Learning=False)
-      for i in sequence_order:
-        for _ in xrange(self.numLearningPoints):
+      for _ in xrange(self.numLearningPoints):
+        random.shuffle(sequence_order)
+        for i in sequence_order:
           sequence = sequences[i]
           for s in sequence:
             self.sensorInputs[0].addDataToQueue(list(s), 0, 0)
@@ -427,7 +428,7 @@ class FeedbackExperiment(object):
       "permanenceDecrement": 0.02,
       "reducedBasalThreshold": 10,
       "minThreshold": 13,
-      "basalPredictedSegmentDecrement": 0.0,
+      "basalPredictedSegmentDecrement": 0.02,
       "apicalPredictedSegmentDecrement": 0.0,
       "activationThreshold": 15,
       "sampleSize": 20,
