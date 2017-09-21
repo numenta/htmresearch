@@ -55,46 +55,6 @@ def locateConvergencePoint(stats, minOverlap, maxOverlap):
   return 1
 
 
-def averageConvergencePoint(inferenceStats, prefix, minOverlap, maxOverlap,
-                            settlingTime):
-  """
-  inferenceStats contains activity traces while the system visits each object.
-
-  Given the i'th object, inferenceStats[i] contains activity statistics for
-  each column for each region for the entire sequence of sensations.
-
-  For each object, compute the convergence time - the first point when all
-  L2 columns have converged.
-
-  Return the average convergence time across all objects.
-
-  Given inference statistics for a bunch of runs, locate all traces with the
-  given prefix. For each trace locate the iteration where it finally settles
-  on targetValue. Return the average settling iteration across all runs.
-  """
-  convergenceSum = 0.0
-
-  # For each object
-  for stats in inferenceStats:
-
-    # For each L2 column locate convergence time
-    convergencePoint = 0.0
-    for key in stats.iterkeys():
-      if prefix in key:
-        columnConvergence = locateConvergencePoint(
-          stats[key], minOverlap, maxOverlap)
-
-        # Ensure this column has converged by the last iteration
-        # assert(columnConvergence <= len(stats[key]))
-
-        convergencePoint = max(convergencePoint, columnConvergence)
-
-    convergenceSum += ceil(float(convergencePoint)/settlingTime)
-
-  return convergenceSum/len(inferenceStats)
-
-
-
 def averageConvergencePointNew(numActiveL2cells, minOverlap, maxOverlap):
   """
   inferenceStats contains activity traces while the system visits each object.
@@ -295,7 +255,7 @@ def runExperiment(args):
   longDistanceConnections = args.get("longDistanceConnections", 0)
   profile = args.get("profile", False)
   locationNoise = args.get("locationNoise", 0)
-  featureNoise = args.get("featureNoise", 0)
+  featureNoise = args.get("featureNoise", 0.0)
   numPoints = args.get("numPoints", 10)
   trialNum = args.get("trialNum", 42)
   pointRange = args.get("pointRange", 1)
@@ -400,6 +360,7 @@ def runExperiment(args):
       "object": objectId,
       "numSteps": len(objectSensations[0]),
       "pairs": objectSensations,
+      "noise": featureNoise,
       "includeRandomLocation": includeRandomLocation,
       "numAmbiguousLocations": numAmbiguousLocations,
     }

@@ -85,8 +85,6 @@ class FaultyTemporalMemory(TemporalMemory):
     cell, and, if learning is turned on, learns on one segment, growing a new
     segment if necessary.
 
-    Note: This differs from its base class implementation
-
     @param column (int)
     Index of bursting column.
 
