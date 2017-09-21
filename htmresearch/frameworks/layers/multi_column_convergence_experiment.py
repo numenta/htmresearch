@@ -47,11 +47,6 @@ def runExperiment(args):
                              Default: 10
   @param numPoints   (int)   The number of points on each object.
                              Default: 10
-  @param pointRange  (int)   Creates objects each with points ranging from
-                             [numPoints,...,numPoints+pointRange-1]
-                             A total of numObjects * pointRange objects will be
-                             created.
-                             Default: 1
   @param numLocations (int)  For each point, the number of locations to choose
                              from.  Default: 10
   @param numFeatures (int)   For each point, the number of features to choose
@@ -94,7 +89,6 @@ def runExperiment(args):
   featureNoise = args.get("featureNoise", 0.0)
   numPoints = args.get("numPoints", 10)
   trialNum = args.get("trialNum", 42)
-  pointRange = args.get("pointRange", 1)
   plotInferenceStats = args.get("plotInferenceStats", True)
   settlingTime = args.get("settlingTime", 3)
   includeRandomLocation = args.get("includeRandomLocation", False)
@@ -116,10 +110,9 @@ def runExperiment(args):
     seed=trialNum
   )
 
-  for p in range(pointRange):
-    objects.createRandomObjects(numObjects, numPoints=numPoints+p,
-                                      numLocations=numLocations,
-                                      numFeatures=numFeatures)
+  objects.createRandomObjects(numObjects, numPoints=numPoints,
+                                    numLocations=numLocations,
+                                    numFeatures=numFeatures)
 
   r = objects.objectConfusion()
   print "Average common pairs in objects=", r[0],
