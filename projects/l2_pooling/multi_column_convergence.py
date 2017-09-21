@@ -288,9 +288,9 @@ if __name__ == "__main__":
                     "numFeatures": 10,
                     "numColumns": 1,
                     "trialNum": 4,
-                    "featureNoise": 0.40,
+                    "featureNoise": 0.0,
                     "plotInferenceStats": True,  # Outputs detailed graphs
-                    "settlingTime": 3,
+                    "settlingTime": 2,
                     "includeRandomLocation": False
                   }
     )
