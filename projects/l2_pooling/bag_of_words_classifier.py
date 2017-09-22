@@ -72,27 +72,11 @@ def findWordInVocabulary(input, wordList):
 
 
 
-def bowClassifierPredict(input, bowVectors, distance="overlap"):
-  numClasses = bowVectors.shape[0]
-  output = np.zeros((numClasses,))
-
-  # normalize input
-  if distance == "L1":
-    for i in range(numClasses):
-      output[i] = np.sum(np.abs(input - bowVectors[i, :]))
-
-  elif distance == "dotProduct":
-    # normalize input
-    input = input / np.linalg.norm(input)
-    for i in range(numClasses):
-      bowVectors[i, :] = bowVectors[i, :]/np.linalg.norm(bowVectors[i, :])
-      output[i] = np.dot(input, bowVectors[i, :])
-    output = 1 - output
-  elif distance == "overlap":
-    for i in range(numClasses):
-      output[i] = -np.sum(np.minimum(input, bowVectors[i, :]))
-  return output
-
+def bowClassifierPredict(testVector, bowVectors):
+  """
+  Return overlap of the testVector with stored representations for each object.
+  """
+  return np.dot(bowVectors, testVector)
 
 
 def locateConvergencePoint(stats):
@@ -202,61 +186,41 @@ def run_bag_of_words_classifier(args={}):
   # Create random order of sensations for each object
   objectSensations = []
   for i in range(numObjects):
-    senses = np.where(bowVectors[i, :])[0]
-    senseList = senses.tolist()
+    sensations = np.where(bowVectors[i, :])[0]
+    senseList = sensations.tolist()
     random.shuffle(senseList)
     objectSensations.append(senseList)
 
   # plot accuracy as a function of number of sensations
   accuracyList = []
-  classificationOutcome = np.zeros((numObjects, 11))
-  for sensationNumber in range(1, 11):
+  classificationOutcome = np.zeros((numObjects, numPoints+1))
+  for sensationNumber in range(1, numPoints+1):
     bowVectorsTest = np.zeros((numObjects, numWords), dtype=np.int32)
     for objectId in range(numObjects):
-      numSensations = min(len(objectSensations[objectNames[objectId]]), sensationNumber)
       numPointsToInclude = min(numColumns*sensationNumber, numPoints)
 
-      #
       # # sensations for object objectId
-      senses = objectSensations[objectId]
-      # if objectId==42:
-      #   print senses
+      sensations = objectSensations[objectId]
       for j in range(numPointsToInclude):
-        # index = np.random.choice(senses)
-        index = senses[j]
+        index = sensations[j]
         bowVectorsTest[objectId, index] += 1
-      # for c in range(numColumns):
-      #   for j in range(numSensations):
-      #     # index = np.random.choice(senses)
-      #     index = senses[j]
-      #     bowVectorsTest[objectId, index] += 1
 
+    # Count the number of correct classifications.
+    # A correct classification is where object i is unambiguously recognized.
     numCorrect = 0
     for i in range(numObjects):
-      output = bowClassifierPredict(bowVectorsTest[i, :], bowVectors)
-      # if i==42:
-      #   print
-      #   print bowVectorsTest[i, :]
-      #   print bowVectors[i, :]
-      #   print "maxSenses=", maxSenses
-      #   print -output
-      #   print -output[42]
-      predictLabel = np.argmin(output)
-      outcome = predictLabel == i
+      overlaps = bowClassifierPredict(bowVectorsTest[i, :], bowVectors)
+      bestOverlap = max(overlaps)
+      outcome = (overlaps[i] == bestOverlap) and len(np.where(overlaps==bestOverlap)[0]) == 1
       numCorrect += outcome
       classificationOutcome[i, sensationNumber] = outcome
     accuracy = float(numCorrect) / numObjects
     accuracyList.append(accuracy)
-    # print "maxSenses {} accuracy {}".format(maxSenses, accuracy)
 
   convergencePoint = np.zeros((numObjects, ))
   for i in range(numObjects):
-    # if i==42:
-    # print "obj ", i, "result: ", classificationOutcome[i, :]
-    # print locateConvergencePoint(classificationOutcome[i, :])
     if np.max(classificationOutcome[i, :])>0:
       convergencePoint[i] = locateConvergencePoint(classificationOutcome[i, :])
-      # convergencePoint[i] = np.where(classificationOutcome[i, :] == 1)[0][0]
     else:
       convergencePoint[i] = 11
 
@@ -566,37 +530,37 @@ def run_ideal_model_comparison():
   plt.savefig('plots/compare_model_with_ideal_observer.pdf')
 
 def runTests():
-  # # object  # 100 feature #  10 location # 10 distinct words # 100 numColumns 1
-  # # convergencePoint: 2.29
-  # run_bag_of_words_classifier(
-  #   {
-  #     "numObjects": 100,
-  #     "numPoints": 10,
-  #     "numColumns": 1,
-  #   }
-  # )
-  #
-  # # object  # 53 feature #  13 location # 10 distinct words # 126 numColumns 1
-  # # convergencePoint: 1.88679245283
-  # run_bag_of_words_classifier(
-  #   {
-  #     "numObjects": 53,
-  #     "numPoints": 9,
-  #     "numFeatures": 13,
-  #     "numColumns": 1,
-  #   }
-  # )
-  #
-  # # object  # 101 feature #  11 location # 10 distinct words # 110 numColumns 1
-  # # convergencePoint: 2.27722772277
-  # run_bag_of_words_classifier(
-  #   {
-  #     "numObjects": 101,
-  #     "numPoints": 10,
-  #     "numFeatures": 11,
-  #     "numColumns": 1,
-  #   }
-  # )
+  # object  # 100 feature #  10 location # 10 distinct words # 100 numColumns 1
+  # convergencePoint: 2.29
+  run_bag_of_words_classifier(
+    {
+      "numObjects": 100,
+      "numPoints": 10,
+      "numColumns": 1,
+    }
+  )
+
+  # object  # 53 feature #  13 location # 10 distinct words # 126 numColumns 1
+  # convergencePoint: 1.88679245283
+  run_bag_of_words_classifier(
+    {
+      "numObjects": 53,
+      "numPoints": 9,
+      "numFeatures": 13,
+      "numColumns": 1,
+    }
+  )
+
+  # object  # 101 feature #  11 location # 10 distinct words # 110 numColumns 1
+  # convergencePoint: 2.27722772277
+  run_bag_of_words_classifier(
+    {
+      "numObjects": 101,
+      "numPoints": 10,
+      "numFeatures": 11,
+      "numColumns": 1,
+    }
+  )
 
   # Should be faster than above
   # convergencePoint: 2.27722772277
