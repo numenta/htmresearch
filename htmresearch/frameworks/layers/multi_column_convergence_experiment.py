@@ -211,8 +211,8 @@ def runExperiment(args):
       )
 
 
-  convergencePoint = exp.averageConvergencePoint("L2 Representation", 30, 40,
-                                                 settlingTime)
+  convergencePoint, accuracy = exp.averageConvergencePoint("L2 Representation",
+                                                 30, 40, settlingTime)
   classificationAccuracy = float(numCorrectClassifications) / numObjects
 
   print "# objects {} # features {} # locations {} # columns {} trial # {} network type {}".format(
