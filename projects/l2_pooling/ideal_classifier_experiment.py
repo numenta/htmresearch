@@ -19,26 +19,31 @@
 # ----------------------------------------------------------------------
 
 """
-This file is used to run Thing experiments using simulated sensations with
-a simple logistic encoder, with/without location signal
-
+This file runs an idealized observer experiment with feature/location
+pairs and compares that to the HTM model.  The ideal observer can also be run
+without location information, in which case it simulates a bag of features
+classifier.
 
 Example usage
 
-Train a bag of words classifier with/without location
-python bag_of_words_classifier.py --location 1
+Train an ideal classifier with/without location
 
-python bag_of_words_classifier.py  --location 0
+python ideal_classifier_experiment.py --location 1
+
+python ideal_classifier_experiment.py  --location 0
 """
 
 import cPickle
 from optparse import OptionParser
 import os
 import random
+from multiprocessing import Pool, cpu_count
+
 import numpy
 import numpy as np
 import  matplotlib.pyplot as plt
-from multiprocessing import Pool, cpu_count
+import matplotlib as mpl
+mpl.rcParams['pdf.fonttype'] = 42
 
 from htmresearch.frameworks.layers.object_machine_factory import (
   createObjectMachine
@@ -48,7 +53,7 @@ from multi_column_convergence import runExperimentPool
 plt.ion()
 plt.close('all')
 def _getArgs():
-  parser = OptionParser(usage="Train BoW classifier on Thing data")
+  parser = OptionParser(usage="Train classifier")
 
   parser.add_option("-l",
                     "--location",
@@ -72,7 +77,7 @@ def findWordInVocabulary(input, wordList):
 
 
 
-def bowClassifierPredict(testVector, bowVectors):
+def classifierPredict(testVector, bowVectors):
   """
   Return overlap of the testVector with stored representations for each object.
   """
@@ -96,7 +101,10 @@ def locateConvergencePoint(stats):
 
 
 
-def run_bag_of_words_classifier(args={}):
+def run_ideal_classifier(args={}):
+  """
+  Create and train classifier using given parameters.
+  """
   numObjects = args.get("numObjects", 10)
   numLocations = args.get("numLocations", 10)
   numFeatures = args.get("numFeatures", 10)
@@ -138,7 +146,6 @@ def run_bag_of_words_classifier(args={}):
   label = np.zeros((numInputVectors, numObjects))
   k = 0
   for i in range(numObjects):
-    # print "converting object {} ...".format(i)
     numSensations = len(objectSDRs[objectNames[i]])
     for j in range(numSensations):
       activeBitsFeature = np.array(list(objectSDRs[objectNames[i]][j][0][1]))
@@ -163,11 +170,8 @@ def run_bag_of_words_classifier(args={}):
       featureList[i] = wordList.shape[0] - 1
 
   numWords = wordList.shape[0]
-  # wordList = wordList[np.random.permutation(np.arange(numWords)), :]
-  print "object # {} feature #  {} location # {} distinct words # {} numColumns {}".format(
-    numObjects, numFeatures, numLocations, numWords, numColumns)
 
-  # convert objects to BOW representations
+  # convert objects to vectorized word representations
   bowVectors = np.zeros((numObjects, numWords), dtype=np.int32)
   k = 0
   for i in range(numObjects):
@@ -209,9 +213,10 @@ def run_bag_of_words_classifier(args={}):
     # A correct classification is where object i is unambiguously recognized.
     numCorrect = 0
     for i in range(numObjects):
-      overlaps = bowClassifierPredict(bowVectorsTest[i, :], bowVectors)
+      overlaps = classifierPredict(bowVectorsTest[i, :], bowVectors)
       bestOverlap = max(overlaps)
-      outcome = (overlaps[i] == bestOverlap) and len(np.where(overlaps==bestOverlap)[0]) == 1
+      outcome = ( (overlaps[i] == bestOverlap) and
+                  len(np.where(overlaps==bestOverlap)[0]) == 1)
       numCorrect += outcome
       classificationOutcome[i, sensationNumber] = outcome
     accuracy = float(numCorrect) / numObjects
@@ -228,7 +233,9 @@ def run_bag_of_words_classifier(args={}):
   args.update({"numTouches": range(1, 11)})
   args.update({"convergencePoint": np.mean(convergencePoint)})
   args.update({"classificationOutcome": classificationOutcome})
-  print "convergencePoint:", args["convergencePoint"]
+  print "objects={}, features={}, locations={}, distinct words={}, numColumns={}".format(
+    numObjects, numFeatures, numLocations, numWords, numColumns),
+  print "==> convergencePoint:", args["convergencePoint"]
 
   return args
 
@@ -365,7 +372,7 @@ def run_bow_experiment_single_column(options):
   print "useLocation: ", useLocation
 
   pool = Pool(processes=numWorkers)
-  result = pool.map(run_bag_of_words_classifier, args)
+  result = pool.map(run_ideal_classifier, args)
 
   resultsName = "bag_of_words_useLocation_{}.pkl".format(useLocation)
   # Pickle results for later use
@@ -387,16 +394,15 @@ def run_bow_experiment_single_column(options):
   plt.savefig(plotPath)
 
 
-def run_bow_experiment_multiple_columns():
+def run_multiple_column_experiment():
   # Create the objects
-  featureRange = [5, 30]
+  featureRange = [5, 10, 20, 30]
   pointRange = 1
   objectRange = [100]
   numLocations = [10]
   numPoints = 10
   numTrials = 10
-  columnRange = [1, 2, 3, 4, 5, 6]
-  # columnRange = [1, 2, 3, 4, 5, 6, 7, 8]
+  columnRange = [1, 2, 3, 4, 5, 6, 7, 8]
   useLocation = 1
 
   resultsDir = os.path.dirname(os.path.realpath(__file__))
@@ -422,23 +428,23 @@ def run_bow_experiment_multiple_columns():
   print "Number of experiments:",len(args)
   bowResultsFile = os.path.join(resultsDir,
            "bag_of_words_multi_column_useLocation_{}.pkl".format(useLocation))
-  # pool = Pool(processes=cpu_count())
-  # result = pool.map(run_bag_of_words_classifier, args)
-  #
-  # # Pickle results for later use
-  # with open(bowResultsFile, "wb") as f:
-  #   cPickle.dump(result, f)
+  pool = Pool(processes=cpu_count())
+  result = pool.map(run_ideal_classifier, args)
+
+  # Pickle results for later use
+  with open(bowResultsFile, "wb") as f:
+    cPickle.dump(result, f)
 
   htmResultsFile = os.path.join(resultsDir, "column_convergence_results.pkl")
-  # runExperimentPool(
-  #   numObjects=objectRange,
-  #   numLocations=[10],
-  #   numFeatures=featureRange,
-  #   numColumns=columnRange,
-  #   numPoints=10,
-  #   nTrials=numTrials,
-  #   numWorkers=cpu_count(),
-  #   resultsName=htmResultsFile)
+  runExperimentPool(
+    numObjects=objectRange,
+    numLocations=[10],
+    numFeatures=featureRange,
+    numColumns=columnRange,
+    numPoints=10,
+    nTrials=numTrials,
+    numWorkers=cpu_count(),
+    resultsName=htmResultsFile)
 
   with open(htmResultsFile, "rb") as f:
     results = cPickle.load(f)
@@ -473,13 +479,13 @@ def run_ideal_model_comparison():
          }
       )
 
-  print "{} experiments to run, {} workers".format(len(args), numWorkers)
+  print "{} experiments to run, {} workers".format(len(args), cpu_count())
   print "useLocation: ", useLocation
 
   # run_bag_of_words_classifier(args[0])
   pool = Pool(processes=cpu_count())
-  result = pool.map(run_bag_of_words_classifier, args)
-  resultsName = "ideal_mode_result.pkl"
+  result = pool.map(run_ideal_classifier, args)
+  resultsName = "ideal_model_result.pkl"
   # Pickle results for later use
   with open(resultsName, "wb") as f:
     cPickle.dump(result, f)
@@ -532,7 +538,7 @@ def run_ideal_model_comparison():
 def runTests():
   # object  # 100 feature #  10 location # 10 distinct words # 100 numColumns 1
   # convergencePoint: 2.29
-  run_bag_of_words_classifier(
+  run_ideal_classifier(
     {
       "numObjects": 100,
       "numPoints": 10,
@@ -542,7 +548,7 @@ def runTests():
 
   # object  # 53 feature #  13 location # 10 distinct words # 126 numColumns 1
   # convergencePoint: 1.88679245283
-  run_bag_of_words_classifier(
+  run_ideal_classifier(
     {
       "numObjects": 53,
       "numPoints": 9,
@@ -553,7 +559,7 @@ def runTests():
 
   # object  # 101 feature #  11 location # 10 distinct words # 110 numColumns 1
   # convergencePoint: 2.27722772277
-  run_bag_of_words_classifier(
+  run_ideal_classifier(
     {
       "numObjects": 101,
       "numPoints": 10,
@@ -564,7 +570,7 @@ def runTests():
 
   # Should be faster than above
   # convergencePoint: 2.27722772277
-  run_bag_of_words_classifier(
+  run_ideal_classifier(
     {
       "numObjects": 101,
       "numPoints": 10,
@@ -578,9 +584,9 @@ if __name__ == "__main__":
 
   # run_bow_experiment_single_column(options)
 
-  # run_bow_experiment_multiple_columns()
+  run_multiple_column_experiment()
 
   # run_ideal_model_comparison()
 
-  runTests()
+  # runTests()
 
