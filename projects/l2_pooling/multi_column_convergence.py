@@ -27,6 +27,7 @@ or adjust the confusion between objects.
 import os
 import numpy
 import cPickle
+import time
 from multiprocessing import Pool, cpu_count
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -103,11 +104,20 @@ def runExperimentPool(numObjects,
                          "l4Params": l4Params
                          }
               )
-  print "{} experiments to run, {} workers".format(len(args), numWorkers)
+  numExperiments = len(args)
+  print "{} experiments to run, {} workers".format(numExperiments, numWorkers)
   # Run the pool
   if numWorkers > 1:
     pool = Pool(processes=numWorkers)
-    result = pool.map(runExperiment, args)
+    rs = pool.map_async(runExperiment, args, chunksize=1)
+    while not rs.ready():
+      remaining = rs._number_left
+      pctDone = 100.0 - (100.0*remaining) / numExperiments
+      print "    =>", remaining, "experiments remaining, percent complete=",pctDone
+      time.sleep(5)
+    pool.close()  # No more work
+    pool.join()
+    result = rs.get()
   else:
     result = []
     for arg in args:
@@ -279,7 +289,7 @@ if __name__ == "__main__":
 
   # This is how you run a specific experiment in single process mode. Useful
   # for debugging, profiling, etc.
-  if True:
+  if False:
     results = runExperiment(
                   {
                     "numObjects": 100,
@@ -299,7 +309,7 @@ if __name__ == "__main__":
   # Here we want to see how the number of objects affects convergence for a
   # single column.
   # This experiment is run using a process pool
-  if False:
+  if True:
     # We run 10 trials for each column number and then analyze results
     numTrials = 10
     columnRange = [1]
