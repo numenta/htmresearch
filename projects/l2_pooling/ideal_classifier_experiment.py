@@ -201,7 +201,7 @@ def run_ideal_classifier(args={}):
   for sensationNumber in range(1, numPoints+1):
     bowVectorsTest = np.zeros((numObjects, numWords), dtype=np.int32)
     for objectId in range(numObjects):
-      numPointsToInclude = min(numColumns*sensationNumber, numPoints)
+      numPointsToInclude = min(numColumns*sensationNumber, len(objectSensations[objectId]))
 
       # # sensations for object objectId
       sensations = objectSensations[objectId]
@@ -426,13 +426,13 @@ def run_multiple_column_experiment():
             )
 
   print "Number of experiments:",len(args)
-  bowResultsFile = os.path.join(resultsDir,
-           "bag_of_words_multi_column_useLocation_{}.pkl".format(useLocation))
+  idealResultsFile = os.path.join(resultsDir,
+           "ideal_multi_column_useLocation_{}.pkl".format(useLocation))
   pool = Pool(processes=cpu_count())
   result = pool.map(run_ideal_classifier, args)
 
   # Pickle results for later use
-  with open(bowResultsFile, "wb") as f:
+  with open(idealResultsFile, "wb") as f:
     cPickle.dump(result, f)
 
   htmResultsFile = os.path.join(resultsDir, "column_convergence_results.pkl")
@@ -449,21 +449,22 @@ def run_multiple_column_experiment():
   with open(htmResultsFile, "rb") as f:
     results = cPickle.load(f)
 
-  with open(bowResultsFile, "rb") as f:
-    resultsBOW = cPickle.load(f)
+  with open(idealResultsFile, "rb") as f:
+    resultsIdeal = cPickle.load(f)
 
   plt.figure()
   plotConvergenceByColumn(results, columnRange, featureRange, numTrials)
-  plotConvergenceByColumn(resultsBOW, columnRange, featureRange, numTrials,
+  plotConvergenceByColumn(resultsIdeal, columnRange, featureRange, numTrials,
                           "--")
   plt.savefig('plots/ideal_observer_multiple_column.pdf')
 
 
-def run_ideal_model_comparison():
+def single_column_accuracy_comparison():
   pointRange = 1
   numTrials = 4
-  useLocation = options.useLocation
   args = []
+
+  resultsDir = os.path.dirname(os.path.realpath(__file__))
 
   for t in range(numTrials):
     for useLocation in [0, 1]:
@@ -480,21 +481,22 @@ def run_ideal_model_comparison():
       )
 
   print "{} experiments to run, {} workers".format(len(args), cpu_count())
-  print "useLocation: ", useLocation
 
-  # run_bag_of_words_classifier(args[0])
+  idealResultsFile = os.path.join(resultsDir, "ideal_model_result.pkl")
+
+  # Run all experiments and pickle results for later use
   pool = Pool(processes=cpu_count())
-  result = pool.map(run_ideal_classifier, args)
-  resultsName = "ideal_model_result.pkl"
-  # Pickle results for later use
-  with open(resultsName, "wb") as f:
-    cPickle.dump(result, f)
+  resultsIdeal = pool.map(run_ideal_classifier, args)
 
-  # run sensorimotor network
-  numTrials = 10
+  with open(idealResultsFile, "wb") as f:
+    cPickle.dump(resultsIdeal, f)
+
+  # run HTM network
+  numTrials = 1
   columnRange = [1]
   objectRange = [100]
   numAmbiguousLocationsRange = [0]
+  htmResultsFile = os.path.join(resultsDir, "single_column_convergence_results.pkl")
   runExperimentPool(
     numObjects=objectRange,
     numLocations=[10],
@@ -504,26 +506,30 @@ def run_ideal_model_comparison():
     nTrials=numTrials,
     numWorkers=cpu_count(),
     ambiguousLocationsRange=numAmbiguousLocationsRange,
-    resultsName="single_column_convergence_results.pkl")
+    resultsName=htmResultsFile)
+
+  # Read results from pickle files
+  with open(idealResultsFile, "rb") as f:
+    resultsIdeal = cPickle.load(f)
+  with open(htmResultsFile, "rb") as f:
+    resultsModel = cPickle.load(f)
 
   # plot accuracy across sensations
   accuracyIdeal = 0
   accuracyBOF = 0
-  for r in result:
+  for r in resultsIdeal:
     if r["useLocation"]:
       accuracyIdeal += np.array(r['accuracy'])
     else:
       accuracyBOF += np.array(r['accuracy'])
 
-  accuracyIdeal /= len(result) / 2
-  accuracyBOF /= len(result) / 2
+  accuracyIdeal /= len(resultsIdeal) / 2
+  accuracyBOF /= len(resultsIdeal) / 2
 
   numTouches = len(accuracyIdeal)
-  with open("single_column_convergence_results.pkl", "rb") as f:
-    resultsModel = cPickle.load(f)
   accuracyModel = 0
   for r in resultsModel:
-    accuracyModel += np.array(r['accuracy'])
+    accuracyModel += np.array(r['classificationAccuracy'])
   accuracyModel /= len(resultsModel)
 
   plt.figure()
@@ -534,6 +540,7 @@ def run_ideal_model_comparison():
   plt.ylabel("Accuracy")
   plt.legend()
   plt.savefig('plots/compare_model_with_ideal_observer.pdf')
+
 
 def runTests():
   # object  # 100 feature #  10 location # 10 distinct words # 100 numColumns 1
@@ -584,9 +591,9 @@ if __name__ == "__main__":
 
   # run_bow_experiment_single_column(options)
 
-  run_multiple_column_experiment()
+  # run_multiple_column_experiment()
 
-  # run_ideal_model_comparison()
+  single_column_accuracy_comparison()
 
   # runTests()
 
