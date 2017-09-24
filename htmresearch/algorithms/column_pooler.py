@@ -410,20 +410,24 @@ class ColumnPooler(object):
     discrepancy = self.sdrSize - len(chosenCells)
     if discrepancy > 0:
       remFFcells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
-      if len(remFFcells > discrepancy):
-        # Inhibit cells proportionally to the number of cells that have already
-        # been chosen. If ~0 have been chosen activate ~all of the feedforward
-        # supported cells. If ~sdrSize have been chosen, activate very few of
-        # the feedforward supported cells.
-        n = min(max(discrepancy,
-                    len(remFFcells) * discrepancy / self.sdrSize),
-                len(remFFcells))
-        selected = numpy.empty(n, dtype="uint32")
-        self._random.sample(numpy.asarray(remFFcells, dtype="uint32"),
-                            selected)
-        chosenCells = numpy.append(chosenCells, selected)
-      else:
-        chosenCells = numpy.append(chosenCells, remFFcells)
+
+      # Inhibit cells proportionally to the number of cells that have already
+      # been chosen. If ~0 have been chosen activate ~all of the feedforward
+      # supported cells. If ~sdrSize have been chosen, activate very few of
+      # the feedforward supported cells.
+
+      # Use the discrepancy:sdrSize ratio to determine the number of cells to
+      # activate.
+      n = len(remFFcells) * discrepancy / self.sdrSize
+      # Activate at least 'discrepancy' cells.
+      n = max(n, discrepancy)
+      # If there aren't 'n' available, activate all of the available cells.
+      n = min(n, len(remFFcells))
+
+      selected = numpy.empty(n, dtype="uint32")
+      self._random.sample(numpy.asarray(remFFcells, dtype="uint32"),
+                          selected)
+      chosenCells = numpy.append(chosenCells, selected)
 
     chosenCells.sort()
     self.activeCells = numpy.asarray(chosenCells, dtype="uint32")
