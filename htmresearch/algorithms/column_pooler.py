@@ -419,10 +419,11 @@ class ColumnPooler(object):
       # If there aren't 'n' available, activate all of the available cells.
       n = min(n, len(remFFcells))
 
-      selected = numpy.empty(n, dtype="uint32")
-      self._random.sample(numpy.asarray(remFFcells, dtype="uint32"),
-                          selected)
-      chosenCells = numpy.append(chosenCells, selected)
+      if len(remFFcells) > n:
+        selected = _sample(self._random, remFFcells, n)
+        chosenCells = numpy.append(chosenCells, selected)
+      else:
+        chosenCells = numpy.append(chosenCells, remFFcells)
 
     chosenCells.sort()
     self.activeCells = numpy.asarray(chosenCells, dtype="uint32")
@@ -653,6 +654,19 @@ def _sampleRange(rng, start, end, step, k):
   rng.sample(numpy.arange(start, end, step, dtype="uint32"), array)
   return array
 
+
+def _sample(rng, arr, k):
+  """
+  Equivalent to:
+
+  random.sample(arr, k)
+
+  except it uses our random number generator.
+  """
+  selected = numpy.empty(k, dtype="uint32")
+  rng.sample(numpy.asarray(arr, dtype="uint32"),
+             selected)
+  return selected
 
 
 def _countWhereGreaterEqualInRows(sparseMatrix, rows, threshold):
