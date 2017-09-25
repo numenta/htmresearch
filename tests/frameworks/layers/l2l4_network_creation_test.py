@@ -61,7 +61,6 @@ networkConfig1 = {
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 0.6667,
     "learningMode": True,
   },
 }
@@ -103,7 +102,6 @@ networkConfig2 = {
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 0.6667,
     "learningMode": True,
   }
 }
@@ -144,7 +142,6 @@ networkConfig3 = {
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 0.6667,
     "learningMode": True,
   }
 }
@@ -188,7 +185,6 @@ networkConfig4 = {
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 0.6667,
     "learningMode": True,
   }
 }
@@ -562,7 +558,6 @@ class LaminarNetworkTest(unittest.TestCase):
         "activationThresholdDistal": 15,
         "sampleSizeDistal": 25,
         "connectedPermanenceDistal": 0.6,
-        "distalSegmentInhibitionFactor": 0.8333,
         "learningMode": True,
       },
     }
