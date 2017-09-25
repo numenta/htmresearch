@@ -348,9 +348,9 @@ class ColumnPooler(object):
     # Calculate the number of active segments on each cell
     numActiveSegmentsByCell = numpy.zeros(self.cellCount, dtype="int")
     overlaps = self.internalDistalPermanences.rightVecSumAtNZGteThresholdSparse(
-      prevActiveCells, self.connectedPermanenceDistal) #kl: within the same column
+      prevActiveCells, self.connectedPermanenceDistal)
     numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
-    for i, lateralInput in enumerate(lateralInputs): #kl: cross column
+    for i, lateralInput in enumerate(lateralInputs):
       overlaps = self.distalPermanences[i].rightVecSumAtNZGteThresholdSparse(
         lateralInput, self.connectedPermanenceDistal)
       numActiveSegmentsByCell[overlaps >= self.activationThresholdDistal] += 1
@@ -612,13 +612,13 @@ class ColumnPooler(object):
     For remaining parameters, see the __init__ docstring.
     """
 
-    permanences.incrementNonZerosOnOuter( # matrix manipulation, reinforce the connection betwwen activecells wih active input
+    permanences.incrementNonZerosOnOuter(
       activeCells, activeInput, permanenceIncrement)
     permanences.incrementNonZerosOnRowsExcludingCols(
       activeCells, activeInput, -permanenceDecrement)
-    permanences.clipRowsBelowAndAbove( # clean up set for outliers
+    permanences.clipRowsBelowAndAbove(
       activeCells, 0.0, 1.0)
-    if sampleSize == -1: # creating synapses
+    if sampleSize == -1:
       permanences.setZerosOnOuter(
         activeCells, activeInput, initialPermanence)
     else:
