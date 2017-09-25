@@ -218,7 +218,7 @@ class ColumnPooler(object):
       feedforwardGrowthCandidates = feedforwardInput
 
     # inference step
-    if not learn: # inference
+    if not learn:
       self._computeInferenceMode(feedforwardInput, lateralInputs)
 
     # learning step
@@ -302,7 +302,7 @@ class ColumnPooler(object):
                   self.initialProximalPermanence, self.synPermProximalInc,
                   self.synPermProximalDec, self.connectedPermanenceProximal)
 
-      # External distal learning cross column, segments
+      # External distal learning
       for i, lateralInput in enumerate(lateralInputs):
         self._learn(self.distalPermanences[i], self._random,
                     self.activeCells, lateralInput, lateralInput,
@@ -310,7 +310,7 @@ class ColumnPooler(object):
                     self.synPermDistalInc, self.synPermDistalDec,
                     self.connectedPermanenceDistal)
 
-      # Internal distal learning within the same column
+      # Internal distal learning
       self._learn(self.internalDistalPermanences, self._random,
                   self.activeCells, prevActiveCells, prevActiveCells,
                   self.sampleSizeDistal, self.initialDistalPermanence,
@@ -337,7 +337,6 @@ class ColumnPooler(object):
     """
 
     prevActiveCells = self.activeCells
-    print self.activeCells
 
     # Calculate the feedforward supported cells
     overlaps = self.proximalPermanences.rightVecSumAtNZGteThresholdSparse(
@@ -358,8 +357,8 @@ class ColumnPooler(object):
     chosenCells = []
 
     # First, activate the FF-supported cells that have the highest number of
-    if len(feedforwardSupportedCells) == 0:
     # lateral active segments (as long as it's not 0)
+    if len(feedforwardSupportedCells) == 0:
       pass
     else:
       numActiveSegsForFFSuppCells = numActiveSegmentsByCell[
@@ -371,7 +370,7 @@ class ColumnPooler(object):
       ttop = numpy.max(numActiveSegsForFFSuppCells)
       while ttop > 0 and len(chosenCells) < self.sdrSize:
         chosenCells = numpy.union1d(chosenCells,
-                    feedforwardSupportedCells[numActiveSegsForFFSuppCells > ttop])
+                    feedforwardSupportedCells[numActiveSegsForFFSuppCells >= ttop])
         ttop -= 1
 
     # If we haven't filled the sdrSize quorum, add in inertial cells.
@@ -398,7 +397,7 @@ class ColumnPooler(object):
           ttop = numpy.max(numActiveSegsForPrevCells)
           while ttop >= 0 and len(chosenCells) < self.sdrSize:
             chosenCells = numpy.union1d(chosenCells,
-                        prevCells[numActiveSegsForPrevCells > ttop])
+                        prevCells[numActiveSegsForPrevCells >= ttop])
             ttop -= 1
 
     # If we haven't filled the sdrSize quorum, add cells that have feedforward

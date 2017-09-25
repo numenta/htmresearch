@@ -47,7 +47,6 @@ def getDefaultL2Params(inputSize, seed):
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": .8,
     "inertiaFactor": .9,
     "seed": seed,
   }

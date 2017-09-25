@@ -94,7 +94,6 @@ networkConfig = {
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 0.6667,
     "learningMode": True,
   },
 
@@ -114,7 +113,6 @@ networkConfig = {
     "activationThresholdDistal": 13,
     "sampleSizeDistal": 20,
     "connectedPermanenceDistal": 0.5,
-    "distalSegmentInhibitionFactor": 0.6667,
     "learningMode": True,
   },
 }

@@ -858,7 +858,6 @@ class L4L2Experiment(object):
       "activationThresholdDistal": 13,
       "sampleSizeDistal": 20,
       "connectedPermanenceDistal": 0.5,
-      "distalSegmentInhibitionFactor": 0.999,
       "seed": self.seed,
       "learningMode": True,
     }
