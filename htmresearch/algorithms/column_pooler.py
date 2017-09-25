@@ -26,7 +26,7 @@ from nupic.bindings.math import SparseMatrix, GetNTAReal, Random
 
 
 class ColumnPooler(object):
-  """,
+  """
   This class constitutes a temporary implementation for a cross-column pooler.
   The implementation goal of this class is to prove basic properties before
   creating a cleaner implementation.
