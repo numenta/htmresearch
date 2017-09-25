@@ -418,7 +418,7 @@ class ColumnPooler(object):
 
       # Use the discrepancy:sdrSize ratio to determine the number of cells to
       # activate.
-      n = len(remFFcells) * discrepancy / self.sdrSize
+      n = (len(remFFcells) * discrepancy) // self.sdrSize
       # Activate at least 'discrepancy' cells.
       n = max(n, discrepancy)
       # If there aren't 'n' available, activate all of the available cells.
