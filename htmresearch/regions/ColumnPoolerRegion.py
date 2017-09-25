@@ -287,13 +287,6 @@ class ColumnPoolerRegion(PyRegion):
           dataType="Real32",
           count=1,
           constraints=""),
-        distalSegmentInhibitionFactor=dict(
-          description="Controls how many active segments (relatively) are "
-                      "required for a cell to inhibit another cell.",
-          accessMode="Read",
-          dataType="Real32",
-          count=1,
-          constraints=""),
         inertiaFactor=dict(
           description="Controls the proportion of previously active cells that "
                       "remain active through inertia in the next timestep (in  "
@@ -352,7 +345,6 @@ class ColumnPoolerRegion(PyRegion):
                sampleSizeDistal=20,
                activationThresholdDistal=13,
                connectedPermanenceDistal=0.50,
-               distalSegmentInhibitionFactor=0.999,
                inertiaFactor=1.,
 
                seed=42,
@@ -382,7 +374,6 @@ class ColumnPoolerRegion(PyRegion):
     self.sampleSizeDistal = sampleSizeDistal
     self.activationThresholdDistal = activationThresholdDistal
     self.connectedPermanenceDistal = connectedPermanenceDistal
-    self.distalSegmentInhibitionFactor = distalSegmentInhibitionFactor
     self.inertiaFactor = inertiaFactor
     self.seed = seed
 
@@ -421,7 +412,6 @@ class ColumnPoolerRegion(PyRegion):
         "activationThresholdDistal": self.activationThresholdDistal,
         "sampleSizeDistal": self.sampleSizeDistal,
         "connectedPermanenceDistal": self.connectedPermanenceDistal,
-        "distalSegmentInhibitionFactor": self.distalSegmentInhibitionFactor,
         "inertiaFactor": self.inertiaFactor,
         "seed": self.seed,
       }

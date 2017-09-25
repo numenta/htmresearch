@@ -464,7 +464,6 @@ class FeedbackExperiment(object):
       "activationThresholdDistal": 13,
       "sampleSizeDistal": 20,
       "connectedPermanenceDistal": 0.5,
-      "distalSegmentInhibitionFactor": .8,
       "inertiaFactor": .6667,
       "seed": self.seed,
     }
