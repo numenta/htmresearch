@@ -421,7 +421,6 @@ class ColumnPoolerRegion(PyRegion):
         "activationThresholdDistal": self.activationThresholdDistal,
         "sampleSizeDistal": self.sampleSizeDistal,
         "connectedPermanenceDistal": self.connectedPermanenceDistal,
-        "distalSegmentInhibitionFactor": self.distalSegmentInhibitionFactor,
         "inertiaFactor": self.inertiaFactor,
         "seed": self.seed,
       }

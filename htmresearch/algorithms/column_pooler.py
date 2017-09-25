@@ -26,7 +26,7 @@ from nupic.bindings.math import SparseMatrix, GetNTAReal, Random
 
 
 class ColumnPooler(object):
-  """
+  """,
   This class constitutes a temporary implementation for a cross-column pooler.
   The implementation goal of this class is to prove basic properties before
   creating a cleaner implementation.
@@ -57,7 +57,6 @@ class ColumnPooler(object):
                sampleSizeDistal=20,
                activationThresholdDistal=13,
                connectedPermanenceDistal=0.50,
-               distalSegmentInhibitionFactor=0.999,
                inertiaFactor=1.,
 
                seed=42):
@@ -136,10 +135,6 @@ class ColumnPooler(object):
     @param  connectedPermanenceDistal (float)
             Permanence required for a distal synapse to be connected
 
-    @param  distalSegmentInhibitionFactor (float)
-            The proportion of the highest number of active lateral segments
-            necessary for a cell not to be inhibited (must be <1).
-
     @param  inertiaFactor (float)
             The proportion of previously active cells that remain
             active in the next timestep due to inertia (in the absence of
@@ -151,8 +146,6 @@ class ColumnPooler(object):
             Random number generator seed
     """
 
-    assert distalSegmentInhibitionFactor > 0.0
-    assert distalSegmentInhibitionFactor < 1.0
     assert maxSdrSize is None or maxSdrSize >= sdrSize
     assert minSdrSize is None or minSdrSize <= sdrSize
 
@@ -181,7 +174,6 @@ class ColumnPooler(object):
     self.connectedPermanenceDistal = connectedPermanenceDistal
     self.sampleSizeDistal = sampleSizeDistal
     self.activationThresholdDistal = activationThresholdDistal
-    self.distalSegmentInhibitionFactor = distalSegmentInhibitionFactor
     self.inertiaFactor = inertiaFactor
 
     self.activeCells = numpy.empty(0, dtype="uint32")
@@ -221,15 +213,19 @@ class ColumnPooler(object):
     @param predictedInput (sequence)
            Sorted indices of predicted cells in the TM layer.
     """
+
     if feedforwardGrowthCandidates is None:
       feedforwardGrowthCandidates = feedforwardInput
 
-    if not learn:
+    # inference step
+    if not learn: # inference
       self._computeInferenceMode(feedforwardInput, lateralInputs)
 
+    # learning step
     elif not self.onlineLearning:
       self._computeLearningMode(feedforwardInput, lateralInputs,
                                 feedforwardGrowthCandidates)
+    # online learning step
     else:
       if (predictedInput is not None and
           len(predictedInput) > self.predictedInhibitionThreshold):
@@ -285,6 +281,7 @@ class ColumnPooler(object):
     # of time (i.e. we moved somewhere else) or we were mistaken.  Either way,
     # create a new SDR and learn on it.
     # This case is the only way different object representations are created.
+    # enforce the active cells in the output layer
     if len(self.activeCells) < self.minSdrSize:
       self.activeCells = _sampleRange(self._random,
                                       0, self.numberOfCells(),
@@ -305,7 +302,7 @@ class ColumnPooler(object):
                   self.initialProximalPermanence, self.synPermProximalInc,
                   self.synPermProximalDec, self.connectedPermanenceProximal)
 
-      # External distal learning
+      # External distal learning cross column, segments
       for i, lateralInput in enumerate(lateralInputs):
         self._learn(self.distalPermanences[i], self._random,
                     self.activeCells, lateralInput, lateralInput,
@@ -313,7 +310,7 @@ class ColumnPooler(object):
                     self.synPermDistalInc, self.synPermDistalDec,
                     self.connectedPermanenceDistal)
 
-      # Internal distal learning
+      # Internal distal learning within the same column
       self._learn(self.internalDistalPermanences, self._random,
                   self.activeCells, prevActiveCells, prevActiveCells,
                   self.sampleSizeDistal, self.initialDistalPermanence,
@@ -340,6 +337,7 @@ class ColumnPooler(object):
     """
 
     prevActiveCells = self.activeCells
+    print self.activeCells
 
     # Calculate the feedforward supported cells
     overlaps = self.proximalPermanences.rightVecSumAtNZGteThresholdSparse(
@@ -360,8 +358,8 @@ class ColumnPooler(object):
     chosenCells = []
 
     # First, activate the FF-supported cells that have the highest number of
-    # lateral active segments (as long as it's not 0)
     if len(feedforwardSupportedCells) == 0:
+    # lateral active segments (as long as it's not 0)
       pass
     else:
       numActiveSegsForFFSuppCells = numActiveSegmentsByCell[
@@ -373,8 +371,7 @@ class ColumnPooler(object):
       ttop = numpy.max(numActiveSegsForFFSuppCells)
       while ttop > 0 and len(chosenCells) < self.sdrSize:
         chosenCells = numpy.union1d(chosenCells,
-                    feedforwardSupportedCells[numActiveSegsForFFSuppCells >
-                    self.distalSegmentInhibitionFactor * ttop])
+                    feedforwardSupportedCells[numActiveSegsForFFSuppCells > ttop])
         ttop -= 1
 
     # If we haven't filled the sdrSize quorum, add in inertial cells.
@@ -401,8 +398,7 @@ class ColumnPooler(object):
           ttop = numpy.max(numActiveSegsForPrevCells)
           while ttop >= 0 and len(chosenCells) < self.sdrSize:
             chosenCells = numpy.union1d(chosenCells,
-                        prevCells[numActiveSegsForPrevCells >
-                        self.distalSegmentInhibitionFactor * ttop])
+                        prevCells[numActiveSegsForPrevCells > ttop])
             ttop -= 1
 
     # If we haven't filled the sdrSize quorum, add cells that have feedforward
@@ -410,7 +406,7 @@ class ColumnPooler(object):
     discrepancy = self.sdrSize - len(chosenCells)
     if discrepancy > 0:
       remFFcells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
-      if len(remFFcells > discrepancy):
+      if len(remFFcells) > discrepancy:
         # Inhibit cells proportionally to the number of cells that have already
         # been chosen. If ~0 have been chosen activate ~all of the feedforward
         # supported cells. If ~sdrSize have been chosen, activate very few of
