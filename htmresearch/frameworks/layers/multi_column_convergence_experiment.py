@@ -24,6 +24,7 @@ convergence of L4-L2 as you increase the number of columns under various
 scenarios.
 """
 
+import numpy
 import random
 
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
@@ -147,6 +148,7 @@ def runExperiment(args):
   # present each sensation for settlingTime time steps to let it settle and
   # ensure it converges.
   numCorrectClassifications=0
+  classificationPerSensation = numpy.zeros(settlingTime*numPoints)
   for objectId in objects:
     exp.sendReset()
 
@@ -195,10 +197,10 @@ def runExperiment(args):
 
     exp.infer(inferenceSDRs, objectName=objectId, reset=False)
 
-    classificationResults = exp.getCurrentClassification(30, includeZeros=False)
-    # print "Classification for object",objectId, "=", classificationResults
-    if (classificationResults.get(objectId, 0.0)==1.0 and
-        len(classificationResults)==1):
+    classificationPerSensation += numpy.array(
+      exp.statistics[objectId]["Correct classification"])
+
+    if exp.isObjectClassified(objectId, minOverlap=30):
       numCorrectClassifications += 1
 
     if plotInferenceStats:
@@ -214,6 +216,7 @@ def runExperiment(args):
   convergencePoint, accuracy = exp.averageConvergencePoint("L2 Representation",
                                                  30, 40, settlingTime)
   classificationAccuracy = float(numCorrectClassifications) / numObjects
+  classificationPerSensation = classificationPerSensation / numObjects
 
   print "# objects {} # features {} # locations {} # columns {} trial # {} network type {}".format(
     numObjects, numFeatures, numLocations, numColumns, trialNum, networkType)
@@ -225,6 +228,7 @@ def runExperiment(args):
   args.update({"objects": objects.getObjects()})
   args.update({"convergencePoint":convergencePoint})
   args.update({"classificationAccuracy":classificationAccuracy})
+  args.update({"classificationPerSensation":classificationPerSensation.tolist()})
 
   # Can't pickle experiment so can't return it for batch multiprocessing runs.
   # However this is very useful for debugging when running in a single thread.

@@ -751,12 +751,12 @@ class L4L2Experiment(object):
     return overlaps
 
 
-
   def getCurrentClassification(self, minOverlap=None, includeZeros=True):
     """
-    A dict with a score for each object. Score goes from 0 to 1. A 1 means
-    every col (that has received input since the last reset) currently has
-    overlap >= minOverlap with the representation for that object.
+    Return the current classification for every object.  Returns a dict with a
+    score for each object. Score goes from 0 to 1. A 1 means every col (that has
+    received input since the last reset) currently has overlap >= minOverlap
+    with the representation for that object.
 
     :param minOverlap: min overlap to consider the object as recognized.
                        Defaults to half of the SDR size
@@ -774,13 +774,13 @@ class L4L2Experiment(object):
     for objectName, objectSdr in self.objectL2Representations.iteritems():
       count = 0
       score = 0.0
-      for i in xrange(self.numColumns):
+      for col in xrange(self.numColumns):
         # Ignore inactive column
-        if len(l2sdr[i]) == 0:
+        if len(l2sdr[col]) == 0:
           continue
 
         count += 1
-        overlap = len(l2sdr[i] & objectSdr[i])
+        overlap = len(l2sdr[col] & objectSdr[col])
         if overlap >= minOverlap:
           score += 1
 
@@ -792,6 +792,41 @@ class L4L2Experiment(object):
           results[objectName] = score / count
 
     return results
+
+
+  def isObjectClassified(self, objectName, minOverlap=None, maxL2Size=None):
+    """
+    Return True if objectName is currently unambiguously classified by every L2
+    column. Classification is correct and unambiguous if the current L2 overlap
+    with the true object is greater than minOverlap and if the size of the L2
+    representation is no more than maxL2Size
+
+    :param minOverlap: min overlap to consider the object as recognized.
+                       Defaults to half of the SDR size
+
+    :param maxL2Size: max size for the L2 representation
+                       Defaults to 1.5 * SDR size
+
+    :return: True/False
+    """
+    L2Representation = self.getL2Representations()
+    objectRepresentation = self.objectL2Representations[objectName]
+    sdrSize = self.config["L2Params"]["sdrSize"]
+    if minOverlap is None:
+      minOverlap = sdrSize / 2
+    if maxL2Size is None:
+      maxL2Size = 1.5*sdrSize
+
+    numCorrectClassifications = 0
+    for col in xrange(self.numColumns):
+      overlapWithObject = len(objectRepresentation[col] & L2Representation[col])
+
+      if ( overlapWithObject >= minOverlap  and
+           len(L2Representation[col]) <= maxL2Size ):
+        numCorrectClassifications += 1
+
+    return numCorrectClassifications == self.numColumns
+
 
   def getDefaultL4Params(self, inputSize, numInputBits):
     """
@@ -965,9 +1000,14 @@ class L4L2Experiment(object):
         len(self.L4Columns[i]._tm.getActiveApicalSegments())
       )
 
-      # add true overlap if objectName was provided
+      # add true overlap and classification result if objectName was provided
       if objectName is not None:
         objectRepresentation = self.objectL2Representations[objectName]
         statistics["Overlap L2 with object C" + str(i)].append(
-          len(objectRepresentation[i] & L2Representation[i])
-        )
+          len(objectRepresentation[i] & L2Representation[i]) )
+
+    if objectName is not None:
+      if self.isObjectClassified(objectName):
+        statistics["Correct classification"].append(1.0)
+      else:
+        statistics["Correct classification"].append(0.0)

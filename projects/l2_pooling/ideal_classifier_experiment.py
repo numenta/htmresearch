@@ -461,7 +461,7 @@ def run_multiple_column_experiment():
 
 def single_column_accuracy_comparison():
   pointRange = 1
-  numTrials = 4
+  numTrials = 10
   args = []
 
   resultsDir = os.path.dirname(os.path.realpath(__file__))
@@ -492,7 +492,7 @@ def single_column_accuracy_comparison():
     cPickle.dump(resultsIdeal, f)
 
   # run HTM network
-  numTrials = 1
+  numTrials = 10
   columnRange = [1]
   objectRange = [100]
   numAmbiguousLocationsRange = [0]
@@ -503,6 +503,7 @@ def single_column_accuracy_comparison():
     numFeatures=[10],
     numColumns=columnRange,
     numPoints=10,
+    settlingTime=1,
     nTrials=numTrials,
     numWorkers=cpu_count(),
     ambiguousLocationsRange=numAmbiguousLocationsRange,
@@ -529,7 +530,7 @@ def single_column_accuracy_comparison():
   numTouches = len(accuracyIdeal)
   accuracyModel = 0
   for r in resultsModel:
-    accuracyModel += np.array(r['classificationAccuracy'])
+    accuracyModel += np.array(r['classificationPerSensation'])
   accuracyModel /= len(resultsModel)
 
   plt.figure()
