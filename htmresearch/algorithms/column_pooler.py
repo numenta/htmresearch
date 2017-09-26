@@ -405,17 +405,22 @@ class ColumnPooler(object):
     discrepancy = self.sdrSize - len(chosenCells)
     if discrepancy > 0:
       remFFcells = numpy.setdiff1d(feedforwardSupportedCells, chosenCells)
-      if len(remFFcells) > discrepancy:
-        # Inhibit cells proportionally to the number of cells that have already
-        # been chosen. If ~0 have been chosen activate ~all of the feedforward
-        # supported cells. If ~sdrSize have been chosen, activate very few of
-        # the feedforward supported cells.
-        n = min(max(discrepancy,
-                    len(remFFcells) * discrepancy / self.sdrSize),
-                len(remFFcells))
-        selected = numpy.empty(n, dtype="uint32")
-        self._random.sample(numpy.asarray(remFFcells, dtype="uint32"),
-                            selected)
+
+      # Inhibit cells proportionally to the number of cells that have already
+      # been chosen. If ~0 have been chosen activate ~all of the feedforward
+      # supported cells. If ~sdrSize have been chosen, activate very few of
+      # the feedforward supported cells.
+
+      # Use the discrepancy:sdrSize ratio to determine the number of cells to
+      # activate.
+      n = (len(remFFcells) * discrepancy) // self.sdrSize
+      # Activate at least 'discrepancy' cells.
+      n = max(n, discrepancy)
+      # If there aren't 'n' available, activate all of the available cells.
+      n = min(n, len(remFFcells))
+
+      if len(remFFcells) > n:
+        selected = _sample(self._random, remFFcells, n)
         chosenCells = numpy.append(chosenCells, selected)
       else:
         chosenCells = numpy.append(chosenCells, remFFcells)
@@ -649,6 +654,19 @@ def _sampleRange(rng, start, end, step, k):
   rng.sample(numpy.arange(start, end, step, dtype="uint32"), array)
   return array
 
+
+def _sample(rng, arr, k):
+  """
+  Equivalent to:
+
+  random.sample(arr, k)
+
+  except it uses our random number generator.
+  """
+  selected = numpy.empty(k, dtype="uint32")
+  rng.sample(numpy.asarray(arr, dtype="uint32"),
+             selected)
+  return selected
 
 
 def _countWhereGreaterEqualInRows(sparseMatrix, rows, threshold):
