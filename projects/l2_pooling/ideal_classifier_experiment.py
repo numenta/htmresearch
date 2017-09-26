@@ -467,7 +467,7 @@ def run_multiple_column_experiment():
   pool = Pool(processes=cpu_count())
   result = pool.map(run_ideal_classifier, args)
 
-  Pickle results for later use
+  # Pickle results for later use
   with open(idealResultsFile, "wb") as f:
     cPickle.dump(result, f)
 
