@@ -19,8 +19,7 @@
 # ----------------------------------------------------------------------
 
 """
-This file plots the convergence of L4-L2 as you increase the number of columns,
-or adjust the confusion between objects.
+This file plots the convergence of L4-L2 as you increase the amount of noise.
 
 """
 
