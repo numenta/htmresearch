@@ -96,3 +96,4 @@ robotium-solo-5.0.1.jar.properties
 *_ALL
 /projects/l2_pooling/plots
 /projects/combined_sequences/plots
+/domino.log

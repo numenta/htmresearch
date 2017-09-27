@@ -24,7 +24,11 @@ convergence of L4-L2 as you increase the number of columns under various
 scenarios.
 """
 
+import cPickle
+from multiprocessing import Pool
 import random
+import time
+import numpy
 
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 from htmresearch.frameworks.layers.object_machine_factory import (
@@ -147,6 +151,7 @@ def runExperiment(args):
   # present each sensation for settlingTime time steps to let it settle and
   # ensure it converges.
   numCorrectClassifications=0
+  classificationPerSensation = numpy.zeros(settlingTime*numPoints)
   for objectId in objects:
     exp.sendReset()
 
@@ -195,10 +200,10 @@ def runExperiment(args):
 
     exp.infer(inferenceSDRs, objectName=objectId, reset=False)
 
-    classificationResults = exp.getCurrentClassification(30, includeZeros=False)
-    # print "Classification for object",objectId, "=", classificationResults
-    if (classificationResults.get(objectId, 0.0)==1.0 and
-        len(classificationResults)==1):
+    classificationPerSensation += numpy.array(
+      exp.statistics[objectId]["Correct classification"])
+
+    if exp.isObjectClassified(objectId, minOverlap=30):
       numCorrectClassifications += 1
 
     if plotInferenceStats:
@@ -211,9 +216,10 @@ def runExperiment(args):
       )
 
 
-  convergencePoint = exp.averageConvergencePoint("L2 Representation", 30, 40,
-                                                 settlingTime)
+  convergencePoint, accuracy = exp.averageConvergencePoint("L2 Representation",
+                                                 30, 40, settlingTime)
   classificationAccuracy = float(numCorrectClassifications) / numObjects
+  classificationPerSensation = classificationPerSensation / numObjects
 
   print "# objects {} # features {} # locations {} # columns {} trial # {} network type {}".format(
     numObjects, numFeatures, numLocations, numColumns, trialNum, networkType)
@@ -225,10 +231,107 @@ def runExperiment(args):
   args.update({"objects": objects.getObjects()})
   args.update({"convergencePoint":convergencePoint})
   args.update({"classificationAccuracy":classificationAccuracy})
+  args.update({"classificationPerSensation":classificationPerSensation.tolist()})
 
   # Can't pickle experiment so can't return it for batch multiprocessing runs.
   # However this is very useful for debugging when running in a single thread.
   if plotInferenceStats:
     args.update({"experiment": exp})
   return args
+
+
+def runExperimentPool(numObjects,
+                      numLocations,
+                      numFeatures,
+                      numColumns,
+                      longDistanceConnectionsRange = [0.0],
+                      numWorkers=7,
+                      nTrials=1,
+                      numPoints=10,
+                      locationNoiseRange=[0.0],
+                      featureNoiseRange=[0.0],
+                      enableFeedback=[True],
+                      ambiguousLocationsRange=[0],
+                      numInferenceRpts=1,
+                      settlingTime=3,
+                      l2Params=None,
+                      l4Params=None,
+                      resultsName="convergence_results.pkl"):
+  """
+  Allows you to run a number of experiments using multiple processes.
+  For each parameter except numWorkers, pass in a list containing valid values
+  for that parameter. The cross product of everything is run, and each
+  combination is run nTrials times.
+
+  Returns a list of dict containing detailed results from each experiment.
+  Also pickles and saves the results in resultsName for later analysis.
+
+  Example:
+    results = runExperimentPool(
+                          numObjects=[10],
+                          numLocations=[5],
+                          numFeatures=[5],
+                          numColumns=[2,3,4,5,6],
+                          numWorkers=8,
+                          nTrials=5)
+  """
+  # Create function arguments for every possibility
+  args = []
+
+  for c in reversed(numColumns):
+    for o in reversed(numObjects):
+      for l in numLocations:
+        for f in numFeatures:
+          for p in longDistanceConnectionsRange:
+            for t in range(nTrials):
+              for locationNoise in locationNoiseRange:
+                for featureNoise in featureNoiseRange:
+                  for ambiguousLocations in ambiguousLocationsRange:
+                    for feedback in enableFeedback:
+                      args.append(
+                        {"numObjects": o,
+                         "numLocations": l,
+                         "numFeatures": f,
+                         "numColumns": c,
+                         "trialNum": t,
+                         "numPoints": numPoints,
+                         "longDistanceConnections" : p,
+                         "plotInferenceStats": False,
+                         "locationNoise": locationNoise,
+                         "featureNoise": featureNoise,
+                         "enableFeedback": feedback,
+                         "numAmbiguousLocations": ambiguousLocations,
+                         "numInferenceRpts": numInferenceRpts,
+                         "l2Params": l2Params,
+                         "l4Params": l4Params,
+                         "settlingTime": settlingTime,
+                         }
+              )
+  numExperiments = len(args)
+  print "{} experiments to run, {} workers".format(numExperiments, numWorkers)
+  # Run the pool
+  if numWorkers > 1:
+    pool = Pool(processes=numWorkers)
+    rs = pool.map_async(runExperiment, args, chunksize=1)
+    while not rs.ready():
+      remaining = rs._number_left
+      pctDone = 100.0 - (100.0*remaining) / numExperiments
+      print "    =>", remaining, "experiments remaining, percent complete=",pctDone
+      time.sleep(5)
+    pool.close()  # No more work
+    pool.join()
+    result = rs.get()
+  else:
+    result = []
+    for arg in args:
+      result.append(runExperiment(arg))
+
+  # print "Full results:"
+  # pprint.pprint(result, width=150)
+
+  # Pickle results for later use
+  with open(resultsName,"wb") as f:
+    cPickle.dump(result,f)
+
+  return result
 
