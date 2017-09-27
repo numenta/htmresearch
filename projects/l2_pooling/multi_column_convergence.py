@@ -27,110 +27,15 @@ or adjust the confusion between objects.
 import os
 import numpy
 import cPickle
-import time
-from multiprocessing import Pool, cpu_count
+from multiprocessing import cpu_count
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.rcParams['pdf.fonttype'] = 42
 
 from htmresearch.frameworks.layers.multi_column_convergence_experiment import (
-  runExperiment
+  runExperiment, runExperimentPool
 )
 
-
-def runExperimentPool(numObjects,
-                      numLocations,
-                      numFeatures,
-                      numColumns,
-                      longDistanceConnectionsRange = [0.0],
-                      numWorkers=7,
-                      nTrials=1,
-                      numPoints=10,
-                      locationNoiseRange=[0.0],
-                      featureNoiseRange=[0.0],
-                      enableFeedback=[True],
-                      ambiguousLocationsRange=[0],
-                      numInferenceRpts=1,
-                      l2Params=None,
-                      l4Params=None,
-                      resultsName="convergence_results.pkl"):
-  """
-  Allows you to run a number of experiments using multiple processes.
-  For each parameter except numWorkers, pass in a list containing valid values
-  for that parameter. The cross product of everything is run, and each
-  combination is run nTrials times.
-
-  Returns a list of dict containing detailed results from each experiment.
-  Also pickles and saves the results in resultsName for later analysis.
-
-  Example:
-    results = runExperimentPool(
-                          numObjects=[10],
-                          numLocations=[5],
-                          numFeatures=[5],
-                          numColumns=[2,3,4,5,6],
-                          numWorkers=8,
-                          nTrials=5)
-  """
-  # Create function arguments for every possibility
-  args = []
-
-  for c in reversed(numColumns):
-    for o in reversed(numObjects):
-      for l in numLocations:
-        for f in numFeatures:
-          for p in longDistanceConnectionsRange:
-            for t in range(nTrials):
-              for locationNoise in locationNoiseRange:
-                for featureNoise in featureNoiseRange:
-                  for ambiguousLocations in ambiguousLocationsRange:
-                    for feedback in enableFeedback:
-                      args.append(
-                        {"numObjects": o,
-                         "numLocations": l,
-                         "numFeatures": f,
-                         "numColumns": c,
-                         "trialNum": t,
-                         "numPoints": numPoints,
-                         "longDistanceConnections" : p,
-                         "plotInferenceStats": False,
-                         "settlingTime": 3,
-                         "locationNoise": locationNoise,
-                         "featureNoise": featureNoise,
-                         "enableFeedback": feedback,
-                         "numAmbiguousLocations": ambiguousLocations,
-                         "numInferenceRpts": numInferenceRpts,
-                         "l2Params": l2Params,
-                         "l4Params": l4Params
-                         }
-              )
-  numExperiments = len(args)
-  print "{} experiments to run, {} workers".format(numExperiments, numWorkers)
-  # Run the pool
-  if numWorkers > 1:
-    pool = Pool(processes=numWorkers)
-    rs = pool.map_async(runExperiment, args, chunksize=1)
-    while not rs.ready():
-      remaining = rs._number_left
-      pctDone = 100.0 - (100.0*remaining) / numExperiments
-      print "    =>", remaining, "experiments remaining, percent complete=",pctDone
-      time.sleep(5)
-    pool.close()  # No more work
-    pool.join()
-    result = rs.get()
-  else:
-    result = []
-    for arg in args:
-      result.append(runExperiment(arg))
-
-  # print "Full results:"
-  # pprint.pprint(result, width=150)
-
-  # Pickle results for later use
-  with open(resultsName,"wb") as f:
-    cPickle.dump(result,f)
-
-  return result
 
 def plotConvergenceByColumn(results, columnRange, featureRange, numTrials):
   """
@@ -299,7 +204,7 @@ if __name__ == "__main__":
                     "numColumns": 1,
                     "trialNum": 4,
                     "featureNoise": 0.0,
-                    "plotInferenceStats": True,  # Outputs detailed graphs
+                    "plotInferenceStats": False,  # Outputs detailed graphs
                     "settlingTime": 2,
                     "includeRandomLocation": False
                   }

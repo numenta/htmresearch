@@ -51,7 +51,10 @@ rc('font',**{'family':'sans-serif','sans-serif':['Arial']})
 from htmresearch.frameworks.layers.object_machine_factory import (
   createObjectMachine
 )
-from multi_column_convergence import runExperimentPool
+
+from htmresearch.frameworks.layers.multi_column_convergence_experiment import (
+  runExperimentPool
+)
 
 plt.ion()
 plt.close('all')
