@@ -21,8 +21,7 @@
 """
 This file runs an idealized observer experiment with feature/location
 pairs and compares that to the HTM model.  The ideal observer can also be run
-without location information, in which case it simulates a bag of features
-classifier.
+without location information.
 
 Example usage
 
@@ -83,15 +82,15 @@ def findWordInVocabulary(input, wordList):
 
 
 
-def classifierPredict(testVector, bowVectors):
+def classifierPredict(testVector, storedVectors):
   """
   Return overlap of the testVector with stored representations for each object.
   """
-  numClasses = bowVectors.shape[0]
+  numClasses = storedVectors.shape[0]
   output = np.zeros((numClasses,))
 
   for i in range(numClasses):
-    output[i] = np.sum(np.minimum(testVector, bowVectors[i, :]))
+    output[i] = np.sum(np.minimum(testVector, storedVectors[i, :]))
   return output
 
 
@@ -202,31 +201,31 @@ def run_ideal_classifier(args={}):
   numWords = wordList.shape[0]
 
   # convert objects to vectorized word representations
-  bowVectors = np.zeros((numObjects, numWords), dtype=np.int32)
+  storedObjectRepresentations = np.zeros((numObjects, numWords), dtype=np.int32)
   k = 0
   for i in range(numObjects):
     numSensations = len(objectSDRs[objectNames[i]])
     for j in range(numSensations):
       index = findWordInVocabulary(data[k, :], wordList)
-      bowVectors[i, index] += 1
+      storedObjectRepresentations[i, index] += 1
       k += 1
 
   # Cool plot of feature vectors
   # plt.figure()
-  # plt.imshow(np.transpose(bowVectors))
+  # plt.imshow(np.transpose(storedObjectRepresentations))
   # plt.xlabel('Object #')
   # plt.ylabel('Word #')
-  # plt.title("BoW representations")
+  # plt.title("Object representations")
 
   # Create random order of sensations for each object
   objectSensations = []
   for i in range(numObjects):
     senseList = []
-    wordIndices = np.where(bowVectors[i, :])[0]
+    wordIndices = np.where(storedObjectRepresentations[i, :])[0]
     # An object can have multiple instances of a word, in which case we
     # add all of them
     for w in wordIndices:
-      senseList.extend(bowVectors[i, w]*[w])
+      senseList.extend(storedObjectRepresentations[i, w]*[w])
     random.shuffle(senseList)
     objectSensations.append(senseList)
 
@@ -248,7 +247,7 @@ def run_ideal_classifier(args={}):
     # A correct classification is where object i is unambiguously recognized.
     numCorrect = 0
     for i in range(numObjects):
-      overlaps = classifierPredict(bowVectorsTest[i, :], bowVectors)
+      overlaps = classifierPredict(bowVectorsTest[i, :], storedObjectRepresentations)
       bestOverlap = max(overlaps)
       outcome = ( (overlaps[i] == bestOverlap) and
                   len(np.where(overlaps==bestOverlap)[0]) == 1)
