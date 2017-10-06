@@ -2055,7 +2055,7 @@ var clockLast = 0;
 var clockNow = 0;
 var clockSkew = 0;
 var clock = typeof performance === "object" && performance.now ? performance : Date;
-var setFrame = typeof requestAnimationFrame === "function" ? requestAnimationFrame : function(f) { setTimeout(f, 17); };
+var setFrame = typeof window === "object" && window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function(f) { setTimeout(f, 17); };
 
 function now() {
   return clockNow || (setFrame(clearNow), clockNow = clock.now() + clockSkew);
@@ -2146,12 +2146,12 @@ function nap() {
 function sleep(time) {
   if (frame) return; // Soonest alarm already set, or will be.
   if (timeout) timeout = clearTimeout(timeout);
-  var delay = time - clockNow;
+  var delay = time - clockNow; // Strictly less than if we recomputed clockNow.
   if (delay > 24) {
-    if (time < Infinity) timeout = setTimeout(wake, delay);
+    if (time < Infinity) timeout = setTimeout(wake, time - clock.now() - clockSkew);
     if (interval) interval = clearInterval(interval);
   } else {
-    if (!interval) clockLast = clockNow, interval = setInterval(poke, pokeDelay);
+    if (!interval) clockLast = clock.now(), interval = setInterval(poke, pokeDelay);
     frame = 1, setFrame(wake);
   }
 }
@@ -3314,6 +3314,12 @@ function set$2(object, f) {
   return set;
 }
 
+var EOL = {};
+var EOF = {};
+var QUOTE = 34;
+var NEWLINE = 10;
+var RETURN = 13;
+
 function objectConverter(columns) {
   return new Function("d", "return {" + columns.map(function(name, i) {
     return JSON.stringify(name) + ": d[" + i + "]";
@@ -3345,7 +3351,7 @@ function inferColumns(rows) {
 
 var dsv = function(delimiter) {
   var reFormat = new RegExp("[\"" + delimiter + "\n\r]"),
-      delimiterCode = delimiter.charCodeAt(0);
+      DELIMITER = delimiter.charCodeAt(0);
 
   function parse(text, f) {
     var convert, columns, rows = parseRows(text, function(row, i) {
@@ -3357,62 +3363,49 @@ var dsv = function(delimiter) {
   }
 
   function parseRows(text, f) {
-    var EOL = {}, // sentinel value for end-of-line
-        EOF = {}, // sentinel value for end-of-file
-        rows = [], // output rows
+    var rows = [], // output rows
         N = text.length,
         I = 0, // current character index
-        n = 0, // the current line number
-        t, // the current token
-        eol; // is the current token followed by EOL?
+        n = 0, // current line number
+        t, // current token
+        eof = N <= 0, // current token followed by EOF?
+        eol = false; // current token followed by EOL?
+
+    // Strip the trailing newline.
+    if (text.charCodeAt(N - 1) === NEWLINE) --N;
+    if (text.charCodeAt(N - 1) === RETURN) --N;
 
     function token() {
-      if (I >= N) return EOF; // special case: end of file
-      if (eol) return eol = false, EOL; // special case: end of line
+      if (eof) return EOF;
+      if (eol) return eol = false, EOL;
 
-      // special case: quotes
-      var j = I, c;
-      if (text.charCodeAt(j) === 34) {
-        var i = j;
-        while (i++ < N) {
-          if (text.charCodeAt(i) === 34) {
-            if (text.charCodeAt(i + 1) !== 34) break;
-            ++i;
-          }
-        }
-        I = i + 2;
-        c = text.charCodeAt(i + 1);
-        if (c === 13) {
-          eol = true;
-          if (text.charCodeAt(i + 2) === 10) ++I;
-        } else if (c === 10) {
-          eol = true;
-        }
-        return text.slice(j + 1, i).replace(/""/g, "\"");
+      // Unescape quotes.
+      var i, j = I, c;
+      if (text.charCodeAt(j) === QUOTE) {
+        while (I++ < N && text.charCodeAt(I) !== QUOTE || text.charCodeAt(++I) === QUOTE);
+        if ((i = I) >= N) eof = true;
+        else if ((c = text.charCodeAt(I++)) === NEWLINE) eol = true;
+        else if (c === RETURN) { eol = true; if (text.charCodeAt(I) === NEWLINE) ++I; }
+        return text.slice(j + 1, i - 1).replace(/""/g, "\"");
       }
 
-      // common case: find next delimiter or newline
+      // Find next delimiter or newline.
       while (I < N) {
-        var k = 1;
-        c = text.charCodeAt(I++);
-        if (c === 10) eol = true; // \n
-        else if (c === 13) { eol = true; if (text.charCodeAt(I) === 10) ++I, ++k; } // \r|\r\n
-        else if (c !== delimiterCode) continue;
-        return text.slice(j, I - k);
+        if ((c = text.charCodeAt(i = I++)) === NEWLINE) eol = true;
+        else if (c === RETURN) { eol = true; if (text.charCodeAt(I) === NEWLINE) ++I; }
+        else if (c !== DELIMITER) continue;
+        return text.slice(j, i);
       }
 
-      // special case: last token before EOF
-      return text.slice(j);
+      // Return last token before EOF.
+      return eof = true, text.slice(j, N);
     }
 
     while ((t = token()) !== EOF) {
-      var a = [];
-      while (t !== EOL && t !== EOF) {
-        a.push(t);
-        t = token();
-      }
-      if (f && (a = f(a, n++)) == null) continue;
-      rows.push(a);
+      var row = [];
+      while (t !== EOL && t !== EOF) row.push(t), t = token();
+      if (f && (row = f(row, n++)) == null) continue;
+      rows.push(row);
     }
 
     return rows;
@@ -3437,7 +3430,7 @@ var dsv = function(delimiter) {
 
   function formatValue(text) {
     return text == null ? ""
-        : reFormat.test(text += "") ? "\"" + text.replace(/\"/g, "\"\"") + "\""
+        : reFormat.test(text += "") ? "\"" + text.replace(/"/g, "\"\"") + "\""
         : text;
   }
 
@@ -5201,9 +5194,64 @@ Node.prototype = hierarchy.prototype = {
   copy: node_copy
 };
 
-function Node$2(value) {
-  this._ = value;
-  this.next = null;
+function enclosesNot(a, b) {
+  var dr = a.r - b.r, dx = b.x - a.x, dy = b.y - a.y;
+  return dr < 0 || dr * dr < dx * dx + dy * dy;
+}
+
+function enclosesWeak(a, b) {
+  var dr = a.r - b.r + 1e-6, dx = b.x - a.x, dy = b.y - a.y;
+  return dr > 0 && dr * dr > dx * dx + dy * dy;
+}
+
+function enclosesWeakAll(a, B) {
+  for (var i = 0; i < B.length; ++i) {
+    if (!enclosesWeak(a, B[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function encloseBasis2(a, b) {
+  var x1 = a.x, y1 = a.y, r1 = a.r,
+      x2 = b.x, y2 = b.y, r2 = b.r,
+      x21 = x2 - x1, y21 = y2 - y1, r21 = r2 - r1,
+      l = Math.sqrt(x21 * x21 + y21 * y21);
+  return {
+    x: (x1 + x2 + x21 / l * r21) / 2,
+    y: (y1 + y2 + y21 / l * r21) / 2,
+    r: (l + r1 + r2) / 2
+  };
+}
+
+function encloseBasis3(a, b, c) {
+  var x1 = a.x, y1 = a.y, r1 = a.r,
+      x2 = b.x, y2 = b.y, r2 = b.r,
+      x3 = c.x, y3 = c.y, r3 = c.r,
+      a2 = x1 - x2,
+      a3 = x1 - x3,
+      b2 = y1 - y2,
+      b3 = y1 - y3,
+      c2 = r2 - r1,
+      c3 = r3 - r1,
+      d1 = x1 * x1 + y1 * y1 - r1 * r1,
+      d2 = d1 - x2 * x2 - y2 * y2 + r2 * r2,
+      d3 = d1 - x3 * x3 - y3 * y3 + r3 * r3,
+      ab = a3 * b2 - a2 * b3,
+      xa = (b2 * d3 - b3 * d2) / (ab * 2) - x1,
+      xb = (b3 * c2 - b2 * c3) / ab,
+      ya = (a3 * d2 - a2 * d3) / (ab * 2) - y1,
+      yb = (a2 * c3 - a3 * c2) / ab,
+      A = xb * xb + yb * yb - 1,
+      B = 2 * (r1 + xa * xb + ya * yb),
+      C = xa * xa + ya * ya - r1 * r1,
+      r = -(A ? (B + Math.sqrt(B * B - 4 * A * C)) / (2 * A) : C / B);
+  return {
+    x: x1 + xa + xb * r,
+    y: y1 + ya + yb * r,
+    r: r
+  };
 }
 
 var treemapDice = function(parent, x0, y0, x1, y1) {
@@ -5327,7 +5375,7 @@ function computeUpperHullIndexes(points) {
   return indexes.slice(0, size); // remove popped points
 }
 
-var slice$3 = [].slice;
+var slice$4 = [].slice;
 
 var noabort = {};
 
@@ -5600,7 +5648,7 @@ dsv$1("text/tab-separated-values", tsvParse);
 var array$2 = Array.prototype;
 
 var map$3 = array$2.map;
-var slice$4 = array$2.slice;
+var slice$5 = array$2.slice;
 
 var implicit = {name: "implicit"};
 
@@ -5609,7 +5657,7 @@ function ordinal(range) {
       domain = [],
       unknown = implicit;
 
-  range = range == null ? [] : slice$4.call(range);
+  range = range == null ? [] : slice$5.call(range);
 
   function scale(d) {
     var key = d + "", i = index.get(key);
@@ -5629,7 +5677,7 @@ function ordinal(range) {
   };
 
   scale.range = function(_) {
-    return arguments.length ? (range = slice$4.call(_), scale) : range.slice();
+    return arguments.length ? (range = slice$5.call(_), scale) : range.slice();
   };
 
   scale.unknown = function(_) {
@@ -5652,7 +5700,7 @@ var constant$9 = function(x) {
   };
 };
 
-var number$1 = function(x) {
+var number$2 = function(x) {
   return +x;
 };
 
@@ -5742,15 +5790,15 @@ function continuous(deinterpolate, reinterpolate) {
   };
 
   scale.domain = function(_) {
-    return arguments.length ? (domain = map$3.call(_, number$1), rescale()) : domain.slice();
+    return arguments.length ? (domain = map$3.call(_, number$2), rescale()) : domain.slice();
   };
 
   scale.range = function(_) {
-    return arguments.length ? (range$$1 = slice$4.call(_), rescale()) : range$$1.slice();
+    return arguments.length ? (range$$1 = slice$5.call(_), rescale()) : range$$1.slice();
   };
 
   scale.rangeRound = function(_) {
-    return range$$1 = slice$4.call(_), interpolate$$1 = interpolateRound, rescale();
+    return range$$1 = slice$5.call(_), interpolate$$1 = interpolateRound, rescale();
   };
 
   scale.clamp = function(_) {
@@ -5925,7 +5973,13 @@ function newInterval(floori, offseti, count, field) {
     return newInterval(function(date) {
       if (date >= date) while (floori(date), !test(date)) date.setTime(date - 1);
     }, function(date, step) {
-      if (date >= date) while (--step >= 0) while (offseti(date, 1), !test(date)) {} // eslint-disable-line no-empty
+      if (date >= date) {
+        if (step < 0) while (++step <= 0) {
+          while (offseti(date, -1), !test(date)) {} // eslint-disable-line no-empty
+        } else while (--step >= 0) {
+          while (offseti(date, +1), !test(date)) {} // eslint-disable-line no-empty
+        }
+      }
     });
   };
 
@@ -7327,10 +7381,20 @@ function triangleArea(a, b, c) {
  */
 function arrayOfAxonsChart() {
   let width,
-      height;
+      height,
+      borderWidth = 1,
+      r = 1.5;
 
   let chart = function(selection$$1) {
     selection$$1.each(function(axonsData) {
+      if (!axonsData) {
+        select(this).selectAll('.activeAxon')
+          .data(d => [])
+          .exit()
+          .remove();
+        return;
+      }
+
       let x = linear$2()
           .domain([0, axonsData.inputSize])
           .range([4, width - 4]);
@@ -7342,6 +7406,7 @@ function arrayOfAxonsChart() {
         .attr('class', 'border')
         .attr('fill', 'none')
         .attr('stroke', 'black')
+        .attr('stroke-width', borderWidth)
         .attr('width', width)
         .attr('height', height);
 
@@ -7352,7 +7417,7 @@ function arrayOfAxonsChart() {
         .attr('class', 'activeAxon')
         .call(enter => {
           enter.append('circle')
-            .attr('r', 1.5)
+            .attr('r', r)
             .attr('stroke', 'none')
             .attr('fill', 'black');
         })
@@ -7375,6 +7440,18 @@ function arrayOfAxonsChart() {
     return chart;
   };
 
+  chart.r = function(_) {
+    if (!arguments.length) return r;
+    r = _;
+    return chart;
+  };
+
+  chart.borderWidth = function(_) {
+    if (!arguments.length) return borderWidth;
+    borderWidth = _;
+    return chart;
+  };
+
   return chart;
 }
 
@@ -7385,11 +7462,12 @@ function arrayOfAxonsChart() {
 function featureChart() {
   let width,
       height,
-      color$$1;
+      color$$1,
+      includeText = true;
 
   let chart = function(selection$$1) {
     let featureColor = selection$$1.selectAll('.featureColor')
-        .data(d => d.name != null ? [d.name] : []);
+        .data(d => (d && d.name != null) ? [d.name] : []);
 
     featureColor.exit().remove();
 
@@ -7403,7 +7481,7 @@ function featureChart() {
       .attr('fill', d => color$$1(d));
 
     let featureText = selection$$1.selectAll('.featureText')
-        .data(d => d.name != null ? [d.name] : []);
+        .data(d => (includeText && d && d.name != null) ? [d.name] : []);
 
     featureText.exit().remove();
 
@@ -7438,6 +7516,12 @@ function featureChart() {
     return chart;
   };
 
+  chart.includeText = function(_) {
+    if (!arguments.length) return includeText;
+    includeText = _;
+    return chart;
+  };
+
   return chart;
 }
 
@@ -7461,6 +7545,7 @@ function decodedLocationsChart() {
   let width,
       height,
       color$$1,
+      perRow = 3,
       minimumMatch = 0.25;
 
   let chart = function(selection$$1) {
@@ -7468,31 +7553,33 @@ function decodedLocationsChart() {
     selection$$1.each(function(decodedLocationsData) {
       let decodingsByObject = {};
       decodedLocationsData.decodings.forEach(d => {
-        if (d.amountContained >= minimumMatch) {
-          if (!decodingsByObject.hasOwnProperty(d.objectName)) {
-            decodingsByObject[d.objectName] = [];
-          }
-
-          decodingsByObject[d.objectName].push(d);
+        if (!decodingsByObject.hasOwnProperty(d.objectName)) {
+          decodingsByObject[d.objectName] = [];
         }
+
+        decodingsByObject[d.objectName].push(d);
       });
 
       let decodings = [],
           maxWidth = 0,
-          maxHeight = 0;
+          maxHeight = 0,
+          pxPerRow = 4 + width / perRow;
       for (let objectName in decodingsByObject) {
-        decodings.push([objectName, decodingsByObject[objectName]]);
+        if (decodingsByObject[objectName].some(
+          d => d.amountContained >= minimumMatch)) {
+          decodings.push([objectName, decodingsByObject[objectName]]);
 
-        decodedLocationsData.objects[objectName].forEach(d => {
-          maxWidth = Math.max(maxWidth, d.left + d.width);
-          maxHeight = Math.max(maxHeight, d.top + d.height);
-        });
+          decodedLocationsData.objects[objectName].forEach(d => {
+            maxWidth = Math.max(maxWidth, d.left + d.width);
+            maxHeight = Math.max(maxHeight, d.top + d.height);
+          });
+        }
       }
 
       // Sort by object name.
       decodings.sort((a,b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
 
-      let rows = partition$1(decodings, 3);
+      let rows = partition$1(decodings, perRow);
 
       let decodedObjectRow = select(this).selectAll('.decodedObjectRow')
           .data(rows);
@@ -7501,7 +7588,7 @@ function decodedLocationsChart() {
 
       decodedObjectRow = decodedObjectRow.enter().append('g')
         .attr('class', 'decodedObjectRow')
-        .attr('transform', (d,i) => `translate(0,${i == 0 ? 0 : i*height/2.5 + 10})`)
+        .attr('transform', (d,i) => `translate(0,${i == 0 ? 0 : i*height/2})`)
         .merge(decodedObjectRow);
 
       let decodedObject = decodedObjectRow.selectAll('.decodedObject')
@@ -7511,15 +7598,15 @@ function decodedLocationsChart() {
 
       decodedObject = decodedObject.enter().append('g')
         .attr('class', 'decodedObject')
-        .attr('transform', (d, i) => `translate(${i*width/3},0)`)
+        .attr('transform', (d, i) => `translate(${i*pxPerRow},0)`)
         .call(enter => {
           enter.append('g')
             .attr('class', 'features');
           enter.append('g')
               .attr('class', 'points')
             .append('rect')
-              .attr('width', width/3)
-              .attr('height', height/2.5)
+              .attr('width', width/perRow)
+              .attr('height', height/2)
               .attr('fill', 'white')
               .attr('fill-opacity', 0.7);
         })
@@ -7528,7 +7615,7 @@ function decodedLocationsChart() {
       decodedObject.each(function([objectName, decodedLocations]) {
 
         let cmMax = Math.max(maxWidth, maxHeight);
-        let pxMax = Math.min(width/3, height/2.5);
+        let pxMax = Math.min(width/perRow, height/2 - 4);
         let x = linear$2()
             .domain([0, cmMax])
             .range([0, pxMax]);
@@ -7551,7 +7638,8 @@ function decodedLocationsChart() {
               .call(featureChart()
                     .width(x(featureData.width))
                     .height(y(featureData.height))
-                    .color(color$$1));
+                    .color(color$$1)
+                    .includeText(false));
           });
 
         let point = select(this).select('.points').selectAll('.point')
@@ -7595,6 +7683,12 @@ function decodedLocationsChart() {
     return chart;
   };
 
+  chart.perRow = function(_) {
+    if (!arguments.length) return perRow;
+    perRow = _;
+    return chart;
+  };
+
   chart.color = function(_) {
     if (!arguments.length) return color$$1;
     color$$1 = _;
@@ -7629,14 +7723,16 @@ function partition$2(arr, n) {
 function decodedObjectsChart() {
   let width,
       height,
-      color$$1;
+      color$$1,
+      perRow = 3;
 
   let chart = function(selection$$1) {
 
     selection$$1.each(function(decodedObjectsData) {
 
       let maxWidth = 0,
-          maxHeight = 0;
+          maxHeight = 0,
+          pxPerRow = 4 + width / perRow;
       decodedObjectsData.decodings.forEach(objectName => {
         decodedObjectsData.objects[objectName].forEach(d => {
           maxWidth = Math.max(maxWidth, d.left + d.width);
@@ -7649,7 +7745,7 @@ function decodedObjectsChart() {
       // Sort by object name.
       decodings.sort();
 
-      let rows = partition$2(decodings, 3);
+      let rows = partition$2(decodings, perRow);
 
       let decodedObjectRow = select(this).selectAll('.decodedObjectRow')
           .data(rows);
@@ -7658,7 +7754,7 @@ function decodedObjectsChart() {
 
       decodedObjectRow = decodedObjectRow.enter().append('g')
         .attr('class', 'decodedObjectRow')
-        .attr('transform', (d,i) => `translate(0,${i == 0 ? 0 : i*height/3 + 10})`)
+        .attr('transform', (d,i) => `translate(0,${i == 0 ? 0 : i*height/perRow})`)
         .merge(decodedObjectRow);
 
       let decodedObject = decodedObjectRow.selectAll('.decodedObject')
@@ -7668,12 +7764,12 @@ function decodedObjectsChart() {
 
       decodedObject = decodedObject.enter().append('g')
         .attr('class', 'decodedObject')
-        .attr('transform', (d, i) => `translate(${i*width/3},0)`)
+        .attr('transform', (d, i) => `translate(${i*pxPerRow},0)`)
         .merge(decodedObject);
 
       decodedObject.each(function(objectName) {
         let cmMax = Math.max(maxWidth, maxHeight);
-        let pxMax = Math.min(width/3, height/3);
+        let pxMax = Math.min(width/perRow, height/2 - 4);
         let x = linear$2()
             .domain([0, cmMax])
             .range([0, pxMax]);
@@ -7714,6 +7810,12 @@ function decodedObjectsChart() {
     return chart;
   };
 
+  chart.perRow = function(_) {
+    if (!arguments.length) return perRow;
+    perRow = _;
+    return chart;
+  };
+
   chart.color = function(_) {
     if (!arguments.length) return color$$1;
     color$$1 = _;
@@ -7738,18 +7840,42 @@ function layerOfCellsChart() {
       height,
       color$$1 = ordinal()
         .domain(['active', 'predicted', 'predicted-active'])
-        .range(['orangered', 'rgba(0, 127, 255, 0.498)', 'black']),
+        .range(['black', 'rgba(0, 127, 255, 0.498)', 'black']),
       stroke = "black",
-      onCellSelected = selectedCell => {},
+      onCellSelected = (selectedCell, id) => {},
       columnMajorIndexing = false;
 
   let drawHighlightedCells = function(selection$$1) {
     selection$$1.each(function(layerData) {
-      select(this).selectAll('.cell')
-        .attr('stroke-width', d =>
-              layerData.highlightedCells.indexOf(d.cell) != -1
-              ? 2
-              : 0);
+      let xScale = linear$2()
+          .domain([0, layerData.dimensions.cols - 1])
+          .range([5, width - 5]),
+          yScale = linear$2()
+          .domain([0, layerData.dimensions.rows - 1])
+          .range([5, height - 5]);
+
+      let x, y;
+      if (columnMajorIndexing) {
+        x = cell => xScale(Math.floor(cell / layerData.dimensions.rows));
+        y = cell => yScale(cell % layerData.dimensions.rows);
+      } else {
+        x = cell => xScale(cell % layerData.dimensions.cols);
+        y = cell => yScale(Math.floor(cell / layerData.dimensions.cols));
+      }
+
+      let highlightedCell = select(this)
+        .select('.front')
+        .selectAll('.highlightedCell')
+        .data(layerData.highlightedCells);
+      highlightedCell.exit().remove();
+      highlightedCell = highlightedCell.enter()
+        .append('polygon')
+          .attr('class', 'highlightedCell')
+          .attr('points', '0,-4 2,2 -2,2')
+          .attr('stroke', 'goldenrod')
+          .attr('stroke-width', 2)
+        .merge(highlightedCell)
+          .attr('transform', d => `translate(${x(d)},${y(d)})`);
     });
   };
 
@@ -7795,7 +7921,21 @@ function layerOfCellsChart() {
           .attr('width', width)
           .attr('height', height);
 
-      let cells = layer.selectAll('.cells')
+      let main = layer.selectAll(':scope > .main')
+          .data([null]);
+      main.exit().remove();
+      main = main.enter()
+        .append('g')
+        .attr('class', 'main')
+        .merge(main);
+
+      layer.selectAll(':scope > .front')
+        .data([null])
+        .enter()
+        .append('g')
+        .attr('class', 'front');
+
+      let cells = main.selectAll('.cells')
           .data([layerData.cells]);
 
       cells = cells.enter()
@@ -7811,7 +7951,6 @@ function layerOfCellsChart() {
       cell = cell.enter()
         .append('polygon')
           .attr('class', 'cell')
-          .attr('stroke', 'goldenrod')
         .merge(cell)
           .attr('fill', d => color$$1(d.state))
           .attr('stroke-width', d =>
@@ -7846,7 +7985,7 @@ function layerOfCellsChart() {
           if (p !== layerNode._selectedCell) {
             layerNode._selectedCell = p;
             draw();
-            onCellSelected(p.cell);
+            onCellSelected(p ? p.cell : null, layerData.id);
           }
         })
         .on('mouseleave', () => {
@@ -7855,7 +7994,7 @@ function layerOfCellsChart() {
           if (layerNode._selectedCell !== null) {
             layerNode._selectedCell = null;
             draw();
-            onCellSelected(null);
+            onCellSelected(null, layerData.id);
           }
         });
 
@@ -7866,7 +8005,7 @@ function layerOfCellsChart() {
                               layerNode._mousePosition[1]);
         if (p !== layerNode._selectedCell) {
           layerNode._selectedCell = p;
-          onCellSelected(p.cell);
+          onCellSelected(p ? p.cell : null, layerData.id);
         }
       }
 
@@ -7918,6 +8057,12 @@ function layerOfCellsChart() {
     return chart;
   };
 
+  chart.color = function(_) {
+    if (!arguments.length) return color$$1;
+    color$$1 = _;
+    return chart;
+  };
+
   return chart;
 }
 
@@ -7933,12 +8078,15 @@ function layerOfCellsChart() {
 function locationModulesChart() {
   var width,
       height,
-      onCellSelected = (iModule, selectedCell) => {};
+      numRows = 3,
+      numCols = 6,
+      color$$1 = null,
+      onCellSelected = (iModule, selectedCell, layerId) => {};
 
   let drawHighlightedCells = function(selection$$1) {
     selection$$1.each(function(moduleArrayData) {
-      let moduleWidth = width / 6,
-          moduleHeight = height / 3,
+      let moduleWidth = width / numCols,
+          moduleHeight = height / numRows,
           highlightedCellsByModule = [];
 
       let base = 0;
@@ -7964,15 +8112,19 @@ function locationModulesChart() {
             return d;
           })
           .each(function(d, i) {
-            select(this).call(
-              layerOfCellsChart()
+            let chart = layerOfCellsChart()
                 .width(moduleWidth)
                 .height(moduleHeight)
                 .stroke('lightgray')
                 .onCellSelected(
                   cell => onCellSelected(cell !== null ? i : null,
-                                         cell))
-                .drawHighlightedCells);
+                                         cell, moduleArrayData.id));
+
+            if (color$$1 !== null) {
+              chart.color(color$$1);
+            }
+
+            select(this).call(chart.drawHighlightedCells);
           });
     });
   };
@@ -7996,9 +8148,8 @@ function locationModulesChart() {
       .attr('height', height);
 
     modules.each(function(moduleArrayData) {
-      // TODO: stop hardcoding 18 modules
-      let moduleWidth = width / 6,
-          moduleHeight = height / 3;
+      let moduleWidth = width / numCols,
+          moduleHeight = height / numRows;
 
       let module = select(this)
           .selectAll('.module')
@@ -8012,16 +8163,22 @@ function locationModulesChart() {
         .attr('class', 'module')
         .merge(module)
         .attr('transform',
-              (d, i) => `translate(${Math.floor(i/3) * moduleWidth},${(i%3)*moduleHeight})`)
+              (d, i) => `translate(${Math.floor(i/numRows) * moduleWidth},${(i%numRows)*moduleHeight})`)
         .each(function(d, i) {
+          let chart = layerOfCellsChart()
+              .width(moduleWidth)
+              .height(moduleHeight)
+              .stroke('lightgray')
+              .onCellSelected(
+                cell => onCellSelected(cell !== null ? i : null,
+                                       cell, moduleArrayData.id));
+
+          if (color$$1 !== null) {
+            chart.color(color$$1);
+          }
+
           select(this)
-            .call(layerOfCellsChart()
-                  .width(moduleWidth)
-                  .height(moduleHeight)
-                  .stroke('lightgray')
-                  .onCellSelected(
-                    cell => onCellSelected(cell !== null ? i : null,
-                                           cell)));
+            .call(chart);
         });
     });
   };
@@ -8040,9 +8197,27 @@ function locationModulesChart() {
     return chart;
   };
 
+  chart.numRows = function(_) {
+    if (!arguments.length) return numRows;
+    numRows = _;
+    return chart;
+  };
+
+  chart.numCols = function(_) {
+    if (!arguments.length) return numCols;
+    numCols = _;
+    return chart;
+  };
+
   chart.onCellSelected = function(_) {
     if (!arguments.length) return onCellSelected;
     onCellSelected = _;
+    return chart;
+  };
+
+  chart.color = function(_) {
+    if (!arguments.length) return color$$1;
+    color$$1 = _;
     return chart;
   };
 
@@ -8100,6 +8275,8 @@ function arrowShape() {
 }
 
 function motionChart() {
+  let maxLength = 900;
+
   let chart = function(selection$$1) {
     selection$$1.each(function(deltaLocation) {
       let data = deltaLocation != null ? [deltaLocation] : [];
@@ -8115,7 +8292,7 @@ function motionChart() {
       if (deltaLocation != null) {
         arrowLength = Math.sqrt(Math.pow(deltaLocation.top, 2) +
                                 Math.pow(deltaLocation.left, 2));
-        correctedArrowLength = Math.min(900, Math.max(15, arrowLength));
+        correctedArrowLength = Math.min(maxLength, Math.max(15, arrowLength));
         correctionFactor = correctedArrowLength / arrowLength;
       }
 
@@ -8178,7 +8355,7 @@ function motionChart() {
           })
         .merge(leftLabel)
         .attr('transform', d => {
-          return `translate(0,${Math.abs(d.top/2) + 10})`;
+          return `translate(0,${Math.abs(correctionFactor*d.top/2) + 10})`;
         });
 
       leftLabel.select('text')
@@ -8234,7 +8411,7 @@ function motionChart() {
           })
         .merge(topLabel)
         .attr('transform', d => {
-          return `translate(${Math.abs(d.left/2) + 12},0)`;
+          return `translate(${Math.abs(correctionFactor*d.left/2) + 8},0)`;
         });
 
       topLabel.select('text')
@@ -8252,6 +8429,12 @@ function motionChart() {
         .attr('y1', d => -correctionFactor*d.top/2)
         .attr('y2', d => correctionFactor*d.top/2);
     });
+  };
+
+  chart.maxLength = function(_) {
+    if (!arguments.length) return maxLength;
+    maxLength = _;
+    return chart;
   };
 
   return chart;
@@ -8351,7 +8534,7 @@ function timelineChart() {
       });
 
       let onchangeFn = onchange
-          ? d => onchange(d.iTimestep)
+          ? d => onchange(d.iTimestep, 0)
           : null;
 
       let verticalElement = timelineNode.selectAll('.verticalElement')
@@ -9154,17 +9337,17 @@ let boxes = {
   location: {
     left: 0, top: secondRowTop, width: columnWidth, height: 180, text: 'location layer',
     bitsLeft: 10, bitsTop: 10, bitsWidth: 150, bitsHeight: 60,
-    decodingsLeft: 20, decodingsTop: 85, decodingsWidth: 148, decodingsHeight: 90
+    decodingsLeft: 13, decodingsTop: 85, decodingsWidth: 142, decodingsHeight: 90
   },
   input: {
     left: secondColumnLeft, top: secondRowTop, width: columnWidth, height: 180, text: 'feature-location pair layer',
     bitsLeft: 10, bitsTop: 10, bitsWidth: 150, bitsHeight: 60,
-    decodingsLeft: 20, decodingsTop: 85, decodingsWidth: 148, decodingsHeight: 90
+    decodingsLeft: 13, decodingsTop: 85, decodingsWidth: 142, decodingsHeight: 90
   },
   object: {
     left: secondColumnLeft, top: 12, width: columnWidth, height: 180, text: 'object layer',
     bitsLeft: 10, bitsTop: 10, bitsWidth: 150, bitsHeight: 60,
-    decodingsLeft: 20, decodingsTop: 85, decodingsWidth: 148, decodingsHeight: 90
+    decodingsLeft: 13, decodingsTop: 85, decodingsWidth: 142, decodingsHeight: 90
   },
   motion: {
     left: 0, top: thirdRowTop, width: columnWidth, height: 81, text: 'motion input',
@@ -9880,6 +10063,2023 @@ var locationModules = Object.freeze({
 	printRecordingFromUrl: printRecordingFromUrl$1
 });
 
+/**
+ * Example params:
+ * {
+ *   inputSize: 100,
+ *   activeBits: [42, 45]
+ * }
+ */
+function arrayOfAxonsChart$1() {
+  let width,
+      height,
+      borderWidth = 1,
+      rectWidth = 2;
+
+  let chart = function(selection$$1) {
+    selection$$1.each(function(axonsData) {
+      if (!axonsData) {
+        select(this).selectAll('.activeAxon')
+          .data(d => [])
+          .exit()
+          .remove();
+        return;
+      }
+
+      let x = linear$2()
+          .domain([0, axonsData.inputSize])
+          .range([4, width - 4]);
+
+      select(this)
+        .selectAll('.border')
+        .data([null])
+        .enter().append('rect')
+        .attr('class', 'border')
+        .attr('fill', 'none')
+        .attr('stroke', 'black')
+        .attr('stroke-width', borderWidth)
+        .attr('width', width)
+        .attr('height', height);
+
+      let activeAxon = select(this).selectAll('.activeAxon')
+          .data(d => d.activeBits);
+
+      activeAxon.enter().append('g')
+        .attr('class', 'activeAxon')
+        .call(enter => {
+          enter.append('rect')
+            .attr('x', -rectWidth / 2)
+            .attr('width', rectWidth)
+            .attr('height', 5)
+            .attr('stroke', 'none')
+            .attr('fill', 'brown');
+        })
+        .merge(activeAxon)
+        .attr('transform', cell => `translate(${x(cell)}, 2.5)`);
+
+      activeAxon.exit().remove();
+    });
+  };
+
+  chart.width = function(_) {
+    if (!arguments.length) return width;
+    width = _;
+    return chart;
+  };
+
+  chart.height = function(_) {
+    if (!arguments.length) return height;
+    height = _;
+    return chart;
+  };
+
+  chart.rectWidth = function(_) {
+    if (!arguments.length) return rectWidth;
+    rectWidth = _;
+    return chart;
+  };
+
+  chart.borderWidth = function(_) {
+    if (!arguments.length) return borderWidth;
+    borderWidth = _;
+    return chart;
+  };
+
+  return chart;
+}
+
+/**
+ * Data example:
+ * [{timesteps: [{}, {}, {reset: true}, {}, {}]
+ *   selectedIndex: 2},
+ *  ...]
+ *
+ * "reset: true" implies that a reset happened before that timestep.
+ */
+function timelineChart$1() {
+  var onchange,
+      senseWidth = 16,
+      resetWidth = 6,
+      repeatOffset = 10,
+      betweenRepeatOffset = 6;
+
+  let drawSelectedStep = function(selection$$1) {
+    selection$$1.each(function(timelineData) {
+      select(this).selectAll('.colorWithSelection')
+        .attr('fill', d =>
+              (d.timestep.iTimestep == timelineData.selectedIndex &&
+               (d.phase === null ||
+                d.phase === timelineData.selectedPhase))
+              ? 'black'
+              : 'lightgray');
+
+      select(this).selectAll('.selectedText')
+        .style('visibility', d => d.iTimestep == timelineData.selectedIndex
+               ? 'visible'
+               : 'hidden');
+    });
+  };
+
+  var chart = function(selection$$1) {
+    let timeline = selection$$1.selectAll('.timeline')
+        .data(d => [d]);
+
+    timeline = timeline.enter()
+      .append('g')
+      .attr('class', 'timeline')
+      .merge(timeline);
+
+    timeline.each(function(timelineData) {
+      let timelineNode = select(this);
+
+      let shapes = [];
+
+      let touchNumber = 0;
+
+      // First, change this to display repeats to the right
+
+      timelineData.timesteps.forEach((timestep, iTimestep) => {
+
+        if (timestep.reset && iTimestep !== 0) {
+          shapes.push({type: 'reset'});
+          touchNumber = 0;
+        }
+
+        let o = Object.assign({iTimestep}, timestep);
+
+        switch (o.type) {
+        case 'sense':
+          touchNumber++;
+
+          o.text = `Touch ${touchNumber}`;
+
+          shapes.push({
+            type: 'sense',
+            timestep: o
+          });
+
+          break;
+        case 'repeat': {
+          o.text = 'Settle';
+          shapes.push({
+            type: 'repeat',
+            timestep: o
+          });
+          break;
+        }
+        default:
+          throw `Unrecognized ${o.type}`;
+        }
+      });
+
+      let predictionPhaseFn = onchange
+          ? d => onchange(d.timestep.iTimestep, 0)
+          : null,
+          sensePhaseFn = onchange
+          ? d => onchange(d.timestep.iTimestep, 1)
+          : null;
+
+      let verticalElement = timelineNode.selectAll('.verticalElement')
+          .data(shapes);
+
+      verticalElement.exit().remove();
+
+      verticalElement = verticalElement.enter()
+        .append('div')
+        .attr('class', 'shape')
+        .style('position', 'relative')
+        .style('display', 'inline-block')
+        .style('margin-top', '15px')
+        .call(enter => {
+          enter.append('svg')
+            .attr('height', 40);
+        })
+        .merge(verticalElement);
+
+      verticalElement.filter(d => d.type == 'reset')
+          .style('width', `${resetWidth}px`)
+          .style('top', '-2px')
+          .select('svg')
+        .attr('width', resetWidth)
+        .selectAll('.reset')
+        .data([null])
+        .enter().append('rect')
+          .attr('class', 'reset')
+          .attr('height', 15)
+          .attr('width', 2)
+        .attr('fill', 'gray');
+
+      let timestep = verticalElement.filter(d => d.type != 'reset')
+          .call(s => {
+            let selectedText = s.selectAll('.selectedText')
+                .data(d => [d.timestep]);
+
+            selectedText.exit().remove();
+
+            selectedText.enter().append('div')
+                .attr('class', 'selectedText')
+                .style('position', 'absolute')
+                .style('width', '50px')
+                .style('left', '-18px')
+                .style('top', '-16px')
+                .style('font', '10px Verdana')
+              .merge(selectedText)
+                .text(d => d.text);
+          })
+          .select('svg')
+          .attr('width', senseWidth)
+          .selectAll('.timestep')
+          .data(d => [d]);
+
+      timestep = timestep.enter()
+        .append('g')
+          .attr('class', 'timestep')
+        .merge(timestep);
+
+      timestep.exit().remove();
+
+      let circle = timestep.selectAll('.nophase')
+          .data(d => [Object.assign({phase: null}, d)]);
+
+      circle.exit().remove();
+
+      circle.enter().append('circle')
+          .attr('class', 'nophase colorWithSelection')
+          .attr('stroke', 'none')
+          .attr('cx', 6)
+          .attr('cy', 6)
+          .attr('cursor', onchange ? 'pointer' : null)
+        .merge(circle)
+          .attr('r', (d, i) => d.type == 'repeat' ? 3 : 5)
+        .on('click', predictionPhaseFn);
+
+      let phase0 = timestep.selectAll('.phase0')
+          .data(d => [Object.assign({phase: 0}, d)]);
+
+      phase0.exit().remove();
+
+      phase0.enter().append('text')
+          .attr('class', 'repeat colorWithSelection')
+          .attr('stroke', 'none')
+          .attr('x', 6)
+          .attr('y', 25)
+          .attr('cursor', onchange ? 'pointer' : null)
+          .attr('text-anchor', 'middle')
+          .style('font', `bold 13px Verdana`)
+          .text('?')
+        .merge(phase0)
+          .on('click', predictionPhaseFn);
+
+      let phase1 = timestep.selectAll('.phase1')
+          .data(d => [Object.assign({phase: 1}, d)]);
+
+      phase1.exit().remove();
+
+      phase1.enter().append('text')
+          .attr('class', 'phase1 colorWithSelection')
+          .attr('stroke', 'none')
+          .attr('x', 6)
+          .attr('y', 40)
+          .attr('cursor', onchange ? 'pointer' : null)
+          .attr('text-anchor', 'middle')
+          .style('font', `bold 13px Verdana`)
+          .text('!')
+        .merge(phase1)
+          .on('click', sensePhaseFn);
+    });
+
+    drawSelectedStep(selection$$1);
+  };
+
+  chart.drawSelectedStep = drawSelectedStep;
+
+  chart.onchange = function(_) {
+    if (!arguments.length) return onchange;
+    onchange = _;
+    return chart;
+  };
+
+  return chart;
+}
+
+function plusShape() {
+  var radius,
+      innerRadius;
+
+  let shape = function(_) {
+    let diff = radius - innerRadius,
+        innerWidth = innerRadius*2,
+        innerHeight = innerWidth;
+
+    let innerRight = `M ${innerRadius} ${-innerRadius}`,
+        right1 = `l ${diff} 0`,
+        down1 = `l 0 ${innerHeight}`,
+        left1 = `l ${-diff} 0`,
+        down2 = `l 0 ${diff}`,
+        left2 = `l ${-innerWidth} 0`,
+        up1 = `l 0 ${-diff}`,
+        left3 = `l ${-diff} 0`,
+        up2 = `l 0 ${-innerHeight}`,
+        right2 = `l ${diff} 0`,
+        up3 = `l 0 ${-diff}`,
+        right3 = `l ${innerWidth} 0`,
+        end = 'Z';
+
+    return [innerRight, right1, down1, left1, down2, left2, up1, left3, up2, right2, up3, right3, end].join(' ');
+  };
+
+  shape.innerRadius = function(_) {
+    if (!arguments.length) return innerRadius;
+    innerRadius = _;
+    return shape;
+  };
+
+  shape.radius = function(_) {
+    if (!arguments.length) return radius;
+    radius = _;
+    return shape;
+  };
+
+  return shape;
+}
+
+// When you hover over a cell, this should consider every cell in the
+// layer wrt that cell. For each, it should tile a firing field.
+
+
+/**
+ * Data:
+ * {locations: [[12.0, 16.0], [11.0, 6.0]],
+ *  features: [{name: 'A', location: {}, width: 12.2, height: 7.2}],
+ *  selectedBodyPart: 'body',
+ *  selectedAnchorLocation: {top: 12.0, 16.0},
+ *  selectedLocationCell: 42,
+ *  selectedLocationModule: {
+ *    cellDimensions: [5, 5],
+ *    moduleMapDimensions: [20.0, 20.0],
+ *    orientation: 0.834
+ *    cells: [{cell: 42}, ...],
+ *  }}
+ */
+function worldChart$1() {
+  var width,
+      height,
+      color$$1,
+      t = 0;
+
+  let drawSelectedBodyPart = function(selection$$1) {
+    selection$$1.each(function(worldData) {
+      select(this)
+        .selectAll('.currentLocation')
+        .select('path')
+        .attr('d', function(d, i) {
+          let plus = plusShape();
+
+          if (worldData.selectedBodyPart == i) {
+            plus.radius(10).innerRadius(3);
+          } else {
+            plus.radius(7).innerRadius(2);
+          }
+
+          return plus();
+        });
+
+      select(this)
+        .select('.bodyLocation')
+        .select('circle')
+        .attr('r', (worldData.selectedBodyPart == 'body')
+              ? 8
+              : 5);
+    });
+  };
+
+  let drawFiringFields = function(selection$$1) {
+    selection$$1.each(function(worldData) {
+      let worldBackground = select(this).select('.worldBackground'),
+          firingFields = worldBackground.select('.firingFields');
+
+      let xScale = linear$2()
+            .domain([0, worldData.dims.width])
+            .range([0, width]),
+          x = location => xScale(location.left),
+          yScale =  linear$2()
+            .domain([0, worldData.dims.height])
+            .range([0, height]),
+          y = location => yScale(location.top);
+
+      let pattern = worldBackground.select('.myDefs')
+          .selectAll('pattern')
+          .data(worldData.selectedLocationModule
+                ? [worldData.selectedLocationModule.cells.map(c => c.cell)]
+                : []);
+
+      pattern.exit().remove();
+
+      if (worldData.selectedLocationModule) {
+        let config = worldData.selectedLocationModule,
+            distancePerCell = [config.moduleMapDimensions[0] / config.cellDimensions[0],
+                               config.moduleMapDimensions[1] / config.cellDimensions[1]],
+            pixelsPerCell = [height * (distancePerCell[0] / worldData.dims.height),
+                             width * (distancePerCell[1] / worldData.dims.width)];
+
+        let selectedCellFieldOrigin = [
+          Math.floor(worldData.selectedLocationCell / config.cellDimensions[1]),
+          worldData.selectedLocationCell % config.cellDimensions[1]];
+
+        pattern.enter().append('pattern')
+          .attr('id', 'FiringField')
+          .attr('patternUnits', 'userSpaceOnUse')
+          .call(enter => {
+            enter.append('path')
+              .attr('fill', 'black')
+              .attr('fill-opacity', 0.6)
+              .attr('stroke', 'none');
+          })
+          .merge(pattern)
+          .attr('width', config.cellDimensions[1])
+          .attr('height', config.cellDimensions[0])
+          .call(p => {
+            p.select('path')
+              .attr('d', cells => {
+                let squares = [];
+
+                for (let i = -1; i < 2; i++) {
+                  for (let j = -1; j < 2; j++) {
+                    cells.forEach(cell => {
+                      let cellFieldOrigin = [
+                        Math.floor(cell / config.cellDimensions[1]),
+                        cell % config.cellDimensions[1]];
+
+                      let top = i*config.cellDimensions[1] + (selectedCellFieldOrigin[0] - cellFieldOrigin[0]),
+                          left = j*config.cellDimensions[0] + (selectedCellFieldOrigin[1] - cellFieldOrigin[1]);
+
+                      squares.push(`M ${left} ${top} l 1 0 l 0 1 l -1 0 Z`);
+
+                    });
+                  }
+                }
+
+                return squares.join(' ');
+              });
+          })
+          .attr('patternTransform', point => {
+            let translateLocation = {
+              top: worldData.selectedAnchorLocation.top,
+              left: worldData.selectedAnchorLocation.left
+            };
+
+            return `translate(${x(translateLocation)},${y(translateLocation)}) `
+              + `rotate(${180 * config.orientation / Math.PI}, 0, 0) `
+              + `scale(${pixelsPerCell[1]},${pixelsPerCell[0]})`;
+          });
+      }
+
+      let firingField = firingFields.selectAll('.firingField')
+          .data(worldData.selectedLocationModule
+                ? [worldData.selectedLocationModule.cells.map(c => c.cell)]
+                : []);
+
+      firingField.enter().append('rect')
+        .attr('class', 'firingField')
+        .attr('fill', (d,i) => `url(#FiringField)`)
+        .attr('stroke', 'none')
+        .attr('width', width)
+        .attr('height', height);
+
+      firingField.exit().remove();
+    });
+  };
+
+  var chart = function(selection$$1) {
+    selection$$1.each(function(worldData) {
+      let worldNode = select(this);
+
+      let xScale = linear$2()
+            .domain([0, worldData.dims.width])
+            .range([0, width]),
+          x = location => xScale(location.left),
+          yScale =  linear$2()
+            .domain([0, worldData.dims.height])
+            .range([0, height]),
+          y = location => yScale(location.top);
+
+
+      let features = worldNode.selectAll('.features')
+        .data(d => [d]);
+
+      features = features.enter().append('g')
+        .attr('class', 'features')
+        .merge(features);
+
+      let feature = features.selectAll('feature')
+          .data(d => d.features ? d.features : []);
+
+      feature.exit().remove();
+
+      feature.enter()
+        .append('g')
+        .attr('class', 'feature')
+        .merge(feature)
+        .attr('transform', d => `translate(${x(d)},${y(d)})`)
+        .each(function(featureData) {
+          select(this)
+            .call(featureChart()
+                  .width(xScale(featureData.width))
+                  .height(yScale(featureData.height))
+                  .color(color$$1));
+        });
+
+
+      let appendage = select(this).selectAll('.appendage')
+          .data(worldData.locations);
+
+      appendage.exit().remove();
+
+      appendage.enter().append('line')
+          .attr('class', 'appendage')
+          .attr('stroke', 'black')
+          .attr('stroke-width', 2)
+        .merge(appendage)
+        .attr('x1', d => x(d))
+        .attr('y1', d => y(d))
+        .attr('x2', x(worldData.bodyLocation))
+        .attr('y2', y(worldData.bodyLocation));
+
+      let currentLocation = select(this).selectAll('.currentLocation')
+          .data(worldData.locations);
+
+      currentLocation.exit().remove();
+
+      currentLocation.enter().append('g')
+          .attr('class', 'currentLocation')
+          .call(enter => {
+            enter.append('path')
+              .attr('fill', 'white')
+              .attr('stroke', 'black')
+              .attr('stroke-width', 1);
+          })
+        .merge(currentLocation)
+          .attr('transform', d => `translate(${x(d)},${y(d)})`);
+
+
+      let bodyLocation = select(this).selectAll('.bodyLocation')
+          .data([worldData.bodyLocation]);
+
+      bodyLocation.exit().remove();
+
+      bodyLocation.enter().append('g')
+          .attr('class', 'bodyLocation')
+          .call(enter => {
+            enter
+              .append('circle')
+              .attr('fill', 'white')
+              .attr('stroke', 'black')
+              .attr('stroke-width', 2);
+          })
+        .merge(bodyLocation)
+          .attr('transform', d => `translate(${x(d)},${y(d)})`);
+
+      let worldBackground = worldNode.selectAll('.worldBackground')
+        .data(d => [d]);
+
+      worldBackground = worldBackground
+        .enter().append('g')
+          .attr('class', 'worldBackground')
+        .call(enter => {
+          enter.append('defs')
+              .attr('class', 'myDefs');
+
+          enter.append('rect').attr('fill', 'none')
+            .attr('width', width)
+            .attr('height', height)
+            .attr('stroke', 'black')
+            .attr('stroke-dasharray', '5,5')
+            .attr('stroke-width', 2);
+
+          enter.append('g').attr('class', 'firingFields');
+        })
+        .merge(worldBackground);
+    });
+
+    drawFiringFields(selection$$1);
+    drawSelectedBodyPart(selection$$1);
+  };
+
+  chart.drawFiringFields = drawFiringFields;
+  chart.drawSelectedBodyPart = drawSelectedBodyPart;
+
+  chart.width = function(_) {
+    if (!arguments.length) return width;
+    width = _;
+    return chart;
+  };
+
+  chart.height = function(_) {
+    if (!arguments.length) return height;
+    height = _;
+    return chart;
+  };
+
+  chart.color = function(_) {
+    if (!arguments.length) return color$$1;
+    color$$1 = _;
+    return chart;
+  };
+
+
+  return chart;
+}
+
+/**
+ *
+ * Example timestep:
+ * {
+ *   bodyWorldLocation: {left: 42.0, top: 12.0},
+ *   reset: null,
+ *   worldFeatures: {
+ *     'Object 1': [
+ *       {width: 8, height: 8, top: 0, left: 8, name: 'A'},
+ *       {width: 8, height: 8, top: 0, left: 16, name: 'B'}]
+ *   },
+ *   predictedBodyToSpecificObject: {
+ *     modules: [
+ *       {activeCells: [],
+ *        activeSynapsesByCell: {}},
+ *     ]
+ *   },
+ *   anchoredBodyToSpecificObject: {
+ *     modules: [
+ *       {activeCells: [],
+ *        activeSynapsesByCell: {}},
+ *     ]
+ *   },
+ *   corticalColumns: [{
+ *     egocentricLocation: {left: 42.0, top: 12.0},
+ *     featureInput: {
+ *       inputSize: 150,
+ *       activeBits: [],
+ *       decodings: []
+ *     },
+ *     sensorToBody: {
+ *       modules: [
+ *         {activeCells: []},
+ *       ]
+ *     },
+ *     predictedSensorToSpecificObject: {
+ *       modules: [
+ *         {activeCells: [],
+ *          activeSynapsesByCell: {}},
+ *       ]
+ *     },
+ *     anchoredSensorToSpecificObject: {
+ *       modules: [
+ *         {activeCells: [],
+ *          activeSynapsesByCell: {}},
+ *       ]
+ *     },
+ *     predictedFeatureLocationPair: {
+ *       predictedCells: [],
+ *       decodings: [],
+ *       activeSynapsesByCell: {
+ *         42: {
+ *           locationLayer: [12, 17, 29],
+ *           objectLayer: [42, 45]
+ *         }
+ *       }
+ *     },
+ *     featureLocationPair: {
+ *       activeCells: [],
+ *       decodings: [],
+ *       activeSynapsesByCell: {
+ *         42: {
+ *           locationLayer: [12, 17, 29],
+ *           objectLayer: [42, 45]
+ *         }
+ *       }
+ *     },
+ *     objectLayer: {
+ *       activeCells: [],
+ *       decodings: [],
+ *       activeSynapsesByCell: {}
+ *     }
+ *   }]
+ * };
+ */
+
+function parseData$2(text$$1) {
+  let featureColor = ordinal(),
+      timesteps = [],
+      rows = text$$1.split('\n');
+
+  // Row: number of cortical columns
+  let numCorticalColumns = parseInt(rows[0]);
+
+  // Row: world dimensions
+  let worldDims = JSON.parse(rows[1]);
+
+  // Row: Features and colors
+  //   {'A': 'red',
+  //    'B': 'blue',
+  //    'C': 'gray'}
+  let featureColorMapping = JSON.parse(rows[2]);
+
+  var features = [],
+      colors = [];
+
+  for (var feature in featureColorMapping) {
+    features.push(feature);
+    colors.push(featureColorMapping[feature]);
+  }
+
+  featureColor
+    .domain(features)
+    .range(colors);
+
+  // Third row: Objects
+  // {
+  //   'Object 1': [
+  //     {top: 12.0, left: 11.2, width: 5.2, height: 19, name: 'A'},
+  //     ...
+  //   ],
+  //   'Object 2': []
+  // };
+  let objects = JSON.parse(rows[3]);
+
+  let currentTimestep = null,
+      didReset = false,
+      worldFeatures = null,
+      worldLocationByColumn = null,
+      bodyWorldLocation = null;
+
+  // [{cellDimensions: [5,5], moduleMapDimensions: [20.0, 20.0], orientation: 0.2},
+  //  ...]
+  let configByModule = JSON.parse(rows[4]).map(d => {
+    d.dimensions = {rows: d.cellDimensions[0], cols: d.cellDimensions[1]};
+    return d;
+  }),
+      objectLayerConfig = {dimensions: {rows: 16, cols: 256}};
+
+  function endTimestep() {
+    if (currentTimestep !== null) {
+      currentTimestep.worldFeatures = worldFeatures;
+
+      timesteps.push(currentTimestep);
+    }
+
+    currentTimestep = null;
+  }
+
+  function beginNewTimestep(type) {
+    endTimestep();
+
+    currentTimestep = {
+      corticalColumns: sequence(numCorticalColumns).map(_ => { return {}; }),
+      type
+    };
+
+    currentTimestep.corticalColumns.forEach((c, iCol) => {
+      c.prevObjectLayer = (timesteps.length == 0 || didReset)
+        ? Object.assign({cells: [], decodings: []}, objectLayerConfig)
+        : timesteps[timesteps.length - 1].corticalColumns[iCol].objectLayer;
+    });
+
+    currentTimestep.predictedBodyToSpecificObject =
+      (timesteps.length == 0 || didReset)
+      ? {modules: configByModule.map(
+         c => Object.assign({cells: [], decodings: []}, c))}
+      : timesteps[timesteps.length - 1].anchoredBodyToSpecificObject;
+
+    worldLocationByColumn.forEach((location, iCol) => {
+      currentTimestep.corticalColumns[iCol].worldLocation =
+        {top: location[0], left: location[1]};
+    });
+
+    currentTimestep.bodyWorldLocation =
+      {top: bodyWorldLocation[0], left: bodyWorldLocation[1]};
+
+    if (didReset) {
+      currentTimestep.reset = true;
+      didReset = false;
+    }
+  }
+
+  let i = 5;
+  while (i < rows.length) {
+    switch (rows[i]) {
+    case 'reset':
+      didReset = true;
+      i++;
+      break;
+    case 'compute': {
+      let timestepType = rows[i+1];
+      beginNewTimestep(timestepType);
+
+      let egocentricLocationByColumn = JSON.parse(rows[i+2]),
+          featureInputByColumn = JSON.parse(rows[i+3]),
+          featureDecodingsByColumn = JSON.parse(rows[i+4]);
+
+      featureInputByColumn.forEach((activeBits, iColumn) => {
+        let decodings = featureDecodingsByColumn[iColumn];
+        currentTimestep.corticalColumns[iColumn].featureInput = {
+          inputSize: 150,
+          activeBits,
+          decodings
+        };
+      });
+
+      egocentricLocationByColumn.forEach((location, iColumn) => {
+        currentTimestep.corticalColumns[iColumn].egocentricLocation =
+          {top: location[0], left: location[1]};
+      });
+
+      i += 5;
+      break;
+    }
+    case 'bodyLocationInWorld': {
+      bodyWorldLocation = JSON.parse(rows[i+1]);
+      i += 2;
+      break;
+    }
+    case 'locationInWorld': {
+      worldLocationByColumn = JSON.parse(rows[i+1]);
+      i += 2;
+      break;
+    }
+    case 'sensorToBody': {
+      let cellsByModuleByColumn = JSON.parse(rows[i+1]);
+
+      cellsByModuleByColumn.forEach((cellsByModule, iCol) => {
+        let modules = cellsByModule.map((activeCells, iModule) => {
+          let cells = activeCells.map(cell => {
+            return {
+              cell,
+              state: 'predicted-active'
+            };
+          });
+
+          return Object.assign({cells,
+                                activeSynapsesByCell: {}},
+                               configByModule[iModule]);
+        });
+
+        currentTimestep.corticalColumns[iCol].sensorToBody = {
+          modules
+        };
+      });
+
+      i += 2;
+      break;
+    }
+    case 'anchoredBodyToSpecificObject': {
+      let cellsByModule = JSON.parse(rows[i+1]);
+
+      let modules = cellsByModule.map((d, iModule) => {
+          let [activeCells, synapsesForActiveCellsBySourceLayer] = d;
+
+        let predictedCells = currentTimestep
+            .predictedBodyToSpecificObject
+            .modules[iModule]
+            .cells
+            .map(d => d.cell);
+
+        let cells = activeCells.map(cell => {
+          return {
+            cell,
+            state: predictedCells.indexOf(cell) != -1
+              ? 'predicted-active'
+              : 'active'
+          };
+        });
+
+        let activeSynapsesByCell = synapsesForActiveCellsBySourceLayer
+            ? getActiveSynapsesByCell(activeCells,
+                                       synapsesForActiveCellsBySourceLayer)
+            : null;
+
+        return Object.assign({cells,
+                              activeSynapsesByCell},
+                             configByModule[iModule]);
+      });
+
+      currentTimestep.anchoredBodyToSpecificObject = {
+        modules
+      };
+
+      i += 2;
+      break;
+    };
+    case 'predictedSensorToSpecificObject': {
+      let cellsByModuleByColumn = JSON.parse(rows[i+1]),
+          decodingsByColumn = JSON.parse(rows[i+2]);
+
+      cellsByModuleByColumn.forEach((cellsByModule, iCol) => {
+        let modules = cellsByModule.map((d, iModule) => {
+          let [activeCells, synapsesForActiveCellsBySourceLayer] = d;
+
+          let cells = activeCells.map(cell => {
+            return {
+              cell,
+              state: 'predicted-active'
+            };
+          });
+
+          let activeSynapsesByCell = synapsesForActiveCellsBySourceLayer
+              ? getActiveSynapsesByCell(activeCells,
+                                         synapsesForActiveCellsBySourceLayer)
+              : null;
+
+          return Object.assign({cells,
+                                activeSynapsesByCell},
+                               configByModule[iModule]);
+        });
+
+        let decodings = decodingsByColumn[iCol].map(
+          ([objectName, top, left, amountContained]) => {
+            return { objectName, top, left, amountContained };
+          });
+
+        currentTimestep.corticalColumns[iCol].predictedSensorToSpecificObject = {
+          modules, decodings
+        };
+      });
+
+      i += 3;
+      break;
+    }
+    case 'anchoredSensorToSpecificObject': {
+      let cellsByModuleByColumn = JSON.parse(rows[i+1]),
+          decodingsByColumn = JSON.parse(rows[i+2]);
+
+      cellsByModuleByColumn.forEach((cellsByModule, iCol) => {
+        let modules = cellsByModule.map((d, iModule) => {
+          let [activeCells, synapsesForActiveCellsBySourceLayer] = d;
+
+          let predictedCells = currentTimestep
+              .corticalColumns[iCol]
+              .predictedSensorToSpecificObject
+              .modules[iModule]
+              .cells
+              .map(d => d.cell);
+
+          let cells = activeCells.map(cell => {
+            return {
+              cell,
+              state: predictedCells.indexOf(cell) != -1
+                ? 'predicted-active'
+                : 'active'
+            };
+          });
+
+          let activeSynapsesByCell = synapsesForActiveCellsBySourceLayer
+              ? getActiveSynapsesByCell(activeCells,
+                                         synapsesForActiveCellsBySourceLayer)
+              : null;
+
+          return Object.assign({cells, activeSynapsesByCell},
+                               configByModule[iModule]);
+
+        });
+
+        let decodings = decodingsByColumn[iCol].map(
+          ([objectName, top, left, amountContained]) => {
+            return { objectName, top, left, amountContained };
+          });
+
+        currentTimestep.corticalColumns[iCol].anchoredSensorToSpecificObject = {
+          modules, decodings
+        };
+      });
+
+      i += 3;
+      break;
+    }
+    case 'predictedFeatureLocationPair': {
+      let cellsByColumn = JSON.parse(rows[i+1]);
+      let decodingsByColumn = JSON.parse(rows[i+2]);
+
+      cellsByColumn.forEach((d, iCol) => {
+        let [predictedCells, segmentsForPredictedCells] = d;
+
+        let cells = predictedCells.map(cell => {
+          return {
+            cell,
+            state: 'predicted'
+          };
+        });
+
+        let predictedCellDecodings = decodingsByColumn[iCol].map(
+          ([objectName, top, left, amountContained]) => {
+            return { objectName, top, left, amountContained };
+          });
+
+        let synapsesByPredictedCell = {};
+
+        predictedCells.forEach(cell => {
+          synapsesByPredictedCell[cell] = {};
+        });
+
+        for (let presynapticLayer in segmentsForPredictedCells) {
+          segmentsForPredictedCells[presynapticLayer].forEach((segments, ci) => {
+            let synapses = [];
+            segments.forEach(presynapticCells => {
+              synapses = synapses.concat(presynapticCells);
+            });
+
+            synapsesByPredictedCell[predictedCells[ci]][presynapticLayer] = synapses;
+          });
+        }
+
+        currentTimestep.corticalColumns[iCol].predictedFeatureLocationPair = {
+          predictedCells,
+          activeSynapsesByCell: synapsesByPredictedCell,
+          decodings: predictedCellDecodings,
+          cells: cells,
+          dimensions: {rows: 32, cols: 150}
+        };
+      });
+
+      i += 3;
+      break;
+    }
+    case 'featureLocationPair': {
+      let cellsByColumn = JSON.parse(rows[i+1]);
+      let decodingsByColumn = JSON.parse(rows[i+2]);
+
+      cellsByColumn.forEach((d, iCol) => {
+        let [activeCells, synapsesForActiveCellsBySourceLayer] = d;
+
+        let predictedCells = currentTimestep
+            .corticalColumns[iCol]
+            .predictedFeatureLocationPair
+            .cells
+            .map(d => d.cell);
+
+        let cells = activeCells.map(cell => {
+          return {
+            cell,
+            state: predictedCells.indexOf(cell) != -1
+              ? 'predicted-active'
+              : 'active'
+          };
+        });
+
+        let activeSynapsesByCell = synapsesForActiveCellsBySourceLayer
+            ? getActiveSynapsesByCell(activeCells,
+                                       synapsesForActiveCellsBySourceLayer)
+            : null;
+
+        let activeCellDecodings = decodingsByColumn[iCol].map(
+          ([objectName, top, left, amountContained]) => {
+            return { objectName, top, left, amountContained };
+          });
+
+        currentTimestep.corticalColumns[iCol].featureLocationPair = {
+          cells, activeSynapsesByCell,
+          decodings: activeCellDecodings,
+          dimensions: {rows: 32, cols: 150}
+        };
+
+      });
+
+      i += 3;
+      break;
+    }
+    case 'objectLayer': {
+      let cellsByColumn = JSON.parse(rows[i+1]),
+          decodingsByColumn = JSON.parse(rows[i+2]);
+
+      cellsByColumn.forEach((d, iCol) => {
+        let [activeCells, synapsesForActiveCellsBySourceLayer] = d;
+
+        let prevActiveCells = (currentTimestep.reset || timesteps.length == 0)
+            ? []
+            : timesteps[timesteps.length-1].corticalColumns[iCol].objectLayer.cells.map(d => d.cell);
+
+        let cells = activeCells.map(cell => {
+          return {
+            cell,
+            state: prevActiveCells.indexOf(cell) != -1
+              ? 'predicted-active'
+              : 'active'
+          };
+        });
+
+        let activeSynapsesByCell = synapsesForActiveCellsBySourceLayer
+            ? getActiveSynapsesByCell(activeCells,
+                                       synapsesForActiveCellsBySourceLayer)
+            : null;
+
+        let decodings = decodingsByColumn[iCol];
+        currentTimestep.corticalColumns[iCol].objectLayer = Object.assign(
+          {cells, activeSynapsesByCell, decodings},
+          objectLayerConfig);
+      });
+
+      i += 3;
+      break;
+    }
+    case 'objectPlacements': {
+      let objectPlacements = JSON.parse(rows[i+1]);
+
+      worldFeatures = [];
+      for (let objectName in objects) {
+        let objectPlacement = objectPlacements[objectName];
+        objects[objectName].forEach(({name, top, left, width, height}) => {
+          worldFeatures.push({
+            name, width, height,
+            top: top + objectPlacement[0],
+            left: left + objectPlacement[1]
+          });
+        });
+      }
+
+      i += 2;
+      break;
+    }
+    default:
+      if (rows[i] == null || rows[i] == '') {
+        i++;
+      } else {
+        throw `Unrecognized: ${rows[i]}`;
+      }
+    }
+  }
+
+  endTimestep();
+
+  return {
+    timesteps, worldDims, configByModule, featureColor, objects
+  };
+}
+
+let rowHeight = 90;
+let secondRowTop$1 = 12 + rowHeight;
+let thirdRowTop$1 = secondRowTop$1 + rowHeight + 10;
+let fourthRowTop = thirdRowTop$1 + rowHeight;
+let fifthRowTop = fourthRowTop + rowHeight + 34;
+let bitsWidth = 90;
+let bitsHeight = 90;
+let decodingsWidth = 76;
+let decodingsTop = 6;
+let decodingsLeft = bitsWidth + 6;
+let decodingsHeight = rowHeight - 8;
+let columnWidth$1 = bitsWidth + (decodingsWidth + 24) + 14;
+
+let layout = {
+  smallLabels: [
+    {
+      html: 'object',
+      topRightCorner: {top: 12 + bitsHeight/2, left: 19}
+    },
+    {
+      html: 'feature-location<br />pair',
+      topRightCorner: {top: secondRowTop$1 + bitsHeight/2.5, left: 19}
+    },
+    {
+      html: 'feature input',
+      topRightCorner: {top: thirdRowTop$1 - 7, left: 19}
+    },
+    {
+      html: 'sensor<br />relative to<br />body',
+      topRightCorner: {top: thirdRowTop$1 + bitsHeight/3, left: 19}
+    },
+    {
+      html: 'sensor<br />relative to<br />specific object',
+      topRightCorner: {top: fourthRowTop + bitsHeight/3, left: 19}
+    },
+    {
+      html: 'body<br />relative to<br />specific object',
+      topRightCorner: {top: fifthRowTop + (bitsHeight + 60)/2.55, left: 40 + 19}
+    },
+  ],
+  mediumLabels: [
+    {
+      html: 'Neocortex',
+      top: -1, left: 5
+    },
+    {
+      html: 'Mystery Population',
+      top: fifthRowTop - 13, left: 5 + 20
+    },
+    {
+      html: 'The World',
+      top: fifthRowTop - 13, left: 5 + 40 + 60 + 40 + bitsWidth + 138
+    }],
+  corticalColumn: {
+    width: bitsWidth,
+    marginRight: columnWidth$1 - bitsWidth,
+    firstMarginLeft: 20,
+
+    object: {
+      left: 0, top: 12, width: bitsWidth, height: rowHeight
+    },
+    decodedObject: {
+      left: decodingsLeft, top: decodingsTop + 12, width: decodingsWidth,
+      height: decodingsHeight
+    },
+
+    featureLocationPair: {
+      left: 0, top: secondRowTop$1, width: bitsWidth, height: bitsHeight
+    },
+    decodedFeatureLocationPair: {
+      left: decodingsLeft,
+      top: decodingsTop + secondRowTop$1,
+      width: decodingsWidth, height: decodingsHeight
+    },
+
+    featureInput: {
+      left: 0, top: secondRowTop$1 + bitsHeight, width: bitsWidth, height: 5
+    },
+    decodedFeatureInput: {
+      left: decodingsLeft, top: secondRowTop$1 + bitsHeight,
+      height: 10, width: 10
+    },
+
+    sensorToBody: {
+      left: 0, top: thirdRowTop$1, width: bitsWidth, height: bitsHeight
+    },
+    decodedSensorToBody: {
+      left: decodingsLeft + decodingsWidth/2 - 5,
+      top: decodingsTop + thirdRowTop$1 + decodingsHeight / 2 - 10,
+      width: decodingsWidth,
+      height: decodingsHeight
+    },
+
+    sensorToSpecificObject: {
+      left: 0, top: fourthRowTop, width: bitsWidth, height: bitsHeight
+    },
+    decodedSensorToSpecificObject: {
+      left: decodingsLeft, top: decodingsTop + fourthRowTop, width: decodingsWidth,
+      height: decodingsHeight
+    }
+  },
+
+  bodyToSpecificObject: {
+    left: 60, top: fifthRowTop, width: bitsWidth + 60,
+    height: bitsHeight + 60,
+    decodingsLeft: decodingsLeft, decodingsTop: decodingsTop, decodingsWidth: decodingsWidth,
+    decodingsHeight: decodingsHeight
+  },
+
+  decodedBodyToSpecificObject: {
+    left: decodingsLeft, top: decodingsTop, width: decodingsWidth,
+    height: decodingsHeight
+  },
+
+  world: {
+    left: 40 + 60 + 40 + bitsWidth + 138, top: fifthRowTop,
+    width: bitsHeight + 60, height: bitsHeight + 60
+  }
+};
+
+let lines = [
+    // Top and bottom of neocortex
+    {x1: 0, y1: 12,
+     x2: columnWidth$1*3 - 70, y2: 12},
+    {x1: 0, y1: fourthRowTop + rowHeight,
+     x2: columnWidth$1*3 - 70, y2: fourthRowTop + rowHeight},
+
+    // Top and bottom of claustrum
+    {x1: layout.bodyToSpecificObject.left - 40,
+     y1: layout.bodyToSpecificObject.top,
+     x2: layout.bodyToSpecificObject.left + layout.bodyToSpecificObject.width + 40,
+     y2: layout.bodyToSpecificObject.top},
+    {x1: layout.bodyToSpecificObject.left - 40,
+     y1: layout.bodyToSpecificObject.top + layout.bodyToSpecificObject.height,
+     x2: layout.bodyToSpecificObject.left + layout.bodyToSpecificObject.width + 40,
+     y2: layout.bodyToSpecificObject.top + layout.bodyToSpecificObject.height},
+
+    // Sides of claustrum
+    {x1: layout.bodyToSpecificObject.left, y1: layout.bodyToSpecificObject.top,
+     x2: layout.bodyToSpecificObject.left, y2: layout.bodyToSpecificObject.top + layout.bodyToSpecificObject.height},
+    {x1: layout.bodyToSpecificObject.left + layout.bodyToSpecificObject.width,
+     y1: layout.bodyToSpecificObject.top,
+     x2: layout.bodyToSpecificObject.left + layout.bodyToSpecificObject.width,
+     y2: layout.bodyToSpecificObject.top + layout.bodyToSpecificObject.height}
+];
+
+function printRecording$2(node, text$$1) {
+  // Constants
+  let margin = {top: 5, right: 5, bottom: 15, left: 5},
+      width = 600,
+      height = fifthRowTop + rowHeight + 20 + 40,
+      parsed = parseData$2(text$$1);
+
+  // Mutable state
+  let iTimestep = 0,
+      iTimestepPhase = 0,
+      selectedObjectCell = null,
+      selectedInputCell = null,
+      selectedBodyToSpecificObjectCell = null,
+      selectedSensorToSpecificObjectCell = null,
+      selectedSensorToBodyCell = null,
+      highlightedCellsByLayer = {};
+
+  // Allow a mix of SVG and HTML
+  let html$$1 = select(node)
+        .append('div')
+          .style('margin-left', 'auto')
+          .style('margin-right', 'auto')
+          .style('position', 'relative')
+          .style('width', `${width + margin.left + margin.right}px`),
+      htmlSelectable = html$$1.append('div')
+      .style('margin-left', '-50px')
+      .style('padding-left', '50px')
+      .style('margin-right', '-20px')
+      .style('padding-right', '20px'),
+      svg = htmlSelectable.append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom);
+
+  // Add keyboard navigation
+  htmlSelectable
+    .attr('tabindex', 0)
+    .on('keydown', function() {
+      switch (event.keyCode) {
+      case 37: // Left
+        iTimestep--;
+        if (iTimestep < 0) {
+          iTimestep = parsed.timesteps.length - 1;
+        }
+
+        onSelectedTimestepChanged();
+        event.preventDefault();
+        break;
+      case 38: // Up:
+       iTimestepPhase--;
+        if (iTimestepPhase < 0) {
+          iTimestep--;
+          iTimestepPhase = 1;
+
+          if (iTimestep < 0) {
+            iTimestep = parsed.timesteps.length - 1;
+          }
+        }
+        onSelectedTimestepChanged();
+        event.preventDefault();
+        break;
+      case 39: // Right
+        iTimestep = (iTimestep+1)%parsed.timesteps.length;
+        onSelectedTimestepChanged();
+        event.preventDefault();
+        break;
+      case 40: // Down
+        iTimestepPhase++;
+        if (iTimestepPhase > 1) {
+          iTimestep = (iTimestep+1)%parsed.timesteps.length;
+          iTimestepPhase = 0;
+        }
+
+        onSelectedTimestepChanged();
+        event.preventDefault();
+        break;
+      }
+    });
+
+  // Make the SVG a clickable slideshow
+  let slideshow = svg.append('g')
+      .on('click', () => {
+        iTimestepPhase++;
+        if (iTimestepPhase > 1) {
+          iTimestep = (iTimestep+1) % parsed.timesteps.length;
+          iTimestepPhase = 0;
+        }
+
+        onSelectedTimestepChanged();
+      });
+
+  slideshow.append('rect')
+      .attr('fill', 'transparent')
+      .attr('stroke', 'none')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.bottom + margin.top + 10);
+
+  let container = slideshow
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+  // Arrange the boxes
+  let bodyToSpecificObjectNode = container.selectAll('.layerBox')
+      .data([layout.bodyToSpecificObject]);
+  bodyToSpecificObjectNode.exit().remove();
+  bodyToSpecificObjectNode = bodyToSpecificObjectNode.enter().append('g')
+    .attr('class', 'layer')
+    .merge(bodyToSpecificObjectNode)
+    .attr('transform', d => `translate(${d.left}, ${d.top})`);
+
+  let corticalColumn = container.selectAll('.corticalColumn')
+      .data(sequence(3));
+  corticalColumn.exit().remove();
+  corticalColumn = corticalColumn.enter()
+    .append('g')
+    .attr('class', 'corticalColumn')
+    .attr('transform', (_, i) => `translate(${layout.corticalColumn.firstMarginLeft + i*(columnWidth$1)})`)
+    .call(enter => {
+      // Neocortex column
+      enter.append('line')
+        .attr('stroke', 'black')
+        .attr('stroke-width', 2)
+        .attr('x1', 0)
+        .attr('y1', 12)
+        .attr('x2', 0)
+        .attr('y2', fourthRowTop + rowHeight);
+
+      enter.append('line')
+        .attr('stroke', 'black')
+        .attr('stroke-width', 2)
+        .attr('x1', bitsWidth)
+        .attr('y1', 12)
+        .attr('x2', bitsWidth)
+        .attr('y2', fourthRowTop + rowHeight);
+
+      ['object', 'decodedObject', 'featureLocationPair', 'decodedFeatureLocationPair',
+       'featureInput', 'decodedFeatureInput',
+       'sensorToBody', 'decodedSensorToBody', 'sensorToSpecificObject',
+       'decodedSensorToSpecificObject'].forEach(layer => {
+         let lay = layout.corticalColumn[layer];
+         enter.append('g')
+           .attr('class', layer)
+           .attr('transform', `translate(${lay.left},${lay.top})`);
+       });
+    })
+    .merge(corticalColumn);
+
+  let worldNode = container.append('g')
+      .attr('transform', `translate(${layout.world.left}, ${layout.world.top})`);
+
+  let timelineNode = htmlSelectable
+      .append('div')
+      .style('padding-top', '5px')
+      .style('padding-left', '17px') // Because it hangs some text off the side.
+      .style('padding-right', '17px')
+      .style('text-align', 'center');
+
+  let line$$1 = container
+      .selectAll('.myLine')
+      .data(lines);
+  line$$1.exit().remove();
+  line$$1 = line$$1.enter()
+    .append('line')
+    .attr('stroke', 'black')
+    .attr('stroke-width', 2)
+    .merge(line$$1)
+    .attr('x1', d => d.x1)
+    .attr('y1', d => d.y1)
+    .attr('x2', d => d.x2)
+    .attr('y2', d => d.y2);
+
+  let smallLabel = html$$1.selectAll('.smallLabel')
+      .data(layout.smallLabels);
+  smallLabel.exit().remove();
+  smallLabel = smallLabel.enter()
+    .append('div')
+    .attr('class', 'smallLabel')
+    .style('width', 0)
+    .style('position', 'absolute')
+    .call(div => {
+      div.append('div')
+        .attr('class', 'text')
+        .style('position', 'absolute')
+        .style('text-align', 'right')
+        .style('font', '10px Verdana')
+        .style('pointer-events', 'none')
+        .style('width', '80px')
+        .style('right', 0);
+    })
+    .merge(smallLabel)
+    .style('top', d => `${d.topRightCorner.top}px`)
+    .style('left', d => `${d.topRightCorner.left}px`);
+  smallLabel.select('.text')
+    .html(d => d.html);
+
+  let mediumLabel = html$$1.selectAll('.mediumLabel')
+      .data(layout.mediumLabels);
+  mediumLabel.exit().remove();
+  mediumLabel = mediumLabel.enter()
+    .append('div')
+    .attr('class', 'mediumLabel')
+    .style('position', 'absolute')
+    .style('text-align', 'left')
+    .style('font', '13px Verdana')
+    .style('font-weight', 'bold')
+    .style('pointer-events', 'none')
+    .merge(mediumLabel)
+    .style('left', d => `${d.left}px`)
+    .style('top', d => `${d.top}px`)
+    .html(d => d.html);
+
+  // Configure the charts
+  let sensorToBody = locationModulesChart()
+        .width(layout.corticalColumn.sensorToBody.width)
+        .height(layout.corticalColumn.sensorToBody.height)
+        .numRows(4)
+        .numCols(4)
+        .color(() => "brown")
+        .onCellSelected((iModule, cell, layerId) => {
+          if (cell !== null) {
+            selectedSensorToBodyCell = [layerId, iModule, cell];
+          } else {
+            selectedSensorToBodyCell = null;
+          }
+          onLocationCellSelected();
+        }),
+      sensorToBodyDatum = (column, iCol) => {
+        return {
+          modules: column.sensorToBody.modules,
+          highlightedCells: highlightedCellsByLayer[`${iCol} sensorToBody`] || [],
+          id: iCol
+        };
+      },
+      decodedSensorToBody = motionChart()
+        .maxLength(40),
+      decodedSensorToBodyDatum = column => column.egocentricLocation,
+      sensorToSpecificObject = locationModulesChart()
+        .width(layout.corticalColumn.sensorToSpecificObject.width)
+        .height(layout.corticalColumn.sensorToSpecificObject.height)
+        .numRows(4)
+        .numCols(4)
+      .onCellSelected((iModule, cell, layerId) => {
+        selectedSensorToSpecificObjectCell = (cell !== null)
+          ? [layerId, iModule, cell]
+          : null;
+          onLocationCellSelected();
+        }),
+      sensorToSpecificObjectDatum = (column, iCol) => {
+        return {
+          modules: (iTimestepPhase == 0)
+            ? column.predictedSensorToSpecificObject.modules
+            : column.anchoredSensorToSpecificObject.modules,
+          highlightedCells: highlightedCellsByLayer[`${iCol} sensorToSpecificObject`] || [],
+          id: iCol
+        };
+      },
+      decodedSensorToSpecificObject = decodedLocationsChart()
+        .width(layout.corticalColumn.decodedSensorToSpecificObject.width)
+        .height(layout.corticalColumn.decodedSensorToSpecificObject.height)
+        .perRow(2)
+        .color(parsed.featureColor),
+      decodedSensorToSpecificObjectDatum = column => {
+        return {
+          decodings: (iTimestepPhase == 0)
+            ? column.predictedSensorToSpecificObject.decodings
+            : column.anchoredSensorToSpecificObject.decodings,
+          objects: parsed.objects
+        };
+      },
+      featureLocationPair = layerOfCellsChart()
+        .width(layout.corticalColumn.featureLocationPair.width)
+        .height(layout.corticalColumn.featureLocationPair.height)
+        .columnMajorIndexing(true)
+        .onCellSelected((cell, layerId) => {
+          if (cell !== null) {
+            selectedInputCell = [layerId, cell];
+          } else {
+            selectedInputCell = null;
+          }
+          onInputCellSelected();
+        }),
+      featureLocationPairDatum = (column, iCol) => Object.assign(
+        {highlightedCells: highlightedCellsByLayer[`${iCol} inputLayer`] || [],
+         id: iCol},
+        (iTimestepPhase == 0)
+          ? column.predictedFeatureLocationPair
+          : column.featureLocationPair
+      ),
+      decodedFeatureLocationPair = decodedLocationsChart()
+        .width(layout.corticalColumn.decodedFeatureLocationPair.width)
+        .height(layout.corticalColumn.decodedFeatureLocationPair.height)
+        .perRow(2)
+        .color(parsed.featureColor),
+      decodedFeatureLocationPairDatum = column => {
+        return {
+          decodings: (iTimestepPhase == 0)
+            ? column.predictedFeatureLocationPair.decodings
+            : column.featureLocationPair.decodings,
+          objects: parsed.objects
+        };
+      },
+      objectLayer = layerOfCellsChart()
+        .width(layout.corticalColumn.object.width)
+        .height(layout.corticalColumn.object.height)
+        .onCellSelected((cell, layerId) => {
+          if (cell !== null) {
+            selectedObjectCell = [layerId, cell];
+          } else {
+            selectedObjectCell = null;
+          }
+          onObjectCellSelected();
+        }),
+      objectDatum = (column, iCol) => Object.assign(
+        {highlightedCells: highlightedCellsByLayer[`${iCol} objectLayer`] || [],
+         id: iCol},
+        (iTimestepPhase) == 0
+        ? column.prevObjectLayer
+        : column.objectLayer),
+      decodedObject = decodedObjectsChart()
+        .width(layout.corticalColumn.decodedObject.width)
+        .height(layout.corticalColumn.decodedObject.height)
+        .perRow(2)
+        .color(parsed.featureColor),
+      decodedObjectDatum = column => {
+        return {
+          decodings: (iTimestepPhase) == 0
+            ? column.prevObjectLayer.decodings
+            : column.objectLayer.decodings,
+          objects: parsed.objects
+        };
+      },
+      featureInput = arrayOfAxonsChart$1()
+        .width(layout.corticalColumn.featureInput.width)
+        .height(layout.corticalColumn.featureInput.height)
+        .rectWidth(1)
+        .borderWidth(0),
+      featureInputDatum = column => {
+        return (iTimestepPhase == 0)
+          ? null
+          : column.featureInput;
+      },
+      decodedFeature = featureChart()
+        .color(parsed.featureColor)
+        .width(layout.corticalColumn.decodedFeatureInput.width)
+        .height(layout.corticalColumn.decodedFeatureInput.height),
+      decodedFeatureDatum = column => {
+        return (iTimestepPhase == 0)
+          ? null
+          : {name: column.featureInput.decodings[0]};
+      },
+      bodyToSpecificObject = locationModulesChart()
+        .width(layout.bodyToSpecificObject.width)
+        .height(layout.bodyToSpecificObject.height)
+        .numRows(4)
+        .numCols(4)
+        .onCellSelected((iModule, cell) => {
+          selectedBodyToSpecificObjectCell = (cell !== null)
+            ? [iModule, cell]
+            : null;
+          onLocationCellSelected();
+        }),
+      bodyToSpecificObjectDatum = () => {
+        return {
+          modules: (iTimestepPhase == 0)
+            ? parsed.timesteps[iTimestep].predictedBodyToSpecificObject.modules
+            : parsed.timesteps[iTimestep].anchoredBodyToSpecificObject.modules,
+          highlightedCells: highlightedCellsByLayer['bodyToSpecificObject'] || []
+        };
+      },
+      world = worldChart$1()
+        .width(layout.world.width)
+        .height(layout.world.height)
+        .color(parsed.featureColor),
+      worldDatum = () => {
+        let [selectedBodyPart,
+             selectedLayer,
+             iModule,
+             selectedCell] = getSelectedCell();
+
+        let selectedLocationModule = null,
+            selectedLocationCell = null,
+            selectedAnchorLocation = null,
+            timestep = parsed.timesteps[iTimestep];
+
+        switch (selectedLayer) {
+        case 'sensorToSpecificObject':
+          selectedLocationModule = (iTimestepPhase == 0)
+            ? timestep.corticalColumns[selectedBodyPart]
+            .predictedSensorToSpecificObject
+            .modules[iModule]
+            : timestep
+            .corticalColumns[selectedBodyPart]
+            .anchoredSensorToSpecificObject
+            .modules[iModule];
+          selectedAnchorLocation = timestep.corticalColumns[selectedBodyPart]
+            .worldLocation;
+          break;
+        case 'bodyToSpecificObject':
+          selectedLocationModule = (iTimestepPhase == 0)
+            ? timestep
+            .predictedBodyToSpecificObject
+            .modules[iModule]
+            : timestep
+            .anchoredBodyToSpecificObject
+            .modules[iModule];
+          selectedAnchorLocation = timestep.bodyWorldLocation;
+          break;
+        case 'sensorToBody':
+          selectedLocationModule = timestep
+            .corticalColumns[selectedBodyPart]
+            .sensorToBody
+            .modules[iModule];
+          selectedAnchorLocation = timestep.bodyWorldLocation;
+          break;
+        }
+
+        return {
+          dims: parsed.worldDims,
+          bodyLocation: timestep.bodyWorldLocation,
+          locations: timestep.corticalColumns.map(c => c.worldLocation),
+          features: timestep.worldFeatures,
+          selectedLocationModule,
+          selectedLocationCell,
+          selectedAnchorLocation,
+          selectedBodyPart
+        };
+      },
+      timeline = timelineChart$1().onchange((iTimestepNew, iTimestepPhaseNew) => {
+        iTimestep = iTimestepNew;
+        iTimestepPhase = iTimestepPhaseNew;
+        onSelectedTimestepChanged();
+      }),
+      timelineDatum = () => {
+        return {
+          timesteps: parsed.timesteps,
+          selectedIndex: iTimestep,
+          selectedPhase: iTimestepPhase
+        };
+      };
+
+  calculateHighlightedCells();
+  draw();
+
+  //
+  // Lifecycle functions
+  //
+
+  function draw(incremental) {
+    corticalColumn
+      .data(parsed.timesteps[iTimestep].corticalColumns);
+
+    corticalColumn.select(':scope > .object')
+      .datum(objectDatum)
+      .call(objectLayer);
+
+    corticalColumn.select(':scope > .decodedObject')
+      .datum(decodedObjectDatum)
+      .call(decodedObject);
+
+    corticalColumn.select(':scope > .featureLocationPair')
+      .datum(featureLocationPairDatum)
+      .call(featureLocationPair);
+
+    corticalColumn.select(':scope > .decodedFeatureLocationPair')
+      .datum(decodedFeatureLocationPairDatum)
+      .call(decodedFeatureLocationPair);
+
+    corticalColumn.select(':scope > .sensorToBody')
+      .datum(sensorToBodyDatum)
+      .call(sensorToBody);
+
+    corticalColumn.select(':scope > .decodedSensorToBody')
+      .datum(decodedSensorToBodyDatum)
+      .call(decodedSensorToBody);
+
+    corticalColumn.select(':scope > .sensorToSpecificObject')
+      .datum(sensorToSpecificObjectDatum)
+      .call(sensorToSpecificObject);
+
+    corticalColumn.select(':scope > .decodedSensorToSpecificObject')
+      .datum(decodedSensorToSpecificObjectDatum)
+      .call(decodedSensorToSpecificObject);
+
+    corticalColumn.select(':scope > .featureInput')
+      .datum(featureInputDatum)
+      .call(featureInput);
+
+    corticalColumn.select(':scope > .decodedFeatureInput')
+      .datum(decodedFeatureDatum)
+      .call(decodedFeature);
+
+    bodyToSpecificObjectNode
+      .datum(bodyToSpecificObjectDatum)
+      .call(bodyToSpecificObject);
+
+    worldNode
+      .datum(worldDatum)
+      .call(world);
+
+    timelineNode
+      .datum(timelineDatum)
+      .call(incremental ? timeline.drawSelectedStep : timeline);
+  }
+
+  function onSelectedTimestepChanged() {
+    calculateHighlightedCells();
+    drawHighlightedCells();
+    draw(true);
+  }
+
+  function onLocationCellSelected() {
+    calculateHighlightedCells();
+    drawHighlightedCells();
+
+    worldNode
+      .datum(worldDatum)
+      .call(world.drawFiringFields)
+      .call(world.drawSelectedBodyPart);
+  }
+
+  function onInputCellSelected() {
+    calculateHighlightedCells();
+    drawHighlightedCells();
+
+    worldNode
+      .datum(worldDatum)
+      .call(world.drawSelectedBodyPart);
+  }
+
+  function onObjectCellSelected() {
+    calculateHighlightedCells();
+    drawHighlightedCells();
+
+    worldNode
+      .datum(worldDatum)
+      .call(world.drawSelectedBodyPart);
+  }
+
+  function getSelectedCell() {
+    let selectedBodyPart = null,
+        selectedLayer = null,
+        selectedModule = null,
+        selectedCell = null;
+
+   // Selected object cell
+    if (selectedObjectCell != null) {
+      let [iCol, cell] = selectedObjectCell;
+      selectedBodyPart = iCol;
+      selectedLayer = 'object';
+      selectedCell = cell;
+    }
+
+    // Selected input cell
+    if (selectedInputCell != null) {
+      let [iCol, cell] = selectedInputCell;
+      selectedBodyPart = iCol;
+      selectedLayer = 'featureLocationPair';
+      selectedCell = cell;
+    }
+
+    // Selected sensor location cell
+    if (selectedSensorToBodyCell != null) {
+      let [iCol, iModule, cell] = selectedSensorToBodyCell;
+      selectedBodyPart = iCol;
+      selectedLayer = 'sensorToBody';
+      selectedModule = iModule;
+      selectedCell = cell;
+    }
+
+    // Selected sensor location cell
+    if (selectedSensorToSpecificObjectCell != null) {
+      let [iCol, iModule, cell] = selectedSensorToSpecificObjectCell;
+      selectedBodyPart = iCol;
+      selectedLayer = 'sensorToSpecificObject';
+      selectedModule = iModule;
+      selectedCell = cell;
+    }
+
+    // Selected body location cell
+    if (selectedBodyToSpecificObjectCell != null) {
+      let [iModule, cell] = selectedBodyToSpecificObjectCell;
+      selectedBodyPart = 'body';
+      selectedLayer = 'bodyToSpecificObject';
+      selectedModule = iModule;
+      selectedCell = cell;
+    }
+
+    return [selectedBodyPart,
+            selectedLayer,
+            selectedModule,
+            selectedCell];
+  }
+
+  function calculateHighlightedCells() {
+    highlightedCellsByLayer = {};
+
+    // Selected object cell
+    if (selectedObjectCell != null) {
+      let [iCol, cell] = selectedObjectCell;
+      let layer = (iTimestepPhase == 0 )
+          ? parsed.timesteps[iTimestep].corticalColumns[iCol].prevObjectLayer
+          : parsed.timesteps[iTimestep].corticalColumns[iCol].objectLayer,
+          synapsesByPresynapticLayer =
+          layer.activeSynapsesByCell[cell];
+
+      if (synapsesByPresynapticLayer) {
+        highlightedCellsByLayer = synapsesByPresynapticLayer;
+      }
+    }
+
+    // Selected input cell
+    if (selectedInputCell != null) {
+      let [iCol, cell] = selectedInputCell;
+      let layer = parsed.timesteps[iTimestep].corticalColumns[iCol].featureLocationPair,
+          synapsesByPresynapticLayer =
+            layer.activeSynapsesByCell[cell];
+
+      if (synapsesByPresynapticLayer) {
+        highlightedCellsByLayer = synapsesByPresynapticLayer;
+      }
+    }
+
+    // Selected sensor location cell
+    if (selectedSensorToSpecificObjectCell != null) {
+      let [iCol, iModule, cell] = selectedSensorToSpecificObjectCell;
+      let module = (iTimestepPhase == 0)
+          ? parsed.timesteps[iTimestep].corticalColumns[iCol].predictedSensorToSpecificObject.modules[iModule]
+          : parsed.timesteps[iTimestep].corticalColumns[iCol].anchoredSensorToSpecificObject.modules[iModule];
+
+      let synapsesByPresynapticLayer =
+          module.activeSynapsesByCell[cell];
+
+      if (synapsesByPresynapticLayer) {
+        highlightedCellsByLayer = synapsesByPresynapticLayer;
+      }
+    }
+
+    // Selected body location cell
+    if (selectedBodyToSpecificObjectCell != null) {
+      let [iModule, cell] = selectedBodyToSpecificObjectCell;
+      let module = (iTimestepPhase == 0)
+          ? parsed.timesteps[iTimestep].predictedBodyToSpecificObject.modules[iModule]
+          : parsed.timesteps[iTimestep].anchoredBodyToSpecificObject.modules[iModule];
+
+      let synapsesByPresynapticLayer =
+          module.activeSynapsesByCell[cell];
+
+      if (synapsesByPresynapticLayer) {
+        highlightedCellsByLayer = synapsesByPresynapticLayer;
+      }
+    }
+  }
+
+  function drawHighlightedCells() {
+    corticalColumn.select(':scope > .object')
+      .datum(objectDatum)
+      .call(objectLayer.drawHighlightedCells);
+
+    corticalColumn.select(':scope > .featureLocationPair')
+      .datum(featureLocationPairDatum)
+      .call(featureLocationPair.drawHighlightedCells);
+
+    corticalColumn.select(':scope > .sensorToBody')
+      .datum(sensorToBodyDatum)
+      .call(sensorToBody.drawHighlightedCells);
+
+    corticalColumn.select(':scope > .sensorToSpecificObject')
+      .datum(sensorToSpecificObjectDatum)
+      .call(sensorToSpecificObject.drawHighlightedCells);
+
+    bodyToSpecificObjectNode
+      .datum(bodyToSpecificObjectDatum)
+      .call(bodyToSpecificObject.drawHighlightedCells);
+  }
+}
+
+/**
+ * Given data of the format:
+ * activeCells:
+ *   [42, 67, ...]
+ * synapsesForActiveCells:
+ *   {presynapticLayer1: [[17, 77, 14, 39], // synapses for cell 42
+ *                        [13, 40]          // synapses for cell 67
+ *                        ...],
+ *    ...}
+ *
+ * Convert it to
+ *   {42: {presynapticLayer1: [17, 77, 14, 39]}
+ *    67: {presynapticLayer1: [13, 40]}}
+ *
+ * The first format is optimized for sending over the network. The
+ * second format is much easier to visualize.
+ */
+function getActiveSynapsesByCell(activeCells, synapsesForActiveCells) {
+  let activeSynapsesByCell = {};
+
+  activeCells.forEach(cell => {
+    activeSynapsesByCell[cell] = {};
+  });
+
+  for (let presynapticLayer in synapsesForActiveCells) {
+    synapsesForActiveCells[presynapticLayer].forEach((synapses, ci) => {
+      activeSynapsesByCell[activeCells[ci]][presynapticLayer] = synapses;
+    });
+  }
+
+  return activeSynapsesByCell;
+}
+
+function printRecordingFromUrl$2(node, logUrl) {
+  text(logUrl,
+          (error, contents) =>
+          printRecording$2(node, contents));
+}
+
+
+
+
+var multiColumnInference = Object.freeze({
+	printRecording: printRecording$2,
+	printRecordingFromUrl: printRecordingFromUrl$2
+});
+
 function Grid2dLayout(nColumns, nRows, left, top, width, height, padding) {
   this.nColumns = nColumns;
   this.nRows = nRows;
@@ -10200,14 +12400,14 @@ function layerOfCellsPlot() {
   return chart;
 }
 
-function printRecordingFromUrl$2(node, csvUrl) {
+function printRecordingFromUrl$3(node, csvUrl) {
   text(csvUrl,
           function (error, contents) {
-            return printRecording$2(node, contents);
+            return printRecording$3(node, contents);
           });
 }
 
-function printRecording$2(node, csv$$1) {
+function printRecording$3(node, csv$$1) {
 
   // Data from the CSV
   var worldDiameter,
@@ -11195,8 +13395,9 @@ function printRecording$2(node, csv$$1) {
 
 exports.locationModuleInference = locationModuleInference;
 exports.locationModules = locationModules;
-exports.printRecording = printRecording$2;
-exports.printRecordingFromUrl = printRecordingFromUrl$2;
+exports.multiColumnInference = multiColumnInference;
+exports.printRecording = printRecording$3;
+exports.printRecordingFromUrl = printRecordingFromUrl$3;
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
