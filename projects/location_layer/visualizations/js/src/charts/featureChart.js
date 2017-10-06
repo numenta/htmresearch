@@ -7,11 +7,12 @@ import * as d3 from "d3";
 function featureChart() {
   let width,
       height,
-      color;
+      color,
+      includeText = true;
 
   let chart = function(selection) {
     let featureColor = selection.selectAll('.featureColor')
-        .data(d => d.name != null ? [d.name] : []);
+        .data(d => (d && d.name != null) ? [d.name] : []);
 
     featureColor.exit().remove();
 
@@ -25,7 +26,7 @@ function featureChart() {
       .attr('fill', d => color(d));
 
     let featureText = selection.selectAll('.featureText')
-        .data(d => d.name != null ? [d.name] : []);
+        .data(d => (includeText && d && d.name != null) ? [d.name] : []);
 
     featureText.exit().remove();
 
@@ -57,6 +58,12 @@ function featureChart() {
   chart.color = function(_) {
     if (!arguments.length) return color;
     color = _;
+    return chart;
+  };
+
+  chart.includeText = function(_) {
+    if (!arguments.length) return includeText;
+    includeText = _;
     return chart;
   };
 

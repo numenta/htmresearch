@@ -21,6 +21,7 @@ function decodedLocationsChart() {
   let width,
       height,
       color,
+      perRow = 3,
       minimumMatch = 0.25;
 
   let chart = function(selection) {
@@ -28,31 +29,33 @@ function decodedLocationsChart() {
     selection.each(function(decodedLocationsData) {
       let decodingsByObject = {};
       decodedLocationsData.decodings.forEach(d => {
-        if (d.amountContained >= minimumMatch) {
-          if (!decodingsByObject.hasOwnProperty(d.objectName)) {
-            decodingsByObject[d.objectName] = [];
-          }
-
-          decodingsByObject[d.objectName].push(d);
+        if (!decodingsByObject.hasOwnProperty(d.objectName)) {
+          decodingsByObject[d.objectName] = [];
         }
+
+        decodingsByObject[d.objectName].push(d);
       });
 
       let decodings = [],
           maxWidth = 0,
-          maxHeight = 0;
+          maxHeight = 0,
+          pxPerRow = 4 + width / perRow;
       for (let objectName in decodingsByObject) {
-        decodings.push([objectName, decodingsByObject[objectName]]);
+        if (decodingsByObject[objectName].some(
+          d => d.amountContained >= minimumMatch)) {
+          decodings.push([objectName, decodingsByObject[objectName]]);
 
-        decodedLocationsData.objects[objectName].forEach(d => {
-          maxWidth = Math.max(maxWidth, d.left + d.width);
-          maxHeight = Math.max(maxHeight, d.top + d.height);
-        });
+          decodedLocationsData.objects[objectName].forEach(d => {
+            maxWidth = Math.max(maxWidth, d.left + d.width);
+            maxHeight = Math.max(maxHeight, d.top + d.height);
+          });
+        }
       }
 
       // Sort by object name.
       decodings.sort((a,b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
 
-      let rows = partition(decodings, 3);
+      let rows = partition(decodings, perRow);
 
       let decodedObjectRow = d3.select(this).selectAll('.decodedObjectRow')
           .data(rows);
@@ -61,7 +64,7 @@ function decodedLocationsChart() {
 
       decodedObjectRow = decodedObjectRow.enter().append('g')
         .attr('class', 'decodedObjectRow')
-        .attr('transform', (d,i) => `translate(0,${i == 0 ? 0 : i*height/2.5 + 10})`)
+        .attr('transform', (d,i) => `translate(0,${i == 0 ? 0 : i*height/2})`)
         .merge(decodedObjectRow);
 
       let decodedObject = decodedObjectRow.selectAll('.decodedObject')
@@ -71,15 +74,15 @@ function decodedLocationsChart() {
 
       decodedObject = decodedObject.enter().append('g')
         .attr('class', 'decodedObject')
-        .attr('transform', (d, i) => `translate(${i*width/3},0)`)
+        .attr('transform', (d, i) => `translate(${i*pxPerRow},0)`)
         .call(enter => {
           enter.append('g')
             .attr('class', 'features');
           enter.append('g')
               .attr('class', 'points')
             .append('rect')
-              .attr('width', width/3)
-              .attr('height', height/2.5)
+              .attr('width', width/perRow)
+              .attr('height', height/2)
               .attr('fill', 'white')
               .attr('fill-opacity', 0.7);
         })
@@ -88,7 +91,7 @@ function decodedLocationsChart() {
       decodedObject.each(function([objectName, decodedLocations]) {
 
         let cmMax = Math.max(maxWidth, maxHeight);
-        let pxMax = Math.min(width/3, height/2.5);
+        let pxMax = Math.min(width/perRow, height/2 - 4);
         let x = d3.scaleLinear()
             .domain([0, cmMax])
             .range([0, pxMax]);
@@ -111,7 +114,8 @@ function decodedLocationsChart() {
               .call(featureChart()
                     .width(x(featureData.width))
                     .height(y(featureData.height))
-                    .color(color));
+                    .color(color)
+                    .includeText(false));
           });
 
         let point = d3.select(this).select('.points').selectAll('.point')
@@ -152,6 +156,12 @@ function decodedLocationsChart() {
   chart.height = function(_) {
     if (!arguments.length) return height;
     height = _;
+    return chart;
+  };
+
+  chart.perRow = function(_) {
+    if (!arguments.length) return perRow;
+    perRow = _;
     return chart;
   };
 

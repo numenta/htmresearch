@@ -13,12 +13,15 @@ import {layerOfCellsChart} from './layerOfCellsChart.js';
 function locationModulesChart() {
   var width,
       height,
-      onCellSelected = (iModule, selectedCell) => {};
+      numRows = 3,
+      numCols = 6,
+      color = null,
+      onCellSelected = (iModule, selectedCell, layerId) => {};
 
   let drawHighlightedCells = function(selection) {
     selection.each(function(moduleArrayData) {
-      let moduleWidth = width / 6,
-          moduleHeight = height / 3,
+      let moduleWidth = width / numCols,
+          moduleHeight = height / numRows,
           highlightedCellsByModule = [];
 
       let base = 0;
@@ -44,15 +47,19 @@ function locationModulesChart() {
             return d;
           })
           .each(function(d, i) {
-            d3.select(this).call(
-              layerOfCellsChart()
+            let chart = layerOfCellsChart()
                 .width(moduleWidth)
                 .height(moduleHeight)
                 .stroke('lightgray')
                 .onCellSelected(
                   cell => onCellSelected(cell !== null ? i : null,
-                                         cell))
-                .drawHighlightedCells);
+                                         cell, moduleArrayData.id));
+
+            if (color !== null) {
+              chart.color(color);
+            }
+
+            d3.select(this).call(chart.drawHighlightedCells);
           });
     });
   };
@@ -76,9 +83,8 @@ function locationModulesChart() {
       .attr('height', height);
 
     modules.each(function(moduleArrayData) {
-      // TODO: stop hardcoding 18 modules
-      let moduleWidth = width / 6,
-          moduleHeight = height / 3;
+      let moduleWidth = width / numCols,
+          moduleHeight = height / numRows;
 
       let module = d3.select(this)
           .selectAll('.module')
@@ -92,16 +98,22 @@ function locationModulesChart() {
         .attr('class', 'module')
         .merge(module)
         .attr('transform',
-              (d, i) => `translate(${Math.floor(i/3) * moduleWidth},${(i%3)*moduleHeight})`)
+              (d, i) => `translate(${Math.floor(i/numRows) * moduleWidth},${(i%numRows)*moduleHeight})`)
         .each(function(d, i) {
+          let chart = layerOfCellsChart()
+              .width(moduleWidth)
+              .height(moduleHeight)
+              .stroke('lightgray')
+              .onCellSelected(
+                cell => onCellSelected(cell !== null ? i : null,
+                                       cell, moduleArrayData.id));
+
+          if (color !== null) {
+            chart.color(color);
+          }
+
           d3.select(this)
-            .call(layerOfCellsChart()
-                  .width(moduleWidth)
-                  .height(moduleHeight)
-                  .stroke('lightgray')
-                  .onCellSelected(
-                    cell => onCellSelected(cell !== null ? i : null,
-                                           cell)));
+            .call(chart);
         });
     });
   };
@@ -120,9 +132,27 @@ function locationModulesChart() {
     return chart;
   };
 
+  chart.numRows = function(_) {
+    if (!arguments.length) return numRows;
+    numRows = _;
+    return chart;
+  };
+
+  chart.numCols = function(_) {
+    if (!arguments.length) return numCols;
+    numCols = _;
+    return chart;
+  };
+
   chart.onCellSelected = function(_) {
     if (!arguments.length) return onCellSelected;
     onCellSelected = _;
+    return chart;
+  };
+
+  chart.color = function(_) {
+    if (!arguments.length) return color;
+    color = _;
     return chart;
   };
 

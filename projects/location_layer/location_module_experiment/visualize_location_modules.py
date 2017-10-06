@@ -30,8 +30,7 @@ import math
 import os
 import random
 
-from htmresearch.algorithms.superficial_location_module import (
-  SuperficialLocationModule2D)
+from htmresearch.algorithms.location_modules import SuperficialLocationModule2D
 
 
 def go():

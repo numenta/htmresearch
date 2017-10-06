@@ -2,6 +2,8 @@ import * as d3 from 'd3';
 import {arrowShape} from './../shapes/arrowShape.js';
 
 function motionChart() {
+  let maxLength = 900;
+
   let chart = function(selection) {
     selection.each(function(deltaLocation) {
       let data = deltaLocation != null ? [deltaLocation] : [];
@@ -17,7 +19,7 @@ function motionChart() {
       if (deltaLocation != null) {
         arrowLength = Math.sqrt(Math.pow(deltaLocation.top, 2) +
                                 Math.pow(deltaLocation.left, 2));
-        correctedArrowLength = Math.min(900, Math.max(15, arrowLength));
+        correctedArrowLength = Math.min(maxLength, Math.max(15, arrowLength));
         correctionFactor = correctedArrowLength / arrowLength;
       }
 
@@ -80,7 +82,7 @@ function motionChart() {
           })
         .merge(leftLabel)
         .attr('transform', d => {
-          return `translate(0,${Math.abs(d.top/2) + 10})`;
+          return `translate(0,${Math.abs(correctionFactor*d.top/2) + 10})`;
         });
 
       leftLabel.select('text')
@@ -136,7 +138,7 @@ function motionChart() {
           })
         .merge(topLabel)
         .attr('transform', d => {
-          return `translate(${Math.abs(d.left/2) + 12},0)`;
+          return `translate(${Math.abs(correctionFactor*d.left/2) + 8},0)`;
         });
 
       topLabel.select('text')
@@ -154,6 +156,12 @@ function motionChart() {
         .attr('y1', d => -correctionFactor*d.top/2)
         .attr('y2', d => correctionFactor*d.top/2);
     });
+  };
+
+  chart.maxLength = function(_) {
+    if (!arguments.length) return maxLength;
+    maxLength = _;
+    return chart;
   };
 
   return chart;

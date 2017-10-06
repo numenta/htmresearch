@@ -31,8 +31,7 @@ import numpy as np
 from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
   ApicalTiebreakPairMemory)
 from htmresearch.algorithms.column_pooler import ColumnPooler
-from htmresearch.algorithms.superficial_location_module import (
-  SuperficialLocationModule2D)
+from htmresearch.algorithms.location_modules import SuperficialLocationModule2D
 
 
 class Grid2DLocationExperiment(object):

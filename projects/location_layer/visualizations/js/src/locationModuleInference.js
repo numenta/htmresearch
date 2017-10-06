@@ -442,17 +442,17 @@ let boxes = {
   location: {
     left: 0, top: secondRowTop, width: columnWidth, height: 180, text: 'location layer',
     bitsLeft: 10, bitsTop: 10, bitsWidth: 150, bitsHeight: 60,
-    decodingsLeft: 20, decodingsTop: 85, decodingsWidth: 148, decodingsHeight: 90
+    decodingsLeft: 13, decodingsTop: 85, decodingsWidth: 142, decodingsHeight: 90
   },
   input: {
     left: secondColumnLeft, top: secondRowTop, width: columnWidth, height: 180, text: 'feature-location pair layer',
     bitsLeft: 10, bitsTop: 10, bitsWidth: 150, bitsHeight: 60,
-    decodingsLeft: 20, decodingsTop: 85, decodingsWidth: 148, decodingsHeight: 90
+    decodingsLeft: 13, decodingsTop: 85, decodingsWidth: 142, decodingsHeight: 90
   },
   object: {
     left: secondColumnLeft, top: 12, width: columnWidth, height: 180, text: 'object layer',
     bitsLeft: 10, bitsTop: 10, bitsWidth: 150, bitsHeight: 60,
-    decodingsLeft: 20, decodingsTop: 85, decodingsWidth: 148, decodingsHeight: 90
+    decodingsLeft: 13, decodingsTop: 85, decodingsWidth: 142, decodingsHeight: 90
   },
   motion: {
     left: 0, top: thirdRowTop, width: columnWidth, height: 81, text: 'motion input',
