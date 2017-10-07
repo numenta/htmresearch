@@ -10403,10 +10403,6 @@ function plusShape() {
   return shape;
 }
 
-// When you hover over a cell, this should consider every cell in the
-// layer wrt that cell. For each, it should tile a firing field.
-
-
 /**
  * Data:
  * {locations: [[12.0, 16.0], [11.0, 6.0]],
@@ -10432,24 +10428,16 @@ function worldChart$1() {
       select(this)
         .selectAll('.currentLocation')
         .select('path')
-        .attr('d', function(d, i) {
-          let plus = plusShape();
-
-          if (worldData.selectedBodyPart == i) {
-            plus.radius(10).innerRadius(3);
-          } else {
-            plus.radius(7).innerRadius(2);
-          }
-
-          return plus();
-        });
+        .attr('fill', (d, i) => worldData.selectedBodyPart == i
+              ? 'goldenrod'
+              : 'white');
 
       select(this)
         .select('.bodyLocation')
         .select('circle')
-        .attr('r', (worldData.selectedBodyPart == 'body')
-              ? 8
-              : 5);
+        .attr('fill', (worldData.selectedBodyPart == 'body')
+              ? 'goldenrod'
+              : 'white');
     });
   };
 
@@ -10523,12 +10511,7 @@ function worldChart$1() {
               });
           })
           .attr('patternTransform', point => {
-            let translateLocation = {
-              top: worldData.selectedAnchorLocation.top,
-              left: worldData.selectedAnchorLocation.left
-            };
-
-            return `translate(${x(translateLocation)},${y(translateLocation)}) `
+            return `translate(${x(worldData.selectedAnchorLocation)},${y(worldData.selectedAnchorLocation)}) `
               + `rotate(${180 * config.orientation / Math.PI}, 0, 0) `
               + `scale(${pixelsPerCell[1]},${pixelsPerCell[0]})`;
           });
@@ -10598,7 +10581,7 @@ function worldChart$1() {
       appendage.enter().append('line')
           .attr('class', 'appendage')
           .attr('stroke', 'black')
-          .attr('stroke-width', 2)
+          .attr('stroke-width', 1)
         .merge(appendage)
         .attr('x1', d => x(d))
         .attr('y1', d => y(d))
@@ -10614,9 +10597,9 @@ function worldChart$1() {
           .attr('class', 'currentLocation')
           .call(enter => {
             enter.append('path')
-              .attr('fill', 'white')
               .attr('stroke', 'black')
-              .attr('stroke-width', 1);
+              .attr('stroke-width', 1)
+              .attr('d', plusShape().radius(7).innerRadius(2));
           })
         .merge(currentLocation)
           .attr('transform', d => `translate(${x(d)},${y(d)})`);
@@ -10634,7 +10617,8 @@ function worldChart$1() {
               .append('circle')
               .attr('fill', 'white')
               .attr('stroke', 'black')
-              .attr('stroke-width', 2);
+              .attr('stroke-width', 2)
+              .attr('r', 5);
           })
         .merge(bodyLocation)
           .attr('transform', d => `translate(${x(d)},${y(d)})`);
@@ -11734,10 +11718,9 @@ function printRecording$2(node, text$$1) {
         let [selectedBodyPart,
              selectedLayer,
              iModule,
-             selectedCell] = getSelectedCell();
+             selectedLocationCell] = getSelectedCell();
 
         let selectedLocationModule = null,
-            selectedLocationCell = null,
             selectedAnchorLocation = null,
             timestep = parsed.timesteps[iTimestep];
 
@@ -11769,7 +11752,8 @@ function printRecording$2(node, text$$1) {
             .corticalColumns[selectedBodyPart]
             .sensorToBody
             .modules[iModule];
-          selectedAnchorLocation = timestep.bodyWorldLocation;
+          selectedAnchorLocation = timestep.corticalColumns[selectedBodyPart]
+            .worldLocation;
           break;
         }
 
