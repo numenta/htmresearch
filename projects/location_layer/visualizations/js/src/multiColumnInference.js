@@ -1054,10 +1054,9 @@ function printRecording(node, text) {
         let [selectedBodyPart,
              selectedLayer,
              iModule,
-             selectedCell] = getSelectedCell();
+             selectedLocationCell] = getSelectedCell();
 
         let selectedLocationModule = null,
-            selectedLocationCell = null,
             selectedAnchorLocation = null,
             timestep = parsed.timesteps[iTimestep];
 
@@ -1089,7 +1088,8 @@ function printRecording(node, text) {
             .corticalColumns[selectedBodyPart]
             .sensorToBody
             .modules[iModule];
-          selectedAnchorLocation = timestep.bodyWorldLocation;
+          selectedAnchorLocation = timestep.corticalColumns[selectedBodyPart]
+            .worldLocation;
           break;
         }
 
