@@ -134,9 +134,8 @@ class Grid2DLocationExperimentVisualizer(Grid2DLocationExperimentMonitor):
     for (objectName, location), sdr in self.locationRepresentations.iteritems():
       amountContained = (np.intersect1d(sdr, activeLocationCells).size /
                          float(sdr.size))
-      if amountContained >= 0.05:
-        decodings.append(
-          [objectName, location[0], location[1], amountContained])
+      decodings.append(
+        [objectName, location[0], location[1], amountContained])
 
     print(json.dumps(decodings), file=self.out)
 
@@ -187,9 +186,8 @@ class Grid2DLocationExperimentVisualizer(Grid2DLocationExperimentMonitor):
     for (objectName, location), sdr in self.locationRepresentations.iteritems():
       amountContained = (np.intersect1d(sdr, activeLocationCells).size /
                          float(sdr.size))
-      if amountContained >= 0.05:
-        decodings.append(
-          [objectName, location[0], location[1], amountContained])
+      decodings.append(
+        [objectName, location[0], location[1], amountContained])
     print(json.dumps(decodings), file=self.out)
 
 
@@ -237,8 +235,7 @@ class Grid2DLocationExperimentVisualizer(Grid2DLocationExperimentMonitor):
     for (objectName, location, feature), sdr in self.inputRepresentations.iteritems():
       amountContained = (np.intersect1d(sdr, activeCells).size /
                          float(sdr.size))
-      if amountContained >= 0.05:
-        decodings.append([objectName, location[0], location[1], amountContained])
+      decodings.append([objectName, location[0], location[1], amountContained])
 
     return decodings
 
@@ -271,9 +268,6 @@ class Grid2DLocationExperimentVisualizer(Grid2DLocationExperimentMonitor):
 
   def afterObjectCompute(self, feedforwardInput, **kwargs):
     activeCells = self.objectLayer.getActiveCells()
-
-    cells = dict((cell, [])
-                 for cell in activeCells.tolist())
 
     print("objectLayer", file=self.out)
     if self.includeSynapses:

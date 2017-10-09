@@ -15,18 +15,42 @@ function layerOfCellsChart() {
       height,
       color = d3.scaleOrdinal()
         .domain(['active', 'predicted', 'predicted-active'])
-        .range(['orangered', 'rgba(0, 127, 255, 0.498)', 'black']),
+        .range(['black', 'rgba(0, 127, 255, 0.498)', 'black']),
       stroke = "black",
-      onCellSelected = selectedCell => {},
+      onCellSelected = (selectedCell, id) => {},
       columnMajorIndexing = false;
 
   let drawHighlightedCells = function(selection) {
     selection.each(function(layerData) {
-      d3.select(this).selectAll('.cell')
-        .attr('stroke-width', d =>
-              layerData.highlightedCells.indexOf(d.cell) != -1
-              ? 2
-              : 0);
+      let xScale = d3.scaleLinear()
+          .domain([0, layerData.dimensions.cols - 1])
+          .range([5, width - 5]),
+          yScale = d3.scaleLinear()
+          .domain([0, layerData.dimensions.rows - 1])
+          .range([5, height - 5]);
+
+      let x, y;
+      if (columnMajorIndexing) {
+        x = cell => xScale(Math.floor(cell / layerData.dimensions.rows));
+        y = cell => yScale(cell % layerData.dimensions.rows);
+      } else {
+        x = cell => xScale(cell % layerData.dimensions.cols);
+        y = cell => yScale(Math.floor(cell / layerData.dimensions.cols));
+      }
+
+      let highlightedCell = d3.select(this)
+        .select('.front')
+        .selectAll('.highlightedCell')
+        .data(layerData.highlightedCells);
+      highlightedCell.exit().remove();
+      highlightedCell = highlightedCell.enter()
+        .append('polygon')
+          .attr('class', 'highlightedCell')
+          .attr('points', '0,-4 2,2 -2,2')
+          .attr('stroke', 'goldenrod')
+          .attr('stroke-width', 2)
+        .merge(highlightedCell)
+          .attr('transform', d => `translate(${x(d)},${y(d)})`);
     });
   };
 
@@ -72,7 +96,21 @@ function layerOfCellsChart() {
           .attr('width', width)
           .attr('height', height);
 
-      let cells = layer.selectAll('.cells')
+      let main = layer.selectAll(':scope > .main')
+          .data([null]);
+      main.exit().remove();
+      main = main.enter()
+        .append('g')
+        .attr('class', 'main')
+        .merge(main);
+
+      layer.selectAll(':scope > .front')
+        .data([null])
+        .enter()
+        .append('g')
+        .attr('class', 'front');
+
+      let cells = main.selectAll('.cells')
           .data([layerData.cells]);
 
       cells = cells.enter()
@@ -88,7 +126,6 @@ function layerOfCellsChart() {
       cell = cell.enter()
         .append('polygon')
           .attr('class', 'cell')
-          .attr('stroke', 'goldenrod')
         .merge(cell)
           .attr('fill', d => color(d.state))
           .attr('stroke-width', d =>
@@ -123,7 +160,7 @@ function layerOfCellsChart() {
           if (p !== layerNode._selectedCell) {
             layerNode._selectedCell = p;
             draw();
-            onCellSelected(p.cell);
+            onCellSelected(p ? p.cell : null, layerData.id);
           }
         })
         .on('mouseleave', () => {
@@ -132,7 +169,7 @@ function layerOfCellsChart() {
           if (layerNode._selectedCell !== null) {
             layerNode._selectedCell = null;
             draw();
-            onCellSelected(null);
+            onCellSelected(null, layerData.id);
           }
         });
 
@@ -143,7 +180,7 @@ function layerOfCellsChart() {
                               layerNode._mousePosition[1]);
         if (p !== layerNode._selectedCell) {
           layerNode._selectedCell = p;
-          onCellSelected(p.cell);
+          onCellSelected(p ? p.cell : null, layerData.id);
         }
       }
 
@@ -192,6 +229,12 @@ function layerOfCellsChart() {
   chart.columnMajorIndexing = function(_) {
     if (!arguments.length) return columnMajorIndexing;
     columnMajorIndexing = _;
+    return chart;
+  };
+
+  chart.color = function(_) {
+    if (!arguments.length) return color;
+    color = _;
     return chart;
   };
 

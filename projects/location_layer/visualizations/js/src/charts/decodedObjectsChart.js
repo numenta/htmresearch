@@ -20,14 +20,16 @@ function partition(arr, n) {
 function decodedObjectsChart() {
   let width,
       height,
-      color;
+      color,
+      perRow = 3;
 
   let chart = function(selection) {
 
     selection.each(function(decodedObjectsData) {
 
       let maxWidth = 0,
-          maxHeight = 0;
+          maxHeight = 0,
+          pxPerRow = 4 + width / perRow;
       decodedObjectsData.decodings.forEach(objectName => {
         decodedObjectsData.objects[objectName].forEach(d => {
           maxWidth = Math.max(maxWidth, d.left + d.width);
@@ -40,7 +42,7 @@ function decodedObjectsChart() {
       // Sort by object name.
       decodings.sort();
 
-      let rows = partition(decodings, 3);
+      let rows = partition(decodings, perRow);
 
       let decodedObjectRow = d3.select(this).selectAll('.decodedObjectRow')
           .data(rows);
@@ -49,7 +51,7 @@ function decodedObjectsChart() {
 
       decodedObjectRow = decodedObjectRow.enter().append('g')
         .attr('class', 'decodedObjectRow')
-        .attr('transform', (d,i) => `translate(0,${i == 0 ? 0 : i*height/3 + 10})`)
+        .attr('transform', (d,i) => `translate(0,${i == 0 ? 0 : i*height/perRow})`)
         .merge(decodedObjectRow);
 
       let decodedObject = decodedObjectRow.selectAll('.decodedObject')
@@ -59,12 +61,12 @@ function decodedObjectsChart() {
 
       decodedObject = decodedObject.enter().append('g')
         .attr('class', 'decodedObject')
-        .attr('transform', (d, i) => `translate(${i*width/3},0)`)
+        .attr('transform', (d, i) => `translate(${i*pxPerRow},0)`)
         .merge(decodedObject);
 
       decodedObject.each(function(objectName) {
         let cmMax = Math.max(maxWidth, maxHeight);
-        let pxMax = Math.min(width/3, height/3);
+        let pxMax = Math.min(width/perRow, height/2 - 4);
         let x = d3.scaleLinear()
             .domain([0, cmMax])
             .range([0, pxMax]);
@@ -102,6 +104,12 @@ function decodedObjectsChart() {
   chart.height = function(_) {
     if (!arguments.length) return height;
     height = _;
+    return chart;
+  };
+
+  chart.perRow = function(_) {
+    if (!arguments.length) return perRow;
+    perRow = _;
     return chart;
   };
 

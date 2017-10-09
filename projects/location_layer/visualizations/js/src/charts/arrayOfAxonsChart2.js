@@ -11,7 +11,7 @@ function arrayOfAxonsChart() {
   let width,
       height,
       borderWidth = 1,
-      r = 1.5;
+      rectWidth = 2;
 
   let chart = function(selection) {
     selection.each(function(axonsData) {
@@ -44,10 +44,12 @@ function arrayOfAxonsChart() {
       activeAxon.enter().append('g')
         .attr('class', 'activeAxon')
         .call(enter => {
-          enter.append('circle')
-            .attr('r', r)
+          enter.append('rect')
+            .attr('x', -rectWidth / 2)
+            .attr('width', rectWidth)
+            .attr('height', 5)
             .attr('stroke', 'none')
-            .attr('fill', 'black');
+            .attr('fill', 'brown');
         })
         .merge(activeAxon)
         .attr('transform', cell => `translate(${x(cell)}, 2.5)`);
@@ -68,9 +70,9 @@ function arrayOfAxonsChart() {
     return chart;
   };
 
-  chart.r = function(_) {
-    if (!arguments.length) return r;
-    r = _;
+  chart.rectWidth = function(_) {
+    if (!arguments.length) return rectWidth;
+    rectWidth = _;
     return chart;
   };
 

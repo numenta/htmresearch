@@ -1,5 +1,6 @@
 import * as locationModuleInference from "./src/locationModuleInference";
 import * as locationModules from "./src/locationModules";
+import * as multiColumnInference from "./src/multiColumnInference";
 
 export {printRecording,
         printRecordingFromUrl}
@@ -7,3 +8,4 @@ export {printRecording,
 
 export {locationModuleInference};
 export {locationModules};
+export {multiColumnInference};

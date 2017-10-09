@@ -95,7 +95,7 @@ function timelineChart() {
       });
 
       let onchangeFn = onchange
-          ? d => onchange(d.iTimestep)
+          ? d => onchange(d.iTimestep, 0)
           : null;
 
       let verticalElement = timelineNode.selectAll('.verticalElement')
