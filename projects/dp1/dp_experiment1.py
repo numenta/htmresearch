@@ -28,6 +28,10 @@ import random
 import time
 import numpy
 
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.rcParams['pdf.fonttype'] = 42
+
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 from htmresearch.frameworks.layers.object_machine_factory import (
   createObjectMachine
@@ -141,10 +145,9 @@ def runExperiment(args):
   # each neighboring column. Each column gets its own distal segment.
   exp.learnObjects(pairObjects.provideObjectsToLearn())
 
-  # Verify that it learned the pairs
+  # Verify that all columns learned the pairs
   numCorrectClassifications = 0
   for pairId in pairObjects:
-    exp.sendReset()
 
     obj = pairObjects[pairId]
     objectSensations = {}
@@ -161,21 +164,58 @@ def runExperiment(args):
 
     exp.infer(inferenceSDRs, objectName=pairId, reset=False)
 
-    res = exp.isObjectClassified(pairId, minOverlap=30)
-    if res: numCorrectClassifications += 1
+    if exp.isObjectClassified(pairId, minOverlap=30):
+      numCorrectClassifications += 1
 
+    exp.sendReset()
 
   print "Classification accuracy for pairs=",100.0*numCorrectClassifications/len(distinctPairs)
+
+  ########################################################################
+  #
+  # Create "object representations" in L2 by simultaneously invoking the union
+  # of all FL pairs in an object and doing some sort of spatial pooling to
+  # create L2 representation.
+
+  exp.resetStatistics()
+  for objectId in objects:
+    # Create one sensation per object consisting of the union of all features
+    # and the union of locations.
+    ul, uf = objects.getUniqueFeaturesLocationsInObject(objectId)
+    print "Object",objectId,"Num unique features:",len(uf),"Num unique locations:",len(ul)
+    objectSensations = {}
+    for c in range(numColumns):
+      objectSensations[c] = [(tuple(ul),  tuple(uf))]*settlingTime
+
+    inferConfig = {
+      "object": objectId,
+      "numSteps": settlingTime,
+      "pairs": objectSensations,
+    }
+
+    inferenceSDRs = objects.provideObjectToInfer(inferConfig)
+
+    exp.infer(inferenceSDRs, objectName="Object "+str(objectId))
+
+  # Compute confusion matrix between all objects as network settles
+  for iteration in range(settlingTime):
+    confusion = numpy.zeros((numObjects, numObjects))
+    for o1 in objects:
+      for o2 in objects:
+        confusion[o1, o2] = len(exp.statistics[o1]["Full L2 SDR C0"][iteration] & exp.statistics[o2]["Full L2 SDR C0"][iteration])
+
+    plt.figure()
+    plt.imshow(confusion)
+    plt.xlabel('Object #')
+    plt.ylabel('Object #')
+    plt.title("Object overlaps")
+    plt.colorbar()
+    plt.savefig("confusion"+str(iteration)+".pdf")
+    plt.close()
 
 
   return args
 
-
-  # Create object representations in L2 by simultaneously invoking all FL pairs
-  # in an object and doing some sort of spatial pooling to create L2
-  # representation.
-
-  # Compute confusion matrix between all objects
 
   # Show average overlap as a function of number of shared FL pairs,
   # shared locations, shared features
@@ -185,7 +225,7 @@ def runExperiment(args):
   # Compute confusion matrix using our normal method
 
 
-  exp.learnObjects(objects.provideObjectsToLearn())
+  # exp.learnObjects(objects.provideObjectsToLearn())
 
   # For inference, we will check and plot convergence for each object. For each
   # object, we create a sequence of random sensations for each column.  We will
@@ -384,12 +424,13 @@ if __name__ == "__main__":
   # for debugging, profiling, etc.
   results = runExperiment(
       {
-        "numObjects": 10,
+        "numObjects": 20,
         "numPoints": 10,
-        "numLocations": 10,
-        "numFeatures": 10,
+        "numLocations": 20,
+        "numFeatures": 20,
         "numColumns": 3,
         "trialNum": 4,
+        "settlingTime": 3,
         "plotInferenceStats": False,  # Outputs detailed graphs
       }
   )
