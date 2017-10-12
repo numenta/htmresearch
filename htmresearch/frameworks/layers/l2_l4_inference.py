@@ -320,7 +320,7 @@ class L4L2Experiment(object):
       SparseMatrix(0, self.config["L2Params"]["cellCount"])
       for _ in xrange(self.numColumns)]
     self.objectNameToIndex = {}
-    self.statistics = []
+    self.resetStatistics()
 
 
   @LoggingDecorator()
@@ -430,8 +430,8 @@ class L4L2Experiment(object):
 
     Parameters:
     ----------------------------
-    @param   objects (dict)
-             Objects to learn, in the canonical format specified above
+    @param   sensationList (list)
+             List of sensations, in the canonical format specified above
 
     @param   reset (bool)
              If set to True (which is the default value), the network will
@@ -443,11 +443,6 @@ class L4L2Experiment(object):
     """
     self._unsetLearningMode()
     statistics = collections.defaultdict(list)
-
-    if objectName is not None:
-      if objectName not in self.objectL2Representations:
-        raise ValueError("The provided objectName was not given during"
-                         " learning")
 
     for sensations in sensationList:
 
@@ -514,6 +509,10 @@ class L4L2Experiment(object):
     Public interface to sends a reset signal to the network.  This is logged.
     """
     self._sendReset(*args, **kwargs)
+
+
+  def resetStatistics(self):
+    self.statistics = []
 
 
   def plotInferenceStats(self,
@@ -995,17 +994,20 @@ class L4L2Experiment(object):
       statistics["L2 Representation C" + str(i)].append(
         len(L2Representation[i])
       )
+      statistics["Full L2 SDR C" + str(i)].append(
+        L2Representation[i]
+      )
       statistics["L4 Apical Segments C" + str(i)].append(
         len(self.L4Columns[i]._tm.getActiveApicalSegments())
       )
 
-      # add true overlap and classification result if objectName was provided
-      if objectName is not None:
+      # add true overlap and classification result if objectName was learned
+      if objectName in self.objectL2Representations:
         objectRepresentation = self.objectL2Representations[objectName]
         statistics["Overlap L2 with object C" + str(i)].append(
           len(objectRepresentation[i] & L2Representation[i]) )
 
-    if objectName is not None:
+    if objectName in self.objectL2Representations:
       if self.isObjectClassified(objectName):
         statistics["Correct classification"].append(1.0)
       else:
