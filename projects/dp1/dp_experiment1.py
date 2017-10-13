@@ -38,6 +38,21 @@ from htmresearch.frameworks.layers.object_machine_factory import (
 )
 
 
+def printColumnPoolerDiagnostics(pooler):
+  print "sampleSizeProximal: ", pooler.sampleSizeProximal
+  print "Average number of proximal synapses per cell:",
+  print float(pooler.numberOfProximalSynapses()) / pooler.cellCount
+
+  print "Average number of distal segments per cell:",
+  print float(pooler.numberOfDistalSegments()) / pooler.cellCount
+
+  print "Average number of connected distal synapses per cell:",
+  print float(pooler.numberOfConnectedDistalSynapses()) / pooler.cellCount
+
+  print "Average number of distal synapses per cell:",
+  print float(pooler.numberOfDistalSynapses()) / pooler.cellCount
+
+
 def runExperiment(args):
   """
   Run experiment.  args is a dict representing the parameters. We do it this way
@@ -197,6 +212,7 @@ def runExperiment(args):
 
     exp.infer(inferenceSDRs, objectName="Object "+str(objectId))
 
+
   # Compute confusion matrix between all objects as network settles
   for iteration in range(settlingTime):
     confusion = numpy.zeros((numObjects, numObjects))
@@ -214,6 +230,11 @@ def runExperiment(args):
     plt.close()
 
 
+  for col in range(numColumns):
+    print "Diagnostics for column",col
+    printColumnPoolerDiagnostics(exp.getAlgorithmInstance(column=col))
+    print
+
   return args
 
 
@@ -224,101 +245,6 @@ def runExperiment(args):
 
   # Compute confusion matrix using our normal method
 
-
-  # exp.learnObjects(objects.provideObjectsToLearn())
-
-  # For inference, we will check and plot convergence for each object. For each
-  # object, we create a sequence of random sensations for each column.  We will
-  # present each sensation for settlingTime time steps to let it settle and
-  # ensure it converges.
-  numCorrectClassifications=0
-  classificationPerSensation = numpy.zeros(settlingTime*numPoints)
-  for objectId in objects:
-    exp.sendReset()
-
-    obj = objects[objectId]
-    objectSensations = {}
-    for c in range(numColumns):
-      objectSensations[c] = []
-
-    if numColumns > 1:
-      # Create sequence of random sensations for this object for all columns At
-      # any point in time, ensure each column touches a unique loc,feature pair
-      # on the object.  It is ok for a given column to sense a loc,feature pair
-      # more than once. The total number of sensations is equal to the number of
-      # points on the object.
-      for sensationNumber in range(len(obj)):
-        # Randomly shuffle points for each sensation
-        objectCopy = [pair for pair in obj]
-        random.shuffle(objectCopy)
-        for c in range(numColumns):
-          # stay multiple steps on each sensation
-          for _ in xrange(settlingTime):
-            objectSensations[c].append(objectCopy[c])
-
-    else:
-      # Create sequence of sensations for this object for one column. The total
-      # number of sensations is equal to the number of points on the object. No
-      # point should be visited more than once.
-      objectCopy = [pair for pair in obj]
-      random.shuffle(objectCopy)
-      for pair in objectCopy:
-        # stay multiple steps on each sensation
-        for _ in xrange(settlingTime):
-          objectSensations[0].append(pair)
-
-    inferConfig = {
-      "object": objectId,
-      "numSteps": len(objectSensations[0]),
-      "pairs": objectSensations,
-      "noiseLevel": featureNoise,
-      "locationNoise": locationNoise,
-      "includeRandomLocation": includeRandomLocation,
-      "numAmbiguousLocations": numAmbiguousLocations,
-    }
-
-    inferenceSDRs = objects.provideObjectToInfer(inferConfig)
-
-    exp.infer(inferenceSDRs, objectName=objectId, reset=False)
-
-    classificationPerSensation += numpy.array(
-      exp.statistics[objectId]["Correct classification"])
-
-    if exp.isObjectClassified(objectId, minOverlap=30):
-      numCorrectClassifications += 1
-
-    if plotInferenceStats:
-      exp.plotInferenceStats(
-        fields=["L2 Representation",
-                "Overlap L2 with object",
-                "L4 Representation"],
-        experimentID=objectId,
-        onePlot=False,
-      )
-
-
-  convergencePoint, accuracy = exp.averageConvergencePoint("L2 Representation",
-                                                 30, 40, settlingTime)
-  classificationAccuracy = float(numCorrectClassifications) / numObjects
-  classificationPerSensation = classificationPerSensation / numObjects
-
-  print "# objects {} # features {} # locations {} # columns {} trial # {} network type {}".format(
-    numObjects, numFeatures, numLocations, numColumns, trialNum, networkType)
-  print "Average convergence point=",convergencePoint
-  print "Classification accuracy=",classificationAccuracy
-  print
-
-  # Return our convergence point as well as all the parameters and objects
-  args.update({"objects": objects.getObjects()})
-  args.update({"convergencePoint":convergencePoint})
-  args.update({"classificationAccuracy":classificationAccuracy})
-  args.update({"classificationPerSensation":classificationPerSensation.tolist()})
-
-  # Can't pickle experiment so can't return it for batch multiprocessing runs.
-  # However this is very useful for debugging when running in a single thread.
-  if plotInferenceStats:
-    args.update({"experiment": exp})
-  return args
 
 
 def runExperimentPool(numObjects,
@@ -428,7 +354,7 @@ if __name__ == "__main__":
         "numPoints": 10,
         "numLocations": 20,
         "numFeatures": 20,
-        "numColumns": 3,
+        "numColumns": 1,
         "trialNum": 4,
         "settlingTime": 3,
         "plotInferenceStats": False,  # Outputs detailed graphs
