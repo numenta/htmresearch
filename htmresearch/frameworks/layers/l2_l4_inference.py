@@ -729,6 +729,23 @@ class L4L2Experiment(object):
     return [set(column._pooler.getActiveCells()) for column in self.L2Columns]
 
 
+  def getAlgorithmInstance(self, layer="L2", column=0):
+    """
+    Returns an instance of the underlying algorithm. For example,
+    layer=L2 and column=1 could return the actual instance of ColumnPooler
+    that is responsible for column 1.
+    """
+    assert ( (column>=0) and (column<self.numColumns)), ("Column number not "
+                          "in valid range")
+
+    if layer == "L2":
+      return self.L2Columns[column].getAlgorithmInstance()
+    elif layer == "L4":
+      return self.L4Columns[column].getAlgorithmInstance()
+    else:
+      raise Exception("Invalid layer. Must be 'L4' or 'L2'")
+
+
   def getCurrentObjectOverlaps(self):
     """
     Get every L2's current overlap with each L2 object representation that has
