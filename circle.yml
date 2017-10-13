@@ -1,0 +1,31 @@
+machine:
+  timezone:
+    GMT
+  xcode:
+    version: 8.3
+  environment:
+    PYTHONPATH: "$HOME/Library/Python/2.7/lib/python/site-packages"
+    PATH: "$HOME/Library/Python/2.7/bin:$PATH"
+  pre:
+    - sudo pip install --upgrade pip
+    - brew update
+    - brew install freetype libpng
+
+dependencies:
+  override:
+    - pip install --user --upgrade setuptools wheel 
+    - pip install --user -r requirements.txt 
+
+compile:
+  override:
+    - python setup.py bdist_wheel
+  
+test:
+  pre:
+    - pip install --user --find-links=`pwd`/dist/ htmresearch
+  override:
+    - py.test --junitxml=$CIRCLE_TEST_REPORTS/py_test_report.xml -n 6 tests/frameworks/layers/ tests/regions/ tests/algorithms/
+
+general:
+  artifacts:
+    - dist
