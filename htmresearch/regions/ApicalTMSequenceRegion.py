@@ -468,3 +468,10 @@ class ApicalTMSequenceRegion(PyRegion):
       return self.cellsPerColumn * self.columnCount
     else:
       raise Exception("Invalid output name specified: %s" % name)
+
+
+  def getAlgorithmInstance(self):
+    """
+    Returns an instance of the underlying temporal memory instance
+    """
+    return self._tm
