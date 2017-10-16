@@ -64,6 +64,9 @@ test_script:
   - ps: |
       cd $env:APPVEYOR_BUILD_FOLDER
       py.test --junitxml=py_test_report.xml -n 6 tests/frameworks/layers/ tests/regions/ tests/algorithms/
+
+on_finish:
+  - ps: |
       $wc = New-Object 'System.Net.WebClient'
       $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path py_test_report.xml))
 
