@@ -89,7 +89,7 @@ You can perform a more thorough test by running the test script from the reposit
 Archive
 =======
 
-We archive our old research code and experiments in the following repository:
+Some of our old research code and experiments are archived in the following repository: 
  
 * https://github.com/numenta-archive/htmresearch
 
