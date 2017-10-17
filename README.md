@@ -85,3 +85,11 @@ You can perform a more thorough test by running the test script from the reposit
 
     %> ./run_tests.sh 
 
+
+Archive
+=======
+
+Some of our old research code and experiments are archived in the following repository: 
+ 
+* https://github.com/numenta-archive/htmresearch
+
