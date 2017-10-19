@@ -1,7 +1,6 @@
 gensim==3.0.0
 matplotlib==2.1.0
 numpy==1.12.1
-nupic==1.0.3
 pandas==0.18.1
 plotly==2.0.13
 plyfile==0.5
@@ -13,5 +12,6 @@ seaborn==0.8.1
 simplejson==2.6.2
 tabulate==0.7.5
 tqdm==4.8.4
-# NOTE: htmresearch_core Should be version locked before creating new release
-htmresearch_core==0.0.2
+# NOTE: nupic and htmresearch_core dependencies should be version locked before creating new release
+nupic
+htmresearch_core
