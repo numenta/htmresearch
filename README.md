@@ -56,6 +56,12 @@ Installation
 OK, enough caveats. Here are some installation instructions though mostly you
 are on your own. (Wait, was that another caveat?)
 
+## Released Version ![](https://img.shields.io/pypi/v/htmresearch.svg)
+
+    pip install nupic htmresearch
+
+## Developer
+
 Requirements:
 
 - `nupic` and `nupic.core`
