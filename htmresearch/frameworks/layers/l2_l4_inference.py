@@ -1013,6 +1013,7 @@ class L4L2Experiment(object):
       )
       statistics["Full L2 SDR C" + str(i)].append(
         L2Representation[i]
+        # random.sample(L2Representation[i], min(len(L2Representation[i]), 500))
       )
       statistics["L4 Apical Segments C" + str(i)].append(
         len(self.L4Columns[i]._tm.getActiveApicalSegments())
