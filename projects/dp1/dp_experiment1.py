@@ -161,30 +161,30 @@ def runExperiment(args):
   exp.learnObjects(pairObjects.provideObjectsToLearn())
 
   # Verify that all columns learned the pairs
-  numCorrectClassifications = 0
-  for pairId in pairObjects:
-
-    obj = pairObjects[pairId]
-    objectSensations = {}
-    for c in range(numColumns):
-      objectSensations[c] = [obj[0]]*settlingTime
-
-    inferConfig = {
-      "object": pairId,
-      "numSteps": settlingTime,
-      "pairs": objectSensations,
-    }
-
-    inferenceSDRs = pairObjects.provideObjectToInfer(inferConfig)
-
-    exp.infer(inferenceSDRs, objectName=pairId, reset=False)
-
-    if exp.isObjectClassified(pairId, minOverlap=30):
-      numCorrectClassifications += 1
-
-    exp.sendReset()
-
-  print "Classification accuracy for pairs=",100.0*numCorrectClassifications/len(distinctPairs)
+  # numCorrectClassifications = 0
+  # for pairId in pairObjects:
+  #
+  #   obj = pairObjects[pairId]
+  #   objectSensations = {}
+  #   for c in range(numColumns):
+  #     objectSensations[c] = [obj[0]]*settlingTime
+  #
+  #   inferConfig = {
+  #     "object": pairId,
+  #     "numSteps": settlingTime,
+  #     "pairs": objectSensations,
+  #   }
+  #
+  #   inferenceSDRs = pairObjects.provideObjectToInfer(inferConfig)
+  #
+  #   exp.infer(inferenceSDRs, objectName=pairId, reset=False)
+  #
+  #   if exp.isObjectClassified(pairId, minOverlap=30):
+  #     numCorrectClassifications += 1
+  #
+  #   exp.sendReset()
+  #
+  # print "Classification accuracy for pairs=",100.0*numCorrectClassifications/len(distinctPairs)
 
   ########################################################################
   #
@@ -218,7 +218,8 @@ def runExperiment(args):
     confusion = numpy.zeros((numObjects, numObjects))
     for o1 in objects:
       for o2 in objects:
-        confusion[o1, o2] = len(exp.statistics[o1]["Full L2 SDR C0"][iteration] & exp.statistics[o2]["Full L2 SDR C0"][iteration])
+        confusion[o1, o2] = len(set(exp.statistics[o1]["Full L2 SDR C0"][iteration]) &
+                                set(exp.statistics[o2]["Full L2 SDR C0"][iteration]) )
 
     plt.figure()
     plt.imshow(confusion)
@@ -226,7 +227,7 @@ def runExperiment(args):
     plt.ylabel('Object #')
     plt.title("Object overlaps")
     plt.colorbar()
-    plt.savefig("confusion"+str(iteration)+".pdf")
+    plt.savefig("confusion_random_10L_5F_"+str(iteration)+".pdf")
     plt.close()
 
 
@@ -352,8 +353,8 @@ if __name__ == "__main__":
       {
         "numObjects": 20,
         "numPoints": 10,
-        "numLocations": 20,
-        "numFeatures": 20,
+        "numLocations": 10,
+        "numFeatures": 5,
         "numColumns": 1,
         "trialNum": 4,
         "settlingTime": 3,
