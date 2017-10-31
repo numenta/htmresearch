@@ -1,11 +1,17 @@
-# Program requirements
-matplotlib
-pandas
-plotly>=1.12.10
-simplejson
-tabulate
-tqdm
-prettytable
-plyfile
-scikit-learn
-scipy
+gensim==3.0.0
+matplotlib==2.1.0
+numpy==1.12.1
+pandas==0.18.1
+plotly==2.0.13
+plyfile==0.5
+prettytable==0.7.2
+pyqtgraph==0.10.0
+scikit_learn==0.19.0
+scipy==1.0.0rc1
+seaborn==0.8.1
+simplejson==2.6.2
+tabulate==0.7.5
+tqdm==4.8.4
+# NOTE: nupic and htmresearch_core dependencies should be version locked before creating new release
+nupic
+htmresearch_core

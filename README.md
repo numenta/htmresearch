@@ -56,6 +56,12 @@ Installation
 OK, enough caveats. Here are some installation instructions though mostly you
 are on your own. (Wait, was that another caveat?)
 
+## Released Version ![](https://img.shields.io/pypi/v/htmresearch.svg)
+
+    pip install nupic htmresearch
+
+## Developer
+
 Requirements:
 
 - `nupic` and `nupic.core`
@@ -84,4 +90,12 @@ external distal basal connections.
 You can perform a more thorough test by running the test script from the repository root:
 
     %> ./run_tests.sh 
+
+
+Archive
+=======
+
+Some of our old research code and experiments are archived in the following repository: 
+ 
+* https://github.com/numenta-archive/htmresearch
 

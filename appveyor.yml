@@ -1,0 +1,81 @@
+#---------------------------------#
+#      general configuration      #
+#---------------------------------#
+
+# version format
+version: '{build}'
+
+branches:
+  except:
+    - gh-pages
+
+#---------------------------------#
+#    environment configuration    #
+#---------------------------------#
+
+# http://www.appveyor.com/docs/environment-variables
+# http://www.appveyor.com/docs/installed-software
+
+init:
+  - git config --global core.autocrlf input
+
+# Can't have a shallow clone because the CMake process will be
+# calling into git to write the current SHA into the binaries.
+shallow_clone: false
+clone_folder: c:\projects\htmresearch
+clone_depth: 1
+
+environment:
+  PYTHONPATH: "%PYTHONHOME%"
+  PATH: "%PYTHONHOME%\\Scripts;%PYTHONHOME%;%PATH%"
+
+  matrix:
+    # Win64-gcc
+    - PYTHON_VERSION: "2.7.13"
+      PYTHON_ARCH: "64"
+      PYTHONHOME: "C:\\Python27-x64"
+
+    # Win32-gcc
+    - PYTHON_VERSION: "2.7.13"
+      PYTHON_ARCH: "32"
+      PYTHONHOME: "C:\\Python27"
+
+#---------------------------------#
+#       build configuration       #
+#---------------------------------#
+
+# configuration values must be compatible with CMAKE_BUILD_TYPE: Debug or Release
+configuration: Release
+
+install:
+  - pip install --upgrade pip
+  - pip install --upgrade setuptools wheel
+  - pip install -r requirements.txt
+
+build_script:
+  # Build python wheel
+  - python setup.py bdist_wheel
+
+before_test:
+ - pip install --find-links=%APPVEYOR_BUILD_FOLDER%\dist htmresearch
+
+test_script:
+  # python tests
+  - ps: |
+      cd $env:APPVEYOR_BUILD_FOLDER
+      py.test --junitxml=py_test_report.xml -n 6 tests/frameworks/layers/ tests/regions/ tests/algorithms/
+
+on_finish:
+  - ps: |
+      $wc = New-Object 'System.Net.WebClient'
+      $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path py_test_report.xml))
+
+after_test:
+  - cmd: |
+      for /f %%i in ('type VERSION') do set VERSION=%%i
+      copy %APPVEYOR_BUILD_FOLDER%\dist\htmresearch-%VERSION%-py2-none-any.whl %APPVEYOR_BUILD_FOLDER%\htmresearch-%APPVEYOR_REPO_COMMIT%-py2-none-any.whl
+
+artifacts:
+  - path: '*.whl'
+    name: htmresearch
+
