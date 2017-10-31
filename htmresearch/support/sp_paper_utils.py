@@ -308,6 +308,42 @@ def runSPOnBatch(sp, inputVectors, learn, sdrOrders=None, verbose=0):
   return outputColumns, avgBoostFactors
 
 
+def runDiscriminationTest(sp, inputVectors, numPairs=100):
+  """
+  For two random input vectors, store their SP outputs. Create a merged version
+  of the two vectors and get its SP output.
+
+  Compare the overlap of the "merged input" SP output with the two stored SP
+  outputs.
+
+  Compute the average overlap between all pairs of vectors.
+  """
+  numInputVector, inputSize = inputVectors.shape
+  numColumns = np.prod(sp.getColumnDimensions())
+  sparsity = np.zeros(numPairs)
+  overlaps = np.zeros(numPairs)
+  mergedOverlaps = np.zeros(numPairs)
+
+  for a in range(numPairs):
+    outputColumns = np.zeros((3, numColumns), dtype=uintType)
+    i = np.random.randint(numInputVector)
+    j = np.random.randint(numInputVector)
+    sp.compute(inputVectors[i][:], False, outputColumns[0][:])
+    sp.compute(inputVectors[j][:], False, outputColumns[1][:])
+
+    mergedInput = inputVectors[j][:].copy()
+    mergedInput[inputVectors[i][:].nonzero()[0]] = 1
+    sp.compute(mergedInput, False, outputColumns[2][:])
+
+    overlaps[a] = outputColumns[1].dot(outputColumns[0])
+    mergedOverlaps[a] = (outputColumns[1].dot(outputColumns[2]) +
+                         outputColumns[0].dot(outputColumns[2]))/2.0
+    sparsity[a] = (outputColumns[1].sum() + outputColumns[0].sum())/2.0
+
+  print "Mean/stdev overlap:",overlaps.mean(),overlaps.std()
+  print "Mean/stdev merged overlap:",mergedOverlaps.mean(),mergedOverlaps.std()
+  print "Mean number of active columns:",sparsity.mean()
+
 
 def createDirectories(expName):
   paths = []

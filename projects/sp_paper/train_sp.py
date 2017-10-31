@@ -407,6 +407,7 @@ def runSPexperiments(expConfig):
   print
   print "Runnning experiment: {}".format(expName)
   print "Training Data Size {} Dimensions {}".format(numInputVector, inputSize)
+  print "Number of epochs",expConfig.numEpochs
 
   spParams = getSpatialPoolerParams(params, expConfig)
   sp = createSpatialPooler(expConfig.spatialImp, spParams)
@@ -437,6 +438,10 @@ def runSPexperiments(expConfig):
              'witnessError': []}
 
   connectedSyns = getConnectedSyns(sp)
+
+  print "Running discrimination test before training"
+  runDiscriminationTest(sp, inputVectors, numPairs=1000)
+
   activeColumnsCurrentEpoch, dum = runSPOnBatch(sp, testInputs, learn=False)
 
   inspectSpatialPoolerStats(sp, inputVectors, expName + "beforeTraining")
@@ -503,10 +508,14 @@ def runSPexperiments(expConfig):
       verbose = True
     else:
       verbose = False
+
     activeColumnsTrain, meanBoostFactors = runSPOnBatch(sp, inputVectors, learn, sdrOrders, verbose)
     # run SP on test dataset and compute metrics
     activeColumnsPreviousEpoch = copy.copy(activeColumnsCurrentEpoch)
     activeColumnsCurrentEpoch, dum = runSPOnBatch(sp, testInputs, learn=False)
+
+    print "Running discrimination test after training"
+    runDiscriminationTest(sp, inputVectors, numPairs=1000)
 
     stability = calculateStability(activeColumnsCurrentEpoch,
                                    activeColumnsPreviousEpoch)
