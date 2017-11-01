@@ -1,0 +1,97 @@
+{
+    "description": "<p>Numenta's HTM research code</p>",
+    "license":  {
+        "id": "AGPL-3.0"
+    },
+    "access_right": "open",
+    "upload_type": "software",
+    "creators": [
+        {
+            "affiliation": "Numenta",
+            "orcid": "0000-0002-2141-0629",
+            "name": "Subutai Ahmad"
+        },
+        {
+            "affiliation": "Numenta",
+            "name": "Scott Purdy"
+        },
+        {
+            "name": "Yuwei Cui"
+        },
+        {
+            "affiliation": "Numenta",
+            "name": "Marcus Lewis"
+        },
+        {
+            "affiliation": "Numenta",
+            "name": "Kai Liu"
+        },
+        {
+            "affiliation": "Numenta",
+            "name": "Luiz Scheinkman"
+        },
+        {
+            "affiliation": "Numenta",
+            "name": "Matthew Taylor"
+        },
+        {
+            "affiliation": "Numenta",
+            "name": "Celeste Baranski"
+        },
+        {
+            "name": "Chetan Surpur"
+        },
+        {
+            "name": "Marion Le Borgne"
+        },
+        {
+            "name": "Alexander Lavin"
+        },
+        {
+            "name": "Ryan J. McCall"
+        },
+        {
+            "name": "Austin Marshall"
+        },
+        {
+            "name": "Nathanael Romano"
+        },
+        {
+            "name": "Sagan Bolliger"
+        },
+        {
+            "name": "Tom Silver"
+        },
+        {
+            "name": "Hernandez Urbina"
+        },
+        {
+            "name": "Jared Weiss"
+        },
+        {
+            "name": "Max Schwarzer"
+        },
+        {
+            "affiliation": "Numenta",
+            "name": "Mirko Klukas"
+        },
+        {
+            "name": "Brev Patterson"
+        },
+        {
+            "name": "Andrew Malta"
+        },
+        {
+            "name": "E. Paxon Frady"
+        },
+        {
+            "name": "Karthik Katipally"
+        },
+        {
+            "name": "Akhila Ananthram"
+        },
+        {
+            "name": "breznak"
+        }
+    ]
+}
