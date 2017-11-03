@@ -221,6 +221,31 @@ class SimpleObjectMachine(ObjectMachineBase):
         )
 
 
+  def getDistinctPairs(self):
+    """
+    Return a set consisting of unique feature/location pairs across all
+    objects
+    """
+    distinctPairs = set()
+    for pairs in self.objects.itervalues():
+      distinctPairs = distinctPairs.union(set(pairs))
+    return distinctPairs
+
+
+  def getUniqueFeaturesLocationsInObject(self, name):
+    """
+    Return two sets. The first set contains the unique locations Ids in the
+    object. The second set contains the unique feature Ids in the object.
+    """
+    uniqueFeatures = set()
+    uniqueLocations = set()
+    for pair in self.objects[name]:
+      uniqueLocations = uniqueLocations.union({pair[0]})
+      uniqueFeatures = uniqueFeatures.union({pair[1]})
+
+    return uniqueLocations, uniqueFeatures
+
+
   def _getSDRPairs(self,
                    pairs,
                    noise=None,

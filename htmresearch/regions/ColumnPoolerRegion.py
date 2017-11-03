@@ -510,3 +510,12 @@ class ColumnPoolerRegion(PyRegion):
       return self.cellCount
     else:
       raise Exception("Invalid output name specified: " + name)
+
+
+  def getAlgorithmInstance(self):
+    """
+    Returns an instance of the underlying column pooler instance
+    """
+    return self._pooler
+
+

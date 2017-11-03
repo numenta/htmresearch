@@ -320,7 +320,7 @@ class L4L2Experiment(object):
       SparseMatrix(0, self.config["L2Params"]["cellCount"])
       for _ in xrange(self.numColumns)]
     self.objectNameToIndex = {}
-    self.statistics = []
+    self.resetStatistics()
 
 
   @LoggingDecorator()
@@ -430,8 +430,8 @@ class L4L2Experiment(object):
 
     Parameters:
     ----------------------------
-    @param   objects (dict)
-             Objects to learn, in the canonical format specified above
+    @param   sensationList (list)
+             List of sensations, in the canonical format specified above
 
     @param   reset (bool)
              If set to True (which is the default value), the network will
@@ -443,11 +443,6 @@ class L4L2Experiment(object):
     """
     self._unsetLearningMode()
     statistics = collections.defaultdict(list)
-
-    if objectName is not None:
-      if objectName not in self.objectL2Representations:
-        raise ValueError("The provided objectName was not given during"
-                         " learning")
 
     for sensations in sensationList:
 
@@ -514,6 +509,10 @@ class L4L2Experiment(object):
     Public interface to sends a reset signal to the network.  This is logged.
     """
     self._sendReset(*args, **kwargs)
+
+
+  def resetStatistics(self):
+    self.statistics = []
 
 
   def plotInferenceStats(self,
@@ -728,6 +727,23 @@ class L4L2Experiment(object):
     Returns the active representation in L2.
     """
     return [set(column._pooler.getActiveCells()) for column in self.L2Columns]
+
+
+  def getAlgorithmInstance(self, layer="L2", column=0):
+    """
+    Returns an instance of the underlying algorithm. For example,
+    layer=L2 and column=1 could return the actual instance of ColumnPooler
+    that is responsible for column 1.
+    """
+    assert ( (column>=0) and (column<self.numColumns)), ("Column number not "
+                          "in valid range")
+
+    if layer == "L2":
+      return self.L2Columns[column].getAlgorithmInstance()
+    elif layer == "L4":
+      return self.L4Columns[column].getAlgorithmInstance()
+    else:
+      raise Exception("Invalid layer. Must be 'L4' or 'L2'")
 
 
   def getCurrentObjectOverlaps(self):
@@ -995,17 +1011,21 @@ class L4L2Experiment(object):
       statistics["L2 Representation C" + str(i)].append(
         len(L2Representation[i])
       )
+      statistics["Full L2 SDR C" + str(i)].append(
+        L2Representation[i]
+        # random.sample(L2Representation[i], min(len(L2Representation[i]), 500))
+      )
       statistics["L4 Apical Segments C" + str(i)].append(
         len(self.L4Columns[i]._tm.getActiveApicalSegments())
       )
 
-      # add true overlap and classification result if objectName was provided
-      if objectName is not None:
+      # add true overlap and classification result if objectName was learned
+      if objectName in self.objectL2Representations:
         objectRepresentation = self.objectL2Representations[objectName]
         statistics["Overlap L2 with object C" + str(i)].append(
           len(objectRepresentation[i] & L2Representation[i]) )
 
-    if objectName is not None:
+    if objectName in self.objectL2Representations:
       if self.isObjectClassified(objectName):
         statistics["Correct classification"].append(1.0)
       else:
