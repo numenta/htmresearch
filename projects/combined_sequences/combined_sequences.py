@@ -153,6 +153,69 @@ def inferObject(exp, objectId, objects, objectName):
   exp.infer(inferenceSDRs, objectName=objectName)
 
 
+def createSuperimposedSDRs(inferenceSDRSequence, inferenceSDRObject):
+  superimposedSDRs = []
+  for sensations in zip(inferenceSDRSequence, inferenceSDRObject):
+    print "sequence loc:", sensations[0][0][0]
+    print "object loc:  ",sensations[1][0][0]
+    print "superimposed:", sensations[0][0][0].union(sensations[1][0][0])
+    print
+    print "sequence feat:", sensations[0][0][1]
+    print "object feat:  ",sensations[1][0][1]
+    print "superimposed:", sensations[0][0][1].union(sensations[1][0][1])
+    print
+    newSensation = {
+      0: (sensations[0][0][0].union(sensations[1][0][0]),
+          sensations[0][0][1].union(sensations[1][0][1]))
+    }
+    print newSensation
+    superimposedSDRs.append(newSensation)
+    print
+    print
+
+  return superimposedSDRs
+
+
+def inferSuperimposedSequenceObjects(exp, sequenceId, objectId, sequences, objects):
+  """Run inference on the given sequence."""
+  # Create the (loc, feat) pairs for this sequence for column 0.
+  objectSensations = {
+    0: [pair for pair in sequences[sequenceId]]
+  }
+
+  inferConfig = {
+    "object": sequenceId,
+    "numSteps": len(objectSensations[0]),
+    "pairs": objectSensations,
+  }
+
+  inferenceSDRSequence = sequences.provideObjectToInfer(inferConfig)
+
+  # Create sequence of random sensations for this object for one column. The
+  # total number of sensations is equal to the number of points on the object.
+  # No point should be visited more than once.
+  objectSensations = {}
+  objectSensations[0] = []
+  obj = objects[objectId]
+  objectCopy = [pair for pair in obj]
+  random.shuffle(objectCopy)
+  for pair in objectCopy:
+    objectSensations[0].append(pair)
+
+  inferConfig = {
+    "numSteps": len(objectSensations[0]),
+    "pairs": objectSensations,
+    "includeRandomLocation": False,
+  }
+
+  inferenceSDRObject = objects.provideObjectToInfer(inferConfig)
+
+  superimposedSDRs = createSuperimposedSDRs(inferenceSDRSequence, inferenceSDRObject)
+
+  exp.infer(superimposedSDRs, objectName=str(sequenceId) + "+" + str(objectId))
+
+
+
 def runExperiment(args):
   """
   Runs the experiment.  What did you think this does?
@@ -171,7 +234,7 @@ def runExperiment(args):
   numLocations = args.get("numLocations", 100000)
   numInputBits = args.get("inputBits", 20)
   settlingTime = args.get("settlingTime", 3)
-  figure6 = args.get("figure6", False)
+  figure = args.get("figure", False)
 
   random.seed(trialNum)
 
@@ -242,15 +305,11 @@ def runExperiment(args):
   # Run inference
 
   print "Running inference"
-  if not figure6:
-    # By default run inference on every sequence and object.
-    for seqId in sequences:
-      inferSequence(exp, seqId, sequences)
-    for objectId in objects:
-      inferObject(exp, objectId, objects, objectId + numSequences)
-
-  else:
-    # For figure 6 we want to run sequences and objects in a specific order
+  if figure == "6":
+    # For figure 6 we have trained the system on both temporal sequences and
+    # objects. We test the system by randomly switching between sequences and
+    # objects. To replicate the graph, we want to run sequences and objects in a
+    # specific order
     for trial,itemType in enumerate(["sequence", "object", "sequence", "object",
                                      "sequence", "sequence", "object",
                                      "sequence", ]):
@@ -261,6 +320,24 @@ def runExperiment(args):
       else:
         objectId = random.randint(0, numObjects-1)
         inferObject(exp, objectId, objects, objectId+numSequences)
+
+
+  elif figure == "7":
+    # For figure 7 we have trained the system on both temporal sequences and
+    # objects. We test the system by superimposing randomly chosen sequences and
+    # objects.
+    for trial in range(10):
+      sequenceId = random.randint(0, numSequences - 1)
+      objectId = random.randint(0, numObjects - 1)
+      inferSuperimposedSequenceObjects(exp, sequenceId=sequenceId,
+                         objectId=objectId, sequences=sequences, objects=objects)
+
+  else:
+    # By default run inference on every sequence and object in order.
+    for seqId in sequences:
+      inferSequence(exp, seqId, sequences)
+    for objectId in objects:
+      inferObject(exp, objectId, objects, objectId + numSequences)
 
 
   ##########################################################################
@@ -504,6 +581,33 @@ def runExperiment6(dirName):
     cPickle.dump(results, f)
 
 
+def runExperiment7(dirName):
+  """
+  This runs the experiment the section "Simulations with Combined Sequences",
+  an example stream containing a mixture of temporal and sensorimotor sequences.
+  For inference we superimpose the objects and sequences.
+  """
+  # Results are put into a pkl file which can be used to generate the plots.
+  # dirName is the absolute path where the pkl file will be placed.
+  resultsFilename = os.path.join(dirName, "superimposed_sequence_results.pkl")
+  results = runExperiment(
+    {
+      "numSequences": 5,
+      "seqLength": 10,
+      "numObjects": 5,
+      "numFeatures": 50,
+      "trialNum": 8,
+      "numLocations": 50,
+      "settlingTime": 3,
+      "figure": "7",
+    }
+  )
+
+  # Pickle results for plotting and possible later debugging
+  with open(resultsFilename, "wb") as f:
+    cPickle.dump(results, f)
+
+
 if __name__ == "__main__":
 
   # Map paper figures to experiment
@@ -513,6 +617,7 @@ if __name__ == "__main__":
     "5A": runExperiment5A,
     "5B": runExperiment5B,
     "6":  runExperiment6,
+    "7":  runExperiment7,
   }
   figures = generateFigureFunc.keys()
   figures.sort()

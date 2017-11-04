@@ -296,7 +296,7 @@ class L4TMExperiment(L4L2Experiment):
       )
 
       # add true overlap if objectName was provided
-      if objectName is not None:
+      if objectName in self.objectL2Representations:
         objectRepresentation = self.objectL2Representations[objectName]
         statistics["Overlap L2 with object C" + str(i)].append(
           len(objectRepresentation[i] & L2Representation[i])
