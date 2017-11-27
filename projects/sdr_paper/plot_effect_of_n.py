@@ -268,7 +268,7 @@ layout = Layout(
         ),
         tickfont=Font(
             family='',
-            size=12,
+            size=24,
             color=''
         ),
         showline=True,
@@ -283,7 +283,7 @@ layout = Layout(
             showarrow=False,
             font=Font(
                 family='',
-                size=16,
+                size=24,
                 color=''
             ),
             align='center',
@@ -303,7 +303,7 @@ layout = Layout(
             showarrow=False,
             font=Font(
                 family='',
-                size=16,
+                size=24,
                 color=''
             ),
             align='center',
@@ -323,7 +323,7 @@ layout = Layout(
             showarrow=False,
             font=Font(
                 family='',
-                size=16,
+                size=24,
                 color=''
             ),
             align='center',
@@ -343,7 +343,7 @@ layout = Layout(
             showarrow=False,
             font=Font(
                 family='',
-                size=16,
+                size=24,
                 color=''
             ),
             align='center',
@@ -360,4 +360,4 @@ fig = Figure(data=data, layout=layout)
 plot_url = py.plot(fig)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
-py.image.save_as(figure, 'images/effect_of_n.png', scale=4)
+py.image.save_as(figure, 'images/effect_of_n.pdf', scale=4)
