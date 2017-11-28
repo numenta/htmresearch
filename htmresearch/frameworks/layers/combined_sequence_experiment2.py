@@ -35,9 +35,9 @@ from htmresearch.frameworks.layers.laminar_network import createNetwork
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
 
 
-class L4TMExperiment(L4L2Experiment):
+class CombinedSequenceExperiment(L4L2Experiment):
   """
-  L4-TM combined sequences experiment.
+  L2-TM combined sequences experiment.
   """
 
   def __init__(self,
@@ -48,12 +48,10 @@ class L4TMExperiment(L4L2Experiment):
                externalInputSize=1024,
                numExternalInputBits=20,
                L2Overrides=None,
-               networkType = "L4L2TMColumn",
                L4Overrides=None,
                seed=42,
                logCalls=False,
                objectNamesAreIndices=False,
-               TMOverrides=None,
                ):
     """
     Creates the network.
@@ -76,22 +74,25 @@ class L4TMExperiment(L4L2Experiment):
     self.externalInputSize = externalInputSize
     self.numInputBits = numInputBits
     self.objectNamesAreIndices = objectNamesAreIndices
+    self.numExternalInputBits = numExternalInputBits
 
     # seed
     self.seed = seed
     random.seed(seed)
 
-    # update parameters with overrides
+    # Create default parameters and then update with overrides
     self.config = {
-      "networkType": networkType,
+      "networkType": "CombinedSequenceColumn",
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
-      "L4Params": self.getDefaultL4Params(inputSize, numExternalInputBits),
+      "enableFeedback": False,
       "L2Params": self.getDefaultL2Params(inputSize, numInputBits),
-      "TMParams": self.getDefaultTMParams(self.inputSize, self.numInputBits),
     }
-
+    self.config["L4Params"] = self._getDefaultCombinedL4Params(
+      self.numInputBits, self.inputSize,
+      self.numExternalInputBits, self.externalInputSize,
+      self.config["L2Params"]["cellCount"])
 
     if L2Overrides is not None:
       self.config["L2Params"].update(L2Overrides)
@@ -99,16 +100,14 @@ class L4TMExperiment(L4L2Experiment):
     if L4Overrides is not None:
       self.config["L4Params"].update(L4Overrides)
 
-    if TMOverrides is not None:
-      self.config["TMParams"].update(TMOverrides)
+    pprint.pprint(self.config)
 
     # Recreate network including TM parameters
     self.network = createNetwork(self.config)
     self.sensorInputs = []
     self.externalInputs = []
-    self.L4Regions = []
     self.L2Regions = []
-    self.TMRegions = []
+    self.L4Regions = []
 
     for i in xrange(self.numColumns):
       self.sensorInputs.append(
@@ -117,19 +116,15 @@ class L4TMExperiment(L4L2Experiment):
       self.externalInputs.append(
         self.network.regions["externalInput_" + str(i)].getSelf()
       )
-      self.L4Regions.append(
-        self.network.regions["L4Column_" + str(i)]
-      )
       self.L2Regions.append(
         self.network.regions["L2Column_" + str(i)]
       )
-      self.TMRegions.append(
-        self.network.regions["TMColumn_" + str(i)]
+      self.L4Regions.append(
+        self.network.regions["L4Column_" + str(i)]
       )
 
-    self.L4Columns = [region.getSelf() for region in self.L4Regions]
     self.L2Columns = [region.getSelf() for region in self.L2Regions]
-    self.TMColumns = [region.getSelf() for region in self.TMRegions]
+    self.L4Columns = [region.getSelf() for region in self.L4Regions]
 
     # will be populated during training
     self.objectL2Representations = {}
@@ -140,47 +135,15 @@ class L4TMExperiment(L4L2Experiment):
     self.statistics = []
 
 
-  def getTMRepresentations(self):
+  def _getDefaultCombinedL4Params(self, numInputBits, inputSize,
+                                  numExternalInputBits, externalInputSize,
+                                  L2CellCount):
     """
-    Returns the active representation in TM.
+    Returns a good default set of parameters to use in a combined L4 region.
     """
-    return [set(column.getOutputData("activeCells").nonzero()[0])
-            for column in self.TMRegions]
-
-
-  def getTMNextPredictedCells(self):
-    """
-    Returns the cells in TM that were predicted at the end of the most recent
-    call to 'compute'.
-    """
-    return [set(column.getOutputData("nextPredictedCells").nonzero()[0])
-            for column in self.TMRegions]
-
-
-  def getTMPredictedActiveCells(self):
-    """
-    Returns the cells in TM that were predicted at the beginning of the most
-    recent call to 'compute' and are currently active.
-    """
-    return [set(column.getOutputData("predictedActiveCells").nonzero()[0])
-            for column in self.TMRegions]
-
-
-  def getDefaultTMParams(self, inputSize, numInputBits):
-    """
-    Returns a good default set of parameters to use in the TM region.
-    """
-    sampleSize = int(1.5 * numInputBits)
-
-    if numInputBits == 20:
-      activationThreshold = 18
-      minThreshold = 18
-    elif numInputBits == 10:
-      activationThreshold = 8
-      minThreshold = 8
-    else:
-      activationThreshold = int(numInputBits * .6)
-      minThreshold = activationThreshold
+    sampleSize = numExternalInputBits + numInputBits
+    activationThreshold = int(max(numExternalInputBits, numInputBits) * .6)
+    minThreshold = activationThreshold
 
     return {
       "columnCount": inputSize,
@@ -198,7 +161,9 @@ class L4TMExperiment(L4L2Experiment):
       "activationThreshold": activationThreshold,
       "sampleSize": sampleSize,
       "implementation": "ApicalTiebreak",
-      "seed": self.seed
+      "seed": self.seed,
+      "basalInputWidth": inputSize*16 + externalInputSize,
+      "apicalInputWidth": L2CellCount,
     }
 
 
@@ -209,7 +174,7 @@ class L4TMExperiment(L4L2Experiment):
     """
     numCorrect = 0.0
     numStats = 0.0
-    prefix = "TM PredictedActive"
+    prefix = "L4 PredictedActive"
 
     # For each object
     for stats in self.statistics:
@@ -224,24 +189,6 @@ class L4TMExperiment(L4L2Experiment):
               numCorrect += 1.0
 
     return numCorrect / numStats
-
-
-  def _unsetLearningMode(self):
-    """
-    Unsets the learning mode, to start inference.
-    """
-    for region in self.TMRegions:
-      region.setParameter("learn", False)
-    super(L4TMExperiment, self)._unsetLearningMode()
-
-
-  def _setLearningMode(self):
-    """
-    Sets the learning mode.
-    """
-    for region in self.TMRegions:
-      region.setParameter("learn", True)
-    super(L4TMExperiment, self)._setLearningMode()
 
 
   def _updateInferenceStats(self, statistics, objectName=None):
@@ -261,9 +208,6 @@ class L4TMExperiment(L4L2Experiment):
     L4PredictedCells = self.getL4PredictedCells()
     L4PredictedActiveCells = self.getL4PredictedActiveCells()
     L2Representation = self.getL2Representations()
-    TMPredictedActive = self.getTMPredictedActiveCells()
-    TMNextPredicted = self.getTMNextPredictedCells()
-    TMRepresentation = self.getTMRepresentations()
 
     for i in xrange(self.numColumns):
       statistics["L4 Representation C" + str(i)].append(
@@ -283,18 +227,6 @@ class L4TMExperiment(L4L2Experiment):
       )
       statistics["L4 Basal Segments C" + str(i)].append(
         len(self.L4Columns[i]._tm.getActiveBasalSegments())
-      )
-      statistics["TM Basal Segments C" + str(i)].append(
-        len(self.TMColumns[i]._tm.getActiveBasalSegments())
-      )
-      statistics["TM PredictedActive C" + str(i)].append(
-        len(TMPredictedActive[i])
-      )
-      statistics["TM NextPredicted C" + str(i)].append(
-        len(TMNextPredicted[i])
-      )
-      statistics["TM Representation C" + str(i)].append(
-        len(TMRepresentation[i])
       )
 
       # add true overlap if objectName was provided
