@@ -67,20 +67,22 @@ def printDiagnostics(exp, sequences, objects, verbosity=0):
     for i in sequences:
       print i,sequences[i]
 
-    print "\nNetwork parameters:"
-    pprint.pprint(exp.config)
+  print "\nNetwork parameters:"
+  pprint.pprint(exp.config)
 
 
-def trainSequences(sequences, exp):
+def trainSequences(sequences, exp, idOffset=0):
   """Train the network on all the sequences"""
-  for seqName in sequences:
+  for seqId in sequences:
     # Make sure we learn enough times to deal with high order sequences and
     # remove extra predictions.
-    iterations = 3*len(sequences[seqName])
+    iterations = 3*len(sequences[seqId])
     for p in range(iterations):
 
       # Ensure we generate new random location for each sequence presentation
-      objectSDRs = sequences.provideObjectsToLearn([seqName])
+      s = sequences.provideObjectsToLearn([seqId])
+      objectSDRs = dict()
+      objectSDRs[seqId + idOffset] = s[seqId]
       exp.learnObjects(objectSDRs, reset=False)
 
       # TM needs reset between sequences, but not other regions
@@ -90,7 +92,7 @@ def trainSequences(sequences, exp):
     exp.sendReset()
 
 
-def trainObjects(objects, exp, numRepeatsPerObject, experimentIdOffset):
+def trainObjects(objects, exp, numRepeatsPerObject, experimentIdOffset=0):
   """
   Train the network on all the objects by randomly traversing points on
   each object.  We offset the id of each object to avoid confusion with
@@ -108,7 +110,7 @@ def trainObjects(objects, exp, numRepeatsPerObject, experimentIdOffset):
   exp.learnObjects(objectTraversals)
 
 
-def inferSequence(exp, sequenceId, sequences):
+def inferSequence(exp, sequenceId, sequences, objectName=0):
   """Run inference on the given sequence."""
   # Create the (loc, feat) pairs for this sequence for column 0.
   objectSensations = {
@@ -122,7 +124,7 @@ def inferSequence(exp, sequenceId, sequences):
   }
 
   inferenceSDRs = sequences.provideObjectToInfer(inferConfig)
-  exp.infer(inferenceSDRs, objectName=sequenceId)
+  exp.infer(inferenceSDRs, objectName=objectName)
 
 
 def inferObject(exp, objectId, objects, objectName):
@@ -176,6 +178,46 @@ def createSuperimposedSDRs(inferenceSDRSequence, inferenceSDRObject):
   return superimposedSDRs
 
 
+def createSuperimposedSensorySDRs(sequenceSensations, objectSensations):
+  """
+  Given two lists of sensations, create a new list where the sensory SDRs are
+  union of the individual sensory SDRs. Keep the location SDRs from the object.
+
+  A list of sensations has the following format:
+  [
+    {
+      0: (set([1, 5, 10]), set([6, 12, 52]),  # location, feature for CC0
+    },
+    {
+      0: (set([5, 46, 50]), set([8, 10, 11]),  # location, feature for CC0
+    },
+  ]
+
+  We assume there is only one cortical column, and that the two input lists have
+  identical length.
+
+  """
+  assert len(sequenceSensations) == len(objectSensations)
+  superimposedSensations = []
+  for i, objectSensation in enumerate(objectSensations):
+    # print "sequence loc:", sequenceSensations[i][0][0]
+    # print "object loc:  ",objectSensation[0][0]
+    # print
+    # print "sequence feat:", sequenceSensations[i][0][1]
+    # print "object feat:  ",objectSensation[0][1]
+    # print
+    newSensation = {
+      0: (objectSensation[0][0],
+          sequenceSensations[i][0][1].union(objectSensation[0][1]))
+    }
+    superimposedSensations.append(newSensation)
+    # print newSensation
+    # print
+    # print
+
+  return superimposedSensations
+
+
 def inferSuperimposedSequenceObjects(exp, sequenceId, objectId, sequences, objects):
   """Run inference on the given sequence."""
   # Create the (loc, feat) pairs for this sequence for column 0.
@@ -215,6 +257,61 @@ def inferSuperimposedSequenceObjects(exp, sequenceId, objectId, sequences, objec
   exp.infer(superimposedSDRs, objectName=str(sequenceId) + "+" + str(objectId))
 
 
+def trainSuperimposedSequenceObjects(exp, numRepetitions,
+                                     sequences, objects):
+  """
+  Train the network on the given object and sequence simultaneously for N
+  repetitions each.  The total number of training inputs is N * seqLength = M
+  (Ideally numPoints = seqLength)
+
+  Create a list of M random training presentations of the object (To)
+  Create a list of M=N*seqLength training presentations of the sequence (Ts).
+
+  Create a list of M training inputs. The i'th training sensory input is created
+  by taking the OR of To and Ts.  The location input comes from the object.
+
+  We only train L4 this way (?).
+
+  The other alternative is to train on one object for N repetitions. For each
+  repetition we choose a random sequence and create OR'ed sensory inputs. Insert
+  reset between each sequence presentation as before.  We need to ensure that
+  each sequence is seen at least seqLength times.
+  """
+  trainingSensations = {}
+  objectSDRs = objects.provideObjectsToLearn()
+  sequenceSDRs = sequences.provideObjectsToLearn()
+
+  # Create the order of sequences we will show. Each sequence will be shown
+  # exactly numRepetitions times.
+  sequenceOrder = range(len(sequences)) * numRepetitions
+  random.shuffle(sequenceOrder)
+
+  for objectId,sensations in objectSDRs.iteritems():
+
+    # Create sequence of random sensations for this object, repeated
+    # numRepetitions times. The total number of sensations is equal to the
+    # number of points on the object multiplied by numRepetitions. Each time
+    # an object is visited, we choose a random sequence to show.
+
+    trainingSensations[objectId] = []
+
+    for s in range(numRepetitions):
+      # Get sensations for this object and shuffle them
+      objectSensations = [sensation for sensation in sensations]
+      random.shuffle(objectSensations)
+
+      # Pick a random sequence and get its sensations.
+      sequenceId = sequenceOrder.pop()
+      sequenceSensations = sequenceSDRs[sequenceId]
+
+      # Create superimposed sensory sensations.  We will only use the location
+      # SDRs from the object SDRs.
+      trainingSensations[objectId].extend(createSuperimposedSensorySDRs(
+        sequenceSensations, objectSensations))
+
+  # Train the network on all the SDRs for all the objects
+  exp.learnObjects(trainingSensations)
+
 
 def runExperiment(args):
   """
@@ -233,7 +330,7 @@ def runExperiment(args):
   inputSize = args.get("inputSize", 512)
   numLocations = args.get("numLocations", 100000)
   numInputBits = args.get("inputBits", 20)
-  settlingTime = args.get("settlingTime", 3)
+  settlingTime = args.get("settlingTime", 1)
   figure = args.get("figure", False)
 
   random.seed(trialNum)
@@ -297,8 +394,11 @@ def runExperiment(args):
   printDiagnostics(exp, sequences, objects, verbosity=0)
 
   # Train the network on all the sequences and then all the objects.
-  trainSequences(sequences, exp)
-  trainObjects(objects, exp, settlingTime, numSequences)
+  if figure == "S":
+    trainSuperimposedSequenceObjects(exp, 3*seqLength, sequences, objects)
+  else:
+    trainObjects(objects, exp, settlingTime)
+    trainSequences(sequences, exp, numObjects)
 
   ##########################################################################
   #
@@ -315,11 +415,11 @@ def runExperiment(args):
                                      "sequence", ]):
       if itemType == "sequence":
         objectId = random.randint(0, numSequences-1)
-        inferSequence(exp, objectId, sequences)
+        inferSequence(exp, objectId, sequences, objectId+numObjects)
 
       else:
         objectId = random.randint(0, numObjects-1)
-        inferObject(exp, objectId, objects, objectId+numSequences)
+        inferObject(exp, objectId, objects, objectId)
 
 
   elif figure == "7":
@@ -334,19 +434,28 @@ def runExperiment(args):
 
   else:
     # By default run inference on every sequence and object in order.
-    for seqId in sequences:
-      inferSequence(exp, seqId, sequences)
     for objectId in objects:
-      inferObject(exp, objectId, objects, objectId + numSequences)
+      inferObject(exp, objectId, objects, objectId)
+    for seqId in sequences:
+      inferSequence(exp, seqId, sequences, seqId+numObjects)
 
 
   ##########################################################################
   #
   # Compute a number of overall inference statistics
   convergencePoint, sensorimotorAccuracy = exp.averageConvergencePoint(
-    "L2 Representation", 30, 40, 1)
+    "L2 Representation", 30, 40, 1, numObjects)
+  print "L2 accuracy for sequences:", sensorimotorAccuracy
 
-  sequenceAccuracy = exp.averageSequenceAccuracy(15, 25)
+  convergencePoint, sensorimotorAccuracy = exp.averageConvergencePoint(
+    "L2 Representation", 30, 40, 1, 0, numObjects)
+  print "L2 accuracy for objects:", sensorimotorAccuracy
+
+  sequenceAccuracy = exp.averageSequenceAccuracy(15, 25, 0, numObjects)
+  print "TM accuracy for objects:", sequenceAccuracy
+
+  sequenceAccuracy = exp.averageSequenceAccuracy(15, 25, numObjects)
+  print "TM accuracy for sequences:", sequenceAccuracy
 
   infStats = exp.getInferenceStats()
   predictedActive = numpy.zeros(len(infStats))
@@ -572,7 +681,7 @@ def runExperiment6(dirName):
       "trialNum": 8,
       "numLocations": 50,
       "settlingTime": 3,
-      "figure6": True,
+      "figure": "6",
     }
   )
 
@@ -608,6 +717,32 @@ def runExperiment7(dirName):
     cPickle.dump(results, f)
 
 
+def runExperimentS(dirName):
+  """
+  This runs an experiment where the network is trained on stream containing a
+  mixture of temporal and sensorimotor sequences.
+  """
+  # Results are put into a pkl file which can be used to generate the plots.
+  # dirName is the absolute path where the pkl file will be placed.
+  resultsFilename = os.path.join(dirName, "superimposed_training_results.pkl")
+  results = runExperiment(
+    {
+      "numSequences": 20,
+      "seqLength": 10,
+      "numObjects": 20,
+      "numFeatures": 100,
+      "trialNum": 8,
+      "numLocations": 50,
+      "settlingTime": 1,
+      "figure": "S",
+    }
+  )
+
+  # Pickle results for plotting and possible later debugging
+  with open(resultsFilename, "wb") as f:
+    cPickle.dump(results, f)
+
+
 if __name__ == "__main__":
 
   # Map paper figures to experiment
@@ -618,6 +753,7 @@ if __name__ == "__main__":
     "5B": runExperiment5B,
     "6":  runExperiment6,
     "7":  runExperiment7,
+    "S":  runExperimentS,
   }
   figures = generateFigureFunc.keys()
   figures.sort()
