@@ -124,7 +124,7 @@ def plotAccuracyDuringSensorimotorInference(results, featureRange, objectRange,
   totals = numpy.zeros((max(objectRange)+1, max(featureRange) + 1))
   for r in results:
     if r["numFeatures"] in featureRange and r["numObjects"] in objectRange:
-      accuracy[r["numObjects"], r["numFeatures"]] += r["sequenceAccuracyPct"]
+      accuracy[r["numObjects"], r["numFeatures"]] += r["sequenceAccuracyTM"]
       totals[r["numObjects"], r["numFeatures"]] += 1
 
   for o in objectRange:
@@ -179,7 +179,7 @@ def plotAccuracyDuringSequenceInference(results, locationRange, featureRange,
   totals = numpy.zeros((max(featureRange)+1, max(locationRange) + 1))
   for r in results:
     if r["numFeatures"] in featureRange and r["numSequences"] in seqRange:
-      accuracy[r["numFeatures"], r["numLocations"]] += r["sensorimotorAccuracyPct"]
+      accuracy[r["numFeatures"], r["numLocations"]] += r["objectAccuracyL2"]
       totals[r["numFeatures"], r["numLocations"]] += 1
 
   for f in featureRange:
@@ -325,7 +325,7 @@ if __name__ == "__main__":
   # Generate a plot similar to one in the section "Simulations with Combined
   # Sequences".  Note that the dashed vertical lines and labels were added in
   # manually.
-  resultsFig6 = os.path.join(dirName, "combined_results.pkl")
+  resultsFig6 = os.path.join(dirName, "superimposed_training.pkl")
   if os.path.exists(resultsFig6):
     with open(resultsFig6, "rb") as f:
       results = cPickle.load(f)

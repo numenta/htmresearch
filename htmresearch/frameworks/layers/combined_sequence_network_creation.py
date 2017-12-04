@@ -137,9 +137,10 @@ def createL4L2TMColumn(network, networkConfig, suffix=""):
                destInput="feedforwardGrowthCandidates")
 
   # Link L2 feedback to L4
-  network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
-               srcOutput="feedForwardOutput", destInput="apicalInput",
-               propagationDelay=1)
+  if networkConfig["enableFeedback"]:
+    network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
+                 srcOutput="feedForwardOutput", destInput="apicalInput",
+                 propagationDelay=1)
 
   # Link reset output to L2, TM, and L4
   network.link(sensorInputName, L2ColumnName, "UniformLink", "",

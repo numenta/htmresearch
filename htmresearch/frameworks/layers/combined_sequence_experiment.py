@@ -87,6 +87,7 @@ class L4TMExperiment(L4L2Experiment):
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
+      "enableFeedback": False,
       "L4Params": self.getDefaultL4Params(inputSize, numExternalInputBits),
       "L2Params": self.getDefaultL2Params(inputSize, numInputBits),
       "TMParams": self.getDefaultTMParams(self.inputSize, self.numInputBits),
@@ -190,9 +191,9 @@ class L4TMExperiment(L4L2Experiment):
       "initialPermanence": 0.41,
       "connectedPermanence": 0.6,
       "permanenceIncrement": 0.1,
-      "permanenceDecrement": 0.02,
+      "permanenceDecrement": 0.03,
       "minThreshold": minThreshold,
-      "basalPredictedSegmentDecrement": 0.001,
+      "basalPredictedSegmentDecrement": 0.003,
       "apicalPredictedSegmentDecrement": 0.0,
       "reducedBasalThreshold": int(activationThreshold*0.6),
       "activationThreshold": activationThreshold,
@@ -202,7 +203,8 @@ class L4TMExperiment(L4L2Experiment):
     }
 
 
-  def averageSequenceAccuracy(self, minOverlap, maxOverlap):
+  def averageSequenceAccuracy(self, minOverlap, maxOverlap,
+                              firstStat=0, lastStat=None):
     """
     For each object, decide whether the TM uniquely classified it by checking
     that the number of predictedActive cells are in an acceptable range.
@@ -212,16 +214,18 @@ class L4TMExperiment(L4L2Experiment):
     prefix = "TM PredictedActive"
 
     # For each object
-    for stats in self.statistics:
+    for stats in self.statistics[firstStat:lastStat]:
 
       # Keep running total of how often the number of predictedActive cells are
-      # in the range.
+      # in the range.  We always skip the first (unpredictable) count.
       for key in stats.iterkeys():
         if prefix in key:
-          for numCells in stats[key]:
+          for numCells in stats[key][1:]:
             numStats += 1.0
             if numCells in range(minOverlap, maxOverlap + 1):
               numCorrect += 1.0
+          # print stats["object"], key, stats[key]
+          # print
 
     return numCorrect / numStats
 
