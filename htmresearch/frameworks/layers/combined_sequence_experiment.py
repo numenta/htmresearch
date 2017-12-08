@@ -29,7 +29,10 @@ is identical to the use of its superclass.
 import pprint
 import random
 
+import numpy
+
 from nupic.bindings.math import SparseMatrix
+from nupic.algorithms.knn_classifier import KNNClassifier
 from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.frameworks.layers.laminar_network import createNetwork
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
@@ -140,6 +143,11 @@ class L4TMExperiment(L4L2Experiment):
     self.objectNameToIndex = {}
     self.statistics = []
 
+    # Create classifier to hold supposedly unique TM states
+    self.classifier = KNNClassifier(distanceMethod="rawOverlap")
+    self.numTMCells = (self.TMColumns[0].cellsPerColumn *
+                       self.TMColumns[0].columnCount)
+
 
   def getTMRepresentations(self):
     """
@@ -209,25 +217,48 @@ class L4TMExperiment(L4L2Experiment):
     For each object, decide whether the TM uniquely classified it by checking
     that the number of predictedActive cells are in an acceptable range.
     """
-    numCorrect = 0.0
+    numObjectsCorrect = 0.0
+    numSequencesCorrect = 0.0
     numStats = 0.0
-    prefix = "TM PredictedActive"
 
-    # For each object
+    # For each object or sequence we classify every point or element
+    #
+    # A sequence element is considered correctly classified only if the number
+    # of predictedActive cells is within a reasonable range and if the KNN
+    # Classifier correctly classifies the representation as belonging to this
+    # sequence.
+    #
+    # A point on an object is considered correctly classified by the TM if the
+    # number of predictedActive cells is within range.
     for stats in self.statistics[firstStat:lastStat]:
 
       # Keep running total of how often the number of predictedActive cells are
       # in the range.  We always skip the first (unpredictable) count.
-      for key in stats.iterkeys():
-        if prefix in key:
-          for numCells in stats[key][1:]:
-            numStats += 1.0
-            if numCells in range(minOverlap, maxOverlap + 1):
-              numCorrect += 1.0
-          # print stats["object"], key, stats[key]
+      predictedActiveStat = stats["TM PredictedActive C0"][1:]
+      TMRepresentationStat = stats["TM Representation C0"][1:]
+      for numCells,sdr in zip(predictedActiveStat, TMRepresentationStat):
+        numStats += 1.0
+        if numCells in range(minOverlap, maxOverlap + 1):
+          numObjectsCorrect += 1.0
+
+          # Check KNN Classifier
+          sdr = list(sdr)
+          sdr.sort()
+          dense = numpy.zeros(self.numTMCells)
+          dense[sdr] = 1.0
+          (winner, inferenceResult, dist, categoryDist) = \
+            self.classifier.infer(dense)
+          # print sdr, winner, stats['object'], winner == stats['object']
+          # print inferenceResult
           # print
 
-    return numCorrect / numStats
+          if winner == stats['object']:
+            numSequencesCorrect += 1.0
+
+    if numStats==0:
+      return 0.0, 0.0
+
+    return (numObjectsCorrect / numStats), (numSequencesCorrect / numStats)
 
 
   def _unsetLearningMode(self):
@@ -294,12 +325,23 @@ class L4TMExperiment(L4L2Experiment):
       statistics["TM PredictedActive C" + str(i)].append(
         len(TMPredictedActive[i])
       )
+
+      # The number of cells that are in predictive state as a result of this
+      # input
       statistics["TM NextPredicted C" + str(i)].append(
         len(TMNextPredicted[i])
       )
+
+      # The indices of all active cells in the TM
       statistics["TM Representation C" + str(i)].append(
-        len(TMRepresentation[i])
+        TMRepresentation[i]
       )
+
+      # Insert exact TM representation into the classifier if potentially unique
+      if len(TMRepresentation[i]) < 1.5*self.numInputBits:
+        sdr = list(TMRepresentation[i])
+        sdr.sort()
+        self.classifier.learn(sdr, objectName, isSparse=self.numTMCells)
 
       # add true overlap if objectName was provided
       if objectName in self.objectL2Representations:
