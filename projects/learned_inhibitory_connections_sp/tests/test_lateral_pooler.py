@@ -19,10 +19,8 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 import pytest
-import sys
-sys.path.append("./src")
 import numpy as np
-from lateral_pooler import SpatialPooler
+from lateralpooler.lateral_pooler import SpatialPooler
 import itertools
 
 def test_whether_encoding_is_the_same_as_wmax_for_uniform_H():
