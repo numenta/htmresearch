@@ -225,8 +225,8 @@ class L4TMExperiment(L4L2Experiment):
     #
     # A sequence element is considered correctly classified only if the number
     # of predictedActive cells is within a reasonable range and if the KNN
-    # Classifier correctly classifies the representation as belonging to this
-    # sequence.
+    # Classifier correctly classifies the active cell representation as
+    # belonging to this sequence.
     #
     # A point on an object is considered correctly classified by the TM if the
     # number of predictedActive cells is within range.
@@ -236,8 +236,11 @@ class L4TMExperiment(L4L2Experiment):
       # in the range.  We always skip the first (unpredictable) count.
       predictedActiveStat = stats["TM PredictedActive C0"][1:]
       TMRepresentationStat = stats["TM Representation C0"][1:]
+      # print "\n-----------"
+      # print stats["object"], predictedActiveStat
       for numCells,sdr in zip(predictedActiveStat, TMRepresentationStat):
         numStats += 1.0
+        # print "numCells: ", numCells
         if numCells in range(minOverlap, maxOverlap + 1):
           numObjectsCorrect += 1.0
 
@@ -249,7 +252,7 @@ class L4TMExperiment(L4L2Experiment):
           (winner, inferenceResult, dist, categoryDist) = \
             self.classifier.infer(dense)
           # print sdr, winner, stats['object'], winner == stats['object']
-          # print inferenceResult
+          # print categoryDist
           # print
 
           if winner == stats['object']:
@@ -338,8 +341,8 @@ class L4TMExperiment(L4L2Experiment):
       )
 
       # Insert exact TM representation into the classifier if potentially unique
-      if len(TMRepresentation[i]) < 1.5*self.numInputBits:
-        sdr = list(TMRepresentation[i])
+      if len(TMPredictedActive[i]) < 1.5*self.numInputBits:
+        sdr = list(TMPredictedActive[i])
         sdr.sort()
         self.classifier.learn(sdr, objectName, isSparse=self.numTMCells)
 
