@@ -27,6 +27,7 @@ from scipy.io import loadmat
 from sklearn.datasets import fetch_mldata
 import itertools
 
+
 def load_data(label, **args):
 
     X = None

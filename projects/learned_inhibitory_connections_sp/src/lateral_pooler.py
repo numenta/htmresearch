@@ -146,26 +146,6 @@ class SpatialPooler(object):
         return Y
 
 
-    def compute(self, input_vector, learn, active_array):
-        """
-        This method resembles the primary public method of the SpatialPooler class. 
-        It takes a input vector and outputs the indices of the active columns. If 'learn' 
-        is set to True, this method also performs weight updates and updates to the activity 
-        statistics according to the respective methods implemented below.
-        """
-        m = self.input_size
-        X = input_vector.reshape((m,1))
-        Y = self.encode(X)
-        
-        if learn:
-            self.update_connections(X, Y)
-
-        active_units = np.where(Y[:,0]==1.)[0]
-        active_array[active_units] = 1.
-
-        return active_units
-
-
     def compute_dW(self, X, Y):
         """
         Computes the weight update for the feedforward weights
