@@ -31,6 +31,8 @@ import sys
 import numpy
 
 import matplotlib as mpl
+import traceback
+
 mpl.rcParams['pdf.fonttype'] = 42
 from matplotlib import rc
 rc('font',**{'family':'sans-serif','sans-serif':['Arial']})
@@ -234,8 +236,8 @@ if __name__ == "__main__":
 
   # Generate images similar to those used in the first plot for the section
   # "Simulations with Pure Temporal Sequences"
-  resultsFig4A = os.path.join(dirName, "pure_sequences_example.pkl")
-  if os.path.exists(resultsFig4A):
+  try:
+    resultsFig4A = os.path.join(dirName, "pure_sequences_example.pkl")
     with open(resultsFig4A, "rb") as f:
       results = cPickle.load(f)
 
@@ -255,11 +257,15 @@ if __name__ == "__main__":
                              "detailed_plots")
       )
     print "Plots for Fig 4A generated in 'detailed_plots'"
+  except Exception, e:
+    print "\nCould not generate plots for Fig 4A: "
+    traceback.print_exc()
+    print
 
   # Generate the second plot for the section "Simulations with Pure
   # Temporal Sequences"
-  resultsFig4B = os.path.join(dirName, "sequence_batch_results.pkl")
-  if os.path.exists(resultsFig4B):
+  try:
+    resultsFig4B = os.path.join(dirName, "sequence_batch_results.pkl")
     featureRange = [5, 10, 100]
     seqRange = [50]
     locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
@@ -274,11 +280,15 @@ if __name__ == "__main__":
       yaxis="Accuracy (%)")
 
     print "Plots for Fig 4B generated in 'plots'"
+  except Exception, e:
+    print "\nCould not generate plots for Fig 4B: "
+    traceback.print_exc()
+    print
 
   # Generate images similar to the first plot for the section "Simulations with
   # Sensorimotor Sequences"
-  resultsFig5A = os.path.join(dirName, "sensorimotor_sequence_example.pkl")
-  if os.path.exists(resultsFig5A):
+  try:
+    resultsFig5A = os.path.join(dirName, "sensorimotor_sequence_example.pkl")
     with open(resultsFig5A, "rb") as f:
       results = cPickle.load(f)
 
@@ -300,12 +310,16 @@ if __name__ == "__main__":
       )
 
     print "Plots for Fig 5A generated in 'detailed_plots'"
+  except Exception, e:
+    print "\nCould not generate plots for Fig 5A: "
+    traceback.print_exc()
+    print
 
 
   # Generate the second plot for the section "Simulations with Sensorimotor
   # Sequences"
-  resultsFig5B = os.path.join(dirName, "sensorimotor_batch_results.pkl")
-  if os.path.exists(resultsFig5B):
+  try:
+    resultsFig5B = os.path.join(dirName, "sensorimotor_batch_results.pkl")
     # These ranges must equal or be a subset of the actual ranges that were run
     featureRange = [5, 10, 50]
     objectRange = [2, 5, 10, 20, 30, 40, 50, 70]
@@ -320,25 +334,34 @@ if __name__ == "__main__":
       yaxis="Accuracy (%)")
 
     print "Plots for Fig 5B generated in 'plots'"
+  except Exception, e:
+    print "\nCould not generate plots for Fig 5B: "
+    traceback.print_exc()
+    print
 
 
-  # Generate a plot similar to one in the section "Simulations with Combined
+    # Generate a plot similar to one in the section "Simulations with Combined
   # Sequences".  Note that the dashed vertical lines and labels were added in
   # manually.
-  resultsFig6 = os.path.join(dirName, "superimposed_training.pkl")
-  if os.path.exists(resultsFig6):
-    with open(resultsFig6, "rb") as f:
-      results = cPickle.load(f)
+  try:
+    resultsFig6 = os.path.join(dirName, "superimposed_training.pkl")
+    if os.path.exists(resultsFig6):
+      with open(resultsFig6, "rb") as f:
+        results = cPickle.load(f)
 
-    plotMultipleInferenceRun(
-      results["statistics"][0:10],
-      fields=[
-        ("L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
-        ("TM PredictedActive",
-         "Predicted active cells in temporal sequence layer"),
-      ],
-      basename=results["name"],
-      plotDir=os.path.join(dirName, "plots")
-    )
+      plotMultipleInferenceRun(
+        results["statistics"][0:10],
+        fields=[
+          ("L4 PredictedActive", "Predicted active cells in sensorimotor layer"),
+          ("TM PredictedActive",
+           "Predicted active cells in temporal sequence layer"),
+        ],
+        basename=results["name"],
+        plotDir=os.path.join(dirName, "plots")
+      )
 
-    print "Plots for Fig 6 generated in 'plots'"
+      print "Plots for Fig 6 generated in 'plots'"
+  except Exception, e:
+    print "\nCould not generate plots for Fig 6: "
+    traceback.print_exc()
+    print
