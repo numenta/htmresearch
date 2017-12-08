@@ -27,7 +27,7 @@ from optparse import OptionParser
 from datasets import load_data
 from utils import random_id
 from nupic.algorithms.spatial_pooler import SpatialPooler as OldSpatialPooler
-from soft_inhibition import SpatialPooler as SoftPooler
+from htmresearch.algorithms.lateral_pooler import LateralPooler
 from callbacks import ModelCheckpoint, ModelOutputEvaluator, Reconstructor, ModelInspector, OutputCollector
 
 
@@ -158,7 +158,7 @@ def main(argv):
   #####################################################
   elif sp_type == "lateral":
 
-    pooler = SoftPooler(**sp_params)
+    pooler = LateralPooler(**sp_params)
 
     sys.stdout.write(
       "Training dynamic lateral pooler:\n")
