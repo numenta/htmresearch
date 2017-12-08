@@ -145,13 +145,10 @@ def main(argv):
         y = Y[:, t]
         pooler.compute(x, True, y)
 
-
-
       results["inputs"].append(X)
       results["outputs"].append(Y)
       results["feedforward"].append(get_permanence_vals(pooler)) 
       
-
   
   ####################################################
   # 
