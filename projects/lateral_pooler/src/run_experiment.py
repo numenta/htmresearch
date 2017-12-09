@@ -19,17 +19,19 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-import os
+
+import inspect, os
 import numpy as np
 import pickle
 import json
 import sys
 from optparse import OptionParser
 from datasets import load_data
-from utils import random_id
+from htmresearch.support.lateral_pooler.utils import random_id
 from nupic.algorithms.spatial_pooler import SpatialPooler as OldSpatialPooler
 from htmresearch.algorithms.lateral_pooler import LateralPooler
 from htmresearch.support.lateral_pooler.callbacks import ModelCheckpoint, ModelOutputEvaluator, Reconstructor, ModelInspector, OutputCollector
+
 
 
 def dump_dict(path, my_dict):
@@ -87,7 +89,9 @@ def main(argv):
   experiment_id   = args.experiment_id
   seed            = args.seed
 
-  sp_params_dict  = json.load(open("./params.json"))
+
+  mypath =  os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) # script directory
+  sp_params_dict  = json.load(open(mypath + "/params.json"))
   if args.sp_params is not None:
     sp_params       = sp_params_dict[sp_type][args.sp_params]
   else:
