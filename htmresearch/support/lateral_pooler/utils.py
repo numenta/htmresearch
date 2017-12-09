@@ -19,7 +19,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 import numpy as np
-import shortuuid 
+import uuid 
 from scipy.stats import entropy
 import pickle
 import os
@@ -155,7 +155,9 @@ def trim_doc(docstring):
 
 def random_id(length):
     """Returns a random id of specified length."""
-    return shortuuid.ShortUUID().random(length=length)
+    assert(length < 10)
+    x = str(uuid.uuid4())
+    return x[:length]
 
 
 def create_movie(fig, update_figure, filename, title, fps=15, dpi=100):
