@@ -18,18 +18,18 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
-import sys
+
 import os
 import numpy as np
 import pickle
 import json
+import sys
 from optparse import OptionParser
 from datasets import load_data
 from utils import random_id
 from nupic.algorithms.spatial_pooler import SpatialPooler as OldSpatialPooler
 from htmresearch.algorithms.lateral_pooler import LateralPooler
-from callbacks import ModelCheckpoint, ModelOutputEvaluator, Reconstructor, ModelInspector, OutputCollector
-
+from htmresearch.support.lateral_pooler.callbacks import ModelCheckpoint, ModelOutputEvaluator, Reconstructor, ModelInspector, OutputCollector
 
 
 def dump_dict(path, my_dict):
@@ -63,7 +63,7 @@ def get_permanence_vals(sp):
 
 
 def parse_argv():
-  parser = OptionParser(usage="Train HTM Spatial Pooler")
+  parser = OptionParser(usage = "python run_experiment.py --sp lateral --data mnist --params mnist -e 2 -b 30 -d 100")
   parser.add_option("--data",   type=str, default='', dest="data_set", help="")
   parser.add_option("-d", "--num_data",  type=int, default=30000, dest="num_data_points", help="")
   parser.add_option("-e",     "--num_epochs", type=int, default=6, dest="num_epochs", help="number of epochs")
@@ -107,6 +107,7 @@ def main(argv):
   X, _, X_test, _ = load_data(data_set, num_inputs = num_data_points) 
 
   n, m = get_shape(sp_params)
+  X    = X[:,:num_data_points]
   d    = X.shape[1]
   
 

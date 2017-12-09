@@ -22,7 +22,7 @@ import numpy as np
 from htmresearch.support.lateral_pooler.utils import random_mini_batches
 from  numpy import dot, exp, maximum
 import warnings
-
+import sys
 
 class LateralPooler(object):
     """
@@ -93,8 +93,8 @@ class LateralPooler(object):
         # ---------------------
         #  Statistics
         # ---------------------
-        self.avg_activity_units = np.zeros(outputSize)
-        self.avg_activity_pairs = np.zeros((outputSize, outputSize))
+        self.avg_activity_units = 0.0000001*np.ones(outputSize)
+        self.avg_activity_pairs = 0.0000001*np.ones((outputSize, outputSize))
 
         # ---------------------
         #  Learning parameters
