@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2017, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -18,8 +18,6 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
-
-
 import inspect, os
 import numpy as np
 import pickle
@@ -90,8 +88,8 @@ def main(argv):
   seed            = args.seed
 
 
-  mypath =  os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) # script directory
-  sp_params_dict  = json.load(open(mypath + "/params.json"))
+  the_scripts_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) # script directory
+  sp_params_dict  = json.load(open(the_scripts_path + "/params.json"))
   if args.sp_params is not None:
     sp_params       = sp_params_dict[sp_type][args.sp_params]
   else:
@@ -101,10 +99,10 @@ def main(argv):
   if experiment_id is None:
     experiment_id = random_id(5)
 
-  path = "../results/{}_pooler_{}_{}/".format(sp_type, data_set,experiment_id)
+  path = the_scripts_path + "/../results/{}_pooler_{}_{}/".format(sp_type, data_set,experiment_id)
   os.makedirs(os.path.dirname(path))
 
-  sys.stdout.write(
+  print(
     "Experiment directory:\n\"{}\"\n"
     .format(path))
 

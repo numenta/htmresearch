@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2017, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -20,8 +20,6 @@
 # ----------------------------------------------------------------------
 
 import numpy as np
-import sys
-sys.path.append('/Users/mklukas/nta/htmresearch/projects/energy_based_pooling/energy_based_models')
 from scalar_encoder import ScalarEncoder 
 from scipy.io import loadmat
 from sklearn.datasets import fetch_mldata

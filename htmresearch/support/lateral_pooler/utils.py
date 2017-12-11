@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2017, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -30,12 +30,12 @@ import os
 
 
 def get_permanence_vals(sp):
-  m = sp.getNumInputs()
-  n = np.prod(sp.getColumnDimensions())
-  W = np.zeros((n, m))
-  for i in range(sp._numColumns):
-    sp.getPermanence(i, W[i, :])
-  return W
+    m = sp.getNumInputs()
+    n = np.prod(sp.getColumnDimensions())
+    W = np.zeros((n, m))
+    for i in range(sp._numColumns):
+        sp.getPermanence(i, W[i, :])
+    return W
 
 
 def update_statistics(Y, P, beta=0.9):
@@ -94,33 +94,33 @@ def compute_conditional_probabilies(Y):
 
 
 def random_mini_batches(X, Y, minibatch_size, seed=None):
-	"""
-	Compute a list of minibatches from inputs X and targets Y.
-	A datapoint is expected to be represented as a column in 
-	the data matrices X and Y.
-	"""
-	d    = X.shape[1]
-	size = minibatch_size
-	minibatches = []
+    """
+    Compute a list of minibatches from inputs X and targets Y.
+    A datapoint is expected to be represented as a column in 
+    the data matrices X and Y.
+    """
+    d    = X.shape[1]
+    size = minibatch_size
+    minibatches = []
 
-	if Y is None:
-		Y = np.zeros((1, d))
+    if Y is None:
+        Y = np.zeros((1, d))
 
-	np.random.seed(seed)
-	perm = np.random.permutation(d)
+    np.random.seed(seed)
+    perm = np.random.permutation(d)
 
-	for t in range(0, d, size):
-		subset = perm[t: t+size]
-		minibatches.append((X[:, subset], Y[:, subset]))
+    for t in range(0, d, size):
+        subset = perm[t: t+size]
+        minibatches.append((X[:, subset], Y[:, subset]))
 
-	return minibatches
+    return minibatches
 
 
 def scalar_reconstruction(x):
-	v = x*np.arange(len(x))
-	s = np.sum(v)/len(x)
-	s = s/len(x)
-	return s
+    v = x*np.arange(len(x))
+    s = np.sum(v)/len(x)
+    s = s/len(x)
+    return s
 
 
 def trim_doc(docstring):
@@ -175,5 +175,3 @@ def create_movie(fig, update_figure, filename, title, fps=15, dpi=100):
             else:
                 break
 
-def create_sp_params(params):
-    pass

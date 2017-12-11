@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2017, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -36,7 +36,7 @@ class ScalarEncoder(object):
        				   min                 max     min				   max
                     
                       
-	    f(x,y)     =    [. . . . . 1 1 1 . .]	+	[. . . . . . . 1 1 1]
+	    f((x,y))) =     [. . . . . 1 1 1 . .]	+	[. . . . . . . 1 1 1]
 
 	"""
 	def __init__(self, dimensions=1, max_values = [[0., 1.]], bits_per_axis=[1000], weight_per_axis=[20], wrap_around = False):
