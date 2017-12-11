@@ -22,7 +22,7 @@ import numpy as np
 from htmresearch.support.lateral_pooler.utils import random_mini_batches
 from  numpy import dot, exp, maximum
 import warnings
-import sys
+
 
 class LateralPooler(object):
   """
@@ -125,7 +125,11 @@ class LateralPooler(object):
     """ 
     W, boost, H = self.get_connections()
     n, m  = W.shape 
+    
+    # Optional thresholding of permanence values:
+    # (note that the original SP does this)
     # W_prime = (W > self.permanence_threshold).astype(float)
+    
     W_prime = W
     d = X.shape[1]
     Y = np.zeros((n,d))
@@ -222,10 +226,6 @@ class LateralPooler(object):
 
         num_batches = len(minibatches)
         for t, (X_t, _) in enumerate(minibatches):
-            sys.stdout.flush()
-            sys.stdout.write(
-              "\r{}/{}  {}/{}"
-                .format(num_epochs, epoch + 1, num_batches, t + 1))
 
             for callback in callbacks:
               callback.on_batch_begin((X_t, None), cache)

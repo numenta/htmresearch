@@ -78,55 +78,55 @@
 	{
 		"xy_biased": 
 		{
-		    "inputSize"  : 200,
-		    "outputSize" : 128, 
-		    "codeWeight" : 5, 
+		    "input_size"  : 200,
+		    "output_size" : 128, 
+		    "code_weight" : 5, 
 		    "seed" : 1,
-		    "learningRate"        : 0.05,
-		    "smoothingPeriod"     : 1000.0, 
-		    "boostStrength"       : 100.0,
-		    "boostStrengthHidden" : 100.0,
-		    "incDecRatio"         : 1.0,
-		    "permanenceThreshold" : 0.5
+		    "learning_rate"        : 0.05,
+		    "smoothing_period"     : 1000.0, 
+		    "boost_strength"       : 100.0,
+		    "boost_strength_hidden" : 100.0,
+		    "inc_dec_ratio"         : 1.0,
+		    "permanence_threshold" : 0.5
 		},
 		"natural": 
 		{
-		    "inputSize"  : 400,
-		    "outputSize" : 128, 
-		    "codeWeight" : 5, 
+		    "input_size"  : 400,
+		    "output_size" : 128, 
+		    "code_weight" : 5, 
 		    "seed" : 1,
-		    "learningRate"        : 0.05,
-		    "smoothingPeriod"     : 100.0, 
-		    "boostStrength"       : 100.0,
-		    "boostStrengthHidden" : 100.0,
-		    "incDecRatio"         : 1.0,
-		    "permanenceThreshold" : 0.5
+		    "learning_rate"        : 0.05,
+		    "smoothing_period"     : 100.0, 
+		    "boost_strength"       : 100.0,
+		    "boost_strength_hidden" : 100.0,
+		    "inc_dec_ratio"         : 1.0,
+		    "permanence_threshold" : 0.5
 		},
 		"natural_more_columns": 
 		{
-		    "inputSize"  : 400,
-		    "outputSize" : 1024, 
-		    "codeWeight" : 20, 
+		    "input_size"  : 400,
+		    "output_size" : 1024, 
+		    "code_weight" : 20, 
 		    "seed" : 1,
-		    "learningRate"        : 0.05,
-		    "smoothingPeriod"     : 50.0, 
-		    "boostStrength"       : 100.0,
-		    "boostStrengthHidden" : 100.0,
-		    "incDecRatio"         : 1.0,
-		    "permanenceThreshold" : 0.5
+		    "learning_rate"        : 0.05,
+		    "smoothing_period"     : 50.0, 
+		    "boost_strength"       : 100.0,
+		    "boost_strength_hidden" : 100.0,
+		    "inc_dec_ratio"         : 1.0,
+		    "permanence_threshold" : 0.5
 		},
 		"mnist": 
 		{
-		    "inputSize"  : 784,
-		    "outputSize" : 128, 
-		    "codeWeight" : 5, 
+		    "input_size"  : 784,
+		    "output_size" : 128, 
+		    "code_weight" : 5, 
 		    "seed" : 1,
-		    "learningRate"        : 0.05,
+		    "learning_rate"        : 0.05,
 		    "smoothingPeriod"     : 1000.0, 
-		    "boostStrength"       : 100.0,
-		    "boostStrengthHidden" : 100.0,
-		    "incDecRatio"         : 1.0,
-		    "permanenceThreshold" : 0.5
+		    "boost_strength"       : 100.0,
+		    "boost_strength_hidden" : 100.0,
+		    "inc_dec_ratio"         : 1.0,
+		    "permanence_threshold" : 0.5
 		}
 	}
 }

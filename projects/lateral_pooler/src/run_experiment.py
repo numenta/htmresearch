@@ -128,7 +128,7 @@ def main(argv):
     
     pooler = OldSpatialPooler(**sp_params)
 
-    sys.stdout.write(
+    print(
       "Training ordinary pooler:\n")
 
     # "Fit" the model to the training data
@@ -182,7 +182,7 @@ def main(argv):
   dump_dict(path, sp_params)
   dump_results(path, results)
 
-  sys.stdout.write(
+  print(
     "\nDone.\n")
 
 
