@@ -48,22 +48,22 @@ class SpatialPooler(LateralPooler):
     assert(inputDimensions[1] == 1 and columnDimensions[1] == 1)
 
     super_args = {
-        "inputSize"           : inputDimensions[0], 
-        "outputSize"          : columnDimensions[0], 
-        "codeWeight"          : numActiveColumnsPerInhArea, 
-        "seed"                : seed,
-        "learningRate"        : synPermActiveInc,
-        "incDecRatio"         : synPermActiveInc/synPermInactiveDec,
-        "smoothingPeriod"     : dutyCyclePeriod, 
-        "boostStrength"       : boostStrength,
-        "boostStrengthHidden" : boostStrength,
-        "permanenceThreshold" : synPermConnected
+        "input_ize"             : inputDimensions[0], 
+        "output_size"           : columnDimensions[0], 
+        "code_weight"           : numActiveColumnsPerInhArea, 
+        "seed"                  : seed,
+        "learning_rate"         : synPermActiveInc,
+        "inc_dec_ratio"         : synPermActiveInc/synPermInactiveDec,
+        "smoothing_period"      : dutyCyclePeriod, 
+        "boost_strength"        : boostStrength,
+        "boost_strength_hidden" : boostStrength,
+        "permanence_threshold"  : synPermConnected
     }
     super(SpatialPooler, self).__init__(**super_args)
               
 
 
-  def compute(self, input_vector, learn, active_array):
+  def compute(self, inputVector, learn, activeArray):
   """
   This method resembles the primary public method of the SpatialPooler class. 
   It takes a input vector and outputs the indices of the active columns. If 'learn' 
@@ -71,14 +71,15 @@ class SpatialPooler(LateralPooler):
   statistics according to the respective methods implemented below.
   """
     m = self.input_size
-    X = input_vector.reshape((m,1))
+    X = inputVector.reshape((m,1))
     Y = self.encode(X)
 
     if learn:
     self.update_connections(X, Y)
 
     active_units = np.where(Y[:,0]==1.)[0]
-    active_array[active_units] = 1.
+    
+    activeArray[active_units] = 1.
 
     return active_units
 

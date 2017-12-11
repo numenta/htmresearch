@@ -43,16 +43,16 @@ class LateralPooler(object):
   """
 
   def __init__(self, 
-               inputSize           = 784, 
-               outputSize          = 128, 
-               codeWeight          = 4, 
+               input_size           = 784, 
+               output_size          = 128, 
+               code_weight          = 4, 
                seed                = -1,
-               learningRate        = 0.01,
-               smoothingPeriod     = 50., 
-               boostStrength       = 100.,
-               boostStrengthHidden = 100.,
-               incDecRatio         = 1.,
-               permanenceThreshold = .5
+               learning_rate        = 0.01,
+               smoothing_period     = 50., 
+               boost_strength       = 100.,
+               boost_strength_hidden = 100.,
+               inc_dec_ratio         = 1.,
+               permanence_threshold = .5
     ):
     """
     Args
@@ -75,11 +75,11 @@ class LateralPooler(object):
     else:
         self._random = np.random
 
-    self.input_size  = inputSize
-    self.output_size = outputSize
-    self.shape       = (outputSize, inputSize)
-    self.code_weight = codeWeight
-    self.sparsity    = float(codeWeight)/float(outputSize)
+    self.input_size  = input_size
+    self.output_size = output_size
+    self.shape       = (output_size, input_size)
+    self.code_weight = code_weight
+    self.sparsity    = float(code_weight)/float(output_size)
 
     # ---------------------
     #  Network connections 
@@ -93,18 +93,18 @@ class LateralPooler(object):
     # ---------------------
     #  Statistics
     # ---------------------
-    self.avg_activity_units = 0.0000001*np.ones(outputSize)
-    self.avg_activity_pairs = 0.0000001*np.ones((outputSize, outputSize))
+    self.avg_activity_units = 0.0000001*np.ones(n)
+    self.avg_activity_pairs = 0.0000001*np.ones((n, n))
 
     # ---------------------
     #  Learning parameters
     # ---------------------
-    self.boost_strength        = boostStrength
-    self.boost_strength_hidden = boostStrengthHidden
-    self.permanence_threshold = float(permanenceThreshold)
-    self.smoothing_period = float(smoothingPeriod)
-    self.learning_rate    = float(learningRate)
-    self.inc_dec_ratio    = float(incDecRatio)
+    self.boost_strength        = boost_strength
+    self.boost_strength_hidden = boost_strength_hidden
+    self.permanence_threshold = float(permanence_threshold)
+    self.smoothing_period = float(smoothing_period)
+    self.learning_rate    = float(learning_rate)
+    self.inc_dec_ratio    = float(inc_dec_ratio)
 
 
   def get_connections(self):
