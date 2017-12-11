@@ -214,14 +214,20 @@ class LateralPooler(object):
     for callback in callbacks:
       callback.set_model(self)
 
+    cache = {
+      "num_epochs": num_epochs,
+      "initial_epoch": initial_epoch,
+      "batch_size": batch_size
+    }
+
     for epoch in range(initial_epoch, num_epochs):
 
-        cache = {}
 
         for callback in callbacks:
           callback.on_epoch_begin(epoch, cache)
 
         minibatches = random_mini_batches(X, None, batch_size, seed)
+        cache["num_batches"] = len(minibatches)
 
         num_batches = len(minibatches)
         for t, (X_t, _) in enumerate(minibatches):

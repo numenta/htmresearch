@@ -20,6 +20,7 @@
 # ----------------------------------------------------------------------
 import numpy as np
 import pickle
+import sys
 
 
 class Callback(object):
@@ -180,5 +181,32 @@ class Reconstructor(Callback):
 
   def get_outputs(self):
       return np.array(self.outputs)
+
+
+
+class Logger(Callback):
+  """
+  Prints at what epoch and minibatch we are in training.
+  """
+  def __init__(self):
+      self.model  = None
+
+  def on_epoch_begin(self, epoch, cache):
+    cache["epoch"] = epoch
+    cache["batch"] = 0
+
+  def on_batch_begin(self, batch, cache):
+    sys.stdout.flush()
+
+    epoch = cache["epoch"]
+    t = cache["batch"] + 1
+    cache["batch"] += 1
+    num_epochs = cache["num_epochs"]
+    d = cache["num_batches"]
+
+
+    sys.stdout.write(
+      "\r{}/{}  {}/{}"
+        .format(num_epochs, epoch + 1, d, t + 1))
 
 

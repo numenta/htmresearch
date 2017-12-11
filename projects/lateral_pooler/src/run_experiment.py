@@ -28,7 +28,9 @@ from datasets import load_data
 from htmresearch.support.lateral_pooler.utils import random_id
 from nupic.algorithms.spatial_pooler import SpatialPooler as OldSpatialPooler
 from htmresearch.algorithms.lateral_pooler import LateralPooler
-from htmresearch.support.lateral_pooler.callbacks import ModelCheckpoint, ModelOutputEvaluator, Reconstructor, ModelInspector, OutputCollector
+from htmresearch.support.lateral_pooler.callbacks import (ModelCheckpoint, ModelOutputEvaluator, 
+                                                          Reconstructor, ModelInspector, 
+                                                          OutputCollector, Logger)
 
 
 
@@ -50,7 +52,7 @@ def get_shape(params):
   if "inputDimensions" in params:
     return params["columnDimensions"][0], params["inputDimensions"][0]
   else:
-    return params["outputSize"], params["inputSize"]
+    return params["output_size"], params["input_size"]
 
 
 def get_permanence_vals(sp):
@@ -89,7 +91,7 @@ def main(argv):
 
 
   the_scripts_path = os.path.dirname(os.path.realpath(__file__)) # script directory
-  
+
   sp_params_dict  = json.load(open(the_scripts_path + "/params.json"))
   if args.sp_params is not None:
     sp_params       = sp_params_dict[sp_type][args.sp_params]
@@ -170,9 +172,10 @@ def main(argv):
     collect_feedforward = ModelInspector(lambda pooler: pooler.feedforward.copy(), on_batch = False )
     # collect_lateral     = ModelInspector(lambda pooler: pooler.inhibitory.copy(),  on_batch = False )
     training_log        = OutputCollector()
+    print_training_status = Logger()
 
     # "Fit" the model to the training datasets
-    pooler.fit(X, batch_size=batch_size, num_epochs=num_epochs, initial_epoch=0, callbacks=[collect_feedforward, training_log])
+    pooler.fit(X, batch_size=batch_size, num_epochs=num_epochs, initial_epoch=0, callbacks=[collect_feedforward, training_log, print_training_status])
 
     results["inputs"]      = training_log.get_inputs()
     results["outputs"]     = training_log.get_outputs()

@@ -122,7 +122,7 @@
 		    "code_weight" : 5, 
 		    "seed" : 1,
 		    "learning_rate"        : 0.05,
-		    "smoothingPeriod"     : 1000.0, 
+		    "smoothing_period"     : 1000.0, 
 		    "boost_strength"       : 100.0,
 		    "boost_strength_hidden" : 100.0,
 		    "inc_dec_ratio"         : 1.0,
