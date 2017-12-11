@@ -20,8 +20,7 @@
 # ----------------------------------------------------------------------
 import numpy as np
 from htmresearch.support.lateral_pooler.utils import random_mini_batches
-from  numpy import dot, exp, maximum
-import warnings
+
 
 
 class LateralPooler(object):
@@ -135,7 +134,7 @@ class LateralPooler(object):
     Y = np.zeros((n,d))
     s = self.sparsity
 
-    score             = boost * dot(W_prime, X)
+    score             = boost * np.dot(W_prime, X)
     sorted_score_args = np.argsort(score, axis=0)[::-1, :]
     inh_signal = np.zeros((n, d))
 

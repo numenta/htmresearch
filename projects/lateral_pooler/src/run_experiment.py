@@ -88,7 +88,8 @@ def main(argv):
   seed            = args.seed
 
 
-  the_scripts_path = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) # script directory
+  the_scripts_path = os.path.dirname(os.path.realpath(__file__)) # script directory
+  
   sp_params_dict  = json.load(open(the_scripts_path + "/params.json"))
   if args.sp_params is not None:
     sp_params       = sp_params_dict[sp_type][args.sp_params]
