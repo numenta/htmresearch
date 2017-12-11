@@ -1,0 +1,132 @@
+{
+	"ordinary": 
+	{
+		"xy_biased":
+		{
+			  "inputDimensions": [200, 1],
+			  "columnDimensions": [128, 1],
+			  "potentialRadius": 128,
+			  "potentialPct": 1.0,
+			  "globalInhibition": true,
+			  "localAreaDensity": -1.0,
+			  "numActiveColumnsPerInhArea": 5,
+			  "stimulusThreshold": 1,
+			  "synPermInactiveDec": 0.05,
+			  "synPermActiveInc": 0.05,
+			  "synPermConnected": 0.5,
+			  "minPctOverlapDutyCycle": 0.001,
+			  "dutyCyclePeriod": 1000,
+			  "boostStrength": 100.0,
+			  "seed": 1936
+		},
+		"xy_biased_incdec_2":
+		{
+			  "inputDimensions": [200, 1],
+			  "columnDimensions": [128, 1],
+			  "potentialRadius": 128,
+			  "potentialPct": 1.0,
+			  "globalInhibition": true,
+			  "localAreaDensity": -1.0,
+			  "numActiveColumnsPerInhArea": 5,
+			  "stimulusThreshold": 1,
+			  "synPermInactiveDec": 0.01,
+			  "synPermActiveInc": 0.05,
+			  "synPermConnected": 0.5,
+			  "minPctOverlapDutyCycle": 0.001,
+			  "dutyCyclePeriod": 1000,
+			  "boostStrength": 100.0,
+			  "seed": 1936
+		},
+		"natural":
+		{
+			  "inputDimensions": [400, 1],
+			  "columnDimensions": [128, 1],
+			  "potentialRadius": 128,
+			  "potentialPct": 1.0,
+			  "globalInhibition": true,
+			  "localAreaDensity": -1.0,
+			  "numActiveColumnsPerInhArea": 5,
+			  "stimulusThreshold": 1,
+			  "synPermInactiveDec": 0.05,
+			  "synPermActiveInc": 0.05,
+			  "synPermConnected": 0.5,
+			  "minPctOverlapDutyCycle": 0.001,
+			  "dutyCyclePeriod": 1000,
+			  "boostStrength": 100.0,
+			  "seed": 1936
+		},
+		"mnist":
+		{
+			  "inputDimensions": [784, 1],
+			  "columnDimensions": [128, 1],
+			  "potentialRadius": 128,
+			  "potentialPct": 1.0,
+			  "globalInhibition": true,
+			  "localAreaDensity": -1.0,
+			  "numActiveColumnsPerInhArea": 5,
+			  "stimulusThreshold": 1,
+			  "synPermInactiveDec": 0.05,
+			  "synPermActiveInc"  : 0.05,
+			  "synPermConnected": 0.5,
+			  "minPctOverlapDutyCycle": 0.001,
+			  "dutyCyclePeriod": 1000,
+			  "boostStrength": 100.0,
+			  "seed": 1936
+		}
+	},
+	"lateral": 
+	{
+		"xy_biased": 
+		{
+		    "input_size"  : 200,
+		    "output_size" : 128, 
+		    "code_weight" : 5, 
+		    "seed" : 1,
+		    "learning_rate"        : 0.05,
+		    "smoothing_period"     : 1000.0, 
+		    "boost_strength"       : 100.0,
+		    "boost_strength_hidden" : 100.0,
+		    "inc_dec_ratio"         : 1.0,
+		    "permanence_threshold" : 0.5
+		},
+		"natural": 
+		{
+		    "input_size"  : 400,
+		    "output_size" : 128, 
+		    "code_weight" : 5, 
+		    "seed" : 1,
+		    "learning_rate"        : 0.05,
+		    "smoothing_period"     : 100.0, 
+		    "boost_strength"       : 100.0,
+		    "boost_strength_hidden" : 100.0,
+		    "inc_dec_ratio"         : 1.0,
+		    "permanence_threshold" : 0.5
+		},
+		"natural_more_columns": 
+		{
+		    "input_size"  : 400,
+		    "output_size" : 1024, 
+		    "code_weight" : 20, 
+		    "seed" : 1,
+		    "learning_rate"        : 0.05,
+		    "smoothing_period"     : 50.0, 
+		    "boost_strength"       : 100.0,
+		    "boost_strength_hidden" : 100.0,
+		    "inc_dec_ratio"         : 1.0,
+		    "permanence_threshold" : 0.5
+		},
+		"mnist": 
+		{
+		    "input_size"  : 784,
+		    "output_size" : 128, 
+		    "code_weight" : 5, 
+		    "seed" : 1,
+		    "learning_rate"        : 0.05,
+		    "smoothing_period"     : 1000.0, 
+		    "boost_strength"       : 100.0,
+		    "boost_strength_hidden" : 100.0,
+		    "inc_dec_ratio"         : 1.0,
+		    "permanence_threshold" : 0.5
+		}
+	}
+}
